@@ -27,7 +27,7 @@ import {
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, PadTextNode, TruncateTextNode, WrapTextNode, ExactNode, TextSimilarityNode, FuzzyMatchNode,
   CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
-  NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode, TemplateNode,
+  RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode, TemplateNode,
   PromoNode,
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateTimeValueNode, DATE_TIME_VALUE_OP_META, DatePartNode, WeekInfoNode,
@@ -277,7 +277,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       },
       { type: "pair", children: [
         { type: "convert", label: "Convert", keywords: "units", description: "Converts a value to another unit and rescales the number: length, mass, temperature, time, speed, energy and more. Excel: `CONVERT`.", create: () => new ConvertNode() },
-        { type: "cast", label: "Cast", description: "Changes a value's type to number, text, date, `TRUE`/`FALSE` or complex, item by item on Lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
+        { type: "cast", label: "Cast", description: "Changes a value's type to number, text, date, `TRUE`/`FALSE` or complex, item by item on Lists. To text it takes a format like `0.00%`; to number it takes decimal and group separators, for text like `1.234,56`. Excel: `TEXT`, `VALUE`, `NUMBERVALUE`.", create: () => new CastNode(), parity: false },
       ]},
       { type: "group", label: "Node Group", description: "A container: drop it around nodes, or select them and press G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
       { type: "pair", children: [
@@ -880,7 +880,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       { type: "text-dollar", label: "DOLLAR",  description: "Format a number as a currency string, for example `\"$1,234.56\"`, or `\"($78.90)\"` for a negative. Excel: `DOLLAR`.", create: () => new FormatDollarNode() },
-      { type: "text-numbervalue", label: "NUMBERVALUE", description: "Parses a number from a string with custom decimal and group separators, for example `\"1.234,56\"` with `decimal=\",\"` `group=\".\"`. Excel: `NUMBERVALUE`.", create: () => new NumberValueNode(), parity: false },
       { type: "text-fixed", label: "FIXED",     description: "Format a number as a fixed-decimal string with optional thousands separators. Excel: `FIXED`.", create: () => new FixedNode() },
       { type: "pair", children: [romanArabicLeaf("roman"), romanArabicLeaf("arabic")] },
     ],

@@ -9,15 +9,20 @@ export type UrlEncodeOp = "encode" | "decode" | "base64" | "unbase64";
 export type RegexOp = "test" | "extract" | "extract_all" | "extract_groups" | "replace";
 
 /** VALUE's text reading, shared by the formula and Cast ([[B16]] oneFormulaSurface), in the US form only ([[C117]] usNumberText): `decimalFromText` after the currency, percent and parenthesis marks. */
-export function parseValueText(text: string): number {
+/** VALUE's reading, and Cast to Number's: `$`, `(5)` for negatives and trailing `%`, with the decimal and group separators a caller names (`.` and `,` when blank, as NUMBERVALUE's). */
+export function parseValueText(text: string, decimalSep = "", groupSep = ""): number {
+  const d = (decimalSep || ".")[0];
+  const g: string | null = groupSep !== "" ? groupSep[0] : d === "," ? null : ",";
+  if (g === d) return NaN;
   let t = text.trim(), pct = 0, neg = false;
   while (t.endsWith("%")) { pct++; t = t.slice(0, -1).trim(); }
   if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1).trim(); }
   t = t.replace(/^([+-]?)\$/, "$1");
-  const dot = t.indexOf(".");
-  if (dot >= 0 && t.slice(dot + 1).includes(",")) return NaN;
-  t = t.replace(/,/g, "");
-  const n = decimalFromText(t);
+  const di = t.indexOf(d);
+  const intPart = di === -1 ? t : t.slice(0, di);
+  const frac = di === -1 ? null : t.slice(di + 1);
+  if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return NaN;
+  const n = decimalFromText((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
   return Number.isNaN(n) ? NaN : (neg ? -n : n) / Math.pow(100, pct);
 }
 

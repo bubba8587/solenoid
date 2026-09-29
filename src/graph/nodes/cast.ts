@@ -1,7 +1,7 @@
 // [[D16]] retypeReconciles, [[C113]] controlDrivenRetype
 import { ClassicPreset } from "rete";
 import { isDateType, type SocketDataType } from "../sockets";
-import { trueAnyIn, numListOut, strComboOut, dateComboOut, complexOut, logicalComboOut } from "./shared";
+import { trueAnyIn, strIn, readInput, numListOut, strComboOut, dateComboOut, complexOut, logicalComboOut } from "./shared";
 import { coerceLogical } from "../valueKinds";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { formatCx, cx, isCx, type Cx } from "./complex";
@@ -50,14 +50,14 @@ export function parseCx(s: string): Cx {
 type CastScalar = number | string | Cx | boolean | null;
 
 // `dateish` makes a text cast use the date formatter for numeric serials.
-function castOne(x: unknown, target: CastTarget, format: string, dateish: boolean): CastScalar {
+function castOne(x: unknown, target: CastTarget, format: string, dateish: boolean, decimalSep = "", groupSep = ""): CastScalar {
   if (x == null) return null;
   switch (target) {
     case "number": {
       if (isCx(x)) return x.re;
       if (typeof x === "number") return x;
       if (typeof x === "boolean") return x ? 1 : 0;
-      if (typeof x === "string") return parseValueText(x);
+      if (typeof x === "string") return parseValueText(x, decimalSep, groupSep);
       return NaN;
     }
     case "text": {
@@ -122,9 +122,21 @@ function displayList(out: (CastScalar | SolError)[], target: CastTarget): (numbe
   );
 }
 
+/** The typed-in arguments each target takes ([[B11]] maximalMerge: Cast absorbs the NUMBERVALUE card's separators and TEXT's format). */
+const CAST_TARGET_INPUTS: Record<CastTarget, readonly { key: string; label: string }[]> = {
+  text: [{ key: "format", label: "Format" }],
+  number: [{ key: "decimal_sep", label: "Decimal sep" }, { key: "group_sep", label: "Group sep" }],
+  date: [],
+  complex: [],
+  logical: [],
+};
+
 export class CastNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     value: "A date keeps its date type, so casting it to text formats it as a date.",
+    format: "A pattern like 0.00, 0.00% or YYYY-MM-DD. Blank is the plain text. Excel: TEXT.",
+    decimal_sep: "Defaults to a period, so 1.234,56 reads with a comma here and a period as the group.",
+    group_sep: "Defaults to a comma, or none when the decimal is a comma.",
     result: "A blank input stays blank rather than failing. A value that will not parse becomes #VALUE!, per cell in a list.",
   };
 
@@ -132,6 +144,8 @@ export class CastNode extends ClassicPreset.Node {
   unitAware = true;
   label: string;
   target: CastTarget;
+  // Unset so the card shows each default as a placeholder.
+  stringLiterals: Record<string, string> = {};
   cachedResult: number | (number | null | SolError)[] | string | (string | null)[] | boolean | (boolean | null | SolError)[] | SolError | null = null;
   width = 252; height = 190; // 252 fits the five-segment type SegToggle (.solenoid-node--cast)
 
@@ -140,7 +154,24 @@ export class CastNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Cast";
     this.target = init?.target ?? "text";
     this.addInput("value",  trueAnyIn("Value"));
+    for (const { key, label } of CAST_TARGET_INPUTS[this.target]) this.addInput(key, strIn(label));
     this.addOutput("result", castOutput(this.target));
+  }
+
+  /** The target's own inputs that a switch to `next` removes; their cables go first. */
+  keysDroppedBySwitch(next: CastTarget): string[] {
+    const keep = new Set(CAST_TARGET_INPUTS[next].map((i) => i.key));
+    return CAST_TARGET_INPUTS[this.target].map((i) => i.key).filter((k) => !keep.has(k));
+  }
+
+  /** Retargets in place; the caller owes the cable pruning before and `retypeOutputCables` after. */
+  setTarget(next: CastTarget): void {
+    if (next === this.target) return;
+    for (const k of this.keysDroppedBySwitch(next)) this.removeInput(k);
+    for (const { key, label } of CAST_TARGET_INPUTS[next]) if (!this.inputs[key]) this.addInput(key, strIn(label));
+    this.target = next;
+    const out = this.outputs.result;
+    if (out) out.socket = castOutput(next).socket;
   }
 
   // The source socket's type is the only witness telling a date serial from a number.
@@ -155,14 +186,17 @@ export class CastNode extends ClassicPreset.Node {
     return sock && "dataType" in sock ? (sock as { dataType: SocketDataType }).dataType : null;
   }
 
-  data(inputs: { value?: unknown[] }): { result: CastScalar | (CastScalar | SolError)[] | SolError } {
+  data(inputs: { value?: unknown[]; format?: string[]; decimal_sep?: string[]; group_sep?: string[] }): { result: CastScalar | (CastScalar | SolError)[] | SolError } {
     const raw = this.target === "text" ? inputs.value?.[0] : stripUnitCells(inputs.value?.[0]);
-    const format = "";
+    const arg = (key: "format" | "decimal_sep" | "group_sep") =>
+      this.inputs[key] ? readInput(inputs[key], this.stringLiterals[key] ?? "") : "";
+    const format = arg("format"), decimalSep = arg("decimal_sep"), groupSep = arg("group_sep");
+    if (format === null || decimalSep === null || groupSep === null) { this.cachedResult = null; return { result: null }; }
     const kind = this.sourceKind();
     const dateish = kind != null && isDateType(kind);
 
     if (Array.isArray(raw)) {
-      const raw2 = raw.map((el) => castOne(el, this.target, format, dateish));
+      const raw2 = raw.map((el) => castOne(el, this.target, format, dateish, decimalSep, groupSep));
       const out: (CastScalar | SolError)[] = raw2.map((v) =>
         v === null ? null
         : castFailed(v, this.target) ? solError("#VALUE!", `Could not convert the value to ${this.target}`)
@@ -172,7 +206,7 @@ export class CastNode extends ClassicPreset.Node {
       return { result: out };
     }
 
-    const scalar = castOne(raw, this.target, format, dateish);
+    const scalar = castOne(raw, this.target, format, dateish, decimalSep, groupSep);
     if (castFailed(scalar, this.target)) {
       const err = solError("#VALUE!", `Could not convert the value to ${this.target}`);
       this.cachedResult = err;

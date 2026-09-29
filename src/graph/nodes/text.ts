@@ -11,7 +11,7 @@ export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
-import { numberValue, splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { rolesFrom, setting } from "../inputRoles";
 import { dropInputCables } from "../components/cablePrune";
@@ -745,42 +745,6 @@ export class ExactNode extends ClassicPreset.Node {
       strVal(inputs.a, this, "a"),
       strVal(inputs.b, this, "b"),
     );
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── NUMBERVALUE ─────────────────────────────────────────────────────────────
-
-export class NumberValueNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    decimal_sep: "Defaults to a period.",
-    group_sep: "Defaults to a comma.",
-  };
-  label: string;
-  cachedResult: BroadcastResult = null;
-  // Separators stay unset so the card shows each default as a placeholder.
-  stringLiterals: Record<string, string> = { text: "" };
-  width = 180; height = 195;
-
-  constructor(init?: { label?: string }) {
-    super("NumberValue");
-    this.label = init?.label ?? "NUMBERVALUE";
-    this.addInput("text",        strComboIn("Text"));
-    this.addInput("decimal_sep", strIn("Decimal sep"));
-    this.addInput("group_sep",   strIn("Group sep"));
-    this.addOutput("result", numListOut("Number"));
-  }
-
-  data(inputs: {
-    text?: (string | string[])[];
-    decimal_sep?: string[];
-    group_sep?: string[];
-  }): { result: BroadcastResult } {
-    const decRaw = readInput(inputs.decimal_sep, this.stringLiterals.decimal_sep ?? "");
-    const grpRaw = readInput(inputs.group_sep, this.stringLiterals.group_sep ?? "");
-    if (decRaw === null || grpRaw === null) { this.cachedResult = null; return { result: null }; }
-    const result = broadcastCells((text: string) => numberValue(text, decRaw, grpRaw), strVal(inputs.text, this, "text"));
     this.cachedResult = result;
     return { result };
   }

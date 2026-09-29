@@ -1,23 +1,20 @@
 // [[C17]]
 import { describe, it, expect } from "vitest";
 import {
-  ExactNode, TextFindNode, NumberValueNode, TextTransformNode, TextLenNode,
+  ExactNode, TextFindNode, TextTransformNode, TextLenNode,
   TextSliceNode, SubstituteNode, TextReplaceNode, ReptNode, CharCodeNode,
   TextAfterBeforeNode, UrlEncodeNode, RomanArabicNode, FixedNode,
   FormatDollarNode, ReverseTextNode, SpellNumberNode, TextJoinNode,
   TextSplitNode, ConcatNode,
 } from "../../../src/graph/nodes/text";
 import { isSolError, solError } from "../../../src/graph/errorValue";
+import { CastNode } from "../../../src/graph/nodes/cast";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { SolenoidSocket, canConnect } from "../../../src/graph/sockets";
 
 describe("NUMBERVALUE — strict full-string parse", () => {
   const nv = (text: string, decimal_sep?: string, group_sep?: string) =>
-    new NumberValueNode().data({
-      text: [text],
-      ...(decimal_sep !== undefined ? { decimal_sep: [decimal_sep] } : {}),
-      ...(group_sep !== undefined ? { group_sep: [group_sep] } : {}),
-    }).result;
+    compileEvaluator(`NUMBERVALUE(${[text, decimal_sep, group_sep].filter((a) => a !== undefined).map((a) => JSON.stringify(a)).join(",")})`)!({});
 
   it("a trailing non-numeric char is #VALUE! (not parseFloat's greedy 12)", () => {
     const r = nv("12x");
@@ -37,18 +34,41 @@ describe("NUMBERVALUE — strict full-string parse", () => {
     expect(nv("")).toBe(0);
     expect(nv("42")).toBe(42);
   });
-  it("the card and the formula answer alike ([[C17]] shareImpl)", async () => {
-    const cases: [string, string?, string?][] = [
-      [""], ["  "], ["42"], ["12%%"], ["1 234"], ["1.234,56", ",", "."], ["3,5%", ","],
-      ["1,5", ",", ","], ["3.1,2", ".", ","], ["1.2.3"], ["12x"], ["0x1F"],
-    ];
-    for (const [text, d, g] of cases) {
-      const args = [text, d, g].filter((a) => a !== undefined).map((a) => JSON.stringify(a)).join(",");
-      const formula = compileEvaluator(`NUMBERVALUE(${args})`)!({});
-      const card = nv(text, d, g);
-      if (isSolError(formula)) expect(isSolError(card) && card.code, `${args}`).toBe(formula.code);
-      else expect(card, `${args}`).toBe(formula);
+});
+
+// [[B11]] maximalMerge: Cast to Number is VALUE's reading, with NUMBERVALUE's separators on the card.
+describe("Cast to Number reads as VALUE does, with the separators it is given", () => {
+  const cast = (text: string, decimal_sep?: string, group_sep?: string) => {
+    const n = new CastNode({ target: "number" });
+    if (decimal_sep !== undefined) n.stringLiterals.decimal_sep = decimal_sep;
+    if (group_sep !== undefined) n.stringLiterals.group_sep = group_sep;
+    return n.data({ value: [text] }).result;
+  };
+  it("with blank separators it answers as VALUE, case by case ([[C17]] shareImpl)", () => {
+    for (const text of ["42", "12%", "$1,234.5", "(5)", "12x", "1,234", "1.2.3"]) {
+      const formula = compileEvaluator(`VALUE(${JSON.stringify(text)})`)!({});
+      const card = cast(text);
+      if (isSolError(formula)) expect(isSolError(card) && card.code, text).toBe(formula.code);
+      else expect(card, text).toBe(formula);
     }
+  });
+  it("a separator reads other conventions and keeps VALUE's $, % and (5)", () => {
+    expect(cast("1.234,56", ",", ".")).toBe(1234.56);
+    expect(cast("$1.234,5", ",", ".")).toBe(1234.5);
+    expect(cast("(3,5)", ",")).toBe(-3.5);
+    expect(cast("3,5%", ",")).toBe(0.035);
+    expect(isSolError(cast("1,5", ",", ","))).toBe(true);
+  });
+  it("Format and the separators exist only on the target that reads them, and a switch keeps the other target's text", () => {
+    const n = new CastNode({ target: "text" });
+    expect(Object.keys(n.inputs)).toEqual(["value", "format"]);
+    n.stringLiterals.format = "0.00%";
+    expect(n.data({ value: [0.1234] }).result).toBe("12.34%");
+    expect(n.keysDroppedBySwitch("number")).toEqual(["format"]);
+    n.setTarget("number");
+    expect(Object.keys(n.inputs)).toEqual(["value", "decimal_sep", "group_sep"]);
+    n.setTarget("date");
+    expect(Object.keys(n.inputs)).toEqual(["value"]);
   });
 });
 
@@ -156,11 +176,11 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     const found = new TextFindNode({ op: "find" }).data({ needle: ["l"], haystack: [["hello", "abc"]] }).result as unknown[];
     expect(found[0]).toBe(3);
     expect(isSolError(found[1])).toBe(true);
-    // One unparseable string errors alone; empty text reads 0, as in Excel.
-    const nums = new NumberValueNode().data({ text: [["42", "12x", ""]] }).result as unknown[];
+    // One unparseable string errors alone.
+    const nums = new CastNode({ target: "number" }).data({ value: [["42", "12x", "7"]] }).result as unknown[];
     expect(nums[0]).toBe(42);
     expect(isSolError(nums[1]) && (nums[1] as { code: string }).code).toBe("#VALUE!");
-    expect(nums[2]).toBe(0);
+    expect(nums[2]).toBe(7);
     // A delimiter this element doesn't contain is a per-cell blank.
     expect(new TextAfterBeforeNode({ op: "after" }).data({ text: [["a-b", "cd"]], delimiter: ["-"] }).result)
       .toEqual(["b", null]);
@@ -198,8 +218,7 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(dt(new TextLenNode(), "out", "result")).toBe("numlist");
     expect(dt(new TextSliceNode(), "in", "n")).toBe("numlist");
     // NUMBERVALUE's separators pick a parsing CONVENTION, not a per-element operand.
-    const nv = new NumberValueNode();
-    expect(dt(nv, "in", "text")).toBe("strcombo");
+    const nv = new CastNode({ target: "number" });
     expect(dt(nv, "in", "decimal_sep")).toBe("string");
     expect(dt(nv, "in", "group_sep")).toBe("string");
   });

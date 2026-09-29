@@ -195,7 +195,6 @@ export { CharCodeComponent } from "./CharCodeNode";
 export { TextJoinComponent } from "./TextJoinNode";
 export { TextSplitComponent } from "./TextSplitNode";
 export { TextAfterBeforeComponent } from "./TextAfterBeforeNode";
-export { NumberValueComponent } from "./NumberValueNode";
 export { RomanArabicComponent } from "./RomanArabicNode";
 export { FixedComponent } from "./FixedNode";
 export { UrlEncodeComponent } from "./UrlEncodeNode";

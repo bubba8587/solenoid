@@ -469,11 +469,11 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "MID", syntax: "=MID(text, start, chars)", parity: false },
   ],
   "cast": [
-    { excel: "TEXT", syntax: "=TEXT(value, format)", parity: false, note: "Use Cast to Text with a format. Supports \"\", \"0\", \"0.00\", \"0.00%\" and date patterns like YYYY-MM-DD." },
-    { excel: "VALUE", syntax: "=VALUE(text)", parity: false, note: "Cast to Number" },
+    { excel: "TEXT", syntax: "=TEXT(value, format)", parity: false, note: "Cast to Text, with the pattern in Format. Supports \"\", \"0\", \"0.00\", \"0.00%\" and date patterns like YYYY-MM-DD." },
+    { excel: "VALUE", syntax: "=VALUE(text)", parity: false, note: "Cast to Number. It also reads $ amounts and (5) as -5." },
+    { excel: "NUMBERVALUE", syntax: "=NUMBERVALUE(text, [decimal_separator], [group_separator])", parity: false, note: "Cast to Number, with the separators on the card. The card also reads $ and (5); empty text is #VALUE! there and 0 in NUMBERVALUE." },
     { excel: "VALUETOTEXT", syntax: "=VALUETOTEXT(value)", parity: false, note: "Use Cast to Text with no format." },
   ],
-  "text-numbervalue": [{ excel: "NUMBERVALUE", syntax: "=NUMBERVALUE(text)", parity: false, note: "Supports custom decimal and group separators. For plain parsing, use Cast to Number." }],
   "text-proper": [{ excel: "PROPER", syntax: "=PROPER(text)", parity: false }],
   "text-replace": [
     { excel: "REPLACE", syntax: "=REPLACE(text, start, n, new)", parity: false },
