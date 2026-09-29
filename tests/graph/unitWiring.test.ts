@@ -143,6 +143,8 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(displayMagnitudeOf(warm)).toBeCloseTo(25, 9);
     const mean = run("(a + b) / 2") as UnitCell;
     expect(displayMagnitudeOf(mean)).toBeCloseTo(25, 9);
+    expect(displayMagnitudeOf(run("(a + b) / (1 + 1)") as UnitCell)).toBeCloseTo(25, 9);
+    expect(displayMagnitudeOf(run("(a + b) / (3 - 1)") as UnitCell)).toBeCloseTo(25, 9);
     const diff = run("b - a") as UnitCell;
     expect(diff.display).toBeUndefined();
     expect(magnitudeOf(diff)).toBeCloseTo(10, 9); // 10 K

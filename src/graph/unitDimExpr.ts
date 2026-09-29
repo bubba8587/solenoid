@@ -443,8 +443,8 @@ function affEval(node: Ast, scope: AffScope): Aff | SolError {
       if (isSolError(r)) return r;
       const list = l.list || r.list;
       switch (node.op) {
-        case "+": return { w: l.w + r.w, list, konst: null, scaled: l.scaled || r.scaled };
-        case "-": return { w: l.w - r.w, list, konst: null, scaled: l.scaled || r.scaled };
+        case "+": return { w: l.w + r.w, list, konst: l.konst !== null && r.konst !== null ? l.konst + r.konst : null, scaled: l.scaled || r.scaled };
+        case "-": return { w: l.w - r.w, list, konst: l.konst !== null && r.konst !== null ? l.konst - r.konst : null, scaled: l.scaled || r.scaled };
         case "*":
           if (l.w !== 0 && r.w !== 0) return affErr();
           if (l.w !== 0) return r.konst === null ? affErr() : { w: l.w * r.konst, list, konst: null, scaled: true };
