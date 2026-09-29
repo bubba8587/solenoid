@@ -339,6 +339,15 @@ describe("DOLLAR — Excel's negative accounting form is ($…), FX prints $(…
   });
 });
 
+describe("ROUND past a double's precision", () => {
+  it("gives the value back when the digits asked for reach past its 15 significant ones", () => {
+    expect(call("ROUND", 1 / 3, 20)).toBe(1 / 3);
+    expect(call("ROUND", 123456789.123456789, 12)).toBe(123456789.123456789);
+    expect(call("ROUND", 1.005, 2)).toBe(1.01);
+    expect(call("ROUND", 2.5, 0)).toBe(3);
+  });
+});
+
 describe("FIXED and DOLLAR round with roundDigits, as ROUND does", () => {
   it("1.005 to 2 places is 1.01, where Formula.js's toFixed gives 1.00", () => {
     expect(str(call("FIXED", 1.005, 2))).toBe("1.01");

@@ -11,6 +11,8 @@ export type RoundMode = "round" | "roundup" | "rounddown";
 /** Excel's rounding: digits truncate, the scaled value reads at 15 significant digits so 1.005 is 1.005 and not 1.00499…, halves go away from zero. */
 export function roundDigits(v: number, digits: number, mode: RoundMode = "round"): number {
   const d = Math.trunc(digits);
+  // Digits past a double's 15 significant ones are already as rounded as the value can be.
+  if (v !== 0 && Number.isFinite(v) && d + Math.floor(Math.log10(Math.abs(v))) >= 15) return v;
   const scale = Math.pow(10, Math.abs(d));
   if (!Number.isFinite(scale)) return d > 0 ? v : 0;
   const raw = d >= 0 ? Math.abs(v) * scale : Math.abs(v) / scale;
