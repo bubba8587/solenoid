@@ -99,11 +99,12 @@ export function ReportOverlay() {
 
   // No await needed: syncRefs runs synchronously before commitBody's first await, so the sockets still mint.
   function closeReport() {
-    if (node) void commitBody();
+    if (node) { void commitPageName(); void commitBody(); }
     reportStore.close();
   }
   useEscapeToClose(closeReport, !!nodeId);
   usePendingDraft(!!node && body !== lastSyncRef.current, () => void commitBody());
+  usePendingDraft(!!node && pageName !== node.pageName, () => void commitPageName());
 
   const tex = useKatexReady();
   const bodyHtml = useMemo(
