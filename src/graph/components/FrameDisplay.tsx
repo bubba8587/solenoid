@@ -13,6 +13,7 @@ import { CellImage } from "./cubeCell";
 import { cellImageSrc } from "../recordLayout";
 import { frameFormatStore } from "../frameFormatStore";
 import { formatNumberWithAnnotation, applyLogicalStyle, applyTextCase, isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
+import { formatScalar } from "./format";
 
 function isNanCell(v: FrameCell): boolean {
   return typeof v === "number" && Number.isNaN(v);
@@ -28,9 +29,7 @@ export function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: Forma
   const c = formatFrameCell(type, v);
   if (c === null || c === undefined || c === "") return "";
   if (typeof c === "string") return type === "string" ? applyTextCase(c, ann?.textCase) : c;
-  if (Number.isNaN(c)) return "NaN";
-  if (!Number.isFinite(c)) return c > 0 ? "∞" : "-∞";
-  return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
+  return formatScalar(c);
 }
 
 export function FrameDisplay({ frame, label, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, peek }: {

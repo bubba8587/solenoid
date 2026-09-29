@@ -65,7 +65,7 @@ The message is a neutral observation prefixed with the card's label (or "Alert" 
 - boolean: "Tank: is true";
 - text: `Log: contains "error"`.
 
-Numbers print as integers or rounded to three decimals.
+Numbers print as every unformatted number does ([[D94]] oneNumberDisplay).
 
 `alertStore` registers `forget` and `forgetAll` with the node-store registry ([[stores#The rules]]): deleting an Alert card removes its events, and a whole-graph rebuild clears the log. Each event in the HUD has its own dismiss button (`alertStore.dismiss`).
 

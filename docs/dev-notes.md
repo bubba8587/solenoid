@@ -23,6 +23,10 @@ specific item.
   `SUM(prices)`, `ROWS(prices)` and `INDEX(prices, ROW(), 2)` work; a grid in some row keeps it `#SHAPE!`.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's editable levels carry it too (None type, `COUNTA(@tags)`; Fx rows on the root only).
+- **One number display** ([[D94]] oneNumberDisplay): `formatScalar` is the FC's General style (integer as is,
+  else 6 significant digits trimmed, extremes scientific) and every unformatted display uses it: value boxes, Frame
+  and Table cards, the Table and Cube popups, complex parts, unit suffixes, Alert messages. `formatCx` (data) keeps
+  4 decimals; the Constant and Physics Constant cards and chart ticks keep theirs. `listPreview` was dead and went.
 - **A list popup's CSV view followed the Source switch backwards**: the list path of `buildText` ignored the mode
   it was handed and read the not-yet-updated toggle. It now takes the mode like the table path.
 - **One text reading** ([[D93]] oneTextReading): every place text becomes a typed value (List Input typed or

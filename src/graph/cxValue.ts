@@ -1,6 +1,7 @@
 // [[C17]] shareImpl, [[C24]] arraySemantics
 
 import { solError, type SolError } from "./errorValue";
+import { formatScalar as displayNumber } from "./components/format";
 
 export interface Cx { readonly __cx: true; readonly re: number; readonly im: number }
 
@@ -33,8 +34,9 @@ export function formatCx(z: Cx, digits = 4): string {
   return assembleCx(z, cxNumFmt(digits)).text;
 }
 
-export function formatCxDisplay(z: Cx, digits = 4): string {
-  return assembleCx(z, cxNumFmt(digits), true).text;
+/** On screen each part reads as any unformatted number does ([[D94]] oneNumberDisplay). */
+export function formatCxDisplay(z: Cx): string {
+  return assembleCx(z, displayNumber, true).text;
 }
 
 export function parseCx(text: string): Cx | null {

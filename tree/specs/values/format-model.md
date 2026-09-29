@@ -115,7 +115,7 @@ Both are display-only and ride the annotation like `logicalStyle`. The lambda's 
 
 | Style | Renders | Notes |
 |---|---|---|
-| `auto` | canonical trim | `extremeSci` (`format.ts`) forces scientific for extreme magnitudes; an integer prints as is; anything else is `toPrecision(6)` with trailing zeros dropped |
+| `auto` | canonical trim | `formatScalar` (`format.ts`), the one display of every unformatted number ([[D94]] oneNumberDisplay): `extremeSci` forces scientific for extreme magnitudes; an integer prints as is; anything else is `toPrecision(6)` with trailing zeros dropped |
 | `decimal` | `d` places or `d` significant figures, grouped | |
 | `integer` | `1,235` | rounded, grouped |
 | `percent` | ×100, then `d` places or significant figures, then `%` | |
@@ -159,7 +159,7 @@ The red negative styles keep the minus or parentheses in the string: red is a co
 
 `formatCxWithAnnotation` is the render half, and `controlsFor` with `COMPLEX_FORMAT_STYLES` gates the popup. Three rules follow from a complex number having two components and one sign structure:
 
-- **Precision applies to both components**: `3.14 + 2.72i` at 2 places, never one formatted and the other trimmed. Under `auto` each component keeps the plain trim (an integer as is, otherwise four decimals with trailing zeros dropped); the FC annotates rather than overrides.
+- **Precision applies to both components**: `3.14 + 2.72i` at 2 places, never one formatted and the other trimmed. Under `auto` each component reads as any unformatted number does ([[D94]] oneNumberDisplay); the FC annotates rather than overrides.
 - **The style list is reduced.** Percent, fraction, integer, custom and the date styles mean nothing on a complex, so they aren't offered, and an annotation that still carries one (it can survive a socket retype) falls back to `auto`.
 - **The unit wraps the whole value**: `(3 + 2i) V`, never `3 V + 2i V`, and `3 + 2i V` would read as the unit on the imaginary term alone. A prefix unit still leads, as on the number path.
 

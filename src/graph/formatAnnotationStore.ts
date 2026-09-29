@@ -1,7 +1,7 @@
 // [[C94]] formatFamilyGates, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
-import { extremeSci } from "./components/format";
+import { formatScalar } from "./components/format";
 import { groupingApplies, scaleApplies, negativeApplies, COMPLEX_FORMAT_STYLES } from "./formatModel";
 import { assembleCx, type Cx } from "./cxValue";
 import { APP_LOCALE } from "./locale";
@@ -127,13 +127,7 @@ export function applyFormatStyle(
   }
 }
 
-function autoFormat(n: number): string {
-  const sci = extremeSci(n);
-  if (sci !== null) return sci;
-  if (Number.isInteger(n)) return n.toString();
-  const s = parseFloat(n.toPrecision(6)).toString();
-  return s;
-}
+const autoFormat = formatScalar;
 
 function toFraction(n: number, maxDen = 99): string {
   if (!Number.isFinite(n)) return String(n);
@@ -549,7 +543,7 @@ export function formatCxWithAnnotation(z: Cx, ann: FormatAnnotation): string {
     (COMPLEX_FORMAT_STYLES as readonly string[]).includes(ann.format) ? ann.format : "auto";
   const { text, hasBothParts } = assembleCx(z, (n) =>
     style === "auto"
-      ? (Number.isInteger(n) ? n.toString() : n.toFixed(4).replace(/\.?0+$/, ""))
+      ? formatScalar(n)
       : applyFormatStyle(n, style, ann.customPattern, ann.decimalDigits, ann.decimalMode, true),
     true);
   if (text === "NaN") return text;

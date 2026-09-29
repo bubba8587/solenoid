@@ -318,7 +318,7 @@ describe("formatRowValue — annotated inline-output rows", () => {
   const ann2dp = { format: "decimal", unit: "none", decimalDigits: 2, decimalMode: "places" } as never;
 
   it("unannotated cells keep the plain forms", () => {
-    expect(formatRowValue(1.5)).toBe("1.5000");
+    expect(formatRowValue(1.5)).toBe("1.5");
     expect(formatRowValue(null)).toBe("—");
     expect(formatRowValue(true)).toBe("TRUE");
     expect(formatRowValue("abc")).toBe("abc");

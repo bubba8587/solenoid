@@ -1,5 +1,6 @@
 // [[C25]] firstClassUnits
 // Standalone unit-suffix rendering, outside the unit wiring, which the Format Controller and Convert own.
+import { formatScalar } from "./components/format";
 
 export type UnitSuffix = "none" | "deg" | "rad" | "percent";
 
@@ -11,7 +12,7 @@ export const UNIT_SUFFIX_LABELS: Record<UnitSuffix, string> = {
 };
 
 export function formatWithUnit(n: number, suffix: UnitSuffix): string {
-  const num = Number.isInteger(n) ? n.toString() : n.toFixed(4);
+  const num = formatScalar(n);
   switch (suffix) {
     case "deg":     return `${num}°`;
     case "rad":     return `${num} rad`;

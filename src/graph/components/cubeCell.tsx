@@ -55,7 +55,7 @@ export function frameCellNode(type: FrameColType, cell: FrameCell, format?: Form
   const img = cellImageSrc(cell);
   if (img) return <CellImage src={img} />;
   const f = formatFrameCell(type, cell, format);
-  return <>{f === null ? "" : String(f)}</>;
+  return <>{f === null ? "" : typeof f === "number" ? formatScalar(f) : f}</>;
 }
 
 export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {

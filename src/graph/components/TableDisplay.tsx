@@ -8,7 +8,7 @@ import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import { extremeSci } from "./format";
+import { formatScalar } from "./format";
 import { useHostNodeId } from "./nodeContext";
 import { resolveDisplayAnnotation } from "./valueDisplayFormat";
 import {
@@ -20,13 +20,7 @@ import type { ResultType } from "../nodes/shared";
 type Cell = number | string | boolean | null | SolError;
 type Mat = Cell[][];
 
-function fmtNum(v: number): string {
-  if (Number.isNaN(v)) return "NaN";
-  if (!Number.isFinite(v)) return v > 0 ? "∞" : "-∞";
-  const sci = extremeSci(v);
-  if (sci !== null) return sci;
-  return Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/\.?0+$/, "");
-}
+const fmtNum = formatScalar;
 
 function isNanCell(v: Cell): boolean {
   return typeof v === "number" && Number.isNaN(v);

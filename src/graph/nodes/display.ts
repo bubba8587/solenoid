@@ -7,6 +7,7 @@ import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn, bro
 import { isLambdaValue, type LambdaValue } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
+import { formatScalar } from "../components/format";
 
 export class DisplayNode extends ClassicPreset.Node {
   label: string;
@@ -154,7 +155,7 @@ export class AlertNode extends ClassicPreset.Node {
 
   private buildMessage(result: number | number[], inputs: AlertInputs): string {
     const name = (this.label ?? "").trim() || "Alert";
-    const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000));
+    const fmt = formatScalar;
     const num = (got: (number | number[])[] | undefined, lit: number) => {
       const v = scalarish(got, lit);
       return typeof v === "number" ? fmt(v) : "value";

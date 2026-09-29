@@ -7,6 +7,7 @@ export function extremeSci(n: number): string | null {
   return null;
 }
 
+/** The one display of a number nobody formatted, the Format Controller's General (`auto`) style ([[D94]] oneNumberDisplay): an integer as it is, anything else to 6 significant digits with trailing zeros dropped, extremes in scientific. */
 export function formatScalar(n: number): string {
   // A throw during React render blacks out the app: a display formatter degrades.
   if (typeof n !== "number") return n == null ? "" : String(n);
@@ -15,15 +16,5 @@ export function formatScalar(n: number): string {
   if (!Number.isFinite(n)) return n > 0 ? "∞" : "-∞";
   const sci = extremeSci(n);
   if (sci !== null) return sci;
-  return Number.isInteger(n) ? n.toString() : n.toFixed(4);
-}
-
-export function listPreview(arr: number[]): string {
-  if (arr.length === 0) return "[ ]";
-  const p = arr.slice(0, 4).map((n) =>
-    Number.isNaN(n) ? "NaN"
-      : !Number.isFinite(n) ? (n > 0 ? "∞" : "-∞")
-      : Number.isInteger(n) ? n.toString() : n.toFixed(2),
-  );
-  return `[${p.join(", ")}${arr.length > 4 ? ", …" : ""}]  (${arr.length})`;
+  return Number.isInteger(n) ? n.toString() : parseFloat(n.toPrecision(6)).toString();
 }
