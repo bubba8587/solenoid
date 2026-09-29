@@ -6,6 +6,15 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-29c: commit-walk review of 09-25 to 09-29; cloud session)
+- A collapsed XLOOKUP, Cast, Schedule, Gantt or Earned Value card shows one input pill: collapsed, it drops its socketed section and one `InlineInputs` carries every input (`tree/specs/floors/components.md` § Sections).
+- The Table popup's CSV view reads the added columns' inferred types everywhere (`typesShown`), and CSV pressed in CSV does nothing, so a pasted text column no longer turns to NaN.
+- INDEX and Filter keep their sockets and cables when a wired table empties: an empty array says nothing about shape ([[D85]] columnsStayColumns; `indexPosition.test.ts`, `conduitFilterTypes.test.ts`).
+- Drilling into a Cube cell holding one record saves it as a one-row table first, so the drill shows it and Add Row keeps it.
+- Chart exports size their root in canvas units (zoom taken out) and vault PNGs carry the legend (`nodeChartSvgString`).
+- Removed: the native pivot's unit tail (Pivot runs in JS; nothing reached it). A computed column builds each whole-column reading once per run.
+- Open leads the walk found and left: `backlog.md` § From the 2026-09-29 commit-walk review.
+
 ### SESSION DIGEST (2026-09-29b: ROW(), the shape model, one text reading and number display, Cast, palette follow-ups, type icons, card sections and the liquid fold; cloud session)
 
 - **`ROW()` replaces the bare `row`/`rows` names; a computed column's whole column is a one-column table**

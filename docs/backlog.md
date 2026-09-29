@@ -306,3 +306,15 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   (ETS) needs a confidence socket (D73); FORECAST.ETS ignores `data_completion` and `aggregation` (parity note);
   DECOMPOSE, FUZZYMATCH, RANDDIST, SHARPE/SORTINO and REGEX case options unchecked against their cards; Antoine
   has no per-substance range check.
+
+## From the 2026-09-29 commit-walk review (09-25 to 09-29; open leads, each verified against HEAD unless marked)
+- [ ] **TEXTSPLIT rows only** (author's call, `settings-audit.md` col_delimiter): `TEXTSPLIT(A1,,";")` is `#SYNTAX!`; relaxing the role alone would split each row into letters (`splitText` on "").
+- [ ] **Logical text reads blank, not NaN** ([[D93]] oneTextReading says NaN): `coerceLogical` gives null for "maybe", and yes/no now blank too. Author: NaN, or narrow D93 to number and date.
+- [ ] **Merge Plots of XY charts** (`visual.ts` mergeXY): keeps the first source's x categories, so a second plot's categories in another order land on wrong ticks; a numeric source under category ticks is clamped off; axis names drop.
+- [ ] **Cast "Group (default ,)"** label: with Decimal `,` the default group is none, so the label misleads; a string for the author.
+- [ ] **Chart compact ticks** (`chartCore.ts` compactTick): 999,500 prints "1000K"; close ticks on a narrow range all read "100K". Pick the suffix after rounding and the precision from the step.
+- [ ] **YEARFRAC basis -0.5** floors to -1 (`#DOMAIN!`); Excel truncates toward zero, if it truncates that way (unconfirmed).
+- [ ] **Frontmatter `-.inf` / `+.inf`** read as text (`noteFrontmatter.ts` readScalar's `^[-+]\.` rule); js-yaml reads them as infinities.
+- [ ] **Web Source A→B→A** (plausible): B's late reply can land while the card shows A; clear `inflightKey` on the `key === lastKey` early return.
+- [ ] **Decimal places setting** (plausible): CubeDisplay and open Table / Cube popups don't subscribe to `numberDecimals`; Record chart text is baked at compute.
+- [ ] **VARP / STDEVP** still listed in `unitDimExpr.ts` SQUARE sets and `FUNCTION_FAMILY` though both are legacy aliases; delete if nothing reads them by the old name.
