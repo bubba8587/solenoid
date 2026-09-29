@@ -198,6 +198,8 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 
 ## Demo video (`assets/video/`, the `demo-video` skill)
 
+- [ ] **Re-film after 2026-09-29's UI changes:** type icons on every type toggle and column header, the narrower
+  Cast card with its Separators, the 4-decimal number display, palette-following Add menu tints and neutral accents.
 - [ ] **Author review before publishing:** listen to the synthesized soundtracks (the agent checked them by numbers
   only) and pick where each cut goes: the app tour (landing page, README, release notes), the one-minute Obsidian
   cut (the plugin's README and community listing, the `/obsidian` page).

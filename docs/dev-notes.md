@@ -6,7 +6,7 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-09-29b: ROW() hint, Frame Input header legend, List Input Source; cloud session)
+### SESSION DIGEST (2026-09-29b: ROW(), the shape model, one text reading and number display, Cast, palette follow-ups, type icons; cloud session)
 
 - **`ROW()` replaces the bare `row`/`rows` names; a computed column's whole column is a one-column table**
   ([[C22]] rowFormulaRefs, [[C14]] currentExcelParity): `ROW()` reads the row context (`currentRowNumber`),
@@ -39,6 +39,18 @@ specific item.
   palette; the Sparkline node's line and columns paint gold.
 - **Type icons** (DESIGN.md § Type icons): every type segment, column type button, the (i) legend and the Pivot
   chips draw `TypeIcon` (`#`, `Aa`, calendar, checkbox, double-struck C) instead of words or `T`/`D`/`B`.
+- **Cast absorbs NUMBERVALUE** (the NumberValue card is gone): to Text takes a `format`, to Number takes Decimal and
+  Group separators under a small Separators label, read by VALUE's own reader (`parseValueText`); a retarget drops
+  the departing inputs' cables. Cast sits on the default width tiers now that its segments are icons.
+- **A Cube row holding a table is `#SHAPE!` on that row alone** ([[D81]] cubeRowLists); the column's other rows
+  compute. SORT of nothing answers nothing.
+- **Palette follow-ups:** Add menu leaf tints follow the palette (`accent` is a node kind, `leafAccent`), and the
+  three neutral accents take on the palette's chrome ([[D95]] neutralsFollowChrome: `neutralHex`, tinted toward the
+  app background within a lightness range).
+- **CI:** four pack formulas lacked `orient`; `vectorOrient.test.ts` now loads the packs itself, so the check no
+  longer depends on test order.
+- **Left for the author:** ratify D85, D93, D94, D95 and the amended C14, C22, D81, D82, D90; re-film the demo
+  video; decide whether `Aa` meaning both Text and Filter's match case is a problem.
 
 ### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
 
@@ -154,73 +166,3 @@ specific item.
   the author; the render sits in `.dev/video/`, uncommitted, and ships with the next app version bump.
 - **Rig in a cloud container:** Obsidian's Linux tarball unpacks to `/opt/Obsidian`; Xephyr is absent, so a stand-in
   script running `Xvfb` on the same display (and a no-op `metacity`) lets `npm run plugin:rig` run unchanged.
-
-### SESSION DIGEST (2026-09-26: XY plots from issue #3; branch `claude/feature-requests-vh44bk`)
-
-- **XY plots** ([[D91]] xyColumnMapping, new): Scatter, the new **XY Line** op (Cartesian) and Bubble emit an `xy`
-  payload drawn by one `XYView`. Options name the columns: `x`, `y` (comma list), `s` size, `c` color (numeric ramp
-  with a colorbar, or text categories), `annotate` point text, `by` split into series. `linestyle` joins points in row
-  order, broken at gaps; `aspect=equal` and `xlim` for parametric curves. A missing column is `#REF!` on the card.
-- **Merge Plots** overlays XY sources on one numeric plane (Bubble no longer refused); a Line or Area joins by numeric
-  label or row position, bars are `#TYPE!`. The old index-plotted Scatter and `BubbleView` paths are gone.
-- Chart Builder gains the ten XY rows; chart-showcase seed has a Lissajous XY Line group. Contests recorded on
-  [[C96]] chartOptionsAreMatplotlib and [[D75]] builderExposesEveryOption (keep).
-- **Checked after the merge (2026-09-28):** an XY Line draws right in a Display and embedded in a Report (equal aspect,
-  colorbar). Not yet: a Composite boundary shot, and the demo video isn't re-filmed.
-
-### SESSION DIGEST (2026-09-26: SPARKLINE, typed Cube columns, lists, Add-menu search; author present)
-
-- **SPARKLINE(range, [type])** answers an 80 × 20 SVG as `data:image/svg+xml` text (line, column or win/loss, the
-  Sparkline node's types; Default gold, win/loss in green and vermilion), averaged to 40 points past that ([[D82]]
-  sparklineCell). A text cell holding a `data:image` picture shows as the picture in Frame and Cube cards and popups
-  ([[D83]] imageTextCells).
-- **Typed Cube columns** ([[D90]] cubeTypesAtDepth): Cube Input's root header has the type button (None, Number, Text,
-  Date, Boolean, Formula). A type overrides every kind in its column: scalars and list items read as Frame cells
-  (NaN when unreadable, [[D93]] oneTextReading). Nested tables: see the 2026-09-28 Cube digest. `cubeText` stays
-  plain records until a column is typed or computed, then `{ columns, rows }`. The plugin's cube editor has the button
-  without Formula and saves the picks as a Frame's.
-- **Cube formulas read lists** ([[D81]] cubeRowLists): in Cube Input's Fx columns and the Computed Column node over a
-  Cube, `@name` on a list column is this row's list and a row may answer a list; `SPARKLINE(@history)` per row works.
-- **Lists** ([[D85]] columnsStayColumns, the author's call): a list is one row everywhere, so INDEX is strict on it
-  (`INDEX(x, 2, 1)` is `#REF!`); TOCOL, BYROW and MAKEARRAY(n, 1) answer one-column tables; TOROW is the list and reads
-  row by row as Excel's does; SEQUENCE(n) stays a list. TOCOL and TOROW take Excel's `ignore` and `scan_by_column`, on
-  the Table Reshape card as a By row / By column toggle and a skip picker. TAKE and DROP count a list's items as
-  columns (`TAKE(x, , 2)`), on the formula and the TAKE / DROP card. SORT, SORTBY and List Sort order text and
-  mixed kinds (`compareListCells`); SORTBY keeps its `sort_order`. Every list popup has the Source checkbox; a mixed
-  list opens as text with a gray chip. Type Check gains ISERR.
-- **INDEX** (the author's call): the card shows one Position socket on a list and Row / Column on anything else, through
-  the ordinary socket swap; one index walks a one-row or one-column table as in Excel (`INDEX(TOCOL(x), 3)`); the hint
-  reads `INDEX(array, [row], [col])`. Positions may be lists, on the card and in the formula, as Excel's array
-  arguments; CHOOSEROWS and CHOOSECOLS stay table verbs on a list. A typed skip reads as Excel's in INDEX, EXPAND,
-  TAKE and DROP (`EXPAND(m, 3, , 0)`, [[C80]] blankArgIsExcelBlank).
-- **Blank roles** ([[D86]] blankRoles, the author's call, absorbing D33 and E15): data blanks stay blank; a blank setting
-  (count, size, mode, digits) is its default, overriding the typed value, item by item in a list; a blank pick is dropped;
-  no fallback is `#SYNTAX!`. One declaration, `ARG_ROLES` (`inputRoles.ts`), read by formulas (`applyArgRoles`) and by
-  cards (`static inputRoles = rolesFrom(...)`, `readRole`); spec [[input-roles]], which also took value-semantics' role
-  table. A blank in a table of positions is `#SYNTAX!` in that cell. D86 is written in the author's words.
-- **SORT, SORTBY, FILTER, UNIQUE on tables** ([[D85]], the author's call: strict Excel): formulas take tables and Excel's full
-  signatures; on a list SORT and UNIQUE change nothing without by_col. List Sort (Rows / Columns, key rows with their own
-  order), List Filter (a table's rows tested on one Column) and UNIQUE (Rows / Columns, Only singles) take `anydata`, so a
-  list stays a list. Kernels `sortGrid`, `sortGridByKeys`, `filterGrid`, `uniqueGrid`.
-- **Excel-signature parity** ([[A5]] excelParity): `excelArityParity.test.ts` checks every registered Excel name's arity
-  against Excel's (`fixtures/excelArity.ts`); the ones still short are listed with a reason and the list only shrinks.
-  Filled in the author's absence: MODE.MULT's several ranges; TEXTSPLIT's row delimiter, ignore_empty, match_mode and
-  pad_with; TEXTAFTER / TEXTBEFORE's instance_num, match_mode, match_end and if_not_found; VDB's no_switch; TREND and
-  GROWTH's const. `settings-audit.md` proposes the settings sweep's roles for review.
-- **The settings sweep** ([[D86]] blankRoles, built on Claude's judgement at the author's word): `ARG_ROLES` covers about
-  150 functions; the cards read their settings through `readRole` (Series per op, `readAsRole`); a blank filter condition
-  skips the condition ([[C24]]'s consequence overturned). A required setting with a working Excel blank reads as it
-  (a blank `cumulative` is FALSE), otherwise `#SYNTAX!`; distribution parameters are data; CLAMP's blank bound is no
-  bound. For review: `settings-audit.md`.
-- **Socket labels** carry no parentheticals: "(1-based)" moved to the Inspector's socket notes ([[C19]] namingModel, the
-  author's words); the rest are a backlog sweep.
-- **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
-- **Add-menu search:** Excel-name rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name
-  is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
-  (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
-  46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
-- **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); a review of the settings sweep
-  (`settings-audit.md`); whether List Sort and List Filter keep their names now they take tables; the parity list's
-  remaining gaps (backlog); the Cubes and lists section of the backlog, next up a blank in a typed list literal; the
-  plugin release (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The
-  outbox is empty.
