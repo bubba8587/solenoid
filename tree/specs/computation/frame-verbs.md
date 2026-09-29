@@ -512,15 +512,15 @@ These run only in the oracle, on the collected value, on both platforms. They ha
 
 ### Nest and Unnest
 
-`nestFrame(f, keyColumns, nestedName = "items")` groups one flat Frame into a Cube: one row per distinct key tuple (by `encodeCell`, first-seen order), then a nested column whose cell holds that group's rows of every non-key column as a sub-frame (type, unit and format kept). The key columns carry their type, so a date key stays date-matchable in a Cube XLOOKUP. Names go through `makeHeaders`, and a blank nested name is `items`. It is the single-table sibling of Nest Join and the inverse of Unnest. A missing key is `#REF!`.
+`nestFrame(f, keyColumns, nestedName = "items")` groups one flat Frame into a Cube: one row per distinct key tuple (by `encodeCell`, first-seen order), then a nested column whose cell holds that group's rows of every non-key column as a sub-frame (type, unit and format kept). The key columns carry their type and format, so a date key stays date-matchable in a Cube XLOOKUP. Names go through `makeHeaders`, and a blank nested name is `items`. It is the single-table sibling of Nest Join and the inverse of Unnest. A missing key is `#REF!`.
 
-`unnestCube(c, nestedColumn)` peels one level off a nested column (`#REF!` when it is missing). Each nested cell votes for a kind: a non-empty list votes list, a Frame votes table, a Cube votes cube, and an empty list votes nothing, since it means "no children". Two kinds is `#TYPE!` (`nested cells must all be lists, all tables, or all cubes`). With no votes, the list path runs if any cell is a list, else the table path.
+`unnestCube(c, nestedColumn)` peels one level off a nested column (`#REF!` when it is missing). It is JavaScript only: Cubes never reach the native engine. Each nested cell votes for a kind: a non-empty list votes list, a Frame votes table, a Cube votes cube, and an empty list votes nothing, since it means "no children". Two kinds is `#TYPE!` (`nested cells must all be lists, all tables, or all cubes`). With no votes, the list path runs if any cell is a list, else the table path.
 
 | Path | Result |
 |---|---|
-| List | A Frame. Each parent row repeats once per item, and the item sits under the same column name (so a Predecessors list round-trips into the Schedule Links input). An empty or missing list keeps its row once with a blank, so a task with no predecessors survives. Every column is re-inferred. |
-| Table | A Frame. Each parent row repeats once per child row, with the child's columns appended (their schema from the first Frame cell; a child lacking one is blank there). A row with no child rows is dropped. Parent columns are re-inferred, child columns keep their type, and names go through `makeHeaders`. |
-| Cube | A Cube one level shallower. As the table path, with the schema from the first Cube cell, carried types kept, and each child's own nested columns left nested. |
+| List | A Frame. Each parent row repeats once per item, and the item sits under the same column name (so a Predecessors list round-trips into the Schedule Links input). An empty or missing list keeps its row once with a blank, so a task with no predecessors survives. Every column is re-inferred; parent columns keep their format. |
+| Table | A Frame. Each parent row repeats once per child row, with the child's columns appended (their schema from the first Frame cell; a child lacking one is blank there). A row with no child rows is dropped. Parent columns are re-inferred and keep their format, child columns keep their type, unit and format, and names go through `makeHeaders`. |
+| Cube | A Cube one level shallower. As the table path, with the schema from the first Cube cell, carried types and formats kept, and each child's own nested columns left nested. |
 
 ### Table tidies
 

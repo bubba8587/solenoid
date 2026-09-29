@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "../../src/graph/frameVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
-import { isCubeValue, isFrameValue, cubeFromColumns, cubeDepth, cubeRowCount, type FrameValue } from "../../src/graph/frame";
+import { isCubeValue, isFrameValue, cubeFromColumns, cubeDepth, cubeRowCount, type FrameValue, type FrameColumn } from "../../src/graph/frame";
 
 const f: FrameValue = {
   __frame: true,
@@ -186,6 +186,22 @@ describe("nest / unnest (flat ⟷ cube)", () => {
     expect(back.columns[0].values).toEqual(["A", "A", "B"]);
     expect(back.columns[1].values).toEqual(["x", "y", "z"]);
     expect(back.columns[2].values).toEqual([1, 2, 3]);
+  });
+  it("unnest keeps each column's unit and format, flattening or peeling", () => {
+    const fmt = { format: "currency", unit: "" } as unknown as FrameColumn["format"];
+    const unit = { dim: { L: 1 }, display: "m" } as unknown as FrameColumn["unit"];
+    const src: FrameValue = { __frame: true, columns: [
+      { name: "cust", type: "string", values: ["A", "B"], format: fmt },
+      { name: "len", type: "number", values: [1, 2], unit, format: fmt },
+    ] };
+    const back = unnestCube(nestFrame(src, ["cust"], "rows"), "rows");
+    if (!isFrameValue(back)) throw new Error("expected a Frame");
+    expect(back.columns.map((c) => [c.unit, c.format])).toEqual([[undefined, fmt], [unit, fmt]]);
+    const inner = cubeFromColumns([{ name: "rep", cells: ["Ann"], type: "string", format: fmt }]);
+    const outer = cubeFromColumns([{ name: "region", cells: ["N"], type: "string", format: fmt }, { name: "reps", cells: [inner] }]);
+    const peeled = unnestCube(outer, "reps");
+    if (!isCubeValue(peeled)) throw new Error("expected a Cube");
+    expect(peeled.columns.map((c) => c.format)).toEqual([fmt, fmt]);
   });
   it("unnest #REF!s on an unknown nested column", () => {
     let err: unknown;

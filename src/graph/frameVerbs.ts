@@ -1185,7 +1185,7 @@ export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedNa
   }
   const names = makeHeaders([...keyColumns, nestedName.trim() || "items"], keyColumns.length + 1);
   const keyOut: CubeColumn[] = keyCols.map((c, k) => ({
-    name: names[k], type: c.type, cells: order.map((key) => cellAt(c, buckets.get(key)![0])),
+    name: names[k], type: c.type, ...(c.format ? { format: c.format } : {}), cells: order.map((key) => cellAt(c, buckets.get(key)![0])),
   }));
   const nestedCells: CubeCell[] = order.map((key) => {
     const rowIdx = buckets.get(key)!;
@@ -1228,7 +1228,7 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | Cub
       else for (const item of items) { pushParent(); explodedL.push(item ?? null); }
     }
     return frame([
-      ...flatCols.map((fc, k) => ({ ...inferColumn(fc.name, flatValsL[k]), name: fc.name })),
+      ...flatCols.map((fc, k) => ({ ...inferColumn(fc.name, flatValsL[k]), name: fc.name, ...(fc.format ? { format: fc.format } : {}) })),
       { ...inferColumn(nested.name, explodedL), name: nested.name },
     ]);
   }
@@ -1255,8 +1255,8 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | Cub
       flatCols.length + childCubeCols.length,
     );
     return cubeFromColumns([
-      ...flatCols.map((fc, k) => ({ name: namesC[k], cells: flatValsC[k], ...(fc.type ? { type: fc.type } : {}) })),
-      ...childCubeCols.map((cc, k) => ({ name: namesC[flatCols.length + k], cells: childValsC[k], ...(cc.type ? { type: cc.type } : {}) })),
+      ...flatCols.map((fc, k) => ({ name: namesC[k], cells: flatValsC[k], ...(fc.type ? { type: fc.type } : {}), ...(fc.format ? { format: fc.format } : {}) })),
+      ...childCubeCols.map((cc, k) => ({ name: namesC[flatCols.length + k], cells: childValsC[k], ...(cc.type ? { type: cc.type } : {}), ...(cc.format ? { format: cc.format } : {}) })),
     ]);
   }
 
@@ -1281,8 +1281,11 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | Cub
     flatCols.length + childCols.length,
   );
   return frame([
-    ...flatCols.map((_, k) => ({ ...inferColumn(names[k], flatVals[k]), name: names[k] })),
-    ...childCols.map((cc, k) => ({ name: names[flatCols.length + k], type: cc.type, values: childVals[k] })),
+    ...flatCols.map((fc, k) => ({ ...inferColumn(names[k], flatVals[k]), name: names[k], ...(fc.format ? { format: fc.format } : {}) })),
+    ...childCols.map((cc, k) => ({
+      name: names[flatCols.length + k], type: cc.type, values: childVals[k],
+      ...(cc.unit ? { unit: cc.unit } : {}), ...(cc.format ? { format: cc.format } : {}),
+    })),
   ]);
 }
 
