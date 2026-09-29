@@ -1020,6 +1020,12 @@ export function formulaToLatex(expr: string): string | null {
   }
 }
 
+/** `f(params) = body`, the head's parameters written as the body writes them; null when the body does not parse. */
+export function lambdaToLatex(params: readonly string[], expr: string): string | null {
+  const body = formulaToLatex(expr);
+  return body === null ? null : `f(${params.map(symbolLatex).join(",\\,")}) = ${body}`;
+}
+
 // ─── Step-by-step evaluation ─────────────────────────────────────────────────
 
 // A step shows its numbers as every unformatted number shows ([[D94]] oneNumberDisplay).

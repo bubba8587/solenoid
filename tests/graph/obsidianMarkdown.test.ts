@@ -105,6 +105,10 @@ describe("lambdaToMarkdown", () => {
     expect(md.endsWith("\n$$")).toBe(true);
     expect(md).not.toContain("[object Object]");
   });
+  it("the f(params) head writes each parameter as the body does", () => {
+    const md = lambdaToMarkdown(lam({ params: ["a_b_c", "rate"], expr: "a_b_c * rate" }));
+    expect(md).toContain("f(a_{{b_c}},\\,\\mathrm{rate}) = a_{{b_c}}");
+  });
   it("descriptions follow as a plain where-legend; an unparsable body falls back to code", () => {
     const md = lambdaToMarkdown(lam({ expr: "base * t", descriptions: { t: "months ahead", base: "latest run-rate" } }));
     expect(md).toContain("\n\nwhere\n- *t* — months ahead\n- *base* — latest run-rate");

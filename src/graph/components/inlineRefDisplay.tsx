@@ -22,7 +22,7 @@ import { parseNoteFrontmatter } from "../noteFrontmatter";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
-import { formulaToLatex } from "../excelFormula";
+import { lambdaToLatex } from "../excelFormula";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
@@ -101,13 +101,12 @@ function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView 
       </span>
     );
   }
-  const params = value.params.map((p) => p.replace(/[\\{}]/g, "")).join(",\\,");
   const expr = (value.expr ?? "").trim();
-  const bodyTex = expr ? formulaToLatex(expr) : null;
+  const latex = expr ? lambdaToLatex(value.params, expr) : null;
   const html = (() => {
-    if (!render || !bodyTex) return null;
+    if (!render || !latex) return null;
     try {
-      return render(`f(${params}) = ${bodyTex}`, { throwOnError: false, displayMode: true });
+      return render(latex, { throwOnError: false, displayMode: true });
     } catch { return null; }
   })();
   if (!html) return <span className="solenoid-ref-inline">{lambdaText(value)}</span>;

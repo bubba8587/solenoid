@@ -4,7 +4,7 @@ import { type FrameValue, formatFrameCell, isFrameValue } from "./frame";
 import { isMermaidValue, type MermaidValue } from "./mermaidValue";
 import { isDocumentValue, type DocumentValue } from "./documentValue";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
-import { formulaToLatex } from "./excelFormula";
+import { lambdaToLatex } from "./excelFormula";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
 
 const INLINE_REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)(!?)`/g;
@@ -39,11 +39,9 @@ export function mathToMarkdown(latex: string): string {
 
 export function lambdaToMarkdown(v: LambdaValue): string {
   const expr = (v.expr ?? "").trim();
-  const bodyTex = expr ? formulaToLatex(expr) : null;
+  const latex = expr ? lambdaToLatex(v.params, expr) : null;
   const sig = `λ(${v.params.join(", ")})`;
-  const head = bodyTex
-    ? mathToMarkdown(`f(${v.params.map((p) => p.replace(/[\\{}]/g, "")).join(",\\,")}) = ${bodyTex}`)
-    : `\`${expr ? `${sig} = ${expr}` : sig}\``;
+  const head = latex ? mathToMarkdown(latex) : `\`${expr ? `${sig} = ${expr}` : sig}\``;
   const desc = v.descriptions;
   const described = desc
     ? [...v.params, ...Object.keys(desc).filter((k) => !v.params.includes(k))].filter((k) => desc[k]?.trim())
