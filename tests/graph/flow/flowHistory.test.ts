@@ -45,6 +45,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("undo and redo flush a pending edit", () => {
@@ -108,5 +109,26 @@ describe("the byte budget", () => {
     h.doc = big(3);
     flowHistory.recordNow();
     expect(flowHistory.records()).toHaveLength(2);
+  });
+});
+
+describe("the camera across a restore", () => {
+  it("comes back exactly, even between zoom steps where a pinch left it", async () => {
+    vi.stubGlobal("document", { createElement: () => ({}) });
+    const { makeFlowView } = await import("../../../src/graph/flow/flowView");
+    const view = makeFlowView({ getNode: () => undefined } as never, {
+      bumpNode() {}, bumpConnections() {}, moveNode() {}, setViewport() {}, getContainer: () => null,
+    });
+    h.view = view;
+    view.setTransform({ x: 13, y: -41, k: 1.37 });
+    h.onLoad = () => view.setTransform({ x: 0, y: 0, k: 0.6 });
+    h.doc = doc("a", 1);
+    flowHistory.reset();
+    h.doc = doc("a", 2);
+    flowHistory.recordNow();
+
+    await flowHistory.undo();
+
+    expect({ ...view.transform }).toEqual({ x: 13, y: -41, k: 1.37 });
   });
 });

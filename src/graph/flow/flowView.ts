@@ -2,7 +2,7 @@
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
 import type { View } from "../view";
-import { clampZoom } from "../viewPresets";
+import { boundZoom, clampZoom } from "../viewPresets";
 
 export type FlowViewCallbacks = {
   bumpNode(id: string): void;
@@ -61,6 +61,12 @@ export function makeFlowView(editor: NodeEditor<Schemes>, cb: FlowViewCallbacks)
     async pan(x, y) {
       transform.x = x;
       transform.y = y;
+      pushViewport();
+    },
+    async setCamera(t) {
+      transform.x = t.x;
+      transform.y = t.y;
+      transform.k = boundZoom(t.k);
       pushViewport();
     },
     async moveNode(id, pos) {

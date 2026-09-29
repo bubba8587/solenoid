@@ -26,10 +26,7 @@ async function restore(json: string): Promise<void> {
     const view = getView();
     const t = view ? { ...view.transform } : null;
     await withGraphRebuild(() => loadGraph(JSON.parse(json) as SavedGraph, { curtain: false }));
-    if (view && t) {
-      await view.pan(t.x, t.y);
-      await view.zoom(t.k);
-    }
+    if (view && t) await view.setCamera(t);
     scheduleAutosave();
   } finally {
     _restoring = false;

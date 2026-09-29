@@ -14,6 +14,8 @@ export type View = {
   /** Sets the scale, then adds (ox, oy) to the pan: the anchored-zoom step. */
   zoom(k: number, ox?: number, oy?: number): Promise<void>;
   pan(x: number, y: number): Promise<void>;
+  /** Sets the whole camera as given, bounded but never snapped, so a saved camera comes back exactly. */
+  setCamera(t: { x: number; y: number; k: number }): Promise<void>;
   moveNode(id: string, pos: { x: number; y: number }): Promise<void>;
   rerenderNode(id: string): Promise<void>;
   rerenderCables(): Promise<void>;
