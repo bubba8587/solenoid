@@ -8,12 +8,14 @@ export interface CellSuggestHandle { onKey: (e: { key: string; preventDefault: (
 const MAX_ITEMS = 50;
 
 /** Never opens on focus alone and never constrains; the host input keeps focus throughout, so a press here must not blur it. */
-export function CellSuggest({ options, draft, onPick, handle, opener = { title: "Existing values", label: "Show this column's existing values" } }: {
+export function CellSuggest({ options, draft, onPick, handle, detail, opener = { title: "Existing values", label: "Show this column's existing values" } }: {
   options: string[];
   draft: string;
   onPick: (value: string) => void;
   handle: Ref<CellSuggestHandle>;
   opener?: { title: string; label: string };
+  /** A dim note after a value, when there is one to add. */
+  detail?: (value: string) => string | undefined;
 }) {
   const anchorRef = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLUListElement>(null);
@@ -102,6 +104,7 @@ export function CellSuggest({ options, draft, onPick, handle, opener = { title: 
               onClick={() => pick(v)}
             >
               {v}
+              {detail?.(v) && <span className="table-popup__suggest-detail">{detail(v)}</span>}
             </li>
           ))}
         </ul>,

@@ -14,7 +14,8 @@ specific item.
   (on by default) turns it off. API v1 grows `columnNames()`, which the Decision Matrix view's Add criterion reads.
   Specs: [[obsidian-plugin]] § Column name suggestions, [[table-popup]] § Editing a cell. Not yet exported to
   Solenoid-Properties or checked in the rig (no Obsidian in the cloud container); the header list was checked in
-  the app's popup through the dev server.
+  the app's popup through the dev server; the Decision Matrix e2e now covers it in Obsidian 1.13.7. A name typed more than one way shows its types ("Number or Text") and a
+  pick sets the name only; the API's options carry `types` beside `type`.
 
 ### SESSION DIGEST (2026-09-28: Cube types at every depth, cell kinds; cloud session)
 

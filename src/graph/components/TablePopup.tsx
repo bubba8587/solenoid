@@ -147,7 +147,7 @@ export function TablePopup() {
   const committedExprs = useRef<(string | undefined)[]>([]);
   const suggestRef = useRef<CellSuggestHandle>(null);
   const headSuggestRef = useRef<CellSuggestHandle>(null);
-  const [editHead, setEditHead] = useState<{ c: number; options: { name: string; type: CellType }[] } | null>(null);
+  const [editHead, setEditHead] = useState<{ c: number; options: { name: string; types: CellType[] }[] } | null>(null);
   const [liveComputed, setLiveComputed] = useState<CellValue[][] | null>(null);
   const initedFor = useRef<TablePopupState | null>(null);
   const summaryCache = useRef<{ deps: unknown[]; value: ColSummary[] | null }>({ deps: [], value: null });
@@ -451,8 +451,9 @@ export function TablePopup() {
   }
   function pickHeaderName(c: number, name: string) {
     setHeaderName(c, name);
-    const type = editHead?.options.find((o) => o.name === name)?.type;
-    if (!type || colExprs[c] !== undefined) return;
+    const types = editHead?.options.find((o) => o.name === name)?.types ?? [];
+    if (types.length !== 1 || colExprs[c] !== undefined) return;
+    const type = types[0];
     setColumnTypes((t) => {
       const next = t.slice();
       while (next.length <= c) next.push("number");
@@ -823,6 +824,7 @@ export function TablePopup() {
                                   options={nameOptions}
                                   draft={headerNames[c] ?? ""}
                                   onPick={(v) => pickHeaderName(c, v)}
+                                  detail={(v) => { const types = editHead?.options.find((o) => o.name === v)?.types ?? []; return types.length > 1 ? types.map((t) => COLTYPE_NAME[t]).join(" or ") : undefined; }}
                                   opener={{ title: "Column names", label: "Show column names used in other frames" }}
                                 />
                               )}

@@ -141,6 +141,11 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   median across the options (raw values, before normalizing; a blank logical stays FALSE), and shows it
   dimmed (`fillBlanks` in its `src/scoring.ts`). Its parity fuzz fills Solenoid's blanks the same way to
   compare the rest. Adopting it is a C64 change (frame-verbs spec step 2) and puts the two back in step.
+- [ ] **The plugin's breakdown bars in the app** (author 2026-09-29, queued as its own task): the Decision Matrix
+  Bases View's Rankings view draws each option as a bar split into each criterion's signed contribution, with
+  penalties hatched left of zero and a legend (`src/rankings-view.ts` and `styles.css` there). Bring that visual
+  to the Decision Matrix node's card or popup, under [[C64]] decisionMatrixFamily and DESIGN.md; ask which dev
+  environment verifies it before starting.
 
 ## Charts
 

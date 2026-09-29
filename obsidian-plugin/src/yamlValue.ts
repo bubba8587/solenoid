@@ -175,7 +175,8 @@ export function readColumnTypes(raw: unknown): Record<string, ColumnTypes> {
   return out;
 }
 
-export interface ColumnNameOption { name: string; type: FrameColType; properties: string[] }
+/** `types` is every type the name is typed as, the most used first; more than one means the vault disagrees. */
+export interface ColumnNameOption { name: string; type: FrameColType; types: FrameColType[]; properties: string[] }
 
 /** Every column name typed under the given properties, each with its most used type; the most used names first. */
 export function columnNameOptions(columnTypes: Record<string, ColumnTypes>, keys: string[]): ColumnNameOption[] {
@@ -191,7 +192,10 @@ export function columnNameOptions(columnTypes: Record<string, ColumnTypes>, keys
   }
   return [...seen.entries()]
     .sort(([a, ea], [b, eb]) => eb.properties.length - ea.properties.length || a.localeCompare(b))
-    .map(([name, { counts, properties }]) => ({ name, type: [...counts.entries()].sort((x, y) => y[1] - x[1])[0][0], properties }));
+    .map(([name, { counts, properties }]) => {
+      const types = [...counts.entries()].sort((x, y) => y[1] - x[1]).map(([t]) => t);
+      return { name, type: types[0], types, properties };
+    });
 }
 
 export function frameSourceFromYaml(value: unknown, picked: ColumnTypes = {}): FrameSourceColumn[] {

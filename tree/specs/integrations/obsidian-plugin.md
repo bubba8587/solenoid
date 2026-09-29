@@ -334,8 +334,11 @@ Serves [[D92]] columnNameSuggest. While a Frame editor's header name is focused,
 the column names typed in the vault: every column of every property in `data.json`'s `columnTypes`
 that is still assigned the Frame or Cube type, the property being edited included (so a second
 note's `scores` Frame offers the first one's columns). A name typed under several properties counts
-once per property, the most used names come first, and each carries the type it has most often.
-Picking a name also sets the column's type to it; the type button still cycles after. A name
+once per property, the most used names come first, and each carries every type it is typed as.
+Picking a name typed one way sets the column's type to it; the type button still cycles after. A
+name the vault types more than one way (`cost` a Number in one Frame, Text in another) shows its
+types after it ("Number or Text"), and picking it sets the name only: the column keeps its type,
+since either choice would be a guess. A name
 another column of the same Frame already has is left out. The list is read when the header takes
 focus (`columnNameOptions`, a function on the popup state), so a column typed a moment ago in another
 note is offered. It is the table popup's own `CellSuggest` ([[table-popup]] § Editing a cell): it never
@@ -477,7 +480,7 @@ version the shape only grows; a breaking change is version 2.
 | `release(el)` | Unmounts every chip `frameChip` mounted inside `el`. Call it before emptying `el`. |
 | `columnTypes(key)` | A copy of the column types recorded for Frame property `key`, `{ column: "number" \| "string" \| "date" \| "logical" }`; `{}` when none are. |
 | `setColumnTypes(key, types, replace?)` | Records column types for `key`, as the editor does on save: merged into what is there, or the whole map with `replace`. Awaits the write to `data.json`. |
-| `columnNames()` | The names [[#Column name suggestions]] offers, `{ name, type, properties }[]` (`properties`: the Frame and Cube properties that type the name), the most used first; `[]` when the user has turned Suggest column names off. A caller filters it (by type, or out of its own bookkeeping properties) to suit its own name field. |
+| `columnNames()` | The names [[#Column name suggestions]] offers, `{ name, type, types, properties }[]` (`types`: every type the name is typed as, the most used first, and `type` the first of them; `properties`: the Frame and Cube properties that type the name), the most used first; `[]` when the user has turned Suggest column names off. A caller filters it (by type, or out of its own bookkeeping properties) to suit its own name field. |
 | `COLUMN_TYPES_EVENT` | `"solenoid-properties:column-types"`, triggered on `app.workspace` with the property key whenever its column types change, from the editor or through `setColumnTypes`. A caller listens with `registerEvent(app.workspace.on(api.COLUMN_TYPES_EVENT, (key) => ...))`: a type picked in the editor changes no YAML, so no metadata event says so. |
 
 A caller writes the Frame's YAML itself (`processFrontMatter`) and records the types of the columns

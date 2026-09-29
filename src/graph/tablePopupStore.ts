@@ -46,8 +46,8 @@ export interface TablePopupState {
   formLayout?: string;
   lambdaOptions?: string[];
   noFormulaColumns?: boolean;
-  /** Names a column header may take, each with the type picking it sets; read when a header is focused. */
-  columnNameOptions?: () => { name: string; type: "number" | "string" | "date" | "logical" }[];
+  /** Names a column header may take, each with the types it has elsewhere; a pick sets the type only when there is one. Read when a header is focused. */
+  columnNameOptions?: () => { name: string; types: ("number" | "string" | "date" | "logical")[] }[];
   /** undefined is a Data column. */
   sourceExprs?: (string | undefined)[];
   computedCells?: Cell[][];
