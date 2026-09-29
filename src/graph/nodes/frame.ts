@@ -1692,10 +1692,12 @@ function localMonthStartSerial(): number {
   return Date.UTC(d.getFullYear(), d.getMonth(), 1) / 86400000 + 25569;
 }
 
+/** As EDATE: a day past the target month's end lands on its last day. */
 function addMonthsSerial(start: number, months: number): number {
   const d = new Date(Math.round((start - 25569) * 86400000));
-  d.setUTCMonth(d.getUTCMonth() + months);
-  return Math.floor(d.getTime() / 86400000 + 25569);
+  const y = d.getUTCFullYear(), mo = d.getUTCMonth() + months;
+  const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+  return Math.floor(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay)) / 86400000 + 25569);
 }
 
 export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, view: PayoffView, start: number | null): FrameValue {

@@ -32,6 +32,14 @@ describe("PayoffPlannerNode", () => {
     expect(formatDateSerial(f.columns[3].values[0] as number, "YYYY-MM")).toBe(`${expected.getUTCFullYear()}-${String(expected.getUTCMonth() + 1).padStart(2, "0")}`);
   });
 
+  it("a start on the 31st lands a payoff date on a short month's last day, as EDATE does", () => {
+    const f = payoffFrame(debts, 50, "avalanche", "summary", parseDateToSerial("2026-01-31"));
+    const months = f.columns[1].values as number[];
+    const y = 2026 + Math.floor(months[0] / 12), mo = months[0] % 12;
+    const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+    expect(formatDateSerial(f.columns[3].values[0] as number, "YYYY-MM-DD")).toBe(`${y}-${String(mo + 1).padStart(2, "0")}-${String(Math.min(31, lastDay)).padStart(2, "0")}`);
+  });
+
   it("schedule: Month plus a balance column per debt, month 0 the starting balances", () => {
     const f = payoffFrame(debts, 0, "snowball", "schedule", null);
     expect(f.columns.map((c) => c.name)).toEqual(["Month", "Card", "Car"]);
