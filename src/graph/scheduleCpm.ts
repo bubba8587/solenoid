@@ -242,9 +242,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
         { name: "Task", type: "string", cells: names },
         { name: "Duration", type: "number", cells: names.map(() => dur) },
         { name: "Predecessors", cells: names.map((_, k) => (k === 0
-          ? (preds.every((d) => d.type === "FS" && d.lag === 0 && !d.elapsed) ? preds.map((d) => d.task) : cubeFromColumns([
-              { name: "Task", type: "string", cells: preds.map((d) => d.task) }, { name: "Type", type: "string", cells: preds.map((d) => d.type) }, { name: "Lag", type: "number", cells: preds.map((d) => d.lag) },
-            ]))
+          ? predecessorCell(preds)
           : cubeFromColumns([{ name: "Task", type: "string", cells: [names[k - 1]] }, { name: "Type", type: "string", cells: ["SS"] }, { name: "Lag", type: "number", cells: [every] }, { name: "Elapsed", type: "logical", cells: [true] }]))) },
         ...(base != null ? [{ name: "Start", type: "date" as const, cells: names.map((_, k) => base + k * every) }] : []),
       ]);

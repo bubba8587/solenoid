@@ -206,6 +206,22 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(col(r.cube, "Start").map(iso)[2]).toBe("2026-01-21"); // Wrap follows the last occurrence
   });
 
+  it("a recurring row's first occurrence keeps an elapsed lag on its predecessor", () => {
+    const pred = (repeat: number | null) => cubeFromColumns([
+      { name: "Task", cells: ["Pour", "Inspect"], type: "string" },
+      { name: "Duration", cells: [5, 1], type: "number" },
+      { name: "Repeat", cells: [null, repeat], type: "number" },
+      { name: "Predecessors", cells: [[], cubeFromColumns([
+        { name: "Task", cells: ["Pour"], type: "string" }, { name: "Type", cells: ["FS"], type: "string" },
+        { name: "Lag", cells: [2], type: "number" }, { name: "Elapsed", cells: [true], type: "logical" },
+      ])] },
+    ]);
+    const once = scheduleTasks(pred(null), { start: MON, workingDays: true });
+    expect(iso(col(once.cube, "Start")[1])).toBe("2026-01-12"); // Friday's finish plus the weekend
+    const inner = col(scheduleTasks(pred(2), { start: MON, workingDays: true }).cube, "Tasks")[1] as CubeValue;
+    expect(iso(col(inner, "Start")[0])).toBe("2026-01-12");
+  });
+
   it("an empty tasks cube schedules nothing and finishes on the start", () => {
     const r = scheduleTasks(tasks([]), { start: MON, workingDays: true });
     expect(col(r.cube, "Start")).toEqual([]);
