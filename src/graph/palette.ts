@@ -840,6 +840,33 @@ export const NEUTRAL_HEX: Record<string, string> = Object.assign(Object.create(n
   [NEUTRAL_DARK]: "#3a3d42",
 });
 export const NEUTRAL_CYCLE = [NEUTRAL_WHITE, "gray", NEUTRAL_DARK] as const;
+
+// Each neutral is drawn from the chrome color of about its lightness, so a tinted palette's neutrals share its background's tint.
+const NEUTRAL_CHROME_KEY: Record<string, ChromeKey> = { [NEUTRAL_WHITE]: "text", gray: "textMuted", [NEUTRAL_DARK]: "borderStrong" };
+const NEUTRAL_TINT_MAX_CHROMA = 0.05;
+// The OKLCH lightness a chrome color must have to stand for each shade; Solarized's dim text is no white.
+const NEUTRAL_L_RANGE: Record<string, [number, number]> = { [NEUTRAL_WHITE]: [0.85, 1], gray: [0.45, 0.8], [NEUTRAL_DARK]: [0.2, 0.55] };
+
+/** A neutral shade (white, gray or dark) as the active palette draws it: its chrome's own color, else the default shade tinted with the chrome background's hue, else the default ([[D95]] neutralsFollowChrome). */
+export function neutralHex(slot: string): string {
+  const fallback = slot === "gray" ? _effective.gray : NEUTRAL_HEX[slot];
+  const ramp = _effectiveChrome.dark;
+  const own = ramp[NEUTRAL_CHROME_KEY[slot]];
+  const range = NEUTRAL_L_RANGE[slot];
+  if (isHex(own) && range) {
+    const L = hexToOklch(own)[0];
+    if (L >= range[0] && L <= range[1]) return own;
+  }
+  const bg = ramp.appBg;
+  if (!isHex(bg) || !fallback) return fallback ?? _effective.gray;
+  const [, c, h] = hexToOklch(bg);
+  return oklchToHex(hexToOklch(fallback)[0], Math.min(c, NEUTRAL_TINT_MAX_CHROMA), h);
+}
+
+/** The app accent's color: a palette slot's, with the gray swatch drawn as the neutral gray. */
+export function resolveAccent(slot: string): string {
+  return slot === "gray" ? neutralHex("gray") : resolveColor(slot);
+}
 export function isNeutralShade(slot: string): boolean {
   return slot === NEUTRAL_WHITE || slot === NEUTRAL_DARK;
 }
@@ -873,5 +900,6 @@ export function heightRampColor(t: number): [number, number, number] {
 
 // Total on purpose: a stray slot falls back to gray rather than crashing a render.
 export function resolveColor(slot: string): string {
-  return NEUTRAL_HEX[slot] ?? (isPaletteSlot(slot) ? _effective[slot] : undefined) ?? _effective.gray;
+  if (isNeutralShade(slot)) return neutralHex(slot);
+  return (isPaletteSlot(slot) ? _effective[slot] : undefined) ?? _effective.gray;
 }

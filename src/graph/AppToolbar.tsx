@@ -6,7 +6,7 @@ import { inspectorStore } from "./inspectorStore";
 import { SwatchGrid } from "./components/SwatchGrid";
 import { PaintbrushIcon } from "./components/PaintbrushIcon";
 import { useDismissOnOutside } from "./components/useDismissOnOutside";
-import { resolveColor } from "./palette";
+import { resolveAccent } from "./palette";
 import "./AppToolbar.css";
 
 export function AppToolbar() {
@@ -33,7 +33,7 @@ export function AppToolbar() {
         >
           {/* The accent shows as the small dot. */}
           <PaintbrushIcon />
-          <span className="solenoid-apptools__paint-dot" style={{ background: resolveColor(accent) }} />
+          <span className="solenoid-apptools__paint-dot" style={{ background: resolveAccent(accent) }} />
         </button>
         {pickerOpen && (
           <div ref={paletteRef} className="solenoid-apptools__palette">

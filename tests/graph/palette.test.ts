@@ -1,6 +1,6 @@
 // [[C62]]
 import { describe, it, expect, afterEach } from "vitest";
-import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
+import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, resolveAccent, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
 
 // WCAG luminance/contrast, shared by the structure checks below and the
 // accent-adaptive suite (which re-runs them on rotated ramps).
@@ -354,11 +354,26 @@ describe("neutral shades (gray-swatch cycle)", () => {
     expect(nextNeutral(undefined)).toBe("gray");
   });
 
-  it("resolves the two extreme neutrals to their fixed hex, independent of the palette", () => {
+  // [[D95]] neutralsFollowChrome
+  it("the neutrals take the palette's chrome: plain under Default, the chrome's own colors under a tinted palette", () => {
     expect(resolveColor(NEUTRAL_WHITE)).toBe(NEUTRAL_HEX[NEUTRAL_WHITE]);
-    paletteStore.setActiveBase("Solarized");
-    expect(resolveColor(NEUTRAL_WHITE)).toBe(NEUTRAL_HEX[NEUTRAL_WHITE]); // palette-independent
-    paletteStore.setActiveBase("Default");
+    expect(resolveColor(NEUTRAL_DARK)).toBe(NEUTRAL_HEX[NEUTRAL_DARK]);
+    paletteStore.setActiveBase("Blueprint");
+    try {
+      expect(resolveColor(NEUTRAL_WHITE)).toBe("#e3ecf5");
+      expect(resolveColor(NEUTRAL_DARK)).toBe("#375f85");
+      expect(resolveAccent("gray")).toBe("#8ba4bf");
+      expect(resolveColor("gray")).toBe(BUILTIN_PALETTES.Blueprint.gray);
+      // Solarized's text is too dim to be the white shade, so the plain white takes its background's blue-green hue.
+      paletteStore.setActiveBase("Solarized");
+      const [L, c, h] = hexToOklch(resolveColor(NEUTRAL_WHITE));
+      const hueGap = Math.abs(((h - hexToOklch("#03303b")[2]) % 360 + 540) % 360 - 180);
+      expect(L).toBeGreaterThan(0.9);
+      expect(c).toBeGreaterThan(0.01);
+      expect(hueGap).toBeLessThan(25);
+    } finally {
+      paletteStore.setActiveBase("Default");
+    }
   });
 
   it("the extremes are neutral shades; gray and real slots are not", () => {

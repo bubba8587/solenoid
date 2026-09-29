@@ -1,5 +1,5 @@
 // [[C62]] paletteAllOrNone
-import { resolveColor, paletteStore, initPalette } from "./palette";
+import { resolveAccent, paletteStore, initPalette } from "./palette";
 import { themeVars, type ThemeMode } from "./themeVars";
 import { createNotifier } from "./storeKit";
 import { syncNativeAccent } from "./nativeAccent";
@@ -14,7 +14,7 @@ const { notify, subscribe, version } = createNotifier();
 function apply() {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  const hex = resolveColor(_accent);
+  const hex = resolveAccent(_accent);
   for (const [name, value] of Object.entries(themeVars(_accent, _mode))) {
     if (value === null) root.style.removeProperty(name);
     else root.style.setProperty(name, value);
