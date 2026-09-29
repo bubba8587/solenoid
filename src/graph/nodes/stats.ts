@@ -386,7 +386,9 @@ export class ForecastNode extends ClassicPreset.Node {
       if (this.op === "exponential") {
         const fit = expFit(xs, ys);
         if (!fit) {
-          const err = solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
+          const err = ys.slice(0, xs.length).every((y) => y > 0)
+            ? solError("#DIV/0!", "Known Xs have zero variance")
+            : solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
           this.cachedResult = err;
           return { result: err };
         }

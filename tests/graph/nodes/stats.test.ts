@@ -193,6 +193,12 @@ describe("REGRESSION / FORECAST zero-variance Xs", () => {
     const r = new ForecastNode().data({ x: [3], ys: [[1, 2, 3]], xs: [[5, 5, 5]] }).result;
     expect(isSolError(r) && r.code).toBe("#DIV/0!");
   });
+  it("exponential FORECAST is #DIV/0! over zero-variance Xs, #DOMAIN! only for a y at or below 0", () => {
+    const flat = new ForecastNode({ op: "exponential" }).data({ x: [3], ys: [[1, 2, 3]], xs: [[5, 5, 5]] }).result;
+    expect(isSolError(flat) && flat.code).toBe("#DIV/0!");
+    const neg = new ForecastNode({ op: "exponential" }).data({ x: [3], ys: [[1, -2, 3]], xs: [[1, 2, 3]] }).result;
+    expect(isSolError(neg) && neg.code).toBe("#DOMAIN!");
+  });
 });
 
 describe("INTERPOLATE (piecewise-linear lookup)", () => {
