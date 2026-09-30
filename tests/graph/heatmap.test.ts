@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { colormapRgb, heatScale, normalizeCmap, COLORMAP_LIST } from "../../src/graph/colormaps";
 import { formatNumberSpec, isNumberSpec } from "../../src/graph/numberSpec";
-import { heatmapLayout, heatCellAt, heatRowY, type HeatLayoutInput } from "../../src/graph/components/heatmapLayout";
+import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, type HeatLayoutInput } from "../../src/graph/components/heatmapLayout";
+import { jsDateToSerial } from "../../src/graph/nodes/date";
 
 describe("colormaps", () => {
   it("spell names as matplotlib does, any case, with _r reversing", () => {
@@ -113,5 +114,29 @@ describe("heatmapLayout", () => {
     const low = heatmapLayout({ ...base, lower: true });
     expect(heatRowY(low, 0)).toBeGreaterThan(heatRowY(low, 2));
     expect(heatCellAt(low, low.gx + 1, heatRowY(low, 0) + 1)).toEqual({ r: 0, c: 0 });
+  });
+});
+
+describe("calendarLayout", () => {
+  const monday = jsDateToSerial(new Date(Date.UTC(2026, 0, 5)));
+
+  it("sums a repeated day, starts the grid on a Monday and finds the day under a point", () => {
+    const l = calendarLayout([monday + 2, monday + 2, monday + 9], [3, 4, 1], 300, 110, 1, null)!;
+    expect(l.byDay.get(monday + 2)).toBe(7);
+    expect([l.lo, l.hi]).toEqual([1, 7]);
+    expect(l.gridStart).toBe(monday);
+    expect(l.cbar).toBeNull();
+    const at = (day: number) => calDayAt(l, l.padL + Math.floor((day - l.gridStart) / 7) * l.cell + 1, l.padT + ((day - l.gridStart) % 7) * l.cell + 1);
+    expect(at(monday + 9)).toBe(monday + 9);
+    expect(at(monday)).toBeNull();
+  });
+
+  it("makes room for the colorbar right of the grid", () => {
+    const days = Array.from({ length: 300 }, (_, i) => monday + i);
+    const bare = calendarLayout(days, days.map(() => 1), 300, 110, 1, null)!;
+    const barred = calendarLayout(days, days.map(() => 1), 300, 110, 1, 20)!;
+    expect(barred.cell).toBeLessThan(bare.cell);
+    expect(barred.cbar!.textX + 20).toBeLessThanOrEqual(300);
+    expect(barred.cbar!.x).toBeGreaterThanOrEqual(barred.padL + barred.weeks * barred.cell);
   });
 });

@@ -322,6 +322,7 @@ const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "layout", "critical", "minutes", "window", "week"];
 const RECORD_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "cardsize", "clamp"];
+const CALHEAT_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
 const HEATMAP_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "annot", "fmt", "cbar", "aspect", "origin", "fontsize"];
 
@@ -339,7 +340,7 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   radialbar: { label: "Radial",           group: "Categorical",  op: "radialbar", keys: SLICE_KEYS },
   funnel:    { label: "Funnel",           group: "Categorical",  op: "funnel", keys: SLICE_KEYS },
   histogram: { label: "Histogram",        group: "Figures",      op: "column", keys: XY_KEYS },
-  histogram2d: { label: "Histogram 2-D",  group: "Figures",      op: "contour", keys: STAT_KEYS },
+  histogram2d: { label: "Histogram 2-D",  group: "Figures",      op: "heatmap", keys: HEATMAP_KEYS },
   kpi:       { label: "KPI",              group: "Figures",      op: "kpi", keys: STAT_KEYS },
   scale:     { label: "Gauge",            group: "Figures",      op: "scale", keys: STAT_KEYS },
   proportion: { label: "Proportion",      group: "Figures",      op: "proportion", keys: STAT_KEYS },
@@ -347,7 +348,7 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   waterfall: { label: "Waterfall",        group: "Figures",      op: "waterfall", keys: STAT_KEYS },
   candle:    { label: "Candlestick",      group: "Figures",      op: "candle", keys: STAT_KEYS },
   boxplot:   { label: "Boxplot",          group: "Figures",      op: "boxplot", keys: STAT_KEYS },
-  calheat:   { label: "Calendar Heatmap", group: "Figures",      op: "calheat", keys: STAT_KEYS },
+  calheat:   { label: "Calendar Heatmap", group: "Figures",      op: "calheat", keys: CALHEAT_KEYS },
   heatmap:   { label: "Heatmap",          group: "Figures",      op: "heatmap", keys: HEATMAP_KEYS },
   gantt:     { label: "Gantt",            group: "Figures",      op: "gantt", keys: GANTT_TIMELINE_KEYS },
   record:    { label: "Record",           group: "Figures",      op: "record", keys: RECORD_KEYS },

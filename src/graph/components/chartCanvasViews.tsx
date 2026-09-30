@@ -1,15 +1,16 @@
 // [[C100]] chartIsAValue
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, heightRampColor, divergingRampColor } from "../palette";
-import { colormapRgb, heatScale } from "../colormaps";
+import { colormapRgb, heatScale, type HeatScale } from "../colormaps";
 import { formatNumberSpec } from "../numberSpec";
 import { formatScalar } from "./format";
-import { heatmapLayout, heatCellAt, heatRowY, type HeatLayout } from "./heatmapLayout";
+import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, type HeatLayout, type CalLayout } from "./heatmapLayout";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import type { ChartOptions } from "../nodes/chartOptions";
 import { serialToJsDate } from "../nodes/date";
 import { heightColor } from "./SurfaceView";
-import { compactTick, canvasFont, useFontsVersion } from "./chartCore";
+import { compactTick, canvasFont } from "./chartCore";
 import type {
   WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload,
   ProportionPayload, QuiverPayload, ContourPayload,
@@ -243,48 +244,37 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
 
 // ─── Calendar heatmap ──────────────────────────────────────────────────────────
 
-function mondayIndex(serial: number): number {
-  return (serialToJsDate(serial).getUTCDay() + 6) % 7;
-}
-
-function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H: number, fs: number) {
+function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptions, W: number, H: number, fs: number): CalLayout | null {
   const ctx = setupCanvas(canvas, W, H);
-  if (!ctx) return;
+  if (!ctx) return null;
   const ink = themeInk(canvas);
-  if (p.days.length === 0) return;
-  const byDay = new Map<number, number>();
-  for (let i = 0; i < p.days.length; i++) byDay.set(p.days[i], (byDay.get(p.days[i]) ?? 0) + (p.values[i] ?? 0));
-  const dayList = [...byDay.keys()];
-  const end = iterMax(dayList);
-  const dataStart = iterMin(dayList);
-  const padL = Math.round(14 * fs), padT = Math.round(11 * fs), padR = 1, padB = 1;
-  const MIN_CELL = 3.2;
-  const endMonday = end - mondayIndex(end);
-  const spanStart = Math.max(dataStart, end - 365);
-  const wantWeeks = (endMonday - (spanStart - mondayIndex(spanStart))) / 7 + 1;
-  const maxWeeks = Math.max(4, Math.floor((W - padL - padR) / MIN_CELL));
-  const weeks = Math.min(wantWeeks, maxWeeks);
-  const gridStart = endMonday - (weeks - 1) * 7;
-  const start = Math.max(spanStart, gridStart);
-  const truncated = dataStart < start;
+  if (p.days.length === 0) return null;
+  const showCbar = o.cbar !== false;
+  ctx.font = tickFont(fs);
+  let tickW = 0;
+  if (showCbar) {
+    const est = heatScale(iterMin(p.values), iterMax(p.values), o);
+    for (const v of scaleTicks(est)) tickW = Math.max(tickW, ctx.measureText(compactTick(v)).width);
+  }
+  const L = calendarLayout(p.days, p.values, W, H, fs, showCbar ? tickW : null);
+  if (!L) return null;
+  const { byDay, start, end, gridStart, weeks, cell, gap, padL, padT } = L;
+  const scale = heatScale(L.lo, L.hi, o);
+  // No cmap and no center keeps the accent, at an opacity by value over the empty-day color.
+  const color = heatColorFn(o);
+  const paint: Paint = o.cmap || o.center !== undefined
+    ? (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }
+    : (c, x, y, w, h, t) => {
+      c.fillStyle = ink.sunken; c.fillRect(x, y, w, h);
+      c.fillStyle = ink.accent; c.globalAlpha = 0.16 + 0.84 * t; c.fillRect(x, y, w, h); c.globalAlpha = 1;
+    };
 
-  let vLo = Infinity, vHi = -Infinity;
-  for (const [d, v] of byDay) { if (d >= start) { vLo = Math.min(vLo, v); vHi = Math.max(vHi, v); } }
-  const norm = (v: number) => (vHi > vLo ? (v - vLo) / (vHi - vLo) : 0.75);
-
-  const cell = Math.min((W - padL - padR) / weeks, (H - padT - padB) / 7);
-  const gap = cell > 6 ? 1 : 0.5;
-
-  if (truncated) {
-    ctx.font = tickFont(fs);
-    ctx.fillStyle = ink.dim;
+  ctx.fillStyle = ink.dim;
+  if (L.truncated) {
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-    ctx.fillText(`last ${weeks} wk`, W - padR - 1, padT - 2);
+    ctx.fillText(`last ${weeks} wk`, padL + weeks * cell, padT - 2);
   }
-
-  ctx.font = tickFont(fs);
-  ctx.fillStyle = ink.dim;
   ctx.textAlign = "left";
   ctx.textBaseline = "bottom";
   let lastMonth = -1;
@@ -307,16 +297,12 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
       if (day < start || day > end) continue;
       const x = padL + w * cell, y = padT + r * cell;
       const v = byDay.get(day);
-      ctx.fillStyle = ink.sunken;
-      ctx.fillRect(x, y, cell - gap, cell - gap);
-      if (v != null) {
-        ctx.fillStyle = ink.accent;
-        ctx.globalAlpha = 0.16 + 0.84 * norm(v);
-        ctx.fillRect(x, y, cell - gap, cell - gap);
-        ctx.globalAlpha = 1;
-      }
+      if (v == null) { ctx.fillStyle = ink.sunken; ctx.fillRect(x, y, cell - gap, cell - gap); }
+      else paint(ctx, x, y, cell - gap, cell - gap, scale.t(v));
     }
   }
+  if (L.cbar) drawColorbar(ctx, ink, L.cbar, scale, paint, scaleTicks(scale), Math.ceil(10.5 * fs));
+  return L;
 }
 
 // ─── Heatmap ──────────────────────────────────────────────────────────────────
@@ -337,6 +323,33 @@ function heatExtent(z: (number | null)[][]): [number, number] {
   return [lo, hi];
 }
 
+type Paint = (ctx: Ctx, x: number, y: number, w: number, h: number, t: number) => void;
+
+/** A vertical scale bar, high at the top, its ticks labeled unless two would collide. */
+function drawColorbar(ctx: Ctx, ink: ReturnType<typeof themeInk>, box: { x: number; y: number; w: number; h: number; textX: number }, scale: HeatScale, paint: Paint, ticks: number[], lineH: number) {
+  const { x, y, w, h, textX } = box;
+  const span = scale.hi - scale.lo;
+  for (let i = 0; i < h; i++) {
+    const v = span > 0 ? scale.hi - (span * (i + 0.5)) / h : scale.lo;
+    paint(ctx, x, y + i, w, Math.min(1.5, h - i), scale.t(v));
+  }
+  ctx.strokeStyle = ink.border;
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = ink.dim;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  const drawn: number[] = [];
+  for (const v of ticks) {
+    const ty = span > 0 ? y + ((scale.hi - v) / span) * h : y + h / 2;
+    if (drawn.some((d) => Math.abs(d - ty) < lineH)) continue;
+    drawn.push(ty);
+    ctx.fillText(compactTick(v), textX, ty);
+  }
+}
+
+const scaleTicks = (s: HeatScale) => [s.hi, ...(s.center !== undefined && s.center > s.lo && s.center < s.hi ? [s.center] : []), s.lo];
+
 const annotText = (v: number, fmt: string | undefined) => (fmt ? formatNumberSpec(v, fmt) : null) ?? compactTick(v);
 
 function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptions, W: number, H: number, fs: number): HeatLayout | null {
@@ -348,7 +361,7 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
   if (nR === 0 || nC === 0 || !Number.isFinite(dLo)) return null;
   const scale = heatScale(dLo, dHi, o);
   const color = heatColorFn(o);
-  const cbarTicks = [scale.hi, ...(scale.center !== undefined && scale.center > scale.lo && scale.center < scale.hi ? [scale.center] : []), scale.lo];
+  const cbarTicks = scaleTicks(scale);
 
   ctx.font = tickFont(fs);
   const widest = (xs: Iterable<string>) => { let m = 0; for (const x of xs) m = Math.max(m, ctx.measureText(x).width); return m; };
@@ -432,29 +445,7 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
     }
   }
 
-  if (L.cbar) {
-    const { x, y, w, h, textX } = L.cbar;
-    const span = scale.hi - scale.lo;
-    for (let i = 0; i < h; i++) {
-      const v = span > 0 ? scale.hi - (span * (i + 0.5)) / h : scale.lo;
-      ctx.fillStyle = rgbCss(color(scale.t(v)));
-      ctx.fillRect(x, y + i, w, Math.min(1.5, h - i));
-    }
-    ctx.strokeStyle = ink.border;
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(x, y, w, h);
-    ctx.fillStyle = ink.dim;
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    const sy = (v: number) => (span > 0 ? y + ((scale.hi - v) / span) * h : y + h / 2);
-    const drawn: number[] = [];
-    for (const v of cbarTicks) {
-      const ty = sy(v);
-      if (drawn.some((d) => Math.abs(d - ty) < L.lineH)) continue;
-      drawn.push(ty);
-      ctx.fillText(compactTick(v), textX, ty);
-    }
-  }
+  if (L.cbar) drawColorbar(ctx, ink, L.cbar, scale, (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }, cbarTicks, L.lineH);
 
   ctx.fillStyle = ink.dim;
   ctx.font = canvasFont(600, 9 * fs);
@@ -690,7 +681,6 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
 
 function useThemedCanvas(draw: (canvas: HTMLCanvasElement) => void) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  useFontsVersion();
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => { if (ref.current) draw(ref.current); });
   return ref;
@@ -716,60 +706,88 @@ export function BoxplotView({ payload, width, height, fscale = 1 }: { payload: B
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function CalHeatView({ payload, width, height, fscale = 1 }: { payload: CalHeatPayload; width: number; height: number; fscale?: number }) {
-  const ref = useThemedCanvas((c) => drawCalHeat(c, payload, width, height, fscale));
-  if (payload.days.length === 0) return <Empty />;
-  return <canvas ref={ref} style={{ width, height, display: "block" }} />;
+/** A canvas that redraws only when `deps` change, keeping the layout it drew for hit tests: hovering re-renders the
+ *  view, and a big grid is too costly to repaint per move. */
+function useHoverCanvas<L>(draw: (c: HTMLCanvasElement) => L | null, deps: unknown[]) {
+  const theme = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const ref = useRef<HTMLCanvasElement>(null);
+  const layout = useRef<L | null>(null);
+  useLayoutEffect(() => {
+    if (ref.current) layout.current = draw(ref.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, theme]);
+  return [ref, layout] as const;
 }
 
-export function HeatmapView({ payload, options, width, height, fscale = 1 }: { payload: HeatmapPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
-  const theme = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const fonts = useFontsVersion();
-  const ref = useRef<HTMLCanvasElement>(null);
-  const layout = useRef<HeatLayout | null>(null);
-  const [hover, setHover] = useState<{ r: number; c: number; x: number; y: number } | null>(null);
-  // Only a real change redraws: hovering re-renders this component, and a big grid is too costly to repaint per move.
-  // The options are keyed by content, since ChartFigure hands over a fresh object each render.
-  const optionsKey = JSON.stringify(options);
-  useLayoutEffect(() => {
-    if (ref.current) layout.current = drawHeatmap(ref.current, payload, options, width, height, fscale);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, optionsKey, width, height, fscale, theme, fonts]);
-  const empty = payload.z.length === 0 || payload.cols.length === 0 || !payload.z.some((r) => r.some((v) => v != null));
-  if (empty) return <Empty />;
+type Hover = { x: number; y: number; cell: { left: number; top: number; width: number; height: number }; label: string; value: number | undefined };
+
+/** The canvas plus the hovered cell's outline and its readout, flipped away from the nearer edges. */
+function HoverFrame({ width, height, canvasRef, onMove, hover }: {
+  width: number; height: number;
+  canvasRef: RefObject<HTMLCanvasElement | null>;
+  onMove: (x: number, y: number) => void;
+  hover: Hover | null;
+}) {
   const move = (e: ReactPointerEvent<HTMLCanvasElement>) => {
-    const L = layout.current;
     const box = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - box.left) * width) / (box.width || width);
-    const y = ((e.clientY - box.top) * height) / (box.height || height);
-    const cell = L ? heatCellAt(L, x, y) : null;
-    setHover(cell ? { ...cell, x, y } : null);
+    onMove(((e.clientX - box.left) * width) / (box.width || width), ((e.clientY - box.top) * height) / (box.height || height));
   };
-  const L = layout.current;
-  const v = hover ? payload.z[hover.r]?.[hover.c] : undefined;
   return (
     <div style={{ position: "relative", width, height }}>
-      <canvas ref={ref} style={{ width, height, display: "block" }} onPointerMove={move} onPointerLeave={() => setHover(null)} />
-      {hover && L && (
+      <canvas ref={canvasRef} style={{ width, height, display: "block" }} onPointerMove={move} onPointerLeave={() => onMove(-1, -1)} />
+      {hover && (
         <>
-          <div style={{
-            position: "absolute", pointerEvents: "none", boxSizing: "border-box",
-            left: L.gx + hover.c * L.cw, top: heatRowY(L, hover.r), width: L.cw, height: L.ch,
-            outline: "1.5px solid var(--text)", outlineOffset: -0.75,
-          }} />
+          <div style={{ position: "absolute", pointerEvents: "none", boxSizing: "border-box", ...hover.cell, outline: "1.5px solid var(--text)", outlineOffset: -0.75 }} />
           <div style={{
             position: "absolute", pointerEvents: "none", whiteSpace: "nowrap", zIndex: 1,
             fontSize: 11, padding: "2px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)",
             ...(hover.x > width / 2 ? { right: width - hover.x + 10 } : { left: hover.x + 10 }),
             ...(hover.y > height / 2 ? { bottom: height - hover.y + 10 } : { top: hover.y + 10 }),
           }}>
-            <span style={{ color: "var(--text-dim)" }}>{payload.rows[hover.r]} · {payload.cols[hover.c]}</span>
+            <span style={{ color: "var(--text-dim)" }}>{hover.label}</span>
             {"  "}
-            {v == null ? "—" : formatScalar(v)}
+            {hover.value == null ? "—" : formatScalar(hover.value)}
           </div>
         </>
       )}
     </div>
+  );
+}
+
+export function CalHeatView({ payload, options, width, height, fscale = 1 }: { payload: CalHeatPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
+  const [ref, layout] = useHoverCanvas((c) => drawCalHeat(c, payload, options, width, height, fscale), [payload, JSON.stringify(options), width, height, fscale]);
+  const [hover, setHover] = useState<{ day: number; x: number; y: number } | null>(null);
+  if (payload.days.length === 0) return <Empty />;
+  const L = layout.current;
+  return (
+    <HoverFrame width={width} height={height} canvasRef={ref}
+      onMove={(x, y) => { const day = L ? calDayAt(L, x, y) : null; setHover(day === null ? null : { day, x, y }); }}
+      hover={hover && L ? {
+        x: hover.x, y: hover.y,
+        cell: { left: L.padL + Math.floor((hover.day - L.gridStart) / 7) * L.cell, top: L.padT + ((hover.day - L.gridStart) % 7) * L.cell, width: L.cell - L.gap, height: L.cell - L.gap },
+        label: formatDateSerial(hover.day, DEFAULT_DATE_FORMAT),
+        value: L.byDay.get(hover.day),
+      } : null}
+    />
+  );
+}
+
+export function HeatmapView({ payload, options, width, height, fscale = 1 }: { payload: HeatmapPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
+  const [ref, layout] = useHoverCanvas((c) => drawHeatmap(c, payload, options, width, height, fscale), [payload, JSON.stringify(options), width, height, fscale]);
+  const [hover, setHover] = useState<{ r: number; c: number; x: number; y: number } | null>(null);
+  const empty = payload.z.length === 0 || payload.cols.length === 0 || !payload.z.some((r) => r.some((v) => v != null));
+  if (empty) return <Empty />;
+  const L = layout.current;
+  return (
+    <HoverFrame width={width} height={height} canvasRef={ref}
+      onMove={(x, y) => { const cell = L ? heatCellAt(L, x, y) : null; setHover(cell ? { ...cell, x, y } : null); }}
+      hover={hover && L ? {
+        x: hover.x, y: hover.y,
+        cell: { left: L.gx + hover.c * L.cw, top: heatRowY(L, hover.r), width: L.cw, height: L.ch },
+        label: `${payload.rows[hover.r]} · ${payload.cols[hover.c]}`,
+        value: payload.z[hover.r]?.[hover.c] ?? undefined,
+      } : null}
+    />
   );
 }
 

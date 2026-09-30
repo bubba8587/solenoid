@@ -792,6 +792,14 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
     const f = frame([{ name: "A", type: "number", values: [1, 2] }, { name: "B", type: "number", values: [3, 4] }]);
     expect((await new HeatmapNode().data({ values: [f] })).chart.payload).toEqual({ kind: "heatmap", z: [[1, 3], [2, 4]], rows: ["1", "2"], cols: ["A", "B"] });
   });
+  it("Histogram 2-D draws its bins as a heatmap, y growing upward, bins labeled by their lower edge", () => {
+    const n = new HistogramNode({ mode: "2d" });
+    n.stringLiterals.options = "cmap=magma";
+    const out = n.data({ values: [[0, 1, 2, 0]], y: [[0, 1, 2, 2]], bins: [2], ybins: [2] }).chart as ChartValue;
+    expect(out.op).toBe("heatmap");
+    expect(out.payload).toEqual({ kind: "heatmap", z: [[1, 0], [1, 2]], rows: ["0", "1"], cols: ["0", "1"] });
+    expect(out.options).toMatchObject({ origin: "lower", aspect: "auto", cmap: "magma" });
+  });
   it("Heatmap cuts a huge table to HEATMAP_MAX and says how big it was", async () => {
     const big = Array.from({ length: HEATMAP_MAX + 5 }, (_, r) => Array.from({ length: 3 }, (_, c) => r + c));
     const p = (await new HeatmapNode().data({ values: [big] })).chart.payload as HeatmapPayload;

@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
-import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey } from "../nodes/chartOptions";
+import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey, type ChartTargetId } from "../nodes/chartOptions";
 import { COLORMAP_LIST } from "../colormaps";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
@@ -198,6 +198,11 @@ const SELECT_KEYS: readonly {
     options: [{ value: "s", label: "Small" }, { value: "m", label: "Medium" }, { value: "l", label: "Large" }],
   },
 ];
+// A select's default is the figure's own: a Heatmap draws square cells, a 2-D histogram fills the plot with y growing upward.
+const TARGET_DEFAULTS: Partial<Record<ChartTargetId, Partial<Record<ChartBuilderKey, string>>>> = {
+  heatmap: { aspect: "equal" },
+  histogram2d: { origin: "lower" },
+};
 const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "center", "vmin", "vmax", "linewidth", "markersize", "alpha", "fontsize"];
 
 export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNodeType>) {
@@ -215,8 +220,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const inertSelects = SELECT_KEYS.filter(({ key }) => !accepted.has(key) && live(key));
   const inertNum = inert(NUM_KEYS);
   const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertSelects.length > 0 || inertNum.length > 0;
-  // A select's default is the figure's own default, and a Heatmap's aspect defaults to square cells.
-  const clearFor = (key: ChartBuilderKey, clear: string) => (key === "aspect" && target === "heatmap" ? "equal" : clear);
+  const clearFor = (key: ChartBuilderKey, clear: string) => TARGET_DEFAULTS[target]?.[key] ?? clear;
   const inertLabel = target === "gantt" && (data.stringLiterals["layout"] ?? "").trim().toLowerCase() === "calendar"
     ? "the Gantt calendar" : spec.label;
   return (

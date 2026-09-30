@@ -62,26 +62,9 @@ const sig3 = (n: number): string => String(Number(n.toPrecision(3)));
 
 /** A value-axis tick: three significant figures, with K, M, B, T above a thousand. It rounds before it picks the
  *  unit, so 999,999 reads 1M, not 1000K. */
-let fontsVersion = 0;
-let fontsHooked = false;
-const fontSubs = new Set<() => void>();
-function subscribeFonts(cb: () => void) {
-  if (!fontsHooked && typeof document !== "undefined" && document.fonts) {
-    fontsHooked = true;
-    document.fonts.addEventListener("loadingdone", () => { fontsVersion++; fontSubs.forEach((f) => f()); });
-  }
-  fontSubs.add(cb);
-  return () => { fontSubs.delete(cb); };
-}
-/** Bumps when a web font finishes loading: a canvas drawn before the app font arrived draws again in it. */
-export function useFontsVersion(): number {
-  return useSyncExternalStore(subscribeFonts, () => fontsVersion);
-}
-
 /** A canvas font in the app's faces (`--font-sans`, `--font-mono`), since a canvas can't read a CSS variable itself. */
 export function canvasFont(weight: number, px: number, face: "sans" | "mono" = "sans"): string {
-  const family = getComputedStyle(document.documentElement).getPropertyValue(face === "mono" ? "--font-mono" : "--font-sans").trim();
-  return `${weight} ${px}px ${family || (face === "mono" ? "ui-monospace, monospace" : "system-ui, sans-serif")}`;
+  return `${weight} ${px}px ${getComputedStyle(document.documentElement).getPropertyValue(face === "mono" ? "--font-mono" : "--font-sans").trim()}`;
 }
 
 export function compactTick(n: number): string {

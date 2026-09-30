@@ -4,7 +4,7 @@ import { appThemeStore } from "../appTheme";
 import { heightRampColor } from "../palette";
 import type { SurfacePayload } from "../chartValue";
 import { iterMin, iterMax } from "../nodes/mathUtils";
-import { canvasFont, useFontsVersion } from "./chartCore";
+import { canvasFont } from "./chartCore";
 
 
 type V3 = [number, number, number];
@@ -133,7 +133,6 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
 
 export function SurfaceView({ payload, width, height }: { payload: SurfacePayload; width: number; height: number }) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  useFontsVersion();
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => {
     if (ref.current) drawSurface(ref.current, payload, width, height);

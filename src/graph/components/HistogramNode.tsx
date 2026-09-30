@@ -21,8 +21,8 @@ const H = 150;
 export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const cv = data.cachedChart;
-  const has = !!cv && (cv.op === "contour"
-    ? cv.payload?.kind === "contour" && cv.payload.z.length > 0
+  const has = !!cv && (cv.op === "heatmap"
+    ? cv.payload?.kind === "heatmap" && cv.payload.z.length > 0
     : Array.isArray(cv.values) && cv.values.length > 0);
 
   async function pickMode(next: HistogramMode) {

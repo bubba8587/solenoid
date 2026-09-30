@@ -437,8 +437,10 @@ export class HistogramNode extends ClassicPreset.Node {
       const h = histogram2d(xs, ys, kx, ky);
       this.cachedResult = null;
       if (isSolError(h)) { this.cachedChart = null; return { chart: h }; }
-      const payload: ContourPayload = { kind: "contour", xs: h?.xEdges ?? [], ys: h?.yEdges ?? [], z: h?.counts ?? [], levels: 10 };
-      const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: this.chartOptions, title };
+      // matplotlib's hist2d: discrete bins filling the axes, y growing upward, each bin labeled by its lower edge.
+      const edge = (v: number) => String(Number(v.toPrecision(3)));
+      const payload: HeatmapPayload = { kind: "heatmap", z: h?.counts ?? [], rows: (h?.yEdges ?? []).map(edge), cols: (h?.xEdges ?? []).map(edge) };
+      const chart: ChartValue = { __chart: true, op: "heatmap", values: null, payload, options: { origin: "lower", aspect: "auto", ...this.chartOptions }, title };
       this.cachedChart = h ? chart : null;
       return { chart };
     }
