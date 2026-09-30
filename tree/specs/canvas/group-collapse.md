@@ -36,7 +36,7 @@ A readout row shows one of the group's terminals: a value that leaves the group 
 2. **Other outputs that cross the edge.** Any other member output socket with a cable leaving the group gets a generic row: the member's label and its live value from `cableValueStore`. There is one row per source socket. Two refinements apply only in `recomputeGroupCollapse`:
    - if the value's source already feeds a shown Display, the crossing gets a pill on that Display's row instead of a second row;
    - for a Conduit lane, the row is labeled with the node that feeds the matching input lane, since that is where the value comes from.
-3. **Leaf members.** A member that has an output socket but no outgoing cable at all gets a generic row for its first output. A value that goes nowhere is a terminal too.
+3. **Leaf members.** A member that has an output socket but no outgoing cable at all gets a generic row for its first output its card shows (`presentSocketKeys`, [[stores]] § Node-keyed stores in brief), so a socket its current mode hides is never the row; a card that has not rendered offers its first declared output. A value that goes nowhere is a terminal too.
 
 A member whose outputs all feed members only is hidden with no row. Members already shown in pass 1 (a Display and its FC hop) are not counted again.
 

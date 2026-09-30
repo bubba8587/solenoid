@@ -1,5 +1,6 @@
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore, useRef, useState, useLayoutEffect, useEffect, type ReactNode } from "react";
+import { presentSocketStore } from "../presentSocketStore";
 import type { ClassicPreset } from "rete";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { socketFlipStore } from "../socketFlipStore";
@@ -154,6 +155,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
     frameHintStore.close();
   };
   useEffect(() => cancelHint, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => presentSocketStore.mount(nodeId, side, socketKey), [nodeId, side, socketKey]);
 
   const resolvePeekValue = (): { value: unknown; nodeId: string } | null => {
     if (side === "output") return { value: cableValueStore.get(nodeId, socketKey), nodeId };

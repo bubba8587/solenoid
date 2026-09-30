@@ -4,6 +4,7 @@ import { NodeEditor, ClassicPreset } from "rete";
 import { GroupNode, FormatControllerNode, DisplayNode, NumberInputNode } from "../../src/graph/rete-nodes";
 import { recomputeGroupCollapse, groupCollapseStore, groupReadouts } from "../../src/graph/groupCollapse";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
+import { presentSocketStore } from "../../src/graph/presentSocketStore";
 import { resolveVisibleTarget } from "../../src/graph/flyToNode";
 import type { Schemes } from "../../src/graph/schemes";
 
@@ -108,5 +109,24 @@ describe("collapse state is per editor", () => {
     main.group.collapsed = false;
     recomputeGroupCollapse(main.editor);
     expect(groupCollapseStore.isNodeHidden(main.host.id)).toBe(false);
+  });
+});
+
+describe("group collapse — a member's row uses an output its card shows", () => {
+  it("an unwired member exposes its first shown output, not its first declared one", async () => {
+    const editor = new NodeEditor<Schemes>() as Editor;
+    const member = new ClassicPreset.Node("Two outs");
+    member.addOutput("hidden", new ClassicPreset.Output(new ClassicPreset.Socket("number")));
+    member.addOutput("shown", new ClassicPreset.Output(new ClassicPreset.Socket("number")));
+    await editor.addNode(member as never);
+    const group = new GroupNode({ members: [member.id], collapsed: true });
+    await editor.addNode(group as never);
+    recomputeGroupCollapse(editor);
+    expect(groupCollapseStore.retainedFor(group.id)[0]?.effSocketKey).toBe("hidden");
+    const off = presentSocketStore.mount(member.id, "output", "shown");
+    await Promise.resolve();
+    recomputeGroupCollapse(editor);
+    off();
+    expect(groupCollapseStore.retainedFor(group.id)[0]?.effSocketKey).toBe("shown");
   });
 });

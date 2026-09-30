@@ -1,5 +1,6 @@
 // [[B10]] reactFlowView, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
 import type { View } from "../../src/graph/view";
+import { ChartBuilderNode } from "../../src/graph/nodes/visual";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
@@ -16,6 +17,7 @@ import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { GROUP_PAD, GROUP_HEADER, autofitGroupWithHistory } from "../../src/graph/groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore } from "../../src/graph/groupCollapse";
 import { socketFlipStore } from "../../src/graph/socketFlipStore";
+import { presentSocketStore } from "../../src/graph/presentSocketStore";
 import { collapseStore } from "../../src/graph/collapseStore";
 import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 
@@ -529,6 +531,32 @@ describe("Cleanup with an expanded group (headless)", () => {
       expect(inY, `${id} left the group box vertically`).toBe(true);
     }
     expect(group.collapsed).toBe(true);
+  });
+});
+
+describe("Tidy hands ELK the sockets a card shows", () => {
+  it("a Chart Builder reserves the rows its target shows, wired or not, not all of its fields", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const src = new ArithmeticNode({ op: "add" });
+    const builder = new ChartBuilderNode({ target: "heatmap" });
+    for (const n of [src, builder]) await editor.addNode(n as never);
+    for (const n of [src, builder] as Array<{ width: number; height: number }>) { n.width = 200; n.height = 200; }
+    addView(src.id, 0, 0, 200, 200);
+    addView(builder.id, 400, 0, 200, 200);
+    await connect(editor, src, "result", builder, "fontsize");
+    const shown = ["title", "cmap", "fontsize"];
+    const unmount = [...shown.map((k) => presentSocketStore.mount(builder.id, "input", k)), presentSocketStore.mount(builder.id, "output", "result")];
+    let seen: Array<{ id: string; height: number; ports: Array<{ id: string; y: number }> }> = [];
+    const recorder = { async layout(graph: unknown) { seen = (graph as { children: typeof seen }).children; return { children: [] }; } };
+    const arrangeFn = makeArrangeFn({ editor, view, ensureElk: async () => recorder, repositionDockedTo: () => {}, isDestroyed: () => false });
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    unmount.forEach((f) => f());
+    expect(Object.keys(builder.inputs).length).toBeGreaterThan(40);
+    const b = seen.find((c) => c.id === builder.id)!;
+    expect(b.ports.map((p) => p.id).sort()).toEqual([...shown.map((k) => `${builder.id}_${k}_input`), `${builder.id}_result_output`].sort());
+    for (const p of b.ports) { expect(p.y).toBeGreaterThanOrEqual(0); expect(p.y).toBeLessThanOrEqual(b.height); }
   });
 });
 

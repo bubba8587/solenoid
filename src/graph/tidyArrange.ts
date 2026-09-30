@@ -12,6 +12,7 @@ import { measuredBox } from "./nodeSize";
 import { nodeSizeStore } from "./nodeSizeStore";
 import { pushForGrownGroups, settleOverlaps } from "./groupPush";
 import { socketFlipStore } from "./socketFlipStore";
+import { presentSocketKeys } from "./presentSocketStore";
 import { collapseStore } from "./collapseStore";
 import { standoffStore, standoffClusters, settleStandoffs, liveStandoffs } from "./standoffs";
 import { rebuildGroupMembership } from "./groupMembership";
@@ -362,11 +363,10 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       if (n instanceof GroupNode) {
         const gb = measuredBox(view, n.id, editor);
         laid = asLaidOut(n, { w: cluster?.w ?? (gb?.w || n.width), h: cluster?.h ?? (gb?.h || n.height), inputs: {}, outputs: {} });
-      } else if (cluster) {
-        laid = asLaidOut(n, { w: cluster.w, h: cluster.h });
       } else {
-        const size = hostFootprint.get(n.id) ?? measuredBox(view, n.id, editor);
-        laid = asLaidOut(n, { w: size?.w, h: size?.h, ...(n instanceof ConduitNode ? wiredLanes(n, conns) : {}) });
+        const size = cluster ?? hostFootprint.get(n.id) ?? measuredBox(view, n.id, editor);
+        const sockets = n instanceof ConduitNode ? wiredLanes(n, conns) : presentSockets(n, conns);
+        laid = asLaidOut(n, { w: size?.w, h: size?.h, ...sockets });
       }
       return { node: laid, from: from ? { x: from.x, y: from.y, w: laid.width, h: laid.height } : null };
     });
@@ -472,6 +472,18 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     });
   };
+}
+
+/** The sockets a card shows, wired or not (`presentSocketStore`), plus any a cable reaches, since ELK throws on an
+ *  edge to a missing port. Reserving every declared socket would lay a card out at its largest variant. */
+function presentSockets(n: Schemes["Node"], conns: readonly Schemes["Connection"][]): { inputs: object; outputs: object } {
+  const keep = { input: new Set(presentSocketKeys(n, "input")), output: new Set(presentSocketKeys(n, "output")) };
+  for (const c of conns) {
+    if (c.target === n.id && typeof c.targetInput === "string") keep.input.add(c.targetInput);
+    if (c.source === n.id && typeof c.sourceOutput === "string") keep.output.add(c.sourceOutput);
+  }
+  const pick = (rec: object, keys: Set<string>) => Object.fromEntries(Object.entries(rec).filter(([k]) => keys.has(k)));
+  return { inputs: pick(n.inputs, keep.input), outputs: pick(n.outputs, keep.output) };
 }
 
 /** A Conduit's wired lanes only, one in and one out when nothing is wired, so ELK does not see a tall many-port card. */

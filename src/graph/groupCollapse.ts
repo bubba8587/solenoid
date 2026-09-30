@@ -1,4 +1,5 @@
 // [[C88]] collapseIsVisual
+import { presentSocketKeys } from "./presentSocketStore";
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -128,7 +129,7 @@ export function groupReadouts(editor: Editor, group: GroupNode): RetainedTermina
     if (exposed.has(id) || rowed.has(id)) continue;
     const node = editor.getNode(id);
     if (!node) continue;
-    const firstOut = Object.keys(node.outputs ?? {})[0];
+    const firstOut = presentSocketKeys(node, "output")[0];
     if (!firstOut) continue;
     if (conns.some((c) => c.source === id)) continue;
     terminals.push({ kind: "node", displayId: id, label: genericLabel(node), effNodeId: id, effSocketKey: firstOut });
@@ -246,7 +247,7 @@ export function recomputeGroupCollapse(editor: Editor): void {
       if (exposed.has(id) || rowedMembers.has(id)) continue;
       const node = editor.getNode(id);
       if (!node) continue;
-      const firstOut = Object.keys(node.outputs ?? {})[0];
+      const firstOut = presentSocketKeys(node, "output")[0];
       if (!firstOut) continue;
       if (conns.some((c) => c.source === id)) continue;
       terminals.push({ kind: "node", displayId: id, label: genericLabel(node), effNodeId: id, effSocketKey: firstOut });
