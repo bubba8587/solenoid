@@ -1,15 +1,4 @@
 import type { ComplexPowerNode as ComplexPowerNodeType } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
-import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
+import { makeNodeComponent } from "./standardNode";
 
-export function ComplexPowerComponent({ data, emit }: NodeProps<ComplexPowerNodeType>) {
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <ValueDisplay
-        value={data.cachedResult}
-        empty="—"
-      />
-    </NodeShell>
-  );
-}
+export const ComplexPowerComponent = makeNodeComponent<ComplexPowerNodeType>((n) => n.cachedResult);

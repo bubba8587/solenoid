@@ -10,8 +10,6 @@ import { getOwningView } from "../activeGraph";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
 
-// The picker popup lives in App (ElementPicker.tsx, module store) because this
-// card renders in rete's separate React root.
 export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
   const el = ELEMENT_BY_SYMBOL.get(data.symbol)!;
   const openPicker = () => {

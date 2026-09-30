@@ -1,12 +1,4 @@
 import type { ContainsNode as ContainsNodeType } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
-import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
+import { makeNodeComponent } from "./standardNode";
 
-export function ContainsComponent({ data, emit }: NodeProps<ContainsNodeType>) {
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
+export const ContainsComponent = makeNodeComponent<ContainsNodeType>((n) => n.cachedResult);
