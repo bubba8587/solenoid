@@ -8,10 +8,11 @@ The bar for what earns a spot: `archive/release-notes-1.1.md` (a sell is a shiny
 a user will go discover and play with, or something that would inspire a download;
 What's New is not a changelog, GitHub is). There is no install base yet (author
 2026-08-28): novelty *versus the last release* counts for nothing, only the bar above
-makes something a slide. **The 1.4.1 list shipped with v1.4.1 and v1.4.2 and lives in
-git history** (`git show v1.4.2:docs/release-notes-features.md`); this file covers
-everything on `develop` since the v1.4.2 tag. The What's New deck
-(`HelpDialogs.tsx`) still shows 1.4's slides.
+makes something a slide. **1.5 carries the 1.4.1 and 1.4.2 headliners too** (author
+2026-09-30): the point releases went out without a deck of their own, so this list covers
+everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in git history
+(`git show v1.4.2:docs/release-notes-features.md`). The What's New deck
+(`HelpDialogs.tsx`, `WHATS_NEW_VERSION`) still shows 1.4.1's slides.
 
 ## Headliners: the slide deck
 
@@ -31,6 +32,31 @@ everything on `develop` since the v1.4.2 tag. The What's New deck
   edge that turns it into a value, a list, a table, a Frame or a nested Cube. Formula
   columns read a list cell as that row's list and can answer one, so per-row math over
   nested data (`SUM(@prices)`, `SPARKLINE(@history)`) just works.
+- **[slide] Linux desktop.** *(1.4.1)* The desktop app runs on Linux as well as
+  Windows, with the same native Polars engine, vault access and local files. Releases
+  carry an AppImage (download, mark executable, run) and a `.deb`. The window draws its
+  own controls and resize grips, and the canvas stays crisp through zoom on WebKitGTK.
+- **[slide] Solenoid Properties, an Obsidian plugin.** *(1.4.1, grown in 1.4.2)* List,
+  Matrix, Frame, Cube and Complex property types for Obsidian: a property shows as the
+  chip Solenoid draws for it, opens in Solenoid's table editor and stays plain YAML in the
+  note. Solenoid reads back every type and column type the plugin writes. Turn on the
+  Solenoid look and Obsidian itself wears your Solenoid palette and accent, on desktop
+  and phone. Listed in Obsidian's community plugins:
+  community.obsidian.md/plugins/solenoid-properties.
+- **[slide] Knap notes in Obsidian** (Solenoid Properties plugin). Put `knap: true` in a
+  note and its body renders as a live template from its own properties, in Reading view
+  and Live Preview. A bare `{{ budget }}` on a Frame or List property is the property's
+  chip right in the text, and editing it edits the property. The plugin release goes out
+  alongside the app.
+- **[slide] Formula columns in a Frame Input.** *(1.4.1)* A column's type cycle ends on
+  **Fx**: the column becomes a formula over the row (`@qty * @price`), typed where the
+  data is. A Frame Input's λ inputs are named in it (`λ1` binds by name, `λ1(@a, @b)`
+  calls it), and a formula that returns a date stays a Date column with no type pick
+  (`@start + 7`, `TODAY() + 7`).
+- **[slide] Table editing.** *(1.4.1)* The table popup's Form and CSV views edit in place,
+  in both Source and Formatted modes. The cell being edited gets a calendar for a date and
+  a checkbox for a Boolean, and a text cell suggests the values already in its column. The
+  column header is one row: type, name, format and sort.
 - **[slide] XY plots.** Scatter, the new **XY Line** and Bubble plot real x against y:
   name the columns (`x`, several `y`, `s` for size, `c` for color, `annotate` for point
   labels, `by` to split series), join points into a connected line, and set
@@ -40,11 +66,10 @@ everything on `develop` since the v1.4.2 tag. The What's New deck
   win/loss sparkline straight into a table cell, and in a Cube a formula column runs it
   per row: `SPARKLINE(@history)` gives every row its own trend. Pictures in text cells
   show as pictures in every card and popup.
-- **[slide] Knap notes in Obsidian** (Solenoid Properties plugin). Put `knap: true` in a
-  note and its body renders as a live template from its own properties, in Reading view
-  and Live Preview. A bare `{{ budget }}` on a Frame or List property is the property's
-  chip right in the text, and editing it edits the property. The plugin release goes out
-  alongside the app.
+- **[slide] Obsidian markdown in notes.** *(1.4.1)* Note, Import Obsidian Note, the Report
+  preview and the webpage export render what Obsidian writes: `[[wikilinks]]` as links,
+  `#tags` as chips, `> [!callouts]`, `==highlights==`, `$math$`, with `%% comments %%` and
+  `^block-ids` hidden. A note imported from a vault reads the way it does at home.
 
 ## Release-notes body
 
