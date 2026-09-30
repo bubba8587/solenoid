@@ -1,4 +1,4 @@
-// [[C68]], [[C86]] membershipByGesture
+// [[C68]], [[C86]] membershipByGesture, [[C103]] untrustedContentSeams
 import { describe, it, expect } from "vitest";
 import { SvgPickerNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/copyPaste";
@@ -30,6 +30,18 @@ describe("SvgPickerNode", () => {
     }
     // The Layer output is the picked name — what a downstream Filter compares on.
     expect(out.layer).toBe("CA");
+  });
+
+  it("scrubs markup a loaded file wrote straight into stringLiterals before it leaves on a cable", () => {
+    const n = new SvgPickerNode();
+    n.stringLiterals.source = '<svg><image href="x" onerror="alert(1)"/><script>alert(2)</script></svg>';
+    const out = n.data();
+    expect(isSvgValue(out.chart)).toBe(true);
+    if (isSvgValue(out.chart)) {
+      expect(out.chart.source).not.toMatch(/onerror|<script|alert/i);
+      expect(out.chart.source).toMatch(/^<svg/);
+    }
+    expect(n.stringLiterals.source).toBe(isSvgValue(out.chart) ? out.chart.source : "");
   });
 
   it("emits a null chart and null layer when empty", () => {

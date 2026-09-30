@@ -4,7 +4,6 @@ import type { SvgPickerNode as SvgPickerNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { resolveLayer, elementName, sourceHasLayer } from "../svgLayer";
-import { sanitizeSvg } from "../svgSanitize";
 import { requestNetwork } from "../connectionStore";
 import type { NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
@@ -38,7 +37,7 @@ function bakeSelectionGlow(source: string, sel: string, color: string): string {
 /** Highlighting is imperative, since React state per pointermove would thrash: painted with filters and restored on change. */
 export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>) {
   const [url, setUrl] = useState(data.url);
-  const [source, setSource] = useState(data.stringLiterals.source ?? "");
+  const [source, setSource] = useState(() => data.source);
   const [hoverColor, setHoverColor] = useState(data.hoverColor);
   const [selectedLayer, setSelectedLayer] = useState(data.selectedLayer);
   const [height, setHeight] = useState(data.height);
@@ -56,8 +55,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   // Loaded markup is scrubbed and the clean form written back.
   useEffect(() => {
     const raw = data.stringLiterals.source ?? "";
-    const clean = sanitizeSvg(raw);
-    if (clean !== raw) { data.stringLiterals.source = clean; scheduleAutosave(); }
+    const clean = data.source;
+    if (clean !== raw) scheduleAutosave();
     setSource(clean);
   }, [data.stringLiterals.source]);
   useEffect(() => { setHoverColor(data.hoverColor); }, [data.hoverColor]);
@@ -184,7 +183,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     try {
       const res = await fetch(u);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = sanitizeSvg(await res.text());
+      const text = await res.text();
       if (!/<svg[\s>]/i.test(text)) throw new Error("not an SVG");
       adoptSource(text);
       setLoadError(null);
@@ -195,8 +194,10 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     }
   }
   function adoptSource(text: string) {
-    setSource(text); data.stringLiterals.source = text;
-    if (data.selectedLayer && !sourceHasLayer(text, data.selectedLayer)) { data.selectedLayer = ""; setSelectedLayer(""); }
+    data.stringLiterals.source = text;
+    const clean = data.source;
+    setSource(clean);
+    if (data.selectedLayer && !sourceHasLayer(clean, data.selectedLayer)) { data.selectedLayer = ""; setSelectedLayer(""); }
   }
   const urlField = useDraftCommit<string>(url, (v) => v, (t) => t.trim(), (v) => {
     setUrl(v); data.url = v; scheduleAutosave();
@@ -210,7 +211,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const text = sanitizeSvg(String(reader.result));
+      const text = String(reader.result);
       adoptSource(text);
       if (url) { setUrl(""); data.url = ""; }
       setLoadError(null);
