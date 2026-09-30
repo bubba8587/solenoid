@@ -8,7 +8,7 @@ specific item.
 
 ### SESSION DIGEST (2026-09-30c: 1.5 release notes, the cube formulas seed; cloud session)
 - `docs/release-notes-features.md` is the 1.5 selling list and carries the 1.4.1 and 1.4.2 headliners (author); Heatmap is not a headliner, Cubes take two slides, and the plugin release ships beside the app. The What's New deck is still 1.4.1's.
-- New seed **Cubes: formulas over lists and tables** (`cube-formulas.json`, Tables): Cube Input Fx columns over a list per row (lap times: SPARKLINE, MIN, FILTER, SCAN answering a list, whole-column MIN and RANK) and a table per row (weeks × items sales: `@sales * @prices`, MMULT, BYCOL, XMATCH/CHOOSE), plus a Computed Column card with a wired side input.
+- New seed **Cubes: records with their own lists and tables** (`cube-formulas.json`, Tables): a gradebook (per-student score lists: drop the two lowest, missing count, quiz slope, weighted grade, a check-in filter) and a portfolio (per-holding lot tables and price histories: cost basis, harvestable loss, max drawdown via SCAN), each ending in charts and totals rather than a Display of the cube (author). Found: `LARGE(list, SEQUENCE(n))` answers blank per row instead of Excel's array (backlog).
 
 ### SESSION DIGEST (2026-09-30b: oldest-first code review, 1.0 import through August; cloud session)
 - Walked every file whose last hand edit (sweep commits of 40+ files excluded) predates September; September's 589 files are left for a later walk (the author: confident in them for now). Open leads: `backlog.md` § From the 2026-09-30 oldest-first review.

@@ -1,183 +1,421 @@
 {
   "v": 2,
   "order": 155,
-  "label": "Cubes: formulas over lists and tables",
+  "label": "Cubes: records with their own lists and tables",
   "group": "Tables",
   "nodes": [
     {
       "id": "noteIntro",
       "type": "NoteNode",
-      "x": -20,
-      "y": 210,
+      "x": 0,
+      "y": 108,
       "init": {
-        "label": "Formulas over lists and tables in cells",
-        "body": "A Cube cell can hold a list or a whole table, and a **Formula** column in Cube Input reads it one row at a time. `@laps` is this row's list and `@sales` this row's table, so any list or table function works per row: `MIN`, `SCAN`, `FILTER`, `MMULT`, `BYCOL`, `SPARKLINE`. A row can answer a list too. A bare `laps` is every row's laps at once, for comparisons across the team.\n\nOpen either Cube Input to see its columns; the Fx columns are the formulas.",
+        "label": "Records that carry their own lists and tables",
+        "body": "A Cube row can hold a list or a whole table in one cell, so each record keeps its own history however long it is. A **Formula** column in Cube Input reads it one row at a time: `@homework` is this student's scores and `@lots` this holding's purchase lots. Any list or table function works per row, and a bare column name reads every row at once.\n\nOpen either Cube Input to see the data and the Fx columns.",
         "width": 520,
-        "height": 190
+        "height": 180
       }
     },
     {
-      "id": "noteLaps",
+      "id": "noteGrades",
       "type": "NoteNode",
-      "x": 559,
-      "y": 268,
+      "x": 579,
+      "y": 166,
       "init": {
-        "label": "A list per row: a track session",
-        "body": "Each runner's `laps` is a list of lap times in seconds, and the lists differ in length. `trend` draws them, `best` and `average` reduce them, `fade` compares the last lap with the first, and `on_goal` keeps the laps at or under the runner's own `goal`. `splits` answers a list: the running total after each lap. `gap` and `rank` read the whole `laps` and `best` columns to place each runner against the team.",
+        "label": "A gradebook",
+        "body": "Each student has their own lists of homework, quiz and exam scores, and the counts differ. `homework_avg` drops the two lowest homeworks before averaging: `DROP(SORT(@homework, , -1, TRUE), , -2)`. `missing` counts the zeros, `momentum` is the slope of the quiz scores, and `grade` weights the three categories 25/25/50.\n\nDownstream, the grades chart sorted, and **Check in with** lists anyone under 75, missing two or more homeworks, or trending down.",
         "width": 460,
-        "height": 210,
+        "height": 240,
         "color": "teal"
       }
     },
     {
-      "id": "laps",
+      "id": "grades",
       "type": "CubeInputNode",
-      "x": 559,
-      "y": 534,
+      "x": 579,
+      "y": 583,
       "init": {
-        "label": "Track session",
-        "cubeText": "{\n \"columns\": [\n  {\n   \"name\": \"runner\",\n   \"type\": \"string\"\n  },\n  {\n   \"name\": \"goal\",\n   \"type\": \"number\"\n  },\n  {\n   \"name\": \"laps\",\n   \"type\": \"number\"\n  },\n  {\n   \"name\": \"trend\",\n   \"expr\": \"SPARKLINE(@laps)\"\n  },\n  {\n   \"name\": \"best\",\n   \"expr\": \"MIN(@laps)\"\n  },\n  {\n   \"name\": \"average\",\n   \"expr\": \"ROUND(AVERAGE(@laps), 1)\"\n  },\n  {\n   \"name\": \"fade\",\n   \"expr\": \"INDEX(@laps, COUNT(@laps)) - INDEX(@laps, 1)\"\n  },\n  {\n   \"name\": \"pacing\",\n   \"expr\": \"IF(@fade > 2, \\\"Fading\\\", IF(@fade < -2, \\\"Negative split\\\", \\\"Even\\\"))\"\n  },\n  {\n   \"name\": \"on_goal\",\n   \"expr\": \"FILTER(@laps, @laps <= @goal, \\\"none\\\")\"\n  },\n  {\n   \"name\": \"splits\",\n   \"expr\": \"SCAN(0, @laps, LAMBDA(total, lap, total + lap))\"\n  },\n  {\n   \"name\": \"gap\",\n   \"expr\": \"@best - MIN(laps)\"\n  },\n  {\n   \"name\": \"rank\",\n   \"expr\": \"RANK(@best, best, 1)\"\n  }\n ],\n \"rows\": [\n  {\n   \"runner\": \"Ana\",\n   \"goal\": 80,\n   \"laps\": [\n    78,\n    79,\n    80,\n    81,\n    79,\n    82,\n    80,\n    77\n   ]\n  },\n  {\n   \"runner\": \"Ben\",\n   \"goal\": 85,\n   \"laps\": [\n    84,\n    86,\n    88,\n    90,\n    91\n   ]\n  },\n  {\n   \"runner\": \"Cleo\",\n   \"goal\": 75,\n   \"laps\": [\n    76,\n    75,\n    74,\n    74,\n    73,\n    73\n   ]\n  },\n  {\n   \"runner\": \"Dev\",\n   \"goal\": 82,\n   \"laps\": [\n    81,\n    80,\n    82,\n    83,\n    81,\n    80,\n    79\n   ]\n  },\n  {\n   \"runner\": \"Eli\",\n   \"goal\": 90,\n   \"laps\": [\n    88,\n    92,\n    95,\n    93,\n    97,\n    99\n   ]\n  }\n ]\n}"
+        "label": "Gradebook",
+        "cubeText": "{\n \"columns\": [\n  {\n   \"name\": \"student\",\n   \"type\": \"string\"\n  },\n  {\n   \"name\": \"homework\",\n   \"type\": \"number\"\n  },\n  {\n   \"name\": \"quizzes\",\n   \"type\": \"number\"\n  },\n  {\n   \"name\": \"exams\",\n   \"type\": \"number\"\n  },\n  {\n   \"name\": \"homework_avg\",\n   \"expr\": \"ROUND(AVERAGE(DROP(SORT(@homework, , -1, TRUE), , -2)), 1)\"\n  },\n  {\n   \"name\": \"missing\",\n   \"expr\": \"COUNTIF(@homework, 0)\"\n  },\n  {\n   \"name\": \"quiz_trend\",\n   \"expr\": \"SPARKLINE(@quizzes)\"\n  },\n  {\n   \"name\": \"momentum\",\n   \"expr\": \"ROUND(SLOPE(@quizzes, SEQUENCE(COUNT(@quizzes))), 1)\"\n  },\n  {\n   \"name\": \"grade\",\n   \"expr\": \"ROUND(0.25 * @homework_avg + 0.25 * AVERAGE(@quizzes) + 0.5 * AVERAGE(@exams), 1)\"\n  },\n  {\n   \"name\": \"letter\",\n   \"expr\": \"IFS(@grade >= 90, \\\"A\\\", @grade >= 80, \\\"B\\\", @grade >= 70, \\\"C\\\", @grade >= 60, \\\"D\\\", TRUE, \\\"F\\\")\"\n  }\n ],\n \"rows\": [\n  {\n   \"student\": \"Ana\",\n   \"homework\": [\n    95,\n    88,\n    0,\n    92,\n    100,\n    90,\n    85,\n    94\n   ],\n   \"quizzes\": [\n    78,\n    82,\n    85,\n    90,\n    94,\n    96\n   ],\n   \"exams\": [\n    84,\n    91\n   ]\n  },\n  {\n   \"student\": \"Ben\",\n   \"homework\": [\n    70,\n    0,\n    65,\n    0,\n    72,\n    60,\n    0\n   ],\n   \"quizzes\": [\n    88,\n    80,\n    74,\n    70,\n    66,\n    61\n   ],\n   \"exams\": [\n    72,\n    64\n   ]\n  },\n  {\n   \"student\": \"Chloe\",\n   \"homework\": [\n    100,\n    98,\n    97,\n    100,\n    95,\n    99,\n    100,\n    96\n   ],\n   \"quizzes\": [\n    95,\n    97,\n    93,\n    98,\n    96,\n    99\n   ],\n   \"exams\": [\n    96,\n    94\n   ]\n  },\n  {\n   \"student\": \"Dev\",\n   \"homework\": [\n    80,\n    85,\n    0,\n    78,\n    82,\n    88,\n    84\n   ],\n   \"quizzes\": [\n    70,\n    72,\n    71,\n    75,\n    74\n   ],\n   \"exams\": [\n    79,\n    81\n   ]\n  },\n  {\n   \"student\": \"Elif\",\n   \"homework\": [\n    60,\n    72,\n    75,\n    81,\n    85,\n    90,\n    92,\n    95\n   ],\n   \"quizzes\": [\n    58,\n    64,\n    70,\n    77,\n    83,\n    88\n   ],\n   \"exams\": [\n    68,\n    85\n   ]\n  },\n  {\n   \"student\": \"Finn\",\n   \"homework\": [\n    90,\n    92,\n    85,\n    0,\n    0,\n    88,\n    91,\n    87\n   ],\n   \"quizzes\": [\n    85,\n    87,\n    84,\n    80,\n    76,\n    72\n   ],\n   \"exams\": [\n    88,\n    79\n   ]\n  },\n  {\n   \"student\": \"Gia\",\n   \"homework\": [\n    75,\n    78,\n    80,\n    77,\n    74,\n    79,\n    81,\n    76\n   ],\n   \"quizzes\": [\n    81,\n    79,\n    83,\n    80,\n    82,\n    84\n   ],\n   \"exams\": [\n    77,\n    80\n   ]\n  }\n ]\n}"
       }
     },
     {
-      "id": "dispLaps",
-      "type": "DisplayNode",
-      "x": 888,
-      "y": 498,
+      "id": "sortG",
+      "type": "SortFrameNode",
+      "x": 920,
+      "y": 426,
       "init": {
-        "label": "Session"
+        "label": "By grade",
+        "dir": "desc"
       },
-      "size": {
-        "w": 1080,
-        "h": 180
+      "stringLiterals": {
+        "column": "grade"
       }
     },
     {
-      "id": "noteStores",
-      "type": "NoteNode",
-      "x": 4,
-      "y": 835,
+      "id": "keepG",
+      "type": "ColumnsNode",
+      "x": 1249,
+      "y": 476,
       "init": {
-        "label": "A table per row: a café chain",
-        "body": "Each store's `sales` is a table: six weeks down, Coffee, Tea and Pastry across. Its `prices` are a list in the same item order, so `@sales * @prices` prices every cell of this store's table. `MMULT` turns the table into weekly revenue, `trend` charts it, and `BYCOL` totals each item for `top_item`. `share` is this store's revenue over the whole `revenue` column.\n\nThe **Computed Column** card adds one more column from outside: `weeks_on_target` counts the weeks at or over a wired `target`.",
+        "label": "Student, grade"
+      },
+      "stringLiterals": {
+        "columns": "student, grade"
+      }
+    },
+    {
+      "id": "chartG",
+      "type": "ChartNode",
+      "x": 1578,
+      "y": 473,
+      "init": {
+        "label": "Final grades",
+        "op": "bar"
+      },
+      "stringLiterals": {
+        "options": "title=Final grade"
+      }
+    },
+    {
+      "id": "filterG",
+      "type": "FilterFrameNode",
+      "x": 920,
+      "y": 710,
+      "init": {
+        "label": "Needs a check-in",
+        "combine": "or",
+        "condConfig": {
+          "0": {
+            "op": "lt"
+          },
+          "1": {
+            "op": "gte"
+          },
+          "2": {
+            "op": "lt"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0",
+          "column1",
+          "value1",
+          "column2",
+          "value2"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "grade",
+        "value0": "75",
+        "column1": "missing",
+        "value1": "2",
+        "column2": "momentum",
+        "value2": "-2"
+      }
+    },
+    {
+      "id": "namesG",
+      "type": "GetColumnNode",
+      "x": 1249,
+      "y": 964,
+      "init": {
+        "label": "Names",
+        "readAs": "text"
+      },
+      "stringLiterals": {
+        "name": "student"
+      }
+    },
+    {
+      "id": "checkIn",
+      "type": "DisplayNode",
+      "x": 1578,
+      "y": 1027,
+      "init": {
+        "label": "Check in with"
+      }
+    },
+    {
+      "id": "notePort",
+      "type": "NoteNode",
+      "x": 24,
+      "y": 1295,
+      "init": {
+        "label": "A portfolio with tax lots",
+        "body": "Each holding keeps its purchase lots as a table (shares, price paid) and a year of monthly closes as a list. `cost` multiplies the lot table's two columns, and `harvestable` is the loss sitting in lots bought above today's price, the ones worth selling for a tax loss. `drawdown` is the worst fall from a running peak: `@history / SCAN(0, @history, LAMBDA(peak, x, MAX(peak, x))) - 1`.\n\nChange a `price` in the Cube Input and every chart and total follows.",
         "width": 460,
-        "height": 250,
+        "height": 240,
         "color": "amber"
       }
     },
     {
-      "id": "stores",
+      "id": "port",
       "type": "CubeInputNode",
-      "x": 4,
-      "y": 1226,
+      "x": 519,
+      "y": 1679,
       "init": {
-        "label": "Café chain",
-        "cubeText": "{\n \"columns\": [\n  {\n   \"name\": \"store\",\n   \"type\": \"string\"\n  },\n  {\n   \"name\": \"prices\",\n   \"type\": \"number\"\n  },\n  {\n   \"name\": \"sales\"\n  },\n  {\n   \"name\": \"units\",\n   \"expr\": \"SUM(@sales)\"\n  },\n  {\n   \"name\": \"weekly\",\n   \"expr\": \"TOROW(MMULT(@sales, TRANSPOSE(@prices)))\"\n  },\n  {\n   \"name\": \"trend\",\n   \"expr\": \"SPARKLINE(@weekly, \\\"column\\\")\"\n  },\n  {\n   \"name\": \"by_item\",\n   \"expr\": \"BYCOL(@sales * @prices, LAMBDA(item, SUM(item)))\"\n  },\n  {\n   \"name\": \"top_item\",\n   \"expr\": \"CHOOSE(XMATCH(MAX(@by_item), @by_item), \\\"Coffee\\\", \\\"Tea\\\", \\\"Pastry\\\")\"\n  },\n  {\n   \"name\": \"revenue\",\n   \"expr\": \"SUM(@weekly)\"\n  },\n  {\n   \"name\": \"best_week\",\n   \"expr\": \"XMATCH(MAX(@weekly), @weekly)\"\n  },\n  {\n   \"name\": \"share\",\n   \"expr\": \"ROUND(@revenue / SUM(revenue), 3)\"\n  }\n ],\n \"rows\": [\n  {\n   \"store\": \"Harbor\",\n   \"prices\": [\n    4.5,\n    3.5,\n    4\n   ],\n   \"sales\": [\n    [\n     120,\n     40,\n     55\n    ],\n    [\n     132,\n     38,\n     60\n    ],\n    [\n     128,\n     45,\n     52\n    ],\n    [\n     140,\n     42,\n     66\n    ],\n    [\n     151,\n     47,\n     70\n    ],\n    [\n     160,\n     50,\n     74\n    ]\n   ]\n  },\n  {\n   \"store\": \"Station\",\n   \"prices\": [\n    4,\n    3,\n    3.5\n   ],\n   \"sales\": [\n    [\n     210,\n     30,\n     90\n    ],\n    [\n     205,\n     28,\n     85\n    ],\n    [\n     198,\n     31,\n     80\n    ],\n    [\n     190,\n     27,\n     78\n    ],\n    [\n     185,\n     29,\n     75\n    ],\n    [\n     176,\n     26,\n     70\n    ]\n   ]\n  },\n  {\n   \"store\": \"Campus\",\n   \"prices\": [\n    3.5,\n    2.5,\n    3\n   ],\n   \"sales\": [\n    [\n     90,\n     80,\n     40\n    ],\n    [\n     150,\n     120,\n     60\n    ],\n    [\n     160,\n     125,\n     65\n    ],\n    [\n     155,\n     118,\n     62\n    ],\n    [\n     60,\n     50,\n     25\n    ],\n    [\n     40,\n     35,\n     20\n    ]\n   ]\n  },\n  {\n   \"store\": \"Old Town\",\n   \"prices\": [\n    5,\n    4,\n    4.5\n   ],\n   \"sales\": [\n    [\n     70,\n     60,\n     90\n    ],\n    [\n     72,\n     58,\n     95\n    ],\n    [\n     75,\n     62,\n     110\n    ],\n    [\n     74,\n     61,\n     120\n    ],\n    [\n     78,\n     64,\n     135\n    ],\n    [\n     80,\n     66,\n     150\n    ]\n   ]\n  }\n ]\n}"
+        "label": "Holdings",
+        "cubeText": "{\n \"columns\": [\n  {\n   \"name\": \"ticker\",\n   \"type\": \"string\"\n  },\n  {\n   \"name\": \"price\",\n   \"type\": \"number\"\n  },\n  {\n   \"name\": \"lots\"\n  },\n  {\n   \"name\": \"history\",\n   \"type\": \"number\"\n  },\n  {\n   \"name\": \"shares\",\n   \"expr\": \"SUM(CHOOSECOLS(@lots, 1))\"\n  },\n  {\n   \"name\": \"cost\",\n   \"expr\": \"SUM(CHOOSECOLS(@lots, 1) * CHOOSECOLS(@lots, 2))\"\n  },\n  {\n   \"name\": \"value\",\n   \"expr\": \"@shares * @price\"\n  },\n  {\n   \"name\": \"gain\",\n   \"expr\": \"@value - @cost\"\n  },\n  {\n   \"name\": \"harvestable\",\n   \"expr\": \"SUM(FILTER(CHOOSECOLS(@lots, 1) * (@price - CHOOSECOLS(@lots, 2)), CHOOSECOLS(@lots, 2) > @price, 0))\"\n  },\n  {\n   \"name\": \"trend\",\n   \"expr\": \"SPARKLINE(@history)\"\n  },\n  {\n   \"name\": \"drawdown\",\n   \"expr\": \"ROUND(MIN(@history / SCAN(0, @history, LAMBDA(peak, x, MAX(peak, x))) - 1), 3)\"\n  },\n  {\n   \"name\": \"weight\",\n   \"expr\": \"ROUND(@value / SUM(value), 3)\"\n  }\n ],\n \"rows\": [\n  {\n   \"ticker\": \"VTI\",\n   \"price\": 240,\n   \"lots\": [\n    [\n     40,\n     180\n    ],\n    [\n     15,\n     225\n    ],\n    [\n     25,\n     210\n    ]\n   ],\n   \"history\": [\n    220,\n    228,\n    250,\n    262,\n    256,\n    245,\n    230,\n    224,\n    236,\n    241,\n    238,\n    240\n   ]\n  },\n  {\n   \"ticker\": \"VXUS\",\n   \"price\": 58,\n   \"lots\": [\n    [\n     100,\n     52\n    ],\n    [\n     60,\n     56\n    ]\n   ],\n   \"history\": [\n    55,\n    57,\n    61,\n    63,\n    62,\n    60,\n    56,\n    54,\n    55,\n    57,\n    59,\n    58\n   ]\n  },\n  {\n   \"ticker\": \"BND\",\n   \"price\": 72,\n   \"lots\": [\n    [\n     80,\n     81\n    ],\n    [\n     50,\n     74\n    ],\n    [\n     40,\n     70\n    ]\n   ],\n   \"history\": [\n    78,\n    77,\n    76,\n    74,\n    73,\n    72,\n    71,\n    71,\n    72,\n    73,\n    72,\n    72\n   ]\n  },\n  {\n   \"ticker\": \"AAPL\",\n   \"price\": 205,\n   \"lots\": [\n    [\n     20,\n     130\n    ],\n    [\n     10,\n     190\n    ],\n    [\n     8,\n     198\n    ]\n   ],\n   \"history\": [\n    170,\n    182,\n    195,\n    210,\n    225,\n    231,\n    214,\n    198,\n    190,\n    197,\n    203,\n    205\n   ]\n  },\n  {\n   \"ticker\": \"NVDA\",\n   \"price\": 110,\n   \"lots\": [\n    [\n     60,\n     45\n    ],\n    [\n     20,\n     135\n    ]\n   ],\n   \"history\": [\n    60,\n    78,\n    96,\n    118,\n    132,\n    140,\n    128,\n    104,\n    95,\n    99,\n    106,\n    110\n   ]\n  },\n  {\n   \"ticker\": \"TSLA\",\n   \"price\": 190,\n   \"lots\": [\n    [\n     12,\n     265\n    ],\n    [\n     8,\n     175\n    ]\n   ],\n   \"history\": [\n    250,\n    262,\n    240,\n    215,\n    230,\n    205,\n    180,\n    172,\n    168,\n    176,\n    185,\n    190\n   ]\n  }\n ]\n}"
       }
     },
     {
-      "id": "target",
-      "type": "NumberInputNode",
-      "x": 64,
-      "y": 1105,
+      "id": "keepAlloc",
+      "type": "ColumnsNode",
+      "x": 882,
+      "y": 1522,
       "init": {
-        "label": "Weekly target",
-        "value": 1100
+        "label": "Ticker, value"
+      },
+      "stringLiterals": {
+        "columns": "ticker, value"
       }
     },
     {
-      "id": "onTarget",
-      "type": "ComputedColumnNode",
-      "x": 338,
-      "y": 1108,
+      "id": "pieAlloc",
+      "type": "ChartNode",
+      "x": 1211,
+      "y": 1519,
       "init": {
-        "label": "Weeks on target",
-        "expr": "COUNTIF(@weekly, \">=\" & target)",
-        "sideVars": [
-          "target"
+        "label": "Allocation",
+        "op": "pie"
+      }
+    },
+    {
+      "id": "filterH",
+      "type": "FilterFrameNode",
+      "x": 882,
+      "y": 1811,
+      "init": {
+        "label": "Lots under water",
+        "condConfig": {
+          "0": {
+            "op": "lt"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
         ]
       },
       "stringLiterals": {
-        "name": "weeks_on_target",
-        "after": "best_week"
+        "column0": "harvestable",
+        "value0": "0"
       }
     },
     {
-      "id": "dispStores",
-      "type": "DisplayNode",
-      "x": 667,
-      "y": 1275,
+      "id": "keepH",
+      "type": "ColumnsNode",
+      "x": 1211,
+      "y": 1903,
       "init": {
-        "label": "Stores"
+        "label": "Ticker, harvestable"
       },
-      "size": {
-        "w": 1260,
-        "h": 160
+      "stringLiterals": {
+        "columns": "ticker, harvestable"
       }
     },
     {
-      "id": "grp-laps",
-      "type": "GroupNode",
-      "x": 535,
-      "y": 210,
+      "id": "barH",
+      "type": "ChartNode",
+      "x": 1540,
+      "y": 1900,
       "init": {
-        "label": "A list per row",
+        "label": "Losses to harvest",
+        "op": "bar"
+      },
+      "stringLiterals": {
+        "options": "title=Harvestable loss"
+      }
+    },
+    {
+      "id": "colGain",
+      "type": "GetColumnNode",
+      "x": 882,
+      "y": 1295,
+      "init": {
+        "label": "Gains",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "gain"
+      }
+    },
+    {
+      "id": "sumGain",
+      "type": "AggregateNode",
+      "x": 1211,
+      "y": 1327,
+      "init": {
+        "label": "Unrealized gain",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "colH",
+      "type": "GetColumnNode",
+      "x": 882,
+      "y": 2175,
+      "init": {
+        "label": "Harvestable",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "harvestable"
+      }
+    },
+    {
+      "id": "sumH",
+      "type": "AggregateNode",
+      "x": 1211,
+      "y": 2208,
+      "init": {
+        "label": "Loss to harvest",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "grp-grades",
+      "type": "GroupNode",
+      "x": 555,
+      "y": 108,
+      "init": {
+        "label": "Gradebook",
         "members": [
-          "noteLaps",
-          "laps",
-          "dispLaps"
+          "noteGrades",
+          "grades",
+          "sortG",
+          "keepG",
+          "chartG",
+          "filterG",
+          "namesG",
+          "checkIn"
         ],
         "color": "teal",
         "collapsed": false,
-        "width": 1461,
-        "height": 547
+        "width": 1291,
+        "height": 1109
       }
     },
     {
-      "id": "grp-stores",
+      "id": "grp-port",
       "type": "GroupNode",
-      "x": -20,
-      "y": 777,
+      "x": 0,
+      "y": 1237,
       "init": {
-        "label": "A table per row",
+        "label": "Portfolio",
         "members": [
-          "noteStores",
-          "stores",
-          "target",
-          "onTarget",
-          "dispStores"
+          "notePort",
+          "port",
+          "keepAlloc",
+          "pieAlloc",
+          "filterH",
+          "keepH",
+          "barH",
+          "colGain",
+          "sumGain",
+          "colH",
+          "sumH"
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 1975,
-        "height": 775
+        "width": 1808,
+        "height": 1149
       }
     }
   ],
   "connections": [
     {
-      "source": "laps",
+      "source": "grades",
       "sourceOutput": "cube",
-      "target": "dispLaps",
-      "targetInput": "in"
-    },
-    {
-      "source": "stores",
-      "sourceOutput": "cube",
-      "target": "onTarget",
+      "target": "sortG",
       "targetInput": "frame"
     },
     {
-      "source": "target",
-      "sourceOutput": "value",
-      "target": "onTarget",
-      "targetInput": "target"
+      "source": "sortG",
+      "sourceOutput": "frame",
+      "target": "keepG",
+      "targetInput": "frame"
     },
     {
-      "source": "onTarget",
+      "source": "keepG",
       "sourceOutput": "frame",
-      "target": "dispStores",
+      "target": "chartG",
+      "targetInput": "values"
+    },
+    {
+      "source": "grades",
+      "sourceOutput": "cube",
+      "target": "filterG",
+      "targetInput": "frame"
+    },
+    {
+      "source": "filterG",
+      "sourceOutput": "frame",
+      "target": "namesG",
+      "targetInput": "frame"
+    },
+    {
+      "source": "namesG",
+      "sourceOutput": "values",
+      "target": "checkIn",
       "targetInput": "in"
+    },
+    {
+      "source": "port",
+      "sourceOutput": "cube",
+      "target": "keepAlloc",
+      "targetInput": "frame"
+    },
+    {
+      "source": "keepAlloc",
+      "sourceOutput": "frame",
+      "target": "pieAlloc",
+      "targetInput": "values"
+    },
+    {
+      "source": "port",
+      "sourceOutput": "cube",
+      "target": "filterH",
+      "targetInput": "frame"
+    },
+    {
+      "source": "filterH",
+      "sourceOutput": "frame",
+      "target": "keepH",
+      "targetInput": "frame"
+    },
+    {
+      "source": "keepH",
+      "sourceOutput": "frame",
+      "target": "barH",
+      "targetInput": "values"
+    },
+    {
+      "source": "port",
+      "sourceOutput": "cube",
+      "target": "colGain",
+      "targetInput": "frame"
+    },
+    {
+      "source": "colGain",
+      "sourceOutput": "values",
+      "target": "sumGain",
+      "targetInput": "list"
+    },
+    {
+      "source": "port",
+      "sourceOutput": "cube",
+      "target": "colH",
+      "targetInput": "frame"
+    },
+    {
+      "source": "colH",
+      "sourceOutput": "values",
+      "target": "sumH",
+      "targetInput": "list"
     }
   ],
   "standoffs": []

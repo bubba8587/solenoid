@@ -36,6 +36,9 @@ warning is expected.
   when its answer leaves the number family (a retype, [[D16]] retypeReconciles, or fixed wider
   sockets) and amends C47. Quadratic Roots already answers the conjugate pair.
 
+## Formula parity (found 2026-09-30)
+- [ ] **LARGE / SMALL with an array `k`** answer blank inside a Cube Fx column (`LARGE(@homework, SEQUENCE(COUNT(@homework) - 2))`); Excel returns one value per k. Check outside a Cube too.
+
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
 - [ ] **Paired-list aggregate**: SUMPRODUCT, the SUMX functions, CORREL, COVARIANCE and a weighted average as one two-list Aggregate (the author said to wait), and the remaining smaller pairs.
