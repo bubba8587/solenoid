@@ -9,7 +9,7 @@ import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, calCellX
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import type { ChartOptions } from "../nodes/chartOptions";
 import { serialToJsDate } from "../nodes/date";
-import { compactTick, canvasFont, niceTicks } from "./chartCore";
+import { compactTick, canvasFont, niceTicks, useAppFaces } from "./chartCore";
 import type {
   WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload,
   ProportionPayload, QuiverPayload, ContourPayload,
@@ -754,8 +754,9 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, o: ChartOptio
 
 function useThemedCanvas(draw: (canvas: HTMLCanvasElement) => void) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const faces = useAppFaces();
   const ref = useRef<HTMLCanvasElement>(null);
-  useLayoutEffect(() => { if (ref.current) draw(ref.current); });
+  useLayoutEffect(() => { if (faces && ref.current) draw(ref.current); });
   return ref;
 }
 
@@ -783,12 +784,13 @@ export function BoxplotView({ payload, width, height, fscale = 1 }: { payload: B
  *  view, and a big grid is too costly to repaint per move. */
 function useHoverCanvas<L>(draw: (c: HTMLCanvasElement) => L | null, deps: unknown[]) {
   const theme = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const faces = useAppFaces();
   const ref = useRef<HTMLCanvasElement>(null);
   const layout = useRef<L | null>(null);
   useLayoutEffect(() => {
-    if (ref.current) layout.current = draw(ref.current);
+    if (faces && ref.current) layout.current = draw(ref.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, theme]);
+  }, [...deps, theme, faces]);
   return [ref, layout] as const;
 }
 

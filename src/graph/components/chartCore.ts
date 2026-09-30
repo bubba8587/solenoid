@@ -62,9 +62,32 @@ const sig3 = (n: number): string => String(Number(n.toPrecision(3)));
 
 /** A value-axis tick: three significant figures, with K, M, B, T above a thousand. It rounds before it picks the
  *  unit, so 999,999 reads 1M, not 1000K. */
-/** A canvas font in the app's faces (`--font-sans`, `--font-mono`), since a canvas can't read a CSS variable itself. */
+/** The app's own face, the first family of `--font-sans` or `--font-mono`: a canvas names only it, so no other face can stand in. */
+function appFamily(face: "sans" | "mono"): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(face === "mono" ? "--font-mono" : "--font-sans").split(",")[0].trim();
+}
+
+/** A canvas font in the app's face, since a canvas can't read a CSS variable itself. */
 export function canvasFont(weight: number, px: number, face: "sans" | "mono" = "sans"): string {
-  return `${weight} ${px}px ${getComputedStyle(document.documentElement).getPropertyValue(face === "mono" ? "--font-mono" : "--font-sans").trim()}`;
+  return `${weight} ${px}px ${appFamily(face)}`;
+}
+
+// A canvas paints its text once, in whatever face is loaded at that moment, and the bundled faces load
+// asynchronously; so the canvas figures wait for both faces, the Latin and Latin Extended glyphs included.
+const FACE_SAMPLE = "0123456789 AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz .,:;%+-·…éüñçłő";
+let facesReady = false;
+const faceSubs = new Set<() => void>();
+function subscribeFaces(cb: () => void) {
+  faceSubs.add(cb);
+  if (!facesReady && faceSubs.size === 1) {
+    void Promise.all((["sans", "mono"] as const).map((f) => document.fonts.load(canvasFont(500, 12, f), FACE_SAMPLE)))
+      .finally(() => { facesReady = true; faceSubs.forEach((f) => f()); });
+  }
+  return () => { faceSubs.delete(cb); };
+}
+/** False until the app's faces are loaded; a canvas figure paints only once it is true. */
+export function useAppFaces(): boolean {
+  return useSyncExternalStore(subscribeFaces, () => facesReady);
 }
 
 export function compactTick(n: number): string {

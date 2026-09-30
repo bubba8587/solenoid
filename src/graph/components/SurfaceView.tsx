@@ -6,7 +6,7 @@ import { colormapRgb } from "../colormaps";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { SurfacePayload } from "../chartValue";
 import { iterMin, iterMax } from "../nodes/mathUtils";
-import { canvasFont } from "./chartCore";
+import { canvasFont, useAppFaces } from "./chartCore";
 
 
 type V3 = [number, number, number];
@@ -136,9 +136,10 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, o: ChartOptio
 
 export function SurfaceView({ payload, options, width, height }: { payload: SurfacePayload; options: ChartOptions; width: number; height: number }) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const faces = useAppFaces();
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => {
-    if (ref.current) drawSurface(ref.current, payload, options, width, height);
+    if (faces && ref.current) drawSurface(ref.current, payload, options, width, height);
   });
   const empty = payload.xs.length < 2 || payload.ys.length < 2 || !payload.z.some((r) => r.some((v) => v != null && Number.isFinite(v)));
   if (empty) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
