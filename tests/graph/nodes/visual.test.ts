@@ -465,13 +465,13 @@ describe("chart-wave nodes emit their payloads", () => {
 describe("Surface — the 3-D / Flat view toggle (old Contour)", () => {
   it("the toggle swaps the payload kind and owns the Levels socket", () => {
     const n = new SurfaceNode();
-    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys"]);
+    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "options"]);
     n.setOp("contour");
-    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "levels"]);
+    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "levels", "options"]);
     const z = [[10, 20], [30, 40]];
     expect(n.data({ z: [z] }).chart).toMatchObject({ op: "contour", payload: { kind: "contour", levels: 8 } });
     n.setOp("surface");
-    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys"]);
+    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "options"]);
     expect(n.data({ z: [z] }).chart).toMatchObject({ op: "surface", payload: { kind: "surface", yaw: 45 } });
   });
 
@@ -791,6 +791,19 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
   it("Heatmap plots an all-number frame whole, rows numbered", async () => {
     const f = frame([{ name: "A", type: "number", values: [1, 2] }, { name: "B", type: "number", values: [3, 4] }]);
     expect((await new HeatmapNode().data({ values: [f] })).chart.payload).toEqual({ kind: "heatmap", z: [[1, 3], [2, 4]], rows: ["1", "2"], cols: ["A", "B"] });
+  });
+  it("Surface carries the parsed options on both views", () => {
+    const n = new SurfaceNode({ op: "contour" });
+    n.stringLiterals.options = "title=Terrain;cmap=magma";
+    const flat = n.data({ z: [[[1, 2], [3, 4]]] }).chart;
+    expect(flat).toMatchObject({ op: "contour", title: "Terrain", options: { cmap: "magma" } });
+    n.setOp("surface");
+    expect(n.data({ z: [[[1, 2], [3, 4]]] }).chart.options).toMatchObject({ cmap: "magma" });
+  });
+  it("Vector Field reads its options", () => {
+    const n = new QuiverNode();
+    const out = n.data({ u: [[[1]]], v: [[[0]]], options: ["cmap=viridis;title=Wind"] }).chart;
+    expect(out).toMatchObject({ title: "Wind", options: { cmap: "viridis" } });
   });
   it("Histogram 2-D draws its bins as a heatmap, y growing upward, bins labeled by their lower edge", () => {
     const n = new HistogramNode({ mode: "2d" });

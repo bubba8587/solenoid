@@ -2,8 +2,9 @@
 import { describe, it, expect } from "vitest";
 import { colormapRgb, heatScale, normalizeCmap, COLORMAP_LIST } from "../../src/graph/colormaps";
 import { formatNumberSpec, isNumberSpec } from "../../src/graph/numberSpec";
-import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, type HeatLayoutInput } from "../../src/graph/components/heatmapLayout";
+import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, calCellXY, calendarHeight, type HeatLayoutInput } from "../../src/graph/components/heatmapLayout";
 import { jsDateToSerial } from "../../src/graph/nodes/date";
+import { contourAt } from "../../src/graph/components/chartCanvasViews";
 
 describe("colormaps", () => {
   it("spell names as matplotlib does, any case, with _r reversing", () => {
@@ -137,6 +138,37 @@ describe("calendarLayout", () => {
     const barred = calendarLayout(days, days.map(() => 1), 300, 110, 1, 20)!;
     expect(barred.cell).toBeLessThan(bare.cell);
     expect(barred.cbar!.textX + 20).toBeLessThanOrEqual(300);
-    expect(barred.cbar!.x).toBeGreaterThanOrEqual(barred.padL + barred.weeks * barred.cell);
+    expect(barred.cbar!.x).toBeGreaterThanOrEqual(barred.padL + barred.perBand * barred.cell);
+  });
+
+  it("wraps a year into bands when that makes the days larger, and finds a day in any band", () => {
+    const year = Array.from({ length: 365 }, (_, i) => monday + i);
+    const strip = calendarLayout(year, year.map(() => 1), 280, 60, 1, null)!;
+    expect(strip.bands).toBe(1);
+    const tall = calendarLayout(year, year.map(() => 1), 280, 180, 1, null)!;
+    expect(tall.bands).toBeGreaterThan(1);
+    expect(tall.cell).toBeGreaterThan(strip.cell);
+    const last = tall.weeks - 1;
+    const { x, y } = calCellXY(tall, last, 0);
+    expect(calDayAt(tall, x + 1, y + 1)).toBe(tall.gridStart + last * 7);
+    expect(Math.floor(last / tall.perBand)).toBe(tall.bands - 1);
+  });
+
+  it("sizes a card to the bands it needs, never cramping days under 8 pixels when bands can help", () => {
+    const year = Array.from({ length: 365 }, (_, i) => monday + i);
+    const h = calendarHeight(year, 278, 1, 22);
+    const l = calendarLayout(year, year.map(() => 1), 278, h, 1, 22)!;
+    expect(l.cell).toBeGreaterThanOrEqual(8);
+    expect(l.bands * l.bandH).toBeLessThanOrEqual(h);
+  });
+});
+
+describe("contourAt", () => {
+  const p = { kind: "contour" as const, xs: [0, 10], ys: [0, 1, 2], z: [[0, 10], [10, 20], [null, 5]], levels: 4 };
+  it("interpolates inside a cell and answers null off the grid or on a hole", () => {
+    expect(contourAt(p, 5, 0.5)).toBe(10);
+    expect(contourAt(p, 0, 0)).toBe(0);
+    expect(contourAt(p, 11, 0.5)).toBeNull();
+    expect(contourAt(p, 5, 1.5)).toBeNull();
   });
 });

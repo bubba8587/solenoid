@@ -874,12 +874,14 @@ export class SurfaceNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     xs: "One X coordinate per column; unwired means 1, 2, 3…",
     ys: "One Y coordinate per row; unwired means 1, 2, 3…",
+    options: "key=value pairs separated by semicolons, or a Chart Builder. Both views read title and cmap; the flat view also reads xlabel, ylabel, center, vmin, vmax and cbar.",
   };
 
   label: string;
   op: SurfaceViewOp;
   literals: Record<string, number> = { yaw: 45, pitch: 45 };
   stringLiterals: Record<string, string> = { xs: "", ys: "" };
+  chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
   width = 240;
   height = 220;
@@ -898,6 +900,7 @@ export class SurfaceNode extends ClassicPreset.Node {
       this.literals.levels ??= 8;
       this.addInput("levels", numIn("Levels"));
     }
+    this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
     this.height = this.op === "contour" ? 240 : 220;
   }
@@ -911,10 +914,13 @@ export class SurfaceNode extends ClassicPreset.Node {
     } else if (this.inputs.levels) {
       this.removeInput("levels");
     }
+    keepInputLast(this, "options");
     this.height = next === "contour" ? 240 : 220;
   }
 
-  data(inputs: { z?: unknown[]; xs?: unknown[]; ys?: unknown[]; levels?: number[] }): { chart: ChartValue } {
+  data(inputs: { z?: unknown[]; xs?: unknown[]; ys?: unknown[]; levels?: number[]; options?: string[] }): { chart: ChartValue } {
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
+    const options = this.chartOptions;
     const xsRaw = inputs.xs === undefined ? undefined : (inputs.xs[0] ?? null);
     const ysRaw = inputs.ys === undefined ? undefined : (inputs.ys[0] ?? null);
     const { xs, ys, z } = surfaceAxes(inputs.z?.[0] ?? null, xsRaw, ysRaw);
@@ -924,14 +930,14 @@ export class SurfaceNode extends ClassicPreset.Node {
       // Mirror only when unwired, so a wired value never overwrites the saved literal.
       if (inputs.levels?.[0] === undefined && levelsRaw !== null) this.literals.levels = levels;
       const payload: ContourPayload = { kind: "contour", xs, ys, z, levels };
-      const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: {}, title: this.label || "Contour" };
+      const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options, title: options.title || this.label || "Contour" };
       this.cachedChart = chart;
       return { chart };
     }
     const payload: SurfacePayload = { kind: "surface", xs, ys, z, yaw: this.literals.yaw ?? 45, pitch: this.literals.pitch ?? 45 };
     const chart: ChartValue = {
       __chart: true, op: "surface", values: null, payload,
-      options: {}, title: this.label || "Surface",
+      options, title: options.title || this.label || "Surface",
     };
     this.cachedChart = chart;
     return { chart };
@@ -1388,6 +1394,8 @@ export class RecordNode extends ClassicPreset.Node {
 
 export class QuiverNode extends ClassicPreset.Node {
   label: string;
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
   width = 240;
   height = 240;
@@ -1397,15 +1405,17 @@ export class QuiverNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Vector Field";
     this.addInput("u", tableIn("ΔX components"));
     this.addInput("v", tableIn("ΔY components"));
+    this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { u?: (number | null)[][][]; v?: (number | null)[][][] }): { chart: ChartValue } {
+  data(inputs: { u?: (number | null)[][][]; v?: (number | null)[][][]; options?: string[] }): { chart: ChartValue } {
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const num = (x: unknown): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
     const norm = (m: unknown): (number | null)[][] =>
       Array.isArray(m) ? m.map((r) => (Array.isArray(r) ? r.map(num) : [num(r)])) : [];
     const payload: QuiverPayload = { kind: "quiver", u: norm(inputs.u?.[0]), v: norm(inputs.v?.[0]) };
-    const chart: ChartValue = { __chart: true, op: "quiver", values: null, payload, options: {}, title: this.label || "Vector Field" };
+    const chart: ChartValue = { __chart: true, op: "quiver", values: null, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "Vector Field" };
     this.cachedChart = chart;
     return { chart };
   }

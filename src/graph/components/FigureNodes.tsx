@@ -11,6 +11,7 @@ import { isSolError, type SolError } from "../errorValue";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
+import { calendarHeight } from "./heatmapLayout";
 import { ChartChip } from "./ChartChip";
 import { OpToggle } from "./SegToggle";
 import { collapseStore } from "../collapseStore";
@@ -71,8 +72,11 @@ export const BoxplotComponent = makeFigureComponent<BoxplotNode>(
   (p) => p?.kind === "boxplot" && p.boxes.length > 0,
 );
 
+// The height the wrapped weeks need at the card's width, plus the title strip; the tick width is a typical label's.
 export const CalendarHeatmapComponent = makeFigureComponent<CalendarHeatmapNode>(
-  110,
+  (cv, w) => cv.payload?.kind === "calheat"
+    ? calendarHeight(cv.payload.days, w, 1, cv.options.cbar === false ? null : 22) + (cv.options.title ? 16 : 0)
+    : 110,
   (p) => p?.kind === "calheat" && p.days.length > 0,
 );
 

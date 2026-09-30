@@ -152,9 +152,9 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
   if (value.op === "sankey" && value.payload?.kind === "sankey")
     return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "surface" && value.payload?.kind === "surface")
-    return <SurfaceView payload={value.payload} width={width} height={height} />;
+    return <SurfaceView payload={value.payload} options={value.options} width={width} height={height} />;
   if (value.op === "contour" && value.payload?.kind === "contour")
-    return <ContourView payload={value.payload} width={width} height={height} fscale={fscale} />;
+    return <ContourView payload={value.payload} options={value.options} width={width} height={height} fscale={fscale} />;
   if (value.op === "waterfall" && value.payload?.kind === "waterfall")
     return <WaterfallView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "candle" && value.payload?.kind === "candle")
@@ -166,7 +166,7 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
   if (value.op === "heatmap" && value.payload?.kind === "heatmap")
     return <HeatmapView payload={value.payload} options={value.options} width={width} height={height} fscale={fscale} />;
   if (value.op === "quiver" && value.payload?.kind === "quiver")
-    return <QuiverView payload={value.payload} width={width} height={height} />;
+    return <QuiverView payload={value.payload} options={value.options} width={width} height={height} />;
   if (value.op === "record" && value.payload?.kind === "record")
     return <RecordCardView payload={value.payload} width={width} fscale={fscale} title={value.options?.title} onStep={recordNav} />;
   if (value.payload?.kind === "xy")

@@ -299,7 +299,7 @@ export type ChartTargetId =
   | "pie" | "radar" | "radialbar" | "funnel"
   | "bubble" | "overlay"
   | "histogram" | "histogram2d" | "kpi" | "scale" | "proportion" | "sankey"
-  | "waterfall" | "candle" | "boxplot" | "calheat" | "heatmap" | "gantt" | "record";
+  | "waterfall" | "candle" | "boxplot" | "calheat" | "heatmap" | "contour" | "surface" | "quiver" | "gantt" | "record";
 
 const XY_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
@@ -323,6 +323,8 @@ const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
 const RECORD_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "cardsize", "clamp"];
 const CALHEAT_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
+const CONTOUR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
+const FIELD_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "fontsize"];
 const HEATMAP_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "annot", "fmt", "cbar", "aspect", "origin", "fontsize"];
 
@@ -350,6 +352,9 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   boxplot:   { label: "Boxplot",          group: "Figures",      op: "boxplot", keys: STAT_KEYS },
   calheat:   { label: "Calendar Heatmap", group: "Figures",      op: "calheat", keys: CALHEAT_KEYS },
   heatmap:   { label: "Heatmap",          group: "Figures",      op: "heatmap", keys: HEATMAP_KEYS },
+  contour:   { label: "Contour",          group: "Figures",      op: "contour", keys: CONTOUR_KEYS },
+  surface:   { label: "Surface",          group: "Figures",      op: "surface", keys: FIELD_KEYS },
+  quiver:    { label: "Vector Field",     group: "Figures",      op: "quiver", keys: FIELD_KEYS },
   gantt:     { label: "Gantt",            group: "Figures",      op: "gantt", keys: GANTT_TIMELINE_KEYS },
   record:    { label: "Record",           group: "Figures",      op: "record", keys: RECORD_KEYS },
 };

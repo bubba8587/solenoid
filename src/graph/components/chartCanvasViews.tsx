@@ -5,12 +5,11 @@ import { resolveColor, heightRampColor, divergingRampColor } from "../palette";
 import { colormapRgb, heatScale, type HeatScale } from "../colormaps";
 import { formatNumberSpec } from "../numberSpec";
 import { formatScalar } from "./format";
-import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, type HeatLayout, type CalLayout } from "./heatmapLayout";
+import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, calCellXY, type HeatLayout, type CalLayout } from "./heatmapLayout";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import type { ChartOptions } from "../nodes/chartOptions";
 import { serialToJsDate } from "../nodes/date";
-import { heightColor } from "./SurfaceView";
-import { compactTick, canvasFont } from "./chartCore";
+import { compactTick, canvasFont, niceTicks } from "./chartCore";
 import type {
   WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload,
   ProportionPayload, QuiverPayload, ContourPayload,
@@ -258,7 +257,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   }
   const L = calendarLayout(p.days, p.values, W, H, fs, showCbar ? tickW : null);
   if (!L) return null;
-  const { byDay, start, end, gridStart, weeks, cell, gap, padL, padT } = L;
+  const { byDay, start, end, gridStart, weeks, cell, gap, padL, padT, perBand } = L;
   const scale = heatScale(L.lo, L.hi, o);
   // No cmap and no center keeps the accent, at an opacity by value over the empty-day color.
   const color = heatColorFn(o);
@@ -273,29 +272,37 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptio
   if (L.truncated) {
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-    ctx.fillText(`last ${weeks} wk`, padL + weeks * cell, padT - 2);
+    ctx.fillText(`last ${weeks} wk`, padL + perBand * cell, padT - 2);
   }
   ctx.textAlign = "left";
   ctx.textBaseline = "bottom";
+  // A band's first week labels a month carried over from the band above when two clear weeks follow, so it never crowds the next.
   let lastMonth = -1;
   for (let w = 0; w < weeks; w++) {
     const m = serialToJsDate(gridStart + w * 7).getUTCMonth();
-    if (m !== lastMonth) {
-      if (w > 0 || weeks < 20) ctx.fillText("JFMAMJJASOND"[m] ?? "", padL + w * cell, padT - 2);
+    const bandStart = w % perBand === 0;
+    if (m !== lastMonth || bandStart) {
+      const clear = [1, 2].every((k) => serialToJsDate(gridStart + (w + k) * 7).getUTCMonth() === m);
+      if (m !== lastMonth ? (w > 0 || weeks < 20) : clear) {
+        const { x, y } = calCellXY(L, w, 0);
+        ctx.fillText("JFMAMJJASOND"[m] ?? "", x, y - 2);
+      }
       lastMonth = m;
     }
   }
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  for (const [row, ch] of [[0, "M"], [2, "W"], [4, "F"]] as const) {
-    ctx.fillText(ch, padL - 3, padT + (row + 0.5) * cell);
+  for (let b = 0; b < L.bands; b++) {
+    for (const [row, ch] of [[0, "M"], [2, "W"], [4, "F"]] as const) {
+      ctx.fillText(ch, padL - 3, calCellXY(L, b * perBand, row).y + cell / 2);
+    }
   }
 
   for (let w = 0; w < weeks; w++) {
     for (let r = 0; r < 7; r++) {
       const day = gridStart + w * 7 + r;
       if (day < start || day > end) continue;
-      const x = padL + w * cell, y = padT + r * cell;
+      const { x, y } = calCellXY(L, w, r);
       const v = byDay.get(day);
       if (v == null) { ctx.fillStyle = ink.sunken; ctx.fillRect(x, y, cell - gap, cell - gap); }
       else paint(ctx, x, y, cell - gap, cell - gap, scale.t(v));
@@ -535,7 +542,8 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
 
 // ─── Vector field (quiver) ─────────────────────────────────────────────────────
 
-function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: number) {
+function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, o: ChartOptions, W: number, H: number) {
+  const color = heatColorFn({ cmap: o.cmap });
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -566,7 +574,7 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
     }
     const mag = Math.hypot(u, v);
     const t = mag / maxMag;
-    const [r, g, b] = heightColor(t);
+    const [r, g, b] = color(t);
     const col = `rgb(${r | 0},${g | 0},${b | 0})`;
     const len = reach * (0.15 + 0.85 * t);
     const ang = Math.atan2(-v, u);
@@ -596,25 +604,62 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
 
 // ─── Contour ───────────────────────────────────────────────────────────────────
 
-function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H: number, fs: number) {
+export interface ContourLayout {
+  x0: number; x1: number; y0: number; y1: number;
+  xmin: number; xmax: number; ymin: number; ymax: number;
+}
+
+/** The height at a data point by bilinear interpolation in its grid cell, or null outside the grid or on a hole. */
+export function contourAt(p: ContourPayload, x: number, y: number): number | null {
+  const find = (axis: number[], v: number) => {
+    for (let i = 0; i < axis.length - 1; i++) {
+      const a = axis[i], b = axis[i + 1];
+      if ((v >= a && v <= b) || (v <= a && v >= b)) return { i, f: b === a ? 0 : (v - a) / (b - a) };
+    }
+    return null;
+  };
+  const cx = find(p.xs, x), cy = find(p.ys, y);
+  if (!cx || !cy) return null;
+  const at = (ix: number, iy: number) => { const v = p.z[iy]?.[ix]; return v != null && Number.isFinite(v) ? v : null; };
+  const z00 = at(cx.i, cy.i), z10 = at(cx.i + 1, cy.i), z01 = at(cx.i, cy.i + 1), z11 = at(cx.i + 1, cy.i + 1);
+  if (z00 == null || z10 == null || z01 == null || z11 == null) return null;
+  const { f: u } = cx, { f: v } = cy;
+  return z00 * (1 - u) * (1 - v) + z10 * u * (1 - v) + z01 * (1 - u) * v + z11 * u * v;
+}
+
+function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, o: ChartOptions, W: number, H: number, fs: number): ContourLayout | null {
   const ctx = setupCanvas(canvas, W, H);
-  if (!ctx) return;
+  if (!ctx) return null;
   const ink = themeInk(canvas);
   const { xs, ys, z } = p;
   const nx = xs.length, ny = ys.length;
   const fin = (v: number | null | undefined): v is number => v != null && Number.isFinite(v);
-  if (nx < 2 || ny < 2) return;
+  if (nx < 2 || ny < 2) return null;
   let zmin = Infinity, zmax = -Infinity;
   for (const row of z) for (const v of row) if (fin(v)) { zmin = Math.min(zmin, v); zmax = Math.max(zmax, v); }
-  if (!Number.isFinite(zmin)) return;
-  if (zmin === zmax) zmax = zmin + 1;
-
-  const padL = 6, padR = 6, padT = Math.round(12 * fs), padB = Math.round(12 * fs);
+  if (!Number.isFinite(zmin)) return null;
+  const scale = heatScale(zmin, zmax, o);
+  const color = heatColorFn(o);
   const xmin = iterMin(xs), xmax = iterMax(xs);
   const ymin = iterMin(ys), ymax = iterMax(ys);
-  const sx = (v: number) => padL + ((v - xmin) / (xmax - xmin || 1)) * (W - padL - padR);
-  const sy = (v: number) => H - padB - ((v - ymin) / (ymax - ymin || 1)) * (H - padT - padB);
-  const tz = (v: number) => (v - zmin) / (zmax - zmin);
+
+  // Gutters: y ticks and label left, x ticks and label below, the colorbar right, half a tick's text above.
+  ctx.font = tickFont(fs);
+  const lineH = Math.ceil(10.5 * fs);
+  const xTicks = (w: number) => niceTicks(xmin, xmax, Math.max(3, Math.floor(w / (45 * fs))));
+  const yTicks = (h: number) => niceTicks(ymin, ymax, Math.max(3, Math.floor(h / (30 * fs))));
+  const widest = (xs: number[]) => xs.reduce((m, v) => Math.max(m, ctx.measureText(compactTick(v)).width), 0);
+  const cbarTicks = scaleTicks(scale);
+  const cbarW = o.cbar === false ? 0 : 6 + 8 + 3 + widest(cbarTicks);
+  const padT = Math.ceil(5 * fs);
+  const padB = lineH + 3 + (o.xlabel ? lineH + 2 : 0);
+  const labelW = o.ylabel ? lineH + 2 : 0;
+  const padL = labelW + widest(yTicks(H - padT - padB)) + 5;
+  const padR = Math.max(cbarW, widest([xmax]) / 2 + 1);
+  const L: ContourLayout = { x0: padL, x1: W - padR, y0: padT, y1: H - padB, xmin, xmax, ymin, ymax };
+  if (L.x1 - L.x0 < 10 || L.y1 - L.y0 < 10) return null;
+  const sx = (v: number) => L.x0 + ((v - xmin) / (xmax - xmin || 1)) * (L.x1 - L.x0);
+  const sy = (v: number) => L.y1 - ((v - ymin) / (ymax - ymin || 1)) * (L.y1 - L.y0);
 
   const SUB = 6;
   for (let iy = 0; iy < ny - 1; iy++) for (let ix = 0; ix < nx - 1; ix++) {
@@ -624,10 +669,9 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
       const u0 = i / SUB, u1 = (i + 1) / SUB, v0 = j / SUB, v1 = (j + 1) / SUB;
       const um = (u0 + u1) / 2, vm = (v0 + v1) / 2;
       const zc = z00 * (1 - um) * (1 - vm) + z10 * um * (1 - vm) + z01 * (1 - um) * vm + z11 * um * vm;
-      const [r, g, b] = heightColor(tz(zc));
       const xa = sx(xs[ix] + (xs[ix + 1] - xs[ix]) * u0), xb = sx(xs[ix] + (xs[ix + 1] - xs[ix]) * u1);
       const ya = sy(ys[iy] + (ys[iy + 1] - ys[iy]) * v0), yb = sy(ys[iy] + (ys[iy + 1] - ys[iy]) * v1);
-      ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
+      ctx.fillStyle = rgbCss(color(scale.t(zc)));
       // Overdraw by half a px so the subquads butt together without seams.
       ctx.fillRect(Math.min(xa, xb) - 0.5, Math.min(ya, yb) - 0.5, Math.abs(xb - xa) + 1, Math.abs(yb - ya) + 1);
     }
@@ -636,8 +680,9 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
   ctx.strokeStyle = "rgba(0,0,0,0.45)";
   ctx.lineWidth = 0.8;
   const levels = Math.max(2, p.levels | 0);
+  const zTop = zmax === zmin ? zmin + 1 : zmax;
   for (let li = 1; li <= levels; li++) {
-    const t = zmin + ((zmax - zmin) * li) / (levels + 1);
+    const t = zmin + ((zTop - zmin) * li) / (levels + 1);
     for (let iy = 0; iy < ny - 1; iy++) for (let ix = 0; ix < nx - 1; ix++) {
       const z00 = z[iy]?.[ix], z10 = z[iy]?.[ix + 1], z01 = z[iy + 1]?.[ix], z11 = z[iy + 1]?.[ix + 1];
       if (!fin(z00) || !fin(z10) || !fin(z01) || !fin(z11)) continue;
@@ -666,15 +711,43 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
     }
   }
 
+  // Axes: a hairline frame, outward ticks at round numbers.
+  ctx.strokeStyle = ink.border;
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(L.x0, L.y0, L.x1 - L.x0, L.y1 - L.y0);
   ctx.font = tickFont(fs);
   ctx.fillStyle = ink.dim;
-  ctx.textBaseline = "bottom";
-  ctx.textAlign = "left";
-  ctx.fillText(compactTick(xmin), padL, H - 1);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for (const v of xTicks(L.x1 - L.x0)) {
+    const x = sx(v);
+    ctx.beginPath(); ctx.moveTo(x, L.y1); ctx.lineTo(x, L.y1 + 3); ctx.stroke();
+    ctx.fillText(compactTick(v), x, L.y1 + 3);
+  }
   ctx.textAlign = "right";
-  ctx.fillText(compactTick(xmax), W - padR, H - 1);
-  ctx.textAlign = "left";
-  ctx.fillText(compactTick(ymax), padL, padT - 2);
+  ctx.textBaseline = "middle";
+  for (const v of yTicks(L.y1 - L.y0)) {
+    const y = sy(v);
+    ctx.beginPath(); ctx.moveTo(L.x0 - 3, y); ctx.lineTo(L.x0, y); ctx.stroke();
+    ctx.fillText(compactTick(v), L.x0 - 4, y);
+  }
+  if (o.cbar !== false) {
+    drawColorbar(ctx, ink, { x: L.x1 + 6, y: L.y0, w: 8, h: L.y1 - L.y0, textX: L.x1 + 6 + 8 + 3 }, scale,
+      (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }, cbarTicks, lineH);
+  }
+  ctx.fillStyle = ink.dim;
+  ctx.font = canvasFont(600, 9 * fs);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  if (o.xlabel) ctx.fillText(fitLabel(ctx, o.xlabel, L.x1 - L.x0), (L.x0 + L.x1) / 2, H - (lineH + 2) / 2);
+  if (o.ylabel) {
+    ctx.save();
+    ctx.translate(lineH / 2, (L.y0 + L.y1) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(fitLabel(ctx, o.ylabel, L.y1 - L.y0), 0, 0);
+    ctx.restore();
+  }
+  return L;
 }
 
 // ─── React wrappers ────────────────────────────────────────────────────────────
@@ -719,7 +792,7 @@ function useHoverCanvas<L>(draw: (c: HTMLCanvasElement) => L | null, deps: unkno
   return [ref, layout] as const;
 }
 
-type Hover = { x: number; y: number; cell: { left: number; top: number; width: number; height: number }; label: string; value: number | undefined };
+type Hover = { x: number; y: number; cell?: { left: number; top: number; width: number; height: number }; label: string; value: number | undefined };
 
 /** The canvas plus the hovered cell's outline and its readout, flipped away from the nearer edges. */
 function HoverFrame({ width, height, canvasRef, onMove, hover }: {
@@ -737,7 +810,7 @@ function HoverFrame({ width, height, canvasRef, onMove, hover }: {
       <canvas ref={canvasRef} style={{ width, height, display: "block" }} onPointerMove={move} onPointerLeave={() => onMove(-1, -1)} />
       {hover && (
         <>
-          <div style={{ position: "absolute", pointerEvents: "none", boxSizing: "border-box", ...hover.cell, outline: "1.5px solid var(--text)", outlineOffset: -0.75 }} />
+          {hover.cell && <div style={{ position: "absolute", pointerEvents: "none", boxSizing: "border-box", ...hover.cell, outline: "1.5px solid var(--text)", outlineOffset: -0.75 }} />}
           <div style={{
             position: "absolute", pointerEvents: "none", whiteSpace: "nowrap", zIndex: 1,
             fontSize: 11, padding: "2px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)",
@@ -764,7 +837,7 @@ export function CalHeatView({ payload, options, width, height, fscale = 1 }: { p
       onMove={(x, y) => { const day = L ? calDayAt(L, x, y) : null; setHover(day === null ? null : { day, x, y }); }}
       hover={hover && L ? {
         x: hover.x, y: hover.y,
-        cell: { left: L.padL + Math.floor((hover.day - L.gridStart) / 7) * L.cell, top: L.padT + ((hover.day - L.gridStart) % 7) * L.cell, width: L.cell - L.gap, height: L.cell - L.gap },
+        cell: { ...(({ x, y }) => ({ left: x, top: y }))(calCellXY(L, Math.floor((hover.day - L.gridStart) / 7), (hover.day - L.gridStart) % 7)), width: L.cell - L.gap, height: L.cell - L.gap },
         label: formatDateSerial(hover.day, DEFAULT_DATE_FORMAT),
         value: L.byDay.get(hover.day),
       } : null}
@@ -797,18 +870,32 @@ export function WaffleView({ payload, width, height, colors, fscale = 1 }: { pay
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function QuiverView({ payload, width, height }: { payload: QuiverPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawQuiver(c, payload, width, height));
+export function QuiverView({ payload, options, width, height }: { payload: QuiverPayload; options: ChartOptions; width: number; height: number }) {
+  const ref = useThemedCanvas((c) => drawQuiver(c, payload, options, width, height));
   const ny = Math.min(payload.u.length, payload.v.length);
   const nx = Math.min(payload.u[0]?.length ?? 0, payload.v[0]?.length ?? 0);
   if (nx === 0 || ny === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function ContourView({ payload, width, height, fscale = 1 }: { payload: ContourPayload; width: number; height: number; fscale?: number }) {
-  const ref = useThemedCanvas((c) => drawContour(c, payload, width, height, fscale));
+export function ContourView({ payload, options, width, height, fscale = 1 }: { payload: ContourPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
+  const [ref, layout] = useHoverCanvas((c) => drawContour(c, payload, options, width, height, fscale), [payload, JSON.stringify(options), width, height, fscale]);
+  const [hover, setHover] = useState<{ px: number; py: number; x: number; y: number } | null>(null);
   const empty = payload.xs.length < 2 || payload.ys.length < 2 || !payload.z.some((r) => r.some((v) => v != null && Number.isFinite(v)));
   if (empty) return <Empty />;
-  return <canvas ref={ref} style={{ width, height, display: "block" }} />;
+  const L = layout.current;
+  return (
+    <HoverFrame width={width} height={height} canvasRef={ref}
+      onMove={(px, py) => {
+        if (!L || px < L.x0 || px > L.x1 || py < L.y0 || py > L.y1) { setHover(null); return; }
+        setHover({ px, py, x: L.xmin + ((px - L.x0) / (L.x1 - L.x0)) * (L.xmax - L.xmin), y: L.ymax - ((py - L.y0) / (L.y1 - L.y0)) * (L.ymax - L.ymin) });
+      }}
+      hover={hover ? {
+        x: hover.px, y: hover.py,
+        label: `x ${compactTick(hover.x)}, y ${compactTick(hover.y)}`,
+        value: contourAt(payload, hover.x, hover.y) ?? undefined,
+      } : null}
+    />
+  );
 }
 

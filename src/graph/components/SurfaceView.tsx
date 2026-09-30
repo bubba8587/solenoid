@@ -2,6 +2,8 @@
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { heightRampColor } from "../palette";
+import { colormapRgb } from "../colormaps";
+import type { ChartOptions } from "../nodes/chartOptions";
 import type { SurfacePayload } from "../chartValue";
 import { iterMin, iterMax } from "../nodes/mathUtils";
 import { canvasFont } from "./chartCore";
@@ -20,7 +22,8 @@ const DH = 0.55;
 const LIGHT = unit([-0.4, -0.6, 0.7]);
 const SURFACE_ALPHA = 0.86;
 
-function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H: number) {
+function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, o: ChartOptions, W: number, H: number) {
+  const shadeOf = (t: number) => (o.cmap ? colormapRgb(o.cmap, t) : null) ?? heightColor(t);
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const scale = Math.min(4, (window.devicePixelRatio || 1) * 2);
@@ -104,7 +107,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
     if (n[2] < 0) n = [-n[0], -n[1], -n[2]];
     n = unit(n);
     const bright = 0.55 + 0.45 * Math.max(0, n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]);
-    const [r, g, b] = heightColor((c00 + c10 + c01 + c11) / 4);
+    const [r, g, b] = shadeOf((c00 + c10 + c01 + c11) / 4);
     const shade = (ch: number) => Math.round(ch * bright);
     const [q00, q10, q11, q01] = [screen(ix, iy, c00), screen(ix + 1, iy, c10), screen(ix + 1, iy + 1, c11), screen(ix, iy + 1, c01)];
     ctx.beginPath();
@@ -131,11 +134,11 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   ctx.globalAlpha = 1;
 }
 
-export function SurfaceView({ payload, width, height }: { payload: SurfacePayload; width: number; height: number }) {
+export function SurfaceView({ payload, options, width, height }: { payload: SurfacePayload; options: ChartOptions; width: number; height: number }) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => {
-    if (ref.current) drawSurface(ref.current, payload, width, height);
+    if (ref.current) drawSurface(ref.current, payload, options, width, height);
   });
   const empty = payload.xs.length < 2 || payload.ys.length < 2 || !payload.z.some((r) => r.some((v) => v != null && Number.isFinite(v)));
   if (empty) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
