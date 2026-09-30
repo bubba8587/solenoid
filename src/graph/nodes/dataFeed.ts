@@ -50,7 +50,7 @@ export class DataFeedNode extends ClassicPreset.Node {
     }
     if (this.needsKey()) {
       this.cachedResult = null;
-      connectionStore.setState(this.id, { status: "error", message: `Add a ${p.label} API key in Settings.` });
+      connectionStore.setState(this.id, { status: "error", message: `Add an API key for ${p.label} in Settings.` });
       return { frame: null };
     }
     const key = p.needsKey ? apiKeyStore.get(p.keyProvider ?? p.id) : "";

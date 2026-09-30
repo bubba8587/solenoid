@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import { useFocusTrap } from "./useFocusTrap";
+import { useDraftCommit } from "./inlineInput";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { CloseIcon } from "./CloseIcon";
 import { documentStore } from "../documentStore";
@@ -16,8 +17,7 @@ function TextRow({ label, value, placeholder, onCommit }: {
   placeholder?: string;
   onCommit: (v: string) => void;
 }) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => { setDraft(value); }, [value]);
+  const field = useDraftCommit(value, (v) => v, (t) => t, onCommit);
   return (
     <label className="solenoid-settings__row">
       <span className="solenoid-settings__row-text">
@@ -25,14 +25,11 @@ function TextRow({ label, value, placeholder, onCommit }: {
       </span>
       <input
         className="sol-docprops__input"
-        value={draft}
+        value={field.draft}
         placeholder={placeholder}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
-          if (e.key === "Escape") { setDraft(value); e.currentTarget.blur(); }
-        }}
-        onBlur={() => { if (draft !== value) onCommit(draft); }}
+        onChange={(e) => field.setDraft(e.target.value)}
+        onKeyDown={field.onKeyDown}
+        onBlur={field.onBlur}
       />
     </label>
   );

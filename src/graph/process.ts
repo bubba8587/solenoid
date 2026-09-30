@@ -122,6 +122,14 @@ let _rerunForce = false;
 let _rerunExact = false;
 const _rerunChanged = new Set<string>();
 
+let _settleWaiters: Array<() => void> = [];
+
+/** Resolves once no pass is running and no rerun is queued, so a caller that just asked for a pass reads its result. */
+export function graphSettled(): Promise<void> {
+  if (!_passActive) return Promise.resolve();
+  return new Promise((resolve) => { _settleWaiters.push(resolve); });
+}
+
 export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
   if (calcModeStore.isManual() && !opts?.force && !isGraphRebuilding()) {
     calcModeStore.markDirty();
@@ -155,6 +163,11 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
     } finally {
       if (exact) calcModeStore.endForceExact();
     }
+  }
+  if (!_passActive && _settleWaiters.length) {
+    const waiters = _settleWaiters;
+    _settleWaiters = [];
+    for (const w of waiters) w();
   }
 }
 

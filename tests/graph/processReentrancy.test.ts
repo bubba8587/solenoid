@@ -4,7 +4,7 @@ import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../../src/graph/schemes";
-import { processGraph, setEditorRefs, requestRecalc } from "../../src/graph/process";
+import { processGraph, setEditorRefs, requestRecalc, graphSettled } from "../../src/graph/process";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 
 // Single-flight invariant (the fix for the flushSync-mount crash): a processGraph call made
@@ -23,6 +23,35 @@ class Src extends ClassicPreset.Node {
 }
 
 describe("processGraph is single-flight (a mid-pass recompute coalesces, never nests)", () => {
+  it("graphSettled waits out the rerun a coalesced call queued", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    await editor.addNode(new Src("a") as unknown as Schemes["Node"]);
+    let resetCount = 0;
+    const origReset = engine.reset.bind(engine);
+    (engine as unknown as { reset: (id?: string) => void }).reset = (id?: string) => { resetCount++; return origReset(id); };
+
+    // Hold the first pass open at its render step, as a slow pass would be.
+    let release!: () => void;
+    const held = new Promise<void>((r) => { release = r; });
+    let first = true;
+    const view = {
+      rerenderNode: async () => { if (first) { first = false; await held; } },
+    } as unknown as View;
+    setEditorRefs(editor, engine, view);
+
+    const running = processGraph();
+    await processGraph(); // an outside caller, coalesced: returns before its pass has run
+    expect(resetCount).toBe(1);
+    let passesAtSettle = -1;
+    const settled = graphSettled().then(() => { passesAtSettle = resetCount; });
+    release();
+    await running;
+    await settled;
+    expect(passesAtSettle).toBe(2);
+  });
+
   it("a recompute fired during the render phase runs no nested pass, and settles as one rerun", async () => {
     const editor = new NodeEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();

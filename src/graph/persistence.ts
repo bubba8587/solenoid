@@ -19,7 +19,7 @@ import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets, rem
 import { packsStore, allPacks } from "./packs";
 import { pushNotice } from "./noticeStore";
 import { documentStore } from "./documentStore";
-import { reportStore } from "./reportStore";
+import "./reportStore"; // registers its forget-all, which closes the report on load
 import { presentationStore } from "./presentationStore";
 import { compositeEditorStore } from "./compositeEditorStore";
 import { paletteStore, reportPaletteStore } from "./palette";
@@ -203,7 +203,6 @@ async function rebuildGraph(
     await chunkYield();
   }
   forgetAllNodes();
-  reportStore.close();
   presentationStore.stop();
   compositeEditorStore.close();
   paletteStore.setDocPalette(g.palette ?? null);

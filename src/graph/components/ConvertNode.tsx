@@ -5,7 +5,7 @@ import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, FormatControllerNode } from
 import {
   applyFormatStyle, FORMAT_STYLE_GROUPS, FORMAT_STYLE_LABELS, type FormatStyle,
 } from "../formatAnnotationStore";
-import { processGraph } from "../process";
+import { notifyGraphChanged, processGraph } from "../process";
 import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { LazySelect } from "./LazySelect";
@@ -124,11 +124,13 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
     const next = e.target.value as FormatStyle;
     node.inFormat = next;
     setInFormat(next);
+    notifyGraphChanged();
   }
   function onOutFormatChange(e: ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value as FormatStyle;
     node.outFormat = next;
     setOutFormat(next);
+    notifyGraphChanged();
   }
 
   const fromCat    = CONVERT_UNIT_DEFS[fromUnit]?.category;
@@ -197,7 +199,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
           );
         })}
       </LazySelect>
-      <div style={{ textAlign: "center", fontSize: "0.65rem", color: "rgba(255,255,255,0.3)", margin: "2px 0" }}>
+      <div style={{ textAlign: "center", fontSize: "0.65rem", color: "var(--text-muted)", margin: "2px 0" }}>
         ↓ convert to
       </div>
       <LazySelect
