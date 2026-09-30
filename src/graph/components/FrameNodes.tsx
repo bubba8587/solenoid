@@ -443,12 +443,16 @@ const ASOF_DIRECTION_OPTIONS: { value: AsofDirection; label: string; title: stri
 export function JoinComponent({ data, emit }: NodeProps<JoinNodeType>) {
   const [how, setHow] = useNodeField(data, "how");
   const [asofDirection, setAsofDirection] = useNodeField(data, "asofDirection");
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
     <NodeShell node={data} emit={emit}>
+      {/* Collapsed, one InlineInputs carries every input, so the card shows one pill, not one per group. */}
+      {collapsed ? <InlineInputs node={data} emit={emit} keys={["left", "right", "leftKey", "rightKey", "tolerance"]} /> : <>
       <InlineInputs node={data} emit={emit} keys={["left", "right"]} />
       <CardSection label="Keys">
         <InlineInputs node={data} emit={emit} keys={["leftKey", "rightKey", "tolerance"]} />
       </CardSection>
+      </>}
       <ArgSelect value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
       {how === "asof" && <SegToggle value={asofDirection} options={ASOF_DIRECTION_OPTIONS} onChange={setAsofDirection} />}
       <FrameOrCubeDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
@@ -835,14 +839,17 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
 // ─── RECONCILE ───────────────────────────────────────────────────────────────
 
 export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>) {
+  const reconcileCollapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const frameOut = data.outputs.frame;
   const summaryOut = data.outputs.summary;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
+      {reconcileCollapsed ? <InlineInputs node={data} emit={emit} keys={["left", "right", "key", "priceColumn", "qtyColumn"]} /> : <>
       <InlineInputs node={data} emit={emit} keys={["left", "right"]} />
       <CardSection label="Columns">
         <InlineInputs node={data} emit={emit} keys={["key", "priceColumn", "qtyColumn"]} />
       </CardSection>
+      </>}
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>

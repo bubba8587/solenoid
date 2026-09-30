@@ -1,4 +1,6 @@
 // [[C100]] chartIsAValue
+import { useSyncExternalStore } from "react";
+import { collapseStore } from "../collapseStore";
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey, type ChartTargetId } from "../nodes/chartOptions";
 import { COLORMAP_LIST } from "../colormaps";
@@ -217,6 +219,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
     setTarget(next);
   }
   const connected = useConnectedInputs(data.id);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const spec = CHART_BUILDER_TARGETS[target];
   const accepted = new Set<string>(chartBuilderKeys(target, data.stringLiterals["layout"]));
   const live = (k: ChartBuilderKey) =>
@@ -236,6 +239,14 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
       <div style={{ padding: "2px 0 4px" }}>
         <ArgSelect value={target} onChange={(t) => void pickTarget(t)} options={TARGET_OPTS} />
       </div>
+      {collapsed ? (
+        // Collapsed, one InlineInputs carries every shown input: the toggle and select rows would hide their sockets, and two groups would draw two pills.
+        <InlineInputs node={data} emit={emit} keys={[
+          ...acc(STR_KEYS), ...TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key }) => key),
+          ...SELECT_KEYS.filter(({ key }) => accepted.has(key)).map(({ key }) => key), ...acc(NUM_KEYS),
+          ...inertStr, ...inertToggles.map(({ key }) => key), ...inertSelects.map(({ key }) => key), ...inertNum,
+        ] as string[]} />
+      ) : <>
       <InlineInputs node={data} emit={emit} keys={acc(STR_KEYS) as string[]} />
       {TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label }) => (
         <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
@@ -258,6 +269,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
           </div>
         </CardSection>
       )}
+      </>}
       <div className="solenoid-node__section-divider" />
       {out && (
         <MeasuredSocketRow side="output" socketKey="result" nodeId={data.id} emit={emit} payload={out.socket}>

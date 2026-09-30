@@ -463,7 +463,7 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
         </div>
       </AdvancedFoot>
       {result != null && node.outputs[outputId] && (
-        <div className="solenoid-composite__output" style={{ marginTop: 4 }}>
+        <div className="solenoid-composite__output solenoid-node__io-row--output" style={{ marginTop: 4 }}>
           <span className="solenoid-node__io-label">
             Solution: {exposed.find((p) => p.id === inputId)?.label ?? "input"}
           </span>
@@ -583,7 +583,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         const value = node.cachedOutputs[p.id] ?? null;
         // MeasuredSocketRow wraps only the box, so the output dot centers on the box, not the label.
         return (
-          <div key={p.id} className="solenoid-composite__output">
+          <div key={p.id} className="solenoid-composite__output solenoid-node__io-row--output">
             <span className="solenoid-node__io-label">{p.label}</span>
             <MeasuredSocketRow side="output" socketKey={p.id} nodeId={node.id} emit={emit} payload={port.socket}>
               {isNumericSeries(value) && <MiniSparkline series={value} />}

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { collapseStore } from "../collapseStore";
+import { CollapsedInputPill } from "./CollapsedInputPill";
 import type { FilterNode as FilterNodeType } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
 import { processGraph } from "../process";
@@ -18,6 +20,7 @@ import { nodeDisplayName } from "../catalogUtils";
 // The frame Filter's rows minus the column picker, since a list has no lanes; Kept rides the hero box and Dropped is the complement.
 export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
   const connected = useConnectedInputs(data.id);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const [combine, setCombine] = useNodeField(data, "combine");
   const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
   const strLiterals = (data.stringLiterals ??= {});
@@ -51,6 +54,10 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
+      {/* Collapsed, every input rides one pill; the condition rows would hide their sockets with them. */}
+      {collapsed ? (
+        <CollapsedInputPill node={data} emit={emit} keys={[...(data.inputs.column ? ["list", "column"] : ["list"]), ...keys]} />
+      ) : (<>
       <InlineInputs node={data} emit={emit} keys={data.inputs.column ? ["list", "column"] : ["list"]} />
       {keys.length > 1 && (
         <SegToggle value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
@@ -92,6 +99,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
       >
         Add Condition
       </button>
+      </>)}
       <MeasuredSocketRow side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result!.socket} hero>
         <ValueDisplay value={data.cachedResult as DisplayValue} />
       </MeasuredSocketRow>

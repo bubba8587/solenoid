@@ -1,4 +1,6 @@
 // [[C95]] commitOnEnter, [[C113]] controlDrivenRetype, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
+import { CollapsedInputPill } from "./CollapsedInputPill";
+import { collapseStore } from "../collapseStore";
 import type React from "react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
@@ -681,9 +683,15 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
   const preview = rate != null ? (data.literals.amount ?? 1) * rate : null;
   const seriesRows = data.cachedSeries?.length ?? 0;
   const frame = data.outputs.frame;
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  const inputKeys = mode === "spot" ? ["amount", "from", "to"] : ["from", "to", "from_date", "to_date"];
 
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
+      {/* Collapsed, every input rides one pill; the currency and date rows would hide their sockets with them. */}
+      {collapsed ? (
+        <CollapsedInputPill node={data} emit={emit} keys={inputKeys.filter((k) => data.inputs[k])} />
+      ) : (<>
       <div className="sol-conn">
         <SegToggle value={mode} options={FX_MODE_OPTIONS} onChange={(o) => void pickFxMode(data, o, setMode)} />
       </div>
@@ -696,6 +704,7 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
           <FxDateRow data={data} emit={emit} socketKey="to_date" label="TO DATE" />
         </>
       )}
+      </>)}
       <div className="sol-conn">
         <div className="sol-conn__note">Frankfurter: ECB reference rates, once per business day.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />

@@ -196,6 +196,13 @@
   display: none;
 }
 
+/* An emptied body is only its padding (20px), thinner than the 28px input pill centered on it, which then hangs off the card:
+   collapsed, a body holding the pill keeps the pill's height plus 4px either side. */
+.solenoid-node--collapsed .solenoid-node__body:has(.solenoid-node__input-pill) {
+  box-sizing: border-box;
+  min-height: 36px;
+}
+
 .solenoid-node__collapsed-only { display: none; }
 .solenoid-node--collapsed .solenoid-node__collapsed-only {
   display: flex;

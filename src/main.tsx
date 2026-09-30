@@ -102,5 +102,6 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 if (import.meta.env.DEV) {
   void import("./graph/seedTune");
   void import("./graph/census");
+  void import("./graph/collapseSweep");
   void import("./devCopyEdit");
 }

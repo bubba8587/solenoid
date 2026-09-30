@@ -1,4 +1,5 @@
 // [[C43]] oneFlowSurface, [[B10]] reactFlowView
+import { registerDevRfStore } from "./devRfStores";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   ReactFlow,
@@ -203,6 +204,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const screenMouseRef = useRef({ x: 0, y: 0 });
   const { setViewport, getViewport, screenToFlowPosition, getNodes } = useReactFlow();
   const storeApi = useStoreApi();
+  useEffect(() => (import.meta.env.DEV ? registerDevRfStore(storeApi) : undefined), [storeApi]);
   const nodesInitialized = useNodesInitialized();
   const fitDoneRef = useRef(false);
   useEffect(() => {
