@@ -6,6 +6,7 @@ import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, typ
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
+import { dropInputCables } from "./cablePrune";
 import { stopDragStart } from "../coarse";
 import { CardSection } from "./CardSection";
 
@@ -208,6 +209,13 @@ const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "c
 export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNodeType>) {
   const out = data.outputs.result;
   const [target, setTarget] = useNodeField(data, "target");
+  async function pickTarget(next: ChartTargetId) {
+    if (next === data.target) return;
+    const keep = new Set<string>(chartBuilderKeys(next, data.stringLiterals["layout"]));
+    await dropInputCables(data.id, (k) => k !== "result" && !keep.has(k));
+    data.setTarget(next);
+    setTarget(next);
+  }
   const connected = useConnectedInputs(data.id);
   const spec = CHART_BUILDER_TARGETS[target];
   const accepted = new Set<string>(chartBuilderKeys(target, data.stringLiterals["layout"]));
@@ -226,7 +234,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
-        <ArgSelect value={target} onChange={setTarget} options={TARGET_OPTS} />
+        <ArgSelect value={target} onChange={(t) => void pickTarget(t)} options={TARGET_OPTS} />
       </div>
       <InlineInputs node={data} emit={emit} keys={acc(STR_KEYS) as string[]} />
       {TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label }) => (

@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";
-import { parseChartOptions, serializeChartOptions, type ChartOptions, type ChartTargetId } from "./chartOptions";
+import { parseChartOptions, serializeChartOptions, chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d, equalWidthBins, binCountError } from "./visualOps";
 export { histogram2d, type Histogram2d } from "./visualOps";
@@ -1497,6 +1497,14 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("vmax",      numIn("Color max"));
     this.addInput("center",    numIn("Color center"));
     this.addOutput("result", strOut("Options"));
+  }
+
+  /** Switch the figure, clearing every field the new one does not read; the card removes those fields' cables first. */
+  setTarget(next: ChartTargetId): void {
+    const keep = new Set<string>(chartBuilderKeys(next, this.stringLiterals.layout));
+    for (const k of Object.keys(this.stringLiterals)) if (!keep.has(k)) delete this.stringLiterals[k];
+    for (const k of Object.keys(this.literals)) if (!keep.has(k)) delete this.literals[k];
+    this.target = next;
   }
 
   data(inputs: Record<string, unknown[]>) {

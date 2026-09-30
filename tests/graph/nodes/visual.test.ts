@@ -205,6 +205,17 @@ describe("Chart Builder", () => {
     expect(b.data({})).toEqual({ result: "title=T;color=#123456" });
   });
 
+  it("switching the target clears every field the new figure does not read", () => {
+    const b = new ChartBuilderNode({ target: "scatter" });
+    Object.assign(b.stringLiterals, { title: "T", color: "#123456", x: "t", aspect: "equal" });
+    Object.assign(b.literals, { markersize: 4, fontsize: 12, xmin: 0 });
+    b.setTarget("heatmap");
+    expect(b.target).toBe("heatmap");
+    expect(b.stringLiterals).toEqual({ title: "T", aspect: "equal" });
+    expect(b.literals).toEqual({ fontsize: 12 });
+    expect(b.data({})).toEqual({ result: "title=T;aspect=equal;fontsize=12" });
+  });
+
   it("every target key is a real builder field, and every target reads title", () => {
     const fields = new Set<string>([...CHART_BUILDER_FIELDS.str, ...CHART_BUILDER_FIELDS.num]);
     for (const { id, keys } of CHART_TARGET_LIST) {
