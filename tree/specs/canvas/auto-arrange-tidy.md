@@ -50,7 +50,7 @@ A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a m
 
 `elkTidyLayout` builds the graph and applies the result through a `translate` callback. elkjs is a heavy chunk, so it loads lazily on the first Tidy (`makeEnsureElk`); a failed load clears the cache so the next Tidy retries, and a surface destroyed during the load returns null.
 
-- The root options are `ELK_ROOT_OPTIONS`: `elk.algorithm = layered`, `elk.hierarchyHandling = INCLUDE_CHILDREN`, `elk.edgeRouting = POLYLINE`. This constant is their one home: `elkTidyLayout` spreads it and the integration test consumes it verbatim, so the two cannot drift ([[engineering#One declaration per fact]]). `tidyLayerSplitFor` is shared with the test the same way.
+- The root options are `ELK_ROOT_OPTIONS`: `elk.algorithm = layered`, `elk.edgeRouting = POLYLINE`. There is no `elk.hierarchyHandling`: the graph ELK sees is flat (a group is one rectangle), and `INCLUDE_CHILDREN` switches off ELK's packing of disconnected components, which stacked every unconnected card or collapsed group into one tall column. Packing lays them out as a block (`tidyArrangeGroups.test.ts` pins it). This constant is their one home: `elkTidyLayout` spreads it and the integration test consumes it verbatim, so the two cannot drift ([[engineering#One declaration per fact]]). `tidyLayerSplitFor` is shared with the test the same way.
 - Each card becomes a child with its ports sorted by socket index and `portConstraints: FIXED_POS`. Edges connect port ids (`${nodeId}_${key}_${side}`); an edge with an empty socket key connects the node itself.
 - Docked Format Controllers are adornments, not layout nodes. They are left out, and their inline cables are bridged (host → FC → consumer becomes host → consumer) so the real graph still lays out.
 - ELK only sees edges whose both ends are in the layout, because an edge to an excluded node makes ELK throw. Edges into a group's members are remapped onto the group as node-level edges, and edges into a cluster follower are remapped onto its cluster leader.
@@ -84,17 +84,17 @@ The `tidyAlign` setting chooses where the port column sits:
 | `tidyDensity` | `elk.layered.spacing.nodeNodeBetweenLayers` / `elk.spacing.nodeNode` | compact 36 / 24, normal 55 / 38, airy 80 / 56 |
 | `tidyWidthCap` | layer unzipping | off, 2, 3 or 4 cards per layer |
 
-A width cap switches on ELK's layer unzipping. The root gets `elk.layered.layerUnzipping.strategy = ALTERNATING` (omitted when the cap is off), and the port preset's per-node `options` hook stamps `elk.layered.layerUnzipping.layerSplit` on every card. The split must be per card, because ELK ignores it on the root. Its value is `tidyLayerSplitFor(nodeCount, cap) = ceil(nodeCount / cap)`, at least 1. The count is the whole layout's node count, since per-layer widths are unknown before ELK runs. That over-splits a graph with cards outside the widest layer, which is safe: a layer of W cards has W ≤ nodeCount, so W / split ≤ cap. Layer unzipping needs elkjs 0.11 or later; the project is on 0.12.
+A width cap switches on ELK's layer unzipping. The root gets `elk.layered.layerUnzipping.strategy = ALTERNATING` (omitted when the cap is off), and the port preset's per-node `options` hook stamps `elk.layered.layerUnzipping.layerSplit` on every card. The split must be per card, because ELK ignores it on the root. `elkTidyLayout` computes it for each layout from the node count and the setting, so every caller, the landing page's scene included, gets its own; no split outlives a layout. Its value is `tidyLayerSplitFor(nodeCount, cap) = ceil(nodeCount / cap)`, at least 1. The count is the whole layout's node count, since per-layer widths are unknown before ELK runs. That over-splits a graph with cards outside the widest layer, which is safe: a layer of W cards has W ≤ nodeCount, so W / split ≤ cap. Layer unzipping needs elkjs 0.11 or later; the project is on 0.12.
 
 ## Flipped cards
 
 A card in `socketFlipStore` reads from its right and emits to its left, so Tidy lays it out as a predecessor. Whenever either end of an edge is flipped, the edge is reversed and its ports are dropped, making it a node-level edge so the mirrored side never fights the symmetric ports. The test reads each end's ELK-visible id, so a grouped member counts as its group, which is never flipped. In a RIGHT layout a flipped sink lands to the left of its source.
 
-It also lands below its layer-mates, not above. When any ELK-visible card is flipped, `elkTidyLayout` lists the flipped cards last among the children and adds `FLIPPED_MODEL_ORDER_OPTIONS` (`elk.layered.considerModelOrder.strategy = NODES_AND_EDGES` and `elk.layered.crossingMinimization.forceNodeModelOrder = true`). ELK needs the strategy set alongside the force flag, because the flag assumes the model order has survived into crossing minimization. Forced model order then sorts them to the trailing edge of their layer. A layout with no flipped card gets neither change, so it is identical to an ordinary layout. `tidyArrangeGroups.test.ts` pins both the placement and the unflipped options and children.
+It also lands below its layer-mates, not above. When any ELK-visible card is flipped, `elkTidyLayout` lists the flipped cards last among the children and adds `FLIPPED_MODEL_ORDER_OPTIONS` (`elk.layered.considerModelOrder.strategy = NODES_AND_EDGES`, `elk.layered.crossingMinimization.forceNodeModelOrder = true` and `elk.hierarchyHandling = INCLUDE_CHILDREN`). ELK needs the strategy set alongside the force flag, because the flag assumes the model order has survived into crossing minimization, and the forced order places a flipped card last in its layer only under `INCLUDE_CHILDREN`, so a layout with a flipped card gives up component packing. Forced model order then sorts them to the trailing edge of their layer. A layout with no flipped card gets neither change, so it is identical to an ordinary layout. `tidyArrangeGroups.test.ts` pins both the placement and the unflipped options and children.
 
 ## Anchoring the result
 
-ELK lays out from the origin, so the result is shifted back. The anchor keeps the flow's **leading edge and cross-axis center**, not the top-left corner.
+ELK lays out from the origin, so the result is shifted back. The anchor keeps the flow's **leading edge and cross-axis center**, not the top-left corner. The footprint before and the footprint ELK returns are both the union of the boxes ELK was handed (a cluster's block, a host with its docked FC's reservation, a group at its measured size), so the same measure stands on both sides.
 
 - Under RIGHT it keeps the old cluster's left edge and vertical center.
 - Under DOWN it keeps the top edge and horizontal center.
@@ -106,13 +106,11 @@ Both references are deterministic in either direction, so Cleanup's tidy-then-au
 
 The selection is cleared for the layout and restored afterwards, because translating a selected card triggers the group-follow, which would compound across the per-card placement. These steps run in order after ELK returns:
 
-1. Cluster followers move to their offsets from the new leader position.
-2. The anchor shift moves every layout target.
-3. Each laid-out group's members move by the group's net delta.
-4. The pin-drop loop clears inline sizes (see Cards stay content-sized).
-5. Within a group: the box grows to wrap its members, and may push its neighbors (see Growing a group).
-6. Autosave is scheduled, the selection is restored, and a Tidy of a selection zooms to it. Scheduling here is enough: `view.translate` schedules nothing, and the autosave debounce reads positions when it flushes, so the deferred settle below is still captured.
-7. One frame later, so the sockets have rendered at the new host positions before they are measured, docked FCs snap back onto their hosts; standoffs settle with `forceLock`, so a cluster is pulled back into a rigid block rather than merely band-satisfied; the no-overlap pass runs ([[C112]] noOverlapsEver, skipped under Cleanup's `skipPush`, whose own top-level Tidy runs it), preferring the layout targets (or the group, within a group), so a selection Tidy that lands on an unselected card pushes that card aside and a tidied card on a locked group moves off it; and a whole-canvas Tidy waits one more frame and then fits the view with `fitAll`. Never a raw `zoomAt`, which centers in the full container and lands content under the docked panels.
+1. Every card moves once, straight to its final spot: ELK's position plus the anchor shift, a cluster's cards at their offsets from their block, and a laid-out group's members by the group's move. Nothing is re-measured between ELK and the move.
+2. The pin-drop loop clears inline sizes (see Cards stay content-sized).
+3. Within a group: the box grows to wrap its members, and may push its neighbors (see Growing a group).
+4. Autosave is scheduled, the selection is restored, and a Tidy of a selection zooms to it. Scheduling here is enough: `view.translate` schedules nothing, and the autosave debounce reads positions when it flushes, so the deferred settle below is still captured.
+5. One frame later, so the sockets have rendered at the new host positions before they are measured, docked FCs snap back onto their hosts; standoffs settle with `forceLock`, so a cluster is pulled back into a rigid block rather than merely band-satisfied; the no-overlap pass runs ([[C112]] noOverlapsEver, skipped under Cleanup's `skipPush`, whose own top-level Tidy runs it), preferring the layout targets (or the group, within a group), so a selection Tidy that lands on an unselected card pushes that card aside and a tidied card on a locked group moves off it; and a whole-canvas Tidy waits one more frame and then fits the view with `fitAll`. Never a raw `zoomAt`, which centers in the full container and lands content under the docked panels.
 
 ## Cards stay content-sized
 
@@ -145,9 +143,10 @@ Cleanup passes `skipPush: true` to its per-group arranges, because it runs its o
 1. Clear the node and cable selection.
 2. Tidy every unlocked group's members with `skipPush: true`.
 3. Wait two frames (the snap-back's animation frame, then its translate) so the deferred FC snap-backs land, then autofit every unlocked group. Autofitting earlier would pad the boxes around stale FC positions.
-4. Collapse every unlocked group that is still expanded.
-5. Tidy the top level, with groups as rigid collapsed units and no confirmation.
-6. Wait a frame, fit the view, and schedule autosave.
+4. Collapse every unlocked group that is still expanded, then wait two frames: React Flow measures a card a frame after it renders, and a top-level Tidy that read the expanded sizes laid the collapsed groups out far apart, so a second Cleanup moved everything again.
+5. Tidy the top level, with groups as rigid collapsed units and no confirmation. That Tidy fits the view and schedules the autosave.
+
+A second Cleanup moves nothing unless a card's content changed size in between (a Report still rendering, say).
 
 ## Align and distribute
 

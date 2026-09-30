@@ -532,6 +532,30 @@ describe("Cleanup with an expanded group (headless)", () => {
   });
 });
 
+describe("Tidy packs disconnected cards (real ELK)", () => {
+  it("lays nine unconnected cards out as a block, not a single tall column", async () => {
+    settingsStore.set("tidyDirection", "right");
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const cards = Array.from({ length: 9 }, () => new ArithmeticNode({ op: "add" }));
+    for (const [i, n] of cards.entries()) {
+      await editor.addNode(n as never);
+      (n as unknown as { width: number; height: number }).width = 180;
+      (n as unknown as { width: number; height: number }).height = 100;
+      addView(n.id, 0, i * 300, 180, 100);
+    }
+    const arrangeFn = makeArrangeFn({ editor, view, ensureElk: makeEnsureElk(() => false), repositionDockedTo: () => {}, isDestroyed: () => false });
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    const boxes = cards.map((n) => boxOf(view, n.id));
+    const w = Math.max(...boxes.map((b) => b.x + b.w)) - Math.min(...boxes.map((b) => b.x));
+    const h = Math.max(...boxes.map((b) => b.y + b.h)) - Math.min(...boxes.map((b) => b.y));
+    expect(new Set(boxes.map((b) => Math.round(b.x))).size).toBeGreaterThan(1);
+    expect(h / w).toBeLessThan(3);
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i], boxes[j])).toBe(false);
+  });
+});
+
 describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
   afterEach(() => { socketFlipStore.clear(); settingsStore.set("tidyDirection", "right"); });
 

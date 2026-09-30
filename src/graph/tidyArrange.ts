@@ -33,9 +33,7 @@ export interface TidyDeps {
 
 export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
 
-let tidyLayerSplit = 0;
-
-export function symmetricPortPreset(direction: TidyDirection) {
+export function symmetricPortPreset(direction: TidyDirection, layerSplit = 0) {
   const down = direction === "down";
   return {
     port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
@@ -49,21 +47,57 @@ export function symmetricPortPreset(direction: TidyDirection) {
         : { x: 0, y: along, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
     },
     options(_id: string): Record<string, string | number | boolean> {
-      return tidyLayerSplit > 0
-        ? { "elk.layered.layerUnzipping.layerSplit": String(tidyLayerSplit) }
+      return layerSplit > 0
+        ? { "elk.layered.layerUnzipping.layerSplit": String(layerSplit) }
         : {};
     },
   };
 }
 
-export function tidyOptionsFromSettings(): Record<string, string> {
+function widthCapFromSettings(): TidyWidthCap {
   const cap = settingsStore.get("tidyWidthCap");
+  return cap === "off" ? 0 : (Number(cap) as TidyWidthCap);
+}
+
+export function tidyOptionsFromSettings(): Record<string, string> {
   return tidyLayoutOptions({
     direction: settingsStore.get("tidyDirection"),
     density: settingsStore.get("tidyDensity"),
-    widthCap: cap === "off" ? 0 : (Number(cap) as TidyWidthCap),
+    widthCap: widthCapFromSettings(),
   });
 }
+
+const isDockedFc = (n: Schemes["Node"]) => n instanceof FormatControllerNode && !!dockedNodeStore.get(n.id);
+
+/** The cards a top-level Tidy places: no docked FC, no group member. The confirmation counts with it, or the dialog misstates the scope. */
+function countLayoutUnits(nodes: readonly Schemes["Node"][], memberIds: ReadonlySet<string>): number {
+  return nodes.filter((n) => !isDockedFc(n) && !memberIds.has(n.id)).length;
+}
+
+type Box = { x: number; y: number; w: number; h: number };
+function unionBox(boxes: Iterable<Box>): { left: number; top: number; right: number; bottom: number } {
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+  for (const b of boxes) {
+    left = Math.min(left, b.x); top = Math.min(top, b.y);
+    right = Math.max(right, b.x + b.w); bottom = Math.max(bottom, b.y + b.h);
+  }
+  return { left, top, right, bottom };
+}
+
+/** The node as ELK should see it: a reserved size, and for a Conduit only its wired lanes. Nothing is written to the card. */
+function asLaidOut(n: Schemes["Node"], o: { w?: number; h?: number; inputs?: object; outputs?: object }): Schemes["Node"] {
+  return new Proxy(n, {
+    get(target, prop) {
+      if (prop === "width" && o.w !== undefined) return o.w;
+      if (prop === "height" && o.h !== undefined) return o.h;
+      if (prop === "inputs" && o.inputs) return o.inputs;
+      if (prop === "outputs" && o.outputs) return o.outputs;
+      return Reflect.get(target, prop);
+    },
+  });
+}
+
+const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
 export type TidyDirection = "right" | "down";
 export type TidyDensity = "compact" | "normal" | "airy";
@@ -77,11 +111,13 @@ const TIDY_DENSITY_SPACING: Record<TidyDensity, readonly [number, number]> = {
 
 export const ELK_ROOT_OPTIONS = {
   "elk.algorithm": "layered",
-  "elk.hierarchyHandling": "INCLUDE_CHILDREN",
   "elk.edgeRouting": "POLYLINE",
 } as const;
 
+// Forced model order puts a flipped card last in its layer only under INCLUDE_CHILDREN (pinned by the flipped-sink
+// test), and INCLUDE_CHILDREN turns off component packing, so only a layout with a flipped card pays that price.
 export const FLIPPED_MODEL_ORDER_OPTIONS = {
+  "elk.hierarchyHandling": "INCLUDE_CHILDREN",
   "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
   "elk.layered.crossingMinimization.forceNodeModelOrder": "true",
 } as const;
@@ -138,7 +174,7 @@ export async function elkTidyLayout(
     translate: (id: string, x: number, y: number) => Promise<unknown> | unknown;
   },
 ): Promise<void> {
-  const preset = symmetricPortPreset(settingsStore.get("tidyDirection"));
+  const preset = symmetricPortPreset(settingsStore.get("tidyDirection"), tidyLayerSplitFor(args.nodes.length, widthCapFromSettings()));
   const portId = (id: string, key: string, side: string) => [id, key, side].join("_");
   const byIndex = (rec: Record<string, { index?: number } | undefined>) =>
     Object.entries(rec).sort((a, b) => (a[1]?.index ?? 0) - (b[1]?.index ?? 0));
@@ -195,45 +231,28 @@ export async function elkTidyLayout(
 
 export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
   const { editor, view, ensureElk, repositionDockedTo, isDestroyed } = deps;
+  const nodesOf = (ids: readonly string[]) => ids.map((id) => editor.getNode(id)).filter((n): n is Schemes["Node"] => !!n);
   return async (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => {
     const all = editor.getNodes();
     const selected = all.filter((n) => (n as { selected?: boolean }).selected);
-
     const allGroups = all.filter((n): n is GroupNode => n instanceof GroupNode);
     const memberOf = new Map<string, GroupNode>();
     for (const g of allGroups) for (const m of g.members) memberOf.set(m, g);
 
-    const forcedGroup = opts?.groupId
-      ? allGroups.find((g) => g.id === opts.groupId) ?? null
-      : null;
-
-    const targets = forcedGroup
-      ? forcedGroup.members.map((id) => editor.getNode(id)).filter((n): n is Schemes["Node"] => !!n)
-      : (selected.length > 0 ? selected : all);
+    // The scope: one group's members (forced, or a selection wholly inside one group), else the selection, else all.
+    const forcedGroup = opts?.groupId ? allGroups.find((g) => g.id === opts.groupId) ?? null : null;
+    const selectionGroup = !forcedGroup && selected.length > 0 && selected.every((n) => memberOf.get(n.id) === memberOf.get(selected[0].id))
+      ? memberOf.get(selected[0].id) ?? null : null;
+    const withinGroup = forcedGroup ?? selectionGroup;
+    const targets = forcedGroup ? nodesOf(forcedGroup.members) : selected.length > 0 ? selected : all;
     if (targets.length === 0) return;
+    const tidyNodes = withinGroup ? nodesOf(withinGroup.members) : targets;
 
-    let withinGroup: GroupNode | null = forcedGroup;
-    let tidyNodes: Schemes["Node"][] = targets;
-    if (!forcedGroup && selected.length > 0 && selected.every((n) => memberOf.has(n.id))) {
-      const grp = memberOf.get(selected[0].id)!;
-      if (selected.every((n) => memberOf.get(n.id) === grp)) {
-        withinGroup = grp;
-        tidyNodes = grp.members.map((id) => editor.getNode(id)).filter((n): n is Schemes["Node"] => !!n);
-      }
-    }
-
-    if (!withinGroup) {
-      // Count layout units with layoutTargets' predicate below, or the dialog misstates the scope.
-      const arrangedCount = targets.filter(
-        (n) => !(n instanceof FormatControllerNode && !!dockedNodeStore.get(n.id)) && !memberOf.has(n.id),
-      ).length;
-      if (!opts?.skipConfirm && arrangedCount > TIDY_CONFIRM_THRESHOLD) {
-        const scope = selected.length > 0 ? `${arrangedCount} selected` : `all ${arrangedCount}`;
-        const ok = await requestConfirm({
-          message: `Tidy will rearrange ${scope} nodes. Continue?`,
-          confirmLabel: "Tidy",
-        });
-        if (!ok) return;
+    if (!withinGroup && !opts?.skipConfirm) {
+      const count = countLayoutUnits(targets, new Set(memberOf.keys()));
+      if (count > TIDY_CONFIRM_THRESHOLD) {
+        const scope = selected.length > 0 ? `${count} selected` : `all ${count}`;
+        if (!await requestConfirm({ message: `Tidy will rearrange ${scope} nodes. Continue?`, confirmLabel: "Tidy" })) return;
       }
     }
 
@@ -242,52 +261,42 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     if (selectedIds.length > 0) unselectAllNodesFromProcess();
 
     const conns = editor.getConnections();
-    const dockedFcIds = new Set(
-      tidyNodes
-        .filter((n) => n instanceof FormatControllerNode && !!dockedNodeStore.get(n.id))
-        .map((n) => n.id),
-    );
-    const memberIds = new Set(memberOf.keys());
-    const layoutTargets = tidyNodes.filter(
-      (n) =>
-        !dockedFcIds.has(n.id) &&
-        (withinGroup ? true : !memberIds.has(n.id) && !(n instanceof GroupNode && n.lockedPosition)),
-    );
+    const dockedFcIds = new Set(tidyNodes.filter(isDockedFc).map((n) => n.id));
+    const layoutTargets = tidyNodes.filter((n) =>
+      !dockedFcIds.has(n.id) && (withinGroup || (!memberOf.has(n.id) && !(n instanceof GroupNode && n.lockedPosition))));
 
+    // Standoff clusters whose cards are all being laid out move as one block, reserved by its leader.
     const looseTargetIds = new Set(layoutTargets.map((n) => n.id));
     const clusterLeaderOf = new Map<string, string>();
     const clusterMembersOf = new Map<string, string[]>();
+    const clusterBox = new Map<string, Box>();
     const clusterMemberOffset = new Map<string, { dx: number; dy: number }>();
-    const clusterLeaderSize = new Map<string, { w: number; h: number }>();
-    const clusterFollowers = new Set<string>();
     if (!standoffStore.isEmpty()) {
-      const boxOf = (id: string) => measuredBox(view, id, editor);
       for (const cluster of standoffClusters(liveStandoffs(groupCollapseStore.isNodeHidden))) {
         if (!cluster.every((id) => looseTargetIds.has(id))) continue;
         const boxes = cluster
-          .map((id) => [id, boxOf(id)] as const)
-          .filter((e): e is [string, NonNullable<ReturnType<typeof boxOf>>] => !!e[1]);
+          .map((id) => [id, measuredBox(view, id, editor)] as const)
+          .filter((e): e is [string, Box] => !!e[1]);
         if (boxes.length < 2) continue;
-        const ox = Math.min(...boxes.map(([, b]) => b.x));
-        const oy = Math.min(...boxes.map(([, b]) => b.y));
-        const ex = Math.max(...boxes.map(([, b]) => b.x + b.w));
-        const ey = Math.max(...boxes.map(([, b]) => b.y + b.h));
+        const u = unionBox(boxes.map(([, b]) => b));
         const leader = boxes.slice().sort((a, b) => {
           const ga = editor.getNode(a[0]) instanceof GroupNode ? 1 : 0;
           const gb = editor.getNode(b[0]) instanceof GroupNode ? 1 : 0;
           return ga !== gb ? ga - gb : (a[1].x + a[1].y) - (b[1].x + b[1].y);
         })[0][0];
         clusterMembersOf.set(leader, boxes.map(([id]) => id));
-        clusterLeaderSize.set(leader, { w: ex - ox, h: ey - oy });
+        clusterBox.set(leader, { x: u.left, y: u.top, w: u.right - u.left, h: u.bottom - u.top });
         for (const [id, b] of boxes) {
           clusterLeaderOf.set(id, leader);
-          clusterMemberOffset.set(id, { dx: b.x - ox, dy: b.y - oy });
-          if (id !== leader) clusterFollowers.add(id);
+          clusterMemberOffset.set(id, { dx: b.x - u.left, dy: b.y - u.top });
         }
       }
     }
     const elkId = (id: string) => clusterLeaderOf.get(id) ?? id;
+    const elkNodes = layoutTargets.filter((n) => elkId(n.id) === n.id);
+    const elkVisible = new Set(elkNodes.map((n) => n.id));
 
+    // Edges ELK can see: docked FCs bridged out, edges into a group's members moved onto the group, into a follower onto its leader.
     const bridges: Schemes["Connection"][] = [];
     for (const fcId of dockedFcIds) {
       const ins  = conns.filter((c) => c.target === fcId && c.targetInput === "in");
@@ -315,20 +324,12 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         } as unknown as Schemes["Connection"]);
       }
     }
-    const elkVisible = new Set(
-      layoutTargets.filter((n) => !clusterFollowers.has(n.id)).map((n) => n.id),
-    );
-    const subsetConns = [...conns, ...bridges].flatMap((c) => {
+    const elkConns = [...conns, ...bridges].flatMap((c) => {
       const s = elkId(c.source);
       const t = elkId(c.target);
       if (s === t || !elkVisible.has(s) || !elkVisible.has(t)) return [];
-      const flipEdge = socketFlipStore.get(s) || socketFlipStore.get(t);
-      if (flipEdge) {
-        return [{
-          ...c,
-          source: t, sourceOutput: "",
-          target: s, targetInput: "",
-        } as unknown as Schemes["Connection"]];
+      if (socketFlipStore.get(s) || socketFlipStore.get(t)) {
+        return [{ ...c, source: t, sourceOutput: "", target: s, targetInput: "" } as unknown as Schemes["Connection"]];
       }
       return [{
         ...c,
@@ -336,199 +337,93 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         target: t, targetInput: t !== c.target ? "" : c.targetInput,
       } as unknown as Schemes["Connection"]];
     });
-    const layoutTargetIds = new Set(layoutTargets.map((n) => n.id));
+
+    // A host with a docked output FC reserves the FC's area too, so no neighbor packs into it.
     const hostFootprint = new Map<string, { w: number; h: number }>();
     for (const fcId of dockedFcIds) {
       const fc = editor.getNode(fcId);
-      if (!(fc instanceof FormatControllerNode) || fc.side !== "output") continue;
-      if (!layoutTargetIds.has(fc.hostNodeId)) continue;
+      if (!(fc instanceof FormatControllerNode) || fc.side !== "output" || !looseTargetIds.has(fc.hostNodeId)) continue;
       const host = editor.getNode(fc.hostNodeId);
       const hostPos = view.position(fc.hostNodeId);
       if (!host || !hostPos) continue;
       const hostBox = measuredBox(view, fc.hostNodeId, editor) ?? { w: host.width, h: host.height };
       const fcBox = measuredBox(view, fcId, editor) ?? { w: fc.width, h: fc.height };
       const sc = getSocketScreenCenter(view, fc.hostNodeId, fc.socketKey, "output");
-      const socketLocalY = sc
-        ? screenToCanvas(view, view.container, sc.x, sc.y).y - hostPos.y
-        : hostBox.h / 2;
+      const socketLocalY = sc ? screenToCanvas(view, view.container, sc.x, sc.y).y - hostPos.y : hostBox.h / 2;
       const prev = hostFootprint.get(fc.hostNodeId) ?? { w: hostBox.w, h: hostBox.h };
-      hostFootprint.set(fc.hostNodeId, {
-        w: prev.w + fcBox.w + 8,
-        h: Math.max(prev.h, socketLocalY + fcBox.h / 2),
-      });
+      hostFootprint.set(fc.hostNodeId, { w: prev.w + fcBox.w + 8, h: Math.max(prev.h, socketLocalY + fcBox.h / 2) });
     }
 
-    const proxyNodes = layoutTargets.filter((n) => !clusterFollowers.has(n.id)).map((n) => {
-      const clusterSize = clusterLeaderSize.get(n.id);
-      if (clusterSize && !(n instanceof GroupNode)) {
-        return new Proxy(n, {
-          get(target, prop) {
-            if (prop === "width") return clusterSize.w;
-            if (prop === "height") return clusterSize.h;
-            return Reflect.get(target, prop);
-          },
-        });
-      }
+    // What ELK lays out, and where each of those boxes sits now: a cluster by its block, anything else by its card.
+    const elkBoxes = elkNodes.map((n) => {
+      const cluster = clusterBox.get(n.id);
+      const from = cluster ?? view.position(n.id);
+      let laid: Schemes["Node"];
       if (n instanceof GroupNode) {
         const gb = measuredBox(view, n.id, editor);
-        const gw = clusterSize?.w ?? (gb?.w || n.width);
-        const gh = clusterSize?.h ?? (gb?.h || n.height);
-        return new Proxy(n, {
-          get(target, prop) {
-            if (prop === "width") return gw;
-            if (prop === "height") return gh;
-            if (prop === "inputs")  return {};
-            if (prop === "outputs") return {};
-            return Reflect.get(target, prop);
-          },
-        });
+        laid = asLaidOut(n, { w: cluster?.w ?? (gb?.w || n.width), h: cluster?.h ?? (gb?.h || n.height), inputs: {}, outputs: {} });
+      } else if (cluster) {
+        laid = asLaidOut(n, { w: cluster.w, h: cluster.h });
+      } else {
+        const size = hostFootprint.get(n.id) ?? measuredBox(view, n.id, editor);
+        laid = asLaidOut(n, { w: size?.w, h: size?.h, ...(n instanceof ConduitNode ? wiredLanes(n, conns) : {}) });
       }
-      const fp = hostFootprint.get(n.id);
-      const isBundler = n instanceof ConduitNode;
-      if (!fp && !isBundler) {
-        const b = measuredBox(view, n.id, editor);
-        if (!b || (b.w === n.width && b.h === n.height)) return n;
-        return new Proxy(n, {
-          get(target, prop) {
-            if (prop === "width") return b.w;
-            if (prop === "height") return b.h;
-            return Reflect.get(target, prop);
-          },
-        });
-      }
-      let filteredInputs:  Record<string, unknown> | undefined;
-      let filteredOutputs: Record<string, unknown> | undefined;
-      if (isBundler) {
-        const usedInputs = new Set<string>();
-        const usedOutputs = new Set<string>();
-        for (const c of conns) {
-          if (c.target === n.id && typeof c.targetInput === "string") usedInputs.add(c.targetInput);
-          if (c.source === n.id && typeof c.sourceOutput === "string") usedOutputs.add(c.sourceOutput);
-        }
-        if (usedInputs.size  === 0) usedInputs.add(Object.keys(n.inputs)[0]);
-        if (usedOutputs.size === 0) usedOutputs.add(Object.keys(n.outputs)[0]);
-        filteredInputs = {}; filteredOutputs = {};
-        for (const k of usedInputs)  filteredInputs[k]  = (n.inputs  as Record<string, unknown>)[k];
-        for (const k of usedOutputs) filteredOutputs[k] = (n.outputs as Record<string, unknown>)[k];
-      }
-      return new Proxy(n, {
-        get(target, prop) {
-          if (fp && prop === "width")  return fp.w;
-          if (fp && prop === "height") return fp.h;
-          if (filteredInputs  && prop === "inputs")  return filteredInputs;
-          if (filteredOutputs && prop === "outputs") return filteredOutputs;
-          return Reflect.get(target, prop);
-        },
-      });
+      return { node: laid, from: from ? { x: from.x, y: from.y, w: laid.width, h: laid.height } : null };
     });
-    const down = settingsStore.get("tidyDirection") === "down";
-    let origMinX = Infinity, origMinY = Infinity;
-    let targetCx = 0, targetCy = 0;
-    if (withinGroup) {
-      const gv = view.position(withinGroup.id);
-      if (gv) {
-        const left = gv.x + GROUP_PAD;
-        const right = gv.x + withinGroup.width - GROUP_PAD;
-        const top = gv.y + GROUP_HEADER + GROUP_PAD;
-        const bottom = gv.y + withinGroup.height - GROUP_PAD;
-        origMinX = left; origMinY = top;
-        targetCx = (left + right) / 2;
-        targetCy = (top + bottom) / 2;
-      }
-    } else {
-      let oldLeft = Infinity, oldRight = -Infinity, oldTop = Infinity, oldBottom = -Infinity;
-      for (const n of layoutTargets) {
-        const b = measuredBox(view, n.id, editor);
-        if (!b) continue;
-        oldLeft = Math.min(oldLeft, b.x); oldRight = Math.max(oldRight, b.x + b.w);
-        oldTop = Math.min(oldTop, b.y); oldBottom = Math.max(oldBottom, b.y + b.h);
-      }
-      origMinX = oldLeft; origMinY = oldTop;
-      targetCx = (oldLeft + oldRight) / 2;
-      targetCy = (oldTop + oldBottom) / 2;
-    }
-
-    const groupOrigPos = new Map<string, { x: number; y: number }>();
-    for (const n of layoutTargets) {
-      if (n instanceof GroupNode) {
-        const p = view.position(n.id);
-        if (p) groupOrigPos.set(n.id, { x: p.x, y: p.y });
-      }
-    }
 
     const elk = await ensureElk();
     if (!elk) return;
-
-    const capSetting = settingsStore.get("tidyWidthCap");
-    const widthCap = (capSetting === "off" ? 0 : Number(capSetting)) as TidyWidthCap;
-    tidyLayerSplit = tidyLayerSplitFor(proxyNodes.length, widthCap);
-
+    const placed = new Map<string, { x: number; y: number }>();
     await elkTidyLayout(elk, {
-      nodes: proxyNodes as Schemes["Node"][],
-      connections: subsetConns,
+      nodes: elkBoxes.map((b) => b.node),
+      connections: elkConns,
       options: tidyOptionsFromSettings(),
-      translate: (id, x, y) => view.moveNode(id, { x, y }),
+      translate: (id, x, y) => { placed.set(id, { x, y }); },
     });
 
-    for (const [leader, members] of clusterMembersOf) {
-      const lv = view.position(leader);
-      if (!lv) continue;
-      const baseX = lv.x;
-      const baseY = lv.y;
-      for (const mid of members) {
-        const off = clusterMemberOffset.get(mid)!;
-        await view.moveNode(mid, { x: baseX + off.dx, y: baseY + off.dy });
-      }
-    }
-
-    let newLeft = Infinity, newRight = -Infinity, newTop = Infinity, newBottom = -Infinity;
-    for (const n of layoutTargets) {
-      const b = measuredBox(view, n.id, editor);
-      if (!b) continue;
-      newLeft = Math.min(newLeft, b.x); newRight = Math.max(newRight, b.x + b.w);
-      newTop = Math.min(newTop, b.y); newBottom = Math.max(newBottom, b.y + b.h);
-    }
-    let dx: number, dy: number;
-    if (down) {
-      dy = origMinY - newTop;
-      dx = targetCx - (newLeft + newRight) / 2;
-    } else {
-      dx = origMinX - newLeft;
-      dy = targetCy - (newTop + newBottom) / 2;
-    }
+    // Anchor: keep the leading edge and the cross-axis center. Both footprints use the same reserved boxes, so a
+    // second Tidy is a fixed point; within a group the reference is the box interior.
+    const down = settingsStore.get("tidyDirection") === "down";
+    const after = unionBox(elkBoxes.flatMap((b) => {
+      const p = placed.get(b.node.id);
+      return p ? [{ x: p.x, y: p.y, w: b.node.width, h: b.node.height }] : [];
+    }));
+    let ref = unionBox(elkBoxes.flatMap((b) => (b.from ? [b.from] : [])));
+    const gv = withinGroup ? view.position(withinGroup.id) : null;
     if (withinGroup) {
-      const gv = view.position(withinGroup.id);
-      if (gv) {
-        if (down) {
-          const interiorLeft = gv.x + GROUP_PAD;
-          if (newLeft + dx < interiorLeft) dx = interiorLeft - newLeft;
-        } else {
-          const interiorTop = gv.y + GROUP_HEADER + GROUP_PAD;
-          if (newTop + dy < interiorTop) dy = interiorTop - newTop;
-        }
-      }
+      ref = gv
+        ? { left: gv.x + GROUP_PAD, right: gv.x + withinGroup.width - GROUP_PAD, top: gv.y + GROUP_HEADER + GROUP_PAD, bottom: gv.y + withinGroup.height - GROUP_PAD }
+        : { left: NaN, right: NaN, top: NaN, bottom: NaN };
     }
-    if (Number.isFinite(dx) && Number.isFinite(dy) && (dx !== 0 || dy !== 0)) {
-      for (const n of layoutTargets) {
-        const p = view.position(n.id);
-        if (!p) continue;
-        await view.moveNode(n.id, { x: p.x + dx, y: p.y + dy });
-      }
+    let dx = down ? (ref.left + ref.right) / 2 - (after.left + after.right) / 2 : ref.left - after.left;
+    let dy = down ? ref.top - after.top : (ref.top + ref.bottom) / 2 - (after.top + after.bottom) / 2;
+    if (gv) {
+      if (down) dx = Math.max(dx, gv.x + GROUP_PAD - after.left);
+      else dy = Math.max(dy, gv.y + GROUP_HEADER + GROUP_PAD - after.top);
     }
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) { dx = 0; dy = 0; }
 
-    for (const [gid, orig] of groupOrigPos) {
-      const gv = view.position(gid);
-      const grp = editor.getNode(gid);
-      if (!gv || !(grp instanceof GroupNode)) continue;
-      const gdx = gv.x - orig.x;
-      const gdy = gv.y - orig.y;
-      if (gdx === 0 && gdy === 0) continue;
-      for (const mid of grp.members) {
-        const mp = view.position(mid);
-        if (!mp) continue;
-        await view.moveNode(mid, { x: mp.x + gdx, y: mp.y + gdy });
+    // Every card moves once, to its final spot: a cluster's cards at their offsets, a group's members with it.
+    const moves = new Map<string, { x: number; y: number }>();
+    for (const b of elkBoxes) {
+      const p = placed.get(b.node.id);
+      if (!p) continue;
+      const to = { x: p.x + dx, y: p.y + dy };
+      for (const id of clusterMembersOf.get(b.node.id) ?? [b.node.id]) {
+        const off = clusterMemberOffset.get(id) ?? { dx: 0, dy: 0 };
+        moves.set(id, { x: to.x + off.dx, y: to.y + off.dy });
       }
     }
+    for (const [id, to] of [...moves]) {
+      const g = editor.getNode(id);
+      const from = view.position(id);
+      if (!(g instanceof GroupNode) || !from || (to.x === from.x && to.y === from.y)) continue;
+      for (const m of g.members) {
+        const mp = view.position(m);
+        if (mp) moves.set(m, { x: mp.x + to.x - from.x, y: mp.y + to.y - from.y });
+      }
+    }
+    for (const [id, to] of moves) await view.moveNode(id, to);
 
     for (const n of layoutTargets) {
       const card = view.nodeElement(n.id)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
@@ -539,19 +434,12 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       else card.style.removeProperty("width");
     }
 
-    if (withinGroup) {
-      let maxX = -Infinity, maxY = -Infinity;
-      for (const n of layoutTargets) {
-        const b = measuredBox(view, n.id, editor);
-        if (!b) continue;
-        maxX = Math.max(maxX, b.x + b.w);
-        maxY = Math.max(maxY, b.y + b.h);
-      }
-      const gv = view.position(withinGroup.id);
+    if (withinGroup && gv) {
+      const ext = unionBox(layoutTargets.flatMap((n) => { const b = measuredBox(view, n.id, editor); return b ? [b] : []; }));
       const preW = withinGroup.width, preH = withinGroup.height;
-      if (gv && Number.isFinite(maxX)) {
-        withinGroup.width = Math.round(Math.max(withinGroup.width, (maxX - gv.x) + GROUP_PAD));
-        withinGroup.height = Math.round(Math.max(withinGroup.height, (maxY - gv.y) + GROUP_PAD));
+      if (Number.isFinite(ext.right)) {
+        withinGroup.width = Math.round(Math.max(withinGroup.width, ext.right - gv.x + GROUP_PAD));
+        withinGroup.height = Math.round(Math.max(withinGroup.height, ext.bottom - gv.y + GROUP_PAD));
         await view.rerenderNode(withinGroup.id);
       }
       rebuildGroupMembership(editor);
@@ -563,9 +451,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
 
     // view.translate schedules nothing, and the autosave debounce reads positions at flush time, so the deferred settle below is captured.
     scheduleAutosave();
-
     selectedIds.forEach((id, i) => selectNodeFromProcess(id, i > 0));
-
     if (!withinGroup && selectedIds.length > 0) await zoomAt(view, targets);
 
     requestAnimationFrame(async () => {
@@ -581,11 +467,24 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
       // fitAll, never a raw zoomAt: zoomAt centers in the full container and lands content under the docked panels.
       if (!withinGroup && selectedIds.length === 0) {
-        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        await nextFrame();
         if (!isDestroyed()) await fitAll();
       }
     });
   };
+}
+
+/** A Conduit's wired lanes only, one in and one out when nothing is wired, so ELK does not see a tall many-port card. */
+function wiredLanes(n: ConduitNode, conns: readonly Schemes["Connection"][]): { inputs: object; outputs: object } {
+  const ins = new Set<string>(), outs = new Set<string>();
+  for (const c of conns) {
+    if (c.target === n.id && typeof c.targetInput === "string") ins.add(c.targetInput);
+    if (c.source === n.id && typeof c.sourceOutput === "string") outs.add(c.sourceOutput);
+  }
+  if (ins.size === 0) ins.add(Object.keys(n.inputs)[0]);
+  if (outs.size === 0) outs.add(Object.keys(n.outputs)[0]);
+  const pick = (rec: object, keys: Set<string>) => Object.fromEntries([...keys].map((k) => [k, (rec as Record<string, unknown>)[k]]));
+  return { inputs: pick(n.inputs, ins), outputs: pick(n.outputs, outs) };
 }
 
 export function makeCleanupFn(
@@ -593,36 +492,24 @@ export function makeCleanupFn(
   view: View,
   arrangeFn: ArrangeFn,
 ): () => Promise<void> {
+  const groupsNow = () => editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
   return async () => {
-    const allNodes = editor.getNodes();
-    const groupsForCount = allNodes.filter((n): n is GroupNode => n instanceof GroupNode);
-    const memberIds = new Set<string>();
-    for (const g of groupsForCount) for (const m of g.members) memberIds.add(m);
-    const unitCount = allNodes.filter(
-      (n) => !(n instanceof FormatControllerNode && !!dockedNodeStore.get(n.id)) && !memberIds.has(n.id),
-    ).length;
-    if (unitCount > TIDY_CONFIRM_THRESHOLD) {
-      const ok = await requestConfirm({
-        message: `Cleanup will tidy, collapse, and re-fit all ${unitCount} items. Continue?`,
-        confirmLabel: "Cleanup",
-      });
+    const memberIds = new Set(groupsNow().flatMap((g) => g.members));
+    const count = countLayoutUnits(editor.getNodes(), memberIds);
+    if (count > TIDY_CONFIRM_THRESHOLD) {
+      const ok = await requestConfirm({ message: `Cleanup will tidy, collapse, and re-fit all ${count} items. Continue?`, confirmLabel: "Cleanup" });
       if (!ok) return;
     }
 
     unselectAllNodesFromProcess();
     cableSelectionStore.set(null);
 
-    const groupsNow = () =>
-      editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
-
-    const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
-
     const groups = groupsNow().filter((g) => !g.lockedPosition);
     for (const g of groups) await arrangeFn({ groupId: g.id, skipPush: true });
     await nextFrame(); await nextFrame();
     for (const g of groups) await autofitGroupBox(editor, view, g);
 
-    const toCollapse = groupsNow().filter((g) => !g.collapsed && !g.lockedPosition);
+    const toCollapse = groups.filter((g) => !g.collapsed);
     if (toCollapse.length) {
       for (const g of toCollapse) g.collapsed = true;
       syncGroupCollapse(editor, view);
@@ -630,13 +517,11 @@ export function makeCleanupFn(
         await view.rerenderNode(g.id);
         settleCollapse(view, g.id, g.members, false);
       }
+      // React Flow measures a card a frame after it renders; the top-level Tidy must see the collapsed sizes.
+      await nextFrame(); await nextFrame();
     }
 
+    // The top-level Tidy fits the view and schedules the autosave itself.
     await arrangeFn({ skipConfirm: true });
-
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    await fitAll();
-
-    scheduleAutosave();
   };
 }

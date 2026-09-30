@@ -13,6 +13,7 @@ specific item.
 - Calendar Heatmap wraps its weeks into up to four bands and sizes its card to them, so a year reads at 8 px or more a day on the card.
 - Surface and Vector Field have an Options input (Chart Builder targets Contour, Surface, Vector Field): `cmap` on all three; the Flat view adds axes with round ticks, axis titles, `center`/`vmin`/`vmax`, a colorbar and a hover readout of the interpolated height.
 - Chart Builder: switching the target clears the fields and cables the new figure does not read (author); only Gantt's calendar layout still dims rows it ignores.
+- Tidy and Cleanup: ELK packs disconnected components (no `INCLUDE_CHILDREN` on the root; flipped layouts keep it), Cleanup waits for the collapsed sizes before its top-level Tidy (a second Cleanup is now a fixed point), each card moves once, and the layer split no longer lives in a module variable (the landing scene read a stale one) (`tree/specs/canvas/auto-arrange-tidy.md`).
 - Canvas figure text draws in the app's faces (`canvasFont`), not `system-ui`.
 - New pure modules: `colormaps.ts` (matplotlib's maps, `_r`, `heatScale`), `numberSpec.ts` (the Python format spec behind `fmt`), `components/heatmapLayout.ts` (`tests/graph/heatmap.test.ts`).
 
