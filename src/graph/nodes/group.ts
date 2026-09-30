@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[C88]] collapseIsVisual, [[D63]] lockedGroupIsObstacle
+// [[C86]] membershipByGesture, [[C88]] collapsedGroupCard, [[D63]] lockedGroupIsObstacle
 import { ClassicPreset } from "rete";
 
 export class GroupNode extends ClassicPreset.Node {

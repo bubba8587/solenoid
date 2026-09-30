@@ -1,4 +1,4 @@
-// [[C88]] collapseIsVisual
+// [[C88]] collapsedGroupCard
 import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";
 

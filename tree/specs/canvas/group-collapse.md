@@ -2,11 +2,11 @@
 aliases: ["Group collapse"]
 tags: [spec, canvas]
 ---
-<!-- [[C88]] collapseIsVisual -->
+<!-- [[C88]] collapsedGroupCard -->
 
 # Spec: Group collapse
 
-Serves [[C88]] collapseIsVisual. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C88]] collapsedGroupCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Collapsing a group shrinks it to a small card that shows the group's results as readout rows. Collapse is visual only: members stay wired and keep computing. This spec covers what is hidden, which readouts the card shows, and how the camera finds a node inside a collapsed group.
 

@@ -1,4 +1,4 @@
-// [[C88]] collapseIsVisual
+// [[C88]] collapsedGroupCard
 import { presentSocketKeys } from "./presentSocketStore";
 import type { View } from "./view";
 import type { NodeEditor } from "rete";

@@ -125,7 +125,7 @@ results get retried and settled rulings relapse.
 | Code | Governing docs |
 |---|---|
 | `tree/decisions/**`, `tools/dte.py`, `tests/graph/rules.test.ts` | `dte.md`; `../dte-rules/` (DTE's own SPEC, CLAUDE, README, ADOPTING, DECISIONS) |
-| `groupCollapse.ts`, `flyToNode.ts` | [[C88]] collapseIsVisual; `../tree/specs/canvas/group-collapse.md` |
+| `groupCollapse.ts`, `flyToNode.ts` | [[C88]] collapsedGroupCard; `../tree/specs/canvas/group-collapse.md` |
 | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `../tree/specs/canvas/add-menu.md`; [[D5]] searchWiderThanLabel |
 | `equationSolve.ts` | [[C47]] equationNode; `../tree/specs/computation/equation-solver.md` |
 | `semanticZoomStore.ts` | [[B10]] reactFlowView; `../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom |
@@ -135,7 +135,7 @@ results get retried and settled rulings relapse.
 | `graphCompute.ts`, `process.ts`, `coerceInputs.ts`, `nodeRegistry.ts` (the pass and arrival coercion) | `../tree/specs/computation/compute-pass.md`; [[C23]] calcModes; `../tree/specs/values/error-values.md` |
 | `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | [[C43]] oneFlowSurface; `../tree/specs/canvas/react-flow-surface-contract.md`; [[B10]] reactFlowView; `../DESIGN.md` § Cards |
 | `connectionStore.ts`, `httpBridge.ts`, live-source fetch | [[C23]] calcModes; `../tree/specs/computation/live-connections.md` |
-| `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapseIsVisual; `../tree/specs/canvas/group-collapse.md` (camera targets) |
+| `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapsedGroupCard; `../tree/specs/canvas/group-collapse.md` (camera targets) |
 | `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
 | `mathUtils.ts` `fillBorderedGrid` | [[C102]] gridFillThenForecast; `../tree/specs/computation/bordered-grid-fill.md` |
 | `excelFunctions.ts` overrides / dispatch walk | `../tree/specs/computation/formulajs-divergences.md` (why each override exists) |

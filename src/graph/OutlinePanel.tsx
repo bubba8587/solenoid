@@ -1,4 +1,4 @@
-// [[C88]] collapseIsVisual, [[C85]] groupPushDeterministic
+// [[C88]] collapsedGroupCard, [[C85]] groupPushDeterministic
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import { getActiveEditor as getEditor, getActiveView as getView } from "./activeGraph";
 import { selectNode, unselectAllNodes } from "./canvasCommands";

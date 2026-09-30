@@ -1,4 +1,4 @@
-// [[C88]] collapseIsVisual. Console-only probe (driven by scripts/collapse-sweep.mjs): mounts one card per catalog type,
+// [[C88]] collapsedGroupCard. Console-only probe (driven by scripts/collapse-sweep.mjs): mounts one card per catalog type,
 // measures every socket expanded and collapsed against the collapsed-card rules (tree/specs/floors/components.md
 // § Collapsed), and against the handle bounds React Flow draws cables from, then removes the card again.
 import { FLAT_CATALOG } from "./catalogUtils";
