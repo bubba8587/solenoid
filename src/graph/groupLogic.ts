@@ -151,7 +151,7 @@ export async function autofitGroupWithHistory(editor: Editor, view: View, group:
   if (!res) return;
   rebuildGroupMembership(editor);
   syncGroupCollapse(editor, view);
-  settleStandoffs(new Set([group.id]), { forceLock: true });
+  settleStandoffs(new Set([group.id]), { forceLock: true, touching: new Set([group.id]) });
   settleOverlaps(editor, view, new Set([group.id]));
   scheduleAutosave();
 }

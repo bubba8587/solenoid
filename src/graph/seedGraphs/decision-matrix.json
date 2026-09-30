@@ -116,7 +116,7 @@
     {
       "id": "noteChart",
       "type": "NoteNode",
-      "x": 2041,
+      "x": 1862,
       "y": 1218,
       "init": {
         "label": "The podium is a chart",

@@ -214,32 +214,45 @@ export function separateOverlaps(
   gap = PUSH_GAP,
   pinned: ReadonlySet<string> = new Set(),
 ): Map<string, Disp> {
-  const order = [...boxes].sort((a, b) =>
+  return separateUnits(boxes.map((b) => ({ ...b, parts: [{ x: b.x, y: b.y, w: b.w, h: b.h }] })), gap, pinned);
+}
+
+/** A unit moves as one, but only its parts collide: a cluster's bounding box is not an obstacle. */
+type Unit = PushBox & { parts: Rect[] };
+
+function separateUnits(units: Unit[], gap: number, pinned: ReadonlySet<string>): Map<string, Disp> {
+  const order = [...units].sort((a, b) =>
     (pinned.has(a.id) ? 0 : 1) - (pinned.has(b.id) ? 0 : 1) || (a.x + a.y) - (b.x + b.y));
   const placed: Rect[] = [];
   const disp = new Map<string, Disp>();
-  for (const b of order) {
-    const r: Rect = { x: b.x, y: b.y, w: b.w, h: b.h };
-    if (!pinned.has(b.id)) {
+  for (const u of order) {
+    let dx = 0, dy = 0;
+    if (!pinned.has(u.id)) {
       for (let guard = 0; guard < 10000; guard++) {
         let hit: Rect | null = null;
+        let part: Rect | null = null;
         let hitArea = 0;
-        for (const o of placed) {
-          const ox = xOverlap(r, o), oy = yOverlap(r, o);
-          if (ox > 0 && oy > 0 && ox * oy > hitArea) { hitArea = ox * oy; hit = o; }
+        for (const p0 of u.parts) {
+          const r = { x: p0.x + dx, y: p0.y + dy, w: p0.w, h: p0.h };
+          for (const o of placed) {
+            const ox = xOverlap(r, o), oy = yOverlap(r, o);
+            if (ox > 0 && oy > 0 && ox * oy > hitArea) { hitArea = ox * oy; hit = o; part = r; }
+          }
         }
-        if (!hit) break;
-        const right = hit.x + hit.w + gap - r.x;
-        const down = hit.y + hit.h + gap - r.y;
-        if (right <= down) r.x += right;
-        else r.y += down;
+        if (!hit || !part) break;
+        const right = hit.x + hit.w + gap - part.x;
+        const down = hit.y + hit.h + gap - part.y;
+        if (right <= down) dx += right;
+        else dy += down;
       }
-      if (r.x !== b.x || r.y !== b.y) disp.set(b.id, { dx: r.x - b.x, dy: r.y - b.y });
+      if (dx !== 0 || dy !== 0) disp.set(u.id, { dx, dy });
     }
-    placed.push(r);
+    for (const p0 of u.parts) placed.push({ x: p0.x + dx, y: p0.y + dy, w: p0.w, h: p0.h });
   }
   return disp;
 }
+
+const rectOf = (b: PushBox): Rect => ({ x: b.x, y: b.y, w: b.w, h: b.h });
 
 export interface SeparateAllOpts {
   /** Boxes that move as one rigid unit (standoff clusters). */
@@ -265,7 +278,7 @@ export function separateAll(boxes: readonly PushBox[], opts: SeparateAllOpts = {
     for (const id of ids) unitOf.set(id, uid);
     unitMembers.set(uid, ids);
   }
-  const units: PushBox[] = [];
+  const units: Unit[] = [];
   const fixedU = new Set<string>();
   const preferU = new Set<string>();
   for (const [uid, ids] of unitMembers) {
@@ -277,20 +290,20 @@ export function separateAll(boxes: readonly PushBox[], opts: SeparateAllOpts = {
       if (fixed.has(id)) fixedU.add(uid);
       if (prefer.has(id)) preferU.add(uid);
     }
-    units.push({ id: uid, x: minX, y: minY, w: maxX - minX, h: maxY - minY });
+    units.push({ id: uid, x: minX, y: minY, w: maxX - minX, h: maxY - minY, parts: ids.map((id) => rectOf(byId.get(id)!)) });
   }
   for (const b of boxes) {
     if (unitOf.has(b.id)) continue;
-    units.push({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h });
+    units.push({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h, parts: [rectOf(b)] });
     if (fixed.has(b.id)) fixedU.add(b.id);
     if (prefer.has(b.id)) preferU.add(b.id);
   }
-  const first = separateOverlaps(units, gap, new Set([...fixedU, ...preferU]));
+  const first = separateUnits(units, gap, new Set([...fixedU, ...preferU]));
   const shifted = units.map((u) => {
     const d = first.get(u.id);
-    return d ? { ...u, x: u.x + d.dx, y: u.y + d.dy } : u;
+    return d ? { ...u, x: u.x + d.dx, y: u.y + d.dy, parts: u.parts.map((p) => ({ ...p, x: p.x + d.dx, y: p.y + d.dy })) } : u;
   });
-  const second = separateOverlaps(shifted, gap, fixedU);
+  const second = separateUnits(shifted, gap, fixedU);
   const out = new Map<string, Disp>();
   for (const u of units) {
     const a = first.get(u.id), b = second.get(u.id);

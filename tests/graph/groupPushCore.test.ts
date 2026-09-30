@@ -1,6 +1,6 @@
 // [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle
 import { describe, it, expect } from "vitest";
-import { computeExpandPush, separateOverlaps, PushBox, Satellite, ExpandSpec, PUSH_GAP, Pt } from "../../src/graph/groupPushCore";
+import { computeExpandPush, separateOverlaps, separateAll, PushBox, Satellite, ExpandSpec, PUSH_GAP, Pt } from "../../src/graph/groupPushCore";
 
 // A group at (0,0) collapsing to a 100×40 card, expanding to 400×300.
 const spec: ExpandSpec = { x: 0, y: 0, preW: 100, preH: 40, postW: 400, postH: 300 };
@@ -281,5 +281,27 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
   it("leaves two pinned obstacles overlapping (neither can move)", () => {
     const boxes = [box("A", 0, 0, 200, 200), box("B", 50, 50, 200, 200)];
     expect(separateOverlaps(boxes, PUSH_GAP, new Set(["A", "B"])).size).toBe(0);
+  });
+});
+
+describe("separateAll with standoff clusters", () => {
+  it("a box between a cluster's members, touching neither, stays put", () => {
+    const boxes: PushBox[] = [
+      { id: "g", x: 0, y: 0, w: 300, h: 60 },
+      { id: "n", x: 0, y: 400, w: 300, h: 80 },
+      { id: "mid", x: 50, y: 150, w: 180, h: 60 },
+    ];
+    expect(separateAll(boxes, { clusters: [["g", "n"]] }).size).toBe(0);
+  });
+
+  it("a box that does touch a member moves the cluster or itself, never tearing the cluster", () => {
+    const boxes: PushBox[] = [
+      { id: "g", x: 0, y: 0, w: 300, h: 60 },
+      { id: "n", x: 0, y: 400, w: 300, h: 80 },
+      { id: "hit", x: 50, y: 420, w: 180, h: 60 },
+    ];
+    const d = separateAll(boxes, { clusters: [["g", "n"]] });
+    expect(d.get("g")).toEqual(d.get("n"));
+    expect(d.size).toBeGreaterThan(0);
   });
 });

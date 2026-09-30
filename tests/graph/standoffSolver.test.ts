@@ -1,7 +1,7 @@
 // [[C89]] standoffsSolveLast
 import { describe, it, expect } from "vitest";
 import { solveStandoffs } from "../../src/graph/standoffSolver";
-import { Standoff, Box, anchorPoint, anchorFromVector, liveStandoffs } from "../../src/graph/standoffs";
+import { Standoff, Box, anchorPoint, anchorFromVector, liveStandoffs, standoffsTouching } from "../../src/graph/standoffs";
 
 const box = (x: number, y: number, w = 100, h = 60): Box => ({ x, y, w, h });
 
@@ -174,5 +174,14 @@ describe("a standoff with an end hidden in a collapsed group is dormant", () => 
     expect(live).toEqual([]);
     expect(solveStandoffs(boxes, live).size).toBe(0);
     expect(liveStandoffs(() => false, [tie])).toEqual([tie]);
+  });
+});
+
+describe("standoffsTouching", () => {
+  it("keeps every standoff of a cluster that holds a touched id, and nothing else", () => {
+    const all = [east("ab", "a", "b", 28, 100), east("bc", "b", "c", 28, 100), east("xy", "x", "y", 28, 100)];
+    expect(standoffsTouching(all, new Set(["c"])).map((s) => s.id)).toEqual(["ab", "bc"]);
+    expect(standoffsTouching(all, new Set(["y"])).map((s) => s.id)).toEqual(["xy"]);
+    expect(standoffsTouching(all, new Set(["q"]))).toEqual([]);
   });
 });

@@ -7,7 +7,7 @@ import { GroupNode } from "./rete-nodes";
 import { moveGroupMembers, withLockedGroupsPinned } from "./groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore, syncGroupCollapse, settleCollapse } from "./groupCollapse";
 import { computeExpandPush, separateAll, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
-import { standoffStore, standoffClusters, liveStandoffs, Box as StandoffBox } from "./standoffs";
+import { standoffStore, standoffClusters, liveStandoffs, standoffsTouching, Box as StandoffBox } from "./standoffs";
 import { solveStandoffs } from "./standoffSolver";
 import { scheduleAutosave } from "./persistence";
 import { settingsStore } from "./settingsStore";
@@ -29,6 +29,17 @@ interface PushRecord {
 
 const _records = new Map<string, PushRecord>();
 
+/** A standoff partner a collapse moved, because the shrink moved its anchor; expanding those groups slides it back. */
+interface CollapseSettle {
+  dueTo: Set<string>;
+  preX: number;
+  preY: number;
+  setX: number;
+  setY: number;
+}
+
+const _collapseSettles = new Map<string, CollapseSettle>();
+
 const EPS = 2;
 
 export const groupPushStore = {
@@ -36,6 +47,10 @@ export const groupPushStore = {
     _records.delete(id);
     for (const [pid, r] of [..._records]) {
       if (r.dueTo.has(id)) _records.delete(pid);
+    }
+    _collapseSettles.delete(id);
+    for (const [pid, r] of [..._collapseSettles]) {
+      if (r.dueTo.has(id)) _collapseSettles.delete(pid);
     }
   },
 };
@@ -207,11 +222,12 @@ function buildAnchors(
 }
 
 function collapsedCardSize(view: View, g: GroupNode): { w: number; h: number } {
+  const el = view.nodeElement(g.id);
+  // measuredBox exception: a toggle reads the card in the frame it repaints, before React Flow re-measures, so the
+  // painted element comes first; the last tier is the collapsed-card layout formula, not a default.
+  if (el && el.offsetWidth > 0) return { w: el.offsetWidth, h: el.offsetHeight };
   const m = measuredSize(view, g.id);
   if (m) return m;
-  const el = view.nodeElement(g.id);
-  // measuredBox exception: the last tier is the collapsed-card layout formula, not a default.
-  if (el && el.offsetWidth > 0) return { w: el.offsetWidth, h: el.offsetHeight };
   const rows = Math.max(
     groupCollapseStore.retainedFor(g.id).length,
     groupCollapseStore.inputPillsFor(g.id).length,
@@ -305,7 +321,10 @@ function runExpandPushes(
     const plain = new Map<string, StandoffBox>(
       [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
     );
-    const settle = solveStandoffs(plain, liveStandoffs(groupCollapseStore.isNodeHidden), withLockedGroupsPinned(editor, expandedIds), { forceLock: true });
+    // Only clusters this expansion touched: the expanding groups (their anchors moved) and every box the push moved.
+    const touched = new Set<string>([...expandedIds, ...[...totals].filter(([, t]) => t.dx !== 0 || t.dy !== 0).map(([id]) => id)]);
+    const live = standoffsTouching(liveStandoffs(groupCollapseStore.isNodeHidden), touched);
+    const settle = solveStandoffs(plain, live, withLockedGroupsPinned(editor, expandedIds), { forceLock: true });
     for (const [id, d] of settle) {
       const b = world.boxes.get(id);
       if (!b) continue;
@@ -379,8 +398,9 @@ export function pushForGrownGroups(
 
 // ─── Restore ───────────────────────────────────────────────────────────────────
 
-export function restoreSettledPushes(editor: Editor, view: View): void {
-  let moved = false;
+/** Returns the ids it slid back. */
+export function restoreSettledPushes(editor: Editor, view: View): Set<string> {
+  const moved = new Set<string>();
   for (const [id, r] of [..._records]) {
     const settled = [...r.dueTo].every((gid) => {
       const g = editor.getNode(gid);
@@ -392,10 +412,26 @@ export function restoreSettledPushes(editor: Editor, view: View): void {
     if (!p) continue;
     if (Math.abs(p.x - r.expX) <= EPS && Math.abs(p.y - r.expY) <= EPS) {
       translatePushed(editor, view, id, r.preX - p.x, r.preY - p.y);
-      moved = true;
+      moved.add(id);
     }
   }
-  if (moved) scheduleAutosave();
+  if (moved.size) scheduleAutosave();
+  return moved;
+}
+
+function restoreCollapseSettles(editor: Editor, view: View): void {
+  for (const [id, r] of [..._collapseSettles]) {
+    const open = [...r.dueTo].every((gid) => {
+      const g = editor.getNode(gid);
+      return !g || (g instanceof GroupNode && !g.collapsed);
+    });
+    if (!open) continue;
+    _collapseSettles.delete(id);
+    const p = position(view, id);
+    if (p && Math.abs(p.x - r.setX) <= EPS && Math.abs(p.y - r.setY) <= EPS) {
+      translatePushed(editor, view, id, r.preX - p.x, r.preY - p.y);
+    }
+  }
 }
 
 // [[C52]] visibleSelection: a member hidden by the collapse leaves the selection.
@@ -428,23 +464,54 @@ export async function setGroupsCollapsed(
   for (const g of changed) settleCollapse(view, g.id, g.members, !collapse);
 
   if (collapse) {
-    restoreSettledPushes(editor, view);
-    settleStandoffsOverWorld(editor, view, new Set(changed.map((g) => g.id)));
+    const restored = restoreSettledPushes(editor, view);
+    const ids = new Set(changed.map((g) => g.id));
+    settleStandoffsOverWorld(editor, view, ids, new Set([...ids, ...restored]));
     settleOverlapsAfterPaint(editor, view, new Set(changed.map((g) => g.id)));
-  } else if (settingsStore.get("groupPush")) {
-    runExpandPushes(editor, view, changed, preSizes);
+  } else {
+    restoreCollapseSettles(editor, view);
+    if (settingsStore.get("groupPush")) runExpandPushes(editor, view, changed, preSizes);
   }
   scheduleAutosave();
 }
 
-function settleStandoffsOverWorld(editor: Editor, view: View, pinned: Set<string>): void {
+function settleStandoffsOverWorld(editor: Editor, view: View, pinned: Set<string>, touching: ReadonlySet<string>): void {
   if (standoffStore.isEmpty()) return;
   const world = buildWorld(editor, view, new Set());
   const plain = new Map<string, StandoffBox>(
     [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
   );
-  const disp = solveStandoffs(plain, liveStandoffs(groupCollapseStore.isNodeHidden), withLockedGroupsPinned(editor, pinned), { forceLock: true });
-  for (const [id, d] of disp) translatePushed(editor, view, id, d.dx, d.dy);
+  const live = standoffsTouching(liveStandoffs(groupCollapseStore.isNodeHidden), touching);
+  const disp = solveStandoffs(plain, live, withLockedGroupsPinned(editor, pinned), { forceLock: true });
+  // A collapse never rearranges the canvas: a cluster whose re-solve would land on another box stays where it is,
+  // its bar stretched past the band until the group opens again.
+  for (const cluster of standoffClusters(live)) {
+    const own = new Set(cluster);
+    const lands = cluster.some((id) => {
+      const d = disp.get(id);
+      const b = plain.get(id);
+      if (!d || !b) return false;
+      const m = { x: b.x + d.dx, y: b.y + d.dy, w: b.w, h: b.h };
+      return [...plain].some(([oid, o]) => !own.has(oid) &&
+        Math.min(m.x + m.w, o.x + o.w) - Math.max(m.x, o.x) > EPS &&
+        Math.min(m.y + m.h, o.y + o.h) - Math.max(m.y, o.y) > EPS);
+    });
+    if (lands) for (const id of cluster) disp.delete(id);
+  }
+  for (const [id, d] of disp) {
+    const p = position(view, id);
+    if (!p) continue;
+    const prior = _collapseSettles.get(id);
+    const onPrior = prior && Math.abs(p.x - prior.setX) <= EPS && Math.abs(p.y - prior.setY) <= EPS;
+    _collapseSettles.set(id, {
+      dueTo: onPrior ? new Set([...prior.dueTo, ...pinned]) : new Set(pinned),
+      preX: onPrior ? prior.preX : p.x,
+      preY: onPrior ? prior.preY : p.y,
+      setX: p.x + d.dx,
+      setY: p.y + d.dy,
+    });
+    translatePushed(editor, view, id, d.dx, d.dy);
+  }
 }
 
 /** Separates every overlap among the top-level boxes; `prefer` holds still where it can. */

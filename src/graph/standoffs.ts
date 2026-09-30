@@ -202,7 +202,16 @@ export const standoffLayoutTick = {
 };
 
 
-export type SettleOpts = { forceLock?: boolean };
+/** `touching` limits the solve to the standoff clusters holding one of these ids: a forced lock snaps every slanted
+ *  standoff it solves rigid, and a layout step must not snap clusters it never moved. */
+export type SettleOpts = { forceLock?: boolean; touching?: ReadonlySet<string> };
+
+/** The standoffs whose cluster (`standoffClusters`) holds one of `ids`. */
+export function standoffsTouching(standoffs: readonly Standoff[], ids: ReadonlySet<string>): Standoff[] {
+  const hit = new Set<string>();
+  for (const cluster of standoffClusters(standoffs)) if (cluster.some((id) => ids.has(id))) for (const id of cluster) hit.add(id);
+  return standoffs.filter((s) => hit.has(s.a.nodeId));
+}
 let _settle: (pinned?: Set<string>, opts?: SettleOpts) => void = () => {};
 export function setStandoffSettle(fn: (pinned?: Set<string>, opts?: SettleOpts) => void) {
   _settle = fn;

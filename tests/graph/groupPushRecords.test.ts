@@ -6,6 +6,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { GroupNode } from "../../src/graph/nodes/group";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { setGroupsCollapsed } from "../../src/graph/groupPush";
+import { standoffStore } from "../../src/graph/standoffs";
 import { swapSelectionSlots } from "../../src/graph/canvasCommands";
 import { autofitGroupWithHistory, createGroupFromSelection, GROUP_PAD, GROUP_HEADER } from "../../src/graph/groupLogic";
 
@@ -310,6 +311,72 @@ describe("collapse and the selection ([[C52]] visibleSelection)", () => {
       expect(sel(loose).selected).toBe(true);
     } finally {
       restore();
+    }
+  });
+});
+
+// [[C89]] standoffsSolveLast: a collapse re-solves only the clusters it touches, records the moves, and never lands a box
+// on another; expanding slides the partner back.
+describe("standoffs across a collapse round trip", () => {
+  async function setup() {
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const g = new GroupNode({ width: 600, height: 300 });
+    const n = new DisplayNode();
+    for (const node of [g, n]) await editor.addNode(node as never);
+    addView(g.id, 100, 100, groupView(g));
+    const nView = addView(n.id, 310, 560, () => ({ w: 180, h: 80 }));
+    const tie = standoffStore.add({ nodeId: g.id, anchor: "s" }, { nodeId: n.id, anchor: "n" }, 40, 240, true);
+    return { editor, view, addView, g, nView, tie };
+  }
+
+  it("the collapse pulls the partner in and the expand puts it back exactly", async () => {
+    const { editor, view, g, nView, tie } = await setup();
+    try {
+      await setGroupsCollapsed(editor, view, [g], true);
+      await flushRafs();
+      expect(nView.position).toEqual({ x: 142, y: 400 });
+      await setGroupsCollapsed(editor, view, [g], false);
+      await flushRafs();
+      expect(nView.position).toEqual({ x: 310, y: 560 });
+    } finally {
+      standoffStore.remove(tie.id);
+    }
+  });
+
+  it("a collapse leaves the partner in place when the re-solve would land it on another box", async () => {
+    const { editor, view, addView, g, nView, tie } = await setup();
+    const blocker = new DisplayNode();
+    await editor.addNode(blocker as never);
+    const bView = addView(blocker.id, 150, 440, () => ({ w: 180, h: 60 }));
+    try {
+      await setGroupsCollapsed(editor, view, [g], true);
+      await flushRafs();
+      expect(nView.position).toEqual({ x: 310, y: 560 });
+      expect(bView.position).toEqual({ x: 150, y: 440 });
+    } finally {
+      standoffStore.remove(tie.id);
+    }
+  });
+
+  it("a toggle leaves an unrelated slanted standoff alone", async () => {
+    const { editor, view, addView, g, tie } = await setup();
+    const a = new DisplayNode();
+    const b = new DisplayNode();
+    for (const node of [a, b]) await editor.addNode(node as never);
+    const aView = addView(a.id, 2000, 2000, () => ({ w: 180, h: 80 }));
+    const bView = addView(b.id, 2300, 2045, () => ({ w: 180, h: 80 }));
+    const slant = standoffStore.add({ nodeId: a.id, anchor: "e" }, { nodeId: b.id, anchor: "w" }, 40, 240);
+    try {
+      await setGroupsCollapsed(editor, view, [g], true);
+      await flushRafs();
+      await setGroupsCollapsed(editor, view, [g], false);
+      await flushRafs();
+      expect(aView.position).toEqual({ x: 2000, y: 2000 });
+      expect(bView.position).toEqual({ x: 2300, y: 2045 });
+    } finally {
+      standoffStore.remove(tie.id);
+      standoffStore.remove(slant.id);
     }
   });
 });

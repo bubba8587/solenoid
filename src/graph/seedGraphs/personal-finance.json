@@ -65,7 +65,7 @@
     {
       "id": "note-cash",
       "type": "NoteNode",
-      "x": 4042,
+      "x": 3557,
       "y": 5637,
       "init": {
         "label": "2 · Cash flow this quarter",
@@ -316,7 +316,7 @@
     {
       "id": "note-pivot",
       "type": "NoteNode",
-      "x": 6103,
+      "x": 5374,
       "y": -1344,
       "init": {
         "label": "3 · Spending pivot",
@@ -444,7 +444,7 @@
     {
       "id": "note-acct",
       "type": "NoteNode",
-      "x": 1754,
+      "x": 1004,
       "y": -1046,
       "init": {
         "label": "4 · Net worth",
@@ -726,7 +726,7 @@
     {
       "id": "note-proj",
       "type": "NoteNode",
-      "x": 3918,
+      "x": 3158,
       "y": 3490,
       "init": {
         "label": "5 · Retirement what-if",
@@ -948,7 +948,7 @@
     {
       "id": "note-mort",
       "type": "NoteNode",
-      "x": 3945,
+      "x": 3210,
       "y": 1987,
       "init": {
         "label": "6 · Mortgage stress-test",
@@ -1172,7 +1172,7 @@
     {
       "id": "note-bud",
       "type": "NoteNode",
-      "x": 3938,
+      "x": 3193,
       "y": 874,
       "init": {
         "label": "7 · Budget vs actual",

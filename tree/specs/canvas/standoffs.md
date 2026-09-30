@@ -45,6 +45,7 @@ Select exactly two linkable items, right-click one of them, and choose "Link wit
 - Each correction splits evenly between the two ends. If one end is pinned, the other takes all of it. A standoff with both ends pinned is skipped.
 - `forceLock` treats every standoff as locked for that one solve, without touching the saved `locked` flag. Every layout operation uses it, so a cluster of items joined by standoffs (`standoffClusters()`, the connected groups) behaves as one rigid block.
 - Position-locked groups are always pinned (`withLockedGroupsPinned`).
+- A settle can be scoped with `touching`: only the clusters holding one of those ids solve (`standoffsTouching`). Every layout pass scopes its `forceLock` solve to what it moved, so an unrelated unlocked slant survives it.
 
 The solver runs as the last step after every pass that affects layout ([[C89]] standoffsSolveLast):
 
@@ -52,12 +53,12 @@ The solver runs as the last step after every pass that affects layout ([[C89]] s
 |---|---|
 | Live drag | Only when a dragged item (or a member of a dragged group) is linked; ties are sparse, so a plain drag costs nothing (`standoffStore.participants()` gates the work). Once per animation frame during the drag, and once more exactly on drop, with the dragged items pinned. Band only, never `forceLock`, so an unlocked slant survives a drag. Programmatic moves never trigger it. |
 | Group expand | Inside `runExpandPushes`. After the push heuristics, each cluster moves as one block: every member takes the cluster's largest displacement, so a lone push isn't pulled partway back. Then a `forceLock` solve, with its corrections folded into the push records so a later collapse restores them too ([[group-expand-push]]). |
-| Group collapse | After the pushes are restored, a `forceLock` re-solve, because the shrink moved the anchors. |
-| Autofit | `autofitGroupWithHistory` re-solves with `forceLock`, pinning the fitted group. |
-| Tidy | A final `forceLock` settle after layout. |
+| Group collapse | After the pushes are restored, a `forceLock` re-solve of the touched clusters, because the shrink moved the anchors. A cluster that would land on another box is skipped; the moves are recorded, and the expand slides them back ([[group-expand-push]]). |
+| Autofit | `autofitGroupWithHistory` re-solves the fitted group's cluster with `forceLock`, pinning the group. |
+| Tidy | A final `forceLock` settle of the clusters holding a laid-out box. |
 | Toolbar edits | A band, lock or angle change settles at once. |
 
-Every layout pass in the table except the live drag and toolbar edits then ends with the no-overlap pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band.
+Every layout pass in the table except the live drag and toolbar edits then ends with the no-overlap pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band; only the members' own boxes collide, never the cluster's bounding box.
 
 ## Tidy and clusters
 

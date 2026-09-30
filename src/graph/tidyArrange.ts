@@ -473,7 +473,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         if (n instanceof FormatControllerNode && n.hostNodeId) hosts.add(n.hostNodeId);
       }
       for (const h of hosts) repositionDockedTo(h);
-      settleStandoffs(undefined, { forceLock: true });
+      // Only the clusters this Tidy laid out: a forced lock would snap an untouched slanted standoff elsewhere.
+      settleStandoffs(undefined, { forceLock: true, touching: new Set(withinGroup ? [withinGroup.id] : layoutTargets.map((n) => n.id)) });
       if (!opts?.skipPush) {
         settleOverlaps(editor, view, new Set(withinGroup ? [withinGroup.id] : layoutTargets.map((n) => n.id)));
       }

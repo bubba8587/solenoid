@@ -26,7 +26,7 @@ import { SocketLegend, ConfirmDialog, NoticeToasts } from "../components";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
 import { settleCableChange } from "../cableSettle";
 import { groupCollapseStore } from "../groupCollapse";
-import { standoffStore, setStandoffSettle, liveStandoffs, type SettleOpts } from "../standoffs";
+import { standoffStore, setStandoffSettle, liveStandoffs, standoffsTouching, type SettleOpts } from "../standoffs";
 import { solveStandoffs } from "../standoffSolver";
 import { withLockedGroupsPinned } from "../groupLogic";
 import { measuredBox } from "../nodeSize";
@@ -172,7 +172,8 @@ function FlowCanvasInner() {
     let standoffSolving = false;
     const settleStandoffNetwork = (pinned: Set<string> = new Set(), opts?: SettleOpts) => {
       if (standoffSolving || standoffStore.isEmpty()) return;
-      const live = liveStandoffs(groupCollapseStore.isNodeHidden);
+      const all = liveStandoffs(groupCollapseStore.isNodeHidden);
+      const live = opts?.touching ? standoffsTouching(all, opts.touching) : all;
       const boxes = new Map<string, { x: number; y: number; w: number; h: number }>();
       for (const st of live) {
         for (const end of [st.a, st.b]) {
