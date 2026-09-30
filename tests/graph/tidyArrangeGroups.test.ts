@@ -589,6 +589,43 @@ describe("Tidy hands ELK the sockets a card shows", () => {
   });
 });
 
+describe("Tidy's ports sit at the real socket heights", () => {
+  afterEach(() => settingsStore.set("tidyAlign", "sockets"));
+  async function recordPorts(align: "sockets" | "center") {
+    settingsStore.set("tidyAlign", align);
+    settingsStore.set("tidyDirection", "right");
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const src = new ArithmeticNode({ op: "add" }), dst = new ArithmeticNode({ op: "add" });
+    for (const n of [src, dst]) await editor.addNode(n as never);
+    for (const n of [src, dst] as Array<{ width: number; height: number }>) { n.width = 180; n.height = 300; }
+    addView(src.id, 0, 0, 180, 300);
+    addView(dst.id, 400, 0, 180, 300);
+    await connect(editor, src, "result", dst, "b");
+    // Only dst's "b" row is drawn: 200 down its card, 10 tall.
+    const drawn = view.nodeElement(dst.id)!;
+    const dot = { offsetLeft: -5, offsetTop: 200, offsetWidth: 10, offsetHeight: 10, offsetParent: drawn };
+    const inner = drawn.querySelector.bind(drawn);
+    (drawn as unknown as { querySelector: (s: string) => unknown }).querySelector = (sel: string) =>
+      sel.includes('data-socket-key="b"') ? dot : inner(sel);
+    let seen: Array<{ id: string; ports: Array<{ id: string; y: number; height: number }> }> = [];
+    const recorder = { async layout(graph: unknown) { seen = (graph as { children: typeof seen }).children; return { children: [] }; } };
+    const arrangeFn = makeArrangeFn({ editor, view, ensureElk: async () => recorder, repositionDockedTo: () => {}, isDestroyed: () => false });
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    const port = (id: string, key: string) => seen.find((c) => c.id === id)!.ports.find((p) => p.id.includes(`_${key}_`))!;
+    return { b: port(dst.id, "b"), a: port(dst.id, "a") };
+  }
+
+  it("places a drawn socket's port at its row, and an undrawn one where the spaced ports put it", async () => {
+    const withSockets = await recordPorts("sockets");
+    expect(withSockets.b.y + withSockets.b.height / 2).toBe(205);
+    const centered = await recordPorts("center");
+    expect(withSockets.a.y).toBe(centered.a.y);
+    expect(centered.b.y).not.toBe(withSockets.b.y);
+  });
+});
+
 describe("Tidy packs disconnected cards (real ELK)", () => {
   it("lays nine unconnected cards out as a block, not a single tall column", async () => {
     settingsStore.set("tidyDirection", "right");

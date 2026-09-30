@@ -12,7 +12,7 @@ Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK
 
 ## What Tidy guarantees
 
-Tidy is an ELK layered layout, called directly, that only moves nodes. Ports sit symmetrically so two connected nodes line up; the result is anchored to the flow's leading edge and its cross-axis center; no layout pass leaves a fixed inline size on a card. A global Tidy keeps each group as a rigid unit and never enters it; a group's own Tidy arranges exactly that group's members.
+Tidy is an ELK layered layout, called directly, that only moves nodes. Ports sit at their sockets' heights (or symmetrically) so two connected nodes line up; the result is anchored to the flow's leading edge and its cross-axis center; no layout pass leaves a fixed inline size on a card. A global Tidy keeps each group as a rigid unit and never enters it; a group's own Tidy arranges exactly that group's members.
 
 Why: each of these closes a failure the opposite choice produced. rete-auto-arrange's `classic` preset put outputs at the top and inputs at the bottom, so every link staircased its target upward and the graph looked as if it floated high. Anchoring by the top-left corner dropped a flattened row to the top of the old footprint, the same symptom from the other side. And its applier stamped an inline height on every card, which froze it. Moving without resizing keeps cards content-driven, as [[react-flow-surface-contract#Node width and height]] demands of everything else. Symmetric ports and leading-edge anchoring give the same answer in either direction, so Cleanup's cycle of Tidy then autofit is a fixed point. **Reopen if:** ELK is replaced, or React Flow starts owning card sizes (then the guard that drops pinned sizes becomes the wrong tool).
 
@@ -60,19 +60,20 @@ A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a m
 - A plain card reserves its measured box. A cluster leader (a standoff cluster, see [[C89]] standoffsSolveLast) reserves the whole cluster's bounding box, and its followers are placed back at their offsets from the leader before the anchor step.
 - A card with a docked output Format Controller reserves the host plus FC as one inflated box, its socket's height read from the card's layout offsets (`socketLocalCenter`), never a screen rect divided by the zoom, so ELK does not pack a neighbor into the FC's area. The width grows by the FC width plus 8 per docked FC; the height covers the FC centered on its socket. This reservation is made only for hosts that are themselves layout targets, and it lives only in the proxy handed to ELK. Nothing is written to the card.
 
-## Symmetric ports
+## Ports
 
 Ports sit at the **same offset on both sides** of every card, so two connected cards line up instead of staircasing. `symmetricPortPreset(direction)` builds the preset per layout, so a settings change needs no re-registration. Ports are 15 × 15 and spaced 16 apart.
 
 - Under **RIGHT**, inputs sit on the WEST side and outputs on the EAST side, spread down the card's height.
 - Under **DOWN**, inputs sit on NORTH and outputs on SOUTH, spread across the width.
 
-The `tidyAlign` setting chooses where the port column sits:
+The `tidyAlign` setting chooses where the ports sit:
 
-- **Center** (the default) puts the ports around the middle of the card, so card centers align. Cables may slant slightly because the real output socket sits lower than the input rows.
+- **Sockets** (the default) puts each port at its socket's real height on the card, read from the card's layout offsets (`socketLocalCenter`), so ELK lines up the sockets a cable joins and the cable runs level. Measured over eight seeds, level cables went from 0 to 7 percent of all cables under Center to 23 to 70 percent, with the mean vertical run down by up to half and no new crossings or overlaps. It applies under RIGHT only, since sockets sit on a card's left and right edges; under DOWN, and for a socket that is not drawn (an unmounted card, the landing scene), the Center placement stands.
+- **Center** puts the ports around the middle of the card, so card centers align, and cables slant wherever a socket sits off the middle.
 - **Top** puts the first port 20 from the leading edge, so card top edges (or left edges under DOWN) align.
 
-`tidyAlign` lives in `settingsStore` and shows as a Center / Top segmented control (a `"segment"` field type) in Settings ▸ Canvas.
+`tidyAlign` lives in `settingsStore` and shows as a Sockets / Center / Top segmented control (a `"segment"` field type) in Settings ▸ Canvas.
 
 ## The three Tidy knobs
 

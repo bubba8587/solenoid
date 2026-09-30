@@ -9,7 +9,7 @@ const LS_KEY = "solenoid.settings";
 
 export interface Settings {
   groupPush: boolean;
-  tidyAlign: "center" | "top";
+  tidyAlign: "sockets" | "center" | "top";
   tidyDirection: "right" | "down";
   tidyDensity: "compact" | "normal" | "airy";
   /** A string so the segment control stores it directly; the call site maps it to the numeric cap. */
@@ -44,7 +44,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   groupPush: true,
-  tidyAlign: "center",
+  tidyAlign: "sockets",
   tidyDirection: "right",
   tidyDensity: "normal",
   tidyWidthCap: "off",
@@ -96,6 +96,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         type: "segment",
         accordion: "Tidy",
         options: [
+          { value: "sockets", label: "Sockets" },
           { value: "center", label: "Center" },
           { value: "top", label: "Top" },
         ],

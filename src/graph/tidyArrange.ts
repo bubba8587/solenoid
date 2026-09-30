@@ -173,6 +173,7 @@ export async function elkTidyLayout(
     }>;
     options: Record<string, string>;
     translate: (id: string, x: number, y: number) => Promise<unknown> | unknown;
+    socketAt?: (nodeId: string, key: string, side: "input" | "output") => { x: number; y: number } | null;
   },
 ): Promise<void> {
   const preset = symmetricPortPreset(settingsStore.get("tidyDirection"), tidyLayerSplitFor(args.nodes.length, widthCapFromSettings()));
@@ -195,9 +196,15 @@ export async function elkTidyLayout(
         const p = preset.port({
           side, index, ports: entries.length, width: node.width, height: node.height,
         });
+        // A card's sockets sit on its left and right edges, so their real heights serve a left-to-right layout only;
+        // there, level ports make level cables. Top-to-bottom, and for an undrawn socket, the spaced ports stand.
+        const across = p.side === "EAST" || p.side === "WEST";
+        const real = across && settingsStore.get("tidyAlign") === "sockets" ? args.socketAt?.(node.id, key, side) : null;
         return {
           id: portId(node.id, key, side),
-          width: p.width, height: p.height, x: p.x, y: p.y,
+          width: p.width, height: p.height,
+          x: p.x,
+          y: real ? real.y - p.height / 2 : p.y,
           properties: { side: p.side },
         };
       });
@@ -377,6 +384,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       connections: elkConns,
       options: tidyOptionsFromSettings(),
       translate: (id, x, y) => { placed.set(id, { x, y }); },
+      socketAt: (id, key, side) => (clusterBox.has(id) || editor.getNode(id) instanceof GroupNode ? null : socketLocalCenter(view, id, key, side)),
     });
 
     // Anchor: keep the leading edge and the cross-axis center. Both footprints use the same reserved boxes, so a
