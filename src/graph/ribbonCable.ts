@@ -4,6 +4,7 @@ import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";
 
 import { getOwningView } from "./activeGraph";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 export const CONDUIT_BODY_SIZE = 92;
 export const CONDUIT_PIVOT = CONDUIT_BODY_SIZE / 2;
@@ -135,6 +136,8 @@ function ribbonTargetOf(editor: EditorLike, c: Conn): { kind: "conduit" | "group
 }
 
 const _separationPins = new Map<string, Set<string>>();
+registerNodeForget((id) => { _separationPins.delete(id); });
+registerNodeForgetAll(() => { _separationPins.clear(); });
 
 export function pinRibbonSeparation(conduitIds: string[], cableId: string): void {
   for (const id of conduitIds) {

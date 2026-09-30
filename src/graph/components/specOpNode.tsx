@@ -2,7 +2,6 @@ import { InlineInputs, type InlineNode } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps, type OpOption, type ShellNode } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
 import { getOwningView } from "../activeGraph";
-import { processGraph } from "../process";
 import type { SolError } from "../errorValue";
 
 interface SpecOpNode<Op extends string> {
@@ -30,7 +29,6 @@ export function makeSpecOpComponent<Op extends string, N extends SpecOpNode<Op> 
       data.setOp(next);
       await getOwningView(data.id)?.rerenderNode(data.id);
       setOpField(next);
-      await processGraph();
     }
 
     return (

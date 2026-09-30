@@ -6,7 +6,6 @@ import { AppToolbar } from "./AppToolbar";
 import { TabletActions } from "./TabletActions";
 import { autoArrange, cleanup } from "./canvasCommands";
 import { saveToDisk, openFromDisk } from "./fileSession";
-import { frStore } from "./frStore";
 import { mobileMenuStore } from "./mobileMenuStore";
 import { toggleChrome } from "./chromeToggle";
 import { DocumentTitle } from "./components/DocumentTitle";
@@ -34,7 +33,6 @@ export function TopBar() {
     <div
       className="solenoid-topbar"
       onPointerDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => { if (e.key === "?" || (e.key === "/" && e.ctrlKey)) frStore.toggle(); }}
     >
       {/* Masked, not <img>, so the mark recolors per theme; CSS swaps wordmark↔icon
           on a phone, where the icon doubles as the app-menu button. */}

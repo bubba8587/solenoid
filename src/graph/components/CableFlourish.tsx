@@ -108,13 +108,16 @@ export function CableFlourish() {
   runsRef.current = runs;
 
   // Portal into the canvas pane so it paints behind nodes/cables but above the grid.
+  // The trigger is registered once, so it reads the pane through a ref, not the first render's state.
+  const canvasRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    setCanvasEl(document.querySelector<HTMLElement>(".sol-rf-appcanvas .react-flow"));
+    canvasRef.current = document.querySelector<HTMLElement>(".sol-rf-appcanvas .react-flow");
+    setCanvasEl(canvasRef.current);
   }, []);
 
   const trigger = () => {
-    const w = canvasEl?.clientWidth || window.innerWidth;
-    const h = canvasEl?.clientHeight || window.innerHeight;
+    const w = canvasRef.current?.clientWidth || window.innerWidth;
+    const h = canvasRef.current?.clientHeight || window.innerHeight;
     const run = makeRun(nextId.current++, w, h);
     if (run.total > 0) setRuns((r) => [...r, run]);
   };

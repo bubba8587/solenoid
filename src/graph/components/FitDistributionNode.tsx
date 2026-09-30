@@ -17,12 +17,12 @@ export function FitDistributionComponent({ data, emit }: NodeProps<FitDistributi
       )}
       {bestOut && (
         <MeasuredSocketRow hero side="output" socketKey="best" nodeId={data.id} emit={emit} payload={bestOut.socket}>
-          <div style={{ width: "100%" }}><ValueDisplay value={data.cachedBest} /></div>
+          <div style={{ width: "100%" }}><ValueDisplay value={data.cachedBest} socketKey="best" /></div>
         </MeasuredSocketRow>
       )}
       {paramsOut && (
         <MeasuredSocketRow hero side="output" socketKey="params" nodeId={data.id} emit={emit} payload={paramsOut.socket}>
-          <div style={{ width: "100%" }}><ValueDisplay value={data.cachedParams} /></div>
+          <div style={{ width: "100%" }}><ValueDisplay value={data.cachedParams} socketKey="params" /></div>
         </MeasuredSocketRow>
       )}
     </NodeShell>

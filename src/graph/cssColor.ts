@@ -45,29 +45,6 @@ function parseHex(s: string): RGBA | null {
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
   const a = h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1;
-  if (![r, g, b].every(Number.isFinite)) return null;
+  if (![r, g, b, a].every(Number.isFinite)) return null;
   return { r, g, b, a };
-}
-
-export function toCss(c: RGBA): string {
-  const r = Math.round(clamp255(c.r)), g = Math.round(clamp255(c.g)), b = Math.round(clamp255(c.b));
-  return `rgba(${r}, ${g}, ${b}, ${clamp01(c.a)})`;
-}
-
-export function mixSrgb(a: RGBA, b: RGBA, t: number): RGBA {
-  const u = clamp01(t);
-  const v = 1 - u;
-  return {
-    r: a.r * v + b.r * u,
-    g: a.g * v + b.g * u,
-    b: a.b * v + b.b * u,
-    a: a.a * v + b.a * u,
-  };
-}
-
-export function flowTint(base: string, basePercent: number): string {
-  const c = parseColor(base) ?? { r: 200, g: 200, b: 200, a: 1 };
-  const white: RGBA = { r: 255, g: 255, b: 255, a: 1 };
-  // base P% means weight (1 − P/100) toward white.
-  return toCss(mixSrgb(c, white, 1 - clamp01(basePercent / 100)));
 }

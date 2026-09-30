@@ -5,7 +5,6 @@ import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from 
 import { dropInputCables } from "./cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
 import { getOwningView, getOwningEditor } from "../activeGraph";
-import { processGraph } from "../process";
 const OPS = (Object.keys(RETURNS_OP_META) as ReturnsOp[]).map((op) => ({
   value: op, label: RETURNS_OP_META[op].label, title: RETURNS_OP_META[op].description,
 }));
@@ -22,7 +21,6 @@ export function ReturnsComponent({ data, emit }: NodeProps<ReturnsNodeType>) {
     if (outputChanged && editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);
-    await processGraph(data.id);
   }
   return (
     <NodeShell node={data} emit={emit}>

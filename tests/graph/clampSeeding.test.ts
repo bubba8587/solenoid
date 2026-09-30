@@ -1,6 +1,9 @@
 // [[C24]]
 import { describe, it, expect } from "vitest";
-import { collectFinite, extendSafeRange, boundsFromSafeRange } from "../../src/graph/modelFuzz";
+import { collectFinite, extendSafeRange, boundsFromSafeRange, findLeaves } from "../../src/graph/modelFuzz";
+import { ClassicPreset, NodeEditor } from "rete";
+import type { Schemes } from "../../src/graph/schemes";
+import { NumberInputNode, SliderInputNode } from "../../src/graph/nodes/input";
 import { solError } from "../../src/graph/errorValue";
 
 // Task 2 (Stream D): the model-fuzz "+ Clamp" quick-fix is seeded with the
@@ -54,5 +57,18 @@ describe("boundsFromSafeRange", () => {
     expect(boundsFromSafeRange(undefined)).toBeUndefined();
     expect(boundsFromSafeRange({ min: Infinity, max: -Infinity })).toBeUndefined();
     expect(boundsFromSafeRange({ min: NaN, max: 1 })).toBeUndefined();
+  });
+});
+
+describe("model fuzz leaves", () => {
+  it("a Slider with nothing wired in is a leaf even though it declares bound sockets", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const slider = new SliderInputNode();
+    const num = new NumberInputNode();
+    const bound = new SliderInputNode();
+    for (const n of [slider, num, bound]) await editor.addNode(n as unknown as Schemes["Node"]);
+    await editor.addConnection(new ClassicPreset.Connection(num, "value" as never, bound, "min" as never) as unknown as Schemes["Connection"]);
+    const ids = findLeaves(editor as never).map((l) => l.node.id).sort();
+    expect(ids).toEqual([slider.id, num.id].sort());
   });
 });

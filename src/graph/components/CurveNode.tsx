@@ -60,10 +60,10 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     return best;
   };
 
-  const sortByX = (arr: Array<[number, number]>) => [...arr].sort((a, b) => a[0] - b[0]);
   const update = (next: Array<[number, number]>) => { live.current = next; setPts(next); };
   const commit = () => {
-    update(sortByX(live.current));
+    // Points that landed on one x collapse as the output does (curvePoints), so the pad never shows a point the output lacks.
+    update(curvePoints(pointsToText(live.current)));
     data.pointsText = pointsToText(live.current);
     void processGraph(data.id);
   };
@@ -79,7 +79,7 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
 
   // Display only: the node's own sampling drives the outputs.
   const path = useMemo(() => {
-    const sorted = sortByX(pts);
+    const sorted = curvePoints(pointsToText(pts));
     if (sorted.length === 0) return "";
     const f = monotoneCubic(sorted.map((p) => p[0]), sorted.map((p) => p[1]));
     const seg: string[] = [];

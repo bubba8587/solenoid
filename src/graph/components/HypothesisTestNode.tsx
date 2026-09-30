@@ -8,6 +8,7 @@ import { getOwningView } from "../activeGraph";
 const OPS = (Object.keys(HYPOTHESIS_TEST_OP_META) as HypothesisTestOp[]).map((op) => ({
   value: op,
   label: HYPOTHESIS_TEST_OP_META[op].label,
+  title: HYPOTHESIS_TEST_OP_META[op].description,
 }));
 
 export function HypothesisTestComponent({ data, emit }: NodeProps<HypothesisTestNodeType>) {

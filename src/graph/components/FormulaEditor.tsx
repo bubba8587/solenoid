@@ -97,11 +97,11 @@ export function FormulaEditor({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onKeyUp={(e) => {
-          // Arrow keys, Home and End move the caret without an input event, so the hint bar refreshes here.
+          // Arrow keys, Home and End move the caret without an input event, so the hint bar and the menu's token refresh here.
           const k = e.key;
-          if (k.startsWith("Arrow") || k === "Home" || k === "End") {
-            setCallHint(enclosingCall(value, (e.target as HTMLTextAreaElement).selectionStart));
-          }
+          const caret = (e.target as HTMLTextAreaElement).selectionStart;
+          if (k === "ArrowLeft" || k === "ArrowRight" || k === "Home" || k === "End") refreshMenu(value, caret);
+          else if ((k === "ArrowUp" || k === "ArrowDown") && !menu) setCallHint(enclosingCall(value, caret));
         }}
         onScroll={syncScroll}
         onClick={(e) => refreshMenu(value, (e.target as HTMLTextAreaElement).selectionStart)}

@@ -1,6 +1,6 @@
 // Model fuzzing: valid-shaped samples per leaf source; findings go to the Problems panel (origin "fuzz").
 import { ClassicPreset } from "rete";
-import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
+import { getEditor, getView, graphSettled, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { downstreamClosure } from "./graphCompute";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { NumberInputNode, SliderInputNode } from "./nodes/input";
@@ -52,11 +52,12 @@ type Leaf =
   | { kind: "number"; node: NumberInputNode | SliderInputNode }
   | { kind: "text"; node: TextInputNode };
 
-function findLeaves(editor: AnyEditor): Leaf[] {
+export function findLeaves(editor: AnyEditor): Leaf[] {
   const leaves: Leaf[] = [];
+  // A leaf is a source with nothing wired in; a Slider declares bound sockets, so declared inputs don't disqualify it.
+  const wiredTargets = new Set(editor.getConnections().map((c) => c.target));
   for (const node of editor.getNodes()) {
-    const hasInputs = Object.keys((node as unknown as { inputs?: Record<string, unknown> }).inputs ?? {}).length > 0;
-    if (hasInputs) continue;
+    if (wiredTargets.has(node.id)) continue;
     if (node instanceof NumberInputNode || node instanceof SliderInputNode) leaves.push({ kind: "number", node });
     else if (node instanceof TextInputNode) leaves.push({ kind: "text", node });
   }
@@ -192,7 +193,7 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
         for (const v of values) {
           samples++;
           (leaf.node as { value: number | string }).value = v;
-          await processGraph(leaf.node.id);
+          await processGraph(leaf.node.id); await graphSettled();
           for (const id of downstream) {
             const node = editor.getNode(id);
             if (!node) continue;
@@ -215,7 +216,7 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
       } finally {
         // Restore on every exit path, so a throw never leaves the graph holding a sample.
         (leaf.node as { value: number | string }).value = original;
-        await processGraph(leaf.node.id);
+        await processGraph(leaf.node.id); await graphSettled();
       }
     }
   } finally {

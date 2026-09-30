@@ -4,7 +4,6 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
 import { getOwningView } from "../activeGraph";
-import { processGraph } from "../process";
 const OPS = (Object.keys(SMOOTH_OP_META) as SmoothOp[]).map((op) => ({
   value: op, label: SMOOTH_OP_META[op].label, title: SMOOTH_OP_META[op].description,
 }));
@@ -18,7 +17,6 @@ export function SmoothComponent({ data, emit }: NodeProps<SmoothNodeType>) {
     data.setOp(next);
     await getOwningView(data.id)?.rerenderNode(data.id);
     setOpField(next);
-    await processGraph(data.id);
   }
   return (
     <NodeShell node={data} emit={emit}>

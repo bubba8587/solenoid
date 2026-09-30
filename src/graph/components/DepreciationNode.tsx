@@ -8,6 +8,7 @@ import { getOwningView } from "../activeGraph";
 const OPS = (Object.keys(DEPRECIATION_OP_META) as DepreciationOp[]).map((op) => ({
   value: op,
   label: DEPRECIATION_OP_META[op].label,
+  title: DEPRECIATION_OP_META[op].description,
 }));
 
 export function DepreciationComponent({ data, emit }: NodeProps<DepreciationNodeType>) {

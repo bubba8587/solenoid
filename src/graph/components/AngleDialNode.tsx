@@ -3,6 +3,7 @@ import { AngleDialNode } from "../nodes/control";
 import { AngleDial } from "../AngleDial";
 import { NodeShell, NodeProps } from "./nodeKit";
 import { processGraph } from "../process";
+import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import "./AngleDialNode.css";
 
 function normalize(deg: number): number {
@@ -12,23 +13,20 @@ function normalize(deg: number): number {
 
 export function AngleDialComponent({ data, emit }: NodeProps<AngleDialNode>) {
   const [degrees, setDegrees] = useState(data.value);
-  const [draft, setDraft] = useState(String(Math.round(data.value)));
-  const [editing, setEditing] = useState(false);
-
-  useEffect(() => {
-    if (!editing) {
-      setDegrees(data.value);
-      setDraft(String(Math.round(data.value)));
-    }
-  }, [data.value, editing]);
+  useEffect(() => { setDegrees(data.value); }, [data.value]);
 
   const commit = useCallback((next: number) => {
     const clamped = normalize(Math.round(next));
     setDegrees(clamped);
-    setDraft(String(clamped));
     data.value = clamped;
     void processGraph(data.id);
   }, [data]);
+  const field = useDraftCommit(
+    degrees,
+    (v) => String(Math.round(v)),
+    (t) => { const n = Number(t); return t.trim() !== "" && Number.isFinite(n) ? n : INVALID_DRAFT; },
+    commit,
+  );
 
   return (
     <NodeShell node={data} emit={emit} collapsible={false} className="solenoid-node--angle-dial">
@@ -46,17 +44,10 @@ export function AngleDialComponent({ data, emit }: NodeProps<AngleDialNode>) {
             className="angle-dial-node__input"
             type="text"
             inputMode="numeric"
-            value={draft}
-            onChange={e => { setEditing(true); setDraft(e.target.value); }}
-            onBlur={() => {
-              setEditing(false);
-              const parsed = Number(draft);
-              commit(Number.isFinite(parsed) ? parsed : degrees);
-            }}
-            onKeyDown={e => {
-              if (e.key === "Enter") e.currentTarget.blur();
-              if (e.key === "Escape") { setDraft(String(Math.round(degrees))); setEditing(false); e.currentTarget.blur(); }
-            }}
+            value={field.draft}
+            onChange={e => field.setDraft(e.target.value)}
+            onBlur={field.onBlur}
+            onKeyDown={field.onKeyDown}
             onPointerDown={e => e.stopPropagation()}
             onMouseDown={e => e.stopPropagation()}
           />

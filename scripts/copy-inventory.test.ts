@@ -44,18 +44,17 @@ describe("copy inventory", () => {
     ];
     const edits = new Map<string, string>([
       ["seed:demo.json:nodes[0].init.body", "New prose."],
-      ["tsx:cmp/A.tsx:1.tooltip#0", "Sharper tip"],
+      ["tsx:cmp/A.tsx:1.tooltip#0", "Costs $$5 or $&"], // `$` patterns must land literally
       ["tsx:cmp/A.tsx:2.tooltip#0", "Won't apply"], // appears twice in the file
     ]);
-    // seed staleness check re-collects from the real repo; sidestep it by making
-    // the seed record fresh: applyInventory's seed path re-reads via collect —
-    // here we call with a fixture root, so collect must run against that root.
     const { outcomes, unchanged } = applyInventory(root, records, edits);
     expect(unchanged).toBe(0);
     const byId = new Map(outcomes.map((o) => [o.id, o]));
+    expect(byId.get("seed:demo.json:nodes[0].init.body")!.status).toBe("applied");
+    expect(readFileSync(join(root, "seeds/demo.json"), "utf8")).toContain('"New prose."');
     expect(byId.get("tsx:cmp/A.tsx:1.tooltip#0")!.status).toBe("applied");
     expect(byId.get("tsx:cmp/A.tsx:2.tooltip#0")!.status).toBe("skipped");
-    expect(readFileSync(join(root, "cmp/A.tsx"), "utf8")).toContain('title="Sharper tip"');
+    expect(readFileSync(join(root, "cmp/A.tsx"), "utf8")).toContain('title="Costs $$5 or $&"');
     expect(readFileSync(join(root, "cmp/A.tsx"), "utf8")).toContain('title="Twice said"');
   });
 

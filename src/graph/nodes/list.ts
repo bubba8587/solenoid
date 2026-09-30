@@ -2236,7 +2236,7 @@ export class SpectrumNode extends ClassicPreset.Node {
   };
   label: string;
   literals: Record<string, number> = { rate: 1 };
-  cachedResult: ListCell[][] | null = null;
+  cachedResult: ListCell[][] | SolError | null = null;
   width = 200; height = 160;
 
   constructor(init?: { label?: string }) {
@@ -2252,7 +2252,7 @@ export class SpectrumNode extends ClassicPreset.Node {
     const rate = readRole<number | SolError>(this, "rate", inputs.rate);
     if (arr.length === 0) { this.cachedResult = null; return { result: null }; }
     const rows = spectrum(arr, rate);
-    if (isSolError(rows)) { this.cachedResult = null; return { result: rows }; }
+    if (isSolError(rows)) { this.cachedResult = rows; return { result: rows }; }
     this.cachedResult = rows.map((r) => [r.frequency, r.magnitude, r.phase]);
     return { result: this.cachedResult };
   }

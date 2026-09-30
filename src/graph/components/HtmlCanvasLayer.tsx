@@ -259,10 +259,15 @@ export function HtmlCanvasLayer({ editor, view }: { editor: NodeEditor<Schemes>;
 
     let rebuildTimer = 0;
     let dirtyIds: Set<string> | null = new Set();
+    let heldForLasso = false;
     const scheduleRebuild = (id?: string) => {
-      if (!built || lassoActiveStore.get()) return;
+      if (!built) return;
       if (id === undefined) dirtyIds = null;
       else if (dirtyIds) dirtyIds.add(id);
+      if (lassoActiveStore.get()) { heldForLasso = true; return; }
+      arm();
+    };
+    const arm = () => {
       clearTimeout(rebuildTimer);
       rebuildTimer = window.setTimeout(() => {
         const ids = dirtyIds;
@@ -295,6 +300,12 @@ export function HtmlCanvasLayer({ editor, view }: { editor: NodeEditor<Schemes>;
     const count = (cause: string) => { triggers[cause] = (triggers[cause] ?? 0) + 1; };
     const fullRebuild = (cause: string) => () => { count(cause); scheduleRebuild(); };
     // Not cableValueStore: its bump carries no ids, so it would force a full rebuild every pass; values arrive per id through the render pipe.
+    // A rebuild held for a lasso runs on release, with every id collected meanwhile.
+    const unsubLasso = lassoActiveStore.subscribe(() => {
+      if (lassoActiveStore.get() || !heldForLasso) return;
+      heldForLasso = false;
+      arm();
+    });
     const unsubConn = connectionVersionStore.subscribe(fullRebuild("connection"));
     const unsubCollapse = collapseStore.subscribe(fullRebuild("collapse"));
     // Group collapse re-renders only the group id, so without this its members keep their cached bitmaps.
@@ -378,6 +389,7 @@ export function HtmlCanvasLayer({ editor, view }: { editor: NodeEditor<Schemes>;
       clearInterval(retry);
       clearTimeout(rebuildTimer);
       clearTimeout(gestureTimer);
+      unsubLasso();
       unsubConn();
       unsubCollapse();
       unsubGroupCollapse();

@@ -208,5 +208,3 @@ The marketing pages' `.sol-landing` wrapper overrides the four accent variables 
 A `<canvas>` cannot evaluate `color-mix()` or `var(--…)`, so `cssColor.ts` does that math for the canvas renderers. It stays free of the DOM; resolving a `var()` needs `getComputedStyle` and is the caller's job.
 
 - `parseColor` reads `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()` and `rgba()` (alpha as a fraction or a percentage), and `color(srgb r g b / a)`. Chromium serializes any `color-mix()` result in that last form, so without it header tints and group-tinted borders fall back to a flat body fill. Its channels are rounded after scaling to 0 to 255, because the serialized floats are truncated and a bare multiply lands one step low. Anything else returns null.
-- `mixSrgb(a, b, t)` matches `color-mix(in srgb, …)`: a straight blend of the gamma-encoded channels, not linear light, with `t` the weight of `b`.
-- `flowTint(base, p)` is `color-mix(in srgb, base p%, #fff)`, the cable flow tint; an unparseable base reads as light gray.

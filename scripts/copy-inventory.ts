@@ -139,7 +139,7 @@ export function applyRecord(
     const total = hits.reduce((n, f) => n + countOccurrences(readFileSync(f, "utf8"), oldQ), 0);
     if (total > 1) return skip(`quoted string appears ${total} times; edit by hand`);
     const src = readFileSync(hits[0], "utf8");
-    writeFileSync(hits[0], src.replace(oldQ, newQ));
+    writeFileSync(hits[0], src.replace(oldQ, () => newQ));
     return { id, status: "applied" };
   }
   const file = join(root, rec.file);
@@ -150,7 +150,7 @@ export function applyRecord(
   const n = countOccurrences(src, rec.text);
   if (n === 0) return skip("string not found; source changed since extract");
   if (n > 1) return skip(`string appears ${n} times in the file; edit by hand`);
-  writeFileSync(file, src.replace(rec.text, edited));
+  writeFileSync(file, src.replace(rec.text, () => edited));
   return { id, status: "applied" };
 }
 

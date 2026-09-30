@@ -5,6 +5,7 @@ import { NodeShell, ArgSelect, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
+import { useDraftCommit } from "./inlineInput";
 import "./ColorPickerNode.css";
 import { stopDragStart } from "../coarse";
 
@@ -55,7 +56,14 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
   const [mode, setMode] = useState<ColorMode>(data.mode);
   const [format, setFormat] = useState<ColorFormat>(data.format);
   const [ch, setCh] = useState<Ch>({ c0: data.literals.c0, c1: data.literals.c1, c2: data.literals.c2 });
-  const [hexDraft, setHexDraft] = useState(data.stringLiterals.hex ?? "#56b4e9");
+  const [hex, setHex] = useState(data.stringLiterals.hex ?? "#56b4e9");
+  // The hex field commits on Enter or blur, while the swatch tracks the draft live as a preview.
+  const hexField = useDraftCommit(hex, (v) => v, (t) => t, (v) => {
+    setHex(v);
+    data.stringLiterals.hex = v;
+    void processGraph(data.id);
+  });
+  const hexDraft = hexField.draft;
 
   const raw = mode === "hex"
     ? colord(hexDraft || "#000000")
@@ -77,7 +85,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
     if (next === mode) return;
     if (next === "hex") {
       const hx = c.toHex();
-      setHexDraft(hx);
+      setHex(hx);
       data.stringLiterals.hex = hx;
     } else {
       const nc: Ch = next === "hsv"
@@ -97,12 +105,6 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
     void processGraph(data.id);
   }
 
-    // The hex field commits on Enter or blur, while the swatch tracks the draft live as a preview.
-  function commitHex() {
-    data.stringLiterals.hex = hexDraft;
-    void processGraph(data.id);
-  }
-
   const colorOut = data.outputs.color;
 
   return (
@@ -114,9 +116,9 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
             className="solenoid-colorpicker__hex"
             value={hexDraft}
             spellCheck={false}
-            onChange={(e) => setHexDraft(e.target.value)}
-            onBlur={commitHex}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+            onChange={(e) => hexField.setDraft(e.target.value)}
+            onBlur={hexField.onBlur}
+            onKeyDown={hexField.onKeyDown}
           />
         </div>
       ) : (

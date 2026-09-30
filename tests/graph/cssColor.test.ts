@@ -1,6 +1,6 @@
 // [[C62]] paletteAllOrNone
 import { describe, it, expect } from "vitest";
-import { parseColor, toCss, mixSrgb, flowTint, type RGBA } from "../../src/graph/cssColor";
+import { parseColor } from "../../src/graph/cssColor";
 
 describe("parseColor", () => {
   it("parses #rrggbb", () => {
@@ -44,43 +44,7 @@ describe("parseColor", () => {
     expect(parseColor("var(--x)")).toBeNull();
     expect(parseColor("color-mix(in srgb, #fff 50%, #000)")).toBeNull();
     expect(parseColor("#ff")).toBeNull();      // bad length
+    expect(parseColor("#112233zz")).toBeNull(); // bad alpha digits
     expect(parseColor("rgb(1,2)")).toBeNull(); // too few
-  });
-});
-
-describe("toCss", () => {
-  it("rounds + clamps to an rgba() string", () => {
-    expect(toCss({ r: 255.6, g: -3, b: 128.4, a: 1.2 })).toBe("rgba(255, 0, 128, 1)");
-  });
-});
-
-describe("mixSrgb", () => {
-  const black: RGBA = { r: 0, g: 0, b: 0, a: 1 };
-  const white: RGBA = { r: 255, g: 255, b: 255, a: 1 };
-  it("t=0 → a, t=1 → b", () => {
-    expect(mixSrgb(black, white, 0)).toEqual(black);
-    expect(mixSrgb(black, white, 1)).toEqual(white);
-  });
-  it("t=0.5 → midpoint", () => {
-    expect(mixSrgb(black, white, 0.5)).toEqual({ r: 127.5, g: 127.5, b: 127.5, a: 1 });
-  });
-  it("clamps t", () => {
-    expect(mixSrgb(black, white, 2)).toEqual(white);
-    expect(mixSrgb(black, white, -1)).toEqual(black);
-  });
-});
-
-describe("flowTint", () => {
-  it("mixes base P% toward white (matches color-mix(in srgb, base P%, #fff))", () => {
-    // base 100% → pure base.
-    expect(flowTint("#3060c0", 100)).toBe("rgba(48, 96, 192, 1)");
-    // base 0% → pure white.
-    expect(flowTint("#3060c0", 0)).toBe("rgba(255, 255, 255, 1)");
-    // base 85% (the cable flow value) → 0.15 toward white.
-    const c = flowTint("#000000", 85); // 0.15*255 = 38.25 → 38
-    expect(c).toBe("rgba(38, 38, 38, 1)");
-  });
-  it("falls back gracefully on an unparseable base", () => {
-    expect(flowTint("var(--whatever)", 85)).toMatch(/^rgba\(/);
   });
 });
