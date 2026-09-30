@@ -310,7 +310,7 @@ Formula.js reports failures as `Error` objects. Inside a formula they stay `Erro
 
 A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[value-semantics#The value grammar]]), so `Array.isArray` means exactly one thing everywhere, and every complex test goes through `isCx`, never a structural array check. It reaches a function only through a declared `cxArgs` (step 10 of the dispatch ladder). The IM* family declares it; COMPLEX and QUADRATICROOTS take real arguments and deliberately do not.
 
-- **Arguments** (`asCxArg`): a complex value as is, a real number as `re + 0i`, or text in Excel's `a+bi` grammar. Text that does not parse is `#VALUE!` (Excel says `#NUM!`); anything else, logicals included, is `#TYPE!`.
+- **Arguments** (`toCx` in `cxValue.ts`, which the IM cards share): a complex value as is, a real number as `re + 0i`, or text in Excel's `a+bi` grammar. Text that does not parse is `#VALUE!` (Excel says `#NUM!`); anything else, logicals included, is `#TYPE!`.
 - **Results** are tagged complex values, not Excel's text complexes. IMREAL, IMAGINARY, IMABS and IMARGUMENT answer numbers.
 - The IM* functions are element-wise, like their nodes: they declare no `listArgs`, so they broadcast over lists, and IMSUM and IMPRODUCT over two lists zip them pairwise rather than summing a whole range as Excel does.
 - IMARGUMENT(0) is 0, atan2's convention and the IM Unpack node's answer; Excel answers `#DIV/0!`.

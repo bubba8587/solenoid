@@ -6,6 +6,16 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-30b: oldest-first code review, 1.0 import through August; cloud session)
+- Walked every file whose last hand edit (sweep commits of 40+ files excluded) predates September; September's 589 files are left for a later walk (the author: confident in them for now). Open leads: `backlog.md` § From the 2026-09-30 oldest-first review.
+- Two security holes closed: the SVG Picker scrubs markup in its class (`source` getter), so a loaded or pasted file can't inline script through an `SvgFigure` ([[C103]] untrustedContentSeams); the string editor's save endpoint binds 127.0.0.1, takes only scanned `src/` files and refuses a foreign Origin.
+- One complex operand reading for card and formula (`cxValue.ts` `toCx`: a real is z + 0i, text parses, else #TYPE!); Polynomial Roots keeps every coefficient in its slot (an error propagates, a blank leaves the roots unknown).
+- `graphSettled()` (`process.ts`, compute-pass spec § Single flight): a caller outside a pass awaits it after `processGraph` before reading results; Tornado and model fuzz do.
+- Every hand-rolled draft field found now runs on `useDraftCommit` (Document Properties, Angle Dial, Date Range, Color Picker hex): Escape cancels, a pending draft flushes ([[C95]] commitOnEnter).
+- `makeOpNodeComponent` (`standardNode.tsx`) is the op-picker card; 32 cards moved onto the standard factories. Pass-through cards (IF, IFS, CHOOSE, SWITCH, IFERROR, Expect) show tables through `ResultDisplay`.
+- The readInput sweep also scans `scripts/new-node.mjs`, whose template now reads through `readInput` ([[D86]] blankRoles).
+- Deleted as dead: `highlightUtils`, `hicColors`, `flow/flowSeeds`, `RandNode`, FormulaField's unreachable inline editor, cssColor's `toCss`/`mixSrgb`/`flowTint`, `parseFredObservations`, `snapCoord` and a dozen unused store members and exports.
+
 ### SESSION DIGEST (2026-09-30: the Heatmap figure, Tidy fixed points, group collapse round trips; cloud session)
 - Heatmap is a figure node now: frame, table or list in, a `heatmap` chart value out; the pass-through `HeatmapCellNode` and its hardcoded blue-yellow-red card are gone (`tree/specs/computation/chart-figures.md` § Heatmap, § The CSS and canvas figures).
 - Square, touching cells by default (`aspect=auto` fills); seaborn's `cmap`, `center`, `vmin`, `vmax`, `annot`, `fmt`, `cbar` plus `origin`, all in the Chart Builder's new Heatmap target. No `cmap` means the palette's height ramp, or its diverging ramp with a center, so the default follows the theme.
