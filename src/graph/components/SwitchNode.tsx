@@ -1,8 +1,8 @@
 import type { SwitchNode } from "../rete-nodes";
-import type { NodeProps } from "./nodeKit";
-import { NodeShell, ValueDisplay } from "./nodeKit";
+import { NodeShell, type NodeProps } from "./nodeKit";
 import { PairedExtensibleInputs } from "./PairedExtensibleInputs";
-import type { DisplayValue } from "./valueDisplayFormat";
+import { ResultDisplay } from "./ResultDisplay";
+import { nodeDisplayName } from "../catalogUtils";
 
 export function SwitchComponent({ data, emit }: NodeProps<SwitchNode>) {
   return (
@@ -13,7 +13,7 @@ export function SwitchComponent({ data, emit }: NodeProps<SwitchNode>) {
         leadingKeys={["expr"]}
         trailingKeys={["default"]}
       />
-      <ValueDisplay value={data.cachedResult as DisplayValue} />
+      <ResultDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

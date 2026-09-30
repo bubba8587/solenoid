@@ -18,7 +18,7 @@ export function ConstantComponent({ data, emit }: NodeProps<ConstantNodeType>) {
     <NodeShell node={data} emit={emit}>
       <OpSelect value={op} onChange={setOp} options={OPS} />
       <div className="solenoid-node__display-value">
-        <span style={{ marginRight: 6, color: "#9aa0a6" }}>{meta.symbol}</span>
+        <span style={{ marginRight: 6, color: "var(--text-dim)" }}>{meta.symbol}</span>
         {formatValue(meta.value)}
       </div>
     </NodeShell>

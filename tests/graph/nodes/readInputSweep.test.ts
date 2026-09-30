@@ -36,11 +36,17 @@ function stripComments(src: string): string {
 }
 
 function offenders(): { file: string; lines: number[] }[] {
-  const dir = path.resolve(__dirname, "../../../src/graph/nodes");
+  const root = path.resolve(__dirname, "../../..");
+  const dir = path.join(root, "src/graph/nodes");
+  const files = fs.readdirSync(dir)
+    .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
+    .map((f) => path.join(dir, f));
+  // The scaffolder's class templates are where new nodes start.
+  files.push(path.join(root, "scripts/new-node.mjs"));
   const out: { file: string; lines: number[] }[] = [];
-  for (const f of fs.readdirSync(dir)) {
-    if (!f.endsWith(".ts") || f.endsWith(".test.ts")) continue;
-    const src = stripComments(fs.readFileSync(path.join(dir, f), "utf8"));
+  for (const file of files) {
+    const f = path.relative(root, file);
+    const src = stripComments(fs.readFileSync(file, "utf8"));
     const lines: number[] = [];
     for (const m of src.matchAll(SWALLOW)) {
       lines.push(src.slice(0, m.index).split("\n").length);
