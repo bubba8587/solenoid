@@ -4,7 +4,7 @@ import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complex
 import { solError, isSolError, type SolError } from "../errorValue";
 import { cellShortCircuit, COMPUTE } from "../valueKinds";
 import {
-  cx, isCx, type Cx,
+  cx, toCx, type Cx,
   cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
   cxSqrt, cxConj, cxSin, cxCos, cxTan, cxSinh, cxCosh, cxSec, cxCsc, cxCot,
   cxSech, cxCsch, quadraticRoots,
@@ -16,11 +16,9 @@ export { cx, isCx, formatCx, type Cx } from "../cxValue";
 
 type Operand<T> = { scalar: T | SolError | null; list: (T | SolError | null)[] | null };
 
-function cxOp(v: Cx | (Cx | SolError | null)[] | SolError | null): Operand<Cx> {
-  if (v === null || isSolError(v)) return { scalar: v, list: null };
-  return isCx(v)
-    ? { scalar: v, list: null }
-    : { scalar: null, list: v as (Cx | SolError | null)[] };
+function cxOp(v: unknown, name: string): Operand<Cx> {
+  const one = (e: unknown): Cx | SolError | null => (e === null || e === undefined || isSolError(e) ? (e ?? null) as SolError | null : toCx(e, name));
+  return Array.isArray(v) ? { scalar: null, list: v.map(one) } : { scalar: one(v), list: null };
 }
 
 function numOp(v: number | (number | SolError | null)[] | SolError | null): Operand<number> {
@@ -112,7 +110,7 @@ export class ComplexUnpackNode extends ClassicPreset.Node {
 
   data(inputs: { z?: (Cx | (Cx | SolError | null)[])[] }) {
     const z = inputs.z?.[0] ?? null;
-    const part = (f: (c: Cx) => number) => broadcastComplex(f, cxOp(z));
+    const part = (f: (c: Cx) => number) => broadcastComplex(f, cxOp(z, this.label));
     this.cachedRe  = part((c) => c.re);
     this.cachedIm  = part((c) => c.im);
     this.cachedAbs = part(cxAbs);
@@ -179,7 +177,7 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
         case "sech":  return cxSech(z);
         case "csch":  return cxCsch(z);
       }
-    }, cxOp(inputs.z?.[0] ?? null));
+    }, cxOp(inputs.z?.[0] ?? null, this.label));
     this.cachedResult = result;
     return { result };
   }
@@ -221,8 +219,8 @@ export class ComplexBinaryNode extends ClassicPreset.Node {
         case "div":     return cxDiv(a, b);
       }
     },
-      cxOp(inputs.a?.[0] ?? null),
-      cxOp(inputs.b?.[0] ?? null));
+      cxOp(inputs.a?.[0] ?? null, this.label),
+      cxOp(inputs.b?.[0] ?? null, this.label));
     this.cachedResult = result;
     return { result };
   }
@@ -246,10 +244,9 @@ export class ComplexPowerNode extends ClassicPreset.Node {
     z?: (Cx | (Cx | SolError | null)[])[];
     n?: (number | number[])[];
   }): { result: CellResult<Cx> } {
-    // The operand tags keep a two-element real list `[1, 2]` from reading as one complex scalar.
     const result = broadcastComplex(
       (z: Cx, n: number) => cxPow(z, n),
-      cxOp(inputs.z?.[0] ?? null),
+      cxOp(inputs.z?.[0] ?? null, this.label),
       numOp(readInput(inputs.n, this.literals.n ?? 2)),
     );
     this.cachedResult = result;
@@ -279,8 +276,15 @@ export class PolyRootsNode extends ClassicPreset.Node {
   data(inputs: { coeffs?: (number | null | SolError)[][] }): { roots: Cx[] | SolError | null; real: number[] | null } {
     const list = inputs.coeffs?.[0] ?? null;
     if (list === null) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
-    const nums = list.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-    const rs = polyRoots(nums);
+    // Positional: a coefficient's slot is its degree, so nothing is dropped. The first error wins; a blank leaves the polynomial unknown.
+    const err = list.find(isSolError);
+    if (err) { this.cachedRoots = err; this.cachedReal = null; return { roots: err, real: null }; }
+    if (list.some((v) => v === null)) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
+    if (!list.every((v) => typeof v === "number" && Number.isFinite(v))) {
+      const e = solError("#VALUE!", "Polynomial Roots needs a finite number in every coefficient");
+      this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null };
+    }
+    const rs = polyRoots(list as number[]);
     if (rs === null) { const e = solError("#DOMAIN!", "Polynomial Roots needs at least one non-zero coefficient"); this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null }; }
     this.cachedRoots = rs.map(([re, im]) => cx(re, im));
     this.cachedReal = rs.filter(([, im]) => im === 0).map(([re]) => re).sort((x, y) => x - y);

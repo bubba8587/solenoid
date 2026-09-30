@@ -1,8 +1,8 @@
-// [[C24]] arraySemantics
+// [[C24]] arraySemantics, [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
-  ComplexPowerNode, QuadraticRootsNode, cx, isCx, type Cx,
+  ComplexPowerNode, QuadraticRootsNode, PolyRootsNode, cx, isCx, type Cx,
 } from "../../../src/graph/nodes/complex";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
 import { isSolError, solError } from "../../../src/graph/errorValue";
@@ -146,3 +146,28 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
   });
 });
 
+
+describe("complex operands read like the formula's (toCx)", () => {
+  it("a real number is z + 0i, text parses as a+bi, anything else is #TYPE!", () => {
+    const conj = (z: unknown) => new ComplexUnaryNode({ op: "conj" }).data({ z: [z as Cx] }).result;
+    expect(conj(5)).toEqual(cx(5, -0));
+    expect(conj("3+4i")).toEqual(cx(3, -4));
+    expect(isSolError(conj("abc"))).toBe(true);
+    expect(conj([1, cx(0, 2)] as unknown as Cx)).toEqual([cx(1, -0), cx(0, -2)]);
+    expect(isSolError(conj(true))).toBe(true);
+  });
+});
+
+describe("Polynomial Roots keeps every coefficient in its slot", () => {
+  const roots = (coeffs: unknown[]) => new PolyRootsNode().data({ coeffs: [coeffs as (number | null)[]] });
+  it("x² − 1 has roots ±1", () => {
+    expect(roots([1, 0, -1]).real).toEqual([-1, 1]);
+  });
+  it("a blank coefficient leaves the roots unknown instead of shifting the degree", () => {
+    expect(roots([1, null, -1])).toEqual({ roots: null, real: null });
+  });
+  it("an error coefficient propagates", () => {
+    const e = solError("#DIV/0!", "x");
+    expect(roots([1, e, -1]).roots).toBe(e);
+  });
+});

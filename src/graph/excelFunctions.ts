@@ -37,7 +37,7 @@ import {
   durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xirr, mirr, returnsOp, fvSchedule } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
-  cx, isCx, parseCx, type Cx,
+  cx, isCx, toCx, type Cx,
   cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
   cxSqrt, cxConj, cxSin, cxCos, cxTan, cxSinh, cxCosh, cxSec, cxCsc, cxCot,
   cxSech, cxCsch, quadraticRoots,
@@ -2121,18 +2121,10 @@ registerInternal("XNOR", (...vals) => {
   return !acc;
 });
 
-function asCxArg(v: unknown, name: string): Cx | SolError {
-  if (isCx(v)) return v;
-  if (typeof v === "number") return cx(v, 0);
-  if (typeof v === "string") {
-    return parseCx(v) ?? solError("#VALUE!", `${name}: "${v}" is not a complex number. Write it as "a+bi"`);
-  }
-  return solError("#TYPE!", `${name} expects a complex number`);
-}
 
 function regCxUnary(name: string, f: (z: Cx) => Cx | number): void {
   registerInternal(name, (v) => {
-    const z = asCxArg(v, name);
+    const z = toCx(v, name);
     return isSolError(z) ? z : f(z);
   });
 }
@@ -2161,7 +2153,7 @@ function regCxFold(name: string, f: (a: Cx, b: Cx) => Cx): void {
   registerInternal(name, (...vs) => {
     let acc: Cx | null = null;
     for (const v of vs) {
-      const z = asCxArg(v, name);
+      const z = toCx(v, name);
       if (isSolError(z)) return z;
       acc = acc === null ? z : f(acc, z);
     }
@@ -2173,9 +2165,9 @@ regCxFold("IMPRODUCT", cxMul);
 
 function regCxBinary(name: string, f: (a: Cx, b: Cx) => Cx): void {
   registerInternal(name, (a, b) => {
-    const za = asCxArg(a, name);
+    const za = toCx(a, name);
     if (isSolError(za)) return za;
-    const zb = asCxArg(b, name);
+    const zb = toCx(b, name);
     return isSolError(zb) ? zb : f(za, zb);
   });
 }
@@ -2183,7 +2175,7 @@ regCxBinary("IMSUB", cxSub);
 regCxBinary("IMDIV", cxDiv);
 
 registerInternal("IMPOWER", (v, n) => {
-  const z = asCxArg(v, "IMPOWER");
+  const z = toCx(v, "IMPOWER");
   if (isSolError(z)) return z;
   if (isCx(n)) return solError("#TYPE!", "IMPOWER's exponent is a real number");
   const p = Number(n);

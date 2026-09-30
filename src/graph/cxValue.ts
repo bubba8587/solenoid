@@ -52,6 +52,16 @@ export function parseCx(text: string): Cx | null {
   return null;
 }
 
+/** One reading of a complex operand for the formula and the card: a real number is z + 0i, text is parsed as "a+bi", anything else is #TYPE!. */
+export function toCx(v: unknown, name: string): Cx | SolError {
+  if (isCx(v)) return v;
+  if (typeof v === "number") return cx(v, 0);
+  if (typeof v === "string") {
+    return parseCx(v) ?? solError("#VALUE!", `${name}: "${v}" is not a complex number. Write it as "a+bi"`);
+  }
+  return solError("#TYPE!", `${name} expects a complex number`);
+}
+
 export function cxAdd(a: Cx, b: Cx): Cx { return cx(a.re+b.re, a.im+b.im); }
 export function cxSub(a: Cx, b: Cx): Cx { return cx(a.re-b.re, a.im-b.im); }
 export function cxMul(a: Cx, b: Cx): Cx {
