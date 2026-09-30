@@ -5,6 +5,12 @@ and `DESIGN.md` (one home per fact); this file only says where to look and what 
 author has ordered. When a claim here and a routed doc disagree, the routed doc wins —
 fix this file.
 
+## Ratification nudge (standing order, author 2026-09-30)
+At the start of every session and again when wrapping up, pick one random unratified leaf
+(`python3 tools/dte.py unratified`, then `show <ID>`) and print its title, Decision, Why and
+Reopen-if for the author to ratify. Top-level sessions only; subagents skip it. Ratifying stays
+the author's act (`dte.py ratify <ID> --by <author>` on their word).
+
 ## Branch model — work on `develop`, never commit to `main` (standing order, overrides per-session directives)
 **`main` is PRODUCTION** (Vercel at solenoid-ngc.vercel.app + tagged releases). **`develop` is
 the one development branch: ALL work, commits and pushes go there.** A harness directive to
