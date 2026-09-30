@@ -6,6 +6,10 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-30c: 1.5 release notes, the cube formulas seed; cloud session)
+- `docs/release-notes-features.md` is the 1.5 selling list and carries the 1.4.1 and 1.4.2 headliners (author); Heatmap is not a headliner, Cubes take two slides, and the plugin release ships beside the app. The What's New deck is still 1.4.1's.
+- New seed **Cubes: formulas over lists and tables** (`cube-formulas.json`, Tables): Cube Input Fx columns over a list per row (lap times: SPARKLINE, MIN, FILTER, SCAN answering a list, whole-column MIN and RANK) and a table per row (weeks × items sales: `@sales * @prices`, MMULT, BYCOL, XMATCH/CHOOSE), plus a Computed Column card with a wired side input.
+
 ### SESSION DIGEST (2026-09-30b: oldest-first code review, 1.0 import through August; cloud session)
 - Walked every file whose last hand edit (sweep commits of 40+ files excluded) predates September; September's 589 files are left for a later walk (the author: confident in them for now). Open leads: `backlog.md` § From the 2026-09-30 oldest-first review.
 - Two security holes closed: the SVG Picker scrubs markup in its class (`source` getter), so a loaded or pasted file can't inline script through an `SvgFigure` ([[C103]] untrustedContentSeams); the string editor's save endpoint binds 127.0.0.1, takes only scanned `src/` files and refuses a foreign Origin.
