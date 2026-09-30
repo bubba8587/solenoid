@@ -188,6 +188,22 @@
   image-rendering: pixelated;
 }
 
+/* Collapsed, the code stays scannable at a glance, just small. */
+.solenoid-node__collapsed-only.sol-conn__qr-thumb {
+  padding: 4px;
+  background: #ffffff;
+  border-radius: 4px;
+}
+.sol-conn__qr-thumb img {
+  width: 56px;
+  height: 56px;
+  image-rendering: pixelated;
+}
+
+.sol-conn__line {
+  display: flex;
+  gap: 4px;
+}
 .sol-conn__vault {
   display: flex;
   align-items: center;

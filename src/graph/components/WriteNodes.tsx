@@ -11,6 +11,7 @@ import { isFrameValue } from "../frame";
 import { notifyGraphChanged, processGraph } from "../process";
 import { getOwningView } from "../activeGraph";
 import { FrameDisplay } from "./FrameDisplay";
+import { DocumentChip } from "./DocumentChip";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { dropInputCables } from "./cablePrune";
@@ -95,7 +96,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
       <div className="sol-conn">
         <SegToggle value={format} onChange={pickFormat} options={FORMAT_OPTIONS} />
         {!desktop && <div className="sol-conn__note">Writing files is available in the desktop app only.</div>}
-        <div style={{ display: "flex", gap: 4 }}>
+        <div className="sol-conn__line">
           <input
             className="sol-conn__url"
             type="text"
@@ -325,7 +326,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
               Link to graph
             </label>
             {stamp && <div className="sol-conn__note" title="Stub note this write adds a solenoid: link to">+ {stubRelPath(documentStore.currentName())}</div>}
-            <div style={{ display: "flex", gap: 4 }}>
+            <div className="sol-conn__line">
               <select className="sol-conn__select" style={{ flex: 1 }} value={subfolder} onChange={(e) => pickSubfolder(e.target.value)} {...stopPtr}>
                 <option value="">Vault root</option>
                 {subfolder && !folders.includes(subfolder) && <option value={subfolder}>{subfolder}</option>}
@@ -393,6 +394,11 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
         )}
         {activeMode === "note" && docPreview && <div className="sol-conn__note">{docPreview}</div>}
         {activeMode === "properties" && <FrameDisplay frame={d.cachedPlan as never} label={d.label || "Write to Obsidian"} />}
+        {activeMode === "note" && (
+          <div className={`solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip${isDocumentValue(doc) ? "" : " solenoid-node__display-value--empty"}`}>
+            {isDocumentValue(doc) ? <DocumentChip value={doc} size="sm" /> : "—"}
+          </div>
+        )}
       </div>
     </NodeShell>
   );

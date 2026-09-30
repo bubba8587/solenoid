@@ -170,6 +170,7 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
           </label>
         </div>
       </div>
+      <div className="solenoid-node__collapsed-only solenoid-node__display-value">{data.value}</div>
     </NodeShell>
   );
 }

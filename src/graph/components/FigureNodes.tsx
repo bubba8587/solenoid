@@ -44,9 +44,9 @@ function makeFigureComponent<N extends FigureNode>(
         {controls?.(data)}
         <InlineInputs node={data} emit={emit} />
         <div className="solenoid-node__section-divider" />
-        {!collapsed && (has && cv
+        {!collapsed && has && cv
           ? <ChartFigure value={cv} width={figW} height={typeof figHeight === "number" ? figHeight : figHeight(cv, figW)} />
-          : <div className="solenoid-node__display-value solenoid-node__display-value--empty" title={err?.message}>{err ? err.code : "—"}</div>)}
+          : !(collapsed && cv) && <div className="solenoid-node__display-value solenoid-node__display-value--empty" title={err?.message}>{err ? err.code : "—"}</div>}
         {cv && (
           <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
             <ChartChip value={cv} />

@@ -191,8 +191,9 @@
   background: var(--group-color-dark, var(--border-strong));
 }
 
-/* A CardSection is layout-transparent, so its rows collapse exactly as if they sat on the body. */
-.solenoid-node--collapsed :is(.solenoid-node__body, .solenoid-node__section) > *:not(.solenoid-node__display-value):not(.solenoid-node__value-input):not(.solenoid-node__quoted):not([data-socket-side]):not(.solenoid-node__input-pill):not(.solenoid-node__io-row--output):not(.solenoid-node__collapsed-only):not(.solenoid-node__section) {
+/* A CardSection is layout-transparent, so its rows collapse exactly as if they sat on the body; so is a connection card's
+   `sol-conn` block, which holds its settings and its value box together. */
+.solenoid-node--collapsed :is(.solenoid-node__body, .solenoid-node__section, .solenoid-node__body > .sol-conn) > *:not(.solenoid-node__display-value):not(.solenoid-node__value-input):not(.solenoid-node__quoted):not([data-socket-side]):not(.solenoid-node__input-pill):not(.solenoid-node__io-row--output):not(.solenoid-node__collapsed-only):not(.solenoid-node__section):not(.sol-conn) {
   display: none;
 }
 
@@ -203,7 +204,8 @@
   min-height: 36px;
 }
 
-.solenoid-node__collapsed-only { display: none; }
+/* Scoped to an open card so it outranks a value box's own `display` (`--chip` is flex). */
+.solenoid-node:not(.solenoid-node--collapsed) .solenoid-node__collapsed-only { display: none; }
 .solenoid-node--collapsed .solenoid-node__collapsed-only {
   display: flex;
   align-items: center;

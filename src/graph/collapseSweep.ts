@@ -30,6 +30,8 @@ export interface SweepRow {
   collapsedH: number;
   /** Collapsed again with a cable into every input that some source card can feed. */
   wired: string[];
+  /** What the collapsed body shows besides its sockets and pill: empty when the card says nothing about itself. */
+  shows: string;
 }
 
 const SOURCES = ["number-input", "text-input", "boolean-input", "date-input", "list-input", "table-input", "frame-input", "cube-input", "lambda-make"];
@@ -66,6 +68,31 @@ function presentKeys(nodeId: string): Set<string> {
     if (b.width > 0 && b.height > 0) out.add(`${h.classList.contains("source") ? "output" : "input"}:${h.dataset.handleid}`);
   }
   return out;
+}
+
+/** The collapsed body's visible content, sockets and pills aside: its text, or the kinds of element it draws. */
+function collapsedContent(nodeId: string): string {
+  const wrap = getView()?.nodeElement(nodeId);
+  const card = wrap?.querySelector<HTMLElement>(".solenoid-node");
+  const body = card?.querySelector<HTMLElement>(".solenoid-node__body");
+  if (!card || !body) return "?";
+  const parts: string[] = [];
+  const walk = (el: Element) => {
+    if (el.matches(".react-flow__handle, [data-socket-side], .solenoid-node__input-pill, .solenoid-node__output-pill")) return;
+    const b = el.getBoundingClientRect();
+    if (b.width === 0 || b.height === 0 || shown(el, card) < 0.05) return;
+    if (el.matches("svg, canvas, img, input, select, button, textarea")) {
+      const tag = el.tagName.toLowerCase();
+      const v = tag === "input" ? (el as HTMLInputElement).value || (el as HTMLInputElement).placeholder : tag === "select" ? (el as HTMLSelectElement).value : "";
+      const cls = el.getAttribute("class")?.split(" ")[0] ?? "";
+      parts.push(v ? `${tag}:${v.slice(0, 16)}` : cls ? `${tag}.${cls}` : tag);
+      return;
+    }
+    for (const n of el.childNodes) if (n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").trim()) parts.push((n.textContent ?? "").trim().slice(0, 20));
+    for (const c of el.children) walk(c);
+  };
+  for (const c of body.children) walk(c);
+  return parts.join(" | ");
 }
 
 function measure(nodeId: string, ports: { inputs: string[]; outputs: string[] }, collapsed: boolean): string[] {
@@ -199,14 +226,17 @@ async function sweepOne(type: string, create: () => object): Promise<SweepRow | 
     const shownKeys = presentKeys(node!.id);
     ports.inputs = ports.inputs.filter((k) => shownKeys.has(`input:${k}`));
     ports.outputs = ports.outputs.filter((k) => shownKeys.has(`output:${k}`));
+    // `collapsible={false}` cards never collapse (selectionOps isCollapsible), so there is nothing to measure.
+    if (getView()?.nodeElement(node!.id)?.querySelector(".solenoid-node--no-chevron")) return null;
     collapseStore.set(node!.id, true);
     await frames(6);
     const collapsed = measure(node!.id, ports, true);
     const collapsedH = Math.round(getView()?.nodeElement(node!.id)?.getBoundingClientRect().height ?? 0);
-    const wired = await measureWired(node!, ports);
-    return { type, inputs: ports.inputs.length, outputs: ports.outputs.length, expanded, collapsed, collapsedH, wired };
+    const shows = collapsedContent(node!.id);
+    const wired = (window as { __sweepWired?: boolean }).__sweepWired ? await measureWired(node!, ports) : [];
+    return { type, inputs: ports.inputs.length, outputs: ports.outputs.length, expanded, collapsed, collapsedH, wired, shows };
   } catch (e) {
-    return { type, inputs: 0, outputs: 0, expanded: [`threw: ${(e as Error).message}`], collapsed: [], collapsedH: 0, wired: [] };
+    return { type, inputs: 0, outputs: 0, expanded: [`threw: ${(e as Error).message}`], collapsed: [], collapsedH: 0, wired: [], shows: "?" };
   } finally {
     if (node) {
       collapseStore.set(node.id, false);
@@ -228,7 +258,7 @@ async function sweep(only?: string[]): Promise<SweepRow[]> {
 }
 
 /** Leaves the given cards on the canvas, collapsed, in a row, for a screenshot. */
-async function show(types: string[]): Promise<void> {
+async function show(types: string[], expanded = false): Promise<void> {
   const editor = getEditor();
   const view = getView();
   if (!editor || !view) return;
@@ -239,8 +269,9 @@ async function show(types: string[]): Promise<void> {
     const node = create() as unknown as { id: string };
     await editor.addNode(node as never);
     await view.moveNode(node.id, { x, y: 0 });
-    collapseStore.set(node.id, true);
-    x += 260;
+    await Promise.race([processGraph(node.id).catch(() => undefined), new Promise((r) => setTimeout(r, 3000))]);
+    if (!expanded) collapseStore.set(node.id, true);
+    x += expanded ? 340 : 260;
   }
   await frames(6);
 }
@@ -248,7 +279,7 @@ async function show(types: string[]): Promise<void> {
 declare global {
   interface Window {
     __solenoidCollapseSweep?: (only?: string[]) => Promise<SweepRow[]>;
-    __solenoidCollapseShow?: (types: string[]) => Promise<void>;
+    __solenoidCollapseShow?: (types: string[], expanded?: boolean) => Promise<void>;
   }
 }
 window.__solenoidCollapseSweep = sweep;

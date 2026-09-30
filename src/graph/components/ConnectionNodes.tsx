@@ -26,6 +26,8 @@ import { obsidianOpenUrl } from "../obsidianLinks";
 import { apiKeyStore } from "../apiKeyStore";
 import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
 import { FrameDisplay } from "./FrameDisplay";
+import { ArrayChip } from "./ArrayChip";
+import { CubeChip } from "./CubeChip";
 import { LazySelect } from "./LazySelect";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -250,6 +252,9 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
             {vals.length > 4 && <div className="sol-conn__preview-more">+{vals.length - 4} more</div>}
           </div>
         )}
+        <div className={`solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip${vals?.length ? "" : " solenoid-node__display-value--empty"}`}>
+          {vals?.length ? <ArrayChip value={vals} label={nodeDisplayName(data)} size="sm" elem="string" /> : "—"}
+        </div>
       </div>
     </NodeShell>
   );
@@ -797,10 +802,9 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 </button>
               )}
             </div>
-            <div style={{ display: "flex", gap: 4 }}>
-              <select
+            <select
                 className="sol-conn__select"
-                style={{ flex: 1 }}
+                style={{ width: "100%" }}
                 value={folder}
                 disabled={connected.has("folder")}
                 title={connected.has("folder") ? "Driven by the Folder cable" : undefined}
@@ -812,7 +816,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 {folder && !folders.includes(folder) && <option value={folder}>{folder}</option>}
                 {folders.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
-            </div>
             <label className="sol-conn__field" title="Only notes whose name matches. * stands for anything.">
               Filter
               <input
@@ -853,6 +856,9 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
             )}
           </>
         )}
+        <div className={`solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip${cube ? "" : " solenoid-node__display-value--empty"}`}>
+          {cube ? <CubeChip value={cube} label={nodeDisplayName(data)} size="sm" accent="var(--sock-cube)" /> : "—"}
+        </div>
       </div>
     </NodeShell>
   );
