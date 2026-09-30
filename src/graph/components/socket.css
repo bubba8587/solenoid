@@ -82,8 +82,13 @@ html.is-mobile {
     pointer-events: none;
   }
   .solenoid-node:not(.solenoid-node--selected),
-  .solenoid-group:not(.solenoid-group--selected),
+  .react-flow__node:not(.sol-group-open) .solenoid-group:not(.solenoid-group--selected),
   .solenoid-note:not(.solenoid-note--selected) {
+    pointer-events: auto;
+  }
+  /* An open group's interior is canvas on a phone too: it takes a tap on its header and edge bands only, as on desktop. */
+  .sol-group-open .solenoid-group:not(.solenoid-group--selected) .solenoid-group__header,
+  .sol-group-open .solenoid-group:not(.solenoid-group--selected) .solenoid-group__band {
     pointer-events: auto;
   }
   /* The Conduit's box is a fixed 92 square around a tiny block, so the tap target is its painted shell. */
