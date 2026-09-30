@@ -22,12 +22,15 @@ everything on `develop` since the v1.4.2 tag. The What's New deck
   on top. Record's new Cards view puts the same cards on the canvas as a masonry
   gallery, and **Add Record: Cards** in the popup wires one up for you. The Cards from
   files example shows it off on a crew, products and orders set.
-- **[slide] Heatmaps done properly.** Heatmap is a real chart now: frame, table or list
-  in, square cells out, with matplotlib's colormaps and seaborn's options (`cmap`,
-  `center`, `vmin`, `vmax`, `annot`, `fmt`, `cbar`), a colorbar and a hover readout. Left
-  alone it follows your palette. Calendar Heatmap wraps a year into readable bands,
-  Histogram 2-D draws a real binned grid, and Contour, Surface and Vector Field take
-  colormaps, axes and a colorbar too. All of it is in the Chart Builder.
+- **[slide] Cubes with typed columns.** A Cube Input column takes a type (Number, Text,
+  Date, Boolean, Formula) the way a Frame's does, and it holds at every depth: a table
+  nested inside a cell keeps its own column types, so one column's rows can hold
+  differently shaped tables. Typed values read and show like a Frame's, and the
+  Solenoid Properties plugin's cube editor has the same type button.
+- **[slide] Any cell, any shape.** Every Cube cell, list items included, has a menu at its
+  edge that turns it into a value, a list, a table, a Frame or a nested Cube. Formula
+  columns read a list cell as that row's list and can answer one, so per-row math over
+  nested data (`SUM(@prices)`, `SPARKLINE(@history)`) just works.
 - **[slide] XY plots.** Scatter, the new **XY Line** and Bubble plot real x against y:
   name the columns (`x`, several `y`, `s` for size, `c` for color, `annotate` for point
   labels, `by` to split series), join points into a connected line, and set
@@ -37,15 +40,11 @@ everything on `develop` since the v1.4.2 tag. The What's New deck
   win/loss sparkline straight into a table cell, and in a Cube a formula column runs it
   per row: `SPARKLINE(@history)` gives every row its own trend. Pictures in text cells
   show as pictures in every card and popup.
-- **[slide] Cubes you can shape.** Cube Input columns take a type (Number, Text, Date,
-  Boolean, Formula) at every depth, and any cell can switch between a value, a list, a
-  table, a Frame or a nested Cube from a menu at its edge. Formula columns read a list
-  cell as that row's list. Nested tables keep their own types, cell by cell.
 - **[slide] Knap notes in Obsidian** (Solenoid Properties plugin). Put `knap: true` in a
   note and its body renders as a live template from its own properties, in Reading view
   and Live Preview. A bare `{{ budget }}` on a Frame or List property is the property's
-  chip right in the text, and editing it edits the property. *Ships with the plugin's
-  0.1.5 release, which is still to run (backlog).*
+  chip right in the text, and editing it edits the property. The plugin release goes out
+  alongside the app.
 
 ## Release-notes body
 
