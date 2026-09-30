@@ -10,7 +10,9 @@ export interface EditAxis {
   noun: string;
   /** The word on either side: "above" and "below", "left" and "right", "before" and "after". */
   sides: [string, string];
-  /** The targeted indices; empty only when there are none, and Insert then offers one at the end. */
+  /** The two ends, for an insert with nothing targeted: "top" and "bottom", "start" and "end". */
+  ends: [string, string];
+  /** The selected or focused indices; empty when nothing is picked, and then Insert goes to either end and Delete takes the last. */
   target: readonly number[];
   /** How many there are now. */
   total: number;
@@ -47,7 +49,13 @@ export function targetLabel(axis: Pick<EditAxis, "noun" | "target" | "nameOf" | 
 }
 
 function insertItems(axis: EditAxis): MenuItem[] {
-  if (axis.target.length === 0) return [{ label: axis.noun, onClick: () => axis.insert(axis.total, 1) }];
+  if (axis.total === 0) return [{ label: axis.noun, onClick: () => axis.insert(0, 1) }];
+  if (axis.target.length === 0) {
+    return [
+      { label: `${axis.noun} at ${axis.ends[0]}`, onClick: () => axis.insert(0, 1) },
+      { label: `${axis.noun} at ${axis.ends[1]}`, onClick: () => axis.insert(axis.total, 1) },
+    ];
+  }
   const n = axis.target.length;
   const lo = Math.min(...axis.target), hi = Math.max(...axis.target);
   const what = n > 1 ? plural(axis.noun, n) : axis.noun;
@@ -57,14 +65,15 @@ function insertItems(axis: EditAxis): MenuItem[] {
   ];
 }
 
-function deleteItem(axis: EditAxis): MenuItem {
+function deleteItem(picked: EditAxis): MenuItem {
+  const axis = picked.target.length ? picked : { ...picked, target: [picked.total - 1] };
   return { label: targetLabel(axis), onClick: () => axis.remove([...axis.target]), disabled: !axis.canEmpty && axis.target.length >= axis.total };
 }
 
 /** The Insert and Delete items for whichever axes the editor offers. */
 export function editMenuItems(row?: EditAxis, col?: EditAxis): { insert: MenuItem[]; remove: MenuItem[] } {
   const axes = [row, col].filter((a): a is EditAxis => !!a);
-  return { insert: axes.flatMap(insertItems), remove: axes.filter((a) => a.target.length > 0).map(deleteItem) };
+  return { insert: axes.flatMap(insertItems), remove: axes.filter((a) => a.total > 0).map(deleteItem) };
 }
 
 function useOutsideClose(open: boolean, ref: React.RefObject<HTMLElement | null>, close: () => void) {

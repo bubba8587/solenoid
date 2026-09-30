@@ -327,12 +327,13 @@ export function cubeEditAxes(edit: CubeEditBinding, view: DrillView, target: { r
   const gridWidth = isGrid ? list.reduce<number>((m, r) => Math.max(m, Array.isArray(r) ? r.length : 0), 0) : 0;
   const keys = isList || isGrid ? [] : cols ? cols.map((c) => c.name) : recordKeys(list);
   const colCount = isGrid ? gridWidth : keys.length;
-  const clamp = (xs: number[], n: number) => { const ok = xs.filter((i) => i >= 0 && i < n); return ok.length ? ok : n > 0 ? [n - 1] : []; };
+  const clamp = (xs: number[], n: number) => xs.filter((i) => i >= 0 && i < n);
 
   const blank = () => (isList ? null : isGrid ? Array.from({ length: Math.max(1, gridWidth) }, () => null) : {});
   const row: EditAxis = {
     noun: isList ? "Item" : "Row",
     sides: isList ? ["before", "after"] : ["above", "below"],
+    ends: isList ? ["start", "end"] : ["top", "bottom"],
     target: clamp(target.rows, list.length),
     total: list.length,
     canEmpty: true,
@@ -351,6 +352,7 @@ export function cubeEditAxes(edit: CubeEditBinding, view: DrillView, target: { r
   const col: EditAxis = {
     noun: "Column",
     sides: ["left", "right"],
+    ends: ["start", "end"],
     target: clamp(target.cols, colCount),
     total: colCount,
     canEmpty: true,

@@ -618,14 +618,8 @@ export function TablePopup() {
     });
   }
   const inRange = (xs: readonly number[], n: number) => xs.filter((i) => i >= 0 && i < n);
-  const rowTarget = (() => {
-    const picked = inRange(sel?.axis === "row" ? sel.indices : focusCell ? [focusCell.r] : [], rows);
-    return picked.length ? picked : rows > 0 ? [rows - 1] : [];
-  })();
-  const colTarget = (() => {
-    const picked = inRange(sel?.axis === "col" ? sel.indices : focusCell ? [focusCell.c] : [], cols);
-    return picked.length ? picked : cols > 0 ? [cols - 1] : [];
-  })();
+  const rowTarget = inRange(sel?.axis === "row" ? sel.indices : focusCell ? [focusCell.r] : [], rows);
+  const colTarget = inRange(sel?.axis === "col" ? sel.indices : focusCell ? [focusCell.c] : [], cols);
   // ── Form view ────────────────────────────────────────────────────────────
   const formCapable = !!state.onSaveSource;
   const fRow = Math.min(formRow, Math.max(0, rows - 1));
@@ -813,6 +807,7 @@ export function TablePopup() {
   const rowAxis: EditAxis | undefined = editsRows ? {
     noun: view === "form" ? "Record" : "Row",
     sides: view === "form" ? ["before", "after"] : ["above", "below"],
+    ends: view === "form" ? ["start", "end"] : ["top", "bottom"],
     target: view === "form" ? (rows > 0 ? [fRow] : []) : rowTarget,
     total: rows,
     insert: insertRows,
@@ -821,6 +816,7 @@ export function TablePopup() {
   const colAxis: EditAxis | undefined = editable && view === "grid" && !state.fixedCols ? {
     noun: "Column",
     sides: ["left", "right"],
+    ends: ["start", "end"],
     target: colTarget,
     total: cols,
     nameOf: editableHeaders ? (i) => headerNames[i] : state.headers ? (i) => state.headers?.[i] : undefined,

@@ -54,7 +54,7 @@ describe("a Cube level's nested declarations follow their rows", () => {
 });
 
 describe("the menus", () => {
-  const axis = (over: Partial<EditAxis>): EditAxis => ({ noun: "Row", sides: ["above", "below"], target: [2], total: 5, insert: () => {}, remove: () => {}, ...over });
+  const axis = (over: Partial<EditAxis>): EditAxis => ({ noun: "Row", sides: ["above", "below"], ends: ["top", "bottom"], target: [2], total: 5, insert: () => {}, remove: () => {}, ...over });
   it("name what Delete removes", () => {
     expect(targetLabel(axis({}))).toBe("Row 3");
     expect(targetLabel(axis({ target: [4, 2, 3] }))).toBe("Rows 3–5");
@@ -75,7 +75,18 @@ describe("the menus", () => {
     expect(editMenuItems(axis({ target: [0], total: 1 })).remove[0].disabled).toBe(true);
     expect(editMenuItems(axis({ target: [0], total: 1, canEmpty: true })).remove[0].disabled).toBe(false);
   });
-  it("offer one at the end when there are none", () => {
+  it("with nothing picked, insert at either end and delete the last, by name", () => {
+    const calls: number[] = [];
+    const removed: number[][] = [];
+    const { insert, remove } = editMenuItems(axis({ target: [], total: 4, insert: (at) => calls.push(at), remove: (xs) => removed.push(xs) }));
+    expect(insert.map((i) => i.label)).toEqual(["Row at top", "Row at bottom"]);
+    insert.forEach((i) => i.onClick());
+    expect(calls).toEqual([0, 4]);
+    expect(remove.map((i) => i.label)).toEqual(["Row 4"]);
+    remove[0].onClick();
+    expect(removed).toEqual([[3]]);
+  });
+  it("offer one when there are none", () => {
     const calls: number[] = [];
     const { insert, remove } = editMenuItems(axis({ target: [], total: 0, insert: (at) => calls.push(at) }));
     expect(insert.map((i) => i.label)).toEqual(["Row"]);
