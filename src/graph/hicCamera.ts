@@ -1,19 +1,13 @@
 // [[C42]] htmlInCanvasRenderer
 // screen = world × scale + (tx, ty), in canvas-local CSS px.
 
-import { clamp } from "./nodes/mathUtils";
-
 export class Camera {
   scale: number;
   tx: number;
   ty: number;
-  readonly minScale: number;
-  readonly maxScale: number;
 
-  constructor(opts: { scale?: number; tx?: number; ty?: number; minScale?: number; maxScale?: number } = {}) {
-    this.minScale = opts.minScale ?? 0.02;
-    this.maxScale = opts.maxScale ?? 8;
-    this.scale = clamp(opts.scale ?? 1, this.minScale, this.maxScale);
+  constructor(opts: { scale?: number; tx?: number; ty?: number } = {}) {
+    this.scale = opts.scale ?? 1;
     this.tx = opts.tx ?? 0;
     this.ty = opts.ty ?? 0;
   }

@@ -26,11 +26,6 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.params]);
 
-  async function handleExprChange(next: string) {
-    setExpr(next);
-    await applyLambdaChange(node, { expr: next });
-  }
-
   // [[C95]] commitOnEnter: a per-keystroke commit would churn sockets.
   async function commitParams() {
     if (params === node.params) return;
@@ -58,7 +53,6 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
       </div>
       <FormulaField
         value={expr}
-        onChange={handleExprChange}
         placeholder="x * rate …"
         onOpen={() => formulaPopup.open(node.id)}
       />

@@ -1,4 +1,4 @@
-// [[C42]]
+// [[C42]] htmlInCanvasRenderer
 export interface AtlasItem {
   id: string;
   /** Natural (padded) capture size in raster px. */

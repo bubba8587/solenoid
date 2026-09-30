@@ -8,7 +8,6 @@ import type {
   ScanLambdaNode as ScanLambdaNodeType,
 } from "../rete-nodes";
 import { isLambdaValue, formatLambda, formatLambdaSig, undeclaredConsumerVars, type LambdaSig } from "../nodes/lambda";
-import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { formulaPopup } from "../formulaPopupStore";
@@ -45,12 +44,6 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.stringLiterals.formula]);
 
-  async function onChange(next: string) {
-    setVal(next);
-    node.stringLiterals.formula = next;
-    await processGraph();
-  }
-
   if (lambdaSrc) {
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
     // A body variable that is one of this node's variables but not a declared param reads as a captured constant, never a binding.
@@ -77,7 +70,7 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
   }
 
   return (
-    <FormulaField value={val} onChange={onChange} onOpen={() => formulaPopup.open(node.id)} />
+    <FormulaField value={val} onOpen={() => formulaPopup.open(node.id)} />
   );
 }
 

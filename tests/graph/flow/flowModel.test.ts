@@ -4,7 +4,7 @@ import { buildModel, toFlowNodes, toFlowEdges, toFlowPosition, fromFlowPosition,
 import { isolateStore } from "../../../src/graph/isolateStore";
 import { DisplayNode } from "../../../src/graph/rete-nodes";
 import { computeAll } from "../../../src/graph/graphCompute";
-import { FLOW_SEEDS, DEFAULT_SEED_ID } from "../../../src/graph/flow/flowSeeds";
+import { SEEDS as FLOW_SEEDS, DEFAULT_SEED_ID } from "../../../src/graph/seeds";
 import { isSolError } from "../../../src/graph/errorValue";
 
 // C0 pin: a saved graph builds the headless model, computes, and projects into

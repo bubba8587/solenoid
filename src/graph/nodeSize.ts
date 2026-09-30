@@ -9,9 +9,9 @@ type Editor = NodeEditor<Schemes>;
 
 export type NodeBox = { x: number; y: number; w: number; h: number };
 
-export const FALLBACK_NODE_W = 180;
-export const FALLBACK_NODE_H = 100;
-export const COLLAPSED_NODE_H = 52;
+const FALLBACK_NODE_W = 180;
+const FALLBACK_NODE_H = 100;
+const COLLAPSED_NODE_H = 52;
 
 export function measuredSize(view: View, id: string): { w: number; h: number } | null {
   const m = view.measured?.(id);

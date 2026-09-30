@@ -2,12 +2,10 @@
 import type { ExpressionNode, LambdaNode, EquationNode, ScriptNode } from "../rete-nodes";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
-import type { View } from "../view";
 import { dropInputCables } from "./cablePrune";
 import { INPUT_ROW_PITCH } from "./inlineInput";
 
-// Shared, so the inline component and the popup grow the node identically.
-export function computeExprHeight(varCount: number): number {
+function computeExprHeight(varCount: number): number {
   return 188 + Math.max(varCount, 0) * INPUT_ROW_PITCH;
 }
 
@@ -23,15 +21,11 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
   for (const v of removed) node.removeInput(v);
 
   node.height = computeExprHeight(node.varNames.length);
-  if (view) {
-    // A pinned inline height would keep the new input row from growing the card.
-    clearPinnedHeight(view, node.id);
-    await view.rerenderNode(node.id);
-  }
+  if (view) await view.rerenderNode(node.id);
   await processGraph();
 }
 
-export function computeScriptHeight(varCount: number): number {
+function computeScriptHeight(varCount: number): number {
   return 240 + Math.max(varCount, 0) * INPUT_ROW_PITCH;
 }
 
@@ -45,14 +39,11 @@ export async function applyScriptChange(node: ScriptNode, src: string): Promise<
   for (const v of removed) node.removeInput(v);
 
   node.height = computeScriptHeight(node.varNames.length);
-  if (view) {
-    clearPinnedHeight(view, node.id);
-    await view.rerenderNode(node.id);
-  }
+  if (view) await view.rerenderNode(node.id);
   await processGraph();
 }
 
-export function computeEquationHeight(varCount: number): number {
+function computeEquationHeight(varCount: number): number {
   return 110 + (Math.max(varCount, 0) + 1) * 46;
 }
 
@@ -76,10 +67,7 @@ export async function applyEquationChange(node: EquationNode, newExpr: string): 
   for (const v of removed) { node.removeInput(v); node.removeOutput(v); }
 
   node.height = computeEquationHeight(node.varNames.length);
-  if (view) {
-    clearPinnedHeight(view, node.id);
-    await view.rerenderNode(node.id);
-  }
+  if (view) await view.rerenderNode(node.id);
   await processGraph();
 }
 
@@ -98,15 +86,7 @@ export async function applyLambdaChange(
   for (const v of removed) node.removeInput(v);
 
   node.height = computeExprHeight(node.captured.length) + INPUT_ROW_PITCH;
-  if (view) {
-    clearPinnedHeight(view, node.id);
-    await view.rerenderNode(node.id);
-  }
+  if (view) await view.rerenderNode(node.id);
   await processGraph();
 }
 
-/** The wrapper's first non-span child; width is left alone, since only the vertical pin overflows. */
-function clearPinnedHeight(view: View, nodeId: string): void {
-  const card = view.nodeElement(nodeId)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
-  if (card) card.style.height = "";
-}

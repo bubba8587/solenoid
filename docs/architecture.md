@@ -138,7 +138,7 @@ src/
 | `flow/drillStack.ts` | The per-composite drill stack that outlives the drill-in: its flow view, topology pipe, open gate and snapshot history |
 | `flow/FlowCompositeOverlay.tsx` | The drill-in host: a `FlowSurface` over the composite internal editor plus the breadcrumb strip, port promotion and run controls; registers the active graph and swaps the select / arrange slots while open (see `tree/specs/canvas/composite-drill-in-mount-lifecycle.md`) |
 | `flow/StaticFlowStage.tsx` | Non-interactive RF stage (landing demo, node showcase): `makeStaticStack` + controlled viewport |
-| `flow/flowSeeds.ts`, `flow/preview.ts` | Own seed glob (no persistence import — headless-harness-safe); generic-card value previews |
+| `flow/preview.ts` | Generic-card value previews |
 | `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |
 | `modalGuard.ts` | `modalOwnsKeyboard()` — the one gate every canvas-level key handler (canvasKeyboard, the surface's Escape, RF's delete hook) asks first: an `aria-modal` dialog / pop-up overlay in the DOM, or an open palette / reference / settings / shortcuts, and the canvas shortcuts stand down (F9 excepted) |
 | `canvasLasso.ts` | `installLassoSelection(deps)` — shift-drag / touch-select lasso: winding-direction touch vs enclose modes, cached node rects, frame-coalesced live apply, release-time cable path sampling |
@@ -229,7 +229,6 @@ src/
 | `cableFlowStore.ts`, `cableFlourishStore.ts` | Flow-bead animation toggle; decorative flourish |
 | `ribbonCable.ts` | Ribbon (bundled trunk + fans) membership/geometry — derived fresh per render |
 | `flow/FlowCableEdge.tsx` | The cable renderer (RF edge type: hit strokes, ribbon/pill rerouting, flow-bead overlay, run selection) |
-| `highlightUtils.ts` | Hover-highlight traversal, deliberately asymmetric and depth-limited: an origin lights its whole fan, a destination lights one cable |
 
 ### Renderers — the RF DOM surface + the HTML-in-Canvas gesture layer
 
@@ -250,7 +249,7 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (the transform `htmlCanvasRenderer` drives; the Pixi-era pan/zoom/pinch/fit helpers are deleted) |
 | `hicCableGeom.ts` (+`.test.ts`) | `cablePolyline` — the app's REAL router (`getCablePath`) flattened via `pathPoints.ts`, so canvas cables match DOM cables |
 | `hicGraphSnapshot.ts` | measures socket world-positions and lists the cables the HTML-in-Canvas layer draws |
-| `hicColors.ts`, `hicSocketGlyph.ts` (+tests) | color helpers + socket-glyph classification the snapshot uses |
+| `hicSocketGlyph.ts` (+tests) | socket-glyph classification the snapshot uses |
 | `pathPoints.ts` (+`.test.ts`) | pure M/L/C/Q path → polyline flattening (`parsePathPoints`) |
 | `rasterAtlas.ts` (+`.test.ts`) | the capture atlas (`packAtlas`) — one canvas read-back per paint |
 | `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB mixing — a canvas can't evaluate `color-mix`/`var()` |

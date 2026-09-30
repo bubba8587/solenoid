@@ -22,7 +22,7 @@ function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined
   return top;
 }
 
-export interface AcausalRowNode {
+interface AcausalRowNode {
   id: string;
   inputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
   outputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
@@ -95,7 +95,6 @@ export function EquationComponent({ data: node, emit, config }: NodeProps<Equati
     <NodeShell node={node} emit={emit} hideOutputSockets>
       <FormulaField
         value={node.expr}
-        onChange={() => {}}
         placeholder="V = I * R"
         locked={node.locked}
         noPrefix

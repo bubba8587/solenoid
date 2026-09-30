@@ -12,9 +12,4 @@ describe("Camera", () => {
     expect(wx).toBeCloseTo(100);
     expect(wy).toBeCloseTo(50);
   });
-
-  it("clamps a construction scale to [minScale, maxScale]", () => {
-    expect(new Camera({ scale: 100 }).scale).toBe(8);
-    expect(new Camera({ scale: 0 }).scale).toBe(0.02);
-  });
 });

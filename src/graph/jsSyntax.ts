@@ -1,4 +1,4 @@
-// [[C66]]
+// [[C66]] scriptNode
 // Script-node highlighting: lezer's JavaScript grammar mapped onto the `.fx-tokens` classes, re-emitting every
 // character so the highlighted <pre> mirrors the <textarea> exactly.
 import { parser } from "@lezer/javascript";

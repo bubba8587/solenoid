@@ -56,7 +56,7 @@ export async function ipcInvoke<T>(command: string, args?: Record<string, unknow
   }
 }
 
-export interface EngineInfo {
+interface EngineInfo {
   name: string;
   version: string;
   backend: string;

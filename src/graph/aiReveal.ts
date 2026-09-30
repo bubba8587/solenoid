@@ -1,5 +1,5 @@
 // [[B13]] aiInScope
-// The class goes on rete's holder and the keyframes run on its child, leaving rete's translate positioning intact.
+// The class goes on the React Flow node wrapper and the keyframes run on its child, leaving the wrapper's transform positioning intact.
 
 import { getView } from "./process";
 import { getLastLoadIdMap } from "./persistence";

@@ -972,11 +972,6 @@ const COMPUTED_AS_OPTIONS: { value: ComputedColumnAs; label: string }[] = [
 export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumnNodeType>) {
   const [expr, setExpr] = useState(data.expr);
   useEffect(() => { setExpr(data.expr); }, [data.expr]);
-  const commit = useCallback(async (next: string) => {
-    setExpr(next);
-    data.expr = next;
-    await processGraph(data.id);
-  }, [data]);
   const [addAs, setAddAs] = useNodeField(data, "addAs");
   const [, bumpBindings] = useState(0);
   const bind = useCallback((v: string, col: string) => {
@@ -990,7 +985,6 @@ export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumn
       {/* A wired λ takes over and the field goes quiet. */}
       <FormulaField
         value={expr}
-        onChange={commit}
         placeholder="@price * @qty …"
         locked={false}
         onOpen={() => formulaPopup.open(data.id)}
