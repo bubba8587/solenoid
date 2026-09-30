@@ -239,6 +239,16 @@
 .solenoid-node--square-collapse.solenoid-node--collapsed.solenoid-node--selected .solenoid-node__chevron {
   opacity: 1;
 }
+/* A mini with nothing plugged into its output is a glance, not a source: the socket hides until hover or selection
+   brings it back to drag a cable from. */
+.solenoid-node--square-collapse.solenoid-node--collapsed.solenoid-node--output-unwired [data-socket-side="output"] {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.solenoid-node--square-collapse.solenoid-node--collapsed.solenoid-node--output-unwired:hover [data-socket-side="output"],
+.solenoid-node--square-collapse.solenoid-node--collapsed.solenoid-node--output-unwired.solenoid-node--selected [data-socket-side="output"] {
+  opacity: 1;
+}
 .solenoid-node--square-collapse.solenoid-node--collapsed {
   width: 68px;
   min-width: 0;

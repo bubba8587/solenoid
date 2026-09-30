@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNod
 import type { ClassicPreset } from "rete";
 import { repositionDockedNodes } from "../canvasCommands";
 import { toggleNodeCollapsed } from "../selectionOps";
-import { getOwningView } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
+import { connectionVersionStore } from "../graphSignals";
 import { nodeAccent, nodeResizable, nodeWide, nodeMedium } from "../rete-nodes";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
@@ -12,6 +13,8 @@ import { themeAccent, darkenAccent, contrastInk } from "../palette";
 
 // Under this many px a header pointer is a tap, not a drag; shared with the title label.
 export const HEADER_TAP_SLOP = 4;
+
+const noSubscribe = () => () => {};
 
 /** SVG strokes, not CSS borders, so the frame can't subpixel-crack under zoom (DESIGN.md § Cards); two sibling viewports, since an absolutely positioned svg keeps its intrinsic 300×150 unless sized and geometry on a nested svg proved unreliable. */
 export function CardFrame() {
@@ -46,6 +49,11 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   const collapsed = useSyncExternalStore(
     collapseStore.subscribe,
     () => (node ? collapseStore.get(node.id) : false),
+  );
+  // Only a square-collapse card reads it, so no other card rescans the connections on every cable change.
+  const outputWired = useSyncExternalStore(
+    squareCollapse ? connectionVersionStore.subscribe : noSubscribe,
+    () => squareCollapse && !!node && !!getOwningEditor(node.id)?.getConnections().some((c) => c.source === node.id),
   );
 
   useEffect(() => {
@@ -187,6 +195,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
         `${collapsed ? " solenoid-node--collapsed" : ""}${groupColor ? " solenoid-node--grouped" : ""}` +
         `${resizable ? " solenoid-node--resizable" : ""}${size ? " solenoid-node--sized" : ""}` +
         `${wide ? " solenoid-node--wide" : ""}${medium ? " solenoid-node--medium" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
+        `${squareCollapse && !outputWired ? " solenoid-node--output-unwired" : ""}` +
         `${!collapsible ? " solenoid-node--no-chevron" : ""}${className ? " " + className : ""}`
       }
       style={styleProp}
