@@ -590,8 +590,8 @@ describe("Tidy hands ELK the sockets a card shows", () => {
 });
 
 describe("Tidy's ports sit at the real socket heights", () => {
-  afterEach(() => settingsStore.set("tidyAlign", "sockets"));
-  async function recordPorts(align: "sockets" | "center") {
+  afterEach(() => settingsStore.set("tidyAlign", "balanced"));
+  async function recordPorts(align: "balanced" | "sockets" | "center") {
     settingsStore.set("tidyAlign", align);
     settingsStore.set("tidyDirection", "right");
     const editor = new NodeEditor<Schemes>();
@@ -617,12 +617,15 @@ describe("Tidy's ports sit at the real socket heights", () => {
     return { b: port(dst.id, "b"), a: port(dst.id, "a") };
   }
 
-  it("places a drawn socket's port at its row, and an undrawn one where the spaced ports put it", async () => {
+  it("places a drawn socket's port at its row (halfway under Balanced), and an undrawn one where the spaced ports put it", async () => {
     const withSockets = await recordPorts("sockets");
     expect(withSockets.b.y + withSockets.b.height / 2).toBe(205);
     const centered = await recordPorts("center");
     expect(withSockets.a.y).toBe(centered.a.y);
     expect(centered.b.y).not.toBe(withSockets.b.y);
+    const balanced = await recordPorts("balanced");
+    expect(balanced.b.y).toBe((centered.b.y + withSockets.b.y) / 2);
+    expect(balanced.a.y).toBe(centered.a.y);
   });
 });
 

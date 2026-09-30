@@ -7,8 +7,8 @@
     {
       "id": "cats",
       "type": "ListInputNode",
-      "x": -5847,
-      "y": -4004,
+      "x": -5100,
+      "y": -550,
       "init": {
         "label": "Categories",
         "valueKeys": [
@@ -30,8 +30,8 @@
     {
       "id": "pie",
       "type": "ChartNode",
-      "x": -5547,
-      "y": -3838,
+      "x": -4791,
+      "y": -325,
       "init": {
         "label": "Share (pie)",
         "op": "pie"
@@ -40,8 +40,8 @@
     {
       "id": "radar",
       "type": "ChartNode",
-      "x": -5547,
-      "y": -3515,
+      "x": -4791,
+      "y": 46,
       "init": {
         "label": "Profile (radar)",
         "op": "radar"
@@ -50,8 +50,8 @@
     {
       "id": "radial",
       "type": "ChartNode",
-      "x": -5547,
-      "y": -4484,
+      "x": -4791,
+      "y": -1067,
       "init": {
         "label": "Levels (radial)",
         "op": "radialbar"
@@ -60,8 +60,8 @@
     {
       "id": "funnel",
       "type": "ChartNode",
-      "x": -5547,
-      "y": -4161,
+      "x": -4791,
+      "y": -696,
       "init": {
         "label": "Stages (funnel)",
         "op": "funnel"
@@ -70,8 +70,8 @@
     {
       "id": "scores",
       "type": "ListInputNode",
-      "x": -5829,
-      "y": -1098,
+      "x": -4694,
+      "y": -1902,
       "init": {
         "label": "Samples",
         "valueKeys": [
@@ -103,8 +103,8 @@
     {
       "id": "hist",
       "type": "HistogramNode",
-      "x": -5564,
-      "y": -1038,
+      "x": -4425,
+      "y": -1814,
       "init": {
         "label": "Distribution"
       },
@@ -115,8 +115,8 @@
     {
       "id": "kpi",
       "type": "KpiNode",
-      "x": -5665,
-      "y": 1302,
+      "x": -5985,
+      "y": -2409,
       "init": {
         "label": "Revenue"
       },
@@ -129,8 +129,8 @@
     {
       "id": "bullet",
       "type": "GaugeNode",
-      "x": -5665,
-      "y": 1552,
+      "x": -5753,
+      "y": -2409,
       "init": {
         "label": "To target",
         "mode": "bar"
@@ -144,8 +144,8 @@
     {
       "id": "tm_frame",
       "type": "FrameInputNode",
-      "x": -5859,
-      "y": 538,
+      "x": -5335,
+      "y": -1902,
       "init": {
         "label": "Spending table",
         "frameText": "[{\"name\":\"Category\",\"type\":\"string\",\"values\":[\"Rent\",\"Food\",\"Travel\",\"Fun\"]},{\"name\":\"Amount\",\"type\":\"number\",\"values\":[1200,650,400,300]}]"
@@ -154,8 +154,8 @@
     {
       "id": "treemap",
       "type": "ProportionNode",
-      "x": -5534,
-      "y": 496,
+      "x": -5006,
+      "y": -1896,
       "init": {
         "label": "Spending (treemap)"
       }
@@ -163,8 +163,8 @@
     {
       "id": "sk_frame",
       "type": "FrameInputNode",
-      "x": -5859,
-      "y": 970,
+      "x": -5976,
+      "y": -1902,
       "init": {
         "label": "Budget flows",
         "frameText": "[{\"name\":\"From\",\"type\":\"string\",\"values\":[\"Salary\",\"Salary\",\"Salary\",\"Bonus\"]},{\"name\":\"To\",\"type\":\"string\",\"values\":[\"Housing\",\"Food\",\"Savings\",\"Savings\"]},{\"name\":\"Value\",\"type\":\"number\",\"values\":[2000,800,700,500]}]"
@@ -173,8 +173,8 @@
     {
       "id": "sankey",
       "type": "SankeyNode",
-      "x": -5534,
-      "y": 940,
+      "x": -5647,
+      "y": -1876,
       "init": {
         "label": "Budget flow (sankey)"
       }
@@ -182,8 +182,8 @@
     {
       "id": "matrix",
       "type": "FrameInputNode",
-      "x": -5865,
-      "y": -50,
+      "x": -4991,
+      "y": -2327,
       "init": {
         "label": "Series frame",
         "frameText": "[{\"name\": \"Step\", \"type\": \"string\", \"values\": [\"1\", \"2\", \"3\", \"4\", \"5\"]}, {\"name\": \"A\", \"type\": \"number\", \"values\": [12, 19, 7, 23, 15]}, {\"name\": \"B\", \"type\": \"number\", \"values\": [8, 11, 5, 14, 9]}]"
@@ -192,8 +192,8 @@
     {
       "id": "bubble",
       "type": "ChartNode",
-      "x": -5529,
-      "y": 87,
+      "x": -4662,
+      "y": -2351,
       "init": {
         "label": "Points (bubble)",
         "op": "bubble"
@@ -202,8 +202,8 @@
     {
       "id": "ls_x",
       "type": "SeriesNode",
-      "x": -5974,
-      "y": -1909,
+      "x": -4113,
+      "y": -1902,
       "init": {
         "label": "Angles 0–2π",
         "op": "linspace"
@@ -217,8 +217,8 @@
     {
       "id": "sin",
       "type": "MathFXNode",
-      "x": -5709,
-      "y": -1895,
+      "x": -3844,
+      "y": -1850,
       "init": {
         "label": "sin",
         "op": "sin"
@@ -227,8 +227,8 @@
     {
       "id": "spark_wave",
       "type": "SparklineNode",
-      "x": -5420,
-      "y": -1878,
+      "x": -3548,
+      "y": -1811,
       "init": {
         "label": "Wave (line)",
         "op": "line"
@@ -237,8 +237,8 @@
     {
       "id": "data",
       "type": "ListInputNode",
-      "x": -5711,
-      "y": -3106,
+      "x": -5707,
+      "y": -1067,
       "init": {
         "label": "Weekly sales",
         "valueKeys": [
@@ -264,8 +264,8 @@
     {
       "id": "spark_data",
       "type": "SparklineNode",
-      "x": -5418,
-      "y": -3008,
+      "x": -5412,
+      "y": -906,
       "init": {
         "label": "Sales (column)",
         "op": "column"
@@ -274,8 +274,8 @@
     {
       "id": "slider",
       "type": "SliderInputNode",
-      "x": -5799,
-      "y": -2230,
+      "x": -5512,
+      "y": -2351,
       "init": {
         "label": "Reading",
         "value": 0.72
@@ -289,8 +289,8 @@
     {
       "id": "gauge",
       "type": "GaugeNode",
-      "x": -5534,
-      "y": -2230,
+      "x": -5243,
+      "y": -2334,
       "init": {},
       "literals": {
         "value": 0
@@ -299,8 +299,8 @@
     {
       "id": "grid",
       "type": "TableInputNode",
-      "x": -5859,
-      "y": -547,
+      "x": -3709,
+      "y": -2351,
       "init": {
         "label": "Correlation-ish grid",
         "tableText": "1, 4, 9, 16\n2, 6, 12, 20\n4, 9, 15, 22\n8, 13, 19, 25"
@@ -309,8 +309,8 @@
     {
       "id": "heat",
       "type": "HeatmapNode",
-      "x": -5534,
-      "y": -555,
+      "x": -3380,
+      "y": -2324,
       "init": {
         "label": "Heatmap"
       }
@@ -318,8 +318,8 @@
     {
       "id": "color_a",
       "type": "ColorPickerNode",
-      "x": -5974,
-      "y": -1619,
+      "x": -4113,
+      "y": -1607,
       "init": {
         "label": "Line color",
         "mode": "hsv",
@@ -334,8 +334,8 @@
     {
       "id": "cb_a",
       "type": "ChartBuilderNode",
-      "x": -5709,
-      "y": -1685,
+      "x": -3844,
+      "y": -1636,
       "init": {
         "label": "Style: sine",
         "target": "line"
@@ -355,8 +355,8 @@
     {
       "id": "chart_a",
       "type": "ChartNode",
-      "x": -5420,
-      "y": -1604,
+      "x": -3548,
+      "y": -1518,
       "init": {
         "label": "Sine (styled line)",
         "op": "line"
@@ -366,7 +366,7 @@
       "id": "color_b",
       "type": "ColorPickerNode",
       "x": -5976,
-      "y": -2709,
+      "y": -669,
       "init": {
         "label": "Bar color",
         "mode": "rgb",
@@ -381,8 +381,8 @@
     {
       "id": "cb_b",
       "type": "ChartBuilderNode",
-      "x": -5711,
-      "y": -2733,
+      "x": -5707,
+      "y": -690,
       "init": {
         "label": "Style: sales"
       },
@@ -399,8 +399,8 @@
     {
       "id": "chart_b",
       "type": "ChartNode",
-      "x": -5418,
-      "y": -2694,
+      "x": -5412,
+      "y": -634,
       "init": {
         "label": "Sales (styled column)",
         "op": "column"
@@ -409,8 +409,8 @@
     {
       "id": "xy_frame",
       "type": "FrameInputNode",
-      "x": -5859,
-      "y": 2080,
+      "x": -4350,
+      "y": -2327,
       "init": {
         "label": "Curve points (t, x, y)",
         "frameText": "[{\"name\": \"t\", \"type\": \"number\", \"values\": [0.0, 0.1571, 0.3142, 0.4712, 0.6283, 0.7854, 0.9425, 1.0996, 1.2566, 1.4137, 1.5708, 1.7279, 1.885, 2.042, 2.1991, 2.3562, 2.5133, 2.6704, 2.8274, 2.9845, 3.1416, 3.2987, 3.4558, 3.6128, 3.7699, 3.927, 4.0841, 4.2412, 4.3982, 4.5553, 4.7124, 4.8695, 5.0265, 5.1836, 5.3407, 5.4978, 5.6549, 5.8119, 5.969, 6.1261, 6.2832]}, {\"name\": \"x\", \"type\": \"number\", \"values\": [0.0, 0.454, 0.8091, 0.9877, 0.9511, 0.7071, 0.309, -0.1566, -0.5877, -0.891, -1.0, -0.891, -0.5877, -0.1565, 0.309, 0.7071, 0.9511, 0.9877, 0.8091, 0.454, -0.0, -0.4541, -0.8091, -0.9877, -0.9511, -0.7071, -0.3089, 0.1566, 0.5877, 0.891, 1.0, 0.891, 0.5879, 0.1565, -0.309, -0.7071, -0.9511, -0.9877, -0.8091, -0.454, 0.0]}, {\"name\": \"y\", \"type\": \"number\", \"values\": [0.0, 0.3091, 0.5879, 0.809, 0.951, 1.0, 0.951, 0.809, 0.5878, 0.309, -0.0, -0.3091, -0.5879, -0.809, -0.951, -1.0, -0.951, -0.809, -0.5878, -0.309, 0.0, 0.3091, 0.5879, 0.809, 0.951, 1.0, 0.951, 0.809, 0.5878, 0.309, -0.0, -0.3091, -0.5877, -0.809, -0.9511, -1.0, -0.951, -0.8091, -0.5878, -0.309, 0.0]}]"
@@ -419,8 +419,8 @@
     {
       "id": "xyline",
       "type": "ChartNode",
-      "x": -5534,
-      "y": 2040,
+      "x": -4021,
+      "y": -2351,
       "init": {
         "label": "Lissajous (XY line)",
         "op": "xyline"
@@ -432,8 +432,8 @@
     {
       "id": "grp-shares",
       "type": "GroupNode",
-      "x": -5871,
-      "y": -4542,
+      "x": -5124,
+      "y": -1125,
       "init": {
         "label": "Shares & profiles",
         "members": [
@@ -445,15 +445,15 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 592,
-        "height": 1340
+        "width": 601,
+        "height": 1528
       }
     },
     {
       "id": "grp-dist",
       "type": "GroupNode",
-      "x": -5853,
-      "y": -1156,
+      "x": -4718,
+      "y": -1960,
       "init": {
         "label": "Distribution",
         "members": [
@@ -462,15 +462,15 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 557,
-        "height": 505
+        "width": 561,
+        "height": 550
       }
     },
     {
       "id": "grp-treemap",
       "type": "GroupNode",
-      "x": -5883,
-      "y": 438,
+      "x": -5359,
+      "y": -1960,
       "init": {
         "label": "Treemap",
         "members": [
@@ -479,15 +479,15 @@
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 617,
-        "height": 406
+        "width": 621,
+        "height": 456
       }
     },
     {
       "id": "grp-sankey",
       "type": "GroupNode",
-      "x": -5883,
-      "y": 882,
+      "x": -6000,
+      "y": -1960,
       "init": {
         "label": "Sankey",
         "members": [
@@ -496,15 +496,15 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 617,
-        "height": 382
+        "width": 621,
+        "height": 452
       }
     },
     {
       "id": "grp-series",
       "type": "GroupNode",
-      "x": -5889,
-      "y": -294,
+      "x": -5015,
+      "y": -2409,
       "init": {
         "label": "Series frame",
         "members": [
@@ -513,15 +513,15 @@
         ],
         "color": "lime",
         "collapsed": false,
-        "width": 629,
-        "height": 694
+        "width": 621,
+        "height": 415
       }
     },
     {
       "id": "grp-gauge",
       "type": "GroupNode",
-      "x": -5823,
-      "y": -2288,
+      "x": -5536,
+      "y": -2409,
       "init": {
         "label": "Gauge",
         "members": [
@@ -530,15 +530,15 @@
         ],
         "color": "purple",
         "collapsed": false,
-        "width": 497,
-        "height": 283
+        "width": 501,
+        "height": 300
       }
     },
     {
       "id": "grp-heat",
       "type": "GroupNode",
-      "x": -5883,
-      "y": -613,
+      "x": -3733,
+      "y": -2409,
       "init": {
         "label": "Heatmap",
         "members": [
@@ -547,15 +547,15 @@
         ],
         "color": "vermilion",
         "collapsed": false,
-        "width": 617,
-        "height": 281
+        "width": 621,
+        "height": 429
       }
     },
     {
       "id": "grp-sine",
       "type": "GroupNode",
-      "x": -5998,
-      "y": -1967,
+      "x": -4137,
+      "y": -1960,
       "init": {
         "label": "Sine wave",
         "members": [
@@ -568,15 +568,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 847,
-        "height": 773
+        "width": 857,
+        "height": 815
       }
     },
     {
       "id": "grp-sales",
       "type": "GroupNode",
       "x": -6000,
-      "y": -3164,
+      "y": -1125,
       "init": {
         "label": "Weekly sales",
         "members": [
@@ -588,15 +588,15 @@
         ],
         "color": "teal",
         "collapsed": false,
-        "width": 850,
-        "height": 838
+        "width": 856,
+        "height": 848
       }
     },
     {
       "id": "grp-xy",
       "type": "GroupNode",
-      "x": -5883,
-      "y": 1982,
+      "x": -4374,
+      "y": -2409,
       "init": {
         "label": "XY line",
         "members": [
@@ -605,8 +605,8 @@
         ],
         "color": "pink",
         "collapsed": false,
-        "width": 617,
-        "height": 420
+        "width": 621,
+        "height": 415
       }
     }
   ],

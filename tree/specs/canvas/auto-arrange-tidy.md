@@ -69,11 +69,14 @@ Ports sit at the **same offset on both sides** of every card, so two connected c
 
 The `tidyAlign` setting chooses where the ports sit:
 
-- **Sockets** (the default) puts each port at its socket's real height on the card, read from the card's layout offsets (`socketLocalCenter`), so ELK lines up the sockets a cable joins and the cable runs level. Measured over eight seeds, level cables went from 0 to 7 percent of all cables under Center to 23 to 70 percent, with the mean vertical run down by up to half and no new crossings or overlaps. It applies under RIGHT only, since sockets sit on a card's left and right edges; under DOWN, and for a socket that is not drawn (an unmounted card, the landing scene), the Center placement stands.
+- **Balanced** (the default) puts each port halfway between the Center placement and its socket's real height on the card, read from the card's layout offsets (`socketLocalCenter`).
+- **Sockets** puts each port at its socket's real height, so ELK lines up the sockets a cable joins and the cable runs level.
+
+Balanced and Sockets apply under RIGHT only, since sockets sit on a card's left and right edges; under DOWN, and for a socket that is not drawn (an unmounted card, the landing scene), the Center placement stands. Why Balanced is the default: most cards put their output at the bottom and their inputs down the side, so lining every socket up walks a chain of cards down a staircase, and a level cable is not the goal in itself. Scored per cable against the two cards it joins (level enough when its rise is within half their mean height; a staircase when their centers sit apart), over eight seeds Balanced kept as many or more cables level enough than Center on every seed (53 to 73 percent where Center had 46 to 62 on the four that differed) with about half the center offset of Sockets, and the same side-by-side placement as Center.
 - **Center** puts the ports around the middle of the card, so card centers align, and cables slant wherever a socket sits off the middle.
 - **Top** puts the first port 20 from the leading edge, so card top edges (or left edges under DOWN) align.
 
-`tidyAlign` lives in `settingsStore` and shows as a Sockets / Center / Top segmented control (a `"segment"` field type) in Settings ▸ Canvas.
+`tidyAlign` lives in `settingsStore` and shows as a Balanced / Sockets / Center / Top segmented control (a `"segment"` field type) in Settings ▸ Canvas.
 
 ## The three Tidy knobs
 

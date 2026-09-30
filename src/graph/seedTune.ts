@@ -42,27 +42,28 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
 
   // Per group first, so each box wraps real painted member sizes before the whole-canvas pass moves it as a unit.
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
+  const collapsed = groups.filter((g) => g.collapsed);
+  if (collapsed.length) {
+    await setGroupsCollapsed(editor, view, collapsed, false);
+    await frames(2);
+  }
   for (const g of groups) {
-    const wasCollapsed = g.collapsed;
-    if (wasCollapsed) {
-      await setGroupsCollapsed(editor, view, [g], false);
-      await frames(2);
-    }
     if (g.members.length > 1) {
       await autoArrange({ groupId: g.id });
       await frames(2);
     }
     await autofitGroupWithHistory(editor, view, g);
     await frames(2);
-    if (wasCollapsed) {
-      await setGroupsCollapsed(editor, view, [g], true);
-      await frames(2);
-    }
   }
 
-  // Then a whole-canvas Tidy, exactly what pressing T does, so the baked layout equals the tidied one.
+  // Then a whole-canvas Tidy, exactly what pressing T does, so the baked layout equals the tidied one. The groups are
+  // still expanded: laid out collapsed, a group's hidden members would lie under its neighbors' boxes.
   await autoArrange({ skipConfirm: true });
   await frames(2);
+  if (collapsed.length) {
+    await setGroupsCollapsed(editor, view, collapsed, true);
+    await frames(2);
+  }
 
   // Standoffs settle last, against the tidied positions.
   if (!standoffStore.isEmpty()) {

@@ -7,8 +7,8 @@
     {
       "id": "n-start",
       "type": "NoteNode",
-      "x": -593,
-      "y": -602,
+      "x": 605,
+      "y": 885,
       "init": {
         "label": "Start here",
         "body": "# Power features tour\nEach cluster shows a feature that is easy to miss. Drag the sliders, click the Conduit, and right-click pairs of nodes and selected cables. **Ctrl+/** opens the full Reference.",
@@ -21,8 +21,8 @@
     {
       "id": "note-lambda",
       "type": "NoteNode",
-      "x": -99,
-      "y": -729,
+      "x": 1099,
+      "y": 545,
       "init": {
         "label": "Lambdas",
         "body": "# λ as a value\nThe **LAMBDA** node packages a formula. `rate` isn't a parameter, so it became a wired input whose live value is baked into the λ; Excel would write LET. Wire the λ into MAP or REDUCE and it replaces their inline formula; parameters bind by position. Drag the Rate slider and everything downstream follows.",
@@ -35,8 +35,8 @@
     {
       "id": "slider-rate",
       "type": "SliderInputNode",
-      "x": 81,
-      "y": -441,
+      "x": 1114,
+      "y": 1162,
       "init": {
         "label": "Rate",
         "value": 3
@@ -50,8 +50,8 @@
     {
       "id": "lambda-1",
       "type": "LambdaNode",
-      "x": 346,
-      "y": -436,
+      "x": 1383,
+      "y": 1160,
       "init": {
         "label": "× rate",
         "params": "value",
@@ -64,8 +64,8 @@
     {
       "id": "range-1",
       "type": "SeriesNode",
-      "x": 406,
-      "y": -766,
+      "x": 1443,
+      "y": 815,
       "init": {
         "label": "1 to 6",
         "op": "range"
@@ -79,8 +79,8 @@
     {
       "id": "map-1",
       "type": "MapTableNode",
-      "x": 691,
-      "y": -506,
+      "x": 1731,
+      "y": 1136,
       "init": {
         "label": "MAP through λ"
       },
@@ -92,8 +92,8 @@
     {
       "id": "disp-map",
       "type": "DisplayNode",
-      "x": 1016,
-      "y": -408,
+      "x": 2060,
+      "y": 1280,
       "init": {
         "label": "Scaled list",
         "unitSuffix": "none"
@@ -102,8 +102,8 @@
     {
       "id": "reduce-1",
       "type": "ReduceLambdaNode",
-      "x": 691,
-      "y": -787,
+      "x": 1731,
+      "y": 851,
       "init": {
         "label": "Sum of squares"
       },
@@ -117,8 +117,8 @@
     {
       "id": "disp-reduce",
       "type": "DisplayNode",
-      "x": 1016,
-      "y": -710,
+      "x": 2060,
+      "y": 967,
       "init": {
         "label": "Σ x²",
         "unitSuffix": "none"
@@ -127,8 +127,8 @@
     {
       "id": "note-conduit",
       "type": "NoteNode",
-      "x": 1424,
-      "y": 1155,
+      "x": 650,
+      "y": -44,
       "init": {
         "label": "Conduits & Ribbons",
         "body": "# Bundle cables\nThree sensor cables enter the **Conduit** and travel on as one wide **Ribbon** into the collapsed group. The Conduit fans its lanes (its toolbar rotates or **Extends** the run); the trunk selects the whole ribbon. Or select several cables and right-click → **Insert Conduit**.",
@@ -141,8 +141,8 @@
     {
       "id": "in-sa",
       "type": "NumberInputNode",
-      "x": 1097,
-      "y": 1412,
+      "x": 361,
+      "y": -87,
       "init": {
         "label": "Sensor A",
         "value": 30
@@ -151,8 +151,8 @@
     {
       "id": "in-sb",
       "type": "NumberInputNode",
-      "x": 1883,
-      "y": 989,
+      "x": 361,
+      "y": -207,
       "init": {
         "label": "Sensor B",
         "value": 55
@@ -161,8 +161,8 @@
     {
       "id": "in-sc",
       "type": "NumberInputNode",
-      "x": 1097,
-      "y": 427,
+      "x": 361,
+      "y": -327,
       "init": {
         "label": "Sensor C",
         "value": 72
@@ -171,8 +171,8 @@
     {
       "id": "conduit-1",
       "type": "ConduitNode",
-      "x": 1576,
-      "y": 1025,
+      "x": 665,
+      "y": -156,
       "init": {
         "label": "Conduit",
         "angle": 0
@@ -181,8 +181,8 @@
     {
       "id": "grp-mon",
       "type": "GroupNode",
-      "x": 2453,
-      "y": 967,
+      "x": 1183,
+      "y": -176,
       "init": {
         "label": "Monitoring",
         "members": [
@@ -193,14 +193,14 @@
         "color": "gold",
         "collapsed": true,
         "width": 232,
-        "height": 429
+        "height": 401
       }
     },
     {
       "id": "disp-a",
       "type": "DisplayNode",
-      "x": 2477,
-      "y": 1152,
+      "x": 1207,
+      "y": -118,
       "init": {
         "label": "Sensor A",
         "unitSuffix": "none"
@@ -209,8 +209,8 @@
     {
       "id": "disp-b",
       "type": "DisplayNode",
-      "x": 2477,
-      "y": 1279,
+      "x": 1207,
+      "y": -5,
       "init": {
         "label": "Sensor B",
         "unitSuffix": "none"
@@ -219,8 +219,8 @@
     {
       "id": "disp-c",
       "type": "DisplayNode",
-      "x": 2477,
-      "y": 1025,
+      "x": 1207,
+      "y": 108,
       "init": {
         "label": "Sensor C",
         "unitSuffix": "none"
@@ -229,11 +229,11 @@
     {
       "id": "note-standoff",
       "type": "NoteNode",
-      "x": 1424,
-      "y": 1433,
+      "x": 1109,
+      "y": 190,
       "init": {
         "label": "Standoffs",
-        "body": "# Keep things apart\nThe pale bar under the cables links Sensor B to the Monitoring group: a **Standoff**. Drags, tidies, and group expansion keep the two between its min and max distance; the bar slants to show slack. Make one: select exactly two items → right-click → **Link with Standoff**.",
+        "body": "# Keep things apart\nThe pale bar links this note to the Monitoring group: a **Standoff**. Drags, tidies, and group expansion keep the two between its min and max distance; the bar slants to show slack. Make one: select exactly two items → right-click → **Link with Standoff**.",
         "color": "pink",
         "width": 380,
         "height": 240,
@@ -243,8 +243,8 @@
     {
       "id": "note-units",
       "type": "NoteNode",
-      "x": -179,
-      "y": -103,
+      "x": -569,
+      "y": -269,
       "init": {
         "label": "Units",
         "body": "# Units travel with the value\n**Convert** turns miles into kilometers, and from there the *value itself* carries km. The Display and its docked **Format** controller pick the unit up and lock to it: you can re-format the number but never mislabel the unit. Convert is the authority in any chain of formats.",
@@ -257,8 +257,8 @@
     {
       "id": "in-trip",
       "type": "NumberInputNode",
-      "x": 1,
-      "y": 175,
+      "x": -569,
+      "y": 47,
       "init": {
         "label": "Marathon (mi)",
         "value": 26.2
@@ -267,8 +267,8 @@
     {
       "id": "conv-1",
       "type": "ConvertNode",
-      "x": 266,
-      "y": 68,
+      "x": -300,
+      "y": -9,
       "init": {
         "label": "mi → km",
         "fromUnit": "mi",
@@ -278,8 +278,8 @@
     {
       "id": "disp-km",
       "type": "DisplayNode",
-      "x": 531,
-      "y": 157,
+      "x": -31,
+      "y": 138,
       "init": {
         "label": "Distance",
         "unitSuffix": "none"
@@ -288,8 +288,8 @@
     {
       "id": "fc-km",
       "type": "FormatControllerNode",
-      "x": 713,
-      "y": 166,
+      "x": 152,
+      "y": 147,
       "init": {
         "label": "Format",
         "hostNodeId": "disp-km",
@@ -313,8 +313,8 @@
     {
       "id": "note-switch",
       "type": "NoteNode",
-      "x": -269,
-      "y": 603,
+      "x": -569,
+      "y": 545,
       "init": {
         "label": "Live controls",
         "body": "# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labeled choice, then pick which cable is live; cycle to flip scenarios without rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); the formula opens a big typeset editor.",
@@ -327,8 +327,8 @@
     {
       "id": "in-a",
       "type": "NumberInputNode",
-      "x": -89,
-      "y": 881,
+      "x": -569,
+      "y": 833,
       "init": {
         "label": "Plan A (monthly)",
         "value": 1200
@@ -337,8 +337,8 @@
     {
       "id": "in-b2",
       "type": "NumberInputNode",
-      "x": -89,
-      "y": 1149,
+      "x": -569,
+      "y": 1113,
       "init": {
         "label": "Plan B (monthly)",
         "value": 2000
@@ -347,8 +347,8 @@
     {
       "id": "switch-1",
       "type": "CableSwitchNode",
-      "x": 194,
-      "y": 822,
+      "x": -261,
+      "y": 805,
       "init": {
         "label": "Scenario",
         "activeIndex": 0,
@@ -365,8 +365,8 @@
     {
       "id": "expr-1",
       "type": "ExpressionNode",
-      "x": 459,
-      "y": 835,
+      "x": 48,
+      "y": 857,
       "init": {
         "label": "Yearly cost",
         "expr": "12 * monthly"
@@ -378,8 +378,8 @@
     {
       "id": "disp-year",
       "type": "DisplayNode",
-      "x": 784,
-      "y": 884,
+      "x": 377,
+      "y": 930,
       "init": {
         "label": "Per year",
         "unitSuffix": "none"
@@ -388,8 +388,8 @@
     {
       "id": "in-c",
       "type": "NumberInputNode",
-      "x": -89,
-      "y": 1266,
+      "x": -569,
+      "y": 1234,
       "init": {
         "label": "Plan C (monthly)",
         "value": 1500
@@ -398,8 +398,8 @@
     {
       "id": "switch-many",
       "type": "CableSwitchNode",
-      "x": 194,
-      "y": 1073,
+      "x": -281,
+      "y": 1060,
       "init": {
         "label": "All plans",
         "activeIndex": 0,
@@ -424,8 +424,8 @@
     {
       "id": "grp-lambda",
       "type": "GroupNode",
-      "x": -123,
-      "y": -845,
+      "x": 1075,
+      "y": 487,
       "init": {
         "label": "Lambdas",
         "members": [
@@ -440,33 +440,32 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 1400,
-        "height": 646
+        "width": 1246,
+        "height": 956
       }
     },
     {
       "id": "grp-conduit",
       "type": "GroupNode",
-      "x": 1400,
-      "y": 967,
+      "x": 626,
+      "y": -214,
       "init": {
         "label": "Conduits and Ribbons",
         "members": [
           "note-conduit",
-          "note-standoff",
           "conduit-1"
         ],
         "color": "lime",
         "collapsed": false,
         "width": 428,
-        "height": 730
+        "height": 434
       }
     },
     {
       "id": "grp-units",
       "type": "GroupNode",
-      "x": -203,
-      "y": -161,
+      "x": -593,
+      "y": -327,
       "init": {
         "label": "Units",
         "members": [
@@ -478,15 +477,15 @@
         ],
         "color": "teal",
         "collapsed": false,
-        "width": 1105,
-        "height": 550
+        "width": 934,
+        "height": 638
       }
     },
     {
       "id": "grp-switch",
       "type": "GroupNode",
-      "x": -293,
-      "y": 545,
+      "x": -593,
+      "y": 487,
       "init": {
         "label": "Live controls",
         "members": [
@@ -501,8 +500,8 @@
         ],
         "color": "purple",
         "collapsed": false,
-        "width": 1285,
-        "height": 829
+        "width": 1178,
+        "height": 854
       }
     }
   ],
@@ -643,15 +642,15 @@
   "standoffs": [
     {
       "a": {
-        "nodeId": "in-sb",
-        "anchor": "e"
+        "nodeId": "grp-mon",
+        "anchor": "s"
       },
       "b": {
-        "nodeId": "grp-mon",
-        "anchor": "w"
+        "nodeId": "note-standoff",
+        "anchor": "n"
       },
-      "min": 140,
-      "max": 900
+      "min": 40,
+      "max": 240
     },
     {
       "a": {

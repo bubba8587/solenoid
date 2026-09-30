@@ -96,4 +96,4 @@ This is the author's rule for seed graphs: groups liberally, standoffs sparingly
 - A Note wired through its frontmatter exports gets no standoff.
 - A data node never has a standoff to its consumer. An exhibit and its Note go in one group instead (a Note can be a member).
 
-Re-bake seeds with `scripts/tune-seeds.mjs` after editing. `decision-matrix.json` and `table-verbs.json` are the exemplars.
+Re-bake seeds with `scripts/tune-seeds.mjs` after editing. It expands every group for the whole pass and collapses the collapsed ones again at the end, because a whole-canvas Tidy of collapsed groups packs their small boxes and leaves their hidden members under the neighbors' boxes, which `seeds.test.ts` rejects. `decision-matrix.json` and `table-verbs.json` are the exemplars.

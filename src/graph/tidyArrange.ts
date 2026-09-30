@@ -198,13 +198,17 @@ export async function elkTidyLayout(
         });
         // A card's sockets sit on its left and right edges, so their real heights serve a left-to-right layout only;
         // there, level ports make level cables. Top-to-bottom, and for an undrawn socket, the spaced ports stand.
+        const align = settingsStore.get("tidyAlign");
         const across = p.side === "EAST" || p.side === "WEST";
-        const real = across && settingsStore.get("tidyAlign") === "sockets" ? args.socketAt?.(node.id, key, side) : null;
+        const real = across && (align === "sockets" || align === "balanced") ? args.socketAt?.(node.id, key, side) : null;
+        // Balanced goes halfway: full height matching lines every cable up and walks a chain of bottom-output cards
+        // down a staircase; halfway keeps cables within their cards' band and the cards side by side.
+        const pull = align === "balanced" ? 0.5 : 1;
         return {
           id: portId(node.id, key, side),
           width: p.width, height: p.height,
           x: p.x,
-          y: real ? real.y - p.height / 2 : p.y,
+          y: real ? p.y + pull * (real.y - p.height / 2 - p.y) : p.y,
           properties: { side: p.side },
         };
       });

@@ -8,7 +8,7 @@
       "id": "note",
       "type": "NoteNode",
       "x": -1260,
-      "y": -150,
+      "y": -212,
       "init": {
         "label": "How it works",
         "body": "# Sudoku solver\n\nThe container is a **Simulation** loop over an 81×9 **candidate matrix** (one cell per row, one digit per column). Every matrix here is built by an **Expression** formula, the peer table and the unit table included, so there are no giant lookup grids to scroll past.\n\nEach round is one deduction pass:\n\n1. **Naked singles**: a cell pinned to one digit removes it from every peer.\n2. **Hidden singles**: a digit with one home left in a row, column or box claims that cell.\n3. **Naked pairs**: two cells sharing the same two candidates knock those digits out of any cell that sees both.\n\nThree puzzles feed an **Input Switch**; step it to pick which one the solver reads. Edit a puzzle (0 = empty), then press **Solve** on the container. *Solved* confirms every cell pinned to exactly one digit. Drill in to see the machinery."
@@ -17,8 +17,8 @@
     {
       "id": "puzzle",
       "type": "TableInputNode",
-      "x": -940,
-      "y": -150,
+      "x": -1260,
+      "y": -42,
       "init": {
         "label": "Hard (0 = empty)",
         "tableText": "6, 2, 0, 0, 5, 0, 0, 0, 9\n8, 0, 0, 0, 1, 0, 0, 3, 7\n0, 0, 0, 9, 0, 0, 0, 0, 1\n0, 0, 5, 8, 0, 0, 0, 0, 0\n0, 0, 9, 0, 4, 0, 6, 0, 0\n0, 0, 0, 0, 0, 5, 0, 1, 3\n0, 5, 0, 0, 0, 2, 0, 0, 0\n7, 0, 6, 0, 9, 0, 0, 2, 0\n0, 0, 0, 4, 0, 0, 0, 0, 0"
@@ -27,8 +27,8 @@
     {
       "id": "puzzle2",
       "type": "TableInputNode",
-      "x": -940,
-      "y": 140,
+      "x": -1260,
+      "y": 225,
       "init": {
         "label": "Wikipedia easy",
         "tableText": "5, 3, 0, 0, 7, 0, 0, 0, 0\n6, 0, 0, 1, 9, 5, 0, 0, 0\n0, 9, 8, 0, 0, 0, 0, 6, 0\n8, 0, 0, 0, 6, 0, 0, 0, 3\n4, 0, 0, 8, 0, 3, 0, 0, 1\n7, 0, 0, 0, 2, 0, 0, 0, 6\n0, 6, 0, 0, 0, 0, 2, 8, 0\n0, 0, 0, 4, 1, 9, 0, 0, 5\n0, 0, 0, 0, 8, 0, 0, 7, 9"
@@ -37,8 +37,8 @@
     {
       "id": "puzzle3",
       "type": "TableInputNode",
-      "x": -940,
-      "y": 430,
+      "x": -1260,
+      "y": 492,
       "init": {
         "label": "Easy",
         "tableText": "0, 0, 0, 2, 6, 0, 7, 0, 1\n6, 8, 0, 0, 7, 0, 0, 9, 0\n1, 9, 0, 0, 0, 4, 5, 0, 0\n8, 2, 0, 1, 0, 0, 0, 4, 0\n0, 0, 4, 6, 0, 2, 9, 0, 0\n0, 5, 0, 0, 0, 3, 0, 2, 8\n0, 0, 9, 3, 0, 0, 0, 7, 4\n0, 4, 0, 0, 5, 0, 0, 3, 6\n7, 0, 3, 0, 1, 8, 0, 0, 0"
@@ -47,21 +47,29 @@
     {
       "id": "switch",
       "type": "CableSwitchNode",
-      "x": -600,
-      "y": 40,
+      "x": -915,
+      "y": 242,
       "init": {
         "label": "Pick a puzzle",
         "activeIndex": 0,
         "multiSelect": false,
-        "valueKeys": ["v0", "v1", "v2"],
-        "titles": { "v0": "Hard", "v1": "Wikipedia easy", "v2": "Easy" }
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2"
+        ],
+        "titles": {
+          "v0": "Hard",
+          "v1": "Wikipedia easy",
+          "v2": "Easy"
+        }
       }
     },
     {
       "id": "solver",
       "type": "CompositeNode",
-      "x": -150,
-      "y": -87,
+      "x": -588,
+      "y": 317,
       "init": {
         "label": "Sudoku solver: drill in!",
         "runMode": "simulation",
@@ -338,43 +346,228 @@
             }
           ],
           "connections": [
-            { "source": "colix", "sourceOutput": "result", "target": "rowix", "targetInput": "colix" },
-            { "source": "rowix", "sourceOutput": "result", "target": "peers", "targetInput": "rowix" },
-            { "source": "colix", "sourceOutput": "result", "target": "peers", "targetInput": "colix" },
-            { "source": "uix", "sourceOutput": "result", "target": "units", "targetInput": "uix" },
-            { "source": "colix", "sourceOutput": "result", "target": "units", "targetInput": "colix" },
-            { "source": "units", "sourceOutput": "result", "target": "unitsT", "targetInput": "units" },
-            { "source": "m_grid", "sourceOutput": "value", "target": "cells", "targetInput": "grid" },
-            { "source": "cells", "sourceOutput": "result", "target": "cand0", "targetInput": "cellvals" },
-            { "source": "digits", "sourceOutput": "result", "target": "cand0", "targetInput": "digits" },
-            { "source": "cand0", "sourceOutput": "result", "target": "prev", "targetInput": "table" },
-            { "source": "cnext", "sourceOutput": "result", "target": "prev", "targetInput": "table2" },
-            { "source": "prev", "sourceOutput": "result", "target": "nakedS", "targetInput": "cand" },
-            { "source": "peers", "sourceOutput": "result", "target": "nakedS", "targetInput": "peers" },
-            { "source": "ones", "sourceOutput": "result", "target": "nakedS", "targetInput": "ones" },
-            { "source": "nakedS", "sourceOutput": "result", "target": "hidden", "targetInput": "cand" },
-            { "source": "unitsT", "sourceOutput": "result", "target": "hidden", "targetInput": "unitsT" },
-            { "source": "units", "sourceOutput": "result", "target": "hidden", "targetInput": "units" },
-            { "source": "nakedS", "sourceOutput": "result", "target": "cand2", "targetInput": "cand" },
-            { "source": "hidden", "sourceOutput": "result", "target": "cand2", "targetInput": "hidden" },
-            { "source": "ones", "sourceOutput": "result", "target": "cand2", "targetInput": "ones" },
-            { "source": "cand2", "sourceOutput": "result", "target": "pairs", "targetInput": "cand" },
-            { "source": "ones", "sourceOutput": "result", "target": "pairs", "targetInput": "ones" },
-            { "source": "pairs", "sourceOutput": "result", "target": "mates", "targetInput": "pairs" },
-            { "source": "peers", "sourceOutput": "result", "target": "mates", "targetInput": "peers" },
-            { "source": "cand2", "sourceOutput": "result", "target": "cnext", "targetInput": "cand" },
-            { "source": "peers", "sourceOutput": "result", "target": "cnext", "targetInput": "peers" },
-            { "source": "mates", "sourceOutput": "result", "target": "cnext", "targetInput": "mates" },
-            { "source": "pairs", "sourceOutput": "result", "target": "cnext", "targetInput": "pairs" },
-            { "source": "cnext", "sourceOutput": "result", "target": "vals", "targetInput": "cand" },
-            { "source": "ones", "sourceOutput": "result", "target": "vals", "targetInput": "ones" },
-            { "source": "digits", "sourceOutput": "result", "target": "vals", "targetInput": "digits" },
-            { "source": "vals", "sourceOutput": "result", "target": "sol9", "targetInput": "list" },
-            { "source": "sol9", "sourceOutput": "result", "target": "m_solution", "targetInput": "value" },
-            { "source": "cnext", "sourceOutput": "result", "target": "spread", "targetInput": "cand" },
-            { "source": "ones", "sourceOutput": "result", "target": "spread", "targetInput": "ones" },
-            { "source": "spread", "sourceOutput": "result", "target": "solved", "targetInput": "a" },
-            { "source": "solved", "sourceOutput": "result", "target": "m_solved", "targetInput": "value" }
+            {
+              "source": "colix",
+              "sourceOutput": "result",
+              "target": "rowix",
+              "targetInput": "colix"
+            },
+            {
+              "source": "rowix",
+              "sourceOutput": "result",
+              "target": "peers",
+              "targetInput": "rowix"
+            },
+            {
+              "source": "colix",
+              "sourceOutput": "result",
+              "target": "peers",
+              "targetInput": "colix"
+            },
+            {
+              "source": "uix",
+              "sourceOutput": "result",
+              "target": "units",
+              "targetInput": "uix"
+            },
+            {
+              "source": "colix",
+              "sourceOutput": "result",
+              "target": "units",
+              "targetInput": "colix"
+            },
+            {
+              "source": "units",
+              "sourceOutput": "result",
+              "target": "unitsT",
+              "targetInput": "units"
+            },
+            {
+              "source": "m_grid",
+              "sourceOutput": "value",
+              "target": "cells",
+              "targetInput": "grid"
+            },
+            {
+              "source": "cells",
+              "sourceOutput": "result",
+              "target": "cand0",
+              "targetInput": "cellvals"
+            },
+            {
+              "source": "digits",
+              "sourceOutput": "result",
+              "target": "cand0",
+              "targetInput": "digits"
+            },
+            {
+              "source": "cand0",
+              "sourceOutput": "result",
+              "target": "prev",
+              "targetInput": "table"
+            },
+            {
+              "source": "cnext",
+              "sourceOutput": "result",
+              "target": "prev",
+              "targetInput": "table2"
+            },
+            {
+              "source": "prev",
+              "sourceOutput": "result",
+              "target": "nakedS",
+              "targetInput": "cand"
+            },
+            {
+              "source": "peers",
+              "sourceOutput": "result",
+              "target": "nakedS",
+              "targetInput": "peers"
+            },
+            {
+              "source": "ones",
+              "sourceOutput": "result",
+              "target": "nakedS",
+              "targetInput": "ones"
+            },
+            {
+              "source": "nakedS",
+              "sourceOutput": "result",
+              "target": "hidden",
+              "targetInput": "cand"
+            },
+            {
+              "source": "unitsT",
+              "sourceOutput": "result",
+              "target": "hidden",
+              "targetInput": "unitsT"
+            },
+            {
+              "source": "units",
+              "sourceOutput": "result",
+              "target": "hidden",
+              "targetInput": "units"
+            },
+            {
+              "source": "nakedS",
+              "sourceOutput": "result",
+              "target": "cand2",
+              "targetInput": "cand"
+            },
+            {
+              "source": "hidden",
+              "sourceOutput": "result",
+              "target": "cand2",
+              "targetInput": "hidden"
+            },
+            {
+              "source": "ones",
+              "sourceOutput": "result",
+              "target": "cand2",
+              "targetInput": "ones"
+            },
+            {
+              "source": "cand2",
+              "sourceOutput": "result",
+              "target": "pairs",
+              "targetInput": "cand"
+            },
+            {
+              "source": "ones",
+              "sourceOutput": "result",
+              "target": "pairs",
+              "targetInput": "ones"
+            },
+            {
+              "source": "pairs",
+              "sourceOutput": "result",
+              "target": "mates",
+              "targetInput": "pairs"
+            },
+            {
+              "source": "peers",
+              "sourceOutput": "result",
+              "target": "mates",
+              "targetInput": "peers"
+            },
+            {
+              "source": "cand2",
+              "sourceOutput": "result",
+              "target": "cnext",
+              "targetInput": "cand"
+            },
+            {
+              "source": "peers",
+              "sourceOutput": "result",
+              "target": "cnext",
+              "targetInput": "peers"
+            },
+            {
+              "source": "mates",
+              "sourceOutput": "result",
+              "target": "cnext",
+              "targetInput": "mates"
+            },
+            {
+              "source": "pairs",
+              "sourceOutput": "result",
+              "target": "cnext",
+              "targetInput": "pairs"
+            },
+            {
+              "source": "cnext",
+              "sourceOutput": "result",
+              "target": "vals",
+              "targetInput": "cand"
+            },
+            {
+              "source": "ones",
+              "sourceOutput": "result",
+              "target": "vals",
+              "targetInput": "ones"
+            },
+            {
+              "source": "digits",
+              "sourceOutput": "result",
+              "target": "vals",
+              "targetInput": "digits"
+            },
+            {
+              "source": "vals",
+              "sourceOutput": "result",
+              "target": "sol9",
+              "targetInput": "list"
+            },
+            {
+              "source": "sol9",
+              "sourceOutput": "result",
+              "target": "m_solution",
+              "targetInput": "value"
+            },
+            {
+              "source": "cnext",
+              "sourceOutput": "result",
+              "target": "spread",
+              "targetInput": "cand"
+            },
+            {
+              "source": "ones",
+              "sourceOutput": "result",
+              "target": "spread",
+              "targetInput": "ones"
+            },
+            {
+              "source": "spread",
+              "sourceOutput": "result",
+              "target": "solved",
+              "targetInput": "a"
+            },
+            {
+              "source": "solved",
+              "sourceOutput": "result",
+              "target": "m_solved",
+              "targetInput": "value"
+            }
           ]
         }
       }
@@ -382,8 +575,8 @@
     {
       "id": "solDisp",
       "type": "DisplayNode",
-      "x": 182,
-      "y": -137,
+      "x": -256,
+      "y": 416,
       "init": {
         "label": "Solution"
       }
@@ -391,8 +584,8 @@
     {
       "id": "okDisp",
       "type": "DisplayNode",
-      "x": 182,
-      "y": 152,
+      "x": -256,
+      "y": 546,
       "init": {
         "label": "Solved"
       }

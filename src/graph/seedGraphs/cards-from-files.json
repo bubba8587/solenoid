@@ -8,7 +8,7 @@
       "id": "note",
       "type": "NoteNode",
       "x": -480,
-      "y": 60,
+      "y": -727,
       "init": {
         "label": "Cards from files",
         "body": "# Files to cards\nLocal File nodes read three CSV files from the demo vault's **Data** folder: crew, products and orders. Table verbs run on them.\n\nOrders join a product lookup on SKU and a rep lookup on the rep's full name, and a Keep picks the fields an order card needs.\n\nOpen any Frame chip and switch the popup to **Cards**. The photos and product pictures are `data:image` cells.\n\n**Record: Cards** draws the same cards as a chart, in the Catalog display below.\n\nOn desktop, point **Settings ▸ Data** at your own folder to read your own files.",
@@ -19,8 +19,8 @@
     {
       "id": "crew",
       "type": "LocalFileNode",
-      "x": 0,
-      "y": -640,
+      "x": 341,
+      "y": 1606,
       "init": {
         "label": "Crew",
         "fileName": "crew.csv"
@@ -29,8 +29,8 @@
     {
       "id": "products",
       "type": "LocalFileNode",
-      "x": 0,
-      "y": 380,
+      "x": -45,
+      "y": 44,
       "init": {
         "label": "Products",
         "fileName": "products.csv"
@@ -39,8 +39,8 @@
     {
       "id": "orders",
       "type": "LocalFileNode",
-      "x": 0,
-      "y": 1160,
+      "x": 341,
+      "y": 149,
       "init": {
         "label": "Orders",
         "fileName": "orders.csv"
@@ -49,8 +49,8 @@
     {
       "id": "crew-remote",
       "type": "FilterFrameNode",
-      "x": 420,
-      "y": -1000,
+      "x": 696,
+      "y": 1264,
       "init": {
         "label": "Filter → remote crew",
         "condConfig": {
@@ -72,8 +72,8 @@
     {
       "id": "crew-sort",
       "type": "SortFrameNode",
-      "x": 420,
-      "y": -660,
+      "x": 696,
+      "y": 2048,
       "init": {
         "label": "Sort → rating, best first",
         "dir": "desc"
@@ -85,8 +85,8 @@
     {
       "id": "rep-name",
       "type": "ComputedColumnNode",
-      "x": 420,
-      "y": -320,
+      "x": 956,
+      "y": 1635,
       "init": {
         "label": "Computed → Rep, the full name",
         "expr": "@[First Name] & \" \" & @[Last Name]"
@@ -99,8 +99,8 @@
     {
       "id": "rep-lookup",
       "type": "ColumnsNode",
-      "x": 840,
-      "y": -320,
+      "x": 1556,
+      "y": 1778,
       "init": {
         "label": "Keep → rep lookup"
       },
@@ -111,8 +111,8 @@
     {
       "id": "top-rated",
       "type": "FilterFrameNode",
-      "x": 420,
-      "y": 60,
+      "x": 341,
+      "y": -727,
       "init": {
         "label": "Filter → rated 4.5 and up",
         "condConfig": {
@@ -134,8 +134,8 @@
     {
       "id": "by-price",
       "type": "SortFrameNode",
-      "x": 420,
-      "y": 400,
+      "x": 341,
+      "y": 916,
       "init": {
         "label": "Sort → price, high first",
         "dir": "desc"
@@ -147,8 +147,8 @@
     {
       "id": "priciest",
       "type": "HeadNode",
-      "x": 840,
-      "y": 400,
+      "x": 696,
+      "y": 968,
       "init": {
         "label": "Head → priciest five"
       },
@@ -159,8 +159,8 @@
     {
       "id": "product-lookup",
       "type": "ColumnsNode",
-      "x": 420,
-      "y": 740,
+      "x": 341,
+      "y": 526,
       "init": {
         "label": "Keep → product lookup"
       },
@@ -171,8 +171,8 @@
     {
       "id": "order-lines",
       "type": "JoinNode",
-      "x": 840,
-      "y": 1100,
+      "x": 869,
+      "y": 552,
       "init": {
         "label": "Join Orders × product lookup (on SKU)",
         "how": "left"
@@ -185,8 +185,8 @@
     {
       "id": "open-lines",
       "type": "FilterFrameNode",
-      "x": 1260,
-      "y": 1100,
+      "x": 1556,
+      "y": 881,
       "init": {
         "label": "Filter → open orders",
         "condConfig": {
@@ -208,8 +208,8 @@
     {
       "id": "with-rep",
       "type": "JoinNode",
-      "x": 1680,
-      "y": 1100,
+      "x": 1922,
+      "y": 1506,
       "init": {
         "label": "Join → rep lookup (on Rep)",
         "how": "left"
@@ -222,8 +222,8 @@
     {
       "id": "order-card",
       "type": "ColumnsNode",
-      "x": 2100,
-      "y": 1100,
+      "x": 2249,
+      "y": 1642,
       "init": {
         "label": "Keep → the order card"
       },
@@ -234,8 +234,8 @@
     {
       "id": "by-category",
       "type": "GroupByFrameNode",
-      "x": 1260,
-      "y": 1460,
+      "x": 1556,
+      "y": 513,
       "init": {
         "label": "GROUPBY Category → SUM(Total)",
         "agg": "sum",
@@ -249,8 +249,8 @@
     {
       "id": "by-status",
       "type": "GroupByFrameNode",
-      "x": 420,
-      "y": 1500,
+      "x": 696,
+      "y": 184,
       "init": {
         "label": "GROUPBY Status → SUM(Total)",
         "agg": "sum",
@@ -264,8 +264,8 @@
     {
       "id": "products-cards",
       "type": "RecordNode",
-      "x": 420,
-      "y": 1880,
+      "x": 341,
+      "y": -356,
       "init": {
         "label": "Record: Cards → the catalog",
         "op": "cards"
@@ -278,8 +278,8 @@
     {
       "id": "catalog",
       "type": "DisplayNode",
-      "x": 840,
-      "y": 1880,
+      "x": 696,
+      "y": -548,
       "init": {
         "label": "Catalog cards"
       },

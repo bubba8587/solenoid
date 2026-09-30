@@ -22,7 +22,7 @@ function resetToDefaults() {
   // No public reset() — drive each key back to the known default via set().
   // The equality guard means this is a no-op (no notify) when already at default.
   settingsStore.set("groupPush", true);
-  settingsStore.set("tidyAlign", "sockets");
+  settingsStore.set("tidyAlign", "balanced");
   settingsStore.set("csvFolder", "");
 }
 
@@ -37,7 +37,7 @@ describe("settingsStore — equality guard (no-op on same value)", () => {
     settingsStore.subscribe(cb);
     const before = settingsStore.version();
     settingsStore.set("groupPush", true); // already true
-    settingsStore.set("tidyAlign", "sockets"); // already the default
+    settingsStore.set("tidyAlign", "balanced"); // already the default
     expect(cb).not.toHaveBeenCalled();
     expect(settingsStore.version()).toBe(before);
   });

@@ -7,8 +7,8 @@
     {
       "id": "note0",
       "type": "NoteNode",
-      "x": 90,
-      "y": 224,
+      "x": -69,
+      "y": 1027,
       "init": {
         "label": "Tasks: list and tracked time",
         "body": "# The same tasks, from the files and from the plugin\n\nA tasks folder read as a **Vault Folder** already gives each task's title, status, priority, due and tags: they are frontmatter, straight from the files. **TaskNotes** is for what lives only in the plugin. Here it sums each task's timeEntries into minutes tracked, a total the files can't give you.\n\nThe third group scores the unfinished tasks through a **Decision Matrix**: a short estimate and time already tracked both count (a negative weight means lower is better), every task gets a score, and the podium is the answer.\n\nWith no vault folder or TaskNotes URL set in Settings, both readers use the bundled sample, so this runs anywhere.",
@@ -20,8 +20,8 @@
     {
       "id": "vfLive",
       "type": "VaultFolderNode",
-      "x": 21,
-      "y": 510,
+      "x": 420,
+      "y": 1085,
       "init": {
         "label": "Vault Folder",
         "folder": "Tasks"
@@ -30,8 +30,8 @@
     {
       "id": "listDisplay",
       "type": "DisplayNode",
-      "x": 346,
-      "y": 696,
+      "x": 749,
+      "y": 1172,
       "init": {
         "label": "Task list"
       }
@@ -40,7 +40,7 @@
       "id": "tnLive",
       "type": "TaskNotesNode",
       "x": -45,
-      "y": -353,
+      "y": 1608,
       "init": {
         "label": "TaskNotes",
         "provider": "tasks"
@@ -49,8 +49,8 @@
     {
       "id": "rollup",
       "type": "CubeRollupNode",
-      "x": 280,
-      "y": -137,
+      "x": 284,
+      "y": 1677,
       "init": {
         "label": "Sum timeEntries minutes",
         "agg": "sum"
@@ -64,8 +64,8 @@
     {
       "id": "minDisplay",
       "type": "DisplayNode",
-      "x": 605,
-      "y": -62,
+      "x": 613,
+      "y": 1712,
       "init": {
         "label": "Minutes per task"
       }
@@ -73,8 +73,8 @@
     {
       "id": "grp-list",
       "type": "GroupNode",
-      "x": -3,
-      "y": 452,
+      "x": 396,
+      "y": 1027,
       "init": {
         "label": "The list, from the files",
         "members": [
@@ -83,15 +83,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 879,
-        "height": 415
+        "width": 3940,
+        "height": 503
       }
     },
     {
       "id": "grp-time",
       "type": "GroupNode",
       "x": -69,
-      "y": -411,
+      "y": 1550,
       "init": {
         "label": "Tracked time, from TaskNotes",
         "members": [
@@ -101,15 +101,15 @@
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 1012,
-        "height": 597
+        "width": 3116,
+        "height": 503
       }
     },
     {
       "id": "open",
       "type": "FilterFrameNode",
-      "x": 3000,
-      "y": 3000,
+      "x": 3126,
+      "y": 1608,
       "init": {
         "label": "status is not done",
         "condConfig": {
@@ -131,8 +131,8 @@
     {
       "id": "weights",
       "type": "FrameInputNode",
-      "x": 3300,
-      "y": 3000,
+      "x": 3126,
+      "y": 1972,
       "init": {
         "label": "Weights",
         "frameText": "[{\"name\": \"Criterion\", \"type\": \"string\", \"values\": [\"timeEstimate\", \"trackedMinutes\", \"archived\"]}, {\"name\": \"Weight\", \"type\": \"number\", \"values\": [-1, 2, 0]}, {\"name\": \"Norm\", \"type\": \"string\", \"values\": [\"Rank\", \"Rank\", \"\"]}]"
@@ -141,8 +141,8 @@
     {
       "id": "dm",
       "type": "DecisionMatrixNode",
-      "x": 3600,
-      "y": 3000,
+      "x": 3465,
+      "y": 1834,
       "init": {
         "label": "Decision Matrix",
         "normalize": "max",
@@ -152,8 +152,8 @@
     {
       "id": "select",
       "type": "ColumnsNode",
-      "x": 3900,
-      "y": 3000,
+      "x": 3794,
+      "y": 1943,
       "init": {
         "label": "Keep path, Score"
       },
@@ -164,8 +164,8 @@
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 4200,
-      "y": 3000,
+      "x": 4123,
+      "y": 1943,
       "init": {
         "label": "Podium",
         "op": "bar"
@@ -177,8 +177,8 @@
     {
       "id": "grp-score",
       "type": "GroupNode",
-      "x": 2950,
-      "y": 2940,
+      "x": 3102,
+      "y": 1550,
       "init": {
         "label": "Which task next?",
         "members": [
@@ -188,8 +188,8 @@
           "select",
           "chart"
         ],
-        "width": 1600,
-        "height": 400
+        "width": 1289,
+        "height": 750
       }
     }
   ],

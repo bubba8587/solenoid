@@ -7,8 +7,8 @@
     {
       "id": "src_a",
       "type": "ListInputNode",
-      "x": 604,
-      "y": 13474,
+      "x": 24,
+      "y": 7275,
       "init": {
         "label": "Data A",
         "valueKeys": [
@@ -22,8 +22,8 @@
     {
       "id": "src_breaks",
       "type": "ListInputNode",
-      "x": 604,
-      "y": 13784,
+      "x": 24,
+      "y": 7596,
       "init": {
         "label": "Breaks",
         "valueKeys": [
@@ -37,8 +37,8 @@
     {
       "id": "src_va",
       "type": "ListInputNode",
-      "x": 604,
-      "y": 12733,
+      "x": 24,
+      "y": 6522,
       "init": {
         "label": "Vector A",
         "valueKeys": [
@@ -52,8 +52,8 @@
     {
       "id": "src_vb",
       "type": "ListInputNode",
-      "x": 604,
-      "y": 12990,
+      "x": 24,
+      "y": 6782,
       "init": {
         "label": "Vector B",
         "valueKeys": [
@@ -67,8 +67,8 @@
     {
       "id": "n_shift",
       "type": "ShiftNode",
-      "x": 920,
-      "y": 13377,
+      "x": 315,
+      "y": 7197,
       "init": {
         "label": "Shift",
         "wrap": "wrap"
@@ -80,8 +80,8 @@
     {
       "id": "n_pct",
       "type": "DiffNode",
-      "x": 920,
-      "y": 13198,
+      "x": 315,
+      "y": 7016,
       "init": {
         "label": "DIFF (% mode)",
         "mode": "percent"
@@ -90,8 +90,8 @@
     {
       "id": "n_z",
       "type": "NormalizeNode",
-      "x": 920,
-      "y": 13586,
+      "x": 315,
+      "y": 7414,
       "init": {
         "label": "Normalize (z mode)",
         "mode": "zscore"
@@ -100,8 +100,8 @@
     {
       "id": "n_bin",
       "type": "BinNode",
-      "x": 910,
-      "y": 13776,
+      "x": 315,
+      "y": 7608,
       "init": {
         "label": "Bin"
       }
@@ -109,8 +109,8 @@
     {
       "id": "n_comb",
       "type": "CombinationsNode",
-      "x": 890,
-      "y": 12716,
+      "x": 310,
+      "y": 6544,
       "init": {
         "label": "Combinations",
         "mode": "combinations"
@@ -122,8 +122,8 @@
     {
       "id": "n_outer",
       "type": "TableOuterNode",
-      "x": 890,
-      "y": 12971,
+      "x": 310,
+      "y": 6803,
       "init": {
         "label": "Outer"
       }
@@ -131,8 +131,8 @@
     {
       "id": "d_shift",
       "type": "DisplayNode",
-      "x": 1215,
-      "y": 13401,
+      "x": 584,
+      "y": 7242,
       "init": {
         "label": "Shifted"
       }
@@ -140,8 +140,8 @@
     {
       "id": "d_pct",
       "type": "DisplayNode",
-      "x": 1215,
-      "y": 13172,
+      "x": 584,
+      "y": 7031,
       "init": {
         "label": "% change"
       }
@@ -149,8 +149,8 @@
     {
       "id": "d_z",
       "type": "DisplayNode",
-      "x": 1215,
-      "y": 13558,
+      "x": 584,
+      "y": 7403,
       "init": {
         "label": "z-scores"
       }
@@ -158,8 +158,8 @@
     {
       "id": "d_bin",
       "type": "DisplayNode",
-      "x": 1215,
-      "y": 13809,
+      "x": 584,
+      "y": 7662,
       "init": {
         "label": "bins"
       }
@@ -167,8 +167,8 @@
     {
       "id": "d_comb",
       "type": "DisplayNode",
-      "x": 1215,
-      "y": 12762,
+      "x": 639,
+      "y": 6611,
       "init": {
         "label": "combinations"
       }
@@ -176,8 +176,8 @@
     {
       "id": "d_outer",
       "type": "DisplayNode",
-      "x": 1215,
-      "y": 13003,
+      "x": 639,
+      "y": 6849,
       "init": {
         "label": "outer product"
       }
@@ -185,8 +185,8 @@
     {
       "id": "src_vc",
       "type": "ListInputNode",
-      "x": 1737,
-      "y": 11600,
+      "x": 1138,
+      "y": 5562,
       "init": {
         "label": "Vector C",
         "valueKeys": [
@@ -200,8 +200,8 @@
     {
       "id": "src_px",
       "type": "ListInputNode",
-      "x": 1737,
-      "y": 12220,
+      "x": 1138,
+      "y": 5990,
       "init": {
         "label": "x",
         "valueKeys": [
@@ -215,8 +215,8 @@
     {
       "id": "src_py",
       "type": "ListInputNode",
-      "x": 1737,
-      "y": 12425,
+      "x": 1138,
+      "y": 6199,
       "init": {
         "label": "y (x^2)",
         "valueKeys": [
@@ -230,8 +230,8 @@
     {
       "id": "src_rle",
       "type": "ListInputNode",
-      "x": 1737,
-      "y": 11805,
+      "x": 1138,
+      "y": 5759,
       "init": {
         "label": "Repeats",
         "valueKeys": [
@@ -245,8 +245,8 @@
     {
       "id": "n_ewma",
       "type": "EwmaNode",
-      "x": 1737,
-      "y": 12033,
+      "x": 1641,
+      "y": 5359,
       "init": {
         "label": "EWMA"
       },
@@ -257,8 +257,8 @@
     {
       "id": "n_conv",
       "type": "ConvolveNode",
-      "x": 1737,
-      "y": 11423,
+      "x": 1138,
+      "y": 5347,
       "init": {
         "label": "Convolve"
       }
@@ -266,8 +266,8 @@
     {
       "id": "n_cross",
       "type": "CrossNode",
-      "x": 2046,
-      "y": 11606,
+      "x": 1407,
+      "y": 5596,
       "init": {
         "label": "Cross Product"
       }
@@ -275,8 +275,8 @@
     {
       "id": "n_poly",
       "type": "PolyfitNode",
-      "x": 2036,
-      "y": 12236,
+      "x": 1421,
+      "y": 6042,
       "init": {
         "label": "Poly Fit"
       },
@@ -287,8 +287,8 @@
     {
       "id": "n_trapz",
       "type": "TrapzNode",
-      "x": 2046,
-      "y": 12444,
+      "x": 1421,
+      "y": 6253,
       "init": {
         "label": "Integrate"
       },
@@ -299,8 +299,8 @@
     {
       "id": "n_rle",
       "type": "RleNode",
-      "x": 2016,
-      "y": 11808,
+      "x": 1407,
+      "y": 5805,
       "init": {
         "label": "Run Lengths"
       }
@@ -308,8 +308,8 @@
     {
       "id": "n_between",
       "type": "BetweenNode",
-      "x": 495,
-      "y": -694,
+      "x": 523,
+      "y": 1406,
       "init": {
         "label": "Between"
       },
@@ -322,8 +322,8 @@
     {
       "id": "n_isclose",
       "type": "IsCloseNode",
-      "x": 495,
-      "y": -483,
+      "x": 523,
+      "y": 1603,
       "init": {
         "label": "Is Close"
       },
@@ -336,8 +336,8 @@
     {
       "id": "d_ewma",
       "type": "DisplayNode",
-      "x": 2016,
-      "y": 12007,
+      "x": 1910,
+      "y": 5347,
       "init": {
         "label": "ewma"
       }
@@ -345,8 +345,8 @@
     {
       "id": "d_conv",
       "type": "DisplayNode",
-      "x": 2016,
-      "y": 11442,
+      "x": 1407,
+      "y": 5380,
       "init": {
         "label": "convolution"
       }
@@ -354,8 +354,8 @@
     {
       "id": "d_cross",
       "type": "DisplayNode",
-      "x": 2341,
-      "y": 11634,
+      "x": 1676,
+      "y": 5638,
       "init": {
         "label": "cross"
       }
@@ -363,8 +363,8 @@
     {
       "id": "d_poly",
       "type": "DisplayNode",
-      "x": 2341,
-      "y": 12269,
+      "x": 1690,
+      "y": 6096,
       "init": {
         "label": "fitted y"
       }
@@ -372,8 +372,8 @@
     {
       "id": "d_trapz",
       "type": "DisplayNode",
-      "x": 2341,
-      "y": 12472,
+      "x": 1690,
+      "y": 6295,
       "init": {
         "label": "integral"
       }
@@ -381,8 +381,8 @@
     {
       "id": "d_rle",
       "type": "DisplayNode",
-      "x": 2341,
-      "y": 11826,
+      "x": 1736,
+      "y": 5830,
       "init": {
         "label": "run lengths"
       }
@@ -390,8 +390,8 @@
     {
       "id": "d_between",
       "type": "DisplayNode",
-      "x": 760,
-      "y": -652,
+      "x": 792,
+      "y": 1469,
       "init": {
         "label": "5 in [1,10]?"
       }
@@ -399,8 +399,8 @@
     {
       "id": "d_isclose",
       "type": "DisplayNode",
-      "x": 760,
-      "y": -441,
+      "x": 792,
+      "y": 1666,
       "init": {
         "label": "close?"
       }
@@ -408,8 +408,8 @@
     {
       "id": "src_c",
       "type": "ListInputNode",
-      "x": 1722,
-      "y": 13996,
+      "x": 1123,
+      "y": 7596,
       "init": {
         "label": "Data C (one outlier)",
         "valueKeys": [
@@ -423,8 +423,8 @@
     {
       "id": "src_rank",
       "type": "ListInputNode",
-      "x": 1722,
-      "y": 13011,
+      "x": 1626,
+      "y": 6625,
       "init": {
         "label": "Rank B",
         "valueKeys": [
@@ -438,8 +438,8 @@
     {
       "id": "src_epoch",
       "type": "NumberInputNode",
-      "x": 179,
-      "y": -4792,
+      "x": 24,
+      "y": 2434,
       "init": {
         "label": "Unix seconds",
         "value": 1700000000,
@@ -450,8 +450,8 @@
     {
       "id": "agg_ptp",
       "type": "AggregateNode",
-      "x": 2067,
-      "y": 13517,
+      "x": 1472,
+      "y": 8022,
       "init": {
         "label": "PTP (max−min)",
         "op": "ptp"
@@ -460,8 +460,8 @@
     {
       "id": "d_ptp",
       "type": "DisplayNode",
-      "x": 2362,
-      "y": 13548,
+      "x": 1771,
+      "y": 8068,
       "init": {
         "label": "PTP (max−min)"
       }
@@ -469,8 +469,8 @@
     {
       "id": "agg_iqr",
       "type": "AggregateNode",
-      "x": 2067,
-      "y": 14387,
+      "x": 1472,
+      "y": 8214,
       "init": {
         "label": "IQR",
         "op": "iqr"
@@ -479,8 +479,8 @@
     {
       "id": "d_iqr",
       "type": "DisplayNode",
-      "x": 2362,
-      "y": 14418,
+      "x": 1771,
+      "y": 8260,
       "init": {
         "label": "IQR"
       }
@@ -488,8 +488,8 @@
     {
       "id": "agg_mad",
       "type": "AggregateNode",
-      "x": 2067,
-      "y": 14575,
+      "x": 1472,
+      "y": 6944,
       "init": {
         "label": "MAD",
         "op": "mad"
@@ -498,8 +498,8 @@
     {
       "id": "d_mad",
       "type": "DisplayNode",
-      "x": 2362,
-      "y": 14606,
+      "x": 1771,
+      "y": 6990,
       "init": {
         "label": "MAD"
       }
@@ -507,8 +507,8 @@
     {
       "id": "agg_sem",
       "type": "AggregateNode",
-      "x": 2067,
-      "y": 14011,
+      "x": 1472,
+      "y": 7136,
       "init": {
         "label": "SEM",
         "op": "sem"
@@ -517,8 +517,8 @@
     {
       "id": "d_sem",
       "type": "DisplayNode",
-      "x": 2362,
-      "y": 14042,
+      "x": 1771,
+      "y": 7182,
       "init": {
         "label": "SEM"
       }
@@ -526,8 +526,8 @@
     {
       "id": "agg_cv",
       "type": "AggregateNode",
-      "x": 2067,
-      "y": 14199,
+      "x": 1472,
+      "y": 7638,
       "init": {
         "label": "CV",
         "op": "cv"
@@ -536,8 +536,8 @@
     {
       "id": "d_cv",
       "type": "DisplayNode",
-      "x": 2362,
-      "y": 14230,
+      "x": 1771,
+      "y": 7684,
       "init": {
         "label": "CV"
       }
@@ -545,8 +545,8 @@
     {
       "id": "agg_rms",
       "type": "AggregateNode",
-      "x": 2067,
-      "y": 13329,
+      "x": 1472,
+      "y": 7830,
       "init": {
         "label": "RMS",
         "op": "rms"
@@ -555,8 +555,8 @@
     {
       "id": "d_rms",
       "type": "DisplayNode",
-      "x": 2362,
-      "y": 13360,
+      "x": 1771,
+      "y": 7876,
       "init": {
         "label": "RMS"
       }
@@ -564,8 +564,8 @@
     {
       "id": "cor_spearman",
       "type": "CorrelNode",
-      "x": 2067,
-      "y": 12897,
+      "x": 1903,
+      "y": 6742,
       "init": {
         "label": "SPEARMAN",
         "op": "spearman"
@@ -574,8 +574,8 @@
     {
       "id": "d_spearman",
       "type": "DisplayNode",
-      "x": 2362,
-      "y": 12942,
+      "x": 2172,
+      "y": 6809,
       "init": {
         "label": "spearman"
       }
@@ -583,8 +583,8 @@
     {
       "id": "cor_kendall",
       "type": "CorrelNode",
-      "x": 2067,
-      "y": 13113,
+      "x": 1903,
+      "y": 6522,
       "init": {
         "label": "KENDALL",
         "op": "kendall"
@@ -593,8 +593,8 @@
     {
       "id": "d_kendall",
       "type": "DisplayNode",
-      "x": 2362,
-      "y": 13158,
+      "x": 2172,
+      "y": 6589,
       "init": {
         "label": "kendall"
       }
@@ -602,8 +602,8 @@
     {
       "id": "bin_q",
       "type": "BinNode",
-      "x": 1722,
-      "y": 12716,
+      "x": 1123,
+      "y": 6522,
       "init": {
         "label": "Bin (quartiles)",
         "mode": "quantiles"
@@ -615,8 +615,8 @@
     {
       "id": "d_binq",
       "type": "DisplayNode",
-      "x": 2037,
-      "y": 12749,
+      "x": 1392,
+      "y": 6576,
       "init": {
         "label": "bucket 1..4"
       }
@@ -624,8 +624,8 @@
     {
       "id": "outl",
       "type": "OutliersNode",
-      "x": 2037,
-      "y": 13705,
+      "x": 1442,
+      "y": 7328,
       "init": {
         "label": "Outliers (IQR)",
         "method": "iqr"
@@ -634,8 +634,8 @@
     {
       "id": "d_outl_flags",
       "type": "DisplayNode",
-      "x": 2362,
-      "y": 13714,
+      "x": 1771,
+      "y": 7363,
       "init": {
         "label": "Value / Outlier"
       }
@@ -643,8 +643,8 @@
     {
       "id": "ep_from",
       "type": "EpochNode",
-      "x": 444,
-      "y": -4823,
+      "x": 293,
+      "y": 2406,
       "init": {
         "op": "from",
         "unit": "s"
@@ -653,8 +653,8 @@
     {
       "id": "d_epfrom",
       "type": "DisplayNode",
-      "x": 754,
-      "y": -4962,
+      "x": 607,
+      "y": 2271,
       "init": {
         "label": "date"
       }
@@ -662,8 +662,8 @@
     {
       "id": "trunc",
       "type": "DateTruncNode",
-      "x": 754,
-      "y": -4839,
+      "x": 607,
+      "y": 2398,
       "init": {
         "label": "Truncate (month)",
         "unit": "month"
@@ -672,8 +672,8 @@
     {
       "id": "d_trunc",
       "type": "DisplayNode",
-      "x": 1049,
-      "y": -4795,
+      "x": 906,
+      "y": 2465,
       "init": {
         "label": "month start"
       }
@@ -681,8 +681,8 @@
     {
       "id": "ep_to",
       "type": "EpochNode",
-      "x": 769,
-      "y": -4627,
+      "x": 622,
+      "y": 2614,
       "init": {
         "label": "Date → Epoch (ms)",
         "op": "to",
@@ -692,8 +692,8 @@
     {
       "id": "d_epto",
       "type": "DisplayNode",
-      "x": 1049,
-      "y": -4593,
+      "x": 906,
+      "y": 2666,
       "init": {
         "label": "epoch ms"
       }
@@ -701,8 +701,8 @@
     {
       "id": "hav",
       "type": "ExpressionNode",
-      "x": 465,
-      "y": -3620,
+      "x": 1663,
+      "y": 1406,
       "init": {
         "label": "Haversine London→Paris km",
         "expr": "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))"
@@ -717,8 +717,8 @@
     {
       "id": "d_hav",
       "type": "DisplayNode",
-      "x": 790,
-      "y": -3492,
+      "x": 1992,
+      "y": 1599,
       "init": {
         "label": "≈343.5 km"
       }
@@ -726,8 +726,8 @@
     {
       "id": "src_frame",
       "type": "FrameInputNode",
-      "x": 24,
-      "y": 3947,
+      "x": 1158,
+      "y": 2332,
       "init": {
         "label": "Sales table",
         "frameText": "[{\"name\": \"Region\", \"type\": \"string\", \"values\": [\"N\", \"S\", \"E\", \"W\", \"N\", \"S\", \"E\", \"W\"]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [120, 95, 140, 80, 130, null, 150, 90]}, {\"name\": \"Ads\", \"type\": \"number\", \"values\": [10, 8, 12, 6, 11, 7, 13, 7]}, {\"name\": \"Returns\", \"type\": \"number\", \"values\": [5, 9, 3, 12, 4, 10, 2, 11]}]"
@@ -736,8 +736,8 @@
     {
       "id": "desc",
       "type": "DescribeNode",
-      "x": 358,
-      "y": 3842,
+      "x": 1496,
+      "y": 2271,
       "init": {
         "label": "Describe"
       }
@@ -745,8 +745,8 @@
     {
       "id": "d_desc",
       "type": "DisplayNode",
-      "x": 683,
-      "y": 3855,
+      "x": 1825,
+      "y": 2291,
       "init": {
         "label": "describe"
       }
@@ -754,8 +754,8 @@
     {
       "id": "corrm",
       "type": "CorrMatrixNode",
-      "x": 358,
-      "y": 4072,
+      "x": 1496,
+      "y": 2505,
       "init": {
         "label": "Correlation Matrix",
         "method": "pearson"
@@ -764,8 +764,8 @@
     {
       "id": "d_corrm",
       "type": "DisplayNode",
-      "x": 683,
-      "y": 4104,
+      "x": 1825,
+      "y": 2553,
       "init": {
         "label": "corr matrix"
       }
@@ -773,8 +773,8 @@
     {
       "id": "amort",
       "type": "AmortizationNode",
-      "x": 333,
-      "y": 5296,
+      "x": 2244,
+      "y": 1406,
       "init": {
         "label": "Amortization (12 × 0.5%)"
       },
@@ -788,8 +788,8 @@
     {
       "id": "d_amort",
       "type": "DisplayNode",
-      "x": 658,
-      "y": 5284,
+      "x": 2573,
+      "y": 1430,
       "init": {
         "label": "schedule"
       }
@@ -797,8 +797,8 @@
     {
       "id": "src_g1",
       "type": "ListInputNode",
-      "x": 350,
-      "y": 6923,
+      "x": 5533,
+      "y": 4403,
       "init": {
         "label": "Group 1",
         "valueKeys": [
@@ -812,8 +812,8 @@
     {
       "id": "src_g2",
       "type": "ListInputNode",
-      "x": 350,
-      "y": 7161,
+      "x": 5533,
+      "y": 4633,
       "init": {
         "label": "Group 2",
         "valueKeys": [
@@ -827,8 +827,8 @@
     {
       "id": "src_groups",
       "type": "TableInputNode",
-      "x": 290,
-      "y": 6313,
+      "x": 4634,
+      "y": 4343,
       "init": {
         "label": "Groups (3 columns)",
         "tableText": "6.9, 8.3, 8.0\n5.4, 6.8, 10.5\n5.8, 7.8, 8.1\n4.6, 9.2, 6.9\n4.0, 6.5, 9.3"
@@ -837,8 +837,8 @@
     {
       "id": "src_2x2",
       "type": "TableInputNode",
-      "x": 290,
-      "y": 6631,
+      "x": 4634,
+      "y": 4098,
       "init": {
         "label": "2×2 counts",
         "tableText": "3, 1\n1, 3"
@@ -847,8 +847,8 @@
     {
       "id": "ht_mannwhitney",
       "type": "HypothesisTestNode",
-      "x": 659,
-      "y": 7260,
+      "x": 5827,
+      "y": 4303,
       "init": {
         "label": "Mann–Whitney U",
         "op": "mannwhitney"
@@ -857,8 +857,8 @@
     {
       "id": "d_mannwhitney",
       "type": "DisplayNode",
-      "x": 964,
-      "y": 7305,
+      "x": 6096,
+      "y": 4369,
       "init": {
         "label": "p-value"
       }
@@ -866,8 +866,8 @@
     {
       "id": "ht_wilcoxon",
       "type": "HypothesisTestNode",
-      "x": 659,
-      "y": 7031,
+      "x": 5827,
+      "y": 4523,
       "init": {
         "label": "Wilcoxon signed-rank",
         "op": "wilcoxon"
@@ -876,8 +876,8 @@
     {
       "id": "d_wilcoxon",
       "type": "DisplayNode",
-      "x": 964,
-      "y": 7082,
+      "x": 6096,
+      "y": 4599,
       "init": {
         "label": "p-value"
       }
@@ -885,8 +885,8 @@
     {
       "id": "ht_ks",
       "type": "HypothesisTestNode",
-      "x": 659,
-      "y": 6815,
+      "x": 5827,
+      "y": 4756,
       "init": {
         "label": "KS (2-sample)",
         "op": "ks"
@@ -895,8 +895,8 @@
     {
       "id": "d_ks",
       "type": "DisplayNode",
-      "x": 964,
-      "y": 6860,
+      "x": 6096,
+      "y": 4822,
       "init": {
         "label": "p-value"
       }
@@ -904,8 +904,8 @@
     {
       "id": "ht_anova",
       "type": "HypothesisTestNode",
-      "x": 639,
-      "y": 6430,
+      "x": 4970,
+      "y": 4495,
       "init": {
         "label": "ANOVA",
         "op": "anova"
@@ -914,8 +914,8 @@
     {
       "id": "d_anova",
       "type": "DisplayNode",
-      "x": 964,
-      "y": 6461,
+      "x": 5299,
+      "y": 4540,
       "init": {
         "label": "p-value"
       }
@@ -923,8 +923,8 @@
     {
       "id": "ht_kruskal",
       "type": "HypothesisTestNode",
-      "x": 639,
-      "y": 6242,
+      "x": 4970,
+      "y": 4303,
       "init": {
         "label": "Kruskal–Wallis",
         "op": "kruskal"
@@ -933,8 +933,8 @@
     {
       "id": "d_kruskal",
       "type": "DisplayNode",
-      "x": 964,
-      "y": 6273,
+      "x": 5299,
+      "y": 4348,
       "init": {
         "label": "p-value"
       }
@@ -942,8 +942,8 @@
     {
       "id": "ht_fisher",
       "type": "HypothesisTestNode",
-      "x": 639,
-      "y": 6627,
+      "x": 4963,
+      "y": 4129,
       "init": {
         "label": "Fisher exact",
         "op": "fisher"
@@ -952,8 +952,8 @@
     {
       "id": "d_fisher",
       "type": "DisplayNode",
-      "x": 964,
-      "y": 6658,
+      "x": 5292,
+      "y": 4174,
       "init": {
         "label": "p-value"
       }
@@ -961,8 +961,8 @@
     {
       "id": "ht_prop",
       "type": "HypothesisTestNode",
-      "x": 350,
-      "y": 5986,
+      "x": 5152,
+      "y": 3827,
       "init": {
         "label": "Two-proportion z",
         "op": "proptest"
@@ -977,8 +977,8 @@
     {
       "id": "d_prop",
       "type": "DisplayNode",
-      "x": 639,
-      "y": 6065,
+      "x": 5421,
+      "y": 3946,
       "init": {
         "label": "p-value"
       }
@@ -986,8 +986,8 @@
     {
       "id": "ht_binom",
       "type": "HypothesisTestNode",
-      "x": 350,
-      "y": 5742,
+      "x": 4649,
+      "y": 3827,
       "init": {
         "label": "Binomial test",
         "op": "binomtest"
@@ -1001,8 +1001,8 @@
     {
       "id": "d_binom",
       "type": "DisplayNode",
-      "x": 639,
-      "y": 5800,
+      "x": 4918,
+      "y": 3915,
       "init": {
         "label": "p-value"
       }
@@ -1010,8 +1010,8 @@
     {
       "id": "src_A",
       "type": "TableInputNode",
-      "x": 260,
-      "y": 1479,
+      "x": 4544,
+      "y": 2616,
       "init": {
         "label": "A (symmetric 3×3)",
         "tableText": "4, 1, 2\n1, 3, 0\n2, 0, 5"
@@ -1020,8 +1020,8 @@
     {
       "id": "src_b",
       "type": "ListInputNode",
-      "x": 320,
-      "y": 1996,
+      "x": 4604,
+      "y": 3127,
       "init": {
         "label": "b",
         "valueKeys": [
@@ -1035,8 +1035,8 @@
     {
       "id": "src_sig",
       "type": "ListInputNode",
-      "x": 286,
-      "y": 4685,
+      "x": 2632,
+      "y": 2479,
       "init": {
         "label": "Signal (5 Hz sine + 1)",
         "valueKeys": [
@@ -1050,8 +1050,8 @@
     {
       "id": "md_trace",
       "type": "MatDetNode",
-      "x": 621,
-      "y": 1109,
+      "x": 4908,
+      "y": 2271,
       "init": {
         "op": "trace"
       }
@@ -1059,8 +1059,8 @@
     {
       "id": "d_trace",
       "type": "DisplayNode",
-      "x": 952,
-      "y": 1139,
+      "x": 5243,
+      "y": 2317,
       "init": {
         "label": "TRACE"
       }
@@ -1068,8 +1068,8 @@
     {
       "id": "md_rank",
       "type": "MatDetNode",
-      "x": 621,
-      "y": 1297,
+      "x": 4908,
+      "y": 2463,
       "init": {
         "op": "rank"
       }
@@ -1077,8 +1077,8 @@
     {
       "id": "d_rank",
       "type": "DisplayNode",
-      "x": 952,
-      "y": 1327,
+      "x": 5243,
+      "y": 2509,
       "init": {
         "label": "MATRIXRANK"
       }
@@ -1086,8 +1086,8 @@
     {
       "id": "md_norm",
       "type": "MatDetNode",
-      "x": 621,
-      "y": 1485,
+      "x": 4908,
+      "y": 2655,
       "init": {
         "op": "norm"
       }
@@ -1095,8 +1095,8 @@
     {
       "id": "d_norm",
       "type": "DisplayNode",
-      "x": 952,
-      "y": 1515,
+      "x": 5243,
+      "y": 2701,
       "init": {
         "label": "NORM"
       }
@@ -1104,8 +1104,8 @@
     {
       "id": "solve",
       "type": "MatSolveNode",
-      "x": 621,
-      "y": 2002,
+      "x": 4908,
+      "y": 3160,
       "init": {
         "label": "Solve A·x = b"
       }
@@ -1113,8 +1113,8 @@
     {
       "id": "d_solve",
       "type": "DisplayNode",
-      "x": 952,
-      "y": 2012,
+      "x": 5243,
+      "y": 3184,
       "init": {
         "label": "x"
       }
@@ -1122,8 +1122,8 @@
     {
       "id": "eigen",
       "type": "MatEigenNode",
-      "x": 621,
-      "y": 1716,
+      "x": 4908,
+      "y": 2902,
       "init": {
         "label": "Eigen (symmetric)"
       }
@@ -1131,8 +1131,8 @@
     {
       "id": "d_eigv",
       "type": "DisplayNode",
-      "x": 952,
-      "y": 1673,
+      "x": 5243,
+      "y": 2854,
       "init": {
         "label": "eigenvalues"
       }
@@ -1140,8 +1140,8 @@
     {
       "id": "d_eigvec",
       "type": "DisplayNode",
-      "x": 952,
-      "y": 1830,
+      "x": 5243,
+      "y": 2997,
       "init": {
         "label": "eigenvectors"
       }
@@ -1149,8 +1149,8 @@
     {
       "id": "spec",
       "type": "SpectrumNode",
-      "x": 551,
-      "y": 4672,
+      "x": 2901,
+      "y": 2523,
       "init": {
         "label": "Spectrum (FFT)"
       },
@@ -1161,8 +1161,8 @@
     {
       "id": "d_spec",
       "type": "DisplayNode",
-      "x": 876,
-      "y": 4406,
+      "x": 3230,
+      "y": 2271,
       "init": {
         "label": "bin 5 → 3 at 5 Hz"
       }
@@ -1170,8 +1170,8 @@
     {
       "id": "src_typos",
       "type": "ListInputNode",
-      "x": 356,
-      "y": -4345,
+      "x": 6312,
+      "y": 1621,
       "init": {
         "label": "Typos",
         "valueKeys": [
@@ -1186,8 +1186,8 @@
     {
       "id": "src_cities",
       "type": "ListInputNode",
-      "x": 356,
-      "y": -4140,
+      "x": 6312,
+      "y": 1830,
       "init": {
         "label": "Cities",
         "valueKeys": [
@@ -1202,8 +1202,8 @@
     {
       "id": "sim",
       "type": "TextSimilarityNode",
-      "x": 356,
-      "y": -3935,
+      "x": 6312,
+      "y": 1406,
       "init": {
         "label": "Text Similarity (ratio)",
         "method": "ratio"
@@ -1216,8 +1216,8 @@
     {
       "id": "d_sim",
       "type": "DisplayNode",
-      "x": 628,
-      "y": -3884,
+      "x": 6581,
+      "y": 1483,
       "init": {
         "label": "1 − 3/7"
       }
@@ -1225,8 +1225,8 @@
     {
       "id": "fuzzy",
       "type": "FuzzyMatchNode",
-      "x": 628,
-      "y": -4268,
+      "x": 6588,
+      "y": 1734,
       "init": {
         "label": "Fuzzy Match",
         "method": "ratio"
@@ -1238,8 +1238,8 @@
     {
       "id": "d_fuzzy_m",
       "type": "DisplayNode",
-      "x": 898,
-      "y": -4289,
+      "x": 6862,
+      "y": 1744,
       "init": {
         "label": "best match"
       }
@@ -1247,8 +1247,8 @@
     {
       "id": "d_fuzzy_s",
       "type": "DisplayNode",
-      "x": 898,
-      "y": -4132,
+      "x": 6862,
+      "y": 1905,
       "init": {
         "label": "score"
       }
@@ -1256,8 +1256,8 @@
     {
       "id": "src_series",
       "type": "ListInputNode",
-      "x": 318,
-      "y": 10344,
+      "x": 3105,
+      "y": 1406,
       "init": {
         "label": "Monthly series (36)",
         "valueKeys": [
@@ -1271,8 +1271,8 @@
     {
       "id": "ets",
       "type": "EtsForecastNode",
-      "x": 583,
-      "y": 10304,
+      "x": 3374,
+      "y": 1437,
       "init": {
         "label": "Forecast (ETS)"
       },
@@ -1284,8 +1284,8 @@
     {
       "id": "d_ets_f",
       "type": "DisplayNode",
-      "x": 914,
-      "y": 10253,
+      "x": 3708,
+      "y": 1420,
       "init": {
         "label": "Forecast / Interval"
       }
@@ -1293,8 +1293,8 @@
     {
       "id": "d_ets_s",
       "type": "DisplayNode",
-      "x": 914,
-      "y": 10499,
+      "x": 3708,
+      "y": 1670,
       "init": {
         "label": "season used"
       }
@@ -1302,8 +1302,8 @@
     {
       "id": "src_win",
       "type": "FrameInputNode",
-      "x": 231,
-      "y": 48,
+      "x": 5562,
+      "y": 2465,
       "init": {
         "label": "Sales by region/month",
         "frameText": "[{\"name\": \"Region\", \"type\": \"string\", \"values\": [\"N\", \"S\", \"N\", \"S\", \"N\", \"S\"]}, {\"name\": \"Month\", \"type\": \"number\", \"values\": [1, 1, 2, 2, 3, 3]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [120, 95, 140, 80, 130, 110]}]"
@@ -1312,8 +1312,8 @@
     {
       "id": "win_cumsum",
       "type": "WindowNode",
-      "x": 599,
-      "y": -186,
+      "x": 5935,
+      "y": 2271,
       "init": {
         "label": "Window: running sum",
         "agg": "cumsum"
@@ -1327,8 +1327,8 @@
     {
       "id": "src_win_keys",
       "type": "ListInputNode",
-      "x": 291,
-      "y": 399,
+      "x": 5622,
+      "y": 2821,
       "init": {
         "label": "Partition keys",
         "valueKeys": [
@@ -1343,8 +1343,8 @@
     {
       "id": "d_win_cumsum",
       "type": "DisplayNode",
-      "x": 924,
-      "y": -108,
+      "x": 6264,
+      "y": 2400,
       "init": {
         "label": "YTD per region"
       }
@@ -1352,8 +1352,8 @@
     {
       "id": "win_share",
       "type": "WindowNode",
-      "x": 599,
-      "y": 217,
+      "x": 5935,
+      "y": 2678,
       "init": {
         "label": "Window: share of group",
         "agg": "share"
@@ -1367,8 +1367,8 @@
     {
       "id": "d_win_share",
       "type": "DisplayNode",
-      "x": 924,
-      "y": 295,
+      "x": 6264,
+      "y": 2807,
       "init": {
         "label": "share of region"
       }
@@ -1376,8 +1376,8 @@
     {
       "id": "win_rank",
       "type": "WindowNode",
-      "x": 599,
-      "y": 620,
+      "x": 5935,
+      "y": 3085,
       "init": {
         "label": "Window: rank by Sales",
         "agg": "rank"
@@ -1391,8 +1391,8 @@
     {
       "id": "d_win_rank",
       "type": "DisplayNode",
-      "x": 924,
-      "y": 698,
+      "x": 6264,
+      "y": 3214,
       "init": {
         "label": "rank within region"
       }
@@ -1400,8 +1400,8 @@
     {
       "id": "src_gamma",
       "type": "ListInputNode",
-      "x": 25,
-      "y": 12318,
+      "x": 24,
+      "y": 4369,
       "init": {
         "label": "Sample (gamma-ish)",
         "valueKeys": [
@@ -1415,8 +1415,8 @@
     {
       "id": "fitd",
       "type": "FitDistributionNode",
-      "x": 298,
-      "y": 12271,
+      "x": 293,
+      "y": 4396,
       "init": {
         "label": "Fit Distribution"
       }
@@ -1424,8 +1424,8 @@
     {
       "id": "d_fit_rank",
       "type": "DisplayNode",
-      "x": 636,
-      "y": 12117,
+      "x": 632,
+      "y": 4266,
       "init": {
         "label": "ranking"
       }
@@ -1433,8 +1433,8 @@
     {
       "id": "d_fit_best",
       "type": "DisplayNode",
-      "x": 636,
-      "y": 12363,
+      "x": 632,
+      "y": 4516,
       "init": {
         "label": "best"
       }
@@ -1442,8 +1442,8 @@
     {
       "id": "d_fit_params",
       "type": "DisplayNode",
-      "x": 636,
-      "y": 12490,
+      "x": 632,
+      "y": 4647,
       "init": {
         "label": "params"
       }
@@ -1451,8 +1451,8 @@
     {
       "id": "dsample",
       "type": "DistributionsNode",
-      "x": 25,
-      "y": 11957,
+      "x": 24,
+      "y": 3827,
       "init": {
         "label": "Distribution: sample",
         "op": "gamma",
@@ -1467,8 +1467,8 @@
     {
       "id": "d_dsample",
       "type": "DisplayNode",
-      "x": 298,
-      "y": 12137,
+      "x": 299,
+      "y": 3843,
       "init": {
         "label": "200 gamma draws"
       },
@@ -1477,8 +1477,8 @@
     {
       "id": "fit2",
       "type": "FitDistributionNode",
-      "x": 298,
-      "y": 11823,
+      "x": 299,
+      "y": 3968,
       "init": {
         "label": "Fit the draws"
       }
@@ -1486,8 +1486,8 @@
     {
       "id": "d_fit2",
       "type": "DisplayNode",
-      "x": 636,
-      "y": 11909,
+      "x": 628,
+      "y": 4078,
       "init": {
         "label": "best family of the draws"
       }
@@ -1495,8 +1495,8 @@
     {
       "id": "t_unaccent",
       "type": "TextTransformNode",
-      "x": 464,
-      "y": 11361,
+      "x": 5730,
+      "y": 1580,
       "init": {
         "label": "UNACCENT",
         "op": "unaccent"
@@ -1508,8 +1508,8 @@
     {
       "id": "d_unaccent",
       "type": "DisplayNode",
-      "x": 729,
-      "y": 11391,
+      "x": 5999,
+      "y": 1626,
       "init": {
         "label": "Creme Brulee a Zurich"
       }
@@ -1517,8 +1517,8 @@
     {
       "id": "t_slug",
       "type": "TextTransformNode",
-      "x": 464,
-      "y": 11549,
+      "x": 5730,
+      "y": 1406,
       "init": {
         "label": "SLUGIFY",
         "op": "slugify"
@@ -1530,8 +1530,8 @@
     {
       "id": "d_slug",
       "type": "DisplayNode",
-      "x": 729,
-      "y": 11579,
+      "x": 5999,
+      "y": 1452,
       "init": {
         "label": "hello-world-ete-2026"
       }
@@ -1539,8 +1539,8 @@
     {
       "id": "t_pad",
       "type": "PadTextNode",
-      "x": 464,
-      "y": 10898,
+      "x": 5730,
+      "y": 1951,
       "init": {
         "label": "Pad Text (left, zeros)",
         "side": "left"
@@ -1556,8 +1556,8 @@
     {
       "id": "d_pad",
       "type": "DisplayNode",
-      "x": 729,
-      "y": 10960,
+      "x": 5999,
+      "y": 2045,
       "init": {
         "label": "000042"
       }
@@ -1565,8 +1565,8 @@
     {
       "id": "t_trunc",
       "type": "TruncateTextNode",
-      "x": 464,
-      "y": 11150,
+      "x": 5730,
+      "y": 1754,
       "init": {
         "label": "Truncate Text"
       },
@@ -1581,8 +1581,8 @@
     {
       "id": "d_trunc_t",
       "type": "DisplayNode",
-      "x": 729,
-      "y": 11192,
+      "x": 5999,
+      "y": 1817,
       "init": {
         "label": "The quick brown…"
       }
@@ -1590,8 +1590,8 @@
     {
       "id": "a_argsort",
       "type": "ArgMinMaxNode",
-      "x": 1737,
-      "y": 14850,
+      "x": 1138,
+      "y": 8488,
       "init": {
         "label": "ARGSORT",
         "op": "argsort"
@@ -1600,8 +1600,8 @@
     {
       "id": "d_argsort",
       "type": "DisplayNode",
-      "x": 2002,
-      "y": 14865,
+      "x": 1407,
+      "y": 8515,
       "init": {
         "label": "positions that sort Data A"
       }
@@ -1609,8 +1609,8 @@
     {
       "id": "a_between",
       "type": "BetweenNode",
-      "x": 1737,
-      "y": 15032,
+      "x": 1138,
+      "y": 8656,
       "init": {
         "label": "Between 10 and 15"
       },
@@ -1622,8 +1622,8 @@
     {
       "id": "a_which",
       "type": "ArgMinMaxNode",
-      "x": 2002,
-      "y": 15050,
+      "x": 1407,
+      "y": 8700,
       "init": {
         "label": "WHICH",
         "op": "which"
@@ -1632,8 +1632,8 @@
     {
       "id": "d_which",
       "type": "DisplayNode",
-      "x": 2267,
-      "y": 15074,
+      "x": 1676,
+      "y": 8736,
       "init": {
         "label": "positions in [10,15]"
       }
@@ -1641,8 +1641,8 @@
     {
       "id": "src_prices",
       "type": "ListInputNode",
-      "x": 390,
-      "y": 8787,
+      "x": 2719,
+      "y": 4190,
       "init": {
         "label": "Prices",
         "valueKeys": [
@@ -1656,8 +1656,8 @@
     {
       "id": "ret_log",
       "type": "ReturnsNode",
-      "x": 685,
-      "y": 8608,
+      "x": 3019,
+      "y": 4033,
       "init": {
         "op": "log"
       }
@@ -1665,8 +1665,8 @@
     {
       "id": "d_ret_log",
       "type": "DisplayNode",
-      "x": 950,
-      "y": 8584,
+      "x": 3288,
+      "y": 4025,
       "init": {
         "label": "log returns"
       }
@@ -1674,8 +1674,8 @@
     {
       "id": "ret_dd",
       "type": "ReturnsNode",
-      "x": 685,
-      "y": 8406,
+      "x": 3019,
+      "y": 3827,
       "init": {
         "op": "drawdown"
       }
@@ -1683,8 +1683,8 @@
     {
       "id": "d_ret_dd",
       "type": "DisplayNode",
-      "x": 950,
-      "y": 8409,
+      "x": 3288,
+      "y": 3846,
       "init": {
         "label": "drawdown"
       }
@@ -1692,8 +1692,8 @@
     {
       "id": "ret_mdd",
       "type": "ReturnsNode",
-      "x": 685,
-      "y": 9204,
+      "x": 3019,
+      "y": 4650,
       "init": {
         "op": "maxdrawdown"
       }
@@ -1701,8 +1701,8 @@
     {
       "id": "d_ret_mdd",
       "type": "DisplayNode",
-      "x": 950,
-      "y": 9235,
+      "x": 3288,
+      "y": 4696,
       "init": {
         "label": "max drawdown"
       }
@@ -1710,8 +1710,8 @@
     {
       "id": "ret_simple",
       "type": "ReturnsNode",
-      "x": 685,
-      "y": 9006,
+      "x": 3019,
+      "y": 4439,
       "init": {
         "op": "simple"
       }
@@ -1719,8 +1719,8 @@
     {
       "id": "ret_sharpe",
       "type": "ReturnsNode",
-      "x": 950,
-      "y": 8991,
+      "x": 3288,
+      "y": 4448,
       "init": {
         "op": "sharpe"
       },
@@ -1732,8 +1732,8 @@
     {
       "id": "d_ret_sharpe",
       "type": "DisplayNode",
-      "x": 1215,
-      "y": 9043,
+      "x": 3557,
+      "y": 4526,
       "init": {
         "label": "annualised Sharpe"
       }
@@ -1741,8 +1741,8 @@
     {
       "id": "ret_cagr",
       "type": "ReturnsNode",
-      "x": 685,
-      "y": 8790,
+      "x": 3019,
+      "y": 4219,
       "init": {
         "op": "cagr"
       },
@@ -1754,8 +1754,8 @@
     {
       "id": "d_ret_cagr",
       "type": "DisplayNode",
-      "x": 950,
-      "y": 8834,
+      "x": 3288,
+      "y": 4286,
       "init": {
         "label": "CAGR (252/yr)"
       }
@@ -1763,8 +1763,8 @@
     {
       "id": "src_sizes",
       "type": "FrameInputNode",
-      "x": 268,
-      "y": -1281,
+      "x": 3574,
+      "y": 2543,
       "init": {
         "label": "Sizes",
         "frameText": "[{\"name\": \"Size\", \"type\": \"string\", \"values\": [\"S\", \"M\", \"L\"]}]"
@@ -1773,8 +1773,8 @@
     {
       "id": "src_colors",
       "type": "FrameInputNode",
-      "x": 268,
-      "y": -1006,
+      "x": 3574,
+      "y": 2819,
       "init": {
         "label": "Colors",
         "frameText": "[{\"name\": \"Color\", \"type\": \"string\", \"values\": [\"red\", \"blue\"]}, {\"name\": \"Code\", \"type\": \"number\", \"values\": [1, 2]}]"
@@ -1783,8 +1783,8 @@
     {
       "id": "j_cross",
       "type": "JoinNode",
-      "x": 603,
-      "y": -1174,
+      "x": 3913,
+      "y": 2704,
       "init": {
         "label": "Cross join",
         "how": "cross"
@@ -1793,8 +1793,8 @@
     {
       "id": "d_crossjoin",
       "type": "DisplayNode",
-      "x": 928,
-      "y": -1116,
+      "x": 4242,
+      "y": 2821,
       "init": {
         "label": "every size x every color (6 rows)"
       }
@@ -1802,8 +1802,8 @@
     {
       "id": "src_week",
       "type": "FrameInputNode",
-      "x": 268,
-      "y": -1552,
+      "x": 3574,
+      "y": 2271,
       "init": {
         "label": "Week index",
         "frameText": "[{\"name\": \"Week\", \"type\": \"number\", \"values\": [1, 2, 3]}]"
@@ -1812,8 +1812,8 @@
     {
       "id": "bind_cols",
       "type": "BindColumnsNode",
-      "x": 603,
-      "y": -1445,
+      "x": 3913,
+      "y": 2429,
       "init": {
         "label": "Bind Columns"
       }
@@ -1821,8 +1821,8 @@
     {
       "id": "d_bind",
       "type": "DisplayNode",
-      "x": 928,
-      "y": -1407,
+      "x": 4242,
+      "y": 2484,
       "init": {
         "label": "Week | Size (side by side)"
       }
@@ -1830,8 +1830,8 @@
     {
       "id": "h_sha",
       "type": "HashNode",
-      "x": 272,
-      "y": 9667,
+      "x": 7129,
+      "y": 1549,
       "init": {
         "label": "Hash (SHA-256)",
         "algorithm": "sha256"
@@ -1843,8 +1843,8 @@
     {
       "id": "d_hsha",
       "type": "DisplayNode",
-      "x": 537,
-      "y": 9697,
+      "x": 7398,
+      "y": 1595,
       "init": {
         "label": "sha256 hex"
       }
@@ -1852,8 +1852,8 @@
     {
       "id": "h_md5",
       "type": "HashNode",
-      "x": 272,
-      "y": 9479,
+      "x": 7129,
+      "y": 1723,
       "init": {
         "label": "Hash (MD5)",
         "algorithm": "md5"
@@ -1865,8 +1865,8 @@
     {
       "id": "d_hmd5",
       "type": "DisplayNode",
-      "x": 537,
-      "y": 9509,
+      "x": 7398,
+      "y": 1769,
       "init": {
         "label": "900150983cd24fb0d6963f7d28e17f72"
       }
@@ -1874,8 +1874,8 @@
     {
       "id": "b64e",
       "type": "UrlEncodeNode",
-      "x": 272,
-      "y": 9855,
+      "x": 7129,
+      "y": 1897,
       "init": {
         "op": "base64"
       },
@@ -1886,8 +1886,8 @@
     {
       "id": "b64d",
       "type": "UrlEncodeNode",
-      "x": 627,
-      "y": 9855,
+      "x": 7398,
+      "y": 1915,
       "init": {
         "op": "unbase64"
       }
@@ -1895,8 +1895,8 @@
     {
       "id": "d_b64",
       "type": "DisplayNode",
-      "x": 982,
-      "y": 9869,
+      "x": 7667,
+      "y": 1936,
       "init": {
         "label": "round trip"
       }
@@ -1904,8 +1904,8 @@
     {
       "id": "uuid1",
       "type": "UuidNode",
-      "x": 272,
-      "y": 10010,
+      "x": 7114,
+      "y": 1406,
       "init": {
         "label": "UUID"
       }
@@ -1913,8 +1913,8 @@
     {
       "id": "d_uuid",
       "type": "DisplayNode",
-      "x": 537,
-      "y": 10025,
+      "x": 7383,
+      "y": 1414,
       "init": {
         "label": "new on F9"
       }
@@ -1922,8 +1922,8 @@
     {
       "id": "src_names",
       "type": "ListInputNode",
-      "x": 1737,
-      "y": 8523,
+      "x": 3844,
+      "y": 3896,
       "init": {
         "label": "Names",
         "valueKeys": [
@@ -1938,8 +1938,8 @@
     {
       "id": "tmpl",
       "type": "TemplateNode",
-      "x": 2002,
-      "y": 8523,
+      "x": 4113,
+      "y": 3927,
       "init": {
         "label": "Template",
         "sideVars": [
@@ -1954,8 +1954,8 @@
     {
       "id": "d_tmpl",
       "type": "DisplayNode",
-      "x": 2267,
-      "y": 8406,
+      "x": 4382,
+      "y": 3827,
       "init": {
         "label": "one line per name"
       }
@@ -1963,8 +1963,8 @@
     {
       "id": "src_noisy",
       "type": "ListInputNode",
-      "x": 306,
-      "y": -2593,
+      "x": 6623,
+      "y": 2742,
       "init": {
         "label": "Noisy signal",
         "valueKeys": [
@@ -1978,8 +1978,8 @@
     {
       "id": "sm_sg",
       "type": "SmoothNode",
-      "x": 646,
-      "y": -2443,
+      "x": 6968,
+      "y": 2930,
       "init": {
         "op": "savgol"
       },
@@ -1991,8 +1991,8 @@
     {
       "id": "d_sm_sg",
       "type": "DisplayNode",
-      "x": 941,
-      "y": -2546,
+      "x": 7267,
+      "y": 2865,
       "init": {
         "label": "savgol 5/2"
       }
@@ -2000,8 +2000,8 @@
     {
       "id": "sm_lo",
       "type": "SmoothNode",
-      "x": 646,
-      "y": -1975,
+      "x": 6968,
+      "y": 3400,
       "init": {
         "op": "lowess"
       },
@@ -2012,8 +2012,8 @@
     {
       "id": "d_sm_lo",
       "type": "DisplayNode",
-      "x": 941,
-      "y": -2101,
+      "x": 7267,
+      "y": 3296,
       "init": {
         "label": "lowess 0.5"
       }
@@ -2021,8 +2021,8 @@
     {
       "id": "sm_ga",
       "type": "SmoothNode",
-      "x": 646,
-      "y": -3024,
+      "x": 6968,
+      "y": 2366,
       "init": {
         "op": "gaussian"
       },
@@ -2033,8 +2033,8 @@
     {
       "id": "d_sm_ga",
       "type": "DisplayNode",
-      "x": 941,
-      "y": -3150,
+      "x": 7267,
+      "y": 2271,
       "init": {
         "label": "gaussian σ1.5"
       }
@@ -2042,8 +2042,8 @@
     {
       "id": "pk",
       "type": "FindPeaksNode",
-      "x": 616,
-      "y": -2756,
+      "x": 6938,
+      "y": 2620,
       "init": {
         "label": "Find Peaks"
       },
@@ -2054,8 +2054,8 @@
     {
       "id": "d_pk_pos",
       "type": "DisplayNode",
-      "x": 941,
-      "y": -2687,
+      "x": 7267,
+      "y": 2720,
       "init": {
         "label": "Position / Height"
       }
@@ -2063,8 +2063,8 @@
     {
       "id": "src_season",
       "type": "ListInputNode",
-      "x": 287,
-      "y": 7632,
+      "x": 4000,
+      "y": 1406,
       "init": {
         "label": "Quarterly sales (3 yrs)",
         "valueKeys": [
@@ -2078,8 +2078,8 @@
     {
       "id": "decomp",
       "type": "DecomposeNode",
-      "x": 552,
-      "y": 7603,
+      "x": 4269,
+      "y": 1426,
       "init": {
         "label": "Decompose",
         "model": "additive"
@@ -2091,8 +2091,8 @@
     {
       "id": "d_dc_t",
       "type": "DisplayNode",
-      "x": 877,
-      "y": 7563,
+      "x": 4598,
+      "y": 1408,
       "init": {
         "label": "Trend / Seasonal / Residual"
       }
@@ -2100,8 +2100,8 @@
     {
       "id": "src_coef",
       "type": "ListInputNode",
-      "x": 362,
-      "y": 14076,
+      "x": 4940,
+      "y": 1406,
       "init": {
         "label": "x³ − 6x² + 11x − 6",
         "valueKeys": [
@@ -2115,8 +2115,8 @@
     {
       "id": "proots",
       "type": "PolyRootsNode",
-      "x": 627,
-      "y": 14081,
+      "x": 5209,
+      "y": 1447,
       "init": {
         "label": "Polynomial Roots"
       }
@@ -2124,8 +2124,8 @@
     {
       "id": "d_proots",
       "type": "DisplayNode",
-      "x": 892,
-      "y": 14126,
+      "x": 5478,
+      "y": 1509,
       "init": {
         "label": "roots 1, 2, 3"
       }
@@ -2133,8 +2133,8 @@
     {
       "id": "src_coef2",
       "type": "ListInputNode",
-      "x": 362,
-      "y": 14281,
+      "x": 4940,
+      "y": 1628,
       "init": {
         "label": "x³ − 1",
         "valueKeys": [
@@ -2148,8 +2148,8 @@
     {
       "id": "proots2",
       "type": "PolyRootsNode",
-      "x": 627,
-      "y": 14286,
+      "x": 5209,
+      "y": 1668,
       "init": {
         "label": "Polynomial Roots"
       }
@@ -2157,8 +2157,8 @@
     {
       "id": "d_proots2",
       "type": "DisplayNode",
-      "x": 892,
-      "y": 14290,
+      "x": 5478,
+      "y": 1680,
       "init": {
         "label": "1 and a conjugate pair"
       }
@@ -2166,8 +2166,8 @@
     {
       "id": "src_pts",
       "type": "FrameInputNode",
-      "x": 143,
-      "y": 3198,
+      "x": 1494,
+      "y": 4691,
       "init": {
         "label": "Points (3 blobs)",
         "frameText": "[{\"name\": \"x\", \"type\": \"number\", \"values\": [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1, 4.9, 9, 9.3, 8.8]}, {\"name\": \"y\", \"type\": \"number\", \"values\": [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2, 5.3, 2, 2.2, 1.9]}]"
@@ -2176,8 +2176,8 @@
     {
       "id": "km",
       "type": "KMeansNode",
-      "x": 487,
-      "y": 2936,
+      "x": 1839,
+      "y": 4954,
       "init": {
         "label": "K-Means"
       },
@@ -2188,8 +2188,8 @@
     {
       "id": "d_km_l",
       "type": "DisplayNode",
-      "x": 823,
-      "y": 2913,
+      "x": 2173,
+      "y": 4935,
       "init": {
         "label": "cluster per row"
       }
@@ -2197,8 +2197,8 @@
     {
       "id": "d_km_c",
       "type": "DisplayNode",
-      "x": 823,
-      "y": 3070,
+      "x": 2173,
+      "y": 5096,
       "init": {
         "label": "centers"
       }
@@ -2206,8 +2206,8 @@
     {
       "id": "pca1",
       "type": "PcaNode",
-      "x": 487,
-      "y": 3363,
+      "x": 1839,
+      "y": 4514,
       "init": {
         "label": "PCA"
       }
@@ -2215,8 +2215,8 @@
     {
       "id": "d_pca_s",
       "type": "DisplayNode",
-      "x": 823,
-      "y": 3253,
+      "x": 2173,
+      "y": 4424,
       "init": {
         "label": "scores"
       }
@@ -2224,8 +2224,8 @@
     {
       "id": "d_pca_e",
       "type": "DisplayNode",
-      "x": 823,
-      "y": 3604,
+      "x": 2173,
+      "y": 4779,
       "init": {
         "label": "explained variance"
       }
@@ -2233,8 +2233,8 @@
     {
       "id": "src_study",
       "type": "FrameInputNode",
-      "x": 143,
-      "y": 2388,
+      "x": 1494,
+      "y": 3856,
       "init": {
         "label": "Hours studied → pass",
         "frameText": "[{\"name\": \"hours\", \"type\": \"number\", \"values\": [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5]}, {\"name\": \"pass\", \"type\": \"number\", \"values\": [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1]}]"
@@ -2243,8 +2243,8 @@
     {
       "id": "logit",
       "type": "LogisticNode",
-      "x": 487,
-      "y": 2393,
+      "x": 1823,
+      "y": 3910,
       "init": {
         "label": "Logistic Regression"
       },
@@ -2255,8 +2255,8 @@
     {
       "id": "d_logit_c",
       "type": "DisplayNode",
-      "x": 823,
-      "y": 2288,
+      "x": 2162,
+      "y": 3827,
       "init": {
         "label": "intercept −4.08, slope 1.50"
       }
@@ -2264,8 +2264,8 @@
     {
       "id": "d_logit_p",
       "type": "DisplayNode",
-      "x": 823,
-      "y": 2450,
+      "x": 2162,
+      "y": 3993,
       "init": {
         "label": "P(pass) per row"
       }
@@ -2273,8 +2273,8 @@
     {
       "id": "grp_list_transforms",
       "type": "GroupNode",
-      "x": 580,
-      "y": 12658,
+      "x": 0,
+      "y": 6464,
       "init": {
         "label": "List transforms",
         "members": [
@@ -2297,15 +2297,15 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 843,
-        "height": 1322
+        "width": 847,
+        "height": 1339
       }
     },
     {
       "id": "grp_signals_vectors",
       "type": "GroupNode",
-      "x": 1713,
-      "y": 11365,
+      "x": 1114,
+      "y": 5289,
       "init": {
         "label": "Signals & vectors",
         "members": [
@@ -2328,15 +2328,15 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 836,
-        "height": 1255
+        "width": 1004,
+        "height": 1137
       }
     },
     {
       "id": "grp_tolerance_checks",
       "type": "GroupNode",
-      "x": 471,
-      "y": -752,
+      "x": 499,
+      "y": 1348,
       "init": {
         "label": "Tolerance checks",
         "members": [
@@ -2347,15 +2347,15 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 497,
-        "height": 470
+        "width": 501,
+        "height": 456
       }
     },
     {
       "id": "grp_robust_stats",
       "type": "GroupNode",
-      "x": 1698,
-      "y": 12658,
+      "x": 1099,
+      "y": 6464,
       "init": {
         "label": "Robust stats",
         "members": [
@@ -2384,15 +2384,15 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 872,
-        "height": 2096
+        "width": 1281,
+        "height": 1928
       }
     },
     {
       "id": "grp_dates_epochs",
       "type": "GroupNode",
-      "x": 155,
-      "y": -5020,
+      "x": 0,
+      "y": 2213,
       "init": {
         "label": "Dates & epochs",
         "members": [
@@ -2406,15 +2406,15 @@
         ],
         "color": "pink",
         "collapsed": false,
-        "width": 1128,
-        "height": 579
+        "width": 1114,
+        "height": 587
       }
     },
     {
       "id": "grp_haversine",
       "type": "GroupNode",
-      "x": 441,
-      "y": -3678,
+      "x": 1639,
+      "y": 1348,
       "init": {
         "label": "Haversine",
         "members": [
@@ -2423,15 +2423,15 @@
         ],
         "color": "teal",
         "collapsed": false,
-        "width": 557,
+        "width": 561,
         "height": 432
       }
     },
     {
       "id": "grp_profiling",
       "type": "GroupNode",
-      "x": 0,
-      "y": 3784,
+      "x": 1134,
+      "y": 2213,
       "init": {
         "label": "Profiling",
         "members": [
@@ -2443,15 +2443,15 @@
         ],
         "color": "violet",
         "collapsed": false,
-        "width": 1438,
-        "height": 526
+        "width": 1454,
+        "height": 530
       }
     },
     {
       "id": "grp_amortization",
       "type": "GroupNode",
-      "x": 309,
-      "y": 5226,
+      "x": 2220,
+      "y": 1348,
       "init": {
         "label": "Amortization",
         "members": [
@@ -2460,15 +2460,15 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 820,
-        "height": 420
+        "width": 841,
+        "height": 444
       }
     },
     {
       "id": "grp_hypothesis_tests",
       "type": "GroupNode",
-      "x": 266,
-      "y": 5684,
+      "x": 4610,
+      "y": 3769,
       "init": {
         "label": "Hypothesis tests",
         "members": [
@@ -2495,15 +2495,15 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 906,
-        "height": 1783
+        "width": 1694,
+        "height": 1193
       }
     },
     {
       "id": "grp_window_functions",
       "type": "GroupNode",
-      "x": 207,
-      "y": -244,
+      "x": 5538,
+      "y": 2213,
       "init": {
         "label": "Window functions",
         "members": [
@@ -2518,15 +2518,15 @@
         ],
         "color": "violet",
         "collapsed": false,
-        "width": 1025,
-        "height": 1257
+        "width": 1041,
+        "height": 1265
       }
     },
     {
       "id": "grp_matrix_ops",
       "type": "GroupNode",
-      "x": 236,
-      "y": 1051,
+      "x": 4520,
+      "y": 2213,
       "init": {
         "label": "Matrix ops",
         "members": [
@@ -2546,15 +2546,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 967,
-        "height": 1141
+        "width": 998,
+        "height": 1118
       }
     },
     {
       "id": "grp_spectrum",
       "type": "GroupNode",
-      "x": 262,
-      "y": 4348,
+      "x": 2608,
+      "y": 2213,
       "init": {
         "label": "Spectrum",
         "members": [
@@ -2564,15 +2564,15 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 914,
+        "width": 922,
         "height": 840
       }
     },
     {
       "id": "grp_fuzzy_text",
       "type": "GroupNode",
-      "x": 332,
-      "y": -4403,
+      "x": 6288,
+      "y": 1348,
       "init": {
         "label": "Fuzzy text",
         "members": [
@@ -2586,15 +2586,15 @@
         ],
         "color": "lime",
         "collapsed": false,
-        "width": 774,
-        "height": 687
+        "width": 782,
+        "height": 704
       }
     },
     {
       "id": "grp_forecast",
       "type": "GroupNode",
-      "x": 294,
-      "y": 10195,
+      "x": 3081,
+      "y": 1348,
       "init": {
         "label": "Forecast",
         "members": [
@@ -2605,15 +2605,15 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 851,
-        "height": 429
+        "width": 875,
+        "height": 439
       }
     },
     {
       "id": "grp_distribution_fitting",
       "type": "GroupNode",
-      "x": 1,
-      "y": 11765,
+      "x": 0,
+      "y": 3769,
       "init": {
         "label": "Distribution fitting",
         "members": [
@@ -2629,15 +2629,15 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 1437,
-        "height": 855
+        "width": 1450,
+        "height": 1007
       }
     },
     {
       "id": "grp_text_transforms",
       "type": "GroupNode",
-      "x": 440,
-      "y": 10840,
+      "x": 5706,
+      "y": 1348,
       "init": {
         "label": "Text transforms",
         "members": [
@@ -2652,15 +2652,15 @@
         ],
         "color": "lime",
         "collapsed": false,
-        "width": 558,
-        "height": 887
+        "width": 562,
+        "height": 845
       }
     },
     {
       "id": "grp_positions",
       "type": "GroupNode",
-      "x": 1713,
-      "y": 14792,
+      "x": 1114,
+      "y": 8430,
       "init": {
         "label": "Positions",
         "members": [
@@ -2672,15 +2672,15 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 762,
-        "height": 448
+        "width": 770,
+        "height": 442
       }
     },
     {
       "id": "grp_returns_risk",
       "type": "GroupNode",
-      "x": 366,
-      "y": 8348,
+      "x": 2695,
+      "y": 3769,
       "init": {
         "label": "Returns & risk",
         "members": [
@@ -2699,15 +2699,15 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 1057,
-        "height": 1035
+        "width": 1070,
+        "height": 1059
       }
     },
     {
       "id": "grp_combine_frames",
       "type": "GroupNode",
-      "x": 244,
-      "y": -1610,
+      "x": 3550,
+      "y": 2213,
       "init": {
         "label": "Combine frames",
         "members": [
@@ -2721,15 +2721,15 @@
         ],
         "color": "violet",
         "collapsed": false,
-        "width": 951,
-        "height": 820
+        "width": 950,
+        "height": 881
       }
     },
     {
       "id": "grp_codecs_ids",
       "type": "GroupNode",
-      "x": 248,
-      "y": 9421,
+      "x": 7090,
+      "y": 1348,
       "init": {
         "label": "Codecs & ids",
         "members": [
@@ -2745,15 +2745,15 @@
         ],
         "color": "gray",
         "collapsed": false,
-        "width": 942,
-        "height": 736
+        "width": 785,
+        "height": 712
       }
     },
     {
       "id": "grp_template",
       "type": "GroupNode",
-      "x": 1713,
-      "y": 8348,
+      "x": 3820,
+      "y": 3769,
       "init": {
         "label": "Template",
         "members": [
@@ -2763,15 +2763,15 @@
         ],
         "color": "lime",
         "collapsed": false,
-        "width": 762,
+        "width": 770,
         "height": 488
       }
     },
     {
       "id": "grp_smoothing_peaks",
       "type": "GroupNode",
-      "x": 282,
-      "y": -3208,
+      "x": 6599,
+      "y": 2213,
       "init": {
         "label": "Smoothing & peaks",
         "members": [
@@ -2787,15 +2787,15 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 874,
-        "height": 1560
+        "width": 883,
+        "height": 1536
       }
     },
     {
       "id": "grp_seasonal_decomposition",
       "type": "GroupNode",
-      "x": 263,
-      "y": 7505,
+      "x": 3976,
+      "y": 1348,
       "init": {
         "label": "Seasonal decomposition",
         "members": [
@@ -2805,15 +2805,15 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 912,
-        "height": 420
+        "width": 920,
+        "height": 422
       }
     },
     {
       "id": "grp_polynomial_roots",
       "type": "GroupNode",
-      "x": 338,
-      "y": 14018,
+      "x": 4916,
+      "y": 1348,
       "init": {
         "label": "Polynomial roots",
         "members": [
@@ -2826,15 +2826,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 762,
-        "height": 458
+        "width": 770,
+        "height": 505
       }
     },
     {
       "id": "grp_multivariate",
       "type": "GroupNode",
-      "x": 119,
-      "y": 2230,
+      "x": 1470,
+      "y": 3769,
       "init": {
         "label": "Multivariate",
         "members": [
@@ -2852,15 +2852,15 @@
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 1200,
-        "height": 1516
+        "width": 1205,
+        "height": 1500
       }
     },
     {
       "id": "n_wrap",
       "type": "WrapTextNode",
-      "x": 1243,
-      "y": 10662,
+      "x": 15,
+      "y": 1348,
       "init": {
         "label": "Wrap Text"
       },
@@ -2874,8 +2874,8 @@
     {
       "id": "d_wrap",
       "type": "DisplayNode",
-      "x": 1713,
-      "y": 10663,
+      "x": 282,
+      "y": 1363,
       "init": {
         "label": "Wrapped lines"
       }
@@ -2883,8 +2883,8 @@
     {
       "id": "n_hist2d",
       "type": "HistogramNode",
-      "x": 1713,
-      "y": 15278,
+      "x": 1114,
+      "y": 8910,
       "init": {
         "label": "Histogram",
         "mode": "2d"
@@ -2897,8 +2897,8 @@
     {
       "id": "n_ode",
       "type": "OdeIntegrateNode",
-      "x": 1183,
-      "y": 7963,
+      "x": 1035,
+      "y": 1348,
       "init": {
         "label": "ODE Integrate"
       },
@@ -2915,8 +2915,8 @@
     {
       "id": "d_ode",
       "type": "ChartNode",
-      "x": 1713,
-      "y": 8001,
+      "x": 1362,
+      "y": 1418,
       "init": {
         "label": "y(t): dy/dt = y",
         "op": "line"

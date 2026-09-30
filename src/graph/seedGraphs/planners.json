@@ -8,8 +8,8 @@
     {
       "id": "note",
       "type": "NoteNode",
-      "x": 405,
-      "y": 2145,
+      "x": 0,
+      "y": 1457,
       "init": {
         "label": "Planners",
         "body": "# Two planners\n\n**Group Cost Settle** reads a ledger cube (who paid, for whom) and answers who owes whom, as transfers the Sankey draws and as net positions.\n\n**Payoff Planner** takes a debt list and an extra monthly amount, pays every minimum and throws the extra at the head debt; as each clears, its minimum joins the pile. Avalanche (highest APR first) pays the least interest; snowball (smallest balance first) clears a debt sooner. Same money, two orders: compare the two plans."
@@ -18,8 +18,8 @@
     {
       "id": "ts-ledger",
       "type": "CubeInputNode",
-      "x": 30,
-      "y": 2657,
+      "x": 404,
+      "y": 1690,
       "init": {
         "label": "Expenses (ledger)",
         "cubeText": "[\n  {\"Item\": \"Cabin\",        \"Amount\": 600, \"Paid by\": \"Ada\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Flights\",      \"Amount\": 500, \"Paid by\": \"Bo\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Rental car\",   \"Amount\": 300, \"Paid by\": \"Cy\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Groceries\",    \"Amount\": 150, \"Paid by\": \"Di\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Dinner out\",   \"Amount\": 200, \"Paid by\": \"Eve\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Kayaks\",       \"Amount\": 90,  \"Paid by\": [\"Ada\", \"Di\"], \"For\": [\"Bo\", \"Cy\", \"Di\"]},\n  {\"Item\": \"Coffee\",       \"Amount\": 40,  \"Paid by\": \"Cy\",           \"For\": [\"Ada\", \"Cy\"]},\n  {\"Item\": \"Eve's ticket\", \"Amount\": 60,  \"Paid by\": \"Bo\",           \"For\": [\"Eve\"]}\n]"
@@ -28,8 +28,8 @@
     {
       "id": "ts-settle",
       "type": "SettleNode",
-      "x": 359,
-      "y": 2603,
+      "x": 733,
+      "y": 1670,
       "init": {
         "label": "Group Cost Settle",
         "mode": "transactions",
@@ -39,8 +39,8 @@
     {
       "id": "ts-sankey",
       "type": "SankeyNode",
-      "x": 701,
-      "y": 2391,
+      "x": 1071,
+      "y": 1848,
       "init": {
         "label": "Money flow"
       }
@@ -48,8 +48,8 @@
     {
       "id": "ts-netDisplay",
       "type": "DisplayNode",
-      "x": 701,
-      "y": 2773,
+      "x": 1071,
+      "y": 1515,
       "init": {
         "label": "Net positions"
       },
@@ -61,8 +61,8 @@
     {
       "id": "grp-split",
       "type": "GroupNode",
-      "x": 6,
-      "y": 2333,
+      "x": 380,
+      "y": 1457,
       "init": {
         "label": "Split a trip",
         "members": [
@@ -71,7 +71,7 @@
           "ts-sankey",
           "ts-netDisplay"
         ],
-        "width": 1143,
+        "width": 1139,
         "height": 759
       }
     },
@@ -79,7 +79,7 @@
       "id": "dp-debts",
       "type": "FrameInputNode",
       "x": 24,
-      "y": 1455,
+      "y": 2294,
       "init": {
         "label": "Debts",
         "frameText": "[{\"name\": \"Debt\", \"type\": \"string\", \"values\": [\"Credit card\", \"Car loan\", \"Store card\", \"Student loan\"]}, {\"name\": \"Balance\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [3200, 8500, 650, 12000]}, {\"name\": \"APR\", \"type\": \"number\", \"values\": [0.24, 0.06, 0.19, 0.045]}, {\"name\": \"Min\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [95, 260, 30, 140]}]"
@@ -89,7 +89,7 @@
       "id": "dp-extra",
       "type": "NumberInputNode",
       "x": 84,
-      "y": 1888,
+      "y": 2748,
       "init": {
         "label": "Extra per month",
         "value": 200
@@ -99,7 +99,7 @@
       "id": "dp-avalanche",
       "type": "PayoffPlannerNode",
       "x": 378,
-      "y": 1775,
+      "y": 2665,
       "init": {
         "label": "Avalanche",
         "order": "avalanche",
@@ -110,7 +110,7 @@
       "id": "dp-snowball",
       "type": "PayoffPlannerNode",
       "x": 378,
-      "y": 1429,
+      "y": 2319,
       "init": {
         "label": "Snowball",
         "order": "snowball",
@@ -121,7 +121,7 @@
       "id": "dp-avalancheDisplay",
       "type": "DisplayNode",
       "x": 707,
-      "y": 1802,
+      "y": 2727,
       "init": {
         "label": "Avalanche plan"
       },
@@ -134,7 +134,7 @@
       "id": "dp-snowballDisplay",
       "type": "DisplayNode",
       "x": 707,
-      "y": 1456,
+      "y": 2381,
       "init": {
         "label": "Snowball plan"
       },
@@ -147,7 +147,7 @@
       "id": "grp-payoff",
       "type": "GroupNode",
       "x": 0,
-      "y": 1371,
+      "y": 2236,
       "init": {
         "label": "Pay off the debts",
         "members": [
@@ -159,7 +159,7 @@
           "dp-snowballDisplay"
         ],
         "width": 1155,
-        "height": 736
+        "height": 770
       }
     }
   ],
