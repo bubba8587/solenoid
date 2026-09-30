@@ -618,6 +618,11 @@
   background: color-mix(in srgb, var(--node-accent, var(--accent)) 10%, transparent);
 }
 .table-popup__rowhead--pick { cursor: pointer; }
+/* The cell the Insert and Delete menus act on, marked once focus has left it for the menus (table-popup § The grid). */
+.table-popup__cell--active:not(:focus-within),
+.table-popup__colhead--active:not(:focus-within) {
+  box-shadow: inset 0 0 0 2px var(--node-accent, var(--accent));
+}
 
 
 .table-popup__footer {

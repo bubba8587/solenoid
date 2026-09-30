@@ -191,6 +191,7 @@ export function CubePopup() {
       onClose={() => cubePopup.close()}
       onEscape={() => {
         if (sel) setSel(null);
+        else if (focusCell) setFocusCell(null);
         else if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
         else cubePopup.close();
       }}
@@ -303,7 +304,7 @@ export function CubePopup() {
                   } : undefined}
                 >{r + 1}</th>
                 {Array.from({ length: shownCols }, (_, c) => (
-                  <td key={c} className={`table-popup__cell${editAxes && isSel(r, c) ? " table-popup__cell--sel" : ""}`} data-r={r} data-c={c} style={{ padding: "2px 6px", textAlign: "left" }}>
+                  <td key={c} className={`table-popup__cell${editAxes && isSel(r, c) ? " table-popup__cell--sel" : ""}${editAxes && focusCell?.r === r && focusCell.c === c ? " table-popup__cell--active" : ""}`} data-r={r} data-c={c} style={{ padding: "2px 6px", textAlign: "left" }}>
                     {editView && state.edit
                       ? (editView.kind === "list"
                           ? <ListEditCell edit={state.edit} path={editView.path!} row={listVertical ? r : c} source={sourceMode} />

@@ -829,6 +829,8 @@ export function TablePopup() {
   const menuCol = sel?.axis === "row" ? undefined : colAxis;
   const selRows = new Set(sel?.axis === "row" ? sel.indices : []);
   const selCols = new Set(sel?.axis === "col" ? sel.indices : []);
+  // The cell the menus act on stays outlined after focus moves to them; nothing unmarked is ever a target.
+  const activeAt = (r: number, c: number) => editsRows && view === "grid" && focusCell?.r === r && focusCell.c === c;
   const pickRow = (e: React.MouseEvent, r: number) => {
     setSel((prev) => pickIndex(prev, "row", r, e.shiftKey, visibleOrder));
     setFocusCell(null);
@@ -887,6 +889,8 @@ export function TablePopup() {
       (document.activeElement as HTMLElement | null)?.blur?.();
     } else if (sel) {
       setSel(null);
+    } else if (focusCell) {
+      setFocusCell(null);
     } else if (askClose) {
       setAskClose(false);
     } else {
@@ -960,7 +964,7 @@ export function TablePopup() {
                   <th
                     key={c}
                     title={vertical ? undefined : headers?.[c]}
-                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}${selCols.has(c) ? " table-popup__colhead--sel" : ""}`}
+                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}${selCols.has(c) ? " table-popup__colhead--sel" : ""}${editsRows && focusCell?.r === -1 && focusCell.c === c ? " table-popup__colhead--active" : ""}`}
                     onClick={colAxis ? (e) => pickCol(e, c) : undefined}
                     onContextMenu={colAxis ? (e) => {
                       if (!selCols.has(c)) { setSel({ axis: "col", indices: [c], anchor: c }); setFocusCell(null); }
@@ -1099,7 +1103,7 @@ export function TablePopup() {
                       return (
                         <td
                           key={c}
-                          className={`table-popup__cell table-popup__cell--computed${selRows.has(r) || selCols.has(c) ? " table-popup__cell--sel" : ""}`}
+                          className={`table-popup__cell table-popup__cell--computed${selRows.has(r) || selCols.has(c) ? " table-popup__cell--sel" : ""}${activeAt(r, c) ? " table-popup__cell--active" : ""}`}
                           style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                         >
                           {readOnlyCell(
@@ -1113,7 +1117,7 @@ export function TablePopup() {
                     return (
                     <td
                       key={c}
-                      className={`table-popup__cell${selRows.has(r) || selCols.has(c) ? " table-popup__cell--sel" : ""}${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}${affixType || suggestHere ? " table-popup__cell--affix" : ""}`}
+                      className={`table-popup__cell${selRows.has(r) || selCols.has(c) ? " table-popup__cell--sel" : ""}${activeAt(r, c) ? " table-popup__cell--active" : ""}${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}${affixType || suggestHere ? " table-popup__cell--affix" : ""}`}
                       style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                       title={nan ? "Not a number: an undefined value in the data"
                         : isErrCell ? ERROR_EXPLANATIONS[errCode as keyof typeof ERROR_EXPLANATIONS]
