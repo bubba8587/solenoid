@@ -1,7 +1,9 @@
 // [[C10]] socketLattice
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cubePopup, gridPosOf, type DrillView, type CellRef } from "../cubePopupStore";
-import { CubeEditCell, ListEditCell, GridEditCell, CubeEditRows, CubeEditHeader } from "./cubeEditCell";
+import { CubeEditCell, ListEditCell, GridEditCell, cubeEditAxes, CubeEditHeader } from "./cubeEditCell";
+import { TableEditMenus, TableContextMenu } from "./TableEditMenu";
+import { pickIndex, type AxisSelection } from "../tableEdit";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount, type CubeCell } from "../frame";
 import { CubeCellChip, frameCellNode, cubeCellToken } from "./cubeCell";
@@ -124,6 +126,13 @@ export function CubePopup() {
   const { sort, cycle: cycleSort } = useColumnSort(state?.stack[state.stack.length - 1]);
   const [listVertical, setListVertical] = useState(false);
   const [sourceMode, setSourceMode] = useState(false);
+  const [sel, setSel] = useState<AxisSelection | null>(null);
+  const [focusCell, setFocusCell] = useState<{ r: number; c: number } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  // A new level starts with nothing selected.
+  const levelKey = state ? `${state.stack.length}:${JSON.stringify(state.stack[state.stack.length - 1]?.path ?? null)}` : "";
+  const [seenLevel, setSeenLevel] = useState(levelKey);
+  if (levelKey !== seenLevel) { setSeenLevel(levelKey); setSel(null); setFocusCell(null); setCtxMenu(null); }
 
   const gridRef = useRef<HTMLDivElement>(null);
   const listVerticalRef = useRef(listVertical);
@@ -155,12 +164,34 @@ export function CubePopup() {
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
 
+  // A list across a row shows its items as columns; the menus still count items.
+  const itemsAcross = view.kind === "list" && !listVertical;
+  const editAxes = editView && state.edit ? cubeEditAxes(state.edit, editView, {
+    rows: sel?.axis === "row" ? sel.indices : focusCell ? [itemsAcross ? focusCell.c : focusCell.r] : [],
+    cols: sel?.axis === "col" ? sel.indices : focusCell ? [focusCell.c] : [],
+  }) : null;
+  const menuRow = sel?.axis === "col" ? undefined : editAxes?.row;
+  const menuCol = sel?.axis === "row" && !itemsAcross ? undefined : editAxes?.col;
+  const selRows = new Set(sel?.axis === "row" ? sel.indices : []);
+  const selCols = new Set(sel?.axis === "col" ? sel.indices : []);
+  const isSel = (r: number, c: number) => (itemsAcross ? selRows.has(c) : selRows.has(r) || selCols.has(c));
+  const onControl = (e: React.SyntheticEvent) => !!(e.target as HTMLElement).closest("button, input, select, textarea, label");
+  const openMenuAt = (e: React.MouseEvent) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY }); };
+  const pick = (e: React.MouseEvent, axis: "row" | "col", i: number, order: readonly number[]) => {
+    if (onControl(e)) return;
+    setSel((prev) => pickIndex(prev, axis, i, e.shiftKey, order));
+    setFocusCell(null);
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  };
+  const allCols = Array.from({ length: shownCols }, (_, c) => c);
+
   return (
     <PopupShell
       title={view.label}
       onClose={() => cubePopup.close()}
       onEscape={() => {
-        if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
+        if (sel) setSel(null);
+        else if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
         else cubePopup.close();
       }}
       cardClassName="table-popup"
@@ -227,7 +258,15 @@ export function CubePopup() {
                 <th
                   key={c}
                   title={headers?.[c]}
-                  className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}`}
+                  className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}${isSel(-1, c) && !itemsAcross ? " table-popup__colhead--sel" : ""}`}
+                  onClick={editAxes ? (e) => (itemsAcross ? pick(e, "row", c, allCols) : editAxes.col && pick(e, "col", c, allCols)) : undefined}
+                  onContextMenu={editAxes ? (e) => {
+                    if ((e.target as HTMLElement).closest("input, textarea")) return;
+                    const axis = itemsAcross ? "row" : "col";
+                    if (!itemsAcross && !editAxes.col) return;
+                    if (!(axis === "row" ? selRows : selCols).has(c)) { setSel({ axis, indices: [c], anchor: c }); setFocusCell(null); }
+                    openMenuAt(e);
+                  } : undefined}
                 >
                   {editView && state.edit && headers && editView.kind !== "list"
                     ? <CubeEditHeader edit={state.edit} path={editView.path!} column={headers[c]} />
@@ -237,12 +276,34 @@ export function CubePopup() {
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody
+            onFocus={editAxes ? (e) => {
+              const el = (e.target as HTMLElement).closest<HTMLElement>("[data-r]");
+              if (!el) return;
+              setFocusCell({ r: Number(el.dataset.r), c: Number(el.dataset.c) });
+              setSel(null);
+            } : undefined}
+            onContextMenu={editAxes ? (e) => {
+              const el = (e.target as HTMLElement).closest<HTMLElement>("[data-r]");
+              if (!el) return;
+              const r = Number(el.dataset.r), c = Number(el.dataset.c);
+              if (!isSel(r, c)) { setSel(null); setFocusCell({ r, c }); }
+              openMenuAt(e);
+            } : undefined}
+          >
             {visibleOrder.map((r) => (
               <tr key={r}>
-                <th className="table-popup__rowhead">{r + 1}</th>
+                <th
+                  className={`table-popup__rowhead${editAxes && !itemsAcross ? " table-popup__rowhead--pick" : ""}${!itemsAcross && selRows.has(r) ? " table-popup__rowhead--sel" : ""}`}
+                  onClick={editAxes && !itemsAcross ? (e) => pick(e, "row", r, visibleOrder) : undefined}
+                  onContextMenu={editAxes && !itemsAcross ? (e) => {
+                    e.stopPropagation();
+                    if (!selRows.has(r)) { setSel({ axis: "row", indices: [r], anchor: r }); setFocusCell(null); }
+                    openMenuAt(e);
+                  } : undefined}
+                >{r + 1}</th>
                 {Array.from({ length: shownCols }, (_, c) => (
-                  <td key={c} className="table-popup__cell" data-r={r} data-c={c} style={{ padding: "2px 6px", textAlign: "left" }}>
+                  <td key={c} className={`table-popup__cell${editAxes && isSel(r, c) ? " table-popup__cell--sel" : ""}`} data-r={r} data-c={c} style={{ padding: "2px 6px", textAlign: "left" }}>
                     {editView && state.edit
                       ? (editView.kind === "list"
                           ? <ListEditCell edit={state.edit} path={editView.path!} row={listVertical ? r : c} source={sourceMode} />
@@ -258,6 +319,7 @@ export function CubePopup() {
         </table>
       </div>
 
+      {ctxMenu && editAxes && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
       <div className="table-popup__footer">
         {view.kind === "list" && (
           <div className="table-popup__view" role="group" aria-label="List layout">
@@ -274,7 +336,7 @@ export function CubePopup() {
             Source
           </label>
         )}
-        {editView && state.edit && <CubeEditRows edit={state.edit} view={editView} />}
+        {editAxes && <TableEditMenus row={menuRow} col={menuCol} />}
         <div className="table-popup__spacer" />
         <div className="table-popup__actions">
           <button className="table-popup__btn table-popup__btn--primary" onClick={() => cubePopup.close()}>Done</button>

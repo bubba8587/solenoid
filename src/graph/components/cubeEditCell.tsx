@@ -6,7 +6,9 @@ import {
   getAtPath, setAtPath, parseCellText, cellTextOf, recordKeys, cellKindOf, convertCellKind, newColumnKey,
   type CellKind, type CubePath, type CubeRecord, type CubeSource, type CubeSourceColumn,
 } from "../literalEditors";
-import { typesAt, isFrameAt, withFrame, withNestedType, renameNestedColumn, dropNestedColumn, dropNestedUnder, type NestedTables } from "../cubeTypes";
+import { typesAt, isFrameAt, withFrame, withNestedType, renameNestedColumn, dropNestedColumn, dropNestedUnder, shiftNestedRows, type NestedTables } from "../cubeTypes";
+import { insertAt, removeAt, insertGridCols, removeGridCols } from "../tableEdit";
+import type { EditAxis } from "./TableEditMenu";
 import { stopDragStart } from "../coarse";
 import { elemChipClass } from "../valuePopup";
 import { isSolError } from "../errorValue";
@@ -313,7 +315,8 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
   );
 }
 
-export function CubeEditRows({ edit, view }: { edit: CubeEditBinding; view: DrillView }): ReactNode {
+/** The Insert and Delete menus' axes for the level on screen (table-popup § Editing a Cube Input), at the given targets. */
+export function cubeEditAxes(edit: CubeEditBinding, view: DrillView, target: { rows: number[]; cols: number[] }): { row?: EditAxis; col?: EditAxis } {
   const path = view.path ?? [];
   const src = edit.source();
   const level = (path.length ? getAtPath(src.rows, path) : src.rows) as unknown[] | undefined;
@@ -323,49 +326,71 @@ export function CubeEditRows({ edit, view }: { edit: CubeEditBinding; view: Dril
   const cols = rootColumns(edit, path);
   const gridWidth = isGrid ? list.reduce<number>((m, r) => Math.max(m, Array.isArray(r) ? r.length : 0), 0) : 0;
   const keys = isList || isGrid ? [] : cols ? cols.map((c) => c.name) : recordKeys(list);
-  const add = () => commitAt(edit, path, [...list, isList ? null : isGrid ? Array.from({ length: Math.max(1, gridWidth) }, () => null) : {}]);
-  const remove = () => { if (list.length) commitAt(edit, path, list.slice(0, -1), (n) => dropNestedUnder(n, [...path, list.length - 1])); };
-  const addColumn = () => {
-    if (isGrid) {
-      const base = list.length ? (list as unknown[][]) : [[]];
-      commitAt(edit, path, base.map((r) => [...(Array.isArray(r) ? r : []), null]));
-      return;
-    }
-    let n = keys.length + 1;
-    while (keys.includes(newColumnKey(n))) n++;
-    const key = newColumnKey(n);
-    const base = list.length ? (list as CubeRecord[]) : [{}];
-    const rows = base.map((r) => (r && typeof r === "object" && !Array.isArray(r) ? (key in r ? r : { ...r, [key]: null }) : r));
-    if (cols) commitSource(edit, { ...src, columns: [...src.columns, { name: key }], rows });
-    else commitAt(edit, path, rows);
-  };
-  const removeColumn = () => {
-    if (isGrid) {
-      commitAt(edit, path, (list as unknown[][]).map((r) => (Array.isArray(r) ? r.slice(0, gridWidth - 1) : r)));
-      return;
-    }
-    const last = keys[keys.length - 1];
-    if (last === undefined) return;
-    const rows = (list as CubeRecord[]).map((r) => {
-      if (!r || typeof r !== "object" || Array.isArray(r)) return r;
-      const { [last]: _dropped, ...rest } = r;
-      return rest;
-    });
-    const dropped = (n: NestedTables) => dropNestedColumn(n, path, last);
-    if (cols) commitSource(edit, withNested({ ...src, columns: src.columns.filter((c) => c.name !== last), rows }, dropped));
-    else commitAt(edit, path, rows, dropped);
-  };
   const colCount = isGrid ? gridWidth : keys.length;
-  return (
-    <>
-      <button className="table-popup__btn" onClick={add} title={isList ? "Append an item" : isGrid ? "Append a row" : "Append an empty record"}>{isList ? "Add Item" : "Add Row"}</button>
-      <button className="table-popup__btn" onClick={remove} disabled={list.length === 0} title={isList ? "Remove the last item" : "Remove the last row"}>{isList ? "− Item" : "− Row"}</button>
-      {!isList && (
-        <>
-          <button className="table-popup__btn" onClick={addColumn} title="Add a column to every row">Add Column</button>
-          <button className="table-popup__btn" onClick={removeColumn} disabled={colCount === 0} title="Remove the last column from every row">− Col</button>
-        </>
-      )}
-    </>
-  );
+  const clamp = (xs: number[], n: number) => { const ok = xs.filter((i) => i >= 0 && i < n); return ok.length ? ok : n > 0 ? [n - 1] : []; };
+
+  const blank = () => (isList ? null : isGrid ? Array.from({ length: Math.max(1, gridWidth) }, () => null) : {});
+  const row: EditAxis = {
+    noun: isList ? "Item" : "Row",
+    sides: isList ? ["before", "after"] : ["above", "below"],
+    target: clamp(target.rows, list.length),
+    total: list.length,
+    canEmpty: true,
+    insert: (at, count) => commitAt(edit, path, insertAt(list, at, Array.from({ length: count }, blank)), (n) => shiftNestedRows(n, path, at, count)),
+    remove: (indices) => {
+      const drop = new Set(indices);
+      commitAt(edit, path, removeAt(list, drop), (n) => {
+        let out = n;
+        for (const d of [...drop].sort((a, b) => b - a)) out = shiftNestedRows(dropNestedUnder(out, [...path, d]), path, d + 1, -1);
+        return out;
+      });
+    },
+  };
+  if (isList) return { row };
+
+  const col: EditAxis = {
+    noun: "Column",
+    sides: ["left", "right"],
+    target: clamp(target.cols, colCount),
+    total: colCount,
+    canEmpty: true,
+    nameOf: isGrid ? undefined : (i) => keys[i],
+    insert: (at, count) => {
+      if (isGrid) {
+        commitAt(edit, path, insertGridCols(list.length ? (list as unknown[][]) : [[]], at, count, null));
+        return;
+      }
+      const added: string[] = [];
+      for (let n = keys.length + 1; added.length < count; n++) {
+        const key = newColumnKey(n);
+        if (!keys.includes(key)) added.push(key);
+      }
+      const order = insertAt(keys, at, added);
+      const base = list.length ? (list as CubeRecord[]) : [{}];
+      const rows = base.map((r) => {
+        if (!r || typeof r !== "object" || Array.isArray(r)) return r;
+        const out: CubeRecord = {};
+        for (const k of order) out[k] = k in r ? r[k] : null;
+        for (const k of Object.keys(r)) if (!(k in out)) out[k] = r[k];
+        return out;
+      });
+      if (cols) commitSource(edit, { ...src, columns: insertAt(src.columns, at, added.map((name) => ({ name }))), rows });
+      else commitAt(edit, path, rows);
+    },
+    remove: (indices) => {
+      if (isGrid) {
+        commitAt(edit, path, removeGridCols(list as unknown[][], new Set(indices)));
+        return;
+      }
+      const names = new Set(indices.map((i) => keys[i]).filter((k): k is string => k !== undefined));
+      const rows = (list as CubeRecord[]).map((r) => {
+        if (!r || typeof r !== "object" || Array.isArray(r)) return r;
+        return Object.fromEntries(Object.entries(r).filter(([k]) => !names.has(k)));
+      });
+      const dropped = (n: NestedTables) => [...names].reduce((acc, name) => dropNestedColumn(acc, path, name), n);
+      if (cols) commitSource(edit, withNested({ ...src, columns: src.columns.filter((c) => !names.has(c.name)), rows }, dropped));
+      else commitAt(edit, path, rows, dropped);
+    },
+  };
+  return { row, col };
 }

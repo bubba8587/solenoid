@@ -45,6 +45,8 @@ import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
 import "./TablePopup.css";
 import { ChevronDownIcon } from "./Icons";
+import { TableEditMenus, TableContextMenu, type EditAxis } from "./TableEditMenu";
+import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex, type AxisSelection } from "../tableEdit";
 
 type CellType = "number" | "string" | "date" | "logical";
 
@@ -169,7 +171,12 @@ export function TablePopup() {
   // What Save would write, as of the last save or live commit; a close that differs asks first.
   const savedSnapshot = useRef("");
   // The column names the host outputs now, which key its column formats until the next save or live commit.
-  const liveNames = useRef<string[]>([]);
+  const liveNames = useRef<(string | undefined)[]>([]);
+  // Host names of deleted columns, whose formats go at the next save or live commit.
+  const droppedNames = useRef<string[]>([]);
+  const [sel, setSel] = useState<AxisSelection | null>(null);
+  const [focusCell, setFocusCell] = useState<{ r: number; c: number } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; form?: boolean } | null>(null);
   const [askClose, setAskClose] = useState(false);
 
   useEffect(() => {
@@ -185,6 +192,10 @@ export function TablePopup() {
     const exprs = Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]);
     setHeaderNames(names);
     liveNames.current = state.headers ? [...state.headers] : [];
+    droppedNames.current = [];
+    setSel(null);
+    setFocusCell(null);
+    setCtxMenu(null);
     setColumnTypes(types);
     setColExprs(exprs);
     committedExprs.current = exprs;
@@ -320,6 +331,8 @@ export function TablePopup() {
     if (!nodeId || !editableHeaders || state?.formatControls !== "columns") return;
     const next = makeHeaders(headerNames, cols);
     frameFormatStore.rekey(nodeId, liveNames.current, next);
+    for (const name of droppedNames.current) if (!next.includes(name)) frameFormatStore.delete(nodeId, name);
+    droppedNames.current = [];
     liveNames.current = next;
   }
   function persistColFmt(c: number, patch: Partial<FormatAnnotation>) {
@@ -524,25 +537,95 @@ export function TablePopup() {
       toggleColumnType(c);
     }
   }
-  function addRow() {
-    setGrid((g) => [...g, Array.from({ length: Math.max(1, cols) }, () => "")]);
+  // ── Rows and columns: insert and delete anywhere (table-popup § The grid) ──
+  const pad = <T,>(arr: readonly T[], n: number, fill: T): T[] => (arr.length >= n ? [...arr] : [...arr, ...Array.from({ length: n - arr.length }, () => fill)]);
+  const blankRow = () => Array.from({ length: Math.max(1, cols) }, () => "");
+  function flushDraft() {
+    if (!editCell) return;
+    setCell(editCell.r, editCell.c, editDraft.current);
+    setEditCell(null);
   }
-  function addCol() {
-    setGrid((g) => (g.length === 0 ? [[""]] : g.map((row) => [...row, ""])));
-    setHeaderNames((h) => [...h, ""]);
-    setColumnTypes((t) => [...t, "number"]);
+  function insertRows(at: number, count: number) {
+    flushDraft();
+    setGrid((g) => insertAt(g, at, Array.from({ length: count }, blankRow)));
+    if (computedVals) setLiveComputed(insertAt(computedVals, at, Array.from({ length: count }, () => [] as CellValue[])));
+    setSel((sl) => (sl?.axis === "row" ? { axis: "row", indices: sl.indices.map((i) => shiftForInsert(i, at, count)), anchor: shiftForInsert(sl.anchor, at, count) } : sl));
+    setFocusCell((f) => (f ? { r: shiftForInsert(f.r, at, count), c: f.c } : f));
+    if (view === "form") setFormRow(at);
   }
-  function removeRow() {
-    setGrid((g) => (g.length > 1 ? g.slice(0, -1) : g));
+  function deleteRows(indices: number[]) {
+    const drop = new Set(indices);
+    if (drop.size === 0 || drop.size >= rows) return;
+    flushDraft();
+    setGrid((g) => removeAt(g, drop));
+    if (computedVals) setLiveComputed(removeAt(computedVals, drop));
+    setSel(null);
+    setFocusCell((f) => {
+      if (!f) return f;
+      const r = shiftForRemove(f.r, drop);
+      return r === null ? null : { r, c: f.c };
+    });
+    if (view === "form") setFormRow(Math.max(0, Math.min(Math.min(...indices), rows - drop.size - 1)));
   }
-  function removeCol() {
-    if (cols <= 1) return;
-    const removed = cols - 1;
-    remapSort((col) => (col === removed ? null : col > removed ? col - 1 : col));
-    setGrid((g) => g.map((row) => row.slice(0, -1)));
-    setHeaderNames((h) => h.slice(0, -1));
-    setColumnTypes((t) => t.slice(0, -1));
+  function insertCols(at: number, count: number) {
+    flushDraft();
+    const fill = <T,>(v: T): T[] => Array.from({ length: count }, () => v);
+    setGrid((g) => (g.length === 0 ? [fill("")] : insertGridCols(g, at, count, "")));
+    setHeaderNames((h) => insertAt(pad(h, cols, ""), at, fill("")));
+    setColumnTypes((t) => insertAt(pad(t, cols, "number" as CellType), at, fill("number" as CellType)));
+    setColExprs((x) => insertAt(pad(x, cols, undefined as string | undefined), at, fill(undefined as string | undefined)));
+    committedExprs.current = insertAt(pad(committedExprs.current, cols, undefined), at, fill(undefined));
+    if (state?.formatControls === "columns") {
+      setColFmt((f) => insertAt(pad(f, cols, { format: "auto", unit: "none" } as FormatAnnotation), at, fill({ format: "auto", unit: "none" } as FormatAnnotation)));
+      setColLocal((l) => insertAt(pad(l, cols, false), at, fill(false)));
+      setColInherited((x) => insertAt(pad(x, cols, undefined as FormatAnnotation | undefined), at, fill(undefined as FormatAnnotation | undefined)));
+    }
+    setColStat((m) => remapKeys(m, (i) => shiftForInsert(i, at, count)));
+    remapSort((col) => shiftForInsert(col, at, count));
+    if (editableHeaders) liveNames.current = insertAt(pad(liveNames.current, cols, undefined), at, fill(undefined));
+    if (computedVals) setLiveComputed(computedVals.map((row) => insertAt(pad(row ?? [], cols, null as CellValue), at, fill(null as CellValue))));
+    setSel((sl) => (sl?.axis === "col" ? { axis: "col", indices: sl.indices.map((i) => shiftForInsert(i, at, count)), anchor: shiftForInsert(sl.anchor, at, count) } : sl));
+    setFocusCell((f) => (f ? { r: f.r, c: shiftForInsert(f.c, at, count) } : f));
   }
+  function deleteCols(indices: number[]) {
+    const drop = new Set(indices);
+    if (drop.size === 0 || drop.size >= cols) return;
+    flushDraft();
+    const move = (i: number) => shiftForRemove(i, drop);
+    setGrid((g) => removeGridCols(g, drop));
+    setHeaderNames((h) => removeAt(pad(h, cols, ""), drop));
+    setColumnTypes((t) => removeAt(pad(t, cols, "number" as CellType), drop));
+    setColExprs((x) => removeAt(pad(x, cols, undefined as string | undefined), drop));
+    committedExprs.current = removeAt(pad(committedExprs.current, cols, undefined), drop);
+    if (state?.formatControls === "columns") {
+      setColFmt((f) => removeAt(f, drop));
+      setColLocal((l) => removeAt(l, drop));
+      setColInherited((x) => removeAt(x, drop));
+    }
+    setColStat((m) => remapKeys(m, move));
+    remapSort(move);
+    if (editableHeaders) {
+      const live = pad(liveNames.current, cols, undefined);
+      droppedNames.current.push(...live.filter((n, i): n is string => drop.has(i) && n !== undefined));
+      liveNames.current = removeAt(live, drop);
+    }
+    if (computedVals) setLiveComputed(computedVals.map((row) => removeAt(row ?? [], drop)));
+    setSel(null);
+    setFocusCell((f) => {
+      if (!f) return f;
+      const c = move(f.c);
+      return c === null ? null : { r: f.r, c };
+    });
+  }
+  const inRange = (xs: readonly number[], n: number) => xs.filter((i) => i >= 0 && i < n);
+  const rowTarget = (() => {
+    const picked = inRange(sel?.axis === "row" ? sel.indices : focusCell ? [focusCell.r] : [], rows);
+    return picked.length ? picked : rows > 0 ? [rows - 1] : [];
+  })();
+  const colTarget = (() => {
+    const picked = inRange(sel?.axis === "col" ? sel.indices : focusCell ? [focusCell.c] : [], cols);
+    return picked.length ? picked : cols > 0 ? [cols - 1] : [];
+  })();
   // ── Form view ────────────────────────────────────────────────────────────
   const formCapable = !!state.onSaveSource;
   const fRow = Math.min(formRow, Math.max(0, rows - 1));
@@ -551,17 +634,6 @@ export function TablePopup() {
   const formCols = formPlaced.length > 0 ? Math.max(...formPlaced.map((pl) => pl.col + pl.colSpan - 1)) : 1;
   const formColIndex = (name: string): number =>
     headerNames.findIndex((h) => (h ?? "").trim().toLowerCase() === name.trim().toLowerCase());
-  function addRecord() {
-    const at = rows;
-    setGrid((g) => (g.length === 0 ? [Array.from({ length: Math.max(1, cols) }, () => "")] : [...g, Array.from({ length: Math.max(1, cols) }, () => "")]));
-    setFormRow(at);
-  }
-  function removeRecord() {
-    if (rows <= 1) return;
-    setGrid((g) => g.filter((_, i) => i !== fRow));
-    setFormRow(Math.max(0, Math.min(fRow, rows - 2)));
-  }
-
   function buildFrameColumns(): FramePopupColumn[] {
     return Array.from({ length: cols }, (_, c) => {
       const type = columnTypes[c] ?? "number";
@@ -737,6 +809,47 @@ export function TablePopup() {
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
 
+  const editsRows = editable && (view === "grid" || view === "form");
+  const rowAxis: EditAxis | undefined = editsRows ? {
+    noun: view === "form" ? "Record" : "Row",
+    sides: view === "form" ? ["before", "after"] : ["above", "below"],
+    target: view === "form" ? (rows > 0 ? [fRow] : []) : rowTarget,
+    total: rows,
+    insert: insertRows,
+    remove: deleteRows,
+  } : undefined;
+  const colAxis: EditAxis | undefined = editable && view === "grid" && !state.fixedCols ? {
+    noun: "Column",
+    sides: ["left", "right"],
+    target: colTarget,
+    total: cols,
+    nameOf: editableHeaders ? (i) => headerNames[i] : state.headers ? (i) => state.headers?.[i] : undefined,
+    labelOf: colLabel,
+    insert: insertCols,
+    remove: deleteCols,
+  } : undefined;
+  // A selection of rows offers only row actions, and of columns only column actions.
+  const menuRow = sel?.axis === "col" ? undefined : rowAxis;
+  const menuCol = sel?.axis === "row" ? undefined : colAxis;
+  const selRows = new Set(sel?.axis === "row" ? sel.indices : []);
+  const selCols = new Set(sel?.axis === "col" ? sel.indices : []);
+  // Editable names fill their header, so a strip of column letters above them is the column's handle, as row numbers are the row's.
+  const letterStrip = !!colAxis && editableHeaders && !vertical;
+  const pickRow = (e: React.MouseEvent, r: number) => {
+    setSel((prev) => pickIndex(prev, "row", r, e.shiftKey, visibleOrder));
+    setFocusCell(null);
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  };
+  const onControl = (e: React.SyntheticEvent) => !!(e.target as HTMLElement).closest("button, input, select, textarea, label");
+  const allCols = Array.from({ length: cols }, (_, c) => c);
+  const pickCol = (e: React.MouseEvent, c: number) => {
+    if (onControl(e)) return;
+    setSel((prev) => pickIndex(prev, "col", c, e.shiftKey, allCols));
+    setFocusCell(null);
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  };
+  const openMenuAt = (e: React.MouseEvent) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY }); };
+
   const focusGridCell = (target: { vi: number; c: number } | null) => {
     if (!target) return;
     const el = gridRef.current?.querySelector<HTMLElement>(`[data-vi="${target.vi}"][data-c="${target.c}"]`);
@@ -775,6 +888,8 @@ export function TablePopup() {
       editDraft.current = grid[editCell.r]?.[editCell.c] ?? "";
       setEditCell(null);
       (document.activeElement as HTMLElement | null)?.blur?.();
+    } else if (sel) {
+      setSel(null);
     } else if (askClose) {
       setAskClose(false);
     } else {
@@ -838,8 +953,25 @@ export function TablePopup() {
       )}
       {view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
-          <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
+          <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}${letterStrip ? " table-popup__grid--lettered" : ""}`} ref={gridRef}>
             <thead>
+              {letterStrip && (
+                <tr className="table-popup__letters">
+                  <th className="table-popup__corner" />
+                  {Array.from({ length: viewCols }, (_, c) => (
+                    <th
+                      key={c}
+                      className={`table-popup__letter${selCols.has(c) ? " table-popup__letter--sel" : ""}`}
+                      title={`Select column ${colLabel(c)}`}
+                      onClick={(e) => pickCol(e, c)}
+                      onContextMenu={(e) => {
+                        if (!selCols.has(c)) { setSel({ axis: "col", indices: [c], anchor: c }); setFocusCell(null); }
+                        openMenuAt(e);
+                      }}
+                    >{colLabel(c)}</th>
+                  ))}
+                </tr>
+              )}
               <tr>
                 <th className="table-popup__corner">
                   {editableHeaders && !vertical && <HeaderHelpButton formulas={fxColumns} lambdas={(state.lambdaOptions ?? []).length > 0} />}
@@ -848,7 +980,13 @@ export function TablePopup() {
                   <th
                     key={c}
                     title={vertical ? undefined : headers?.[c]}
-                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}`}
+                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}${selCols.has(c) ? " table-popup__colhead--sel" : ""}`}
+                    onClick={colAxis ? (e) => pickCol(e, c) : undefined}
+                    onContextMenu={colAxis ? (e) => {
+                      if ((e.target as HTMLElement).closest("input, textarea")) return;
+                      if (!selCols.has(c)) { setSel({ axis: "col", indices: [c], anchor: c }); setFocusCell(null); }
+                      openMenuAt(e);
+                    } : undefined}
                   >
                     {vertical ? colLabel(0) : editableHeaders ? (
                       <div className="table-popup__colhead-edit">
@@ -869,7 +1007,11 @@ export function TablePopup() {
                                 value={headerNames[c] ?? ""}
                                 placeholder={colLabel(c)}
                                 spellCheck={false}
-                                onFocus={state.columnNameOptions ? () => setEditHead({ c, options: state.columnNameOptions?.() ?? [] }) : undefined}
+                                onFocus={() => {
+                                  setSel(null);
+                                  setFocusCell((f) => ({ r: f?.r ?? -1, c }));
+                                  if (state.columnNameOptions) setEditHead({ c, options: state.columnNameOptions?.() ?? [] });
+                                }}
                                 onBlur={state.columnNameOptions ? () => setEditHead(null) : undefined}
                                 onKeyDown={(e) => { if (!e.nativeEvent.isComposing) headSuggestRef.current?.onKey(e); }}
                                 onChange={(e) => setHeaderName(c, e.target.value)}
@@ -929,10 +1071,36 @@ export function TablePopup() {
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody
+              onFocus={editsRows ? (e) => {
+                const el = (e.target as HTMLElement).closest<HTMLElement>("[data-vi]");
+                if (!el) return;
+                const r = visibleOrder[Number(el.dataset.vi)];
+                if (r === undefined) return;
+                setFocusCell({ r, c: Number(el.dataset.c) });
+                setSel(null);
+              } : undefined}
+              onContextMenu={editsRows ? (e) => {
+                const el = (e.target as HTMLElement).closest<HTMLElement>("[data-vi]");
+                if (!el) return;
+                const r = visibleOrder[Number(el.dataset.vi)];
+                const c = Number(el.dataset.c);
+                if (r === undefined) return;
+                if (!(selRows.has(r) || selCols.has(c))) { setSel(null); setFocusCell({ r, c }); }
+                openMenuAt(e);
+              } : undefined}
+            >
               {visibleOrder.map((r, vi) => { const row = viewRow(r); return (
                 <tr key={r}>
-                  <th className="table-popup__rowhead">{r + 1}</th>
+                  <th
+                    className={`table-popup__rowhead${editsRows ? " table-popup__rowhead--pick" : ""}${selRows.has(r) ? " table-popup__rowhead--sel" : ""}`}
+                    onClick={editsRows ? (e) => pickRow(e, r) : undefined}
+                    onContextMenu={editsRows ? (e) => {
+                      e.stopPropagation();
+                      if (!selRows.has(r)) { setSel({ axis: "row", indices: [r], anchor: r }); setFocusCell(null); }
+                      openMenuAt(e);
+                    } : undefined}
+                  >{r + 1}</th>
                   {Array.from({ length: viewCols }, (_, c) => {
                     // A vertical list's type is the list's, not column `c` (always 0 there).
                     const type = vertical ? cellType : colTypeAt(c);
@@ -951,7 +1119,7 @@ export function TablePopup() {
                       return (
                         <td
                           key={c}
-                          className="table-popup__cell table-popup__cell--computed"
+                          className={`table-popup__cell table-popup__cell--computed${selRows.has(r) || selCols.has(c) ? " table-popup__cell--sel" : ""}`}
                           style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                         >
                           {readOnlyCell(
@@ -965,7 +1133,7 @@ export function TablePopup() {
                     return (
                     <td
                       key={c}
-                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}${affixType || suggestHere ? " table-popup__cell--affix" : ""}`}
+                      className={`table-popup__cell${selRows.has(r) || selCols.has(c) ? " table-popup__cell--sel" : ""}${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}${affixType || suggestHere ? " table-popup__cell--affix" : ""}`}
                       style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                       title={nan ? "Not a number: an undefined value in the data"
                         : isErrCell ? ERROR_EXPLANATIONS[errCode as keyof typeof ERROR_EXPLANATIONS]
@@ -1084,9 +1252,6 @@ export function TablePopup() {
               <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.min(rows - 1, fRow + 1))} disabled={fRow >= rows - 1} title="Next record">
                 <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
-              <div className="table-popup__spacer" />
-              <button type="button" className="table-popup__btn" onClick={addRecord} title="Add a record">Add Record</button>
-              <button type="button" className="table-popup__btn" onClick={removeRecord} disabled={rows <= 1} title="Delete this record">− Record</button>
             </div>
             {rows > 0 && (() => {
               const box = (c: number, name: string, key: number | string, at?: React.CSSProperties, hint?: string) => {
@@ -1218,6 +1383,7 @@ export function TablePopup() {
         />
       )}
 
+      {ctxMenu && editsRows && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
       <div className="table-popup__footer">
         <div className="table-popup__view" role="group" aria-label="View">
           <button
@@ -1280,14 +1446,7 @@ export function TablePopup() {
             Source
           </label>
         )}
-        {editable && view === "grid" && (
-          <div className="table-popup__dim-controls">
-            <button className="table-popup__btn" onClick={addRow} title="Add row">Add Row</button>
-            <button className="table-popup__btn" onClick={removeRow} title="Remove last row" disabled={rows <= 1}>− Row</button>
-            {!state.fixedCols && <button className="table-popup__btn" onClick={addCol} title="Add column">Add Column</button>}
-            {!state.fixedCols && <button className="table-popup__btn" onClick={removeCol} title="Remove last column" disabled={cols <= 1}>− Col</button>}
-          </div>
-        )}
+        {editsRows && <TableEditMenus row={menuRow} col={menuCol} />}
         <div className="table-popup__spacer" />
         {editable ? (
           <div className="table-popup__actions">

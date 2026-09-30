@@ -260,3 +260,28 @@
   .sol-popup__close { font-size: 24px; }
   .sol-popup__title { font-size: 13px; }
 }
+/* The table editors' Insert and Delete menus open upward from the footer; the right-click one sits at the pointer. */
+.sol-popup-menu__list--up {
+  top: auto;
+  bottom: calc(100% + 4px);
+  right: auto;
+  left: 0;
+}
+.sol-popup-menu__list--at {
+  position: fixed;
+  right: auto;
+  z-index: 9600;
+}
+.sol-popup-menu__heading {
+  padding: 4px 10px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.sol-popup-menu__sep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}

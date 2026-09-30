@@ -190,7 +190,9 @@ export const PLUGIN = {
       await hand.click(await need(page, '.metadata-property[data-property-key="attendees"] .solenoid-property-chip'));
       await sleep(800);
       for (let i = 1; i < ATTENDEES.length; i++) {
-        await hand.click(await need(page, "button", "Add Row"));
+        await hand.click(await need(page, 'button[aria-label="Insert"]'));
+        await sleep(120);
+        await hand.click(await need(page, '[role="menu"] button', "Row below"));
         await sleep(180);
       }
       const cells = await rectsIn(page, "td.table-popup__cell");
@@ -252,7 +254,9 @@ export const PLUGIN = {
       // The first record at typing speed, the other three fast-forwarded in compose.mjs.
       for (const [i, fields] of WEST.entries()) {
         if (i === 1) c.rec.at("fast", { rate: 4 });
-        await hand.click(await need(page, "button", "Add Record"));
+        await hand.click(await need(page, 'button[aria-label="Insert"]'));
+        await sleep(150);
+        await hand.click(await need(page, '[role="menu"] button', "Record after"));
         await sleep(250);
         const boxes = await rectsIn(page, ".table-popup__form-box-input");
         for (const [j, text] of fields.entries()) {

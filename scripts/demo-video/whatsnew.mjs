@@ -158,7 +158,9 @@ export const WHATSNEW = {
       const grip = await need(page, ".sol-popup__resize");
       await hand.drag({ x: grip.cx, y: grip.cy }, { x: grip.cx - 130, y: grip.cy + 40 }, { ms: 900 });
       await sleep(500);
-      await hand.click(await need(page, "button", "Add Row"));
+      await hand.click(await need(page, 'button[aria-label="Insert"]'));
+      await sleep(250);
+      await hand.click(await need(page, '[role="menu"] button', "Row below"));
       await sleep(500);
       const cells = await rectsIn(page, "td.table-popup__cell");
       const row = cells.slice(-3);

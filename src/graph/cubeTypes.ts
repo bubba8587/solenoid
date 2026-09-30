@@ -106,6 +106,19 @@ export function dropNestedColumn(nested: NestedTables, tablePath: CubePath, colu
   });
 }
 
+/**
+ * Rows inserted or deleted in the level at `levelPath` (a records array, or a list's items): every declaration under a
+ * row at or past `from` moves by `delta`. Deleting runs `dropNestedUnder` on the removed rows first.
+ */
+export function shiftNestedRows(nested: NestedTables, levelPath: CubePath, from: number, delta: number): NestedTables {
+  const n = levelPath.length;
+  return rekey(nested, (path, e) => {
+    const at = path[n];
+    if (path.length <= n || !startsWith(path, levelPath) || typeof at !== "number" || at < from) return [path, e];
+    return [[...path.slice(0, n), at + delta, ...path.slice(n + 1)], e];
+  });
+}
+
 /** Everything declared inside the cell at `cellPath` is dropped, as when its row is removed or its contents replaced; `keepOwn` keeps the cell's own table. */
 export function dropNestedUnder(nested: NestedTables, cellPath: CubePath, keepOwn = false): NestedTables {
   return rekey(nested, (path, e) => (startsWith(path, cellPath) && !(keepOwn && path.length === cellPath.length) ? null : [path, e]));

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useEscapeLayer } from "./escapeLayers";
 import "./popupChrome.css";
 
 export type PopupMenuItem = { label: string; onClick: () => void; disabled?: boolean };
@@ -6,6 +7,7 @@ export type PopupMenuItem = { label: string; onClick: () => void; disabled?: boo
 export function PopupOverflowMenu({ items, label = "More actions" }: { items: PopupMenuItem[]; label?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  useEscapeLayer(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;
