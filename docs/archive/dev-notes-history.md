@@ -1,6 +1,111 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-29 (the 09-26 digests, verbatim).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-30 (the 09-27 and 09-28 digests, verbatim).
+
+---
+
+## Sweep 2026-09-30 — session digests 2026-09-27 and 09-28 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-28: Cube types at every depth, cell kinds; cloud session)
+
+- **Cube types at every depth, cell by cell** ([[D90]] cubeTypesAtDepth, superseding D80 on the author's word): a
+  column's type holds its values, lists and Tables; each Frame or Cube nested in a cell has its own declarations, kept
+  in the source's `nested` map keyed by the table's records path (`cubeTypes.ts`: `{ frame?, types? }`), so one
+  column's rows can hold differently shaped, differently typed tables. The plugin keeps them per note
+  (`nestedTables` in `data.json`), which Vault Folder and Import Obsidian Note read. Specs: [[frame-verbs]] § The Cube
+  value, [[table-popup]] § Editing a Cube Input.
+- **Cell kinds** ([[E16]] cubeCellKinds): every Cube editing cell, list items included, has a Value / List / Table /
+  Frame / Cube menu at its edge (`CellKindMenu`, `convertCellKind`), Table being the app's 2-D shape. A Frame cell is
+  declared, derives a real Frame (`frameCellFromRecords`) and holds only values; undeclared records are a Cube, so
+  the editor no longer labels a flat nested table "Frame" by its contents.
+- **Review plan block 15** (the hand-resolved merges): `getOwningEditor` finds a node in a closed composite on any live
+  canvas; an Import Obsidian Note Refresh re-reads plugin picks for an unchanged note; every card component reads its
+  own graph (`getOwning*`), pinned by `sourceInvariants.test.ts`. The `engine.rs` auto-merges pass `cargo test`.
+- **Review plan block 1** (the settings sweep): cards whose formula twin has a blank role but ignored it now read it
+  (Date Diff basis, DDB / VDB factor, DOLLAR / FIXED decimals, LOG base, GESTEP step), Find Peaks' minimums read a blank
+  as no minimum, Clamp's tooltip matches its code, and the audit sheet gained the QUARTILE rows with
+  `settingsAudit.test.ts` holding its formula table to `ARG_ROLES`. MAKEARRAY's required Rows / Cols wait on the author.
+- **Review plan blocks 2 and 3:** the one-row list convention checks out against [[D85]] columnsStayColumns (TAKE / DROP
+  tooltips now say it). Against [[D48]] classifyNonFinite, the MODEs, the Mode card and PRODUCT answer `#DOMAIN!` on a
+  NaN (PRODUCT moved onto the shared kernel), and no repeated value is Excel's `#N/A`. A pivot group past a call's
+  argument limit no longer throws (`pivotFrame`), nor do the chart renderers on long data.
+- **Table popup formats:** a Custom column format gets its pattern box (`CustomPatternField`), and the summary footer's
+  sums, means, extremes and dates read through the column's format (`statReadsAsCell`).
+- **Review plan, the rest (blocks 4–44):** every block is checked; what stands is recorded in place in
+  `docs/review-plan.md`, and the open lines left are author decisions or need the Obsidian rig. The fixes carry their
+  tests; the ones worth knowing: native Polars now runs in CI (`test.yml` `rust` job; the fuzzer then found and the
+  engine fixed a rolling-sum drift and a last-n-after-groupBy row loss), frontmatter reads and writes as Obsidian's
+  js-yaml does (CRLF, control characters, ambiguous keys, indented blocks), a vault Write subfolder can't climb out on
+  Windows, °F reads back as typed, a wired plain number beside °C readings is a reading, live cards drop a reply for a
+  URL they moved past, a locked canvas drops keyboard focus in cards, and the midnight rollover sees Cube Input and
+  Knap `'now'`. New leaf: [[C117]] usNumberText (US number text only, the author's rule). Inbox:
+  `temperature-difference-converts-by-scale`. For 1.6 in the backlog: Equation outputs vs the formula surface.
+- **Cloud sessions can run `cargo test`** once WebKitGTK's dev packages are installed (`libwebkit2gtk-4.1-dev
+  libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev`); the first build takes about six minutes.
+
+### SESSION DIGEST (2026-09-27: Cards view, resizable formula popup; cloud session)
+
+- **Cards view** ([[C114]] cardsView, asked for by the author, who judges the result): every frame popup has Grid,
+  Cards, (Form,) CSV. Each row is a card in one narrow column; `planCards` (`cardLayout.ts`) derives the card's parts
+  (key, title, subtitle, date, headline number, chips, flags, stat tiles, clamped prose, thumbnail) from the column
+  names, types and cells, deterministically. A filter, a one-key sort and Show More sit above; Edit in Form jumps an
+  editable row to the Form view. Every popup opens in Grid; Cards is an option. Spec: [[table-popup]] § The Cards view.
+  Checked in headless Chromium at 1400 and 390 pixels, both themes.
+- **Cards, second pass:** a name pair joins into the title, Start/End dates make a range, Tags split into chips, hex
+  colors get swatches, Rating stars, percent and progress-like columns get meters, a currency column can be the
+  hero, http and email cells are links, and a card past 6 fields folds behind Show All N Fields. Pictures are
+  `data:image` only, never fetched, as in the grid ([[D83]] imageTextCells); the first pass fetched web images.
+- **Record ↔ Cards** ([[B11]] maximalMerge, [[C114]] cardsView): Record's single-record view is renamed **Detail**
+  (`detail`), and a **Cards** view (`cards`, no layout socket) draws the popup's derived cards as a figure in the Gallery's
+  masonry (`MasonryGallery`), planned in the node over up to 2000 rows (`RecordDeck`). The card is one component,
+  `AutoCard`, in both places. The popup's overflow menu adds **Add Record: Cards**, placing a wired Record node in the
+  first clear spot right of the host. The Cards from files seed gained a Catalog gallery.
+- **Record Rows:** the scalar Row (Detail only) became **Rows** on every view: a number or a list (`numlist`, typed
+  `1, 3, 5`, `picks` role, negatives from the end), blank for every row. Detail's pager is its own `page` among the
+  picks, so a wired list still pages. The CSV field now takes a `(default X)` placeholder (`all` here).
+- **Cards demo data:** `scripts/gen-cards-demo.cjs` writes `demo-vault/Data/{crew,products,orders}.csv` (drawn
+  `data:image` avatars and product pictures, tags, colors, ratings, progress, date ranges, links) and the
+  **Cards from files** seed (Tables): Local File nodes into Filter, Sort, Head, a Computed Column, Keep lookups, two
+  Joins, a Keep that picks the order card's fields, and two GROUPBYs. It runs on the web build through the bundled
+  demo vault. The data hangs together (skills and bios by team, Paid by status, backorder notes on out-of-stock
+  lines); joining whole tables made nonsense cards, so the joins take lean lookups. The joined frame led to two planner fixes: a second picture column
+  draws as a picture, never prose, and a lone Last Name no longer counts as name-like.
+- **The formula popup resizes** (Expression, Equation, LAMBDA, the table lambdas): the Table popup's corner grip, and
+  the editor's own vertical grip before the first drag, as the CSV block has; once sized the editor fills.
+
+### SESSION DIGEST (2026-09-28: plugin 0.1.5 on Solenoid-Properties main, its whatsnew video; cloud session)
+
+- **Plugin 0.1.5 replaces 0.1.4** (whose release failed the Obsidian review): TableCards' dead eslint directives are
+  gone, the Knap marker regexes are built from their constants, and the Knap views use `createSpan`/`createDiv`. Only
+  the Release run is left (`docs/backlog.md` § Obsidian).
+- **The whatsnew cut is 0.1.5's** (author approved the render): typing about 2.5x faster, the Knap totals held against
+  the Frame's qty column and its footer Sum, and `wn-cards`, a crew Frame on Obsidian's phone emulation panned across
+  in Grid, then Cards and a filter. Recorded in a cloud container; the setup that works there is in the `demo-video`
+  skill. Not yet in `assets/video/` (backlog).
+- **The plugin's `main.js` is 626 kB again** (960 kB after 09-27): `closeParens` moved to its own `closeParens.ts`, since
+  importing it from `excelFormula.ts` pulled Formula.js and jstat into the plugin; the plugin draws the Cards rules with
+  Obsidian's `MarkdownRenderer` through a `components/Markdown` shim, so `marked` stays out (spec: [[obsidian-plugin]]).
+  The Cards view itself is the rest of the growth over 581 kB. Checked in a real Obsidian 1.13.7 through the rig.
+- **The export refuses an unpinned package:** a copied file importing a package missing from the snapshot's
+  `package.json` stops `plugin:export` (it had shipped a snapshot whose `tsc` failed on `marked` and Formula.js).
+
+### SESSION DIGEST (2026-09-27: Knap notes in the Obsidian plugin; cloud session)
+
+- **Knap notes** ([[D87]] knapNotes, asked for by the author): a note with `knap: true` renders its body in Reading view
+  as its Note card does, from its own properties; a bare `{{ name }}` on a List, Matrix, Frame or Cube property is the
+  property's chip in the body, editing the property. Live Preview renders too, piece by piece: a tag, or an `if` /
+  `for` block whole, shows its output until the cursor enters it (`knapLive.ts`). Spec: [[obsidian-plugin]]
+  § Knap notes. Checked in a real Obsidian 1.13.7 through the rig (loop and `if` across paragraphs, chip Save writing
+  the property, refresh on a property change, errors, embeds, switching off).
+- **Module split** so the plugin can bundle Knap without the formula engine: `toTemplateValue` moved to
+  `templateValue.ts`, `guessScalarText` to `scalarText.ts`; `bareTags` in `knapTemplate.ts` finds the bare tags
+  `embedBareVariables` rewrites. The plugin's `main.js` is 581 kB (477 kB before; the difference is Knap).
+- **Live Preview details:** an error waits for a 1.5 s pause in typing (a half-typed tag fails to render), and Up/Down
+  enter a drawn block, which the editor stepped over.
+- **The `whatsnew` video cut** (`scripts/demo-video/whatsnew.mjs`, plugin 0.1.4, 1080p60 via `DEMO_FPS=60`), approved by
+  the author; the render sits in `.dev/video/`, uncommitted, and ships with the next app version bump.
+- **Rig in a cloud container:** Obsidian's Linux tarball unpacks to `/opt/Obsidian`; Xephyr is absent, so a stand-in
+  script running `Xvfb` on the same display (and a no-op `metacity`) lets `npm run plugin:rig` run unchanged.
 
 ---
 

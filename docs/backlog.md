@@ -158,6 +158,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 
+- [ ] **Hand-tidied groups then a canvas Tidy, twice, moved personal finance ~530 px** (2026-09-30, both alignment modes; Cleanup itself is a fixed point). Recheck since `separateAll` stopped treating a standoff cluster's bounding box as solid.
 - [ ] **Collapsed stadium pill hover preview** — a collapsed node's input pill shows a hover
   preview listing EVERY cable item (name + value), not just the first. Author's extension to
   consider with it: a special Conduit → bundled cable → Cube node (the bundle's lanes land as one
