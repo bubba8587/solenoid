@@ -86,8 +86,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   0.1.3's standing findings. Left: run its Release workflow from the Actions tab with `0.1.5`.
 - [ ] **`whatsnew` video (plugin 0.1.5, approved 2026-09-28) to `assets/video/`** on the author's word: re-render with
   `DEMO_FPS=60`, recording `wn-cards` in its own run after the rest (`demo-video` skill).
-- [ ] **Cards sort box on a phone:** the "Source" label runs under its chevron ("Source ov") in a 344 px popup
-  (seen in the whatsnew recording, `TableCards.tsx` `.table-cards__sort`).
 - [ ] **A Note card's bare `{{ list }}` on its own field prints Knap's JSON**; in Obsidian a Knap note draws the
   chip ([[D87]] knapNotes, as [[C68]] asks of a bare tag). Embed the card's own object fields as a Report does?
 - [ ] **Knap notes on show:** a `knap: true` note in the demo vault and on the `/obsidian` page, once the plugin

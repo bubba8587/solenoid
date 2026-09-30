@@ -684,30 +684,47 @@
   }
 }
 
-/* ── Mobile scaling ─────────────────────────────────────────────────────────── */
+/* ── Narrow screens ───────────────────────────────────────────────────────────
+   Compact, not finger-sized (the author's ruling for the footer, carried to the grid): more columns and rows
+   on screen beat bigger targets, and the popup takes the height a phone has. */
 @media (max-width: 640px) {
-  .table-popup { width: 96vw; }
-  .table-popup__grid-scroll { max-height: 42vh; max-height: 42dvh; margin: 10px; }
+  .table-popup { width: calc(100vw - 16px); }
+  .table-popup__grid-scroll { max-height: 60vh; max-height: 60dvh; margin: 8px; }
   .table-popup__grid { font-size: 14px; }
   .table-popup__input {
-    padding: 9px 8px;
+    min-width: 52px;
+    padding: 8px 6px;
     font-size: 14px;
   }
   .table-popup__colhead,
-  .table-popup__rowhead { font-size: 12px; }
-  .table-popup__colhead--name { min-width: 132px; }
+  .table-popup__rowhead { font-size: 12px; padding-top: 2px; padding-bottom: 2px; padding-left: 4px; }
+  .table-popup__rowhead { padding-right: 4px; }
+  .table-popup__rowhead { min-width: 22px; }
+  .table-popup__colhead--name { min-width: 84px; padding-top: 3px; padding-bottom: 3px; padding-left: 4px; }
+  .table-popup__colhead-edit { gap: 3px; }
   .table-popup__coltype {
-    width: 26px;
-    height: 26px;
-    font-size: 13px;
+    box-sizing: border-box;
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
   }
-  .table-popup__coltype--fx { font-size: 12px; }
-  .table-popup__fmtbtn { height: 26px; padding: 0 7px; }
-  .table-popup__colhead-input { font-size: 13px; padding: 4px 6px; }
-  .table-popup__csv { font-size: 14px; margin: 10px; width: calc(100% - 20px); }
-  .table-popup__csvwrap { margin: 10px; }
+  .table-popup__coltype--fx { font-size: 11px; }
+  /* The paintbrush alone says format; its chevron costs a column 10px. */
+  .table-popup__fmtbtn { box-sizing: border-box; height: 24px; padding: 0 4px; }
+  .table-popup__fmtbtn > svg:last-child { display: none; }
+  /* A header name is as wide as its text (the input's size), not the cell input's 52px floor, which is for values. */
+  .table-popup__colhead-field { flex: 1 0 auto; }
+  .table-popup__colhead-input { min-width: 0; width: auto; flex: 1 0 auto; font-size: 13px; padding: 3px 4px; }
+  .table-popup__csv { font-size: 14px; margin: 8px; width: calc(100% - 16px); min-height: 40vh; min-height: 40dvh; }
+  .table-popup__csvwrap { margin: 8px; }
   .table-popup__csv--over { margin: 0; width: 100%; }
   .table-popup__csvmirror-inner { font-size: 14px; }
+  .table-popup__form-scroll { margin: 8px; max-height: 60vh; max-height: 60dvh; }
+  .table-popup__form { max-width: none; }
+  .table-popup__footer { padding: 0 8px 8px; }
+  /* Clear of the resize grip in the card's corner. */
+  .table-popup__actions { margin-right: 14px; }
+  .table-popup__matrix-fmt { margin: 8px 8px 0; }
 }
 
 .cube-popup__crumbs {

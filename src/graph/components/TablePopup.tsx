@@ -988,6 +988,7 @@ export function TablePopup() {
                               <input
                                 className="table-popup__input table-popup__input--text table-popup__colhead-input"
                                 value={headerNames[c] ?? ""}
+                                size={Math.min(24, Math.max(3, (headerNames[c] ?? "").length + 1))}
                                 placeholder={colLabel(c)}
                                 spellCheck={false}
                                 onFocus={() => {

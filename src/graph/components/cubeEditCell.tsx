@@ -276,6 +276,7 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
       className="table-popup__input table-popup__input--text table-popup__colhead-input"
       defaultValue={column}
       key={column}
+      size={Math.min(24, Math.max(3, column.length + 1))}
       spellCheck={false}
       onClick={(e) => e.stopPropagation()}
       onPointerDown={stopDragStart}

@@ -517,9 +517,9 @@ root, while `html.is-mobile` rules cannot and the bundle carries none. Measured,
 panel 12px left of the card, which the look undoes so the icon keeps the desktop's 11px inset, and
 the light badge centers itself on the taller row. At 412 and 360 px every editor
 fits, and under a coarse pointer the footer's controls get smaller, not finger-sized (11px text on
-a 412px phone, 10px at 380px and under; author's ruling, `TablePopup.css`): the view toggle, Source
-and the Insert and Delete menus share the first row, and Cancel/Save sit right on the second
-(measured at 412 and 360 px, 2026-09-30). Done sits right.
+a 412px phone, 10px at 380px and under; author's ruling, `TablePopup.css`): the footer takes two
+rows at most, the view toggle and Source first, the Insert and Delete menus on whichever row has
+room, and Cancel/Save right on the last (measured at 412, 390 and 360 px, 2026-09-30). Done sits right.
 
 A builder that finds this spec silent stops that part and runs
 `python tools/dte.py gap [[obsidian-plugin]] --title "..." --by <name>`; it never improvises.

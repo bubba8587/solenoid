@@ -130,4 +130,8 @@
   .table-cards__sort,
   .table-cards__dir { height: 34px; }
   .table-cards__dir { width: 34px; }
+  /* The sort box shows its whole pick ("Source order"); the filter takes what is left. */
+  .table-cards__filter { flex: 1 1 80px; }
+  .table-cards__sort { flex: 0 0 auto; max-width: 52%; padding-right: 2px; }
+  .table-cards-wrap { margin: 8px; }
 }

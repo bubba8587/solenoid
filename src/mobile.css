@@ -231,21 +231,20 @@ html.is-mobile {
 
   /* ── Function Reference overlay ── */
 
-  .fr-panel { width: 92vw; height: 88vh; height: 88dvh; }
+  .fr-panel { width: calc(100vw - 16px); height: 90vh; height: 90dvh; }
 
-  .fr-tab { padding: 10px 14px; }
-  .fr-tabs { padding-right: 52px; }
+  /* One line per tab: the row scrolls sideways rather than wrapping a label onto two lines. */
+  .fr-tab { padding: 10px 12px; white-space: nowrap; flex-shrink: 0; }
+  .fr-tabs { padding-right: 44px; }
   .fr-tabs__scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
   .fr-tabs .fr-close {
     top: 4px;
     bottom: auto;
     margin-block: 0;
-    right: 8px;
-    width: 40px;
-    height: 40px;
-    background: var(--surface-raised);
-    border: 1px solid var(--border-strong);
+    right: 4px;
+    width: 36px;
+    height: 36px;
     color: var(--text);
   }
   .fr-close svg { width: 20px; height: 20px; }
@@ -254,7 +253,8 @@ html.is-mobile {
   .fr-search { flex: 1 1 100%; }
   .fr-filters { margin-left: 0; }
   .fr-select { padding: 7px 8px; flex-shrink: 0; }
-  .fr-colcheck { padding-top: 6px; padding-bottom: 6px; }
+  /* The divider separates it from the filters on one row; wrapped onto its own line it is a stray rule. */
+  .fr-colcheck { padding-top: 6px; padding-bottom: 6px; padding-left: 2px; box-shadow: none; }
   .fr-stats { display: none; }
 
   .fr-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -280,4 +280,15 @@ html.is-mobile .solenoid-settings__key-input {
 }
 html.is-mobile .solenoid-settings__row--palette .solenoid-settings__palette-control {
   align-items: flex-start;
+}
+
+/* Narrow phones (360 to 375 px): the tools row needs 376 px at 34 px buttons, so it steps down to 30. */
+@media (max-width: 380px) {
+  html.is-mobile {
+    .solenoid-topbar { padding: 0 6px; gap: 3px; }
+    .solenoid-topbar .solenoid-nav__btn,
+    .solenoid-topbar__nav,
+    .solenoid-apptools__btn { width: 30px; height: 30px; }
+    .solenoid-topbar .solenoid-nav__btn svg { width: 16px; height: 16px; }
+  }
 }

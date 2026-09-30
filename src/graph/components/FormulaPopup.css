@@ -25,7 +25,8 @@
 .formula-popup__render {
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* Centered by auto margins, not justify-content: those fall to 0 when a long formula overflows, so it scrolls from its start instead of clipping both ends. */
+  justify-content: flex-start;
   min-height: 76px;
   padding: 16px 14px;
   background: var(--border-subtle);
@@ -33,7 +34,13 @@
   border-radius: 8px;
   overflow-x: auto;
 }
+.formula-popup__render > * { margin-inline: auto; }
 .formula-popup__render .katex { font-size: 1.35em; }
+@media (max-width: 640px) {
+  .formula-popup__body { padding: 10px; }
+  .formula-popup__render { min-height: 60px; padding: 12px 10px; }
+  .formula-popup__render .katex { font-size: 1.15em; }
+}
 
 .formula-popup__raw {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
