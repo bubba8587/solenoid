@@ -19,7 +19,7 @@ import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse, settleCollapse, groupCollapseStore } from "./groupCollapse";
 import { fitAll } from "./NavMenu";
 import { dockedNodeStore } from "./dockedNodeStore";
-import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
+import { socketLocalCenter } from "./canvasGeometry";
 import { scheduleAutosave } from "./persistence";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 const TIDY_CONFIRM_THRESHOLD = 12;
@@ -345,12 +345,10 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       const fc = editor.getNode(fcId);
       if (!(fc instanceof FormatControllerNode) || fc.side !== "output" || !looseTargetIds.has(fc.hostNodeId)) continue;
       const host = editor.getNode(fc.hostNodeId);
-      const hostPos = view.position(fc.hostNodeId);
-      if (!host || !hostPos) continue;
+      if (!host) continue;
       const hostBox = measuredBox(view, fc.hostNodeId, editor) ?? { w: host.width, h: host.height };
       const fcBox = measuredBox(view, fcId, editor) ?? { w: fc.width, h: fc.height };
-      const sc = getSocketScreenCenter(view, fc.hostNodeId, fc.socketKey, "output");
-      const socketLocalY = sc ? screenToCanvas(view, view.container, sc.x, sc.y).y - hostPos.y : hostBox.h / 2;
+      const socketLocalY = socketLocalCenter(view, fc.hostNodeId, fc.socketKey, "output")?.y ?? hostBox.h / 2;
       const prev = hostFootprint.get(fc.hostNodeId) ?? { w: hostBox.w, h: hostBox.h };
       hostFootprint.set(fc.hostNodeId, { w: prev.w + fcBox.w + 8, h: Math.max(prev.h, socketLocalY + fcBox.h / 2) });
     }
@@ -403,15 +401,17 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     }
     if (!Number.isFinite(dx) || !Number.isFinite(dy)) { dx = 0; dy = 0; }
 
-    // Every card moves once, to its final spot: a cluster's cards at their offsets, a group's members with it.
+    // Every card moves once, to its final spot on a whole pixel: a cluster's cards at their offsets, a group's members
+    // with it. ELK and the centering anchor leave fractions, and a fraction carried into a cluster's offsets or a
+    // group's autofit came back as a slightly different size on the next Tidy, which is enough to change the layout.
     const moves = new Map<string, { x: number; y: number }>();
+    const whole = (x: number, y: number) => ({ x: Math.round(x), y: Math.round(y) });
     for (const b of elkBoxes) {
       const p = placed.get(b.node.id);
       if (!p) continue;
-      const to = { x: p.x + dx, y: p.y + dy };
       for (const id of clusterMembersOf.get(b.node.id) ?? [b.node.id]) {
         const off = clusterMemberOffset.get(id) ?? { dx: 0, dy: 0 };
-        moves.set(id, { x: to.x + off.dx, y: to.y + off.dy });
+        moves.set(id, whole(p.x + dx + off.dx, p.y + dy + off.dy));
       }
     }
     for (const [id, to] of [...moves]) {
@@ -420,7 +420,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       if (!(g instanceof GroupNode) || !from || (to.x === from.x && to.y === from.y)) continue;
       for (const m of g.members) {
         const mp = view.position(m);
-        if (mp) moves.set(m, { x: mp.x + to.x - from.x, y: mp.y + to.y - from.y });
+        if (mp) moves.set(m, whole(mp.x + to.x - from.x, mp.y + to.y - from.y));
       }
     }
     for (const [id, to] of moves) await view.moveNode(id, to);

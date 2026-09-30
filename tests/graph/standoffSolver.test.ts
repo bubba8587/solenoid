@@ -79,6 +79,18 @@ describe("solveStandoffs", () => {
     expect(d.get("b")!.dy).toBeCloseTo(-80, 0);
   });
 
+  it("lands every moved box on a whole pixel, so repeated settles cannot accumulate a fraction", () => {
+    // Both ends free and a 45-degree lock: the raw split lands both ends on fractions.
+    const bx = boxes({ a: box(0.4, 10.3), b: box(300.7, 37.9) });
+    const d = solveStandoffs(bx, [{ ...east("s1", "a", "b", 28, 100), locked: true }]);
+    expect(d.size).toBe(2);
+    for (const [id, m] of d) {
+      const b = bx.get(id)!;
+      expect(Number.isInteger(b.x + m.dx), `${id} x`).toBe(true);
+      expect(Number.isInteger(b.y + m.dy), `${id} y`).toBe(true);
+    }
+  });
+
   it("splits the correction when both ends are free", () => {
     const d = solveStandoffs(boxes({ a: box(0, 0), b: box(300, 0) }), [east("s1", "a", "b", 28, 100)]);
     expect(d.get("a")!.dx).toBeCloseTo(50, 0);  // a moves toward b

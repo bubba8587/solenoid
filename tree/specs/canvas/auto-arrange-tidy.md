@@ -58,7 +58,7 @@ A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a m
 - A Conduit exposes only its wired lanes as ports, whatever it shows, (one in and one out when nothing is wired), so ELK does not treat it as a tall multi-port card.
 - Cards are handed to ELK as Proxies. A Proxy keeps the card's `id`, so the applier still translates the real card, and any reserved size lives only on the proxy.
 - A plain card reserves its measured box. A cluster leader (a standoff cluster, see [[C89]] standoffsSolveLast) reserves the whole cluster's bounding box, and its followers are placed back at their offsets from the leader before the anchor step.
-- A card with a docked output Format Controller reserves the host plus FC as one inflated box, so ELK does not pack a neighbor into the FC's area. The width grows by the FC width plus 8 per docked FC; the height covers the FC centered on its socket. This reservation is made only for hosts that are themselves layout targets, and it lives only in the proxy handed to ELK. Nothing is written to the card.
+- A card with a docked output Format Controller reserves the host plus FC as one inflated box, its socket's height read from the card's layout offsets (`socketLocalCenter`), never a screen rect divided by the zoom, so ELK does not pack a neighbor into the FC's area. The width grows by the FC width plus 8 per docked FC; the height covers the FC centered on its socket. This reservation is made only for hosts that are themselves layout targets, and it lives only in the proxy handed to ELK. Nothing is written to the card.
 
 ## Symmetric ports
 
@@ -106,7 +106,7 @@ Both references are deterministic in either direction, so Cleanup's tidy-then-au
 
 The selection is cleared for the layout and restored afterwards, because translating a selected card triggers the group-follow, which would compound across the per-card placement. These steps run in order after ELK returns:
 
-1. Every card moves once, straight to its final spot: ELK's position plus the anchor shift, a cluster's cards at their offsets from their block, and a laid-out group's members by the group's move. Nothing is re-measured between ELK and the move.
+1. Every card moves once, straight to its final spot on a whole pixel: ELK's position plus the anchor shift, a cluster's cards at their offsets from their block, and a laid-out group's members by the group's move. Nothing is re-measured between ELK and the move.
 2. The pin-drop loop clears inline sizes (see Cards stay content-sized).
 3. Within a group: the box grows to wrap its members, and may push its neighbors (see Growing a group).
 4. Autosave is scheduled, the selection is restored, and a Tidy of a selection zooms to it. Scheduling here is enough: `view.translate` schedules nothing, and the autosave debounce reads positions when it flushes, so the deferred settle below is still captured.
@@ -146,7 +146,7 @@ Cleanup passes `skipPush: true` to its per-group arranges, because it runs its o
 4. Collapse every unlocked group that is still expanded, then wait two frames: React Flow measures a card a frame after it renders, and a top-level Tidy that read the expanded sizes laid the collapsed groups out far apart, so a second Cleanup moved everything again.
 5. Tidy the top level, with groups as rigid collapsed units and no confirmation. That Tidy fits the view and schedules the autosave.
 
-A second Cleanup moves nothing unless a card's content changed size in between (a Report still rendering, say).
+A second Tidy or Cleanup moves nothing unless a card's content changed size in between. ELK is deterministic, but a sub-pixel change in any size it is handed can flip its ordering and move cards by hundreds of pixels, so every input is kept exact: whole-pixel positions from Tidy, the standoff solve and autofit, and zoom-free socket offsets. `tidyArrangeGroups.test.ts` pins the group Tidy and autofit cycle with fractional card heights.
 
 ## Align and distribute
 

@@ -503,6 +503,35 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
   });
 });
 
+describe("group Tidy then autofit is a fixed point", () => {
+  it("a second and third cycle move nothing, even with fractional card heights", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const m1 = new ArithmeticNode({ op: "add" }), m2 = new ArithmeticNode({ op: "add" }), m3 = new ArithmeticNode({ op: "add" });
+    for (const n of [m1, m2, m3]) await editor.addNode(n as never);
+    await connect(editor, m1, "result", m3, "a");
+    await connect(editor, m2, "result", m3, "b");
+    addView(m1.id, 124.3, 158.6, 180, 100.25);
+    addView(m2.id, 134.1, 268.2, 180, 71.5);
+    addView(m3.id, 344.7, 178.9, 180, 120.75);
+    const group = new GroupNode({ members: [m1.id, m2.id, m3.id], width: 460, height: 300 });
+    await editor.addNode(group as never);
+    addView(group.id, 100, 100, 460, 300, () => ({ w: group.width, h: group.height }));
+    const arrangeFn = makeArrangeFn({ editor, view, ensureElk: makeEnsureElk(() => false), repositionDockedTo: () => {}, isDestroyed: () => false });
+    const cycle = async () => {
+      await arrangeFn({ groupId: group.id, skipPush: true });
+      await flushRafs();
+      await autofitGroupWithHistory(editor, view, group);
+      await flushRafs();
+      return [group.id, m1.id, m2.id, m3.id].map((id) => ({ ...view.fakes.get(id)!.position })).concat([{ x: group.width, y: group.height }]);
+    };
+    await cycle();
+    const second = await cycle();
+    const third = await cycle();
+    expect(third).toEqual(second);
+  });
+});
+
 describe("Cleanup with an expanded group (headless)", () => {
   it("members ride their group through tidy→autofit→collapse→top-level tidy", { timeout: 20000 }, async () => {
     const { editor, view, arrangeFn, m1, m2, group } = await buildScene();

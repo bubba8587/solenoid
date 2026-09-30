@@ -39,7 +39,7 @@ Select exactly two linkable items, right-click one of them, and choose "Link wit
 
 ## The solver runs last
 
-`solveStandoffs` (`standoffSolver.ts`) is pure and unit-tested. The canvas registers the live settle routine that drives it (`setStandoffSettle`). It takes plain boxes, the standoffs, a set of pinned ids and an optional `forceLock`, and returns a displacement per box.
+`solveStandoffs` (`standoffSolver.ts`) is pure and unit-tested. The canvas registers the live settle routine that drives it (`setStandoffSettle`). It takes plain boxes, the standoffs, a set of pinned ids and an optional `forceLock`, and returns a displacement per box. Each displacement lands its box on a whole pixel: the solve stops once every error is within 0.25, and an unrounded leftover rode into a Tidy's cluster offsets and back out as a slightly different block size.
 
 - It is iterative projection: up to 48 rounds, each correcting every active standoff in turn, stopping once no correction exceeds 0.25px.
 - Each correction splits evenly between the two ends. If one end is pinned, the other takes all of it. A standoff with both ends pinned is skipped.

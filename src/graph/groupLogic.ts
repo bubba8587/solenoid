@@ -124,11 +124,13 @@ export async function autofitGroupBox(
   if (!Number.isFinite(minX)) return null;
 
   const before: GroupGeom = { x: gv.x, y: gv.y, width: group.width, height: group.height };
+  // Each edge rounds on its own. Rounding the size instead left the interior up to half a pixel lopsided, and a
+  // within-group Tidy, which centers the members in the interior, then moved them a fraction on every Cleanup.
+  const x = Math.round(minX - GROUP_PAD), y = Math.round(minY - GROUP_PAD - GROUP_HEADER);
   const after: GroupGeom = {
-    x: minX - GROUP_PAD,
-    y: minY - GROUP_PAD - GROUP_HEADER,
-    width:  Math.round(Math.max(GROUP_MIN_W, (maxX - minX) + GROUP_PAD * 2)),
-    height: Math.round(Math.max(GROUP_MIN_H, (maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER)),
+    x, y,
+    width:  Math.max(GROUP_MIN_W, Math.round(maxX + GROUP_PAD) - x),
+    height: Math.max(GROUP_MIN_H, Math.round(maxY + GROUP_PAD) - y),
   };
   if (group.lockedPosition) {
     // [[D63]] lockedGroupIsObstacle: the lock holds the corner, so the members come to it.

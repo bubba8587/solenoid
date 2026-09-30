@@ -44,7 +44,7 @@ interface FakeView {
 
 function makeFakeView() {
   const nodeViews = new Map<string, FakeView>();
-  const pane = { reads: 0, socketsDrawn: false };
+  const pane = { reads: 0, screenReads: 0, socketsDrawn: false };
   // rootClass models the card root's CSS class: "solenoid-node" for standard
   // NodeCard roots, "solenoid-note" etc. for React-sized roots the pin-drop
   // loop must leave alone.
@@ -62,7 +62,12 @@ function makeFakeView() {
         querySelector(sel: string) {
           // The socket lookups the FC-footprint path makes have no DOM here.
           if (sel.startsWith("[data-socket")) {
-            return pane.socketsDrawn ? { getBoundingClientRect: () => ({ left: 500, top: 300, width: 10, height: 10 }) } : null;
+            // A drawn socket sits 300 down its card; the screen is never asked, so a zoom cannot enter.
+            return pane.socketsDrawn ? {
+              offsetLeft: 0, offsetTop: 300, offsetWidth: 10, offsetHeight: 10,
+              get offsetParent() { return view.element; },
+              getBoundingClientRect: () => { pane.screenReads++; return { left: 500, top: 300, width: 10, height: 10 }; },
+            } : null;
           }
           // The pin-drop loop selects the card and clears the inline dims.
           return {
@@ -197,15 +202,16 @@ describe("Tidy with a docked FC does not widen the host on repeat", () => {
     expect(fv.stampedW).toBe(260);
   });
 
-  // A drill-in's arrange is built before its surface mounts, so the pane must come from the view at Tidy time.
-  it("measures a docked FC's host socket against the view's own pane", async () => {
+  // A screen rect divided by the zoom is quantized by the zoom, and that fraction of a pixel changed the layout from run to run.
+  it("measures a docked FC's host socket from the card's layout, never the screen", async () => {
     const { view, arrangeFn } = await buildScene();
     view.pane.socketsDrawn = true;
 
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
 
-    expect(view.pane.reads).toBeGreaterThan(0);
+    expect(view.pane.screenReads).toBe(0);
+    expect(view.pane.reads).toBe(0);
   });
 
   // Regression: "Tidy makes Notes very very wide (sockets misaligned), fixed by
