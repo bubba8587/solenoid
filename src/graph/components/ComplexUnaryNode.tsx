@@ -1,23 +1,4 @@
-import type { ComplexUnaryNode as ComplexUnaryNodeType, ComplexUnaryOp } from "../rete-nodes";
-import { COMPLEX_UNARY_OP_META } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { COMPLEX_UNARY_OP_META, type ComplexUnaryOp, type ComplexUnaryNode as ComplexUnaryNodeType } from "../rete-nodes";
+import { makeOpNodeComponent } from "./standardNode";
 
-const OPS = (Object.keys(COMPLEX_UNARY_OP_META) as ComplexUnaryOp[]).map((op) => ({
-  value: op,
-  label: COMPLEX_UNARY_OP_META[op].label,
-}));
-
-export function ComplexUnaryComponent({ data, emit }: NodeProps<ComplexUnaryNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  return (
-    <NodeShell node={data} emit={emit}>
-      <OpSelect value={op} onChange={setOp} options={OPS} />
-      <InlineInputs node={data} emit={emit} />
-      <ValueDisplay
-        value={data.cachedResult}
-        empty="—"
-      />
-    </NodeShell>
-  );
-}
+export const ComplexUnaryComponent = makeOpNodeComponent<ComplexUnaryOp, ComplexUnaryNodeType>(COMPLEX_UNARY_OP_META, (n) => n.cachedResult);

@@ -488,6 +488,8 @@ export function paintGridToText(grid: ReadonlyArray<ReadonlyArray<number | null>
   return grid.map((row) => row.map((c) => (c == null ? "" : trimNum(c))).join(",")).join("\n");
 }
 
+export const gridPainterDim = (v: number): number => clamp(Math.round(v), 1, 64);
+
 export class GridPainterNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "Unpainted cells read as null, not zero.",
@@ -509,8 +511,8 @@ export class GridPainterNode extends ClassicPreset.Node {
   }
 
   data(): { result: (number | null)[][] } {
-    const rows = clamp(Math.round(this.literals.rows ?? 6), 1, 64);
-    const cols = clamp(Math.round(this.literals.cols ?? 8), 1, 64);
+    const rows = gridPainterDim(this.literals.rows ?? 6);
+    const cols = gridPainterDim(this.literals.cols ?? 8);
     this.literals.rows = rows;
     this.literals.cols = cols;
     return { result: parsePaintGrid(this.tableText, rows, cols) };

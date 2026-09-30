@@ -1,6 +1,6 @@
 // [[D46]] freezeVolatilePerCalc
 // The graph-aware half of the Tornado node, so node classes stay decoupled from the live editor.
-import { getEditor, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
+import { getEditor, graphSettled, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
 import { NumberInputNode, SliderInputNode } from "./nodes/input";
@@ -50,7 +50,7 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
   beginGraphRebuild();
   calcModeStore.beginForceExact();
   try {
-    await processGraph(tornado.id);
+    await processGraph(tornado.id); await graphSettled();
     const base = typeof tornado.cachedResult === "number" ? tornado.cachedResult : NaN;
     if (!Number.isFinite(base)) return results;
 
@@ -62,8 +62,8 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
       const basis: "slider" | "number" = node instanceof SliderInputNode ? "slider" : "number";
       if (node instanceof SliderInputNode) {
         // effectiveMin/Max resolve wired bounds too (data() ran in the base pass).
-        lo = node.effectiveMin ?? node.literals.min ?? original;
-        hi = node.effectiveMax ?? node.literals.max ?? original;
+        lo = node.effectiveMin;
+        hi = node.effectiveMax;
       } else {
         const delta = original !== 0 ? Math.abs(original) * 0.1 : 1;
         lo = original - delta;
@@ -73,11 +73,11 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
 
       try {
         node.value = hi;
-        await processGraph(node.id);
+        await processGraph(node.id); await graphSettled();
         const highResult = typeof tornado.cachedResult === "number" ? tornado.cachedResult : NaN;
 
         node.value = lo;
-        await processGraph(node.id);
+        await processGraph(node.id); await graphSettled();
         const lowResult = typeof tornado.cachedResult === "number" ? tornado.cachedResult : NaN;
 
         // Keep a leaf even when an extreme diverged, and mark it.
@@ -89,7 +89,7 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
         });
       } finally {
         node.value = original;
-        await processGraph(node.id);
+        await processGraph(node.id); await graphSettled();
       }
     }
   } finally {

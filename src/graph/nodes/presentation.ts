@@ -39,6 +39,7 @@ export class PresentationNode extends ClassicPreset.Node {
   removeStep(index: number): void {
     if (index < 0 || index >= this.steps.length) return;
     this.steps.splice(index, 1);
+    if (index < this.activeIndex) this.activeIndex--;
     if (this.activeIndex >= this.steps.length) {
       this.activeIndex = Math.max(0, this.steps.length - 1);
     }

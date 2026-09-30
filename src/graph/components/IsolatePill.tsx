@@ -7,7 +7,7 @@ export function IsolatePill() {
   useSyncExternalStore(isolateStore.subscribe, isolateStore.version);
   if (!isolateStore.isActive()) return null;
   const count = isolateStore.get()?.size ?? 0;
-  // The dim visual is shared, so the pill is what tells the gestures apart.
+  // The dim visual is shared, so the pill is what tells the gestures apart; a gesture labels itself.
   const mode = isolateStore.mode();
   return (
     <button
@@ -17,7 +17,7 @@ export function IsolatePill() {
       onClick={() => isolateStore.exit()}
     >
       <span className="solenoid-isolate-pill__dot" />
-      <span>{mode ? `${mode} · ${count} downstream` : `Isolated · ${count} node${count === 1 ? "" : "s"}`}</span>
+      <span>{mode ?? `Isolated · ${count} node${count === 1 ? "" : "s"}`}</span>
       <span className="solenoid-isolate-pill__exit">Esc to exit</span>
     </button>
   );

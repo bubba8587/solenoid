@@ -56,7 +56,4 @@ export const apiKeyStore = {
     persist();
     notify();
   },
-  providers(): string[] {
-    return Object.keys(keys);
-  },
 };

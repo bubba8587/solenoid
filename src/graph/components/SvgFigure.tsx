@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef } from "react";
 import type { SvgValue } from "../svgValue";
 import { elementName } from "../svgLayer";
 
-// Read-only: the pick happens only on the source node, and the markup was sanitized at intake by the SVG Picker.
+// Read-only: the pick happens only on the source node, whose class scrubs the markup before it leaves on a cable.
 
 export function SvgFigure({ value, height, className }: { value: SvgValue; height?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);

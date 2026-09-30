@@ -29,6 +29,7 @@ export const nodeSizeStore = {
     if (_sizes.delete(id)) notify();
   },
   clear(): void {
+    _mins.clear();
     if (_sizes.size === 0) return;
     _sizes.clear();
     notify();

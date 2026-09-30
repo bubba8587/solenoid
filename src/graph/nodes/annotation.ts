@@ -1,6 +1,7 @@
 // [[C68]]
 import { ClassicPreset } from "rete";
 import { sourceHasLayer } from "../svgLayer";
+import { sanitizeSvg } from "../svgSanitize";
 import {
   numberSocket, stringSocket, logicalSocket, dateSocket,
   listSocket, strListSocket, logicalListSocket, dateListSocket, frameSocket,
@@ -361,7 +362,17 @@ export class SvgPickerNode extends ClassicPreset.Node {
     this.addOutput("layer", strOut("Layer"));
   }
 
-  get source(): string { return this.stringLiterals.source ?? ""; }
+  private cleanSource = "";
+
+  /** Every path in (typed, fetched, loaded, pasted) is scrubbed here, before the markup leaves on a cable ([[C103]] untrustedContentSeams). */
+  get source(): string {
+    const raw = this.stringLiterals.source ?? "";
+    if (raw !== this.cleanSource) {
+      this.cleanSource = sanitizeSvg(raw);
+      this.stringLiterals.source = this.cleanSource;
+    }
+    return this.cleanSource;
+  }
 
   data(): { chart: SvgValue | null; layer: string | null } {
     const source = this.source;

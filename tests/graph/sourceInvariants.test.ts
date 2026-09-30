@@ -775,7 +775,6 @@ describe("[[B10]] reactFlowView — every node-keyed store registers with nodeSt
     "pivotEditorStore.ts": "ONE transient open-editor id, not a per-node map",
     "elementPickerStore.ts": "ONE transient open-picker id, not a per-node map",
     "compositeEditorStore.ts": "ONE transient open-drill-in id, not a per-node map",
-    "reportStore.ts": "ONE transient open-overlay id (+ dock flag), not a per-node map",
   };
 
   it("every *Store*.ts references registerNodeForget (or is sanctioned, with a reason)", () => {

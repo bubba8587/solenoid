@@ -15,7 +15,6 @@ function persist() {
 
 export const cableFlowStore = {
   get: (): boolean => _on,
-  set: (v: boolean) => { if (_on === v) return; _on = v; persist(); notify(); },
   toggle: () => { _on = !_on; persist(); notify(); },
   subscribe,
 };

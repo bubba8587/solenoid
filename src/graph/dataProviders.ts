@@ -1,4 +1,4 @@
-// [[C23]] calcModes
+// [[C103]] untrustedContentSeams
 // Pure and side-effect free, so the presets unit-test without the network.
 import { frameFromColumnar, type FrameValue } from "./frame";
 import { csvToFrame } from "./nodes/connection";
@@ -20,19 +20,6 @@ export interface ProviderPreset {
   quickPicks?: ReadonlyArray<{ id: string; label: string }>;
   buildUrl(input: string, key: string, opts?: DataFeedOpts): string;
   parse(text: string): FrameValue;
-}
-
-export function parseFredObservations(text: string): FrameValue {
-  const data = JSON.parse(text) as { observations?: Array<{ date?: string; value?: string }> };
-  const obs = data.observations ?? [];
-  const date = obs.map((o) => o.date ?? "");
-  const value = obs.map((o) => {
-    const v = o.value ?? "";
-    if (v === "." || v === "") return null;
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  });
-  return frameFromColumnar({ date, value });
 }
 
 /** Parsed here, not through csvToFrame, which would turn the whole column to text at the first `.` gap. */

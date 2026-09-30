@@ -1,6 +1,6 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit)
 import { createNotifier } from "./storeKit";
-
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 let _openNodeId: string | null = null;
 let _docked = false;
@@ -14,7 +14,6 @@ function syncDockClass(): void {
 export const reportStore = {
   version,
   subscribe,
-  isOpen: (): boolean => _openNodeId !== null,
   openNodeId: (): string | null => _openNodeId,
   isDocked: (): boolean => _docked && _openNodeId !== null,
   open(nodeId: string) {
@@ -40,3 +39,6 @@ export const reportStore = {
     this.setDocked(!_docked);
   },
 };
+
+registerNodeForget((id) => { if (id === _openNodeId) reportStore.close(); });
+registerNodeForgetAll(() => reportStore.close());

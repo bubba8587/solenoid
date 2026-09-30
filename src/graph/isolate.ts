@@ -63,7 +63,7 @@ export function isolateWhereUsed(nodeId: string): boolean {
   const editor = getActiveEditor();
   if (!editor) return false;
   const downstream = downstreamClosure(editor, nodeId);
-  enter(editor, expandEntities(editor, downstream), "Where used");
+  enter(editor, expandEntities(editor, downstream), `Where used · ${downstream.size - 1} downstream`);
   return true;
 }
 

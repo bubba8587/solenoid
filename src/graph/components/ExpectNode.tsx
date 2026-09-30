@@ -2,13 +2,14 @@
 import { useEffect, useState } from "react";
 import type { ExpectNode as ExpectNodeType } from "../rete-nodes";
 import { EXPECT_CHECK_LABEL } from "../nodes/quality";
-import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
+import { NodeShell, type NodeProps } from "./nodeKit";
+import { ResultDisplay } from "./ResultDisplay";
+import { nodeDisplayName } from "../catalogUtils";
 import { InlineInputs, InlineCsvField, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
 import { solError } from "../errorValue";
 import { ErrorChip } from "./ErrorChip";
-import type { DisplayValue } from "./valueDisplayFormat";
 import { stopDragStart } from "../coarse";
 
 type CheckKey = "checkNotNull" | "checkUnique" | "checkRange" | "checkRegex" | "checkAllowed";
@@ -90,7 +91,7 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
           )}
         </MeasuredSocketRow>
       )}
-      <ValueDisplay value={data.cachedValue as DisplayValue} />
+      <ResultDisplay value={data.cachedValue} label={nodeDisplayName(data)} />
       {data.violations.length > 0 && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2 }}>
           <ErrorChip
