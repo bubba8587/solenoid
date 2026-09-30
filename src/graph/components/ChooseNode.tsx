@@ -1,8 +1,8 @@
 import type { ChooseNode } from "../rete-nodes";
-import type { NodeProps } from "./nodeKit";
-import { NodeShell, ValueDisplay } from "./nodeKit";
+import { NodeShell, type NodeProps } from "./nodeKit";
 import { ExtensibleInputs } from "./ExtensibleInputs";
-import type { DisplayValue } from "./valueDisplayFormat";
+import { ResultDisplay } from "./ResultDisplay";
+import { nodeDisplayName } from "../catalogUtils";
 
 export function ChooseComponent({ data, emit }: NodeProps<ChooseNode>) {
   return (
@@ -13,7 +13,7 @@ export function ChooseComponent({ data, emit }: NodeProps<ChooseNode>) {
         leadingKeys={["index"]}
         valueKeys={data.valueInputKeys()}
       />
-      <ValueDisplay value={data.cachedResult as DisplayValue} />
+      <ResultDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

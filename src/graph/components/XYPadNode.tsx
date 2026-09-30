@@ -54,11 +54,11 @@ export function XYPadComponent({ data, emit }: NodeProps<XYPadNodeType>) {
           track(e.clientX, e.clientY);
         }}
         onPointerMove={(e) => {
-          if (e.buttons === 0) return;
+          if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
           track(e.clientX, e.clientY);
         }}
-        onPointerUp={commit}
-        onPointerCancel={commit}
+        onPointerUp={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) commit(); }}
+        onPointerCancel={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) commit(); }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div

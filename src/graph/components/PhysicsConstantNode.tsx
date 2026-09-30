@@ -23,9 +23,9 @@ export function PhysicsConstantComponent({ data, emit }: NodeProps<PhysicsConsta
     <NodeShell node={data} emit={emit}>
       <OpSelect value={op} onChange={setOp} options={OPS} />
       <div className="solenoid-node__display-value">
-        <span style={{ marginRight: 6, color: "#9aa0a6" }}>{meta.symbol}</span>
+        <span style={{ marginRight: 6, color: "var(--text-dim)" }}>{meta.symbol}</span>
         {formatConst(meta.value)}
-        <span style={{ marginLeft: 6, color: "#9aa0a6", fontSize: "0.85em" }}>{meta.unit}</span>
+        <span style={{ marginLeft: 6, color: "var(--text-dim)", fontSize: "0.85em" }}>{meta.unit}</span>
       </div>
     </NodeShell>
   );

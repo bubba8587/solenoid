@@ -26,7 +26,7 @@ export function RegexComponent({ data: node, emit }: NodeProps<RegexNodeType>) {
         keys={op === "replace" ? ["text", "pattern", "replacement"] : ["text", "pattern"]}
       />
       <div className="solenoid-node__io-row" style={{ paddingLeft: 8 }}>
-        <span className="solenoid-node__io-label" style={{ color: "#7a8088", fontSize: 10 }}>flags</span>
+        <span className="solenoid-node__io-label" style={{ color: "var(--text-muted)", fontSize: 10 }}>flags</span>
         <input
           type="text"
           className="solenoid-node__inline-input"

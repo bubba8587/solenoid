@@ -59,7 +59,7 @@ const classByTemplate = {
   }
 
   data(inputs: { x?: (number | number[])[] }) {
-    const x = inputs.x?.[0] ?? this.literals.x ?? 0;
+    const x = readInput(inputs.x, this.literals.x ?? 0);
     const result = broadcast((v) => v /* TODO: op */, x);
     this.cachedResult = result;
     return { result };

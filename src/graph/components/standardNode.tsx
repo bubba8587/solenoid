@@ -1,6 +1,6 @@
 // [[C19]] namingModel, [[C26]] opArgDistinct, [[C24]] arraySemantics
 import { useEffect, useState, type ReactNode } from "react";
-import { NodeShell, type NodeProps, type ShellNode } from "./nodeKit";
+import { NodeShell, OpSelect, useNodeField, type NodeProps, type ShellNode } from "./nodeKit";
 import { InlineInputs, type InlineNode } from "./inlineInput";
 import { ExtensibleInputs, type ExtensibleNode } from "./ExtensibleInputs";
 import { ResultDisplay } from "./ResultDisplay";
@@ -27,6 +27,23 @@ export function makeNodeComponent<N extends ShellNode & InlineNode>(
         <InlineInputs node={data} emit={emit} />
         <ResultDisplay value={value(data)} label={nodeDisplayName(data)} />
         {opts.recalc != null && <RecalcButton title={opts.recalc} />}
+      </NodeShell>
+    );
+  };
+}
+
+export function makeOpNodeComponent<Op extends string, N extends ShellNode & InlineNode & { op: Op }>(
+  meta: Record<Op, { label: string }>,
+  value: (node: N) => Displayable,
+): (props: NodeProps<N>) => ReactNode {
+  const options = (Object.keys(meta) as Op[]).map((op) => ({ value: op, label: meta[op].label }));
+  return function StandardOpNode({ data, emit }: NodeProps<N>) {
+    const [op, setOp] = useNodeField(data, "op");
+    return (
+      <NodeShell node={data} emit={emit}>
+        <InlineInputs node={data} emit={emit} />
+        <OpSelect value={op} onChange={setOp} options={options} />
+        <ResultDisplay value={value(data)} label={nodeDisplayName(data)} />
       </NodeShell>
     );
   };

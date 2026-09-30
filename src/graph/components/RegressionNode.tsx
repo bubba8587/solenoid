@@ -1,20 +1,4 @@
-import { REGRESSION_OP_META } from "../rete-nodes";
-import type { RegressionNode as RegressionNodeType, RegressionOp } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { REGRESSION_OP_META, type RegressionOp, type RegressionNode as RegressionNodeType } from "../rete-nodes";
+import { makeOpNodeComponent } from "./standardNode";
 
-const OPS = (Object.keys(REGRESSION_OP_META) as RegressionOp[]).map((op) => ({
-  value: op,
-  label: REGRESSION_OP_META[op].label,
-}));
-
-export function RegressionComponent({ data, emit }: NodeProps<RegressionNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={OPS} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
+export const RegressionComponent = makeOpNodeComponent<RegressionOp, RegressionNodeType>(REGRESSION_OP_META, (n) => n.cachedResult);
