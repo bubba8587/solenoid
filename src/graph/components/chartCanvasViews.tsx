@@ -9,7 +9,7 @@ import { heatmapLayout, heatCellAt, heatRowY, type HeatLayout } from "./heatmapL
 import type { ChartOptions } from "../nodes/chartOptions";
 import { serialToJsDate } from "../nodes/date";
 import { heightColor } from "./SurfaceView";
-import { compactTick } from "./chartCore";
+import { compactTick, canvasFont, useFontsVersion } from "./chartCore";
 import type {
   WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload,
   ProportionPayload, QuiverPayload, ContourPayload,
@@ -46,7 +46,7 @@ function themeInk(canvas: HTMLCanvasElement) {
   };
 }
 
-const tickFont = (fs: number) => `500 ${8.5 * fs}px system-ui, sans-serif`;
+const tickFont = (fs: number) => canvasFont(500, 8.5 * fs);
 
 function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: number, sy: (v: number) => number, x0: number, x1: number, fs: number) {
   ctx.font = tickFont(fs);
@@ -377,7 +377,7 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
 
   if (o.annot !== false) {
     const size = Math.min(12 * fs, Math.max(8.5 * fs, Math.min(cw, ch) * 0.3));
-    ctx.font = `500 ${size}px system-ui, sans-serif`;
+    ctx.font = canvasFont(500, size, "mono");
     let fits = ch >= size + 3;
     if (fits && o.annot === undefined) {
       for (const row of p.z) { for (const v of row) if (v != null && ctx.measureText(annotText(v, o.fmt)).width > cw - 4) { fits = false; break; } if (!fits) break; }
@@ -395,10 +395,10 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
           const w = ctx.measureText(text).width;
           if (w > cw - 3) f = size * (cw - 3) / w;
           if (f < 6 || ch < f + 2) continue;
-          ctx.font = `500 ${f}px system-ui, sans-serif`;
+          ctx.font = canvasFont(500, f, "mono");
           ctx.fillStyle = inkOn(color(scale.t(v)));
           ctx.fillText(text, gx + c * cw + cw / 2, cy);
-          if (f !== size) ctx.font = `500 ${size}px system-ui, sans-serif`;
+          if (f !== size) ctx.font = canvasFont(500, size, "mono");
         }
       }
     }
@@ -457,7 +457,7 @@ function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptio
   }
 
   ctx.fillStyle = ink.dim;
-  ctx.font = `600 ${9 * fs}px system-ui, sans-serif`;
+  ctx.font = canvasFont(600, 9 * fs);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   if (L.xlabel && o.xlabel) ctx.fillText(fitLabel(ctx, o.xlabel, cw * nC), L.xlabel.x, L.xlabel.y);
@@ -690,6 +690,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
 
 function useThemedCanvas(draw: (canvas: HTMLCanvasElement) => void) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  useFontsVersion();
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => { if (ref.current) draw(ref.current); });
   return ref;
@@ -723,6 +724,7 @@ export function CalHeatView({ payload, width, height, fscale = 1 }: { payload: C
 
 export function HeatmapView({ payload, options, width, height, fscale = 1 }: { payload: HeatmapPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
   const theme = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const fonts = useFontsVersion();
   const ref = useRef<HTMLCanvasElement>(null);
   const layout = useRef<HeatLayout | null>(null);
   const [hover, setHover] = useState<{ r: number; c: number; x: number; y: number } | null>(null);
@@ -732,7 +734,7 @@ export function HeatmapView({ payload, options, width, height, fscale = 1 }: { p
   useLayoutEffect(() => {
     if (ref.current) layout.current = drawHeatmap(ref.current, payload, options, width, height, fscale);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, optionsKey, width, height, fscale, theme]);
+  }, [payload, optionsKey, width, height, fscale, theme, fonts]);
   const empty = payload.z.length === 0 || payload.cols.length === 0 || !payload.z.some((r) => r.some((v) => v != null));
   if (empty) return <Empty />;
   const move = (e: ReactPointerEvent<HTMLCanvasElement>) => {
