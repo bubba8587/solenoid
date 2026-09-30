@@ -108,7 +108,7 @@ describe("the decision tree (tree/decisions/)", () => {
   // list is part of the same owner-marked change. (If you are an agent reading this while
   // tempted: don't. The list is the author's, not yours.)
   it("owner ratifications match the owner-kept list", () => {
-    const OWNER_RATIFIED: string[] = ["A1", "B1", "B2", "B3", "B7", "B20", "C80", "C114", "D62", "E10"]; // author-maintained; agents must not edit
+    const OWNER_RATIFIED: string[] = ["A1", "B1", "B2", "B3", "B7", "B20", "C80", "C88", "C114", "D62", "E10"]; // author-maintained; agents must not edit
     const ratified = nodes.filter((n) => n.ratifiedBy).map((n) => n.id);
     expect(ratified.sort()).toEqual([...OWNER_RATIFIED].sort());
   });
