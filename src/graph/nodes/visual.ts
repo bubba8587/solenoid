@@ -1,6 +1,6 @@
 // [[B11]], [[C116]] xyChartFamily
 import { ClassicPreset } from "rete";
-import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
+import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";
 import { parseChartOptions, serializeChartOptions, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
@@ -10,7 +10,7 @@ import { isChartValue, recordNumberText } from "../chartValue";
 import { buildXY, sourceAsXY, XY_CHART_OPS, type XYOp } from "./xyPlot";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
-  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, QuiverPayload,
+  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload, QuiverPayload,
   RecordPayload, RecordField, RecordSize, RecordDeck, OverlaySeries, OverlayPayload, XYPayload, XYSeries,
 } from "../chartValue";
 import { solError, type SolError } from "../errorValue";
@@ -767,23 +767,88 @@ export class SankeyNode extends ClassicPreset.Node {
 
 // ─── Heatmap ──────────────────────────────────────────────────────────────────
 
-export class HeatmapCellNode extends ClassicPreset.Node {
+/** The most rows, and the most columns, a Heatmap draws; the rest are cut and the payload says how many there were. */
+export const HEATMAP_MAX = 400;
+
+const indexNames = (n: number) => Array.from({ length: n }, (_, i) => String(i + 1));
+
+/** A frame's number columns become the heat columns; a first column that is not numbers names the rows. */
+export function heatmapFromColumns(cols: FrameColumn[]): Omit<HeatmapPayload, "kind"> {
+  const named = cols.length >= 2 && cols[0].type !== "number";
+  const data = (named ? cols.slice(1) : cols).filter((c) => c.type === "number");
+  const nRows = data.reduce((m, c) => Math.max(m, c.values.length), 0);
+  const cells = data.map(colAsRawNumbers);
+  const z = Array.from({ length: nRows }, (_, r) => cells.map((col) => col[r] ?? null));
+  const rows = named ? colAsStrings(cols[0]).slice(0, nRows) : indexNames(nRows);
+  while (rows.length < nRows) rows.push("");
+  return { z, rows, cols: data.map((c) => c.name) };
+}
+
+/** A plain table plots as it stands, rows and columns numbered; a list is one row. */
+export function heatmapFromTable(t: unknown[]): Omit<HeatmapPayload, "kind"> {
+  const grid = t.length > 0 && t.every(Array.isArray) ? (t as unknown[][]) : [t];
+  const nCols = grid.reduce((m, r) => Math.max(m, r.length), 0);
+  const z = grid.map((r) => Array.from({ length: nCols }, (_, c) => { const v = r[c]; return typeof v === "number" && Number.isFinite(v) ? v : null; }));
+  return { z, rows: indexNames(grid.length), cols: indexNames(nCols) };
+}
+
+export function clipHeatmap(h: Omit<HeatmapPayload, "kind">): HeatmapPayload {
+  const nR = h.z.length, nC = h.cols.length;
+  const payload: HeatmapPayload = {
+    kind: "heatmap",
+    z: nR > HEATMAP_MAX || nC > HEATMAP_MAX ? h.z.slice(0, HEATMAP_MAX).map((r) => r.slice(0, HEATMAP_MAX)) : h.z,
+    rows: h.rows.slice(0, HEATMAP_MAX),
+    cols: h.cols.slice(0, HEATMAP_MAX),
+  };
+  if (nR > HEATMAP_MAX) payload.totalRows = nR;
+  if (nC > HEATMAP_MAX) payload.totalCols = nC;
+  return payload;
+}
+
+export class HeatmapNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "A frame's number columns are the heatmap's columns, and a first column of text or dates names the rows. A plain table plots as it stands.",
+    options: "key=value pairs separated by semicolons, or a Chart Builder. Reads seaborn's heatmap names: cmap, center, vmin, vmax, annot, fmt, cbar, plus aspect and origin.",
+  };
+
   label: string;
-  cachedResult: number[][] | null = null;
-  width = 240;
-  height = 200;
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | null = null;
+  rawInputs: ReadonlySet<string> = new Set(["values"]);
+  width = 280;
+  height = 260;
+
+  static frameHints: Record<string, FrameHint> = {
+    values: { columns: [
+      { name: "Region", type: "string", cells: ["North", "South", "West"] },
+      { name: "Q1", type: "number", cells: [12, 18, 9] },
+      { name: "Q2", type: "number", cells: [15, 13, 11] },
+      { name: "Q3", type: "number", cells: [11, 16, 14] },
+    ] },
+  };
 
   constructor(init?: { label?: string }) {
-    super("HeatmapCell");
+    super("Heatmap");
     this.label = init?.label ?? "Heatmap";
-    this.addInput("table", tableIn("Table"));
-    this.addOutput("result", tableOut("Pass-through"));
+    this.addInput("values", frameIn("Data"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { table?: number[][][] }) {
-    const t = inputs.table?.[0] ?? null;
-    this.cachedResult = t;
-    return { result: t };
+  async data(inputs: { values?: unknown[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+    const raw = inputs.values?.[0] ?? null;
+    let grid: Omit<HeatmapPayload, "kind"> = { z: [], rows: [], cols: [] };
+    if (Array.isArray(raw)) grid = heatmapFromTable(raw);
+    else if (isCubeValue(raw)) { const f = flatCubeToFrame(raw, "scalar"); if (isFrameValue(f)) grid = heatmapFromColumns(f.columns); }
+    else if (raw != null) grid = heatmapFromColumns(await readFrameColumns(raw as FrameInput));
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
+    const chart: ChartValue = {
+      __chart: true, op: "heatmap", values: null, payload: clipHeatmap(grid),
+      options: this.chartOptions, title: this.chartOptions.title || this.label || "Heatmap",
+    };
+    this.cachedChart = chart;
+    return { chart };
   }
 }
 
@@ -1346,8 +1411,8 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect"] as const;
-const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin"] as const;
+const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -1403,6 +1468,11 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("by",        strIn("Split by"));
     this.addInput("linestyle", strIn("Line style"));
     this.addInput("aspect",    strIn("Aspect"));
+    this.addInput("cmap",      strIn("Colormap"));
+    this.addInput("annot",     strIn("Cell values"));
+    this.addInput("fmt",       strIn("Value format"));
+    this.addInput("cbar",      strIn("Colorbar"));
+    this.addInput("origin",    strIn("First row"));
     this.addInput("xmin",      numIn("X min"));
     this.addInput("xmax",      numIn("X max"));
     this.addInput("ymin",      numIn("Y min"));
@@ -1411,6 +1481,9 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("markersize", numIn("Marker size (px)"));
     this.addInput("alpha",     numIn("Fill alpha"));
     this.addInput("fontsize",  numIn("Font size (pt)"));
+    this.addInput("vmin",      numIn("Color min"));
+    this.addInput("vmax",      numIn("Color max"));
+    this.addInput("center",    numIn("Color center"));
     this.addOutput("result", strOut("Options"));
   }
 
@@ -1455,6 +1528,11 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       by: str("by"),
       linestyle: str("linestyle"),
       aspect: str("aspect"),
+      cmap: str("cmap"),
+      annot: str("annot"),
+      fmt: str("fmt"),
+      cbar: str("cbar"),
+      origin: str("origin"),
       xmin:      num("xmin"),
       xmax:      num("xmax"),
       ymin:      num("ymin"),
@@ -1463,6 +1541,9 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       markersize: num("markersize"),
       alpha:     num("alpha"),
       fontsize:  num("fontsize"),
+      vmin:      num("vmin"),
+      vmax:      num("vmax"),
+      center:    num("center"),
     });
     this.cachedString = out;
     return { result: out };

@@ -1,5 +1,7 @@
 // [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[D91]] xyColumnMapping
 import type { ChartValueOp } from "../chartValue";
+import { normalizeCmap } from "../colormaps";
+import { isNumberSpec } from "../numberSpec";
 
 export interface ChartOptions {
   title?: string;
@@ -26,8 +28,17 @@ export interface ChartOptions {
   c?: string;
   annotate?: string;
   by?: string;
+  cmap?: string;
+  vmin?: number;
+  vmax?: number;
+  center?: number;
+  annot?: boolean;
+  fmt?: string;
+  cbar?: boolean;
+  origin?: HeatOrigin;
 }
 
+export type HeatOrigin = "upper" | "lower";
 export type LineStyle = "solid" | "dashed" | "dotted" | "dashdot" | "none";
 export type AspectMode = "auto" | "equal";
 export type PieLabelMode = "off" | "outside" | "inside";
@@ -132,6 +143,14 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "c":      if (val) opts.c = val; break;
       case "annotate": if (val) opts.annotate = val; break;
       case "by":     if (val) opts.by = val; break;
+      case "cmap":   { const m = normalizeCmap(val); if (m !== undefined) opts.cmap = m; break; }
+      case "vmin":   { const n = toNum(val); if (n !== undefined) opts.vmin = n; break; }
+      case "vmax":   { const n = toNum(val); if (n !== undefined) opts.vmax = n; break; }
+      case "center": { const n = toNum(val); if (n !== undefined) opts.center = n; break; }
+      case "annot":  { const b = toBool(val); if (b !== undefined) opts.annot = b; break; }
+      case "fmt":    if (isNumberSpec(val)) opts.fmt = val; break;
+      case "cbar":   { const b = toBool(val); if (b !== undefined) opts.cbar = b; break; }
+      case "origin": { const s = val.toLowerCase(); if (s === "upper" || s === "lower") opts.origin = s; break; }
       default: break;
     }
   }
@@ -176,6 +195,11 @@ export interface ChartBuilderFields {
   by?: string;
   linestyle?: string;
   aspect?: string;
+  cmap?: string;
+  annot?: string;
+  fmt?: string;
+  cbar?: string;
+  origin?: string;
   xmin?: number | null;
   xmax?: number | null;
   ymin?: number | null;
@@ -184,6 +208,9 @@ export interface ChartBuilderFields {
   markersize?: number | null;
   alpha?: number | null;
   fontsize?: number | null;
+  vmin?: number | null;
+  vmax?: number | null;
+  center?: number | null;
 }
 
 export function serializeChartOptions(f: ChartBuilderFields): string {
@@ -231,6 +258,11 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("by", f.by);
   str("linestyle", f.linestyle);
   str("aspect", f.aspect);
+  str("cmap", f.cmap);
+  str("annot", f.annot);
+  str("fmt", f.fmt);
+  str("cbar", f.cbar);
+  str("origin", f.origin);
   if ((f.xmin != null && Number.isFinite(f.xmin)) || (f.xmax != null && Number.isFinite(f.xmax))) {
     const lo = f.xmin != null && Number.isFinite(f.xmin) ? f.xmin : "";
     const hi = f.xmax != null && Number.isFinite(f.xmax) ? f.xmax : "";
@@ -245,6 +277,9 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   num("markersize", f.markersize);
   num("alpha", f.alpha);
   num("fontsize", f.fontsize);
+  num("vmin", f.vmin);
+  num("vmax", f.vmax);
+  num("center", f.center);
   return parts.join(";");
 }
 
@@ -256,14 +291,15 @@ export type ChartBuilderKey =
   | "collapse" | "week" | "fiscal_start" | "status" | "group_by"
   | "cardsize" | "clamp"
   | "x" | "y" | "s" | "c" | "annotate" | "by" | "linestyle" | "aspect" | "xmin" | "xmax"
-  | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
+  | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize"
+  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin";
 
 export type ChartTargetId =
   | "column" | "bar" | "line" | "area" | "scatter" | "xyline"
   | "pie" | "radar" | "radialbar" | "funnel"
   | "bubble" | "overlay"
   | "histogram" | "histogram2d" | "kpi" | "scale" | "proportion" | "sankey"
-  | "waterfall" | "candle" | "boxplot" | "calheat" | "gantt" | "record";
+  | "waterfall" | "candle" | "boxplot" | "calheat" | "heatmap" | "gantt" | "record";
 
 const XY_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
@@ -286,6 +322,8 @@ const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "layout", "critical", "minutes", "window", "week"];
 const RECORD_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "cardsize", "clamp"];
+const HEATMAP_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "annot", "fmt", "cbar", "aspect", "origin", "fontsize"];
 
 export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; op: ChartValueOp; keys: readonly ChartBuilderKey[] }> = {
   column:    { label: "Column",           group: "Cartesian",    op: "column", keys: XY_KEYS },
@@ -310,6 +348,7 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   candle:    { label: "Candlestick",      group: "Figures",      op: "candle", keys: STAT_KEYS },
   boxplot:   { label: "Boxplot",          group: "Figures",      op: "boxplot", keys: STAT_KEYS },
   calheat:   { label: "Calendar Heatmap", group: "Figures",      op: "calheat", keys: STAT_KEYS },
+  heatmap:   { label: "Heatmap",          group: "Figures",      op: "heatmap", keys: HEATMAP_KEYS },
   gantt:     { label: "Gantt",            group: "Figures",      op: "gantt", keys: GANTT_TIMELINE_KEYS },
   record:    { label: "Record",           group: "Figures",      op: "record", keys: RECORD_KEYS },
 };

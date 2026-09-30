@@ -56,7 +56,7 @@ const POLICY: Record<string, Policy> = {
   ChartNode: "na",                // visuals: a chart value out, no dimensioned matrix output
   SurfaceNode: "na",
   QuiverNode: "na",
-  HeatmapCellNode: "na",
+  HeatmapNode: "na",
   TableInputNode: "author",       // a literal source that tags its own output
 };
 

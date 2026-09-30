@@ -1,12 +1,17 @@
 // [[C100]] chartIsAValue
-import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
 import { appThemeStore } from "../appTheme";
-import { resolveColor } from "../palette";
+import { resolveColor, heightRampColor, divergingRampColor } from "../palette";
+import { colormapRgb, heatScale } from "../colormaps";
+import { formatNumberSpec } from "../numberSpec";
+import { formatScalar } from "./format";
+import { heatmapLayout, heatCellAt, heatRowY, type HeatLayout } from "./heatmapLayout";
+import type { ChartOptions } from "../nodes/chartOptions";
 import { serialToJsDate } from "../nodes/date";
 import { heightColor } from "./SurfaceView";
 import { compactTick } from "./chartCore";
 import type {
-  WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload,
+  WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload,
   ProportionPayload, QuiverPayload, ContourPayload,
 } from "../chartValue";
 import { iterMin, iterMax } from "../nodes/mathUtils";
@@ -314,6 +319,166 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
   }
 }
 
+// ─── Heatmap ──────────────────────────────────────────────────────────────────
+
+type Rgb = [number, number, number];
+const rgbCss = ([r, g, b]: Rgb) => `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+const inkOn = ([r, g, b]: Rgb) => ((0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? "#1a1a1a" : "#ffffff");
+
+/** The color of `t` under the options: the named cmap, else the palette's diverging ramp with a center, else its height ramp. */
+function heatColorFn(o: ChartOptions): (t: number) => Rgb {
+  if (o.cmap) return (t) => colormapRgb(o.cmap!, t) ?? heightRampColor(t);
+  return o.center !== undefined ? divergingRampColor : heightRampColor;
+}
+
+function heatExtent(z: (number | null)[][]): [number, number] {
+  let lo = Infinity, hi = -Infinity;
+  for (const row of z) for (const v of row) if (v != null && Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  return [lo, hi];
+}
+
+const annotText = (v: number, fmt: string | undefined) => (fmt ? formatNumberSpec(v, fmt) : null) ?? compactTick(v);
+
+function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptions, W: number, H: number, fs: number): HeatLayout | null {
+  const ctx = setupCanvas(canvas, W, H);
+  if (!ctx) return null;
+  const ink = themeInk(canvas);
+  const nR = p.z.length, nC = p.cols.length;
+  const [dLo, dHi] = heatExtent(p.z);
+  if (nR === 0 || nC === 0 || !Number.isFinite(dLo)) return null;
+  const scale = heatScale(dLo, dHi, o);
+  const color = heatColorFn(o);
+  const cbarTicks = [scale.hi, ...(scale.center !== undefined && scale.center > scale.lo && scale.center < scale.hi ? [scale.center] : []), scale.lo];
+
+  ctx.font = tickFont(fs);
+  const widest = (xs: Iterable<string>) => { let m = 0; for (const x of xs) m = Math.max(m, ctx.measureText(x).width); return m; };
+  const showCbar = o.cbar !== false;
+  const note = p.totalRows !== undefined || p.totalCols !== undefined;
+  const L = heatmapLayout({
+    nR, nC, W, H, fs,
+    rowLabelW: widest(p.rows), colLabelW: widest(p.cols),
+    cbarTickW: showCbar ? widest(cbarTicks.map(compactTick)) : 0,
+    xlabel: !!o.xlabel, ylabel: !!o.ylabel, cbar: showCbar,
+    aspect: o.aspect ?? "equal", lower: o.origin === "lower", note,
+  });
+  const { gx, cw, ch } = L;
+
+  // Cells touch: each overdraws its right and bottom neighbor by half a pixel so antialiasing leaves no seam.
+  for (let r = 0; r < nR; r++) {
+    const y = heatRowY(L, r);
+    const row = p.z[r];
+    for (let c = 0; c < nC; c++) {
+      const v = row[c];
+      const x = gx + c * cw;
+      ctx.fillStyle = v == null ? ink.sunken : rgbCss(color(scale.t(v)));
+      ctx.fillRect(x, y, cw + (c < nC - 1 ? 0.5 : 0), ch + ((L.lower ? r > 0 : r < nR - 1) ? 0.5 : 0));
+    }
+  }
+
+  if (o.annot !== false) {
+    const size = Math.min(12 * fs, Math.max(8.5 * fs, Math.min(cw, ch) * 0.3));
+    ctx.font = `500 ${size}px system-ui, sans-serif`;
+    let fits = ch >= size + 3;
+    if (fits && o.annot === undefined) {
+      for (const row of p.z) { for (const v of row) if (v != null && ctx.measureText(annotText(v, o.fmt)).width > cw - 4) { fits = false; break; } if (!fits) break; }
+    }
+    if (fits || o.annot === true) {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (let r = 0; r < nR; r++) {
+        const cy = heatRowY(L, r) + ch / 2;
+        for (let c = 0; c < nC; c++) {
+          const v = p.z[r][c];
+          if (v == null) continue;
+          const text = annotText(v, o.fmt);
+          let f = size;
+          const w = ctx.measureText(text).width;
+          if (w > cw - 3) f = size * (cw - 3) / w;
+          if (f < 6 || ch < f + 2) continue;
+          ctx.font = `500 ${f}px system-ui, sans-serif`;
+          ctx.fillStyle = inkOn(color(scale.t(v)));
+          ctx.fillText(text, gx + c * cw + cw / 2, cy);
+          if (f !== size) ctx.font = `500 ${size}px system-ui, sans-serif`;
+        }
+      }
+    }
+  }
+
+  ctx.font = tickFont(fs);
+  ctx.fillStyle = ink.dim;
+  if (L.rowLabels) {
+    const { x, w, step } = L.rowLabels;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let r = 0; r < nR; r += step) ctx.fillText(fitLabel(ctx, p.rows[r] ?? "", w), x, heatRowY(L, r) + ch / 2);
+  }
+  if (L.colLabels) {
+    const { y, h, rotated, step } = L.colLabels;
+    for (let c = 0; c < nC; c += step) {
+      const cx = gx + c * cw + cw / 2;
+      if (rotated) {
+        ctx.save();
+        ctx.translate(cx, y);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText(fitLabel(ctx, p.cols[c] ?? "", h), 0, 0);
+        ctx.restore();
+      } else {
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(fitLabel(ctx, p.cols[c] ?? "", Math.max(cw - 2, 8)), cx, y);
+      }
+    }
+  }
+
+  if (L.cbar) {
+    const { x, y, w, h, textX } = L.cbar;
+    const span = scale.hi - scale.lo;
+    for (let i = 0; i < h; i++) {
+      const v = span > 0 ? scale.hi - (span * (i + 0.5)) / h : scale.lo;
+      ctx.fillStyle = rgbCss(color(scale.t(v)));
+      ctx.fillRect(x, y + i, w, Math.min(1.5, h - i));
+    }
+    ctx.strokeStyle = ink.border;
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = ink.dim;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    const sy = (v: number) => (span > 0 ? y + ((scale.hi - v) / span) * h : y + h / 2);
+    const drawn: number[] = [];
+    for (const v of cbarTicks) {
+      const ty = sy(v);
+      if (drawn.some((d) => Math.abs(d - ty) < L.lineH)) continue;
+      drawn.push(ty);
+      ctx.fillText(compactTick(v), textX, ty);
+    }
+  }
+
+  ctx.fillStyle = ink.dim;
+  ctx.font = `600 ${9 * fs}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  if (L.xlabel && o.xlabel) ctx.fillText(fitLabel(ctx, o.xlabel, cw * nC), L.xlabel.x, L.xlabel.y);
+  if (L.ylabel && o.ylabel) {
+    ctx.save();
+    ctx.translate(L.ylabel.x, L.ylabel.y);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(fitLabel(ctx, o.ylabel, ch * nR), 0, 0);
+    ctx.restore();
+  }
+  if (L.note) {
+    const parts: string[] = [];
+    if (p.totalRows !== undefined) parts.push(`${nR} of ${p.totalRows} rows`);
+    if (p.totalCols !== undefined) parts.push(`${nC} of ${p.totalCols} columns`);
+    ctx.font = tickFont(fs);
+    ctx.textAlign = "right";
+    ctx.fillText(parts.join(", "), L.note.x, L.note.y);
+  }
+  return L;
+}
+
 // ─── Waffle ────────────────────────────────────────────────────────────────────
 
 function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, H: number, colors: string[], fs: number) {
@@ -554,6 +719,56 @@ export function CalHeatView({ payload, width, height, fscale = 1 }: { payload: C
   const ref = useThemedCanvas((c) => drawCalHeat(c, payload, width, height, fscale));
   if (payload.days.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
+}
+
+export function HeatmapView({ payload, options, width, height, fscale = 1 }: { payload: HeatmapPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
+  const theme = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const ref = useRef<HTMLCanvasElement>(null);
+  const layout = useRef<HeatLayout | null>(null);
+  const [hover, setHover] = useState<{ r: number; c: number; x: number; y: number } | null>(null);
+  // Only a real change redraws: hovering re-renders this component, and a big grid is too costly to repaint per move.
+  // The options are keyed by content, since ChartFigure hands over a fresh object each render.
+  const optionsKey = JSON.stringify(options);
+  useLayoutEffect(() => {
+    if (ref.current) layout.current = drawHeatmap(ref.current, payload, options, width, height, fscale);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payload, optionsKey, width, height, fscale, theme]);
+  const empty = payload.z.length === 0 || payload.cols.length === 0 || !payload.z.some((r) => r.some((v) => v != null));
+  if (empty) return <Empty />;
+  const move = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    const L = layout.current;
+    const box = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - box.left) * width) / (box.width || width);
+    const y = ((e.clientY - box.top) * height) / (box.height || height);
+    const cell = L ? heatCellAt(L, x, y) : null;
+    setHover(cell ? { ...cell, x, y } : null);
+  };
+  const L = layout.current;
+  const v = hover ? payload.z[hover.r]?.[hover.c] : undefined;
+  return (
+    <div style={{ position: "relative", width, height }}>
+      <canvas ref={ref} style={{ width, height, display: "block" }} onPointerMove={move} onPointerLeave={() => setHover(null)} />
+      {hover && L && (
+        <>
+          <div style={{
+            position: "absolute", pointerEvents: "none", boxSizing: "border-box",
+            left: L.gx + hover.c * L.cw, top: heatRowY(L, hover.r), width: L.cw, height: L.ch,
+            outline: "1.5px solid var(--text)", outlineOffset: -0.75,
+          }} />
+          <div style={{
+            position: "absolute", pointerEvents: "none", whiteSpace: "nowrap", zIndex: 1,
+            fontSize: 11, padding: "2px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)",
+            ...(hover.x > width / 2 ? { right: width - hover.x + 10 } : { left: hover.x + 10 }),
+            ...(hover.y > height / 2 ? { bottom: height - hover.y + 10 } : { top: hover.y + 10 }),
+          }}>
+            <span style={{ color: "var(--text-dim)" }}>{payload.rows[hover.r]} · {payload.cols[hover.c]}</span>
+            {"  "}
+            {v == null ? "—" : formatScalar(v)}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export function WaffleView({ payload, width, height, colors, fscale = 1 }: { payload: ProportionPayload; width: number; height: number; colors: string[]; fscale?: number }) {

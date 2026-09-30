@@ -14,7 +14,7 @@ import { registerChartSvgProvider } from "../canvasCapture";
 import { useHostNodeId } from "./nodeContext";
 import { ChartTitle, titleHeight, UNTITLED_FIGURES } from "./chartTitle";
 import {
-  WaterfallView, CandleView, BoxplotView, CalHeatView, WaffleView, QuiverView, ContourView,
+  WaterfallView, CandleView, BoxplotView, CalHeatView, HeatmapView, WaffleView, QuiverView, ContourView,
 } from "./chartCanvasViews";
 
 export { useChartColors, toSeries } from "./chartCore";
@@ -163,6 +163,8 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
     return <BoxplotView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "calheat" && value.payload?.kind === "calheat")
     return <CalHeatView payload={value.payload} width={width} height={height} fscale={fscale} />;
+  if (value.op === "heatmap" && value.payload?.kind === "heatmap")
+    return <HeatmapView payload={value.payload} options={value.options} width={width} height={height} fscale={fscale} />;
   if (value.op === "quiver" && value.payload?.kind === "quiver")
     return <QuiverView payload={value.payload} width={width} height={height} />;
   if (value.op === "record" && value.payload?.kind === "record")

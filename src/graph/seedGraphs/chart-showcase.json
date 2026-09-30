@@ -308,7 +308,7 @@
     },
     {
       "id": "heat",
-      "type": "HeatmapCellNode",
+      "type": "HeatmapNode",
       "x": -5534,
       "y": -555,
       "init": {
@@ -687,7 +687,7 @@
       "source": "grid",
       "sourceOutput": "table",
       "target": "heat",
-      "targetInput": "table"
+      "targetInput": "values"
     },
     {
       "source": "sin",

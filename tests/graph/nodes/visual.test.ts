@@ -2,14 +2,14 @@
 import { cellImageSrc } from "../../../src/graph/recordLayout";
 import { describe, it, expect } from "vitest";
 import {
-  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
   boxplotStats, quantileSorted, HistogramNode, type Histogram2d,
-  RecordNode, recordRows, parseRecordLayout, recordImageSrc,
+  RecordNode, recordRows, parseRecordLayout, recordImageSrc, HEATMAP_MAX,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
-import type { XYPayload, BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
+import type { XYPayload, BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, HeatmapPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
 import { DateInputNode, XYPadNode } from "../../../src/graph/nodes/control";
 import { extractInit } from "../../../src/graph/copyPaste";
@@ -115,10 +115,12 @@ describe("visual nodes", () => {
     expect(out.payload).toMatchObject({ kind: "scale", style: "bar", value: 42, target: 80, min: 0, max: 200 });
   });
 
-  it("Heatmap passes a Table straight through", () => {
-    const h = new HeatmapCellNode();
-    expect(h.data({ table: [[[1, 2], [3, 4]]] })).toEqual({ result: [[1, 2], [3, 4]] });
-    expect(h.data({})).toEqual({ result: null });
+  it("Heatmap draws a plain table as it stands, numbering rows and columns, blanks as gaps", async () => {
+    const out = (await new HeatmapNode().data({ values: [[[1, 2, 3], [4, "x", null]]] })).chart;
+    expect(out).toMatchObject({ __chart: true, op: "heatmap", values: null, title: "Heatmap" });
+    expect(out.payload).toEqual({ kind: "heatmap", z: [[1, 2, 3], [4, null, null]], rows: ["1", "2"], cols: ["1", "2", "3"] });
+    expect((await new HeatmapNode().data({ values: [[5, 6]] })).chart.payload).toMatchObject({ z: [[5, 6]], rows: ["1"] });
+    expect((await new HeatmapNode().data({})).chart.payload).toMatchObject({ z: [], rows: [], cols: [] });
   });
 
   it("op + literals round-trip through extractInit", () => {
@@ -771,6 +773,32 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
     const short = frame([{ name: "O", type: "number", values: [1] }, { name: "H", type: "number", values: [2] }]);
     const bad = await n.data({ frame: [short] });
     expect(isSolError(bad.chart) && bad.chart.code).toBe("#SHAPE!");
+  });
+  it("Heatmap names rows by a text first column and keeps only number columns", async () => {
+    const f = frame([
+      { name: "Region", type: "string", values: ["North", "South"] },
+      { name: "Q1", type: "number", values: [12, 18] },
+      { name: "Note", type: "string", values: ["a", "b"] },
+      { name: "Q2", type: "number", values: [15, null] },
+    ]);
+    const n = new HeatmapNode();
+    n.stringLiterals.options = "title=Sales;cmap=rdbu_R;center=0";
+    const out = (await n.data({ values: [f] })).chart;
+    expect(out.payload).toEqual({ kind: "heatmap", z: [[12, 15], [18, null]], rows: ["North", "South"], cols: ["Q1", "Q2"] });
+    expect(out.title).toBe("Sales");
+    expect(out.options).toMatchObject({ cmap: "RdBu_r", center: 0 });
+  });
+  it("Heatmap plots an all-number frame whole, rows numbered", async () => {
+    const f = frame([{ name: "A", type: "number", values: [1, 2] }, { name: "B", type: "number", values: [3, 4] }]);
+    expect((await new HeatmapNode().data({ values: [f] })).chart.payload).toEqual({ kind: "heatmap", z: [[1, 3], [2, 4]], rows: ["1", "2"], cols: ["A", "B"] });
+  });
+  it("Heatmap cuts a huge table to HEATMAP_MAX and says how big it was", async () => {
+    const big = Array.from({ length: HEATMAP_MAX + 5 }, (_, r) => Array.from({ length: 3 }, (_, c) => r + c));
+    const p = (await new HeatmapNode().data({ values: [big] })).chart.payload as HeatmapPayload;
+    expect(p.z.length).toBe(HEATMAP_MAX);
+    expect(p.rows.length).toBe(HEATMAP_MAX);
+    expect(p.totalRows).toBe(HEATMAP_MAX + 5);
+    expect(p.totalCols).toBeUndefined();
   });
   it("Calendar skips a day whose value is blank instead of painting 0", async () => {
     const n = new CalendarHeatmapNode();

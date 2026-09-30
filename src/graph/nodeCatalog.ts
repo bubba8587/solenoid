@@ -2,7 +2,7 @@
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
-  SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
+  SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
@@ -258,7 +258,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Grids & Fields", description: "Figures over a 2-D grid: cell color, height, and direction.",
             children: [
-              { type: "heatmap-cell", label: "Heatmap", description: "Color every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
+              { type: "heatmap", label: "Heatmap", description: "A table as a grid of square cells colored by value, with a colorbar and each value written in its cell when it fits. A frame's text first column names the rows. seaborn `heatmap`, matplotlib `imshow`.", create: () => new HeatmapNode(), parity: false, keywords: "heatmap heat map matrix grid colormap cmap correlation conditional formatting imshow seaborn viridis diverging" },
               { type: "surface", label: "Surface", description: "A shaded 3-D surface plot over a table of heights, with optional Xs and Ys coordinate lists; absent axes count 1, 2, 3, and so on, the same shape Grid Interpolate fills.", create: () => new SurfaceNode(), parity: false, keywords: "surface 3d mesh plot height field terrain contour wireframe grid" },
               { type: "contour", label: "Contour", description: "The flat twin of Surface: the same table of heights drawn as filled height bands with iso-lines.", create: () => new SurfaceNode({ op: "contour" }), parity: false, keywords: "contour iso lines level topo topographic height map bands field 2d surface" },
               { type: "quiver", label: "Vector Field", description: "One arrow per grid cell from two same-shaped matrices (the X and Y components), colored by magnitude. For gradients, flows, and wind fields.", create: () => new QuiverNode(), parity: false, keywords: "quiver vector field arrows flow gradient wind direction magnitude" },

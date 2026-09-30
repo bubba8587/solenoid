@@ -904,6 +904,30 @@ export function heightRampColor(t: number): [number, number, number] {
   return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 }
 
+// ── Diverging ramp (a Heatmap with a center) ────────────────────────────────
+const DIVERGE_STOPS: Array<[PaletteSlot, number, number]> = [
+  ["blue", 0.3, 1], ["blue", 0.6, 1], ["gray", 0.9, 0.15], ["vermilion", 0.6, 1], ["vermilion", 0.34, 1],
+];
+let _diverge: Array<[number, number, number]> | null = null;
+let _divergeVer = -1;
+function divergeStops(): Array<[number, number, number]> {
+  if (_diverge && _divergeVer === paletteVersion()) return _diverge;
+  _divergeVer = paletteVersion();
+  _diverge = DIVERGE_STOPS.map(([slot, l, sat]) => {
+    const t = parseHex(resolveColor(slot)) ?? [138, 143, 152];
+    const [h, s] = rgbToHsl(...t);
+    return parseHex(hslToHex(h, s * sat, l)) ?? t;
+  });
+  return _diverge;
+}
+export function divergingRampColor(t: number): [number, number, number] {
+  const stops = divergeStops();
+  const u = Math.max(0, Math.min(1, t)) * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(u));
+  const f = u - i, a = stops[i], b = stops[i + 1];
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+}
+
 // Total on purpose: a stray slot falls back to gray rather than crashing a render.
 export function resolveColor(slot: string): string {
   if (isNeutralShade(slot)) return neutralHex(slot);

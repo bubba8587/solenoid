@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { nodeDomWeight, nodeAccent, nodeAccentSlot, nodeKindOf, explicitKindOf } from "../../../src/graph/nodes/kind";
 import { majorityColor } from "../../../src/graph/groupLogic";
 import { NumberInputNode, BooleanInputNode } from "../../../src/graph/nodes/input";
-import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode, KpiNode, RecordNode } from "../../../src/graph/nodes/visual";
+import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapNode, SparklineNode, GaugeNode, ChartBuilderNode, KpiNode, RecordNode } from "../../../src/graph/nodes/visual";
 import { GanttNode } from "../../../src/graph/nodes/gantt";
 import { UrlEncodeNode } from "../../../src/graph/nodes/text";
 import { EpochNode } from "../../../src/graph/nodes/date";
@@ -45,11 +45,11 @@ describe("nodeDomWeight", () => {
   });
 
   it("weighs full chart / diagram figures as the heavy tier", () => {
-    for (const n of [new ChartNode(), new HistogramNode(), new ProportionNode(), new SankeyNode(), new MermaidNode()]) {
+    for (const n of [new ChartNode(), new HistogramNode(), new ProportionNode(), new SankeyNode(), new MermaidNode(), new HeatmapNode()]) {
       expect(nodeDomWeight(n)).toBeGreaterThan(nodeDomWeight(new SparklineNode()));
     }
-    // Grid-of-cells / inline-bar figures sit between the small figures and full charts.
-    for (const n of [new HeatmapCellNode(), new TornadoNode()]) {
+    // Inline-bar figures sit between the small figures and full charts.
+    for (const n of [new TornadoNode()]) {
       expect(nodeDomWeight(n)).toBeGreaterThan(nodeDomWeight(new SparklineNode()));
       expect(nodeDomWeight(n)).toBeLessThan(nodeDomWeight(new ChartNode()));
     }

@@ -70,6 +70,16 @@ export interface CalHeatPayload {
   days: number[];
   values: number[];
 }
+export interface HeatmapPayload {
+  kind: "heatmap";
+  /** `z[r][c]`, row-major as the table reads; null is a gap. */
+  z: (number | null)[][];
+  rows: string[];
+  cols: string[];
+  /** Set only when the table was cut to `HEATMAP_MAX` rows or columns. */
+  totalRows?: number;
+  totalCols?: number;
+}
 export interface QuiverPayload {
   kind: "quiver";
   u: (number | null)[][];
@@ -175,12 +185,12 @@ export interface XYPayload {
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
-  | CalHeatPayload | QuiverPayload | RecordPayload | OverlayPayload
+  | CalHeatPayload | HeatmapPayload | QuiverPayload | RecordPayload | OverlayPayload
   | XYPayload | GanttPayload;
 
 export const CHART_SPECIAL_OPS = [
   "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",
-  "candle", "boxplot", "calheat", "quiver", "record", "overlay", "gantt",
+  "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt",
 ] as const;
 
 export type ChartValueOp = ChartOp | (typeof CHART_SPECIAL_OPS)[number];

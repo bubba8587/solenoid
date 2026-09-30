@@ -6,6 +6,11 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-30: the Heatmap figure; cloud session)
+- Heatmap is a figure node now: frame, table or list in, a `heatmap` chart value out; the pass-through `HeatmapCellNode` and its hardcoded blue-yellow-red card are gone (`tree/specs/computation/chart-figures.md` § Heatmap, § The CSS and canvas figures).
+- Square, touching cells by default (`aspect=auto` fills); seaborn's `cmap`, `center`, `vmin`, `vmax`, `annot`, `fmt`, `cbar` plus `origin`, all in the Chart Builder's new Heatmap target. No `cmap` means the palette's height ramp, or its diverging ramp with a center, so the default follows the theme.
+- New pure modules: `colormaps.ts` (matplotlib's maps, `_r`, `heatScale`), `numberSpec.ts` (the Python format spec behind `fmt`), `components/heatmapLayout.ts` (`tests/graph/heatmap.test.ts`).
+
 ### SESSION DIGEST (2026-09-29c: commit-walk review of 08-01 to 09-29; cloud session)
 - A collapsed XLOOKUP, Cast, Schedule, Gantt or Earned Value card shows one input pill: collapsed, it drops its socketed section and one `InlineInputs` carries every input (`tree/specs/floors/components.md` § Sections).
 - The Table popup's CSV view reads the added columns' inferred types everywhere (`typesShown`), and CSV pressed in CSV does nothing, so a pasted text column no longer turns to NaN.

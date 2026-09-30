@@ -1,6 +1,7 @@
 // [[C100]] chartIsAValue
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey } from "../nodes/chartOptions";
+import { COLORMAP_LIST } from "../colormaps";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -50,12 +51,14 @@ function ToggleInputRow({ node, emit, socketKey, label }: {
   );
 }
 
+type SelectOption = { value: string; label: string; group?: string };
+
 function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
   node: ShellNode & { stringLiterals: Record<string, string> };
   emit: Emit;
   socketKey: string;
   label: string;
-  options: readonly { value: string; label: string }[];
+  options: readonly SelectOption[];
   clearValue?: string;
 }) {
   const connected = useConnectedInputs(node.id);
@@ -84,15 +87,28 @@ function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
 
 const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label, group: t.group }));
 
-const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "x", "y", "s", "c", "annotate", "by", "window", "columns"];
+const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "x", "y", "s", "c", "annotate", "by", "fmt", "window", "columns"];
+
+const CMAP_OPTS: readonly SelectOption[] = [
+  { value: "", label: "Theme palette", group: "Palette" },
+  ...COLORMAP_LIST.map((m) => ({ value: m.name, label: m.name, group: m.family })),
+  ...COLORMAP_LIST.map((m) => ({ value: `${m.name}_r`, label: `${m.name}, reversed`, group: "Reversed" })),
+];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
   [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }, { key: "clamp", label: "Clamp tiles" }];
 const SELECT_KEYS: readonly {
   key: ChartBuilderKey;
   label: string;
-  options: readonly { value: string; label: string }[];
+  options: readonly SelectOption[];
   clearValue: string;
 }[] = [
+  { key: "cmap", label: "Colormap", clearValue: "", options: CMAP_OPTS },
+  {
+    key: "annot", label: "Cell values", clearValue: "",
+    options: [{ value: "", label: "When they fit" }, { value: "on", label: "Always" }, { value: "off", label: "Hidden" }],
+  },
+  { key: "cbar", label: "Colorbar", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "origin", label: "First row", clearValue: "upper", options: [{ value: "upper", label: "At the top" }, { value: "lower", label: "At the bottom" }] },
   {
     key: "pielabels", label: "Pie labels", clearValue: "outside",
     options: [
@@ -182,7 +198,7 @@ const SELECT_KEYS: readonly {
     options: [{ value: "s", label: "Small" }, { value: "m", label: "Medium" }, { value: "l", label: "Large" }],
   },
 ];
-const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "center", "vmin", "vmax", "linewidth", "markersize", "alpha", "fontsize"];
 
 export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNodeType>) {
   const out = data.outputs.result;
@@ -199,6 +215,8 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const inertSelects = SELECT_KEYS.filter(({ key }) => !accepted.has(key) && live(key));
   const inertNum = inert(NUM_KEYS);
   const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertSelects.length > 0 || inertNum.length > 0;
+  // A select's default is the figure's own default, and a Heatmap's aspect defaults to square cells.
+  const clearFor = (key: ChartBuilderKey, clear: string) => (key === "aspect" && target === "heatmap" ? "equal" : clear);
   const inertLabel = target === "gantt" && (data.stringLiterals["layout"] ?? "").trim().toLowerCase() === "calendar"
     ? "the Gantt calendar" : spec.label;
   return (
@@ -211,7 +229,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
         <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
       ))}
       {SELECT_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label, options, clearValue }) => (
-        <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearValue} />
+        <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearFor(key, clearValue)} />
       ))}
       <InlineInputs node={data} emit={emit} keys={acc(NUM_KEYS) as string[]} />
       {anyInert && (
@@ -222,7 +240,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
               <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
             ))}
             {inertSelects.map(({ key, label, options, clearValue }) => (
-              <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearValue} />
+              <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearFor(key, clearValue)} />
             ))}
             <InlineInputs node={data} emit={emit} keys={inertNum as string[]} />
           </div>

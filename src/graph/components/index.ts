@@ -227,7 +227,7 @@ export { SankeyComponent } from "./SankeyNode";
 export { SurfaceComponent } from "./SurfaceNode";
 export {
   WaterfallComponent, CandlestickComponent, BoxplotComponent,
-  CalendarHeatmapComponent, ProportionComponent, QuiverComponent,
+  CalendarHeatmapComponent, HeatmapComponent, ProportionComponent, QuiverComponent,
 } from "./FigureNodes";
 export { RecordComponent } from "./RecordNode";
 export { GanttComponent } from "./GanttNode";
@@ -236,7 +236,6 @@ export { CurveComponent } from "./CurveNode";
 export { GridPainterComponent } from "./GridPainterNode";
 export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
-export { HeatmapCellComponent } from "./HeatmapCellNode";
 export { ChartBuilderComponent } from "./ChartBuilderNode";
 export { DateInputComponent } from "./DateInputNode";
 export { DateRangeComponent } from "./DateRangeNode";

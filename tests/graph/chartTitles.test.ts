@@ -13,6 +13,7 @@ const SAMPLE: Record<ChartBuilderKey, string> = {
   window: "2026-01-01,2026-02-01", columns: "name", collapse: "0", week: "us", fiscal_start: "4", group_by: "off",
   cardsize: "l", clamp: "on",
   x: "t", y: "a,b", s: "n", c: "k", annotate: "name", by: "group", linestyle: "--", aspect: "equal", xmin: "0", xmax: "5",
+  cmap: "viridis", vmin: "0", vmax: "1", center: "0", annot: "on", fmt: ".2f", cbar: "off", origin: "lower",
 };
 const RECORD_ONLY = new Set<ChartBuilderKey>(["cardsize", "clamp"]);
 

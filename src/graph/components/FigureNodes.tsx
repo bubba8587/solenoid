@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { ClassicPreset } from "rete";
 import type {
   WaterfallNode, CandlestickNode, BoxplotNode,
-  CalendarHeatmapNode, ProportionNode, ProportionLayout, QuiverNode,
+  CalendarHeatmapNode, HeatmapNode, ProportionNode, ProportionLayout, QuiverNode,
 } from "../rete-nodes";
 import { PROPORTION_LAYOUT_OPTIONS } from "../rete-nodes";
 import type { ChartValue, ChartPayload } from "../chartValue";
@@ -27,7 +27,7 @@ type FigureNode = ClassicPreset.Node & {
 };
 
 function makeFigureComponent<N extends FigureNode>(
-  figHeight: number,
+  figHeight: number | ((cv: ChartValue, width: number) => number),
   hasData: (p: ChartPayload | undefined) => boolean,
   controls?: (data: N) => ReactNode,
 ) {
@@ -44,7 +44,7 @@ function makeFigureComponent<N extends FigureNode>(
         <InlineInputs node={data} emit={emit} />
         <div className="solenoid-node__section-divider" />
         {!collapsed && (has && cv
-          ? <ChartFigure value={cv} width={figW} height={figHeight} />
+          ? <ChartFigure value={cv} width={figW} height={typeof figHeight === "number" ? figHeight : figHeight(cv, figW)} />
           : <div className="solenoid-node__display-value solenoid-node__display-value--empty" title={err?.message}>{err ? err.code : "—"}</div>)}
         {cv && (
           <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
@@ -74,6 +74,23 @@ export const BoxplotComponent = makeFigureComponent<BoxplotNode>(
 export const CalendarHeatmapComponent = makeFigureComponent<CalendarHeatmapNode>(
   110,
   (p) => p?.kind === "calheat" && p.days.length > 0,
+);
+
+// Tall enough for square cells at the card's width, so a short grid leaves no dead band.
+function heatmapCardHeight(cv: ChartValue, w: number): number {
+  if (cv.payload?.kind !== "heatmap") return 170;
+  const { z, cols } = cv.payload;
+  const longest = cols.reduce((m, c) => Math.max(m, c.length), 0);
+  const cell = Math.min(40, Math.max(3, (w - 90) / Math.max(1, cols.length)));
+  const colGutter = longest * 5.2 > cell ? Math.min(longest * 5.2, 60) : 14;
+  const o = cv.options;
+  const extra = colGutter + 8 + (o.title ? 16 : 0) + (o.xlabel ? 14 : 0);
+  return Math.round(Math.max(90, Math.min(320, z.length * cell + extra)));
+}
+
+export const HeatmapComponent = makeFigureComponent<HeatmapNode>(
+  heatmapCardHeight,
+  (p) => p?.kind === "heatmap" && p.z.some((r) => r.some((v) => v != null)),
 );
 
 // A real component, since it owns a useState hook; the toggle slots above the inputs (the Gauge pattern).
