@@ -440,6 +440,33 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "MODE.SNGL", "PROB", "SERIESSUM",
 ]);
 
+/**
+ * The arguments of a range function that take one value, as Excel's signature has them; the rest are ranges.
+ * A list or table in one of these lifts: the function runs once per item and answers that shape
+ * (`LARGE(x, SEQUENCE(3))` is the top three). XLOOKUP, XMATCH and INDEX lift their own and are left out.
+ */
+type ScalarArgs = readonly number[] | { from: number; every: number };
+export const RANGE_SCALAR_ARGS: Record<string, ScalarArgs> = {
+  LARGE: [1], SMALL: [1], TRIMMEAN: [1],
+  PERCENTILE: [1], "PERCENTILE.INC": [1], "PERCENTILE.EXC": [1],
+  QUARTILE: [1], "QUARTILE.INC": [1], "QUARTILE.EXC": [1],
+  PERCENTRANK: [1, 2], "PERCENTRANK.INC": [1, 2], "PERCENTRANK.EXC": [1, 2],
+  RANK: [0, 2], "RANK.EQ": [0, 2], "RANK.AVG": [0, 2],
+  "FORECAST.LINEAR": [0],
+  COUNTIF: [1], AVERAGEIF: [1],
+  COUNTIFS: { from: 1, every: 2 }, SUMIFS: { from: 2, every: 2 }, AVERAGEIFS: { from: 2, every: 2 },
+  MAXIFS: { from: 2, every: 2 }, MINIFS: { from: 2, every: 2 },
+  NPV: [0], XNPV: [0], FVSCHEDULE: [0], SERIESSUM: [0, 1, 2],
+  "Z.TEST": [1, 2], "T.TEST": [2, 3], PROB: [2, 3],
+};
+
+function liftedArgs(name: string, argv: readonly unknown[]): number[] {
+  const decl = RANGE_SCALAR_ARGS[name];
+  if (!decl || !RANGE_FUNCTIONS.has(name)) return [];
+  const takesOne = (i: number) => ("from" in decl ? i >= decl.from && (i - decl.from) % decl.every === 0 : decl.includes(i));
+  return argv.flatMap((a, i) => (isArr(a) && takesOne(i) ? [i] : []));
+}
+
 // ── Range-argument prep (the null/error aggregator policy) ────────────────────
 
 const RANGE_RAW = new Set([
@@ -861,39 +888,53 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
       const sol = argv.find(isSolError);
       if (sol) return sol;
-      const vectors = EXCEL_IMPL_META[name]?.orient === "free" ? readVectors(argv) : null;
-      if (vectors) argv = vectors.argv;
-      if (argv.some((a) => isMatrix(a)) && !EXCEL_IMPL_META[name]?.matrixArgs) {
-        if (RANGE_POSITIONAL.has(name)) {
-          return solError("#SHAPE!", `${name} over a matrix isn't supported yet. Wire the matrix through its node`);
-        }
-        if (RANGE_FUNCTIONS.has(name)) {
-          argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
-        } else if (takesWholeArgs(name) || (EXCEL_IMPL_META[name] === undefined && !isInternalFunction(name))) {
-          return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
-        }
-      }
-      if (!EXCEL_IMPL_META[name]?.cxArgs && !NULL_INSPECTING.has(name) && !takesWholeArgs(name)
-          && argv.some(containsCx)) {
-        return solError("#TYPE!", `${name} doesn't compute on complex numbers. Use the IM* family`);
-      }
-      if (takesWholeArgs(name)) {
-        if (!NULLABLE_SCALARS_OK.has(name) && argv.some((a, i) => !isArr(a) && isMissing(a) && !blanks.settled[i])) return null;
-        const r = dispatch(name, ...argv);
-        return vectors?.column ? asColumn(r) : r;
-      }
-      if (RANGE_FUNCTIONS.has(name)) {
-        // Clone: some Formula.js functions (CHISQ.TEST) mutate their arguments, which would corrupt the upstream cached value.
-        const prep = prepRangeArgs(name, argv);
-        if (prep.error !== undefined) return prep.error;
-        const r = dispatch(name, ...prep.args.map((a) => (isArr(a) ? a.slice() : a)));
-        return typeof r === "number"
-          ? guardFinite(r, prep.args.flatMap((a) => (isArr(a) ? a : [a])))
-          : r;
-      }
-      return broadcastCall(name, argv, blanks.settled);
+      const lifted = liftedArgs(name, argv);
+      if (lifted.length === 0) return routeCall(name, argv, blanks.settled);
+      return mapCells(lifted.map((i) => argv[i]), (...cells) => {
+        const bad = cells.find(isErr);
+        if (bad !== undefined) return bad;
+        if (cells.some(isMissing)) return null;
+        const one = argv.slice();
+        lifted.forEach((i, k) => { one[i] = cells[k]; });
+        return routeCall(name, one, blanks.settled);
+      });
     }
   }
+}
+
+/** Steps 9 to 11 of the dispatch ladder, once the arguments are evaluated, read by role and error-free. */
+function routeCall(name: string, argv: unknown[], settled: readonly boolean[]): unknown {
+  const vectors = EXCEL_IMPL_META[name]?.orient === "free" ? readVectors(argv) : null;
+  if (vectors) argv = vectors.argv;
+  if (argv.some((a) => isMatrix(a)) && !EXCEL_IMPL_META[name]?.matrixArgs) {
+    if (RANGE_POSITIONAL.has(name)) {
+      return solError("#SHAPE!", `${name} over a matrix isn't supported yet. Wire the matrix through its node`);
+    }
+    if (RANGE_FUNCTIONS.has(name)) {
+      argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
+    } else if (takesWholeArgs(name) || (EXCEL_IMPL_META[name] === undefined && !isInternalFunction(name))) {
+      return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
+    }
+  }
+  if (!EXCEL_IMPL_META[name]?.cxArgs && !NULL_INSPECTING.has(name) && !takesWholeArgs(name)
+      && argv.some(containsCx)) {
+    return solError("#TYPE!", `${name} doesn't compute on complex numbers. Use the IM* family`);
+  }
+  if (takesWholeArgs(name)) {
+    if (!NULLABLE_SCALARS_OK.has(name) && argv.some((a, i) => !isArr(a) && isMissing(a) && !settled[i])) return null;
+    const r = dispatch(name, ...argv);
+    return vectors?.column ? asColumn(r) : r;
+  }
+  if (RANGE_FUNCTIONS.has(name)) {
+    // Clone: some Formula.js functions (CHISQ.TEST) mutate their arguments, which would corrupt the upstream cached value.
+    const prep = prepRangeArgs(name, argv);
+    if (prep.error !== undefined) return prep.error;
+    const r = dispatch(name, ...prep.args.map((a) => (isArr(a) ? a.slice() : a)));
+    return typeof r === "number"
+      ? guardFinite(r, prep.args.flatMap((a) => (isArr(a) ? a : [a])))
+      : r;
+  }
+  return broadcastCall(name, argv, settled);
 }
 
 export type ExprEvaluator = (env: Record<string, unknown>) => unknown;

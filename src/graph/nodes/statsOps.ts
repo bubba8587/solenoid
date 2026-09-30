@@ -113,9 +113,11 @@ export function quartile(arr: readonly number[], q: number, exc: boolean): numbe
   return guardFinite(percentileOf([...arr].sort((a, b) => a - b), p, exc), arr);
 }
 
-export function nthExtreme(arr: readonly number[], k: number, largest: boolean): number | null {
+export function nthExtreme(arr: readonly number[], k: number, largest: boolean): number | SolError | null {
   const ki = Math.round(k);
-  if (arr.length === 0 || ki < 1 || ki > arr.length) return null;
+  if (Number.isNaN(ki)) return solError("#VALUE!", "k must be a number");
+  if (ki < 1) return solError("#DOMAIN!", "k starts at 1, the largest or smallest value");
+  if (arr.length === 0 || ki > arr.length) return null;
   const sorted = [...arr].sort((a, b) => a - b);
   return largest ? sorted[arr.length - ki] : sorted[ki - 1];
 }
