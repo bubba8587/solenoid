@@ -1,20 +1,4 @@
-import type { CovarianceNode as CovarianceNodeType, CovarianceOp } from "../rete-nodes";
-import { COVARIANCE_OP_META } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { COVARIANCE_OP_META, type CovarianceOp, type CovarianceNode as CovarianceNodeType } from "../rete-nodes";
+import { makeOpNodeComponent } from "./standardNode";
 
-const OPS = (Object.keys(COVARIANCE_OP_META) as CovarianceOp[]).map((op) => ({
-  value: op,
-  label: COVARIANCE_OP_META[op].label,
-}));
-
-export function CovarianceComponent({ data, emit }: NodeProps<CovarianceNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={OPS} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
+export const CovarianceComponent = makeOpNodeComponent<CovarianceOp, CovarianceNodeType>(COVARIANCE_OP_META, (n) => n.cachedResult);
