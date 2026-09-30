@@ -833,8 +833,6 @@ export function TablePopup() {
   const menuCol = sel?.axis === "row" ? undefined : colAxis;
   const selRows = new Set(sel?.axis === "row" ? sel.indices : []);
   const selCols = new Set(sel?.axis === "col" ? sel.indices : []);
-  // Editable names fill their header, so a strip of column letters above them is the column's handle, as row numbers are the row's.
-  const letterStrip = !!colAxis && editableHeaders && !vertical;
   const pickRow = (e: React.MouseEvent, r: number) => {
     setSel((prev) => pickIndex(prev, "row", r, e.shiftKey, visibleOrder));
     setFocusCell(null);
@@ -842,9 +840,12 @@ export function TablePopup() {
   };
   const onControl = (e: React.SyntheticEvent) => !!(e.target as HTMLElement).closest("button, input, select, textarea, label");
   const allCols = Array.from({ length: cols }, (_, c) => c);
+  // A name fills its header, so Shift-click on it extends the column selection; a plain click edits the name.
   const pickCol = (e: React.MouseEvent, c: number) => {
-    if (onControl(e)) return;
-    setSel((prev) => pickIndex(prev, "col", c, e.shiftKey, allCols));
+    const onName = e.shiftKey && !!(e.target as HTMLElement).closest(".table-popup__colhead-input");
+    if (onControl(e) && !onName) return;
+    const from = focusCell && focusCell.c >= 0 ? { axis: "col" as const, indices: [focusCell.c], anchor: focusCell.c } : null;
+    setSel((prev) => pickIndex(prev ?? from, "col", c, e.shiftKey, allCols));
     setFocusCell(null);
     (document.activeElement as HTMLElement | null)?.blur?.();
   };
@@ -953,25 +954,8 @@ export function TablePopup() {
       )}
       {view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
-          <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}${letterStrip ? " table-popup__grid--lettered" : ""}`} ref={gridRef}>
+          <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
             <thead>
-              {letterStrip && (
-                <tr className="table-popup__letters">
-                  <th className="table-popup__corner" />
-                  {Array.from({ length: viewCols }, (_, c) => (
-                    <th
-                      key={c}
-                      className={`table-popup__letter${selCols.has(c) ? " table-popup__letter--sel" : ""}`}
-                      title={`Select column ${colLabel(c)}`}
-                      onClick={(e) => pickCol(e, c)}
-                      onContextMenu={(e) => {
-                        if (!selCols.has(c)) { setSel({ axis: "col", indices: [c], anchor: c }); setFocusCell(null); }
-                        openMenuAt(e);
-                      }}
-                    >{colLabel(c)}</th>
-                  ))}
-                </tr>
-              )}
               <tr>
                 <th className="table-popup__corner">
                   {editableHeaders && !vertical && <HeaderHelpButton formulas={fxColumns} lambdas={(state.lambdaOptions ?? []).length > 0} />}
@@ -983,7 +967,6 @@ export function TablePopup() {
                     className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}${selCols.has(c) ? " table-popup__colhead--sel" : ""}`}
                     onClick={colAxis ? (e) => pickCol(e, c) : undefined}
                     onContextMenu={colAxis ? (e) => {
-                      if ((e.target as HTMLElement).closest("input, textarea")) return;
                       if (!selCols.has(c)) { setSel({ axis: "col", indices: [c], anchor: c }); setFocusCell(null); }
                       openMenuAt(e);
                     } : undefined}
@@ -1014,6 +997,7 @@ export function TablePopup() {
                                 }}
                                 onBlur={state.columnNameOptions ? () => setEditHead(null) : undefined}
                                 onKeyDown={(e) => { if (!e.nativeEvent.isComposing) headSuggestRef.current?.onKey(e); }}
+                                onMouseDown={(e) => { if (e.shiftKey && colAxis) e.preventDefault(); }}
                                 onChange={(e) => setHeaderName(c, e.target.value)}
                               />
                               {nameOptions.length > 0 && (
