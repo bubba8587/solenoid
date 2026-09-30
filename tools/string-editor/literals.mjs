@@ -11,7 +11,6 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..', '..');
-const SRC_DIR = path.join(REPO_ROOT, 'src');
 // Durable, append-only record of successful copy/voice edits (tracked in git).
 const COPY_LOG = path.join(HERE, 'copy-edits.jsonl');
 
