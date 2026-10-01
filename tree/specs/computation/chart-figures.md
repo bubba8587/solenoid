@@ -102,6 +102,8 @@ Ops `line`, `column`, `winloss` (`SPARKLINE_OP_META`); an old save's `bar` loads
 
 The card picks the op in two steps: a family select (Cartesian, XY, Categorical, from `CHART_OP_META`'s `group`) narrows a type select, and picking a family jumps to its first type. The type is the node's `op`, the accented op select; the family is only a filter ([[C26]] opArgDistinct), and both derive from `CHART_OP_META` so they can't drift from the Add-menu rows ([[engineering#One declaration per fact]]). Every op reads the same `values` input, so switching op is a plain recompute.
 
+Scatter, XY Line and Bubble stay three types under the XY family ([[C116]] xyChartFamily): they share the numeric plane and differ only in their starting settings (line style, markers, which columns are x, y and size). The Chart node has no combined bars-and-lines type: that figure is Merge Plots over a Column chart and a Line chart, so a table whose bars and line sit in one frame is split into two charts first. The Chart Builder lists Merge Plots under Cartesian.
+
 `data()` reads the raw `values` input. The input is kept raw (`rawInputs`) because coercion would widen a wired list into a single frame row; Boxplot is raw for the same reason. A cube is flattened to a frame of its scalar columns first (`flatCubeToFrame(cube, "scalar")`: a list or table column has nothing to plot and is skipped); a top-level `SolError` there is treated as no data (Chart is in the error guard's see-errors set, so it runs). Every non-finite cell becomes null in place, so labels stay aligned with rows.
 
 - **Op `scatter`, `xyline` or `bubble`:** `buildXY` reads the input into an `xy` payload (see XY plots below); the other bullets do not apply.
@@ -200,6 +202,8 @@ The source is the wired `source` string, else the card literal (a starter flowch
 
 Figures with an `options` input take one string of `key=value` pairs separated by `;` ([[C96]] chartOptionsAreMatplotlib). It is typed on the card or produced by a Chart Builder.
 
+The key names are matplotlib's (`marker`, `markersize`, `fontsize`, `linestyle` and the rest), and pandas' scatter names where a key names a table column (`x`, `y`, `s`, `c`). A new option takes its matplotlib name where one exists; only a concept matplotlib lacks gets a name of our own, and the tables below mark it (`annotate`, `by`, `radarscale`, `pielabels`, the Record and Gantt keys). An unknown key is ignored rather than refused, so a string written for a newer build still draws on an older one.
+
 ### Grammar (`parseChartOptions`)
 
 - Split on `;`. A part with no `=` is skipped. The key is the text before the first `=`, trimmed and lower-cased; the value is the rest, trimmed (so `title=a=b` is `a=b`). There is no escape: a value cannot contain `;`.
@@ -251,6 +255,8 @@ Figures with an `options` input take one string of `key=value` pairs separated b
 Each parser reads only its own keys from the shared string and ignores the rest, so one string can carry chart keys and figure keys together.
 
 ### Which renderer reads which key
+
+**MUST** ([[D75]] builderExposesEveryOption): for each chart type, the Chart Builder offers exactly the options that chart type draws, no more and no fewer. An option the chart reads is offered for it, and an option offered for it visibly changes the figure everywhere it is drawn: on the node, in a Display, in the popup and in a Report. Most people set options in the Chart Builder rather than typing them, so an option missing there is invisible and an option that does nothing looks broken, and nothing else ties what the builder offers to what each chart draws. A chart that learns an option offers it in the Chart Builder in the same change; one that drops an option stops offering it. *Unenforced:* whether an option visibly changes a figure needs the figure drawn on screen, and the test suite doesn't draw; `chartTitles.test.ts` pins the title option and that every offered key is one a parser reads, and the rest is checked by eye whenever the Chart Builder's options or a chart change. Reopen if the options move to separate fields per chart type, so the builder's list could be derived.
 
 A key a renderer does not read is inert on that figure. For each Chart Builder target the key list (`CHART_BUILDER_TARGETS`) is exactly this set ([[D75]] builderExposesEveryOption); the target's `op` names the figure it draws.
 

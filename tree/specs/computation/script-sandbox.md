@@ -10,6 +10,8 @@ Serves [[C66]] scriptNode. It covers what the system does and blocks, and the de
 
 The Script card runs a user-written JavaScript function on its inputs. Each parameter becomes an input socket, the arguments are converted to plain JavaScript, and the returned value is folded back onto the app's value model, where it types itself. The function runs inside a Web Worker, a separate background thread with the input and output routes removed, so a runaway or careless script cannot freeze the app or reach the network.
 
+The node is named Script, not Code, because CODE is an Excel function ([[D21]] noExcelNameClash). A script declares no result type, unlike Expression's Number / Text / Date / Auto switch: a JavaScript value says its own type, where a formula does not say what it returns.
+
 | File | Role |
 |---|---|
 | `nodes/script.ts` | The card: sockets from the function's parameters, arguments in, result out |
@@ -91,7 +93,7 @@ The one global a script sees is `Solenoid`, frozen, with a single method. JavaSc
 
 ## The time limit
 
-The timer lives in the executor, not the worker, because a stuck worker cannot answer. It starts when the call is sent to the worker, so time spent waiting in the queue does not count. A call still running after `SCRIPT_TIMEOUT_MS` (1000 ms) resolves to `#VALUE!` "Timed out after 1 s"; the executor terminates the worker and the next queued call starts on a fresh one.
+The limit exists because a runaway loop would otherwise freeze the app, and freeze it again every time the autosaved document reopens. The timer lives in the executor, not the worker, because a stuck worker cannot answer. It starts when the call is sent to the worker, so time spent waiting in the queue does not count. A call still running after `SCRIPT_TIMEOUT_MS` (1000 ms) resolves to `#VALUE!` "Timed out after 1 s"; the executor terminates the worker and the next queued call starts on a fresh one.
 
 An uncaught error in the worker (a script throwing from a timer, a policy forbidding eval, a bundling fault) resolves the running call to `#VALUE!` with the reason and retires the worker; the queue carries on with a fresh one. An error thrown late by a call that already settled lands on whichever call is running then. A failure posting a request resolves that call to `#VALUE!`.
 
