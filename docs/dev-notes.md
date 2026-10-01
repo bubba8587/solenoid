@@ -13,6 +13,7 @@ specific item.
 - **Retired into specs:** C64, C94, D16, D18, D34, D37, D42, D75 (how a feature works, not a call); citations repoint to the call each served.
 - **Reparented:** C92 and C93 to B20 alone, C117 to B16, D85 to C15, B19 to A5, C38 to B18.
 - Stale claims dropped on the way: C60 (a blank Window reads as left out, so cumulative), C68 (no file-name date tokens), C70 (a row fault is the node's `#VALUE!`, per E10), C107 (the plugin's opt-in look does restyle Obsidian).
+- **Second, aggressive pass** (author: "another pass. aggressive"): 25 more leaves retired into their specs (C13, C19, C21, C43, C60, C61, C62, C109, C111, C113, C116, D5, D21, D23, D63, D69, D71, D81, D83, D91, D92, D95, E16, B10, C41: conventions, applications of a parent, how a feature works, a library choice, a process order). MUST markers dropped except D73. The 98 unratified leaves now average 30 words of Decision and 22 of Why (the author's ratified ones run 22 to 46 and 14 to 44). D21 and D22 hang off B16, C42 off A1, D82 off C100 and C54.
 
 ### SESSION DIGEST (2026-09-30c: 1.5 release notes, the cube formulas seed; cloud session)
 - `docs/release-notes-features.md` is the 1.5 selling list and carries the 1.4.1 and 1.4.2 headliners (author); Heatmap is not a headliner, Cubes take two slides, and the plugin release ships beside the app. The What's New deck is still 1.4.1's.
