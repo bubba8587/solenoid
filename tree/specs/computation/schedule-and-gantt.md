@@ -12,7 +12,7 @@ A plan in Solenoid is a table of tasks, one row per task, and the schedule is a 
 
 Code: `src/graph/nodes/schedule.ts` (the Schedule node), `src/graph/scheduleCpm.ts` (reads the tasks cube into the engine's model and writes the computed columns back), `src/graph/nodes/gantt.ts` with `src/graph/ganttPayload.ts` (the Gantt node and its payload), `src/graph/planImport.ts` (plan files into the tasks cube, used by Local File in `nodes/connection.ts`). The engine and the figure are the three in-repo packages of [[C69]] ganttPackages, each with its own contract: `packages/schedule-engine/README.md` (the passes, the calendar, the file formats), `packages/gantt-layout/README.md` (the payload fields and the layout) and `packages/gantt-react/README.md` (the figure and its option keys). The Gantt node's place among the figure nodes, its option defaults, its popup and its export are in [[chart-figures]]. This spec does not restate them.
 
-The app consumes the three packages through `tsconfig.json` paths, the Vite alias and the vitest alias, never an install step, so `npm ci` and the desktop build are untouched. Each package carries its own `package.json` and LICENSE ([[C69]] ganttPackages).
+The app consumes the three packages through `tsconfig.json` paths, the Vite alias and the vitest alias, never an install step, so `npm ci` and the desktop build are untouched. Each package carries its own `package.json` and LICENSE ([[C69]] ganttPackages). No GPL, EPL or commercial code enters them, and each README has a section on what was studied while building it.
 
 ## The tasks cube
 
@@ -162,7 +162,7 @@ The checks are the DCMA assessment's that fit a table of tasks, under plain name
 
 Local File reads a Microsoft Project XML (MSPDI), GanttProject `.gan` or Primavera XER file (`planFileToPlan`) and emits its tasks twice: as a tasks cube on the `plan` socket (`planToCube`) and as a flat frame on `frame` (`planToFrame`, one row per task with Task, Level, Duration, Predecessors, Start, Finish, Deadline and Complete). A CSV whose Predecessors column (`predecessor`, `depends on`, `after`) uses the row-number grammar in every filled cell, Smartsheet's export, also comes out as a plan (`csvPlanToCube`): each token resolves through the row-to-name list to a task name. A CSV that is not a plan gives a null plan and stays a frame.
 
-In the cube, a task whose dependencies are all FS with lag 0 gets a list of names; any typed, lagged or elapsed dependency makes the cell a nested Task, Type, Lag (and Elapsed) table. Optional columns (Start, Finish, Deadline, Manual, Complete, Actual start, ALAP, Elapsed, Weekend, Hours, Holidays, Project, Tasks) appear only when some task uses them. A field the reader cannot model is named in `unsupported` and shown on the card as "Not carried over: …", never dropped and never a new column ([[D68]] importUnsupportedIsNamed). The per-format rules (link codes, constraint mapping, calendars) are in the schedule-engine README.
+In the cube, a task whose dependencies are all FS with lag 0 gets a list of names; any typed, lagged or elapsed dependency makes the cell a nested Task, Type, Lag (and Elapsed) table. Optional columns (Start, Finish, Deadline, Manual, Complete, Actual start, ALAP, Elapsed, Weekend, Hours, Holidays, Project, Tasks) appear only when some task uses them. A field the reader cannot model is named in `unsupported` and shown on the card as "Not carried over: …", never dropped and never a new column ([[D68]] importUnsupportedIsNamed). The per-format rules (link codes, constraint mapping, calendars) are in the schedule-engine README. The list of what an import must name is the correctness list in `docs/v2.0/25-gantt.md` § 3.2.
 
 ### Link grammar stays at the border
 
@@ -206,7 +206,7 @@ The webpage export and Write to Obsidian take a figure's SVG from a registered s
 
 ## The figure never writes
 
-There is no bar editing: edits happen in the table ([[C71]] noBarEditing). It is also the only rule that can be built. A chart value is flat JSON on a cable, the figure is drawn by a different node than the one that owns the literal, values carry no provenance, and a plan that arrives through Filter or Join has no literal at all. The editor is the Cube Input popup, which already has drill levels and commits on Enter or blur, and snapshot undo covers it. What is lost is one gesture (dragging from one bar to another to make a link); the Predecessors cell covers its function.
+There is no bar editing: edits happen in the table ([[C71]] noBarEditing). It is also the only rule that can be built. A chart value is flat JSON on a cable, the figure is drawn by a different node than the one that owns the literal, values carry no provenance, and a plan that arrives through Filter or Join has no literal at all. The editor is the Cube Input popup, which already has drill levels and commits on Enter or blur, and snapshot undo covers it. What is lost is one gesture (dragging from one bar to another to make a link); the Predecessors cell covers its function. If the author ever asks for editing on the chart, it comes back the way the Record node picks a record: the chart picks a task and another node follows that pick by name. The chart never edits the table.
 
 ## Dates and precision
 
