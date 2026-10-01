@@ -2,7 +2,7 @@
 aliases: ["Palette and theme"]
 tags: [spec, canvas]
 ---
-<!-- [[C62]] paletteAllOrNone, [[C111]] unfiledCardTakesOutputColor -->
+<!-- [[C62]] paletteAllOrNone, [[C111]] unfiledCardTakesOutputColor, [[D95]] neutralsFollowChrome -->
 
 # Spec: Palette and theme
 
@@ -39,7 +39,11 @@ The twelve slots and their Default hexes:
 
 ### The gray swatch's neutral cycle
 
-The gray swatch cycles through three values: `neutral-white` (`#f3f4f6`, a hair off pure white so it reads as a swatch), `gray` (the real slot) and `neutral-dark` (`#3a3d42`). The two extremes are fixed sentinel ids, so a card stores and saves them like any slot, but no palette changes them. `nextNeutral` steps gray to dark to white to gray, and any real color steps to gray. `NEUTRAL_CYCLE` lists them in the order the split disc draws them: upper left white, middle gray, lower right dark. `NEUTRAL_HEX` has a null prototype, so a stored slot such as `"constructor"` reads as undefined rather than a function.
+The gray swatch cycles through three values: `neutral-white` (default `#f3f4f6`, a hair off pure white so it reads as a swatch), `gray` (the real slot) and `neutral-dark` (default `#3a3d42`). The two extremes are fixed sentinel ids, so a card stores and saves them like any slot.
+
+`neutralHex(slot)` draws all three from the active palette's chrome ([[D95]] neutralsFollowChrome), so on a tinted palette they are that palette's neutrals and not foreign grays. White takes the dark ramp's `text`, gray its `textMuted`, dark its `borderStrong`, each only when that chrome color's OKLCh lightness falls in the shade's band (white 0.85 to 1, gray 0.45 to 0.8, dark 0.2 to 0.55; Solarized's dim text is no white). Otherwise the default shade (for gray, the palette's gray slot) is tinted with the chrome background's hue at a chroma of at most 0.05; a palette with no chrome keeps the plain default. `resolveColor` routes the white and dark shades through it, and `resolveAccent` the app accent's gray, so groups, notes and cables colored with a neutral shade follow the palette the same way. A gray node or socket keeps the palette's own `gray` slot. If a palette's chrome text or border reads badly as an accent, that palette names its neutrals itself.
+
+`nextNeutral` steps gray to dark to white to gray, and any real color steps to gray. `NEUTRAL_CYCLE` lists them in the order the split disc draws them: upper left white, middle gray, lower right dark. `NEUTRAL_HEX` has a null prototype, so a stored slot such as `"constructor"` reads as undefined rather than a function.
 
 ## Socket colors
 
@@ -94,7 +98,7 @@ Besides its slots, a palette may author the **chrome ramp**: the neutral workben
 | `surfaceRaised` | `--surface-raised` | `textMuted` | `--text-muted` |
 | `border` | `--border` | | |
 
-A ramp is all or nothing ([[C62]] paletteAllOrNone). Default authors none (`NO_CHROME`), because it is App.css's own ramp; every other built-in authors all thirteen keys in both modes. The rest of the neutral chrome follows the ramp two ways: through App.css's own `var()` chains (`--btn-bg` from `--surface-sunken`, `--panel-border` from `--border`, `--panel-bg` and `--overlay-bg` from `--surface`), and through the derived tokens below.
+A ramp is all or nothing ([[C62]] paletteAllOrNone): a palette sets every key in both modes or none, and the other neutrals are mixed from that one set, never set one by one, so moving the set moves the whole chrome, including on a palette nobody has checked by eye. A palette may recolor the workbench but never break its structure (`DESIGN.md` §2: canvas darker than a card, a legible dot, the field brightest in light mode and a recess in dark mode, hover stepping toward the ink, three border tiers stepping outward, four ink tiers stepping down in contrast); `palette.test.ts` checks it over every ramp, Default's included, since a rule Default fails is a wrong rule. The WCAG AA requirement (4.5:1 for ink on a card and a field) binds only Default, which nobody chose, and Colorblind-safe, which exists to be legible (`AA_PALETTES` in `palette.test.ts`); the others are looks a user opts into, whose value is fidelity to that look. A palette that becomes anyone's default joins `AA_PALETTES` that day. Default authors none (`NO_CHROME`), because it is App.css's own ramp; every other built-in authors all thirteen keys in both modes. The rest of the neutral chrome follows the ramp two ways: through App.css's own `var()` chains (`--btn-bg` from `--surface-sunken`, `--panel-border` from `--border`, `--panel-bg` and `--overlay-bg` from `--surface`), and through the derived tokens below.
 
 `DEFAULT_CHROME` is a hand-kept copy of App.css's two `:root` ramps. It is never written to the DOM. It seeds the Custom palette's ramp and the custom palette editor's chrome wells, so an author edits away from what they see. No test can read the stylesheet, so keep it in step with App.css by hand.
 
@@ -148,7 +152,7 @@ Light shadows take the ink's hue, so a warm ramp casts a warm shadow; dark mode 
 
 Returning the ramp object itself, rather than a copy, means the authored hexes pass through byte-identical at home.
 
-The rotation is in OKLCh, never HSL: HSL's saturation varies with hue, so an HSL rotation washed the workbench in the accent color, at up to twice the authored perceived chroma on Orchard's dark ground ([[C62]] paletteAllOrNone).
+Solarized, Colorblind-safe, Equinox, Muted and Custom do not rotate. The rotation does not reopen the socket-sibling HSV rule (`DESIGN.md` §Tertiary), whose steps stay near their own hue. The rotation is in OKLCh, never HSL: HSL's saturation varies with hue, so an HSL rotation washed the workbench in the accent color, at up to twice the authored perceived chroma on Orchard's dark ground ([[C62]] paletteAllOrNone).
 
 ## Which palette is in effect
 

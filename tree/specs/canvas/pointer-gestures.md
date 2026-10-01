@@ -12,7 +12,7 @@ This spec is the mechanics of canvas pointer input: which listener handles each 
 
 ## The ordering rule
 
-Pinch listens in the capture phase and cannot be vetoed. Pan and node drag listen in the bubble phase and can be ([[C92]] pinchUnvetoable). Both halves matter; don't move either.
+Pinch listens in the capture phase and cannot be vetoed. Pan and node drag listen in the bubble phase and can be ([[C92]] pinchUnvetoable). Both halves matter; don't move either. The guarantee leans on React Flow binding its handlers in bubble: if React Flow ever moves them to capture, the ordering breaks and this section must be redone.
 
 React Flow's node drag (d3-drag) and pane pan bind in bubble on the node and pane elements. The pinch listens in capture on the canvas wrapper, so it sees every two-finger move first and consumes it. No component's `stopPropagation` can hide a finger from the pinch. A control that wants the pointer for itself (a slider, a dial, a text field) can still stop the event and so block the pan and the drag. Only the zoom is unstoppable, and no call site has to remember anything to keep it that way.
 
@@ -27,7 +27,7 @@ React Flow's node drag (d3-drag) and pane pan bind in bubble on the node and pan
 3. A third finger disarms the gesture.
 4. When fewer than two touches remain (`touchend` or `touchcancel`), the gesture ends.
 
-**A pinch never selects.** Finger one may land on a card before the gesture can be recognized as a pinch. So when a pinch ends, a capture-phase click guard swallows every click for the next 400ms. The click is prevented, not undone afterwards.
+**A pinch never selects.** Finger one may land on a card before the gesture can be recognized as a pinch. So when a pinch ends, a capture-phase click guard swallows every click for the next 400ms. The click is prevented, not undone afterwards, because a visible correction reads as a glitch.
 
 ## Wheel zoom: `installWheelZoom`
 
@@ -37,7 +37,7 @@ React Flow's node drag (d3-drag) and pane pan bind in bubble on the node and pan
 - Each wheel event scales an unsnapped "virtual" zoom by `wheelZoomDelta`, then snaps it with `clampZoom`. Carrying the unsnapped value means a trackpad glide of tiny deltas still reaches the next step instead of rounding back to the current one ([[D71]] zoomLatticeDiscreteOnly). The virtual zoom resets whenever another path (the zoom pill, a fit, a pinch) has moved the zoom.
 - The world point under the cursor stays pinned.
 
-**The curve** (`viewPresets.ts`, shared by every surface). `wheelZoomDelta` normalizes the wheel to pixels (a line is 16 px, a page 400 px), multiplies by `−ZOOM_SCALE` (0.0028), and caps the result at ±`ZOOM_STEP_CAP` (0.24); the new scale is `k × (1 + delta)`. The slope is much gentler per pixel than d3's default, so a trackpad scroll glides instead of lurching, and the cap is higher, so a mouse notch still moves. The scale stays between `MIN_ZOOM` (0.1), past which the dot grid is long gone and cards are specks, and `MAX_ZOOM`, where a card fills the viewport. `boundZoom` clamps without snapping (for the pinch), `clampZoom` clamps and snaps to the nearest `ZOOM_SNAP` step, and fits snap down, so the framed content still fits after snapping.
+**The curve** (`viewPresets.ts`, shared by every surface). `wheelZoomDelta` normalizes the wheel to pixels (a line is 16 px, a page 400 px), multiplies by `−ZOOM_SCALE` (0.0028), and caps the result at ±`ZOOM_STEP_CAP` (0.24); the new scale is `k × (1 + delta)`. The slope is much gentler per pixel than d3's default, so a trackpad scroll glides instead of lurching, and the cap is higher, so a mouse notch still moves. The scale stays between `MIN_ZOOM` (0.1), past which the dot grid is long gone and cards are specks, and `MAX_ZOOM`, where a card fills the viewport. `boundZoom` clamps without snapping (for the pinch), `clampZoom` clamps and snaps to the nearest `ZOOM_SNAP` step (0.1, so every discrete zoom, whether a wheel notch, the zoom pill, a key or a fit, lands on a 10% step, and the first discrete step after a pinch rounds back onto one), and fits snap down, so the framed content still fits after snapping.
 
 ## One finger on a card: `installTouchCardPan`
 

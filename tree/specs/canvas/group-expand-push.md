@@ -20,7 +20,7 @@ The push runs over plain boxes, with no rete or DOM, so the core (`computeExpand
 - A group moves with its members and with every FC docked to one of them; a loose node moves with any FC docked to it.
 - All passes read and write the same in-memory boxes, and the totals are applied once at the end, because `view.moveNode` is async and the DOM would show stale positions between passes.
 
-The push runs only while the `groupPush` setting is on.
+The push runs only while the `groupPush` setting ("Auto-arrange groups on expand") is on. Turning it off also skips the overlap backstop on expand; whether the backstop should run anyway is open with the author.
 
 ## The push, per expanding group
 
@@ -55,7 +55,7 @@ Three more passes run over the same boxes, after every expanding group has had i
 
 ## What is not a layout op
 
-A card that grows with its live content (a Display showing a longer value, a list that gains rows) and a card whose body chevron expands push nothing. Either can cover a neighbor until the next layout op's no-overlap pass separates them, which measures the grown card. Content that overflows a constant-size body ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box. Whether growth should push is open with the author (inbox `card-growth-pushes`).
+The user's own moves are not layout ops: a drag, Align and paste put cards where the user put them, and no no-overlap pass follows them ([[C112]] noOverlapsEver). A card that grows with its live content (a Display showing a longer value, a list that gains rows) and a card whose body chevron expands push nothing. Either can cover a neighbor until the next layout op's no-overlap pass separates them, which measures the grown card. Content that overflows a constant-size body ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box. Whether growth should push is open with the author (inbox `card-growth-pushes`).
 
 ## Records and restore
 
