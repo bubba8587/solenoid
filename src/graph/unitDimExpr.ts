@@ -38,8 +38,8 @@ const PRESERVE_FNS = new Set([
 ]);
 
 /** Square the shared dimension. VAR and DEVSQ are squared spreads, a difference² over °C. */
-const SQUARE_FNS = new Set(["VAR", "VAR.S", "VAR.P", "VARP", "DEVSQ", "SUMSQ"]);
-const SQUARED_SPREAD_FNS = new Set(["VAR", "VAR.S", "VAR.P", "VARP", "DEVSQ"]);
+const SQUARE_FNS = new Set(["VAR", "VAR.S", "VAR.P", "DEVSQ", "SUMSQ"]);
+const SQUARED_SPREAD_FNS = new Set(["VAR", "VAR.S", "VAR.P", "DEVSQ"]);
 
 /** Answer one of the first argument's values; every other argument is a plain number. */
 const PICK_SCALAR_FNS = new Set([
