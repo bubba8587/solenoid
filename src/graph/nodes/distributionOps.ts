@@ -84,6 +84,11 @@ function hypgeomPmf(k: number, n: number, M: number, N: number): number | null {
 
 const probGuard = (v: number): boolean => v > 0 && v < 1;
 
+/** A density whose x^(shape − 1) factor meets x = 0: unbounded below shape 1 (Excel's #NUM!), `atOne` at shape 1, else 0. */
+function densityAtZero(shape: number, atOne: number): number | null {
+  return shape < 1 ? null : shape === 1 ? atOne : 0;
+}
+
 export const DIST_SPECS: Record<DistKey, DistSpec> = {
   normal: {
     label: "Normal", group: "Continuous", excel: "NORM.DIST / NORM.INV",
@@ -146,8 +151,9 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
         const target = form === "inv" ? v : 1 - v;
         return bisectionInv((x) => chiSqCDF(x, dfv), target, 0, 1e6);
       }
+      if (v < 0) return null;
       if (form === "pdf") {
-        return v <= 0 ? 0 : exp(-v / 2 + (dfv / 2 - 1) * log(v) - (dfv / 2) * log(2) - lnGamma(dfv / 2));
+        return v === 0 ? densityAtZero(dfv / 2, 0.5) : exp(-v / 2 + (dfv / 2 - 1) * log(v) - (dfv / 2) * log(2) - lnGamma(dfv / 2));
       }
       const cdfVal = chiSqCDF(v, dfv);
       return form === "cdf" ? cdfVal : 1 - cdfVal;
@@ -164,9 +170,10 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
         const target = form === "inv" ? v : 1 - v;
         return bisectionInv((x) => fCDF(x, d1, d2), target, 0, 1e6);
       }
+      if (v < 0) return null;
       if (form === "cdf") return fCDF(v, d1, d2);
       if (form === "rt") return 1 - fCDF(v, d1, d2);
-      if (v <= 0) return 0;
+      if (v === 0) return densityAtZero(d1 / 2, 1);
       return exp(
         (d1 / 2) * log(d1) + (d2 / 2) * log(d2) + (d1 / 2 - 1) * log(v) -
         ((d1 + d2) / 2) * log(d1 * v + d2) +
@@ -204,8 +211,9 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
       if (form === "inv") {
         return probGuard(v) ? bisectionInv((x) => gammaCDF(x, av, bv), v, 0, 1e6) : null;
       }
+      if (v < 0) return null;
       if (form === "cdf") return gammaCDF(v, av, bv);
-      return gammaPDF(v, av, bv);
+      return v === 0 ? densityAtZero(av, 1 / bv) : gammaPDF(v, av, bv);
     },
   },
   lognorm: {

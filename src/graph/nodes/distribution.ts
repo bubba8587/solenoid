@@ -43,6 +43,7 @@ export class DistributionsNode extends ClassicPreset.Node {
   get spec(): DistSpec { return DIST_SPECS[this.op]; }
   get xKey(): string { return this.spec.xKey; }
   get paramKeys(): string[] { return this.spec.params.map((p) => p.key); }
+  get inputKeys(): string[] { return inputKeysFor(this.op, this.form); }
 
   private makeInput(key: string) {
     const spec = this.spec;
@@ -73,9 +74,18 @@ export class DistributionsNode extends ClassicPreset.Node {
     this.op = next;
     const after = inputKeysFor(next, this.form);
     for (const k of before) if (!after.includes(k)) this.removeInput(k);
-    for (const k of after) if (!this.inputs[k]) this.addInput(k, this.makeInput(k));
+    for (const k of after) {
+      const input = this.inputs[k];
+      if (input) input.label = this.makeInput(k).label;
+      else this.addInput(k, this.makeInput(k));
+    }
     this.seedLiterals();
     this.height = 203 + 28 * this.spec.params.length;
+  }
+
+  keysDroppedByForm(next: DistForm): string[] {
+    const before = firstKeyFor(this.op, this.form);
+    return before === firstKeyFor(this.op, next) ? [] : [before];
   }
 
   setForm(next: DistForm): void {

@@ -93,6 +93,19 @@ describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
     expect(dist("normal", "cdf").data({x:[1],mean:[0],stdev:[-1]}).result).toBeNull();
     expect(ev("BINOM.DIST(11, 10, 0.5, FALSE)")).toBeNull();
   });
+  it("CHISQ, F and GAMMA at x = 0 and below, as Excel answers", () => {
+    expect(ev("CHISQ.DIST(0, 2, FALSE)")).toBe(0.5);
+    expect(ev("CHISQ.DIST(0, 4, FALSE)")).toBe(0);
+    expect(ev("CHISQ.DIST(0, 1, FALSE)")).toBeNull();
+    expect(ev("F.DIST(0, 2, 7, FALSE)")).toBe(1);
+    expect(ev("F.DIST(0, 5, 7, FALSE)")).toBe(0);
+    expect(ev("GAMMA.DIST(0, 1, 2, FALSE)")).toBe(0.5);
+    expect(ev("GAMMA.DIST(0, 3, 2, FALSE)")).toBe(0);
+    expect(ev("GAMMA.DIST(0, 0.5, 2, FALSE)")).toBeNull();
+    for (const f of ["CHISQ.DIST(-1, 2, TRUE)", "CHISQ.DIST(-1, 2, FALSE)", "CHISQ.DIST.RT(-1, 2)", "F.DIST(-1, 2, 7, TRUE)",
+      "F.DIST.RT(-1, 2, 7)", "GAMMA.DIST(-1, 1, 2, TRUE)", "GAMMA.DIST(-1, 1, 2, FALSE)"]) expect(ev(f)).toBeNull();
+    expect(dist("gamma", "pdf").data({x:[0],alpha:[1],beta:[2]}).result).toBe(0.5);
+  });
 });
 
 describe("the `sample` form — N draws by inverse CDF, seeded per recalculation", () => {

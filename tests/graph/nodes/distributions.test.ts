@@ -96,6 +96,24 @@ describe("the one-node mechanics", () => {
     expect(node.height).toBe(203 + 28);
   });
 
+  it("a form switch drops exactly the first input it replaces", () => {
+    const node = dist("normal", "sample");
+    expect(node.keysDroppedByForm("inv")).toEqual(["count"]);
+    expect(node.keysDroppedByForm("cdf")).toEqual(["count"]);
+    node.setForm("cdf");
+    expect(node.keysDroppedByForm("pdf")).toEqual([]);
+    expect(node.keysDroppedByForm("sample")).toEqual(["x"]);
+    node.setForm("sample");
+    expect(node.inputKeys).toEqual(["count", "mean", "stdev"]);
+  });
+
+  it("a distribution switch relabels the params it keeps", () => {
+    const node = dist("normal", "cdf");
+    node.setOp("lognorm" as never);
+    expect(node.inputs.mean?.label).toBe("mean (ln)");
+    expect(node.inputs.stdev?.label).toBe("stdev (ln)");
+  });
+
   it("the form survives a switch when the target has it, else lands on its sibling", () => {
     expect(formAfterSwitch("cdf", "t" as never)).toBe("cdf");
     expect(formAfterSwitch("pdf", "poisson" as never)).toBe("pmf");   // continuous → discrete

@@ -4,7 +4,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate } from "./excelCriteria";
-import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm } from "./nodes/mathUtils";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantiles, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -1051,15 +1051,11 @@ registerInternal("T.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); r
 registerInternal("T.DIST.2T", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(2 * (1 - tCDF(Math.abs(xn), d))); });
 registerInternal("T.INV", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((t) => tCDF(t, d), pn, -1e6, 1e6)); });
 registerInternal("T.INV.2T", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((t) => tCDF(t, d), 1 - pn / 2, -1e6, 1e6)); });
-registerInternal("CHISQ.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(1 - chiSqCDF(xn, d)); });
+registerInternal("CHISQ.DIST.RT", (x, df) => dist("chisq", "rt", x, df));
 registerInternal("CHISQ.INV.RT", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => chiSqCDF(x, d), 1 - pn, 0, 1e6)); });
-registerInternal("F.DIST.RT", (x, a, b) => { const xn = toNum(x), d1 = toNum(a), d2 = toNum(b); return badNum(xn, d1, d2) || d1 <= 0 || d2 <= 0 ? null : ok(1 - fCDF(xn, d1, d2)); });
+registerInternal("F.DIST.RT", (x, a, b) => dist("f", "rt", x, a, b));
 registerInternal("F.INV.RT", (p, a, b) => { const pn = toNum(p), d1 = toNum(a), d2 = toNum(b); return badNum(pn, d1, d2) || d1 <= 0 || d2 <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => fCDF(x, d1, d2), 1 - pn, 0, 1e6)); });
-registerInternal("GAMMA.DIST", (x, a, b, cum) => {
-  const xn = toNum(x), al = toNum(a), be = toNum(b);
-  if (badNum(xn, al, be) || al <= 0 || be <= 0) return null;
-  return ok(isTrue(cum) ? gammaCDF(xn, al, be) : gammaPDF(xn, al, be));
-});
+registerInternal("GAMMA.DIST", (x, a, b, cum) => dist("gamma", cdfOrPdf(cum), x, a, b));
 registerInternal("GAMMA.INV", (p, a, b) => { const pn = toNum(p), al = toNum(a), be = toNum(b); return badNum(pn, al, be) || al <= 0 || be <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => gammaCDF(x, al, be), pn, 0, 1e6)); });
 
 const dist = (key: DistKey, form: DistForm, v: unknown, ...params: unknown[]): number | null => {
