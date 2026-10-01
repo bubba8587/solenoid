@@ -6,6 +6,10 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-01b: mechanical backlog sweep; cloud session)
+- Seven 09-29 commit-walk leads landed (author: "anything mechanical you're confident in"): the Distribution card's form and op switches (right cable pruned, kept params relabeled, the Sample form's hidden Draws field back), CHISQ/F/GAMMA at x = 0 and below as Excel answers (the three stray formula paths now run `DIST_SPECS`), SUMIFS and Get Column drop a stale async read, AI Apply refuses when the document moved under its diff, dead VARP/STDEVP rows, the value-semantics `autoLiterals` list.
+- Left for a ruling, though small: Running over unit lists (per-position dimension for PRODUCT, °C sums), the Frame popup's stray format on a cancelled new column (which names Cancel should drop), UUID and undo, CI on `develop` (build minutes).
+
 ### SESSION DIGEST (2026-10-01: the unratified tree rewritten to the author's leaf test; cloud session)
 - **A Why may lean on its parent, downhill only** (`docs/dte.md` § Solenoid practice; author): "we want A, thus we want B", never specifics piled up to justify the parent; a parent the call doesn't follow from is usually the wrong parent.
 - **Every unratified B to E leaf rewritten** to the author's test (a call a person could weigh; "this works and doesn't not work" is spec): Decisions cut to the call in plain words, Whys to the plain reason, mechanics, per-function lists and the author's detail rulings moved into their specs (input-roles § Rulings, obsidian-plugin, formula-language § Lists, columns and tables, and others).
