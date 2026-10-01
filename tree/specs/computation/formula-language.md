@@ -165,6 +165,15 @@ Four tables name functions a formula refuses. Each refusal happens before any ar
 
 Formula.js also exposes some legacy stems with dotted children (`FX.TDIST.RT`); the stem is the superseded name, so those dotted spellings are blocked too (`TDIST.RT`, `CHIDIST.RT`, `BINOMDIST.RANGE`, `ISO.CEILING.MATH` and the rest). `TDIST` maps to `T.DIST.RT` because Excel split its tails argument into `.RT` and `.2T`; `TINV` was always two-tailed, so it maps to `T.INV.2T`. `ELIMINATED_FUNCTIONS` is the set of `LEGACY_ALIASES` and `POSITION_NAMES` keys, derived, never kept by hand, and `blockedNameMessage` is the one place a blocked name's message comes from. Each blocked name is also registered as an internal stub answering the same `#NAME?`, so a direct `resolveExcelFunction` caller (a node) gets the redirect instead of Formula.js's implementation. Blocked names are removed from `RANGE_FUNCTIONS` and `RANGE_POSITIONAL` at module load and filtered out of every advertised list.
 
+**Why each family is blocked** ([[C14]] currentExcelParity). A name is blocked only once its replacement already works, so a redirect never points at a name that fails. INDEX stays: it was never superseded.
+
+- **The D* database family** (DSUM, DAVERAGE, DGET and the rest) is superseded by composition, a Frame Filter feeding an aggregate, the way XLOOKUP supersedes VLOOKUP. It is blocked rather than left to Formula.js, whose versions are broken, and each name redirects to the aggregate it wraps; DGET, a unique-match lookup, redirects to XLOOKUP.
+- **CEILING.PRECISE, FLOOR.PRECISE, ISO.CEILING** differ from the MATH forms only in ignoring the significance's sign, so they redirect to CEILING.MATH and FLOOR.MATH.
+- **SUBTOTAL and AGGREGATE** pick their operation by a number code, and their hidden-row and ignore-errors options mean something only in a cell grid, so they redirect to SUM.
+- **COLUMN** answers a cell reference's position and was never superseded, so it is blocked with its own message rather than a replacement name, and Formula.js's version never runs: columns are read by name. ROW has one meaning here, a computed column's current row, so `ROW()` works there ([[C22]] rowFormulaRefs) and says where it works anywhere else.
+- **The A forms** (AVERAGEA, MINA, MAXA, STDEVA, STDEVPA, VARA, VARPA) differ from their plain forms only in reading the text and logicals a range's cells hold. The graph's lists are typed, so text never sits among numbers, and how an aggregate reads a logical is one question for every aggregate rather than a second name per function. Each redirects to its plain form: AVERAGE, MIN, MAX, STDEV.S, STDEV.P, VAR.S, VAR.P (the author's suggestion, 2026-09-25).
+- **SUMIF** is covered by SUMIFS with one criteria pair, the node implements only the plural forms, and Formula.js's SUMIF concatenates a numeric-text sum range as text ("01030" for 4), a wrong answer rather than an error. So SUMIF redirects to SUMIFS.
+
 ### Excel names on nodes
 
 Where a node does what an Excel function does, it wears the Excel spelling in capitals ([[D23]] capsClaimsFunction), even when the formula surface won't run that function. This is a naming divergence from Excel, recorded here rather than as a decision of its own:
@@ -214,6 +223,19 @@ A blank slot evaluates to `null`, the first-class missing value. An omitted trai
 The arguments that are settings or positions, and what a blank in each reads as, are declared once in `ARG_ROLES` and read at step 6; the roles, the declaration and the reading rules are [[input-roles]] ([[D86]] blankRoles). A slot left empty and a variable whose value is blank read alike there, and a declared slot no longer blanks the answer under the null rule.
 
 So `TEXTJOIN(",",,"a","","b")` is `a,,b`, and `XMATCH(7, x, )` is an exact match. A blank `search_mode` becomes 0, which the implementation rejects as Excel does. Every other blank stays `null` and follows the route's missing-value rules. `IF(x,,y)` returns `null` for a true `x`, not 0.
+
+## Lists, columns and tables
+
+The shape model ([[D85]] columnsStayColumns):
+
+- **A List is one row**, everywhere: for its shape, for broadcasting, and for every row and column position. `INDEX(x, 2, 1)` is `#REF!`, as `CHOOSEROWS(x, 2)` is `#VALUE!`. `INDEX(SEQUENCE(5), 3)` is item 3; `INDEX(SEQUENCE(5), 3, 1)` is `#REF!`.
+- **A Frame column read whole is a one-column table**, as an Excel table column is ([[computed-columns]]). So `ROWS(price)` is the row count, and SORT, UNIQUE and TAKE work down it, not across it.
+- **A column-shaped answer stays a column.** A function whose Excel answer is a column because of what it does answers a one-column table: TOCOL, MAKEARRAY with one column, and BYROW. So `m / BYROW(m, SUM)` divides each row by its own total and `HSTACK(m, BYROW(m, SUM))` puts the totals in a column beside `m`. The Table Reshape card's TOCOL op and the By Axis card's BYROW op answer one-column tables too, and switching op retypes the output. SEQUENCE(n) stays a list: its orientation carries no meaning, and the Sequence card answers a list.
+- **Direction is declared per function** (`orient`, see *Whole-list natives*). A direction-free function reads a one-column or one-row table as its items and answers in the shape its first vector came in, so `price * REVERSE(price)` pairs values instead of spreading into a grid. An axis-aware function (SORT, TAKE, VSTACK and the other Excel shapers) gets the table as it is.
+- **The named converters.** Frame from Lists turns each list, a row, into a column of the Frame; Get Column turns a column back into a list; TOROW flattens a table or a column into a list, reading row by row. Nothing else turns one shape into the other silently.
+- **Lists under the Excel shapers.** TAKE and DROP count a list's items as columns (*Matrices and dynamic arrays*). INDEX takes a list of positions, on the card and in the formula, so a list has its own way to pick several items and stay a list (*Index access*). CHOOSEROWS and CHOOSECOLS name rows and columns, so they answer tables even on a list (`CHOOSECOLS(x, 1, 3)` is a one-row table), where TAKE and DROP, whose names say nothing about tables, keep a list a list. SORT and UNIQUE work on rows, so on a list they change nothing unless `by_col` is TRUE; the Sort and UNIQUE cards carry the same choice as a Rows / Columns toggle, defaulting to Rows. Reading a list's items as rows instead would take its own toggle on the card and an argument in the formula, never an exception in the rule.
+
+The author, 2026-09-26, on SORT and UNIQUE over a list: "strict excel. if we have to add affordances for user support, we'll do that. hell we could even throw #SYNTAX! on do-nothing function setups if we have to, though that's drastic. we can add toggles to cards AND, crucially, we could just add a LISTSORT or ROWSORT or whatever custom function we want with differing/shortcut behavior."
 
 ## Argument routing
 
@@ -287,6 +309,8 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 | `&` | Both sides as text: numbers through `numberToText`, logicals as `TRUE` and `FALSE`, strings as they are. `null & "a"` is `null`. |
 | `=` `<>` | Two strings compare case-insensitively (`toLowerCase`, [[C45]] excelComparisons). Anything else compares with `===` after the logical bridge, so `5 = "5"` is FALSE and `TRUE = 1` is TRUE. |
 | `<` `>` `<=` `>=` | Two numbers numerically; two strings by UTF-16 code unit (`compareStrings`, [[C59]] byteStringOrder), which is case-sensitive; any other pair `#TYPE!` "Cannot order values of different types; Cast one side first". |
+
+**Case** ([[C45]] excelComparisons). Every equality test and match ignores case, as Excel's `=` does: `=` and `<>`, the Comparison node's equality ops, lookup matches, the criteria family and the Filter's text ops. EXACT and the "Match case" option compare case-sensitively. Every identity operation respects case instead: Join keys, GROUPBY keys and Distinct ([[frame-verbs]]), since merging "Apple" and "apple" into one group or one match would destroy a distinction the data held, with nothing on screen to show it. Ordering goes by character code and so respects case too ([[C59]] byteStringOrder). A per-verb option to ignore case in keys would be an addition inside this rule.
 
 `0^0` is 1, the JavaScript answer, not Excel's `#NUM!` ([[B16]] oneFormulaSurface).
 
@@ -390,7 +414,7 @@ Errors produced by an implementation for its own reasons (a negative `SQRT`, a b
 
 ## The Expression node
 
-`ExpressionNode` (catalog type `expression`) is the formula surface on the canvas. Its persisted fields are `label`, `expr`, `locked`, `resultAs`, `literals` (variable name to number) and `varDescriptions` (variable name to prose, shown as a hover tooltip and a legend, never part of the formula). Its sockets derive from `expr`.
+`ExpressionNode` (catalog type `expression`) is the formula surface on the canvas. Its persisted fields are `label`, `expr`, `locked`, `resultAs`, `literals` (variable name to number) and `varDescriptions` (variable name to prose, shown as a hover tooltip and a legend, never part of the formula). Its sockets derive from `expr`. A variable takes a scalar, a list or a matrix, never a Frame or Cube ([[C15]] matricesInFormulas); a request to widen Expression past that is answered with a Composite instead.
 
 **Variables.** `extractVariables(expr)` walks the AST and collects every bare `name` that is not a constant, in first-appearance order without duplicates, from operator operands, call arguments, application callees and arguments, and LAMBDA bodies. Function names in call position, `@` and bracket references, and literals are not variables. A LAMBDA's parameters are bound inside its body and are not variables, and neither is a bare function name in a lambda slot (an argument of `MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN`, `GROUPBY`, or of an application), which evaluates as an eta function. So `MAP(x, LAMBDA(v, v*2))` and `MAP(x, SQRT)` both grow the one socket `x`. A formula that does not parse has no variables.
 
