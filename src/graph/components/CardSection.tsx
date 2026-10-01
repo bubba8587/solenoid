@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { bumpConnectionVersion } from "../graphSignals";
 import { sectionFoldStore } from "../sectionFoldStore";
-import { scheduleAutosave } from "../persistence";
+import { notifyGraphChanged } from "../process";
 import { useHostNodeId } from "./nodeContext";
 import { useConnectedInputs } from "./inlineInput";
 import type { ClassicPreset } from "rete";
@@ -55,7 +55,7 @@ export function CardSection({ label, title, collapsible, defaultOpen = true, soc
   const setOpen = (next: boolean) => {
     if (!nodeId) { setLocal(next); return; }
     sectionFoldStore.set(nodeId, label, next);
-    scheduleAutosave();
+    notifyGraphChanged();
   };
   const mounted = useRef(false);
   useEffect(() => {
