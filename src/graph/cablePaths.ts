@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView
+// [[A1]] visualGraphCalculator
 import type { CableShape } from "./cableShape";
 
 export enum Position {
@@ -208,7 +208,7 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   }
   cands.sort((p, q) => p.turns - q.turns);
   for (let m = minLeg; m >= 0.25; m /= 2) {
-    // Length first ([[B10]] reactFlowView); the sort order only settles exact ties.
+    // Length first ([[A1]] visualGraphCalculator); the sort order only settles exact ties.
     let best: { heads: number[]; lens: number[]; total: number } | null = null;
     for (const c of cands) {
       const heads = buildHeads(kS, c.sigma, c.b, c.r, c.e);

@@ -1,4 +1,4 @@
-// [[C92]] pinchUnvetoable, [[D71]] zoomLatticeDiscreteOnly
+// [[C92]] pinchUnvetoable
 import { clampZoom, wheelZoomDelta, MIN_ZOOM, MAX_ZOOM } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };

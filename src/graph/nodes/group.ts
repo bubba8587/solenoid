@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[C88]] collapsedGroupCard, [[D63]] lockedGroupIsObstacle
+// [[C86]] membershipByGesture, [[C88]] collapsedGroupCard, [[C112]] noOverlapsEver
 import { ClassicPreset } from "rete";
 
 export class GroupNode extends ClassicPreset.Node {
@@ -8,7 +8,7 @@ export class GroupNode extends ClassicPreset.Node {
   collapsed: boolean;
   width: number;
   height: number;
-  lockedPosition: boolean; // [[D63]] lockedGroupIsObstacle
+  lockedPosition: boolean; // [[C112]] noOverlapsEver
 
   constructor(init?: {
     label?: string;

@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone
+// [[B14]] oneDesignSystem
 import { createNotifier, createToggleStore } from "./storeKit";
 
 // ── Color helpers ────────────────────────────────────────────────────────────
@@ -427,7 +427,7 @@ const CVD_CHROME: PaletteChrome = {
   },
 };
 
-// Solarized's near-3:1 body contrast is its identity: do not raise these tones ([[C62]] paletteAllOrNone).
+// Solarized's near-3:1 body contrast is its identity: do not raise these tones ([[B14]] oneDesignSystem).
 const BASE = {
   b03: "#002b36", b02: "#073642", b01: "#586e75", b00: "#657b83",
   b0: "#839496", b1: "#93a1a1", b2: "#eee8d5", b3: "#fdf6e3",
@@ -853,7 +853,7 @@ const NEUTRAL_TINT_MAX_CHROMA = 0.05;
 // The OKLCH lightness a chrome color must have to stand for each shade; Solarized's dim text is no white.
 const NEUTRAL_L_RANGE: Record<string, [number, number]> = { [NEUTRAL_WHITE]: [0.85, 1], gray: [0.45, 0.8], [NEUTRAL_DARK]: [0.2, 0.55] };
 
-/** A neutral shade (white, gray or dark) as the active palette draws it: its chrome's own color, else the default shade tinted with the chrome background's hue, else the default ([[D95]] neutralsFollowChrome). */
+/** A neutral shade (white, gray or dark) as the active palette draws it: its chrome's own color, else the default shade tinted with the chrome background's hue, else the default ([[B14]] oneDesignSystem). */
 export function neutralHex(slot: string): string {
   const fallback = slot === "gray" ? _effective.gray : NEUTRAL_HEX[slot];
   const ramp = _effectiveChrome.dark;

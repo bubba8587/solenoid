@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface: a locked canvas is view-only, from the right-click menus too
+// [[B3]] sameNodeEverywhere: a locked canvas is view-only, from the right-click menus too
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../../src/graph/schemes";

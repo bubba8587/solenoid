@@ -1,4 +1,4 @@
-// [[C77]] compositeIsSubgraph, [[B10]] reactFlowView
+// [[C77]] compositeIsSubgraph, [[A1]] visualGraphCalculator
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";

@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C43]] oneFlowSurface
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
 
 export type View = {
   hasNode(id: string): boolean;

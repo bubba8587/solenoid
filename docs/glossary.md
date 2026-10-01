@@ -203,7 +203,7 @@ area. When you coin a new load-bearing term, add it here.
   `flow/flowView.ts` is the one implementation and `view` is its variable name
   everywhere. Positions live ON the node (`node.position`, absolute canvas coords) —
   there is no side map. **FlowSurface** is the one React component both canvases
-  render ([[C43]] oneFlowSurface).
+  render ([[B3]] sameNodeEverywhere).
 
 ## The author's UI vocabulary (chrome name → code handle)
 

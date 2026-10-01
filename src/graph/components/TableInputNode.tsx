@@ -1,4 +1,4 @@
-// [[C58]] tableInputRawText, [[C113]] controlDrivenRetype
+// [[C58]] tableInputRawText, [[B11]] maximalMerge
 import { useEffect, useState, type ReactNode } from "react";
 import type { TableInputNode as TableInputNodeType, TableElemType } from "../rete-nodes";
 import { processGraph } from "../process";

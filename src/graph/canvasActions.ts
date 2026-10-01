@@ -188,7 +188,7 @@ export function linkStandoffBetween(
 }
 
 /**
- * Every surface's `noderemoved` settle ([[B10]] reactFlowView). Under a rebuild gate a removal may be a
+ * Every surface's `noderemoved` settle ([[A1]] visualGraphCalculator). Under a rebuild gate a removal may be a
  * relocation (Wrap as Composite keeps the node and its stores), so the gated edit forgets what it really deleted.
  */
 export function settleNodeRemoved(editor: NodeEditor<Schemes>, view: View, node: SolenoidNode, gated: boolean): void {
@@ -199,7 +199,7 @@ export function settleNodeRemoved(editor: NodeEditor<Schemes>, view: View, node:
   if (node instanceof GroupNode) restoreSettledPushes(editor, view);
 }
 
-/** What differs between the surfaces that share the delete verb ([[C43]] oneFlowSurface). */
+/** What differs between the surfaces that share the delete verb ([[B3]] sameNodeEverywhere). */
 export type DeleteScope = EditScope & {
   /** Drawn cables and standoffs exist on the main canvas alone. */
   mainLayers: boolean;

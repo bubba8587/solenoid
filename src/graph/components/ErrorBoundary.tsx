@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface: every render is boundaried (tree/specs/canvas/react-flow-surface-contract.md).
+// [[B3]] sameNodeEverywhere: every render is boundaried (tree/specs/canvas/react-flow-surface-contract.md).
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 /** `scope="node"` wraps each card, whose throw would otherwise blank the whole canvas. */

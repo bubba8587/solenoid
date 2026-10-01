@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[C42]] htmlInCanvasRenderer
+// [[B3]] sameNodeEverywhere, [[C42]] htmlInCanvasRenderer
 import { getView, getEditor } from "./process";
 
 function inlineStylesheetText(): string {

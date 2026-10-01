@@ -4,7 +4,7 @@ import { indexRefError } from "./indexAccess";
 import type { Cell } from "./coerce";
 import { MAX_GENERATED } from "./listOps";
 
-/** `#OVERFLOW!` past MAX_GENERATED cells, so a typo like EXPAND(x, 1e5, 1e5) answers an error instead of exhausting memory ([[C21]] matchNodeLimits). */
+/** `#OVERFLOW!` past MAX_GENERATED cells, so a typo like EXPAND(x, 1e5, 1e5) answers an error instead of exhausting memory ([[C17]] shareImpl). */
 function cellCap(fn: string, rows: number, cols: number): SolError | null {
   return rows * cols > MAX_GENERATED
     ? solError("#OVERFLOW!", `${fn} would build ${rows}×${cols} cells, past the ${MAX_GENERATED} element limit`)

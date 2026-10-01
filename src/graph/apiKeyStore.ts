@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[B13]] aiInScope, [[C105]] apiKeysStayLocal
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[B13]] aiInScope, [[C105]] apiKeysStayLocal
 import { createNotifier } from "./storeKit";
 
 const LS_KEY = "solenoid.apiKeys";

@@ -2,7 +2,7 @@
 aliases: ["Layout and chrome"]
 tags: [spec, canvas]
 ---
-<!-- [[B14]] oneDesignSystem, [[C93]] gestureByPointerType, [[B10]] reactFlowView, [[B2]] webTryDesktopFull -->
+<!-- [[B14]] oneDesignSystem, [[C93]] gestureByPointerType, [[A1]] visualGraphCalculator, [[B2]] webTryDesktopFull -->
 
 # Spec: Layout and chrome
 

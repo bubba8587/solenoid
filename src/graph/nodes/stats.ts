@@ -1,4 +1,4 @@
-// [[B11]], [[C113]], [[C17]] shareImpl
+// [[B11]], [[C17]] shareImpl
 import { ClassicPreset } from "rete";
 import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, readRole, tableIn, tableOut, frameOut, strOut } from "./shared";
 import { rolesFrom, required, setting } from "../inputRoles";

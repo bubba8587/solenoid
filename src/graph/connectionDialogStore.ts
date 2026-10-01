@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 type Prefill = { nodeId: string; socketKey: string };
 
 export type ConnDialogReq = {

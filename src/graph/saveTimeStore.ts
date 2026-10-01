@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 // A leaf module (storeKit only), because a node class cannot import documentStore; documentStore injects the provider.
 
 import { createNotifier } from "./storeKit";

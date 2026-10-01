@@ -2,7 +2,7 @@
 aliases: ["Error values"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[D35]] errorInErrorOut, [[E9]] errorsKeepOrigin, [[D69]] convertBadPickIsNA -->
+<!-- [[C24]] arraySemantics, [[D35]] errorInErrorOut, [[E9]] errorsKeepOrigin, [[C25]] firstClassUnits -->
 
 # Spec: Error values
 
@@ -77,7 +77,7 @@ A condition that is a tagged error at scalar level (÷0 is `#DIV/0!`, a domain m
 - The mechanism is `broadcastErr`, the sibling of `broadcast` in `nodes/shared.ts`. Its element function may return a `SolError`, and the call site maps the producer's domain-`null` sentinel through `?? errFactory()`.
 - Arithmetic, Math (MathFn), TwoInputMath (LOG), Standardize and Fisher use `broadcastErr`; Convert gets the same behavior through `broadcastUnit`.
 - `broadcast` doesn't collapse to NaN either: every result passes `guardFinite`, so a NaN result is `#DOMAIN!` per cell. Only an explicit function returning null stays blank.
-- A whole-node error, like Convert's incommensurable unit pick ([[D69]] convertBadPickIsNA), stays a single value at every rank.
+- A whole-node error, like Convert's incommensurable unit pick ([[C25]] firstClassUnits), stays a single value at every rank.
 
 ### The per-cell contract and the non-finite guard
 

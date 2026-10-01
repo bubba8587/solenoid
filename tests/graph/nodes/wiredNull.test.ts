@@ -584,7 +584,7 @@ describe("figure controls never clobber the typed literal", () => {
 });
 
 describe("Distribution — a wired blank parameter propagates", () => {
-  // The [[C61]] oneDistributionNode flagship: every param reads through readInput, so a wired
+  // The [[B11]] maximalMerge flagship: every param reads through readInput, so a wired
   // blank mean blanks the result while an unwired slot uses the seeded literal.
   it("NORM.DIST: a wired blank mean blanks the result; unwired uses the literals", () => {
     const node = new DistributionsNode({ op: "normal", form: "cdf" });

@@ -1,4 +1,4 @@
-// [[D90]] cubeTypesAtDepth, [[E16]] cubeCellKinds
+// [[D90]] cubeTypesAtDepth
 // What is declared for each table nested in a Cube's cells, keyed by where it sits: whether it is a Frame, and its
 // columns' types. Pure JSON, so Cube Input's source and the Solenoid Properties plugin's store hold it as it is.
 import type { FrameColType } from "./frame";

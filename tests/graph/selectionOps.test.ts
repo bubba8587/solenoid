@@ -1,4 +1,4 @@
-// [[C52]], [[D63]] lockedGroupIsObstacle
+// [[C52]], [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
 import { NodeEditor } from "rete";
 import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, toggleNodeCollapsed, type Placed } from "../../src/graph/selectionOps";

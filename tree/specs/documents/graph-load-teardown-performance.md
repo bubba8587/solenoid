@@ -2,11 +2,11 @@
 aliases: ["Graph load / teardown performance"]
 tags: [spec, documents]
 ---
-<!-- [[C43]] oneFlowSurface -->
+<!-- [[B3]] sameNodeEverywhere -->
 
 # Spec: Graph load / teardown performance
 
-Serves [[C43]] oneFlowSurface. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Loading a document tears down the current graph and builds the new one (`rebuildGraph` in `persistence.ts`). Opening a file, switching documents, pasting a saved graph, and every undo or redo restore all go through this path, so its cost scales with graph size. Every card renders in one React tree and React Flow measures its own handles, so the costs that matter are the number of React Flow commits, the number of cards that re-render, the length of the async chain during build, and the per-node store cleanup. This spec covers each.
 

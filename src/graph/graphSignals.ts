@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store)
+// [[A1]] visualGraphCalculator (module-singleton store)
 // Version and flag stores the surface raises and cards subscribe to.
 // Bumped on connectioncreated and connectionremoved.
 let _connVersion = 0;

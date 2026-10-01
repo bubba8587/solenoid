@@ -1,4 +1,4 @@
-// [[C61]], [[C113]], [[D46]] freezeVolatilePerCalc
+// [[B11]], [[D46]] freezeVolatilePerCalc
 import { ClassicPreset } from "rete";
 import { numIn, numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
 import { DIST_SPECS, isInverseForm, formAfterSwitch, sampleQuantiles, type DistForm, type DistKey, type DistSpec } from "./distributionOps";

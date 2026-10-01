@@ -2,11 +2,11 @@
 aliases: ["Pointer gestures"]
 tags: [spec, canvas]
 ---
-<!-- [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType, [[C43]] oneFlowSurface, [[C52]] visibleSelection -->
+<!-- [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType, [[B3]] sameNodeEverywhere, [[C52]] visibleSelection -->
 
 # Spec: Pointer gestures
 
-Serves [[C92]] pinchUnvetoable (where each gesture listens and what counts as a finger), [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[C43]] oneFlowSurface (both canvases wire the gestures once). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C92]] pinchUnvetoable (where each gesture listens and what counts as a finger), [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[B3]] sameNodeEverywhere (both canvases wire the gestures once). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This spec is the mechanics of canvas pointer input: which listener handles each gesture, in which event phase, and how a finger is told apart from a mouse or pen. [[touch-gestures]] is its companion: the inventory of what every gesture does on each device.
 
@@ -109,7 +109,7 @@ There is no palm rejection ([[C93]]). A pen is handled only as what it is, a pre
 
 ## Both canvases wire the gestures once
 
-The main canvas (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay`) render the same `FlowSurface` ([[C43]] oneFlowSurface). `FlowSurface` installs `installFlowPinch`, `installTouchCardPan` and `installWheelZoom` on its wrapper, along with the lasso, the menus and the keyboard. A static surface (`hooks.staticView`, the landing scenes) installs none of them. Anything installed in a host instead of the surface is a behavior the other canvas silently lacks.
+The main canvas (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay`) render the same `FlowSurface` ([[B3]] sameNodeEverywhere). `FlowSurface` installs `installFlowPinch`, `installTouchCardPan` and `installWheelZoom` on its wrapper, along with the lasso, the menus and the keyboard. A static surface (`hooks.staticView`, the landing scenes) installs none of them. Anything installed in a host instead of the surface is a behavior the other canvas silently lacks.
 
 ## Locking
 

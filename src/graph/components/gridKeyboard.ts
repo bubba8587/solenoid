@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface (.nokeys: the grid owns its keys), [[C54]] noPerCellFormulas (computed cells are skipped)
+// [[B3]] sameNodeEverywhere (.nokeys: the grid owns its keys), [[C54]] noPerCellFormulas (computed cells are skipped)
 // `vi` is the visual row (an index into the sorted visibleOrder), never the source row; `skip(vi, c)` marks a cell Tab hops over.
 
 export type GridKey =

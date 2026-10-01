@@ -106,7 +106,7 @@ const FX_LEGEND: [string, string][] = [
   ["@price / SUM(price)", "this row's share of the total"],
 ];
 
-/** `cube`: the Cube popup's legend, which adds the None type and a list column's `@` read ([[D81]] cubeRowLists). */
+/** `cube`: the Cube popup's legend, which adds the None type and a list column's `@` read ([[C22]] rowFormulaRefs). */
 export function HeaderHelpButton({ formulas, lambdas, cube = false }: { formulas: boolean; lambdas: boolean; cube?: boolean }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);

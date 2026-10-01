@@ -2,11 +2,11 @@
 aliases: ["Outline panel"]
 tags: [spec, canvas]
 ---
-<!-- [[B10]] reactFlowView, [[C52]] visibleSelection -->
+<!-- [[A1]] visualGraphCalculator, [[C52]] visibleSelection -->
 
 # Spec: Outline panel
 
-Serves [[B10]] reactFlowView (focusing a node) and follows [[C52]] visibleSelection. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[A1]] visualGraphCalculator (focusing a node) and follows [[C52]] visibleSelection. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The Outline, called the Navigator on screen, is the left-docked list of every node on the main canvas, mirroring group membership and collapse state. Format Controllers are left out entirely. The code is `OutlinePanel.tsx`.
 

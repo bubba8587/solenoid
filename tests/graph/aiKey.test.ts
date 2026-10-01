@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView
+// [[A1]] visualGraphCalculator
 import { describe, it, expect, afterEach } from "vitest";
 import { apiKeyStore } from "../../src/graph/apiKeyStore";
 import { AI_PROVIDER, aiConnected } from "../../src/graph/aiKey";

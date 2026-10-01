@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter, [[C113]] controlDrivenRetype, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
+// [[C95]] commitOnEnter, [[B11]] maximalMerge, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { collapseStore } from "../collapseStore";
 import type React from "react";
@@ -665,7 +665,7 @@ function FxDateRow({ data, emit, socketKey, label }: {
 
 const FX_MODE_OPTIONS = (Object.keys(FX_MODE_META) as FxMode[]).map((k) => ({ value: k, label: FX_MODE_META[k].label }));
 
-// Spot ↔ History swaps sockets in place ([[C113]] controlDrivenRetype): prune departing
+// Spot ↔ History swaps sockets in place ([[B11]] maximalMerge): prune departing
 // input AND output cables first.
 async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => void) {
   if (next === data.mode) return;

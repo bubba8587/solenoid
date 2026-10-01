@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone
+// [[B14]] oneDesignSystem
 
 export function categoryColorIndex(values: readonly (string | null | undefined)[]): Map<string, number> {
   const index = new Map<string, number>();

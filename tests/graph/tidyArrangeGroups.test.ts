@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
+// [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic
 import type { View } from "../../src/graph/view";
 import { ChartBuilderNode } from "../../src/graph/nodes/visual";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";

@@ -1,4 +1,4 @@
-// [[D91]] xyColumnMapping, [[C100]] chartIsAValue
+// [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue
 import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
 import { solError, type SolError } from "../errorValue";
 import type { ChartOptions, LineStyle } from "./chartOptions";

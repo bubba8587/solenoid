@@ -18,7 +18,7 @@ import { resolveColor } from "../palette";
 import { repaintSparkline, SPARK_SLOTS } from "../nodes/visualOps";
 import "./ArrayChip.css";
 
-/** A text cell holding a data:image picture ([[D83]] imageTextCells); a sparkline paints in the active palette ([[D82]] sparklineCell). */
+/** A text cell holding a data:image picture ([[C103]] untrustedContentSeams); a sparkline paints in the active palette ([[D82]] sparklineCell). */
 export function CellImage({ src, className = "sol-cell-img", alt = "" }: { src: string; className?: string; alt?: string }): ReactNode {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const shown = repaintSparkline(src, {

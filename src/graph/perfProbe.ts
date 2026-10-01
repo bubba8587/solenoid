@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface (tree/specs/documents/graph-load-teardown-performance.md)
+// [[B3]] sameNodeEverywhere (tree/specs/documents/graph-load-teardown-performance.md)
 // Inert unless `window.__solenoidPerf = true`; `window.__solenoidStats()` dumps the tables.
 
 export function perfEnabled(): boolean {

@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone
+// [[B14]] oneDesignSystem
 import { isDesktop } from "./fileBridge";
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {

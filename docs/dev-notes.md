@@ -80,7 +80,7 @@ specific item.
   (the Excel shapers read rows and columns themselves). `readVectors` / `asColumn` in `excelFormula.ts` apply it;
   `vectorOrient.test.ts` runs every `free` function on a list and a column. A computed column's row-aligned wired
   list reads as a column. INTERPOLATE and DIAGONAL are `free` for their vector mode and keep their grid mode.
-  A Cube column of list cells reads whole as its rows stacked, padded with blanks ([[D81]] cubeRowLists), so
+  A Cube column of list cells reads whole as its rows stacked, padded with blanks ([[C22]] rowFormulaRefs), so
   `SUM(prices)`, `ROWS(prices)` and `INDEX(prices, ROW(), 2)` work; a grid in some row keeps it `#SHAPE!`.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's editable levels carry it too (None type, `COUNTA(@tags)`; Fx rows on the root only).
@@ -123,10 +123,10 @@ specific item.
 - **Cast absorbs NUMBERVALUE** (the NumberValue card is gone): to Text takes a `format`, to Number takes Decimal and
   Group separators under a small Separators label, read by VALUE's own reader (`parseValueText`); a retarget drops
   the departing inputs' cables. Cast sits on the default width tiers now that its segments are icons.
-- **A Cube row holding a table is `#SHAPE!` on that row alone** ([[D81]] cubeRowLists); the column's other rows
+- **A Cube row holding a table is `#SHAPE!` on that row alone** ([[C22]] rowFormulaRefs); the column's other rows
   compute. SORT of nothing answers nothing.
 - **Palette follow-ups:** Add menu leaf tints follow the palette (`accent` is a node kind, `leafAccent`), and the
-  three neutral accents take on the palette's chrome ([[D95]] neutralsFollowChrome: `neutralHex`, tinted toward the
+  three neutral accents take on the palette's chrome ([[B14]] oneDesignSystem: `neutralHex`, tinted toward the
   app background within a lightness range).
 - **CI:** four pack formulas lacked `orient`; `vectorOrient.test.ts` now loads the packs itself, so the check no
   longer depends on test order.
@@ -136,7 +136,7 @@ specific item.
 
 ### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
 
-- **Frame headers suggest column names** ([[D92]] columnNameSuggest): the plugin hands the Frame editor a
+- **Frame headers suggest column names** ([[C107]] obsidianPlugin): the plugin hands the Frame editor a
   `columnNameOptions` function (read on header focus) over every column typed under a Frame or Cube property;
   the header runs the popup's own `CellSuggest`, a pick sets the column's type, and a Suggest column names toggle
   (on by default) turns it off. API v1 grows `columnNames()`, which the Decision Matrix view's Add criterion reads.

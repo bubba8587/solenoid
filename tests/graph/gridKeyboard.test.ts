@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface
+// [[B3]] sameNodeEverywhere
 import { describe, it, expect } from "vitest";
 import { gridKeyOf, nextCell, stepListSel, type GridKey } from "../../src/graph/components/gridKeyboard";
 

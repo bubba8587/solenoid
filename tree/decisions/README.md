@@ -13,7 +13,7 @@ Tags go in the `tags` property or inline in the body. Typing your name into `rat
 
 **Write a decision.** New note in `outbox/`, any shape. Say what and why. Above ring C it becomes an inbox item first.
 
-**Find things.** `[[C41]]` by ID, `[[branchModel]]` by name. `DTE.base` has the Outbox, Unratified, Contested, Inbox and All views.
+**Find things.** `[[B7]]` by ID, `[[branchModel]]` by name. `DTE.base` has the Outbox, Unratified, Contested, Inbox and All views.
 
 **Specs.** They live beside this folder in `specs/`, grouped by area. Link one by file name, `[[save-format]]`, or by its title. The Specs view in `DTE.base` lists them by folder.
 

@@ -39,7 +39,7 @@
   border-radius: 4px;
 }
 
-/* [[D83]] imageTextCells: a picture held as text, sized to the row. */
+/* [[C103]] untrustedContentSeams: a picture held as text, sized to the row. */
 .sol-cell-img {
   display: inline-block;
   height: 1.3em;

@@ -1,4 +1,4 @@
-// [[D5]] searchWiderThanLabel
+// [[B16]] oneFormulaSurface
 export function fuzzyScore(query: string, text: string): number | null {
   return fuzzyScoreLower(query.toLowerCase().replace(/\s+/g, ""), text.toLowerCase());
 }

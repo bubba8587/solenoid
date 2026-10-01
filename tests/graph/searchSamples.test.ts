@@ -1,4 +1,4 @@
-// [[D5]] searchWiderThanLabel, [[C19]] namingModel
+// [[B16]] oneFormulaSurface
 import fs from "node:fs";
 import { describe, it, expect } from "vitest";
 import { runSearchSamples } from "../../scripts/search-samples";

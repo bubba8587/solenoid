@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (the snapshot history), [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator (the snapshot history), [[B12]] losslessSaves
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding, withGraphRebuild } from "../process";

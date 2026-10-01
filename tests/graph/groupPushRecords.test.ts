@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver, [[D63]] lockedGroupIsObstacle
+// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NodeEditor } from "rete";

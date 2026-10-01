@@ -1,4 +1,4 @@
-// [[C88]] collapsedGroupCard (collapsedAwareNodesRect), [[D71]] zoomLatticeDiscreteOnly
+// [[C88]] collapsedGroupCard (collapsedAwareNodesRect), [[C92]] pinchUnvetoable
 import { floorZoom } from "./viewPresets";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getActiveView, getActiveEditor } from "./activeGraph";

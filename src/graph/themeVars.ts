@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone
+// [[B14]] oneDesignSystem
 import { hexToRgba, contrastInk, themeAccent, resolveColor, resolveAccent, paletteStore, SOCKET_VARS, socketArrayShade, socketMatrixShade, socketRingShade, chromeCssVars, adaptChrome, CHROME_VARS, DERIVED_CHROME_VARS } from "./palette";
 
 export type ThemeMode = "dark" | "light";

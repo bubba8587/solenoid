@@ -1,4 +1,4 @@
-// [[C19]] namingModel, [[C26]] opArgDistinct, [[C24]] arraySemantics
+// [[B16]] oneFormulaSurface, [[C26]] opArgDistinct, [[C24]] arraySemantics
 import { useEffect, useState, type ReactNode } from "react";
 import { NodeShell, OpSelect, useNodeField, type NodeProps, type ShellNode } from "./nodeKit";
 import { InlineInputs, type InlineNode } from "./inlineInput";

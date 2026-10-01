@@ -1,4 +1,4 @@
-// [[C52]] visibleSelection, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast
+// [[C52]] visibleSelection, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast
 
 import type { View } from "./view";
 import { GroupNode } from "./rete-nodes";

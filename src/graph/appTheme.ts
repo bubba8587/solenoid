@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone
+// [[B14]] oneDesignSystem
 import { resolveAccent, paletteStore, initPalette } from "./palette";
 import { themeVars, type ThemeMode } from "./themeVars";
 import { createNotifier } from "./storeKit";

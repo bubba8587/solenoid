@@ -2,11 +2,11 @@
 aliases: ["Module-singleton stores"]
 tags: [spec, floors]
 ---
-<!-- [[B10]] reactFlowView, [[B12]] losslessSaves, [[C106]] noNativeDialogs; covers: src/graph/*Store.ts, src/graph/storeKit.ts, src/graph/nodeStoreRegistry.ts -->
+<!-- [[A1]] visualGraphCalculator, [[B12]] losslessSaves, [[C106]] noNativeDialogs; covers: src/graph/*Store.ts, src/graph/storeKit.ts, src/graph/nodeStoreRegistry.ts -->
 
 # Spec: Module-singleton stores
 
-What every `*Store.ts` under `src/graph/` is built to. The stores are the app-wide state that [[B10]] reactFlowView keeps outside React (`storeKit.ts` `createNotifier`); this spec is their floor, and its `covers:` line is what `dte blast` and `dte coverage` read instead of a citation per file.
+What every `*Store.ts` under `src/graph/` is built to. The stores are the app-wide state that [[A1]] visualGraphCalculator keeps outside React (`storeKit.ts` `createNotifier`); this spec is their floor, and its `covers:` line is what `dte blast` and `dte coverage` read instead of a citation per file.
 
 A **store** is a plain module that holds one piece of shared state, such as which cards are collapsed, the pinned values, the toast queue, or whether a dialog is open. Components read it and re-render when it changes. A module store rather than component state lets a surface in one React tree drive a popup mounted in another (a card on the canvas opens the Script editor mounted in App), and lets Canvas's keydown handler read the state directly, with no stale closure.
 

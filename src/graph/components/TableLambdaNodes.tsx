@@ -95,7 +95,7 @@ const AXIS_OPTS: ReadonlyArray<{ value: ByAxis; label: string }> = [
   { value: "col", label: "By column" },
 ];
 
-// [[C113]] controlDrivenRetype: BYROW answers a one-column table and BYCOL a list, so the switch retypes the output.
+// [[B11]] maximalMerge: BYROW answers a one-column table and BYCOL a list, so the switch retypes the output.
 export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
   const [op, setOpField] = useNodeField(data, "op");
   async function pickOp(next: ByAxis) {

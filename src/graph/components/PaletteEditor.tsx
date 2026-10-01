@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone
+// [[B14]] oneDesignSystem
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CardFrame } from "./NodeCard";
 import { useHeaderHeightVar } from "./useHeaderHeightVar";

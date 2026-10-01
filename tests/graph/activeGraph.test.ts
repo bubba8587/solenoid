@@ -100,7 +100,7 @@ describe("activeGraph resolver", () => {
   });
 });
 
-describe("a main-graph node retypes on its own surface while a drill-in is open ([[C113]] controlDrivenRetype)", () => {
+describe("a main-graph node retypes on its own surface while a drill-in is open ([[B11]] maximalMerge)", () => {
   it("SEQUENCE and Expression swap their result socket and re-render on the main view", async () => {
     const { SeriesNode } = await import("../../src/graph/nodes/list");
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");

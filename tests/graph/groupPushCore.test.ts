@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle
+// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
 import { computeExpandPush, separateOverlaps, separateAll, PushBox, Satellite, ExpandSpec, PUSH_GAP, Pt } from "../../src/graph/groupPushCore";
 

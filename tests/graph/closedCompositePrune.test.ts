@@ -1,4 +1,4 @@
-// [[C113]] controlDrivenRetype, [[C77]] compositeIsSubgraph
+// [[B11]] maximalMerge, [[C77]] compositeIsSubgraph
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";

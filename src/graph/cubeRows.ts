@@ -1,4 +1,4 @@
-// [[D81]] cubeRowLists: a Cube as a row formula reads it.
+// [[C22]] rowFormulaRefs: a Cube as a row formula reads it.
 import { inferColumn, typedColumn, isFrameValue, isCubeValue, type FrameColType, type CubeValue, type CubeColumn, type CubeCell } from "./frame";
 import { isUnitCell, type ColumnUnit } from "./unitValue";
 import { displayMagnitudeOf } from "./unitBridge";
@@ -27,7 +27,7 @@ const atRef = (name: string): string => `@${/^[A-Za-z_][\w.]*$/.test(name) ? nam
 
 /**
  * A column of lists read whole is its rows stacked, one list per row, padded with blanks to the longest
- * ([[D81]] cubeRowLists, [[D85]] columnsStayColumns): a list is a row, so a column of them is a table.
+ * ([[C22]] rowFormulaRefs, [[D85]] columnsStayColumns): a list is a row, so a column of them is a table.
  * A blank is no value here, so SUM and AVERAGE read only the items that exist.
  */
 function stackedRows(col: CubeColumn, values: readonly unknown[]): unknown {
@@ -46,7 +46,7 @@ export function cubeRowTable(cube: CubeValue): { columns: CubeRowColumn[] } {
     columns: cube.columns.map((col): CubeRowColumn => {
       const tables = col.cells.some(isTableCell);
       if (!tables && !col.cells.some(Array.isArray)) return scalarRead(col, rows);
-      // A table cell refuses on its own row only; the column's other rows still read ([[D81]] cubeRowLists).
+      // A table cell refuses on its own row only; the column's other rows still read ([[C22]] rowFormulaRefs).
       const tableErr = solError("#SHAPE!", `This row of "${col.name}" holds a table; a formula reads values and lists`);
       const values = Array.from({ length: rows }, (_, i) => {
         const c = col.cells[i] ?? null;

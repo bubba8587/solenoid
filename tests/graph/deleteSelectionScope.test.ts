@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[D41]] formatFlowsDownstream
+// [[B3]] sameNodeEverywhere, [[D41]] formatFlowsDownstream
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";

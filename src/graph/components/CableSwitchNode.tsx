@@ -1,4 +1,4 @@
-// [[C113]] controlDrivenRetype
+// [[B11]] maximalMerge
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";

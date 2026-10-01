@@ -57,7 +57,7 @@ describe("the connect-time gate ([[C10]] socketLattice acceptance)", () => {
   });
 });
 
-describe("the result socket reconciles RANK, keeps FAMILY ([[C10]] socketLattice + [[C113]] controlDrivenRetype)", () => {
+describe("the result socket reconciles RANK, keeps FAMILY ([[C10]] socketLattice + [[B11]] maximalMerge)", () => {
   it("a matrix result marks the node rank-2; a scalar result marks it back", async () => {
     const node = new ExpressionNode({ expr: "a * 2" });
     wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);

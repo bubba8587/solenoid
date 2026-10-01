@@ -33,7 +33,7 @@ warning is expected.
   surface, but every variable's output is a number socket ([[C47]] equationNode: "every real root"),
   so a relation whose answer is complex (`x^2 + 1 = 0`, expected ±i), text, a date or a logical has
   nowhere to go: a negative discriminant is `#SOLVE!`. The fix decides what an unknown's output is
-  when its answer leaves the number family (a retype, [[C113]] controlDrivenRetype, or fixed wider
+  when its answer leaves the number family (a retype, [[B11]] maximalMerge, or fixed wider
   sockets) and amends C47. Quadratic Roots already answers the conjugate pair.
 
 ## Node merges (parked by the author, [[B11]] maximalMerge)
@@ -152,7 +152,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   stays the documented [[C96]] exception. Multi-series `color` is the other exception (the author skipped the fix).
 - [ ] **Gauge Dial has no Options input**, so no title or font size in Dial mode (author's call).
 - [ ] **Multi-output services still fall to math blue:** Geocode, Weather, Holidays, FX; input amber would fit
-  ([[C111]] reaches only one-output cards).
+  ([[B14]] reaches only one-output cards).
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 - [ ] **Collapse sweep leftovers** (`collapse-sweep.mjs`, needs the author's ruling): solver cards (TVM, Ohm's Law, Triangle Solver, Ideal Gas and kin) keep a row per variable collapsed rather than one pill; settings still visible collapsed on Expect, Grid Painter, Curve, Point Plotter, RANDARRAY, Color, Resistor Code and Query's buttons.
@@ -233,7 +233,7 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   - units: `T (K)`, `p (Pa)`, `ρ (kg/m³)`, `a (m/s)` (thermo), `(UTC)` on the astro sockets, `Marker size (px)`,
     `Font size (pt)` (chart options);
   - the λ-table binding hints `Values (value)`, `value2 (optional)`, `value3 (optional)` (MAP), a named exception in
-    [[C13]] frameLabelGrammar, so moving them amends that leaf.
+    [[B14]] oneDesignSystem, so moving them amends that leaf.
   Math notation stays (`arg(z)`, `P(lo ≤ X ≤ hi)`).
 
 ## Formatting & units
@@ -357,9 +357,9 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **PERCENTRANK.EXC of one value** answers 0.5, unchecked in Excel; **an imported file's first autosave** may still move its time if the load normalizes the graph (`updateCurrentGraph` compares serialized forms).
 
 ## From the 2026-09-30 oldest-first review (1.0-era and July files; verified against HEAD)
-- [ ] **Add Column's Add as** (`frameEdit.ts` applyAddColumnAddAs) drops the Values cable on every switch, where the two output retypes beside it keep a cable the new type still accepts (`retypeOutputCables`); and all three helpers swap the socket from component code, where the retype recipe (`tree/specs/values/type-propagation-on-in-place-socket-retype.md` step 1) puts it in the class's `setMode` ([[C113]] controlDrivenRetype).
+- [ ] **Add Column's Add as** (`frameEdit.ts` applyAddColumnAddAs) drops the Values cable on every switch, where the two output retypes beside it keep a cable the new type still accepts (`retypeOutputCables`); and all three helpers swap the socket from component code, where the retype recipe (`tree/specs/values/type-propagation-on-in-place-socket-retype.md` step 1) puts it in the class's `setMode` ([[B11]] maximalMerge).
 - [ ] **Constant and Physics Constant** draw their own value box (`ConstantNode.tsx`, `PhysicsConstantNode.tsx`): no copy button, no Format Controller. `ValueDisplay`'s `render` could carry the symbol and unit; decide how those sit beside an FC's formatting.
 - [ ] **IFERROR over a Frame**: `replaceCaught` (`nodes/logic.ts`) walks lists only, so a per-cell error inside a table passes through uncaught ([[C24]] arraySemantics); decide whether IFERROR reaches into cells.
 - [ ] **Convert's number formats** (`ConvertNode.tsx`) copy `numberFormatOptions` (`fcControls.tsx`) minus the pack formats; share it once `applyFormatStyle` is confirmed to take pack ids.
-- [ ] **Node showcase on its own flow stage** (`flow/StaticFlowStage.tsx`): a hand-built React Flow surface beside `FlowSurface`'s `locked` + `staticView` mode that `SceneStage` uses ([[C43]] oneFlowSurface, [[B3]] sameNodeEverywhere); unverified that the showcase runs on FlowSurface unchanged. Its type switch may also race (`NodeShowcase.tsx`: a cancelled run's `addNode` landing after the next `clear()`), unconfirmed.
+- [ ] **Node showcase on its own flow stage** (`flow/StaticFlowStage.tsx`): a hand-built React Flow surface beside `FlowSurface`'s `locked` + `staticView` mode that `SceneStage` uses ([[B3]] sameNodeEverywhere); unverified that the showcase runs on FlowSurface unchanged. Its type switch may also race (`NodeShowcase.tsx`: a cancelled run's `addNode` landing after the next `clear()`), unconfirmed.
 - [ ] **String editor's quote scanner** (`tools/string-editor/literals.mjs`) loses sync on regex literals, JSX apostrophes and nested templates (≈490 "literals" in `src/` span a line break), so real strings read not-found; tokenize with TypeScript's `createScanner`.

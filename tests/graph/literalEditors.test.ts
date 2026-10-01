@@ -63,7 +63,7 @@ describe("paths + shapes + cell text", () => {
     expect(recordsShape("x")).toBe("scalar");
     expect(recordsShape(null)).toBe("scalar");
   });
-  // [[E16]] cubeCellKinds
+  // [[D90]] cubeTypesAtDepth
   it("a cell switches between a value, a list, a table, a Frame and a Cube, keeping what it can", () => {
     expect([cellKindOf(3), cellKindOf(null), cellKindOf([]), cellKindOf([1]), cellKindOf([[1, 2], [3]]), cellKindOf([{ a: 1 }]), cellKindOf([{ a: 1 }], true), cellKindOf({ a: 1 })])
       .toEqual(["value", "value", "list", "list", "table", "cube", "frame", "cube"]);
@@ -115,7 +115,7 @@ describe("CubeInputNode", () => {
   });
 });
 
-// [[D90]] cubeTypesAtDepth, [[D81]] cubeRowLists
+// [[D90]] cubeTypesAtDepth, [[C22]] rowFormulaRefs
 describe("Cube Input typed and formula columns", () => {
   const cube = (source: object) => new CubeInputNode({ cubeText: JSON.stringify(source) }).data().cube as CubeValue;
   const col = (c: CubeValue, name: string) => c.columns.find((x) => x.name === name)!;

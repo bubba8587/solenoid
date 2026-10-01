@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (the snapshot history)
+// [[A1]] visualGraphCalculator (the snapshot history)
 // Session history, one line per labeled record under a date header; labels come from flow/flowHistoryDigest.ts.
 
 function fmtTime(t: number): string {

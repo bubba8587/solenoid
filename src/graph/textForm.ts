@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C19]] namingModel
+// [[B12]] losslessSaves, [[B16]] oneFormulaSurface
 import type { SavedGraph, SavedNode, SavedConnection, SavedStandoff } from "./persistence";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 import type { Pin } from "./pinStore";

@@ -111,7 +111,7 @@ describe("chart cards wear the chart green", () => {
   });
 });
 
-describe("[[C111]] unfiledCardTakesOutputColor", () => {
+describe("[[B14]] oneDesignSystem", () => {
   it("a card no family lists wears its one non-numeric output's color", () => {
     for (const n of [new UrlEncodeNode(), new EpochNode()]) {
       expect(explicitKindOf(n), n.constructor.name).toBeNull();

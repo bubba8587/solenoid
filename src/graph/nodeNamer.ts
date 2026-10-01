@@ -1,4 +1,4 @@
-// [[C19]] namingModel
+// [[B16]] oneFormulaSurface
 // For modules below catalogUtils in the import graph (errorValue, groupCollapse); catalogUtils binds nodeDisplayName at
 // load, and until then the class-derived fallback stands.
 

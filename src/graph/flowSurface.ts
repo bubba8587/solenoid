@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[B10]] reactFlowView
+// [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator
 // RF Handles and resize controls work only inside a ReactFlow tree, so the context gates them. Registered, not
 // imported: a direct import would be a NodeSocket ↔ FlowSocketHandle cycle.
 import { createContext, useContext, type ComponentType, type CSSProperties, type ReactNode } from "react";

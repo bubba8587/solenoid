@@ -10,7 +10,7 @@ Serves [[C66]] scriptNode. It covers what the system does and blocks, and the de
 
 The Script card runs a user-written JavaScript function on its inputs. Each parameter becomes an input socket, the arguments are converted to plain JavaScript, and the returned value is folded back onto the app's value model, where it types itself. The function runs inside a Web Worker, a separate background thread with the input and output routes removed, so a runaway or careless script cannot freeze the app or reach the network.
 
-The node is named Script, not Code, because CODE is an Excel function ([[D21]] noExcelNameClash). A script declares no result type, unlike Expression's Number / Text / Date / Auto switch: a JavaScript value says its own type, where a formula does not say what it returns.
+The node is named Script, not Code, because CODE is an Excel function ([[B16]] oneFormulaSurface). A script declares no result type, unlike Expression's Number / Text / Date / Auto switch: a JavaScript value says its own type, where a formula does not say what it returns.
 
 | File | Role |
 |---|---|

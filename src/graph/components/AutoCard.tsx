@@ -1,4 +1,4 @@
-// [[C114]] cardsView, [[D83]] imageTextCells
+// [[C114]] cardsView, [[C103]] untrustedContentSeams
 import { CellImage } from "./cubeCell";
 import { splitTags, isHexColor, linkHref, shortLink, type CardColType, type CardPlan } from "../cardLayout";
 import { categoryColorIndex } from "../categoryColor";

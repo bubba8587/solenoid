@@ -126,7 +126,7 @@ export function parseCellText(text: string): unknown {
   return text;
 }
 
-/** What an editing cell holds ([[E16]] cubeCellKinds): a value, a list, a table (rows of values, the app's 2-D shape), a Frame or a Cube (records). */
+/** What an editing cell holds ([[D90]] cubeTypesAtDepth): a value, a list, a table (rows of values, the app's 2-D shape), a Frame or a Cube (records). */
 export type CellKind = "value" | "list" | "table" | "frame" | "cube";
 
 /** Records are a Frame only where the cell is declared one (`isFrameAt`); otherwise a Cube. */

@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface (installed by the surface, once), [[C52]] visibleSelection
+// [[B3]] sameNodeEverywhere (installed by the surface, once), [[C52]] visibleSelection
 import type { View } from "./view";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";

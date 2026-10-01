@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C19]] namingModel
+// [[A1]] visualGraphCalculator, [[B16]] oneFormulaSurface
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { NAME_RE, typePrefix, nextAvailableName, counterCheckpoint } from "./nodeNaming";

@@ -77,7 +77,7 @@ Every render and its intermediates land in `.dev/video/` (gitignored). A cut wor
   minimum-jerk timing; `hand.type` varies its rhythm. In Obsidian the kit is injected into each window
   (`injectCursor`) and `c.enterWindow(/^Settings/)` / `c.leaveWindow` hand the pointer across at the same screen spot.
 - **Camera**: `c.frame` (instant, off camera), `c.fly` (van Wijk smooth zoom), `c.drift` (slow push or pan).
-  They write `view.transform` and call `view.pan`, which bypasses the 10% zoom lattice ([[D71]]
+  They write `view.transform` and call `view.pan`, which bypasses the 10% zoom lattice ([[C92]]
   zoomLatticeDiscreteOnly governs discrete steps only). Wheel zoom would jump in 10% steps.
 - **Documents**: `c.doc(graph, name)` imports save-format JSON (`tree/specs/documents/save-format.md`)
   through `documentStore.importAsDocument`; ids are remapped, so find nodes by label with `c.socket`,

@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone
+// [[B14]] oneDesignSystem
 /** `fallbackVar` is the value type's socket color, used when there is no node context. */
 export function readChipPopupStyle(
   el: HTMLElement,

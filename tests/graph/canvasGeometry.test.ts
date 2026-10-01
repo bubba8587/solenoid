@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface
+// [[B3]] sameNodeEverywhere
 import { describe, it, expect } from "vitest";
 import { socketLocalCenter } from "../../src/graph/canvasGeometry";
 import type { View } from "../../src/graph/view";

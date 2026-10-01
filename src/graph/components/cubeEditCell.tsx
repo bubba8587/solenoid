@@ -1,4 +1,4 @@
-// [[C28]] literalsIffEditable, [[C95]] commitOnEnter, [[D90]] cubeTypesAtDepth, [[E16]] cubeCellKinds
+// [[C28]] literalsIffEditable, [[C95]] commitOnEnter, [[D90]] cubeTypesAtDepth
 import { useEffect, useState, type ReactNode } from "react";
 import { cubePopup, type CubeEditBinding, type DrillView, type CellRef } from "../cubePopupStore";
 import { recordsToCube, frameCellFromRecords, cubeRowCount, cubeDepth, typedCubeCell, coerceListItem, type CubeCell } from "../frame";
@@ -178,7 +178,7 @@ function redeclare(n: NestedTables, cellPath: CubePath, from: CellKind, to: Cell
   return to === "frame" ? withFrame(cleared, cellPath, true) : kept ? withFrame(cleared, cellPath, false) : cleared;
 }
 
-/** One editing cell: a value types in place, anything else is a chip to drill into, and the edge menu switches between them ([[E16]] cubeCellKinds). */
+/** One editing cell: a value types in place, anything else is a chip to drill into, and the edge menu switches between them ([[D90]] cubeTypesAtDepth). */
 function EditCell({ edit, cellPath, crumb, from, type, item, source, kinds = true }: {
   edit: CubeEditBinding; cellPath: CubePath; crumb: string; from: CellRef; type?: ColType; item: boolean; source: boolean;
   /** A table's or a Frame's cell stays a value: no menu. */

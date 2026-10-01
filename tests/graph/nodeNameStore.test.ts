@@ -1,4 +1,4 @@
-// [[C19]] namingModel
+// [[B16]] oneFormulaSurface
 import { describe, it, expect, beforeEach } from "vitest";
 import { nodeNameStore } from "../../src/graph/nodeNameStore";
 

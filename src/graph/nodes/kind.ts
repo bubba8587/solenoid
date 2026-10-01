@@ -1,4 +1,4 @@
-// [[C42]], [[C111]] unfiledCardTakesOutputColor
+// [[C42]], [[B14]] oneDesignSystem
 import { ClassicPreset } from "rete";
 import { type NodeKind, NODE_KIND_ACCENTS, NODE_KIND_SLOTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";

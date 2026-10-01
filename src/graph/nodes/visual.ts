@@ -1,4 +1,4 @@
-// [[B11]], [[C116]] xyChartFamily
+// [[B11]]
 import { ClassicPreset } from "rete";
 import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";

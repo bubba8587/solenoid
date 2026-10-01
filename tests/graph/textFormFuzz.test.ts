@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C19]] namingModel
+// [[B12]] losslessSaves, [[B16]] oneFormulaSurface
 import { describe, it, expect } from "vitest";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";

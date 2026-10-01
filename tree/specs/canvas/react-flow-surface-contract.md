@@ -2,13 +2,13 @@
 aliases: ["React Flow surface contract"]
 tags: [spec, canvas]
 ---
-<!-- [[B3]] sameNodeEverywhere, [[B10]] reactFlowView, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream -->
+<!-- [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream -->
 
 # Spec: React Flow surface contract
 
 Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-The canvas is drawn by React Flow (RF) over a headless rete model ([[B10]] reactFlowView). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The rete model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the small rete core supplies those, and writing our own would add code to maintain with nothing new for the user. Reopen if rete core stops being maintained in a way that hurts, or another library would let us delete code. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
+The canvas is drawn by React Flow (RF) over a headless rete model ([[A1]] visualGraphCalculator). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The rete model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the small rete core supplies those, and writing our own would add code to maintain with nothing new for the user. Reopen if rete core stops being maintained in a way that hurts, or another library would let us delete code. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
 
 ## One surface for both canvases
 
@@ -79,7 +79,7 @@ Positions are always absolute canvas coordinates, never RF's parent-relative one
 - Removing nodes removes their cables through the editor, and their names go too.
 - `toFlowNodes` lists parents before their children, as RF requires.
 
-### What the app uses from rete ([[B10]] reactFlowView)
+### What the app uses from rete ([[A1]] visualGraphCalculator)
 
 The rete surface is small: `ClassicPreset.Node / Input / Output / Socket / Connection` (plain data classes; every node class extends `Node`), `NodeEditor` (add, remove and get nodes and connections, and `addPipe` for the `nodecreated`, `connectioncreated` and `noderemoved` events that `coerceInputs`, the error guards, FC reconcile and the RF topology sync hang off), and `DataflowEngine` (`fetch`, `reset` and the public `cache`, which is pre-seeded for `#CIRC!`). That is about 1,500 lines of vendored ESM with one dependency, MIT licensed.
 
@@ -161,7 +161,7 @@ A cable renders as an SVG `<g>` inside RF's shared edge SVG (`FlowCableEdge.tsx`
 
 Starting a cable drag blurs the focused field first (`onConnectStart`), so a value that is mid-edit commits before it is wired. Rely on this; don't re-implement it. The drag also lights the origin socket for its duration, and the canvas root wears `solenoid-canvas--cabling` from pickup to drop: socket.css grows every socket's catch zone and re-arms mobile's drop targets off that class. The socket a dragged cable would land on (RF snaps within `connectionRadius`) lights once the pair validates.
 
-Every live cable change on either surface, including the ones components make themselves, settles through the cable-change pipe ([[C113]] controlDrivenRetype). `settleCableChange` reconciles FC and wildcard types, bumps the connection version, rescans FC unit mismatches and re-derives group collapse; then the stack's `afterCableChange` recomputes. On the main canvas that is a targeted pass from the cable's target. The drill-in's is empty, because its topology pipe already recomputes from the breadcrumb root once per burst. Under a rebuild gate the pipe holds: the main gate marks the bulk topology dirty for `withGraphRebuild`, and a bulk edit's scope settles once at its end. A cable dropped on empty canvas can open the Add menu instead (quick-wire, [[add-menu]]).
+Every live cable change on either surface, including the ones components make themselves, settles through the cable-change pipe ([[B11]] maximalMerge). `settleCableChange` reconciles FC and wildcard types, bumps the connection version, rescans FC unit mismatches and re-derives group collapse; then the stack's `afterCableChange` recomputes. On the main canvas that is a targeted pass from the cable's target. The drill-in's is empty, because its topology pipe already recomputes from the breadcrumb root once per burst. Under a rebuild gate the pipe holds: the main gate marks the bulk topology dirty for `withGraphRebuild`, and a bulk edit's scope settles once at its end. A cable dropped on empty canvas can open the Add menu instead (quick-wire, [[add-menu]]).
 
 ## Sockets
 
@@ -312,7 +312,7 @@ Isolate is a view-only focus: the focus set shows and every other card recedes. 
 
 ## Undo history
 
-Undo is a snapshot history (`flow/flowHistory.ts`, [[B10]] reactFlowView). Every settled mutation records the canonical document (`serializeGraph`, as JSON), so no action needs its own inverse: an undo is a `loadGraph` of the earlier snapshot.
+Undo is a snapshot history (`flow/flowHistory.ts`, [[A1]] visualGraphCalculator). Every settled mutation records the canonical document (`serializeGraph`, as JSON), so no action needs its own inverse: an undo is a `loadGraph` of the earlier snapshot.
 
 - **Recording.** `schedule()` debounces by `COALESCE_MS` (400 ms); `recordNow()` records at once. Neither records while a restore or a rebuild is running. A snapshot identical to the current one is skipped, and so is one that differs only by the cards' measured `init.width` and `init.height`, which re-stamp after a restore mounts the cards; recording that drift would cut off the redo tail for nothing. A new record truncates the redo tail.
 - **Who records.** `processGraph`'s graph-changed hook records component edits and autosaves; position-only changes (a nudge, a group push, standoffs), which never run `processGraph`, record through `afterProgrammaticMove`; drawn-cable edits record through `commitDrawn()`.

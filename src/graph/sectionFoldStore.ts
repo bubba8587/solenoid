@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[B12]] losslessSaves
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[B12]] losslessSaves
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

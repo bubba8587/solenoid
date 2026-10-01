@@ -1,4 +1,4 @@
-// [[D91]] xyColumnMapping
+// [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
 import { buildXY } from "../../../src/graph/nodes/xyPlot";
 import { ChartNode, MergePlotsNode } from "../../../src/graph/nodes/visual";

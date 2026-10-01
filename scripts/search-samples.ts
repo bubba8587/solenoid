@@ -1,4 +1,4 @@
-// [[D5]] searchWiderThanLabel, [[C19]] namingModel
+// [[B16]] oneFormulaSurface
 // One sample query per kind of searchable row, run through the real Add-menu search.
 // tests/graph/searchSamples.test.ts runs them; `npm run search-samples` prints them as a Markdown table.
 import { flattenLeaves, searchLeaves } from "../src/graph/catalogSearch";

@@ -1,4 +1,4 @@
-// [[B10]], [[C43]]
+// [[A1]], [[B3]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { NodeEditor } from "rete";

@@ -2,11 +2,11 @@
 aliases: ["Addressable model"]
 tags: [spec, documents]
 ---
-<!-- [[C19]] namingModel -->
+<!-- [[B16]] oneFormulaSurface -->
 
 # Spec: Addressable model
 
-Serves [[C19]] namingModel. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B16]] oneFormulaSurface. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Every node has a **name**: a stable identifier the user can edit, used wherever one part of a document refers to a node. This spec says what a name is and what it is not. The text form's grammar and round-trip rules are in [[save-format]].
 

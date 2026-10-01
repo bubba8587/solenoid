@@ -1,4 +1,4 @@
-/* [[B10]] reactFlowView */
+/* [[A1]] visualGraphCalculator */
 /* decorum sets its bar and button sizes as inline styles, so these overrides need !important. */
 
 html[data-shell="desktop"] div[data-tauri-decorum-tb] {

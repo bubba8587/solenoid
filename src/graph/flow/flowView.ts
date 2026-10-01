@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C43]] oneFlowSurface
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
 import type { View } from "../view";

@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[D52]] compositesHoldUntilSolve
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[D52]] compositesHoldUntilSolve
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

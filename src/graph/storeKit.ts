@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (the module-singleton stores are app-wide state)
+// [[A1]] visualGraphCalculator (the module-singleton stores are app-wide state)
 
 export interface Notifier {
   notify: () => void;

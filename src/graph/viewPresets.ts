@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[C92]] pinchUnvetoable, [[D71]] zoomLatticeDiscreteOnly
+// [[B3]] sameNodeEverywhere, [[C92]] pinchUnvetoable
 
 const ZOOM_SCALE = 0.0028;
 const ZOOM_STEP_CAP = 0.24;

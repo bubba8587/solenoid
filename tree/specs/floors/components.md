@@ -2,7 +2,7 @@
 aliases: ["Components"]
 tags: [spec, floors]
 ---
-<!-- [[C95]] commitOnEnter, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem, [[C43]] oneFlowSurface, [[B10]] reactFlowView; covers: src/graph/components/*.tsx, src/graph/flow/*.tsx, src/graph/*.tsx -->
+<!-- [[C95]] commitOnEnter, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem, [[A1]] visualGraphCalculator; covers: src/graph/components/*.tsx, src/graph/flow/*.tsx, src/graph/*.tsx -->
 
 # Spec: Components
 
@@ -21,7 +21,7 @@ What every React component in the app is built to. A component that implements a
    - The editable node title runs the same state machine (`useEditableLabel`): typing never writes `node.label`. Open drafts are flushed before a capture through `draftFlush.ts` ([[per-doc-autosave-persistence]]), so a draft is never lost when the user switches documents, saves a file or closes the window.
 3. **A socket that is about to disappear loses its cables first**, through `dropInputCables` (or `dropOutputCables` for an output) in `components/cablePrune.ts`, never a hand-rolled loop over `editor.removeConnection` ([[input-cable-pruning#The ordering rule]]; sweep-enforced).
 4. **A node's `width` and `height` belong to the ResizeObserver**, which overwrites them with the rendered size on every layout. Only a declared size-owner class (annotation frames, the composite card, groups, overlay hosts) reads `init.width` and `init.height` back on load; any other resize gesture routes its size through `nodeSizeStore` ([[react-flow-surface-contract#Node width and height]]).
-5. **Every render is inside an error boundary**: `ErrorBoundary` wraps each card (`withNodeBoundary`) and the app root, so one throwing card shows its own error and never blanks the canvas ([[C43]] oneFlowSurface; [[react-flow-surface-contract]]). The node wrapper is memoized by component type, because a fresh wrapper type per render would remount the card, lose focus mid-edit and re-run every effect.
+5. **Every render is inside an error boundary**: `ErrorBoundary` wraps each card (`withNodeBoundary`) and the app root, so one throwing card shows its own error and never blanks the canvas ([[B3]] sameNodeEverywhere; [[react-flow-surface-contract]]). The node wrapper is memoized by component type, because a fresh wrapper type per render would remount the card, lose focus mid-edit and re-run every effect.
 6. **Visual, layout and copy choices follow DESIGN.md** ([[B14]] oneDesignSystem): the op and argument split ([[C26]] opArgDistinct), the socket glyph table, the voice rules for every string, icons at even pixel sizes, and no native browser dialogs ([[C106]] noNativeDialogs).
 7. **A node looks and behaves the same wherever it renders** ([[B3]] sameNodeEverywhere): marketing scenes, popups and the socket value peek mount the real component, never a redrawn copy.
 8. **Pointer handling depends on pointer type** ([[C93]] gestureByPointerType). A control you drag inside stops the event from reaching the canvas. Read-only chrome uses `stopDragStart` (in `coarse.ts`), which stops the event on desktop, so a click cannot start a card drag, and lets it through on mobile, so a pan starting there still works. Nothing swallows a second finger, so a pinch always reaches the canvas ([[C92]] pinchUnvetoable).

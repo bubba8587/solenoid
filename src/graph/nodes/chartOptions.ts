@@ -1,4 +1,4 @@
-// [[C96]] chartOptionsAreMatplotlib, [[D91]] xyColumnMapping
+// [[C96]] chartOptionsAreMatplotlib
 import type { ChartValueOp } from "../chartValue";
 import { normalizeCmap } from "../colormaps";
 import { isNumberSpec } from "../numberSpec";

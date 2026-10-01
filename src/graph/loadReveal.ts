@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface (tree/specs/documents/graph-load-teardown-performance.md)
+// [[B3]] sameNodeEverywhere (tree/specs/documents/graph-load-teardown-performance.md)
 // The load curtain's phase and progress, driven by rebuildGraph so node-by-node construction is never seen.
 
 import { createNotifier } from "./storeKit";

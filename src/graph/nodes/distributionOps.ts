@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[C61]] oneDistributionNode
+// [[C17]] shareImpl, [[B11]] maximalMerge
 // Must not import rete: excelFunctions.ts registers the distribution formulas straight on `DIST_SPECS[key].compute`.
 import {
   stdNormCDF,

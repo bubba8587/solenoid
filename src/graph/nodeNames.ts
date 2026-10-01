@@ -1,4 +1,4 @@
-// [[C19]] namingModel
+// [[B16]] oneFormulaSurface
 // Node names and connectable endpoints for the connection dialog, derived live: the header title plus a 1-based index
 // when shared; an untitled node falls back to its type.
 import type { ClassicPreset } from "rete";

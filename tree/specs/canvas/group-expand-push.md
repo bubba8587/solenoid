@@ -2,11 +2,11 @@
 aliases: ["Group expand push"]
 tags: [spec, canvas]
 ---
-<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[B10]] reactFlowView, [[C52]] visibleSelection, [[C112]] noOverlapsEver -->
+<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[A1]] visualGraphCalculator, [[C52]] visibleSelection, [[C112]] noOverlapsEver -->
 
 # Spec: Group expand push
 
-Serves [[C85]] groupPushDeterministic (the push and its records), [[B10]] reactFlowView (the RF projection) and [[C86]] membershipByGesture (who joins a group). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C85]] groupPushDeterministic (the push and its records), [[A1]] visualGraphCalculator (the RF projection) and [[C86]] membershipByGesture (who joins a group). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A collapsed group draws as a small card. Expanding it back to full size would cover whatever sits nearby, so the expansion pushes those neighbors just far enough aside, remembers each push, and slides them back when the group collapses again. This spec covers that push, how groups map onto React Flow, and the rules for who is a member of a group.
 

@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream
+// [[B3]] sameNodeEverywhere, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";

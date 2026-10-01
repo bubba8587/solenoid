@@ -65,7 +65,7 @@ leaf, because none is a product call.
 
 ## Wikilinks
 
-Solenoid writes every citation as an Obsidian wikilink, `[[C41]]` or `[[C41]] branchModel`, and
+Solenoid writes every citation as an Obsidian wikilink, `[[C25]]` or `[[C25]] firstClassUnits`, and
 the link fields of a leaf (`parents`, `supersedes`, `superseded_by`, `conflicts_with`) as quoted
 wikilinks, `parents: ["[[B7]]"]`. The author opens `tree/` as one Obsidian vault holding `decisions/` and `specs/` (its `.obsidian/` is ignored; the tool finds the decisions through `decisions = tree/decisions` in `dte.cfg`, a local patch), and each node's lineage, its
 supersessions and every doc that cites it are followable links, backlinks and graph-view edges.
@@ -84,7 +84,7 @@ Obsidian notes too: a front matter with the spec's title as an alias and a `spec
 wikilinks to other specs by file name.
 
 A leaf's `aliases` carry its name, so `[[branchModel]]` resolves and the link
-autocompleter offers names. The tool counts a citation only by ID, so write `[[C41]]` in code and
+autocompleter offers names. The tool counts a citation only by ID, so write `[[C25]]` in code and
 docs and use the alias when browsing. `tree/decisions/DTE.base` is the tree as Obsidian Bases views:
 Outbox, Unratified, Contested, Inbox, All leaves. Obsidian's `aliases`, `tags` and `cssclasses`
 are known fields to the tool.

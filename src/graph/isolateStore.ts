@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C52]] visibleSelection
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[C52]] visibleSelection
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

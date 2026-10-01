@@ -1,4 +1,4 @@
-// [[D5]] searchWiderThanLabel, [[C19]] namingModel
+// [[B16]] oneFormulaSurface
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { LEGACY_ALIASES } from "./excelFunctions";
 import { fuzzyScoreLower, fieldScoreLower, tokenWordScore, withinOneEdit } from "./fuzzy";

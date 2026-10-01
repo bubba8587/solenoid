@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone
+// [[B14]] oneDesignSystem
 
 export interface RGBA { r: number; g: number; b: number; a: number }
 

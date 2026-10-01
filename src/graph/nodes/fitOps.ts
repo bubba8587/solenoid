@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[C61]] oneDistributionNode
+// [[C17]] shareImpl, [[B11]] maximalMerge
 import { lnGamma, regularizedBeta, regularizedGamma, stdNormCDF } from "./mathUtils";
 
 export type FitFamily = "normal" | "lognorm" | "expon" | "gamma" | "weibull" | "uniform" | "beta" | "poisson";

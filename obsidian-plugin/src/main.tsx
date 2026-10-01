@@ -51,7 +51,7 @@ interface PluginData {
   /** Note path, then property: the column types of the tables nested in that note's cube. */
   nestedTables?: PluginNestedTables;
   look?: boolean;
-  /** Off only when the user turns it off ([[D92]] columnNameSuggest). */
+  /** Off only when the user turns it off ([[C107]] obsidianPlugin). */
   suggestColumns?: boolean;
 }
 

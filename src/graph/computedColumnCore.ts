@@ -1,4 +1,4 @@
-// [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas, [[D81]] cubeRowLists
+// [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas
 import type { FrameCell, CubeCell } from "./frame";
 import type { ExprEvaluator } from "./excelFormula";
 import type { LambdaValue } from "./lambdaValue";

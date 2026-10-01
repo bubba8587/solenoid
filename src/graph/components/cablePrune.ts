@@ -1,4 +1,4 @@
-// [[C113]] controlDrivenRetype. Mechanics: tree/specs/canvas/input-cable-pruning.md.
+// [[B11]] maximalMerge. Mechanics: tree/specs/canvas/input-cable-pruning.md.
 import { getOwningEditor } from "../activeGraph";
 
 /** `gone` is the set of departing keys, or a predicate over the target-input key for the complement case. */

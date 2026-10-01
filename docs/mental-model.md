@@ -9,10 +9,10 @@ summaries; the docs they point to are authoritative.
 
 The app is one React tree. **React Flow** (`@xyflow/react`) is the view. It renders every
 card, cable, the minimap and the viewport. `flow/FlowSurface.tsx` is the one surface,
-shared by the main canvas and the composite drill-in ([[C43]] oneFlowSurface). **rete
+shared by the main canvas and the composite drill-in ([[B3]] sameNodeEverywhere). **rete
 core** (`NodeEditor` + `ClassicPreset`) plus `rete-engine` (`DataflowEngine`) is the
 headless model and compute spine, kept on purpose; no rete render package exists
-([[B10]] reactFlowView).
+([[A1]] visualGraphCalculator).
 
 - `flow/SolNodeAdapter.tsx` binds a rete node instance to its registered card component.
 - `flow/flowView.ts` is the one implementation of the `View` seam (`view.ts`), turning the
@@ -78,7 +78,7 @@ once downstream against the settled result (`../tree/specs/documents/save-format
 never saved; they're worked out again on load. A node that retypes a socket in place
 (Cast's target, read-as, Note frontmatter) must call `reconcileFcTypes` or
 `retypeOutputCables`, because no connection event fires. The spec is
-`../tree/specs/values/type-propagation-on-in-place-socket-retype.md` ([[C113]] controlDrivenRetype).
+`../tree/specs/values/type-propagation-on-in-place-socket-retype.md` ([[B11]] maximalMerge).
 
 ## Frames are different
 
@@ -117,7 +117,7 @@ Display is a separate, read-side pipeline: the raw result, then type-default for
 ## Save, load, and the text form
 
 Every node has a stable, user-editable `name`. Rete `id`s are random and regenerated on
-load, so never save or compare ids across loads ([[C19]] namingModel). The text form
+load, so never save or compare ids across loads ([[B16]] oneFormulaSurface). The text form
 (`textForm.ts`: one node per line, name-addressed, in topological order, byte-stable
 writes) is the canonical projection, and the JSON save derives from it (`../tree/specs/documents/save-format.md` § Every save passes through the text form
 saveViaTextForm).

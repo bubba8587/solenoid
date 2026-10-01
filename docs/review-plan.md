@@ -300,7 +300,7 @@ Commits: 6ec8102a, bc077a37, 6ccbe16c, b9cfcfe5, e1089889, 71128d54, caccb6be, 4
 753f0062, 3566d721, 1c99a751, 56e7bab7, 3d3d3f43, 8dd59513
 Where: `unitDimExpr.ts` (`affineWeight`, line ~526), `unitValue.ts` (`adoptReading`,
 `arithmeticCell`, `compareUnits`), `frameVerbs.ts`, `nodes/{expression,list,tableLambda,frame}.ts`
-Leaves: [[C25]] firstClassUnits, [[C25]] firstClassUnits (D40 unitOnValue folded into it). Spec: `tree/specs/values/unit-flow.md`.
+Leaves: [[C25]] firstClassUnits (D40 unitOnValue folded into it). Spec: `tree/specs/values/unit-flow.md`.
 Why risky: a static "point weight" classifier replaced a run-twice heuristic; every aggregate,
 comparison and arithmetic op got a reading-vs-delta rule; a bare number's meaning now depends on
 the op (reading in MIN/compare, delta in +/−). That is a lot of per-op special cases.
@@ -491,7 +491,7 @@ Leaves: [[D77]] constantsAlwaysWin, [[C50]] lambdaBindsByName.
 ## 26. Layout: no overlaps ever
 Commits: 3f83b611, 244cb2f5, 83806909, 35fbead5, 524514f5
 Where: `separateOverlaps`, `separateAll`, `groupPush.ts` (9 commits), `tidyArrange.ts`
-Leaves: [[C112]] noOverlapsEver, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast.
+Leaves: [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast.
 - [x] Checked 2026-09-28: 12 random scenes × three expand/collapse patterns × 50 cycles: the box grows only while starting overlaps separate (the first few cycles), then stays fixed with no overlaps, since collapse restores every card. Was: Greedy top-left placement "moves only right or down": a canvas that grows without
       bound after repeated expand/collapse cycles (drift). Run 50 cycles, measure bbox.
 - [ ] NEEDS AUTHOR 2026-09-28: silent, and a layout action can create it (a locked group expanding onto another, or Tidy inside one widening it onto a locked neighbour); C112 says two locked groups that overlap are left alone. Options: keep it silent; have `separateAll` return the leftover fixed pairs and raise an alert naming both; or clamp a locked group's growth into another locked box (an exception under D63). Was: Two locked groups that overlap each other: neither moves, pass ends with overlap;
@@ -504,7 +504,7 @@ Leaves: [[C112]] noOverlapsEver, [[D63]] lockedGroupIsObstacle, [[C89]] standoff
 Commits: 6e6bac53, 03b6662c, 63108591, 42a6a32e
 - [x] Found: `MAX_GENERATED = 1_000_000` in `nodes/listOps.ts:444`, read from 4 files;
       `tree/specs/computation/formula-language.md` § The registry says each surface applies it at its own boundary
-      and the 2-D builders inside their `matrixOps` kernels ([[C21]] matchNodeLimits). So the
+      and the 2-D builders inside their `matrixOps` kernels ([[C17]] shareImpl). So the
       check is: every generator listed there (SEQUENCE, RANDARRAY, MAKEARRAY, LINSPACE,
       REPEAT, GEOMETRIC, RANGE, PADLEFT/RIGHT, EXPAND, MUNIT, DIAGONAL, OUTER) hits the cap
       on BOTH surfaces with `#OVERFLOW!`, and RANGE caps on `rangeCount` before allocating.

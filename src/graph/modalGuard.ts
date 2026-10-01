@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface (the surface installs the keyboard once)
+// [[B3]] sameNodeEverywhere (the surface installs the keyboard once)
 // Does an overlay own the keyboard? Pinned on the event at capture time, since an overlay may close on the key it
 // answers and a bubble-time check would then see no modal.
 import { paletteStore } from "./paletteStore";

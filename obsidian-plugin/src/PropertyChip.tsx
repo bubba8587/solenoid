@@ -30,7 +30,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   columnTypes?: ColumnTypes;
   /** `replace` sets the property's whole map, so a cube column switched back to none loses its pick. */
   onColumnTypes?: (types: ColumnTypes, replace?: boolean) => void;
-  /** The frame editor's header suggestions ([[D92]] columnNameSuggest). */
+  /** The frame editor's header suggestions ([[C107]] obsidianPlugin). */
   columnNameOptions?: () => ColumnNameOption[];
   /** A cube's nested tables' types, this note's own; without the callback they are shown but not kept. */
   nestedTables?: NestedTables;

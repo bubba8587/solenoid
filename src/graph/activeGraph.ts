@@ -5,7 +5,7 @@ import type { Schemes } from "./schemes";
 import { getEditor, getView, beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
 // Chrome acts on this graph; getEditor()/getView() stay main-only, or autosave would save a substituted surface.
 
-/** How a bulk edit (paste, delete, wrap or unpack a composite) gates and settles on one surface ([[C43]] oneFlowSurface). */
+/** How a bulk edit (paste, delete, wrap or unpack a composite) gates and settles on one surface ([[B3]] sameNodeEverywhere). */
 export interface EditScope {
   /** Raise the surface's rebuild gate, which holds its per-event settles. */
   begin: () => void;

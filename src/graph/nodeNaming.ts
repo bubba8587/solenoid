@@ -1,4 +1,4 @@
-// [[C19]] namingModel
+// [[B16]] oneFormulaSurface
 // Shared by nodeNameStore and the pure textForm writer, so both name nodes by one algorithm.
 
 /** Identifiers are the only names the text form can address unambiguously (`Name.output`, no quoting). */

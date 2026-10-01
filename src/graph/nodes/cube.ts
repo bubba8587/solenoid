@@ -283,7 +283,7 @@ export class CubeRollupNode extends ClassicPreset.Node {
   }
 }
 
-/** The typed Cube a Cube Input's source derives: typed columns read their cells as the type ([[D90]] cubeTypesAtDepth), then formula columns fill in dependency order ([[D81]] cubeRowLists). */
+/** The typed Cube a Cube Input's source derives: typed columns read their cells as the type ([[D90]] cubeTypesAtDepth), then formula columns fill in dependency order ([[C22]] rowFormulaRefs). */
 export function cubeFromSource(source: CubeSource): CubeValue {
   const data = recordsToCube(source.rows, sourcePicks(source), source.nested);
   const keys = recordKeys(source.rows);

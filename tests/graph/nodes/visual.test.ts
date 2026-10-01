@@ -559,7 +559,7 @@ describe("Record node", () => {
     expect(recordImageSrc("data:text/html,<script>alert(1)</script>")).toBeNull();
     expect(recordImageSrc("javascript:alert(1)//.png")).toBeNull();
   });
-  // [[D83]] imageTextCells: the grid and the Cards view show data:image text only, never a fetched address.
+  // [[C103]] untrustedContentSeams: the grid and the Cards view show data:image text only, never a fetched address.
   it("cellImageSrc: data:image only, so no web address and no other data: type", () => {
     expect(cellImageSrc(" data:image/svg+xml,%3Csvg/%3E")).toBe("data:image/svg+xml,%3Csvg/%3E");
     expect(cellImageSrc("https://x.test/a.png")).toBeNull();

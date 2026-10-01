@@ -1,4 +1,4 @@
-// [[C26]] opArgDistinct, [[B11]] maximalMerge, [[D5]] searchWiderThanLabel
+// [[C26]] opArgDistinct, [[B11]] maximalMerge, [[B16]] oneFormulaSurface
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distribution";

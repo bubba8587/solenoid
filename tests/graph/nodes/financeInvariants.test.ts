@@ -1,4 +1,4 @@
-// [[B11]], [[C113]]
+// [[B11]]
 import { describe, it, expect } from "vitest";
 import {
   BondPricingNode, DiscountSecurityNode, DurationNode, CouponNode, AccruedInterestNode,

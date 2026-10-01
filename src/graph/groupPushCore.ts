@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle, [[C112]] noOverlapsEver
+// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
 import { clamp } from "./nodes/mathUtils";
 
 export interface PushBox {

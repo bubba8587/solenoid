@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle
+// [[C86]] membershipByGesture, [[C112]] noOverlapsEver
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup, withLockedGroupsPinned } from "../../src/graph/groupLogic";

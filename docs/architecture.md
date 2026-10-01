@@ -70,7 +70,7 @@ This file is the map.
 - **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
   + `rete-engine` (DataflowEngine, pull-based recompute). No rete render/area
   plugins exist; `elkjs` is called directly for Tidy. The core stays on purpose
-  ([[B10]] reactFlowView — author-ratified 2026-08-27).
+  ([[A1]] visualGraphCalculator — author-ratified 2026-08-27).
 - **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
   KaTeX (formula popup), marked (help panel).
 - Cross-surface state stays in module-level singleton stores (`storeKit.ts`

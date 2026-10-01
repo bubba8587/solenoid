@@ -1,4 +1,4 @@
-// [[C113]] controlDrivenRetype, [[C24]]
+// [[B11]] maximalMerge, [[C24]]
 import { describe, expect, it } from "vitest";
 import { CastNode, castOutput, parseCx, type CastTarget } from "../../../src/graph/nodes/cast";
 import { cx } from "../../../src/graph/cxValue";

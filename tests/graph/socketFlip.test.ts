@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C43]] oneFlowSurface
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
 import { describe, it, expect, beforeEach } from "vitest";
 import { socketFlipStore } from "../../src/graph/socketFlipStore";
 import { isFlippableNode, registerFlippable } from "../../src/graph/flippableNodes";

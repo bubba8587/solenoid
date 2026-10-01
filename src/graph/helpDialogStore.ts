@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 import { createValueStore } from "./storeKit";
 
 export type HelpDialog = "about" | "whatsnew";

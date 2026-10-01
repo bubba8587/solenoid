@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone
+// [[B14]] oneDesignSystem
 import { describe, it, expect } from "vitest";
 import { parseColor } from "../../src/graph/cssColor";
 

@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle, [[B10]] reactFlowView, [[C52]] visibleSelection, [[C112]] noOverlapsEver
+// [[C86]] membershipByGesture, [[C112]] noOverlapsEver, [[A1]] visualGraphCalculator, [[C52]] visibleSelection
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { ClassicPreset } from "rete";
@@ -133,7 +133,7 @@ export async function autofitGroupBox(
     height: Math.max(GROUP_MIN_H, Math.round(maxY + GROUP_PAD) - y),
   };
   if (group.lockedPosition) {
-    // [[D63]] lockedGroupIsObstacle: the lock holds the corner, so the members come to it.
+    // [[C112]] noOverlapsEver: the lock holds the corner, so the members come to it.
     moveGroupMembers(editor, view, group, gv.x - after.x, gv.y - after.y);
     after.x = gv.x;
     after.y = gv.y;

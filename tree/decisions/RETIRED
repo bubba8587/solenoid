@@ -119,3 +119,28 @@ D34	2026-10-01	reverted	-	Claude	-	oneErrorKind: One notion of error
 D37	2026-10-01	reverted	-	Claude	-	errorBeatsMissing: Error beats missing at the same cell
 D42	2026-10-01	reverted	-	Claude	-	perInputUnitBlind: A node that doesn't do unit math gets plain numbers, input by input
 D75	2026-10-01	reverted	-	Claude	-	builderExposesEveryOption: Chart Builder exposes every option a chart type honors, and every option it exposes works
+C13	2026-10-01	reverted	-	Claude	-	frameLabelGrammar: A Frame input's label names the columns it expects
+C19	2026-10-01	reverted	-	Claude	-	namingModel: Every name a node shows comes from one place and reads the same on every surface
+C21	2026-10-01	reverted	-	Claude	-	matchNodeLimits: A formula can't generate more values than the matching node allows
+C43	2026-10-01	reverted	-	Claude	-	oneFlowSurface: The main canvas and a composite's drill-in view are one canvas, built once
+C60	2026-10-01	reverted	-	Claude	-	oneRunningNode: One Running node: a Window of 0 runs from the start, N covers the last N items
+C61	2026-10-01	reverted	-	Claude	-	oneDistributionNode: One Distribution node: pick the distribution, then pick what to work out
+C62	2026-10-01	reverted	-	Claude	-	paletteAllOrNone: A palette sets every neutral color of the workbench, or none of them
+C109	2026-10-01	reverted	-	Claude	-	linuxOwnWindowControls: On Linux the desktop shell draws its own window controls
+C111	2026-10-01	reverted	-	Claude	-	unfiledCardTakesOutputColor: A node outside every family wears its output's color
+C113	2026-10-01	reverted	-	Claude	-	controlDrivenRetype: Picking a node's operation or mode can change that node's own inputs and outputs
+C116	2026-10-01	reverted	-	Claude	-	xyChartFamily: Scatter, XY Line and Bubble stay three Chart types, grouped as one XY family
+D5	2026-10-01	reverted	-	Claude	-	searchWiderThanLabel: An Add-menu row shows a short name; Excel spellings are search words, never added to it
+D23	2026-10-01	reverted	-	Claude	-	capsClaimsFunction: A name in capitals is a function you can type; anything else is Title Case
+D63	2026-10-01	reverted	-	Claude	-	lockedGroupIsObstacle: A group locked in place never moves in a layout action; everything else moves around it
+D69	2026-10-01	reverted	-	Claude	-	convertBadPickIsNA: Convert between units that measure different things answers #N/A for the node, not per cell
+D71	2026-10-01	reverted	-	Claude	-	zoomLatticeDiscreteOnly: Stepped zoom lands on 10% steps; a pinch never snaps while your fingers move
+D81	2026-10-01	reverted	-	Claude	-	cubeRowLists: In a Cube's computed column, @name reads this row's list, and a row may answer a list
+D83	2026-10-01	reverted	-	Claude	-	imageTextCells: A text cell holding a picture address shows as the picture in a table; a web address stays text
+D91	2026-10-01	reverted	-	Claude	-	xyColumnMapping: An XY plot's options name which columns are x, y, size, color, point text and series
+D92	2026-10-01	reverted	-	Claude	-	columnNameSuggest: Frame headers suggest column names already typed in the vault; a pick takes its type
+D95	2026-10-01	reverted	-	Claude	-	neutralsFollowChrome: The neutral swatches take the active palette's tint, as its workbench does
+E16	2026-10-01	reverted	-	Claude	-	cubeCellKinds: A Cube Input cell switches in place between value, list, Table, Frame and Cube, keeping what it can
+D21	2026-10-01	reverted	-	Claude	-	noExcelNameClash: A node's name never reads as a core Excel function that does something else
+B10	2026-10-01	reverted	-	Claude	-	reactFlowView: React Flow draws the canvas over a small library that computes it
+C41	2026-10-01	reverted	-	Claude	-	branchModel: All work goes on develop; main is production only

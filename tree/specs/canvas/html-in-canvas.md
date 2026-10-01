@@ -2,7 +2,7 @@
 aliases: ["HTML-in-Canvas gesture layer"]
 tags: [spec, canvas]
 ---
-<!-- [[C42]] htmlInCanvasRenderer, [[B10]] reactFlowView -->
+<!-- [[C42]] htmlInCanvasRenderer, [[A1]] visualGraphCalculator -->
 
 # Spec: HTML-in-Canvas gesture layer
 

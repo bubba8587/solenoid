@@ -1,4 +1,4 @@
-// [[C61]], [[C113]]
+// [[B11]]
 import { describe, it, expect } from "vitest";
 import { DIST_SPECS } from "../../../src/graph/nodes/distribution";
 

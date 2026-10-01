@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 type Opener = (screenX: number, screenY: number) => void;
 
 let opener: Opener | null = null;

@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[C113]], [[D22]], [[C25]], [[D86]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
+// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[B11]], [[D22]], [[C25]], [[D86]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -38,7 +38,7 @@ function codeLines(file: string): string[] {
 // (the whole file passes only on a "/" OS otherwise).
 const rel = (p: string) => path.relative(SRC, p).replace(/\\/g, "/");
 
-describe("[[C113]] controlDrivenRetype — a file that retypes sockets in place must reconcile downstream", () => {
+describe("[[B11]] maximalMerge — a file that retypes sockets in place must reconcile downstream", () => {
   // An in-place socket retype (swapping `port.socket` or calling
   // `MutableSocket.setType`) fires no connection event, so downstream Format
   // Controllers keep stale formats unless the file also drives
@@ -75,7 +75,7 @@ describe("[[C113]] controlDrivenRetype — a file that retypes sockets in place 
     expect(
       offenders,
       `These files retype sockets in place but never reference retypeOutputCables/` +
-      `reconcileFcTypes ([[C113]] controlDrivenRetype): downstream FCs will keep stale formats. Call the ` +
+      `reconcileFcTypes ([[B11]] maximalMerge): downstream FCs will keep stale formats. Call the ` +
       `reconciler, or add the file to SANCTIONED with the reason it is safe:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
@@ -369,7 +369,7 @@ describe("[[B12]] losslessSaves — class names are load-bearing: keepNames stay
   });
 });
 
-describe("[[C113]] controlDrivenRetype — a node class reconciles on the editor that owns it", () => {
+describe("[[B11]] maximalMerge — a node class reconciles on the editor that owns it", () => {
   // The active editor is the surface on screen; a main-graph node behind an open drill-in isn't in it.
   it("no nodes/packs file reads getActiveEditor / getActiveView (use getOwningEditor / getOwningView)", () => {
     const offenders: string[] = [];
@@ -730,7 +730,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
   });
 });
 
-describe("[[B10]] reactFlowView — every node-keyed store registers with nodeStoreRegistry", () => {
+describe("[[A1]] visualGraphCalculator — every node-keyed store registers with nodeStoreRegistry", () => {
   // Per-node state lives in module-level stores (rete's separate React root —
   // no shared context), and the registry is the ONE answer to "what happens on
   // node delete / graph rebuild". A store that skips it leaks dead-id entries
@@ -789,7 +789,7 @@ describe("[[B10]] reactFlowView — every node-keyed store registers with nodeSt
     expect(
       offenders,
       `These stores hold state but never register with nodeStoreRegistry ` +
-      `([[B10]] reactFlowView): a deleted node's entries linger and a rebuild misses them. ` +
+      `([[A1]] visualGraphCalculator): a deleted node's entries linger and a rebuild misses them. ` +
       `registerNodeForget(+All), or add the store to SANCTIONED with the reason ` +
       `it is not node-keyed:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
@@ -809,7 +809,7 @@ describe("[[B10]] reactFlowView — every node-keyed store registers with nodeSt
     }
     expect(
       offenders,
-      `These stores register forget but not forgetAll ([[B10]] reactFlowView) — the rebuild ` +
+      `These stores register forget but not forgetAll ([[A1]] visualGraphCalculator) — the rebuild ` +
       `bulk reset misses them:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -825,7 +825,7 @@ describe("[[B10]] reactFlowView — every node-keyed store registers with nodeSt
   });
 });
 
-describe("[[B10]] reactFlowView — the socket box's greppable half", () => {
+describe("[[A1]] visualGraphCalculator — the socket box's greppable half", () => {
   // The rendering half (RF measures the Handle's box; a transform or an
   // unmeasured constant misreports the cable endpoint) is
   // scripts/socket-box-probe.mjs on the live page. The known REGRESSION VECTORS
@@ -854,7 +854,7 @@ describe("[[B10]] reactFlowView — the socket box's greppable half", () => {
   });
 });
 
-describe("[[C13]] frameLabelGrammar — frame-input labels follow the column-role grammar", () => {
+describe("[[B14]] oneDesignSystem — frame-input labels follow the column-role grammar", () => {
   // A frame input's label is the ONE place the expected columns can be read
   // before wiring (aligned columns arrive as one frame input by design). Roles
   // join with " + " in Title case; a no-expectation input is a plain noun; shape
@@ -891,7 +891,7 @@ describe("[[C13]] frameLabelGrammar — frame-input labels follow the column-rol
         }
       }
     }
-    expect(offenders, "labels violating the frameLabelGrammar grammar ([[C13]] frameLabelGrammar)").toEqual([]);
+    expect(offenders, "labels violating the frameLabelGrammar grammar ([[B14]] oneDesignSystem)").toEqual([]);
   });
 });
 
@@ -926,7 +926,7 @@ describe("heroChipRow: hero-box chips use the shared --chip row, never an inline
   });
 });
 
-describe("[[B10]] reactFlowView — the movement stack reads sizes through measuredBox", () => {
+describe("[[A1]] visualGraphCalculator — the movement stack reads sizes through measuredBox", () => {
   // Every module that moves or fits nodes. A direct DOM size read here is either a
   // leftover ad-hoc ladder or a sanctioned exception carrying its reason on the line
   // above; the leaf lists the four that stand.

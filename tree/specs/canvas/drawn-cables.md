@@ -2,11 +2,11 @@
 aliases: ["Drawn cables"]
 tags: [spec, canvas]
 ---
-<!-- [[B10]] reactFlowView; covers: src/graph/drawnCables.ts, src/graph/drawnCablePath.ts, src/graph/components/drawnCableLayer.css, tests/graph/drawnCablePath.test.ts -->
+<!-- [[A1]] visualGraphCalculator; covers: src/graph/drawnCables.ts, src/graph/drawnCablePath.ts, src/graph/components/drawnCableLayer.css, tests/graph/drawnCablePath.test.ts -->
 
 # Spec: Drawn cables
 
-Serves [[B10]] reactFlowView. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[A1]] visualGraphCalculator. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A drawn cable is a free-drawn annotation curve: a list of points the user places, rendered with the same three drawers (spline, diagonal, straight) as wired cables. Drawn cables live in a world-coordinate layer inside React Flow's `<ViewportPortal>`, the same pattern the standoffs use. The layer is gated on the main-graph hook `hooks.drawnCables` and has its own store (`drawnCables.ts`), its own exclusive selection and a docked panel (`DrawnCableInspector.tsx`). The geometry is pure (`drawnCablePath.ts`); the components are `DrawnCableLayer.tsx` and `DrawnCableCapture.tsx`. Tests: `drawnCablePath.test.ts`, `textForm.test.ts`, `flow/flowHistoryDigest.test.ts`.
 

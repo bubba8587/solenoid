@@ -76,7 +76,7 @@ export function parseRecordLayout(text: string): RecordPlacement[] {
   });
 }
 
-/** A data:image URL: the one image a table grid shows in a text cell, since it fetches nothing ([[D83]] imageTextCells). */
+/** A data:image URL: the one image a table grid shows in a text cell, since it fetches nothing ([[C103]] untrustedContentSeams). */
 export function cellImageSrc(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();

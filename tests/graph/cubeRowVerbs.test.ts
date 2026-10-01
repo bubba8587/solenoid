@@ -191,7 +191,7 @@ describe("Computed Column over a cube", () => {
     expect(colCells(c, "tags")[0]).toBe(colCells(src, "tags")[0]);
   });
 
-  // [[D81]] cubeRowLists
+  // [[C22]] rowFormulaRefs
   it("@name reads this row's list, and a list answer is that row's list cell", () => {
     const c = compute("COUNTA(@tags)", "n");
     expect(colCells(c, "n")).toEqual([1, 2]);
@@ -201,7 +201,7 @@ describe("Computed Column over a cube", () => {
     expect(up.columns.find((k) => k.name === "up")!.type).toBe("string");
   });
 
-  // [[D81]] cubeRowLists, [[D85]] columnsStayColumns: a column of lists read whole is its rows stacked, padded with blanks.
+  // [[C22]] rowFormulaRefs, [[D85]] columnsStayColumns: a column of lists read whole is its rows stacked, padded with blanks.
   it("a bare list column reads as its rows stacked, padded with blanks that totals skip", () => {
     expect(colCells(compute("COUNTA(tags)", "x"), "x")).toEqual([3, 3]);
     expect(colCells(compute("ROWS(tags)", "x"), "x")).toEqual([2, 2]);

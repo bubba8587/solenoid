@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface
+// [[B3]] sameNodeEverywhere
 import { describe, it, expect, afterEach } from "vitest";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";

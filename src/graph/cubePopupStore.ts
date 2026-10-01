@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[D90]] cubeTypesAtDepth
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[D90]] cubeTypesAtDepth
 import { createValueStore } from "./storeKit";
 import { recordsToCube, frameCellFromRecords, type CubeValue, type FrameValue, type CubeCell, type FrameColType } from "./frame";
 import { getAtPath, type CubePath, type CubeRecord, type CubeSource } from "./literalEditors";

@@ -1,4 +1,4 @@
-// [[C62]]
+// [[B14]]
 import { describe, it, expect, afterEach } from "vitest";
 import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, resolveAccent, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
 
@@ -166,7 +166,7 @@ describe("chrome ramp structure", () => {
     expect(c("textDim")).toBeGreaterThan(c("textMuted"));
   });
 
-  // [[C62]] paletteAllOrNone: contrast is scoped to the two palettes that PROMISE it — Default, the
+  // [[B14]] oneDesignSystem: contrast is scoped to the two palettes that PROMISE it — Default, the
   // experience nobody chose, and Colorblind-safe, whose brief is legibility. The rest
   // are aesthetic opt-ins where fidelity to a look wins; Solarized sits near 3:1 by
   // design and forcing AA meant shipping something that was no longer Solarized.
@@ -194,7 +194,7 @@ describe("chrome ramp structure", () => {
 });
 
 // Accent-adaptive chrome: the tinted ramps (CHROME_HOME) follow the live accent's
-// hue — rotated by (accent − home) with every key's LUMINANCE held, so the [[C62]] paletteAllOrNone
+// hue — rotated by (accent − home) with every key's LUMINANCE held, so the [[B14]] oneDesignSystem
 // structure survives any accent and the authored ramp reappears untouched at home.
 describe("accent-adaptive chrome", () => {
   const HOMES = Object.entries(CHROME_HOME) as [PaletteName, PaletteSlot][];
@@ -274,7 +274,7 @@ describe("accent-adaptive chrome", () => {
     }
   });
 
-  // The load-bearing guarantee: rotation may retint but never relight. Every [[C62]] paletteAllOrNone
+  // The load-bearing guarantee: rotation may retint but never relight. Every [[B14]] oneDesignSystem
   // structure rule holds for every adaptive palette under every pickable accent.
   const CASES = HOMES.flatMap(([name]) =>
     MODES.flatMap((mode) => COLOR_PALETTE.map((accent) => [name, mode, accent] as [PaletteName, "dark" | "light", PaletteSlot])),
@@ -354,7 +354,7 @@ describe("neutral shades (gray-swatch cycle)", () => {
     expect(nextNeutral(undefined)).toBe("gray");
   });
 
-  // [[D95]] neutralsFollowChrome
+  // [[B14]] oneDesignSystem
   it("the neutrals take the palette's chrome: plain under Default, the chrome's own colors under a tinted palette", () => {
     expect(resolveColor(NEUTRAL_WHITE)).toBe(NEUTRAL_HEX[NEUTRAL_WHITE]);
     expect(resolveColor(NEUTRAL_DARK)).toBe(NEUTRAL_HEX[NEUTRAL_DARK]);

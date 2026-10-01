@@ -1,4 +1,4 @@
-// [[E16]] cubeCellKinds
+// [[D90]] cubeTypesAtDepth
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useHangUnder } from "./columnHeadControls";

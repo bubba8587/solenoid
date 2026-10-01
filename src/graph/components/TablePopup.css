@@ -158,7 +158,7 @@
   align-items: center;
 }
 .table-popup__affix .table-popup__form-box-check { margin: 0; cursor: pointer; }
-/* A Cube editing cell: the value or chip, and the Value / List / Table menu at its edge, shown on hover or focus ([[E16]] cubeCellKinds). */
+/* A Cube editing cell: the value or chip, and the Value / List / Table menu at its edge, shown on hover or focus ([[D90]] cubeTypesAtDepth). */
 .cube-edit__cell { position: relative; display: flex; align-items: center; min-width: 0; }
 .cube-edit__cell > .table-popup__input { padding-right: 22px; }
 .cube-edit__cell > .solenoid-array-chip { margin-right: 20px; }
@@ -206,7 +206,7 @@
   cursor: pointer;
 }
 .table-popup__suggest-types { display: inline-flex; gap: 2px; margin-left: 8px; vertical-align: middle; }
-/* The type button's glyph, as a label: a name typed more than one way shows each ([[D92]] columnNameSuggest). */
+/* The type button's glyph, as a label: a name typed more than one way shows each ([[C107]] obsidianPlugin). */
 .table-popup__typeglyph {
   width: 16px;
   height: 16px;

@@ -1,4 +1,4 @@
-/* [[C43]] oneFlowSurface, [[B10]] reactFlowView. Mechanics: tree/specs/canvas/react-flow-surface-contract.md. */
+/* [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator. Mechanics: tree/specs/canvas/react-flow-surface-contract.md. */
 
 .solenoid-node {
   background: var(--surface);

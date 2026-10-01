@@ -9,7 +9,7 @@ The protocol for parallel agent sessions. Dormant in a solo session: claim nothi
 - **Claims** are one line each in this file, deleted when the work lands. Agents message each other
   directly for live coordination; the board holds only what must survive a restart.
 - **The Lead merges.** Agent 1 is the Lead. Peers commit on their worktree branches and send the
-  Lead a commit hash once it is green; the Lead merges into `develop` ([[C41]] branchModel), and
+  Lead a commit hash once it is green; the Lead merges into `develop` ([[B7]] preAlphaBreakFreely), and
   nobody else pushes.
 - **Reopen if** the test lock stops being a machine constraint, or the branch model changes.
 

@@ -1,4 +1,4 @@
-// [[C109]] linuxOwnWindowControls
+// [[B2]] webTryDesktopFull
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { isDesktop } from "./fileBridge";

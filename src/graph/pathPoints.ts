@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView
+// [[A1]] visualGraphCalculator
 // Pure geometry. Cable paths are absolute M/L/C/Q `d` strings, flattened once to a polyline.
 
 export interface Pt { x: number; y: number }

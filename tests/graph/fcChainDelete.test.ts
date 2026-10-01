@@ -1,4 +1,4 @@
-// [[B10]], [[C43]], [[C25]]
+// [[A1]], [[B3]], [[C25]]
 // A docked FC is part of its host's entity, so deleting a host takes the FCs docked on it.
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";

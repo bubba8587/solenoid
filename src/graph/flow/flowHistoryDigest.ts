@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[B10]] reactFlowView (the snapshot history)
+// [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator (the snapshot history)
 import type { SavedGraph, SavedNode, SavedConnection } from "../persistence";
 
 const nodeName = (n: SavedNode | undefined): string => n?.name || n?.type || "a node";

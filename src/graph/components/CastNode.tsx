@@ -1,4 +1,4 @@
-// [[C113]] controlDrivenRetype
+// [[B11]] maximalMerge
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CastNode as CastNodeType } from "../rete-nodes";
 import { CAST_TARGET_META, type CastTarget } from "../rete-nodes";

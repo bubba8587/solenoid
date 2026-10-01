@@ -14,7 +14,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   column's rows can hold differently shaped, differently typed tables. The plugin keeps them per note
   (`nestedTables` in `data.json`), which Vault Folder and Import Obsidian Note read. Specs: [[frame-verbs]] § The Cube
   value, [[table-popup]] § Editing a Cube Input.
-- **Cell kinds** ([[E16]] cubeCellKinds): every Cube editing cell, list items included, has a Value / List / Table /
+- **Cell kinds** (E16 cubeCellKinds (retired)): every Cube editing cell, list items included, has a Value / List / Table /
   Frame / Cube menu at its edge (`CellKindMenu`, `convertCellKind`), Table being the app's 2-D shape. A Frame cell is
   declared, derives a real Frame (`frameCellFromRecords`) and holds only values; undeclared records are a Cube, so
   the editor no longer labels a flat nested table "Frame" by its contents.
@@ -54,7 +54,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **Cards, second pass:** a name pair joins into the title, Start/End dates make a range, Tags split into chips, hex
   colors get swatches, Rating stars, percent and progress-like columns get meters, a currency column can be the
   hero, http and email cells are links, and a card past 6 fields folds behind Show All N Fields. Pictures are
-  `data:image` only, never fetched, as in the grid ([[D83]] imageTextCells); the first pass fetched web images.
+  `data:image` only, never fetched, as in the grid (D83 imageTextCells (retired)); the first pass fetched web images.
 - **Record ↔ Cards** ([[B11]] maximalMerge, [[C114]] cardsView): Record's single-record view is renamed **Detail**
   (`detail`), and a **Cards** view (`cards`, no layout socket) draws the popup's derived cards as a figure in the Gallery's
   masonry (`MasonryGallery`), planned in the node over up to 2000 rows (`RecordDeck`). The card is one component,
@@ -113,7 +113,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 
 ### SESSION DIGEST (2026-09-26: XY plots from issue #3; branch `claude/feature-requests-vh44bk`)
 
-- **XY plots** ([[D91]] xyColumnMapping, new): Scatter, the new **XY Line** op (Cartesian) and Bubble emit an `xy`
+- **XY plots** (D91 xyColumnMapping (retired), new): Scatter, the new **XY Line** op (Cartesian) and Bubble emit an `xy`
   payload drawn by one `XYView`. Options name the columns: `x`, `y` (comma list), `s` size, `c` color (numeric ramp
   with a colorbar, or text categories), `annotate` point text, `by` split into series. `linestyle` joins points in row
   order, broken at gaps; `aspect=equal` and `xlim` for parametric curves. A missing column is `#REF!` on the card.
@@ -129,13 +129,13 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **SPARKLINE(range, [type])** answers an 80 × 20 SVG as `data:image/svg+xml` text (line, column or win/loss, the
   Sparkline node's types; Default gold, win/loss in green and vermilion), averaged to 40 points past that ([[D82]]
   sparklineCell). A text cell holding a `data:image` picture shows as the picture in Frame and Cube cards and popups
-  ([[D83]] imageTextCells).
+  (D83 imageTextCells (retired)).
 - **Typed Cube columns** ([[D90]] cubeTypesAtDepth): Cube Input's root header has the type button (None, Number, Text,
   Date, Boolean, Formula). A type overrides every kind in its column: scalars and list items read as Frame cells
   (NaN when unreadable, [[D93]] oneTextReading). Nested tables: see the 2026-09-28 Cube digest. `cubeText` stays
   plain records until a column is typed or computed, then `{ columns, rows }`. The plugin's cube editor has the button
   without Formula and saves the picks as a Frame's.
-- **Cube formulas read lists** ([[D81]] cubeRowLists): in Cube Input's Fx columns and the Computed Column node over a
+- **Cube formulas read lists** (D81 cubeRowLists (retired)): in Cube Input's Fx columns and the Computed Column node over a
   Cube, `@name` on a list column is this row's list and a row may answer a list; `SPARKLINE(@history)` per row works.
 - **Lists** ([[D85]] columnsStayColumns, the author's call): a list is one row everywhere, so INDEX is strict on it
   (`INDEX(x, 2, 1)` is `#REF!`); TOCOL, BYROW and MAKEARRAY(n, 1) answer one-column tables; TOROW is the list and reads
@@ -168,11 +168,11 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   skips the condition ([[C24]]'s consequence overturned). A required setting with a working Excel blank reads as it
   (a blank `cumulative` is FALSE), otherwise `#SYNTAX!`; distribution parameters are data; CLAMP's blank bound is no
   bound. For review: `settings-audit.md`.
-- **Socket labels** carry no parentheticals: "(1-based)" moved to the Inspector's socket notes ([[C19]] namingModel, the
+- **Socket labels** carry no parentheticals: "(1-based)" moved to the Inspector's socket notes (C19 namingModel (retired), the
   author's words); the rest are a backlog sweep.
 - **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
 - **Add-menu search:** Excel-name rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name
-  is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
+  is one op's formula name (C19 namingModel (retired), amended on the author's word); a search shows one row per thing placed
   (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
   46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
 - **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); a review of the settings sweep
@@ -351,7 +351,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   builder keys are exactly what its renderer honors; `chartTitles.test.ts`). The audit made alpha, radar,
   canvas-figure fontsize and the Gantt view keys real. Sankey merges repeated From/To pairs (`mergeFlows`)
   and lifts a flow on hover. Every chart card, Chart Builder, Mermaid and Record included, is the chart
-  kind; an unfiled card with one non-numeric output wears its output's color ([[C111]]).
+  kind; an unfiled card with one non-numeric output wears its output's color (C111 unfiledCardTakesOutputColor (retired)).
 
 ---
 
@@ -743,7 +743,7 @@ On `develop`, pushed.
 - **The cite-and-prune sweep, second half of the day.** Sixteen leaves lifted out of specs and docs that had only a
   nearest-ancestor governor: the layout cluster under B10 (C84 tidyTranslatesOnly (retired), [[C85]] groupPushDeterministic,
   [[C86]] membershipByGesture, C87 groupsAreSubflows (retired), [[C88]] collapseIsVisual, [[C89]] standoffsSolveLast,
-  C90 drawnCablesAnnotate (retired), C91 cableWalkRouter (retired), with [[D63]] lockedGroupIsObstacle and D64 oneSizeRead (retired)),
+  C90 drawnCablesAnnotate (retired), C91 cableWalkRouter (retired), with D63 lockedGroupIsObstacle (retired) and D64 oneSizeRead (retired)),
   the input model ([[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; C42 was the wrong governor), and the
   UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers (C94 formatFamilyGates (retired)
   formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, C97 rechartsLazyChunk (retired),
@@ -760,8 +760,8 @@ On `develop`, pushed.
   ops/classes, packages, core modules; disjoint lists, no agent ran tests, one full run at the end). Net ~470 comment
   lines gone, ~150 turned into pointers at a leaf or spec. Their candidate lists yielded ten leaves: [[C103]]
   foreignDocNetworkGate (the stale "C2 gate" comments), [[C105]] apiKeysStayLocal, [[C106]] noNativeDialogs, D65 serialsNeverDate (retired)
-  serialsNeverDate, [[D66]] daysMinutesModes, D67 grammarOnlyAtBorder (retired), [[D68]] importUnsupportedIsNamed, [[D69]]
-  convertBadPickIsNA, [[D70]] nullNotEnoughData, [[D71]] zoomLatticeDiscreteOnly; the rest were spec content or
+  serialsNeverDate, [[D66]] daysMinutesModes, D67 grammarOnlyAtBorder (retired), [[D68]] importUnsupportedIsNamed, D69 convertBadPickIsNA (retired)
+  convertBadPickIsNA, [[D70]] nullNotEnoughData, D71 zoomLatticeDiscreteOnly (retired); the rest were spec content or
   consequences (C70, C100). Six relapses they found are a backlog item for the author; the Lambda tooltip that
   contradicted [[C50]] is fixed.
 - **The B ring grew its two missing parents** (author's ask): [[B16]] oneFormulaSurface under A5 (the parity families:
@@ -894,7 +894,7 @@ off the release, then ordered "ingest DTE rules and follow them": every change b
 its node, the two nodes acted under got their one contest (D42 perInputUnitBlind, E11
 controlDrivenRetype: keep), and the new rule landed as a node before its code (C6).
 
-- **Input Switch pending ghosts are drawn** ([[C113]]): `PendingCableLayer` (a ViewportPortal
+- **Input Switch pending ghosts are drawn** (C113 controlDrivenRetype (retired)): `PendingCableLayer` (a ViewportPortal
   layer beside the drawn cables) draws each `cablePendingStore` entry dashed in the Option A
   stroke from RF's measured handle bounds; no edge exists to carry it.
 - **Tidy reserves a plain card's MEASURED box**: the ELK proxy read `node.width/height` for an

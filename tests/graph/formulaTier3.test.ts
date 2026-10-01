@@ -1,4 +1,4 @@
-// [[C17]], [[B16]] oneFormulaSurface, [[C21]]
+// [[C17]], [[B16]] oneFormulaSurface
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_IMPL_META, listReturningNames, wholeArgNames, resolveExcelFunction } from "../../src/graph/excelFunctions";

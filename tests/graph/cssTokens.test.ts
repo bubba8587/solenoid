@@ -1,4 +1,4 @@
-// [[C62]] paletteAllOrNone, [[B14]] oneDesignSystem
+// [[B14]] oneDesignSystem
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";

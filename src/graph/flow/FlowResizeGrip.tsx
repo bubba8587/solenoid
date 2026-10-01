@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[B10]] reactFlowView
+// [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator
 import { useCallback, useRef } from "react";
 import { NodeResizeControl, type ResizeParams } from "@xyflow/react";
 import type { FlowResizeGripProps } from "../flowSurface";

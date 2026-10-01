@@ -2,11 +2,11 @@
 aliases: ["Cable rendering knobs"]
 tags: [spec, canvas]
 ---
-<!-- [[B10]] reactFlowView, [[C10]] socketLattice -->
+<!-- [[A1]] visualGraphCalculator, [[C10]] socketLattice -->
 
 # Spec: Cable rendering knobs
 
-Serves [[B10]] reactFlowView (the router and the spline) and [[C10]] socketLattice (ribbons and Conduit runs: the Conduit is wiring, so the run is the user's entity). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[A1]] visualGraphCalculator (the router and the spline) and [[C10]] socketLattice (ribbons and Conduit runs: the Conduit is wiring, so the run is the user's entity). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This spec covers how a wired cable is drawn: the three cable shapes (spline, diagonal and straight), per-socket exit angles, ribbons (several Conduit lanes drawn as one wide cable), and Conduit runs (the whole wire through a chain of Conduits). The drawing lives in `flow/FlowCableEdge.tsx`, the paths in `cablePaths.ts`, the ribbon logic in `ribbonCable.ts`, and the run walk in `conduitTrace.ts`.
 
