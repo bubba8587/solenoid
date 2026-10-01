@@ -3,12 +3,13 @@ import { useState, useRef, useLayoutEffect, useSyncExternalStore, type ChangeEve
 import type { ConvertNode as ConvertNodeType, ConvertCategory, ConvertUnitDef } from "../rete-nodes";
 import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, FormatControllerNode } from "../rete-nodes";
 import {
-  applyFormatStyle, FORMAT_STYLE_GROUPS, FORMAT_STYLE_LABELS, type FormatStyle,
+  applyFormatStyle, type FormatStyle,
 } from "../formatAnnotationStore";
 import { notifyGraphChanged, processGraph } from "../process";
 import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { LazySelect } from "./LazySelect";
+import { numberFormatOptions } from "./fcControls";
 import { NodeSocket } from "./NodeSocket";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 
@@ -42,17 +43,7 @@ function FormatSelect({ value, onChange }: { value: FormatStyle; onChange: (e: C
       onMouseDown={(e) => e.stopPropagation()}
       title="Display format"
     >
-      {Object.entries(FORMAT_STYLE_GROUPS).map(([group, styles]) =>
-        styles.length === 1 && group === "General" ? (
-          <option key={styles[0]} value={styles[0]}>{FORMAT_STYLE_LABELS[styles[0]]}</option>
-        ) : (
-          <optgroup key={group} label={group}>
-            {styles.map((s) => (
-              <option key={s} value={s}>{FORMAT_STYLE_LABELS[s]}</option>
-            ))}
-          </optgroup>
-        )
-      )}
+      {numberFormatOptions()}
     </LazySelect>
   );
 }

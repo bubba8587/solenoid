@@ -97,7 +97,7 @@ export function useFcFormatOptions(): FcFormatOptions {
   }, [packsVersion]);
 }
 
-export function numberFormatOptions(packFormatGroups: Map<string, FcOption[]>) {
+export function numberFormatOptions(packFormatGroups: Map<string, FcOption[]> = new Map()) {
   return (
     <>
       {Object.entries(FORMAT_STYLE_GROUPS).map(([group, styles]) =>
