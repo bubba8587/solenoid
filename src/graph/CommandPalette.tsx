@@ -39,8 +39,10 @@ type AiState =
   | { phase: "idle" }
   | { phase: "busy" }
   | { phase: "answer"; text: string }
-  | { phase: "edit"; newText: string; diff: DiffLine[]; warnings: string[] }
+  | { phase: "edit"; base: string; newText: string; diff: DiffLine[]; warnings: string[] }
   | { phase: "error"; message: string };
+
+const DOC_MOVED = "The document changed while this edit was open, so it wasn't applied. Ask again to edit the current version.";
 
 function currentTextForm(): string {
   const g: SavedGraph = serializeGraph() ?? { v: CURRENT_SAVE_VERSION, nodes: [], connections: [] };
@@ -103,16 +105,19 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     const prompt = query.trim();
     if (!prompt || aiState.phase === "busy") return;
     setAiState({ phase: "busy" });
-    const outcome: AiOutcome = await runAiPrompt(prompt, currentTextForm());
+    const base = currentTextForm();
+    const outcome: AiOutcome = await runAiPrompt(prompt, base);
     if (!aliveRef.current) return;
     if (outcome.kind === "answer") {
       setAiState({ phase: "answer", text: outcome.text });
     } else if (outcome.kind === "edit") {
-      const diff = diffLines(currentTextForm(), outcome.newText);
-      if (!hasChanges(diff)) {
+      const diff = diffLines(base, outcome.newText);
+      if (currentTextForm() !== base) {
+        setAiState({ phase: "error", message: DOC_MOVED });
+      } else if (!hasChanges(diff)) {
         setAiState({ phase: "answer", text: "The document already matches that request." });
       } else {
-        setAiState({ phase: "edit", newText: outcome.newText, diff, warnings: outcome.warnings });
+        setAiState({ phase: "edit", base, newText: outcome.newText, diff, warnings: outcome.warnings });
       }
     } else {
       setAiState({ phase: "error", message: outcome.message });
@@ -121,7 +126,11 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
 
   async function applyAiEdit() {
     if (aiState.phase !== "edit") return;
-    const before = new Set(readTextForm(currentTextForm()).nodes.map((n) => n.name ?? n.id));
+    if (currentTextForm() !== aiState.base) {
+      setAiState({ phase: "error", message: DOC_MOVED });
+      return;
+    }
+    const before = new Set(readTextForm(aiState.base).nodes.map((n) => n.name ?? n.id));
     const graph = readTextForm(aiState.newText);
     const ok = await loadGraph(graph);
     if (!aliveRef.current) return;
