@@ -2,11 +2,11 @@
 aliases: ["Chart figures"]
 tags: [spec, computation]
 ---
-<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C118]] formatTravelsWithValue, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams, [[C114]] cardsView, [[D91]] xyColumnMapping, [[C116]] xyChartFamily -->
+<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C118]] formatTravelsWithValue, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams, [[C114]] cardsView -->
 
 # Spec: Chart figures
 
-Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[B2]] webTryDesktopFull, [[C71]] noBarEditing and [[C118]] formatTravelsWithValue (the Format Controller's `chart` family) and [[D91]] xyColumnMapping. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[B2]] webTryDesktopFull, [[C71]] noBarEditing and [[C118]] formatTravelsWithValue (the Format Controller's `chart` family), and [[B11]] maximalMerge (the XY family). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A chart in Solenoid is a value, not a drawing. Each figure node computes a small, self-describing figure value and sends it down a `chart` cable; whatever receives it (the node's own card, a Display, the chart popup, a Report embed) draws it at the size it has. This spec covers that value, the nodes that make it, the options string that styles it, and the renderers that draw it.
 
@@ -102,7 +102,9 @@ Ops `line`, `column`, `winloss` (`SPARKLINE_OP_META`); an old save's `bar` loads
 
 The card picks the op in two steps: a family select (Cartesian, XY, Categorical, from `CHART_OP_META`'s `group`) narrows a type select, and picking a family jumps to its first type. The type is the node's `op`, the accented op select; the family is only a filter ([[C26]] opArgDistinct), and both derive from `CHART_OP_META` so they can't drift from the Add-menu rows ([[engineering#One declaration per fact]]). Every op reads the same `values` input, so switching op is a plain recompute.
 
-Scatter, XY Line and Bubble stay three types under the XY family ([[C116]] xyChartFamily): they share the numeric plane and differ only in their starting settings (line style, markers, which columns are x, y and size). The Chart node has no combined bars-and-lines type: that figure is Merge Plots over a Column chart and a Line chart, so a table whose bars and line sit in one frame is split into two charts first. The Chart Builder lists Merge Plots under Cartesian.
+Scatter, XY Line and Bubble stay three types on the Chart node, grouped as one XY family apart from the charts that plot against labels ([[B11]] maximalMerge): they share the numeric plane and differ only in their starting settings (line style, markers, which columns are x, y and size). The option not taken was folding them into one Scatter type with settings. Connected scatter and bubble are the names people look for, and as settings on one type they would be found only by someone who already knew them; a family of their own says they are one figure without hiding the names. The author's call. Reopen if the XY types' defaults converge so their names no longer mean different starting points.
+
+The Chart node has no combined bars-and-lines (Composed) type: that figure is Merge Plots over a Column chart and a Line chart, so a table whose bars and line sit in one frame is split into two charts first. A fixed bars-and-lines type would be a second, narrower way to draw what Merge Plots already draws ([[B11]] maximalMerge). The author's call. Reopen if charts with bars and lines from one table turn out common. The Chart Builder lists Merge Plots under Cartesian.
 
 `data()` reads the raw `values` input. The input is kept raw (`rawInputs`) because coercion would widen a wired list into a single frame row; Boxplot is raw for the same reason. A cube is flattened to a frame of its scalar columns first (`flatCubeToFrame(cube, "scalar")`: a list or table column has nothing to plot and is skipped); a top-level `SolError` there is treated as no data (Chart is in the error guard's see-errors set, so it runs). Every non-finite cell becomes null in place, so labels stay aligned with rows.
 
@@ -116,7 +118,7 @@ Options: a wired string is parsed; a wired blank means no options; a wired non-s
 
 ### XY plots
 
-Scatter, XY Line and Bubble plot points on a numeric plane ([[D91]] xyColumnMapping). `buildXY(op, input, options)`:
+Scatter, XY Line and Bubble plot points on a numeric plane. Their options can name which columns are x, y, marker size, marker color, point text and series, rather than the card having an input for each ([[C96]] chartOptionsAreMatplotlib): not every table reads as "first column is x, the rest are series" (a parametric t, x, y table should plot y against x, not both against t, and a size or label column would otherwise become one more series), and naming each column's role is how pandas plots a table, so it fits the option names people already know. A named column the data lacks is an error on the chart, never silently ignored, because a misspelt column ignored would draw a plausible wrong chart. Reopen if the options move to separate fields per chart type, where a column picker could replace typed names. `buildXY(op, input, options)`:
 
 - **A list** plots at x = 1, 2, 3, …, a non-finite cell a gap; **a number** is one point at x = 1. One series named `""`.
 - **A frame** assigns each column a role by name. The options `x`, `y` (a comma list), `s` (size), `c` (color), `annotate` (point text) and `by` (split into series) name columns, matched trimmed and case-insensitively; a name the frame lacks is `#REF!` naming the role and the column. Unnamed roles default: for Scatter and XY Line, x is the first column no role claimed (any type), and y is every remaining number column; for Bubble, x, y and size are the first, second and third unclaimed number columns (a single number column plots at `(x, x)`). A `y` or `s` column that is not number-typed is `#TYPE!`. No y column means nothing to plot (null).

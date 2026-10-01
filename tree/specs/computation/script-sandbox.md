@@ -48,6 +48,8 @@ The one global a script sees is `Solenoid`, frozen, with a single method. JavaSc
 
 ## The arguments
 
+Frames and Cubes go into and come out of a script, though a formula keeps them out ([[C15]] matricesInFormulas): Script is the advanced surface, and there is no good reason for the same limit there. The author's call ([[C66]] scriptNode).
+
 `scriptArgToJs` hands the script the same shapes it can return, so what one script emits another can read:
 
 - A Frame becomes an array of `{name: value}` rows. A lazy Frame, or a head-N preview, is collected in full first (through the preview's `__ref` handle), never silently truncated. Date columns stay serials and unit-locked columns stay their typed magnitudes, since that is how the cells are stored.
