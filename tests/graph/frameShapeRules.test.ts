@@ -274,6 +274,16 @@ describe("a wired config socket makes the shape unknown", () => {
     expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:string", "Qtr:number"]);
   });
 
+  it("a min or max of dates with totals runs as a date, as its shape says", async () => {
+    const f = { __frame: true as const, columns: [
+      { name: "k", type: "string" as const, values: ["a", "a", "b"] },
+      { name: "d", type: "date" as const, values: [45000, 45010, 45020] },
+    ] };
+    const g = new GroupByFrameNode({ agg: "max", totalDepth: 1 });
+    const out = (await g.data({ frame: [f], keys: [["k"]], column: ["d"] })).frame as { columns: { name: string; type: string }[] };
+    expect(out.columns.map((c) => `${c.name}:${c.type}`)).toEqual(["k:string", "d:date"]);
+  });
+
   it("Unpivot reads the typed columns, and goes unknown once Keep or Melt is wired", async () => {
     const u = new UnpivotNode();
     u.stringLiterals.idColumns = "Region";

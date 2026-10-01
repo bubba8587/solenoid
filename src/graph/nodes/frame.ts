@@ -779,10 +779,16 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     if (this.totalDepth !== 0) {
       const mat = await readFrame(f);
       if (mat == null || isSolError(mat)) return emitFrame(this, beginPass(this), mat);
-      return emitFrame(this, beginPass(this), runVerb(() => pivotFrame(mat, {
+      const out = runVerb(() => pivotFrame(mat, {
         rowFields: keys, colFields: [], values: [col], funcs: [this.agg],
         rowTotalDepth: this.totalDepth,
-      })));
+      }));
+      // A min or max of dates stays a date, as the plain groupBy's does (`shapeOf`).
+      if (!isSolError(out) && (this.agg === "min" || this.agg === "max") && getColumn(mat, col)?.type === "date") {
+        const last = out.columns.length - 1;
+        out.columns[last] = { ...out.columns[last], type: "date" };
+      }
+      return emitFrame(this, beginPass(this), out);
     }
     return emitFrame(this, beginPass(this),
       await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }));

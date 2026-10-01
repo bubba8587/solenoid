@@ -260,8 +260,6 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   the formula read the first occurrence only, and the formula ignores `instance_num`, `match_mode`, `match_end` and
   `if_not_found` without a word. Either both surfaces gain instance support ([[D73]] nodeCoversFormula), or the formula
   refuses the unsupported arguments with "isn't supported", as XLOOKUP refuses wildcard modes.
-- [ ] **SEARCH has no wildcards** (`?`, `*`, `~`), where Excel's does: `SEARCH("a?c", "xabc")` is `#VALUE!`, Excel 2. It
-  needs a kernel shared with the Text Find card; the criteria family's wildcard matcher (`excelCriteria.ts`) is a start.
 - [ ] **N, T, TYPE and ERROR.TYPE are out of scope but still callable (author's call).** `EXCEL_GAP` marks all four
   `oos` ("Not needed", "Not supported") and they have no card, yet Formula.js answers them, and `NULL_INSPECTING` lists
   N, T and TYPE on purpose. TYPE is the leaky one: `undefined` for a blank, a LAMBDA or a complex number, one answer per
@@ -316,7 +314,7 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Record chart text** is baked at compute (`visual.ts` formatNumberWithAnnotation), so a Decimal places change shows on it only after the next recompute ([[D94]] oneNumberDisplay).
 - [ ] **∞ through a note** (author's call): the writer puts ∞ in a note as the text `"Infinity"` (`yamlScalar`), which a number column reads back as NaN ([[D93]] oneTextReading), while [[D48]] classifyNonFinite keeps an incoming ∞ a real value; bare `.inf` reads blank (`noteFrontmatter.ts` readScalar). Write `.inf` and read it as ∞, or read the text "Infinity" as ∞.
 - [ ] **A blank slot in an undeclared parameter** errors instead of reading as Excel's blank: `POWER(2, )` is #VALUE! (Excel: 1), while `MOD(5, )` is #DIV/0! as Excel's is. [[C80]] blankArgIsExcelBlank leaves undeclared parameters to the function; declaring more `ARG_ROLES` would close it.
-- [ ] **TaskNotes blank URL** (author's call, [[D62]] demoVaultResolution): with Use demo vault on (the default), a blank TaskNotes URL now reads the demo, where it always meant the default server `localhost:8080` (`taskNotesApi.ts` base(), the Settings placeholder). Write Tasks has no demo check, so it can Preview and Run rows read from demo paths against a real server on 8080. Decide what blank means; either way Write Tasks should refuse while its reader is on the demo, and `useDemoVault` belongs in the TaskNotes fetch key.
+- [ ] **TaskNotes blank URL** (author's call, [[D62]] demoVaultResolution): with Use demo vault on (the default), a blank TaskNotes URL reads the demo, where it always meant the default server `localhost:8080` (`taskNotesApi.ts` base(), the Settings placeholder). Decide what blank means. (Write Tasks already refuses while the reader is on the demo.)
 - [ ] **SUMIF/AVERAGEIF numeric text** (`excelCriteria.ts` ~l.105): a text "10" in the value column is summed; Excel ignores text there. Revert, or record it as a divergence.
 - [ ] **Unnest on a Schedule's Predecessors**: a plan mixing plain and typed links gives name lists beside cubes, which Unnest refuses (#TYPE!). Either Unnest turns list items into Task/Type=FS/Lag=0 rows beside cube rows, or `predecessorCell` builds a cube for the whole column once any row is typed. The cube path also drops a task with no predecessors where the list path keeps it.
 - [ ] **MSPDI start-no-earlier-than** writes `<ConstraintDate>` only when the floor binds (it writes the scheduled start); a non-binding floor date isn't carried, since `ScheduledTask` has only `floored: boolean`.
@@ -327,7 +325,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Currency over a list**: the Amount socket is single-value, so a list of amounts is refused; broadcast, or keep one amount per card.
 - [ ] **Hours per day**: the Schedule engine divides work by the task calendar's hours, but `scheduleCpm.ts` still reads Work and hour Durations with the project's hours per day even when a task has its own Hours column.
 - [ ] **CUMIPMT/CUMPRINC with End past the loan** return a number (formula and card); Excel is believed to give #NUM! (unconfirmed).
-- [ ] **GROUPBY with totals**: the shape types a min/max of a date column as date while the pivot run outputs number.
 - [ ] **Frame popup formats**: a format picked on a brand-new column, then Cancel, leaves a stray entry under that column's would-be name (`frameFormatStore.rekey`).
 - [ ] **Matrix format precedence**: the matrix popup's own pick now wins over an FC wired to the same card (as a Frame column's own pick does); the reverse is defensible.
 - [ ] **Gantt font scale** keeps the dragged grid width, so wider columns can run off the right instead of truncating with "…".
@@ -335,9 +332,8 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **UUID and undo**: `UuidNode` saves its generated `init.value`, which changes on every compute, so an undo on a document holding one records a stray history entry and wipes Redo. Stop saving the value, or have the history ignore it.
 - [ ] **List text predicates on a mixed list** (`list.ts` requireTextList, [[D49]] textPredicateNeedsText): `["apple", 1]` and `[1, "apple"]` are both #TYPE! now; confirm that reading of D49.
 - [ ] **Series op switch**: a typed value equal to the old op's default (Start 0 on Range) reads as untouched and gives way to the next op's default; keeping it needs a saved "edited keys" field.
-- [ ] **Section folds** inside a card (`CardSection.setOpen`) autosave but record no undo step, unlike a card collapse.
 - [ ] **LOGEST with a Y at or below 0** answers an empty list while the Fit card answers #DOMAIN!; a test pins the difference against [[C17]] shareImpl. Pick one.
-- [ ] **XNPV node** runs through Formula.js with no check for a date before the first date (XIRR now refuses it); **LARGE/SMALL** round a fractional k (`nthExtreme`), unchecked against Excel.
+- [ ] **LARGE/SMALL** round a fractional k (`nthExtreme`), unchecked against Excel.
 - [ ] **Running on unit lists** (`listOps.ts` running): unit cells are dropped, so [1 kg, 2 kg, 3 kg] runs to zeros; go through `forAggregateUnits` as Reduce does, and check RUNNING agrees.
 - [ ] **Sketch sample aliasing**: the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs` verb_sample) aliases on periodic data (alternating keys at stride 4 keep only one). A fixed-seed well-mixed sample would fix it; spec line plus both samplers.
 - [ ] **Sketch Run** (`withExactPass`): a sink's Run in Sketch mode leaves the canvas on exact values until the next edit, as F9 does; the table popup's Copy/Export CSV still export the sampled table it shows.
