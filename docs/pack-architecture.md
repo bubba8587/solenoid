@@ -3,12 +3,19 @@
 > **Status: the framework is BUILT** — `packsStore` + pack registration, FC unit/format
 > extensions (`fcExtensions.ts`), dormant-pack persistence, the **Geometry** pack as the worked
 > example, and the **Composite** subgraph container (`nodes/composite.ts`). The settled calls
-> live in the decision tree: [[B15]] leanCore (a lean core plus optional packs; the toolkit is
-> never an add-on) and its children [[C76]] formulaPackDefault, [[C77]] compositeIsSubgraph,
+> live in the decision tree: [[B15]] leanCore and its children [[C76]] formulaPackDefault, [[C77]] compositeIsSubgraph,
 > [[C78]] packLegibility and [[C79]] packActivationIsPresentation
 > (`python tools/dte.py tree --under B15`). This doc is the guide for authoring packs; the open
 > pack work (more packs, distribution/deps, variant-switch reconcile, port aliasing) lives in
 > `backlog.md`.
+
+## The core toolkit
+
+What every pack builds on is always in the core, never an add-on ([[B15]] leanCore): the canvas
+and the engine, units, the socket types and their legend, the formula language, the basic look of
+a node, and saving and loading. A pack never ships its own units or socket types: two packs that
+disagreed on units would break wiring between them. Most node families, by contrast, are packs
+that can be switched on or off.
 
 ## Building a pack node
 
@@ -21,6 +28,11 @@ the two it is; the custom-logic nodes are the short list that gets the scrutiny 
 [archive/compute-architecture.md](archive/compute-architecture.md) for the library-bound
 cases). A simple node that grows into several internal nodes becomes a composite
 ([[C77]] compositeIsSubgraph), never a Group.
+
+A formula pack node saves as a plain locked Expression, so a document that uses one still
+opens and computes with its pack switched off ([[C76]] formulaPackDefault). Formula nodes get
+units right because the formula engine already understands them; custom code is harder to
+trust from a third party and often runs only on desktop, which is why it is the short list.
 
 ### Input coercion — the default widens, opting out is one line
 A custom-logic node's `data()` receives every input already coerced to its socket's
@@ -64,7 +76,18 @@ already satisfied by an internal wire, the author sets:
   fallback for an unwired `exposed` port. It lives next to that variable's restriction
   metadata, so restriction and promotion share one per-variable spec.
 
-How promoted ports and locked internals read on screen is [[C78]] packLegibility. Aliasing
+How promoted ports and locked internals read on screen follows [[C78]] packLegibility: as
+packs add power, keeping the UI obvious comes first (a powerful node editor easily becomes
+unreadable; Blender's is the cautionary tale), so the feature bends to the UI.
+
+- **Mark the exception, not the rule.** Locked is the silent default; only a port the user can
+  expose or has promoted gets an accent mark. No lock icon on every locked cable or port.
+- **Moving is not rewiring.** A pack's insides can be rearranged freely while their wiring
+  stays locked.
+- **Say the mode once.** Viewing locked insides is shown once, as a tinted frame or a mode pill
+  reusing the canvas-lock and layout pills, never as badges on each cable.
+
+Aliasing
 (many internal ports collapsing to one shell parameter, e.g. a single "confidence level"
 feeding several internal nodes rather than N identical ports) is an open follow-up, tracked
 in the backlog.
@@ -99,7 +122,8 @@ pack-distribution system (`deferrals.md` "Pushed to 1.4/2.0"); it must land befo
 third-party or code pack ships.
 
 Isolation levels: this is level 1 (every pack's constructors registered and its formula
-functions resolving, activation filtering only the Add menu and autocomplete). Level 2 (each
+functions resolving, activation filtering only the Add menu and autocomplete). A switched-off
+pack still ships with the app; leaving it out of the build is deliberately not done. Level 2 (each
 pack self-contained, enforced by structure) is a later tidy-up the pack/core wall is drawn for;
 level 3 (third-party packs loaded at runtime) is a safety project of its own ([[C79]]
 packActivationIsPresentation).

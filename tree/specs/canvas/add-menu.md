@@ -2,11 +2,11 @@
 aliases: ["Add menu"]
 tags: [spec, canvas]
 ---
-<!-- [[D5]] searchWiderThanLabel, [[C19]] namingModel, [[D22]] oneNamePerCard -->
+<!-- [[B16]] oneFormulaSurface, [[D22]] oneNamePerCard -->
 
 # Spec: Add menu
 
-Serves [[D5]] searchWiderThanLabel; the names it shows follow [[C19]] namingModel and [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B16]] oneFormulaSurface: every name a node shows has one home ([[#Where each name comes from]]) and a row's search words reach wider than its name ([[#A row's name and its search words]]). Placed nodes are titled by [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The Add menu is the panel a user opens to place a new card. With the search box empty it shows the catalog as a tree of categories; as soon as the user types, it shows one ranked list of every row that matches. The catalog is declared in `nodeCatalog.ts` and assembled by `catalogUtils.ts`; op families are declared in `nodeOps.ts`; search is `catalogSearch.ts` and `fuzzy.ts`; the panel is `AddNodeMenu.tsx`. `catalogSearch.test.ts`, `fuzzy.test.ts` and `nodeOps.test.ts` pin the behavior.
 
@@ -26,7 +26,7 @@ The tree is curated to read well: general plotters stay at the top of Visuals wh
 
 | Field | Meaning |
 |---|---|
-| `type` | The catalog key. Internal, never shown ([[C19]] namingModel). |
+| `type` | The catalog key. Internal, never shown ([[#Where each name comes from]]). |
 | `label` | The name shown in the menu and, by default, on the card ([[D22]] oneNamePerCard). |
 | `description` | Shown on hover in the menu, on the card header and in the Inspector. |
 | `create` | Builds a fresh node. |
@@ -37,7 +37,7 @@ The tree is curated to read well: general plotters stay at the top of Visuals wh
 | `hiddenOps` | The family's ops with no leaf of their own, derived from `NODE_OPS` and never set by hand, so the `{ }` mark can never claim something the menu contradicts. |
 | `hideOpsMark` | Hides the `{ }` mark while keeping the ops in `hiddenOps` and in search. |
 | `excel` | The node's own Excel equivalents (`ExcelEquiv`: `excel`, `syntax`, and a `parity` and `note` that override the leaf's for that one function). The Function Reference generates from these; none means a Solenoid-native node. |
-| `keywords` | Space-separated search words, matched by search and never shown ([[D5]] searchWiderThanLabel). |
+| `keywords` | Space-separated search words, matched by search and never shown ([[#A row's name and its search words]]). |
 | `fx` | The formula names the leaf answers to when the despaced label cannot be its name, because of punctuation or because one node splits into several functions. |
 
 ## Building the catalog
@@ -81,7 +81,7 @@ A family's **hidden ops** (`hiddenOps`) are the ops with no leaf of their own: e
 `flattenLeaves` turns the tree into the flat list that search scores. Each entry carries its leaf plus its category path, the labels of the categories it sits under, outermost first. Beyond the tree's own leaves, it adds two kinds of generated row:
 
 - **Hidden-op rows.** Each hidden op gets a row built by `opEntry`, with type `` `${host}__op-${op}` ``. Picking the row places the host card already set to that op. Folding a family onto one card therefore never makes an op unfindable.
-- **Excel-alias rows** ([[C19]] namingModel). Two sources, both through `excelEntry`, type `` `${host}__excel-${name}` ``:
+- **Excel-alias rows** ([[#Where each name comes from]]). Two sources, both through `excelEntry`, type `` `${host}__excel-${name}` ``:
   - an op of the leaf's family whose formula name (`fx`) differs from its label gets a row that places the card set to that op, labeled `` `${name} → ${hostLabel}: ${opLabel}` `` ("NORM.DIST → Distributions: Normal", "SORTINO → Returns: Sortino ratio"); these come first, so they win over a card-level row for the same name;
   - each Excel name in `CATALOG_TO_EXCEL` that the leaf answers to gets a row labeled `` `${name} → ${hostLabel}` `` ("ROWS → Table Size", "COUNTA → COUNT").
 
@@ -147,7 +147,7 @@ Quick-wire is a setting (`quickWire`, off by default). With it on, a cable dropp
 
 ## Why one long label widens the whole menu
 
-`.solenoid-add-menu__scroll` is a two-column CSS grid (`grid-template-columns: auto auto`) so the two halves of a pair share column tracks. Every child that is not a pair half (`--half`) spans both columns (`grid-column: 1 / -1`), and a spanning item's natural width is split across both auto tracks. Rows are `white-space: nowrap` and the panel has no `max-width`. The panel is therefore as wide as its widest single row. The tree view hides this because it renders one category at a time; search renders every matching row at once, so the widest row in the whole catalog can set the width on the first keystroke. When the Distribution rows each carried their full list of dotted Excel names, one row was almost seven times the usual width and the menu tripled in width on the first keystroke; that is why Excel spellings live in `keywords` and never in a label ([[D5]] searchWiderThanLabel).
+`.solenoid-add-menu__scroll` is a two-column CSS grid (`grid-template-columns: auto auto`) so the two halves of a pair share column tracks. Every child that is not a pair half (`--half`) spans both columns (`grid-column: 1 / -1`), and a spanning item's natural width is split across both auto tracks. Rows are `white-space: nowrap` and the panel has no `max-width`. The panel is therefore as wide as its widest single row. The tree view hides this because it renders one category at a time; search renders every matching row at once, so the widest row in the whole catalog can set the width on the first keystroke. When the Distribution rows each carried their full list of dotted Excel names, one row was almost seven times the usual width and the menu tripled in width on the first keystroke; that is why Excel spellings live in `keywords` and never in a label ([[#A row's name and its search words]]).
 
 ## Search samples
 
@@ -170,14 +170,16 @@ A placed node knows only its class and its `op`. The catalog lookups index every
 - The title a placed node shows ([[D22]] oneNamePerCard) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated "Host: Op" search rows), else the class name. No class hardcodes a family title: every op family sets `this.label = init?.label ?? ""`, and no component syncs a label when the op changes, so the title follows the current op on its own. Every surface that names a node (header, Navigator, Inspector, cable inspector, history digest, popup titles) reads it.
 - A leaf name is a title, so it carries no glyph prefix ("+ Add") and no hint ("ROUND to N digits"), and an "X / Y" row that creates only X is split into two leaves (`leafOps`).
 - A node's name never reads as a core Excel function that does something else ([[D21]] noExcelNameClash): the node that keeps or drops columns is "Keep Columns" / "Drop Columns", never a bare "Columns", which reads as COLUMNS(). A label that is the node form of its like-named function (Sort and SORT) is fine. The check is a denylist: no Tables & Frames leaf despaces to ROWS, COLUMNS, ROW or COLUMN, the count functions that started the rule (the author, 2026-08-25).
-- The hover type-hint (`.solenoid-node__type-hint`) shows the op-agnostic family name from `nodeTypeName`: the class name with its `Node` suffix removed and spaces added ("Series", "Math FX"). A family name that reads wrong is fixed by renaming the class (`MathFnNode` to `MathFXNode`), never with an override map.
+- The hover type-hint (`.solenoid-node__type-hint`) shows the op-agnostic family name from `nodeTypeName`: the class name with its `Node` suffix removed and spaces added ("Series", "Math FX"). It is the one surface that does not show the node's name, and that is the author's call: the hint exists to name the family once, which the title and op picker don't, so nothing removes this exception. A family name that reads wrong is fixed by renaming the class (`MathFnNode` to `MathFXNode`), never with an override map.
 
-### Where each name comes from ([[C19]] namingModel)
+### Where each name comes from
+
+Every name a node shows comes from one home and reads the same on every surface ([[B16]] oneFormulaSurface): its name is the same in the Add menu, on its title, in the Navigator, the Inspector, Problems and everywhere else, and its formula name, Excel names, op names, socket labels and description each have one home too. Every surface reads the name from that home rather than keeping its own. Names that exist only in the code are never shown. The reason: a user reads a name in one place and looks for it in another, so it has to be the same name in both; a function already has one name on the formula bar and on the canvas, and every other name a node shows follows suit. This would reopen if a surface needed a name of its own that no other surface should show.
 
 | Name | Home | Shown on |
 |---|---|---|
 | **Name** | the catalog leaf label (`nodeCatalog.ts`), or for an op family the current op's label; the title rules are [[D22]] oneNamePerCard | card title, Navigator, Inspector title, Problems, Pins, Comments, status bar, Isolate, cable inspector, history and popup titles, all through `nodeDisplayName` (the user's own label wins) |
-| **Family name** | `nodeTypeName`, derived from the class name | only the card's hover type-hint, under the exception in [[D22]] |
+| **Family name** | `nodeTypeName`, derived from the class name | only the card's hover type-hint, under the exception in [[#Naming a placed node]] |
 | **Excel names** | `NODE_EXCEL[type]` | Inspector Excel rows; the description's closing "Excel: X."; and Add-menu search, as a row that shows the name before an arrow ("ROWS → Table Size", or "NORM.DIST → Distributions: Normal" for one op's formula name, built by `excelEntry`) whenever the Excel name is not already the row's own name or one of its ops |
 | **Op names** | the family's `OP_META` label, read by `nodeOps` | the op dropdown; hidden-op search rows ("Host: Op"); the card title when the op has its own leaf |
 | **Formula name** | `fx ?? despace(label)` in `nodeOps` | the formula surface; letter case per [[D23]] capsClaimsFunction |
@@ -188,9 +190,17 @@ The name surfaces exist so that a user who reads a name in one place finds the s
 
 The class name, the rete `super()` name and the registry type key are internal and never shown. `nodeTypeName` (`nodeNamer.ts`) is the last-resort fallback for a node with no catalog entry (a Placeholder, a composite boundary). Modules below `catalogUtils` in the import graph (`errorValue`, `groupCollapse`) reach the same derivation through `displayNameOf`, which `catalogUtils` binds at load. Nothing else reads `constructor.name` for display; the enforcing test lists the two sanctioned uses that are not for display.
 
+## A row's name and its search words
+
+An Add-menu row's visible name carries only what a reader needs to recognize and pick it ([[B16]] oneFormulaSurface). Other spellings a user might type, Excel function names first, are search words: they go in `keywords`, which search reads at full weight and the menu never shows. They are never tacked onto the name to make the row findable. A node's one name shows on every surface, so it has to stay readable; being findable and being readable are separate jobs, and since a search word counts as much as the name does, moving a spelling out of the name costs nothing. One long name also widens the whole menu ([[#Why one long label widens the whole menu]]).
+
+*Exception:* a short parenthetical that tells apart two entries sharing a name stays ("T.TEST (Welch)", "DATE (Build)"), and so does a bare acronym that is the name people know ("Growth Rate (CAGR)"). An Excel function spelling never does. **Removed by:** the menu gaining per-row truncation, which would remove the length pressure.
+
+This would reopen if search words stopped ranking as high as the name.
+
 ## Invariants
 
-- A rendered label carries only what a reader needs to pick the row. Alternate spellings, Excel function names above all, go in `keywords`, which scores at full weight and never renders ([[D5]] searchWiderThanLabel).
+- A rendered label carries only what a reader needs to pick the row; alternate spellings go in `keywords` ([[#A row's name and its search words]]).
 - A hidden-op row's label is `` `${hostLabel}: ${opLabel}` `` (`opSearchLabel`) and nothing else, so renaming a card renames its op rows.
 - A card's formula name (`fx`) is independent of its label. It stays declared wherever removing the spaces from the label would not produce it ([[engineering#An override lives on the declaration it overrides]], [[formula-language#Derived names are unique]]).
 - Every op is reachable: it either has a row of its own or is the family's primary op. The primary op is found by constructing the leaf and reading its `op` (`primaryOpOf`), never declared by hand.

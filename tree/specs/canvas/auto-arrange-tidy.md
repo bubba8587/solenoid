@@ -2,11 +2,11 @@
 aliases: ["Auto-arrange / Tidy"]
 tags: [spec, canvas]
 ---
-<!-- [[B10]] reactFlowView, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver -->
+<!-- [[B10]] reactFlowView, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver -->
 
 # Spec: Auto-arrange / Tidy
 
-Serves [[B10]] reactFlowView; the position lock is [[D63]] lockedGroupIsObstacle, the size read is [[#Size reads]], standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B10]] reactFlowView; the position lock is [[#Position-locked groups]] ([[C112]] noOverlapsEver), the size read is [[#Size reads]], standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK layered layout engine. It only moves cards; it never resizes them. Cleanup is a bigger pass built on Tidy: it tidies inside every group, fits and collapses the groups, then tidies the top level. Both live in `tidyArrange.ts` (`makeArrangeFn`, `makeCleanupFn`). The integration harness is `tidyArrangeGroups.test.ts`, which drives the real arrange and cleanup with real elkjs over a fake area that models the DOM contract.
 
@@ -122,7 +122,9 @@ No layout pass may leave a fixed inline `height` on a card. A pinned height free
 
 ## Position-locked groups
 
-A group with `GroupNode.lockedPosition` set (persisted through `INIT_FIELD_ORDER`) sits out global Tidy and Cleanup as a fixed obstacle ([[D63]] lockedGroupIsObstacle).
+A group locked in place never moves in any layout action: Tidy, Cleanup, the expand push, the collapse restore, autofit, standoff solves and the no-overlap pass all treat it as a fixed obstacle and move everything else around it ([[C112]] noOverlapsEver). A lock that a layout could move isn't a lock, and since every layout action ends with nothing overlapping, the locked group can't just sit the action out: everything else has to move around it. The lock holds the box, not its contents. **Reopen if:** the lock should also freeze the group's contents, or people expect a locked group to still move in a Tidy.
+
+A group with `GroupNode.lockedPosition` set (persisted through `INIT_FIELD_ORDER`) sits out global Tidy and Cleanup as a fixed obstacle.
 
 - It is dropped from `layoutTargets`, so global Tidy never places it or carries its members.
 - Cleanup skips it in its member tidy, autofit and collapse steps. It stays exactly where it was pinned.
@@ -156,7 +158,7 @@ A second Tidy or Cleanup moves nothing unless a card's content changed size in b
 
 `selectionOps.ts` holds the manual layout verbs over the selection: align, distribute and batch collapse. It works through the `process.ts` singletons, so it is callable from anywhere.
 
-- **The move set.** Each selected card carries its group's members (when it is a group) and its whole standoff cluster (`expandMoveSet`), so moving one end of a pair can't wrench it away from its bar. A position-locked group is never in the move set, whether selected or reached through a cluster ([[D63]] lockedGroupIsObstacle); the arrow-key nudge uses the same set. Every physical card moves exactly once: a card carried by two seeds follows the first only, since the deltas come from boxes captured up front and would drift. The selection is dropped while the cards move, because translating a selected card triggers the group-follow, which compounds.
+- **The move set.** Each selected card carries its group's members (when it is a group) and its whole standoff cluster (`expandMoveSet`), so moving one end of a pair can't wrench it away from its bar. A position-locked group is never in the move set, whether selected or reached through a cluster ([[#Position-locked groups]]); the arrow-key nudge uses the same set. Every physical card moves exactly once: a card carried by two seeds follows the first only, since the deltas come from boxes captured up front and would drift. The selection is dropped while the cards move, because translating a selected card triggers the group-follow, which compounds.
 - **Align** (`alignDeltas`, pure) aligns the boxes to an edge or the center of the selection's own bounding box, the way Figma and Illustrator do: left, right, top, bottom, or center on either axis. It is a manual gesture and deliberately not overlap-free, so cards that share the other axis land on top of each other.
 - **Distribute** (`distributeDeltas`, pure) spaces the gaps between edges evenly, not the centers, because card heights vary so widely that equal-center spacing overlaps big cards. It needs at least three cards, and it guarantees no overlap and at least `DISTRIBUTE_GAP` (40, close to Tidy's normal node spacing of 38, so distribute and auto-arrange feel alike) between neighbors:
   - if the span from the first to the last card already fits every box plus that gap, both ends stay fixed and the interior evens out, with gaps of at least `DISTRIBUTE_GAP`;

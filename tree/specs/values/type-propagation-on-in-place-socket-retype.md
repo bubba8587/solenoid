@@ -2,11 +2,11 @@
 aliases: ["Type propagation on in-place socket retype"]
 tags: [spec, values]
 ---
-<!-- [[C113]] controlDrivenRetype, [[C10]] socketLattice -->
+<!-- [[B11]] maximalMerge, [[C10]] socketLattice -->
 
 # Spec: Type propagation on in-place socket retype
 
-Serves [[C113]] controlDrivenRetype. The static shape walk serves [[C10]] socketLattice (passthroughs forward the shape) and [[engineering#One declaration per fact]] (`frameShape()` and `columnPickers()` are each a node's one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B11]] maximalMerge through [[#Control-driven socket swaps]]. The static shape walk serves [[C10]] socketLattice (passthroughs forward the shape) and [[engineering#One declaration per fact]] (`frameShape()` and `columnPickers()` are each a node's one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 ## The trap
 
@@ -16,7 +16,9 @@ Several nodes change an output socket's type in place from a UI control: **Cast*
 
 ## Control-driven socket swaps
 
-A node's own op, mode or argument field can swap that node's sockets in place. This is an established pattern; grep `setOp`, `setMode` and `keysDroppedBySwitch` before claiming a node can't retype on a mode. A swap can change an input socket, an output socket or both, and can add or remove whole input rows. It is separate from wildcard adoption (`trueAnyAdopt`), which the wiring drives and no field touches.
+Picking a different operation, mode or option on a node can change that node's own inputs and outputs on the spot: change the type an input or output takes, or add and remove input rows, instead of each variant needing a node of its own ([[B11]] maximalMerge). A family's variants live on one node, so a picker that changes what the node computes has to be able to change its sockets; otherwise every variant would need a node of its own. Cables plugged into an input that goes away are unplugged, and whatever reads a changed output is updated to match (the rule below, on in-place retypes). Nothing would reopen this short of giving up one node per family.
+
+This is an established pattern; grep `setOp`, `setMode` and `keysDroppedBySwitch` before claiming a node can't retype on a mode. A swap can change an input socket, an output socket or both, and can add or remove whole input rows. It is separate from wildcard adoption (`trueAnyAdopt`), which the wiring drives and no field touches.
 
 **The recipe:**
 
@@ -42,7 +44,7 @@ The combo Auto rung is `anycombo`, not `any`: an Auto result is a list whenever 
 
 ## The rule: an in-place retype re-drives FC adaptation
 
-**MUST:** when a node changes the type of one of its own inputs or outputs in place, everything wired to it is updated to match, never left working by the old type. No wiring event fires in this case, so the node itself must see to it. A pick on a node may change its own sockets ([[C113]] controlDrivenRetype), and nothing downstream sees that change on its own: left alone, a downstream Format Controller keeps formatting by the old type and shows a wrong-looking value. The retypers include Cast's target, a LAMBDA table's result type, Get Column's read-as, a Note's frontmatter, List and Table Input element types, Add and Split Column, Cable Switch and Import from Obsidian; the completeness test (`sourceInvariants.test.ts`) owns the full list.
+**MUST:** when a node changes the type of one of its own inputs or outputs in place, everything wired to it is updated to match, never left working by the old type. No wiring event fires in this case, so the node itself must see to it. A pick on a node may change its own sockets ([[#Control-driven socket swaps]]), and nothing downstream sees that change on its own: left alone, a downstream Format Controller keeps formatting by the old type and shows a wrong-looking value. The retypers include Cast's target, a LAMBDA table's result type, Get Column's read-as, a Note's frontmatter, List and Table Input element types, Add and Split Column, Cable Switch and Import from Obsidian; the completeness test (`sourceInvariants.test.ts`) owns the full list.
 
 So any code that changes a socket's `dataType` in place must re-drive FC adaptation, through `fcReconcile.ts`:
 

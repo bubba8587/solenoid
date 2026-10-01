@@ -2,11 +2,11 @@
 aliases: ["Composite nodes"]
 tags: [spec, computation]
 ---
-<!-- [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[C43]] oneFlowSurface, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
+<!-- [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
 
 # Spec: Composite nodes
 
-Serves [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[C43]] oneFlowSurface, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[C28]] literalsIffEditable, [[D79]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This file owns the Composite card: its value model, its boundary ports and markers, every run mode, the heavy-mode hold, loops inside a composite, making a composite from a selection and unpacking it, how it saves and loads, and how edits inside it reach the outside. How the drill-in canvas mounts, leaves, undoes and substitutes the active graph is [[composite-drill-in-mount-lifecycle]]; this file only names the points where the drill-in calls into the composite. The outer pass that retargets an inner edit onto the owning card is [[compute-pass]]. The save shape of `init.internal` is also summarized in [[save-format]].
 
@@ -362,7 +362,7 @@ Copy and paste treat a composite like any node: the clone is constructed from `e
 
 ## Edits inside and how they reach the outside
 
-The drill-in is the main canvas's surface component over the internal editor ([[C43]] oneFlowSurface). What it changes flows out this way:
+The drill-in is the main canvas's surface component over the internal editor ([[B3]] sameNodeEverywhere). What it changes flows out this way:
 
 - **Topology** (a node or cable added or removed inside). The composite's own pipe bumps `internalEditSeq` and, for a cable, settles internal types and boundary adoption. The drill stack's pipe then runs `processGraph(stack[0].id)`, targeting the outermost composite on the breadcrumb, and schedules an autosave and an undo record.
 - **Values** (a field on an internal card, a marker seed, a Monte Carlo spread). The component calls `processGraph` with the internal node's id, or with no id. The outer pass does not find that id in the main editor, so it bumps `markInternalEdit()` on every composite in the nesting chain and retargets the pass at the outermost owner ([[compute-pass]] § Retarget into composites).

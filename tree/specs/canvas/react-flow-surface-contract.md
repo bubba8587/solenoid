@@ -2,17 +2,19 @@
 aliases: ["React Flow surface contract"]
 tags: [spec, canvas]
 ---
-<!-- [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream -->
+<!-- [[B3]] sameNodeEverywhere, [[B10]] reactFlowView, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream -->
 
 # Spec: React Flow surface contract
 
-Serves [[C43]] oneFlowSurface. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The canvas is drawn by React Flow (RF) over a headless rete model ([[B10]] reactFlowView). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The rete model owns the graph: nodes, connections, absolute positions, values. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
 
 ## One surface for both canvases
 
-The main canvas (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay`, the view you get by opening a composite node) render the same `FlowSurface` over a `SurfaceStack` ([[C43]] oneFlowSurface). The two hosts differ only through `SurfaceHooks`.
+The main canvas (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay`, the view you get by opening a composite node) render the same `FlowSurface` over a `SurfaceStack`. The two hosts differ only through `SurfaceHooks`.
+
+Inside a composite the user works on the same canvas as the main one: gestures, the lasso, menus and keys all behave the same ([[B3]] sameNodeEverywhere: the inside of a composite is one more place a node appears). They differ only where the place has to: what an edit lands in, which undo history answers, and what Escape and Delete do (the hooks table below lists every difference). Two separate canvases would drift apart, and the inside would slowly stop feeling like the canvas the user learned; the drill-in's old bare delete loop was exactly that drift. **Reopen if:** one of the two genuinely needs a behavior the other must not have.
 
 - Anything that belongs to the surface goes in `FlowSurface`, never in one host. That covers gestures, menus, keys, layers and installers. A behavior installed in one host is a behavior the other silently lacks.
 - The top-bar chrome calls commands through slots in `canvasCommands.ts`. While a drill-in is open it swaps four of them to point at its own level and restores them on unmount: `swapSelectionSlots` (select, unselect all), `swapArrangeSlots` (Tidy and Cleanup), `swapDeleteSlot` (the delete button used on touch, where there is no Delete key) and `swapRepositionDockedSlot` (re-seating a docked Format Controller). A new slot that the drill-in should own needs its own `swap*` function here, or the command silently acts on the main canvas. The `setClearHistory` slot must run after every document load or rebuild, or Ctrl+Z unwinds the load itself.

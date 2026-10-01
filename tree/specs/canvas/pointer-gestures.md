@@ -2,7 +2,7 @@
 aliases: ["Pointer gestures"]
 tags: [spec, canvas]
 ---
-<!-- [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType, [[C43]] oneFlowSurface, [[D71]] zoomLatticeDiscreteOnly, [[C52]] visibleSelection -->
+<!-- [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType, [[C43]] oneFlowSurface, [[C52]] visibleSelection -->
 
 # Spec: Pointer gestures
 
@@ -29,12 +29,16 @@ React Flow's node drag (d3-drag) and pane pan bind in bubble on the node and pan
 
 **A pinch never selects.** Finger one may land on a card before the gesture can be recognized as a pinch. So when a pinch ends, a capture-phase click guard swallows every click for the next 400ms. The click is prevented, not undone afterwards, because a visible correction reads as a glitch.
 
+## Zoom steps
+
+Zooming in steps (a wheel notch, the zoom pill, a key, a fit) lands on a 10% step. A pinch zooms smoothly and never snaps while the fingers move, and the next stepped zoom rounds back onto a step ([[C92]] pinchUnvetoable). Snapping mid-pinch would jump the canvas under the fingers, so the pinch follows them; that is the author's call. Fixed steps everywhere else keep the zoom readout tidy and the steps repeatable. **Reopen if:** the step size should change with the zoom level.
+
 ## Wheel zoom: `installWheelZoom`
 
 `flow/flowWheel.ts`, on the canvas wrapper in capture, like the pinch. It is the only wheel path; React Flow's `zoomOnScroll` is off.
 
 - It acts only on wheels over the canvas (`.react-flow`). The minimap zooms itself, and panels and inspectors sit outside the pane, so none of them zoom the canvas.
-- Each wheel event scales an unsnapped "virtual" zoom by `wheelZoomDelta`, then snaps it with `clampZoom`. Carrying the unsnapped value means a trackpad glide of tiny deltas still reaches the next step instead of rounding back to the current one ([[D71]] zoomLatticeDiscreteOnly). The virtual zoom resets whenever another path (the zoom pill, a fit, a pinch) has moved the zoom.
+- Each wheel event scales an unsnapped "virtual" zoom by `wheelZoomDelta`, then snaps it with `clampZoom`. Carrying the unsnapped value means a trackpad glide of tiny deltas still reaches the next step instead of rounding back to the current one ([[#Zoom steps]]). The virtual zoom resets whenever another path (the zoom pill, a fit, a pinch) has moved the zoom.
 - The world point under the cursor stays pinned.
 
 **The curve** (`viewPresets.ts`, shared by every surface). `wheelZoomDelta` normalizes the wheel to pixels (a line is 16 px, a page 400 px), multiplies by `−ZOOM_SCALE` (0.0028), and caps the result at ±`ZOOM_STEP_CAP` (0.24); the new scale is `k × (1 + delta)`. The slope is much gentler per pixel than d3's default, so a trackpad scroll glides instead of lurching, and the cap is higher, so a mouse notch still moves. The scale stays between `MIN_ZOOM` (0.1), past which the dot grid is long gone and cards are specks, and `MAX_ZOOM`, where a card fills the viewport. `boundZoom` clamps without snapping (for the pinch), `clampZoom` clamps and snaps to the nearest `ZOOM_SNAP` step (0.1, so every discrete zoom, whether a wheel notch, the zoom pill, a key or a fit, lands on a 10% step, and the first discrete step after a pinch rounds back onto one), and fits snap down, so the framed content still fits after snapping.

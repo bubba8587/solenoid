@@ -46,6 +46,7 @@ A bridge holds a single handler. `register(fn)` returns an unregister function t
 
 - `pushNotice(message, tone = "info", ttl = 6500, action?)` queues a transient notice and returns its id. A `ttl` of 0 makes it sticky until dismissed, which is what the returned id is for. An optional single action (such as "Allow" on the network prompt) runs its `onClick` and dismisses the notice.
 - `requestConfirm(message or options)` opens the confirmation dialog and resolves true or false. A confirmation still open when a new one arrives resolves false first. `answerConfirm(ok)` closes the dialog, then resolves.
+- These are the app's only interruptions (rule 5 above): the browser's own boxes are also unstyled on the web, and the in-app dialog looks and handles the keyboard like every other dialog. File-access prompts belong to the operating system and don't count.
 
 ## Node-keyed stores in brief
 
