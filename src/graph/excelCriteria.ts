@@ -14,16 +14,22 @@ export interface Criterion {
 
 const PREFIX: Array<[string, CriterionOp]> = [["<>", "neq"], [">=", "gte"], ["<=", "lte"], ["=", "eq"], [">", "gt"], ["<", "lt"]];
 
-function wildcardToRegex(pattern: string): RegExp | null {
-  let re = "", hasWild = false;
+/** Excel's wildcards as a regex source: `?` one character, `*` any run, `~` takes the next character literally. */
+export function wildcardSource(pattern: string): { source: string; hasWild: boolean } {
+  let source = "", hasWild = false;
   for (let i = 0; i < pattern.length; i++) {
     const ch = pattern[i];
-    if (ch === "~" && i + 1 < pattern.length) { re += pattern[i + 1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); i++; continue; }
-    if (ch === "*") { re += ".*"; hasWild = true; continue; }
-    if (ch === "?") { re += "."; hasWild = true; continue; }
-    re += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (ch === "~" && i + 1 < pattern.length) { source += pattern[i + 1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); i++; continue; }
+    if (ch === "*") { source += "[\\s\\S]*"; hasWild = true; continue; }
+    if (ch === "?") { source += "[\\s\\S]"; hasWild = true; continue; }
+    source += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
-  return hasWild ? new RegExp(`^${re}$`, "i") : null;
+  return { source, hasWild };
+}
+
+function wildcardToRegex(pattern: string): RegExp | null {
+  const { source, hasWild } = wildcardSource(pattern);
+  return hasWild ? new RegExp(`^${source}$`, "i") : null;
 }
 
 const unescape = (s: string) => s.replace(/~(.)/g, "$1");

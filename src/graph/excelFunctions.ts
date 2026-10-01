@@ -3,7 +3,7 @@ import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
-import { criteriaAggregate } from "./excelCriteria";
+import { criteriaAggregate, wildcardSource } from "./excelCriteria";
 import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
@@ -885,7 +885,6 @@ const TEXT_PASS_THROUGHS: Record<string, { text: number[]; check?: (a: unknown[]
   RIGHT: { text: [0], check: atLeast("RIGHT", 1, 0, "takes 0 or more characters") },
   UPPER: { text: [0] }, LOWER: { text: [0] }, TRIM: { text: [0] }, REPLACE: { text: [0, 3] }, EXACT: { text: [0, 1] },
   FIND: { text: [0, 1], check: findStart("FIND") },
-  SEARCH: { text: [0, 1], check: findStart("SEARCH") },
 };
 for (const [name, { text, check }] of Object.entries(TEXT_PASS_THROUGHS)) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
@@ -896,6 +895,17 @@ for (const name of ["BASE", "DEC2HEX", "BIN2HEX", "OCT2HEX"]) {
   registerInternal(name, (...a) => { const r = f(...a); return typeof r === "string" ? r.toUpperCase() : r; });
 }
 registerInternal("MID", (text, start, len) => {
+// Excel's SEARCH reads ?, * and ~ in find_text; Formula.js's matches them literally.
+registerInternal("SEARCH", (find, within, start) => {
+  const bad = findStart("SEARCH")([find, within, start]);
+  if (bad) return bad;
+  const s = start == null ? 1 : Math.trunc(toNum(start));
+  if (Number.isNaN(s)) return VALUE("SEARCH");
+  const f = toStr(find), w = toStr(within);
+  if (f === "") return s;
+  const at = new RegExp(wildcardSource(f).source, "i").exec(w.slice(s - 1));
+  return at ? at.index + s : solError("#VALUE!", "Find text not found within the text");
+});
   const t = toStr(text), s = Math.trunc(toNum(start)), n = Math.trunc(toNum(len));
   if (badNum(s, n)) return VALUE("MID");
   if (s < 1 || n < 0) return solError("#VALUE!", "MID starts at 1 or later and takes 0 or more characters");

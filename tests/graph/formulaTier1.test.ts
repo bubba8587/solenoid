@@ -273,6 +273,15 @@ describe("one-function Excel parity, each checked against Excel", () => {
     expect(err('SEARCH("","abc",5)')).toBe("#VALUE!");
     expect(err('LEFT("abc",-1)')).toBe("#VALUE!");
   });
+  it("SEARCH reads Excel's wildcards: ? one character, * any run, ~ a literal", () => {
+    expect(ev('SEARCH("a?c","xabc")')).toBe(2);
+    expect(ev('SEARCH("B*D","abcde")')).toBe(2);
+    expect(ev('SEARCH("~*","a*b")')).toBe(2);
+    expect(ev('SEARCH("~?","ab?")')).toBe(3);
+    expect(ev('SEARCH("a*","bca",2)')).toBe(3);
+    expect(err('SEARCH("x?","abx")')).toBe("#VALUE!");
+    expect(ev('SEARCH("","abc",2)')).toBe(2);
+  });
   it("YEARFRAC basis 1 uses 366 when a Feb 29 falls in the span, and the average year past one year", () => {
     expect(ev("YEARFRAC(DATE(2011,12,15),DATE(2012,3,1),1)")).toBeCloseTo(77 / 366, 12);
     expect(ev("YEARFRAC(DATE(2012,12,15),DATE(2013,3,1),1)")).toBeCloseTo(76 / 365, 12);
