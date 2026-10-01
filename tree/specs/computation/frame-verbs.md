@@ -95,7 +95,7 @@ There are four entry paths, and they do not infer the same way.
 
 Inference is deliberately conservative, and `coerceLogical` (`valueKinds.ts`) is the liberal reading for the explicit paths (Cast to Boolean, Get Column's read-as Logical, a Frame Input logical column, a filter value). It reads a boolean as itself; a finite number as true when non-zero; the text `true` or `false` in any case, or text that parses to a finite number; and anything else as null, meaning not readable as a logical, which each caller interprets.
 
-An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates; Get Column's read-as converts those explicitly.
+An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates; Get Column's read-as converts those explicitly. One cell that isn't an unambiguous ISO date keeps the whole column as text: declining to guess is always safe, and a wrong date never is ([[C44]] dateSerials).
 
 ### Native file readers
 

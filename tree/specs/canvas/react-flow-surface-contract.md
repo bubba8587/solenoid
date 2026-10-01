@@ -8,7 +8,7 @@ tags: [spec, canvas]
 
 Serves [[B3]] sameNodeEverywhere. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-The canvas is drawn by React Flow (RF) over a headless rete model ([[B10]] reactFlowView). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The rete model owns the graph: nodes, connections, absolute positions, values. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
+The canvas is drawn by React Flow (RF) over a headless rete model ([[B10]] reactFlowView). RF owns the screen: node wrappers, the edge layer, selection, dragging, the camera. The rete model owns the graph: nodes, connections, absolute positions, values. React Flow only draws and knows nothing of typed sockets or values flowing; the small rete core supplies those, and writing our own would add code to maintain with nothing new for the user. Reopen if rete core stops being maintained in a way that hurts, or another library would let us delete code. This spec says which side owns what, how values cross the seam between them, and what the one shared surface does: its keyboard, its selection, deletion, copy and paste, Format Controller docking, isolate, and undo.
 
 ## One surface for both canvases
 

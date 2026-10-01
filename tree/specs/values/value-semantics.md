@@ -60,7 +60,7 @@ Which rule applies is decided by the kind of computation, not by the function's 
 | Context | An error | A `null` | Where |
 |---|---|---|---|
 | **Element-wise numeric** (operators, mapped functions) | propagates unchanged, per cell, the first in argument order | propagates (`null + 5` is `null`: the SQL model, not Excel's blank-as-0) | the shared broadcasters (`broadcast`, `broadcastErr`, `broadcastCall`) |
-| **Element-wise logical** (Comparison, BooleanOp, IF, NOT) | propagates unchanged | goes into Kleene logic: `FALSE AND null` is FALSE, `TRUE AND null` is null | `broadcastEl`; the Kleene tables in `valueKinds.ts` |
+| **Element-wise logical** (Comparison, BooleanOp, IF, NOT) | propagates unchanged | goes into Kleene logic: `FALSE AND null` is FALSE, `TRUE AND null` is null, `TRUE OR null` is TRUE, `FALSE OR null` is null: a test with a blank in it answers unknown, never FALSE ([[D38]] kleeneLogic) | `broadcastEl`; the Kleene tables in `valueKinds.ts` |
 | **Reduction or aggregate** (SUM, AVG, the formula AND and OR, the Aggregate node) | propagates, the first error wins | skipped (Excel's range behavior, SQL aggregates) | `forAggregate`, `prepRangeArgs` |
 | **Paired, index-aligned** (SUMPRODUCT, CORREL, SUMIF…) | propagates | a null in any range drops that whole row pairwise; ragged ranges keep the shortest zip (pad-then-drop is the same as truncating) | `RANGE_PAIRED` |
 | **Positional lookups** (XLOOKUP, XMATCH, INDEX) | propagates | nulls stay put, since dropping them would shift indices | `RANGE_POSITIONAL` |

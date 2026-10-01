@@ -613,7 +613,7 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 
 - A blank IF branch stays blank; Excel reads it as 0.
 - `0^0` is 1; Excel answers `#NUM!`.
-- DATE's year is literal: 26 is the year 26, never 1926.
+- DATE's year is literal: 26 is the year 26, never 1926. Date text needs a four-digit year. One reading of a year everywhere beats matching Excel's two-digit guess ([[C44]] dateSerials).
 - DATEDIF's `MD` is never negative; Excel's goes negative across a short month.
 - VALUE does not parse date or time text.
 - The IM* functions answer tagged complex values, zip lists pairwise, and answer IMARGUMENT(0) as 0; unparseable complex text is `#VALUE!` rather than `#NUM!`.
@@ -838,7 +838,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 **`parseDate(text, opts)`** is the one text-to-date parser, behind DATEVALUE, Cast to date, Frame and Table date columns, Date Input and Get Column's read-as. It answers the serial, `#AMBIGUOUS!`, or NaN when the text is not a date. Time is kept, not floored. In order:
 
 1. Trimmed empty text is NaN.
-2. **Relative phrases** (`isRelativeDateText`: today, tonight, tomorrow, yesterday, now, next, last, this, coming, upcoming, ago, "from now", "in 3…", or a weekday name or abbreviation) are NaN unless `opts.relative` is set. Text with a four-digit year is never relative, so "Monday, 16 March 2026" is a fixed date. With `relative` on, chrono resolves the phrase against `opts.now` (default the wall clock), looking forward ("friday" is the coming one), and the answer is that local calendar day as a UTC serial. Only an opted-in Date Input passes `relative` ([[D54]] relativeDatesOptIn).
+2. **Relative phrases** (`isRelativeDateText`: today, tonight, tomorrow, yesterday, now, next, last, this, coming, upcoming, ago, "from now", "in 3…", or a weekday name or abbreviation) are NaN unless `opts.relative` is set. Text with a four-digit year is never relative, so "Monday, 16 March 2026" is a fixed date. With `relative` on, chrono resolves the phrase against `opts.now` (default the wall clock), looking forward ("friday" is the coming one), and the answer is that local calendar day as a UTC serial. Only an opted-in Date Input passes `relative` (the Date Input's Settings ▸ Data ▸ Relative dates, off by default; such a Date Input raises a warning alert when the day it lands on changes, [[D54]] relativeDatesOptIn) ([[D54]] relativeDatesOptIn).
 3. Text without a four-digit year is NaN: there is no two-digit-year century pivot in any form.
 4. ISO date-only text (`YYYY-MM` or `YYYY-MM-DD`, with an optional sign and up to six year digits) goes through `new Date`, which reads it as UTC with no 0–99 century pivot (chrono would pivot "0026"). ISO text with a time goes on to chrono's zone handling.
 5. A numeric day-month-year date (`NUMERIC_DMY`: one or two digits, a separator of `-`, `/` or `.`, one or two digits, a four-digit year) whose two leading parts are both 12 or less and differ is `#AMBIGUOUS!`, with a message asking for a month name (3-Apr-2026) or ISO. Where one part is above 12 the reading is forced; the parser never guesses.
