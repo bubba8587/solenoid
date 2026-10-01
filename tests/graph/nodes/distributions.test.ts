@@ -147,7 +147,8 @@ describe("PHI / GAUSS — standard-normal forms that moved from Math", () => {
 describe("discrete sampling sweeps the CDF once", () => {
   const us = Array.from({ length: 300 }, (_, i) => ((i * 7919) % 300) / 300 + 1e-4);
   it("answers the same draws, in the same order, as one quantile per draw", () => {
-    const cases: Array<[DistKey, number[]]> = [["poisson", [5]], ["hypgeom", DIST_SPECS.hypgeom.params.map((p) => p.def)], ["negbinom", [5, 0.5]]];
+    const cases: Array<[DistKey, number[]]> = [["poisson", [5]], ["hypgeom", DIST_SPECS.hypgeom.params.map((p) => p.def)], ["negbinom", [5, 0.5]],
+      ["binom", [10, 0.5]], ["binom", [200, 0.03]], ["binom", [0, 0.5]], ["binom", [10, 1]], ["binom", [10, 1.5]]];
     for (const [key, ps] of cases) {
       expect(sampleQuantiles(key, us, ps)).toEqual(us.map((u) => sampleQuantile(key, u, ps)));
     }
