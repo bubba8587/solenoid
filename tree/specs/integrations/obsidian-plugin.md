@@ -2,7 +2,7 @@
 aliases: ["Solenoid Properties (the Obsidian plugin)"]
 tags: [spec, integrations]
 ---
-<!-- [[C107]] obsidianPlugin, [[D87]] knapNotes, [[D92]] columnNameSuggest, [[B3]] sameNodeEverywhere, [[B1]] obsidianBet; covers: obsidian-plugin/vite.config.ts, obsidian-plugin/src/*.ts, obsidian-plugin/src/*.tsx, obsidian-plugin/src/shims/*.ts -->
+<!-- [[C107]] obsidianPlugin, [[D87]] knapNotes, [[B3]] sameNodeEverywhere, [[B1]] obsidianBet; covers: obsidian-plugin/vite.config.ts, obsidian-plugin/src/*.ts, obsidian-plugin/src/*.tsx, obsidian-plugin/src/shims/*.ts -->
 
 # Spec: Solenoid Properties (the Obsidian plugin)
 
@@ -330,7 +330,14 @@ literal tag is written `{{ "{" }}{ x }}` (knap.md).
 
 ## Column name suggestions
 
-Serves [[D92]] columnNameSuggest. While a Frame editor's header name is focused, the popup offers
+Serves [[C107]] obsidianPlugin. While you name a Frame column, the plugin suggests the column names
+already typed elsewhere in the vault, and picking one also gives the column that type; a setting
+(Suggest column names) turns it off. A Frame column is often the same field spread across many
+notes, and a typo quietly makes a second column that counts for nothing; suggesting the names
+already in use prevents that, as Obsidian does for property names. **Reopen if:** people want
+suggestions from columns nobody has typed.
+
+While a Frame editor's header name is focused, the popup offers
 the column names typed in the vault: every column of every property in `data.json`'s `columnTypes`
 that is still assigned the Frame or Cube type, the property being edited included (so a second
 note's `scores` Frame offers the first one's columns). A name typed under several properties counts
