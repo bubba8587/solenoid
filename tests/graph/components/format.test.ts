@@ -1,4 +1,4 @@
-// [[C94]] formatFamilyGates, [[D94]] oneNumberDisplay
+// [[C118]] formatTravelsWithValue, [[D94]] oneNumberDisplay
 import { describe, it, expect } from "vitest";
 import { formatScalar } from "../../../src/graph/components/format";
 import { settingsStore } from "../../../src/graph/settingsStore";

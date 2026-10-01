@@ -97,7 +97,7 @@ describe("a tall matrix maps in one pass", () => {
 });
 
 describe("the per-cell value model rides through rank 2 unchanged", () => {
-  it("a cell error propagates in place ([[D37]] errorBeatsMissing)", () => {
+  it("a cell error propagates in place ([[C24]] arraySemantics)", () => {
     const err = { __solError: true, code: "#DIV/0!", message: "x" };
     const out = ev("x + 1", { x: [[1, err], [3, 4]] }) as unknown[][];
     expect(out[0][0]).toBe(2);

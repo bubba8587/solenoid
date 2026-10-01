@@ -120,7 +120,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 - **Merge Plots** overlays XY sources on one numeric plane (Bubble no longer refused); a Line or Area joins by numeric
   label or row position, bars are `#TYPE!`. The old index-plotted Scatter and `BubbleView` paths are gone.
 - Chart Builder gains the ten XY rows; chart-showcase seed has a Lissajous XY Line group. Contests recorded on
-  [[C96]] chartOptionsAreMatplotlib and [[D75]] builderExposesEveryOption (keep).
+  [[C96]] chartOptionsAreMatplotlib and D75 builderExposesEveryOption (retired) (keep).
 - **Checked after the merge (2026-09-28):** an XY Line draws right in a Display and embedded in a Report (equal aspect,
   colorbar). Not yet: a Composite boundary shot, and the demo video isn't re-filmed.
 
@@ -347,7 +347,7 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
   `mermaid` 12 with a `lodash-es` override. **For the author:** C70's per-row faults vs the whole-run error,
   and Local File's grammar-text Predecessors (both in the backlog).
 - **Charts:** every figure the Chart Builder titles now draws its title, and the Sankey, KPI and Gauge cards
-  render through `ChartFigure`, so options apply on the card ([[D75]] builderExposesEveryOption: a type's
+  render through `ChartFigure`, so options apply on the card (D75 builderExposesEveryOption (retired): a type's
   builder keys are exactly what its renderer honors; `chartTitles.test.ts`). The audit made alpha, radar,
   canvas-figure fontsize and the Gantt view keys real. Sankey merges repeated From/To pairs (`mergeFlows`)
   and lifts a flow on hover. Every chart card, Chart Builder, Mermaid and Record included, is the chart
@@ -745,7 +745,7 @@ On `develop`, pushed.
   [[C86]] membershipByGesture, C87 groupsAreSubflows (retired), [[C88]] collapseIsVisual, [[C89]] standoffsSolveLast,
   C90 drawnCablesAnnotate (retired), C91 cableWalkRouter (retired), with [[D63]] lockedGroupIsObstacle and D64 oneSizeRead (retired)),
   the input model ([[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; C42 was the wrong governor), and the
-  UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers ([[C94]]
+  UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers (C94 formatFamilyGates (retired)
   formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, C97 rechartsLazyChunk (retired),
   [[C98]] paletteMirrorsMenubar, C99 chromeEnvelopeVars (retired), [[C100]] chartIsAValue, [[C101]] onePatchPath, [[C102]] gridFillThenForecast; the last two
   replaced a plan-doc 'candidate' and a core-only A5 citation). D64 / C95 / C97 are enforced by
@@ -901,7 +901,7 @@ controlDrivenRetype: keep), and the new rule landed as a node before its code (C
   ordinary card (`tidyArrange.ts`), so a stale constructor height or a collapsed card
   mis-spaced. History checked: the 2026-07-16 measuredBox unification simply never reached that
   branch. Regression in `tidyArrangeGroups.test.ts` (fails without the fix).
-- **Triangle Solver is unit-aware** ([[D42]]): an angle-dimensioned cell converts base radians
+- **Triangle Solver is unit-aware** (D42 perInputUnitBlind (retired)): an angle-dimensioned cell converts base radians
   to degrees whatever its display unit; a side takes its display magnitude as the strip did.
   `geometry.test.ts`.
 - **TaskNotes chip** reports `cols` beside `rows` on every provider (`reportOk`), so `6×0` is gone.

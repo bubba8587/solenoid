@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue, [[D75]] builderExposesEveryOption
+// [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
 import { CHART_TARGET_LIST, chartBuilderKeys, parseChartOptions, type ChartBuilderKey } from "../../src/graph/nodes/chartOptions";
 import { chartValueOps } from "../../src/graph/chartValue";

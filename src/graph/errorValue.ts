@@ -1,4 +1,4 @@
-// [[C24]], [[D34]] oneErrorKind, [[E9]] errorsKeepOrigin, [[D37]] errorBeatsMissing
+// [[C24]], [[E9]] errorsKeepOrigin, [[C24]] arraySemantics
 import { perfEnabled, recordNode } from "./perfProbe";
 import { displayNameOf } from "./nodeNamer";
 

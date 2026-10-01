@@ -1,4 +1,4 @@
-// [[C94]] formatFamilyGates
+// [[C118]] formatTravelsWithValue
 import { settingsStore } from "../settingsStore";
 
 /** The decimal places an unformatted number shows, the "Decimal places" setting ([[D94]] oneNumberDisplay). */

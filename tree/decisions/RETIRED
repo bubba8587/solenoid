@@ -111,3 +111,11 @@ D88	2026-09-27	moved	C114	Claude Opus 5.5	the author	cardsView: Table popups off
 C63	2026-09-27	reverted	-	Claude Opus 5.5	the author	oneRecordNode: The Record views (Detail, Cards, Gallery, Board, List) are choices on one Record node
 D80	2026-09-28	superseded	D90	Claude (agent)	the author	cubeColumnTypes: A Cube column may declare a type or none; a declared type holds every cell and list item to it
 E17	2026-09-29	superseded	D85	Claude Opus 5.5	the author	vectorOrient: A Frame column is a one-column table; each list function declares whether a vector's direction matters
+C64	2026-10-01	reverted	-	Claude	-	decisionMatrixFamily: Decision nodes show signed contributions, scale by each criterion's largest value, and name ties
+C94	2026-10-01	reverted	-	Claude	-	formatFamilyGates: A Format Controller shows only the controls that fit its value; decimal places follow one rule
+D16	2026-10-01	reverted	-	Claude	-	retypeReconciles: When a node retypes its own input or output, everything wired to it is updated to match
+D18	2026-10-01	reverted	-	Claude	-	frameLabelHint: A Frame input that names its columns shows an example table with exactly those columns
+D34	2026-10-01	reverted	-	Claude	-	oneErrorKind: One notion of error
+D37	2026-10-01	reverted	-	Claude	-	errorBeatsMissing: Error beats missing at the same cell
+D42	2026-10-01	reverted	-	Claude	-	perInputUnitBlind: A node that doesn't do unit math gets plain numbers, input by input
+D75	2026-10-01	reverted	-	Claude	-	builderExposesEveryOption: Chart Builder exposes every option a chart type honors, and every option it exposes works

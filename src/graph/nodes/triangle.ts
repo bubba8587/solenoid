@@ -1,4 +1,4 @@
-// [[D42]], [[C25]] firstClassUnits
+// [[C25]]
 
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, logicalComboOut, readInput } from "./shared";

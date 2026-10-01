@@ -2,11 +2,11 @@
 aliases: ["Input roles"]
 tags: [spec, values]
 ---
-<!-- [[D86]] blankRoles, [[C80]] blankArgIsExcelBlank, [[C24]] arraySemantics, [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D35]] errorInErrorOut, [[C17]] shareImpl -->
+<!-- [[D86]] blankRoles, [[C80]] blankArgIsExcelBlank, [[C24]] arraySemantics, [[D36]] nullSkippedNotZero, [[C24]] arraySemantics, [[D35]] errorInErrorOut, [[C17]] shareImpl -->
 
 # Spec: Input roles
 
-Serves [[D86]] blankRoles (what a blank means depends on what the input is for), [[C80]] blankArgIsExcelBlank (a formula's empty slot), [[C24]] arraySemantics and [[D36]] nullSkippedNotZero (data blanks), [[D37]] errorBeatsMissing and [[D35]] errorInErrorOut (errors first), and [[C17]] shareImpl (the card and the formula read one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[D86]] blankRoles (what a blank means depends on what the input is for), [[C80]] blankArgIsExcelBlank (a formula's empty slot), [[C24]] arraySemantics and [[D36]] nullSkippedNotZero (data blanks), [[C24]] arraySemantics and [[D35]] errorInErrorOut (errors first), and [[C17]] shareImpl (the card and the formula read one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This file owns what a blank does once it reaches an input: the roles an input can have, the one declaration every function and card subscribes to, and how each surface reads it. How the blank gets there (unwired versus wired, `readInput`) is [[value-semantics]] "Reading an input"; what a blank then does inside a computation (totals skip it, element-wise math carries it) is the rest of [[value-semantics]]. The error codes are [[error-values]].
 
@@ -116,7 +116,7 @@ Two dispositions keep their reason under the new roles:
 
 Two placement rules, both found by sweeping `finance.ts`. Neither is about which role to take; both are about a guard that takes the right one in the wrong place, which typechecks and is silently wrong.
 
-- **An error outranks a blank** ([[D37]] errorBeatsMissing). A node that both reads its settings and inspects a list for `SolError`s runs the error check first. `#DIV/0!` reaching MIRR's cash flows while a blank reaches its `finrate` is `#DIV/0!`.
+- **An error outranks a blank** ([[C24]] arraySemantics). A node that both reads its settings and inspects a list for `SolError`s runs the error check first. `#DIV/0!` reaching MIRR's cash flows while a blank reaches its `finrate` is `#DIV/0!`.
 - **Scope the read to the active op.** On a multi-op node, only the inputs the current op reads can change the answer. A guard hoisted above the `switch` that combines every op's inputs turns a blank on an input this op ignores into a wrong answer: TBILLYIELD does not read `discount`. Read and guard inside the op's branch, or read op-dependently first.
 
 ## Writing a new node or function

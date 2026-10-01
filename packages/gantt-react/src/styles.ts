@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C71]] noBarEditing, [[B14]] oneDesignSystem, [[C62]] paletteAllOrNone, [[C94]] formatFamilyGates
+// [[C69]] ganttPackages, [[C71]] noBarEditing, [[B14]] oneDesignSystem, [[C62]] paletteAllOrNone, [[C118]] formatTravelsWithValue
 
 export const ganttStyles = `
 .solenoid-gantt {

@@ -1,4 +1,4 @@
-// [[C113]] controlDrivenRetype, [[D16]] retypeReconciles, [[C26]] opArgDistinct, [[C44]] dateSerials
+// [[C113]] controlDrivenRetype, [[C26]] opArgDistinct, [[C44]] dateSerials
 import type {
   TodayNowNode as TodayNowNodeType,
   DateConstructNode as DateConstructNodeType,
@@ -75,7 +75,7 @@ export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNo
   async function pickOp(next: DateTimeValueOp) {
     if (next === data.op) return;
     data.setOp(next);
-    // In-place output retype ([[D16]] retypeReconciles).
+    // In-place output retype ([[C113]] controlDrivenRetype).
     const editor = getOwningEditor(data.id);
     const view = getOwningView(data.id);
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
@@ -182,7 +182,7 @@ export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
-    // In-place output retype ([[D16]] retypeReconciles).
+    // In-place output retype ([[C113]] controlDrivenRetype).
     const editor = getOwningEditor(data.id);
     const view = getOwningView(data.id);
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");

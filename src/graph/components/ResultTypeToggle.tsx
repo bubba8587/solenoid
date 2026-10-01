@@ -1,4 +1,4 @@
-// [[D16]] retypeReconciles: the result-type toggle is an in-place socket retype, so it must reconcile.
+// [[C113]] controlDrivenRetype: the result-type toggle is an in-place socket retype, so it must reconcile.
 import { useEffect, useState } from "react";
 import type { ClassicPreset } from "rete";
 import { resultSocket, RESULT_TYPE_META, type ResultType, type ResultDim } from "../nodes/shared";

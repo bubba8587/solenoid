@@ -816,7 +816,7 @@ export class CompositeNode extends ClassicPreset.Node {
 
   markInternalEdit(): void { this.internalEditSeq++; }
 
-  /** Every internal cable change settles here, opened in a drill-in or not ([[D16]] retypeReconciles). */
+  /** Every internal cable change settles here, opened in a drill-in or not ([[C113]] controlDrivenRetype). */
   settleInternalTypes(): boolean {
     reconcileFcTypes(this.internalEditor, null);
     return this.adoptBoundaryTypes();

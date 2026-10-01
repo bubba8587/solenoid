@@ -4,7 +4,7 @@ proposed_ring: D
 ask: human
 date: 2026-09-24
 parents:
-  - "[[D75]]"
+  - "[[C96]]"
 ---
 ## Decision
 

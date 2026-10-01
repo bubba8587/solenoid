@@ -161,7 +161,7 @@ const SKIP_OPTS: ReadonlyArray<{ value: SkipCells; label: string }> = [
   { value: "both", label: "Skip blanks and errors" },
 ];
 
-// [[D16]] retypeReconciles: the wrap ops and the flatten ops have different sockets, so the switch reshapes the card.
+// [[C113]] controlDrivenRetype: the wrap ops and the flatten ops have different sockets, so the switch reshapes the card.
 export function TableReshapeComponent({ data, emit }: NodeProps<TableReshapeNodeType>) {
   const [op, setOpField] = useNodeField(data, "op");
   async function pickOp(next: TableReshapeOp) {

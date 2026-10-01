@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[D37]] errorBeatsMissing, [[D48]] classifyNonFinite, [[C44]] dateSerials, [[C24]] arraySemantics, [[D70]] nullNotEnoughData
+// [[C17]] shareImpl, [[C24]] arraySemantics, [[D48]] classifyNonFinite, [[C44]] dateSerials, [[C24]] arraySemantics, [[D70]] nullNotEnoughData
 // Must not import `finance.ts` (import cycle). A missing date answers null; a wrong argument answers a `#DOMAIN!` naming it, never a throw or a fabricated number.
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 import { solError, isSolError, type SolError } from "../errorValue";

@@ -2,11 +2,11 @@
 aliases: ["Input-cable pruning"]
 tags: [spec, canvas]
 ---
-<!-- [[D16]] retypeReconciles -->
+<!-- [[C113]] controlDrivenRetype -->
 
 # Spec: Input-cable pruning
 
-Serves [[D16]] retypeReconciles: a node that changes its own sockets updates what is wired to them. The prune is one loop, declared once ([[engineering#One declaration per fact]]). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C113]] controlDrivenRetype: a node that changes its own sockets updates what is wired to them. The prune is one loop, declared once ([[engineering#One declaration per fact]]). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Many nodes change their own sockets: a mode or op switch hides some inputs, a variadic row is deleted, a formula variable or a side socket disappears. Whenever input sockets are about to go away, the cables wired into them are removed first, through one helper. This spec says what that helper does and when code may bypass it.
 

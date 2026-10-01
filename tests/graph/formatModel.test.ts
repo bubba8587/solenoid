@@ -1,4 +1,4 @@
-// [[C94]] formatFamilyGates
+// [[C118]] formatTravelsWithValue
 import { describe, it, expect } from "vitest";
 import { familyOf, controlsFor, precisionApplies } from "../../src/graph/formatModel";
 import { applyLogicalStyle } from "../../src/graph/formatAnnotationStore";

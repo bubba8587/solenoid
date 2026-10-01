@@ -2,11 +2,11 @@
 aliases: ["Error values"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[D34]] oneErrorKind, [[D35]] errorInErrorOut, [[E9]] errorsKeepOrigin, [[D69]] convertBadPickIsNA -->
+<!-- [[C24]] arraySemantics, [[D35]] errorInErrorOut, [[E9]] errorsKeepOrigin, [[D69]] convertBadPickIsNA -->
 
 # Spec: Error values
 
-Serves [[C24]] arraySemantics, [[D34]] oneErrorKind, [[D35]] errorInErrorOut and [[E9]] errorsKeepOrigin. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one. The semantics (what null, NaN, Infinity and each error mean, and how they propagate by context) are [[value-semantics]]; this file is the mechanics.
+Serves [[C24]] arraySemantics, [[D35]] errorInErrorOut and [[E9]] errorsKeepOrigin. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one. The semantics (what null, NaN, Infinity and each error mean, and how they propagate by context) are [[value-semantics]]; this file is the mechanics.
 
 Failures in Solenoid are values. A node that cannot answer returns a tagged error, the error travels down the cables like any other value, and the value box shows it as a red badge until something catches it.
 

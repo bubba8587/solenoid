@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[D16]] retypeReconciles, [[D41]] formatFlowsDownstream
+// [[C43]] oneFlowSurface, [[C113]] controlDrivenRetype, [[D41]] formatFlowsDownstream
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import type { View } from "./view";
@@ -50,7 +50,7 @@ export type CableSettleStack = {
   cablePipeInstalled?: boolean;
 };
 
-/** Every live cable change on the stack settles here, the ones components make included ([[D16]] retypeReconciles). Once per stack: rete can't remove a pipe. */
+/** Every live cable change on the stack settles here, the ones components make included ([[C113]] controlDrivenRetype). Once per stack: rete can't remove a pipe. */
 export function installCableSettlePipe(s: CableSettleStack): void {
   if (s.cablePipeInstalled || !s.afterCableChange) return;
   s.cablePipeInstalled = true;

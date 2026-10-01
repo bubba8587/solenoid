@@ -122,7 +122,7 @@ superseded, or restating what a test already pins.
 ### Reflexes (each one is a pointer, not the rule)
 - Components never call `node.data()` (`tree/specs/floors/components.md`). Edits commit on Enter/blur
   via `useDraftCommit` ([[C95]] commitOnEnter). In-place socket retype must reconcile
-  ([[D16]] retypeReconciles). Prune departing sockets' cables before removing them
+  (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`). Prune departing sockets' cables before removing them
   (`tree/specs/canvas/input-cable-pruning.md`).
 - After a node dedup/merge or an output-socket rename: `seeds.test.ts`, `nodeOps.test.ts`,
   `formulaNodeCoverage.test.ts` beside the parity/catalog suites ([[B11]] maximalMerge).

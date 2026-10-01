@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[D16]] retypeReconciles. Mechanics: tree/specs/documents/literal-input-editors.md.
+// [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[C113]] controlDrivenRetype. Mechanics: tree/specs/documents/literal-input-editors.md.
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { useKatexRender } from "./katexLoader";
@@ -521,7 +521,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
   const strLiterals = (node.stringLiterals ??= {});
   const pickerKeys = new Map(columnPickersOf(node).map((p) => [p.key, p.frameInput]));
 
-  // A literal edit can move a derived socket type with no connection event ([[D16]] retypeReconciles).
+  // A literal edit can move a derived socket type with no connection event ([[C113]] controlDrivenRetype).
   function settleTypes() {
     const ed = getOwningEditor(node.id);
     const ar = getOwningView(node.id);

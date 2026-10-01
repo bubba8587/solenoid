@@ -1,4 +1,4 @@
-// [[C94]] formatFamilyGates
+// [[C118]] formatTravelsWithValue
 import { type SocketDataType, elementFamilyOf, isWildcardType } from "./sockets";
 import { type FormatStyleId, type FormatStyle } from "./formatAnnotationStore";
 

@@ -1,4 +1,4 @@
-// [[D18]] frameLabelHint
+// [[C13]] frameLabelGrammar
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { frameHintStore, type FrameHint } from "../frameHint";
 import { formatFrameCell } from "../frame";

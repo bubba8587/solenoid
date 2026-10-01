@@ -2,11 +2,11 @@
 aliases: ["Frame model and relational verbs"]
 tags: [spec, computation]
 ---
-<!-- [[C16]] polarsEngine, [[C24]] arraySemantics, [[C45]] excelComparisons, [[C59]] byteStringOrder, [[D76]] textMinMax, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[C10]] socketLattice, [[C25]] firstClassUnits, [[C64]] decisionMatrixFamily, [[D46]] freezeVolatilePerCalc -->
+<!-- [[C16]] polarsEngine, [[C24]] arraySemantics, [[C45]] excelComparisons, [[C59]] byteStringOrder, [[D76]] textMinMax, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[C10]] socketLattice, [[C25]] firstClassUnits, [[B17]] typedValueModel, [[D46]] freezeVolatilePerCalc -->
 
 # Spec: Frame model and relational verbs
 
-Serves [[C16]] polarsEngine, [[C24]] arraySemantics (and its children [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[D76]] textMinMax), [[C45]] excelComparisons, [[C59]] byteStringOrder and [[C10]] socketLattice. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C16]] polarsEngine, [[C24]] arraySemantics (and its children [[D36]] nullSkippedNotZero, [[C24]] arraySemantics, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[D76]] textMinMax), [[C45]] excelComparisons, [[C59]] byteStringOrder and [[C10]] socketLattice. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A Frame is Solenoid's table: named, typed columns of cells. The relational verbs (select, sort, filter, group, join and the rest) take Frames and return new ones. They run on two engines behind one seam: a pure JavaScript implementation on the web, called the oracle because it is the one definition every engine must match, and native Polars on desktop. A shared corpus of cases holds the two to identical answers. A Cube is the Frame's nested sibling, whose cells may hold lists and whole tables.
 
@@ -114,7 +114,7 @@ Frame Input is the editable literal table. Its stored text is never rewritten; t
 
 ### Nulls, errors and non-finite numbers
 
-`null` is an empty cell. It is skipped by aggregates, dropped by comparisons, sorted last, and is its own key in grouping and dedupe ([[D36]] nullSkippedNotZero). A `SolError` in a cell is a present value: it is not blank, it propagates through aggregates, sorts last, and keys by its code ([[D37]] errorBeatsMissing). `±Infinity` is a real value in a number column. `NaN` is present but dirty: it is counted, it is not blank, it sorts into the tail, it fails every predicate except `neq`, and it poisons an aggregate to `#DOMAIN!`.
+`null` is an empty cell. It is skipped by aggregates, dropped by comparisons, sorted last, and is its own key in grouping and dedupe ([[D36]] nullSkippedNotZero). A `SolError` in a cell is a present value: it is not blank, it propagates through aggregates, sorts last, and keys by its code ([[C24]] arraySemantics). `±Infinity` is a real value in a number column. `NaN` is present but dirty: it is counted, it is not blank, it sorts into the tail, it fails every predicate except `neq`, and it poisons an aggregate to `#DOMAIN!`.
 
 ### Units and formats
 
@@ -575,7 +575,7 @@ These also run in the oracle on the collected value, on both platforms.
 
 ### Decision Matrix and Decision Sensitivity
 
-`decisionMatrix(f, weights, normalize, breakdown = false, normalizeOverrides = {})` scores and ranks a Frame of options ([[C64]] decisionMatrixFamily).
+`decisionMatrix(f, weights, normalize, breakdown = false, normalizeOverrides = {})` scores and ranks a Frame of options ([[B17]] typedValueModel).
 
 1. **Columns** (`decisionColumns`). The label is the first string column, if any; the criteria are every other number or logical column. A date column is never a criterion, since a serial is not a score. No criteria is `#VALUE!` (`Decision Matrix needs at least one numeric criterion column`), and an error cell in a criterion is returned as the result. Without a label column the options are `Option 1`, `Option 2` and so on.
 2. **Cells.** A finite number scores as itself, a logical as 1 or 0, and a blank, text or non-finite cell as 0 (not yet scored).
@@ -588,7 +588,7 @@ These also run in the oracle on the collected value, on both platforms.
 
 `decisionSensitivity(scores, scenarios, normalize)` reruns the matrix once per scenario. Scenarios is the weights frame widened: the first string column names the criteria, each number column is one scenario named by its header, and one optional `Norm` column applies to all of them. No number column is `#VALUE!` (`Scenarios needs a number column per scenario`). When no row is named after any criterion every weight would default to 1 and every scenario would agree, so that is `#VALUE!` too (`No Scenarios row is named after a criterion`). A criterion a scenario omits weighs 1. The result is a Cube with one row per scenario: `Scenario` (the header), `Winner` (the top option, or every option tied at rank 1 joined with ` = `), `Margin` (`round4(top − runner-up)`, blank with one option) and `Ranking` (the scenario's full label · Score · Rank frame, nested).
 
-**Why these rules** ([[C64]] decisionMatrixFamily). Each removes a plausible wrong reading. Both cards scale by `max` unless told otherwise (the card's `normalize`), because unscaled values mislead the moment criteria use different scales (dollars beside a 1 to 5 rating), and comparing unlike criteria is the nodes' reason to exist. The breakdown shows signed contributions because bare normalized values read backwards under a negative weight: the priciest option showed Price 1.0 while taking the largest penalty. Ranking on the score as shown means the displayed score and the rank never disagree, and Sensitivity's Margin is 0 exactly when its Winner names a tie (`A = B`). The no-matching-row `#VALUE!` catches the trap a renamed criterion springs, where every scenario would silently come out identical. A breakdown of unscaled values, if wanted back, is a third detail choice beside summary and breakdown rather than a redefinition of this one; a Scenarios table that legitimately runs with no matching criteria would reopen the `#VALUE!`.
+**Why these rules** ([[B17]] typedValueModel). Each removes a plausible wrong reading. Both cards scale by `max` unless told otherwise (the card's `normalize`), because unscaled values mislead the moment criteria use different scales (dollars beside a 1 to 5 rating), and comparing unlike criteria is the nodes' reason to exist. The breakdown shows signed contributions because bare normalized values read backwards under a negative weight: the priciest option showed Price 1.0 while taking the largest penalty. Ranking on the score as shown means the displayed score and the rank never disagree, and Sensitivity's Margin is 0 exactly when its Winner names a tie (`A = B`). The no-matching-row `#VALUE!` catches the trap a renamed criterion springs, where every scenario would silently come out identical. A breakdown of unscaled values, if wanted back, is a third detail choice beside summary and breakdown rather than a redefinition of this one; a Scenarios table that legitimately runs with no matching criteria would reopen the `#VALUE!`.
 
 ### Allocator
 

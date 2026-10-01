@@ -2,11 +2,11 @@
 aliases: ["Chart figures"]
 tags: [spec, computation]
 ---
-<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C94]] formatFamilyGates, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams, [[C114]] cardsView, [[D91]] xyColumnMapping, [[C116]] xyChartFamily -->
+<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C118]] formatTravelsWithValue, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams, [[C114]] cardsView, [[D91]] xyColumnMapping, [[C116]] xyChartFamily -->
 
 # Spec: Chart figures
 
-Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing and [[C94]] formatFamilyGates (the Format Controller's `chart` family) and [[D91]] xyColumnMapping. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[B2]] webTryDesktopFull, [[C71]] noBarEditing and [[C118]] formatTravelsWithValue (the Format Controller's `chart` family) and [[D91]] xyColumnMapping. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A chart in Solenoid is a value, not a drawing. Each figure node computes a small, self-describing figure value and sends it down a `chart` cable; whatever receives it (the node's own card, a Display, the chart popup, a Report embed) draws it at the size it has. This spec covers that value, the nodes that make it, the options string that styles it, and the renderers that draw it.
 
@@ -256,9 +256,9 @@ Each parser reads only its own keys from the shared string and ignores the rest,
 
 ### Which renderer reads which key
 
-**MUST** ([[D75]] builderExposesEveryOption): for each chart type, the Chart Builder offers exactly the options that chart type draws, no more and no fewer. An option the chart reads is offered for it, and an option offered for it visibly changes the figure everywhere it is drawn: on the node, in a Display, in the popup and in a Report. Most people set options in the Chart Builder rather than typing them, so an option missing there is invisible and an option that does nothing looks broken, and nothing else ties what the builder offers to what each chart draws. A chart that learns an option offers it in the Chart Builder in the same change; one that drops an option stops offering it. *Unenforced:* whether an option visibly changes a figure needs the figure drawn on screen, and the test suite doesn't draw; `chartTitles.test.ts` pins the title option and that every offered key is one a parser reads, and the rest is checked by eye whenever the Chart Builder's options or a chart change. Reopen if the options move to separate fields per chart type, so the builder's list could be derived.
+**MUST** ([[C96]] chartOptionsAreMatplotlib): for each chart type, the Chart Builder offers exactly the options that chart type draws, no more and no fewer. An option the chart reads is offered for it, and an option offered for it visibly changes the figure everywhere it is drawn: on the node, in a Display, in the popup and in a Report. Most people set options in the Chart Builder rather than typing them, so an option missing there is invisible and an option that does nothing looks broken, and nothing else ties what the builder offers to what each chart draws. A chart that learns an option offers it in the Chart Builder in the same change; one that drops an option stops offering it. *Unenforced:* whether an option visibly changes a figure needs the figure drawn on screen, and the test suite doesn't draw; `chartTitles.test.ts` pins the title option and that every offered key is one a parser reads, and the rest is checked by eye whenever the Chart Builder's options or a chart change. Reopen if the options move to separate fields per chart type, so the builder's list could be derived.
 
-A key a renderer does not read is inert on that figure. For each Chart Builder target the key list (`CHART_BUILDER_TARGETS`) is exactly this set ([[D75]] builderExposesEveryOption); the target's `op` names the figure it draws.
+A key a renderer does not read is inert on that figure. For each Chart Builder target the key list (`CHART_BUILDER_TARGETS`) is exactly this set ([[C96]] chartOptionsAreMatplotlib); the target's `op` names the figure it draws.
 
 | Target (`op`) | Keys read |
 |---|---|
@@ -408,7 +408,7 @@ The webpage export and Write to Obsidian take a chart as SVG from the source nod
 
 ## A Format Controller on a chart socket
 
-The `chart` family has one control, the text scale `chartFontScale` (×0.8, ×1 default, ×1.25, ×1.5, ×2), and nothing else ([[C94]] formatFamilyGates; the table is [[format-model]]). It is display-only: it never changes the value on the cable. The scale multiplies with the value's own `fontsize`: the payload figures get `fscale = chartFontScale · fontsize / 10`, and the recharts series figures compute the same product themselves.
+The `chart` family has one control, the text scale `chartFontScale` (×0.8, ×1 default, ×1.25, ×1.5, ×2), and nothing else ([[C118]] formatTravelsWithValue; the table is [[format-model]]). It is display-only: it never changes the value on the cable. The scale multiplies with the value's own `fontsize`: the payload figures get `fscale = chartFontScale · fontsize / 10`, and the recharts series figures compute the same product themselves.
 
 - **Where it is read:** the Chart and Merge Plots cards (the FC on their own output), Display (`resolveDisplayAnnotation`: an FC on the Display, else one on its source output or downstream), the popup (the FC on the node it was opened from) and a Report embed (the FC resolved for that reference). The other figure cards do not read it.
 - **Figures it affects:** every recharts series figure, Overlay, XY, Treemap and Sankey labels, KPI, the Bar gauge and Record (through `--chart-fscale`), Gantt, and the canvas text of Waterfall, Candlestick, Boxplot, Calendar Heatmap, Heatmap, Waffle and Contour. It has no effect on the Dial, Surface or Vector Field.

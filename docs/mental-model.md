@@ -78,7 +78,7 @@ once downstream against the settled result (`../tree/specs/documents/save-format
 never saved; they're worked out again on load. A node that retypes a socket in place
 (Cast's target, read-as, Note frontmatter) must call `reconcileFcTypes` or
 `retypeOutputCables`, because no connection event fires. The spec is
-`../tree/specs/values/type-propagation-on-in-place-socket-retype.md` ([[D16]] retypeReconciles).
+`../tree/specs/values/type-propagation-on-in-place-socket-retype.md` ([[C113]] controlDrivenRetype).
 
 ## Frames are different
 

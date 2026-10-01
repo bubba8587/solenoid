@@ -1,4 +1,4 @@
-// [[C58]] tableInputRawText, [[D16]] retypeReconciles
+// [[C58]] tableInputRawText, [[C113]] controlDrivenRetype
 import { useEffect, useState, type ReactNode } from "react";
 import type { TableInputNode as TableInputNodeType, TableElemType } from "../rete-nodes";
 import { processGraph } from "../process";

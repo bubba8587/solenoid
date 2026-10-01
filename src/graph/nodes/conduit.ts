@@ -1,4 +1,4 @@
-// [[D35]] errorInErrorOut, [[D42]] perInputUnitBlind
+// [[D35]] errorInErrorOut, [[C25]] firstClassUnits
 // Mechanics: [[conduit-lane-faces]]. All CONDUIT_MAX_LANES lanes are declared up front, since the engine and validator address any lane.
 import { ClassicPreset } from "rete";
 import { trueAnySocket, MutableSocket } from "../sockets";
@@ -73,7 +73,7 @@ export function conduitSeqTaken(nodes: Iterable<object>, self: object, n: number
 }
 
 export class ConduitNode extends ClassicPreset.Node {
-  /** Lanes forward tags untouched ([[D42]] perInputUnitBlind). */
+  /** Lanes forward tags untouched ([[C25]] firstClassUnits). */
   unitAware = true;
   label: string;
   seq: number;

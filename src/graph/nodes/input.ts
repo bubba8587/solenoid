@@ -125,7 +125,7 @@ export class ColorBlendNode extends ClassicPreset.Node {
     };
     const a = parse("a", "Color A");
     const b = parse("b", "Color B");
-    // An error outranks an unknown, so errors are checked before blanks ([[D37]] errorBeatsMissing).
+    // An error outranks an unknown, so errors are checked before blanks ([[C24]] arraySemantics).
     const err = [a, b].find(isSolError);
     if (err) {
       this.cachedString = err;

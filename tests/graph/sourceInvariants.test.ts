@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[D16]], [[D22]], [[D42]], [[D86]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
+// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[C113]], [[D22]], [[C25]], [[D86]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -38,7 +38,7 @@ function codeLines(file: string): string[] {
 // (the whole file passes only on a "/" OS otherwise).
 const rel = (p: string) => path.relative(SRC, p).replace(/\\/g, "/");
 
-describe("[[D16]] retypeReconciles — a file that retypes sockets in place must reconcile downstream", () => {
+describe("[[C113]] controlDrivenRetype — a file that retypes sockets in place must reconcile downstream", () => {
   // An in-place socket retype (swapping `port.socket` or calling
   // `MutableSocket.setType`) fires no connection event, so downstream Format
   // Controllers keep stale formats unless the file also drives
@@ -75,7 +75,7 @@ describe("[[D16]] retypeReconciles — a file that retypes sockets in place must
     expect(
       offenders,
       `These files retype sockets in place but never reference retypeOutputCables/` +
-      `reconcileFcTypes ([[D16]] retypeReconciles): downstream FCs will keep stale formats. Call the ` +
+      `reconcileFcTypes ([[C113]] controlDrivenRetype): downstream FCs will keep stale formats. Call the ` +
       `reconciler, or add the file to SANCTIONED with the reason it is safe:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
@@ -154,13 +154,13 @@ describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keep
   });
 });
 
-describe("[[D42]] perInputUnitBlind — a node file that runs the dimension algebra declares unitAware", () => {
+describe("[[C25]] firstClassUnits — a node file that runs the dimension algebra declares unitAware", () => {
   // The unit-blind boundary strips `UnitCell` tags from every input UNLESS the
   // node declares `unitAware = true` (coerceInputs). So a node that calls the
   // per-cell algebra — isUnitCell / dimOf / magnitudeOf / the *Units combinators
   // / broadcastUnit — without the flag never sees a tag: the algebra silently
   // no-ops on display magnitudes. The BEHAVIOUR is covered by unitCoercion.test;
-  // THIS is the completeness half ([[D42]] perInputUnitBlind): a new algebra
+  // THIS is the completeness half ([[C25]] firstClassUnits): a new algebra
   // node whose file forgets the flag fails here by name.
   //
   // Deliberately EXCLUDED from the consuming set: the matrix-unit family
@@ -192,7 +192,7 @@ describe("[[D42]] perInputUnitBlind — a node file that runs the dimension alge
     expect(
       offenders,
       `These node files call the per-cell unit algebra but never declare ` +
-      `unitAware = true ([[D42]] perInputUnitBlind): the unit-blind boundary strips the tags before ` +
+      `unitAware = true ([[C25]] firstClassUnits): the unit-blind boundary strips the tags before ` +
       `data() runs, so the algebra silently no-ops. Declare the flag on the ` +
       `algebra-running class, or add the file to SANCTIONED with the reason:\n  ` +
       offenders.join("\n  "),
@@ -369,7 +369,7 @@ describe("[[B12]] losslessSaves — class names are load-bearing: keepNames stay
   });
 });
 
-describe("[[D16]] retypeReconciles — a node class reconciles on the editor that owns it", () => {
+describe("[[C113]] controlDrivenRetype — a node class reconciles on the editor that owns it", () => {
   // The active editor is the surface on screen; a main-graph node behind an open drill-in isn't in it.
   it("no nodes/packs file reads getActiveEditor / getActiveView (use getOwningEditor / getOwningView)", () => {
     const offenders: string[] = [];

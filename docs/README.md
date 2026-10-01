@@ -152,7 +152,7 @@ results get retried and settled rulings relapse.
 | `tidyArrange.ts` (ELK), `nodeSize.ts` | [[B10]] reactFlowView, [[D63]] lockedGroupIsObstacle; `../tree/specs/canvas/auto-arrange-tidy.md` |
 | `errorValue.ts`, `valueKinds.ts` | `tree/specs/values/value-semantics.md`; [[C24]] arraySemantics; `../tree/specs/values/error-values.md` |
 | `inputRoles.ts`, `readRole` (`nodes/shared.ts`) | `../tree/specs/values/input-roles.md`; [[D86]] blankRoles |
-| `fcReconcile.ts`, in-place socket retype | [[D16]] retypeReconciles; `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` |
+| `fcReconcile.ts`, in-place socket retype | [[C113]] controlDrivenRetype; `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` |
 | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `../tree/specs/values/unit-flow.md`; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
 | `formatModel.ts`, `formatController.ts`, FC controls | `tree/specs/values/format-model.md` |
 | `alertStore.ts` | [[D79]] effectsEdgeTriggered; `../tree/specs/computation/alert-node-alerts-hud.md` |

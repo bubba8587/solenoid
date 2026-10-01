@@ -96,7 +96,7 @@ A shared mutable socket means wiring a date into one card retypes another card's
 
 ## Out of scope
 
-Unit separation (`#UNIT!` at compute time, `unitLattice.ts`, [[C25]] firstClassUnits): `accepts()` stays unit-blind. Value coercion on arrival beyond req. 4 ([[compute-pass]], "Arrival coercion"). In-place retype reconciliation ([[D16]] retypeReconciles, [[type-propagation-on-in-place-socket-retype]]).
+Unit separation (`#UNIT!` at compute time, `unitLattice.ts`, [[C25]] firstClassUnits): `accepts()` stays unit-blind. Value coercion on arrival beyond req. 4 ([[compute-pass]], "Arrival coercion"). In-place retype reconciliation ([[C113]] controlDrivenRetype, [[type-propagation-on-in-place-socket-retype]]).
 
 ## Gaps
 

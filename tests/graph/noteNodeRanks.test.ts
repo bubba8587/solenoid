@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D16]] retypeReconciles, [[C107]] obsidianPlugin
+// [[C10]] socketLattice, [[C113]] controlDrivenRetype, [[C107]] obsidianPlugin
 import { describe, it, expect } from "vitest";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { isFrameValue } from "../../src/graph/frame";

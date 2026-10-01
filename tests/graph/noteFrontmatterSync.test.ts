@@ -1,4 +1,4 @@
-// [[D16]] retypeReconciles, [[C10]] socketLattice
+// [[C113]] controlDrivenRetype, [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { NoteNode } from "../../src/graph/nodes/annotation";

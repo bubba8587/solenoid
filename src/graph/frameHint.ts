@@ -1,4 +1,4 @@
-// [[D18]] frameLabelHint, [[C13]] frameLabelGrammar
+// [[C13]] frameLabelGrammar
 // A node class declares a per-input example frame (static `frameHints`) that hovering the socket shows as a mini-table;
 // on the class, so it sits beside the socket it documents and survives minification.
 

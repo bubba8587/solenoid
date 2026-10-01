@@ -33,7 +33,7 @@ warning is expected.
   surface, but every variable's output is a number socket ([[C47]] equationNode: "every real root"),
   so a relation whose answer is complex (`x^2 + 1 = 0`, expected ±i), text, a date or a logical has
   nowhere to go: a negative discriminant is `#SOLVE!`. The fix decides what an unknown's output is
-  when its answer leaves the number family (a retype, [[D16]] retypeReconciles, or fixed wider
+  when its answer leaves the number family (a retype, [[C113]] controlDrivenRetype, or fixed wider
   sockets) and amends C47. Quadratic Roots already answers the conjugate pair.
 
 ## Node merges (parked by the author, [[B11]] maximalMerge)
@@ -127,13 +127,13 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Decision Matrix (author 2026-09-28)
 
-- [ ] **Flip points** ([[C64]] decisionMatrixFamily): per criterion, the nearest weight at which a different
+- [ ] **Flip points** ([[B17]] typedValueModel): per criterion, the nearest weight at which a different
   option takes first place with the other weights held, the way the Decision Matrix Bases View plugin shows them
   under each weight (`flipWeights` in its `src/scoring.ts`, tested there). Pairwise order is linear in each
   weight since every score shares Σ|w|; the plugin ignores `round4`, so the flip weight lands on a near-tie
   rather than a clean handover. A home here: a Breakdown column or a Decision Sensitivity mode. Weigh it
   against `v2.0/10`'s ±N% affordance first, which answers the same "how close is the call" question.
-- [ ] **Blanks score as the criterion's median** ([[C64]] decisionMatrixFamily): a blank criterion cell scores 0
+- [ ] **Blanks score as the criterion's median** ([[B17]] typedValueModel): a blank criterion cell scores 0
   today, so under a negative weight an unscored option looks best (an unpriced option is the cheapest). The
   Decision Matrix Bases View plugin scores a blank, or a number cell that reads as NaN, as that criterion's
   median across the options (raw values, before normalizing; a blank logical stays FALSE), and shows it
@@ -142,14 +142,14 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **The plugin's breakdown bars in the app** (author 2026-09-29, queued as its own task): the Decision Matrix
   Bases View's Rankings view draws each option as a bar split into each criterion's signed contribution, with
   penalties hatched left of zero and a legend (`src/rankings-view.ts` and `styles.css` there). Bring that visual
-  to the Decision Matrix node's card or popup, under [[C64]] decisionMatrixFamily and DESIGN.md; ask which dev
+  to the Decision Matrix node's card or popup, under [[B17]] typedValueModel and DESIGN.md; ask which dev
   environment verifies it before starting.
 
 ## Charts
 
 - [ ] **Radar `ymin`/`ymax` under Scale = per axis (author to pick):** a multi-series radar normalizes each axis,
   so the range does nothing; a single-series radar honors it. Either a set range implies a shared scale, or it
-  stays the documented [[D75]] exception. Multi-series `color` is the other exception (the author skipped the fix).
+  stays the documented [[C96]] exception. Multi-series `color` is the other exception (the author skipped the fix).
 - [ ] **Gauge Dial has no Options input**, so no title or font size in Dial mode (author's call).
 - [ ] **Multi-output services still fall to math blue:** Geocode, Weather, Holidays, FX; input amber would fit
   ([[C111]] reaches only one-output cards).
@@ -357,7 +357,7 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **PERCENTRANK.EXC of one value** answers 0.5, unchecked in Excel; **an imported file's first autosave** may still move its time if the load normalizes the graph (`updateCurrentGraph` compares serialized forms).
 
 ## From the 2026-09-30 oldest-first review (1.0-era and July files; verified against HEAD)
-- [ ] **Add Column's Add as** (`frameEdit.ts` applyAddColumnAddAs) drops the Values cable on every switch, where the two output retypes beside it keep a cable the new type still accepts (`retypeOutputCables`); and all three helpers swap the socket from component code, where the retype recipe (`tree/specs/values/type-propagation-on-in-place-socket-retype.md` step 1) puts it in the class's `setMode` ([[D16]] retypeReconciles).
+- [ ] **Add Column's Add as** (`frameEdit.ts` applyAddColumnAddAs) drops the Values cable on every switch, where the two output retypes beside it keep a cable the new type still accepts (`retypeOutputCables`); and all three helpers swap the socket from component code, where the retype recipe (`tree/specs/values/type-propagation-on-in-place-socket-retype.md` step 1) puts it in the class's `setMode` ([[C113]] controlDrivenRetype).
 - [ ] **Constant and Physics Constant** draw their own value box (`ConstantNode.tsx`, `PhysicsConstantNode.tsx`): no copy button, no Format Controller. `ValueDisplay`'s `render` could carry the symbol and unit; decide how those sit beside an FC's formatting.
 - [ ] **IFERROR over a Frame**: `replaceCaught` (`nodes/logic.ts`) walks lists only, so a per-cell error inside a table passes through uncaught ([[C24]] arraySemantics); decide whether IFERROR reaches into cells.
 - [ ] **Convert's number formats** (`ConvertNode.tsx`) copy `numberFormatOptions` (`fcControls.tsx`) minus the pack formats; share it once `applyFormatStyle` is confirmed to take pack ids.

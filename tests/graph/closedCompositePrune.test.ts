@@ -1,4 +1,4 @@
-// [[D16]] retypeReconciles, [[C77]] compositeIsSubgraph
+// [[C113]] controlDrivenRetype, [[C77]] compositeIsSubgraph
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";

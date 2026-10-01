@@ -5,7 +5,6 @@ ask: human
 date: 2026-09-24
 parents:
   - "[[C25]]"
-  - "[[D42]]"
 ---
 ## Decision
 
@@ -20,7 +19,7 @@ Only Triangle Solver is `unitAware`. Every other pack node reads a tagged input 
 - Pipe Roughness reads "0.1 m" as 0.1 mm.
 - Parallel Combine sums kΩ and Ω as raw numbers.
 
-The formula surface strips cells to base SI instead, so STANDARDATMOSPHERE and the card disagree on the same input ([[C17]] shareImpl). Outputs are bare except for Triangle Solver's angles, so K, Pa, Hz and mm go downstream as plain numbers. That contradicts the flagship unit story ([[C25]] firstClassUnits). A per-input declaration keeps [[D42]] perInputUnitBlind's central strip: the strip converts instead of discarding the unit.
+The formula surface strips cells to base SI instead, so STANDARDATMOSPHERE and the card disagree on the same input ([[C17]] shareImpl). Outputs are bare except for Triangle Solver's angles, so K, Pa, Hz and mm go downstream as plain numbers. That contradicts the flagship unit story ([[C25]] firstClassUnits). A per-input declaration keeps D42 perInputUnitBlind (retired)'s central strip: the strip converts instead of discarding the unit.
 
 **Owner's call:** build the declared-unit coercion for pack nodes now, or park it with the pack distribution work?
 
