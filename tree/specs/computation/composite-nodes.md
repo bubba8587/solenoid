@@ -188,7 +188,7 @@ Config: `byRowPortId` (`""` = unset).
 | any other value | itself, as one row |
 
 - No rows, or an unknown port, runs one plain pass. Otherwise one pass per row with that row as the port's override; each output is an array, one entry per row.
-- Cap: `BY_ROW_MAX_ROWS = 500`. Rows past it are dropped from the tail. When the total exceeds the cap, the composite fires a warning alert (Alerts HUD and toast) "`<name>`: By-Row ran the first 500 of `<total>` rows (the rest were skipped)", where name is the trimmed label or `Composite`. It fires only when the total differs from the last capped total (`lastByRowCapTotal`, transient) and never while a graph rebuild is open ([[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud]]). A run under the cap resets the edge.
+- Cap: `BY_ROW_MAX_ROWS = 500`. By-Row is the one heavy mode whose pass count comes from the data rather than a typed number, and every pass recomputes the whole inside, so a huge wired table would freeze the Solve; the cut-short series still looks plausible, so the cap warns loudly rather than dropping rows silently. Rows past it are dropped from the tail. When the total exceeds the cap, the composite fires a warning alert (Alerts HUD and toast) "`<name>`: By-Row ran the first 500 of `<total>` rows (the rest were skipped)", where name is the trimmed label or `Composite`. It fires only when the total differs from the last capped total (`lastByRowCapTotal`, transient) and never while a graph rebuild is open ([[D79]] effectsEdgeTriggered, [[alert-node-alerts-hud]]). A run under the cap resets the edge.
 - The editor is a "For each row of" picker over the exposed inputs, with `— none`; with none exposed it reads `— expose an input to iterate`.
 
 ### Goal Seek
@@ -256,7 +256,9 @@ With a stop port set, `simulationSteps` becomes a cap and its label reads Max st
 
 ## The heavy-mode hold
 
-A composite in a heavy configuration holds its result until the user asks for a solve, and never solves on load, paste, create or a switch into a heavy mode ([[D52]] compositesHoldUntilSolve).
+A composite in a heavy configuration holds its result until the user asks for a solve, and never solves on load, paste, create or a switch into a heavy mode ([[D52]] compositesHoldUntilSolve). Solving on load would stall opening a document, and a held composite sits blank so the user can watch it compute when they press Solve. The plain Single mode stays fully live.
+
+Heavy means holding is the point, not only cost: Manual refresh runs one pass and is heavy anyway, because holding until Refresh is its whole job, while Monte Carlo is heavy only when some input actually varies.
 
 `isHeavyMode()`:
 
@@ -372,7 +374,7 @@ Because every internal pass fully resets the internal engine, the subgraph is re
 
 ## Packs
 
-A pack node that grows past one formula becomes a composite ([[C77]] compositeIsSubgraph, `docs/pack-architecture.md`). Two pieces of that shape exist as data only: `exposure: "hidden"` and `tier: "advanced"` are honored where noted above (a hidden port gets no card socket and skips the wired value; the tier is saved), but nothing in the app creates a hidden port, reads the tier, or lets a pack declare a composite. Every port the app creates is exposed and basic. Locked is the silent default and only promotable ports earn chrome ([[C78]] packLegibility); a composite card today has no lock state of its own.
+A pack node that grows past one formula becomes a composite ([[C77]] compositeIsSubgraph, `docs/pack-architecture.md`). Two pieces of that shape exist as data only: `exposure: "hidden"` and `tier: "advanced"` are honored where noted above (a hidden port gets no card socket and skips the wired value; the tier is saved), but nothing in the app creates a hidden port, reads the tier, or lets a pack declare a composite. Every port the app creates is exposed and basic. Locked is the silent default and only promotable ports earn chrome ([[C78]] packLegibility); a composite card today has no lock state of its own. A simple pack node never hides extra nodes inside to enforce an input's limit; a limit is a setting on the input. A one-formula pack node is treated as a one-node composite, so growing it into a composite changes nothing about how it appears, how input limits attach, or how errors show.
 
 ## Refused and not built
 

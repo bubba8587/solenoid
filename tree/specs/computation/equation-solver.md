@@ -10,6 +10,14 @@ Serves [[C47]] equationNode. It covers what the system does and blocks, and the 
 
 The Equation card holds one relation, `LHS = RHS`, and solves it for whichever variable is not wired. Every variable is both an input and an output. The card lives in `nodes/equation.ts` (`EquationNode`); the solving layers are in `equationSolve.ts`. TVM is an Equation card with a fixed relation (`TvmNode extends EquationNode` in `nodes/finance.ts`), so it solves the same way; Triangle Solver has its own solver in `nodes/triangle.ts`.
 
+## Which cards are relations
+
+TVM, Compound Growth and Effective Rate are built as fixed-relation Equation cards (Compound Growth and Effective Rate are locked `EquationNode`s from the catalog; TVM is `TvmNode`), so each solves for whichever of its variables is left unwired. On those cards a setting is only something that changes the relation itself: TVM's payment timing swaps its relation (`TVM_TIMING_EXPRS`), while every quantity, compounds-per-year included, is a variable.
+
+Deliberately not converted, so no one converts them later: Depreciation; IPMT, PPMT, CUMIPMT and ISPMT, which are derived quantities rather than relations; DOLLARDE and DOLLARFR; bonds and T-bills; and the DIST/INV pairs, which have no closed-form formula to invert.
+
+The solver is Solenoid's own and uses no outside algebra library, which keeps it small and free of dependencies. A quadratic gives every real root; nothing above degree two is solved in closed form, and demand for cubic or higher roots (a cubic formula or a bundled algebra system) would reopen that.
+
 ## Parsing and sockets
 
 - The relation must have exactly one `=`. No `=` at the top reads "An equation needs one = sign, like V = I * R"; a second one reads "Use exactly one = sign"; a parse failure reads "Syntax error". `parseEquation` answers null for a syntax error and the message text for a shape problem; these show as the card's in-card message.

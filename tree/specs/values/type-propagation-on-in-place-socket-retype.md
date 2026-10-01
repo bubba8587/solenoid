@@ -42,7 +42,9 @@ The combo Auto rung is `anycombo`, not `any`: an Auto result is a list whenever 
 
 ## The rule: an in-place retype re-drives FC adaptation
 
-Any code that changes a socket's `dataType` in place must re-drive FC adaptation, through `fcReconcile.ts`:
+**MUST:** when a node changes the type of one of its own inputs or outputs in place, everything wired to it is updated to match, never left working by the old type. No wiring event fires in this case, so the node itself must see to it. A pick on a node may change its own sockets ([[C113]] controlDrivenRetype), and nothing downstream sees that change on its own: left alone, a downstream Format Controller keeps formatting by the old type and shows a wrong-looking value. The retypers include Cast's target, a LAMBDA table's result type, Get Column's read-as, a Note's frontmatter, List and Table Input element types, Add and Split Column, Cable Switch and Import from Obsidian; the completeness test (`sourceInvariants.test.ts`) owns the full list.
+
+So any code that changes a socket's `dataType` in place must re-drive FC adaptation, through `fcReconcile.ts`:
 
 - **`reconcileFcTypes(editor, view)`** is the shared sweep. The canvas connection pipe calls it, and so does any manual retype. It doesn't recompute or bump the connection version; the caller owns `processGraph`. In order:
   1. `settleWildcardTypes` first, so the FCs resolve against settled types.
