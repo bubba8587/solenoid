@@ -380,7 +380,7 @@ A figure on a `chart` socket carries data, not geometry, and lays itself out at 
 - The same figure draws at four sizes: the card's [Chart] chip, the resizable Display (with a size cap), the popup, and a Report embed. None of them uses a pre-rendered pixel frame.
 - `ChartFigure` (`chartView.tsx`) is the one dispatcher. The popup passes `virtualize`, which renders only the visible rows.
 
-**Static export** (`canvasCapture.ts`) never uses the HTML-in-Canvas API ([[C42]] htmlInCanvasRenderer).
+**Static export** (`canvasCapture.ts`) never uses the HTML-in-Canvas API ([[C42]] htmlInCanvasRenderer): `drawElementImage` needs a browser flag the recipient of an exported file won't have.
 
 - `captureCanvasImage` rasterizes the current viewport (not the whole world) through a `foreignObject`, and returns null when unmounted or when the browser refuses it, so an export fails soft. A rasterized `foreignObject` inherits no live stylesheets, so every same-origin stylesheet rule is inlined; an unreadable cross-origin sheet is skipped.
 - A chart's SVG is serialized with its rendered styles inlined, since the exported document ships no app stylesheet and anything a chart takes from class rules or `var(--…)` must be baked in. The original and the clone are walked in lockstep, because `getComputedStyle` is blank on a detached node.

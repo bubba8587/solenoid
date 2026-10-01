@@ -8,7 +8,7 @@ tags: [spec, canvas]
 
 Serves [[C42]] htmlInCanvasRenderer; its GPU limits are [[#The GPU texture budget]]. It covers what the layer does, when it runs, and the number behind each knob. The knobs are tuning, not decisions: change one freely, and record the measurement that justified the change here.
 
-The layer makes pan and zoom cheap on a big graph. During a gesture it hides React Flow's viewport and draws captured bitmaps of the cards on a canvas instead; at rest the real DOM is back. It is never a DOM replacement: every click, edit and hover lands on the real cards. The engine is `HtmlCanvasRenderer` (`htmlCanvasRenderer.ts`), an imperative class rather than a React component; `HtmlCanvasLayer` mounts it and feeds it.
+The layer makes pan and zoom cheap on a big graph. During a gesture it hides React Flow's viewport and draws captured bitmaps of the cards on a canvas instead; at rest the real DOM is back. It is never a DOM replacement: every click, edit and hover lands on the real cards. The live DOM and this layer are the canvas's only two ways of being drawn; a third would be another renderer to keep in step with every card. The layer rests on a flagged browser API, so it stays an opt-in: if the flag stalls or changes, the DOM default is untouched and nothing breaks. **Reopen if:** the API ships unflagged and the DOM path becomes the one that costs more to keep. The engine is `HtmlCanvasRenderer` (`htmlCanvasRenderer.ts`), an imperative class rather than a React component; `HtmlCanvasLayer` mounts it and feeds it.
 
 ## When it runs
 

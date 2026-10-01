@@ -266,7 +266,7 @@ shown: DisplayNode label="Annual budget" unitSuffix="none" width=180 height=88 i
 - newer: "This file was saved by a newer version of Solenoid (format v*N*) and can't be opened here. Update the app to load it."
 - older: "This file uses an old save format (v*N*) that this build no longer opens."
 
-There is no migration in either direction ([[B7]] preAlphaBreakFreely). A change to the format bumps `CURRENT_SAVE_VERSION` and updates the seeds and tests.
+A newer file is refused rather than opened with the parts this build doesn't understand dropped, because the next autosave would write that loss over the good copy ([[B12]] losslessSaves). There is no migration in either direction ([[B7]] preAlphaBreakFreely), so an older file is refused too. A change to the format bumps `CURRENT_SAVE_VERSION` and updates the seeds and tests.
 
 ## The load path: `loadGraph(g, { curtain? })`
 
