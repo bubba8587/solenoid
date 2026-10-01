@@ -2198,6 +2198,12 @@ export class SplitFrameNode extends ClassicPreset.Node {
     this.addOutput("headers", strListOut("Headers"));
   }
 
+  setColType(next: SplitColType): void {
+    this.colType = next;
+    const out = this.outputs.matrix;
+    if (out) out.socket = splitMatrixOutput(next).socket;
+  }
+
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedMatrix = null; this.cachedHeaders = null; this.cachedMixed = false; return { matrix: null, headers: null }; }
@@ -2266,6 +2272,12 @@ export class GetColumnNode extends ClassicPreset.Node {
     this.addInput("frame", cubeIn("Table / Cube"));
     this.addInput("name", strIn("Column"));
     this.addOutput("values", getColumnOutput(this.readAs));
+  }
+
+  setReadAs(next: GetColumnReadAs): void {
+    this.readAs = next;
+    const out = this.outputs.values;
+    if (out) out.socket = getColumnOutput(next).socket;
   }
 
   columnPickers(): ColumnPickerSpec[] { return [{ key: "name", frameInput: "frame" }]; }
@@ -2370,6 +2382,12 @@ export class AddColumnNode extends ClassicPreset.Node {
     this.addInput("name", strIn("Name"));
     this.addInput("values", addColumnInput(this.addAs));
     this.addOutput("frame", tableAdoptOut("Frame"));
+  }
+
+  setAddAs(next: AddColumnAddAs): void {
+    this.addAs = next;
+    const inp = this.inputs.values;
+    if (inp) inp.socket = addColumnInput(next).socket;
   }
 
   passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }

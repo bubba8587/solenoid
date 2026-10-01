@@ -1,7 +1,7 @@
 // [[B11]]
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
-import { retypeOutputCables } from "../../src/graph/fcReconcile";
+import { retypeOutputCables, retypeInputCables } from "../../src/graph/fcReconcile";
 import { stringSocket, anySocket, numberSocket, dateTableSocket, SolenoidSocket, AdoptiveSocket } from "../../src/graph/sockets";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 
@@ -30,6 +30,31 @@ describe("retypeOutputCables (Cast / LAMBDA / Get Column shared retype path)", (
     const ids = editor.getConnections().map((c) => c.id);
     expect(ids).toContain(toAny.id);   // string → any: kept
     expect(ids).not.toContain(toNum.id); // string → number: dropped (incompatible)
+  });
+});
+
+describe("retypeInputCables (Add Column's Add as)", () => {
+  it("keeps a cable the new input type still accepts and drops one it refuses", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const str = new ClassicPreset.Node("Str");
+    str.addOutput("out", new ClassicPreset.Output(stringSocket, "Out"));
+    const num = new ClassicPreset.Node("Num");
+    num.addOutput("out", new ClassicPreset.Output(numberSocket, "Out"));
+    const cons = new ClassicPreset.Node("Cons");
+    cons.addInput("a", new ClassicPreset.Input(numberSocket, "A")); // post-swap type = number
+    cons.addInput("b", new ClassicPreset.Input(numberSocket, "B"));
+    for (const n of [str, num, cons]) await editor.addNode(n as never);
+    const fromStr = new ClassicPreset.Connection(str as never, "out", cons as never, "a");
+    const fromNum = new ClassicPreset.Connection(num as never, "out", cons as never, "b");
+    await editor.addConnection(fromStr as never);
+    await editor.addConnection(fromNum as never);
+
+    await retypeInputCables(editor as never, stubArea, cons.id, "a");
+    await retypeInputCables(editor as never, stubArea, cons.id, "b");
+
+    const ids = editor.getConnections().map((c) => c.id);
+    expect(ids).not.toContain(fromStr.id);
+    expect(ids).toContain(fromNum.id);
   });
 });
 

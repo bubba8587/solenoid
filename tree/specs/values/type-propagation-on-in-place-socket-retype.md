@@ -26,9 +26,9 @@ This is an established pattern; grep `setOp`, `setMode` and `keysDroppedBySwitch
 2. On the toggle, the component first calls `dropInputCables(id, departing)` ([[input-cable-pruning#The ordering rule]]). Otherwise a removed socket leaves an invisible live cable.
 3. Then it calls `setOp` / `setMode`,
 4. then `rerenderNode`,
-5. and after an output swap only, `retypeOutputCables`, because the swap fired no connection event.
+5. and after an output swap only, `retypeOutputCables`, because the swap fired no connection event. An input retyped in place (the socket stays, its type changes) is pruned by `retypeInputCables` instead of step 2, which keeps a cable the new type still accepts.
 
-**Examples:** `WorkdaysNode` (Days ↔ End-date input, date ↔ number output), `SettleNode` (people-frame ↔ ledger-cube input on its `mode`), `RecordNode` (Row and Group-by sockets per op), `ReturnsNode`, the finance nodes and `date.ts` (output family), `CableSwitchNode` (One ↔ Many output), and `Expression`, `composite` and `formatController` (`setType`).
+**Examples:** `WorkdaysNode` (Days ↔ End-date input, date ↔ number output), `SettleNode` (people-frame ↔ ledger-cube input on its `mode`), `RecordNode` (Row and Group-by sockets per op), `ReturnsNode`, the finance nodes and `date.ts` (output family), `CableSwitchNode` (One ↔ Many output), `GetColumnNode`, `SplitFrameNode` and `AddColumnNode` (`setReadAs`, `setColType`, `setAddAs`, driven from `frameEdit.ts`), and `Expression`, `composite` and `formatController` (`setType`).
 
 ## The result-type selector (`ResultTypeToggle`)
 

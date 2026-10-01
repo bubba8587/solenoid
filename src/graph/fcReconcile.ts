@@ -24,6 +24,22 @@ export async function retypeOutputCables(
   reconcileFcTypes(editor, view);
 }
 
+/** The input-side twin of `retypeOutputCables`: after an in-place input retype, drop only the cables the new type refuses. */
+export async function retypeInputCables(
+  editor: NodeEditor<Schemes>,
+  view: View | null,
+  nodeId: string,
+  inKey: string,
+): Promise<void> {
+  const inType = declaredTypeOf(editor.getNode(nodeId)?.inputs[inKey]?.socket);
+  for (const c of [...editor.getConnections()]) {
+    if (c.target !== nodeId || c.targetInput !== inKey) continue;
+    const outSock = editor.getNode(c.source)?.outputs?.[c.sourceOutput]?.socket;
+    if (!inType || !(outSock instanceof SolenoidSocket) || !canConnect(outSock.dataType, inType)) await editor.removeConnection(c.id);
+  }
+  reconcileFcTypes(editor, view);
+}
+
 /** `view` is null for a graph nobody is looking at (a closed composite): the model still settles, nothing re-renders. */
 export function reconcileFcTypes(
   editor: NodeEditor<Schemes>,
