@@ -41,9 +41,12 @@ leaf, because none is a product call.
   session the agent ratifies and adds the ID there in the same commit.
 - **A Why is the plain reason for the call** (the author's ratified leaves are the model). One or two
   sentences a person would say out loud: why this is the product we want ("it's nice to have groups
-  that take up a lot less space", "there's no good reason to have two versions of a function"). Not
-  history or a past incident, not an argument down from a parent leaf, not a restatement of the
-  mechanics; those belong in History, the parent, or the spec.
+  that take up a lot less space", "there's no good reason to have two versions of a function"). It
+  may lean on the parent, but only downhill: we want the parent, so we want this ("the vault belongs
+  to the user, so a write changes only what it targets"). It never runs uphill, piling up specifics
+  that make the parent look right; the parent has its own Why. A parent that doesn't lead to the call
+  is usually the wrong parent. Not history or a past incident, not a restatement of the mechanics;
+  those belong in History or the spec.
 - **Rules hold without memory** (DTE A7 autonomy, B19 privateMemory). No session remembers the last, so a rule that
   governs the code is written once, derived rather than transcribed, and enforced by a test.
 - **An unenforced MUST is labeled.** A leaf with a MUST is cited by the test that enforces it, or
