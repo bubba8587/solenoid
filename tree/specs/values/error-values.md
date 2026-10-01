@@ -87,6 +87,8 @@ One rule per output cell, decided before the op, is built into every element-wis
 2. otherwise a `null` operand gives `null`;
 3. otherwise compute.
 
+**Error beats missing.** When a cell is both an error and missing, the error wins and passes on unchanged; it never turns into text, NaN, or `[object Object]`. Of the two, the error is the one the user must see: checking for missing first would drop the error or stringify it, and a real failure would show up as a blank. The same order binds a node that reads its settings and inspects a list for errors ([[input-roles]], "Where the check goes").
+
 Every broadcaster zips ragged lists to the longest, and a padded position is `null`. `broadcastCells` is the broadcaster for the non-numeric families: text operands are mixed and the result is often another family, so it opens up the element type (`string | number | boolean`) and is overloaded by arity so each call site keeps precise operand types.
 
 The shared helpers are `cellShortCircuit` (the full rule) and `cellError` (errors only, for the Kleene logic family, which feeds `null` to its own function) in `valueKinds.ts`. So a list cell behaves exactly like a scalar or a ragged pad: `[1, #DIV/0!, 3] + 10` keeps the error, and `[1, null, 3] + 10` gives `[11, null, 13]`. `broadcastCall` skips the null short-circuit for the `NULL_INSPECTING` predicates (ISBLANK, ISNUMBER…) that need to see the blank.
@@ -123,7 +125,7 @@ Detection and recovery form a 2 × 2 over missing (`null`) and error (`SolError`
 | **detect** | ISNULL (per cell, deep, `isMissing`) | ISERROR (`isSolError`), ISNA (`isNaError`) |
 | **recover** | Fill (`FillNode`: constant, ffill, bfill, mean, median, mode, interpolate, drop, coalesce) | IFERROR, IFNA (per cell) |
 
-These must hold across all of them:
+There is one kind of error, never two. With two notions, ISERROR and IFERROR would disagree about the same cell, and a not-a-number counted as an error in one place and as a number in another is a wrong answer nobody sees. These must hold across all of them:
 
 1. A tagged `SolError` is the only definition of an error, so ISERROR and IFERROR agree exactly (`isSolError`). A bare NaN is not an error; `guardFinite` classifies non-finite results first, so an untagged NaN never reaches these nodes.
 2. A `null` is not an error in any of them. It passes through IFERROR and IFNA, and it is what Fill targets. A real "not found" is a tagged `#N/A` (XLOOKUP, for one), not `null`.

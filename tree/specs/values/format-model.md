@@ -10,6 +10,12 @@ Serves [[C94]] formatFamilyGates, with the unit rules of [[C25]] firstClassUnits
 
 A **Format Controller** (FC) is the small card that docks on a socket and decides how the value there is displayed: its style, precision, negatives, scale, text attributes and unit. This file is the model it follows. `formatModel.ts` says which controls exist for which value; `formatAnnotationStore.ts` renders a number under a format and stores what each FC has set; `nodes/formatController.ts` is the FC card itself. The FC popup shows and hides its controls from the same model, so what renders and what the popup offers can't disagree. How a format travels along the cables is [[unit-flow]].
 
+## The controls follow the value
+
+A Format Controller shows only the controls that fit the kind of value it formats. A control that doesn't fit is hidden, never shown greyed out, and never applied behind the user's back: a control that can't apply tells the user nothing. The one greyed-out control is the unit dropdown under a lock state (below), because there the value does have a unit and the control shows where it comes from ([[C25]] firstClassUnits). Decimal places follow one rule in every number style ("The precision rule"), never one per style, so what the popup offers and what the value looks like can't drift apart each time a style is added. Any number style can carry a unit; a date, text or logical value never does. A Frame gets no controls here, since each of its columns carries its own unit and format ([[D43]] unitByGranularity). A saved style pick survives a change in the kind of value arriving and has no effect until a fitting value returns ("The FC card").
+
+This would reopen if a control needed to be shown greyed out for a reason other than a unit lock, or one kind of value needed two rules for decimal places.
+
 ## The pipeline
 
 A displayed value goes through these stages, in order, each driven by one part of the `FormatAnnotation`:
@@ -133,6 +139,8 @@ Both are display-only and ride the annotation like `logicalStyle`. The lambda's 
 | `time_12` | `2:30 PM` | `h:mm A` |
 | `datetime` | `2026-06-03 14:30` | `YYYY-MM-DD HH:mm` |
 | `date_custom` | the FC's `customPattern` | `DD-MMM-YYYY` when blank |
+
+**One display for every unformatted number** ([[D94]] oneNumberDisplay). Every surface that shows a number without a format the user picked shows it through `formatScalar`, the same function as the `auto` style: value boxes, Frame and Table cards, the Table and Cube popups, complex numbers, unit suffixes, Alert messages and formula steps. The decimals are a setting rather than a constant because how many suit depends on the person and the data; dropping trailing zeros keeps 1.5 from reading as 1.5000. `settingsStore`'s `numberDecimals` is read on every call, and `formatAnnotationStore` and `frameFormatStore` notify when it changes, so what is on screen redraws ([[stores]]); a popup already open keeps its text until it is opened again. Three kinds of output keep their own rule: a number turned into text as data (Cast to text, a complex in a text formula) is not a display; the Constant and Physics Constant cards exist to show a constant's precision; and chart axis ticks are laid out by the figure. A surface that needs a different default from the rest takes a Format Controller, never a constant of its own.
 
 The number dropdown groups the styles as General (`auto`), Number (`decimal`, `integer`, `fraction`, `fraction_adv`, `scientific`), Percent and Custom. Currency is a unit, not a style ([[D47]] noMixCurrencies). A date style renders the value as a date serial through `formatDateSerial`, with no unit; `dateAnnotationPattern` gives the pattern, and the Frame and Cube cell renderers read it so a column's `format` changes its date cells.
 
