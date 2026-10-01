@@ -1106,6 +1106,7 @@ export class SumIfsNode extends ClassicPreset.Node {
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["Column", "Value"];
   cachedResult: number | UnitCell | SolError | null = null;
+  private _gen = 0;
   width = 210;
   height = 280;
 
@@ -1161,6 +1162,7 @@ export class SumIfsNode extends ClassicPreset.Node {
 
   data(inputs: Record<string, unknown[] | undefined>): { result: number | UnitCell | SolError | null } {
     const finish = (r: number | UnitCell | SolError | null) => { this.cachedResult = r; return { result: r }; };
+    const gen = ++this._gen;
     const raw = inputs.frame?.[0];
     if (isCubeValue(raw)) return this.data({ ...inputs, frame: [flatCubeToFrame(raw, "scalar")] });
     if (isFrameRef(raw)) {
@@ -1173,6 +1175,7 @@ export class SumIfsNode extends ClassicPreset.Node {
       if (vn != null && String(vn).trim() !== "") names.add(String(vn).trim());
       return (async () => {
         const cols = await materialize(Promise.all([...names].map(async (n) => [n, await readRefColumn(raw, n)] as const)));
+        if (gen !== this._gen) return { result: null };
         if (isSolError(cols)) return finish(cols);
         const byName = new Map(cols);
         const slice: FrameValue = { __frame: true, columns: cols.map(([, c]) => c).filter((c): c is FrameColumn => c != null) };

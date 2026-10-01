@@ -2250,6 +2250,7 @@ export class GetColumnNode extends ClassicPreset.Node {
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
+  private _gen = 0;
   width = 200; height = 205;
 
   constructor(init?: { label?: string; readAs?: GetColumnReadAs }) {
@@ -2264,6 +2265,7 @@ export class GetColumnNode extends ClassicPreset.Node {
   columnPickers(): ColumnPickerSpec[] { return [{ key: "name", frameInput: "frame" }]; }
 
   data(inputs: { frame?: unknown[]; name?: string[] }): { values: GetColumnValues } {
+    const gen = ++this._gen;
     const f = inputs.frame?.[0] ?? null;
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
     if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
@@ -2283,6 +2285,7 @@ export class GetColumnNode extends ClassicPreset.Node {
     if (isFrameRef(fr)) {
       return (async () => {
         const col = await materialize(readRefColumn(fr, name));
+        if (gen !== this._gen) return { values: null };
         if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
         if (!col) { this.cachedResult = null; return { values: null }; }
         return { values: this.readColumn(col) };
