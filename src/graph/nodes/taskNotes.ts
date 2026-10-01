@@ -105,7 +105,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
       have = typeof f === "number" && typeof t === "number" && Number.isFinite(f) && Number.isFinite(t);
       if (have) { from = Math.min(f as number, t as number); to = Math.max(f as number, t as number); }
     }
-    const key = connectionStore.key(this.id, have ? `${this.provider}|${this.apiUrl()}|${from}|${to}` : "");
+    const key = connectionStore.key(this.id, have ? `${this.provider}|${isDemoTaskNotes() ? "demo" : this.apiUrl()}|${from}|${to}` : "");
     if (key !== this._lastKey) {
       if (!have) {
         this._lastKey = key;
@@ -181,6 +181,8 @@ export class TaskNotesNode extends ClassicPreset.Node {
   }
 }
 
+const DEMO_REFUSAL = "TaskNotes is showing the demo. Set a TaskNotes URL in Settings to write tasks.";
+
 export type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error";
 
 export class WriteTasksNode extends ClassicPreset.Node {
@@ -234,6 +236,7 @@ export class WriteTasksNode extends ClassicPreset.Node {
   async preview(): Promise<void> {
     if (this.status === "previewing" || this.status === "writing") return;
     if (!this.planRows.length) { this.status = "error"; this.statusMessage = "Nothing to write. Connect rows."; return; }
+    if (isDemoTaskNotes()) { this.status = "error"; this.statusMessage = DEMO_REFUSAL; return; }
     this.status = "previewing";
     try {
       const resolved = new Map<number, string>();
@@ -271,6 +274,7 @@ export class WriteTasksNode extends ClassicPreset.Node {
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
     if (isSolError(this.cachedCube)) { this.status = "error"; this.statusMessage = this.cachedCube.code; return; }
     if (!this.planRows.length) { this.status = "error"; this.statusMessage = "Nothing to write. Connect rows."; return; }
+    if (isDemoTaskNotes()) { this.status = "error"; this.statusMessage = DEMO_REFUSAL; return; }
     this.status = "writing";
     let created = 0, updated = 0, failed = 0;
     const failures: string[] = [];
