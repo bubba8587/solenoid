@@ -376,6 +376,17 @@ describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
     expect(r).toBeCloseTo(-1000 + 600 / 1.1 + 600 / 1.1 ** 2, 0);
   });
 
+  it("dated NPV answers Excel's XNPV example and refuses a date before the first", () => {
+    const dated = (dates: number[]) => new NPVNode({ op: "dates" }).data({
+      rate: [0.09], list: [[-10000, 2750, 4250, 3250, 2750]], dates: [dates],
+    }).result;
+    expect(dated([39448, 39508, 39751, 39859, 39904]) as number).toBeCloseTo(2086.65, 2);
+    expect((dated([39448, 39508, 39400, 39859, 39904]) as { code?: string }).code).toBe("#DOMAIN!");
+    const ev = compileEvaluator("XNPV(0.09, a, b)")!;
+    expect(ev({ a: [-10000, 2750, 4250, 3250, 2750], b: [39448, 39508, 39751, 39859, 39904] }) as number).toBeCloseTo(2086.65, 2);
+    expect((ev({ a: [-10000, 2750], b: [39448, 39400] }) as { code?: string }).code).toBe("#DOMAIN!");
+  });
+
   it("dated IRR recovers the rate NPV used", () => {
     const r = new IRRNode({ op: "dates" }).data({
       list: [[-1000, 1100]],

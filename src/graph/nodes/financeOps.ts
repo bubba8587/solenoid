@@ -510,6 +510,17 @@ export function solveDiscountRate(values: readonly number[], exponents: readonly
   return newton !== null ? newton : bracketDiscountRate(values, exponents);
 }
 
+/** XNPV over the prepared lists, truncated to the shorter, discounted actual/365 from the first date; null with no flows. */
+export function xnpv(rate: number, values: readonly number[], dates: readonly number[]): number | SolError | null {
+  const n = Math.min(values.length, dates.length);
+  if (n === 0) return null;
+  const d0 = dates[0];
+  if (dates.slice(1, n).some((d) => d < d0)) return solError("#DOMAIN!", "A cash-flow date comes before the first date");
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += values[i] / Math.pow(1 + rate, (dates[i] - d0) / 365);
+  return Number.isFinite(sum) ? sum : null;
+}
+
 /** XIRR over the prepared lists, truncated to the shorter; null under two flows. */
 export function xirr(values: readonly number[], dates: readonly number[]): number | SolError | null {
   const n = Math.min(values.length, dates.length);

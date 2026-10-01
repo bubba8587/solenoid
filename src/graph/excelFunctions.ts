@@ -34,7 +34,7 @@ import {
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
-  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xirr, mirr, returnsOp, fvSchedule } from "./nodes/financeOps";
+  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xnpv, xirr, mirr, returnsOp, fvSchedule } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
   cx, isCx, toCx, type Cx,
@@ -486,6 +486,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MIRR:        { returns: "number", listArgs: true, orient: "free", arity: [3, 3], family: "finance-iterative" },
   FVSCHEDULE:  { returns: "number", arity: [2, 2], family: "finance" },
   CHOOSE:      { returns: "any", arity: [2, 255], family: "lookup" },
+  XNPV:        { returns: "number", listArgs: true, orient: "free", arity: [3, 3], family: "finance" },
   XIRR:        { returns: "number", listArgs: true, orient: "free", arity: [2, 3], family: "finance-iterative" },
   "F.TEST": { returns: "number", listArgs: false, arity: [2, 2], family: "statistics", native: true },
   PROB:     { returns: "number", listArgs: false, arity: [3, 4], family: "statistics", native: true },
@@ -894,7 +895,6 @@ for (const name of ["BASE", "DEC2HEX", "BIN2HEX", "OCT2HEX"]) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
   registerInternal(name, (...a) => { const r = f(...a); return typeof r === "string" ? r.toUpperCase() : r; });
 }
-registerInternal("MID", (text, start, len) => {
 // Excel's SEARCH reads ?, * and ~ in find_text; Formula.js's matches them literally.
 registerInternal("SEARCH", (find, within, start) => {
   const bad = findStart("SEARCH")([find, within, start]);
@@ -906,6 +906,7 @@ registerInternal("SEARCH", (find, within, start) => {
   const at = new RegExp(wildcardSource(f).source, "i").exec(w.slice(s - 1));
   return at ? at.index + s : solError("#VALUE!", "Find text not found within the text");
 });
+registerInternal("MID", (text, start, len) => {
   const t = toStr(text), s = Math.trunc(toNum(start)), n = Math.trunc(toNum(len));
   if (badNum(s, n)) return VALUE("MID");
   if (s < 1 || n < 0) return solError("#VALUE!", "MID starts at 1 or later and takes 0 or more characters");
@@ -1378,6 +1379,15 @@ registerInternal("MIRR", (values, finrate, reinrate) => {
   const fr = toNum(finrate), rr = toNum(reinrate);
   if (badNum(fr, rr)) return VALUE("MIRR");
   return nums.length <= 1 ? null : mirr(nums, fr, rr);
+});
+registerInternal("XNPV", (rate, values, dates) => {
+  if (rate == null) return null;
+  const r = toNum(rate);
+  if (Number.isNaN(r)) return VALUE("XNPV");
+  const prep = datedPrep(numList(values) as (number | null | SolError)[], numList(dates) as (number | null | SolError)[]);
+  if (prep.error) return prep.error;
+  if (prep.blank) return null;
+  return xnpv(r, prep.values, prep.dates);
 });
 registerInternal("XIRR", (values, dates) => {
   const prep = datedPrep(numList(values) as (number | null | SolError)[], numList(dates) as (number | null | SolError)[]);
