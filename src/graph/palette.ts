@@ -269,9 +269,15 @@ const SOLARIZED: Record<PaletteSlot, string> = {
   pink:      SOL.magenta,
 };
 
-const EQUINOX: Record<PaletteSlot, string> = Object.fromEntries(
-  COLOR_PALETTE.map((slot) => [slot, oklchToHex(hexToOklch(PALETTE[slot])[0], 0, 0)]),
-) as Record<PaletteSlot, string>;
+const EQUINOX_BAND: [number, number] = [0.42, 0.9];
+function equinoxPalette(): Record<PaletteSlot, string> {
+  const lightness = COLOR_PALETTE.map((slot) => hexToOklch(PALETTE[slot])[0]);
+  const lo = Math.min(...lightness), hi = Math.max(...lightness);
+  const [to0, to1] = EQUINOX_BAND;
+  return Object.fromEntries(COLOR_PALETTE.map((slot, i) =>
+    [slot, oklchToHex(to0 + ((lightness[i] - lo) / (hi - lo)) * (to1 - to0), 0, 0)])) as Record<PaletteSlot, string>;
+}
+const EQUINOX = equinoxPalette();
 
 const PEAR = {
   pearFill: "#649117", pearBright: "#b8d532",
@@ -516,7 +522,7 @@ const SOLARIZED_CHROME: PaletteChrome = {
   },
 };
 
-const EQUINOX_CHROME: PaletteChrome = {
+const EQUINOX_BASE_CHROME: { dark: Record<ChromeKey, string>; light: Record<ChromeKey, string> } = {
   dark: {
     appBg: "#141414", canvasBg: "#0b0b0b", canvasDot: "#2a2a2a",
     surface: "#1e1e1e", surfaceSunken: "#141414", surfaceRaised: "#262626",
@@ -550,16 +556,22 @@ const BLUEPRINT_CHROME: PaletteChrome = {
 const GROUND_KEYS: ChromeKey[] = ["appBg", "canvasBg", "surface", "surfaceSunken", "surfaceRaised"];
 const BORDER_KEYS: ChromeKey[] = ["border", "borderStrong", "borderSubtle"];
 const INK_KEYS: ChromeKey[] = ["text", "textBright", "textDim", "textMuted"];
-function polarizeRamp(ramp: Record<ChromeKey, string>, ground: string, ink: string): Record<ChromeKey, string> {
+function polarizeRamp(ramp: Record<ChromeKey, string>, ground: string, ink: string, strength: number): Record<ChromeKey, string> {
   const out = { ...ramp };
-  for (const k of GROUND_KEYS) out[k] = mixHex(ramp[k], ground, 0.5);
-  for (const k of BORDER_KEYS) out[k] = mixHex(ramp[k], ink, 0.25);
-  for (const k of INK_KEYS) out[k] = mixHex(ramp[k], ink, 0.5);
+  for (const k of GROUND_KEYS) out[k] = mixHex(ramp[k], ground, strength);
+  for (const k of BORDER_KEYS) out[k] = mixHex(ramp[k], ink, strength / 2);
+  for (const k of INK_KEYS) out[k] = mixHex(ramp[k], ink, strength);
   return out;
 }
 const NEON_CHROME: PaletteChrome = {
-  dark: polarizeRamp(DEFAULT_CHROME.dark, "#000000", "#ffffff"),
-  light: polarizeRamp(DEFAULT_CHROME.light, "#ffffff", "#000000"),
+  dark: polarizeRamp(DEFAULT_CHROME.dark, "#000000", "#ffffff", 0.5),
+  light: polarizeRamp(DEFAULT_CHROME.light, "#ffffff", "#000000", 0.5),
+};
+
+const EQUINOX_POLARIZE = 0.3;
+const EQUINOX_CHROME: PaletteChrome = {
+  dark: polarizeRamp(EQUINOX_BASE_CHROME.dark, "#000000", "#ffffff", EQUINOX_POLARIZE),
+  light: polarizeRamp(EQUINOX_BASE_CHROME.light, "#ffffff", "#000000", EQUINOX_POLARIZE),
 };
 
 const NO_CHROME: PaletteChrome = { dark: {}, light: {} };

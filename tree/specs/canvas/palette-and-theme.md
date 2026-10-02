@@ -80,7 +80,7 @@ A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`)
 - **Muted**: the Default hues at about 0.62 of their saturation, with lightness nudged toward the middle.
 - **Colorblind-safe**: the Okabe-Ito set. The eight slots that drive sockets (gray, gold, lime, pink, sky, vermilion, violet, green) each take a different Okabe-Ito color, so the type system stays separable; gray is `#999999`, since Okabe-Ito has no gray. The four slots that only color node kinds reuse the matching one: amber takes number's orange, blue takes frame's blue, teal takes complex's sky, purple takes date's reddish purple.
 - **Solarized**: Solarized's eight accents, plus base1 gray (`#93a1a1`) and three hues blended into its gaps (a leafy green, a light azure, a muted purple), with gold brightened off Solarized yellow. Every slot stays a distinct color.
-- **Equinox**: Default with its hue and saturation removed. Each slot is the gray at its Default color's OKLab lightness (`oklchToHex(L, 0, 0)`), so blue and violet stay dark grays and gold and lime light ones, and type is told apart by socket shape and that lightness alone. This neutralizes the error red too, by design.
+- **Equinox**: Default with its hue and saturation removed. Each slot is a gray at its Default color's OKLab lightness, with the slots' lightness range stretched linearly onto 0.42 to 0.9 (`EQUINOX_BAND`) for contrast (`equinoxPalette`), so blue and violet are dark grays and gold and lime nearly white, and type is told apart by socket shape and that lightness alone. This neutralizes the error red too, by design.
 - **Orchard**: lifted from the Pear design system, a warm cream ground under orchard hues. Pear ships no cool hue, so teal, sky, blue, violet and purple are blended into its gaps at Pear's own saturation and value band (saturation about 0.40 to 0.56, value about 0.62 to 0.71), the same technique Solarized uses.
 - **Blueprint**: a cyanotype drafting table. The slots are chalky mid-value pencil colors that hold up on deep blue and on the light whiteprint; `blue` and `sky` stay clearly separated from the ground by value.
 - **Neon**: derived from Default, never authored (`neonPalette`). Gray stays Default's gray. Every other slot:
@@ -128,9 +128,9 @@ App.css holds the fallback values of the theme tokens. `appThemeStore` overwrite
 - **Solarized** uses its base03 to base3 ladder in the canonical roles: background, background highlight, then the content tones in Solarized's own order. Its border tiers are blends in the gap between base02 and base01. Its body text sits near 3:1 contrast on purpose; do not raise it (the 4.5:1 requirement binds only Default and Colorblind-safe, above).
 - **Muted** lifts off near-black onto a soft, barely warm charcoal and pulls the light ramp's contrast in a step.
 - **Colorblind-safe** is fully achromatic and a step crisper than Default.
-- **Equinox** is Default's contrast with Default's blue cast removed, fully achromatic.
+- **Equinox** is an authored achromatic ramp (Default's with the blue cast removed), polarized at strength 0.3 (`EQUINOX_POLARIZE`) the way Neon's is below, for a crisper workbench.
 - **Blueprint** is prussian blue in dark mode and cool whiteprint paper in light mode, cool end to end.
-- **Neon** is derived from Default's two ramps, not authored (`polarizeRamp`): the five ground keys mix halfway to the mode's ground pole (black in dark mode, white in light), the four inks halfway to the opposite pole, and the three borders a quarter of the way to it, all with `mixHex`. The dot keeps Default's value. Mixing every key of a tier by the same step keeps each tier's order, so the structure Default passes carries over.
+- **Neon** is derived from Default's two ramps, not authored (`polarizeRamp`): at strength 0.5: the five ground keys mix that far to the mode's ground pole (black in dark mode, white in light), the four inks that far to the opposite pole, and the three borders half as far, all with `mixHex`. The dot keeps Default's value. Mixing every key of a tier by the same step keeps each tier's order, so the structure Default passes carries over.
 
 ### Derived chrome tokens
 
