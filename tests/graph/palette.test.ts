@@ -79,6 +79,34 @@ describe("Neon", () => {
   });
 });
 
+describe("Dawn and Dusk", () => {
+  const ok = (hex: string) => {
+    const [l, c, h] = hexToOklch(hex);
+    return [l, c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
+  };
+  const dist = (a: string, b: string) => Math.hypot(...ok(a).map((x, i) => x - ok(b)[i]));
+  const dd = BUILTIN_PALETTES["Dawn and Dusk"];
+
+  it("keeps socket colors apart and never crowds a pair much past Default", () => {
+    const sockets = [...new Set(SOCKET_VARS.map((s) => s.slot))];
+    const floor = Math.min(...sockets.flatMap((a) => sockets.filter((b) => b !== a).map((b) => dist(PALETTE[a], PALETTE[b]))));
+    for (const a of COLOR_PALETTE) for (const b of COLOR_PALETTE) {
+      if (a >= b) continue;
+      if (sockets.includes(a) && sockets.includes(b)) expect(dist(dd[a], dd[b]), `${a}/${b}`).toBeGreaterThanOrEqual(floor - 1e-9);
+      expect(dist(dd[a], dd[b]), `${a}/${b}`).toBeGreaterThanOrEqual(Math.min(0.85 * dist(PALETTE[a], PALETTE[b]), floor));
+    }
+  });
+
+  it("keeps Default's lightness on every chrome key, so the structure carries over", () => {
+    for (const mode of ["dark", "light"] as const) {
+      for (const key of CHROME_KEYS) {
+        const L = hexToOklch(BUILTIN_CHROME["Dawn and Dusk"][mode][key]!)[0];
+        expect(Math.abs(L - hexToOklch(DEFAULT_CHROME[mode][key])[0]), `${mode} ${key}`).toBeLessThan(0.01);
+      }
+    }
+  });
+});
+
 // The chrome ramp a palette may author (App.css's neutral tokens). Parallel to the
 // slot map: never resolved through resolveColor, written straight by appTheme.
 describe("chrome ramp", () => {

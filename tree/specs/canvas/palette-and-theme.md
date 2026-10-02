@@ -74,7 +74,7 @@ A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`)
 
 ## The built-in palettes
 
-`BUILTIN_PALETTES` holds eight palettes, and `PALETTE_NAMES` lists them in this order:
+`BUILTIN_PALETTES` holds nine palettes, and `PALETTE_NAMES` lists them in this order:
 
 - **Default**: `PALETTE` itself.
 - **Muted**: the Default hues at about 0.62 of their saturation, with lightness nudged toward the middle.
@@ -90,6 +90,7 @@ A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`)
   4. **Spacing guard.** Within that window the slot takes the brightest candidate (81 samples, each through steps 1 and 2) whose OKLab distance to every other slot is at least the floor: Default's closest pair among the socket slots (gold and lime). If none qualifies, it takes the candidate with the most room. Slots choose in order of reach, darkest hue first, and the whole round runs three times so later choices are seen by earlier ones.
 
   The point of the guard is that brightening crowds colors toward the luminance peaks (yellow, cyan, magenta), where the neighbors are: without it gold and lime meet at yellow, and pink and purple at magenta.
+- **Dawn and Dusk**: derived from Default and the heatmap's `plasma` colormap (`colormapRgb`), never authored (`dawnDuskPalette`). Plasma's character is how its lightness and chroma travel with hue (deep purples, rich magentas, light golds), so each slot keeps its Default hue and finds the plasma sample (256 along the map) nearest that hue in OKLCh. A slot inside plasma's hue arc moves half way (`DD_PULL`) to that sample's lightness and chroma, clamped to lightness 0.55 to 0.9 so it reads on both grounds. A slot outside the arc, plasma having no greens or cyans, keeps its lightness and 70% of its chroma (`DD_DUSK`), the dusky end of the day; the two blend over the 40° past the arc's edge (`DD_ARC_FADE`). Gray takes a faint tint (chroma 0.03) of the dusk hue. Socket slots stay at least Default's closest socket-pair distance apart, and no pair falls under the smaller of that distance and 85% of its own Default distance (`palette.test.ts`).
 
 ## The neutral chrome ramp
 
@@ -130,6 +131,7 @@ App.css holds the fallback values of the theme tokens. `appThemeStore` overwrite
 - **Colorblind-safe** is fully achromatic and a step crisper than Default.
 - **Equinox** is an authored achromatic ramp (Default's with the blue cast removed), polarized at strength 0.3 (`EQUINOX_POLARIZE`) the way Neon's is below, for a crisper workbench.
 - **Blueprint** is prussian blue in dark mode and cool whiteprint paper in light mode, cool end to end.
+- **Dawn and Dusk** takes plasma's two ends, ground from one and ink from the other (`tintRamp`): every key keeps its Default OKLab lightness, so the structure carries over, and takes a hue and chroma. Dark mode: grounds and borders take the dusk hue (plasma at 0.4, a purplish burgundy) at chroma 0.05, and the inks the dawn hue (plasma at 0.92, yellow) at 0.03, a cream. Light mode swaps them: a pale-yellow ground under plum ink. It does not follow the accent.
 - **Neon** is derived from Default's two ramps, not authored (`polarizeRamp`): at strength 0.5: the five ground keys mix that far to the mode's ground pole (black in dark mode, white in light), the four inks that far to the opposite pole, and the three borders half as far, all with `mixHex`. The dot keeps Default's value. Mixing every key of a tier by the same step keeps each tier's order, so the structure Default passes carries over.
 
 ### Derived chrome tokens
