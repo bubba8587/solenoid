@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { readInput, readRole, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
-import { flatCubeToFrame, cubePivotSource, coerceFrameCell } from "../frame";
+import { flatCubeToFrame, coerceFrameCell } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
 import { affineWeight, type Lam } from "../unitDimExpr";
@@ -831,8 +831,7 @@ export class PivotNode extends ClassicPreset.Node {
   filterExclude: Record<string, string[]> = {};
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
-  // `items` marks a Cube column of lists or grids, which can only be a value field ([[D96]] pivotPoolsItems).
-  sourceColumns: { name: string; type: FrameColType; distinct: string[]; items?: true }[] = [];
+  sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
   _gen?: number;
   _ref?: FrameRef | null;
@@ -879,16 +878,12 @@ export class PivotNode extends ClassicPreset.Node {
     filter?: (boolean | null)[][];
   }) {
     const raw = inputs.frame?.[0] ?? null;
-    const src = isCubeValue(raw) ? cubePivotSource(raw) : null;
-    const f = src ? src.frame : raw as FrameInput | null;
+    const f = isCubeValue(raw) ? flatCubeToFrame(raw, "scalar") as FrameValue : raw;
     if (!f) { this.cachedResult = null; this.sourceColumns = []; return { frame: null }; }
     if (!isFrameRef(f)) {
-      const items = src?.items ?? {};
-      this.sourceColumns = f.columns.map((c) => items[c.name]
-        ? { name: c.name, type: c.type, distinct: [], items: true as const }
-        : { name: c.name, type: c.type, distinct: distinctKeys(c.values) });
+      this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));
       // A value never takes the async branch, so this result is sync.
-      return this.computePivot(f, f, inputs, items) as { frame: FrameValue | SolError | null };
+      return this.computePivot(f, f, inputs) as { frame: FrameValue | SolError | null };
     }
     const gen = beginPass(this);
     return (async () => {
@@ -913,7 +908,7 @@ export class PivotNode extends ClassicPreset.Node {
   private computePivot(f: FrameValue, source: FrameInput, inputs: {
     rowFields?: string[][]; colFields?: string[][]; values?: string[][];
     filter?: (boolean | null)[][];
-  }, items: Record<string, FrameCell[][]> = {}): { frame: FrameInput | SolError | null } | Promise<{ frame: FrameInput | SolError | null }> {
+  }): { frame: FrameInput | SolError | null } | Promise<{ frame: FrameInput | SolError | null }> {
     const valid = new Set(f.columns.map((c) => c.name));
     this.pruneFieldsTo(valid);
     const rowRaw = readColumnList(inputs.rowFields);
@@ -933,7 +928,6 @@ export class PivotNode extends ClassicPreset.Node {
       rowTotalDepth: this.rowTotalDepth, colTotalDepth: this.colTotalDepth,
       rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
       filter: this.combineFilter(f, inputs.filter?.[0]),
-      items,
     };
     this.cachedResult = runVerb(() => pivotFrame(f, spec));
     return { frame: this.cachedResult };

@@ -969,8 +969,6 @@ export interface PivotSpec {
   colSort?: number;
   relativeTo?: number;
   filter?: ReadonlyArray<boolean | null>;
-  // Per value column holding lists or grids, each source row's items ([[D96]] pivotPoolsItems).
-  items?: Readonly<Record<string, ReadonlyArray<readonly FrameCell[]>>>;
 }
 
 const tupleKey = (t: readonly FrameCell[]): string => JSON.stringify(t.map(encodeCell));
@@ -1054,13 +1052,9 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   const colFields = spec.colFields.filter((s) => s.trim() !== "");
   const valueNames = spec.values.filter((s) => s.trim() !== "");
   if (valueNames.length === 0) throw solError("#VALUE!", "PIVOTBY needs at least one value field");
-  for (const n of [...rowFields, ...colFields]) {
-    if (spec.items?.[n]) throw solError("#SHAPE!", `Column "${n}" holds a list in each row; it can only be a value field`);
-  }
   const rowCols = rowFields.map((n) => requireColumn(f, n));
   const colCols = colFields.map((n) => requireColumn(f, n));
   const valCols = valueNames.map((n) => requireColumn(f, n));
-  const valItems = valueNames.map((n) => spec.items?.[n]);
   const funcs: AggOp[] = valueNames.map((_, i) => spec.funcs[i] ?? spec.funcs[0] ?? "sum");
   const relativeTo = spec.relativeTo ?? 0;
 
@@ -1079,7 +1073,7 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   for (const i of rows) {
     const r = rowKeyIndex.get(leafKeyOf(rowCols, i)), c = colKeyIndex.get(leafKeyOf(colCols, i));
     if (r === undefined || c === undefined) continue;
-    valCols.forEach((vc, v) => { const it = valItems[v]; if (it) cells[v][r][c].push(...(it[i] ?? [])); else cells[v][r][c].push(cellAt(vc, i)); });
+    valCols.forEach((vc, v) => cells[v][r][c].push(cellAt(vc, i)));
   }
 
   const sortKey = (cellsList: FrameCell[], v: number): number | string | null => {
