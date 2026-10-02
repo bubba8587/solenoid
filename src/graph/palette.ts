@@ -624,16 +624,28 @@ const DAWN_DUSK_CHROME: PaletteChrome = {
   light: tintRamp(DEFAULT_CHROME.light, plasmaAt(PLASMA_DAWN)[2], plasmaAt(PLASMA_DUSK)[2], 0),
 };
 
-const CANVAS_STEP = { dark: 0.12, light: 0.07 };
+const CANVAS_STEP = { dark: 0.1, light: 0.05 };
+const contrastRatio = (a: string, b: string) => {
+  const [x, y] = [relLum(a), relLum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
 function deepenCanvas(ramp: ChromeRamp, mode: "dark" | "light"): ChromeRamp {
   const { canvasBg, canvasDot, surface } = ramp;
   if (!isHex(canvasBg) || !isHex(canvasDot) || !isHex(surface)) return ramp;
   const [l, c, h] = hexToOklch(canvasBg);
   const target = hexToOklch(surface)[0] - CANVAS_STEP[mode];
   if (l <= target) return ramp;
+  const dim = mode === "dark" ? target / l : 1;
+  const canvas = oklchToHex(target, c * dim, h);
   const [dl, dc, dh] = hexToOklch(canvasDot);
-  const dim = target / l;
-  return { ...ramp, canvasBg: oklchToHex(target, c * dim, h), canvasDot: oklchToHex(dl + target - l, dc * dim, dh) };
+  const want = contrastRatio(canvasDot, canvasBg);
+  const above = dl > l;
+  let near = target, far = above ? 1 : 0;
+  for (let i = 0; i < 22; i++) {
+    const mid = (near + far) / 2;
+    if (contrastRatio(oklchToHex(mid, dc * dim, dh), canvas) >= want) far = mid; else near = mid;
+  }
+  return { ...ramp, canvasBg: canvas, canvasDot: oklchToHex(far, dc * dim, dh) };
 }
 const deepened = (chrome: PaletteChrome): PaletteChrome =>
   ({ dark: deepenCanvas(chrome.dark, "dark"), light: deepenCanvas(chrome.light, "light") });

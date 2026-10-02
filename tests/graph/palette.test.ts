@@ -239,7 +239,7 @@ describe("chrome ramp structure", () => {
 
   // A tinted canvas shares its cards' hue, so lightness alone must set them apart: these sit a clear step further down than Default's.
   it.each(RAMPS.filter(([n]) => ["Solarized", "Orchard", "Blueprint", "Dawn and Dusk"].includes(n)))("%s/%s: the canvas sits well below the card", (_n, mode, r) => {
-    expect(hexToOklch(r.surface)[0] - hexToOklch(r.canvasBg)[0]).toBeGreaterThanOrEqual((mode === "dark" ? 0.12 : 0.07) - 0.005);
+    expect(hexToOklch(r.surface)[0] - hexToOklch(r.canvasBg)[0]).toBeGreaterThanOrEqual((mode === "dark" ? 0.1 : 0.05) - 0.005);
   });
 
   // [[B14]] oneDesignSystem: contrast is scoped to the two palettes that PROMISE it — Default, the
