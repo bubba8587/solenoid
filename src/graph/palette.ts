@@ -376,7 +376,7 @@ const NEON = neonPalette();
 const PLASMA_DUSK = 0.4;
 const PLASMA_DAWN = 0.92;
 const DD_LIGHTNESS: [number, number] = [0.45, 0.92];
-const DD_CHROMA = 0.9;
+const DD_CHROMA = 0.6;
 const DD_GRAY_CHROMA = 0.015;
 const plasmaAt = (t: number): [number, number, number] => {
   const [r, g, b] = colormapRgb("plasma", t)!;
