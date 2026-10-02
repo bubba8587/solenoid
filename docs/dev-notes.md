@@ -7,7 +7,7 @@ first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
 ### SESSION DIGEST (2026-10-02: the Neon palette; cloud session)
-- **Neon** joins the built-ins, derived from Default with no authored hexes: slots pushed toward full HSV saturation and value, nudged in hue toward brightness (reach scaled by how dark the hue is, capped at a third of each neighbor gap), held 4.5:1 on black and never closer to each other than Default's gold/lime (`neonPalette`); chrome polarized off Default's two ramps (`polarizeRamp`). Spec: `palette-and-theme` § The built-in palettes, § Mapping a lifted system onto the ramp. Light mode needed no hand-tuning.
+- **Neon** joins the built-ins, derived from Default with no authored hexes: slots pushed 65% of the way to full HSV saturation and value, nudged in hue toward brightness (reach scaled by how dark the hue is, capped at a third of each neighbor gap), held 4.5:1 on black and never closer to each other than Default's gold/lime (`neonPalette`); chrome polarized off Default's two ramps (`polarizeRamp`). Spec: `palette-and-theme` § The built-in palettes, § Mapping a lifted system onto the ramp. Light mode needed no hand-tuning.
 - `shot-graph.mjs` takes `--palette <name>` and `--light`.
 - The PIVOTBY list-cell work is parked on `pivot-list-cells` (reverted on `develop`); merging it back needs the revert reverted.
 

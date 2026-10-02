@@ -310,7 +310,7 @@ const BLUEPRINT: Record<PaletteSlot, string> = {
   gray:      "#9aa8bd",
 };
 
-const NEON_STEP = 0.3;
+const NEON_STEP = 0.35;
 const NEON_MIN_LUM = 0.175;
 const NEON_NUDGE = 45;
 const NEON_NUDGE_SHARE = 1 / 3;
