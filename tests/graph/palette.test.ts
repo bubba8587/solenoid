@@ -600,6 +600,22 @@ describe("contrast ink is baked, not recomputed", () => {
     }
   });
 
+  // Android Chrome picks its toolbar icons from the theme-color (the accent) by WCAG contrast against white
+  // (ColorUtils.shouldUseLightForegroundOnBackground, threshold 3); the accent's ink must agree with it.
+  it("agrees with Android Chrome's light/dark foreground rule", () => {
+    const chrome = (hex: string) => {
+      const lin = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c < 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+      return 1.05 / (0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2] + 0.05) >= 3 ? "#fff" : "#1a1a1a";
+    };
+    expect(contrastInk(BUILTIN_PALETTES.Neon.green)).toBe("#1a1a1a");
+    expect(contrastInk(PALETTE.green)).toBe("#1a1a1a");
+    expect(contrastInk(PALETTE.sky)).toBe("#1a1a1a");
+    for (const name of PALETTE_NAMES) for (const slot of COLOR_PALETTE) for (const mode of ["dark", "light"] as const) {
+      const hex = themeAccent(BUILTIN_PALETTES[name][slot], mode);
+      expect(contrastInk(hex), `${name}/${slot}/${mode}`).toBe(chrome(hex));
+    }
+  });
+
   it("is stable across calls (the cache can't drift from a fresh computation)", () => {
     for (const slot of COLOR_PALETTE) {
       const a = contrastInk(PALETTE[slot]);

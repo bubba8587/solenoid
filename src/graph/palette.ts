@@ -84,11 +84,12 @@ export function contrastInk(hex: string): string {
   return ink;
 }
 
+// Android Chrome's rule for the toolbar it tints with theme-color (ColorUtils.shouldUseLightForegroundOnBackground),
+// so the accent's ink agrees with the browser's own icons: white wherever white clears 3:1 against the fill.
+const LIGHT_INK_CONTRAST = 3;
 function computeInk(hex: string): string {
-  const t = parseHex(hex);
-  if (!t) return "#fff";
-  const lum = (0.299 * t[0] + 0.587 * t[1] + 0.114 * t[2]) / 255;
-  return lum > 0.62 ? "#1a1a1a" : "#fff";
+  if (!parseHex(hex)) return "#fff";
+  return 1.05 / (relLum(hex) + 0.05) >= LIGHT_INK_CONTRAST ? "#fff" : "#1a1a1a";
 }
 
 function bakeInks(map: Record<PaletteSlot, string>): void {
