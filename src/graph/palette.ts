@@ -375,13 +375,9 @@ const NEON = neonPalette();
 
 const PLASMA_DUSK = 0.4;
 const PLASMA_DAWN = 0.92;
-const DD_PULL = 0.5;
-const DD_CHROMA_PULL = 0.2;
-const DD_DUSK = 0.8;
-const DD_ARC_FADE = 40;
-const DD_LIGHTNESS: [number, number] = [0.55, 0.9];
+const DD_LIGHTNESS: [number, number] = [0.45, 0.92];
+const DD_CHROMA = 0.9;
 const DD_GRAY_CHROMA = 0.015;
-const DD_CHROMA = 0.85;
 const plasmaAt = (t: number): [number, number, number] => {
   const [r, g, b] = colormapRgb("plasma", t)!;
   const to = (n: number) => Math.round(n).toString(16).padStart(2, "0");
@@ -390,15 +386,29 @@ const plasmaAt = (t: number): [number, number, number] => {
 const hueGap = (a: number, b: number) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
 function dawnDuskPalette(): Record<PaletteSlot, string> {
   const arc = Array.from({ length: 256 }, (_, i) => plasmaAt(i / 255));
+  const [start, end] = [arc[0], arc[arc.length - 1]];
+  const span = (end[2] - start[2] + 360) % 360;
+  const along = (h: number) => (h - start[2] + 360) % 360;
+  const readable = (l: number) => DD_LIGHTNESS[0] + ((l - start[0]) / (end[0] - start[0])) * (DD_LIGHTNESS[1] - DD_LIGHTNESS[0]);
+  const loop = (h: number): [number, number] => {
+    if (along(h) <= span) {
+      const near = arc.reduce((best, p) => (hueGap(p[2], h) < hueGap(best[2], h) ? p : best));
+      return [near[0], near[1]];
+    }
+    const f = (along(h) - span) / (360 - span);
+    return [end[0] + (start[0] - end[0]) * f, end[1] + (start[1] - end[1]) * f];
+  };
+  const hueOf = (slot: PaletteSlot) => hexToOklch(PALETTE[slot])[2];
+  const outside = COLOR_PALETTE.filter((slot) => slot !== "gray" && along(hueOf(slot)) > span)
+    .sort((a, b) => along(hueOf(a)) - along(hueOf(b)));
   const out = {} as Record<PaletteSlot, string>;
   for (const slot of COLOR_PALETTE) {
-    const [l, c, h] = hexToOklch(PALETTE[slot]);
+    const [l, , h0] = hexToOklch(PALETTE[slot]);
     if (slot === "gray") { out[slot] = oklchToHex(l, DD_GRAY_CHROMA, plasmaAt(PLASMA_DUSK)[2]); continue; }
-    const near = arc.reduce((best, p) => (hueGap(p[2], h) < hueGap(best[2], h) ? p : best));
-    const inArc = Math.max(0, 1 - hueGap(near[2], h) / DD_ARC_FADE);
-    const lightness = l + (near[0] - l) * DD_PULL * inArc;
-    const chroma = (c + (near[1] - c) * DD_CHROMA_PULL) * inArc + c * DD_DUSK * (1 - inArc);
-    out[slot] = oklchToHex(Math.min(DD_LIGHTNESS[1], Math.max(DD_LIGHTNESS[0], lightness)), chroma * DD_CHROMA, h);
+    const i = outside.indexOf(slot);
+    const h = i < 0 ? h0 : end[2] + ((360 - span) * (i + 1)) / (outside.length + 1);
+    const [pl, pc] = loop(h);
+    out[slot] = oklchToHex(readable(pl), pc * DD_CHROMA, h);
   }
   return out;
 }
