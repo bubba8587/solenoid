@@ -91,7 +91,7 @@ function tuckTarget(caption: HTMLElement): HTMLElement | SVGElement | null {
   return null;
 }
 const R = 6; // a socket dot's radius: its center sits this far below the socket's top
-const socketColor = (sock: ClassicPreset.Socket) => (sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "#888");
+const socketColor = (sock: ClassicPreset.Socket) => (sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "var(--sock-any)");
 
 type Goo = { mode: "merge" | "split"; drops: GooDrop[]; pillTop: number; pillColor: string; pillHeight: number; hidden: (HTMLElement | SVGElement)[] };
 
@@ -119,7 +119,7 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
   // The fold is liquid: wired sockets run together into the pill, and bud back off it to their rows (SocketGoo).
   const [goo, setGoo] = useState<Goo | null>(null);
   const splitFrom = useRef<number | null>(null);
-  const firstColor = sockets ? socketColor(sockets.node.inputs[sockets.keys.find((k) => sockets.node.inputs[k]) ?? ""]?.socket as ClassicPreset.Socket) : "#888";
+  const firstColor = sockets ? socketColor(sockets.node.inputs[sockets.keys.find((k) => sockets.node.inputs[k]) ?? ""]?.socket as ClassicPreset.Socket) : "var(--sock-any)";
   const tuckHeight = sockets && sockets.keys.filter((k) => sockets.node.inputs[k]).length >= 2 ? 28 : 12;
   function toggle() {
     const content = ref.current?.closest<HTMLElement>(".solenoid-node__content");

@@ -46,7 +46,7 @@
   color: var(--accent);
 }
 .solenoid-mobile-bar__delete:active {
-  color: #e26d6d;
+  color: var(--sol-error);
 }
 
 .solenoid-mobile-bar__add {

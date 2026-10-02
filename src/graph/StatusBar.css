@@ -41,10 +41,10 @@
   background: var(--accent);
   transition: width 0.18s ease;
 }
-.solenoid-statusbar__counts--warn .solenoid-statusbar__budget-fill { background: #e0a100; }
+.solenoid-statusbar__counts--warn .solenoid-statusbar__budget-fill { background: var(--sol-warn); }
 .solenoid-statusbar__counts--warn { color: var(--text); }
-.solenoid-statusbar__counts--over .solenoid-statusbar__budget-fill { background: #e5484d; }
-.solenoid-statusbar__counts--over { color: #e5484d; font-weight: 600; }
+.solenoid-statusbar__counts--over .solenoid-statusbar__budget-fill { background: var(--sol-error); }
+.solenoid-statusbar__counts--over { color: var(--sol-error); font-weight: 600; }
 
 .solenoid-statusbar__dot {
   margin: 0 6px;
@@ -93,7 +93,7 @@ button.solenoid-statusbar__calc--dirty {
 .solenoid-statusbar__sketch {
   flex: 0 0 auto;
   margin-right: 10px;
-  color: #d9a93b;
+  color: var(--sol-warn);
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }

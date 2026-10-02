@@ -86,8 +86,8 @@
 }
 
 .solenoid-drawn-inspector__remove:hover {
-  border-color: #c25b5b;
-  color: #e08a8a;
+  border-color: color-mix(in srgb, var(--sol-error) 80%, #000);
+  color: color-mix(in srgb, var(--sol-error) 70%, #fff);
 }
 
 .solenoid-drawn-inspector__select {
@@ -199,8 +199,8 @@
 }
 
 .solenoid-drawn-inspector__pointbtn--drop:hover:not(:disabled) {
-  border-color: #c25b5b;
-  color: #e08a8a;
+  border-color: color-mix(in srgb, var(--sol-error) 80%, #000);
+  color: color-mix(in srgb, var(--sol-error) 70%, #fff);
 }
 
 .solenoid-drawn-inspector__pointbtn:disabled {

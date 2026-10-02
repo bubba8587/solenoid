@@ -6,12 +6,11 @@ import { registerChrome } from "../chromeToggle";
 import { flyToNode } from "../flyToNode";
 import "./alertLayer.css";
 import { CloseIcon } from "./CloseIcon";
+import { resolveColor } from "../palette";
+import { appThemeStore } from "../appTheme";
 
-const KIND_COLOR: Record<AlertKind, string> = {
-  info:     "#4c8bf5",
-  warning:  "#d9822b",
-  critical: "#e0524d",
-};
+const kindColor = (kind: AlertKind): string =>
+  kind === "critical" ? "var(--sol-error)" : kind === "warning" ? "var(--sol-warn)" : resolveColor("blue");
 
 // Lucide "bell" (https://lucide.dev/icons/bell) — the warning triangle marks Problems.
 const AlertSvg = ({ size = 14 }: { size?: number }) => (
@@ -22,6 +21,7 @@ const AlertSvg = ({ size = 14 }: { size?: number }) => (
 );
 
 export function AlertLayer() {
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [collapsed, setCollapsed] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -64,7 +64,7 @@ export function AlertLayer() {
     <div
       key={ev.id}
       className="solenoid-alert"
-      style={{ ["--alert-color" as string]: KIND_COLOR[ev.kind] }}
+      style={{ ["--alert-color" as string]: kindColor(ev.kind) }}
       onClick={() => flyToNode(ev.nodeId)}
       title="Go to this alert"
     >

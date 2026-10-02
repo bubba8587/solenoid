@@ -140,10 +140,11 @@ The socket colors are the system's real palette: each data type owns a hue so a 
   border-only ring).
 
 ### Status (semantic state)
-A small reserved set for failure and state feedback, kept apart from the typed socket palette so an error never reads as a data type.
-- **Danger Red** (`#e0473a`): error values (the `#CODE!` badge, the error explanation panel) and destructive-action hover. Lighter siblings `#e0524d` (alerts) / `#e06c75` (row-remove hover) are tints of the same red.
-- **Success Green** (`#2fae7a`): a true/ok state, e.g. a boolean input reading 1.
-- **Warning Amber** (`#d9a93b`): caution / out-of-range states.
+A small reserved set for failure and state feedback. Each is a token drawn from a palette slot, so a palette restyles it with everything else; code never writes the hex.
+- **Danger** (`--sol-error`, the `vermilion` slot; Default `#e0473a`): error values (the `#CODE!` badge, the error explanation panel), error text and status dots, destructive-action hover. A darker border or lighter text is a `color-mix` of the token, never a separate hex.
+- **Success** (`--sol-ok`, the `green` slot): a true/ok state, e.g. a boolean input reading 1, a KPI moving the good way, a met target.
+- **Warning** (`--sol-warn`, the `gold` slot): caution, out-of-range, stale and loading states.
+- Status-colored **text** mixes the token 70% toward `--text` so it reads on a pale card as well as a dark one.
 
 ### Named Rules
 **The Quiet Accent Rule.**

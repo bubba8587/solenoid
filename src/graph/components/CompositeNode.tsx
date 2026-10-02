@@ -482,7 +482,7 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
 
 // An SVG circle: a small CSS box reads as an oval in the flex row.
 function StatusDot({ state }: { state: "stale" | "failed" | "ok" }) {
-  const color = state === "stale" ? "#d9822b" : state === "failed" ? "var(--sol-error)" : "var(--sock-lambda)";
+  const color = state === "stale" ? "var(--sol-warn)" : state === "failed" ? "var(--sol-error)" : "var(--sock-lambda)";
   const title = state === "stale" ? "Stale" : state === "failed" ? "No solution" : "Up to date";
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0, display: "block" }}>

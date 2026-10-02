@@ -342,7 +342,7 @@
 }
 .solenoid-outline__conn:hover .solenoid-outline__conn-btn { opacity: 0.8; }
 .solenoid-outline__conn-btn:hover { background: var(--btn-hover); color: var(--accent); opacity: 1; }
-.solenoid-outline__conn-btn--del:hover { color: #e26d6d; }
+.solenoid-outline__conn-btn--del:hover { color: var(--sol-error); }
 .solenoid-outline__conn-btn svg { display: block; }
 
 @media (pointer: coarse) {

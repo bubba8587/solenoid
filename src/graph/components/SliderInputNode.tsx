@@ -110,11 +110,11 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
         .solenoid-slider-node-range::-webkit-slider-thumb {
           -webkit-appearance: none; appearance: none;
           width: 12px; height: 12px; border-radius: 50%;
-          background: #56b4e9; cursor: grab; border: none;
+          background: var(--node-accent, var(--accent)); cursor: grab; border: none;
         }
         .solenoid-slider-node-range::-moz-range-thumb {
           width: 12px; height: 12px; border-radius: 50%;
-          background: #56b4e9; cursor: grab; border: none;
+          background: var(--node-accent, var(--accent)); cursor: grab; border: none;
         }
         .solenoid-slider-node-range:active::-webkit-slider-thumb { cursor: grabbing; }
       `}</style>

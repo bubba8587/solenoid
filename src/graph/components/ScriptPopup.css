@@ -20,7 +20,7 @@
 
 .script-popup__error {
   font-size: 11px;
-  color: #e06c2e;
+  color: var(--sol-error);
 }
 
 .script-popup__note {

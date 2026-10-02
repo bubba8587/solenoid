@@ -41,21 +41,23 @@
 }
 .fx-editor__ta::placeholder { color: var(--text-muted); opacity: 1; }
 
-/* Variables take the number-socket amber, since they become input sockets; scoped to `.fx-tokens` so any surface can paint highlightFormula() output. */
-.fx-tokens .fx-fn      { color: #4aa3df; font-weight: 600; }
-.fx-tokens .fx-unknown { color: #e0707a; }
+/* Token colors are socket colors: a variable becomes a number input, a string literal is text, a constant is a logical-like name. Light mode mixes each 70% toward the ink so it reads on a pale card, as frameHint does. Scoped to `.fx-tokens` so any surface can paint highlightFormula() output. */
+.fx-tokens, .fx-editor__menu, .md-code { --fx-mix: 100%; }
+:root[data-theme="light"] :is(.fx-tokens, .fx-editor__menu, .md-code) { --fx-mix: 70%; }
+.fx-tokens .fx-fn      { color: color-mix(in srgb, var(--sock-complex) var(--fx-mix), var(--text)); font-weight: 600; }
+.fx-tokens .fx-unknown { color: var(--sol-error); }
 /* A frame verb is a real name whose type can't flow through formulas, so it wears the frame violet, distinct from the typo red. */
 .fx-tokens .fx-frame   { color: var(--sock-frame); font-weight: 600; }
-.fx-tokens .fx-var     { color: #d9a521; }
-.fx-tokens .fx-const   { color: #b48cff; }
-.fx-tokens .fx-num     { color: #4cae8f; }
-.fx-tokens .fx-str     { color: #8aab46; }
+.fx-tokens .fx-var     { color: color-mix(in srgb, var(--sock-number) var(--fx-mix), var(--text)); }
+.fx-tokens .fx-const   { color: color-mix(in srgb, var(--sock-logical) var(--fx-mix), var(--text)); }
+.fx-tokens .fx-num     { color: color-mix(in srgb, var(--sock-lambda) var(--fx-mix), var(--text)); }
+.fx-tokens .fx-str     { color: color-mix(in srgb, var(--sock-string) var(--fx-mix), var(--text)); }
 .fx-tokens .fx-op,
 .fx-tokens .fx-paren,
 .fx-tokens .fx-comma   { color: var(--text-muted); }
-.fx-tokens .fx-err     { color: #e0707a; text-decoration: underline wavy; }
+.fx-tokens .fx-err     { color: var(--sol-error); text-decoration: underline wavy; }
 /* JS-only tokens (jsSyntax.ts — the Script node's source). */
-.fx-tokens .fx-kw      { color: #b48cff; font-weight: 600; }
+.fx-tokens .fx-kw      { color: color-mix(in srgb, var(--sock-logical) var(--fx-mix), var(--text)); font-weight: 600; }
 .fx-tokens .fx-comment { color: var(--text-muted); font-style: italic; }
 
 .fx-editor__menu {
@@ -89,9 +91,9 @@
 .fx-editor__item--on { background: color-mix(in srgb, var(--node-accent, #4aa3df) 24%, transparent); }
 .fx-editor__item:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .fx-editor__kind { width: 13px; text-align: center; font-size: 11px; opacity: 0.85; }
-.fx-editor__kind--fn { color: #4aa3df; }
-.fx-editor__kind--const { color: #b48cff; }
-.fx-editor__kind--var { color: #d9a521; }
+.fx-editor__kind--fn { color: color-mix(in srgb, var(--sock-complex) var(--fx-mix, 100%), var(--text)); }
+.fx-editor__kind--const { color: color-mix(in srgb, var(--sock-logical) var(--fx-mix, 100%), var(--text)); }
+.fx-editor__kind--var { color: color-mix(in srgb, var(--sock-number) var(--fx-mix, 100%), var(--text)); }
 .fx-editor__name { letter-spacing: 0.01em; }
 .fx-editor__sig-hint {
   margin-left: 2px;

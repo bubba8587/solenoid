@@ -9,9 +9,6 @@ import { stopDragStart } from "../coarse";
 import { AutoCard, cardChipColors } from "./AutoCard";
 import "./chartCards.css";
 
-// A semantic state color, never a palette slot: a trend reads good or bad, not "teal".
-const POS = "#2fae7a";
-
 function fscaleStyle(fscale: number | undefined): React.CSSProperties | undefined {
   return fscale && fscale !== 1 ? ({ "--chart-fscale": fscale } as React.CSSProperties) : undefined;
 }
@@ -23,7 +20,7 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   const pct = delta !== null && prev !== null && prev !== 0 ? (delta / Math.abs(prev)) * 100 : null;
   const dir = delta === null ? 0 : Math.sign(delta);
   const good = (dir > 0 && goodUp) || (dir < 0 && !goodUp);
-  const color = dir === 0 ? "var(--text-dim)" : good ? POS : "var(--sol-error)";
+  const color = dir === 0 ? "var(--text-dim)" : `color-mix(in srgb, ${good ? "var(--sol-ok)" : "var(--sol-error)"} 70%, var(--text))`;
   return (
     <div className="sol-kpi" style={fscaleStyle(fscale)}>
       <div className="sol-kpi__value">
@@ -326,7 +323,7 @@ export function BulletBar({ payload, width, fscale }: { payload: ScalePayload; w
         <div className="sol-bullet__track">
           <div
             className="sol-bullet__value"
-            style={{ width: `${vFrac * 100}%`, background: met ? POS : "var(--accent)" }}
+            style={{ width: `${vFrac * 100}%`, background: met ? "var(--sol-ok)" : "var(--accent)" }}
           />
           {tFrac !== null && <div className="sol-bullet__target" style={{ left: `${tFrac * 100}%` }} />}
         </div>

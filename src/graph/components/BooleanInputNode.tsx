@@ -22,7 +22,7 @@ export function BooleanInputComponent({ data, emit }: NodeProps<BooleanInputNode
           onChange={onToggle}
           style={{ width: 14, height: 14 }}
         />
-        <span style={{ fontSize: 13, color: data.value === 1 ? "color-mix(in srgb, #2fae7a 70%, var(--text))" : "var(--text-dim)" }}>
+        <span style={{ fontSize: 13, color: data.value === 1 ? "color-mix(in srgb, var(--sol-ok) 70%, var(--text))" : "var(--text-dim)" }}>
           {data.value === 1 ? "TRUE" : "FALSE"}
         </span>
       </label>

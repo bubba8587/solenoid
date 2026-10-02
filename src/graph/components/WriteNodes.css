@@ -45,4 +45,4 @@
 }
 .sol-write__browse:hover { border-color: var(--node-accent, var(--accent)); }
 
-.sol-conn__status-text--error { color: #e0566b; }
+.sol-conn__status-text--error { color: var(--sol-error); }

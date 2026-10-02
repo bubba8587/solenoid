@@ -1,6 +1,8 @@
-/* Every error surface draws its red from --sol-error; appTheme writes it from the palette's `vermilion` slot, and this :root value is the pre-apply fallback. */
+/* The status colors come from the palette (--sol-error vermilion, --sol-ok green, --sol-warn gold); appTheme writes them, and these :root values are the pre-apply fallback. */
 :root {
   --sol-error: #e0473a;
+  --sol-ok: #00b862;
+  --sol-warn: #f5b914;
 }
 
 .sol-error-chip {

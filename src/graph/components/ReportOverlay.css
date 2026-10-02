@@ -148,15 +148,15 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
 .report-source__ta::placeholder { color: var(--text-muted); }
 .report-source__ta::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 .knap-tag { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 3px; }
-.fx-tokens .fx-kw { color: #c678dd; font-weight: 600; }
+.fx-tokens .fx-kw { color: color-mix(in srgb, var(--sock-date) var(--fx-mix), var(--text)); font-weight: 600; }
 .md-heading { color: var(--text-bright, var(--text)); font-weight: 700; }
 .md-list, .md-quote { color: var(--text-muted); }
 .md-quote { font-style: italic; }
 .md-strong { font-weight: 700; }
 .md-em { font-style: italic; }
-.md-code { color: #4cae8f; }
+.md-code { color: color-mix(in srgb, var(--sock-lambda) var(--fx-mix, 100%), var(--text)); }
 .md-fence { color: var(--text-muted); }
-.md-link { color: #4aa3df; }
+.md-link { color: var(--accent); }
 
 .report-preview {
   flex: 1 1 50%;

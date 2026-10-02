@@ -133,7 +133,7 @@
   padding: 0;
   cursor: pointer;
 }
-.solenoid-pin__remove:hover { opacity: 1; color: #e0524d; }
+.solenoid-pin__remove:hover { opacity: 1; color: var(--sol-error); }
 
 .solenoid-pin--group {
   flex-direction: column;

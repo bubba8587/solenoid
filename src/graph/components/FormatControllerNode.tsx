@@ -274,7 +274,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const outputPort = node.outputs["out"];
 
   const socketAccent = SOCKET_COLORS[node.socketDataType];
-  const accent = mismatch ? "#e06c2e" : socketAccent;
+  const accent = mismatch ? "var(--sol-error)" : socketAccent;
 
   const family = familyOf(node.socketDataType);
   const c0 = controlsFor(family, format);

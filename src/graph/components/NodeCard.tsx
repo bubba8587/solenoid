@@ -134,7 +134,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
 
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const mode = appThemeStore.getMode();
-  // An override (the FC's mismatch orange, its socket color) still needs theme adjusting; nodeAccent is already resolved.
+  // An override (the FC's mismatch red, its socket color) still needs theme adjusting; nodeAccent is already resolved.
   const accent = accentOverride
     ? themeAccent(accentOverride, mode)
     : node ? nodeAccent(node as unknown as ClassicPreset.Node, mode) : undefined;

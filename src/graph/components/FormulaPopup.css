@@ -55,7 +55,7 @@
 .formula-popup__error {
   margin-top: 8px;
   font-size: 11px;
-  color: #e06c2e;
+  color: var(--sol-error);
 }
 
 .formula-popup__edit-row {

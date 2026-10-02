@@ -92,6 +92,6 @@
 }
 
 .solenoid-standoff-toolbar__delete:hover {
-  border-color: #c25b5b;
-  color: #e08a8a;
+  border-color: color-mix(in srgb, var(--sol-error) 80%, #000);
+  color: color-mix(in srgb, var(--sol-error) 70%, #fff);
 }

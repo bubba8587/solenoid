@@ -136,9 +136,9 @@
   border-radius: 50%;
   background: var(--text-dim);
 }
-.sol-conn__dot--ok      { background: #2fae7a; }
-.sol-conn__dot--error   { background: #e0566b; }
-.sol-conn__dot--loading { background: #d9a93b; animation: sol-conn-pulse 1s ease-in-out infinite; }
+.sol-conn__dot--ok      { background: var(--sol-ok); }
+.sol-conn__dot--error   { background: var(--sol-error); }
+.sol-conn__dot--loading { background: var(--sol-warn); animation: sol-conn-pulse 1s ease-in-out infinite; }
 /* Gated (network permission not granted): a hollow, muted ring — armed but not fired,
    the disarmed-sink idle look. */
 .sol-conn__dot--gated   { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-dim); }

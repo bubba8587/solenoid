@@ -208,7 +208,7 @@
 .solenoid-doctitle__doc-row:hover .solenoid-doctitle__doc-action,
 .solenoid-doctitle__doc-action:focus-visible { opacity: 1; }
 .solenoid-doctitle__doc-action:hover { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text); }
-.solenoid-doctitle__doc-action--danger:hover { color: #e0524d; }
+.solenoid-doctitle__doc-action--danger:hover { color: var(--sol-error); }
 
 .solenoid-doctitle__action {
   display: block;

@@ -163,7 +163,7 @@
 }
 
 .solenoid-cmdpalette__aierror {
-  color: #e0473a;
+  color: var(--sol-error);
   font-size: 12px;
   line-height: 1.4;
   padding: 2px 4px;
@@ -186,15 +186,15 @@
   overflow: auto;
 }
 .solenoid-cmdpalette__aidiffline { padding: 0 8px; white-space: pre; }
-.solenoid-cmdpalette__aidiffline--add { background: color-mix(in srgb, #2fae7a 14%, transparent); }
+.solenoid-cmdpalette__aidiffline--add { background: color-mix(in srgb, var(--sol-ok) 14%, transparent); }
 .solenoid-cmdpalette__aidiffline--del {
-  background: color-mix(in srgb, #e0473a 12%, transparent);
+  background: color-mix(in srgb, var(--sol-error) 12%, transparent);
   color: var(--text-dim);
   text-decoration: line-through;
-  text-decoration-color: color-mix(in srgb, #e0473a 55%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--sol-error) 55%, transparent);
 }
 
-.solenoid-cmdpalette__aiwarnings { color: #d9a93b; font-size: 11px; line-height: 1.4; padding: 0 4px; }
+.solenoid-cmdpalette__aiwarnings { color: var(--sol-warn); font-size: 11px; line-height: 1.4; padding: 0 4px; }
 
 .solenoid-cmdpalette__aiactions { display: flex; justify-content: flex-end; gap: 6px; }
 .solenoid-cmdpalette__aibtn {

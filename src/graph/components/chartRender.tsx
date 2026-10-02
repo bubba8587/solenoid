@@ -6,7 +6,7 @@ import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, categoryAxisWidth, niceTicks, partSlices, useSeriesSpotlight, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
-import { heightRampColor } from "../palette";
+import { heightRampColor, resolveColor } from "../palette";
 import { ChartTitle, titleHeight } from "./chartTitle";
 import { iterMin, iterMax } from "../nodes/mathUtils";
 
@@ -831,8 +831,7 @@ export function GaugeArc({ pct, track, size }: { pct: number; track: string; siz
   );
 }
 
-const RISING = "#e0524d";
-const FALLING = "#4c8bf5";
+const RISING = "var(--sol-error)";
 const DIVERGED = "var(--text-dim)";
 
 export type TornadoBar = {
@@ -868,6 +867,7 @@ function TornadoTooltip({ active, payload }: { active?: boolean; payload?: { pay
 export const TORNADO_W = 218;
 
 export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: string; axis: string }) {
+  const falling = resolveColor("blue");
   return (
     <BarChart
       width={TORNADO_W}
@@ -882,7 +882,7 @@ export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: st
       <Tooltip isAnimationActive={false} content={<TornadoTooltip />} />
       <Bar dataKey="offset" stackId="tornado" fill="transparent" isAnimationActive={false} />
       <Bar dataKey="range" stackId="tornado" isAnimationActive={false}>
-        {data.map((d, i) => <Cell key={i} fill={d.diverged ? DIVERGED : d.rising ? RISING : FALLING} fillOpacity={d.diverged ? 0.4 : 1} />)}
+        {data.map((d, i) => <Cell key={i} fill={d.diverged ? DIVERGED : d.rising ? RISING : falling} fillOpacity={d.diverged ? 0.4 : 1} />)}
       </Bar>
     </BarChart>
   );

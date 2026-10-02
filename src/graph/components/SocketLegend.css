@@ -198,8 +198,8 @@ html.is-mobile .solenoid-legend { display: none; }
   margin-right: 6px;
   white-space: nowrap;
 }
-.solenoid-dimflow__badge--ok { color: #2fae7a; background: color-mix(in srgb, #2fae7a 17%, transparent); }
-.solenoid-dimflow__badge--no { color: #e0705e; background: color-mix(in srgb, #e0705e 17%, transparent); }
+.solenoid-dimflow__badge--ok { color: var(--sol-ok); background: color-mix(in srgb, var(--sol-ok) 17%, transparent); }
+.solenoid-dimflow__badge--no { color: var(--sol-error); background: color-mix(in srgb, var(--sol-error) 17%, transparent); }
 .solenoid-dimflow__note {
   margin: 2px 0 0;
   font-size: 11.5px;

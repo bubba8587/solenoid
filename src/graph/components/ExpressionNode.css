@@ -111,7 +111,7 @@
 .solenoid-expr__error {
   padding: 1px 8px 3px;
   font-size: 10px;
-  color: #e06c2e;
+  color: var(--sol-error);
 }
 
 /* Advisory, not an error: the node still computes. */
@@ -119,7 +119,7 @@
   margin: 0 8px 4px;
   font-size: 10px;
   line-height: 1.3;
-  color: #e06c2e;
+  color: var(--sol-warn);
 }
 
 .solenoid-expr__lambda-hint code {

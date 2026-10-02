@@ -123,8 +123,8 @@
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 .sol-card__flag--on {
-  color: color-mix(in srgb, #2fae7a 70%, var(--text));
-  background: color-mix(in srgb, #2fae7a 16%, transparent);
+  color: color-mix(in srgb, var(--sol-ok) 70%, var(--text));
+  background: color-mix(in srgb, var(--sol-ok) 16%, transparent);
 }
 .sol-card__stats {
   display: grid;
@@ -210,7 +210,7 @@
 }
 .sol-card__stars svg { display: block; }
 .sol-card__star-empty { fill: color-mix(in srgb, var(--text) 14%, transparent); }
-.sol-card__star-fill { fill: #d9a93b; }
+.sol-card__star-fill { fill: var(--sol-warn); }
 .sol-card__meter {
   display: block;
   height: 4px;

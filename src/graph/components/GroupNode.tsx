@@ -341,7 +341,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
                           nodeId={ip.nodeId} emit={emit} payload={sock} top={pillY(ip.index) - 6} />
             );
           }
-          const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "#888";
+          const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "var(--sock-any)";
           const pillLit = socketHighlightStore.isHighlighted(dragSocketKey(ip.nodeId, ip.socketKey));
           return (
             <Fragment key={`in${ip.nodeId}-${ip.socketKey}`}>
@@ -362,7 +362,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           const sock = getOwningEditor(t.effNodeId)?.getNode(t.effNodeId)?.outputs[t.effSocketKey]?.socket;
           if (!sock) return null;
           if ((t.lanes ?? 0) > 1) {
-            const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "#888";
+            const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "var(--sock-any)";
             const pillLit = socketHighlightStore.isHighlighted(dragSocketKey(t.effNodeId, t.effSocketKey));
             return (
               <Fragment key={`out${t.effNodeId}:${t.effSocketKey}`}>

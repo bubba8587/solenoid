@@ -41,9 +41,9 @@
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
-  background: #d9822b;
+  background: var(--sol-warn);
   /* A near-black shade of the badge's own hue, stable across themes; --accent-ink tracks the unrelated accent. */
-  color: color-mix(in srgb, #d9822b 20%, #000);
+  color: color-mix(in srgb, var(--sol-warn) 20%, #000);
   border-radius: 8px;
   font-size: 9px;
   font-weight: 700;
@@ -105,4 +105,4 @@
   padding: 0;
   cursor: pointer;
 }
-.solenoid-alert__remove:hover { opacity: 1; color: #e0524d; }
+.solenoid-alert__remove:hover { opacity: 1; color: var(--sol-error); }

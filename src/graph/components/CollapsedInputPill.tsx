@@ -35,7 +35,7 @@ export function CollapsedInputPill({
   void hlVersion;
   const lit = keys.some((k) => socketHighlightStore.isHighlighted(dragSocketKey(node.id, k)));
   const first = node.inputs[keys[0]]?.socket;
-  const pillColor = first instanceof SolenoidSocket ? SOCKET_COLORS[first.dataType] : "#888";
+  const pillColor = first instanceof SolenoidSocket ? SOCKET_COLORS[first.dataType] : "var(--sock-any)";
   return (
     <>
       {keys.map((key) => {

@@ -881,7 +881,7 @@ body.solenoid-scrubbing * {
   cursor: pointer;
 }
 .solenoid-node__row-remove:hover {
-  color: #e06c75;
+  color: var(--sol-error);
 }
 
 .solenoid-node__add-input {

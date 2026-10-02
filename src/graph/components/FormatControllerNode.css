@@ -184,7 +184,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #e06c2e;
+  background: var(--sol-error);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
