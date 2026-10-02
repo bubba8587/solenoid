@@ -376,7 +376,7 @@ const NEON = neonPalette();
 const PLASMA_DUSK = 0.4;
 const PLASMA_DAWN = 0.92;
 const DD_LIGHTNESS: [number, number] = [0.45, 0.92];
-const DD_CHROMA = 0.6;
+const DD_SATURATION = 0.65;
 const DD_GRAY_CHROMA = 0.015;
 const plasmaAt = (t: number): [number, number, number] => {
   const [r, g, b] = colormapRgb("plasma", t)!;
@@ -405,11 +405,10 @@ function dawnDuskPalette(): Record<PaletteSlot, string> {
   for (const slot of COLOR_PALETTE) {
     const [l, , h0] = hexToOklch(PALETTE[slot]);
     if (slot === "gray") { out[slot] = oklchToHex(l, DD_GRAY_CHROMA, plasmaAt(PLASMA_DUSK)[2]); continue; }
-    if (slot === "vermilion") { out[slot] = PALETTE.vermilion; continue; }
     const i = outside.indexOf(slot);
     const h = i < 0 ? h0 : end[2] + ((360 - span) * (i + 1)) / (outside.length + 1);
-    const [pl, pc] = loop(h);
-    out[slot] = oklchToHex(readable(pl), pc * DD_CHROMA, h);
+    const lightness = slot === "vermilion" ? l : readable(loop(h)[0]);
+    out[slot] = oklchToHex(lightness, maxChroma(lightness, h) * DD_SATURATION, h);
   }
   return out;
 }
@@ -724,6 +723,16 @@ function oklchToLinear(L: number, C: number, h: number): [number, number, number
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
   ];
+}
+
+/** The most OKLCh chroma sRGB can show at this lightness and hue. */
+function maxChroma(L: number, h: number): number {
+  let lo = 0, hi = 0.4;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (oklchToLinear(L, mid, h).every((c) => c >= -1e-4 && c <= 1 + 1e-4)) lo = mid; else hi = mid;
+  }
+  return lo;
 }
 
 function oklchToHex(L: number, C: number, h: number): string {
