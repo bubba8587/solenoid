@@ -376,12 +376,12 @@ const NEON = neonPalette();
 const PLASMA_DUSK = 0.4;
 const PLASMA_DAWN = 0.92;
 const DD_PULL = 0.5;
-const DD_CHROMA_PULL = 0.35;
+const DD_CHROMA_PULL = 0.2;
 const DD_DUSK = 0.8;
 const DD_ARC_FADE = 40;
 const DD_LIGHTNESS: [number, number] = [0.55, 0.9];
-const DD_GRAY_CHROMA = 0.02;
-const DD_CHROMA = 0.95;
+const DD_GRAY_CHROMA = 0.015;
+const DD_CHROMA = 0.85;
 const plasmaAt = (t: number): [number, number, number] => {
   const [r, g, b] = colormapRgb("plasma", t)!;
   const to = (n: number) => Math.round(n).toString(16).padStart(2, "0");
@@ -624,17 +624,31 @@ const DAWN_DUSK_CHROME: PaletteChrome = {
   light: tintRamp(DEFAULT_CHROME.light, plasmaAt(PLASMA_DAWN)[2], plasmaAt(PLASMA_DUSK)[2], 0),
 };
 
+const CANVAS_STEP = { dark: 0.12, light: 0.07 };
+function deepenCanvas(ramp: ChromeRamp, mode: "dark" | "light"): ChromeRamp {
+  const { canvasBg, canvasDot, surface } = ramp;
+  if (!isHex(canvasBg) || !isHex(canvasDot) || !isHex(surface)) return ramp;
+  const [l, c, h] = hexToOklch(canvasBg);
+  const target = hexToOklch(surface)[0] - CANVAS_STEP[mode];
+  if (l <= target) return ramp;
+  const [dl, dc, dh] = hexToOklch(canvasDot);
+  const dim = target / l;
+  return { ...ramp, canvasBg: oklchToHex(target, c * dim, h), canvasDot: oklchToHex(dl + target - l, dc * dim, dh) };
+}
+const deepened = (chrome: PaletteChrome): PaletteChrome =>
+  ({ dark: deepenCanvas(chrome.dark, "dark"), light: deepenCanvas(chrome.light, "light") });
+
 const NO_CHROME: PaletteChrome = { dark: {}, light: {} };
 export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
   "Default": NO_CHROME,
   "Muted": MUTED_CHROME,
   "Colorblind-safe": CVD_CHROME,
-  "Solarized": SOLARIZED_CHROME,
+  "Solarized": deepened(SOLARIZED_CHROME),
   "Equinox": EQUINOX_CHROME,
-  "Orchard": ORCHARD_CHROME,
-  "Blueprint": BLUEPRINT_CHROME,
+  "Orchard": deepened(ORCHARD_CHROME),
+  "Blueprint": deepened(BLUEPRINT_CHROME),
   "Neon": NEON_CHROME,
-  "Dawn and Dusk": DAWN_DUSK_CHROME,
+  "Dawn and Dusk": deepened(DAWN_DUSK_CHROME),
 };
 
 // ── Accent-adaptive chrome ──────────────────────────────────────────────────────

@@ -87,20 +87,21 @@ describe("Dawn and Dusk", () => {
   const dist = (a: string, b: string) => Math.hypot(...ok(a).map((x, i) => x - ok(b)[i]));
   const dd = BUILTIN_PALETTES["Dawn and Dusk"];
 
-  it("keeps socket colors apart and never crowds a pair much past Default", () => {
+  // Looser than Neon's guard on purpose: the author traded some separation for a softer palette.
+  it("keeps socket colors 90% of the socket floor apart, and no pair under 80% of its old limit", () => {
     const sockets = [...new Set(SOCKET_VARS.map((s) => s.slot))];
     const floor = Math.min(...sockets.flatMap((a) => sockets.filter((b) => b !== a).map((b) => dist(PALETTE[a], PALETTE[b]))));
     for (const a of COLOR_PALETTE) for (const b of COLOR_PALETTE) {
       if (a >= b) continue;
-      if (sockets.includes(a) && sockets.includes(b)) expect(dist(dd[a], dd[b]), `${a}/${b}`).toBeGreaterThanOrEqual(floor - 1e-9);
-      expect(dist(dd[a], dd[b]), `${a}/${b}`).toBeGreaterThanOrEqual(Math.min(0.85 * dist(PALETTE[a], PALETTE[b]), floor));
+      if (sockets.includes(a) && sockets.includes(b)) expect(dist(dd[a], dd[b]), `${a}/${b}`).toBeGreaterThanOrEqual(0.9 * floor);
+      expect(dist(dd[a], dd[b]), `${a}/${b}`).toBeGreaterThanOrEqual(0.8 * Math.min(dist(PALETTE[a], PALETTE[b]), floor));
     }
   });
 
   it("keeps Default's lightness steps on every chrome key, dusk's grounds and borders lifted as one", () => {
     const inks = new Set(["text", "textBright", "textDim", "textMuted"]);
     for (const mode of ["dark", "light"] as const) {
-      for (const key of CHROME_KEYS) {
+      for (const key of CHROME_KEYS.filter((k) => k !== "canvasBg" && k !== "canvasDot")) {
         const L = hexToOklch(BUILTIN_CHROME["Dawn and Dusk"][mode][key]!)[0];
         const lift = mode === "dark" && !inks.has(key) ? 0.06 : 0;
         expect(Math.abs(L - hexToOklch(DEFAULT_CHROME[mode][key])[0] - lift), `${mode} ${key}`).toBeLessThan(0.01);
@@ -234,6 +235,11 @@ describe("chrome ramp structure", () => {
     expect(c("textBright")).toBeGreaterThan(c("text"));
     expect(c("text")).toBeGreaterThan(c("textDim"));
     expect(c("textDim")).toBeGreaterThan(c("textMuted"));
+  });
+
+  // A tinted canvas shares its cards' hue, so lightness alone must set them apart: these sit a clear step further down than Default's.
+  it.each(RAMPS.filter(([n]) => ["Solarized", "Orchard", "Blueprint", "Dawn and Dusk"].includes(n)))("%s/%s: the canvas sits well below the card", (_n, mode, r) => {
+    expect(hexToOklch(r.surface)[0] - hexToOklch(r.canvasBg)[0]).toBeGreaterThanOrEqual((mode === "dark" ? 0.12 : 0.07) - 0.005);
   });
 
   // [[B14]] oneDesignSystem: contrast is scoped to the two palettes that PROMISE it — Default, the
