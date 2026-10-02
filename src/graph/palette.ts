@@ -269,9 +269,8 @@ const SOLARIZED: Record<PaletteSlot, string> = {
   pink:      SOL.magenta,
 };
 
-const EQUINOX_GRAY = "#8a8f98";
 const EQUINOX: Record<PaletteSlot, string> = Object.fromEntries(
-  COLOR_PALETTE.map((slot) => [slot, EQUINOX_GRAY]),
+  COLOR_PALETTE.map((slot) => [slot, oklchToHex(hexToOklch(PALETTE[slot])[0], 0, 0)]),
 ) as Record<PaletteSlot, string>;
 
 const PEAR = {

@@ -27,8 +27,8 @@ describe("built-in palettes", () => {
 
   // Author's rule (2026-06-21): slots may share a color ONLY where colourblindness
   // forces it (Colorblind-safe maps 12 slots onto a smaller proven CVD set) or where
-  // a palette is DELIBERATELY monochrome (Equinox — all one gray, type read by socket
-  // shape). Every other built-in must give all 12 slots visibly distinct hexes.
+  // a palette is DELIBERATELY monochrome (Equinox — Default's lightness as grays, type read
+  // by socket shape). Every other built-in must give all 12 slots visibly distinct hexes.
   const SHARED_COLOUR_OK = new Set(["Colorblind-safe", "Equinox"]);
   it("non-Colorblind palettes have 12 distinct colors", () => {
     for (const name of PALETTE_NAMES) {
