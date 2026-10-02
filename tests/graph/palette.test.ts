@@ -97,11 +97,13 @@ describe("Dawn and Dusk", () => {
     }
   });
 
-  it("keeps Default's lightness on every chrome key, so the structure carries over", () => {
+  it("keeps Default's lightness steps on every chrome key, dusk's grounds and borders lifted as one", () => {
+    const inks = new Set(["text", "textBright", "textDim", "textMuted"]);
     for (const mode of ["dark", "light"] as const) {
       for (const key of CHROME_KEYS) {
         const L = hexToOklch(BUILTIN_CHROME["Dawn and Dusk"][mode][key]!)[0];
-        expect(Math.abs(L - hexToOklch(DEFAULT_CHROME[mode][key])[0]), `${mode} ${key}`).toBeLessThan(0.01);
+        const lift = mode === "dark" && !inks.has(key) ? 0.06 : 0;
+        expect(Math.abs(L - hexToOklch(DEFAULT_CHROME[mode][key])[0] - lift), `${mode} ${key}`).toBeLessThan(0.01);
       }
     }
   });

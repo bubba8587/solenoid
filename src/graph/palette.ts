@@ -376,10 +376,12 @@ const NEON = neonPalette();
 const PLASMA_DUSK = 0.4;
 const PLASMA_DAWN = 0.92;
 const DD_PULL = 0.5;
-const DD_DUSK = 0.7;
+const DD_CHROMA_PULL = 0.35;
+const DD_DUSK = 0.8;
 const DD_ARC_FADE = 40;
 const DD_LIGHTNESS: [number, number] = [0.55, 0.9];
-const DD_GRAY_CHROMA = 0.03;
+const DD_GRAY_CHROMA = 0.02;
+const DD_CHROMA = 0.95;
 const plasmaAt = (t: number): [number, number, number] => {
   const [r, g, b] = colormapRgb("plasma", t)!;
   const to = (n: number) => Math.round(n).toString(16).padStart(2, "0");
@@ -395,8 +397,8 @@ function dawnDuskPalette(): Record<PaletteSlot, string> {
     const near = arc.reduce((best, p) => (hueGap(p[2], h) < hueGap(best[2], h) ? p : best));
     const inArc = Math.max(0, 1 - hueGap(near[2], h) / DD_ARC_FADE);
     const lightness = l + (near[0] - l) * DD_PULL * inArc;
-    const chroma = (c + (near[1] - c) * DD_PULL) * inArc + c * DD_DUSK * (1 - inArc);
-    out[slot] = oklchToHex(Math.min(DD_LIGHTNESS[1], Math.max(DD_LIGHTNESS[0], lightness)), chroma, h);
+    const chroma = (c + (near[1] - c) * DD_CHROMA_PULL) * inArc + c * DD_DUSK * (1 - inArc);
+    out[slot] = oklchToHex(Math.min(DD_LIGHTNESS[1], Math.max(DD_LIGHTNESS[0], lightness)), chroma * DD_CHROMA, h);
   }
   return out;
 }
@@ -605,19 +607,21 @@ const EQUINOX_CHROME: PaletteChrome = {
   light: polarizeRamp(EQUINOX_BASE_CHROME.light, "#ffffff", "#000000", EQUINOX_POLARIZE),
 };
 
-const DD_GROUND_CHROMA = 0.05;
-const DD_INK_CHROMA = 0.03;
-function tintRamp(ramp: Record<ChromeKey, string>, groundHue: number, inkHue: number): Record<ChromeKey, string> {
+const DD_GROUND_CHROMA = 0.04;
+const DD_INK_CHROMA = 0.025;
+const DD_DUSK_LIFT = 0.06;
+function tintRamp(ramp: Record<ChromeKey, string>, groundHue: number, inkHue: number, lift: number): Record<ChromeKey, string> {
   const out = { ...ramp };
   for (const k of CHROME_KEYS) {
     const ink = INK_KEYS.includes(k);
-    out[k] = oklchToHex(hexToOklch(ramp[k])[0], ink ? DD_INK_CHROMA : DD_GROUND_CHROMA, ink ? inkHue : groundHue);
+    const L = hexToOklch(ramp[k])[0] + (ink ? 0 : lift);
+    out[k] = oklchToHex(L, ink ? DD_INK_CHROMA : DD_GROUND_CHROMA, ink ? inkHue : groundHue);
   }
   return out;
 }
 const DAWN_DUSK_CHROME: PaletteChrome = {
-  dark: tintRamp(DEFAULT_CHROME.dark, plasmaAt(PLASMA_DUSK)[2], plasmaAt(PLASMA_DAWN)[2]),
-  light: tintRamp(DEFAULT_CHROME.light, plasmaAt(PLASMA_DAWN)[2], plasmaAt(PLASMA_DUSK)[2]),
+  dark: tintRamp(DEFAULT_CHROME.dark, plasmaAt(PLASMA_DUSK)[2], plasmaAt(PLASMA_DAWN)[2], DD_DUSK_LIFT),
+  light: tintRamp(DEFAULT_CHROME.light, plasmaAt(PLASMA_DAWN)[2], plasmaAt(PLASMA_DUSK)[2], 0),
 };
 
 const NO_CHROME: PaletteChrome = { dark: {}, light: {} };
