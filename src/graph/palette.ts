@@ -405,6 +405,7 @@ function dawnDuskPalette(): Record<PaletteSlot, string> {
   for (const slot of COLOR_PALETTE) {
     const [l, , h0] = hexToOklch(PALETTE[slot]);
     if (slot === "gray") { out[slot] = oklchToHex(l, DD_GRAY_CHROMA, plasmaAt(PLASMA_DUSK)[2]); continue; }
+    if (slot === "vermilion") { out[slot] = PALETTE.vermilion; continue; }
     const i = outside.indexOf(slot);
     const h = i < 0 ? h0 : end[2] + ((360 - span) * (i + 1)) / (outside.length + 1);
     const [pl, pc] = loop(h);
