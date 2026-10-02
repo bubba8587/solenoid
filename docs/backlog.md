@@ -173,6 +173,18 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   `--canvas-dot` a step closer to the ground, or a slightly larger, softer dot, keyed on
   `html[data-webview="webkitgtk"]` as the zoom fixes are (`tree/specs/canvas/layout-chrome.md` § Desktop window frame). DESIGN.md
   § 2 holds the structure: dots legible without shouting.
+- [ ] **Group member tints refresh by hand** (`groupMembership.ts`): the member-dot store caches resolved hexes and is
+  rebuilt only by explicit `rebuildGroupMembership()` calls on each palette-switch path (Settings, Palette Editor,
+  Document Properties, persistence). A new switch path that forgets the call leaves stale tints; subscribe it to
+  `paletteStore` instead.
+- [ ] **Palette stragglers left for a call** (2026-10-02 sweep): the lasso colors (`FlowSurface.tsx`,
+  `htmlCanvasRenderer.ts`), `CableFlourish.tsx`'s fixed Okabe-Ito list, the conduit stripe (`conduit.css`, Default
+  vermilion but not an error), the slate `--node-accent` on Image, File Link and SVG Picker, and the
+  `FlowCableEdge` ribbon gray. Each is a hard-coded hue that ignores the palette.
+- [ ] **PIVOTBY over Cube list and grid cells** is parked on branch `pivot-list-cells` (D96 pivotPoolsItems lives
+  there): the author is choosing how a group reads lists (pool items vs average of row results) and grids
+  (pool every cell, lists only, or each grid column as a field).
+
 - [ ] **Palette on wide-gamut displays** (author 2026-09-21 noticed the Linux desktop reads more saturated than
   the dev server; cause in `archive/dev-notes-history.md`, digest 2026-09-21b). The hexes are sRGB, so a color-managed engine (Chromium, WebView2
   with a display profile) shows them accurately and an unmanaged one (WebKitGTK) stretches them to the panel.
