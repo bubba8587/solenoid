@@ -310,25 +310,62 @@ const BLUEPRINT: Record<PaletteSlot, string> = {
   gray:      "#9aa8bd",
 };
 
-const NEON_STEP = 0.25;
+const NEON_STEP = 0.1;
 const NEON_MIN_LUM = 0.175;
-function neonOf(hex: string): string {
-  const t = parseHex(hex);
-  if (!t) return hex;
-  const [h, s, v] = rgbToHsv(...t);
-  const value = 1 - (1 - v) * NEON_STEP;
-  const pushed = 1 - (1 - s) * NEON_STEP;
-  if (relLum(hsvToHex(h, pushed, value)) >= NEON_MIN_LUM) return hsvToHex(h, pushed, value);
-  let lo = 0, hi = pushed;
+const NEON_NUDGE = 45;
+const NEON_NUDGE_SHARE = 1 / 3;
+const NEON_NUDGE_SAMPLES = 80;
+const NEON_PASSES = 3;
+const PEAK_LUM = relLum("#ffff00");
+
+function okDistance(a: string, b: string): number {
+  const [l1, c1, h1] = hexToOklch(a), [l2, c2, h2] = hexToOklch(b);
+  const r1 = (h1 * Math.PI) / 180, r2 = (h2 * Math.PI) / 180;
+  return Math.hypot(l1 - l2, c1 * Math.cos(r1) - c2 * Math.cos(r2), c1 * Math.sin(r1) - c2 * Math.sin(r2));
+}
+
+function neonAt(hue: number, sat: number, value: number): string {
+  if (relLum(hsvToHex(hue, sat, value)) >= NEON_MIN_LUM) return hsvToHex(hue, sat, value);
+  let lo = 0, hi = sat;
   for (let i = 0; i < 20; i++) {
     const mid = (lo + hi) / 2;
-    if (relLum(hsvToHex(h, mid, value)) >= NEON_MIN_LUM) lo = mid; else hi = mid;
+    if (relLum(hsvToHex(hue, mid, value)) >= NEON_MIN_LUM) lo = mid; else hi = mid;
   }
-  return hsvToHex(h, lo, value);
+  return hsvToHex(hue, lo, value);
 }
-const NEON: Record<PaletteSlot, string> = Object.fromEntries(
-  COLOR_PALETTE.map((slot) => [slot, slot === "gray" ? PALETTE.gray : neonOf(PALETTE[slot])]),
-) as Record<PaletteSlot, string>;
+
+function neonPalette(): Record<PaletteSlot, string> {
+  const hsv = (slot: PaletteSlot) => rgbToHsv(...parseHex(PALETTE[slot])!);
+  const socketSlots = [...new Set(SOCKET_VARS.map((s) => s.slot))];
+  let floor = Infinity;
+  for (const a of socketSlots) for (const b of socketSlots) if (a < b) floor = Math.min(floor, okDistance(PALETTE[a], PALETTE[b]));
+  const ring = COLOR_PALETTE.filter((slot) => slot !== "gray").sort((a, b) => hsv(a)[0] - hsv(b)[0]);
+  const plan = ring.map((slot, i) => {
+    const [h, s, v] = hsv(slot);
+    const up = ((hsv(ring[(i + 1) % ring.length])[0] - h + 360) % 360) * NEON_NUDGE_SHARE;
+    const down = ((h - hsv(ring[(i - 1 + ring.length) % ring.length])[0] + 360) % 360) * NEON_NUDGE_SHARE;
+    const reach = NEON_NUDGE * (1 - relLum(hsvToHex(h, 1, 1)) / PEAK_LUM);
+    return { slot, h, sat: 1 - (1 - s) * NEON_STEP, value: 1 - (1 - v) * NEON_STEP, from: -Math.min(reach, down), to: Math.min(reach, up), reach };
+  }).sort((a, b) => b.reach - a.reach);
+  const out = { gray: PALETTE.gray } as Record<PaletteSlot, string>;
+  for (const p of plan) out[p.slot] = neonAt(p.h, p.sat, p.value);
+  for (let pass = 0; pass < NEON_PASSES; pass++) {
+    for (const p of plan) {
+      const others = COLOR_PALETTE.filter((o) => o !== p.slot).map((o) => out[o]);
+      const spacing = (hex: string) => Math.min(...others.map((o) => okDistance(hex, o)));
+      let best: string | null = null, bestLum = -1, roomiest = out[p.slot], roomiestSpacing = -1;
+      for (let i = 0; i <= NEON_NUDGE_SAMPLES; i++) {
+        const cand = neonAt(p.h + p.from + ((p.to - p.from) * i) / NEON_NUDGE_SAMPLES, p.sat, p.value);
+        const room = spacing(cand);
+        if (room >= floor && relLum(cand) > bestLum) { best = cand; bestLum = relLum(cand); }
+        if (room > roomiestSpacing) { roomiest = cand; roomiestSpacing = room; }
+      }
+      out[p.slot] = best ?? roomiest;
+    }
+  }
+  return out;
+}
+const NEON = neonPalette();
 
 export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> = {
   "Default": { ...PALETTE },

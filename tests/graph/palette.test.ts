@@ -1,6 +1,6 @@
 // [[B14]]
 import { describe, it, expect, afterEach } from "vitest";
-import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, resolveAccent, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
+import { SOCKET_VARS, BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, resolveAccent, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
 
 // WCAG luminance/contrast, shared by the structure checks below and the
 // accent-adaptive suite (which re-runs them on rotated ramps).
@@ -40,12 +40,41 @@ describe("built-in palettes", () => {
 });
 
 describe("Neon", () => {
-  it("is Default turned up: same hues, every slot but gray readable on black", () => {
-    for (const slot of COLOR_PALETTE) {
-      const hex = BUILTIN_PALETTES.Neon[slot];
-      if (slot === "gray") { expect(hex).toBe(PALETTE.gray); continue; }
-      expect(Math.abs(hexToOklch(hex)[2] - hexToOklch(PALETTE[slot])[2]), slot).toBeLessThan(12);
-      expect(ratio(hex, "#000000"), slot).toBeGreaterThanOrEqual(4.5);
+  const hue = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+    const h = d === 0 ? 0 : max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return h * 60;
+  };
+  const ring = COLOR_PALETTE.filter((s) => s !== "gray").sort((a, b) => hue(PALETTE[a]) - hue(PALETTE[b]));
+  const gap = (a: string, b: string) => (hue(b) - hue(a) + 360) % 360;
+
+  it("keeps Default's gray and makes every other slot readable on black", () => {
+    expect(BUILTIN_PALETTES.Neon.gray).toBe(PALETTE.gray);
+    for (const slot of ring) expect(ratio(BUILTIN_PALETTES.Neon[slot], "#000000"), slot).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("nudges hues without reordering them, each pair keeping a third of its Default gap", () => {
+    let around = 0;
+    ring.forEach((slot, i) => {
+      const next = ring[(i + 1) % ring.length];
+      const after = gap(BUILTIN_PALETTES.Neon[slot], BUILTIN_PALETTES.Neon[next]);
+      expect(after, `${slot} to ${next}`).toBeGreaterThanOrEqual(gap(PALETTE[slot], PALETTE[next]) / 3 - 0.5);
+      around += after;
+    });
+    expect(around).toBeCloseTo(360, 3);
+  });
+
+  it("puts no two slots closer than Default's closest pair of socket colors", () => {
+    const ok = (hex: string) => {
+      const [l, c, h] = hexToOklch(hex);
+      return [l, c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
+    };
+    const dist = (a: string, b: string) => Math.hypot(...ok(a).map((x, i) => x - ok(b)[i]));
+    const sockets = [...new Set(SOCKET_VARS.map((s) => s.slot))];
+    const floor = Math.min(...sockets.flatMap((a) => sockets.filter((b) => b !== a).map((b) => dist(PALETTE[a], PALETTE[b]))));
+    for (const a of COLOR_PALETTE) for (const b of COLOR_PALETTE) {
+      if (a < b) expect(dist(BUILTIN_PALETTES.Neon[a], BUILTIN_PALETTES.Neon[b]), `${a}/${b}`).toBeGreaterThanOrEqual(floor - 1e-9);
     }
   });
 });
