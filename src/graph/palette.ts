@@ -375,40 +375,24 @@ const NEON = neonPalette();
 
 const PLASMA_DUSK = 0.4;
 const PLASMA_DAWN = 0.92;
-const DD_LIGHTNESS: [number, number] = [0.45, 0.92];
 const DD_SATURATION = 0.65;
-const DD_GRAY_CHROMA = 0.015;
+const DD_TINT = 0.1;
+const DD_GRAY_TINT = 0.03;
 const plasmaAt = (t: number): [number, number, number] => {
   const [r, g, b] = colormapRgb("plasma", t)!;
   const to = (n: number) => Math.round(n).toString(16).padStart(2, "0");
   return hexToOklch(`#${to(r)}${to(g)}${to(b)}`);
 };
-const hueGap = (a: number, b: number) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
 function dawnDuskPalette(): Record<PaletteSlot, string> {
-  const arc = Array.from({ length: 256 }, (_, i) => plasmaAt(i / 255));
-  const [start, end] = [arc[0], arc[arc.length - 1]];
-  const span = (end[2] - start[2] + 360) % 360;
-  const along = (h: number) => (h - start[2] + 360) % 360;
-  const readable = (l: number) => DD_LIGHTNESS[0] + ((l - start[0]) / (end[0] - start[0])) * (DD_LIGHTNESS[1] - DD_LIGHTNESS[0]);
-  const loop = (h: number): [number, number] => {
-    if (along(h) <= span) {
-      const near = arc.reduce((best, p) => (hueGap(p[2], h) < hueGap(best[2], h) ? p : best));
-      return [near[0], near[1]];
-    }
-    const f = (along(h) - span) / (360 - span);
-    return [end[0] + (start[0] - end[0]) * f, end[1] + (start[1] - end[1]) * f];
-  };
-  const hueOf = (slot: PaletteSlot) => hexToOklch(PALETTE[slot])[2];
-  const outside = COLOR_PALETTE.filter((slot) => slot !== "gray" && along(hueOf(slot)) > span)
-    .sort((a, b) => along(hueOf(a)) - along(hueOf(b)));
+  const ab = ([, c, h]: [number, number, number]) => [c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
+  const [ka, kb] = ab(plasmaAt(PLASMA_DUSK));
   const out = {} as Record<PaletteSlot, string>;
   for (const slot of COLOR_PALETTE) {
-    const [l, , h0] = hexToOklch(PALETTE[slot]);
-    if (slot === "gray") { out[slot] = oklchToHex(l, DD_GRAY_CHROMA, plasmaAt(PLASMA_DUSK)[2]); continue; }
-    const i = outside.indexOf(slot);
-    const h = i < 0 ? h0 : end[2] + ((360 - span) * (i + 1)) / (outside.length + 1);
-    const lightness = slot === "vermilion" ? l : readable(loop(h)[0]);
-    out[slot] = oklchToHex(lightness, maxChroma(lightness, h) * DD_SATURATION, h);
+    const lch = hexToOklch(PALETTE[slot]);
+    const [a, b] = ab(lch).map((x) => x * DD_SATURATION);
+    const t = slot === "gray" ? DD_GRAY_TINT : DD_TINT;
+    const [ta, tb] = [a + (ka - a) * t, b + (kb - b) * t];
+    out[slot] = oklchToHex(lch[0], Math.hypot(ta, tb), (Math.atan2(tb, ta) * 180) / Math.PI);
   }
   return out;
 }
@@ -723,16 +707,6 @@ function oklchToLinear(L: number, C: number, h: number): [number, number, number
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
   ];
-}
-
-/** The most OKLCh chroma sRGB can show at this lightness and hue. */
-function maxChroma(L: number, h: number): number {
-  let lo = 0, hi = 0.4;
-  for (let i = 0; i < 24; i++) {
-    const mid = (lo + hi) / 2;
-    if (oklchToLinear(L, mid, h).every((c) => c >= -1e-4 && c <= 1 + 1e-4)) lo = mid; else hi = mid;
-  }
-  return lo;
 }
 
 function oklchToHex(L: number, C: number, h: number): string {
