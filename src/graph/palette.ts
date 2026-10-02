@@ -214,7 +214,7 @@ export function socketVarHex(expr: string, mode: "dark" | "light"): string {
 }
 
 // ── Built-in palettes ────────────────────────────────────────────────────────
-export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox" | "Orchard" | "Blueprint";
+export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox" | "Orchard" | "Blueprint" | "Neon";
 
 const MUTED: Record<PaletteSlot, string> = {
   gray:      "#8a8f98",
@@ -310,6 +310,26 @@ const BLUEPRINT: Record<PaletteSlot, string> = {
   gray:      "#9aa8bd",
 };
 
+const NEON_STEP = 0.25;
+const NEON_MIN_LUM = 0.175;
+function neonOf(hex: string): string {
+  const t = parseHex(hex);
+  if (!t) return hex;
+  const [h, s, v] = rgbToHsv(...t);
+  const value = 1 - (1 - v) * NEON_STEP;
+  const pushed = 1 - (1 - s) * NEON_STEP;
+  if (relLum(hsvToHex(h, pushed, value)) >= NEON_MIN_LUM) return hsvToHex(h, pushed, value);
+  let lo = 0, hi = pushed;
+  for (let i = 0; i < 20; i++) {
+    const mid = (lo + hi) / 2;
+    if (relLum(hsvToHex(h, mid, value)) >= NEON_MIN_LUM) lo = mid; else hi = mid;
+  }
+  return hsvToHex(h, lo, value);
+}
+const NEON: Record<PaletteSlot, string> = Object.fromEntries(
+  COLOR_PALETTE.map((slot) => [slot, slot === "gray" ? PALETTE.gray : neonOf(PALETTE[slot])]),
+) as Record<PaletteSlot, string>;
+
 export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> = {
   "Default": { ...PALETTE },
   "Muted": MUTED,
@@ -318,6 +338,7 @@ export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> 
   "Equinox": EQUINOX,
   "Orchard": ORCHARD,
   "Blueprint": BLUEPRINT,
+  "Neon": NEON,
 };
 
 export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
@@ -490,6 +511,21 @@ const BLUEPRINT_CHROME: PaletteChrome = {
   },
 };
 
+const GROUND_KEYS: ChromeKey[] = ["appBg", "canvasBg", "surface", "surfaceSunken", "surfaceRaised"];
+const BORDER_KEYS: ChromeKey[] = ["border", "borderStrong", "borderSubtle"];
+const INK_KEYS: ChromeKey[] = ["text", "textBright", "textDim", "textMuted"];
+function polarizeRamp(ramp: Record<ChromeKey, string>, ground: string, ink: string): Record<ChromeKey, string> {
+  const out = { ...ramp };
+  for (const k of GROUND_KEYS) out[k] = mixHex(ramp[k], ground, 0.5);
+  for (const k of BORDER_KEYS) out[k] = mixHex(ramp[k], ink, 0.25);
+  for (const k of INK_KEYS) out[k] = mixHex(ramp[k], ink, 0.5);
+  return out;
+}
+const NEON_CHROME: PaletteChrome = {
+  dark: polarizeRamp(DEFAULT_CHROME.dark, "#000000", "#ffffff"),
+  light: polarizeRamp(DEFAULT_CHROME.light, "#ffffff", "#000000"),
+};
+
 const NO_CHROME: PaletteChrome = { dark: {}, light: {} };
 export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
   "Default": NO_CHROME,
@@ -499,6 +535,7 @@ export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
   "Equinox": EQUINOX_CHROME,
   "Orchard": ORCHARD_CHROME,
   "Blueprint": BLUEPRINT_CHROME,
+  "Neon": NEON_CHROME,
 };
 
 // ── Accent-adaptive chrome ──────────────────────────────────────────────────────

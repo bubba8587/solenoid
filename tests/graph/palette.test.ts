@@ -39,6 +39,17 @@ describe("built-in palettes", () => {
   });
 });
 
+describe("Neon", () => {
+  it("is Default turned up: same hues, every slot but gray readable on black", () => {
+    for (const slot of COLOR_PALETTE) {
+      const hex = BUILTIN_PALETTES.Neon[slot];
+      if (slot === "gray") { expect(hex).toBe(PALETTE.gray); continue; }
+      expect(Math.abs(hexToOklch(hex)[2] - hexToOklch(PALETTE[slot])[2]), slot).toBeLessThan(12);
+      expect(ratio(hex, "#000000"), slot).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
 // The chrome ramp a palette may author (App.css's neutral tokens). Parallel to the
 // slot map: never resolved through resolveColor, written straight by appTheme.
 describe("chrome ramp", () => {

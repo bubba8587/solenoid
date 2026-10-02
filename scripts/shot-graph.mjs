@@ -33,11 +33,13 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
   else if (a === "--wait") opt.wait = Number(argv[++i]);
+  else if (a === "--palette") opt.palette = argv[++i];
+  else if (a === "--light") opt.light = true;
   else if (a === "--full") opt.full = true;
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key]… [--wait ms] [--full]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key]… [--wait ms] [--palette name] [--light] [--full]"); process.exit(2); }
 
 const inferType = (cells) => {
   const filled = cells.filter((c) => c !== "" && c != null);
@@ -91,13 +93,15 @@ try {
   page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
   page.on("console", (m) => { if (m.type() === "error") console.log(`[console.error] ${m.text()}`); });
   const doc = { id: "shot", name: graph.label ?? "Shot", graph, updatedAt: Date.now() };
-  await page.evaluateOnNewDocument((doc) => {
+  await page.evaluateOnNewDocument((doc, palette, light) => {
     if (sessionStorage.getItem("shot-seeded")) return;
     sessionStorage.setItem("shot-seeded", "1");
     localStorage.clear();
     localStorage.setItem("solenoid.docs.index.a", JSON.stringify({ seq: 1, currentId: doc.id, docs: [{ id: doc.id, name: doc.name, updatedAt: doc.updatedAt }] }));
     localStorage.setItem(`solenoid.docs.doc.${doc.id}.a`, JSON.stringify({ seq: 2, doc }));
-  }, doc);
+    if (palette) localStorage.setItem("solenoid.palette", palette);
+    if (light) localStorage.setItem("solenoid.theme", JSON.stringify({ accent: "gold", mode: "light" }));
+  }, doc, opt.palette ?? null, !!opt.light);
   await page.goto("http://localhost:1420", { waitUntil: "networkidle2", timeout: 90_000 });
   await page.waitForSelector(".solenoid-node", { timeout: 30_000 });
   await page.click(".solenoid-nav__btn--fit").catch(() => {});

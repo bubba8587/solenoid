@@ -74,7 +74,7 @@ A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`)
 
 ## The built-in palettes
 
-`BUILTIN_PALETTES` holds seven palettes, and `PALETTE_NAMES` lists them in this order:
+`BUILTIN_PALETTES` holds eight palettes, and `PALETTE_NAMES` lists them in this order:
 
 - **Default**: `PALETTE` itself.
 - **Muted**: the Default hues at about 0.62 of their saturation, with lightness nudged toward the middle.
@@ -83,6 +83,7 @@ A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`)
 - **Equinox**: every slot the same gray, `#8a8f98`, so type is told apart by socket shape alone. This neutralizes the error red too, by design.
 - **Orchard**: lifted from the Pear design system, a warm cream ground under orchard hues. Pear ships no cool hue, so teal, sky, blue, violet and purple are blended into its gaps at Pear's own saturation and value band (saturation about 0.40 to 0.56, value about 0.62 to 0.71), the same technique Solarized uses.
 - **Blueprint**: a cyanotype drafting table. The slots are chalky mid-value pencil colors that hold up on deep blue and on the light whiteprint; `blue` and `sky` stay clearly separated from the ground by value.
+- **Neon**: derived from Default, never authored (`neonOf`). Each slot but gray keeps its Default hue and takes HSV saturation and value three quarters of the way to full (`1 − (1 − x) × 0.25`). A slot that would then fall under 4.5:1 on black (relative luminance 0.175, `NEON_MIN_LUM`) bisects its saturation back down, value held, until it clears; violet and blue are the two that do, since a saturated blue-violet is dark. Gray stays Default's gray.
 
 ## The neutral chrome ramp
 
@@ -123,6 +124,7 @@ App.css holds the fallback values of the theme tokens. `appThemeStore` overwrite
 - **Colorblind-safe** is fully achromatic and a step crisper than Default.
 - **Equinox** is Default's contrast with Default's blue cast removed, fully achromatic.
 - **Blueprint** is prussian blue in dark mode and cool whiteprint paper in light mode, cool end to end.
+- **Neon** is derived from Default's two ramps, not authored (`polarizeRamp`): the five ground keys mix halfway to the mode's ground pole (black in dark mode, white in light), the four inks halfway to the opposite pole, and the three borders a quarter of the way to it, all with `mixHex`. The dot keeps Default's value. Mixing every key of a tier by the same step keeps each tier's order, so the structure Default passes carries over.
 
 ### Derived chrome tokens
 

@@ -5,7 +5,7 @@ description: Load a small example graph into the live Solenoid app and screensho
 
 # Screenshot a graph
 
-`node scripts/shot-graph.mjs <graph.json> [--out file.png] [steps…] [--wait ms] [--full]`
+`node scripts/shot-graph.mjs <graph.json> [--out file.png] [steps…] [--wait ms] [--palette name] [--light] [--full]`
 
 It starts the dev server if it is down (`scripts/dev-up.mjs`), opens the graph as the only document
 of a fresh browser profile, fits the view, prints each node's visible text (one line per node,
@@ -25,6 +25,7 @@ title first) and saves a PNG cropped to the nodes. One run takes about 6 seconds
   `--press <key>` presses Enter, Escape, Tab and so on. `--full` keeps the whole viewport.
 - **Editing a card's formula:** `--click .solenoid-expr__rendered --type .fx-editor__ta '<formula>' --press Escape`
   (the popup commits on close). An Fx column: `--popup --type .table-popup__exprinput '<formula>' --press Enter`.
+- **`--palette <name>`** opens under a built-in palette (`Neon`, `Orchard`…) and **`--light`** in light mode.
 - Read the printed text before the PNG: it often answers the question without an image.
 - Save a graph worth reusing into `scripts/shot-graphs/`; keep scratch graphs and PNGs in the
   scratchpad.

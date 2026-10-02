@@ -6,6 +6,11 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-02: the Neon palette; cloud session)
+- **Neon** joins the built-ins, derived from Default with no authored hexes: slots pushed toward full HSV saturation and value with a 4.5:1-on-black floor (`neonOf`), chrome polarized off Default's two ramps (`polarizeRamp`). Spec: `palette-and-theme` § The built-in palettes, § Mapping a lifted system onto the ramp. Light mode needed no hand-tuning.
+- `shot-graph.mjs` takes `--palette <name>` and `--light`.
+- The PIVOTBY list-cell work is parked on `pivot-list-cells` (reverted on `develop`); merging it back needs the revert reverted.
+
 ### SESSION DIGEST (2026-10-01b: mechanical backlog sweep; cloud session)
 - Seven 09-29 commit-walk leads landed (author: "anything mechanical you're confident in"): the Distribution card's form and op switches (right cable pruned, kept params relabeled, the Sample form's hidden Draws field back), CHISQ/F/GAMMA at x = 0 and below as Excel answers (the three stray formula paths now run `DIST_SPECS`), SUMIFS and Get Column drop a stale async read, AI Apply refuses when the document moved under its diff, dead VARP/STDEVP rows, the value-semantics `autoLiterals` list.
 - Second batch ("keep going"): Write Tasks refuses while TaskNotes shows the demo (and the fetch key carries the demo state), section folds record undo, SEARCH reads Excel's wildcards (one kernel with the criteria functions, card and formula), XNPV refuses an earlier date on card and formula, GROUPBY totals keep a min/max of dates a date, Add Column's Add as keeps a cable the new type accepts (`retypeInputCables`; the three Frame-card socket swaps moved into their classes), binomial sampling walks the CDF once (100k draws over 1000 trials: ~7 s to ~45 ms, same draws), Convert shares `numberFormatOptions`.
