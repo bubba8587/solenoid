@@ -6,6 +6,10 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-02: PIVOTBY over Cube lists and grids; cloud session)
+- **New D96 pivotPoolsItems:** a Cube column of lists or grids is a PIVOTBY value field, and each group pools its rows' items, so a one-row group matches `AVERAGE(@homework)`; such a column is never a row, column or filter field, and a nested table stays out. Mechanics in `frame-verbs` § pivot (`cubePivotSource`, the `items` spec field).
+- The cube formulas seed gains `period` and `kind` columns and three pivots: average scores by period (pooled lists, charted), letters by period (counts with totals), holdings by kind (value share, gain, loss to harvest).
+
 ### SESSION DIGEST (2026-10-01b: mechanical backlog sweep; cloud session)
 - Seven 09-29 commit-walk leads landed (author: "anything mechanical you're confident in"): the Distribution card's form and op switches (right cable pruned, kept params relabeled, the Sample form's hidden Draws field back), CHISQ/F/GAMMA at x = 0 and below as Excel answers (the three stray formula paths now run `DIST_SPECS`), SUMIFS and Get Column drop a stale async read, AI Apply refuses when the document moved under its diff, dead VARP/STDEVP rows, the value-semantics `autoLiterals` list.
 - Second batch ("keep going"): Write Tasks refuses while TaskNotes shows the demo (and the fetch key carries the demo state), section folds record undo, SEARCH reads Excel's wildcards (one kernel with the criteria functions, card and formula), XNPV refuses an earlier date on card and formula, GROUPBY totals keep a min/max of dates a date, Add Column's Add as keeps a cable the new type accepts (`retypeInputCables`; the three Frame-card socket swaps moved into their classes), binomial sampling walks the CDF once (100k draws over 1000 trials: ~7 s to ~45 ms, same draws), Convert shares `numberFormatOptions`.

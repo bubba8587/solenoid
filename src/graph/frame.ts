@@ -583,6 +583,32 @@ export function flatCubeToFrame(c: CubeValue, only?: readonly string[] | "scalar
   };
 }
 
+const flatItems = (v: readonly CubeCell[]): unknown[] => v.flatMap((x) => (Array.isArray(x) ? flatItems(x) : [x]));
+
+// [[D96]] pivotPoolsItems
+export function cubePivotSource(c: CubeValue): { frame: FrameValue; items: Record<string, FrameCell[][]> } {
+  const rows = cubeRowCount(c);
+  const scalar = flatCubeToFrame(c, "scalar") as FrameValue;
+  const items: Record<string, FrameCell[][]> = {};
+  const columns: FrameColumn[] = [];
+  for (const col of c.columns) {
+    const flat = scalar.columns.find((fc) => fc.name === col.name);
+    if (flat) { columns.push(flat); continue; }
+    if (col.cells.some((v) => isCubeValue(v) || isFrameValue(v))) continue;
+    const perRow = Array.from({ length: rows }, (_, i) => {
+      const v = col.cells[i] ?? null;
+      return v === null ? [] : Array.isArray(v) ? flatItems(v) : [v];
+    });
+    const pooled = perRow.flat();
+    const { mags, unit } = pooled.some(isUnitCell) ? matrixCellsFromList(pooled) : { mags: pooled, unit: undefined };
+    const typed = typedColumn(col.name, unit ? mags : pooled.map((v) => (isUnitCell(v) ? v.value : v)), pooled.length, col.type ?? null);
+    let at = 0;
+    items[col.name] = perRow.map((r) => typed.values.slice(at, (at += r.length)));
+    columns.push({ name: col.name, type: typed.type, ...(unit && typed.type === "number" ? { unit } : {}), values: Array(rows).fill(null) });
+  }
+  return { frame: { __frame: true, columns }, items };
+}
+
 export function toCube(v: unknown): CubeValue {
   if (isCubeValue(v)) return v;
   if (isFrameValue(v)) return frameToCube(v);

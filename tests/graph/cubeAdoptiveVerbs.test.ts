@@ -126,11 +126,11 @@ describe("a vault-shaped cube (list columns beside scalar ones) reaches the aggr
     { name: "tags", cells: [["a"], [], ["b"]] },
   ]);
 
-  it("PIVOTBY offers the scalar columns as fields and pivots on them", async () => {
+  it("PIVOTBY offers every column as a field and pivots on the scalar ones", async () => {
     const { PivotNode } = await import("../../src/graph/rete-nodes");
     const p = new PivotNode();
     const out = await p.data({ frame: [vault], rowFields: [["status"]], colFields: [[]], values: [["hours"]] });
-    expect(p.sourceColumns.map((c) => c.name)).toEqual(["status", "hours"]);
+    expect(p.sourceColumns.map((c) => c.name)).toEqual(["status", "hours", "tags"]);
     expect(isFrameValue(out.frame) && out.frame.columns[1].values.slice(0, 2)).toEqual([6, 3]);
   });
 

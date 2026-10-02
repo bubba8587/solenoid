@@ -88,6 +88,9 @@ export function PivotEditorPopup() {
   const node = state.node;
   const fields = node.sourceColumns ?? [];
   const typeOf = (name: string) => fields.find((f) => f.name === name)?.type ?? "number";
+  // [[D96]] pivotPoolsItems: a column of lists or grids is a value field only.
+  const isItems = (name: string) => fields.some((f) => f.name === name && f.items);
+  const fieldTitle = (name: string) => `${name} · ${typeOf(name)}${isItems(name) ? " list" : ""}`;
 
   function commit(next: Cfg) {
     writeToNode(node, next);
@@ -116,7 +119,7 @@ export function PivotEditorPopup() {
     commit({ ...cfg, funcs: { ...cfg.funcs, [field]: op } });
   }
   function addFilter(field: string) {
-    if (!field || field in cfg.exclude) return;
+    if (!field || field in cfg.exclude || isItems(field)) return;
     commit({ ...cfg, exclude: { ...cfg.exclude, [field]: [] } });
     setOpenFilter(field);
   }
@@ -147,6 +150,7 @@ export function PivotEditorPopup() {
     setDropZone(null);
     if (!payload) return;
     const { from, field } = payload;
+    if (toZone !== "vals" && isItems(field)) return;
     const next: Cfg = { ...cfg, rows: [...cfg.rows], cols: [...cfg.cols], vals: [...cfg.vals], funcs: { ...cfg.funcs } };
     if (from !== "fields") {
       const src = zoneArr(next, from);
@@ -176,7 +180,7 @@ export function PivotEditorPopup() {
       onDragStart={() => { drag.current = { from: zone, field }; }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop(zone, zoneArr(cfg, zone).indexOf(field)); }}
-      title={`${field} · ${typeOf(field)}`}
+      title={fieldTitle(field)}
     >
       <span className="pivot-chip__glyph">{TYPE_GLYPH(typeOf(field))}</span>
       <span className="pivot-chip__name">{field}</span>
@@ -185,7 +189,7 @@ export function PivotEditorPopup() {
   );
 
   const addPicker = (z: Zone) => {
-    const avail = fields.filter((f) => !zoneArr(cfg, z).includes(f.name));
+    const avail = fields.filter((f) => !zoneArr(cfg, z).includes(f.name) && (z === "vals" || !f.items));
     return (
       <select
         className="pivot-zone__add"
@@ -205,7 +209,7 @@ export function PivotEditorPopup() {
       onDragStart={() => { drag.current = { from: "vals", field }; }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop("vals", cfg.vals.indexOf(field)); }}
-      title={`${field} · ${typeOf(field)}`}>
+      title={fieldTitle(field)}>
       <span className="pivot-chip__name">{field}</span>
       <select className="pivot-chip__func" value={cfg.funcs[field] ?? node.agg} onChange={(e) => setFunc(field, e.target.value as AggOp)} onPointerDown={(e) => e.stopPropagation()}>
         {FUNC_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -236,7 +240,7 @@ export function PivotEditorPopup() {
 
   // Unchecked values compile to the engine's exclude mask.
   const filterFields = Object.keys(cfg.exclude);
-  const filterAvail = fields.filter((f) => !(f.name in cfg.exclude));
+  const filterAvail = fields.filter((f) => !(f.name in cfg.exclude) && !f.items);
   const renderFilters = () => (
     <div
       className={`pivot-zone pivot-zone--filters${dropZone === "filters" ? " pivot-zone--over" : ""}`}
@@ -300,7 +304,7 @@ export function PivotEditorPopup() {
           <div className="pivot-fields__list">
             {fields.map((f) => (
               <span key={f.name} className={`pivot-chip pivot-chip--${f.type}${usedSet.has(f.name) ? " pivot-chip--used" : ""}`} draggable
-                onDragStart={() => { drag.current = { from: "fields", field: f.name }; }} title={`${f.name} · ${f.type}`}>
+                onDragStart={() => { drag.current = { from: "fields", field: f.name }; }} title={fieldTitle(f.name)}>
                 <span className="pivot-chip__glyph">{TYPE_GLYPH(f.type)}</span>
                 <span className="pivot-chip__name">{f.name}</span>
               </span>
