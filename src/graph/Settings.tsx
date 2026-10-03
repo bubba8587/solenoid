@@ -9,6 +9,7 @@ import { IS_MOBILE } from "./coarse";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
+import { appThemeStore } from "./appTheme";
 import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 import { getEditor } from "./process";
@@ -169,6 +170,7 @@ function TextRow({ field }: { field: SettingField }) {
 // A palette change must rebuild group membership: the member-dot store caches resolved hexes.
 function PaletteSection() {
   useSyncExternalStore(paletteStore.subscribe, paletteStore.version);
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const active = paletteStore.activeBase();
   function pick(name: PaletteChoice) {
     paletteStore.setActiveBase(name);
@@ -204,7 +206,7 @@ function PaletteSection() {
               Edit custom…
             </button>
           </div>
-          <SwatchGrid readOnly />
+          <SwatchGrid value={appThemeStore.getAccent()} onPick={(c) => appThemeStore.setAccent(c)} />
         </div>
       </div>
     </div>

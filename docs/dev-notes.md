@@ -6,6 +6,9 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-03: settings accent picker; cloud session)
+- **Settings ▸ Appearance's swatches pick the accent**: the same `SwatchGrid` on `appThemeStore` as the toolbar's paintbrush, so the two stay in step. The read-only legend mode is gone.
+
 ### SESSION DIGEST (2026-10-02: palettes, status colors and ink; cloud session)
 - **New palettes, all derived from Default, none authored** ([[B14]] oneDesignSystem; `palette-and-theme` § The built-in palettes): **Neon** (HSV push to 65% of full, a brightness-seeking hue nudge capped at a third of each neighbor gap, 4.5:1 on black, never closer than Default's gold/lime; chrome polarized off Default's ramps) and **Dawn and Dusk** (Default's slots at 65% chroma, tinted 10% toward plasma's dusk burgundy; chrome takes plasma's two ends, ground from one and ink from the other). Plasma is Dawn and Dusk's inspiration only; the author ruled harmony with the grounds over separation (gold/lime closest at about 68% of the socket floor).
 - **Equinox** keeps Default's OKLab lightness as grays, stretched onto 0.42 to 0.9, and its chrome is polarized at 0.3 (`polarizeRamp` takes a strength).

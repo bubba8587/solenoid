@@ -9,28 +9,22 @@ export function SwatchGrid({
   onPick,
   colors = COLOR_PALETTE,
   className = "",
-  readOnly = false,
 }: {
   value?: string;
   onPick?: (slot: string) => void;
   colors?: readonly string[];
   className?: string;
-  readOnly?: boolean;
 }) {
   const neutralSelected = value === "gray" || isNeutralShade(value ?? "");
   return (
-    <div className={`solenoid-swatchgrid${readOnly ? " solenoid-swatchgrid--readonly" : ""}${className ? ` ${className}` : ""}`}>
+    <div className={`solenoid-swatchgrid${className ? ` ${className}` : ""}`}>
       {colors.map((slot) => {
         const isGray = slot === "gray";
         const disc = isGray
-          ? <NeutralSwatch on={!readOnly && neutralSelected} />
+          ? <NeutralSwatch on={neutralSelected} />
           : <Swatch color={resolveColor(slot)} on={slot === value} />;
         const title = isGray ? "Neutral: cycles white / gray / dark." : slot;
-        return readOnly ? (
-          <span key={slot} className="solenoid-swatchgrid__opt" title={title}>
-            {disc}
-          </span>
-        ) : (
+        return (
           <button
             key={slot}
             type="button"

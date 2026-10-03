@@ -26,5 +26,3 @@
 }
 .solenoid-swatchgrid__opt:hover { transform: scale(1.12); }
 
-.solenoid-swatchgrid--readonly .solenoid-swatchgrid__opt { cursor: default; }
-.solenoid-swatchgrid--readonly .solenoid-swatchgrid__opt:hover { transform: none; }
