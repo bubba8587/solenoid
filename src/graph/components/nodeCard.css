@@ -675,6 +675,10 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 .solenoid-node__io-label {
   flex: 0 0 auto;
 }
+/* A field that fills the rest of the row sits a little further off its label than the row's gap. */
+.solenoid-node__io-label + :is(.solenoid-node__quoted--inline, .solenoid-node__inline-input, .solenoid-node__select, .solenoid-node__value-input) {
+  margin-left: 4px;
+}
 
 .solenoid-node__io-row--hero {
   display: block;
