@@ -5,7 +5,7 @@ import license from "rollup-plugin-license";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
-import { SITE_ORIGIN, SITE_PAGES, pageHtml, robotsTxt, sitemapXml, type SitePage } from "./src/graph/landing/siteMeta";
+import { SITE_ORIGIN, SITE_PAGES, pageHtml, robotsTxt, sitemapXml, withPrerender, type SitePage } from "./src/graph/landing/siteMeta";
 const host = process.env.TAURI_DEV_HOST;
 
 /** Dev-only endpoint for the in-app copy-edit freeze (`src/devCopyEdit.ts`): maps an
@@ -232,7 +232,10 @@ function sitePageHtml(): Plugin {
       const index = await readFile(path.join(outDir, "index.html"), "utf8");
       for (const name of Object.keys(SITE_PAGES) as SitePage[]) {
         const page = SITE_PAGES[name];
-        await writeFile(path.join(outDir, `${name}.html`), pageHtml(index, page));
+        // The page's text, snapshotted by scripts/prerender-site.mjs, so crawlers read it without JavaScript.
+        const snapshot = await readFile(path.resolve(`prerender/${name}.html`), "utf8").catch(() => null);
+        const html = pageHtml(index, page);
+        await writeFile(path.join(outDir, `${name}.html`), snapshot ? withPrerender(html, snapshot) : html);
       }
       await writeFile(path.join(outDir, "robots.txt"), robotsTxt());
       await writeFile(path.join(outDir, "sitemap.xml"), sitemapXml());

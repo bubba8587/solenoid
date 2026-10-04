@@ -41,6 +41,14 @@ export const SITE_PAGES: Record<SitePage, SitePageMeta> = {
 
 const escapeAttr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
+/** The page's plain-text snapshot (`prerender/<page>.html`) inside #root, for crawlers that don't run JavaScript;
+ *  React replaces it on mount. */
+export function withPrerender(html: string, snapshot: string): string {
+  const root = '<div id="root"></div>';
+  if (!html.includes(root)) throw new Error("index.html has no empty #root");
+  return html.replace(root, `<div id="root"><style>#root > main a { color: var(--accent, #f5b914); }</style><main style="max-width:720px;margin:0 auto;padding:32px 20px;line-height:1.5">\n${snapshot.trim()}\n</main></div>`);
+}
+
 export function pageHtml(indexHtml: string, page: SitePageMeta): string {
   const desc = escapeAttr(page.description);
   const title = escapeAttr(page.title);
