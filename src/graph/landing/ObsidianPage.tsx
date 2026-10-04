@@ -3,7 +3,7 @@ import { useEffect, useMemo } from "react";
 import { Reveal, useRevealAnim, NoteImportScene, VaultTableScene, TaskNotesScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
 import { LiveGraph } from "./LandingGraph";
 import { ReportOverlay } from "../components/ReportOverlay";
-import { SiteHeader, SiteFooter, Feature, DownloadLink, PLUGIN_URL } from "./siteNav";
+import { SiteHeader, SiteFooter, Feature, DownloadLink, PLUGIN_URL, HOME_HREF } from "./siteNav";
 import { PropertiesDemo } from "./PropertiesDemo";
 import { TablePopup } from "../components/TablePopup";
 import { CubePopup } from "../components/CubePopup";
@@ -121,7 +121,7 @@ export default function ObsidianPage() {
                     Get the plugin
                   </a>
                   <DownloadLink />
-                  <a className="sol-landing__cta" href="/?landing">
+                  <a className="sol-landing__cta" href={HOME_HREF}>
                     What is Solenoid?
                   </a>
                 </div>

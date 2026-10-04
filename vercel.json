@@ -5,6 +5,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/about",
+      "destination": "/about.html"
+    },
+    {
+      "source": "/about/",
+      "destination": "/about.html"
+    },
+    {
       "source": "/obsidian",
       "destination": "/obsidian.html"
     },

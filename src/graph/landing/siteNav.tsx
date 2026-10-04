@@ -5,6 +5,7 @@ import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
 import { Reveal } from "./LandingScenes";
+import { SITE_PAGES } from "./siteMeta";
 
 export const GITHUB_URL = "https://github.com/bubba8587/solenoid";
 
@@ -27,8 +28,8 @@ export function DownloadLink({ primary }: { primary?: boolean }) {
 
 export const PLUGIN_URL = "https://community.obsidian.md/plugins/solenoid-properties";
 
-// The home page is served under ?landing, since the root is the app itself.
-export const HOME_HREF = "/?landing";
+// The site's home page is /about, since the root is the app itself.
+export const HOME_HREF = SITE_PAGES.about.path;
 
 // The wordmark covers Home, so it stays out of this list.
 export const SITE_NAV: { href: string; label: string }[] = [

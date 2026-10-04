@@ -1,6 +1,6 @@
 // [[B3]] sameNodeEverywhere, [[B2]] webTryDesktopFull, [[B14]] oneDesignSystem (DESIGN.md § Voice)
 import { useEffect } from "react";
-import { GITHUB_URL, SiteHeader, SiteFooter, DownloadLink } from "./siteNav";
+import { GITHUB_URL, SiteHeader, SiteFooter, DownloadLink, HOME_HREF } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
@@ -97,7 +97,7 @@ export default function DownloadPage() {
               <p>MIT licensed. No accounts, no cloud, no telemetry.</p>
               <div className="sol-landing__actions">
                 <a className="sol-landing__cta sol-landing__cta--primary" href="/">Open Solenoid</a>
-                <a className="sol-landing__cta" href="/?landing">What is Solenoid?</a>
+                <a className="sol-landing__cta" href={HOME_HREF}>What is Solenoid?</a>
               </div>
             </Reveal>
           </section>

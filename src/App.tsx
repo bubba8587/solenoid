@@ -41,11 +41,11 @@ import "./mobile.css";
 const SHOWCASE_TYPE = new URLSearchParams(window.location.search).get("showcase");
 const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 
-const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
 const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
 
 // Every path rewrites to index.html on Vercel, so the site's pathname routes are read here.
 const SITE_PATH = window.location.pathname.replace(/\/+$/, "");
+const IS_LANDING = SITE_PATH === "/about";
 const IS_OBSIDIAN = SITE_PATH === "/obsidian";
 const ObsidianPage = lazy(() => import("./graph/landing/ObsidianPage"));
 const IS_DOWNLOAD = SITE_PATH === "/download";

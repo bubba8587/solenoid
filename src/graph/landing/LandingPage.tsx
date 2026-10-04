@@ -1,4 +1,5 @@
 // [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem (DESIGN.md § Voice)
+import { useEffect } from "react";
 import { LandingGraph } from "./LandingGraph";
 import { SocketLegendRows } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";
@@ -16,11 +17,15 @@ import {
   PresenterScene,
   FnWall,
 } from "./LandingScenes";
+import { SITE_PAGES } from "./siteMeta";
 import "./LandingPage.css";
 
 
 export default function LandingPage() {
   const anim = useRevealAnim();
+  useEffect(() => {
+    document.title = SITE_PAGES.about.title;
+  }, []);
 
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>

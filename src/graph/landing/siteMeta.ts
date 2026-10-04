@@ -7,9 +7,15 @@ export interface SitePageMeta {
   description: string;
 }
 
-export type SitePage = "obsidian" | "download" | "examples" | "packs";
+export type SitePage = "about" | "obsidian" | "download" | "examples" | "packs";
 
 export const SITE_PAGES: Record<SitePage, SitePageMeta> = {
+  about: {
+    path: "/about",
+    title: "Solenoid · Your workbooks, now in node-graph form",
+    description:
+      "Build your spreadsheets piece by piece. Each step is a card on a canvas, wired to the next, so a complex calculation stays easy to follow.",
+  },
   obsidian: {
     path: "/obsidian",
     title: "Solenoid · The computation layer for your vault",
@@ -54,9 +60,9 @@ export function pageHtml(indexHtml: string, page: SitePageMeta): string {
   return out;
 }
 
-/** Every crawlable URL: the app at `/`, the landing page, then each site page. */
+/** Every crawlable URL: the app at `/`, then each site page. */
 export function sitemapXml(): string {
-  const urls = [`${SITE_ORIGIN}/`, `${SITE_ORIGIN}/?landing`, ...Object.values(SITE_PAGES).map((p) => `${SITE_ORIGIN}${p.path}`)];
+  const urls = [`${SITE_ORIGIN}/`, ...Object.values(SITE_PAGES).map((p) => `${SITE_ORIGIN}${p.path}`)];
   const body = urls.map((u) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc></url>`).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`;
 }
