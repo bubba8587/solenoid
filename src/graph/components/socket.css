@@ -73,7 +73,7 @@
   }
 }
 
-/* An unselected node's descendants are inert on mobile, so pointers pass to the canvas; gated on html.is-mobile, not coarseness, so it flips with Canvas's IS_MOBILE drag guard. */
+/* An unselected node's descendants are inert on mobile, so pointers pass to the canvas; gated on html.is-mobile, not coarseness, so it flips with `stopDragStart`'s isMobile() guard. */
 html.is-mobile {
   .solenoid-node:not(.solenoid-node--selected) *,
   .solenoid-conduit:not(.solenoid-conduit--selected) *,

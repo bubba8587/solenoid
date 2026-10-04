@@ -37,7 +37,7 @@ import { LoadOverlay } from "../components/LoadOverlay";
 import { ComputeOverlay } from "../components/ComputeOverlay";
 import { IsolatePill } from "../components/IsolatePill";
 import { settingsStore } from "../settingsStore";
-import { IS_MOBILE } from "../coarse";
+import { useIsMobile } from "../useDeviceMode";
 
 type Stack = {
   editor: NodeEditor<Schemes>;
@@ -236,7 +236,8 @@ function FlowCanvasInner() {
     settingsStore.subscribe,
     () => settingsStore.get("commandPaletteAlwaysOn"),
   );
-  const paletteAlwaysOn = Boolean(paletteAlwaysOnSetting) && !IS_MOBILE;
+  const mobile = useIsMobile();
+  const paletteAlwaysOn = Boolean(paletteAlwaysOnSetting) && !mobile;
 
   // App chrome renders beside the surface, because the main wrapper is visibility:hidden under a drill-in.
   return (

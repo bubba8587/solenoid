@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { SOCKET_COLORS } from "../sockets";
 import { contrastInk } from "../palette";
 import { CubeGlyphFaces } from "./cubeGlyph";
-import { IS_MOBILE } from "../coarse";
+import { isMobile } from "../coarse";
 import { registerChrome } from "../chromeToggle";
 import "./SocketLegend.css";
 
@@ -243,7 +243,7 @@ function readPersistedCollapsed(): boolean | null {
 }
 
 export function SocketLegend() {
-  const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed() ?? IS_MOBILE);
+  const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed() ?? isMobile());
   useEffect(() => {
     try { localStorage.setItem(LEGEND_LS_KEY, collapsed ? "1" : "0"); }
     catch { /* private mode / quota — non-fatal */ }

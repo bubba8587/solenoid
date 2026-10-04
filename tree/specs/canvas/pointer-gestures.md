@@ -105,7 +105,7 @@ There is no palm rejection ([[C93]]). A pen is handled only as what it is, a pre
 
 ## Tablets
 
-`IS_MOBILE` is false on a tablet (iPadOS sends a desktop user agent by default; see `coarse.ts`), so a tablet runs the desktop chrome. Because the gesture model keys on pointer type, touch on a tablet behaves exactly as on a phone: tap then drag on unselected cards, and two fingers zoom over any pixel.
+`isMobile()` is false on a tablet (iPadOS sends a desktop user agent by default; see `coarse.ts`), so a tablet runs the desktop chrome. Because the gesture model keys on pointer type, touch on a tablet behaves exactly as on a phone: tap then drag on unselected cards, and two fingers zoom over any pixel.
 
 ## Both canvases wire the gestures once
 

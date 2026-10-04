@@ -24,7 +24,7 @@ import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
 import { rebuildGroupMembership } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
-import { IS_MOBILE } from "../coarse";
+import { isMobile } from "../coarse";
 import "../components/compositeEditor.css";
 
 const isBoundaryMarker = (n: object) => n instanceof CompositeInputNode || n instanceof CompositeOutputNode;
@@ -32,7 +32,7 @@ const isBoundaryMarker = (n: object) => n instanceof CompositeInputNode || n ins
 function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   const s = useMemo(() => getDrillStack(comp), [comp]);
   const [ready, setReady] = useState(false);
-  const [controlsOpen, setControlsOpen] = useState(!IS_MOBILE);
+  const [controlsOpen, setControlsOpen] = useState(!isMobile());
   const wrapperRef = useRef<HTMLDivElement>(null);
   useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
   useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.version);

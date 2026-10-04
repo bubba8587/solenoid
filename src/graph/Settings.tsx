@@ -5,7 +5,7 @@ import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { apiKeyStore } from "./apiKeyStore";
 import { AI_PROVIDER, AI_ENABLED } from "./aiKey";
-import { IS_MOBILE } from "./coarse";
+import { isMobile } from "./coarse";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
@@ -21,7 +21,7 @@ import "./Settings.css";
 
 
 const MOBILE_NA = "Not available in mobile mode.";
-const naOnThisDevice = (field: SettingField): boolean => IS_MOBILE && !!field.disabledOnMobile;
+const naOnThisDevice = (field: SettingField): boolean => isMobile() && !!field.disabledOnMobile;
 
 function Switch({ on, onClick, label, disabled }: { on: boolean; onClick: () => void; label: string; disabled?: boolean }) {
   return (

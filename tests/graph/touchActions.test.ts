@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 // ─── The two touch bars must not drift ───────────────────────────────────────
 // A phone gets the bottom action bar; a tablet gets the same actions in the TOP
 // bar, because a tablet runs the desktop chrome and has no bottom bar at all
-// (IS_MOBILE is false there — iPadOS ships a desktop UA on purpose). The author's
+// (isMobile() is false there — iPadOS ships a desktop UA on purpose). The author's
 // standing instruction when this was queued: reuse the mobile bar's controls
 // exactly — same handlers, same icons, same disabled logic, new location.
 //
@@ -54,8 +54,8 @@ describe("the mobile bar and the tablet top-bar actions share one source", () =>
 
   it("a device is never both mobile and tablet, and never neither", () => {
     const coarse = read("./coarse.ts");
-    // Derived, not sniffed: IS_TABLET is exactly "coarse but not mobile".
-    expect(coarse).toContain("export const IS_TABLET = IS_COARSE && !IS_MOBILE;");
+    // Derived, not sniffed: a tablet is exactly "coarse but not mobile".
+    expect(coarse).toContain("return IS_COARSE && !_mobile;");
   });
 });
 

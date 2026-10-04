@@ -1,6 +1,6 @@
 // [[C88]] collapsedGroupCard (mirrors the group readout), [[D79]] effectsEdgeTriggered
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
-import { IS_MOBILE } from "../coarse";
+import { isMobile } from "../coarse";
 import { pinStore } from "../pinStore";
 import { registerChrome } from "../chromeToggle";
 import { cableValueStore } from "../cableValueStore";
@@ -82,7 +82,7 @@ export function PinLayer() {
 
   // Mobile: a tap outside re-collapses, so the chips never linger over the graph.
   useEffect(() => {
-    if (!IS_MOBILE || collapsed) return;
+    if (!isMobile() || collapsed) return;
     const onDown = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setCollapsed(true);
     };

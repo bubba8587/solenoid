@@ -6,8 +6,9 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-10-04: XY gradient line, drag frame rate, Chart Builder sections, stacking commands; cloud session)
+### SESSION DIGEST (2026-10-04: XY gradient line, drag frame rate, Chart Builder sections, stacking commands, landscape phones; cloud session)
 - **An XY line with a numeric `c` draws in the ramp too**, segment by segment, and `cmap` picks the ramp from the Heatmap's colormap list ([[chart-figures]] XY).
+- **A phone turned sideways runs the tablet layout, scaled to fit** ([[C119]] landscapePhoneIsTablet; [[layout-chrome#Phones in landscape]]): `IS_MOBILE`/`IS_TABLET` became the live `isMobile()`/`isTablet()`, the viewport meta's scale does the zoom.
 - **Stacking commands**: Bring to front / forward, Send backward / to back on the selection (Ctrl+Shift+], Ctrl+], Ctrl+[, Ctrl+Shift+[; Edit menu; front and back on right-click). The order is the editor's node order and the save keeps it in the `positions` key order ([[react-flow-surface-contract#Stacking]]).
 - **Chart Builder is a wide card and folds its secondary rows into sections** when its chart offers more than ten (DESIGN.md § Card sections); its select options no longer repeat their row label.
 - **A drag never re-renders a card** (`SolNodeAdapter` memo ignores RF's position and `dragging` props); a dragged card is one composited layer and chart internals drop pointer events while anything moves ([[react-flow-surface-contract#Drag performance]]). Measured 36 charts × 250 points: a 30-step drag 13.3 s → under 1 s, worst frame 1.2 s → ~70 ms (dev build, headless).

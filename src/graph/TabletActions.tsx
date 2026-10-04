@@ -3,7 +3,8 @@ import { useSyncExternalStore } from "react";
 import { deleteSelected } from "./canvasCommands";
 import { touchSelectStore } from "./touchSelectStore";
 import { paletteStore } from "./paletteStore";
-import { IS_TABLET } from "./coarse";
+import { IS_COARSE } from "./coarse";
+import { useIsMobile } from "./useDeviceMode";
 import {
   fireUndo, fireGroup, useHasSelection,
   CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph,
@@ -12,7 +13,7 @@ import {
 /** A tablet's keyboard-less edit actions (MobileControls never mounts there). Gated by `html.is-tablet` in CSS; only the
  *  selection poll is gated in JS, so a desktop never watches a control it can't see. */
 export function TabletActions() {
-  const hasSelection = useHasSelection(IS_TABLET);
+  const hasSelection = useHasSelection(IS_COARSE && !useIsMobile());
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
 
   return (

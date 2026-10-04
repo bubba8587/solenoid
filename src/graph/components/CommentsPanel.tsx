@@ -1,5 +1,5 @@
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
-import { IS_MOBILE } from "../coarse";
+import { isMobile } from "../coarse";
 import { commentStore, commentAuthorStore, commentsPanelUi, type Comment } from "../commentStore";
 import { registerChrome } from "../chromeToggle";
 import { flyToNodeAndFlash } from "../flyToNode";
@@ -54,7 +54,7 @@ export function CommentsPanel() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!IS_MOBILE || collapsed) return;
+    if (!isMobile() || collapsed) return;
     const onDown = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setCollapsed(true);
     };

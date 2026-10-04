@@ -5,7 +5,7 @@ import { getActiveView, getActiveEditor } from "./activeGraph";
 import { collapsedAwareNodesRect } from "./components/Minimap";
 import { canvasLockStore } from "./canvasLock";
 import { cableFlourishBridge } from "./cableFlourishStore";
-import { IS_COARSE, IS_MOBILE } from "./coarse";
+import { IS_COARSE, isMobile } from "./coarse";
 import { fullscreenSupported, toggleFullscreen } from "./fullscreen";
 import { clamp } from "./nodes/mathUtils";
 import "./NavMenu.css";
@@ -38,7 +38,7 @@ function visibleInsets(c: DOMRect) {
   };
   const M = 14; // breathing margin off each panel
   // Mobile chrome is two full-width edges; its small floating side buttons reserve nothing.
-  if (IS_MOBILE) {
+  if (isMobile()) {
     const topbar = rect(q(".solenoid-topbar"));
     const bar = rect(q(".solenoid-mobile-bar"));
     return {

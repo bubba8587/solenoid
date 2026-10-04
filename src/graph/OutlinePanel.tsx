@@ -7,7 +7,7 @@ import { outlineSearch } from "./outlineStore";
 import { keyUnderModal } from "./modalGuard";
 import { registerChrome } from "./chromeToggle";
 import { touchSelectStore } from "./touchSelectStore";
-import { IS_COARSE, IS_MOBILE } from "./coarse";
+import { IS_COARSE, isMobile } from "./coarse";
 import { connectionDialog } from "./connectionDialogStore";
 import { nodeConnections } from "./nodeNames";
 import {
@@ -276,11 +276,11 @@ export function OutlinePanel() {
     void focusNode(id);
   };
   const handleRowClick = (e: MouseEvent, id: string) => {
-    // IS_COARSE, not IS_MOBILE: a tablet reaches select mode from the top bar while IS_MOBILE is false.
+    // IS_COARSE, not isMobile(): a tablet reaches select mode from the top bar while isMobile() is false.
     const accumulate = e.ctrlKey || e.metaKey || (IS_COARSE && touchSelectStore.get());
     const range = e.shiftKey;
     if (!accumulate && !range) {
-      if (IS_MOBILE) { void focusNode(id); lastClicked.current = id; }
+      if (isMobile()) { void focusNode(id); lastClicked.current = id; }
       return;
     }
     const editor = getEditor();

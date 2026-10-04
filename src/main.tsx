@@ -17,7 +17,7 @@ import { initFullscreenHotkey } from "./graph/fullscreen";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop } from "./graph/fileBridge";
 import { OWN_WINDOW_CONTROLS } from "./graph/WindowControls";
-import { IS_MOBILE, IS_TABLET } from "./graph/coarse";
+import { IS_PHONE, deviceModeStore, isMobile, isTablet, landscapePhoneScale } from "./graph/coarse";
 import { ErrorBoundary } from "./graph/components/ErrorBoundary";
 import "./graph/components/errorBoundary.css";
 import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
@@ -31,10 +31,27 @@ if (isDesktop()) document.documentElement.dataset.shell = "desktop";
 // linux shim for crisp canvas zoom (tree/specs/canvas/layout-chrome.md)
 if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 
-// Mobile styling keys off this flag, never `pointer: coarse`, so a phone's "Request desktop site" gets the desktop layout.
-if (IS_MOBILE) document.documentElement.classList.add("is-mobile");
-// Mutually exclusive with is-mobile.
-if (IS_TABLET) document.documentElement.classList.add("is-tablet");
+// Mobile styling keys off these flags, never `pointer: coarse`, so a phone's "Request desktop site" gets the desktop layout.
+// A phone turned sideways swaps to the tablet layout and scales the page to fit it, as browser zoom would ([[C119]] landscapePhoneIsTablet).
+{
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+  const portraitViewport = meta?.content ?? "";
+  // Roughly the browser's toolbar and the system bars, which a sideways screen still loses from its height.
+  const BROWSER_CHROME_H = 80;
+  const applyDeviceMode = () => {
+    const html = document.documentElement;
+    html.classList.toggle("is-mobile", isMobile());
+    // Mutually exclusive with is-mobile.
+    html.classList.toggle("is-tablet", isTablet());
+    if (!IS_PHONE || !meta) return;
+    if (isMobile()) { meta.content = portraitViewport; return; }
+    const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height);
+    const k = landscapePhoneScale(long, short - BROWSER_CHROME_H).toFixed(3);
+    meta.content = `width=device-width, initial-scale=${k}, minimum-scale=${k}, maximum-scale=${k}, viewport-fit=cover`;
+  };
+  applyDeviceMode();
+  deviceModeStore.subscribe(applyDeviceMode);
+}
 
 // Last-resort surfacing for `void asyncFn()` failures, since the desktop console is closed; throttled against storms.
 {

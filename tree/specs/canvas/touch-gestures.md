@@ -17,8 +17,9 @@ The flags live in `coarse.ts`. Derive from them; never duplicate the tests.
 | Flag | Definition | Interaction model |
 |---|---|---|
 | `IS_COARSE` | `(pointer: coarse)` matches | Touch-primary: bigger hit areas, touch actions in a bar. |
-| `IS_MOBILE` | `IS_COARSE` and a mobile user agent (mirrored to `html.is-mobile` by `main.tsx`) | The mobile model: selection-gated nodes, the bottom action bar. |
-| `IS_TABLET` | `IS_COARSE` and not a mobile user agent | The desktop interaction model, with touch actions in the top bar. |
+| `IS_PHONE` | `IS_COARSE` and a mobile user agent | The device; decides whether rotation can switch the model. |
+| `isMobile()` | `IS_PHONE` held in portrait, read live (mirrored to `html.is-mobile` by `main.tsx`; `useIsMobile()` in a render) | The mobile model: selection-gated nodes, the bottom action bar. |
+| `isTablet()` | `IS_COARSE` and not `isMobile()` | The desktop interaction model, with touch actions in the top bar; a phone turned sideways runs it ([[layout-chrome#Phones in landscape]]). |
 
 "Request desktop site" flips the user-agent test, and that is the user's way out of the mobile model. Never gate on coarseness alone something that must flip with it.
 

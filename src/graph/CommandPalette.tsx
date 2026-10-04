@@ -1,7 +1,7 @@
 // [[C98]] paletteMirrorsMenubar
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";
-import { IS_MOBILE } from "./coarse";
+import { isMobile } from "./coarse";
 import { apiKeyStore } from "./apiKeyStore";
 import { aiConnected } from "./aiKey";
 import { runAiPrompt, type AiOutcome } from "./aiService";
@@ -76,7 +76,7 @@ function buildSettingToggles(): PaletteItem[] {
   for (const section of SETTINGS_SCHEMA) {
     for (const f of section.fields) {
       if (f.type === "folder" || f.type === "segment") continue;
-      if (IS_MOBILE && f.disabledOnMobile) continue;
+      if (isMobile() && f.disabledOnMobile) continue;
       out.push({
         id: `setting:${f.key}`,
         kind: "setting",

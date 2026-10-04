@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { documentStore } from "../documentStore";
 import { requestConfirm } from "../confirmStore";
-import { IS_MOBILE } from "../coarse";
+import { isMobile } from "../coarse";
 import { SEEDS, SEED_GROUPS } from "../seeds";
 import "./documentTitle.css";
 
@@ -26,7 +26,7 @@ export function DocumentTitle() {
 
   function openMenu() {
     const r = rootRef.current?.getBoundingClientRect();
-    if (r) setMenuPos(IS_MOBILE ? { top: r.bottom + 4 } : { top: r.bottom + 5, left: r.left + r.width / 2 });
+    if (r) setMenuPos(isMobile() ? { top: r.bottom + 4 } : { top: r.bottom + 5, left: r.left + r.width / 2 });
     setMenuOpen((o) => !o);
     setRenaming(false);
     setRenamingId(null);
@@ -107,7 +107,7 @@ export function DocumentTitle() {
         <div
           className="solenoid-doctitle__menu"
           ref={menuRef}
-          style={{ top: menuPos.top, left: menuPos.left, transform: IS_MOBILE ? "none" : "translateX(-50%)" }}
+          style={{ top: menuPos.top, left: menuPos.left, transform: isMobile() ? "none" : "translateX(-50%)" }}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="solenoid-doctitle__section-head">Recent documents</div>

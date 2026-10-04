@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import { deleteSelected } from "./canvasCommands";
 import { addMenuRequest } from "./addMenuStore";
 import { touchSelectStore } from "./touchSelectStore";
-import { IS_MOBILE } from "./coarse";
+import { useIsMobile } from "./useDeviceMode";
 import { paletteStore } from "./paletteStore";
 import { useBottomChrome } from "./chromeBottom";
 import {
@@ -14,7 +14,7 @@ import "./MobileControls.css";
 /** Buttons dim rather than disappear, so the bar never reflows. */
 export function MobileControls() {
   // On desktop the poll would scan every node 5×/sec for an invisible control.
-  const hasSelection = useHasSelection(IS_MOBILE);
+  const hasSelection = useHasSelection(useIsMobile());
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
 
   // Near the top, so the on-screen keyboard doesn't cover the menu's search field.

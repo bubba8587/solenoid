@@ -1,6 +1,6 @@
 // [[D79]] effectsEdgeTriggered. Layout: tree/specs/computation/alert-node-alerts-hud.md.
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
-import { IS_MOBILE } from "../coarse";
+import { isMobile } from "../coarse";
 import { alertStore, type AlertKind } from "../alertStore";
 import { registerChrome } from "../chromeToggle";
 import { flyToNode } from "../flyToNode";
@@ -27,7 +27,7 @@ export function AlertLayer() {
 
   // Mobile: a tap outside re-collapses, so chips don't linger over the canvas.
   useEffect(() => {
-    if (!IS_MOBILE || collapsed) return;
+    if (!isMobile() || collapsed) return;
     const onDown = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setCollapsed(true);
     };

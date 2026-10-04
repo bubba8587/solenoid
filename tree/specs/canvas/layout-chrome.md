@@ -65,7 +65,7 @@ This is the layout with a mouse and a desktop user agent (no `html.is-mobile`). 
 
 ### Tablets
 
-A tablet (`html.is-tablet`: a coarse pointer without a mobile user agent, `IS_TABLET` in `coarse.ts`) runs this desktop layout, because `IS_MOBILE` requires a mobile user agent and tablet Chrome reports non-mobile (`userAgentData.mobile === false`). iPadOS sends a desktop user agent on purpose. So a tablet gets no bottom action bar; the top bar carries the touch actions instead (palette, undo and redo, select, group, delete; `TabletActions.tsx`) as ordinary 28px pill buttons in the existing row. A button dimmed because it needs a selection is still tappable, because the selection is polled every 200ms and a disabled button would swallow the first tap after a fresh select. The touch target grows to 44px (the 28px button plus 8px above and below), the platform minimum, through a pseudo-element rather than padding, so the laid-out pill stays 30px.
+A tablet (`html.is-tablet`: a coarse pointer that isn't an upright phone, `isTablet()` in `coarse.ts`) runs this desktop layout, because `isMobile()` requires a mobile user agent and tablet Chrome reports non-mobile (`userAgentData.mobile === false`). iPadOS sends a desktop user agent on purpose. So a tablet gets no bottom action bar; the top bar carries the touch actions instead (palette, undo and redo, select, group, delete; `TabletActions.tsx`) as ordinary 28px pill buttons in the existing row. A button dimmed because it needs a selection is still tappable, because the selection is polled every 200ms and a disabled button would swallow the first tap after a fresh select. The touch target grows to 44px (the 28px button plus 8px above and below), the platform minimum, through a pseudo-element rather than padding, so the laid-out pill stays 30px.
 
 Two things are deliberately not carried over from the mobile bottom bar, so don't complete the parity: **Add node** (Insert ▸ Add node… in the menu bar covers it, and a ➕ up top would be a second), and the **raised FAB treatment** (a thumb-reach accommodation for a phone's bottom edge; up top it would only be a loud button, and the Quiet Accent Rule reserves accent for type and state, not emphasis). The touch add gesture is a long-press on empty canvas, the browser's native long-press turned into `contextmenu` and routed by `canvasContextMenu.ts`. The full set of add paths is long-press or right-click on the canvas, the mobile bar's ➕, the `A` key, and Insert ▸ Add node…. The gesture inventory is [[touch-gestures]].
 
@@ -82,7 +82,7 @@ Measured in Chromium: at 768 and 800px, row 1 holds `SOLENOID file layout` plus 
 
 - `.solenoid-app` is `100dvh` app-wide (`App.css`, with a `100vh` fallback line), not gated on `is-mobile`. Gating it left the desktop layout's bottom chrome (status bar, minimap, navigator) below the usable screen on tablets. Desktop browsers have no dynamic toolbars, so `dvh` equals `vh` there.
 - Tall overlays carry `vh` and `dvh` declaration pairs (the Function Reference, the Report window, the Settings, Shortcuts and help dialogs, the table and pivot pop-ups, the Add menu, the command palette, the drill-in run controls). The `dvh` line wins where supported and is never larger than the `vh` value, so it only ever shrinks. Keep the pair when adding a tall overlay.
-- The zoom pill's fullscreen button gates on `IS_COARSE` (touch-primary), not `IS_MOBILE`, so a tablet's desktop pill keeps it. A tablet has no F11 key; mouse desktops keep F11 and the browser's own.
+- The zoom pill's fullscreen button gates on `IS_COARSE` (touch-primary), not `isMobile()`, so a tablet's desktop pill keeps it. A tablet has no F11 key; mouse desktops keep F11 and the browser's own.
 
 ## The desktop window frame (the Tauri shell)
 
@@ -108,7 +108,7 @@ The menu bar is the title bar: `.solenoid-menubar` carries `data-tauri-drag-regi
 
 ## Mobile
 
-The mobile layout applies under `html.is-mobile`, set in `main.tsx` from `IS_MOBILE`: a coarse pointer and a mobile user agent. That covers phones in any orientation, including landscape, where a width breakpoint would miss them, but not mouse-driven laptops, tablets, or a phone that requested the desktop site (a desktop user agent gets the desktop layout, as the user asked). The overrides live in `mobile.css`, imported last in `App.tsx` so they win the cascade. The desktop layout stays the source of truth; mobile enlarges tap targets and keeps floating chrome from overflowing. Canvas touch navigation comes from `touch-action: none` on the canvas, and in-node targets matter only while a node is selected, since touch gates all node interaction on selection (`socket.css`).
+The mobile layout applies under `html.is-mobile`, set in `main.tsx` from `isMobile()`: a coarse pointer and a mobile user agent, held upright. That covers phones in portrait, where a width breakpoint would miss them, but not mouse-driven laptops, tablets, a phone turned sideways (see Phones in landscape), or a phone that requested the desktop site (a desktop user agent gets the desktop layout, as the user asked). The overrides live in `mobile.css`, imported last in `App.tsx` so they win the cascade. The desktop layout stays the source of truth; mobile enlarges tap targets and keeps floating chrome from overflowing. Canvas touch navigation comes from `touch-action: none` on the canvas, and in-node targets matter only while a node is selected, since touch gates all node interaction on selection (`socket.css`).
 
 The top chrome becomes two rows.
 
@@ -153,6 +153,14 @@ The minimap and the socket legend are `display: none` on mobile (`mobile.css`). 
 - **The Function Reference** panel is `92vw` by `88dvh`, leaving a tappable backdrop margin on every side. Its tabs scroll sideways with a 52px reserve on the right for the pinned 40px close chip; its first header row wraps so search keeps a full line; the stats legend is hidden; the table pans sideways with a 240px Notes column; and each row's + is always visible, since touch has no hover.
 - **Settings** rows carrying a wide control (a text input, the palette stack) stack the control full width under the text, with the palette's swatches left-aligned; below 540px the shortcuts grid is one column.
 - Node chrome, the Connection dialog and the Settings and Shortcuts overlays get finger-sized versions of their small buttons and switches.
+
+
+### Phones in landscape
+
+Serves [[C119]] landscapePhoneIsTablet. A phone (`IS_PHONE`: coarse and a mobile user agent) turned sideways runs the tablet layout, scaled down to fit:
+
+- The orientation is the screen's (`screen.orientation`, else `orientationchange`), never the viewport's shape, since the on-screen keyboard makes a portrait viewport wider than it is tall. `isMobile()` flips on rotation and `deviceModeStore` notifies; `main.tsx` toggles `html.is-mobile` / `html.is-tablet` and rewrites the viewport meta, and render-time readers subscribe through `useIsMobile()` (`useDeviceMode.ts`). Nothing reloads.
+- The scale is the viewport meta's `initial-scale`, pinned with equal `minimum-scale` and `maximum-scale`, so the browser lays the page out wider and draws it smaller, exactly as its own zoom would, and pointer coordinates stay true. `landscapePhoneScale(long side, short side − 80)` is the smaller of `width / 1100` (the desktop top bar fits one row from 1100 px) and `height / 380` (room for the canvas between the bars), clamped to `[0.6, 1]`; the 80 px is the browser toolbar and system bars. A Galaxy S25+ (832 × 384) runs at 0.756, a 1100 px layout. Back in portrait the meta returns to its original content.
 
 ## Push or overlay: how the pieces interact
 
