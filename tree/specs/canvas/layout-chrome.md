@@ -161,6 +161,11 @@ Serves [[C119]] landscapePhoneIsTablet. A phone (`IS_PHONE`: coarse and a mobile
 
 - The orientation is the screen's (`screen.orientation`, else `orientationchange`), never the viewport's shape, since the on-screen keyboard makes a portrait viewport wider than it is tall. `isMobile()` flips on rotation and `deviceModeStore` notifies; `main.tsx` toggles `html.is-mobile` / `html.is-tablet` and rewrites the viewport meta, and render-time readers subscribe through `useIsMobile()` (`useDeviceMode.ts`). Nothing reloads.
 - The scale is the viewport meta's `initial-scale`, pinned with equal `minimum-scale` and `maximum-scale`, so the browser lays the page out wider and draws it smaller, exactly as its own zoom would, and pointer coordinates stay true. `landscapePhoneScale(long side, short side − 80)` is the smaller of `width / 1100` (the desktop top bar fits one row from 1100 px) and `height / 380` (room for the canvas between the bars), clamped to `[0.6, 1]`; the 80 px is the browser toolbar and system bars. A Galaxy S25+ (832 × 384) runs at 0.756, a 1100 px layout. Back in portrait the meta returns to its original content.
+- **Fullscreen drops the scale; installing keeps it.** Chrome pins the page scale to 1 for as long as the Fullscreen API holds the page (the zoom pill's fullscreen button), whatever the viewport meta says, and no rewrite of the meta moves it, so a sideways phone in fullscreen lays out at its real width. CSS `zoom` is not the fallback: React Flow reads pointer positions in zoomed pixels against an unzoomed transform, so a dragged card trails the finger by the zoom factor.
+
+#### Installed
+
+`public/manifest.webmanifest` makes the app installable (Chrome's "Add to Home screen"): it opens at `/` with `display: fullscreen` (falling back to `standalone`), which hides the browser bars without the Fullscreen API, so the landscape scale holds. Its icons (`public/icons/`) are the app icon's gold glyph on the dark canvas color, a rounded tile for `any` and a full-bleed one with the glyph inside the safe circle for `maskable`; `node scripts/pwa-icons.mjs` regenerates them from `src-tauri/icons/icon.png`. There is no service worker: Chrome installs without one, and the app has no offline mode to offer.
 
 ## Push or overlay: how the pieces interact
 

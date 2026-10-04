@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Installed to a home screen the app opens without browser bars and, unlike the fullscreen button, keeps a sideways
+         phone's page scale (tree/specs/canvas/layout-chrome.md § Installed). -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <!-- maximum-scale=1 stops iOS from auto-zooming the page when a small node
          input gains focus; the canvas provides its own pinch-zoom, so page-level
          zoom isn't needed. viewport-fit=cover enables the safe-area insets. -->
