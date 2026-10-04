@@ -155,6 +155,9 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   ([[B14]] reaches only one-output cards).
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
+- [ ] **Sideways phone: verify on the S25+ (2026-10-04, untestable headless):** the scale watchdog against the right-side
+  cut-off, the fullscreen chrome zoom and its 18px corner inset ([[layout-chrome#Phones in landscape]]). Open asks: refit the
+  camera on rotate; a service worker if Android Chrome still won't offer Install; the six-rung mark for the desktop icon.
 - [ ] **Collapse sweep leftovers** (`collapse-sweep.mjs`, needs the author's ruling): solver cards (TVM, Ohm's Law, Triangle Solver, Ideal Gas and kin) keep a row per variable collapsed rather than one pill; settings still visible collapsed on Expect, Grid Painter, Curve, Point Plotter, RANDARRAY, Color, Resistor Code and Query's buttons.
 
 - [ ] **Hand-tidied groups then a canvas Tidy, twice, moved personal finance ~530 px** (2026-09-30, both alignment modes; Cleanup itself is a fixed point). Recheck since `separateAll` stopped treating a standoff cluster's bounding box as solid.
