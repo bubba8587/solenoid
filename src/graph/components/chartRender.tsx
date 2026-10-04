@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
-import { type SyntheticEvent, type ComponentProps } from "react";
+import { type SyntheticEvent, type ComponentProps, useId, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, categoryAxisWidth, niceTicks, partSlices, useSeriesSpotlight, type ChartShape } from "./chartCore";
@@ -651,6 +651,44 @@ function XYTooltip({ active, payload, names, xcats, multi, seriesName }: {
 
 const rampCss = (t: number) => { const [r, g, b] = heightRampColor(t); return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; };
 
+// Past this many segments a gradient per segment costs more than it shows; each takes its first point's color.
+const GRADIENT_SEGMENTS_MAX = 400;
+
+/** A joint line whose color runs between its points' marker colors, one segment at a time. */
+function rampLine(id: string, colors: string[], width: number, dash: string | undefined, opacity: number) {
+  const RampLine = ({ points }: { points?: { x: number | null; y: number | null }[] }) => {
+    if (!points || points.length < 2) return null;
+    const lines: ReactElement[] = [];
+    const stops: ReactElement[] = [];
+    const smooth = points.length - 1 <= GRADIENT_SEGMENTS_MAX;
+    let run = 0;
+    for (let i = 0; i + 1 < points.length; i++) {
+      const a = points[i], b = points[i + 1];
+      if (a.x == null || a.y == null || b.x == null || b.y == null) continue;
+      const ca = colors[i], cb = colors[i + 1];
+      let stroke = ca;
+      if (ca !== cb && smooth) {
+        stroke = `url(#${id}-${i})`;
+        stops.push(
+          <linearGradient key={i} id={`${id}-${i}`} gradientUnits="userSpaceOnUse" x1={a.x} y1={a.y} x2={b.x} y2={b.y}>
+            <stop offset="0" stopColor={ca} /><stop offset="1" stopColor={cb} />
+          </linearGradient>,
+        );
+      }
+      lines.push(<line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={stroke} strokeDashoffset={dash ? -run : undefined} />);
+      run += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    // Opacity on the group, so the round caps where segments meet don't darken.
+    return (
+      <g opacity={opacity} fill="none" strokeWidth={width} strokeDasharray={dash} strokeLinecap={dash ? "butt" : "round"}>
+        {stops.length > 0 && <defs>{stops}</defs>}
+        {lines}
+      </g>
+    );
+  };
+  return RampLine;
+}
+
 /** Pads [lo, hi] so a unit spans the same pixels on both axes. */
 function equalDomains(x: [number, number], y: [number, number], pw: number, ph: number): { x: [number, number]; y: [number, number] } {
   const dx = x[1] - x[0] || 1, dy = y[1] - y[0] || 1;
@@ -672,6 +710,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   const { series, xcats, names } = payload;
   const { dim, pick } = useSeriesSpotlight(series.map((s) => s.name));
+  const gradId = useId().replace(/:/g, "");
   const multi = series.length > 1;
   const paint = (j: number) => series[j]?.color || (multi ? colors[j % colors.length] : opts?.color || viz);
   const pts = series.flatMap((s) => s.points.filter((p): p is XYPoint => p !== null));
@@ -758,16 +797,18 @@ export function XYView({ payload, width, height, opts, fontScale }: {
         const o = dim(j);
         const alpha = s.alpha ?? opts?.alpha ?? (s.sRange ? 0.55 : 1);
         const lw = s.linewidth ?? opts?.linewidth ?? 1.5;
-        const line = s.line !== "none" && rows.length > 1
-          ? { stroke: paint(j), strokeWidth: lw, strokeDasharray: LINE_DASH[s.line], strokeOpacity: (s.alpha ?? opts?.alpha ?? 1) * o, fill: "none" }
-          : false;
+        const lineAlpha = (s.alpha ?? opts?.alpha ?? 1) * o;
+        const line = s.line === "none" || rows.length < 2 ? false
+          : s.cRange && rows.some((d) => typeof d.c === "number")
+            ? rampLine(`${gradId}-${k}`, rows.map((d) => pointFill(d, j)), lw, LINE_DASH[s.line], lineAlpha)
+            : { stroke: paint(j), strokeWidth: lw, strokeDasharray: LINE_DASH[s.line], strokeOpacity: lineAlpha, fill: "none" };
         const shape = (p: { cx?: number; cy?: number; payload?: XYRow }) => {
           const d = p.payload;
           if (!s.marker || !d || p.cx == null || p.cy == null) return <g />;
           return <circle cx={p.cx} cy={p.cy} r={pointR(d, j)} fill={pointFill(d, j)} fillOpacity={alpha * o} />;
         };
         return (
-          <Scatter key={k} name={s.name} data={rows} line={line} lineType="joint" shape={shape as ComponentProps<typeof Scatter>["shape"]} isAnimationActive={false}>
+          <Scatter key={k} name={s.name} data={rows} line={line as ComponentProps<typeof Scatter>["line"]} lineType="joint" shape={shape as ComponentProps<typeof Scatter>["shape"]} isAnimationActive={false}>
             {anyText && <LabelList dataKey="label" position="right" fill={axis} fontSize={8.5 * fs} />}
           </Scatter>
         );

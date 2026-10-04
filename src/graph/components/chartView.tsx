@@ -1,5 +1,5 @@
 // [[B3]] sameNodeEverywhere, [[C100]] chartIsAValue
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, memo, Suspense, useEffect, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
 import { toSeries, partSlices } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
@@ -118,7 +118,7 @@ export function GanttView({ payload, width, height, virtualize, fontScale }: {
   );
 }
 
-export function ChartFigure({ value, width, height, axes = true, fontScale, recordNav, virtualize }: {
+export const ChartFigure = memo(function ChartFigure({ value, width, height, axes = true, fontScale, recordNav, virtualize }: {
   value: ChartValue; width: number; height: number; axes?: boolean;
   fontScale?: number;
   recordNav?: (delta: number) => void;
@@ -177,7 +177,7 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
     return <GanttView payload={value.payload} width={width} height={height} virtualize={virtualize} fontScale={fscale} />;
   if (value.op === "scatter" || value.op === "xyline" || value.op === "bubble") return EMPTY_FIGURE;
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
-}
+});
 
 const EMPTY_FIGURE = <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
 

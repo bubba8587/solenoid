@@ -366,6 +366,16 @@ Every render is inside an error boundary (`components/ErrorBoundary.tsx`): one a
 
 Two mechanisms keep loads fast ([[graph-load-teardown-performance]]). The topology pipe merges a rebuild into one React commit. `syncTopology` keeps each surviving node's object identity, so RF's memo skips cards that didn't change, and adding one node re-renders one card.
 
+## Drag performance
+
+A drag or pan holds the frame rate however many figures the canvas shows.
+
+- A drag never re-renders a card. RF hands every card its absolute position and a `dragging` flag as props, the position new each frame; `SolNodeAdapter`'s memo ignores both, since no card reads them. Without this, a dragged chart rebuilt every mark each frame (measured on 36 charts of 250 points: a 30-step drag took 13 seconds).
+- Selecting a card doesn't redraw its figure: `ChartFigure` is memoized and the Chart card keeps its figure value stable between computes.
+- A dragged card wears `will-change: transform` (one composited layer, so the browser moves a bitmap instead of repainting), and while a card is dragged or the canvas pans, chart internals (recharts' wrapper, the hover canvases) take no pointer, so they don't re-run hover hit-testing every frame (flow.css).
+
+Reopen if a card needs its live position while it moves; it should read it from a store, not RF's props.
+
 ## Marketing-page scenes
 
 Serves [[B3]] sameNodeEverywhere: every scene on the marketing pages is the real app, never a picture of it, and at most one scene per page is live. Feature scenes on the marketing pages render the real node components over a local rete stack (their own editor, engine and view). A locked scene (`SceneStage`) borrows the process-wide globals for a single compute and then restores them. A page may host one live, interactive stage (`LiveGraph`) that keeps the globals, so its overlays, such as the report and table popups, work. A page has only one slot each for the global editor, engine and view, which is why it can hold at most one live stage and every other scene is locked and self-contained.

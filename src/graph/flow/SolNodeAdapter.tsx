@@ -33,4 +33,13 @@ function SolNodeAdapterBase(props: NodeProps<SolFlowNode>) {
   return <C data={data.node} emit={stubEmit} />;
 }
 
-export const SolNodeAdapter = memo(SolNodeAdapterBase);
+// RF passes the absolute position (new every drag frame) and the dragging flag as props; no card reads either, so a drag never re-renders the card.
+function sameCard(a: NodeProps<SolFlowNode>, b: NodeProps<SolFlowNode>): boolean {
+  for (const k in b) {
+    if (k === "positionAbsoluteX" || k === "positionAbsoluteY" || k === "dragging") continue;
+    if (a[k as keyof typeof a] !== b[k as keyof typeof b]) return false;
+  }
+  return Object.keys(a).length === Object.keys(b).length;
+}
+
+export const SolNodeAdapter = memo(SolNodeAdapterBase, sameCard);

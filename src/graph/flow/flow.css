@@ -18,6 +18,13 @@
   background-color: var(--canvas-bg);
 }
 
+/* A card on the move is one composited layer, and its figures take no pointer, so a drag or pan doesn't repaint or re-hover a chart every frame. */
+.react-flow__node.dragging { will-change: transform; }
+.react-flow__node.dragging :is(.recharts-wrapper, canvas),
+.react-flow__pane.dragging .react-flow__node :is(.recharts-wrapper, canvas) {
+  pointer-events: none;
+}
+
 .react-flow__node.sol-member-hidden {
   visibility: hidden !important;
   pointer-events: none !important;

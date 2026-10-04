@@ -1,5 +1,5 @@
 // [[C100]] chartIsAValue
-import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
 import { CHART_OP_META } from "../rete-nodes";
 import { NodeShell, OpSelect, ArgSelect, type NodeProps, type OpOption } from "./nodeKit";
@@ -44,13 +44,15 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   const series = toSeries(data.cachedResult);
   const err = data.cachedError;
   const hasData = series.length > 0 || !!data.cachedSeries || !!data.cachedPayload;
-  const cv: ChartValue = {
+  const title = opts.title || nodeDisplayName(data);
+  // Stable between computes, so selecting the card doesn't redraw its figure.
+  const cv: ChartValue = useMemo(() => ({
     __chart: true, op, values: data.cachedResult,
     series: data.cachedSeries ?? undefined,
     labels: data.cachedLabels ?? undefined,
     payload: data.cachedPayload ?? undefined,
-    options: opts, title: opts.title || nodeDisplayName(data),
-  };
+    options: opts, title,
+  }), [op, data.cachedResult, data.cachedSeries, data.cachedLabels, data.cachedPayload, opts, title]);
 
   const chartRef = useRef<HTMLDivElement>(null);
   const [valuesTop, setValuesTop] = useState<number | undefined>(undefined);
