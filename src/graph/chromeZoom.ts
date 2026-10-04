@@ -1,6 +1,6 @@
 // [[C119]] landscapePhoneIsTablet
 import { useSyncExternalStore } from "react";
-import { IS_PHONE, deviceModeStore, isMobile, landscapePhoneScale } from "./coarse";
+import { IS_COARSE, IS_PHONE, deviceModeStore, isMobile, landscapePhoneScale } from "./coarse";
 import "./chromeZoom.css";
 
 // Roughly the browser's toolbar and the system bars, which a sideways screen still loses from its height.
@@ -28,6 +28,11 @@ function update(): void {
 }
 
 export function installChromeZoom(): void {
+  if (!IS_COARSE) return;
+  // Any touch screen in fullscreen insets the bars from its rounded corners (chromeZoom.css).
+  const corners = () => document.documentElement.classList.toggle("fullscreen-touch", !!document.fullscreenElement);
+  document.addEventListener("fullscreenchange", corners);
+  corners();
   if (!IS_PHONE) return;
   document.addEventListener("fullscreenchange", update);
   deviceModeStore.subscribe(update);

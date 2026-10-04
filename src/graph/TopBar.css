@@ -8,7 +8,7 @@
   align-items: center;
   gap: 8px;
   height: 44px;
-  padding: 0 12px;
+  padding: 0 calc(12px + var(--corner-inset, 0px));
   background: var(--panel-bg);
   border-bottom: 1px solid var(--panel-border);
   box-shadow: 0 2px 0 0 var(--accent), var(--shadow-pop);
@@ -147,12 +147,12 @@ html.is-tablet .solenoid-topbar__group--tablet {
     flex-wrap: wrap;
     height: auto;
     row-gap: 6px;
-    padding: 7px calc(12px + var(--tablet-pinned-w)) 7px 12px;
+    padding: 7px calc(12px + var(--corner-inset, 0px) + var(--tablet-pinned-w)) 7px calc(12px + var(--corner-inset, 0px));
   }
   html.is-tablet .solenoid-topbar > .solenoid-apptools {
     position: absolute;
     top: 7px;
-    right: 12px;
+    right: calc(12px + var(--corner-inset, 0px));
   }
   html.is-tablet .solenoid-topbar > .solenoid-topbar__divider { display: none; }
 }

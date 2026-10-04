@@ -13,10 +13,19 @@ html.chrome-zoomed :is(
   .solenoid-selbar,
   .solenoid-cmdpalette,
   .solenoid-notices,
-  .solenoid-doctitle__menu
+  .solenoid-doctitle__menu,
+  .react-flow__attribution
 ) {
   zoom: var(--chrome-zoom);
   /* The bars' heights are published in screen pixels; a zoomed element would shrink its own offset by the zoom again. */
   --chrome-top: calc(var(--chrome-top-px, 66px) / var(--chrome-zoom));
   --chrome-bottom: calc(var(--chrome-bottom-px, 19px) / var(--chrome-zoom));
+  --corner-inset: calc(var(--corner-inset-px, 0px) / var(--chrome-zoom));
+}
+
+/* A touch screen in fullscreen draws to its rounded corners, so the bars' contents step in from the ends; their
+   backgrounds still run edge to edge. The screen doesn't report its corner shape, so this is a margin, not a fit. */
+html.fullscreen-touch {
+  --corner-inset-px: max(18px, env(safe-area-inset-left), env(safe-area-inset-right));
+  --corner-inset: var(--corner-inset-px);
 }
