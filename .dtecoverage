@@ -30,6 +30,7 @@ packages/*/package.json
 obsidian-plugin/manifest.json
 public/robots.txt
 public/sitemap.xml
+public/manifest.webmanifest
 
 why: licences and the product pitch are reader on-ramps, not system descriptions (author's rule 2026-09-18)
 LICENSE
