@@ -204,6 +204,12 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 The site is five pages (`/about` is the landing page; `/` is the app) sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:
 
+- [ ] **Move to solenoid-ngc.com** (bought 2026-10-04 at Namecheap, nameservers pointed at Vercel; serves `main`). Once it
+  resolves: agent switches `SITE_ORIGIN` (`siteMeta.ts`), the README, the plugin's `authorUrl` and `SOLENOID_LINKS`, and reruns
+  `prerender-site.mjs`; author redirects `solenoid-ngc.vercel.app` to it in Vercel, adds it to Search Console / Bing and
+  submits `/sitemap.xml`. Optional: `solenoidngc.com` (unhyphenated, unregistered) as a redirect.
+- [ ] **Bluesky handle `@solenoid-ngc.com` (author, later):** Bluesky Settings → Account → Handle → I have my own domain →
+  DNS panel; add its TXT record (`_atproto`, `did=did:plc:…`) in Vercel's Domains → DNS Records, then Verify.
 - [ ] **Tagline "node graph calculator" in the site copy** (author 2026-10-04, aligned during the copy pass): it is only in
   the README today; the planned domain (solenoid-ngc.com) carries its initials, the copy spells it out, never "NGC".
 - [ ] **Author reviews the site copy.** An agent pass (2026-09-23) brought every page to DESIGN.md §7;
