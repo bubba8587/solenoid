@@ -11,6 +11,11 @@ export function installFlowPinch(
   },
 ): () => void {
   let start: { dist: number; cx: number; cy: number; vp: Viewport } | null = null;
+  // A pinch that ends with one finger still down pans from that finger's current spot. React Flow's zoom never saw the
+  // pinch's moves, so handing it the finger would pan from where the finger was when the pinch began: a jump.
+  let carry: { id: number; x: number; y: number; vp: Viewport } | null = null;
+  // A finger left over from a pinch may lift on a card long after the pinch, and its tap must not select it.
+  let pinched = false;
   let suppressClickUntil = 0;
 
   const measure = (e: TouchEvent) => {
@@ -25,15 +30,25 @@ export function installFlowPinch(
 
   const touchStart = (e: TouchEvent) => {
     if (e.touches.length === 2) {
+      carry = null;
       const m = measure(e);
       if (!(m.dist > 0)) { start = null; return; }
       start = { ...m, vp: opts.getViewport() };
+      pinched = true;
     } else if (e.touches.length > 2) {
       start = null;
     }
   };
 
   const touchMove = (e: TouchEvent) => {
+    if (carry) {
+      const t = [...e.touches].find((x) => x.identifier === carry!.id);
+      if (!t || e.touches.length !== 1) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      opts.setViewport({ x: carry.vp.x + t.clientX - carry.x, y: carry.vp.y + t.clientY - carry.y, zoom: carry.vp.zoom });
+      return;
+    }
     if (!start || e.touches.length !== 2) return;
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -55,6 +70,13 @@ export function installFlowPinch(
     if (start && e.touches.length < 2) {
       start = null;
       suppressClickUntil = performance.now() + 400;
+      const t = e.touches[0];
+      if (t) carry = { id: t.identifier, x: t.clientX, y: t.clientY, vp: opts.getViewport() };
+    }
+    if (e.touches.length === 0) {
+      carry = null;
+      if (pinched) suppressClickUntil = performance.now() + 400;
+      pinched = false;
     }
   };
 
