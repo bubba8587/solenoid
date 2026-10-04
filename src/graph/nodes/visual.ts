@@ -1491,7 +1491,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("ymax",      numIn("Y max"));
     this.addInput("linewidth", numIn("Line width"));
     this.addInput("markersize", numIn("Marker size (px)"));
-    this.addInput("alpha",     numIn("Fill alpha"));
+    this.addInput("alpha",     numIn("Opacity"));
     this.addInput("fontsize",  numIn("Font size (pt)"));
     this.addInput("vmin",      numIn("Color min"));
     this.addInput("vmax",      numIn("Color max"));

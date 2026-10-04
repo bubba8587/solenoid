@@ -220,6 +220,12 @@ const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] =
   { label: "Shown", keys: ["critical", "baseline", "arrows", "today", "status", "weekends", "labels", "histogram", "minutes"] },
   { label: "Calendar", keys: ["week", "fiscal_start"] },
 ];
+// Inside its section a row drops the words the caption already says; the socket keeps its full name for the collapsed card and cables.
+const SECTION_LABELS: Partial<Record<ChartBuilderKey, string>> = {
+  x: "X", y: "Y", s: "Size", c: "Color", annotate: "Labels",
+  linestyle: "Line",
+  vmin: "Min", vmax: "Max", center: "Center",
+};
 const SECTIONED = new Set<ChartBuilderKey>(SECTIONS.flatMap((sec) => sec.keys));
 const KIND_ORDER: readonly ChartBuilderKey[] = [
   ...STR_KEYS, ...TOGGLE_KEYS.map(({ key }) => key), ...SELECT_KEYS.map(({ key }) => key), ...NUM_KEYS,
@@ -228,23 +234,26 @@ const TOGGLE_BY_KEY = new Map(TOGGLE_KEYS.map((t) => [t.key, t]));
 const SELECT_BY_KEY = new Map(SELECT_KEYS.map((t) => [t.key, t]));
 
 /** The rows for `keys` in order: runs of text and number keys share one InlineInputs, toggles and selects draw their own rows. */
-function BuilderRows({ node, emit, keys, clearFor }: {
+function BuilderRows({ node, emit, keys, clearFor, short }: {
   node: ChartBuilderNodeType; emit: Emit; keys: readonly ChartBuilderKey[];
   clearFor: (key: ChartBuilderKey, clear: string) => string;
+  short?: boolean;
 }) {
+  const labelOf = (key: string, full: string) => (short && SECTION_LABELS[key as ChartBuilderKey]) || full;
   const out: ReactNode[] = [];
   let run: string[] = [];
   const flush = () => {
-    if (run.length) out.push(<InlineInputs key={`in-${run[0]}`} node={node} emit={emit} keys={run} />);
+    if (run.length) out.push(<InlineInputs key={`in-${run[0]}`} node={node} emit={emit} keys={run}
+      labelFor={short ? (k) => labelOf(k, node.inputs[k]?.label ?? k) : undefined} />);
     run = [];
   };
   for (const key of keys) {
     const toggle = TOGGLE_BY_KEY.get(key);
     const select = SELECT_BY_KEY.get(key);
-    if (toggle) { flush(); out.push(<ToggleInputRow key={key} node={node} emit={emit} socketKey={key} label={toggle.label} />); }
+    if (toggle) { flush(); out.push(<ToggleInputRow key={key} node={node} emit={emit} socketKey={key} label={labelOf(key, toggle.label)} />); }
     else if (select) {
       flush();
-      out.push(<SelectInputRow key={key} node={node} emit={emit} socketKey={key} label={select.label} options={select.options} clearValue={clearFor(key, select.clearValue)} />);
+      out.push(<SelectInputRow key={key} node={node} emit={emit} socketKey={key} label={labelOf(key, select.label)} options={select.options} clearValue={clearFor(key, select.clearValue)} />);
     } else run.push(key);
   }
   flush();
@@ -258,7 +267,7 @@ function BuilderSection({ node, emit, label, keys, clearFor }: {
   const inUse = useRowsInUse(node, keys);
   return (
     <CardSection label={label} collapsible defaultOpen={inUse} sockets={{ node, emit, keys }}>
-      <BuilderRows node={node} emit={emit} keys={keys} clearFor={clearFor} />
+      <BuilderRows node={node} emit={emit} keys={keys} clearFor={clearFor} short />
     </CardSection>
   );
 }
