@@ -71,5 +71,5 @@ why: a stylesheet implements DESIGN.md (B14 oneDesignSystem); one that carries a
 why: seed documents are JSON, which cannot carry a citation; seeds.test.ts and scripts/tune-seeds.mjs pin the rules they follow ([[C89]] standoffsSolveLast: groups liberally, standoffs sparingly)
 src/graph/seedGraphs
 
-why: generated text snapshots of the site pages; scripts/prerender-site.mjs writes them and prerender.test.ts pins one per page
+why: generated text snapshots of the site pages and their source fingerprint; scripts/prerender-site.mjs writes them and prerender.test.ts pins them current
 prerender

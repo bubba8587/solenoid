@@ -1,7 +1,7 @@
 // Snapshots each site page's text (headings, paragraphs, list items, links) into prerender/<page>.html; the build pastes it into dist/<page>.html's
 // #root (vite.config.ts sitePageHtml), so crawlers and link previews read the page without running JavaScript, and
 // React replaces the snapshot when it mounts. Vercel's build can't run a browser, so the snapshots are committed.
-// Run after changing a site page's copy:  node scripts/prerender-site.mjs   (builds first, then serves dist/)
+// Run after changing a site page's copy (prerender.test.ts fails until you do):  node scripts/prerender-site.mjs
 import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import puppeteer from "puppeteer-core";
@@ -59,3 +59,5 @@ try {
   await browser.close();
   server.kill();
 }
+// Records what these snapshots were made from; prerender.test.ts fails when the sources move on without a rerun.
+execFileSync("npx", ["vitest", "run", "tests/graph/landing/prerender.test.ts"], { cwd: root, stdio: "inherit", env: { ...process.env, UPDATE_PRERENDER: "1" } });
