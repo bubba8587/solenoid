@@ -1,7 +1,6 @@
 // [[C98]] paletteMirrorsMenubar
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";
-import { isMobile } from "./coarse";
 import { apiKeyStore } from "./apiKeyStore";
 import { aiConnected } from "./aiKey";
 import { runAiPrompt, type AiOutcome } from "./aiService";
@@ -12,7 +11,6 @@ import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 import { writeTextForm, readTextForm } from "./textForm";
 import { commandRecents } from "./commandRecents";
 import { paletteStore } from "./paletteStore";
-import { settingsStore, SETTINGS_SCHEMA } from "./settingsStore";
 import { alignSelection, distributeSelection, collapseSelection } from "./selectionOps";
 import { buildMenus, fireMenuKey, type MenuItem } from "./menuModel";
 import "./CommandPalette.css";
@@ -28,7 +26,7 @@ function SparkleIcon() {
 
 type PaletteItem = {
   id: string;
-  kind: "command" | "setting";
+  kind: "command";
   label: string;
   sub?: string;
   shortcut?: string;
@@ -69,24 +67,6 @@ function buildCommands(): PaletteItem[] {
     { label: "Expand selection", run: () => collapseSelection(false) },
   ];
   return [...fromMenus, ...extra].map((c, i) => ({ id: `cmd:${i}:${c.label}`, kind: "command" as const, ...c }));
-}
-
-function buildSettingToggles(): PaletteItem[] {
-  const out: PaletteItem[] = [];
-  for (const section of SETTINGS_SCHEMA) {
-    for (const f of section.fields) {
-      if (f.type === "folder" || f.type === "segment") continue;
-      if (isMobile() && f.disabledOnMobile) continue;
-      out.push({
-        id: `setting:${f.key}`,
-        kind: "setting",
-        label: `Toggle ${f.label}`,
-        sub: settingsStore.get(f.key) ? "on" : "off",
-        run: () => settingsStore.toggle(f.key as Parameters<typeof settingsStore.toggle>[0]),
-      });
-    }
-  }
-  return out;
 }
 
 export function CommandPalette({ onClose, persistent = false }: { onClose: () => void; persistent?: boolean }) {
@@ -149,7 +129,6 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   const recentsVersion = useSyncExternalStore(commandRecents.subscribe, commandRecents.version);
   const inputRef = useRef<HTMLInputElement>(null);
   const commands = useMemo(buildCommands, []);
-  const toggles = useMemo(buildSettingToggles, []);
 
   // Docked mode must not steal focus from the canvas on mount.
   useEffect(() => { if (!persistent) inputRef.current?.focus(); }, [persistent]);
@@ -175,16 +154,16 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
       return [...recent, ...rest].slice(0, 8);
     }
     const scored: { item: PaletteItem; score: number }[] = [];
-    for (const c of [...commands, ...toggles]) {
+    for (const c of commands) {
       const s = fieldScore(q, c.label);
       if (s !== null) scored.push({ item: c, score: s });
     }
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, 20).map((s) => s.item);
-  }, [query, commands, toggles, persistent, focused, recentsVersion, aiMode]);
+  }, [query, commands, persistent, focused, recentsVersion, aiMode]);
 
   function run(item: PaletteItem) {
-    if (item.kind === "command" || item.kind === "setting") commandRecents.record(item.label);
+    if (item.kind === "command") commandRecents.record(item.label);
     // Close first: an open palette owns the keyboard, so a command that presses a canvas key would meet its own gate.
     onClose();
     item.run();
