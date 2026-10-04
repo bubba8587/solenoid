@@ -44,11 +44,28 @@ if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
     html.classList.toggle("is-tablet", isTablet());
     if (!IS_PHONE || !meta) return;
     if (isMobile()) { meta.content = portraitViewport; return; }
-    const k = landscapeFit().toFixed(3);
-    meta.content = `width=device-width, initial-scale=${k}, minimum-scale=${k}, maximum-scale=${k}, viewport-fit=cover`;
+    retries = 0;
+    setFit(landscapeFit());
+  };
+  const setFit = (k: number) => {
+    const s = k.toFixed(3);
+    meta!.content = `width=device-width, initial-scale=${s}, minimum-scale=${s}, maximum-scale=${s}, viewport-fit=cover`;
+  };
+  // A phone's browser can leave the old scale in place around a rotation or a fullscreen exit; this puts the fit back,
+  // nudging the value so the browser reads the meta as changed. Capped, so a browser that refuses can't loop it.
+  let retries = 0;
+  const reassert = () => {
+    if (!IS_PHONE || !meta || isMobile() || document.fullscreenElement || !window.visualViewport) return;
+    const k = landscapeFit();
+    if (Math.abs(window.visualViewport.scale - k) < 0.01 || retries >= 3) return;
+    retries++;
+    setFit(k + 0.001);
+    requestAnimationFrame(() => setFit(k));
   };
   applyDeviceMode();
   deviceModeStore.subscribe(applyDeviceMode);
+  window.visualViewport?.addEventListener("resize", () => setTimeout(reassert, 150));
+  document.addEventListener("fullscreenchange", () => { retries = 0; setTimeout(reassert, 300); });
   installChromeZoom();
 }
 
