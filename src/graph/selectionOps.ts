@@ -10,6 +10,7 @@ import { groupCollapseStore } from "./groupCollapse";
 import { collapseStore } from "./collapseStore";
 import { scheduleAutosave } from "./persistence";
 import { notifyGraphChanged } from "./process";
+import { settingsStore } from "./settingsStore";
 import { measuredBox, type NodeBox } from "./nodeSize";
 import type { Schemes } from "./schemes";
 import type { NodeEditor } from "rete";
@@ -167,21 +168,29 @@ export function collapseSelection(collapsed: boolean): void {
   const editor = getEditor();
   const view = getView();
   if (!editor || !view) return;
-  let changed = false;
+  const changed: string[] = [];
   for (const id of selectedNodeIds(editor)) {
     const el = view.nodeElement(id);
     if (el && isCollapsible(el) && collapseStore.get(id) !== collapsed) {
       collapseStore.set(id, collapsed);
-      changed = true;
+      changed.push(id);
     }
   }
-  if (changed) notifyGraphChanged();
+  if (!changed.length) return;
+  if (!collapsed) frontOnExpand(changed);
+  notifyGraphChanged();
+}
+
+/** A card the user just expanded comes to the front, so it isn't stuck behind what it grew into (the `frontOnExpand` setting). */
+export function frontOnExpand(ids: readonly string[]): void {
+  if (settingsStore.get("frontOnExpand")) stackSelection("front", ids);
 }
 
 /** A card's chevron: flips the collapse, re-renders the card, and saves and records the change. */
 export function toggleNodeCollapsed(nodeId: string): void {
   collapseStore.toggle(nodeId);
   void getOwningView(nodeId)?.rerenderNode(nodeId);
+  if (!collapseStore.get(nodeId)) frontOnExpand([nodeId]);
   notifyGraphChanged();
 }
 

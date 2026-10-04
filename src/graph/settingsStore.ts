@@ -9,6 +9,7 @@ const LS_KEY = "solenoid.settings";
 
 export interface Settings {
   groupPush: boolean;
+  frontOnExpand: boolean;
   tidyAlign: "balanced" | "sockets" | "center" | "top";
   tidyDirection: "right" | "down";
   tidyDensity: "compact" | "normal" | "airy";
@@ -44,6 +45,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   groupPush: true,
+  frontOnExpand: true,
   tidyAlign: "balanced",
   tidyDirection: "right",
   tidyDensity: "normal",
@@ -89,6 +91,11 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "groupPush",
         label: "Auto-arrange groups on expand",
+      },
+      {
+        key: "frontOnExpand",
+        label: "Bring a card to the front on expand",
+        help: "So an expanded card isn't stuck behind its neighbors",
       },
       {
         key: "tidyAlign",

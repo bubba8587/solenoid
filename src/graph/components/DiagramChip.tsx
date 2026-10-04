@@ -2,6 +2,7 @@ import { collapseStore } from "../collapseStore";
 import { useHostNodeId } from "./nodeContext";
 import { stopDragStart } from "../coarse";
 import type { MermaidValue } from "../mermaidValue";
+import { frontOnExpand } from "../selectionOps";
 
 /** A click expands the host card, where the diagram draws full size; there is no diagram popup. */
 export function DiagramChip({ value, pinNodeId, size = "sm" }: {
@@ -20,7 +21,7 @@ export function DiagramChip({ value, pinNodeId, size = "sm" }: {
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
-        if (hostId) collapseStore.set(hostId, false);
+        if (hostId) { collapseStore.set(hostId, false); frontOnExpand([hostId]); }
       }}
     >
       Diagram
