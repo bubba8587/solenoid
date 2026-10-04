@@ -218,7 +218,7 @@ The marketing pages' `.sol-landing` wrapper overrides the four accent variables 
 
 ## Palette-derived color for charts and chips
 
-- **The height ramp** (`heightRampColor(t)`, for Surface, Contour and Vector Field): five stops from the slots violet, blue, teal, green and gold, each forced to HSL lightness 0.26, 0.38, 0.5, 0.62 and 0.78, so the ramp reads as height under any palette. `t` is clamped to 0 to 1 and interpolated linearly between stops. The stops are cached per palette version, since a draw calls this thousands of times.
+- **The height ramp** (`heightRampColor(t)`, for Surface, Contour and Vector Field, and the default of the Heatmap, Calendar Heatmap's colormap and an XY figure's `c`): the slots blue, green, teal and gold exactly as the palette has them, sorted darkest to lightest by relative luminance, so the ramp reads as height and every stop is a palette color. Those four climb in luminance in every built-in palette (only green and teal trade places), which is why they were chosen. The diverging ramp (`divergingRampColor`, a Heatmap with a `center`) is blue, gray and vermilion, likewise unaltered. `t` is clamped to 0 to 1 and interpolated linearly between stops. The stops are cached per palette version, since a draw calls this thousands of times.
 - **Category chips** (`categoryColorIndex(values)` in `categoryColor.ts`): each distinct string gets an index by first appearance, skipping null and undefined. It is pure and order-deterministic, so a value keeps its index wherever it sits and a chip keeps its color when rows are reordered for display. The index maps to the chart series colors (`useSeriesColors`, modulo their count) at render time.
 
 ## Color math for canvas renderers

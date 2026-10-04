@@ -165,7 +165,7 @@ Serves [[C119]] landscapePhoneIsTablet. A phone (`IS_PHONE`: coarse and a mobile
 
 #### Installed
 
-`public/manifest.webmanifest` makes the app installable (Chrome's "Add to Home screen"): it opens at `/` with `display: fullscreen` (falling back to `standalone`), which hides the browser bars without the Fullscreen API, so the landscape scale holds. Its icons (`public/icons/`) are the app icon's gold glyph on the dark canvas color, a rounded tile for `any` and a full-bleed one with the glyph inside the safe circle for `maskable`; `node scripts/pwa-icons.mjs` regenerates them from `src-tauri/icons/icon.png`. There is no service worker: Chrome installs without one, and the app has no offline mode to offer.
+`public/manifest.webmanifest` makes the app installable (Chrome's "Add to Home screen"): it opens at `/` with `display: fullscreen` (falling back to `standalone`), which hides the browser bars without the Fullscreen API, so the landscape scale holds. Its icons (`public/icons/`) are the six-rung gold mark on the dark canvas color, a rounded tile for `any` and a full-bleed one with the glyph inside the safe circle for `maskable`; `node scripts/pwa-icons.mjs` regenerates them from `src/logo/solenoidicon.svg`, the six-rung mark. There is no service worker: Chrome installs without one, and the app has no offline mode to offer.
 
 ## Push or overlay: how the pieces interact
 

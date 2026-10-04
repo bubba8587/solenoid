@@ -56,18 +56,6 @@ export function hexToHsl(hex: string): [number, number, number] {
   return t ? rgbToHsl(...t) : [0, 0, 0];
 }
 
-function hslToHex(h: number, s: number, l: number): string {
-  h = ((h % 360) + 360) % 360;
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = l - c / 2;
-  const [r1, g1, b1] =
-    h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] :
-    h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
-  const to = (n: number) => Math.round(Math.min(1, Math.max(0, n + m)) * 255).toString(16).padStart(2, "0");
-  return `#${to(r1)}${to(g1)}${to(b1)}`;
-}
-
 export function hexToRgba(hex: string, alpha: number): string {
   const t = parseHex(hex);
   if (!t) return `rgba(139,124,246,${alpha})`;
@@ -1038,19 +1026,17 @@ export function nextNeutral(current: string | undefined): string {
   return i === -1 ? "gray" : NEUTRAL_CYCLE[(i + 1) % NEUTRAL_CYCLE.length];
 }
 
-// ── Sequential height ramp (Surface / Contour / Vector Field) ────────────────
-const RAMP_SLOTS: PaletteSlot[] = ["violet", "blue", "teal", "green", "gold"];
-const RAMP_L = [0.26, 0.38, 0.5, 0.62, 0.78];
+// ── Sequential height ramp (Surface / Contour / Vector Field, and the Heatmap's and XY figures' default) ──
+// The palette's own colors, darkest first, so the ramp reads as height and every stop is a color the palette has.
+const RAMP_SLOTS: PaletteSlot[] = ["blue", "green", "teal", "gold"];
 let _ramp: Array<[number, number, number]> | null = null;
 let _rampVer = -1;
 function rampStops(): Array<[number, number, number]> {
   if (_ramp && _rampVer === paletteVersion()) return _ramp;
   _rampVer = paletteVersion();
-  _ramp = RAMP_SLOTS.map((slot, i) => {
-    const t = parseHex(resolveColor(slot)) ?? [138, 143, 152];
-    const [h, s] = rgbToHsl(...t);
-    return parseHex(hslToHex(h, s, RAMP_L[i])) ?? t;
-  });
+  _ramp = RAMP_SLOTS.map((slot) => resolveColor(slot))
+    .sort((a, b) => relLum(a) - relLum(b))
+    .map((hex) => parseHex(hex) ?? [138, 143, 152]);
   return _ramp;
 }
 export function heightRampColor(t: number): [number, number, number] {
@@ -1062,19 +1048,14 @@ export function heightRampColor(t: number): [number, number, number] {
 }
 
 // ── Diverging ramp (a Heatmap with a center) ────────────────────────────────
-const DIVERGE_STOPS: Array<[PaletteSlot, number, number]> = [
-  ["blue", 0.3, 1], ["blue", 0.6, 1], ["gray", 0.9, 0.15], ["vermilion", 0.6, 1], ["vermilion", 0.34, 1],
-];
+// The palette's blue, gray and vermilion as they are: two hues meeting at the neutral.
+const DIVERGE_SLOTS: PaletteSlot[] = ["blue", "gray", "vermilion"];
 let _diverge: Array<[number, number, number]> | null = null;
 let _divergeVer = -1;
 function divergeStops(): Array<[number, number, number]> {
   if (_diverge && _divergeVer === paletteVersion()) return _diverge;
   _divergeVer = paletteVersion();
-  _diverge = DIVERGE_STOPS.map(([slot, l, sat]) => {
-    const t = parseHex(resolveColor(slot)) ?? [138, 143, 152];
-    const [h, s] = rgbToHsl(...t);
-    return parseHex(hslToHex(h, s * sat, l)) ?? t;
-  });
+  _diverge = DIVERGE_SLOTS.map((slot) => parseHex(resolveColor(slot)) ?? [138, 143, 152]);
   return _diverge;
 }
 export function divergingRampColor(t: number): [number, number, number] {
