@@ -202,8 +202,10 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Landing pages
 
-The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:
+The site is five pages (`/about` is the landing page; `/` is the app) sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:
 
+- [ ] **Tagline "node graph calculator" in the site copy** (author 2026-10-04, aligned during the copy pass): it is only in
+  the README today; the planned domain (solenoid-ngc.com) carries its initials, the copy spells it out, never "NGC".
 - [ ] **Author reviews the site copy.** An agent pass (2026-09-23) brought every page to DESIGN.md §7;
   the Packs and Examples pages now render from the pack definitions and the seed list.
 - [ ] **Check the per-page link previews on the next Vercel deploy** (share `/obsidian` or `/packs` and read the card).
