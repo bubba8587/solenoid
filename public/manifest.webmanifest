@@ -4,8 +4,7 @@
   "description": "A node-graph alternative to Excel for data tables.",
   "start_url": "/",
   "scope": "/",
-  "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone"],
+  "display": "standalone",
   "background_color": "#0b0b0b",
   "theme_color": "#56b4e9",
   "icons": [
