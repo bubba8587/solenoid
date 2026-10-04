@@ -1,0 +1,22 @@
+/* [[C119]] landscapePhoneIsTablet: a sideways phone in fullscreen, where the page scale is pinned to 1, shrinks the app
+   chrome by the landscape fit instead. Never the canvas: React Flow reads pointers in zoomed pixels against an unzoomed
+   transform, so a zoomed canvas would drag cards short of the finger. */
+html.chrome-zoomed :is(
+  .solenoid-header,
+  .solenoid-statusbar,
+  .solenoid-nav,
+  .solenoid-outline__open-pill,
+  .solenoid-outline,
+  .inspector-panel,
+  .solenoid-hud-stack,
+  .solenoid-legend,
+  .solenoid-selbar,
+  .solenoid-cmdpalette,
+  .solenoid-notices,
+  .solenoid-doctitle__menu
+) {
+  zoom: var(--chrome-zoom);
+  /* The bars' heights are published in screen pixels; a zoomed element would shrink its own offset by the zoom again. */
+  --chrome-top: calc(var(--chrome-top-px, 66px) / var(--chrome-zoom));
+  --chrome-bottom: calc(var(--chrome-bottom-px, 19px) / var(--chrome-zoom));
+}

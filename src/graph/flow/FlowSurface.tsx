@@ -42,6 +42,7 @@ import type { FlowView } from "./flowView";
 import { notifyGraphChanged, processGraph } from "../process";
 import { cableDragStore, setCableDragging, stackOrderStore } from "../graphSignals";
 import { stackSelection } from "../selectionOps";
+import { useChromeZoom } from "../chromeZoom";
 import { installCanvasKeyboard } from "../canvasKeyboard";
 import { firstCompatibleSocketKey, quickWireCompatibleTypes } from "../catalogSearch";
 import { SolenoidSocket } from "../sockets";
@@ -769,6 +770,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   );
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const visibleCatalog = useMemo(() => buildCatalog(true), [packsVersion]);
+  const chromeZoom = useChromeZoom();
+  const minimapStyle = useMemo(
+    () => (chromeZoom === 1 ? MINIMAP_STYLE : { width: Math.round(MINIMAP_STYLE.width * chromeZoom), height: Math.round(MINIMAP_STYLE.height * chromeZoom) }),
+    [chromeZoom],
+  );
 
   return (
     <div
@@ -842,7 +848,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         </ViewportPortal>
         <MiniMap<SolFlowNode>
           className="solenoid-minimap"
-          style={MINIMAP_STYLE}
+          style={minimapStyle}
           pannable
           zoomable
           bgColor="var(--overlay-bg)"

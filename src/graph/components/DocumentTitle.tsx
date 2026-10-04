@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { documentStore } from "../documentStore";
 import { requestConfirm } from "../confirmStore";
 import { isMobile } from "../coarse";
+import { chromeZoomStore } from "../chromeZoom";
 import { SEEDS, SEED_GROUPS } from "../seeds";
 import "./documentTitle.css";
 
@@ -26,7 +27,9 @@ export function DocumentTitle() {
 
   function openMenu() {
     const r = rootRef.current?.getBoundingClientRect();
-    if (r) setMenuPos(isMobile() ? { top: r.bottom + 4 } : { top: r.bottom + 5, left: r.left + r.width / 2 });
+    // Screen pixels; the menu shrinks with the chrome (chromeZoom.css), which scales its own offsets too.
+    const z = chromeZoomStore.get();
+    if (r) setMenuPos(isMobile() ? { top: (r.bottom + 4) / z } : { top: (r.bottom + 5) / z, left: (r.left + r.width / 2) / z });
     setMenuOpen((o) => !o);
     setRenaming(false);
     setRenamingId(null);

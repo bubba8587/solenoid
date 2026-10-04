@@ -17,7 +17,8 @@ import { initFullscreenHotkey } from "./graph/fullscreen";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop } from "./graph/fileBridge";
 import { OWN_WINDOW_CONTROLS } from "./graph/WindowControls";
-import { IS_PHONE, deviceModeStore, isMobile, isTablet, landscapePhoneScale } from "./graph/coarse";
+import { IS_PHONE, deviceModeStore, isMobile, isTablet } from "./graph/coarse";
+import { installChromeZoom, landscapeFit } from "./graph/chromeZoom";
 import { ErrorBoundary } from "./graph/components/ErrorBoundary";
 import "./graph/components/errorBoundary.css";
 import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
@@ -36,8 +37,6 @@ if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
   const portraitViewport = meta?.content ?? "";
-  // Roughly the browser's toolbar and the system bars, which a sideways screen still loses from its height.
-  const BROWSER_CHROME_H = 80;
   const applyDeviceMode = () => {
     const html = document.documentElement;
     html.classList.toggle("is-mobile", isMobile());
@@ -45,12 +44,12 @@ if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
     html.classList.toggle("is-tablet", isTablet());
     if (!IS_PHONE || !meta) return;
     if (isMobile()) { meta.content = portraitViewport; return; }
-    const long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height);
-    const k = landscapePhoneScale(long, short - BROWSER_CHROME_H).toFixed(3);
+    const k = landscapeFit().toFixed(3);
     meta.content = `width=device-width, initial-scale=${k}, minimum-scale=${k}, maximum-scale=${k}, viewport-fit=cover`;
   };
   applyDeviceMode();
   deviceModeStore.subscribe(applyDeviceMode);
+  installChromeZoom();
 }
 
 // Last-resort surfacing for `void asyncFn()` failures, since the desktop console is closed; throttled against storms.
