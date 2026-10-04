@@ -7,6 +7,7 @@ import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth,
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { heightRampColor, resolveColor } from "../palette";
+import { colormapRgb } from "../colormaps";
 import { ChartTitle, titleHeight } from "./chartTitle";
 import { iterMin, iterMax } from "../nodes/mathUtils";
 
@@ -649,7 +650,7 @@ function XYTooltip({ active, payload, names, xcats, multi, seriesName }: {
   );
 }
 
-const rampCss = (t: number) => { const [r, g, b] = heightRampColor(t); return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; };
+const rampCss = (t: number, cmap?: string) => { const [r, g, b] = (cmap ? colormapRgb(cmap, t) : null) ?? heightRampColor(t); return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; };
 
 // Past this many segments a gradient per segment costs more than it shows; each takes its first point's color.
 const GRADIENT_SEGMENTS_MAX = 400;
@@ -723,7 +724,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     const s = series[j];
     if (typeof p.c === "number" && s.cRange) {
       const [lo, hi] = s.cRange;
-      return rampCss(hi > lo ? (p.c - lo) / (hi - lo) : 0.5);
+      return rampCss(hi > lo ? (p.c - lo) / (hi - lo) : 0.5, opts?.cmap);
     }
     if (typeof p.c === "string" && s.cCats) return colors[Math.max(0, s.cCats.indexOf(p.c)) % colors.length];
     return paint(j);
@@ -823,7 +824,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     <div style={{ height: MULTI_LEGEND_H, paddingLeft: yAxisW, paddingRight: margin.right, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 9 * fs, color: axis, whiteSpace: "nowrap", overflow: "hidden" }}>
       {names.c && <span>{names.c}</span>}
       <span>{compactTick(cRange[0])}</span>
-      <span aria-hidden="true" style={{ width: 60, height: 7, borderRadius: 2, flex: "none", background: `linear-gradient(to right, ${[0, 0.25, 0.5, 0.75, 1].map(rampCss).join(", ")})` }} />
+      <span aria-hidden="true" style={{ width: 60, height: 7, borderRadius: 2, flex: "none", background: `linear-gradient(to right, ${[0, 0.25, 0.5, 0.75, 1].map((t) => rampCss(t, opts?.cmap)).join(", ")})` }} />
       <span>{compactTick(cRange[1])}</span>
     </div>
   );
