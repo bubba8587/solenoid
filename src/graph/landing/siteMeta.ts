@@ -44,6 +44,7 @@ export function pageHtml(indexHtml: string, page: SitePageMeta): string {
     [/(<meta property="og:title" content=")[^"]*(")/, title],
     [/(<meta property="og:description" content=")[^"]*(")/, desc],
     [/(<meta property="og:url" content=")[^"]*(")/, `${SITE_ORIGIN}${page.path}`],
+    [/(<link rel="canonical" href=")[^"]*(")/, `${SITE_ORIGIN}${page.path}`],
   ];
   let out = indexHtml;
   for (const [re, value] of swaps) {
@@ -51,4 +52,15 @@ export function pageHtml(indexHtml: string, page: SitePageMeta): string {
     out = out.replace(re, (_m, open: string, close: string) => open + value + close);
   }
   return out;
+}
+
+/** Every crawlable URL: the app at `/`, the landing page, then each site page. */
+export function sitemapXml(): string {
+  const urls = [`${SITE_ORIGIN}/`, `${SITE_ORIGIN}/?landing`, ...Object.values(SITE_PAGES).map((p) => `${SITE_ORIGIN}${p.path}`)];
+  const body = urls.map((u) => `  <url><loc>${u.replace(/&/g, "&amp;")}</loc></url>`).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`;
+}
+
+export function robotsTxt(): string {
+  return `User-agent: *\nAllow: /\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`;
 }

@@ -5,7 +5,7 @@ import license from "rollup-plugin-license";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
-import { SITE_PAGES, pageHtml, type SitePage } from "./src/graph/landing/siteMeta";
+import { SITE_ORIGIN, SITE_PAGES, pageHtml, robotsTxt, sitemapXml, type SitePage } from "./src/graph/landing/siteMeta";
 const host = process.env.TAURI_DEV_HOST;
 
 /** Dev-only endpoint for the in-app copy-edit freeze (`src/devCopyEdit.ts`): maps an
@@ -225,14 +225,17 @@ function sitePageHtml(): Plugin {
   let outDir = "dist";
   return {
     name: "solenoid-site-page-html",
-    apply: "build",
     configResolved(config) { outDir = path.resolve(config.root, config.build.outDir); },
+    // index.html names the site as %SITE_ORIGIN%, so a domain move is the one line in siteMeta.ts.
+    transformIndexHtml: (html) => html.replaceAll("%SITE_ORIGIN%", SITE_ORIGIN),
     async closeBundle() {
       const index = await readFile(path.join(outDir, "index.html"), "utf8");
       for (const name of Object.keys(SITE_PAGES) as SitePage[]) {
         const page = SITE_PAGES[name];
         await writeFile(path.join(outDir, `${name}.html`), pageHtml(index, page));
       }
+      await writeFile(path.join(outDir, "robots.txt"), robotsTxt());
+      await writeFile(path.join(outDir, "sitemap.xml"), sitemapXml());
     },
   };
 }

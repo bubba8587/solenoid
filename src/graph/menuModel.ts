@@ -23,9 +23,10 @@ import { helpDialogStore } from "./helpDialogStore";
 import { gridSnapStore } from "./gridSnapStore";
 import { APP_LOCALE } from "./locale";
 import { drawModeStore } from "./drawnCables";
+import { SITE_ORIGIN } from "./landing/siteMeta";
 
 // Desktop has no address bar, so this is the only way to the site; on web the current origin serves the same route.
-const HOSTED_SITE = "https://solenoid-ngc.vercel.app";
+const HOSTED_SITE = SITE_ORIGIN;
 function openWebsite(): void {
   const onOrigin = /^https?:$/.test(window.location.protocol);
   void openExternal(isDesktop() || !onOrigin ? `${HOSTED_SITE}/?landing` : `${window.location.origin}/?landing`);
