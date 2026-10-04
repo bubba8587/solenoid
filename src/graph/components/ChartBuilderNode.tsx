@@ -95,7 +95,7 @@ const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "colo
 const CMAP_OPTS: readonly SelectOption[] = [
   { value: "", label: "Theme palette", group: "Palette" },
   ...COLORMAP_LIST.map((m) => ({ value: m.name, label: m.name, group: m.family })),
-  ...COLORMAP_LIST.map((m) => ({ value: `${m.name}_r`, label: `${m.name}, reversed`, group: "Reversed" })),
+  ...COLORMAP_LIST.map((m) => ({ value: `${m.name}_r`, label: `${m.name}_r`, group: "Reversed" })),
 ];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
   [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }, { key: "clamp", label: "Clamp tiles" }];
@@ -111,38 +111,38 @@ const SELECT_KEYS: readonly {
     options: [{ value: "", label: "When they fit" }, { value: "on", label: "Always" }, { value: "off", label: "Hidden" }],
   },
   { key: "cbar", label: "Colorbar", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
-  { key: "origin", label: "First row", clearValue: "upper", options: [{ value: "upper", label: "At the top" }, { value: "lower", label: "At the bottom" }] },
+  { key: "origin", label: "First row", clearValue: "upper", options: [{ value: "upper", label: "Top" }, { value: "lower", label: "Bottom" }] },
   {
     key: "pielabels", label: "Pie labels", clearValue: "outside",
     options: [
-      { value: "outside", label: "Labels: outside" },
-      { value: "inside", label: "Labels: on slice" },
-      { value: "off", label: "Labels: off" },
+      { value: "outside", label: "Outside" },
+      { value: "inside", label: "On slice" },
+      { value: "off", label: "Off" },
     ],
   },
   {
     key: "linestyle", label: "Line style", clearValue: "",
     options: [
-      { value: "", label: "Lines: default" },
-      { value: "none", label: "Lines: none" },
-      { value: "solid", label: "Lines: solid" },
-      { value: "dashed", label: "Lines: dashed" },
-      { value: "dotted", label: "Lines: dotted" },
-      { value: "dashdot", label: "Lines: dash-dot" },
+      { value: "", label: "Default" },
+      { value: "none", label: "None" },
+      { value: "solid", label: "Solid" },
+      { value: "dashed", label: "Dashed" },
+      { value: "dotted", label: "Dotted" },
+      { value: "dashdot", label: "Dash-dot" },
     ],
   },
   {
     key: "aspect", label: "Aspect", clearValue: "auto",
     options: [
-      { value: "auto", label: "Aspect: fill the plot" },
-      { value: "equal", label: "Aspect: equal x and y" },
+      { value: "auto", label: "Fill the plot" },
+      { value: "equal", label: "Equal x and y" },
     ],
   },
   {
     key: "radarscale", label: "Radar scale", clearValue: "axis",
     options: [
-      { value: "axis", label: "Scale: per axis" },
-      { value: "shared", label: "Scale: shared" },
+      { value: "axis", label: "Per axis" },
+      { value: "shared", label: "Shared" },
     ],
   },
   {
@@ -158,7 +158,7 @@ const SELECT_KEYS: readonly {
   },
   {
     key: "tiers", label: "Header rows", clearValue: "2",
-    options: [{ value: "2", label: "Two rows" }, { value: "1", label: "One row" }],
+    options: [{ value: "2", label: "Two" }, { value: "1", label: "One" }],
   },
   {
     key: "layout", label: "Layout", clearValue: "gantt",
@@ -166,7 +166,7 @@ const SELECT_KEYS: readonly {
   },
   {
     key: "fit", label: "Fit", clearValue: "off",
-    options: [{ value: "off", label: "The zoom preset" }, { value: "page", label: "Whole plan, one width" }],
+    options: [{ value: "off", label: "Zoom preset" }, { value: "page", label: "Whole plan" }],
   },
   { key: "critical", label: "Critical path", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
   { key: "baseline", label: "Baseline", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
@@ -181,7 +181,7 @@ const SELECT_KEYS: readonly {
   {
     key: "collapse", label: "Outline", clearValue: "open",
     options: [
-      { value: "open", label: "Every level" },
+      { value: "open", label: "All levels" },
       { value: "0", label: "Top level" },
       { value: "1", label: "Two levels" },
       { value: "2", label: "Three levels" },

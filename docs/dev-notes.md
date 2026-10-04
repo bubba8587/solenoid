@@ -8,7 +8,7 @@ specific item.
 
 ### SESSION DIGEST (2026-10-04: XY gradient line, drag frame rate, Chart Builder sections; cloud session)
 - **An XY line with a numeric `c` draws in the ramp too**, segment by segment, and `cmap` picks the ramp from the Heatmap's colormap list ([[chart-figures]] XY).
-- **Chart Builder folds its secondary rows into sections** when its chart offers more than ten (DESIGN.md § Card sections).
+- **Chart Builder is a wide card and folds its secondary rows into sections** when its chart offers more than ten (DESIGN.md § Card sections); its select options no longer repeat their row label.
 - **A drag never re-renders a card** (`SolNodeAdapter` memo ignores RF's position and `dragging` props); a dragged card is one composited layer and chart internals drop pointer events while anything moves ([[react-flow-surface-contract#Drag performance]]). Measured 36 charts × 250 points: a 30-step drag 13.3 s → under 1 s, worst frame 1.2 s → ~70 ms (dev build, headless).
 
 ### SESSION DIGEST (2026-10-03: settings accent picker; cloud session)

@@ -307,7 +307,7 @@ export function nodeWide(node: ClassicPreset.Node): boolean {
   if (node instanceof PointPlotterNode || node instanceof CurveNode) return true;
   if (node instanceof ExpressionNode || node instanceof ScriptNode || node instanceof EquationNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
-  if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode) return true;
+  if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode || node instanceof ChartBuilderNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
