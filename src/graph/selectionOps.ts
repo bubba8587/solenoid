@@ -1,7 +1,8 @@
 // [[C52]] visibleSelection, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast
 
 import type { View } from "./view";
-import { GroupNode } from "./rete-nodes";
+import { GroupNode, ConduitNode } from "./rete-nodes";
+import { bumpStackOrder } from "./graphSignals";
 import { repositionDockedNodes, unselectAllNodes, selectNode } from "./canvasCommands";
 import { getActiveEditor as getEditor, getActiveView as getView, getOwningView } from "./activeGraph";
 import { standoffStore, standoffClusters, settleStandoffs, liveStandoffs } from "./standoffs";
@@ -181,5 +182,75 @@ export function collapseSelection(collapsed: boolean): void {
 export function toggleNodeCollapsed(nodeId: string): void {
   collapseStore.toggle(nodeId);
   void getOwningView(nodeId)?.rerenderNode(nodeId);
+  notifyGraphChanged();
+}
+
+export type StackMove = "front" | "forward" | "backward" | "back";
+
+/** The bottom-to-top order after `move`: front and back take the selection past everything; forward and backward
+ *  step each selected id past the nearest unselected one it `overlaps`, and leave it where it is when none does. */
+export function restackOrder(
+  order: readonly string[], selected: ReadonlySet<string>, move: StackMove, overlaps: (a: string, b: string) => boolean,
+): string[] {
+  const out = [...order];
+  if (move === "front") return [...out.filter((id) => !selected.has(id)), ...out.filter((id) => selected.has(id))];
+  if (move === "back") return [...out.filter((id) => selected.has(id)), ...out.filter((id) => !selected.has(id))];
+  if (move === "forward") {
+    for (let i = out.length - 1; i >= 0; i--) {
+      const id = out[i];
+      if (!selected.has(id)) continue;
+      const j = out.findIndex((o, k) => k > i && !selected.has(o) && overlaps(id, o));
+      if (j < 0) continue;
+      out.splice(i, 1);
+      out.splice(j, 0, id);
+    }
+    return out;
+  }
+  for (let i = 0; i < out.length; i++) {
+    const id = out[i];
+    if (!selected.has(id)) continue;
+    let j = -1;
+    for (let k = i - 1; k >= 0; k--) if (!selected.has(out[k]) && overlaps(id, out[k])) { j = k; break; }
+    if (j < 0) continue;
+    out.splice(i, 1);
+    out.splice(j, 0, id);
+  }
+  return out;
+}
+
+/** Rewrites the editor's node order, which is the stacking order: RF draws cards in it and the save keeps it.
+ *  rete has no reorder call and `getNodes()` returns a copy, so this writes its `nodes` array in place. */
+export function reorderEditorNodes(editor: Editor, order: readonly string[]): void {
+  const nodes = (editor as unknown as { nodes: Schemes["Node"][] }).nodes;
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  if (order.length !== nodes.length || order.some((id) => !byId.has(id))) return;
+  nodes.splice(0, nodes.length, ...order.map((id) => byId.get(id)!));
+}
+
+// Groups, Conduits and cards stack in separate bands (flowModel.nodeZIndex), so only a card of the same kind is in the way.
+const stackBand = (n: Schemes["Node"] | undefined) => (n instanceof GroupNode ? 2 : n instanceof ConduitNode ? 1 : 0);
+
+/** Moves the selected cards (or `ids`) to the front, one step forward, one step back, or to the back. */
+export function stackSelection(move: StackMove, ids?: readonly string[]): void {
+  const editor = getEditor();
+  const view = getView();
+  if (!editor || !view) return;
+  const selected = new Set(ids ?? selectedNodeIds(editor));
+  if (!selected.size) return;
+  const order = editor.getNodes().map((n) => n.id);
+  const boxes = new Map<string, Box | null>();
+  const box = (id: string) => {
+    if (!boxes.has(id)) boxes.set(id, boxOf(view, id));
+    return boxes.get(id)!;
+  };
+  const overlaps = (a: string, b: string) => {
+    if (stackBand(editor.getNode(a)) !== stackBand(editor.getNode(b))) return false;
+    const p = box(a), q = box(b);
+    return !!p && !!q && p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h;
+  };
+  const next = restackOrder(order, selected, move, overlaps);
+  if (next.every((id, i) => id === order[i])) return;
+  reorderEditorNodes(editor, next);
+  bumpStackOrder();
   notifyGraphChanged();
 }

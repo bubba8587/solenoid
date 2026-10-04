@@ -70,6 +70,8 @@ export function describeGraphDelta(prev: SavedGraph, next: SavedGraph): string {
   if (edited.length) parts.push(nodeList(edited, "Edited"));
   if (!parts.length && moved.length)
     parts.push(moved.length === 1 ? `Moved node: ${nodeName(moved[0])}` : `Moved ${moved.length} nodes`);
+  if (!parts.length && prev.nodes.map((n) => n.id).join() !== next.nodes.map((n) => n.id).join())
+    parts.push("Changed the stacking order");
   if (!parts.length) {
     const pd = prev.drawnCables?.length ?? 0;
     const nd = next.drawnCables?.length ?? 0;

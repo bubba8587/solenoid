@@ -134,6 +134,7 @@ Single keys work when you're not typing in a field.
 | **Ctrl+Z / Ctrl+Shift+Z** | Undo / redo |
 | **Ctrl+C / Ctrl+V** | Copy / paste, wiring intact |
 | **Ctrl+Shift+G** | Make a Composite from the selection |
+| **Ctrl+] / Ctrl+[** | Bring the selection forward / send it backward (with Shift: to the front / back) |
 | **Ctrl+A / Ctrl+F** | Select all / find a node |
 | **Ctrl+S / Ctrl+Shift+S** | Save / Save As |
 | **Ctrl+O / Ctrl+Shift+L** | Open / reload the document |

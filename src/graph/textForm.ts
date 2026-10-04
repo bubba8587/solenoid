@@ -198,9 +198,9 @@ export function writeTextForm(g: SavedGraph): string {
     lines.push(parts.join(" "));
   }
 
-  // No prototype, so a node named `__proto__` is an ordinary key.
+  // No prototype, so a node named `__proto__` is an ordinary key. Keyed in array order, which is the stacking order the lines don't keep.
   const positions: Record<string, { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean; sections?: Record<string, boolean> }> = Object.create(null);
-  for (const id of order) {
+  for (const id of g.nodes.map((n) => n.id)) {
     const sn = byId.get(id);
     if (!sn) continue;
     const p: { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean; sections?: Record<string, boolean> } = { x: sn.x, y: sn.y };
@@ -286,6 +286,12 @@ export function readTextForm(text: string): SavedGraph {
     if (pos.sections && typeof pos.sections === "object") sn.sections = { ...pos.sections };
     return sn;
   });
+
+  // The positions table runs in stacking order; a hand-written one that misses a node leaves the line order.
+  if (sidecar.positions && typeof sidecar.positions === "object") {
+    const rank = new Map(Object.keys(sidecar.positions).map((name, i) => [name, i]));
+    if (nodes.every((n) => rank.has(n.id))) nodes.sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+  }
 
   const connections: SavedConnection[] = [];
   for (const p of parsed) {

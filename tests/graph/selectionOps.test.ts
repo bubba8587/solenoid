@@ -1,7 +1,7 @@
 // [[C52]], [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
 import { NodeEditor } from "rete";
-import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, toggleNodeCollapsed, type Placed } from "../../src/graph/selectionOps";
+import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, toggleNodeCollapsed, restackOrder, reorderEditorNodes, type Placed } from "../../src/graph/selectionOps";
 import { collapseStore } from "../../src/graph/collapseStore";
 import { setGraphChanged } from "../../src/graph/process";
 import { GroupNode, DisplayNode } from "../../src/graph/rete-nodes";
@@ -141,5 +141,45 @@ describe("toggleNodeCollapsed", () => {
     expect(collapseStore.get("n1")).toBe(false);
     expect(changes).toBe(2);
     setGraphChanged(() => {});
+  });
+});
+
+describe("restackOrder", () => {
+  const all = () => true;
+  it("takes the selection past everything to the front or the back, keeping its own order", () => {
+    expect(restackOrder(["a", "b", "c", "d"], new Set(["a", "c"]), "front", all)).toEqual(["b", "d", "a", "c"]);
+    expect(restackOrder(["a", "b", "c", "d"], new Set(["b", "d"]), "back", all)).toEqual(["b", "d", "a", "c"]);
+  });
+  it("steps forward past the nearest card it overlaps, skipping ones it doesn't touch", () => {
+    const touches = (x: string, y: string) => [x, y].sort().join() === "a,c";
+    expect(restackOrder(["a", "b", "c", "d"], new Set(["a"]), "forward", touches)).toEqual(["b", "c", "a", "d"]);
+  });
+  it("steps backward past the nearest card it overlaps", () => {
+    expect(restackOrder(["a", "b", "c"], new Set(["c"]), "backward", all)).toEqual(["a", "c", "b"]);
+  });
+  it("leaves a card with nothing overlapping in the way where it is", () => {
+    expect(restackOrder(["a", "b"], new Set(["a"]), "forward", () => false)).toEqual(["a", "b"]);
+    expect(restackOrder(["a", "b"], new Set(["b"]), "forward", all)).toEqual(["a", "b"]);
+  });
+  it("moves a selected pair as a block without one leapfrogging the other", () => {
+    expect(restackOrder(["a", "b", "c"], new Set(["a", "b"]), "forward", all)).toEqual(["c", "a", "b"]);
+    expect(restackOrder(["a", "b", "c"], new Set(["b", "c"]), "backward", all)).toEqual(["b", "c", "a"]);
+  });
+});
+
+describe("reorderEditorNodes", () => {
+  it("rewrites the order getNodes returns, the one the save and RF read", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const a = new DisplayNode(), b = new DisplayNode(), c = new DisplayNode();
+    for (const n of [a, b, c]) await editor.addNode(n);
+    reorderEditorNodes(editor, [c.id, a.id, b.id]);
+    expect(editor.getNodes().map((n) => n.id)).toEqual([c.id, a.id, b.id]);
+  });
+  it("ignores an order that doesn't name every node exactly", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const a = new DisplayNode(), b = new DisplayNode();
+    for (const n of [a, b]) await editor.addNode(n);
+    reorderEditorNodes(editor, [b.id]);
+    expect(editor.getNodes().map((n) => n.id)).toEqual([a.id, b.id]);
   });
 });

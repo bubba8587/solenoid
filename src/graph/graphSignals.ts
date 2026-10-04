@@ -52,3 +52,20 @@ export const conduitAngleStore = {
   },
 };
 
+
+// Bumped when a verb reorders the editor's nodes (the stacking order), so every surface re-projects its RF nodes.
+let _stackVersion = 0;
+const _stackListeners = new Set<() => void>();
+
+export function bumpStackOrder() {
+  _stackVersion++;
+  for (const l of _stackListeners) l();
+}
+
+export const stackOrderStore = {
+  get: () => _stackVersion,
+  subscribe: (l: () => void) => {
+    _stackListeners.add(l);
+    return () => { _stackListeners.delete(l); };
+  },
+};

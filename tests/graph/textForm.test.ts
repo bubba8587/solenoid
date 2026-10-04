@@ -406,3 +406,26 @@ describe("per-node section folds (sectionFoldStore)", () => {
     expect(reloaded.nodes.find((n) => n.name === "E")?.sections).toBeUndefined();
   });
 });
+
+describe("stacking order", () => {
+  // Wired A → B, so the lines run A then B; the array (the stacking order) puts B underneath.
+  const g: SavedGraph = {
+    v: 2,
+    nodes: [
+      { id: "b", type: "DisplayNode", name: "B", x: 0, y: 0, init: {} },
+      { id: "a", type: "NumberInputNode", name: "A", x: 40, y: 20, init: {} },
+    ],
+    connections: [{ source: "a", sourceOutput: "value", target: "b", targetInput: "value" }],
+  };
+
+  it("survives the text form, whose lines run in wiring order", () => {
+    const text = writeTextForm(g);
+    expect(text.indexOf("A: ")).toBeLessThan(text.indexOf("B: "));
+    expect(readTextForm(text).nodes.map((n) => n.name)).toEqual(["B", "A"]);
+  });
+
+  it("falls back to the line order when the positions table misses a node", () => {
+    const text = writeTextForm(g).replace(/"B": \{[^}]*\},?\s*/, "");
+    expect(readTextForm(text).nodes.map((n) => n.name)).toEqual(["A", "B"]);
+  });
+});

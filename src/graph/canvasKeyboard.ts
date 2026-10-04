@@ -25,7 +25,7 @@ import { drawModeStore, drawnCableStore, finishDrawing } from "./drawnCables";
 import { isolateStore } from "./isolateStore";
 import { isolateSelection } from "./isolate";
 import { addMenuRequest } from "./addMenuStore";
-import { expandMoveSet } from "./selectionOps";
+import { expandMoveSet, stackSelection } from "./selectionOps";
 import { scheduleAutosave } from "./persistence";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { DOT_SPACING } from "./gridSnapStore";
@@ -228,6 +228,11 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       if (e.code === "KeyO") { void openFromDisk(); e.preventDefault(); return; }
       if (e.code === "KeyL" && e.shiftKey) { void documentStore.reloadCurrent(); e.preventDefault(); return; }
       if (editable) return;
+      if (e.code === "BracketRight" || e.code === "BracketLeft") {
+        const up = e.code === "BracketRight";
+        if (!locked) stackSelection(up ? (e.shiftKey ? "front" : "forward") : (e.shiftKey ? "back" : "backward"));
+        e.preventDefault(); return;
+      }
       if (e.code === "KeyG" && e.shiftKey) {
         const editor = editorRef.current;
         const view = viewRef.current;

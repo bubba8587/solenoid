@@ -198,7 +198,7 @@ The text form carries no `id`: on read, each node's `id` is its name.
 | Key | Content |
 |---|---|
 | `v` | The version. Read back as `CURRENT_SAVE_VERSION` when absent. |
-| `positions` | Object keyed by name, in line order: `{ x, y, size?, collapsed?, flipped?, sections? }`. A node missing here reads at `(0, 0)`. |
+| `positions` | Object keyed by name, in stacking order (the `SavedGraph`'s node order, bottom to top), since the lines run in wiring order: `{ x, y, size?, collapsed?, flipped?, sections? }`. Read back, the nodes take this key order; when a node is missing here it reads at `(0, 0)` and the nodes keep the line order. |
 | `standoffs` | As saved, with both `nodeId`s as names. |
 | `drawnCables` | As saved (no node references). |
 | `pins` | `{ nodeId, outputKey }` with `nodeId` as a name. |

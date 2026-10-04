@@ -91,6 +91,23 @@ export type NodeContextTarget = {
   viewOnly?: boolean;
 };
 
+// Lucide "bring-to-front" / "send-to-back". https://lucide.dev/icons/bring-to-front
+const FrontSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <rect x="8" y="8" width="8" height="8" rx="2" />
+    <path d="M4 10a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2" />
+    <path d="M14 20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2" />
+  </svg>
+);
+const BackSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <rect x="14" y="14" width="8" height="8" rx="2" />
+    <rect x="2" y="2" width="8" height="8" rx="2" />
+    <path d="M7 14v1a2 2 0 0 0 2 2h1" />
+    <path d="M14 7h1a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
 type Props = {
   target: NodeContextTarget;
   onIsolate: (ids: string[]) => void;
@@ -103,10 +120,11 @@ type Props = {
   onUnpackComposite?: (nodeId: string) => void;
   onToggleLock?: (nodeId: string) => void;
   onToggleFlip?: (nodeId: string) => void;
+  onStack?: (ids: string[], move: "front" | "back") => void;
   onClose: () => void;
 };
 
-export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onToggleLock, onToggleFlip, onClose }: Props) {
+export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onToggleLock, onToggleFlip, onStack, onClose }: Props) {
   const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
@@ -172,6 +190,8 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       {target.isFlippable && !target.viewOnly && onToggleFlip &&
         item(<FlipSvg />, target.flipped ? "Unflip sockets" : "Flip sockets", () => onToggleFlip!(target.nodeId),
           "Swap the inputs and outputs to the opposite sides")}
+      {!target.viewOnly && onStack && item(<FrontSvg />, "Bring to front", () => onStack!(target.seedIds, "front"))}
+      {!target.viewOnly && onStack && item(<BackSvg />, "Send to back", () => onStack!(target.seedIds, "back"))}
       {target.isGroup && !target.viewOnly && onToggleLock && (
         target.lockedPosition
           ? item(<UnlockSvg />, "Unlock position", () => onToggleLock!(target.nodeId),

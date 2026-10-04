@@ -40,7 +40,8 @@ import { toFlowNodes, toFlowEdges, mergeFlowNodes, nodeClassName, toFlowPosition
 import { canConnect, connect, moveNode } from "./flowModel";
 import type { FlowView } from "./flowView";
 import { notifyGraphChanged, processGraph } from "../process";
-import { cableDragStore, setCableDragging } from "../graphSignals";
+import { cableDragStore, setCableDragging, stackOrderStore } from "../graphSignals";
+import { stackSelection } from "../selectionOps";
 import { installCanvasKeyboard } from "../canvasKeyboard";
 import { firstCompatibleSocketKey, quickWireCompatibleTypes } from "../catalogSearch";
 import { SolenoidSocket } from "../sockets";
@@ -227,6 +228,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [s]);
 
   useEffect(() => groupMembershipStore.subscribe(syncTopology), [syncTopology]);
+  useEffect(() => stackOrderStore.subscribe(syncTopology), [syncTopology]);
 
   useEffect(() => {
     const restamp = () =>
@@ -912,6 +914,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             void (s.view as unknown as View).rerenderNode(id);
             notifyGraphChanged();
           }}
+          onStack={(ids, move) => stackSelection(move, ids)}
           onClose={() => setNodeCtx(null)}
         />
       )}
