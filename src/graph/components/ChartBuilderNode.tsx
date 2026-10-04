@@ -1,5 +1,5 @@
 // [[C100]] chartIsAValue
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { collapseStore } from "../collapseStore";
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey, type ChartTargetId } from "../nodes/chartOptions";
@@ -10,7 +10,7 @@ import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
 import { dropInputCables } from "./cablePrune";
 import { stopDragStart } from "../coarse";
-import { CardSection } from "./CardSection";
+import { CardSection, useRowsInUse } from "./CardSection";
 
 const isOnValue = (s: string | undefined) => {
   const v = (s ?? "").trim().toLowerCase();
@@ -208,6 +208,61 @@ const TARGET_DEFAULTS: Partial<Record<ChartTargetId, Partial<Record<ChartBuilder
 };
 const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "center", "vmin", "vmax", "linewidth", "markersize", "alpha", "fontsize"];
 
+// A target offering more rows than this folds its secondary ones into sections; a shorter card stays uncaptioned.
+const SECTIONED_ABOVE = 10;
+// Keys in no section (the title, axis labels, font size, a few one-figure settings) stay at the top.
+const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] = [
+  { label: "Columns", keys: ["x", "y", "s", "c", "annotate", "by"] },
+  { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha"] },
+  { label: "Axes", keys: ["grid", "aspect", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
+  { label: "Color scale", keys: ["cmap", "center", "vmin", "vmax", "cbar", "annot", "fmt"] },
+  { label: "Timeline", keys: ["zoom", "tiers", "fit", "window", "columns", "collapse", "group_by"] },
+  { label: "Shown", keys: ["critical", "baseline", "arrows", "today", "status", "weekends", "labels", "histogram", "minutes"] },
+  { label: "Calendar", keys: ["week", "fiscal_start"] },
+];
+const SECTIONED = new Set<ChartBuilderKey>(SECTIONS.flatMap((sec) => sec.keys));
+const KIND_ORDER: readonly ChartBuilderKey[] = [
+  ...STR_KEYS, ...TOGGLE_KEYS.map(({ key }) => key), ...SELECT_KEYS.map(({ key }) => key), ...NUM_KEYS,
+];
+const TOGGLE_BY_KEY = new Map(TOGGLE_KEYS.map((t) => [t.key, t]));
+const SELECT_BY_KEY = new Map(SELECT_KEYS.map((t) => [t.key, t]));
+
+/** The rows for `keys` in order: runs of text and number keys share one InlineInputs, toggles and selects draw their own rows. */
+function BuilderRows({ node, emit, keys, clearFor }: {
+  node: ChartBuilderNodeType; emit: Emit; keys: readonly ChartBuilderKey[];
+  clearFor: (key: ChartBuilderKey, clear: string) => string;
+}) {
+  const out: ReactNode[] = [];
+  let run: string[] = [];
+  const flush = () => {
+    if (run.length) out.push(<InlineInputs key={`in-${run[0]}`} node={node} emit={emit} keys={run} />);
+    run = [];
+  };
+  for (const key of keys) {
+    const toggle = TOGGLE_BY_KEY.get(key);
+    const select = SELECT_BY_KEY.get(key);
+    if (toggle) { flush(); out.push(<ToggleInputRow key={key} node={node} emit={emit} socketKey={key} label={toggle.label} />); }
+    else if (select) {
+      flush();
+      out.push(<SelectInputRow key={key} node={node} emit={emit} socketKey={key} label={select.label} options={select.options} clearValue={clearFor(key, select.clearValue)} />);
+    } else run.push(key);
+  }
+  flush();
+  return <>{out}</>;
+}
+
+function BuilderSection({ node, emit, label, keys, clearFor }: {
+  node: ChartBuilderNodeType; emit: Emit; label: string; keys: readonly ChartBuilderKey[];
+  clearFor: (key: ChartBuilderKey, clear: string) => string;
+}) {
+  const inUse = useRowsInUse(node, keys);
+  return (
+    <CardSection label={label} collapsible defaultOpen={inUse} sockets={{ node, emit, keys }}>
+      <BuilderRows node={node} emit={emit} keys={keys} clearFor={clearFor} />
+    </CardSection>
+  );
+}
+
 export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNodeType>) {
   const out = data.outputs.result;
   const [target, setTarget] = useNodeField(data, "target");
@@ -232,6 +287,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const inertNum = inert(NUM_KEYS);
   const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertSelects.length > 0 || inertNum.length > 0;
   const clearFor = (key: ChartBuilderKey, clear: string) => TARGET_DEFAULTS[target]?.[key] ?? clear;
+  const sectioned = accepted.size > SECTIONED_ABOVE;
   const inertLabel = target === "gantt" && (data.stringLiterals["layout"] ?? "").trim().toLowerCase() === "calendar"
     ? "the Gantt calendar" : spec.label;
   return (
@@ -247,14 +303,11 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
           ...inertStr, ...inertToggles.map(({ key }) => key), ...inertSelects.map(({ key }) => key), ...inertNum,
         ] as string[]} />
       ) : <>
-      <InlineInputs node={data} emit={emit} keys={acc(STR_KEYS) as string[]} />
-      {TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label }) => (
-        <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
-      ))}
-      {SELECT_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label, options, clearValue }) => (
-        <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearFor(key, clearValue)} />
-      ))}
-      <InlineInputs node={data} emit={emit} keys={acc(NUM_KEYS) as string[]} />
+      <BuilderRows node={data} emit={emit} keys={sectioned ? KIND_ORDER.filter((k) => accepted.has(k) && !SECTIONED.has(k)) : acc(KIND_ORDER)} clearFor={clearFor} />
+      {sectioned && SECTIONS.map(({ label, keys }) => {
+        const shown = acc(keys);
+        return shown.length > 0 && <BuilderSection key={label} node={data} emit={emit} label={label} keys={shown} clearFor={clearFor} />;
+      })}
       {anyInert && (
         <CardSection label={`Not used by ${inertLabel}`}>
           <div style={{ opacity: 0.45 }}>
