@@ -1,5 +1,5 @@
 // [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue
-import { argRole, LEFT_OUT } from "./inputRoles";
+import { argRole, LEFT_OUT, type InputRole } from "./inputRoles";
 import { FORMULA_SIGNATURES } from "./formulaSignatureTable";
 
 interface PackSlotMeta { signature?: string; emptySlotsLeftOut?: boolean; emptySlotShown?: string }
@@ -89,4 +89,12 @@ export function emptySlotReading(name: string, i: number): EmptySlotReading {
   const type = paramType(up, i);
   const value = type === "text" ? "" : type === "logical" ? false : 0;
   return { value, shown: show(value) };
+}
+
+/** A card's empty setting field shows what it reads as; data and required fields show nothing ([[D96]] emptySlotShowsItsValue). */
+export function fieldPlaceholder(role: InputRole | undefined, key: string): string | undefined {
+  if (role?.kind !== "setting") return undefined;
+  if (role.from) return emptySlotReading(role.from[0], role.from[1]).shown ?? "";
+  if (role.blank !== LEFT_OUT) return show(role.blank) ?? "";
+  return role.word ?? LEFT_OUT_BY_PARAM[key] ?? "default";
 }

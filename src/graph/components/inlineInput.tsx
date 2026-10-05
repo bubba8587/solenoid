@@ -18,6 +18,8 @@ import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 import { usePendingDraft } from "../draftFlush";
 import { decimalFromText } from "../valueKinds";
+import { fieldPlaceholder } from "../emptySlots";
+import type { InputRole } from "../inputRoles";
 
 // Body-height estimate only; socket placement is measured per row.
 export const INPUT_ROW_PITCH = 28;
@@ -511,6 +513,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
   const incoming = useIncomingSources(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
   const literals = (node.literals ??= {});
+  const roles = (node.constructor as { inputRoles?: Record<string, InputRole> }).inputRoles;
   const suggestId = suggest ? `sol-suggest-${node.id}` : undefined;
   const suggestOptions = suggest ? Array.from(new Set(Object.values(suggest).flat())) : [];
 
@@ -581,7 +584,9 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
         const isNumber = dt === "number" || (dt === "numlist" && !numlistCsv);
         const isStr    = dt === "string" || dt === "strcombo";
         const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist" || numlistCsv;
-        const { label, placeholder } = splitDefaultLabel(labelFor ? labelFor(key, i) : (input.label || key));
+        const split = splitDefaultLabel(labelFor ? labelFor(key, i) : (input.label || key));
+        const label = split.label;
+        const placeholder = split.placeholder ?? fieldPlaceholder(roles?.[key], key);
         const isConn = connected.has(key);
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={socket}>

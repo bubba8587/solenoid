@@ -723,6 +723,13 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   -webkit-appearance: none;
   margin: 0;
 }
+/* An empty field's placeholder is what it reads as ([[D96]] emptySlotShowsItsValue): muted, like a formula's empty slot. */
+.solenoid-node__inline-input::placeholder,
+.solenoid-node__quoted-input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.6;
+  font-style: italic;
+}
 .solenoid-node__inline-input:focus {
   border-color: var(--node-accent, var(--accent));
 }

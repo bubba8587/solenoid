@@ -8,12 +8,13 @@ import { solError, isSolError, type SolError } from "./errorValue";
  * `picks`: positions; a blank pick is dropped, none left is the picks left out (`#SYNTAX!` when `required`).
  */
 export type InputRole =
-  | { kind: "setting"; blank: unknown }
+  | { kind: "setting"; blank: unknown; word?: string; from?: readonly [string, number] }
   | { kind: "required" }
   | { kind: "picks"; required: boolean };
 
 export const LEFT_OUT = undefined;
-export const setting = (blank: unknown): InputRole => ({ kind: "setting", blank });
+/** `word`: what an empty field shows for a `LEFT_OUT` default ([[D96]] emptySlotShowsItsValue). */
+export const setting = (blank: unknown, word?: string): InputRole => ({ kind: "setting", blank, ...(word ? { word } : {}) });
 export const required: InputRole = { kind: "required" };
 export const picks = (opts: { required?: boolean } = {}): InputRole => ({ kind: "picks", required: opts.required ?? false });
 
@@ -219,7 +220,7 @@ export function rolesFrom(name: string, sockets: Record<string, number>): Record
   for (const [key, i] of Object.entries(sockets)) {
     const role = argRole(name, i);
     if (!role) throw new Error(`rolesFrom: ${name} declares no role for argument ${i}`);
-    out[key] = role;
+    out[key] = role.kind === "setting" ? { ...role, from: [name, i] } : role;
   }
   return out;
 }

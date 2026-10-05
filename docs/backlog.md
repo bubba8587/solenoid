@@ -42,7 +42,6 @@ warning is expected.
 
 ## Empty argument slots (author 2026-10-05; [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue)
 
-- [ ] **Build the empty-slot rules** (`[decided 2026-10-05]` in input-roles § Empty slots and § Placeholders, formula-language § Blank and omitted arguments): the per-parameter empty-slot table beside `ARG_ROLES` with its every-function test (the 2026-10-05 probe found 411 slot/typed mismatches, 75 of them errors), the editor and read-only ghosts, card setting-field placeholders and the `LEFT_OUT` words.
 - [ ] **XLOOKUP's empty `if_not_found`** stays missing until Excel's answer is checked (C80 left it out; author 2026-10-05: backlog).
 - [ ] **Leaf number clash:** this session's D96 emptySlotShowsItsValue took the number the parked `pivot-list-cells` branch gave D96 pivotPoolsItems; move that branch's leaf (`dte move`) when it merges.
 

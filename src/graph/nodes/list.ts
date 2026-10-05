@@ -2270,7 +2270,7 @@ export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; param
 };
 
 export class SmoothNode extends ClassicPreset.Node {
-  static inputRoles = { window: setting(LEFT_OUT), order: setting(LEFT_OUT), frac: setting(LEFT_OUT), sigma: setting(LEFT_OUT) };
+  static inputRoles = { window: setting(LEFT_OUT, "5"), order: setting(LEFT_OUT, "2"), frac: setting(LEFT_OUT, "0.67"), sigma: setting(LEFT_OUT, "1") };
   static socketDocs: Record<string, string> = {
     list: "Blank and error cells are skipped by the fits and stay blank in the result.",
     window: "Odd number of neighbours, larger than the order.",
@@ -2324,7 +2324,7 @@ export class SmoothNode extends ClassicPreset.Node {
 
 // ─── FIND PEAKS ───────────────────────────────────────────────────────────────
 export class FindPeaksNode extends ClassicPreset.Node {
-  static inputRoles = { height: setting(LEFT_OUT), distance: setting(LEFT_OUT), prominence: setting(LEFT_OUT) };
+  static inputRoles = { height: setting(LEFT_OUT, "none"), distance: setting(LEFT_OUT, "none"), prominence: setting(LEFT_OUT, "none") };
   static socketDocs: Record<string, string> = {
     result: "One row per local maximum that passes every filter: Position (1-based) and Height.",
     height: "Empty, there is no minimum; the same for the two filters below.",

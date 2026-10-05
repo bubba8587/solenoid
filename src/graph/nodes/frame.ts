@@ -392,7 +392,7 @@ export const HEAD_OP_META: Record<HeadOp, { label: string; description: string }
 };
 
 export class HeadNode extends ClassicPreset.Node {
-  static inputRoles = { rows: setting(10), to: setting(LEFT_OUT) };
+  static inputRoles = { rows: setting(10), to: setting(LEFT_OUT, "end") };
   static socketDocs: Record<string, string> = {
     rows: "First, Last, and Skip read this as a row count. Rows M–N reads it as the 1-based start row.",
     to: "Only the Rows M–N operation reads this, as the last kept row.",

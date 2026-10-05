@@ -79,7 +79,7 @@ CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
 
 ## Empty slots
 
-`[decided 2026-10-05]` ([[C80]] blankArgIsExcelBlank). An empty argument slot is something the user typed, so it reads as the value Excel gives it, for every parameter of every function, whatever its role. A blank *value* in the same place still reads by the role above.
+([[C80]] blankArgIsExcelBlank). An empty argument slot is something the user typed, so it reads as the value Excel gives it, for every parameter of every function, whatever its role. A blank *value* in the same place still reads by the role above.
 
 | The parameter takes | An empty slot reads as | Shown in the slot as |
 |---|---|---|
@@ -96,11 +96,11 @@ CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
 
 ## Placeholders
 
-`[decided 2026-10-05]` ([[D96]] emptySlotShowsItsValue). Wherever an empty slot's reading isn't "", the slot shows it as muted placeholder text, so a value nobody typed is never invisible:
+([[D96]] emptySlotShowsItsValue). Wherever an empty slot's reading isn't "", the slot shows it as muted placeholder text, so a value nobody typed is never invisible:
 
 - **The formula editor** draws it in the highlight mirror under the textarea, as a zero-width marker after the comma, so the user's text and caret never move.
 - **A read-only formula** (a card's formula line) draws it inline.
-- **A card's empty setting field** shows its declared blank as the field's placeholder. An empty data field stays plainly empty, since its blank really is blank.
+- **A card's empty setting field** shows its declared blank as the field's placeholder (`fieldPlaceholder` in `emptySlots.ts`; a card setting pointed at a formula with `rolesFrom` shows the formula slot's reading). Other fields keep the placeholder their label's `(default …)` or their field kind gives.
 
 A `LEFT_OUT` reading shows a short word for the default it stands for, declared with the setting: `all` for a size that keeps the whole axis (TAKE, DROP, EXPAND), `1` where the default is the first (an instance or a start), `none` where nothing is applied, and the default value itself wherever one exists.
 

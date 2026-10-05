@@ -226,7 +226,7 @@ Formula.js's array functions are written against 2-D spreadsheet ranges and have
 
 Three things can sit in an argument's place, and they read differently ([[C80]] blankArgIsExcelBlank):
 
-- **An empty slot**, a comma with nothing typed before the next comma or the closing parenthesis, reads as Excel's blank for that parameter: 0, FALSE, "", or the argument left out where Excel reads it so. Every parameter has this reading, declared once ([[input-roles#Empty slots]]), and it is shown in the slot wherever it isn't "" ([[D96]] emptySlotShowsItsValue). `[decided 2026-10-05]`
+- **An empty slot**, a comma with nothing typed before the next comma or the closing parenthesis, reads as Excel's blank for that parameter: 0, FALSE, "", or the argument left out where Excel reads it so. Every parameter has this reading, declared once ([[input-roles#Empty slots]]), and it is shown in the slot wherever it isn't "" ([[D96]] emptySlotShowsItsValue).
 - **A blank value**, a variable or cell holding blank, follows the parameter's role ([[D86]] blankRoles, [[input-roles]]): a blank in data stays missing ([[D36]] nullSkippedNotZero), a blank setting is its default, a blank pick is dropped.
 - **An omitted trailing argument** is absent, so the implementation receives `undefined` and takes its default. Implementations read `undefined` as "use the default" and never treat `null` as omitted.
 

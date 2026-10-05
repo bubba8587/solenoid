@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { emptySlotReading } from "../../src/graph/emptySlots";
+import { emptySlotReading, fieldPlaceholder } from "../../src/graph/emptySlots";
+import { rolesFrom, setting, required, LEFT_OUT } from "../../src/graph/inputRoles";
 
 const ev = (src: string, env: Record<string, unknown> = {}) => compileEvaluator(src)!(env);
 const show = (v: unknown): string => {
@@ -64,5 +65,18 @@ describe("the highlighter shows an empty slot's reading ([[D96]] emptySlotShowsI
     expect(highlightFormula("IF(c,SUM(1,),)")).toMatch(/SUM.*fx-ghost-inline">0<.*fx-ghost-inline">0</);
     expect(highlightFormula("PI()")).not.toContain("fx-ghost");
     expect(highlightFormula("(a, b)")).not.toContain("fx-ghost");
+  });
+});
+
+describe("a card's empty setting field shows what it reads as ([[D96]] emptySlotShowsItsValue)", () => {
+  it("from its formula twin, its own blank, or its word; data and required fields show nothing", () => {
+    const take = rolesFrom("TAKE", { rows: 1 });
+    expect(fieldPlaceholder(take.rows, "rows")).toBe("all");
+    expect(fieldPlaceholder(rolesFrom("ROUND", { digits: 1 }).digits, "digits")).toBe("0");
+    expect(fieldPlaceholder(rolesFrom("TEXTJOIN", { delimiter: 0 }).delimiter, "delimiter")).toBe("");
+    expect(fieldPlaceholder(setting(10), "rows")).toBe("10");
+    expect(fieldPlaceholder(setting(LEFT_OUT, "end"), "to")).toBe("end");
+    expect(fieldPlaceholder(required, "k")).toBeUndefined();
+    expect(fieldPlaceholder(undefined, "x")).toBeUndefined();
   });
 });
