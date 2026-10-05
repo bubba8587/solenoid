@@ -177,10 +177,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   `--canvas-dot` a step closer to the ground, or a slightly larger, softer dot, keyed on
   `html[data-webview="webkitgtk"]` as the zoom fixes are (`tree/specs/canvas/layout-chrome.md` § Desktop window frame). DESIGN.md
   § 2 holds the structure: dots legible without shouting.
-- [ ] **Group member tints refresh by hand** (`groupMembership.ts`): the member-dot store caches resolved hexes and is
-  rebuilt only by explicit `rebuildGroupMembership()` calls on each palette-switch path (Settings, Palette Editor,
-  Document Properties, persistence). A new switch path that forgets the call leaves stale tints; subscribe it to
-  `paletteStore` instead.
 - [ ] **Palette stragglers left for a call** (2026-10-02 sweep): the lasso colors (`FlowSurface.tsx`,
   `htmlCanvasRenderer.ts`), `CableFlourish.tsx`'s fixed Okabe-Ito list, the conduit stripe (`conduit.css`, Default
   vermilion but not an error), the slate `--node-accent` on Image, File Link and SVG Picker, and the

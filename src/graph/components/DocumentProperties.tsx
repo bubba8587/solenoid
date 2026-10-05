@@ -6,8 +6,6 @@ import { CloseIcon } from "./CloseIcon";
 import { documentStore } from "../documentStore";
 import { docMetaStore, docPropertiesPanel } from "../docMetaStore";
 import { paletteStore } from "../palette";
-import { getEditor } from "../process";
-import { rebuildGroupMembership } from "../groupMembership";
 import "../Settings.css";
 import "./DocumentProperties.css";
 
@@ -60,8 +58,6 @@ export function DocumentProperties() {
   function setDocBase(name: string) {
     const overrides = paletteStore.docPalette()?.overrides;
     paletteStore.setDocPalette(name ? { base: name, overrides } : overrides ? { overrides } : null);
-    const ed = getEditor();
-    if (ed) rebuildGroupMembership(ed);
     capture();
   }
 

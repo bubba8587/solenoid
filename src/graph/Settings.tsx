@@ -12,10 +12,8 @@ import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette"
 import { appThemeStore } from "./appTheme";
 import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
-import { getEditor } from "./process";
 import { docMetaStore } from "./docMetaStore";
 import { networkAllowed, allowNetwork } from "./connectionStore";
-import { rebuildGroupMembership } from "./groupMembership";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
 
@@ -167,15 +165,12 @@ function TextRow({ field }: { field: SettingField }) {
   );
 }
 
-// A palette change must rebuild group membership: the member-dot store caches resolved hexes.
 function PaletteSection() {
   useSyncExternalStore(paletteStore.subscribe, paletteStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const active = paletteStore.activeBase();
   function pick(name: PaletteChoice) {
     paletteStore.setActiveBase(name);
-    const ed = getEditor();
-    if (ed) rebuildGroupMembership(ed);
   }
   return (
     <div className="solenoid-settings__section">

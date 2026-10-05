@@ -195,7 +195,7 @@ Custom is the user's own palette, and only the app base may be Custom. Its slot 
 - `setCustomMap(map, chrome?)` commits a whole draft at once, laying valid hexes over the current map and ramp. The editor saves through it so the app retints once, not on every drag tick.
 - `loadCustomTemplate(name)` copies a built-in's slots, and its ramp laid over `DEFAULT_CHROME`. A template that authors no ramp therefore resets the custom ramp to neutral rather than leaving the old one.
 
-Each edit persists, and recomputes and notifies both stores only when Custom is actually on screen: the app base is Custom and no document pin overrides it. `paletteEditorPanel` is the editor's open flag. The Settings dialog's palette picker lists the built-ins plus Custom; picking one also rebuilds group membership, because the group member-dot store caches resolved hexes.
+Each edit persists, and recomputes and notifies both stores only when Custom is actually on screen: the app base is Custom and no document pin overrides it. `paletteEditorPanel` is the editor's open flag. The Settings dialog's palette picker lists the built-ins plus Custom. The group member-dot store keeps each member's palette slot and resolves it when read, and it notifies on every palette change, so no switch path has to rebuild group membership.
 
 `initPalette()` runs once at startup. It reads the custom map and ramp (ignoring anything malformed, and keeping only valid hexes over the defaults), then the app base, recomputes, and notifies so subscribers pick up a persisted palette. Every `localStorage` read and write is wrapped in try/catch, so a private window still works.
 

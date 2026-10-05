@@ -11,8 +11,6 @@ import {
   type PaletteSlot, type PaletteName, type ChromeKey, type PaletteChrome,
 } from "../palette";
 import { appThemeStore } from "../appTheme";
-import { getEditor } from "../process";
-import { rebuildGroupMembership } from "../groupMembership";
 import "../Settings.css";
 import "./GroupNode.css";
 import "./NoteNode.css";
@@ -78,8 +76,6 @@ export function PaletteEditorModal() {
   function save() {
     paletteStore.setCustomMap(draft, chromeDraft);
     paletteStore.setActiveBase("Custom");
-    const ed = getEditor();
-    if (ed) rebuildGroupMembership(ed);
     paletteEditorPanel.close();
   }
 
