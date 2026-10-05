@@ -16,6 +16,7 @@ export const ELECTROMAGNETISM_PACK_FORMULAS: PackFormula[] = [
     },
     returns: "string", arity: [1, 2],
     signature: "frequency Hz — or blank, wavelength m",
+    emptySlotsLeftOut: true, emptySlotShown: "none",
   },
   {
     name: "PHYSICSCONSTANT",

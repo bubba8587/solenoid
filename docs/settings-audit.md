@@ -202,6 +202,7 @@ argument; a value is the typed blank it reads as.
 | TOEPOCH | `unit` → omitted |
 | TOROW | `ignore` → omitted; `scan_by_column` → omitted |
 | TRAPZ | `dx` → omitted |
+| INTERPOLATE | `known_xs` → omitted; `new_xs` → omitted |
 | TREND | `const` → omitted |
 | TRIMMEAN | `percent` → 0 |
 | TRUNC | `digits` → omitted |

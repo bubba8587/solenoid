@@ -18,6 +18,10 @@ interface PackFormulaBase {
   rank?: ExcelRank;
   arity: [number, number];
   signature?: string;
+  /** An empty slot marks the unknown to solve for, so it reads as the argument left out ([[C80]] blankArgIsExcelBlank). */
+  emptySlotsLeftOut?: boolean;
+  /** The placeholder such a slot shows ([[D96]] emptySlotShowsItsValue); "solve" when unset. */
+  emptySlotShown?: string;
 }
 
 /** A formula that takes whole lists declares whether a vector's direction matters to it ([[D85]] columnsStayColumns). */

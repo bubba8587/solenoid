@@ -20,5 +20,6 @@ export const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
     },
     returns: "number", rank: "list", listArgs: true, orient: "free", arity: [3, 6],
     signature: "a, b, c, A°, B°, C° — any 3 incl. a side; returns all six",
+    emptySlotsLeftOut: true,
   },
 ];

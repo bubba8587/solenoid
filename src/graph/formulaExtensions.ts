@@ -5,6 +5,7 @@ import { allPacks, packsStore } from "./packs";
 import { registerInternal, unregisterInternal, internalFunctionNames, FX_FUNCTION_NAMES, EXCEL_IMPL_META } from "./excelFunctions";
 import { formulaFunctionNames } from "./excelFormula";
 import type { PackFormula } from "./packs/packShared";
+import { setPackLookup } from "./emptySlots";
 
 let coreNames: Set<string> | null = null;
 
@@ -52,6 +53,11 @@ export function packFormulaNames(): string[] {
 export function packFormulaSignature(name: string): string | null {
   return PACK_FORMULA_META.get(name.toUpperCase())?.signature ?? null;
 }
+
+export function packFormulaMeta(name: string): PackFormula | undefined {
+  return PACK_FORMULA_META.get(name.toUpperCase());
+}
+setPackLookup(packFormulaMeta);
 
 let cachedNames: string[] = [];
 let cachedVersion = -1;

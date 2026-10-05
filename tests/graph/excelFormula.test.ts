@@ -721,27 +721,27 @@ describe("TEXT formats date serials (audit finding 29)", () => {
   });
 });
 
-describe("omitted arguments — IF(x,,y) is a BLANK (author 2026-07-16)", () => {
+describe("an empty argument slot reads as Excel's blank ([[C80]] blankArgIsExcelBlank, author 2026-10-05)", () => {
   const ev = (expr: string, env: Record<string, unknown>) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
     return fn(env);
   };
-  it("an empty middle argument evaluates to null (blank), not a syntax error", () => {
-    expect(ev("IF(value=0,,value)", { value: 0 })).toBeNull();
+  it("an empty middle IF branch is 0, as in Excel, not a syntax error", () => {
+    expect(ev("IF(value=0,,value)", { value: 0 })).toBe(0);
     expect(ev("IF(value=0,,value)", { value: 7 })).toBe(7);
   });
   it("an empty TRAILING argument works too", () => {
     expect(ev("IF(value>0,value,)", { value: 5 })).toBe(5);
-    expect(ev("IF(value>0,value,)", { value: -1 })).toBeNull();
+    expect(ev("IF(value>0,value,)", { value: -1 })).toBe(0);
   });
-  it("broadcasts over a list — the Excel zeros-to-blanks idiom", () => {
-    expect(ev("IF(value=0,,value)", { value: [3, 0, 5] })).toEqual([3, null, 5]);
+  it("a blank value, not an empty slot, is what blanks a cell", () => {
+    expect(ev("IF(value=0,b,value)", { value: [3, 0, 5], b: null })).toEqual([3, null, 5]);
   });
-  it("a blank inside an aggregate is skipped like any missing value", () => {
+  it("an empty slot in an aggregate is a 0, which SUM can't tell from nothing", () => {
     expect(ev("SUM(a,,b)", { a: 2, b: 3 })).toBe(5);
   });
-  it("extractVariables ignores blanks", () => {
+  it("extractVariables ignores empty slots", () => {
     expect(extractVariables("IF(x=0,,x)")).toEqual(["x"]);
   });
 });

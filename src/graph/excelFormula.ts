@@ -3,7 +3,8 @@ import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, blockedNameMessage, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { formatScalar } from "./components/format";
 import { isMissing, guardFinite, powerOf } from "./valueKinds";
-import { applyArgRoles } from "./inputRoles";
+import { applyArgRoles, argRole } from "./inputRoles";
+import { emptySlotReading } from "./emptySlots";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
@@ -885,6 +886,8 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         : n.args.map((a) => evalAst(a, env));
       const blanks = applyArgRoles(name, n.args.map((a) => a.t === "blank"), argv);
       argv = blanks.argv;
+      // An empty slot with no role reads as its parameter's Excel blank ([[C80]] blankArgIsExcelBlank).
+      n.args.forEach((a, i) => { if (a.t === "blank" && !argRole(name, i)) argv[i] = emptySlotReading(name, i).value; });
       if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
       const sol = argv.find(isSolError);
       if (sol) return sol;
