@@ -42,3 +42,18 @@ A per-node `await addNode; await moveNode` loop would be about 2N sequential asy
 ## Loading curtain
 
 When the teardown and build together exceed `SWITCH_CURTAIN_MIN_WORK` (300 nodes plus connections), a "Loading graph" curtain shows a progress bar. It counts teardown too, since leaving a big document dominates. Under the curtain the teardown yields to a paint every 24 removals and the build yields after each chunk, so the bar can repaint. A yield to a paint is an animation frame followed by a zero-delay task: the build otherwise yields only to microtasks, so the curtain would never show and the bar would never move. The curtain begins before teardown, so node-by-node construction is never seen. Without the curtain nothing yields. Undo and redo restores pass `curtain: false` and never show it.
+
+## The web node budget
+
+The web app shows a soft budget, `WEB_DEMO_NODE_BUDGET` (300) in `nodeBudget.ts`: the status bar's node meter turns to a caution color at 75 percent and past the budget offers a note recommending the desktop app. Nothing is blocked, and the desktop app has no budget. The number is a tuning knob; change it with a new measurement here.
+
+Measured 2026-10-05 on a production build in phone emulation (412 × 915, device pixel ratio 2.6, CPU throttled 4×), with personal-finance tiled into larger graphs and a 30-step drag at zoom 0.6:
+
+| Nodes | Load | Pan, frame p50 | Card drag, frame p50 / p95 |
+|---|---|---|---|
+| 154 | 8.9 s | 100 ms | 17 / 67 ms |
+| 308 | 17.9 s | 167 ms | not measured |
+| 462 | 34.1 s | 250 ms | 17 / 183 ms |
+| 616 | 53.4 s | not measured | 333 / 1333 ms |
+
+Load and pan grow about linearly; a card drag holds until somewhere past 460 nodes and breaks down by 616. 300 is double the size a phone handled well, with room under the drag's knee. Pan is the next limit: the viewport has no compositing layer during a pan, so every frame repaints what is on screen. **Reopen if:** pan gets a layer on coarse pointers ([[html-in-canvas#The GPU texture budget]] says why it has none), which would move the knee.
