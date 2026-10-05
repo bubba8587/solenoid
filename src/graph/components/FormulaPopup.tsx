@@ -269,7 +269,7 @@ export function FormulaPopup() {
           </div>
         ) : (
         <div className="formula-popup__engine-note">
-          The Formula surface does not support Frame-related nodes, such as JOIN.
+          The Formula surface does not support Frame/Cube-related nodes, such as JOIN.
         </div>
         )}
 
