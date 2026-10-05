@@ -10,7 +10,7 @@ specific item.
 - **Chart value axes keep the decimals close ticks need** (`valueTickFormat`/`compactTick(n, step)` in `chartCore.ts`): 100000, 100250 read "100K", "100.25K"; the gutter measures with the same formatter.
 - **A Board's number lanes format when drawn** (`recordLaneText`), so Decimal places shows without a recompute ([[chart-figures]] Record).
 - **Schedule converts Work and hour Durations at the task's own Hours**; **MSPDI writes a typed Start's floor even when it doesn't bind** (`startFloor` on `ScheduledTask`).
-- **YEARFRAC truncates its basis** as Excel does; the criteria functions' numeric-text reading is listed with formula-language's deliberate Excel differences.
+- **YEARFRAC truncates its basis** as Excel does. **The criteria functions never read text as a number** ([[B17]] typedValueModel, author 2026-10-05): numeric text never sums or meets a number criterion, and a typed criterion over a text range stays text (formula-language § criteria).
 - **Desktop HTTP scope is `http://*:*` / `https://*:*`** (the plugin never wildcards a port); unverified in a desktop build. **The plugin drops a mount never attached after 10 s.**
 
 ### SESSION DIGEST (2026-10-04: XY gradient line, drag frame rate, Chart Builder sections, stacking commands, landscape phones, installable app, pinch hand-off, site SEO; cloud session)

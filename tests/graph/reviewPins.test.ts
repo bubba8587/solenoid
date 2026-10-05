@@ -552,7 +552,7 @@ describe("review pins: follow-ups to the 2026-09-24 formula leads", () => {
     expect(passesFilter(31, "eq", "31", "number", false)).toBe(true);
     expect(code(await ev('"0x1F" + 1'))).toBe("#VALUE!");
     expect(code(await ev('VALUE("Infinity")'))).toBe("#VALUE!");
-    expect(await ev("COUNTIF(x, 31)", { x: ["0x1F", "31"] })).toBe(1);
+    expect(await ev("COUNTIF(x, 31)", { x: ["0x1F", "31", 31] })).toBe(1);
     expect(code(await ev('NUMBERVALUE("0x1F")'))).toBe("#VALUE!");
   });
 });

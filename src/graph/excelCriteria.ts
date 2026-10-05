@@ -44,9 +44,9 @@ export function parseCriterion(raw: unknown, numericRange: boolean): Criterion |
   for (const [p, o] of PREFIX) if (text.startsWith(p)) { op = o; rest = text.slice(p.length); break; }
   if (rest === "") return { op, value: null };
   if (rest === "TRUE" || rest === "FALSE") return { op, value: rest === "TRUE" };
-  const n = decimalFromText(rest);
-  if (Number.isFinite(n)) return { op, value: n };
   if (numericRange) {
+    const n = decimalFromText(rest);
+    if (Number.isFinite(n)) return { op, value: n };
     const d = parseDate(rest);
     if (isSolError(d)) return d.code === "#AMBIGUOUS!" ? d : { op, value: unescape(rest) };
     if (Number.isFinite(d)) return { op, value: d };
@@ -73,10 +73,8 @@ export function criterionMatches(cell: unknown, crit: Criterion): boolean {
   if (blank) return crit.op === "neq";
   if (typeof crit.value === "boolean") return typeof cell === "boolean" && cmp(crit.op, Number(cell) - Number(crit.value));
   if (typeof crit.value === "number") {
-    if (typeof cell === "number") return cmp(crit.op, cell - crit.value);
     if (typeof cell === "boolean") return false;
-    const asNum = typeof cell === "string" ? decimalFromText(cell) : NaN;
-    return Number.isFinite(asNum) ? cmp(crit.op, asNum - crit.value) : crit.op === "neq";
+    return typeof cell === "number" ? cmp(crit.op, cell - crit.value) : crit.op === "neq";
   }
   if (typeof cell !== "string") return crit.op === "neq";
   if (crit.wild) { const hit = crit.wild.test(cell); return crit.op === "eq" ? hit : !hit; }
@@ -108,7 +106,6 @@ export function criteriaAggregate(kind: CriteriaKind, values: readonly unknown[]
     const v = values[i];
     if (isSolError(v)) return v;
     if (typeof v === "number" && Number.isFinite(v)) kept.push(v);
-    else if (typeof v === "string" && Number.isFinite(decimalFromText(v))) kept.push(decimalFromText(v));
   }
   switch (kind) {
     case "count": return count;

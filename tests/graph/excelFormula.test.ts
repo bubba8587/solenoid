@@ -587,14 +587,11 @@ describe("classic lookups redirect to their current-Excel replacements ([[C14]] 
     expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "b"], v: [1, 2] })).toBe(1);
   });
 
-  it("COUNTIF / AVERAGEIF survive a numeric-STRING range (SUMIF's exact failure mode)", () => {
-    // SUMIF was blocked because Formula.js concatenated a numeric-string sum_range
-    // ("10"+"30" → "1030") instead of summing. COUNTIF/AVERAGEIF stay because they
-    // do NOT share that bug — pin it so a Formula.js bump can't regress them silently.
-    // COUNTIF compares numerically against ">15" even when the range is text digits.
-    expect(ev('COUNTIF(v, ">15")', { v: ["10", "30", "20"] })).toBe(2);
-    // AVERAGEIF averages the matching numeric-string values, not their concatenation.
-    expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] })).toBe(20);
+  it("COUNTIF / AVERAGEIF never read a numeric-STRING range as numbers ([[B17]] typedValueModel)", () => {
+    // Text digits are text: a criterion over them compares as text ("9" sorts after "15"), nothing sums them,
+    // and never Formula.js's "10"+"30" → "1030".
+    expect(ev('COUNTIF(v, ">15")', { v: ["10", "9", "20"] })).toBe(2);
+    expect((ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] }) as { code: string }).code).toBe("#DIV/0!");
   });
 
   it("MATCH → #NAME? 'Use XMATCH'", () => {
