@@ -96,10 +96,10 @@ describe("List Input (multi-type)", () => {
     n.stringLiterals["v0"] = "apple, pear, fig";
     expect(n.data({}).list).toEqual(["apple", "pear", "fig"]);
   });
-  it("logical type reads a cell as Frame Input does: true/false/1/0, anything else blank", () => {
+  it("logical type reads a cell as Frame Input does: true and false, anything else NaN", () => {
     const n = new ListInputNode({ dataType: "logical" });
     n.stringLiterals["v0"] = "true, false, 1, 0, maybe";
-    expect(n.data({}).list).toEqual([true, false, true, false, null]);
+    expect(n.data({}).list).toEqual([true, false, NaN, NaN, NaN]);
   });
   it("setDataType is a no-op (returns false) when unchanged", () => {
     expect(new ListInputNode().setDataType("number")).toBe(false);
@@ -121,7 +121,7 @@ describe("List Input (multi-type)", () => {
     expect(run("date", ["01-Jan-2026", "02-Jan-2026"])).toEqual([46023, 46024]); // parsed, was []
     expect(run("number", ["1", "2.5"])).toEqual([1, 2.5]);
     expect(run("string", [1, 2])).toEqual(["1", "2"]);
-    expect(run("logical", ["yes"])).toEqual([null]); // coerceLogical's vocabulary, wired
+    expect(run("logical", ["yes", "TRUE"])).toEqual([NaN, true]); // only TRUE and FALSE read, wired too
     // Text the type can't read is NaN, as typed text and a Frame cell read it; never dropped.
     expect(run("number", ["abc", 5])).toEqual([NaN, 5]);
     expect(run("date", ["nope"])).toEqual([NaN]);

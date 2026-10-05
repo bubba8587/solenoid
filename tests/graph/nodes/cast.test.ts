@@ -87,7 +87,7 @@ describe("Cast node", () => {
     expect(cast("logical", " True ")).toBe(true);   // trimmed
     expect(cast("logical", 5)).toBe(true);          // nonzero → TRUE
     expect(cast("logical", 0)).toBe(false);
-    expect(cast("logical", "1")).toBe(true);        // numeric string → nonzero
+    expect(isSolError(cast("logical", "1"))).toBe(true); // numeric text isn't a logical
     expect(cast("logical", true)).toBe(true);       // real boolean passes through
   });
 

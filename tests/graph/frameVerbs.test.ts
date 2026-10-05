@@ -588,3 +588,22 @@ describe("sampleFrame (sketch mode's preview rows)", () => {
     expect(sampleFrame(f, 0)).toBe(f);
   });
 });
+
+describe("a logical column reads only TRUE and FALSE ([[D93]] oneTextReading)", () => {
+  const f: FrameValue = { __frame: true, columns: [
+    { name: "k", type: "string", values: ["a", "b", "c", "d"] },
+    { name: "ok", type: "logical", values: [true, false, NaN, null] },
+  ] };
+  it("a NaN or blank cell matches no filter; an unreadable filter value is #TYPE!", () => {
+    expect(filterRows(f, "ok", "eq", "false").columns[0].values).toEqual(["b"]);
+    expect(filterRows(f, "ok", "neq", "true").columns[0].values).toEqual(["b"]);
+    let err: unknown = null;
+    try { filterRows(f, "ok", "eq", "1"); } catch (e) { err = e; }
+    expect(isSolError(err) && err.code).toBe("#TYPE!");
+  });
+  it("a Frame Input logical cell keeps typed text it can't read as NaN", async () => {
+    const { coerceFrameCell } = await import("../../src/graph/frame");
+    expect([coerceFrameCell("logical", "True"), coerceFrameCell("logical", "yes"), coerceFrameCell("logical", "1"), coerceFrameCell("logical", " ")])
+      .toEqual([true, NaN, NaN, null]);
+  });
+});

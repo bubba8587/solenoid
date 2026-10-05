@@ -362,9 +362,9 @@ function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[
   });
 }
 
-/** The native engine keeps error cells only in number and date columns. */
+/** The native engine keeps error cells only in number and date columns, and a logical column has no NaN. */
 const holdsTextOrLogicalError = (f: FrameValue): boolean =>
-  f.columns.some((c) => (c.type === "string" || c.type === "logical") && c.values.some(isSolError));
+  f.columns.some((c) => (c.type === "string" || c.type === "logical") && c.values.some((v) => isSolError(v) || (c.type === "logical" && typeof v === "number")));
 
 const isOracleHandle = (h: FrameHandle): boolean => h.startsWith("jsf:");
 

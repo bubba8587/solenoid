@@ -72,9 +72,11 @@ describe("Get Column read-as Logical (TRUE/FALSE out of a column)", () => {
     expect(bools(f, "Mask")).toEqual([true, false, true]);
   });
 
-  it("a blank stays null; an unparseable cell is lenient null (not a fabricated FALSE)", () => {
+  it("a blank stays null; an unparseable cell is #TYPE!, never a fabricated FALSE", () => {
     const f = frameFromCells(["Flag"], [["true"], [""], ["maybe"]]); // mixed text → string column
-    expect(bools(f, "Flag")).toEqual([true, null, null]);
+    const out = bools(f, "Flag") as unknown[];
+    expect(out.slice(0, 2)).toEqual([true, null]);
+    expect((out[2] as { code?: string }).code).toBe("#TYPE!");
   });
 });
 

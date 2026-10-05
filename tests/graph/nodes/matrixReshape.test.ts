@@ -244,10 +244,10 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
   it("the element-type toggle derives text/date/logical tables from the same raw text", () => {
     const raw = tableRawCells("a, b\nc,");
     expect(deriveTable(raw, "string")).toEqual([["a", "b"], ["c", null]]);
-    const logical = deriveTable(tableRawCells("true, 0\n1, x"), "logical") as unknown[][];
+    const logical = deriveTable(tableRawCells("true, FALSE\n1, x"), "logical") as unknown[][];
     expect(logical[0]).toEqual([true, false]);
-    expect(logical[1][0]).toBe(true);
-    expect(logical[1][1]).toBeNull(); // a bad logical is null — coerceLogical's (Frame Input's) contract
+    expect(logical[1][0]).toBeNaN(); // text reads only as TRUE or FALSE, numeric text too
+    expect(logical[1][1]).toBeNaN();
     const dates = deriveTable(tableRawCells("2026-03-15"), "date") as number[][];
     expect(dates[0][0]).toBe(46096); // the audit-29 serial pin
   });

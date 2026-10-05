@@ -9,7 +9,7 @@ import { isSolError, solError } from "./errorValue";
 import { sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, roundAtLargerTerm, type ColumnUnit } from "./unitValue";
 import { dimEqual, dimPow, formatDim } from "./dimension";
 import { fcUnitToUnit } from "./unitBridge";
-import { forAggregate, coerceLogical, guardFinite, decimalFromText } from "./valueKinds";
+import { forAggregate, guardFinite, decimalFromText, logicalOrTypeError } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
@@ -174,7 +174,8 @@ export function sampleFrame(f: FrameValue, n: number): FrameValue {
 
 function filterValueToNumber(value: FrameCell, type: FrameColType): number | null {
   if (type === "logical") {
-    const b = coerceLogical(value);
+    const b = logicalOrTypeError(value, "Filter");
+    if (isSolError(b)) throw b;
     return b === null ? null : b ? 1 : 0;
   }
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -226,6 +227,7 @@ export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, ty
     if (op === "neq") return fold(String(cell)) !== fold(String(value));
     return compareOp(op, compareStrings(String(cell), String(value)), 0);
   }
+  if (type === "logical" && typeof cell !== "boolean") return false;
   const x = type === "logical" ? (cell ? 1 : 0) : Number(cell);
   const y = filterValueToNumber(value, type);
   if (y === null) return false;
@@ -1291,7 +1293,11 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | Cub
 
 // ─── Frame lookup (XLOOKUP / VLOOKUP over a table) ──────────────────────────────
 function lookupNeedle(lookup: string, type: FrameColType): FrameCell {
-  if (type === "logical") return !!coerceLogical(lookup);
+  if (type === "logical") {
+    const b = logicalOrTypeError(lookup, "Lookup");
+    if (isSolError(b)) throw b;
+    return b;
+  }
   if (type === "date") {
     const t = lookup.trim();
     return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t);

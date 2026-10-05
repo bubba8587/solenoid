@@ -93,7 +93,7 @@ There are four entry paths, and they do not infer the same way.
 
 `inferColumn` also recovers units. When any cell is a `UnitCell` (a Cube column read back), `matrixCellsFromList` unwraps the cells to their display magnitudes before inference and returns the one unit they share, which tags the resulting number column; cells that disagree give no unit. So a Frame to Cube to Frame round trip keeps its units.
 
-Inference is deliberately conservative, and `coerceLogical` (`valueKinds.ts`) is the liberal reading for the explicit paths (Cast to Boolean, Get Column's read-as Logical, a Frame Input logical column, a filter value). It reads a boolean as itself; a finite number as true when non-zero; the text `true` or `false` in any case, or text that parses to a finite number; and anything else as null, meaning not readable as a logical, which each caller interprets.
+`coerceLogical` (`valueKinds.ts`) is the one reading of a value as a logical, for the explicit paths (Cast to Boolean, Get Column's read-as Logical, a Frame Input logical column, a list read as logical, a filter or lookup value on a logical column, the NAND/NOR/XNOR arguments and the logical settings of INTERPOLATE, TOROW and TOCOL). It reads a boolean as itself, a finite number as true when non-zero, and text only as `true` or `false` in any case; blank is null. Any other text, numeric text such as `1` included, is NaN ([[D93]] oneTextReading, [[B17]] typedValueModel): a cell holds and shows `NaN`, and a computation turns it into `#TYPE!` naming the value (`logicalOrTypeError`). A NaN cell in a logical column matches no filter, and a frame holding one stays on the oracle, since the engine's boolean columns have no NaN.
 
 An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates; Get Column's read-as converts those explicitly. One cell that isn't an unambiguous ISO date keeps the whole column as text: declining to guess is always safe, and a wrong date never is ([[C44]] dateSerials).
 
@@ -253,7 +253,7 @@ Cells cross as JSON. Upload direction (`encodeWireCell`): a finite number, strin
 
 | Column type | Accepts | Everything else |
 |---|---|---|
-| logical | a boolean; a number (non-zero is true); text `true`/`false`/`1`/`0` after trim, any case | `null` |
+| logical | a boolean; a number (non-zero is true); text `true`/`false` after trim, any case | `null` (a frame with a NaN logical cell never uploads) |
 | string | text | `null` |
 | number, date | a number; a boolean as 1/0; text parsed after trimming and removing every comma; the `__nf` sentinel; `{"__err": code, "ref"?}` as an error cell (an unknown code reads `#ERROR!`) | `null` |
 

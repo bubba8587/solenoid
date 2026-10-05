@@ -53,9 +53,9 @@ describe("lookupFrameCell — frame XLOOKUP/VLOOKUP", () => {
     expect(lookupFrameCell(people, "id", "name", "3")).toBe("Cy");
   });
 
-  it("looks up by a logical key (0/1 or true/false both match)", () => {
+  it("looks up by a logical key: true or false; 0 is #TYPE!", () => {
     expect(lookupFrameCell(people, "active", "name", "false")).toBe("Bob");
-    expect(lookupFrameCell(people, "active", "name", "0")).toBe("Bob");
+    expect(() => lookupFrameCell(people, "active", "name", "0")).toThrow(/isn't a logical/);
     expect(lookupFrameCell(people, "active", "name", "true")).toBe("Ann"); // first match
   });
 
@@ -149,9 +149,9 @@ describe("lookupCell on a cube — cube XLOOKUP (top-level key, whole-cell retur
     expect(lookupCell(customers, "id", "orders", "2")).toBeNull();
   });
 
-  it("matches a logical key (true/false or 1/0), first match wins", () => {
+  it("matches a logical key (true or false), first match wins; 0 is #TYPE!", () => {
     expect(lookupCell(customers, "vip", "name", "false")).toBe("Bob");
-    expect(lookupCell(customers, "vip", "name", "0")).toBe("Bob");
+    expect(() => lookupCell(customers, "vip", "name", "0")).toThrow(/isn't a logical/);
     expect(lookupCell(customers, "vip", "name", "true")).toBe("Ann");
   });
 

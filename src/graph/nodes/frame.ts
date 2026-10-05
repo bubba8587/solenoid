@@ -18,7 +18,7 @@ import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { coerceLogical } from "../valueKinds";
+import { logicalOrTypeError } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
   buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
@@ -2327,7 +2327,7 @@ export class GetColumnNode extends ClassicPreset.Node {
     if (this.readAs === "logical") {
       // Shares coerceLogical with Cast to Boolean so the two parse identically.
       const out = col.values.map((v) =>
-        v === null ? null : isSolError(v) ? v : coerceLogical(v),
+        v === null ? null : isSolError(v) ? v : logicalOrTypeError(v, `Get Column "${col.name}"`),
       );
       this.cachedResult = out;
       return out;

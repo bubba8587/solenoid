@@ -187,11 +187,11 @@ describe("nodeOutputElemFamily — the declared family, whatever the cells say",
 
   it("still reports `logical` when EVERY entry was unparseable (the reported bug)", async () => {
     const n = await listInputOf("logical");
-    // The data really is all-null — nothing here could vote for a family.
+    // Every entry is NaN, so nothing here could vote for a family.
     const node = n as unknown as ListInputNode;
     node.stringLiterals.v0 = "xyz, pqr";
     wrapNodeData(node as never);
-    expect((node.data({}) as { list: unknown[] }).list).toEqual([null, null]);
+    expect((node.data({}) as { list: unknown[] }).list).toEqual([NaN, NaN]);
     // The socket is unmoved, so the box stays a Bool list.
     expect(nodeOutputElemFamily(n.id)).toBe("logical");
   });

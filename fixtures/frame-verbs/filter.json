@@ -893,7 +893,7 @@
    }
   },
   {
-   "name": "a value spelling nan matches no logical",
+   "name": "a value that isn't TRUE or FALSE on a logical column is #TYPE!",
    "frames": {
     "in": {
      "columns": [
@@ -914,15 +914,7 @@
     "op": "eq",
     "value": "nan"
    },
-   "expect": {
-    "columns": [
-     {
-      "name": "b",
-      "type": "logical",
-      "values": []
-     }
-    ]
-   }
+   "expectError": "#TYPE!"
   },
   {
    "name": "a hex value matches no number",

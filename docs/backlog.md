@@ -323,7 +323,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 
 ## From the 2026-09-29 commit-walk review (08-24 to 09-29; open leads, each verified against HEAD unless marked)
 - [ ] **TEXTSPLIT rows only** (author's call, `settings-audit.md` col_delimiter): `TEXTSPLIT(A1,,";")` is `#SYNTAX!`; relaxing the role alone would split each row into letters (`splitText` on "").
-- [ ] **Logical text reads blank, not NaN** ([[D93]] oneTextReading says NaN): `coerceLogical` gives null for "maybe", and yes/no now blank too. Author: NaN, or narrow D93 to number and date.
 - [ ] **Cast "Group (default ,)"** label: with Decimal `,` the default group is none, so the label misleads; a string for the author.
 - [ ] **∞ through a note** (author's call): the writer puts ∞ in a note as the text `"Infinity"` (`yamlScalar`), which a number column reads back as NaN ([[D93]] oneTextReading), while [[D48]] classifyNonFinite keeps an incoming ∞ a real value; bare `.inf` reads blank (`noteFrontmatter.ts` readScalar). Write `.inf` and read it as ∞, or read the text "Infinity" as ∞.
 - [ ] **A blank slot in an undeclared parameter** errors instead of reading as Excel's blank: `POWER(2, )` is #VALUE! (Excel: 1), while `MOD(5, )` is #DIV/0! as Excel's is. [[C80]] blankArgIsExcelBlank leaves undeclared parameters to the function; declaring more `ARG_ROLES` would close it.

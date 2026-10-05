@@ -79,8 +79,8 @@ describe("parseListLiteral — typed 1-D list literals", () => {
   it("datelist: each part → a date serial", () => {
     expect(parseListLiteral("2026-03-15", "datelist")).toEqual([46096]);
   });
-  it("logicallist: each part → a boolean (TRUE/FALSE, 0/1)", () => {
-    expect(parseListLiteral("true, 0, FALSE, 1", "logicallist")).toEqual([true, false, false, true]);
+  it("logicallist: each part → a boolean; only TRUE and FALSE read, 0 and 1 are NaN", () => {
+    expect(parseListLiteral("true, 0, FALSE, 1", "logicallist")).toEqual([true, NaN, false, NaN]);
   });
 });
 

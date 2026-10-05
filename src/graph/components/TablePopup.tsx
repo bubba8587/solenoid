@@ -425,7 +425,7 @@ export function TablePopup() {
     const ann = annFor(c);
     if (type === "logical" || typeof raw === "boolean") {
       const b = typeof raw === "boolean" ? raw : coerceFrameCell("logical", String(raw));
-      return typeof b === "boolean" ? applyLogicalStyle(b, ann.logicalStyle) : String(raw);
+      return typeof b === "boolean" ? applyLogicalStyle(b, ann.logicalStyle) : b === null ? "" : "NaN";
     }
     const v: CellValue = typeof raw === "string" && (type === "number" || type === "date")
       ? coerceFrameCell(type, raw)
@@ -1273,7 +1273,7 @@ export function TablePopup() {
                     ) : type === "logical" ? (
                       (() => {
                         const raw = (grid[fRow]?.[c] ?? "").trim().toLowerCase();
-                        const val = raw === "true" || raw === "1" ? true : raw === "false" || raw === "0" ? false : null;
+                        const val = raw === "true" ? true : raw === "false" ? false : null;
                         return (
                           <input
                             type="checkbox"

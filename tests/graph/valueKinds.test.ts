@@ -2,12 +2,12 @@
 import { describe, it, expect } from "vitest";
 import {
   isMissing, isLogical,
-  logicalToNumber, numberToLogical, coerceLogical,
+  logicalToNumber, numberToLogical, coerceLogical, logicalOrTypeError,
   kleeneNot, kleeneOr, kleeneAnd,
   forAggregate,
   cellShortCircuit, cellError, COMPUTE,
 } from "../../src/graph/valueKinds";
-import { solError } from "../../src/graph/errorValue";
+import { solError, isSolError } from "../../src/graph/errorValue";
 
 describe("value-kind predicates", () => {
   it("isMissing only true for null", () => {
@@ -116,25 +116,28 @@ describe("per-element broadcast contract", () => {
   });
 });
 
-describe("coerceLogical — the shared liberal text/number → logical parse", () => {
+describe("coerceLogical — the one reading of a value as a logical ([[D93]] oneTextReading)", () => {
   it("passes a real boolean through", () => {
     expect(coerceLogical(true)).toBe(true);
     expect(coerceLogical(false)).toBe(false);
   });
-  it("parses TRUE/FALSE text case-insensitively, trimmed", () => {
+  it("reads only the text TRUE and FALSE, case-insensitively, trimmed", () => {
     expect(coerceLogical("TRUE")).toBe(true);
     expect(coerceLogical(" false ")).toBe(false);
   });
-  it("follows the logical↔number bridge (0 → FALSE, nonzero → TRUE), incl. numeric strings", () => {
+  it("reads a finite number by the logical↔number bridge (0 → FALSE, nonzero → TRUE)", () => {
     expect(coerceLogical(0)).toBe(false);
     expect(coerceLogical(-3)).toBe(true);
-    expect(coerceLogical("1")).toBe(true);
-    expect(coerceLogical("0")).toBe(false);
   });
-  it("returns null when it can't be read as a logical", () => {
-    expect(coerceLogical("maybe")).toBeNull();
+  it("reads any other text, numeric text included, as NaN; blank stays blank", () => {
+    for (const v of ["maybe", "yes", "1", "0", NaN, {}]) expect(coerceLogical(v)).toBeNaN();
     expect(coerceLogical("")).toBeNull();
-    expect(coerceLogical(NaN)).toBeNull();
-    expect(coerceLogical({})).toBeNull();
+    expect(coerceLogical(null)).toBeNull();
+  });
+  it("a computation reads that NaN as #TYPE!, naming the value", () => {
+    const e = logicalOrTypeError("maybe", "XNOR");
+    expect(isSolError(e) && e.code).toBe("#TYPE!");
+    expect(isSolError(e) && e.message).toContain('"maybe"');
+    expect(logicalOrTypeError("True", "XNOR")).toBe(true);
   });
 });

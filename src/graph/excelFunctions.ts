@@ -35,7 +35,7 @@ import {
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
   durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xnpv, xirr, mirr, returnsOp, fvSchedule } from "./nodes/financeOps";
-import { coerceNumber as toNum, coerceLogical, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
+import { coerceNumber as toNum, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri, logicalOrTypeError } from "./valueKinds";
 import {
   cx, isCx, toCx, type Cx,
   cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
@@ -1678,8 +1678,9 @@ registerInternal("INTERPOLATE", (ys, xs, newXs, forecast) => {
     const axes = gridAxes(ys, xs ?? undefined, newXs ?? undefined);
     if (axes === null) return null;
     if (isSolError(axes)) return axes;
-    const fc = forecast === undefined ? true : coerceLogical(forecast) !== false;
-    return fillGrid(axes.z, axes.xs, axes.ys, fc);
+    const fc = forecast === undefined ? true : logicalOrTypeError(forecast, "INTERPOLATE's forecast");
+    if (isSolError(fc)) return fc;
+    return fillGrid(axes.z, axes.xs, axes.ys, fc !== false);
   }
   if (newXs === undefined) {
     return solError("#VALUE!", "INTERPOLATE: list mode needs known_ys, known_xs and new_xs");
@@ -1859,7 +1860,8 @@ function flattenArgs(fn: string, v: unknown, ignore: unknown, scan: unknown): un
   const code = ignore == null ? 0 : toNum(ignore);
   const skip = SKIP_BY_CODE[code];
   if (!Number.isInteger(code) || !skip) return solError("#VALUE!", `${fn}'s ignore is 0, 1, 2 or 3`);
-  const byCol = scan == null ? false : coerceLogical(scan);
+  const byCol = scan == null ? false : logicalOrTypeError(scan, `${fn}'s scan_by_column`);
+  if (isSolError(byCol)) return byCol;
   if (byCol === null) return solError("#VALUE!", `${fn}'s scan_by_column is TRUE or FALSE`);
   return flattenCells(m as unknown[][], byCol, skip);
 }
@@ -2123,14 +2125,23 @@ registerInternal("HYPOTENUSE", (x, y) => {
   if (x == null || y == null) return null;
   return Math.hypot(Number(x), Number(y));
 });
-const kleeneFold = (vals: unknown[], f: (a: Tri, b: Tri) => Tri, seed: Tri): Tri =>
-  vals.map((v) => coerceLogical(v)).reduce<Tri>((a, t) => f(a, t), seed);
-registerInternal("NAND", (...vals) => kleeneNot(kleeneFold(vals, kleeneAnd, true)));
-registerInternal("NOR",  (...vals) => kleeneNot(kleeneFold(vals, kleeneOr, false)));
+const kleeneFold = (fn: string, vals: unknown[], f: (a: Tri, b: Tri) => Tri, seed: Tri): Tri | SolError => {
+  let acc = seed;
+  for (const v of vals) {
+    const t = logicalOrTypeError(v, fn);
+    if (isSolError(t)) return t;
+    acc = f(acc, t);
+  }
+  return acc;
+};
+const kleeneNotOf = (t: Tri | SolError) => (isSolError(t) ? t : kleeneNot(t));
+registerInternal("NAND", (...vals) => kleeneNotOf(kleeneFold("NAND", vals, kleeneAnd, true)));
+registerInternal("NOR",  (...vals) => kleeneNotOf(kleeneFold("NOR", vals, kleeneOr, false)));
 registerInternal("XNOR", (...vals) => {
   let acc: Tri = false;
   for (const v of vals) {
-    const t = coerceLogical(v);
+    const t = logicalOrTypeError(v, "XNOR");
+    if (isSolError(t)) return t;
     if (t === null) return null;
     acc = acc !== t;
   }

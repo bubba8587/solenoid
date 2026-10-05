@@ -295,7 +295,7 @@ describe("a typed property reads its text as a Frame cell of that type does", ()
     const cube = notesToCube(notes, { ...NO_TYPES, obsidian });
     expect(Number.isNaN(cellAt(cube, "n", 0))).toBe(true);
     expect(cellAt(cube, "d", 0)).toBe(2024);
-    expect(cellAt(cube, "ok", 0)).toBe(null);
+    expect(cellAt(cube, "ok", 0)).toBeNaN(); // only true and false read as a checkbox
   });
 });
 
