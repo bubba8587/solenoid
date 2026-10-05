@@ -387,7 +387,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
       ) : (
         <div className="solenoid-group__body" style={{ borderColor: borderCol, background: hexToRgba(color, fillAlpha) }}>
           {/* The only body surface that grabs an unselected group; the wrapper is pointer-transparent (flow.css). */}
-          <div className="solenoid-group__band solenoid-group__band--n" />
           <div className="solenoid-group__band solenoid-group__band--e" />
           <div className="solenoid-group__band solenoid-group__band--s" />
           <div className="solenoid-group__band solenoid-group__band--w" />

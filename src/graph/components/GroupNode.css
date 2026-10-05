@@ -122,12 +122,11 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
 .sol-group-open .solenoid-group__resize { pointer-events: auto; }
 .sol-group-open .solenoid-group--selected .solenoid-group__body { pointer-events: auto; }
 
-/* Anchored to the body's padding box, so they outset 4px past the 2px border and the dashed line itself is grabbable. */
+/* Anchored to the body's padding box, so they outset 4px past the 2px border and the dashed line itself is grabbable. The header is the top edge. */
 .solenoid-group__band { position: absolute; pointer-events: auto; }
-.solenoid-group__band--n { top: -4px; left: -4px; right: -4px; height: 18px; }
-.solenoid-group__band--s { bottom: -4px; left: -4px; right: -4px; height: 18px; }
-.solenoid-group__band--w { top: -4px; bottom: -4px; left: -4px; width: 18px; }
-.solenoid-group__band--e { top: -4px; bottom: -4px; right: -4px; width: 18px; }
+.solenoid-group__band--s { bottom: -4px; left: -4px; right: -4px; height: 10px; }
+.solenoid-group__band--w { top: 0; bottom: -4px; left: -4px; width: 10px; }
+.solenoid-group__band--e { top: 0; bottom: -4px; right: -4px; width: 10px; }
 
 .solenoid-group__resize {
   position: absolute;

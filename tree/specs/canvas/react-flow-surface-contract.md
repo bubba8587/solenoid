@@ -106,7 +106,7 @@ The full rules are in [[group-expand-push]].
 The inside of an expanded group behaves like empty canvas, not like a handle for dragging the group.
 
 - `flowModel.nodeClassName` gives an expanded group's wrapper the class `sol-group-open`, and flow.css makes that wrapper `pointer-events: none !important`. The `!important` is needed because RF stamps `pointer-events: all` inline on every selectable wrapper.
-- The parts that should take presses claim their own pointers in GroupNode.css: the header, the grip, and four `solenoid-group__band` strips along the dashed edge. Each strip is 18px wide and straddles the edge, 4px outside and 14px inside.
+- The parts that should take presses claim their own pointers in GroupNode.css: the header, the grip, and three `solenoid-group__band` strips along the dashed side and bottom edges. The header is the top edge, so no strip reaches into the group under it (author 2026-10-05). Each strip is 10px wide and straddles the edge, 4px outside and 4px inside the 2px dashed line.
 - While the group is selected, its whole body takes pointers again, so a selected group drags by its face.
 - Every other press inside the group falls through to the pane: pan, lasso, cable hits and the canvas context menu.
 - A collapsed group gets no such class and stays draggable everywhere.
