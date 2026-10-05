@@ -37,7 +37,7 @@ The set is Excel-style `#CODE!`, but more specific than Excel's seven, following
 | `#AMBIGUOUS!` | a date string could read as either D/M or M/D (`dateSerial.ts`) | Solenoid only |
 | `#ERROR!` | an unexpected internal failure; the guard's catch-all | Err:517 |
 
-IFERROR catches every code; IFNA and ISNA match only `#N/A`.
+IFERROR catches every code; IFNA and ISNA match only `#N/A`. The IFERROR card catches per cell in a list, a Frame and a Cube, nested cells included (author 2026-10-05). Over a Frame or Cube its fallback is one value, and in a column whose type it doesn't suit (text in a number column, say) the caught cell becomes `#TYPE!` instead, so a column never mixes families ([[B17]] typedValueModel).
 
 ### The guard
 

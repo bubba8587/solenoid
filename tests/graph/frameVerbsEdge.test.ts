@@ -103,3 +103,19 @@ describe("aggregates over one large group", () => {
     expect([at("sum"), at("min"), at("max"), at("product"), at("median")]).toEqual([599_994, 0, 6, 0, 3]);
   }, 10_000);
 });
+
+describe("appendFrames keeps a unit and format every frame agrees on", () => {
+  const col = (unit?: { dim: Record<string, number>; display?: string }, format?: { format: string; unit: string }) =>
+    ({ __frame: true as const, columns: [{ name: "d", type: "number" as const, values: [1], ...(unit ? { unit } : {}), ...(format ? { format } : {}) }] });
+  const km = { dim: { length: 1 }, display: "km" };
+  const pct = { format: "percent", unit: "none" };
+  it("keeps what they share and drops what they don't", () => {
+    const same = appendFrames([col(km, pct), col(km, pct)] as never).columns[0];
+    expect(same.unit).toEqual(km);
+    expect(same.format).toEqual(pct);
+    const mixed = appendFrames([col(km, pct), col({ dim: { length: 1 }, display: "m" }, pct)] as never).columns[0];
+    expect(mixed.unit).toBeUndefined();
+    expect(mixed.format).toEqual(pct);
+    expect(appendFrames([col(km), col()] as never).columns[0].unit).toBeUndefined();
+  });
+});

@@ -316,8 +316,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Sketch sample aliasing**: the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs` verb_sample) aliases on periodic data (alternating keys at stride 4 keep only one). A fixed-seed well-mixed sample would fix it; spec line plus both samplers.
 - [ ] **Sketch Run** (`withExactPass`): a sink's Run in Sketch mode leaves the canvas on exact values until the next edit, as F9 does; the table popup's Copy/Export CSV still export the sampled table it shows.
 - [ ] **Record Detail/Gallery/Board/List** now show an unformatted number as Cards does (Auto), not `formatScalar`; confirm.
-- [ ] **Append units**: Append drops unit and format by spec; keep them when every frame agrees?
 
 ## From the 2026-09-30 oldest-first review (1.0-era and July files; verified against HEAD)
-- [ ] **IFERROR over a Frame**: `replaceCaught` (`nodes/logic.ts`) walks lists only, so a per-cell error inside a table passes through uncaught ([[C24]] arraySemantics); decide whether IFERROR reaches into cells.
 - [ ] **Node showcase on its own flow stage** (`flow/StaticFlowStage.tsx`): a hand-built React Flow surface beside `FlowSurface`'s `locked` + `staticView` mode that `SceneStage` uses ([[B3]] sameNodeEverywhere); unverified that the showcase runs on FlowSurface unchanged. Its type switch may also race (`NodeShowcase.tsx`: a cancelled run's `addNode` landing after the next `clear()`), unconfirmed.

@@ -5,8 +5,8 @@ import { rolesFrom } from "../inputRoles";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, ifTest, type Tri } from "../valueKinds";
-import { compareUnits } from "../unitValue";
-import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
+import { compareUnits, isUnitCell } from "../unitValue";
+import { isFrameValue, isCubeValue, frameRowCount, type FrameValue, type FrameColType } from "../frame";
 
 function frameCells(f: FrameValue): unknown[][] {
   const rows = frameRowCount(f);
@@ -362,8 +362,8 @@ export type IFErrorMode = "iferror" | "ifna";
 
 export class IFErrorNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    value: "A blank is not an error and passes through untouched.",
-    fallback: "Replaces each caught cell. A list fallback pairs with the value by position.",
+    value: "A blank is not an error and passes through untouched. A Frame or Cube is caught cell by cell.",
+    fallback: "Replaces each caught cell. A list fallback pairs with the value by position; over a Frame or Cube it is one value that must suit each column's type.",
   };
 
   label: string;
@@ -396,11 +396,43 @@ export class IFErrorNode extends ClassicPreset.Node {
   }
 }
 
-function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) => boolean): unknown {
+/** Whether a fallback can sit in a column of this type without blending families ([[B17]] typedValueModel). */
+function fitsColumn(fallback: unknown, type: FrameColType | undefined): boolean {
+  if (fallback == null || isSolError(fallback) || type === undefined) return true;
+  if (typeof fallback === "number" || isUnitCell(fallback)) return type === "number" || type === "date";
+  if (typeof fallback === "string") return type === "string";
+  if (typeof fallback === "boolean") return type === "logical";
+  return false;
+}
+
+/** Each caught cell becomes the fallback: in a list item by item, in a Frame or Cube cell by cell, where a fallback
+ *  that doesn't suit its column's type is that cell's #TYPE! instead. */
+function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) => boolean, type?: FrameColType): unknown {
   if (Array.isArray(value)) {
-    return value.map((v, i) => replaceCaught(v, Array.isArray(fallback) ? fallback[i] : fallback, caught));
+    return value.map((v, i) => replaceCaught(v, Array.isArray(fallback) ? fallback[i] : fallback, caught, type));
   }
-  return caught(value) ? fallback : value;
+  if (isFrameValue(value) || isCubeValue(value)) {
+    if (Array.isArray(fallback) || isFrameValue(fallback) || isCubeValue(fallback)) {
+      return solError("#VALUE!", "Over a Frame or Cube the fallback is one value, used for every caught cell");
+    }
+    const cellFor = (cell: unknown, colName: string, colType: FrameColType | undefined): unknown => {
+      if (isFrameValue(cell) || isCubeValue(cell) || Array.isArray(cell)) return replaceCaught(cell, fallback, caught, colType);
+      if (!caught(cell)) return cell;
+      return fitsColumn(fallback, colType)
+        ? fallback
+        : solError("#TYPE!", `The fallback doesn't fit column "${colName}", which holds ${colType} values`);
+    };
+    if (isFrameValue(value)) {
+      const frame: FrameValue = {
+        __frame: true,
+        columns: value.columns.map(({ raw: _raw, ...c }) => ({ ...c, values: c.values.map((v) => cellFor(v, c.name, c.type)) as typeof c.values })),
+      };
+      return frame;
+    }
+    return { ...value, columns: value.columns.map((c) => ({ ...c, cells: c.cells.map((v) => cellFor(v, c.name, c.type)) as typeof c.cells })) };
+  }
+  if (!caught(value)) return value;
+  return fitsColumn(fallback, type) ? fallback : solError("#TYPE!", `The fallback doesn't fit this column, which holds ${type} values`);
 }
 
 // ─── IS.TEST ──────────────────────────────────────────────────────────────────

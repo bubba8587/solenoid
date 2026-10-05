@@ -1393,12 +1393,18 @@ export function appendFrames(frames: readonly FrameValue[]): FrameValue {
   }
   return frame(names.map((name) => {
     const values: FrameCell[] = [];
+    const cols: FrameColumn[] = [];
     for (const f of frames) {
       const col = f.columns.find((c) => c.name === name);
+      if (col) cols.push(col);
       const rows = frameRowCount(f);
       for (let i = 0; i < rows; i++) values.push(col ? cellAt(col, i) : null);
     }
-    return { name, type: typeOf.get(name)!, values };
+    // A unit or format every frame holding the column agrees on carries over; any disagreement drops it.
+    const unit = cols.every((c) => sameColumnUnit(c.unit, cols[0].unit)) ? cols[0].unit : undefined;
+    const fmt = (c: FrameColumn) => JSON.stringify(c.format ?? null);
+    const format = cols.every((c) => fmt(c) === fmt(cols[0])) ? cols[0].format : undefined;
+    return { name, type: typeOf.get(name)!, values, ...(unit ? { unit } : {}), ...(format ? { format } : {}) };
   }));
 }
 

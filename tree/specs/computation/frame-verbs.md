@@ -501,7 +501,7 @@ The Join card: a blank Right key reuses the Left key; a blank Left key yields no
 
 ### append
 
-`appendFrames(frames)`. Stacks frames in order, matching columns by name. The output columns are the union of names in first-seen order; a frame lacking a column contributes blanks for its rows. A name with different types in two frames is `#TYPE!` (`append: column "<n>" is <t1> in one frame and <t2> in another`); nothing is coerced. Columns carry name, type and values only. The card stacks its wired rows in row order and passes a single frame through.
+`appendFrames(frames)`. Stacks frames in order, matching columns by name. The output columns are the union of names in first-seen order; a frame lacking a column contributes blanks for its rows. A name with different types in two frames is `#TYPE!` (`append: column "<n>" is <t1> in one frame and <t2> in another`); nothing is coerced. A column keeps its unit and its format when every frame holding it agrees on them (the same unit, display included, and the same format), and loses whichever they disagree on (author 2026-10-05); a frame lacking the column has no say. The native engine sees no units, so its answer takes them from the same oracle shadow. The card stacks its wired rows in row order and passes a single frame through.
 
 ### bindColumns
 
