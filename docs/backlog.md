@@ -312,7 +312,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 
 ## From the 2026-09-29 commit-walk review (08-24 to 09-29; open leads, each verified against HEAD unless marked)
 - [ ] **Vendored DTE**: `tools/dte.py` `COVERAGE_TEMPLATE` writes a literal `100%%` into a new `.dtecoverage` on `dte init`; `excluded_from_coverage` doesn't count `covers:` citations (the numbers only). Upstream fixes.
-- [ ] **Series op switch**: a typed value equal to the old op's default (Start 0 on Range) reads as untouched and gives way to the next op's default; keeping it needs a saved "edited keys" field.
 - [ ] **Sketch sample aliasing**: the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs` verb_sample) aliases on periodic data (alternating keys at stride 4 keep only one). A fixed-seed well-mixed sample would fix it; spec line plus both samplers.
 - [ ] **Sketch Run** (`withExactPass`): a sink's Run in Sketch mode leaves the canvas on exact values until the next edit, as F9 does; the table popup's Copy/Export CSV still export the sampled table it shows.
 - [ ] **Record Detail/Gallery/Board/List** now show an unformatted number as Cards does (Auto), not `formatScalar`; confirm.

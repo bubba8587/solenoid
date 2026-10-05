@@ -121,6 +121,7 @@ export const INIT_FIELD_ORDER = [
   "pageName",
   "scanBy", "skipCells", "indexAxes",
   "byCol", "exactlyOnce",
+  "typedKeys",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

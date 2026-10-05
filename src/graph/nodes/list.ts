@@ -175,10 +175,14 @@ export class SeriesNode extends ClassicPreset.Node {
   width = 180;
   height = 248;
 
-  constructor(init?: { label?: string; op?: SeriesOp }) {
+  /** The fields the user typed in, so an op switch keeps them even when one equals the old op's default. */
+  typedKeys: string[] = [];
+
+  constructor(init?: { label?: string; op?: SeriesOp; typedKeys?: string[] }) {
     super("Series");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "range";
+    this.typedKeys = [...(init?.typedKeys ?? [])];
     for (const i of SERIES_SPECS[this.op]) this.addInput(i.key, numIn(i.label));
     this.addOutput("list", listOut("List"));
     this.seedLiterals();
@@ -196,8 +200,8 @@ export class SeriesNode extends ClassicPreset.Node {
   setOp(next: SeriesOp): void {
     if (next === this.op) return;
     const before = SERIES_SPECS[this.op];
-    // A value still at the old op's default was never typed, so it yields to the next op's default (or none).
-    for (const i of before) if (i.def !== undefined && this.literals[i.key] === i.def) delete this.literals[i.key];
+    // A seeded default was never typed, so it yields to the next op's default (or none); a typed value stays.
+    for (const i of before) if (i.def !== undefined && !this.typedKeys.includes(i.key)) delete this.literals[i.key];
     this.op = next;
     const after = SERIES_SPECS[next];
     for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);
@@ -212,6 +216,10 @@ export class SeriesNode extends ClassicPreset.Node {
       this.lastRank = 1;
     }
     this.seedLiterals();
+  }
+
+  noteLiteralEdit(key: string, cleared: boolean): void {
+    this.typedKeys = cleared ? this.typedKeys.filter((k) => k !== key) : [...new Set([...this.typedKeys, key])];
   }
 
   currentInputRoles(): Record<string, InputRole> {

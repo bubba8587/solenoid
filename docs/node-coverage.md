@@ -71,7 +71,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 
 ## Lists
 
-- **Literal** and **Series**: one list-generator node with Range, SEQUENCE, LinSpace, Geometric, Fibonacci and Repeat as ops. Start is shared, so switching ops keeps the cable.
+- **Literal** and **Series**: one list-generator node with Range, SEQUENCE, LinSpace, Geometric, Fibonacci and Repeat as ops. Start is shared, so switching ops keeps the cable. A value the user typed survives a switch, even one equal to the old op's default (`typedKeys`, saved with the card, fed by `InlineInputs` through `noteLiteralEdit`); a seeded default gives way to the next op's.
 - **Aggregate** (`AggregateNode`): a fixed-op 1-D reducer with 20 ops (sum, avg, min, max, count, countdistinct, median, product, stdev, var, geomean…). It isn't called Reduce, so it can't be confused with the REDUCE LAMBDA helper, which takes a table.
 - **List Filter**: filters a list's items, or a table's rows tested on one Column (the socket shows while a table is wired), with the Frame Filter's condition engine (extensible AND / OR op and value rows, text ops, Match case), on `anydata`, so a list stays a list. Frames go to Frame Filter. The permanent `Dropped` output is the exact complement.
 - **List Sort** and **UNIQUE** take a list or a table on `anydata` and follow Excel strictly: Rows by default, so a list (one row) needs Columns ([[D85]] columnsStayColumns). List Sort's key rows are SORTBY's by_arrays, each with its own order.

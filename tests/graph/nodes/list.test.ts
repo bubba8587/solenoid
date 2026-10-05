@@ -913,15 +913,27 @@ describe("Series — one arithmetic-progression node, op-switch mechanics", () =
     expect(g.literals.count).toBe(10);
   });
 
+  const type = (n: SeriesNode, key: string, v: number) => { n.literals[key] = v; n.noteLiteralEdit(key, false); };
   it("a value the user typed survives the switch", () => {
     const n = new SeriesNode({ op: "range" });
-    n.literals.start = 5;
+    type(n, "start", 5);
     n.setOp("sequence");
     expect(n.literals.start).toBe(5);
     const g = new SeriesNode({ op: "geometric" });
-    g.literals.count = 3;
+    type(g, "count", 3);
     g.setOp("linspace");
     expect(g.literals.count).toBe(3);
+  });
+
+  it("a typed value equal to the old op's default survives too, and is saved as typed", () => {
+    const n = new SeriesNode({ op: "range" });
+    type(n, "start", 0);
+    n.setOp("sequence");
+    expect(n.literals.start).toBe(0);
+    const reloaded = new SeriesNode({ op: "range", typedKeys: n.typedKeys });
+    reloaded.literals.start = 0;
+    reloaded.setOp("sequence");
+    expect(reloaded.literals.start).toBe(0);
   });
 });
 

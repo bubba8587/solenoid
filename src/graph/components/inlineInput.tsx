@@ -525,15 +525,21 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
   }
 
+  // A card that tells typed values from its seeded defaults hears about each edit (Series).
+  const noteEdit = (key: string, cleared: boolean) =>
+    (node as { noteLiteralEdit?: (key: string, cleared: boolean) => void }).noteLiteralEdit?.(key, cleared);
+
   async function set(key: string, v: number | undefined) {
     if (v === undefined) delete literals[key];
     else literals[key] = v;
+    noteEdit(key, v === undefined);
     settleTypes();
     await processGraph(node.id);
   }
 
   async function setStr(key: string, v: string) {
     strLiterals[key] = v;
+    noteEdit(key, v === "");
     settleTypes();
     await processGraph(node.id);
   }
@@ -544,6 +550,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     delete strLiterals[key];
     if (typeof v === "number") literals[key] = v;
     else if (typeof v === "string") strLiterals[key] = v;
+    noteEdit(key, v === undefined);
     settleTypes();
     await processGraph(node.id);
   }
