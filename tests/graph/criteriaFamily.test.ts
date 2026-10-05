@@ -56,6 +56,13 @@ describe("numeric text in the ranges stays text ([[B17]] typedValueModel)", () =
     expect((ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] }) as { code: string }).code).toBe("#DIV/0!");
     expect(ev("COUNTIF(v, 20)", { v: ["20", 20, "20"] })).toBe(1);
   });
+  it("a number ordering over a range holding text is #TYPE!, never an alphabetical match", () => {
+    const code = (v: unknown) => (v as { code?: string }).code;
+    expect(code(ev('COUNTIF(v, ">15")', { v: ["9", "10", "20"] }))).toBe("#TYPE!");
+    expect(code(ev('SUMIFS(n, v, "<=2")', { v: [1, "2", 3], n: [1, 1, 1] }))).toBe("#TYPE!");
+    expect(ev('COUNTIF(v, ">b")', { v: ["a", "c"] })).toBe(1);
+    expect(ev('COUNTIF(v, "<>15")', { v: ["9", "15"] })).toBe(1);
+  });
   it("a typed criterion over a text range is text, so it matches the same text", () => {
     expect(ev('COUNTIF(ids, "10")', { ids: ["10", "20", "10"] })).toBe(2);
     expect(ev('COUNTIF(ids, 10)', { ids: ["10", "20", "10"] })).toBe(0);

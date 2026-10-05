@@ -588,9 +588,9 @@ describe("classic lookups redirect to their current-Excel replacements ([[C14]] 
   });
 
   it("COUNTIF / AVERAGEIF never read a numeric-STRING range as numbers ([[B17]] typedValueModel)", () => {
-    // Text digits are text: a criterion over them compares as text ("9" sorts after "15"), nothing sums them,
+    // Text digits are text: a number ordering over them is #TYPE!, nothing sums them,
     // and never Formula.js's "10"+"30" → "1030".
-    expect(ev('COUNTIF(v, ">15")', { v: ["10", "9", "20"] })).toBe(2);
+    expect((ev('COUNTIF(v, ">15")', { v: ["10", "9", "20"] }) as { code: string }).code).toBe("#TYPE!");
     expect((ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] }) as { code: string }).code).toBe("#DIV/0!");
   });
 

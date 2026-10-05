@@ -93,6 +93,10 @@ export function criteriaAggregate(kind: CriteriaKind, values: readonly unknown[]
     const numeric = range.some((v) => typeof v === "number") && !range.some((v) => typeof v === "string" && v !== "");
     const c = parseCriterion(raw, numeric);
     if (isSolError(c)) return c;
+    if (!numeric && c.op !== "eq" && c.op !== "neq" && typeof c.value === "string" && Number.isFinite(decimalFromText(c.value))
+      && range.some((v) => typeof v === "string" && v !== "")) {
+      return solError("#TYPE!", `"${String(raw)}" compares numbers, but its range holds text. Cast the range to numbers first.`);
+    }
     crits.push(c);
   }
   let n = pairs.reduce((m, [r]) => Math.min(m, r.length), Infinity);
