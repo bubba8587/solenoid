@@ -749,7 +749,7 @@ export class CompositeNode extends ClassicPreset.Node {
         this.lastSolveKey = this.solveKey(inputs);
         this.solveRequested = false;
         this.solveInsideOnly = false;
-        this.unsettled = !settled;
+        this.unsettled = !settled || this.gatedInside();
         this.stale = this.unsettled;
         compositeStaleStore.set(this.id, this.stale);
         return outputs;
@@ -792,6 +792,11 @@ export class CompositeNode extends ClassicPreset.Node {
     }
     await whenConnectionsSettled(ids);
     return { outputs, settled: connectionStore.landedCount(ids) === landed };
+  }
+
+  /** A live card inside waits for this document's network permission, so a solve can't finish. */
+  gatedInside(): boolean {
+    return nestedNodeIds(this.internalEditor).some((id) => connectionStore.getState(id).status === "gated");
   }
 
   isHeavyMode(): boolean {

@@ -14,6 +14,7 @@ import type { DisplayValue } from "./valueDisplayFormat";
 import { processGraph } from "../process";
 import { compositeEditorStore } from "../compositeEditorStore";
 import { compositeStaleStore } from "../compositeStaleStore";
+import { connectionStore } from "../connectionStore";
 import { stopDragStart } from "../coarse";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
@@ -521,7 +522,9 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
   const [runMode, setRunMode] = useNodeField(node, "runMode");
   // A held composite's output doesn't change, so processGraph won't re-render it.
   useSyncExternalStore(compositeStaleStore.subscribe, compositeStaleStore.getVersion);
+  useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
   const heavy = node.isHeavyMode();
+  const gated = heavy && node.gatedInside();
   const stale = compositeStaleStore.isStale(node.id);
   const failed = heavy && runMode === "goal-seek" && isSolError(node.goalSeekResult);
   return (
@@ -543,6 +546,11 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
             {runMode === "manual" ? "Refresh" : "Solve"}
           </button>
           <StatusDot state={stale ? "stale" : failed ? "failed" : "ok"} />
+        </div>
+      )}
+      {gated && (
+        <div className="sol-conn__status-text" style={{ marginTop: 4 }} title="Waiting for permission. Allow this document to connect in Settings ▸ Data.">
+          Waiting for permission
         </div>
       )}
       {runMode === "scenarios" && <ScenarioTable node={node} />}

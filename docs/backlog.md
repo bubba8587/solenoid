@@ -315,8 +315,7 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 ## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
 - [ ] **Verify on the next desktop build:** the window still closes (Windows: overlay title bar and Alt+F4; Linux: the
   app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy` added), and drafts survive it.
-- [ ] **Follow-ups (2026-09-24, round 2):** a heavy composite whose live card still waits for network permission Solves
-  to blank with nothing saying why; RANDARRAY whole numbers over a range holding none (1.2 to 1.8) is `#VALUE!`,
+- [ ] **Follow-ups (2026-09-24, round 2):** RANDARRAY whole numbers over a range holding none (1.2 to 1.8) is `#VALUE!`,
   unchecked against Excel.
 - [ ] **Packs and units:** only Thermo presets declare input units (`preset-declared-units` in the inbox); fluids,
   electricity, EM, earthsky, health and chemistry build bare constants into formulas, so wired units give wrong

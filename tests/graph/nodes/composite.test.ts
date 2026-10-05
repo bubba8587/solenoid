@@ -1369,3 +1369,22 @@ describe("an error crossing the boundary acts as it would unpacked ([[D35]] erro
     expect(gs[aOut]).toBe(3);
   });
 });
+
+describe("a heavy composite with a live card waiting for permission", () => {
+  it("says so, and its solve stays stale", async () => {
+    const { connectionStore } = await import("../../../src/graph/connectionStore");
+    const c = new CompositeNode({ runMode: "manual" });
+    const inner = new NumberInputNode();
+    await c.internalEditor.addNode(inner as unknown as Schemes["Node"]);
+    expect(c.gatedInside()).toBe(false);
+    connectionStore.setState(inner.id, { status: "gated" });
+    try {
+      expect(c.gatedInside()).toBe(true);
+      c.requestSolve(false);
+      await c.data({});
+      expect(c.stale).toBe(true);
+    } finally {
+      connectionStore.setState(inner.id, { status: "idle" });
+    }
+  });
+});
