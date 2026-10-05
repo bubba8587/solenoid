@@ -277,6 +277,14 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 
 ## Formula parity leads (2026-09-25 audit against Excel)
 
+- [ ] **An Excel parity checker** (author 2026-10-05, after the one-off sheet behind `excelChecked.test.ts`):
+  a script that writes a workbook of every Excel-named function in `EXCEL_IMPL_META` at its edge cases (empty slots in
+  every position, blank and text arguments, out-of-domain values, fractional counts, month-end and leap dates, list and
+  array arguments), each row a live Excel formula beside Solenoid's answer and a Same/Differs cell, errors written as
+  text; and a reader that takes the workbook back after the author saves it in Excel, records Excel's answers as a
+  fixture, and fails a test on every row where Solenoid differs, so each difference is fixed or listed in
+  formula-language's deliberate differences. Excel-only functions need the `_xlfn.` prefix, and Solenoid's list
+  arguments stand in for `{…}` array constants. The one-off generator lives only in a session scratchpad; start fresh.
 - [ ] **N, T, TYPE and ERROR.TYPE are out of scope but still callable (author's call; checked in Excel 2026-10-05: `TYPE(1/0)` is 16, `TYPE({1,2})` 64).** `EXCEL_GAP` marks all four
   `oos` ("Not needed", "Not supported") and they have no card, yet Formula.js answers them, and `NULL_INSPECTING` lists
   N, T and TYPE on purpose. TYPE is the leaky one: `undefined` for a blank, a LAMBDA or a complex number, one answer per
