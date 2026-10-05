@@ -23,7 +23,7 @@ title first) and saves a PNG cropped to the nodes. One run takes about 6 seconds
   `--popup [N]` opens the Nth frame chip's table and shoots only the popup (all rows, not the
   3-row preview); `--click <css>` clicks; `--type <css> <text>` replaces a field's text;
   `--press <key>` presses Enter, Escape, Tab and so on. `--full` keeps the whole viewport.
-- **Editing a card's formula:** `--click .solenoid-expr__rendered --type .fx-editor__ta '<formula>' --press Escape`
+- **Editing a card's formula:** `--click .solenoid-expr__rendered --type .fx-editor__input '<formula>' --press Escape`
   (the popup commits on close). An Fx column: `--popup --type .table-popup__exprinput '<formula>' --press Enter`.
 - **`--palette <name>`** opens under a built-in palette (`Neon`, `Orchard`…) and **`--light`** in light mode.
 - Read the printed text before the PNG: it often answers the question without an image.

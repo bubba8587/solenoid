@@ -99,9 +99,9 @@
 }
 
 .formula-popup__edit-row .fx-editor { flex: 1; min-width: 0; }
-.formula-popup__edit-row .fx-editor__ta { min-height: 30px; max-height: 56vh; max-height: 56dvh; resize: vertical; }
+.formula-popup__edit-row .fx-editor__input { min-height: 30px; max-height: 56vh; max-height: 56dvh; }
 
-/* Sized by the corner grip: the body scrolls and the editor takes the spare height. As in the CSV view, the textarea drops its own grip, since a flexed height ignores the one it writes. */
+/* Sized by the corner grip: the body scrolls and the editor takes the spare height. */
 .sol-popup--sized .formula-popup__body {
   display: flex;
   flex-direction: column;
@@ -117,10 +117,9 @@
   display: flex;
   flex-direction: column;
 }
-.sol-popup--sized .formula-popup__edit-row .fx-editor__ta {
+.sol-popup--sized .formula-popup__edit-row .fx-editor__input {
   flex: 1 1 auto;
   max-height: none;
-  resize: none;
 }
 
 .formula-popup__steps {

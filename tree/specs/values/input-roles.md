@@ -98,7 +98,7 @@ CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
 
 ([[D96]] emptySlotShowsItsValue). Wherever an empty slot's reading isn't "", the slot shows it as muted placeholder text, so a value nobody typed is never invisible:
 
-- **The formula editor** draws it in the highlight mirror under the textarea, as a zero-width marker after the comma, so the user's text and caret never move.
+- **The formula editor** draws it after the slot's spaces as CSS content that takes room, so the formula spaces out around it on one line. The editor draws its own highlighted text (`FormulaEditor`, an editable box rather than a textarea under a mirror), so the reading is never part of the text and the caret steps over it.
 - **A read-only formula** (a card's formula line) draws it inline.
 - **A card's empty setting field** shows its declared blank as the field's placeholder (`fieldPlaceholder` in `emptySlots.ts`; a card setting pointed at a formula with `rolesFrom` shows the formula slot's reading). Other fields keep the placeholder their label's `(default …)` or their field kind gives.
 

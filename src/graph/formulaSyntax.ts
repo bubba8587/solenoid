@@ -33,16 +33,16 @@ function identClass(word: string, isCall: boolean): string {
   return "fx-var";
 }
 
-/** How an empty slot's reading shows ([[D96]] emptySlotShowsItsValue): `overlay` is a zero-width marker for the editor's
- *  mirror, so the typed text never moves; `inline` sits in the text, for a formula drawn read-only. */
-export type GhostMode = "overlay" | "inline";
+/** How an empty slot's reading shows ([[D96]] emptySlotShowsItsValue): `editor` draws it as CSS content, so it takes
+ *  room but never joins the editable text; `inline` is text, for a formula drawn read-only. */
+export type GhostMode = "editor" | "inline";
 
 export function highlightFormula(src: string, ghosts: GhostMode = "inline"): string {
   let out = "";
   let i = 0;
   const span = (cls: string, text: string) => `<span class="${cls}">${esc(text)}</span>`;
-  // Each open paren or brace: the call it belongs to, which argument is open, whether anything was typed in it, and where it starts in `out`.
-  const stack: { name: string | null; arg: number; typed: boolean; at: number; from: number }[] = [];
+  // Each open paren or brace: the call it belongs to, which argument is open, and whether anything was typed in it.
+  const stack: { name: string | null; arg: number; typed: boolean }[] = [];
   let pendingCall: string | null = null;
   const typed = () => { const top = stack[stack.length - 1]; if (top) top.typed = true; };
   const closeSlot = (closing: boolean) => {
@@ -50,12 +50,10 @@ export function highlightFormula(src: string, ghosts: GhostMode = "inline"): str
     if (!top || !top.name || top.typed || (closing && top.arg === 0)) return;
     const shown = emptySlotReading(top.name, top.arg).shown;
     if (shown === null) return;
-    // In the editor a reading sits in the slot's typed spaces when they fit it, else as a small raised label.
-    const room = src.slice(top.from, i).length;
-    const g = ghosts === "overlay"
-      ? `<span class="fx-ghost${room >= shown.length ? "" : " fx-ghost--raised"}" data-ghost="${esc(shown)}"></span>`
+    // After the slot's spaces, where a typed value would end.
+    out += ghosts === "editor"
+      ? `<span class="fx-ghost" data-ghost="${esc(shown)}"></span>`
       : `<span class="fx-ghost-inline">${esc(shown)}</span>`;
-    out = out.slice(0, top.at) + g + out.slice(top.at);
   };
   while (i < src.length) {
     const c = src[i];
@@ -109,7 +107,7 @@ export function highlightFormula(src: string, ghosts: GhostMode = "inline"): str
     if (c === "(") {
       typed();
       out += span("fx-paren", c); i++;
-      stack.push({ name: pendingCall, arg: 0, typed: false, at: out.length, from: i });
+      stack.push({ name: pendingCall, arg: 0, typed: false });
       pendingCall = null;
       continue;
     }
@@ -118,10 +116,10 @@ export function highlightFormula(src: string, ghosts: GhostMode = "inline"): str
       closeSlot(false);
       out += span("fx-comma", c); i++;
       const top = stack[stack.length - 1];
-      if (top) { top.arg++; top.typed = false; top.at = out.length; top.from = i; }
+      if (top) { top.arg++; top.typed = false; }
       continue;
     }
-    if (c === "{") { out += span("fx-err", c); i++; stack.push({ name: null, arg: 0, typed: false, at: out.length, from: i }); continue; }
+    if (c === "{") { out += span("fx-err", c); i++; stack.push({ name: null, arg: 0, typed: false }); continue; }
     if (c === "}") { stack.pop(); typed(); out += span("fx-err", c); i++; continue; }
     out += span("fx-err", c); i++;
   }

@@ -1,4 +1,3 @@
-/* The textarea and the <pre> must share identical text metrics (font, size, line-height, padding, wrapping, tab-size), or the colored layer drifts from the caret. */
 .fx-editor {
   position: relative;
   border: 1px solid var(--border);
@@ -8,8 +7,7 @@
   font-size: 12.5px;
   line-height: 1.5;
 }
-.fx-editor__hl,
-.fx-editor__ta {
+.fx-editor__input {
   margin: 0;
   padding: 7px 9px;
   font: inherit;
@@ -19,27 +17,14 @@
   overflow-wrap: break-word;
   word-break: break-word;
   box-sizing: border-box;
-  border: 0;
-}
-.fx-editor__hl {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
   color: var(--text);
-}
-.fx-editor__ta {
-  position: relative;
-  display: block;
-  width: 100%;
-  background: transparent;
-  color: transparent;       /* only the highlighted <pre> shows the text */
-  caret-color: var(--text); /* but keep a visible caret */
-  resize: none;
+  caret-color: var(--text);
   outline: none;
   overflow: auto;
+  cursor: text;
 }
-.fx-editor__ta::placeholder { color: var(--text-muted); opacity: 1; }
+.fx-editor__input:empty::before { content: attr(data-placeholder); color: var(--text-muted); pointer-events: none; }
+.fx-editor__input[contenteditable="false"] { cursor: default; }
 
 /* Token colors are socket colors: a variable becomes a number input, a string literal is text, a constant is a logical-like name. Light mode mixes each 70% toward the ink so it reads on a pale card, as frameHint does. Scoped to `.fx-tokens` so any surface can paint highlightFormula() output. */
 .fx-tokens, .fx-editor__menu, .md-code { --fx-mix: 100%; }
@@ -134,18 +119,6 @@
 
 /* An empty argument slot's reading, muted ([[D96]] emptySlotShowsItsValue). In the editor's mirror it takes no width, so the
    typed text and the caret above it never move; drawn read-only it sits in the text. */
-.fx-tokens .fx-ghost { position: relative; display: inline-block; width: 0; vertical-align: top; }
-.fx-tokens .fx-ghost::after {
-  content: attr(data-ghost);
-  position: absolute;
-  left: 0.15em;
-  top: 0;
-  line-height: inherit;
-  color: var(--text-dim);
-  opacity: 0.6;
-  font-style: italic;
-  white-space: nowrap;
-  pointer-events: none;
-}
-.fx-tokens .fx-ghost--raised::after { font-size: 0.68em; top: -0.62em; left: -0.1em; }
+.fx-tokens .fx-ghost { user-select: none; }
+.fx-tokens .fx-ghost::after { content: attr(data-ghost); color: var(--text-dim); opacity: 0.6; font-style: italic; pointer-events: none; }
 .fx-tokens .fx-ghost-inline { color: var(--text-dim); opacity: 0.6; font-style: italic; }
