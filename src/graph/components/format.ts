@@ -7,11 +7,23 @@ export function displayDecimals(): number {
   return Number.isInteger(d) && d >= 0 ? d : 4;
 }
 
-// |n| ≥ 1e12 (as Excel's General does) or a nonzero |n| below the smallest shown decimal, where fixed decimals would lie as "0".
+/** The size at which an unformatted number turns scientific, the "Scientific from" setting; Infinity when it is off. */
+export function sciThreshold(): number {
+  const s = settingsStore.get("sciAbove");
+  const p = Number(s);
+  return s === "off" ? Infinity : Number.isInteger(p) ? 10 ** p : 1e9;
+}
+
+/** The one key both display settings change, so a store can redraw on either. */
+export function displaySettingsKey(): string {
+  return `${settingsStore.get("numberDecimals")}|${settingsStore.get("sciAbove")}`;
+}
+
+// |n| at or past the "Scientific from" setting, or a nonzero |n| below the smallest shown decimal, where fixed decimals would lie as "0".
 export function extremeSci(n: number, decimals = displayDecimals()): string | null {
   const a = Math.abs(n);
   if (!Number.isFinite(a)) return null;
-  if (a >= 1e12 || (a > 0 && a < 10 ** -decimals)) return n.toExponential(4).replace(/\.?0+e/, "e");
+  if (a >= sciThreshold() || (a > 0 && a < 10 ** -decimals)) return n.toExponential(4).replace(/\.?0+e/, "e");
   return null;
 }
 

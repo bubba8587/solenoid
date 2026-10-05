@@ -43,6 +43,8 @@ export interface Settings {
   relativeDates: boolean;
   /** How many decimal places a number with no format shows; a string so the segment control stores it directly. */
   numberDecimals: "2" | "3" | "4" | "6";
+  /** The power of ten at which an unformatted number turns scientific; "off" never does. */
+  sciAbove: "6" | "9" | "12" | "off";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -70,6 +72,7 @@ export const DEFAULT_SETTINGS: Settings = {
   commandPaletteAlwaysOn: false,
   relativeDates: false,
   numberDecimals: "4",
+  sciAbove: "9",
 };
 
 export interface SettingField {
@@ -198,6 +201,18 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
           { value: "3", label: "3" },
           { value: "4", label: "4" },
           { value: "6", label: "6" },
+        ],
+      },
+      {
+        key: "sciAbove",
+        label: "Scientific from",
+        help: "Numbers without a format this large or larger show in scientific notation.",
+        type: "segment",
+        options: [
+          { value: "6", label: "1M" },
+          { value: "9", label: "1B" },
+          { value: "12", label: "1T" },
+          { value: "off", label: "Off" },
         ],
       },
       {

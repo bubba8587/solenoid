@@ -19,6 +19,7 @@ export function ConstantComponent({ data, emit }: NodeProps<ConstantNodeType>) {
       <OpSelect value={op} onChange={setOp} options={OPS} />
       <ValueDisplay
         value={meta.value}
+        renderWins
         render={(v) => <><span style={{ marginRight: 6, color: "var(--text-dim)" }}>{meta.symbol}</span>{formatValue(v)}</>}
         toClipboard={(v) => String(v)}
       />

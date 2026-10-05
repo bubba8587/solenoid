@@ -442,10 +442,13 @@ export function ValueDisplay({
   full,
   socketKey,
   popupOverrides,
+  renderWins,
 }: {
   value: DisplayValue;
   empty?: ReactNode;
   render?: (v: number) => ReactNode;
+  /** The card's own `render` and `toClipboard` win over any annotation: the constant cards, which show their precision. */
+  renderWins?: boolean;
   toClipboard?: (v: number) => string;
   /** Show a list in full (values joined) instead of a chip: the Display node. */
   full?: boolean;
@@ -476,7 +479,7 @@ export function ValueDisplay({
     return <div className="solenoid-node__display-value">{kindLabel}</div>;
   }
 
-  const ann = annotationForValue(rawValue, resolveDisplayAnnotation(ctxNodeId, socketKey));
+  const ann = renderWins ? undefined : annotationForValue(rawValue, resolveDisplayAnnotation(ctxNodeId, socketKey));
 
   // The declared element family, never a cell scan: a date serial looks numeric and an all-null list has no cells.
   const elemFam = nodeOutputElemFamily(ctxNodeId);

@@ -2,6 +2,7 @@
 
 import { createNotifier } from "./storeKit";
 import { settingsStore } from "./settingsStore";
+import { displaySettingsKey } from "./components/format";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { FORMAT_STYLE_LABELS, LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, type FormatAnnotation, type FormatStyle } from "./formatAnnotationStore";
 import { precisionApplies } from "./formatModel";
@@ -25,11 +26,11 @@ function key(nodeId: string, column: string): string {
 const _store = new Map<string, FrameColumnFormat>();
 const { notify, subscribe, version } = createNotifier();
 
-// A new "Decimal places" setting redraws every value shown through this store ([[D94]] oneNumberDisplay).
-let _decimals = settingsStore.get("numberDecimals");
+// A new "Decimal places" or "Scientific from" setting redraws every value shown through this store ([[D94]] oneNumberDisplay).
+let _display = displaySettingsKey();
 settingsStore.subscribe(() => {
-  const d = settingsStore.get("numberDecimals");
-  if (d !== _decimals) { _decimals = d; notify(); }
+  const d = displaySettingsKey();
+  if (d !== _display) { _display = d; notify(); }
 });
 
 export const frameFormatStore = {

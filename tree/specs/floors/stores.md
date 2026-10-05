@@ -58,7 +58,7 @@ A bridge holds a single handler. `register(fn)` returns an unregister function t
 
 ## App settings (`settingsStore`)
 
-`settingsStore` holds the app-wide preferences as one object persisted under `solenoid.settings`; `initSettings()` reads it once at startup, laying any saved values over `DEFAULT_SETTINGS`. `get(key)`, `set(key, value)` (which does nothing when unchanged) and `toggle(key)` for booleans. `numberDecimals` is read by `formatScalar` on every call, and `formatAnnotationStore` and `frameFormatStore` each notify when it changes, so every value box and Frame card redraws ([[D94]] oneNumberDisplay). `settingsPanel` is the Settings dialog's open flag.
+`settingsStore` holds the app-wide preferences as one object persisted under `solenoid.settings`; `initSettings()` reads it once at startup, laying any saved values over `DEFAULT_SETTINGS`. `get(key)`, `set(key, value)` (which does nothing when unchanged) and `toggle(key)` for booleans. `numberDecimals` and `sciAbove` are read by `formatScalar` on every call, and `formatAnnotationStore` and `frameFormatStore` each notify when either changes (`displaySettingsKey`), so every value box and Frame card redraws ([[D94]] oneNumberDisplay). `settingsPanel` is the Settings dialog's open flag.
 
 A new setting takes three edits: the `Settings` interface, `DEFAULT_SETTINGS`, and an entry in `SETTINGS_SCHEMA`, which lays out the Settings dialog as titled sections of fields. A field has a `key`, a `label`, optional `help`, and a `type`:
 

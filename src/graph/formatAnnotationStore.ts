@@ -1,7 +1,7 @@
 // [[C118]] formatTravelsWithValue, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
-import { formatScalar } from "./components/format";
+import { formatScalar, displaySettingsKey } from "./components/format";
 import { groupingApplies, scaleApplies, negativeApplies, COMPLEX_FORMAT_STYLES } from "./formatModel";
 import { assembleCx, type Cx } from "./cxValue";
 import { APP_LOCALE } from "./locale";
@@ -448,11 +448,11 @@ const _store = new Map<string, FormatAnnotation>();
 const _byNode = new Map<string, Map<string, FormatAnnotation>>();
 const { notify, subscribe, version } = createNotifier();
 
-// A new "Decimal places" setting redraws every value shown through this store ([[D94]] oneNumberDisplay).
-let _decimals = settingsStore.get("numberDecimals");
+// A new "Decimal places" or "Scientific from" setting redraws every value shown through this store ([[D94]] oneNumberDisplay).
+let _display = displaySettingsKey();
 settingsStore.subscribe(() => {
-  const d = settingsStore.get("numberDecimals");
-  if (d !== _decimals) { _decimals = d; notify(); }
+  const d = displaySettingsKey();
+  if (d !== _display) { _display = d; notify(); }
 });
 
 function key(nodeId: string, socketKey: string): string {
