@@ -1,4 +1,6 @@
 // [[B11]] maximalMerge, [[C26]] opArgDistinct, [[C44]] dateSerials
+import { useSyncExternalStore } from "react";
+import { collapseStore } from "../collapseStore";
 import type {
   TodayNowNode as TodayNowNodeType,
   DateConstructNode as DateConstructNodeType,
@@ -210,10 +212,21 @@ export function TimeZoneConvertComponent({ data, emit }: NodeProps<TimeZoneConve
 }
 
 export function WorldClockComponent({ data, emit }: NodeProps<WorldClockNodeType>) {
+  // Collapsed: the first zone's time, to the minute, under its place.
+  const cols = data.cachedResult?.columns;
+  const place = cols?.[0]?.values[0];
+  const time = cols?.[1]?.values[0];
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} squareCollapse>
       <InlineInputs node={data} emit={emit} suggest={{ zones: IANA_ZONES }} />
-      <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+      {!collapsed && <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />}
+      <div className="solenoid-node__collapsed-only solenoid-node__mini-value">
+        {typeof time === "string" ? <>
+          <span className="solenoid-node__mini-label">{String(place ?? "")}</span>
+          {time.replace(/^\S+\s+/, "")}
+        </> : "—"}
+      </div>
     </NodeShell>
   );
 }
