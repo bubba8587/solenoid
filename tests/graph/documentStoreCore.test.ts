@@ -8,6 +8,7 @@ import {
   setDocPath,
   setDocFileSaved,
   updateCurrentGraph,
+  adoptLoadedGraph,
   removeDocument,
   duplicateDocument,
   getCurrent,
@@ -99,6 +100,19 @@ describe("renameDocument", () => {
     expect(getCurrent(lib)?.name).toBe("Budget");
     lib = renameDocument(lib, "a", "   ");
     expect(getCurrent(lib)?.name).toBe("Budget"); // unchanged
+  });
+});
+
+describe("adoptLoadedGraph", () => {
+  it("takes a load's normalized graph without moving the time, so the next unchanged autosave is a no-op", () => {
+    let lib = addDocument(emptyLibrary(), doc("a", "A", 7));
+    lib = addDocument(lib, doc("b", "B", 8));
+    lib = setCurrent(lib, "a");
+    const normalized: SavedGraph = { v: 2, nodes: [{ id: "n", name: "n", type: "ConstantNode", x: 0, y: 0, init: {} }], connections: [] as never } as SavedGraph;
+    lib = adoptLoadedGraph(lib, normalized);
+    expect(getCurrent(lib)!.updatedAt).toBe(7);
+    expect(lib.documents.map((d) => d.id)).toEqual(["b", "a"]);
+    expect(updateCurrentGraph(lib, normalized, 99)).toBe(lib);
   });
 });
 
@@ -227,6 +241,7 @@ describe("[[B12]] losslessSaves — every transform returns new objects, never m
       ["setDocPath", () => setDocPath(lib, "a", "/tmp/x.json", "X")],
       ["setDocFileSaved", () => setDocFileSaved(lib, "a", 5)],
       ["updateCurrentGraph", () => updateCurrentGraph(lib, graph(), 1)],
+      ["adoptLoadedGraph", () => adoptLoadedGraph(lib, { ...graph(), nodes: [{ id: "n", type: "ConstantNode", x: 0, y: 0, init: {} }] } as SavedGraph)],
       ["removeDocument", () => removeDocument(lib, "a")],
       ["duplicateDocument", () => duplicateDocument(lib, "a", "a2", "A copy")],
     ];

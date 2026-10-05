@@ -303,7 +303,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 ## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
 - [ ] **Verify on the next desktop build:** the window still closes (Windows: overlay title bar and Alt+F4; Linux: the
   app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy` added), and drafts survive it.
-  unchecked against Excel.
 - [ ] **Packs and units:** only Thermo presets declare input units (`preset-declared-units` in the inbox); fluids,
   electricity, EM, earthsky, health and chemistry build bare constants into formulas, so wired units give wrong
   result dimensions (escape velocity with r in km, sensible heat, dBm, pH, Newton cooling `EXP(-kk*t)`). Forecast
@@ -319,7 +318,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **World Clock** updates only on a recompute, at midnight or on F9; a per-minute ticker is a design choice (a live tick recomputes its downstream every minute).
 - [ ] **Currency over a list**: the Amount socket is single-value, so a list of amounts is refused; broadcast, or keep one amount per card.
 - [ ] **Matrix format precedence**: the matrix popup's own pick now wins over an FC wired to the same card (as a Frame column's own pick does); the reverse is defensible.
-- [ ] **Gantt font scale** keeps the dragged grid width, so wider columns can run off the right instead of truncating with "…".
 - [ ] **Vault Folder mdbase**: it finds collections only at or below the folder it reads, while Write Properties walks up to the vault root; one rule for both.
 - [ ] **List text predicates on a mixed list** (`list.ts` requireTextList, [[D49]] textPredicateNeedsText): `["apple", 1]` and `[1, "apple"]` are both #TYPE! now; confirm that reading of D49.
 - [ ] **Series op switch**: a typed value equal to the old op's default (Start 0 on Range) reads as untouched and gives way to the next op's default; keeping it needs a saved "edited keys" field.
@@ -327,10 +325,8 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Sketch Run** (`withExactPass`): a sink's Run in Sketch mode leaves the canvas on exact values until the next edit, as F9 does; the table popup's Copy/Export CSV still export the sampled table it shows.
 - [ ] **Record Detail/Gallery/Board/List** now show an unformatted number as Cards does (Auto), not `formatScalar`; confirm.
 - [ ] **Append units**: Append drops unit and format by spec; keep them when every frame agrees?
-- [ ] **An imported file's first autosave** may still move its time if the load normalizes the graph (`updateCurrentGraph` compares serialized forms).
 
 ## From the 2026-09-30 oldest-first review (1.0-era and July files; verified against HEAD)
 - [ ] **Constant and Physics Constant** draw their own value box (`ConstantNode.tsx`, `PhysicsConstantNode.tsx`): no copy button, no Format Controller. `ValueDisplay`'s `render` could carry the symbol and unit; decide how those sit beside an FC's formatting.
 - [ ] **IFERROR over a Frame**: `replaceCaught` (`nodes/logic.ts`) walks lists only, so a per-cell error inside a table passes through uncaught ([[C24]] arraySemantics); decide whether IFERROR reaches into cells.
 - [ ] **Node showcase on its own flow stage** (`flow/StaticFlowStage.tsx`): a hand-built React Flow surface beside `FlowSurface`'s `locked` + `staticView` mode that `SceneStage` uses ([[B3]] sameNodeEverywhere); unverified that the showcase runs on FlowSurface unchanged. Its type switch may also race (`NodeShowcase.tsx`: a cancelled run's `addNode` landing after the next `clear()`), unconfirmed.
-- [ ] **String editor's quote scanner** (`tools/string-editor/literals.mjs`) loses sync on regex literals, JSX apostrophes and nested templates (≈490 "literals" in `src/` span a line break), so real strings read not-found; tokenize with TypeScript's `createScanner`.

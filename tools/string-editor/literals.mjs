@@ -7,6 +7,7 @@
 
 import { readFile, writeFile, appendFile } from 'node:fs/promises';
 import path from 'node:path';
+import { parse } from '@babel/parser';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -80,56 +81,34 @@ export function rebuildLiteral(text, quote) {
 
 // Walk a TS/TSX source and emit every simple string literal.
 // Skips comments; template literals containing ${ are flagged hasInterp and not editable.
-function scanSource(text) {
+// A real parser finds the literals, so regex literals, JSX text and nested templates can't throw the scan out of
+// step the way a quote-by-quote walk did. A file that won't parse yields none.
+function scanSource(text, file = 'x.tsx') {
+  let ast;
+  try {
+    ast = parse(text, { sourceType: 'module', errorRecovery: true, plugins: file.endsWith('.tsx') ? ['typescript', 'jsx'] : ['typescript'] });
+  } catch { return []; }
   const out = [];
-  let i = 0;
-  const N = text.length;
-  let curLine = 1;
-
-  while (i < N) {
-    const c = text[i];
-    // line comment
-    if (c === '/' && text[i + 1] === '/') {
-      while (i < N && text[i] !== '\n') i++;
-      continue;
+  const visit = (node) => {
+    if (!node || typeof node.type !== 'string') return;
+    const plain = node.type === 'StringLiteral' || (node.type === 'TemplateLiteral' && node.expressions.length === 0);
+    if (plain || node.type === 'TemplateLiteral') {
+      const raw = text.slice(node.start, node.end);
+      out.push({
+        start: node.start, end: node.end, line: node.loc.start.line, quote: raw[0],
+        raw, hasInterp: !plain, content: plain ? decodeBody(raw.slice(1, -1)) : null,
+      });
+      if (plain) return;
     }
-    // block comment
-    if (c === '/' && text[i + 1] === '*') {
-      i += 2;
-      while (i < N && !(text[i] === '*' && text[i + 1] === '/')) { if (text[i] === '\n') curLine++; i++; }
-      i += 2;
-      continue;
+    for (const key of Object.keys(node)) {
+      if (key === 'loc' || key === 'leadingComments' || key === 'trailingComments' || key === 'innerComments') continue;
+      const v = node[key];
+      if (Array.isArray(v)) v.forEach(visit);
+      else if (v && typeof v === 'object') visit(v);
     }
-    if (c === '"' || c === "'" || c === '`') {
-      const quote = c;
-      const start = i;
-      const startLine = curLine;
-      i++;
-      let hasInterp = false;
-      while (i < N) {
-        const d = text[i];
-        if (d === '\\') { i += 2; continue; }
-        if (d === '\n') curLine++;
-        if (quote === '`' && d === '$' && text[i + 1] === '{') { hasInterp = true; }
-        if (d === quote) { i++; break; }
-        i++;
-      }
-      const end = i; // exclusive
-      const raw = text.slice(start, end);
-      // must be properly closed
-      if (raw.length >= 2 && raw[raw.length - 1] === quote) {
-        const body = raw.slice(1, -1);
-        out.push({
-          start, end, line: startLine, quote,
-          raw, hasInterp,
-          content: hasInterp ? null : decodeBody(body),
-        });
-      }
-      continue;
-    }
-    if (c === '\n') curLine++;
-    i++;
-  }
+  };
+  visit(ast.program);
+  out.sort((x, y) => x.start - y.start);
   return out;
 }
 
@@ -148,7 +127,7 @@ export async function buildIndex(listFiles) {
       mdFiles.push({ file: rel, abs, text });
       continue;
     }
-    for (const lit of scanSource(text)) {
+    for (const lit of scanSource(text, abs)) {
       if (lit.hasInterp || lit.content === null || lit.content === '') continue;
       const rec = { file: rel, abs, start: lit.start, end: lit.end, line: lit.line, quote: lit.quote, raw: lit.raw, content: lit.content };
       const arr = byContent.get(lit.content);

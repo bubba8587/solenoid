@@ -509,11 +509,12 @@ function fitColumns(cols: ReturnType<typeof buildColumns>, avail: number): Retur
   const out: typeof cols = [];
   let used = 0;
   for (const c of cols) {
-    if (out.length && used + c.width > avail) break;
+    if (used + c.width > avail) break;
     out.push(c);
     used += c.width;
   }
-  return out.length ? out : cols.slice(0, 1);
+  // The first column always shows; narrower than the pane needs, it truncates with "…" instead of running off it.
+  return out.length || !cols.length ? out : [{ ...cols[0], width: Math.max(0, Math.floor(avail)) }];
 }
 
 function shadingRects(payload: GanttPayload, scale: { from: number; to: number; pxPerDay: number }, h: number) {

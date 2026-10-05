@@ -24,7 +24,7 @@ The Solenoid dev server must already be running on **http://localhost:1420**
 
 ```
 cd tools/string-editor
-npm install                 # once, installs playwright-core (pinned to match the local Chromium)
+npm install                 # once, installs playwright-core (pinned to match the local Chromium) and @babel/parser
 node up.mjs                 # kills any old instance, starts fresh, opens the window
 ```
 

@@ -96,6 +96,14 @@ export function updateCurrentGraph(lib: DocLibrary, graph: SavedGraph, now: numb
   return { ...lib, documents: [updated, ...rest] };
 }
 
+/** The current document's graph as the load left it (a load may normalize a file's graph), keeping its time: a
+ *  load is not an edit, so the first autosave after it moves the time only for a real change. */
+export function adoptLoadedGraph(lib: DocLibrary, graph: SavedGraph): DocLibrary {
+  const cur = getCurrent(lib);
+  if (!cur || sameGraph(cur.graph, graph)) return lib;
+  return { ...lib, documents: lib.documents.map((d) => (d.id === cur.id ? { ...d, graph } : d)) };
+}
+
 export function removeDocument(lib: DocLibrary, id: string): DocLibrary {
   const documents = lib.documents.filter((d) => d.id !== id);
   let currentId = lib.currentId;

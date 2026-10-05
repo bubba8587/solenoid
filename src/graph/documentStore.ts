@@ -18,6 +18,7 @@ import {
   setDocPath,
   setDocFileSaved,
   updateCurrentGraph,
+  adoptLoadedGraph,
   removeDocument,
   duplicateDocument,
   validateLibrary,
@@ -181,10 +182,19 @@ function makeDoc(name: string, graph: SavedGraph): SolDoc {
   return { id: newId(), name: uniqueName(_lib, name), graph, updatedAt: Date.now() };
 }
 
+/** Loads the current document and adopts the loaded form, so a load's normalizing never reads as an edit. */
+async function loadCurrent(graph: SavedGraph): Promise<boolean> {
+  if (!(await loadGraph(graph))) return false;
+  let loaded: SavedGraph | null = null;
+  try { loaded = serializeGraph(); } catch { /* the next autosave reports it */ }
+  if (loaded) { _lib = adoptLoadedGraph(_lib, loaded); persist(); }
+  return true;
+}
+
 async function showCurrent(): Promise<boolean> {
   const cur = getCurrent(_lib);
   if (!cur) return false;
-  return loadGraph(cur.graph);
+  return loadCurrent(cur.graph);
 }
 
 async function showCurrentSafe(revertTo?: string | null): Promise<void> {
@@ -374,7 +384,7 @@ export const documentStore = {
     _lib = addDocument(_lib, doc);
     persist();
     notify();
-    if (!(await loadGraph(graph)) && prevId) {
+    if (!(await loadCurrent(graph)) && prevId) {
       _lib = setCurrent(_lib, prevId);
       persist();
       notify();

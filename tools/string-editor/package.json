@@ -8,6 +8,7 @@
     "start": "node server.mjs"
   },
   "dependencies": {
+    "@babel/parser": "^7.29.9",
     "playwright-core": "1.60.0"
   }
 }
