@@ -691,31 +691,55 @@ export class TextSplitNode extends ClassicPreset.Node {
 // ─── TEXTAFTER / TEXTBEFORE ───────────────────────────────────────────────────
 
 export const TEXT_AFTER_BEFORE_OP_META = {
-  after:  { label: "TEXTAFTER",  description: "Text after the first occurrence of delimiter. Null if not found. Excel: `TEXTAFTER`." },
-  before: { label: "TEXTBEFORE", description: "Text before the first occurrence of delimiter. Null if not found. Excel: `TEXTBEFORE`." },
+  after:  { label: "TEXTAFTER",  description: "Text after an occurrence of the delimiter, counted from the start, or from the end when negative. Blank if not found. Excel: `TEXTAFTER`." },
+  before: { label: "TEXTBEFORE", description: "Text before an occurrence of the delimiter, counted from the start, or from the end when negative. Blank if not found. Excel: `TEXTBEFORE`." },
 } satisfies Record<TextAfterBeforeOp, { label: string; description: string }>;
 
 export class TextAfterBeforeNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("TEXTAFTER", { instance: 2, if_not_found: 5 });
+  static socketDocs: Record<string, string> = {
+    instance: "Which occurrence: 1 is the first, 2 the second, -1 the last. Blank means 1.",
+    if_not_found: "The answer when the delimiter isn't found; blank leaves it blank.",
+  };
   label: string;
   op: TextAfterBeforeOp;
+  /** Excel's match_mode 0; off is match_mode 1. */
+  matchCase: boolean;
+  /** Excel's match_end: the end of the text counts as a delimiter. */
+  matchEnd: boolean;
   cachedText: CellResult<string> = null;
-  stringLiterals: Record<string, string> = { text: "", delimiter: "" };
-  width = 180; height = 205;
+  stringLiterals: Record<string, string> = { text: "", delimiter: "", if_not_found: "" };
+  literals: Record<string, number> = { instance: 1 };
+  width = 190; height = 290;
 
-  constructor(init?: { label?: string; op?: TextAfterBeforeOp }) {
+  constructor(init?: { label?: string; op?: TextAfterBeforeOp; matchCase?: boolean; matchEnd?: boolean }) {
     super("TextAfterBefore");
     this.op    = init?.op    ?? "after";
     this.label = init?.label ?? "";
+    this.matchCase = init?.matchCase ?? true;
+    this.matchEnd = init?.matchEnd ?? false;
     this.addInput("text",      strComboIn("Text"));
     this.addInput("delimiter", strComboIn("Delimiter"));
+    this.addInput("instance",  numIn("Instance"));
+    this.addInput("if_not_found", strIn("If not found"));
     this.addOutput("result", strComboOut("Result"));
   }
 
   data(inputs: {
     text?: (string | string[])[];
     delimiter?: (string | string[])[];
+    instance?: number[];
+    if_not_found?: string[];
   }): { result: CellResult<string> } {
-    const result = broadcastCells((text: string, delimiter: string) => textAfterBefore(this.op, text, delimiter),
+    const instance = readRole<number | SolError | undefined>(this, "instance", inputs.instance);
+    if (isSolError(instance)) { this.cachedText = instance; return { result: instance }; }
+    const ifNotFound = readRole<string | SolError | undefined>(this, "if_not_found", inputs.if_not_found);
+    if (isSolError(ifNotFound)) { this.cachedText = ifNotFound; return { result: ifNotFound }; }
+    const opts = { instance: instance ?? 1, caseless: !this.matchCase, matchEnd: this.matchEnd };
+    const result = broadcastCells((text: string, delimiter: string) => {
+      const r = textAfterBefore(this.op, text, delimiter, opts);
+      return r === null && ifNotFound !== undefined && ifNotFound !== "" ? ifNotFound : r;
+    },
       strVal(inputs.text,      this, "text"),
       strVal(inputs.delimiter, this, "delimiter"));
     this.cachedText = result;

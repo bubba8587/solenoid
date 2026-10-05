@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_ARITY, MANY } from "./fixtures/excelArity";
+import { TextAfterBeforeNode } from "../../src/graph/nodes/text";
 
 // A registration that accepts fewer arguments than Excel's, each with the reason it stays short. The test fails on a new
 // gap and on an entry that no longer applies, so the list only shrinks.
@@ -65,6 +66,19 @@ describe("TEXTSPLIT, TEXTAFTER and TEXTBEFORE take Excel's options", () => {
     expect(ev("TEXTBEFORE(t, \"-\", 4, 0, 1)", { t })).toBe("a-b-C-d");
     expect(ev("TEXTAFTER(t, \"x\", 1, 0, 0, \"none\")", { t })).toBe("none");
     expect(ev("TEXTAFTER(t, \"-\", 0)", { t })).toMatchObject({ code: "#VALUE!" });
+  });
+  it("the TEXTAFTER / TEXTBEFORE card covers every argument and agrees with the formula ([[D73]] nodeCoversFormula)", () => {
+    const t = "a-b-C-d";
+    const card = (op: "after" | "before", delim: string, instance: number, o: { matchCase?: boolean; matchEnd?: boolean; ifNotFound?: string } = {}) => {
+      const n = new TextAfterBeforeNode({ op, matchCase: o.matchCase, matchEnd: o.matchEnd });
+      return n.data({ text: [t], delimiter: [delim], instance: [instance], if_not_found: o.ifNotFound === undefined ? undefined : [o.ifNotFound] }).result;
+    };
+    expect(card("after", "-", 2)).toBe(ev("TEXTAFTER(t, \"-\", 2)", { t }));
+    expect(card("before", "-", -2)).toBe(ev("TEXTBEFORE(t, \"-\", -2)", { t }));
+    expect(card("before", "c", 1, { matchCase: false })).toBe(ev("TEXTBEFORE(t, \"c\", 1, 1)", { t }));
+    expect(card("before", "-", 4, { matchEnd: true })).toBe(ev("TEXTBEFORE(t, \"-\", 4, 0, 1)", { t }));
+    expect(card("after", "x", 1, { ifNotFound: "none" })).toBe("none");
+    expect(card("before", "c", 1)).toBeNull();
   });
   it("TEXTSPLIT: a row delimiter answers a table padded with #N/A; ignore_empty drops empty parts", () => {
     expect(ev("TEXTSPLIT(t, \",\")", { t: "a,,b" })).toEqual(["a", "", "b"]);

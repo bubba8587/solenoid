@@ -273,10 +273,6 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 
 ## Formula parity leads (2026-09-25 audit against Excel)
 
-- [ ] **TEXTAFTER / TEXTBEFORE drop Excel's later arguments.** `TEXTAFTER("a-b-c", "-", 2)` answers "b-c": the card and
-  the formula read the first occurrence only, and the formula ignores `instance_num`, `match_mode`, `match_end` and
-  `if_not_found` without a word. Either both surfaces gain instance support ([[D73]] nodeCoversFormula), or the formula
-  refuses the unsupported arguments with "isn't supported", as XLOOKUP refuses wildcard modes.
 - [ ] **N, T, TYPE and ERROR.TYPE are out of scope but still callable (author's call).** `EXCEL_GAP` marks all four
   `oos` ("Not needed", "Not supported") and they have no card, yet Formula.js answers them, and `NULL_INSPECTING` lists
   N, T and TYPE on purpose. TYPE is the leaky one: `undefined` for a blank, a LAMBDA or a complex number, one answer per

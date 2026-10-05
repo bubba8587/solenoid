@@ -291,11 +291,11 @@ export const VALUELESS_OPS: ReadonlySet<FilterOp> = VALUELESS_FILTER_OPS;
 
 export const TEXT_MATCH_OPS: ReadonlySet<FilterOp> = new Set(["eq", "neq", "contains", "startsWith", "endsWith"]);
 
-export function MatchCaseButton({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+export function MatchCaseButton({ on, onToggle, label = "Aa", title = "Match case. Off matches text like Excel's = does." }: { on: boolean; onToggle: () => void; label?: string; title?: string }) {
   return (
     <button
       type="button"
-      title="Match case. Off matches text like Excel's = does."
+      title={title}
       aria-pressed={on}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
       onPointerDown={stopDragStart}
@@ -307,7 +307,7 @@ export function MatchCaseButton({ on, onToggle }: { on: boolean; onToggle: () =>
         color: on ? "var(--surface)" : "var(--text-muted)",
       }}
     >
-      Aa
+      {label}
     </button>
   );
 }
