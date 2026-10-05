@@ -1,6 +1,6 @@
 // [[C44]] dateSerials
 import { describe, it, expect, vi } from "vitest";
-import { hasVolatileDates, msUntilNextMidnight, armMidnightRollover } from "../../src/graph/volatileDates";
+import { hasVolatileDates, msUntilNextMidnight, armMidnightRollover, armMinuteTick, clockCardIds } from "../../src/graph/volatileDates";
 import { TodayNowNode, WorldClockNode } from "../../src/graph/nodes/date";
 import { HolidaysNode } from "../../src/graph/nodes/connection";
 import { wallClockSerial, serialToJsDate } from "../../src/graph/nodes/dateSerial";
@@ -101,6 +101,26 @@ describe("volatile formula columns refresh on a recalc", () => {
     vi.setSystemTime(new Date(2026, 8, 8, 0, 0, 1));
     await requestRecalc();
     expect(dayOf(cell())).toBe(8);
+    vi.useRealTimers();
+  });
+});
+
+describe("the World Clock ticks each minute", () => {
+  it("recomputes only the cards holding a clock, at each minute boundary", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 5, 12, 0, 30));
+    const clock = Object.assign(new WorldClockNode(), { id: "w" });
+    const other = Object.assign(new TodayNowNode(), { id: "t" });
+    const hits: string[] = [];
+    const disarm = armMinuteTick(() => [clock, other], (id) => hits.push(id));
+    expect(clockCardIds([clock, other])).toEqual(["w"]);
+    vi.advanceTimersByTime(29_000);
+    expect(hits).toEqual([]);
+    vi.advanceTimersByTime(2_000);
+    expect(hits).toEqual(["w"]);
+    vi.advanceTimersByTime(60_000);
+    expect(hits).toEqual(["w", "w"]);
+    disarm();
     vi.useRealTimers();
   });
 });

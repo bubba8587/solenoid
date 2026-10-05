@@ -553,11 +553,15 @@ describe("Filter — condition rows over the list's own values ([[C49]] filterOn
     }
   });
 
-  it("a text predicate on a list mixing text and numbers is #TYPE! whichever comes first", () => {
-    for (const list of [[1, "apple"], ["apple", 1]]) {
-      expect(() => mk([{ op: "contains", value: "a" }]).data({ list: [list] }))
-        .toThrowError(expect.objectContaining({ code: "#TYPE!" }));
-    }
+  it("a text predicate on a list mixing text and numbers answers each item: a non-text one is its own #TYPE!", () => {
+    const code = (v: unknown) => (v as { code?: string })?.code ?? v;
+    expect((mk([{ op: "contains", value: "a" }]).data({ list: [[1, "apple", "kiwi"]] }).result as unknown[]).map(code)).toEqual(["#TYPE!", "apple"]);
+    expect((mk([{ op: "contains", value: "a" }]).data({ list: [["apple", 1]] }).result as unknown[]).map(code)).toEqual(["apple", "#TYPE!"]);
+  });
+
+  it("a text predicate on a list with no text at all is #TYPE! for the whole list", () => {
+    expect(() => mk([{ op: "contains", value: "a" }]).data({ list: [[1, 2]] }))
+      .toThrowError(expect.objectContaining({ code: "#TYPE!" }));
   });
 
   it("AND narrows, OR unions", () => {

@@ -31,8 +31,8 @@ import { SelectionActionsBar } from "./graph/components/SelectionActionsBar";
 import { WebDemoBanner } from "./graph/WebDemoBanner";
 import { installExternalLinkGuard } from "./graph/externalLinks";
 import { installRecordCardsAction } from "./graph/recordCardsFromPopup";
-import { armMidnightRollover } from "./graph/volatileDates";
-import { getEditor, requestRecalc } from "./graph/process";
+import { armMidnightRollover, armMinuteTick } from "./graph/volatileDates";
+import { getEditor, requestRecalc, processGraph } from "./graph/process";
 import "./App.css";
 import "./graph/StatusBar.css";
 import "./mobile.css";
@@ -111,6 +111,7 @@ function MainApp() {
   useEffect(installRecordCardsAction, []);
   // TODAY / NOW / relative Date Inputs recompute once at each local midnight (R5).
   useEffect(() => armMidnightRollover(() => getEditor()?.getNodes() ?? [], () => { void requestRecalc(); }), []);
+  useEffect(() => armMinuteTick(() => getEditor()?.getNodes() ?? [], (id) => { void processGraph(id); }), []);
 
   return (
     <div className="solenoid-app">

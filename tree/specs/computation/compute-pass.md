@@ -147,7 +147,7 @@ A node whose `data()` draws random numbers keeps its raw draw and a `lastGen` fi
 
 Volatile functions inside a formula (`RAND`, `RANDARRAY`, `SHUFFLE` and the sampling functions in `excelFunctions.ts`) draw fresh values on every evaluation, so an Expression holding one re-rolls whenever that Expression is recomputed.
 
-The midnight rollover (`volatileDates.ts`, armed once in `App.tsx`) sets one timer for a second past the next local midnight; when it fires, it calls `requestRecalc()` if the document holds a Today / Now card, a node whose `expr` or `frameText` contains `TODAY(` or `NOW(` (any case), or a Date Input holding a relative date phrase, looking inside composites too, then re-arms. TODAY and NOW read the local calendar, so their day turns at the same local midnight.
+The midnight rollover (`volatileDates.ts`, armed once in `App.tsx`) sets one timer for a second past the next local midnight; when it fires, it calls `requestRecalc()` if the document holds a Today / Now card, a node whose `expr` or `frameText` contains `TODAY(` or `NOW(` (any case), or a Date Input holding a relative date phrase, looking inside composites too, then re-arms. A World Clock also ticks each minute (`armMinuteTick`, armed beside it): a second timer, aligned to the minute, calls `processGraph` on each top-level card that holds one, so the clock and what it feeds recompute without rolling the rest of the document; Manual mode marks it dirty instead. TODAY and NOW read the local calendar, so their day turns at the same local midnight.
 
 ## Rebuild scopes
 

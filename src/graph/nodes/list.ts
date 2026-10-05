@@ -14,7 +14,7 @@ import { rolesFrom, setting, LEFT_OUT, type InputRole } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
-import { passesFilter, requireTextColumn, requireTextList, readingScaleOf, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
+import { passesFilter, requireTextColumn, requireTextList, readingScaleOf, TEXT_FILTER_OPS, TEXT_OP_LABEL, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, isAffineDisplay, isUnitCell, unitError, READINGS_ADD, type UnitCell } from "../unitValue";
@@ -1065,13 +1065,19 @@ export class FilterNode extends ClassicPreset.Node {
       this.cachedDropped = null;
       return { result: this.cachedResult, dropped: null };
     }
-    // [[D49]] textPredicateNeedsText: a text predicate on a non-text list is #TYPE!.
-    const gate = listTextGateType(mags);
-    for (const c of conds) requireTextList(c.op, gate);
+    // [[D49]] textPredicateNeedsText: a text predicate on a list with no text is #TYPE!; on a list mixing text with
+    // other values, each item that isn't text stays in the result as its own #TYPE!.
+    const hasText = mags.some((v) => typeof v === "string");
+    if (!hasText) for (const c of conds) requireTextList(c.op, listTextGateType(mags));
+    const textOp = conds.find((c) => TEXT_FILTER_OPS.has(c.op));
     const kept: unknown[] = [];
     const dropped: unknown[] = [];
     for (let i = 0; i < arr.length; i++) {
       const mag = mags[i] as FrameCell;
+      if (textOp && mag != null && !isSolError(mag) && typeof mag !== "string") {
+        kept.push(solError("#TYPE!", `${TEXT_OP_LABEL[textOp.op] ?? textOp.op} reads text; this item is a ${listElemColType([mag])}. Cast it to Text first`));
+        continue;
+      }
       const pass = (c: { op: FilterOp; value: string; matchCase: boolean }) =>
         passesFilter(mag, c.op, c.value, type, c.matchCase);
       const item = list ? arr[i] : m[i];

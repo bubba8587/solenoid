@@ -1,5 +1,5 @@
 // [[D46]] freezeVolatilePerCalc, [[C44]] dateSerials
-// Midnight rollover: TODAY, NOW, the Today, Holidays and World Clock cards, a Knap `'now' | date` and relative Date Inputs answer for the calendar day, so at each local midnight a
+// Midnight rollover: TODAY, NOW, the Today, Holidays and World Clock cards (the clock also ticks each minute), a Knap `'now' | date` and relative Date Inputs answer for the calendar day, so at each local midnight a
 // document holding any of them recomputes once. One timer, re-armed after each firing.
 
 import { isRelativeDateText } from "./nodes/dateSerial";
@@ -43,6 +43,28 @@ export function armMidnightRollover(nodes: () => readonly unknown[], recalc: () 
       if (hasVolatileDates(nodes())) recalc();
       schedule();
     }, msUntilNextMidnight());
+  };
+  schedule();
+  return () => { if (timer) clearTimeout(timer); };
+}
+
+/** Top-level cards that hold a World Clock, itself or inside a composite: the cards the minute tick recomputes. */
+export function clockCardIds(nodes: readonly unknown[]): string[] {
+  const holds = (n: unknown): boolean => {
+    const o = n as { constructor?: { name?: string }; internalEditor?: { getNodes(): readonly unknown[] } };
+    return o.constructor?.name === "WorldClockNode" || (!!o.internalEditor && o.internalEditor.getNodes().some(holds));
+  };
+  return nodes.filter(holds).map((n) => (n as { id: string }).id);
+}
+
+/** A World Clock shows the time to the minute, so each minute it recomputes, with what it feeds. Returns the disarm. */
+export function armMinuteTick(nodes: () => readonly unknown[], recompute: (id: string) => void): () => void {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const schedule = () => {
+    timer = setTimeout(() => {
+      for (const id of clockCardIds(nodes())) recompute(id);
+      schedule();
+    }, 60_000 - (Date.now() % 60_000) + 50);
   };
   schedule();
   return () => { if (timer) clearTimeout(timer); };

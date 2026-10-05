@@ -37,3 +37,10 @@ describe("Currency reads the amount's currency", () => {
     expect(fx("USD", "EUR", 0.5).data({ amount: [err] }).converted).toEqual(err);
   });
 });
+
+describe("Currency converts a list of amounts", () => {
+  it("item by item at the one rate, a blank staying blank", () => {
+    const out = fx("USD", "EUR", 0.5).data({ amount: [[10, null, 30]] }).converted as unknown[];
+    expect(out.map((v) => (v == null ? v : magnitudeOf(v)))).toEqual([5, null, 15]);
+  });
+});

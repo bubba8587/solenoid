@@ -1,6 +1,6 @@
 // [[B11]], [[C103]] untrustedContentSeams, [[C1]] demoVault
 import { ClassicPreset } from "rete";
-import { frameOut, strListOut, strIn, numIn, numOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput } from "./shared";
+import { frameOut, strListOut, strIn, numIn, numOut, numListIn, numListOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput } from "./shared";
 import { serialToJsDate } from "./dateSerial";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
 import { weatherUrl, parseWeather, type TempUnit, type WeatherResult } from "../weatherProvider";
@@ -664,7 +664,7 @@ function convertAmount(amount: unknown, from: string, to: string, rate: number |
 
 export class FxNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    amount: "How much, in the From currency.",
+    amount: "How much, in the From currency: one amount or a list.",
     from: "The currency to convert out of.",
     to: "The currency to convert into.",
     from_date: "The history range's start. Blank means 90 days back.",
@@ -698,7 +698,7 @@ export class FxNode extends ClassicPreset.Node {
 
   private makeInput(key: string): ClassicPreset.Input<ClassicPreset.Socket> {
     switch (key) {
-      case "amount":    return numIn("Amount");
+      case "amount":    return numListIn("Amount");
       case "from":      return strIn("From");
       case "to":        return strIn("To");
       case "from_date": return dateIn("From date");
@@ -707,7 +707,7 @@ export class FxNode extends ClassicPreset.Node {
   }
   private makeOutput(key: string): ClassicPreset.Output<ClassicPreset.Socket> {
     switch (key) {
-      case "converted": return numOut("Converted");
+      case "converted": return numListOut("Converted");
       case "rate":      return numOut("Rate");
       case "asof":      return dateOut("As of");
       default:          return frameOut("Rates");
@@ -765,7 +765,10 @@ export class FxNode extends ClassicPreset.Node {
       }
     }
     const rate = this.cached?.rate ?? null;
-    const converted = convertAmount(amount, from.toLowerCase(), to.toLowerCase(), rate);
+    // A list of amounts converts item by item at the one rate.
+    const converted = Array.isArray(amount)
+      ? amount.map((a) => convertAmount(a, from.toLowerCase(), to.toLowerCase(), rate))
+      : convertAmount(amount, from.toLowerCase(), to.toLowerCase(), rate);
     const asof = this.cached && Number.isFinite(this.cached.serial) ? this.cached.serial : null;
     return { converted, rate, asof };
   }

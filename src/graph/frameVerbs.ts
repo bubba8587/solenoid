@@ -189,7 +189,7 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
 
 export const TEXT_FILTER_OPS: ReadonlySet<FilterOp> = new Set(["contains", "startsWith", "endsWith"]);
 
-const TEXT_OP_LABEL: Record<string, string> = {
+export const TEXT_OP_LABEL: Record<string, string> = {
   contains: "Contains", startsWith: "Starts with", endsWith: "Ends with",
 };
 

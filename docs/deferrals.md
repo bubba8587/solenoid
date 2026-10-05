@@ -144,6 +144,12 @@ the decision tree (`dte.md`).
 
 ## Parked features (revisit only if the trigger returns)
 
+- **Matrix format precedence** (author 2026-10-05: deferred). The matrix popup's own format pick wins over a
+  Format Controller wired to the same card, as a Frame column's own pick does (`resolveMatrixAnnotation`, pinned in
+  `valueDisplayAnnotation.test.ts`); the reverse is defensible.
+- **Vault Folder vs Write Properties collection lookup** (author 2026-10-05: no call yet). Vault Folder finds mdbase
+  collections only at or below the folder it reads, while Write Properties walks up to the vault root; one rule should
+  serve both.
 - **TYPE with Solenoid's own answers** (author 2026-10-05: keep TYPE, deferred). Mostly redundant beside the socket
   types, but friendly: give TYPE a code for every Solenoid kind, including the ones Excel has no number for (blank,
   LAMBDA, complex, unit value, frame), and move it out of `EXCEL_GAP`'s `oos` rows. Today it leaks Formula.js:
