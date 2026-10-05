@@ -34,6 +34,8 @@ import { TypeIcon } from "./TypeIcon";
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { TableCards } from "./TableCards";
+import { cardMatches } from "../cardLayout";
+import { SearchIcon } from "./Icons";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
 import { CellImage } from "./cubeCell";
@@ -134,6 +136,10 @@ export function TablePopup() {
 
   const [grid, setGrid] = useState<string[][]>([]);
   const { sort, cycle: cycleSort, remap: remapSort, clear: clearSort, set: setSort } = useColumnSort(state);
+  // One word filter for the Grid and Cards views, shared as the sort is; a new popup starts unfiltered.
+  const [query, setQuery] = useState("");
+  const queryFor = useRef(state);
+  if (queryFor.current !== state) { queryFor.current = state; if (query !== "") setQuery(""); }
   // Must stay aligned with the grid's columns.
   const [headerNames, setHeaderNames] = useState<string[]>([]);
   const [columnTypes, setColumnTypes] = useState<CellType[]>([]);
@@ -474,12 +480,16 @@ export function TablePopup() {
     textColDistinct.set(ec, values);
   }
 
+  const sortable = !(state.list && !vertical);
   const sortOrder = sortedOrder(viewRows, sort, (r, c) =>
     sortKeyOf(vertical ? grid[0]?.[r] : rawAt(r, c)));
-  const visibleOrder = sortOrder.length > MAX_VISIBLE_ROWS ? sortOrder.slice(0, MAX_VISIBLE_ROWS) : sortOrder;
+  const filtering = query.trim() !== "" && sortable;
+  const matchedOrder = filtering
+    ? sortOrder.filter((r) => cardMatches(displayRowAt(r, displayMode === "source" ? "source" : "shown"), query))
+    : sortOrder;
+  const visibleOrder = matchedOrder.length > MAX_VISIBLE_ROWS ? matchedOrder.slice(0, MAX_VISIBLE_ROWS) : matchedOrder;
   const viewRowCache = new Map<number, string[]>();
   const viewRow = (r: number): string[] => { let v = viewRowCache.get(r); if (!v) { v = viewRowAt(r); viewRowCache.set(r, v); } return v; };
-  const sortable = !(state.list && !vertical);
 
   // An input has no intrinsic width, so measure: the mono advance is 27/42 em (the shipped .fnt metrics), plus 16px padding.
   const MONO_CH_PX = 13 * (27 / 42);
@@ -976,6 +986,15 @@ export function TablePopup() {
           ) : null}
         </div>
       )}
+      {view === "grid" && sortable && viewRows > 1 && (
+        <div className="table-cards__bar table-popup__filterbar">
+          <label className="table-cards__filter">
+            <SearchIcon size={12} />
+            <input value={query} placeholder="Filter" aria-label="Filter rows" spellCheck={false} onChange={(e) => setQuery(e.target.value)} />
+          </label>
+          {filtering && <span className="table-cards__count">{matchedOrder.length} of {viewRows}</span>}
+        </div>
+      )}
       {view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
           <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
@@ -1377,6 +1396,8 @@ export function TablePopup() {
           dataKey={cardsKey.current.key}
           sort={sort}
           onSort={setSort}
+          query={query}
+          onQuery={setQuery}
           onEdit={formCapable ? (r) => { setFormRow(r); setView("form"); } : undefined}
         />
       ) : (

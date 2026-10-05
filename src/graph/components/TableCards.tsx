@@ -14,7 +14,7 @@ const CARD_RULES = helpSection(helpMd, "Cards");
 
 /** `dataKey` changes whenever the cells or their shown text do; the plan, the chip colors and the row texts are cached on it. */
 export function TableCards({
-  names, types, computed, chipCols, rowCount, order, rawAt, shownRow, dataKey, sort, onSort, onEdit,
+  names, types, computed, chipCols, rowCount, order, rawAt, shownRow, dataKey, sort, onSort, query, onQuery, onEdit,
 }: {
   names: readonly string[];
   types: readonly CardColType[];
@@ -28,9 +28,11 @@ export function TableCards({
   dataKey: object;
   sort: ColumnSort;
   onSort: (next: ColumnSort) => void;
+  /** The popup's word filter, shared with the Grid view. */
+  query: string;
+  onQuery: (next: string) => void;
   onEdit?: (r: number) => void;
 }) {
-  const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(PAGE);
   const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -98,7 +100,7 @@ export function TableCards({
             placeholder="Filter"
             aria-label="Filter cards"
             spellCheck={false}
-            onChange={(e) => { setQuery(e.target.value); setLimit(PAGE); }}
+            onChange={(e) => { onQuery(e.target.value); setLimit(PAGE); }}
           />
         </label>
         <select
