@@ -8,9 +8,9 @@ parents:
 ---
 ## Decision
 
-A pack formula preset names the unit its correlation reads each physical input in (`units` on the pack entry, `varUnits` on the Expression or Equation node, saved with the node). A wired value converts to that unit before the formula runs, a bare number is taken as already in it, and a value of another dimension is `#UNIT!`. The formula then runs on plain numbers and the result is a bare number. Declared today: the Thermo presets whose inputs are temperatures or the wind-chill speed (Magnus SVP, dew point, RH from dew point, wet bulb and wind chill in °C, heat index in °F, air density, radiation and the ideal-gas equation in K). Every other pack preset is still undeclared.
+A pack formula preset names the unit its correlation reads each physical input in (`units` on the pack entry, `varUnits` on the Expression or Equation node, saved with the node). A wired value converts to that unit before the formula runs, a bare number is taken as already in it, and a value of another dimension is `#UNIT!`. The formula then runs on plain numbers and the result is a bare number. Declared today: the Thermo presets whose inputs are temperatures or the wind-chill speed (Magnus SVP, dew point, RH from dew point, wet bulb and wind chill in °C, heat index in °F, air density, radiation and the ideal-gas equation in K). Rolled out on the author's go-ahead (2026-10-05) to every physical preset in fluids, electricity, electromagnetism, earth and sky, health and chemistry whose input unit is stated; inputs in units with no unit id yet (coulomb, farad, henry, tesla, weber, mAh, years, bpm) stay undeclared. `packs.test.ts` checks that every declared unit resolves.
 
-Open next steps, in order: declare the remaining physical presets (fluids, electricity, electromagnetism, earth and sky, health, chemistry), and let a preset declare its result unit so the answer carries it (today it comes back bare).
+Open next step: let a preset declare its result unit so the answer carries it (today it comes back bare).
 
 ## Why
 

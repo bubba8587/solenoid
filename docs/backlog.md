@@ -303,9 +303,8 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 ## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
 - [ ] **Verify on the next desktop build:** the window still closes (Windows: overlay title bar and Alt+F4; Linux: the
   app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy` added), and drafts survive it.
-- [ ] **Packs and units:** only Thermo presets declare input units (`preset-declared-units` in the inbox); fluids,
-  electricity, EM, earthsky, health and chemistry build bare constants into formulas, so wired units give wrong
-  result dimensions (escape velocity with r in km, sensible heat, dBm, pH, Newton cooling `EXP(-kk*t)`). Forecast
+- [ ] **Pack follow-ups:** presets still read inputs in units with no unit id (coulomb, farad, henry, tesla, weber,
+  mAh, years, bpm) undeclared, and every result comes back bare (`preset-declared-units` in the inbox). Forecast
   (ETS) needs a confidence socket (D73); FORECAST.ETS ignores `data_completion` and `aggregation` (parity note);
   DECOMPOSE, FUZZYMATCH, RANDDIST, SHARPE/SORTINO and REGEX case options unchecked against their cards; Antoine
   has no per-substance range check.

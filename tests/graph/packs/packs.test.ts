@@ -75,3 +75,25 @@ describe("built-in packs", () => {
     expect(NODE_PACK_TAGS["logic-nor"]).toEqual(["timesavers"]);
   });
 });
+
+describe("[[C25]] firstClassUnits — physical presets read wired units in their declared unit", () => {
+  type Runner = { data: (i: Record<string, unknown[]>) => Record<string, unknown> };
+  const run = async (pack: string, type: string, inputs: Record<string, unknown>) => {
+    const mod = await import(`../../../src/graph/packs/${pack}.ts`);
+    const all = Object.values(mod).filter(Array.isArray).flat() as { type: string }[];
+    const { formulaNode } = await import("../../../src/graph/packs/packShared");
+    const entry = all.find((e) => e.type === type)!;
+    const n = formulaNode(entry as never).create() as unknown as Runner;
+    const ins: Record<string, unknown[]> = {};
+    for (const [k, v] of Object.entries(inputs)) ins[k] = [v];
+    return n.data(ins).result;
+  };
+  it("escape velocity with r in km matches r in m; Ohm's law reads kΩ; BMI reads cm", async () => {
+    const { applyFcUnit } = await import("../../../src/graph/unitBridge");
+    const m = await run("earthsky", "es-escape-velocity", { m: 5.972e24, r: 6.371e6 }) as number;
+    expect(await run("earthsky", "es-escape-velocity", { m: 5.972e24, r: applyFcUnit(6371, "km") }) as number).toBeCloseTo(m, 6);
+    expect(((await run("earthsky", "es-escape-velocity", { m: 5.972e24, r: applyFcUnit(5, "kg") })) as { code?: string }).code).toBe("#UNIT!");
+    const bmi = await run("health", "hf-bmi", { w: 70, h: 1.75 }) as number;
+    expect(await run("health", "hf-bmi", { w: 70, h: applyFcUnit(175, "cm") }) as number).toBeCloseTo(bmi, 9);
+  });
+});

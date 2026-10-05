@@ -19,25 +19,25 @@ export const EARTH_FORMULAS: FormulaPackEntry[] = [
   { type: "es-gravity", label: "Gravity at Latitude", expr:
       "9.780327*(1+0.0053024*SIN(lat*PI()/180)^2-0.0000058*SIN(2*lat*PI()/180)^2)-0.000003086*h",
     description: "Local gravity (m/s²): the 1980 International Gravity Formula at latitude lat (°) with the free-air correction for altitude h in meters",
-    keywords: "igf wgs84 gravitational acceleration" },
+    keywords: "igf wgs84 gravitational acceleration", units: { h: "m" } },
   { type: "es-horizon", label: "Distance to Horizon", expr: "SQRT(2*6371008.8*h)/1000",
     description: "How far the horizon is (km) from an eye height h meters above the surface. Geometric, no refraction",
-    keywords: "visibility sea level lookout" },
+    keywords: "visibility sea level lookout", units: { h: "m" } },
 ];
 
 export const ORBIT_FORMULAS: FormulaPackEntry[] = [
   { type: "es-escape-velocity", label: "Escape Velocity", expr: `SQRT(2*${G}*m/r)`,
     description: "Speed to escape a body of mass m (kg) from radius r (m)   (v = √(2GM/r); Earth surface ≈ 11.2 km/s)",
-    keywords: "rocket delta v" },
+    keywords: "rocket delta v", units: { m: "kg", r: "m" } },
   { type: "es-orbital-velocity", label: "Circular Orbital Velocity", expr: `SQRT(${G}*m/r)`,
     description: "Speed of a circular orbit of radius r (m) around mass m (kg)   (v = √(GM/r); LEO ≈ 7.8 km/s)",
-    keywords: "satellite leo" },
+    keywords: "satellite leo", units: { m: "kg", r: "m" } },
   { type: "es-orbital-period", label: "Orbital Period (Kepler)", expr: `2*PI()*SQRT(r^3/(${G}*m))`,
     description: "Period in seconds of an orbit with semi-major axis r (m) around mass m (kg)   (T = 2π√(a³/GM))",
-    keywords: "kepler third law satellite year" },
+    keywords: "kepler third law satellite year", units: { m: "kg", r: "m" } },
   { type: "es-schwarzschild", label: "Schwarzschild Radius", expr: `2*${G}*m/299792458^2`,
     description: "Event-horizon radius r = 2GM/c² of mass m (kg). The Sun's is about 3 km.",
-    keywords: "black hole relativity" },
+    keywords: "black hole relativity", units: { m: "kg" } },
 ];
 
 export const EARTHSKY_FORMULAS: FormulaPackEntry[] = [...EARTH_FORMULAS, ...ORBIT_FORMULAS];
