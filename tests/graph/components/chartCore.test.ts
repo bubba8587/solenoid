@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, toSeries, partSlices, spotlightIndex } from "../../../src/graph/components/chartCore";
+import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -34,6 +34,18 @@ describe("compactTick", () => {
     expect(compactTick(-999.7)).toBe("-1K");
     expect(compactTick(2.5e12)).toBe("2.5T");
   });
+  it("keeps the decimals its axis's step needs, so close ticks stay apart", () => {
+    expect([100000, 100250, 100500].map((n) => compactTick(n, 250))).toEqual(["100K", "100.25K", "100.5K"]);
+    expect([0.1, 0.1001, 0.1002].map((n) => compactTick(n, 0.0001))).toEqual(["0.1", "0.1001", "0.1002"]);
+    expect(compactTick(150000, 50000)).toBe("150K");
+    expect(compactTick(0, 250)).toBe("0");
+  });
+  it("valueTickFormat reads the step from the axis's ticks, or from round ticks over the values", () => {
+    expect([100000, 100500].map(valueTickFormat([], [100000, 100500, 101000]))).toEqual(["100K", "100.5K"]);
+    const fmt = valueTickFormat([100000, 100480, null, "x"]);
+    expect([100000, 100100, 100200].map(fmt)).toEqual(["100K", "100.1K", "100.2K"]);
+    expect([0, 25000, 50000].map(valueTickFormat([0, 50000]))).toEqual(["0", "25K", "50K"]);
+  });
   it("returns empty string for non-finite", () => {
     expect(compactTick(NaN)).toBe("");
     expect(compactTick(Infinity)).toBe("");
@@ -53,6 +65,10 @@ describe("valueAxisWidth", () => {
     expect(valueAxisWidth([120000, 176319], 1)).toBe(32); // ends at 180K
     expect(valueAxisWidth([-1234, 50], 1)).toBe(37); // starts at -1.2K
     expect(valueAxisWidth([1, 2, null, "x", NaN], 2)).toBe(43); // scales with the font
+  });
+  it("measures with the axis's formatter, so a narrow range's longer ticks fit", () => {
+    const v = [100000, 100480];
+    expect(valueAxisWidth(v, 1, false, valueTickFormat(v))).toBeGreaterThan(valueAxisWidth(v, 1));
   });
 });
 

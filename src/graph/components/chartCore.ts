@@ -90,15 +90,38 @@ export function useAppFaces(): boolean {
   return useSyncExternalStore(subscribeFaces, () => facesReady);
 }
 
-export function compactTick(n: number): string {
+/** A tick in three figures with a K/M/B/T unit. Given about the axis's tick `step`, when three figures can't tell
+ *  neighbours apart it writes the tick in full, to two places past the step's (100000, 100250 → 100K, 100.25K). */
+export function compactTick(n: number, step?: number): string {
   if (!Number.isFinite(n)) return "";
   const r = Number(n.toPrecision(3));
   const a = Math.abs(r);
-  if (a >= 1e12) return `${sig3(r / 1e12)}T`;
-  if (a >= 1e9) return `${sig3(r / 1e9)}B`;
-  if (a >= 1e6) return `${sig3(r / 1e6)}M`;
-  if (a >= 1e3) return `${sig3(r / 1e3)}K`;
-  return sig3(r);
+  const unit = a >= 1e12 ? 1e12 : a >= 1e9 ? 1e9 : a >= 1e6 ? 1e6 : a >= 1e3 ? 1e3 : 1;
+  const suffix = unit === 1e12 ? "T" : unit === 1e9 ? "B" : unit === 1e6 ? "M" : unit === 1e3 ? "K" : "";
+  if (step && step > 0 && Number.isFinite(step) && n !== 0 && step < 10 ** (Math.floor(Math.log10(Math.abs(n))) - 2)) {
+    const places = (x: number, cap: number) => {
+      let d = 0;
+      while (d < cap && Math.abs(Math.round(x * 10 ** d) - x * 10 ** d) > 1e-6) d++;
+      return d;
+    };
+    return `${Number((n / unit).toFixed(places(n / unit, places(step / unit, 12) + 2)))}${suffix}`;
+  }
+  return `${sig3(r / unit)}${suffix}`;
+}
+
+/** One value axis's tick formatter: `compactTick` at the step of the axis's ticks, or of round ticks over the
+ *  values' own range when the axis picks its ticks itself. */
+export function valueTickFormat(values: Iterable<unknown>, ticks?: readonly number[]): (n: number) => string {
+  let step = Infinity;
+  if (ticks && ticks.length > 1) for (let i = 1; i < ticks.length; i++) step = Math.min(step, Math.abs(ticks[i] - ticks[i - 1]) || Infinity);
+  else {
+    let lo = Infinity, hi = -Infinity;
+    for (const v of values) if (typeof v === "number" && Number.isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    const t = hi > lo ? niceTicks(lo, hi, 5) : [];
+    if (t.length > 1) step = t[1] - t[0];
+  }
+  const s = Number.isFinite(step) ? step : undefined;
+  return (n: number) => compactTick(n, s);
 }
 
 /** Round-number ticks inside [lo, hi], about `count` of them. */
@@ -114,17 +137,19 @@ export function niceTicks(lo: number, hi: number, count = 5): number[] {
 
 /** A value axis's gutter in px: its widest compact tick at 5.8 · fs a character (never under three), measured over
  *  the data's extremes rounded to two figures (recharts' nice ends) and the round ticks between them, since a 0–1
- *  axis's 0.25 is wider than either end. Plus recharts' 8 px of tick spacing and 14 for an axis title. */
-export function valueAxisWidth(values: Iterable<unknown>, fs: number, titled = false): number {
-  let lo = 0, hi = 0;
+ *  axis's 0.25 is wider than either end, and over the round ticks of the data's own range, read by the axis's `fmt`.
+ *  Plus recharts' 8 px of tick spacing and 14 for an axis title. */
+export function valueAxisWidth(values: Iterable<unknown>, fs: number, titled = false, fmt: (n: number) => string = compactTick): number {
+  let lo = 0, hi = 0, min = Infinity, max = -Infinity;
   for (const v of values) {
     if (typeof v !== "number" || !Number.isFinite(v)) continue;
     if (v < lo) lo = v;
     if (v > hi) hi = v;
+    min = Math.min(min, v); max = Math.max(max, v);
   }
   const ends = [lo, hi].map((n) => Number(n.toPrecision(2)));
-  const ticks = [...ends, ...niceTicks(ends[0], ends[1], 4)];
-  return Math.ceil(Math.max(3, ...ticks.map((n) => compactTick(n).length)) * 5.8 * fs + 8) + (titled ? 14 : 0);
+  const ticks = [...ends, ...niceTicks(ends[0], ends[1], 4), ...(max > min ? niceTicks(min, max, 5) : [])];
+  return Math.ceil(Math.max(3, ...ticks.map((n) => fmt(n).length)) * 5.8 * fs + 8) + (titled ? 14 : 0);
 }
 
 /** A horizontal Bar's category gutter in px: its widest tick at 5.2 · fs a character plus 8, at least 18, at most a
