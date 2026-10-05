@@ -390,39 +390,97 @@ function SectionFields({ fields }: { fields: SettingField[] }) {
   return <>{out}</>;
 }
 
+/** Every word typed appears somewhere in the text, in any order and case. */
+function matches(query: string, ...texts: (string | undefined)[]): boolean {
+  const hay = texts.filter(Boolean).join(" ").toLowerCase();
+  return query.toLowerCase().split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
+}
+
+/** The settings whose label, help or section name match, flat: a match opens no accordion it would hide in. */
+function SearchResults({ query }: { query: string }) {
+  const sections = SETTINGS_SCHEMA
+    .map((section) => ({ title: section.title, fields: section.fields.filter((f) => matches(query, section.title, f.label, f.help, f.accordion)) }))
+    .filter((s) => s.fields.length > 0);
+  const packs = allPacks().filter((p) => matches(query, "node packs", p.name, p.description, p.group));
+  const fixed = [
+    matches(query, "appearance color palette accent theme") && <PaletteSection key="palette" />,
+    matches(query, "renderer html canvas gpu") && <RendererSection key="renderer" />,
+    AI_ENABLED && matches(query, "ai anthropic api key assistant") && <AiSection key="ai" />,
+    matches(query, "data connection api keys fred alpha vantage") && <ApiKeysSection key="keys" />,
+  ].filter(Boolean);
+  if (sections.length === 0 && packs.length === 0 && fixed.length === 0) {
+    return <div className="solenoid-settings__note">No setting matches “{query}”.</div>;
+  }
+  return (
+    <>
+      {sections.map((section) => (
+        <div key={section.title} className="solenoid-settings__section">
+          <div className="solenoid-settings__section-title">{section.title}</div>
+          {section.fields.map(renderField)}
+        </div>
+      ))}
+      {packs.length > 0 && (
+        <div className="solenoid-settings__section">
+          <div className="solenoid-settings__section-title">Node Packs</div>
+          {packs.map((p) => <Row key={p.id} label={p.name} help={p.description} on={packsStore.isActive(p.id)} onToggle={() => packsStore.toggle(p.id)} />)}
+        </div>
+      )}
+      {fixed}
+    </>
+  );
+}
+
 export function Settings() {
   const open = useSyncExternalStore(settingsPanel.subscribe, settingsPanel.get);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
+  useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
   useFocusTrap(open, panelRef);
 
   useEscapeToClose(() => settingsPanel.close(), open);
 
   if (!open) return null;
+  const q = query.trim();
 
   return (
     <div className="solenoid-settings" onPointerDown={() => settingsPanel.close()}>
       <div ref={panelRef} className="solenoid-settings__panel" role="dialog" aria-modal="true" aria-label="Settings" onPointerDown={(e) => e.stopPropagation()}>
         <div className="solenoid-settings__header">
           <span className="solenoid-settings__title">Settings</span>
+          <input
+            type="search"
+            className="solenoid-settings__search"
+            placeholder="Search settings"
+            aria-label="Search settings"
+            value={query}
+            spellCheck={false}
+            autoComplete="off"
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Escape" && query) { e.preventDefault(); e.stopPropagation(); setQuery(""); } }}
+          />
           <button className="solenoid-settings__close" onClick={() => settingsPanel.close()} aria-label="Close">×</button>
         </div>
         {/* Section order: Appearance, Canvas, View, Data, Obsidian (the schema, in
             array order), Renderer, Packs — then the credential sections (AI, API
             keys) trail at the bottom. */}
         <div className="solenoid-settings__body">
-          <PaletteSection />
-          {SETTINGS_SCHEMA.map((section) => (
-            <div key={section.title} className="solenoid-settings__section">
-              <div className="solenoid-settings__section-title">{section.title}</div>
-              <SectionFields fields={section.fields} />
-              {section.title === "Data" && <NetworkDocRow />}
-            </div>
-          ))}
-          <RendererSection />
-          <PacksSection />
-          {AI_ENABLED && <AiSection />}
-          <ApiKeysSection />
+          {q ? <SearchResults query={q} /> : (
+            <>
+              <PaletteSection />
+              {SETTINGS_SCHEMA.map((section) => (
+                <div key={section.title} className="solenoid-settings__section">
+                  <div className="solenoid-settings__section-title">{section.title}</div>
+                  <SectionFields fields={section.fields} />
+                  {section.title === "Data" && <NetworkDocRow />}
+                </div>
+              ))}
+              <RendererSection />
+              <PacksSection />
+              {AI_ENABLED && <AiSection />}
+              <ApiKeysSection />
+            </>
+          )}
         </div>
       </div>
     </div>
