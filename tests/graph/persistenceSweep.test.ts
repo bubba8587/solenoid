@@ -196,6 +196,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",
     plannedKeys: "Write to Obsidian's Keys text as of its last plan, so a Keys edit re-plans; re-read from the literal on every compute",
     planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
+    generated: "UUID's value for this recalculation; a load is a new one, and a saved value would make every compute an edit to undo",
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
     ast: "compiled from expr", evaluator: "compiled from expr", varNames: "extracted from expr",

@@ -1053,27 +1053,30 @@ num1("ATANH",  (x) => (x <= -1 || x >= 1 ? domErr() : Math.atanh(x)));
 const isTrue = (v: unknown) => v === true || v === 1 || (typeof v === "string" && /^(true|1)$/i.test(v.trim()));
 const ok = (v: number) => (Number.isFinite(v) ? v : null);
 
+// [[D70]] nullNotEnoughData: a parameter outside the distribution's domain is a wrong input, as Excel's #NUM! is.
+const distDomain = () => solError("#DOMAIN!", "A parameter is outside the distribution's domain");
 registerInternal("T.DIST", (x, df, cum) => {
   const xn = toNum(x), d = toNum(df);
-  if (badNum(xn, d) || d <= 0) return null;
+  if (badNum(xn, d)) return null;
+  if (d <= 0) return distDomain();
   return ok(isTrue(cum) ? tCDF(xn, d) : tPDF(xn, d));
 });
-registerInternal("T.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(1 - tCDF(xn, d)); });
-registerInternal("T.DIST.2T", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(2 * (1 - tCDF(Math.abs(xn), d))); });
-registerInternal("T.INV", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((t) => tCDF(t, d), pn, -1e6, 1e6)); });
-registerInternal("T.INV.2T", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((t) => tCDF(t, d), 1 - pn / 2, -1e6, 1e6)); });
+registerInternal("T.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) ? null : d <= 0 ? distDomain() : ok(1 - tCDF(xn, d)); });
+registerInternal("T.DIST.2T", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) ? null : d <= 0 ? distDomain() : ok(2 * (1 - tCDF(Math.abs(xn), d))); });
+registerInternal("T.INV", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) ? null : d <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((t) => tCDF(t, d), pn, -1e6, 1e6)); });
+registerInternal("T.INV.2T", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) ? null : d <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((t) => tCDF(t, d), 1 - pn / 2, -1e6, 1e6)); });
 registerInternal("CHISQ.DIST.RT", (x, df) => dist("chisq", "rt", x, df));
-registerInternal("CHISQ.INV.RT", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => chiSqCDF(x, d), 1 - pn, 0, 1e6)); });
+registerInternal("CHISQ.INV.RT", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) ? null : d <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((x) => chiSqCDF(x, d), 1 - pn, 0, 1e6)); });
 registerInternal("F.DIST.RT", (x, a, b) => dist("f", "rt", x, a, b));
-registerInternal("F.INV.RT", (p, a, b) => { const pn = toNum(p), d1 = toNum(a), d2 = toNum(b); return badNum(pn, d1, d2) || d1 <= 0 || d2 <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => fCDF(x, d1, d2), 1 - pn, 0, 1e6)); });
+registerInternal("F.INV.RT", (p, a, b) => { const pn = toNum(p), d1 = toNum(a), d2 = toNum(b); return badNum(pn, d1, d2) ? null : d1 <= 0 || d2 <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((x) => fCDF(x, d1, d2), 1 - pn, 0, 1e6)); });
 registerInternal("GAMMA.DIST", (x, a, b, cum) => dist("gamma", cdfOrPdf(cum), x, a, b));
-registerInternal("GAMMA.INV", (p, a, b) => { const pn = toNum(p), al = toNum(a), be = toNum(b); return badNum(pn, al, be) || al <= 0 || be <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => gammaCDF(x, al, be), pn, 0, 1e6)); });
+registerInternal("GAMMA.INV", (p, a, b) => { const pn = toNum(p), al = toNum(a), be = toNum(b); return badNum(pn, al, be) ? null : al <= 0 || be <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((x) => gammaCDF(x, al, be), pn, 0, 1e6)); });
 
-const dist = (key: DistKey, form: DistForm, v: unknown, ...params: unknown[]): number | null => {
+const dist = (key: DistKey, form: DistForm, v: unknown, ...params: unknown[]): number | SolError | null => {
   const vn = toNum(v), ps = params.map(toNum);
   if (badNum(vn, ...ps)) return null;
   const r = DIST_SPECS[key].compute(form, vn, ps);
-  return r === null ? null : ok(r);
+  return r === null ? distDomain() : ok(r);
 };
 const cdfOrPdf = (cum: unknown, discrete = false): DistForm => (isTrue(cum) ? "cdf" : discrete ? "pmf" : "pdf");
 registerInternal("NORM.DIST",    (x, mean, sd, cum) => dist("normal", cdfOrPdf(cum), x, mean, sd));
@@ -1096,17 +1099,19 @@ registerInternal("RANDDIST", (family, n, ...params) => {
 });
 registerInternal("BETA.DIST", (x, a, b, cum, A, B) => {
   const lo = A == null ? 0 : toNum(A), hi = B == null ? 1 : toNum(B);
-  if (badNum(lo, hi) || hi <= lo) return null;
+  if (badNum(lo, hi)) return null;
+  if (hi <= lo) return distDomain();
   const xn = toNum(x);
   if (Number.isNaN(xn)) return null;
   const r = dist("beta", cdfOrPdf(cum), (xn - lo) / (hi - lo), a, b);
-  return r === null || isTrue(cum) ? r : ok(r / (hi - lo));
+  return typeof r !== "number" || isTrue(cum) ? r : ok(r / (hi - lo));
 });
 registerInternal("BETA.INV", (p, a, b, A, B) => {
   const lo = A == null ? 0 : toNum(A), hi = B == null ? 1 : toNum(B);
-  if (badNum(lo, hi) || hi <= lo) return null;
+  if (badNum(lo, hi)) return null;
+  if (hi <= lo) return distDomain();
   const r = dist("beta", "inv", p, a, b);
-  return r === null ? null : ok(lo + r * (hi - lo));
+  return typeof r !== "number" ? r : ok(lo + r * (hi - lo));
 });
 registerInternal("LOGNORM.DIST", (x, mean, sd, cum) => dist("lognorm", cdfOrPdf(cum), x, mean, sd));
 registerInternal("LOGNORM.INV",  (p, mean, sd) => dist("lognorm", "inv", p, mean, sd));
@@ -2119,7 +2124,7 @@ registerInternal("TEMPLATE", (text, ...values) => {
 registerInternal("LOG2", (x) => {
   if (x == null) return null;
   const n = Number(x);
-  return n <= 0 ? null : Math.log2(n);
+  return n <= 0 ? domErr() : Math.log2(n);
 });
 registerInternal("HYPOTENUSE", (x, y) => {
   if (x == null || y == null) return null;
@@ -2261,16 +2266,18 @@ registerInternal("TREND", (ys, xs, newXs, konst) => {
   const fit = linearFit(pair.xs, pair.ys);
   return fit ? targets.map((x) => fit.intercept + fit.slope * x) : [];
 });
+// [[D70]] nullNotEnoughData: a y at or below 0 is a wrong input, as on the Fit card.
+const NONPOSITIVE_Y = () => solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
 registerInternal("GROWTH", (ys, xs, newXs, konst) => {
   if (ys == null) return null;
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
+  if (pair.ys.some((y) => !(y > 0))) return NONPOSITIVE_Y();
   const targets = regressionTargets(newXs == null ? (xs ?? pair.xs) : newXs);
   if (isSolError(targets)) return targets;
   if (targets.length === 0) return [];
   // const FALSE forces b = 1, so ln y = x·ln m is fit through the origin, as Excel's GROWTH does.
   if (konst != null && !isTrue(konst)) {
-    if (pair.ys.some((y) => !(y > 0))) return [];
     const lnM = slopeThroughOrigin(pair.xs, pair.ys.map(Math.log));
     return lnM == null ? [] : targets.map((x) => Math.exp(lnM * x));
   }
@@ -2289,8 +2296,9 @@ registerInternal("LOGEST", (ys, xs) => {
   if (ys == null) return null;
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
+  if (pair.ys.some((y) => !(y > 0))) return NONPOSITIVE_Y();
   const fit = expFit(pair.xs, pair.ys);
   if (fit) return [fit.m, fit.b];
-  return pair.xs.length >= 2 && pair.ys.every((y) => y > 0) ? solError("#DIV/0!", "Known Xs have zero variance") : [];
+  return pair.xs.length >= 2 ? solError("#DIV/0!", "Known Xs have zero variance") : [];
 });
 

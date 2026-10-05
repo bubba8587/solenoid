@@ -662,6 +662,12 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
     expect(n.data().result).not.toBe(a);
     expect(ev("UUID()")).not.toBe(ev("UUID()"));
   });
+  it("UUID's save holds no UUID, so a recompute is never an edit for undo", async () => {
+    const { extractInit } = await import("../../../src/graph/copyPaste");
+    const n = new UuidNode();
+    n.data();
+    expect(JSON.stringify(extractInit(n))).not.toMatch(/[0-9a-f]{8}-/);
+  });
   it("ENCODEBASE64 / DECODEBASE64 ride the url-encode card; bad base64 passes through", () => {
     expect(new UrlEncodeNode({ op: "base64" }).data({ text: ["hello world"] }).result).toBe("aGVsbG8gd29ybGQ=");
     expect(new UrlEncodeNode({ op: "unbase64" }).data({ text: ["aGVsbG8gd29ybGQ="] }).result).toBe("hello world");

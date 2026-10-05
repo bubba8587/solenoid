@@ -1,7 +1,8 @@
 // [[C17]], [[B11]] (MAX_GENERATED), [[C110]] rangeIncludesStop
 import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
-import { isUnitCell } from "../unitValue";
+import { isUnitCell, type UnitCell, forAggregateUnits, isAffineDisplay, tagDim, unitError, READINGS_ADD } from "../unitValue";
+import { dimEqual, dimPow, isDimensionless } from "../dimension";
 import { forAggregate, ifTest, isMissing, DOMAIN_MESSAGE } from "../valueKinds";
 import { compareStrings } from "../stringOrder";
 import { iterMin, iterMax } from "./mathUtils";
@@ -263,7 +264,30 @@ export function polyfitEval(xs: readonly Cell[], ys: readonly Cell[], degree: nu
 
 export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev";
 
-export function running(op: RunningOp, arr: readonly Cell[], window: number | null): Cell[] {
+/** A list of one unit runs on its magnitudes and keeps the unit, as Reduce does: a product's power grows with its count,
+ *  and over °C a spread is a delta and two readings have no sum. */
+export function running(op: RunningOp, arr: readonly (Cell | UnitCell)[], window: number | null): (Cell | UnitCell)[] | SolError {
+  if (!arr.some(isUnitCell)) return runningPlain(op, arr as readonly Cell[], window);
+  // An error cell stays in place and runs as it does without units.
+  const prep = forAggregateUnits(arr.filter((v) => !isSolError(v)), op !== "sum");
+  if (prep.error) return prep.error;
+  const affine = isAffineDisplay(prep.display);
+  if (affine && op === "sum" && arr.filter((c) => isUnitCell(c) && isAffineDisplay(c.display)).length > 1) return unitError(READINGS_ADD);
+  let k = 0;
+  const mags: Cell[] = arr.map((v) => (isSolError(v) ? v : isMissing(v) ? null : prep.nums[k++]));
+  const out = runningPlain(op, mags, window);
+  const w = window !== null && Math.round(window) >= 1 ? Math.round(window) : Infinity;
+  const counted = mags.map((v) => (typeof v === "number" && Number.isFinite(v) ? 1 : 0));
+  const display = affine && op === "stdev" ? undefined : prep.display;
+  return out.map((v, i) => {
+    if (typeof v !== "number" || isDimensionless(prep.dim)) return v;
+    const n = counted.slice(Math.max(0, i - w + 1), i + 1).reduce((a: number, b) => a + b, 0);
+    const dim = op === "product" ? dimPow(prep.dim, n) : prep.dim;
+    return tagDim(v, dim, dimEqual(dim, prep.dim) ? display : undefined);
+  });
+}
+
+function runningPlain(op: RunningOp, arr: readonly Cell[], window: number | null): Cell[] {
   if (window !== null && Math.round(window) >= 1) {
     const w = Math.max(1, Math.round(window));
     return arr.map((_, i) => {

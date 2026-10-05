@@ -174,6 +174,8 @@ export function TablePopup() {
   const liveNames = useRef<(string | undefined)[]>([]);
   // Host names of deleted columns, whose formats go at the next save or live commit.
   const droppedNames = useRef<string[]>([]);
+  // Formats picked under a name the host doesn't output yet (a new column); a discard takes them back.
+  const unsavedPicks = useRef(new Set<string>());
   const [sel, setSel] = useState<AxisSelection | null>(null);
   const [focusCell, setFocusCell] = useState<{ r: number; c: number } | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; form?: boolean } | null>(null);
@@ -193,6 +195,7 @@ export function TablePopup() {
     setHeaderNames(names);
     liveNames.current = state.headers ? [...state.headers] : [];
     droppedNames.current = [];
+    unsavedPicks.current.clear();
     setSel(null);
     setFocusCell(null);
     setCtxMenu(null);
@@ -333,6 +336,7 @@ export function TablePopup() {
     frameFormatStore.rekey(nodeId, liveNames.current, next);
     for (const name of droppedNames.current) if (!next.includes(name)) frameFormatStore.delete(nodeId, name);
     droppedNames.current = [];
+    unsavedPicks.current.clear();
     liveNames.current = next;
   }
   function persistColFmt(c: number, patch: Partial<FormatAnnotation>) {
@@ -342,6 +346,7 @@ export function TablePopup() {
     const nodeId = state?.pinNodeId;
     const col = colFmtKey(c);
     if (!nodeId || !col) return;
+    if (state?.formatControls === "columns" && !liveNames.current.includes(col)) unsavedPicks.current.add(col);
     frameFormatStore.set(nodeId, col, { ...annFor(c), ...patch, unit: "none" });
     scheduleAutosave();
     void processGraph(nodeId);
@@ -784,6 +789,12 @@ export function TablePopup() {
     if (!editable) return false;
     const midEdit = !!editCell && editDraft.current !== (grid[editCell.r]?.[editCell.c] ?? "");
     return midEdit || editSnapshot(grid, headerNames, settledColumnTypes(), colExprs) !== savedSnapshot.current;
+  }
+  function discard() {
+    const nodeId = state?.pinNodeId;
+    if (nodeId) for (const name of unsavedPicks.current) frameFormatStore.delete(nodeId, name);
+    unsavedPicks.current.clear();
+    tablePopup.close();
   }
   // The overlay, the close button, Escape and Go to source all land here; the footer's Cancel discards outright.
   function requestClose() {
@@ -1435,14 +1446,14 @@ export function TablePopup() {
         <div className="table-popup__spacer" />
         {editable ? (
           <div className="table-popup__actions">
-            <button className="table-popup__btn" onClick={() => tablePopup.close()}>Cancel</button>
+            <button className="table-popup__btn" onClick={discard}>Cancel</button>
             <button className="table-popup__btn table-popup__btn--primary" onClick={save} disabled={csvBlocksSave}>Save</button>
           </div>
         ) : (
           <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
         )}
       </div>
-      {askClose && <UnsavedChangesPrompt onSave={save} onDiscard={() => tablePopup.close()} onKeepEditing={() => setAskClose(false)} />}
+      {askClose && <UnsavedChangesPrompt onSave={save} onDiscard={discard} onKeepEditing={() => setAskClose(false)} />}
     </PopupShell>
   );
 }

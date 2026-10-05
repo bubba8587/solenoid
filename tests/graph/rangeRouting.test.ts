@@ -162,8 +162,10 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
     expect(out.intercept as number).toBeCloseTo(1, 10);
     // An exact exponential fits perfectly → log-scale R² = 1.
     expect(out.r2 as number).toBeCloseTo(1, 10);
-    // y ≤ 0: the formula keeps the quiet empty; the card is loud (#DOMAIN!, Excel's #NUM!).
-    expect(ev("LOGEST(y, x)", { y: [1, -1, 2, 3], x: XS })).toEqual([]);
+    // y ≤ 0 is a wrong input, #DOMAIN! (Excel's #NUM!) on the formula and the card alike ([[D70]] nullNotEnoughData).
+    for (const f of ["LOGEST(y, x)", "GROWTH(y, x)", "GROWTH(y, x, x, FALSE)"]) {
+      expect((ev(f, { y: [1, -1, 2, 3], x: XS }) as { code?: string }).code).toBe("#DOMAIN!");
+    }
     const bad = node.data({ ys: [[1, -1, 2, 3]], xs: [XS] });
     expect([bad.slope, bad.intercept, bad.r2].map((v) => (v as { code?: string })?.code)).toEqual(["#DOMAIN!", "#DOMAIN!", "#DOMAIN!"]);
   });

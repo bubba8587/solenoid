@@ -894,7 +894,7 @@ export class UuidNode extends ClassicPreset.Node {
   label: string;
   cachedText: string | null = null;
   private lastGen = -1;
-  private value = "";
+  private generated = "";
   width = 260; height = 104;
 
   constructor(init?: { label?: string }) {
@@ -905,9 +905,9 @@ export class UuidNode extends ClassicPreset.Node {
 
   data(): { result: string } {
     const gen = getRecalcGen();
-    if (this.lastGen !== gen) { this.value = uuidV4(); this.lastGen = gen; }
-    this.cachedText = this.value;
-    return { result: this.value };
+    if (this.lastGen !== gen) { this.generated = uuidV4(); this.lastGen = gen; }
+    this.cachedText = this.generated;
+    return { result: this.generated };
   }
 }
 

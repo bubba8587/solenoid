@@ -326,29 +326,23 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **TEXTSPLIT rows only** (author's call, `settings-audit.md` col_delimiter): `TEXTSPLIT(A1,,";")` is `#SYNTAX!`; relaxing the role alone would split each row into letters (`splitText` on "").
 - [ ] **Cast "Group (default ,)"** label: with Decimal `,` the default group is none, so the label misleads; a string for the author.
 - [ ] **∞ through a note** (author's call): the writer puts ∞ in a note as the text `"Infinity"` (`yamlScalar`), which a number column reads back as NaN ([[D93]] oneTextReading), while [[D48]] classifyNonFinite keeps an incoming ∞ a real value; bare `.inf` reads blank (`noteFrontmatter.ts` readScalar). Write `.inf` and read it as ∞, or read the text "Infinity" as ∞.
-- [ ] **A blank slot in an undeclared parameter** errors instead of reading as Excel's blank: `POWER(2, )` is #VALUE! (Excel: 1), while `MOD(5, )` is #DIV/0! as Excel's is. [[C80]] blankArgIsExcelBlank leaves undeclared parameters to the function; declaring more `ARG_ROLES` would close it.
 - [ ] **TaskNotes blank URL** (author's call, [[D62]] demoVaultResolution): with Use demo vault on (the default), a blank TaskNotes URL reads the demo, where it always meant the default server `localhost:8080` (`taskNotesApi.ts` base(), the Settings placeholder). Decide what blank means. (Write Tasks already refuses while the reader is on the demo.)
 - [ ] **Vendored DTE**: `tools/dte.py` `COVERAGE_TEMPLATE` writes a literal `100%%` into a new `.dtecoverage` on `dte init`; `excluded_from_coverage` doesn't count `covers:` citations (the numbers only). Upstream fixes.
 - [ ] **World Clock** updates only on a recompute, at midnight or on F9; a per-minute ticker is a design choice (a live tick recomputes its downstream every minute).
 - [ ] **Currency over a list**: the Amount socket is single-value, so a list of amounts is refused; broadcast, or keep one amount per card.
 - [ ] **CUMIPMT/CUMPRINC with End past the loan** return a number (formula and card); Excel is believed to give #NUM! (unconfirmed).
-- [ ] **Frame popup formats**: a format picked on a brand-new column, then Cancel, leaves a stray entry under that column's would-be name (`frameFormatStore.rekey`).
 - [ ] **Matrix format precedence**: the matrix popup's own pick now wins over an FC wired to the same card (as a Frame column's own pick does); the reverse is defensible.
 - [ ] **Gantt font scale** keeps the dragged grid width, so wider columns can run off the right instead of truncating with "…".
 - [ ] **Vault Folder mdbase**: it finds collections only at or below the folder it reads, while Write Properties walks up to the vault root; one rule for both.
-- [ ] **UUID and undo**: `UuidNode` saves its generated `init.value`, which changes on every compute, so an undo on a document holding one records a stray history entry and wipes Redo. Stop saving the value, or have the history ignore it.
 - [ ] **List text predicates on a mixed list** (`list.ts` requireTextList, [[D49]] textPredicateNeedsText): `["apple", 1]` and `[1, "apple"]` are both #TYPE! now; confirm that reading of D49.
 - [ ] **Series op switch**: a typed value equal to the old op's default (Start 0 on Range) reads as untouched and gives way to the next op's default; keeping it needs a saved "edited keys" field.
-- [ ] **LOGEST with a Y at or below 0** answers an empty list while the Fit card answers #DOMAIN!; a test pins the difference against [[C17]] shareImpl. Pick one.
 - [ ] **LARGE/SMALL** round a fractional k (`nthExtreme`), unchecked against Excel.
-- [ ] **Running on unit lists** (`listOps.ts` running): unit cells are dropped, so [1 kg, 2 kg, 3 kg] runs to zeros; go through `forAggregateUnits` as Reduce does, and check RUNNING agrees.
 - [ ] **Sketch sample aliasing**: the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs` verb_sample) aliases on periodic data (alternating keys at stride 4 keep only one). A fixed-seed well-mixed sample would fix it; spec line plus both samplers.
 - [ ] **Sketch Run** (`withExactPass`): a sink's Run in Sketch mode leaves the canvas on exact values until the next edit, as F9 does; the table popup's Copy/Export CSV still export the sampled table it shows.
 - [ ] **Record Detail/Gallery/Board/List** now show an unformatted number as Cards does (Auto), not `formatScalar`; confirm.
 - [ ] **30/360 against real Excel**: DAYS360 now counts a last-of-February start as the 30th and YEARFRAC basis 0 follows NASD (both ends of February → 30), from Excel's documented rules, not checked in Excel; `docs/upstream-formulajs.md` claims DAYS360(31-Jan-2024, 1-Mar-2024) is 30 where the rules give 31. Check both in Excel.
 - [ ] **Finance basis 4** (`financeOps.ts`) uses the US 30/360 rule, not the European one; **coupon schedules** stepping back from a 31-Aug maturity land on 3 Mar, not the end of February.
 - [ ] **Append units**: Append drops unit and format by spec; keep them when every frame agrees?
-- [ ] **Blank where [[D70]] nullNotEnoughData wants an error** (the finance kernels now answer #DOMAIN!; same class, not yet changed): distributions' invalid parameter and BETA.* with B ≤ A (formula-language.md § distributions, `compute`, `sampleQuantile`); LOG2 of x ≤ 0 (`scalar.ts`); LOGEST and GROWTH (const FALSE) with a Y ≤ 0 answer `[]`; the Depreciation card's SLN/SYD/DDB/DB answer blank where their formulas give #DOMAIN! (`finance.ts`).
 - [ ] **PERCENTRANK.EXC of one value** answers 0.5, unchecked in Excel; **an imported file's first autosave** may still move its time if the load normalizes the graph (`updateCurrentGraph` compares serialized forms).
 
 ## From the 2026-09-30 oldest-first review (1.0-era and July files; verified against HEAD)

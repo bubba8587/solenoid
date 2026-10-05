@@ -1469,7 +1469,7 @@ export class RunningNode extends ClassicPreset.Node {
 
   label: string;
   agg: RunningOp;
-  cachedList: ListCell[] | null = [];
+  cachedList: (ListCell | UnitCell)[] | null = [];
   literals: Record<string, number> = { window: 0 };
   width = 180;
   height = 218;
@@ -1494,7 +1494,7 @@ export class RunningNode extends ClassicPreset.Node {
     const w = readRole<number | undefined>(this, "window", inputs.window) ?? 0;
     if (!Number.isFinite(w) || w < 0) { this.cachedList = []; return { result: solError("#DOMAIN!", "Window must be 0 (cumulative) or a positive count") }; }
     const result = running(this.agg, arr, w);
-    this.cachedList = result;
+    this.cachedList = isSolError(result) ? [] : result;
     return { result };
   }
 }

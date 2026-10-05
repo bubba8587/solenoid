@@ -348,6 +348,19 @@ describe("Depreciation", () => {
   });
 });
 
+describe("Depreciation answers its formula's domain errors ([[D70]] nullNotEnoughData)", () => {
+  it("a period past the life is the formula's error, and a missing input stays blank", async () => {
+    const { compileEvaluator } = await import("../../../src/graph/excelFormula");
+    for (const op of ["syd", "ddb", "db"] as const) {
+      const card = new DepreciationNode({ op }).data({ cost: [10000], salvage: [1000], life: [5], per: [7] }).result;
+      const fx = compileEvaluator(`${op.toUpperCase()}(10000, 1000, 5, 7)`)!({});
+      expect((card as { code?: string }).code).toBeDefined();
+      expect(card).toEqual(fx);
+    }
+    expect(new DepreciationNode({ op: "syd" }).data({ cost: [10000], salvage: [1000], life: [5], per: [null as unknown as number] }).result).toBeNull();
+  });
+});
+
 describe("Depreciation — VDB absorbed as an op", () => {
   it("VDB matches the standalone kernel's period-range result", () => {
     const r = new DepreciationNode({ op: "vdb" }).data({ cost: [10000], salvage: [1000], life: [10], start: [0], end: [1], factor: [2] });

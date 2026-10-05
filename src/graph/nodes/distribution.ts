@@ -1,9 +1,10 @@
 // [[B11]], [[D46]] freezeVolatilePerCalc
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
+import { numIn, numListIn, numListOut, readInput, broadcastErr, type BroadcastResult } from "./shared";
 import { DIST_SPECS, isInverseForm, formAfterSwitch, sampleQuantiles, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 import { mulberry32 } from "../monteCarlo";
 import { getRecalcGen } from "../process";
+import { solError } from "../errorValue";
 export { DIST_SPECS, DIST_FORM_META, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 
 function firstKeyFor(op: DistKey, form: DistForm): string {
@@ -126,9 +127,10 @@ export class DistributionsNode extends ClassicPreset.Node {
     const firstKey = firstKeyFor(this.op, form);
     const first = readInput(inputs[firstKey], this.literals[firstKey]);
     const params = spec.params.map((p) => readInput(inputs[p.key], this.literals[p.key]));
-    const result = broadcast((v, ...ps) => {
+    const result = broadcastErr((v, ...ps) => {
       const r = spec.compute(form, v, ps);
-      return r !== null && Number.isFinite(r) ? r : null;
+      // [[D70]] nullNotEnoughData: a parameter outside the domain is a wrong input.
+      return r !== null && Number.isFinite(r) ? r : solError("#DOMAIN!", "A parameter is outside the distribution's domain");
     }, first, ...params);
     this.cachedResult = result;
     return { result };

@@ -6,7 +6,7 @@ import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";
 import { solError, type SolError } from "../errorValue";
 import { guardFinite } from "../valueKinds";
-import { resolveExcelFunction } from "../excelFunctions";
+import { resolveExcelFunction, normalizeFxResult } from "../excelFunctions";
 import { EquationNode } from "./equation";
 import {
   couponValue, accrint, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
@@ -168,19 +168,16 @@ export class DepreciationNode extends ClassicPreset.Node {
     } else {
       const per    = readInput(inputs.per, this.literals.per ?? null);
       const factor = readAsRole<number | undefined>(this, "factor", inputs.factor, argRole("DDB", 4)!) ?? 2;
-      if (cost !== null && salvage !== null && life !== null && life > 0) {
-        if (this.op === "sln") {
-          result = resolveExcelFunction("SLN")!(cost, salvage, life) as number;
-        } else if (per !== null && per >= 1) {
-          if (this.op === "syd" && per <= life) {
-            result = resolveExcelFunction("SYD")!(cost, salvage, life, per) as number;
-          } else if (this.op === "ddb" && per <= life) {
-            result = factor === null ? null : resolveExcelFunction("DDB")!(cost, salvage, life, per, factor) as number;
-          } else if (this.op === "db") {
+      // Every input present, the formula answers, its domain errors included ([[D70]] nullNotEnoughData: a wrong input is an error).
+      type Answer = number | SolError;
+      if (cost !== null && salvage !== null && life !== null) {
+        if (this.op === "sln") result = normalizeFxResult(resolveExcelFunction("SLN")!(cost, salvage, life)) as Answer;
+        else if (per !== null) {
+          if (this.op === "syd") result = normalizeFxResult(resolveExcelFunction("SYD")!(cost, salvage, life, per)) as Answer;
+          else if (this.op === "ddb") result = factor === null ? null : normalizeFxResult(resolveExcelFunction("DDB")!(cost, salvage, life, per, factor)) as Answer;
+          else if (this.op === "db") {
             const month = readInput(inputs.month, this.literals.month ?? 12);
-            if (month !== null && cost > 0 && salvage > 0 && per <= life) {
-              result = resolveExcelFunction("DB")!(cost, salvage, life, per, month) as number;
-            }
+            if (month !== null) result = normalizeFxResult(resolveExcelFunction("DB")!(cost, salvage, life, per, month)) as Answer;
           }
         }
       }

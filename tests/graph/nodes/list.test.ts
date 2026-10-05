@@ -303,6 +303,21 @@ describe("Set — one merged card across both families", () => {
   });
 });
 
+describe("Running over a list of one unit keeps the unit, as Reduce does", () => {
+  const kg = (value: number) => ({ __unitCell: true, value, dim: { mass: 1 }, display: "kg" });
+  const run = (agg: "sum" | "product" | "max", list: unknown[], window = 0) =>
+    new RunningNode({ agg }).data({ list: [list as never], window: [window] }).result;
+  it("sums, slides and multiplies", () => {
+    expect(run("sum", [kg(1), kg(2), kg(3)])).toEqual([kg(1), kg(3), kg(6)]);
+    expect(run("max", [kg(1), null, kg(3)], 2)).toEqual([kg(1), kg(1), kg(3)]);
+    expect(run("product", [kg(2), kg(3)])).toEqual([kg(2), { __unitCell: true, value: 6, dim: { mass: 2 } }]);
+  });
+  it("refuses mixed units", () => {
+    const r = run("sum", [kg(1), { __unitCell: true, value: 1, dim: { length: 1 }, display: "m" }]);
+    expect((r as { code?: string }).code).toBe("#UNIT!");
+  });
+});
+
 describe("Running — all so far (window grows)", () => {
   it("sum / product", () => {
     expect(new RunningNode({ agg: "sum" }).data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 3, 6, 10]);
