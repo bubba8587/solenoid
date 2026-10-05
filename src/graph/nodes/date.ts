@@ -286,7 +286,7 @@ export class DateDiffNode extends ClassicPreset.Node {
     if (dateDiffNeedsBasis(this.op)) {
       const basisRaw = readAsRole<number | SolError | undefined>(this, "basis", inputs.basis, argRole(this.op === "days360" ? "DAYS360" : "YEARFRAC", 2)!);
       if (isSolError(basisRaw)) { this.cachedResult = basisRaw; return { result: basisRaw }; }
-      basis = Math.floor(basisRaw ?? 0);
+      basis = Math.trunc(basisRaw ?? 0);
     }
     const result = broadcastErr((s, e) => dateDiff(this.op, s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
     this.cachedResult = result;

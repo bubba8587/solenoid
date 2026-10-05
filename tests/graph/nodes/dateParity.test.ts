@@ -63,6 +63,13 @@ describe("date formulas == date nodes", () => {
     expect((card as { code: string }).code).toBe("#DOMAIN!");
   });
 
+  it("YEARFRAC truncates its basis toward zero, as Excel truncates every argument", () => {
+    const [a, b] = [d("2024-01-01"), d("2024-01-02")];
+    expect(ev("YEARFRAC(a, b, -0.5)", { a, b })).toBeCloseTo(ev("YEARFRAC(a, b, 0)", { a, b }) as number, 12);
+    expect(ev("YEARFRAC(a, b, 3.9)", { a, b })).toBeCloseTo(1 / 365, 12);
+    expect(new DateDiffNode({ op: "yearfrac" }).data({ start: [a], end: [b], basis: [-0.5] }).result).toBeCloseTo(1 / 360, 12);
+  });
+
   it("US 30/360 counts a start on the last day of February as the 30th", () => {
     const d360 = (a: string, b: string) => ev("DAYS360(a, b)", { a: d(a), b: d(b) });
     expect(d360("2026-02-28", "2026-03-31")).toBe(30);

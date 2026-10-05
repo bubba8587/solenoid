@@ -1243,7 +1243,7 @@ registerInternal("WEEKNUM",    (d, rt) => { const n = toNum(d); return Number.is
 registerInternal("ISOWEEKNUM", (d) => { const n = toNum(d); return Number.isNaN(n) ? VALUE("ISOWEEKNUM") : weekInfo("isoweeknum", n); });
 registerInternal("DAYS",     (end, start) => { const e = toNum(end), s = toNum(start); return badNum(e, s) ? VALUE("DAYS") : dateDiff("days", s, e); });
 registerInternal("DAYS360",  (start, end, method) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("DAYS360") : dateDiff("days360", s, e, isTrue(method) ? 1 : 0); });
-registerInternal("YEARFRAC", (start, end, basis) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("YEARFRAC") : dateDiff("yearfrac", s, e, Math.floor(optNum(basis, 0))); });
+registerInternal("YEARFRAC", (start, end, basis) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("YEARFRAC") : dateDiff("yearfrac", s, e, Math.trunc(optNum(basis, 0))); });
 const epochUnit = (u: unknown): EpochUnit | null => (u == null ? "s" : /^ms$/i.test(String(u).trim()) ? "ms" : /^s$/i.test(String(u).trim()) ? "s" : null);
 registerInternal("FROMEPOCH", (v, unit) => { const n = toNum(v), u = epochUnit(unit); return Number.isNaN(n) ? VALUE("FROMEPOCH") : u === null ? solError("#DOMAIN!", "FROMEPOCH unit must be s or ms") : epochToSerial(n, u); });
 registerInternal("TOEPOCH",   (d, unit) => { const n = toNum(d), u = epochUnit(unit); return Number.isNaN(n) ? VALUE("TOEPOCH") : u === null ? solError("#DOMAIN!", "TOEPOCH unit must be s or ms") : serialToEpoch(n, u); });
