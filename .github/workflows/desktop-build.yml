@@ -4,12 +4,8 @@ on:
   push:
     branches:
       - main
-      - develop
-    # Docs and tree edits can't break a build; path filters never apply to tags.
-    paths-ignore:
-      - "docs/**"
-      - "tree/**"
-      - "**/*.md"
+      - master
+      - "claude/**"
     # A version tag (e.g. v0.1.1-alpha) is the "this push is a release"
     # signal — it triggers the same builds, then the release job publishes a
     # GitHub Release with both platforms' files. A normal commit push only
@@ -17,11 +13,6 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-
-# A newer push to the same branch cancels the older build; a tag's build always finishes.
-concurrency:
-  group: desktop-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 # Required so the release job can create a Release via GITHUB_TOKEN.
 permissions:
