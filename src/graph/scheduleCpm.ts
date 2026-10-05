@@ -5,7 +5,7 @@ import { formatDateSerial, parseDate, DEFAULT_DATETIME_FORMAT } from "./nodes/da
 import { cubeFromColumns, isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue } from "./frame";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 import { isUnitCell } from "./unitValue";
-import { predecessorCell } from "./planImport";
+import { predecessorCell, predecessorColumn } from "./planImport";
 import {
   schedule, mermaidGantt, writeMspdi, ScheduleError, predecessorText, LINK_TYPES, intervalsForHours,
   type PlanTask, type PlanDependency, type LinkType, type ScheduleOutput, type ScheduledTask,
@@ -120,10 +120,10 @@ function readPredecessors(cell: CubeCell, taskName: string): PlanDependency[] {
   if (isText(cell)) return cell.trim() ? [{ task: cell.trim(), type: "FS", lag: 0 }] : [];
   if (isTable(cell)) {
     const t = asCube(cell);
-    const nameCol = findColumn(t, TASK_NAMES, (col) => col.cells.some(isText));
+    const nameCol = findColumn(t, ["predecessor", ...TASK_NAMES], (col) => col.cells.some(isText));
     const typeCol = findColumn(t, ["type", "link", "kind"]);
     const lagCol = findColumn(t, ["lag", "lead", "offset"]);
-    if (!nameCol) throw solError("#VALUE!", `Schedule: task "${taskName}" has a Predecessors table with no Task column`);
+    if (!nameCol) throw solError("#VALUE!", `Schedule: task "${taskName}" has a Predecessors table with no Predecessor or Task column`);
     const rows = t.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
     const out: PlanDependency[] = [];
     for (let i = 0; i < rows; i++) {
@@ -254,7 +254,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
         { name: "Duration", type: "number", cells: names.map(() => dur) },
         { name: "Predecessors", cells: names.map((_, k) => (k === 0
           ? predecessorCell(preds)
-          : cubeFromColumns([{ name: "Task", type: "string", cells: [names[k - 1]] }, { name: "Type", type: "string", cells: ["SS"] }, { name: "Lag", type: "number", cells: [every] }, { name: "Elapsed", type: "logical", cells: [true] }]))) },
+          : cubeFromColumns([{ name: "Predecessor", type: "string", cells: [names[k - 1]] }, { name: "Type", type: "string", cells: ["SS"] }, { name: "Lag", type: "number", cells: [every] }, { name: "Elapsed", type: "logical", cells: [true] }]))) },
         ...(base != null ? [{ name: "Start", type: "date" as const, cells: names.map((_, k) => base + k * every) }] : []),
       ]);
       const sub = readLevel(gen, hoursPerDay, depth + 1);
@@ -329,7 +329,7 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
     );
   }
   if (merged && !level.cols.pred && rows.some((t) => t?.predecessors.length)) {
-    appended.unshift({ name: "Predecessors", cells: cells((t) => predecessorCell(t.predecessors)) });
+    appended.unshift({ name: "Predecessors", cells: predecessorColumn(rows.map((t) => t?.predecessors ?? null)) });
   }
   if (!level.cols.duration && rows.some((t) => t?.summary)) appended.unshift({ name: "Duration", type: "number", cells: cells((t) => t.duration) });
   if (!level.cols.children && level.childLevels.some(Boolean)) {
@@ -343,8 +343,9 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
     if (col === level.cols.children) {
       return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (level.childLevels[i] ? writeLevel(level.childLevels[i]!, byName, nested, minutes, merged) : cell)) };
     }
-    if (merged && col === level.cols.pred) {
-      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i] ? predecessorCell(rows[i]!.predecessors) : cell)) };
+    if (col === level.cols.pred) {
+      const written = predecessorColumn(rows.map((t) => t?.predecessors ?? null));
+      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i] ? written[i] : cell)) };
     }
     if (col === level.cols.duration) {
       return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i]?.summary ? rows[i]!.duration : cell)) };

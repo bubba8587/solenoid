@@ -22,8 +22,9 @@ describe("plan import", () => {
     expect(col(plan.cube, "Task")).toEqual(["Demolition", "Rough-in", "Drywall", "Paint", "Cabinets", "Countertops", "Appliances", "Final inspection"]);
     const roughIn = col(plan.cube, "Tasks")[1] as CubeValue;
     expect(col(roughIn, "Task")).toEqual(["Plumbing rough-in", "Electrical rough-in"]);
-    expect(col(plan.cube, "Predecessors")[2]).toEqual(["Rough-in"]);            // FS/0 → a list of names
-    const typed = col(plan.cube, "Predecessors")[6] as CubeValue;               // SS+1 → a Task · Type · Lag table
+    // One SS+1 link makes the whole column Predecessor · Type · Lag tables, so Unnest reads it whole.
+    expect(col(col(plan.cube, "Predecessors")[2] as CubeValue, "Predecessor")).toEqual(["Rough-in"]);
+    const typed = col(plan.cube, "Predecessors")[6] as CubeValue;
     expect(col(typed, "Type")).toEqual(["SS"]);
     expect(col(typed, "Lag")).toEqual([1]);
     expect(plan.frame.columns.map((c) => c.name)).toEqual(["Task", "Level", "Duration", "Predecessors", "Start", "Finish", "Deadline", "Complete"]);
@@ -38,12 +39,12 @@ describe("plan import", () => {
   it("a Smartsheet-style CSV with row-number predecessors becomes a plan; a plain CSV does not", () => {
     const f = csvToFrame("Task Name,Duration,Predecessors\nDemolition,2,\nFraming,3,1\nRoof,2,\"2FS+1d, 1SS\"\nInspect,0,3");
     const cube = csvPlanToCube(f)!;
-    expect(col(cube, "Predecessors")[1]).toEqual(["Demolition"]);
+    expect(col(col(cube, "Predecessors")[1] as CubeValue, "Predecessor")).toEqual(["Demolition"]);
     const roof = col(cube, "Predecessors")[2] as CubeValue;
-    expect(col(roof, "Task")).toEqual(["Framing", "Demolition"]);
+    expect(col(roof, "Predecessor")).toEqual(["Framing", "Demolition"]);
     expect(col(roof, "Type")).toEqual(["FS", "SS"]);
     expect(col(roof, "Lag")).toEqual([1, 0]);
-    expect(col(cube, "Predecessors")[0]).toEqual([]);
+    expect(col(col(cube, "Predecessors")[0] as CubeValue, "Predecessor")).toEqual([]);
     const r = scheduleTasks(cube, { start: parseDateToSerial("2026-01-05"), workingDays: true });
     expect(col(r.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07", "2026-01-13", "2026-01-14"]);
     expect(csvPlanToCube(csvToFrame("Task,Duration,Predecessors\nA,1,\nB,1,A"))).toBeNull(); // names, not the grammar → a plain table

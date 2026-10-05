@@ -33,7 +33,7 @@ function depsOf(cell: CubeCell | undefined): PlanDependency[] {
   if (isText(cell)) return cell.trim() ? [{ task: cell.trim(), type: "FS", lag: 0 }] : [];
   if (isTable(cell)) {
     const t = asCube(cell);
-    const nameCol = col(t, ...TASK_NAMES) ?? t.columns.find((x) => x.cells.some(isText));
+    const nameCol = col(t, "predecessor", ...TASK_NAMES) ?? t.columns.find((x) => x.cells.some(isText));
     const typeCol = col(t, "type", "link", "kind");
     const lagCol = col(t, "lag", "lead", "offset");
     if (!nameCol) return [];

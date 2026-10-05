@@ -19,15 +19,23 @@ const PRED_HEADERS = ["predecessors", "predecessor", "depends on", "after"];
 const GRAMMAR_TOKEN = /^\s*\d+\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+(\.\d+)?\s*(e?d|w|wk|h)?)?\s*$/i;
 
 /** Plain FS/0 dependencies are a list of names; anything typed or lagged is a nested Task · Type · Lag table. */
-export function predecessorCell(deps: PlanDependency[]): CubeCell {
-  if (deps.length === 0) return [];
-  if (deps.every((d) => d.type === "FS" && d.lag === 0 && !d.elapsed)) return deps.map((d) => d.task);
+const plainLink = (d: PlanDependency) => d.type === "FS" && d.lag === 0 && !d.elapsed;
+
+export function predecessorCell(deps: PlanDependency[], typed = !deps.every(plainLink)): CubeCell {
+  if (!typed) return deps.map((d) => d.task);
   return cubeFromColumns([
-    { name: "Task", cells: deps.map((d) => d.task), type: "string" },
+    { name: "Predecessor", cells: deps.map((d) => d.task), type: "string" },
     { name: "Type", cells: deps.map((d) => d.type), type: "string" },
     { name: "Lag", cells: deps.map((d) => d.lag), type: "number" },
     ...(deps.some((d) => d.elapsed) ? [{ name: "Elapsed", cells: deps.map((d) => d.elapsed === true), type: "logical" as const }] : []),
   ]);
+}
+
+/** A Predecessors column is one kind: name lists while every link is a plain FS, else a table in every row, so Unnest
+ *  reads it whole. A null row (an inactive task) stays null. */
+export function predecessorColumn(rows: ReadonlyArray<PlanDependency[] | null>): CubeCell[] {
+  const typed = rows.some((deps) => deps != null && !deps.every(plainLink));
+  return rows.map((deps) => (deps == null ? null : predecessorCell(deps, typed)));
 }
 
 /** Optional columns appear only when some row uses them. */
@@ -36,7 +44,7 @@ export function planToCube(tasks: PlanTask[]): CubeValue {
   const cols: Array<{ name: string; cells: CubeCell[]; type?: "string" | "number" | "date" | "logical" }> = [
     { name: "Task", cells: tasks.map((t) => t.name), type: "string" },
     { name: "Duration", cells: tasks.map((t) => (t.children?.length ? null : t.duration)), type: "number" },
-    { name: "Predecessors", cells: tasks.map((t) => predecessorCell(t.predecessors)) },
+    { name: "Predecessors", cells: predecessorColumn(tasks.map((t) => t.predecessors)) },
   ];
   if (has((t) => t.start != null)) cols.push({ name: "Start", cells: tasks.map((t) => t.start ?? null), type: "date" });
   if (has((t) => t.finish != null)) cols.push({ name: "Finish", cells: tasks.map((t) => t.finish ?? null), type: "date" });
@@ -88,7 +96,7 @@ export function csvPlanToCube(f: FrameValue): CubeValue | null {
   const names = taskCol.values.map((v) => (v == null ? "" : String(v)));
   const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
   const cols: Array<{ name: string; cells: CubeCell[]; type?: "string" | "number" | "date" | "logical" }> = f.columns.map((c) => {
-    if (c === pred) return { name: "Predecessors", cells: cells.map((s) => predecessorCell(parsePredecessorText(s, names).deps)) };
+    if (c === pred) return { name: "Predecessors", cells: predecessorColumn(cells.map((s) => parsePredecessorText(s, names).deps)) };
     return { name: c.name, cells: [...c.values], type: c.type };
   });
   for (const c of cols) while (c.cells.length < rows) c.cells.push(null);

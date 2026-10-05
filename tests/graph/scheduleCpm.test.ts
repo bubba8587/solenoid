@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { scheduleTasks } from "../../src/graph/scheduleCpm";
 import { parseDateToSerial, formatDateSerial } from "../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../src/graph/errorValue";
-import { cubeFromColumns, isFrameValue, type CubeValue, type CubeCell } from "../../src/graph/frame";
+import { cubeFromColumns, isFrameValue, flatCubeToFrame, type CubeValue, type CubeCell, type FrameValue } from "../../src/graph/frame";
 import { unnestCube } from "../../src/graph/frameVerbs";
 
 // The tasks arrive as a CUBE: Predecessors is a list cell (zero or more names), never an
@@ -48,11 +48,11 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(col(r.cube, "Float")).toEqual([0, 0, 1, 0, 2, 0, 0, 0]);
     expect(col(r.cube, "Critical")).toEqual([true, true, false, true, false, true, true, true]);
     expect(iso(r.projectFinish)).toBe("2026-01-27");
-    // Original columns first (the Predecessors list cells untouched, by reference), then the four appended.
+    // Original columns first (Predecessors rewritten in its structured form), then the four appended.
     expect(r.cube.columns.map((x) => x.name).slice(0, 7)).toEqual(["Task", "Duration", "Predecessors", "Start", "Finish", "Float", "Critical"]);
     expect(r.cube.columns.map((x) => x.name).slice(7)).toEqual(["Free Float", "Early Start", "Early Finish", "Late Start", "Late Finish", "Driving", "Late"]);
     expect(col(r.cube, "Driving")).toEqual([null, "Demolition", "Demolition", "Plumbing rough-in", "Drywall", "Drywall", "Cabinets", "Countertops"]);
-    expect(col(r.cube, "Predecessors")[3]).toBe(col(c, "Predecessors")[3]);
+    expect(col(r.cube, "Predecessors")[3]).toEqual(col(c, "Predecessors")[3]);
   });
 
   it("a text Predecessors cell is ONE name (never split); names match trimmed, case-insensitively; blank is none", () => {
@@ -246,8 +246,9 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(col(r.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07", "2026-01-06"]);
     // The merged links land in the Predecessors column, so a Gantt downstream draws them.
     const preds = col(r.cube, "Predecessors");
-    expect(preds[0]).toEqual([]);
-    expect(preds[1]).toEqual(["A"]);
+    // One typed link makes the whole column tables, so Unnest reads it whole.
+    expect(col(preds[0] as CubeValue, "Predecessor")).toEqual([]);
+    expect(col(preds[1] as CubeValue, "Predecessor")).toEqual(["A"]);
     expect(col(preds[2] as CubeValue, "Type")).toEqual(["SS"]);
     // An unknown successor is the schedule's #VALUE! naming it.
     expect(() => scheduleTasks(plan, {
@@ -310,6 +311,23 @@ describe("a Work column beside a stray number column", () => {
     const alone = cubeFromColumns([{ name: "Task", cells: ["A"] as CubeCell[] }, { name: "Work", cells: [16] as CubeCell[] }]);
     const finish = (x: CubeValue) => scheduleTasks(x, { start: MON, workingDays: true }).output.tasks[0];
     expect(finish(c)).toEqual(finish(alone));
+  });
+});
+
+describe("a Predecessors column is one kind", () => {
+  it("a plan mixing plain and typed links comes out as a table in every row, so Unnest reads it", () => {
+    const ss = cubeFromColumns([{ name: "Task", cells: ["A"] }, { name: "Type", cells: ["SS"] }, { name: "Lag", cells: [1] }]);
+    const plan = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "C"] },
+      { name: "Duration", cells: [2, 1, 1] },
+      { name: "Predecessors", cells: [[], ["A"], ss] as CubeCell[] },
+    ]);
+    const r1 = scheduleTasks(plan, { start: MON, workingDays: true });
+    expect(col(r1.cube, "Predecessors").every((cell) => !Array.isArray(cell))).toBe(true);
+    const links = unnestCube(r1.cube, "Predecessors") as CubeValue;
+    const r2 = scheduleTasks(cubeFromColumns([{ name: "Task", cells: ["A", "B", "C"] }, { name: "Duration", cells: [2, 1, 1] }]),
+      { start: MON, workingDays: true, links: flatCubeToFrame(links) as FrameValue });
+    expect(col(r2.cube, "Start").map(iso)).toEqual(col(r1.cube, "Start").map(iso));
   });
 });
 
