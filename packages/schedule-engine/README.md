@@ -90,7 +90,7 @@ the project span), weekend days and holidays.
 - `float` is total float in working days; it may be negative under a ceiling or deadline, and it
   is a fraction of a day in Minutes mode. `driving` is the predecessor that set the start, else
   null. `segments` holds the inclusive work parts when a task is split around the status date.
-  `late` means the finish is past the deadline, `floored` that a typed Start held the task, and
+  `late` means the finish is past the deadline, `floored` that a typed Start held the task, `startFloor` that typed Start (held or not), and
   `wbs` is the `1.2.3` outline number.
 - A link's `driving` means it set the successor's early start; `violated` means the successor's
   date breaks it because a floor or manual pin overrode it.

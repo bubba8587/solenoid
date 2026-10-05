@@ -253,7 +253,7 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
       ...(segments ? { segments } : {}),
       alap: t.alap,
       late: deadline != null && finish > deadline,
-      floored: p.floored[i], manual: t.manual && t.start != null, complete: t.complete,
+      floored: p.floored[i], startFloor: t.start ?? null, manual: t.manual && t.start != null, complete: t.complete,
       deadline, group: t.group, wbs: t.wbs, predecessors: t.predecessors,
     };
   });

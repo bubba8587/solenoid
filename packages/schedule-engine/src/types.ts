@@ -68,6 +68,7 @@ export interface ScheduledTask {
   alap: boolean;
   late: boolean;
   floored: boolean;
+  startFloor: number | null;
   manual: boolean;
   complete: number;
   deadline: number | null;

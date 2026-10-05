@@ -119,6 +119,15 @@ describe("MSPDI write: a typed start", () => {
       expect(back.tasks[1].start == null ? null : iso(back.tasks[1].start)).toBe("2026-03-11");
     }
   });
+  it("a floor its predecessors already pass still writes its own date", () => {
+    const o = schedule({
+      start: isoToSerial("2026-03-02")!, calendar: { workingDays: true },
+      tasks: [{ name: "A", duration: 5, predecessors: [] }, { name: "B", duration: 1, predecessors: [{ task: "A", type: "FS", lag: 0 }], start: isoToSerial("2026-03-03")! }],
+    });
+    expect(o.tasks[1].floored).toBe(false);
+    const back = readMspdi(writeMspdi(o, { formatIso: iso }));
+    expect(back.tasks[1].start == null ? null : iso(back.tasks[1].start)).toBe("2026-03-03");
+  });
 });
 
 describe("format border edge cases", () => {

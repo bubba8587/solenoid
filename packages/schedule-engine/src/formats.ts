@@ -284,8 +284,8 @@ export function writeMspdi(out: ScheduleOutput, opts: { title?: string; hoursPer
       `<LateStart>${stamp(t.lateStart, false)}</LateStart>`, `<LateFinish>${stamp(t.lateFinish, true)}</LateFinish>`,
       `<TotalSlack>${Math.round(t.float * H * 60 * 10)}</TotalSlack>`, `<FreeSlack>${Math.round(t.freeFloat * H * 60 * 10)}</FreeSlack>`,
       `<Critical>${t.critical ? 1 : 0}</Critical>`, `<PercentComplete>${Math.round(t.complete)}</PercentComplete>`,
-      `<ConstraintType>${t.alap ? 1 : t.manual ? 2 : t.floored ? 4 : 0}</ConstraintType>`,
-      ...(!t.alap && !t.manual && t.floored ? [`<ConstraintDate>${stamp(t.start, false)}</ConstraintDate>`] : []),
+      `<ConstraintType>${t.alap ? 1 : t.manual ? 2 : t.startFloor != null ? 4 : 0}</ConstraintType>`,
+      ...(!t.alap && !t.manual && t.startFloor != null ? [`<ConstraintDate>${stamp(t.startFloor, false)}</ConstraintDate>`] : []),
       `<Manual>${t.manual ? 1 : 0}</Manual>`,
     ];
     if (t.deadline != null) f.push(`<Deadline>${stamp(t.deadline, true)}</Deadline>`);
