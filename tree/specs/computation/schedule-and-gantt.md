@@ -23,7 +23,7 @@ Columns are found by name, case-insensitive; the first alias in each row below t
 | Column (aliases) | Read as | Meaning |
 |---|---|---|
 | Task (`name`, `title`; else the first column holding text) | text | The task's name. Required, unique, never blank. |
-| Duration (`days`; else, when there is no Work column, the first numeric or united column that is not a date column and not named in this table) | number | Working days. Blank or 0 is a milestone. A cell holding a time unit value converts through hours per day; any other unit is an error. A parent's Duration is ignored, since it rolls up. |
+| Duration (`days`; else, when there is no Work column, the first numeric or united column that is not a date column and not named in this table) | number | Working days. Blank or 0 is a milestone. A cell holding a time unit value converts through the task's hours per day (its Hours cell, else the project's); any other unit is an error. A parent's Duration is ignored, since it rolls up. |
 | Predecessors (`predecessor`, `after`, `depends on`, `blockedby`, `blocked by`) | list, text or nested table | The tasks that come first. See [Predecessors](#predecessors). |
 | Tasks (`children`, `subtasks`, `steps`; else a column of nested tables that have a Task column) | nested table | The row's children. See [Hierarchy](#hierarchy). |
 | Start | date, optional | A floor: the task starts no earlier. |
@@ -35,7 +35,7 @@ Columns are found by name, case-insensitive; the first alias in each row below t
 | ALAP (`as late as possible`, `late as possible`) | logical, optional | The task starts at its late start. |
 | Actual start (`started`, `started on`) | date, optional | The day work began; pins the early start. |
 | Elapsed | logical, optional | The duration counts every calendar day. |
-| Work (`effort`, `work (h)`, `hours of work`) and Units (`assignment`, `fte`) | number, optional | With no Duration, the duration is Work ÷ (Units × hours per day) days. Units defaults to 1 and is at least 0.01. |
+| Work (`effort`, `work (h)`, `hours of work`) and Units (`assignment`, `fte`) | number, optional | With no Duration, the duration is Work ÷ (Units × the task's hours per day) days. Units defaults to 1 and is at least 0.01. |
 | Weekend (`weekend code`), Hours (`hours per day`), Holidays (`days off`) | number, number, date list | The task's own calendar, layered over the project's. |
 | Active (`included`) | logical, optional | A row whose Active cell is set and false is left out of the schedule, and its computed cells are blank. |
 | Repeat (`occurrences`, `times`) and Every (`every (days)`, `interval`, `period`) | number, optional | A childless row with Repeat above 1 becomes a parent of that many occurrences, named `<Task> 1`, `<Task> 2` and so on, each starting Every calendar days (default 7) after the one before. The first occurrence takes the row's predecessors. |

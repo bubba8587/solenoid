@@ -313,6 +313,16 @@ describe("a Work column beside a stray number column", () => {
   });
 });
 
+describe("a task's own Hours", () => {
+  it("convert its Work and its hour Duration, not the project's hours per day", () => {
+    const plan = (cols: { name: string; cells: CubeCell[] }[]) => scheduleTasks(cubeFromColumns([{ name: "Task", cells: ["A"] }, { name: "Hours", cells: [4] }, ...cols]), { start: MON, workingDays: true }).output.tasks[0];
+    const fourDays = plan([{ name: "Duration", cells: [4] }]);
+    expect(plan([{ name: "Work", cells: [16] }])).toEqual(fourDays);
+    expect(plan([{ name: "Duration", cells: [{ __unitCell: true, value: 16 * 3600, dim: { time: 1 } } as unknown as CubeCell] }])).toEqual(fourDays);
+    expect(plan([{ name: "Work", cells: [16] }])).not.toEqual(scheduleTasks(cubeFromColumns([{ name: "Task", cells: ["A"] }, { name: "Hours", cells: [4] }, { name: "Duration", cells: [2] }]), { start: MON, workingDays: true }).output.tasks[0]);
+  });
+});
+
 describe("a Links frame row whose successor is inactive", () => {
   it("is skipped, as the same link in the inactive row's own Predecessors cell is", () => {
     const c = cubeFromColumns([

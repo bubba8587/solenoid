@@ -343,7 +343,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Vendored DTE**: `tools/dte.py` `COVERAGE_TEMPLATE` writes a literal `100%%` into a new `.dtecoverage` on `dte init`; `excluded_from_coverage` doesn't count `covers:` citations (the numbers only). Upstream fixes.
 - [ ] **World Clock** updates only on a recompute, at midnight or on F9; a per-minute ticker is a design choice (a live tick recomputes its downstream every minute).
 - [ ] **Currency over a list**: the Amount socket is single-value, so a list of amounts is refused; broadcast, or keep one amount per card.
-- [ ] **Hours per day**: the Schedule engine divides work by the task calendar's hours, but `scheduleCpm.ts` still reads Work and hour Durations with the project's hours per day even when a task has its own Hours column.
 - [ ] **CUMIPMT/CUMPRINC with End past the loan** return a number (formula and card); Excel is believed to give #NUM! (unconfirmed).
 - [ ] **Frame popup formats**: a format picked on a brand-new column, then Cancel, leaves a stray entry under that column's would-be name (`frameFormatStore.rekey`).
 - [ ] **Matrix format precedence**: the matrix popup's own pick now wins over an FC wired to the same card (as a Frame column's own pick does); the reverse is defensible.

@@ -240,11 +240,13 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     childLevels.push(childLevel);
     const repeat = cols.repeat && isNum(cols.repeat.cells[i]) ? Math.floor(cols.repeat.cells[i] as number) : 0;
     const every = cols.every && isNum(cols.every.cells[i]) ? (cols.every.cells[i] as number) : 7;
+    const ownHours = cols.hours?.cells[i];
+    const taskHours = isNum(ownHours) && ownHours > 0 ? ownHours : hoursPerDay;
     let generated = false;
     if (!kids && repeat > 1) {
       generated = true;
       const base = readDate(cols.start?.cells[i], name, "Start");
-      const dur = readDuration(duration?.cells[i] ?? null, hoursPerDay, name);
+      const dur = readDuration(duration?.cells[i] ?? null, taskHours, name);
       const preds = pred ? readPredecessors(pred.cells[i] ?? null, name) : [];
       const names = Array.from({ length: repeat }, (_, k) => `${name} ${k + 1}`);
       const gen = cubeFromColumns([
@@ -265,7 +267,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     const hasDuration = duration && duration.cells[i] != null && duration.cells[i] !== "";
     tasks.push({
       name,
-      duration: kids ? 0 : hasDuration || !isNum(workCell) ? readDuration(duration?.cells[i] ?? null, hoursPerDay, name) : (workCell as number) / (Math.max(0.01, isNum(unitsCell) ? unitsCell : 1) * hoursPerDay),
+      duration: kids ? 0 : hasDuration || !isNum(workCell) ? readDuration(duration?.cells[i] ?? null, taskHours, name) : (workCell as number) / (Math.max(0.01, isNum(unitsCell) ? unitsCell : 1) * taskHours),
       ...(isNum(workCell) ? { work: workCell } : {}), ...(isNum(unitsCell) ? { units: unitsCell } : {}),
       predecessors: generated ? [] : pred ? readPredecessors(pred.cells[i] ?? null, name) : [],
       start: readDate(cols.start?.cells[i], name, "Start"), finish: readDate(cols.finish?.cells[i], name, "Finish"), deadline: readDate(cols.deadline?.cells[i], name, "Deadline"),
