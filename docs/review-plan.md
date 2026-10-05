@@ -696,7 +696,7 @@ Where: `src-tauri/src/linux_webview.rs` (FFI into WebKit settings), `tauri.conf.
       fails silently on Linux, exactly the bug f9c859de fixed for dot-dirs. And Windows:
       `requireLiteralLeadingDot` false, so the scope is broader there; is anything relying on
       the narrower Linux scope for safety?
-- [ ] NEEDS AUTHOR 2026-09-28, a docs gap: no recovery path is written. A flaky run: "Re-run failed jobs" on the tag's run, and the release job follows. A code fix: delete the tag, fix on develop, merge, re-tag. Home: beside the release paragraph in CLAUDE.md or architecture.md. Side note: `desktop-build.yml` triggers on `claude/**` but not `develop`. Was: Release on tag "once both builds pass": a Windows-only failure leaves a tag with no
+- [ ] NEEDS AUTHOR 2026-09-28, a docs gap: no recovery path is written. A flaky run: "Re-run failed jobs" on the tag's run, and the release job follows. A code fix: delete the tag, fix on develop, merge, re-tag. Home: beside the release paragraph in CLAUDE.md or architecture.md. Was: Release on tag "once both builds pass": a Windows-only failure leaves a tag with no
       release; the recovery path (retag? rerun?) should be in `docs/`.
 
 ## 37. Charts and Chart Builder (09-15, 09-23)
