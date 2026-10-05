@@ -10,6 +10,7 @@ import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
 import { calcModeStore } from "./calcModeStore";
 import { pushNotice } from "./noticeStore";
+import { settingsStore } from "./settingsStore";
 
 export type FrameHandle = string & { readonly __frameHandle: unique symbol };
 
@@ -518,8 +519,13 @@ export function resetFrameBackendToJs(): void {
   clearHandleKeyedCaches();
 }
 
+/** The native engine runs frame verbs: the desktop app, unless Settings turns it off to compare with the web's oracle. */
+export function nativeEngineOn(): boolean {
+  return engineAvailable() && settingsStore.get("nativeEngine") !== false;
+}
+
 export async function initFrameBackend(): Promise<void> {
-  if (!engineAvailable()) return;
+  if (!nativeEngineOn()) { if (_backend instanceof PolarsBackend) resetFrameBackendToJs(); return; }
   try {
     const info = await enginePing();
     if (info?.backend === "polars") {
@@ -528,6 +534,19 @@ export async function initFrameBackend(): Promise<void> {
     }
   } catch {
   }
+}
+
+/** Flipping the Settings switch swaps the backend and hands back so the caller reloads the document: no frame may
+ *  keep a handle from the engine it left. */
+export function watchEngineSetting(onSwitched: () => void): void {
+  let last = settingsStore.get("nativeEngine");
+  settingsStore.subscribe(() => {
+    const now = settingsStore.get("nativeEngine");
+    if (now === last) return;
+    last = now;
+    if (!engineAvailable()) return;
+    void initFrameBackend().then(onSwitched);
+  });
 }
 
 export async function readCsvFrame(folder: string, name: string): Promise<FrameValue | SolError> {

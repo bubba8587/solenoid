@@ -20,10 +20,10 @@ import { connectionStore, requestNetwork, fetchInBackground } from "../connectio
 import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
-import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type CubeValue } from "../frame";
+import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
 import { parseCsvRows } from "../csv";
 import { engineAvailable, ipcInvoke } from "../ipcBridge";
-import { readCsvFrame, dropFrameRef, collectPreview, type FrameRef, type FrameHandle } from "../frameBackend";
+import { readCsvFrame, dropFrameRef, collectPreview, nativeEngineOn, type FrameRef, type FrameHandle } from "../frameBackend";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { planFileToPlan, csvPlanToCube } from "../planImport";
 
@@ -340,6 +340,17 @@ export class LocalFileNode extends ClassicPreset.Node {
     if (name === "") return fail("Pick a file", "idle");
     connectionStore.setState(this.id, { status: "loading" });
     try {
+      if (parquet && !nativeEngineOn()) {
+        // The native engine reads the file, and its rows come over to the app's own engine.
+        const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
+        const columns = await ipcInvoke<FrameColumn[]>("engine_collect", { handle }).finally(() => { void ipcInvoke("engine_drop", { handle }).catch(() => {}); });
+        if (stale()) return superseded;
+        const frame: FrameValue = { __frame: true, columns };
+        adopt(null);
+        this.cachedResult = frame;
+        connectionStore.setState(this.id, { status: "ok", rows: frameRowCount(frame), cols: columns.length, fetchedAt: Date.now() });
+        return { frame, plan: null };
+      }
       if (parquet) {
         const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
         const ref: FrameRef = { __frameRef: handle as FrameHandle, __plan: [] };
@@ -368,7 +379,7 @@ export class LocalFileNode extends ClassicPreset.Node {
         });
         return { frame: null, plan: plan.cube };
       }
-      const frame = engineAvailable() && !isDemoVaultPath(folder)
+      const frame = nativeEngineOn() && !isDemoVaultPath(folder)
         ? await (async () => {
             const r = await readCsvFrame(folder, name);
             if (isSolError(r)) throw new Error(r.message);

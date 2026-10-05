@@ -10,7 +10,8 @@ import { initSettings } from "./graph/settingsStore";
 import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initPackFormulas } from "./graph/formulaExtensions";
-import { initFrameBackend } from "./graph/frameBackend";
+import { initFrameBackend, watchEngineSetting } from "./graph/frameBackend";
+import { documentStore } from "./graph/documentStore";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
@@ -115,6 +116,7 @@ initPackFcExtensions();
 initPackFormulas();
 
 void initFrameBackend();
+watchEngineSetting(() => void documentStore.reloadCurrent());
 
 initDevtoolsHotkey();
 
