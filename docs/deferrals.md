@@ -144,6 +144,20 @@ the decision tree (`dte.md`).
 
 ## Parked features (revisit only if the trigger returns)
 
+- **TYPE with Solenoid's own answers** (author 2026-10-05: keep TYPE, deferred). Mostly redundant beside the socket
+  types, but friendly: give TYPE a code for every Solenoid kind, including the ones Excel has no number for (blank,
+  LAMBDA, complex, unit value, frame), and move it out of `EXCEL_GAP`'s `oos` rows. Today it leaks Formula.js:
+  `undefined` for a blank, a LAMBDA or a complex number, one answer per element on a list, `#SHAPE!` on a matrix,
+  and `TYPE(1/0)` is `#DIV/0!` (Excel checked 2026-10-05: 16 for an error, 64 for an array). N, T and ERROR.TYPE
+  stay `oos` until then.
+- **An Excel parity checker** (author 2026-10-05: deferred). A script writes a workbook of every Excel-named function
+  in `EXCEL_IMPL_META` at its edge cases (empty slots in every position, blank and text arguments, out-of-domain
+  values, fractional counts, month-end and leap dates, list arguments), each row a live Excel formula beside
+  Solenoid's answer and a Same/Differs cell, errors written as text; a reader takes the workbook back after the
+  author saves it in Excel, records Excel's answers as a fixture, and fails a test on each row where Solenoid
+  differs until it is fixed or listed as a deliberate difference. Excel-only names need the `_xlfn.` prefix, and
+  Solenoid's list arguments stand in for `{…}` constants. The two one-off sheets (2026-10-05) are pinned in
+  `excelChecked.test.ts`; their generator lived in a scratchpad, so start fresh.
 - **Array constants and nested arrays in formulas** (author 2026-09-26: "let's defer in-array constants indefinitely
   until Excel nested syntax reaches stable channel"; author 2026-09-24: take Excel's syntax). Excel's Beta
   Channel (Insider post 2026-09-24) lets a cell hold an array: braces nest (`={{1,2,3};{4,5,6}}`),
