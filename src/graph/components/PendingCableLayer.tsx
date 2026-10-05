@@ -1,6 +1,6 @@
 // [[B11]] maximalMerge. Spec: tree/specs/canvas/react-flow-surface-contract.md § Ghost cables.
 // No connection exists behind a ghost, so it can't be an RF edge; its endpoints come from RF's measured handle bounds.
-import { useSyncExternalStore } from "react";
+import { memo, useSyncExternalStore } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";
 import { cablePendingStore, type PendingReconnect } from "../cableState";
 import { cableShapeStore } from "../cableShape";
@@ -47,7 +47,7 @@ function PendingGhost({ p }: { p: PendingReconnect }) {
   return <path className="solenoid-pending-cable" d={d} stroke={ghostColor(p)} />;
 }
 
-export function PendingCableLayer() {
+export const PendingCableLayer = memo(function PendingCableLayer() {
   useSyncExternalStore(cablePendingStore.subscribe, cablePendingStore.version);
   const all = cablePendingStore.all();
   if (all.length === 0) return null;
@@ -56,4 +56,4 @@ export function PendingCableLayer() {
       {all.map((p) => <PendingGhost key={p.id} p={p} />)}
     </svg>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react";
+import { memo, useState, useSyncExternalStore } from "react";
 import { cableSelectionStore } from "../cableState";
 import { useCableShape } from "../cableShape";
 import { CableShapeIcon } from "../CableShapeSelector";
@@ -68,7 +68,7 @@ const sameSet = (a: readonly string[], b: readonly string[]) => {
   return bs.size === new Set(a).size && a.every((x) => bs.has(x));
 };
 
-export function CableInspector() {
+export const CableInspector = memo(function CableInspector() {
   useSyncExternalStore(cableSelectionStore.subscribe, cableSelectionStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
@@ -218,4 +218,4 @@ export function CableInspector() {
       )}
     </div>
   );
-}
+});

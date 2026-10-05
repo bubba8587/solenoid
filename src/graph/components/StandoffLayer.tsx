@@ -1,6 +1,7 @@
 // [[C89]] standoffsSolveLast
 import { measuredSize } from "../nodeSize";
-import { useSyncExternalStore } from "react";
+import { memo, useSyncExternalStore } from "react";
+import { useStore, type ReactFlowState } from "@xyflow/react";
 import { createPortal } from "react-dom";
 import {
   standoffStore,
@@ -63,7 +64,18 @@ function liveBox(id: string): Box | null {
   return { x: pos.x, y: pos.y, w, h };
 }
 
-function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
+// Its two cards' boxes as one compared string, so a drag re-renders only the bars on what moved.
+function endsKey(st: ReactFlowState, s: Standoff): string {
+  return [s.a.nodeId, s.b.nodeId].map((id) => {
+    const n = st.nodeLookup.get(id);
+    return n ? `${n.internals.positionAbsolute.x},${n.internals.positionAbsolute.y},${n.measured.width},${n.measured.height}` : "";
+  }).join("|");
+}
+
+const StandoffBar = memo(function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
+  useStore((st) => endsKey(st, s));
+  useSyncExternalStore(standoffLayoutTick.subscribe, standoffLayoutTick.version);
+  useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   // Hidden endpoints (collapsed-group members) make the standoff dormant.
   if (groupCollapseStore.isNodeHidden(s.a.nodeId) || groupCollapseStore.isNodeHidden(s.b.nodeId)) {
     return null;
@@ -103,7 +115,7 @@ function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
       />
     </g>
   );
-}
+});
 
 function StandoffToolbar({ s }: { s: Standoff }) {
   const onBand = (min: number, max: number) => {
@@ -167,7 +179,7 @@ function StandoffToolbar({ s }: { s: Standoff }) {
   );
 }
 
-export function StandoffLayer() {
+export const StandoffLayer = memo(function StandoffLayer() {
   useSyncExternalStore(standoffStore.subscribe, standoffStore.version);
   useSyncExternalStore(standoffLayoutTick.subscribe, standoffLayoutTick.version);
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
@@ -187,4 +199,4 @@ export function StandoffLayer() {
       {selected && <StandoffToolbar s={selected} />}
     </>
   );
-}
+});

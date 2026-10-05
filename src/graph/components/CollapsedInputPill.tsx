@@ -31,9 +31,7 @@ export function CollapsedInputPill({
   onOpen?: () => void;
   openTitle?: string;
 }) {
-  const hlVersion = useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);
-  void hlVersion;
-  const lit = keys.some((k) => socketHighlightStore.isHighlighted(dragSocketKey(node.id, k)));
+  const lit = useSyncExternalStore(socketHighlightStore.subscribe, () => keys.some((k) => socketHighlightStore.isHighlighted(dragSocketKey(node.id, k))));
   const first = node.inputs[keys[0]]?.socket;
   const pillColor = first instanceof SolenoidSocket ? SOCKET_COLORS[first.dataType] : "var(--sock-any)";
   return (

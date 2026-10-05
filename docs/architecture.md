@@ -50,6 +50,7 @@ This file is the map.
 │                             #     release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share),
 │                             #     shot-graph.mjs (a graph JSON, short form or saved, loaded into the dev app and
 │                             #     screenshotted, canvas or a frame popup; examples in shot-graphs/; the shot-graph skill),
+│                             #     drag-probe.mjs (counts the components a 30-step card drag renders; Drag performance),
 │                             #     debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs
 │                             #     (pinnable .desktop launchers for the local release + debug apps),
 │                             #     demo-video/ (the demo video: scripted scenes filmed in Chromium and a real

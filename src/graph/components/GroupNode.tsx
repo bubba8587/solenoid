@@ -85,6 +85,12 @@ function renderReadout(t: RetainedTerminal) {
   return <span className="solenoid-group__row-val">{readoutText(t)}</span>;
 }
 
+// A trunk pill's glow reads its own socket's highlight, so a cable hover redraws one pill, not every group.
+function PillGlow({ socket }: { socket: string }) {
+  const lit = useSyncExternalStore(socketHighlightStore.subscribe, () => socketHighlightStore.isHighlighted(socket));
+  return lit ? <rect x="0" y="0" width="12" height="22" rx="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} /> : null;
+}
+
 export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const node = data;
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -97,7 +103,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const mode = appThemeStore.getMode();
   const fillAlpha = mode === "light" ? 0.14 : 0.08;
@@ -342,7 +347,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             );
           }
           const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "var(--sock-any)";
-          const pillLit = socketHighlightStore.isHighlighted(dragSocketKey(ip.nodeId, ip.socketKey));
           return (
             <Fragment key={`in${ip.nodeId}-${ip.socketKey}`}>
               <NodeSocket side="input" socketKey={ip.socketKey} nodeId={ip.nodeId} emit={emit}
@@ -351,9 +355,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
                    viewBox="0 0 12 22" aria-hidden>
                 <rect x="0" y="0" width="12" height="22" rx="6" fill={pillColor} />
                 <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke={socketRingColor(pillColor)} strokeWidth="2" />
-                {pillLit && (
-                  <rect x="0" y="0" width="12" height="22" rx="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
-                )}
+                <PillGlow socket={dragSocketKey(ip.nodeId, ip.socketKey)} />
               </svg>
             </Fragment>
           );
@@ -363,7 +365,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           if (!sock) return null;
           if ((t.lanes ?? 0) > 1) {
             const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "var(--sock-any)";
-            const pillLit = socketHighlightStore.isHighlighted(dragSocketKey(t.effNodeId, t.effSocketKey));
             return (
               <Fragment key={`out${t.effNodeId}:${t.effSocketKey}`}>
                 <NodeSocket side="output" socketKey={t.effSocketKey} nodeId={t.effNodeId} emit={emit}
@@ -372,9 +373,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
                      viewBox="0 0 12 22" aria-hidden>
                   <rect x="0" y="0" width="12" height="22" rx="6" fill={pillColor} />
                   <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke={socketRingColor(pillColor)} strokeWidth="2" />
-                  {pillLit && (
-                    <rect x="0" y="0" width="12" height="22" rx="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
-                  )}
+                  <PillGlow socket={dragSocketKey(t.effNodeId, t.effSocketKey)} />
                 </svg>
               </Fragment>
             );

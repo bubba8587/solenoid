@@ -1,4 +1,4 @@
-import { useRef, useSyncExternalStore } from "react";
+import { memo, useRef, useSyncExternalStore } from "react";
 import { drawModeStore, finishDrawing } from "../drawnCables";
 import { isPinching } from "../pointerGesture";
 import { IS_COARSE } from "../coarse";
@@ -6,7 +6,7 @@ import "./drawnCableLayer.css";
 
 const TAP_SLOP = IS_COARSE ? 12 : 4;
 
-export function DrawnCableCapture({
+export const DrawnCableCapture = memo(function DrawnCableCapture({
   toFlow,
   panBy,
   zoom,
@@ -106,4 +106,4 @@ export function DrawnCableCapture({
       </div>
     </>
   );
-}
+});

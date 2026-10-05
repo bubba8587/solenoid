@@ -1,4 +1,4 @@
-import { useCallback, useRef, useSyncExternalStore } from "react";
+import { memo, useCallback, useRef, useSyncExternalStore } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import {
   drawnCableStore, drawModeStore, commitDrawn,
@@ -256,7 +256,7 @@ function PendingCable({ zoom }: { zoom: number }) {
   );
 }
 
-export function DrawnCableLayer() {
+export const DrawnCableLayer = memo(function DrawnCableLayer() {
   useSyncExternalStore(drawnCableStore.subscribe, drawnCableStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   useSyncExternalStore(drawModeStore.subscribe, drawModeStore.version);
@@ -279,4 +279,4 @@ export function DrawnCableLayer() {
       <PendingCable zoom={zoom} />
     </svg>
   );
-}
+});

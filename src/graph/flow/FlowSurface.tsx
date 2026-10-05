@@ -536,6 +536,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     },
     [getViewport, setViewport],
   );
+  const currentZoom = useCallback(() => getViewport().zoom, [getViewport]);
   const onPaneClick = useCallback(() => {
     cableSelectionStore.set(null);
     drawnCableStore.select(null);
@@ -938,7 +939,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           />
         </svg>
       )}
-      {hooks.drawnCables && <DrawnCableCapture toFlow={screenToFlowPosition} panBy={panBy} zoom={() => getViewport().zoom} />}
+      {hooks.drawnCables && <DrawnCableCapture toFlow={screenToFlowPosition} panBy={panBy} zoom={currentZoom} />}
       <CableInspector />
       {hooks.drawnCables && <DrawnCableInspector />}
       {children}

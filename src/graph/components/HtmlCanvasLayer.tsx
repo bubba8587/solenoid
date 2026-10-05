@@ -1,5 +1,5 @@
 // [[C42]] htmlInCanvasRenderer
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useRenderMode } from "../renderMode";
 import { zoomSettleMs } from "../zoomSettle";
 import { IS_COARSE } from "../coarse";
@@ -31,7 +31,7 @@ const graphDomWeight = (ed: NodeEditor<Schemes>): number => {
   return w;
 };
 
-export function HtmlCanvasLayer({ editor, view }: { editor: NodeEditor<Schemes>; view: View }) {
+export const HtmlCanvasLayer = memo(function HtmlCanvasLayer({ editor, view }: { editor: NodeEditor<Schemes>; view: View }) {
   const mode = useRenderMode();
   const hostRef = useRef<HTMLDivElement>(null);
   const [domWeight, setDomWeight] = useState(() => graphDomWeight(editor));
@@ -417,4 +417,4 @@ export function HtmlCanvasLayer({ editor, view }: { editor: NodeEditor<Schemes>;
 
   if (!active) return null;
   return <div ref={hostRef} className="solenoid-html-layer" />;
-}
+});

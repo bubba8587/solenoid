@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { memo, useSyncExternalStore } from "react";
 import {
   drawnCableStore, nearestOption, commitDrawn,
   DRAWN_WIDTHS, DRAWN_HEAD_SCALES, DRAWN_ANGLE_STEP,
@@ -103,7 +103,7 @@ function Segmented<T extends string>({
   );
 }
 
-export function DrawnCableInspector() {
+export const DrawnCableInspector = memo(function DrawnCableInspector() {
   useSyncExternalStore(drawnCableStore.subscribe, drawnCableStore.version);
 
   const id = drawnCableStore.selected();
@@ -245,4 +245,4 @@ export function DrawnCableInspector() {
       </button>
     </div>
   );
-}
+});

@@ -372,6 +372,8 @@ A drag or pan holds the frame rate however many figures the canvas shows.
 
 - A drag never re-renders a card. RF hands every card its absolute position and a `dragging` flag as props, the position new each frame; `SolNodeAdapter`'s memo ignores both, since no card reads them. Without this, a dragged chart rebuilt every mark each frame (measured on 36 charts of 250 points: a 30-step drag took 13 seconds).
 - Selecting a card doesn't redraw its figure: `ChartFigure` is memoized and the Chart card keeps its figure value stable between computes.
+- A drag re-renders the dragged card's cables and nothing else of the app's. RF keeps the node list in `FlowSurface`'s state, so the surface re-renders every frame; every layer it renders (the standoff, drawn-cable and pending-cable layers, the HTML-canvas layer, both cable inspectors, the drawn-cable capture) is memoized and draws from its stores, and a standoff bar re-renders only when its own two cards move or resize (an RF-store selector on their boxes, as the pending ghosts do).
+- A hover never redraws every card: a card or pill reads its own socket's highlight (`socketHighlightStore.isHighlighted(key)` as the snapshot), never the store's version, so crossing a cable redraws only the sockets it lights. `scripts/drag-probe.mjs` counts what a drag renders.
 - A dragged card wears `will-change: transform` (one composited layer, so the browser moves a bitmap instead of repainting), and while a card is dragged or the canvas pans, chart internals (recharts' wrapper, the hover canvases) take no pointer, so they don't re-run hover hit-testing every frame (flow.css).
 
 Reopen if a card needs its live position while it moves; it should read it from a store, not RF's props.
