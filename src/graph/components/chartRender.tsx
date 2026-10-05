@@ -86,6 +86,8 @@ export function ChartView({
   const { grid, axis, viz } = useChartColors();
   const seriesColors = useSeriesColors();
   const paint = (i: number) => seriesColors[i % seriesColors.length];
+  // A Pie, Funnel or Radial slice spotlights on a click, as a legend entry does on a multi-series chart.
+  const { dim: sliceDim, pick: pickSlice } = useSeriesSpotlight(series.map((d) => String(d.i)));
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   // A numeric index axis hands back fractional ticks (0.5, 1.5), so round to a datum.
@@ -196,8 +198,8 @@ export function ChartView({
     chart = (
       <PieChart width={width} height={chartH}>
         <Pie data={slices} dataKey="v" nameKey="i" cx="50%" cy="50%" outerRadius={r} stroke="var(--surface)" isAnimationActive={false}
-             label={labeled ? pieLabel : undefined} labelLine={false}>
-          {slices.map((d) => <Cell key={d.i} fill={paint(d.i)} />)}
+             label={labeled ? pieLabel : undefined} labelLine={false} onClick={(_e, k) => pickSlice(slices[k]?.i ?? -1)}>
+          {slices.map((d) => <Cell key={d.i} fill={paint(d.i)} fillOpacity={sliceDim(d.i)} className="sol-slice" />)}
         </Pie>
         {SLICE_TIP}
       </PieChart>
@@ -219,8 +221,8 @@ export function ChartView({
     const rings = partSlices(op, series).map((d) => ({ ...d, name: sanitizeChartLabel(tickFmt(d.i)), fill: paint(d.i) }));
     chart = (
       <RadialBarChart width={width} height={chartH} cx="50%" cy="50%" innerRadius="18%" outerRadius="92%" data={rings} startAngle={90} endAngle={-270}>
-        <RadialBar dataKey="v" background={{ fill: grid }} cornerRadius={3} isAnimationActive={false}>
-          {rings.map((d) => <Cell key={d.i} fill={d.fill} />)}
+        <RadialBar dataKey="v" background={{ fill: grid }} cornerRadius={3} isAnimationActive={false} onClick={(_e, k) => pickSlice(rings[k]?.i ?? -1)}>
+          {rings.map((d) => <Cell key={d.i} fill={d.fill} fillOpacity={sliceDim(d.i)} className="sol-slice" />)}
         </RadialBar>
         {labels && <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fs, color: axis }} />}
         {SLICE_TIP}
@@ -231,9 +233,9 @@ export function ChartView({
     chart = (
       <FunnelChart width={width} height={chartH}>
         {SLICE_TIP}
-        <Funnel dataKey="v" data={stages} isAnimationActive={false}>
+        <Funnel dataKey="v" data={stages} isAnimationActive={false} onClick={(_e: unknown, k: number) => pickSlice(stages[k]?.i ?? -1)}>
           <LabelList position="right" dataKey="v" fill={axis} stroke="none" fontSize={10 * fs} />
-          {stages.map((d) => <Cell key={d.i} fill={paint(d.i)} />)}
+          {stages.map((d) => <Cell key={d.i} fill={paint(d.i)} fillOpacity={sliceDim(d.i)} className="sol-slice" />)}
         </Funnel>
       </FunnelChart>
     );
