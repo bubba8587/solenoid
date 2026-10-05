@@ -297,7 +297,7 @@ A note that does not exist yet is written as the markdown (wrapped in markers fo
 
 **Frontmatter YAML** (`frontmatterToYaml` in `obsidianMarkdown.ts`; `yamlScalar` is shared with `frontmatterPatch.ts`). The block is `---`-fenced with a trailing newline, keys in insertion order, and empty when there are no keys. A list is a block sequence (`key: []` when empty). A scalar is written bare unless YAML would misread it:
 
-- null is empty, a finite number is bare, a non-finite number is quoted, and a logical is `true` or `false`;
+- null is empty, a finite number is bare, ∞ and −∞ are YAML's `.inf` and `-.inf`, which the note reader reads back as ∞ ([[D48]] classifyNonFinite; `.nan` reads blank), NaN is quoted, and a logical is `true` or `false`;
 - text is quoted when it is empty, has surrounding whitespace, contains any of `:#[]{}",` or a newline or tab, reads as `true`, `false`, `null`, `yes`, `no`, `on` or `off` in any case, starts like a YAML number (an optional sign, then a digit or a dot and a digit: `+1`, `-.5`), starts with a YAML indicator (`*&!|>%@'` or a backtick, or `~`), is a bare or space-followed `-` or `?`, or is an infinity or NaN word (`.inf`, `-.inf`, `.nan`, any case); a test reads every such value back through the `yaml` package;
 - quoted text is a double-quoted scalar with backslash, quote, newline, carriage return and tab escaped, so a multi-line value stays valid on one line; text holding a character YAML calls non-printable (a C0 or C1 control other than tab and line breaks) is quoted with it escaped as `\xNN`, since js-yaml refuses a block that holds one raw.
 

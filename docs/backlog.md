@@ -311,9 +311,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   has no per-substance range check.
 
 ## From the 2026-09-29 commit-walk review (08-24 to 09-29; open leads, each verified against HEAD unless marked)
-- [ ] **Cast "Group (default ,)"** label: with Decimal `,` the default group is none, so the label misleads; a string for the author.
-- [ ] **∞ through a note** (author's call): the writer puts ∞ in a note as the text `"Infinity"` (`yamlScalar`), which a number column reads back as NaN ([[D93]] oneTextReading), while [[D48]] classifyNonFinite keeps an incoming ∞ a real value; bare `.inf` reads blank (`noteFrontmatter.ts` readScalar). Write `.inf` and read it as ∞, or read the text "Infinity" as ∞.
-- [ ] **TaskNotes blank URL** (author's call, [[D62]] demoVaultResolution): with Use demo vault on (the default), a blank TaskNotes URL reads the demo, where it always meant the default server `localhost:8080` (`taskNotesApi.ts` base(), the Settings placeholder). Decide what blank means. (Write Tasks already refuses while the reader is on the demo.)
 - [ ] **Vendored DTE**: `tools/dte.py` `COVERAGE_TEMPLATE` writes a literal `100%%` into a new `.dtecoverage` on `dte init`; `excluded_from_coverage` doesn't count `covers:` citations (the numbers only). Upstream fixes.
 - [ ] **World Clock** updates only on a recompute, at midnight or on F9; a per-minute ticker is a design choice (a live tick recomputes its downstream every minute).
 - [ ] **Currency over a list**: the Amount socket is single-value, so a list of amounts is refused; broadcast, or keep one amount per card.
@@ -327,6 +324,5 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Append units**: Append drops unit and format by spec; keep them when every frame agrees?
 
 ## From the 2026-09-30 oldest-first review (1.0-era and July files; verified against HEAD)
-- [ ] **Constant and Physics Constant** draw their own value box (`ConstantNode.tsx`, `PhysicsConstantNode.tsx`): no copy button, no Format Controller. `ValueDisplay`'s `render` could carry the symbol and unit; decide how those sit beside an FC's formatting.
 - [ ] **IFERROR over a Frame**: `replaceCaught` (`nodes/logic.ts`) walks lists only, so a per-cell error inside a table passes through uncaught ([[C24]] arraySemantics); decide whether IFERROR reaches into cells.
 - [ ] **Node showcase on its own flow stage** (`flow/StaticFlowStage.tsx`): a hand-built React Flow surface beside `FlowSurface`'s `locked` + `staticView` mode that `SceneStage` uses ([[B3]] sameNodeEverywhere); unverified that the showcase runs on FlowSurface unchanged. Its type switch may also race (`NodeShowcase.tsx`: a cancelled run's `addNode` landing after the next `clear()`), unconfirmed.

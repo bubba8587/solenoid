@@ -304,7 +304,7 @@ export function nodeResizable(node: ClassicPreset.Node): boolean {
 }
 
 export function nodeWide(node: ClassicPreset.Node): boolean {
-  if (node instanceof PointPlotterNode || node instanceof CurveNode) return true;
+  if (node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof PhysicsConstantNode) return true;
   if (node instanceof ExpressionNode || node instanceof ScriptNode || node instanceof EquationNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode || node instanceof ChartBuilderNode) return true;

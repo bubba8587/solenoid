@@ -77,7 +77,8 @@ export interface SettingField {
   label: string;
   help?: string;
   type?: "boolean" | "folder" | "segment" | "text";
-  placeholder?: string;
+  /** What an empty field reads as; a function when it depends on another setting. */
+  placeholder?: string | ((get: <K extends keyof Settings>(key: K) => Settings[K]) => string);
   options?: { value: string; label: string }[];
   accordion?: string;
   /** No mobile counterpart: consumers must both gray the control and skip the behavior. */
@@ -265,7 +266,8 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         label: "TaskNotes API",
         help: "The TaskNotes plugin's HTTP API. Turn it on in the plugin's settings; the token goes on the TaskNotes card.",
         type: "text",
-        placeholder: "http://localhost:8080",
+        // Blank reads the demo vault while Use demo vault is on ([[D62]] demoVaultResolution), else the plugin's default address.
+        placeholder: (get) => (get("useDemoVault") ? "Demo vault" : "http://localhost:8080"),
       },
     ],
   },

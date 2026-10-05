@@ -32,6 +32,8 @@ describe("frontmatterToYaml", () => {
     expect(yamlScalar("-")).toBe('"-"');
     expect(yamlScalar(".5")).toBe('".5"');
     expect(yamlScalar(".inf")).toBe('".inf"');
+    expect(yamlScalar(Infinity)).toBe(".inf");
+    expect(yamlScalar(-Infinity)).toBe("-.inf");
     expect(yamlScalar("-item")).toBe("-item"); // plain '-' + non-space stays a plain scalar
   });
   it("a multi-line / tabbed string is quoted with the newline escaped (stays valid one-line YAML)", () => {

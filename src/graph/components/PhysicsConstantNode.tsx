@@ -1,20 +1,10 @@
 import { PhysicsConstantNode as PhysicsConstantNodeType } from "../rete-nodes";
 import { PHYS_CONSTANTS, type PhysConstOp } from "../nodes/physicsConstantsOps";
-import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
 const OPS = (Object.entries(PHYS_CONSTANTS) as [PhysConstOp, (typeof PHYS_CONSTANTS)[PhysConstOp]][]).map(
   ([value, meta]) => ({ value, label: `${meta.symbol}  ${meta.label}`, group: meta.group }),
 );
-
-// Constants span 61 orders of magnitude: exponent notation for anything the plain form
-// would mangle, full digits where they fit.
-function formatConst(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1e-3 && abs < 1e9) {
-    return Number.isInteger(n) ? n.toString() : String(Number(n.toPrecision(10)));
-  }
-  return n.toExponential(6).replace(/\.?0+e/, "e");
-}
 
 export function PhysicsConstantComponent({ data, emit }: NodeProps<PhysicsConstantNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
@@ -22,11 +12,8 @@ export function PhysicsConstantComponent({ data, emit }: NodeProps<PhysicsConsta
   return (
     <NodeShell node={data} emit={emit}>
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      <div className="solenoid-node__display-value">
-        <span style={{ marginRight: 6, color: "var(--text-dim)" }}>{meta.symbol}</span>
-        {formatConst(meta.value)}
-        <span style={{ marginLeft: 6, color: "var(--text-dim)", fontSize: "0.85em" }}>{meta.unit}</span>
-      </div>
+      {/* The value carries its unit, so the box shows it formatted with the unit; the symbol is in the picker. */}
+      <ValueDisplay value={meta.value} toClipboard={(v) => String(v)} />
     </NodeShell>
   );
 }

@@ -141,6 +141,7 @@ function NetworkDocRow() {
 }
 
 function TextRow({ field }: { field: SettingField }) {
+  useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
   const value = settingsStore.get(field.key) as string;
   const [draft, setDraft] = useState(value);
   const commit = () => settingsStore.set(field.key, draft.trim() as never);
@@ -154,7 +155,7 @@ function TextRow({ field }: { field: SettingField }) {
         <input
           type="text"
           className="solenoid-settings__key-input"
-          placeholder={field.placeholder}
+          placeholder={typeof field.placeholder === "function" ? field.placeholder(settingsStore.get) : field.placeholder}
           value={draft}
           spellCheck={false}
           autoComplete="off"

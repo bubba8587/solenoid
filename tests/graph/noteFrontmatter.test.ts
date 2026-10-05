@@ -220,8 +220,11 @@ describe("a hand-typed number spelling reads as Obsidian types it", () => {
   const val = (y: string) => parseNoteFrontmatter(`---\nk: ${y}\n---\n`).fields[0]?.value;
   it("a signed dot-float is text; a signed or binary radix literal is a number", () => {
     expect(val("-.5")).toBe("-.5");
-    expect(val("-.inf")).toBe(null);
-    expect(val("+.inf")).toBe(null);
+    // YAML's infinity reads as ∞ ([[D48]] classifyNonFinite), so ∞ written to a note comes back.
+    expect(val("-.inf")).toBe(-Infinity);
+    expect(val("+.inf")).toBe(Infinity);
+    expect(val(".inf")).toBe(Infinity);
+    expect(val(".nan")).toBe(null);
     expect(val(".5")).toBe(0.5);
     expect(val("0b101")).toBe(5);
     expect(val("+0x1F")).toBe(31);

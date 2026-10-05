@@ -150,7 +150,7 @@ export const SERIES_OP_META = {
 
 const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string; def?: number }>> = {
   range:    [{ key: "start", label: "Start", def: 0 }, { key: "stop", label: "Stop" }, { key: "step", label: "Step", def: 1 }],
-  sequence: [{ key: "count", label: "Rows", def: 10 }, { key: "cols", label: "Columns (default 1)" }, { key: "start", label: "Start (default 1)" }, { key: "step", label: "Step (default 1)" }],
+  sequence: [{ key: "count", label: "Rows", def: 10 }, { key: "cols", label: "Columns" }, { key: "start", label: "Start" }, { key: "step", label: "Step" }],
   linspace: [{ key: "start", label: "Start", def: 0 }, { key: "end", label: "End", def: 1 }, { key: "count", label: "Count", def: 10 }],
   geometric: [{ key: "start", label: "Start", def: 1 }, { key: "ratio", label: "Ratio", def: 2 }, { key: "count", label: "Count", def: 8 }],
   fibonacci: [{ key: "count", label: "Count", def: 10 }],
@@ -212,6 +212,10 @@ export class SeriesNode extends ClassicPreset.Node {
       this.lastRank = 1;
     }
     this.seedLiterals();
+  }
+
+  currentInputRoles(): Record<string, InputRole> {
+    return SeriesNode.rolesByOp[this.op];
   }
 
   data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[]; cols?: number[]; ratio?: number[]; value?: number[] }): { list: number[] | number[][] | SolError | null } {

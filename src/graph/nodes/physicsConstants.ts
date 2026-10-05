@@ -8,7 +8,7 @@ import { PHYS_CONSTANTS, type PhysConstOp } from "./physicsConstantsOps";
 export class PhysicsConstantNode extends ClassicPreset.Node {
   label: string;
   op: PhysConstOp;
-  width = 210;
+  width = 240;
   height = 110;
 
   constructor(init?: { label?: string; op?: PhysConstOp }) {
