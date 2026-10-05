@@ -1,13 +1,13 @@
 // [[C10]] socketLattice
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cubePopup, gridPosOf, type DrillView, type CellRef } from "../cubePopupStore";
-import { CubeEditCell, ListEditCell, GridEditCell, cubeEditAxes, CubeEditHeader } from "./cubeEditCell";
+import { CubeEditCell, ListEditCell, GridEditCell, CubeEditChip, cubeEditAxes, CubeEditHeader } from "./cubeEditCell";
 import { TableEditMenus, TableContextMenu, useEditShortcuts } from "./TableEditMenu";
 import { pickIndex, type AxisSelection } from "../tableEdit";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount, type CubeCell } from "../frame";
 import { CubeCellChip, frameCellNode, cubeCellToken, cubeCellShown } from "./cubeCell";
-import { cubeLevelColumns, statValues } from "../cubeLevelTable";
+import { cubeLevelColumns, statValues, isContainer } from "../cubeLevelTable";
 import { cardMatches } from "../cardLayout";
 import { TableCards } from "./TableCards";
 import { SearchIcon, ChevronDownIcon } from "./Icons";
@@ -284,6 +284,8 @@ export function CubePopup() {
           types={table.columns.map((c) => c.type)}
           computed={new Set()}
           chipCols={new Set()}
+          nestedCols={new Set(table.columns.flatMap((col, c) => (col.nested ? [c] : [])))}
+          listCols={new Set(table.columns.flatMap((col, c) => (col.lists ? [c] : [])))}
           rowCount={rows}
           order={sortOrder}
           rawAt={(r, c) => {
@@ -291,6 +293,17 @@ export function CubePopup() {
             return v === null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : typeof v === "object" ? cubeCellToken(v) : String(v);
           }}
           shownRow={rowText}
+          itemsAt={(r, c) => {
+            const v = table.columns[c]?.cells[r];
+            return Array.isArray(v) ? v.map((x) => cubeCellToken(x as CubeCell)).filter((t) => t !== "") : null;
+          }}
+          cellNodeAt={(r, c) => {
+            const col = table.columns[c];
+            const v = col?.cells[r] ?? null;
+            if (!col || !isContainer(v)) return null;
+            if (editView && state.edit && editView.kind === "cube") return <CubeEditChip edit={state.edit} path={editView.path!} row={r} column={col.name} />;
+            return <CubeCellChip cell={v} crumb={col.name} size="sm" type={col.declared} format={col.format} at={{ r, c }} />;
+          }}
           dataKey={table}
           sort={sort}
           onSort={setSort}

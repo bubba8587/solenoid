@@ -45,6 +45,9 @@ warning is expected.
 - [ ] **Leaf number clash:** this session's D96 emptySlotShowsItsValue took the number the parked `pivot-list-cells` branch gave D96 pivotPoolsItems; move that branch's leaf (`dte move`) when it merges.
 
 ## Cubes and lists (author 2026-09-26)
+- [ ] **Cards preview what a nested cell holds** (author 2026-10-05, [[C114]] cardsView): a cube card shows a nested
+  list, table, Frame or Cube only as its drill chip. Explore example layouts (first task names, a mini table, counts) and
+  write the new card-interpreter rules into table-popup § The Cards view before building.
 
 - [ ] **Review the settings sweep ([[D86]] blankRoles).** Built on Claude's judgement (2026-09-26); the calls and the
   exact roles are in `settings-audit.md`. Still to sweep: Frame verbs' column references, an as-of Join's tolerance,

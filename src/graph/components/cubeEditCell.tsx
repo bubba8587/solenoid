@@ -217,6 +217,17 @@ export function CubeEditCell({ edit, path, row, column, source = false }: {
   return <EditCell edit={edit} cellPath={[...path, row, column]} crumb={column} from={{ r: row }} type={declaredTypeAt(edit, path, column)} item={false} source={source} kinds={!inFrame} />;
 }
 
+/** An editable level's nested cell as its drill chip, for a card; null for a plain value. */
+export function CubeEditChip({ edit, path, row, column }: { edit: CubeEditBinding; path: CubePath; row: number; column: string }): ReactNode {
+  if (rootColumns(edit, path)?.find((c) => c.name === column)?.expr !== undefined) return null;
+  const cellPath: CubePath = [...path, row, column];
+  const src = edit.source();
+  const value = getAtPath(src.rows, cellPath);
+  const kind = cellKindOf(value, isFrameAt(src.nested ?? {}, cellPath));
+  if (kind === "value") return null;
+  return <NestedChip edit={edit} cellPath={cellPath} value={value} kind={kind} crumb={column} from={{ r: row }} type={declaredTypeAt(edit, path, column)} />;
+}
+
 export function ListEditCell({ edit, path, row, source = false }: { edit: CubeEditBinding; path: CubePath; row: number; source?: boolean }): ReactNode {
   return <EditCell edit={edit} cellPath={[...path, row]} crumb="item" from={{ item: row }} type={declaredTypeAt(edit, path)} item source={source} />;
 }

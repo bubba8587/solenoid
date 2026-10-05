@@ -13,6 +13,9 @@ export interface CardColumnInput {
   shown?: readonly string[];
   /** The column's format is the Chip style. */
   chip?: boolean;
+  /** Every filled cell is a nested list, table, Frame or Cube; `lists` when every one is a list. */
+  nested?: boolean;
+  lists?: boolean;
 }
 
 export interface CardMeter { col: number; max: number }
@@ -244,7 +247,7 @@ export function planCards(cols: readonly CardColumnInput[]): CardPlan {
     cols.flatMap((_, i) => (!taken.has(i) && profiles[i].filled > 0 && pred(i) ? [i] : []));
   const first = (pred: (i: number) => boolean): number | null => free(pred)[0] ?? null;
 
-  const isText = (i: number) => cols[i].type === "string";
+  const isText = (i: number) => cols[i].type === "string" && !cols[i].nested;
   const isNum = (i: number) => cols[i].type === "number";
   const isDate = (i: number) => cols[i].type === "date";
   const isLinks = (i: number) => profiles[i].urls * 2 >= profiles[i].filled && profiles[i].urls > 0;
@@ -271,7 +274,7 @@ export function planCards(cols: readonly CardColumnInput[]): CardPlan {
     titleRest = takeAll(middleName !== null ? [middleName, lastName] : [lastName]);
   }
 
-  const tags = takeAll(free((i) => isPlainText(i) && has(words[i], TAG_WORDS) && profiles[i].maxLen <= PROSE_MAX));
+  const tags = takeAll(free((i) => has(words[i], TAG_WORDS) && (cols[i].lists || (isPlainText(i) && profiles[i].maxLen <= PROSE_MAX))));
 
   const prose = takeAll(free((i) => {
     if (!isPlainText(i)) return false;

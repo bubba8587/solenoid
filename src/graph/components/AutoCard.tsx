@@ -1,4 +1,5 @@
 // [[C114]] cardsView, [[C103]] untrustedContentSeams
+import type { ReactNode } from "react";
 import { CellImage } from "./cubeCell";
 import { splitTags, isHexColor, linkHref, shortLink, type CardColType, type CardPlan } from "../cardLayout";
 import { categoryColorIndex } from "../categoryColor";
@@ -79,11 +80,12 @@ export function cardChipColors(
   chipCols: ReadonlySet<number>,
   rowCount: number,
   rawAt: (r: number, c: number) => string,
+  itemsAt?: (r: number, c: number) => readonly string[] | null,
 ): Map<number, Map<string, number>> {
   const m = new Map<number, Map<string, number>>();
   let next = 0;
-  const tokensOf = (c: number) => Array.from({ length: rowCount }, (_, r) => rawAt(r, c)).flatMap((t) =>
-    plan.tags.includes(c) ? splitTags(t) : t.trim() === "" ? [] : [t.trim()]);
+  const tokensOf = (c: number) => Array.from({ length: rowCount }, (_, r) => rawAt(r, c)).flatMap((t, r) =>
+    plan.tags.includes(c) ? (itemsAt?.(r, c) ?? splitTags(t)) : t.trim() === "" ? [] : [t.trim()]);
   for (const c of [...plan.chips, ...plan.tags]) {
     const own = categoryColorIndex(tokensOf(c));
     if (chipCols.has(c)) { m.set(c, own); continue; }
@@ -109,7 +111,7 @@ function tilesOf(plan: CardPlan): Tile[] {
  * With `fold`, a card past TILE_LIMIT fields and its prose stay short until `open`; `onToggle` flips that.
  */
 export function AutoCard({
-  plan, names, types, computed, chipColors, texts, raw, rowNumber, fold, open = false, onToggle, toggleOnClick = false, onEdit,
+  plan, names, types, computed, chipColors, texts, raw, items, cellNode, rowNumber, fold, open = false, onToggle, toggleOnClick = false, onEdit,
 }: {
   plan: CardPlan;
   names: readonly string[];
@@ -118,6 +120,10 @@ export function AutoCard({
   chipColors: ReadonlyMap<number, ReadonlyMap<string, number>>;
   texts: readonly string[];
   raw: (c: number) => string;
+  /** A list cell's items, which a tag column shows in place of splitting its text. */
+  items?: (c: number) => readonly string[] | null;
+  /** A tile's value drawn by the host (a nested cell's drill chip), else its text. */
+  cellNode?: (c: number) => ReactNode;
   rowNumber: number;
   fold: boolean;
   open?: boolean;
@@ -135,7 +141,7 @@ export function AutoCard({
   const meta = start !== "" && end !== "" ? `${start} – ${end}` : start || end;
   const hero = text(plan.hero);
   const chips = plan.chips.filter((c) => text(c) !== "");
-  const tagTokens = plan.tags.flatMap((c) => splitTags(raw(c)).map((t) => ({ c, t })));
+  const tagTokens = plan.tags.flatMap((c) => (items?.(c) ?? splitTags(raw(c))).map((t) => ({ c, t })));
   const swatches = plan.swatches.filter((c) => isHexColor(raw(c)));
   const flags = plan.flags.flatMap((c) => { const v = readLogical(raw(c)); return v === null ? [] : [{ c, v }]; });
   const rowTiles = tilesOf(plan).filter((t) => text(t.c) !== "");
@@ -214,7 +220,7 @@ export function AutoCard({
                 <dt className="sol-card__label">{computed.has(c) && <FxDot />}{names[c]}</dt>
                 <dd>
                   {kind === "rating" && Number.isFinite(n) && <Stars value={n} />}
-                  <CellText text={kind === "meter" && Number.isFinite(n) && !text(c).endsWith("%") ? `${Math.round((n / (max ?? 1)) * 100)}%` : text(c)} />
+                  {cellNode?.(c) ?? <CellText text={kind === "meter" && Number.isFinite(n) && !text(c).endsWith("%") ? `${Math.round((n / (max ?? 1)) * 100)}%` : text(c)} />}
                 </dd>
                 {kind === "meter" && Number.isFinite(n) && (
                   <span className="sol-card__meter" aria-hidden="true">

@@ -27,6 +27,12 @@ describe("cubeLevelColumns", () => {
     expect(summarizeColumn(statValues(done), done.type).checked).toBe(2);
   });
 
+  it("marks columns of nested containers, and of flat lists among them", () => {
+    const t = cubeLevelColumns({ kind: "cube", label: "c", cube })!;
+    const shape = Object.fromEntries(t.columns.map((c) => [c.name, [c.nested, c.lists]]));
+    expect(shape).toEqual({ task: [false, false], days: [false, false], done: [false, false], after: [true, true] });
+  });
+
   it("has no table for a list or grid level", () => {
     expect(cubeLevelColumns({ kind: "list", label: "l", items: [1, 2] })).toBeNull();
     expect(cubeLevelColumns({ kind: "grid", label: "g", cells: [[1]] })).toBeNull();

@@ -40,6 +40,16 @@ describe("planCards: which part of the card each column fills", () => {
     expect(planCards(people)).toEqual({ ...EMPTY, key: 0, title: 1, subtitle: 2, meta: 4, hero: 5, chips: [3], flags: [7], stats: [6], prose: [8] });
   });
 
+  it("puts nested cells only in tags (a list column so named) or stats", () => {
+    const nested = [
+      col("Project", "string", ["Web", "App", "Ops"]),
+      col("Tags", "string", ["[web, q4]", "[ios]", "[ops]"], { nested: true, lists: true }),
+      col("Plan", "string", ["[2×3 Table]", "[3×2 Table]", "[1×1 Table]"], { nested: true }),
+      col("Name", "string", ["[3×2×1 Cube]", "[2×2×1 Cube]", "[1×2×1 Cube]"], { nested: true }),
+    ];
+    expect(planCards(nested)).toEqual({ ...EMPTY, title: 0, tags: [1], stats: [2, 3] });
+  });
+
   it("places every column exactly once, even an empty one", () => {
     expect(placed(planCards(people))).toEqual(people.map((_, i) => i));
     const withBlank = [...people, col("Spare", "string", ["", "", "", ""])];

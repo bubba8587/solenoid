@@ -1,6 +1,6 @@
 // [[C114]] cardsView
 import type { DrillView } from "./cubePopupStore";
-import { cubeRowCount, frameRowCount, type CubeCell, type FrameColType } from "./frame";
+import { cubeRowCount, frameRowCount, isCubeValue, isFrameValue, type CubeCell, type FrameColType } from "./frame";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 import { isUnitCell } from "./unitValue";
 import { displayMagnitudeOf } from "./unitBridge";
@@ -13,6 +13,18 @@ export interface LevelColumn {
   declared?: FrameColType;
   format?: FormatAnnotation;
   cells: readonly CubeCell[];
+  /** Every filled cell is a list, table, Frame or Cube; `lists` when every one is a flat list. */
+  nested: boolean;
+  lists: boolean;
+}
+
+export const isContainer = (v: unknown): boolean => Array.isArray(v) || isCubeValue(v) || isFrameValue(v);
+const isFlatList = (v: unknown): boolean => Array.isArray(v) && !v.some((x) => Array.isArray(x));
+
+function shapeOf(cells: readonly CubeCell[]): { nested: boolean; lists: boolean } {
+  const filled = cells.filter((v) => v != null && v !== "");
+  const nested = filled.length > 0 && filled.every(isContainer);
+  return { nested, lists: nested && filled.every(isFlatList) };
 }
 
 function inferType(cells: readonly CubeCell[]): FrameColType {
@@ -31,7 +43,7 @@ export function cubeLevelColumns(view: DrillView): { rows: number; columns: Leve
       rows,
       columns: view.cube.columns.map((c) => {
         const cells = Array.from({ length: rows }, (_, r) => c.cells[r] ?? null);
-        return { name: c.name, type: c.type ?? inferType(cells), declared: c.type, format: c.format, cells };
+        return { name: c.name, type: c.type ?? inferType(cells), declared: c.type, format: c.format, cells, ...shapeOf(cells) };
       }),
     };
   }
@@ -42,6 +54,7 @@ export function cubeLevelColumns(view: DrillView): { rows: number; columns: Leve
       columns: view.frame.columns.map((c) => ({
         name: c.name, type: c.type, declared: c.type, format: c.format,
         cells: Array.from({ length: rows }, (_, r) => (c.values[r] ?? null) as CubeCell),
+        nested: false, lists: false,
       })),
     };
   }
