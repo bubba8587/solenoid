@@ -56,7 +56,7 @@ This file is the map.
 │                             #     demo-video/ (the demo video: scripted scenes filmed in Chromium and a real
 │                             #     Obsidian, cut with ffmpeg; the demo-video skill runs it)
 ├── .claude/                  # Claude Code project config: skills/ (add-node, demo-video, shot-graph), commands/, settings.json
-├── .github/workflows/        # CI: test.yml (tsc+vitest), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
+├── .github/workflows/        # CI: test.yml (tsc+vitest), engine-test.yml (cargo test, on engine or corpus changes), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
 ├── package.json              # JS deps + scripts (dev, build, test, tauri)
 ├── vite.config.ts            # Vite config (keepNames: constructor.name is load-bearing)
