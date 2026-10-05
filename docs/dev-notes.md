@@ -6,6 +6,13 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-05: known-bug sweep from the backlog's commit-walk leads; cloud session)
+- **Chart value axes keep the decimals close ticks need** (`valueTickFormat`/`compactTick(n, step)` in `chartCore.ts`): 100000, 100250 read "100K", "100.25K"; the gutter measures with the same formatter.
+- **A Board's number lanes format when drawn** (`recordLaneText`), so Decimal places shows without a recompute ([[chart-figures]] Record).
+- **Schedule converts Work and hour Durations at the task's own Hours**; **MSPDI writes a typed Start's floor even when it doesn't bind** (`startFloor` on `ScheduledTask`).
+- **YEARFRAC truncates its basis** as Excel does; the criteria functions' numeric-text reading is listed with formula-language's deliberate Excel differences.
+- **Desktop HTTP scope is `http://*:*` / `https://*:*`** (the plugin never wildcards a port); unverified in a desktop build. **Desktop builds run on develop** (docs-only pushes skipped, superseded branch builds cancelled). **The plugin drops a mount never attached after 10 s.**
+
 ### SESSION DIGEST (2026-10-04: XY gradient line, drag frame rate, Chart Builder sections, stacking commands, landscape phones, installable app, pinch hand-off, site SEO; cloud session)
 - **Site SEO**: one origin (`SITE_ORIGIN` in `siteMeta.ts`; `index.html` says `%SITE_ORIGIN%`), robots and sitemap generated at build, canonicals and SoftwareApplication JSON-LD; the landing page moved from `?landing` to `/about` (the app keeps `/`); each site page's HTML carries a plain-text snapshot from `prerender/`, kept current by a source fingerprint `prerender.test.ts` checks (architecture.md). The domain solenoid-ngc.com is bought and pointed at Vercel; the cutover is a backlog item.
 - **Lifting one finger of a pinch** pans on from the leftover finger, without the jump or a stray card drag or select (`flowPinch.ts`, [[touch-gestures]]).
