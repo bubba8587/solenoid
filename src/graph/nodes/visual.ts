@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";
-import { parseChartOptions, serializeChartOptions, chartBuilderKeys, type ChartOptions, type ChartTargetId } from "./chartOptions";
+import { parseChartOptions, serializeChartOptions, chartBuilderKeys, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d, equalWidthBins, binCountError } from "./visualOps";
 export { histogram2d, type Histogram2d } from "./visualOps";
@@ -246,7 +246,10 @@ export class MergePlotsNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
-    this.chartOptions = parseChartOptions(readInput(inputs.options as string[] | undefined, this.stringLiterals.options ?? null));
+    // Only the keys the builder offers Merge Plots: each plot keeps its own color, marker size and alpha.
+    const parsed = parseChartOptions(readInput(inputs.options as string[] | undefined, this.stringLiterals.options ?? null));
+    const offered = new Set<string>(CHART_BUILDER_TARGETS.overlay.keys);
+    this.chartOptions = Object.fromEntries(Object.entries(parsed).filter(([k]) => offered.has(k))) as ChartOptions;
     const sources: { cv: ChartValue; plotNo: number }[] = [];
     let refusal: SolError | null = null;
     this.plotKeys().forEach((key, i) => {

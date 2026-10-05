@@ -23,6 +23,15 @@ describe("Merge Plots node", () => {
     expect(n.outputs.chart).toBeTruthy();
   });
 
+  it("keeps only the options the builder offers it: a plot's alpha and marker size stay the plot's", () => {
+    const n = new MergePlotsNode();
+    const res = n.data({ p0: [chart("line", [1, 2])], p1: [chart("line", [3, 4])], options: ["title=T; alpha=0.3; markersize=9; color=red; linewidth=2"] });
+    const opts = (res.chart as ChartValue).options!;
+    expect(opts.title).toBe("T");
+    expect(opts.linewidth).toBe(2);
+    expect([opts.alpha, opts.markersize, opts.color]).toEqual([undefined, undefined, undefined]);
+  });
+
   it("overlays each input's series, one per source, preserving its mark kind", () => {
     const n = new MergePlotsNode();
     const res = n.data({

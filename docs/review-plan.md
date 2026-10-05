@@ -537,7 +537,7 @@ Commits: 94b25efb (nine bugs), 9c4dd3f8, 12bca4cb, 365e0fd7, ba686b25, 9afe6faf,
 - [x] Checked 2026-09-28: the export doesn't wait for a fetch in flight, so it carries what the card shows at that moment, which is ba686b25's rule. Was: Reports export what the screen shows (ba686b25): a Report with a live card mid-fetch.
 
 ## 30. Smaller 09-23/24 items, one look each
-- [ ] Test gap 2026-09-28, no bug reproduced: nothing lists what renderers read, so the reverse direction is unguarded; the one read not offered found by hand is Merge Plots over XY data (`opts.alpha`, `opts.markersize`), reach unconfirmed. Proposal: a per-op `RENDERER_READS` table beside the targets, with `reads ⊆ keys` tested. Was: e0ee9307 Chart Builder: every option offered is honored, pinned by `chartTitles.test.ts`
+- [ ] Test gap 2026-09-28: nothing lists what renderers read, so the reverse direction is unguarded. The one case found by hand, Merge Plots over XY data reading `opts.alpha` / `opts.markersize`, is fixed 2026-10-05: Merge Plots keeps only the keys the builder offers it (`mergePlots.test.ts`). Proposal: a per-op `RENDERER_READS` table beside the targets, with `reads ⊆ keys` tested. Was: e0ee9307 Chart Builder: every option offered is honored, pinned by `chartTitles.test.ts`
       key sets. The reverse: an option the RENDERER reads that the builder doesn't offer is
       only caught if the test enumerates renderer reads. Does it?
 - [x] Checked 2026-09-28: A→B plus B→A keeps one direction, a self-loop stays in the payload and the renderer skips it, +10 and −10 net to nothing. Was: 06dbb7fb Sankey merges repeated From→To flows: a cycle (A→B, B→A) and a self-loop.
