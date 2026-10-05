@@ -533,10 +533,12 @@ export function ValueDisplay({
     if (isString) return cased(value as string);
     if (isLogical) return applyLogicalStyle(value as boolean, ann?.logicalStyle);
     if (listIsString) return (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ");
+    // With no format picked, a number copies exactly; the display may round it or put it in scientific form.
+    const exact = (v: number) => (toClipboard ? toClipboard(v) : String(v));
     if (isList) return (value as (number | null | SolError)[]).map((v) =>
-      (toClipboard && !ann && typeof v === "number") ? toClipboard(v) : formatListCell(v, fmtScalar, ann)
+      (!ann && typeof v === "number") ? exact(v) : formatListCell(v, fmtScalar, ann)
     ).join(", ");
-    return toClipboard && !ann ? toClipboard(value as number) : fmtScalar(value as number);
+    return !ann ? exact(value as number) : fmtScalar(value as number);
   }
 
   function handleCopy(e: React.MouseEvent) {

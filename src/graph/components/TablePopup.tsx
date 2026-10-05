@@ -180,6 +180,7 @@ export function TablePopup() {
   const [focusCell, setFocusCell] = useState<{ r: number; c: number } | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; form?: boolean } | null>(null);
   const [askClose, setAskClose] = useState(false);
+  const [roFocus, setRoFocus] = useState<{ vi: number; c: number } | null>(null);
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -875,12 +876,17 @@ export function TablePopup() {
       }
     }
   }
-  const readOnlyCell = (content: string, className: string, vi: number, c: number) => (
+  // A selected read-only number shows its exact value, which the display may round or put in scientific form.
+  const readOnlyCell = (shown: string, className: string, vi: number, c: number, exact: string | null = null) => {
+    const content = exact !== null && (roFocus?.vi === vi && roFocus.c === c || activeAt(visibleOrder[vi], c)) ? exact : shown;
+    return (
     <div
       className={`${className} table-popup__input--ro`}
       data-vi={vi}
       data-c={c}
       tabIndex={-1}
+      onFocus={() => setRoFocus({ vi, c })}
+      onBlur={() => setRoFocus((f) => (f?.vi === vi && f.c === c ? null : f))}
       onKeyDown={(e) => {
         const k = gridKeyOf(e);
         if (!k) return;
@@ -892,7 +898,14 @@ export function TablePopup() {
     >
       {cellImageSrc(content) ? <CellImage src={cellImageSrc(content)!} /> : chipCols.has(c) && content !== "" ? <CategoryChip value={content} index={chipCols.get(c)!.get(content) ?? 0} /> : content === "" ? " " : content}
     </div>
-  );
+    );
+  };
+  /** The exact number behind a read-only cell (a computed column's, or a cell of a frame the popup can't edit), or null. */
+  const exactAt = (r: number, c: number, computed: boolean): string | null => {
+    if (vertical || colTypeAt(c) !== "number") return null;
+    const v = computed ? (liveComputed ?? state.computedCells)?.[r]?.[c] : state.data[r]?.[c];
+    return typeof v === "number" && Number.isFinite(v) ? String(v) : null;
+  };
   const onGridEscape = () => {
     if (editCell) {
       editDraft.current = grid[editCell.r]?.[editCell.c] ?? "";
@@ -1121,7 +1134,7 @@ export function TablePopup() {
                           {readOnlyCell(
                             controlledCell((liveComputed ?? state.computedCells)?.[r]?.[c] ?? null, c),
                             `table-popup__input table-popup__input--computed${isTextType(type) ? " table-popup__input--text" : ""}`,
-                            vi, c,
+                            vi, c, exactAt(r, c, true),
                           )}
                         </td>
                       );
@@ -1138,7 +1151,7 @@ export function TablePopup() {
                       {!canEdit ? readOnlyCell(
                         row[c] ?? "",
                         `${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`,
-                        vi, c,
+                        vi, c, editable ? null : exactAt(r, c, false),
                       ) : (
                       <>
                       {chipShown && (

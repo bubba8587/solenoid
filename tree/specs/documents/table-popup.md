@@ -283,3 +283,5 @@ A Cube Input's chip opens the popup as an editor bound to the node (an edit bind
 ## Enforced by
 
 `tests/graph/displayPopupCoverage.test.ts` (every Display value kind has a popup), `tests/graph/nodes/tableInput.test.ts` (raw text survives), `tests/graph/tableFooterStats.test.ts`, `tests/graph/gridKeyboard.test.ts`, `tests/graph/columnSort.test.ts`, `tests/graph/nodes/computedColumn.test.ts` (the λ naming), `tests/graph/listInputChip.test.ts` and `tests/graph/cardLayout.test.ts` (the Cards plan).
+
+**Exact numbers on selection** (author 2026-10-05). A typed cell's editor already shows the text as typed. A read-only number cell (a computed column's, or any cell of a frame the popup cannot edit) shows its exact value while it is selected or focused (`exactAt`), since its display may round it or put it in scientific form; it shows the display again when the selection moves.

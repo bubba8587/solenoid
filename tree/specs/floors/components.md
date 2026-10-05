@@ -83,7 +83,7 @@ The card's CSS lives in `nodeCard.css`; socket sizing is `socket.css`, driven by
 - **Whitespace.** In a text result, leading and trailing spaces show as middots and an empty string as a dim placeholder; the value and what is copied keep the real whitespace.
 - **One line.** A non-resizable card ellipsizes its value to one line; a resizable card (inputs, text, Display, lookups) wraps and fills instead.
 - **Chips.** A box holding a chip uses `--chip`: a flex row that centers the chip vertically, aligns it right, and keeps the height of a text box, so chip cards line up with value cards. Cards never restate this inline (`sourceInvariants` pins it).
-- **Copy.** A copy button sits at the box's left edge. On desktop the text is selectable; on touch a drag pans instead, and the button covers copying.
+- **Copy.** A copy button sits at the box's left edge. On desktop the text is selectable; on touch a drag pans instead, and the button covers copying. A number nobody formatted copies exactly (every digit, never the rounded or scientific display); one under a Format Controller copies as shown, since that look was chosen (author 2026-10-05).
 - **Several boxes.** A card with several result boxes passes `socketKey`, so an FC wired to one output formats only that box. `InlineOutputRows` shows compact per-output rows, each resolving its FC per socket; a row shows at most three list cells and then `…`.
 - **Errors explained.** When an error is wired into an IS-check card, the card shows the code, the producer's message and the longer `ERROR_EXPLANATIONS` text.
 
