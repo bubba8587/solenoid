@@ -21,6 +21,13 @@
 /* A card on the move is one composited layer, and its figures take no pointer, so a drag or pan doesn't repaint or re-hover a chart every frame. */
 .react-flow__node.dragging,
 .react-flow__node.sol-riding { will-change: transform; }
+/* What moves floats above the cards for the drag (members above their groups), so no card is painted over a moving layer and flips in and out of a layer of its own: a card blinking out for a frame on a phone. */
+.react-flow__node.dragging,
+.react-flow__node.sol-riding { z-index: 1002 !important; }
+.react-flow__node.sol-group-open:is(.dragging, .sol-riding) { z-index: 1001 !important; }
+/* The chrome over the canvas keeps a layer of its own for the same reason. Opacity, not transform: a transform would become the containing block of its fixed-position menus. */
+.solenoid-header, .solenoid-statusbar, .solenoid-legend, .solenoid-nav,
+.solenoid-outline__open-pill, .solenoid-hud-stack, .react-flow__minimap { will-change: opacity; }
 /* A dragged open group clips its paint (with room for the selection glow), so the members riding over it stay their own layers instead of re-rastering the group's every frame. */
 .react-flow__node.sol-group-open.dragging { overflow: clip; overflow-clip-margin: 24px; }
 .react-flow__node.dragging :is(.recharts-wrapper, canvas),
