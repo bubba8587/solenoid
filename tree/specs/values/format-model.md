@@ -104,7 +104,7 @@ Which controls exist per family, both as popup rows and as resolution axes (`con
 | · render as markdown | — | — | ✔ (inline markdown, sanitized) | — | — |
 | · monospace | — | — | ✔ (text is sans by default) | — | — |
 
-The text case dropdown's **Chip** value colors each distinct string by category, with the shared chart palette and one `CategoryChip`, keyed by first appearance in source row order. It shares the text style dropdown, so it excludes a case pick. The on-canvas grid, read-only popups and an editable popup cell all render the pill; an editable cell shows the pill while unfocused and swaps to the raw text on focus, and Source mode keeps raw text throughout.
+The text case dropdown's **Chip** value colors each distinct string by category, with the shared chart palette and one `CategoryChip`, keyed by first appearance in source row order. A chip wears its color the way a card's header band does (author 2026-10-05): opaque, the hue at `--header-tint` toward `--surface`, its text at `--mix-ink` toward `--text`, and no border, which stays the mark of a chip that is a button. It shares the text style dropdown, so it excludes a case pick. The on-canvas grid, read-only popups and an editable popup cell all render the pill; an editable cell shows the pill while unfocused and swaps to the raw text on focus, and Source mode keeps raw text throughout.
 
 The two object families each carry exactly one control:
 
