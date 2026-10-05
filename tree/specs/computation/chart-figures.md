@@ -325,7 +325,7 @@ A `MermaidValue` is not a `ChartValue`; the surfaces test for it separately and 
 
 ### The categorical palette
 
-Multi-series marks, categorical slices, treemap cells, Sankey nodes and waffle categories take colors from `useSeriesColors()`: the swatch pickers' slot order (`COLOR_PALETTE`) starting at `purple` and wrapping (author 2026-10-05: purple, gray, vermilion, violet, pink, sky, teal, gold, green, amber, blue, lime), resolved through the active palette, indexed `i % 12` (`SERIES_SLOTS`). `MermaidView` and the value chips (`CategoryChip`) use the same order.
+Multi-series marks, categorical slices, treemap cells, Sankey nodes and waffle categories take colors from `useSeriesColors()`: the swatch pickers' slot order (`COLOR_PALETTE`) without gray, which reads as missing data, starting at `purple` and wrapping (author 2026-10-05: purple, vermilion, violet, pink, sky, teal, gold, green, amber, blue, lime), resolved through the active palette, indexed `i % 11` (`SERIES_SLOTS`). `MermaidView` and the value chips (`CategoryChip`) use the same order.
 
 ### Titles
 
