@@ -10,7 +10,7 @@ Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[D41]] formatFlo
 
 The Table popup is the one full-size viewer and editor for a table-shaped value: a list, a matrix or a Frame. It shows the value as a grid, a CSV text block, a frame as a stack of cards or, on a Frame Input, a one-record form. It sorts, formats, summarizes, copies and exports, and on a literal source it is the editor that writes back to the node. A Cube opens the sibling Cube popup, described at the end. Both sit in the shared popup shell.
 
-Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupStore.ts` (its state), `src/graph/valuePopup.ts` (the openers), `FrameChip.tsx`, `ArrayChip.tsx`, `TableInputNode.tsx` and `FrameNodes.tsx` (the editing openers), `tableFooterStats.ts` (the summary footer), `PopupShell.tsx`, `PopupResizeGrip.tsx`, `PopupOverflowMenu.tsx` and `PopupPinButton.tsx` (the shell), `popupChrome.css` and `TablePopup.css`, and `CubePopup.tsx` with `cubeCell.tsx` and `cubeEditCell.tsx` (the Cube popup). The helpers it leans on have their own files: `columnSort.tsx`, `gridKeyboard.ts`, `CellEditAffix.tsx`, `CellSuggest.tsx`, `CsvEditor.tsx`, `columnHeadControls.tsx`, and `TableCards.tsx`, `AutoCard.tsx` and `cardLayout.ts` (the Cards view), `recordCardsFromPopup.ts` (Add Record: Cards).
+Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupStore.ts` (its state), `src/graph/valuePopup.ts` (the openers), `FrameChip.tsx`, `ArrayChip.tsx`, `TableInputNode.tsx` and `FrameNodes.tsx` (the editing openers), `tableFooterStats.ts` (the summary footer), `PopupShell.tsx`, `PopupResizeGrip.tsx`, `PopupOverflowMenu.tsx` and `PopupPinButton.tsx` (the shell), `popupChrome.css` and `TablePopup.css`, and `CubePopup.tsx` with `cubeCell.tsx`, `cubeEditCell.tsx` and `cubeLevelTable.ts` (the Cube popup). The helpers it leans on have their own files: `columnSort.tsx`, `gridKeyboard.ts`, `CellEditAffix.tsx`, `CellSuggest.tsx`, `CsvEditor.tsx`, `columnHeadControls.tsx`, and `TableCards.tsx`, `AutoCard.tsx` and `cardLayout.ts` (the Cards view), `recordCardsFromPopup.ts` (Add Record: Cards).
 
 ## The store and the openers
 
@@ -204,7 +204,7 @@ The CSV view shows the same data as one text block (`CsvEditor`). A frame's bloc
 
 ## Copy and export
 
-The header's overflow menu (⋯) holds Copy CSV (Copy for a list), Copy as Markdown, Export CSV…, Show or Hide summary footer (frames only), Freeze or Unfreeze header (Grid view only) and Add Record: Cards (a frame with a host node, § The Cards view).
+The header's overflow menu (⋯) holds Copy CSV (Copy for a list), Copy as Markdown, Export CSV…, Show or Hide summary footer (frames, and a Cube popup's table levels), Freeze or Unfreeze header (Grid view only) and Add Record: Cards (a frame with a host node, § The Cards view).
 
 - **What is copied.** Every row of the dataset, never the rendered slice, in the visual sort order. The cells use the type's default format and follow the Source checkbox, but never a column's format picks. In the CSV view, Copy takes the block's text as it stands.
 - **A list** copies as one line of values joined by `, `, matching the node's list result box, in sort order when shown as a column.
@@ -267,6 +267,7 @@ The statistics run over every row: a read-only popup reads its value, an editabl
 - **Sorting** is keyed on the drill level, so a sort never carries a column index across to an unrelated table. Sort keys come from the raw cells, and the cell renderer is handed the source row, so drilling a sorted row reaches the right value. The render is capped at 1000 rows.
 - **Copy and export** (Copy CSV, Copy as Markdown, Export CSV…) emit every row of the current level in sort order. A nested container serializes as its chip token (`[3×2×1 Cube]`, `[5×2 Frame]`, `[a, b, c…]`), never expanded. The header line is always present (`Col N` when the level has no names). CSV quoting and the formula guard are the Table popup's (`csvField`). The file is named after the level's label, else `cube.csv`.
 - **Lists** have the same Row and Column switch as the Table popup.
+- **Table levels read like a frame popup** (author 2026-10-05). A cube or frame level, read-only or editable, has the Table popup's filter above the grid, a Grid and Cards switch, and the summary footer, on the same setting and menu item. The cards and the footer read the level's cells (`cubeLevelColumns`): a column's declared type, else the one its plain cells agree on (numbers, logicals), else text; a unit cell counts as the number it shows, and a nested container shows as its chip token and counts as filled. The cards only read, and a nested container on a card doesn't drill (Grid does). Filter, sort and footer picks start fresh on each level; a list or grid level has none of them.
 
 ### Editing a Cube Input
 
@@ -282,6 +283,6 @@ A Cube Input's chip opens the popup as an editor bound to the node (an edit bind
 
 ## Enforced by
 
-`tests/graph/displayPopupCoverage.test.ts` (every Display value kind has a popup), `tests/graph/nodes/tableInput.test.ts` (raw text survives), `tests/graph/tableFooterStats.test.ts`, `tests/graph/gridKeyboard.test.ts`, `tests/graph/columnSort.test.ts`, `tests/graph/nodes/computedColumn.test.ts` (the λ naming), `tests/graph/listInputChip.test.ts` and `tests/graph/cardLayout.test.ts` (the Cards plan).
+`tests/graph/displayPopupCoverage.test.ts` (every Display value kind has a popup), `tests/graph/nodes/tableInput.test.ts` (raw text survives), `tests/graph/tableFooterStats.test.ts`, `tests/graph/cubeLevelTable.test.ts`, `tests/graph/gridKeyboard.test.ts`, `tests/graph/columnSort.test.ts`, `tests/graph/nodes/computedColumn.test.ts` (the λ naming), `tests/graph/listInputChip.test.ts` and `tests/graph/cardLayout.test.ts` (the Cards plan).
 
 **Exact numbers on selection** (author 2026-10-05). A typed cell's editor already shows the text as typed. A read-only number cell (a computed column's, or any cell of a frame the popup cannot edit) shows its exact value while it is selected or focused (`exactAt`), since its display may round it or put it in scientific form; it shows the display again when the selection moves.

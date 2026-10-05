@@ -9,8 +9,7 @@ import { parseCsvRows, joinCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { coerceFrameCell, formatFrameCell, columnTypesAfterCsvEdit, makeHeaders, type FrameSourceColumn } from "../frame";
-import { describeColumn, distinctColumnValues } from "../frameVerbs";
-import { aggregate } from "../nodes/statsOps";
+import { distinctColumnValues } from "../frameVerbs";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { decimalFromText } from "../valueKinds";
@@ -41,7 +40,7 @@ import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout
 import { CellImage } from "./cubeCell";
 import "./chartCards.css"; // .sol-record__img, for the Form's image cells
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
-import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, statReadsAsCell } from "./tableFooterStats";
+import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, statReadsAsCell, summarizeColumn } from "./tableFooterStats";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
@@ -679,17 +678,7 @@ export function TablePopup() {
         return state.data.map((row) => row?.[c] ?? null);
       };
       return Array.from({ length: cols }, (_c, c) => {
-        const type = colTypeAt(c);
-        const values = valuesFor(c);
-        const profile = describeColumn(values, type);
-        let sum: number | null = null;
-        if (type === "number") {
-          const r = aggregate("sum", values.filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
-          sum = typeof r === "number" ? r : null;
-        }
-        const checked = type === "logical" ? values.filter((v) => v === true).length : null;
-        const unchecked = type === "logical" ? values.filter((v) => v === false).length : null;
-        return { profile, sum, checked, unchecked };
+        return summarizeColumn(valuesFor(c), colTypeAt(c));
       });
     })() : null;
     summaryCache.current = { deps: summaryDeps, value };

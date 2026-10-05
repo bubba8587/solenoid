@@ -1,5 +1,6 @@
 // [[C24]] arraySemantics (nulls and errors in a column profile)
-import type { ColumnProfile } from "../frameVerbs";
+import { describeColumn, type ColumnProfile } from "../frameVerbs";
+import { aggregate } from "../nodes/statsOps";
 import { formatScalar } from "./format";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 
@@ -16,6 +17,19 @@ export type ColSummary = {
   checked: number | null;
   unchecked: number | null;
 };
+
+/** One column's footer figures over every row. */
+export function summarizeColumn(values: readonly unknown[], type: FooterColType): ColSummary {
+  const profile = describeColumn(values, type);
+  let sum: number | null = null;
+  if (type === "number") {
+    const r = aggregate("sum", values.filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
+    sum = typeof r === "number" ? r : null;
+  }
+  const checked = type === "logical" ? values.filter((v) => v === true).length : null;
+  const unchecked = type === "logical" ? values.filter((v) => v === false).length : null;
+  return { profile, sum, checked, unchecked };
+}
 
 export const FOOTER_STAT_LABEL: Record<FooterStat, string> = {
   sum: "Sum", avg: "Average", min: "Min", max: "Max", median: "Median",
