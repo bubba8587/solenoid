@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { BUILTIN_PACKS, NODE_PACK_TAGS, PACK_GROUP_ORDER } from "../../../src/graph/packs";
 import { auditPackNodes } from "../../../src/graph/packs/formulaTestKit";
+import { fcUnitToUnit } from "../../../src/graph/unitBridge";
 
 // Structural health of every built-in pack: entries construct, type ids are
 // unique pack-wide AND across packs (multi-pack claims must share the SAME
@@ -9,6 +10,20 @@ import { auditPackNodes } from "../../../src/graph/packs/formulaTestKit";
 // dependencies point at real packs.
 
 describe("built-in packs", () => {
+  it("every declared input unit resolves and names one of the preset's inputs ([[C25]] firstClassUnits)", () => {
+    const bad: string[] = [];
+    for (const p of BUILTIN_PACKS) {
+      for (const { entry } of p.nodes ?? []) {
+        const n = entry.create() as unknown as { varUnits?: Record<string, string>; inputs: Record<string, unknown> };
+        for (const [k, u] of Object.entries(n.varUnits ?? {})) {
+          if (!fcUnitToUnit(u)) bad.push(`${entry.type}: ${k} reads in "${u}", which is no unit`);
+          if (!(k in n.inputs)) bad.push(`${entry.type}: ${k} is no input`);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
   it("every pack sits in a listed group, so Settings and the Packs page both show it", () => {
     for (const p of BUILTIN_PACKS) expect(PACK_GROUP_ORDER, `pack ${p.id}`).toContain(p.group);
   });
