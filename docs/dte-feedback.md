@@ -227,3 +227,8 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     flow list followed by stray items. Any field write (`retire`'s `supersedes`, `authorize`) hits the
     same path. Patched locally: `set_field` drops the indented `- ` lines that follow the key it
     replaces. The fix belongs upstream beside B30 obsidianVault's tolerance for vault edits.
+29. **`dte init` writes a literal `100%%`.** `COVERAGE_TEMPLATE` is formatted with `%` escapes, so a fresh
+    `.dtecoverage` reads `100%%` where it means `100%`. Escape it once, or build the template without `%` formatting.
+30. **`excluded_from_coverage` ignores `covers:` citations.** A spec whose front matter carries a `covers:` glob
+    governs the files it matches, but the coverage numbers still count those files as uncited. Only the numbers are
+    off; `coverage --check` passes. Count a file a `covers:` glob matches as cited.

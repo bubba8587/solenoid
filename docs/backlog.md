@@ -300,20 +300,4 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   filesystem access and a pack format are settled. When they load, the Add menu's per-type caches (`catalogSearch.ts`
   `_sigCache`, `families`) must clear, since a reloaded pack can change a type's sockets.
 
-## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
-- [ ] **Verify on the next desktop build:** the window still closes (Windows: overlay title bar and Alt+F4; Linux: the
-  app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy` added), and drafts survive it.
-- [ ] **Pack follow-ups:** presets still read inputs in units with no unit id (coulomb, farad, henry, tesla, weber,
-  mAh, years, bpm) undeclared, and every result comes back bare (`preset-declared-units` in the inbox). Forecast
-  (ETS) needs a confidence socket (D73); FORECAST.ETS ignores `data_completion` and `aggregation` (parity note);
-  DECOMPOSE, FUZZYMATCH, RANDDIST, SHARPE/SORTINO and REGEX case options unchecked against their cards; Antoine
-  has no per-substance range check.
 
-## From the 2026-09-29 commit-walk review (08-24 to 09-29; open leads, each verified against HEAD unless marked)
-- [ ] **Vendored DTE**: `tools/dte.py` `COVERAGE_TEMPLATE` writes a literal `100%%` into a new `.dtecoverage` on `dte init`; `excluded_from_coverage` doesn't count `covers:` citations (the numbers only). Upstream fixes.
-- [ ] **Sketch sample aliasing**: the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs` verb_sample) aliases on periodic data (alternating keys at stride 4 keep only one). A fixed-seed well-mixed sample would fix it; spec line plus both samplers.
-- [ ] **Sketch Run** (`withExactPass`): a sink's Run in Sketch mode leaves the canvas on exact values until the next edit, as F9 does; the table popup's Copy/Export CSV still export the sampled table it shows.
-- [ ] **Record Detail/Gallery/Board/List** now show an unformatted number as Cards does (Auto), not `formatScalar`; confirm.
-
-## From the 2026-09-30 oldest-first review (1.0-era and July files; verified against HEAD)
-- [ ] **Node showcase on its own flow stage** (`flow/StaticFlowStage.tsx`): a hand-built React Flow surface beside `FlowSurface`'s `locked` + `staticView` mode that `SceneStage` uses ([[B3]] sameNodeEverywhere); unverified that the showcase runs on FlowSurface unchanged. Its type switch may also race (`NodeShowcase.tsx`: a cancelled run's `addNode` landing after the next `clear()`), unconfirmed.

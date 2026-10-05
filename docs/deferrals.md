@@ -144,6 +144,21 @@ the decision tree (`dte.md`).
 
 ## Parked features (revisit only if the trigger returns)
 
+- **Known leads parked by the author (2026-10-05):**
+  - *Desktop window close:* verify on the next desktop build that the window still closes (Windows: overlay title bar
+    and Alt+F4; Linux: the app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy`),
+    and that drafts survive it. The author is on mobile.
+  - *Sketch sample aliasing:* the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs`
+    verb_sample) aliases on periodic data; a fixed-seed well-mixed sample in both samplers would fix it. *Sketch Run*
+    (`withExactPass`) leaves the canvas on exact values until the next edit, and the table popup's Copy/Export CSV
+    export the sampled table it shows.
+  - *Pack follow-ups:* inputs in units with no unit id (coulomb, farad, henry, tesla, weber, mAh, years, bpm) stay
+    undeclared and results come back bare (`preset-declared-units` in the inbox); Forecast (ETS) needs a confidence
+    socket (D73); FORECAST.ETS ignores `data_completion` and `aggregation`; DECOMPOSE, FUZZYMATCH, RANDDIST,
+    SHARPE/SORTINO and REGEX case options unchecked against their cards; Antoine has no per-substance range check.
+  - *Node showcase* (`flow/StaticFlowStage.tsx`): a hand-built React Flow surface beside `FlowSurface`'s `locked` +
+    `staticView` mode ([[B3]] sameNodeEverywhere), unverified that the showcase runs on FlowSurface unchanged; its type
+    switch may race (`NodeShowcase.tsx`: a cancelled run's `addNode` landing after the next `clear()`).
 - **Matrix format precedence** (author 2026-10-05: deferred). The matrix popup's own format pick wins over a
   Format Controller wired to the same card, as a Frame column's own pick does (`resolveMatrixAnnotation`, pinned in
   `valueDisplayAnnotation.test.ts`); the reverse is defensible.
