@@ -71,11 +71,38 @@ CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
 
 **A card** reads a declared input with `readRole(this, key, inputs.key)` (`nodes/shared.ts`). Unwired, the value is the typed literal; wired, the cable's value, and a blank cable overrides the typed value ([[D86]] blankRoles). The value then goes through `applyRole` with the socket's label for the error. An unwired input with no typed value (CHOOSEROWS's indices) is a blank. The card still hides its typed field while a cable is plugged in, so the override is visible.
 
-**A formula** reads its arguments in `applyArgRoles` at evaluation step 6, after the arguments are evaluated and before the error check ([[formula-language#Calls]]). A slot left empty evaluates to `null`, so an empty slot and a blank value take the same path. A declared slot is *settled*: the element-wise null rule no longer blanks the answer on it. A required picks group (CHOOSEROWS's indices across all its arguments) answers `#SYNTAX!` only when every one of them is left out, so `CHOOSEROWS(m, blank, 2)` is row 2.
+**A formula** reads its arguments in `applyArgRoles` at evaluation step 6, after the arguments are evaluated and before the error check ([[formula-language#Calls]]). An empty slot and a blank value take different paths: the empty slot reads as its parameter's Excel blank ([[#Empty slots]]), and a blank value reads by the role. A declared slot, and any empty slot, is *settled*: the element-wise null rule no longer blanks the answer on it. A required picks group (CHOOSEROWS's indices across all its arguments) answers `#SYNTAX!` only when every one of them is left out, so `CHOOSEROWS(m, blank, 2)` is row 2.
 
 **A computed column** runs the formula once per row, so a blank setting cell is a whole blank setting on that row: `ROUND(@Price, @Digits)` rounds a row with a blank digits cell to 0 places, the same answer the Round card gives for a digits list with a blank item.
 
 **A kernel** never sees a blank setting or a blank pick: it receives the declared blank, `LEFT_OUT`, or a list with the blank picks gone. Kernels shared by a card and a formula (`chooseAxis`, `indexInto`) take numbers and `undefined` only.
+
+## Empty slots
+
+`[decided 2026-10-05]` ([[C80]] blankArgIsExcelBlank). An empty argument slot is something the user typed, so it reads as the value Excel gives it, for every parameter of every function, whatever its role. A blank *value* in the same place still reads by the role above.
+
+| The parameter takes | An empty slot reads as | Shown in the slot as |
+|---|---|---|
+| a number | 0 | `0` |
+| a logical | FALSE | `FALSE` |
+| text | "" | nothing |
+| any value (IF's branches, CHOOSE's values, SWITCH's results) | 0 | `0` |
+| a setting Excel reads as omitted when empty (TAKE's, DROP's and EXPAND's sizes) | `LEFT_OUT` | a word for the default |
+| a declared setting | its declared blank (`setting(blank)`) | that blank, or its word when `LEFT_OUT` |
+
+**The declaration.** Every parameter's empty-slot reading comes from one table beside `ARG_ROLES`: a declared role's blank where there is one, else the parameter's type. The type comes from the function's signature names ([[formula-language]], `FORMULA_SIGNATURES`), with an explicit override per function where a name misleads; a variadic tail repeats its group. A test calls every function with an empty slot in each position and compares the answer with the same call given the reading typed out, so the reading and the function cannot drift apart.
+
+**Not covered:** XLOOKUP's empty `if_not_found` stays missing until Excel's answer is checked (backlog).
+
+## Placeholders
+
+`[decided 2026-10-05]` ([[D96]] emptySlotShowsItsValue). Wherever an empty slot's reading isn't "", the slot shows it as muted placeholder text, so a value nobody typed is never invisible:
+
+- **The formula editor** draws it in the highlight mirror under the textarea, as a zero-width marker after the comma, so the user's text and caret never move.
+- **A read-only formula** (a card's formula line) draws it inline.
+- **A card's empty setting field** shows its declared blank as the field's placeholder. An empty data field stays plainly empty, since its blank really is blank.
+
+A `LEFT_OUT` reading shows a short word for the default it stands for, declared with the setting: `all` for a size that keeps the whole axis (TAKE, DROP, EXPAND), `1` where the default is the first (an instance or a start), `none` where nothing is applied, and the default value itself wherever one exists.
 
 ## Choosing a role
 

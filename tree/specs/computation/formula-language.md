@@ -211,7 +211,7 @@ Evaluating `{ t: "call", name, args }` uppercases the name and takes the first m
 3. **Blocked.** `LEGACY_ALIASES`, then `FRAME_SURFACE_NAMES`, then `NODE_SURFACE_NAMES`, as tabled above.
 4. **Unknown.** No implementation resolves: `#NAME?` "Unknown function {NAME}".
 5. **Evaluate arguments.** Each argument is evaluated. For a lambda host (`MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN`, `GROUPBY`) a bare dispatchable name eta-expands instead (see *LAMBDA*).
-6. **Input roles.** `applyArgRoles` reads each declared argument by its role in `ARG_ROLES` ([[input-roles]]), so a blank setting is its default, a blank pick is dropped and a missing required one is `#SYNTAX!` (see *Blank and omitted arguments*).
+6. **Empty slots and input roles.** An empty slot reads as its parameter's Excel blank, and `applyArgRoles` reads each other declared argument by its role in `ARG_ROLES` ([[input-roles]]), so a blank setting is its default, a blank pick is dropped and a missing required one is `#SYNTAX!` (see *Blank and omitted arguments*).
 7. **Error handlers.** `IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` receive their arguments as they are (see *Error-handling functions*).
 8. **Error propagation.** The first top-level argument that is a `SolError` is the answer. Errors inside a list are not hoisted here; each route decides.
 9. **Matrix containment.** If any argument is a matrix and the function does not declare `matrixArgs`: a `RANGE_POSITIONAL` function answers `#SHAPE!`; a `RANGE_FUNCTIONS` member flattens each matrix row-major and continues; a whole-list native, or a name with no `EXCEL_IMPL_META` entry and no internal registration (a Formula.js-only name), answers one `#SHAPE!` "{NAME} works on values and 1-D lists, not a 2-D matrix"; an internally registered element-wise function continues to the broadcast ([[#The dispatch ladder]]).
@@ -224,11 +224,13 @@ Formula.js's array functions are written against 2-D spreadsheet ranges and have
 
 ## Blank and omitted arguments
 
-A blank slot evaluates to `null`, the first-class missing value. An omitted trailing argument is absent, so the implementation receives `undefined`. Implementations read `undefined` as "use the default" and never treat `null` as omitted ([[C80]] blankArgIsExcelBlank).
+Three things can sit in an argument's place, and they read differently ([[C80]] blankArgIsExcelBlank):
 
-The arguments that are settings or positions, and what a blank in each reads as, are declared once in `ARG_ROLES` and read at step 6; the roles, the declaration and the reading rules are [[input-roles]] ([[D86]] blankRoles). A slot left empty and a variable whose value is blank read alike there, and a declared slot no longer blanks the answer under the null rule.
+- **An empty slot**, a comma with nothing typed before the next comma or the closing parenthesis, reads as Excel's blank for that parameter: 0, FALSE, "", or the argument left out where Excel reads it so. Every parameter has this reading, declared once ([[input-roles#Empty slots]]), and it is shown in the slot wherever it isn't "" ([[D96]] emptySlotShowsItsValue). `[decided 2026-10-05]`
+- **A blank value**, a variable or cell holding blank, follows the parameter's role ([[D86]] blankRoles, [[input-roles]]): a blank in data stays missing ([[D36]] nullSkippedNotZero), a blank setting is its default, a blank pick is dropped.
+- **An omitted trailing argument** is absent, so the implementation receives `undefined` and takes its default. Implementations read `undefined` as "use the default" and never treat `null` as omitted.
 
-So `TEXTJOIN(",",,"a","","b")` is `a,,b`, and `XMATCH(7, x, )` is an exact match. A blank `search_mode` becomes 0, which the implementation rejects as Excel does. Every other blank stays `null` and follows the route's missing-value rules. `IF(x,,y)` returns `null` for a true `x`, not 0.
+So `TEXTJOIN(",",,"a","","b")` is `a,,b`, `XMATCH(7, x, )` is an exact match, `POWER(2, )` is 1, `IF(x,,y)` is 0 for a true `x`, and `AVERAGE(2,)` is 1 while `AVERAGE(2, b)` with `b` blank is 2. A blank `search_mode` becomes 0, which the implementation rejects as Excel does. A declared or empty slot no longer blanks the answer under the null rule.
 
 ## Lists, columns and tables
 
@@ -611,7 +613,6 @@ The criteria family (SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS, COUNTIF, AVER
 
 Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because consistency across the graph beats matching a quirk:
 
-- A blank IF branch stays blank; Excel reads it as 0.
 - `0^0` is 1; Excel answers `#NUM!`.
 - DATE's year is literal: 26 is the year 26, never 1926. Date text needs a four-digit year. One reading of a year everywhere beats matching Excel's two-digit guess ([[C44]] dateSerials).
 - DATEDIF's `MD` is never negative; Excel's goes negative across a short month.
