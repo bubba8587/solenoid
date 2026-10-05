@@ -224,7 +224,7 @@ A missing handle is `#REF!` (`frame handle <h> not found (dropped or never creat
 
 `frameBackend()` starts as the `JsFrameBackend`. At startup `initFrameBackend()` checks `engineAvailable()` (the desktop shell); if `engine_ping` reports `backend: "polars"`, it calls `engine_clear` (a webview reload would otherwise orphan every stored frame) and swaps in the `PolarsBackend`. Any failure keeps the JS backend. A swap (`setFrameBackend`, `resetFrameBackendToJs`) clears every handle-keyed cache, because handle strings are unique only within one backend instance.
 
-Settings ▸ Data ▸ Native data engine (`nativeEngine`, on by default, desktop only) turns the native engine off to compare its answers with the oracle's. `nativeEngineOn()` is `engineAvailable()` and the setting. Off, `initFrameBackend` keeps the JS backend, Local File reads a CSV with the web's reader (`csvToFrame`) and a Parquet file natively but collects its rows into a plain frame (`engine_collect`, then `engine_drop`). Flipping it swaps the backend and reloads the open document (`watchEngineSetting`, wired in `main.tsx`), so no frame keeps a handle from the engine it left.
+Settings ▸ Data ▸ Polars engine (`nativeEngine`, on by default, desktop only) turns the native engine off to compare its answers with the oracle's. `nativeEngineOn()` is `engineAvailable()` and the setting. Off, `initFrameBackend` keeps the JS backend, Local File reads a CSV with the web's reader (`csvToFrame`) and a Parquet file natively but collects its rows into a plain frame (`engine_collect`, then `engine_drop`). Flipping it swaps the backend and reloads the open document (`watchEngineSetting`, wired in `main.tsx`), so no frame keeps a handle from the engine it left.
 
 ### JsFrameBackend
 

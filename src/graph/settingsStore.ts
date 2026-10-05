@@ -228,8 +228,8 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       },
       {
         key: "nativeEngine",
-        label: "Native data engine",
-        help: "Off runs table work in the app's own engine, as the web app does, to compare results. Switching reloads the document.",
+        label: "Polars engine",
+        help: "Runs table operations on Polars. Turn it off to compare results with the web app's engine. Changing it reloads the document.",
         desktopOnly: true,
       },
       {

@@ -373,7 +373,7 @@ let toldLogicalNaN = false;
 function noteLogicalNaN(f: FrameValue): void {
   if (toldLogicalNaN || !f.columns.some((c) => c.type === "logical" && c.values.some((v) => typeof v === "number"))) return;
   toldLogicalNaN = true;
-  pushNotice("The desktop engine reads a logical cell that isn't TRUE or FALSE as blank, not NaN, so a result can differ from the web app's.", "info");
+  pushNotice("Polars reads a logical cell that isn't TRUE or FALSE as blank, where the web app shows NaN. Results that count blanks can differ.", "info");
 }
 
 const isOracleHandle = (h: FrameHandle): boolean => h.startsWith("jsf:");
