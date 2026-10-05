@@ -28,7 +28,7 @@ export function FormulaEditor({
 
   // A trailing newline needs a filler char, or the <pre> runs one line short of the textarea.
   const html = useMemo(
-    () => highlightFormula(value) + (value.endsWith("\n") ? " " : ""),
+    () => highlightFormula(value, "overlay") + (value.endsWith("\n") ? " " : ""),
     [value],
   );
 

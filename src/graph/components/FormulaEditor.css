@@ -131,3 +131,21 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* An empty argument slot's reading, muted ([[D96]] emptySlotShowsItsValue). In the editor's mirror it takes no width, so the
+   typed text and the caret above it never move; drawn read-only it sits in the text. */
+.fx-tokens .fx-ghost { position: relative; display: inline-block; width: 0; vertical-align: top; }
+.fx-tokens .fx-ghost::after {
+  content: attr(data-ghost);
+  position: absolute;
+  left: 0.15em;
+  top: 0;
+  line-height: inherit;
+  color: var(--text-dim);
+  opacity: 0.6;
+  font-style: italic;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.fx-tokens .fx-ghost--raised::after { font-size: 0.68em; top: -0.62em; left: -0.1em; }
+.fx-tokens .fx-ghost-inline { color: var(--text-dim); opacity: 0.6; font-style: italic; }

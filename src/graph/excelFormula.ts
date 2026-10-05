@@ -1001,9 +1001,9 @@ const TRIG_TEX: Record<string, string> = {
 };
 const CMP_TEX: Record<string, string> = { "=": "=", "<>": "\\ne", "<": "<", ">": ">", "<=": "\\le", ">=": "\\ge" };
 
-/** KaTeX has no `\textquotedbl`, so the quotes stay literal inside `\text{}`. */
-function texString(s: string): string {
-  const esc = s.replace(/[\\{}$&#%_^~]/g, (c) => {
+/** Text escaped for KaTeX's text mode. */
+function texText(s: string): string {
+  return s.replace(/[\\{}$&#%_^~]/g, (c) => {
     switch (c) {
       case "\\": return "\\textbackslash{}";
       case "^":  return "\\textasciicircum{}";
@@ -1011,7 +1011,11 @@ function texString(s: string): string {
       default:   return `\\${c}`;
     }
   });
-  return `\\text{"${esc}"}`;
+}
+
+/** KaTeX has no `\textquotedbl`, so the quotes stay literal inside `\text{}`. */
+function texString(s: string): string {
+  return `\\text{"${texText(s)}"}`;
 }
 
 // prec: cmp=1, concat=2, add=3, mul=4, exp=5, unary=6, atom=7.
@@ -1031,16 +1035,24 @@ function tex(n: Ast, parent: number): string {
       return wrap(`${tex(n.fn, 7)}\\left(${n.args.map((x) => tex(x, 0)).join(", ")}\\right)`, 7);
     case "call": {
       const name = n.name.toUpperCase();
+      // An empty slot shows the value it reads as, muted ([[D96]] emptySlotShowsItsValue).
+      const arg = (i: number, prec: number): string => {
+        const x = n.args[i];
+        if (x.t !== "blank") return tex(x, prec);
+        const shown = emptySlotReading(name, i).shown;
+        return shown === null ? "\\," : `\\textcolor{gray}{\\textit{${texText(shown)}}}`;
+      };
+      const all = (sep: string) => n.args.map((_, i) => arg(i, 0)).join(sep);
       const a = n.args;
-      if (name === "SQRT" && a[0]) return `\\sqrt{${tex(a[0], 0)}}`;
-      if (name === "ABS" && a[0]) return `\\left|${tex(a[0], 0)}\\right|`;
-      if (name === "POWER" && a[1]) return wrap(`${tex(a[0], 5)}^{${tex(a[1], 0)}}`, 5);
-      if (name === "EXP" && a[0]) return wrap(`e^{${tex(a[0], 0)}}`, 5);
+      if (name === "SQRT" && a[0]) return `\\sqrt{${arg(0, 0)}}`;
+      if (name === "ABS" && a[0]) return `\\left|${arg(0, 0)}\\right|`;
+      if (name === "POWER" && a[1]) return wrap(`${arg(0, 5)}^{${arg(1, 0)}}`, 5);
+      if (name === "EXP" && a[0]) return wrap(`e^{${arg(0, 0)}}`, 5);
       if (name === "PI" && a.length === 0) return "\\pi";
-      if (name === "LN") return `\\ln\\!\\left(${a.map((x) => tex(x, 0)).join(",\\, ")}\\right)`;
-      if ((name === "LOG10" || name === "LOG") && a.length <= 1) return `\\log\\!\\left(${a.map((x) => tex(x, 0)).join("")}\\right)`;
+      if (name === "LN") return `\\ln\\!\\left(${all(",\\, ")}\\right)`;
+      if ((name === "LOG10" || name === "LOG") && a.length <= 1) return `\\log\\!\\left(${all("")}\\right)`;
       const fn = TRIG_TEX[name] ?? `\\operatorname{${name}}`;
-      return `${fn}\\!\\left(${a.map((x) => tex(x, 0)).join(",\\, ")}\\right)`;
+      return `${fn}\\!\\left(${all(",\\, ")}\\right)`;
     }
     case "bin": {
       if (n.op === "/") return `\\frac{${tex(n.l, 0)}}{${tex(n.r, 0)}}`;

@@ -52,3 +52,17 @@ describe("an empty slot reads as its parameter's Excel blank", () => {
     expect(emptySlotReading("TAKE", 1).shown).toBe("all");
   });
 });
+
+describe("the highlighter shows an empty slot's reading ([[D96]] emptySlotShowsItsValue)", () => {
+  it("as a zero-width marker in the editor, and inline when read-only", async () => {
+    const { highlightFormula } = await import("../../src/graph/formulaSyntax");
+    expect(highlightFormula("POWER(2, )", "overlay")).toContain('<span class="fx-ghost" data-ghost="0"></span>');
+    expect(highlightFormula("POWER(2,)")).toContain('<span class="fx-ghost-inline">0</span>');
+    expect(highlightFormula('TEXTJOIN(",",,"a")')).toContain(">FALSE<");
+    expect(highlightFormula('CONCAT("a",,"b")')).not.toContain("fx-ghost");
+    expect(highlightFormula("TAKE(m,,2)")).toContain(">all<");
+    expect(highlightFormula("IF(c,SUM(1,),)")).toMatch(/SUM.*fx-ghost-inline">0<.*fx-ghost-inline">0</);
+    expect(highlightFormula("PI()")).not.toContain("fx-ghost");
+    expect(highlightFormula("(a, b)")).not.toContain("fx-ghost");
+  });
+});

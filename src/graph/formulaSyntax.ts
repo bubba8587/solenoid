@@ -4,6 +4,7 @@ import { FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
 import { advertisedFunctionNames } from "./formulaExtensions";
 import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
+import { emptySlotReading } from "./emptySlots";
 
 // Not a module-level constant: packs register after load, and switching a pack off shrinks the advertised set.
 let _fnSet = new Set<string>();
@@ -32,13 +33,35 @@ function identClass(word: string, isCall: boolean): string {
   return "fx-var";
 }
 
-export function highlightFormula(src: string): string {
+/** How an empty slot's reading shows ([[D96]] emptySlotShowsItsValue): `overlay` is a zero-width marker for the editor's
+ *  mirror, so the typed text never moves; `inline` sits in the text, for a formula drawn read-only. */
+export type GhostMode = "overlay" | "inline";
+
+export function highlightFormula(src: string, ghosts: GhostMode = "inline"): string {
   let out = "";
   let i = 0;
   const span = (cls: string, text: string) => `<span class="${cls}">${esc(text)}</span>`;
+  // Each open paren or brace: the call it belongs to, which argument is open, whether anything was typed in it, and where it starts in `out`.
+  const stack: { name: string | null; arg: number; typed: boolean; at: number; from: number }[] = [];
+  let pendingCall: string | null = null;
+  const typed = () => { const top = stack[stack.length - 1]; if (top) top.typed = true; };
+  const closeSlot = (closing: boolean) => {
+    const top = stack[stack.length - 1];
+    if (!top || !top.name || top.typed || (closing && top.arg === 0)) return;
+    const shown = emptySlotReading(top.name, top.arg).shown;
+    if (shown === null) return;
+    // In the editor a reading sits in the slot's typed spaces when they fit it, else as a small raised label.
+    const room = src.slice(top.from, i).length;
+    const g = ghosts === "overlay"
+      ? `<span class="fx-ghost${room >= shown.length ? "" : " fx-ghost--raised"}" data-ghost="${esc(shown)}"></span>`
+      : `<span class="fx-ghost-inline">${esc(shown)}</span>`;
+    out = out.slice(0, top.at) + g + out.slice(top.at);
+  };
   while (i < src.length) {
     const c = src[i];
     if (c === " " || c === "\t" || c === "\n" || c === "\r") { out += esc(c); i++; continue; }
+    if (c !== "(") pendingCall = null;
+    if (c !== "," && c !== ")" && c !== "(" && c !== "}") typed();
     if (isDigit(c) || (c === "." && isDigit(src[i + 1] ?? ""))) {
       let j = i + 1;
       while (j < src.length && /[0-9.]/.test(src[j])) j++;
@@ -76,13 +99,30 @@ export function highlightFormula(src: string): string {
       const word = src.slice(i, j);
       let k = j;
       while (k < src.length && /\s/.test(src[k])) k++;
-      out += span(identClass(word, src[k] === "("), word); i = j; continue;
+      out += span(identClass(word, src[k] === "("), word); i = j;
+      pendingCall = src[k] === "(" ? word.toUpperCase() : null;
+      continue;
     }
     const two = src.slice(i, i + 2);
     if (two === "<>" || two === "<=" || two === ">=") { out += span("fx-op", two); i += 2; continue; }
     if ("+-*/^%&=<>".includes(c)) { out += span("fx-op", c); i++; continue; }
-    if (c === "(" || c === ")") { out += span("fx-paren", c); i++; continue; }
-    if (c === ",") { out += span("fx-comma", c); i++; continue; }
+    if (c === "(") {
+      typed();
+      out += span("fx-paren", c); i++;
+      stack.push({ name: pendingCall, arg: 0, typed: false, at: out.length, from: i });
+      pendingCall = null;
+      continue;
+    }
+    if (c === ")") { closeSlot(true); stack.pop(); out += span("fx-paren", c); i++; continue; }
+    if (c === ",") {
+      closeSlot(false);
+      out += span("fx-comma", c); i++;
+      const top = stack[stack.length - 1];
+      if (top) { top.arg++; top.typed = false; top.at = out.length; top.from = i; }
+      continue;
+    }
+    if (c === "{") { out += span("fx-err", c); i++; stack.push({ name: null, arg: 0, typed: false, at: out.length, from: i }); continue; }
+    if (c === "}") { stack.pop(); typed(); out += span("fx-err", c); i++; continue; }
     out += span("fx-err", c); i++;
   }
   return out;
