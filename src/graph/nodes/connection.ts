@@ -266,7 +266,7 @@ export class ImportXmlNode extends ClassicPreset.Node {
 // ─── LOCAL FILE (a file in the Settings target folder) ──────────────────────────
 export class LocalFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",
+    frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file. Empty for a Project XML, GanttProject or Primavera file, which reads as a Plan.",
     plan: "A project plan: Project XML, GanttProject, Primavera XER, or a CSV with Predecessors like 3FS+2d. Tasks nest as the outline. Empty otherwise.",
   };
   label: string;
@@ -359,14 +359,14 @@ export class LocalFileNode extends ClassicPreset.Node {
         const plan = planFileToPlan(text);
         if (!plan) throw new Error("Not a Project XML, GanttProject or Primavera file");
         adopt(null);
-        this.cachedResult = plan.frame;
+        this.cachedResult = null;
         this.cachedPlan = plan.cube;
         this.planNotes = plan.unsupported;
         connectionStore.setState(this.id, {
-          status: "ok", rows: frameRowCount(plan.frame), cols: plan.frame.columns.length, fetchedAt: Date.now(),
+          status: "ok", rows: cubeRowCount(plan.cube), cols: plan.cube.columns.length, fetchedAt: Date.now(),
           ...(plan.unsupported.length ? { message: `Not carried over: ${plan.unsupported.join("; ")}` } : {}),
         });
-        return { frame: plan.frame, plan: plan.cube };
+        return { frame: null, plan: plan.cube };
       }
       const frame = engineAvailable() && !isDemoVaultPath(folder)
         ? await (async () => {

@@ -118,9 +118,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Schedule row faults vs [[C70]] oneScheduleRule (author to rule):** C70 says a per-row fault (a bad
   Duration, an unparseable date) stays on its row, but `scheduleCpm.ts` throws on every fault and the whole
   run is one `#VALUE!` on all outputs. Either the code grows a per-row path or C70's line changes.
-- [ ] **Local File's plan `frame` writes Predecessors as grammar text** (`Framing SS+2`), so wiring that frame
-  (not the `plan` cube) into Schedule reads the text as one task name and fails as unknown. Verify, then
-  either write structured predecessors or let Schedule's frame path parse the grammar (`../tree/specs/computation/schedule-and-gantt.md` § Link grammar stays at the border).
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.

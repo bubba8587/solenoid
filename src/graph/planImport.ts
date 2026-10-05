@@ -3,11 +3,10 @@
 // here, at the border, and never lives in a cell (tree/specs/computation/schedule-and-gantt.md). Pure: no I/O, no rete.
 
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue } from "./frame";
-import { readMspdi, readGan, isGanText, readXer, isXerText, parsePredecessorText, predecessorText, type PlanTask, type PlanDependency, type CalendarSpec } from "@solenoid/schedule-engine";
+import { readMspdi, readGan, isGanText, readXer, isXerText, parsePredecessorText, type PlanTask, type PlanDependency, type CalendarSpec } from "@solenoid/schedule-engine";
 
 export interface ImportedPlan {
   cube: CubeValue;
-  frame: FrameValue;
   start: number | null;
   calendar: CalendarSpec | null;
   title: string;
@@ -68,14 +67,14 @@ export function isMspdiText(text: string): boolean {
 
 export function mspdiToPlan(text: string): ImportedPlan {
   const plan = readMspdi(text);
-  return { cube: planToCube(plan.tasks), frame: planToFrame(plan.tasks), start: plan.start || null, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
+  return { cube: planToCube(plan.tasks), start: plan.start || null, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
 }
 
 export function planFileToPlan(text: string): ImportedPlan | null {
   if (isMspdiText(text)) return mspdiToPlan(text);
   if (isGanText(text) || isXerText(text)) {
     const plan = isXerText(text) ? readXer(text) : readGan(text);
-    return { cube: planToCube(plan.tasks), frame: planToFrame(plan.tasks), start: plan.start, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
+    return { cube: planToCube(plan.tasks), start: plan.start, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
   }
   return null;
 }
@@ -103,21 +102,3 @@ export function csvPlanToCube(f: FrameValue): CubeValue | null {
   return cubeFromColumns(cols);
 }
 
-export function planToFrame(tasks: PlanTask[]): FrameValue {
-  const flat: Array<{ t: PlanTask; level: number }> = [];
-  const walk = (list: PlanTask[], level: number) => { for (const t of list) { flat.push({ t, level }); if (t.children?.length) walk(t.children, level + 1); } };
-  walk(tasks, 0);
-  return {
-    __frame: true,
-    columns: [
-      { name: "Task", type: "string", values: flat.map((x) => x.t.name) },
-      { name: "Level", type: "number", values: flat.map((x) => x.level) },
-      { name: "Duration", type: "number", values: flat.map((x) => (x.t.children?.length ? null : x.t.duration)) },
-      { name: "Predecessors", type: "string", values: flat.map((x) => predecessorText(x.t.predecessors)) },
-      { name: "Start", type: "date", values: flat.map((x) => x.t.start ?? null) },
-      { name: "Finish", type: "date", values: flat.map((x) => x.t.finish ?? null) },
-      { name: "Deadline", type: "date", values: flat.map((x) => x.t.deadline ?? null) },
-      { name: "Complete", type: "number", values: flat.map((x) => x.t.complete ?? 0) },
-    ],
-  };
-}

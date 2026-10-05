@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { planToCube, mspdiToPlan, isMspdiText, csvPlanToCube, planToFrame } from "../../src/graph/planImport";
+import { planToCube, mspdiToPlan, isMspdiText, csvPlanToCube } from "../../src/graph/planImport";
 import { csvToFrame } from "../../src/graph/nodes/connection";
 import { scheduleTasks } from "../../src/graph/scheduleCpm";
 import { formatDateSerial, parseDateToSerial } from "../../src/graph/nodes/dateSerial";
@@ -27,10 +27,7 @@ describe("plan import", () => {
     const typed = col(plan.cube, "Predecessors")[6] as CubeValue;
     expect(col(typed, "Type")).toEqual(["SS"]);
     expect(col(typed, "Lag")).toEqual([1]);
-    expect(plan.frame.columns.map((c) => c.name)).toEqual(["Task", "Level", "Duration", "Predecessors", "Start", "Finish", "Deadline", "Complete"]);
-    const row = plan.frame.columns[0].values.indexOf("Appliances");
-    expect(plan.frame.columns[3].values[row]).toBe("Cabinets SS+1");
-    expect(plan.frame.columns[1].values[row + 0]).toBe(0);
+    expect("frame" in plan).toBe(false); // a flat table would hold the links as grammar text
     const r = scheduleTasks(plan.cube, { start: plan.start!, workingDays: true, holidays: plan.calendar!.holidays, weekendCode: plan.calendar!.weekendCode });
     expect(col(r.cube, "Finish").map(iso)).toEqual(["2026-01-06", "2026-01-09", "2026-01-13", "2026-01-15", "2026-01-20", "2026-01-27", "2026-01-26", "2026-01-27"]);
     expect(col(r.cube, "Critical")).toEqual([true, true, true, false, true, true, false, true]);
@@ -51,10 +48,8 @@ describe("plan import", () => {
     expect(csvPlanToCube(csvToFrame("x,y\n1,2"))).toBeNull();
   });
 
-  it("planToCube keeps optional columns only when used; planToFrame flattens with levels", () => {
+  it("planToCube keeps optional columns only when used", () => {
     const c = planToCube([{ name: "A", duration: 1, predecessors: [] }, { name: "B", duration: 2, predecessors: [{ task: "A", type: "FS", lag: 0 }], complete: 50 }]);
     expect(c.columns.map((x) => x.name)).toEqual(["Task", "Duration", "Predecessors", "Complete"]);
-    const f = planToFrame([{ name: "P", duration: 0, predecessors: [], children: [{ name: "A", duration: 1, predecessors: [] }] }]);
-    expect(f.columns[1].values).toEqual([0, 1]);
   });
 });
