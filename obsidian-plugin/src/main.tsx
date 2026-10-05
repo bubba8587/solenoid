@@ -42,7 +42,9 @@ interface MetadataTypeManager {
   getAssignedWidget(name: string): string | null;
 }
 
-interface Mount { host: HTMLElement; root: Root; attached: boolean }
+interface Mount { host: HTMLElement; root: Root; attached: boolean; born: number }
+
+const NEVER_ATTACHED_MS = 10_000;
 
 interface PluginData {
   palette?: string;
@@ -206,7 +208,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     el.appendChild(host);
     const root = createRoot(shadow);
     root.render(node);
-    this.mounts.add({ host, root, attached: host.isConnected });
+    this.mounts.add({ host, root, attached: host.isConnected, born: Date.now() });
     window.requestAnimationFrame(() => this.sweep());
     return shadow;
   }
@@ -214,7 +216,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   private sweep(): void {
     for (const m of this.mounts) {
       if (m.host.isConnected) { m.attached = true; adoptSheets(m.host); }
-      else if (m.attached) this.unmount(m);
+      else if (m.attached || Date.now() - m.born > NEVER_ATTACHED_MS) this.unmount(m);
     }
   }
 

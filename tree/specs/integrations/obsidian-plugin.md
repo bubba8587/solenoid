@@ -303,8 +303,9 @@ literal tag is written `{{ "{" }}{ x }}` (knap.md).
 9. **The chip owns its value between Obsidian's renders.** Obsidian skips re-rendering a focused
    property, so `PropertyChip` keeps the edited YAML in state and the cube editor's records seam
    reads the latest commit. Obsidian builds a property row off-document and attaches it after
-   `render` returns, so a mount counts as dropped (and is unmounted) only once it has been seen
-   attached and then is not.
+   `render` returns, so a mount counts as dropped (and is unmounted) once it has been seen
+   attached and then is not, or when it has never been attached ten seconds after it was made
+   (a row built for a cancelled edit).
 10. **Stylesheets are per document.** Obsidian's settings, and a note popped out, are windows of
     their own, and a constructed stylesheet can only be adopted in the document that made it. A
     host is created in its container's `ownerDocument` with that document's sheets; a palette
