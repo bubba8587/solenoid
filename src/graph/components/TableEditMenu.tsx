@@ -104,7 +104,7 @@ function MenuList({ items, className, style, heading }: { items: MenuItem[]; cla
     <div className={className} role="menu" style={style}>
       {heading}
       {items.map((it, i) => (
-        <button key={i} type="button" role="menuitem" className="sol-popup-menu__item" disabled={it.disabled} onClick={it.onClick}>{it.label}{it.shortcut && <span className="sol-popup-menu__shortcut">{it.shortcut}</span>}</button>
+        <button key={i} type="button" role="menuitem" className="sol-popup-menu__item" disabled={it.disabled} onClick={it.onClick}>{it.label}</button>
       ))}
     </div>
   );
