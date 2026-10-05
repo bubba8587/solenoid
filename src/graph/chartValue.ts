@@ -116,6 +116,10 @@ export function recordFieldText(f: RecordField): string {
   return typeof f.value === "number" ? recordNumberText(f.value, f.format) : f.value;
 }
 
+export function recordLaneText(lane: { label: string; value?: number; format?: FormatAnnotation | null }): string {
+  return lane.value === undefined ? lane.label : recordNumberText(lane.value, lane.format);
+}
+
 export interface RecordDeck {
   names: string[];
   types: CardColType[];
@@ -132,7 +136,8 @@ export interface RecordPayload {
   deck?: RecordDeck;
   cols: number;
   cards: RecordField[][];
-  lanes?: Array<{ label: string; cards: number[] }>;
+  /** A number column's lane keeps its number and format, read by `recordLaneText` when drawn. */
+  lanes?: Array<{ label: string; value?: number; format?: FormatAnnotation | null; cards: number[] }>;
   more?: number;
   size?: RecordSize;
   clamp?: boolean;

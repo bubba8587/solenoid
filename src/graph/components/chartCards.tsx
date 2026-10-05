@@ -2,7 +2,7 @@
 import { CellImage } from "./cubeCell";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
-import { recordFieldText, recordNumberText, titleIndexFor } from "../chartValue";
+import { recordFieldText, recordLaneText, recordNumberText, titleIndexFor } from "../chartValue";
 import { formatScalar } from "./format";
 import { planColumns, packMasonry } from "./masonryLayout";
 import { stopDragStart } from "../coarse";
@@ -264,9 +264,9 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
       <div style={outer}>
         {titleLine}
         <div className="sol-record-board">
-          {(payload.lanes ?? []).map((lane) => (
-            <div key={lane.label} className="sol-record-lane">
-              <div className="sol-record-lane__label">{lane.label}</div>
+          {(payload.lanes ?? []).map((lane, li) => (
+            <div key={li} className="sol-record-lane">
+              <div className="sol-record-lane__label">{recordLaneText(lane)}</div>
               {lane.cards.map((ci) => <RecordGrid key={ci} fields={payload.cards[ci] ?? []} cols={payload.cols} />)}
             </div>
           ))}

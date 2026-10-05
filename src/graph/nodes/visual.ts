@@ -1363,9 +1363,10 @@ export class RecordNode extends ClassicPreset.Node {
       const laneOf = new Map<string, number>();
       for (const r of drawn) {
         const cell = recordCell(byCol, r);
-        const label = cell === null ? "—" : typeof cell === "number" ? recordNumberText(cell, byCol.format) : cell;
-        let li = laneOf.get(label);
-        if (li === undefined) { li = laneList.length; laneOf.set(label, li); laneList.push({ label, cards: [] }); }
+        const lane = typeof cell === "number" ? { label: "", value: cell, format: byCol.format } : { label: cell ?? "—" };
+        const key = typeof cell === "number" ? `#${cell}` : `$${lane.label}`;
+        let li = laneOf.get(key);
+        if (li === undefined) { li = laneList.length; laneOf.set(key, li); laneList.push({ ...lane, cards: [] }); }
         laneList[li].cards.push(cards.length);
         cards.push(cardAt(r));
       }

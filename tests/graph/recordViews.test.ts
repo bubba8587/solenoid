@@ -3,8 +3,9 @@ import { describe, it, expect } from "vitest";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
 import { RecordNode, parseRecordLayout } from "../../src/graph/nodes/visual";
-import { recordFieldText, titleIndexFor, type RecordPayload } from "../../src/graph/chartValue";
+import { recordFieldText, recordLaneText, titleIndexFor, type RecordPayload } from "../../src/graph/chartValue";
 import type { FrameValue } from "../../src/graph/frame";
+import { settingsStore } from "../../src/graph/settingsStore";
 
 // Record 1.4 B1 (trimmed): the List op + the `cardsize` gallery preset.
 
@@ -112,7 +113,24 @@ describe("Record views read a cell as the Cards view does", () => {
       const fields = p.cards[0];
       expect(text(fields.find((f) => f.label === "Due")!)).toBe("2023-03-15");
       expect(text(fields.find((f) => f.label === "Share")!)).toBe("25.6%");
-      if (op === "board") expect(p.lanes?.[0].label).toBe("50%");
+      if (op === "board") expect(recordLaneText(p.lanes![0])).toBe("50%");
     });
   }
+});
+
+describe("a board's number lanes", () => {
+  it("keep their number, so a Decimal places change shows on the heading without a recompute ([[D94]] oneNumberDisplay)", async () => {
+    const f: FrameValue = { __frame: true, columns: [{ name: "Lane", type: "number", values: [1.23456, 1.23456, 2] }] };
+    const rec = new RecordNode({ op: "board" });
+    rec.stringLiterals.by = "Lane";
+    const p = (await rec.data({ frame: [f] })).chart.payload as RecordPayload;
+    expect(p.lanes?.map((l) => l.cards)).toEqual([[0, 1], [2]]);
+    try {
+      settingsStore.set("numberDecimals", "2");
+      expect(p.lanes?.map(recordLaneText)).toEqual(["1.23", "2"]);
+    } finally {
+      settingsStore.set("numberDecimals", "4");
+    }
+    expect(recordLaneText(p.lanes![0])).toBe("1.2346");
+  });
 });
