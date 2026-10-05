@@ -9,6 +9,7 @@ import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
 import { calcModeStore } from "./calcModeStore";
+import { pushNotice } from "./noticeStore";
 
 export type FrameHandle = string & { readonly __frameHandle: unique symbol };
 
@@ -362,9 +363,17 @@ function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[
   });
 }
 
-/** The native engine keeps error cells only in number and date columns, and a logical column has no NaN. */
+/** The native engine keeps error cells only in number and date columns. */
 const holdsTextOrLogicalError = (f: FrameValue): boolean =>
-  f.columns.some((c) => (c.type === "string" || c.type === "logical") && c.values.some((v) => isSolError(v) || (c.type === "logical" && typeof v === "number")));
+  f.columns.some((c) => (c.type === "string" || c.type === "logical") && c.values.some(isSolError));
+
+/** A logical column has no NaN on the engine, which reads one as blank; said once a session. */
+let toldLogicalNaN = false;
+function noteLogicalNaN(f: FrameValue): void {
+  if (toldLogicalNaN || !f.columns.some((c) => c.type === "logical" && c.values.some((v) => typeof v === "number"))) return;
+  toldLogicalNaN = true;
+  pushNotice("The desktop engine reads a logical cell that isn't TRUE or FALSE as blank, not NaN, so a result can differ from the web app's.", "info");
+}
 
 const isOracleHandle = (h: FrameHandle): boolean => h.startsWith("jsf:");
 
@@ -400,6 +409,7 @@ class PolarsBackend implements FrameBackend {
 
   async source(frame: FrameValue): Promise<FrameHandle> {
     if (holdsTextOrLogicalError(frame)) return this.oracle.source(frame);
+    noteLogicalNaN(frame);
     const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(encodeWireCell) })) };
     const h = await (ipcInvoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>);
     return this.remember(h, schemaOnly(frame));
