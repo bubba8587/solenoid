@@ -2,16 +2,17 @@
 // Must stay recharts-free: a helper imported from here must not drag recharts into the main bundle.
 import { useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
-import { resolveColor, COLOR_PALETTE, type PaletteSlot } from "../palette";
+import { resolveColor, type PaletteSlot } from "../palette";
 
 export type ChartShape =
   | "line" | "area" | "bar" | "column"       // cartesian (axes-aware)
   | "pie" | "radar" | "radialbar" | "funnel"; // categorical / polar
 
-// The swatch pickers' order without gray, starting at purple; charts, diagrams and value chips all color in it.
-const HUES = COLOR_PALETTE.filter((slot) => slot !== "gray");
-const SERIES_START = HUES.indexOf("purple");
-export const SERIES_SLOTS: readonly PaletteSlot[] = [...HUES.slice(SERIES_START), ...HUES.slice(0, SERIES_START)];
+// The same slot order as MermaidView, so a chart and a diagram side by side color their series alike.
+const SERIES_SLOTS: PaletteSlot[] = [
+  "blue", "gold", "teal", "pink", "green", "purple",
+  "sky", "vermilion", "lime", "violet", "amber", "gray",
+];
 
 // recharts writes colors as SVG attributes, where CSS var() doesn't resolve.
 export function useChartColors() {

@@ -2,9 +2,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, themeAccent } from "../palette";
-import { SERIES_SLOTS } from "./chartCore";
 
 
+const SERIES_SLOTS = [
+  "blue", "gold", "teal", "pink", "green", "purple",
+  "sky", "vermilion", "lime", "violet", "amber", "gray",
+] as const;
 
 function readVar(name: string, fallback: string): string {
   if (typeof document === "undefined") return fallback;
