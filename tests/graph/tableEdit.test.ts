@@ -71,6 +71,13 @@ describe("the menus", () => {
     insert.forEach((i) => i.onClick());
     expect(calls).toEqual([[1, 3], [4, 3]]);
   });
+  it("show the keys only on the axis they act on: rows, unless only columns are offered", () => {
+    const col = axis({ noun: "Column", sides: ["left", "right"] });
+    const both = editMenuItems(axis({}), col);
+    expect(both.insert.map((i) => i.shortcut)).toEqual(["Ctrl+Shift+=", undefined, undefined, undefined]);
+    expect(both.remove.map((i) => i.shortcut)).toEqual(["Ctrl+-", undefined]);
+    expect(editMenuItems(undefined, col).insert[0].shortcut).toBe("Ctrl+Shift+=");
+  });
   it("never delete every row, unless the level may be empty", () => {
     expect(editMenuItems(axis({ target: [0], total: 1 })).remove[0].disabled).toBe(true);
     expect(editMenuItems(axis({ target: [0], total: 1, canEmpty: true })).remove[0].disabled).toBe(false);

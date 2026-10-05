@@ -14,7 +14,7 @@
 //   --click <css>        click the first match
 //   --click-edge <css>   click the first match 5px in from its top-left corner (a popup's overlay, outside the card)
 //   --type <css> <text>  focus the first match, select all, type the text
-//   --press <key>        press a key (Enter, Escape, Tab…)
+//   --press <key>        press a key (Enter, Escape, Tab…) or a combo (Control+Shift+Equal)
 // Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__input.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -123,7 +123,14 @@ try {
       await page.keyboard.press("KeyA");
       await page.keyboard.up("Control");
       await page.keyboard.type(step.text);
-    } else if (step.press) await page.keyboard.press(step.press);
+    } else if (step.press) {
+      // A combo like Control+Shift+Equal holds each modifier around the last key.
+      const keys = step.press.split("+");
+      const last = keys.pop();
+      for (const k of keys) await page.keyboard.down(k);
+      await page.keyboard.press(last);
+      for (const k of keys.reverse()) await page.keyboard.up(k);
+    }
     else if (step.popup) {
       const chips = await page.$$(".solenoid-array-chip--frame");
       if (!chips[step.popup - 1]) throw new Error(`no frame chip #${step.popup} (found ${chips.length})`);

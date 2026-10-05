@@ -26,7 +26,7 @@ export interface EditAxis {
   canEmpty?: boolean;
 }
 
-interface MenuItem { label: string; onClick: () => void; disabled?: boolean }
+interface MenuItem { label: string; onClick: () => void; disabled?: boolean; shortcut?: string }
 
 function plural(noun: string, n: number): string {
   return `${n} ${noun.toLowerCase()}${noun.endsWith("s") ? "" : "s"}`;
@@ -60,20 +60,29 @@ function insertItems(axis: EditAxis): MenuItem[] {
   const lo = Math.min(...axis.target), hi = Math.max(...axis.target);
   const what = n > 1 ? plural(axis.noun, n) : axis.noun;
   return [
-    { label: `${what} ${axis.sides[0]}`, onClick: () => axis.insert(lo, n) },
+    { label: `${what} ${axis.sides[0]}`, onClick: () => axis.insert(lo, n), shortcut: "Ctrl+Shift+=" },
     { label: `${what} ${axis.sides[1]}`, onClick: () => axis.insert(hi + 1, n) },
   ];
 }
 
 function deleteItem(picked: EditAxis): MenuItem {
   const axis = picked.target.length ? picked : { ...picked, target: [picked.total - 1] };
-  return { label: targetLabel(axis), onClick: () => axis.remove([...axis.target]), disabled: !axis.canEmpty && axis.target.length >= axis.total };
+  return {
+    label: targetLabel(axis), onClick: () => axis.remove([...axis.target]),
+    disabled: !axis.canEmpty && axis.target.length >= axis.total, shortcut: picked.target.length ? "Ctrl+-" : undefined,
+  };
 }
 
 /** The Insert and Delete items for whichever axes the editor offers. */
 export function editMenuItems(row?: EditAxis, col?: EditAxis): { insert: MenuItem[]; remove: MenuItem[] } {
   const axes = [row, col].filter((a): a is EditAxis => !!a);
-  return { insert: axes.flatMap(insertItems), remove: axes.filter((a) => a.total > 0).map(deleteItem) };
+  // The keys act on rows unless only columns are offered (a column selection), so only that axis shows them.
+  const keyed = row ?? col;
+  const bare = (items: MenuItem[], a: EditAxis) => (a === keyed ? items : items.map(({ shortcut: _s, ...it }) => it));
+  return {
+    insert: axes.flatMap((a) => bare(insertItems(a), a)),
+    remove: axes.filter((a) => a.total > 0).flatMap((a) => bare([deleteItem(a)], a)),
+  };
 }
 
 function useOutsideClose(open: boolean, ref: React.RefObject<HTMLElement | null>, close: () => void) {
@@ -95,7 +104,7 @@ function MenuList({ items, className, style, heading }: { items: MenuItem[]; cla
     <div className={className} role="menu" style={style}>
       {heading}
       {items.map((it, i) => (
-        <button key={i} type="button" role="menuitem" className="sol-popup-menu__item" disabled={it.disabled} onClick={it.onClick}>{it.label}</button>
+        <button key={i} type="button" role="menuitem" className="sol-popup-menu__item" disabled={it.disabled} onClick={it.onClick}>{it.label}{it.shortcut && <span className="sol-popup-menu__shortcut">{it.shortcut}</span>}</button>
       ))}
     </div>
   );
@@ -166,10 +175,42 @@ export function TableContextMenu({ at, row, col, onClose }: { at: { x: number; y
   return (
     <div ref={ref} className="sol-popup-menu__list sol-popup-menu__list--at" role="menu" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
       <div className="sol-popup-menu__heading">Insert</div>
-      {insert.map((it, i) => <button key={`i${i}`} type="button" role="menuitem" className="sol-popup-menu__item" onClick={wrap(it).onClick}>{it.label}</button>)}
+      {insert.map((it, i) => <button key={`i${i}`} type="button" role="menuitem" className="sol-popup-menu__item" onClick={wrap(it).onClick}>{it.label}{it.shortcut && <span className="sol-popup-menu__shortcut">{it.shortcut}</span>}</button>)}
       <div className="sol-popup-menu__sep" />
       <div className="sol-popup-menu__heading">Delete</div>
-      {remove.map((it, i) => <button key={`d${i}`} type="button" role="menuitem" className="sol-popup-menu__item" disabled={it.disabled} onClick={wrap(it).onClick}>{it.label}</button>)}
+      {remove.map((it, i) => <button key={`d${i}`} type="button" role="menuitem" className="sol-popup-menu__item" disabled={it.disabled} onClick={wrap(it).onClick}>{it.label}{it.shortcut && <span className="sol-popup-menu__shortcut">{it.shortcut}</span>}</button>)}
     </div>
   );
+}
+
+/**
+ * Excel's keys for the same targets the menus act on: Ctrl+Shift+= (Cmd on a Mac) inserts as many before the target
+ * as are picked, Ctrl+− deletes them. A column selection acts on columns, anything else on rows; with nothing picked
+ * the keys do nothing. Neither key types a character, so they act from inside a cell too, and they take the keys from
+ * the browser's zoom while an editor is showing.
+ *
+ * Called before an editor's early return; the returned `arm` takes the current axes each render, and an editor that
+ * renders nothing leaves them unarmed.
+ */
+export function useEditShortcuts(): (row: EditAxis | undefined, col: EditAxis | undefined, columns: boolean) => void {
+  const live = useRef<{ row?: EditAxis; col?: EditAxis; columns: boolean } | null>(null);
+  live.current = null;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const cur = live.current;
+      if (!cur || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const insert = e.shiftKey && (e.key === "+" || e.key === "=" || e.code === "Equal");
+      const remove = !e.shiftKey && (e.key === "-" || e.code === "Minus");
+      if (!insert && !remove) return;
+      const axis = cur.columns ? cur.col ?? cur.row : cur.row ?? cur.col;
+      if (!axis || axis.target.length === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (insert) axis.insert(Math.min(...axis.target), axis.target.length);
+      else if (axis.canEmpty || axis.target.length < axis.total) axis.remove([...axis.target]);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+  return (row, col, columns) => { live.current = { row, col, columns }; };
 }

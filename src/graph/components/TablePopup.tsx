@@ -47,7 +47,7 @@ import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
 import "./TablePopup.css";
 import { ChevronDownIcon } from "./Icons";
-import { TableEditMenus, TableContextMenu, type EditAxis } from "./TableEditMenu";
+import { TableEditMenus, TableContextMenu, useEditShortcuts, type EditAxis } from "./TableEditMenu";
 import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex, type AxisSelection } from "../tableEdit";
 
 type CellType = "number" | "string" | "date" | "logical";
@@ -136,6 +136,7 @@ export function TablePopup() {
 
   const [grid, setGrid] = useState<string[][]>([]);
   const { sort, cycle: cycleSort, remap: remapSort, clear: clearSort, set: setSort } = useColumnSort(state);
+  const armEditShortcuts = useEditShortcuts();
   // One word filter for the Grid and Cards views, shared as the sort is; a new popup starts unfiltered.
   const [query, setQuery] = useState("");
   const queryFor = useRef(state);
@@ -849,6 +850,7 @@ export function TablePopup() {
   // A selection of rows offers only row actions, and of columns only column actions.
   const menuRow = sel?.axis === "col" ? undefined : rowAxis;
   const menuCol = sel?.axis === "row" ? undefined : colAxis;
+  armEditShortcuts(menuRow, menuCol, sel?.axis === "col");
   const selRows = new Set(sel?.axis === "row" ? sel.indices : []);
   const selCols = new Set(sel?.axis === "col" ? sel.indices : []);
   // The cell the menus act on stays outlined after focus moves to them; nothing unmarked is ever a target.

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cubePopup, gridPosOf, type DrillView, type CellRef } from "../cubePopupStore";
 import { CubeEditCell, ListEditCell, GridEditCell, cubeEditAxes, CubeEditHeader } from "./cubeEditCell";
-import { TableEditMenus, TableContextMenu } from "./TableEditMenu";
+import { TableEditMenus, TableContextMenu, useEditShortcuts } from "./TableEditMenu";
 import { pickIndex, type AxisSelection } from "../tableEdit";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount, type CubeCell } from "../frame";
@@ -125,6 +125,7 @@ export function CubePopup() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const { sort, cycle: cycleSort } = useColumnSort(state?.stack[state.stack.length - 1]);
   const [listVertical, setListVertical] = useState(false);
+  const armEditShortcuts = useEditShortcuts();
   const [sourceMode, setSourceMode] = useState(false);
   const [sel, setSel] = useState<AxisSelection | null>(null);
   const [focusCell, setFocusCell] = useState<{ r: number; c: number } | null>(null);
@@ -172,6 +173,7 @@ export function CubePopup() {
   }) : null;
   const menuRow = sel?.axis === "col" ? undefined : editAxes?.row;
   const menuCol = sel?.axis === "row" && !itemsAcross ? undefined : editAxes?.col;
+  armEditShortcuts(menuRow, menuCol, sel?.axis === "col");
   const selRows = new Set(sel?.axis === "row" ? sel.indices : []);
   const selCols = new Set(sel?.axis === "col" ? sel.indices : []);
   const isSel = (r: number, c: number) => (itemsAcross ? selRows.has(c) : selRows.has(r) || selCols.has(c));
