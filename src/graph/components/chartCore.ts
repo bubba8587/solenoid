@@ -8,8 +8,8 @@ export type ChartShape =
   | "line" | "area" | "bar" | "column"       // cartesian (axes-aware)
   | "pie" | "radar" | "radialbar" | "funnel"; // categorical / polar
 
-// The swatch pickers' order, starting at sky; charts, diagrams and value chips all color in it.
-const SERIES_START = COLOR_PALETTE.indexOf("sky");
+// The swatch pickers' order, starting at purple; charts, diagrams and value chips all color in it.
+const SERIES_START = COLOR_PALETTE.indexOf("purple");
 export const SERIES_SLOTS: readonly PaletteSlot[] = [...COLOR_PALETTE.slice(SERIES_START), ...COLOR_PALETTE.slice(0, SERIES_START)];
 
 // recharts writes colors as SVG attributes, where CSS var() doesn't resolve.
