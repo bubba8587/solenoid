@@ -11,7 +11,7 @@ import { EquationNode } from "./equation";
 import {
   couponValue, accrint, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
   bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xnpv, xirr, mirr, amortizationSchedule, fvSchedule,
-  returnsOp, RETURNS_OP_META, type ReturnsOp,
+  returnsOp, RETURNS_OP_META, type ReturnsOp, cumulativePayment,
 } from "./financeOps";
 export { RETURNS_OP_META } from "./financeOps";
 export type { ReturnsOp } from "./financeOps";
@@ -907,39 +907,7 @@ export class PaymentBreakdownNode extends ClassicPreset.Node {
     if (rate === null || nper === null || pv === null || startRaw === null || endRaw === null) {
       this.cachedResult = null; return { result: null };
     }
-    const start = Math.round(startRaw);
-    const end   = Math.round(endRaw);
-    const type  = this.paymentTiming === "beg" ? 1 : 0;
-    if (!(rate > 0 && nper > 0 && pv > 0 && start >= 1 && end >= start)) {
-      const err = solError("#DOMAIN!", "Rate, periods and PV must be above 0, and the range must start at period 1 or later and not after its end");
-      this.cachedResult = err;
-      return { result: err };
-    }
-
-    let result: number | null = null;
-    let pmt: number;
-    if (Math.abs(rate) < 1e-12) {
-      pmt = -pv / nper;
-    } else {
-      const rN = Math.pow(1 + rate, nper);
-      pmt = -(pv * rN) * rate / ((1 + rate * type) * (rN - 1));
-    }
-    if (Number.isFinite(pmt)) {
-      let cumSum = 0;
-      for (let per = start; per <= end; per++) {
-        let ipmt: number;
-        if (Math.abs(rate) < 1e-12) {
-          ipmt = 0;
-        } else {
-          const rPer1 = Math.pow(1 + rate, per - 1);
-          const B = pv * rPer1 + pmt * (1 + rate * type) * (rPer1 - 1) / rate;
-          ipmt = -(type === 0 ? B * rate : (B - pmt) * rate);
-        }
-        cumSum += this.op === "cumipmt" ? ipmt : pmt - ipmt;
-      }
-      result = Number.isFinite(cumSum) ? cumSum : null;
-    }
-
+    const result = cumulativePayment(this.op === "cumipmt" ? "cumipmt" : "cumprinc", rate, nper, pv, startRaw, endRaw, this.paymentTiming === "beg" ? 1 : 0);
     this.cachedResult = result;
     return { result };
   }

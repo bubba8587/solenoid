@@ -43,7 +43,7 @@ export const ARG_ROLES: Record<string, ArgRoles> = {
   INTERPOLATE: { 1: setting(LEFT_OUT), 2: setting(LEFT_OUT) },
   TREND: { 3: setting(LEFT_OUT) },
   GROWTH: { 3: setting(LEFT_OUT) },
-  TEXTSPLIT: { 1: required, 2: setting(LEFT_OUT), 3: setting(false), 4: setting(0), 5: setting(LEFT_OUT) },
+  TEXTSPLIT: { 1: setting(LEFT_OUT), 2: setting(LEFT_OUT), 3: setting(false), 4: setting(0), 5: setting(LEFT_OUT) },
   TEXTAFTER: { 2: setting(LEFT_OUT), 3: setting(0), 4: setting(0), 5: setting(LEFT_OUT) },
   TEXTBEFORE: { 2: setting(LEFT_OUT), 3: setting(0), 4: setting(0), 5: setting(LEFT_OUT) },
   // The settings sweep ([[D86]] blankRoles): optional settings read a blank as left out, required ones as Excel's

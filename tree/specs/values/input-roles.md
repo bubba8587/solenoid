@@ -92,7 +92,7 @@ CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
 
 **The declaration.** Every parameter's empty-slot reading comes from one table beside `ARG_ROLES`: a declared role's blank where there is one, else the parameter's type. The type comes from the function's signature names ([[formula-language]], `FORMULA_SIGNATURES`), with an explicit override per function where a name misleads; a variadic tail repeats its group. A test calls every function with an empty slot in each position and compares the answer with the same call given the reading typed out, so the reading and the function cannot drift apart.
 
-**Not covered:** XLOOKUP's empty `if_not_found` stays missing until Excel's answer is checked (backlog).
+**Where Excel reads an empty slot its own way** (checked in Excel 2026-10-05), a table beside the readings says so (`EXCEL_EMPTY_SLOT` in `emptySlots.ts`) and wins over the role: TEXTJOIN's empty `ignore_empty` is TRUE, where a blank value is FALSE, and XLOOKUP's empty `if_not_found` is left out, so no match is `#N/A`.
 
 ## Placeholders
 
@@ -121,7 +121,7 @@ The roles replace an older per-kind table in which most non-data inputs propagat
 | a figure's datum: a chart's values, a KPI's number | data | renders an empty figure, never a `SolError` out a `chart` socket | Gauge, KPI |
 | a filter predicate, one per row | data | drops that row | Filter |
 | a distribution's parameter: a mean, a shape, a probability | data | propagates | `NORM.DIST(x, blank, 1, TRUE)` is blank |
-| a mode selector: basis, type, method, delimiter, cumulative | setting | its default; with none, `#SYNTAX!` | `NORM.DIST(x, 0, 1, blank)` is the density (FALSE); `TEXTSPLIT(x, blank)` is `#SYNTAX!` |
+| a mode selector: basis, type, method, delimiter, cumulative | setting | its default; with none, `#SYNTAX!` | `NORM.DIST(x, 0, 1, blank)` is the density (FALSE); the TEXTSPLIT card's blank delimiter is `#SYNTAX!` |
 | a shape or count: rows, columns, count, wrap width, window | setting | its default; with none, `#SYNTAX!` | `RUNNING("sum", x, blank)` is cumulative; `MAKEARRAY(blank, 3, f)` is `#SYNTAX!` |
 | an optional bound or tolerance | setting | no bound, or the default tolerance | Clamp's min; Is Close's tolerance; Slice's end |
 | a position | picks, or a required setting where a list must stay aligned | dropped (picks) or `#SYNTAX!` | INDEX's position; CHOOSE's index; Get Row |

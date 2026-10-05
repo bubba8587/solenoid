@@ -113,13 +113,15 @@ export function quartile(arr: readonly number[], q: number, exc: boolean): numbe
   return guardFinite(percentileOf([...arr].sort((a, b) => a - b), p, exc), arr);
 }
 
+/** A fractional k counts as Excel does (checked in Excel): its position in ascending order is truncated, so SMALL's
+ *  k = 2.5 is the 2nd smallest and LARGE's is the 3rd largest. */
 export function nthExtreme(arr: readonly number[], k: number, largest: boolean): number | SolError | null {
-  const ki = Math.round(k);
-  if (Number.isNaN(ki)) return solError("#VALUE!", "k must be a number");
-  if (ki < 1) return solError("#DOMAIN!", "k starts at 1, the largest or smallest value");
-  if (arr.length === 0 || ki > arr.length) return null;
+  if (Number.isNaN(k)) return solError("#VALUE!", "k must be a number");
+  if (k < 1) return solError("#DOMAIN!", "k starts at 1, the largest or smallest value");
+  const n = arr.length;
+  if (n === 0 || k > n) return null;
   const sorted = [...arr].sort((a, b) => a - b);
-  return largest ? sorted[arr.length - ki] : sorted[ki - 1];
+  return sorted[Math.floor(largest ? n - k + 1 : k) - 1];
 }
 
 export function pearson(xs: readonly number[], ys: readonly number[], rsq = false): number | SolError | null {

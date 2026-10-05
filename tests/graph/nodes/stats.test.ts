@@ -139,8 +139,8 @@ describe("PERCENTRANK", () => {
     expect(fx("PERCENTRANK.EXC(x, 3)", [1, null, 3, 5])).toBe(0.5);
     expect(node("percentrank-inc", [5], 5)).toBe(1);
     expect(fx("PERCENTRANK.INC(x, 5)", [5])).toBe(1);
-    expect(node("percentrank-exc", [5], 5)).toBe(0.5);
-    expect(fx("PERCENTRANK.EXC(x, 5)", [5])).toBe(0.5);
+    expect(node("percentrank-exc", [5], 5)).toBe(1);
+    expect(fx("PERCENTRANK.EXC(x, 5)", [5])).toBe(1); // as Excel answers
     const dups = [2, 4, 4, 4, 5, 5, 7, 9];
     expect(node("percentrank-inc", dups, 4, 2.6)).toBe(0.14);
     expect(fx("PERCENTRANK.INC(x, 4, 2.6)", dups)).toBe(0.14);

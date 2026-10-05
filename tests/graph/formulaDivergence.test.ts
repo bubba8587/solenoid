@@ -384,3 +384,17 @@ describe("Pass-through stats family holds the Excel value (catches FX drift on u
     expect(num(call("SUMSQ", [1, 2, 3]))).toBeCloseTo(14, 9);     // 1+4+9
   });
 });
+
+describe("CUMIPMT, CUMPRINC and SLN refuse what Excel refuses (FX answers)", () => {
+  it("an end period past the loan is #DOMAIN! (Excel's #NUM!) and a zero life #DIV/0!, checked in Excel", () => {
+    for (const name of ["CUMIPMT", "CUMPRINC"]) expect((call(name, 0.01, 12, 1000, 1, 15, 0) as { code?: string }).code).toBe("#DOMAIN!");
+    expect((call("SLN", 1, 1, 0) as { code?: string }).code).toBe("#DIV/0!");
+    expect(num(call("CUMIPMT", 0.01, 12, 1000, 1, 12, 0))).toBeCloseTo(num((FX as unknown as Record<string, (...a: number[]) => unknown>).CUMIPMT(0.01, 12, 1000, 1, 12, 0)), 9);
+  });
+  it("FX still runs past the loan and calls a zero life #NUM! (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => unknown>;
+    expect(typeof fx.CUMIPMT(0.01, 12, 1000, 1, 15, 0)).toBe("number");
+    expect(typeof fx.CUMPRINC(0.01, 12, 1000, 1, 15, 0)).toBe("number");
+    expect(String(fx.SLN(1, 1, 0))).toMatch(/#NUM!/);
+  });
+});

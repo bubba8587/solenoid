@@ -3,16 +3,27 @@
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 import { solError, isSolError, type SolError } from "../errorValue";
 
+/** Months later (or earlier), the day clamped to the target month's length: 31 Aug less 6 months is 29 Feb, never 2 Mar. */
 export function coupAddMonths(d: Date, months: number): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, d.getUTCDate()));
+  const y = d.getUTCFullYear(), m = d.getUTCMonth() + months;
+  const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(d.getUTCDate(), last)));
+}
+
+const isMonthEnd = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1)).getUTCDate() === 1;
+
+/** The coupon date `months` from an anchor (the maturity), counted from the anchor each time so a short month never
+ *  drifts the schedule; a month-end anchor keeps every coupon on a month end, as Excel's schedule does. */
+export function couponDate(anchor: Date, months: number): Date {
+  if (!isMonthEnd(anchor)) return coupAddMonths(anchor, months);
+  return new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() + months + 1, 0));
 }
 
 export function coupDates(settle: Date, maturity: Date, freq: number): { prev: Date; next: Date } {
   const step = 12 / freq;
-  let next = new Date(maturity.getTime());
-  while (next > settle) next = coupAddMonths(next, -step);
-  next = coupAddMonths(next, step);
-  return { prev: coupAddMonths(next, -step), next };
+  let k = 0;
+  while (couponDate(maturity, -k * step) > settle) k++;
+  return { prev: couponDate(maturity, -k * step), next: couponDate(maturity, -(k - 1) * step) };
 }
 
 export function days30_360(d1: Date, d2: Date): number {
@@ -81,10 +92,11 @@ export function solveYield(priceAt: (y: number) => number, target: number, coupo
   return yld;
 }
 
+/** Coupons from `next` through maturity, counted back from maturity on its own schedule. */
 export function bondCouponCount(next: Date, maturity: Date, freq: number): number {
   const step = 12 / freq;
-  let N = 0; let d = new Date(next.getTime());
-  while (d <= maturity) { N++; d = coupAddMonths(d, step); }
+  let N = 0;
+  while (couponDate(maturity, -N * step) >= next) N++;
   return N;
 }
 
@@ -117,8 +129,11 @@ export function oddfPrice(
   const step = 12 / freq;
   const E = 360 / freq;
   const periods: [Date, Date][] = [];
-  let d0 = new Date(firstCoupon.getTime());
-  while (d0 > issue) { const prev = coupAddMonths(d0, -step); periods.unshift([prev, d0]); d0 = prev; }
+  for (let j = 0, d0 = firstCoupon; d0 > issue; j++) {
+    const prev = couponDate(firstCoupon, -(j + 1) * step);
+    periods.unshift([prev, d0]);
+    d0 = prev;
+  }
   let sumDC = 0, sumA = 0;
   for (const [qs, qe] of periods) {
     const start = qs < issue ? issue : qs;
@@ -676,4 +691,27 @@ export function returnsOp(op: ReturnsOp, series: readonly RCell[], rf = 0, perio
     case "sharpe":      return sharpeRatio(series, rf, periodsPerYear);
     case "sortino":     return sortinoRatio(series, rf, periodsPerYear);
   }
+}
+
+/** CUMIPMT and CUMPRINC: the interest or principal paid over periods start…end of a level-payment loan. Excel's
+ *  refusals are #DOMAIN! (its #NUM!), an end past the loan's last period among them. */
+export function cumulativePayment(
+  op: "cumipmt" | "cumprinc", rate: number, nper: number, pv: number, startRaw: number, endRaw: number, type: 0 | 1,
+): number | SolError | null {
+  const start = Math.round(startRaw);
+  const end = Math.round(endRaw);
+  if (!(rate > 0 && nper > 0 && pv > 0 && start >= 1 && end >= start && end <= nper)) {
+    return solError("#DOMAIN!", "Rate, periods and PV must be above 0, and the range must run from period 1 or later to the loan's last period at most");
+  }
+  const rN = Math.pow(1 + rate, nper);
+  const pmt = -(pv * rN) * rate / ((1 + rate * type) * (rN - 1));
+  if (!Number.isFinite(pmt)) return null;
+  let sum = 0;
+  for (let per = start; per <= end; per++) {
+    const rPer1 = Math.pow(1 + rate, per - 1);
+    const B = pv * rPer1 + pmt * (1 + rate * type) * (rPer1 - 1) / rate;
+    const ipmt = -(type === 0 ? B * rate : (B - pmt) * rate);
+    sum += op === "cumipmt" ? ipmt : pmt - ipmt;
+  }
+  return Number.isFinite(sum) ? sum : null;
 }

@@ -7,8 +7,9 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator
 
 describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, an omitted argument the default", () => {
 
-  it("TEXTJOIN: a blank ignore_empty is FALSE and keeps the empties; omitted is not possible (required)", () => {
-    expect(ev('TEXTJOIN(",", , "a", "", "b")')).toBe("a,,b");
+  it("TEXTJOIN: an empty ignore_empty slot is TRUE, as Excel reads it; a blank value is FALSE and keeps the empties", () => {
+    expect(ev('TEXTJOIN(",", , "a", "", "b")')).toBe("a,b");
+    expect(ev('TEXTJOIN(",", b, "a", "", "b")', { b: null })).toBe("a,,b");
     expect(ev('TEXTJOIN(",", TRUE, "a", "", "b")')).toBe("a,b");
     expect(ev('TEXTJOIN(",", FALSE, "a", "", "b")')).toBe("a,,b");
   });

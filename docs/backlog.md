@@ -42,7 +42,6 @@ warning is expected.
 
 ## Empty argument slots (author 2026-10-05; [[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue)
 
-- [ ] **XLOOKUP's empty `if_not_found`** stays missing until Excel's answer is checked (C80 left it out; author 2026-10-05: backlog).
 - [ ] **Leaf number clash:** this session's D96 emptySlotShowsItsValue took the number the parked `pivot-list-cells` branch gave D96 pivotPoolsItems; move that branch's leaf (`dte move`) when it merges.
 
 ## Cubes and lists (author 2026-09-26)
@@ -278,7 +277,7 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 
 ## Formula parity leads (2026-09-25 audit against Excel)
 
-- [ ] **N, T, TYPE and ERROR.TYPE are out of scope but still callable (author's call).** `EXCEL_GAP` marks all four
+- [ ] **N, T, TYPE and ERROR.TYPE are out of scope but still callable (author's call; checked in Excel 2026-10-05: `TYPE(1/0)` is 16, `TYPE({1,2})` 64).** `EXCEL_GAP` marks all four
   `oos` ("Not needed", "Not supported") and they have no card, yet Formula.js answers them, and `NULL_INSPECTING` lists
   N, T and TYPE on purpose. TYPE is the leaky one: `undefined` for a blank, a LAMBDA or a complex number, one answer per
   element on a list (Excel 64), `#SHAPE!` on a matrix, and `TYPE(1/0)` is `#DIV/0!` (Excel 16). Retire the four the way
@@ -313,7 +312,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 ## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
 - [ ] **Verify on the next desktop build:** the window still closes (Windows: overlay title bar and Alt+F4; Linux: the
   app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy` added), and drafts survive it.
-- [ ] **Follow-ups (2026-09-24, round 2):** RANDARRAY whole numbers over a range holding none (1.2 to 1.8) is `#VALUE!`,
   unchecked against Excel.
 - [ ] **Packs and units:** only Thermo presets declare input units (`preset-declared-units` in the inbox); fluids,
   electricity, EM, earthsky, health and chemistry build bare constants into formulas, so wired units give wrong
@@ -323,27 +321,22 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   has no per-substance range check.
 
 ## From the 2026-09-29 commit-walk review (08-24 to 09-29; open leads, each verified against HEAD unless marked)
-- [ ] **TEXTSPLIT rows only** (author's call, `settings-audit.md` col_delimiter): `TEXTSPLIT(A1,,";")` is `#SYNTAX!`; relaxing the role alone would split each row into letters (`splitText` on "").
 - [ ] **Cast "Group (default ,)"** label: with Decimal `,` the default group is none, so the label misleads; a string for the author.
 - [ ] **∞ through a note** (author's call): the writer puts ∞ in a note as the text `"Infinity"` (`yamlScalar`), which a number column reads back as NaN ([[D93]] oneTextReading), while [[D48]] classifyNonFinite keeps an incoming ∞ a real value; bare `.inf` reads blank (`noteFrontmatter.ts` readScalar). Write `.inf` and read it as ∞, or read the text "Infinity" as ∞.
 - [ ] **TaskNotes blank URL** (author's call, [[D62]] demoVaultResolution): with Use demo vault on (the default), a blank TaskNotes URL reads the demo, where it always meant the default server `localhost:8080` (`taskNotesApi.ts` base(), the Settings placeholder). Decide what blank means. (Write Tasks already refuses while the reader is on the demo.)
 - [ ] **Vendored DTE**: `tools/dte.py` `COVERAGE_TEMPLATE` writes a literal `100%%` into a new `.dtecoverage` on `dte init`; `excluded_from_coverage` doesn't count `covers:` citations (the numbers only). Upstream fixes.
 - [ ] **World Clock** updates only on a recompute, at midnight or on F9; a per-minute ticker is a design choice (a live tick recomputes its downstream every minute).
 - [ ] **Currency over a list**: the Amount socket is single-value, so a list of amounts is refused; broadcast, or keep one amount per card.
-- [ ] **CUMIPMT/CUMPRINC with End past the loan** return a number (formula and card); Excel is believed to give #NUM! (unconfirmed).
 - [ ] **Matrix format precedence**: the matrix popup's own pick now wins over an FC wired to the same card (as a Frame column's own pick does); the reverse is defensible.
 - [ ] **Gantt font scale** keeps the dragged grid width, so wider columns can run off the right instead of truncating with "…".
 - [ ] **Vault Folder mdbase**: it finds collections only at or below the folder it reads, while Write Properties walks up to the vault root; one rule for both.
 - [ ] **List text predicates on a mixed list** (`list.ts` requireTextList, [[D49]] textPredicateNeedsText): `["apple", 1]` and `[1, "apple"]` are both #TYPE! now; confirm that reading of D49.
 - [ ] **Series op switch**: a typed value equal to the old op's default (Start 0 on Range) reads as untouched and gives way to the next op's default; keeping it needs a saved "edited keys" field.
-- [ ] **LARGE/SMALL** round a fractional k (`nthExtreme`), unchecked against Excel.
 - [ ] **Sketch sample aliasing**: the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs` verb_sample) aliases on periodic data (alternating keys at stride 4 keep only one). A fixed-seed well-mixed sample would fix it; spec line plus both samplers.
 - [ ] **Sketch Run** (`withExactPass`): a sink's Run in Sketch mode leaves the canvas on exact values until the next edit, as F9 does; the table popup's Copy/Export CSV still export the sampled table it shows.
 - [ ] **Record Detail/Gallery/Board/List** now show an unformatted number as Cards does (Auto), not `formatScalar`; confirm.
-- [ ] **30/360 against real Excel**: DAYS360 now counts a last-of-February start as the 30th and YEARFRAC basis 0 follows NASD (both ends of February → 30), from Excel's documented rules, not checked in Excel; `docs/upstream-formulajs.md` claims DAYS360(31-Jan-2024, 1-Mar-2024) is 30 where the rules give 31. Check both in Excel.
-- [ ] **Finance basis 4** (`financeOps.ts`) uses the US 30/360 rule, not the European one; **coupon schedules** stepping back from a 31-Aug maturity land on 3 Mar, not the end of February.
 - [ ] **Append units**: Append drops unit and format by spec; keep them when every frame agrees?
-- [ ] **PERCENTRANK.EXC of one value** answers 0.5, unchecked in Excel; **an imported file's first autosave** may still move its time if the load normalizes the graph (`updateCurrentGraph` compares serialized forms).
+- [ ] **An imported file's first autosave** may still move its time if the load normalizes the graph (`updateCurrentGraph` compares serialized forms).
 
 ## From the 2026-09-30 oldest-first review (1.0-era and July files; verified against HEAD)
 - [ ] **Constant and Physics Constant** draw their own value box (`ConstantNode.tsx`, `PhysicsConstantNode.tsx`): no copy button, no Format Controller. `ValueDisplay`'s `render` could carry the symbol and unit; decide how those sit beside an FC's formatting.

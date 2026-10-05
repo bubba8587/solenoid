@@ -59,9 +59,11 @@ export interface SplitOpts { rowDelimiter?: string; ignoreEmpty?: boolean; casel
  * answers a table, short rows padded with `pad` (`#N/A` when left out, as Excel's). An empty delimiter splits into
  * single characters; `ignoreEmpty` drops the empty parts.
  */
-export function splitText(text: string, delimiter: string, opts: SplitOpts = {}): string[] | unknown[][] {
+/** A null `delimiter` leaves each row whole: TEXTSPLIT with a row delimiter only answers one column. */
+export function splitText(text: string, delimiter: string | null, opts: SplitOpts = {}): string[] | unknown[][] {
   const caseless = opts.caseless ?? false;
-  const cut = (t: string, d: string): string[] => {
+  const cut = (t: string, d: string | null): string[] => {
+    if (d === null) return [t];
     if (d === "") return [...t];
     const parts: string[] = [];
     let from = 0;

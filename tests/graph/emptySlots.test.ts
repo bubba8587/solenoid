@@ -43,13 +43,16 @@ describe("an empty slot reads as its parameter's Excel blank", () => {
     expect(ev("AVERAGE(2, )")).toBe(1);
     expect(ev("AVERAGE(2, b)", { b: null })).toBe(2);
     expect(ev('CONCAT("a", , "b")')).toBe("ab");
-    expect(ev('TEXTJOIN(",", , "a", "", "b")')).toBe("a,,b");
+    // Excel's own readings, checked in Excel: an empty ignore_empty is TRUE, an empty if_not_found is left out.
+    expect(ev('TEXTJOIN(",", , "a", "", "b")')).toBe("a,b");
+    expect((ev("XLOOKUP(9, a, b, )", { a: [1, 2, 3], b: [10, 20, 30] }) as { code?: string }).code).toBe("#N/A");
   });
 
   it("shows the reading, or a word for a left-out default, and nothing for blank text", () => {
     expect(emptySlotReading("POWER", 1).shown).toBe("0");
     expect(emptySlotReading("CONCAT", 1).shown).toBeNull();
-    expect(emptySlotReading("TEXTJOIN", 1).shown).toBe("FALSE");
+    expect(emptySlotReading("TEXTJOIN", 1).shown).toBe("TRUE");
+    expect(emptySlotReading("XLOOKUP", 3).shown).toBe("none");
     expect(emptySlotReading("TAKE", 1).shown).toBe("all");
   });
 });
@@ -59,7 +62,7 @@ describe("the highlighter shows an empty slot's reading ([[D96]] emptySlotShowsI
     const { highlightFormula } = await import("../../src/graph/formulaSyntax");
     expect(highlightFormula("POWER(2, )", "editor")).toContain('</span> <span class="fx-ghost" data-ghost="0"></span>');
     expect(highlightFormula("POWER(2,)")).toContain('<span class="fx-ghost-inline">0</span>');
-    expect(highlightFormula('TEXTJOIN(",",,"a")')).toContain(">FALSE<");
+    expect(highlightFormula('TEXTJOIN(",",,"a")')).toContain(">TRUE<");
     expect(highlightFormula('CONCAT("a",,"b")')).not.toContain("fx-ghost");
     expect(highlightFormula("TAKE(m,,2)")).toContain(">all<");
     expect(highlightFormula("IF(c,SUM(1,),)")).toMatch(/SUM.*fx-ghost-inline">0<.*fx-ghost-inline">0</);

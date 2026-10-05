@@ -13,7 +13,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, regexOccurrence, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
-import { rolesFrom, setting } from "../inputRoles";
+import { rolesFrom, setting, required } from "../inputRoles";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningView } from "../activeGraph";
 import { SolenoidSocket } from "../sockets";
@@ -659,7 +659,8 @@ export class TextJoinNode extends ClassicPreset.Node {
 // ─── TEXTSPLIT ────────────────────────────────────────────────────────────────
 
 export class TextSplitNode extends ClassicPreset.Node {
-  static inputRoles = rolesFrom("TEXTSPLIT", { delimiter: 1 });
+  // The card has no row delimiter, so a blank delimiter leaves nothing to split by.
+  static inputRoles = { delimiter: required };
   static socketDocs: Record<string, string> = {
     delimiter: "An empty delimiter splits the text into single characters.",
   };

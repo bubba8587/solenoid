@@ -34,7 +34,7 @@ import {
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
-  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xnpv, xirr, mirr, returnsOp, fvSchedule } from "./nodes/financeOps";
+  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xnpv, xirr, mirr, returnsOp, fvSchedule, cumulativePayment } from "./nodes/financeOps";
 import { coerceNumber as toNum, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri, logicalOrTypeError } from "./valueKinds";
 import {
   cx, isCx, toCx, type Cx,
@@ -587,6 +587,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   PRICE:      { returns: "number", arity: [4, 6], family: "finance", native: true },
   YIELD:      { returns: "number", arity: [4, 6], family: "finance", native: true },
   VDB:        { returns: "number", arity: [5, 7], family: "finance", native: true },
+  CUMIPMT:    { returns: "number", arity: [6, 6], family: "finance", native: true },
+  CUMPRINC:   { returns: "number", arity: [6, 6], family: "finance", native: true },
+  SLN:        { returns: "number", arity: [3, 3], family: "finance", native: true },
   ODDFPRICE:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDFYIELD:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDLPRICE:  { returns: "number", arity: [5, 7], family: "finance", native: true },
@@ -822,7 +825,8 @@ export function excelPercentRank(
   const n = s.length;
   if (n === 0 || Number.isNaN(x)) return VALUE("PERCENTRANK");
   if (x < s[0] || x > s[n - 1]) return solError("#N/A", "Value is outside the range of the data");
-  if (n === 1 && !exc) return 1;
+  // A one-value array ranks its value 1 in every form, as Excel answers (checked in Excel), where the bases would give 0/0 or 1/2.
+  if (n === 1) return 1;
   const below = s.filter((v) => v < x).length;
   const pos = s[below] === x
     ? below
@@ -1412,6 +1416,15 @@ registerInternal("CHOOSE", (index, ...values) => {
   if (idx < 1 || idx > values.length) return solError("#VALUE!", `CHOOSE index ${idx} is outside the range 1–${values.length}`);
   return values[idx - 1] ?? null;
 });
+// Formula.js runs an end period past the loan as if it continued, and takes a zero life; Excel refuses both.
+registerInternal("CUMIPMT", (rate, nper, pv, start, end, type) =>
+  cumulativePayment("cumipmt", toNum(rate), toNum(nper), toNum(pv), toNum(start), toNum(end), isTrue(type) ? 1 : 0));
+registerInternal("CUMPRINC", (rate, nper, pv, start, end, type) =>
+  cumulativePayment("cumprinc", toNum(rate), toNum(nper), toNum(pv), toNum(start), toNum(end), isTrue(type) ? 1 : 0));
+registerInternal("SLN", (cost, salvage, life) => {
+  const l = toNum(life);
+  return l === 0 ? solError("#DIV/0!", "Life is 0") : ok((toNum(cost) - toNum(salvage)) / l);
+});
 registerInternal("VDB", (cost, salvage, life, start, end, factor, noSwitch) =>
   vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2), isTrue(noSwitch)));
 registerInternal("ODDFPRICE", (settle, maturity, issue, firstCoupon, rate, yld, redemption, freq) =>
@@ -1476,10 +1489,12 @@ registerInternal("FUZZYMATCH", (text, candidates, threshold, method) => {
   const best = fuzzyBest(toStr(text), cands, m, threshold == null ? 0.6 : Number(threshold));
   return best ? best.text : solError("#N/A", "No candidate is similar enough");
 });
-registerInternal("TEXTSPLIT", (text, colDelim, rowDelim, ignoreEmpty, matchMode, pad) =>
-  splitText(toStr(text), toStr(colDelim), {
+registerInternal("TEXTSPLIT", (text, colDelim, rowDelim, ignoreEmpty, matchMode, pad) => {
+  if (colDelim == null && rowDelim == null) return solError("#SYNTAX!", "TEXTSPLIT needs a column delimiter, a row delimiter, or both");
+  return splitText(toStr(text), colDelim == null ? null : toStr(colDelim), {
     rowDelimiter: rowDelim == null ? undefined : toStr(rowDelim), ignoreEmpty: isTrue(ignoreEmpty), caseless: toNum(matchMode ?? 0) === 1, pad,
-  }));
+  });
+});
 const afterBefore = (op: "after" | "before") => (text: unknown, delim: unknown, instance: unknown, matchMode: unknown, matchEnd: unknown, ifNotFound: unknown) => {
   const r = textAfterBefore(op, toStr(text), toStr(delim), { instance: instance == null ? 1 : toNum(instance), caseless: toNum(matchMode ?? 0) === 1, matchEnd: toNum(matchEnd ?? 0) === 1 });
   return r === null && ifNotFound !== undefined ? ifNotFound : r;

@@ -197,7 +197,7 @@ argument; a value is the typed blank it reads as.
 | TEXTAFTER | `instance_num` → omitted; `match_mode` → 0; `match_end` → 0; `if_not_found` → omitted |
 | TEXTBEFORE | `instance_num` → omitted; `match_mode` → 0; `match_end` → 0; `if_not_found` → omitted |
 | TEXTJOIN | `delimiter` → ""; `ignore_empty` → false |
-| TEXTSPLIT | `col_delimiter` → #SYNTAX!; `row_delimiter` → omitted; `ignore_empty` → false; `match_mode` → 0; `pad_with` → omitted |
+| TEXTSPLIT | `col_delimiter` → omitted; `row_delimiter` → omitted; `ignore_empty` → false; `match_mode` → 0; `pad_with` → omitted |
 | TOCOL | `ignore` → omitted; `scan_by_column` → omitted |
 | TOEPOCH | `unit` → omitted |
 | TOROW | `ignore` → omitted; `scan_by_column` → omitted |

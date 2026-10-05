@@ -27,6 +27,18 @@ const LOGICAL_PARAMS = new Set([
   "no_commas", "no_switch", "const",
 ]);
 
+/** Where Excel reads an empty slot apart from its parameter's type and its role (checked in Excel, 2026-10-05). */
+const EXCEL_EMPTY_SLOT: Record<string, Record<number, unknown>> = {
+  TEXTJOIN: { 1: true },
+  XLOOKUP: { 3: LEFT_OUT },
+};
+
+/** Excel's reading for this empty slot when it isn't the parameter's usual one. */
+export function emptySlotOverride(name: string, i: number): { value: unknown } | null {
+  const fn = EXCEL_EMPTY_SLOT[name.toUpperCase()];
+  return fn && i in fn ? { value: fn[i] } : null;
+}
+
 /** A function whose parameter names mislead, by zero-based argument. */
 const OVERRIDES: Record<string, Record<number, "number" | "text" | "logical">> = {};
 
@@ -41,7 +53,7 @@ const LEFT_OUT_BY_PARAM: Record<string, string> = {
 const LEFT_OUT_BY_FN: Record<string, Record<number, string>> = {
   TAKE: { 1: "all", 2: "all" }, DROP: { 1: "none", 2: "none" }, EXPAND: { 1: "same", 2: "same" },
   RANK: { 2: "0" }, "RANK.EQ": { 2: "0" }, "RANK.AVG": { 2: "0" }, TRUNC: { 1: "0" }, DOLLAR: { 1: "2" },
-  RANDARRAY: { 2: "0", 3: "1" }, INTERPOLATE: { 1: "1, 2, 3…", 2: "1, 2, 3…" }, LEFT: { 1: "1" }, RIGHT: { 1: "1" }, WEEKDAY: { 1: "1" }, WEEKNUM: { 1: "1" },
+  RANDARRAY: { 2: "0", 3: "1" }, TEXTSPLIT: { 1: "none", 2: "none" }, INTERPOLATE: { 1: "1, 2, 3…", 2: "1, 2, 3…" }, LEFT: { 1: "1" }, RIGHT: { 1: "1" }, WEEKDAY: { 1: "1" }, WEEKNUM: { 1: "1" },
 };
 
 function baseName(param: string): string {
@@ -76,6 +88,12 @@ const show = (v: unknown): string | null =>
 /** An empty slot at argument `i` of `name` reads as Excel's blank for that parameter ([[C80]] blankArgIsExcelBlank). */
 export function emptySlotReading(name: string, i: number): EmptySlotReading {
   const up = name.toUpperCase();
+  const override = emptySlotOverride(up, i);
+  if (override) {
+    if (override.value !== LEFT_OUT) return { value: override.value, shown: show(override.value) };
+    const param = paramName(up, i);
+    return { value: LEFT_OUT, shown: LEFT_OUT_BY_FN[up]?.[i] ?? (param ? LEFT_OUT_BY_PARAM[param] : undefined) ?? "default" };
+  }
   const role = argRole(up, i);
   if (role?.kind === "setting") {
     if (role.blank !== LEFT_OUT) return { value: role.blank, shown: show(role.blank) };

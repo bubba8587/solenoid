@@ -4,7 +4,7 @@ import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol,
 import { formatScalar } from "./components/format";
 import { isMissing, guardFinite, powerOf } from "./valueKinds";
 import { applyArgRoles, argRole } from "./inputRoles";
-import { emptySlotReading } from "./emptySlots";
+import { emptySlotReading, emptySlotOverride } from "./emptySlots";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
@@ -886,8 +886,13 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         : n.args.map((a) => evalAst(a, env));
       const blanks = applyArgRoles(name, n.args.map((a) => a.t === "blank"), argv);
       argv = blanks.argv;
-      // An empty slot with no role reads as its parameter's Excel blank ([[C80]] blankArgIsExcelBlank).
-      n.args.forEach((a, i) => { if (a.t === "blank" && !argRole(name, i)) argv[i] = emptySlotReading(name, i).value; });
+      // An empty slot reads as its parameter's Excel blank ([[C80]] blankArgIsExcelBlank); a role reads it unless Excel doesn't.
+      n.args.forEach((a, i) => {
+        if (a.t !== "blank") return;
+        const override = emptySlotOverride(name, i);
+        if (override) argv[i] = override.value;
+        else if (!argRole(name, i)) argv[i] = emptySlotReading(name, i).value;
+      });
       if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
       const sol = argv.find(isSolError);
       if (sol) return sol;
