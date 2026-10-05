@@ -609,9 +609,25 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   );
 
   const dragLastPos = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const ridingRef = useRef<HTMLElement[]>([]);
   const onNodeDragStart: OnNodeDrag<SolFlowNode> = useCallback((_e, _node, dragged) => {
     dragLastPos.current = new Map(dragged.map((n) => [n.id, { ...n.position }]));
-  }, []);
+    // A dragged group's members move without RF's dragging class; each gets its own layer for the drag.
+    const riding: HTMLElement[] = [];
+    const ride = (g: GroupNode) => {
+      for (const id of g.members) {
+        const el = s.view.nodeElement(id);
+        if (el) { el.classList.add("sol-riding"); riding.push(el); }
+        const inner = s.editor.getNode(id);
+        if (inner instanceof GroupNode) ride(inner);
+      }
+    };
+    for (const n of dragged) {
+      const model = s.editor.getNode(n.id);
+      if (model instanceof GroupNode && !model.collapsed) ride(model);
+    }
+    ridingRef.current = riding;
+  }, [s]);
   const standoffRaf = useRef(0);
   const onNodeDrag: OnNodeDrag<SolFlowNode> = useCallback(
     (_e, _node, dragged) => {
@@ -644,6 +660,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   );
   const onNodeDragStop: OnNodeDrag<SolFlowNode> = useCallback(
     (_e, _node, dragged) => {
+      for (const el of ridingRef.current) el.classList.remove("sol-riding");
+      ridingRef.current = [];
       if (s.standoffSettle && !standoffStore.isEmpty()) s.standoffSettle(new Set(dragged.map((n) => n.id)));
       let membershipTouched = false;
       for (const n of dragged) {

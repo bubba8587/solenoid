@@ -19,7 +19,10 @@
 }
 
 /* A card on the move is one composited layer, and its figures take no pointer, so a drag or pan doesn't repaint or re-hover a chart every frame. */
-.react-flow__node.dragging { will-change: transform; }
+.react-flow__node.dragging,
+.react-flow__node.sol-riding { will-change: transform; }
+/* A dragged open group clips its paint (with room for the selection glow), so the members riding over it stay their own layers instead of re-rastering the group's every frame. */
+.react-flow__node.sol-group-open.dragging { overflow: clip; overflow-clip-margin: 24px; }
 .react-flow__node.dragging :is(.recharts-wrapper, canvas),
 .react-flow__pane.dragging .react-flow__node :is(.recharts-wrapper, canvas) {
   pointer-events: none;
