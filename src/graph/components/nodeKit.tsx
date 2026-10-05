@@ -558,7 +558,7 @@ export function ValueDisplay({
       style={{
         position: "relative",
         ...(isList ? { fontSize: full ? 14 : 13 } : {}),
-        ...(isDate && !isList ? { fontSize: 15 } : {}),
+        ...(isDate && !isList ? { fontSize: 13 } : {}),
         ...(isString && ann?.textAlign ? { textAlign: ann.textAlign } : {}),
         userSelect: IS_COARSE ? "none" : "text",
         cursor: isEmpty ? undefined : "text",

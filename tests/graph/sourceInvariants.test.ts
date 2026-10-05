@@ -896,7 +896,7 @@ describe("[[B14]] oneDesignSystem — frame-input labels follow the column-role 
 });
 
 // ─── heroChipRow: a chip in a hero box rides the shared flex row ─────────────
-// `.solenoid-node__display-value` is a BLOCK sized for an 18px text line; an inline chip
+// `.solenoid-node__display-value` is a BLOCK sized for a 16px text line; an inline chip
 // baseline-aligns in it and lands ~3px low. Five separate "center the chip" fixes were
 // per-card inline styles (a `justifyContent` without `display: flex` does nothing), and
 // each new chart card copied a broken one. The ONE home is the
