@@ -210,9 +210,15 @@ export function argRole(name: string, i: number): InputRole | undefined {
   const roles = ARG_ROLES[name];
   if (!roles) return undefined;
   if (roles[i]) return roles[i];
-  const top = Math.max(...Object.keys(roles).filter((k) => k !== "rest").map(Number));
+  if (!roles.rest) return undefined;
+  let top = lastPositional.get(name);
+  if (top === undefined) {
+    top = Math.max(...Object.keys(roles).filter((k) => k !== "rest").map(Number));
+    lastPositional.set(name, top);
+  }
   return i > top ? roles.rest : undefined;
 }
+const lastPositional = new Map<string, number>();
 
 /** A card's sockets, each named for the formula argument it is: `rolesFrom("TAKE", { rows: 1, cols: 2 })`. */
 export function rolesFrom(name: string, sockets: Record<string, number>): Record<string, InputRole> {
@@ -257,9 +263,9 @@ export function applyRole(role: InputRole, v: unknown, label: string): unknown {
  * A formula's arguments read by their roles. `settled[i]` marks a slot the null rule must not blank the answer on:
  * a slot left empty, or one with a role. A variadic `required` picks group errors only when every one is left out.
  */
-export function applyArgRoles(name: string, emptySlots: readonly boolean[], argv: unknown[]): { argv: unknown[]; settled: boolean[] } {
+export function applyArgRoles(name: string, emptySlots: readonly boolean[], argv: unknown[]): { argv: unknown[]; settled: readonly boolean[] } {
+  if (!ARG_ROLES[name]) return { argv, settled: emptySlots };
   const settled = [...emptySlots];
-  if (!ARG_ROLES[name]) return { argv, settled };
   const label = (i: number) => `${name}: argument ${i + 1}`;
   const out = argv.map((v, i) => {
     const role = argRole(name, i);

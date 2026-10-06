@@ -1,5 +1,5 @@
 // [[C22]], [[C80]], [[B16]] oneFormulaSurface (RANGE_* policies), [[C14]] currentExcelParity
-import { solError, isSolError, isNaError } from "./errorValue";
+import { solError, isSolError, isNaError, type SolError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, blockedNameMessage, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { formatScalar } from "./components/format";
 import { isMissing, guardFinite, powerOf } from "./valueKinds";
@@ -845,7 +845,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       return fnVal.fn(...argv);
     }
     case "call": {
-      const name = n.name.toUpperCase();
+      const { name, emptySlots, hasBlank } = callPlan(n);
       const bound = env[n.name];
       if (isLambdaValue(bound)) {
         const argv = n.args.map((a) => evalAst(a, env));
@@ -874,20 +874,15 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         };
         return { __lambda: true, params, fn, expr: "" } satisfies LambdaValue;
       }
-      const blocked = blockedNameMessage(name);
-      if (blocked) return solError("#NAME?", blocked);
-      const frameNode = FRAME_SURFACE_NAMES[name];
-      if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas. Use the ${frameNode} node, or a Computed Column for row math`);
-      const nodeVerb = NODE_SURFACE_NAMES[name];
-      if (nodeVerb) return solError("#NAME?", `Use the ${nodeVerb} node`);
-      if (!resolveExcelFunction(name)) return solError("#NAME?", `Unknown function ${name}`);
+      const refused = callRefusal(name);
+      if (refused) return refused;
       let argv = ETA_HOSTS.has(name)
         ? n.args.map((a) => etaOrEval(a, env))
         : n.args.map((a) => evalAst(a, env));
-      const blanks = applyArgRoles(name, n.args.map((a) => a.t === "blank"), argv);
+      const blanks = applyArgRoles(name, emptySlots, argv);
       argv = blanks.argv;
       // An empty slot reads as its parameter's Excel blank ([[C80]] blankArgIsExcelBlank); a role reads it unless Excel doesn't.
-      n.args.forEach((a, i) => {
+      if (hasBlank) n.args.forEach((a, i) => {
         if (a.t !== "blank") return;
         const override = emptySlotOverride(name, i);
         if (override) argv[i] = override.value;
@@ -912,6 +907,41 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
   }
 }
 
+type CallAst = Extract<Ast, { t: "call" }>;
+const callPlans = new WeakMap<CallAst, { name: string; emptySlots: boolean[]; hasBlank: boolean }>();
+
+/** The per-call-site facts that never change between evaluations. */
+function callPlan(n: CallAst): { name: string; emptySlots: boolean[]; hasBlank: boolean } {
+  let plan = callPlans.get(n);
+  if (!plan) {
+    const emptySlots = n.args.map((a) => a.t === "blank");
+    plan = { name: n.name.toUpperCase(), emptySlots, hasBlank: emptySlots.includes(true) };
+    callPlans.set(n, plan);
+  }
+  return plan;
+}
+
+let refusalGen = -1;
+const refusals = new Map<string, SolError | null>();
+
+/** Why a call to `name` can't run (blocked, a node's verb, unknown), or null; one verdict per name per registry generation. */
+function callRefusal(name: string): SolError | null {
+  const gen = registryGeneration();
+  if (gen !== refusalGen) { refusals.clear(); refusalGen = gen; }
+  let verdict = refusals.get(name);
+  if (verdict !== undefined) return verdict;
+  const blocked = blockedNameMessage(name);
+  const frameNode = FRAME_SURFACE_NAMES[name];
+  const nodeVerb = NODE_SURFACE_NAMES[name];
+  verdict = blocked ? solError("#NAME?", blocked)
+    : frameNode ? solError("#TYPE!", `Frames don't flow through formulas. Use the ${frameNode} node, or a Computed Column for row math`)
+    : nodeVerb ? solError("#NAME?", `Use the ${nodeVerb} node`)
+    : !resolveExcelFunction(name) ? solError("#NAME?", `Unknown function ${name}`)
+    : null;
+  refusals.set(name, verdict);
+  return verdict;
+}
+
 const rangeMemo = new WeakMap<Ast, { gen: number; argv: unknown[]; result: unknown }>();
 
 /** A range function called again with the very same arguments (a whole column, row after row) answers its last result. */
@@ -927,30 +957,59 @@ function memoRangeCall(node: Ast, name: string, argv: unknown[], settled: readon
   return result;
 }
 
+interface NameTraits {
+  free: boolean; matrixArgs: boolean; rangePositional: boolean; range: boolean; whole: boolean;
+  known: boolean; checksCx: boolean; nullableOk: boolean;
+}
+let traitsGen = -1;
+const traitsByName = new Map<string, NameTraits>();
+
+function nameTraits(name: string): NameTraits {
+  const gen = registryGeneration();
+  if (gen !== traitsGen) { traitsByName.clear(); traitsGen = gen; }
+  let t = traitsByName.get(name);
+  if (!t) {
+    const meta = EXCEL_IMPL_META[name];
+    const whole = takesWholeArgs(name);
+    t = {
+      free: meta?.orient === "free",
+      matrixArgs: !!meta?.matrixArgs,
+      rangePositional: RANGE_POSITIONAL.has(name),
+      range: RANGE_FUNCTIONS.has(name),
+      whole,
+      known: meta !== undefined || isInternalFunction(name),
+      checksCx: !meta?.cxArgs && !NULL_INSPECTING.has(name) && !whole,
+      nullableOk: NULLABLE_SCALARS_OK.has(name),
+    };
+    traitsByName.set(name, t);
+  }
+  return t;
+}
+
 /** Steps 9 to 11 of the dispatch ladder, once the arguments are evaluated, read by role and error-free. */
 function routeCall(name: string, argv: unknown[], settled: readonly boolean[]): unknown {
-  const vectors = EXCEL_IMPL_META[name]?.orient === "free" ? readVectors(argv) : null;
+  const t = nameTraits(name);
+  const vectors = t.free ? readVectors(argv) : null;
   if (vectors) argv = vectors.argv;
-  if (argv.some((a) => isMatrix(a)) && !EXCEL_IMPL_META[name]?.matrixArgs) {
-    if (RANGE_POSITIONAL.has(name)) {
+  if (!t.matrixArgs && argv.some((a) => isMatrix(a))) {
+    if (t.rangePositional) {
       return solError("#SHAPE!", `${name} over a matrix isn't supported yet. Wire the matrix through its node`);
     }
-    if (RANGE_FUNCTIONS.has(name)) {
+    if (t.range) {
       argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
-    } else if (takesWholeArgs(name) || (EXCEL_IMPL_META[name] === undefined && !isInternalFunction(name))) {
+    } else if (t.whole || !t.known) {
       return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
     }
   }
-  if (!EXCEL_IMPL_META[name]?.cxArgs && !NULL_INSPECTING.has(name) && !takesWholeArgs(name)
-      && argv.some(containsCx)) {
+  if (t.checksCx && argv.some(containsCx)) {
     return solError("#TYPE!", `${name} doesn't compute on complex numbers. Use the IM* family`);
   }
-  if (takesWholeArgs(name)) {
-    if (!NULLABLE_SCALARS_OK.has(name) && argv.some((a, i) => !isArr(a) && isMissing(a) && !settled[i])) return null;
+  if (t.whole) {
+    if (!t.nullableOk && argv.some((a, i) => !isArr(a) && isMissing(a) && !settled[i])) return null;
     const r = dispatch(name, ...argv);
     return vectors?.column ? asColumn(r) : r;
   }
-  if (RANGE_FUNCTIONS.has(name)) {
+  if (t.range) {
     // Clone: some Formula.js functions (CHISQ.TEST) mutate their arguments, which would corrupt the upstream cached value.
     const prep = prepRangeArgs(name, argv);
     if (prep.error !== undefined) return prep.error;

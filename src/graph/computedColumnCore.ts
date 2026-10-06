@@ -205,6 +205,23 @@ function runColumn<C>(
   };
 
   const cells: C[] = [];
+  if (spec.kind === "expr") {
+    // Every expr binding is a whole column or a side value, so one env serves every row.
+    const env: Record<string, unknown> = {};
+    bindings.forEach((b, k) => { env[params[k]] = b.kind === "side" ? b.value : wholeCol(b.col); });
+    rowStack.push(rowFrame);
+    try {
+      for (let i = 0; i < rows; i++) {
+        cursor = i;
+        let r: unknown;
+        try { r = spec.evaluator(env); } catch (e) {
+          r = isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
+        }
+        cells.push(tag(r));
+      }
+    } finally { rowStack.pop(); }
+    return { cells, sideVars };
+  }
   for (let i = 0; i < rows; i++) {
     cursor = i;
     const rowCells = bindings.map((b) =>
@@ -215,10 +232,7 @@ function runColumn<C>(
     if (errIdx >= 0) { cells.push(rowCells[errIdx] as C); continue; }
     const r = withRow(rowFrame, () => {
       try {
-        if (spec.kind === "lambda") return spec.lam.fn(...rowCells);
-        const env: Record<string, unknown> = {};
-        params.forEach((p, k) => { env[p] = rowCells[k]; });
-        return spec.evaluator(env);
+        return spec.lam.fn(...rowCells);
       } catch (e) {
         return isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
       }

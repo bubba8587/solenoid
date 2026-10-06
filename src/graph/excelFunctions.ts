@@ -190,11 +190,17 @@ export function unregisterInternal(name: string): void {
 }
 
 export function resolveExcelFunction(name: string): ((...a: unknown[]) => unknown) | null {
-  const key = name.toUpperCase();
-  const internal = INTERNAL_IMPLS.get(key);
-  if (internal) return internal;
-  return fxLookup(key);
+  if (resolvedGen !== registryGen) { resolved.clear(); resolvedGen = registryGen; }
+  let f = resolved.get(name);
+  if (f === undefined) {
+    const key = name.toUpperCase();
+    f = INTERNAL_IMPLS.get(key) ?? fxLookup(key);
+    resolved.set(name, f);
+  }
+  return f;
 }
+let resolvedGen = -1;
+const resolved = new Map<string, ((...a: unknown[]) => unknown) | null>();
 
 function fxLookup(name: string): ((...a: unknown[]) => unknown) | null {
   let cur: unknown = FX;
