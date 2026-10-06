@@ -1,0 +1,7 @@
+{ "nodes": [
+  { "id": "d", "type": "ListInputNode", "init": { "label": "Sales", "valueKeys": ["v0", "v1", "v2", "v3", "v4"] },
+    "stringLiterals": { "v0": "30", "v1": "45", "v2": "20", "v3": "55", "v4": "40" } },
+  { "id": "b", "type": "ChartBuilderNode", "init": { "label": "Chart Builder", "target": "line" }, "stringLiterals": { "title": "Set by the Builder" } },
+  { "id": "c", "type": "ChartNode", "init": { "label": "Chart", "op": "column" } },
+  { "id": "c2", "type": "ChartNode", "init": { "label": "Own type", "op": "column" } } ],
+  "cables": [ "d.list -> c.values", "b.result -> c.options", "d.list -> c2.values" ] }

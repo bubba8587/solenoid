@@ -3,7 +3,27 @@ import type { ChartValueOp } from "../chartValue";
 import { normalizeCmap } from "../colormaps";
 import { isNumberSpec } from "../numberSpec";
 
+export type ChartOp =
+  | "column" | "bar" | "line" | "area"
+  | "pie" | "radar" | "radialbar" | "funnel" | "scatter" | "xyline"
+  | "bubble";
+
+export const CHART_OP_META = {
+  column:    { label: "Column",   group: "Cartesian" },
+  bar:       { label: "Bar",      group: "Cartesian" },
+  line:      { label: "Line",     group: "Cartesian" },
+  area:      { label: "Area",     group: "Cartesian" },
+  scatter:   { label: "Scatter",  group: "XY" },
+  xyline:    { label: "XY Line",  group: "XY" },
+  bubble:    { label: "Bubble",   group: "XY" },
+  pie:       { label: "Pie",      group: "Categorical" },
+  radar:     { label: "Radar",    group: "Categorical" },
+  radialbar: { label: "Radial",   group: "Categorical" },
+  funnel:    { label: "Funnel",   group: "Categorical" },
+} satisfies Record<ChartOp, { label: string; group: string }>;
+
 export interface ChartOptions {
+  kind?: ChartOp;
   title?: string;
   xlabel?: string;
   ylabel?: string;
@@ -84,6 +104,14 @@ function toAspect(v: string): AspectMode | undefined {
   return s === "equal" || s === "auto" ? s : undefined;
 }
 
+// The Chart's own type names, any case and spacing; pandas' barh is our horizontal bar.
+function toChartKind(v: string): ChartOp | undefined {
+  const s = v.trim().toLowerCase().replace(/[\s_-]/g, "");
+  if (s === "barh") return "bar";
+  return (Object.keys(CHART_OP_META) as ChartOp[])
+    .find((op) => op === s || CHART_OP_META[op].label.toLowerCase().replace(/\s/g, "") === s);
+}
+
 function toNum(v: string): number | undefined {
   const t = v.trim();
   if (t === "") return undefined;
@@ -100,6 +128,7 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
     const key = part.slice(0, eq).trim().toLowerCase();
     const val = part.slice(eq + 1).trim();
     switch (key) {
+      case "kind":   { const k = toChartKind(val); if (k !== undefined) opts.kind = k; break; }
       case "title":  if (val) opts.title = val; break;
       case "xlabel": if (val) opts.xlabel = val; break;
       case "ylabel": if (val) opts.ylabel = val; break;
@@ -158,6 +187,7 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
 }
 
 export interface ChartBuilderFields {
+  kind?: string;
   title?: string;
   xlabel?: string;
   ylabel?: string;
@@ -221,6 +251,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   const num = (k: string, v: number | null | undefined) => {
     if (v != null && Number.isFinite(v)) parts.push(`${k}=${v}`);
   };
+  str("kind", f.kind);
   str("title", f.title);
   str("xlabel", f.xlabel);
   str("ylabel", f.ylabel);

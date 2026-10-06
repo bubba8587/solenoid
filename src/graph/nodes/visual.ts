@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";
-import { parseChartOptions, serializeChartOptions, chartBuilderKeys, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
+import { parseChartOptions, serializeChartOptions, chartBuilderKeys, CHART_BUILDER_TARGETS, CHART_OP_META, type ChartOp, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d, equalWidthBins, binCountError } from "./visualOps";
 export { histogram2d, type Histogram2d } from "./visualOps";
@@ -71,33 +71,16 @@ export class SparklineNode extends ClassicPreset.Node {
 
 // ─── Chart ──────────────────────────────────────────────────────────────────
 
-export type ChartOp =
-  | "column" | "bar" | "line" | "area"
-  | "pie" | "radar" | "radialbar" | "funnel" | "scatter" | "xyline"
-  | "bubble";
-
-export const CHART_OP_META = {
-  column:    { label: "Column",   group: "Cartesian" },
-  bar:       { label: "Bar",      group: "Cartesian" },
-  line:      { label: "Line",     group: "Cartesian" },
-  area:      { label: "Area",     group: "Cartesian" },
-  scatter:   { label: "Scatter",  group: "XY" },
-  xyline:    { label: "XY Line",  group: "XY" },
-  bubble:    { label: "Bubble",   group: "XY" },
-  pie:       { label: "Pie",      group: "Categorical" },
-  radar:     { label: "Radar",    group: "Categorical" },
-  radialbar: { label: "Radial",   group: "Categorical" },
-  funnel:    { label: "Funnel",   group: "Categorical" },
-} satisfies Record<ChartOp, { label: string; group: string }>;
-
 export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "A list plots by position; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
-    options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Scatter, XY Line and Bubble also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
+    options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. kind picks the chart type, overriding the type above. Scatter, XY Line and Bubble also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
   };
 
   label: string;
   op: ChartOp;
+  // [[D97]] builderSetsChartType
+  drawnOp: ChartOp;
   cachedResult: number | number[] | null = null;
   cachedSeries: { name: string; values: (number | null)[] }[] | null = null;
   cachedLabels: (string | number)[] | null = null;
@@ -122,6 +105,7 @@ export class ChartNode extends ClassicPreset.Node {
     super("Chart (Recharts)");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "column";
+    this.drawnOp = this.op;
     this.addInput("values", cubeAdoptIn("Data"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
@@ -139,9 +123,11 @@ export class ChartNode extends ClassicPreset.Node {
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
+    const op = this.chartOptions.kind ?? this.op;
+    this.drawnOp = op;
     let v: number | number[] | null = null;
-    if (XY_CHART_OPS.has(this.op)) {
-      const xy = buildXY(this.op as XYOp, raw, this.chartOptions);
+    if (XY_CHART_OPS.has(op)) {
+      const xy = buildXY(op as XYOp, raw, this.chartOptions);
       if (isSolError(xy)) {
         this.cachedResult = null;
         this.cachedError = xy;
@@ -149,13 +135,13 @@ export class ChartNode extends ClassicPreset.Node {
       }
       this.cachedPayload = xy;
       v = xy ? (xy.series[0].points.map((p) => p?.y ?? null) as unknown as number[]) : null;
-      const explicit = this.op === "bubble" || this.chartOptions.x !== undefined;
+      const explicit = op === "bubble" || this.chartOptions.x !== undefined;
       if (xy && explicit && this.chartOptions.xlabel === undefined && xy.names.x) this.chartOptions.xlabel = xy.names.x;
       if (xy && (explicit || this.chartOptions.y !== undefined) && this.chartOptions.ylabel === undefined && xy.names.y) this.chartOptions.ylabel = xy.names.y;
     } else if (isFrameValue(raw) && raw.columns.length > 0) {
       const cols = raw.columns;
       const asNums = (col: FrameColumn) => col.values.map(num);
-      if (this.op === "radar" && cols.length >= 2) {
+      if (op === "radar" && cols.length >= 2) {
         const labelCol = cols[0];
         const numCols = cols.slice(1).filter((c) => c.type === "number");
         this.cachedLabels = numCols.map((c) => c.name);
@@ -181,7 +167,7 @@ export class ChartNode extends ClassicPreset.Node {
     this.cachedResult = v;
     const chart: ChartValue = {
       __chart: true,
-      op: this.op,
+      op,
       values: this.cachedResult,
       series: this.cachedSeries ?? undefined,
       labels: this.cachedLabels ?? undefined,
@@ -1432,7 +1418,7 @@ const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize"
 
 export class ChartBuilderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "Feeds any figure's Options input. Only the fields given a value are included.",
+    result: "Feeds any figure's Options input. Only the fields given a value are included, plus the chart type when it names a Chart.",
   };
 
   label: string;
@@ -1515,6 +1501,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     const str = (k: string) => readInput(inputs[k] as string[] | undefined, this.stringLiterals[k]) ?? undefined;
     const num = (k: string) => readInput(inputs[k] as number[] | undefined, this.literals[k]) ?? undefined;
     const out = serializeChartOptions({
+      kind:      this.target in CHART_OP_META ? this.target : undefined,
       title:     str("title"),
       xlabel:    str("xlabel"),
       ylabel:    str("ylabel"),

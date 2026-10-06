@@ -391,14 +391,18 @@ type PickProps<T extends string> = {
   value: T;
   onChange: (next: T) => void;
   options: ReadonlyArray<OpOption<T>>;
+  disabled?: boolean;
+  title?: string;
 };
 
-function PickSelect<T extends string>({ value, onChange, options, className }: PickProps<T> & { className: string }) {
+function PickSelect<T extends string>({ value, onChange, options, className, disabled, title }: PickProps<T> & { className: string }) {
   const hasGroups = options.some((o) => o.group != null);
   return (
     <LazySelect
       className={className}
       value={value}
+      disabled={disabled}
+      title={title}
       onChange={(e) => onChange(e.target.value as T)}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}

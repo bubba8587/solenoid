@@ -208,6 +208,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     effectiveMin: "derived from literals", effectiveMax: "derived from literals", effectiveStep: "derived from literals",
     // ── recomputed from inputs every engine pass ──
     chartOptions: "parsed per data() from the persisted options input/literal",
+    drawnOp: "the Chart's drawn type, re-derived per data() from the options' kind over the persisted op ([[D97]])",
     sourceColumns: "detected from the input frame per compute",
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",

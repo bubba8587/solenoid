@@ -23,6 +23,7 @@ specific item.
 
 ### SESSION DIGEST (2026-10-06c: TanStack investigation, branch `tan`; cloud session)
 - **TanStack Charts 1.0 beats Recharts 3.10 on every measure taken** (bundle 64 vs 150 KB gz; 5–10× faster mount and re-render; static SVG with no DOM). Young, with two upstream defects found. Proposal and numbers: `v2.0/26-tanstack.md`; harness `spikes/tanstack-charts/` (excluded from coverage in `.dtecoverage`). Nothing in `src/` changed.
+- **The Chart Builder sets the Chart's type** ([[D97]] builderSetsChartType): a Chart-type target emits `kind=<type>` first in its options, and a Chart draws the options' `kind` over its own `op`, its pickers locked while one stands ([[chart-figures#Chart]]). `ChartOp`/`CHART_OP_META` moved to `chartOptions.ts`, which ends `chartValue.ts`'s import cycle. Shot graph: `scripts/shot-graphs/builder-sets-chart-type.json`.
 - **Other TanStack libraries**: Virtual is the one strong fit (the popups' 1000-row cap, the parked Path A in `deferrals.md`); Query and Hotkeys are maybes; the rest don't fit.
 
 ### SESSION DIGEST (2026-10-06: performance hunt at 100k rows; cloud session)

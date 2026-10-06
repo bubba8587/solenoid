@@ -1,7 +1,7 @@
 // [[C100]] chartIsAValue
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
-import { CHART_OP_META } from "../rete-nodes";
+import type { ChartNode as ChartNodeType } from "../rete-nodes";
+import { CHART_OP_META, type ChartOp } from "../nodes/chartOptions";
 import { NodeShell, OpSelect, ArgSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";
@@ -31,14 +31,16 @@ const W = 218;
 const H = 150;
 
 export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
-  const [op, setOpState] = useState<ChartOp>(data.op);
+  const [ownOp, setOpState] = useState<ChartOp>(data.op);
   const setOp = useCallback((v: ChartOp) => { setOpState(v); void applyChartOp(data, v); }, [data]);
+  const opts = data.chartOptions;
+  const op = opts.kind ?? ownOp;
+  const lockTitle = opts.kind ? `Set by the options (kind=${opts.kind})` : undefined;
   const family = CHART_OP_META[op].group;
   const setFamily = useCallback((f: string) => { setOp(OPS_BY_FAMILY[f][0]); }, [setOp]);
   const typeOpts: ReadonlyArray<OpOption<ChartOp>> = OPS_BY_FAMILY[family]
     .map((value) => ({ value, label: CHART_OP_META[value].label }));
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
-  const opts = data.chartOptions;
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const fontScale = formatAnnotationStore.getForNode(data.id)?.chartFontScale;
   const series = toSeries(data.cachedResult);
@@ -74,8 +76,8 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
     >
       {/* The type is the node's `op`, so it stays the accented OpSelect; the family only filters it (opArgDistinct). */}
       <div className="solenoid-node__field-row">
-        <ArgSelect value={family} onChange={setFamily} options={FAMILY_OPTS} />
-        <OpSelect value={op} onChange={setOp} options={typeOpts} />
+        <ArgSelect value={family} onChange={setFamily} options={FAMILY_OPTS} disabled={!!opts.kind} title={lockTitle} />
+        <OpSelect value={op} onChange={setOp} options={typeOpts} disabled={!!opts.kind} title={lockTitle} />
       </div>
       <div ref={chartRef} className="solenoid-node__figure" style={{ position: "relative", marginTop: 4, height: H }}>
         {err ? (

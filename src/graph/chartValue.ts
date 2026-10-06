@@ -1,7 +1,7 @@
 // [[C100]] chartIsAValue
 import type { CardColType, CardPlan } from "./cardLayout";
 import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
-import { type ChartOp, CHART_OP_META } from "./nodes/visual";
+import { type ChartOp, CHART_OP_META } from "./nodes/chartOptions";
 import type { ChartOptions, LineStyle } from "./nodes/chartOptions";
 import type { GanttPayload } from "@solenoid/gantt-layout";
 
@@ -200,7 +200,6 @@ export const CHART_SPECIAL_OPS = [
 
 export type ChartValueOp = ChartOp | (typeof CHART_SPECIAL_OPS)[number];
 
-/** Lazy: `CHART_OP_META`'s module imports this one back, so reading it at load time sees it half-initialized. */
 export function chartValueOps(): readonly ChartValueOp[] {
   return [...(Object.keys(CHART_OP_META) as ChartOp[]), ...CHART_SPECIAL_OPS];
 }

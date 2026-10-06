@@ -5,7 +5,8 @@ import type { SocketDataType } from "./sockets";
 import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distribution";
 
 import { ChartNode, SparklineNode, SurfaceNode, ProportionNode, RecordNode } from "./nodes/visual";
-import { CHART_OP_META, SPARKLINE_OP_META, PROPORTION_OP_META, RECORD_OP_META } from "./nodes/visual";
+import { SPARKLINE_OP_META, PROPORTION_OP_META, RECORD_OP_META } from "./nodes/visual";
+import { CHART_OP_META } from "./nodes/chartOptions";
 import {
   FillNode, SetsNode, SumIfsNode,
   FILL_OP_META, COND_AGG_OP_META,

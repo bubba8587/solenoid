@@ -179,18 +179,30 @@ describe("Chart Builder", () => {
     b.literals.ymin = 0;
     b.literals.ymax = 100;
     b.literals.linewidth = 2;
-    expect(b.data({})).toEqual({ result: "title=Sales;color=#56b4e9;grid=on;ylim=0,100;linewidth=2" });
-    expect(b.cachedString).toBe("title=Sales;color=#56b4e9;grid=on;ylim=0,100;linewidth=2");
+    expect(b.data({})).toEqual({ result: "kind=column;title=Sales;color=#56b4e9;grid=on;ylim=0,100;linewidth=2" });
+    expect(b.cachedString).toBe("kind=column;title=Sales;color=#56b4e9;grid=on;ylim=0,100;linewidth=2");
   });
 
   it("a wired input overrides the inline literal", () => {
     const b = new ChartBuilderNode();
     b.stringLiterals.title = "inline";
-    expect(b.data({ title: ["wired"] })).toEqual({ result: "title=wired" });
+    expect(b.data({ title: ["wired"] })).toEqual({ result: "kind=column;title=wired" });
   });
 
-  it("an untouched builder emits an empty string", () => {
-    expect(new ChartBuilderNode().data({})).toEqual({ result: "" });
+  it("an untouched builder emits only its Chart type, and nothing for a figure of its own", () => {
+    expect(new ChartBuilderNode().data({})).toEqual({ result: "kind=column" });
+    expect(new ChartBuilderNode({ target: "heatmap" }).data({})).toEqual({ result: "" });
+  });
+
+  it("[[D97]] builderSetsChartType: a Chart draws the type its options' kind names, over its own", () => {
+    const b = new ChartBuilderNode({ target: "line" });
+    const chart = new ChartNode({ op: "column" });
+    const { chart: v } = chart.data({ values: [[1, 2, 3]], options: [b.data({}).result] });
+    expect(chart.op).toBe("column");
+    expect(chart.drawnOp).toBe("line");
+    expect((v as { op: string }).op).toBe("line");
+    chart.data({ values: [[1, 2, 3]] });
+    expect(chart.drawnOp).toBe("column");
   });
 
   it("target round-trips through extractInit; a stale target falls back to column", () => {

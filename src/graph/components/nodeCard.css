@@ -1030,6 +1030,11 @@ body.solenoid-scrubbing * {
   appearance: none;
 }
 
+.solenoid-node__select:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .solenoid-node__select:focus {
   border-color: var(--node-accent, var(--accent));
 }
