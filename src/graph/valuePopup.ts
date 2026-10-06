@@ -30,7 +30,7 @@ function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "
 
 export function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
   let fam: ElemFamily | undefined;
-  for (const cell of (is2D(v) ? (v as Cell[][]).flat() : v)) {
+  for (const cell of cellsOf(v)) {
     if (cell === null || cell === undefined || isSolError(cell)) continue;
     const f: ElemFamily | undefined =
       typeof cell === "number" ? "number"
@@ -49,8 +49,15 @@ export function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
 /** The chip tint's modifier: a list of one kind wears that kind's color, a mixed list the neutral "any" gray, and an empty one the default. */
 export function elemChipClass(v: ArrayValue, table: boolean, family = elemFamilyOfCells(v)): string {
   if (family) return family === "number" ? "" : ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`;
-  const present = (is2D(v) ? (v as Cell[][]).flat() : v).some((c) => c !== null && c !== undefined && !isSolError(c));
-  return present ? " solenoid-array-chip--elem-any" : "";
+  for (const c of cellsOf(v)) {
+    if (c !== null && c !== undefined && !isSolError(c)) return " solenoid-array-chip--elem-any";
+  }
+  return "";
+}
+
+function* cellsOf(v: ArrayValue): Iterable<Cell> {
+  if (!is2D(v)) { yield* v as Cell[]; return; }
+  for (const row of v as Cell[][]) yield* row;
 }
 
 export const POP_OUT_KINDS = ["frame", "cube", "table", "list"] as const;

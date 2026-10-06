@@ -10,7 +10,7 @@ import { isSolError, type SolError } from "../errorValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../unitBridge";
 import { dimEqual } from "../dimension";
-import { formatScalar } from "./format";
+import { formatScalar, displaySettingsKey } from "./format";
 import { frameFormatStore, MATRIX_FORMAT_KEY } from "../frameFormatStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
 
@@ -136,11 +136,20 @@ export function unwrapUnitCells(value: DisplayValue, ann: FormatAnnotation | und
       return (value as (number | UnitCell | null | SolError)[]).map((c) =>
         isUnitCell(c) ? displayMagnitude(c, ann) : c);
     }
-    return (value as (number | UnitCell | boolean | string | null | SolError)[])
+    const settings = displaySettingsKey();
+    const cached = unitListShown.get(value);
+    if (cached?.settings === settings) return cached.shown;
+    const shown = (value as (number | UnitCell | boolean | string | null | SolError)[])
       .map((c) => formatListCell(c, formatScalar));
+    unitListShown.set(value, { settings, shown });
+    return shown;
   }
   return value;
 }
+
+/** Formatted copies of whole lists, so a re-render (a hover) doesn't re-format every cell; values on cables are never mutated. */
+const unitListShown = new WeakMap<object, { settings: string; shown: DisplayValue }>();
+const dateListShown = new WeakMap<object, DisplayValue>();
 
 function fmtSerial(v: number): string {
   if (!Number.isFinite(v)) return "";
@@ -180,13 +189,17 @@ export function dateFormatDisplay(value: DisplayValue, dateLike: boolean, hasAnn
   }
   // Per cell, never decided from cell 0: a leading valid date must not turn a later error or blank into an empty cell.
   if (Array.isArray(value)) {
-    return (value as (number | string | boolean | null | SolError)[]).map((v) => {
+    const cached = dateListShown.get(value);
+    if (cached) return cached;
+    const shown = (value as (number | string | boolean | null | SolError)[]).map((v) => {
       if (isSolError(v)) return v.code;
       if (v === null) return "";
       // A non-finite serial is dirty data: it shows as NaN, as in a Frame's date column.
       if (typeof v === "number") return Number.isFinite(v) ? fmtSerial(v) : "NaN";
       return v;
     });
+    dateListShown.set(value, shown);
+    return shown;
   }
   return value;
 }
