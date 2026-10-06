@@ -11,9 +11,11 @@
 }
 
 .solenoid-settings__panel {
-  width: min(760px, 94vw);
-  max-height: 80vh;
-  max-height: 80dvh;
+  /* A fixed column of label-left, control-right rows: it never grows with the window, and keeps a 12px gutter on a phone. */
+  width: min(580px, calc(100vw - 24px));
+  /* A fixed height, so a search that empties the body doesn't shrink and re-center the panel under the typing. */
+  height: min(720px, 80vh);
+  height: min(720px, 80dvh);
   display: flex;
   flex-direction: column;
   /* Clip at the panel, not scroll, so the rounded corner clips the body's scrollbar and the header stays pinned. */
