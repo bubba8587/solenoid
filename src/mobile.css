@@ -187,16 +187,22 @@ html.is-mobile {
   /* A finger leaves a sticky :hover on whatever row lands under it after a tap, so only the press itself tints. */
   .solenoid-add-menu__item:hover { background: transparent; }
   .solenoid-add-menu__item:active { background: var(--accent-soft); }
+  /* The chevron hangs in the row's left padding, so the category name lines up with the rows under it. */
   .solenoid-add-menu__item--back {
     justify-content: flex-start;
-    gap: 6px;
     font-weight: 600;
     color: var(--text-bright);
     border-bottom: 1px solid var(--border-subtle);
     border-radius: 3px 3px 0 0;
     margin-bottom: 2px;
   }
-  .solenoid-add-menu__search { padding: 7px 10px; font-size: 13px; }
+  .solenoid-add-menu__item--back > svg {
+    position: absolute;
+    left: 1px;
+    width: 10px;
+    height: 10px;
+  }
+  .solenoid-add-menu__search { padding: 5px 8px; font-size: 13px; }
 
   /* ── Navigator ── */
   .solenoid-outline__open-pill { display: none; }
