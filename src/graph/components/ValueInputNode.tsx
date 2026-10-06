@@ -1,5 +1,5 @@
 // [[B11]] maximalMerge, [[C118]] formatTravelsWithValue, [[C95]] commitOnEnter
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { FormatControllerNode, VALUE_INPUT_OP_META, type ValueInputNode as ValueInputNodeType, type ValueInputOp } from "../rete-nodes";
 import type { FormatStyleId, TextCase, LogicalStyle, DecimalMode } from "../formatAnnotationStore";
 import { familyOf, controlsFor } from "../formatModel";
@@ -9,6 +9,7 @@ import { retypeOutputCables } from "../fcReconcile";
 import { clamp } from "../nodes/mathUtils";
 import { stopDragStart } from "../coarse";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
+import { collapseStore } from "../collapseStore";
 import { SegToggle, OpToggle } from "./SegToggle";
 import { CardSection } from "./CardSection";
 import { TypeIcon } from "./TypeIcon";
@@ -55,6 +56,9 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
   const [, bump] = useState(0);
   const pick = (set: () => void) => { set(); bump((v) => v + 1); applyDisplayPick(data); };
   const commitValue = (text: string) => { data.value = text; void processGraph(data.id); };
+  // Collapsed, the card is its result alone: the shared rule keeps a value field, so the entry steps out here.
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  const entry = !collapsed;
 
   return (
     <NodeShell node={data} emit={emit}>
@@ -66,10 +70,10 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
       <CardSection label="Format" collapsible defaultOpen={formatIsSet(data)}>
         <FormatRows node={data} dt={dt} pick={pick} />
       </CardSection>
-      {dt === "number" && <NumberEntry text={data.value} onCommit={commitValue} />}
-      {dt === "string" && <QuotedTextInput variant="value" resizable value={data.value} onChange={commitValue} />}
-      {dt === "date" && <DateEntry raw={data.value} onCommit={commitValue} />}
-      {dt === "logical" && (
+      {entry && dt === "number" && <NumberEntry text={data.value} onCommit={commitValue} />}
+      {entry && dt === "string" && <QuotedTextInput variant="value" resizable value={data.value} onChange={commitValue} />}
+      {entry && dt === "date" && <DateEntry raw={data.value} onCommit={commitValue} />}
+      {entry && dt === "logical" && (
         <LogicalCheck
           checked={/^true$/i.test(data.value.trim())}
           onToggle={() => commitValue(/^true$/i.test(data.value.trim()) ? "FALSE" : "TRUE")}
