@@ -1,0 +1,404 @@
+From 052e99c5fef38a4e8876e130cf7881bd5697ee61 Mon Sep 17 00:00:00 2001
+From: Solenoid contributors <noreply@anthropic.com>
+Date: Tue, 6 Oct 2026 15:40:23 +0000
+Subject: [PATCH] feat(charts): accept per-datum fill and stroke on dot and
+ rect
+
+---
+ .changeset/dot-rect-fill-channel.md           |  6 ++
+ API-FRICTION.md                               | 23 +++++-
+ docs/reference/marks/bar-and-rect.md          |  9 ++-
+ docs/reference/marks/dot-and-hexagon.md       | 10 ++-
+ .../docs/reference/marks/bar-and-rect.md      |  9 ++-
+ .../docs/reference/marks/dot-and-hexagon.md   | 10 ++-
+ packages/charts-core/src/dot.ts               | 21 ++++--
+ packages/charts-core/src/point-color.test.ts  | 75 ++++++++++++++++++-
+ packages/charts-core/src/rect.ts              | 19 +++--
+ 9 files changed, 158 insertions(+), 24 deletions(-)
+ create mode 100644 .changeset/dot-rect-fill-channel.md
+
+diff --git a/.changeset/dot-rect-fill-channel.md b/.changeset/dot-rect-fill-channel.md
+new file mode 100644
+index 0000000..e758bbd
+--- /dev/null
++++ b/.changeset/dot-rect-fill-channel.md
+@@ -0,0 +1,6 @@
++---
++'@tanstack/charts': minor
++---
++
++Accept per-row `fill` and `stroke` accessors on `dot`, `rect`, and `cell`,
++matching the visual channels already used by bar, area, and text marks.
+diff --git a/API-FRICTION.md b/API-FRICTION.md
+index d9e37c2..e4e6072 100644
+--- a/API-FRICTION.md
++++ b/API-FRICTION.md
+@@ -5,7 +5,7 @@ observed difficulty from examples, production migrations, tests, and agent
+ evaluations so later API, documentation, and TanStack Intent skill work is
+ based on evidence.
+ 
+-Last updated: 2026-09-30
++Last updated: 2026-10-06
+ 
+ ## Triage rule
+ 
+@@ -345,6 +345,7 @@ Each entry records:
+ | F-306 | Inferred consumer declarations could not name core types       | Tooling               | resolved   |
+ | F-307 | Grouped-y keyboard navigation followed x order                 | API                   | resolved   |
+ | F-308 | Raster format documentation omitted browser encoder fallback   | Documentation         | resolved   |
++| F-309 | Dot and rect paint could not vary per row                      | API                   | resolved   |
+ 
+ ## Findings
+ 
+@@ -9199,3 +9200,23 @@ Each entry records:
+   decodes as WebP in Chromium and Firefox and PNG in WebKit. Dimensions and
+   opaque red pixels pass with lossy-encoding tolerance, alongside ten existing
+   PNG checks per engine. No page errors or console warnings/errors occur.
++
++### F-309 - Dot and rect paint could not vary per row
++
++- Status: resolved
++- Severity: medium
++- Owner: API
++- Observed in: Solenoid's Recharts-to-TanStack migration
++  (`src/graph/components/chartRender.tsx` and
++  `src/graph/components/charts/heatFigures.tsx`)
++- Friction: XY points coloured through a numeric colormap and heatmap cells
++  whose rows already carried their paint needed per-row fills. `dot` and `rect`
++  accepted only a constant `fill` and `stroke`, while bar, area, text, line,
++  and link accept a visual channel. The application routed each prepared CSS
++  color through `color` and a pass-through color resolver whose mapping
++  returned its input, so the color scale did no work.
++- Decision: make `fill` and `stroke` visual channels on `dot`, `rect`, and
++  `cell`. A resolved `fill` replaces the color scale for that row and becomes
++  its interaction color, as it does for bars.
++- Verification: point-color tests resolve per-row fills, strokes, and point
++  colors for `dot` and `cell`, and fail against the constant-only marks.
+diff --git a/docs/reference/marks/bar-and-rect.md b/docs/reference/marks/bar-and-rect.md
+index 79f5ca2..2e50b32 100644
+--- a/docs/reference/marks/bar-and-rect.md
++++ b/docs/reference/marks/bar-and-rect.md
+@@ -381,9 +381,9 @@ function rect<TDatum>(
+ | `z`           | `Channel<TDatum, ChartKey?>`        | No group                               | Interaction group                                    |
+ | `color`       | `Channel<TDatum, ChartKey?>`        | `z`                                    | Value sent to the chart color scale                  |
+ | `key`         | `Channel<TDatum, ChartKey>`         | Top/nested `id`, x/y tuple, then index | Stable identity                                      |
+-| `fill`        | `string`                            | Resolved color                         | Final constant fill override                         |
++| `fill`        | `VisualChannel<TDatum, string>`     | Resolved color                         | Final fill override per mark or row                  |
+ | `fillOpacity` | `number`                            | SVG default                            | Fill opacity                                         |
+-| `stroke`      | `string`                            | None                                   | Constant stroke                                      |
++| `stroke`      | `VisualChannel<TDatum, string>`     | None                                   | Optional stroke per mark or row                      |
+ | `strokeWidth` | `number`                            | SVG default                            | Stroke width                                         |
+ | `inset`       | `number`                            | `0.75`                                 | Pixels removed from all four edges                   |
+ | `radius`      | `VisualChannel<TDatum, RectRadius>` | None                                   | Uniform or physical per-corner radii                 |
+@@ -391,6 +391,11 @@ function rect<TDatum>(
+ 
+ Both endpoints must be valid chart values. Endpoint order may be reversed.
+ 
++`fill` and `stroke` accept a constant or a row accessor. A resolved `fill`
++replaces the chart color scale for that rect and becomes its interaction color,
++so a heatmap whose rows already carry their paint needs no pass-through color
++scale.
++
+ Rect and cell corner tuples always use physical top-left, top-right,
+ bottom-right, bottom-left order. Reversing either semantic endpoint does not
+ reorder the tuple.
+diff --git a/docs/reference/marks/dot-and-hexagon.md b/docs/reference/marks/dot-and-hexagon.md
+index b0bc03b..998ce17 100644
+--- a/docs/reference/marks/dot-and-hexagon.md
++++ b/docs/reference/marks/dot-and-hexagon.md
+@@ -42,10 +42,10 @@ function dot<TDatum>(
+ | `key`           | `Channel<TDatum, ChartKey>`          | ID, x, y, x/y, index | Stable scene and interaction identity |
+ | `r`             | `number \| Channel<TDatum, number?>` | `3.5`                | Raw radius value                      |
+ | `rScale`        | `(value: number) => number`          | Identity             | Maps each valid raw radius to pixels  |
+-| `fill`          | `string`                             | Resolved color       | Final constant fill override          |
++| `fill`          | `VisualChannel<TDatum, string>`      | Resolved color       | Final fill override per mark or row   |
+ | `fillOpacity`   | `number`                             | SVG default          | Fill opacity                          |
+ | `layout`        | `DodgeXLayout \| DodgeYLayout`       | None                 | Resolved collision placement          |
+-| `stroke`        | `string`                             | None                 | Constant stroke                       |
++| `stroke`        | `VisualChannel<TDatum, string>`      | None                 | Optional stroke per mark or row       |
+ | `strokeOpacity` | `number`                             | SVG default          | Stroke opacity                        |
+ | `strokeWidth`   | `number`                             | SVG default          | Stroke width                          |
+ | `states`        | `readonly ChartMarkState[]`          | None                 | Focus-driven presentation overrides   |
+@@ -53,8 +53,10 @@ function dot<TDatum>(
+ `rScale` is called only for finite, nonnegative raw radii. The mapped result
+ must also be finite and nonnegative or the row is skipped.
+ 
+-Unlike `hexagon`, `dot.fill` and `dot.stroke` are constants. Use `color` and
+-the chart color scale for data-driven dot color.
++`fill` and `stroke` accept a constant or a row accessor. A resolved `fill`
++replaces the chart color scale for that dot and becomes its interaction color.
++Use `color` when the value should pass through the chart color scale and
++legend; use a `fill` accessor when the row already carries its paint.
+ 
+ [`dodgeX` and `dodgeY`](./dodge.md) derive one dot coordinate after the
+ measured axis scale and final plot bounds resolve. The generated coordinate
+diff --git a/packages/charts-core/docs/reference/marks/bar-and-rect.md b/packages/charts-core/docs/reference/marks/bar-and-rect.md
+index 79f5ca2..2e50b32 100644
+--- a/packages/charts-core/docs/reference/marks/bar-and-rect.md
++++ b/packages/charts-core/docs/reference/marks/bar-and-rect.md
+@@ -381,9 +381,9 @@ function rect<TDatum>(
+ | `z`           | `Channel<TDatum, ChartKey?>`        | No group                               | Interaction group                                    |
+ | `color`       | `Channel<TDatum, ChartKey?>`        | `z`                                    | Value sent to the chart color scale                  |
+ | `key`         | `Channel<TDatum, ChartKey>`         | Top/nested `id`, x/y tuple, then index | Stable identity                                      |
+-| `fill`        | `string`                            | Resolved color                         | Final constant fill override                         |
++| `fill`        | `VisualChannel<TDatum, string>`     | Resolved color                         | Final fill override per mark or row                  |
+ | `fillOpacity` | `number`                            | SVG default                            | Fill opacity                                         |
+-| `stroke`      | `string`                            | None                                   | Constant stroke                                      |
++| `stroke`      | `VisualChannel<TDatum, string>`     | None                                   | Optional stroke per mark or row                      |
+ | `strokeWidth` | `number`                            | SVG default                            | Stroke width                                         |
+ | `inset`       | `number`                            | `0.75`                                 | Pixels removed from all four edges                   |
+ | `radius`      | `VisualChannel<TDatum, RectRadius>` | None                                   | Uniform or physical per-corner radii                 |
+@@ -391,6 +391,11 @@ function rect<TDatum>(
+ 
+ Both endpoints must be valid chart values. Endpoint order may be reversed.
+ 
++`fill` and `stroke` accept a constant or a row accessor. A resolved `fill`
++replaces the chart color scale for that rect and becomes its interaction color,
++so a heatmap whose rows already carry their paint needs no pass-through color
++scale.
++
+ Rect and cell corner tuples always use physical top-left, top-right,
+ bottom-right, bottom-left order. Reversing either semantic endpoint does not
+ reorder the tuple.
+diff --git a/packages/charts-core/docs/reference/marks/dot-and-hexagon.md b/packages/charts-core/docs/reference/marks/dot-and-hexagon.md
+index b0bc03b..998ce17 100644
+--- a/packages/charts-core/docs/reference/marks/dot-and-hexagon.md
++++ b/packages/charts-core/docs/reference/marks/dot-and-hexagon.md
+@@ -42,10 +42,10 @@ function dot<TDatum>(
+ | `key`           | `Channel<TDatum, ChartKey>`          | ID, x, y, x/y, index | Stable scene and interaction identity |
+ | `r`             | `number \| Channel<TDatum, number?>` | `3.5`                | Raw radius value                      |
+ | `rScale`        | `(value: number) => number`          | Identity             | Maps each valid raw radius to pixels  |
+-| `fill`          | `string`                             | Resolved color       | Final constant fill override          |
++| `fill`          | `VisualChannel<TDatum, string>`      | Resolved color       | Final fill override per mark or row   |
+ | `fillOpacity`   | `number`                             | SVG default          | Fill opacity                          |
+ | `layout`        | `DodgeXLayout \| DodgeYLayout`       | None                 | Resolved collision placement          |
+-| `stroke`        | `string`                             | None                 | Constant stroke                       |
++| `stroke`        | `VisualChannel<TDatum, string>`      | None                 | Optional stroke per mark or row       |
+ | `strokeOpacity` | `number`                             | SVG default          | Stroke opacity                        |
+ | `strokeWidth`   | `number`                             | SVG default          | Stroke width                          |
+ | `states`        | `readonly ChartMarkState[]`          | None                 | Focus-driven presentation overrides   |
+@@ -53,8 +53,10 @@ function dot<TDatum>(
+ `rScale` is called only for finite, nonnegative raw radii. The mapped result
+ must also be finite and nonnegative or the row is skipped.
+ 
+-Unlike `hexagon`, `dot.fill` and `dot.stroke` are constants. Use `color` and
+-the chart color scale for data-driven dot color.
++`fill` and `stroke` accept a constant or a row accessor. A resolved `fill`
++replaces the chart color scale for that dot and becomes its interaction color.
++Use `color` when the value should pass through the chart color scale and
++legend; use a `fill` accessor when the row already carries its paint.
+ 
+ [`dodgeX` and `dodgeY`](./dodge.md) derive one dot coordinate after the
+ measured axis scale and final plot bounds resolve. The generated coordinate
+diff --git a/packages/charts-core/src/dot.ts b/packages/charts-core/src/dot.ts
+index ad801c1..0365a52 100644
+--- a/packages/charts-core/src/dot.ts
++++ b/packages/charts-core/src/dot.ts
+@@ -6,6 +6,7 @@ import {
+   isChartValue,
+   isNonnegativeFiniteNumber,
+   markStates,
++  visualValue,
+ } from './mark'
+ import { createMarkWithScaleValues } from './mark-with-scale-values'
+ import { resolveDotLayout } from './dot-layout'
+@@ -36,6 +37,7 @@ import type {
+   MarkScaleBindings,
+   ResolvedScale,
+   SceneNode,
++  VisualChannel,
+ } from './types'
+ 
+ export interface DotOptions<TDatum>
+@@ -48,10 +50,10 @@ export interface DotOptions<TDatum>
+   key?: Channel<TDatum, ChartKey>
+   r?: number | Channel<TDatum, number | null | undefined>
+   rScale?: ChartNumericScale
+-  fill?: string
++  fill?: VisualChannel<TDatum, string>
+   fillOpacity?: number
+   layout?: DotLayout
+-  stroke?: string
++  stroke?: VisualChannel<TDatum, string>
+   strokeOpacity?: number
+   strokeWidth?: number
+   states?: readonly ChartMarkState<TDatum, ChartDotStateStyle<TDatum>>[]
+@@ -224,8 +226,17 @@ export function dot<TDatum>(
+           if (!isNonnegativeFiniteNumber(radius)) return
+           const group = zValues[datumIndex] ?? null
+           const groupKey = valueKey(group)
+-          const color =
+-            options.fill ?? resolveColor(colorValues[datumIndex] ?? null)
++          const color = visualValue(
++            options.fill,
++            datum,
++            datumIndex,
++            data,
++            resolveColor(colorValues[datumIndex] ?? null),
++          )
++          const stroke =
++            options.stroke === undefined
++              ? undefined
++              : visualValue(options.stroke, datum, datumIndex, data, 'none')
+           const key = `${id}:${groupKey}:${valueKey(keys[datumIndex])}`
+           const point: ChartPoint<TDatum> = {
+             key,
+@@ -258,7 +269,7 @@ export function dot<TDatum>(
+             style: {
+               fill: color,
+               fillOpacity: options.fillOpacity,
+-              stroke: options.stroke,
++              stroke,
+               strokeOpacity: options.strokeOpacity,
+               strokeWidth: options.strokeWidth,
+             },
+diff --git a/packages/charts-core/src/point-color.test.ts b/packages/charts-core/src/point-color.test.ts
+index d98d134..b1a0dad 100644
+--- a/packages/charts-core/src/point-color.test.ts
++++ b/packages/charts-core/src/point-color.test.ts
+@@ -5,9 +5,10 @@ import { areaX } from './area-x'
+ import { barX, barY } from './bar'
+ import { dot } from './dot'
+ import { lineY } from './line'
++import { cell } from './rect'
+ import { ruleY } from './rule'
+ import { createChartScene, defineChart } from './scene'
+-import { bandXAxes, bandYAxes, linearAxes } from './test-scales'
++import { bandAxes, bandXAxes, bandYAxes, linearAxes } from './test-scales'
+ import type { SceneArea, SceneNode, SceneRect, SceneRule } from './types'
+ 
+ describe('mark point colors', () => {
+@@ -116,6 +117,66 @@ describe('mark point colors', () => {
+     ])
+   })
+ 
++  it('uses each dot fill and stroke instead of the ordinal fallback', () => {
++    const data = [
++      { id: 'a', series: 'Alpha', x: 0, y: 1, fill: '#fb7185', ring: 'red' },
++      { id: 'b', series: 'Beta', x: 1, y: 2, fill: '#38bdf8', ring: 'blue' },
++    ]
++    const scene = createChartScene(
++      defineChart({
++        marks: [
++          dot(data, {
++            x: 'x',
++            y: 'y',
++            z: 'series',
++            key: 'id',
++            fill: (datum) => datum.fill,
++            stroke: (datum) => datum.ring,
++          }),
++        ],
++        ...linearAxes([0, 1], [0, 2]),
++        color: { scale: fallbackColors() },
++      }),
++      { width: 480, height: 260 },
++    )
++
++    expect(dotFills(scene.nodes)).toEqual(data.map((datum) => datum.fill))
++    expect(dotStrokes(scene.nodes)).toEqual(data.map((datum) => datum.ring))
++    expect(scene.points.map((point) => point.color)).toEqual(
++      data.map((datum) => datum.fill),
++    )
++  })
++
++  it('uses each rect fill and stroke instead of the ordinal fallback', () => {
++    const data = [
++      { id: 'a', column: 'A', row: 'Alpha', fill: '#a78bfa', ring: 'red' },
++      { id: 'b', column: 'B', row: 'Beta', fill: '#2dd4bf', ring: 'blue' },
++    ]
++    const scene = createChartScene(
++      defineChart({
++        marks: [
++          cell(data, {
++            x: 'column',
++            y: 'row',
++            z: 'row',
++            key: 'id',
++            fill: (datum) => datum.fill,
++            stroke: (datum) => datum.ring,
++          }),
++        ],
++        ...bandAxes(['A', 'B'], ['Alpha', 'Beta']),
++        color: { scale: fallbackColors() },
++      }),
++      { width: 480, height: 260 },
++    )
++
++    expect(rectFills(scene.nodes)).toEqual(data.map((datum) => datum.fill))
++    expect(rectStrokes(scene.nodes)).toEqual(data.map((datum) => datum.ring))
++    expect(scene.points.map((point) => point.color)).toEqual(
++      data.map((datum) => datum.fill),
++    )
++  })
++
+   it('colors individual marks without changing their z groups', () => {
+     const data = [
+       { id: 'a', series: 'Shared', color: 'Warm', x: 0, y: 1 },
+@@ -330,6 +391,18 @@ function dotFills(nodes: readonly SceneNode[]): (string | undefined)[] {
+     .map((node) => node.style?.fill)
+ }
+ 
++function rectStrokes(nodes: readonly SceneNode[]): (string | undefined)[] {
++  return flatten(nodes)
++    .filter((node): node is SceneRect => node.kind === 'rect')
++    .map((node) => node.style?.stroke)
++}
++
++function dotStrokes(nodes: readonly SceneNode[]): (string | undefined)[] {
++  return flatten(nodes)
++    .filter((node) => node.kind === 'dot')
++    .map((node) => node.style?.stroke)
++}
++
+ function lineStrokes(nodes: readonly SceneNode[]): (string | undefined)[] {
+   return flatten(nodes)
+     .filter((node) => node.kind === 'polyline')
+diff --git a/packages/charts-core/src/rect.ts b/packages/charts-core/src/rect.ts
+index de2dd3a..ffc7be6 100644
+--- a/packages/charts-core/src/rect.ts
++++ b/packages/charts-core/src/rect.ts
+@@ -44,9 +44,9 @@ export interface RectOptions<TDatum>
+   z?: Channel<TDatum, ChartKey | null | undefined>
+   color?: Channel<TDatum, ChartKey | null | undefined>
+   key?: Channel<TDatum, ChartKey>
+-  fill?: string
++  fill?: VisualChannel<TDatum, string>
+   fillOpacity?: number
+-  stroke?: string
++  stroke?: VisualChannel<TDatum, string>
+   strokeWidth?: number
+   inset?: number
+   radius?: VisualChannel<TDatum, RectRadius>
+@@ -262,8 +262,17 @@ export function rect<TDatum>(
+             const width = categoricalWidth || Math.max(0, Math.abs(x2 - x1))
+             const height = categoricalHeight || Math.max(0, Math.abs(y2 - y1))
+             const group = zValues[datumIndex] ?? null
+-            const color =
+-              options.fill ?? resolveColor(colorValues[datumIndex] ?? null)
++            const color = visualValue(
++              options.fill,
++              datum,
++              datumIndex,
++              data,
++              resolveColor(colorValues[datumIndex] ?? null),
++            )
++            const stroke =
++              options.stroke === undefined
++                ? undefined
++                : visualValue(options.stroke, datum, datumIndex, data, 'none')
+             const key = `${id}:${valueKey(group)}:${valueKey(keys[datumIndex])}`
+             const paintedX = left + inset
+             const paintedY = top + inset
+@@ -307,7 +316,7 @@ export function rect<TDatum>(
+               style: {
+                 fill: color,
+                 fillOpacity: options.fillOpacity,
+-                stroke: options.stroke,
++                stroke,
+                 strokeWidth: options.strokeWidth,
+               },
+             })
+-- 
+2.43.0
+

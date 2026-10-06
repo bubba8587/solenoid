@@ -1,0 +1,266 @@
+From 0cb595c678e7a5ca81d68265e51724297ec537a3 Mon Sep 17 00:00:00 2001
+From: Solenoid contributors <noreply@anthropic.com>
+Date: Tue, 6 Oct 2026 15:39:43 +0000
+Subject: [PATCH] fix(charts): name ariaLabel when it is missing or empty
+
+---
+ .changeset/arialabel-required-error.md        |  5 ++++
+ API-FRICTION.md                               | 26 ++++++++++++++++++-
+ packages/charts-core/src/adapter.test.ts      | 21 +++++++++++++++
+ packages/charts-core/src/canvas.test.ts       | 26 +++++++++++++++++++
+ packages/charts-core/src/canvas.ts            |  6 ++---
+ packages/charts-core/src/markup-internal.ts   |  7 +++++
+ packages/charts-core/src/renderer.ts          |  3 +++
+ packages/charts-core/src/svg-renderer.test.ts |  9 +++++++
+ packages/charts-core/src/svg-renderer.ts      |  9 +++++--
+ 9 files changed, 106 insertions(+), 6 deletions(-)
+ create mode 100644 .changeset/arialabel-required-error.md
+
+diff --git a/.changeset/arialabel-required-error.md b/.changeset/arialabel-required-error.md
+new file mode 100644
+index 0000000..b2707cd
+--- /dev/null
++++ b/.changeset/arialabel-required-error.md
+@@ -0,0 +1,5 @@
++---
++'@tanstack/charts': patch
++---
++
++Reject a missing or empty `ariaLabel` with a `TypeError` that names the option when rendering SVG or Canvas markup, mounting a chart, or updating a mounted chart, instead of failing inside attribute escaping.
+diff --git a/API-FRICTION.md b/API-FRICTION.md
+index d9e37c2..934c95b 100644
+--- a/API-FRICTION.md
++++ b/API-FRICTION.md
+@@ -5,7 +5,7 @@ observed difficulty from examples, production migrations, tests, and agent
+ evaluations so later API, documentation, and TanStack Intent skill work is
+ based on evidence.
+ 
+-Last updated: 2026-09-30
++Last updated: 2026-10-06
+ 
+ ## Triage rule
+ 
+@@ -345,6 +345,7 @@ Each entry records:
+ | F-306 | Inferred consumer declarations could not name core types       | Tooling               | resolved   |
+ | F-307 | Grouped-y keyboard navigation followed x order                 | API                   | resolved   |
+ | F-308 | Raster format documentation omitted browser encoder fallback   | Documentation         | resolved   |
++| F-309 | A missing accessible name failed inside markup escaping        | API                   | resolved   |
+ 
+ ## Findings
+ 
+@@ -9199,3 +9200,26 @@ Each entry records:
+   decodes as WebP in Chromium and Firefox and PNG in WebKit. Dimensions and
+   opaque red pixels pass with lossy-encoding tolerance, alongside ten existing
+   PNG checks per engine. No page errors or console warnings/errors occur.
++
++### F-309 - A missing accessible name failed inside markup escaping
++
++- Status: resolved
++- Severity: low
++- Owner: API
++- Observed in: Solenoid's Recharts-to-TanStack migration
++  (`src/graph/components/chartRender.tsx`)
++- Friction: chart titles there are user-authored and may be empty, so every
++  `<Chart>` guards `ariaLabel={title || fallback}`. Checking what an unguarded
++  value does showed that `renderChartSvg(scene, {})`, the Canvas shell
++  prerender, and adapter prerender threw this error from attribute escaping:
++  `Cannot read properties of undefined (reading 'replace')`. Mounting set the
++  attribute to `"undefined"`, and an empty string produced an unnamed
++  `role="img"` surface. The type requires the option, so only untyped or
++  loosely typed callers hit it, but nothing in the failure named `ariaLabel`.
++- Decision: validate `ariaLabel` where markup is written and where a host
++  mounts or updates, throwing a `TypeError` with the message
++  `A chart requires a non-empty ariaLabel string`. Keep the option type
++  unchanged.
++- Verification: SVG, Canvas, composed-layer, `mountCanvasChart`, and adapter
++  prerender, mount, and update regressions fail before and pass after. An
++  invalid update leaves the previous label mounted.
+diff --git a/packages/charts-core/src/adapter.test.ts b/packages/charts-core/src/adapter.test.ts
+index 4dd0cf7..b439ad6 100644
+--- a/packages/charts-core/src/adapter.test.ts
++++ b/packages/charts-core/src/adapter.test.ts
+@@ -170,6 +170,27 @@ describe('chart adapter controller', () => {
+     adapter.destroy()
+   })
+ 
++  it('requires a non-empty ariaLabel string', () => {
++    const error = new TypeError('A chart requires a non-empty ariaLabel string')
++    const options = {
++      definition,
++      width: 480,
++      height: 260,
++    } as unknown as Parameters<typeof createChartAdapter>[0]
++    const container = document.createElement('div')
++
++    expect(() => createChartAdapter(options).prerender()).toThrow(error)
++    expect(() => createChartAdapter(options).mount(container)).toThrow(error)
++
++    const adapter = createChartAdapter({ ...options, ariaLabel: 'Revenue' })
++    adapter.mount(container)
++    expect(() => adapter.update({ ...options, ariaLabel: '' })).toThrow(error)
++    expect(container.querySelector('svg')?.getAttribute('aria-label')).toBe(
++      'Revenue',
++    )
++    adapter.destroy()
++  })
++
+   it('throws when mounted twice', () => {
+     const adapter = createChartAdapter({
+       definition,
+diff --git a/packages/charts-core/src/canvas.test.ts b/packages/charts-core/src/canvas.test.ts
+index edb81d1..68868ca 100644
+--- a/packages/charts-core/src/canvas.test.ts
++++ b/packages/charts-core/src/canvas.test.ts
+@@ -774,6 +774,32 @@ describe('Canvas renderer', () => {
+     expect(getContextSpy).not.toHaveBeenCalled()
+   })
+ 
++  it('requires a non-empty ariaLabel string', () => {
++    const error = new TypeError('A chart requires a non-empty ariaLabel string')
++    const missing = {} as ChartSurfaceRenderOptions
++
++    expect(() => canvasChartRenderer.prerender(scene([]), missing)).toThrow(
++      error,
++    )
++    expect(() =>
++      canvasChartRenderer
++        .compose(createSvgChartRenderer())
++        .prerender(scene([]), missing),
++    ).toThrow(error)
++    expect(() =>
++      mountCanvasChart(document.createElement('div'), {
++        definition: defineChart({
++          marks: [lineY([{ x: 0, y: 0 }], { x: 'x', y: 'y' })],
++          scales: { x: { scale: scaleLinear }, y: { scale: scaleLinear } },
++        }),
++        width: 480,
++        height: 260,
++        ariaLabel: '',
++      }),
++    ).toThrow(error)
++    expect(getContextSpy).not.toHaveBeenCalled()
++  })
++
+   it('paints translated and clipped heterogeneous composed views', () => {
+     const observations = [
+       { id: 'first', x: 1, y: 2 },
+diff --git a/packages/charts-core/src/canvas.ts b/packages/charts-core/src/canvas.ts
+index d2565ee..07504e0 100644
+--- a/packages/charts-core/src/canvas.ts
++++ b/packages/charts-core/src/canvas.ts
+@@ -1,4 +1,4 @@
+-import { escapeAttribute } from './markup-internal'
++import { escapeAttribute, requireAriaLabel } from './markup-internal'
+ import { mountChartRenderer } from './renderer'
+ import { createChartRuntime } from './runtime'
+ import { resolveFocusScene } from './focus-layer'
+@@ -450,7 +450,7 @@ function createLayeredChartRenderer(
+       const description = options.ariaDescription
+         ? ` aria-description="${escapeAttribute(options.ariaDescription)}"`
+         : ''
+-      return `<div class="${escapeAttribute(className)}" role="img" aria-roledescription="chart" aria-label="${escapeAttribute(options.ariaLabel)}"${description} tabindex="${integer(options.tabIndex ?? 0)}" data-ts-chart-width="${integer(scene.width)}" data-ts-chart-height="${integer(scene.height)}" style="display:block;position:relative;width:100%;height:100%;overflow:visible">${layers
++      return `<div class="${escapeAttribute(className)}" role="img" aria-roledescription="chart" aria-label="${escapeAttribute(requireAriaLabel(options.ariaLabel))}"${description} tabindex="${integer(options.tabIndex ?? 0)}" data-ts-chart-width="${integer(scene.width)}" data-ts-chart-height="${integer(scene.height)}" style="display:block;position:relative;width:100%;height:100%;overflow:visible">${layers
+         .map(
+           (layer, index) =>
+             `<div class="ts-chart-layer" data-ts-chart-layer="${index}" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">${layer.renderer.prerender(layerScene(scene, layer, index), layerOptions(options, index))}</div>`,
+@@ -860,7 +860,7 @@ function renderCanvasShell(
+     : ''
+   const width = integer(scene.width)
+   const height = integer(scene.height)
+-  return `<div class="${escapeAttribute(className)}" role="img" aria-roledescription="chart" aria-label="${escapeAttribute(options.ariaLabel)}"${description} tabindex="${integer(options.tabIndex ?? 0)}" data-ts-chart-width="${width}" data-ts-chart-height="${height}" data-ts-chart-pixel-ratio="1" style="display:block;position:relative;width:100%;height:100%;overflow:visible"><canvas class="ts-chart-canvas__background" width="${width}" height="${height}" aria-hidden="true" style="display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas><canvas class="ts-chart-canvas__focus-under" width="${width}" height="${height}" aria-hidden="true" style="display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas><canvas class="ts-chart-canvas__scene" width="${width}" height="${height}" aria-hidden="true" style="display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas><canvas class="ts-chart-canvas__focus" width="${width}" height="${height}" aria-hidden="true" style="display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas><canvas class="ts-chart-canvas__base" width="${width}" height="${height}" aria-hidden="true" style="display:none"></canvas></div>`
++  return `<div class="${escapeAttribute(className)}" role="img" aria-roledescription="chart" aria-label="${escapeAttribute(requireAriaLabel(options.ariaLabel))}"${description} tabindex="${integer(options.tabIndex ?? 0)}" data-ts-chart-width="${width}" data-ts-chart-height="${height}" data-ts-chart-pixel-ratio="1" style="display:block;position:relative;width:100%;height:100%;overflow:visible"><canvas class="ts-chart-canvas__background" width="${width}" height="${height}" aria-hidden="true" style="display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas><canvas class="ts-chart-canvas__focus-under" width="${width}" height="${height}" aria-hidden="true" style="display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas><canvas class="ts-chart-canvas__scene" width="${width}" height="${height}" aria-hidden="true" style="display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas><canvas class="ts-chart-canvas__focus" width="${width}" height="${height}" aria-hidden="true" style="display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas><canvas class="ts-chart-canvas__base" width="${width}" height="${height}" aria-hidden="true" style="display:none"></canvas></div>`
+ }
+ 
+ function findOrCreateRoot(container: HTMLElement): HTMLDivElement {
+diff --git a/packages/charts-core/src/markup-internal.ts b/packages/charts-core/src/markup-internal.ts
+index ca6a4dd..5e17ae7 100644
+--- a/packages/charts-core/src/markup-internal.ts
++++ b/packages/charts-core/src/markup-internal.ts
+@@ -20,6 +20,13 @@ export function escapeText(value: string): string {
+   return value.replace(unsafeCharacter, escapeCharacter)
+ }
+ 
++export function requireAriaLabel(value: string): string {
++  if (typeof value !== 'string' || !value) {
++    throw new TypeError('A chart requires a non-empty ariaLabel string')
++  }
++  return value
++}
++
+ export function escapeAttribute(value: string): string {
+   return value
+     .replace(unsafeCharacter, escapeCharacter)
+diff --git a/packages/charts-core/src/renderer.ts b/packages/charts-core/src/renderer.ts
+index c897f4f..01827ba 100644
+--- a/packages/charts-core/src/renderer.ts
++++ b/packages/charts-core/src/renderer.ts
+@@ -1,5 +1,6 @@
+ import { createChartRuntime } from './runtime'
+ import { resolveChartHostTabIndex } from './adapter-shared'
++import { requireAriaLabel } from './markup-internal'
+ import { createDomTextMeasurer } from './dom-text'
+ import { findNearestPoint, viewportInteractionPoints } from './scene'
+ import { focusDisabled } from './focus-disabled'
+@@ -128,6 +129,7 @@ export function mountChartRenderer<
+     TYValue
+   >(),
+ ): ChartRendererHost<TDatum, TXValue, TYValue> {
++  requireAriaLabel(initialOptions.ariaLabel)
+   resolveTooltipInput(initialOptions.definition.tooltip)
+   let options = initialOptions
+   let scene!: ChartScene<TDatum, TXValue, TYValue>
+@@ -935,6 +937,7 @@ export function mountChartRenderer<
+     interaction,
+     update(nextOptions) {
+       if (destroyed) return
++      requireAriaLabel(nextOptions.ariaLabel)
+       resolveTooltipInput(nextOptions.definition.tooltip)
+       const fontChanged =
+         nextOptions.measureText === undefined && domText.refresh()
+diff --git a/packages/charts-core/src/svg-renderer.test.ts b/packages/charts-core/src/svg-renderer.test.ts
+index 31401b9..dd6a8dc 100644
+--- a/packages/charts-core/src/svg-renderer.test.ts
++++ b/packages/charts-core/src/svg-renderer.test.ts
+@@ -52,6 +52,15 @@ describe('SVG scene renderer', () => {
+     expect(document.querySelector('parsererror')).toBeNull()
+   })
+ 
++  it('requires a non-empty ariaLabel string', () => {
++    const scene = testScene()
++    for (const options of [{}, { ariaLabel: '' }, { ariaLabel: 42 }]) {
++      expect(() =>
++        renderChartSvg(scene, options as unknown as { ariaLabel: string }),
++      ).toThrow(new TypeError('A chart requires a non-empty ariaLabel string'))
++    }
++  })
++
+   it('renders structured disconnected polygons and holes with even-odd fill', () => {
+     const scene = testScene()
+     const svg = renderChartSvg(scene, { ariaLabel: 'Density contour' })
+diff --git a/packages/charts-core/src/svg-renderer.ts b/packages/charts-core/src/svg-renderer.ts
+index f3c8327..dbcaf9b 100644
+--- a/packages/charts-core/src/svg-renderer.ts
++++ b/packages/charts-core/src/svg-renderer.ts
+@@ -1,4 +1,9 @@
+-import { number, escapeText, escapeAttribute } from './markup-internal'
++import {
++  number,
++  escapeText,
++  escapeAttribute,
++  requireAriaLabel,
++} from './markup-internal'
+ import type {
+   ChartScene,
+   RenderChartSvgOptions,
+@@ -56,7 +61,7 @@ export function renderChartSvgWithHooks(
+           idPrefix,
+         )
+ 
+-  return `<svg class="${escapeAttribute(className)}" width="100%" height="100%" viewBox="0 0 ${number(scene.width)} ${number(scene.height)}" role="img" aria-roledescription="chart" aria-label="${escapeAttribute(options.ariaLabel)}" tabindex="${number(options.tabIndex ?? 0)}"${direction} style="display:block;overflow:visible">${description}${definitions}${background}${renderSceneNodes(scene.nodes, idPrefix, hooks, svgRenderChildren(options))}</svg>`
++  return `<svg class="${escapeAttribute(className)}" width="100%" height="100%" viewBox="0 0 ${number(scene.width)} ${number(scene.height)}" role="img" aria-roledescription="chart" aria-label="${escapeAttribute(requireAriaLabel(options.ariaLabel))}" tabindex="${number(options.tabIndex ?? 0)}"${direction} style="display:block;overflow:visible">${description}${definitions}${background}${renderSceneNodes(scene.nodes, idPrefix, hooks, svgRenderChildren(options))}</svg>`
+ }
+ 
+ export function renderSceneNodes(
+-- 
+2.43.0
+

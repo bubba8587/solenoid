@@ -1,67 +1,31 @@
-# feat(charts): add contourLines for scalar-grid iso-lines
+# feat(charts): add contourLines for interior iso-lines
 
 ## Summary
 
-Adds `contourLines` to the optional `@tanstack/charts/spatial/contour` subpath. It strokes the same scalar-grid level sets as `contour`, but as polylines that keep only interior level crossings. It drops ring edges that run along the grid border or through cells with missing samples. Unbroken interior rings stay closed.
+`contour` emits filled level-set polygons, and stroking them also traces the grid border and the edges beside missing samples, so it can't draw clean iso-lines. This adds `contourLines` to `@tanstack/charts/spatial/contour`: the same grid input and levels, stroked as polylines, with ring edges along the grid border and beside missing samples dropped and unbroken interior rings kept closed. The level generation is shared with `contour`.
 
 ## Motivation
 
-Solenoid's contour figure (`src/graph/components/charts/fieldFigures.tsx`) draws 64 filled bands for shading and stroked iso-lines at a few chosen levels on top. A stroked `contour` cannot provide those lines. Each level is a filled ring, so its stroke also traces the grid border wherever the level reaches the edge, and it outlines every null cell. For example, a ramp `[0,0,0,0, 2,2,2,2, 4,4,4,4]` (4 x 3) at level 1 strokes the whole region above the level, including both side borders and the top border, not just the crossing at y = 1. To get clean lines, the application had to write its own marching-squares pass over the source grid and a raw `createMark` that builds SVG path strings for each level.
-
-## Changes
-
-- `spatial-contour-internal.ts`: new `contourIsolines(coordinates, grid, level, smooth)`. It takes unsmoothed `d3-contour` rings, so each ring edge lies in exactly one marching-squares cell. An edge is dropped when both of its endpoints lie on the grid border, or when any in-grid corner sample of its cell is missing. The remaining edges are split into runs. A ring that loses no edge stays closed by repeating its first point. Kept vertices are then smoothed with `d3-contour`'s linear rule (`x + (level - v0) / (v1 - v0) - 0.5`). Because the rule is identical, every line vertex is also a vertex of the smoothed fill at that level.
-- `spatial-contour.ts`: grid validation, value extraction, threshold normalization, generation and level identity move from `contour` into one private `generateContours` helper. `contour` uses it with unchanged behavior. New `contourLines` mark and `ContourLinesOptions<TDatum>` (`ContourOptions` without `fill` and `fillOpacity`). Each run becomes a `polyline` scene node (`fill: 'none'`, round caps and joins), keyed by `[id, levelIdentity, lineIndex]`. `stroke` defaults to the resolved color, and the mark adds no focus points.
-- Docs: an "Iso-lines" section in `docs/reference/marks/contour.md`, plus rows in `docs/reference/index.md`. Regenerated through `pnpm docs:sync`.
-- `.changeset/contour-isolines.md` (minor).
-- `API-FRICTION.md`: F-313 and its index row.
-
-A sibling export was chosen over a `lines: true` option on `contour`:
-
-- it emits a different scene primitive, and `fill`/`fillOpacity` would be meaningless;
-- its stroke default differs from `contour`'s;
-- it tree-shakes out of existing `contour` bundles;
-- band levels and line levels usually differ, so they are two marks anyway.
+Moving Solenoid's charts from Recharts to TanStack Charts, our contour figure draws filled bands with iso-lines over them at chosen levels (`src/graph/components/charts/fieldFigures.tsx`). Stroking `contour`'s polygons outlined the plot edge and every hole, so we wrote our own marching-squares mark for the lines.
 
 ## API
-
-Before (application code):
-
-```ts
-contour(field, { width: m, height: k, thresholds: bands, fill })
-// plus a custom createMark running marching squares and emitting path strings
-```
-
-After:
 
 ```ts
 import { contour, contourLines } from '@tanstack/charts/spatial/contour'
 
-contour(field, { width: m, height: k, thresholds: bands, fill })
-contourLines(field, {
-  width: m,
-  height: k,
-  thresholds: levels,
-  stroke: 'rgba(0,0,0,0.45)',
-  strokeWidth: 0.8,
-})
+marks: [
+  contour(grid, { width: w, height: h, thresholds: 64 }),
+  contourLines(grid, { width: w, height: h, thresholds: [0.25, 0.5, 0.75], stroke: 'currentColor' }),
+]
 ```
 
-## Tests
+`ContourLinesOptions` is `ContourOptions` without the fill options.
 
-- `spatial-contour-internal.test.ts`:
-  - a level touching the border becomes one open line whose ends stop on the border, with no border edges;
-  - an interior ring stays closed and equals the smoothed fill ring;
-  - a field with a NaN hole produces four open lines that avoid the hole, and every vertex is a fill vertex.
-- `spatial-contour.test.ts`:
-  - validation errors carry the `contourLines` mark name;
-  - on a field with a null hole and two levels: the stroke callback is called once per level, the source lineage excludes the hole, `fill: 'none'` is set, the outer level stays closed, the inner level splits into four open lines away from the hole, and every point lies inside the plot;
-  - the border-touching level projects to the expected plot coordinates.
+## For the reviewer
+
+- Friction entry F-309 (renumber if several of our PRs land); minor changeset; reference docs and `llms.txt` synced.
 
 ## Validation
 
-VALIDATION_PLACEHOLDER
-
-## Friction log
-
-F-313 (Filled contours could not draw clean interior iso-lines).
+- `spatial-contour.test.ts`, `spatial-contour-internal.test.ts` (a field with a hole and a level touching the border), `api-friction.test.ts`, `pnpm typecheck`: pass.
+- Not run here: full `pnpm test`, `bundle:check`, `package:check` (see PR 04's notes on what our environment can't run).
