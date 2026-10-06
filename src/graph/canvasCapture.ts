@@ -133,11 +133,17 @@ export function nodeChartSvgString(nodeId: string): string | null {
   const provided = nodeChartSvgProvided(nodeId);
   if (provided) return provided;
   const el = nodeChartSvg(nodeId);
-  if (!el) return null;
-  const svg = serializeSvgWithComputedStyles(el);
+  const card = getView()?.nodeElement(nodeId);
+  return el && card ? figureSvgString(el, card) : null;
+}
+
+/** A drawn figure's SVG with computed styles baked in, sized in canvas units, its DOM legend redrawn under the plot. */
+export function figureSvgString(el: SVGSVGElement, container: Element): string {
   const { w, h } = canvasSizeOf(el);
+  // A root sized in percent would fill the wrapper, legend row included; pin it to the plot's own box.
+  const svg = serializeSvgWithComputedStyles(el).replace(/^<svg([^>]*?) width="100%" height="100%"/, `<svg$1 width="${w}" height="${h}"`);
   // The multi-series legend is DOM beside the plot, so an export of the plot's SVG alone can't tell the series apart.
-  const legend = getView()?.nodeElement(nodeId)?.querySelector(".sol-chart-legend");
+  const legend = container.querySelector(".sol-chart-legend");
   const entries: LegendEntry[] = legend ? Array.from(legend.children).map((item) => ({
     color: getComputedStyle(item.firstElementChild as Element).backgroundColor,
     label: (item.textContent ?? "").trim(),
@@ -150,7 +156,11 @@ export function nodeChartSvgString(nodeId: string): string | null {
 
 export function nodeChartSvg(nodeId: string): SVGSVGElement | null {
   const el = getView()?.nodeElement(nodeId);
-  if (!el) return null;
+  return el ? largestFigureSvg(el) : null;
+}
+
+/** The figure among an element's SVGs: the largest that isn't card chrome or glyph-sized furniture. */
+export function largestFigureSvg(el: Element): SVGSVGElement | null {
   let best: SVGSVGElement | null = null;
   let bestArea = 40 * 40;
   for (const svg of Array.from(el.querySelectorAll("svg"))) {

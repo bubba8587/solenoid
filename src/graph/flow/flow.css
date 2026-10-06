@@ -38,8 +38,8 @@ html.perf-no-grid-dots .sol-canvas-backing__dots { display: none; }
 
 /* A dragged open group clips its paint (with room for the selection glow), so the members riding over it stay their own layers instead of re-rastering the group's every frame. */
 .react-flow__node.sol-group-open.dragging { overflow: clip; overflow-clip-margin: 24px; }
-.react-flow__node.dragging :is(.recharts-wrapper, canvas),
-.react-flow__pane.dragging .react-flow__node :is(.recharts-wrapper, canvas) {
+.react-flow__node.dragging :is(.ts-chart-host, canvas),
+.react-flow__pane.dragging .react-flow__node :is(.ts-chart-host, canvas) {
   pointer-events: none;
 }
 

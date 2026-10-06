@@ -1,6 +1,6 @@
 // Console-only census probe (driven by scripts/card-css-census.mjs): mounts one card per catalog type on the live editor,
 // classifies each element as carrying a value or handler, or paint-only, and removes the card again.
-// Charts mount recharts lazily, so a figure interior is under-counted; the census targets card chrome.
+// Charts mount the chart library lazily, so a figure interior is under-counted; the census targets card chrome.
 import { FLAT_CATALOG } from "./catalogUtils";
 import { getEditor, getView } from "./process";
 const frames = (n: number) =>
