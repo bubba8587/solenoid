@@ -1,4 +1,5 @@
 // [[C58]] tableInputRawText, [[D41]] formatFlowsDownstream
+import { iterMin } from "../nodes/mathUtils";
 import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyText } from "../clipboard";
@@ -175,7 +176,7 @@ export function TablePopup() {
   const csvTypesFrom = useRef<number | null>(null);
   const cardsKey = useRef<{ deps: unknown[]; key: object }>({ deps: [], key: {} });
   // What Save would write, as of the last save or live commit; a close that differs asks first.
-  const savedSnapshot = useRef("");
+  const savedSnapshot = useRef<EditSnapshot | null>(null);
   // The column names the host outputs now, which key its column formats until the next save or live commit.
   const liveNames = useRef<(string | undefined)[]>([]);
   // Host names of deleted columns, whose formats go at the next save or live commit.
@@ -581,7 +582,7 @@ export function TablePopup() {
       const r = shiftForRemove(f.r, drop);
       return r === null ? null : { r, c: f.c };
     });
-    if (view === "form") setFormRow(Math.max(0, Math.min(Math.min(...indices), rows - drop.size - 1)));
+    if (view === "form") setFormRow(Math.max(0, Math.min(iterMin(indices), rows - drop.size - 1)));
   }
   function insertCols(at: number, count: number) {
     flushDraft();
@@ -789,7 +790,7 @@ export function TablePopup() {
   function hasUnsavedEdits(): boolean {
     if (!editable) return false;
     const midEdit = !!editCell && editDraft.current !== (grid[editCell.r]?.[editCell.c] ?? "");
-    return midEdit || editSnapshot(grid, headerNames, settledColumnTypes(), colExprs) !== savedSnapshot.current;
+    return midEdit || !sameSnapshot(editSnapshot(grid, headerNames, settledColumnTypes(), colExprs), savedSnapshot.current);
   }
   function discard() {
     const nodeId = state?.pinNodeId;
@@ -1480,8 +1481,26 @@ export function TablePopup() {
 }
 
 /** Formula columns infer their type, so only a Data column's type counts as an edit. */
-function editSnapshot(grid: string[][], names: string[], types: CellType[], exprs: (string | undefined)[]): string {
-  return JSON.stringify([grid, names, types.map((t, j) => (exprs[j] !== undefined ? "fx" : t)), exprs]);
+interface EditSnapshot { grid: string[][]; names: string[]; types: CellType[]; exprs: (string | undefined)[]; json?: string }
+
+/** What a save would write, compared by identity first: a whole-grid stringify only when an edit made new arrays. */
+function editSnapshot(grid: string[][], names: string[], types: CellType[], exprs: (string | undefined)[]): EditSnapshot {
+  return { grid, names, types, exprs };
+}
+
+function snapshotJson(s: EditSnapshot): string {
+  return (s.json ??= JSON.stringify([s.grid, s.names, s.types.map((t, j) => (s.exprs[j] !== undefined ? "fx" : t)), s.exprs]));
+}
+
+const sameItems = <T,>(a: readonly T[], b: readonly T[]): boolean => a.length === b.length && a.every((x, i) => x === b[i]);
+
+function sameSnapshot(a: EditSnapshot, b: EditSnapshot | null): boolean {
+  if (!b) return false;
+  if (a.grid === b.grid && sameItems(a.names, b.names) && sameItems(a.exprs, b.exprs)
+      && sameItems(a.types.map((t, j) => (a.exprs[j] !== undefined ? "fx" : t)), b.types.map((t, j) => (b.exprs[j] !== undefined ? "fx" : t)))) {
+    return true;
+  }
+  return snapshotJson(a) === snapshotJson(b);
 }
 
 function UnsavedChangesPrompt({ onSave, onDiscard, onKeepEditing }: {

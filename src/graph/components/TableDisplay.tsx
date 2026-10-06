@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from "react";
 import { ArrayChip, type ElemFamily } from "./ArrayChip";
 import { CategoryChip } from "./CategoryChip";
-import { categoryColorIndex } from "../categoryColor";
+import { categoryColorIndexOf } from "../categoryColor";
 import type { TablePopupState } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
@@ -82,7 +82,7 @@ export function TableDisplay({ table, label, full, kind, elem, ann: annProp, pop
   const rows = table.length, cols = table[0]?.length ?? 0;
   const maxR = full ? rows : Math.min(rows, peek ? 5 : 4), maxC = full ? cols : Math.min(cols, 4);
   const dateLike = kind === "date" || elem === "date";
-  const chipMap = ann?.chip ? categoryColorIndex(table.flat().map((v) => (typeof v === "string" ? v : null))) : null;
+  const chipMap = ann?.chip ? categoryColorIndexOf(table, () => table.flat().map((v) => (typeof v === "string" ? v : null))) : null;
 
   return (
     <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>

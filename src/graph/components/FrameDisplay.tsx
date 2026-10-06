@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from "react";
 import { FrameChip } from "./FrameChip";
 import { CategoryChip } from "./CategoryChip";
-import { categoryColorIndex } from "../categoryColor";
+import { categoryColorIndexOf } from "../categoryColor";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue, type FrameSourceColumn } from "../frame";
 import type { SourceCommitRefresh } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
@@ -85,8 +85,8 @@ export function FrameDisplay({ frame, label, source, onSaveSource, onCommitSourc
   const maxC = full ? frame.columns.length : Math.min(frame.columns.length, previewCols ?? 3);
   const extraCols = !full && frame.columns.length > maxC;
   const chipCols = new Map<number, Map<string, number>>();
-  frame.columns.forEach((c, j) => {
-    if (c.type === "string" && annFor(c)?.chip) chipCols.set(j, categoryColorIndex(c.values as (string | null)[]));
+  frame.columns.slice(0, maxC).forEach((c, j) => {
+    if (c.type === "string" && annFor(c)?.chip) chipCols.set(j, categoryColorIndexOf(c.values, () => c.values as (string | null)[]));
   });
 
   return (

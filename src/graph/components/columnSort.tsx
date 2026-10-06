@@ -80,8 +80,9 @@ function compareKeys(a: SortKey, b: SortKey): number {
   if (an !== (typeof b === "number")) return an ? -1 : 1;
   if (an) return a - (b as number);
   // A UI list keeps natural order ([[C59]] byteStringOrder), so "item2" precedes "item10".
-  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+  return naturalOrder.compare(String(a), String(b));
 }
+const naturalOrder = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 /** Identity when unsorted; rows equal on every key keep source order by an explicit index tie-break, not by sort stability. */
 export function sortedOrder(
@@ -91,10 +92,12 @@ export function sortedOrder(
 ): number[] {
   const order = Array.from({ length: rowCount }, (_, i) => i);
   if (sort.length === 0) return order;
+  const keys = sort.map(({ col }) => order.map((r) => keyAt(r, col)));
   return order.sort((ra, rb) => {
-    for (const { col, dir } of sort) {
-      const a = keyAt(ra, col);
-      const b = keyAt(rb, col);
+    for (let k = 0; k < sort.length; k++) {
+      const { dir } = sort[k];
+      const a = keys[k][ra];
+      const b = keys[k][rb];
       if (a === null || b === null) {
         if (a === b) continue;
         return a === null ? 1 : -1;

@@ -237,12 +237,20 @@ export class FrameInputNode extends ClassicPreset.Node {
 
   private _computedFrom: { text: string; lams: unknown[]; stamp: number } | null = null;
 
+  private _parsed: { text: string; source: ReturnType<typeof parseFrameSource>; shape?: Shape } | null = null;
+
+  private parsedSource() {
+    if (this._parsed?.text !== this.frameText) this._parsed = { text: this.frameText, source: parseFrameSource(this.frameText) };
+    return this._parsed;
+  }
+
   frameShape(): Shape {
-    return shapeOfFrameValue(frameFromInputText(this.frameText));
+    const parsed = this.parsedSource();
+    return (parsed.shape ??= shapeOfFrameValue(frameFromInputText(this.frameText)));
   }
 
   data(inputs: Record<string, unknown[] | undefined> = {}) {
-    const source = parseFrameSource(this.frameText);
+    const source = this.parsedSource().source;
     const isComputed = (c: FrameSourceColumn) => !!c.expr;
     if (!source.some(isComputed)) {
       if (!this.cachedResult || this._builtFrom !== this.frameText) {
