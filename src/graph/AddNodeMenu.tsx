@@ -306,6 +306,36 @@ function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim }: {
   );
 }
 
+// ─── Phone sheet fit: one uniform scale that fills the free height ─────
+
+// The panel's height cap (AddNodeMenu.css), the size a full 12-row level is tuned to.
+const PANEL_CAP = 448;
+const SHEET_WIDTH = 232;
+const FILL_H = 0.92;
+const FILL_W = 0.86;
+
+/** The sheet keeps its narrow shape and scales up as one piece until a full level fills the height between the bars, centered there. Sized to the full cap, so drilling never moves it. */
+function useSheetFit(ref: React.RefObject<HTMLDivElement | null>, on: boolean): { scale: number; top: number } {
+  const [fit, setFit] = useState({ scale: 1, top: 0 });
+  useLayoutEffect(() => {
+    if (!on) return;
+    const measure = () => {
+      const root = getComputedStyle(document.documentElement);
+      const chromeTop = parseFloat(root.getPropertyValue("--chrome-top")) || 82;
+      const chromeBottom = parseFloat(root.getPropertyValue("--chrome-bottom")) || 57;
+      const heading = ref.current?.querySelector<HTMLElement>(".solenoid-add-menu__heading")?.offsetHeight ?? 22;
+      const baseH = PANEL_CAP + heading;
+      const free = window.innerHeight - chromeTop - chromeBottom;
+      const scale = Math.max(1, Math.min((free * FILL_H) / baseH, (window.innerWidth * FILL_W) / SHEET_WIDTH));
+      setFit({ scale, top: chromeTop + Math.max(6, (free - baseH * scale) / 2) });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [ref, on]);
+  return fit;
+}
+
 // ─── Root menu ──────────────────────────────────────────────────────────
 
 type AddNodeMenuProps = {
@@ -334,6 +364,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   const scrollRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [stack]);
   useEffect(() => { addMenuRequest.setOpen(true); return () => addMenuRequest.setOpen(false); }, []);
+  const sheet = useSheetFit(ref, drill);
   const [pos, setPos] = useState<{ left: number; top: number; visible: boolean }>({
     left: screenX, top: screenY, visible: false,
   });
@@ -449,7 +480,9 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     <div
       ref={ref}
       className={`solenoid-add-menu${drill ? " solenoid-add-menu--sheet" : ""}`}
-      style={drill ? { visibility: pos.visible ? "visible" : "hidden" } : { left: pos.left, top: pos.top, visibility: pos.visible ? "visible" : "hidden" }}
+      style={drill
+        ? { visibility: pos.visible ? "visible" : "hidden", "--sheet-scale": sheet.scale, "--sheet-top": `${sheet.top}px` } as CSSProperties
+        : { left: pos.left, top: pos.top, visibility: pos.visible ? "visible" : "hidden" }}
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div className="solenoid-add-menu__heading">Add node</div>

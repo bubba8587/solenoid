@@ -174,12 +174,13 @@ html.is-mobile {
 
   /* ── Add menu ── a sheet docked under the top bars (the keyboard would cover a bottom one), one level at a time. */
   .solenoid-add-menu { font-size: 13px; }
-  /* One fixed narrow width for every level, so drilling never resizes it; centered. */
+  /* One narrow width for every level, scaled up as one piece to fill the free height and centered there (`useSheetFit`). */
   .solenoid-add-menu--sheet {
     left: 50%;
-    transform: translateX(-50%);
-    width: min(232px, 80dvw);
-    top: calc(var(--chrome-top, 82px) + 6px);
+    width: 232px;
+    top: var(--sheet-top, calc(var(--chrome-top, 82px) + 6px));
+    transform: translateX(-50%) scale(var(--sheet-scale, 1));
+    transform-origin: top center;
   }
   .solenoid-add-menu__panel { max-width: 92vw; max-height: min(86vh, 448px); max-height: min(86dvh, 448px); }
   .solenoid-add-menu__item { padding: 7px 12px; }
