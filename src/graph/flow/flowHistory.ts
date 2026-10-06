@@ -8,24 +8,53 @@ const MAX_DEPTH = 80;
 const MAX_BYTES = 16 * 1024 * 1024;
 const COALESCE_MS = 400;
 
-type Entry = { json: string; time: number; label: string; baseline?: true };
+/** A graph as its top-level fields plus one JSON string per node; an unchanged node reuses the previous step's string. */
+type Snapshot = { head: string; nodes: string[] };
+type Entry = { snap: Snapshot; ownBytes: number; time: number; label: string; baseline?: true };
 
 let _stack: Entry[] = [];
 let _index = -1;
 let _restoring = false;
 let _timer: ReturnType<typeof setTimeout> | null = null;
+/** The parsed graph of the entry at `_index` when it was last recorded, so a record never re-parses it for its label. */
+let _topGraph: SavedGraph | null = null;
 
-function capture(): string | null {
-  const g = serializeGraph();
-  return g ? JSON.stringify(g) : null;
+function snapshotOf(g: SavedGraph, prev: Snapshot | undefined): { snap: Snapshot; ownBytes: number } {
+  const { nodes, ...rest } = g;
+  const head = JSON.stringify(rest);
+  let ownBytes = head.length * 2;
+  const reuse = new Map<string, string>();
+  for (const json of prev?.nodes ?? []) reuse.set(json, json);
+  const out = nodes.map((n) => {
+    const json = JSON.stringify(n);
+    const shared = reuse.get(json);
+    if (shared !== undefined) return shared;
+    ownBytes += json.length * 2;
+    return json;
+  });
+  return { snap: { head, nodes: out }, ownBytes };
 }
 
-async function restore(json: string): Promise<void> {
+const fullBytes = (s: Snapshot): number => s.head.length * 2 + s.nodes.reduce((n, j) => n + j.length * 2, 0);
+
+const sameSnapshot = (a: Snapshot, b: Snapshot | undefined): boolean =>
+  !!b && a.head === b.head && a.nodes.length === b.nodes.length && a.nodes.every((j, i) => j === b.nodes[i]);
+
+const graphOf = (s: Snapshot): SavedGraph => ({ ...(JSON.parse(s.head) as Omit<SavedGraph, "nodes">), nodes: s.nodes.map((j) => JSON.parse(j)) });
+
+function capture(prev?: Snapshot): { graph: SavedGraph; snap: Snapshot; ownBytes: number } | null {
+  const g = serializeGraph();
+  return g ? { graph: g, ...snapshotOf(g, prev) } : null;
+}
+
+async function restore(snap: Snapshot): Promise<void> {
   _restoring = true;
   try {
     const view = getView();
     const t = view ? { ...view.transform } : null;
-    await withGraphRebuild(() => loadGraph(JSON.parse(json) as SavedGraph, { curtain: false }));
+    const graph = graphOf(snap);
+    await withGraphRebuild(() => loadGraph(graph, { curtain: false }));
+    _topGraph = null;
     if (view && t) await view.setCamera(t);
     scheduleAutosave();
   } finally {
@@ -40,8 +69,9 @@ export const flowHistory = {
       clearTimeout(_timer);
       _timer = null;
     }
-    const s = capture();
-    _stack = s ? [{ json: s, time: Date.now(), label: "Opened", baseline: true }] : [];
+    const c = capture();
+    _stack = c ? [{ snap: c.snap, ownBytes: c.ownBytes, time: Date.now(), label: "Opened", baseline: true }] : [];
+    _topGraph = c?.graph ?? null;
     _index = _stack.length - 1;
   },
 
@@ -60,23 +90,27 @@ export const flowHistory = {
       clearTimeout(_timer);
       _timer = null;
     }
-    const s = capture();
     const top = _stack[_index];
-    if (!s || s === top?.json) return;
+    const c = capture(top?.snap);
+    if (!c || sameSnapshot(c.snap, top?.snap)) return;
     let label = "Edited document";
     if (top) {
       try {
-        const prev = JSON.parse(top.json) as SavedGraph;
-        const next = JSON.parse(s) as SavedGraph;
-        if (sameIgnoringDims(prev, next)) return;
-        label = describeGraphDelta(prev, next);
+        const prev = _topGraph ?? graphOf(top.snap);
+        if (sameIgnoringDims(prev, c.graph)) return;
+        label = describeGraphDelta(prev, c.graph);
       } catch { /* a label is cosmetic — never block the record */ }
     }
     _stack = _stack.slice(0, _index + 1);
-    _stack.push({ json: s, time: Date.now(), label });
-    if (_stack.length > MAX_DEPTH) _stack.shift();
-    let bytes = _stack.reduce((n, e) => n + e.json.length * 2, 0);
-    while (_stack.length > 2 && bytes > MAX_BYTES) bytes -= _stack.shift()!.json.length * 2;
+    _stack.push({ snap: c.snap, ownBytes: c.ownBytes, time: Date.now(), label });
+    _topGraph = c.graph;
+    const dropOldest = () => {
+      _stack.shift();
+      _stack[0].ownBytes = fullBytes(_stack[0].snap);
+    };
+    if (_stack.length > MAX_DEPTH) dropOldest();
+    const bytes = () => _stack.reduce((n, e) => n + e.ownBytes, 0);
+    while (_stack.length > 2 && bytes() > MAX_BYTES) dropOldest();
     _index = _stack.length - 1;
   },
 
@@ -89,7 +123,7 @@ export const flowHistory = {
     if (_timer) flowHistory.recordNow();
     if (_index <= 0) return;
     _index--;
-    await restore(_stack[_index].json);
+    await restore(_stack[_index].snap);
   },
 
   async redo(): Promise<void> {
@@ -97,7 +131,7 @@ export const flowHistory = {
     if (_timer) flowHistory.recordNow();
     if (_index >= _stack.length - 1) return;
     _index++;
-    await restore(_stack[_index].json);
+    await restore(_stack[_index].snap);
   },
 
   records: (): Array<{ time: number; label: string }> =>

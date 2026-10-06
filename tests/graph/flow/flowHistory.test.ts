@@ -132,3 +132,25 @@ describe("the camera across a restore", () => {
     expect({ ...view.transform }).toEqual({ x: 13, y: -41, k: 1.37 });
   });
 });
+
+describe("a big graph keeps its undo depth", () => {
+  it("shares an unchanged node between steps, so a 4 MB table doesn't crowd out history", async () => {
+    const big = "x".repeat(2 * 1024 * 1024);
+    const graph = (value: number): SavedGraph => ({
+      v: 2,
+      nodes: [
+        { id: "t", type: "FrameInputNode", name: "t", x: 0, y: 0, init: { frameText: big } },
+        { id: "n", type: "NumberInputNode", name: "n", x: 0, y: 0, init: { value } },
+      ],
+      connections: [],
+    }) as SavedGraph;
+    h.doc = graph(0);
+    flowHistory.reset();
+    for (let i = 1; i <= 20; i++) { h.doc = graph(i); flowHistory.recordNow(); }
+    expect(flowHistory._state()).toEqual({ depth: 21, index: 20 });
+    await flowHistory.undo();
+    const restored = h.doc as SavedGraph;
+    expect((restored.nodes[1].init as { value: number }).value).toBe(19);
+    expect((restored.nodes[0].init as { frameText: string }).frameText).toBe(big);
+  });
+});

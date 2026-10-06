@@ -62,15 +62,25 @@ function newId(): string {
 }
 
 
+/** Each slot's seq as this tab last read or wrote it, so a save doesn't read both multi-MB slots back; another tab's write drops it. */
+const slotSeqs = new Map<string, number | null>();
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => { if (e.key === null) slotSeqs.clear(); else slotSeqs.delete(e.key); });
+}
+
 function readSlotSeq(key: string): number | null {
+  const known = slotSeqs.get(key);
+  if (known !== undefined) return known;
+  let seq: number | null = null;
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const m = /^\{"seq":(\d+)/.exec(raw);
-    return m ? Number(m[1]) : null;
+    const m = raw ? /^\{"seq":(\d+)/.exec(raw) : null;
+    seq = m ? Number(m[1]) : null;
   } catch {
     return null;
   }
+  slotSeqs.set(key, seq);
+  return seq;
 }
 
 function readParsed<T>(key: string): Partial<T> | null {
@@ -85,7 +95,12 @@ function readParsed<T>(key: string): Partial<T> | null {
 function writeToOlderSlot(keyA: string, keyB: string, value: unknown): boolean {
   const slot = chooseWriteSlot(readSlotSeq(keyA), readSlotSeq(keyB));
   try {
-    localStorage.setItem(slot === "a" ? keyA : keyB, JSON.stringify(value));
+    const key = slot === "a" ? keyA : keyB;
+    const json = JSON.stringify(value);
+    slotSeqs.delete(key);
+    localStorage.setItem(key, json);
+    const m = /^\{"seq":(\d+)/.exec(json);
+    slotSeqs.set(key, m ? Number(m[1]) : null);
     return true;
   } catch {
     return false;
@@ -107,6 +122,8 @@ function removeDocSlots(id: string): void {
   try {
     localStorage.removeItem(docSlotKey(id, "a"));
     localStorage.removeItem(docSlotKey(id, "b"));
+    slotSeqs.delete(docSlotKey(id, "a"));
+    slotSeqs.delete(docSlotKey(id, "b"));
   } catch { /* storage disabled — nothing to remove */ }
 }
 
