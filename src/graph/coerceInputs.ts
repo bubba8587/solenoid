@@ -69,8 +69,15 @@ function familyCell(fam: string, c: unknown): unknown {
   const expected = fam === "number" && typeof c === "string" ? "a number" : EXPECTED[fam];
   return solError("#TYPE!", `${kindText(c)} where ${expected} is expected`);
 }
+/** Always a fresh array: a node may reorder or splice what it's given, and the input is a value other consumers share. */
 function familyCells(fam: string, v: unknown): unknown {
-  return Array.isArray(v) ? v.map((c) => familyCells(fam, c)) : familyCell(fam, v);
+  if (!Array.isArray(v)) return familyCell(fam, v);
+  const out = new Array<unknown>(v.length);
+  for (let i = 0; i < v.length; i++) {
+    const c: unknown = v[i];
+    out[i] = Array.isArray(c) ? familyCells(fam, c) : familyCell(fam, c);
+  }
+  return out;
 }
 /** A scalar rung cannot hold a per-cell error, so it fails the node instead. */
 function scalarOrThrow<T>(v: T): T {
