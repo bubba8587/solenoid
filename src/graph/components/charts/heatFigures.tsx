@@ -7,12 +7,11 @@ import { decorative } from "@tanstack/charts/mark/decorative";
 import { whenFocused } from "@tanstack/charts/focus/mark";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
 import { colord } from "colord";
-import { tip, useTheme, useForExport, Fig } from "./kit";
+import { tip, useForExport, Fig, useInk, EmptyFigure, rgbCss, heatColorFn, measureFont, measureText, fitLabel, type Rgb } from "./kit";
 import { compactTick, useAppFaces } from "../chartCore";
 import { formatScalar } from "../format";
 import { heatmapLayout, heatRowY, calendarLayout, calCellXY, type CalLayout } from "../heatmapLayout";
-import { colormapRgb, heatScale, type HeatScale } from "../../colormaps";
-import { heightRampColor, divergingRampColor, resolveColor } from "../../palette";
+import { heatScale, type HeatScale } from "../../colormaps";
 import { formatNumberSpec } from "../../numberSpec";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../../nodes/dateSerial";
 import { serialToJsDate } from "../../nodes/date";
@@ -24,52 +23,14 @@ const CANVAS_CELLS = 2500;
 const ANNOT_ID = "sol-heat-annot";
 const ANNOT_CSS = `.ts-chart [data-ts-key*="${ANNOT_ID}"] text { font-family: var(--font-mono); }`;
 
-type Rgb = [number, number, number];
-const rgbCss = ([r, g, b]: Rgb) => `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
 const inkOn = ([r, g, b]: Rgb) => ((0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? "#1a1a1a" : "#ffffff");
 
-/** The color of `t` under the options: the named cmap, else the palette's diverging ramp with a center, else its height ramp. */
-function heatColorFn(o: ChartOptions): (t: number) => Rgb {
-  if (o.cmap) return (t) => colormapRgb(o.cmap!, t) ?? heightRampColor(t);
-  return o.center !== undefined ? divergingRampColor : heightRampColor;
-}
 
 const scaleTicks = (s: HeatScale) => [s.hi, ...(s.center !== undefined && s.center > s.lo && s.center < s.hi ? [s.center] : []), s.lo];
 const annotText = (v: number, fmt: string | undefined) => (fmt ? formatNumberSpec(v, fmt) : null) ?? compactTick(v);
 
-/** A font for measuring, in the same family stack the SVG text falls back through. */
-function canvasFont(weight: number, px: number, face: "sans" | "mono" = "sans"): string {
-  const stack = getComputedStyle(document.documentElement).getPropertyValue(face === "mono" ? "--font-mono" : "--font-sans").trim();
-  return `${weight} ${px}px ${stack || "sans-serif"}`;
-}
 
-let measureCtx: CanvasRenderingContext2D | null = null;
-function measure(s: string, font: string): number {
-  measureCtx ??= document.createElement("canvas").getContext("2d");
-  if (!measureCtx) return s.length * 6;
-  measureCtx.font = font;
-  return measureCtx.measureText(s).width;
-}
-function fitLabel(s: string, max: number, font: string): string {
-  if (measure(s, font) <= max) return s;
-  let t = s;
-  while (t.length > 1 && measure(`${t}…`, font) > max) t = t.slice(0, -1);
-  return `${t}…`;
-}
 
-/** The theme colors the heat figures paint with, read off the document so a canvas-painted mark gets real colors. */
-function useHeatInk() {
-  const { theme, axis } = useTheme();
-  const cs = getComputedStyle(document.documentElement);
-  const v = (name: string, fb: string) => cs.getPropertyValue(name).trim() || fb;
-  return {
-    theme, dim: axis,
-    text: v("--text", "#ccc"),
-    border: v("--border-strong", "#555"),
-    sunken: v("--surface-sunken", "#2a2a2a"),
-    accent: v("--accent", resolveColor("sky")),
-  };
-}
 
 // The figures lay out in plot pixels: x from the left, y from the top.
 const pixelScales = (W: number, H: number) => ({
@@ -108,7 +69,6 @@ function colorbarMarks(box: Box, scale: HeatScale, paint: (t: number) => string,
   };
 }
 
-const Empty = () => <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
 const gradientKey = (id: string) => `sol-cbar-${id.replace(/[^\w-]/g, "")}`;
 
 // ─── Heatmap ──────────────────────────────────────────────────────────────────
@@ -116,7 +76,7 @@ const gradientKey = (id: string) => `sol-cbar-${id.replace(/[^\w-]/g, "")}`;
 type HeatCell = { r: number; c: number; v: number | null; x1: number; x2: number; y1: number; y2: number; paint: string; k: string };
 
 export function HeatmapView({ payload: p, options: o, width: W, height: H, fscale: fs = 1 }: { payload: HeatmapPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
-  const ink = useHeatInk();
+  const ink = useInk();
   const faces = useAppFaces();
   const forExport = useForExport();
   const gid = gradientKey(useId());
@@ -132,8 +92,8 @@ export function HeatmapView({ payload: p, options: o, width: W, height: H, fscal
     const scale = heatScale(dLo, dHi, o);
     const color = heatColorFn(o);
     const cbarTicks = scaleTicks(scale);
-    const tickFont = canvasFont(500, 9 * fs);
-    const widest = (xs: Iterable<string>) => { let m = 0; for (const x of xs) m = Math.max(m, measure(x, tickFont)); return m; };
+    const tickFont = measureFont(500, 9 * fs);
+    const widest = (xs: Iterable<string>) => { let m = 0; for (const x of xs) m = Math.max(m, measureText(x, tickFont)); return m; };
     const showCbar = o.cbar !== false;
     const note = p.totalRows !== undefined || p.totalCols !== undefined;
     const L = heatmapLayout({
@@ -162,10 +122,10 @@ export function HeatmapView({ payload: p, options: o, width: W, height: H, fscal
     const annots: { size: number; rows: (TextRow & { ink: string })[] }[] = [];
     if (o.annot !== false) {
       const size = Math.min(12 * fs, Math.max(8.5 * fs, Math.min(cw, ch) * 0.3));
-      const font = canvasFont(500, size, "mono");
+      const font = measureFont(500, size, "mono");
       let fits = ch >= size + 3;
       if (fits && o.annot === undefined) {
-        outer: for (const row of p.z) for (const v of row) if (v != null && measure(annotText(v, o.fmt), font) > cw - 4) { fits = false; break outer; }
+        outer: for (const row of p.z) for (const v of row) if (v != null && measureText(annotText(v, o.fmt), font) > cw - 4) { fits = false; break outer; }
       }
       if (fits || o.annot === true) {
         // A label that overflows its cell shrinks to fit; labels group by size, one text mark per size.
@@ -173,7 +133,7 @@ export function HeatmapView({ payload: p, options: o, width: W, height: H, fscal
         for (const d of cells) {
           if (d.v == null) continue;
           const s = annotText(d.v, o.fmt);
-          const w = measure(s, font);
+          const w = measureText(s, font);
           const f = w > cw - 3 ? Math.floor(((size * (cw - 3)) / w) * 2) / 2 : size;
           if (f < 6 || ch < f + 2) continue;
           const list = bySize.get(f) ?? [];
@@ -204,7 +164,7 @@ export function HeatmapView({ payload: p, options: o, width: W, height: H, fscal
       if (p.totalCols !== undefined) parts.push(`${nC} of ${p.totalCols} columns`);
       labels.push({ x: L.note.x, y: L.note.y, s: parts.join(", "), k: "note", anchor: "end" });
     }
-    const titleFont = canvasFont(600, 9 * fs);
+    const titleFont = measureFont(600, 9 * fs);
     const titles: (TextRow & { rotate?: number })[] = [];
     if (L.xlabel && o.xlabel) titles.push({ x: L.xlabel.x, y: L.xlabel.y, s: fitLabel(o.xlabel, cw * nC, titleFont), k: "xl" });
     if (L.ylabel && o.ylabel) titles.push({ x: L.ylabel.x, y: L.ylabel.y, s: fitLabel(o.ylabel, ch * nR, titleFont), k: "yl", rotate: -90 });
@@ -236,7 +196,7 @@ export function HeatmapView({ payload: p, options: o, width: W, height: H, fscal
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p, optsKey, W, H, fs, themeKey, ink.text, ink.sunken, ink.border, faces, forExport, gid, empty]);
 
-  if (!definition) return <Empty />;
+  if (!definition) return <EmptyFigure />;
   return (
     <Fig width={W} height={H}>
       <style href={ANNOT_ID} precedence="default">{ANNOT_CSS}</style>
@@ -250,7 +210,7 @@ export function HeatmapView({ payload: p, options: o, width: W, height: H, fscal
 type CalCell = { day: number; v: number | null; x1: number; x2: number; y1: number; y2: number; paint: string };
 
 export function CalHeatView({ payload: p, options: o, width: W, height: H, fscale: fs = 1 }: { payload: CalHeatPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
-  const ink = useHeatInk();
+  const ink = useInk();
   const faces = useAppFaces();
   const forExport = useForExport();
   const gid = gradientKey(useId());
@@ -260,12 +220,12 @@ export function CalHeatView({ payload: p, options: o, width: W, height: H, fscal
   const definition = useMemo(() => {
     if (p.days.length === 0) return null;
     const showCbar = o.cbar !== false;
-    const tickFont = canvasFont(500, 9 * fs);
+    const tickFont = measureFont(500, 9 * fs);
     let tickW = 0;
     if (showCbar) {
       let lo = Infinity, hi = -Infinity;
       for (const v of p.values) { if (v < lo) lo = v; if (v > hi) hi = v; }
-      for (const v of scaleTicks(heatScale(lo, hi, o))) tickW = Math.max(tickW, measure(compactTick(v), tickFont));
+      for (const v of scaleTicks(heatScale(lo, hi, o))) tickW = Math.max(tickW, measureText(compactTick(v), tickFont));
     }
     const L: CalLayout | null = calendarLayout(p.days, p.values, W, H, fs, showCbar ? tickW : null);
     if (!L) return null;
@@ -338,7 +298,7 @@ export function CalHeatView({ payload: p, options: o, width: W, height: H, fscal
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p, optsKey, W, H, fs, themeKey, ink.text, ink.sunken, ink.accent, ink.border, faces, forExport, gid]);
 
-  if (!definition) return <Empty />;
+  if (!definition) return <EmptyFigure />;
   return (
     <Fig width={W} height={H}>
       <Chart definition={definition} width={W} height={H} ariaLabel="calendar heatmap" tabIndex={-1} />

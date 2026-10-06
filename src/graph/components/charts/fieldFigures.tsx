@@ -6,35 +6,19 @@ import { canvasChartRenderer } from "@tanstack/charts/canvas";
 import { contour } from "@tanstack/charts/spatial/contour";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
 import "../chartView.css";
-import { Fig, tip, useTheme, axisLabel, useForExport } from "./kit";
-import { compactTick, canvasFont, niceTicks } from "../chartCore";
-import { colormapRgb, heatScale, type HeatScale } from "../../colormaps";
-import { heightRampColor, divergingRampColor } from "../../palette";
+import { Fig, tip, useTheme, axisLabel, useForExport, EmptyFigure, rgbCss, heatColorFn, measureFont, measureText, type Rgb } from "./kit";
+import { compactTick, niceTicks } from "../chartCore";
+import { heatScale, type HeatScale } from "../../colormaps";
 import { formatScalar } from "../format";
 import type { ChartOptions } from "../../nodes/chartOptions";
 import type { ContourPayload, QuiverPayload } from "../../chartValue";
 import { iterMin, iterMax } from "../../nodes/mathUtils";
 import { cellOf, bilinear, contourAt } from "../heatmapLayout";
 
-type Rgb = [number, number, number];
-const rgbCss = ([r, g, b]: Rgb) => `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
 const fin = (v: number | null | undefined): v is number => v != null && Number.isFinite(v);
 
-/** The color of `t` under the options: the named cmap, else the palette's diverging ramp with a center, else its height ramp. */
-function heatColorFn(o: ChartOptions): (t: number) => Rgb {
-  if (o.cmap) return (t) => colormapRgb(o.cmap!, t) ?? heightRampColor(t);
-  return o.center !== undefined ? divergingRampColor : heightRampColor;
-}
 
-let measureCtx: CanvasRenderingContext2D | null = null;
-function textWidth(s: string, px: number): number {
-  measureCtx ??= document.createElement("canvas").getContext("2d");
-  if (!measureCtx) return s.length * px * 0.6;
-  measureCtx.font = canvasFont(500, px);
-  return measureCtx.measureText(s).width;
-}
 
-const Empty = () => <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
 
 // ─── Contour ───────────────────────────────────────────────────────────────────
 
@@ -186,14 +170,14 @@ export function ContourView({ payload, options, width, height, fscale = 1 }: { p
     // Gutters: y ticks and label left, x ticks and label below, the colorbar right, half a tick's text above.
     const tickPx = 9 * fs;
     const lineH = Math.ceil(10.5 * fs);
-    const widest = (vs: number[]) => vs.reduce((m, v) => Math.max(m, textWidth(compactTick(v), tickPx)), 0);
+    const widest = (vs: number[]) => vs.reduce((m, v) => Math.max(m, measureText(compactTick(v), measureFont(500, tickPx))), 0);
     const cbarTicks = [scale.hi, ...(scale.center !== undefined && scale.center > scale.lo && scale.center < scale.hi ? [scale.center] : []), scale.lo];
     const cbarW = o.cbar === false ? 0 : 6 + 8 + 3 + widest(cbarTicks);
     const top = Math.ceil(5 * fs);
     const bottom = lineH + 3 + (o.xlabel ? lineH + 2 : 0);
     const yTicks = niceTicks(ext.ymin, ext.ymax, Math.max(3, Math.floor((height - top - bottom) / (30 * fs)))).filter((t) => t >= ext.ymin && t <= ext.ymax);
     const left = (o.ylabel ? lineH + 2 : 0) + widest(yTicks) + 6;
-    const right = Math.ceil(Math.max(cbarW, textWidth(compactTick(ext.xmax), tickPx) / 2 + 1));
+    const right = Math.ceil(Math.max(cbarW, measureText(compactTick(ext.xmax), measureFont(500, tickPx)) / 2 + 1));
     const plot = { x0: left, x1: width - right, y0: top, y1: height - bottom };
     if (plot.x1 - plot.x0 < 10 || plot.y1 - plot.y0 < 10) return null;
     const xTicks = niceTicks(ext.xmin, ext.xmax, Math.max(3, Math.floor((plot.x1 - plot.x0) / (45 * fs)))).filter((t) => t >= ext.xmin && t <= ext.xmax);
@@ -237,7 +221,7 @@ export function ContourView({ payload, options, width, height, fscale = 1 }: { p
     });
   }, [payload, options, width, height, fs, theme, grid, axis]);
 
-  if (!definition) return <Empty />;
+  if (!definition) return <EmptyFigure />;
   return (
     <Fig width={width} height={height}>
       <Chart definition={definition} width={width} height={height} ariaLabel={options.title || "Contour"} tabIndex={-1} />
@@ -310,7 +294,7 @@ export function QuiverView({ payload, options, width, height }: { payload: Quive
     });
   }, [payload, options.cmap, width, height, nx, ny, theme, grid, forExport]);
 
-  if (!definition) return <Empty />;
+  if (!definition) return <EmptyFigure />;
   return (
     <Fig width={width} height={height}>
       <Chart definition={definition} width={width} height={height} ariaLabel={options.title || "Vector field"} tabIndex={-1} />

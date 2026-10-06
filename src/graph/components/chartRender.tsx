@@ -14,13 +14,12 @@ import { treemap } from "@tanstack/charts/hierarchy/treemap";
 import { sankeyDiagram } from "@tanstack/charts/network/sankey";
 import { curveLinearClosed, curveStepAfter } from "d3-shape";
 import "./chartView.css";
-import { LINE_DOT_R, SCATTER_DOT_R, PLOT_TOP, MULTI_LEGEND_H, tipValue, tip, fade, useTheme, valueDomain, axisLabel, indexTicker, indexTicks, SeriesLegend, legendPress, Fig } from "./charts/kit";
+import { LINE_DOT_R, SCATTER_DOT_R, PLOT_TOP, MULTI_LEGEND_H, tipValue, tip, fade, useTheme, valueDomain, axisLabel, indexTicker, indexTicks, SeriesLegend, legendPress, Fig, rgbCss, heatColorFn } from "./charts/kit";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, compactTick, valueTickFormat, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, sanitizeChartLabel, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
-import { heightRampColor, resolveColor } from "../palette";
-import { colormapRgb } from "../colormaps";
+import { resolveColor } from "../palette";
 import { ChartTitle, titleHeight } from "./chartTitle";
 import { iterMin, iterMax } from "../nodes/mathUtils";
 
@@ -681,7 +680,7 @@ const LINE_DASH: Record<LineStyle, string | undefined> = {
 };
 const BUBBLE_AREA: [number, number] = [40, 420];
 
-const rampCss = (t: number, cmap?: string) => { const [r, g, b] = (cmap ? colormapRgb(cmap, t) : null) ?? heightRampColor(t); return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; };
+const rampCss = (t: number, cmap?: string) => rgbCss(heatColorFn({ cmap })(t));
 
 /** Pads [lo, hi] so a unit spans the same pixels on both axes. */
 function equalDomains(x: [number, number], y: [number, number], pw: number, ph: number): { x: [number, number]; y: [number, number] } {

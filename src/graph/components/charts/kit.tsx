@@ -6,6 +6,9 @@ import { tooltip } from "@tanstack/charts/tooltip";
 import { colord } from "colord";
 import { formatScalar } from "../format";
 import { useChartColors, useSeriesColors, axisTick, niceTicks } from "../chartCore";
+import { colormapRgb } from "../../colormaps";
+import { heightRampColor, divergingRampColor, resolveColor } from "../../palette";
+import type { ChartOptions } from "../../nodes/chartOptions";
 
 export const LINE_DOT_R = 2;
 export const SCATTER_DOT_R = 3;
@@ -129,3 +132,49 @@ export const legendPress = (e: SyntheticEvent) => {
 /** True while a figure draws for export: a figure that paints marks on a canvas for speed draws them as SVG instead. */
 export const ChartExportContext = createContext(false);
 export const useForExport = () => useContext(ChartExportContext);
+
+export const EmptyFigure = () => <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
+
+export type Rgb = [number, number, number];
+export const rgbCss = ([r, g, b]: Rgb) => `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+
+/** The color of `t` under the options: the named cmap, else the palette's diverging ramp with a center, else its height ramp. */
+export function heatColorFn(o: Pick<ChartOptions, "cmap" | "center">): (t: number) => Rgb {
+  if (o.cmap) return (t) => colormapRgb(o.cmap!, t) ?? heightRampColor(t);
+  return o.center !== undefined ? divergingRampColor : heightRampColor;
+}
+
+/** A font for measuring, in the same family stack the SVG text falls back through, so an unloaded face can't skew it. */
+export function measureFont(weight: number, px: number, face: "sans" | "mono" = "sans"): string {
+  const stack = getComputedStyle(document.documentElement).getPropertyValue(face === "mono" ? "--font-mono" : "--font-sans").trim();
+  return `${weight} ${px}px ${stack || "sans-serif"}`;
+}
+
+let measureCtx: CanvasRenderingContext2D | null = null;
+export function measureText(s: string, font: string): number {
+  measureCtx ??= document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return s.length * 6;
+  measureCtx.font = font;
+  return measureCtx.measureText(s).width;
+}
+
+/** `s`, cut with an ellipsis to fit `max` pixels in `font`. */
+export function fitLabel(s: string, max: number, font: string): string {
+  if (measureText(s, font) <= max) return s;
+  let t = s;
+  while (t.length > 1 && measureText(`${t}…`, font) > max) t = t.slice(0, -1);
+  return `${t}…`;
+}
+
+/** The theme's paints as resolved values, so a canvas-painted mark and an export get real colors. */
+export function useInk() {
+  const t = useTheme();
+  const cs = getComputedStyle(document.documentElement);
+  const v = (name: string, fb: string) => cs.getPropertyValue(name).trim() || fb;
+  return {
+    ...t, dim: t.axis,
+    up: resolveColor("green"), down: resolveColor("vermilion"), neutral: resolveColor("blue"),
+    accent: v("--accent", resolveColor("sky")),
+    text: v("--text", "#ccc"), border: v("--border-strong", "#555"), sunken: v("--surface-sunken", "#2a2a2a"),
+  };
+}
