@@ -16,14 +16,6 @@ the decision tree (`dte.md`).
   replacement precisely; build nothing toward it until then.
 - **Feature/value copy doc** for landing/marketing — author will initiate; ranked candidate
   copy lines per feature, author ranks value.
-- **Table/cube popup virtualization for wide EDITABLE frames** (author 2026-08-30: "don't
-  really care" — parked; `archive/1.4-plan.md` B9 HOLD). Read-only cells already render plain text
-  (~50% off every read-only popup, landed 2026-08-24; `scripts/table-popup-probe.mjs` has the
-  measurements). The open call is Path A (keep the `<table>`, window the `<tr>`s ourselves,
-  ~60 lines) vs Path B (div-grid rewrite on `react-window` — settled: react-window CANNOT wrap
-  the existing `<table>`, its rows are hardcoded divs). Either path: sort order, an open edit
-  scrolling out, Copy CSV / Export staying whole-dataset, and the form-view pager all need
-  checking. 1.4's frozen-header lift (B3) is `position: sticky` and does not prejudge this.
 - **INDEX — marked for later (2026-07-01, `archive/cube-node-scope.md`)**: output socket
   should express Cube (today singular `any`); Excel range forms (`row=0`/`col=0` whole
   row/col, the reference form) — Solenoid INDEX is cell-only. (`archive/1.4-plan.md` D6 HOLD.)

@@ -1,6 +1,8 @@
 // [[C10]] socketLattice
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type * as React from "react";
+import type { Virtualizer } from "@tanstack/react-virtual";
+import { VirtualRows } from "./VirtualRows";
 import { cubePopup, gridPosOf, type DrillView, type CellRef } from "../cubePopupStore";
 import { CubeEditCell, ListEditCell, GridEditCell, CubeEditChip, cubeEditAxes, CubeEditHeader } from "./cubeEditCell";
 import { TableEditMenus, TableContextMenu, useEditShortcuts } from "./TableEditMenu";
@@ -154,6 +156,8 @@ export function CubePopup() {
   if (levelKey !== seenLevel) { setSeenLevel(levelKey); setSel(null); setFocusCell(null); setCtxMenu(null); setQuery(""); setColStat({}); }
 
   const gridRef = useRef<HTMLDivElement>(null);
+  const virtualRef = useRef<Virtualizer<HTMLDivElement, HTMLTableRowElement> | null>(null);
+  const orderRef = useRef<readonly number[]>([]);
   const listVerticalRef = useRef(listVertical);
   listVerticalRef.current = listVertical;
   const focus = state?.stack[state.stack.length - 1]?.focus;
@@ -161,11 +165,20 @@ export function CubePopup() {
     if (!focus || !gridRef.current) return;
     const at = gridPosOf(focus, listVerticalRef.current);
     const sel = at.c === undefined ? `[data-r="${at.r}"]` : `[data-r="${at.r}"][data-c="${at.c}"]`;
+    let t = 0;
+    const flash = (el: HTMLElement) => {
+      el.scrollIntoView({ block: "center", inline: "center" });
+      el.classList.add("table-popup__cell--return");
+      t = window.setTimeout(() => el.classList.remove("table-popup__cell--return"), 1200);
+    };
     const el = gridRef.current.querySelector<HTMLElement>(sel);
-    if (!el) return;
-    el.scrollIntoView({ block: "center", inline: "center" });
-    el.classList.add("table-popup__cell--return");
-    const t = window.setTimeout(() => el.classList.remove("table-popup__cell--return"), 1200);
+    if (el) flash(el);
+    else {
+      // The row is outside the drawn window: scroll it in, then flash it once it is drawn.
+      const vi = orderRef.current.indexOf(at.r);
+      if (vi >= 0) virtualRef.current?.scrollToIndex(vi, { align: "center" });
+      requestAnimationFrame(() => requestAnimationFrame(() => { const next = gridRef.current?.querySelector<HTMLElement>(sel); if (next) flash(next); }));
+    }
     return () => window.clearTimeout(t);
   }, [focus]);
 
@@ -173,15 +186,15 @@ export function CubePopup() {
   const view = state.stack[state.stack.length - 1];
   const { headers, rows, cols, depth, cell, sortKey } = describe(view, listVertical, sourceMode);
   const sortable = !(view.kind === "list" && !listVertical);
-  const MAX_VISIBLE = 1000;
-  const rowsTruncated = rows > MAX_VISIBLE;
-  const colsTruncated = cols > MAX_VISIBLE;
-  const shownCols = colsTruncated ? MAX_VISIBLE : cols;
+  const MAX_VISIBLE_COLS = 1000;
+  const colsTruncated = cols > MAX_VISIBLE_COLS;
+  const shownCols = colsTruncated ? MAX_VISIBLE_COLS : cols;
   const sortOrder = sortedOrder(rows, sort, sortKey);
   const rowText = (r: number): string[] => (table?.columns ?? []).map((col) => cubeCellShown(col.cells[r] ?? null, col.declared, col.format));
   const filtering = !!table && query.trim() !== "";
   const matchedOrder = filtering ? sortOrder.filter((r) => cardMatches(rowText(r), query)) : sortOrder;
-  const visibleOrder = matchedOrder.length > MAX_VISIBLE ? matchedOrder.slice(0, MAX_VISIBLE) : matchedOrder;
+  const visibleOrder = matchedOrder;
+  orderRef.current = visibleOrder;
   const cards = !!table && layout === "cards";
 
   const grouped = !!state.groupColor;
@@ -189,6 +202,7 @@ export function CubePopup() {
 
   // A list across a row shows its items as columns; the menus still count items.
   const itemsAcross = view.kind === "list" && !listVertical;
+  const pinnedVi = focusCell ? visibleOrder.indexOf(itemsAcross ? 0 : focusCell.r) : -1;
   const editAxes = editView && state.edit ? cubeEditAxes(state.edit, editView, {
     rows: sel?.axis === "row" ? sel.indices : focusCell ? [itemsAcross ? focusCell.c : focusCell.r] : [],
     cols: sel?.axis === "col" ? sel.indices : focusCell ? [focusCell.c] : [],
@@ -229,7 +243,7 @@ export function CubePopup() {
           {table && (cards || rows > 1) && (
             <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${rows}` : undefined} />
           )}
-          <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{rowsTruncated || colsTruncated ? ` · first ${MAX_VISIBLE.toLocaleString(APP_LOCALE)}` : ""}</span>
+          <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{colsTruncated ? ` · first ${MAX_VISIBLE_COLS.toLocaleString(APP_LOCALE)} columns` : ""}</span>
           {depth !== null && (
             <span
               className="table-popup__dims"
@@ -353,8 +367,10 @@ export function CubePopup() {
               openMenuAt(e);
             } : undefined}
           >
-            {visibleOrder.map((r) => (
-              <tr key={r}>
+            <VirtualRows
+              count={visibleOrder.length} scrollRef={gridRef} virtualRef={virtualRef} colSpan={shownCols + 1} pinned={pinnedVi}
+              row={(vi, measure) => { const r = visibleOrder[vi]; return (
+              <tr key={r} ref={measure} data-index={vi}>
                 <th
                   className={`table-popup__rowhead${editAxes && !itemsAcross ? " table-popup__rowhead--pick" : ""}${!itemsAcross && selRows.has(r) ? " table-popup__rowhead--sel" : ""}`}
                   onClick={editAxes && !itemsAcross ? (e) => pick(e, "row", r, visibleOrder) : undefined}
@@ -376,7 +392,8 @@ export function CubePopup() {
                   </td>
                 ))}
               </tr>
-            ))}
+              ); }}
+            />
           </tbody>
           {table && summaries && (
             <tfoot className="table-popup__sumfoot">
@@ -440,3 +457,4 @@ export function CubePopup() {
     </PopupShell>
   );
 }
+

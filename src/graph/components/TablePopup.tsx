@@ -3,6 +3,8 @@ import { iterMin } from "../nodes/mathUtils";
 import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
+import type { Virtualizer } from "@tanstack/react-virtual";
+import { VirtualRows } from "./VirtualRows";
 import { copyText } from "../clipboard";
 import { tablePopup, getRecordCardsAction, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
@@ -44,7 +46,6 @@ import "./chartCards.css"; // .sol-record__img, for the Form's image cells
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, statReadsAsCell, summarizeColumn } from "./tableFooterStats";
 import { saveCsvFileDialog } from "../fileBridge";
-import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
 import "./TablePopup.css";
 import { ChevronDownIcon } from "./Icons";
@@ -158,6 +159,8 @@ export function TablePopup() {
   const editDraft = useRef("");
   const [, bumpDraft] = useState(0);
   const gridRef = useRef<HTMLTableElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const virtualRef = useRef<Virtualizer<HTMLDivElement, HTMLTableRowElement> | null>(null);
   const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
   const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
   const frozen = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupFrozen"));
@@ -259,8 +262,6 @@ export function TablePopup() {
   const rows = grid.length;
   const cols = grid.reduce((m, r) => Math.max(m, r.length), 0);
 
-  const MAX_VISIBLE_ROWS = 1000;
-  const rowsTruncated = rows > MAX_VISIBLE_ROWS;
   const computedVals = liveComputed ?? state.computedCells;
   const isComputedCol = (c: number) => colExprs[c] !== undefined;
   const hasComputed = !!computedVals && colExprs.some((e) => e !== undefined);
@@ -459,7 +460,6 @@ export function TablePopup() {
 
   const vertical = !!state.list && listVertical;
   const listLen = grid[0]?.length ?? 0;
-  const listTruncated = vertical && listLen > MAX_VISIBLE_ROWS;
   // formatRenderActive implies not a list, so `vertical` is false here.
   const controlledRowAt = (r: number): CellValue[] => (editable ? rawRow(r) : (state.data[r] ?? []));
   const viewRowAt = (r: number): string[] => {
@@ -489,18 +489,23 @@ export function TablePopup() {
   const matchedOrder = filtering
     ? sortOrder.filter((r) => cardMatches(displayRowAt(r, displayMode === "source" ? "source" : "shown"), query))
     : sortOrder;
-  const visibleOrder = matchedOrder.length > MAX_VISIBLE_ROWS ? matchedOrder.slice(0, MAX_VISIBLE_ROWS) : matchedOrder;
+  const visibleOrder = matchedOrder;
+  // The row holding focus stays drawn when it scrolls out, so an open edit isn't unmounted mid-entry.
+  const pinnedVi = roFocus ? roFocus.vi : focusCell && focusCell.r >= 0 ? visibleOrder.indexOf(focusCell.r) : -1;
   const viewRowCache = new Map<number, string[]>();
   const viewRow = (r: number): string[] => { let v = viewRowCache.get(r); if (!v) { v = viewRowAt(r); viewRowCache.set(r, v); } return v; };
 
   // An input has no intrinsic width, so measure: the mono advance is 27/42 em (the shipped .fnt metrics), plus 16px padding.
   const MONO_CH_PX = 13 * (27 / 42);
+  const WIDTH_SAMPLE_ROWS = 1000;
+  // Widths come from the leading rows; formatting every row of a long table would cost what the windowing saves.
+  const widthSample = visibleOrder.length > WIDTH_SAMPLE_ROWS ? visibleOrder.slice(0, WIDTH_SAMPLE_ROWS) : visibleOrder;
   const colMinWidths: Array<number | undefined> = [];
   for (let c = 0; c < viewCols; c++) {
     const colType = vertical ? cellType : typeAt(c, cellType, state.columnTypes);
     if (isTextType(colType)) { colMinWidths.push(undefined); continue; }
     let m = 0;
-    for (const r of visibleOrder) m = Math.max(m, (viewRow(r)[c] ?? "").length);
+    for (const r of widthSample) m = Math.max(m, (viewRow(r)[c] ?? "").length);
     const px = Math.ceil(m * MONO_CH_PX) + 16;
     colMinWidths.push(px > 72 ? Math.min(px, 200) : undefined);
   }
@@ -861,8 +866,13 @@ export function TablePopup() {
 
   const focusGridCell = (target: { vi: number; c: number } | null) => {
     if (!target) return;
-    const el = gridRef.current?.querySelector<HTMLElement>(`[data-vi="${target.vi}"][data-c="${target.c}"]`);
-    if (el) { el.focus(); if (el.matches("input")) el.select(); }
+    const find = () => gridRef.current?.querySelector<HTMLElement>(`[data-vi="${target.vi}"][data-c="${target.c}"]`);
+    const focus = (el: HTMLElement) => { el.focus(); if (el.matches("input")) el.select(); };
+    const el = find();
+    if (el) { focus(el); return; }
+    // The row is outside the drawn window: scroll it in, then focus it once it is drawn.
+    virtualRef.current?.scrollToIndex(target.vi, { align: "auto" });
+    requestAnimationFrame(() => requestAnimationFrame(() => { const next = find(); if (next) focus(next); }));
   };
   const chipCols = new Map<number, Map<string, number>>();
   if (!vertical) {
@@ -934,7 +944,7 @@ export function TablePopup() {
         {((view === "grid" && sortable && viewRows > 1) || view === "cards") && (
           <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${viewRows}` : undefined} />
         )}
-        <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
+        <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}</span>
       </>}
       pinNodeId={state.pinNodeId}
       headerActions={
@@ -981,7 +991,7 @@ export function TablePopup() {
         </div>
       )}
       {view === "grid" ? (
-        <div className="table-popup__grid-scroll sol-popup__scroll">
+        <div className="table-popup__grid-scroll sol-popup__scroll" ref={scrollRef}>
           <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
             <thead>
               <tr>
@@ -1103,8 +1113,10 @@ export function TablePopup() {
                 openMenuAt(e);
               } : undefined}
             >
-              {visibleOrder.map((r, vi) => { const row = viewRow(r); return (
-                <tr key={r}>
+              <VirtualRows
+                count={visibleOrder.length} scrollRef={scrollRef} virtualRef={virtualRef} colSpan={viewCols + 1} pinned={pinnedVi}
+                row={(vi, measure) => { const r = visibleOrder[vi]; const row = viewRow(r); return (
+                <tr key={r} ref={measure} data-index={vi}>
                   <th
                     className={`table-popup__rowhead${editsRows ? " table-popup__rowhead--pick" : ""}${selRows.has(r) ? " table-popup__rowhead--sel" : ""}`}
                     onClick={editsRows ? (e) => pickRow(e, r) : undefined}
@@ -1219,7 +1231,8 @@ export function TablePopup() {
                     );
                   })}
                 </tr>
-              ); })}
+              ); }}
+              />
             </tbody>
             {colSummaries && (
               <tfoot className="table-popup__sumfoot">
