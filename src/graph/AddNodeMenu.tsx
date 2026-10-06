@@ -13,29 +13,20 @@ import { SOCKET_COLORS, type SocketDataType } from "./sockets";
 const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kind], appThemeStore.getMode());
 import { ChevronRightIcon } from "./components/Icons";
 
-/** Seams lean 60° from horizontal; the gradient runs perpendicular to them. */
-const BAND_ANGLE = "120deg";
-
-/** Hard stops with a 1px blend, so a tilted seam doesn't stair-step. */
-function bandStops(types: readonly SocketDataType[]): string {
-  const n = types.length;
-  return types.map((t, i) => {
-    const c = `color-mix(in srgb, ${SOCKET_COLORS[t]} var(--band-mix), transparent)`;
-    const from = i === 0 ? "0%" : `calc(${(100 * i) / n}% + 0.5px)`;
-    const to = i === n - 1 ? "100%" : `calc(${(100 * (i + 1)) / n}% - 0.5px)`;
-    return `${c} ${from}, ${c} ${to}`;
-  }).join(", ");
-}
-
 function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
-  if (leaf.accents?.length) {
-    return {
-      className: " solenoid-add-menu__item--accent solenoid-add-menu__item--bands",
-      style: { "--item-accent": SOCKET_COLORS[leaf.accents[0]], "--item-bands": `linear-gradient(${BAND_ANGLE}, ${bandStops(leaf.accents)})` } as CSSProperties,
-    };
-  }
+  if (leaf.accents?.length) return { className: " solenoid-add-menu__item--accent solenoid-add-menu__item--bands" };
   if (leaf.accent) return { className: " solenoid-add-menu__item--accent", style: { "--item-accent": leafAccent(leaf.accent) } as CSSProperties };
   return { className: "" };
+}
+
+/** A type-toggle node's flag: one slanted tile per type at the row's trailing end, in that type's socket color. */
+function TypeBands({ types }: { types?: readonly SocketDataType[] }) {
+  if (!types?.length) return null;
+  return (
+    <span className="solenoid-add-menu__bands" aria-hidden="true">
+      {types.map((t) => <span key={t} className="solenoid-add-menu__band" style={{ "--band-color": SOCKET_COLORS[t] } as CSSProperties} />)}
+    </span>
+  );
 }
 
 export type NodeCatalogEntry = {
@@ -239,6 +230,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
             {leaf.label}
             {leaf.hiddenOps?.length && !leaf.hideOpsMark ? <OpsMark /> : null}
             {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
+            <TypeBands types={leaf.accents} />
           </div>
         );
       })}
@@ -412,6 +404,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
                 {leaf.label}
                 {leaf.hiddenOps?.length && !leaf.hideOpsMark ? <OpsMark /> : null}
                 {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
+                <TypeBands types={leaf.accents} />
               </div>
             ))
           ) : (

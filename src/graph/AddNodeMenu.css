@@ -156,14 +156,34 @@
   background: color-mix(in srgb, var(--item-accent) 38%, transparent);
 }
 
-/* One faded band per type on a type-toggle node, seams tilted (BAND_ANGLE). --band-mix resolves where --item-bands is set, so hover lifts every band. */
-.solenoid-add-menu__item--bands { --band-mix: 18%; }
-.solenoid-add-menu__item--bands:hover,
-.solenoid-add-menu__item--bands.solenoid-add-menu__item--active { --band-mix: 32%; }
-.solenoid-add-menu__item--bands::before,
+/* A type-toggle node: a neutral row and text, with its types as a trailing flag of slanted tiles (60° from horizontal). */
+.solenoid-add-menu__item--bands {
+  color: var(--text);
+}
+.solenoid-add-menu__item--bands::before {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
 .solenoid-add-menu__item--bands:hover::before,
 .solenoid-add-menu__item--bands.solenoid-add-menu__item--active::before {
-  background: var(--item-bands);
+  background: color-mix(in srgb, var(--text) 13%, transparent);
+}
+.solenoid-add-menu__bands {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  gap: 3px;
+  padding-right: 4px;
+}
+.solenoid-add-menu__band {
+  width: 6px;
+  height: 14px;
+  border-radius: 1px;
+  transform: skewX(-30deg);
+  background: color-mix(in srgb, var(--band-color) 70%, transparent);
+}
+.solenoid-add-menu__item--bands:hover .solenoid-add-menu__band,
+.solenoid-add-menu__item--bands.solenoid-add-menu__item--active .solenoid-add-menu__band {
+  background: var(--band-color);
 }
 
 .solenoid-add-menu__item--half {
