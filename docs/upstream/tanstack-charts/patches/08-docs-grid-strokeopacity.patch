@@ -1,0 +1,96 @@
+From 7cfb168bf26dc1ed56d00621cebad61a724bf437 Mon Sep 17 00:00:00 2001
+From: Solenoid contributors <noreply@anthropic.com>
+Date: Tue, 6 Oct 2026 15:06:38 +0000
+Subject: [PATCH] docs: name the guide line style fields and where grid opacity
+ is set
+
+---
+ docs/concepts/layout-axes-and-coordinates.md       |  4 ++--
+ docs/reference/scales-guides-and-color.md          | 14 ++++++++++----
+ .../docs/concepts/layout-axes-and-coordinates.md   |  4 ++--
+ .../docs/reference/scales-guides-and-color.md      | 14 ++++++++++----
+ 4 files changed, 24 insertions(+), 12 deletions(-)
+
+diff --git a/docs/concepts/layout-axes-and-coordinates.md b/docs/concepts/layout-axes-and-coordinates.md
+index ba81118..be2f053 100644
+--- a/docs/concepts/layout-axes-and-coordinates.md
++++ b/docs/concepts/layout-axes-and-coordinates.md
+@@ -175,8 +175,8 @@ const x = {
+ | `reverse`         | Reverse the responsive range                             |
+ 
+ Both grids default to hidden when `grid` is omitted. A style object enables
+-the grid or baseline and accepts renderer-neutral stroke, opacity, width,
+-dash, and line-cap fields.
++the grid or baseline and accepts renderer-neutral `stroke`, `strokeOpacity`,
++`strokeWidth`, `strokeDasharray`, and `lineCap` fields.
+ 
+ Candidate generation and label layout are separate. Choose at most one of
+ `axis.ticks.count`, `axis.ticks.spacing`, and `axis.ticks.values`. Grid lines
+diff --git a/docs/reference/scales-guides-and-color.md b/docs/reference/scales-guides-and-color.md
+index e323f94..a2abb8a 100644
+--- a/docs/reference/scales-guides-and-color.md
++++ b/docs/reference/scales-guides-and-color.md
+@@ -263,10 +263,16 @@ interface ChartAxisOptions<TValue extends ChartValue> {
+ | `side`     | `bottom` for x; `left` for y | Places an x axis on top/bottom or a y axis on left/right.                |
+ 
+ Set `grid` or `axis.line` to a `ChartGuideLineStyle` object to enable the
+-guide and override its stroke, opacity, width, dash pattern, or line cap.
+-Omitted style fields keep the normal theme defaults. An empty object is
+-equivalent to `true`, and `axis.line` styles only the axis baseline, not its
+-tick stubs. Use finite non-negative widths and opacity values from zero to one.
++guide and override its `stroke`, `strokeOpacity`, `strokeWidth`,
++`strokeDasharray`, or `lineCap`. Omitted style fields keep the normal theme
++defaults. An empty object is equivalent to `true`, and `axis.line` styles only
++the axis baseline, not its tick stubs. Use finite non-negative widths and
++opacity values from zero to one.
++
++The default grid opacity is set once on the grid group, and a style's
++`strokeOpacity` is written on each grid line, where it overrides the group. An
++SVG inspector therefore still shows the default on the group after an
++override.
+ 
+ ```ts
+ type ChartContinuousValue = number | Date
+diff --git a/packages/charts-core/docs/concepts/layout-axes-and-coordinates.md b/packages/charts-core/docs/concepts/layout-axes-and-coordinates.md
+index ba81118..be2f053 100644
+--- a/packages/charts-core/docs/concepts/layout-axes-and-coordinates.md
++++ b/packages/charts-core/docs/concepts/layout-axes-and-coordinates.md
+@@ -175,8 +175,8 @@ const x = {
+ | `reverse`         | Reverse the responsive range                             |
+ 
+ Both grids default to hidden when `grid` is omitted. A style object enables
+-the grid or baseline and accepts renderer-neutral stroke, opacity, width,
+-dash, and line-cap fields.
++the grid or baseline and accepts renderer-neutral `stroke`, `strokeOpacity`,
++`strokeWidth`, `strokeDasharray`, and `lineCap` fields.
+ 
+ Candidate generation and label layout are separate. Choose at most one of
+ `axis.ticks.count`, `axis.ticks.spacing`, and `axis.ticks.values`. Grid lines
+diff --git a/packages/charts-core/docs/reference/scales-guides-and-color.md b/packages/charts-core/docs/reference/scales-guides-and-color.md
+index e323f94..a2abb8a 100644
+--- a/packages/charts-core/docs/reference/scales-guides-and-color.md
++++ b/packages/charts-core/docs/reference/scales-guides-and-color.md
+@@ -263,10 +263,16 @@ interface ChartAxisOptions<TValue extends ChartValue> {
+ | `side`     | `bottom` for x; `left` for y | Places an x axis on top/bottom or a y axis on left/right.                |
+ 
+ Set `grid` or `axis.line` to a `ChartGuideLineStyle` object to enable the
+-guide and override its stroke, opacity, width, dash pattern, or line cap.
+-Omitted style fields keep the normal theme defaults. An empty object is
+-equivalent to `true`, and `axis.line` styles only the axis baseline, not its
+-tick stubs. Use finite non-negative widths and opacity values from zero to one.
++guide and override its `stroke`, `strokeOpacity`, `strokeWidth`,
++`strokeDasharray`, or `lineCap`. Omitted style fields keep the normal theme
++defaults. An empty object is equivalent to `true`, and `axis.line` styles only
++the axis baseline, not its tick stubs. Use finite non-negative widths and
++opacity values from zero to one.
++
++The default grid opacity is set once on the grid group, and a style's
++`strokeOpacity` is written on each grid line, where it overrides the group. An
++SVG inspector therefore still shows the default on the group after an
++override.
+ 
+ ```ts
+ type ChartContinuousValue = number | Date
+-- 
+2.43.0
+
