@@ -1,7 +1,8 @@
 // [[B16]] oneFormulaSurface
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
-import { IS_COARSE } from "./coarse";
+import { IS_COARSE, deviceModeStore } from "./coarse";
+import { addMenuRequest } from "./addMenuStore";
 import { descriptionText } from "./descriptionMd";
 import "./AddNodeMenu.css";
 import { NODE_KIND_ACCENTS, type NodeKind } from "./nodes/shared";
@@ -11,7 +12,7 @@ import { SOCKET_COLORS, type SocketDataType } from "./sockets";
 
 /** A row takes its kind's color as a card of that kind shows it: the current palette, adjusted for light mode. */
 const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kind], appThemeStore.getMode());
-import { ChevronRightIcon } from "./components/Icons";
+import { ChevronRightIcon, ChevronLeftIcon } from "./components/Icons";
 
 function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
   if (leaf.accents?.length) return { className: " solenoid-add-menu__item--accent solenoid-add-menu__item--bands" };
@@ -238,6 +239,71 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
   );
 }
 
+// ─── Drill-down list (phone): one level at a time, a back row on top ────
+
+function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
+  leaf: NodeCatalogEntry; half?: boolean; active?: boolean; dim: boolean;
+  onSelect: () => void; onMouseEnter?: () => void; rowRef?: React.Ref<HTMLDivElement>;
+}) {
+  const hl = leafHighlight(leaf);
+  return (
+    <div
+      ref={rowRef}
+      className={`solenoid-add-menu__item${half ? " solenoid-add-menu__item--half" : ""}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
+      title={leaf.description && descriptionText(leaf.description)}
+      style={hl.style}
+      onMouseEnter={onMouseEnter}
+      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+    >
+      {leaf.label}
+      {leaf.hiddenOps?.length && !leaf.hideOpsMark ? <OpsMark /> : null}
+      {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
+      <TypeBands types={leaf.accents} />
+    </div>
+  );
+}
+
+/** No hover and no resting highlight: a finger has no hover, so nothing lights until it lands. */
+function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim }: {
+  entries: CatalogEntry[];
+  stack: number[];
+  onPush: (i: number) => void;
+  onPop: () => void;
+  onSelect: (leaf: NodeCatalogEntry) => void;
+  isDim: (leaf: NodeCatalogEntry) => boolean;
+}) {
+  let items = toRenderItems(entries);
+  let parent: CatalogCategory | null = null;
+  for (const i of stack) {
+    const it = items[i];
+    if (!it || it.kind !== "category") break;
+    parent = it.entry;
+    items = toRenderItems(it.entry.children);
+  }
+  return (
+    <>
+      {parent && (
+        <div className="solenoid-add-menu__item solenoid-add-menu__item--back" onClick={(e) => { e.stopPropagation(); onPop(); }}>
+          <ChevronLeftIcon size={14} />
+          <span>{parent.label}</span>
+        </div>
+      )}
+      {items.map((it, i) => it.kind === "category" ? (
+        <div
+          key={`cat:${it.entry.label}`}
+          className="solenoid-add-menu__item solenoid-add-menu__item--category"
+          onClick={(e) => { e.stopPropagation(); onPush(i); }}
+        >
+          <span>{it.entry.label}</span>
+          <span className="solenoid-add-menu__arrow"><ChevronRightIcon size={12} /></span>
+        </div>
+      ) : (
+        <LeafRow key={`leaf:${it.entry.type}`} leaf={it.entry} half={it.half} dim={isDim(it.entry)} onSelect={() => onSelect(it.entry)} />
+      ))}
+    </>
+  );
+}
+
 // ─── Root menu ──────────────────────────────────────────────────────────
 
 type AddNodeMenuProps = {
@@ -260,6 +326,12 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   const [pinned, setPinned] = useState<number[] | null>(null);
   const [submenuSide, setSubmenuSide] = useState<"left" | "right">("right");
   const [rootOpensLeft, setRootOpensLeft] = useState(false);
+  // A phone drills one level at a time in a docked sheet instead of opening flyouts beside the finger.
+  const drill = useSyncExternalStore(deviceModeStore.subscribe, deviceModeStore.get);
+  const [stack, setStack] = useState<number[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [stack]);
+  useEffect(() => { addMenuRequest.setOpen(true); return () => addMenuRequest.setOpen(false); }, []);
   const [pos, setPos] = useState<{ left: number; top: number; visible: boolean }>({
     left: screenX, top: screenY, visible: false,
   });
@@ -293,6 +365,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (drill) { setPos((p) => (p.visible ? p : { ...p, visible: true })); return; }
     const rect = el.getBoundingClientRect();
     setRootOpensLeft(screenX + rect.width * 2 + 8 > window.innerWidth - VIEWPORT_MARGIN);
     setPos((p) => {
@@ -307,14 +380,15 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       return { left, top, visible: true };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screenX, screenY, searching, results.length, treePath.length]);
+  }, [screenX, screenY, searching, results.length, treePath.length, drill]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     // Capture phase: React Flow's handlers stop a canvas mousedown before it bubbles.
     const onDown = (e: PointerEvent) => {
       const t = e.target as Element | null;
-      if (t?.closest?.(".solenoid-add-menu, .solenoid-add-menu__panel--submenu")) return;
+      // The phone's + button toggles the menu itself; closing here would reopen it on the same tap.
+      if (t?.closest?.(".solenoid-add-menu, .solenoid-add-menu__panel--submenu, .solenoid-mobile-bar__add")) return;
       onClose();
     };
     const t = window.setTimeout(() => window.addEventListener("pointerdown", onDown, true), 0);
@@ -372,13 +446,13 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   return (
     <div
       ref={ref}
-      className="solenoid-add-menu"
-      style={{ left: pos.left, top: pos.top, visibility: pos.visible ? "visible" : "hidden" }}
+      className={`solenoid-add-menu${drill ? " solenoid-add-menu--sheet" : ""}`}
+      style={drill ? { visibility: pos.visible ? "visible" : "hidden" } : { left: pos.left, top: pos.top, visibility: pos.visible ? "visible" : "hidden" }}
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div className="solenoid-add-menu__heading">Add node</div>
       <div className="solenoid-add-menu__panel">
-        <div className="solenoid-add-menu__scroll">
+        <div className="solenoid-add-menu__scroll" ref={scrollRef}>
         <input
           ref={inputRef}
           className="solenoid-add-menu__search"
@@ -392,26 +466,25 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
         {searching ? (
           results.length > 0 ? (
             results.map((leaf, i) => (
-              <div
+              <LeafRow
                 key={leaf.type}
-                ref={i === activeIndex ? activeRef : undefined}
-                className={`solenoid-add-menu__item${leafHighlight(leaf).className}${i === activeIndex ? " solenoid-add-menu__item--active" : ""}${isDim(leaf) ? " solenoid-add-menu__item--incompatible" : ""}`}
-                title={leaf.description && descriptionText(leaf.description)}
-                style={leafHighlight(leaf).style}
-                onMouseEnter={() => setActiveIndex(i)}
-                onClick={() => select(leaf)}
-              >
-                {leaf.label}
-                {leaf.hiddenOps?.length && !leaf.hideOpsMark ? <OpsMark /> : null}
-                {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
-                <TypeBands types={leaf.accents} />
-              </div>
+                leaf={leaf}
+                rowRef={i === activeIndex ? activeRef : undefined}
+                active={i === activeIndex}
+                dim={isDim(leaf)}
+                onMouseEnter={drill ? undefined : () => setActiveIndex(i)}
+                onSelect={() => select(leaf)}
+              />
             ))
           ) : (
             <div className="solenoid-add-menu__empty">No matches</div>
           )
         ) : (
-          <TreeMenu entries={entries} depth={0} path={treePath} onHover={handleHover} onOpenCategory={handleOpenCategory} onSelect={select} onSubmenuSide={setSubmenuSide} isDim={isDim} />
+          drill ? (
+            <DrillMenu entries={entries} stack={stack} onPush={(i) => setStack((st) => [...st, i])} onPop={() => setStack((st) => st.slice(0, -1))} onSelect={select} isDim={isDim} />
+          ) : (
+            <TreeMenu entries={entries} depth={0} path={treePath} onHover={handleHover} onOpenCategory={handleOpenCategory} onSelect={select} onSubmenuSide={setSubmenuSide} isDim={isDim} />
+          )
         )}
         </div>
       </div>

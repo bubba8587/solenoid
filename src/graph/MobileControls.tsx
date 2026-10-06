@@ -17,8 +17,8 @@ export function MobileControls() {
   const hasSelection = useHasSelection(useIsMobile());
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
 
-  // Near the top, so the on-screen keyboard doesn't cover the menu's search field.
-  const openAddMenu = () => addMenuRequest.open(window.innerWidth / 2, 96);
+  // The phone menu docks under the top bars, so the on-screen keyboard doesn't cover its search field.
+  const openAddMenu = () => addMenuRequest.toggle(window.innerWidth / 2, 96);
 
   // The bar's height includes its safe-area padding, so `--chrome-bottom` carries the inset too.
   const bottomRef = useBottomChrome<HTMLDivElement>();

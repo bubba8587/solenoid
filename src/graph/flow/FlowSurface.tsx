@@ -325,7 +325,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     // A locked canvas adds nothing, so the Add menu doesn't open on it.
     () => addMenuRequest.register((screenX, screenY) => {
       if (!canvasLockStore.get() && !hooksRef.current.locked) setMenu({ screenX, screenY });
-    }),
+    }, () => setMenu(null)),
     [],
   );
 

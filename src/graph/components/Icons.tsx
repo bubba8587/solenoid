@@ -23,6 +23,7 @@ const Svg = ({ size = 14, strokeWidth = 1.6, style, children }: IconProps & { ch
 );
 
 export const ChevronRightIcon = (p: IconProps) => <Svg {...p}><path d="m9 18 6-6-6-6" /></Svg>;
+export const ChevronLeftIcon = (p: IconProps) => <Svg {...p}><path d="m15 18-6-6 6-6" /></Svg>;
 export const ChevronDownIcon = (p: IconProps) => <Svg {...p}><path d="m6 9 6 6 6-6" /></Svg>;
 export const PlayIcon = (p: IconProps) => <Svg {...p}><path d="M6 3 20 12 6 21z" /></Svg>;
 /** "link": a chain, for anything that follows cables. */
