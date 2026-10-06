@@ -2,7 +2,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { planCards, cardMatches, PROFILE_ROWS, type CardColType, type CardColumnInput } from "../cardLayout";
 import { type ColumnSort, type SortDir } from "./columnSort";
-import { ArrowIcon, InfoIcon, SearchIcon } from "./Icons";
+import { ArrowIcon, InfoIcon } from "./Icons";
 import { Markdown } from "./Markdown";
 import { helpSection } from "../helpSection";
 import helpMd from "../help/help.md?raw";
@@ -14,7 +14,7 @@ const CARD_RULES = helpSection(helpMd, "Cards");
 
 /** `dataKey` changes whenever the cells or their shown text do; the plan, the chip colors and the row texts are cached on it. */
 export function TableCards({
-  names, types, computed, chipCols, nestedCols, listCols, rowCount, order, rawAt, shownRow, itemsAt, cellNodeAt, dataKey, sort, onSort, query, onQuery, onEdit,
+  names, types, computed, chipCols, nestedCols, listCols, rowCount, order, rawAt, shownRow, itemsAt, cellNodeAt, dataKey, sort, onSort, query, onEdit,
 }: {
   names: readonly string[];
   types: readonly CardColType[];
@@ -33,12 +33,13 @@ export function TableCards({
   dataKey: object;
   sort: ColumnSort;
   onSort: (next: ColumnSort) => void;
-  /** The popup's word filter, shared with the Grid view. */
+  /** The popup's word filter, typed in its header and shared with the Grid view. */
   query: string;
-  onQuery: (next: string) => void;
   onEdit?: (r: number) => void;
 }) {
   const [limit, setLimit] = useState(PAGE);
+  const [seenQuery, setSeenQuery] = useState(query);
+  if (query !== seenQuery) { setSeenQuery(query); setLimit(PAGE); }
   const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const [rulesOpen, setRulesOpen] = useState(false);
   const cols = names.length;
@@ -102,16 +103,6 @@ export function TableCards({
   return (
     <div className="table-cards-wrap sol-popup__scroll">
       <div className="table-cards__bar">
-        <label className="table-cards__filter">
-          <SearchIcon size={12} />
-          <input
-            value={query}
-            placeholder="Filter"
-            aria-label="Filter cards"
-            spellCheck={false}
-            onChange={(e) => { onQuery(e.target.value); setLimit(PAGE); }}
-          />
-        </label>
         <select
           className="table-cards__sort"
           aria-label="Sort cards"
@@ -131,7 +122,6 @@ export function TableCards({
         >
           <ArrowIcon dir={dir === "asc" ? "up" : "down"} size={12} />
         </button>
-        {query.trim() !== "" && <span className="table-cards__count">{matched.length} of {rowCount}</span>}
         <button
           type="button"
           className="table-cards__dir"

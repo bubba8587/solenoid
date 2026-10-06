@@ -1,4 +1,4 @@
-/* The Table popup's Cards view around its cards: the filter and sort bar and the one-column list. The cards are AutoCard.css. */
+/* The Table popup's Cards view around its cards: the sort bar and the one-column list. The cards are AutoCard.css. */
 /* The Table popup's Cards view: one narrow column of row cards. */
 .table-cards-wrap {
   display: flex;
@@ -23,32 +23,6 @@
   background: var(--surface);
   box-sizing: border-box;
 }
-.table-cards__filter {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  height: 28px;
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-muted);
-}
-.table-cards__filter:focus-within { border-color: var(--node-accent, var(--accent)); }
-.table-cards__filter input {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text);
-  font: inherit;
-  font-size: 12px;
-}
-.table-cards__filter input::placeholder { color: var(--text-muted); }
 .table-cards__sort {
   flex: 0 1 auto;
   min-width: 0;
@@ -100,13 +74,6 @@
 .table-cards__rules .sol-md table { font-size: 11px; }
 .table-cards__rules .sol-md td:first-child,
 .table-cards__rules .sol-md code { white-space: nowrap; }
-.table-cards__count {
-  flex: none;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  font-variant-numeric: tabular-nums;
-}
 .table-cards {
   display: flex;
   flex-direction: column;
@@ -124,14 +91,11 @@
 .table-cards__more { align-self: center; margin: 4px 0 2px; }
 @media (max-width: 640px) {
   .table-cards-wrap { margin: 10px; max-height: 62vh; max-height: 62dvh; }
-  .table-cards__filter input,
   .table-cards__sort { font-size: 14px; }
-  .table-cards__filter,
   .table-cards__sort,
   .table-cards__dir { height: 34px; }
   .table-cards__dir { width: 34px; }
-  /* The sort box shows its whole pick ("Source order"); the filter takes what is left. */
-  .table-cards__filter { flex: 1 1 80px; }
+  /* The sort box shows its whole pick ("Source order"). */
   .table-cards__sort { flex: 0 0 auto; max-width: 52%; padding-right: 2px; }
   .table-cards-wrap { margin: 8px; }
 }

@@ -34,7 +34,7 @@ import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { TableCards } from "./TableCards";
 import { cardMatches } from "../cardLayout";
-import { SearchIcon } from "./Icons";
+import { SearchField } from "./SearchField";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
 import { CellImage } from "./cubeCell";
@@ -908,6 +908,7 @@ export function TablePopup() {
     return typeof v === "number" && Number.isFinite(v) ? String(v) : null;
   };
   const onGridEscape = () => {
+    if (query && (document.activeElement as HTMLElement | null)?.closest(".sol-search")) { setQuery(""); return; }
     if (editCell) {
       editDraft.current = grid[editCell.r]?.[editCell.c] ?? "";
       setEditCell(null);
@@ -932,7 +933,12 @@ export function TablePopup() {
       grouped={grouped}
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}
-      headerExtra={<span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>}
+      headerExtra={<>
+        {((view === "grid" && sortable && viewRows > 1) || view === "cards") && (
+          <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${viewRows}` : undefined} />
+        )}
+        <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
+      </>}
       pinNodeId={state.pinNodeId}
       headerActions={
         <PopupOverflowMenu
@@ -975,15 +981,6 @@ export function TablePopup() {
               title={`Unit: ${columnUnitLabel(state.columnUnits[0])} (inherited from the source)`}
             />
           ) : null}
-        </div>
-      )}
-      {view === "grid" && sortable && viewRows > 1 && (
-        <div className="table-cards__bar table-popup__filterbar">
-          <label className="table-cards__filter">
-            <SearchIcon size={12} />
-            <input value={query} placeholder="Filter" aria-label="Filter rows" spellCheck={false} onChange={(e) => setQuery(e.target.value)} />
-          </label>
-          {filtering && <span className="table-cards__count">{matchedOrder.length} of {viewRows}</span>}
         </div>
       )}
       {view === "grid" ? (
@@ -1388,7 +1385,6 @@ export function TablePopup() {
           sort={sort}
           onSort={setSort}
           query={query}
-          onQuery={setQuery}
           onEdit={formCapable ? (r) => { setFormRow(r); setView("form"); } : undefined}
         />
       ) : (

@@ -1,4 +1,5 @@
 // [[C98]] paletteMirrorsMenubar
+import { SearchField } from "./components/SearchField";
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
@@ -448,17 +449,7 @@ export function Settings() {
       <div ref={panelRef} className="solenoid-settings__panel" role="dialog" aria-modal="true" aria-label="Settings" onPointerDown={(e) => e.stopPropagation()}>
         <div className="solenoid-settings__header">
           <span className="solenoid-settings__title">Settings</span>
-          <input
-            type="search"
-            className="solenoid-settings__search"
-            placeholder="Search settings"
-            aria-label="Search settings"
-            value={query}
-            spellCheck={false}
-            autoComplete="off"
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Escape" && query) { e.preventDefault(); e.stopPropagation(); setQuery(""); } }}
-          />
+          <SearchField className="solenoid-settings__search" value={query} onChange={setQuery} placeholder="Search settings" label="Search settings" />
           <button className="solenoid-settings__close" onClick={() => settingsPanel.close()} aria-label="Close">×</button>
         </div>
         {/* Section order: Appearance, Canvas, View, Data, Obsidian (the schema, in

@@ -10,7 +10,8 @@ import { CubeCellChip, frameCellNode, cubeCellToken, cubeCellShown } from "./cub
 import { cubeLevelColumns, statValues, isContainer } from "../cubeLevelTable";
 import { cardMatches } from "../cardLayout";
 import { TableCards } from "./TableCards";
-import { SearchIcon, ChevronDownIcon } from "./Icons";
+import { ChevronDownIcon } from "./Icons";
+import { SearchField } from "./SearchField";
 import { settingsStore } from "../settingsStore";
 import { type FooterStat, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, summarizeColumn } from "./tableFooterStats";
 import { PopupShell, popupCardVars } from "./PopupShell";
@@ -212,7 +213,8 @@ export function CubePopup() {
       title={view.label}
       onClose={() => cubePopup.close()}
       onEscape={() => {
-        if (sel) setSel(null);
+        if (query && (document.activeElement as HTMLElement | null)?.closest(".sol-search")) setQuery("");
+        else if (sel) setSel(null);
         else if (focusCell) setFocusCell(null);
         else if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
         else cubePopup.close();
@@ -223,6 +225,9 @@ export function CubePopup() {
       resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={
         <>
+          {table && (cards || rows > 1) && (
+            <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${rows}` : undefined} />
+          )}
           <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{rowsTruncated || colsTruncated ? ` · first ${MAX_VISIBLE.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (
             <span
@@ -269,15 +274,6 @@ export function CubePopup() {
         </div>
       )}
 
-      {!cards && table && rows > 1 && (
-        <div className="table-cards__bar table-popup__filterbar">
-          <label className="table-cards__filter">
-            <SearchIcon size={12} />
-            <input value={query} placeholder="Filter" aria-label="Filter rows" spellCheck={false} onChange={(e) => setQuery(e.target.value)} />
-          </label>
-          {filtering && <span className="table-cards__count">{matchedOrder.length} of {rows}</span>}
-        </div>
-      )}
       {cards && table ? (
         <TableCards
           names={table.columns.map((c) => c.name)}
@@ -308,7 +304,6 @@ export function CubePopup() {
           sort={sort}
           onSort={setSort}
           query={query}
-          onQuery={setQuery}
         />
       ) : (
       <div ref={gridRef} className="table-popup__grid-scroll sol-popup__scroll">

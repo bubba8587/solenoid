@@ -15,6 +15,7 @@
 //   --click-edge <css>   click the first match 5px in from its top-left corner (a popup's overlay, outside the card)
 //   --type <css> <text>  focus the first match, select all, type the text
 //   --press <key>        press a key (Enter, Escape, Tab…) or a combo (Control+Shift+Equal)
+// --size 390x844 shoots a touch phone viewport instead of the 1600×1000 desktop.
 // Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__input.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -36,10 +37,11 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--palette") opt.palette = argv[++i];
   else if (a === "--light") opt.light = true;
   else if (a === "--full") opt.full = true;
+  else if (a === "--size") { const [w, h] = argv[++i].split("x").map(Number); opt.size = { width: w, height: h }; }
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key]… [--wait ms] [--palette name] [--light] [--full]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key]… [--wait ms] [--palette name] [--light] [--full] [--size WxH]"); process.exit(2); }
 
 const inferType = (cells) => {
   const filled = cells.filter((c) => c !== "" && c != null);
@@ -89,7 +91,7 @@ execFileSync(process.execPath, [new URL("./dev-up.mjs", import.meta.url).pathnam
 const browser = await puppeteer.launch({ executablePath: browserPath(), headless: true, args: ["--no-sandbox", "--window-size=1600,1000"] });
 try {
   const page = await browser.newPage();
-  await page.setViewport({ width: 1600, height: 1000 });
+  await page.setViewport(opt.size ? { ...opt.size, isMobile: true, hasTouch: true } : { width: 1600, height: 1000 });
   page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
   page.on("console", (m) => { if (m.type() === "error") console.log(`[console.error] ${m.text()}`); });
   const doc = { id: "shot", name: graph.label ?? "Shot", graph, updatedAt: Date.now() };
