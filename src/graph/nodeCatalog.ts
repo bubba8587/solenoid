@@ -300,13 +300,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "composite-output", label: "Composite Output", description: "Internal: a Composite's output boundary marker.", create: () => new CompositeOutputNode(), parity: false, hidden: true },
       { type: "conduit",    label: "Conduit",   description: "Bundle up to 8 cables into one block. They travel onward as a single ribbon that splits back into lanes at the destination. Rotate or extend it.", create: () => new ConduitNode(), parity: false },
       { type: "alert",     label: "Alert",    description: "Watches a value and fires a toast and an Alerts HUD entry on a status change: a Low/High range, `TRUE`, any new value, or a threshold cross.", create: () => new AlertNode() },
-      {
-        type: "category", label: "Data Quality", description: "Trust the graph: validate values in place, and rank which upstream inputs matter most.",
-        children: [
-          { type: "expect", label: "Expect", description: "Data validation: opt-in checks for not-null, unique, in range, regex or allowlist. A failure never blocks the value; it shows a red badge and fires an Alert once per new failure.", create: () => new ExpectNode(), parity: false, keywords: "expect validate validation data quality check rule assert not null unique range regex allowlist in list membership enum whitelist trust" },
-          { type: "tornado", label: "Tornado", description: "One-at-a-time sensitivity: Run perturbs each upstream Number or Slider ±10% and ranks them by how far this value swings, as a tornado chart.", create: () => new TornadoNode(), parity: false, keywords: "tornado sensitivity analysis what-if one at a time impact ranking swing trust" },
-        ],
-      },
+      { type: "expect", label: "Expect", description: "Data validation: opt-in checks for not-null, unique, in range, regex or allowlist. A failure never blocks the value; it shows a red badge and fires an Alert once per new failure.", create: () => new ExpectNode(), parity: false, keywords: "expect validate validation data quality check rule assert not null unique range regex allowlist in list membership enum whitelist trust" },
+      { type: "tornado", label: "Tornado", description: "One-at-a-time sensitivity: Run perturbs each upstream Number or Slider ±10% and ranks them by how far this value swings, as a tornado chart.", create: () => new TornadoNode(), parity: false, keywords: "tornado sensitivity analysis what-if one at a time impact ranking swing trust" },
       { type: "presentation", label: "Presentation", description: "Presenter mode: select nodes, Add step captures them, Prev/Next steps through. Each step flies the camera to fit its nodes.", create: () => new PresentationNode(), parity: false },
       { type: "session-history", label: "Session History", description: "A live log of this session's undo and redo actions, like nodes added, moved or removed and connections made or broken, with a copy button. It isn't saved.", create: () => new SessionHistoryNode(), parity: false },
     ],
@@ -440,16 +435,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
           },
         ],
       },
-      {
-        type: "category", label: "Distributions", description: "Probability distributions and related helpers.",
-        children: [
-          { type: "distributions", label: "Distributions", description: "Any distribution as CDF, PDF, PMF, tail, or inverse: normal, t, chi-squared, binomial, Poisson. Excel: the `NORM.DIST` / `T.INV` families.", create: () => new DistributionsNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
-          { type: "pair", children: [
-            { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
-            { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
-          ]},
-        ],
-      },
+      { type: "distributions", label: "Distributions", description: "Any distribution as CDF, PDF, PMF, tail, or inverse: normal, t, chi-squared, binomial, Poisson. Excel: the `NORM.DIST` / `T.INV` families.", create: () => new DistributionsNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
+      { type: "pair", children: [
+        { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
+        { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
+      ]},
     ],
   },
 
