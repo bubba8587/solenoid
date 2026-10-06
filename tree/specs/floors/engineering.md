@@ -2,11 +2,11 @@
 aliases: ["Engineering rules"]
 tags: [spec, floors]
 ---
-<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull -->
+<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull, [[C120]] linearWork -->
 
 # Spec: Engineering rules
 
-Serves [[C17]] shareImpl and [[B2]] webTryDesktopFull.
+Serves [[C17]] shareImpl, [[B2]] webTryDesktopFull and [[C120]] linearWork.
 
 The cross-cutting code-hygiene rules. Unlike the other floors this spec has no `covers:` glob: each rule binds every file in the repo, source and tests alike, whenever the file does the thing the rule names. A file that relies on one cites the parent leaf it serves, or nothing.
 
@@ -77,3 +77,42 @@ A comment is a copy of knowledge that has a better home, and copies drift. A rea
 - **The blast-radius test.** A constraint earns a comment only when a mistake could happen at a single edit site, no doc lies on the path to that mistake, and no stronger home is available. Prose that governs a module's architecture goes the other way and is promoted to a leaf or spec.
 - **Compression.** A surviving comment is one sentence stating the constraint (enumerated contracts and truth tables excepted). Section banners appear only in files of about 400 lines or more. No Excel-equivalent or duplicate annotations that the catalog or a spec already carries. Test files (`*.test.ts`, `*.test.tsx`) are exempt for now.
 - **Reopen if** regressions keep happening that a comment would have prevented. Fix the routing first.
+
+## Performance
+
+Serves [[C120]] linearWork. Each rule names the shape that broke it, since every one of these passed its tests on 20 rows.
+
+### Nothing whole-table runs once per row
+
+**MUST:** inside a loop over rows or cells, no call walks the whole table or list again: no `filter`, `find`, `indexOf`, `includes`, `slice` or aggregate over the collection being looped, and no `JSON.stringify` of a row to make a key. Work that doesn't depend on the row is done once before the loop.
+
+- *Hoist what is the same on every row.* A filter's needle is folded and parsed once (`compileFilter`), a formula call's name, blank slots and routing are resolved once per call site and per function (`callPlan`, `callRefusal`, `nameTraits`), and a plain computed column builds its environment once.
+- *A whole-column call answers once per column.* `SUM(price)` inside a per-row formula re-summed 100k values on every row (about 20 minutes at 100k rows) until `memoRangeCall` answered repeat calls with identical arguments from the last result.
+- *Count with a sort, not a scan.* Rank normalization counted smaller values with a `filter` per row (33 s at 20k rows); it now sorts once and binary-searches.
+- *A shared total is computed once per span.* A percent-of pivot re-summed its denominator for every body cell (154 s at 100k rows); `denominator` keeps one sum per row span and column span.
+- *Key rows on the raw cell.* A one-column group, distinct or partition keys a `Map` on the cell itself (`rowKeyer`; `Map`'s SameValueZero groups exactly as `encodeCell` does), and the engine keys on `CellKey`. Several columns may still join a JSON key.
+
+### Sorting compares precomputed keys
+
+**MUST:** a comparator only compares. Each row's sort key is derived once into an array before `sort`, and blanks and errors are split out first rather than tested inside the comparator. One shared `Intl.Collator` stands in for `localeCompare` with options. `sortedIndexOrder`, the window ORDER BY and the popup's `sortedOrder` follow it; a pivot's value sort scores each row once.
+
+### A cache names everything its answer depends on
+
+**MUST:** a cache keys on the identity of values that never change in place, or on a generation that every input bumps (`registryGeneration()` for anything resolved through the function registry, `displaySettingsKey()` for number formatting). If every input of the cached answer can't be named, there is no cache.
+
+Values on cables are never changed in place once a node returns them, which is what makes identity a key: `WeakMap`s keyed by a list, a column's `values` or a call site hold the date and unit display copies, the chip color index (`categoryColorIndexOf`) and the range-call memo. Two caches were left out on this rule: the table popup's filter depends on more display state than can be listed, and sharing one capture between undo and autosave would need an edit counter every mutation bumps, without which a store-only edit between the two timers could be dropped from the save.
+
+The one exception runs the other way: a typed input reaches its node as a fresh copy (`familyCells`), because a node may reorder or splice what it is given. **Removed by:** an audit that no node changes an input in place.
+
+### Drawing stops at the screen
+
+**MUST:** a view converts and draws only what it shows. The engine's preview takes its rows before converting them (`preview_of`); a card scans only the columns it draws; a Line or Area series denser than its pixels draws its envelope (`minMaxDecimate`, [[chart-figures]]). A data structure that serves undo or a save shares what didn't change rather than copying it (the undo history's per-node strings, [[react-flow-surface-contract#Undo history]]).
+
+### No spread of a collection into a call
+
+**MUST:** `Math.min(...xs)`, `Math.max(...xs)`, `push(...xs)` and any other spread of a list into an argument list is used only on a list with a known small bound. The engine throws a `RangeError` past roughly 125,000 arguments, so a user's table reaches it; use `iterMin`/`iterMax` (`nodes/mathUtils.ts`) or a loop. Deleting a selection of every row in the table popup once threw this way.
+
+### A speed-up proves the answer didn't move
+
+**MUST:** a change made for speed shows the old and new outputs agree, through the shared fixture corpus ([[frame-verbs]]) or a test that compares the fast path against the plain one (the engine's `streamed_values_match_the_cell_path`), and its commit states a before-and-after measurement at a size that shows the difference. A performance test that pins a time bound sets it loose enough for a slow CI machine and tight enough that the quadratic version fails (`rangeCallMemo.test.ts`: 20k rows under 2 s).
+
