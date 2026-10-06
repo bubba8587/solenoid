@@ -26,7 +26,7 @@ fn dump(f: &SolFrame) -> Vec<(String, String, Vec<Json>)> {
             (
                 c.name().to_string(),
                 t.tag().to_string(),
-                cells_of(c).iter().map(cell_to_json).collect(),
+                OutValues(c.clone()).json(),
             )
         })
         .collect()
@@ -78,7 +78,7 @@ fn collect_returns_all_rows_typed() {
     assert_eq!(cols.len(), 3);
     assert_eq!(cols[0].values.len(), 3); // full, not head-N
     assert_eq!(cols[1].ty, "date"); // tag preserved
-    assert_eq!(cols[2].values[2], Json::String("c".into()));
+    assert_eq!(cols[2].values.json()[2], Json::String("c".into()));
 }
 
 #[test]
@@ -355,49 +355,21 @@ fn engine_apply_many_ipc_matches_chained_engine_apply_calls() {
 // ─── Oracle-key parity: serde_json tagged tuples, byte-identical to JS ─────────
 
 #[test]
-fn row_key_is_byte_identical_to_js_json_stringify() {
-    // The exact literal produced by node:
-    //   JSON.stringify([["s","a<U+0001>b"],["#",1],["#",-0],["b",true],["n"]])
-    // (a \u{1}-bearing string, integral float as integer, -0 keyed as 0).
-    let cells: Vec<Vec<Cell>> = vec![
-        vec![Cell::Str("a\u{1}b".into())],
-        vec![Cell::Num(1.0)],
-        vec![Cell::Num(-0.0)],
-        vec![Cell::Bool(true)],
-        vec![Cell::Null],
+fn cell_keys_group_as_the_oracle_does() {
+    let same = |a: Cell, b: Cell| a.key() == b.key();
+    assert!(same(Cell::Num(0.0), Cell::Num(-0.0)));
+    assert!(same(Cell::Num(f64::NAN), Cell::Num(f64::NAN)));
+    assert!(same(Cell::Num(f64::from_bits(ERR_DOMAIN_BITS)), Cell::Num(f64::from_bits(ERR_DOMAIN_BITS))));
+    let apart = [
+        Cell::Null, Cell::Bool(true), Cell::Bool(false), Cell::Num(1.0), Cell::Str("1".into()), Cell::Num(1.5), Cell::Num(0.1),
+        Cell::Num(f64::INFINITY), Cell::Num(f64::NEG_INFINITY), Cell::Num(f64::NAN), Cell::Str("inf".into()),
+        Cell::Num(f64::from_bits(ERR_DOMAIN_BITS)), Cell::Num(f64::from_bits(ERR_OVERFLOW_BITS)),
     ];
-    assert_eq!(
-        row_key_json(&cells, 0),
-        "[[\"s\",\"a\\u0001b\"],[\"#\",1],[\"#\",0],[\"b\",true],[\"n\"]]"
-    );
-}
-
-#[test]
-fn row_key_keys_each_non_finite_apart() {
-    // JSON.stringify writes every non-finite as `null`, so the oracle's
-    // encodeCell names them instead — mirror it byte for byte or +∞, −∞ and
-    // NaN silently share a distinct/group bucket on one engine only.
-    let cells: Vec<Vec<Cell>> = vec![
-        vec![Cell::Num(f64::INFINITY)],
-        vec![Cell::Num(f64::NEG_INFINITY)],
-        vec![Cell::Num(f64::NAN)],
-        vec![Cell::Null],
-    ];
-    assert_eq!(
-        row_key_json(&cells, 0),
-        "[[\"#\",\"inf\"],[\"#\",\"-inf\"],[\"#\",\"nan\"],[\"n\"]]"
-    );
-    // The tokens live under the "#" tag, so a string cell spelling "inf"
-    // keys as ["s","inf"] and cannot collide.
-    let strs: Vec<Vec<Cell>> = vec![vec![Cell::Str("inf".into())]];
-    assert_eq!(row_key_json(&strs, 0), "[[\"s\",\"inf\"]]");
-}
-
-#[test]
-fn row_key_float_formatting_matches_js() {
-    // Non-integral floats via shortest-round-trip; integral via the i64 branch.
-    let cells: Vec<Vec<Cell>> = vec![vec![Cell::Num(1.5)], vec![Cell::Num(0.1)], vec![Cell::Num(-2.0)]];
-    assert_eq!(row_key_json(&cells, 0), "[[\"#\",1.5],[\"#\",0.1],[\"#\",-2]]");
+    for (i, a) in apart.iter().enumerate() {
+        for (j, b) in apart.iter().enumerate() {
+            assert_eq!(a.key() == b.key(), i == j, "{a:?} vs {b:?}");
+        }
+    }
 }
 
 // ─── Non-finite wire sentinel: {"__nf":...} both directions ─────────────────────
@@ -520,7 +492,7 @@ fn engine_read_csv_infers_dates_end_to_end() {
     let cols = engine_read_csv(dir.to_string_lossy().to_string(), name.to_string()).unwrap();
     std::fs::remove_file(dir.join(name)).ok();
     assert_eq!(cols[0].ty, "date"); // all-ISO (with a blank hole) → date serials
-    assert_eq!(cols[0].values, vec![num_to_json(46096.0), num_to_json(46097.0), Json::Null]);
+    assert_eq!(cols[0].values.json(), vec![num_to_json(46096.0), num_to_json(46097.0), Json::Null]);
     assert_eq!(cols[1].ty, "string"); // mixed text stays text
     assert_eq!(cols[2].ty, "number"); // Polars-native numeric untouched
 }
@@ -786,4 +758,19 @@ fn round_sig_matches_to_precision() {
     assert_eq!(round_sig(99.95, 3), 100.0);
     assert_eq!(round_sig(10000305.17578125, 15), 10000305.1757813);
     assert_eq!(convert_key(32.0, 5.0 / 9.0, -17.77777777777777), 0.0);
+}
+
+#[test]
+fn streamed_values_match_the_cell_path() {
+    let f = SolFrame {
+        df: DataFrame::new(vec![
+            Series::new("n".into(), vec![Some(1.0), Some(-0.0), Some(2.5), None, Some(f64::INFINITY), Some(f64::NEG_INFINITY), Some(f64::NAN), Some(1e300), Some(9.1e15), Some(f64::from_bits(ERR_DOMAIN_BITS))]).into_column(),
+        ])
+        .unwrap(),
+        types: vec![SolType::Number],
+    };
+    let col = &f.df.get_columns()[0];
+    let via_cells: Vec<Json> = cells_of(col).iter().map(cell_to_json).collect();
+    assert_eq!(OutValues(col.clone()).json(), via_cells);
+    assert_eq!(serde_json::to_string(&OutValues(col.clone())).unwrap(), serde_json::to_string(&via_cells).unwrap());
 }

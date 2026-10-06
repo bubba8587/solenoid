@@ -50,36 +50,30 @@ enum Cell {
     Bool(bool),
 }
 
+/// A cell's equality class for Distinct, as the oracle's `encodeCell` keys it: 0 and -0 one value, every plain NaN one value, errors by code.
+#[derive(Hash, PartialEq, Eq)]
+enum CellKey<'a> {
+    Null,
+    Bool(bool),
+    Err(&'static str),
+    Nan,
+    Num(u64),
+    Str(&'a str),
+}
+
 impl Cell {
-    fn key_json(&self) -> Json {
+    fn key(&self) -> CellKey<'_> {
         match self {
-            Cell::Null => serde_json::json!(["n"]),
-            Cell::Bool(b) => serde_json::json!(["b", b]),
+            Cell::Null => CellKey::Null,
+            Cell::Bool(b) => CellKey::Bool(*b),
             Cell::Num(n) => match error_of(*n) {
-                Some((code, _)) => serde_json::json!(["e", code]),
-                None => serde_json::json!(["#", key_num(*n)]),
+                Some((code, _)) => CellKey::Err(code),
+                None if n.is_nan() => CellKey::Nan,
+                None => CellKey::Num(if *n == 0.0 { 0.0f64.to_bits() } else { n.to_bits() }),
             },
-            Cell::Str(s) => serde_json::json!(["s", s]),
+            Cell::Str(s) => CellKey::Str(s),
         }
     }
-}
-
-fn key_num(n: f64) -> Json {
-    if n.is_nan() {
-        return Json::String("nan".into());
-    }
-    if n.is_infinite() {
-        return Json::String(if n > 0.0 { "inf" } else { "-inf" }.into());
-    }
-    if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 {
-        return Json::Number((n as i64).into());
-    }
-    serde_json::Number::from_f64(n).map(Json::Number).unwrap_or(Json::Null)
-}
-
-fn row_key_json(chosen_cells: &[Vec<Cell>], i: usize) -> String {
-    let tuple: Vec<Json> = chosen_cells.iter().map(|c| c[i].key_json()).collect();
-    serde_json::to_string(&tuple).unwrap_or_default()
 }
 
 // ─── A handle's backing frame: a DataFrame + the Solenoid type tags ─────────────
@@ -374,7 +368,63 @@ pub struct OutColumn {
     name: String,
     #[serde(rename = "type")]
     ty: String,
-    values: Vec<Json>,
+    values: OutValues,
+}
+
+/// A column's cells written straight from the typed Polars column, each as `num_to_json` / `cell_to_json` would.
+pub struct OutValues(Column);
+
+impl OutValues {
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    #[cfg(test)]
+    fn json(&self) -> Vec<Json> {
+        serde_json::to_value(self).unwrap().as_array().unwrap().clone()
+    }
+}
+
+impl Serialize for OutValues {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeSeq;
+        let s = self.0.as_materialized_series();
+        let mut seq = serializer.serialize_seq(Some(s.len()))?;
+        match s.dtype() {
+            DataType::Float64 => {
+                for o in s.f64().unwrap().into_iter() {
+                    match o {
+                        None => seq.serialize_element(&())?,
+                        Some(n) if n.is_finite() => {
+                            if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 {
+                                seq.serialize_element(&(n as i64))?
+                            } else {
+                                seq.serialize_element(&n)?
+                            }
+                        }
+                        Some(n) => seq.serialize_element(&num_to_json(n))?,
+                    }
+                }
+            }
+            DataType::String => {
+                for o in s.str().unwrap().into_iter() {
+                    seq.serialize_element(&o)?;
+                }
+            }
+            DataType::Boolean => {
+                for o in s.bool().unwrap().into_iter() {
+                    seq.serialize_element(&o)?;
+                }
+            }
+            _ => {
+                for c in cells_of(&self.0) {
+                    seq.serialize_element(&cell_to_json(&c))?;
+                }
+            }
+        }
+        seq.end()
+    }
 }
 
 #[derive(Serialize)]
@@ -505,19 +555,53 @@ fn wire_to_solframe(frame: WireFrame) -> Result<SolFrame, IpcError> {
         .map(|c| c.values.len())
         .max()
         .unwrap_or(0);
-    let mut names: Vec<String> = Vec::new();
     let mut types: Vec<SolType> = Vec::new();
-    let mut columns: Vec<Vec<Cell>> = Vec::new();
+    let mut columns: Vec<Column> = Vec::new();
     for c in &frame.columns {
         let ty = SolType::from_tag(&c.ty);
-        let mut cells: Vec<Cell> = c.values.iter().map(|v| json_to_cell(v, ty)).collect();
-        cells.resize(nrows, Cell::Null); // pad ragged columns with null
-        names.push(c.name.clone());
         types.push(ty);
-        columns.push(cells);
+        columns.push(series_from_json(&c.name, ty, &c.values, nrows));
     }
-    let df = build_df(&names, &types, &columns)?;
+    let df = DataFrame::new(columns).map_err(|e| IpcError::internal(format!("frame build failed: {e}")))?;
     Ok(SolFrame { df, types })
+}
+
+/// `series_of` over `json_to_cell`, without the cell vector between them, borrowing text and padding to `nrows` with nulls.
+fn series_from_json(name: &str, ty: SolType, values: &[Json], nrows: usize) -> Column {
+    let nm: PlSmallStr = name.into();
+    let pad = nrows.saturating_sub(values.len());
+    let s = match ty {
+        SolType::Str => {
+            let mut v: Vec<Option<&str>> = values.iter().map(Json::as_str).collect();
+            v.extend(std::iter::repeat(None).take(pad));
+            Series::new(nm, v)
+        }
+        SolType::Logical => {
+            let mut v: Vec<Option<bool>> = values
+                .iter()
+                .map(|j| match json_to_cell(j, ty) {
+                    Cell::Bool(b) => Some(b),
+                    Cell::Num(n) => Some(n != 0.0),
+                    _ => None,
+                })
+                .collect();
+            v.extend(std::iter::repeat(None).take(pad));
+            Series::new(nm, v)
+        }
+        _ => {
+            let mut v: Vec<Option<f64>> = values
+                .iter()
+                .map(|j| match json_to_cell(j, ty) {
+                    Cell::Num(n) => Some(n),
+                    Cell::Bool(b) => Some(if b { 1.0 } else { 0.0 }),
+                    _ => None,
+                })
+                .collect();
+            v.extend(std::iter::repeat(None).take(pad));
+            Series::new(nm, v)
+        }
+    };
+    s.into_column()
 }
 
 // ─── Native CSV read ─────────────────────────────────────────────────────────
@@ -1180,10 +1264,10 @@ fn verb_distinct(frame: &SolFrame, columns: &Option<Vec<String>>) -> Result<SolF
     require_columns(frame, &chosen)?;
     let chosen_cells: Vec<Vec<Cell>> =
         chosen.iter().map(|n| frame.column_cells(n).unwrap().1).collect();
-    let mut seen: HashSet<String> = HashSet::new();
+    let mut seen: HashSet<Vec<CellKey>> = HashSet::new();
     let mut keep: Vec<usize> = Vec::new();
     for i in 0..frame.df.height() {
-        if seen.insert(row_key_json(&chosen_cells, i)) {
+        if seen.insert(chosen_cells.iter().map(|c| c[i].key()).collect()) {
             keep.push(i);
         }
     }
@@ -2276,7 +2360,7 @@ fn collect_of(frame: &SolFrame) -> Vec<OutColumn> {
         .map(|(c, t)| OutColumn {
             name: c.name().to_string(),
             ty: t.tag().to_string(),
-            values: cells_of(c).iter().map(cell_to_json).collect(),
+            values: OutValues(c.clone()),
         })
         .collect()
 }
@@ -2296,11 +2380,10 @@ fn column_of(frame: &SolFrame, name: &str) -> Option<OutColumn> {
                 .map(|i| i - 1)
         })?;
     let column = &frame.df.get_columns()[idx];
-    let cells = cells_of(column);
     Some(OutColumn {
         name: column.name().to_string(),
         ty: frame.types[idx].tag().to_string(),
-        values: cells.iter().map(cell_to_json).collect(),
+        values: OutValues(column.clone()),
     })
 }
 
