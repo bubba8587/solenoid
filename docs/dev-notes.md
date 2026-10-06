@@ -6,6 +6,11 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-06: performance hunt at 100k rows; cloud session)
+- **Quadratic paths gone, outputs unchanged** (fixture corpus + cargo tests green): Decision Matrix rank (20k rows 33s → 44ms); a computed column's whole-column range call is memoized per call site by argument identity (`memoRangeCall`, [[computed-columns]]; `@price / SUM(price)` 10k rows 12.3s → 39ms); pivot "% of" sums each denominator span once (100k rows, 1000×12 leaves: 154s → 0.3s).
+- **Frame verbs**: filters compile once (`compileFilter`), single-key group/distinct/window partitions key on the raw cell (`rowKeyer`), sort and window ORDER BY classify blanks once, rolling windows sum in place, `describeColumn` sorts once, `inferColumn` parses once. **Engine**: preview converts only its rows, `cells_of` reads typed columns, `reorder_rows` uses `DataFrame::take` on canonical dtypes.
+- **Compute pass**: `loopMembers` O(edges), `cableValueStore` nested by node; value boxes cache their formatted list per array (keyed on display settings for numbers).
+
 ### SESSION DIGEST (2026-10-05: known-bug sweep from the backlog's commit-walk leads; cloud session)
 - **Chart value axes keep the decimals close ticks need** (`valueTickFormat`/`compactTick(n, step)` in `chartCore.ts`): 100000, 100250 read "100K", "100.25K"; the gutter measures with the same formatter.
 - **A Board's number lanes format when drawn** (`recordLaneText`), so Decimal places shows without a recompute ([[chart-figures]] Record).

@@ -18,6 +18,16 @@ plugin build's pin; 1.x is a new major). Vitest 5 transforms with Oxc, so the `e
 true }` in `vite.config.ts` serves only the production minify, and its "esbuild options ignored"
 warning is expected.
 
+## Performance (found 2026-10-06, not done)
+- [ ] **Engine commands run on the UI thread**: `#[tauri::command(async)]` frees it, but `engine_drop` is fire-and-forget (`frameBackend.ts`), so a drop could race a preview of its handle; needs a desktop check.
+- [ ] **Engine IPC copies**: `collect_of`/`column_of` build `Cell`s then `serde_json::Value`s per cell (a custom `Serialize` writes straight from the typed column); `engine_source` goes JSON → `Cell` → Series (deserialize per type, keeping `json_to_cell`'s coercions); `verb_distinct` keys rows with a JSON string; `append_frames`/`bind_columns` round-trip cells where `vstack`/`hstack` would do.
+- [ ] **Native CSV crosses IPC twice**: `engine_read_csv` returns every row, then the first verb re-uploads it; register a handle as Parquet does.
+- [ ] **Formula per-row overhead**: the expr-mode env is rebuilt per row (`computedColumnCore.ts`), and a call re-resolves its function name, blank slots and roles per row (a per-call-node plan keyed on `registryGeneration()`); `IF(@p>5, ROUND(@p,2), 0)` is ~0.8s at 100k rows.
+- [ ] **Unit math allocates per cell**: `dimMul`/`dimDiv` give every result cell its own dim, and `arithmeticCell` makes closures per cell (`unitValue.ts`).
+- [ ] **Input coercion copies every list** (`familyCells`, `stripUnitCells` in `coerceInputs.ts`) even when nothing changes; copy-on-first-change needs an audit that no node mutates an input array.
+- [ ] **Error origins**: each per-cell error gets its own `origin` object for `rowIndex`, which nothing reads (error-values spec, compute-pass spec, `errorValue.test.ts`); dropping it lets one tagged error be shared. Author's call.
+- [ ] **`raw` source text** rides beside every imported number/date column (`inferColumn`), doubling its memory; only the value popup reads it.
+
 ## Release planning (author-run)
 
 - [ ] **Walk `2.0-plan.md`** (1.4.2 shipped 2026-09-22 with plugin 0.1.3; 1.4.1 was the first Windows + Linux release).
