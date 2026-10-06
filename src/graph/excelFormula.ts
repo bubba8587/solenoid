@@ -897,7 +897,9 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       const sol = argv.find(isSolError);
       if (sol) return sol;
       const lifted = liftedArgs(name, argv);
-      if (lifted.length === 0) return routeCall(name, argv, blanks.settled);
+      if (lifted.length === 0) {
+        return RANGE_FUNCTIONS.has(name) ? memoRangeCall(n, name, argv, blanks.settled) : routeCall(name, argv, blanks.settled);
+      }
       return mapCells(lifted.map((i) => argv[i]), (...cells) => {
         const bad = cells.find(isErr);
         if (bad !== undefined) return bad;
@@ -908,6 +910,21 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       });
     }
   }
+}
+
+const rangeMemo = new WeakMap<Ast, { gen: number; argv: unknown[]; result: unknown }>();
+
+/** A range function called again with the very same arguments (a whole column, row after row) answers its last result. */
+function memoRangeCall(node: Ast, name: string, argv: unknown[], settled: readonly boolean[]): unknown {
+  const gen = registryGeneration();
+  const last = rangeMemo.get(node);
+  if (last && last.gen === gen && last.argv.length === argv.length && last.argv.every((a, i) => Object.is(a, argv[i]))) {
+    return last.result;
+  }
+  const result = routeCall(name, argv, settled);
+  const immutable = result === null || typeof result !== "object" || isSolError(result);
+  if (immutable && argv.some(isArr)) rangeMemo.set(node, { gen, argv, result });
+  return result;
 }
 
 /** Steps 9 to 11 of the dispatch ladder, once the arguments are evaluated, read by role and error-free. */
@@ -938,7 +955,7 @@ function routeCall(name: string, argv: unknown[], settled: readonly boolean[]): 
     const prep = prepRangeArgs(name, argv);
     if (prep.error !== undefined) return prep.error;
     const r = dispatch(name, ...prep.args.map((a) => (isArr(a) ? a.slice() : a)));
-    return typeof r === "number"
+    return typeof r === "number" && !Number.isFinite(r)
       ? guardFinite(r, prep.args.flatMap((a) => (isArr(a) ? a : [a])))
       : r;
   }

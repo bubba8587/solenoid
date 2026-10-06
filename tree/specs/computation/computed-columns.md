@@ -29,6 +29,8 @@ Brackets spell a name that isn't a valid identifier. A column is found by its ex
 
 So `revenue / SUM(revenue)` gives each row's share of the total, and `SUMIFS(amt, cat, @cat)` sums the rows in this row's category. A whole column where one value is needed is a `#SHAPE!` on that row that points at `@` ("A computed column needs one value per row. Use @name to read this row's cell."), never a silent read of this row's cell.
 
+**A whole-column total is worked out once per column, not once per row.** A range function (`RANGE_FUNCTIONS`) called with the very same argument values as its last call (the same whole-column array, the same scalars, by identity) answers its last result (`memoRangeCall`, keyed per call site and registry generation), so `revenue / SUM(revenue)` stays linear in the row count. Only a scalar or error result is kept; a list result is computed fresh each row so no row shares a mutable array. Every range function is pure, so a new range function that reads a clock, a random source or the row stack must not join `RANGE_FUNCTIONS`.
+
 A name resolves in a fixed order: a column (or the column an explicit binding picks, below), then a LAMBDA's captured values, then the surface's side value. A name that is none of these is a miss. What a miss means depends on the surface (below).
 
 `@name` and `[Name]` only work inside a computed column. Anywhere else they are a `#REF!` saying so.
