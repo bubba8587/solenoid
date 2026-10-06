@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { settingsStore, type Settings } from "./settingsStore";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 // Reuses Settings' segment-pill styles so the popover and the Settings rows can't drift.
@@ -16,11 +16,25 @@ const TIDY_ROWS: ReadonlyArray<{
 
 /** Writes straight to settingsStore, which both ELK call sites read at layout time. Clickaway close is owned by the
  *  opener in TopBar; Escape closes here. */
-export function TidyOptionsPopover({ onClose }: { onClose: () => void }) {
+export type TidyAction = { label: string; hint: string; icon: ReactNode; run: () => void };
+
+/** `actions` puts command rows above the options (the phone's shared Tidy dropdown); picking one runs it and closes. */
+export function TidyOptionsPopover({ onClose, actions }: { onClose: () => void; actions?: readonly TidyAction[] }) {
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
   useEscapeToClose(onClose);
   return (
     <div className="solenoid-tidy-options" role="dialog" aria-label="Tidy options">
+      {actions?.length ? (
+        <div className="solenoid-tidy-options__actions">
+          {actions.map((a) => (
+            <button key={a.label} type="button" className="solenoid-tidy-options__action" onClick={() => { a.run(); onClose(); }}>
+              <span className="solenoid-tidy-options__action-icon" aria-hidden="true">{a.icon}</span>
+              <span className="solenoid-tidy-options__action-label">{a.label}</span>
+              <span className="solenoid-tidy-options__action-hint">{a.hint}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
       {TIDY_ROWS.map((row) => {
         const value = settingsStore.get(row.key) as string;
         return (

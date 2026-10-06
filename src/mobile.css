@@ -21,6 +21,12 @@ html.is-mobile {
     display: none;
   }
   .solenoid-topbar__group--layout { display: flex; gap: 2px; }
+  /* Tidy, its options and Cleanup live in the shared Tidy dropdown pill on a phone. */
+  .solenoid-topbar__group--tidymenu { display: flex; }
+  .solenoid-topbar__group--layout :is(.solenoid-topbar__tidy, .solenoid-topbar__tidy-opts, .solenoid-topbar__cleanup) { display: none; }
+  .solenoid-topbar .solenoid-nav__btn.solenoid-topbar__tidymenu-btn { width: auto; padding: 0 9px 0 11px; border-radius: 999px; }
+  .solenoid-topbar__tidymenu-btn svg { flex: 0 0 auto; }
+  .solenoid-topbar .solenoid-topbar__tidymenu-btn .solenoid-topbar__chev { width: 11px; height: 11px; }
   .solenoid-topbar .solenoid-nav__btn { width: 34px; height: 34px; }
   .solenoid-topbar .solenoid-nav__btn svg { width: 17px; height: 17px; }
   .solenoid-topbar__icon { display: flex; }

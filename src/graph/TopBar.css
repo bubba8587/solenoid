@@ -115,6 +115,51 @@
   box-shadow: var(--overlay-shadow);
 }
 
+/* The phone's shared Tidy dropdown: a pill of its own, hidden on desktop, where Tidy and Cleanup keep their own buttons. */
+.solenoid-topbar__group--tidymenu {
+  display: none;
+  position: relative;
+}
+.solenoid-topbar__tidymenu-btn {
+  width: auto;
+  padding: 0 8px 0 10px;
+  gap: 3px;
+}
+.solenoid-tidy-options__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.solenoid-tidy-options__action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.solenoid-tidy-options__action:hover,
+.solenoid-tidy-options__action:active {
+  background: var(--accent-soft);
+}
+.solenoid-tidy-options__action-icon {
+  display: flex;
+  color: var(--text-dim);
+}
+.solenoid-tidy-options__action-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .solenoid-tidy-options__row {
   display: flex;
   align-items: center;
