@@ -1224,16 +1224,29 @@ fn lazy_slice_rows(plan: Plan, mode: &str, n: f64, to: Option<f64>) -> Result<Pl
     Ok(Plan { lf, ..plan })
 }
 
+/// The dtype `series_of` builds for a Solenoid type.
+fn canonical_dtype(ty: SolType) -> DataType {
+    match ty {
+        SolType::Logical => DataType::Boolean,
+        SolType::Str => DataType::String,
+        _ => DataType::Float64,
+    }
+}
+
+/// `column` as `series_of` would rebuild it under `name`: itself when already canonical, else through its cells.
+fn canonical_series(column: &Column, ty: SolType, name: &str) -> Series {
+    let mut s = if *column.dtype() == canonical_dtype(ty) {
+        column.as_materialized_series().clone()
+    } else {
+        series_of(name, ty, &cells_of(column)).as_materialized_series().clone()
+    };
+    s.rename(name.into());
+    s
+}
+
 fn reorder_rows(frame: &SolFrame, idxs: &[usize]) -> Result<SolFrame, IpcError> {
     let height = frame.df.height();
-    let canonical = frame.df.get_columns().iter().zip(frame.types.iter()).all(|(c, t)| {
-        *c.dtype()
-            == match t {
-                SolType::Logical => DataType::Boolean,
-                SolType::Str => DataType::String,
-                _ => DataType::Float64,
-            }
-    });
+    let canonical = frame.df.get_columns().iter().zip(frame.types.iter()).all(|(c, t)| *c.dtype() == canonical_dtype(*t));
     if canonical && idxs.iter().all(|&i| i < height) {
         let picked = IdxCa::from_vec("".into(), idxs.iter().map(|&i| i as IdxSize).collect());
         let df = frame.df.take(&picked).map_err(|e| IpcError::internal(format!("row pick failed: {e}")))?;
@@ -2279,17 +2292,20 @@ fn append_frames(handles: &[String]) -> Result<SolFrame, IpcError> {
     }
 
     let types: Vec<SolType> = names.iter().map(|n| type_of[n]).collect();
-    let mut out_cols: Vec<Vec<Cell>> = names.iter().map(|_| Vec::new()).collect();
-    for f in &frames {
-        let rows = f.df.height();
-        for (ci, name) in names.iter().enumerate() {
-            match f.column_cells(name) {
-                Some((_, cells)) => out_cols[ci].extend(cells),
-                None => out_cols[ci].extend(std::iter::repeat(Cell::Null).take(rows)),
-            }
+    let fail = |e: PolarsError| IpcError::internal(format!("append failed: {e}"));
+    let mut out_cols: Vec<Column> = Vec::with_capacity(names.len());
+    for (name, &ty) in names.iter().zip(types.iter()) {
+        let mut acc = Series::new_empty(name.as_str().into(), &canonical_dtype(ty));
+        for f in &frames {
+            let piece = match f.df.get_columns().iter().position(|c| c.name().as_str() == name) {
+                Some(idx) => canonical_series(&f.df.get_columns()[idx], ty, name),
+                None => Series::full_null(name.as_str().into(), f.df.height(), &canonical_dtype(ty)),
+            };
+            acc.append(&piece).map_err(fail)?;
         }
+        out_cols.push(acc.rechunk().into_column());
     }
-    let df = build_df(&names, &types, &out_cols)?;
+    let df = DataFrame::new(out_cols).map_err(fail)?;
     Ok(SolFrame { df, types })
 }
 
@@ -2309,18 +2325,25 @@ fn bind_columns(handles: &[String]) -> Result<SolFrame, IpcError> {
     let rows = frames.iter().map(|f| f.df.height()).max().unwrap_or(0);
     let mut proposed: Vec<String> = Vec::new();
     let mut types: Vec<SolType> = Vec::new();
-    let mut out_cols: Vec<Vec<Cell>> = Vec::new();
+    let mut pieces: Vec<&Column> = Vec::new();
     for f in &frames {
-        for (i, n) in f.names().iter().enumerate() {
-            proposed.push(n.clone());
+        for (i, c) in f.df.get_columns().iter().enumerate() {
+            proposed.push(c.name().to_string());
             types.push(f.types[i]);
-            let mut cells = f.column_cells(n).map(|(_, c)| c).unwrap_or_default();
-            cells.resize(rows, Cell::Null);
-            out_cols.push(cells);
+            pieces.push(c);
         }
     }
     let names = make_headers(&proposed, proposed.len());
-    let df = build_df(&names, &types, &out_cols)?;
+    let fail = |e: PolarsError| IpcError::internal(format!("bind columns failed: {e}"));
+    let mut out_cols: Vec<Column> = Vec::with_capacity(names.len());
+    for ((c, &ty), name) in pieces.iter().zip(types.iter()).zip(names.iter()) {
+        let mut s = canonical_series(c, ty, name);
+        if s.len() < rows {
+            s.append(&Series::full_null(name.as_str().into(), rows - s.len(), &canonical_dtype(ty))).map_err(fail)?;
+        }
+        out_cols.push(s.rechunk().into_column());
+    }
+    let df = DataFrame::new(out_cols).map_err(fail)?;
     Ok(SolFrame { df, types })
 }
 
