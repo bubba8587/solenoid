@@ -48,7 +48,10 @@ export function dimPow(a: Dim, n: number): Dim {
 }
 
 export function dimEqual(a: Dim, b: Dim): boolean {
-  return dimAxes(a, b).every((k) => (a[k] ?? 0) === (b[k] ?? 0));
+  if (a === b) return true;
+  for (const k in a) if ((a[k] ?? 0) !== (b[k] ?? 0)) return false;
+  for (const k in b) if (!(k in a) && (b[k] ?? 0) !== 0) return false;
+  return true;
 }
 
 /** `k` with `dim` = `base`^k, or null when `dim` is no power of `base`. */
@@ -64,7 +67,8 @@ export function dimPowerOf(dim: Dim, base: Dim): number | null {
 }
 
 export function isDimensionless(a: Dim): boolean {
-  return Object.keys(a).every((k) => (a[k] ?? 0) === 0);
+  for (const k in a) if ((a[k] ?? 0) !== 0) return false;
+  return true;
 }
 
 function isLinear(u: Unit): boolean {

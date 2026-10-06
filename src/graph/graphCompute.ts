@@ -18,15 +18,15 @@ export const CIRC_MESSAGE =
 
 export function loopMembers(editor: Editor): Set<string> {
   const ids = editor.getNodes().map((n) => n.id);
-  const adj = new Map<string, string[]>();
-  for (const id of ids) adj.set(id, []);
+  const targets = new Map<string, Set<string>>();
+  for (const id of ids) targets.set(id, new Set());
   const selfLoops = new Set<string>();
   for (const c of editor.getConnections()) {
     if (c.source === c.target) { selfLoops.add(c.source); continue; }
-    if (adj.has(c.source) && adj.get(c.source)!.indexOf(c.target) === -1 && ids.includes(c.target)) {
-      adj.get(c.source)!.push(c.target);
-    }
+    if (targets.has(c.target)) targets.get(c.source)?.add(c.target);
   }
+  const adj = new Map<string, string[]>();
+  for (const [id, ts] of targets) adj.set(id, [...ts]);
   const index = new Map<string, number>();
   const low = new Map<string, number>();
   const onStack = new Set<string>();
@@ -78,8 +78,8 @@ export function downstreamClosure(editor: Editor, startId: string): Set<string> 
   }
   const seen = new Set<string>([startId]);
   const queue = [startId];
-  while (queue.length) {
-    const id = queue.shift()!;
+  for (let head = 0; head < queue.length; head++) {
+    const id = queue[head];
     for (const t of out.get(id) ?? []) if (!seen.has(t)) { seen.add(t); queue.push(t); }
   }
   return seen;

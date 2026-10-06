@@ -3,25 +3,22 @@
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
-const _values = new Map<string, unknown>();
+const _values = new Map<string, Map<string, unknown>>();
 const { notify, subscribe, version } = createNotifier();
 
 export const cableValueStore = {
   setNodeOutputs(nodeId: string, outputs: Record<string, unknown>) {
-    for (const [k, v] of Object.entries(outputs)) {
-      _values.set(`${nodeId}:${k}`, v);
-    }
+    let outs = _values.get(nodeId);
+    if (!outs) { outs = new Map(); _values.set(nodeId, outs); }
+    for (const [k, v] of Object.entries(outputs)) outs.set(k, v);
   },
 
   get(nodeId: string, outputKey: string): unknown {
-    return _values.get(`${nodeId}:${outputKey}`);
+    return _values.get(nodeId)?.get(outputKey);
   },
 
   forget(nodeId: string) {
-    const prefix = `${nodeId}:`;
-    for (const k of _values.keys()) {
-      if (k.startsWith(prefix)) _values.delete(k);
-    }
+    _values.delete(nodeId);
   },
 
   bump: notify,

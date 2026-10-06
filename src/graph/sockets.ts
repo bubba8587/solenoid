@@ -169,11 +169,16 @@ export function isDateType(dt: SocketDataType): boolean {
 
 export type ElementFamily = keyof typeof FAMILIES;
 
-export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
-  for (const [fam, dims] of Object.entries(FAMILIES)) {
-    if (Object.values(dims).includes(dt)) return fam;
+const FAMILY_OF = (() => {
+  const m = new Map<SocketDataType, ElementFamily>();
+  for (const [fam, dims] of Object.entries(FAMILIES) as [ElementFamily, Record<string, SocketDataType>][]) {
+    for (const dt of Object.values(dims)) if (!m.has(dt)) m.set(dt, fam);
   }
-  return null;
+  return m;
+})();
+
+export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
+  return FAMILY_OF.get(dt) ?? null;
 }
 
 export function comboOfType(dt: SocketDataType): SocketDataType | null {
