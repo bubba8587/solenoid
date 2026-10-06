@@ -1,29 +1,20 @@
 // [[C100]] chartIsAValue, [[D98]] tanstackDrawsCharts
 // Waterfall, Candlestick and Boxplot: band-indexed figures built from bars, links and ticks.
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 import { barY, defineChart, dot, link, ruleY, tickY, waterfall, type ChartPoint, type ChartTooltipContent } from "@tanstack/charts";
 import { decorative } from "@tanstack/charts/mark/decorative";
 import { Chart } from "@tanstack/charts/react";
 import { scaleBand } from "@tanstack/charts/scales/band";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
-import { appThemeStore } from "../../appTheme";
-import { resolveColor } from "../../palette";
 import { valueTickFormat, sanitizeChartLabel } from "../chartCore";
-import { PLOT_TOP, Fig, tip, tipValue, useTheme, valueDomain } from "./kit";
+import { PLOT_TOP, Fig, tip, tipValue, valueDomain, useInk, EmptyFigure } from "./kit";
 import type { BoxplotPayload, CandlePayload, WaterfallPayload } from "../../chartValue";
 
-const Empty = () => <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
 
 // The y axis column the canvas figures reserved, so the band math below can size labels and boxes.
 const axisW = (fs: number) => Math.round(30 * fs);
 const MARGIN_R = 4;
 
-function useInk() {
-  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const t = useTheme();
-  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || resolveColor("sky");
-  return { ...t, up: resolveColor("green"), down: resolveColor("vermilion"), neutral: resolveColor("blue"), accent };
-}
 
 /** A label cut to fit `px` at a 9px-times-`fs` font, by an average glyph width (no DOM measuring in a definition). */
 function fitText(s: string, px: number, fs: number): string {
@@ -85,7 +76,7 @@ export function WaterfallView({ payload, width, height, fscale = 1 }: { payload:
       }),
     });
   }, [payload, width, height, fs, theme, grid, axis, up, down, neutral]);
-  if (!definition) return <Empty />;
+  if (!definition) return <EmptyFigure />;
   return (
     <Fig width={width} height={height}>
       <Chart definition={definition} width={width} height={height} ariaLabel="waterfall chart" tabIndex={-1} />
@@ -152,7 +143,7 @@ export function CandleView({ payload, width, height, fscale = 1 }: { payload: Ca
       }),
     });
   }, [payload, width, height, fs, theme, grid, up, down]);
-  if (payload.close.length === 0) return <Empty />;
+  if (payload.close.length === 0) return <EmptyFigure />;
   return (
     <Fig width={width} height={height}>
       {definition && <Chart definition={definition} width={width} height={height} ariaLabel="candlestick chart" tabIndex={-1} />}
@@ -212,7 +203,7 @@ export function BoxplotView({ payload, width, height, fscale = 1 }: { payload: B
       }),
     });
   }, [payload, width, height, fs, theme, grid, accent, down]);
-  if (!definition) return <Empty />;
+  if (!definition) return <EmptyFigure />;
   return (
     <Fig width={width} height={height}>
       <Chart definition={definition} width={width} height={height} ariaLabel="boxplot" tabIndex={-1} />

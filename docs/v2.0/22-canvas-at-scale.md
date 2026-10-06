@@ -54,8 +54,10 @@ With Step 1, HIC can paint labels itself for cards that were never mounted.
 
 ## Step 4 — Figure rasterize-at-rest (only if a workload demands)
 
-Recharts + KaTeX raster at rest, live on hover (the SvgPicker precedent; KaTeX re-rasters on
-zoom). Quality gate: pixel-crisp at any zoom, hover indistinguishable. The last DOM lever.
+Chart SVG and KaTeX raster at rest, live on hover (the SvgPicker precedent; KaTeX re-rasters on
+zoom). Quality gate: pixel-crisp at any zoom, hover indistinguishable. The last DOM lever. A TanStack
+figure can already paint its marks on a canvas inside the chart (`ChartExportContext` keeps exports SVG),
+which may be the cheaper lever for chart-heavy canvases.
 
 ## Adjacent, not in the arc
 
