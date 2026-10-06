@@ -54,6 +54,21 @@ describe("Value Input type switch", () => {
     expect(socketType(n)).toBe("string");
   });
 
+  it("gives each type back what was typed under it, and carries by meaning only into a type not used yet", () => {
+    const n = new ValueInputNode({ op: "string", value: "hello" });
+    n.setOp("number");
+    expect(n.value).toBe("0");
+    n.value = "123.5";
+    n.setOp("logical");
+    expect(n.value).toBe("TRUE");
+    n.setOp("string");
+    expect(n.value).toBe("hello");
+    n.setOp("number");
+    expect(n.value).toBe("123.5");
+    n.setOp("logical");
+    expect(n.value).toBe("TRUE");
+  });
+
   it("keeps the text where it still reads, else carries it by meaning", () => {
     expect(carryValueText("hello", "string")).toBe("hello");
     expect(carryValueText("12", "number")).toBe("12");

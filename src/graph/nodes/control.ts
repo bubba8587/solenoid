@@ -244,6 +244,8 @@ export class ValueInputNode extends ClassicPreset.Node {
   height = 140;
   cachedValue: unknown = null;
   private lastRelative: LastRelative = null;
+  /** What was typed under each op this session, so switching away and back restores it; only the shown op's text is saved ([[C28]] literalsIffEditable). */
+  private entryByOp: Partial<Record<ValueInputOp, string>> = {};
 
   constructor(init?: {
     label?: string;
@@ -275,10 +277,11 @@ export class ValueInputNode extends ClassicPreset.Node {
     this.addOutput("value", new ClassicPreset.Output(valueSocketFor(this.op), "Value"));
   }
 
-  /** Swaps the output socket in place; the caller follows with `retypeOutputCables`. */
+  /** Swaps the output socket in place; the caller follows with `retypeOutputCables`. A type never used this session gets the text carried by meaning. */
   setOp(t: ValueInputOp): boolean {
     if (t === this.op) return false;
-    this.value = carryValueText(this.value, t);
+    this.entryByOp[this.op] = this.value;
+    this.value = this.entryByOp[t] ?? carryValueText(this.value, t);
     this.op = t;
     const out = this.outputs.value;
     if (out) out.socket = valueSocketFor(t);

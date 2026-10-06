@@ -257,6 +257,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
     unitAware: "class-constant declaration (perInputUnitBlind)",
     ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[D93]] oneTextReading)",
+    entryByOp: "Value Input's typed text per op this session, restored on switching back; only the shown op's text is saved ([[C28]] literalsIffEditable)",
     cachedSource: "List Input's typed text per item, for the popup's Source view; re-split from stringLiterals on every compute",
     autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
     textLiterals: "class-constant declaration — the VALUES land in stringLiterals, which persist",

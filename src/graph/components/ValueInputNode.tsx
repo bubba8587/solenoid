@@ -29,11 +29,14 @@ const OP_OPTIONS = (Object.keys(VALUE_INPUT_OP_META) as ValueInputOp[]).map((val
   title: VALUE_INPUT_OP_META[value].label,
 }));
 
-/** An in-place retype drops the cables it can't feed and re-adapts downstream FCs itself. */
+/** An in-place retype drops the cables it can't feed and re-adapts downstream FCs itself, and resets the card's size. */
 async function applyValueOp(node: ValueInputNodeType, t: ValueInputOp): Promise<void> {
   if (!node.setOp(t)) return;
   const editor = getOwningEditor(node.id);
   const view = getOwningView(node.id);
+  // A new type starts at the card's natural size: the text field grip's width is a live inline style on the card.
+  const card = view?.nodeElement(node.id)?.querySelector<HTMLElement>(".solenoid-node");
+  card?.style.removeProperty("width");
   if (editor && view) await retypeOutputCables(editor, view, node.id, "value");
   if (view) await view.rerenderNode(node.id);
   await processGraph();
