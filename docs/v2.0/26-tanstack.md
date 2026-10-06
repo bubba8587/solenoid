@@ -80,7 +80,7 @@ Upstream findings, checked against the source, are in § 8.
 
 | Library | Fit | Where |
 |---|---|---|
-| **Virtual** 3.x | Strong | Table and Cube popups cap at 1000 rows/columns (`TablePopup.tsx`, `CubePopup.tsx`); Gantt hand-windows its rows (`GanttFigure.tsx`). It is the parked "Path A" in `docs/deferrals.md` without hand-writing it. Needs the author to lift the deferral. |
+| **Virtual** 3.x | Taken | Table and Cube popups window their rows (`VirtualRows.tsx`, Path A from the old deferral: the `<table>` stays, spacer rows stand in). A Cube level still caps at 1000 columns; Gantt still hand-windows its rows (`GanttFigure.tsx`). |
 | Query (`query-core`) | Medium | `connectionStore.ts` + `nodes/connection.ts` hand-roll a keyed cache, in-flight dedupe, stale-answer guard, refetch timer. The spec's no-retry and sync-`data()` rules stay custom, so only worth it if more connection kinds come. |
 | Hotkeys 0.x | Medium, later | Shortcuts are spelled three times (`canvasKeyboard.ts`, `menuModel.ts`, `ShortcutsOverlay.tsx`); one registry would end the drift. Wait for 1.0. |
 | Table v9 | Weak | The popup is mostly editing, computed columns and alternate views, which Table does not supply. |
