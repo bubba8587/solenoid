@@ -74,7 +74,7 @@ would let reports and Obsidian notes export a chart that is not on screen and re
 scrape. Against it: three days at 1.0, a bug and a bad default found in an hour, a smaller
 community.
 
-**Taken, all in** (author 2026-10-06: `tan` is not a production branch, so no gradual path). Recharts is removed and every plot draws with TanStack Charts ([[D98]] tanstackDrawsCharts; mechanics in `tree/specs/computation/chart-figures.md` § The TanStack figures). The chart chunk is 76 KB gzipped for all 14 renderers. Off-canvas export landed with it: an Obsidian write or report export draws a chart value that isn't on screen through the same figure (`chartSvgOffscreen.tsx`). Left: the canvas figures (waffle, waterfall, candlestick, boxplot, heatmaps, contour) and new chart types.
+**Taken, all in** (author 2026-10-06: `tan` is not a production branch, so no gradual path). Recharts is removed and every plot draws with TanStack Charts ([[D98]] tanstackDrawsCharts; mechanics in `tree/specs/computation/chart-figures.md` § The TanStack figures). The chart chunk is 76 KB gzipped for all 14 renderers. Off-canvas export landed with it: an Obsidian write or report export draws a chart value that isn't on screen through the same figure (`chartSvgOffscreen.tsx`). The payload figures followed (waffle, waterfall, candlestick, boxplot, both heatmaps, contour, vector field; only the 3-D Surface keeps its own canvas), so they export too, and the Chart node gained Lollipop, Rose, Hexbin and Density plus `stacked`, `drawstyle=steps` and `hole`.
 
 Upstream defects to report: the grid style's `opacity`/`strokeOpacity` is ignored (worked around in `chartView.css`); `nice: true` over-widens small charts (we compute domains ourselves, `valueDomain`).
 

@@ -7,7 +7,7 @@ import { parseGanttViewOptions } from "@solenoid/gantt-layout";
 
 const SAMPLE: Record<ChartBuilderKey, string> = {
   title: "T", xlabel: "X", ylabel: "Y", color: "#123456", grid: "off", marker: "on", pielabels: "inside",
-  radarscale: "shared", ymin: "1", ymax: "2", linewidth: "2", markersize: "4", alpha: "0.5", fontsize: "12",
+  radarscale: "shared", stacked: "percent", drawstyle: "steps", hole: "0.5", gridsize: "12", ymin: "1", ymax: "2", linewidth: "2", markersize: "4", alpha: "0.5", fontsize: "12",
   zoom: "week", layout: "calendar", tiers: "1", fit: "page", critical: "off", baseline: "off", arrows: "off",
   today: "off", status: "off", weekends: "off", labels: "off", histogram: "on", minutes: "on",
   window: "2026-01-01,2026-02-01", columns: "name", collapse: "0", week: "us", fiscal_start: "4", group_by: "off",

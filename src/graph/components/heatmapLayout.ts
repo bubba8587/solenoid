@@ -1,6 +1,7 @@
 // [[C100]] chartIsAValue
 // Where a Heatmap's or a Calendar's grid, labels and colorbar sit at a given size. Pure: the canvas view measures text and draws.
 import { serialToJsDate } from "../nodes/date";
+import type { ContourPayload } from "../chartValue";
 
 export interface HeatLayout {
   /** The grid's top left corner and cell size; `lower` puts row 0 at the bottom. */
@@ -177,3 +178,27 @@ export function calendarHeight(days: readonly number[], W: number, fs: number, c
   const cell = Math.min(16, availW / Math.ceil(weeks / b));
   return Math.ceil(b * (padT + 7 * cell) + (b - 1) * BAND_GAP + padB);
 }
+
+/** The height at a data point by bilinear interpolation in its grid cell, or null outside the grid or on a hole. */
+export function contourAt(p: ContourPayload, x: number, y: number): number | null {
+  const cx = cellOf(p.xs, x), cy = cellOf(p.ys, y);
+  return cx && cy ? bilinear(p.z, cx, cy) : null;
+}
+
+type CellPos = { i: number; f: number };
+export function cellOf(axis: number[], v: number): CellPos | null {
+  for (let i = 0; i < axis.length - 1; i++) {
+    const a = axis[i], b = axis[i + 1];
+    if ((v >= a && v <= b) || (v <= a && v >= b)) return { i, f: b === a ? 0 : (v - a) / (b - a) };
+  }
+  return null;
+}
+export function bilinear(z: (number | null)[][], cx: CellPos, cy: CellPos): number | null {
+  const at = (ix: number, iy: number) => { const v = z[iy]?.[ix]; return (typeof v === "number" && Number.isFinite(v)) ? v : null; };
+  const z00 = at(cx.i, cy.i), z10 = at(cx.i + 1, cy.i), z01 = at(cx.i, cy.i + 1), z11 = at(cx.i + 1, cy.i + 1);
+  if (z00 == null || z10 == null || z01 == null || z11 == null) return null;
+  const u = cx.f, v = cy.f;
+  return z00 * (1 - u) * (1 - v) + z10 * u * (1 - v) + z01 * (1 - u) * v + z11 * u * v;
+}
+
+

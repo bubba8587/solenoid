@@ -45,6 +45,13 @@ const tornado = [
   { label: "Tax", offset: 98, range: 5, rising: false, outLow: 103, outHigh: 98 },
 ];
 
+let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const gauss = () => Math.sqrt(-2 * Math.log(rnd())) * Math.cos(2 * Math.PI * rnd());
+const cloudPts = (cx: number, cy: number, n: number) => Array.from({ length: n }, () => ({ x: cx + gauss() * 2, y: cy + gauss() * 1.5 }));
+const cloud = (bin: "hexbin" | "density") => ({ kind: "xy", names: { x: "x", y: "y" }, bin, series: [
+  { name: "A", line: "none", marker: true, points: cloudPts(4, 5, 400) },
+  { name: "B", line: "none", marker: true, points: cloudPts(9, 8, 300) },
+] }) as never;
 type Lib = typeof TS;
 const figures: [string, (L: Lib, g: { grid: string; axis: string }) => React.ReactNode][] = [
   ["column + labels", (L) => <L.ChartView op="column" series={sales} labels={labels} width={W} height={H} axes opts={{ title: "Weekly sales", ylabel: "units" }} />],
@@ -70,6 +77,15 @@ const figures: [string, (L: Lib, g: { grid: string; axis: string }) => React.Rea
   ["treemap", (L) => <L.TreemapView names={partLabels} values={[40, 25, 15, 12, 8]} width={W} height={H} />],
   ["sankey", (L) => <L.SankeyView sources={["Salary", "Salary", "Salary", "Bonus"]} targets={["Housing", "Food", "Savings", "Savings"]} values={[40, 20, 25, 10]} width={W} height={H} />],
   ["gauge", (L) => <div style={{ position: "relative", width: 120, height: 60, overflow: "hidden" }}><L.GaugeArc pct={72} track="#3a3f45" size={120} /></div>],
+  ["stacked column", (L) => <L.MultiSeriesView op="column" series={multi} labels={qs} width={W} height={H} axes opts={{ stacked: "on" }} />],
+  ["100% bar", (L) => <L.MultiSeriesView op="bar" series={multi} labels={qs} width={W} height={H} axes opts={{ stacked: "percent" }} />],
+  ["stacked area", (L) => <L.MultiSeriesView op="area" series={multi} labels={qs} width={W} height={H} axes opts={{ stacked: "on" }} />],
+  ["step line", (L) => <L.ChartView op="line" series={sales} labels={labels} width={W} height={H} axes opts={{ drawstyle: "steps" }} />],
+  ["lollipop", (L) => <L.ChartView op="lollipop" series={sales} labels={labels} width={W} height={H} axes />],
+  ["donut", (L) => <L.ChartView op="pie" series={parts} labels={partLabels} width={W} height={H} axes opts={{ hole: 0.55, pielabels: "inside" }} />],
+  ["rose", (L) => <L.ChartView op="rose" series={parts} labels={partLabels} width={W} height={H} axes />],
+  ["hexbin", (L) => <L.XYView payload={cloud("hexbin")} width={W} height={H} />],
+  ["density", (L) => <L.XYView payload={cloud("density")} width={W} height={H} />],
   ["tornado", (L, g) => <L.TornadoBars data={tornado} grid={g.grid} axis={g.axis} />],
 ];
 

@@ -8,8 +8,8 @@ import { serialToJsDate } from "../nodes/dateSerial";
 import type { ChartValue } from "../chartValue";
 
 export type ChartShape =
-  | "line" | "area" | "bar" | "column"       // cartesian (axes-aware)
-  | "pie" | "radar" | "radialbar" | "funnel"; // categorical / polar
+  | "line" | "area" | "bar" | "column" | "lollipop"     // cartesian (axes-aware)
+  | "pie" | "radar" | "radialbar" | "funnel" | "rose";  // categorical / polar
 
 // The same slot order as MermaidView, so a chart and a diagram side by side color their series alike.
 const SERIES_SLOTS: PaletteSlot[] = [
@@ -318,7 +318,7 @@ export function toSeries(v: unknown): { i: number; v: number }[] {
 /** The rows a part-of-whole figure can place: a pie has no slice for zero or less, a funnel stage or radial ring none below zero. */
 export function partSlices(op: ChartShape, series: readonly { i: number; v: number }[]): { i: number; v: number }[] {
   if (op === "pie") return series.filter((d) => d.v > 0);
-  if (op === "funnel" || op === "radialbar") return series.filter((d) => d.v >= 0);
+  if (op === "funnel" || op === "radialbar" || op === "rose") return series.filter((d) => d.v >= 0);
   return [...series];
 }
 
@@ -341,4 +341,16 @@ export function figurePoints(value: ChartValue): number {
   if (p?.kind === "overlay") return p.series.reduce((m, s) => m + s.values.length, 0);
   if (value.series) return value.series.reduce((m, s) => m + s.values.length, 0);
   return Array.isArray(value.values) ? value.values.length : 0;
+}
+
+/** A label safe for a figure: control characters to spaces, whitespace collapsed, capped at `cap` code points with an ellipsis. */
+export function sanitizeChartLabel(raw: string, cap = 16): string {
+  let clean = "";
+  for (const ch of raw) {
+    const c = ch.codePointAt(0);
+    clean += (c !== undefined && (c < 0x20 || (c >= 0x7f && c <= 0x9f))) ? " " : ch;
+  }
+  clean = clean.replace(/\s+/g, " ").trim();
+  const cps = [...clean]; // code points, so the cap never splits a surrogate pair
+  return cps.length > cap ? `${cps.slice(0, cap - 1).join("").trimEnd()}…` : clean;
 }

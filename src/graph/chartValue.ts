@@ -188,6 +188,8 @@ export interface XYPayload {
   /** Set when x is a date column: each x is a date serial, and the axis reads as dates. */
   xDate?: boolean;
   names: { x?: string; y?: string; s?: string; c?: string; text?: string };
+  /** Hexbin and Density draw the points' density rather than the points. */
+  bin?: "hexbin" | "density";
 }
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload

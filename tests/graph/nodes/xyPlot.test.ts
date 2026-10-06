@@ -230,3 +230,11 @@ describe("date x and References", () => {
     expect(refShape({})).toBeNull();
   });
 });
+
+describe("Hexbin and Density", () => {
+  it("mark the payload so the figure bins its points", () => {
+    expect((buildXY("hexbin", [1, 2, 3], {}) as { bin?: string }).bin).toBe("hexbin");
+    expect((buildXY("density", [1, 2, 3], {}) as { bin?: string }).bin).toBe("density");
+    expect((buildXY("scatter", [1, 2, 3], {}) as { bin?: string }).bin).toBeUndefined();
+  });
+});

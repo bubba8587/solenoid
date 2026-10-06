@@ -4,7 +4,7 @@ import { colormapRgb, heatScale, normalizeCmap, COLORMAP_LIST } from "../../src/
 import { formatNumberSpec, isNumberSpec } from "../../src/graph/numberSpec";
 import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, calCellXY, calendarHeight, type HeatLayoutInput } from "../../src/graph/components/heatmapLayout";
 import { jsDateToSerial } from "../../src/graph/nodes/date";
-import { contourAt } from "../../src/graph/components/chartCanvasViews";
+import { contourAt } from "../../src/graph/components/heatmapLayout";
 
 describe("colormaps", () => {
   it("spell names as matplotlib does, any case, with _r reversing", () => {

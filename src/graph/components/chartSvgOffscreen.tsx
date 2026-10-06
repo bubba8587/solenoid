@@ -2,6 +2,7 @@
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { ChartFigure } from "./chartView";
+import { ChartExportContext } from "./charts/kit";
 import { figureSvgString, largestFigureSvg } from "../canvasCapture";
 import type { ChartValue } from "../chartValue";
 
@@ -16,7 +17,7 @@ export async function chartValueSvg(value: ChartValue, width = OFFSCREEN_W, heig
   document.body.appendChild(host);
   const root = createRoot(host);
   try {
-    flushSync(() => root.render(<ChartFigure value={value} width={width} height={height} />));
+    flushSync(() => root.render(<ChartExportContext.Provider value={true}><ChartFigure value={value} width={width} height={height} /></ChartExportContext.Provider>));
     for (let k = 0; k < 30 && !host.querySelector("svg.ts-chart"); k++) await new Promise((r) => requestAnimationFrame(r));
     const svg = largestFigureSvg(host);
     return svg ? figureSvgString(svg, host) : null;
