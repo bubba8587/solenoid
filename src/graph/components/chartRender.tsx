@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { type SyntheticEvent, type ComponentProps, useId, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, partSlices, useSeriesSpotlight, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { heightRampColor, resolveColor } from "../palette";
@@ -71,7 +71,7 @@ function yDomainOf(opts: ChartOptions | undefined): [number | string, number | s
 }
 
 export function ChartView({
-  op, series, width, height, axes, opts, signColors, labels, fontScale,
+  op, series: given, width, height, axes, opts, signColors, labels, fontScale,
 }: {
   op: ChartShape;
   series: { i: number; v: number }[];
@@ -85,6 +85,7 @@ export function ChartView({
 }) {
   const { grid, axis, viz } = useChartColors();
   const seriesColors = useSeriesColors();
+  const series = op === "line" || op === "area" ? minMaxDecimate(given, width) : given;
   const paint = (i: number) => seriesColors[i % seriesColors.length];
   // A Pie, Funnel or Radial slice spotlights on a click, as a legend entry does on a multi-series chart.
   const { dim: sliceDim, pick: pickSlice } = useSeriesSpotlight(series.map((d) => String(d.i)));

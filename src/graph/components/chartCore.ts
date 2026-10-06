@@ -161,6 +161,28 @@ export function categoryAxisWidth(ticks: Iterable<string>, width: number, fs: nu
   return titled ? Math.max(32, w) : w;
 }
 
+/**
+ * A line's points thinned to each of `buckets` index spans' lowest and highest point, kept in index order, so a
+ * series far denser than its pixels draws the same envelope (every spike included) from 2 × `buckets` points.
+ * Every span gives exactly two (a flat span repeats its point), since a category axis spaces points by count.
+ */
+export function minMaxDecimate<P extends { v: number }>(series: P[], buckets: number): P[] {
+  const n = series.length;
+  if (buckets < 1 || n <= buckets * 4) return series;
+  const out: P[] = [];
+  for (let b = 0; b < buckets; b++) {
+    const lo = Math.floor((b * n) / buckets), hi = Math.floor(((b + 1) * n) / buckets);
+    let min = lo, max = lo;
+    for (let k = lo + 1; k < hi; k++) {
+      if (series[k].v < series[min].v) min = k;
+      if (series[k].v > series[max].v) max = k;
+    }
+    if (min <= max) out.push(series[min], series[max]);
+    else out.push(series[max], series[min]);
+  }
+  return out;
+}
+
 export function toSeries(v: unknown): { i: number; v: number }[] {
   if (v == null) return [];
   const arr: unknown[] = Array.isArray(v) ? v : [v];
