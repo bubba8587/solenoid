@@ -175,8 +175,8 @@ html.is-mobile {
   /* ── Add menu ── a sheet docked under the top bars (the keyboard would cover a bottom one), one level at a time. */
   .solenoid-add-menu { font-size: 14px; }
   .solenoid-add-menu--sheet {
-    left: 8px;
-    right: 8px;
+    left: 10dvw;
+    width: 80dvw;
     top: calc(var(--chrome-top, 82px) + 6px);
   }
   .solenoid-add-menu--sheet .solenoid-add-menu__panel {
