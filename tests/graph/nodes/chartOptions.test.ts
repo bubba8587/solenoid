@@ -52,6 +52,20 @@ describe("parseChartOptions", () => {
   });
 });
 
+describe("kind ([[D97]] builderSetsChartType)", () => {
+  it("reads the Chart's type names in any case and spacing, and pandas' barh as the horizontal bar", () => {
+    expect(parseChartOptions("kind=Line").kind).toBe("line");
+    expect(parseChartOptions("kind=XY Line").kind).toBe("xyline");
+    expect(parseChartOptions("kind=radial").kind).toBe("radialbar");
+    expect(parseChartOptions("kind=barh").kind).toBe("bar");
+    expect(parseChartOptions("kind=histogram").kind).toBeUndefined();
+  });
+  it("serializes first and round-trips", () => {
+    expect(serializeChartOptions({ title: "T", kind: "pie" })).toBe("kind=pie;title=T");
+    expect(parseChartOptions("kind=pie;title=T")).toEqual({ kind: "pie", title: "T" });
+  });
+});
+
 describe("serializeChartOptions", () => {
   it("emits only set fields and collapses Y bounds into ylim", () => {
     expect(serializeChartOptions({ title: "A", color: "red", ymin: 0, ymax: 10 }))
