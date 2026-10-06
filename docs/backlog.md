@@ -18,9 +18,6 @@ plugin build's pin; 1.x is a new major). Vitest 5 transforms with Oxc, so the `e
 true }` in `vite.config.ts` serves only the production minify, and its "esbuild options ignored"
 warning is expected.
 
-## Inputs
-- [ ] **Fold Number, Text, Boolean and Date Input into Value Input** ([[B11]] maximalMerge): their Add-menu leaves would create a Value Input preset to the type; seeds and tests move with them. Waiting on the author's word.
-
 ## Performance (found 2026-10-06, not done)
 - [ ] **Engine commands run on the UI thread**: `#[tauri::command(async)]` frees it, but `engine_drop` is fire-and-forget (`frameBackend.ts`), so a drop could race a preview of its handle; needs a desktop check.
 - [ ] **Native CSV crosses IPC twice**: `engine_read_csv` returns every row, then the first verb re-uploads it; register a handle as Parquet does.

@@ -27,6 +27,10 @@ the decision tree (`dte.md`).
 - **INDEX — marked for later (2026-07-01, `archive/cube-node-scope.md`)**: output socket
   should express Cube (today singular `any`); Excel range forms (`row=0`/`col=0` whole
   row/col, the reference form) — Solenoid INDEX is cell-only. (`archive/1.4-plan.md` D6 HOLD.)
+- **The scalar input merge (author 2026-10-06: deferred until they've used Value Input a while).**
+  Number, Text, Boolean and Date Input sit beside Value Input, which covers all four ([[B11]]
+  maximalMerge). The fold: each old Add-menu leaf creates a Value Input preset to its type, the
+  four classes go, and seeds and tests move with them. Reopen on the author's word.
 - **The stack merge (author 2026-09-23: deferred).** Append and Bind Columns (Frames) sit beside
   XSTACK (lists and tables). `../tree/specs/computation/formula-language.md` § Excel names on nodes says the Frame pair becomes VSTACK and
   HSTACK when the merge lands; [[C48]] appendLadder keeps one append node per rank. Reopening it
