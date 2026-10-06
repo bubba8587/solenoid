@@ -18,6 +18,9 @@ plugin build's pin; 1.x is a new major). Vitest 5 transforms with Oxc, so the `e
 true }` in `vite.config.ts` serves only the production minify, and its "esbuild options ignored"
 warning is expected.
 
+## Tooling
+- [ ] **`scripts/touch-pan-probe.mjs` is stale**: its drill-in step times out waiting for `.solenoid-composite-editor__canvas .solenoid-node` (fails on develop before 2026-10-06's grip work too), and it needs `--no-sandbox` to launch as root.
+
 ## Performance (found 2026-10-06, not done)
 - [ ] **Engine commands run on the UI thread**: `#[tauri::command(async)]` frees it, but `engine_drop` is fire-and-forget (`frameBackend.ts`), so a drop could race a preview of its handle; needs a desktop check.
 - [ ] **Native CSV crosses IPC twice**: `engine_read_csv` returns every row, then the first verb re-uploads it; register a handle as Parquet does.

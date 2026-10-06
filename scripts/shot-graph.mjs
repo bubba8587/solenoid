@@ -16,7 +16,7 @@
 //   --type <css> <text>  focus the first match, select all, type the text
 //   --press <key>        press a key (Enter, Escape, Tab…) or a combo (Control+Shift+Equal)
 //   --drag <css> <dx> <dy>  press the first match's center, move by (dx, dy) screen px, release; prints each card's box before and after
-// --size 390x844 shoots a touch phone viewport instead of the 1600×1000 desktop.
+// --size 390x844 shoots a phone (mobile UA, coarse pointer, touch) instead of the 1600×1000 desktop; --click taps and --drag drags a finger there.
 // Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__input.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -94,6 +94,19 @@ const browser = await puppeteer.launch({ executablePath: browserPath(), headless
 try {
   const page = await browser.newPage();
   await page.setViewport(opt.size ? { ...opt.size, isMobile: true, hasTouch: true } : { width: 1600, height: 1000 });
+  if (opt.size) {
+    // The phone model, not just a touch viewport: a mobile UA and (pointer: coarse) before the app loads (as touch-pan-probe.mjs).
+    await page.setUserAgent(
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+      { mobile: true, platform: "Android", platformVersion: "14", architecture: "", model: "Pixel 8", brands: [] },
+    );
+    await page.evaluateOnNewDocument(() => {
+      const orig = window.matchMedia.bind(window);
+      window.matchMedia = (q) => /pointer:\s*coarse/.test(q)
+        ? { matches: true, media: q, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } }
+        : orig(q);
+    });
+  }
   page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
   page.on("console", (m) => { if (m.type() === "error") console.log(`[console.error] ${m.text()}`); });
   const doc = { id: "shot", name: graph.label ?? "Shot", graph, updatedAt: Date.now() };
@@ -120,7 +133,13 @@ try {
 
   let popupOpen = false;
   for (const step of opt.steps) {
-    if (step.click) await page.click(step.click, step.edge ? { offset: { x: 5, y: 5 } } : undefined);
+    if (step.click && opt.size && !step.edge) {
+      const el = await page.$(step.click);
+      if (!el) throw new Error(`no match for ${step.click}`);
+      const b = await el.boundingBox();
+      await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    }
+    else if (step.click) await page.click(step.click, step.edge ? { offset: { x: 5, y: 5 } } : undefined);
     else if (step.type) {
       await page.click(step.type);
       await page.keyboard.down("Control");
@@ -143,10 +162,16 @@ try {
       if (!el) throw new Error(`no match for ${step.drag}`);
       const b = await el.boundingBox();
       const x = b.x + b.width / 2, y = b.y + b.height / 2;
-      await page.mouse.move(x, y);
-      await page.mouse.down();
-      for (let k = 1; k <= 10; k++) await page.mouse.move(x + (step.dx * k) / 10, y + (step.dy * k) / 10);
-      await page.mouse.up();
+      if (opt.size) {
+        await page.touchscreen.touchStart(x, y);
+        for (let k = 1; k <= 10; k++) await page.touchscreen.touchMove(x + (step.dx * k) / 10, y + (step.dy * k) / 10);
+        await page.touchscreen.touchEnd();
+      } else {
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        for (let k = 1; k <= 10; k++) await page.mouse.move(x + (step.dx * k) / 10, y + (step.dy * k) / 10);
+        await page.mouse.up();
+      }
       console.log("cards after drag: ", (await boxes()).join(" | "));
     }
     else if (step.popup) {

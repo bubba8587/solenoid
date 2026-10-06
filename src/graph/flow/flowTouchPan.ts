@@ -4,7 +4,7 @@ import { touchSelectStore } from "../touchSelectStore";
 
 type Viewport = { x: number; y: number; zoom: number };
 
-const CONTROL_SELECTOR = "button, select, .react-flow__handle, [data-socket-key], .sol-rf-grip";
+const CONTROL_SELECTOR = "button, select, .react-flow__handle, [data-socket-key], .sol-rf-grip, .solenoid-field-resize";
 
 export function installTouchCardPan(
   el: HTMLElement,
