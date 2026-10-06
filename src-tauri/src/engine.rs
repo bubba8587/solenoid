@@ -172,9 +172,19 @@ fn anyvalue_to_cell(av: AnyValue) -> Cell {
 
 fn cells_of(column: &Column) -> Vec<Cell> {
     let s = column.as_materialized_series();
-    (0..s.len())
-        .map(|i| anyvalue_to_cell(s.get(i).unwrap_or(AnyValue::Null)))
-        .collect()
+    match s.dtype() {
+        DataType::Float64 => s.f64().unwrap().into_iter().map(|o| o.map_or(Cell::Null, Cell::Num)).collect(),
+        DataType::Boolean => s.bool().unwrap().into_iter().map(|o| o.map_or(Cell::Null, Cell::Bool)).collect(),
+        DataType::String => s
+            .str()
+            .unwrap()
+            .into_iter()
+            .map(|o| o.map_or(Cell::Null, |x| Cell::Str(x.to_string())))
+            .collect(),
+        _ => (0..s.len())
+            .map(|i| anyvalue_to_cell(s.get(i).unwrap_or(AnyValue::Null)))
+            .collect(),
+    }
 }
 
 fn json_to_cell(v: &Json, ty: SolType) -> Cell {
@@ -1131,6 +1141,23 @@ fn lazy_slice_rows(plan: Plan, mode: &str, n: f64, to: Option<f64>) -> Result<Pl
 }
 
 fn reorder_rows(frame: &SolFrame, idxs: &[usize]) -> Result<SolFrame, IpcError> {
+    let height = frame.df.height();
+    let canonical = frame.df.get_columns().iter().zip(frame.types.iter()).all(|(c, t)| {
+        *c.dtype()
+            == match t {
+                SolType::Logical => DataType::Boolean,
+                SolType::Str => DataType::String,
+                _ => DataType::Float64,
+            }
+    });
+    if canonical && idxs.iter().all(|&i| i < height) {
+        let picked = IdxCa::from_vec("".into(), idxs.iter().map(|&i| i as IdxSize).collect());
+        let df = frame.df.take(&picked).map_err(|e| IpcError::internal(format!("row pick failed: {e}")))?;
+        return Ok(SolFrame {
+            df,
+            types: frame.types.clone(),
+        });
+    }
     let names = frame.names();
     let cols: Vec<Vec<Cell>> = frame
         .df
@@ -1287,21 +1314,22 @@ fn text_scan_mask(frame: &SolFrame, column: &str, op: &str, value: &Json, match_
     if value.is_null() {
         return vec![false; frame.df.height()];
     }
-    let fold = |s: String| if match_case { s } else { s.to_lowercase() };
-    let needle = fold(json_str(value));
+    let needle = if match_case { json_str(value) } else { json_str(value).to_lowercase() };
     let (_, cells) = frame.column_cells(column).unwrap();
     (0..frame.df.height())
-        .map(|i| match cell_display(&cells[i]) {
-            None => false,
-            Some(s) => {
-                let s = fold(s);
-                match op {
-                    "contains" => s.contains(&needle),
-                    "startsWith" => s.starts_with(&needle),
-                    "endsWith" => s.ends_with(&needle),
-                    "eq" => s == needle,
-                    _ => s != needle, // neq (the only other op routed here)
-                }
+        .map(|i| {
+            let shown: std::borrow::Cow<str> = match &cells[i] {
+                Cell::Null => return false,
+                Cell::Str(s) => s.as_str().into(),
+                other => cell_display(other).unwrap_or_default().into(),
+            };
+            let s = if match_case { shown } else { shown.to_lowercase().into() };
+            match op {
+                "contains" => s.contains(&needle),
+                "startsWith" => s.starts_with(&needle),
+                "endsWith" => s.ends_with(&needle),
+                "eq" => s == needle,
+                _ => s != needle, // neq (the only other op routed here)
             }
         })
         .collect()
@@ -2226,7 +2254,8 @@ fn preview_of(frame: &SolFrame, n: usize) -> OutPreview {
             ty: t.tag().to_string(),
         })
         .collect();
-    let col_cells: Vec<Vec<Cell>> = frame.df.get_columns().iter().map(cells_of).collect();
+    let head = frame.df.head(Some(take));
+    let col_cells: Vec<Vec<Cell>> = head.get_columns().iter().map(cells_of).collect();
     let rows: Vec<Vec<Json>> = (0..take)
         .map(|r| col_cells.iter().map(|cells| cell_to_json(&cells[r])).collect())
         .collect();

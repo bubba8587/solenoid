@@ -257,7 +257,7 @@ function inferColType(cells: ReadonlyArray<string>): FrameColType {
   if (nonBlank.length === 0) return "string";
   if (nonBlank.every((c) => cellToNumber(c) !== null)) return "number";
   if (nonBlank.every(isLogicalCell)) return "logical";
-  if (nonBlank.every(isDateCell)) return "date";
+  if (nonBlank.every((c) => dateCellSerial(c) !== null)) return "date";
   return "string";
 }
 
@@ -334,8 +334,10 @@ function isBlank(v: unknown): boolean {
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/;
-function isDateCell(v: unknown): boolean {
-  return typeof v === "string" && ISO_DATE.test(v.trim()) && Number.isFinite(parseDateToSerial(v));
+function dateCellSerial(v: unknown): number | null {
+  if (typeof v !== "string" || !ISO_DATE.test(v.trim())) return null;
+  const serial = parseDateToSerial(v);
+  return Number.isFinite(serial) ? serial : null;
 }
 
 function isLogicalCell(v: unknown): boolean {
@@ -373,17 +375,30 @@ export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameC
   if (nonBlank.length > 0 && nonBlank.every((c) => typeof c === "boolean")) {
     return { name, type: "logical", values: read((c) => c as boolean), raw };
   }
-  const numeric = nonBlank.length > 0 && nonBlank.every((c) => cellToNumber(c) !== null);
-  if (numeric) {
-    return { name, type: "number", values: read(cellToNumber), raw, ...(recovered ? { unit: recovered } : {}) };
+  const readAll = (fn: (c: unknown) => number | null): FrameCell[] | null => {
+    if (nonBlank.length === 0) return null;
+    const out: FrameCell[] = new Array(cells.length);
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i];
+      if (isSolError(c)) { out[i] = c; continue; }
+      if (isBlank(c)) { out[i] = null; continue; }
+      const v = fn(c);
+      if (v === null) return null;
+      out[i] = v;
+    }
+    return out;
+  };
+  const numbers = readAll(cellToNumber);
+  if (numbers) {
+    return { name, type: "number", values: numbers, raw, ...(recovered ? { unit: recovered } : {}) };
   }
   const logical = nonBlank.length > 0 && nonBlank.every(isLogicalCell);
   if (logical) {
     return { name, type: "logical", values: read(cellToBool), raw };
   }
-  const dates = nonBlank.length > 0 && nonBlank.every(isDateCell);
+  const dates = readAll(dateCellSerial);
   if (dates) {
-    return { name, type: "date", values: read((c) => parseDateToSerial(String(c))), raw };
+    return { name, type: "date", values: dates, raw };
   }
   return { name, type: "string", values: read((c) => String(c).trim()), raw };
 }
@@ -409,9 +424,14 @@ export function frameFromCells(headers: ReadonlyArray<string>, rows: ReadonlyArr
   return { __frame: true, columns };
 }
 
+function recordKeys(records: ReadonlyArray<Record<string, unknown>>): string[] {
+  const keys = new Set<string>();
+  for (const rec of records) for (const k of Object.keys(rec)) keys.add(k);
+  return [...keys];
+}
+
 export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>): FrameValue {
-  const keys: string[] = [];
-  for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
+  const keys = recordKeys(records);
   const names = makeHeaders(keys, keys.length);
   const columns = keys.map((key, j) => inferColumn(names[j], records.map((r) => r[key])));
   return { __frame: true, columns };
@@ -419,8 +439,7 @@ export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>
 
 /** A Cube cell's records as a flat Frame: a picked column crosses `coerceFrameCell` with its text kept as `raw`, the rest take `inferColumn`'s reading, and a nested value is blank, since a Frame cell is flat ([[D90]] cubeTypesAtDepth). */
 export function frameCellFromRecords(records: ReadonlyArray<Record<string, unknown>>, picks: ColumnTypes = {}): FrameValue {
-  const keys: string[] = [];
-  for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
+  const keys = recordKeys(records);
   const names = makeHeaders(keys, keys.length);
   const columns = keys.map((key, j): FrameColumn => {
     const cells = records.map((r) => { const v = r[key]; return v != null && typeof v === "object" ? null : v; });
@@ -453,8 +472,7 @@ export function recordsToCube(
   nested: NestedTables = {},
   base: CubePath = [],
 ): CubeValue {
-  const keys: string[] = [];
-  for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
+  const keys = recordKeys(records);
   const names = makeHeaders(keys, keys.length);
   const tableAt = (rows: Record<string, unknown>[], at: CubePath): CubeCell =>
     isFrameAt(nested, at) ? frameCellFromRecords(rows, typesAt(nested, at)) : recordsToCube(rows, typesAt(nested, at), nested, at);

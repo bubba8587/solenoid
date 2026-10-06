@@ -14,7 +14,7 @@ import { rolesFrom, setting, LEFT_OUT, type InputRole } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
-import { passesFilter, requireTextColumn, requireTextList, readingScaleOf, TEXT_FILTER_OPS, TEXT_OP_LABEL, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
+import { compileFilter, requireTextColumn, requireTextList, readingScaleOf, TEXT_FILTER_OPS, TEXT_OP_LABEL, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, isAffineDisplay, isUnitCell, unitError, READINGS_ADD, type UnitCell } from "../unitValue";
@@ -1080,16 +1080,16 @@ export class FilterNode extends ClassicPreset.Node {
     const textOp = conds.find((c) => TEXT_FILTER_OPS.has(c.op));
     const kept: unknown[] = [];
     const dropped: unknown[] = [];
+    const preds = conds.map((c) => compileFilter(c.op, c.value, type, c.matchCase));
     for (let i = 0; i < arr.length; i++) {
       const mag = mags[i] as FrameCell;
       if (textOp && mag != null && !isSolError(mag) && typeof mag !== "string") {
         kept.push(solError("#TYPE!", `${TEXT_OP_LABEL[textOp.op] ?? textOp.op} reads text; this item is a ${listElemColType([mag])}. Cast it to Text first`));
         continue;
       }
-      const pass = (c: { op: FilterOp; value: string; matchCase: boolean }) =>
-        passesFilter(mag, c.op, c.value, type, c.matchCase);
+      const pass = (p: (cell: FrameCell) => boolean) => p(mag);
       const item = list ? arr[i] : m[i];
-      if (this.combine === "and" ? conds.every(pass) : conds.some(pass)) kept.push(item);
+      if (this.combine === "and" ? preds.every(pass) : preds.some(pass)) kept.push(item);
       else dropped.push(item);
     }
     this.cachedResult = kept;
@@ -1209,7 +1209,7 @@ export class SumIfsNode extends ClassicPreset.Node {
   private compute(
     inputs: Record<string, unknown[] | undefined>, f: FrameValue, col: (name: string) => FrameColumn | null,
   ): number | UnitCell | SolError | null {
-    interface Crit { col: FrameColumn; op: FilterOp; value: string; matchCase: boolean }
+    interface Crit { col: FrameColumn; pass: (cell: FrameCell) => boolean }
     const crits: Crit[] = [];
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
@@ -1223,12 +1223,11 @@ export class SumIfsNode extends ClassicPreset.Node {
       const c = col(name);
       if (!c) return solError("#REF!", `No column "${name}" in the frame`);
       try { requireTextColumn(op, c.type, name); } catch (e) { return e as SolError; }
-      crits.push({ col: c, op, value: val, matchCase: cfg?.matchCase ?? false });
+      crits.push({ col: c, pass: compileFilter(op, val, c.type, cfg?.matchCase ?? false) });
     }
     if (crits.length === 0) return null;
     const n = frameRowCount(f);
-    const test = (c: Crit, i: number) =>
-      passesFilter((c.col.values[i] ?? null) as FrameCell, c.op, c.value, c.col.type, c.matchCase);
+    const test = (c: Crit, i: number) => c.pass((c.col.values[i] ?? null) as FrameCell);
     const passes = (i: number) =>
       this.match === "any" ? crits.some((c) => test(c, i)) : crits.every((c) => test(c, i));
     if (this.op === "countifs") {
