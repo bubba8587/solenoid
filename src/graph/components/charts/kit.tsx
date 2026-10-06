@@ -59,12 +59,14 @@ export function valueDomain(values: Iterable<unknown>, lo: number | undefined, h
   let a = lo ?? min, b = hi ?? max;
   if (a === b) { a -= a === 0 ? 1 : Math.abs(a) * 0.1; b += b === 0 ? 1 : Math.abs(b) * 0.1; }
   if (a > b) [a, b] = [b, a];
-  const count = Math.max(2, Math.round(px / 36));
+  const count = Math.max(4, Math.round(px / 32));
   const raw = niceTicks(a, b, count);
   const step = raw.length > 1 ? raw[1] - raw[0] : (b - a);
   if (lo === undefined) a = Math.floor(a / step + 1e-9) * step;
   if (hi === undefined) b = Math.ceil(b / step - 1e-9) * step;
-  const ticks = niceTicks(a, b, count).filter((t) => t >= a - step * 1e-9 && t <= b + step * 1e-9);
+  // The ticks keep the step the ends were rounded to, so a rounded end always carries a tick.
+  const ticks: number[] = [];
+  for (let v = Math.ceil(a / step - 1e-9) * step; v <= b + step * 1e-9; v += step) ticks.push(Number(v.toPrecision(12)));
   return { domain: [a, b], ticks };
 }
 
