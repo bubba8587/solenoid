@@ -15,10 +15,21 @@ const isoOf = (serial: number) => new Date((serial - 25569) * 86400000).toISOStr
 
 // The raw text is the stored truth: idle shows DD-MMM-YYYY ([[C44]] dateSerials), editing shows what was typed, and an ambiguous or unparseable entry stays put and flags red.
 export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit} collapsible={false}>
+      <DateEntry
+        raw={data.stringLiterals.date ?? ""}
+        onCommit={(text) => { data.stringLiterals.date = text; void processGraph(data.id); }}
+      />
+    </NodeShell>
+  );
+}
+
+/** The typed date field with its calendar and formats popup; Date Input's and Value Input's. */
+export function DateEntry({ raw, onCommit }: { raw: string; onCommit: (text: string) => void }) {
   const nativeRef = useRef<HTMLInputElement>(null);
   // Mirrors the node ([[D54]] relativeDatesOptIn).
   const relativeAllowed = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("relativeDates"));
-  const raw = data.stringLiterals.date ?? "";
   const t = raw.trim();
   const relative = relativeAllowed && isRelativeDateText(t);
   const parsed = parseDate(t, relative ? { relative: true } : undefined);
@@ -36,101 +47,99 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
   useDismissOnOutside(infoOpen, () => setInfoOpen(false), [infoBtnRef, infoPopRef]);
   useEffect(() => { if (!editing) setDraft(raw); }, [raw, editing]);
 
-  const commit = (text: string) => { data.stringLiterals.date = text; void processGraph(data.id); };
+  const commit = onCommit;
   const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
   return (
-    <NodeShell node={data} emit={emit} collapsible={false}>
-      <div className="solenoid-date-input" style={{ position: "relative", display: "flex", alignItems: "center", gap: 4 }}>
-        <input
-          type="text"
-          className="solenoid-node__value-input"
-          value={editing ? draft : idleText}
-          placeholder={DEFAULT_DATE_FORMAT}
-          spellCheck={false}
-          title={isSolError(parsed) ? parsed.message : undefined}
-          style={{ flex: 1, minWidth: 0, color: bad ? "var(--sol-error)" : undefined }}
-          onFocus={() => { setDraft(raw); setEditing(true); }}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => {
-            if (canceled.current) canceled.current = false;
-            else commit(draft);
-            setEditing(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
-            else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
-          }}
-          onPointerDown={stop}
-          onMouseDown={stop}
-        />
-        {relativeAllowed && (
-          <button
-            ref={infoBtnRef}
-            type="button"
-            className="solenoid-date-input__picker"
-            title="Supported formats"
-            aria-label="Supported date formats"
-            onPointerDown={stop}
-            onMouseDown={stop}
-            onClick={() => setInfoOpen((o) => !o)}
-            style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 2, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
-          >
-            {/* Lucide "info" (ISC). */}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
-            </svg>
-          </button>
-        )}
-        {infoOpen && (
-          <div
-            ref={infoPopRef}
-            className="nowheel"
-            onPointerDown={stop}
-            onMouseDown={stop}
-            style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, minWidth: 128, padding: "6px 9px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 14px rgba(0,0,0,0.32)" }}
-          >
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-bright)", marginBottom: 5 }}>Supported Formats</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {FORMAT_EXAMPLES.map((ex) => (
-                <span key={ex} style={{ fontSize: 11, fontFamily: "var(--font-mono, monospace)", color: "var(--text)" }}>{ex}</span>
-              ))}
-            </div>
-          </div>
-        )}
+    <div className="solenoid-date-input" style={{ position: "relative", display: "flex", alignItems: "center", gap: 4 }}>
+      <input
+        type="text"
+        className="solenoid-node__value-input"
+        value={editing ? draft : idleText}
+        placeholder={DEFAULT_DATE_FORMAT}
+        spellCheck={false}
+        title={isSolError(parsed) ? parsed.message : undefined}
+        style={{ flex: 1, minWidth: 0, color: bad ? "var(--sol-error)" : undefined }}
+        onFocus={() => { setDraft(raw); setEditing(true); }}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (canceled.current) canceled.current = false;
+          else commit(draft);
+          setEditing(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+          else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
+        }}
+        onPointerDown={stop}
+        onMouseDown={stop}
+      />
+      {relativeAllowed && (
         <button
+          ref={infoBtnRef}
           type="button"
           className="solenoid-date-input__picker"
-          title="Pick a date"
-          aria-label="Open the calendar"
+          title="Supported formats"
+          aria-label="Supported date formats"
           onPointerDown={stop}
           onMouseDown={stop}
-          onClick={() => {
-            const el = nativeRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
-            if (!el) return;
-            try { el.showPicker?.(); } catch { el.focus(); }
-          }}
+          onClick={() => setInfoOpen((o) => !o)}
           style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 2, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
         >
-          <CalendarIcon />
+          {/* Lucide "info" (ISC). */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
+          </svg>
         </button>
-        <input
-          ref={nativeRef}
-          type="date"
-          value={serial !== null ? isoOf(serial) : ""}
-          tabIndex={-1}
-          aria-hidden="true"
-          onChange={(e) => {
-            const v = e.target.value; // native picker → an unambiguous ISO date
-            if (!v) { commit(""); return; }
-            const d = new Date(`${v}T00:00:00Z`);
-            commit(Number.isNaN(d.getTime()) ? "" : formatDateSerial(Math.floor(jsDateToSerial(d)), DEFAULT_DATE_FORMAT));
-          }}
+      )}
+      {infoOpen && (
+        <div
+          ref={infoPopRef}
+          className="nowheel"
           onPointerDown={stop}
           onMouseDown={stop}
-          style={{ position: "absolute", right: 2, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none", border: "none", padding: 0 }}
-        />
-      </div>
-    </NodeShell>
+          style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, minWidth: 128, padding: "6px 9px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 14px rgba(0,0,0,0.32)" }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-bright)", marginBottom: 5 }}>Supported Formats</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {FORMAT_EXAMPLES.map((ex) => (
+              <span key={ex} style={{ fontSize: 11, fontFamily: "var(--font-mono, monospace)", color: "var(--text)" }}>{ex}</span>
+            ))}
+          </div>
+        </div>
+      )}
+      <button
+        type="button"
+        className="solenoid-date-input__picker"
+        title="Pick a date"
+        aria-label="Open the calendar"
+        onPointerDown={stop}
+        onMouseDown={stop}
+        onClick={() => {
+          const el = nativeRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+          if (!el) return;
+          try { el.showPicker?.(); } catch { el.focus(); }
+        }}
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 2, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
+      >
+        <CalendarIcon />
+      </button>
+      <input
+        ref={nativeRef}
+        type="date"
+        value={serial !== null ? isoOf(serial) : ""}
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => {
+          const v = e.target.value; // native picker → an unambiguous ISO date
+          if (!v) { commit(""); return; }
+          const d = new Date(`${v}T00:00:00Z`);
+          commit(Number.isNaN(d.getTime()) ? "" : formatDateSerial(Math.floor(jsDateToSerial(d)), DEFAULT_DATE_FORMAT));
+        }}
+        onPointerDown={stop}
+        onMouseDown={stop}
+        style={{ position: "absolute", right: 2, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: "none", border: "none", padding: 0 }}
+      />
+    </div>
   );
 }

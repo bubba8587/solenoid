@@ -53,7 +53,7 @@ describe("[[B11]] maximalMerge — a file that retypes sockets in place must rec
   const SANCTIONED: Record<string, string> = {
     "sockets.ts": "defines MutableSocket.setType — the primitive itself",
     "nodes/formatController.ts": "the FC's own sockets; retyped BY the fcReconcile pass (and at construction)",
-    "nodes/control.ts": "syncOutputType returns `changed` — its component (CableSwitchNode.tsx) does the retype",
+    "nodes/control.ts": "syncOutputType returns `changed` — its component (CableSwitchNode.tsx) does the retype; ValueInputNode.setDataType likewise, its component (ValueInputNode.tsx) calls retypeOutputCables",
     "nodes/frame.ts": "SettleNode.setMode retypes its own INPUT socket per mode; its component (FrameNodes.tsx SettleComponent) calls reconcileTypesAfterEdit, and an input retype changes what the node ACCEPTS, not its output type — no downstream FC restale. GetColumn.setReadAs, SplitFrame.setColType and AddColumn.setAddAs swap sockets for frameEdit.ts, which calls retypeOutputCables / retypeInputCables",
     "nodes/composite.ts": "port adoption synced by its own pass; the end-of-process settle runs reconcileFcTypes (process.ts)",
     "conduitTrace.ts": "conduit lane adoption — driven from the same central settle",

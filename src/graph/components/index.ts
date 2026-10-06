@@ -237,6 +237,7 @@ export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
 export { ChartBuilderComponent } from "./ChartBuilderNode";
 export { DateInputComponent } from "./DateInputNode";
+export { ValueInputComponent } from "./ValueInputNode";
 export { DateRangeComponent } from "./DateRangeNode";
 export { SaveTimesComponent } from "./SaveTimesNode";
 export { XYPadComponent } from "./XYPadNode";

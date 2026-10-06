@@ -331,6 +331,7 @@ Node kind `table`, with the gold accent the table socket shares (`NODE_KIND_SLOT
 
 ## Input and control
 
+- **Value Input**: one typed value whose type (Number, Text, Date, Boolean) is a `SegToggle` on the card ([[B11]] maximalMerge). The Format Controller's own dropdowns sit under it (number style, precision and unit; date style; letter case; show-as) and the hero box shows the result. The format is the card's own `annotationFor`, so it carries downstream like an FC's ([[C118]] formatTravelsWithValue), and a Number's unit tags the value. The typed text is the one stored field: a type switch keeps it where it still reads, carries it by meaning (TRUE↔1, a nonzero number is TRUE) and otherwise resets to the type's default (0, FALSE, today).
 - Number Input, Boolean Input, Slider (its ◄/► step buttons are the "stepper"), RandBetween, RandArray, Sequence.
 - **Angle Dial**: degrees 0–359, snapping to its step (default 15).
 - **Date Input**: type any date (ISO, day-first numeric, ordinals, month names, through the shared chrono-backed `parseDate`) or use the native calendar. It renders DD-MMM-YYYY and keeps exactly what you typed, never discarding an unparseable entry (which gives a blank). An ambiguous numeric like 3/4/2026 gives `#AMBIGUOUS!`, never a guess. Relative phrases resolve only when Settings ▸ Data ▸ Relative dates is on ([[D54]] relativeDatesOptIn).

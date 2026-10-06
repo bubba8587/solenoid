@@ -1,6 +1,6 @@
 // [[B16]] oneFormulaSurface, [[C53]] queryIsCompositePreset, [[C14]] currentExcelParity
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, ValueInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
@@ -166,6 +166,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Input", description: "Source nodes: where values enter your graph.",
     children: [
+      { type: "value-input",         label: "Value Input",   description: "One value you type in: a number, text, a date or `TRUE`/`FALSE`, with its display format and a number's unit set on the card.", accent: "input", keywords: "scalar literal constant number text string date boolean logical type format unit", create: () => new ValueInputNode(), parity: false },
       { type: "number-input",        label: "Number Input",  description: "A literal number value.", accent: "input", keywords: "scalar value literal", create: () => new NumberInputNode() },
       { type: "list-input",  label: "List Input",    description: "Concatenates comma-separated values and other wired-in Lists into a single-row List.", accent: "list", keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
       { type: "text-input",    label: "Text Input",    description: "A literal string value.", accent: STR, keywords: "string literal", create: () => new TextInputNode() },

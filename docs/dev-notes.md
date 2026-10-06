@@ -6,6 +6,9 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-06b: Value Input; cloud session)
+- **Value Input** (`ValueInputNode`, `nodes/control.ts`; [[B11]] maximalMerge): one scalar source whose type is a `SegToggle` (Number, Text, Date, Boolean), the FC's dropdowns embedded under it (`fcControls`), the typed field, then the hero box. The format is the card's own `annotationFor`, so a downstream FC can inherit it ([[C118]] formatTravelsWithValue, contested once: keep). Date Input's field and Boolean Input's checkbox are now shared pieces (`DateEntry`, `LogicalCheck`), and the relative-date alert is one helper (`resolveDateText`). `NodeCard` hangs the output dot on the result box before an input field.
+
 ### SESSION DIGEST (2026-10-06: performance hunt at 100k rows; cloud session)
 - **Quadratic paths gone, outputs unchanged** (fixture corpus + cargo tests green): Decision Matrix rank (20k rows 33s → 44ms); a computed column's whole-column range call is memoized per call site by argument identity (`memoRangeCall`, [[computed-columns]]; `@price / SUM(price)` 10k rows 12.3s → 39ms); pivot "% of" sums each denominator span once (100k rows, 1000×12 leaves: 154s → 0.3s).
 - **Frame verbs**: filters compile once (`compileFilter`), single-key group/distinct/window partitions key on the raw cell (`rowKeyer`), sort and window ORDER BY classify blanks once, rolling windows sum in place, `describeColumn` sorts once, `inferColumn` parses once. **Engine**: preview converts only its rows, `cells_of` reads typed columns, `reorder_rows` uses `DataFrame::take` on canonical dtypes.

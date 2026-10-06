@@ -1,6 +1,6 @@
-// [[D54]]
+// [[D54]], [[B11]] maximalMerge
 import { ClassicPreset } from "rete";
-import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
+import { numberSocket, stringSocket, dateSocket, logicalSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
@@ -14,7 +14,10 @@ import { isRelativeDateText } from "./dateSerial";
 import { settingsStore } from "../settingsStore";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
-import { isSolError, type SolError } from "../errorValue";
+import { isSolError, solError, type SolError } from "../errorValue";
+import { isDateStyle, type FormatAnnotation, type FormatStyleId, type DecimalMode, type TextCase, type LogicalStyle } from "../formatAnnotationStore";
+import { applyFcUnit } from "../unitBridge";
+import type { TableElemType } from "./matrix";
 import { clamp } from "./mathUtils";
 import { compareStrings } from "../stringOrder";
 
@@ -147,30 +150,177 @@ export class DateInputNode extends ClassicPreset.Node {
     this.addOutput("result", dateOut("Date serial"));
   }
 
-  private lastRelative: { text: string; serial: number } | null = null;
+  private lastRelative: LastRelative = null;
 
   static relativeAllowed(): boolean { return settingsStore.get("relativeDates"); }
 
   data(): { result: number | SolError | null } {
-    const text = (this.stringLiterals.date ?? "").trim();
-    const relative = isRelativeDateText(text) && DateInputNode.relativeAllowed();
-    const r = parseDate(text, relative ? { relative: true } : undefined);
-    if (isSolError(r)) return { result: r };
-    const serial = Number.isFinite(r) ? Math.floor(r) : null;
-    if (relative && serial !== null) {
-      const was = this.lastRelative;
-      if (was !== null && was.text === text && was.serial !== serial && !isGraphRebuilding()) {
-        const name = (this.label ?? "").trim() || "Date Input";
-        fireAlert({
-          nodeId: this.id, label: name, kind: "warning",
-          message: `${name}: "${text}" now resolves to ${formatDateSerial(serial, DEFAULT_DATE_FORMAT)} (was ${formatDateSerial(was.serial, DEFAULT_DATE_FORMAT)})`,
-        });
-      }
-      this.lastRelative = { text, serial };
-    } else {
-      this.lastRelative = null;
+    const r = resolveDateText(this, this.stringLiterals.date ?? "", this.lastRelative, "Date Input");
+    this.lastRelative = r.last;
+    return { result: r.result };
+  }
+}
+
+type LastRelative = { text: string; serial: number } | null;
+
+/** A typed date's serial; a relative phrase ([[D54]] relativeDatesOptIn) alerts when it re-resolves to a new day. */
+function resolveDateText(
+  node: { id: string; label?: string },
+  raw: string,
+  last: LastRelative,
+  fallbackName: string,
+): { result: number | SolError | null; last: LastRelative } {
+  const text = raw.trim();
+  const relative = isRelativeDateText(text) && DateInputNode.relativeAllowed();
+  const r = parseDate(text, relative ? { relative: true } : undefined);
+  if (isSolError(r)) return { result: r, last: null };
+  const serial = Number.isFinite(r) ? Math.floor(r) : null;
+  if (!relative || serial === null) return { result: serial, last: null };
+  if (last !== null && last.text === text && last.serial !== serial && !isGraphRebuilding()) {
+    const name = (node.label ?? "").trim() || fallbackName;
+    fireAlert({
+      nodeId: node.id, label: name, kind: "warning",
+      message: `${name}: "${text}" now resolves to ${formatDateSerial(serial, DEFAULT_DATE_FORMAT)} (was ${formatDateSerial(last.serial, DEFAULT_DATE_FORMAT)})`,
+    });
+  }
+  return { result: serial, last: { text, serial } };
+}
+
+export type ValueInputType = TableElemType;
+
+const VALUE_INPUT_TYPES: readonly ValueInputType[] = ["number", "string", "date", "logical"];
+
+const todayText = () => formatDateSerial(Math.floor(jsDateToSerial(new Date())), DEFAULT_DATE_FORMAT);
+
+function valueSocketFor(t: ValueInputType) {
+  switch (t) {
+    case "number":  return numberSocket;
+    case "string":  return stringSocket;
+    case "date":    return dateSocket;
+    case "logical": return logicalSocket;
+  }
+}
+
+/** The typed text across a type switch: kept where it still reads in the new type, else carried by meaning or reset to the type's default. */
+export function carryValueText(text: string, to: ValueInputType): string {
+  const t = text.trim();
+  const n = t === "" ? NaN : Number(t);
+  const isTrue = /^true$/i.test(t);
+  switch (to) {
+    case "string":  return text;
+    case "number":  return Number.isFinite(n) ? t : isTrue ? "1" : "0";
+    case "logical": return isTrue || (Number.isFinite(n) && n !== 0) ? "TRUE" : "FALSE";
+    case "date": {
+      const relative = isRelativeDateText(t) && DateInputNode.relativeAllowed();
+      const d = parseDate(t, relative ? { relative: true } : undefined);
+      return typeof d === "number" && Number.isFinite(d) ? text : todayText();
     }
-    return { result: serial };
+  }
+}
+
+/** One typed value of any scalar type, with its display format and unit set on the card itself ([[C118]] formatTravelsWithValue). */
+export class ValueInputNode extends ClassicPreset.Node {
+  label: string;
+  dataType: ValueInputType;
+  value: string;
+  format: FormatStyleId;
+  customPattern: string;
+  decimalDigits: number;
+  decimalMode: DecimalMode;
+  unit: string;
+  customUnit: string;
+  textCase: TextCase;
+  chip: boolean;
+  logicalStyle: LogicalStyle;
+  width = 180;
+  height = 140;
+  cachedValue: unknown = null;
+  private lastRelative: LastRelative = null;
+
+  constructor(init?: {
+    label?: string;
+    dataType?: ValueInputType;
+    value?: string;
+    format?: FormatStyleId;
+    customPattern?: string;
+    decimalDigits?: number;
+    decimalMode?: DecimalMode;
+    unit?: string;
+    customUnit?: string;
+    textCase?: TextCase;
+    chip?: boolean;
+    logicalStyle?: LogicalStyle;
+  }) {
+    super("ValueInput");
+    this.label = init?.label ?? "Value Input";
+    this.dataType = init?.dataType && VALUE_INPUT_TYPES.includes(init.dataType) ? init.dataType : "number";
+    this.value = init?.value ?? (this.dataType === "date" ? todayText() : this.dataType === "logical" ? "FALSE" : this.dataType === "number" ? "0" : "");
+    this.format = init?.format ?? "auto";
+    this.customPattern = init?.customPattern ?? "0.00";
+    this.decimalDigits = init?.decimalDigits ?? 2;
+    this.decimalMode = init?.decimalMode ?? "places";
+    this.unit = init?.unit ?? "none";
+    this.customUnit = init?.customUnit ?? "";
+    this.textCase = init?.textCase ?? "none";
+    this.chip = init?.chip ?? false;
+    this.logicalStyle = init?.logicalStyle ?? "truefalse";
+    this.addOutput("value", new ClassicPreset.Output(valueSocketFor(this.dataType), "Value"));
+  }
+
+  /** Swaps the output socket in place; the caller follows with `retypeOutputCables`. */
+  setDataType(t: ValueInputType): boolean {
+    if (t === this.dataType) return false;
+    this.value = carryValueText(this.value, t);
+    this.dataType = t;
+    const out = this.outputs.value;
+    if (out) out.socket = valueSocketFor(t);
+    return true;
+  }
+
+  /** A pick outside the current type stays saved and sits inert, as on the Format Controller. */
+  effectiveFormat(): FormatStyleId {
+    if (this.dataType === "date") return isDateStyle(this.format) ? this.format : "date_dmy";
+    return isDateStyle(this.format) ? "auto" : this.format;
+  }
+
+  annotationFor(outKey: string): FormatAnnotation | undefined {
+    if (outKey !== "value") return undefined;
+    const numeric = this.dataType === "number";
+    return {
+      format: this.effectiveFormat(),
+      customPattern: this.customPattern,
+      decimalDigits: this.decimalDigits,
+      decimalMode: this.decimalMode,
+      unit: numeric ? this.unit : "none",
+      customUnit: numeric ? this.customUnit : "",
+      textCase: this.textCase,
+      chip: this.chip,
+      logicalStyle: this.logicalStyle,
+    };
+  }
+
+  data(): { value: unknown } {
+    if (this.dataType !== "date") this.lastRelative = null;
+    this.cachedValue = this.compute();
+    return { value: this.cachedValue };
+  }
+
+  private compute(): unknown {
+    switch (this.dataType) {
+      case "string":  return this.value;
+      case "logical": return /^true$/i.test(this.value.trim());
+      case "date": {
+        const r = resolveDateText(this, this.value, this.lastRelative, "Value Input");
+        this.lastRelative = r.last;
+        return r.result;
+      }
+      case "number": {
+        const t = this.value.trim();
+        const n = t === "" ? 0 : Number(t);
+        if (!Number.isFinite(n)) return solError("#VALUE!", `"${t}" isn't a number`);
+        return applyFcUnit(n, this.unit, this.customUnit);
+      }
+    }
   }
 }
 

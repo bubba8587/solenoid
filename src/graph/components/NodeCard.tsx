@@ -86,12 +86,12 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   function syncOutputSocketTop() {
     const el = ref.current;
     if (!el) return;
-    // First visible box: a collapsed node hides its figure (offsetParent null).
-    const boxes = el.querySelectorAll<HTMLElement>(
-      ".solenoid-node__figure, .solenoid-node__display-value, .solenoid-node__value-input",
-    );
-    let box: HTMLElement | null = null;
-    for (const b of boxes) { if (b.offsetParent !== null) { box = b; break; } }
+    // First visible box: a collapsed node hides its figure (offsetParent null). A result box outranks an input field above it (Value Input).
+    const firstVisible = (sel: string) => {
+      for (const b of el.querySelectorAll<HTMLElement>(sel)) if (b.offsetParent !== null) return b;
+      return null;
+    };
+    const box = firstVisible(".solenoid-node__figure, .solenoid-node__display-value") ?? firstVisible(".solenoid-node__value-input");
     if (!box) { el.style.removeProperty("--out-socket-top"); return; }
     // Sum offsetTop up to the content wrapper: a box inside an intermediate positioned element (Date Input's picker row) would otherwise measure about 0.
     const content = el.querySelector<HTMLElement>(".solenoid-node__content");
