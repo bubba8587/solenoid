@@ -7,6 +7,7 @@ import { nodeChartSvgString } from "./canvasCapture";
 import { dataUrlToBytes, sanitizeName } from "./imageAssets";
 import { assembleDocumentMarkdown, valueToObsidianBlock } from "./obsidianMarkdown";
 import { isImageValue, type ImageValue } from "./imageValue";
+import { isChartValue } from "./chartValue";
 import { refPreview, resolveRefAnnotation } from "./components/inlineRefDisplay";
 import { type DocumentValue } from "./documentValue";
 import { spliceBlock } from "./managedBlock";
@@ -90,7 +91,6 @@ async function rasterizeSvgMarkup(markup: string, size?: { w: number; h: number 
   }
 }
 
-/** Sized from the measured box, since a recharts root has no reliable intrinsic size until drawn. */
 export type ObsidianWriteMode = "overwrite" | "append" | "block";
 
 export function mergeNoteText(existing: string | null, md: string, mode: ObsidianWriteMode, blockName: string): string {
@@ -179,7 +179,8 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
       return refPreview(value, doc.sourceId ? resolveRefAnnotation(doc.sourceId, name) : undefined);
     }
     const srcId = opts.refSources.get(name);
-    const markup = srcId ? nodeChartSvgString(srcId) : null;
+    const markup = (srcId ? nodeChartSvgString(srcId) : null)
+      ?? (isChartValue(value) ? await (await import("./components/chartSvgOffscreen")).chartValueSvg(value) : null);
     const bytes = markup ? await rasterizeSvgMarkup(markup) : null;
     if (!bytes) return "";
     return writeAsset(name, bytes, "png");

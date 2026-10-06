@@ -6,7 +6,9 @@ import { nodeDisplayNames } from "./nodeNames";
 import { resolveRefAnnotation, refPreview } from "./components/inlineRefDisplay";
 import { isDocumentValue } from "./documentValue";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
-import { captureCanvasImage, captureChartSvgs } from "./canvasCapture";
+import { captureCanvasImage, captureChartSvgs, nodeChartSvgString } from "./canvasCapture";
+import { cableValueStore } from "./cableValueStore";
+import { isChartValue } from "./chartValue";
 import { saveHtmlFileDialog, isDesktop } from "./fileBridge";
 import { pushNotice } from "./noticeStore";
 import { reportPaletteStore } from "./palette";
@@ -147,7 +149,7 @@ export function reportReferencedNodeIds(
 
 export function buildReportExportHtml(
   report: ReportNode,
-  opts: { canvasImage: string | null; body: string },
+  opts: { canvasImage: string | null; body: string; offCanvasCharts?: readonly { name: string; svg: string }[] },
 ): string {
   const editor = getEditor();
   const allNodes = editor?.getNodes() ?? [];
@@ -163,7 +165,7 @@ export function buildReportExportHtml(
 
   const noteIds = new Set(allNodes.filter((n): n is NoteNode => n instanceof NoteNode).map((n) => n.id));
   const refIds = reportReferencedNodeIds(report, connections, noteIds);
-  const charts = captureChartSvgs(names, refIds);
+  const charts = [...captureChartSvgs(names, refIds), ...(opts.offCanvasCharts ?? [])];
   const chartsHtml = charts.map((c) =>
     `<div class="report-export__chart"><div class="report-export__chart-label">${escapeHtml(c.name)}</div>${c.svg}</div>`,
   ).join("\n");
@@ -196,13 +198,33 @@ export function buildReportExportHtml(
 </html>`;
 }
 
+/** The report's referenced charts that aren't drawn on the canvas, drawn off it from their values. */
+async function offCanvasChartSvgs(report: ReportNode): Promise<{ name: string; svg: string }[]> {
+  const editor = getEditor();
+  if (!editor) return [];
+  const nodes = editor.getNodes();
+  const noteIds = new Set(nodes.filter((n): n is NoteNode => n instanceof NoteNode).map((n) => n.id));
+  const out: { name: string; svg: string }[] = [];
+  for (const id of reportReferencedNodeIds(report, editor.getConnections(), noteIds)) {
+    if (nodeChartSvgString(id)) continue;
+    const node = nodes.find((n) => n.id === id);
+    const value = node ? Object.keys(node.outputs).map((k) => cableValueStore.get(id, k)).find(isChartValue) : undefined;
+    if (!value) continue;
+    const { chartValueSvg } = await import("./components/chartSvgOffscreen");
+    const svg = await chartValueSvg(value);
+    if (svg) out.push({ name: nodeDisplayNames(nodes).get(id) ?? "Chart", svg });
+  }
+  return out;
+}
+
 export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
   try {
     const body = await report.renderedBody();
     const embeds = report.refKeys().map((k) => report.refValue(k)).filter(isDocumentValue);
     if (body.includes("$") || embeds.some((d) => d.body.includes("$"))) await loadKatexRenderer();
     const canvasImage = await captureCanvasImage();
-    const html = buildReportExportHtml(report, { canvasImage, body });
+    const offCanvasCharts = await offCanvasChartSvgs(report);
+    const html = buildReportExportHtml(report, { canvasImage, body, offCanvasCharts });
     const name = exportFileName(report.label);
     const chosen = await saveHtmlFileDialog(name, html);
     // The web download fires and returns null too, so the toast must not key off the path.

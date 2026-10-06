@@ -28,7 +28,7 @@ const main = async () => {
 
     console.log(`\nPer-card DOM census — ${rows.length} card types measured on the live dev page`);
     console.log(`Totals across all cards: ${sum("total")} elements, ${sum("valueOrHandler")} carry a value/handler, ${sum("paintOnly")} paint-only`);
-    console.log(`(charts/popups mount recharts lazily, so figure interiors are under-counted — this is the CHROME census)\n`);
+    console.log(`(charts/popups mount the chart library lazily, so figure interiors are under-counted — this is the CHROME census)\n`);
 
     console.log("Top 30 cards by paint-only element count:");
     console.log("paint  value  total  root                              type");

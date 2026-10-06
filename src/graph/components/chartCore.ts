@@ -1,5 +1,5 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull
-// Must stay recharts-free: a helper imported from here must not drag recharts into the main bundle.
+// Must stay free of the chart library: a helper imported from here must not drag it into the main bundle.
 import { useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, type PaletteSlot } from "../palette";
@@ -14,7 +14,7 @@ const SERIES_SLOTS: PaletteSlot[] = [
   "sky", "vermilion", "lime", "violet", "amber", "gray",
 ];
 
-// recharts writes colors as SVG attributes, where CSS var() doesn't resolve.
+// Resolved values, so an exported SVG carries real colors rather than variables the note can't resolve.
 export function useChartColors() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const cs = getComputedStyle(document.documentElement);
@@ -133,32 +133,6 @@ export function niceTicks(lo: number, hi: number, count = 5): number[] {
   const out: number[] = [];
   for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(Number(v.toPrecision(12)));
   return out;
-}
-
-/** A value axis's gutter in px: its widest compact tick at 5.8 · fs a character (never under three), measured over
- *  the data's extremes rounded to two figures (recharts' nice ends) and the round ticks between them, since a 0–1
- *  axis's 0.25 is wider than either end, and over the round ticks of the data's own range, read by the axis's `fmt`.
- *  Plus recharts' 8 px of tick spacing and 14 for an axis title. */
-export function valueAxisWidth(values: Iterable<unknown>, fs: number, titled = false, fmt: (n: number) => string = compactTick): number {
-  let lo = 0, hi = 0, min = Infinity, max = -Infinity;
-  for (const v of values) {
-    if (typeof v !== "number" || !Number.isFinite(v)) continue;
-    if (v < lo) lo = v;
-    if (v > hi) hi = v;
-    min = Math.min(min, v); max = Math.max(max, v);
-  }
-  const ends = [lo, hi].map((n) => Number(n.toPrecision(2)));
-  const ticks = [...ends, ...niceTicks(ends[0], ends[1], 4), ...(max > min ? niceTicks(min, max, 5) : [])];
-  return Math.ceil(Math.max(3, ...ticks.map((n) => fmt(n).length)) * 5.8 * fs + 8) + (titled ? 14 : 0);
-}
-
-/** A horizontal Bar's category gutter in px: its widest tick at 5.2 · fs a character plus 8, at least 18, at most a
- *  third of the width, and at least 32 under an axis title. */
-export function categoryAxisWidth(ticks: Iterable<string>, width: number, fs: number, titled = false): number {
-  let longest = 0;
-  for (const t of ticks) longest = Math.max(longest, t.length);
-  const w = Math.min(Math.round(width / 3), Math.max(18, 8 + Math.ceil(longest * 5.2 * fs)));
-  return titled ? Math.max(32, w) : w;
 }
 
 /**

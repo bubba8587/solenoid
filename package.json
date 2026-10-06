@@ -49,6 +49,7 @@
     "@xyflow/react": "^12.12.0",
     "chrono-node": "^2.10.1",
     "colord": "^2.10.0",
+    "d3-shape": "3.2.0",
     "dompurify": "^3.4.14",
     "elkjs": "^0.12.0",
     "katex": "^0.18.5",
@@ -60,7 +61,6 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-is": "^19.2.8",
-    "recharts": "^3.10.1",
     "rete": "^2.0.6",
     "rete-engine": "^2.1.1",
     "web-worker": "^1.5.0",
@@ -69,6 +69,7 @@
   "devDependencies": {
     "@codemirror/language": "^6.12.4",
     "@tauri-apps/cli": "^2.11.5",
+    "@types/d3-shape": "^3.2.0",
     "@types/dompurify": "^3.0.5",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.18",

@@ -1033,10 +1033,10 @@ function rawFieldsReaching(effect: RegExp): string[] {
   }
 }
 
-describe("[[B2]] webTryDesktopFull — recharts is imported statically by exactly one module", () => {
-  it("only components/chartRender.tsx imports recharts", () => {
+describe("[[B2]] webTryDesktopFull, [[D98]] tanstackDrawsCharts — the chart library is imported by the lazy chart chunk only", () => {
+  it("only components/chartRender.tsx imports @tanstack/charts or d3", () => {
     const importers = walk(SRC)
-      .filter((f) => /from\s+["']recharts["']/.test(fs.readFileSync(f, "utf8")))
+      .filter((f) => /from\s+["'](@tanstack\/charts|d3-)/.test(fs.readFileSync(f, "utf8")))
       .map(rel);
     expect(importers).toEqual(["components/chartRender.tsx"]);
   });

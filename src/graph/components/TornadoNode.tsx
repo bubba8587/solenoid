@@ -36,17 +36,16 @@ export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
   const floor = starts.length ? Math.min(...starts) : 0;
   const ceil = ends.length ? Math.max(...ends) : floor + 1;
   const fullSpan = ceil - floor || 1;
-  // recharts stacks from 0, so the "offset" spacer starts every row at the same
-  // floor and `range` is the visible swing; a diverged row spans the full extent.
+  // A bar spans its output swing in output units; a diverged row spans the full extent.
   const normalized = results.map((r) => {
     const common = {
       label: r.label, outLow: r.low, outHigh: r.high,
       inLow: r.inputLow, inHigh: r.inputHigh, basis: r.basis,
     };
-    if (r.diverged) return { ...common, offset: 0, range: fullSpan, rising: true, diverged: true };
+    if (r.diverged) return { ...common, offset: floor, range: fullSpan, rising: true, diverged: true };
     const start = Math.min(r.low, r.high);
     const end = Math.max(r.low, r.high);
-    return { ...common, offset: start - floor, range: end - start, rising: r.high >= r.low, diverged: false };
+    return { ...common, offset: start, range: end - start, rising: r.high >= r.low, diverged: false };
   });
 
   return (

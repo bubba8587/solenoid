@@ -43,7 +43,7 @@ const RENDERS = new Set(
     .map(([f]) => f),
 );
 
-const VENDOR = [/^react-flow/, /^xy-/, /^katex/, /^mermaid/, /^cm-/, /^hljs/, /^tippy/, /^rete/, /^recharts/, /^decorum/];
+const VENDOR = [/^react-flow/, /^xy-/, /^katex/, /^mermaid/, /^cm-/, /^hljs/, /^tippy/, /^rete/, /^ts-chart/, /^decorum/];
 const renderMention = (s) => [...srcText].some(([f, t]) => RENDERS.has(f) && t.includes(s));
 const composed = (cls) =>
   // BEM separators only: splitting on a bare "-" matches almost anything.

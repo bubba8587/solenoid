@@ -2,7 +2,7 @@ import puppeteer from "puppeteer-core";
 import { browserPath } from "../../scripts/browser.mjs";
 const b = await puppeteer.launch({ executablePath: browserPath(), args: ["--no-sandbox"] });
 const p = await b.newPage();
-await p.setViewport({ width: 1200, height: 1400 });
+await p.setViewport({ width: Number(process.env.VW ?? 1600), height: 1400, deviceScaleFactor: Number(process.env.DPR ?? 1) });
 p.on("console", (m) => { if (m.type() === "error") console.log("ERR", m.text()); });
 p.on("pageerror", (e) => console.log("PAGEERR", e.message));
 await p.goto(process.argv[2], { waitUntil: "networkidle0" });

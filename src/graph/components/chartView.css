@@ -1,26 +1,38 @@
-/* [[C100]] chartIsAValue */
-/* A chart is a figure: recharts' SVG text is selectable, and recharts 3's accessibilityLayer makes marks focusable and paints focus rings. */
-.recharts-wrapper,
-.recharts-surface,
-.recharts-wrapper * {
+/* [[C100]] chartIsAValue, [[D98]] tanstackDrawsCharts */
+/* A chart is a figure: its text is not selectable and the card, not the chart, takes focus. */
+.ts-chart-host,
+.ts-chart-host * {
   user-select: none;
   -webkit-user-select: none;
   outline: none;
 }
 
-.sol-sankey .recharts-sankey-link {
+/* TanStack Charts 1.0.0 paints grid rules at 11% and ignores a grid style's opacity; the theme's grid color is already muted. */
+.ts-chart__grid {
+  stroke-opacity: 1;
+}
+
+.ts-chart-host {
+  --ts-chart-tooltip-background: var(--surface-raised);
+  --ts-chart-tooltip-color: var(--text);
+  --ts-chart-tooltip-border: 1px solid var(--border);
+  --ts-chart-tooltip-border-radius: 4px;
+  --ts-chart-tooltip-padding: 3px 7px;
+  --ts-chart-tooltip-font: 11px var(--font-sans);
+  --ts-chart-focus-fill: var(--surface);
+}
+
+/* A Pie, Radial or Funnel slice lifts under the pointer, as a Sankey flow does; a click spotlights it. */
+.ts-chart [data-ts-key*="sol-slice"] :is(path, rect) {
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+.ts-chart [data-ts-key*="sol-slice"] :is(path, rect):hover {
+  filter: brightness(1.15);
+}
+.ts-chart [data-ts-key*="sol-flow"] line {
   transition: stroke-opacity 0.12s ease;
 }
-
-.sol-sankey .recharts-sankey-link:hover {
+.ts-chart [data-ts-key*="sol-flow"] line:hover {
   stroke-opacity: 0.85;
-}
-
-/* A Pie, Funnel or Radial slice lifts on hover, as a Sankey flow does; a click spotlights it. */
-.sol-slice {
-  cursor: pointer;
-  transition: filter 0.12s ease, fill-opacity 0.12s ease;
-}
-.sol-slice:hover {
-  filter: brightness(1.15);
 }

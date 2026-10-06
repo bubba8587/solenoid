@@ -1,8 +1,6 @@
 # 26 — TanStack libraries: charts first
 
-PROPOSAL 2026-10-06, branch `tan`. An investigation, not a ruling: nothing here is built into
-`src/`. The harness lives in `spikes/tanstack-charts/` (side-by-side page, perf page, static-SVG
-probe, bundle entries) and `@tanstack/charts@1.0.0` is pinned in `package.json` on this branch only.
+Branch `tan`, 2026-10-06. Started as an investigation; the charts half is now built (§ 6). `spikes/tanstack-charts/` is now a gallery of every figure (`npx vite --config spikes/tanstack-charts/vite.config.ts`, then `shot.mjs`, `hover.mjs`, `eval.mjs`); `@tanstack/charts@1.0.0` is pinned.
 
 ## 1. The question
 
@@ -38,10 +36,10 @@ renderer than Recharts 3.10.1 for Solenoid? Secondary: where do the other TanSta
 | Colours | Hex only, resolved per theme change | Writes `var(--token, #fallback)` into SVG; follows the theme with no rebuild |
 
 Dev-build numbers are worse for Recharts (3–4 s mount) because of Redux dev checks; the table uses
-`vite build` + `vite preview`. Run: `spikes/tanstack-charts/perf.mjs`.
+`vite build` + `vite preview`. The comparison harness was removed with Recharts; git history has it.
 
 Visual parity on the shapes ported (line, area, column, bar, pie, sparkline, scatter, tornado):
-`spikes/tanstack-charts/comparison.png`. The port is about 80 lines for those eight. The tornado
+`spikes/tanstack-charts/comparison.png`.  The tornado
 needs no transparent-offset-bar trick: `barX` takes an explicit `x1..x2` interval.
 
 ## 4. Problems found in the first hour
@@ -76,20 +74,9 @@ would let reports and Obsidian notes export a chart that is not on screen and re
 scrape. Against it: three days at 1.0, a bug and a bad default found in an hour, a smaller
 community.
 
-Recommended path, if the author wants it:
-1. Leave Recharts in place. Port the **Sparkline** and **Tornado** (small, self-contained) behind
-   the same lazy boundary and live with them for a release.
-2. Add a static-SVG `registerChartSvgProvider` for those two, so export stops depending on the
-   live DOM for them (the hook already exists for Gantt).
-3. If both hold up, port `chartRender.tsx` figure by figure; then consider moving the canvas views.
-   Recharts leaves when its last figure does.
+**Taken, all in** (author 2026-10-06: `tan` is not a production branch, so no gradual path). Recharts is removed and every plot draws with TanStack Charts ([[D98]] tanstackDrawsCharts; mechanics in `tree/specs/computation/chart-figures.md` § The TanStack figures). The chart chunk is 76 KB gzipped for all 14 renderers. Off-canvas export landed with it: an Obsidian write or report export draws a chart value that isn't on screen through the same figure (`chartSvgOffscreen.tsx`). Left: the canvas figures (waffle, waterfall, candlestick, boxplot, heatmaps, contour) and new chart types.
 
-What this needs before code (`docs/dte.md` § Solenoid practice): the engineering spec's lazy-chunk
-rule renamed from "recharts" to "the chart library"; `tree/specs/computation/chart-figures.md` § the pinned Recharts
-behaviours rewritten per figure as they move; `sourceInvariants.test.ts`'s one-importer pin.
-
-Reopen if: TanStack Charts stalls (no release for 3 months) or the upstream bugs above stay open
-past 1.1.
+Upstream defects to report: the grid style's `opacity`/`strokeOpacity` is ignored (worked around in `chartView.css`); `nice: true` over-widens small charts (we compute domains ourselves, `valueDomain`).
 
 ## 7. The other TanStack libraries
 

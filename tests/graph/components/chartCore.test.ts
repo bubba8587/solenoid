@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex } from "../../../src/graph/components/chartCore";
+import { axisTick, compactTick, valueTickFormat, toSeries, partSlices, spotlightIndex } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -52,26 +52,6 @@ describe("compactTick", () => {
   });
 });
 
-describe("valueAxisWidth", () => {
-  it("keeps the 26 px gutter (40 with an axis title) while the ticks stay short", () => {
-    expect(valueAxisWidth([1, 5, 80], 1)).toBe(26);
-    expect(valueAxisWidth([1, 5, 80], 1, true)).toBe(40);
-    expect(valueAxisWidth([], 1)).toBe(26);
-  });
-  it("measures the round ticks between the ends too: a 0–1 axis has 0.25", () => {
-    expect(valueAxisWidth([0, 1], 1)).toBe(32);
-  });
-  it("grows to the widest end tick, rounded the way the axis rounds its ends", () => {
-    expect(valueAxisWidth([120000, 176319], 1)).toBe(32); // ends at 180K
-    expect(valueAxisWidth([-1234, 50], 1)).toBe(37); // starts at -1.2K
-    expect(valueAxisWidth([1, 2, null, "x", NaN], 2)).toBe(43); // scales with the font
-  });
-  it("measures with the axis's formatter, so a narrow range's longer ticks fit", () => {
-    const v = [100000, 100480];
-    expect(valueAxisWidth(v, 1, false, valueTickFormat(v))).toBeGreaterThan(valueAxisWidth(v, 1));
-  });
-});
-
 describe("toSeries", () => {
   it("drops non-finite / error / null cells, keeping ORIGINAL indices (labels stay aligned)", () => {
     expect(toSeries([10, null, 30])).toEqual([{ i: 0, v: 10 }, { i: 2, v: 30 }]);
@@ -116,13 +96,3 @@ describe("spotlightIndex", () => {
   });
 });
 
-describe("categoryAxisWidth", () => {
-  it("fits the widest label, at least 18, at most a third of the width", () => {
-    expect(categoryAxisWidth(["1", "2"], 300, 1)).toBe(18);
-    expect(categoryAxisWidth(["North America", "EU"], 300, 1)).toBe(8 + Math.ceil(13 * 5.2));
-    expect(categoryAxisWidth(["x".repeat(80)], 300, 1)).toBe(100);
-  });
-  it("keeps room for an axis title", () => {
-    expect(categoryAxisWidth(["a"], 300, 1, true)).toBe(32);
-  });
-});
