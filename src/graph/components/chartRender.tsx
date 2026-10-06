@@ -768,7 +768,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     const pw = width - 50, ph = chartH - 34;
     const ext = (vals: number[], lo?: number, hi?: number): [number, number] => [lo ?? iterMin(vals), hi ?? iterMax(vals)];
     let xd = xcats ? { domain: [-0.5, xcats.length - 0.5] as [number, number], ticks: indexTicks(xcats.length, pw) }
-      : valueDomain(pts.map((p) => p.x), opts?.xmin, opts?.xmax, pw * 0.6, false);
+      : valueDomain(pts.map((p) => p.x), opts?.xmin, opts?.xmax, pw, false);
     let yd = valueDomain(pts.map((p) => p.y), opts?.ymin, opts?.ymax, ph, false);
     // Room for the largest marker on an open side, so a big bubble at the edge isn't cut.
     const rMax = Math.max(0, ...rows.map((d) => d.r));
