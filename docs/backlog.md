@@ -18,6 +18,9 @@ plugin build's pin; 1.x is a new major). Vitest 5 transforms with Oxc, so the `e
 true }` in `vite.config.ts` serves only the production minify, and its "esbuild options ignored"
 warning is expected.
 
+## Expect
+- [ ] **Range can't check dates**: Min and Max are number sockets, so a date value is range-checked only against typed serials. Adoptive bounds (a date range for a date value) would fix it.
+
 ## Tooling
 - [ ] **`scripts/touch-pan-probe.mjs` is stale**: its drill-in step times out waiting for `.solenoid-composite-editor__canvas .solenoid-node` (fails on develop before 2026-10-06's grip work too), and it needs `--no-sandbox` to launch as root.
 

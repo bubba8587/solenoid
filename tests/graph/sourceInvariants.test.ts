@@ -174,6 +174,7 @@ describe("[[C25]] firstClassUnits — a node file that runs the dimension algebr
   const SANCTIONED: Record<string, string> = {
     "nodes/shared.ts": "the helper library (broadcastUnit/guardCell/anyDimensioned) — declares no node class; every caller declares unitAware in its own file",
     "nodes/listOps.ts": "a rete-free kernel with no node class; setKey keys a unit cell for Unique, which gets tags through its passthrough() input",
+    "nodes/quality.ts": "Expect only reads unit cells, to check one in the unit it shows and to key a quantity for unique; the tags arrive through its passthrough() input and it forwards the value untouched",
     "nodes/scriptCoerce.ts": "Script is unit-blind by design; isUnitCell here unwraps CUBE cells (which ride inside the whole CubeValue, past the boundary strip) to magnitudes for the script",
   };
   const NODE_DIRS = ["nodes", "packs"].map((d) => path.join(SRC, d));
