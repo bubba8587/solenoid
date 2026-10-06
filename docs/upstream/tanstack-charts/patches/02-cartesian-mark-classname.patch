@@ -1,0 +1,1676 @@
+From a95cdbc27edfcd53e07b6c1c2fcfb5112bcc9207 Mon Sep 17 00:00:00 2001
+From: Solenoid contributors <noreply@anthropic.com>
+Date: Tue, 6 Oct 2026 15:41:04 +0000
+Subject: [PATCH] feat(charts): accept className on cartesian marks
+
+---
+ .changeset/cartesian-mark-classname.md        |   8 +
+ API-FRICTION.md                               |  31 +++-
+ docs/reference/marks/bar-and-rect.md          |  13 +-
+ docs/reference/marks/contour.md               |   1 +
+ docs/reference/marks/density.md               |   1 +
+ docs/reference/marks/dot-and-hexagon.md       |  32 ++--
+ docs/reference/marks/line-and-area.md         |  37 +++--
+ docs/reference/marks/ridgeline.md             |   1 +
+ .../rules-links-arrows-vectors-and-ticks.md   |   5 +
+ docs/reference/marks/text-frame-and-facet.md  |   1 +
+ docs/reference/marks/violin.md                |   1 +
+ docs/reference/marks/voronoi.md               |   1 +
+ docs/reference/marks/waffle.md                |   1 +
+ .../docs/reference/marks/bar-and-rect.md      |  13 +-
+ .../docs/reference/marks/contour.md           |   1 +
+ .../docs/reference/marks/density.md           |   1 +
+ .../docs/reference/marks/dot-and-hexagon.md   |  32 ++--
+ .../docs/reference/marks/line-and-area.md     |  37 +++--
+ .../docs/reference/marks/ridgeline.md         |   1 +
+ .../rules-links-arrows-vectors-and-ticks.md   |   5 +
+ .../reference/marks/text-frame-and-facet.md   |   1 +
+ .../docs/reference/marks/violin.md            |   1 +
+ .../docs/reference/marks/voronoi.md           |   1 +
+ .../docs/reference/marks/waffle.md            |   1 +
+ packages/charts-core/src/area-x.ts            |   4 +-
+ packages/charts-core/src/area.ts              |   4 +-
+ packages/charts-core/src/arrow.ts             |   4 +-
+ packages/charts-core/src/band.ts              |  13 +-
+ packages/charts-core/src/bar.ts               |  13 +-
+ packages/charts-core/src/canvas.test.ts       |  39 +++++
+ .../charts-core/src/class-name-internal.ts    |   3 +
+ packages/charts-core/src/dot.ts               |   4 +-
+ packages/charts-core/src/geo.ts               |   5 +-
+ packages/charts-core/src/hexagon.ts           |   4 +-
+ .../charts-core/src/hierarchy-sunburst.ts     |   5 +-
+ packages/charts-core/src/line.ts              |   4 +-
+ packages/charts-core/src/link.ts              |   4 +-
+ packages/charts-core/src/polar.ts             |   5 +-
+ packages/charts-core/src/rect.ts              |   4 +-
+ packages/charts-core/src/ridgeline.ts         |   7 +-
+ packages/charts-core/src/rule.ts              |  13 +-
+ packages/charts-core/src/spatial-contour.ts   |   7 +-
+ packages/charts-core/src/spatial-density.ts   |   7 +-
+ packages/charts-core/src/spatial-voronoi.ts   |   4 +-
+ packages/charts-core/src/svg-renderer.test.ts | 155 +++++++++++++++++-
+ packages/charts-core/src/text.ts              |   4 +-
+ packages/charts-core/src/tick.ts              |   8 +-
+ packages/charts-core/src/vector.ts            |   4 +-
+ packages/charts-core/src/violin.ts            |   7 +-
+ packages/charts-core/src/waffle.ts            |   7 +-
+ 50 files changed, 453 insertions(+), 112 deletions(-)
+ create mode 100644 .changeset/cartesian-mark-classname.md
+ create mode 100644 packages/charts-core/src/class-name-internal.ts
+
+diff --git a/.changeset/cartesian-mark-classname.md b/.changeset/cartesian-mark-classname.md
+new file mode 100644
+index 0000000..5fcce1b
+--- /dev/null
++++ b/.changeset/cartesian-mark-classname.md
+@@ -0,0 +1,8 @@
++---
++'@tanstack/charts': minor
++---
++
++Accept `className` on Cartesian marks. Line, area, bar, rect, dot, hexagon,
++text, rule, tick, vector, arrow, link, band, waffle, violin, ridgeline,
++contour, density contour, and Voronoi marks append it to their base group
++class, matching polar, geo, and sunburst marks.
+diff --git a/API-FRICTION.md b/API-FRICTION.md
+index d9e37c2..086122a 100644
+--- a/API-FRICTION.md
++++ b/API-FRICTION.md
+@@ -5,7 +5,7 @@ observed difficulty from examples, production migrations, tests, and agent
+ evaluations so later API, documentation, and TanStack Intent skill work is
+ based on evidence.
+ 
+-Last updated: 2026-09-30
++Last updated: 2026-10-06
+ 
+ ## Triage rule
+ 
+@@ -345,6 +345,7 @@ Each entry records:
+ | F-306 | Inferred consumer declarations could not name core types       | Tooling               | resolved   |
+ | F-307 | Grouped-y keyboard navigation followed x order                 | API                   | resolved   |
+ | F-308 | Raster format documentation omitted browser encoder fallback   | Documentation         | resolved   |
++| F-309 | Cartesian marks could not take a styling class                 | API                   | resolved   |
+ 
+ ## Findings
+ 
+@@ -9199,3 +9200,31 @@ Each entry records:
+   decodes as WebP in Chromium and Firefox and PNG in WebKit. Dimensions and
+   opaque red pixels pass with lossy-encoding tolerance, alongside ten existing
+   PNG checks per engine. No page errors or console warnings/errors occur.
++
++### F-309 - Cartesian marks could not take a styling class
++
++- Status: resolved
++- Severity: medium
++- Owner: API
++- Observed in: Solenoid's Recharts-to-TanStack migration
++  (`src/graph/components/chartView.css`, `chartRender.tsx`, and
++  `charts/heatFigures.tsx` in Solenoid)
++- Friction: polar, geo, and sunburst marks accept `className`, but Cartesian
++  marks hard-coded their group class. Hover styling for funnel stages
++  (`areaX`) and Sankey flows (`link`), and a monospace font for heatmap
++  annotations (`text`), had to give each mark a sentinel `id` and target
++  substrings of generated keys such as `[data-ts-key*="sol-flow"]`. That
++  couples application CSS to the internal key format and overloads mark
++  identity with styling.
++- Decision: add `className?: string` to every Cartesian mark whose render
++  emits a classed root group, appended to the base class exactly as polar marks
++  do. Line appends it to each series group. One internal `classes()` helper
++  now serves polar, sunburst, geo, and Cartesian marks. Inner groups (vector
++  items, ridgeline area and line layers) keep their fixed classes. Composite
++  marks built from child marks are unchanged. Canvas ignores node classes, as
++  the styling guide already documents.
++- Verification: an SVG renderer regression renders all 25 mark variants with
++  `className` and asserts `class="<base> custom"`, and asserts the unchanged
++  default class; it fails before the change. A Canvas regression paints the
++  same link scene with and without `className` and records identical
++  operations. The reference option tables list the option for each mark.
+diff --git a/docs/reference/marks/bar-and-rect.md b/docs/reference/marks/bar-and-rect.md
+index 79f5ca2..1672e86 100644
+--- a/docs/reference/marks/bar-and-rect.md
++++ b/docs/reference/marks/bar-and-rect.md
+@@ -35,6 +35,7 @@ function barY<TDatum>(
+ | Option            | Type                                 | Default                        | Meaning                                          |
+ | ----------------- | ------------------------------------ | ------------------------------ | ------------------------------------------------ |
+ | `id`              | `string`                             | Layer-derived                  | Stable mark ID                                   |
++| `className`       | `string`                             | None                           | Class added beside `ts-chart__bar`               |
+ | `x`               | `Channel<TDatum, ChartValue?>`       | Row index                      | Bar category or center                           |
+ | `y`               | `Channel<TDatum, number?>`           | Numeric datum                  | Length; implicitly stacked at each x             |
+ | `y1`              | `number \| Channel<TDatum, number?>` | Implicit stack start           | Explicit baseline endpoint                       |
+@@ -80,6 +81,7 @@ Its options transpose `barY`:
+ | Option         | Type                                 | Default                        | Meaning                                     |
+ | -------------- | ------------------------------------ | ------------------------------ | ------------------------------------------- |
+ | `id`           | `string`                             | Layer-derived                  | Stable mark ID                              |
++| `className`    | `string`                             | None                           | Class added beside `ts-chart__bar`          |
+ | `x`            | `Channel<TDatum, number?>`           | Numeric datum                  | Length; implicitly stacked at each y        |
+ | `x1`           | `number \| Channel<TDatum, number?>` | Implicit stack start           | Explicit baseline endpoint                  |
+ | `x2`           | `number \| Channel<TDatum, number?>` | Implicit stack end             | Explicit value endpoint; takes precedence   |
+@@ -334,11 +336,11 @@ whenFocused(
+ )
+ ```
+ 
+-`BandXOptions` and `BandYOptions` provide the positional channel, `z`, `color`,
+-`key`, `fill`, `fillOpacity`, `inset`, and `radius`. `bandX.width` and
+-`bandY.height` can replace scale or inferred bandwidth with an explicit
+-nonnegative scene-pixel size, which is useful for a one-pixel focus cursor. A
+-negative inset expands the resolved band. The helpers are also available from
++`BandXOptions` and `BandYOptions` provide the positional channel, `className`,
++`z`, `color`, `key`, `fill`, `fillOpacity`, `inset`, and `radius`.
++`bandX.width` and `bandY.height` can replace scale or inferred bandwidth with
++an explicit nonnegative scene-pixel size, which is useful for a one-pixel focus
++cursor. A negative inset expands the resolved band. The helpers are also available from
+ `@tanstack/charts/band`.
+ 
+ ## `rect`
+@@ -372,6 +374,7 @@ function rect<TDatum>(
+ | Option        | Type                                | Default                                | Meaning                                              |
+ | ------------- | ----------------------------------- | -------------------------------------- | ---------------------------------------------------- |
+ | `id`          | `string`                            | Layer-derived                          | Stable mark ID                                       |
++| `className`   | `string`                            | None                                   | Class added beside `ts-chart__rect`                  |
+ | `x`           | `Channel<TDatum, ChartValue?>`      | Row index                              | X center/category and preferred semantic focus value |
+ | `x1`          | `Channel<TDatum, ChartValue?>`      | `x`, or row index when x is absent     | First x endpoint                                     |
+ | `x2`          | `Channel<TDatum, ChartValue?>`      | `x`                                    | Second x endpoint                                    |
+diff --git a/docs/reference/marks/contour.md b/docs/reference/marks/contour.md
+index 76ae17c..9dd2a24 100644
+--- a/docs/reference/marks/contour.md
++++ b/docs/reference/marks/contour.md
+@@ -45,6 +45,7 @@ The mark contributes derived color values but no positional domains or
+ | `strokeDasharray`                                 | `string`                                      | None             | Contour stroke dash pattern                    |
+ | `opacity`                                         | `number`                                      | Renderer default | Whole-contour opacity                          |
+ | `id`                                              | `string`                                      | Layer-derived    | Stable mark ID                                 |
++| `className`                                       | `string`                                      | None             | Class added beside `ts-chart__contour`         |
+ | `motion`                                          | `ChartMarkMotionOptions<never>['motion']`     | None             | Contour enter, update, and exit motion         |
+ 
+ `width` and `height` must be positive integers, and the source length must be
+diff --git a/docs/reference/marks/density.md b/docs/reference/marks/density.md
+index bcec150..abf6044 100644
+--- a/docs/reference/marks/density.md
++++ b/docs/reference/marks/density.md
+@@ -49,6 +49,7 @@ The mark contributes x/y and derived color domains but intentionally emits no
+ | `strokeDasharray`                                 | `string`                                     | None             | Contour stroke dash pattern                                     |
+ | `opacity`                                         | `number`                                     | Renderer default | Whole-contour opacity                                           |
+ | `id`                                              | `string`                                     | Layer-derived    | Stable mark ID                                                  |
++| `className`                                       | `string`                                     | None             | Class added beside `ts-chart__density-contour`                  |
+ | `motion`                                          | `ChartMarkMotionOptions<never>['motion']`    | None             | Contour enter, update, and exit motion                          |
+ 
+ `bandwidth` must be nonnegative and finite. `cellSize` must be at least one;
+diff --git a/docs/reference/marks/dot-and-hexagon.md b/docs/reference/marks/dot-and-hexagon.md
+index b0bc03b..a381f51 100644
+--- a/docs/reference/marks/dot-and-hexagon.md
++++ b/docs/reference/marks/dot-and-hexagon.md
+@@ -35,6 +35,7 @@ function dot<TDatum>(
+ | Option          | Type                                 | Default              | Meaning                               |
+ | --------------- | ------------------------------------ | -------------------- | ------------------------------------- |
+ | `id`            | `string`                             | Layer-derived        | Stable mark ID                        |
++| `className`     | `string`                             | None                 | Class added beside `ts-chart__dot`    |
+ | `x`             | `Channel<TDatum, ChartValue?>`       | Row index            | Horizontal value                      |
+ | `y`             | `Channel<TDatum, ChartValue?>`       | Numeric datum        | Vertical value                        |
+ | `z`             | `Channel<TDatum, ChartKey?>`         | No group             | Interaction group                     |
+@@ -87,21 +88,22 @@ function hexagon<TDatum>(
+ 
+ ### Options
+ 
+-| Option          | Type                                 | Default                | Meaning                             |
+-| --------------- | ------------------------------------ | ---------------------- | ----------------------------------- |
+-| `id`            | `string`                             | Layer-derived          | Stable mark ID                      |
+-| `x`             | `Channel<TDatum, ChartValue?>`       | Row index              | Horizontal center                   |
+-| `y`             | `Channel<TDatum, ChartValue?>`       | Numeric datum          | Vertical center                     |
+-| `z`             | `Channel<TDatum, ChartKey?>`         | No group               | Interaction group                   |
+-| `color`         | `Channel<TDatum, ChartKey?>`         | `z`                    | Value sent to the chart color scale |
+-| `key`           | `Channel<TDatum, ChartKey>`          | Top/nested `id`, index | Stable identity                     |
+-| `r`             | `number \| Channel<TDatum, number?>` | `6`                    | Raw circumradius                    |
+-| `rScale`        | `(value: number) => number`          | Identity               | Maps radius values to pixels        |
+-| `fill`          | `VisualChannel<TDatum, string>`      | Resolved color         | Final fill override                 |
+-| `fillOpacity`   | `number`                             | SVG default            | Fill opacity                        |
+-| `stroke`        | `VisualChannel<TDatum, string>`      | None                   | Optional stroke per mark or row     |
+-| `strokeOpacity` | `number`                             | SVG default            | Stroke opacity                      |
+-| `strokeWidth`   | `number`                             | SVG default            | Stroke width                        |
++| Option          | Type                                 | Default                | Meaning                                |
++| --------------- | ------------------------------------ | ---------------------- | -------------------------------------- |
++| `id`            | `string`                             | Layer-derived          | Stable mark ID                         |
++| `className`     | `string`                             | None                   | Class added beside `ts-chart__hexagon` |
++| `x`             | `Channel<TDatum, ChartValue?>`       | Row index              | Horizontal center                      |
++| `y`             | `Channel<TDatum, ChartValue?>`       | Numeric datum          | Vertical center                        |
++| `z`             | `Channel<TDatum, ChartKey?>`         | No group               | Interaction group                      |
++| `color`         | `Channel<TDatum, ChartKey?>`         | `z`                    | Value sent to the chart color scale    |
++| `key`           | `Channel<TDatum, ChartKey>`          | Top/nested `id`, index | Stable identity                        |
++| `r`             | `number \| Channel<TDatum, number?>` | `6`                    | Raw circumradius                       |
++| `rScale`        | `(value: number) => number`          | Identity               | Maps radius values to pixels           |
++| `fill`          | `VisualChannel<TDatum, string>`      | Resolved color         | Final fill override                    |
++| `fillOpacity`   | `number`                             | SVG default            | Fill opacity                           |
++| `stroke`        | `VisualChannel<TDatum, string>`      | None                   | Optional stroke per mark or row        |
++| `strokeOpacity` | `number`                             | SVG default            | Stroke opacity                         |
++| `strokeWidth`   | `number`                             | SVG default            | Stroke width                           |
+ 
+ The generated vertices begin at the top and proceed in 60-degree increments.
+ The interaction point remains at the scaled center, and its `color` is the
+diff --git a/docs/reference/marks/line-and-area.md b/docs/reference/marks/line-and-area.md
+index a54b015..4104f40 100644
+--- a/docs/reference/marks/line-and-area.md
++++ b/docs/reference/marks/line-and-area.md
+@@ -43,23 +43,24 @@ function lineY<TDatum>(
+ 
+ ### Options
+ 
+-| Option            | Type                            | Default                        | Meaning                                        |
+-| ----------------- | ------------------------------- | ------------------------------ | ---------------------------------------------- |
+-| `id`              | `string`                        | Layer-derived                  | Stable mark ID                                 |
+-| `x`               | `Channel<TDatum, ChartValue?>`  | Row index                      | Horizontal value                               |
+-| `y`               | `Channel<TDatum, number?>`      | Numeric datum                  | Vertical value                                 |
+-| `z`               | `Channel<TDatum, ChartKey?>`    | No explicit group              | Path grouping; overrides color grouping        |
+-| `color`           | `Channel<TDatum, ChartKey?>`    | `z`                            | Color-scale value; groups when `z` is absent   |
+-| `key`             | `Channel<TDatum, ChartKey>`     | Top/nested `id`, x, then index | Stable interaction and scene identity          |
+-| `stroke`          | `VisualChannel<TDatum, string>` | Resolved color                 | Final path paint; evaluated from the first row |
+-| `strokeOpacity`   | `number`                        | SVG default                    | Stroke opacity                                 |
+-| `strokeWidth`     | `number`                        | `2.25`                         | Stroke width                                   |
+-| `strokeDasharray` | `string`                        | None                           | SVG dash array                                 |
+-| `lineCap`         | `SceneStyle["lineCap"]`         | `"round"`                      | Stroke endpoint shape                          |
+-| `lineJoin`        | `SceneStyle["lineJoin"]`        | `"round"`                      | Stroke corner shape                            |
+-| `points`          | `boolean`                       | `false`                        | Draws a radius-`2.5` dot at each valid point   |
+-| `curve`           | `ChartCurve`                    | Straight segments              | Optional path generator                        |
+-| `states`          | `readonly ChartMarkState[]`     | None                           | Focus-driven presentation overrides            |
++| Option            | Type                            | Default                        | Meaning                                                  |
++| ----------------- | ------------------------------- | ------------------------------ | -------------------------------------------------------- |
++| `id`              | `string`                        | Layer-derived                  | Stable mark ID                                           |
++| `className`       | `string`                        | None                           | Class added to each series group beside `ts-chart__line` |
++| `x`               | `Channel<TDatum, ChartValue?>`  | Row index                      | Horizontal value                                         |
++| `y`               | `Channel<TDatum, number?>`      | Numeric datum                  | Vertical value                                           |
++| `z`               | `Channel<TDatum, ChartKey?>`    | No explicit group              | Path grouping; overrides color grouping                  |
++| `color`           | `Channel<TDatum, ChartKey?>`    | `z`                            | Color-scale value; groups when `z` is absent             |
++| `key`             | `Channel<TDatum, ChartKey>`     | Top/nested `id`, x, then index | Stable interaction and scene identity                    |
++| `stroke`          | `VisualChannel<TDatum, string>` | Resolved color                 | Final path paint; evaluated from the first row           |
++| `strokeOpacity`   | `number`                        | SVG default                    | Stroke opacity                                           |
++| `strokeWidth`     | `number`                        | `2.25`                         | Stroke width                                             |
++| `strokeDasharray` | `string`                        | None                           | SVG dash array                                           |
++| `lineCap`         | `SceneStyle["lineCap"]`         | `"round"`                      | Stroke endpoint shape                                    |
++| `lineJoin`        | `SceneStyle["lineJoin"]`        | `"round"`                      | Stroke corner shape                                      |
++| `points`          | `boolean`                       | `false`                        | Draws a radius-`2.5` dot at each valid point             |
++| `curve`           | `ChartCurve`                    | Straight segments              | Optional path generator                                  |
++| `states`          | `readonly ChartMarkState[]`     | None                           | Focus-driven presentation overrides                      |
+ 
+ Input order is path order. Sort rows before creating the mark when semantic x
+ order differs from input order. A null row flushes the current segment; later
+@@ -130,6 +131,7 @@ function areaY<TDatum>(
+ | Option        | Type                                 | Default                        | Meaning                                                        |
+ | ------------- | ------------------------------------ | ------------------------------ | -------------------------------------------------------------- |
+ | `id`          | `string`                             | Layer-derived                  | Stable mark ID                                                 |
++| `className`   | `string`                             | None                           | Class added beside `ts-chart__area`                            |
+ | `x`           | `Channel<TDatum, ChartValue?>`       | Row index                      | Shared horizontal position                                     |
+ | `y`           | `Channel<TDatum, number?>`           | Numeric datum                  | Layer thickness; implicitly stacked at each x                  |
+ | `y1`          | `number \| Channel<TDatum, number?>` | Implicit stack start           | Explicit lower boundary                                        |
+@@ -187,6 +189,7 @@ function areaX<TDatum>(
+ | Option        | Type                                 | Default                        | Meaning                                           |
+ | ------------- | ------------------------------------ | ------------------------------ | ------------------------------------------------- |
+ | `id`          | `string`                             | Layer-derived                  | Stable mark ID                                    |
++| `className`   | `string`                             | None                           | Class added beside `ts-chart__area`               |
+ | `x`           | `Channel<TDatum, number?>`           | Numeric datum                  | Layer thickness; implicitly stacked at each y     |
+ | `x1`          | `number \| Channel<TDatum, number?>` | Implicit stack start           | Explicit left boundary                            |
+ | `x2`          | `number \| Channel<TDatum, number?>` | Implicit stack end             | Explicit right boundary; takes precedence over x  |
+diff --git a/docs/reference/marks/ridgeline.md b/docs/reference/marks/ridgeline.md
+index 403ec5c..2a1e341 100644
+--- a/docs/reference/marks/ridgeline.md
++++ b/docs/reference/marks/ridgeline.md
+@@ -97,6 +97,7 @@ The public type surface includes `RidgelinePosition`, `RidgelineCurve`,
+ | `height`                                          | `Channel<TDatum, number?>`                 | Required         | Normalized displacement from the category baseline       |
+ | `overlap`                                         | `number`                                   | `1`              | Peak displacement in category-step units                 |
+ | `id`                                              | `string`                                   | Layer-derived    | Stable mark ID                                           |
++| `className`                                       | `string`                                   | None             | Class added beside `ts-chart__ridgeline`                 |
+ | `key`                                             | `Channel<TDatum, ChartKey>`                | Inferred         | Stable profile-sample identity                           |
+ | `color`                                           | `Channel<TDatum, ChartKey?>`               | Category         | Value sent to the chart color scale                      |
+ | `fill`, `stroke`                                  | `VisualChannel<TDatum, string>`            | Resolved color   | Category profile paint; `stroke: null` omits the outline |
+diff --git a/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md b/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
+index da24a1d..927e455 100644
+--- a/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
++++ b/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
+@@ -46,6 +46,7 @@ Options are orientation-specific:
+ | Option            | Type                            | Default                               | Meaning                             |
+ | ----------------- | ------------------------------- | ------------------------------------- | ----------------------------------- |
+ | `id`              | `string`                        | Layer-derived                         | Stable mark ID                      |
++| `className`       | `string`                        | None                                  | Class added beside `ts-chart__rule` |
+ | `x`               | `Channel<TDatum, ChartValue?>`  | Datum itself when it is a chart value | `ruleX` position                    |
+ | `y`               | `Channel<TDatum, ChartValue?>`  | Datum itself when it is a chart value | `ruleY` position                    |
+ | `color`           | `Channel<TDatum, ChartKey?>`    | No value                              | Value sent to the chart color scale |
+@@ -86,6 +87,7 @@ function link<TDatum>(
+ | Option            | Type                            | Default                | Meaning                             |
+ | ----------------- | ------------------------------- | ---------------------- | ----------------------------------- |
+ | `id`              | `string`                        | Layer-derived          | Stable mark ID                      |
++| `className`       | `string`                        | None                   | Class added beside `ts-chart__link` |
+ | `x1`, `y1`        | required channels               | —                      | First endpoint                      |
+ | `x2`, `y2`        | required channels               | —                      | Second endpoint                     |
+ | `z`               | `Channel<TDatum, ChartKey?>`    | No group               | Interaction group                   |
+@@ -131,6 +133,7 @@ function arrow<TDatum>(
+ | Option          | Type                            | Default                | Meaning                                         |
+ | --------------- | ------------------------------- | ---------------------- | ----------------------------------------------- |
+ | `id`            | `string`                        | Layer-derived          | Stable mark ID                                  |
++| `className`     | `string`                        | None                   | Class added beside `ts-chart__arrow`            |
+ | `x1`, `y1`      | required channels               | —                      | Tail endpoint                                   |
+ | `x2`, `y2`      | required channels               | —                      | Head endpoint                                   |
+ | `z`             | `Channel<TDatum, ChartKey?>`    | No group               | Interaction group                               |
+@@ -171,6 +174,7 @@ function vector<TDatum>(
+ | Option          | Type                                 | Default                | Meaning                                         |
+ | --------------- | ------------------------------------ | ---------------------- | ----------------------------------------------- |
+ | `id`            | `string`                             | Layer-derived          | Stable mark ID                                  |
++| `className`     | `string`                             | None                   | Class added beside `ts-chart__vector`           |
+ | `x`, `y`        | required channels                    | —                      | Scaled anchor                                   |
+ | `length`        | `number \| Channel<TDatum, number?>` | `12`                   | Vector length in pixels                         |
+ | `rotate`        | `number \| Channel<TDatum, number?>` | `0`                    | Clockwise degrees; zero points up               |
+@@ -218,6 +222,7 @@ Both share:
+ | Option          | Type                            | Default                                      | Meaning                             |
+ | --------------- | ------------------------------- | -------------------------------------------- | ----------------------------------- |
+ | `id`            | `string`                        | Layer-derived                                | Stable mark ID                      |
++| `className`     | `string`                        | None                                         | Class added beside `ts-chart__tick` |
+ | `x`, `y`        | required channels               | —                                            | Tick center                         |
+ | `z`             | `Channel<TDatum, ChartKey?>`    | No group                                     | Interaction group                   |
+ | `color`         | `Channel<TDatum, ChartKey?>`    | `z`                                          | Value sent to the chart color scale |
+diff --git a/docs/reference/marks/text-frame-and-facet.md b/docs/reference/marks/text-frame-and-facet.md
+index 010a1bb..6660dc7 100644
+--- a/docs/reference/marks/text-frame-and-facet.md
++++ b/docs/reference/marks/text-frame-and-facet.md
+@@ -35,6 +35,7 @@ function text<TDatum>(
+ | Option       | Type                                 | Default                            | Meaning                                           |
+ | ------------ | ------------------------------------ | ---------------------------------- | ------------------------------------------------- |
+ | `id`         | `string`                             | Layer-derived                      | Stable mark ID                                    |
++| `className`  | `string`                             | None                               | Class added beside `ts-chart__text`               |
+ | `x`          | `Channel<TDatum, ChartValue?>`       | Row index                          | Horizontal anchor                                 |
+ | `y`          | `Channel<TDatum, ChartValue?>`       | Numeric datum                      | Vertical anchor                                   |
+ | `text`       | `Channel<TDatum, string \| number?>` | String form of datum               | Label content                                     |
+diff --git a/docs/reference/marks/violin.md b/docs/reference/marks/violin.md
+index 30aa5ab..27ce4b3 100644
+--- a/docs/reference/marks/violin.md
++++ b/docs/reference/marks/violin.md
+@@ -110,6 +110,7 @@ The public type surface includes `ViolinPosition`, `ViolinYCurve`,
+ | `width`                                           | `Channel<TDatum, number?>`                 | Required         | Normalized mirrored envelope width                        |
+ | `span`                                            | `number`                                   | `0.8`            | Full peak width in category-step units                    |
+ | `id`                                              | `string`                                   | Layer-derived    | Stable mark ID                                            |
++| `className`                                       | `string`                                   | None             | Class added beside `ts-chart__violin`                     |
+ | `key`                                             | `Channel<TDatum, ChartKey>`                | Inferred         | Stable profile-sample identity                            |
+ | `color`                                           | `Channel<TDatum, ChartKey?>`               | Category         | Value sent to the chart color scale                       |
+ | `fill`, `stroke`                                  | `VisualChannel<TDatum, string>`            | Resolved color   | Envelope paint; `stroke: null` omits the outline          |
+diff --git a/docs/reference/marks/voronoi.md b/docs/reference/marks/voronoi.md
+index 53d204f..4062d78 100644
+--- a/docs/reference/marks/voronoi.md
++++ b/docs/reference/marks/voronoi.md
+@@ -49,6 +49,7 @@ The mark contributes x/y and color domains but intentionally emits no
+ | `y`                                               | `Channel<TDatum, ChartValue?>`            | Required         | Source vertical position                              |
+ | `z`                                               | `Channel<TDatum, ChartKey?>`              | One tessellation | Independent full-plot topology group                  |
+ | `key`                                             | `Channel<TDatum, ChartKey>`               | Inferred         | Stable source identity and coincident-cell ownership  |
++| `className`                                       | `string`                                  | None             | Class added beside `ts-chart__voronoi`                |
+ | `color`                                           | `Channel<TDatum, ChartKey?>`              | No value         | Value sent to the color scale; never a topology group |
+ | `fill`                                            | `VisualChannel<TDatum, string>`           | Resolved color   | Cell fill                                             |
+ | `stroke`                                          | `VisualChannel<TDatum, string>`           | None             | Cell stroke                                           |
+diff --git a/docs/reference/marks/waffle.md b/docs/reference/marks/waffle.md
+index a19504b..d4890df 100644
+--- a/docs/reference/marks/waffle.md
++++ b/docs/reference/marks/waffle.md
+@@ -58,6 +58,7 @@ motion fields. `WaffleYOptions<TDatum>` adds `y` and `columns`;
+ | `gap`                                             | `number`                                   | `1`              | Empty pixels between complete cells                        |
+ | `radius`                                          | `number`                                   | None             | Corner radius for complete cells                           |
+ | `id`                                              | `string`                                   | Layer-derived    | Stable mark ID                                             |
++| `className`                                       | `string`                                   | None             | Class added beside `ts-chart__waffle`                      |
+ | `z`                                               | `Channel<TDatum, ChartKey?>`               | No group         | Interaction group; color fallback when omitted             |
+ | `color`                                           | `Channel<TDatum, ChartKey?>`               | `z`              | Value sent to the chart color scale                        |
+ | `key`                                             | `Channel<TDatum, ChartKey>`                | Inferred         | Stable source-row identity                                 |
+diff --git a/packages/charts-core/docs/reference/marks/bar-and-rect.md b/packages/charts-core/docs/reference/marks/bar-and-rect.md
+index 79f5ca2..1672e86 100644
+--- a/packages/charts-core/docs/reference/marks/bar-and-rect.md
++++ b/packages/charts-core/docs/reference/marks/bar-and-rect.md
+@@ -35,6 +35,7 @@ function barY<TDatum>(
+ | Option            | Type                                 | Default                        | Meaning                                          |
+ | ----------------- | ------------------------------------ | ------------------------------ | ------------------------------------------------ |
+ | `id`              | `string`                             | Layer-derived                  | Stable mark ID                                   |
++| `className`       | `string`                             | None                           | Class added beside `ts-chart__bar`               |
+ | `x`               | `Channel<TDatum, ChartValue?>`       | Row index                      | Bar category or center                           |
+ | `y`               | `Channel<TDatum, number?>`           | Numeric datum                  | Length; implicitly stacked at each x             |
+ | `y1`              | `number \| Channel<TDatum, number?>` | Implicit stack start           | Explicit baseline endpoint                       |
+@@ -80,6 +81,7 @@ Its options transpose `barY`:
+ | Option         | Type                                 | Default                        | Meaning                                     |
+ | -------------- | ------------------------------------ | ------------------------------ | ------------------------------------------- |
+ | `id`           | `string`                             | Layer-derived                  | Stable mark ID                              |
++| `className`    | `string`                             | None                           | Class added beside `ts-chart__bar`          |
+ | `x`            | `Channel<TDatum, number?>`           | Numeric datum                  | Length; implicitly stacked at each y        |
+ | `x1`           | `number \| Channel<TDatum, number?>` | Implicit stack start           | Explicit baseline endpoint                  |
+ | `x2`           | `number \| Channel<TDatum, number?>` | Implicit stack end             | Explicit value endpoint; takes precedence   |
+@@ -334,11 +336,11 @@ whenFocused(
+ )
+ ```
+ 
+-`BandXOptions` and `BandYOptions` provide the positional channel, `z`, `color`,
+-`key`, `fill`, `fillOpacity`, `inset`, and `radius`. `bandX.width` and
+-`bandY.height` can replace scale or inferred bandwidth with an explicit
+-nonnegative scene-pixel size, which is useful for a one-pixel focus cursor. A
+-negative inset expands the resolved band. The helpers are also available from
++`BandXOptions` and `BandYOptions` provide the positional channel, `className`,
++`z`, `color`, `key`, `fill`, `fillOpacity`, `inset`, and `radius`.
++`bandX.width` and `bandY.height` can replace scale or inferred bandwidth with
++an explicit nonnegative scene-pixel size, which is useful for a one-pixel focus
++cursor. A negative inset expands the resolved band. The helpers are also available from
+ `@tanstack/charts/band`.
+ 
+ ## `rect`
+@@ -372,6 +374,7 @@ function rect<TDatum>(
+ | Option        | Type                                | Default                                | Meaning                                              |
+ | ------------- | ----------------------------------- | -------------------------------------- | ---------------------------------------------------- |
+ | `id`          | `string`                            | Layer-derived                          | Stable mark ID                                       |
++| `className`   | `string`                            | None                                   | Class added beside `ts-chart__rect`                  |
+ | `x`           | `Channel<TDatum, ChartValue?>`      | Row index                              | X center/category and preferred semantic focus value |
+ | `x1`          | `Channel<TDatum, ChartValue?>`      | `x`, or row index when x is absent     | First x endpoint                                     |
+ | `x2`          | `Channel<TDatum, ChartValue?>`      | `x`                                    | Second x endpoint                                    |
+diff --git a/packages/charts-core/docs/reference/marks/contour.md b/packages/charts-core/docs/reference/marks/contour.md
+index 76ae17c..9dd2a24 100644
+--- a/packages/charts-core/docs/reference/marks/contour.md
++++ b/packages/charts-core/docs/reference/marks/contour.md
+@@ -45,6 +45,7 @@ The mark contributes derived color values but no positional domains or
+ | `strokeDasharray`                                 | `string`                                      | None             | Contour stroke dash pattern                    |
+ | `opacity`                                         | `number`                                      | Renderer default | Whole-contour opacity                          |
+ | `id`                                              | `string`                                      | Layer-derived    | Stable mark ID                                 |
++| `className`                                       | `string`                                      | None             | Class added beside `ts-chart__contour`         |
+ | `motion`                                          | `ChartMarkMotionOptions<never>['motion']`     | None             | Contour enter, update, and exit motion         |
+ 
+ `width` and `height` must be positive integers, and the source length must be
+diff --git a/packages/charts-core/docs/reference/marks/density.md b/packages/charts-core/docs/reference/marks/density.md
+index bcec150..abf6044 100644
+--- a/packages/charts-core/docs/reference/marks/density.md
++++ b/packages/charts-core/docs/reference/marks/density.md
+@@ -49,6 +49,7 @@ The mark contributes x/y and derived color domains but intentionally emits no
+ | `strokeDasharray`                                 | `string`                                     | None             | Contour stroke dash pattern                                     |
+ | `opacity`                                         | `number`                                     | Renderer default | Whole-contour opacity                                           |
+ | `id`                                              | `string`                                     | Layer-derived    | Stable mark ID                                                  |
++| `className`                                       | `string`                                     | None             | Class added beside `ts-chart__density-contour`                  |
+ | `motion`                                          | `ChartMarkMotionOptions<never>['motion']`    | None             | Contour enter, update, and exit motion                          |
+ 
+ `bandwidth` must be nonnegative and finite. `cellSize` must be at least one;
+diff --git a/packages/charts-core/docs/reference/marks/dot-and-hexagon.md b/packages/charts-core/docs/reference/marks/dot-and-hexagon.md
+index b0bc03b..a381f51 100644
+--- a/packages/charts-core/docs/reference/marks/dot-and-hexagon.md
++++ b/packages/charts-core/docs/reference/marks/dot-and-hexagon.md
+@@ -35,6 +35,7 @@ function dot<TDatum>(
+ | Option          | Type                                 | Default              | Meaning                               |
+ | --------------- | ------------------------------------ | -------------------- | ------------------------------------- |
+ | `id`            | `string`                             | Layer-derived        | Stable mark ID                        |
++| `className`     | `string`                             | None                 | Class added beside `ts-chart__dot`    |
+ | `x`             | `Channel<TDatum, ChartValue?>`       | Row index            | Horizontal value                      |
+ | `y`             | `Channel<TDatum, ChartValue?>`       | Numeric datum        | Vertical value                        |
+ | `z`             | `Channel<TDatum, ChartKey?>`         | No group             | Interaction group                     |
+@@ -87,21 +88,22 @@ function hexagon<TDatum>(
+ 
+ ### Options
+ 
+-| Option          | Type                                 | Default                | Meaning                             |
+-| --------------- | ------------------------------------ | ---------------------- | ----------------------------------- |
+-| `id`            | `string`                             | Layer-derived          | Stable mark ID                      |
+-| `x`             | `Channel<TDatum, ChartValue?>`       | Row index              | Horizontal center                   |
+-| `y`             | `Channel<TDatum, ChartValue?>`       | Numeric datum          | Vertical center                     |
+-| `z`             | `Channel<TDatum, ChartKey?>`         | No group               | Interaction group                   |
+-| `color`         | `Channel<TDatum, ChartKey?>`         | `z`                    | Value sent to the chart color scale |
+-| `key`           | `Channel<TDatum, ChartKey>`          | Top/nested `id`, index | Stable identity                     |
+-| `r`             | `number \| Channel<TDatum, number?>` | `6`                    | Raw circumradius                    |
+-| `rScale`        | `(value: number) => number`          | Identity               | Maps radius values to pixels        |
+-| `fill`          | `VisualChannel<TDatum, string>`      | Resolved color         | Final fill override                 |
+-| `fillOpacity`   | `number`                             | SVG default            | Fill opacity                        |
+-| `stroke`        | `VisualChannel<TDatum, string>`      | None                   | Optional stroke per mark or row     |
+-| `strokeOpacity` | `number`                             | SVG default            | Stroke opacity                      |
+-| `strokeWidth`   | `number`                             | SVG default            | Stroke width                        |
++| Option          | Type                                 | Default                | Meaning                                |
++| --------------- | ------------------------------------ | ---------------------- | -------------------------------------- |
++| `id`            | `string`                             | Layer-derived          | Stable mark ID                         |
++| `className`     | `string`                             | None                   | Class added beside `ts-chart__hexagon` |
++| `x`             | `Channel<TDatum, ChartValue?>`       | Row index              | Horizontal center                      |
++| `y`             | `Channel<TDatum, ChartValue?>`       | Numeric datum          | Vertical center                        |
++| `z`             | `Channel<TDatum, ChartKey?>`         | No group               | Interaction group                      |
++| `color`         | `Channel<TDatum, ChartKey?>`         | `z`                    | Value sent to the chart color scale    |
++| `key`           | `Channel<TDatum, ChartKey>`          | Top/nested `id`, index | Stable identity                        |
++| `r`             | `number \| Channel<TDatum, number?>` | `6`                    | Raw circumradius                       |
++| `rScale`        | `(value: number) => number`          | Identity               | Maps radius values to pixels           |
++| `fill`          | `VisualChannel<TDatum, string>`      | Resolved color         | Final fill override                    |
++| `fillOpacity`   | `number`                             | SVG default            | Fill opacity                           |
++| `stroke`        | `VisualChannel<TDatum, string>`      | None                   | Optional stroke per mark or row        |
++| `strokeOpacity` | `number`                             | SVG default            | Stroke opacity                         |
++| `strokeWidth`   | `number`                             | SVG default            | Stroke width                           |
+ 
+ The generated vertices begin at the top and proceed in 60-degree increments.
+ The interaction point remains at the scaled center, and its `color` is the
+diff --git a/packages/charts-core/docs/reference/marks/line-and-area.md b/packages/charts-core/docs/reference/marks/line-and-area.md
+index a54b015..4104f40 100644
+--- a/packages/charts-core/docs/reference/marks/line-and-area.md
++++ b/packages/charts-core/docs/reference/marks/line-and-area.md
+@@ -43,23 +43,24 @@ function lineY<TDatum>(
+ 
+ ### Options
+ 
+-| Option            | Type                            | Default                        | Meaning                                        |
+-| ----------------- | ------------------------------- | ------------------------------ | ---------------------------------------------- |
+-| `id`              | `string`                        | Layer-derived                  | Stable mark ID                                 |
+-| `x`               | `Channel<TDatum, ChartValue?>`  | Row index                      | Horizontal value                               |
+-| `y`               | `Channel<TDatum, number?>`      | Numeric datum                  | Vertical value                                 |
+-| `z`               | `Channel<TDatum, ChartKey?>`    | No explicit group              | Path grouping; overrides color grouping        |
+-| `color`           | `Channel<TDatum, ChartKey?>`    | `z`                            | Color-scale value; groups when `z` is absent   |
+-| `key`             | `Channel<TDatum, ChartKey>`     | Top/nested `id`, x, then index | Stable interaction and scene identity          |
+-| `stroke`          | `VisualChannel<TDatum, string>` | Resolved color                 | Final path paint; evaluated from the first row |
+-| `strokeOpacity`   | `number`                        | SVG default                    | Stroke opacity                                 |
+-| `strokeWidth`     | `number`                        | `2.25`                         | Stroke width                                   |
+-| `strokeDasharray` | `string`                        | None                           | SVG dash array                                 |
+-| `lineCap`         | `SceneStyle["lineCap"]`         | `"round"`                      | Stroke endpoint shape                          |
+-| `lineJoin`        | `SceneStyle["lineJoin"]`        | `"round"`                      | Stroke corner shape                            |
+-| `points`          | `boolean`                       | `false`                        | Draws a radius-`2.5` dot at each valid point   |
+-| `curve`           | `ChartCurve`                    | Straight segments              | Optional path generator                        |
+-| `states`          | `readonly ChartMarkState[]`     | None                           | Focus-driven presentation overrides            |
++| Option            | Type                            | Default                        | Meaning                                                  |
++| ----------------- | ------------------------------- | ------------------------------ | -------------------------------------------------------- |
++| `id`              | `string`                        | Layer-derived                  | Stable mark ID                                           |
++| `className`       | `string`                        | None                           | Class added to each series group beside `ts-chart__line` |
++| `x`               | `Channel<TDatum, ChartValue?>`  | Row index                      | Horizontal value                                         |
++| `y`               | `Channel<TDatum, number?>`      | Numeric datum                  | Vertical value                                           |
++| `z`               | `Channel<TDatum, ChartKey?>`    | No explicit group              | Path grouping; overrides color grouping                  |
++| `color`           | `Channel<TDatum, ChartKey?>`    | `z`                            | Color-scale value; groups when `z` is absent             |
++| `key`             | `Channel<TDatum, ChartKey>`     | Top/nested `id`, x, then index | Stable interaction and scene identity                    |
++| `stroke`          | `VisualChannel<TDatum, string>` | Resolved color                 | Final path paint; evaluated from the first row           |
++| `strokeOpacity`   | `number`                        | SVG default                    | Stroke opacity                                           |
++| `strokeWidth`     | `number`                        | `2.25`                         | Stroke width                                             |
++| `strokeDasharray` | `string`                        | None                           | SVG dash array                                           |
++| `lineCap`         | `SceneStyle["lineCap"]`         | `"round"`                      | Stroke endpoint shape                                    |
++| `lineJoin`        | `SceneStyle["lineJoin"]`        | `"round"`                      | Stroke corner shape                                      |
++| `points`          | `boolean`                       | `false`                        | Draws a radius-`2.5` dot at each valid point             |
++| `curve`           | `ChartCurve`                    | Straight segments              | Optional path generator                                  |
++| `states`          | `readonly ChartMarkState[]`     | None                           | Focus-driven presentation overrides                      |
+ 
+ Input order is path order. Sort rows before creating the mark when semantic x
+ order differs from input order. A null row flushes the current segment; later
+@@ -130,6 +131,7 @@ function areaY<TDatum>(
+ | Option        | Type                                 | Default                        | Meaning                                                        |
+ | ------------- | ------------------------------------ | ------------------------------ | -------------------------------------------------------------- |
+ | `id`          | `string`                             | Layer-derived                  | Stable mark ID                                                 |
++| `className`   | `string`                             | None                           | Class added beside `ts-chart__area`                            |
+ | `x`           | `Channel<TDatum, ChartValue?>`       | Row index                      | Shared horizontal position                                     |
+ | `y`           | `Channel<TDatum, number?>`           | Numeric datum                  | Layer thickness; implicitly stacked at each x                  |
+ | `y1`          | `number \| Channel<TDatum, number?>` | Implicit stack start           | Explicit lower boundary                                        |
+@@ -187,6 +189,7 @@ function areaX<TDatum>(
+ | Option        | Type                                 | Default                        | Meaning                                           |
+ | ------------- | ------------------------------------ | ------------------------------ | ------------------------------------------------- |
+ | `id`          | `string`                             | Layer-derived                  | Stable mark ID                                    |
++| `className`   | `string`                             | None                           | Class added beside `ts-chart__area`               |
+ | `x`           | `Channel<TDatum, number?>`           | Numeric datum                  | Layer thickness; implicitly stacked at each y     |
+ | `x1`          | `number \| Channel<TDatum, number?>` | Implicit stack start           | Explicit left boundary                            |
+ | `x2`          | `number \| Channel<TDatum, number?>` | Implicit stack end             | Explicit right boundary; takes precedence over x  |
+diff --git a/packages/charts-core/docs/reference/marks/ridgeline.md b/packages/charts-core/docs/reference/marks/ridgeline.md
+index 403ec5c..2a1e341 100644
+--- a/packages/charts-core/docs/reference/marks/ridgeline.md
++++ b/packages/charts-core/docs/reference/marks/ridgeline.md
+@@ -97,6 +97,7 @@ The public type surface includes `RidgelinePosition`, `RidgelineCurve`,
+ | `height`                                          | `Channel<TDatum, number?>`                 | Required         | Normalized displacement from the category baseline       |
+ | `overlap`                                         | `number`                                   | `1`              | Peak displacement in category-step units                 |
+ | `id`                                              | `string`                                   | Layer-derived    | Stable mark ID                                           |
++| `className`                                       | `string`                                   | None             | Class added beside `ts-chart__ridgeline`                 |
+ | `key`                                             | `Channel<TDatum, ChartKey>`                | Inferred         | Stable profile-sample identity                           |
+ | `color`                                           | `Channel<TDatum, ChartKey?>`               | Category         | Value sent to the chart color scale                      |
+ | `fill`, `stroke`                                  | `VisualChannel<TDatum, string>`            | Resolved color   | Category profile paint; `stroke: null` omits the outline |
+diff --git a/packages/charts-core/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md b/packages/charts-core/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
+index da24a1d..927e455 100644
+--- a/packages/charts-core/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
++++ b/packages/charts-core/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
+@@ -46,6 +46,7 @@ Options are orientation-specific:
+ | Option            | Type                            | Default                               | Meaning                             |
+ | ----------------- | ------------------------------- | ------------------------------------- | ----------------------------------- |
+ | `id`              | `string`                        | Layer-derived                         | Stable mark ID                      |
++| `className`       | `string`                        | None                                  | Class added beside `ts-chart__rule` |
+ | `x`               | `Channel<TDatum, ChartValue?>`  | Datum itself when it is a chart value | `ruleX` position                    |
+ | `y`               | `Channel<TDatum, ChartValue?>`  | Datum itself when it is a chart value | `ruleY` position                    |
+ | `color`           | `Channel<TDatum, ChartKey?>`    | No value                              | Value sent to the chart color scale |
+@@ -86,6 +87,7 @@ function link<TDatum>(
+ | Option            | Type                            | Default                | Meaning                             |
+ | ----------------- | ------------------------------- | ---------------------- | ----------------------------------- |
+ | `id`              | `string`                        | Layer-derived          | Stable mark ID                      |
++| `className`       | `string`                        | None                   | Class added beside `ts-chart__link` |
+ | `x1`, `y1`        | required channels               | —                      | First endpoint                      |
+ | `x2`, `y2`        | required channels               | —                      | Second endpoint                     |
+ | `z`               | `Channel<TDatum, ChartKey?>`    | No group               | Interaction group                   |
+@@ -131,6 +133,7 @@ function arrow<TDatum>(
+ | Option          | Type                            | Default                | Meaning                                         |
+ | --------------- | ------------------------------- | ---------------------- | ----------------------------------------------- |
+ | `id`            | `string`                        | Layer-derived          | Stable mark ID                                  |
++| `className`     | `string`                        | None                   | Class added beside `ts-chart__arrow`            |
+ | `x1`, `y1`      | required channels               | —                      | Tail endpoint                                   |
+ | `x2`, `y2`      | required channels               | —                      | Head endpoint                                   |
+ | `z`             | `Channel<TDatum, ChartKey?>`    | No group               | Interaction group                               |
+@@ -171,6 +174,7 @@ function vector<TDatum>(
+ | Option          | Type                                 | Default                | Meaning                                         |
+ | --------------- | ------------------------------------ | ---------------------- | ----------------------------------------------- |
+ | `id`            | `string`                             | Layer-derived          | Stable mark ID                                  |
++| `className`     | `string`                             | None                   | Class added beside `ts-chart__vector`           |
+ | `x`, `y`        | required channels                    | —                      | Scaled anchor                                   |
+ | `length`        | `number \| Channel<TDatum, number?>` | `12`                   | Vector length in pixels                         |
+ | `rotate`        | `number \| Channel<TDatum, number?>` | `0`                    | Clockwise degrees; zero points up               |
+@@ -218,6 +222,7 @@ Both share:
+ | Option          | Type                            | Default                                      | Meaning                             |
+ | --------------- | ------------------------------- | -------------------------------------------- | ----------------------------------- |
+ | `id`            | `string`                        | Layer-derived                                | Stable mark ID                      |
++| `className`     | `string`                        | None                                         | Class added beside `ts-chart__tick` |
+ | `x`, `y`        | required channels               | —                                            | Tick center                         |
+ | `z`             | `Channel<TDatum, ChartKey?>`    | No group                                     | Interaction group                   |
+ | `color`         | `Channel<TDatum, ChartKey?>`    | `z`                                          | Value sent to the chart color scale |
+diff --git a/packages/charts-core/docs/reference/marks/text-frame-and-facet.md b/packages/charts-core/docs/reference/marks/text-frame-and-facet.md
+index 010a1bb..6660dc7 100644
+--- a/packages/charts-core/docs/reference/marks/text-frame-and-facet.md
++++ b/packages/charts-core/docs/reference/marks/text-frame-and-facet.md
+@@ -35,6 +35,7 @@ function text<TDatum>(
+ | Option       | Type                                 | Default                            | Meaning                                           |
+ | ------------ | ------------------------------------ | ---------------------------------- | ------------------------------------------------- |
+ | `id`         | `string`                             | Layer-derived                      | Stable mark ID                                    |
++| `className`  | `string`                             | None                               | Class added beside `ts-chart__text`               |
+ | `x`          | `Channel<TDatum, ChartValue?>`       | Row index                          | Horizontal anchor                                 |
+ | `y`          | `Channel<TDatum, ChartValue?>`       | Numeric datum                      | Vertical anchor                                   |
+ | `text`       | `Channel<TDatum, string \| number?>` | String form of datum               | Label content                                     |
+diff --git a/packages/charts-core/docs/reference/marks/violin.md b/packages/charts-core/docs/reference/marks/violin.md
+index 30aa5ab..27ce4b3 100644
+--- a/packages/charts-core/docs/reference/marks/violin.md
++++ b/packages/charts-core/docs/reference/marks/violin.md
+@@ -110,6 +110,7 @@ The public type surface includes `ViolinPosition`, `ViolinYCurve`,
+ | `width`                                           | `Channel<TDatum, number?>`                 | Required         | Normalized mirrored envelope width                        |
+ | `span`                                            | `number`                                   | `0.8`            | Full peak width in category-step units                    |
+ | `id`                                              | `string`                                   | Layer-derived    | Stable mark ID                                            |
++| `className`                                       | `string`                                   | None             | Class added beside `ts-chart__violin`                     |
+ | `key`                                             | `Channel<TDatum, ChartKey>`                | Inferred         | Stable profile-sample identity                            |
+ | `color`                                           | `Channel<TDatum, ChartKey?>`               | Category         | Value sent to the chart color scale                       |
+ | `fill`, `stroke`                                  | `VisualChannel<TDatum, string>`            | Resolved color   | Envelope paint; `stroke: null` omits the outline          |
+diff --git a/packages/charts-core/docs/reference/marks/voronoi.md b/packages/charts-core/docs/reference/marks/voronoi.md
+index 53d204f..4062d78 100644
+--- a/packages/charts-core/docs/reference/marks/voronoi.md
++++ b/packages/charts-core/docs/reference/marks/voronoi.md
+@@ -49,6 +49,7 @@ The mark contributes x/y and color domains but intentionally emits no
+ | `y`                                               | `Channel<TDatum, ChartValue?>`            | Required         | Source vertical position                              |
+ | `z`                                               | `Channel<TDatum, ChartKey?>`              | One tessellation | Independent full-plot topology group                  |
+ | `key`                                             | `Channel<TDatum, ChartKey>`               | Inferred         | Stable source identity and coincident-cell ownership  |
++| `className`                                       | `string`                                  | None             | Class added beside `ts-chart__voronoi`                |
+ | `color`                                           | `Channel<TDatum, ChartKey?>`              | No value         | Value sent to the color scale; never a topology group |
+ | `fill`                                            | `VisualChannel<TDatum, string>`           | Resolved color   | Cell fill                                             |
+ | `stroke`                                          | `VisualChannel<TDatum, string>`           | None             | Cell stroke                                           |
+diff --git a/packages/charts-core/docs/reference/marks/waffle.md b/packages/charts-core/docs/reference/marks/waffle.md
+index a19504b..d4890df 100644
+--- a/packages/charts-core/docs/reference/marks/waffle.md
++++ b/packages/charts-core/docs/reference/marks/waffle.md
+@@ -58,6 +58,7 @@ motion fields. `WaffleYOptions<TDatum>` adds `y` and `columns`;
+ | `gap`                                             | `number`                                   | `1`              | Empty pixels between complete cells                        |
+ | `radius`                                          | `number`                                   | None             | Corner radius for complete cells                           |
+ | `id`                                              | `string`                                   | Layer-derived    | Stable mark ID                                             |
++| `className`                                       | `string`                                   | None             | Class added beside `ts-chart__waffle`                      |
+ | `z`                                               | `Channel<TDatum, ChartKey?>`               | No group         | Interaction group; color fallback when omitted             |
+ | `color`                                           | `Channel<TDatum, ChartKey?>`               | `z`              | Value sent to the chart color scale                        |
+ | `key`                                             | `Channel<TDatum, ChartKey>`                | Inferred         | Stable source-row identity                                 |
+diff --git a/packages/charts-core/src/area-x.ts b/packages/charts-core/src/area-x.ts
+index 86814b1..09a9433 100644
+--- a/packages/charts-core/src/area-x.ts
++++ b/packages/charts-core/src/area-x.ts
+@@ -10,6 +10,7 @@ import {
+ } from './mark'
+ import { valueKey } from './scales'
+ import { stackValues } from './stack-internal'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   CartesianChartMark,
+@@ -39,6 +40,7 @@ export interface AreaXCurve {
+ export interface AreaXOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, number | null | undefined>
+   x1?: number | Channel<TDatum, number | null | undefined>
+   x2?: number | Channel<TDatum, number | null | undefined>
+@@ -274,7 +276,7 @@ export function areaX<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__area',
++                className: classes('ts-chart__area', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/area.ts b/packages/charts-core/src/area.ts
+index d015295..f6c5fbc 100644
+--- a/packages/charts-core/src/area.ts
++++ b/packages/charts-core/src/area.ts
+@@ -10,6 +10,7 @@ import {
+ } from './mark'
+ import { valueKey } from './scales'
+ import { stackValues } from './stack-internal'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   CartesianChartMark,
+@@ -33,6 +34,7 @@ import type { StackLayout } from './stack'
+ export interface AreaYOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, ChartValue | null | undefined>
+   y?: Channel<TDatum, number | null | undefined>
+   y1?: number | Channel<TDatum, number | null | undefined>
+@@ -268,7 +270,7 @@ export function areaY<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__area',
++                className: classes('ts-chart__area', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/arrow.ts b/packages/charts-core/src/arrow.ts
+index 7b30d7a..1e3f0cf 100644
+--- a/packages/charts-core/src/arrow.ts
++++ b/packages/charts-core/src/arrow.ts
+@@ -8,6 +8,7 @@ import {
+ } from './mark'
+ import { arrowGeometry } from './arrow-geometry'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   ChannelOutput,
+@@ -27,6 +28,7 @@ import type {
+ export interface ArrowOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x1: Channel<TDatum, ChartValue | null | undefined>
+   y1: Channel<TDatum, ChartValue | null | undefined>
+   x2: Channel<TDatum, ChartValue | null | undefined>
+@@ -221,7 +223,7 @@ export function arrow<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__arrow',
++                className: classes('ts-chart__arrow', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/band.ts b/packages/charts-core/src/band.ts
+index 143a264..9721d65 100644
+--- a/packages/charts-core/src/band.ts
++++ b/packages/charts-core/src/band.ts
+@@ -9,6 +9,7 @@ import {
+ import { createMarkWithScaleValues } from './mark-with-scale-values'
+ import { minimumMappedSpacing } from './mapped-spacing-internal'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   CartesianChartMark,
+@@ -27,6 +28,7 @@ import type {
+ 
+ export interface BandXOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, ChartValue | null | undefined>
+   z?: Channel<TDatum, ChartKey | null | undefined>
+   color?: Channel<TDatum, ChartKey | null | undefined>
+@@ -41,6 +43,7 @@ export interface BandXOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+ 
+ export interface BandYOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+   id?: string
++  className?: string
+   y?: Channel<TDatum, ChartValue | null | undefined>
+   z?: Channel<TDatum, ChartKey | null | undefined>
+   color?: Channel<TDatum, ChartKey | null | undefined>
+@@ -181,7 +184,10 @@ export function bandX<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__band ts-chart__band-x',
++                className: classes(
++                  'ts-chart__band ts-chart__band-x',
++                  options.className,
++                ),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+@@ -299,7 +305,10 @@ export function bandY<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__band ts-chart__band-y',
++                className: classes(
++                  'ts-chart__band ts-chart__band-y',
++                  options.className,
++                ),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/bar.ts b/packages/charts-core/src/bar.ts
+index ffe2226..109d236 100644
+--- a/packages/charts-core/src/bar.ts
++++ b/packages/charts-core/src/bar.ts
+@@ -21,6 +21,7 @@ import {
+ import { valueKey } from './scales'
+ import { stackOuterEnds, type StackOuterEnd } from './stack-ends-internal'
+ import { stackValues } from './stack-internal'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   ChannelAccessor,
+@@ -59,6 +60,7 @@ export type BarRadius<TDatum> =
+ export interface BarYOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, ChartValue | null | undefined>
+   y?: Channel<TDatum, number | null | undefined>
+   y1?: number | Channel<TDatum, number | null | undefined>
+@@ -84,6 +86,7 @@ export interface BarYOptions<TDatum>
+ export interface BarXOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, number | null | undefined>
+   x1?: number | Channel<TDatum, number | null | undefined>
+   x2?: number | Channel<TDatum, number | null | undefined>
+@@ -396,7 +399,10 @@ export function barY<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__bar ts-chart__bar-y',
++                className: classes(
++                  'ts-chart__bar ts-chart__bar-y',
++                  options.className,
++                ),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+@@ -672,7 +678,10 @@ export function barX<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__bar ts-chart__bar-x',
++                className: classes(
++                  'ts-chart__bar ts-chart__bar-x',
++                  options.className,
++                ),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/canvas.test.ts b/packages/charts-core/src/canvas.test.ts
+index edb81d1..36a53b8 100644
+--- a/packages/charts-core/src/canvas.test.ts
++++ b/packages/charts-core/src/canvas.test.ts
+@@ -25,6 +25,7 @@ import {
+ import { dot } from './dot'
+ import { facet } from './facet'
+ import { lineX, lineY } from './line'
++import { link } from './link'
+ import { mountChart } from './dom'
+ import { pie, polar, radialArc, radialDot, radialLine } from './polar'
+ import { resolveCrosshairGuide } from './crosshair-resolver'
+@@ -160,6 +161,44 @@ describe('Canvas renderer', () => {
+     surface.destroy()
+   })
+ 
++  it('paints a mark className as a no-op', () => {
++    const rows = [
++      { x1: 1, y1: 2, x2: 3, y2: 4 },
++      { x1: 2, y1: 1, x2: 4, y2: 3 },
++    ]
++    const paint = (className?: string) => {
++      const scene = createChartScene(
++        defineChart({
++          marks: [
++            link(rows, { x1: 'x1', y1: 'y1', x2: 'x2', y2: 'y2', className }),
++          ],
++          scales: {
++            x: { scale: scaleLinear().domain([0, 5]) },
++            y: { scale: scaleLinear().domain([0, 5]) },
++          },
++          guides: false,
++        }),
++        { width: 300, height: 180 },
++      )
++      const container = document.createElement('div')
++      const surface = createCanvasChartRenderer().mount(container, () => {})
++      surface.render(scene, renderOptions())
++      const canvas = container.querySelector<HTMLCanvasElement>(
++        '.ts-chart-canvas__scene',
++      )
++      const painted = canvas ? contexts.get(canvas) : undefined
++      if (!painted) throw new Error('Expected a painted scene canvas')
++      const operations = [...painted.operations]
++      surface.destroy()
++      return operations
++    }
++
++    const plain = paint()
++
++    expect(plain.length).toBeGreaterThan(0)
++    expect(paint('flow')).toEqual(plain)
++  })
++
+   it('paints round caps and joins by default for both line directions', () => {
+     const scene = createChartScene(
+       defineChart({
+diff --git a/packages/charts-core/src/class-name-internal.ts b/packages/charts-core/src/class-name-internal.ts
+new file mode 100644
+index 0000000..a944d58
+--- /dev/null
++++ b/packages/charts-core/src/class-name-internal.ts
+@@ -0,0 +1,3 @@
++export function classes(base: string, custom: string | undefined): string {
++  return custom ? `${base} ${custom}` : base
++}
+diff --git a/packages/charts-core/src/dot.ts b/packages/charts-core/src/dot.ts
+index ad801c1..13d1087 100644
+--- a/packages/charts-core/src/dot.ts
++++ b/packages/charts-core/src/dot.ts
+@@ -12,6 +12,7 @@ import { resolveDotLayout } from './dot-layout'
+ import { projectLayoutX, projectLayoutY } from './resolved-layout-position'
+ import { resolveNumericScale } from './scale-input'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type { DotLayout } from './dot-layout'
+ import type {
+   LayoutSourceRow,
+@@ -41,6 +42,7 @@ import type {
+ export interface DotOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, ChartValue | null | undefined>
+   y?: Channel<TDatum, ChartValue | null | undefined>
+   z?: Channel<TDatum, ChartKey | null | undefined>
+@@ -270,7 +272,7 @@ export function dot<TDatum>(
+             {
+               kind: 'group' as const,
+               key: id,
+-              className: 'ts-chart__dot',
++              className: classes('ts-chart__dot', options.className),
+               ariaHidden: true,
+               children: nodes,
+             },
+diff --git a/packages/charts-core/src/geo.ts b/packages/charts-core/src/geo.ts
+index 7d5c1f4..57138e8 100644
+--- a/packages/charts-core/src/geo.ts
++++ b/packages/charts-core/src/geo.ts
+@@ -1,4 +1,5 @@
+ import { geoCentroid, geoPath } from 'd3-geo'
++import { classes } from './class-name-internal'
+ import type {
+   GeoPermissibleObjects,
+   GeoGeometryObjects,
+@@ -204,9 +205,7 @@ export function geoShape<TDatum extends GeoPermissibleObjects>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: options.className
+-                  ? `ts-chart__geo ${options.className}`
+-                  : 'ts-chart__geo',
++                className: classes('ts-chart__geo', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/hexagon.ts b/packages/charts-core/src/hexagon.ts
+index ed68518..11e6aaf 100644
+--- a/packages/charts-core/src/hexagon.ts
++++ b/packages/charts-core/src/hexagon.ts
+@@ -9,6 +9,7 @@ import {
+ } from './mark'
+ import { resolveNumericScale } from './scale-input'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   CartesianChartMark,
+@@ -29,6 +30,7 @@ import type {
+ export interface HexagonOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, ChartValue | null | undefined>
+   y?: Channel<TDatum, ChartValue | null | undefined>
+   z?: Channel<TDatum, ChartKey | null | undefined>
+@@ -201,7 +203,7 @@ export function hexagon<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__hexagon',
++                className: classes('ts-chart__hexagon', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/hierarchy-sunburst.ts b/packages/charts-core/src/hierarchy-sunburst.ts
+index a48ac10..6ea37dc 100644
+--- a/packages/charts-core/src/hierarchy-sunburst.ts
++++ b/packages/charts-core/src/hierarchy-sunburst.ts
+@@ -16,6 +16,7 @@ import {
+   type SceneMotionMetadata,
+ } from './scene-motion-internal'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   FlatHierarchyDatum,
+   FlatHierarchyNode,
+@@ -412,7 +413,3 @@ function resolveLayoutRoot<TDatum>(
+   }
+   return selected.copy() as FlatHierarchyNode<TDatum>
+ }
+-
+-function classes(base: string, custom: string | undefined): string {
+-  return custom ? `${base} ${custom}` : base
+-}
+diff --git a/packages/charts-core/src/line.ts b/packages/charts-core/src/line.ts
+index 937d7e5..17682c6 100644
+--- a/packages/charts-core/src/line.ts
++++ b/packages/charts-core/src/line.ts
+@@ -9,6 +9,7 @@ import {
+   visualValue,
+ } from './mark'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   CartesianChartMark,
+@@ -32,6 +33,7 @@ import type {
+ interface LineOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   z?: Channel<TDatum, ChartKey | null | undefined>
+   color?: Channel<TDatum, ChartKey | null | undefined>
+   key?: Channel<TDatum, ChartKey>
+@@ -353,7 +355,7 @@ function createLineMark<TDatum>(
+             nodes.push({
+               kind: 'group',
+               key: `${id}:${groupKey}`,
+-              className: 'ts-chart__line',
++              className: classes('ts-chart__line', options.className),
+               ariaHidden: true,
+               children,
+             })
+diff --git a/packages/charts-core/src/link.ts b/packages/charts-core/src/link.ts
+index e50de21..3d76ab0 100644
+--- a/packages/charts-core/src/link.ts
++++ b/packages/charts-core/src/link.ts
+@@ -7,6 +7,7 @@ import {
+   visualValue,
+ } from './mark'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   ChannelOutput,
+@@ -27,6 +28,7 @@ import type {
+ export interface LinkOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x1: Channel<TDatum, ChartValue | null | undefined>
+   y1: Channel<TDatum, ChartValue | null | undefined>
+   x2: Channel<TDatum, ChartValue | null | undefined>
+@@ -256,7 +258,7 @@ export function link<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__link',
++                className: classes('ts-chart__link', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/polar.ts b/packages/charts-core/src/polar.ts
+index ac7c836..8ddf76d 100644
+--- a/packages/charts-core/src/polar.ts
++++ b/packages/charts-core/src/polar.ts
+@@ -26,6 +26,7 @@ import {
+ import { resolveNumericScale, resolveScaleInput } from './scale-input'
+ import { valueKey } from './scales'
+ import { physicalTextAnchor } from './guide-layout'
++import { classes } from './class-name-internal'
+ import type { Arc, CurveFactory, CurveFactoryLineOnly } from 'd3-shape'
+ import type {
+   Channel,
+@@ -2851,7 +2852,3 @@ function guideLabelOption<TValue>(
+     ? (option as (context: PolarGuideLabelContext) => TValue)(context)
+     : (option ?? fallback)
+ }
+-
+-function classes(base: string, custom: string | undefined): string {
+-  return custom ? `${base} ${custom}` : base
+-}
+diff --git a/packages/charts-core/src/rect.ts b/packages/charts-core/src/rect.ts
+index de2dd3a..deb69ee 100644
+--- a/packages/charts-core/src/rect.ts
++++ b/packages/charts-core/src/rect.ts
+@@ -13,6 +13,7 @@ import {
+   resolveSceneRectRadius,
+ } from './rect-radius-state-internal'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   CartesianChartMark,
+@@ -35,6 +36,7 @@ import type {
+ export interface RectOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, ChartValue | null | undefined>
+   x1?: Channel<TDatum, ChartValue | null | undefined>
+   x2?: Channel<TDatum, ChartValue | null | undefined>
+@@ -318,7 +320,7 @@ export function rect<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__rect',
++                className: classes('ts-chart__rect', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/ridgeline.ts b/packages/charts-core/src/ridgeline.ts
+index ebdef9c..acb3e74 100644
+--- a/packages/charts-core/src/ridgeline.ts
++++ b/packages/charts-core/src/ridgeline.ts
+@@ -13,6 +13,7 @@ import {
+ } from './mapped-spacing-internal'
+ import { valueKey } from './scales'
+ import { groupedIndexes } from './transform-internal'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   ChannelOutput,
+@@ -40,6 +41,7 @@ export type RidgelineStateStyle<TDatum = unknown> = Pick<
+ interface RidgelineOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   /** Normalized profile height in the inclusive range [0, 1]. */
+   height: Channel<TDatum, number | null | undefined>
+   /** Peak height in category-step units. Defaults to 1. */
+@@ -410,7 +412,10 @@ function ridgeline<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: `ts-chart__ridgeline ts-chart__ridgeline-${orientation}`,
++                className: classes(
++                  `ts-chart__ridgeline ts-chart__ridgeline-${orientation}`,
++                  options.className,
++                ),
+                 ariaHidden: true,
+                 children: [
+                   {
+diff --git a/packages/charts-core/src/rule.ts b/packages/charts-core/src/rule.ts
+index 6dfefbb..ae29621 100644
+--- a/packages/charts-core/src/rule.ts
++++ b/packages/charts-core/src/rule.ts
+@@ -6,6 +6,7 @@ import {
+   visualValue,
+ } from './mark'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   CartesianChartMark,
+@@ -24,6 +25,7 @@ import type {
+ 
+ export interface RuleYOptions<TDatum> extends ChartMarkMotionOptions<never> {
+   id?: string
++  className?: string
+   y?: Channel<TDatum, ChartValue | null | undefined>
+   color?: Channel<TDatum, ChartKey | null | undefined>
+   stroke?: VisualChannel<TDatum, string>
+@@ -35,6 +37,7 @@ export interface RuleYOptions<TDatum> extends ChartMarkMotionOptions<never> {
+ 
+ export interface RuleXOptions<TDatum> extends ChartMarkMotionOptions<never> {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, ChartValue | null | undefined>
+   color?: Channel<TDatum, ChartKey | null | undefined>
+   stroke?: VisualChannel<TDatum, string>
+@@ -153,7 +156,10 @@ export function ruleY<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__rule ts-chart__rule-y',
++                className: classes(
++                  'ts-chart__rule ts-chart__rule-y',
++                  options.className,
++                ),
+                 ariaHidden: true,
+                 children,
+               },
+@@ -253,7 +259,10 @@ export function ruleX<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__rule ts-chart__rule-x',
++                className: classes(
++                  'ts-chart__rule ts-chart__rule-x',
++                  options.className,
++                ),
+                 ariaHidden: true,
+                 children,
+               },
+diff --git a/packages/charts-core/src/spatial-contour.ts b/packages/charts-core/src/spatial-contour.ts
+index 31df430..de556b2 100644
+--- a/packages/charts-core/src/spatial-contour.ts
++++ b/packages/charts-core/src/spatial-contour.ts
+@@ -12,6 +12,7 @@ import {
+   mapContourPolygons,
+   normalizeContourThresholds,
+ } from './spatial-contour-internal'
++import { classes } from './class-name-internal'
+ import type { ContourLevelIdentity } from './spatial-contour-internal'
+ import type { TransformLineage } from './transform'
+ import type {
+@@ -31,6 +32,7 @@ export interface ContourDatum<TDatum> extends TransformLineage<TDatum> {
+ 
+ export interface ContourOptions<TDatum> extends ChartMarkMotionOptions<never> {
+   id?: string
++  className?: string
+   /** Number of row-major grid columns. */
+   width: number
+   /** Number of row-major grid rows. */
+@@ -144,7 +146,10 @@ export function contour<TDatum>(
+             {
+               kind: 'group',
+               key: id,
+-              className: 'ts-chart__area ts-chart__contour',
++              className: classes(
++                'ts-chart__area ts-chart__contour',
++                options.className,
++              ),
+               ariaHidden: true,
+               translateX: chart.x,
+               translateY: chart.y,
+diff --git a/packages/charts-core/src/spatial-density.ts b/packages/charts-core/src/spatial-density.ts
+index 2d1d067..3583aad 100644
+--- a/packages/charts-core/src/spatial-density.ts
++++ b/packages/charts-core/src/spatial-density.ts
+@@ -19,6 +19,7 @@ import {
+   normalizeContourThresholds,
+ } from './spatial-contour-internal'
+ import { groupRowsByChartKey } from './spatial-group-internal'
++import { classes } from './class-name-internal'
+ import type {
+   LayoutXYSourceRow,
+   ResolvedLayoutX,
+@@ -55,6 +56,7 @@ export interface DensityContourDatum<TDatum> extends TransformLineage<TDatum> {
+ export interface DensityContourOptions<TDatum>
+   extends ChartMarkMotionOptions<never>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x: Channel<TDatum, ChartValue | null | undefined>
+   y: Channel<TDatum, ChartValue | null | undefined>
+   /** Estimates a separate density field for each non-null group. */
+@@ -272,7 +274,10 @@ export function densityContour<TDatum>(
+                 {
+                   kind: 'group',
+                   key: id,
+-                  className: 'ts-chart__area ts-chart__density-contour',
++                  className: classes(
++                    'ts-chart__area ts-chart__density-contour',
++                    options.className,
++                  ),
+                   ariaHidden: true,
+                   translateX: chart.x,
+                   translateY: chart.y,
+diff --git a/packages/charts-core/src/spatial-voronoi.ts b/packages/charts-core/src/spatial-voronoi.ts
+index bc458a5..9c6f20d 100644
+--- a/packages/charts-core/src/spatial-voronoi.ts
++++ b/packages/charts-core/src/spatial-voronoi.ts
+@@ -14,6 +14,7 @@ import { valueKey } from './scales'
+ import { canonicalDelaunayPoints } from './spatial-delaunay-internal'
+ import { groupRowsByChartKey } from './spatial-group-internal'
+ import { voronoiCellPolygons } from './spatial-voronoi-internal'
++import { classes } from './class-name-internal'
+ import type {
+   LayoutXYSourceRow,
+   ResolvedLayoutX,
+@@ -37,6 +38,7 @@ import type {
+ export interface VoronoiOptions<TDatum>
+   extends ChartMarkMotionOptions<never>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x: Channel<TDatum, ChartValue | null | undefined>
+   y: Channel<TDatum, ChartValue | null | undefined>
+   /** Builds a separate full-extent tessellation for each non-null group. */
+@@ -182,7 +184,7 @@ export function voronoi<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__voronoi',
++                className: classes('ts-chart__voronoi', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/svg-renderer.test.ts b/packages/charts-core/src/svg-renderer.test.ts
+index 31401b9..f08c721 100644
+--- a/packages/charts-core/src/svg-renderer.test.ts
++++ b/packages/charts-core/src/svg-renderer.test.ts
+@@ -1,10 +1,29 @@
+-import { scaleLinear } from 'd3-scale'
++import { scaleBand, scaleLinear } from 'd3-scale'
+ import { describe, expect, it } from 'vitest'
+-import { lineY } from './line'
++import { areaY } from './area'
++import { areaX } from './area-x'
++import { arrow } from './arrow'
++import { bandX, bandY } from './band'
++import { barX, barY } from './bar'
++import { dot } from './dot'
++import { hexagon } from './hexagon'
++import { lineX, lineY } from './line'
++import { link } from './link'
++import { rect } from './rect'
++import { ridgelineY } from './ridgeline'
++import { ruleX, ruleY } from './rule'
++import { contour } from './spatial-contour'
++import { densityContour } from './spatial-density'
++import { voronoi } from './spatial-voronoi'
++import { text } from './text'
++import { tickX, tickY } from './tick'
++import { vector } from './vector'
++import { violinY } from './violin'
++import { waffleY } from './waffle'
+ import { createChartScene, defineChart } from './scene'
+ import { renderChartSvg } from './svg'
+ import { withSvgRenderChildren } from './svg-render-context-internal'
+-import type { ChartScene } from './types'
++import type { ChartMark, ChartScene, StaticChartDefinition } from './types'
+ 
+ describe('SVG scene renderer', () => {
+   it('replaces XML-invalid characters while escaping markup', () => {
+@@ -63,6 +82,136 @@ describe('SVG scene renderer', () => {
+     expect(svg).not.toContain('M99,99Z')
+   })
+ 
++  it('appends an authored className to each Cartesian mark group', () => {
++    const rows = [
++      { x: 1, y: 2, x2: 2, y2: 3, label: 'a', category: 'A', size: 0.5 },
++      { x: 2, y: 4, x2: 3, y2: 1, label: 'b', category: 'B', size: 1 },
++      { x: 3, y: 1, x2: 1, y2: 2, label: 'c', category: 'A', size: 0.25 },
++    ]
++    const xy = { x: 'x', y: 'y', className: 'custom' } as const
++    const segment = {
++      x1: 'x',
++      y1: 'y',
++      x2: 'x2',
++      y2: 'y2',
++      className: 'custom',
++    } as const
++    const linear = {
++      x: { scale: scaleLinear().domain([0, 4]) },
++      y: { scale: scaleLinear().domain([0, 5]) },
++    }
++    const banded = {
++      x: { scale: scaleBand<string>().domain(['A', 'B']) },
++      y: { scale: scaleLinear().domain([0, 5]) },
++    }
++    const cases: ReadonlyArray<
++      readonly [string, ChartMark, StaticChartDefinition['scales']]
++    > = [
++      ['ts-chart__line', lineY(rows, xy), linear],
++      ['ts-chart__line', lineX(rows, xy), linear],
++      ['ts-chart__area', areaY(rows, xy), linear],
++      ['ts-chart__area', areaX(rows, xy), linear],
++      ['ts-chart__bar ts-chart__bar-y', barY(rows, xy), linear],
++      ['ts-chart__bar ts-chart__bar-x', barX(rows, xy), linear],
++      ['ts-chart__rect', rect(rows, segment), linear],
++      ['ts-chart__dot', dot(rows, xy), linear],
++      ['ts-chart__hexagon', hexagon(rows, xy), linear],
++      ['ts-chart__text', text(rows, { ...xy, text: 'label' }), linear],
++      [
++        'ts-chart__rule ts-chart__rule-y',
++        ruleY(rows, { y: 'y', className: 'custom' }),
++        linear,
++      ],
++      [
++        'ts-chart__rule ts-chart__rule-x',
++        ruleX(rows, { x: 'x', className: 'custom' }),
++        linear,
++      ],
++      ['ts-chart__tick ts-chart__tick-x', tickX(rows, xy), linear],
++      ['ts-chart__tick ts-chart__tick-y', tickY(rows, xy), linear],
++      ['ts-chart__vector', vector(rows, xy), linear],
++      ['ts-chart__arrow', arrow(rows, segment), linear],
++      ['ts-chart__link', link(rows, segment), linear],
++      [
++        'ts-chart__band ts-chart__band-x',
++        bandX(rows, { x: 'x', width: 1, className: 'custom' }),
++        linear,
++      ],
++      [
++        'ts-chart__band ts-chart__band-y',
++        bandY(rows, { y: 'y', height: 1, className: 'custom' }),
++        linear,
++      ],
++      ['ts-chart__voronoi', voronoi(rows, xy), linear],
++      [
++        'ts-chart__area ts-chart__density-contour',
++        densityContour(rows, xy),
++        linear,
++      ],
++      [
++        'ts-chart__area ts-chart__contour',
++        contour([0, 1, 2, 1, 2, 3, 2, 3, 4], {
++          width: 3,
++          height: 3,
++          className: 'custom',
++        }),
++        { x: null, y: null },
++      ],
++      [
++        'ts-chart__waffle ts-chart__waffle-y',
++        waffleY(rows, { y: 'size', unit: 0.25, className: 'custom' }),
++        { x: null, y: null },
++      ],
++      [
++        'ts-chart__area ts-chart__violin ts-chart__violin-y',
++        violinY(rows, {
++          x: 'category',
++          y: 'y',
++          width: 'size',
++          className: 'custom',
++        }),
++        banded,
++      ],
++      [
++        'ts-chart__ridgeline ts-chart__ridgeline-y',
++        ridgelineY(rows, {
++          x: 'x',
++          y: 'category',
++          height: 'size',
++          className: 'custom',
++        }),
++        {
++          x: { scale: scaleLinear().domain([0, 4]) },
++          y: { scale: scaleBand<string>().domain(['A', 'B']) },
++        },
++      ],
++    ]
++
++    for (const [base, mark, scales] of cases) {
++      const svg = renderChartSvg(
++        createChartScene(
++          { marks: [mark], scales, guides: false },
++          { width: 240, height: 160 },
++        ),
++        { ariaLabel: base },
++      )
++      expect(svg, base).toContain(`class="${base} custom"`)
++    }
++
++    const plain = renderChartSvg(
++      createChartScene(
++        defineChart({
++          marks: [link(rows, { x1: 'x', y1: 'y', x2: 'x2', y2: 'y2' })],
++          scales: linear,
++          guides: false,
++        }),
++        { width: 240, height: 160 },
++      ),
++      { ariaLabel: 'Links' },
++    )
++    expect(plain).toContain('class="ts-chart__link"')
++  })
++
+   it('serializes Cartesian axis-title typography and paint', () => {
+     const scene = createChartScene(
+       defineChart({
+diff --git a/packages/charts-core/src/text.ts b/packages/charts-core/src/text.ts
+index 9f42cc4..39b3127 100644
+--- a/packages/charts-core/src/text.ts
++++ b/packages/charts-core/src/text.ts
+@@ -9,6 +9,7 @@ import {
+   visualValue,
+ } from './mark'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   CartesianChartMark,
+@@ -34,6 +35,7 @@ export type TextAnchor = 'start' | 'middle' | 'end'
+ export interface TextOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x?: Channel<TDatum, ChartValue | null | undefined>
+   y?: Channel<TDatum, ChartValue | null | undefined>
+   text?: Channel<TDatum, string | number | null | undefined>
+@@ -221,7 +223,7 @@ export function text<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__text',
++                className: classes('ts-chart__text', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/tick.ts b/packages/charts-core/src/tick.ts
+index 3f0562b..f838104 100644
+--- a/packages/charts-core/src/tick.ts
++++ b/packages/charts-core/src/tick.ts
+@@ -12,6 +12,7 @@ import {
+   resolvedCategoryStep,
+ } from './mapped-spacing-internal'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   ChannelOutput,
+@@ -31,6 +32,7 @@ import type {
+ export interface TickXOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x: Channel<TDatum, ChartValue | null | undefined>
+   y: Channel<TDatum, ChartValue | null | undefined>
+   z?: Channel<TDatum, ChartKey | null | undefined>
+@@ -48,6 +50,7 @@ export interface TickXOptions<TDatum>
+ export interface TickYOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x: Channel<TDatum, ChartValue | null | undefined>
+   y: Channel<TDatum, ChartValue | null | undefined>
+   z?: Channel<TDatum, ChartKey | null | undefined>
+@@ -275,7 +278,10 @@ function tick<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: `ts-chart__tick ts-chart__tick-${orientation}`,
++                className: classes(
++                  `ts-chart__tick ts-chart__tick-${orientation}`,
++                  options.className,
++                ),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/vector.ts b/packages/charts-core/src/vector.ts
+index 4481dbb..bb1833f 100644
+--- a/packages/charts-core/src/vector.ts
++++ b/packages/charts-core/src/vector.ts
+@@ -9,6 +9,7 @@ import {
+   visualValue,
+ } from './mark'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   ChannelOutput,
+@@ -30,6 +31,7 @@ export type VectorAnchor = 'start' | 'middle' | 'end'
+ export interface VectorOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   x: Channel<TDatum, ChartValue | null | undefined>
+   y: Channel<TDatum, ChartValue | null | undefined>
+   length?: number | Channel<TDatum, number | null | undefined>
+@@ -213,7 +215,7 @@ export function vector<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: 'ts-chart__vector',
++                className: classes('ts-chart__vector', options.className),
+                 ariaHidden: true,
+                 children: nodes,
+               },
+diff --git a/packages/charts-core/src/violin.ts b/packages/charts-core/src/violin.ts
+index 55c27fb..9afd4ee 100644
+--- a/packages/charts-core/src/violin.ts
++++ b/packages/charts-core/src/violin.ts
+@@ -13,6 +13,7 @@ import {
+ } from './mapped-spacing-internal'
+ import { valueKey } from './scales'
+ import { groupedIndexes } from './transform-internal'
++import { classes } from './class-name-internal'
+ import type { AreaXCurve } from './area-x'
+ import type {
+   Channel,
+@@ -37,6 +38,7 @@ export type ViolinXCurve = Pick<ChartCurve, 'area'>
+ interface ViolinOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
++  className?: string
+   /** Normalized half-envelope width in the inclusive range [0, 1]. */
+   width: Channel<TDatum, number | null | undefined>
+   /** Full peak width in category-step units. Defaults to 0.8. */
+@@ -389,7 +391,10 @@ function violin<TDatum>(
+               {
+                 kind: 'group',
+                 key: id,
+-                className: `ts-chart__area ts-chart__violin ts-chart__violin-${orientation}`,
++                className: classes(
++                  `ts-chart__area ts-chart__violin ts-chart__violin-${orientation}`,
++                  options.className,
++                ),
+                 ariaHidden: true,
+                 children: areas,
+               },
+diff --git a/packages/charts-core/src/waffle.ts b/packages/charts-core/src/waffle.ts
+index 887fed9..6b958e1 100644
+--- a/packages/charts-core/src/waffle.ts
++++ b/packages/charts-core/src/waffle.ts
+@@ -12,6 +12,7 @@ import {
+   resolveSceneRectRadius,
+ } from './rect-radius-state-internal'
+ import { valueKey } from './scales'
++import { classes } from './class-name-internal'
+ import type {
+   Channel,
+   ChartBounds,
+@@ -27,6 +28,7 @@ import type {
+ 
+ export interface WaffleOptions<TDatum> extends ChartMarkMotionOptions<TDatum> {
+   id?: string
++  className?: string
+   z?: Channel<TDatum, ChartKey | null | undefined>
+   color?: Channel<TDatum, ChartKey | null | undefined>
+   key?: Channel<TDatum, ChartKey>
+@@ -260,7 +262,10 @@ function waffle<TDatum>(
+                   {
+                     kind: 'group',
+                     key: id,
+-                    className: `ts-chart__waffle ts-chart__waffle-${orientation}`,
++                    className: classes(
++                      `ts-chart__waffle ts-chart__waffle-${orientation}`,
++                      options.className,
++                    ),
+                     ariaHidden: true,
+                     children: nodes,
+                   },
+-- 
+2.43.0
+

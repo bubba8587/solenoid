@@ -1,0 +1,430 @@
+From 3c734dc3b6af766c5b79b009ff2237c5270ca228 Mon Sep 17 00:00:00 2001
+From: Solenoid contributors <noreply@anthropic.com>
+Date: Tue, 6 Oct 2026 15:43:26 +0000
+Subject: [PATCH] feat(charts): per-datum vector stroke width and head length,
+ filled heads
+
+---
+ .changeset/vector-datum-stroke-and-head.md    |  6 ++
+ API-FRICTION.md                               | 27 ++++++
+ .../rules-links-arrows-vectors-and-ticks.md   | 24 ++++-
+ .../rules-links-arrows-vectors-and-ticks.md   | 24 ++++-
+ packages/charts-core/src/index.ts             |  2 +-
+ packages/charts-core/src/universal-types.ts   |  2 +-
+ packages/charts-core/src/vector.test.ts       | 87 ++++++++++++++++++-
+ packages/charts-core/src/vector.ts            | 78 +++++++++++++++--
+ 8 files changed, 237 insertions(+), 13 deletions(-)
+ create mode 100644 .changeset/vector-datum-stroke-and-head.md
+
+diff --git a/.changeset/vector-datum-stroke-and-head.md b/.changeset/vector-datum-stroke-and-head.md
+new file mode 100644
+index 0000000..21ebf65
+--- /dev/null
++++ b/.changeset/vector-datum-stroke-and-head.md
+@@ -0,0 +1,6 @@
++---
++'@tanstack/charts': minor
++---
++
++Accept per-datum `strokeWidth` and `headLength` accessors on `vector`, and add
++`head: 'filled'` for closed triangular vector heads.
+diff --git a/API-FRICTION.md b/API-FRICTION.md
+index d9e37c2..f4b112c 100644
+--- a/API-FRICTION.md
++++ b/API-FRICTION.md
+@@ -345,6 +345,7 @@ Each entry records:
+ | F-306 | Inferred consumer declarations could not name core types       | Tooling               | resolved   |
+ | F-307 | Grouped-y keyboard navigation followed x order                 | API                   | resolved   |
+ | F-308 | Raster format documentation omitted browser encoder fallback   | Documentation         | resolved   |
++| F-309 | Vector stroke and head size were fixed per mark                | API                   | resolved   |
+ 
+ ## Findings
+ 
+@@ -9199,3 +9200,29 @@ Each entry records:
+   decodes as WebP in Chromium and Firefox and PNG in WebKit. Dimensions and
+   opaque red pixels pass with lossy-encoding tolerance, alongside ten existing
+   PNG checks per engine. No page errors or console warnings/errors occur.
++
++### F-309 - Vector stroke and head size were fixed per mark
++
++- Status: resolved
++- Severity: medium
++- Owner: API
++- Observed in: Solenoid's Recharts-to-TanStack migration
++  (`src/graph/components/charts/fieldFigures.tsx`, `QuiverView`)
++- Friction: a quiver plot thins the stroke and shortens the head on short
++  vectors, because a full-width stroke and full-size head turn a short arrow
++  into a blob. `vector` took one `strokeWidth` and one `headLength` per mark,
++  so the consumer rounded both values to 0.1 and 0.25 pixel steps, bucketed
++  rows by the rounded pair, and emitted one `vector` mark per bucket with
++  synthetic mark ids. Heads were open chevrons only.
++- Decision: accept `VisualChannel<TDatum, number>` for `strokeWidth` and
++  `headLength`, matching `link` and `stroke`; constants keep working. Add
++  `head: 'open' | 'filled'`, default `'open'`. A filled head is one closed
++  area painted with the stroke color and opacity, and the shaft ends at its
++  base. The filled geometry lives in the vector module, so `arrow` consumers
++  keep byte-identical output.
++- Verification: vector tests cover per-datum stroke widths and head lengths and
++  the filled triangle, shortened shaft, paint, and SVG class. Root TypeScript
++  and the unit suite pass. The isolated arrow static-SVG consumer is
++  byte-identical. The vector consumer grows from 22,218 to 22,341 gzip bytes:
++  2 bytes for the channels and 121 for the filled head, which needs a reviewed
++  vector budget above 21.698 KiB.
+diff --git a/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md b/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
+index da24a1d..b9b7a12 100644
+--- a/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
++++ b/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
+@@ -180,14 +180,34 @@ function vector<TDatum>(
+ | `key`           | `Channel<TDatum, ChartKey>`          | Top/nested `id`, index | Stable identity                                 |
+ | `stroke`        | `VisualChannel<TDatum, string>`      | Resolved color         | Final stroke override                           |
+ | `strokeOpacity` | `number`                             | SVG default            | Stroke opacity                                  |
+-| `strokeWidth`   | `number`                             | `1.5`                  | Stroke width                                    |
+-| `headLength`    | `number`                             | `5`                    | Head length in pixels, clamped to at least zero |
++| `strokeWidth`   | `VisualChannel<TDatum, number>`      | `1.5`                  | Stroke width                                    |
++| `headLength`    | `VisualChannel<TDatum, number>`      | `5`                    | Head length in pixels, clamped to at least zero |
+ | `headAngle`     | `number`                             | `30`                   | Head half-angle in degrees                      |
++| `head`          | `'open' \| 'filled'`                 | `'open'`               | Open chevron or closed, filled triangle         |
+ 
+ Length and rotation must be finite. Negative length reverses the body direction
+ while preserving the rotation convention. The interaction point remains the
+ scaled x/y anchor for every anchor mode.
+ 
++`strokeWidth` and `headLength` accept a constant or a per-datum accessor, so one
++mark can thin the stroke and shorten the head on short vectors:
++
++```ts
++vector(field, {
++  x: 'x',
++  y: 'y',
++  length: 'magnitude',
++  rotate: 'angle',
++  strokeWidth: (cell) => Math.min(1.5, cell.magnitude / 8),
++  headLength: (cell) => Math.min(5, cell.magnitude / 3),
++  head: 'filled',
++})
++```
++
++A filled head is a closed triangle painted with the stroke color and stroke
++opacity. The shaft stops at the head's base, so a wide stroke does not blunt
++the tip.
++
+ ## `tickX` and `tickY`
+ 
+ Ticks draw a short rule centered at a scaled point:
+diff --git a/packages/charts-core/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md b/packages/charts-core/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
+index da24a1d..b9b7a12 100644
+--- a/packages/charts-core/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
++++ b/packages/charts-core/docs/reference/marks/rules-links-arrows-vectors-and-ticks.md
+@@ -180,14 +180,34 @@ function vector<TDatum>(
+ | `key`           | `Channel<TDatum, ChartKey>`          | Top/nested `id`, index | Stable identity                                 |
+ | `stroke`        | `VisualChannel<TDatum, string>`      | Resolved color         | Final stroke override                           |
+ | `strokeOpacity` | `number`                             | SVG default            | Stroke opacity                                  |
+-| `strokeWidth`   | `number`                             | `1.5`                  | Stroke width                                    |
+-| `headLength`    | `number`                             | `5`                    | Head length in pixels, clamped to at least zero |
++| `strokeWidth`   | `VisualChannel<TDatum, number>`      | `1.5`                  | Stroke width                                    |
++| `headLength`    | `VisualChannel<TDatum, number>`      | `5`                    | Head length in pixels, clamped to at least zero |
+ | `headAngle`     | `number`                             | `30`                   | Head half-angle in degrees                      |
++| `head`          | `'open' \| 'filled'`                 | `'open'`               | Open chevron or closed, filled triangle         |
+ 
+ Length and rotation must be finite. Negative length reverses the body direction
+ while preserving the rotation convention. The interaction point remains the
+ scaled x/y anchor for every anchor mode.
+ 
++`strokeWidth` and `headLength` accept a constant or a per-datum accessor, so one
++mark can thin the stroke and shorten the head on short vectors:
++
++```ts
++vector(field, {
++  x: 'x',
++  y: 'y',
++  length: 'magnitude',
++  rotate: 'angle',
++  strokeWidth: (cell) => Math.min(1.5, cell.magnitude / 8),
++  headLength: (cell) => Math.min(5, cell.magnitude / 3),
++  head: 'filled',
++})
++```
++
++A filled head is a closed triangle painted with the stroke color and stroke
++opacity. The shaft stops at the head's base, so a wide stroke does not blunt
++the tip.
++
+ ## `tickX` and `tickY`
+ 
+ Ticks draw a short rule centered at a scaled point:
+diff --git a/packages/charts-core/src/index.ts b/packages/charts-core/src/index.ts
+index bf567da..8b6af40 100644
+--- a/packages/charts-core/src/index.ts
++++ b/packages/charts-core/src/index.ts
+@@ -237,7 +237,7 @@ export type { TextAnchor, TextOptions } from './text'
+ export { tickX, tickY } from './tick'
+ export type { TickXOptions, TickYOptions } from './tick'
+ export { vector } from './vector'
+-export type { VectorAnchor, VectorOptions } from './vector'
++export type { VectorAnchor, VectorHead, VectorOptions } from './vector'
+ export { violinX, violinY } from './violin'
+ export type {
+   ViolinPosition,
+diff --git a/packages/charts-core/src/universal-types.ts b/packages/charts-core/src/universal-types.ts
+index 9a0b2e2..893333d 100644
+--- a/packages/charts-core/src/universal-types.ts
++++ b/packages/charts-core/src/universal-types.ts
+@@ -87,7 +87,7 @@ export type {
+ } from './stack'
+ export type { TextAnchor, TextOptions } from './text'
+ export type { TickXOptions, TickYOptions } from './tick'
+-export type { VectorAnchor, VectorOptions } from './vector'
++export type { VectorAnchor, VectorHead, VectorOptions } from './vector'
+ export type {
+   ViolinPosition,
+   ViolinXCurve,
+diff --git a/packages/charts-core/src/vector.test.ts b/packages/charts-core/src/vector.test.ts
+index 7b1ce58..a5172ec 100644
+--- a/packages/charts-core/src/vector.test.ts
++++ b/packages/charts-core/src/vector.test.ts
+@@ -1,8 +1,9 @@
+ import { describe, expect, it } from 'vitest'
+ import { createChartScene, defineChart } from './scene'
++import { renderChartSvg } from './svg'
+ import { linearAxes } from './test-scales'
+ import { vector } from './vector'
+-import type { SceneNode, SceneRule } from './types'
++import type { SceneArea, SceneNode, SceneRule } from './types'
+ 
+ describe('vector mark', () => {
+   it('draws fixed-pixel vectors around their scaled anchors', () => {
+@@ -37,6 +38,82 @@ describe('vector mark', () => {
+     expect(Math.abs(shafts[1]!.x2 - shafts[1]!.x1)).toBeCloseTo(12)
+     expect(scene.points.map((point) => point.datum)).toEqual(rows)
+   })
++
++  it('resolves stroke width and head length per datum', () => {
++    const rows = [
++      { id: 'short', length: 6 },
++      { id: 'long', length: 30 },
++    ]
++    const scene = createChartScene(
++      defineChart({
++        marks: [
++          vector(rows, {
++            x: () => 5,
++            y: () => 5,
++            length: 'length',
++            key: 'id',
++            strokeWidth: (row) => row.length / 10,
++            headLength: (row) => row.length / 3,
++            headAngle: 90,
++          }),
++        ],
++        ...linearAxes([0, 10], [0, 10]),
++      }),
++      { width: 480, height: 260 },
++    )
++    const rules = vectorParts(scene.nodes).filter(
++      (node): node is SceneRule => node.kind === 'rule',
++    )
++    const heads = rules.filter((node) => node.key.endsWith(':head-left'))
++
++    expect(rules.map((node) => node.style?.strokeWidth)).toEqual([
++      0.6, 0.6, 0.6, 3, 3, 3,
++    ])
++    expect(heads.map((node) => Math.abs(node.x2 - node.x1))).toEqual([
++      expect.closeTo(2),
++      expect.closeTo(10),
++    ])
++  })
++
++  it('draws filled heads as closed triangles that end the shaft', () => {
++    const scene = createChartScene(
++      defineChart({
++        marks: [
++          vector([{ x: 5, y: 5 }], {
++            x: 'x',
++            y: 'y',
++            length: 20,
++            anchor: 'start',
++            stroke: '#2563eb',
++            strokeOpacity: 0.5,
++            headLength: 8,
++            headAngle: 60,
++            head: 'filled',
++          }),
++        ],
++        ...linearAxes([0, 10], [0, 10]),
++      }),
++      { width: 480, height: 260 },
++    )
++    const nodes = vectorParts(scene.nodes)
++    const shaft = nodes.find(
++      (node): node is SceneRule =>
++        node.kind === 'rule' && node.className === 'ts-chart__arrow-shaft',
++    )!
++    const head = nodes.find(
++      (node): node is SceneArea =>
++        node.kind === 'area' && node.className === 'ts-chart__arrow-head',
++    )!
++
++    expect(nodes.filter((node) => node.kind === 'rule')).toHaveLength(1)
++    expect(head.points).toHaveLength(3)
++    expect(head.style).toEqual({ fill: '#2563eb', fillOpacity: 0.5 })
++    expect(shaft.y1 - shaft.y2).toBeCloseTo(16)
++    expect(head.points[1]![1]).toBeCloseTo(shaft.y1 - 20)
++    expect(renderChartSvg(scene, { ariaLabel: 'Wind' })).toContain(
++      'class="ts-chart__arrow-head"',
++    )
++  })
+ })
+ 
+ function flatten(nodes: readonly SceneNode[]): SceneNode[] {
+@@ -44,3 +121,11 @@ function flatten(nodes: readonly SceneNode[]): SceneNode[] {
+     node.kind === 'group' ? [node, ...flatten(node.children)] : [node],
+   )
+ }
++
++function vectorParts(nodes: readonly SceneNode[]): SceneNode[] {
++  return flatten(nodes).flatMap((node) =>
++    node.kind === 'group' && node.className === 'ts-chart__vector-item'
++      ? node.children
++      : [],
++  )
++}
+diff --git a/packages/charts-core/src/vector.ts b/packages/charts-core/src/vector.ts
+index 4481dbb..9c5b7d4 100644
+--- a/packages/charts-core/src/vector.ts
++++ b/packages/charts-core/src/vector.ts
+@@ -1,4 +1,5 @@
+ import { arrowGeometry } from './arrow-geometry'
++import type { ArrowGeometryOptions } from './arrow-geometry'
+ import {
+   channelValues,
+   createMark,
+@@ -21,12 +22,15 @@ import type {
+   ChartValue,
+   MarkCallOptions,
+   MarkScaleBindings,
++  SceneGroup,
+   SceneNode,
+   VisualChannel,
+ } from './types'
+ 
+ export type VectorAnchor = 'start' | 'middle' | 'end'
+ 
++export type VectorHead = 'open' | 'filled'
++
+ export interface VectorOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
+@@ -40,9 +44,10 @@ export interface VectorOptions<TDatum>
+   key?: Channel<TDatum, ChartKey>
+   stroke?: VisualChannel<TDatum, string>
+   strokeOpacity?: number
+-  strokeWidth?: number
+-  headLength?: number
++  strokeWidth?: VisualChannel<TDatum, number>
++  headLength?: VisualChannel<TDatum, number>
+   headAngle?: number
++  head?: VectorHead
+ }
+ 
+ type VectorCallOptions<
+@@ -135,8 +140,9 @@ export function vector<TDatum>(
+           const nodes: SceneNode[] = []
+           const points: ChartPoint<TDatum>[] = []
+           const anchor = options.anchor ?? 'middle'
+-          const headLength = Math.max(0, options.headLength ?? 5)
+           const headAngle = ((options.headAngle ?? 30) * Math.PI) / 180
++          const geometry =
++            options.head === 'filled' ? filledVectorGeometry : arrowGeometry
+ 
+           data.forEach((datum, datumIndex) => {
+             const xValue = xValues[datumIndex]
+@@ -175,19 +181,28 @@ export function vector<TDatum>(
+             const style = {
+               stroke: color,
+               strokeOpacity: options.strokeOpacity,
+-              strokeWidth: options.strokeWidth ?? 1.5,
++              strokeWidth: visualValue(
++                options.strokeWidth,
++                datum,
++                datumIndex,
++                data,
++                1.5,
++              ),
+               lineCap: 'round' as const,
+               lineJoin: 'round' as const,
+             }
+ 
+             nodes.push(
+-              arrowGeometry({
++              geometry({
+                 key,
+                 x1,
+                 y1,
+                 x2,
+                 y2,
+-                headLength,
++                headLength: Math.max(
++                  0,
++                  visualValue(options.headLength, datum, datumIndex, data, 5),
++                ),
+                 headAngle,
+                 style,
+                 className: 'ts-chart__vector-item',
+@@ -227,3 +242,54 @@ export function vector<TDatum>(
+     options.renderer,
+   )
+ }
++
++/** Vector whose closed, filled head covers the shaft from its base to the tip. */
++function filledVectorGeometry({
++  key,
++  x1,
++  y1,
++  x2,
++  y2,
++  headLength,
++  headAngle,
++  style,
++  className,
++}: ArrowGeometryOptions): SceneGroup {
++  const angle = Math.atan2(y2 - y1, x2 - x1)
++  const shaft = Math.max(
++    0,
++    1 -
++      (headLength * Math.cos(headAngle)) / (Math.hypot(x2 - x1, y2 - y1) || 1),
++  )
++  const corner = (side: number) =>
++    [
++      x2 + Math.cos(angle + Math.PI + side * headAngle) * headLength,
++      y2 + Math.sin(angle + Math.PI + side * headAngle) * headLength,
++    ] as const
++
++  return {
++    kind: 'group',
++    key,
++    className,
++    ariaHidden: true,
++    children: [
++      {
++        kind: 'rule',
++        key: `${key}:shaft`,
++        className: 'ts-chart__arrow-shaft',
++        x1,
++        y1,
++        x2: x1 + (x2 - x1) * shaft,
++        y2: y1 + (y2 - y1) * shaft,
++        style,
++      },
++      {
++        kind: 'area',
++        key: `${key}:head`,
++        className: 'ts-chart__arrow-head',
++        points: [corner(-1), [x2, y2], corner(1)],
++        style: { fill: style.stroke, fillOpacity: style.strokeOpacity },
++      },
++    ],
++  }
++}
+-- 
+2.43.0
+

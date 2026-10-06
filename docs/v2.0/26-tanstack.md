@@ -85,3 +85,7 @@ Upstream findings, checked against the source, are in § 8.
 | Hotkeys 0.x | Medium, later | Shortcuts are spelled three times (`canvasKeyboard.ts`, `menuModel.ts`, `ShortcutsOverlay.tsx`); one registry would end the drift. Wait for 1.0. |
 | Table v9 | Weak | The popup is mostly editing, computed columns and alternate views, which Table does not supply. |
 | Pacer, Store, Form, Router/Start, AI, DB, Ranger | None | Each duplicates a small helper we already have or fights a seam (`storeKit.ts`, `useDraftCommit`, plain-path routing, the `FrameBackend` seam). |
+
+## 8. Upstream
+
+What 1.0.0 lacked, checked against the TanStack Charts source, with seven patches and four issue drafts ready to submit: `docs/upstream/tanstack-charts/README.md`.

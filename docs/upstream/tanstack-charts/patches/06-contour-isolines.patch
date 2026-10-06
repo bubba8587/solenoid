@@ -1,0 +1,876 @@
+From 3dac22902de6d7a855a6b2cc6459a65c39723662 Mon Sep 17 00:00:00 2001
+From: Solenoid contributors <noreply@anthropic.com>
+Date: Tue, 6 Oct 2026 15:43:58 +0000
+Subject: [PATCH] feat(charts): add contourLines for interior iso-lines
+
+---
+ .changeset/contour-isolines.md                |   7 +
+ API-FRICTION.md                               |  32 ++-
+ docs/reference/index.md                       |   3 +-
+ docs/reference/marks/contour.md               |  50 ++++-
+ llms.txt                                      |   2 +-
+ packages/charts-core/docs/reference/index.md  |   3 +-
+ .../docs/reference/marks/contour.md           |  50 ++++-
+ packages/charts-core/llms.txt                 |   2 +-
+ .../src/spatial-contour-internal.test.ts      |  83 ++++++++
+ .../src/spatial-contour-internal.ts           |  88 +++++++++
+ .../charts-core/src/spatial-contour.test.ts   | 131 +++++++++++-
+ packages/charts-core/src/spatial-contour.ts   | 186 +++++++++++++++---
+ 12 files changed, 602 insertions(+), 35 deletions(-)
+ create mode 100644 .changeset/contour-isolines.md
+
+diff --git a/.changeset/contour-isolines.md b/.changeset/contour-isolines.md
+new file mode 100644
+index 0000000..a94ca51
+--- /dev/null
++++ b/.changeset/contour-isolines.md
+@@ -0,0 +1,7 @@
++---
++'@tanstack/charts': minor
++---
++
++Add `contourLines` to `@tanstack/charts/spatial/contour`. It strokes scalar-grid
++level sets as iso-lines, dropping ring edges along the grid border and beside
++missing samples, and keeps unbroken interior rings closed.
+diff --git a/API-FRICTION.md b/API-FRICTION.md
+index d9e37c2..cfaea7e 100644
+--- a/API-FRICTION.md
++++ b/API-FRICTION.md
+@@ -5,7 +5,7 @@ observed difficulty from examples, production migrations, tests, and agent
+ evaluations so later API, documentation, and TanStack Intent skill work is
+ based on evidence.
+ 
+-Last updated: 2026-09-30
++Last updated: 2026-10-06
+ 
+ ## Triage rule
+ 
+@@ -345,6 +345,7 @@ Each entry records:
+ | F-306 | Inferred consumer declarations could not name core types       | Tooling               | resolved   |
+ | F-307 | Grouped-y keyboard navigation followed x order                 | API                   | resolved   |
+ | F-308 | Raster format documentation omitted browser encoder fallback   | Documentation         | resolved   |
++| F-309 | Filled contours could not draw clean interior iso-lines        | API/Docs              | resolved   |
+ 
+ ## Findings
+ 
+@@ -9199,3 +9200,32 @@ Each entry records:
+   decodes as WebP in Chromium and Firefox and PNG in WebKit. Dimensions and
+   opaque red pixels pass with lossy-encoding tolerance, alongside ten existing
+   PNG checks per engine. No page errors or console warnings/errors occur.
++
++### F-309 - Filled contours could not draw clean interior iso-lines
++
++- Status: resolved
++- Severity: medium
++- Owner: API/Documentation
++- Observed in: Solenoid's Recharts-to-TanStack migration
++  (`src/graph/components/charts/fieldFigures.tsx`)
++- Friction: the contour figure needs fine filled bands plus stroked iso-lines
++  at a few chosen levels. A stroked `contour` outlines each filled ring, so the
++  line also traces the grid border and the edges of missing cells. The
++  application wrote its own marching-squares pass over the source grid and a
++  raw `createMark` that serialized SVG path strings per level.
++- Decision: add `contourLines` beside `contour` in the optional
++  `@tanstack/charts/spatial/contour` subpath. It shares grid validation,
++  thresholds, lineage, and level identity, and takes `contour` options without
++  `fill` and `fillOpacity`. Rings come from `d3-contour` unsmoothed so each edge
++  maps to one marching-squares cell; an edge is dropped when both ends lie on
++  the grid border or its cell has a missing sample. Kept vertices are smoothed
++  with `d3-contour`'s linear rule, so lines match the fill's crossings. Each
++  run of kept edges becomes a `polyline` scene node, and unbroken rings stay
++  closed. A sibling mark keeps the filled mark's area contract and bundle
++  unchanged.
++- Verification: internal tests cover a level touching the border (open line
++  ending on it), an interior ring that stays closed and equals the smoothed
++  fill ring, and a field with a missing sample whose lines avoid it and reuse
++  fill vertices. Mark tests cover the mark-name validation message, derived
++  stroke per level, `fill: 'none'`, polylines inside the plot, and projection
++  of the border-touching level.
+diff --git a/docs/reference/index.md b/docs/reference/index.md
+index aa294b5..a0d766b 100644
+--- a/docs/reference/index.md
++++ b/docs/reference/index.md
+@@ -51,6 +51,7 @@ chart keeps its host renderer.
+ | `sankeyDiagram`                                                   | [Sankey diagram](./marks/sankey.md)                                                         |
+ | `hexbin`                                                          | [Hexbin](./marks/hexbin.md)                                                                 |
+ | `contour`                                                         | [Contour](./marks/contour.md)                                                               |
++| `contourLines`                                                    | [Contour](./marks/contour.md)                                                               |
+ | `densityContour`                                                  | [Density contour](./marks/density.md)                                                       |
+ | `delaunayLink`                                                    | [Delaunay link](./marks/delaunay.md)                                                        |
+ | `voronoi`                                                         | [Voronoi](./marks/voronoi.md)                                                               |
+@@ -181,7 +182,7 @@ aggregate `/scales` export.
+ | `@tanstack/charts/svg/resources`        | `renderChartSvgWithResources`                                                                                                                                                                                                   |
+ | `@tanstack/charts/stack`                | `stack`, `StackAnchor`, `StackLayout`, `StackOptions`, `StackOrder`, `StackOffset`                                                                                                                                              |
+ | `@tanstack/charts/spring`               | `createChartSpring` and scalar spring types                                                                                                                                                                                     |
+-| `@tanstack/charts/spatial/contour`      | `contour`, `ContourOptions`, and `ContourDatum`                                                                                                                                                                                 |
++| `@tanstack/charts/spatial/contour`      | `contour`, `contourLines`, `ContourOptions`, `ContourLinesOptions`, and `ContourDatum`                                                                                                                                          |
+ | `@tanstack/charts/spatial/hexbin`       | `hexbin`, `HexbinOptions`, and `HexbinDatum`                                                                                                                                                                                    |
+ | `@tanstack/charts/spatial/density`      | `densityContour`, `DensityContourOptions`, and `DensityContourDatum`                                                                                                                                                            |
+ | `@tanstack/charts/spatial/delaunay`     | `delaunayLink`, `DelaunayLinkOptions`, and `DelaunayLinkDatum`                                                                                                                                                                  |
+diff --git a/docs/reference/marks/contour.md b/docs/reference/marks/contour.md
+index 76ae17c..9883ff1 100644
+--- a/docs/reference/marks/contour.md
++++ b/docs/reference/marks/contour.md
+@@ -1,6 +1,6 @@
+ ---
+ title: Contour Mark
+-description: Reference for regular scalar-grid contours, thresholds, orientation, source lineage, and structured multipolygon output.
++description: Reference for regular scalar-grid contours and iso-lines, thresholds, orientation, source lineage, and structured multipolygon output.
+ ---
+ 
+ `contour` generates level sets from a regular scalar grid. Import it from the
+@@ -84,3 +84,51 @@ A level can contain several disconnected regions, and an aggregate centroid
+ can fall outside all of them. The mark therefore does not manufacture a focus
+ target or tooltip datum. Layer an interactive source mark only when the grid
+ samples themselves should own focus and tooltips.
++
++## Iso-lines
++
++`contourLines` strokes the same level sets as open or closed polylines. Use it
++over a filled `contour` when each level needs a clean line, including levels
++that differ from the fill's bands.
++
++```ts
++import { contour, contourLines } from '@tanstack/charts/spatial/contour'
++
++const marks = [
++  contour(wind, { width: 64, height: 60, value: speed, thresholds: 32 }),
++  contourLines(wind, {
++    width: 64,
++    height: 60,
++    value: speed,
++    thresholds: [4, 8],
++    stroke: '#111827',
++    strokeWidth: 0.75,
++  }),
++]
++```
++
++```ts
++function contourLines<TDatum>(
++  source: Iterable<TDatum>,
++  options: ContourLinesOptions<TDatum>,
++): ChartMark<never, never, never>
++```
++
++`ContourLinesOptions<TDatum>` is `ContourOptions<TDatum>` without `fill` and
++`fillOpacity`. `stroke` defaults to the resolved color, and lines use round
++caps and joins. Grid validation, thresholds, smoothing, orientation, lineage,
++and level identity match `contour`.
++
++A filled ring's stroke also traces the grid border and the edges of missing
++cells. `contourLines` keeps only interior crossings:
++
++- an edge with both ends on the grid border is dropped, so a level that meets
++  the border ends there as an open line;
++- an edge in a marching-squares cell with a missing sample is dropped, so lines
++  stop beside null and nonfinite values instead of outlining them; and
++- a ring that loses no edges stays closed, repeating its first point.
++
++Surviving vertices are the smoothed crossings the filled `contour` uses at the
++same level, so a line drawn over its band follows the band edge exactly. Each
++level renders as zero or more `polyline` scene nodes keyed by the level identity
++and line index. Like `contour`, the mark emits no `ChartPoint` focus targets.
+diff --git a/llms.txt b/llms.txt
+index 33b3533..8ea2077 100644
+--- a/llms.txt
++++ b/llms.txt
+@@ -99,7 +99,7 @@ Read the canonical pages below. Each concept is documented once; guides and exam
+ - docs/reference/marks/sunburst.md: Sunburst Mark: Reference for flat hierarchy input, responsive radial partitioning, node lineage, branch color, and the optional sunburst import.
+ - docs/reference/marks/sankey.md: Sankey Diagram Mark: Reference for responsive flow layout, semantic graph input, immutable node and link rows, ordinary child marks, and the optional Sankey import.
+ - docs/reference/marks/hexbin.md: Hexbin Mark: Reference for responsive screen-space hexagonal aggregation, reducer outputs, source lineage, color, and the optional spatial import.
+-- docs/reference/marks/contour.md: Contour Mark: Reference for regular scalar-grid contours, thresholds, orientation, source lineage, and structured multipolygon output.
++- docs/reference/marks/contour.md: Contour Mark: Reference for regular scalar-grid contours and iso-lines, thresholds, orientation, source lineage, and structured multipolygon output.
+ - docs/reference/marks/density.md: Density Contour Mark: Reference for responsive point-density contours, thresholds, grouping, weights, source lineage, and structured multipolygon output.
+ - docs/reference/marks/delaunay.md: Delaunay Link Mark: Reference for responsive Delaunay adjacency links, source grouping, endpoint lineage, stable keys, and the optional spatial import.
+ - docs/reference/marks/voronoi.md: Voronoi Mark: Reference for responsive final-screen Voronoi cells, grouping, stable coincident ownership, presentation, and interaction separation.
+diff --git a/packages/charts-core/docs/reference/index.md b/packages/charts-core/docs/reference/index.md
+index aa294b5..a0d766b 100644
+--- a/packages/charts-core/docs/reference/index.md
++++ b/packages/charts-core/docs/reference/index.md
+@@ -51,6 +51,7 @@ chart keeps its host renderer.
+ | `sankeyDiagram`                                                   | [Sankey diagram](./marks/sankey.md)                                                         |
+ | `hexbin`                                                          | [Hexbin](./marks/hexbin.md)                                                                 |
+ | `contour`                                                         | [Contour](./marks/contour.md)                                                               |
++| `contourLines`                                                    | [Contour](./marks/contour.md)                                                               |
+ | `densityContour`                                                  | [Density contour](./marks/density.md)                                                       |
+ | `delaunayLink`                                                    | [Delaunay link](./marks/delaunay.md)                                                        |
+ | `voronoi`                                                         | [Voronoi](./marks/voronoi.md)                                                               |
+@@ -181,7 +182,7 @@ aggregate `/scales` export.
+ | `@tanstack/charts/svg/resources`        | `renderChartSvgWithResources`                                                                                                                                                                                                   |
+ | `@tanstack/charts/stack`                | `stack`, `StackAnchor`, `StackLayout`, `StackOptions`, `StackOrder`, `StackOffset`                                                                                                                                              |
+ | `@tanstack/charts/spring`               | `createChartSpring` and scalar spring types                                                                                                                                                                                     |
+-| `@tanstack/charts/spatial/contour`      | `contour`, `ContourOptions`, and `ContourDatum`                                                                                                                                                                                 |
++| `@tanstack/charts/spatial/contour`      | `contour`, `contourLines`, `ContourOptions`, `ContourLinesOptions`, and `ContourDatum`                                                                                                                                          |
+ | `@tanstack/charts/spatial/hexbin`       | `hexbin`, `HexbinOptions`, and `HexbinDatum`                                                                                                                                                                                    |
+ | `@tanstack/charts/spatial/density`      | `densityContour`, `DensityContourOptions`, and `DensityContourDatum`                                                                                                                                                            |
+ | `@tanstack/charts/spatial/delaunay`     | `delaunayLink`, `DelaunayLinkOptions`, and `DelaunayLinkDatum`                                                                                                                                                                  |
+diff --git a/packages/charts-core/docs/reference/marks/contour.md b/packages/charts-core/docs/reference/marks/contour.md
+index 76ae17c..9883ff1 100644
+--- a/packages/charts-core/docs/reference/marks/contour.md
++++ b/packages/charts-core/docs/reference/marks/contour.md
+@@ -1,6 +1,6 @@
+ ---
+ title: Contour Mark
+-description: Reference for regular scalar-grid contours, thresholds, orientation, source lineage, and structured multipolygon output.
++description: Reference for regular scalar-grid contours and iso-lines, thresholds, orientation, source lineage, and structured multipolygon output.
+ ---
+ 
+ `contour` generates level sets from a regular scalar grid. Import it from the
+@@ -84,3 +84,51 @@ A level can contain several disconnected regions, and an aggregate centroid
+ can fall outside all of them. The mark therefore does not manufacture a focus
+ target or tooltip datum. Layer an interactive source mark only when the grid
+ samples themselves should own focus and tooltips.
++
++## Iso-lines
++
++`contourLines` strokes the same level sets as open or closed polylines. Use it
++over a filled `contour` when each level needs a clean line, including levels
++that differ from the fill's bands.
++
++```ts
++import { contour, contourLines } from '@tanstack/charts/spatial/contour'
++
++const marks = [
++  contour(wind, { width: 64, height: 60, value: speed, thresholds: 32 }),
++  contourLines(wind, {
++    width: 64,
++    height: 60,
++    value: speed,
++    thresholds: [4, 8],
++    stroke: '#111827',
++    strokeWidth: 0.75,
++  }),
++]
++```
++
++```ts
++function contourLines<TDatum>(
++  source: Iterable<TDatum>,
++  options: ContourLinesOptions<TDatum>,
++): ChartMark<never, never, never>
++```
++
++`ContourLinesOptions<TDatum>` is `ContourOptions<TDatum>` without `fill` and
++`fillOpacity`. `stroke` defaults to the resolved color, and lines use round
++caps and joins. Grid validation, thresholds, smoothing, orientation, lineage,
++and level identity match `contour`.
++
++A filled ring's stroke also traces the grid border and the edges of missing
++cells. `contourLines` keeps only interior crossings:
++
++- an edge with both ends on the grid border is dropped, so a level that meets
++  the border ends there as an open line;
++- an edge in a marching-squares cell with a missing sample is dropped, so lines
++  stop beside null and nonfinite values instead of outlining them; and
++- a ring that loses no edges stays closed, repeating its first point.
++
++Surviving vertices are the smoothed crossings the filled `contour` uses at the
++same level, so a line drawn over its band follows the band edge exactly. Each
++level renders as zero or more `polyline` scene nodes keyed by the level identity
++and line index. Like `contour`, the mark emits no `ChartPoint` focus targets.
+diff --git a/packages/charts-core/llms.txt b/packages/charts-core/llms.txt
+index 33b3533..8ea2077 100644
+--- a/packages/charts-core/llms.txt
++++ b/packages/charts-core/llms.txt
+@@ -99,7 +99,7 @@ Read the canonical pages below. Each concept is documented once; guides and exam
+ - docs/reference/marks/sunburst.md: Sunburst Mark: Reference for flat hierarchy input, responsive radial partitioning, node lineage, branch color, and the optional sunburst import.
+ - docs/reference/marks/sankey.md: Sankey Diagram Mark: Reference for responsive flow layout, semantic graph input, immutable node and link rows, ordinary child marks, and the optional Sankey import.
+ - docs/reference/marks/hexbin.md: Hexbin Mark: Reference for responsive screen-space hexagonal aggregation, reducer outputs, source lineage, color, and the optional spatial import.
+-- docs/reference/marks/contour.md: Contour Mark: Reference for regular scalar-grid contours, thresholds, orientation, source lineage, and structured multipolygon output.
++- docs/reference/marks/contour.md: Contour Mark: Reference for regular scalar-grid contours and iso-lines, thresholds, orientation, source lineage, and structured multipolygon output.
+ - docs/reference/marks/density.md: Density Contour Mark: Reference for responsive point-density contours, thresholds, grouping, weights, source lineage, and structured multipolygon output.
+ - docs/reference/marks/delaunay.md: Delaunay Link Mark: Reference for responsive Delaunay adjacency links, source grouping, endpoint lineage, stable keys, and the optional spatial import.
+ - docs/reference/marks/voronoi.md: Voronoi Mark: Reference for responsive final-screen Voronoi cells, grouping, stable coincident ownership, presentation, and interaction separation.
+diff --git a/packages/charts-core/src/spatial-contour-internal.test.ts b/packages/charts-core/src/spatial-contour-internal.test.ts
+index e7d6693..9f3ac9d 100644
+--- a/packages/charts-core/src/spatial-contour-internal.test.ts
++++ b/packages/charts-core/src/spatial-contour-internal.test.ts
+@@ -1,5 +1,7 @@
++import { contours } from 'd3-contour'
+ import { describe, expect, it } from 'vitest'
+ import {
++  contourIsolines,
+   identifyContourLevels,
+   mapContourPolygons,
+   normalizeContourThresholds,
+@@ -140,3 +142,84 @@ describe('structured contour geometry', () => {
+     ).toThrow('at least three points')
+   })
+ })
++
++describe('contour iso-lines', () => {
++  it('drops border edges and keeps a level touching the border open', () => {
++    const values = [0, 0, 0, 0, 2, 2, 2, 2, 4, 4, 4, 4]
++    const grid = { values, width: 4, height: 3 }
++    const rings = contours().size([4, 3]).smooth(false).contour(values, 1)
++
++    expect(contourIsolines(rings.coordinates, grid, 1, true)).toEqual([
++      [
++        [4, 1.5],
++        [3.5, 1],
++        [2.5, 1],
++        [1.5, 1],
++        [0.5, 1],
++        [0, 1.5],
++      ],
++    ])
++  })
++
++  it('keeps interior rings closed on the smoothed fill crossings', () => {
++    const values = [
++      0, 0, 0, 0, 0, 0, 4, 6, 4, 0, 0, 6, 8, 6, 0, 0, 4, 6, 4, 0, 0, 0, 0, 0, 0,
++    ]
++    const grid = { values, width: 5, height: 5 }
++    const generator = contours().size([5, 5])
++    const rings = generator.smooth(false).contour(values, 3).coordinates
++    const fill = generator.smooth(true).contour(values, 3).coordinates
++    const lines = contourIsolines(rings, grid, 3, true)
++
++    expect(lines).toEqual([fill[0]![0]])
++    expect(lines[0]![0]).toEqual(lines[0]!.at(-1))
++  })
++
++  it('omits edges in marching cells beside missing samples', () => {
++    const values = [
++      0,
++      0,
++      0,
++      0,
++      0,
++      0,
++      4,
++      6,
++      4,
++      0,
++      0,
++      6,
++      Number.NaN,
++      6,
++      0,
++      0,
++      4,
++      6,
++      4,
++      0,
++      0,
++      0,
++      0,
++      0,
++      0,
++    ]
++    const grid = { values, width: 5, height: 5 }
++    const generator = contours().size([5, 5])
++    const rings = generator.smooth(false).contour(values, 5).coordinates
++    const fill = generator.smooth(true).contour(values, 5).coordinates
++    const lines = contourIsolines(rings, grid, 5, true)
++    const fillPoints = new Set(
++      fill.flat(2).map((point) => JSON.stringify(point)),
++    )
++
++    expect(lines).toHaveLength(4)
++    for (const line of lines) {
++      expect(line).toHaveLength(3)
++      expect(line[0]).not.toEqual(line.at(-1))
++      for (const point of line) {
++        expect(fillPoints.has(JSON.stringify(point))).toBe(true)
++        expect(Math.hypot(point[0]! - 2.5, point[1]! - 2.5)).toBeGreaterThan(1)
++      }
++    }
++  })
++})
+diff --git a/packages/charts-core/src/spatial-contour-internal.ts b/packages/charts-core/src/spatial-contour-internal.ts
+index 7d42f99..1045363 100644
+--- a/packages/charts-core/src/spatial-contour-internal.ts
++++ b/packages/charts-core/src/spatial-contour-internal.ts
+@@ -105,3 +105,91 @@ function invalidContourPoint(): never {
+     'Contour coordinates must project to finite two-dimensional points',
+   )
+ }
++
++/**
++ * Splits unsmoothed scalar-grid rings into iso-lines. An edge survives only
++ * when every in-grid sample of its marching cell is finite and at least one
++ * endpoint lies inside the grid border, so fill edges along the grid border and
++ * missing cells are removed. Unbroken rings stay closed by repeating their
++ * first point.
++ */
++export function contourIsolines(
++  coordinates: readonly ContourPolygon[],
++  grid: {
++    readonly values: readonly number[]
++    readonly width: number
++    readonly height: number
++  },
++  level: number,
++  smooth: boolean,
++): readonly ContourRing[] {
++  const { values, width, height } = grid
++  const onBorder = (point: ContourPoint) =>
++    point[0] === 0 ||
++    point[0] === width ||
++    point[1] === 0 ||
++    point[1] === height
++  const complete = (start: ContourPoint, end: ContourPoint) => {
++    const column = Math.floor((start[0]! + end[0]!) / 2 - 0.5)
++    const row = Math.floor((start[1]! + end[1]!) / 2 - 0.5)
++    for (let y = row; y <= row + 1; y++) {
++      for (let x = column; x <= column + 1; x++) {
++        if (x < 0 || x >= width || y < 0 || y >= height) continue
++        if (!Number.isFinite(values[y * width + x])) return false
++      }
++    }
++    return true
++  }
++  // Matches d3-contour's linear smoothing so lines share the fill's crossings.
++  const interpolate = (position: number, v0: number, v1: number) =>
++    position + (level - v0) / (v1 - v0) - 0.5
++  const place = (point: ContourPoint): ContourPoint => {
++    const x = point[0]!
++    const y = point[1]!
++    if (!smooth) return [x, y]
++    const column = Math.floor(x)
++    const row = Math.floor(y)
++    const value = values[row * width + column]!
++    if (x > 0 && x < width && column === x) {
++      return [interpolate(x, values[row * width + column - 1]!, value), y]
++    }
++    if (y > 0 && y < height && row === y) {
++      return [x, interpolate(y, values[(row - 1) * width + column]!, value)]
++    }
++    return [x, y]
++  }
++
++  return coordinates.flatMap((polygon) =>
++    polygon.flatMap((ring) => {
++      const points =
++        ring.length > 1 &&
++        ring[0]![0] === ring.at(-1)![0] &&
++        ring[0]![1] === ring.at(-1)![1]
++          ? ring.slice(0, -1)
++          : ring
++      const count = points.length
++      const kept = points.map((start, index) => {
++        const end = points[(index + 1) % count]!
++        return (!onBorder(start) || !onBorder(end)) && complete(start, end)
++      })
++      const first = kept.indexOf(false)
++      if (first === -1) {
++        const closed = points.map(place)
++        return [[...closed, closed[0]!]]
++      }
++      const lines: ContourPoint[][] = []
++      let line: ContourPoint[] = []
++      for (let offset = 1; offset <= count; offset++) {
++        const index = (first + offset) % count
++        if (kept[index]) {
++          if (!line.length) line.push(place(points[index]!))
++          line.push(place(points[(index + 1) % count]!))
++        } else if (line.length) {
++          lines.push(line)
++          line = []
++        }
++      }
++      return lines
++    }),
++  )
++}
+diff --git a/packages/charts-core/src/spatial-contour.test.ts b/packages/charts-core/src/spatial-contour.test.ts
+index 7ed8532..5b11e21 100644
+--- a/packages/charts-core/src/spatial-contour.test.ts
++++ b/packages/charts-core/src/spatial-contour.test.ts
+@@ -1,9 +1,9 @@
+ import { scaleLinear } from 'd3-scale'
+ import { describe, expect, it, vi } from 'vitest'
+ import { createChartScene, defineChart } from './scene'
+-import { contour } from './spatial-contour'
++import { contour, contourLines } from './spatial-contour'
+ import type { ContourLevelIdentity } from './spatial-contour-internal'
+-import type { SceneArea, SceneGroup, SceneNode } from './types'
++import type { SceneArea, SceneGroup, SceneNode, ScenePolyline } from './types'
+ 
+ describe('scalar-grid contours', () => {
+   it('validates grid dimensions and row count', () => {
+@@ -184,6 +184,125 @@ describe('scalar-grid contours', () => {
+   })
+ })
+ 
++describe('scalar-grid iso-lines', () => {
++  it('validates grids with the iso-line mark name', () => {
++    expect(() => contourLines([1, 2], { width: 2, height: 2 })).toThrow(
++      'contourLines: source length must equal width * height (4)',
++    )
++  })
++
++  it('strokes interior crossings without border or hole edges', () => {
++    const rows = [
++      0,
++      0,
++      0,
++      0,
++      0,
++      0,
++      4,
++      6,
++      4,
++      0,
++      0,
++      6,
++      null,
++      6,
++      0,
++      0,
++      4,
++      6,
++      4,
++      0,
++      0,
++      0,
++      0,
++      0,
++      0,
++    ].map((speed, id) => ({ id, speed }))
++    const stroke = vi.fn((datum: { value: number }) =>
++      datum.value === 5 ? '#111827' : '#6b7280',
++    )
++    const scene = createChartScene(
++      defineChart({
++        marks: [
++          contourLines(rows, {
++            width: 5,
++            height: 5,
++            value: 'speed',
++            thresholds: [2, 5],
++            stroke,
++            strokeWidth: 0.75,
++          }),
++        ],
++        scales: { x: null, y: null },
++        guides: false,
++        focusRing: false,
++        margin: 0,
++      }),
++      { width: 100, height: 100 },
++    )
++    const lines = scenePolylines(scene.nodes)
++    const level = (value: number) =>
++      lines.filter((line) => parseContourKey(line.key)[1][1] === value)
++
++    expect(scene.points).toEqual([])
++    expect(lines.every((line) => line.style?.fill === 'none')).toBe(true)
++    expect(lines.every((line) => line.style?.strokeWidth === 0.75)).toBe(true)
++    expect(stroke.mock.calls.map(([datum]) => datum.value)).toEqual([2, 5])
++    expect(stroke.mock.calls[0]?.[0]).toMatchObject({
++      sourceIndexes: expect.not.arrayContaining([12]),
++    })
++    expect(level(2)).toHaveLength(1)
++    const outer = level(2)[0]!
++    expect(outer.points[0]).toEqual(outer.points.at(-1))
++    expect(outer.style?.stroke).toBe('#6b7280')
++    expect(level(5)).toHaveLength(4)
++    for (const line of level(5)) {
++      expect(line.points[0]).not.toEqual(line.points.at(-1))
++      expect(line.style?.stroke).toBe('#111827')
++      for (const [x, y] of line.points) {
++        expect(Math.hypot(x - 50, y - 50)).toBeGreaterThan(20)
++      }
++    }
++    for (const [x, y] of lines.flatMap((line) => line.points)) {
++      expect(x).toBeGreaterThan(0)
++      expect(x).toBeLessThan(100)
++      expect(y).toBeGreaterThan(0)
++      expect(y).toBeLessThan(100)
++    }
++  })
++
++  it('ends a level touching the border at the plot edge', () => {
++    const scene = createChartScene(
++      defineChart({
++        marks: [
++          contourLines([0, 0, 0, 0, 2, 2, 2, 2, 4, 4, 4, 4], {
++            width: 4,
++            height: 3,
++            thresholds: [1],
++          }),
++        ],
++        scales: { x: null, y: null },
++        guides: false,
++        focusRing: false,
++        margin: 0,
++      }),
++      { width: 80, height: 60 },
++    )
++    const lines = scenePolylines(scene.nodes)
++
++    expect(lines).toHaveLength(1)
++    expect(lines[0]?.points).toEqual([
++      [80, 30],
++      [70, 40],
++      [50, 40],
++      [30, 40],
++      [10, 40],
++      [0, 30],
++    ])
++  })
++})
++
+ function renderNumericContour(
+   values: readonly number[],
+   options: {
+@@ -245,6 +364,14 @@ function sceneAreas(nodes: readonly SceneNode[]): SceneArea[] {
+   })
+ }
+ 
++function scenePolylines(nodes: readonly SceneNode[]): ScenePolyline[] {
++  return nodes.flatMap((node): ScenePolyline[] => {
++    if (node.kind === 'polyline') return [node]
++    if (node.kind === 'group') return scenePolylines(node.children)
++    return []
++  })
++}
++
+ type ContourSceneKey = readonly [string, ContourLevelIdentity]
+ 
+ function parseContourKey(key: string): ContourSceneKey {
+diff --git a/packages/charts-core/src/spatial-contour.ts b/packages/charts-core/src/spatial-contour.ts
+index 31df430..d9e8e38 100644
+--- a/packages/charts-core/src/spatial-contour.ts
++++ b/packages/charts-core/src/spatial-contour.ts
+@@ -8,6 +8,7 @@ import {
+   visualValue,
+ } from './mark'
+ import {
++  contourIsolines,
+   identifyContourLevels,
+   mapContourPolygons,
+   normalizeContourThresholds,
+@@ -51,28 +52,46 @@ export interface ContourOptions<TDatum> extends ChartMarkMotionOptions<never> {
+   opacity?: number
+ }
+ 
+-interface PreparedContour<TDatum> {
++/** Scalar-grid iso-line options. Lines are stroked with the resolved color. */
++export type ContourLinesOptions<TDatum> = Omit<
++  ContourOptions<TDatum>,
++  'fill' | 'fillOpacity'
++>
++
++interface PreparedContour<TDatum, TGeometry> {
+   readonly datum: ContourDatum<TDatum>
+-  readonly geometry: ContourMultiPolygon
++  readonly geometry: TGeometry
+   readonly identity: ContourLevelIdentity
+ }
+ 
+-/** Generates scalar-grid contours and projects them into final plot bounds. */
+-export function contour<TDatum>(
++interface ContourGrid {
++  readonly values: readonly number[]
++  readonly width: number
++  readonly height: number
++}
++
++/** Validates a row-major grid and generates its identified level sets. */
++function generateContours<TDatum, TGeometry>(
+   source: Iterable<TDatum>,
+-  options: ContourOptions<NoInfer<TDatum>>,
+-): ChartMark<never, never, never> {
++  options: ContourLinesOptions<TDatum>,
++  markName: string,
++  smooth: boolean,
++  geometryOf: (
++    geometry: ContourMultiPolygon,
++    grid: ContourGrid,
++  ) => TGeometry | undefined,
++): readonly PreparedContour<TDatum, TGeometry>[] {
+   const data = Array.isArray(source) ? source : Array.from(source)
+   const { width, height } = options
+   if (!Number.isInteger(width) || width <= 0) {
+-    throw new TypeError('contour: width must be a positive integer')
++    throw new TypeError(`${markName}: width must be a positive integer`)
+   }
+   if (!Number.isInteger(height) || height <= 0) {
+-    throw new TypeError('contour: height must be a positive integer')
++    throw new TypeError(`${markName}: height must be a positive integer`)
+   }
+   if (data.length !== width * height) {
+     throw new TypeError(
+-      `contour: source length must equal width * height (${width * height})`,
++      `${markName}: source length must equal width * height (${width * height})`,
+     )
+   }
+ 
+@@ -89,11 +108,11 @@ export function contour<TDatum>(
+   const thresholds = normalizeContourThresholds(
+     options.thresholds,
+     thresholdSturges(finiteValues),
+-    'contour',
++    markName,
+   )
+   const generated = createContours()
+     .size([width, height])
+-    .smooth(options.smooth ?? true)
++    .smooth(smooth)
+     .thresholds(typeof thresholds === 'number' ? thresholds : [...thresholds])(
+     values,
+   )
+@@ -104,22 +123,38 @@ export function contour<TDatum>(
+       : { kind: 'explicit' },
+   )
+   const lineageSource = sourceIndexes.map((index) => data[index] as TDatum)
+-  const prepared: readonly PreparedContour<TDatum>[] = generated.flatMap(
+-    (geometry, index) => {
+-      const level = identified[index]
+-      if (!level || geometry.coordinates.length === 0) return []
+-      return [
+-        {
+-          datum: {
+-            value: level.value,
+-            source: lineageSource,
+-            sourceIndexes,
+-          },
+-          geometry,
+-          identity: level.identity,
++  const grid = { values, width, height }
++  return generated.flatMap((levelSet, index) => {
++    const level = identified[index]
++    if (!level || levelSet.coordinates.length === 0) return []
++    const geometry = geometryOf(levelSet, grid)
++    if (geometry === undefined) return []
++    return [
++      {
++        datum: {
++          value: level.value,
++          source: lineageSource,
++          sourceIndexes,
+         },
+-      ]
+-    },
++        geometry,
++        identity: level.identity,
++      },
++    ]
++  })
++}
++
++/** Generates scalar-grid contours and projects them into final plot bounds. */
++export function contour<TDatum>(
++  source: Iterable<TDatum>,
++  options: ContourOptions<NoInfer<TDatum>>,
++): ChartMark<never, never, never> {
++  const { width, height } = options
++  const prepared = generateContours(
++    source,
++    options,
++    'contour',
++    options.smooth ?? true,
++    (geometry) => geometry,
+   )
+   const derivedData = prepared.map(({ datum }) => datum)
+   const colorValues = channelValues(
+@@ -197,3 +232,102 @@ export function contour<TDatum>(
+     options.renderer,
+   )
+ }
++
++/**
++ * Generates scalar-grid iso-lines. Ring edges along the grid border or beside
++ * missing samples are omitted, so only interior level crossings are stroked.
++ */
++export function contourLines<TDatum>(
++  source: Iterable<TDatum>,
++  options: ContourLinesOptions<NoInfer<TDatum>>,
++): ChartMark<never, never, never> {
++  const { width, height } = options
++  const smooth = options.smooth ?? true
++  const prepared = generateContours(
++    source,
++    options,
++    'contourLines',
++    false,
++    (geometry, grid) => {
++      const lines = contourIsolines(
++        geometry.coordinates,
++        grid,
++        geometry.value,
++        smooth,
++      )
++      return lines.length ? lines : undefined
++    },
++  )
++  const derivedData = prepared.map(({ datum }) => datum)
++  const colorValues = channelValues(
++    derivedData,
++    options.color,
++    (datum) => datum.value,
++  )
++
++  return createMark<never, never, never>(
++    ({ markIndex }) => {
++      const id = options.id ?? `contour-lines-${markIndex}`
++      return {
++        id,
++        channels: {
++          color: {
++            scale: 'color',
++            values: colorValues.filter(isChartKey),
++          },
++        },
++        render: ({ chart, color: resolveColor }) => ({
++          nodes: [
++            {
++              kind: 'group',
++              key: id,
++              className: 'ts-chart__line ts-chart__contour-lines',
++              ariaHidden: true,
++              translateX: chart.x,
++              translateY: chart.y,
++              clip: { x: 0, y: 0, width: chart.width, height: chart.height },
++              children: prepared.flatMap(
++                ({ datum, geometry, identity }, index) => {
++                  const colorValue = colorValues[index]
++                  const style = {
++                    fill: 'none',
++                    stroke: visualValue(
++                      options.stroke,
++                      datum,
++                      index,
++                      derivedData,
++                      resolveColor(isChartKey(colorValue) ? colorValue : null),
++                    ),
++                    strokeOpacity: options.strokeOpacity,
++                    strokeWidth: options.strokeWidth,
++                    strokeDasharray: options.strokeDasharray,
++                    lineCap: 'round' as const,
++                    lineJoin: 'round' as const,
++                    opacity: options.opacity,
++                  }
++                  return geometry.map(
++                    (line, lineIndex) =>
++                      ({
++                        kind: 'polyline',
++                        key: JSON.stringify([id, identity, lineIndex]),
++                        points: line.map(
++                          ([x, y]) =>
++                            [
++                              (x! / width) * chart.width,
++                              chart.height - (y! / height) * chart.height,
++                            ] as const,
++                        ),
++                        style,
++                      }) satisfies SceneNode,
++                  )
++                },
++              ),
++            },
++          ],
++        }),
++      }
++    },
++    options.motion,
++    options.renderer,
++  )
++}
+-- 
+2.43.0
+

@@ -1,0 +1,543 @@
+From 569cfff8268bee6581135ce5e855aeacb07edba7 Mon Sep 17 00:00:00 2001
+From: Solenoid contributors <noreply@anthropic.com>
+Date: Tue, 6 Oct 2026 15:44:23 +0000
+Subject: [PATCH] feat(charts): add a halo option to text
+
+---
+ .changeset/text-halo.md                       |   5 +
+ API-FRICTION.md                               |  22 ++-
+ docs/reference/marks/text-frame-and-facet.md  |  27 ++++
+ .../reference/marks/text-frame-and-facet.md   |  27 ++++
+ packages/charts-core/src/canvas.test.ts       |  44 ++++++
+ packages/charts-core/src/index.ts             |   2 +-
+ packages/charts-core/src/svg-renderer.test.ts |  33 +++++
+ packages/charts-core/src/text.test.ts         | 137 +++++++++++++++++-
+ packages/charts-core/src/text.ts              |  37 +++++
+ packages/charts-core/src/universal-types.ts   |   2 +-
+ 10 files changed, 330 insertions(+), 6 deletions(-)
+ create mode 100644 .changeset/text-halo.md
+
+diff --git a/.changeset/text-halo.md b/.changeset/text-halo.md
+new file mode 100644
+index 0000000..aafef06
+--- /dev/null
++++ b/.changeset/text-halo.md
+@@ -0,0 +1,5 @@
++---
++'@tanstack/charts': minor
++---
++
++Add a `halo` option to `text` that paints a stroked copy beneath each label, keeping labels legible over busy marks in SVG and Canvas without measuring text for a background box.
+diff --git a/API-FRICTION.md b/API-FRICTION.md
+index d9e37c2..b91b267 100644
+--- a/API-FRICTION.md
++++ b/API-FRICTION.md
+@@ -5,7 +5,7 @@ observed difficulty from examples, production migrations, tests, and agent
+ evaluations so later API, documentation, and TanStack Intent skill work is
+ based on evidence.
+ 
+-Last updated: 2026-09-30
++Last updated: 2026-10-06
+ 
+ ## Triage rule
+ 
+@@ -6905,24 +6905,40 @@ Each entry records:
+ - Status: monitoring
+ - Severity: medium
+ - Owner: API
+-- Observed in: editable-range label fit and Sankey-flow label backdrops
++- Observed in: editable-range label fit, Sankey-flow label backdrops, and
++  Solenoid's Recharts-to-TanStack migration
++  (`src/graph/components/chartRender.tsx` `pieLabelMarks`)
+ - Friction: Case 92 estimates whether an event label fits with
+   `label.length * 6 + 10`; the richer Sankey case estimates backdrop width from
+   the longer label/value string, font size, and a `0.58` glyph factor. Charts
+   already owns renderer-aware text measurement for axes, automatic text
+   margins, focus-guide labels, and treemap fit, but ordinary definitions cannot
+   compose those measured bounds into a padded background or visibility rule.
++  Solenoid's pie inside-labels sit on arbitrarily colored slices; the
++  migration layered a translucent `rect` under every label, sized from
++  `name.length * fontSize * 0.6 + 6`, only to keep the text legible. The
++  built-in crosshair already solves the same legibility problem without
++  measurement by painting a stroked copy of its label underneath.
+ - Current decision: keep both presentation policies explicit. Do not expose a
+   raw text-measurement utility or add a Sankey-specific label DSL. The narrow
+   reusable candidate is a resolved text-frame/label composite that owns text
+   measurement, padding, background geometry, and optional fit visibility while
+   retaining normal text channels and renderer lifecycle. Two catalog uses are
+   enough to record the seam, not enough to commit its public shape.
++  Legibility alone does not need a box: `text` now accepts `halo`, which emits
++  a round-joined stroked copy of each label directly beneath it, as the
++  crosshair label does. It needs no glyph measurement, follows rotation and
++  states through the label's own key, and paints identically in SVG and
++  Canvas. The halo covers backdrops whose only job is contrast; padded boxes,
++  borders, and fit visibility remain with the framed-label candidate.
+ - Verification: both cases retain their estimates beside the authored label
+   presentation, and the Sankey layout itself remains fully owned by the
+   existing optional primitive. A future extraction must replace both formulas
+   and prove DOM, Canvas, and native measurement behavior before this finding
+-  can resolve.
++  can resolve. Text tests cover the default-off halo, default and authored
++  paint, paint order, geometry parity with the label, disabled zero-width and
++  zero-opacity halos, and state styles shared with the label; SVG and Canvas
++  renderer tests prove the stroked copy paints before the label fill.
+ 
+ ### F-221 — Roadmap evidence existence allowed false verification
+ 
+diff --git a/docs/reference/marks/text-frame-and-facet.md b/docs/reference/marks/text-frame-and-facet.md
+index 010a1bb..204de80 100644
+--- a/docs/reference/marks/text-frame-and-facet.md
++++ b/docs/reference/marks/text-frame-and-facet.md
+@@ -48,11 +48,38 @@ function text<TDatum>(
+ | `rotate`     | `VisualChannel<TDatum, number>`      | No transform                       | Rotation in degrees around the final label origin |
+ | `dx`         | `VisualChannel<TDatum, number>`      | `0`                                | Horizontal pixel offset                           |
+ | `dy`         | `VisualChannel<TDatum, number>`      | `0`                                | Vertical pixel offset                             |
++| `halo`       | `boolean \| TextHaloOptions`         | None                               | Stroke painted under each label                   |
+ | `states`     | `readonly ChartMarkState[]`          | None                               | Focus-driven presentation overrides               |
+ 
+ Labels use a middle baseline. Null or undefined text skips the row; the default
+ for a null datum is an empty string. Invalid x/y values also skip the row.
+ 
++### Halo
++
++`halo` keeps labels legible over busy marks, such as values inside heatmap
++cells or names inside pie slices, without measuring text for a background box.
++Each label gets a stroked copy painted directly beneath it, so the halo follows
++the glyph outlines in SVG and Canvas alike.
++
++```ts
++text(cells, {
++  x: 'column',
++  y: 'row',
++  text: 'value',
++  halo: { stroke: 'white', strokeWidth: 3 },
++})
++```
++
++| Option          | Type     | Default                             | Meaning                     |
++| --------------- | -------- | ----------------------------------- | --------------------------- |
++| `stroke`        | `string` | `var(--ts-chart-text-halo, Canvas)` | Halo paint                  |
++| `strokeOpacity` | `number` | Renderer default                    | Halo stroke opacity         |
++| `strokeWidth`   | `number` | `3`                                 | Halo width; `0` disables it |
++
++`halo: true` uses the defaults. The halo uses round joins, reuses the label's
++position, rotation, and typography, and receives the same `states` styles as
++its label. A zero width or zero opacity paints no halo.
++
+ The interaction point is at the offset label origin. Its semantic values remain
+ the original x/y channels. Without an explicit key, `text` tries a unique
+ top-level or nested `data.id`, then x, y, and the x/y tuple. Supply `key` when
+diff --git a/packages/charts-core/docs/reference/marks/text-frame-and-facet.md b/packages/charts-core/docs/reference/marks/text-frame-and-facet.md
+index 010a1bb..204de80 100644
+--- a/packages/charts-core/docs/reference/marks/text-frame-and-facet.md
++++ b/packages/charts-core/docs/reference/marks/text-frame-and-facet.md
+@@ -48,11 +48,38 @@ function text<TDatum>(
+ | `rotate`     | `VisualChannel<TDatum, number>`      | No transform                       | Rotation in degrees around the final label origin |
+ | `dx`         | `VisualChannel<TDatum, number>`      | `0`                                | Horizontal pixel offset                           |
+ | `dy`         | `VisualChannel<TDatum, number>`      | `0`                                | Vertical pixel offset                             |
++| `halo`       | `boolean \| TextHaloOptions`         | None                               | Stroke painted under each label                   |
+ | `states`     | `readonly ChartMarkState[]`          | None                               | Focus-driven presentation overrides               |
+ 
+ Labels use a middle baseline. Null or undefined text skips the row; the default
+ for a null datum is an empty string. Invalid x/y values also skip the row.
+ 
++### Halo
++
++`halo` keeps labels legible over busy marks, such as values inside heatmap
++cells or names inside pie slices, without measuring text for a background box.
++Each label gets a stroked copy painted directly beneath it, so the halo follows
++the glyph outlines in SVG and Canvas alike.
++
++```ts
++text(cells, {
++  x: 'column',
++  y: 'row',
++  text: 'value',
++  halo: { stroke: 'white', strokeWidth: 3 },
++})
++```
++
++| Option          | Type     | Default                             | Meaning                     |
++| --------------- | -------- | ----------------------------------- | --------------------------- |
++| `stroke`        | `string` | `var(--ts-chart-text-halo, Canvas)` | Halo paint                  |
++| `strokeOpacity` | `number` | Renderer default                    | Halo stroke opacity         |
++| `strokeWidth`   | `number` | `3`                                 | Halo width; `0` disables it |
++
++`halo: true` uses the defaults. The halo uses round joins, reuses the label's
++position, rotation, and typography, and receives the same `states` styles as
++its label. A zero width or zero opacity paints no halo.
++
+ The interaction point is at the offset label origin. Its semantic values remain
+ the original x/y channels. Without an explicit key, `text` tries a unique
+ top-level or nested `data.id`, then x, y, and the x/y tuple. Supply `key` when
+diff --git a/packages/charts-core/src/canvas.test.ts b/packages/charts-core/src/canvas.test.ts
+index edb81d1..873c58a 100644
+--- a/packages/charts-core/src/canvas.test.ts
++++ b/packages/charts-core/src/canvas.test.ts
+@@ -1567,6 +1567,50 @@ describe('Canvas renderer', () => {
+     }
+   })
+ 
++  it('strokes a text halo before filling its label', () => {
++    const container = document.createElement('div')
++    const surface = createCanvasChartRenderer().mount(container, () => {})
++
++    try {
++      surface.render(
++        createChartScene(
++          defineChart({
++            marks: [
++              text([{ x: 1, y: 2, label: 'Alpha' }], {
++                x: 'x',
++                y: 'y',
++                text: 'label',
++                fill: '#111827',
++                halo: { stroke: '#ffffff', strokeWidth: 4 },
++              }),
++            ],
++            scales: {
++              x: { scale: scaleLinear().domain([0, 2]), axis: false },
++              y: { scale: scaleLinear().domain([0, 3]), axis: false },
++            },
++          }),
++          { width: 300, height: 180 },
++        ),
++        renderOptions(),
++      )
++      const painted = contexts.get(surface.sceneCanvas)
++      if (!painted) throw new Error('Expected a painted scene canvas')
++      const textOperations = painted.operations.filter(
++        (operation) =>
++          operation.startsWith('strokeText:') ||
++          operation.startsWith('fillText:'),
++      )
++
++      expect(textOperations).toEqual([
++        'strokeText:Alpha,0,0',
++        'fillText:Alpha,0,0',
++      ])
++      expect(painted.operations).toContain('lineJoin:round')
++    } finally {
++      surface.destroy()
++    }
++  })
++
+   it('keeps the public canvas as a focus-free base bitmap', () => {
+     const container = document.createElement('div')
+     const renderer = createCanvasChartRenderer({ pixelRatio: 2 })
+diff --git a/packages/charts-core/src/index.ts b/packages/charts-core/src/index.ts
+index bf567da..67ef3fa 100644
+--- a/packages/charts-core/src/index.ts
++++ b/packages/charts-core/src/index.ts
+@@ -233,7 +233,7 @@ export {
+ export { ruleX, ruleY } from './rule'
+ export type { RuleXOptions, RuleYOptions } from './rule'
+ export { text } from './text'
+-export type { TextAnchor, TextOptions } from './text'
++export type { TextAnchor, TextHaloOptions, TextOptions } from './text'
+ export { tickX, tickY } from './tick'
+ export type { TickXOptions, TickYOptions } from './tick'
+ export { vector } from './vector'
+diff --git a/packages/charts-core/src/svg-renderer.test.ts b/packages/charts-core/src/svg-renderer.test.ts
+index 31401b9..742fc26 100644
+--- a/packages/charts-core/src/svg-renderer.test.ts
++++ b/packages/charts-core/src/svg-renderer.test.ts
+@@ -4,6 +4,7 @@ import { lineY } from './line'
+ import { createChartScene, defineChart } from './scene'
+ import { renderChartSvg } from './svg'
+ import { withSvgRenderChildren } from './svg-render-context-internal'
++import { text } from './text'
+ import type { ChartScene } from './types'
+ 
+ describe('SVG scene renderer', () => {
+@@ -63,6 +64,38 @@ describe('SVG scene renderer', () => {
+     expect(svg).not.toContain('M99,99Z')
+   })
+ 
++  it('serializes a text halo as a stroked label under its fill', () => {
++    const scene = createChartScene(
++      defineChart({
++        marks: [
++          text([{ x: 1, y: 2, label: 'Alpha' }], {
++            x: 'x',
++            y: 'y',
++            text: 'label',
++            fill: '#111827',
++            halo: { stroke: '#ffffff', strokeWidth: 4 },
++          }),
++        ],
++        scales: {
++          x: { scale: scaleLinear().domain([0, 2]), axis: false },
++          y: { scale: scaleLinear().domain([0, 3]), axis: false },
++        },
++      }),
++      { width: 480, height: 260 },
++    )
++    const svg = renderChartSvg(scene, { ariaLabel: 'Halo chart' })
++    const labels = [...svg.matchAll(/<text [^>]*>Alpha<\/text>/g)].map(
++      ([markup]) => markup,
++    )
++
++    expect(labels).toHaveLength(2)
++    expect(labels[0]).toMatch(
++      /class="ts-chart__text-halo" fill="none" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/,
++    )
++    expect(labels[1]).toMatch(/ fill="#111827"/)
++    expect(labels[1]).not.toContain('stroke')
++  })
++
+   it('serializes Cartesian axis-title typography and paint', () => {
+     const scene = createChartScene(
+       defineChart({
+diff --git a/packages/charts-core/src/text.test.ts b/packages/charts-core/src/text.test.ts
+index b334527..f0a6658 100644
+--- a/packages/charts-core/src/text.test.ts
++++ b/packages/charts-core/src/text.test.ts
+@@ -1,8 +1,9 @@
+ import { describe, expect, it } from 'vitest'
++import { resolveMarkStateScene } from './mark-state'
+ import { createChartScene, defineChart } from './scene'
+ import { linearAxes } from './test-scales'
+ import { text } from './text'
+-import type { SceneLabel, SceneNode } from './types'
++import type { ChartScene, SceneLabel, SceneNode } from './types'
+ 
+ describe('text mark', () => {
+   it('maps per-datum anchor, rotation, and pixel offsets', () => {
+@@ -44,8 +45,142 @@ describe('text mark', () => {
+     expect(labels[0]!.x).toBeLessThan(scene.scales.x.map(2))
+     expect(labels[1]!.x).toBeGreaterThan(scene.scales.x.map(8))
+   })
++
++  it('paints no halo by default', () => {
++    const labels = textLabels(haloScene())
++
++    expect(
++      labels.map(({ text, className, style }) => ({ text, className, style })),
++    ).toEqual([
++      { text: 'Alpha', className: undefined, style: { fill: 'currentColor' } },
++      { text: 'Beta', className: undefined, style: { fill: 'currentColor' } },
++    ])
++  })
++
++  it('paints a round-joined halo under each label', () => {
++    const plain = textLabels(haloScene())
++    const labels = textLabels(haloScene({ halo: true }))
++    const haloStyle = {
++      fill: 'none',
++      stroke: 'var(--ts-chart-text-halo, Canvas)',
++      strokeOpacity: undefined,
++      strokeWidth: 3,
++      lineJoin: 'round',
++    }
++
++    expect(labels).toEqual([
++      {
++        ...plain[0],
++        key: `${plain[0]!.key}:halo`,
++        className: 'ts-chart__text-halo',
++        style: haloStyle,
++      },
++      plain[0],
++      {
++        ...plain[1],
++        key: `${plain[1]!.key}:halo`,
++        className: 'ts-chart__text-halo',
++        style: haloStyle,
++      },
++      plain[1],
++    ])
++  })
++
++  it('applies authored halo paint and skips invisible halos', () => {
++    const [halo] = textLabels(
++      haloScene({
++        halo: { stroke: '#ffffff', strokeOpacity: 0.8, strokeWidth: 4 },
++      }),
++    )
++
++    expect(halo?.style).toEqual({
++      fill: 'none',
++      stroke: '#ffffff',
++      strokeOpacity: 0.8,
++      strokeWidth: 4,
++      lineJoin: 'round',
++    })
++    expect(
++      textLabels(haloScene({ halo: { strokeWidth: Number.NaN } }))[0]?.style
++        ?.strokeWidth,
++    ).toBe(3)
++    for (const halo of [
++      false,
++      { strokeWidth: 0 },
++      { strokeOpacity: 0 },
++    ] as const) {
++      expect(textLabels(haloScene({ halo }))).toHaveLength(2)
++    }
++  })
++
++  it('applies label state styles to the halo of the same datum', () => {
++    const scene = haloScene({
++      halo: true,
++      states: [
++        { when: { focus: 'unmatched' }, style: { opacity: 0.2, dy: 4 } },
++      ],
++    })
++    const focused = scene.points[0]!
++    const resolved = resolveMarkStateScene(scene, {
++      primary: focused,
++      group: [focused],
++      source: 'pointer',
++      pinned: false,
++    }).scene
++    const labels = textLabels(resolved)
++    const original = textLabels(scene)
++
++    expect(labels.map(({ style }) => style?.opacity)).toEqual([
++      undefined,
++      undefined,
++      0.2,
++      0.2,
++    ])
++    expect(labels.map(({ y }) => y)).toEqual([
++      original[0]!.y,
++      original[1]!.y,
++      original[2]!.y + 4,
++      original[3]!.y + 4,
++    ])
++  })
+ })
+ 
++function haloScene(
++  options: Pick<Parameters<typeof text<Row>>[1] & {}, 'halo' | 'states'> = {},
++): ChartScene {
++  const rows: Row[] = [
++    { id: 'a', x: 2, y: 3, label: 'Alpha' },
++    { id: 'b', x: 8, y: 7, label: 'Beta' },
++  ]
++  return createChartScene(
++    defineChart({
++      marks: [
++        text(rows, { x: 'x', y: 'y', text: 'label', key: 'id', ...options }),
++      ],
++      ...linearAxes([0, 10], [0, 10]),
++    }),
++    { width: 480, height: 260 },
++  )
++}
++
++interface Row {
++  id: string
++  x: number
++  y: number
++  label: string
++}
++
++function textLabels(scene: ChartScene): SceneLabel[] {
++  const textGroup = flatten(scene.nodes).find(
++    (node) => node.className === 'ts-chart__text',
++  )
++  return textGroup?.kind === 'group'
++    ? textGroup.children.filter(
++        (node): node is SceneLabel => node.kind === 'label',
++      )
++    : []
++}
++
+ function flatten(nodes: readonly SceneNode[]): SceneNode[] {
+   return nodes.flatMap((node) =>
+     node.kind === 'group' ? [node, ...flatten(node.children)] : [node],
+diff --git a/packages/charts-core/src/text.ts b/packages/charts-core/src/text.ts
+index 9f42cc4..d97ab5f 100644
+--- a/packages/charts-core/src/text.ts
++++ b/packages/charts-core/src/text.ts
+@@ -26,11 +26,19 @@ import type {
+   MarkScaleBindings,
+   SceneLabel,
+   SceneNode,
++  SceneStyle,
+   VisualChannel,
+ } from './types'
+ 
+ export type TextAnchor = 'start' | 'middle' | 'end'
+ 
++/** Stroke painted under each label so it stays legible over busy marks. */
++export interface TextHaloOptions {
++  stroke?: string
++  strokeOpacity?: number
++  strokeWidth?: number
++}
++
+ export interface TextOptions<TDatum>
+   extends ChartMarkMotionOptions<TDatum>, CartesianScaleBindings {
+   id?: string
+@@ -47,6 +55,7 @@ export interface TextOptions<TDatum>
+   rotate?: VisualChannel<TDatum, number>
+   dx?: VisualChannel<TDatum, number>
+   dy?: VisualChannel<TDatum, number>
++  halo?: boolean | TextHaloOptions
+   states?: readonly ChartMarkState<TDatum, ChartTextStateStyle<TDatum>>[]
+ }
+ 
+@@ -97,6 +106,7 @@ export function text<TDatum>(
+   const data = Array.isArray(source) ? source : Array.from(source)
+   const xScale = options.xScale ?? 'x'
+   const yScale = options.yScale ?? 'y'
++  const halo = haloStyle(options.halo)
+ 
+   return createMark(
+     ({ markIndex }) => {
+@@ -198,6 +208,14 @@ export function text<TDatum>(
+               data,
+               colorValue == null ? theme.foreground : resolveColor(colorValue),
+             )
++            if (halo) {
++              nodes.push({
++                ...node,
++                key: `${node.key}:halo`,
++                className: 'ts-chart__text-halo',
++                style: halo,
++              })
++            }
+             nodes.push({
+               ...node,
+               style: { fill: color },
+@@ -235,3 +253,22 @@ export function text<TDatum>(
+     options.renderer,
+   )
+ }
++
++function haloStyle(halo: TextOptions<unknown>['halo']): SceneStyle | undefined {
++  if (!halo) return undefined
++  const options = halo === true ? {} : halo
++  const strokeWidth =
++    typeof options.strokeWidth === 'number' &&
++    Number.isFinite(options.strokeWidth) &&
++    options.strokeWidth >= 0
++      ? options.strokeWidth
++      : 3
++  if (strokeWidth === 0 || options.strokeOpacity === 0) return undefined
++  return {
++    fill: 'none',
++    stroke: options.stroke ?? 'var(--ts-chart-text-halo, Canvas)',
++    strokeOpacity: options.strokeOpacity,
++    strokeWidth,
++    lineJoin: 'round',
++  }
++}
+diff --git a/packages/charts-core/src/universal-types.ts b/packages/charts-core/src/universal-types.ts
+index 9a0b2e2..0b541c5 100644
+--- a/packages/charts-core/src/universal-types.ts
++++ b/packages/charts-core/src/universal-types.ts
+@@ -85,7 +85,7 @@ export type {
+   StackOptions,
+   StackOrder,
+ } from './stack'
+-export type { TextAnchor, TextOptions } from './text'
++export type { TextAnchor, TextHaloOptions, TextOptions } from './text'
+ export type { TickXOptions, TickYOptions } from './tick'
+ export type { VectorAnchor, VectorOptions } from './vector'
+ export type {
+-- 
+2.43.0
+
