@@ -71,7 +71,7 @@ export function ChartView({
       const { domain, ticks } = valueDomain(vals, opts?.ymin, opts?.ymax, valuePx, true);
       const valueAxis = {
         scale: scaleLinear().domain(domain),
-        grid: showGrid ? { stroke: grid } : false,
+        grid: showGrid ? { stroke: grid, strokeOpacity: 1 } : false,
         axis: axes ? { ticks: { values: ticks, format: yFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.xlabel : opts?.ylabel, fs) } : false as const,
       };
       const idx = series.map((d) => d.i);
@@ -435,7 +435,7 @@ export function MultiSeriesView({
     const yFmt = valueTickFormat(vals);
     const valueAxis = {
       scale: scaleLinear().domain(domain),
-      grid: showGrid ? { stroke: grid } : false,
+      grid: showGrid ? { stroke: grid, strokeOpacity: 1 } : false,
       axis: axes ? { ticks: { values: ticks, format: yFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.xlabel : opts?.ylabel, fs) } : false as const,
     };
     const catAxis = {
@@ -582,7 +582,7 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
         },
         y: {
           scale: scaleLinear().domain(domain),
-          grid: (opts?.grid ?? true) ? { stroke: grid } : false,
+          grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
           axis: { ticks: { values: ticks, format: valueTickFormat(vals), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs) },
         },
       },
@@ -786,12 +786,12 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     const axesOf = () => ({
       x: {
         scale: scaleLinear().domain(xd.domain),
-        grid: (opts?.grid ?? true) ? { stroke: grid } : false,
+        grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
         axis: { ticks: { values: xd.ticks, format: xFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs) },
       },
       y: {
         scale: scaleLinear().domain(yd.domain),
-        grid: (opts?.grid ?? true) ? { stroke: grid } : false,
+        grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
         axis: { ticks: { values: yd.ticks, format: valueTickFormat(pts.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs) },
       },
     });
@@ -860,12 +860,12 @@ export function XYView({ payload, width, height, opts, fontScale }: {
       scales: {
         x: {
           scale: scaleLinear().domain(xd.domain),
-          grid: (opts?.grid ?? true) ? { stroke: grid } : false,
+          grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
           axis: { ticks: { values: xd.ticks, format: xFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs) },
         },
         y: {
           scale: scaleLinear().domain(yd.domain),
-          grid: (opts?.grid ?? true) ? { stroke: grid } : false,
+          grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
           axis: { ticks: { values: yd.ticks, format: valueTickFormat(pts.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs) },
         },
       },
@@ -968,7 +968,7 @@ export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: st
       })],
       scales: {
         y: { scale: () => scaleBand<string>().padding(0.2), axis: { ticks: { size: 0 }, tickLabels: { fontSize: 9 } } },
-        x: { scale: scaleLinear().domain(domain), grid: { stroke: grid }, axis: { ticks: { values: ticks, format: (n: number) => compactTick(n), size: 0 }, tickLabels: { fontSize: 9 } } },
+        x: { scale: scaleLinear().domain(domain), grid: { stroke: grid, strokeOpacity: 1 }, axis: { ticks: { values: ticks, format: (n: number) => compactTick(n), size: 0 }, tickLabels: { fontSize: 9 } } },
       },
       theme: { foreground: axis, muted: axis, grid, background: "transparent" },
       keyboard: false, tooltip: tip((points) => {
