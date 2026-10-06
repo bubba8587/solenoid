@@ -7,11 +7,6 @@
   outline: none;
 }
 
-/* TanStack Charts 1.0.0 paints grid rules at 11% and ignores a grid style's opacity; the theme's grid color is already muted. */
-.ts-chart__grid {
-  stroke-opacity: 1;
-}
-
 .ts-chart-host {
   --ts-chart-tooltip-background: var(--surface-raised);
   --ts-chart-tooltip-color: var(--text);

@@ -34,7 +34,7 @@ function valueAxis(values: number[], px: number, zero: boolean, fs: number, grid
   const { domain, ticks } = valueDomain(values, undefined, undefined, px, zero);
   return {
     scale: scaleLinear().domain(domain),
-    grid: { stroke: grid },
+    grid: { stroke: grid, strokeOpacity: 1 },
     axis: { ticks: { values: ticks, format: valueTickFormat(values, ticks), size: 0 }, tickLabels: { fontSize: 9 * fs } },
   };
 }
