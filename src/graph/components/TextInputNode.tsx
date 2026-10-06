@@ -9,7 +9,7 @@ export function TextInputComponent({ data, emit }: NodeProps<TextInputNodeType>)
     <NodeShell node={data} emit={emit}>
       <QuotedTextInput
         variant="value"
-        nodeId={data.id}
+        resizable
         value={data.value}
         onChange={(v) => { data.value = v; void processGraph(data.id); }}
       />

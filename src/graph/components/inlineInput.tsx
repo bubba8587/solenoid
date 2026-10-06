@@ -1,4 +1,5 @@
 // [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[B11]] maximalMerge. Mechanics: tree/specs/documents/literal-input-editors.md.
+import { FieldResizeGrip } from "./FieldResizeGrip";
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { useKatexRender } from "./katexLoader";
@@ -267,14 +268,14 @@ export function QuotedTextInput(props: {
   variant?: "inline" | "value";
   autoFocus?: boolean;
   placeholder?: string;
-  /** When set, the field shows a resize grip. */
-  nodeId?: string;
+  /** The multi-line field shows a grip; a dragged height holds until the text outgrows it. */
+  resizable?: boolean;
   /** A `<datalist>` id for type-ahead suggestions (the caller renders the list). */
   listId?: string;
 }) {
   // Multi-line textarea: a single-line <input> silently strips newlines on paste.
   return props.variant === "value"
-    ? <QuotedValueTextarea value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} />
+    ? <QuotedValueTextarea value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} resizable={props.resizable} />
     : <QuotedInlineInput value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} placeholder={props.placeholder} listId={props.listId} />;
 }
 
@@ -306,17 +307,18 @@ function QuotedInlineInput({ value, onChange, autoFocus, placeholder, listId }: 
 
 const VALUE_TEXTAREA_MAX = 200;
 
-function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
+function QuotedValueTextarea({ value, onChange, autoFocus, resizable }: { value: string; onChange: (v: string) => void; autoFocus?: boolean; resizable?: boolean }) {
   const [draft, setDraft] = useState(value);
   const canceled = useRef(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const dragged = useRef(0);
   useEffect(() => { setDraft(value); }, [value]);
   // Before paint, so the grow never flickers.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, VALUE_TEXTAREA_MAX)}px`;
+    el.style.height = `${Math.max(dragged.current, Math.min(el.scrollHeight, VALUE_TEXTAREA_MAX))}px`;
   }, [draft]);
   const commit = () => {
     if (canceled.current) { canceled.current = false; setDraft(value); return; }
@@ -328,7 +330,7 @@ function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; on
   };
   return (
     <span className="solenoid-node__quoted solenoid-node__quoted--value solenoid-node__quoted--multiline">
-      <span className="solenoid-node__quoted-field">
+      <span className={`solenoid-node__quoted-field${resizable ? " solenoid-field-resizable" : ""}`}>
         <textarea
           ref={ref}
           className="solenoid-node__quoted-input solenoid-node__quoted-textarea nowheel"
@@ -342,6 +344,7 @@ function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; on
           spellCheck={false}
           autoFocus={autoFocus}
         />
+        {resizable && <FieldResizeGrip targetRef={ref} onResize={(h) => { dragged.current = h; }} />}
       </span>
     </span>
   );

@@ -10,6 +10,7 @@ import { clamp } from "../nodes/mathUtils";
 import { stopDragStart } from "../coarse";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
+import { CardSection } from "./CardSection";
 import { TypeIcon } from "./TypeIcon";
 import { FormatStyleSelect, DateStyleSelect, TextCaseSelect, LogicalStyleSelect, UnitSelect, CustomPatternField } from "./fcControls";
 import { useDraftCommit, useNumberScrub, QuotedTextInput, INVALID_DRAFT } from "./inlineInput";
@@ -60,9 +61,11 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
         options={TYPE_OPTIONS}
         onChange={(next) => { setDt(next); void applyValueType(data, next); }}
       />
-      <FormatRows node={data} dt={dt} pick={pick} />
+      <CardSection label="Format" collapsible defaultOpen={formatIsSet(data)}>
+        <FormatRows node={data} dt={dt} pick={pick} />
+      </CardSection>
       {dt === "number" && <NumberEntry text={data.value} onCommit={commitValue} />}
-      {dt === "string" && <QuotedTextInput variant="value" nodeId={data.id} value={data.value} onChange={commitValue} />}
+      {dt === "string" && <QuotedTextInput variant="value" resizable value={data.value} onChange={commitValue} />}
       {dt === "date" && <DateEntry raw={data.value} onCommit={commitValue} />}
       {dt === "logical" && (
         <LogicalCheck
@@ -73,6 +76,16 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
       <ValueDisplay value={data.cachedValue as DisplayValue} socketKey="value" />
     </NodeShell>
   );
+}
+
+/** Opens the folded Format section on load when a pick is away from the type's default (DESIGN.md § Card sections). */
+function formatIsSet(n: ValueInputNodeType): boolean {
+  switch (n.dataType) {
+    case "number":  return n.effectiveFormat() !== "auto" || n.unit !== "none";
+    case "date":    return n.effectiveFormat() !== "date_dmy";
+    case "string":  return n.textCase !== "none" || n.chip;
+    case "logical": return n.logicalStyle !== "truefalse";
+  }
 }
 
 /** The Format Controller's own dropdowns for this type, without its inherit pick: nothing arrives upstream of a source. */

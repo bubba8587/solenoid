@@ -6,13 +6,14 @@ import { getActiveView } from "../activeGraph";
 const MIN_FIELD_H = 64;
 
 // Module scope, like the card grip's drag: a re-render that recreates this DOM must not drop the gesture.
-type Drag = { sy: number; startH: number; k: number; el: HTMLElement };
+type Drag = { sy: number; startH: number; k: number; el: HTMLElement; onResize?: (h: number) => void };
 let active: Drag | null = null;
 
 function onMove(e: PointerEvent) {
   if (!active) return;
   const next = Math.max(MIN_FIELD_H, active.startH + (e.clientY - active.sy) / active.k);
   active.el.style.height = `${Math.round(next)}px`;
+  active.onResize?.(Math.round(next));
 }
 
 function onUp() {
@@ -24,7 +25,8 @@ function onUp() {
 }
 
 /** Replaces the UA resize corner, whose bright glyph no CSS retires (`::-webkit-resizer` paints behind it); the height is a live DOM size, never persisted. */
-export function FieldResizeGrip({ targetRef }: { targetRef: RefObject<HTMLElement | null> }) {
+/** `onResize` tells a field that sizes itself to its text which height the user dragged to, so its next grow keeps it. */
+export function FieldResizeGrip({ targetRef, onResize }: { targetRef: RefObject<HTMLElement | null>; onResize?: (h: number) => void }) {
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     // The grip vetoes the card drag and the pan ([[C93]] gestureByPointerType).
     e.stopPropagation();
@@ -33,7 +35,7 @@ export function FieldResizeGrip({ targetRef }: { targetRef: RefObject<HTMLElemen
     if (!el) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
     const k = getActiveView()?.transform.k || 1;
-    active = { sy: e.clientY, startH: el.getBoundingClientRect().height / k, k, el };
+    active = { sy: e.clientY, startH: el.getBoundingClientRect().height / k, k, el, onResize };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);

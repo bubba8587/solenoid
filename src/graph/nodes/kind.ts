@@ -238,7 +238,7 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
 
 // These recolor with their output socket, so every accent consumer (card, minimap, canvas snapshot) must read nodeAccent, never nodeKindOf.
 const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
-  node instanceof ListInputNode || node instanceof TableInputNode || node instanceof FormatControllerNode ||
+  node instanceof ListInputNode || node instanceof TableInputNode || node instanceof ValueInputNode || node instanceof FormatControllerNode ||
   // Set's output swaps between list and logical per op.
   node instanceof SetsNode;
 
