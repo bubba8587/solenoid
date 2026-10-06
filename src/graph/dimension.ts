@@ -35,8 +35,20 @@ function combine(a: Dim, b: Dim, f: (x: number, y: number) => number): Dim {
   return out;
 }
 
-export const dimMul = (a: Dim, b: Dim): Dim => combine(a, b, (x, y) => x + y);
-export const dimDiv = (a: Dim, b: Dim): Dim => combine(a, b, (x, y) => x - y);
+/** One result per pair of dim objects, frozen, so a list's cells share one dim and later dimEqual calls hit on identity. */
+function memoPair(f: (a: Dim, b: Dim) => Dim): (a: Dim, b: Dim) => Dim {
+  const byA = new WeakMap<Dim, WeakMap<Dim, Dim>>();
+  return (a, b) => {
+    let byB = byA.get(a);
+    if (!byB) { byB = new WeakMap(); byA.set(a, byB); }
+    let r = byB.get(b);
+    if (!r) { r = Object.freeze(f(a, b)); byB.set(b, r); }
+    return r;
+  };
+}
+
+export const dimMul = memoPair((a, b) => combine(a, b, (x, y) => x + y));
+export const dimDiv = memoPair((a, b) => combine(a, b, (x, y) => x - y));
 
 export function dimPow(a: Dim, n: number): Dim {
   const out: Dim = {};
