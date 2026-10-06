@@ -74,3 +74,6 @@ src/graph/seedGraphs
 
 why: generated text snapshots of the site pages and their source fingerprint; scripts/prerender-site.mjs writes them and prerender.test.ts pins them current
 prerender
+
+why: throwaway investigation harnesses (spikes/) measure a candidate library; no product decision governs them, and each spike is deleted or promoted when its proposal is ruled
+spikes
