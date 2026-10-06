@@ -408,13 +408,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [bitwiseLeaf("bitand"), bitwiseLeaf("bitor")] },
           { type: "pair", children: [bitwiseLeaf("bitxor"), bitwiseLeaf("bitlshift")] },
           bitwiseLeaf("bitrshift"),
-          {
-            type: "category", label: "Bessel", description: "Bessel and modified Bessel functions (J, Y, I, K), used in signal processing, heat transfer, and physics.",
-            children: [
-              { type: "pair", children: [besselLeaf("besselj"), besselLeaf("bessely")] },
-              { type: "pair", children: [besselLeaf("besseli"), besselLeaf("besselk")] },
-            ],
-          },
+          { type: "pair", children: [besselLeaf("besselj"), besselLeaf("bessely")] },
+          { type: "pair", children: [besselLeaf("besseli"), besselLeaf("besselk")] },
         ],
       },
       {
@@ -702,12 +697,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "fin-compound-growth", label: "Compound Growth", description: "Lump-sum growth `fv = pv·(1+rate)^nper`: any three give the fourth. Excel: `FV` or `PV` without `pmt`, `PDURATION` for `nper`, `RRI` for `rate`.", create: () => new EquationNode({ label: "Compound Growth", expr: "fv = pv * (1 + rate)^nper", locked: true }), keywords: "pduration rri compound interest growth doubling lump sum" },
         ],
       },
-      {
-        type: "category", label: "Rate conversion", description: "Convert between nominal and effective interest rates.",
-        children: [
-          { type: "fin-effective-rate", label: "Effective Rate", description: "APR ↔ APY: `eff = (1 + nom/npery)^npery − 1`. Two of nominal rate, effective rate, and compounds-per-year. The third solves. Excel: `EFFECT`, `NOMINAL`.", create: () => new EquationNode({ label: "Effective Rate", expr: "eff = (1 + nom/npery)^npery - 1", locked: true }), keywords: "effect nominal apr apy compounding annual percentage yield" },
-        ],
-      },
+      { type: "fin-effective-rate", label: "Effective Rate", description: "APR ↔ APY: `eff = (1 + nom/npery)^npery − 1`. Two of nominal rate, effective rate, and compounds-per-year. The third solves. Excel: `EFFECT`, `NOMINAL`.", create: () => new EquationNode({ label: "Effective Rate", expr: "eff = (1 + nom/npery)^npery - 1", locked: true }), keywords: "effect nominal apr apy compounding annual percentage yield" },
       {
         type: "payment-breakdown", label: "Payment Breakdown",
         description: "Splits a loan payment into interest and principal, for one period or cumulatively across a range of periods. Excel: `IPMT`, `PPMT`, `CUMIPMT`, `CUMPRINC`.",
@@ -724,12 +714,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: `XNPV`.", create: () => new NPVNode({ op: "dates" }), parity: false },
         ],
       },
-      {
-        type: "category", label: "Bond pricing", description: "Price and yield for coupon bonds.",
-        children: [
-          { type: "bond-pricing", label: "Bond Pricing", description: "A coupon bond's price from its yield, or yield from price, `30/360` basis, odd first or last coupons too. Excel: `PRICE`, `YIELD`, `ODDF` / `ODDL`.", create: () => new BondPricingNode(), parity: false, keywords: "bond price yield coupon clean price yield to maturity ytm odd first last irregular period redemption par frequency" },
-        ],
-      },
+      { type: "bond-pricing", label: "Bond Pricing", description: "A coupon bond's price from its yield, or yield from price, `30/360` basis, odd first or last coupons too. Excel: `PRICE`, `YIELD`, `ODDF` / `ODDL`.", create: () => new BondPricingNode(), parity: false, keywords: "bond price yield coupon clean price yield to maturity ytm odd first last irregular period redemption par frequency" },
       {
         type: "category", label: "Depreciation", description: "Depreciate an asset over its useful life.",
         children: [
@@ -980,16 +965,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "cube-rollup", label: "Cube Rollup", description: "Aggregates a column inside each row's nested table and flattens the Cube to a Frame with the roll-up appended: an assembly's cost as a `SUM` of parts.", create: () => new CubeRollupNode(), parity: false, keywords: "cube rollup aggregate sum bom bill of materials costing nested cost roll up assembly subtotal" },
         ],
       },
-      {
-        type: "category", label: "Select", description: "Pick rows or columns, by index or from the table's edges.",
-        children: [
-          { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
-          { type: "pair", children: [
-            { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: false, keywords: "take drop list table rows columns elements edge first last head tail" },
-            { type: "takedrop-drop", label: "DROP", description: TAKEDROP_OP_META.drop.description, create: () => new TakeDropNode({ op: "drop" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
-          ]},
-        ],
-      },
+      { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
+      { type: "pair", children: [
+        { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: false, keywords: "take drop list table rows columns elements edge first last head tail" },
+        { type: "takedrop-drop", label: "DROP", description: TAKEDROP_OP_META.drop.description, create: () => new TakeDropNode({ op: "drop" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
+      ]},
       {
         type: "category", label: "Shape", description: "Reshape between 1D lists and 2D tables, stack tables side-by-side.",
         children: [

@@ -105,7 +105,7 @@ export const HEALTH_PACK: Pack = {
     ...placeFormulas(["Packs", "Health & Fitness", "Body Composition"], HEALTH_COMPOSITION),
     ...placeFormulas(["Packs", "Health & Fitness", "Energy & Metabolism"], HEALTH_ENERGY),
     ...placeFormulas(["Packs", "Health & Fitness", "Heart & Cardio"], HEALTH_CARDIO),
-    ...placeFormulas(["Packs", "Health & Fitness", "Clinical"], HEALTH_CLINICAL),
+    ...placeFormulas(["Packs", "Health & Fitness"], HEALTH_CLINICAL),
   ],
   units: [
     { id: "kcal", label: " kcal", group: "health", groupLabel: "Health" },

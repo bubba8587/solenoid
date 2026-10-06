@@ -82,7 +82,7 @@ export const FLUIDS_PACK: Pack = {
     ...placeFormulas(["Packs", "Fluids"], FLUIDS_BASE),
     ...placeFormulas(["Packs", "Fluids", "Pipe Flow"], FLUIDS_PIPE),
     {
-      path: ["Packs", "Fluid Mechanics"],
+      path: ["Packs", "Fluids", "Pipe Flow"],
       entry: {
         type: "fl-roughness",
         label: "Pipe Roughness",
