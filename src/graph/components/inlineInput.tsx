@@ -344,7 +344,7 @@ function QuotedValueTextarea({ value, onChange, autoFocus, resizable }: { value:
           spellCheck={false}
           autoFocus={autoFocus}
         />
-        {resizable && <FieldResizeGrip targetRef={ref} onResize={(h) => { dragged.current = h; }} />}
+        {resizable && <FieldResizeGrip targetRef={ref} axes="both" minHeight={24} onResize={(h) => { dragged.current = h; }} />}
       </span>
     </span>
   );

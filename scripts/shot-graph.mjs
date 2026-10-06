@@ -15,6 +15,7 @@
 //   --click-edge <css>   click the first match 5px in from its top-left corner (a popup's overlay, outside the card)
 //   --type <css> <text>  focus the first match, select all, type the text
 //   --press <key>        press a key (Enter, Escape, Tab…) or a combo (Control+Shift+Equal)
+//   --drag <css> <dx> <dy>  press the first match's center, move by (dx, dy) screen px, release; prints each card's box before and after
 // --size 390x844 shoots a touch phone viewport instead of the 1600×1000 desktop.
 // Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__input.
 import { execFileSync } from "node:child_process";
@@ -33,6 +34,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--click-edge") opt.steps.push({ click: argv[++i], edge: true });
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
+  else if (a === "--drag") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]) });
   else if (a === "--wait") opt.wait = Number(argv[++i]);
   else if (a === "--palette") opt.palette = argv[++i];
   else if (a === "--light") opt.light = true;
@@ -41,7 +43,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key]… [--wait ms] [--palette name] [--light] [--full] [--size WxH]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy]… [--wait ms] [--palette name] [--light] [--full] [--size WxH]"); process.exit(2); }
 
 const inferType = (cells) => {
   const filled = cells.filter((c) => c !== "" && c != null);
@@ -132,6 +134,20 @@ try {
       for (const k of keys) await page.keyboard.down(k);
       await page.keyboard.press(last);
       for (const k of keys.reverse()) await page.keyboard.up(k);
+    }
+    else if (step.drag) {
+      const boxes = () => page.evaluate(() => [...document.querySelectorAll(".solenoid-node")]
+        .map((n) => { const r = n.getBoundingClientRect(); return `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)}`; }));
+      console.log("cards before drag:", (await boxes()).join(" | "));
+      const el = await page.$(step.drag);
+      if (!el) throw new Error(`no match for ${step.drag}`);
+      const b = await el.boundingBox();
+      const x = b.x + b.width / 2, y = b.y + b.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      for (let k = 1; k <= 10; k++) await page.mouse.move(x + (step.dx * k) / 10, y + (step.dy * k) / 10);
+      await page.mouse.up();
+      console.log("cards after drag: ", (await boxes()).join(" | "));
     }
     else if (step.popup) {
       const chips = await page.$$(".solenoid-array-chip--frame");

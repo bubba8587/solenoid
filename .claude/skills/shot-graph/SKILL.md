@@ -22,7 +22,7 @@ title first) and saves a PNG cropped to the nodes. One run takes about 6 seconds
 - **Steps run in the order given**, and every node's text prints again after them:
   `--popup [N]` opens the Nth frame chip's table and shoots only the popup (all rows, not the
   3-row preview); `--click <css>` clicks; `--type <css> <text>` replaces a field's text;
-  `--press <key>` presses Enter, Escape, Tab and so on, or a combo such as `Control+Shift+Equal`. `--full` keeps the whole viewport.
+  `--press <key>` presses Enter, Escape, Tab and so on, or a combo such as `Control+Shift+Equal`. `--drag <css> <dx> <dy>` presses the first match's center, moves by that many screen px and releases, printing every card's box before and after (a grip test: the card should grow, not move). `--full` keeps the whole viewport.
 - **Editing a card's formula:** `--click .solenoid-expr__rendered --type .fx-editor__input '<formula>' --press Escape`
   (the popup commits on close). An Fx column: `--popup --type .table-popup__exprinput '<formula>' --press Enter`.
 - **`--palette <name>`** opens under a built-in palette (`Neon`, `Orchard`…) and **`--light`** in light mode.
