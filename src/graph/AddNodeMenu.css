@@ -156,6 +156,16 @@
   background: color-mix(in srgb, var(--item-accent) 38%, transparent);
 }
 
+/* One faded band per type on a type-toggle node, seams tilted (BAND_ANGLE). --band-mix resolves where --item-bands is set, so hover lifts every band. */
+.solenoid-add-menu__item--bands { --band-mix: 18%; }
+.solenoid-add-menu__item--bands:hover,
+.solenoid-add-menu__item--bands.solenoid-add-menu__item--active { --band-mix: 32%; }
+.solenoid-add-menu__item--bands::before,
+.solenoid-add-menu__item--bands:hover::before,
+.solenoid-add-menu__item--bands.solenoid-add-menu__item--active::before {
+  background: var(--item-bands);
+}
+
 .solenoid-add-menu__item--half {
   justify-content: flex-start;
 }

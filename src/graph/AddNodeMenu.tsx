@@ -7,10 +7,36 @@ import "./AddNodeMenu.css";
 import { NODE_KIND_ACCENTS, type NodeKind } from "./nodes/shared";
 import { themeAccent } from "./palette";
 import { appThemeStore } from "./appTheme";
+import { SOCKET_COLORS, type SocketDataType } from "./sockets";
 
 /** A row takes its kind's color as a card of that kind shows it: the current palette, adjusted for light mode. */
 const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kind], appThemeStore.getMode());
 import { ChevronRightIcon } from "./components/Icons";
+
+/** Seams lean 60° from horizontal; the gradient runs perpendicular to them. */
+const BAND_ANGLE = "120deg";
+
+/** Hard stops with a 1px blend, so a tilted seam doesn't stair-step. */
+function bandStops(types: readonly SocketDataType[]): string {
+  const n = types.length;
+  return types.map((t, i) => {
+    const c = `color-mix(in srgb, ${SOCKET_COLORS[t]} var(--band-mix), transparent)`;
+    const from = i === 0 ? "0%" : `calc(${(100 * i) / n}% + 0.5px)`;
+    const to = i === n - 1 ? "100%" : `calc(${(100 * (i + 1)) / n}% - 0.5px)`;
+    return `${c} ${from}, ${c} ${to}`;
+  }).join(", ");
+}
+
+function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
+  if (leaf.accents?.length) {
+    return {
+      className: " solenoid-add-menu__item--accent solenoid-add-menu__item--bands",
+      style: { "--item-accent": SOCKET_COLORS[leaf.accents[0]], "--item-bands": `linear-gradient(${BAND_ANGLE}, ${bandStops(leaf.accents)})` } as CSSProperties,
+    };
+  }
+  if (leaf.accent) return { className: " solenoid-add-menu__item--accent", style: { "--item-accent": leafAccent(leaf.accent) } as CSSProperties };
+  return { className: "" };
+}
 
 export type NodeCatalogEntry = {
   type: string;
@@ -19,6 +45,8 @@ export type NodeCatalogEntry = {
   create: () => unknown;
   /** The node kind whose palette color tints the row, resolved when the menu draws so a palette switch reaches it. */
   accent?: NodeKind;
+  /** A type toggle's choices, in toggle order: the row's highlight splits into one band per type, in that type's socket color. */
+  accents?: readonly SocketDataType[];
   parity?: boolean;
   hidden?: boolean;
   packs?: string[];
@@ -197,13 +225,14 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
         const leaf = it.entry;
         const active = onPath && deepest;
         const dim = isDim(leaf);
+        const hl = leafHighlight(leaf);
         return (
           <div
             key={`leaf:${leaf.type}`}
             ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
-            className={`solenoid-add-menu__item${it.half ? " solenoid-add-menu__item--half" : ""}${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
+            className={`solenoid-add-menu__item${it.half ? " solenoid-add-menu__item--half" : ""}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
             title={leaf.description && descriptionText(leaf.description)}
-            style={leaf.accent ? ({ "--item-accent": leafAccent(leaf.accent) } as CSSProperties) : undefined}
+            style={hl.style}
             onMouseEnter={() => onHover([...prefix, i])}
             onClick={(e) => { e.stopPropagation(); onSelect(leaf); }}
           >
@@ -374,9 +403,9 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
               <div
                 key={leaf.type}
                 ref={i === activeIndex ? activeRef : undefined}
-                className={`solenoid-add-menu__item${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${i === activeIndex ? " solenoid-add-menu__item--active" : ""}${isDim(leaf) ? " solenoid-add-menu__item--incompatible" : ""}`}
+                className={`solenoid-add-menu__item${leafHighlight(leaf).className}${i === activeIndex ? " solenoid-add-menu__item--active" : ""}${isDim(leaf) ? " solenoid-add-menu__item--incompatible" : ""}`}
                 title={leaf.description && descriptionText(leaf.description)}
-                style={leaf.accent ? ({ "--item-accent": leafAccent(leaf.accent) } as CSSProperties) : undefined}
+                style={leafHighlight(leaf).style}
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => select(leaf)}
               >
