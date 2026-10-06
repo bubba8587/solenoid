@@ -56,3 +56,4 @@ demo-vault/TaskNotes/
 tree/.obsidian/
 tree/decisions/.obsidian/
 __pycache__/
+.spike-dist

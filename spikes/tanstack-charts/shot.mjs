@@ -1,0 +1,12 @@
+import puppeteer from "puppeteer-core";
+import { browserPath } from "../../scripts/browser.mjs";
+const b = await puppeteer.launch({ executablePath: browserPath(), args: ["--no-sandbox"] });
+const p = await b.newPage();
+await p.setViewport({ width: 1200, height: 1400 });
+p.on("console", (m) => { if (m.type() === "error") console.log("ERR", m.text()); });
+p.on("pageerror", (e) => console.log("PAGEERR", e.message));
+await p.goto(process.argv[2], { waitUntil: "networkidle0" });
+await new Promise((r) => setTimeout(r, 1500));
+await p.screenshot({ path: process.argv[3], fullPage: true });
+console.log(await p.evaluate(() => [...document.querySelectorAll(".cell")].map((c) => c.querySelectorAll("*").length).join(",")));
+await b.close();
