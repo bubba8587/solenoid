@@ -173,16 +173,14 @@ html.is-mobile {
   .solenoid-nav .solenoid-nav__btn svg { width: 15px; height: 15px; }
 
   /* ── Add menu ── a sheet docked under the top bars (the keyboard would cover a bottom one), one level at a time. */
-  .solenoid-add-menu { font-size: 14px; }
+  .solenoid-add-menu { font-size: 13px; }
   .solenoid-add-menu--sheet {
     left: 10dvw;
     width: 80dvw;
     top: calc(var(--chrome-top, 82px) + 6px);
   }
-  .solenoid-add-menu--sheet .solenoid-add-menu__panel {
-    max-height: calc(100dvh - var(--chrome-top, 82px) - var(--chrome-bottom, 57px) - 40px);
-  }
-  .solenoid-add-menu__item { padding: 0 12px; min-height: 40px; }
+  .solenoid-add-menu__panel { max-width: 92vw; max-height: min(86vh, 448px); max-height: min(86dvh, 448px); }
+  .solenoid-add-menu__item { padding: 7px 12px; }
   /* A finger leaves a sticky :hover on whatever row lands under it after a tap, so only the press itself tints. */
   .solenoid-add-menu__item:hover { background: transparent; }
   .solenoid-add-menu__item:active { background: var(--accent-soft); }
@@ -195,7 +193,7 @@ html.is-mobile {
     border-radius: 3px 3px 0 0;
     margin-bottom: 2px;
   }
-  .solenoid-add-menu__search { padding: 9px 10px; font-size: 16px; }
+  .solenoid-add-menu__search { padding: 7px 10px; font-size: 13px; }
 
   /* ── Navigator ── */
   .solenoid-outline__open-pill { display: none; }
