@@ -15,6 +15,8 @@ const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kin
 import { ChevronRightIcon, ChevronLeftIcon } from "./components/Icons";
 
 function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
+  // One type tints the row like a kind accent, in that type's socket color; several make the flag.
+  if (leaf.accents?.length === 1) return { className: " solenoid-add-menu__item--accent", style: { "--item-accent": SOCKET_COLORS[leaf.accents[0]] } as CSSProperties };
   if (leaf.accents?.length) return { className: " solenoid-add-menu__item--accent solenoid-add-menu__item--bands" };
   if (leaf.accent) return { className: " solenoid-add-menu__item--accent", style: { "--item-accent": leafAccent(leaf.accent) } as CSSProperties };
   return { className: "" };
@@ -22,7 +24,7 @@ function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSS
 
 /** A type-toggle node's flag: one slanted tile per type at the row's trailing end, in that type's socket color. */
 function TypeBands({ types }: { types?: readonly SocketDataType[] }) {
-  if (!types?.length) return null;
+  if (!types || types.length < 2) return null;
   return (
     <span className="solenoid-add-menu__bands" aria-hidden="true">
       {types.map((t) => <span key={t} className="solenoid-add-menu__band" style={{ "--band-color": SOCKET_COLORS[t] } as CSSProperties} />)}

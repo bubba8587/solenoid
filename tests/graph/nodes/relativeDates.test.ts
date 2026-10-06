@@ -84,11 +84,11 @@ describe("Value Input's Date mode under the same opt-in", () => {
 
   it("off: a relative phrase is a blank", () => {
     settingsStore.set("relativeDates", false);
-    expect(new ValueInputNode({ dataType: "date", value: "tomorrow" }).data().value).toBeNull();
+    expect(new ValueInputNode({ op: "date", value: "tomorrow" }).data().value).toBeNull();
   });
   it("on: it resolves, and alerts when the resolved day moves", () => {
     settingsStore.set("relativeDates", true);
-    const n = new ValueInputNode({ dataType: "date", value: "today" });
+    const n = new ValueInputNode({ op: "date", value: "today" });
     const first = n.data().value as number;
     expect(first).toBe(Math.floor(parseDate("today", { relative: true }) as number));
     (n as unknown as { lastRelative: { text: string; serial: number } }).lastRelative = { text: "today", serial: first - 1 };
@@ -96,13 +96,13 @@ describe("Value Input's Date mode under the same opt-in", () => {
     expect(alertStore.list().filter((e) => e.nodeId === n.id)).toHaveLength(1);
   });
   it("a switch into Date keeps a relative phrase only while the opt-in is on", () => {
-    const n = new ValueInputNode({ dataType: "string", value: "next friday" });
+    const n = new ValueInputNode({ op: "string", value: "next friday" });
     settingsStore.set("relativeDates", true);
-    n.setDataType("date");
+    n.setOp("date");
     expect(n.value).toBe("next friday");
-    const m = new ValueInputNode({ dataType: "string", value: "next friday" });
+    const m = new ValueInputNode({ op: "string", value: "next friday" });
     settingsStore.set("relativeDates", false);
-    m.setDataType("date");
+    m.setOp("date");
     expect(m.value).not.toBe("next friday");
   });
 });

@@ -1,6 +1,7 @@
 // [[C26]] opArgDistinct, [[B11]] maximalMerge, [[B16]] oneFormulaSurface
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
+import type { SocketDataType } from "./sockets";
 import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distribution";
 
 import { ChartNode, SparklineNode, SurfaceNode, ProportionNode, RecordNode } from "./nodes/visual";
@@ -15,6 +16,7 @@ import { HeadNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/fr
 import { RegexNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
+import { ValueInputNode, VALUE_INPUT_OP_META } from "./nodes/control";
 import { ByAxisNode, BY_AXIS_OP_META } from "./nodes/tableLambda";
 import { StackNode, STACK_OP_META } from "./nodes/matrix";
 import { NPVNode, IRRNode, NPV_OP_META, IRR_OP_META } from "./nodes/finance";
@@ -67,10 +69,11 @@ export type NodeOpsDecl = NodeOpsBase & (
   | { ops?: undefined; create?: undefined }
 );
 
-export interface OpEntryDecl { op: string; label: string; fx?: string; keywords?: string }
+/** `accents` tints the op's own Add-menu row in its types' socket colors, in place of the host's. */
+export interface OpEntryDecl { op: string; label: string; fx?: string; keywords?: string; accents?: readonly SocketDataType[] }
 
-function fromMeta(meta: Record<string, { label: string; fx?: string; keywords?: string }>): OpEntryDecl[] {
-  return Object.entries(meta).map(([op, m]) => ({ op, label: m.label, ...(m.fx ? { fx: m.fx } : {}), ...(m.keywords ? { keywords: m.keywords } : {}) }));
+function fromMeta(meta: Record<string, { label: string; fx?: string; keywords?: string; accents?: readonly SocketDataType[] }>): OpEntryDecl[] {
+  return Object.entries(meta).map(([op, m]) => ({ op, label: m.label, ...(m.fx ? { fx: m.fx } : {}), ...(m.keywords ? { keywords: m.keywords } : {}), ...(m.accents ? { accents: m.accents } : {}) }));
 }
 
 const DIST_OPS: OpEntryDecl[] = (Object.keys(DIST_SPECS) as DistKey[]).map((op) => ({
@@ -86,6 +89,8 @@ const RANK_PERCENTILE_LEAF_OPS = [
 ];
 
 export const NODE_OPS: NodeOpsDecl[] = [
+  { type: "value-input", ctor: ValueInputNode, ops: fromMeta(VALUE_INPUT_OP_META),
+    create: (op) => new ValueInputNode({ op: op as never }) },
   { type: "chart", ctor: ChartNode, ops: fromMeta(CHART_OP_META),
     create: (op) => new ChartNode({ op: op as never }) },
   { type: "sparkline", ctor: SparklineNode, ops: fromMeta(SPARKLINE_OP_META),
@@ -290,6 +295,7 @@ export function opEntry(
     create: () => decl.create(op.op),
     // Not the host's keywords, hiddenOps or ops mark; the op's own keywords ride along.
     keywords: op.keywords,
+    accents: op.accents ?? host.accents,
     hiddenOps: undefined,
     hideOpsMark: undefined,
   };

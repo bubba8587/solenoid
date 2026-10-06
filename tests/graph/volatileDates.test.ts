@@ -19,9 +19,9 @@ describe("volatileDates (R5 midnight rollover)", () => {
     expect(hasVolatileDates([{ expr: "a + b" }, { stringLiterals: { date: "05-Jan-2026" } }, {}])).toBe(false);
   });
   it("spots a relative date on a Value Input in Date mode only", () => {
-    expect(hasVolatileDates([new ValueInputNode({ dataType: "date", value: "next friday" })])).toBe(true);
-    expect(hasVolatileDates([new ValueInputNode({ dataType: "date", value: "05-Jan-2026" })])).toBe(false);
-    expect(hasVolatileDates([new ValueInputNode({ dataType: "string", value: "next friday" })])).toBe(false);
+    expect(hasVolatileDates([new ValueInputNode({ op: "date", value: "next friday" })])).toBe(true);
+    expect(hasVolatileDates([new ValueInputNode({ op: "date", value: "05-Jan-2026" })])).toBe(false);
+    expect(hasVolatileDates([new ValueInputNode({ op: "string", value: "next friday" })])).toBe(false);
   });
   it("spots TODAY() in a Cube Input's formula column", () => {
     const cube = new CubeInputNode({ cubeText: JSON.stringify({ columns: [{ name: "a" }, { name: "d", expr: "TODAY()" }], rows: [{ a: 1 }] }) });

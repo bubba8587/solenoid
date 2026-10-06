@@ -10,32 +10,32 @@ const socketType = (n: ValueInputNode) => (n.outputs.value!.socket as SolenoidSo
 
 describe("Value Input data()", () => {
   it("emits each type from the typed text", () => {
-    expect(new ValueInputNode({ dataType: "number", value: "3.5" }).data().value).toBe(3.5);
-    expect(new ValueInputNode({ dataType: "string", value: " hi " }).data().value).toBe(" hi ");
-    expect(new ValueInputNode({ dataType: "logical", value: "TRUE" }).data().value).toBe(true);
-    expect(new ValueInputNode({ dataType: "logical", value: "FALSE" }).data().value).toBe(false);
-    expect(new ValueInputNode({ dataType: "date", value: "15-Mar-2026" }).data().value).toBe(46096);
+    expect(new ValueInputNode({ op: "number", value: "3.5" }).data().value).toBe(3.5);
+    expect(new ValueInputNode({ op: "string", value: " hi " }).data().value).toBe(" hi ");
+    expect(new ValueInputNode({ op: "logical", value: "TRUE" }).data().value).toBe(true);
+    expect(new ValueInputNode({ op: "logical", value: "FALSE" }).data().value).toBe(false);
+    expect(new ValueInputNode({ op: "date", value: "15-Mar-2026" }).data().value).toBe(46096);
   });
 
   it("reads a blank number as 0 and flags text that isn't one", () => {
-    expect(new ValueInputNode({ dataType: "number", value: "" }).data().value).toBe(0);
-    const bad = new ValueInputNode({ dataType: "number", value: "abc" }).data().value;
+    expect(new ValueInputNode({ op: "number", value: "" }).data().value).toBe(0);
+    const bad = new ValueInputNode({ op: "number", value: "abc" }).data().value;
     expect(isSolError(bad) && bad.code).toBe("#VALUE!");
   });
 
   it("gives a blank or unreadable date no value", () => {
-    expect(new ValueInputNode({ dataType: "date", value: "" }).data().value).toBeNull();
-    expect(new ValueInputNode({ dataType: "date", value: "someday" }).data().value).toBeNull();
+    expect(new ValueInputNode({ op: "date", value: "" }).data().value).toBeNull();
+    expect(new ValueInputNode({ op: "date", value: "someday" }).data().value).toBeNull();
   });
 
   it("tags a number with the card's unit, and never a non-number", () => {
-    const v = new ValueInputNode({ dataType: "number", value: "5", unit: "m" }).data().value;
+    const v = new ValueInputNode({ op: "number", value: "5", unit: "m" }).data().value;
     expect(isUnitCell(v)).toBe(true);
-    expect(new ValueInputNode({ dataType: "string", value: "5", unit: "m" }).data().value).toBe("5");
+    expect(new ValueInputNode({ op: "string", value: "5", unit: "m" }).data().value).toBe("5");
   });
 
   it("caches the value for the hero box", () => {
-    const n = new ValueInputNode({ dataType: "number", value: "7" });
+    const n = new ValueInputNode({ op: "number", value: "7" });
     n.data();
     expect(n.cachedValue).toBe(7);
   });
@@ -45,12 +45,12 @@ describe("Value Input type switch", () => {
   it("swaps the output socket to the picked type", () => {
     const n = new ValueInputNode();
     expect(socketType(n)).toBe("number");
-    expect(n.setDataType("date")).toBe(true);
+    expect(n.setOp("date")).toBe(true);
     expect(socketType(n)).toBe("date");
-    expect(n.setDataType("date")).toBe(false);
-    n.setDataType("logical");
+    expect(n.setOp("date")).toBe(false);
+    n.setOp("logical");
     expect(socketType(n)).toBe("logical");
-    n.setDataType("string");
+    n.setOp("string");
     expect(socketType(n)).toBe("string");
   });
 
@@ -69,34 +69,34 @@ describe("Value Input type switch", () => {
 
 describe("Value Input format", () => {
   it("annotates its own output, dropping the unit off a non-number", () => {
-    const n = new ValueInputNode({ dataType: "number", format: "percent", unit: "m" });
+    const n = new ValueInputNode({ op: "number", format: "percent", unit: "m" });
     expect(n.annotationFor("value")).toMatchObject({ format: "percent", unit: "m" });
     expect(n.annotationFor("other")).toBeUndefined();
-    n.setDataType("string");
+    n.setOp("string");
     expect(n.annotationFor("value")).toMatchObject({ unit: "none" });
   });
 
   it("keeps an off-type style saved but inert", () => {
-    const n = new ValueInputNode({ dataType: "number", format: "percent" });
-    n.setDataType("date");
+    const n = new ValueInputNode({ op: "number", format: "percent" });
+    n.setOp("date");
     expect(n.effectiveFormat()).toBe("date_dmy");
     expect(n.format).toBe("percent");
-    n.setDataType("number");
+    n.setOp("number");
     expect(n.effectiveFormat()).toBe("percent");
   });
 });
 
 describe("Value Input persistence", () => {
   it("round-trips through extractInit", () => {
-    const n = new ValueInputNode({ dataType: "date", value: "15-Mar-2026", format: "date_iso", logicalStyle: "yesno", textCase: "upper" });
+    const n = new ValueInputNode({ op: "date", value: "15-Mar-2026", format: "date_iso", logicalStyle: "yesno", textCase: "upper" });
     const back = new ValueInputNode(extractInit(n) as ConstructorParameters<typeof ValueInputNode>[0]);
     expect(extractInit(back)).toEqual(extractInit(n));
     expect(back.data().value).toBe(46096);
   });
 
   it("falls back to Number on a stale type", () => {
-    const n = new ValueInputNode({ dataType: "cube" as never });
-    expect(n.dataType).toBe("number");
+    const n = new ValueInputNode({ op: "cube" as never });
+    expect(n.op).toBe("number");
     expect(socketType(n)).toBe("number");
   });
 });

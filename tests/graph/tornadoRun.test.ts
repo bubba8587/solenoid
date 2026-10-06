@@ -21,8 +21,8 @@ function fakeEditor(nodes: Record<string, unknown>, connections: Conn[]) {
 
 describe("findUpstreamLeaves", () => {
   it("takes a Number-mode Value Input as a leaf, and walks past any other mode", () => {
-    const num = new ValueInputNode({ label: "Price", dataType: "number", value: "25" });
-    const txt = new ValueInputNode({ label: "Name", dataType: "string", value: "x" });
+    const num = new ValueInputNode({ label: "Price", op: "number", value: "25" });
+    const txt = new ValueInputNode({ label: "Name", op: "string", value: "x" });
     const nodes = { num, txt, tornado: {} };
     const leaves = findUpstreamLeaves(fakeEditor(nodes, [{ source: "num", target: "tornado" }, { source: "txt", target: "tornado" }]), "tornado");
     expect(leaves.map((l) => l.label)).toEqual(["Price"]);

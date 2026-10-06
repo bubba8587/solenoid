@@ -61,8 +61,8 @@ export function findLeaves(editor: AnyEditor): Leaf[] {
     if (wiredTargets.has(node.id)) continue;
     if (node instanceof NumberInputNode || node instanceof SliderInputNode) leaves.push({ kind: "number", node });
     else if (node instanceof TextInputNode) leaves.push({ kind: "text", node });
-    else if (node instanceof ValueInputNode && (node.dataType === "number" || node.dataType === "string")) {
-      leaves.push({ kind: node.dataType === "number" ? "number" : "text", node });
+    else if (node instanceof ValueInputNode && (node.op === "number" || node.op === "string")) {
+      leaves.push({ kind: node.op === "number" ? "number" : "text", node });
     }
   }
   return leaves;

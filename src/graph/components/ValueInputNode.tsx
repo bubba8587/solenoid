@@ -1,6 +1,6 @@
 // [[B11]] maximalMerge, [[C118]] formatTravelsWithValue, [[C95]] commitOnEnter
-import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
-import { FormatControllerNode, type ValueInputNode as ValueInputNodeType, type ValueInputType } from "../rete-nodes";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { FormatControllerNode, VALUE_INPUT_OP_META, type ValueInputNode as ValueInputNodeType, type ValueInputOp } from "../rete-nodes";
 import type { FormatStyleId, TextCase, LogicalStyle, DecimalMode } from "../formatAnnotationStore";
 import { familyOf, controlsFor } from "../formatModel";
 import { processGraph } from "../process";
@@ -9,7 +9,7 @@ import { retypeOutputCables } from "../fcReconcile";
 import { clamp } from "../nodes/mathUtils";
 import { stopDragStart } from "../coarse";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
-import { SegToggle } from "./SegToggle";
+import { SegToggle, OpToggle } from "./SegToggle";
 import { CardSection } from "./CardSection";
 import { TypeIcon } from "./TypeIcon";
 import { FormatStyleSelect, DateStyleSelect, TextCaseSelect, LogicalStyleSelect, UnitSelect, CustomPatternField } from "./fcControls";
@@ -19,20 +19,19 @@ import { LogicalCheck } from "./BooleanInputNode";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./ValueInputNode.css";
 
-const TYPE_OPTIONS: ReadonlyArray<{ value: ValueInputType; label: ReactNode; title: string }> = [
-  { value: "number",  label: <TypeIcon type="number" />,  title: "Number" },
-  { value: "string",  label: <TypeIcon type="string" />,  title: "Text" },
-  { value: "date",    label: <TypeIcon type="date" />,    title: "Date" },
-  { value: "logical", label: <TypeIcon type="logical" />, title: "Boolean: TRUE or FALSE" },
-];
-
-const SOCKET_OF: Record<ValueInputType, "number" | "string" | "date" | "logical"> = {
+const ICON: Record<ValueInputOp, "number" | "string" | "date" | "logical"> = {
   number: "number", string: "string", date: "date", logical: "logical",
 };
 
+const OP_OPTIONS = (Object.keys(VALUE_INPUT_OP_META) as ValueInputOp[]).map((value) => ({
+  value,
+  label: <TypeIcon type={ICON[value]} />,
+  title: VALUE_INPUT_OP_META[value].label,
+}));
+
 /** An in-place retype drops the cables it can't feed and re-adapts downstream FCs itself. */
-async function applyValueType(node: ValueInputNodeType, t: ValueInputType): Promise<void> {
-  if (!node.setDataType(t)) return;
+async function applyValueOp(node: ValueInputNodeType, t: ValueInputOp): Promise<void> {
+  if (!node.setOp(t)) return;
   const editor = getOwningEditor(node.id);
   const view = getOwningView(node.id);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "value");
@@ -48,18 +47,18 @@ function applyDisplayPick(node: ValueInputNodeType): void {
 }
 
 export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType>) {
-  const [dt, setDt] = useState<ValueInputType>(data.dataType);
-  useEffect(() => { setDt(data.dataType); }, [data.dataType]);
+  const [dt, setDt] = useState<ValueInputOp>(data.op);
+  useEffect(() => { setDt(data.op); }, [data.op]);
   const [, bump] = useState(0);
   const pick = (set: () => void) => { set(); bump((v) => v + 1); applyDisplayPick(data); };
   const commitValue = (text: string) => { data.value = text; void processGraph(data.id); };
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle
+      <OpToggle
         value={dt}
-        options={TYPE_OPTIONS}
-        onChange={(next) => { setDt(next); void applyValueType(data, next); }}
+        options={OP_OPTIONS}
+        onChange={(next) => { setDt(next); void applyValueOp(data, next); }}
       />
       <CardSection label="Format" collapsible defaultOpen={formatIsSet(data)}>
         <FormatRows node={data} dt={dt} pick={pick} />
@@ -80,7 +79,7 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
 
 /** Opens the folded Format section on load when a pick is away from the type's default (DESIGN.md § Card sections). */
 function formatIsSet(n: ValueInputNodeType): boolean {
-  switch (n.dataType) {
+  switch (n.op) {
     case "number":  return n.effectiveFormat() !== "auto" || n.unit !== "none";
     case "date":    return n.effectiveFormat() !== "date_dmy";
     case "string":  return n.textCase !== "none" || n.chip;
@@ -89,9 +88,9 @@ function formatIsSet(n: ValueInputNodeType): boolean {
 }
 
 /** The Format Controller's own dropdowns for this type, without its inherit pick: nothing arrives upstream of a source. */
-function FormatRows({ node, dt, pick }: { node: ValueInputNodeType; dt: ValueInputType; pick: (set: () => void) => void }) {
+function FormatRows({ node, dt, pick }: { node: ValueInputNodeType; dt: ValueInputOp; pick: (set: () => void) => void }) {
   const format = node.effectiveFormat();
-  const c = controlsFor(familyOf(SOCKET_OF[dt]), format);
+  const c = controlsFor(familyOf(ICON[dt]), format);
   const stop = { onPointerDown: stopDragStart, onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
   const setFormat = (f: FormatStyleId | "") => { if (f) pick(() => { node.format = f; }); };
 

@@ -16,7 +16,7 @@ export function volatileStamp(text: string | undefined): number {
 
 export function hasVolatileDates(nodes: readonly unknown[]): boolean {
   for (const n of nodes) {
-    const o = n as { expr?: unknown; frameText?: unknown; cubeText?: unknown; body?: unknown; stringLiterals?: Record<string, unknown>; dataType?: unknown; value?: unknown; internalEditor?: { getNodes(): readonly unknown[] } };
+    const o = n as { expr?: unknown; frameText?: unknown; cubeText?: unknown; body?: unknown; stringLiterals?: Record<string, unknown>; op?: unknown; value?: unknown; internalEditor?: { getNodes(): readonly unknown[] } };
     if (CLOCK_NODES.has(o.constructor?.name ?? "")) return true;
     if (o.internalEditor && hasVolatileDates(o.internalEditor.getNodes())) return true;
     if (typeof o.expr === "string" && VOLATILE_FN.test(o.expr)) return true;
@@ -25,8 +25,8 @@ export function hasVolatileDates(nodes: readonly unknown[]): boolean {
     if (typeof o.body === "string" && KNAP_NOW.test(o.body)) return true;
     const date = o.stringLiterals?.date;
     if (typeof date === "string" && isRelativeDateText(date)) return true;
-    // Value Input in Date mode.
-    if (o.dataType === "date" && typeof o.value === "string" && isRelativeDateText(o.value)) return true;
+    // Value Input on its Date op.
+    if (o.constructor?.name === "ValueInputNode" && o.op === "date" && typeof o.value === "string" && isRelativeDateText(o.value)) return true;
   }
   return false;
 }

@@ -75,10 +75,10 @@ describe("model fuzz leaves", () => {
 
   it("takes a Number or Text Value Input, each as its kind, and skips Date and Boolean", async () => {
     const editor = new NodeEditor<Schemes>();
-    const num = new ValueInputNode({ dataType: "number" });
-    const txt = new ValueInputNode({ dataType: "string" });
-    const date = new ValueInputNode({ dataType: "date" });
-    const bool = new ValueInputNode({ dataType: "logical" });
+    const num = new ValueInputNode({ op: "number" });
+    const txt = new ValueInputNode({ op: "string" });
+    const date = new ValueInputNode({ op: "date" });
+    const bool = new ValueInputNode({ op: "logical" });
     for (const n of [num, txt, date, bool]) await editor.addNode(n as unknown as Schemes["Node"]);
     const leaves = findLeaves(editor as never);
     expect(leaves.map((l) => [l.node.id, l.kind]).sort()).toEqual([[num.id, "number"], [txt.id, "text"]].sort());

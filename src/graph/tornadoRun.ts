@@ -27,7 +27,7 @@ export function findUpstreamLeaves(editor: AnyEditor, startId: string): Leaf[] {
       const node = editor.getNode(s);
       if (!node) continue;
       // Stop at a Slider: perturbing what feeds its min, max or step would change its range, not its value.
-      if (node instanceof NumberInputNode || node instanceof SliderInputNode || (node instanceof ValueInputNode && node.dataType === "number")) {
+      if (node instanceof NumberInputNode || node instanceof SliderInputNode || (node instanceof ValueInputNode && node.op === "number")) {
         const label = (node.label ?? "").trim() || (node instanceof SliderInputNode ? "Slider" : "Number");
         leaves.push({ node, label });
       } else {

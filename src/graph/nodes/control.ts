@@ -186,13 +186,21 @@ function resolveDateText(
   return { result: serial, last: { text, serial } };
 }
 
-export type ValueInputType = TableElemType;
+export type ValueInputOp = TableElemType;
 
-const VALUE_INPUT_TYPES: readonly ValueInputType[] = ["number", "string", "date", "logical"];
+/** The one place each type is named: the card's toggle and the Add menu's search rows both read it. Placeholder labels until the single-type inputs fold in. */
+export const VALUE_INPUT_OP_META = {
+  number:  { label: "Number Entry",  keywords: "number numeric scalar", accents: ["number"] },
+  string:  { label: "Text Entry",    keywords: "text string", accents: ["string"] },
+  date:    { label: "Date Entry",    keywords: "date day calendar", accents: ["date"] },
+  logical: { label: "Boolean Entry", keywords: "boolean logical true false checkbox", accents: ["logical"] },
+} satisfies Record<ValueInputOp, { label: string; keywords?: string; accents: readonly SocketDataType[] }>;
+
+const VALUE_INPUT_OPS = Object.keys(VALUE_INPUT_OP_META) as ValueInputOp[];
 
 const todayText = () => formatDateSerial(Math.floor(jsDateToSerial(new Date())), DEFAULT_DATE_FORMAT);
 
-function valueSocketFor(t: ValueInputType) {
+function valueSocketFor(t: ValueInputOp) {
   switch (t) {
     case "number":  return numberSocket;
     case "string":  return stringSocket;
@@ -202,7 +210,7 @@ function valueSocketFor(t: ValueInputType) {
 }
 
 /** The typed text across a type switch: kept where it still reads in the new type, else carried by meaning or reset to the type's default. */
-export function carryValueText(text: string, to: ValueInputType): string {
+export function carryValueText(text: string, to: ValueInputOp): string {
   const t = text.trim();
   const n = t === "" ? NaN : Number(t);
   const isTrue = /^true$/i.test(t);
@@ -221,7 +229,7 @@ export function carryValueText(text: string, to: ValueInputType): string {
 /** One typed value of any scalar type, with its display format and unit set on the card itself ([[C118]] formatTravelsWithValue). */
 export class ValueInputNode extends ClassicPreset.Node {
   label: string;
-  dataType: ValueInputType;
+  op: ValueInputOp;
   value: string;
   format: FormatStyleId;
   customPattern: string;
@@ -239,7 +247,7 @@ export class ValueInputNode extends ClassicPreset.Node {
 
   constructor(init?: {
     label?: string;
-    dataType?: ValueInputType;
+    op?: ValueInputOp;
     value?: string;
     format?: FormatStyleId;
     customPattern?: string;
@@ -253,8 +261,8 @@ export class ValueInputNode extends ClassicPreset.Node {
   }) {
     super("ValueInput");
     this.label = init?.label ?? "Value Input";
-    this.dataType = init?.dataType && VALUE_INPUT_TYPES.includes(init.dataType) ? init.dataType : "number";
-    this.value = init?.value ?? (this.dataType === "date" ? todayText() : this.dataType === "logical" ? "FALSE" : this.dataType === "number" ? "0" : "");
+    this.op = init?.op && VALUE_INPUT_OPS.includes(init.op) ? init.op : "number";
+    this.value = init?.value ?? (this.op === "date" ? todayText() : this.op === "logical" ? "FALSE" : this.op === "number" ? "0" : "");
     this.format = init?.format ?? "auto";
     this.customPattern = init?.customPattern ?? "0.00";
     this.decimalDigits = init?.decimalDigits ?? 2;
@@ -264,14 +272,14 @@ export class ValueInputNode extends ClassicPreset.Node {
     this.textCase = init?.textCase ?? "none";
     this.chip = init?.chip ?? false;
     this.logicalStyle = init?.logicalStyle ?? "truefalse";
-    this.addOutput("value", new ClassicPreset.Output(valueSocketFor(this.dataType), "Value"));
+    this.addOutput("value", new ClassicPreset.Output(valueSocketFor(this.op), "Value"));
   }
 
   /** Swaps the output socket in place; the caller follows with `retypeOutputCables`. */
-  setDataType(t: ValueInputType): boolean {
-    if (t === this.dataType) return false;
+  setOp(t: ValueInputOp): boolean {
+    if (t === this.op) return false;
     this.value = carryValueText(this.value, t);
-    this.dataType = t;
+    this.op = t;
     const out = this.outputs.value;
     if (out) out.socket = valueSocketFor(t);
     return true;
@@ -279,13 +287,13 @@ export class ValueInputNode extends ClassicPreset.Node {
 
   /** A pick outside the current type stays saved and sits inert, as on the Format Controller. */
   effectiveFormat(): FormatStyleId {
-    if (this.dataType === "date") return isDateStyle(this.format) ? this.format : "date_dmy";
+    if (this.op === "date") return isDateStyle(this.format) ? this.format : "date_dmy";
     return isDateStyle(this.format) ? "auto" : this.format;
   }
 
   annotationFor(outKey: string): FormatAnnotation | undefined {
     if (outKey !== "value") return undefined;
-    const numeric = this.dataType === "number";
+    const numeric = this.op === "number";
     return {
       format: this.effectiveFormat(),
       customPattern: this.customPattern,
@@ -300,13 +308,13 @@ export class ValueInputNode extends ClassicPreset.Node {
   }
 
   data(): { value: unknown } {
-    if (this.dataType !== "date") this.lastRelative = null;
+    if (this.op !== "date") this.lastRelative = null;
     this.cachedValue = this.compute();
     return { value: this.cachedValue };
   }
 
   private compute(): unknown {
-    switch (this.dataType) {
+    switch (this.op) {
       case "string":  return this.value;
       case "logical": return /^true$/i.test(this.value.trim());
       case "date": {
