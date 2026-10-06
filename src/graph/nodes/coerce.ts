@@ -41,9 +41,14 @@ export function toList(v: Numeric | null | undefined): number[] | null {
 export function toScalar(v: Numeric | null | undefined): number | null {
   if (v == null) return null;
   if (!Array.isArray(v)) return v;
-  const flat = is2D(v) ? (v as Mat).flat() : (v as number[]);
-  if (flat.length === 1) return flat[0];
-  throw new ShapeError(`Expected a single value, got ${flat.length}`);
+  if (!is2D(v)) {
+    if (v.length === 1) return (v as number[])[0];
+    throw new ShapeError(`Expected a single value, got ${v.length}`);
+  }
+  let count = 0, only: number | null = null;
+  for (const row of v as Mat) { if (count === 0 && row.length) only = row[0]; count += row.length; }
+  if (count === 1) return only;
+  throw new ShapeError(`Expected a single value, got ${count}`);
 }
 
 export type Cell = number | string | boolean | SolError | null;

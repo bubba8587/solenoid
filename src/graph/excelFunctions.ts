@@ -900,6 +900,7 @@ for (const name of ["BASE", "DEC2HEX", "BIN2HEX", "OCT2HEX"]) {
   registerInternal(name, (...a) => { const r = f(...a); return typeof r === "string" ? r.toUpperCase() : r; });
 }
 // Excel's SEARCH reads ?, * and ~ in find_text; Formula.js's matches them literally.
+let searchPattern: { find: string; re: RegExp } | null = null;
 registerInternal("SEARCH", (find, within, start) => {
   const bad = findStart("SEARCH")([find, within, start]);
   if (bad) return bad;
@@ -907,7 +908,8 @@ registerInternal("SEARCH", (find, within, start) => {
   if (Number.isNaN(s)) return VALUE("SEARCH");
   const f = toStr(find), w = toStr(within);
   if (f === "") return s;
-  const at = new RegExp(wildcardSource(f).source, "i").exec(w.slice(s - 1));
+  if (searchPattern?.find !== f) searchPattern = { find: f, re: new RegExp(wildcardSource(f).source, "i") };
+  const at = searchPattern.re.exec(w.slice(s - 1));
   return at ? at.index + s : solError("#VALUE!", "Find text not found within the text");
 });
 registerInternal("MID", (text, start, len) => {
