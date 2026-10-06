@@ -1127,7 +1127,8 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   if (rowValSort >= 0 && rowValSort < V && R > 1) {
     const score = (r: number) => sortKey(Array.from({ length: C }, (_, c) => cells[rowValSort][r][c]).flat(), rowValSort);
     const cmp = byKey(rs < 0);
-    const perm = rowLeaves.map((_, r) => r).sort((x, y) => cmp(score(x), score(y)));
+    const scores = rowLeaves.map((_, r) => score(r));
+    const perm = rowLeaves.map((_, r) => r).sort((x, y) => cmp(scores[x], scores[y]));
     rowLeaves = perm.map((r) => rowLeaves[r]);
     for (let v = 0; v < V; v++) cells[v] = perm.map((r) => cells[v][r]);
   }
@@ -1135,7 +1136,8 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   if (colValSort >= 0 && colValSort < V && C > 1) {
     const score = (c: number) => sortKey(Array.from({ length: R }, (_, r) => cells[colValSort][r][c]).flat(), colValSort);
     const cmp = byKey(cs < 0);
-    const perm = colLeaves.map((_, c) => c).sort((x, y) => cmp(score(x), score(y)));
+    const scores = colLeaves.map((_, c) => score(c));
+    const perm = colLeaves.map((_, c) => c).sort((x, y) => cmp(scores[x], scores[y]));
     colLeaves = perm.map((c) => colLeaves[c]);
     for (let v = 0; v < V; v++) for (let r = 0; r < R; r++) cells[v][r] = perm.map((c) => cells[v][r][c]);
   }
@@ -1145,10 +1147,19 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
     return acc;
   };
   const allRows = rowLeaves.map((_, i) => i), allCols = colLeaves.map((_, i) => i);
-  const parentOf = (leaves: FrameCell[][], idx: number): number[] => {
-    const t = leaves[idx]; if (t.length <= 1) return leaves.map((_, i) => i);
-    const pk = tupleKey(t.slice(0, t.length - 1));
-    return leaves.map((lt, i) => (tupleKey(lt.slice(0, lt.length - 1)) === pk ? i : -1)).filter((i) => i >= 0);
+  const siblingsOf = (leaves: FrameCell[][], all: number[]): number[][] => {
+    const parentKeys = leaves.map((t) => tupleKey(t.slice(0, t.length - 1)));
+    const groups = new Map<string, number[]>();
+    parentKeys.forEach((k, i) => { const g = groups.get(k); if (g) g.push(i); else groups.set(k, [i]); });
+    return leaves.map((t, i) => (t.length <= 1 ? all : groups.get(parentKeys[i])!));
+  };
+  let rowSiblings: number[][] | null = null, colSiblings: number[][] | null = null;
+  const denominators = valCols.map(() => new Map<readonly number[], Map<readonly number[], FrameCell>>());
+  const denominator = (v: number, dr: readonly number[], dc: readonly number[]): FrameCell => {
+    let byCol = denominators[v].get(dr);
+    if (!byCol) { byCol = new Map(); denominators[v].set(dr, byCol); }
+    if (!byCol.has(dc)) byCol.set(dc, sumGroup(collect(v, dr, dc)));
+    return byCol.get(dc)!;
   };
 
   const cellValue = (v: number, rset: number[], cset: number[]): FrameCell => {
@@ -1161,9 +1172,9 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
     if (relativeTo === 0) dr = allRows;
     else if (relativeTo === 1) dc = allCols;
     else if (relativeTo === 2) { dr = allRows; dc = allCols; }
-    else if (relativeTo === 3) dc = cset.length === 1 ? parentOf(colLeaves, cset[0]) : allCols;
-    else if (relativeTo === 4) dr = rset.length === 1 ? parentOf(rowLeaves, rset[0]) : allRows;
-    const den = sumGroup(collect(v, dr, dc));
+    else if (relativeTo === 3) dc = cset.length === 1 ? (colSiblings ??= siblingsOf(colLeaves, allCols))[cset[0]] : allCols;
+    else if (relativeTo === 4) dr = rset.length === 1 ? (rowSiblings ??= siblingsOf(rowLeaves, allRows))[rset[0]] : allRows;
+    const den = denominator(v, dr, dc);
     if (isSolError(den)) return den;
     return (den as number) === 0 ? null : (num as number) / (den as number);
   };
