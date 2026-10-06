@@ -4,11 +4,13 @@ import { solError, type SolError } from "../errorValue";
 import type { ChartOptions, LineStyle } from "./chartOptions";
 import type { ChartValue, XYPayload, XYPoint, XYSeries } from "../chartValue";
 
-export type XYOp = "scatter" | "xyline" | "bubble";
+export type XYOp = "scatter" | "xyline" | "bubble" | "hexbin" | "density";
 
-export const XY_CHART_OPS: ReadonlySet<string> = new Set<XYOp>(["scatter", "xyline", "bubble"]);
+export const XY_CHART_OPS: ReadonlySet<string> = new Set<XYOp>(["scatter", "xyline", "bubble", "hexbin", "density"]);
 
 const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
+
+const binOf = (op: XYOp): { bin?: "hexbin" | "density" } => (op === "hexbin" || op === "density" ? { bin: op } : {});
 
 function rangeOf(vals: Iterable<number>): [number, number] | undefined {
   let lo = Infinity, hi = -Infinity;
@@ -43,7 +45,7 @@ function listXY(op: XYOp, raw: unknown, opts: ChartOptions): XYPayload | null {
   const ys = Array.isArray(raw) ? raw : typeof raw === "number" ? [raw] : null;
   if (!ys) return null;
   const points = ys.map((v, i) => { const y = num(v); return y === null ? null : { x: i + 1, y }; });
-  return { kind: "xy", names: {}, series: [{ name: "", points, line: lineFor(op, opts), marker: markerFor(op, opts, 1) }] };
+  return { kind: "xy", names: {}, series: [{ name: "", points, line: lineFor(op, opts), marker: markerFor(op, opts, 1) }], ...binOf(op) };
 }
 
 /**
@@ -166,6 +168,7 @@ export function buildXY(op: XYOp, raw: unknown, opts: ChartOptions): XYPayload |
   const marker = markerFor(op, opts, series.length);
   return {
     kind: "xy",
+    ...binOf(op),
     series: withRanges(series.map((s) => ({ ...s, marker }))),
     ...(xcats ? { xcats } : {}),
     names: {

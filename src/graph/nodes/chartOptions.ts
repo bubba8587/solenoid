@@ -4,22 +4,26 @@ import { normalizeCmap } from "../colormaps";
 import { isNumberSpec } from "../numberSpec";
 
 export type ChartOp =
-  | "column" | "bar" | "line" | "area"
-  | "pie" | "radar" | "radialbar" | "funnel" | "scatter" | "xyline"
-  | "bubble";
+  | "column" | "bar" | "line" | "area" | "lollipop"
+  | "pie" | "radar" | "radialbar" | "funnel" | "rose" | "scatter" | "xyline"
+  | "bubble" | "hexbin" | "density";
 
 export const CHART_OP_META = {
   column:    { label: "Column",   group: "Cartesian" },
   bar:       { label: "Bar",      group: "Cartesian" },
   line:      { label: "Line",     group: "Cartesian" },
   area:      { label: "Area",     group: "Cartesian" },
+  lollipop:  { label: "Lollipop", group: "Cartesian" },
   scatter:   { label: "Scatter",  group: "XY" },
   xyline:    { label: "XY Line",  group: "XY" },
   bubble:    { label: "Bubble",   group: "XY" },
+  hexbin:    { label: "Hexbin",   group: "XY" },
+  density:   { label: "Density",  group: "XY" },
   pie:       { label: "Pie",      group: "Categorical" },
   radar:     { label: "Radar",    group: "Categorical" },
   radialbar: { label: "Radial",   group: "Categorical" },
   funnel:    { label: "Funnel",   group: "Categorical" },
+  rose:      { label: "Rose",     group: "Categorical" },
 } satisfies Record<ChartOp, { label: string; group: string }>;
 
 export interface ChartOptions {
@@ -42,6 +46,10 @@ export interface ChartOptions {
   fontsize?: number;
   pielabels?: PieLabelMode;
   radarscale?: RadarScale;
+  stacked?: StackMode;
+  drawstyle?: DrawStyle;
+  hole?: number;
+  gridsize?: number;
   x?: string;
   y?: string[];
   s?: string;
@@ -63,6 +71,8 @@ export type LineStyle = "solid" | "dashed" | "dotted" | "dashdot" | "none";
 export type AspectMode = "auto" | "equal";
 export type PieLabelMode = "off" | "outside" | "inside";
 export type RadarScale = "axis" | "shared";
+export type StackMode = "off" | "on" | "percent";
+export type DrawStyle = "default" | "steps";
 
 const TRUTHY = new Set(["on", "true", "1", "yes", "y"]);
 const FALSY = new Set(["off", "false", "0", "no", "n"]);
@@ -86,6 +96,21 @@ function toRadarScale(v: string): RadarScale | undefined {
   const s = v.trim().toLowerCase();
   if (s === "axis" || s === "normalize" || s === "normalized" || s === "independent") return "axis";
   if (s === "shared" || s === "raw" || s === "absolute") return "shared";
+  return undefined;
+}
+
+function toStackMode(v: string): StackMode | undefined {
+  const s = v.trim().toLowerCase();
+  if (s === "percent" || s === "%" || s === "100%" || s === "normalize" || s === "normalized") return "percent";
+  const b = toBool(s);
+  return b === undefined ? undefined : b ? "on" : "off";
+}
+
+// matplotlib's step styles all draw as a step that holds each value until the next point.
+function toDrawStyle(v: string): DrawStyle | undefined {
+  const s = v.trim().toLowerCase();
+  if (s === "default") return "default";
+  if (s === "steps" || s === "steps-post" || s === "steps-pre" || s === "steps-mid") return "steps";
   return undefined;
 }
 
@@ -137,6 +162,11 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "marker": { const b = toBool(val); if (b !== undefined) opts.marker = b; break; }
       case "pielabels": { const m = toPieLabelMode(val); if (m !== undefined) opts.pielabels = m; break; }
       case "radarscale": { const m = toRadarScale(val); if (m !== undefined) opts.radarscale = m; break; }
+      case "stacked": { const m = toStackMode(val); if (m !== undefined) opts.stacked = m; break; }
+      case "drawstyle":
+      case "ds":     { const m = toDrawStyle(val); if (m !== undefined) opts.drawstyle = m; break; }
+      case "hole":   { const n = toNum(val); if (n !== undefined && n >= 0 && n < 1) opts.hole = n; break; }
+      case "gridsize": { const n = toNum(val); if (n !== undefined && n >= 1) opts.gridsize = Math.round(n); break; }
       case "linewidth":
       case "lw":     { const n = toNum(val); if (n !== undefined) opts.linewidth = n; break; }
       case "markersize":
@@ -188,6 +218,10 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
 
 export interface ChartBuilderFields {
   kind?: string;
+  stacked?: string;
+  drawstyle?: string;
+  hole?: number | null;
+  gridsize?: number | null;
   title?: string;
   xlabel?: string;
   ylabel?: string;
@@ -260,6 +294,8 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("marker", f.marker);
   str("pielabels", f.pielabels);
   str("radarscale", f.radarscale);
+  str("stacked", f.stacked);
+  str("drawstyle", f.drawstyle);
   str("zoom", f.zoom);
   str("layout", f.layout);
   str("tiers", f.tiers);
@@ -307,6 +343,8 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   num("linewidth", f.linewidth);
   num("markersize", f.markersize);
   num("alpha", f.alpha);
+  num("hole", f.hole);
+  num("gridsize", f.gridsize);
   num("fontsize", f.fontsize);
   num("vmin", f.vmin);
   num("vmax", f.vmax);
@@ -317,7 +355,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 // Update these key lists whenever a renderer learns or drops an option.
 
 export type ChartBuilderKey =
-  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "zoom"
+  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "stacked" | "drawstyle" | "hole" | "gridsize" | "zoom"
   | "layout" | "tiers" | "fit" | "critical" | "baseline" | "arrows" | "today" | "weekends" | "labels" | "histogram" | "minutes" | "window" | "columns"
   | "collapse" | "week" | "fiscal_start" | "status" | "group_by"
   | "cardsize" | "clamp"
@@ -327,20 +365,29 @@ export type ChartBuilderKey =
 
 export type ChartTargetId =
   | "column" | "bar" | "line" | "area" | "scatter" | "xyline"
-  | "pie" | "radar" | "radialbar" | "funnel"
-  | "bubble" | "overlay"
+  | "pie" | "radar" | "radialbar" | "funnel" | "rose"
+  | "bubble" | "hexbin" | "density" | "lollipop" | "overlay"
   | "histogram" | "histogram2d" | "kpi" | "scale" | "proportion" | "sankey"
   | "waterfall" | "candle" | "boxplot" | "calheat" | "heatmap" | "contour" | "surface" | "quiver" | "gantt" | "record";
 
 const XY_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
+const BAR_KEYS: readonly ChartBuilderKey[] = [...XY_KEYS, "stacked"];
 const LINE_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+  ["title", "xlabel", "ylabel", "color", "grid", "marker", "drawstyle", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+const AREA_KEYS: readonly ChartBuilderKey[] = [...LINE_KEYS, "stacked"];
+const LOLLIPOP_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+const HEXBIN_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "grid", "x", "y", "gridsize", "cmap", "xmin", "xmax", "ymin", "ymax", "fontsize"];
+const DENSITY_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "by", "xmin", "xmax", "ymin", "ymax", "linewidth", "alpha", "fontsize"];
+const ROSE_KEYS: readonly ChartBuilderKey[] = ["title", "grid", "fontsize"];
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "s", "c", "cmap", "annotate", "by", "linestyle", "aspect",
     "xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const XYLINE_KEYS: readonly ChartBuilderKey[] = [...SCATTER_KEYS, "marker"];
-const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
+const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels", "hole"];
 const RADAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "grid", "marker", "radarscale", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
@@ -360,18 +407,22 @@ const HEATMAP_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "annot", "fmt", "cbar", "aspect", "origin", "fontsize"];
 
 export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; op: ChartValueOp; keys: readonly ChartBuilderKey[] }> = {
-  column:    { label: "Column",           group: "Cartesian",    op: "column", keys: XY_KEYS },
-  bar:       { label: "Bar",              group: "Cartesian",    op: "bar", keys: XY_KEYS },
+  column:    { label: "Column",           group: "Cartesian",    op: "column", keys: BAR_KEYS },
+  bar:       { label: "Bar",              group: "Cartesian",    op: "bar", keys: BAR_KEYS },
   line:      { label: "Line",             group: "Cartesian",    op: "line", keys: LINE_KEYS },
-  area:      { label: "Area",             group: "Cartesian",    op: "area", keys: LINE_KEYS },
+  area:      { label: "Area",             group: "Cartesian",    op: "area", keys: AREA_KEYS },
+  lollipop:  { label: "Lollipop",         group: "Cartesian",    op: "lollipop", keys: LOLLIPOP_KEYS },
   overlay:   { label: "Merge Plots",      group: "Cartesian",    op: "overlay", keys: OVERLAY_KEYS },
   scatter:   { label: "Scatter",          group: "XY",           op: "scatter", keys: SCATTER_KEYS },
   xyline:    { label: "XY Line",          group: "XY",           op: "xyline", keys: XYLINE_KEYS },
   bubble:    { label: "Bubble",           group: "XY",           op: "bubble", keys: SCATTER_KEYS },
+  hexbin:    { label: "Hexbin",           group: "XY",           op: "hexbin", keys: HEXBIN_KEYS },
+  density:   { label: "Density",          group: "XY",           op: "density", keys: DENSITY_KEYS },
   pie:       { label: "Pie",              group: "Categorical",  op: "pie", keys: PIE_KEYS },
   radar:     { label: "Radar",            group: "Categorical",  op: "radar", keys: RADAR_KEYS },
   radialbar: { label: "Radial",           group: "Categorical",  op: "radialbar", keys: SLICE_KEYS },
   funnel:    { label: "Funnel",           group: "Categorical",  op: "funnel", keys: SLICE_KEYS },
+  rose:      { label: "Rose",             group: "Categorical",  op: "rose", keys: ROSE_KEYS },
   histogram: { label: "Histogram",        group: "Figures",      op: "column", keys: XY_KEYS },
   histogram2d: { label: "Histogram 2-D",  group: "Figures",      op: "heatmap", keys: HEATMAP_KEYS },
   kpi:       { label: "KPI",              group: "Figures",      op: "kpi", keys: STAT_KEYS },

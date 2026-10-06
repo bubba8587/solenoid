@@ -74,7 +74,7 @@ export class SparklineNode extends ClassicPreset.Node {
 export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "A list plots by position; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
-    options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. kind picks the chart type, overriding the type above. Scatter, XY Line and Bubble also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
+    options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. kind picks the chart type, overriding the type above. stacked stacks several series, drawstyle=steps draws steps, hole makes a pie a donut, gridsize sets a Hexbin's bins. Scatter, XY Line, Bubble, Hexbin and Density also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
   };
 
   label: string;
@@ -1413,8 +1413,8 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin"] as const;
-const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "stacked", "drawstyle", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin"] as const;
+const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "hole", "gridsize", "fontsize", "vmin", "vmax", "center"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -1441,6 +1441,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("marker",    strIn("Markers"));
     this.addInput("pielabels", strIn("Pie labels"));
     this.addInput("radarscale", strIn("Radar scale"));
+    this.addInput("stacked",   strIn("Stacked"));
+    this.addInput("drawstyle", strIn("Steps"));
     this.addInput("zoom",      strIn("Zoom"));
     this.addInput("layout",    strIn("Layout"));
     this.addInput("tiers",     strIn("Header rows"));
@@ -1482,6 +1484,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("linewidth", numIn("Line width"));
     this.addInput("markersize", numIn("Marker size (px)"));
     this.addInput("alpha",     numIn("Opacity"));
+    this.addInput("hole",      numIn("Hole"));
+    this.addInput("gridsize",  numIn("Bins across"));
     this.addInput("fontsize",  numIn("Font size (pt)"));
     this.addInput("vmin",      numIn("Color min"));
     this.addInput("vmax",      numIn("Color max"));
@@ -1510,6 +1514,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       marker:    str("marker"),
       pielabels: str("pielabels"),
       radarscale: str("radarscale"),
+      stacked:   str("stacked"),
+      drawstyle: str("drawstyle"),
       zoom:      str("zoom"),
       layout: str("layout"),
       tiers: str("tiers"),
@@ -1551,6 +1557,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       linewidth: num("linewidth"),
       markersize: num("markersize"),
       alpha:     num("alpha"),
+      hole:      num("hole"),
+      gridsize:  num("gridsize"),
       fontsize:  num("fontsize"),
       vmin:      num("vmin"),
       vmax:      num("vmax"),

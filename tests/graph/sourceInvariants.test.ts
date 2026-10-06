@@ -1034,11 +1034,18 @@ function rawFieldsReaching(effect: RegExp): string[] {
 }
 
 describe("[[B2]] webTryDesktopFull, [[D98]] tanstackDrawsCharts — the chart library is imported by the lazy chart chunk only", () => {
-  it("only components/chartRender.tsx imports @tanstack/charts or d3", () => {
+  it("only components/chartRender.tsx and components/charts/ import @tanstack/charts or d3", () => {
     const importers = walk(SRC)
       .filter((f) => /from\s+["'](@tanstack\/charts|d3-)/.test(fs.readFileSync(f, "utf8")))
+      .map(rel)
+      .filter((f) => f !== "components/chartRender.tsx" && !f.startsWith("components/charts/"));
+    expect(importers).toEqual([]);
+  });
+  it("only the chart chunk's entry and the off-canvas exporter reach components/charts/", () => {
+    const reachers = walk(SRC)
+      .filter((f) => !rel(f).startsWith("components/charts/") && /from\s+["'][^"']*charts\/(kit|[A-Za-z]+)["']/.test(fs.readFileSync(f, "utf8")))
       .map(rel);
-    expect(importers).toEqual(["components/chartRender.tsx"]);
+    expect(reachers.filter((f) => f !== "components/chartRender.tsx" && f !== "components/chartSvgOffscreen.tsx")).toEqual([]);
   });
   it("mermaid and elkjs are never imported statically", () => {
     const importers = walk(SRC)

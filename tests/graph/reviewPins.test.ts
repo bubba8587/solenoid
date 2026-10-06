@@ -1,7 +1,7 @@
 // [[B2]] webTryDesktopFull, [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { bondPrice, bondYield } from "../../src/graph/nodes/financeOps";
-import { sanitizeChartLabel } from "../../src/graph/components/chartRender";
+import { sanitizeChartLabel } from "../../src/graph/components/chartCore";
 import { resolveExcelFunction } from "../../src/graph/excelFunctions";
 import { isSolError } from "../../src/graph/errorValue";
 

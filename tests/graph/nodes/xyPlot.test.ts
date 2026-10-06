@@ -179,3 +179,11 @@ describe("XY option keys", () => {
     expect(serializeChartOptions({ x: "t", y: "a,b", linestyle: "dashed", xmin: 1, xmax: null })).toBe("x=t;y=a,b;linestyle=dashed;xlim=1,");
   });
 });
+
+describe("Hexbin and Density", () => {
+  it("mark the payload so the figure bins its points", () => {
+    expect((buildXY("hexbin", [1, 2, 3], {}) as { bin?: string }).bin).toBe("hexbin");
+    expect((buildXY("density", [1, 2, 3], {}) as { bin?: string }).bin).toBe("density");
+    expect((buildXY("scatter", [1, 2, 3], {}) as { bin?: string }).bin).toBeUndefined();
+  });
+});

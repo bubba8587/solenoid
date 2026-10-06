@@ -186,6 +186,8 @@ export interface XYPayload {
   /** Set when x is a text column: each x is an index into these. */
   xcats?: string[];
   names: { x?: string; y?: string; s?: string; c?: string; text?: string };
+  /** Hexbin and Density draw the points' density rather than the points. */
+  bin?: "hexbin" | "density";
 }
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload

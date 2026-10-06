@@ -139,6 +139,14 @@ const SELECT_KEYS: readonly {
     ],
   },
   {
+    key: "stacked", label: "Stacked", clearValue: "off",
+    options: [{ value: "off", label: "Side by side" }, { value: "on", label: "Stacked" }, { value: "percent", label: "Stacked to 100%" }],
+  },
+  {
+    key: "drawstyle", label: "Steps", clearValue: "default",
+    options: [{ value: "default", label: "Straight lines" }, { value: "steps", label: "Steps" }],
+  },
+  {
     key: "radarscale", label: "Radar scale", clearValue: "axis",
     options: [
       { value: "axis", label: "Per axis" },
@@ -206,14 +214,14 @@ const TARGET_DEFAULTS: Partial<Record<ChartTargetId, Partial<Record<ChartBuilder
   heatmap: { aspect: "equal" },
   histogram2d: { origin: "lower" },
 };
-const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "center", "vmin", "vmax", "linewidth", "markersize", "alpha", "fontsize"];
+const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "center", "vmin", "vmax", "linewidth", "markersize", "alpha", "hole", "gridsize", "fontsize"];
 
 // A target offering more rows than this folds its secondary ones into sections; a shorter card stays uncaptioned.
 const SECTIONED_ABOVE = 10;
 // Keys in no section (the title, axis labels, font size, a few one-figure settings) stay at the top.
 const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] = [
   { label: "Columns", keys: ["x", "y", "s", "c", "annotate", "by"] },
-  { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha"] },
+  { label: "Style", keys: ["color", "stacked", "drawstyle", "linestyle", "linewidth", "marker", "markersize", "alpha", "gridsize"] },
   { label: "Axes", keys: ["grid", "aspect", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
   { label: "Color scale", keys: ["cmap", "center", "vmin", "vmax", "cbar", "annot", "fmt"] },
   { label: "Timeline", keys: ["zoom", "tiers", "fit", "window", "columns", "collapse", "group_by"] },

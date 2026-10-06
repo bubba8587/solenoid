@@ -1,153 +1,28 @@
 // [[C100]] chartIsAValue, [[D98]] tanstackDrawsCharts
-import { type SyntheticEvent, type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { areaX, areaY, barX, barY, defineChart, dot, group, link, lineY, rect, text, type ChartPoint, type ChartTooltipContent } from "@tanstack/charts";
 import { Chart } from "@tanstack/charts/react";
+import { d3Curve } from "@tanstack/charts/d3/shape";
+import { hexbin } from "@tanstack/charts/spatial/hexbin";
+import { densityContour } from "@tanstack/charts/spatial/density";
+import { scaleSequential } from "d3-scale";
 import { scaleBand } from "@tanstack/charts/scales/band";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
 import { scalePoint } from "@tanstack/charts/scales/point";
-import { angleGrid, pie, polar, radialArc, radialArea, radialBarAngle, radialDot, radialGrid, radialLine } from "@tanstack/charts/polar";
-import { tooltip } from "@tanstack/charts/tooltip";
+import { angleGrid, pie, polar, radialArc, radialArea, radialBarAngle, radialBarRadius, radialDot, radialGrid, radialLine } from "@tanstack/charts/polar";
 import { treemap } from "@tanstack/charts/hierarchy/treemap";
 import { sankeyDiagram } from "@tanstack/charts/network/sankey";
-import { curveLinearClosed } from "d3-shape";
-import { colord } from "colord";
+import { curveLinearClosed, curveStepAfter } from "d3-shape";
 import "./chartView.css";
+import { LINE_DOT_R, SCATTER_DOT_R, PLOT_TOP, MULTI_LEGEND_H, tipValue, tip, fade, useTheme, valueDomain, axisLabel, indexTicker, indexTicks, SeriesLegend, legendPress, Fig } from "./charts/kit";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueTickFormat, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueTickFormat, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, sanitizeChartLabel, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { heightRampColor, resolveColor } from "../palette";
 import { colormapRgb } from "../colormaps";
 import { ChartTitle, titleHeight } from "./chartTitle";
 import { iterMin, iterMax } from "../nodes/mathUtils";
-
-const LINE_DOT_R = 2;
-const SCATTER_DOT_R = 3;
-const ALL_TICKS_UPTO = 12;
-// Headroom over an axed plot for the card's expand button.
-const PLOT_TOP = 14;
-const MULTI_LEGEND_H = 18;
-
-// ─── Shared pieces ───────────────────────────────────────────────────────────
-
-/** A tooltip value: an object becomes its error code, so a row never prints "[object Object]". */
-function tipValue(v: unknown): string {
-  if (typeof v === "number") return formatScalar(v);
-  if (v == null) return "";
-  if (typeof v === "object") return String((v as { code?: string }).code ?? "—");
-  return String(v);
-}
-
-/** A tooltip that never pins: a click on a card's figure belongs to the canvas and the spotlight. */
-function tip(content: (points: readonly ChartPoint[]) => ChartTooltipContent) {
-  return { use: tooltip, sticky: false, content: (points: readonly ChartPoint[]) => content(points) };
-}
-
-/** A paint at an opacity, so one mark can spotlight a single slice. */
-function fade(color: string, a: number): string {
-  if (a >= 1) return color;
-  const c = colord(color);
-  return c.isValid() ? c.alpha(c.alpha() * a).toRgbString() : color;
-}
-
-type Theme = { foreground: string; muted: string; grid: string; background: string; palette: readonly string[] };
-function useTheme(): { theme: Theme; paint: (j: number) => string; viz: string; grid: string; axis: string } {
-  const { grid, axis, viz } = useChartColors();
-  const palette = useSeriesColors();
-  return {
-    theme: { foreground: axis, muted: axis, grid, background: "transparent", palette },
-    paint: (j: number) => palette[j % palette.length],
-    viz, grid, axis,
-  };
-}
-
-/** One TanStack chart at a fixed size; the card owns focus, so the figure takes no tab stop. */
-function Fig({ children, width, height }: { children: ReactNode; width: number; height: number }) {
-  return <div className="sol-chart" style={{ width, height }}>{children}</div>;
-}
-
-/** Round ends and ticks for a value axis: the given bounds stand, an open side rounds out from the data. */
-function valueDomain(values: Iterable<unknown>, lo: number | undefined, hi: number | undefined, px: number, zero: boolean): { domain: [number, number]; ticks: number[] } {
-  let min = Infinity, max = -Infinity;
-  for (const v of values) if (typeof v === "number" && Number.isFinite(v)) { min = Math.min(min, v); max = Math.max(max, v); }
-  if (!Number.isFinite(min)) { min = 0; max = 1; }
-  if (zero) { min = Math.min(min, 0); max = Math.max(max, 0); }
-  let a = lo ?? min, b = hi ?? max;
-  if (a === b) { a -= a === 0 ? 1 : Math.abs(a) * 0.1; b += b === 0 ? 1 : Math.abs(b) * 0.1; }
-  if (a > b) [a, b] = [b, a];
-  const count = Math.max(2, Math.round(px / 36));
-  const raw = niceTicks(a, b, count);
-  const step = raw.length > 1 ? raw[1] - raw[0] : (b - a);
-  if (lo === undefined) a = Math.floor(a / step + 1e-9) * step;
-  if (hi === undefined) b = Math.ceil(b / step - 1e-9) * step;
-  const ticks = niceTicks(a, b, count).filter((t) => t >= a - step * 1e-9 && t <= b + step * 1e-9);
-  return { domain: [a, b], ticks };
-}
-
-function axisLabel(textValue: string | undefined, fs: number) {
-  return textValue ? { text: textValue, fontSize: 10 * fs } : undefined;
-}
-
-/** The x tick text of an index axis: the row's label, or its 1-based position. */
-function indexTicker(labels: (string | number)[] | undefined) {
-  return (i: number | string) => {
-    const idx = Math.round(Number(i));
-    if (!Number.isFinite(idx)) return "";
-    if (labels) {
-      const lab = labels[idx];
-      if (lab == null || typeof lab === "object") return "";
-      return typeof lab === "number" ? axisTick(lab) : String(lab);
-    }
-    return idx >= 0 ? String(idx + 1) : "";
-  };
-}
-
-/** Index ticks: every row up to a dozen, else about one per 48 px. */
-function indexTicks(n: number, px: number): number[] {
-  if (n <= ALL_TICKS_UPTO) return Array.from({ length: n }, (_, i) => i);
-  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(px / 48))));
-  const out: number[] = [];
-  for (let i = 0; i < n; i += every) out.push(i);
-  return out;
-}
-
-function SeriesLegend({ series, paint, dim, onPick, fs, color, isLine }: {
-  series: { name: string }[];
-  paint: (j: number) => string;
-  dim: (j: number) => number;
-  onPick: (j: number) => void;
-  fs: number; color: string; isLine: (j: number) => boolean;
-}) {
-  return (
-    <div
-      className="sol-chart-legend"
-      style={{ height: MULTI_LEGEND_H, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
-    >
-      {series.map((s, j) => (
-        <span key={j} onClick={() => onPick(j)} style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: dim(j) }}>
-          <span aria-hidden="true" style={{ width: 8, height: isLine(j) ? 2 : 8, borderRadius: isLine(j) ? 1 : 2, background: paint(j), flex: "none" }} />
-          {s.name}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// rete's drag takes pointer capture on mousedown and would steal the legend's click.
-const legendPress = (e: SyntheticEvent) => {
-  if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
-};
-
-export function sanitizeChartLabel(raw: string, cap = 16): string {
-  let clean = "";
-  for (const ch of raw) {
-    const c = ch.codePointAt(0);
-    clean += (c !== undefined && (c < 0x20 || (c >= 0x7f && c <= 0x9f))) ? " " : ch;
-  }
-  clean = clean.replace(/\s+/g, " ").trim();
-  const cps = [...clean]; // code points, so the cap never splits a surrogate pair
-  return cps.length > cap ? `${cps.slice(0, cap - 1).join("").trimEnd()}…` : clean;
-}
 
 // ─── One series ──────────────────────────────────────────────────────────────
 
@@ -188,7 +63,8 @@ export function ChartView({
   };
 
   const definition = useMemo(() => {
-    const isCart = op === "line" || op === "area" || op === "column" || op === "bar";
+    const isCart = op === "line" || op === "area" || op === "column" || op === "bar" || op === "lollipop";
+    const curve = opts?.drawstyle === "steps" ? d3Curve(curveStepAfter) : undefined;
     if (isCart) {
       const horizontal = op === "bar";
       const valuePx = horizontal ? width - 40 : chartH - 30;
@@ -215,6 +91,16 @@ export function ChartView({
           guides: axes, margin: axes ? { top: PLOT_TOP } : 2, clip: opts?.ymin !== undefined || opts?.ymax !== undefined, theme, keyboard: false, tooltip: tip(rowTip),
         });
       }
+      if (op === "lollipop") {
+        return defineChart({
+          marks: [
+            barY(series, { x: "i", y: "v", fill: color, fillOpacity: barAlpha, maxThickness: lw }),
+            dot(series, { x: "i", y: "v", r: opts?.markersize ?? 4, fill: color }),
+          ],
+          scales: { x: catAxis(true), y: valueAxis },
+          guides: axes, margin: axes ? { top: PLOT_TOP } : 2, clip: opts?.ymin !== undefined || opts?.ymax !== undefined, theme, keyboard: false, tooltip: tip(rowTip),
+        });
+      }
       if (op === "bar") {
         return defineChart({
           marks: [barX(series, { y: "i", x: "v", fill: color, fillOpacity: barAlpha })],
@@ -223,8 +109,8 @@ export function ChartView({
         });
       }
       const marks = [
-        ...(op === "area" ? [areaY(series, { x: "i", y1: 0, y2: "v", fill: color, fillOpacity: fillAlpha })] : []),
-        lineY(series, { x: "i", y: "v", stroke: color, strokeOpacity: op === "line" ? opts?.alpha ?? 1 : 1, strokeWidth: lw }),
+        ...(op === "area" ? [areaY(series, { x: "i", y1: 0, y2: "v", fill: color, fillOpacity: fillAlpha, curve })] : []),
+        lineY(series, { x: "i", y: "v", stroke: color, strokeOpacity: op === "line" ? opts?.alpha ?? 1 : 1, strokeWidth: lw, curve }),
         ...(showMarkers ? [dot(series, { x: "i", y: "v", r: dotR, fill: color })] : []),
       ];
       return defineChart({
@@ -248,6 +134,8 @@ export function ChartView({
         width={width} height={chartH} opts={opts} fs={fs} paint={paint} dim={() => 1} single
       />
     );
+  } else if (op === "rose") {
+    chart = <RoseFigure series={series} width={width} height={chartH} opts={opts} labels={labels} fs={fs} tickFmt={tickFmt} dim={sliceDim} pick={pickSlice} />;
   } else if (op === "radialbar") {
     chart = <RadialFigure series={series} width={width} height={chartH} labels={labels} fs={fs} tickFmt={tickFmt} dim={sliceDim} pick={pickSlice} />;
   } else {
@@ -267,14 +155,14 @@ export function ChartView({
 type PieRow = { i: number; v: number; name: string; angle: number; fraction: number };
 
 /** Pie labels in plot pixels (the pie is centred): outside on a leader line, inside on a chip. */
-function pieLabelMarks(rows: readonly PieRow[], o: { outside: boolean; inside: boolean; width: number; height: number; pad: number; fs: number; axis: string; grid: string }) {
+function pieLabelMarks(rows: readonly PieRow[], o: { outside: boolean; inside: boolean; width: number; height: number; pad: number; fs: number; axis: string; grid: string; hole: number }) {
   if (!o.outside && !o.inside) return [];
   const cx = o.width / 2, cy = o.height / 2, R = Math.min(o.width, o.height) / 2 - o.pad;
   const font = 9 * o.fs, stub = 7;
   const at = (d: PieRow, k: number) => ({ x: cx + Math.sin(d.angle) * R * k, y: cy - Math.cos(d.angle) * R * k });
   if (o.inside) {
     const shown = rows.filter((d) => d.fraction >= 0.06 && d.name).map((d) => {
-      const p = at(d, 0.62), w = d.name.length * font * 0.6 + 6, h = font + 4;
+      const p = at(d, o.hole > 0 ? (1 + o.hole) / 2 : 0.62), w = d.name.length * font * 0.6 + 6, h = font + 4;
       return { ...d, ...p, x1: p.x - w / 2, x2: p.x + w / 2, y1: p.y - h / 2, y2: p.y + h / 2 };
     });
     return [
@@ -304,6 +192,7 @@ function PieFigure({ series, width, height, opts, labels, fs, tickFmt, dim, pick
   const labeled = !!labels && mode !== "off";
   const pad = !labeled ? 6 : mode === "inside" ? Math.min(16, width * 0.07) : Math.min(30, width * 0.12);
   const cap = width < 260 ? 10 : 16;
+  const hole = opts?.hole ?? 0;
   const definition = useMemo(() => {
     const rows = pie(slices.map((d) => ({ ...d, name: sanitizeChartLabel(tickFmt(d.i), cap) })), { value: "v" });
     const outside = labeled && mode === "outside";
@@ -314,10 +203,10 @@ function PieFigure({ series, width, height, opts, labels, fs, tickFmt, dim, pick
         inset: pad,
         scales: { angle: null, radius: null },
         marks: [
-          radialArc(rows, { id: "sol-slice", key: "i", fill: (d) => fade(paint(d.i), dim(d.i)), stroke: "var(--surface)", strokeWidth: 1 }),
+          radialArc(rows, { id: "sol-slice", key: "i", innerRadius: ({ radius }) => radius * hole, fill: (d) => fade(paint(d.i), dim(d.i)), stroke: "var(--surface)", strokeWidth: 1 }),
         ],
       }),
-      ...pieLabelMarks(rows, { outside, inside, width, height, pad, fs, axis, grid }),
+      ...pieLabelMarks(rows, { outside, inside, width, height, pad, fs, axis, grid, hole }),
     ],
       scales: { x: { scale: scaleLinear().domain([0, width]), axis: false }, y: { scale: scaleLinear().domain([height, 0]), axis: false } },
       guides: false, margin: 0, theme,
@@ -326,9 +215,45 @@ function PieFigure({ series, width, height, opts, labels, fs, tickFmt, dim, pick
         return { title: d?.name ?? "", rows: [{ label: "", value: tipValue(d?.v) }] };
       }),
     });
-  }, [slices, width, height, pad, labeled, mode, cap, fs, axis, grid, theme, dim, paint, tickFmt]);
+  }, [slices, width, height, pad, labeled, mode, cap, fs, axis, grid, theme, dim, paint, tickFmt, hole]);
   return (
     <Chart definition={definition} width={width} height={height} ariaLabel="pie chart" tabIndex={-1}
+      onSelect={(p) => { const d = p?.datum as Row | undefined; if (d && typeof d.i === "number") pick(d.i); }} />
+  );
+}
+
+/** A rose: one wedge per row, equal angles, the wedge's area (so its radius by square root) carrying the value. */
+function RoseFigure({ series, width, height, opts, labels, fs, tickFmt, dim, pick }: {
+  series: Row[]; width: number; height: number; opts?: ChartOptions; labels?: (string | number)[];
+  fs: number; tickFmt: (i: number) => string; dim: (j: number) => number; pick: (j: number) => void;
+}) {
+  const { theme, paint, grid } = useTheme();
+  const petals = partSlices("rose", series);
+  const definition = useMemo(() => {
+    const rows = petals.map((d) => ({ ...d, r: Math.sqrt(d.v) }));
+    const top = Math.max(1e-9, ...rows.map((d) => d.r));
+    return defineChart({
+      marks: [polar({
+        inset: 4, radiusRatio: labels ? 0.82 : 0.95,
+        scales: {
+          angle: { scale: () => scaleBand<number>().padding(0.04) },
+          radius: { scale: scaleLinear().domain([0, top]) },
+        },
+        guides: [
+          ...((opts?.grid ?? true) ? [radialGrid({ values: [0.25, 0.5, 0.75, 1].map((t) => t * top), stroke: grid })] : []),
+          ...(labels ? [angleGrid({ strokeOpacity: 0, format: (v) => sanitizeChartLabel(tickFmt(Number(v)), 10), labelFontSize: 9 * fs })] : []),
+        ],
+        marks: [radialBarRadius(rows, { id: "sol-slice", angle: "i", radius: "r", key: "i", fill: (d) => fade(paint(d.i), dim(d.i)), stroke: "var(--surface)", strokeWidth: 1 })],
+      })],
+      scales: { x: null, y: null }, theme, focusRing: false, keyboard: false,
+      tooltip: tip((points) => {
+        const d = points[0]?.datum as Row | undefined;
+        return { title: d ? sanitizeChartLabel(tickFmt(d.i)) : "", rows: [{ label: "", value: tipValue(d?.v) }] };
+      }),
+    });
+  }, [petals, theme, grid, paint, dim, tickFmt, labels, opts, fs]);
+  return (
+    <Chart definition={definition} width={width} height={height} ariaLabel="rose chart" tabIndex={-1}
       onSelect={(p) => { const d = p?.datum as Row | undefined; if (d && typeof d.i === "number") pick(d.i); }} />
   );
 }
@@ -519,6 +444,9 @@ export function MultiSeriesView({
     };
     const valid = rows.filter((d) => d.v !== null) as (SeriesRow & { v: number })[];
     const fill = (d: SeriesRow) => fade(paint(d.j), markAlpha * dim(d.j));
+    const curve = opts?.drawstyle === "steps" ? d3Curve(curveStepAfter) : undefined;
+    const stacking = (op === "column" || op === "bar" || op === "area") && series.length >= 2 ? opts?.stacked ?? "off" : "off";
+    if (stacking !== "off") return stackedDefinition();
     const groupTip = tip((points) => {
       const first = points[0]?.datum as SeriesRow | undefined;
       return {
@@ -540,9 +468,50 @@ export function MultiSeriesView({
     }
     // One grouped mark per kind, so a hover finds every series at its x.
     const key = (d: SeriesRow) => `${d.j}:${d.i}`;
+
+    /** Stacked series: each row spans [lo, hi] above the series before it, positives and negatives stacking apart;
+     *  in percent each index's spans divide by its total size. */
+    function stackedDefinition() {
+      const percent = stacking === "percent";
+      const spans: (SeriesRow & { v: number; lo: number; hi: number; share: number })[] = [];
+      for (const i of idx) {
+        const here = valid.filter((d) => d.i === i);
+        const total = here.reduce((a, d) => a + Math.abs(d.v), 0) || 1;
+        let up = 0, down = 0;
+        for (const d of here) {
+          const size = percent ? Math.abs(d.v) / total : Math.abs(d.v);
+          const share = Math.abs(d.v) / total;
+          if (d.v >= 0) { spans.push({ ...d, lo: up, hi: up + size, share }); up += size; }
+          else { spans.push({ ...d, lo: down - size, hi: down, share }); down -= size; }
+        }
+      }
+      const ends = spans.flatMap((d) => [d.lo, d.hi]);
+      const sd = percent ? { domain: [Math.min(0, ...ends), Math.max(1, ...ends)] as [number, number], ticks: [0, 0.25, 0.5, 0.75, 1] }
+        : valueDomain([...ends, opts?.ymin, opts?.ymax], opts?.ymin, opts?.ymax, horizontal ? width - 40 : chartH - 30, true);
+      const pct = (t: number) => `${Math.round(t * 100)}%`;
+      const vAxis = { ...valueAxis, scale: scaleLinear().domain(sd.domain), axis: axes ? { ...valueAxis.axis, ticks: { values: sd.ticks, format: percent ? pct : valueTickFormat(ends), size: 0 } } : false as const };
+      const sKey = (d: SeriesRow) => `${d.j}:${d.i}`;
+      const stackTip = tip((points) => {
+        const first = points[0]?.datum as SeriesRow | undefined;
+        return {
+          title: first ? tickFmt(first.i) : "",
+          rows: points.map((p) => { const d = p.datum as SeriesRow & { share: number }; return { label: series[d.j]?.name ?? "", value: percent ? `${tipValue(d.v)} (${pct(d.share)})` : tipValue(d.v), color: paint(d.j) }; }),
+        };
+      });
+      const common = { guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, keyboard: false, tooltip: stackTip } as const;
+      if (op === "column") return defineChart({ marks: [barY(spans, { x: "i", y1: "lo", y2: "hi", z: "j", fill, key: sKey })], scales: { x: catAxis, y: vAxis }, focus: "group-x", ...common });
+      if (op === "bar") return defineChart({ marks: [barX(spans, { y: "i", x1: "lo", x2: "hi", z: "j", fill, key: sKey })], scales: { y: catAxis, x: vAxis }, focus: "group-y", ...common });
+      return defineChart({
+        marks: [
+          areaY(spans, { x: "i", y1: "lo", y2: "hi", z: "j", fill: (d) => fade(paint(d.j), Math.max(fillAlpha, 0.55) * dim(d.j)), fillOpacity: 1, key: sKey, curve }),
+          lineY(spans, { x: "i", y: "hi", z: "j", stroke: (d) => fade(paint(d.j), dim(d.j)), strokeWidth: lw, key: sKey, curve }),
+        ],
+        scales: { x: catAxis, y: vAxis }, focus: "group-x", ...common,
+      });
+    }
     const marks = [
-      ...(op === "area" ? [areaY(rows, { x: "i", y1: 0, y2: "v", z: "j", fill: (d) => fade(paint(d.j), fillAlpha * dim(d.j)), fillOpacity: 1, key })] : []),
-      lineY(rows, { x: "i", y: "v", z: "j", stroke: (d) => fade(paint(d.j), (op === "line" ? markAlpha : 1) * dim(d.j)), strokeWidth: lw, key }),
+      ...(op === "area" ? [areaY(rows, { x: "i", y1: 0, y2: "v", z: "j", fill: (d) => fade(paint(d.j), fillAlpha * dim(d.j)), fillOpacity: 1, key, curve })] : []),
+      lineY(rows, { x: "i", y: "v", z: "j", stroke: (d) => fade(paint(d.j), (op === "line" ? markAlpha : 1) * dim(d.j)), strokeWidth: lw, key, curve }),
       ...(showMarkers ? [dot(valid, { x: "i", y: "v", r: dotR, color: (d) => fade(paint(d.j), dim(d.j)), key })] : []),
     ];
     return defineChart({
@@ -762,7 +731,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   const cRange = series.find((s) => s.cRange)?.cRange;
   const catLegend = !multi && !!cats && cats.length > 0;
   const title = opts?.title;
-  const legendRows = (multi || catLegend ? 1 : 0) + (cRange ? 1 : 0);
+  const legendRows = ((multi && payload.bin !== "hexbin") || catLegend ? 1 : 0) + (cRange ? 1 : 0);
   const chartH = height - (title ? titleHeight(fs) : 0) - legendRows * MULTI_LEGEND_H;
 
   const definition = useMemo(() => {
@@ -814,6 +783,50 @@ export function XYView({ payload, width, height, opts, fontScale }: {
       yd = { domain: eq.y, ticks: niceTicks(eq.y[0], eq.y[1], Math.max(3, Math.round(ph / 40))) };
     }
     const xFmt = (t: number) => (xcats ? xcats[Math.round(t)] ?? "" : axisTick(t));
+    const axesOf = () => ({
+      x: {
+        scale: scaleLinear().domain(xd.domain),
+        grid: (opts?.grid ?? true) ? { stroke: grid } : false,
+        axis: { ticks: { values: xd.ticks, format: xFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs) },
+      },
+      y: {
+        scale: scaleLinear().domain(yd.domain),
+        grid: (opts?.grid ?? true) ? { stroke: grid } : false,
+        axis: { ticks: { values: yd.ticks, format: valueTickFormat(pts.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs) },
+      },
+    });
+    if (payload.bin === "hexbin") {
+      // matplotlib's gridsize counts hexagons across the plot; TanStack bins by pixel spacing.
+      const across = opts?.gridsize ?? 20;
+      return defineChart({
+        marks: [hexbin(rows, { x: "x", y: "y", binWidth: Math.max(4, pw / across), color: "count", stroke: "var(--surface)", strokeWidth: 0.5 })],
+        scales: axesOf(), margin: { top: PLOT_TOP }, clip: true, theme, keyboard: false,
+        color: { scale: () => scaleSequential((t: number) => rampCss(t, opts?.cmap)) },
+        tooltip: tip((points) => {
+          const d = points[0]?.datum as { count?: number } | undefined;
+          return { rows: [{ label: "points", value: tipValue(d?.count) }] };
+        }),
+      });
+    }
+    if (payload.bin === "density") {
+      const lw = opts?.linewidth ?? 1;
+      // A density spreads past its outermost points, so an open side gets a quarter of the span more room.
+      const pad = (d: { domain: [number, number]; ticks: number[] }, lo?: number, hi?: number, px = 200) => {
+        const u = (d.domain[1] - d.domain[0]) * 0.25;
+        const dom: [number, number] = [lo === undefined ? d.domain[0] - u : d.domain[0], hi === undefined ? d.domain[1] + u : d.domain[1]];
+        return { domain: dom, ticks: niceTicks(dom[0], dom[1], Math.max(3, Math.round(px / 60))) };
+      };
+      xd = pad(xd, opts?.xmin, opts?.xmax, pw);
+      yd = pad(yd, opts?.ymin, opts?.ymax, ph);
+      return defineChart({
+        marks: [densityContour(rows, {
+          x: "x", y: "y", z: "j", thresholds: 5,
+          fill: (d) => fade(paint(Number(d.group)), (opts?.alpha ?? 0.12) * dim(Number(d.group))),
+          stroke: (d) => fade(paint(Number(d.group)), dim(Number(d.group))), strokeWidth: lw,
+        })],
+        scales: axesOf(), margin: { top: PLOT_TOP }, clip: true, theme, keyboard: false,
+      });
+    }
     const rampSegs: { x1: number; y1: number; x2: number; y2: number; fill: string; to: string; k: string; lw: number; o: number; dash?: string }[] = [];
     const lines = series.flatMap((s, j) => {
       if (s.line === "none") return [];
@@ -892,7 +905,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     <div style={{ width, height }} onPointerDown={legendPress} onMouseDown={legendPress}>
       {title && <ChartTitle text={title} fs={fs} />}
       <Chart definition={definition} width={width} height={chartH} ariaLabel={title || "xy plot"} tabIndex={-1} />
-      {multi && (
+      {multi && payload.bin !== "hexbin" && (
         <SeriesLegend series={series} paint={paint} dim={dim} fs={fs} color={axis}
           isLine={() => series.some((s) => s.line !== "none")} onPick={pick} />
       )}

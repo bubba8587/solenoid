@@ -66,6 +66,29 @@ describe("kind ([[D97]] builderSetsChartType)", () => {
   });
 });
 
+describe("stacked, drawstyle, hole, gridsize", () => {
+  it("read pandas' stacked, with percent for a 100% stack", () => {
+    expect(parseChartOptions("stacked=True").stacked).toBe("on");
+    expect(parseChartOptions("stacked=off").stacked).toBe("off");
+    expect(parseChartOptions("stacked=100%").stacked).toBe("percent");
+    expect(parseChartOptions("stacked=maybe").stacked).toBeUndefined();
+  });
+  it("read every matplotlib step style as steps", () => {
+    for (const v of ["steps", "steps-post", "steps-pre", "steps-mid"]) expect(parseChartOptions(`drawstyle=${v}`).drawstyle).toBe("steps");
+    expect(parseChartOptions("ds=default").drawstyle).toBe("default");
+  });
+  it("keep a hole inside [0, 1) and round a gridsize of at least 1", () => {
+    expect(parseChartOptions("hole=0.5").hole).toBe(0.5);
+    expect(parseChartOptions("hole=1").hole).toBeUndefined();
+    expect(parseChartOptions("gridsize=12.4").gridsize).toBe(12);
+    expect(parseChartOptions("gridsize=0").gridsize).toBeUndefined();
+  });
+  it("round-trip through serialization", () => {
+    const s = serializeChartOptions({ stacked: "percent", drawstyle: "steps", hole: 0.4, gridsize: 15 });
+    expect(parseChartOptions(s)).toEqual({ stacked: "percent", drawstyle: "steps", hole: 0.4, gridsize: 15 });
+  });
+});
+
 describe("serializeChartOptions", () => {
   it("emits only set fields and collapses Y bounds into ylim", () => {
     expect(serializeChartOptions({ title: "A", color: "red", ymin: 0, ymax: 10 }))

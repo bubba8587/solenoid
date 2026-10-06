@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
-import { sanitizeChartLabel } from "../../src/graph/components/chartRender";
+import { sanitizeChartLabel } from "../../src/graph/components/chartCore";
 
 describe("sanitizeChartLabel", () => {
   it("passes a short, clean name through unchanged", () => {

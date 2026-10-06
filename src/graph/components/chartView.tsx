@@ -1,5 +1,5 @@
 // [[B3]] sameNodeEverywhere, [[C100]] chartIsAValue
-import { lazy, memo, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, memo, Suspense, useEffect, type ComponentType, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
 import { toSeries, partSlices } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
@@ -13,9 +13,6 @@ import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 import { registerChartSvgProvider } from "../canvasCapture";
 import { useHostNodeId } from "./nodeContext";
 import { ChartTitle, titleHeight, UNTITLED_FIGURES } from "./chartTitle";
-import {
-  WaterfallView, CandleView, BoxplotView, CalHeatView, HeatmapView, WaffleView, QuiverView, ContourView,
-} from "./chartCanvasViews";
 
 export { useChartColors, toSeries } from "./chartCore";
 export type { ChartShape } from "./chartCore";
@@ -29,6 +26,17 @@ const SankeyViewInner = lazy(() => import("./chartRender").then((m) => ({ defaul
 const XYViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.XYView })));
 const MultiSeriesViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.MultiSeriesView })));
 const OverlayViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.OverlayView })));
+const statFigures = () => import("./charts/statFigures");
+const heatFigures = () => import("./charts/heatFigures");
+const fieldFigures = () => import("./charts/fieldFigures");
+const WaterfallInner = lazy(() => statFigures().then((m) => ({ default: m.WaterfallView })));
+const CandleInner = lazy(() => statFigures().then((m) => ({ default: m.CandleView })));
+const BoxplotInner = lazy(() => statFigures().then((m) => ({ default: m.BoxplotView })));
+const HeatmapInner = lazy(() => heatFigures().then((m) => ({ default: m.HeatmapView })));
+const CalHeatInner = lazy(() => heatFigures().then((m) => ({ default: m.CalHeatView })));
+const ContourInner = lazy(() => fieldFigures().then((m) => ({ default: m.ContourView })));
+const QuiverInner = lazy(() => fieldFigures().then((m) => ({ default: m.QuiverView })));
+const WaffleInner = lazy(() => import("./charts/waffleFigure").then((m) => ({ default: m.WaffleView })));
 const GanttFigureInner = lazy(() => import("@solenoid/gantt-react").then((m) => ({ default: m.GanttFigure })));
 
 const GANTT_EXPORT_W = 1000;
@@ -38,6 +46,21 @@ const MULTI_SERIES_OPS = new Set<ChartShape>(["column", "bar", "line", "area", "
 function box(width: number | string, height: number): ReactNode {
   return <div style={{ width, height }} />;
 }
+
+/** A lazy figure behind a blank box of its size, so the card doesn't reflow before the chunk arrives. */
+function lazyFigure<P extends { width: number; height: number }>(Inner: ComponentType<P>) {
+  return function LazyFigure(props: P) {
+    return <Suspense fallback={box(props.width, props.height)}><Inner {...props} /></Suspense>;
+  };
+}
+const WaterfallView = lazyFigure(WaterfallInner);
+const CandleView = lazyFigure(CandleInner);
+const BoxplotView = lazyFigure(BoxplotInner);
+const HeatmapView = lazyFigure(HeatmapInner);
+const CalHeatView = lazyFigure(CalHeatInner);
+const ContourView = lazyFigure(ContourInner);
+const QuiverView = lazyFigure(QuiverInner);
+const WaffleView = lazyFigure(WaffleInner);
 
 type ChartViewProps = {
   op: ChartShape;
