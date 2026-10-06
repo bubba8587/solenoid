@@ -58,7 +58,7 @@ IFERROR catches every code; IFNA and ISNA match only `#N/A`. The IFERROR card ca
 
 A node returns `solError(...)` where the failure is a real error, never `null`; `null` stays the legitimate blank.
 
-Every error carries an `origin` ([[E9]] errorsKeepOrigin): `nodeId`, `nodeName` (the node's title, or its type name when untitled), `inputSlot` (set only when the origin was tagged at a relay rather than where it was minted) and `rowIndex` (for a per-cell error in a list or Frame column). The guard sets it once, at the mint site or at the first relay that sees it untagged, and never overwrites it, so a chain of passthroughs still points at the original producer. Tagging copies only what it changes and returns the value untouched when nothing is untagged, so the error-free path costs nothing.
+Every error carries an `origin` ([[E9]] errorsKeepOrigin): `nodeId`, `nodeName` (the node's title, or its type name when untitled), `inputSlot` (set only when the origin was tagged at a relay rather than where it was minted). An origin names a node, never a row: a row index would go stale at the first sort or filter downstream. The guard sets it once, at the mint site or at the first relay that sees it untagged, and never overwrites it, so a chain of passthroughs still points at the original producer. Tagging copies only what it changes and returns the value untouched when nothing is untagged, so the error-free path costs nothing; within one output, every cell holding the same untagged error gets one shared tagged copy, so a column of 100k `#DIV/0!` costs one error object, not 100k.
 
 ## The value model inside containers
 

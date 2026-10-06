@@ -17,7 +17,6 @@ export interface SolErrorOrigin {
   nodeId: string;
   nodeName: string;
   inputSlot?: string;
-  rowIndex?: number;
 }
 
 export interface SolError {
@@ -138,28 +137,29 @@ const nodeDisplayName = (n: object): string => displayNameOf(n);
 
 function withOrigin(v: unknown, nodeId: string, nodeName: string): unknown {
   if (isSolError(v)) return v.origin ? v : { ...v, origin: { nodeId, nodeName } };
-  if (Array.isArray(v)) {
+  let origin: SolErrorOrigin | null = null;
+  const tagged = new Map<SolError, SolError>();
+  const tag = (cell: SolError): SolError => {
+    let t = tagged.get(cell);
+    if (!t) { t = { ...cell, origin: (origin ??= { nodeId, nodeName }) }; tagged.set(cell, t); }
+    return t;
+  };
+  const tagCells = (values: readonly unknown[]): unknown[] | null => {
     let out: unknown[] | null = null;
-    for (let i = 0; i < v.length; i++) {
-      const cell: unknown = v[i];
+    for (let i = 0; i < values.length; i++) {
+      const cell: unknown = values[i];
       if (isSolError(cell) && !cell.origin) {
-        if (!out) out = v.slice();
-        out[i] = { ...cell, origin: { nodeId, nodeName, rowIndex: i } };
+        if (!out) out = values.slice();
+        out[i] = tag(cell);
       }
     }
-    return out ?? v;
-  }
+    return out;
+  };
+  if (Array.isArray(v)) return tagCells(v) ?? v;
   if (isFrameLike(v)) {
     let out: FrameLike | null = null;
     v.columns.forEach((col, ci) => {
-      let values: unknown[] | null = null;
-      for (let i = 0; i < col.values.length; i++) {
-        const cell = col.values[i];
-        if (isSolError(cell) && !cell.origin) {
-          if (!values) values = col.values.slice();
-          values[i] = { ...cell, origin: { nodeId, nodeName, rowIndex: i } };
-        }
-      }
+      const values = tagCells(col.values);
       if (values) {
         if (!out) out = { ...v, columns: v.columns.slice() };
         out.columns[ci] = { ...col, values };

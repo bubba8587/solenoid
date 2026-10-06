@@ -165,18 +165,30 @@ describe("SolError origin (provenance Tier 1)", () => {
     expect(relayed.origin?.nodeName).toBe(nodeDisplayName(producer));
   });
 
-  it("tags a per-cell error inside a list result with its row index", () => {
+  it("tags a per-cell error inside a list result with its node", () => {
     const n = new ArithmeticNode({ op: "div" });
     installErrorGuards(n);
     const out = n.data({ a: [[4, 1, 6]], b: [[2, 0, 3]] }) as { result: unknown[] };
     expect(out.result[0]).toBe(2);
     expect(isSolError(out.result[1])).toBe(true);
-    expect((out.result[1] as SolError).origin?.rowIndex).toBe(1);
     expect((out.result[1] as SolError).origin?.nodeId).toBe(n.id);
     expect(out.result[2]).toBe(2);
   });
 
-  it("tags a per-cell error inside a frame-shaped output with its row index", () => {
+  it("tags repeats of one error with one shared copy", () => {
+    const e = solError("#DIV/0!", "Division by zero");
+    const n = { id: "n1", label: "Ratio", outputs: {}, constructor: { name: "SomeNode" } } as unknown as {
+      id: string; data: (i: Record<string, unknown[] | undefined>) => Record<string, unknown>;
+    };
+    (n as unknown as { data?: unknown }).data = () => ({ result: [e, 1, e] });
+    installErrorGuards(n);
+    const out = n.data({}) as { result: unknown[] };
+    expect((out.result[0] as SolError).origin?.nodeName).toBe("Ratio");
+    expect(out.result[2]).toBe(out.result[0]);
+    expect(e.origin).toBeUndefined();
+  });
+
+  it("tags a per-cell error inside a frame-shaped output with its node", () => {
     const e = solError("#VALUE!", "bad cell");
     const n = { id: "n1", label: "Frame Thing", outputs: {}, constructor: { name: "SomeFrameNode" } } as unknown as {
       id: string; data: (i: Record<string, unknown[] | undefined>) => Record<string, unknown>;
@@ -188,7 +200,6 @@ describe("SolError origin (provenance Tier 1)", () => {
     const out = n.data({}) as { out: { columns: { values: unknown[] }[] } };
     const cell = out.out.columns[0].values[1] as SolError;
     expect(isSolError(cell)).toBe(true);
-    expect(cell.origin?.rowIndex).toBe(1);
     expect(cell.origin?.nodeName).toBe("Frame Thing");
   });
 

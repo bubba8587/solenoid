@@ -299,7 +299,7 @@ describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b
   });
 
   it("an uploaded error cell comes back as the same SolError, message and origin kept", async () => {
-    const err = { ...solError("#N/A", "no match for 7"), origin: { nodeId: "n1", nodeName: "Lookup", rowIndex: 2 } };
+    const err = { ...solError("#N/A", "no match for 7"), origin: { nodeId: "n1", nodeName: "Lookup" } };
     invokeMock.mockResolvedValueOnce("plf:src");
     const ref = await runFrameUnary({ __frame: true, columns: [{ name: "v", type: "number", values: [1, err] }] }, { kind: "sort", by: "v", dir: "desc" });
     if (!isFrameRef(ref)) throw new Error("expected a FrameRef");

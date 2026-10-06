@@ -25,7 +25,6 @@ warning is expected.
 - [ ] **Formula per-row overhead**: the expr-mode env is rebuilt per row (`computedColumnCore.ts`), and a call re-resolves its function name, blank slots and roles per row (a per-call-node plan keyed on `registryGeneration()`); `IF(@p>5, ROUND(@p,2), 0)` is ~0.8s at 100k rows.
 - [ ] **Unit math allocates per cell**: `dimMul`/`dimDiv` give every result cell its own dim, and `arithmeticCell` makes closures per cell (`unitValue.ts`).
 - [ ] **Input coercion copies every list** (`familyCells`, `stripUnitCells` in `coerceInputs.ts`) even when nothing changes; copy-on-first-change needs an audit that no node mutates an input array.
-- [ ] **Error origins**: each per-cell error gets its own `origin` object for `rowIndex`, which nothing reads (error-values spec, compute-pass spec, `errorValue.test.ts`); dropping it lets one tagged error be shared. Author's call.
 - [ ] **`raw` source text** rides beside every imported number/date column (`inferColumn`), doubling its memory; only the value popup reads it.
 
 ## Release planning (author-run)
