@@ -55,7 +55,7 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
   const commitValue = (text: string) => { data.value = text; void processGraph(data.id); };
 
   return (
-    <NodeShell node={data} emit={emit} collapsible={false}>
+    <NodeShell node={data} emit={emit}>
       <SegToggle
         value={dt}
         options={TYPE_OPTIONS}

@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { parseDate, parseDateToSerial, isRelativeDateText } from "../../../src/graph/nodes/dateSerial";
 import { DateInputNode } from "../../../src/graph/nodes/control";
+import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { settingsStore } from "../../../src/graph/settingsStore";
 import { alertStore } from "../../../src/graph/alertStore";
 
@@ -73,5 +74,35 @@ describe("Date Input under the opt-in", () => {
   it("an absolute date keeps its fixed serial regardless of the setting", () => {
     settingsStore.set("relativeDates", true);
     expect(new DateInputNode({ date: "15-Mar-2026" }).data().result).toBe(d("2026-03-15"));
+  });
+});
+
+describe("Value Input's Date mode under the same opt-in", () => {
+  const prev = settingsStore.get("relativeDates");
+  beforeEach(() => { alertStore.clear(); });
+  afterEach(() => { settingsStore.set("relativeDates", prev); });
+
+  it("off: a relative phrase is a blank", () => {
+    settingsStore.set("relativeDates", false);
+    expect(new ValueInputNode({ dataType: "date", value: "tomorrow" }).data().value).toBeNull();
+  });
+  it("on: it resolves, and alerts when the resolved day moves", () => {
+    settingsStore.set("relativeDates", true);
+    const n = new ValueInputNode({ dataType: "date", value: "today" });
+    const first = n.data().value as number;
+    expect(first).toBe(Math.floor(parseDate("today", { relative: true }) as number));
+    (n as unknown as { lastRelative: { text: string; serial: number } }).lastRelative = { text: "today", serial: first - 1 };
+    n.data();
+    expect(alertStore.list().filter((e) => e.nodeId === n.id)).toHaveLength(1);
+  });
+  it("a switch into Date keeps a relative phrase only while the opt-in is on", () => {
+    const n = new ValueInputNode({ dataType: "string", value: "next friday" });
+    settingsStore.set("relativeDates", true);
+    n.setDataType("date");
+    expect(n.value).toBe("next friday");
+    const m = new ValueInputNode({ dataType: "string", value: "next friday" });
+    settingsStore.set("relativeDates", false);
+    m.setDataType("date");
+    expect(m.value).not.toBe("next friday");
   });
 });

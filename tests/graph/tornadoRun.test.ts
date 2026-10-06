@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { findUpstreamLeaves, rankTornado } from "../../src/graph/tornadoRun";
 import { NumberInputNode, SliderInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import type { TornadoResult } from "../../src/graph/nodes/tornado";
 
 // Regression: a Slider carries its own min/max/step input sockets, so the old
@@ -19,6 +20,14 @@ function fakeEditor(nodes: Record<string, unknown>, connections: Conn[]) {
 }
 
 describe("findUpstreamLeaves", () => {
+  it("takes a Number-mode Value Input as a leaf, and walks past any other mode", () => {
+    const num = new ValueInputNode({ label: "Price", dataType: "number", value: "25" });
+    const txt = new ValueInputNode({ label: "Name", dataType: "string", value: "x" });
+    const nodes = { num, txt, tornado: {} };
+    const leaves = findUpstreamLeaves(fakeEditor(nodes, [{ source: "num", target: "tornado" }, { source: "txt", target: "tornado" }]), "tornado");
+    expect(leaves.map((l) => l.label)).toEqual(["Price"]);
+  });
+
   it("recognizes a Slider feeding the target (despite its min/max/step sockets)", () => {
     const slider = new SliderInputNode({ label: "Growth" });
     const nodes = { slider, tornado: {} };

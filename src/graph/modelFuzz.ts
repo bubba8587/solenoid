@@ -5,6 +5,7 @@ import { downstreamClosure } from "./graphCompute";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { NumberInputNode, SliderInputNode } from "./nodes/input";
 import { TextInputNode } from "./nodes/text";
+import { ValueInputNode } from "./nodes/control";
 import { ClampNode } from "./nodes/scalar";
 import { ExpectNode } from "./nodes/quality";
 import { isSolError, isFrameLike, sampledCellIndices, type SolErrorCode } from "./errorValue";
@@ -49,8 +50,8 @@ function sampleStrings(rng: () => number, n: number): string[] {
 }
 
 type Leaf =
-  | { kind: "number"; node: NumberInputNode | SliderInputNode }
-  | { kind: "text"; node: TextInputNode };
+  | { kind: "number"; node: NumberInputNode | SliderInputNode | ValueInputNode }
+  | { kind: "text"; node: TextInputNode | ValueInputNode };
 
 export function findLeaves(editor: AnyEditor): Leaf[] {
   const leaves: Leaf[] = [];
@@ -60,8 +61,17 @@ export function findLeaves(editor: AnyEditor): Leaf[] {
     if (wiredTargets.has(node.id)) continue;
     if (node instanceof NumberInputNode || node instanceof SliderInputNode) leaves.push({ kind: "number", node });
     else if (node instanceof TextInputNode) leaves.push({ kind: "text", node });
+    else if (node instanceof ValueInputNode && (node.dataType === "number" || node.dataType === "string")) {
+      leaves.push({ kind: node.dataType === "number" ? "number" : "text", node });
+    }
   }
   return leaves;
+}
+
+/** Value Input keeps its typed text, so a sampled number goes in as text. */
+function setLeafValue(node: Leaf["node"], v: number | string): void {
+  if (node instanceof ValueInputNode) node.value = String(v);
+  else (node as { value: number | string }).value = v;
 }
 
 interface Badness { code: SolErrorCode; message: string }
@@ -192,7 +202,7 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
       try {
         for (const v of values) {
           samples++;
-          (leaf.node as { value: number | string }).value = v;
+          setLeafValue(leaf.node, v);
           await processGraph(leaf.node.id); await graphSettled();
           for (const id of downstream) {
             const node = editor.getNode(id);
@@ -215,7 +225,7 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
         }
       } finally {
         // Restore on every exit path, so a throw never leaves the graph holding a sample.
-        (leaf.node as { value: number | string }).value = original;
+        setLeafValue(leaf.node, original);
         await processGraph(leaf.node.id); await graphSettled();
       }
     }

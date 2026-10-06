@@ -8,6 +8,7 @@ import { compileEvaluator } from "../../src/graph/excelFormula";
 import { CubeInputNode } from "../../src/graph/nodes/cube";
 import { FrameInputNode, ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { requestRecalc } from "../../src/graph/process";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 
 describe("volatileDates (R5 midnight rollover)", () => {
   it("spots TODAY()/NOW() in an expression or a frame's formulas, and a relative Date Input", () => {
@@ -16,6 +17,11 @@ describe("volatileDates (R5 midnight rollover)", () => {
     expect(hasVolatileDates([{ frameText: '[{"name":"Age","expr":"TODAY()-[Born]"}]' }])).toBe(true);
     expect(hasVolatileDates([{ stringLiterals: { date: "next friday" } }])).toBe(true);
     expect(hasVolatileDates([{ expr: "a + b" }, { stringLiterals: { date: "05-Jan-2026" } }, {}])).toBe(false);
+  });
+  it("spots a relative date on a Value Input in Date mode only", () => {
+    expect(hasVolatileDates([new ValueInputNode({ dataType: "date", value: "next friday" })])).toBe(true);
+    expect(hasVolatileDates([new ValueInputNode({ dataType: "date", value: "05-Jan-2026" })])).toBe(false);
+    expect(hasVolatileDates([new ValueInputNode({ dataType: "string", value: "next friday" })])).toBe(false);
   });
   it("spots TODAY() in a Cube Input's formula column", () => {
     const cube = new CubeInputNode({ cubeText: JSON.stringify({ columns: [{ name: "a" }, { name: "d", expr: "TODAY()" }], rows: [{ a: 1 }] }) });

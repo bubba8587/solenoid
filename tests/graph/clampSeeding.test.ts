@@ -4,6 +4,7 @@ import { collectFinite, extendSafeRange, boundsFromSafeRange, findLeaves } from 
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
 import { NumberInputNode, SliderInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { solError } from "../../src/graph/errorValue";
 
 // Task 2 (Stream D): the model-fuzz "+ Clamp" quick-fix is seeded with the
@@ -70,5 +71,16 @@ describe("model fuzz leaves", () => {
     await editor.addConnection(new ClassicPreset.Connection(num, "value" as never, bound, "min" as never) as unknown as Schemes["Connection"]);
     const ids = findLeaves(editor as never).map((l) => l.node.id).sort();
     expect(ids).toEqual([slider.id, num.id].sort());
+  });
+
+  it("takes a Number or Text Value Input, each as its kind, and skips Date and Boolean", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const num = new ValueInputNode({ dataType: "number" });
+    const txt = new ValueInputNode({ dataType: "string" });
+    const date = new ValueInputNode({ dataType: "date" });
+    const bool = new ValueInputNode({ dataType: "logical" });
+    for (const n of [num, txt, date, bool]) await editor.addNode(n as unknown as Schemes["Node"]);
+    const leaves = findLeaves(editor as never);
+    expect(leaves.map((l) => [l.node.id, l.kind]).sort()).toEqual([[num.id, "number"], [txt.id, "text"]].sort());
   });
 });
