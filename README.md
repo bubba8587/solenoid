@@ -52,6 +52,8 @@ The Frame Input node allows you to define a custom Form Input layout for inputti
 
 ## Try it
 
+![The same Solenoid graph on a desktop under six looks (dark, light, Orchard, Blueprint, Neon, Dawn and Dusk), on a tablet and on a phone](docs/assets/everywhere.png)
+
 [solenoid-ngc.com](https://solenoid-ngc.com) runs in your browser, on desktop and mobile. For improved performance, you can enable the HTML-in-Canvas experimental Chrome flag and enable usage of that renderer in Settings.
 
 ## Unsupported Features

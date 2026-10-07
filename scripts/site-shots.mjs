@@ -40,8 +40,9 @@ async function openGraph(browser, shot) {
   const [w, h] = shot.size ?? [1440, 900];
   const zoom = shot.zoom ?? 1;
   await page.setViewport({ width: Math.round(w / zoom), height: Math.round(h / zoom), deviceScaleFactor: (shot.dpr ?? 2) * zoom,
-    ...(shot.phone ? { isMobile: true, hasTouch: true, isLandscape: false } : {}) });
-  if (shot.phone) {
+    ...(shot.phone || shot.tablet ? { isMobile: true, hasTouch: true, isLandscape: !!shot.tablet } : {}) });
+  // A tablet is a touch device held sideways: the app runs its tablet layout for it ([[C119]] landscapePhoneIsTablet).
+  if (shot.phone || shot.tablet) {
     // The phone model as shot-graph.mjs builds it: a mobile UA and (pointer: coarse) before the app loads.
     await page.setUserAgent(
       "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
@@ -57,15 +58,15 @@ async function openGraph(browser, shot) {
   page.on("pageerror", (e) => console.log(`  [pageerror] ${e.message}`));
   const graph = loadGraph(shot.graph);
   const doc = { id: "shot", name: shot.title ?? graph.label ?? "Untitled", graph, updatedAt: Date.now() };
-  await page.evaluateOnNewDocument((doc, theme, palette) => {
+  await page.evaluateOnNewDocument((doc, theme, palette, accent) => {
     if (sessionStorage.getItem("shot-seeded")) return;
     sessionStorage.setItem("shot-seeded", "1");
     localStorage.clear();
     localStorage.setItem("solenoid.docs.index.a", JSON.stringify({ seq: 1, currentId: doc.id, docs: [{ id: doc.id, name: doc.name, updatedAt: doc.updatedAt }] }));
     localStorage.setItem(`solenoid.docs.doc.${doc.id}.a`, JSON.stringify({ seq: 2, doc }));
-    localStorage.setItem("solenoid.theme", JSON.stringify({ accent: "gold", mode: theme }));
+    localStorage.setItem("solenoid.theme", JSON.stringify({ accent, mode: theme }));
     if (palette) localStorage.setItem("solenoid.palette", palette);
-  }, doc, shot.theme ?? "dark", shot.palette ?? null);
+  }, doc, shot.theme ?? "dark", shot.palette ?? null, shot.accent ?? "gold");
   await page.goto(APP, { waitUntil: "networkidle2", timeout: 90_000 });
   if (graph.nodes.length) await page.waitForSelector(".solenoid-node", { timeout: 30_000 });
   await page.waitForFunction(() => window.__spike?.revealPhase?.() === "idle", { timeout: 30_000 }).catch(() => {});

@@ -13,6 +13,11 @@ export const SHOTS = [
   { name: "hero", graph: "solar-payback.json", zoom: Z, frame: { labels: [], pad: 28, clearTop: 40, maxK: 2 }, out: "docs/assets/hero.png" },
   { name: "hero-light", graph: "solar-payback.json", zoom: Z, theme: "light", frame: { labels: [], pad: 28, clearTop: 40, maxK: 2 } },
   { name: "phone", graph: "solar-payback.json", phone: true, size: [390, 844], dpr: 3, frame: { labels: [], k: 0.6, clearTop: 50 } },
+  { name: "tablet", graph: "solar-payback.json", tablet: true, size: [1180, 820], dpr: 2, frame: { labels: [], pad: 24, clearTop: 40, maxK: 2 } },
+  // The palette slices, each under the accent it was authored for (Orchard and Blueprint rotate their tint toward it).
+  ...[["Orchard", "light", "green"], ["Blueprint", "dark", "blue"], ["Neon", "dark", "pink"], ["Dawn and Dusk", "light", "gold"]].map(([palette, theme, accent]) => ({
+    name: `hero-${palette.toLowerCase().replace(/ /g, "-")}`, graph: "solar-payback.json", zoom: Z, palette, theme, accent,
+    frame: { labels: [], pad: 28, clearTop: 40, maxK: 2 } })),
   canvas("types", "types.json", { out: "docs/assets/types.png" }),
   canvas("units", "units.json", { out: "docs/assets/units.png" }),
   canvas("formulas", "formulas.json", { out: "docs/assets/formulas.png" }),
@@ -52,12 +57,12 @@ const preview = ({ title, sub, art }) => ({ asset, w, h }) => `
 /** A window-sized close-up of a shot: `scale` is the shot's drawn width, `at` its top-left offset. */
 const tile = (src, w, h, scale, [x, y] = [0, 0]) =>
   `<div style="width:${w}px;height:${h}px;border:1px solid ${LINE};border-radius:10px;background:${VOID} url(${src}) ${-x}px ${-y}px / ${scale}px auto no-repeat"></div>`;
-/** A phone around a shot. The app tints Android's status bar with its accent (`theme-color`), so the bar is gold. */
-const phoneFrame = (src, width) => {
-  const u = width / 100;
+/** A device around a shot: `u` sizes the status bar, so a tablet's bar reads like a phone's. The app tints Android's
+ *  status bar with its accent (`theme-color`), so the bar is gold. */
+const deviceFrame = (src, width, { u = width / 100, bezel = 6, radius = 26 } = {}) => {
   const ink = "#1b1e23";
   const bars = [3, 5, 7, 9].map((h, i) => `<rect x="${i * 3}" y="${10 - h}" width="2" height="${h}" rx="0.5"/>`).join("");
-  return `<div style="width:${width}px;border:6px solid #2a2a2a;border-radius:26px;overflow:hidden;background:${VOID};box-shadow:0 18px 40px rgba(0,0,0,0.55)">
+  return `<div style="width:${width}px;border:${bezel}px solid #2a2a2a;border-radius:${radius}px;overflow:hidden;background:${VOID};box-shadow:0 18px 40px rgba(0,0,0,0.55)">
     <div style="position:relative;height:${7.5 * u}px;background:${GOLD};display:flex;align-items:center;justify-content:space-between;padding:0 ${5.5 * u}px;color:${ink};font-size:${3.9 * u}px;font-weight:700">
       <span>9:41</span>
       <span style="position:absolute;left:50%;top:50%;width:${3.6 * u}px;height:${3.6 * u}px;transform:translate(-50%,-50%);border-radius:50%;background:#050505"></span>
@@ -68,6 +73,23 @@ const phoneFrame = (src, width) => {
       </span>
     </div>
     <img src="${src}" style="display:block;width:${width}px">
+  </div>`;
+};
+const phoneFrame = (src, width) => deviceFrame(src, width);
+const tabletFrame = (src, width) => deviceFrame(src, width, { u: 2.1, bezel: 9, radius: 22 });
+
+/** The hero cut into diagonal bands, one per look: the two themes, then a palette per band. */
+const PALETTE_SLICES = ["hero", "hero-light", "hero-orchard", "hero-blueprint", "hero-neon", "hero-dawn-and-dusk"];
+const sliced = (shot, width) => {
+  const n = PALETTE_SLICES.length, lean = 7;
+  const band = (i) => {
+    const a = (i / n) * 100, b = ((i + 1) / n) * 100;
+    const l = i === 0 ? -50 : a, r = i === n - 1 ? 150 : b;
+    return `polygon(${l + lean}% 0, ${r + lean}% 0, ${r - lean}% 100%, ${l - lean}% 100%)`;
+  };
+  return `<div style="position:relative;width:${width}px;border:1px solid ${LINE};border-radius:10px;overflow:hidden">
+    <img src="${shot(PALETTE_SLICES[0])}" style="display:block;width:${width}px;visibility:hidden">
+    ${PALETTE_SLICES.map((s, i) => `<img src="${shot(s)}" style="position:absolute;inset:0;width:${width}px;clip-path:${band(i)}">`).join("")}
   </div>`;
 };
 
@@ -95,6 +117,13 @@ export const CARDS = [
   // GitHub's social preview: Settings → General → Social preview takes a 1280×640 upload.
   { name: "social-preview", size: [1280, 640], dpr: 1, out: "docs/assets/social-preview.png",
     html: (ctx) => preview({ title: "Your workbooks, now in node-graph form.", sub: "A node graph calculator. Free and open source.", art: split(ctx.shot, 960) })(ctx) },
+  // README: one graph on desktop under six looks, on a tablet and on a phone.
+  { name: "everywhere", size: [1600, 900], out: "docs/assets/everywhere.png",
+    html: ({ shot, w, h }) => `<div style="position:relative;width:${w}px;height:${h}px;${ground}overflow:hidden">
+      <div style="position:absolute;left:250px;top:40px">${sliced(shot, 1100)}</div>
+      <div style="position:absolute;left:60px;top:430px">${tabletFrame(shot("tablet"), 560)}</div>
+      <div style="position:absolute;left:1300px;top:300px">${phoneFrame(shot("phone"), 240)}</div>
+    </div>` },
   { name: "records", size: [1500, 580], out: "docs/assets/records.png",
     html: ({ shot, w, h }) => `<div style="width:${w}px;height:${h}px;${ground}display:flex;gap:28px;align-items:center;justify-content:center;box-sizing:border-box">
       ${frame(shot("form-light"), "width:700px")}${frame(shot("cards"), "width:700px")}</div>` },

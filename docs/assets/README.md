@@ -15,6 +15,7 @@ after a UI change rather than editing an image by hand.
 | `records.png` | A Frame's Form view (light) beside its Cards view (dark). |
 | `report.png` | A Report's Knap template beside its rendered page (the Report showcase seed). |
 | `obsidian.png` | The demo vault's daily notes read as a table, averaged and charted. |
+| `everywhere.png` | The hero on desktop cut into six looks (both themes, four palettes), on a tablet and on a phone. |
 | `social-preview.png` | GitHub's 1280 × 640 social card. |
 
 `issue-3/` holds the screenshots linked from the reply on issue #3 (XY plots). The reply links them by
