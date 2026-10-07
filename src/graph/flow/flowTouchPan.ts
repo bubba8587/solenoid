@@ -20,6 +20,8 @@ export function installTouchCardPan(
 
   const claims = (t: EventTarget | null): boolean => {
     const target = t as HTMLElement | null;
+    // React Flow marks a selectable cable `nopan`, so a pan that starts on one (or that touch adjustment snaps onto its wide hit stroke) would go nowhere; a tap still selects it.
+    if (target?.closest?.(".react-flow__edge")) return !target.closest(CONTROL_SELECTOR);
     const nodeEl = target?.closest?.(".react-flow__node") as HTMLElement | null;
     if (!nodeEl) return false;
     if (nodeEl.classList.contains("selected")) return false;
