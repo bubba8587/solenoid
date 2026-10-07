@@ -1,15 +1,21 @@
 # README screenshots
 
-Images embedded by the top-level `README.md`. Captured from the desktop app (dark
-theme). Replace in place to refresh; keep the filenames stable so the README keeps working.
+Images embedded by the top-level `README.md`, plus `social-preview.png` (upload it in the GitHub repo's Settings →
+General → Social preview). Every one is drawn from the live app by `node scripts/site-shots.mjs`, which also draws
+the site's link-preview cards in `public/og-*.png`; the graphs and framing live in `scripts/site-shots/`. Rerun it
+after a UI change rather than editing an image by hand.
 
 | File | What it shows |
 |---|---|
-| `hero.png` | The Break-Even Analysis seed — grouped inputs feeding the calculation, with a live results readout. The flagship shot. |
-| `pivot.png` | Several pivot views over one Orders source plus an input switcher, each node previewing its frame. |
-
-Optional additions if you want to grow the gallery later: a Format Controller unit
-chain (Unit Flow seed) and a Cube drill-in popup (Cubes seed).
+| `hero.png` | Solar payback (`solar-payback.json`), the whole app at 125% browser zoom. |
+| `types.png` | A team roster Frame split into typed lists, and nested into a Cube. |
+| `units.png` | Units through a road trip: a mile column summed, a derived speed, Convert, dollars. |
+| `formulas.png` | One relation two ways: PMT in an Expression, the same formula solved backwards in an Equation. |
+| `table-verbs.png` | Orders grouped, sorted, charted and pivoted. |
+| `records.png` | A Frame's Form view (light) beside its Cards view (dark). |
+| `report.png` | A Report's Knap template beside its rendered page (the Report showcase seed). |
+| `obsidian.png` | The demo vault's daily notes read as a table, averaged and charted. |
+| `social-preview.png` | GitHub's 1280 × 640 social card. |
 
 `issue-3/` holds the screenshots linked from the reply on issue #3 (XY plots). The reply links them by
 commit, so the folder can be deleted without breaking it.
