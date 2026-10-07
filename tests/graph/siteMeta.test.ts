@@ -1,6 +1,6 @@
 // [[B3]] sameNodeEverywhere
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { SITE_PAGES, SITE_ORIGIN, pageHtml, type SitePage } from "../../src/graph/landing/siteMeta";
 
 const index = readFileSync("index.html", "utf8");
@@ -14,6 +14,9 @@ describe("site page HTML", () => {
       expect(html).toContain(`<meta name="description" content="${page.description}"`);
       expect(html).toContain(`<meta property="og:url" content="${SITE_ORIGIN}${page.path}"`);
       expect(html.match(/<title>/g)).toHaveLength(1);
+      expect(html).toContain(`<meta property="og:image" content="${SITE_ORIGIN}${page.image}"`);
+      expect(html).toContain(`<meta name="twitter:image" content="${SITE_ORIGIN}${page.image}"`);
+      expect(existsSync(`public${page.image}`), page.image).toBe(true);
     }
   });
 

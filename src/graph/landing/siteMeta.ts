@@ -5,6 +5,9 @@ export interface SitePageMeta {
   path: string;
   title: string;
   description: string;
+  /** The link-preview card in `public/`, drawn by scripts/site-shots.mjs at 2400 × 1260. */
+  image: string;
+  imageAlt: string;
 }
 
 export type SitePage = "about" | "obsidian" | "download" | "examples" | "packs";
@@ -15,27 +18,37 @@ export const SITE_PAGES: Record<SitePage, SitePageMeta> = {
     title: "Solenoid · Your workbooks, now in node-graph form",
     description:
       "Build your spreadsheets piece by piece. Each step is a card on a canvas, wired to the next, so a complex calculation stays easy to follow.",
+    image: "/og-hero.png",
+    imageAlt: "A Solenoid graph in dark and light themes: inputs wired into formulas, a payback chart and a break-even date",
   },
   obsidian: {
     path: "/obsidian",
     title: "Solenoid · The computation layer for your vault",
     description:
       "The Solenoid Properties plugin puts lists, tables, frames and cubes into Obsidian's properties, and the Solenoid app computes over your vault and writes the results back.",
+    image: "/og-obsidian.png",
+    imageAlt: "A folder of Obsidian daily notes read as a table, averaged over seven days and charted in Solenoid",
   },
   download: {
     path: "/download",
     title: "Solenoid · Download",
     description: "Free and open source. Runs in the browser, or as a desktop app on Windows and Linux.",
+    image: "/og-download.png",
+    imageAlt: "Solenoid on a desktop and on a phone",
   },
   examples: {
     path: "/examples",
     title: "Solenoid · Examples",
     description: "Every graph here ships in the app. Open one to load it on your canvas and take it apart.",
+    image: "/og-examples.png",
+    imageAlt: "Four example graphs in Solenoid: a sales leaderboard, unit conversions, typed lists and a rendered report",
   },
   packs: {
     path: "/packs",
     title: "Solenoid · Packs",
     description: "Packs add nodes and functions for a domain, from geometry and health to circuits, fluids and chemistry.",
+    image: "/og-packs.png",
+    imageAlt: "Pack cards in Solenoid: moon phase, a resistor color code, gold from the periodic table and the molar mass of glucose",
   },
 };
 
@@ -59,6 +72,9 @@ export function pageHtml(indexHtml: string, page: SitePageMeta): string {
     [/(<meta property="og:description" content=")[^"]*(")/, desc],
     [/(<meta property="og:url" content=")[^"]*(")/, `${SITE_ORIGIN}${page.path}`],
     [/(<link rel="canonical" href=")[^"]*(")/, `${SITE_ORIGIN}${page.path}`],
+    [/(<meta property="og:image" content=")[^"]*(")/, `${SITE_ORIGIN}${page.image}`],
+    [/(<meta name="twitter:image" content=")[^"]*(")/, `${SITE_ORIGIN}${page.image}`],
+    [/(<meta property="og:image:alt" content=")[^"]*(")/, escapeAttr(page.imageAlt)],
   ];
   let out = indexHtml;
   for (const [re, value] of swaps) {
