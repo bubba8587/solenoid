@@ -21,9 +21,13 @@
   cursor: pointer;
   white-space: nowrap;
 }
+.solenoid-segbtn + .solenoid-segbtn { margin-left: -1px; }
 .solenoid-segbtn:first-child { border-radius: 3px 0 0 3px; }
-.solenoid-segbtn:last-child  { border-radius: 0 3px 3px 0; border-left: none; }
+.solenoid-segbtn:last-child  { border-radius: 0 3px 3px 0; }
+/* Neighbors share one seam; the selected segment draws its whole border over them. */
 .solenoid-segbtn--on {
+  position: relative;
+  z-index: 1;
   background: color-mix(in srgb, var(--text) 10%, var(--surface-sunken));
   color: var(--text);
 }
