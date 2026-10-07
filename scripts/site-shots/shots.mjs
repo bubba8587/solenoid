@@ -32,9 +32,11 @@ export const SHOTS = [
 ];
 
 // ── Cards ───────────────────────────────────────────────────────────────────────────────────────────────────────
-// DESIGN.md's instrument panel: the canvas void with its dot grid, the gold coil wordmark, Atkinson type, flat.
+// DESIGN.md's instrument panel: the site's page color, the gold coil wordmark, Atkinson type, flat.
 const INK = "#e8e8e8", DIM = "#9aa0a6", GOLD = "#f5b914", VOID = "#0b0b0b", LINE = "#2d2d2d";
-const ground = `background:${VOID} radial-gradient(circle, #2a2a2a 1.2px, transparent 1.4px) 0 0 / 22px 22px;`;
+// The site's own page color (`--app-bg`), flat: the dot grid belongs to the canvas inside each screenshot, never around it.
+const PAGE = "#141414";
+const ground = `background:${PAGE};`;
 const frame = (src, css = "") =>
   `<img src="${src}" style="display:block;border:1px solid ${LINE};border-radius:10px;${css}">`;
 const wordmark = (asset, size = 30) => `<div style="display:flex;align-items:center;gap:${size * 0.4}px">
