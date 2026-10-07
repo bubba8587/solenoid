@@ -1,6 +1,6 @@
 // [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem (DESIGN.md § Voice)
 import { useEffect } from "react";
-import { SiteHeader, SiteFooter } from "./siteNav";
+import { SiteHeader, SiteFooter, SiteThumb } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
@@ -47,8 +47,11 @@ export default function ExamplesPage() {
                 <div className="sol-gallery__grid">
                   {group.ids.map((id) => (
                     <a key={id} href={`/?seed=${id}`} className="sol-gallery__card">
-                      <span className="sol-gallery__card-name">{SEEDS[id].label}</span>
-                      <span className="sol-gallery__card-open" aria-hidden="true">Open →</span>
+                      <SiteThumb kind="examples" id={id} />
+                      <span className="sol-gallery__card-row">
+                        <span className="sol-gallery__card-name">{SEEDS[id].label}</span>
+                        <span className="sol-gallery__card-open" aria-hidden="true">Open →</span>
+                      </span>
                     </a>
                   ))}
                 </div>

@@ -3,6 +3,7 @@
 // Starts the dev server if it is down. Each shot opens its graph as the only document of a fresh profile.
 //   node scripts/site-shots.mjs [name…]        every shot then every card, or only the named ones
 //   node scripts/site-shots.mjs --labels <seed|graph.json>   print each card's and group's label, for framing
+//   node scripts/site-shots.mjs --thumbs [id…]   the /examples and /packs tile thumbnails, into public/thumbs/
 // Raw captures land in .dev/site-shots/; each shot or card with `out` is also written there (repo-relative).
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -11,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 import { expand } from "./shot-graph-expand.mjs";
-import { SHOTS, CARDS } from "./site-shots/shots.mjs";
+import { SHOTS, CARDS, THUMB_FOCUS } from "./site-shots/shots.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const RAW = join(ROOT, ".dev", "site-shots");
@@ -22,9 +23,10 @@ mkdirSync(RAW, { recursive: true });
 // The overlays a picture of the work never wants: the socket legend, the minimap, transient toasts.
 const HIDE = [".solenoid-legend", ".solenoid-minimap", ".solenoid-toast", ".solenoid-toasts"];
 // A canvas-only crop also drops the canvas's floating corner controls, so the framing needs no clearance for them.
-const HIDE_CANVAS = [".solenoid-outline__open-pill", ".solenoid-nav"];
+const HIDE_CANVAS = [".solenoid-outline__open-pill", ".solenoid-nav", ".solenoid-hud-stack"];
 
 function loadGraph(src) {
+  if (typeof src === "object") return expand(src);
   const seedFile = join(ROOT, "src", "graph", "seedGraphs", `${src}.json`);
   const file = existsSync(seedFile) ? seedFile : join(ROOT, "scripts", "site-shots", src);
   const raw = JSON.parse(readFileSync(file, "utf8"));
@@ -65,7 +67,7 @@ async function openGraph(browser, shot) {
     if (palette) localStorage.setItem("solenoid.palette", palette);
   }, doc, shot.theme ?? "dark", shot.palette ?? null);
   await page.goto(APP, { waitUntil: "networkidle2", timeout: 90_000 });
-  await page.waitForSelector(".solenoid-node", { timeout: 30_000 });
+  if (graph.nodes.length) await page.waitForSelector(".solenoid-node", { timeout: 30_000 });
   await page.waitForFunction(() => window.__spike?.revealPhase?.() === "idle", { timeout: 30_000 }).catch(() => {});
   await sleep(shot.settle ?? 2500);
   return { ctx, page };
@@ -93,7 +95,9 @@ async function frameCards(page, f) {
     const want = (f.labels ?? []).map((l) => l.toLowerCase());
     const nodes = ed.getNodes().filter((n) => {
       const l = String(n.label ?? "").toLowerCase();
-      return !want.length || want.some((w) => (w.startsWith("=") ? l === w.slice(1) : l.includes(w)) || n.id === w);
+      // "=x" matches a label exactly, "g:x" only a group with that exact label, anything else a label containing it.
+      return !want.length || want.some((w) => (w.startsWith("g:") ? n.constructor.name === "GroupNode" && l === w.slice(2)
+        : w.startsWith("=") ? l === w.slice(1) : l.includes(w)) || n.id === w);
     });
     if (!nodes.length) return { error: `no card matches ${JSON.stringify(f.labels)}` };
     const k0 = vw.transform.k;
@@ -176,6 +180,20 @@ async function runShot(browser, shot) {
     const bare = shot.crop === "canvas";
     await page.addStyleTag({ content: `${[...HIDE, ...(bare ? HIDE_CANVAS : []), ...(shot.hide ?? [])].join(",")} { display: none !important; }` });
     if (shot.css) await page.addStyleTag({ content: shot.css });
+    if (shot.build) {
+      await page.evaluate(buildPack, shot.build);
+      await sleep(1500);
+    }
+    if (shot.expand) {
+      // Collapsed groups open first, so a focus on one frames its members rather than its pill.
+      await page.evaluate(async () => {
+        const { getEditor, getView } = await import("/src/graph/process.ts");
+        const { setGroupsCollapsed } = await import("/src/graph/groupPush.ts");
+        const groups = getEditor().getNodes().filter((n) => n.constructor.name === "GroupNode" && n.collapsed);
+        if (groups.length) await setGroupsCollapsed(getEditor(), getView(), groups, false);
+      });
+      await sleep(1200);
+    }
     if (shot.fitGroups) {
       // A hand-placed graph gives its groups rough boxes; wrap each around its painted members as the app's group fit does.
       await page.evaluate(async () => {
@@ -234,11 +252,75 @@ async function runCard(browser, card) {
   }
 }
 
+/** In the page: a pack's own cards on an empty canvas, custom cards before formula presets, in rows of three. */
+async function buildPack({ pack: packId, max = 6 }) {
+  const { BUILTIN_PACKS } = await import("/src/graph/packs.ts");
+  const { FLAT_CATALOG, addNodeByCatalogType } = await import("/src/graph/catalogUtils.ts");
+  const { getEditor, getView, processGraph } = await import("/src/graph/process.ts");
+  const { unselectAllNodes } = await import("/src/graph/canvasCommands.ts");
+  const pack = BUILTIN_PACKS.find((p) => p.id === packId);
+  const types = [...(pack.nodes ?? []).map((n) => n.entry.type), ...(pack.tags ?? [])];
+  const isPreset = (t) => /^(ExpressionNode|EquationNode)$/.test(FLAT_CATALOG.get(t)?.create().constructor.name ?? "");
+  const chosen = [...types.filter((t) => !isPreset(t)), ...types.filter(isPreset)].slice(0, max);
+  const ed = getEditor(), vw = getView();
+  const ids = [];
+  for (const t of chosen) {
+    const before = new Set(ed.getNodes().map((n) => n.id));
+    if (await addNodeByCatalogType(t)) ids.push(ed.getNodes().find((n) => !before.has(n.id)).id);
+  }
+  unselectAllNodes();
+  await processGraph();
+  await new Promise((r) => setTimeout(r, 600));
+  const k = vw.transform.k;
+  const size = (id) => { const r = vw.nodeElement(id)?.getBoundingClientRect(); return r ? { w: r.width / k, h: r.height / k } : { w: 240, h: 200 }; };
+  let y = 0;
+  for (let row = 0; row * 3 < ids.length; row++) {
+    const cells = ids.slice(row * 3, row * 3 + 3);
+    let x = 0;
+    for (const id of cells) { await vw.moveNode(id, { x, y }); x += size(id).w + 48; }
+    y += Math.max(...cells.map((id) => size(id).h)) + 48;
+  }
+}
+
+/** One thumbnail per example and per pack, in both themes, for the site's /examples and /packs tiles. */
+async function runThumbs(browser, only) {
+  const { ctx, page } = await openGraph(browser, { graph: { nodes: [] }, settle: 500 });
+  const lists = await page.evaluate(async () => {
+    const { SEED_GROUPS } = await import("/src/graph/seeds.ts");
+    const { BUILTIN_PACKS } = await import("/src/graph/packs.ts");
+    return { examples: SEED_GROUPS.flatMap((g) => g.ids), packs: BUILTIN_PACKS.map((p) => p.id) };
+  });
+  await ctx.close();
+  for (const kind of ["examples", "packs"]) {
+    const dir = join(ROOT, "public", "thumbs", kind);
+    mkdirSync(dir, { recursive: true });
+    for (const id of lists[kind].filter((id) => !only.length || only.includes(id))) {
+      for (const theme of ["dark", "light"]) {
+        const name = `thumb-${kind}-${id}-${theme}`;
+        console.log(name);
+        const focus = THUMB_FOCUS[id] ?? {};
+        await runShot(browser, {
+          name, theme, size: [960, 610], dpr: 1.5, crop: "canvas", settle: kind === "examples" ? 3500 : 1500,
+          ...(kind === "examples" ? { graph: id }
+            : existsSync(join(ROOT, "scripts", "site-shots", "packs", `${id}.json`)) ? { graph: `packs/${id}.json` }
+            : { graph: { nodes: [] }, build: { pack: id } }),
+          expand: focus.expand,
+          frame: { labels: focus.labels ?? [], pad: 24, maxK: kind === "packs" ? 1.6 : 0.9 },
+        });
+        execFileSync("convert", [join(RAW, `${name}.png`), "-resize", "640x360^", "-gravity", "center", "-extent", "640x360",
+          "-quality", "80", join(dir, `${id}-${theme}.webp`)]);
+      }
+    }
+  }
+}
+
 const argv = process.argv.slice(2);
 execFileSync(process.execPath, [join(ROOT, "scripts", "dev-up.mjs")], { stdio: "inherit" });
 const browser = await puppeteer.launch({ executablePath: browserPath(), headless: true, args: ["--no-sandbox"] });
 try {
-  if (argv[0] === "--labels") {
+  if (argv[0] === "--thumbs") {
+    await runThumbs(browser, argv.slice(1));
+  } else if (argv[0] === "--labels") {
     const { ctx, page } = await openGraph(browser, { graph: argv[1] });
     for (const l of await labels(page)) console.log(l);
     await ctx.close();

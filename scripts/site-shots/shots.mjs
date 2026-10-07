@@ -99,3 +99,13 @@ export const CARDS = [
     html: ({ shot, w, h }) => `<div style="width:${w}px;height:${h}px;${ground}display:flex;gap:28px;align-items:center;justify-content:center;box-sizing:border-box">
       ${frame(shot("form-light"), "width:700px")}${frame(shot("cards"), "width:700px")}</div>` },
 ];
+
+/** A thumbnail frames every card unless its example names the cards to frame here; `expand` opens collapsed groups first. */
+export const THUMB_FOCUS = {
+  "personal-finance": { expand: true, labels: ["g:dashboard"] },
+  "table-verbs": { labels: ["g:pivot: share and subtotals", "g:nearest match"] },
+  "record-cards": { labels: ["g:row lookup", "g:detail output", "g:list view", "=parts"] },
+  "cards-from-files": { labels: ["=products", "filter → rated", "record: cards", "catalog cards"] },
+  "chart-showcase": { labels: ["g:shares & profiles", "g:distribution", "g:treemap", "g:sankey", "g:series frame", "g:gauge", "g:heatmap"] },
+  "product-launch-gantt": { labels: ["g:schedule + gantt"] },
+};

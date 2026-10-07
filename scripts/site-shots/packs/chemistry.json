@@ -1,0 +1,57 @@
+{
+  "label": "chemistry",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Chemistry Basics\n\n- Element\n- Molar Mass\n- Dilution",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "el",
+      "type": "ElementNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "Element",
+        "symbol": "Au"
+      }
+    },
+    {
+      "id": "mm",
+      "type": "MolarMassNode",
+      "x": 380,
+      "y": 200,
+      "init": {
+        "label": "Glucose"
+      },
+      "stringLiterals": {
+        "formula": "C6H12O6"
+      }
+    },
+    {
+      "id": "ph",
+      "type": "ExpressionNode",
+      "x": 660,
+      "y": 0,
+      "init": {
+        "label": "Dilution (C\u2082)",
+        "expr": "c1*v1/v2",
+        "locked": true
+      },
+      "literals": {
+        "c1": 2,
+        "v1": 0.05,
+        "v2": 0.25
+      }
+    }
+  ],
+  "cables": []
+}

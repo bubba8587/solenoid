@@ -39,6 +39,14 @@ export const SITE_NAV: { href: string; label: string }[] = [
   { href: "/download", label: "Download" },
 ];
 
+/** A gallery tile's picture in the site's theme, drawn from the live app by `scripts/site-shots.mjs --thumbs`. */
+export function SiteThumb({ kind, id }: { kind: "examples" | "packs"; id: string }) {
+  const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
+  return (
+    <img className="sol-thumb" src={`/thumbs/${kind}/${id}-${mode}.webp`} width={640} height={360} alt="" loading="lazy" decoding="async" />
+  );
+}
+
 export function ThemeToggle() {
   const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
   const dark = mode === "dark";

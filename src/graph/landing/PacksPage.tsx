@@ -1,6 +1,6 @@
 // [[B3]] sameNodeEverywhere, [[B15]] leanCore, [[B14]] oneDesignSystem (DESIGN.md § Voice)
 import { useEffect } from "react";
-import { SiteHeader, SiteFooter } from "./siteNav";
+import { SiteHeader, SiteFooter, SiteThumb } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
@@ -45,6 +45,7 @@ export default function PacksPage() {
                 <div className="sol-packs__grid">
                   {group.packs.map((pack) => (
                     <div key={pack.id} className="sol-packs__card">
+                      <SiteThumb kind="packs" id={pack.id} />
                       <div className="sol-packs__card-head">
                         <h3>{pack.name}</h3>
                         {pack.defaultActive && <span className="sol-packs__badge">On by default</span>}

@@ -1,0 +1,98 @@
+{
+  "label": "geometry",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Geometry\n\n- Triangle Solver\n- Regular Polygon Area\n- Distance (2D)\n- Hypotenuse",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "a",
+      "type": "ValueInputNode",
+      "x": 380,
+      "y": 0,
+      "collapsed": true,
+      "init": {
+        "label": "Side a",
+        "op": "number",
+        "value": "3"
+      }
+    },
+    {
+      "id": "b",
+      "type": "ValueInputNode",
+      "x": 380,
+      "y": 105,
+      "collapsed": true,
+      "init": {
+        "label": "Side b",
+        "op": "number",
+        "value": "4"
+      }
+    },
+    {
+      "id": "c",
+      "type": "ValueInputNode",
+      "x": 380,
+      "y": 210,
+      "collapsed": true,
+      "init": {
+        "label": "Side c",
+        "op": "number",
+        "value": "5"
+      }
+    },
+    {
+      "id": "tri",
+      "type": "TriangleSolverNode",
+      "x": 640,
+      "y": 0,
+      "init": {}
+    },
+    {
+      "id": "poly",
+      "type": "ExpressionNode",
+      "x": 940,
+      "y": 0,
+      "init": {
+        "label": "Regular Polygon Area",
+        "expr": "n*s^2/(4*TAN(PI()/n))",
+        "locked": true
+      },
+      "literals": {
+        "n": 6,
+        "s": 2
+      }
+    },
+    {
+      "id": "dist",
+      "type": "ExpressionNode",
+      "x": 940,
+      "y": 300,
+      "init": {
+        "label": "Distance (2D)",
+        "expr": "SQRT((x2-x1)^2+(y2-y1)^2)",
+        "locked": true
+      },
+      "literals": {
+        "x1": 1,
+        "y1": 2,
+        "x2": 7,
+        "y2": 10
+      }
+    }
+  ],
+  "cables": [
+    "a.value -> tri.a",
+    "b.value -> tri.b",
+    "c.value -> tri.c"
+  ]
+}

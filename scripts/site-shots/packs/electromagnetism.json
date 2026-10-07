@@ -1,0 +1,56 @@
+{
+  "label": "electromagnetism",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Electromagnetism\n\n- EM Spectrum Band\n- Physics Constant\n- Coulomb Force",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "band",
+      "type": "EmSpectrumNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "EM Spectrum Band"
+      },
+      "literals": {
+        "freq": 550000000000000.0
+      }
+    },
+    {
+      "id": "const",
+      "type": "PhysicsConstantNode",
+      "x": 660,
+      "y": 0,
+      "init": {
+        "label": "Physics Constant"
+      }
+    },
+    {
+      "id": "coul",
+      "type": "ExpressionNode",
+      "x": 940,
+      "y": 0,
+      "init": {
+        "label": "Coulomb Force",
+        "expr": "8.9875517923*10^9*q1*q2/r^2",
+        "locked": true
+      },
+      "literals": {
+        "q1": 1e-06,
+        "q2": 2e-06,
+        "r": 0.05
+      }
+    }
+  ],
+  "cables": []
+}
