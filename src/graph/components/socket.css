@@ -98,9 +98,8 @@ html.is-mobile {
   .solenoid-conduit:not(.solenoid-conduit--selected) .solenoid-conduit__stripe {
     pointer-events: auto;
   }
-  /* The resize grips stay grabbable on an unselected node, deliberate corner targets like a socket. */
-  .solenoid-node:not(.solenoid-node--selected) .solenoid-node__resize-handle,
-  .solenoid-node:not(.solenoid-node--selected) .solenoid-field-resize {
+  /* The card's resize grip stays grabbable on an unselected node, a deliberate corner target like a socket. A text field's grip does not: inside the card, touch adjustment snaps a nearby pan onto it. */
+  .solenoid-node:not(.solenoid-node--selected) .solenoid-node__resize-handle {
     pointer-events: auto;
   }
   /* During a cable drag every socket is a live drop target again, on any node. */
