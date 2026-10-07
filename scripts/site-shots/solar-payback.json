@@ -20,7 +20,7 @@
       "id": "cost",
       "type": "ValueInputNode",
       "x": 0,
-      "y": 110,
+      "y": 105,
       "collapsed": true,
       "init": {
         "label": "Install cost",
@@ -35,7 +35,7 @@
       "id": "rise",
       "type": "ValueInputNode",
       "x": 0,
-      "y": 220,
+      "y": 210,
       "collapsed": true,
       "init": {
         "label": "Rate rise / yr",
@@ -49,7 +49,7 @@
       "id": "installed",
       "type": "ValueInputNode",
       "x": 0,
-      "y": 330,
+      "y": 315,
       "collapsed": true,
       "init": {
         "label": "Installed",
@@ -60,7 +60,7 @@
     {
       "id": "net",
       "type": "ExpressionNode",
-      "x": 290,
+      "x": 262,
       "y": 0,
       "init": {
         "label": "Net by year",
@@ -70,8 +70,8 @@
     {
       "id": "payback",
       "type": "ExpressionNode",
-      "x": 290,
-      "y": 300,
+      "x": 262,
+      "y": 296,
       "init": {
         "label": "Payback years",
         "expr": "COUNTIF(net, \"<0\") + 1"
@@ -80,7 +80,7 @@
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 600,
+      "x": 562,
       "y": 0,
       "init": {
         "label": "25 years",
@@ -93,8 +93,8 @@
     {
       "id": "even",
       "type": "ExpressionNode",
-      "x": 600,
-      "y": 330,
+      "x": 562,
+      "y": 312,
       "init": {
         "label": "Breaks even on",
         "expr": "EDATE(installed, years * 12)",

@@ -32,8 +32,10 @@ function loadGraph(src) {
 async function openGraph(browser, shot) {
   const ctx = await browser.createBrowserContext();
   const page = await ctx.newPage();
+  // `zoom` is browser zoom: the same output pixels with a smaller CSS viewport, so the chrome reads larger.
   const [w, h] = shot.size ?? [1440, 900];
-  await page.setViewport({ width: w, height: h, deviceScaleFactor: shot.dpr ?? 2 });
+  const zoom = shot.zoom ?? 1;
+  await page.setViewport({ width: Math.round(w / zoom), height: Math.round(h / zoom), deviceScaleFactor: (shot.dpr ?? 2) * zoom });
   page.on("pageerror", (e) => console.log(`  [pageerror] ${e.message}`));
   const graph = loadGraph(shot.graph);
   const doc = { id: "shot", name: shot.title ?? graph.label ?? "Untitled", graph, updatedAt: Date.now() };
