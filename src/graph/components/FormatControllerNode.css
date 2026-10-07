@@ -109,14 +109,14 @@
   padding: 0;
   font-size: 12px;
   line-height: 1;
-  background: var(--border-subtle);
+  background: color-mix(in srgb, var(--text) 10%, var(--surface-sunken));
   border: 1px solid var(--border-strong);
   border-radius: 3px;
   color: var(--text);
   cursor: pointer;
 }
 .solenoid-fc__toggle--on {
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), var(--border-subtle));
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), color-mix(in srgb, var(--text) 10%, var(--surface-sunken)));
   border-color: var(--node-accent, var(--accent));
   color: var(--text);
 }

@@ -1338,10 +1338,10 @@ body.solenoid-scrubbing * {
   order: -1;
 }
 .solenoid-seg--op .solenoid-segbtn {
-  background: var(--border-subtle);
+  background: color-mix(in srgb, var(--text) 10%, var(--surface-sunken));
 }
 .solenoid-seg--op .solenoid-segbtn--on {
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), var(--border-subtle));
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), color-mix(in srgb, var(--text) 10%, var(--surface-sunken)));
   border-color: var(--node-accent, var(--accent));
   color: var(--text);
 }
