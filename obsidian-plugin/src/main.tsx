@@ -57,7 +57,7 @@ interface PluginData {
   suggestColumns?: boolean;
 }
 
-const SOLENOID_LINKS = ["https://solenoid-ngc.vercel.app", "https://github.com/bubba8587/solenoid"];
+const SOLENOID_LINKS = ["https://solenoid-ngc.com", "https://github.com/bubba8587/solenoid"];
 
 const COLUMN_TYPES_EVENT = "solenoid-properties:column-types";
 const FRAME_KIND = PROPERTY_KINDS.find((kind) => kind.id === "solenoid-frame")!;

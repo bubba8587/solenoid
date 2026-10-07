@@ -14,7 +14,7 @@ export const CUTS = {
     end: {
       lead: "Free and open source.",
       sub: "Runs in the browser, or as a desktop app on Windows and Linux.",
-      url: "solenoid-ngc.vercel.app",
+      url: "solenoid-ngc.com",
     },
   },
   obsidian: {
@@ -28,7 +28,7 @@ export const CUTS = {
     end: {
       lead: "Free in Obsidian's community plugins.",
       sub: "Solenoid itself is free and open source, in the browser or on Windows and Linux.",
-      url: "solenoid-ngc.vercel.app/obsidian",
+      url: "solenoid-ngc.com/obsidian",
     },
     // Its backdrops are still screens, so compose.mjs pushes in on them.
     push: true,
@@ -47,7 +47,7 @@ export const CUTS = {
     end: {
       lead: "Free in Obsidian's community plugins.",
       sub: "Solenoid itself is free and open source, in the browser or on Windows and Linux.",
-      url: "solenoid-ngc.vercel.app/obsidian",
+      url: "solenoid-ngc.com/obsidian",
     },
     push: true,
   },

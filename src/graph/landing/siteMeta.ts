@@ -1,5 +1,5 @@
 // [[B3]] sameNodeEverywhere
-export const SITE_ORIGIN = "https://solenoid-ngc.vercel.app";
+export const SITE_ORIGIN = "https://solenoid-ngc.com";
 
 export interface SitePageMeta {
   path: string;

@@ -40,7 +40,7 @@ The Frame Input node allows you to define a custom Form Input layout for inputti
 
 ## Try it
 
-[solenoid-ngc.vercel.app](https://solenoid-ngc.vercel.app) runs in your browser, on desktop and mobile. For improved performance, you can enable the HTML-in-Canvas experimental Chrome flag and enable usage of that renderer in Settings.
+[solenoid-ngc.com](https://solenoid-ngc.com) runs in your browser, on desktop and mobile. For improved performance, you can enable the HTML-in-Canvas experimental Chrome flag and enable usage of that renderer in Settings.
 
 ## Unsupported Features
 

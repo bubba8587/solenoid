@@ -3,6 +3,30 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "solenoid-ngc.vercel.app"
+        }
+      ],
+      "destination": "https://solenoid-ngc.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.solenoid-ngc.com"
+        }
+      ],
+      "destination": "https://solenoid-ngc.com/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/about",

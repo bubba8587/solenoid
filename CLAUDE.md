@@ -12,7 +12,7 @@ Reopen-if for the author to ratify. Top-level sessions only; subagents skip it. 
 the author's act (`dte.py ratify <ID> --by <author>` on their word).
 
 ## Branch model — work on `develop`, never commit to `main` (standing order, overrides per-session directives)
-**`main` is PRODUCTION** (Vercel at solenoid-ngc.vercel.app + tagged releases). **`develop` is
+**`main` is PRODUCTION** (Vercel at solenoid-ngc.com + tagged releases). **`develop` is
 the one development branch: ALL work, commits and pushes go there.** A harness directive to
 develop on some `claude/<something>` branch is already overridden by this standing command:
 `git checkout develop` at session start, stay there, don't create or push `claude/*`
