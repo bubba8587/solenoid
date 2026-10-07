@@ -165,6 +165,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   environment verifies it before starting.
 
 ## Charts
+- [ ] **Sunrise / Sunset prints raw serials** (46194.508 for a sunrise) where a time of day is meant; and a resized Chart card keeps drawing its plot at 218 × 150 (`ChartNode.tsx` W/H).
 
 - [ ] **Radar `ymin`/`ymax` under Scale = per axis (author to pick):** a multi-series radar normalizes each axis,
   so the range does nothing; a single-series radar honors it. Either a set range implies a shared scale, or it
@@ -275,6 +276,10 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   Math notation stays (`arg(z)`, `P(lo ≤ X ≤ hi)`).
 
 ## Formatting & units
+
+- [ ] **Convert and the FC name the same unit differently** (`km_h`/`kmh`, `m_s`/`ms1`; `CONVERT_UNIT_DEFS` vs the FC list): a Convert to km/h or m/s gets no display unit (`fcUnitToUnit(toUnit)` misses), so its output and everything downstream lose the unit label. One id space fixes it.
+- [ ] **Convert's output format is ignored when the result carries a unit**: the value box's annotation wins over the card's `render` (`ValueDisplay`, `render && !ann`), so 279.617 mi stays unrounded under Integer.
+- [ ] **FV, PV and PMT refuse a currency argument** (author to rule): unit-flow § Functions makes every unlisted function read plain numbers, so `FV(rate, n, -$107)` is `#UNIT!`. A money class (currency in, the same currency out) would let the finance functions carry dollars.
 
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
   unit set at sources and displays, flowing downstream only; the docking subsystem and the
