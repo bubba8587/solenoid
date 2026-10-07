@@ -24,6 +24,6 @@
 .solenoid-segbtn:first-child { border-radius: 3px 0 0 3px; }
 .solenoid-segbtn:last-child  { border-radius: 0 3px 3px 0; border-left: none; }
 .solenoid-segbtn--on {
-  background: var(--surface-raised);
+  background: var(--border-subtle);
   color: var(--text);
 }
