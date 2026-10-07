@@ -55,6 +55,12 @@ warning is expected.
   box per variable (a, b, c, A, B, C). The Triangle Solver keeps its Area, Perimeter and Valid boxes. Decide it with the
   item above (both are what an unknown's output is) and amend C47.
 
+## Sets pack
+- [ ] **COUNT DISTINCT on a text list is `#TYPE!`** (found 2026-10-07; numbers work): it is an op on the Aggregate card, whose
+  input is a number list (`listIn`), so names never reach it, yet counting distinct names is the Sets pack's use for it.
+  COUNTBLANK already reads the raw list; COUNT DISTINCT needs a socket that takes any scalar list (read input-roles and the
+  socket lattice before retyping it).
+
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
 - [ ] **Paired-list aggregate**: SUMPRODUCT, the SUMX functions, CORREL, COVARIANCE and a weighted average as one two-list Aggregate (the author said to wait), and the remaining smaller pairs.
