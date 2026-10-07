@@ -50,6 +50,10 @@ warning is expected.
   nowhere to go: a negative discriminant is `#SOLVE!`. The fix decides what an unknown's output is
   when its answer leaves the number family (a retype, [[B11]] maximalMerge, or fixed wider
   sockets) and amends C47. Quadratic Roots already answers the conjugate pair.
+- [ ] **Solver cards show only what they solve** (author 2026-10-07): the Equation node, and the Triangle Solver with it,
+  take every variable as an ordinary input and grow an output box only for the unknown left unwired, instead of a hero
+  box per variable (a, b, c, A, B, C). The Triangle Solver keeps its Area, Perimeter and Valid boxes. Decide it with the
+  item above (both are what an unknown's output is) and amend C47.
 
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
