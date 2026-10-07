@@ -1,0 +1,15 @@
+{
+  "label": "Reading list",
+  "nodes": [
+    { "id": "books", "type": "FrameInputNode", "x": 0, "y": 0, "init": { "label": "Reading list" },
+      "stringLiterals": { "layout": "#Title | Title\nAuthor | Finished\nRating | Loved it\nNotes | Notes" },
+      "frame": [
+        { "name": "Title", "cells": ["The Left Hand of Darkness", "Piranesi", "A Psalm for the Wild-Built", "The Dispossessed", "Klara and the Sun", "Project Hail Mary"] },
+        { "name": "Author", "cells": ["Ursula K. Le Guin", "Susanna Clarke", "Becky Chambers", "Ursula K. Le Guin", "Kazuo Ishiguro", "Andy Weir"] },
+        { "name": "Finished", "type": "date", "cells": ["12-Jan-2026", "03-Feb-2026", "21-Feb-2026", "15-Mar-2026", "02-Apr-2026", "28-Apr-2026"] },
+        { "name": "Rating", "cells": [5, 5, 4, 4, 3, 5] },
+        { "name": "Loved it", "cells": ["TRUE", "TRUE", "TRUE", "FALSE", "FALSE", "TRUE"] },
+        { "name": "Notes", "cells": ["Reread the ice crossing.", "The house, the tides, the statues.", "Gentle robot road trip.", "Two worlds, one wall.", "Quiet and sad.", "Fist bump."] } ] }
+  ],
+  "cables": []
+}

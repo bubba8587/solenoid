@@ -1,0 +1,149 @@
+{
+  "label": "Road trip",
+  "nodes": [
+    {
+      "id": "legs",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Legs"
+      },
+      "frame": [
+        {
+          "name": "Leg",
+          "cells": [
+            "Morning",
+            "Afternoon",
+            "Evening"
+          ]
+        },
+        {
+          "name": "Distance",
+          "cells": [
+            85,
+            70,
+            95
+          ],
+          "unit": "mi"
+        }
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "col",
+      "type": "GetColumnNode",
+      "collapsed": true,
+      "init": {
+        "label": "Distance",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Distance"
+      },
+      "x": 290,
+      "y": 68
+    },
+    {
+      "id": "total",
+      "type": "AggregateNode",
+      "init": {
+        "label": "Total distance",
+        "op": "sum"
+      },
+      "x": 510,
+      "y": 40
+    },
+    {
+      "id": "time",
+      "type": "ValueInputNode",
+      "collapsed": true,
+      "init": {
+        "label": "Driving time",
+        "op": "number",
+        "value": "5",
+        "unit": "hr"
+      },
+      "x": 510,
+      "y": 240
+    },
+    {
+      "id": "speed",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Average speed",
+        "expr": "distance / time"
+      },
+      "x": 750,
+      "y": 0
+    },
+    {
+      "id": "kmh",
+      "type": "ConvertNode",
+      "init": {
+        "label": "In mph",
+        "fromUnit": "m_s",
+        "toUnit": "mph"
+      },
+      "x": 1040,
+      "y": 0
+    },
+    {
+      "id": "mi",
+      "type": "ConvertNode",
+      "init": {
+        "label": "In kilometers",
+        "fromUnit": "mi",
+        "toUnit": "km"
+      },
+      "x": 750,
+      "y": 290
+    },
+    {
+      "id": "liters",
+      "type": "ValueInputNode",
+      "collapsed": true,
+      "init": {
+        "label": "Gallons",
+        "op": "number",
+        "value": "8.3"
+      },
+      "x": 0,
+      "y": 300
+    },
+    {
+      "id": "price",
+      "type": "ValueInputNode",
+      "collapsed": true,
+      "init": {
+        "label": "Gas price",
+        "op": "number",
+        "value": "3.80",
+        "format": "decimal",
+        "decimalDigits": 2,
+        "unit": "usd"
+      },
+      "x": 0,
+      "y": 410
+    },
+    {
+      "id": "fuel",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Fuel cost",
+        "expr": "gallons * price"
+      },
+      "x": 260,
+      "y": 300
+    }
+  ],
+  "cables": [
+    "legs.frame -> col.frame",
+    "col.values -> total.list",
+    "total.result -> speed.distance",
+    "time.value -> speed.time",
+    "speed.result -> kmh.in",
+    "total.result -> mi.in",
+    "liters.value -> fuel.gallons",
+    "price.value -> fuel.price"
+  ]
+}

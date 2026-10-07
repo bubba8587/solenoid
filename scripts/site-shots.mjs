@@ -21,6 +21,8 @@ mkdirSync(RAW, { recursive: true });
 
 // The overlays a picture of the work never wants: the socket legend, the minimap, transient toasts.
 const HIDE = [".solenoid-legend", ".solenoid-minimap", ".solenoid-toast", ".solenoid-toasts"];
+// A canvas-only crop also drops the canvas's floating corner controls, so the framing needs no clearance for them.
+const HIDE_CANVAS = [".solenoid-outline__open-pill", ".solenoid-nav"];
 
 function loadGraph(src) {
   const seedFile = join(ROOT, "src", "graph", "seedGraphs", `${src}.json`);
@@ -35,7 +37,21 @@ async function openGraph(browser, shot) {
   // `zoom` is browser zoom: the same output pixels with a smaller CSS viewport, so the chrome reads larger.
   const [w, h] = shot.size ?? [1440, 900];
   const zoom = shot.zoom ?? 1;
-  await page.setViewport({ width: Math.round(w / zoom), height: Math.round(h / zoom), deviceScaleFactor: (shot.dpr ?? 2) * zoom });
+  await page.setViewport({ width: Math.round(w / zoom), height: Math.round(h / zoom), deviceScaleFactor: (shot.dpr ?? 2) * zoom,
+    ...(shot.phone ? { isMobile: true, hasTouch: true, isLandscape: false } : {}) });
+  if (shot.phone) {
+    // The phone model as shot-graph.mjs builds it: a mobile UA and (pointer: coarse) before the app loads.
+    await page.setUserAgent(
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+      { mobile: true, platform: "Android", platformVersion: "14", architecture: "", model: "Pixel 8", brands: [] },
+    );
+    await page.evaluateOnNewDocument(() => {
+      const orig = window.matchMedia.bind(window);
+      window.matchMedia = (q) => /pointer:\s*coarse/.test(q)
+        ? { matches: true, media: q, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } }
+        : orig(q);
+    });
+  }
   page.on("pageerror", (e) => console.log(`  [pageerror] ${e.message}`));
   const graph = loadGraph(shot.graph);
   const doc = { id: "shot", name: shot.title ?? graph.label ?? "Untitled", graph, updatedAt: Date.now() };
@@ -92,7 +108,9 @@ async function frameCards(page, f) {
     // The canvas runs under the header and the status bar; frame inside the band between them.
     const r0 = vw.container.getBoundingClientRect();
     const top = document.querySelector(".solenoid-header")?.getBoundingClientRect().bottom ?? r0.top;
-    const bottom = document.querySelector(".solenoid-statusbar")?.getBoundingClientRect().top ?? r0.bottom;
+    const bars = [...document.querySelectorAll(".solenoid-statusbar, .solenoid-mobile-bar")]
+      .map((e) => e.getBoundingClientRect()).filter((b) => b.height > 0).map((b) => b.top);
+    const bottom = Math.min(r0.bottom, ...bars);
     const c = { left: r0.left, top, width: r0.width, height: bottom - top };
     const pad = f.pad ?? 48;
     // The canvas's own floating controls sit in the band's top corners; keep the cards below them.
@@ -139,9 +157,9 @@ async function clipFor(page, shot) {
       const f = rect(document.querySelector(".react-flow"));
       const top = rect(document.querySelector(".solenoid-header"))?.bottom ?? f.top;
       const bottom = rect(document.querySelector(".solenoid-statusbar"))?.top ?? f.bottom;
-      r = { x: f.left, y: top, width: f.width, height: bottom - top };
+      r = { x: f.left, y: top + 2, width: f.width, height: bottom - top - 2 };
     }
-    else if (crop === "popup") r = rect(document.querySelector(".table-popup") ?? document.querySelector("[role=dialog]"));
+    else if (crop === "popup") r = rect(document.querySelector(".table-popup, .report-panel, [role=dialog]"));
     else if (crop === "nodes") {
       const rs = [...document.querySelectorAll(".react-flow__node")].map(rect)
         .filter((x) => x.right > 0 && x.bottom > 0 && x.left < innerWidth && x.top < innerHeight);
@@ -155,7 +173,8 @@ async function clipFor(page, shot) {
 async function runShot(browser, shot) {
   const { ctx, page } = await openGraph(browser, shot);
   try {
-    await page.addStyleTag({ content: `${[...HIDE, ...(shot.hide ?? [])].join(",")} { display: none !important; }` });
+    const bare = shot.crop === "canvas";
+    await page.addStyleTag({ content: `${[...HIDE, ...(bare ? HIDE_CANVAS : []), ...(shot.hide ?? [])].join(",")} { display: none !important; }` });
     if (shot.css) await page.addStyleTag({ content: shot.css });
     if (shot.fitGroups) {
       // A hand-placed graph gives its groups rough boxes; wrap each around its painted members as the app's group fit does.
@@ -170,7 +189,7 @@ async function runShot(browser, shot) {
     }
     if (shot.preSteps) await runSteps(page, shot.preSteps);
     if (shot.frame) {
-      const res = await frameCards(page, shot.frame);
+      const res = await frameCards(page, bare ? { clearTop: 0, ...shot.frame } : shot.frame);
       if (res.error) throw new Error(res.error);
       console.log(`  framed ${res.matched} cards at k=${res.k}`);
       await sleep(900);
@@ -194,12 +213,16 @@ async function runCard(browser, card) {
     await page.setViewport({ width: w, height: h, deviceScaleFactor: card.dpr ?? 2 });
     const shot = (name) => `data:image/png;base64,${readFileSync(join(RAW, `${name}.png`)).toString("base64")}`;
     const asset = (p) => `data:image/svg+xml;base64,${readFileSync(join(ROOT, p)).toString("base64")}`;
-    await page.goto(`${APP}/favicon.svg`);
-    await page.setContent(`<!doctype html><html><head><base href="${APP}/">
+    const html = `<!doctype html><html><head>
       <link rel="stylesheet" href="/node_modules/@fontsource-variable/atkinson-hyperlegible-next/index.css">
       <link rel="stylesheet" href="/node_modules/@fontsource-variable/atkinson-hyperlegible-mono/index.css">
       <style>html,body{margin:0;width:${w}px;height:${h}px;overflow:hidden;font-family:"Atkinson Hyperlegible Next Variable",sans-serif}</style>
-      </head><body>${card.html({ shot, asset, w, h })}</body></html>`, { waitUntil: "networkidle0" });
+      </head><body>${card.html({ shot, asset, w, h })}</body></html>`;
+    // Served from the app's own origin, so the font files load as they do in the app.
+    const url = `${APP}/__site-shots-card`;
+    await page.setRequestInterception(true);
+    page.on("request", (req) => (req.url() === url ? req.respond({ contentType: "text/html", body: html }) : req.continue()));
+    await page.goto(url, { waitUntil: "networkidle0" });
     await page.evaluate(() => document.fonts.ready);
     await sleep(300);
     const path = join(RAW, `${card.name}.png`);

@@ -1,0 +1,55 @@
+{
+  "label": "Packs",
+  "nodes": [
+    {
+      "id": "day",
+      "type": "ValueInputNode",
+      "collapsed": true,
+      "init": {
+        "label": "Solstice",
+        "op": "date",
+        "value": "21-Jun-2026"
+      },
+      "x": 0,
+      "y": 30
+    },
+    {
+      "id": "moon",
+      "type": "MoonPhaseNode",
+      "init": {},
+      "x": 230,
+      "y": 0
+    },
+    {
+      "id": "res",
+      "type": "ResistorCodeNode",
+      "init": {},
+      "x": 500,
+      "y": 0
+    },
+    {
+      "id": "el",
+      "type": "ElementNode",
+      "init": {
+        "symbol": "Au"
+      },
+      "x": 0,
+      "y": 230
+    },
+    {
+      "id": "mm",
+      "type": "MolarMassNode",
+      "init": {
+        "label": "Glucose"
+      },
+      "stringLiterals": {
+        "formula": "C6H12O6"
+      },
+      "x": 230,
+      "y": 230
+    }
+  ],
+  "cables": [
+    "day.value -> moon.when"
+  ]
+}
