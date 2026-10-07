@@ -365,13 +365,17 @@
   text-transform: uppercase;
   color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 45%, var(--text));
   opacity: 0;
+  /* Hidden, not just transparent, so 300 resting hints cost no paint per pan frame; it flips after the fade-out. */
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 200ms;
+  transition: opacity 200ms, visibility 0s 200ms;
   user-select: none;
 }
 
 .solenoid-node:hover .solenoid-node__type-hint {
   opacity: 0.65;
+  visibility: visible;
+  transition: opacity 200ms;
 }
 
 .solenoid-node__label-input {

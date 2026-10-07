@@ -131,7 +131,7 @@ src/
 | `flow/SolNodeAdapter.tsx` + `flow/SolFlowNode.tsx` | The RF node type: adapts a rete node instance to the registered card component (version-bumped re-renders, ErrorBoundary per card) |
 | `flow/FlowCableEdge.tsx` | The cable renderer (RF edge type; paths from `cablePaths.ts`, visible strokes as `<BaseEdge>`s styled inline, ribbons, run selection, hit path `.solenoid-cable-hit`) |
 | `flow/FlowConnectionLine.tsx` | The cable being DRAGGED from a socket (RF `connectionLineComponent`): same router + type color as a live cable |
-| `flow/FlowSocketHandle.tsx` | The RF `<Handle>` each socket renders through (measurement + cable anchoring); lights the socket a dragged cable would land on (`useConnection`) |
+| `flow/FlowSocketHandle.tsx` | The RF `<Handle>` each socket renders through (measurement + cable anchoring); lights the socket a dragged cable would land on (`litTargetStore`, published by `FlowConnectionLine.tsx` so sockets never watch the RF store) |
 | `flow/FlowResizeGrip.tsx` | The corner resize grip: RF `NodeResizeControl` wearing the app's grip mark; the model keeps the size (FlowSurface drops the resizer's own dimension changes) |
 | `flowSurface.ts` | The injection seam: node components ask for the RF `Handle` (`useFlowSocket`) and the resize grip (`useFlowResizeGrip`); the flow chunk injects both so shared component code never imports @xyflow/react |
 | `flow/flowPinch.ts`, `flow/flowTouchPan.ts`, `flow/flowWheel.ts` | The gesture installers both surfaces wire (see `tree/specs/canvas/pointer-gestures.md`) |

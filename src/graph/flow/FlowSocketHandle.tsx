@@ -1,13 +1,13 @@
-import { Handle, Position, useConnection, useNodeId } from "@xyflow/react";
+import { useSyncExternalStore } from "react";
+import { Handle, Position, useNodeId } from "@xyflow/react";
 import { SocketComponent } from "../components/SocketComponent";
 import { SocketLitRing } from "../components/NodeSocket";
 import type { FlowSocketProps } from "../flowSurface";
+import { litTargetStore } from "./FlowConnectionLine";
 
 export function FlowSocketHandle({ side, socketKey, payload, shape, lit, flipped }: FlowSocketProps) {
   const nodeId = useNodeId();
-  const conn = useConnection();
-  const isValidTarget =
-    conn.inProgress && conn.isValid === true && conn.toHandle?.nodeId === nodeId && conn.toHandle?.id === socketKey;
+  const isValidTarget = useSyncExternalStore(litTargetStore.subscribe, () => litTargetStore.get() === litTargetStore.key(nodeId, socketKey));
   const visualSide = flipped ? (side === "input" ? "output" : "input") : side;
   return (
     <Handle
