@@ -6,7 +6,6 @@ import {
   Background,
   BackgroundVariant,
   MiniMap,
-  ViewportPortal,
   applyNodeChanges,
   applyEdgeChanges,
   getNodesBounds,
@@ -35,6 +34,8 @@ import { FlowResizeGrip } from "./FlowResizeGrip";
 import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
+import { ViewportLayer } from "./ViewportLayer";
+import { useIsMobile } from "../useDeviceMode";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { toFlowNodes, toFlowEdges, mergeFlowNodes, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
 import { canConnect, connect, moveNode } from "./flowModel";
@@ -790,6 +791,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const visibleCatalog = useMemo(() => buildCatalog(true), [packsVersion]);
   const chromeZoom = useChromeZoom();
+  const mobile = useIsMobile();
   const minimapStyle = useMemo(
     () => (chromeZoom === 1 ? MINIMAP_STYLE : { width: Math.round(MINIMAP_STYLE.width * chromeZoom), height: Math.round(MINIMAP_STYLE.height * chromeZoom) }),
     [chromeZoom],
@@ -853,19 +855,20 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           bgColor="var(--canvas-bg)"
         />
         {hooks.standoffs && (
-          <ViewportPortal>
+          <ViewportLayer>
             <StandoffLayer />
-          </ViewportPortal>
+          </ViewportLayer>
         )}
         {hooks.drawnCables && (
-          <ViewportPortal>
+          <ViewportLayer>
             <DrawnCableLayer />
-          </ViewportPortal>
+          </ViewportLayer>
         )}
-        <ViewportPortal>
+        <ViewportLayer>
           <PendingCableLayer />
-        </ViewportPortal>
-        <MiniMap<SolFlowNode>
+        </ViewportLayer>
+        {/* Not mounted on a phone, where CSS hides it: mounted, it re-renders a rect per card every pan frame. */}
+        {!mobile && <MiniMap<SolFlowNode>
           className="solenoid-minimap"
           style={minimapStyle}
           pannable
@@ -876,7 +879,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           nodeColor={minimapNodeColor}
           nodeStrokeColor={minimapNodeStrokeColor}
           nodeStrokeWidth={1}
-        />
+        />}
       </ReactFlow>
       <HtmlCanvasLayer editor={s.editor} view={s.view as unknown as View} />
       {menu && (

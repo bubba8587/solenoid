@@ -131,7 +131,7 @@ The top chrome becomes two rows.
 
 The align pill must sit at 92px, level with the nav pill. A value sized for a single-row top bar (56px) lands inside Row B and covers the toolbar. If the two rows are retuned, this number and the others in the table move together.
 
-The minimap and the socket legend are `display: none` on mobile (`mobile.css`). Bottom-anchored floating chrome (the docked Conduit toolbar, the cable inspector, the drill-in controls, toasts, the navigator) lifts off the measured bar: `calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 27px)` or `+ 39px`. The lift clears the raised FAB, which sticks about 8px proud of the bar and casts a shadow; the safe-area inset rides inside the measured height.
+The minimap and the socket legend are `display: none` on mobile (`mobile.css`), and the minimap isn't mounted there at all (`FlowSurface.tsx`): hidden but mounted, it re-rendered a rect per card on every pan frame. Bottom-anchored floating chrome (the docked Conduit toolbar, the cable inspector, the drill-in controls, toasts, the navigator) lifts off the measured bar: `calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 27px)` or `+ 39px`. The lift clears the raised FAB, which sticks about 8px proud of the bar and casts a shadow; the safe-area inset rides inside the measured height.
 
 ### Row A and Row B
 

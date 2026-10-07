@@ -199,7 +199,7 @@ A node can flip its sockets to the opposite side, inputs on the right and output
 
 ## World-coordinate overlays
 
-An overlay drawn in graph coordinates renders inside RF's `<ViewportPortal>`, which RF places inside the transformed viewport after the edge and node layers. Every surface mounts `PendingCableLayer`; `StandoffLayer` and `DrawnCableLayer` mount only when the host's `standoffs` / `drawnCables` hooks are on, which only the main canvas does. A sibling of `<ReactFlow>` would paint in screen space and not move with the camera. The armed drawn-cable tool is the exception: its capture sheet is screen-space, and because the pane never sees its presses, it pans the camera itself through a screen-space nudge on the surface ([[drawn-cables]]).
+An overlay drawn in graph coordinates renders into RF's viewport portal, which RF places inside the transformed viewport after the edge and node layers. It goes through `ViewportLayer` (`flow/ViewportLayer.tsx`), never RF's `<ViewportPortal>`: that one re-runs a `querySelector` over the whole canvas in its store selector on every store update, so every pan frame paid for it once per overlay. Every surface mounts `PendingCableLayer`; `StandoffLayer` and `DrawnCableLayer` mount only when the host's `standoffs` / `drawnCables` hooks are on, which only the main canvas does. A sibling of `<ReactFlow>` would paint in screen space and not move with the camera. The armed drawn-cable tool is the exception: its capture sheet is screen-space, and because the pane never sees its presses, it pans the camera itself through a screen-space nudge on the surface ([[drawn-cables]]).
 
 ## Semantic zoom
 
