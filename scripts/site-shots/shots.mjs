@@ -52,8 +52,24 @@ const preview = ({ title, sub, art }) => ({ asset, w, h }) => `
 /** A window-sized close-up of a shot: `scale` is the shot's drawn width, `at` its top-left offset. */
 const tile = (src, w, h, scale, [x, y] = [0, 0]) =>
   `<div style="width:${w}px;height:${h}px;border:1px solid ${LINE};border-radius:10px;background:${VOID} url(${src}) ${-x}px ${-y}px / ${scale}px auto no-repeat"></div>`;
-const phoneFrame = (src, width) =>
-  `<img src="${src}" style="display:block;width:${width}px;border:6px solid #2a2a2a;border-radius:26px;box-shadow:0 18px 40px rgba(0,0,0,0.55)">`;
+/** A phone around a shot. The app tints Android's status bar with its accent (`theme-color`), so the bar is gold. */
+const phoneFrame = (src, width) => {
+  const u = width / 100;
+  const ink = "#1b1e23";
+  const bars = [3, 5, 7, 9].map((h, i) => `<rect x="${i * 3}" y="${10 - h}" width="2" height="${h}" rx="0.5"/>`).join("");
+  return `<div style="width:${width}px;border:6px solid #2a2a2a;border-radius:26px;overflow:hidden;background:${VOID};box-shadow:0 18px 40px rgba(0,0,0,0.55)">
+    <div style="position:relative;height:${7.5 * u}px;background:${GOLD};display:flex;align-items:center;justify-content:space-between;padding:0 ${5.5 * u}px;color:${ink};font-size:${3.9 * u}px;font-weight:700">
+      <span>9:41</span>
+      <span style="position:absolute;left:50%;top:50%;width:${3.6 * u}px;height:${3.6 * u}px;transform:translate(-50%,-50%);border-radius:50%;background:#050505"></span>
+      <span style="display:flex;align-items:center;gap:${1.4 * u}px">
+        <svg width="${3.6 * u}" height="${3 * u}" viewBox="0 0 11 10" fill="${ink}">${bars}</svg>
+        <svg width="${3.8 * u}" height="${3 * u}" viewBox="0 0 12 10" fill="${ink}"><path d="M6 10 0 3.2a8.8 8.8 0 0 1 12 0Z"/></svg>
+        <svg width="${4.6 * u}" height="${2.6 * u}" viewBox="0 0 14 8"><rect x="0.5" y="0.5" width="11.5" height="7" rx="1.5" fill="none" stroke="${ink}"/><rect x="2" y="2" width="7.5" height="4" rx="0.6" fill="${ink}"/><rect x="12.6" y="2.6" width="1.2" height="2.8" rx="0.4" fill="${ink}"/></svg>
+      </span>
+    </div>
+    <img src="${src}" style="display:block;width:${width}px">
+  </div>`;
+};
 
 /** The hero in both themes, split on a diagonal. */
 const split = (shot, width) => `<div style="position:relative;width:${width}px">
