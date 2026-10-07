@@ -2,165 +2,26 @@
   "label": "Solar payback",
   "nodes": [
     {
-      "id": "out",
-      "type": "FrameInputNode",
-      "init": {
-        "label": "Monthly output"
-      },
-      "frame": [
-        {
-          "name": "Month",
-          "cells": [
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec"
-          ]
-        },
-        {
-          "name": "kWh",
-          "cells": [
-            390,
-            450,
-            620,
-            710,
-            800,
-            850,
-            870,
-            820,
-            700,
-            560,
-            420,
-            370
-          ]
-        }
-      ],
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "kwh",
-      "type": "GetColumnNode",
-      "init": {
-        "label": "kWh",
-        "readAs": "number"
-      },
-      "stringLiterals": {
-        "name": "kWh"
-      },
-      "x": 0,
-      "y": 265
-    },
-    {
-      "id": "chart",
-      "type": "ChartNode",
-      "init": {
-        "label": "Output by month",
-        "op": "column"
-      },
-      "stringLiterals": {
-        "options": "title=kWh per month"
-      },
-      "x": 398,
-      "y": 74
-    },
-    {
       "id": "savings",
-      "type": "ExpressionNode",
+      "type": "ValueInputNode",
+      "x": 0,
+      "y": 0,
+      "collapsed": true,
       "init": {
         "label": "Monthly savings",
-        "expr": "ROUND(AVERAGE(kwh) * rate, 0)"
-      },
-      "x": 720,
-      "y": 0
-    },
-    {
-      "id": "payback",
-      "type": "ExpressionNode",
-      "init": {
-        "label": "Payback years",
-        "expr": "ROUND(cost / savings / 12, 1)"
-      },
-      "x": 720,
-      "y": 262
-    },
-    {
-      "id": "even",
-      "type": "ExpressionNode",
-      "init": {
-        "label": "Breaks even on",
-        "expr": "EDATE(installed, ROUND(years * 12, 0))",
-        "resultAs": "date"
-      },
-      "x": 720,
-      "y": 548
-    },
-    {
-      "id": "net",
-      "type": "ExpressionNode",
-      "init": {
-        "label": "Net by year",
-        "expr": "SEQUENCE(25) * savings * 12 - cost"
-      },
-      "x": 1022,
-      "y": 0
-    },
-    {
-      "id": "spark",
-      "type": "ChartNode",
-      "init": {
-        "label": "25 years",
-        "op": "line"
-      },
-      "stringLiterals": {
-        "options": "title=Net savings"
-      },
-      "x": 1022,
-      "y": 250
-    },
-    {
-      "id": "verdict",
-      "type": "AlertNode",
-      "x": 1022,
-      "y": 572,
-      "init": {
-        "label": "Inside the warranty?"
-      },
-      "literals": {
-        "value": 0,
-        "low": 0,
-        "high": 25,
-        "target": 0
-      }
-    },
-    {
-      "id": "rate",
-      "type": "ValueInputNode",
-      "init": {
-        "label": "Rate per kWh",
         "op": "number",
-        "value": "0.17",
+        "value": "107",
         "format": "decimal",
-        "decimalDigits": 2,
+        "decimalDigits": 0,
         "unit": "usd"
-      },
-      "x": 0,
-      "y": 614,
-      "sections": {
-        "Format": false
       }
     },
     {
       "id": "cost",
       "type": "ValueInputNode",
+      "x": 0,
+      "y": 110,
+      "collapsed": true,
       "init": {
         "label": "Install cost",
         "op": "number",
@@ -168,94 +29,86 @@
         "format": "decimal",
         "decimalDigits": 0,
         "unit": "usd"
-      },
-      "x": 214,
-      "y": 614,
-      "sections": {
-        "Format": false
+      }
+    },
+    {
+      "id": "rise",
+      "type": "ValueInputNode",
+      "x": 0,
+      "y": 220,
+      "collapsed": true,
+      "init": {
+        "label": "Rate rise / yr",
+        "op": "number",
+        "value": "0.03",
+        "format": "percent",
+        "decimalDigits": 0
       }
     },
     {
       "id": "installed",
       "type": "ValueInputNode",
+      "x": 0,
+      "y": 330,
+      "collapsed": true,
       "init": {
         "label": "Installed",
         "op": "date",
         "value": "15-Apr-2026"
+      }
+    },
+    {
+      "id": "net",
+      "type": "ExpressionNode",
+      "x": 290,
+      "y": 0,
+      "init": {
+        "label": "Net by year",
+        "expr": "12 * savings * ((1 + rise) ^ SEQUENCE(25) - 1) / rise - cost"
+      }
+    },
+    {
+      "id": "payback",
+      "type": "ExpressionNode",
+      "x": 290,
+      "y": 300,
+      "init": {
+        "label": "Payback years",
+        "expr": "COUNTIF(net, \"<0\") + 1"
+      }
+    },
+    {
+      "id": "chart",
+      "type": "ChartNode",
+      "x": 600,
+      "y": 0,
+      "init": {
+        "label": "25 years",
+        "op": "column"
       },
-      "x": 428,
-      "y": 614
-    },
-    {
-      "id": "g_prod",
-      "type": "GroupNode",
-      "x": -20,
-      "y": -50,
-      "init": {
-        "label": "Production",
-        "members": [
-          "out",
-          "kwh",
-          "chart"
-        ],
-        "color": "sky",
-        "collapsed": false,
-        "width": 600,
-        "height": 520
+      "stringLiterals": {
+        "options": "title=Net savings"
       }
     },
     {
-      "id": "g_in",
-      "type": "GroupNode",
-      "x": -20,
-      "y": 564,
+      "id": "even",
+      "type": "ExpressionNode",
+      "x": 600,
+      "y": 330,
       "init": {
-        "label": "Inputs",
-        "members": [
-          "rate",
-          "cost",
-          "installed"
-        ],
-        "color": "gold",
-        "collapsed": false,
-        "width": 440,
-        "height": 360
-      }
-    },
-    {
-      "id": "g_pay",
-      "type": "GroupNode",
-      "x": 700,
-      "y": -50,
-      "init": {
-        "label": "Payback",
-        "members": [
-          "savings",
-          "payback",
-          "even",
-          "net",
-          "spark",
-          "verdict"
-        ],
-        "color": "green",
-        "collapsed": false,
-        "width": 600,
-        "height": 840
+        "label": "Breaks even on",
+        "expr": "EDATE(installed, years * 12)",
+        "resultAs": "date"
       }
     }
   ],
   "cables": [
-    "out.frame -> chart.values",
-    "out.frame -> kwh.frame",
-    "kwh.values -> savings.kwh",
-    "rate.value -> savings.rate",
-    "cost.value -> payback.cost",
-    "savings.result -> payback.savings",
-    "installed.value -> even.installed",
-    "payback.result -> even.years",
-    "savings.result -> net.savings",
+    "savings.value -> net.savings",
     "cost.value -> net.cost",
-    "net.result -> spark.values",
-    "payback.result -> verdict.value"
+    "rise.value -> net.rise",
+    "net.result -> chart.values",
+    "net.result -> payback.net",
+    "installed.value -> even.installed",
+    "payback.result -> even.years"
   ]
 }

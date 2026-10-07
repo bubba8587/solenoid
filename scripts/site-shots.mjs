@@ -93,6 +93,8 @@ async function frameCards(page, f) {
     const bottom = document.querySelector(".solenoid-statusbar")?.getBoundingClientRect().top ?? r0.bottom;
     const c = { left: r0.left, top, width: r0.width, height: bottom - top };
     const pad = f.pad ?? 48;
+    // The canvas's own floating controls sit in the band's top corners; keep the cards below them.
+    c.top += f.clearTop ?? 52; c.height -= f.clearTop ?? 52;
     const fit = Math.min((c.width - 2 * pad) / (box.r - box.l), (c.height - 2 * pad) / (box.b - box.t));
     const k = f.k ?? Math.min(fit, f.maxK ?? 1.25);
     const [ax, ay] = f.anchor ?? [0.5, 0.5];
