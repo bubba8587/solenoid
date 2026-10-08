@@ -714,7 +714,6 @@
         "value": "5200",
         "width": 180
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }
@@ -730,7 +729,6 @@
         "value": "30",
         "width": 180
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }
@@ -1012,7 +1010,6 @@
         "value": "30",
         "width": 180
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }
@@ -1028,7 +1025,6 @@
         "value": "0",
         "width": 180
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }

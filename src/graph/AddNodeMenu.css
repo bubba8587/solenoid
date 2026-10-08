@@ -189,6 +189,9 @@
 .solenoid-add-menu__item--half {
   justify-content: flex-start;
 }
+/* A pair's two highlights sit as far apart as a full row's sits from the panel edge (3px padding + 5px inset): 2.5 + 3px gap + 2.5. */
+.solenoid-add-menu__item--half-start.solenoid-add-menu__item--accent::before { right: 2.5px; }
+.solenoid-add-menu__item--half-end.solenoid-add-menu__item--accent::before { left: 2.5px; }
 
 .solenoid-add-menu__arrow {
   font-size: 9px;

@@ -15,7 +15,6 @@
         "value": "50",
         "width": 180
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }
@@ -31,7 +30,6 @@
         "value": "12",
         "width": 180
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }
@@ -121,7 +119,6 @@
         "value": "ada",
         "width": 180
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }
@@ -137,7 +134,6 @@
         "value": "lovelace",
         "width": 180
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }
@@ -237,7 +233,6 @@
         "customUnit": "",
         "textCase": "none"
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }
@@ -304,7 +299,6 @@
         "value": "apple,banana,cherry",
         "width": 180
       },
-      "collapsed": true,
       "sections": {
         "Format": false
       }

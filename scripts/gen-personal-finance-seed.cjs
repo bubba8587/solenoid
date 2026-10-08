@@ -31,8 +31,8 @@ function n(id, type, x, y, init = {}, extra = {}) {
   nodes.push(node);
   return id;
 }
-// A Value Input shows its result alone, its Format section folded.
-const FOLDED_INPUT = { collapsed: true, sections: { Format: false } };
+// A Value Input with its Format section folded.
+const FOLDED_INPUT = { sections: { Format: false } };
 function c(source, sourceOutput, target, targetInput) {
   conns.push({ source, sourceOutput, target, targetInput });
 }

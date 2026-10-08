@@ -60,6 +60,10 @@ export type ExcelEquiv = {
   note?: string;
 };
 
+/** Which side of a pair a half-width row sits on; false for a full row. */
+type Half = "start" | "end" | false;
+const halfClass = (h: Half | undefined) => (h ? ` solenoid-add-menu__item--half solenoid-add-menu__item--half-${h}` : "");
+
 function OpsMark() {
   return <span className="solenoid-add-menu__ops-mark" aria-hidden="true" title="Node contains multiple operations">{"{ }"}</span>;
 }
@@ -97,15 +101,15 @@ function isPair(e: CatalogEntry): e is CatalogPair {
 
 // ─── Render/nav items ───────────────────────────────────────────────────
 type RenderItem =
-  | { kind: "leaf"; entry: NodeCatalogEntry; half: boolean }
+  | { kind: "leaf"; entry: NodeCatalogEntry; half: Half }
   | { kind: "category"; entry: CatalogCategory };
 
 function toRenderItems(entries: CatalogEntry[]): RenderItem[] {
   const out: RenderItem[] = [];
   for (const e of entries) {
     if (isPair(e)) {
-      out.push({ kind: "leaf", entry: e.children[0], half: true });
-      out.push({ kind: "leaf", entry: e.children[1], half: true });
+      out.push({ kind: "leaf", entry: e.children[0], half: "start" });
+      out.push({ kind: "leaf", entry: e.children[1], half: "end" });
     } else if (isCategory(e)) {
       out.push({ kind: "category", entry: e });
     } else {
@@ -224,7 +228,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
           <div
             key={`leaf:${leaf.type}`}
             ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
-            className={`solenoid-add-menu__item${it.half ? " solenoid-add-menu__item--half" : ""}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
+            className={`solenoid-add-menu__item${halfClass(it.half)}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
             title={leaf.description && descriptionText(leaf.description)}
             style={hl.style}
             onMouseEnter={() => onHover([...prefix, i])}
@@ -244,14 +248,14 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
 // ─── Drill-down list (phone): one level at a time, a back row on top ────
 
 function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
-  leaf: NodeCatalogEntry; half?: boolean; active?: boolean; dim: boolean;
+  leaf: NodeCatalogEntry; half?: Half; active?: boolean; dim: boolean;
   onSelect: () => void; onMouseEnter?: () => void; rowRef?: React.Ref<HTMLDivElement>;
 }) {
   const hl = leafHighlight(leaf);
   return (
     <div
       ref={rowRef}
-      className={`solenoid-add-menu__item${half ? " solenoid-add-menu__item--half" : ""}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
+      className={`solenoid-add-menu__item${halfClass(half)}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
       title={leaf.description && descriptionText(leaf.description)}
       style={hl.style}
       onMouseEnter={onMouseEnter}
