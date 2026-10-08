@@ -153,10 +153,11 @@ function FormatRows({ node, dt, pick }: { node: ValueInputNodeType; dt: ValueInp
           <CustomPatternField className="solenoid-node__inline-input" value={node.customPattern} date={false} onCommit={(p) => pick(() => { node.customPattern = p; })} />
         </div>
       )}
+      {/* Above the unit row, as on the Format Controller: format picks and the unit don't interleave. */}
+      {c.advanced && <NumberStyleRows node={node} format={format} pick={pick} />}
       <div className="solenoid-node__field-row" {...stop}>
         <UnitSelect className="solenoid-node__select" value={node.unit} onChange={(u) => pick(() => { node.unit = u; })} title="This value's unit" />
       </div>
-      {c.advanced && <NumberStyleRows node={node} format={format} pick={pick} />}
       {node.unit === "custom" && <CustomUnitRow node={node} pick={pick} />}
     </>
   );
