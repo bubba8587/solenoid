@@ -8,7 +8,7 @@
       "id": "hdr",
       "type": "NoteNode",
       "x": -249,
-      "y": 2574,
+      "y": 2573,
       "init": {
         "label": "Null & Logical: the value model",
         "body": "This canvas tours the value model: a first-class **null**, a real **logical** type, and **per-cell errors** that stay in a list. Null means missing; it renders as `null` and aggregators skip it. Logicals are TRUE/FALSE on purple sockets and coerce to 1/0 in math. Each cluster shows one decision.\n\n**Expect** is the guard in one node: a frame with a range check answers which readings fall outside 0 to 50 and which are null, instead of letting them flow.",
@@ -21,7 +21,7 @@
       "id": "nA",
       "type": "NoteNode",
       "x": 575,
-      "y": 2351,
+      "y": 2353,
       "init": {
         "label": "A · Aggregators skip null",
         "body": "The `vals` column has a **blank cell** in row 2, which imports as **null**. SUM = 8; AVERAGE = 8/3, dividing by the 3 PRESENT values, not 4. The list shows `1, null, 3, 4`.",
@@ -34,7 +34,7 @@
       "id": "fiA",
       "type": "FrameInputNode",
       "x": 840,
-      "y": 2524,
+      "y": 2523,
       "init": {
         "label": "CSV (blank cell in vals)",
         "frameText": "vals, tag\n1, a\n, b\n3, c\n4, d"
@@ -44,7 +44,7 @@
       "id": "gcA",
       "type": "GetColumnNode",
       "x": 1169,
-      "y": 2593,
+      "y": 2592,
       "init": {
         "label": "Get \"vals\"",
         "readAs": "number"
@@ -57,7 +57,7 @@
       "id": "dAlist",
       "type": "DisplayNode",
       "x": 1518,
-      "y": 2729,
+      "y": 2728,
       "init": {
         "label": "the list → 1, null, 3, 4"
       }
@@ -66,7 +66,7 @@
       "id": "aggSum",
       "type": "AggregateNode",
       "x": 1518,
-      "y": 2867,
+      "y": 2866,
       "init": {
         "label": "SUM → 8",
         "op": "sum"
@@ -76,7 +76,7 @@
       "id": "aggAvg",
       "type": "AggregateNode",
       "x": 1518,
-      "y": 2351,
+      "y": 2353,
       "init": {
         "label": "AVERAGE → 8/3",
         "op": "avg"
@@ -86,7 +86,7 @@
       "id": "isnA",
       "type": "IsTestNode",
       "x": 1518,
-      "y": 2543,
+      "y": 2542,
       "init": {
         "label": "ISNULL → F,T,F,F",
         "op": "isnull"
@@ -109,7 +109,7 @@
       "id": "s5",
       "type": "ValueInputNode",
       "x": 40,
-      "y": 1276,
+      "y": 1234,
       "init": {
         "label": "5",
         "op": "number",
@@ -124,7 +124,7 @@
       "id": "s3",
       "type": "ValueInputNode",
       "x": 40,
-      "y": 1397,
+      "y": 1449,
       "init": {
         "label": "3",
         "op": "number",
@@ -138,8 +138,8 @@
     {
       "id": "cmpB",
       "type": "ComparisonNode",
-      "x": 316,
-      "y": 1339,
+      "x": 319,
+      "y": 1399,
       "init": {
         "label": "A > B",
         "op": "gt"
@@ -148,8 +148,8 @@
     {
       "id": "dCmp",
       "type": "DisplayNode",
-      "x": 603,
-      "y": 1234,
+      "x": 605,
+      "y": 1296,
       "init": {
         "label": "TRUE (logical)"
       }
@@ -157,8 +157,8 @@
     {
       "id": "mulB",
       "type": "ArithmeticNode",
-      "x": 603,
-      "y": 1365,
+      "x": 605,
+      "y": 1424,
       "init": {
         "label": "× 10  (coerces TRUE→1)",
         "op": "mul"
@@ -171,8 +171,8 @@
     {
       "id": "dMul",
       "type": "DisplayNode",
-      "x": 872,
-      "y": 1442,
+      "x": 874,
+      "y": 1501,
       "init": {
         "label": "→ 10"
       }
@@ -180,8 +180,8 @@
     {
       "id": "andB",
       "type": "BooleanOpNode",
-      "x": 603,
-      "y": 1598,
+      "x": 605,
+      "y": 1654,
       "init": {
         "label": "AND (b=1 coerces to TRUE)",
         "op": "and"
@@ -190,8 +190,8 @@
     {
       "id": "dAnd",
       "type": "DisplayNode",
-      "x": 872,
-      "y": 1686,
+      "x": 874,
+      "y": 1742,
       "init": {
         "label": "AND → TRUE (logical)"
       }
@@ -419,7 +419,7 @@
     {
       "id": "noteG",
       "type": "NoteNode",
-      "x": 1124,
+      "x": 1126,
       "y": 1234,
       "init": {
         "label": "G · Coalesce / Fill: opt into treating a gap",
@@ -432,7 +432,7 @@
     {
       "id": "fiG",
       "type": "FrameInputNode",
-      "x": 1679,
+      "x": 1681,
       "y": 1519,
       "init": {
         "label": "CSV (gaps in g)",
@@ -442,7 +442,7 @@
     {
       "id": "gcG",
       "type": "GetColumnNode",
-      "x": 2008,
+      "x": 2010,
       "y": 1588,
       "init": {
         "label": "Get \"g\" → 1,null,3,null,5",
@@ -455,7 +455,7 @@
     {
       "id": "llElseG",
       "type": "ListInputNode",
-      "x": 2068,
+      "x": 2070,
       "y": 1956,
       "init": {
         "label": "Else [9,9,9,9,9]",
@@ -478,7 +478,7 @@
     {
       "id": "fillConstG",
       "type": "FillNode",
-      "x": 2368,
+      "x": 2370,
       "y": 1619,
       "init": {
         "label": "Fill 0 → 1,0,3,0,5",
@@ -488,7 +488,7 @@
     {
       "id": "dfillConstG",
       "type": "DisplayNode",
-      "x": 2637,
+      "x": 2639,
       "y": 1686,
       "init": {
         "label": "→ 1, 0, 3, 0, 5"
@@ -497,7 +497,7 @@
     {
       "id": "fillFfillG",
       "type": "FillNode",
-      "x": 2368,
+      "x": 2370,
       "y": 1833,
       "init": {
         "label": "Forward fill → 1,1,3,3,5",
@@ -507,7 +507,7 @@
     {
       "id": "dfillFfillG",
       "type": "DisplayNode",
-      "x": 2637,
+      "x": 2639,
       "y": 1889,
       "init": {
         "label": "→ 1, 1, 3, 3, 5"
@@ -516,7 +516,7 @@
     {
       "id": "fillDropG",
       "type": "FillNode",
-      "x": 2368,
+      "x": 2370,
       "y": 1234,
       "init": {
         "label": "Drop → 1,3,5",
@@ -526,7 +526,7 @@
     {
       "id": "dfillDropG",
       "type": "DisplayNode",
-      "x": 2637,
+      "x": 2639,
       "y": 1280,
       "init": {
         "label": "→ 1, 3, 5"
@@ -535,7 +535,7 @@
     {
       "id": "fillInterpG",
       "type": "FillNode",
-      "x": 2368,
+      "x": 2370,
       "y": 1420,
       "init": {
         "label": "Interpolate → 1,2,3,4,5",
@@ -545,7 +545,7 @@
     {
       "id": "dfillInterpG",
       "type": "DisplayNode",
-      "x": 2637,
+      "x": 2639,
       "y": 1476,
       "init": {
         "label": "→ 1, 2, 3, 4, 5"
@@ -554,7 +554,7 @@
     {
       "id": "fillCoalG",
       "type": "FillNode",
-      "x": 2368,
+      "x": 2370,
       "y": 2032,
       "init": {
         "label": "Coalesce(else 9) → 1,9,3,9,5",
@@ -564,7 +564,7 @@
     {
       "id": "dfillCoalG",
       "type": "DisplayNode",
-      "x": 2637,
+      "x": 2639,
       "y": 2130,
       "init": {
         "label": "→ 1, 9, 3, 9, 5"
@@ -681,7 +681,7 @@
       "id": "p_dom",
       "type": "MathFXNode",
       "x": 2636,
-      "y": 2686,
+      "y": 2683,
       "init": {
         "label": "#DOMAIN!  ·  √(−4)",
         "op": "sqrt"
@@ -694,7 +694,7 @@
       "id": "d_dom",
       "type": "DisplayNode",
       "x": 2905,
-      "y": 2732,
+      "y": 2729,
       "init": {
         "label": "Display"
       }
@@ -703,7 +703,7 @@
       "id": "c_dom",
       "type": "IsTestNode",
       "x": 3174,
-      "y": 2663,
+      "y": 2661,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -736,7 +736,7 @@
       "id": "c_rng",
       "type": "IsTestNode",
       "x": 4881,
-      "y": 2353,
+      "y": 2354,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -746,7 +746,7 @@
       "id": "p_syn",
       "type": "ExpressionNode",
       "x": 3393,
-      "y": 2666,
+      "y": 2663,
       "init": {
         "label": "#SYNTAX!",
         "expr": "1 +* 1"
@@ -756,7 +756,7 @@
       "id": "d_syn",
       "type": "DisplayNode",
       "x": 3722,
-      "y": 2735,
+      "y": 2732,
       "init": {
         "label": "Display"
       }
@@ -765,7 +765,7 @@
       "id": "c_syn",
       "type": "IsTestNode",
       "x": 3991,
-      "y": 2663,
+      "y": 2661,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -774,8 +774,8 @@
     {
       "id": "s_val",
       "type": "ValueInputNode",
-      "x": 4210,
-      "y": 2693,
+      "x": 2621,
+      "y": 2998,
       "init": {
         "label": "\"abc\"",
         "op": "string",
@@ -789,8 +789,8 @@
     {
       "id": "p_val",
       "type": "CastNode",
-      "x": 4479,
-      "y": 2663,
+      "x": 2890,
+      "y": 3037,
       "init": {
         "label": "#VALUE!  ·  CAST(\"abc\"→#)",
         "target": "number"
@@ -799,8 +799,8 @@
     {
       "id": "d_val",
       "type": "DisplayNode",
-      "x": 4748,
-      "y": 2734,
+      "x": 3159,
+      "y": 3108,
       "init": {
         "label": "Display"
       }
@@ -808,8 +808,8 @@
     {
       "id": "c_val",
       "type": "IsTestNode",
-      "x": 5017,
-      "y": 2665,
+      "x": 3428,
+      "y": 3040,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -819,7 +819,7 @@
       "id": "s_na",
       "type": "ValueInputNode",
       "x": 2621,
-      "y": 3430,
+      "y": 3368,
       "init": {
         "label": "5 meters",
         "op": "number",
@@ -834,7 +834,7 @@
       "id": "p_na",
       "type": "ConvertNode",
       "x": 2890,
-      "y": 3376,
+      "y": 3384,
       "init": {
         "label": "#N/A  ·  m → kg",
         "fromUnit": "m",
@@ -845,7 +845,7 @@
       "id": "d_na",
       "type": "DisplayNode",
       "x": 3159,
-      "y": 3528,
+      "y": 3535,
       "init": {
         "label": "Display"
       }
@@ -854,7 +854,7 @@
       "id": "c_na",
       "type": "IsTestNode",
       "x": 3428,
-      "y": 3460,
+      "y": 3467,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -864,7 +864,7 @@
       "id": "s_conv",
       "type": "ListInputNode",
       "x": 2636,
-      "y": 3785,
+      "y": 3789,
       "init": {
         "label": "All-positive cash flows",
         "valueKeys": [
@@ -883,7 +883,7 @@
       "id": "p_conv",
       "type": "IRRNode",
       "x": 2905,
-      "y": 3874,
+      "y": 3878,
       "init": {
         "label": "#CONV!  ·  IRR"
       }
@@ -892,7 +892,7 @@
       "id": "d_conv",
       "type": "DisplayNode",
       "x": 3174,
-      "y": 3916,
+      "y": 3920,
       "init": {
         "label": "Display"
       }
@@ -901,7 +901,7 @@
       "id": "c_conv",
       "type": "IsTestNode",
       "x": 3443,
-      "y": 3836,
+      "y": 3841,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -910,8 +910,8 @@
     {
       "id": "s_ref",
       "type": "ListInputNode",
-      "x": 3782,
-      "y": 3003,
+      "x": 3662,
+      "y": 2998,
       "init": {
         "label": "A 3-item list",
         "valueKeys": [
@@ -929,8 +929,8 @@
     {
       "id": "p_ref",
       "type": "ListIndexNode",
-      "x": 4051,
-      "y": 3101,
+      "x": 3931,
+      "y": 3095,
       "init": {
         "label": "#REF!  ·  INDEX #99"
       },
@@ -941,8 +941,8 @@
     {
       "id": "d_ref",
       "type": "DisplayNode",
-      "x": 4320,
-      "y": 3143,
+      "x": 4200,
+      "y": 3137,
       "init": {
         "label": "Display"
       }
@@ -950,8 +950,8 @@
     {
       "id": "c_ref",
       "type": "IsTestNode",
-      "x": 4589,
-      "y": 3082,
+      "x": 4469,
+      "y": 3077,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -960,8 +960,8 @@
     {
       "id": "s_shp",
       "type": "TableInputNode",
-      "x": 2621,
-      "y": 3003,
+      "x": 4210,
+      "y": 2661,
       "init": {
         "label": "A 2×3 table (non-square)",
         "tableText": "1, 2, 3\n4, 5, 6"
@@ -970,8 +970,8 @@
     {
       "id": "p_shp",
       "type": "MatDetNode",
-      "x": 2950,
-      "y": 3025,
+      "x": 4539,
+      "y": 2683,
       "init": {
         "label": "#SHAPE!  ·  determinant needs a square matrix",
         "op": "mdeterm"
@@ -980,8 +980,8 @@
     {
       "id": "d_shp",
       "type": "DisplayNode",
-      "x": 3279,
-      "y": 3081,
+      "x": 4868,
+      "y": 2738,
       "init": {
         "label": "Display"
       }
@@ -989,8 +989,8 @@
     {
       "id": "c_shp",
       "type": "IsTestNode",
-      "x": 3548,
-      "y": 3020,
+      "x": 5137,
+      "y": 2678,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -1000,7 +1000,7 @@
       "id": "s_nam",
       "type": "LambdaNode",
       "x": 3647,
-      "y": 3400,
+      "y": 3394,
       "init": {
         "label": "LAMBDA with a bad name",
         "params": "x, 2y",
@@ -1011,7 +1011,7 @@
       "id": "p_nam",
       "type": "MapTableNode",
       "x": 3976,
-      "y": 3376,
+      "y": 3368,
       "init": {
         "label": "#NAME?  ·  MAP"
       }
@@ -1020,7 +1020,7 @@
       "id": "d_nam",
       "type": "DisplayNode",
       "x": 4305,
-      "y": 3512,
+      "y": 3505,
       "init": {
         "label": "Display"
       }
@@ -1029,7 +1029,7 @@
       "id": "c_nam",
       "type": "IsTestNode",
       "x": 4634,
-      "y": 3459,
+      "y": 3452,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -1086,7 +1086,7 @@
       "id": "c_circ",
       "type": "IsTestNode",
       "x": 4433,
-      "y": 702,
+      "y": 703,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -1108,8 +1108,8 @@
     {
       "id": "oneB",
       "type": "ValueInputNode",
-      "x": 316,
-      "y": 1673,
+      "x": 319,
+      "y": 1659,
       "init": {
         "label": "1",
         "op": "number",
@@ -1124,7 +1124,7 @@
       "id": "grp-a",
       "type": "GroupNode",
       "x": 551,
-      "y": 2293,
+      "y": 2295,
       "init": {
         "label": "A · Aggregators skip null",
         "members": [
@@ -1139,7 +1139,7 @@
         "color": "gold",
         "collapsed": false,
         "width": 1175,
-        "height": 752
+        "height": 746
       }
     },
     {
@@ -1163,8 +1163,8 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 1329,
-        "height": 669
+        "width": 1331,
+        "height": 722
       }
     },
     {
@@ -1249,7 +1249,7 @@
     {
       "id": "grp-g",
       "type": "GroupNode",
-      "x": 1100,
+      "x": 1102,
       "y": 1176,
       "init": {
         "label": "G · Coalesce and Fill",
@@ -1344,8 +1344,8 @@
         ],
         "color": "vermilion",
         "collapsed": false,
-        "width": 2628,
-        "height": 1917
+        "width": 2748,
+        "height": 1919
       }
     },
     {
@@ -1366,14 +1366,14 @@
         "color": "amber",
         "collapsed": false,
         "width": 1245,
-        "height": 681
+        "height": 679
       }
     },
     {
       "id": "tq-fi-sensors",
       "type": "FrameInputNode",
       "x": 87,
-      "y": 484,
+      "y": 521,
       "init": {
         "label": "Sensor readings",
         "frameText": "Sensor, Temp\nA, 21\nB, \nC, 45\nD, 88"
@@ -1406,7 +1406,7 @@
           "tq-exp"
         ],
         "width": 621,
-        "height": 389
+        "height": 464
       }
     }
   ],

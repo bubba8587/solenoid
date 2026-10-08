@@ -8,7 +8,7 @@
       "id": "note-head",
       "type": "NoteNode",
       "x": -130,
-      "y": 814,
+      "y": 815,
       "init": {
         "label": "Script: worked examples",
         "color": "amber",
@@ -20,7 +20,7 @@
       "id": "in-samples",
       "type": "ValueInputNode",
       "x": 494,
-      "y": 888,
+      "y": 820,
       "init": {
         "label": "Samples",
         "op": "number",
@@ -35,7 +35,7 @@
       "id": "sc-pi",
       "type": "ScriptNode",
       "x": 763,
-      "y": 746,
+      "y": 749,
       "init": {
         "label": "Monte Carlo π",
         "expr": "(samples) => {\n  let hits = 0;\n  for (let i = 0; i < samples; i++) {\n    const x = Math.random();\n    const y = Math.random();\n    if (x * x + y * y <= 1) hits++;\n  }\n  return 4 * hits / samples;\n}"
@@ -45,7 +45,7 @@
       "id": "d-pi",
       "type": "DisplayNode",
       "x": 1092,
-      "y": 901,
+      "y": 903,
       "init": {
         "label": "≈ 3.14"
       }
@@ -54,7 +54,7 @@
       "id": "in-n",
       "type": "ValueInputNode",
       "x": 1359,
-      "y": 878,
+      "y": 810,
       "init": {
         "label": "27",
         "op": "number",
@@ -69,7 +69,7 @@
       "id": "sc-collatz",
       "type": "ScriptNode",
       "x": 1628,
-      "y": 758,
+      "y": 759,
       "init": {
         "label": "Collatz path",
         "expr": "(n) => {\n  const path = [n];\n  while (n > 1 && path.length < 1000) {\n    n = n % 2 ? 3 * n + 1 : n / 2;\n    path.push(n);\n  }\n  return path;\n}"
@@ -79,7 +79,7 @@
       "id": "spark",
       "type": "SparklineNode",
       "x": 1966,
-      "y": 746,
+      "y": 748,
       "init": {
         "label": "Sparkline"
       }
@@ -88,7 +88,7 @@
       "id": "sc-summary",
       "type": "ScriptNode",
       "x": 1966,
-      "y": 927,
+      "y": 929,
       "init": {
         "label": "Path summary",
         "expr": "(path) => {\n  const steps = path.length - 1;\n  const peak = Math.max(...path);\n  return steps + \" steps, peak \" + peak;\n}"
@@ -98,7 +98,7 @@
       "id": "d-summary",
       "type": "DisplayNode",
       "x": 2295,
-      "y": 1026,
+      "y": 1028,
       "init": {
         "label": "→ 111 steps, peak 9232"
       }
@@ -107,7 +107,7 @@
       "id": "in-principal",
       "type": "ValueInputNode",
       "x": -106,
-      "y": 1526,
+      "y": 1455,
       "init": {
         "label": "Principal",
         "op": "number",
@@ -122,7 +122,7 @@
       "id": "sc-loan",
       "type": "ScriptNode",
       "x": 163,
-      "y": 1254,
+      "y": 1253,
       "init": {
         "label": "Amortization table",
         "expr": "(principal, rate, years) => {\n  const r = rate / 100 / 12;\n  const n = years * 12;\n  const pow = (1 + r) ** -n;\n  const pay = principal * r / (1 - pow);\n  const rows = [];\n  let bal = principal;\n  let paid = 0;\n  for (let m = 1; m <= n; m++) {\n    const i = bal * r;\n    paid += i;\n    bal -= pay - i;\n    if (m % 60 === 0) rows.push({\n      year: m / 12,\n      interest: Math.round(paid),\n      balance: Math.round(bal),\n    });\n  }\n  return rows;\n}"
@@ -136,7 +136,7 @@
       "id": "d-loan",
       "type": "DisplayNode",
       "x": 501,
-      "y": 1386,
+      "y": 1384,
       "init": {
         "label": "Every 5 years"
       }
@@ -145,7 +145,7 @@
       "id": "sc-total",
       "type": "ScriptNode",
       "x": 504,
-      "y": 1636,
+      "y": 1634,
       "init": {
         "label": "Reads the frame back",
         "expr": "(sched) => {\n  const last = sched[sched.length - 1];\n  return \"Total interest \" + last.interest;\n}"
@@ -155,7 +155,7 @@
       "id": "d-total",
       "type": "DisplayNode",
       "x": 835,
-      "y": 1723,
+      "y": 1711,
       "init": {
         "label": "→ Total interest 206017"
       }
@@ -164,7 +164,7 @@
       "id": "in-year",
       "type": "ValueInputNode",
       "x": -106,
-      "y": 357,
+      "y": 291,
       "init": {
         "label": "Year",
         "op": "number",
@@ -179,7 +179,7 @@
       "id": "sc-fri13",
       "type": "ScriptNode",
       "x": 163,
-      "y": 236,
+      "y": 239,
       "init": {
         "label": "Friday the 13ths",
         "expr": "(year) => {\n  const hits = [];\n  for (let m = 0; m < 12; m++) {\n    const d = new Date(Date.UTC(year, m, 13));\n    if (d.getUTCDay() === 5) hits.push(d);\n  }\n  return hits;\n}"
@@ -189,7 +189,7 @@
       "id": "d-fri13",
       "type": "DisplayNode",
       "x": 492,
-      "y": 343,
+      "y": 346,
       "init": {
         "label": "→ 13-Feb, 13-Mar, 13-Nov"
       }
@@ -198,7 +198,7 @@
       "id": "in-growth",
       "type": "ValueInputNode",
       "x": 774,
-      "y": 382,
+      "y": 315,
       "init": {
         "label": "Growth",
         "op": "number",
@@ -213,7 +213,7 @@
       "id": "sc-cube",
       "type": "ScriptNode",
       "x": 1043,
-      "y": 236,
+      "y": 239,
       "init": {
         "label": "Nested rows: a cube",
         "expr": "(growth) => [\"North\", \"South\"]\n  .map((region, i) => ({\n    region,\n    quarters: [1, 2, 3, 4].map((q) => ({\n      quarter: q,\n      sales: Math.round(\n        100 * (i + 1) * growth ** q,\n      ),\n    })),\n  }))"
@@ -223,7 +223,7 @@
       "id": "rollup",
       "type": "CubeRollupNode",
       "x": 1372,
-      "y": 364,
+      "y": 366,
       "init": {
         "label": "Cube Rollup",
         "agg": "sum"
@@ -238,7 +238,7 @@
       "id": "d-cube",
       "type": "DisplayNode",
       "x": 1701,
-      "y": 467,
+      "y": 468,
       "init": {
         "label": "→ North 510, South 1021"
       }
@@ -247,7 +247,7 @@
       "id": "grp-pi",
       "type": "GroupNode",
       "x": 470,
-      "y": 688,
+      "y": 691,
       "init": {
         "label": "Monte Carlo π",
         "members": [
@@ -258,14 +258,14 @@
         "color": "gold",
         "collapsed": false,
         "width": 830,
-        "height": 401
+        "height": 398
       }
     },
     {
       "id": "grp-collatz",
       "type": "GroupNode",
       "x": 1335,
-      "y": 688,
+      "y": 690,
       "init": {
         "label": "Collatz path",
         "members": [
@@ -277,15 +277,15 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 1212,
-        "height": 488
+        "width": 1194,
+        "height": 485
       }
     },
     {
       "id": "grp-loan",
       "type": "GroupNode",
       "x": -130,
-      "y": 1196,
+      "y": 1195,
       "init": {
         "label": "Amortization table",
         "members": [
@@ -297,15 +297,15 @@
         ],
         "color": "purple",
         "collapsed": false,
-        "width": 1225,
-        "height": 673
+        "width": 1205,
+        "height": 669
       }
     },
     {
       "id": "grp-fri13",
       "type": "GroupNode",
       "x": -130,
-      "y": 178,
+      "y": 181,
       "init": {
         "label": "Friday the 13ths",
         "members": [
@@ -323,7 +323,7 @@
       "id": "grp-cube",
       "type": "GroupNode",
       "x": 750,
-      "y": 178,
+      "y": 181,
       "init": {
         "label": "Nested rows make a cube",
         "members": [
@@ -335,7 +335,7 @@
         "color": "lime",
         "collapsed": false,
         "width": 1159,
-        "height": 490
+        "height": 489
       }
     }
   ],

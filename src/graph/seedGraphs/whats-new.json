@@ -20,7 +20,7 @@
       "id": "intro",
       "type": "NoteNode",
       "x": 0,
-      "y": 993,
+      "y": 975,
       "init": {
         "label": "What's new in 1.4",
         "body": "# What's new in 1.4\n\nOne group per headline. Hover any **output socket** for a live peek of its value: the frames, cubes and charts below all show one. Press **D** to draw a cable of your own.\n\nThe vault and task readers use the bundled sample until you set a vault folder or a TaskNotes URL in Settings."
@@ -30,7 +30,7 @@
       "id": "vault",
       "type": "VaultFolderNode",
       "x": 24,
-      "y": 2495,
+      "y": 2564,
       "init": {
         "label": "Notes",
         "folder": "Notes"
@@ -40,7 +40,7 @@
       "id": "byRating",
       "type": "SortFrameNode",
       "x": 353,
-      "y": 2629,
+      "y": 2698,
       "init": {
         "label": "by rating",
         "dir": "desc"
@@ -53,7 +53,7 @@
       "id": "vaultDisplay",
       "type": "DisplayNode",
       "x": 682,
-      "y": 2660,
+      "y": 2729,
       "init": {
         "label": "Your notes"
       }
@@ -62,7 +62,7 @@
       "id": "grp-vault",
       "type": "GroupNode",
       "x": 0,
-      "y": 2437,
+      "y": 2506,
       "init": {
         "label": "Your Obsidian vault is a table",
         "members": [
@@ -78,7 +78,7 @@
       "id": "tasknotes",
       "type": "TaskNotesNode",
       "x": 24,
-      "y": 2085,
+      "y": 2154,
       "init": {
         "label": "TaskNotes",
         "provider": "tasks"
@@ -88,7 +88,7 @@
       "id": "tasksDisplay",
       "type": "DisplayNode",
       "x": 353,
-      "y": 2087,
+      "y": 2156,
       "init": {
         "label": "Your tasks"
       }
@@ -97,7 +97,7 @@
       "id": "grp-tasks",
       "type": "GroupNode",
       "x": 0,
-      "y": 2027,
+      "y": 2096,
       "init": {
         "label": "TaskNotes, live",
         "members": [
@@ -112,7 +112,7 @@
       "id": "rain",
       "type": "SliderInputNode",
       "x": 404,
-      "y": 1053,
+      "y": 1035,
       "init": {
         "label": "Rain this week (mm)",
         "value": 12
@@ -127,7 +127,7 @@
       "id": "report",
       "type": "ReportNode",
       "x": 673,
-      "y": 1051,
+      "y": 1033,
       "init": {
         "label": "Watering call",
         "width": 300,
@@ -142,7 +142,7 @@
       "id": "grp-report",
       "type": "GroupNode",
       "x": 380,
-      "y": 993,
+      "y": 975,
       "init": {
         "label": "Reports are templates",
         "members": [
@@ -156,8 +156,8 @@
     {
       "id": "plan",
       "type": "CubeInputNode",
-      "x": 1161,
-      "y": 1525,
+      "x": 1296,
+      "y": 1560,
       "init": {
         "label": "Plan",
         "cubeText": "[\n  {\"task\": \"Design\", \"days\": 4, \"after\": []},\n  {\"task\": \"Build\", \"days\": 6, \"after\": [\"Design\"]},\n  {\"task\": \"Write the docs\", \"days\": 3, \"after\": [\"Design\"]},\n  {\"task\": \"Test\", \"days\": 3, \"after\": [\"Build\", \"Write the docs\"]},\n  {\"task\": \"Launch\", \"days\": 0, \"after\": [\"Test\"], \"deadline\": \"2026-10-16\"}\n]"
@@ -166,8 +166,8 @@
     {
       "id": "start",
       "type": "ValueInputNode",
-      "x": 1191,
-      "y": 1725,
+      "x": 1326,
+      "y": 1760,
       "init": {
         "label": "Project start",
         "op": "date",
@@ -181,8 +181,8 @@
     {
       "id": "schedule",
       "type": "ScheduleNode",
-      "x": 1494,
-      "y": 1548,
+      "x": 1632,
+      "y": 1617,
       "init": {
         "label": "Schedule",
         "mode": "working"
@@ -191,8 +191,8 @@
     {
       "id": "gantt",
       "type": "GanttNode",
-      "x": 1823,
-      "y": 1694,
+      "x": 1961,
+      "y": 1763,
       "init": {
         "label": "Gantt"
       }
@@ -200,15 +200,15 @@
     {
       "id": "ganttDisplay",
       "type": "DisplayNode",
-      "x": 2152,
-      "y": 1762,
+      "x": 2290,
+      "y": 1830,
       "init": {}
     },
     {
       "id": "grp-gantt",
       "type": "GroupNode",
-      "x": 1137,
-      "y": 1467,
+      "x": 1272,
+      "y": 1502,
       "init": {
         "label": "Schedules and Gantt charts",
         "members": [
@@ -218,15 +218,15 @@
           "gantt",
           "ganttDisplay"
         ],
-        "width": 1273,
-        "height": 540
+        "width": 1276,
+        "height": 574
       }
     },
     {
       "id": "geocode",
       "type": "GeocodeNode",
-      "x": 1622,
-      "y": 1069,
+      "x": 24,
+      "y": 1560,
       "init": {
         "label": "Boise"
       },
@@ -237,8 +237,8 @@
     {
       "id": "weather",
       "type": "WeatherNode",
-      "x": 1951,
-      "y": 1051,
+      "x": 353,
+      "y": 1565,
       "init": {
         "label": "Boise weather",
         "unit": "C",
@@ -250,8 +250,8 @@
     {
       "id": "weatherDisplay",
       "type": "DisplayNode",
-      "x": 2280,
-      "y": 1228,
+      "x": 682,
+      "y": 1662,
       "init": {
         "label": "Daily"
       }
@@ -259,8 +259,8 @@
     {
       "id": "grp-sources",
       "type": "GroupNode",
-      "x": 1598,
-      "y": 993,
+      "x": 0,
+      "y": 1502,
       "init": {
         "label": "Everyday sources",
         "members": [
@@ -268,15 +268,15 @@
           "weather",
           "weatherDisplay"
         ],
-        "width": 950,
-        "height": 454
+        "width": 1252,
+        "height": 459
       }
     },
     {
       "id": "debts",
       "type": "FrameInputNode",
-      "x": 24,
-      "y": 1525,
+      "x": 1622,
+      "y": 1033,
       "init": {
         "label": "Debts",
         "frameText": "[{\"name\": \"Debt\", \"type\": \"string\", \"values\": [\"Credit card\", \"Car loan\", \"Store card\"]}, {\"name\": \"Balance\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [3200, 8500, 650]}, {\"name\": \"APR\", \"type\": \"number\", \"values\": [0.24, 0.06, 0.19]}, {\"name\": \"Min\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [95, 260, 30]}]"
@@ -285,8 +285,8 @@
     {
       "id": "extra",
       "type": "ValueInputNode",
-      "x": 84,
-      "y": 1773,
+      "x": 1682,
+      "y": 1281,
       "init": {
         "label": "Extra per month",
         "op": "number",
@@ -300,8 +300,8 @@
     {
       "id": "payoff",
       "type": "PayoffPlannerNode",
-      "x": 358,
-      "y": 1620,
+      "x": 1959,
+      "y": 1162,
       "init": {
         "label": "Avalanche",
         "order": "avalanche",
@@ -311,8 +311,8 @@
     {
       "id": "payoffDisplay",
       "type": "DisplayNode",
-      "x": 687,
-      "y": 1727,
+      "x": 2288,
+      "y": 1269,
       "init": {
         "label": "Months to clear"
       }
@@ -320,8 +320,8 @@
     {
       "id": "grp-planners",
       "type": "GroupNode",
-      "x": 0,
-      "y": 1467,
+      "x": 1598,
+      "y": 975,
       "init": {
         "label": "Planners",
         "members": [
@@ -330,15 +330,15 @@
           "payoff",
           "payoffDisplay"
         ],
-        "width": 1117,
-        "height": 470
+        "width": 1120,
+        "height": 507
       }
     },
     {
       "id": "chipFrame",
       "type": "FrameInputNode",
       "x": 985,
-      "y": 1051,
+      "y": 1033,
       "init": {
         "label": "Orders",
         "frameText": "[{\"name\": \"Order\", \"type\": \"string\", \"values\": [\"A-1041\", \"A-1042\", \"A-1043\", \"A-1044\", \"A-1045\"]}, {\"name\": \"Status\", \"type\": \"string\", \"values\": [\"shipped\", \"packing\", \"shipped\", \"on hold\", \"packing\"]}, {\"name\": \"Total\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [120, 85, 40, 260, 15]}]"
@@ -348,7 +348,7 @@
       "id": "chipDisplay",
       "type": "DisplayNode",
       "x": 1314,
-      "y": 1077,
+      "y": 1059,
       "init": {
         "label": "Status as chips"
       }
@@ -357,7 +357,7 @@
       "id": "grp-chips",
       "type": "GroupNode",
       "x": 961,
-      "y": 993,
+      "y": 975,
       "init": {
         "label": "Categorical columns",
         "members": [
