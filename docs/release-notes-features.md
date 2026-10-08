@@ -32,10 +32,6 @@ everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in gi
   edge that turns it into a value, a list, a table, a Frame or a nested Cube. Formula
   columns read a list cell as that row's list and can answer one, so per-row math over
   nested data (`SUM(@prices)`, `SPARKLINE(@history)`) just works.
-- **[slide] Linux desktop.** *(1.4.1)* The desktop app runs on Linux as well as
-  Windows, with the same native Polars engine, vault access and local files. Releases
-  carry an AppImage (download, mark executable, run) and a `.deb`. The window draws its
-  own controls and resize grips, and the canvas stays crisp through zoom on WebKitGTK.
 - **[slide] Solenoid Properties, an Obsidian plugin.** *(1.4.1, grown in 1.4.2)* List,
   Matrix, Frame, Cube and Complex property types for Obsidian: a property shows as the
   chip Solenoid draws for it, opens in Solenoid's table editor and stays plain YAML in the
@@ -48,7 +44,8 @@ everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in gi
   and Live Preview. A bare `{{ budget }}` on a Frame or List property is the property's
   chip right in the text, and editing it edits the property. The plugin release goes out
   alongside the app.
-- **[slide] Formula columns in a Frame Input.** *(1.4.1)* A column's type cycle ends on
+- **[slide] Formula columns in a Frame Input, much stronger.** *(1.4.1)* They already
+  existed in part; this release makes them a real tool. A column's type cycle ends on
   **Fx**: the column becomes a formula over the row (`@qty * @price`), typed where the
   data is. A Frame Input's λ inputs are named in it (`λ1` binds by name, `λ1(@a, @b)`
   calls it), and a formula that returns a date stays a Date column with no type pick
@@ -66,13 +63,11 @@ everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in gi
   win/loss sparkline straight into a table cell, and in a Cube a formula column runs it
   per row: `SPARKLINE(@history)` gives every row its own trend. Pictures in text cells
   show as pictures in every card and popup.
-- **[slide] Obsidian markdown in notes.** *(1.4.1)* Note, Import Obsidian Note, the Report
-  preview and the webpage export render what Obsidian writes: `[[wikilinks]]` as links,
-  `#tags` as chips, `> [!callouts]`, `==highlights==`, `$math$`, with `%% comments %%` and
-  `^block-ids` hidden. A note imported from a vault reads the way it does at home.
 
 ## Release-notes body
 
+- **Linux desktop.** *(1.4.1)* The desktop app runs on Linux as well as Windows: an
+  AppImage (download, mark executable, run) and a `.deb`, with the same native engine.
 - **Card sections.** Busy cards (Cast, Frame Input, XLOOKUP, Schedule, Gantt, Earned
   Value and more) group their settings under captions, and the secondary ones fold away.
   Folding a section with cables in it melts the sockets into one pill and buds them back
