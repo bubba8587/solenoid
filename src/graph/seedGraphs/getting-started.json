@@ -6,26 +6,34 @@
   "nodes": [
     {
       "id": "3dc4458fdead68ca",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 358,
       "y": -99,
       "init": {
         "label": "Monthly budget",
-        "value": 50,
-        "width": 180,
-        "height": 76
+        "op": "number",
+        "value": "50",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "707e9dcb674a0586",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 358,
       "y": 22,
       "init": {
         "label": "Months",
-        "value": 12,
-        "width": 180,
-        "height": 76
+        "op": "number",
+        "value": "12",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -104,26 +112,34 @@
     },
     {
       "id": "bfa05e574426869f",
-      "type": "TextInputNode",
+      "type": "ValueInputNode",
       "x": -349,
       "y": 207,
       "init": {
         "label": "First name",
+        "op": "string",
         "value": "ada",
-        "width": 180,
-        "height": 76
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "d51023727681c51c",
-      "type": "TextInputNode",
+      "type": "ValueInputNode",
       "x": -349,
       "y": 328,
       "init": {
         "label": "Last name",
+        "op": "string",
         "value": "lovelace",
-        "width": 180,
-        "height": 76
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -205,14 +221,25 @@
     },
     {
       "id": "eccce2ca25f6520e",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -349,
       "y": 587,
       "init": {
         "label": "Distance",
-        "value": 1.5,
+        "op": "number",
+        "value": "1.5",
         "width": 180,
-        "height": 76
+        "format": "decimal",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "mi",
+        "customUnit": "",
+        "textCase": "none"
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -242,31 +269,6 @@
       }
     },
     {
-      "id": "2326393ec84f58da",
-      "type": "FormatControllerNode",
-      "x": -166,
-      "y": 591,
-      "init": {
-        "label": "Format",
-        "hostNodeId": "eccce2ca25f6520e",
-        "socketKey": "value",
-        "side": "output",
-        "format": "decimal",
-        "customPattern": "0.00",
-        "decimalDigits": 2,
-        "decimalMode": "places",
-        "unit": "mi",
-        "customUnit": "",
-        "socketDataType": "number",
-        "textCase": "none",
-        "bold": false,
-        "italic": false,
-        "textScale": 14,
-        "width": 152,
-        "height": 91
-      }
-    },
-    {
       "id": "e4fac14f53029814",
       "type": "FormatControllerNode",
       "x": 545,
@@ -293,14 +295,18 @@
     },
     {
       "id": "1b7810cc8a788307",
-      "type": "TextInputNode",
+      "type": "ValueInputNode",
       "x": 625,
       "y": 217,
       "init": {
         "label": "CSV",
+        "op": "string",
         "value": "apple,banana,cherry",
-        "width": 180,
-        "height": 76
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -424,7 +430,6 @@
           "eccce2ca25f6520e",
           "81e3f277a3a0a7b2",
           "9232ae9ba13eb334",
-          "2326393ec84f58da",
           "e4fac14f53029814"
         ],
         "color": "gold",
@@ -570,12 +575,6 @@
       "targetInput": "in"
     },
     {
-      "source": "eccce2ca25f6520e",
-      "sourceOutput": "value",
-      "target": "2326393ec84f58da",
-      "targetInput": "in"
-    },
-    {
       "source": "9232ae9ba13eb334",
       "sourceOutput": "out",
       "target": "e4fac14f53029814",
@@ -612,8 +611,8 @@
       "targetInput": "in"
     },
     {
-      "source": "2326393ec84f58da",
-      "sourceOutput": "out",
+      "source": "eccce2ca25f6520e",
+      "sourceOutput": "value",
       "target": "81e3f277a3a0a7b2",
       "targetInput": "in"
     },

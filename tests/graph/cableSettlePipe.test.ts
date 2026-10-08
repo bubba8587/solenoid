@@ -3,7 +3,7 @@ import type { View } from "../../src/graph/view";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import type { Schemes, SolenoidConnection } from "../../src/graph/schemes";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { installCableSettlePipe, type CableEnds, type CableSettleStack } from "../../src/graph/cableSettle";
 import { beginGraphRebuild, endGraphRebuild } from "../../src/graph/process";
@@ -17,7 +17,7 @@ async function scene(stack: Partial<CableSettleStack>) {
   const editor = new NodeEditor<Schemes>();
   const s: CableSettleStack = { editor, view, ...stack };
   installCableSettlePipe(s);
-  const num = new NumberInputNode({ value: 2 });
+  const num = new ValueInputNode({ value: "2" });
   const fc = new FormatControllerNode();
   await editor.addNode(num);
   await editor.addNode(fc);

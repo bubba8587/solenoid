@@ -11,7 +11,8 @@ import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
 import type { XYPayload, BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, HeatmapPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
-import { DateInputNode, XYPadNode } from "../../../src/graph/nodes/control";
+import { XYPadNode } from "../../../src/graph/nodes/control";
+import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { extractInit } from "../../../src/graph/copyPaste";
 import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial, parseDate } from "../../../src/graph/nodes/date";
@@ -319,17 +320,18 @@ describe("histogram2d (numpy histogram2d)", () => {
 });
 
 describe("control nodes", () => {
-  it("Date Input derives its serial from the raw source text", () => {
-    expect(new DateInputNode({ date: "20-Mar-2026" }).data().result).toBe(Math.floor(parseDate("20-Mar-2026") as number));
-    expect(new DateInputNode({ date: "" }).data()).toEqual({ result: null });
-    expect(new DateInputNode({ date: "not a date" }).data()).toEqual({ result: null });
+  it("a date Value Input derives its serial from the raw source text", () => {
+    const date = (value?: string) => new ValueInputNode({ op: "date", value });
+    expect(date("20-Mar-2026").data().value).toBe(Math.floor(parseDate("20-Mar-2026") as number));
+    expect(date("").data()).toEqual({ value: null });
+    expect(date("not a date").data()).toEqual({ value: null });
     // default is today's serial
-    expect(new DateInputNode().data().result).toBe(Math.floor(jsDateToSerial(new Date())));
+    expect(date().data().value).toBe(Math.floor(jsDateToSerial(new Date())));
   });
-  it("Date Input keeps the raw text verbatim and surfaces #AMBIGUOUS! instead of guessing", () => {
-    const d = new DateInputNode({ date: "20-mar-2026" });
-    expect(d.stringLiterals.date).toBe("20-mar-2026"); // raw is the source of truth
-    const amb = new DateInputNode({ date: "3/4/2026" }).data().result;
+  it("a date Value Input keeps the raw text verbatim and surfaces #AMBIGUOUS! instead of guessing", () => {
+    const d = new ValueInputNode({ op: "date", value: "20-mar-2026" });
+    expect(d.value).toBe("20-mar-2026"); // raw is the source of truth
+    const amb = new ValueInputNode({ op: "date", value: "3/4/2026" }).data().value;
     expect(isSolError(amb) && amb.code).toBe("#AMBIGUOUS!");
   });
 

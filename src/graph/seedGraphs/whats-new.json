@@ -165,14 +165,18 @@
     },
     {
       "id": "start",
-      "type": "DateInputNode",
+      "type": "ValueInputNode",
       "x": 1191,
       "y": 1725,
       "init": {
-        "label": "Project start"
+        "label": "Project start",
+        "op": "date",
+        "value": "28-Sep-2026",
+        "width": 180
       },
-      "stringLiterals": {
-        "date": "28-Sep-2026"
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -281,12 +285,18 @@
     },
     {
       "id": "extra",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 84,
       "y": 1773,
       "init": {
         "label": "Extra per month",
-        "value": 200
+        "op": "number",
+        "value": "200",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -394,7 +404,7 @@
     },
     {
       "source": "start",
-      "sourceOutput": "result",
+      "sourceOutput": "value",
       "target": "schedule",
       "targetInput": "start"
     },

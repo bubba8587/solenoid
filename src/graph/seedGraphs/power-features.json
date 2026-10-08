@@ -140,32 +140,50 @@
     },
     {
       "id": "in-sa",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 361,
       "y": 3,
       "init": {
         "label": "Sensor A",
-        "value": 30
+        "op": "number",
+        "value": "30",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in-sb",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 361,
       "y": -117,
       "init": {
         "label": "Sensor B",
-        "value": 55
+        "op": "number",
+        "value": "55",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in-sc",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 361,
       "y": -237,
       "init": {
         "label": "Sensor C",
-        "value": 72
+        "op": "number",
+        "value": "72",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -256,12 +274,18 @@
     },
     {
       "id": "in-trip",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -569,
       "y": 137,
       "init": {
         "label": "Marathon (mi)",
-        "value": 26.2
+        "op": "number",
+        "value": "26.2",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -326,22 +350,34 @@
     },
     {
       "id": "in-a",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -569,
       "y": 923,
       "init": {
         "label": "Plan A (monthly)",
-        "value": 1200
+        "op": "number",
+        "value": "1200",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in-b2",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -569,
       "y": 1203,
       "init": {
         "label": "Plan B (monthly)",
-        "value": 2000
+        "op": "number",
+        "value": "2000",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -387,12 +423,18 @@
     },
     {
       "id": "in-c",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -569,
       "y": 1324,
       "init": {
         "label": "Plan C (monthly)",
-        "value": 1500
+        "op": "number",
+        "value": "1500",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {

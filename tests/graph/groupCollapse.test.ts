@@ -1,7 +1,7 @@
 // [[C88]] collapsedGroupCard
 import { describe, it, expect, afterEach } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
-import { GroupNode, FormatControllerNode, DisplayNode, NumberInputNode } from "../../src/graph/rete-nodes";
+import { GroupNode, FormatControllerNode, DisplayNode, ValueInputNode } from "../../src/graph/rete-nodes";
 import { recomputeGroupCollapse, groupCollapseStore, groupReadouts } from "../../src/graph/groupCollapse";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { presentSocketStore } from "../../src/graph/presentSocketStore";
@@ -25,9 +25,9 @@ function dock(fcId: string, hostId: string) {
 
 async function build() {
   const editor = new NodeEditor<Schemes>() as Editor;
-  const host = new NumberInputNode();
+  const host = new ValueInputNode();
   const fc = new FormatControllerNode();
-  const outside = new NumberInputNode();
+  const outside = new ValueInputNode();
   await editor.addNode(host as never);
   await editor.addNode(fc as never);
   await editor.addNode(outside as never);

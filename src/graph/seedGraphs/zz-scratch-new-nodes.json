@@ -437,14 +437,18 @@
     },
     {
       "id": "src_epoch",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 24,
       "y": 2434,
       "init": {
         "label": "Unix seconds",
-        "value": 1700000000,
-        "width": 180,
-        "height": 76
+        "op": "number",
+        "value": "1700000000",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {

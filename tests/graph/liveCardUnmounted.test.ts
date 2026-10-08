@@ -5,7 +5,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
 import { CompositeNode, CompositeOutputNode } from "../../src/graph/nodes/composite";
 import { WebSourceNode, FxNode } from "../../src/graph/nodes/connection";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { connectionStore, refreshConnection, refreshAllConnections, scheduleConnectionRecalc, fetchInBackground } from "../../src/graph/connectionStore";
 import { registerOwnedGraph } from "../../src/graph/activeGraph";
 
@@ -83,7 +83,7 @@ describe("a heavy composite holding a live card", () => {
   });
 
   it("holds when a refresh-all has no live card inside it", async () => {
-    const c = await manualCompositeWith(new NumberInputNode() as unknown as Schemes["Node"]);
+    const c = await manualCompositeWith(new ValueInputNode() as unknown as Schemes["Node"]);
     c.requestSolve();
     await c.data({});
     await refreshAllConnections();

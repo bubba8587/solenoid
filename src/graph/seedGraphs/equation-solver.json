@@ -18,22 +18,34 @@
     },
     {
       "id": "n-dist",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 903,
       "y": 2749,
       "init": {
         "label": "Distance km",
-        "value": 120
+        "op": "number",
+        "value": "120",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "n-time",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 903,
       "y": 2870,
       "init": {
         "label": "Time h",
-        "value": 1.5
+        "op": "number",
+        "value": "1.5",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -57,22 +69,34 @@
     },
     {
       "id": "n-speed2",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 468,
       "y": 3157,
       "init": {
         "label": "Speed km/h",
-        "value": 90
+        "op": "number",
+        "value": "90",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "n-time2",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 468,
       "y": 3278,
       "init": {
         "label": "Time h",
-        "value": 2
+        "op": "number",
+        "value": "2",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -108,22 +132,34 @@
     },
     {
       "id": "n-hyp",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1154,
       "y": 1362,
       "init": {
         "label": "Hypotenuse c",
-        "value": 13
+        "op": "number",
+        "value": "13",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "n-lega",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1154,
       "y": 1483,
       "init": {
         "label": "Leg a",
-        "value": 5
+        "op": "number",
+        "value": "5",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -159,32 +195,50 @@
     },
     {
       "id": "n-pv",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -292,
       "y": 2127,
       "init": {
         "label": "Start value",
-        "value": 1000
+        "op": "number",
+        "value": "1000",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "n-fv",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -292,
       "y": 2006,
       "init": {
         "label": "Target value",
-        "value": 2000
+        "op": "number",
+        "value": "2000",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "n-years",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -292,
       "y": 2248,
       "init": {
         "label": "Years",
-        "value": 10
+        "op": "number",
+        "value": "10",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -220,12 +274,18 @@
     },
     {
       "id": "n-cubic",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 304,
       "y": 1420,
       "init": {
         "label": "Right side",
-        "value": 10
+        "op": "number",
+        "value": "10",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -292,32 +352,50 @@
     },
     {
       "id": "n-ta",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 999,
       "y": 1833,
       "init": {
         "label": "Side a",
-        "value": 3
+        "op": "number",
+        "value": "3",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "n-tb",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 999,
       "y": 1954,
       "init": {
         "label": "Side b",
-        "value": 4
+        "op": "number",
+        "value": "4",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "n-tc",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 999,
       "y": 2075,
       "init": {
         "label": "Hypotenuse c",
-        "value": 5
+        "op": "number",
+        "value": "5",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -341,32 +419,50 @@
     },
     {
       "id": "n-fa",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 564,
       "y": 2220,
       "init": {
         "label": "Side a",
-        "value": 7
+        "op": "number",
+        "value": "7",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "n-fb",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 564,
       "y": 2341,
       "init": {
         "label": "Side b",
-        "value": 8
+        "op": "number",
+        "value": "8",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "n-fc",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 564,
       "y": 2462,
       "init": {
         "label": "Hypotenuse c",
-        "value": 11
+        "op": "number",
+        "value": "11",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -421,12 +517,18 @@
     },
     {
       "id": "n-time3",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 2022,
       "y": 1569,
       "init": {
         "label": "Time h",
-        "value": 2
+        "op": "number",
+        "value": "2",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {

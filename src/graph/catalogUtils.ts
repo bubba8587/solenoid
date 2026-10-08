@@ -143,7 +143,8 @@ function applyNodeOps(root: CatalogEntry[], byType: Map<string, NodeCatalogEntry
     if (!hidden.length || !decl.create) continue;
     if (exposureOf(decl) === "collapsed") {
       host.hiddenOps = hidden;
-      if (decl.mark === false) host.hideOpsMark = true;
+      // A row already striped by its types (Value, List, Table Input) says "several kinds" without the { } mark.
+      if (decl.mark === false || (host.accents?.length ?? 0) > 1) host.hideOpsMark = true;
       continue;
     }
     const parent = findParent(root, host);

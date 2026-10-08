@@ -1,7 +1,7 @@
 // [[B12]] losslessSaves, [[C77]] compositeIsSubgraph
 import { describe, it, expect } from "vitest";
 import { CompositeNode, type CompositeSavedNode } from "../../src/graph/nodes/composite";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 import { extractInit } from "../../src/graph/copyPaste";
 import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
@@ -27,7 +27,7 @@ describe("an inner card keeps its size, collapse and flip", () => {
 
   it("through a save and load, and through a drill-in undo restore", async () => {
     const c = await reload({});
-    const a = new NumberInputNode({});
+    const a = new ValueInputNode();
     await c.internalEditor.addNode(a as never);
     nodeSizeStore.set(a.id, { w: 312.4, h: 180 });
     collapseStore.set(a.id, true);

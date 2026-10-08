@@ -7,7 +7,7 @@ import type { Schemes, SolenoidNode } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { setEditorRefs } from "../../src/graph/process";
 import { CompositeNode, type CompositeInternalSnapshot } from "../../src/graph/nodes/composite";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 import { extractInit } from "../../src/graph/copyPaste";
@@ -53,7 +53,7 @@ beforeEach(() => {
 async function annotatedComposite(): Promise<CompositeNode> {
   const c = new CompositeNode({});
   await c.hydrate(ctorRegistry());
-  const a = new NumberInputNode({ value: 1 });
+  const a = new ValueInputNode({ value: "1" });
   const b = new NoteNode({});
   await c.internalEditor.addNode(a as never);
   await c.internalEditor.addNode(b as never);
@@ -106,7 +106,7 @@ describe("an inner card's pins, comments, frame formats and standoffs travel wit
   it("through a document save and load, and the main undo that reloads", async () => {
     const c = await annotatedComposite();
     await editor.addNode(c as SolenoidNode);
-    const outer = new NumberInputNode({ value: 2 });
+    const outer = new ValueInputNode({ value: "2" });
     await editor.addNode(outer as SolenoidNode);
     pinStore.toggle(outer.id, "value");
 
@@ -123,7 +123,7 @@ describe("an inner card's pins, comments, frame formats and standoffs travel wit
   });
 
   it("through Wrap and Unpack, which drop a standoff the boundary would split", async () => {
-    const a = new NumberInputNode({ value: 1 });
+    const a = new ValueInputNode({ value: "1" });
     const inside = new NoteNode({});
     const outside = new NoteNode({});
     for (const n of [a, inside, outside]) await editor.addNode(n as SolenoidNode);

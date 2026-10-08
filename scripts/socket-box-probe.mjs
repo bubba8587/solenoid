@@ -8,7 +8,7 @@ import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
 const CHROME = browserPath();
-const SEEDS = ["getting-started", "power-features", "unit-flow"];
+const SEEDS = ["getting-started", "power-features"];
 const ZOOMS = [1, 1.37];
 const TOL = 1.0;
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));

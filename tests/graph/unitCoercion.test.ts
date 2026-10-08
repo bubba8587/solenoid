@@ -11,7 +11,7 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
-import { NumberInputNode, FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode, AggregateNode, ListInputNode } from "../../src/graph/rete-nodes";
+import { FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode, AggregateNode, ListInputNode, ValueInputNode } from "../../src/graph/rete-nodes";
 import { isUnitCell, type UnitCell } from "../../src/graph/unitValue";
 import { stripUnitCells, displayMagnitudeOf } from "../../src/graph/unitBridge";
 
@@ -49,9 +49,9 @@ describe("stripUnitCells (pure)", () => {
 describe("unit-blind consumers get display magnitudes (the 5 km > 3 regression)", () => {
   it("Comparison downstream of an FC compares the typed number", async () => {
     const g = makeGraph();
-    const num = new NumberInputNode({ label: "n", value: 5 });
+    const num = new ValueInputNode({ label: "n", value: "5" });
     const fc = new FormatControllerNode({ unit: "km" });
-    const thr = new NumberInputNode({ label: "t", value: 3 });
+    const thr = new ValueInputNode({ label: "t", value: "3" });
     const cmp = new ComparisonNode({ op: "gt" });
     for (const n of [num, fc, thr, cmp]) await g.editor.addNode(n as never);
     await g.conn(num, "value", fc, "in");
@@ -62,7 +62,7 @@ describe("unit-blind consumers get display magnitudes (the 5 km > 3 regression)"
 
   it("Round downstream of an FC rounds the typed number", async () => {
     const g = makeGraph();
-    const num = new NumberInputNode({ label: "n", value: 5.4 });
+    const num = new ValueInputNode({ label: "n", value: "5.4" });
     const fc = new FormatControllerNode({ unit: "km" });
     const round = new RoundNNode({ op: "round" });
     for (const n of [num, fc, round]) await g.editor.addNode(n as never);
@@ -75,7 +75,7 @@ describe("unit-blind consumers get display magnitudes (the 5 km > 3 regression)"
 describe("unit-aware nodes and passthroughs keep the tags", () => {
   it("Display forwards the UnitCell unchanged", async () => {
     const g = makeGraph();
-    const num = new NumberInputNode({ label: "n", value: 5 });
+    const num = new ValueInputNode({ label: "n", value: "5" });
     const fc = new FormatControllerNode({ unit: "km" });
     const disp = new DisplayNode({ label: "d" });
     for (const n of [num, fc, disp]) await g.editor.addNode(n as never);
@@ -88,9 +88,9 @@ describe("unit-aware nodes and passthroughs keep the tags", () => {
 
   it("a bare number added to a currency value adopts $ (=$7, keeps display)", async () => {
     const g = makeGraph();
-    const num = new NumberInputNode({ label: "n", value: 5 });
+    const num = new ValueInputNode({ label: "n", value: "5" });
     const fc = new FormatControllerNode({ unit: "usd" });
-    const two = new NumberInputNode({ label: "t", value: 2 });
+    const two = new ValueInputNode({ label: "t", value: "2" });
     const add = new ArithmeticNode({ op: "add" });
     for (const n of [num, fc, two, add]) await g.editor.addNode(n as never);
     await g.conn(num, "value", fc, "in");
@@ -105,9 +105,9 @@ describe("unit-aware nodes and passthroughs keep the tags", () => {
 
   it("$ × a bare number keeps the $ display (no bare ¤ derived symbol)", async () => {
     const g = makeGraph();
-    const num = new NumberInputNode({ label: "n", value: 5000 });
+    const num = new ValueInputNode({ label: "n", value: "5000" });
     const fc = new FormatControllerNode({ unit: "usd" });
-    const two = new NumberInputNode({ label: "t", value: 2 });
+    const two = new ValueInputNode({ label: "t", value: "2" });
     const mul = new ArithmeticNode({ op: "mul" });
     for (const n of [num, fc, two, mul]) await g.editor.addNode(n as never);
     await g.conn(num, "value", fc, "in");
@@ -122,9 +122,9 @@ describe("unit-aware nodes and passthroughs keep the tags", () => {
 
   it("Arithmetic runs the dimension algebra on the tags", async () => {
     const g = makeGraph();
-    const num = new NumberInputNode({ label: "n", value: 2 });
+    const num = new ValueInputNode({ label: "n", value: "2" });
     const fc = new FormatControllerNode({ unit: "km" });
-    const three = new NumberInputNode({ label: "m", value: 3 });
+    const three = new ValueInputNode({ label: "m", value: "3" });
     const mul = new ArithmeticNode({ op: "mul" });
     for (const n of [num, fc, three, mul]) await g.editor.addNode(n as never);
     await g.conn(num, "value", fc, "in");
@@ -140,7 +140,7 @@ describe("unit-aware nodes and passthroughs keep the tags", () => {
 describe("dimensioned cells shape without #SHAPE! (the $ USD regression)", () => {
   it("a currency scalar into an Aggregate widens to a singleton, not #SHAPE!", async () => {
     const g = makeGraph();
-    const num = new NumberInputNode({ label: "n", value: 5 });
+    const num = new ValueInputNode({ label: "n", value: "5" });
     const fc = new FormatControllerNode({ unit: "usd" });
     const agg = new AggregateNode({ op: "sum" });
     for (const n of [num, fc, agg]) await g.editor.addNode(n as never);
@@ -176,7 +176,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
   beforeAll(async () => {
     // Number → FC(km) → FC(none): the second FC INHERITS (forwarding).
     const g = makeGraph();
-    const num = new NumberInputNode({ label: "n", value: 5 });
+    const num = new ValueInputNode({ label: "n", value: "5" });
     const fc1 = new FormatControllerNode({ unit: "km" });
     fc2 = new FormatControllerNode({ unit: "none" });
     for (const n of [num, fc1, fc2]) await g.editor.addNode(n as never);
@@ -188,7 +188,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     // Number → Convert(m→km) → FC: the FC INHERITS the converted value's unit
     // (forwarding — the unit arrives WITH the value; dictation is the other way).
     const h = makeGraph();
-    const src = new NumberInputNode({ label: "n", value: 5000 });
+    const src = new ValueInputNode({ label: "n", value: "5000" });
     const cv = new ConvertNode({ fromUnit: "m", toUnit: "km" });
     fcAfterConvert = new FormatControllerNode({ unit: "none" });
     for (const n of [src, cv, fcAfterConvert]) await h.editor.addNode(n as never);
@@ -201,7 +201,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     // fromUnit DICTATES it (← ← lockedByConvert, dropdown locked to m) — Convert
     // primacy: the value must be tagged in the unit the Convert reads it as.
     const k = makeGraph();
-    const src2 = new NumberInputNode({ label: "n", value: 5 });
+    const src2 = new ValueInputNode({ label: "n", value: "5" });
     fcBeforeConvert = new FormatControllerNode({ unit: "none" });
     const cv2 = new ConvertNode({ fromUnit: "m", toUnit: "km" });
     for (const n of [src2, fcBeforeConvert, cv2]) await k.editor.addNode(n as never);
@@ -237,7 +237,7 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
 describe("Convert primacy on the outgoing value", () => {
   it("Convert to a non-FC-registry unit (yd) still displays yd downstream, not base m", async () => {
     const g = makeGraph();
-    const src = new NumberInputNode({ label: "n", value: 10 });
+    const src = new ValueInputNode({ label: "n", value: "10" });
     const cv = new ConvertNode({ fromUnit: "m", toUnit: "yd" });
     const disp = new DisplayNode({ label: "d" });
     for (const n of [src, cv, disp]) await g.editor.addNode(n as never);
@@ -251,7 +251,7 @@ describe("Convert primacy on the outgoing value", () => {
 
   it("a tagged value whose dimension clashes with the Convert target errors", async () => {
     const g = makeGraph();
-    const src = new NumberInputNode({ label: "n", value: 5 });
+    const src = new ValueInputNode({ label: "n", value: "5" });
     const fc = new FormatControllerNode({ unit: "usd" });
     const cv = new ConvertNode({ fromUnit: "m", toUnit: "km" });
     for (const n of [src, fc, cv]) await g.editor.addNode(n as never);

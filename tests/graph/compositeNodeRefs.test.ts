@@ -1,7 +1,7 @@
 // [[B12]] losslessSaves, [[C35]] unknownViaPlaceholder
 import { describe, it, expect } from "vitest";
 import { CompositeNode } from "../../src/graph/nodes/composite";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { GroupNode } from "../../src/graph/nodes/group";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { PlaceholderNode } from "../../src/graph/nodes/placeholder";
@@ -20,7 +20,7 @@ async function reload(init: Record<string, unknown>): Promise<CompositeNode> {
 describe("node references inside a Composite survive save and load", () => {
   it("a Group's members and a Format Controller's host resolve to the live internal nodes after a load", async () => {
     const c = await reload({});
-    const a = new NumberInputNode({});
+    const a = new ValueInputNode();
     const g = new GroupNode({ members: [a.id] });
     const fc = new FormatControllerNode({ hostNodeId: a.id });
     for (const n of [a, g, fc]) await c.internalEditor.addNode(n as never);
@@ -28,7 +28,7 @@ describe("node references inside a Composite survive save and load", () => {
 
     const c2 = await reload(first);
     const nodes = c2.internalEditor.getNodes();
-    const a2 = nodes.find((n) => n instanceof NumberInputNode)!;
+    const a2 = nodes.find((n) => n instanceof ValueInputNode)!;
     expect((nodes.find((n) => n instanceof GroupNode) as GroupNode).members).toEqual([a2.id]);
     expect((nodes.find((n) => n instanceof FormatControllerNode) as FormatControllerNode).hostNodeId).toBe(a2.id);
 
@@ -40,7 +40,7 @@ describe("node references inside a Composite survive save and load", () => {
     const init = {
       internal: {
         nodes: [
-          { id: "n1", type: "NumberInputNode", init: {} },
+          { id: "n1", type: "ValueInputNode", init: {} },
           { id: "p1", type: "NoSuchPackNode", init: { members: ["n1"], steps: [{ title: "s", nodeIds: ["n1"] }] } },
         ],
         connections: [],
@@ -51,7 +51,7 @@ describe("node references inside a Composite survive save and load", () => {
     await c.hydrate(ctorRegistry());
     expect(init).toEqual(before);
     const ph = c.internalEditor.getNodes().find((n) => n instanceof PlaceholderNode) as PlaceholderNode;
-    const live = c.internalEditor.getNodes().find((n) => n instanceof NumberInputNode)!;
+    const live = c.internalEditor.getNodes().find((n) => n instanceof ValueInputNode)!;
     expect(ph.savedInit.members).toEqual([live.id]);
     const saved = (extractInit(c) as unknown as Snap).internal.nodes.find((n) => n.id === "p1")!;
     expect(saved.init).toEqual(before.internal.nodes[1].init);

@@ -7,7 +7,7 @@ import type { Schemes, SolenoidNode } from "../../src/graph/schemes";
 import { createCompositeFromSelection, unpackComposite } from "../../src/graph/compositeLogic";
 import { settleNodeRemoved } from "../../src/graph/canvasActions";
 import { setActiveGraph, type EditScope } from "../../src/graph/activeGraph";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { CompositeNode } from "../../src/graph/nodes/composite";
@@ -48,7 +48,7 @@ afterEach(() => setActiveGraph(null));
 describe("Wrap as Composite inside a drill-in relocates, it doesn't delete", () => {
   it("the wrapped nodes keep their docks, names and collapse state; unpack forgets only the composite", async () => {
     const { editor, view } = drillLevel();
-    const num = new NumberInputNode({ value: 2 });
+    const num = new ValueInputNode({ value: "2" });
     const disp = new DisplayNode();
     const fc = new FormatControllerNode({});
     for (const n of [num, disp, fc]) await editor.addNode(n as SolenoidNode);
@@ -75,7 +75,7 @@ describe("Wrap as Composite inside a drill-in relocates, it doesn't delete", () 
 
   it("deleting a composite for real forgets its inner cards at every depth", async () => {
     const { editor } = drillLevel();
-    const num = new NumberInputNode({ value: 3 });
+    const num = new ValueInputNode({ value: "3" });
     const disp = new DisplayNode();
     const inner = new CompositeNode();
     const outer = new CompositeNode();
@@ -94,7 +94,7 @@ describe("Wrap as Composite inside a drill-in relocates, it doesn't delete", () 
 
   it("an ungated removal still forgets", async () => {
     const { editor } = drillLevel();
-    const num = new NumberInputNode({ value: 1 });
+    const num = new ValueInputNode({ value: "1" });
     await editor.addNode(num as SolenoidNode);
     nodeNameStore.rename(num.id, "gone_soon");
     await editor.removeNode(num.id);

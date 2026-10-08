@@ -9,9 +9,7 @@ export { NoticeToasts } from "./NoticeToasts";
 export { AngleDialComponent } from "./AngleDialNode";
 export { SlicerComponent } from "./SlicerNode";
 
-export { NumberInputComponent } from "./NumberInputNode";
 export { ConstantComponent } from "./ConstantNode";
-export { BooleanInputComponent } from "./BooleanInputNode";
 export { SliderInputComponent } from "./SliderInputNode";
 export { ColorPickerComponent } from "./ColorPickerNode";
 export { ColorBlendComponent } from "./ColorBlendNode";
@@ -176,7 +174,6 @@ export { HypothesisTestComponent } from "./HypothesisTestNode";
 export { InterpolateComponent } from "./InterpolateNode";
 export { LinestComponent } from "./LinestNode";
 
-export { TextInputComponent } from "./TextInputNode";
 export { TextTransformComponent } from "./TextTransformNode";
 export { TextLenComponent } from "./TextLenNode";
 export { ConcatComponent } from "./ConcatNode";
@@ -236,7 +233,6 @@ export { GridPainterComponent } from "./GridPainterNode";
 export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
 export { ChartBuilderComponent } from "./ChartBuilderNode";
-export { DateInputComponent } from "./DateInputNode";
 export { ValueInputComponent } from "./ValueInputNode";
 export { DateRangeComponent } from "./DateRangeNode";
 export { SaveTimesComponent } from "./SaveTimesNode";

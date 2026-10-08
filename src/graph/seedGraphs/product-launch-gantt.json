@@ -29,26 +29,34 @@
     },
     {
       "id": "start",
-      "type": "DateInputNode",
+      "type": "ValueInputNode",
       "x": 419,
       "y": 1049,
       "init": {
-        "label": "Project start"
+        "label": "Project start",
+        "op": "date",
+        "value": "19-Jan-2026",
+        "width": 180
       },
-      "stringLiterals": {
-        "date": "19-Jan-2026"
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "status",
-      "type": "DateInputNode",
+      "type": "ValueInputNode",
       "x": 419,
       "y": 1152,
       "init": {
-        "label": "Status date"
+        "label": "Status date",
+        "op": "date",
+        "value": "05-Feb-2026",
+        "width": 180
       },
-      "stringLiterals": {
-        "date": "05-Feb-2026"
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -219,13 +227,13 @@
     },
     {
       "source": "start",
-      "sourceOutput": "result",
+      "sourceOutput": "value",
       "target": "schedule",
       "targetInput": "start"
     },
     {
       "source": "status",
-      "sourceOutput": "result",
+      "sourceOutput": "value",
       "target": "schedule",
       "targetInput": "status"
     },
@@ -291,7 +299,7 @@
     },
     {
       "source": "status",
-      "sourceOutput": "result",
+      "sourceOutput": "value",
       "target": "ev",
       "targetInput": "status"
     },

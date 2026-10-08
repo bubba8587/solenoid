@@ -3,14 +3,14 @@
 import { getEditor, graphSettled, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
-import { NumberInputNode, SliderInputNode } from "./nodes/input";
+import { SliderInputNode } from "./nodes/input";
 import { ValueInputNode } from "./nodes/control";
 import type { TornadoNode, TornadoResult } from "./nodes/tornado";
 
 type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
-type Leaf = { node: NumberInputNode | SliderInputNode | ValueInputNode; label: string };
+type Leaf = { node: SliderInputNode | ValueInputNode; label: string };
 
-/** Only Number, Slider and Number-mode Value inputs count: nothing else is a perturbable declared input. */
+/** Only Sliders and number Value Inputs count: nothing else is a perturbable declared input. */
 export function findUpstreamLeaves(editor: AnyEditor, startId: string): Leaf[] {
   const incoming = new Map<string, string[]>();
   for (const c of editor.getConnections()) {
@@ -27,7 +27,7 @@ export function findUpstreamLeaves(editor: AnyEditor, startId: string): Leaf[] {
       const node = editor.getNode(s);
       if (!node) continue;
       // Stop at a Slider: perturbing what feeds its min, max or step would change its range, not its value.
-      if (node instanceof NumberInputNode || node instanceof SliderInputNode || (node instanceof ValueInputNode && node.op === "number")) {
+      if (node instanceof SliderInputNode || (node instanceof ValueInputNode && node.op === "number")) {
         const label = (node.label ?? "").trim() || (node instanceof SliderInputNode ? "Slider" : "Number");
         leaves.push({ node, label });
       } else {

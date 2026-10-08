@@ -9,7 +9,7 @@ import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
 import { setEditorRefs, processGraph } from "../../src/graph/process";
 import { cableValueStore } from "../../src/graph/cableValueStore";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { insertFcInline } from "../../src/graph/fcDocking";
 import { deleteSelection } from "../../src/graph/canvasActions";
@@ -39,7 +39,7 @@ async function attach(editor: NodeEditor<Schemes>, hostNodeId: string, socketKey
 describe("Host → FC → FC, delete the middle FC", () => {
   it("takes the FC docked on it and keeps computing", async () => {
     const { editor, view } = makeGraph();
-    const host = new NumberInputNode({ value: 42 });
+    const host = new ValueInputNode({ value: "42" });
     await editor.addNode(host);
     await processGraph();
     const fc1 = await attach(editor, host.id, "value");
@@ -60,7 +60,7 @@ describe("Host → FC → FC, delete the middle FC", () => {
 describe("deleting a host alone", () => {
   it("takes its docked FCs at any depth, so no FC is left docked to a missing host", async () => {
     const { editor, view } = makeGraph();
-    const host = new NumberInputNode({ value: 5 });
+    const host = new ValueInputNode({ value: "5" });
     await editor.addNode(host);
     const fc1 = await attach(editor, host.id, "value");
     const fc2 = await attach(editor, fc1.id, "out");
@@ -76,8 +76,8 @@ describe("deleting a host alone", () => {
 describe("a node removed while a compute pass is in flight", () => {
   it("is skipped by the pass instead of throwing rete-engine's 'node is not initialized'", async () => {
     const { editor } = makeGraph();
-    const a = new NumberInputNode({ value: 1 });
-    const b = new NumberInputNode({ value: 2 });
+    const a = new ValueInputNode({ value: "1" });
+    const b = new ValueInputNode({ value: "2" });
     await editor.addNode(a);
     await editor.addNode(b);
     const inFlight = processGraph(); // un-awaited, like the connectionremoved pipe's targeted pass

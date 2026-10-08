@@ -8,7 +8,7 @@ import { browserPath } from "./browser.mjs";
 
 const CHROME = browserPath();
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
-const SEEDS = process.argv.length > 2 ? process.argv.slice(2) : ["getting-started", "table-verbs", "unit-flow"];
+const SEEDS = process.argv.length > 2 ? process.argv.slice(2) : ["getting-started", "table-verbs"];
 const TOL = 0.5;
 
 const browser = await puppeteer.launch({

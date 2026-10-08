@@ -5,14 +5,14 @@ import type { Schemes, SolenoidNode, SolenoidConnection } from "../../src/graph/
 import { socketMenuFor, cableTargetFor, nodeTargetFor } from "../../src/graph/canvasContextMenu";
 import { cableSelectionStore } from "../../src/graph/cableState";
 import { CompositeNode } from "../../src/graph/nodes/composite";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { DisplayNode } from "../../src/graph/nodes/display";
 
 const at = { clientX: 10, clientY: 20, target: null };
 
 async function graph() {
   const editor = new NodeEditor<Schemes>();
-  const num = new NumberInputNode({ value: 1 });
+  const num = new ValueInputNode({ value: "1" });
   const disp = new DisplayNode();
   const comp = new CompositeNode();
   for (const n of [num, disp, comp]) await editor.addNode(n as SolenoidNode);

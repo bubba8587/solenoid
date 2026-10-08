@@ -34,7 +34,7 @@ export interface SweepRow {
   shows: string;
 }
 
-const SOURCES = ["number-input", "text-input", "boolean-input", "date-input", "list-input", "table-input", "frame-input", "cube-input", "lambda-make"];
+const SOURCES = ["value-input", "list-input", "table-input", "frame-input", "cube-input", "lambda-make"];
 
 /** How visible an element is: 0 when it or an ancestor inside the card is hidden. */
 function shown(el: Element, stop: Element): number {

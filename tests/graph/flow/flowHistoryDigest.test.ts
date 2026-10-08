@@ -5,7 +5,7 @@ import type { SavedGraph, SavedNode } from "../../../src/graph/persistence";
 
 const node = (id: string, name: string, extra: Partial<SavedNode> = {}): SavedNode => ({
   id,
-  type: "NumberInputNode",
+  type: "ValueInputNode",
   name,
   x: 0,
   y: 0,

@@ -3,14 +3,14 @@ import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import type { Schemes, SolenoidConnection } from "../../src/graph/schemes";
 import { CompositeNode, CompositeInputNode } from "../../src/graph/nodes/composite";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { reconcileLeftPorts } from "../../src/graph/compositeLogic";
 
 describe("reconcileLeftPorts", () => {
   it("drops a port whose marker was deleted inside, with the parent's cables on it, and keeps the rest", async () => {
     const parent = new NodeEditor<Schemes>();
     const comp = new CompositeNode();
-    const src = new NumberInputNode({ value: 1 });
+    const src = new ValueInputNode({ value: "1" });
     await parent.addNode(comp as never);
     await parent.addNode(src);
     const kept = new CompositeInputNode({ label: "Kept" });

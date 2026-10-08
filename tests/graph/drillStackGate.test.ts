@@ -7,7 +7,7 @@ import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { setEditorRefs } from "../../src/graph/process";
 import { CompositeNode } from "../../src/graph/nodes/composite";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 import { collapseStore } from "../../src/graph/collapseStore";
@@ -50,7 +50,7 @@ const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve();
 async function setup() {
   const comp = new CompositeNode({});
   await comp.hydrate(ctorRegistry());
-  const a = new NumberInputNode({ value: 1 });
+  const a = new ValueInputNode({ value: "1" });
   const b = new DisplayNode();
   await comp.internalEditor.addNode(a as never);
   await comp.internalEditor.addNode(b as never);

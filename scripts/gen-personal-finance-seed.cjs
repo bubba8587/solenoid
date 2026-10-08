@@ -26,9 +26,13 @@ function n(id, type, x, y, init = {}, extra = {}) {
   const node = { id, type, x, y, init };
   if (extra.literals) node.literals = extra.literals;
   if (extra.stringLiterals) node.stringLiterals = extra.stringLiterals;
+  if (extra.collapsed) node.collapsed = true;
+  if (extra.sections) node.sections = extra.sections;
   nodes.push(node);
   return id;
 }
+// A Value Input shows its result alone, its Format section folded.
+const FOLDED_INPUT = { collapsed: true, sections: { Format: false } };
 function c(source, sourceOutput, target, targetInput) {
   conns.push({ source, sourceOutput, target, targetInput });
 }
@@ -199,8 +203,8 @@ note("note-assump", -1920, 820,
   "# Stray inputs\nHand-entered values that appear in no CSV. They feed the projections and alerts; change one and the right side recomputes.",
   "vermilion", 360, 170);
 n("in-emerg",    "SliderInputNode", -1900, 1020, { label: "Emergency-fund target $", value: 15000 }, { literals: { min: 0, max: 60000, step: 1000 } });
-n("in-takehome", "NumberInputNode", -1900, 1320, { label: "Monthly take-home $", value: 5200 });
-n("in-years",    "NumberInputNode", -1900, 1500, { label: "Years to retire", value: 30 });
+n("in-takehome", "ValueInputNode", -1900, 1320, { label: "Monthly take-home $", op: "number", value: "5200", width: 180 }, FOLDED_INPUT);
+n("in-years",    "ValueInputNode", -1900, 1500, { label: "Years to retire", op: "number", value: "30", width: 180 }, FOLDED_INPUT);
 const GRP_ASSUMP = ["in-emerg","in-takehome","in-years"];
 
 c("in-emerg","value","alert-nw","low");
@@ -265,13 +269,13 @@ note("note-mort", 1420, 660,
   "vermilion", 380, 200);
 n("sld-loan", "SliderInputNode", 1420,  860, { label: "Home loan $", value: 350000 }, { literals: { min: 100000, max: 800000, step: 10000 } });
 n("sld-apr",  "SliderInputNode", 1420, 1140, { label: "Mortgage APR %", value: 6.25 }, { literals: { min: 2, max: 9, step: 0.05 } });
-n("in-term",  "NumberInputNode", 1420, 1420, { label: "Term (years)", value: 30 });
+n("in-term",  "ValueInputNode", 1420, 1420, { label: "Term (years)", op: "number", value: "30", width: 180 }, FOLDED_INPUT);
 // TVM's fv must be WIRED, not a literal — the Equation-family card is
 // wire-driven, so a seed literal would be an invisible hardcoded known
 // (seeds.test.ts rejects it). fv = 0 ⇒ fully amortized at end of term.
 // Coords are in the TUNED frame (committed JSON), inside grp-mort's left
 // input column between sld-apr and in-term.
-n("in-endbal","NumberInputNode", 2216, 1900, { label: "End balance", value: 0 });
+n("in-endbal","ValueInputNode", 2216, 1900, { label: "End balance", op: "number", value: "0", width: 180 }, FOLDED_INPUT);
 n("expr-mapr","ExpressionNode",  1700, 1140, { label: "Monthly rate", expr: "apr / 100 / 12" });
 n("expr-mnper","ExpressionNode", 1700, 1420, { label: "Payments", expr: "term * 12" });
 n("tvm-pmt",  "TvmNode",         1960,  980, { label: "Monthly payment", paymentTiming: "end" });

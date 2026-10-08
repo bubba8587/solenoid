@@ -107,22 +107,34 @@
     },
     {
       "id": "s5",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 40,
       "y": 1276,
       "init": {
         "label": "5",
-        "value": 5
+        "op": "number",
+        "value": "5",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "s3",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 40,
       "y": 1397,
       "init": {
         "label": "3",
-        "value": 3
+        "op": "number",
+        "value": "3",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -763,12 +775,18 @@
     },
     {
       "id": "s_val",
-      "type": "TextInputNode",
+      "type": "ValueInputNode",
       "x": 4210,
       "y": 2693,
       "init": {
         "label": "\"abc\"",
-        "value": "abc"
+        "op": "string",
+        "value": "abc",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -802,12 +820,18 @@
     },
     {
       "id": "s_na",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 2621,
       "y": 3430,
       "init": {
         "label": "5 meters",
-        "value": 5
+        "op": "number",
+        "value": "5",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -1087,12 +1111,18 @@
     },
     {
       "id": "oneB",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 316,
       "y": 1673,
       "init": {
         "label": "1",
-        "value": 1
+        "op": "number",
+        "value": "1",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {

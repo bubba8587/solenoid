@@ -3,7 +3,7 @@ import { ClassicPreset } from "rete";
 import { type NodeKind, NODE_KIND_ACCENTS, NODE_KIND_SLOTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { themeAccent, socketVarHex, socketVarSlot, type PaletteSlot } from "../palette";
-import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, SaveTimesNode } from "./input";
+import { ConstantNode, SliderInputNode, ColorPickerNode, ColorBlendNode, SaveTimesNode } from "./input";
 import { PhysicsConstantNode } from "./physicsConstants";
 import { ElementNode } from "./chemistry";
 import { ConvertNode } from "./convert";
@@ -49,7 +49,7 @@ import { WriteObsidianNode } from "./obsidian";
 import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
-import { SlicerNode, CableSwitchNode, DateInputNode, ValueInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
+import { SlicerNode, CableSwitchNode, ValueInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
 import { SparklineNode, ChartNode, MergePlotsNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, KpiNode } from "./visual";
 import { GanttNode } from "./gantt";
 import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
@@ -67,7 +67,7 @@ import {
   SeriesSumNode, MultinomialNode,
 } from "./scalar";
 import {
-  TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
+  TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, PadTextNode, TruncateTextNode, WrapTextNode, HashNode, UuidNode, TemplateNode, ExactNode, CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
   ReverseTextNode, SpellNumberNode, TextSimilarityNode, FuzzyMatchNode,
@@ -88,7 +88,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
 export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof ReportNode) return "document";
-  if (node instanceof NumberInputNode || node instanceof ValueInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
+  if (node instanceof ValueInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof GaugeNode || node instanceof HeatmapNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
   if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof HistogramNode || node instanceof SankeyNode) return "chart";
   if (node instanceof QrCodeNode || node instanceof KpiNode || node instanceof GanttNode || node instanceof ChartBuilderNode || node instanceof MermaidNode || node instanceof RecordNode) return "chart";
@@ -102,7 +102,7 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
   if (
     node instanceof ComparisonNode || node instanceof BooleanOpNode ||
     node instanceof NotNode || node instanceof BetweenNode || node instanceof IsCloseNode ||
-    node instanceof BooleanInputNode || node instanceof IsTestNode ||
+    node instanceof IsTestNode ||
     node instanceof IsEvenOddNode ||
     node instanceof IsInNode
   ) return "logic";
@@ -155,7 +155,7 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
   ) return "util";
   if (node instanceof DisplayNode) return "util";
   if (
-    node instanceof TextInputNode || node instanceof TextTransformNode ||
+    node instanceof TextTransformNode ||
     node instanceof TextLenNode || node instanceof ConcatNode ||
     node instanceof TextSliceNode || node instanceof TextFindNode ||
     node instanceof SubstituteNode || node instanceof TextReplaceNode ||
@@ -171,7 +171,7 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
     node instanceof DatePartNode ||
     node instanceof WeekInfoNode || node instanceof DateDiffNode ||
     node instanceof DateAddNode || node instanceof WorkdaysNode ||
-    node instanceof DateInputNode || node instanceof SaveTimesNode ||
+    node instanceof SaveTimesNode ||
     node instanceof TimeZoneConvertNode || node instanceof WorldClockNode
   ) return "date";
   if (

@@ -240,7 +240,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "relativeDates",
         label: "Relative dates",
-        help: "Date Input fields can parse \"next Tuesday\". WARNING: this adds volatility!",
+        help: "A date Value Input can parse \"next Tuesday\". WARNING: this adds volatility!",
       },
       {
         key: "nativeEngine",

@@ -1,31 +1,16 @@
 // [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C95]] commitOnEnter
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { DateInputNode as DateInputNodeType } from "../rete-nodes";
 import { jsDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { isSolError } from "../errorValue";
 import { settingsStore } from "../settingsStore";
-import { NodeShell, type NodeProps } from "./nodeKit";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { CalendarIcon } from "./CalendarIcon";
-import { processGraph } from "../process";
 
 /** Examples for the (i) popup — valid inputs across the relative + absolute forms. No prose. */
 const FORMAT_EXAMPLES = ["today", "tomorrow", "yesterday", "next friday", "last monday", "in 3 days", "2 weeks ago", "15-Mar-2026", "2026-03-15"];
 const isoOf = (serial: number) => new Date((serial - 25569) * 86400000).toISOString().slice(0, 10);
 
-// The raw text is the stored truth: idle shows DD-MMM-YYYY ([[C44]] dateSerials), editing shows what was typed, and an ambiguous or unparseable entry stays put and flags red.
-export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>) {
-  return (
-    <NodeShell node={data} emit={emit} collapsible={false}>
-      <DateEntry
-        raw={data.stringLiterals.date ?? ""}
-        onCommit={(text) => { data.stringLiterals.date = text; void processGraph(data.id); }}
-      />
-    </NodeShell>
-  );
-}
-
-/** The typed date field with its calendar and formats popup; Date Input's and Value Input's. */
+/** A date Value Input's typed field with its calendar and formats popup. The raw text is the stored truth: idle shows DD-MMM-YYYY ([[C44]] dateSerials), editing shows what was typed, and an ambiguous or unparseable entry stays put and flags red. */
 export function DateEntry({ raw, onCommit }: { raw: string; onCommit: (text: string) => void }) {
   const nativeRef = useRef<HTMLInputElement>(null);
   // Mirrors the node ([[D54]] relativeDatesOptIn).

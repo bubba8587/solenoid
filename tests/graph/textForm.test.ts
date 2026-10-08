@@ -154,8 +154,8 @@ describe("text form: unit cases", () => {
     const g: SavedGraph = {
       v: 2,
       nodes: [
-        { id: "__proto__", name: "__proto__", type: "NumberInputNode", x: 40, y: 50, init: {} },
-        { id: "constructor", name: "constructor", type: "NumberInputNode", x: 0, y: 0, init: {} },
+        { id: "__proto__", name: "__proto__", type: "ValueInputNode", x: 40, y: 50, init: {} },
+        { id: "constructor", name: "constructor", type: "ValueInputNode", x: 0, y: 0, init: {} },
       ],
       connections: [],
     };
@@ -413,7 +413,7 @@ describe("stacking order", () => {
     v: 2,
     nodes: [
       { id: "b", type: "DisplayNode", name: "B", x: 0, y: 0, init: {} },
-      { id: "a", type: "NumberInputNode", name: "A", x: 40, y: 20, init: {} },
+      { id: "a", type: "ValueInputNode", name: "A", x: 40, y: 20, init: {} },
     ],
     connections: [{ source: "a", sourceOutput: "value", target: "b", targetInput: "value" }],
   };

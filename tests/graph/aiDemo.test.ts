@@ -53,7 +53,7 @@ describe("demoReply — the staged build", () => {
   });
 
   it("keeps an existing document intact and builds to its right", () => {
-    const own = 'Mine: NumberInputNode label="Mine" value=1\n---\n{ "v": 2, "positions": { "Mine": { "x": 700, "y": 50 } } }\n';
+    const own = 'Mine: ValueInputNode label="Mine" value="1"\n---\n{ "v": 2, "positions": { "Mine": { "x": 700, "y": 50 } } }\n';
     const next = fenceOf(demoReply("add the demo", own));
     const g: SavedGraph = readTextForm(next);
     const names = g.nodes.map((n) => n.name ?? n.id);

@@ -42,7 +42,7 @@ function roundTrip(n: ClassicPreset.Node): string | null {
   const g: SavedGraph = {
     v: CURRENT_SAVE_VERSION,
     nodes: [
-      { id: "Up", type: "NumberInputNode", name: "Up", x: 0, y: 0, init: {} },
+      { id: "Up", type: "ValueInputNode", name: "Up", x: 0, y: 0, init: {} },
       sn,
       { id: "Down", type: "DisplayNode", name: "Down", x: 0, y: 0, init: {} },
     ],

@@ -60,7 +60,7 @@ describe("runAiPrompt", () => {
   });
 
   it("returns a valid fenced rewrite as a canonicalized edit", async () => {
-    const doc = 'A: NumberInputNode label="A" value=7\nShow: DisplayNode in<-A.value\n---\n{ "v": 2 }\n';
+    const doc = 'A: ValueInputNode label="A" value="7"\nShow: DisplayNode in<-A.value\n---\n{ "v": 2 }\n';
     const { fn } = fakeFetch([apiMessage("Added a display.\n```solenoid\n" + doc + "```")]);
     const out = await runAiPrompt("show 7", EMPTY_DOC, { fetch: fn });
     expect(out.kind).toBe("edit");
@@ -68,13 +68,13 @@ describe("runAiPrompt", () => {
     // Canonical: parses back to the same graph, and a second canonicalization
     // is byte-stable.
     const g = readTextForm(out.newText);
-    expect(g.nodes.map((n) => n.type).sort()).toEqual(["DisplayNode", "NumberInputNode"]);
+    expect(g.nodes.map((n) => n.type).sort()).toEqual(["DisplayNode", "ValueInputNode"]);
     expect(out.warnings).toEqual([]);
   });
 
   it("feeds validator issues back as a repair round, then succeeds", async () => {
     const bad = 'A: NumberInputNod value=7\n---\n{ "v": 2 }\n';
-    const good = 'A: NumberInputNode value=7\n---\n{ "v": 2 }\n';
+    const good = 'A: ValueInputNode value="7"\n---\n{ "v": 2 }\n';
     const { fn, bodies, calls } = fakeFetch([
       apiMessage("```solenoid\n" + bad + "```"),
       apiMessage("```solenoid\n" + good + "```"),
@@ -84,7 +84,7 @@ describe("runAiPrompt", () => {
     expect(calls()).toBe(2);
     // The second request carried the validator's message for the model to fix from.
     expect(bodies[1]).toContain("unknown node type");
-    expect(bodies[1]).toContain("NumberInputNode");
+    expect(bodies[1]).toContain("ValueInputNode");
   });
 
   it("gives up after the repair budget with the surviving issues", async () => {

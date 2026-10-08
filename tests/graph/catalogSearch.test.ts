@@ -31,7 +31,7 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
   });
 
   it("'text input' and 'frame input' find their input nodes", () => {
-    expect(types("text input")).toContain("text-input");
+    expect(types("text input")).toContain("value-input__op-string");
     expect(types("frame input")).toContain("frame-input");
   });
 
@@ -272,7 +272,8 @@ describe("Add-menu search — the top hit for common queries", () => {
     ["index", "list-index"], ["unique", "list-unique"], ["countif", "sumifs__excel-COUNTIF"], ["sumif", "sumifs"],
     ["concat", "text-concat"], ["today", "date-today"], ["round", "roundn-round"], ["len", "text-len"],
     ["trim", "text-trim"], ["npv", "npv"], ["irr", "irr"], ["lambda", "lambda-make"],
-    ["transpose", "table-transpose"], ["number input", "number-input"], ["list input", "list-input"],
+    ["transpose", "table-transpose"], ["number input", "value-input__op-number"], ["text input", "value-input__op-string"],
+    ["date input", "value-input__op-date"], ["boolean input", "value-input__op-logical"], ["list input", "list-input"],
     ["note", "note"], ["join", "join"], ["convert", "convert"], ["median", "reduce-median"],
     ["stdev", "reduce-stdev"], ["std dev", "reduce-stdev"], ["standard deviation", "reduce-stdev"],
     ["regex", "regex"], ["switch", "switch"], ["choose", "choose"], ["sequence", "list-sequence"],

@@ -137,8 +137,8 @@ export function buildGroundingSpec(): string {
   w(`Example:`);
   w();
   w("```");
-  w(`Price: NumberInputNode label="Price" value=25`);
-  w(`Qty: NumberInputNode label="Qty" value=4`);
+  w(`Price: ValueInputNode label="Price" value="25"`);
+  w(`Qty: ValueInputNode label="Qty" value="4"`);
   w(`Total: ArithmeticNode op="mul" a<-Price.value b<-Qty.value`);
   w(`Show: DisplayNode in<-Total.result`);
   w(`---`);

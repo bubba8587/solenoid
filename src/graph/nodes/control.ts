@@ -15,7 +15,7 @@ import { settingsStore } from "../settingsStore";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { isDateStyle, type FormatAnnotation, type FormatStyleId, type DecimalMode, type TextCase, type LogicalStyle } from "../formatAnnotationStore";
+import { isDateStyle, type FormatAnnotation, type FormatStyleId, type DecimalMode, type TextCase, type TextAlign, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { applyFcUnit } from "../unitBridge";
 import type { TableElemType } from "./matrix";
 import { clamp } from "./mathUtils";
@@ -135,49 +135,24 @@ export class AngleDialNode extends ClassicPreset.Node {
   }
 }
 
-export class DateInputNode extends ClassicPreset.Node {
-  label: string;
-  stringLiterals: Record<string, string>;
-  width  = 180;
-  height = 110;
-
-  constructor(init?: { label?: string; date?: string }) {
-    super("DateInput");
-    this.label = init?.label ?? "Date Input";
-    this.stringLiterals = {
-      date: init?.date ?? formatDateSerial(Math.floor(jsDateToSerial(new Date())), DEFAULT_DATE_FORMAT),
-    };
-    this.addOutput("result", dateOut("Date serial"));
-  }
-
-  private lastRelative: LastRelative = null;
-
-  static relativeAllowed(): boolean { return settingsStore.get("relativeDates"); }
-
-  data(): { result: number | SolError | null } {
-    const r = resolveDateText(this, this.stringLiterals.date ?? "", this.lastRelative, "Date Input");
-    this.lastRelative = r.last;
-    return { result: r.result };
-  }
-}
-
 type LastRelative = { text: string; serial: number } | null;
+
+const relativeDatesAllowed = (): boolean => settingsStore.get("relativeDates");
 
 /** A typed date's serial; a relative phrase ([[D54]] relativeDatesOptIn) alerts when it re-resolves to a new day. */
 function resolveDateText(
   node: { id: string; label?: string },
   raw: string,
   last: LastRelative,
-  fallbackName: string,
 ): { result: number | SolError | null; last: LastRelative } {
   const text = raw.trim();
-  const relative = isRelativeDateText(text) && DateInputNode.relativeAllowed();
+  const relative = isRelativeDateText(text) && relativeDatesAllowed();
   const r = parseDate(text, relative ? { relative: true } : undefined);
   if (isSolError(r)) return { result: r, last: null };
   const serial = Number.isFinite(r) ? Math.floor(r) : null;
   if (!relative || serial === null) return { result: serial, last: null };
   if (last !== null && last.text === text && last.serial !== serial && !isGraphRebuilding()) {
-    const name = (node.label ?? "").trim() || fallbackName;
+    const name = (node.label ?? "").trim() || "Value Input";
     fireAlert({
       nodeId: node.id, label: name, kind: "warning",
       message: `${name}: "${text}" now resolves to ${formatDateSerial(serial, DEFAULT_DATE_FORMAT)} (was ${formatDateSerial(last.serial, DEFAULT_DATE_FORMAT)})`,
@@ -188,12 +163,12 @@ function resolveDateText(
 
 export type ValueInputOp = TableElemType;
 
-/** The one place each type is named: the card's toggle and the Add menu's search rows both read it. Placeholder labels until the single-type inputs fold in. */
+/** The one place each type is named: the card's toggle and the Add menu's search rows both read it. The keywords carry the retired single-type inputs' names, so "date input" still finds its row. */
 export const VALUE_INPUT_OP_META = {
-  number:  { label: "Number Entry",  keywords: "number numeric scalar", accents: ["number"] },
-  string:  { label: "Text Entry",    keywords: "text string", accents: ["string"] },
-  date:    { label: "Date Entry",    keywords: "date day calendar", accents: ["date"] },
-  logical: { label: "Boolean Entry", keywords: "boolean logical true false checkbox", accents: ["logical"] },
+  number:  { label: "Number",  keywords: "number input numeric scalar literal constant", accents: ["number"] },
+  string:  { label: "Text",    keywords: "text input string literal", accents: ["string"] },
+  date:    { label: "Date",    keywords: "date input day calendar picker serial", accents: ["date"] },
+  logical: { label: "Boolean", keywords: "boolean input logical true false checkbox toggle", accents: ["logical"] },
 } satisfies Record<ValueInputOp, { label: string; keywords?: string; accents: readonly SocketDataType[] }>;
 
 const VALUE_INPUT_OPS = Object.keys(VALUE_INPUT_OP_META) as ValueInputOp[];
@@ -219,7 +194,7 @@ export function carryValueText(text: string, to: ValueInputOp): string {
     case "number":  return Number.isFinite(n) ? t : isTrue ? "1" : "0";
     case "logical": return isTrue || (Number.isFinite(n) && n !== 0) ? "TRUE" : "FALSE";
     case "date": {
-      const relative = isRelativeDateText(t) && DateInputNode.relativeAllowed();
+      const relative = isRelativeDateText(t) && relativeDatesAllowed();
       const d = parseDate(t, relative ? { relative: true } : undefined);
       return typeof d === "number" && Number.isFinite(d) ? text : todayText();
     }
@@ -240,6 +215,15 @@ export class ValueInputNode extends ClassicPreset.Node {
   textCase: TextCase;
   chip: boolean;
   logicalStyle: LogicalStyle;
+  bold: boolean;
+  italic: boolean;
+  textScale: number;
+  textAlign: TextAlign;
+  textMarkdown: boolean;
+  textMono: boolean;
+  grouping: boolean;
+  negativeStyle: NegativeStyle;
+  scaleMode: ScaleMode;
   width = 180;
   height = 140;
   cachedValue: unknown = null;
@@ -260,6 +244,15 @@ export class ValueInputNode extends ClassicPreset.Node {
     textCase?: TextCase;
     chip?: boolean;
     logicalStyle?: LogicalStyle;
+    bold?: boolean;
+    italic?: boolean;
+    textScale?: number;
+    textAlign?: TextAlign;
+    textMarkdown?: boolean;
+    textMono?: boolean;
+    grouping?: boolean;
+    negativeStyle?: NegativeStyle;
+    scaleMode?: ScaleMode;
   }) {
     super("ValueInput");
     this.label = init?.label ?? "Value Input";
@@ -274,6 +267,16 @@ export class ValueInputNode extends ClassicPreset.Node {
     this.textCase = init?.textCase ?? "none";
     this.chip = init?.chip ?? false;
     this.logicalStyle = init?.logicalStyle ?? "truefalse";
+    // The Format Controller's defaults, so a merged FC's picks read the same here.
+    this.bold = init?.bold ?? false;
+    this.italic = init?.italic ?? false;
+    this.textScale = init?.textScale ?? 14;
+    this.textAlign = init?.textAlign ?? "right";
+    this.textMarkdown = init?.textMarkdown ?? false;
+    this.textMono = init?.textMono ?? false;
+    this.grouping = init?.grouping ?? true;
+    this.negativeStyle = init?.negativeStyle ?? "minus";
+    this.scaleMode = init?.scaleMode ?? "none";
     this.addOutput("value", new ClassicPreset.Output(valueSocketFor(this.op), "Value"));
   }
 
@@ -307,6 +310,15 @@ export class ValueInputNode extends ClassicPreset.Node {
       textCase: this.textCase,
       chip: this.chip,
       logicalStyle: this.logicalStyle,
+      bold: this.bold,
+      italic: this.italic,
+      textScale: this.textScale,
+      textAlign: this.textAlign,
+      textMarkdown: this.textMarkdown,
+      textMono: this.textMono,
+      grouping: this.grouping,
+      negativeStyle: this.negativeStyle,
+      scaleMode: this.scaleMode,
     };
   }
 
@@ -321,7 +333,7 @@ export class ValueInputNode extends ClassicPreset.Node {
       case "string":  return this.value;
       case "logical": return /^true$/i.test(this.value.trim());
       case "date": {
-        const r = resolveDateText(this, this.value, this.lastRelative, "Value Input");
+        const r = resolveDateText(this, this.value, this.lastRelative);
         this.lastRelative = r.last;
         return r.result;
       }

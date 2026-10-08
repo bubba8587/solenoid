@@ -49,7 +49,7 @@ const STAGES: Stage[] = [
     marker: "DemoByRegion",
     blurb: "Added revenue totals by region.",
     nodes: [
-      { name: "DemoRegionKey", type: "TextInputNode", init: { label: "Group key", value: "Region" }, col: 1, row: 1 },
+      { name: "DemoRegionKey", type: "ValueInputNode", init: { label: "Group key", op: "string", value: "Region" }, col: 1, row: 1 },
       { name: "DemoByRegion", type: "GroupByFrameNode", init: { label: "Revenue by region", op: "sum" }, stringLiterals: { column: "Revenue" }, col: 2, row: 1 },
       { name: "DemoTotals", type: "DisplayNode", init: { label: "Totals" }, col: 3, row: 1 },
     ],

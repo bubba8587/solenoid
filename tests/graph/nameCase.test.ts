@@ -21,7 +21,7 @@ const TITLECASE_EXCEL_ALLOW = new Set(["CONVERT"]);
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
 const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 // One all-caps identifier token (a name a user could type): letters/digits/dots, no lowercase.
-// Tested on ORIGINAL casing — "NumberInput" (from "Number Input") is Title Case, not all-caps.
+// Tested on ORIGINAL casing — "ValueInput" (from "Value Input") is Title Case, not all-caps.
 // (despace() UPPERCASES, so it can't be used for the case test — strip spaces case-preserving.)
 const isAllCapsTok = (s: string) => /^[A-Z][A-Z0-9.]*$/.test(s);
 const strip = (s: string) => s.replace(/\s+/g, "");

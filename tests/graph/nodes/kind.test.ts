@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { nodeDomWeight, nodeAccent, nodeAccentSlot, nodeKindOf, explicitKindOf } from "../../../src/graph/nodes/kind";
 import { majorityColor } from "../../../src/graph/groupLogic";
-import { NumberInputNode, BooleanInputNode } from "../../../src/graph/nodes/input";
+import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapNode, SparklineNode, GaugeNode, ChartBuilderNode, KpiNode, RecordNode } from "../../../src/graph/nodes/visual";
 import { GanttNode } from "../../../src/graph/nodes/gantt";
 import { UrlEncodeNode } from "../../../src/graph/nodes/text";
@@ -26,14 +26,14 @@ import { themeAccent, socketVarHex, resolveColor } from "../../../src/graph/pale
 
 describe("nodeDomWeight", () => {
   it("weighs a scalar / logic card as the baseline 1", () => {
-    expect(nodeDomWeight(new NumberInputNode())).toBe(1);
-    expect(nodeDomWeight(new BooleanInputNode())).toBe(1);
+    expect(nodeDomWeight(new ValueInputNode())).toBe(1);
+    expect(nodeDomWeight(new ValueInputNode({ op: "logical" }))).toBe(1);
     expect(nodeDomWeight(new ComparisonNode())).toBe(1);
   });
 
   it("weighs a frame-grid preview above a scalar but below a chart", () => {
     const grid = nodeDomWeight(new BuildFrameNode());
-    expect(grid).toBeGreaterThan(nodeDomWeight(new NumberInputNode()));
+    expect(grid).toBeGreaterThan(nodeDomWeight(new ValueInputNode()));
     expect(grid).toBeLessThan(nodeDomWeight(new ChartNode()));
   });
 
@@ -61,7 +61,7 @@ describe("nodeDomWeight", () => {
     // gesture, the only time the gate reads this. So its steady-state weight sits
     // down with the frame-grid tier, well below a full chart, NOT heaviest of all.
     const svg = nodeDomWeight(new SvgPickerNode());
-    expect(svg).toBeGreaterThan(nodeDomWeight(new NumberInputNode()));
+    expect(svg).toBeGreaterThan(nodeDomWeight(new ValueInputNode()));
     expect(svg).toBeLessThan(nodeDomWeight(new ChartNode()));
   });
 
@@ -77,7 +77,7 @@ describe("nodeDomWeight", () => {
 // fixed KIND color.
 describe("nodeAccent", () => {
   it("gives a plain node its theme-resolved kind color", () => {
-    const n = new NumberInputNode();
+    const n = new ComparisonNode();
     expect(nodeAccent(n, "dark")).toBe(themeAccent(NODE_KIND_ACCENTS[nodeKindOf(n)], "dark"));
   });
 

@@ -6,28 +6,10 @@ import namesPlugin from "colord/plugins/names";
 // Global: named CSS colors ("tomato") must parse everywhere colord is used.
 extend([namesPlugin]);
 import { numberSocket } from "../sockets";
-import { numIn, strIn, strOut, logicalOut, dateOut, readInput } from "./shared";
+import { numIn, strIn, strOut, dateOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { wallClockSerial } from "./dateSerial";
 import { saveTimeStore } from "../saveTimeStore";
-
-export class NumberInputNode extends ClassicPreset.Node {
-  label: string;
-  value: number;
-  width = 180;
-  height = 100;
-
-  constructor(init?: { label?: string; value?: number }) {
-    super("NumberInput");
-    this.label = init?.label ?? "Number Input";
-    this.value = init?.value ?? 0;
-    this.addOutput("value", new ClassicPreset.Output(numberSocket));
-  }
-
-  data(): { value: number } {
-    return { value: this.value };
-  }
-}
 
 export type ColorMode = "rgb" | "hsv" | "hex";
 // Output formats stay CSS-valid; CSS has no hsv().
@@ -227,25 +209,6 @@ export class SliderInputNode extends ClassicPreset.Node {
     this.effectiveStep = step > 0 ? step : litStep;
     this.value = Math.min(Math.max(this.value, this.effectiveMin), this.effectiveMax);
     return { value: this.value };
-  }
-}
-
-export class BooleanInputNode extends ClassicPreset.Node {
-  label: string;
-  value: 0 | 1;
-  width = 160;
-  height = 100;
-
-  constructor(init?: { label?: string; value?: 0 | 1 }) {
-    super("BooleanInput");
-    this.label = init?.label ?? "Boolean Input";
-    this.value = init?.value ?? 0;
-    this.addOutput("value", logicalOut("Value"));
-  }
-
-  // `value` stays 0 or 1 for the toggle and the save; the emitted value is a real boolean.
-  data() {
-    return { value: this.value === 1 };
   }
 }
 

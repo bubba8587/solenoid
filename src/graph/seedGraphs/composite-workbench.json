@@ -19,22 +19,34 @@
     },
     {
       "id": "price",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -40,
       "y": 1797,
       "init": {
         "label": "Unit price",
-        "value": 250
+        "op": "number",
+        "value": "250",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "qty",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -40,
       "y": 1917,
       "init": {
         "label": "Quantity",
-        "value": 4
+        "op": "number",
+        "value": "4",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -156,12 +168,18 @@
     },
     {
       "id": "deposit",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1214,
       "y": 1866,
       "init": {
         "label": "Deposit / step",
-        "value": 100
+        "op": "number",
+        "value": "100",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {

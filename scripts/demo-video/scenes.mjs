@@ -9,7 +9,7 @@ import { PLUGIN } from "./plugin.mjs";
 import { WHATSNEW } from "./whatsnew.mjs";
 import { DMATRIX_SCENES } from "./dmatrix.mjs";
 
-const num = (id, label, value, x, y) => ({ id, type: "NumberInputNode", x, y, init: { label, value } });
+const num = (id, label, value, x, y, extra = {}) => ({ id, type: "ValueInputNode", x, y, init: { label, value: String(value), ...extra } });
 const fc = (id, host, key, unit, x, y, extra = {}) => ({
   id, type: "FormatControllerNode", x, y,
   init: { label: "Format", hostNodeId: host, socketKey: key, side: "output", unit, socketDataType: "number", ...extra },
@@ -129,8 +129,8 @@ export const SCENES = {
       await c.doc({
         v: 2,
         nodes: [
-          { id: "d", type: "DateInputNode", x: 0, y: 0, init: { label: "Invoice date" }, stringLiterals: { date: "15-Mar-2026" } },
-          { id: "t", type: "TextInputNode", x: 0, y: 150, init: { label: "Customer", value: "Acme Corp" } },
+          { id: "d", type: "ValueInputNode", x: 0, y: 0, init: { label: "Invoice date", op: "date", value: "15-Mar-2026" } },
+          { id: "t", type: "ValueInputNode", x: 0, y: 150, init: { label: "Customer", op: "string", value: "Acme Corp" } },
           num("n", "Amount", 1200, 0, 300),
           { id: "m", type: "ArithmeticNode", x: 400, y: 110, init: { label: "With tax", op: "mul" }, literals: { a: 0, b: 1.08 } },
         ],
@@ -162,19 +162,19 @@ export const SCENES = {
       await c.doc({
         v: 2,
         nodes: [
-          num("len", "Length", 2, 0, 0), fc("lenFc", "len", "value", "m", 181, 18),
-          num("wid", "Width", 4, 0, 150), fc("widFc", "wid", "value", "m", 181, 168),
-          num("hgt", "Height", 2.5, 0, 300), fc("hgtFc", "hgt", "value", "m", 181, 318),
+          num("len", "Length", 2, 0, 0, { unit: "m" }),
+          num("wid", "Width", 4, 0, 150, { unit: "m" }),
+          num("hgt", "Height", 2.5, 0, 300, { unit: "m" }),
           { id: "area", type: "ArithmeticNode", x: 420, y: 40, init: { label: "Floor area", op: "mul" }, literals: { a: 0, b: 0 } },
           fc("areaFc", "area", "result", "m2", 601, 100),
           { id: "vol", type: "ArithmeticNode", x: 820, y: 180, init: { label: "Volume", op: "mul" }, literals: { a: 0, b: 0 } },
           fc("volFc", "vol", "result", "m3", 1001, 240),
         ],
         connections: [
-          wire("len", "value", "lenFc", "in"), wire("lenFc", "out", "area", "a"),
-          wire("wid", "value", "widFc", "in"), wire("widFc", "out", "area", "b"),
+          wire("len", "value", "area", "a"),
+          wire("wid", "value", "area", "b"),
           wire("area", "result", "areaFc", "in"), wire("areaFc", "out", "vol", "a"),
-          wire("hgt", "value", "hgtFc", "in"), wire("hgtFc", "out", "vol", "b"),
+          wire("hgt", "value", "vol", "b"),
           wire("vol", "result", "volFc", "in"),
         ],
       }, "Room");

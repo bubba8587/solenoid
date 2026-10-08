@@ -7,7 +7,7 @@ import type { Schemes, SolenoidConnection } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
 import { setEditorRefs, processGraph } from "../../src/graph/process";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { CompositeInputNode } from "../../src/graph/nodes/composite";
@@ -28,7 +28,7 @@ function makeGraph() {
 }
 
 async function hostWithTwoConsumers(editor: NodeEditor<Schemes>) {
-  const host = new NumberInputNode({ value: 7 });
+  const host = new ValueInputNode({ value: "7" });
   const a = new DisplayNode();
   const b = new DisplayNode();
   for (const n of [host, a, b]) await editor.addNode(n);
@@ -61,7 +61,7 @@ describe("deleting a docked FC unsplices it", () => {
 
   it("goes before its host when both are selected, so the host's own splice still applies", async () => {
     const { editor, view } = makeGraph();
-    const src = new NumberInputNode({ value: 3 });
+    const src = new ValueInputNode({ value: "3" });
     const host = new DisplayNode();
     const sink = new DisplayNode();
     for (const n of [src, host, sink]) await editor.addNode(n);

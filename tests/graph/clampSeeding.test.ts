@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { collectFinite, extendSafeRange, boundsFromSafeRange, findLeaves } from "../../src/graph/modelFuzz";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
-import { NumberInputNode, SliderInputNode } from "../../src/graph/nodes/input";
+import { SliderInputNode } from "../../src/graph/nodes/input";
 import { ValueInputNode } from "../../src/graph/nodes/control";
 import { solError } from "../../src/graph/errorValue";
 
@@ -65,7 +65,7 @@ describe("model fuzz leaves", () => {
   it("a Slider with nothing wired in is a leaf even though it declares bound sockets", async () => {
     const editor = new NodeEditor<Schemes>();
     const slider = new SliderInputNode();
-    const num = new NumberInputNode();
+    const num = new ValueInputNode();
     const bound = new SliderInputNode();
     for (const n of [slider, num, bound]) await editor.addNode(n as unknown as Schemes["Node"]);
     await editor.addConnection(new ClassicPreset.Connection(num, "value" as never, bound, "min" as never) as unknown as Schemes["Connection"]);

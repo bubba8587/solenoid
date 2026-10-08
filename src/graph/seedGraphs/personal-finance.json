@@ -705,22 +705,34 @@
     },
     {
       "id": "in-takehome",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 384,
       "y": 3353,
       "init": {
         "label": "Monthly take-home $",
-        "value": 5200
+        "op": "number",
+        "value": "5200",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in-years",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 165,
       "y": 3353,
       "init": {
         "label": "Years to retire",
-        "value": 30
+        "op": "number",
+        "value": "30",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -991,22 +1003,34 @@
     },
     {
       "id": "in-term",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 3292,
       "y": 3032,
       "init": {
         "label": "Term (years)",
-        "value": 30
+        "op": "number",
+        "value": "30",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in-endbal",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 3621,
       "y": 3214,
       "init": {
         "label": "End balance",
-        "value": 0
+        "op": "number",
+        "value": "0",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {

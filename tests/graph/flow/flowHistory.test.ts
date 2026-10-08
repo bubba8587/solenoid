@@ -33,7 +33,7 @@ vi.mock("../../../src/graph/process", () => ({
 import { flowHistory } from "../../../src/graph/flow/flowHistory";
 
 const doc = (name: string, value: unknown = 1): SavedGraph =>
-  ({ v: 2, nodes: [{ id: name, type: "NumberInputNode", name, x: 0, y: 0, init: { value } }], connections: [] }) as SavedGraph;
+  ({ v: 2, nodes: [{ id: name, type: "ValueInputNode", name, x: 0, y: 0, init: { value } }], connections: [] }) as SavedGraph;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -140,7 +140,7 @@ describe("a big graph keeps its undo depth", () => {
       v: 2,
       nodes: [
         { id: "t", type: "FrameInputNode", name: "t", x: 0, y: 0, init: { frameText: big } },
-        { id: "n", type: "NumberInputNode", name: "n", x: 0, y: 0, init: { value } },
+        { id: "n", type: "ValueInputNode", name: "n", x: 0, y: 0, init: { value } },
       ],
       connections: [],
     }) as SavedGraph;

@@ -155,12 +155,15 @@ function scoreLeaf(query: Query, lc: LeafWithContext): number | null {
     if (sub === null && word === 0) return null;
     s += word >= 90 ? word : (sub ?? 0) + word;
   }
+  const q = query.trimmed;
+  const phrase = q.includes(" ");
   let bonus = 0;
   for (const [f, penalty] of fields) {
-    const fs = fieldScoreLower(query.squashed, f);
+    let fs = fieldScoreLower(query.squashed, f);
+    // A typed phrase that opens a field ("date input" in "date input day …") ranks as a one-word prefix would.
+    if (fs !== null && fs < 400 && phrase && f.startsWith(q)) fs += 400;
     if (fs !== null) bonus = Math.max(bonus, fs - penalty);
   }
-  const q = query.trimmed;
   if (q.length >= 4 && names.some((n) => withinOneEdit(q, n))) bonus = Math.max(bonus, 200);
   return s + bonus;
 }

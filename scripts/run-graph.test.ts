@@ -48,7 +48,7 @@ describe("run-graph (headless CLI)", () => {
   it("throws a clear error when a connection references a node that isn't in the graph", async () => {
     await expect(
       runGraph({
-        nodes: [{ id: "a", type: "NumberInputNode" }],
+        nodes: [{ id: "a", type: "ValueInputNode" }],
         connections: [{ source: "a", sourceOutput: "value", target: "missing", targetInput: "in" }],
       }),
     ).rejects.toThrow(/unknown node/);

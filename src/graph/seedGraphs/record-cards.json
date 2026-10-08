@@ -71,12 +71,18 @@
     },
     {
       "id": "find",
-      "type": "TextInputNode",
+      "type": "ValueInputNode",
       "x": 321,
       "y": -716,
       "init": {
         "label": "Find SKU",
-        "value": "FW-403"
+        "op": "string",
+        "value": "FW-403",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {

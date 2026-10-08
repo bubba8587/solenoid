@@ -12,7 +12,7 @@ import { loopMembers } from "../../../src/graph/graphCompute";
 import { alertStore } from "../../../src/graph/alertStore";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, BY_ROW_MAX_ROWS } from "../../../src/graph/nodes/composite";
 import { frameFromCells, isFrameValue, frameRowCount, type FrameValue } from "../../../src/graph/frame";
-import { NumberInputNode } from "../../../src/graph/nodes/input";
+import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { ArithmeticNode, MathFXNode } from "../../../src/graph/nodes/scalar";
 import { ComparisonNode, IFErrorNode } from "../../../src/graph/nodes/logic";
 
@@ -142,7 +142,7 @@ describe("CompositeNode shell", () => {
 
   it("a nested composite computes after a reload, without being drilled into", async () => {
     const inner = new CompositeNode({ label: "Inner" });
-    const num = new NumberInputNode({ value: 42 });
+    const num = new ValueInputNode({ value: "42" });
     const innerOut = new CompositeOutputNode({ label: "V" });
     await inner.internalEditor.addNode(num as unknown as Schemes["Node"]);
     await inner.internalEditor.addNode(innerOut as unknown as Schemes["Node"]);
@@ -171,7 +171,7 @@ describe("CompositeNode shell", () => {
       await connect(c.internalEditor, child, childPort, out, "value");
       return { c, port: c.addOutputPort({ label: "V", tier: "basic", internalNodeId: out.id }) };
     };
-    const l1 = await wrap(new NumberInputNode({ value: 7 }) as unknown as Schemes["Node"], "value", "L1");
+    const l1 = await wrap(new ValueInputNode({ value: "7" }) as unknown as Schemes["Node"], "value", "L1");
     const l2 = await wrap(l1.c as unknown as Schemes["Node"], l1.port, "L2");
     const l3 = await wrap(l2.c as unknown as Schemes["Node"], l2.port, "L3");
     expect((await l3.c.data({}))[l3.port]).toBe(7);
@@ -260,7 +260,7 @@ describe("CompositeNode shell", () => {
 describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
   it("an output port adopts the concrete type feeding its internal marker", async () => {
     const c = new CompositeNode();
-    const num = new NumberInputNode({ value: 7 }); // number-typed "value" output
+    const num = new ValueInputNode({ value: "7" }); // number-typed "value" output
     const outMarker = new CompositeOutputNode({ label: "N" });
     await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
     await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
@@ -275,7 +275,7 @@ describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
 
   it("a live rewire reverts the port to trueany when the marker is unwired", async () => {
     const c = new CompositeNode();
-    const num = new NumberInputNode({ value: 1 });
+    const num = new ValueInputNode({ value: "1" });
     const outMarker = new CompositeOutputNode({ label: "N" });
     await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
     await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
@@ -296,7 +296,7 @@ describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
     // composite adopts its rings exactly like one on the outer canvas.
     const { DisplayNode } = await import("../../../src/graph/nodes/display");
     const c = new CompositeNode();
-    const num = new NumberInputNode({ value: 7 });
+    const num = new ValueInputNode({ value: "7" });
     const disp = new DisplayNode();
     await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
     await c.internalEditor.addNode(disp as unknown as Schemes["Node"]);
@@ -315,7 +315,7 @@ describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
 
   it("adoption survives a snapshot/hydrate round-trip (load path settles once)", async () => {
     const c = new CompositeNode();
-    const num = new NumberInputNode({ value: 3 });
+    const num = new ValueInputNode({ value: "3" });
     const outMarker = new CompositeOutputNode({ label: "N" });
     await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
     await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
@@ -335,7 +335,7 @@ describe("CompositeNode Auto-trig reads the internal unit plane", () => {
     const c = new CompositeNode();
     // A number source that publishes the `deg` angle unit on its output (the
     // unitFlow annotation the trig resolver reads) — mirrors trigMode.test.ts.
-    const angle = new NumberInputNode({ value: 90 });
+    const angle = new ValueInputNode({ value: "90" });
     (angle as unknown as { annotationFor: (k: string) => unknown }).annotationFor =
       (k: string) => (k === "value" ? { format: "auto", unit: "deg" } : undefined);
     const sin = new MathFXNode({ op: "sin" }); // auto angle mode
@@ -1374,7 +1374,7 @@ describe("a heavy composite with a live card waiting for permission", () => {
   it("says so, and its solve stays stale", async () => {
     const { connectionStore } = await import("../../../src/graph/connectionStore");
     const c = new CompositeNode({ runMode: "manual" });
-    const inner = new NumberInputNode();
+    const inner = new ValueInputNode();
     await c.internalEditor.addNode(inner as unknown as Schemes["Node"]);
     expect(c.gatedInside()).toBe(false);
     connectionStore.setState(inner.id, { status: "gated" });

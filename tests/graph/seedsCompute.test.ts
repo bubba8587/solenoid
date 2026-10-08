@@ -23,7 +23,6 @@ import { SEEDS } from "../../src/graph/seeds";
 const EXPECTED_ERRORS: Record<string, string[]> = {
   // The dimension-mismatch demo: a currency value into a Convert targeting metres.
   // H_conv2 raises #UNIT!, H_d2 is the Display showing it off (its label says so).
-  "unit-flow": ["H_conv2", "H_d2"],
 };
 
 /** Seeds this loop can't fetch, each owned by a test that can. */

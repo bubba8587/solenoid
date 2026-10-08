@@ -7,7 +7,7 @@ import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { setEditorRefs } from "../../src/graph/process";
 import { setSelectNode, setUnselectAllNodes } from "../../src/graph/canvasCommands";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { GroupNode } from "../../src/graph/nodes/group";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
@@ -50,7 +50,7 @@ async function add<T extends SolenoidNode>(n: T, x = 0, y = 0): Promise<T> {
 }
 
 async function dockedPair() {
-  const host = await add(new NumberInputNode({ value: 5 }));
+  const host = await add(new ValueInputNode({ value: "5" }));
   const sink = await add(new DisplayNode(), 300, 0);
   await editor.addConnection(new ClassicPreset.Connection(host, "value", sink, "in") as SolenoidConnection);
   const fc = await add(new FormatControllerNode({ hostNodeId: host.id, socketKey: "value", side: "output" }), 150, 0);
@@ -92,8 +92,8 @@ describe("paste", () => {
   });
 
   it("a pasted placeholder's references follow the paste, as a live card's do", async () => {
-    const host = await add(new NumberInputNode({ value: 1 }));
-    const left = await add(new NumberInputNode({ value: 2 }));
+    const host = await add(new ValueInputNode({ value: "1" }));
+    const left = await add(new ValueInputNode({ value: "2" }));
     const ph = await add(new PlaceholderNode({ missingType: "GoneNode", savedInit: { hostNodeId: host.id, members: [host.id, left.id] } }) as unknown as SolenoidNode);
     host.selected = ph.selected = true;
     copySelected();
@@ -103,15 +103,15 @@ describe("paste", () => {
   });
 
   it("pastes what was copied, not what the source became", async () => {
-    const src = await add(new NumberInputNode({ value: 1 }));
+    const src = await add(new ValueInputNode({ value: "1" }));
     src.selected = true;
     copySelected();
     (src as unknown as { value: number }).value = 99;
     await editor.removeNode(src.id);
     await pasteClipboard(0, 0);
-    const pasted = editor.getNodes().filter((n) => n instanceof NumberInputNode);
+    const pasted = editor.getNodes().filter((n) => n instanceof ValueInputNode);
     expect(pasted).toHaveLength(1);
-    expect((pasted[0] as unknown as { value: number }).value).toBe(1);
+    expect((pasted[0] as unknown as { value: string }).value).toBe("1");
   });
 
   it("selects the clones and re-docks a pasted docked FC onto the pasted host", async () => {
@@ -120,7 +120,7 @@ describe("paste", () => {
     copySelected();
     await pasteClipboard(0, 400);
     const clones = editor.getNodes().filter((n) => n.id !== host.id && n.id !== fc.id && !(n instanceof DisplayNode));
-    const hostClone = clones.find((n) => n instanceof NumberInputNode)!;
+    const hostClone = clones.find((n) => n instanceof ValueInputNode)!;
     const fcClone = clones.find((n) => n instanceof FormatControllerNode)!;
     expect(hostClone.selected && fcClone.selected).toBe(true);
     expect(host.selected || fc.selected).toBe(false);
@@ -161,7 +161,7 @@ describe("paste inside a drill-in", () => {
       end: () => { calls.push("end"); },
       settle: async (renderOnly?: Set<string>) => { calls.push("settle"); settled = renderOnly; },
     };
-    const src = await add(new NumberInputNode({ value: 3 }));
+    const src = await add(new ValueInputNode({ value: "3" }));
     src.selected = true;
     copySelected();
     setActiveGraph({ editor: drill, view: drillView, scope });

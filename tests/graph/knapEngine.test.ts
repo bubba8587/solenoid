@@ -5,7 +5,7 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards, type SolError } from "../../src/graph/errorValue";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { ReportNode } from "../../src/graph/nodes/report";
 import { isDocumentValue, type DocumentValue } from "../../src/graph/documentValue";
@@ -32,7 +32,7 @@ function makeEditor() {
 describe("Knap through the engine", () => {
   it("a Report template reads a wired number as data and embeds a wired Note's rendered document", async () => {
     const { editor, engine } = makeEditor();
-    const n = new NumberInputNode({ value: 1234.5 });
+    const n = new ValueInputNode({ value: "1234.5" });
     const note = new NoteNode({ body: "---\ntitle: Method\n---\n## {{ title }}" });
     const report = new ReportNode({ body: "Total {{ n | number_format:2 }} ({{ n }})\n{{ note }} {{ note | upper }}" });
     for (const x of [n, note, report]) await editor.addNode(x);

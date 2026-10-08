@@ -3,8 +3,7 @@ import { ClassicPreset } from "rete";
 import { getEditor, getView, graphSettled, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { downstreamClosure } from "./graphCompute";
 import { beginCompute, endCompute } from "./computeOverlayStore";
-import { NumberInputNode, SliderInputNode } from "./nodes/input";
-import { TextInputNode } from "./nodes/text";
+import { SliderInputNode } from "./nodes/input";
 import { ValueInputNode } from "./nodes/control";
 import { ClampNode } from "./nodes/scalar";
 import { ExpectNode } from "./nodes/quality";
@@ -50,8 +49,8 @@ function sampleStrings(rng: () => number, n: number): string[] {
 }
 
 type Leaf =
-  | { kind: "number"; node: NumberInputNode | SliderInputNode | ValueInputNode }
-  | { kind: "text"; node: TextInputNode | ValueInputNode };
+  | { kind: "number"; node: SliderInputNode | ValueInputNode }
+  | { kind: "text"; node: ValueInputNode };
 
 export function findLeaves(editor: AnyEditor): Leaf[] {
   const leaves: Leaf[] = [];
@@ -59,8 +58,7 @@ export function findLeaves(editor: AnyEditor): Leaf[] {
   const wiredTargets = new Set(editor.getConnections().map((c) => c.target));
   for (const node of editor.getNodes()) {
     if (wiredTargets.has(node.id)) continue;
-    if (node instanceof NumberInputNode || node instanceof SliderInputNode) leaves.push({ kind: "number", node });
-    else if (node instanceof TextInputNode) leaves.push({ kind: "text", node });
+    if (node instanceof SliderInputNode) leaves.push({ kind: "number", node });
     else if (node instanceof ValueInputNode && (node.op === "number" || node.op === "string")) {
       leaves.push({ kind: node.op === "number" ? "number" : "text", node });
     }

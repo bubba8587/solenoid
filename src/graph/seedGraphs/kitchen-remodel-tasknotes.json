@@ -67,14 +67,18 @@
     },
     {
       "id": "start",
-      "type": "DateInputNode",
+      "type": "ValueInputNode",
       "x": 706,
       "y": 456,
       "init": {
-        "label": "Project start"
+        "label": "Project start",
+        "op": "date",
+        "value": "05-Jan-2026",
+        "width": 180
       },
-      "stringLiterals": {
-        "date": "05-Jan-2026"
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -192,7 +196,7 @@
     },
     {
       "source": "start",
-      "sourceOutput": "result",
+      "sourceOutput": "value",
       "target": "schedule",
       "targetInput": "start"
     },

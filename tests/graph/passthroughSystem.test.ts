@@ -8,7 +8,7 @@ import { CableSwitchNode } from "../../src/graph/nodes/control";
 import { IfNode, IFErrorNode, ChooseNode, SwitchNode, IfsNode, BooleanOpNode, ComparisonNode } from "../../src/graph/nodes/logic";
 import { ListIndexNode, FillNode, ConcatListsNode } from "../../src/graph/nodes/list";
 import { StackNode } from "../../src/graph/nodes/matrix";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 
 // The passthrough declaration is the ONE source of truth that trueany TYPE adoption,
 // UNIT flow, the type-default DISPLAY walk, and coerceInputs' keep-tags boundary all
@@ -89,7 +89,7 @@ describe("passthrough declarations", () => {
   it("generative / producer nodes declare NO passthrough (their output is genuinely static)", () => {
     // A Number is a source; a Boolean op / Comparison MAKE a new logical value. None
     // of them forward an input type. (INDEX does — see the extraction test below.)
-    for (const n of [new NumberInputNode(), new BooleanOpNode(), new ComparisonNode()]) {
+    for (const n of [new ValueInputNode(), new BooleanOpNode(), new ComparisonNode()]) {
       expect(isPassthroughNode(n)).toBe(false);
     }
   });

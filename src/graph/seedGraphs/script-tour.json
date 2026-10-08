@@ -18,12 +18,18 @@
     },
     {
       "id": "in-samples",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 494,
       "y": 888,
       "init": {
         "label": "Samples",
-        "value": 100000
+        "op": "number",
+        "value": "100000",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -47,12 +53,18 @@
     },
     {
       "id": "in-n",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1359,
       "y": 878,
       "init": {
         "label": "27",
-        "value": 27
+        "op": "number",
+        "value": "27",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -95,12 +107,18 @@
     },
     {
       "id": "in-principal",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -106,
       "y": 1526,
       "init": {
         "label": "Principal",
-        "value": 250000
+        "op": "number",
+        "value": "250000",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -147,12 +165,18 @@
     },
     {
       "id": "in-year",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -106,
       "y": 357,
       "init": {
         "label": "Year",
-        "value": 2026
+        "op": "number",
+        "value": "2026",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -176,12 +200,18 @@
     },
     {
       "id": "in-growth",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 774,
       "y": 382,
       "init": {
         "label": "Growth",
-        "value": 1.1
+        "op": "number",
+        "value": "1.1",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {

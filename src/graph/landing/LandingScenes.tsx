@@ -6,13 +6,11 @@ import { NODE_KIND_ACCENTS, type NodeKind } from "../nodes/shared";
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "../schemes";
 import { nodeNameStore } from "../nodeNameStore";
-import { NumberInputNode } from "../nodes/input";
-import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
 import { FrameInputNode, JoinNode, GroupByFrameNode, FilterFrameNode, SortFrameNode } from "../nodes/frame";
 import { collapseStore } from "../collapseStore";
-import { PointPlotterNode, CurveNode, DateInputNode } from "../nodes/control";
+import { PointPlotterNode, CurveNode, ValueInputNode } from "../nodes/control";
 import { ListInputNode } from "../nodes/list";
 import { DisplayNode } from "../nodes/display";
 import { NoteNode } from "../nodes/annotation";
@@ -206,16 +204,16 @@ export function CableBoardScene() {
       className="sol-scene-stage--sockets"
       manualLayout
       build={async (s) => {
-        const num = new NumberInputNode({ label: "Number", value: 42 });
+        const num = new ValueInputNode({ label: "Number", value: "42" });
         const list = new ListInputNode({ label: "Text list", dataType: "string" });
         list.stringLiterals.v0 = "red, green, blue";
-        const date = new DateInputNode({ label: "Date" });
+        const date = new ValueInputNode({ label: "Date", op: "date" });
         const frame = new FrameInputNode({ label: "Frame", frameText: "a, b\n1, 2\n3, 4" });
         const SPAN = 240;
         const pairs: [ClassicPreset.Node, string, number, number][] = [
           [num, "value", 0, 0],
           [list, "list", 0, 260],
-          [date, "result", 660, 0],
+          [date, "value", 660, 0],
           [frame, "frame", 650, 260],
         ];
         for (const [src, outKey, x, y] of pairs) {
@@ -236,16 +234,12 @@ export function UnitsScene() {
     <SceneStage
       className="sol-scene-stage--units"
       build={async (s) => {
-        const dist = new NumberInputNode({ label: "Distance", value: 300 });
-        const fcKm = new FormatControllerNode({ label: "km", unit: "km", side: "output" });
-        const time = new NumberInputNode({ label: "Time", value: 5 });
-        const fcHr = new FormatControllerNode({ label: "hr", unit: "hr", side: "output" });
+        const dist = new ValueInputNode({ label: "Distance", value: "300", unit: "km" });
+        const time = new ValueInputNode({ label: "Time", value: "5", unit: "hr" });
         const speed = new ArithmeticNode({ label: "Speed", op: "div" });
-        await addNodes(s, [dist, fcKm, time, fcHr, speed]);
-        await wire(s, dist, "value", fcKm, "in");
-        await wire(s, fcKm, "out", speed, "a");
-        await wire(s, time, "value", fcHr, "in");
-        await wire(s, fcHr, "out", speed, "b");
+        await addNodes(s, [dist, time, speed]);
+        await wire(s, dist, "value", speed, "a");
+        await wire(s, time, "value", speed, "b");
       }}
     />
   );
@@ -257,8 +251,8 @@ export function EquationScene() {
     <SceneStage
       className="sol-scene-stage--equation"
       build={async (s) => {
-        const volts = new NumberInputNode({ label: "Volts", value: 12 });
-        const ohms = new NumberInputNode({ label: "Ohms", value: 240 });
+        const volts = new ValueInputNode({ label: "Volts", value: "12" });
+        const ohms = new ValueInputNode({ label: "Ohms", value: "240" });
         const eq = new EquationNode({ label: "Ohm's law", expr: "V = I * R" });
         await addNodes(s, [volts, ohms, eq]);
         await wire(s, volts, "value", eq, "V");
@@ -447,8 +441,8 @@ export function LocalFileScene() {
 // Clears first, because LiveGraph's Reset calls this again on the same stack.
 export async function buildReportPipeline(s: SurfaceStack): Promise<void> {
   await s.editor.clear();
-  const focus = new NumberInputNode({ label: "Focus hours", value: 18.5 });
-  const tasks = new NumberInputNode({ label: "Tasks done", value: 12 });
+  const focus = new ValueInputNode({ label: "Focus hours", value: "18.5" });
+  const tasks = new ValueInputNode({ label: "Tasks done", value: "12" });
   const report = new ReportNode({
     label: "Weekly review",
     body:

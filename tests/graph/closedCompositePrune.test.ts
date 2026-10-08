@@ -6,7 +6,7 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidConnection } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { CompositeNode } from "../../src/graph/nodes/composite";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { getOwningEditor } from "../../src/graph/activeGraph";
 import { dropInputCables } from "../../src/graph/components/cablePrune";
@@ -20,7 +20,7 @@ describe("a node inside a closed composite", () => {
     await main.addNode(outer as never);
     const inner = new CompositeNode();
     await outer.internalEditor.addNode(inner as never);
-    const src = new NumberInputNode({ value: 1 });
+    const src = new ValueInputNode({ value: "1" });
     const sink = new DisplayNode();
     await inner.internalEditor.addNode(src);
     await inner.internalEditor.addNode(sink);

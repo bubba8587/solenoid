@@ -6,22 +6,34 @@
   "nodes": [
     {
       "id": "in_a",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -16,
       "y": 1163,
       "init": {
         "label": "Leg a",
-        "value": 3
+        "op": "number",
+        "value": "3",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in_b",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -16,
       "y": 1284,
       "init": {
         "label": "Leg b",
-        "value": 4
+        "op": "number",
+        "value": "4",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -45,32 +57,50 @@
     },
     {
       "id": "in_qa",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -16,
       "y": 2559,
       "init": {
         "label": "a",
-        "value": 1
+        "op": "number",
+        "value": "1",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in_qb",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -16,
       "y": 2272,
       "init": {
         "label": "b",
-        "value": -3
+        "op": "number",
+        "value": "-3",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in_qc",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -16,
       "y": 2438,
       "init": {
         "label": "c",
-        "value": 2
+        "op": "number",
+        "value": "2",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -161,12 +191,18 @@
     },
     {
       "id": "in_n",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1002,
       "y": 1393,
       "init": {
         "label": "n (large)",
-        "value": 1000000
+        "op": "number",
+        "value": "1000000",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -209,12 +245,18 @@
     },
     {
       "id": "in_terms",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1006,
       "y": 1862,
       "init": {
         "label": "Terms",
-        "value": 200
+        "op": "number",
+        "value": "200",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -277,12 +319,18 @@
     },
     {
       "id": "in_sn",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -16,
       "y": 1805,
       "init": {
         "label": "n",
-        "value": 10
+        "op": "number",
+        "value": "10",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -658,42 +706,66 @@
     },
     {
       "id": "in_N",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1357,
       "y": 2188,
       "init": {
         "label": "Turns N",
-        "value": 500
+        "op": "number",
+        "value": "500",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in_L",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1357,
       "y": 2291,
       "init": {
         "label": "Length ℓ (m)",
-        "value": 0.2
+        "op": "number",
+        "value": "0.2",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in_I",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1357,
       "y": 2394,
       "init": {
         "label": "Current I (A)",
-        "value": 3
+        "op": "number",
+        "value": "3",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "in_r",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1357,
       "y": 2497,
       "init": {
         "label": "Radius r (m)",
-        "value": 0.02
+        "op": "number",
+        "value": "0.02",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {

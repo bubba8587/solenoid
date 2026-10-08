@@ -62,6 +62,8 @@ interface NodeOpsBase {
   ctor: new (...a: never[]) => object;
   mark?: boolean;
   leafOps?: string[];
+  /** The host's own op keeps an op row too: "Value Input: Number" beside Text, Date and Boolean. */
+  primaryRow?: boolean;
 }
 
 export type NodeOpsDecl = NodeOpsBase & (
@@ -90,7 +92,7 @@ const RANK_PERCENTILE_LEAF_OPS = [
 
 export const NODE_OPS: NodeOpsDecl[] = [
   { type: "value-input", ctor: ValueInputNode, ops: fromMeta(VALUE_INPUT_OP_META),
-    create: (op) => new ValueInputNode({ op: op as never }) },
+    create: (op) => new ValueInputNode({ op: op as never }), primaryRow: true },
   { type: "chart", ctor: ChartNode, ops: fromMeta(CHART_OP_META),
     create: (op) => new ChartNode({ op: op as never }) },
   { type: "sparkline", ctor: SparklineNode, ops: fromMeta(SPARKLINE_OP_META),
@@ -257,7 +259,7 @@ export function primaryOpOf(host: NodeCatalogEntry): string | null {
 export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op: string; label: string }> {
   if (!decl.ops) return [];
   const own = new Set(decl.leafOps ?? []);
-  if (!decl.leafOps) {
+  if (!decl.leafOps && !decl.primaryRow) {
     const primary = primaryOpOf(host);
     if (primary) own.add(primary);
   }

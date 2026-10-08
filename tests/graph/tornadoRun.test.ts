@@ -1,7 +1,7 @@
 // [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
 import { findUpstreamLeaves, rankTornado } from "../../src/graph/tornadoRun";
-import { NumberInputNode, SliderInputNode } from "../../src/graph/nodes/input";
+import { SliderInputNode } from "../../src/graph/nodes/input";
 import { ValueInputNode } from "../../src/graph/nodes/control";
 import type { TornadoResult } from "../../src/graph/nodes/tornado";
 
@@ -37,11 +37,11 @@ describe("findUpstreamLeaves", () => {
   });
 
   it("recognizes both a Number and a Slider, and does not walk past the slider's bounds", () => {
-    const num = new NumberInputNode({ label: "Base" });
+    const num = new ValueInputNode({ label: "Base" });
     const slider = new SliderInputNode({ label: "Rate" });
     // A Number driving the slider's `min` — the walk must STOP at the slider, so
     // this upstream number is NOT swept (perturbing it changes the range, not value).
-    const boundSource = new NumberInputNode({ label: "MinFeed" });
+    const boundSource = new ValueInputNode({ label: "MinFeed" });
     const nodes = { num, slider, boundSource, tornado: {} };
     const leaves = findUpstreamLeaves(
       fakeEditor(nodes, [

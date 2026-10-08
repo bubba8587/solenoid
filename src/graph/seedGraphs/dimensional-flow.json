@@ -91,12 +91,18 @@
     },
     {
       "id": "scB",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -349,
       "y": 797,
       "init": {
         "label": "42",
-        "value": 42
+        "op": "number",
+        "value": "42",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -263,12 +269,18 @@
     },
     {
       "id": "siE",
-      "type": "TextInputNode",
+      "type": "ValueInputNode",
       "x": 1335,
       "y": 1551,
       "init": {
         "label": "Text \"42\"",
-        "value": "42"
+        "op": "string",
+        "value": "42",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -292,14 +304,18 @@
     },
     {
       "id": "dpE",
-      "type": "DateInputNode",
+      "type": "ValueInputNode",
       "x": 1335,
       "y": 1745,
       "init": {
-        "label": "Date"
+        "label": "Date",
+        "op": "date",
+        "value": "01-Jan-2025",
+        "width": 180
       },
-      "stringLiterals": {
-        "date": "01-Jan-2025"
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -323,22 +339,34 @@
     },
     {
       "id": "e5",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1335,
       "y": 1918,
       "init": {
         "label": "5",
-        "value": 5
+        "op": "number",
+        "value": "5",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "e3",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": 1335,
       "y": 2039,
       "init": {
         "label": "3",
-        "value": 3
+        "op": "number",
+        "value": "3",
+        "width": 180
+      },
+      "collapsed": true,
+      "sections": {
+        "Format": false
       }
     },
     {
@@ -576,7 +604,7 @@
     },
     {
       "source": "dpE",
-      "sourceOutput": "result",
+      "sourceOutput": "value",
       "target": "castDt",
       "targetInput": "value"
     },

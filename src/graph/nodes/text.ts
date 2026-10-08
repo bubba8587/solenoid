@@ -43,27 +43,6 @@ function strScalar(
   return readInput(input, node.stringLiterals?.[key] ?? def);
 }
 
-// ─── Text Input ────────────────────────────────────────────────────────────
-
-export class TextInputNode extends ClassicPreset.Node {
-  label: string;
-  value: string;
-  cachedText: string | null = null;
-  width = 180; height = 104;
-
-  constructor(init?: { label?: string; value?: string }) {
-    super("TextInput");
-    this.label = init?.label ?? "Text Input";
-    this.value = init?.value ?? "";
-    this.addOutput("value", strOut("Text"));
-  }
-
-  data() {
-    this.cachedText = this.value;
-    return { value: this.value };
-  }
-}
-
 // ─── Promo (easter egg) ────────────────────────────────────────────────────────
 const PROMO_LINES = [
   "Solenoid: wire it, don't write it. ⚡",

@@ -7,7 +7,7 @@ import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/
 import { setEditorRefs } from "../../src/graph/process";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
 import { CompositeNode } from "../../src/graph/nodes/composite";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { dropInputCables } from "../../src/graph/components/cablePrune";
@@ -20,7 +20,7 @@ function savedComposite(hostId = "n1") {
   return new CompositeNode({
     internal: {
       nodes: [
-        { id: "n1", type: "NumberInputNode", init: { value: 5 } },
+        { id: "n1", type: "ValueInputNode", init: { value: "5" } },
         { id: "fc", type: "FormatControllerNode", init: { hostNodeId: hostId, socketKey: "value", side: "output" } },
       ],
       connections: [{ source: "n1", sourceOutput: "value", target: "fc", targetInput: "in" }],
@@ -62,7 +62,7 @@ describe("a composite's FCs settle without a drill-in", () => {
     setEditorRefs(main, new DataflowEngine<Schemes>(), {} as View);
     const c = new CompositeNode();
     await main.addNode(c as never);
-    const num = new NumberInputNode({ value: 5 });
+    const num = new ValueInputNode({ value: "5" });
     const fc = new FormatControllerNode({});
     await c.internalEditor.addNode(num as SolenoidNode);
     await c.internalEditor.addNode(fc as SolenoidNode);

@@ -9,7 +9,7 @@ import {
   ColumnsNode, RenameNode, GroupByFrameNode, UnpivotNode, PivotNode, JoinNode,
   SplitColumnNode, AddIndexNode,
 } from "../../src/graph/nodes/frame";
-import { TextInputNode } from "../../src/graph/nodes/text";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { ListInputNode, FindPeaksNode } from "../../src/graph/nodes/list";
 import { PointPlotterNode, CurveNode, SlicerNode } from "../../src/graph/nodes/control";
 import { AmortizationNode } from "../../src/graph/nodes/finance";
@@ -52,7 +52,7 @@ async function wiredConfig(node: object, configKeys: string[], text = SALES): Pr
   await editor.addNode(n);
   await editor.addConnection(new ClassicPreset.Connection(src, "frame", n, "frame") as Schemes["Connection"]);
   for (const k of configKeys) {
-    const t = new TextInputNode() as unknown as Schemes["Node"];
+    const t = new ValueInputNode({ op: "string" }) as unknown as Schemes["Node"];
     await editor.addNode(t);
     await editor.addConnection(new ClassicPreset.Connection(t, "value", n, k) as Schemes["Connection"]);
   }
@@ -321,7 +321,7 @@ describe("a wired config socket makes the shape unknown", () => {
       await editor.addConnection(new ClassicPreset.Connection(left, "frame", j, "left") as Schemes["Connection"]);
       await editor.addConnection(new ClassicPreset.Connection(right, "frame", j, "right") as Schemes["Connection"]);
       if (wireKey) {
-        const t = new TextInputNode() as unknown as Schemes["Node"];
+        const t = new ValueInputNode({ op: "string" }) as unknown as Schemes["Node"];
         await editor.addNode(t);
         await editor.addConnection(new ClassicPreset.Connection(t, "value", j, wireKey) as Schemes["Connection"]);
       }
