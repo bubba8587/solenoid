@@ -36,6 +36,10 @@ const SLIDES: Slide[] = [
     title: "Sparklines in cells",
     body: "SPARKLINE draws a line, column or win/loss sparkline in a table cell. In a Cube, SPARKLINE(@history) gives every row its own trend.",
   },
+  {
+    title: "New palettes",
+    body: "Try Dawn & Dusk for a relaxing vibe, or Neon to melt your eyes with blazing colors and high contrast.",
+  },
 ];
 
 export function HelpDialogs() {

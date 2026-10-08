@@ -12,7 +12,7 @@ makes something a slide. **1.5 carries the 1.4.1 and 1.4.2 headliners too** (aut
 2026-09-30): the point releases went out without a deck of their own, so this list covers
 everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in git history
 (`git show v1.4.2:docs/release-notes-features.md`). The What's New deck
-(`HelpDialogs.tsx`, `WHATS_NEW_VERSION`) shows 1.5's seven slides.
+(`HelpDialogs.tsx`, `WHATS_NEW_VERSION`) shows 1.5's eight slides.
 
 ## Headliners: the slide deck
 
@@ -63,6 +63,8 @@ everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in gi
   win/loss sparkline straight into a table cell, and in a Cube a formula column runs it
   per row: `SPARKLINE(@history)` gives every row its own trend. Pictures in text cells
   show as pictures in every card and popup.
+- **[slide] New palettes.** Dawn and Dusk, a calm palette built from Default and plasma, and
+  Neon, blazing colors at high contrast.
 
 ## Release-notes body
 
