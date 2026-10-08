@@ -65,6 +65,7 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
   return (
     <NodeShell node={data} emit={emit}>
       <OpToggle
+        className="solenoid-valin__type"
         value={dt}
         options={OP_OPTIONS}
         onChange={(next) => { setDt(next); void applyValueOp(data, next); }}
@@ -78,7 +79,7 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
           onToggle={() => commitValue(/^true$/i.test(data.value.trim()) ? "FALSE" : "TRUE")}
         />
       )}
-      <CardSection label="Format" collapsible defaultOpen={formatIsSet(data)}>
+      <CardSection label="Format" className="solenoid-valin__format" collapsible defaultOpen={formatIsSet(data)}>
         <FormatRows node={data} dt={dt} pick={pick} />
       </CardSection>
       <ValueDisplay value={data.cachedValue as DisplayValue} socketKey="value" />

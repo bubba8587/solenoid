@@ -1131,10 +1131,6 @@ body.solenoid-scrubbing * {
   top: 50%;
   transform: translateY(-50%);
 }
-/* Folded, the caption has no rows of its own below it, so it takes the space above on both sides instead of hugging what follows. */
-.solenoid-node__section:not(:last-child) > .solenoid-node__section-caption--toggle[aria-expanded="false"] {
-  margin-bottom: 6px;
-}
 .solenoid-node__section-caption--toggle:hover {
   color: var(--text);
 }
