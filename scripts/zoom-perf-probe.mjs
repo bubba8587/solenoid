@@ -1,7 +1,9 @@
-// Measures what one frame of panning and zooming costs at each zoom level, from a Chrome trace.
-// Loads a seed, then at every zoom drags the empty canvas and turns the wheel, and sums trace time
-// by phase (script, style, layout, paint, raster, gpu). Needs the dev server on :1420.
-//   node scripts/zoom-perf-probe.mjs [seed] [--throttle=4] [--zooms=1,0.5,0.25,0.1] [--size=1600x1000]
+// Measures what panning and wheel-zooming cost at each zoom level, from a Chrome trace: loads a seed, then at every
+// zoom drags the empty canvas and turns the wheel, sums trace time by phase, and counts compositor layers mid-pan
+// (react-flow-surface-contract § Drag performance). Needs the dev server on :1420.
+//   node scripts/zoom-perf-probe.mjs [seed] [--zooms=1,0.25,0.1] [--frames=60] [--nozoom=1] [--throttle=1] [--size=1600x1000]
+//     [--ko=shadow,text,...|<raw css>]   knock a style out to price it (KNOCKOUTS below; commas separate entries)
+//   env PROFILE=1 (JS self/inclusive time), PAINTS=1 (paint and layerize events), INVAL=1 (what invalidated)
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
@@ -108,14 +110,43 @@ async function main() {
       const done = new Promise((r) => client.once("Tracing.tracingComplete", r));
       await client.send("Tracing.start", {
         transferMode: "ReportEvents",
-        traceConfig: { includedCategories: ["devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "cc", "gpu", "viz", "blink"] },
+        traceConfig: { includedCategories: ["devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "cc", "gpu", "viz", "blink", ...(process.env.INVAL ? ["disabled-by-default-devtools.timeline.invalidationTracking"] : [])] },
       });
       const t0 = Date.now();
+      if (process.env.PROFILE) { await client.send("Profiler.enable"); await client.send("Profiler.setSamplingInterval", { interval: 100 }); await client.send("Profiler.start"); }
       await fn();
+      if (process.env.PROFILE) {
+        const { profile } = await client.send("Profiler.stop");
+        const self = new Map(); const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+        const dt = new Map(); for (let i = 0; i < profile.samples.length; i++) dt.set(profile.samples[i], (dt.get(profile.samples[i]) ?? 0) + (profile.timeDeltas[i] ?? 0) / 1000);
+        // inclusive time per function too
+        const parent = new Map(); for (const n of profile.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+        const incl = new Map();
+        for (const [id, t] of dt) {
+          const n = byId.get(id); const f = n.callFrame; const k = `${f.functionName || "(anon)"} ${f.url.split("/").slice(-2).join("/").split("?")[0]}:${f.lineNumber}`;
+          self.set(k, (self.get(k) ?? 0) + t);
+          const seen = new Set(); for (let cur = id; cur != null; cur = parent.get(cur)) { const cf = byId.get(cur).callFrame; const kk = `${cf.functionName || "(anon)"} ${cf.url.split("/").slice(-2).join("/").split("?")[0]}:${cf.lineNumber}`; if (seen.has(kk)) continue; seen.add(kk); incl.set(kk, (incl.get(kk) ?? 0) + t); }
+        }
+        console.log("  SELF:\n" + [...self].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, t]) => `    ${t.toFixed(0)}ms\t${k}`).join("\n"));
+        console.log("  INCL:\n" + [...incl].sort((a, b) => b[1] - a[1]).slice(0, 45).map(([k, t]) => `    ${t.toFixed(0)}ms\t${k}`).join("\n"));
+      }
       const wall = Date.now() - t0;
       await client.send("Tracing.end");
       await done;
       client.removeAllListeners("Tracing.dataCollected");
+      if (process.env.PAINTS) {
+        const m = new Map();
+        for (const e of chunks) if ((e.name === "Paint" || e.name === "PaintImage" || e.name === "Layerize" || e.name === "UpdateLayer" || e.name === "Commit" || e.name === "PrePaint") && e.ph === "X") { const d = e.args?.data ?? {}; const k = `${e.name} node=${d.nodeId ?? ""} layer=${d.layerId ?? ""}`; const v = m.get(k) ?? [0, 0]; v[0]++; v[1] += e.dur / 1000; m.set(k, v); }
+        console.log([...m].sort((a, b) => b[1][1] - a[1][1]).slice(0, 12).map(([k, [n, t]]) => `    ${n}x ${t.toFixed(0)}ms\t${k}`).join("\n"));
+        const sub = new Map();
+        for (const e of chunks) if (e.cat?.includes("blink") && e.ph === "X" && e.dur) { const v = sub.get(e.name) ?? 0; sub.set(e.name, v + e.dur / 1000); }
+        console.log([...sub].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, t]) => `    ${t.toFixed(0)}ms\t${k}`).join("\n"));
+      }
+      if (process.env.INVAL) {
+        const inv = new Map();
+        for (const e of chunks) if (/Invalidation/.test(e.name)) { const d = e.args?.data ?? {}; const k = `${e.name} ${d.nodeName ?? ""} ${d.reason ?? ""}`.slice(0, 140); inv.set(k, (inv.get(k) ?? 0) + 1); }
+        console.log([...inv].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, n]) => `    ${n}\t${k}`).join("\n"));
+      }
       return { ...summarize(chunks), wall };
     };
 
@@ -133,6 +164,7 @@ async function main() {
       await setZoom(z);
       await sleep(1500);
       console.log(`zoom ${z}: ${await layerCount()}`);
+      let midPan = null;
       const panR = await traceRun(async () => {
         // Empty spot: the top-left corner just under the chrome.
         const x0 = 40, y0 = H - 120;
@@ -141,10 +173,12 @@ async function main() {
         for (let i = 1; i <= FRAMES; i++) {
           await page.mouse.move(x0 + (i % 20) * 6, y0 - (i % 20) * 3);
           await sleep(16);
+          if (i === 30) midPan = { promoted: await page.evaluate(() => document.querySelector(".react-flow__viewport")?.classList.contains("sol-pan-layer")), layers: layers.length, drawn: layers.filter((l) => l.drawsContent).length };
         }
         await page.mouse.up();
         await sleep(300);
       });
+      console.log(`  mid-pan: ${JSON.stringify(midPan)}`);
       if (opt("nozoom", "")) { console.log(`  pan : ${fmt(panR)}`); continue; }
       await setZoom(z);
       await sleep(800);

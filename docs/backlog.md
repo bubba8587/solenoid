@@ -36,6 +36,11 @@ warning is expected.
 - [ ] **Each edit serializes the graph twice** (history at 400 ms, autosave at 700 ms): sharing one capture needs an edit counter every mutation bumps, or a store-only edit between the two could be dropped from the save.
 - [ ] **Undo rebuilds the whole graph** (`loadGraph`); a per-node delta restore needs each node to re-apply state in place ([[B12]] losslessSaves).
 
+## Canvas frame cost (found 2026-10-08b, not done)
+- [ ] **A wheel or pinch zoom still repaints every card on screen each frame**: the pan layer is pan-only, because a layer zooms on a stale raster and text blurs ([[react-flow-surface-contract#Drag performance]]). Zoomed far out that is every card.
+- [ ] **Layerize runs every pan frame** (~1.5 ms on personal-finance at zoom 0.1, more in dev): Chrome takes no direct-transform fast path for a style-driven transform; RF writes the viewport transform as inline style.
+- [ ] **Unmeasured on the author's XPS 15 (UHD 630) and in WebKitGTK**: the pan layer is Chromium-only, so the Linux desktop build pans as before.
+
 ## Release planning (author-run)
 
 - [ ] **Walk `2.0-plan.md`** (1.4.2 shipped 2026-09-22 with plugin 0.1.3; 1.4.1 was the first Windows + Linux release).

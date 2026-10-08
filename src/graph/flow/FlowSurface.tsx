@@ -3,8 +3,6 @@ import { registerDevRfStore } from "./devRfStores";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   ReactFlow,
-  Background,
-  BackgroundVariant,
   MiniMap,
   applyNodeChanges,
   applyEdgeChanges,
@@ -35,6 +33,8 @@ import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
 import { ViewportLayer } from "./ViewportLayer";
+import { CanvasBacking } from "./CanvasBacking";
+import { alignedViewport, createPanLayer, promotesPans } from "./panLayer";
 import { useIsMobile } from "../useDeviceMode";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { toFlowNodes, toFlowEdges, mergeFlowNodes, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
@@ -129,8 +129,6 @@ const MINIMAP_STYLE = { width: 182, height: 105 };
 const DELETE_KEYS = ["Backspace", "Delete"];
 const DEFAULT_EDGE_OPTIONS = { type: "cable" as const, interactionWidth: 0 };
 const MINIMAP_MASK = "color-mix(in srgb, var(--overlay-bg) 72%, transparent)";
-const DOT_SIZE = 2;
-const DOT_OFFSET = DOT_SIZE / 2 - DOT_SPACING / 2;
 
 export type SurfaceHandlers = {
   bumpNode(id: string): void;
@@ -542,12 +540,43 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     cableSelectionStore.set(null);
     drawnCableStore.select(null);
   }, []);
+  const panLayer = useMemo(
+    () => createPanLayer(() => wrapperRef.current?.querySelector<HTMLElement>(".react-flow__viewport")),
+    [],
+  );
+  useEffect(() => () => panLayer.end(), [panLayer]);
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    // Capture, so the camera is whole before d3 reads the press point the drag keeps under the pointer.
+    const align = (e: PointerEvent) => {
+      if (e.pointerType === "touch" || !(e.target as Element | null)?.classList?.contains("react-flow__pane") || !promotesPans()) return;
+      const next = alignedViewport(getViewport(), window.devicePixelRatio || 1);
+      if (next) void setViewport(next);
+    };
+    // A release always ends the layer, so no path that ends a pan without RF's end event can leave it promoted.
+    const release = () => panLayer.end();
+    el.addEventListener("pointerdown", align, true);
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+    return () => {
+      el.removeEventListener("pointerdown", align, true);
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+    };
+  }, [getViewport, setViewport, panLayer]);
+  const onMoveStart = useCallback(
+    (e: MouseEvent | TouchEvent | null, viewport: Viewport) => panLayer.start(e, viewport.zoom),
+    [panLayer],
+  );
+  const onMoveEnd = useCallback((e: MouseEvent | TouchEvent | null) => panLayer.end(e), [panLayer]);
   const onMove = useCallback(
     (_e: unknown, viewport: Viewport) => {
+      panLayer.move(viewport.zoom);
       s.view.setTransform({ x: viewport.x, y: viewport.y, k: viewport.zoom });
       syncSemanticZoomFor(viewport.zoom);
     },
-    [s],
+    [s, panLayer],
   );
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -832,7 +861,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         onNodeDragStop={onNodeDragStop}
+        onMoveStart={onMoveStart}
         onMove={onMove}
+        onMoveEnd={onMoveEnd}
         isValidConnection={isValidConnection}
         deleteKeyCode={locked || hooks.noKeyboard ? null : DELETE_KEYS}
         selectionKeyCode={null}
@@ -846,14 +877,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         colorMode={themeMode}
         proOptions={PRO_OPTIONS}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={DOT_SPACING}
-          size={DOT_SIZE}
-          offset={DOT_OFFSET}
-          color="var(--canvas-dot)"
-          bgColor="var(--canvas-bg)"
-        />
+        <ViewportLayer>
+          <CanvasBacking />
+        </ViewportLayer>
         {hooks.standoffs && (
           <ViewportLayer>
             <StandoffLayer />

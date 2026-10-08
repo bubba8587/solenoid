@@ -1,6 +1,5 @@
 html.minimap-hidden .solenoid-minimap { display: none; }
 html.minimap-top .solenoid-minimap { top: 126px; bottom: auto; }
-html.perf-no-grid-dots .react-flow__background { display: none; }
 
 .solenoid-canvas--locked .solenoid-node,
 .solenoid-canvas--locked .solenoid-node *,

@@ -28,6 +28,14 @@
 /* The chrome over the canvas keeps a layer of its own for the same reason. Opacity, not transform: a transform would become the containing block of its fixed-position menus. */
 .solenoid-header, .solenoid-statusbar, .solenoid-legend, .solenoid-nav,
 .solenoid-outline__open-pill, .solenoid-hud-stack, .react-flow__minimap { will-change: opacity; }
+/* A pan moves the viewport as one layer instead of repainting every card; panLayer.ts sets the class for the gesture. */
+.react-flow__viewport.sol-pan-layer { translate: 0 0 1px; }
+/* The opaque canvas color and dots under every card, in graph coordinates, so the pan layer stays one layer and the grid rides it. */
+.sol-canvas-backing { position: absolute; z-index: -1000; pointer-events: none; background-color: var(--canvas-bg); }
+.sol-canvas-backing__dots { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.sol-canvas-backing circle { fill: var(--canvas-dot); }
+html.perf-no-grid-dots .sol-canvas-backing__dots { display: none; }
+
 /* A dragged open group clips its paint (with room for the selection glow), so the members riding over it stay their own layers instead of re-rastering the group's every frame. */
 .react-flow__node.sol-group-open.dragging { overflow: clip; overflow-clip-margin: 24px; }
 .react-flow__node.dragging :is(.recharts-wrapper, canvas),
