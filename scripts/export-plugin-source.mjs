@@ -38,7 +38,8 @@ const copy = (rel) => {
 const appFiles = new Set(modules.filter((rel) => rel.startsWith("src/")));
 const pluginFiles = run("git", ["ls-files", "obsidian-plugin"]).split("\n").filter(Boolean);
 // Also take type-only imports: the directory's review lints with types, and an unresolved module types as `any`.
-const shimmed = new Set(fs.readdirSync(path.join(ROOT, "obsidian-plugin/src/shims"), { recursive: true }).map((f) => `src/graph/${f}`));
+// readdirSync answers with the platform's separator; the paths compared against it are posix.
+const shimmed = new Set(fs.readdirSync(path.join(ROOT, "obsidian-plugin/src/shims"), { recursive: true }).map((f) => `src/graph/${f.replaceAll("\\", "/")}`));
 const resolveApp = (from, spec) => {
   const base = path.posix.normalize(path.posix.join(path.posix.dirname(from), spec));
   return [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find((c) => /\.tsx?$/.test(c) && fs.existsSync(path.join(ROOT, c)));
