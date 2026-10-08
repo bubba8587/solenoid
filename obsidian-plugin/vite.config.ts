@@ -146,7 +146,8 @@ function shadowCss(): Plugin {
       // `PLUGIN_MODULES=<file>`: every source file this build read, for the snapshot export.
       if (process.env.PLUGIN_MODULES) {
         const ids = [...this.getModuleIds()].map((id) => id.split("?")[0]).filter((id) => path.isAbsolute(id) && !id.includes("node_modules"));
-        writeFileSync(process.env.PLUGIN_MODULES, JSON.stringify([...new Set(ids)].map((id) => path.relative(REPO, id)).sort(), null, 1));
+        // Posix paths whatever the platform: the export matches them against `src/…`.
+        writeFileSync(process.env.PLUGIN_MODULES, JSON.stringify([...new Set(ids)].map((id) => path.relative(REPO, id).split(path.sep).join("/")).sort(), null, 1));
       }
       if (!process.env.PLUGIN_REPORT) return;
       const rows: [number, string][] = [];
