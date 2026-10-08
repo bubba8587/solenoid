@@ -163,6 +163,18 @@ async function main() {
     for (const z of ZOOMS) {
       await setZoom(z);
       await sleep(1500);
+      if (opt("nopan", "")) {
+        await setZoom(z); await sleep(800);
+        // Zoom snaps to 0.1 steps, so notches go up, up, down, down: each pair crosses one step boundary.
+        await page.evaluate(async () => {
+          const { devRfStores } = await import("/src/graph/flow/devRfStores.ts");
+          const store = [...devRfStores][0]; let last = store.getState().transform[2]; window.__zoomSteps = 0;
+          store.subscribe((st) => { if (st.transform[2] !== last) { last = st.transform[2]; window.__zoomSteps++; } });
+        });
+        const zr = await traceRun(async () => { for (let i = 0; i < FRAMES; i++) { await page.mouse.move(W / 2, H / 2); await page.mouse.wheel({ deltaY: i % 4 < 2 ? -100 : 100 }); await sleep(60); } await sleep(300); });
+        const steps = await page.evaluate(() => window.__zoomSteps);
+        console.log(`  zoom (${steps} steps): ${fmt(zr)}  | per step: main ${(zr.mainTask / steps).toFixed(1)}  paint ${(zr.paint / steps).toFixed(1)}  raster ${(zr.raster / steps).toFixed(1)}`); continue;
+      }
       console.log(`zoom ${z}: ${await layerCount()}`);
       let midPan = null;
       const panR = await traceRun(async () => {
