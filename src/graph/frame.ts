@@ -437,12 +437,16 @@ export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>
   return { __frame: true, columns };
 }
 
+/** A record value a Frame cell can hold; a nested value (or anything else) is blank. */
+const flatCell = (v: unknown): string | number | boolean | null =>
+  typeof v === "string" || typeof v === "number" || typeof v === "boolean" ? v : null;
+
 /** A Cube cell's records as a flat Frame: a picked column crosses `coerceFrameCell` with its text kept as `raw`, the rest take `inferColumn`'s reading, and a nested value is blank, since a Frame cell is flat ([[D90]] cubeTypesAtDepth). */
 export function frameCellFromRecords(records: ReadonlyArray<Record<string, unknown>>, picks: ColumnTypes = {}): FrameValue {
   const keys = recordKeys(records);
   const names = makeHeaders(keys, keys.length);
   const columns = keys.map((key, j): FrameColumn => {
-    const cells = records.map((r) => { const v = r[key]; return v != null && typeof v === "object" ? null : v; });
+    const cells = records.map((r) => flatCell(r[key]));
     const type = picks[key];
     if (!type) return inferColumn(names[j], cells);
     const raw = cells.map((c) => (c == null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));

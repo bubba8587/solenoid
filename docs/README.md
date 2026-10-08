@@ -58,7 +58,8 @@ is parked there.
   is `archive/1.4-plan.md` E3 (Materials & Mechanical content) + `2.0-plan.md` Arc 7 (the
   composite pack shape + distribution).
 - **`release-notes-features.md`** — the curated selling list / What's-New source for
-  the release in progress (1.4; the 1.3 list is at the v1.3.0 tag).
+  the release in progress (1.5; the 1.4 list is at the v1.4.0 tag).
+- **`release-notes-1.5.md`** — the 1.5 GitHub release notes, written from that list.
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
   `deferrals.md`.
 - **`out-of-scope.md`** — the standing NO list.
