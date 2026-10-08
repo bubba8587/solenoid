@@ -1116,7 +1116,7 @@ export function TablePopup() {
                   {Array.from({ length: viewCols }, (_, c) => {
                     // A vertical list's type is the list's, not column `c` (always 0 there).
                     const type = vertical ? cellType : colTypeAt(c);
-                    const nan = !isTextType(type) && (row[c] ?? "") === "NaN";
+                    const nan = type !== "string" && (row[c] ?? "") === "NaN";
                     const errCode = (row[c] ?? "").trim();
                     const isErrCell = errCode !== "" && Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, errCode);
                     const fmtEdit = formattedPreview && editable && !vertical;

@@ -66,7 +66,7 @@ The opener's callback sets the mode. The popup is editable when it has `onSaveSo
 | none | nothing: a read-only viewer with a Done button | | every read-only chip and the expand button |
 
 - **`buildSourceColumns`** keeps every cell verbatim; coercion happens downstream in `deriveFrame`. Each column carries its trimmed name, its type, its cells (none for a computed column, whose cells derive from the formula), its trimmed `expr` when it has one, and its `unit` when the source is unit-taggable, the column is a number and the unit is not `none`.
-- **`buildFrameColumns`** feeds the column summaries of an editable frame popup, parsing each cell. Text keeps its value, blank as null. A logical cell reads `true`/`1` and `false`/`0`, ignoring case; anything else is null. Number and date cells parse as numbers (a date is its serial), a date column falls back to the date parser for typed text, and anything unparseable is `NaN`. A blank is null.
+- **`buildFrameColumns`** feeds the column summaries of an editable frame popup, parsing each cell. Text keeps its value, blank as null. A logical cell reads as `coerceFrameCell` reads it: `true`, `false` or a number, anything else `NaN` ([[D93]] oneTextReading). Number and date cells parse as numbers (a date is its serial), a date column falls back to the date parser for typed text, and anything unparseable is `NaN`. A blank is null.
 
 What each node does with the save:
 
@@ -87,7 +87,7 @@ The grid holds every cell as a string, so a half-typed `-` or an empty cell is l
 - **Computed columns** have no raw text. The popup substitutes their derived values into every view, copy path and sort key, renders them read-only through the same formatting path as literal cells, and the keyboard skips them.
 - **Column widths.** A number or date column's minimum width is measured from its visible text: the longest text times the monospace advance (13 × 27/42 pixels, from the shipped font metrics) plus 16, applied only above 72 and capped at 200. A text column takes at least 120 pixels from CSS.
 - **Read-only cells** render as plain text in a focusable element (`tabIndex -1`), not as a read-only input, which costs about 2.5 times the DOM per cell. They keep keyboard movement.
-- **NaN.** In a number or date column, a cell that shows `NaN` is dirty data, not an error: it gets a faint neutral tint, muted italic text and the tooltip "Not a number: an undefined value in the data".
+- **NaN.** In a number, date or Boolean column, a cell that shows `NaN` is dirty data, not an error: it gets a faint neutral tint, muted italic text and the tooltip "Not a number: an undefined value in the data".
 - **Error cells.** A cell whose text is an error code wears the shared `#CODE!` treatment (`sol-error-chip`) with that code's explanation as its tooltip. The test is membership in `ERROR_EXPLANATIONS`, the complete record of codes, so a new code is covered the day it is declared ([[engineering#Lists of names are generated]]).
 - **Chip columns.** A text column whose format is the Chip style draws its cells as `CategoryChip` pills, colored by first appearance in source row order, so sorting never recolors a category ([[format-model]]). In an editable cell in Formatted mode the pill overlays the input while it is unfocused and gives way to the raw text on focus.
 - **Freeze header.** The header row and the row-number column are sticky. The overflow menu's Freeze header toggle (the setting `tablePopupFrozen`) turns that off so both scroll with the body. The summary footer keeps its own sticky behavior.
