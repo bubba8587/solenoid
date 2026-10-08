@@ -231,16 +231,14 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 The site is five pages (`/about` is the landing page; `/` is the app) sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:
 
-- [ ] **solenoid-ngc.com follow-ups (author):** the site, README and plugin source name it, and `vercel.json` 308s
-  `solenoid-ngc.vercel.app` and `www.` to it. Left: add it to Search Console / Bing and submit `/sitemap.xml`; carry the
-  plugin's new `authorUrl` / `SOLENOID_LINKS` into the next plugin release. Optional: `solenoidngc.com` as a redirect.
+- [ ] **solenoid-ngc.com follow-ups (author):** Google Search Console has the domain and its sitemap (2026-10-08).
+  Left: Bing Webmaster Tools (skipped for now; Import from GSC needs no DNS). Optional: `solenoidngc.com` as a redirect.
 - [ ] **Bluesky handle `@solenoid-ngc.com` (author, later):** Bluesky Settings → Account → Handle → I have my own domain →
   DNS panel; add its TXT record (`_atproto`, `did=did:plc:…`) in Vercel's Domains → DNS Records, then Verify.
 - [ ] **Tagline "node graph calculator" in the site copy** (author 2026-10-04, aligned during the copy pass): it is only in
   the README today; the planned domain (solenoid-ngc.com) carries its initials, the copy spells it out, never "NGC".
 - [ ] **Author reviews the site copy.** An agent pass (2026-09-23) brought every page to DESIGN.md §7;
   the Packs and Examples pages now render from the pack definitions and the seed list.
-- [ ] **Check the per-page link previews on the next Vercel deploy** (share `/obsidian` or `/packs` and read the card).
 - [ ] **Public changelog page (parked, author wants it later).** Would live at `/changelog` off
   `docs/release-notes-features.md` + the What's New slides. Deferred so it does not just mirror
   GitHub Releases; revisit when there is a reason it earns its own surface.
