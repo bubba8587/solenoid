@@ -28,7 +28,7 @@ A document has three representations: the live graph (rete editor plus side stor
 
 ## The persisted type is the class name
 
-A node's `type` is its JavaScript `constructor.name` (for example `NumberInputNode`), and loading resolves `type` through `ctorRegistry()` ([[#The persisted type is the class name]]). The registry is built once, lazily, by calling every factory in `FLAT_CATALOG` and mapping each instance's `constructor.name` to its constructor; the first class registered under a name wins, and a factory that throws is skipped (its type then loads as a Placeholder). The class name is also a dispatch key elsewhere (`SEES_ERRORS`, group collapse, pins).
+A node's `type` is its JavaScript `constructor.name` (for example `ValueInputNode`), and loading resolves `type` through `ctorRegistry()` ([[#The persisted type is the class name]]). The registry is built once, lazily, by calling every factory in `FLAT_CATALOG` and mapping each instance's `constructor.name` to its constructor; the first class registered under a name wins, and a factory that throws is skipped (its type then loads as a Placeholder). The class name is also a dispatch key elsewhere (`SEES_ERRORS`, group collapse, pins).
 
 **MUST:** production builds keep class names. Vite 8 defaults to the Oxc minifier, which has no keepNames equivalent, so `vite.config.ts` pins `build.minify: "esbuild"` with `esbuild.keepNames: true`. **MUST:** no two catalog classes share a name.
 
@@ -211,12 +211,12 @@ An empty or whitespace-only sidecar reads as `{}`. Invalid sidecar JSON throws.
 
 ## Example
 
-Two Number Inputs multiplied and displayed, inside a Group, with one comment:
+Two number Value Inputs multiplied and displayed, inside a Group, with one comment:
 
 ```
-budget: NumberInputNode label="Monthly budget" value=50 width=180 height=76
+budget: ValueInputNode label="Monthly budget" value="50" width=180 height=76
 grp: GroupNode label="Budget" members=["budget","months","annual","shown"] color="blue" collapsed=false width=560 height=282
-months: NumberInputNode label="Months" value=12 width=180 height=76
+months: ValueInputNode label="Months" value="12" width=180 height=76
 annual: ArithmeticNode label="Annual total" op="mul" width=180 height=177 lit:a=0 lit:b=0 a<-budget.value b<-months.value
 shown: DisplayNode label="Annual budget" unitSuffix="none" width=180 height=88 in<-annual.result
 ---

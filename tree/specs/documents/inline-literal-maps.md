@@ -20,7 +20,7 @@ A wire-driven card declares neither map. The Equation family (Equation, TVM, Tri
 
 ## Seeds are checked when they are written
 
-`seeds.test.ts` rejects any seed node whose `literals` or `stringLiterals` target a class that does not declare that map, so the mistake fails loudly at authoring time instead of being silently dropped on load. A seed that needs a fixed value on a wire-driven card wires a visible input card (Number Input and the like) instead.
+`seeds.test.ts` rejects any seed node whose `literals` or `stringLiterals` target a class that does not declare that map, so the mistake fails loudly at authoring time instead of being silently dropped on load. A seed that needs a fixed value on a wire-driven card wires a visible input card (a Value Input and the like) instead.
 
 ## A typeable list implies the declaration
 

@@ -280,7 +280,7 @@ A Math node's trig op in **Auto** angle mode computes in degrees when the value 
 
 ## Enforcement
 
-`unitFlowAnnotation.test.ts` (the format direction rules and `applyFcUnit`'s value-changing cases), `unitFlowSeed.test.ts` (one `it` per captioned behavior in the **Unit Flow** seed, A to J), `convert.test.ts` (Convert tags its output) and `tableLambda.test.ts` (units through LAMBDA hosts).
+`unitFlowAnnotation.test.ts` (the format direction rules and `applyFcUnit`'s value-changing cases), `convert.test.ts` (Convert tags its output) and `tableLambda.test.ts` (units through LAMBDA hosts).
 
 ## Related
 

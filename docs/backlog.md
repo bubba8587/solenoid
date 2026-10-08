@@ -24,6 +24,10 @@ warning is expected.
 ## Tooling
 - [ ] **`scripts/touch-pan-probe.mjs` is stale**: its drill-in step times out waiting for `.solenoid-composite-editor__canvas .solenoid-node` (fails on develop before 2026-10-06's grip work too), and it needs `--no-sandbox` to launch as root.
 
+## Seeds (after the 2026-10-08 scalar input fold)
+- [ ] **Re-tune the converted seeds' groups**: run `node scripts/tune-seeds.mjs`; Value Input cards are a different size from the four inputs they replaced.
+- [ ] **Bring the Unit Flow example back**: restore or rebuild it from `../backups/unit-flow.seed.json` and `../backups/unitFlowSeed.test.ts` (outside the repo) with Value Inputs; the test pinned unit-flow's captioned behaviors A to J.
+
 ## Performance (found 2026-10-06, not done)
 - [ ] **Engine commands run on the UI thread**: `#[tauri::command(async)]` frees it, but `engine_drop` is fire-and-forget (`frameBackend.ts`), so a drop could race a preview of its handle; needs a desktop check.
 - [ ] **Native CSV crosses IPC twice**: `engine_read_csv` returns every row, then the first verb re-uploads it; register a handle as Parquet does.
@@ -231,6 +235,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 The site is five pages (`/about` is the landing page; `/` is the app) sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:
 
+- [ ] **Regenerate `prerender/`** after the 2026-10-08 seed and scene changes: `node scripts/prerender-site.mjs`, then commit it (`prerender.test.ts` fails until then). The script fails on Windows: it spawns `npm`/`npx` without `shell: true`.
 - [ ] **solenoid-ngc.com follow-ups (author):** the site, README and plugin source name it, and `vercel.json` 308s
   `solenoid-ngc.vercel.app` and `www.` to it. Left: add it to Search Console / Bing and submit `/sitemap.xml`; carry the
   plugin's new `authorUrl` / `SOLENOID_LINKS` into the next plugin release. Optional: `solenoidngc.com` as a redirect.
@@ -251,6 +256,7 @@ The site is five pages (`/about` is the landing page; `/` is the app) sharing `l
 
 ## Demo video (`assets/video/`, the `demo-video` skill)
 
+- [ ] **Re-film the `types` and `units` scenes**: `scripts/demo-video/scenes.mjs` now builds Value Inputs, and the units scene's input FCs merged into the inputs' own units.
 - [ ] **Re-film after 2026-09-29's UI changes:** type icons on every type toggle and column header, the narrower
   Cast card with its Separators, the 4-decimal number display, palette-following Add menu tints and neutral accents,
   card sections and the liquid fold, the Edit Frame / Edit Table buttons.

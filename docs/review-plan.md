@@ -427,7 +427,7 @@ only by whoever had the desktop. Error cells ride as reserved quiet-NaN bit patt
 Commits: 719591dd, 2c2d5b9b
 Leaves: [[C44]] dateSerials, [[D46]] freezeVolatilePerCalc.
 - [x] Checked 2026-09-28: block 44 answers the time zone (the local calendar day as a UTC-labelled serial, C44); at a DST fall-back NOW repeats an hour of serials, as Excel's local-time NOW does. Was: `wallClockSerial` local vs UTC: a doc saved in one TZ, opened in another: relative
-      Date Input "today" changes; is that stated in the spec? Serial for NOW at DST switch.
+      date Value Input "today" changes; is that stated in the spec? Serial for NOW at DST switch.
 - [x] Fixed 2026-09-28: the rollover finds TODAY/NOW in an `expr` (Expression, Computed Column, LAMBDA, Equation), a Frame Input's formula columns and composites, but not a Cube Input's formula columns (`cubeText`), which it reads now (`volatileDates.test.ts`). Was: Midnight rollover: the Today card inside a composite recalculates; a formula TODAY()
       inside a computed column? A LAMBDA host?
 - [x] Checked 2026-09-28: what coalesces is the rerun a second F9 queues while a pass runs, so two presses are one recalc and one new draw; D46 freezes a card's draw across recomputes, and `RAND() - RAND()` inside one formula is two draws, as in Excel. Was: "A coalesced F9 stays exact in sketch mode" (2c2d5b9b): what is coalesced and can two
@@ -852,7 +852,7 @@ not a new leaf and not a patch.
 - Item 19: a failed fetch records its key and never retries until the key changes (by design);
   a timer whose card is gone clears itself on its next fire.
 - Item 21: TODAY is the local calendar day as a UTC serial; relative phrases only on an opted-in
-  Date Input ([[D54]]); every reader uses UTC getters ([[C44]]). The TZ question is answered.
+  date Value Input ([[D54]]); every reader uses UTC getters ([[C44]]). The TZ question is answered.
 - Item 23: C95's Consequences: switch/save/close commit drafts; the background autosave never
   does. A half-typed frontmatter committing on a document switch is the rule.
 - Item 24: `frontmatterPatch.test.ts` "proves untouched bytes identical and a cube round-trip
