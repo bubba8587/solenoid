@@ -749,6 +749,40 @@
    }
   },
   {
+   "name": "a logical column reads the text \"0\" as FALSE",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "flag",
+       "type": "logical",
+       "values": [
+        true,
+        false
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "flag",
+    "op": "eq",
+    "value": "0"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "flag",
+      "type": "logical",
+      "values": [
+       false
+      ]
+     }
+    ]
+   }
+  },
+  {
    "name": "a logical column accepts the text \"TRUE\"",
    "frames": {
     "in": {

@@ -589,7 +589,7 @@ describe("sampleFrame (sketch mode's preview rows)", () => {
   });
 });
 
-describe("a logical column reads only TRUE and FALSE ([[D93]] oneTextReading)", () => {
+describe("a logical column reads TRUE, FALSE or a number ([[D93]] oneTextReading)", () => {
   const f: FrameValue = { __frame: true, columns: [
     { name: "k", type: "string", values: ["a", "b", "c", "d"] },
     { name: "ok", type: "logical", values: [true, false, NaN, null] },
@@ -598,12 +598,13 @@ describe("a logical column reads only TRUE and FALSE ([[D93]] oneTextReading)", 
     expect(filterRows(f, "ok", "eq", "false").columns[0].values).toEqual(["b"]);
     expect(filterRows(f, "ok", "neq", "true").columns[0].values).toEqual(["b"]);
     let err: unknown = null;
-    try { filterRows(f, "ok", "eq", "1"); } catch (e) { err = e; }
+    expect(filterRows(f, "ok", "eq", "0").columns[0].values).toEqual(["b"]);
+    try { filterRows(f, "ok", "eq", "yes"); } catch (e) { err = e; }
     expect(isSolError(err) && err.code).toBe("#TYPE!");
   });
   it("a Frame Input logical cell keeps typed text it can't read as NaN", async () => {
     const { coerceFrameCell } = await import("../../src/graph/frame");
-    expect([coerceFrameCell("logical", "True"), coerceFrameCell("logical", "yes"), coerceFrameCell("logical", "1"), coerceFrameCell("logical", " ")])
-      .toEqual([true, NaN, NaN, null]);
+    expect([coerceFrameCell("logical", "True"), coerceFrameCell("logical", "yes"), coerceFrameCell("logical", "1"), coerceFrameCell("logical", "0"), coerceFrameCell("logical", "-2"), coerceFrameCell("logical", " ")])
+      .toEqual([true, NaN, true, false, true, null]);
   });
 });

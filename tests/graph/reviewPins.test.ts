@@ -542,7 +542,7 @@ describe("review pins: follow-ups to the 2026-09-24 formula leads", () => {
     expect(coerceNumber(" 12.5 ")).toBe(12.5);
     expect(coerceNumber("1,234")).toBe(1234);
     expect(coerceLogical("0x1")).toBeNaN();
-    expect(coerceLogical("2")).toBeNaN(); // text reads only as TRUE or FALSE
+    expect(coerceLogical("2")).toBe(true);
     const { inferColumn, coerceFrameCell } = await import("../../src/graph/frame");
     expect(inferColumn("h", ["0x1F", "0b1"]).type).toBe("string");
     expect(inferColumn("n", ["1,234", "5"]).values).toEqual([1234, 5]);

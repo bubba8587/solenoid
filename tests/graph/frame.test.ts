@@ -524,10 +524,10 @@ describe("Frame Input is a LITERAL source — never rewrites what you typed", ()
     // Save → reload returns the EXACT text (the bug was "1" → "TRUE").
     const back = parseFrameSource(frameSourceToText(source));
     expect(back[0].cells).toEqual(["1", "TRUE", "0", "FALSE"]);
-    // …while the DERIVED value reads only TRUE and FALSE; the 1 and 0 are NaN ([[D93]] oneTextReading).
+    // …while the DERIVED value (what flows downstream) is real booleans.
     const derived = deriveFrame(source);
     expect(derived.columns[0].type).toBe("logical");
-    expect(derived.columns[0].values).toEqual([NaN, true, NaN, false]);
+    expect(derived.columns[0].values).toEqual([true, true, false, false]);
   });
 
   it("preserves a date column's typed literal, deriving the serial only downstream", () => {

@@ -246,7 +246,7 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
     expect(deriveTable(raw, "string")).toEqual([["a", "b"], ["c", null]]);
     const logical = deriveTable(tableRawCells("true, FALSE\n1, x"), "logical") as unknown[][];
     expect(logical[0]).toEqual([true, false]);
-    expect(logical[1][0]).toBeNaN(); // text reads only as TRUE or FALSE, numeric text too
+    expect(logical[1][0]).toBe(true); // numeric text reads by the number: non-zero is TRUE
     expect(logical[1][1]).toBeNaN();
     const dates = deriveTable(tableRawCells("2026-03-15"), "date") as number[][];
     expect(dates[0][0]).toBe(46096); // the audit-29 serial pin

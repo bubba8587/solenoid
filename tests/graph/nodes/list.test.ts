@@ -96,10 +96,10 @@ describe("List Input (multi-type)", () => {
     n.stringLiterals["v0"] = "apple, pear, fig";
     expect(n.data({}).list).toEqual(["apple", "pear", "fig"]);
   });
-  it("logical type reads a cell as Frame Input does: true and false, anything else NaN", () => {
+  it("logical type reads a cell as Frame Input does: true, false or a number, anything else NaN", () => {
     const n = new ListInputNode({ dataType: "logical" });
     n.stringLiterals["v0"] = "true, false, 1, 0, maybe";
-    expect(n.data({}).list).toEqual([true, false, NaN, NaN, NaN]);
+    expect(n.data({}).list).toEqual([true, false, true, false, NaN]);
   });
   it("setDataType is a no-op (returns false) when unchanged", () => {
     expect(new ListInputNode().setDataType("number")).toBe(false);

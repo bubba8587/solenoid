@@ -121,16 +121,19 @@ describe("coerceLogical — the one reading of a value as a logical ([[D93]] one
     expect(coerceLogical(true)).toBe(true);
     expect(coerceLogical(false)).toBe(false);
   });
-  it("reads only the text TRUE and FALSE, case-insensitively, trimmed", () => {
+  it("reads the text TRUE and FALSE case-insensitively, trimmed", () => {
     expect(coerceLogical("TRUE")).toBe(true);
     expect(coerceLogical(" false ")).toBe(false);
   });
-  it("reads a finite number by the logical↔number bridge (0 → FALSE, nonzero → TRUE)", () => {
+  it("reads a finite number or numeric text by the logical↔number bridge (0 → FALSE, nonzero → TRUE)", () => {
     expect(coerceLogical(0)).toBe(false);
     expect(coerceLogical(-3)).toBe(true);
+    expect(coerceLogical("1")).toBe(true);
+    expect(coerceLogical(" 0 ")).toBe(false);
+    expect(coerceLogical("-2.5")).toBe(true);
   });
-  it("reads any other text, numeric text included, as NaN; blank stays blank", () => {
-    for (const v of ["maybe", "yes", "1", "0", NaN, {}]) expect(coerceLogical(v)).toBeNaN();
+  it("reads any other text as NaN; blank stays blank", () => {
+    for (const v of ["maybe", "yes", "0x1", NaN, {}]) expect(coerceLogical(v)).toBeNaN();
     expect(coerceLogical("")).toBeNull();
     expect(coerceLogical(null)).toBeNull();
   });

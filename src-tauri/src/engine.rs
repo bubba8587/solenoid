@@ -189,7 +189,7 @@ fn json_to_cell(v: &Json, ty: SolType) -> Cell {
             Json::String(s) => match s.trim().to_ascii_lowercase().as_str() {
                 "true" => Cell::Bool(true),
                 "false" => Cell::Bool(false),
-                _ => Cell::Null,
+                t => decimal_from_text(t).map_or(Cell::Null, |n| Cell::Bool(n != 0.0)),
             },
             _ => Cell::Null,
         },
@@ -1356,12 +1356,15 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
                     "true" => Some(1.0),
                     "false" => Some(0.0),
                     "" => None,
-                    _ => {
-                        return Err(IpcError::new(
-                            "#TYPE!",
-                            format!("Filter: \"{s}\" isn't a logical. Only TRUE and FALSE read as one"),
-                        ))
-                    }
+                    _ => match decimal_from_text(t) {
+                        Some(n) => Some(if n == 0.0 { 0.0 } else { 1.0 }),
+                        None => {
+                            return Err(IpcError::new(
+                                "#TYPE!",
+                                format!("Filter: \"{s}\" isn't a logical. Only TRUE, FALSE or a number read as one"),
+                            ))
+                        }
+                    },
                 }
             } else {
                 decimal_from_text(t)

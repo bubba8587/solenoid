@@ -653,12 +653,7 @@ export function TablePopup() {
         if (type === "string") return raw === "" ? null : raw;
         const s = raw.trim();
         if (s === "") return null;
-        if (type === "logical") {
-          const t = s.toLowerCase();
-          if (t === "true" || t === "1") return true;
-          if (t === "false" || t === "0") return false;
-          return null;
-        }
+        if (type === "logical") return coerceFrameCell("logical", s) as boolean | number;
         const n = decimalFromText(s);
         if (Number.isFinite(n)) return n;
         if (type === "date") { const d = parseDateToSerial(s); return Number.isFinite(d) ? d : NaN; }
@@ -1304,14 +1299,13 @@ export function TablePopup() {
                       />
                     ) : type === "logical" ? (
                       (() => {
-                        const raw = (grid[fRow]?.[c] ?? "").trim().toLowerCase();
-                        const val = raw === "true" ? true : raw === "false" ? false : null;
+                        const val = coerceFrameCell("logical", grid[fRow]?.[c] ?? "");
                         return (
                           <input
                             type="checkbox"
                             className="table-popup__form-box-check"
                             checked={val === true}
-                            ref={(el) => { if (el) el.indeterminate = val === null; }}
+                            ref={(el) => { if (el) el.indeterminate = typeof val !== "boolean"; }}
                             onChange={(e) => setCell(fRow, c, e.target.checked ? "TRUE" : "FALSE")}
                           />
                         );
