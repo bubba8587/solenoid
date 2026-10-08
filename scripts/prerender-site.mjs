@@ -4,15 +4,18 @@
 // Run after changing a site page's copy (prerender.test.ts fails until you do):  node scripts/prerender-site.mjs
 import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
+// Windows runs npm and npx as .cmd shims, which only a shell can start.
+const shell = process.platform === "win32";
 const PAGES = { about: "/about", obsidian: "/obsidian", download: "/download", examples: "/examples", packs: "/packs" };
 const PORT = 4174;
 
-execFileSync("npm", ["run", "build"], { cwd: root, stdio: "inherit" });
-const server = spawn("npx", ["vite", "preview", "--port", String(PORT), "--strictPort"], { cwd: root, stdio: "ignore" });
+execFileSync("npm", ["run", "build"], { cwd: root, stdio: "inherit", shell });
+const server = spawn("npx", ["vite", "preview", "--port", String(PORT), "--strictPort"], { cwd: root, stdio: "ignore", shell });
 const browser = await puppeteer.launch({ executablePath: browserPath(), headless: true, args: ["--no-sandbox"] });
 try {
   for (let i = 0; ; i++) {
@@ -57,7 +60,9 @@ try {
   }
 } finally {
   await browser.close();
-  server.kill();
+  // Through a shell, kill() would stop only the shell and leave vite preview holding the port.
+  if (shell) execFileSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+  else server.kill();
 }
 // Records what these snapshots were made from; prerender.test.ts fails when the sources move on without a rerun.
-execFileSync("npx", ["vitest", "run", "tests/graph/landing/prerender.test.ts"], { cwd: root, stdio: "inherit", env: { ...process.env, UPDATE_PRERENDER: "1" } });
+execFileSync("npx", ["vitest", "run", "tests/graph/landing/prerender.test.ts"], { cwd: root, stdio: "inherit", shell, env: { ...process.env, UPDATE_PRERENDER: "1" } });
