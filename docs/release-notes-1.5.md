@@ -11,6 +11,7 @@ Highlights
 - Frame Input. Formula columns grew up: pick Fx on a column to write a formula over the row, such as `@qty * @price`, call the card's λ inputs by name, and a formula that returns a date stays a date. The card itself is easier to work with, with its secondary settings folded under captions and an Edit button right on the card.
 - XY plots. Scatter, the new XY Line and Bubble plot real x against y, with size, color, point labels and series split from named columns. Set `aspect=equal` for parametric curves; the chart showcase draws a Lissajous figure.
 - Sparklines in cells. `SPARKLINE(range, [type])` draws a line, column or win/loss sparkline straight into a table cell. In a Cube, `SPARKLINE(@history)` gives every row its own trend, and pictures in text cells show as pictures in every card and popup.
+- New palettes. Try Dawn & Dusk for a relaxing vibe, or Neon to melt your eyes with blazing colors and high contrast.
 
 Also in 1.5
 
@@ -38,7 +39,7 @@ Also in 1.5
 - Charts: every Chart Builder option works on every figure that shows it. Pie, Funnel and Radial slices lift on hover and spotlight on click, XY figures take a color map, Sankey merges repeated flows, axes write compact ticks, exports keep their legend, and dense line charts draw fast.
 - Collapsed cards show their content: a value, a chip, or a square mini for KPI, Gauge, Slider and World Clock.
 - Stacking commands bring a card to the front or send it back, and an expanded card comes to the front by itself.
-- New palettes: Neon, Dawn and Dusk. A palette swatch sets the app's accent too.
+- A palette swatch in Settings sets the app's accent too.
 - On a phone, the Add menu is a docked drill-down sheet, Tidy folds into one pill, and a sideways phone runs the tablet layout. Solenoid also installs as a home-screen app.
 - Settings has a search box, an empty setting shows its default, and new settings choose where numbers turn scientific and, on desktop, switch the native engine off.
 - Delete removes a selected cable.
