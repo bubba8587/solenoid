@@ -117,7 +117,8 @@ fs.writeFileSync(path.join(target, "source.json"), JSON.stringify({
 }, null, 2) + "\n");
 
 console.log("export: resolving a package-lock.json in the target (npm install --package-lock-only)…");
-run("npm", ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: target });
+// Windows runs npm as a .cmd shim, which only a shell can start.
+run("npm", ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: target, shell: process.platform === "win32" });
 
 fs.rmSync(scratch, { recursive: true, force: true });
 console.log(`export: ${appFiles.size} app files + ${pluginFiles.length} plugin files -> ${target}`);
