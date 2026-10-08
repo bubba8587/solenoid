@@ -4631,7 +4631,7 @@ dependencies = [
 
 [[package]]
 name = "solenoid"
-version = "1.4.2"
+version = "1.5.0"
 dependencies = [
  "polars",
  "polars-plan",
