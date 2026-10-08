@@ -69,9 +69,6 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
         options={OP_OPTIONS}
         onChange={(next) => { setDt(next); void applyValueOp(data, next); }}
       />
-      <CardSection label="Format" collapsible defaultOpen={formatIsSet(data)}>
-        <FormatRows node={data} dt={dt} pick={pick} />
-      </CardSection>
       {entry && dt === "number" && <NumberEntry text={data.value} onCommit={commitValue} />}
       {entry && dt === "string" && <QuotedTextInput variant="value" resizable value={data.value} onChange={commitValue} />}
       {entry && dt === "date" && <DateEntry raw={data.value} onCommit={commitValue} />}
@@ -81,6 +78,9 @@ export function ValueInputComponent({ data, emit }: NodeProps<ValueInputNodeType
           onToggle={() => commitValue(/^true$/i.test(data.value.trim()) ? "FALSE" : "TRUE")}
         />
       )}
+      <CardSection label="Format" collapsible defaultOpen={formatIsSet(data)}>
+        <FormatRows node={data} dt={dt} pick={pick} />
+      </CardSection>
       <ValueDisplay value={data.cachedValue as DisplayValue} socketKey="value" />
     </NodeShell>
   );
