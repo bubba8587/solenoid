@@ -2,6 +2,7 @@
 import { iterMin } from "../nodes/mathUtils";
 import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type * as React from "react";
 import { copyText } from "../clipboard";
 import { tablePopup, getRecordCardsAction, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
@@ -589,11 +590,11 @@ export function TablePopup() {
     const fill = <T,>(v: T): T[] => Array.from({ length: count }, () => v);
     setGrid((g) => (g.length === 0 ? [fill("")] : insertGridCols(g, at, count, "")));
     setHeaderNames((h) => insertAt(pad(h, cols, ""), at, fill("")));
-    setColumnTypes((t) => insertAt(pad(t, cols, "number" as CellType), at, fill("number" as CellType)));
+    setColumnTypes((t) => insertAt(pad(t, cols, "number"), at, fill("number")));
     setColExprs((x) => insertAt(pad(x, cols, undefined as string | undefined), at, fill(undefined as string | undefined)));
     committedExprs.current = insertAt(pad(committedExprs.current, cols, undefined), at, fill(undefined));
     if (state?.formatControls === "columns") {
-      setColFmt((f) => insertAt(pad(f, cols, { format: "auto", unit: "none" } as FormatAnnotation), at, fill({ format: "auto", unit: "none" } as FormatAnnotation)));
+      setColFmt((f) => insertAt(pad(f, cols, { format: "auto", unit: "none" }), at, fill({ format: "auto", unit: "none" })));
       setColLocal((l) => insertAt(pad(l, cols, false), at, fill(false)));
       setColInherited((x) => insertAt(pad(x, cols, undefined as FormatAnnotation | undefined), at, fill(undefined as FormatAnnotation | undefined)));
     }
@@ -611,7 +612,7 @@ export function TablePopup() {
     const move = (i: number) => shiftForRemove(i, drop);
     setGrid((g) => removeGridCols(g, drop));
     setHeaderNames((h) => removeAt(pad(h, cols, ""), drop));
-    setColumnTypes((t) => removeAt(pad(t, cols, "number" as CellType), drop));
+    setColumnTypes((t) => removeAt(pad(t, cols, "number"), drop));
     setColExprs((x) => removeAt(pad(x, cols, undefined as string | undefined), drop));
     committedExprs.current = removeAt(pad(committedExprs.current, cols, undefined), drop);
     if (state?.formatControls === "columns") {

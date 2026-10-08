@@ -433,7 +433,8 @@ export class ImportObsidianNode extends NoteNode {
 
   async loadColumnPicks(vault: string): Promise<void> {
     const { readVaultFile } = await import("../fileBridge");
-    const { parsePluginColumnTypes, parsePluginNestedTables, PLUGIN_DATA_PATH } = await import("../pluginColumnTypes");
+    const { parsePluginColumnTypes, parsePluginNestedTables } = await import("../pluginColumnTypes");
+    const { PLUGIN_DATA_PATH } = await import("../pluginDataPath");
     try {
       const text = await readVaultFile(vault, PLUGIN_DATA_PATH);
       this.columnPicks = parsePluginColumnTypes(text);

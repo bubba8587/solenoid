@@ -107,7 +107,7 @@ function encodeCell(v: FrameCell): unknown {
 }
 
 function sortedIndexOrder(len: number, cellAt: (i: number) => FrameCell, type: FrameColType, dir: "asc" | "desc"): number[] {
-  const keys: (number | string)[] = new Array(len);
+  const keys = new Array<number | string>(len);
   const heads: number[] = [];
   const tails: number[] = [];
   for (let i = 0; i < len; i++) {

@@ -1,5 +1,6 @@
 // The table editors' Insert and Delete menus, in the footer and at the pointer (table-popup § The grid).
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import type * as React from "react";
 import { useEscapeLayer } from "./escapeLayers";
 import { ChevronDownIcon } from "./Icons";
 import "./popupChrome.css";

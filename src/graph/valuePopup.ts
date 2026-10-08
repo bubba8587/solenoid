@@ -56,7 +56,7 @@ export function elemChipClass(v: ArrayValue, table: boolean, family = elemFamily
 }
 
 function* cellsOf(v: ArrayValue): Iterable<Cell> {
-  if (!is2D(v)) { yield* v as Cell[]; return; }
+  if (!is2D(v)) { yield* v; return; }
   for (const row of v as Cell[][]) yield* row;
 }
 

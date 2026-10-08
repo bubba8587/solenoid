@@ -1,6 +1,7 @@
 // [[C107]] obsidianPlugin, [[C67]] mdbaseCeiling, [[D90]] cubeTypesAtDepth
 import { describe, it, expect } from "vitest";
-import { parsePluginColumnTypes, parsePluginNestedTables, PLUGIN_DATA_PATH } from "../../src/graph/pluginColumnTypes";
+import { parsePluginColumnTypes, parsePluginNestedTables } from "../../src/graph/pluginColumnTypes";
+import { PLUGIN_DATA_PATH } from "../../src/graph/pluginDataPath";
 
 describe("the plugin's picked column types", () => {
   it("reads columnTypes, property then column, keeping only real types", () => {

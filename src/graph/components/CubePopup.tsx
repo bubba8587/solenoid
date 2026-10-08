@@ -1,5 +1,6 @@
 // [[C10]] socketLattice
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import type * as React from "react";
 import { cubePopup, gridPosOf, type DrillView, type CellRef } from "../cubePopupStore";
 import { CubeEditCell, ListEditCell, GridEditCell, CubeEditChip, cubeEditAxes, CubeEditHeader } from "./cubeEditCell";
 import { TableEditMenus, TableContextMenu, useEditShortcuts } from "./TableEditMenu";
@@ -291,7 +292,7 @@ export function CubePopup() {
           shownRow={rowText}
           itemsAt={(r, c) => {
             const v = table.columns[c]?.cells[r];
-            return Array.isArray(v) ? v.map((x) => cubeCellToken(x as CubeCell)).filter((t) => t !== "") : null;
+            return Array.isArray(v) ? v.map((x) => cubeCellToken(x)).filter((t) => t !== "") : null;
           }}
           cellNodeAt={(r, c) => {
             const col = table.columns[c];

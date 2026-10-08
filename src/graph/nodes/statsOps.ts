@@ -187,7 +187,7 @@ export const noMode = (): SolError => solError("#N/A", "No value repeats, so the
 
 export function modes(arr: readonly number[]): number | number[] | SolError | null {
   if (arr.length === 0) return null;
-  if (arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr) as SolError;
+  if (arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr);
   const counts = new Map<number, number>();
   for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
   const maxCount = iterMax(counts.values());
@@ -203,7 +203,7 @@ export function fisher(x: number, inverse: boolean): number | SolError {
 
 export function modeSingle(arr: readonly number[]): number | SolError | null {
   if (arr.length === 0) return null;
-  if (arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr) as SolError;
+  if (arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr);
   const counts = new Map<number, number>();
   for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
   const maxCount = iterMax(counts.values());

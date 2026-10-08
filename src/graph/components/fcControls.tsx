@@ -1,6 +1,7 @@
 // [[C118]] formatTravelsWithValue, [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits, [[C79]] packActivationIsPresentation
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import type * as React from "react";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
   LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, unitGroupLabel, type FormatStyleId, type LogicalStyle, type TextCase,

@@ -9,7 +9,8 @@ import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, type FxRate, type 
 import { notesToCube, type VaultNote, type VaultTypeSources } from "../vaultCube";
 import { parseMdbaseCollection, mdbaseTypeFor, type MdbaseCollection } from "../mdbaseTypes";
 import { parseObsidianTypes } from "../obsidianTypes";
-import { parsePluginColumnTypes, parsePluginNestedTables, PLUGIN_DATA_PATH, type PluginColumnTypes, type PluginNestedTables } from "../pluginColumnTypes";
+import { parsePluginColumnTypes, parsePluginNestedTables, type PluginColumnTypes, type PluginNestedTables } from "../pluginColumnTypes";
+import { PLUGIN_DATA_PATH } from "../pluginDataPath";
 import { parseDailyNotesConfig } from "../dailyNotesConfig";
 import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";

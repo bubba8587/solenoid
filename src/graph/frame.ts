@@ -377,7 +377,7 @@ export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameC
   }
   const readAll = (fn: (c: unknown) => number | null): FrameCell[] | null => {
     if (nonBlank.length === 0) return null;
-    const out: FrameCell[] = new Array(cells.length);
+    const out = new Array<FrameCell>(cells.length);
     for (let i = 0; i < cells.length; i++) {
       const c = cells[i];
       if (isSolError(c)) { out[i] = c; continue; }

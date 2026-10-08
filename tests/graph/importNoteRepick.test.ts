@@ -12,7 +12,7 @@ vi.mock("../../src/graph/fileBridge", () => ({
 vi.mock("../../src/graph/demoVault", () => ({ getVaultRoot: () => "/vault", isDemoVaultPath: () => false }));
 
 const { ImportObsidianNode } = await import("../../src/graph/nodes/obsidian");
-const { PLUGIN_DATA_PATH } = await import("../../src/graph/pluginColumnTypes");
+const { PLUGIN_DATA_PATH } = await import("../../src/graph/pluginDataPath");
 
 it("a Refresh re-reads the plugin's column picks for a note whose text hasn't changed", async () => {
   const note = "---\nbudget:\n  - item: Tile\n    cost: 12\n---\n";

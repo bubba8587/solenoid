@@ -10,8 +10,6 @@ export type PluginColumnTypes = Readonly<Record<string, ColumnPicks>>;
 /** The tables nested in one note's cube properties: note path, then property, then each table's records path. */
 export type PluginNestedTables = Readonly<Record<string, Readonly<Record<string, NestedTables>>>>;
 
-export const PLUGIN_DATA_PATH = ".obsidian/plugins/solenoid-properties/data.json";
-
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 function readData(text: string): Record<string, unknown> {
