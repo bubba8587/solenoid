@@ -1,62 +1,58 @@
-// [[C14]], [[D4]], [[E12]], [[E14]], [[C22]], [[D20]] declareContract (EXCEL_IMPL_META), [[D24]] prepByShape, [[D25]] blockedFailFast (LEGACY_ALIASES), [[E10]] pickVsAggregateErrors
+// [[C14]], [[C22]], [[C17]] shareImpl (EXCEL_IMPL_META), [[B16]] oneFormulaSurface, [[E10]] pickVsAggregateErrors
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
-import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
+import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
-import { criteriaAggregate } from "./excelCriteria";
-import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
+import { criteriaAggregate, wildcardSource } from "./excelCriteria";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
-import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
+import { DIST_SPECS, sampleQuantiles, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
-import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
+import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, addWorkdays, networkDays, weekendDays, type EpochUnit } from "./nodes/dateOps";
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { parseValueText, numberValue, splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, regexOccurrence, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
-import { histogram2d } from "./nodes/visualOps";
+import { histogram2d, sparklineImage, SPARKLINE_OPS, type SparklineOp } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
+import { currentRowNumber } from "./computedColumnCore";
 import { matrixShape } from "./nodes/coerce";
-import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
+import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, matRows, matCols, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, flattenCells, SKIP_BY_CODE, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   shiftList, pctChangeList, zscoreList, binIndex, combinationsOf,
   gradientList, ewmaList, trapzList, convolveList, crossProduct, rleEncode, polyfitEval, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum,
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
-  geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
+  geometric, fibonacci, MAX_GENERATED, arrayCount, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
-  firstError as firstListError, sequenceList, uniqueList, sortNumericList, sortByKeys,
-  takeSlice, dropSlice, filterByMask, modeMult, frequencyBins,
+  firstError as firstListError, sequenceList, asRowsOf, backToList, sortGrid, sortGridByKeys, filterGrid, uniqueGrid,
+  takeSlice, dropSlice, randArrayRange, randArrayDraw, modeMult, frequencyBins,
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
-  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp } from "./nodes/financeOps";
-import { coerceNumber as toNum, coerceLogical, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
+  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xnpv, xirr, mirr, returnsOp, fvSchedule, cumulativePayment } from "./nodes/financeOps";
+import { coerceNumber as toNum, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri, logicalOrTypeError } from "./valueKinds";
 import {
-  cx, isCx, parseCx, type Cx,
+  cx, isCx, toCx, type Cx,
   cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
   cxSqrt, cxConj, cxSin, cxCos, cxTan, cxSinh, cxCosh, cxSec, cxCsc, cxCot,
   cxSech, cxCsch, quadraticRoots,
 } from "./cxValue";
 
-// Errors INSIDE a formula stay native Formula.js `Error`s so its own IFERROR/ISERROR
-// catch them — only the FINAL result is mapped, at `normalizeFxResult`.
 const FX_CODE_MAP: Record<string, SolErrorCode> = {
   "#DIV/0!": "#DIV/0!", "#N/A": "#N/A", "#NAME?": "#NAME?",
   "#REF!": "#REF!", "#VALUE!": "#VALUE!", "#NULL!": "#VALUE!", "#NUM!": "#DOMAIN!",
 };
 
-/** Map a Formula.js `Error` return to a tagged SolError (Excel code → Solenoid code). */
 export function fxErrorToSol(e: Error): SolError {
   const code = /#[A-Z0-9/?!.]+/.exec(e.message || String(e))?.[0] ?? "";
   return solError(FX_CODE_MAP[code] ?? "#VALUE!", "The formula produced an error");
 }
 
-/** The shared P5 boundary, applied at each evaluator entry point. Scalar-level — an
- *  array result keeps its existing per-host element cleaning. */
 export function normalizeFxResult(v: unknown): unknown {
   return v instanceof Error ? fxErrorToSol(v) : v;
 }
@@ -79,8 +75,6 @@ export type FuncFamily =
   | "matrix"
   | "units";
 
-// `internal` = keep hand-rolled (a difference that matters); `formulajs` = safe to back
-// with the library; `verify` = confirm parity before flipping.
 export const FAMILY_BACKING: Record<FuncFamily, { backing: Backing; why: string }> = {
   "arithmetic":        { backing: "formulajs", why: "IEEE-754 either way — no difference that matters." },
   "scalar-math":       { backing: "formulajs", why: "Both wrap Math.*; Excel parity is the spec." },
@@ -98,8 +92,6 @@ export const FAMILY_BACKING: Record<FuncFamily, { backing: Backing; why: string 
   "units":             { backing: "internal",  why: "The flagship — Formula.js has no unit system; nothing to consolidate." },
 };
 
-// OVERLAP functions only (native node AND Formula.js); an absent name is Formula.js-only.
-// UPPERCASE — `dispatch` calls `dispatch(name.toUpperCase(), …)`.
 export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   ABS: "scalar-math", SIGN: "scalar-math", SQRT: "scalar-math", SQRTPI: "scalar-math",
   POWER: "scalar-math", EXP: "scalar-math", LN: "scalar-math", LOG: "scalar-math", LOG10: "scalar-math",
@@ -113,15 +105,17 @@ export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   FACT: "combinatorics", FACTDOUBLE: "combinatorics", COMBIN: "combinatorics", COMBINA: "combinatorics",
   PERMUT: "combinatorics", PERMUTATIONA: "combinatorics", MULTINOMIAL: "combinatorics",
 
-  AVERAGE: "statistics", AVERAGEA: "statistics", AVEDEV: "statistics", MEDIAN: "statistics", MODE: "statistics",
+  AVERAGE: "statistics", AVEDEV: "statistics", MEDIAN: "statistics", MODE: "statistics",
+  MIN: "statistics", MAX: "statistics",
   GEOMEAN: "statistics", HARMEAN: "statistics", TRIMMEAN: "statistics",
-  STDEV: "statistics", "STDEV.S": "statistics", STDEVP: "statistics", "STDEV.P": "statistics",
-  VAR: "statistics", "VAR.S": "statistics", VARP: "statistics", "VAR.P": "statistics",
+  STDEV: "statistics", "STDEV.S": "statistics", "STDEV.P": "statistics",
+  VAR: "statistics", "VAR.S": "statistics", "VAR.P": "statistics",
   SKEW: "statistics", "SKEW.P": "statistics", KURT: "statistics", DEVSQ: "statistics",
   LARGE: "statistics", SMALL: "statistics", PERCENTILE: "statistics", "PERCENTILE.INC": "statistics", "PERCENTILE.EXC": "statistics",
   QUARTILE: "statistics", "QUARTILE.INC": "statistics", "QUARTILE.EXC": "statistics",
-  RANK: "statistics", "RANK.EQ": "statistics", "RANK.AVG": "statistics", PERCENTRANK: "statistics",
-  CORREL: "statistics", COVAR: "statistics", "COVARIANCE.P": "statistics", "COVARIANCE.S": "statistics",
+  RANK: "statistics", "RANK.EQ": "statistics", "RANK.AVG": "statistics",
+  PERCENTRANK: "statistics", "PERCENTRANK.INC": "statistics", "PERCENTRANK.EXC": "statistics",
+  CORREL: "statistics", PEARSON: "statistics", COVAR: "statistics", "COVARIANCE.P": "statistics", "COVARIANCE.S": "statistics",
   SLOPE: "statistics", INTERCEPT: "statistics", RSQ: "statistics", FORECAST: "statistics", STANDARDIZE: "statistics", FISHER: "statistics",
 
   "NORM.DIST": "distributions", "NORM.INV": "distributions", "NORM.S.DIST": "distributions", "NORM.S.INV": "distributions",
@@ -166,8 +160,6 @@ export interface ExcelFunctionInfo {
   why: string;
 }
 
-/** The backing decision for an Excel function NAME, or null if it isn't part of the
- *  overlap set (then it's Formula.js-only — nothing to consolidate). Case-insensitive. */
 export function excelFunctionInfo(name: string): ExcelFunctionInfo | null {
   const key = name.toUpperCase();
   const family = FUNCTION_FAMILY[key];
@@ -178,18 +170,12 @@ export function excelFunctionInfo(name: string): ExcelFunctionInfo | null {
 
 const INTERNAL_IMPLS = new Map<string, (...a: unknown[]) => unknown>();
 
-// The derived formula NAME list is read on every keystroke (highlighting,
-// autocomplete) and memoizes against this counter; packs register AFTER module
-// load, so it can never be a load-time snapshot.
 let registryGen = 0;
 
-/** How many registrations have happened — the memo key for any derived list. */
 export function registryGeneration(): number {
   return registryGen;
 }
 
-/** UPPERCASE-keyed. A DUPLICATE registration throws ([[C18]] uniqueNameMap's registry half); a REVOCABLE
- *  name (one that went through unregisterInternal) may return, a live one may not. */
 export function registerInternal(name: string, fn: (...a: unknown[]) => unknown): void {
   const key = name.toUpperCase();
   if (INTERNAL_IMPLS.has(key)) {
@@ -199,25 +185,23 @@ export function registerInternal(name: string, fn: (...a: unknown[]) => unknown)
   registryGen++;
 }
 
-/** Withdraw a registration. Only for registrations that are REVOCABLE — i.e. a
- *  pack's, which must come back out when the pack list is rebuilt. The core's own
- *  registrations run once at module load and are never withdrawn. */
 export function unregisterInternal(name: string): void {
   if (INTERNAL_IMPLS.delete(name.toUpperCase())) registryGen++;
 }
 
-/** A registered internal impl WINS over the Formula.js export; null if neither has it.
- *  A DOTTED name walks Formula.js's namespaced objects. */
 export function resolveExcelFunction(name: string): ((...a: unknown[]) => unknown) | null {
-  const key = name.toUpperCase();
-  const internal = INTERNAL_IMPLS.get(key);
-  if (internal) return internal;
-  return fxLookup(key);
+  if (resolvedGen !== registryGen) { resolved.clear(); resolvedGen = registryGen; }
+  let f = resolved.get(name);
+  if (f === undefined) {
+    const key = name.toUpperCase();
+    f = INTERNAL_IMPLS.get(key) ?? fxLookup(key);
+    resolved.set(name, f);
+  }
+  return f;
 }
+let resolvedGen = -1;
+const resolved = new Map<string, ((...a: unknown[]) => unknown) | null>();
 
-/** A FUNCTION is a walkable container here, not just an object — Formula.js hangs
- *  `.MATH`/`.PRECISE`/`.INTL`/`.TEST` off a callable parent. Autocomplete and dispatch
- *  must walk identically or a name is advertised and then throws when called. */
 function fxLookup(name: string): ((...a: unknown[]) => unknown) | null {
   let cur: unknown = FX;
   for (const part of name.split(".")) {
@@ -227,15 +211,10 @@ function fxLookup(name: string): ((...a: unknown[]) => unknown) | null {
   return typeof cur === "function" ? (cur as (...a: unknown[]) => unknown) : null;
 }
 
-/** Flat AND namespaced-dotted names, so the parser doesn't flag a dotted Excel
- *  function as a typo. */
 export const FX_FUNCTION_NAMES: string[] = (() => {
   const names: string[] = [];
-  // Depth-capped at two (NORM.S.DIST); a FUNCTION can itself carry namespaced children.
   const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [k, v] of Object.entries(obj)) {
-      // `FX.utils` is Formula.js's INTERNAL helper namespace — library plumbing,
-      // not an Excel surface.
       if (!prefix && k === "utils") continue;
       const path = prefix ? `${prefix}.${k}` : k;
       if (typeof v === "function") {
@@ -250,59 +229,38 @@ export const FX_FUNCTION_NAMES: string[] = (() => {
   return names;
 })();
 
-// Verb names recognized but REFUSED on the formula surface ([[C15]] matricesInFormulas): each short-circuits
-// dispatch with a #TYPE! naming the node to use. Value = that node label.
 export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
-  // Frames (named columns)
   BUILDFRAME: "Build Frame", FRAMEFROMLISTS: "Frame from Lists", SPLITFRAME: "Split Frame",
   GETCOLUMN: "Get Column", GETROW: "Get Row", ADDCOLUMN: "Add Column",
-  // Table verbs
   FRAMEFILTER: "Frame Filter", FRAMESORT: "Frame Sort", DISTINCT: "Distinct", HEAD: "Head",
   JOIN: "Join", APPEND: "Append", BINDCOLUMNS: "Bind Columns", COMPUTEDCOLUMN: "Computed Column",
-  // Table verbs › Columns
   SELECTCOLUMNS: "Keep Columns", KEEPCOLUMNS: "Keep Columns", DROPCOLUMNS: "Drop Columns", RENAME: "Rename",
   SPLITCOLUMN: "Split Column", ADDINDEX: "Add Index", MERGECOLUMNS: "Merge Columns",
   HEADERS: "Headers", TABLESIZE: "Table Size",
-  // Table verbs › Reshape
   PIVOTBY: "PIVOTBY", UNPIVOT: "Unpivot", NEST: "Nest", UNNEST: "Unnest",
-  // Table verbs › Clean
   FILLDOWN: "Fill Down", REPLACEVALUES: "Replace Values", DROPBLANKROWS: "Drop Blank Rows",
-  // Table verbs › Analyze
   DECISIONMATRIX: "Decision Matrix", SCHEDULE: "Schedule", EARNEDVALUE: "Earned Value", CUBEINPUT: "Cube Input", GROUPCOSTSETTLE: "Group Cost Settle", PAYOFFPLANNER: "Payoff Planner", SENSITIVITY: "Sensitivity", ALLOCATOR: "Allocator", RECONCILE: "Reconcile", DESCRIBE: "Describe", CORRELATIONMATRIX: "Correlation Matrix", KMEANS: "K-Means", PCA: "PCA", LOGISTICREGRESSION: "Logistic Regression", WINDOW: "Window",
-  // Cubes (nested tables)
   NESTJOIN: "Nest Join", BUILDCUBE: "Build Cube", CUBECOLUMNS: "Cube Columns",
   CUBEROLLUP: "Cube Rollup",
-  // Shape (a matrix writer with no clean formula signature — recognized, wrong surface)
   SETCELL: "Set Cell",
 };
 
-// Formula names eliminated because the capability is a NODE, not a formula — like
-// FRAME_SURFACE_NAMES, but the replacement is a LIST/scalar node rather than a frame
-// verb, so the refusal doesn't carry the "frames don't flow" reason. The name is
-// recognized (not a typo) and redirected to its node. Text Filter → List Filter
-// (2026-08-25, node-combining): List Filter's FilterOp already has contains/startsWith/
-// endsWith + per-row Match case, and its Dropped output is not-contains, so the old
-// TEXTFILTER twin is absorbed. Value = the node label.
 export const NODE_SURFACE_NAMES: Readonly<Record<string, string>> = {
   TEXTFILTER: "List Filter",
 };
 
-// [[C14]] currentExcelParity on the formula surface: each key is BLOCKED — #NAME? naming the replacement, and
-// dropped from autocomplete. Block a name only once its replacement already dispatches.
 export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   VLOOKUP: "XLOOKUP", HLOOKUP: "XLOOKUP", LOOKUP: "XLOOKUP", MATCH: "XMATCH",
 
-  // The D* database family is superseded by composition — a Frame Filter feeding an
-  // aggregate — the same way VLOOKUP is superseded by XLOOKUP, so it's blocked, not left
-  // as a broken Formula.js fallthrough. Each redirects to the aggregate it wraps (DGET,
-  // a unique-match lookup, → XLOOKUP); filter the rows first with the Frame Filter node.
   DSUM: "SUM", DAVERAGE: "AVERAGE", DCOUNT: "COUNT", DCOUNTA: "COUNTA",
   DMAX: "MAX", DMIN: "MIN", DPRODUCT: "PRODUCT", DGET: "XLOOKUP",
   DSTDEV: "STDEV.S", DSTDEVP: "STDEV.P", DVAR: "VAR.S", DVARP: "VAR.P",
 
+  AVERAGEA: "AVERAGE", MINA: "MIN", MAXA: "MAX", STDEVA: "STDEV.S", STDEVPA: "STDEV.P", VARA: "VAR.S", VARPA: "VAR.P",
+
   NORMDIST: "NORM.DIST", NORMINV: "NORM.INV", NORMSDIST: "NORM.S.DIST", NORMSINV: "NORM.S.INV",
   LOGNORMDIST: "LOGNORM.DIST", LOGINV: "LOGNORM.INV", LOGNORMINV: "LOGNORM.INV",
-  TDIST: "T.DIST.RT", TINV: "T.INV.2T", // MS compat mapping: TDIST's tails arg splits into .RT/.2T; TINV was always two-tailed
+  TDIST: "T.DIST.RT", TINV: "T.INV.2T", // TDIST's tails argument split into .RT and .2T; TINV was always two-tailed.
   CHIDIST: "CHISQ.DIST.RT", CHIINV: "CHISQ.INV.RT",
   FDIST: "F.DIST.RT", FINV: "F.INV.RT",
   BETADIST: "BETA.DIST", BETAINV: "BETA.INV",
@@ -318,10 +276,6 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   CEILINGMATH: "CEILING.MATH", CEILINGPRECISE: "CEILING.MATH",
   FLOORMATH: "FLOOR.MATH", FLOORPRECISE: "FLOOR.MATH",
 
-  // The PRECISE/ISO rounding variants differ from the MATH forms only in ignoring
-  // the significance's sign; and SUBTOTAL/AGGREGATE are fn-code indirection whose
-  // hidden-row / ignore-errors options are cell-grid concepts — all superseded,
-  // like SUMIF (nodeExcel's gap rows carry the story).
   "CEILING.PRECISE": "CEILING.MATH", "FLOOR.PRECISE": "FLOOR.MATH",
   "ISO.CEILING": "CEILING.MATH",
   SUBTOTAL: "SUM", AGGREGATE: "SUM",
@@ -336,33 +290,29 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   SKEWP: "SKEW.P",
   CHIDISTRT: "CHISQ.DIST.RT", CHIINVRT: "CHISQ.INV.RT",
   FDISTRT: "F.DIST.RT", FINVRT: "F.INV.RT", TDISTRT: "T.DIST.RT",
-  // Legacy STEMS that Formula.js also exposes dotted (FX.TDIST.RT): the stem is the
-  // superseded name, so the dotted child inherits the redirect.
   "TDIST.RT": "T.DIST.RT", "TDIST.2T": "T.DIST.2T", "TINV.2T": "T.INV.2T",
   "CHIDIST.RT": "CHISQ.DIST.RT", "CHIINV.RT": "CHISQ.INV.RT",
   "FDIST.RT": "F.DIST.RT", "FINV.RT": "F.INV.RT",
   "BINOMDIST.RANGE": "BINOM.DIST.RANGE",
   "ISO.CEILING.MATH": "CEILING.MATH", "ISO.CEILING.PRECISE": "CEILING.MATH",
 
-  // Excel's COLUMN/ROW answer a cell REFERENCE's position, which this graph has no
-  // notion of — `nodeExcel.ts` has them out of scope and no node provides them.
-  // Formula.js's are unrelated array extractors that could never run here anyway
-  // (no `matrixArgs`, so the matrix was broadcast away before the call). INDEX's
-  // whole-axis form is the accessor that replaces both.
-  COLUMN: "INDEX", ROW: "INDEX",
-
-  // The singular criteria-aggregate: SUMIFS covers it (one criteria row), the node
-  // implements only the plural five, and Formula.js's SUMIF string-CONCATENATES a
-  // numeric-string sum_range ("01030" for 4) — a wrong answer, not an error.
   SUMIF: "SUMIFS",
 };
 
-/** Names blocked on the formula surface (the LEGACY_ALIASES keys) — excluded from
- *  autocomplete/highlighting so the editor never teaches a dead spelling. */
-export const ELIMINATED_FUNCTIONS: ReadonlySet<string> = new Set(Object.keys(LEGACY_ALIASES));
+/** Cell-position functions with no graph meaning: not superseded, so no replacement function, only a message. */
+export const POSITION_NAMES: Readonly<Record<string, string>> = {
+  COLUMN: "Columns are read by name, so there is no column number",
+};
 
-/** Every registerInternal name (called after all module-load registrations have
- *  run — a function so import order can't freeze an incomplete list). */
+export const ELIMINATED_FUNCTIONS: ReadonlySet<string> = new Set([...Object.keys(LEGACY_ALIASES), ...Object.keys(POSITION_NAMES)]);
+
+/** The `#NAME?` message a blocked name answers, or undefined for a name that isn't blocked. */
+export function blockedNameMessage(name: string): string | undefined {
+  if (name in POSITION_NAMES) return POSITION_NAMES[name];
+  return name in LEGACY_ALIASES ? `Use ${LEGACY_ALIASES[name]}` : undefined;
+}
+
+/** A function, not a constant, so the list includes registrations made after this module loads. */
 export function internalFunctionNames(): string[] {
   return [...INTERNAL_IMPLS.keys()];
 }
@@ -371,52 +321,43 @@ export function isInternalFunction(name: string): boolean {
   return INTERNAL_IMPLS.has(name.toUpperCase());
 }
 
-/** Declared output ELEMENT type (a SocketDataType subset) — metadata for tests + a
- *  future result-type inference, not yet wired to the result socket. */
-// "any" = type-neutral: the function returns whichever type its arguments carry
-// (XLOOKUP/IF/INDEX pass values through) — a forced concrete type here would lie.
-// "complex" = a tagged Cx ([[D44]] tagSpecialScalars) — the IM* family's currency.
 export type ExcelReturn = "number" | "string" | "logical" | "date" | "complex" | "any";
 
-/** Output RANK, split from the element type the same way the socket lattice splits
- *  them (docs/socket-reference.md): a socket is a family × a rank, not one flat name. */
 export type ExcelRank = "scalar" | "list" | "matrix";
+
+/**
+ * How a list-taking function reads a vector's direction ([[D85]] columnsStayColumns). Every `listArgs` function declares it.
+ * `free`: direction means nothing to it. A one-column or one-row table reads as its items, and a list answer
+ * comes back the way the first vector came in, so a column in is a column out. A table of more than one row and
+ * column stays a table, so a function with a grid mode (INTERPOLATE, DIAGONAL) still gets its grid.
+ * `axis`: rows and columns mean something to it (SORT, TAKE, VSTACK), so it gets the table as it is.
+ */
+export type VectorOrient = "free" | "axis";
 
 export interface ExcelImplMeta {
   returns: ExcelReturn;
-  /** Defaults to "scalar". `list` means the function returns a 1-D list of `returns`. */
   rank?: ExcelRank;
-  /** Hand the 1-D vector over intact, and SKIP the aggregator arg-prep: these ops are
-   *  position-preserving and carry cell errors in place, so dropping nulls or hoisting
-   *  an error would be wrong. */
   listArgs?: boolean;
-  /** The ONLY gate through which a rank-2 value reaches a dispatch whole ([[C15]] matricesInFormulas): an
-   *  undeclared impl answers #SHAPE!, and Formula.js NEVER sees a matrix. */
+  orient?: VectorOrient;
   matrixArgs?: boolean;
-  /** The only gate through which a tagged Cx reaches a dispatch; everywhere else a Cx
-   *  operand answers #TYPE! rather than coercing to "[object Object]" / NaN. */
   cxArgs?: boolean;
-  arity: [number, number]; // [min, max]
+  arity: [number, number];
   family?: FuncFamily;
-  /** true = Solenoid-only (no Formula.js equivalent) — the registry ADDS the
-   *  function to the formula language; without it `dispatch` would throw. */
   native?: boolean;
 }
 
-/** Registered names whose result is a 1-D list rather than a scalar. */
 export function listReturningNames(): string[] {
   return Object.entries(EXCEL_IMPL_META).filter(([, m]) => m.rank === "list").map(([n]) => n);
 }
 
-/** The evaluator derives its routing from this, not a hand-kept parallel set, so a new
- *  registration cannot declare one and forget the other. */
 export function wholeArgNames(): string[] {
   return Object.entries(EXCEL_IMPL_META).filter(([, m]) => m.listArgs).map(([n]) => n);
 }
 
-/** Output-type + arity + family for each REGISTERED native impl. */
 export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ROUND:       { returns: "number", arity: [2, 2], family: "rounding" },
+  ROUNDUP:     { returns: "number", arity: [2, 2], family: "rounding" },
+  ROUNDDOWN:   { returns: "number", arity: [2, 2], family: "rounding" },
   SQRT:        { returns: "number", arity: [1, 1], family: "scalar-math" },
   STANDARDIZE: { returns: "number", arity: [3, 3], family: "statistics" },
   YEAR:        { returns: "number", arity: [1, 1], family: "datetime" },
@@ -435,13 +376,15 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "QUARTILE.INC": { returns: "number", arity: [2, 2], family: "statistics" },
   COVAR:       { returns: "number", arity: [2, 2], family: "statistics" },
   PERCENTRANK: { returns: "number", arity: [2, 3], family: "statistics" },
+  "PERCENTRANK.INC": { returns: "number", arity: [2, 3], family: "statistics" },
+  "PERCENTRANK.EXC": { returns: "number", arity: [2, 3], family: "statistics" },
   RANK:        { returns: "number", arity: [2, 3], family: "statistics" },
   "RANK.EQ":   { returns: "number", arity: [2, 3], family: "statistics" },
   "RANK.AVG":  { returns: "number", arity: [2, 3], family: "statistics" },
   TRIMMEAN:    { returns: "number", arity: [2, 2], family: "statistics" },
-  // The statistics family on the nodes' statsOps kernels (A1 backing flip, 2026-08-23).
   AVERAGE:     { returns: "number", arity: [1, 255], family: "statistics" },
-  AVERAGEA:    { returns: "number", arity: [1, 255], family: "statistics" },
+  MIN:         { returns: "number", arity: [1, 255], family: "statistics" },
+  MAX:         { returns: "number", arity: [1, 255], family: "statistics" },
   AVEDEV:      { returns: "number", arity: [1, 255], family: "statistics" },
   MEDIAN:      { returns: "number", arity: [1, 255], family: "statistics" },
   GEOMEAN:     { returns: "number", arity: [1, 255], family: "statistics" },
@@ -461,6 +404,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "QUARTILE.EXC":   { returns: "number", arity: [2, 2], family: "statistics" },
   "MODE.SNGL": { returns: "number", arity: [1, 255], family: "statistics" },
   CORREL:      { returns: "number", arity: [2, 2], family: "statistics" },
+  PEARSON:     { returns: "number", arity: [2, 2], family: "statistics" },
   RSQ:         { returns: "number", arity: [2, 2], family: "statistics" },
   "COVARIANCE.P": { returns: "number", arity: [2, 2], family: "statistics" },
   "COVARIANCE.S": { returns: "number", arity: [2, 2], family: "statistics" },
@@ -469,9 +413,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   STEYX:       { returns: "number", arity: [2, 2], family: "statistics" },
   FISHER:      { returns: "number", arity: [1, 1], family: "statistics" },
   FISHERINV:   { returns: "number", arity: [1, 1], family: "statistics" },
-  // numpy / pandas / R one-liners (python-r-gap.md) — Solenoid-native names
-  // The criteria family runs one Excel criteria grammar (excelCriteria.ts): comparison
-  // prefixes, ? / * wildcards with ~, date-shaped text against serials, blank matches blank.
   SUMIFS:      { returns: "number", arity: [3, 255], native: true },
   COUNTIFS:    { returns: "number", arity: [2, 255], native: true },
   AVERAGEIFS:  { returns: "number", arity: [3, 255], native: true },
@@ -489,15 +430,16 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   KENDALL:     { returns: "number", arity: [2, 2], native: true },
   LEVENSHTEIN: { returns: "number", arity: [2, 2], native: true },
   SIMILARITY:  { returns: "number", arity: [2, 3], native: true },
-  FUZZYMATCH:  { returns: "string", listArgs: true, arity: [2, 4], native: true },
-  TRACE:       { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  MATRIXRANK:  { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  NORM:        { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  SOLVE:       { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
-  EIGENVALUES: { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  EIGENVECTORS:{ returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  SPECTRUM:    { returns: "number", rank: "matrix", listArgs: true, arity: [1, 2], native: true },
-  HISTOGRAM2D: { returns: "number", rank: "matrix", listArgs: true, arity: [4, 4], native: true },
+  FUZZYMATCH:  { returns: "string", listArgs: true, orient: "free", arity: [2, 4], native: true },
+  TRACE:       { returns: "number", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1], native: true },
+  MATRIXRANK:  { returns: "number", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1], native: true },
+  NORM:        { returns: "number", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1], native: true },
+  SOLVE:       { returns: "number", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 2], native: true },
+  EIGENVALUES: { returns: "number", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1], native: true },
+  EIGENVECTORS:{ returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1], native: true },
+  SPECTRUM:    { returns: "number", rank: "matrix", listArgs: true, orient: "free", arity: [1, 2], native: true },
+  HISTOGRAM2D: { returns: "number", rank: "matrix", listArgs: true, orient: "free", arity: [4, 4], native: true },
+  SPARKLINE:   { returns: "string", listArgs: true, orient: "axis", matrixArgs: true, arity: [1, 2], native: true },
   ANOVA:       { returns: "number", arity: [2, 255], native: true },
   KRUSKAL:     { returns: "number", arity: [2, 255], native: true },
   MANNWHITNEY: { returns: "number", arity: [2, 2], native: true },
@@ -506,7 +448,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   FISHEREXACT: { returns: "number", arity: [4, 4], native: true },
   PROPTEST:    { returns: "number", arity: [4, 4], native: true },
   BINOMTEST:   { returns: "number", arity: [3, 3], native: true },
-  // The date family on the date nodes' dateOps kernels (A1 backing flip, 2026-08-23).
   TIME:        { returns: "number", arity: [3, 3], family: "datetime" },
   TIMEVALUE:   { returns: "number", arity: [1, 1], family: "datetime" },
   WEEKDAY:     { returns: "number", arity: [1, 2], family: "datetime" },
@@ -516,7 +457,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   DAYS360:     { returns: "number", arity: [2, 3], family: "datetime" },
   YEARFRAC:    { returns: "number", arity: [2, 3], family: "datetime" },
   DATEDIF:     { returns: "number", arity: [3, 3], family: "datetime" },
-  // The distribution family on the Distribution node's DIST_SPECS (A1 backing flip, 2026-08-23).
   "NORM.DIST":    { returns: "number", arity: [4, 4], family: "distributions" },
   "NORM.INV":     { returns: "number", arity: [3, 3], family: "distributions" },
   "NORM.S.DIST":  { returns: "number", arity: [2, 2], family: "distributions" },
@@ -540,20 +480,20 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ORDINAL:     { returns: "string",  arity: [1, 1], native: true },
   BETWEEN:     { returns: "logical", arity: [3, 3], native: true },
 
-  TEXTSPLIT:    { returns: "string", arity: [2, 2], family: "text", native: true },
-  TEXTAFTER:    { returns: "string", arity: [2, 2], family: "text", native: true },
-  TEXTBEFORE:   { returns: "string", arity: [2, 2], family: "text", native: true },
+  TEXTSPLIT:    { returns: "string", arity: [2, 6], family: "text", native: true },
+  TEXTAFTER:    { returns: "string", arity: [2, 6], family: "text", native: true },
+  TEXTBEFORE:   { returns: "string", arity: [2, 6], family: "text", native: true },
   ENCODEURL:    { returns: "string", arity: [1, 1], family: "text", native: true },
   REGEXTEST:    { returns: "number", arity: [2, 3], family: "text", native: true },
   REGEXEXTRACT: { returns: "string", arity: [2, 4], family: "text", native: true },
   REGEXREPLACE: { returns: "string", arity: [3, 5], family: "text", native: true },
-  // Formula.js's T.TEST ignores tails/type and its F.TEST returns the variance
-  // ratio instead of the p-value — these run the nodes' own impls (mathUtils).
   "T.TEST": { returns: "number", listArgs: false, arity: [4, 4], family: "statistics", native: true },
-  IRR:         { returns: "number", listArgs: true, arity: [1, 2], family: "finance-iterative" },
-  MIRR:        { returns: "number", listArgs: true, arity: [3, 3], family: "finance-iterative" },
+  IRR:         { returns: "number", listArgs: true, orient: "free", arity: [1, 2], family: "finance-iterative" },
+  MIRR:        { returns: "number", listArgs: true, orient: "free", arity: [3, 3], family: "finance-iterative" },
+  FVSCHEDULE:  { returns: "number", arity: [2, 2], family: "finance" },
   CHOOSE:      { returns: "any", arity: [2, 255], family: "lookup" },
-  XIRR:        { returns: "number", listArgs: true, arity: [2, 3], family: "finance-iterative" },
+  XNPV:        { returns: "number", listArgs: true, orient: "free", arity: [3, 3], family: "finance" },
+  XIRR:        { returns: "number", listArgs: true, orient: "free", arity: [2, 3], family: "finance-iterative" },
   "F.TEST": { returns: "number", listArgs: false, arity: [2, 2], family: "statistics", native: true },
   PROB:     { returns: "number", listArgs: false, arity: [3, 4], family: "statistics", native: true },
 
@@ -562,10 +502,15 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TEXTJOIN:    { returns: "string", arity: [3, 255], family: "text" },
   TEXT:        { returns: "string", arity: [2, 2], family: "text" },
   DOLLAR:      { returns: "string", arity: [1, 2], family: "text" },
+  FIXED:       { returns: "string", arity: [1, 3], family: "text" },
   VALUE:       { returns: "number", arity: [1, 1], family: "text" },
   NUMBERVALUE: { returns: "number", arity: [1, 3], family: "text" },
   MOD:         { returns: "number", arity: [2, 2], family: "scalar-math" },
+  POWER:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   QUOTIENT:    { returns: "number", arity: [2, 2], family: "scalar-math" },
+  GCD:         { returns: "number", arity: [1, 255], family: "scalar-math" },
+  PRODUCT:     { returns: "number", arity: [1, 255], family: "scalar-math" },
+  LCM:         { returns: "number", arity: [1, 255], family: "scalar-math" },
   ATAN2:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   CONVERT:     { returns: "number", arity: [3, 3], family: "scalar-math" },
   "T.DIST":       { returns: "number", arity: [3, 3], family: "statistics" },
@@ -581,13 +526,16 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "GAMMA.INV":    { returns: "number", arity: [3, 3], family: "statistics" },
   TODAY:       { returns: "date", arity: [0, 0], family: "datetime" },
   NOW:         { returns: "date", arity: [0, 0], family: "datetime" },
-  // The lookups take whole lists but deliberately NOT via `listArgs` — RANGE_POSITIONAL
-  // skips the error scan, so an error at an UNREFERENCED position can't poison the pick.
   XLOOKUP:     { returns: "any", matrixArgs: true, arity: [3, 6] },
   XMATCH:      { returns: "number", matrixArgs: true, arity: [2, 4] },
   IF:          { returns: "any", arity: [2, 3] },
-  INDEX:       { returns: "any", matrixArgs: true, listArgs: true, arity: [2, 3] },
+  IFS:         { returns: "any", arity: [2, 254] },
+  INDEX:       { returns: "any", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 3] },
   LEFT:       { returns: "string", arity: [1, 2], family: "text" },
+  BASE:       { returns: "string", arity: [2, 3] },
+  DEC2HEX:    { returns: "string", arity: [1, 2] },
+  BIN2HEX:    { returns: "string", arity: [1, 2] },
+  OCT2HEX:    { returns: "string", arity: [1, 2] },
   RIGHT:      { returns: "string", arity: [1, 2], family: "text" },
   MID:        { returns: "string", arity: [3, 3], family: "text" },
   UPPER:      { returns: "string", arity: [1, 1], family: "text" },
@@ -597,6 +545,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   REPT:       { returns: "string", arity: [2, 2], family: "text" },
   SUBSTITUTE: { returns: "string", arity: [3, 4], family: "text" },
   REPLACE:    { returns: "string", arity: [4, 4], family: "text" },
+  CHAR:       { returns: "string", arity: [1, 1], family: "text" },
+  CODE:       { returns: "number", arity: [1, 1], family: "text" },
+  UNICHAR:    { returns: "string", arity: [1, 1], family: "text" },
+  UNICODE:    { returns: "number", arity: [1, 1], family: "text" },
   EXACT:      { returns: "logical", arity: [2, 2], family: "text" },
   FIND:       { returns: "number", arity: [2, 3], family: "text" },
   SEARCH:     { returns: "number", arity: [2, 3], family: "text" },
@@ -617,11 +569,11 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "NETWORKDAYS.INTL": { returns: "number", arity: [2, 4], family: "datetime" },
   TIMEZONECONVERT: { returns: "date", arity: [3, 3], family: "datetime", native: true },
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
-  "FORECAST.ETS": { returns: "number", listArgs: true, arity: [3, 6], family: "statistics" },
-  FITDIST:     { returns: "any", rank: "list", listArgs: true, arity: [1, 2], native: true },
-  RANDDIST:    { returns: "number", rank: "list", listArgs: true, arity: [2, 5], native: true },
-  "FORECAST.ETS.CONFINT": { returns: "number", listArgs: true, arity: [3, 7], family: "statistics" },
-  "FORECAST.ETS.SEASONALITY": { returns: "number", listArgs: true, arity: [1, 4], family: "statistics" },
+  "FORECAST.ETS": { returns: "number", listArgs: true, orient: "free", arity: [3, 6], family: "statistics" },
+  FITDIST:     { returns: "any", rank: "list", listArgs: true, orient: "free", arity: [1, 2], native: true },
+  RANDDIST:    { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 5], native: true },
+  "FORECAST.ETS.CONFINT": { returns: "number", listArgs: true, orient: "free", arity: [3, 7], family: "statistics" },
+  "FORECAST.ETS.SEASONALITY": { returns: "number", listArgs: true, orient: "free", arity: [1, 4], family: "statistics" },
   COUPDAYBS:  { returns: "number", arity: [2, 4], family: "finance", native: true },
   COUPDAYSNC: { returns: "number", arity: [2, 4], family: "finance", native: true },
   COUPNUM:    { returns: "number", arity: [2, 4], family: "finance", native: true },
@@ -640,152 +592,139 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MDURATION:  { returns: "number", arity: [4, 6], family: "finance", native: true },
   PRICE:      { returns: "number", arity: [4, 6], family: "finance", native: true },
   YIELD:      { returns: "number", arity: [4, 6], family: "finance", native: true },
-  VDB:        { returns: "number", arity: [5, 6], family: "finance", native: true },
+  VDB:        { returns: "number", arity: [5, 7], family: "finance", native: true },
+  CUMIPMT:    { returns: "number", arity: [6, 6], family: "finance", native: true },
+  CUMPRINC:   { returns: "number", arity: [6, 6], family: "finance", native: true },
+  SLN:        { returns: "number", arity: [3, 3], family: "finance", native: true },
   ODDFPRICE:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDFYIELD:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDLPRICE:  { returns: "number", arity: [5, 7], family: "finance", native: true },
   ODDLYIELD:  { returns: "number", arity: [5, 7], family: "finance", native: true },
 
-  REVERSE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  SLICE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
-  NTHELEMENT:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  INTERLEAVE:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  PADRIGHT:        { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
-  PADLEFT:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
-  DIFF:            { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  NORMALIZE:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  PCTCHANGE:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
-  ZSCORE:          { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
-  BIN:             { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
-  SHIFT:           { returns: "number", rank: "list", listArgs: true, arity: [2, 3] },
-  COMBINATIONS:    { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
-  PERMUTATIONS:    { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
-  GRADIENT:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
-  EWMA:            { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
-  TRAPZ:           { returns: "number", listArgs: true, arity: [1, 2] },
-  CONVOLVE:        { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
-  CROSSPRODUCT:    { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
-  RLE:             { returns: "number", rank: "matrix", listArgs: true, arity: [1, 1] },
-  POLYFIT:         { returns: "number", rank: "list", listArgs: true, arity: [3, 3] },
+  REVERSE:         { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  SLICE:           { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 3], native: true },
+  NTHELEMENT:      { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  INTERLEAVE:      { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  PADRIGHT:        { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 3], native: true },
+  PADLEFT:         { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 3], native: true },
+  DIFF:            { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  NORMALIZE:       { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  PCTCHANGE:       { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1] },
+  ZSCORE:          { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1] },
+  BIN:             { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2] },
+  SHIFT:           { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 3] },
+  COMBINATIONS:    { returns: "number", rank: "matrix", listArgs: true, orient: "free", arity: [2, 2] },
+  PERMUTATIONS:    { returns: "number", rank: "matrix", listArgs: true, orient: "free", arity: [2, 2] },
+  GRADIENT:        { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1] },
+  EWMA:            { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2] },
+  TRAPZ:           { returns: "number", listArgs: true, orient: "free", arity: [1, 2] },
+  CONVOLVE:        { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2] },
+  CROSSPRODUCT:    { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2] },
+  RLE:             { returns: "number", rank: "matrix", listArgs: true, orient: "free", arity: [1, 1] },
+  POLYFIT:         { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [3, 3] },
   ISBOOLEAN:       { returns: "logical", arity: [1, 1] },
   ISCLOSE:         { returns: "logical", arity: [2, 3] },
-  NTILE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  ISOUTLIER:       { returns: "logical", rank: "list", listArgs: true, arity: [1, 3], native: true },
+  NTILE:           { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  ISOUTLIER:       { returns: "logical", rank: "list", listArgs: true, orient: "free", arity: [1, 3], native: true },
   FROMEPOCH:       { returns: "date", arity: [1, 2], native: true },
   TOEPOCH:         { returns: "number", arity: [1, 2], native: true },
   DATETRUNC:       { returns: "date", arity: [2, 3], native: true },
-  // The family's ONE name — RUNNING(op, list, [window]); the aggregator is a string
-  // argument ([[C56]] aggregatorsAreArguments), like SORT's direction. The per-op RUNNING* family stays eliminated.
-  RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
-  LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
-  ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
-  ARGSORT:         { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
-  SAVGOL:          { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
-  DECOMPOSE:       { returns: "number", rank: "list", listArgs: true, arity: [3, 4], native: true },
-  LOWESS:          { returns: "number", rank: "list", listArgs: true, arity: [1, 2], native: true },
-  GAUSSIANSMOOTH:  { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  FINDPEAKS:       { returns: "number", rank: "list", listArgs: true, arity: [1, 4], native: true },
-  LOGRETURNS:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "finance", native: true },
-  CUMRETURNS:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "finance", native: true },
-  DRAWDOWN:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "finance", native: true },
-  MAXDRAWDOWN:     { returns: "number", listArgs: true, arity: [1, 1], family: "finance", native: true },
-  CAGR:            { returns: "number", listArgs: true, arity: [1, 2], family: "finance", native: true },
-  VOLATILITY:      { returns: "number", listArgs: true, arity: [1, 2], family: "finance", native: true },
-  SHARPE:          { returns: "number", listArgs: true, arity: [1, 3], family: "finance", native: true },
-  SORTINO:         { returns: "number", listArgs: true, arity: [1, 3], family: "finance", native: true },
-  WHICH:           { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  ARGMIN:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
-  CONTAINS:        { returns: "logical", listArgs: true, arity: [2, 2], native: true },
-  WAVG:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
-  WVAR:            { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
-  WSTDEV:          { returns: "number", listArgs: true, arity: [2, 2], family: "statistics", native: true },
-  // `listArgs` on a scalars-in/list-out builder says "never broadcast me": without
-  // it LINSPACE(list, 1, 5) would map element-wise into a 2-D result, which noFramesInFormulas bans.
-  LINSPACE:        { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
-  REPEAT:          { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  GEOMETRIC:       { returns: "number", rank: "list", listArgs: true, arity: [3, 3], native: true },
-  FIBONACCI:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  RUNNING:         { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 3], native: true },
+  LENGTH:          { returns: "number", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  ARGMAX:          { returns: "number", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  ARGSORT:         { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 2], native: true },
+  SAVGOL:          { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [3, 3], native: true },
+  DECOMPOSE:       { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [3, 4], native: true },
+  LOWESS:          { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 2], native: true },
+  GAUSSIANSMOOTH:  { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  FINDPEAKS:       { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 4], native: true },
+  LOGRETURNS:      { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], family: "finance", native: true },
+  CUMRETURNS:      { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], family: "finance", native: true },
+  DRAWDOWN:        { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], family: "finance", native: true },
+  MAXDRAWDOWN:     { returns: "number", listArgs: true, orient: "free", arity: [1, 1], family: "finance", native: true },
+  CAGR:            { returns: "number", listArgs: true, orient: "free", arity: [1, 2], family: "finance", native: true },
+  VOLATILITY:      { returns: "number", listArgs: true, orient: "free", arity: [1, 2], family: "finance", native: true },
+  SHARPE:          { returns: "number", listArgs: true, orient: "free", arity: [1, 3], family: "finance", native: true },
+  SORTINO:         { returns: "number", listArgs: true, orient: "free", arity: [1, 3], family: "finance", native: true },
+  WHICH:           { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  ARGMIN:          { returns: "number", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  CONTAINS:        { returns: "logical", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  WAVG:            { returns: "number", listArgs: true, orient: "free", arity: [2, 2], family: "statistics", native: true },
+  WVAR:            { returns: "number", listArgs: true, orient: "free", arity: [2, 2], family: "statistics", native: true },
+  WSTDEV:          { returns: "number", listArgs: true, orient: "free", arity: [2, 2], family: "statistics", native: true },
+  LINSPACE:        { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [3, 3], native: true },
+  REPEAT:          { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  GEOMETRIC:       { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [3, 3], native: true },
+  FIBONACCI:       { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
 
-  // These names are DECLARED on the OP_META tables (SET_OP_META /
-  // SET_RELATION_META / FILL_OP_META) because a bare op label ("Union", "Constant")
-  // despaces to UNION/CONSTANT, not to the SET*/FILL* family function name.
-  SETUNION:        { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
-  SETINTERSECT:    { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
-  SETDIFFERENCE:   { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
-  SETSYMDIFF:      { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
-  SETEQUAL:        { returns: "logical", listArgs: true, arity: [2, 2], native: true },
-  SETSUBSET:       { returns: "logical", listArgs: true, arity: [2, 2], native: true },
-  SETSUPERSET:     { returns: "logical", listArgs: true, arity: [2, 2], native: true },
-  SETDISJOINT:     { returns: "logical", listArgs: true, arity: [2, 2], native: true },
-  FILLVALUE:       { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  FILLFORWARD:     { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  FILLBACKWARD:    { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  FILLMEAN:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  FILLMEDIAN:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  FILLMODE:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  FILLINTERPOLATE: { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  FILLDROP:        { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
-  COALESCE:        { returns: "number", rank: "list", listArgs: true, arity: [1, 255], native: true },
-  RANGE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
-  CONCATLISTS:     { returns: "number", rank: "list", listArgs: true, arity: [1, 255], native: true },
+  SETUNION:        { returns: "number",  rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  SETINTERSECT:    { returns: "number",  rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  SETDIFFERENCE:   { returns: "number",  rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  SETSYMDIFF:      { returns: "number",  rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  SETEQUAL:        { returns: "logical", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  SETSUBSET:       { returns: "logical", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  SETSUPERSET:     { returns: "logical", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  SETDISJOINT:     { returns: "logical", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  FILLVALUE:       { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2], native: true },
+  FILLFORWARD:     { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  FILLBACKWARD:    { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  FILLMEAN:        { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  FILLMEDIAN:      { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  FILLMODE:        { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  FILLINTERPOLATE: { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  FILLDROP:        { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
+  COALESCE:        { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 255], native: true },
+  RANGE:           { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 3], native: true },
+  CONCATLISTS:     { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 255], native: true },
 
   "ERF.PRECISE":   { returns: "number", arity: [1, 1] },
   "ERFC.PRECISE":  { returns: "number", arity: [1, 1] },
   VALUETOTEXT:     { returns: "string", arity: [1, 2], family: "text" },
 
-  COUNTDISTINCT:   { returns: "number", listArgs: true, arity: [1, 1], family: "statistics", native: true },
-  // Both of the node's MODES, dispatched on the first argument's rank: 3 args =
-  // List mode, a matrix = Grid mode.
-  INTERPOLATE:     { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 3], family: "statistics", native: true },
-  SHUFFLE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
+  COUNTDISTINCT:   { returns: "number", listArgs: true, orient: "free", arity: [1, 1], family: "statistics", native: true },
+  INTERPOLATE:     { returns: "number", matrixArgs: true, listArgs: true, orient: "free", arity: [1, 3], family: "statistics", native: true },
+  SHUFFLE:         { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1], native: true },
 
-  // Matrix core: `matrixArgs` is [[D26]] hideMatrixFromVendor's gate; `listArgs` routes the rank-≤1 case
-  // whole too (TRANSPOSE of a list is a column, not an element-wise map).
-  TRANSPOSE:  { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
-  MMULT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 2] },
-  MUNIT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
-  DIAGONAL:   { returns: "number", rank: "matrix", listArgs: true, arity: [1, 1] },
-  OUTER:      { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
-  MDETERM:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  // COLUMNS/ROWS answer a shape COUNT (scalar), so they take their arg whole (matrix or
-  // list) rather than broadcasting; a list is a ROW here ([[D13]] widenNeverNarrow), so COLUMNS counts it.
-  COLUMNS:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  ROWS:       { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  // The append-ladder rungs + grid selection/grow, sharing their nodes' kernels. All
-  // element-preserving ("any"), all take grids whole (matrixArgs), a list is a row.
-  HSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 255], native: true },
-  VSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 255], native: true },
-  XSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 256], native: true },
-  CHOOSECOLS: { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 255], native: true },
-  CHOOSEROWS: { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 255], native: true },
-  EXPAND:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 4], native: true },
-  WRAPROWS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
-  WRAPCOLS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
-  TOCOL:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  TOROW:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  SEQUENCE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 4], native: true },
+  TRANSPOSE:  { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1] },
+  MMULT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 2] },
+  MUNIT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1] },
+  DIAGONAL:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "free", arity: [1, 1] },
+  OUTER:      { returns: "number", rank: "matrix", listArgs: true, orient: "free", arity: [2, 2] },
+  MDETERM:    { returns: "number", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1], native: true },
+  MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1], native: true },
+  COLUMNS:    { returns: "number", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1], native: true },
+  ROWS:       { returns: "number", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 1], native: true },
+  ROW:        { returns: "number", arity: [0, 0] },
+  HSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 255], native: true },
+  VSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 255], native: true },
+  XSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 256], native: true },
+  CHOOSECOLS: { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 255], native: true },
+  CHOOSEROWS: { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 255], native: true },
+  EXPAND:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 4], native: true },
+  WRAPROWS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 3], native: true },
+  WRAPCOLS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 3], native: true },
+  TOCOL:      { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 3], native: true },
+  TOROW:      { returns: "any", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 3], native: true },
+  SEQUENCE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 4], native: true },
 
-  UNIQUE:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
-  SORT:        { returns: "number", rank: "list", listArgs: true, arity: [1, 3] },
-  SORTBY:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
-  FILTER:      { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
-  TAKE:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
-  DROP:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3] },
-  "MODE.MULT": { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "statistics" },
-  FREQUENCY:   { returns: "number", rank: "list", listArgs: true, arity: [2, 2], family: "statistics" },
-  RANDARRAY:   { returns: "number", rank: "matrix", listArgs: true, arity: [0, 5], native: true },
+  UNIQUE:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 3] },
+  SORT:        { returns: "any", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [1, 4] },
+  SORTBY:      { returns: "any", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 255], native: true },
+  FILTER:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 3], native: true },
+  TAKE:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 3], native: true },
+  DROP:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 3] },
+  "MODE.MULT": { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 255], family: "statistics" },
+  FREQUENCY:   { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [2, 2], family: "statistics" },
+  RANDARRAY:   { returns: "number", rank: "matrix", listArgs: true, orient: "free", arity: [0, 5], native: true },
 
-  // LAMBDA is a special form (see the stub); the hosts receive arrays whole at
-  // every rank.
-  LAMBDA:    { returns: "number", listArgs: true, arity: [1, 255], native: true },
-  MAP:       { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 4], native: true },
-  BYROW:     { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
-  BYCOL:     { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
-  REDUCE:    { returns: "number", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
-  SCAN:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
-  MAKEARRAY: { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
-  GROUPBY:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
+  LAMBDA:    { returns: "number", listArgs: true, orient: "free", arity: [1, 255], native: true },
+  MAP:       { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 4], native: true },
+  BYROW:     { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 2], native: true },
+  BYCOL:     { returns: "number", rank: "list", matrixArgs: true, listArgs: true, orient: "axis", arity: [2, 2], native: true },
+  REDUCE:    { returns: "number", matrixArgs: true, listArgs: true, orient: "axis", arity: [3, 3], native: true },
+  SCAN:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [3, 3], native: true },
+  MAKEARRAY: { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [3, 3], native: true },
+  GROUPBY:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, orient: "axis", arity: [3, 3], native: true },
 
   REVERSETEXT: { returns: "string", arity: [1, 1], family: "text", native: true },
   UNACCENT:    { returns: "string", arity: [1, 1], family: "text", native: true },
@@ -806,10 +745,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   NOR:         { returns: "logical", arity: [1, 255], native: true },
   XNOR:        { returns: "logical", arity: [1, 255], native: true },
 
-  // The IM* family over tagged Cx ([[D44]] tagSpecialScalars): arguments accept a Cx, a real number,
-  // or Excel's "a+bi" text; results are tagged Cx, not Excel's text complexes.
-  // `cxArgs` is the containment gate. COMPLEX and QUADRATICROOTS take REAL
-  // arguments, deliberately no cxArgs.
   COMPLEX:     { returns: "complex", arity: [2, 3], family: "complex" },
   IMREAL:      { returns: "number", arity: [1, 1], family: "complex", cxArgs: true },
   IMAGINARY:   { returns: "number", arity: [1, 1], family: "complex", cxArgs: true },
@@ -836,27 +771,19 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   IMSUB:       { returns: "complex", arity: [2, 2], family: "complex", cxArgs: true },
   IMDIV:       { returns: "complex", arity: [2, 2], family: "complex", cxArgs: true },
   IMPOWER:     { returns: "complex", arity: [2, 2], family: "complex", cxArgs: true },
-  // listArgs like the other generators (SEQUENCE/LINSPACE): scalar coefficients
-  // in, whole [x₁, x₂] out — a list-returner must never be broadcast.
-  QUADRATICROOTS: { returns: "complex", rank: "list", listArgs: true, arity: [3, 3], family: "complex", native: true },
-  POLYROOTS:      { returns: "complex", rank: "list", listArgs: true, arity: [1, 1], family: "complex", native: true },
+  QUADRATICROOTS: { returns: "complex", rank: "list", listArgs: true, orient: "free", arity: [3, 3], family: "complex", native: true },
+  POLYROOTS:      { returns: "complex", rank: "list", listArgs: true, orient: "free", arity: [1, 1], family: "complex", native: true },
 
-  // The regression quartet: Excel's optional trailing const/stats arguments are
-  // not taken.
-  TREND:  { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
-  GROWTH: { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
-  LINEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
-  LOGEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
+  TREND:  { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 4], family: "statistics" },
+  GROWTH: { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 4], family: "statistics" },
+  LINEST: { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 2], family: "statistics" },
+  LOGEST: { returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 2], family: "statistics" },
 };
 
-/** Number → text in STRING contexts: 15 significant digits, trailing zeros stripped, so
- *  `(0.1+0.2) & " kg"` is "0.3 kg". Non-finite falls back to `String`. */
 export function numberToText(x: number): string {
   if (!Number.isFinite(x)) return String(x);
   const v = parseFloat(x.toPrecision(15));
   const mag = Math.abs(v);
-  // Excel's General text form goes scientific at 1E+21 and below 0.0001, written as
-  // "1E+21" / "1E-07" (uppercase E, signed, two-digit exponent); JS says "1e+21" / "1e-7".
   if (mag !== 0 && (mag >= 1e21 || mag < 1e-4)) {
     const [m, e] = v.toExponential().split("e");
     const exp = Number(e);
@@ -876,27 +803,15 @@ const badNum = (...xs: number[]) => xs.some(Number.isNaN);
 const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
 const VALUE = (fn: string) => solError("#VALUE!", `${fn} needs a number`);
 
-/** Excel ROUND: round half AWAY from zero — JS `Math.round` is half-UP, so they
- *  disagree on negative halves (ROUND(-2.5, 0) is -3 in Excel, -2 in JS). */
-function excelRound(n: number, digits: number): number {
-  const f = Math.pow(10, digits);
-  return (Math.sign(n) * Math.round(Math.abs(n) * f)) / f;
-}
-
-/** Excel RANK of `value` within `ref` — descending (largest = rank 1); ties share
- *  the lowest rank (`avg=false`, RANK.EQ) or the average rank (RANK.AVG). A value not
- *  present is #N/A (Excel). The single source RankPercentileNode ALSO calls. */
-export function excelRank(value: number, ref: ReadonlyArray<number>, avg = false): number | SolError {
+/** `ascending` is Excel's nonzero `order`: the smallest value ranks 1. */
+export function excelRank(value: number, ref: ReadonlyArray<number>, avg = false, ascending = false): number | SolError {
   if (Number.isNaN(value)) return VALUE("RANK");
-  const above = ref.filter((x) => x > value).length;
+  const above = ref.filter((x) => (ascending ? x < value : x > value)).length;
   const equal = ref.filter((x) => x === value).length;
   if (equal === 0) return solError("#N/A", "Value not found in the list");
   return avg ? above + 1 + (equal - 1) / 2 : above + 1;
 }
 
-/** Excel TRIMMEAN: drop `floor(n·percent/2)` values from EACH end (Excel rounds the
- *  total trimmed count down to a multiple of 2), then average the rest. Shared with
- *  TrimMeanNode. Over-trimming everything is #DOMAIN!. */
 export function excelTrimmean(values: ReadonlyArray<number>, percent: number): number | SolError {
   const n = values.length;
   if (n === 0 || Number.isNaN(percent)) return VALUE("TRIMMEAN");
@@ -906,38 +821,37 @@ export function excelTrimmean(values: ReadonlyArray<number>, percent: number): n
   return kept.reduce((a, b) => a + b, 0) / kept.length;
 }
 
-/** Excel parity requires LINEAR INTERPOLATION between points and TRUNCATION (not
- *  rounding) to `sig` digits. INC uses an (n−1) basis, EXC an (n+1); out of range is
- *  #N/A, and an exact match takes the FIRST occurrence. */
+/** Blanks and text in `arr` are skipped; an error in it is the answer. */
 export function excelPercentRank(
-  arr: ReadonlyArray<number>, x: number, sig = 3, exc = false,
+  arr: ReadonlyArray<unknown>, x: number, sig = 3, exc = false,
 ): number | SolError {
-  const s = [...arr].sort((a, b) => a - b);
+  const err = arr.find(isSolError);
+  if (err) return err;
+  const s = arr.filter((v): v is number => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
   const n = s.length;
   if (n === 0 || Number.isNaN(x)) return VALUE("PERCENTRANK");
   if (x < s[0] || x > s[n - 1]) return solError("#N/A", "Value is outside the range of the data");
+  // A one-value array ranks its value 1 in every form, as Excel answers (checked in Excel), where the bases would give 0/0 or 1/2.
+  if (n === 1) return 1;
   const below = s.filter((v) => v < x).length;
-  // pos = the 0-based index position of x: the first occurrence if present, else the
-  // linear interpolation between the bracketing points s[below-1] < x < s[below].
   const pos = s[below] === x
     ? below
     : (below - 1) + (x - s[below - 1]) / (s[below] - s[below - 1]);
   const rank = exc ? (pos + 1) / (n + 1) : pos / (n - 1);
   const f = Math.pow(10, Math.max(0, Math.trunc(sig)));
-  return Math.trunc(rank * f) / f; // Excel truncates to `sig` digits
+  return Math.trunc(rank * f) / f;
 }
 
-/** QUARTILE.INC — the inclusive quartile is PERCENTILE.INC at q/4, so quart 0 = MIN and
- *  quart 4 = MAX (Excel). Matches RankPercentileNode's `percentileOf` interpolation so the
- *  node and formula agree ([[D51]] oneAnswerOneDivergence); Formula.js's QUARTILE.INC errors on 0 and 4. */
 export function excelQuartileInc(nums: ReadonlyArray<number>, q: number): number | SolError {
   return quartile(nums, q, false) ?? solError("#DOMAIN!", "QUARTILE needs at least one number");
 }
 
-registerInternal("ROUND", (x, d) => {
-  const n = toNum(x), digits = optNum(d, 0); // a blank digits slot is 0, like ROUNDUP / TRUNC and Excel
-  return badNum(n, digits) ? VALUE("ROUND") : excelRound(n, digits);
-});
+for (const [name, mode] of [["ROUND", "round"], ["ROUNDUP", "roundup"], ["ROUNDDOWN", "rounddown"]] as const) {
+  registerInternal(name, (x, d) => {
+    const n = toNum(x), digits = optNum(d, 0);
+    return badNum(n, digits) ? VALUE(name) : roundDigits(n, digits, mode);
+  });
+}
 registerInternal("SQRT", (x) => {
   const n = toNum(x);
   if (Number.isNaN(n)) return VALUE("SQRT");
@@ -956,37 +870,70 @@ registerInternal("EOMONTH", (x, months) => {
   const n = toNum(x), m = toNum(months);
   if (badNum(n, m)) return VALUE("EOMONTH");
   const d = serialToJsDate(n);
-  // Day 0 of (month + m + 1) = the last day of (month + m).
+  // Day 0 of month (m + 1) is the last day of month m.
   const eom = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + Math.trunc(m) + 1, 0));
   return Math.round(jsDateToSerial(eom));
 });
 registerInternal("LEN", (x) => toStr(x).length);
 
-// Owned so numbers format at 15 sig digits. CONCAT/TEXTJOIN are RANGE functions (whole
-// arrays, prepped by prepRangeArgs); CONCATENATE is element-wise over scalars.
 const flat = (xs: unknown[]): unknown[] => xs.flatMap((x) => (Array.isArray(x) ? flat(x) : [x]));
 registerInternal("CONCAT", (...xs) => flat(xs).map(toStr).join(""));
 registerInternal("CONCATENATE", (...xs) => flat(xs).map(toStr).join(""));
 registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
   const parts = flat(xs).map(toStr);
-  // Only FALSE/0 keeps empties; a blank slot arrives as FALSE ([[C80]] blankArgIsExcelBlank).
   const kept = ignoreEmpty === false || ignoreEmpty === 0 ? parts : parts.filter((s) => s !== "");
   return kept.join(toStr(delim));
 });
 
-// Text-family pass-throughs: each function's TEXT-position args route through toStr
-// (the numberToText 15-sig-digit contract), then delegate to FX for the semantics.
-const TEXT_ARG_POSITIONS: Record<string, number[]> = {
-  LEFT: [0], RIGHT: [0], MID: [0], UPPER: [0], LOWER: [0], PROPER: [0],
-  TRIM: [0], REPT: [0], REPLACE: [0, 3], // SUBSTITUTE is registered below (its instance truncates)
-  EXACT: [0, 1], FIND: [0, 1], SEARCH: [0, 1],
+const atLeast = (name: string, i: number, min: number, what: string) => (a: unknown[]): SolError | null =>
+  a[i] != null && Math.trunc(toNum(a[i])) < min ? solError("#VALUE!", `${name} ${what}`) : null;
+// Excel lets an empty find_text match one past the end, and no further.
+const findStart = (name: string) => (a: unknown[]): SolError | null =>
+  atLeast(name, 2, 1, "starts at 1 or later")(a) ??
+  (a[2] != null && Math.trunc(toNum(a[2])) > toStr(a[1]).length + 1 ? solError("#VALUE!", `${name} starts past the end of the text`) : null);
+const TEXT_PASS_THROUGHS: Record<string, { text: number[]; check?: (a: unknown[]) => SolError | null }> = {
+  LEFT: { text: [0], check: atLeast("LEFT", 1, 0, "takes 0 or more characters") },
+  RIGHT: { text: [0], check: atLeast("RIGHT", 1, 0, "takes 0 or more characters") },
+  UPPER: { text: [0] }, LOWER: { text: [0] }, TRIM: { text: [0] }, REPLACE: { text: [0, 3] }, EXACT: { text: [0, 1] },
+  FIND: { text: [0, 1], check: findStart("FIND") },
 };
-for (const [name, idxs] of Object.entries(TEXT_ARG_POSITIONS)) {
+for (const [name, { text, check }] of Object.entries(TEXT_PASS_THROUGHS)) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
-  registerInternal(name, (...a) => f(...a.map((x, i) => (idxs.includes(i) ? toStr(x) : x))));
+  registerInternal(name, (...a) => check?.(a) ?? f(...a.map((x, i) => (text.includes(i) ? toStr(x) : x))));
 }
-// SUBSTITUTE is ours: formulajs replaces the (instance + 1)th match, and Excel truncates
-// the instance like every numeric argument.
+for (const name of ["BASE", "DEC2HEX", "BIN2HEX", "OCT2HEX"]) {
+  const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
+  registerInternal(name, (...a) => { const r = f(...a); return typeof r === "string" ? r.toUpperCase() : r; });
+}
+// Excel's SEARCH reads ?, * and ~ in find_text; Formula.js's matches them literally.
+let searchPattern: { find: string; re: RegExp } | null = null;
+registerInternal("SEARCH", (find, within, start) => {
+  const bad = findStart("SEARCH")([find, within, start]);
+  if (bad) return bad;
+  const s = start == null ? 1 : Math.trunc(toNum(start));
+  if (Number.isNaN(s)) return VALUE("SEARCH");
+  const f = toStr(find), w = toStr(within);
+  if (f === "") return s;
+  if (searchPattern?.find !== f) searchPattern = { find: f, re: new RegExp(wildcardSource(f).source, "i") };
+  const at = searchPattern.re.exec(w.slice(s - 1));
+  return at ? at.index + s : solError("#VALUE!", "Find text not found within the text");
+});
+registerInternal("MID", (text, start, len) => {
+  const t = toStr(text), s = Math.trunc(toNum(start)), n = Math.trunc(toNum(len));
+  if (badNum(s, n)) return VALUE("MID");
+  if (s < 1 || n < 0) return solError("#VALUE!", "MID starts at 1 or later and takes 0 or more characters");
+  return t.slice(s - 1, s - 1 + n);
+});
+registerInternal("PROPER", (text) => properCase(toStr(text)));
+registerInternal("REPT", (text, times) => {
+  const t = toStr(text), n = Math.trunc(toNum(times));
+  if (Number.isNaN(n)) return VALUE("REPT");
+  if (n < 0) return solError("#VALUE!", "REPT can't repeat text a negative number of times");
+  if (t.length * n > 32767) return solError("#VALUE!", "REPT's result would pass 32,767 characters, Excel's text limit");
+  return t.repeat(n);
+});
+for (const name of ["CHAR", "UNICHAR"]) registerInternal(name, (code) => charFromCode(toNum(code)));
+for (const name of ["CODE", "UNICODE"]) registerInternal(name, (text) => codeOfText(toStr(text)));
 registerInternal("SUBSTITUTE", (text, old, neu, instance) => {
   const t = toStr(text), o = toStr(old), n = toStr(neu);
   if (o === "") return t;
@@ -998,38 +945,38 @@ registerInternal("SUBSTITUTE", (text, old, neu, instance) => {
   return t.slice(0, at) + n + t.slice(at + o.length);
 });
 
-// Read OUR serial through `serialToJsDate` with getUTC*, exactly like DatePartNode —
-// one serial/UTC model, NOT Formula.js's Date/1900 conventions.
 registerInternal("MONTH",  (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("MONTH")  : serialToJsDate(n).getUTCMonth() + 1; });
 registerInternal("DAY",    (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("DAY")    : serialToJsDate(n).getUTCDate(); });
 registerInternal("HOUR",   (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("HOUR")   : serialToJsDate(n).getUTCHours(); });
 registerInternal("MINUTE", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("MINUTE") : serialToJsDate(n).getUTCMinutes(); });
 registerInternal("SECOND", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("SECOND") : serialToJsDate(n).getUTCSeconds(); });
 
-// The statistics family runs the NODES' kernels (statsOps.ts — Aggregate, Rank &
-// Percentile, Correl, Covariance, Mode, Fisher call the same functions), so the two
-// surfaces cannot drift (capabilityParity / [[C17]] shareImpl). Range args arrive PREPPED
-// (prepRangeArgs: an error already propagated, blanks dropped, paired ranges
-// row-aligned); a registration just gathers the numbers. The flat Excel names carry
-// Excel's flat-name default (STDEV/VAR = sample, PERCENTILE/QUARTILE = inclusive,
-// MODE = single, COVAR = population).
 const numsOf = (...args: unknown[]): number[] =>
-  args.flatMap((a) => (Array.isArray(a) ? a : [a])).map(toNum).filter((n) => Number.isFinite(n));
+  args.flatMap((a) => (Array.isArray(a) ? a : [a])).flatMap((v) => {
+    const n = toNum(v);
+    return typeof v === "number" || !Number.isNaN(n) ? [n] : [];
+  });
 const AGG_FORMULAS: Array<[string, AggregateOp]> = [
   ["AVERAGE", "avg"], ["AVEDEV", "avedev"], ["MEDIAN", "median"], ["GEOMEAN", "geomean"],
   ["HARMEAN", "harmean"], ["DEVSQ", "devsq"], ["STDEV", "stdev"], ["STDEV.S", "stdev"],
   ["STDEV.P", "stdev_p"], ["VAR", "var_s"], ["VAR.S", "var_s"], ["VAR.P", "var_p"],
   ["SKEW", "skew"], ["SKEW.P", "skew_p"], ["KURT", "kurt"],
-  // the numpy / pandas / R one-liners (no Excel name)
   ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
 ];
 for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregate(op, numsOf(...a)));
-// AVERAGEA: Excel counts text as 0 and logicals as 1/0 — every non-blank cell is a value.
-registerInternal("AVERAGEA", (...a) => {
-  const cells = a.flatMap((x) => (Array.isArray(x) ? x : [x])).filter((v) => v != null);
-  return aggregate("avg", cells.map((v) => { const n = toNum(v); return Number.isFinite(n) ? n : 0; }));
-});
-// The *IFS family: (values, range1, crit1, range2, crit2, …); COUNTIFS has no values range.
+// On the shared kernel, so a NaN is #DOMAIN! as in every aggregate ([[D48]] classifyNonFinite); no numbers is Excel's 0.
+registerInternal("PRODUCT", (...a) => { const n = numsOf(...a); return n.length === 0 ? 0 : aggregate("product", n); });
+registerInternal("GCD", (...a) => gcdLcm("gcd", numsOf(...a)));
+registerInternal("LCM", (...a) => gcdLcm("lcm", numsOf(...a)));
+for (const [name, op] of [["MIN", "min"], ["MAX", "max"]] as const) {
+  registerInternal(name, (...a) => {
+    const cells: unknown[] = a.flat(Infinity);
+    const err = cells.find((v) => isSolError(v) || v instanceof Error);
+    if (err !== undefined) return err;
+    const nums = cells.filter((v): v is number => typeof v === "number");
+    return nums.length === 0 ? 0 : aggregate(op, nums);
+  });
+}
 const asRange = (v: unknown): unknown[] => (Array.isArray(v) ? v : [v]);
 const ifsPairs = (rest: unknown[]): Array<[unknown[], unknown]> | SolError => {
   if (rest.length === 0 || rest.length % 2 !== 0) return solError("#VALUE!", "Criteria come in range, criterion pairs");
@@ -1049,7 +996,6 @@ registerInternal("COUNTIFS", (...rest) => {
   const pairs = ifsPairs(rest);
   return isSolError(pairs) ? pairs : criteriaAggregate("count", null, pairs);
 });
-// The singular forms: (range, criterion[, values]); the values range defaults to the range.
 registerInternal("COUNTIF", (range, crit) => criteriaAggregate("count", null, [[asRange(range), crit]]));
 registerInternal("AVERAGEIF", (range, crit, values) => criteriaAggregate("average", asRange(values === undefined ? range : values), [[asRange(range), crit]]));
 registerInternal("LARGE",  (arr, k) => nthExtreme(numsOf(arr), toNum(k), true));
@@ -1063,36 +1009,42 @@ registerInternal("QUARTILE.EXC", (arr, q) => quartile(numsOf(arr), toNum(q), tru
 registerInternal("MODE",      (...a) => modeSingle(numsOf(...a)));
 registerInternal("MODE.SNGL", (...a) => modeSingle(numsOf(...a)));
 registerInternal("CORREL",       (x, y) => pearson(numsOf(x), numsOf(y)));
+registerInternal("PEARSON",      (x, y) => pearson(numsOf(x), numsOf(y)));
 registerInternal("RSQ",          (y, x) => pearson(numsOf(x), numsOf(y), true));
 registerInternal("SPEARMAN",     (x, y) => spearman(numsOf(x), numsOf(y)));
 registerInternal("KENDALL",      (x, y) => kendallTau(numsOf(x), numsOf(y)));
 registerInternal("COVAR",        (x, y) => covariance(numsOf(x), numsOf(y), false));
 registerInternal("COVARIANCE.P", (x, y) => covariance(numsOf(x), numsOf(y), false));
 registerInternal("COVARIANCE.S", (x, y) => covariance(numsOf(x), numsOf(y), true));
-// Excel's argument order is (known_ys, known_xs).
+// Excel's argument order is (known_ys, known_xs), the reverse of the kernel's.
 registerInternal("SLOPE",     (y, x) => regression(numsOf(x), numsOf(y), "slope"));
 registerInternal("INTERCEPT", (y, x) => regression(numsOf(x), numsOf(y), "intercept"));
 registerInternal("STEYX",     (y, x) => regression(numsOf(x), numsOf(y), "steyx"));
 registerInternal("FISHER",    (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("FISHER") : fisher(n, false); });
 registerInternal("FISHERINV", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("FISHERINV") : fisher(n, true); });
 
-// RANK / TRIMMEAN / PERCENTRANK run the single source the visual nodes also call.
-// PERCENTRANK takes the inclusive (n−1) basis with default 3 digits here.
-registerInternal("RANK",     (v, ref) => excelRank(toNum(v), (ref as number[]) ?? [], false));
-registerInternal("RANK.EQ",  (v, ref) => excelRank(toNum(v), (ref as number[]) ?? [], false));
-registerInternal("RANK.AVG", (v, ref) => excelRank(toNum(v), (ref as number[]) ?? [], true));
+const rank = (avg: boolean) => (v: unknown, ref: unknown, order: unknown) => {
+  const o = order == null ? 0 : toNum(order);
+  return Number.isNaN(o) ? VALUE("RANK") : excelRank(toNum(v), (ref as number[]) ?? [], avg, o !== 0);
+};
+registerInternal("RANK",     rank(false));
+registerInternal("RANK.EQ",  rank(false));
+registerInternal("RANK.AVG", rank(true));
 registerInternal("TRIMMEAN", (vals, pct) => excelTrimmean((vals as number[]) ?? [], toNum(pct)));
-// Excel arg order PERCENTRANK(array, x, [significance]); range arg passes whole.
-registerInternal("PERCENTRANK", (arr, x, sig) => excelPercentRank((arr as number[]) ?? [], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), false));
+for (const [name, exc] of [["PERCENTRANK", false], ["PERCENTRANK.INC", false], ["PERCENTRANK.EXC", true]] as const) {
+  registerInternal(name, (arr, x, sig) => excelPercentRank(Array.isArray(arr) ? arr.flat() : arr == null ? [] : [arr], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), exc));
+}
 
-// Owned to match MathFXNode `compute()` exactly: MOD takes the DIVISOR's sign, Excel's
-// ATAN2(x, y) = atan2(y, x), ÷0 is #DIV/0!, out-of-domain is #DOMAIN! not a blank.
 const domErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
 const num1 = (fn: string, f: (x: number) => number | SolError) =>
   registerInternal(fn, (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE(fn) : f(n); });
 registerInternal("MOD", (a, b) => {
-  const x = toNum(a), y = optNum(b, 0); // a blank divisor is 0 → #DIV/0! (Excel)
+  const x = toNum(a), y = optNum(b, 0);
   return badNum(x, y) ? VALUE("MOD") : y === 0 ? solError("#DIV/0!", "Division by zero") : x - y * Math.floor(x / y);
+});
+registerInternal("POWER", (a, b) => {
+  const x = toNum(a), y = toNum(b);
+  return badNum(x, y) ? VALUE("POWER") : powerOf(x, y);
 });
 registerInternal("QUOTIENT", (a, b) => {
   const x = toNum(a), y = toNum(b);
@@ -1100,7 +1052,7 @@ registerInternal("QUOTIENT", (a, b) => {
 });
 registerInternal("ATAN2", (x, y) => {
   const a = toNum(x), b = toNum(y);
-  return badNum(a, b) ? VALUE("ATAN2") : Math.atan2(b, a); // Excel ATAN2(x_num, y_num)
+  return badNum(a, b) ? VALUE("ATAN2") : Math.atan2(b, a); // Excel's ATAN2 takes x first, so the operands swap here.
 });
 num1("LN",     (x) => (x <= 0 ? domErr() : Math.log(x)));
 num1("LOG10",  (x) => (x <= 0 ? domErr() : Math.log10(x)));
@@ -1110,42 +1062,33 @@ num1("ACOS",   (x) => (x < -1 || x > 1 ? domErr() : Math.acos(x)));
 num1("ACOSH",  (x) => (x < 1 ? domErr() : Math.acosh(x)));
 num1("ATANH",  (x) => (x <= -1 || x >= 1 ? domErr() : Math.atanh(x)));
 
-// The distributions Formula.js lacks, on the SAME mathUtils kernels the Distribution
-// NODE uses ([[C17]] shareImpl — the two surfaces are pinned equal by distributionSurfaceParity
-// so they cannot drift). Invalid params return null (a blank), never a fabricated number.
 const isTrue = (v: unknown) => v === true || v === 1 || (typeof v === "string" && /^(true|1)$/i.test(v.trim()));
 const ok = (v: number) => (Number.isFinite(v) ? v : null);
 
+// [[D70]] nullNotEnoughData: a parameter outside the distribution's domain is a wrong input, as Excel's #NUM! is.
+const distDomain = () => solError("#DOMAIN!", "A parameter is outside the distribution's domain");
 registerInternal("T.DIST", (x, df, cum) => {
   const xn = toNum(x), d = toNum(df);
-  if (badNum(xn, d) || d <= 0) return null;
+  if (badNum(xn, d)) return null;
+  if (d <= 0) return distDomain();
   return ok(isTrue(cum) ? tCDF(xn, d) : tPDF(xn, d));
 });
-registerInternal("T.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(1 - tCDF(xn, d)); });
-registerInternal("T.DIST.2T", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(2 * (1 - tCDF(Math.abs(xn), d))); });
-registerInternal("T.INV", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((t) => tCDF(t, d), pn, -1e6, 1e6)); });
-registerInternal("T.INV.2T", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((t) => tCDF(t, d), 1 - pn / 2, -1e6, 1e6)); });
-registerInternal("CHISQ.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) || d <= 0 ? null : ok(1 - chiSqCDF(xn, d)); });
-registerInternal("CHISQ.INV.RT", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) || d <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => chiSqCDF(x, d), 1 - pn, 0, 1e6)); });
-registerInternal("F.DIST.RT", (x, a, b) => { const xn = toNum(x), d1 = toNum(a), d2 = toNum(b); return badNum(xn, d1, d2) || d1 <= 0 || d2 <= 0 ? null : ok(1 - fCDF(xn, d1, d2)); });
-registerInternal("F.INV.RT", (p, a, b) => { const pn = toNum(p), d1 = toNum(a), d2 = toNum(b); return badNum(pn, d1, d2) || d1 <= 0 || d2 <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => fCDF(x, d1, d2), 1 - pn, 0, 1e6)); });
-registerInternal("GAMMA.DIST", (x, a, b, cum) => {
-  const xn = toNum(x), al = toNum(a), be = toNum(b);
-  if (badNum(xn, al, be) || al <= 0 || be <= 0) return null;
-  return ok(isTrue(cum) ? gammaCDF(xn, al, be) : gammaPDF(xn, al, be));
-});
-registerInternal("GAMMA.INV", (p, a, b) => { const pn = toNum(p), al = toNum(a), be = toNum(b); return badNum(pn, al, be) || al <= 0 || be <= 0 || pn <= 0 || pn >= 1 ? null : ok(bisectionInv((x) => gammaCDF(x, al, be), pn, 0, 1e6)); });
+registerInternal("T.DIST.RT", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) ? null : d <= 0 ? distDomain() : ok(1 - tCDF(xn, d)); });
+registerInternal("T.DIST.2T", (x, df) => { const xn = toNum(x), d = toNum(df); return badNum(xn, d) ? null : d <= 0 ? distDomain() : ok(2 * (1 - tCDF(Math.abs(xn), d))); });
+registerInternal("T.INV", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) ? null : d <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((t) => tCDF(t, d), pn, -1e6, 1e6)); });
+registerInternal("T.INV.2T", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) ? null : d <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((t) => tCDF(t, d), 1 - pn / 2, -1e6, 1e6)); });
+registerInternal("CHISQ.DIST.RT", (x, df) => dist("chisq", "rt", x, df));
+registerInternal("CHISQ.INV.RT", (p, df) => { const pn = toNum(p), d = toNum(df); return badNum(pn, d) ? null : d <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((x) => chiSqCDF(x, d), 1 - pn, 0, 1e6)); });
+registerInternal("F.DIST.RT", (x, a, b) => dist("f", "rt", x, a, b));
+registerInternal("F.INV.RT", (p, a, b) => { const pn = toNum(p), d1 = toNum(a), d2 = toNum(b); return badNum(pn, d1, d2) ? null : d1 <= 0 || d2 <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((x) => fCDF(x, d1, d2), 1 - pn, 0, 1e6)); });
+registerInternal("GAMMA.DIST", (x, a, b, cum) => dist("gamma", cdfOrPdf(cum), x, a, b));
+registerInternal("GAMMA.INV", (p, a, b) => { const pn = toNum(p), al = toNum(a), be = toNum(b); return badNum(pn, al, be) ? null : al <= 0 || be <= 0 || pn <= 0 || pn >= 1 ? distDomain() : ok(bisectionInv((x) => gammaCDF(x, al, be), pn, 0, 1e6)); });
 
-// The rest of the distribution family runs the Distribution NODE's own spec table
-// (distributionOps.DIST_SPECS — one compute per distribution, form-selected), so a
-// formula and the card answer identically by construction. Excel's argument orders
-// are mapped onto the spec's (x | p, ...params) shape here; a domain refusal is a
-// blank (the node's rule), never a fabricated number.
-const dist = (key: DistKey, form: DistForm, v: unknown, ...params: unknown[]): number | null => {
+const dist = (key: DistKey, form: DistForm, v: unknown, ...params: unknown[]): number | SolError | null => {
   const vn = toNum(v), ps = params.map(toNum);
   if (badNum(vn, ...ps)) return null;
   const r = DIST_SPECS[key].compute(form, vn, ps);
-  return r === null ? null : ok(r);
+  return r === null ? distDomain() : ok(r);
 };
 const cdfOrPdf = (cum: unknown, discrete = false): DistForm => (isTrue(cum) ? "cdf" : discrete ? "pmf" : "pdf");
 registerInternal("NORM.DIST",    (x, mean, sd, cum) => dist("normal", cdfOrPdf(cum), x, mean, sd));
@@ -1156,9 +1099,6 @@ registerInternal("CHISQ.DIST",   (x, df, cum) => dist("chisq", cdfOrPdf(cum), x,
 registerInternal("CHISQ.INV",    (p, df) => dist("chisq", "inv", p, df));
 registerInternal("F.DIST",       (x, d1, d2, cum) => dist("f", cdfOrPdf(cum), x, d1, d2));
 registerInternal("F.INV",        (p, d1, d2) => dist("f", "inv", p, d1, d2));
-// RANDDIST(family, n, params…): n draws from a Distribution-node family by inverse CDF —
-// the node's `sample` form as a formula (numpy.random.<dist>, R rnorm/rgamma/…). Volatile
-// like RAND (a fresh stream each evaluation; the node's form is seeded per recalc).
 registerInternal("RANDDIST", (family, n, ...params) => {
   const key = String(family ?? "").trim().toLowerCase().replace(/\s+/g, "-") as DistKey;
   if (!(key in DIST_SPECS)) return solError("#DOMAIN!", `RANDDIST family must be one of ${Object.keys(DIST_SPECS).join(", ")}`);
@@ -1167,25 +1107,23 @@ registerInternal("RANDDIST", (family, n, ...params) => {
   const spec = DIST_SPECS[key];
   const ps = spec.params.map((p, i) => (params[i] == null ? p.def : toNum(params[i])));
   if (ps.some((v) => Number.isNaN(v))) return VALUE("RANDDIST");
-  const out: (number | null)[] = [];
-  for (let i = 0; i < count; i++) { const v = sampleQuantile(key, Math.random(), ps); out.push(v !== null && Number.isFinite(v) ? v : null); }
-  return out;
+  return sampleQuantiles(key, Array.from({ length: count }, () => Math.random()), ps);
 });
-// BETA.DIST / BETA.INV carry Excel's optional [A, B] support bounds: x maps onto the
-// standard beta as (x − A)/(B − A); the density scales by 1/(B − A), the quantile maps back.
 registerInternal("BETA.DIST", (x, a, b, cum, A, B) => {
   const lo = A == null ? 0 : toNum(A), hi = B == null ? 1 : toNum(B);
-  if (badNum(lo, hi) || hi <= lo) return null;
+  if (badNum(lo, hi)) return null;
+  if (hi <= lo) return distDomain();
   const xn = toNum(x);
   if (Number.isNaN(xn)) return null;
   const r = dist("beta", cdfOrPdf(cum), (xn - lo) / (hi - lo), a, b);
-  return r === null || isTrue(cum) ? r : ok(r / (hi - lo));
+  return typeof r !== "number" || isTrue(cum) ? r : ok(r / (hi - lo));
 });
 registerInternal("BETA.INV", (p, a, b, A, B) => {
   const lo = A == null ? 0 : toNum(A), hi = B == null ? 1 : toNum(B);
-  if (badNum(lo, hi) || hi <= lo) return null;
+  if (badNum(lo, hi)) return null;
+  if (hi <= lo) return distDomain();
   const r = dist("beta", "inv", p, a, b);
-  return r === null ? null : ok(lo + r * (hi - lo));
+  return typeof r !== "number" ? r : ok(lo + r * (hi - lo));
 });
 registerInternal("LOGNORM.DIST", (x, mean, sd, cum) => dist("lognorm", cdfOrPdf(cum), x, mean, sd));
 registerInternal("LOGNORM.INV",  (p, mean, sd) => dist("lognorm", "inv", p, mean, sd));
@@ -1197,8 +1135,6 @@ registerInternal("POISSON.DIST", (k, mean, cum) => dist("poisson", cdfOrPdf(cum,
 registerInternal("HYPGEOM.DIST", (k, sample, popS, popN, cum) => dist("hypgeom", cdfOrPdf(cum, true), k, sample, popS, popN));
 registerInternal("NEGBINOM.DIST",(f, r, p, cum) => dist("negbinom", cdfOrPdf(cum, true), f, r, p));
 
-// CONVERT runs OUR unit system on the SAME unit keys as the ConvertNode dropdown.
-// Unknown / cross-category units are #N/A (Excel).
 registerInternal("CONVERT", (x, from, to) => {
   const n = toNum(x);
   if (Number.isNaN(n)) return VALUE("CONVERT");
@@ -1206,9 +1142,6 @@ registerInternal("CONVERT", (x, from, to) => {
   return r == null ? solError("#N/A", "CONVERT: unknown or incompatible units") : r;
 });
 
-// Lookup family, against OUR 1-D list model — the same `xmatchIndex` kernel the
-// XMATCH node runs, plus Excel's numeric mode arguments ([[C80]] blankArgIsExcelBlank:
-// only an OMITTED mode is the default).
 const NA_NO_MATCH = () => solError("#N/A", "No match found in the lookup list");
 const xMatchModeArg = (v: unknown): XMatchMatchMode | SolError => {
   if (v === undefined) return "exact";
@@ -1225,25 +1158,11 @@ const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
   switch (toNum(v)) {
     case 1: return "first";
     case -1: return "last";
-    case 2: case -2: return solError("#VALUE!", "Binary search (±2) isn't supported — every search scans");
+    case 2: case -2: return solError("#VALUE!", "Binary search (±2) isn't supported. Every search scans the whole list");
     default: return solError("#VALUE!", "search_mode is 1 or -1");
   }
 };
-// An ARRAY lookup value SPILLS in Excel — one result per element — and we match that:
-// the result is a rank-1 list (still within the formula rank cap), and RANGE_FUNCTIONS
-// return a non-number as-is, so the array flows back cleanly. This is the SCOPED spill
-// for the lookup family only; the general per-argument spill (backlog [[C20]] wholeArrayArgs)
-// stays deferred. Do NOT read this as other RANGE functions spilling — a matrix reaching
-// any other RANGE function is still #SHAPE! upstream. `keys`/`values` are lists or scalars
-// here (a matrix arg errors before us). Excel's lookup_array / return_array are 1-D but
-// ORIENTATION-FREE: a single row or a single column both work, a true grid is #VALUE!.
-// Both registrations declare `matrixArgs` so a matrix reaches them whole, and guard EACH
-// slot themselves: the lookup VALUE may be a scalar, a list, or an orientation-free 1×N /
-// N×1 matrix (all spill over the cells) — only a true 2-D grid is #SHAPE! (mirrors the
-// lookup array); the arrays flatten when one of their dimensions is 1, and XLOOKUP's
-// return array must be the lookup array's length.
 const isGrid = (v: unknown): v is unknown[][] => Array.isArray(v) && v.length > 0 && Array.isArray(v[0]);
-/** A 1×N / N×1 matrix → its N cells; a list → itself; a scalar → [scalar]; a grid → null. */
 const asOneDim = (v: unknown): unknown[] | null => {
   if (!isGrid(v)) return Array.isArray(v) ? v : [v];
   if (v.length === 1) return [...v[0]];
@@ -1289,25 +1208,28 @@ registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
   };
   return spillLookup("XMATCH", lookup, pick);
 });
-// A blank branch (`IF(x,,y)`) arrives as null and STAYS null — a deliberate deviation;
-// real Excel's omitted arg is 0. IF(test, then) with a false test → FALSE.
 registerInternal("IF", (test, thenV, elseV) => {
-  if (test == null) return null; // a MISSING condition stays missing (app contract) — only the branches may be blank
-  const cond = typeof test === "number" ? test !== 0 : Boolean(test);
+  const cond = ifTest(test ?? null);
+  if (cond === null || isSolError(cond)) return cond;
   if (cond) return thenV === undefined ? true : thenV;
   return elseV === undefined ? false : elseV;
 });
-// The blocklist registers itself: a blocked name resolves to a redirect stub, which
-// WINS over Formula.js's own implementation (internal impls are checked first).
-for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
-  registerInternal(name, () => solError("#NAME?", `Use ${use}`));
+registerInternal("IFS", (...args) => {
+  if (args.length % 2 !== 0) return solError("#VALUE!", "IFS takes conditions and values in pairs");
+  for (let i = 0; i < args.length; i += 2) {
+    const cond = ifTest(args[i] ?? null);
+    if (cond === null || isSolError(cond)) return cond;
+    if (cond) return args[i + 1] ?? null;
+  }
+  return solError("#N/A", "No IFS condition matched");
+});
+for (const name of ELIMINATED_FUNCTIONS) {
+  const message = blockedNameMessage(name)!;
+  registerInternal(name, () => solError("#NAME?", message));
 }
-// INDEX is the node's accessor (nodes/indexAccess.ts), so the formula answers what
-// the card answers: rank-2 containers, and 0-or-omitted selecting the WHOLE axis.
-// An axis WRITTEN blank stays the node's wired-blank — unknown, so the result is.
 registerInternal("INDEX", (list, row, col) => {
   const axis = (v: unknown): IndexAxis | SolError => {
-    if (v === undefined || v === null) return v;
+    if (v === undefined || v === null || Array.isArray(v)) return v;
     const n = toNum(v);
     return Number.isNaN(n) ? solError("#VALUE!", "INDEX position must be a number") : n;
   };
@@ -1317,20 +1239,14 @@ registerInternal("INDEX", (list, row, col) => {
   return indexInto(list, r, c);
 });
 
-// FX returns a LOCAL-midnight Date object, and `jsDateToSerial` reads UTC, so the serial
-// shifts by the machine's TZ offset; these four are DATE-ONLY, so rounding recovers it.
+// Formula.js returns local-midnight Dates; rounding the UTC-read serial removes the time-zone offset, which is safe only for date-only results.
 const toSerialIfDate = (v: unknown): unknown => (v instanceof Date ? Math.round(jsDateToSerial(v)) : v);
-for (const fn of ["EDATE", "WORKDAY"]) {
-  const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>)[fn];
-  if (typeof f === "function") registerInternal(fn, (...a) => toSerialIfDate(f(...a)));
+{
+  const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>).EDATE;
+  if (typeof f === "function") registerInternal("EDATE", (...a) => toSerialIfDate(f(...a)));
 }
-// The date family runs the date NODES' kernels (dateOps.ts — capabilityParity / [[C17]] shareImpl):
-// DATE with the literal-year rule (26 is the year 26, the documented Excel deviation),
-// TIME, DATEVALUE / TIMEVALUE on OUR shared parser (chrono-backed, #AMBIGUOUS-aware — one
-// date-parsing definition across DATEVALUE, Frame/Table columns, Date Input, Cast, read-as),
-// the week-info trio and the DAYS / DAYS360 / YEARFRAC / DATEDIF family.
 registerInternal("DATE", (y, m, d) => {
-  const yn = toNum(y), mn = toNum(m), dn = optNum(d, 0); // a blank day is 0: the last day of the month before (Excel)
+  const yn = toNum(y), mn = toNum(m), dn = optNum(d, 0);
   return badNum(yn, mn, dn) ? VALUE("DATE") : dateFromParts(yn, mn, dn);
 });
 registerInternal("TIME", (h, m, s) => {
@@ -1344,7 +1260,7 @@ registerInternal("WEEKNUM",    (d, rt) => { const n = toNum(d); return Number.is
 registerInternal("ISOWEEKNUM", (d) => { const n = toNum(d); return Number.isNaN(n) ? VALUE("ISOWEEKNUM") : weekInfo("isoweeknum", n); });
 registerInternal("DAYS",     (end, start) => { const e = toNum(end), s = toNum(start); return badNum(e, s) ? VALUE("DAYS") : dateDiff("days", s, e); });
 registerInternal("DAYS360",  (start, end, method) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("DAYS360") : dateDiff("days360", s, e, isTrue(method) ? 1 : 0); });
-registerInternal("YEARFRAC", (start, end, basis) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("YEARFRAC") : dateDiff("yearfrac", s, e, Math.floor(optNum(basis, 0))); });
+registerInternal("YEARFRAC", (start, end, basis) => { const s = toNum(start), e = toNum(end); return badNum(s, e) ? VALUE("YEARFRAC") : dateDiff("yearfrac", s, e, Math.trunc(optNum(basis, 0))); });
 const epochUnit = (u: unknown): EpochUnit | null => (u == null ? "s" : /^ms$/i.test(String(u).trim()) ? "ms" : /^s$/i.test(String(u).trim()) ? "s" : null);
 registerInternal("FROMEPOCH", (v, unit) => { const n = toNum(v), u = epochUnit(unit); return Number.isNaN(n) ? VALUE("FROMEPOCH") : u === null ? solError("#DOMAIN!", "FROMEPOCH unit must be s or ms") : epochToSerial(n, u); });
 registerInternal("TOEPOCH",   (d, unit) => { const n = toNum(d), u = epochUnit(unit); return Number.isNaN(n) ? VALUE("TOEPOCH") : u === null ? solError("#DOMAIN!", "TOEPOCH unit must be s or ms") : serialToEpoch(n, u); });
@@ -1357,66 +1273,49 @@ registerInternal("DATETRUNC", (d, unit, ceiling) => {
 registerInternal("DATEDIF",  (start, end, unit) => {
   const s = toNum(start), e = toNum(end);
   if (badNum(s, e)) return VALUE("DATEDIF");
-  // Excel refuses a start after the end for EVERY unit (the DateDiff card's Days op keeps its sign).
   if (s > e) return solError("#DOMAIN!", "DATEDIF needs the start date on or before the end date");
   const op = dateDiffOpForUnit(toStr(unit));
   if (op === null) return solError("#DOMAIN!", "DATEDIF unit must be Y, M, D, YM, MD or YD");
   return dateDiff(op, s, e) ?? solError("#DOMAIN!", "DATEDIF needs the start date on or before the end date");
 });
-// WORKDAY.INTL is namespaced under WORKDAY (not a flat FX key), so the loop above missed
-// it — without the wrap it leaked FX's raw Date object (TZ-shifted), silently corrupting
-// any serial arithmetic downstream.
 {
-  const f = (FX as unknown as { WORKDAY?: { INTL?: (...a: unknown[]) => unknown } }).WORKDAY?.INTL;
-  // FX takes only the numeric weekend codes; Excel also takes the 7-character "0000011"
-  // mask (Mon..Sun, 1 = off), so a mask walks the days here.
-  const maskWalk = (start: number, days: number, mask: string, holidays: unknown): number | SolError => {
-    if (!/^[01]{7}$/.test(mask) || mask === "1111111") return solError("#VALUE!", "WORKDAY.INTL weekend mask must be seven 0/1 characters with a working day");
-    const off = new Set<number>();
-    for (let i = 0; i < 7; i++) if (mask[i] === "1") off.add((i + 1) % 7); // JS day: Mon = 1 … Sun = 0
-    const hol = new Set((Array.isArray(holidays) ? holidays.flat() : holidays == null ? [] : [holidays]).map((h) => Math.floor(toNum(h))).filter(Number.isFinite));
-    const working = (d: number) => !off.has(serialToJsDate(d).getUTCDay()) && !hol.has(d);
-    let d = Math.floor(start), left = Math.trunc(days);
-    const step = left < 0 ? -1 : 1;
-    while (left !== 0) { d += step; if (working(d)) left -= step; }
-    return d;
-  };
-  if (typeof f === "function") registerInternal("WORKDAY.INTL", (start, days, weekend, holidays) => {
+  const weekendOf = (weekend: unknown): Set<number> | null => {
+    if (weekend == null) return weekendDays(1);
     if (typeof weekend === "string" && weekend.length === 7) {
-      const s = toNum(start), n = toNum(days);
-      return badNum(s, n) ? VALUE("WORKDAY.INTL") : maskWalk(s, n, weekend, holidays);
+      if (!/^[01]{7}$/.test(weekend) || weekend === "1111111") return null;
+      // The mask starts on Monday; getUTCDay has Sunday = 0.
+      return new Set([...weekend].flatMap((c, i) => (c === "1" ? [(i + 1) % 7] : [])));
     }
-    return toSerialIfDate(f(start, days, weekend, holidays));
-  });
-}
-// FX's NETWORKDAYS miscounts a REVERSED (start > end) span, but Excel defines it as exactly
-// the negation of the forward count — so swap-and-negate and never touch FX's broken path.
-{
-  const flat = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>).NETWORKDAYS;
-  const intl = (FX as unknown as { NETWORKDAYS?: { INTL?: (...a: unknown[]) => unknown } }).NETWORKDAYS?.INTL;
-  const swapNeg = (f: (...a: unknown[]) => unknown) => (start: unknown, end: unknown, ...rest: unknown[]) => {
-    const s = toNum(start), e = toNum(end);
-    return !Number.isNaN(s) && !Number.isNaN(e) && s > e ? -(f(end, start, ...rest) as number) : f(start, end, ...rest);
+    const code = toNum(weekend);
+    return Number.isNaN(code) ? null : weekendDays(code);
   };
-  if (typeof flat === "function") registerInternal("NETWORKDAYS", swapNeg(flat));
-  if (typeof intl === "function") registerInternal("NETWORKDAYS.INTL", swapNeg(intl));
+  const holidaySet = (holidays: unknown) =>
+    new Set((Array.isArray(holidays) ? holidays.flat() : holidays == null ? [] : [holidays]).map((h) => Math.floor(toNum(h))).filter(Number.isFinite));
+  const badWeekend = (name: string) => solError("#VALUE!", `${name} weekend must be a code (1 to 7, 11 to 17) or seven 0/1 characters with a working day`);
+  const workday = (name: string) => (start: unknown, days: unknown, weekend: unknown, holidays: unknown) => {
+    const s = toNum(start), n = toNum(days), off = weekendOf(weekend);
+    if (badNum(s, n)) return VALUE(name);
+    if (!off) return badWeekend(name);
+    return addWorkdays(s, n, off, holidaySet(holidays));
+  };
+  const networkdays = (name: string) => (start: unknown, end: unknown, weekend: unknown, holidays: unknown) => {
+    const s = toNum(start), e = toNum(end), off = weekendOf(weekend);
+    if (badNum(s, e)) return VALUE(name);
+    if (!off) return badWeekend(name);
+    return networkDays(s, e, off, holidaySet(holidays));
+  };
+  registerInternal("WORKDAY", (start, days, holidays) => workday("WORKDAY")(start, days, undefined, holidays));
+  registerInternal("WORKDAY.INTL", workday("WORKDAY.INTL"));
+  registerInternal("NETWORKDAYS", (start, end, holidays) => networkdays("NETWORKDAYS")(start, end, undefined, holidays));
+  registerInternal("NETWORKDAYS.INTL", networkdays("NETWORKDAYS.INTL"));
 }
-// Serial versions matching the TodayNow node exactly — TODAY an integer (UTC
-// midnight), NOW keeping the time fraction (so it can't share toSerialIfDate's
-// rounding).
-registerInternal("TODAY", () => {
-  const n = new Date();
-  return jsDateToSerial(new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())));
-});
-registerInternal("NOW", () => jsDateToSerial(new Date()));
-// A date-shaped format code gets the serial's UTC Date handed over directly — FX formats
-// via UTC getters, and a local wall-clock Date would double-shift the day. The cases
-// patched up front are FX holes; section codes, fractions and time tokens stay broken.
+registerInternal("TODAY", () => wallClockSerial(new Date(), true));
+registerInternal("NOW", () => wallClockSerial(new Date()));
 registerInternal("TEXT", (value, fmt) => {
   const fxText = (FX as unknown as { TEXT: (...a: unknown[]) => unknown }).TEXT;
   const f = toStr(fmt);
   const n = toNum(value);
-  if (Number.isNaN(n)) return toStr(value); // non-numeric text passes through (Excel)
+  if (Number.isNaN(n)) return toStr(value);
   if (f === "@" || /^general$/i.test(f)) return numberToText(n);
   if (/^0+$/.test(f)) return (n < 0 ? "-" : "") + String(Math.round(Math.abs(n))).padStart(f.length, "0");
   const sci = /^0(?:\.(0+))?E([+-])(0+)$/i.exec(f);
@@ -1430,49 +1329,32 @@ registerInternal("TEXT", (value, fmt) => {
   if (dateish) return fxText(serialToJsDate(n), f);
   return fxText(n, f);
 });
-// Excel's accounting form for a negative is "($1,234.57)" — the $ sits INSIDE the
-// parens, where FX prints "$(1,234.57)".
-registerInternal("DOLLAR", (value, decimals) => {
-  const out = (FX as unknown as { DOLLAR: (...a: unknown[]) => unknown }).DOLLAR(value, decimals);
-  return typeof out === "string" && out.startsWith("$(") ? `($${out.slice(2)}` : out;
+/** `roundDigits` first, so 1.005 to 2 places is 1.01 as in Excel; a value that rounds to 0 goes through as given, keeping its sign. */
+const preRound = (value: unknown, decimals: unknown): unknown => {
+  const n = toNum(value), d = optNum(decimals, 2);
+  if (badNum(n, d)) return value;
+  const r = roundDigits(n, d);
+  return r === 0 ? n : r;
+};
+registerInternal("FIXED", (value, decimals, noCommas) => {
+  const d = optNum(decimals, 2);
+  if (badNum(toNum(value), d)) return VALUE("FIXED");
+  const dd = Math.min(Math.trunc(d), 100);
+  return (FX as unknown as { FIXED: (...a: unknown[]) => unknown }).FIXED(preRound(value, dd), dd, noCommas ?? false);
 });
-// Strict: plain numbers, $ prefix, thousands commas, trailing % (each ÷100), (parens) as
-// negative. Date/time text is deliberately NOT parsed — that's DATEVALUE's job.
+registerInternal("DOLLAR", (value, decimals) => {
+  const out = (FX as unknown as { DOLLAR: (...a: unknown[]) => unknown }).DOLLAR(preRound(value, decimals), decimals);
+  if (typeof out !== "string") return out;
+  if (out.startsWith("$(")) return `($${out.slice(2)}`;
+  // A negative that rounds to zero still takes the negative form: DOLLAR(-0.004) is ($0.00).
+  return out.startsWith("-$") ? `(${out.slice(1)})` : out;
+});
 registerInternal("VALUE", (x) => {
   if (typeof x === "number") return x;
-  const s = toStr(typeof x === "boolean" ? "" : x).trim(); // Excel: VALUE(TRUE) is #VALUE!
-  let t = s, pct = 0, neg = false;
-  while (t.endsWith("%")) { pct++; t = t.slice(0, -1).trim(); }
-  if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1).trim(); }
-  t = t.replace(/^([+-]?)\$/, "$1").replace(/,/g, "");
-  const n = t === "" ? NaN : Number(t);
-  if (Number.isNaN(n)) return VALUE("VALUE");
-  return (neg ? -n : n) / Math.pow(100, pct);
+  const n = parseValueText(toStr(typeof x === "boolean" ? "" : x));
+  return Number.isNaN(n) ? VALUE("VALUE") : n;
 });
-// NUMBERVALUE (Excel): first char of each separator arg counts, whitespace stripped
-// anywhere, trailing %s each ÷100, group separator legal only BEFORE the decimal
-// point, "" → 0. The "," group DEFAULT yields when the decimal sep claims it; only
-// two EXPLICITLY identical separators are #VALUE!.
-registerInternal("NUMBERVALUE", (text, dec, grp) => {
-  const d = (toStr(dec ?? "") || ".")[0];
-  const gRaw = toStr(grp ?? "");
-  const g: string | null = gRaw !== "" ? gRaw[0] : d === "," ? null : ",";
-  if (g === d) return VALUE("NUMBERVALUE");
-  let s = toStr(text).replace(/\s/g, "");
-  if (s === "") return 0;
-  let pct = 0;
-  while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
-  const di = s.indexOf(d);
-  const intPart = di === -1 ? s : s.slice(0, di);
-  const frac = di === -1 ? null : s.slice(di + 1);
-  if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return VALUE("NUMBERVALUE");
-  const n = Number((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
-  if (Number.isNaN(n)) return VALUE("NUMBERVALUE");
-  return n / Math.pow(100, pct);
-});
-
-// The node's own compute (financeOps.ts) in Excel's argument order. An out-of-range
-// argument yields null, never a fabricated number; `basis` defaults to 0 (30/360).
+registerInternal("NUMBERVALUE", (text, dec, grp) => numberValue(toStr(text), toStr(dec ?? ""), toStr(grp ?? "")));
 
 for (const op of ["coupdaybs", "coupdaysnc", "coupncd", "couppcd", "coupnum"] as const) {
   registerInternal(op, (settle, maturity, freq, basis) =>
@@ -1486,8 +1368,6 @@ registerInternal("RECEIVED", (settle, maturity, investment, discount, basis) =>
   securityDisc("received", toNum(settle), toNum(maturity), toNum(investment), toNum(discount), optNum(basis, 0)));
 registerInternal("YIELDDISC", (settle, maturity, pr, redemption, basis) =>
   priceDisc("yielddisc", toNum(settle), toNum(maturity), toNum(pr), optNum(redemption, 100), optNum(basis, 0)));
-// The T-bill trio runs the card's actual/360 kernel (capabilityParity); formulajs counts
-// 30/360 and misses Microsoft's worked examples by a day.
 registerInternal("TBILLEQ",    (settle, maturity, discount) => tbill("tbilleq",    toNum(settle), toNum(maturity), toNum(discount)));
 registerInternal("TBILLPRICE", (settle, maturity, discount) => tbill("tbillprice", toNum(settle), toNum(maturity), toNum(discount)));
 registerInternal("TBILLYIELD", (settle, maturity, pr)       => tbill("tbillyield", toNum(settle), toNum(maturity), toNum(pr)));
@@ -1503,12 +1383,6 @@ registerInternal("PRICE", (settle, maturity, rate, yld, redemption, freq) =>
   bondPriceYield("price", toNum(settle), toNum(maturity), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
 registerInternal("YIELD", (settle, maturity, rate, pr, redemption, freq) =>
   bondPriceYield("yield", toNum(settle), toNum(maturity), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
-// IRR / XIRR run the IRR node's solver (financeOps.solveDiscountRate: Newton, then a
-// bracket-and-bisect fallback; #CONV! only when no root exists above the rate floor) — ONE
-// kernel for both surfaces (capabilityParity). Excel's `guess` only seeds its Newton; this
-// solver needs none, so the argument is accepted and ignored. Same cell policy as the node:
-// a blank cash flow is 0 (dropping it would shift every later period), a blank DATE makes
-// the schedule unknown → blank.
 const IRR_CONV = (fn: string) => solError("#CONV!", `${fn} couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.`);
 registerInternal("IRR", (values) => {
   const { error, nums } = cashPrep(numList(values) as (number | null | SolError)[]);
@@ -1523,37 +1397,44 @@ registerInternal("MIRR", (values, finrate, reinrate) => {
   if (badNum(fr, rr)) return VALUE("MIRR");
   return nums.length <= 1 ? null : mirr(nums, fr, rr);
 });
+registerInternal("XNPV", (rate, values, dates) => {
+  if (rate == null) return null;
+  const r = toNum(rate);
+  if (Number.isNaN(r)) return VALUE("XNPV");
+  const prep = datedPrep(numList(values) as (number | null | SolError)[], numList(dates) as (number | null | SolError)[]);
+  if (prep.error) return prep.error;
+  if (prep.blank) return null;
+  return xnpv(r, prep.values, prep.dates);
+});
 registerInternal("XIRR", (values, dates) => {
   const prep = datedPrep(numList(values) as (number | null | SolError)[], numList(dates) as (number | null | SolError)[]);
   if (prep.error) return prep.error;
   if (prep.blank) return null;
-  const n = Math.min(prep.values.length, prep.dates.length);
-  if (n < 2) return null;
-  const d0 = prep.dates[0];
-  // Excel: every date must be on or after the first (#NUM!); a negative exponent would
-  // otherwise break the solver and blame the sign pattern.
-  if (prep.dates.slice(1, n).some((d) => d < d0)) return solError("#DOMAIN!", "A cash-flow date comes before the first date");
-  return solveDiscountRate(prep.values.slice(0, n), prep.dates.slice(0, n).map((d) => (d - d0) / 365)) ?? IRR_CONV("XIRR");
+  return xirr(prep.values, prep.dates);
 });
-// CHOOSE runs the Choose node's rule: a blank index is unknown (null), a known index
-// outside 1..n is #VALUE!, and the chosen value passes through as-is (a blank included —
-// CHOOSE is NULL_INSPECTING on the evaluator side so an unchosen blank can't poison it).
+registerInternal("FVSCHEDULE", (pv, schedule) => {
+  if (pv == null) return null;
+  const p = toNum(pv);
+  return Number.isNaN(p) ? VALUE("FVSCHEDULE") : fvSchedule(p, numsOf(schedule));
+});
 registerInternal("CHOOSE", (index, ...values) => {
   if (index == null) return null;
-  const idx = Math.trunc(toNum(index)); // Excel truncates: CHOOSE(2.7, ...) is the second
+  const idx = Math.trunc(toNum(index));
   if (Number.isNaN(idx)) return VALUE("CHOOSE");
   if (idx < 1 || idx > values.length) return solError("#VALUE!", `CHOOSE index ${idx} is outside the range 1–${values.length}`);
   return values[idx - 1] ?? null;
 });
-// Excel's VDB carries a trailing no_switch flag; ours always switches to
-// straight-line when that is the larger charge, which is Excel's DEFAULT.
-registerInternal("VDB", (cost, salvage, life, start, end, factor, noSwitch) => {
-  // The card always switches to straight-line; a no_switch of TRUE is refused, not ignored.
-  if (noSwitch === true || (typeof noSwitch === "number" && noSwitch !== 0)) return solError("#VALUE!", "VDB's no_switch isn't supported; the depreciation always switches to straight-line");
-  return vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2));
+// Formula.js runs an end period past the loan as if it continued, and takes a zero life; Excel refuses both.
+registerInternal("CUMIPMT", (rate, nper, pv, start, end, type) =>
+  cumulativePayment("cumipmt", toNum(rate), toNum(nper), toNum(pv), toNum(start), toNum(end), isTrue(type) ? 1 : 0));
+registerInternal("CUMPRINC", (rate, nper, pv, start, end, type) =>
+  cumulativePayment("cumprinc", toNum(rate), toNum(nper), toNum(pv), toNum(start), toNum(end), isTrue(type) ? 1 : 0));
+registerInternal("SLN", (cost, salvage, life) => {
+  const l = toNum(life);
+  return l === 0 ? solError("#DIV/0!", "Life is 0") : ok((toNum(cost) - toNum(salvage)) / l);
 });
-// ODDF* read an issue date and a FIRST-coupon date; ODDL* read only a LAST-interest
-// date, so their argument lists differ in shape, not just in name.
+registerInternal("VDB", (cost, salvage, life, start, end, factor, noSwitch) =>
+  vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2), isTrue(noSwitch)));
 registerInternal("ODDFPRICE", (settle, maturity, issue, firstCoupon, rate, yld, redemption, freq) =>
   oddCoupon("oddfprice", toNum(settle), toNum(maturity), toNum(issue), toNum(firstCoupon), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
 registerInternal("ODDFYIELD", (settle, maturity, issue, firstCoupon, rate, pr, redemption, freq) =>
@@ -1563,10 +1444,6 @@ registerInternal("ODDLPRICE", (settle, maturity, lastInterest, rate, yld, redemp
 registerInternal("ODDLYIELD", (settle, maturity, lastInterest, rate, pr, redemption, freq) =>
   oddCoupon("oddlyield", toNum(settle), toNum(maturity), NaN, toNum(lastInterest), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
 
-// FORECAST.ETS family on the Forecast (ETS) node's Holt–Winters kernel. Excel's timeline
-// argument must be equally spaced; the target's step count beyond the last point is the
-// horizon. seasonality: 1 = detect (default), 0 = none, n = period. Excel's data_completion
-// / aggregation arguments are accepted and ignored (blanks are dropped; one value per step).
 const etsPrep = (values: unknown, timeline: unknown, target: unknown, seasonality: unknown) => {
   const y = numsOf(values);
   const t = numsOf(timeline);
@@ -1592,8 +1469,6 @@ registerInternal("FORECAST.ETS.CONFINT", (target, values, timeline, confidence, 
   return p ? etsInterval(p.fit, p.h, c) : solError("#VALUE!", "FORECAST.ETS.CONFINT needs 3+ values on an equally spaced timeline and a target past its end");
 });
 registerInternal("FORECAST.ETS.SEASONALITY", (values) => { const y = numsOf(values); const m = detectSeason(y); return m > 1 ? m : 0; });
-// FITDIST on the Fit Distribution node's kernel: FITDIST(sample) → the best family's name;
-// FITDIST(sample, family) → that family's parameters (the Distribution node's order).
 registerInternal("FITDIST", (sample, family) => {
   const y = numsOf(sample);
   if (family == null) { const fits = fitAll(y); return fits.length ? fits[0].family : solError("#VALUE!", "FITDIST needs 3+ values a family can fit"); }
@@ -1602,8 +1477,6 @@ registerInternal("FITDIST", (sample, family) => {
   const fit = fitDistribution(y, key);
   return fit ? fit.params : solError("#VALUE!", `The sample can't be fitted as ${key} (support or size)`);
 });
-// FORECAST.LINEAR runs the NODE'S fit; the superseded FORECAST redirects
-// (LEGACY_ALIASES). A range function — both known-value args arrive whole.
 registerInternal("FORECAST.LINEAR", (x, ys, xs) => {
   const n = toNum(x);
   if (Number.isNaN(n)) return VALUE("FORECAST.LINEAR");
@@ -1611,9 +1484,6 @@ registerInternal("FORECAST.LINEAR", (x, ys, xs) => {
   return fit ? fit.intercept + fit.slope * n : solError("#DIV/0!", "Known Xs have zero variance");
 });
 
-// Modern-Excel TEXT functions, registered against the NODE'S OWN compute — imported,
-// not re-written — so the two surfaces cannot drift by construction.
-// String distance / fuzzy matching on the Text Similarity / Fuzzy Match nodes' kernels.
 const simMethod = (m: unknown): SimilarityMethod | null => {
   const k = m == null ? "ratio" : String(m).trim().toLowerCase().replace(/[-\s]/g, "_");
   return k === "ratio" || k === "damerau" || k === "jaro_winkler" || k === "levenshtein" ? k : k === "jaro" ? "jaro_winkler" : null;
@@ -1627,12 +1497,19 @@ registerInternal("FUZZYMATCH", (text, candidates, threshold, method) => {
   const best = fuzzyBest(toStr(text), cands, m, threshold == null ? 0.6 : Number(threshold));
   return best ? best.text : solError("#N/A", "No candidate is similar enough");
 });
-registerInternal("TEXTSPLIT",  (text, delim) => splitText(toStr(text), toStr(delim)));
-registerInternal("TEXTAFTER",  (text, delim) => textAfterBefore("after",  toStr(text), toStr(delim)));
-registerInternal("TEXTBEFORE", (text, delim) => textAfterBefore("before", toStr(text), toStr(delim)));
+registerInternal("TEXTSPLIT", (text, colDelim, rowDelim, ignoreEmpty, matchMode, pad) => {
+  if (colDelim == null && rowDelim == null) return solError("#SYNTAX!", "TEXTSPLIT needs a column delimiter, a row delimiter, or both");
+  return splitText(toStr(text), colDelim == null ? null : toStr(colDelim), {
+    rowDelimiter: rowDelim == null ? undefined : toStr(rowDelim), ignoreEmpty: isTrue(ignoreEmpty), caseless: toNum(matchMode ?? 0) === 1, pad,
+  });
+});
+const afterBefore = (op: "after" | "before") => (text: unknown, delim: unknown, instance: unknown, matchMode: unknown, matchEnd: unknown, ifNotFound: unknown) => {
+  const r = textAfterBefore(op, toStr(text), toStr(delim), { instance: instance == null ? 1 : toNum(instance), caseless: toNum(matchMode ?? 0) === 1, matchEnd: toNum(matchEnd ?? 0) === 1 });
+  return r === null && ifNotFound !== undefined ? ifNotFound : r;
+};
+registerInternal("TEXTAFTER",  afterBefore("after"));
+registerInternal("TEXTBEFORE", afterBefore("before"));
 registerInternal("ENCODEURL",  (text) => urlEncode("encode", toStr(text)));
-// Excel's REGEX* optional arguments are as DOCUMENTED, not JS flag strings.
-// case_sensitivity: 0 = case-sensitive (default), 1 = case-insensitive.
 const caseFlag = (fn: string, cs: unknown): string | SolError => {
   const v = cs == null ? 0 : Number(cs);
   return v === 0 ? "" : v === 1 ? "i" : solError("#VALUE!", `${fn}: case_sensitivity must be 0 or 1`);
@@ -1641,18 +1518,15 @@ registerInternal("REGEXTEST", (text, pat, cs) => {
   const f = caseFlag("REGEXTEST", cs);
   return isSolError(f) ? f : regexApply("test", toStr(text), toStr(pat), "", f);
 });
-// occurrence: 0 (default) replaces every match; n replaces only the nth.
 registerInternal("REGEXREPLACE", (text, pat, repl, occurrence, cs) => {
   const f = caseFlag("REGEXREPLACE", cs);
   if (isSolError(f)) return f;
-  const occ = occurrence == null ? 0 : Math.round(Number(occurrence));
-  if (!Number.isFinite(occ) || occ < 0) return solError("#VALUE!", "REGEXREPLACE: occurrence must be 0 or a positive count");
+  const occ = regexOccurrence(occurrence);
+  if (occ === null) return solError("#VALUE!", "REGEXREPLACE: occurrence must be a number");
   return occ === 0
     ? regexApply("replace", toStr(text), toStr(pat), toStr(repl), f)
     : replaceNth(toStr(text), toStr(pat), toStr(repl), occ, f);
 });
-// return_mode: 0 (default) = first match, 1 = all matches as a list, 2 = the first
-// match's capture groups as a list.
 registerInternal("REGEXEXTRACT", (text, pat, mode, cs) => {
   const f = caseFlag("REGEXEXTRACT", cs);
   if (isSolError(f)) return f;
@@ -1663,8 +1537,9 @@ registerInternal("REGEXEXTRACT", (text, pat, mode, cs) => {
   return solError("#VALUE!", "REGEXEXTRACT: return_mode must be 0, 1 or 2");
 });
 
+// A left-out bound is no bound on that side ([[D86]] blankRoles).
 registerInternal("CLAMP", (x, lo, hi) => {
-  const n = toNum(x), a = toNum(lo), b = toNum(hi);
+  const n = toNum(x), a = lo == null ? -Infinity : toNum(lo), b = hi == null ? Infinity : toNum(hi);
   return badNum(n, a, b) ? VALUE("CLAMP") : Math.min(Math.max(n, a), b);
 });
 registerInternal("ORDINAL", (x) => {
@@ -1677,22 +1552,14 @@ registerInternal("BETWEEN", (x, lo, hi) => {
   return badNum(n, a, b) ? VALUE("BETWEEN") : n >= a && n <= b;
 });
 
-// Delegates to the SAME `nodes/listOps.ts` function the node's `data()` calls. NAMING
-// ([[C51]] formulaNaming): the formula name is the node's LABEL despaced, read from its OP_META table.
-
-/** A bare scalar widens to a 1-element list — the same widening the socket lattice does
- *  on a cable, so `REVERSE(5)` behaves like wiring a Number into a list input. */
 function toList(x: unknown): unknown[] {
   return Array.isArray(x) ? x : x == null ? [] : [x];
 }
 const numList = (x: unknown) => toList(x) as ListCell[];
-/** Guard the generators at the formula boundary — the RANDARRAY/SEQUENCE overflow
- *  convention, since a formula field is where a typo asks for ten million elements. */
 function capped(fn: string, count: number, make: () => unknown[]): unknown[] | SolError {
   if (!Number.isFinite(count)) return VALUE(fn);
-  if (count > MAX_GENERATED) {
-    return solError("#OVERFLOW!", `${fn} count ${Math.round(count)} exceeds the ${MAX_GENERATED} element limit`);
-  }
+  const k = Math.round(count);
+  if (k > MAX_GENERATED) return solError("#OVERFLOW!", `${fn} count ${k} exceeds the ${MAX_GENERATED} element limit`);
   return make();
 }
 
@@ -1701,8 +1568,8 @@ registerInternal("SLICE",      (list, start, end) =>
   sliceList(toList(list), Number(start), end == null ? undefined : Number(end)));
 registerInternal("NTHELEMENT", (list, n) => nthElement(toList(list), Number(n)));
 registerInternal("INTERLEAVE", (a, b) => interleave(toList(a), toList(b)));
-registerInternal("PADRIGHT",   (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "right"));
-registerInternal("PADLEFT",    (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "left"));
+registerInternal("PADRIGHT",   (list, n, fill) => capped("PADRIGHT", Number(n), () => padList(toList(list), Number(n), fill ?? 0, "right")));
+registerInternal("PADLEFT",    (list, n, fill) => capped("PADLEFT", Number(n), () => padList(toList(list), Number(n), fill ?? 0, "left")));
 registerInternal("DIFF",       (list) => diffList(numList(list)));
 registerInternal("NORMALIZE",  (list) => normalizeList(numList(list)));
 registerInternal("PCTCHANGE",  (list) => pctChangeList(numList(list)));
@@ -1726,11 +1593,6 @@ registerInternal("ISOUTLIER",  (list, method, threshold) => {
 });
 registerInternal("ISBOOLEAN",  (v) => v === true || v === false);
 registerInternal("ISCLOSE",    (a, b, tol) => (a == null || b == null ? null : Math.abs(Number(a) - Number(b)) <= (tol == null ? 1e-9 : Number(tol))));
-// ONE Running function, aggregator as a string ARGUMENT ([[C56]] aggregatorsAreArguments): a parameter inside a
-// top-level function, so the family gets one name — never seven (the old per-op
-// RUNNING* family is eliminated and must not come back). Same shape as SORT below
-// carrying its direction. Window omitted or 0 = cumulative; a BLANK window is unknown and
-// answers blank (value-semantics.md, "Reading an input").
 const RUNNING_ARG_OPS: Record<string, RunningOp> = {
   SUM: "sum", AVERAGE: "avg", AVG: "avg", MIN: "min", MAX: "max",
   MEDIAN: "median", PRODUCT: "product", STDEV: "stdev",
@@ -1738,23 +1600,17 @@ const RUNNING_ARG_OPS: Record<string, RunningOp> = {
 registerInternal("RUNNING", (op, list, w) => {
   if (op == null || list == null) return null;
   const key = RUNNING_ARG_OPS[String(op).trim().toUpperCase()];
-  if (!key) return solError("#VALUE!", `RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT, STDEV — got "${String(op)}"`);
+  if (!key) return solError("#VALUE!", `RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT or STDEV, not "${String(op)}"`);
   if (w === undefined) return running(key, numList(list), null);
   if (w == null) return null;
   const n = Number(w);
-  // The Running card's rule: 0 is cumulative, a positive count is the window, nothing else.
   if (!Number.isFinite(n) || n < 0) return solError("#DOMAIN!", "Window must be 0 (cumulative) or a positive count");
   return running(key, numList(list), n);
 });
 
-// LENGTH counts every slot including the missing ones, which is exactly why these
-// need the raw whole-list routing.
 registerInternal("LENGTH",   (list) => toList(list).length);
 registerInternal("ARGMAX",   (list) => argMinMax("argmax", numList(list)));
 registerInternal("ARGSORT",  (list, desc) => argsortList(numList(list), isTrue(desc)));
-// The Returns card's ops (financeOps.returnsOp): [rf] is per period, [periods] per year.
-// DECOMPOSE(list, period, component, [model]): one component of the classical decomposition
-// (the node emits all three) — component = trend | seasonal | residual, model = additive | multiplicative.
 registerInternal("DECOMPOSE", (list, period, component, model) => {
   const comp = String(component ?? "").trim().toLowerCase();
   if (comp !== "trend" && comp !== "seasonal" && comp !== "residual") return solError("#DOMAIN!", "DECOMPOSE component must be trend, seasonal or residual");
@@ -1797,8 +1653,6 @@ registerInternal("REPEAT",    (v, n) => capped("REPEAT", Number(n), () => repeat
 registerInternal("GEOMETRIC", (a, r, n) => capped("GEOMETRIC", Number(n), () => geometric(Number(a), Number(r), Number(n))));
 registerInternal("FIBONACCI", (n) => fibonacci(Number(n)));
 
-// A bare set label ("Union") despaces to UNION, not the SET* family name, so these
-// names are DECLARED on SET_OP_META / SET_RELATION_META rather than despaced.
 registerInternal("SETUNION",      (a, b) => setOperation("union",      toList(a), toList(b)));
 registerInternal("SETINTERSECT",  (a, b) => setOperation("intersect",  toList(a), toList(b)));
 registerInternal("SETDIFFERENCE", (a, b) => setOperation("difference", toList(a), toList(b)));
@@ -1808,8 +1662,6 @@ registerInternal("SETSUBSET",     (a, b) => setRelation("subset",   toList(a), t
 registerInternal("SETSUPERSET",   (a, b) => setRelation("superset", toList(a), toList(b)));
 registerInternal("SETDISJOINT",   (a, b) => setRelation("disjoint", toList(a), toList(b)));
 
-// COALESCE is variadic (List, then each fallback in order), matching the node's
-// extensible Else rows.
 registerInternal("FILLVALUE",       (list, v) => fillList("constant", numList(list), { constant: (v ?? null) as ListCell }));
 registerInternal("FILLFORWARD",     (list) => fillList("ffill",       numList(list)));
 registerInternal("FILLBACKWARD",    (list) => fillList("bfill",       numList(list)));
@@ -1819,22 +1671,15 @@ registerInternal("FILLMODE",        (list) => fillList("mode",        numList(li
 registerInternal("FILLINTERPOLATE", (list) => fillList("interpolate", numList(list)));
 registerInternal("FILLDROP",        (list) => fillList("drop",        numList(list)));
 registerInternal("COALESCE", (list, ...rest) => fillList("coalesce", numList(list), {
-  // A list fallback extends the result to its length; a bare number broadcasts.
   fallbacks: rest.map((f) => (Array.isArray(f) ? f as ListCell[] : typeof f === "number" ? f : null)),
 }));
 
-// RANGE is half-open [start, stop) walking by step, like the node — NOT Excel's "a
-// range of cells", which has no formula spelling here.
 registerInternal("RANGE", (start, stop, step) => {
   const a = Number(start), b = stop == null ? undefined : Number(stop), st = step == null ? 1 : Number(step);
-  // No Count arg, so cap on the IMPLIED length: an infinite walk is #VALUE!, a
-  // too-long one #OVERFLOW!.
   return capped("RANGE", rangeCount(a, b, st), () => rangeList(a, b, st));
 });
 registerInternal("CONCATLISTS", (...lists) => concatLists(...lists.map(toList)));
 
-// Excel's BYTE-indexed variants; Solenoid has no byte model, so they delegate to the
-// character-indexed form (`nodeExcel.ts` declares `parity: false`).
 const delegate = (name: string, to: string) =>
   registerInternal(name, (...args: unknown[]) => {
     const fn = resolveExcelFunction(to);
@@ -1842,48 +1687,32 @@ const delegate = (name: string, to: string) =>
   });
 
 for (const [name, to] of [
-  // ERF.PRECISE / ERFC.PRECISE are Excel's single-argument forms — identical to
-  // ERF / ERFC, which is what `nodeExcel.ts` says too ("Same as ERF in Solenoid").
   ["ERF.PRECISE", "ERF"], ["ERFC.PRECISE", "ERFC"],
 ] as const) delegate(name, to);
 
-// VALUETOTEXT: only Excel's concise form (format 0) is meaningful here — Cast to Text
-// with an empty format, which is what the node does.
 registerInternal("VALUETOTEXT", (v) => toStr(v));
 
-// COUNTDISTINCT keys by VALUE (`setKey`) rather than by JS identity, so two equal
-// complex tuples count as one.
 registerInternal("COUNTDISTINCT", (list) => {
   const arr = toList(list);
   const err = firstListError(arr);
-  if (err) return err;                                    // aggregator policy: errors propagate
+  if (err) return err;
   const seen = new Set<unknown>();
-  for (const v of arr) if (v != null) seen.add(setKey(v)); // and nulls are skipped
+  for (const v of arr) if (v != null) seen.add(setKey(v));
   return seen.size;
 });
 
-// INTERPOLATE covers BOTH of the node's modes under ONE name ([[C18]] uniqueNameMap injectivity),
-// dispatched on the first argument's RANK:
-//   List mode:  INTERPOLATE(known_ys, known_xs, new_xs)          — 3 args, rank ≤ 1.
-//   Grid mode:  INTERPOLATE(table, xs?, ys?, forecast?)          — a MATRIX first arg;
-//               an omitted axis is the 1-based index, coordinates ride beside the table.
 registerInternal("INTERPOLATE", (ys, xs, newXs, forecast) => {
-  // GRID mode — a 2-D first argument. The positional args are (table, xs, ys, forecast);
-  // gridAxes handles an omitted (index) or blank (null) axis and validates a given list.
   if (Array.isArray(ys) && ys.some((r) => Array.isArray(r))) {
-    // A BLANK positional argument is an omitted axis here (the formula surface has no cables,
-    // so there is no "wired blank" to propagate): it counts 1, 2, 3… like an unwired socket.
     const axes = gridAxes(ys, xs ?? undefined, newXs ?? undefined);
     if (axes === null) return null;
     if (isSolError(axes)) return axes;
-    const fc = forecast === undefined ? true : coerceLogical(forecast) !== false;
-    return fillGrid(axes.z, axes.xs, axes.ys, fc);
+    const fc = forecast === undefined ? true : logicalOrTypeError(forecast, "INTERPOLATE's forecast");
+    if (isSolError(fc)) return fc;
+    return fillGrid(axes.z, axes.xs, axes.ys, fc !== false);
   }
   if (newXs === undefined) {
     return solError("#VALUE!", "INTERPOLATE: list mode needs known_ys, known_xs and new_xs");
   }
-  // The node's own pair policy (pairPresent): a cell error in the known data
-  // propagates, an incomplete pair drops.
   const { error, xs: kx, ys: ky } = pairPresent(numList(xs), numList(ys));
   if (error) return error;
   const qRaw = toList(newXs);
@@ -1891,13 +1720,10 @@ registerInternal("INTERPOLATE", (ys, xs, newXs, forecast) => {
   if (qErr) return qErr;
   const q = qRaw.map((v) => (v == null ? NaN : Number(v)));
   const out = interpolateLinear(kx, ky, q);
-  // A missing query stays missing IN PLACE, like the node.
   const result = out.map((v) => (Number.isNaN(v) ? null : v));
   return Array.isArray(newXs) ? result : result[0] ?? null;
 });
 
-// These stay in RANGE_FUNCTIONS (excelFormula) so their arrays arrive whole with
-// the right null/error policy; dispatch prefers the internal over FX.
 registerInternal("T.TEST", (a, b, tails, type) => {
   const t = tails == null ? 2 : Number(tails);
   const ty = Number(type);
@@ -1908,8 +1734,6 @@ registerInternal("T.TEST", (a, b, tails, type) => {
   return p2 === null ? null : t === 2 ? p2 : p2 / 2;
 });
 registerInternal("F.TEST", (a, b) => fTestP((a as number[]) ?? [], (b as number[]) ?? []));
-// The tests beyond Excel's four, on the Hypothesis Test node's statsOps kernels. ANOVA /
-// KRUSKAL take their groups as separate list arguments (a matrix's columns on the node).
 const groupArgs = (args: unknown[]): number[][] => args.map((g) => numsOf(g)).filter((g) => g.length > 0);
 registerInternal("ANOVA",       (...groups) => anovaP(groupArgs(groups)));
 registerInternal("KRUSKAL",     (...groups) => kruskalP(groupArgs(groups)));
@@ -1919,7 +1743,6 @@ registerInternal("KSTEST",      (a, b) => ksTwoSampleP(numsOf(a), numsOf(b)));
 registerInternal("FISHEREXACT", (a, b, c, d) => { const v = [a, b, c, d].map(toNum); return badNum(...v) ? VALUE("FISHEREXACT") : fisherExactP(v[0], v[1], v[2], v[3]); });
 registerInternal("PROPTEST",    (x1, n1, x2, n2) => { const v = [x1, n1, x2, n2].map(toNum); return badNum(...v) ? VALUE("PROPTEST") : twoProportionP(v[0], v[1], v[2], v[3]); });
 registerInternal("BINOMTEST",   (k, n, p) => { const v = [k, n, p].map(toNum); return badNum(...v) ? VALUE("BINOMTEST") : binomTestP(v[0], v[1], v[2]); });
-// Excel PROB: an omitted upper limit means "exactly lower".
 registerInternal("PROB", (range, probs, lo, hi) => {
   const l = toNum(lo);
   const h = hi == null ? l : toNum(hi);
@@ -1927,18 +1750,11 @@ registerInternal("PROB", (range, probs, lo, hi) => {
   return probBetween(numList(range), numList(probs), l, h);
 });
 
-// VOLATILE — a fresh permutation per evaluation; the node is volatile on a coarser
-// clock, holding its keys until the next recalc.
 registerInternal("SHUFFLE", (list) => {
   const arr = toList(list);
   return shuffleList(arr, arr.map(() => Math.random()));
 });
 
-// Every registration below MUST declare `matrixArgs` ([[D26]] hideMatrixFromVendor). Shape CONSTRUCTION pads
-// #N/A per [[C48]] appendLadder — the element-wise broadcaster's null pad (P3) never applies here.
-
-/** A formula argument as a MATRIX: a matrix stays itself, a list is a ROW
- *  ([[D13]] widenNeverNarrow's orientation convention), a scalar is 1×1, null stays null. */
 function toMatrix(v: unknown): unknown[][] | null {
   if (v == null) return null;
   if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];
@@ -1946,21 +1762,17 @@ function toMatrix(v: unknown): unknown[][] | null {
 }
 const numMatrix = (v: unknown): NumMat | SolError | null => {
   const m = toMatrix(v);
-  return m === null ? null : asNumericMatrix(m); // a wired blank stays unknown ([[D33]] unwiredNotBlank)
+  return m === null ? null : asNumericMatrix(m);
 };
 
 registerInternal("TRANSPOSE", (v) => {
   const m = toMatrix(v);
   return m === null ? null : matTranspose(m);
 });
-// COLUMNS/ROWS share the TableInfo node's shape math (matrixShape, [[C17]] shareImpl): a list is a
-// ROW so COLUMNS counts it and ROWS is 1, a scalar is 1×1, a wired blank stays unknown.
 registerInternal("COLUMNS", (v) => matrixShape(v).cols);
 registerInternal("ROWS", (v) => matrixShape(v).rows);
-// HSTACK / VSTACK share the stacker nodes' kernels; a blank input is DROPPED (the node's
-// matsOf filters empties), no inputs → null. CHOOSECOLS/CHOOSEROWS share chooseAxis, the
-// trailing args being the index list. EXPAND shares expandMat — omitted Fill pads with
-// first-class null (the author override of Excel's #N/A), a wired-blank axis is unknown.
+// [[C22]] rowFormulaRefs: ROW() is the computed column's current row.
+registerInternal("ROW", () => currentRowNumber());
 registerInternal("HSTACK", (...args) => {
   const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
   return mats.length ? stackH(mats) : null;
@@ -1975,17 +1787,18 @@ registerInternal("XSTACK", (axis, ...args) => {
   const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
   return mats.length ? (a === "v" ? stackV(mats) : stackH(mats)) : null;
 });
+const asIndices = (args: unknown[]): number[] => args.flat().filter((v) => v !== undefined).map(Number);
 registerInternal("CHOOSECOLS", (matrix, ...cols) => {
   const m = toMatrix(matrix);
-  return m === null ? null : chooseAxis(m, cols.flat().map(Number), "column");
+  return m === null ? null : chooseAxis(m, asIndices(cols), "column");
 });
 registerInternal("CHOOSEROWS", (matrix, ...rows) => {
   const m = toMatrix(matrix);
-  return m === null ? null : chooseAxis(m, rows.flat().map(Number), "row");
+  return m === null ? null : chooseAxis(m, asIndices(rows), "row");
 });
 registerInternal("EXPAND", (matrix, rows, cols, fill) => {
   const m = toMatrix(matrix);
-  if (m === null || rows === null || cols === null) return null; // a wired-blank axis is unknown ([[D33]] unwiredNotBlank)
+  if (m === null) return null;
   return expandMat(m, Math.round(Number(rows ?? 0)), Math.round(Number(cols ?? 0)), fill ?? null);
 });
 registerInternal("MMULT", (a, b) => {
@@ -1997,10 +1810,7 @@ registerInternal("MMULT", (a, b) => {
   return product ?? solError("#SHAPE!", "A's column count must equal B's row count");
 });
 registerInternal("MUNIT", (n) => (n == null ? null : matUnit(Number(n), 0)));
-// numpy.diag: a list becomes a square matrix's diagonal (off-diagonal 0). The blank/null
-// off-diagonal is a NODE-only affordance (there's no toggle in a formula).
 registerInternal("DIAGONAL", (list) => {
-  // numpy.diag's dual: a matrix argument gives its diagonal as a list.
   if (Array.isArray(list) && list.length > 0 && Array.isArray(list[0])) {
     const m = list as unknown[][];
     return m.map((row, i) => (row[i] == null ? null : Number(row[i])));
@@ -2008,14 +1818,11 @@ registerInternal("DIAGONAL", (list) => {
   const vs = numList(list).map((c) => (c == null ? null : Number(c)));
   return vs.length === 0 ? null : matDiag(vs, 0);
 });
-// numpy.outer: two lists → the matrix of their products.
 registerInternal("OUTER", (a, b) => {
   const A = numList(a).map((c) => (typeof c === "number" ? c : null));
   const B = numList(b).map((c) => (typeof c === "number" ? c : null));
   return A.length === 0 || B.length === 0 ? null : outerProduct(A, B);
 });
-// The linear-algebra set numpy/R users expect beside MDETERM/MINVERSE, on the MatDet /
-// Solve / Eigen nodes' matrixOps kernels. SPECTRUM is the FFT node's one-sided spectrum.
 const numMat = (m: unknown): NumMat | SolError => {
   const rows = Array.isArray(m) ? (Array.isArray(m[0]) ? (m as unknown[][]) : [m as unknown[]]) : [[m]];
   return asNumericMatrix(rows);
@@ -2027,15 +1834,27 @@ registerInternal("SOLVE", (m, b) => {
   const a = numMat(m); if (isSolError(a)) return a;
   const bs = numsOf(b);
   if (matRows(a) !== matCols(a) || bs.length !== matRows(a)) return solError("#SHAPE!", "SOLVE needs a square A with one b per row");
-  return matSolve(a, bs) ?? solError("#DIV/0!", "A is singular — the system has no unique solution");
+  return matSolve(a, bs) ?? solError("#DIV/0!", "A is singular, so the system has no unique solution");
 });
 registerInternal("EIGENVALUES", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.values : solError("#SHAPE!", "EIGENVALUES needs a square, symmetric matrix"); });
 registerInternal("EIGENVECTORS", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.vectors : solError("#SHAPE!", "EIGENVECTORS needs a square, symmetric matrix"); });
-registerInternal("SPECTRUM", (list, rate) => spectrum(numList(list), rate == null ? 1 : Number(rate)).map((r) => [r.frequency, r.magnitude, r.phase]));
-// The plain kx×ky count matrix (counts[x-bin][y-bin]); the bin EDGES are dropped from the
-// formula surface (C4 moved coordinates beside the matrix) — the Histogram node's 2-D mode
-// is the figure. null (no finite pair) → blank.
-registerInternal("HISTOGRAM2D", (xs, ys, kx, ky) => histogram2d(numList(xs), numList(ys), toNum(kx), toNum(ky))?.counts ?? null);
+registerInternal("SPECTRUM", (list, rate) => {
+  const rows = spectrum(numList(list), rate == null ? 1 : isSolError(rate) ? rate : Number(rate));
+  return isSolError(rows) ? rows : rows.map((r) => [r.frequency, r.magnitude, r.phase]);
+});
+// [[D82]] sparklineCell
+registerInternal("SPARKLINE", (range, type) => {
+  const items = Array.isArray(range) ? flat(range) : [range];
+  const err = items.find(isSolError);
+  if (err) return err;
+  const op = (type == null || type === "" ? "line" : toStr(type).trim().toLowerCase()) as SparklineOp;
+  if (!SPARKLINE_OPS.includes(op)) return solError("#VALUE!", "SPARKLINE type is \"line\", \"column\" or \"winloss\"");
+  return sparklineImage(items, op);
+});
+registerInternal("HISTOGRAM2D", (xs, ys, kx, ky) => {
+  const h = histogram2d(numList(xs), numList(ys), toNum(kx), toNum(ky));
+  return isSolError(h) ? h : h?.counts ?? null;
+});
 registerInternal("MDETERM", (v) => {
   const m = numMatrix(v);
   if (m === null || isSolError(m)) return m;
@@ -2048,39 +1867,43 @@ registerInternal("MINVERSE", (v) => {
   if (matRows(m) !== matCols(m)) return solError("#SHAPE!", "Matrix must be square");
   return matInverse(m) ?? solError("#DIV/0!", "Matrix is singular. It has no inverse");
 });
-// WRAPROWS/WRAPCOLS take Excel's optional pad_with; the default is the [[C48]] appendLadder #N/A.
 const wrapPad = (padWith: unknown, what: string) => () =>
   padWith !== undefined && padWith !== null
     ? padWith
     : solError("#N/A", `Padded: the list doesn't fill the last ${what}`);
 registerInternal("WRAPROWS", (list, w, padWith) => {
-  if (list == null || w == null) return null; // a wired blank stays unknown ([[D33]] unwiredNotBlank; the node answers blank too)
-  const width = Math.round(Number(w));
-  if (!Number.isFinite(width) || width < 1) return solError("#VALUE!", "WRAPROWS needs a wrap count of 1 or more");
-  return wrapCells(toList(list), width, "rows", wrapPad(padWith, "row"));
+  if (list == null || w == null) return null;
+  const width = wrapCount(Number(w), "WRAPROWS");
+  return isSolError(width) ? width : wrapCells(toList(list), width, "rows", wrapPad(padWith, "row"));
 });
 registerInternal("WRAPCOLS", (list, w, padWith) => {
   if (list == null || w == null) return null;
-  const width = Math.round(Number(w));
-  if (!Number.isFinite(width) || width < 1) return solError("#VALUE!", "WRAPCOLS needs a wrap count of 1 or more");
-  return wrapCells(toList(list), width, "cols", wrapPad(padWith, "column"));
+  const width = wrapCount(Number(w), "WRAPCOLS");
+  return isSolError(width) ? width : wrapCells(toList(list), width, "cols", wrapPad(padWith, "column"));
 });
-// TOCOL/TOROW flatten exactly as the TableReshape node does: TOCOL row-major,
-// TOROW down the columns (the node's transpose-then-flatten).
-registerInternal("TOCOL", (v) => {
+// [[D85]] columnsStayColumns: TOCOL is a one-column table, TOROW a list (a row); both read row by row, as Excel's do.
+function flattenArgs(fn: string, v: unknown, ignore: unknown, scan: unknown): unknown[] | SolError | null {
   const m = toMatrix(v);
-  return m === null ? null : m.flat();
+  if (m === null) return null;
+  const code = ignore == null ? 0 : toNum(ignore);
+  const skip = SKIP_BY_CODE[code];
+  if (!Number.isInteger(code) || !skip) return solError("#VALUE!", `${fn}'s ignore is 0, 1, 2 or 3`);
+  const byCol = scan == null ? false : logicalOrTypeError(scan, `${fn}'s scan_by_column`);
+  if (isSolError(byCol)) return byCol;
+  if (byCol === null) return solError("#VALUE!", `${fn}'s scan_by_column is TRUE or FALSE`);
+  return flattenCells(m as unknown[][], byCol, skip);
+}
+registerInternal("TOCOL", (v, ignore, scan) => {
+  const cells = flattenArgs("TOCOL", v, ignore, scan);
+  return Array.isArray(cells) ? cells.map((x) => [x]) : cells;
 });
-registerInternal("TOROW", (v) => {
-  const m = toMatrix(v);
-  return m === null ? null : matTranspose(m).flat();
-});
-// SEQUENCE(rows, [cols], [start], [step]) — Excel's 2-D form. The cols=1 call IS the
-// Sequence node (a LIST out, matching its 1-D socket); cols > 1 wraps row-major.
+registerInternal("TOROW", (v, ignore, scan) => flattenArgs("TOROW", v, ignore, scan));
 registerInternal("SEQUENCE", (rows, cols, start, step) => {
-  if (rows == null) return null; // the required arg: a wired blank stays unknown (the node agrees)
-  const r = Math.max(0, Math.floor(Number(rows)));
-  const c = cols == null ? 1 : Math.max(0, Math.floor(Number(cols)));
+  if (rows == null) return null;
+  const r = arrayCount(Number(rows), "SEQUENCE");
+  const c = cols == null ? 1 : arrayCount(Number(cols), "SEQUENCE");
+  if (isSolError(r)) return r;
+  if (isSolError(c)) return c;
   const s0 = start == null ? 1 : Number(start);
   const st = step == null ? 1 : Number(step);
   if (r * c > MAX_GENERATED) {
@@ -2088,99 +1911,96 @@ registerInternal("SEQUENCE", (rows, cols, start, step) => {
   }
   const flat = sequenceList(r * c, s0, st);
   if (c === 1) return flat;
-  return wrapCells(flat, c, "rows", () => null); // exact fill — the pad never fires
+  return wrapCells(flat, c, "rows", () => null); // r × c cells fill exactly, so the pad never fires.
 });
 
-registerInternal("UNIQUE", (v) => (v == null ? null : uniqueList(toList(v))));
-// Excel SORT(array, [sort_index], [sort_order], [by_col]) — 1-D scope: the index
-// must be 1/omitted (a list has one column); order −1 sorts descending.
-registerInternal("SORT", (v, sortIndex, order) => {
+// [[D85]] columnsStayColumns: a list is one row, so these read it as Excel reads a 1 × n range. SORT and UNIQUE work on rows
+// unless by_col is TRUE, so on a list they change nothing without it, exactly as in Excel (the author's call, 2026-09-26).
+const sortOrder = (fn: string, o: unknown): boolean | SolError => {
+  const n = o == null ? 1 : toNum(o);
+  return n === 1 ? false : n === -1 ? true : solError("#VALUE!", `${fn}: sort_order is 1 or -1`);
+};
+const truthy = (v: unknown): boolean => v != null && v !== false && v !== 0;
+registerInternal("UNIQUE", (v, byCol, exactlyOnce) => {
   if (v == null) return null;
-  if (sortIndex != null && Number(sortIndex) !== 1) {
-    return solError("#SHAPE!", "SORT of a list has one column — sort_index must be 1 or omitted");
-  }
-  return sortNumericList(numList(v), Number(order ?? 1) === -1);
+  const { m, list } = asRowsOf(v);
+  return backToList(uniqueGrid(m, truthy(byCol), truthy(exactlyOnce)), list);
 });
-registerInternal("SORTBY", (v, by) => {
-  if (v == null || by == null) return null;
-  const arr = toList(v), keys = numList(by);
-  // A key list of another length pads nothing (the Sort card and Excel refuse it).
-  if (keys.length !== arr.length) return solError("#SHAPE!", `SORTBY's key list has ${keys.length} values but the list has ${arr.length}`);
-  return sortByKeys(arr, keys);
+registerInternal("SORT", (v, sortIndex, order, byCol) => {
+  if (v == null) return null;
+  const desc = sortOrder("SORT", order);
+  if (isSolError(desc)) return desc;
+  const { m, list } = asRowsOf(v);
+  const out = sortGrid(m, sortIndex == null ? 1 : toNum(sortIndex), desc, truthy(byCol));
+  return isSolError(out) ? out : backToList(out, list);
+});
+registerInternal("SORTBY", (v, ...pairs) => {
+  if (v == null) return null;
+  const keys: { key: unknown; desc: boolean }[] = [];
+  for (let i = 0; i < pairs.length; i += 2) {
+    if (pairs[i] == null) return null;
+    const desc = sortOrder("SORTBY", pairs[i + 1]);
+    if (isSolError(desc)) return desc;
+    keys.push({ key: pairs[i], desc });
+  }
+  const { m, list } = asRowsOf(v);
+  const out = sortGridByKeys(m, keys);
+  return isSolError(out) ? out : backToList(out, list);
 });
 registerInternal("FILTER", (v, include, ifEmpty) => {
   if (v == null || include == null) return null;
-  const arr = toList(v), mask = toList(include);
-  if (arr.length !== mask.length) {
-    return solError("#SHAPE!", "FILTER's include array must be the same size as the data");
-  }
-  const out = filterByMask(arr, mask);
+  const { m, list } = asRowsOf(v);
+  const out = filterGrid(m, include);
   if (isSolError(out)) return out;
-  if (out.length === 0 && ifEmpty !== undefined && ifEmpty !== null) return ifEmpty;
-  return out;
+  if ((out.length === 0 || out[0].length === 0) && ifEmpty !== undefined && ifEmpty !== null) return ifEmpty;
+  return list ? (out[0] ?? []) : out;
 });
-// Excel's signed counts, rank-aware, through the ONE takeSlice/dropSlice kernel.
 registerInternal("TAKE", (v, rows, cols) => {
-  if (v == null || rows == null) return null;
-  const n = Math.round(Number(rows));
-  if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
-    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : takeSlice(r, Math.round(Number(cols)))));
-    return takeSlice(m, n);
-  }
-  if (cols != null) return solError("#SHAPE!", "TAKE of a list has no columns — pass one count");
-  return takeSlice(toList(v), n);
+  // A blank count arrives as undefined and keeps its axis ([[D86]]).
+  if (v == null) return null;
+  const n = rows == null ? null : Math.round(Number(rows));
+  const c = cols == null ? null : Math.round(Number(cols));
+  if (n === 0 || c === 0) return solError("#DOMAIN!", "TAKE of 0 keeps nothing (Excel: #CALC!)");
+  const { m, list } = asRowsOf(v);
+  const cut = m.map((r) => (c === null ? [...r] : takeSlice(r, c)));
+  return backToList(n === null ? cut : takeSlice(cut, n), list);
 });
 registerInternal("DROP", (v, rows, cols) => {
-  if (v == null || rows == null) return null;
-  const n = Math.round(Number(rows));
-  // Dropping everything is Excel's #CALC!, never a silent empty array.
+  if (v == null) return null;
+  const n = rows == null ? 0 : Math.round(Number(rows));
+  const c = cols == null ? 0 : Math.round(Number(cols));
   const gone = (len: number, k: number) => len > 0 && Math.abs(k) >= len;
-  if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
-    const c = cols == null ? 0 : Math.round(Number(cols));
-    if (gone(v.length, n) || gone((v[0] as unknown[]).length, c)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
-    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : dropSlice(r, c)));
-    return dropSlice(m, n);
-  }
-  if (cols != null) return solError("#SHAPE!", "DROP of a list has no columns — pass one count");
-  const list = toList(v);
-  if (gone(list.length, n)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
-  return dropSlice(list, n);
+  const { m, list } = asRowsOf(v);
+  if (gone(m.length, n) || gone(m[0]?.length ?? 0, c)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+  return backToList(dropSlice(m.map((r) => (cols == null ? [...r] : dropSlice(r, c))), n), list);
 });
-registerInternal("MODE.MULT", (v) => (v == null ? null : modeMult(toList(v))));
+registerInternal("MODE.MULT", (...vs) => (vs.every((v) => v == null) ? null : modeMult(vs.filter((v) => v != null).flatMap(toList))));
 registerInternal("FREQUENCY", (data, bins) => {
   if (data == null || bins == null) return null;
   return frequencyBins(numList(data), numList(bins));
 });
-// RANDARRAY is volatile — fresh values per evaluation (the node holds its rolls for
-// a recalc pass).
 registerInternal("RANDARRAY", (rows, cols, min, max, integer) => {
-  const r = rows == null ? 1 : Math.max(0, Math.floor(Number(rows)));
-  const c = cols == null ? 1 : Math.max(0, Math.floor(Number(cols)));
+  const r = rows == null ? 1 : arrayCount(Number(rows), "RANDARRAY");
+  const c = cols == null ? 1 : arrayCount(Number(cols), "RANDARRAY");
+  if (isSolError(r)) return r;
+  if (isSolError(c)) return c;
   const lo = min == null ? 0 : Number(min);
   const hi = max == null ? 1 : Number(max);
+  const whole = isTrue(integer);
+  const bad = randArrayRange(lo, hi, whole);
+  if (bad) return bad;
   if (r * c > MAX_GENERATED) {
     return solError("#OVERFLOW!", `RANDARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
   }
-  const draw = () => {
-    const x = lo + Math.random() * (hi - lo);
-    return isTrue(integer) ? Math.round(x) : x;
-  };
-  const flat = Array.from({ length: r * c }, draw);
+  const flat = Array.from({ length: r * c }, () => randArrayDraw(Math.random(), lo, hi, whole));
   if (c === 1) return flat;
-  return wrapCells(flat, c, "rows", () => null); // exact fill — the pad never fires
+  return wrapCells(flat, c, "rows", () => null); // r × c cells fill exactly, so the pad never fires.
 });
-
-// LAMBDA is a SPECIAL FORM — its parameters and body must not be evaluated as
-// expressions, so it cannot be a registration. Argument shapes below mirror the host
-// NODES' positional calls (tableLambda.ts), 1-based, so both surfaces bind identically.
 
 const needLambda = (v: unknown, host: string): LambdaValue | SolError =>
   isLambdaValue(v) ? v : solError("#VALUE!", `${host} needs a LAMBDA as its last argument`);
-/** An eta wrapper (`MAP(x, SQRT)`) declares no params, so it is called with its
- *  MEANINGFUL arity only — never the trailing row/col indices. */
 const etaFn = (lam: LambdaValue, meaningful: number): ((...args: unknown[]) => unknown) =>
   lam.eta ? (...args: unknown[]) => lam.fn(...args.slice(0, meaningful)) : lam.fn;
-/** Rank-preserving cell walk: a list is one ROW ([[D13]] widenNeverNarrow's convention). */
 const asRows = (v: unknown): unknown[][] | null => {
   if (v == null) return null;
   if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];
@@ -2197,7 +2017,7 @@ registerInternal("MAP", (...args: unknown[]) => {
   if (arrays.some((a) => a == null)) return null;
   const shaped = arrays.map((a) => asRows(a)!);
   const rows = Math.max(...shaped.map((m) => m.length));
-  const cols = Math.max(...shaped.flatMap((m) => m.map((r) => r.length)));
+  const cols = shaped.flat().reduce((w, r) => Math.max(w, r.length), 0);
   const cellAt = (m: unknown[][], i: number, j: number) => (i < m.length && j < m[i].length ? m[i][j] : null);
   const fn = etaFn(lam, arrays.length);
   const out = Array.from({ length: rows }, (_, i) =>
@@ -2211,20 +2031,19 @@ registerInternal("BYROW", (v, fn) => {
   if (isSolError(lam)) return lam;
   const m = asRows(v);
   const call = etaFn(lam, 1);
-  return m === null ? null : m.map((row) => call([...row]));
+  // One answer per row, as a column beside the rows it came from ([[D85]] columnsStayColumns).
+  return m === null ? null : m.map((row) => [call([...row])]);
 });
 registerInternal("BYCOL", (v, fn) => {
   const lam = needLambda(fn, "BYCOL");
   if (isSolError(lam)) return lam;
   const m = asRows(v);
   if (m === null) return null;
-  const cols = Math.max(...m.map((r) => r.length), 0);
+  const cols = m.reduce((w, r) => Math.max(w, r.length), 0);
   const call = etaFn(lam, 1);
   return Array.from({ length: cols }, (_, j) => call(m.map((r) => (j < r.length ? r[j] : null))));
 });
 
-// Row-major, calling (acc, value, step). A cell ERROR stops the fold and propagates; a
-// null cell reaches the lambda, whose operators already carry the P6 null contract.
 registerInternal("REDUCE", (init, v, fn) => {
   const lam = needLambda(fn, "REDUCE");
   if (isSolError(lam)) return lam;
@@ -2268,12 +2087,9 @@ registerInternal("MAKEARRAY", (rows, cols, fn) => {
   if (r * c > MAX_GENERATED) {
     return solError("#OVERFLOW!", `MAKEARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
   }
-  const out = Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => lam.fn(i + 1, j + 1)));
-  return c === 1 && r > 0 ? out.map((row) => row[0]) : out; // an n×1 result reads as a LIST
+  return Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => lam.fn(i + 1, j + 1)));
 });
 
-// Groups in FIRST-SEEN order, VALUE-keyed via setKey, and returns the two parallel
-// lists as a 2-column matrix [key, result].
 registerInternal("GROUPBY", (keys, values, fn) => {
   const lam = needLambda(fn, "GROUPBY");
   if (isSolError(lam)) return lam;
@@ -2290,18 +2106,13 @@ registerInternal("GROUPBY", (keys, values, fn) => {
   return [...groups.values()].map((g) => [g.key, call(g.vals)]);
 });
 
-// A stub so the name is REGISTERED and a direct resolveExcelFunction caller gets an
-// honest answer instead of a Formula.js fallthrough.
-registerInternal("LAMBDA", () => solError("#VALUE!", "LAMBDA is a special form — write it inline: MAP(x, LAMBDA(v, v*2))"));
+registerInternal("LAMBDA", () => solError("#VALUE!", "Write LAMBDA inside the call that uses it: MAP(x, LAMBDA(v, v*2))"));
 
-// The Time Zone Convert node's kernel (`timeZone.ts` convertZone): a datetime serial read on
-// one IANA zone's wall clock, rebuilt on another's.
 registerInternal("TIMEZONECONVERT", (dt, from, to) => (dt == null || from == null || to == null ? null : convertZone(toNum(dt), toStr(from), toStr(to))));
 
 registerInternal("REVERSETEXT", (t) => (t == null ? null : reverseText(toStr(t))));
 registerInternal("UNACCENT", (t) => (t == null ? null : unaccent(toStr(t))));
 registerInternal("SLUGIFY", (t, sep) => (t == null ? null : slugify(toStr(t), sep == null ? "-" : toStr(sep))));
-// PADTEXT side = where the padding goes (R str_pad): left | right | center (both).
 registerInternal("PADTEXT", (t, width, side, fill) => {
   if (t == null) return null;
   const sd = side == null ? "right" : String(side).trim().toLowerCase().replace("both", "center");
@@ -2325,8 +2136,6 @@ registerInternal("HASH", (t, algorithm) => {
   return hashText(toStr(t), a);
 });
 registerInternal("UUID", () => uuidV4());
-// TEMPLATE(text, v0, v1, …): positional {0} {1} (or {0:0.00}); a named placeholder is the
-// node's affair (it grows sockets) — here it is a #NAME? so the mistake is loud.
 registerInternal("TEMPLATE", (text, ...values) => {
   if (text == null) return null;
   const t = toStr(text);
@@ -2335,59 +2144,48 @@ registerInternal("TEMPLATE", (text, ...values) => {
   const fmt: TemplateFormatters = { number: (v, spec) => String(resolveExcelFunction("TEXT")!(v, spec ?? "@")) };
   return renderTemplate(t, (n) => values[Number(n)] ?? null, (v, _n, spec) => templateFormat(v, spec, fmt));
 });
-// LOG2's node answers null for x ≤ 0 (its family's quiet-null convention), not a
-// #DOMAIN! the card never shows.
 registerInternal("LOG2", (x) => {
   if (x == null) return null;
   const n = Number(x);
-  return n <= 0 ? null : Math.log2(n);
+  return n <= 0 ? domErr() : Math.log2(n);
 });
 registerInternal("HYPOTENUSE", (x, y) => {
   if (x == null || y == null) return null;
   return Math.hypot(Number(x), Number(y));
 });
-// Variadic and Kleene three-valued like the node (logic.ts BooleanOpNode):
-// coerceLogical per operand, null = unknown flows by Kleene, result is a boolean.
-const kleeneFold = (vals: unknown[], f: (a: Tri, b: Tri) => Tri, seed: Tri): Tri =>
-  vals.map((v) => coerceLogical(v)).reduce<Tri>((a, t) => f(a, t), seed);
-registerInternal("NAND", (...vals) => kleeneNot(kleeneFold(vals, kleeneAnd, true)));
-registerInternal("NOR",  (...vals) => kleeneNot(kleeneFold(vals, kleeneOr, false)));
+const kleeneFold = (fn: string, vals: unknown[], f: (a: Tri, b: Tri) => Tri, seed: Tri): Tri | SolError => {
+  let acc = seed;
+  for (const v of vals) {
+    const t = logicalOrTypeError(v, fn);
+    if (isSolError(t)) return t;
+    acc = f(acc, t);
+  }
+  return acc;
+};
+const kleeneNotOf = (t: Tri | SolError) => (isSolError(t) ? t : kleeneNot(t));
+registerInternal("NAND", (...vals) => kleeneNotOf(kleeneFold("NAND", vals, kleeneAnd, true)));
+registerInternal("NOR",  (...vals) => kleeneNotOf(kleeneFold("NOR", vals, kleeneOr, false)));
 registerInternal("XNOR", (...vals) => {
-  // XNOR = NOT(XOR): TRUE iff an EVEN number of inputs are true; unknown poisons.
   let acc: Tri = false;
   for (const v of vals) {
-    const t = coerceLogical(v);
+    const t = logicalOrTypeError(v, "XNOR");
+    if (isSolError(t)) return t;
     if (t === null) return null;
     acc = acc !== t;
   }
   return !acc;
 });
 
-// Element-wise like the nodes: no listArgs, so broadcastCall lifts each over complex
-// lists — IMSUM/IMPRODUCT zip PAIRWISE, not Excel's sum-a-whole-range.
-
-/** Cx as-is, a real as re+0i, text via Excel's "a+bi" grammar; invalid text is #VALUE!
- *  (Excel says #NUM!) and anything else, logicals included, is #TYPE!. */
-function asCxArg(v: unknown, name: string): Cx | SolError {
-  if (isCx(v)) return v;
-  if (typeof v === "number") return cx(v, 0);
-  if (typeof v === "string") {
-    return parseCx(v) ?? solError("#VALUE!", `${name}: "${v}" is not a complex number — the form is "a+bi"`);
-  }
-  return solError("#TYPE!", `${name} expects a complex number`);
-}
 
 function regCxUnary(name: string, f: (z: Cx) => Cx | number): void {
   registerInternal(name, (v) => {
-    const z = asCxArg(v, name);
+    const z = toCx(v, name);
     return isSolError(z) ? z : f(z);
   });
 }
 regCxUnary("IMREAL", (z) => z.re);
 regCxUnary("IMAGINARY", (z) => z.im);
 regCxUnary("IMABS", cxAbs);
-// IMARGUMENT(0) is 0 here (atan2's convention, the IM Unpack node's answer); Excel
-// makes it #DIV/0!.
 regCxUnary("IMARGUMENT", cxArg);
 regCxUnary("IMCONJUGATE", cxConj);
 regCxUnary("IMEXP", cxExp);
@@ -2410,7 +2208,7 @@ function regCxFold(name: string, f: (a: Cx, b: Cx) => Cx): void {
   registerInternal(name, (...vs) => {
     let acc: Cx | null = null;
     for (const v of vs) {
-      const z = asCxArg(v, name);
+      const z = toCx(v, name);
       if (isSolError(z)) return z;
       acc = acc === null ? z : f(acc, z);
     }
@@ -2422,28 +2220,23 @@ regCxFold("IMPRODUCT", cxMul);
 
 function regCxBinary(name: string, f: (a: Cx, b: Cx) => Cx): void {
   registerInternal(name, (a, b) => {
-    const za = asCxArg(a, name);
+    const za = toCx(a, name);
     if (isSolError(za)) return za;
-    const zb = asCxArg(b, name);
+    const zb = toCx(b, name);
     return isSolError(zb) ? zb : f(za, zb);
   });
 }
 regCxBinary("IMSUB", cxSub);
 regCxBinary("IMDIV", cxDiv);
 
-// IMPOWER's exponent is REAL (the node's contract — complex exponents are out of
-// scope on both surfaces).
 registerInternal("IMPOWER", (v, n) => {
-  const z = asCxArg(v, "IMPOWER");
+  const z = toCx(v, "IMPOWER");
   if (isSolError(z)) return z;
   if (isCx(n)) return solError("#TYPE!", "IMPOWER's exponent is a real number");
   const p = Number(n);
   return Number.isNaN(p) ? solError("#VALUE!", "IMPOWER's exponent must be a number") : cxPow(z, p);
 });
 
-// COMPLEX(re, im, [suffix]) — REAL parts in, tagged Cx out. The suffix argument
-// is validated per Excel ("i"/"j") and then dropped: a tagged Cx has no stored
-// spelling, formatCx always renders `i`.
 registerInternal("COMPLEX", (re, im, suffix) => {
   const r = Number(re), i = Number(im);
   if (Number.isNaN(r) || Number.isNaN(i)) return solError("#VALUE!", "COMPLEX takes real and imaginary NUMBERS");
@@ -2453,8 +2246,6 @@ registerInternal("COMPLEX", (re, im, suffix) => {
   return cx(r, i);
 });
 
-// Both roots as the 2-element list [x₁, x₂] — the Quadratic Roots node's two outputs
-// side by side.
 registerInternal("POLYROOTS", (coeffs) => {
   const rs = polyRoots(numList(coeffs).filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
   return rs === null ? solError("#DOMAIN!", "POLYROOTS needs at least one non-zero coefficient") : rs.map(([re, im]) => cx(re, im));
@@ -2465,18 +2256,11 @@ registerInternal("QUADRATICROOTS", (a, b, c) => {
   return quadraticRoots(na, nb, nc);
 });
 
-// Pair prep is pairPresent (error propagates, missing side drops, ragged tails
-// truncate). Excel optionals the sockets can't express: xs omitted → 1..n, new_xs
-// omitted → the known xs. `const`/`stats` tails are NOT taken.
-
-/** ys + optional xs → pairPresent-prepped numeric arrays (xs defaults 1..n). */
 function regressionPair(ys: unknown, xs: unknown): { error?: SolError; xs: number[]; ys: number[] } {
   const ysList = numList(ys);
   const xsList = xs == null ? ysList.map((_, i) => i + 1) : numList(xs);
   return pairPresent(xsList, ysList);
 }
-/** A prediction-target list: errors propagate, nulls drop (the Trend node's own
- *  read of its new_xs input). */
 function regressionTargets(target: unknown): number[] | SolError {
   const list = numList(target);
   const err = list.find(isSolError);
@@ -2484,22 +2268,43 @@ function regressionTargets(target: unknown): number[] | SolError {
   return list.filter((v): v is number => v !== null).map(Number);
 }
 
-registerInternal("TREND", (ys, xs, newXs) => {
+/** Least squares through the origin, Excel's const = FALSE: slope = Σxy / Σx². */
+const slopeThroughOrigin = (xs: readonly number[], ys: readonly number[]): number | null => {
+  let sxy = 0, sxx = 0;
+  for (let i = 0; i < xs.length; i++) { sxy += xs[i] * ys[i]; sxx += xs[i] * xs[i]; }
+  return xs.length > 0 && sxx > 0 ? sxy / sxx : null;
+};
+registerInternal("TREND", (ys, xs, newXs, konst) => {
   if (ys == null) return null;
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
   const targets = regressionTargets(newXs == null ? (xs ?? pair.xs) : newXs);
   if (isSolError(targets)) return targets;
-  const fit = targets.length > 0 ? linearFit(pair.xs, pair.ys) : null;
+  if (targets.length === 0) return [];
+  // const FALSE forces b = 0, as Excel's TREND does.
+  if (konst != null && !isTrue(konst)) {
+    const m = slopeThroughOrigin(pair.xs, pair.ys);
+    return m == null ? [] : targets.map((x) => m * x);
+  }
+  const fit = linearFit(pair.xs, pair.ys);
   return fit ? targets.map((x) => fit.intercept + fit.slope * x) : [];
 });
-registerInternal("GROWTH", (ys, xs, newXs) => {
+// [[D70]] nullNotEnoughData: a y at or below 0 is a wrong input, as on the Fit card.
+const NONPOSITIVE_Y = () => solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
+registerInternal("GROWTH", (ys, xs, newXs, konst) => {
   if (ys == null) return null;
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
+  if (pair.ys.some((y) => !(y > 0))) return NONPOSITIVE_Y();
   const targets = regressionTargets(newXs == null ? (xs ?? pair.xs) : newXs);
   if (isSolError(targets)) return targets;
-  const fit = targets.length > 0 ? expFit(pair.xs, pair.ys) : null;
+  if (targets.length === 0) return [];
+  // const FALSE forces b = 1, so ln y = x·ln m is fit through the origin, as Excel's GROWTH does.
+  if (konst != null && !isTrue(konst)) {
+    const lnM = slopeThroughOrigin(pair.xs, pair.ys.map(Math.log));
+    return lnM == null ? [] : targets.map((x) => Math.exp(lnM * x));
+  }
+  const fit = expFit(pair.xs, pair.ys);
   return fit ? targets.map((x) => fit.b * Math.pow(fit.m, x)) : [];
 });
 registerInternal("LINEST", (ys, xs) => {
@@ -2507,15 +2312,16 @@ registerInternal("LINEST", (ys, xs) => {
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
   const fit = linearFitR2(pair.xs, pair.ys);
-  // Degenerate fit → null, mirroring the node's three null outputs.
-  return fit ? [fit.slope, fit.intercept, fit.r2] : null;
+  if (fit) return [fit.slope, fit.intercept, fit.r2];
+  return pair.xs.length >= 2 ? solError("#DIV/0!", "Known Xs have zero variance") : null;
 });
 registerInternal("LOGEST", (ys, xs) => {
   if (ys == null) return null;
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
+  if (pair.ys.some((y) => !(y > 0))) return NONPOSITIVE_Y();
   const fit = expFit(pair.xs, pair.ys);
-  // y ≤ 0 or degenerate → the node's quiet empty list.
-  return fit ? [fit.m, fit.b] : [];
+  if (fit) return [fit.m, fit.b];
+  return pair.xs.length >= 2 ? solError("#DIV/0!", "Known Xs have zero variance") : [];
 });
 

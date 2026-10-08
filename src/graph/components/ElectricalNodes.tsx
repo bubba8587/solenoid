@@ -4,9 +4,8 @@ import {
   ESeriesNode as ESeriesNodeType,
   AwgNode as AwgNodeType,
   ResistorCodeNode as ResistorCodeNodeType,
-  RESISTOR_DIGIT, RESISTOR_MULT, RESISTOR_TOL,
-  type ESeriesOp,
 } from "../rete-nodes";
+import { RESISTOR_DIGIT, RESISTOR_MULT, RESISTOR_TOL, type ESeriesOp } from "../nodes/electricalOps";
 import { NodeShell, OpSelect, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";
@@ -69,6 +68,8 @@ const BAND_HEX: Record<string, string> = {
   yellow: "#e8c02e", green: "#3d8b40", blue: "#2f6bc4", violet: "#8a4fbf",
   gray: "#9a9a9a", white: "#f2f2f2", gold: "#c19a34", silver: "#bfbfbf",
 };
+// A carbon-film body, so a black or white band reads in either theme.
+const BODY_HEX = "#d9c7a0";
 
 const cap = (c: string) => c[0].toUpperCase() + c.slice(1);
 const DIGIT_OPTIONS = Object.keys(RESISTOR_DIGIT).map((c) => ({ value: c, label: `${cap(c)} (${RESISTOR_DIGIT[c]})` }));
@@ -83,9 +84,9 @@ function ResistorGlyph({ bands }: { bands: string[] }) {
   return (
     <svg viewBox="0 0 120 28" style={{ width: "100%", height: 28, display: "block" }} aria-hidden="true">
       <line x1="0" y1="14" x2="120" y2="14" stroke="var(--border)" strokeWidth="2" />
-      <rect x={bodyX} y={bodyY} width={bodyW} height={bodyH} rx="7" fill="var(--surface-sunken)" stroke="var(--border)" />
+      <rect x={bodyX} y={bodyY} width={bodyW} height={bodyH} rx="7" fill={BODY_HEX} stroke="var(--border)" />
       {bands.map((c, i) => (
-        <rect key={i} x={xs[i]} y={bodyY + 1} width="7" height={bodyH - 2} fill={BAND_HEX[c] ?? "var(--border)"} />
+        <rect key={i} x={xs[i]} y={bodyY + 1} width="7" height={bodyH - 2} fill={BAND_HEX[c] ?? "var(--border)"} stroke="rgba(0,0,0,0.3)" strokeWidth="0.5" />
       ))}
     </svg>
   );

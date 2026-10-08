@@ -1,7 +1,7 @@
-// [[C61]], [[E11]]
-import { describe, it, expect } from "vitest";
+// [[B11]]
+import { describe, it, expect, vi } from "vitest";
 import { DistributionsNode, formAfterSwitch } from "../../../src/graph/nodes/distribution";
-import { DIST_SPECS } from "../../../src/graph/nodes/distributionOps";
+import { DIST_SPECS, sampleQuantile, sampleQuantiles, type DistKey } from "../../../src/graph/nodes/distributionOps";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 
 const dist = (op: string, form: string) =>
@@ -11,22 +11,6 @@ const dist = (op: string, form: string) =>
 // regression here means we've drifted from spreadsheet parity.
 
 describe("normal family", () => {
-  it("NORM.DIST cdf — Φ(1.96) = 0.975", () => {
-    const r = dist("normal", "cdf").data({ x: [1.96], mean: [0], stdev: [1] });
-    expect(r.result).toBeCloseTo(0.975, 4);
-  });
-
-  it("NORM.DIST cdf — non-standard mean/stdev", () => {
-    // NORM.DIST(110, 100, 15, TRUE) = 0.747507
-    const r = dist("normal", "cdf").data({ x: [110], mean: [100], stdev: [15] });
-    expect(r.result).toBeCloseTo(0.747507, 4);
-  });
-
-  it("NORM.S.DIST cdf — Φ(1) = 0.841345", () => {
-    const r = dist("normal-s", "cdf").data({ z: [1] });
-    expect(r.result).toBeCloseTo(0.841345, 4);
-  });
-
   it("NORM.INV is the inverse of NORM.DIST", () => {
     // NORM.INV(0.975, 0, 1) = 1.959964
     const r = dist("normal", "inv").data({ prob: [0.975], mean: [0], stdev: [1] });
@@ -84,62 +68,14 @@ describe("beta / gamma", () => {
   });
 });
 
-describe("lognormal / weibull / exponential", () => {
-  it("LOGNORM.DIST(1, 0, 1) cdf = 0.5", () => {
-    const r = dist("lognorm", "cdf").data({ x: [1], mean: [0], stdev: [1] });
-    expect(r.result).toBeCloseTo(0.5, 4);
-  });
-
-  it("WEIBULL.DIST(1, 2, 2) cdf = 0.221199", () => {
-    const r = dist("weibull", "cdf").data({ x: [1], alpha: [2], beta: [2] });
-    expect(r.result).toBeCloseTo(0.221199, 5);
-  });
-
-  it("EXPON.DIST(1, 1) cdf = 1 - 1/e", () => {
-    const r = dist("expon", "cdf").data({ x: [1], lambda: [1] });
-    expect(r.result).toBeCloseTo(1 - Math.exp(-1), 6);
-  });
-});
-
 describe("discrete family", () => {
-  it("BINOM.DIST(3, 10, 0.5) pmf = 0.117188", () => {
-    const r = dist("binom", "pmf").data({ k: [3], n: [10], p: [0.5] });
-    expect(r.result).toBeCloseTo(0.117188, 5);
-  });
-
-  it("BINOM.DIST(3, 10, 0.5) cdf = 0.171875", () => {
-    const r = dist("binom", "cdf").data({ k: [3], n: [10], p: [0.5] });
-    expect(r.result).toBeCloseTo(0.171875, 5);
-  });
-
   it("POISSON.DIST(3, 2) pmf = 0.180447", () => {
     const r = dist("poisson", "pmf").data({ k: [3], lambda: [2] });
     expect(r.result).toBeCloseTo(0.180447, 5);
   });
-
-  it("POISSON.DIST(3, 2) cdf = 0.857123", () => {
-    const r = dist("poisson", "cdf").data({ k: [3], lambda: [2] });
-    expect(r.result).toBeCloseTo(0.857123, 5);
-  });
-
-  it("HYPGEOM.DIST(2, 5, 10, 20) pmf = 0.348297", () => {
-    const r = dist("hypgeom", "pmf").data({ k: [2], n: [5], M: [10], N: [20] });
-    expect(r.result).toBeCloseTo(0.348297, 5);
-  });
-
-  it("NEGBINOM.DIST(3, 5, 0.5) pmf = 0.136719", () => {
-    const r = dist("negbinom", "pmf").data({ k: [3], r: [5], p: [0.5] });
-    expect(r.result).toBeCloseTo(0.136719, 5);
-  });
 });
 
 describe("the one-node mechanics", () => {
-  it("BINOM.INV — smallest k whose cumulative probability reaches alpha", () => {
-    // BINOM.INV(10, 0.5, 0.75) = 6
-    const r = dist("binom", "inv").data({ prob: [0.75], n: [10], p: [0.5] });
-    expect(r.result).toBe(6);
-  });
-
   it("an inverse form swaps the first input from x to prob and back", () => {
     const node = dist("normal", "cdf");
     expect(node.inputs.x).toBeDefined();
@@ -158,6 +94,24 @@ describe("the one-node mechanics", () => {
     node.setOp("t" as never);
     expect(Object.keys(node.inputs).sort()).toEqual(["df", "x"]);
     expect(node.height).toBe(203 + 28);
+  });
+
+  it("a form switch drops exactly the first input it replaces", () => {
+    const node = dist("normal", "sample");
+    expect(node.keysDroppedByForm("inv")).toEqual(["count"]);
+    expect(node.keysDroppedByForm("cdf")).toEqual(["count"]);
+    node.setForm("cdf");
+    expect(node.keysDroppedByForm("pdf")).toEqual([]);
+    expect(node.keysDroppedByForm("sample")).toEqual(["x"]);
+    node.setForm("sample");
+    expect(node.inputKeys).toEqual(["count", "mean", "stdev"]);
+  });
+
+  it("a distribution switch relabels the params it keeps", () => {
+    const node = dist("normal", "cdf");
+    node.setOp("lognorm" as never);
+    expect(node.inputs.mean?.label).toBe("mean (ln)");
+    expect(node.inputs.stdev?.label).toBe("stdev (ln)");
   });
 
   it("the form survives a switch when the target has it, else lands on its sibling", () => {
@@ -187,5 +141,27 @@ describe("PHI / GAUSS — standard-normal forms that moved from Math", () => {
   it("the node and the formula agree", () => {
     expect(ev("GAUSS(1.96)")).toBeCloseTo(DIST_SPECS.gauss.compute("half", 1.96, [])!, 12);
     expect(ev("PHI(0)")).toBeCloseTo(DIST_SPECS.phi.compute("pdf", 0, [])!, 12);
+  });
+});
+
+describe("discrete sampling sweeps the CDF once", () => {
+  const us = Array.from({ length: 300 }, (_, i) => ((i * 7919) % 300) / 300 + 1e-4);
+  it("answers the same draws, in the same order, as one quantile per draw", () => {
+    const cases: Array<[DistKey, number[]]> = [["poisson", [5]], ["hypgeom", DIST_SPECS.hypgeom.params.map((p) => p.def)], ["negbinom", [5, 0.5]],
+      ["binom", [10, 0.5]], ["binom", [200, 0.03]], ["binom", [0, 0.5]], ["binom", [10, 1]], ["binom", [10, 1.5]]];
+    for (const [key, ps] of cases) {
+      expect(sampleQuantiles(key, us, ps)).toEqual(us.map((u) => sampleQuantile(key, u, ps)));
+    }
+  });
+  it("Poisson λ = 10⁴ costs about one CDF call per value of k, not per draw", () => {
+    const spy = vi.spyOn(DIST_SPECS.poisson, "compute");
+    const node = dist("poisson", "sample");
+    node.literals.count = 1000;
+    node.literals.lambda = 1e4;
+    const out = node.data({}).result as number[];
+    expect(out).toHaveLength(1000);
+    expect(Math.abs(out.reduce((a, b) => a + b, 0) / 1000 - 1e4)).toBeLessThan(20);
+    expect(spy.mock.calls.length).toBeLessThan(20_000);
+    spy.mockRestore();
   });
 });

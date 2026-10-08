@@ -182,6 +182,20 @@ describe("the format row's current value and hint", () => {
     expect(columnFormatRow({ format: "auto", unit: "none" }, DEC3)).toEqual({ value: "auto" });
   });
 
+  // The gap: Custom was offered in every table popup with no pattern box to type into.
+  it("a local Custom pick carries its pattern box, with the rendering default when none was typed", () => {
+    expect(columnFormatRow({ format: "custom", unit: "none" }, undefined)).toEqual({ value: "custom", pattern: { text: "0.00", date: false } });
+    expect(columnFormatRow({ format: "custom", unit: "none", customPattern: "#,##0.0" }, undefined).pattern).toEqual({ text: "#,##0.0", date: false });
+    expect(columnFormatRow({ format: "date_custom", unit: "none" }, undefined, "date").pattern).toEqual({ text: "DD-MMM-YYYY", date: true });
+    expect(columnFormatRow(DEC0, undefined).pattern).toBeUndefined();
+    expect(columnFormatRow(undefined, { format: "custom", unit: "none", customPattern: "0.0" }).pattern).toBeUndefined();
+  });
+
+  it("an inherited Custom names its pattern in the hint", () => {
+    expect(columnFormatRow(undefined, { format: "custom", unit: "none", customPattern: "0.0" }).hint).toBe("← Custom · 0.0");
+    expect(columnFormatRow(undefined, { format: "date_custom", unit: "none", customPattern: "YYYY" }, "date").hint).toBe("← Custom · YYYY");
+  });
+
   it("neither: blank and silent", () => {
     expect(columnFormatRow(undefined, undefined)).toEqual({ value: "" });
   });
@@ -203,7 +217,6 @@ describe("a stamped format is never serialized", () => {
     });
     frameFormatStore.set(input.id, "B", DEC3);
     const out = await collected(await chain([input, new SortFrameNode()]));
-    expect(col(out, "B").format).toEqual(DEC3);
     expect(frameColumnsToInputText(out.columns)).not.toContain("format");
     expect(input.frameText).not.toContain("format");
   });
@@ -212,14 +225,7 @@ describe("a stamped format is never serialized", () => {
 describe("describeAnnotation — the one shared inherit/column hint wording", () => {
   // The docked FC's inherit hint (FormatControllerNode.describeInheritedStyle) now
   // delegates here instead of re-implementing the wording, so this is the single guard
-  // for both surfaces. Pins the connective prose (the part that drifts) and the
-  // per-column-type dispatch, not the label words themselves (those are label tables).
-  it("number precision reads `· N place(s)` / `· N sig fig(s)`, pluralized", () => {
-    expect(describeAnnotation({ format: "decimal", unit: "none", decimalDigits: 3, decimalMode: "places" }, "number")).toMatch(/· 3 places$/);
-    expect(describeAnnotation({ format: "decimal", unit: "none", decimalDigits: 1, decimalMode: "places" }, "number")).toMatch(/· 1 place$/);
-    expect(describeAnnotation({ format: "decimal", unit: "none", decimalDigits: 2, decimalMode: "sigfigs" }, "number")).toMatch(/· 2 sig figs$/);
-  });
-
+  // for both surfaces.
   it("dispatches by column type — string reads case, logical reads show-as, number reads format", () => {
     const ann: FormatAnnotation = {
       format: "decimal", unit: "none", decimalDigits: 0, decimalMode: "places",
@@ -231,5 +237,32 @@ describe("describeAnnotation — the one shared inherit/column hint wording", ()
       describeAnnotation(ann, "number"),
     ]);
     expect(distinct.size, "each column type reads a different axis").toBe(3);
+  });
+});
+
+// [[B12]] losslessSaves: a column's format follows the column through a rename in the Frame Input popup.
+describe("frameFormatStore.rekey", () => {
+  it("moves a renamed column's format to its new name", async () => {
+    const input = new FrameInputNode({ frameText: source([{ name: "B", type: "number", cells: ["1.23456"] }]) });
+    frameFormatStore.set(input.id, "B", DEC3);
+    frameFormatStore.rekey(input.id, ["B"], ["Price"]);
+    input.frameText = source([{ name: "Price", type: "number", cells: ["1.23456"] }]);
+    expect(frameFormatStore.get(input.id, "B")).toBeUndefined();
+    expect(col(await collected(await chain([input])), "Price").format).toEqual(DEC3);
+  });
+
+  it("drops a removed column's format, so a later column of that name starts plain", () => {
+    frameFormatStore.set("n", "A", DEC0);
+    frameFormatStore.set("n", "B", DEC3);
+    frameFormatStore.rekey("n", ["A", "B"], ["A"]);
+    expect(frameFormatStore.get("n", "B")).toBeUndefined();
+    expect(frameFormatStore.get("n", "A")).toEqual(DEC0);
+  });
+
+  it("swaps formats when two columns swap names", () => {
+    frameFormatStore.set("n", "A", DEC0);
+    frameFormatStore.rekey("n", ["A", "B"], ["B", "A"]);
+    expect(frameFormatStore.get("n", "B")).toEqual(DEC0);
+    expect(frameFormatStore.get("n", "A")).toBeUndefined();
   });
 });

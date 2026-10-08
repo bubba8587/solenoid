@@ -1,10 +1,5 @@
 :root {
-  /* @fontsource-variable bundles these under a " Variable"-suffixed family name
-     (see node_modules/@fontsource-variable/.../index.css). List that first so the
-     bundled webfont is what actually renders; the unsuffixed name is a fallback
-     for systems that happen to have the static font installed, then system-ui.
-     Without the suffix the app silently fell back to system-ui everywhere the
-     static font wasn't installed — e.g. every phone. */
+  /* The " Variable"-suffixed family is the bundled @fontsource webfont and must come first, or phones fall back to system-ui. */
   font-family: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-sans: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-mono: "Atkinson Hyperlegible Mono Variable", "Atkinson Hyperlegible Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
@@ -13,132 +8,79 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Accent — overwritten at runtime by appThemeStore (these are fallbacks). */
   --accent: #56b4e9;
   --accent-soft: rgba(86, 180, 233, 0.14);
   --accent-mid: rgba(86, 180, 233, 0.4);
   --accent-ink: #1a1a1a;
 
-  /* ── Neutral ramp (dark defaults; light overrides below) ──────────────
-     surface = raised chrome (node body, menus, popovers)
-     surface-sunken = recessed fields (inputs, value/result boxes)
-     surface-raised = hover/selected fills inside chrome                     */
   --surface: #1e1e1e;
   --surface-sunken: #141414;
   --surface-raised: #262626;
   --border: #2d2d2d;
   --border-strong: #3a3a3a;
   --border-subtle: #2a2a2a;
-  /* Gauge unfilled-arc track — a neutral gray tuned to read clearly against the
-     node body (--surface), a step stronger than the border tokens (which are too
-     faint here). Mirrored in the light theme below. */
   --gauge-track: #4d5157;
   --text: #e8e8e8;
   --text-bright: #f3f4f5;
   --text-dim: #9aa0a6;
-  /* Lightened from #6b7177 to clear WCAG AA 4.5:1 on the card/sunken surfaces
-     while staying a clear step below --text-dim. */
   --text-muted: #80868e;
 
   --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.4);
   --shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.2);
 
-  /* Node header accent-tint strength. (Selection draws from each item's own
-     --node-accent via an outline — see nodeCard.css / GroupNode.css.) */
   --header-tint: 22%;
 
-  /* ── The accent-mix ladder (DESIGN.md §2, The Accent-Mix Ladder) ──
-     Every accent-derived shade picks a rung; no ad-hoc percentages. Each rung
-     is a STRENGTH — the mix target stays at the use site (--text for ink,
-     --border for edges, transparent for glows). */
-  --mix-hairline: 30%; /* tinted hairline: markdown table edges, io-row rules */
-  --mix-edge: 45%;     /* structural edge on a field/bar */
-  --mix-emphasis: 60%; /* active/operation edge — the quiet-emphasis step */
-  --mix-ink: 55%;      /* accent-tinted glyph/label, mixed toward --text */
-  --mix-glow: 28%;     /* selection glow alpha, mixed toward transparent */
-  /* Selection ring: accent pulled toward a contrast pole — lighter in dark
-     mode; lightness-flipped AND nerfed harder in light (author 2026-07-05:
-     a 68–70% mix toward black read as a harsh near-black frame over a pale
-     card; 80% keeps a visible darker-than-hover step). */
+  --mix-hairline: 30%;
+  --mix-edge: 45%;
+  --mix-emphasis: 60%;
+  --mix-ink: 55%;
+  --mix-glow: 28%;
   --mix-ring: 70%;
   --ring-into: #fff;
 
-  /* Socket type colors (--sock-*) are now written from the active palette by
-     appTheme.ts (see SOCKET_VARS in palette.ts): each scalar is a palette slot,
-     arrays are a darker sibling, matrices a punchier hue-shifted one. So a palette
-     switch retints every socket dot/cable/legend swatch. Only the ring stays here. */
   --socket-ring: rgba(0, 0, 0, 0.3);
 
-  /* Selected-cable stroke. White pops on the dark canvas; light mode swaps to
-     a dark neutral so the cable doesn't wash out on the near-white ground. */
   --cable-selected: #ffffff;
 
-  /* ── Semantic aliases used by the app chrome ───────────────────────── */
   --app-bg: #141414;
   --canvas-bg: #0b0b0b;
   --canvas-dot: #3b3b3b;
-  /* Chrome fills are OPAQUE — bars, panels and floating overlays are the raised
-     surface, never a window onto the graph behind them. */
   --panel-bg: var(--surface);
   --panel-border: var(--border);
-  /* Floating overlay chrome (socket legend, minimap, pins, alerts) — needs to
-     read clearly ABOVE a busy graph, so: the opaque surface, a stronger always-on
-     border (vs the subtle --border), and a deeper layered shadow. */
   --overlay-bg: var(--surface);
   --overlay-border: #474c54;
-  /* Right-side overlay chrome reads better defined by its border than floated by a
-     big shadow — a wide soft shadow spreads heavier on the larger panels (the
-     socket legend looked far heavier than the minimap with the SAME shadow). So:
-     thicker always-on border + a lighter, tighter shadow. Width is theme-agnostic,
-     defined once here; the light ramp only re-softens the shadow tint. */
   --overlay-border-width: 2px;
   --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
-  /* Dock edge: the right docks' (Inspector, Report) leftward lift — cards scroll
-     off the page under that edge, so the border alone reads flat. Minimal on
-     purpose, and it stays under the bars (docks sit below the header's z). */
   --dock-shadow: -4px 0 12px rgba(0, 0, 0, 0.25);
   --btn-bg: var(--surface-sunken);
   --btn-hover: #1f1f1f;
   --btn-border: var(--border);
   --btn-border-hover: var(--border-strong);
 
-  /* Brand wordmark fill. Dark mode tints it with the live accent; light mode
-     swaps to a dark neutral (set below) so it doesn't wash out on near-white. */
   --wordmark-color: var(--accent);
 }
 
 :root[data-theme="light"] {
-  /* Card body sits a touch off-white; fields are the brightest layer (white)
-     so number boxes / dropdowns read as familiar input fields, not gray
-     recesses, and the canvas stays a shade grayer so cards lift off it. */
   --surface: #fbfcfd;
   --surface-sunken: #ffffff;
   --surface-raised: #eef1f5;
   --border: #ccd2da;
   --border-strong: #b2bac4;
   --border-subtle: #dfe3e9;
-  /* Gauge track (see dark theme) — a clear medium gray on the near-white body. */
   --gauge-track: #a8b0bb;
   --text: #1b1e23;
   --text-bright: #0d0f12;
   --text-dim: #5b636b;
-  /* Darkened from #6e7682 to clear WCAG AA 4.5:1 on the near-white surfaces. */
   --text-muted: #6a717b;
 
   --shadow-card: 0 1px 2px rgba(20, 30, 50, 0.08);
   --shadow-pop: 0 4px 14px rgba(20, 30, 50, 0.06);
 
-  /* Stronger header tint (pale-on-white needs more). */
   --header-tint: 52%;
 
-  /* Accent-mix ladder, light overrides: ring flips toward black and nerfs
-     harder (see the dark-root ladder comment). Strength rungs stay the same. */
   --mix-ring: 80%;
   --ring-into: #000;
 
-  /* Socket --sock-* colors are written from the palette by appTheme (light mode
-     shifts each slot via themeAccent before deriving array/matrix siblings), so the
-     per-var light overrides that used to live here are gone. Ring + cable only. */
   --socket-ring: rgba(0, 0, 0, 0.2);
   --cable-selected: #2a2f37;
 
@@ -160,11 +102,7 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  /* Stop mobile pull-to-refresh / rubber-band bounce so a drag that starts on
-     the canvas stays a canvas pan instead of scrolling the page. */
   overscroll-behavior: none;
-  /* Drop the gray flash on tap; chrome buttons signal touch via their own
-     :active styles instead. */
   -webkit-tap-highlight-color: transparent;
   background: var(--app-bg);
   color: var(--text);
@@ -173,20 +111,11 @@ body,
 .solenoid-app {
   position: relative;
   width: 100vw;
-  /* Track the VISUAL viewport (dvh), not the layout viewport: on mobile-browser
-     Chrome (phone OR tablet-running-desktop-UI) 100vh includes the strip behind
-     the URL bar / toolbars, so every bottom-anchored descendant (status bar,
-     minimap, navigator) lands below the usable screen. Desktop browsers have no
-     dynamic toolbars, so dvh == vh there; the plain vh line is the fallback for
-     engines without dvh. */
   height: 100vh;
   height: 100dvh;
 }
 
-/* Form controls don't inherit font-family from the UA stylesheet — a bare
-   <button> / <select> / <input> falls back to the platform default. Force them
-   to the app font app-wide so every control matches Atkinson Hyperlegible
-   (each element still sets its own size/weight). */
+/* Form controls don't inherit font-family from the UA stylesheet, so force the app font on them. */
 button,
 input,
 select,

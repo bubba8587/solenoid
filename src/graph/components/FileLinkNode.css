@@ -1,6 +1,4 @@
-/* Canvas File Link — a free-floating link to a file on disk (the path, not the
-   bytes). Mirrors the Image node's chrome (drag-handle bar, chevron, selection
-   ring, neutral slate accent) with a preview row + Open button instead of a well. */
+/* Mirrors the Image node's chrome, with a preview row and an Open button instead of a well. */
 .solenoid-filelink {
   position: relative;
   width: 240px; /* fixed — the node owns no resizable width (see FileLinkNode class) */
@@ -16,8 +14,7 @@
 .solenoid-filelink * { box-sizing: border-box; }
 .solenoid-filelink:active { cursor: grabbing; }
 
-/* Header bar = drag handle. The chevron / name / attach button stop pointerdown so
-   they don't start a drag; the leftover strip stays grabbable. */
+/* The chevron, name and attach button stop pointerdown; the leftover strip stays grabbable. */
 .solenoid-filelink__bar {
   position: relative;
   display: flex;
@@ -75,8 +72,7 @@
 .solenoid-filelink__name:focus { color: var(--text); }
 .solenoid-filelink__name::placeholder { color: currentColor; opacity: 0.5; }
 
-/* Click-to-edit title (not editing): fit-content so the rest of the bar stays a
-   drag handle — mirrors the Note's name-display and the standard node header. */
+/* fit-content, so the rest of the bar stays a drag handle. */
 .solenoid-filelink__name-display {
   width: fit-content;
   max-width: calc(100% - 26px);
@@ -119,8 +115,7 @@
   border-radius: 0 0 5px 5px;
 }
 
-/* Preview row: a file glyph (with the extension tucked into its corner) beside the
-   linked file's name. The name wraps rather than widen the card. */
+/* The name wraps rather than widen the card. */
 .solenoid-filelink__preview {
   display: flex;
   align-items: center;
@@ -204,8 +199,7 @@
   line-height: 1.3;
 }
 
-/* Selection ring — mirrors the Image node's (own ring at the card radius, above
-   the 1px border, so pull it out to -1px). */
+/* The card has a 1px border, so the ring pulls out to -1px. */
 .solenoid-filelink--selected {
   box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
 }

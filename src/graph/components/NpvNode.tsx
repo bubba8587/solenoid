@@ -1,9 +1,8 @@
-// [[D10]] onePrunePath
 import { CASHFLOW_OP_OPTIONS } from "../rete-nodes";
 import type { NPVNode as NPVNodeType, CashflowOp } from "../rete-nodes";
 import { useState } from "react";
 import { processGraph } from "../process";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { OpToggle } from "./SegToggle";
@@ -17,7 +16,7 @@ export function NpvComponent({ data, emit }: NodeProps<NPVNodeType>) {
     if (next === "periods") await dropInputCables(data.id, ["dates"]);
     data.setOp(next);
     setOp(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 

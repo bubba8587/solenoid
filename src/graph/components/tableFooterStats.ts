@@ -1,9 +1,6 @@
 // [[C24]] arraySemantics (nulls and errors in a column profile)
-// The Table popup's summary-footer statistics: one pure module so the picker's
-// choices, the value it shows and its formatting are testable in a node env (the
-// component only wires them to a <select>). Values come from the shared ColumnProfile
-// (frameVerbs describeColumn) plus the two logical counts the summary pass collects.
-import type { ColumnProfile } from "../frameVerbs";
+import { describeColumn, type ColumnProfile } from "../frameVerbs";
+import { aggregate } from "../nodes/statsOps";
 import { formatScalar } from "./format";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 
@@ -14,13 +11,25 @@ export type FooterStat =
   | "checked" | "unchecked"
   | "count" | "distinct" | "blank" | "error";
 
-// profile + sum (numeric) + the TRUE/FALSE tallies (logical); one per column.
 export type ColSummary = {
   profile: ColumnProfile;
   sum: number | null;
   checked: number | null;
   unchecked: number | null;
 };
+
+/** One column's footer figures over every row. */
+export function summarizeColumn(values: readonly unknown[], type: FooterColType): ColSummary {
+  const profile = describeColumn(values, type);
+  let sum: number | null = null;
+  if (type === "number") {
+    const r = aggregate("sum", values.filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
+    sum = typeof r === "number" ? r : null;
+  }
+  const checked = type === "logical" ? values.filter((v) => v === true).length : null;
+  const unchecked = type === "logical" ? values.filter((v) => v === false).length : null;
+  return { profile, sum, checked, unchecked };
+}
 
 export const FOOTER_STAT_LABEL: Record<FooterStat, string> = {
   sum: "Sum", avg: "Average", min: "Min", max: "Max", median: "Median",
@@ -30,9 +39,7 @@ export const FOOTER_STAT_LABEL: Record<FooterStat, string> = {
   count: "Count", distinct: "Distinct", blank: "Empty", error: "Errors",
 };
 
-// The presence stats every column offers, after its type-specific ones.
 const COMMON_STATS: readonly FooterStat[] = ["count", "distinct", "blank", "error"];
-// The picker's options, in order, keyed by column type.
 export const STATS_BY_TYPE: Record<FooterColType, readonly FooterStat[]> = {
   number: ["sum", "avg", "min", "max", "median", "range", "stddev", ...COMMON_STATS],
   date: ["earliest", "latest", ...COMMON_STATS],
@@ -40,11 +47,13 @@ export const STATS_BY_TYPE: Record<FooterColType, readonly FooterStat[]> = {
   string: [...COMMON_STATS],
 };
 
-// The stat a column shows until one is picked. Kept as the long-standing default
-// (Sum for a number column, Count otherwise) — the type-specific stats are one pick
-// away in the dropdown.
 export function defaultFooterStat(type: FooterColType): FooterStat {
   return type === "number" ? "sum" : "count";
+}
+
+/** The statistic a column's footer shows: the pick while the column's type still offers it, else the type's default. */
+export function footerStatFor(type: FooterColType, picked: FooterStat | undefined): FooterStat {
+  return picked !== undefined && STATS_BY_TYPE[type].includes(picked) ? picked : defaultFooterStat(type);
 }
 
 export function footerStatValue(stat: FooterStat, s: ColSummary): number | null {
@@ -55,8 +64,6 @@ export function footerStatValue(stat: FooterStat, s: ColSummary): number | null 
     case "min": return p.min;
     case "max": return p.max;
     case "median": return p.median;
-    // A date column's min/max are its serial bounds — earliest/latest are the same
-    // pair, formatted as dates below.
     case "range": return p.min != null && p.max != null ? p.max - p.min : null;
     case "stddev": return p.std;
     case "earliest": return p.min;
@@ -70,8 +77,10 @@ export function footerStatValue(stat: FooterStat, s: ColSummary): number | null 
   }
 }
 
-// A date bound reads as a formatted date, not a raw serial; everything else is a plain
-// number. Missing (no data) shows an em dash.
+/** A statistic in the column's own units (a sum, a mean, the latest date), which reads through the column's format like a cell; the rest are counts. */
+const IN_COLUMN_UNITS: ReadonlySet<FooterStat> = new Set(["sum", "avg", "min", "max", "median", "range", "stddev", "earliest", "latest"]);
+export const statReadsAsCell = (stat: FooterStat): boolean => IN_COLUMN_UNITS.has(stat);
+
 export function formatFooterStat(stat: FooterStat, v: number | null): string {
   if (v == null) return "—";
   if (stat === "earliest" || stat === "latest") return formatDateSerial(v, DEFAULT_DATE_FORMAT);

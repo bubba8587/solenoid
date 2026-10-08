@@ -1,29 +1,28 @@
-// [[C8]] declareOnce (rendered from SETTINGS_SCHEMA), [[C98]] paletteMirrorsMenubar (a device-greyed setting is greyed here too)
+// [[C98]] paletteMirrorsMenubar
+import { SearchField } from "./components/SearchField";
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { apiKeyStore } from "./apiKeyStore";
 import { AI_PROVIDER, AI_ENABLED } from "./aiKey";
-import { IS_MOBILE } from "./coarse";
-import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
+import { isMobile } from "./coarse";
+import { packsStore, allPacks, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
+import { appThemeStore } from "./appTheme";
 import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
-import { getEditor } from "./process";
 import { docMetaStore } from "./docMetaStore";
 import { networkAllowed, allowNetwork } from "./connectionStore";
-import { rebuildGroupMembership } from "./groupMembership";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
 
-// Rendered from SETTINGS_SCHEMA — add a field there and its control appears here.
 
-// A desktop-only setting greys rather than hides, so the page keeps one shape and a
-// user who knows the desktop app still finds the row.
 const MOBILE_NA = "Not available in mobile mode.";
-const naOnThisDevice = (field: SettingField): boolean => IS_MOBILE && !!field.disabledOnMobile;
+const DESKTOP_ONLY = "Available in the desktop app only.";
+const naOnThisDevice = (field: SettingField): boolean => (isMobile() && !!field.disabledOnMobile) || (!isDesktop() && !!field.desktopOnly);
+const naNote = (field: SettingField): string => (!isDesktop() && field.desktopOnly ? DESKTOP_ONLY : MOBILE_NA);
 
 function Switch({ on, onClick, label, disabled }: { on: boolean; onClick: () => void; label: string; disabled?: boolean }) {
   return (
@@ -46,8 +45,7 @@ function Row({ label, help, on, onToggle, disabled, disabledNote }: {
   disabled?: boolean; disabledNote?: string;
 }) {
   return (
-    // Must stay a <label> so a click anywhere on the row reaches the switch; the
-    // Switch's own aria-label keeps the help text out of the announced name.
+    // Must stay a <label> so a click anywhere on the row reaches the switch.
     <label className={`solenoid-settings__row${disabled ? " solenoid-settings__row--disabled" : ""}`}>
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{label}</span>
@@ -66,14 +64,13 @@ function Toggle({ field }: { field: SettingField }) {
       label={field.label}
       help={field.help}
       disabled={off}
-      disabledNote={MOBILE_NA}
+      disabledNote={naNote(field)}
       on={settingsStore.get(field.key) as boolean}
       onToggle={() => settingsStore.toggle(field.key as Parameters<typeof settingsStore.toggle>[0])}
     />
   );
 }
 
-// A mutually-exclusive choice: a row of buttons, one highlighted.
 function SegmentRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
   const off = naOnThisDevice(field);
@@ -82,7 +79,7 @@ function SegmentRow({ field }: { field: SettingField }) {
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{field.label}</span>
         {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
-        {off && <span className="solenoid-settings__muted">{MOBILE_NA}</span>}
+        {off && <span className="solenoid-settings__muted">{naNote(field)}</span>}
       </span>
       <span className="solenoid-settings__segment" role="radiogroup">
         {(field.options ?? []).map((o) => (
@@ -103,7 +100,6 @@ function SegmentRow({ field }: { field: SettingField }) {
   );
 }
 
-// A path setting; the picker is desktop-only (no filesystem in the browser).
 function FolderRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
   const desktop = isDesktop();
@@ -128,10 +124,6 @@ function FolderRow({ field }: { field: SettingField }) {
   );
 }
 
-// The open document's network permission (C2). Own docs connect freely and the
-// "Always allow network" toggle above covers the standing choice, so this appears
-// ONLY for a foreign, still-undecided doc — the way back to Allow after its notice
-// is dismissed. No row otherwise (it carried no control).
 function NetworkDocRow() {
   useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
@@ -149,8 +141,8 @@ function NetworkDocRow() {
   );
 }
 
-// Commits on blur / Enter, the typed-field convention — never per keystroke.
 function TextRow({ field }: { field: SettingField }) {
+  useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
   const value = settingsStore.get(field.key) as string;
   const [draft, setDraft] = useState(value);
   const commit = () => settingsStore.set(field.key, draft.trim() as never);
@@ -164,7 +156,7 @@ function TextRow({ field }: { field: SettingField }) {
         <input
           type="text"
           className="solenoid-settings__key-input"
-          placeholder={field.placeholder}
+          placeholder={typeof field.placeholder === "function" ? field.placeholder(settingsStore.get) : field.placeholder}
           value={draft}
           spellCheck={false}
           autoComplete="off"
@@ -177,15 +169,12 @@ function TextRow({ field }: { field: SettingField }) {
   );
 }
 
-// Bound to paletteStore, not settingsStore, so it can't reuse SegmentRow. The group
-// member-dot store caches resolved hexes, so a palette change must rebuild it.
 function PaletteSection() {
   useSyncExternalStore(paletteStore.subscribe, paletteStore.version);
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const active = paletteStore.activeBase();
   function pick(name: PaletteChoice) {
     paletteStore.setActiveBase(name);
-    const ed = getEditor();
-    if (ed) rebuildGroupMembership(ed);
   }
   return (
     <div className="solenoid-settings__section">
@@ -216,13 +205,12 @@ function PaletteSection() {
               Edit custom…
             </button>
           </div>
-          <SwatchGrid readOnly />
+          <SwatchGrid value={appThemeStore.getAccent()} onPick={(c) => appThemeStore.setAccent(c)} />
         </div>
       </div>
     </div>
   );
 }
-// HTML-in-Canvas vs the permanent DOM renderer, gated on the Chrome flag.
 function RendererSection() {
   const mode = useRenderMode();
   const [supported] = useState(supportsHtmlInCanvas);
@@ -247,14 +235,11 @@ function RendererSection() {
   );
 }
 
-const PACK_GROUP_ORDER = ["Everyday", "Analysis", "Science & Engineering"];
 
 function PacksSection() {
   useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const builtin = allPacks().filter((p) => p.builtin);
   const custom = loadCustomPacks();
-  // Accordion groups by each pack's declared group; an undeclared one lands in Other
-  // rather than vanishing.
   const groupNames = [...PACK_GROUP_ORDER, "Other"];
   const grouped = groupNames
     .map((g) => ({
@@ -359,7 +344,6 @@ function ApiKeysSection() {
   );
 }
 
-// Its own section: this key gates the command palette's AI mode, not a data node.
 function AiSection() {
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
   return (
@@ -385,8 +369,6 @@ function renderField(f: SettingField): ReactNode {
     : <Toggle key={f.key} field={f} />;
 }
 
-// Render a section's fields, folding consecutive fields that share an `accordion`
-// title into one collapsible <details> (same chrome as the Packs accordion).
 function SectionFields({ fields }: { fields: SettingField[] }) {
   const out: ReactNode[] = [];
   for (let i = 0; i < fields.length; ) {
@@ -409,39 +391,87 @@ function SectionFields({ fields }: { fields: SettingField[] }) {
   return <>{out}</>;
 }
 
+/** Every word typed appears somewhere in the text, in any order and case. */
+function matches(query: string, ...texts: (string | undefined)[]): boolean {
+  const hay = texts.filter(Boolean).join(" ").toLowerCase();
+  return query.toLowerCase().split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
+}
+
+/** The settings whose label, help or section name match, flat: a match opens no accordion it would hide in. */
+function SearchResults({ query }: { query: string }) {
+  const sections = SETTINGS_SCHEMA
+    .map((section) => ({ title: section.title, fields: section.fields.filter((f) => matches(query, section.title, f.label, f.help, f.accordion)) }))
+    .filter((s) => s.fields.length > 0);
+  const packs = allPacks().filter((p) => matches(query, "node packs", p.name, p.description, p.group));
+  const fixed = [
+    matches(query, "appearance color palette accent theme") && <PaletteSection key="palette" />,
+    matches(query, "renderer html canvas gpu") && <RendererSection key="renderer" />,
+    AI_ENABLED && matches(query, "ai anthropic api key assistant") && <AiSection key="ai" />,
+    matches(query, "data connection api keys fred alpha vantage") && <ApiKeysSection key="keys" />,
+  ].filter(Boolean);
+  if (sections.length === 0 && packs.length === 0 && fixed.length === 0) {
+    return <div className="solenoid-settings__note">No setting matches “{query}”.</div>;
+  }
+  return (
+    <>
+      {sections.map((section) => (
+        <div key={section.title} className="solenoid-settings__section">
+          <div className="solenoid-settings__section-title">{section.title}</div>
+          {section.fields.map(renderField)}
+        </div>
+      ))}
+      {packs.length > 0 && (
+        <div className="solenoid-settings__section">
+          <div className="solenoid-settings__section-title">Node Packs</div>
+          {packs.map((p) => <Row key={p.id} label={p.name} help={p.description} on={packsStore.isActive(p.id)} onToggle={() => packsStore.toggle(p.id)} />)}
+        </div>
+      )}
+      {fixed}
+    </>
+  );
+}
+
 export function Settings() {
   const open = useSyncExternalStore(settingsPanel.subscribe, settingsPanel.get);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
+  useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const panelRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
   useFocusTrap(open, panelRef);
 
   useEscapeToClose(() => settingsPanel.close(), open);
 
   if (!open) return null;
+  const q = query.trim();
 
   return (
     <div className="solenoid-settings" onPointerDown={() => settingsPanel.close()}>
       <div ref={panelRef} className="solenoid-settings__panel" role="dialog" aria-modal="true" aria-label="Settings" onPointerDown={(e) => e.stopPropagation()}>
         <div className="solenoid-settings__header">
           <span className="solenoid-settings__title">Settings</span>
+          <SearchField className="solenoid-settings__search" value={query} onChange={setQuery} placeholder="Search settings" label="Search settings" />
           <button className="solenoid-settings__close" onClick={() => settingsPanel.close()} aria-label="Close">×</button>
         </div>
         {/* Section order: Appearance, Canvas, View, Data, Obsidian (the schema, in
             array order), Renderer, Packs — then the credential sections (AI, API
             keys) trail at the bottom. */}
         <div className="solenoid-settings__body">
-          <PaletteSection />
-          {SETTINGS_SCHEMA.map((section) => (
-            <div key={section.title} className="solenoid-settings__section">
-              <div className="solenoid-settings__section-title">{section.title}</div>
-              <SectionFields fields={section.fields} />
-              {section.title === "Data" && <NetworkDocRow />}
-            </div>
-          ))}
-          <RendererSection />
-          <PacksSection />
-          {AI_ENABLED && <AiSection />}
-          <ApiKeysSection />
+          {q ? <SearchResults query={q} /> : (
+            <>
+              <PaletteSection />
+              {SETTINGS_SCHEMA.map((section) => (
+                <div key={section.title} className="solenoid-settings__section">
+                  <div className="solenoid-settings__section-title">{section.title}</div>
+                  <SectionFields fields={section.fields} />
+                  {section.title === "Data" && <NetworkDocRow />}
+                </div>
+              ))}
+              <RendererSection />
+              <PacksSection />
+              {AI_ENABLED && <AiSection />}
+              <ApiKeysSection />
+            </>
+          )}
         </div>
       </div>
     </div>

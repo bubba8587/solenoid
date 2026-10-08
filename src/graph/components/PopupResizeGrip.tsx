@@ -1,15 +1,9 @@
 import { type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { clamp } from "../nodes/mathUtils";
 
-// The corner resize grip for a centered popup — the screen-space sibling of the
-// canvas FieldResizeGrip (same module-scope drag so a re-render mid-gesture can't
-// drop it, same `.solenoid-field-resize` mark). A popup is CENTERED by its overlay,
-// so growth is symmetric about the center: both edges move, which means the card
-// grows by TWICE the pointer delta and the corner under the pointer tracks it.
-
 export type PopupSize = { w: number; h: number };
 
-// Leave the overlay's 10px padding on each side.
+// The overlay's 10px padding on each side.
 const VIEWPORT_MARGIN = 20;
 
 type Drag = { sx: number; sy: number; startW: number; startH: number; min: PopupSize; set: (s: PopupSize) => void };
@@ -36,7 +30,6 @@ export function PopupResizeGrip({ cardRef, min, onResize }: {
   onResize: (s: PopupSize) => void;
 }) {
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    // Don't let the press reach the overlay (which closes) or start a text selection.
     e.stopPropagation();
     e.preventDefault();
     const el = cardRef.current;

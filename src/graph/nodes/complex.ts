@@ -4,38 +4,27 @@ import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complex
 import { solError, isSolError, type SolError } from "../errorValue";
 import { cellShortCircuit, COMPUTE } from "../valueKinds";
 import {
-  cx, isCx, type Cx,
+  cx, toCx, type Cx,
   cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
   cxSqrt, cxConj, cxSin, cxCos, cxTan, cxSinh, cxCosh, cxSec, cxCsc, cxCot,
   cxSech, cxCsch, quadraticRoots,
 } from "../cxValue";
 
-// The tagged Cx ([[D44]] tagSpecialScalars) and its kernels live in ../cxValue, RETE-FREE so the
-// formula path and the display layer need not load the editor; re-exported here.
 export { cx, isCx, formatCx, type Cx } from "../cxValue";
 
-// The family keeps its own broadcaster: shared.ts's `broadcastCells` constrains the
-// element type to string | number | boolean. No `guardFinite` either — the complex
-// ops have their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
+// No `guardFinite` here: the complex ops keep their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
 
-/** One tagged operand: `list` is null when the value is a scalar. */
 type Operand<T> = { scalar: T | SolError | null; list: (T | SolError | null)[] | null };
 
-/** Tag a COMPLEX operand. A scalar is a tagged Cx ([[D44]] tagSpecialScalars) — no structural sniff. */
-function cxOp(v: Cx | (Cx | SolError | null)[] | SolError | null): Operand<Cx> {
-  if (v === null || isSolError(v)) return { scalar: v, list: null };
-  return isCx(v)
-    ? { scalar: v, list: null }
-    : { scalar: null, list: v as (Cx | SolError | null)[] };
+function cxOp(v: unknown, name: string): Operand<Cx> {
+  const one = (e: unknown): Cx | SolError | null => (e === null || e === undefined || isSolError(e) ? (e ?? null) as SolError | null : toCx(e, name));
+  return Array.isArray(v) ? { scalar: null, list: v.map(one) } : { scalar: one(v), list: null };
 }
 
-/** Tag a REAL operand. A number is never an array, so `Array.isArray` suffices. */
 function numOp(v: number | (number | SolError | null)[] | SolError | null): Operand<number> {
   return Array.isArray(v) ? { scalar: null, list: v } : { scalar: v, list: null };
 }
 
-/** Per element when any operand is a list, else once — the same ragged-zip and
- *  per-cell error/missing contract as `broadcast`. Overloaded by arity. */
 function broadcastComplex<A, R>(
   fn: (a: A) => R | SolError | null,
   a: Operand<A>,
@@ -63,10 +52,10 @@ function broadcastComplex(
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (unknown | SolError | null)[] = [];
   for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; } // ragged pad
+    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
     const ops = args.map((a) => (a.list ? a.list[i] : a.scalar));
     const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; } // error / missing propagates
+    if (sc !== COMPUTE) { out.push(sc); continue; }
     out.push(call(...ops));
   }
   return out;
@@ -121,7 +110,7 @@ export class ComplexUnpackNode extends ClassicPreset.Node {
 
   data(inputs: { z?: (Cx | (Cx | SolError | null)[])[] }) {
     const z = inputs.z?.[0] ?? null;
-    const part = (f: (c: Cx) => number) => broadcastComplex(f, cxOp(z));
+    const part = (f: (c: Cx) => number) => broadcastComplex(f, cxOp(z, this.label));
     this.cachedRe  = part((c) => c.re);
     this.cachedIm  = part((c) => c.im);
     this.cachedAbs = part(cxAbs);
@@ -188,7 +177,7 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
         case "sech":  return cxSech(z);
         case "csch":  return cxCsch(z);
       }
-    }, cxOp(inputs.z?.[0] ?? null));
+    }, cxOp(inputs.z?.[0] ?? null, this.label));
     this.cachedResult = result;
     return { result };
   }
@@ -230,8 +219,8 @@ export class ComplexBinaryNode extends ClassicPreset.Node {
         case "div":     return cxDiv(a, b);
       }
     },
-      cxOp(inputs.a?.[0] ?? null),
-      cxOp(inputs.b?.[0] ?? null));
+      cxOp(inputs.a?.[0] ?? null, this.label),
+      cxOp(inputs.b?.[0] ?? null, this.label));
     this.cachedResult = result;
     return { result };
   }
@@ -255,11 +244,9 @@ export class ComplexPowerNode extends ClassicPreset.Node {
     z?: (Cx | (Cx | SolError | null)[])[];
     n?: (number | number[])[];
   }): { result: CellResult<Cx> } {
-    // The one node with operands of DIFFERENT element kinds — the tags are what
-    // keep a two-element real list `[1, 2]` from reading as a scalar complex.
     const result = broadcastComplex(
       (z: Cx, n: number) => cxPow(z, n),
-      cxOp(inputs.z?.[0] ?? null),
+      cxOp(inputs.z?.[0] ?? null, this.label),
       numOp(readInput(inputs.n, this.literals.n ?? 2)),
     );
     this.cachedResult = result;
@@ -267,14 +254,6 @@ export class ComplexPowerNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Quadratic roots (complex) ────────────────────────────────────────────────
-// Both roots of a·x² + b·x + c = 0 as COMPLEX numbers — the companion to the
-// Equation node's quadratic solve, which stays in the real domain (its numeric
-// sockets can't morph to complex; a negative discriminant there is #SOLVE!).
-// Here the conjugate pair comes out the complex sockets like any other Cx.
-
-/** Every root of a polynomial from its coefficient LIST (highest degree first, the
- *  numpy.roots / R polyroot convention): the complex list, plus the real ones alone. */
 export class PolyRootsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     coeffs: "Highest degree first: 1, −6, 11, −6 is x³ − 6x² + 11x − 6. Leading zeros are ignored.",
@@ -297,8 +276,15 @@ export class PolyRootsNode extends ClassicPreset.Node {
   data(inputs: { coeffs?: (number | null | SolError)[][] }): { roots: Cx[] | SolError | null; real: number[] | null } {
     const list = inputs.coeffs?.[0] ?? null;
     if (list === null) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
-    const nums = list.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-    const rs = polyRoots(nums);
+    // Positional: a coefficient's slot is its degree, so nothing is dropped. The first error wins; a blank leaves the polynomial unknown.
+    const err = list.find(isSolError);
+    if (err) { this.cachedRoots = err; this.cachedReal = null; return { roots: err, real: null }; }
+    if (list.some((v) => v === null)) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
+    if (!list.every((v) => typeof v === "number" && Number.isFinite(v))) {
+      const e = solError("#VALUE!", "Polynomial Roots needs a finite number in every coefficient");
+      this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null };
+    }
+    const rs = polyRoots(list as number[]);
     if (rs === null) { const e = solError("#DOMAIN!", "Polynomial Roots needs at least one non-zero coefficient"); this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null }; }
     this.cachedRoots = rs.map(([re, im]) => cx(re, im));
     this.cachedReal = rs.filter(([, im]) => im === 0).map(([re]) => re).sort((x, y) => x - y);
@@ -329,7 +315,6 @@ export class QuadraticRootsNode extends ClassicPreset.Node {
     b?: (number | number[] | null)[];
     c?: (number | number[] | null)[];
   }): { x1: CellResult<Cx>; x2: CellResult<Cx> } {
-    // a = 0 is a per-cell #DOMAIN! — one degenerate row in a list errors alone.
     const root = (which: 1 | 2) => broadcastComplex((a: number, b: number, c: number): Cx | SolError => {
       const r = quadraticRoots(a, b, c);
       return isSolError(r) ? r : r[which - 1];

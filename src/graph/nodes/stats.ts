@@ -1,6 +1,7 @@
-// [[C72]], [[E11]]
+// [[B11]], [[C17]] shareImpl
 import { ClassicPreset } from "rete";
-import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut, frameOut, strOut } from "./shared";
+import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, readRole, tableIn, tableOut, frameOut, strOut } from "./shared";
+import { rolesFrom, required, setting } from "../inputRoles";
 import { rk4 } from "./odeOps";
 import type { Shape } from "../frameShape";
 import { resolveFn } from "./tableLambda";
@@ -18,17 +19,11 @@ import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
 
 
-// The pairwise cell policy, shared with the formula surface (mathUtils.pairPresent):
-// first cell error propagates, a pair with a missing side drops, ragged tails truncate.
 const forPair = pairPresent;
 
 // ─── Statistics nodes ─────────────────────────────────────────────────────────
 
-// ─── Order statistics — ONE node (LARGE/SMALL, RANK, PERCENTILE/QUARTILE/
-// PERCENTRANK) ────────────────────────────────────────────────────────────────
-// Every op reads a list plus one position-or-value scalar and answers a single
-// number; only the scalar's meaning varies (k / value / p / q). PERCENTILE and
-// PERCENTRANK are each other's inverse (value at a rank / rank of a value).
+// ─── Order statistics ─────────────────────────────────────────────────────────
 
 export type RankPercentileOp =
   | "large" | "small"
@@ -66,15 +61,17 @@ const RANK_PERCENTILE_SPECS: Record<RankPercentileFamily, {
   height: number;
 }> = {
   nth:         { inputs: [{ key: "k", label: "K", def: 1 }],                                                    outLabel: "Value",      height: 170 },
-  rank:        { inputs: [{ key: "value", label: "Value", def: 0 }],                                            outLabel: "Rank",       height: 185 },
+  rank:        { inputs: [{ key: "value", label: "Value", def: 0 }, { key: "order", label: "Order", def: 0 }],   outLabel: "Rank",       height: 210 },
   percentile:  { inputs: [{ key: "p", label: "Percentile", def: 0.5 }],                                          outLabel: "Value",      height: 185 },
   quartile:    { inputs: [{ key: "q", label: "Quartile", def: 2 }],                                              outLabel: "Value",      height: 185 },
   percentrank: { inputs: [{ key: "value", label: "Value", def: 0 }, { key: "significance", label: "Digits", def: 3 }], outLabel: "Rank (0–1)", height: 210 },
 };
 
 export class RankPercentileNode extends ClassicPreset.Node {
+  static inputRoles = { ...rolesFrom("LARGE", { k: 1 }), ...rolesFrom("PERCENTILE", { p: 1 }), ...rolesFrom("QUARTILE", { q: 1 }), ...rolesFrom("PERCENTRANK", { significance: 2 }), ...rolesFrom("RANK", { order: 2 }) };
   static socketDocs: Record<string, string> = {
     significance: "The rank truncates to this many digits. It does not round.",
+    order: "0 ranks the largest value 1, as Excel does. Any other number ranks the smallest value 1.",
     p: "A fraction from 0 to 1.",
     q: "0 to 4: 0 = min, 1 = Q1, 2 = median, 3 = Q3, 4 = max.",
   };
@@ -103,8 +100,6 @@ export class RankPercentileNode extends ClassicPreset.Node {
     for (const i of RANK_PERCENTILE_SPECS[this.family].inputs) this.literals[i.key] ??= i.def;
   }
 
-  /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: RankPercentileOp): string[] {
     const keep = new Set(RANK_PERCENTILE_SPECS[RANK_PERCENTILE_FAMILY[next]].inputs.map((i) => i.key));
     return RANK_PERCENTILE_SPECS[this.family].inputs.filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -123,51 +118,43 @@ export class RankPercentileNode extends ClassicPreset.Node {
     this.height = spec.height;
   }
 
-  data(inputs: { list?: (number | null | SolError)[][]; k?: number[]; value?: number[]; p?: number[]; q?: number[]; significance?: number[] }): { result: number | SolError | null } {
+  data(inputs: { list?: (number | null | SolError)[][]; k?: number[]; value?: number[]; p?: number[]; q?: number[]; significance?: number[]; order?: number[] }): { result: number | SolError | null } {
     const family = this.family;
     const exc = this.op.endsWith("-exc");
 
     if (family === "rank" || family === "percentrank") {
-      // The raw list: excelRank / excelPercentRank own their null handling
-      // (shared with the formula surface — one impl both call).
       const arr = inputs.list?.[0] ?? null;
       const v = readInput(inputs.value, this.literals.value ?? null);
       if (family === "percentrank") {
-        const sigRaw = readInput(inputs.significance, this.literals.significance ?? 3);
-        if (sigRaw === null) { this.cachedResult = null; return { result: null }; }
+        const sigRaw = readRole<number | undefined>(this, "significance", inputs.significance) ?? 3;
         if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-        const result = excelPercentRank(arr as number[], v, Math.round(sigRaw), exc);
+        const result = excelPercentRank(arr, v, Math.trunc(sigRaw), exc);
         this.cachedResult = result;
         return { result };
       }
+      const order = readRole<number | undefined>(this, "order", inputs.order) ?? 0;
       if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-      const result = excelRank(v, arr as number[], this.op === "rank-avg");
+      const result = excelRank(v, arr as number[], this.op === "rank-avg", order !== 0);
       this.cachedResult = result;
       return { result };
     }
 
-    // SolError propagates; null (missing) is skipped before ranking.
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
     let result: number | SolError | null = null;
 
-    // The shared statsOps kernels — the LARGE/SMALL/PERCENTILE.*/QUARTILE.* formulas run
-    // the same ones, so the two surfaces can't drift.
     if (family === "nth") {
-      const kRaw = readInput(inputs.k, this.literals.k ?? 1);
-      if (kRaw === null) { this.cachedResult = null; return { result: null }; }
+      const kRaw = readRole<number | SolError>(this, "k", inputs.k);
+      if (isSolError(kRaw)) { this.cachedResult = kRaw; return { result: kRaw }; }
       result = nthExtreme(arr, kRaw, this.op === "large");
     } else if (family === "percentile") {
-      const p = readInput(inputs.p, this.literals.p ?? 0.5);
-      if (p === null) { this.cachedResult = null; return { result: null }; }
+      const p = readRole<number | SolError>(this, "p", inputs.p);
+      if (isSolError(p)) { this.cachedResult = p; return { result: p }; }
       result = percentile(arr, p, exc);
     } else {
-      const qRaw = readInput(inputs.q, this.literals.q ?? 2);
-      if (qRaw === null) { this.cachedResult = null; return { result: null }; }
-      // An out-of-range INC quartile is a blank on the node (a mis-set dial), the
-      // formula's #DOMAIN! — the one deliberate surface difference, kept from before.
-      result = !exc && (Math.round(qRaw) < 0 || Math.round(qRaw) > 4) ? null : quartile(arr, qRaw, exc);
+      const qRaw = readRole<number>(this, "q", inputs.q);
+      result = quartile(arr, qRaw, exc);
     }
     this.cachedResult = result;
     return { result };
@@ -206,7 +193,6 @@ export class CorrelNode extends ClassicPreset.Node {
   data(inputs: { x?: (number | null | SolError)[][]; y?: (number | null | SolError)[][] }): { result: number | SolError | null } {
     const { error, xs, ys } = forPair(inputs.x?.[0] ?? null, inputs.y?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    // Shared with the CORREL / RSQ / SPEARMAN / KENDALL formulas.
     const result = this.op === "spearman" ? spearman(xs, ys)
       : this.op === "kendall" ? kendallTau(xs, ys)
       : pearson(xs, ys, this.op === "rsq");
@@ -235,8 +221,6 @@ export class StandardizeNode extends ClassicPreset.Node {
     const v = readInput(inputs.value, this.literals.value ?? null);
     const m = readInput(inputs.mean, this.literals.mean ?? null);
     const s = readInput(inputs.stdev, this.literals.stdev ?? null);
-    // #DIV/0! is tagged at every dimensionality — a per-element zero sigma in a LIST
-    // becomes a per-cell error, not a whole-list one.
     const divZero = () => solError("#DIV/0!", "Standard deviation is zero");
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (v !== null && m !== null && s !== null) {
@@ -277,7 +261,7 @@ export class CovarianceNode extends ClassicPreset.Node {
   data(inputs: { x?: (number | null | SolError)[][]; y?: (number | null | SolError)[][] }) {
     const { error, xs, ys } = forPair(inputs.x?.[0] ?? null, inputs.y?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    const result = covariance(xs, ys, this.op !== "pop"); // shared with the COVARIANCE.P/.S formulas
+    const result = covariance(xs, ys, this.op !== "pop");
     this.cachedResult = result;
     return { result };
   }
@@ -308,7 +292,6 @@ export class FisherNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[] }): { result: number | (number | SolError | null)[] | SolError | null } {
     const v = readInput(inputs.value, this.literals.value ?? null);
-    // Defined only on (−1, 1); #DOMAIN! is tagged per-cell in a LIST, not whole-list.
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (v !== null) result = broadcastErr((x) => fisher(x, this.op === "fisherinv"), v);
     this.cachedResult = result;
@@ -350,7 +333,7 @@ export class RegressionNode extends ClassicPreset.Node {
   data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }): { result: number | SolError | null } {
     const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    const result = regression(xs, ys, this.op); // shared with the SLOPE / INTERCEPT / STEYX formulas
+    const result = regression(xs, ys, this.op);
     this.cachedResult = result;
     return { result };
   }
@@ -371,7 +354,6 @@ export class ForecastNode extends ClassicPreset.Node {
 
   label: string;
   op: ForecastOp = "linear";
-  // A scalar X → one prediction; a list of Xs → the list of predictions.
   cachedResult: number | (number | null)[] | SolError | null = null;
   width = 180;
   height = 215;
@@ -395,20 +377,18 @@ export class ForecastNode extends ClassicPreset.Node {
   }): { result: number | (number | null)[] | SolError | null } {
     const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    // An unwired X predicts nothing (null), never silently at 0.
     const q = readInput(inputs.x, null);
     if (isSolError(q)) { this.cachedResult = q; return { result: q }; }
 
-    // Fit once — the model is independent of the query. Enough real data with a null
-    // linear fit means zero X variance (#DIV/0!); an exponential fit over a y at or
-    // below zero is #NUM! (GROWTH's answer); too few points stays quietly empty.
     const enough = xs.length >= 2 && ys.length >= 2;
     let predict: ((x: number) => number) | null = null;
     if (enough) {
       if (this.op === "exponential") {
         const fit = expFit(xs, ys);
         if (!fit) {
-          const err = solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
+          const err = ys.slice(0, xs.length).every((y) => y > 0)
+            ? solError("#DIV/0!", "Known Xs have zero variance")
+            : solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
           this.cachedResult = err;
           return { result: err };
         }
@@ -455,16 +435,13 @@ export class ModeNode extends ClassicPreset.Node {
     super("Mode");
     this.label = init?.label ?? "MODE";
     this.addInput("list", listIn("List"));
-    // Combo output: one mode → scalar, a tie → the full list, so no arbitrary tie-break
-    // is needed (this supersedes Excel's MODE.SNGL/MODE.MULT split).
     this.addOutput("result", numListOut("Result"));
   }
 
   data(inputs: { list?: (number | null | SolError)[][] }): { result: number | number[] | SolError | null } {
-    // SolError propagates; null (missing) is skipped so it isn't counted as a mode.
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-    const result = modes(prep.nums); // shared with the MODE / MODE.SNGL formulas
+    const result = modes(prep.nums);
     this.cachedResult = result;
     return { result };
   }
@@ -473,6 +450,7 @@ export class ModeNode extends ClassicPreset.Node {
 // ─── TrimMean ─────────────────────────────────────────────────────────────────
 
 export class TrimMeanNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("TRIMMEAN", { percent: 1 });
   static socketDocs: Record<string, string> = {
     percent: "A fraction from 0 to 1, not a whole-number percent. Half of the trimmed count comes off each end.",
   };
@@ -493,10 +471,8 @@ export class TrimMeanNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][]; percent?: number[] }): { result: number | SolError | null } {
     const arr = inputs.list?.[0] ?? null;
-    const percent = readInput(inputs.percent, this.literals.percent ?? 0.1);
-    if (percent === null) { this.cachedResult = null; return { result: null }; }
+    const percent = readRole<number>(this, "percent", inputs.percent);
     if (!arr || arr.length === 0) { this.cachedResult = null; return { result: null }; }
-    // Shared with the formula path (excelFunctions `excelTrimmean`) — one impl both call.
     const result = excelTrimmean(arr, percent);
     this.cachedResult = result;
     return { result };
@@ -613,11 +589,7 @@ function binomPmfLocal(k: number, n: number, p: number): number | null {
   return Number.isFinite(r) ? r : null;
 }
 
-// ─── Hypothesis tests — ONE node (Z / t / F / chi-square) ────────────────────
-// Every test emits a p-value; the op selector swaps the input rows (Z: one
-// sample + μ₀ + optional σ; t/F: two samples; chi-square: observed/expected).
-// The sample keys are shared (`a`/`b`) so a switch between two-sample tests
-// keeps the cables and only the row labels change.
+// ─── Hypothesis tests ─────────────────────────────────────────────────────────
 
 export type HypothesisTestOp =
   | "z" | "t-paired" | "t-equal" | "t-welch" | "f" | "chisq"
@@ -641,7 +613,6 @@ export const HYPOTHESIS_TEST_OP_META = {
 } satisfies Record<HypothesisTestOp, { label: string; description: string }>;
 
 interface HypothesisTestSpec {
-  /** `num` → a scalar number socket, `table` → a matrix (each column a group), else a list. */
   inputs: ReadonlyArray<{ key: string; label: string; num?: boolean; table?: boolean }>;
   outLabel: string;
 }
@@ -694,7 +665,7 @@ const T_KERNEL_OP = { "t-paired": "paired", "t-equal": "equal-var", "t-welch": "
 
 export class HypothesisTestNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    sigma: "Left unwired, the sample's own standard deviation is used. A wired blank instead blanks the result.",
+    sigma: "Left unset, the sample's own standard deviation is used. A wired blank instead blanks the result.",
   };
 
   label: string;
@@ -726,8 +697,6 @@ export class HypothesisTestNode extends ClassicPreset.Node {
     if (this.op === "binomtest") { this.literals.k ??= 0; this.literals.n ??= 1; this.literals.p0 ??= 0.5; }
   }
 
-  /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: HypothesisTestOp): string[] {
     const keep = new Set(HYPOTHESIS_TEST_SPECS[next].inputs.map((i) => i.key));
     return HYPOTHESIS_TEST_SPECS[this.op].inputs.filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -742,7 +711,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
     for (const i of after) {
       const live = this.inputs[i.key];
       if (!live) this.addInput(i.key, i.num ? numIn(i.label) : i.table ? tableIn(i.label) : listIn(i.label));
-      else live.label = i.label; // a kept key keeps its cable; the role name follows the op
+      else live.label = i.label;
     }
     const out = this.outputs.result;
     if (out) out.label = HYPOTHESIS_TEST_SPECS[next].outLabel;
@@ -753,7 +722,6 @@ export class HypothesisTestNode extends ClassicPreset.Node {
   data(inputs: { a?: number[][]; b?: number[][]; x?: number[]; sigma?: number[]; groups?: (number | null)[][][]; table?: (number | null)[][][]; x1?: number[]; n1?: number[]; x2?: number[]; n2?: number[]; k?: number[]; n?: number[]; p0?: number[] }) {
     const a = inputs.a?.[0] ?? null;
     let result: number | null = null;
-    // The non-Excel tests (statsOps) — every formula of the same name runs the same kernel.
     const groupsOf = (m: (number | null)[][] | null): number[][] | null => {
       if (!m || m.length === 0) return null;
       const cols = m[0].length;
@@ -780,14 +748,13 @@ export class HypothesisTestNode extends ClassicPreset.Node {
       const k = readInput(inputs.k, this.literals.k ?? 0), n = readInput(inputs.n, this.literals.n ?? 1), p0 = readInput(inputs.p0, this.literals.p0 ?? 0.5);
       result = k === null || n === null || p0 === null ? null : binomTestP(k, n, p0);
     } else if (this.op === "z") {
-      const x = readInput(inputs.x, this.literals.x ?? 0); // wired blank → null → blank result
-      // σ: UNWIRED is Excel's omitted argument (use the sample std); a WIRED blank is
-      // unknown and propagates (value-semantics.md, "Reading an input").
-      const sigma = inputs.sigma === undefined ? undefined : (inputs.sigma[0] ?? null);
-      if (a && a.length >= 2 && x !== null && sigma !== null) {
-        const n = a.length;
-        const m = arrMean(a);
-        const std = (sigma !== undefined && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(a));
+      const x = readInput(inputs.x, this.literals.x ?? 0);
+      const sigma = readInput<number | undefined>(inputs.sigma, this.literals.sigma);
+      const xs = a?.filter((v) => typeof v === "number" && Number.isFinite(v));
+      if (xs && xs.length >= 2 && x !== null && sigma !== null) {
+        const n = xs.length;
+        const m = arrMean(xs);
+        const std = (sigma !== undefined && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(xs));
         if (std > 0) result = 1 - stdNormCDF((m - x) / (std / Math.sqrt(n)));
       }
     } else if (this.op === "chisq") {
@@ -805,7 +772,6 @@ export class HypothesisTestNode extends ClassicPreset.Node {
         }
       }
     } else {
-      // ONE implementation with the formula surface (mathUtils.tTestP / fTestP — [[C17]] shareImpl).
       const b = inputs.b?.[0] ?? null;
       if (a && b) result = this.op === "f" ? fTestP(a, b) : tTestP(T_KERNEL_OP[this.op], a, b);
     }
@@ -815,11 +781,6 @@ export class HypothesisTestNode extends ClassicPreset.Node {
 }
 
 // ─── Interpolate (List = 1-D, Grid = fill a 2-D Z table) ──────────────────
-// Two modes; the dropdown swaps the whole socket set:
-//  • LIST — interpolate y for a query x between known (x, y) points.
-//  • GRID — fill the blanks of a Z table; optional Xs / Ys coordinate lists ride
-//    BESIDE it (unwired = the 1-based index), never in a border row/column.
-// Both CLAMP at the ends (no extrapolation past the known range).
 
 export type InterpolateMode = "list" | "grid";
 
@@ -828,8 +789,6 @@ export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; tit
   grid: { label: "Grid", title: "Fill the blanks in a Z table by 2-D interpolation; optional Xs/Ys, unwired axes count 1, 2, 3…" },
 };
 
-// The interpolation bracket for a query against a SORTED-ASCENDING axis: [i0, i1, t]
-// with value = (1-t)·v[i0] + t·v[i1], clamped at both ends (t=0 outside the range).
 
 
 export class InterpolateNode extends ClassicPreset.Node {
@@ -841,15 +800,10 @@ export class InterpolateNode extends ClassicPreset.Node {
 
   label: string;
   mode: InterpolateMode;
-  // LIST mode: scalar-or-list matching the query shape. GRID mode: the filled Z table
-  // (cells may be null where nothing reached). A whole-input error → SolError.
   cachedResult: number | (number | null)[] | (number | null)[][] | SolError | null = null;
   literals: Record<string, number> = { x: 0 };
-  // GRID mode: the Xs / Ys axis lists are typeable CSV lists (parseListLiteral inject),
-  // so they need string-literal slots like a List Input, not just the scalar `x`.
+  // Grid mode's typed Xs / Ys lists need these string slots, like a List Input.
   stringLiterals: Record<string, string> = { xs: "", ys: "" };
-  // GRID mode: also linearly EXTRAPOLATE beyond the known data (the Forecast checkbox),
-  // not just interpolate the interior. On by default.
   forecast = true;
   width = 180; height = 215;
 
@@ -861,8 +815,7 @@ export class InterpolateNode extends ClassicPreset.Node {
     this._rebuildSockets();
   }
 
-  // Callers must drop this node's cables first (applyInterpolateMode) — removeInput is
-  // unsafe while a cable still references the socket.
+  // Removes every socket, so callers prune all of this node's cables first (applyInterpolateMode).
   _rebuildSockets(): void {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
@@ -876,7 +829,6 @@ export class InterpolateNode extends ClassicPreset.Node {
     }
     this.addInput("ys",     listIn("Known Ys"));
     this.addInput("xs",     listIn("Known Xs"));
-    // Combo query: the result mirrors the query's shape, scalar in → scalar out.
     this.addInput("new_xs", numListIn("X"));
     this.addOutput("result", numListOut("Interpolated Y"));
     this.height = 215;
@@ -889,7 +841,6 @@ export class InterpolateNode extends ClassicPreset.Node {
   private dataList(inputs: Record<string, unknown[]>): { result: number | (number | null)[] | SolError | null } {
     const xsIn = inputs.xs as (number | null | SolError)[][] | undefined;
     const ysIn = inputs.ys as (number | null | SolError)[][] | undefined;
-    // Known data: propagate the first error, drop pairs missing on either side.
     const { error, xs, ys } = forPair(xsIn?.[0] ?? null, ysIn?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     const q = readInput(inputs.new_xs as (number | (number | null | SolError)[] | null | SolError)[] | undefined, this.literals.x);
@@ -898,16 +849,13 @@ export class InterpolateNode extends ClassicPreset.Node {
     if (Array.isArray(q)) {
       const qErr = q.find(isSolError);
       if (qErr) { this.cachedResult = qErr as SolError; return { result: qErr as SolError }; }
-      // No known points or no query → nothing to interpolate (empty, like TREND).
       if (noData || q.length === 0) { this.cachedResult = []; return { result: [] }; }
-      // A missing (null) query stays missing IN PLACE; a real one gets its y.
       const nums = q.map((v) => (v === null ? NaN : (v as number)));
       const interp = interpolateLinear(xs, ys, nums);
       const result = q.map((v, i) => (v === null ? null : interp[i]));
       this.cachedResult = result;
       return { result };
     }
-    // Scalar query → scalar result (a missing/no-data query yields null).
     if (q === null || noData) { this.cachedResult = null; return { result: null }; }
     const result = interpolateLinear(xs, ys, [q])[0];
     this.cachedResult = result;
@@ -917,15 +865,11 @@ export class InterpolateNode extends ClassicPreset.Node {
   private dataGrid(inputs: Record<string, unknown[]>): { result: (number | null)[][] | SolError | null } {
     const zRaw = inputs.z?.[0] ?? null;
     if (isSolError(zRaw)) { this.cachedResult = zRaw; return { result: zRaw }; }
-    // An UNWIRED axis is undefined (→ 1-based index); a WIRED blank is null (→ shape unknown,
-    // null result). gridAxes validates a wired list against the row/column count.
     const xs = inputs.xs === undefined ? undefined : (inputs.xs[0] ?? null);
     const ys = inputs.ys === undefined ? undefined : (inputs.ys[0] ?? null);
     const axes = gridAxes(zRaw, xs, ys);
     if (axes === null) { this.cachedResult = null; return { result: null }; }
     if (isSolError(axes)) { this.cachedResult = axes; return { result: axes }; }
-    // Carry the unitGranularity grid unit: filling blanks keeps every cell in the input's unit
-    // (structural reshape, matrixUnitPolicy "carry").
     const result = carryMatrixUnit(fillGrid(axes.z, axes.xs, axes.ys, this.forecast), zRaw);
     this.cachedResult = result;
     return { result };
@@ -941,8 +885,8 @@ export const FIT_OP_META = {
 export type FitOp = keyof typeof FIT_OP_META;
 
 export const FIT_OP_OPTIONS: { value: FitOp; label: string; title?: string }[] = [
-  { value: "linear",      label: "linear", title: "Straight-line fit — slope, intercept, R² (Excel LINEST)" },
-  { value: "exponential", label: "exp",    title: "Growth-curve fit y = b·mˣ — m, b, R² on the log scale (Excel LOGEST)" },
+  { value: "linear",      label: "linear", title: "Straight-line fit: slope, intercept and R². Excel: LINEST" },
+  { value: "exponential", label: "exp",    title: "Growth-curve fit y = b·mˣ: m, b and R² on the log scale. Excel: LOGEST" },
 ];
 
 export class LinestNode extends ClassicPreset.Node {
@@ -968,8 +912,6 @@ export class LinestNode extends ClassicPreset.Node {
     this.addOutput("r2",        numOut(this.op === "exponential" ? "R² (log)" : "R²"));
   }
 
-  // Same three output KEYS both ops, so cables survive the switch; only the labels
-  // retitle (linear = slope/intercept/R², exponential = LOGEST's m/b + log-scale R²).
   setOp(next: FitOp): void {
     this.op = next;
     const exp = next === "exponential";
@@ -984,25 +926,21 @@ export class LinestNode extends ClassicPreset.Node {
       this.cachedSlope = this.cachedIntercept = this.cachedR2 = error;
       return { slope: error, intercept: error, r2: error };
     }
-    // Shared fitting kernels (mathUtils) — the LINEST / LOGEST registrations run the
-    // same ones. Exponential maps LOGEST's m/b onto the slope/intercept sockets.
+    const fail = (err: SolError) => {
+      this.cachedSlope = this.cachedIntercept = this.cachedR2 = err;
+      return { slope: err, intercept: err, r2: err };
+    };
     let fit: { slope: number; intercept: number; r2: number } | null;
     if (this.op === "exponential") {
       const e = expFitR2(xs, ys);
       if (!e && xs.length >= 2 && ys.some((y) => !(y > 0))) {
-        const err = solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)"); // LOGEST's answer
-        this.cachedSlope = this.cachedIntercept = this.cachedR2 = err;
-        return { slope: err, intercept: err, r2: err };
+        return fail(solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)"));
       }
       fit = e ? { slope: e.m, intercept: e.b, r2: e.r2 } : null;
     } else {
       fit = linearFitR2(xs, ys);
-      if (!fit && xs.length >= 2) {
-        const err = solError("#DIV/0!", "Known Xs have zero variance"); // SLOPE / LINEST's answer
-        this.cachedSlope = this.cachedIntercept = this.cachedR2 = err;
-        return { slope: err, intercept: err, r2: err };
-      }
     }
+    if (!fit && xs.length >= 2) return fail(solError("#DIV/0!", "Known Xs have zero variance"));
     this.cachedSlope     = fit?.slope ?? null;
     this.cachedIntercept = fit?.intercept ?? null;
     this.cachedR2        = fit?.r2 ?? null;
@@ -1077,7 +1015,6 @@ export class ProbNode extends ClassicPreset.Node {
     const lo    = readInput(inputs.lo, this.literals.lo ?? 0);
     const hi    = readInput(inputs.hi, this.literals.hi ?? 1);
     if (lo === null || hi === null) { this.cachedResult = null; return { result: null }; }
-    // ONE implementation with the formula surface (mathUtils.probBetween — [[C17]] shareImpl).
     const result = probBetween(range, probs, lo, hi);
     this.cachedResult = result;
     return { result };
@@ -1086,6 +1023,7 @@ export class ProbNode extends ClassicPreset.Node {
 
 // ─── FORECAST (ETS) — Holt–Winters ────────────────────────────────────────────
 export class EtsForecastNode extends ClassicPreset.Node {
+  static inputRoles = { horizon: required, season: setting(1) };
   static socketDocs: Record<string, string> = {
     values: "An equally spaced series, oldest first: monthly sales, daily visits. Blanks are dropped.",
     horizon: "How many steps ahead to forecast.",
@@ -1095,8 +1033,6 @@ export class EtsForecastNode extends ClassicPreset.Node {
   };
   label: string;
   literals: Record<string, number> = { horizon: 6, season: 1 };
-  // Forecast and its ± interval are correlated per step → one frame; the detected
-  // season is a scalar diagnostic, not per-step, so it stays its own output.
   cachedResult: FrameValue | SolError | null = null;
   cachedSeason: number | null = null;
   width = 200; height = 205;
@@ -1120,12 +1056,13 @@ export class EtsForecastNode extends ClassicPreset.Node {
     const prep = forAggregate(inputs.values?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; this.cachedSeason = null; return { forecast: prep.error, detected: null }; }
     const y = prep.nums;
-    const horizon = readInput(inputs.horizon, this.literals.horizon ?? 6);
-    const seasonArg = readInput(inputs.season, this.literals.season ?? 1);
-    if (horizon === null || seasonArg === null || y.length < 3) return blank();
+    const horizon = readRole<number | SolError>(this, "horizon", inputs.horizon);
+    const seasonArg = readRole<number>(this, "season", inputs.season);
+    if (isSolError(horizon)) { this.cachedResult = horizon; this.cachedSeason = null; return { forecast: horizon, detected: null }; }
+    if (y.length < 3) return blank();
     const h = Math.max(1, Math.round(horizon));
     const m = seasonArg === 1 ? detectSeason(y) : Math.max(1, Math.round(seasonArg));
-    const fit = fitEts(y, m) ?? (m > 1 ? fitEts(y, 1) : null); // too short for the season → trend-only
+    const fit = fitEts(y, m) ?? (m > 1 ? fitEts(y, 1) : null);
     if (!fit) return blank();
     const forecast = etsForecast(fit, h);
     const interval = Array.from({ length: h }, (_, i) => etsInterval(fit, i + 1));
@@ -1150,7 +1087,7 @@ export class FitDistributionNode extends ClassicPreset.Node {
     list: "A sample of values. Families whose support the data leaves (a negative value for Lognormal, a non-integer for Poisson) are skipped, not errors.",
     ranking: "Every family the data supports, best AIC first: family, parameters (the Distribution node's own), log-likelihood, AIC, KS distance.",
     best: "The family with the lowest AIC.",
-    params: "That family's parameters, in the Distribution node's order; wire them straight into it.",
+    params: "That distribution's parameters, in the Distribution node's order, ready to connect to it.",
   };
   label: string;
   cachedRanking: FrameValue | SolError | null = null;
@@ -1209,6 +1146,7 @@ export const DECOMPOSE_MODEL_META: Record<DecomposeModel, { label: string; descr
 };
 
 export class DecomposeNode extends ClassicPreset.Node {
+  static inputRoles = { period: required };
   static socketDocs: Record<string, string> = {
     values: "An equally spaced series, oldest first; needs at least two full periods.",
     period: "Season length in steps: 12 for monthly data with a yearly cycle, 7 for daily with a weekly one.",
@@ -1217,7 +1155,6 @@ export class DecomposeNode extends ClassicPreset.Node {
   label: string;
   model: DecomposeModel = "additive";
   literals: Record<string, number> = { period: 12 };
-  // trend / seasonal / residual are correlated (same row = same time step) → ONE frame.
   cachedResult: FrameValue | SolError | null = null;
   width = 200; height = 205;
 
@@ -1237,8 +1174,9 @@ export class DecomposeNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | null | SolError)[][]; period?: number[] }): { decomposition: FrameValue | SolError | null } {
     const blank = (err: SolError | null = null) => { this.cachedResult = err; return { decomposition: err }; };
     const raw = inputs.values?.[0] ?? null;
-    const period = readInput(inputs.period, this.literals.period ?? 12);
-    if (raw === null || period === null) return blank();
+    const period = readRole<number | SolError>(this, "period", inputs.period);
+    if (isSolError(period)) return blank(period);
+    if (raw === null) return blank();
     const err = raw.find((v): v is SolError => isSolError(v));
     if (err) return blank(err);
     const nums = raw.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
@@ -1257,6 +1195,7 @@ export class DecomposeNode extends ClassicPreset.Node {
 // ─── ODE Integrate (RK4) — scipy solve_ivp / R deSolve ─────────────────────────
 
 export class OdeIntegrateNode extends ClassicPreset.Node {
+  static inputRoles = { steps: setting(100) };
   static socketDocs: Record<string, string> = {
     y0: "The value of y at t0.",
     t0: "Start of the interval.",
@@ -1264,10 +1203,8 @@ export class OdeIntegrateNode extends ClassicPreset.Node {
     steps: "Number of RK4 steps; the frame carries steps + 1 rows, t0 first.",
   };
   label: string;
-  // The derivative is a LAMBDA of (t, y); a wired LAMBDA node supersedes the inline text.
   stringLiterals: Record<string, string> = { formula: "y" };
   literals: Record<string, number> = { y0: 1, t0: 0, t1: 1, steps: 100 };
-  // t and y are CORRELATED (same row = same instant), so they ride ONE frame, not two lists.
   cachedResult: FrameValue | SolError | null = null;
   cachedError: string | null = null;
   readonly lambdaSig = { vars: ["t", "y"], required: 2 };
@@ -1281,8 +1218,7 @@ export class OdeIntegrateNode extends ClassicPreset.Node {
     this.addInput("t0", numIn("t0"));
     this.addInput("t1", numIn("t1"));
     this.addInput("steps", numIn("Steps"));
-    // The λ socket is declared LAST so its cable-only row sits right on the FormulaBox
-    // row (the MAP-family layout); the FormulaBox is the derivative's inline authoring.
+    // Declared last so its cable-only row sits on the FormulaBox row (the MAP-family layout).
     this.addInput("lambda", lambdaIn("dy/dt"));
     this.addOutput("solution", frameOut("Solution"));
   }
@@ -1292,17 +1228,14 @@ export class OdeIntegrateNode extends ClassicPreset.Node {
   }
 
   data(inputs: { lambda?: unknown[]; y0?: number[]; t0?: number[]; t1?: number[]; steps?: number[] }): { solution: FrameValue | SolError | null } {
-    // A wired LAMBDA(t, y, …) binds by NAME; the inline text is the fallback. Same
-    // fnError/cachedError shape as the MAP family (#SYNTAX!/#NAME?/#VALUE!).
     const { fn, err, code } = resolveFn(inputs.lambda?.[0], this.stringLiterals.formula, "y", ["t", "y"], 2, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return { solution: solError(code, err!) }; }
     this.cachedError = null;
     const y0 = readInput(inputs.y0, this.literals.y0 ?? 1);
     const t0 = readInput(inputs.t0, this.literals.t0 ?? 0);
     const t1 = readInput(inputs.t1, this.literals.t1 ?? 1);
-    const steps = readInput(inputs.steps, this.literals.steps ?? 100);
-    if (y0 === null || t0 === null || t1 === null || steps === null) { this.cachedResult = null; return { solution: null }; }
-    // A per-step SolError or non-number result aborts the integration (→ #DOMAIN! below).
+    const steps = readRole<number>(this, "steps", inputs.steps);
+    if (y0 === null || t0 === null || t1 === null) { this.cachedResult = null; return { solution: null }; }
     const f = (t: number, y: number): number | null => {
       const r = fn(t, y);
       return typeof r === "number" && Number.isFinite(r) ? r : null;

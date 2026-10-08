@@ -1,4 +1,4 @@
-// [[C66]]
+// [[C66]] scriptNode, [[C95]] commitOnEnter
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { scriptPopup } from "../scriptPopupStore";
 import { getOwningEditor } from "../activeGraph";
@@ -20,9 +20,7 @@ function scriptNodeOf(nodeId: string | null): ScriptNode | null {
   return n?.constructor.name === "ScriptNode" ? (n as ScriptNode) : null;
 }
 
-/** The Script editor popup, mounted once in App and opened from the Script card.
- *  The source is written ONCE on exit, never per keystroke — a commit re-derives the
- *  parameter sockets, and a half-typed parameter list would prune live cables. */
+/** Written once on exit, never per keystroke: a commit re-derives the parameter sockets, and a half-typed parameter list would prune live cables. */
 export function ScriptPopup() {
   const nodeId = useSyncExternalStore(scriptPopup.subscribe, scriptPopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -62,7 +60,6 @@ export function ScriptPopup() {
   const node = scriptNodeOf(nodeId);
   if (!node) return null;
 
-  // Mirror NodeCard's accent + group-color CSS vars so the chrome matches the node.
   const mode = appThemeStore.getMode();
   const rawAccent = NODE_KIND_ACCENTS[nodeKindOf(node)];
   const groupColor = groupMembershipStore.color(node.id);

@@ -1,7 +1,9 @@
-// Lab units throughout: grams, moles, litres, kelvin where absolute.
+// [[C51]] formulaNaming
+// Lab units throughout: grams, moles, liters, kelvin where absolute.
 
-import { ElementNode, MolarMassNode, molarMass, ELEMENTS, ELEMENT_BY_SYMBOL } from "../rete-nodes";
-import { placeFormulas, solError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
+import { ElementNode, MolarMassNode } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { CHEMISTRY_PACK_FORMULAS } from "./chemistryFormulas";
 
 const R_GAS = "8.314462618";
 const FARADAY = "96485.33212";
@@ -12,7 +14,7 @@ export const CHEM_AMOUNTS: FormulaPackEntry[] = [
     keywords: "amount substance stoichiometry grams moles molar" },
   { type: "ch-molarity", label: "Molarity", expr: "n/v",
     description: "Concentration: moles n ÷ volume v (L) → mol/L",
-    keywords: "concentration molar" },
+    keywords: "concentration molar", units: { n: "mol", v: "L" } },
   { type: "ch-dilution", label: "Dilution (C₂)", expr: "c1*v1/v2",
     description: "Concentration after dilution, C₁V₁ = C₂V₂ solved for C₂. Any consistent units.",
     keywords: "c1v1 stock solution" },
@@ -27,16 +29,16 @@ export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
   { type: "ch-nernst", label: "Nernst Equation", expr: `e0-${R_GAS}*tk/(z*${FARADAY})*LN(q)`,
     description: "Cell potential E = E° − RT/zF·lnQ off standard conditions: standard potential e0 (V), temperature tk (K), electrons z, reaction quotient q.",
     keywords: "electrochemistry cell potential redox",
-    varDescriptions: { e0: "Standard potential E° (V)", tk: "Temperature (K)", z: "Electrons transferred", q: "Reaction quotient Q" } },
+    varDescriptions: { e0: "Standard potential E° (V)", tk: "Temperature (K)", z: "Electrons transferred", q: "Reaction quotient Q" }, units: { tk: "K" } },
   { type: "ch-arrhenius", label: "Arrhenius Rate", expr: `a*EXP(-ea/(${R_GAS}*tk))`,
     description: "Rate constant: pre-exponential a, activation energy ea (J/mol), temperature tk (K)   (k = A·e^(−Ea/RT))",
-    keywords: "kinetics activation energy" },
+    keywords: "kinetics activation energy", units: { tk: "K" } },
   { type: "ch-gibbs", label: "Gibbs Free Energy", expr: "dh-tk*ds",
     description: "ΔG = ΔH − TΔS from enthalpy dh (J/mol), temperature tk (K), entropy ds (J/mol·K). Negative means spontaneous.",
-    keywords: "thermodynamics spontaneous" },
+    keywords: "thermodynamics spontaneous", units: { tk: "K" } },
   { type: "ch-beer-lambert", label: "Beer–Lambert Absorbance", expr: "eps*b*conc",
     description: "Absorbance A = εbc: molar absorptivity eps in L/mol·cm, path b in cm, concentration conc in mol/L.",
-    keywords: "spectroscopy absorbance cuvette" },
+    keywords: "spectroscopy absorbance cuvette", units: { b: "cm" } },
   { type: "ch-half-life", label: "Decay Remaining", expr: "n0*0.5^(t/thalf)",
     description: "Amount left after time t given half-life thalf (same time units)   (N = N₀·(½)^(t/t½))",
     keywords: "radioactive exponential decay" },
@@ -46,39 +48,6 @@ export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
 ];
 
 export const CHEMISTRY_FORMULAS: FormulaPackEntry[] = [...CHEM_AMOUNTS, ...CHEM_EQUILIBRIA];
-
-// The pack's custom-logic nodes exposed as formula functions ([[C51]] formulaNaming decision 4).
-const CHEMISTRY_PACK_FORMULAS: PackFormula[] = [
-  {
-    name: "ELEMENT",
-    impl: (el, property) => {
-      if (el == null) return null;
-      const meta = typeof el === "number"
-        ? ELEMENTS.find((m) => m.n === el)
-        : ELEMENT_BY_SYMBOL.get(String(el));
-      if (!meta) return solError("#NAME?", `Unknown element "${el}"`);
-      const p = property == null ? "mass" : String(property).toLowerCase();
-      if (p === "mass") return meta.mass;
-      if (p === "number") return meta.n;
-      if (p === "name") return meta.name;
-      if (p === "symbol") return meta.symbol;
-      if (p === "period") return meta.period;
-      return solError("#VALUE!", `Unknown property "${p}" — mass, number, name, symbol, period`);
-    },
-    returns: "any", arity: [1, 2],
-    signature: "symbol or atomic number, [property (mass)]",
-  },
-  {
-    name: "MOLARMASS",
-    impl: (formula) => {
-      if (formula == null) return null;
-      const s = String(formula);
-      return s.trim() ? molarMass(s) : null;
-    },
-    returns: "number", arity: [1, 1],
-    signature: "chemical formula — H2O, CuSO4·5H2O",
-  },
-];
 
 export const CHEMISTRY_PACK: Pack = {
   formulas: CHEMISTRY_PACK_FORMULAS,

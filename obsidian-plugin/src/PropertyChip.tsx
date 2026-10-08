@@ -1,50 +1,57 @@
-// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText
+// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText, [[D90]] cubeTypesAtDepth
 import { useRef, useState, useSyncExternalStore } from "react";
 import { ArrayChip, arrayAccentFor } from "../../src/graph/components/ArrayChip";
 import { themeVersion, tokenHex } from "./shadow";
 import { FrameChip } from "../../src/graph/components/FrameChip";
 import { CubeChip } from "../../src/graph/components/CubeChip";
 import { deriveFrame, recordsToCube } from "../../src/graph/frame";
-import type { CubeRecord } from "../../src/graph/literalEditors";
+import { recordKeys, type CubeRecord, type CubeSource } from "../../src/graph/literalEditors";
+import type { NestedTables } from "../../src/graph/cubeTypes";
 import {
   coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, columnTypesOf, rawCell,
-  type PropertyKind, type Family, type YamlRecord, type ColumnTypes,
+  type PropertyKind, type Family, type YamlRecord, type ColumnTypes, type ColumnNameOption,
 } from "./yamlValue";
 
 const popupCellType = (family: Family) => (family === "complex" ? "string" : family);
 
-/** A popup here wears its value TYPE's socket color: there is no launching node to inherit from. */
-function typeAccent(kind: PropertyKind): string | undefined {
+function typeAccent(kind: PropertyKind, resolveToken: (token: string) => string | undefined): string | undefined {
   const token =
     kind.shape === "frame" ? "--sock-frame"
     : kind.shape === "cube" ? "--sock-cube"
     : arrayAccentFor(kind.family, kind.shape === "matrix").replace(/^var\(|\)$/g, "");
-  return tokenHex(token);
+  return resolveToken(token);
 }
 
-export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes }: {
+export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes, columnNameOptions, nestedTables, onNestedTables, resolveToken = tokenHex }: {
   kind: PropertyKind;
   label: string;
   initial: unknown;
   onChange: (next: unknown) => void;
-  /** A frame's picked column types for this property, and where a Save reports them. */
   columnTypes?: ColumnTypes;
-  onColumnTypes?: (types: ColumnTypes) => void;
+  /** `replace` sets the property's whole map, so a cube column switched back to none loses its pick. */
+  onColumnTypes?: (types: ColumnTypes, replace?: boolean) => void;
+  /** The frame editor's header suggestions ([[C107]] obsidianPlugin). */
+  columnNameOptions?: () => ColumnNameOption[];
+  /** A cube's nested tables' types, this note's own; without the callback they are shown but not kept. */
+  nestedTables?: NestedTables;
+  onNestedTables?: (nested: NestedTables) => void;
+  resolveToken?: (token: string) => string | undefined;
 }) {
-  // Obsidian skips re-rendering a focused property, so the chip tracks its own edits.
   const [yaml, setYaml] = useState<unknown>(initial);
   const latest = useRef<unknown>(initial);
   const [picked, setPicked] = useState<ColumnTypes>(columnTypes ?? {});
+  // The cube popup keeps the binding it opened with, so its reads go through a ref.
+  const pickedRef = useRef<ColumnTypes>(picked);
+  pickedRef.current = picked;
+  const nestedRef = useRef<NestedTables>(nestedTables ?? {});
   const commit = (next: unknown) => {
     latest.current = next;
     setYaml(next);
     onChange(next);
   };
-  // After a type switch the value may be anything: it shows and edits in this kind's shape, and
-  // only Save writes that shape to the note.
   const items = coerceYaml(kind, yaml) as unknown[];
   useSyncExternalStore(themeVersion.subscribe, themeVersion.get);
-  const accent = typeAccent(kind);
+  const accent = typeAccent(kind, resolveToken);
 
   if (kind.shape === "list") {
     const family = kind.family!;
@@ -60,7 +67,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
           cellType: popupCellType(family),
           list: false,
           fixedCols: true,
-          onSaveRaw: (cells) => commit(listToYaml(cells, yaml)),
+          onSaveRaw: (cells) => commit(listToYaml(cells, yaml, family)),
         }}
       />
     );
@@ -82,7 +89,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
           data: raw.length ? raw : [[""]],
           cellType: popupCellType(family),
           list: false,
-          onSaveRaw: (cells) => commit(matrixToYaml(cells, yaml)),
+          onSaveRaw: (cells) => commit(matrixToYaml(cells, yaml, family)),
         }}
       />
     );
@@ -90,8 +97,6 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
 
   if (kind.shape === "frame") {
     const source = frameSourceFromYaml(items, picked);
-    // An empty frame (what Obsidian leaves after a type switch) opens on one blank Text column
-    // and row: a 0×0 grid has nothing to type into. Text, so nothing typed is lost to a type.
     const editorSource = source.length ? source : [{ name: "", type: "string" as const, cells: [""] }];
     return (
       <FrameChip
@@ -106,20 +111,38 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
           onColumnTypes?.(types);
           commit(frameSourceToYaml(columns, yaml));
         }}
-        popupOverrides={{ unitTaggable: false, noFormulaColumns: true }}
+        popupOverrides={{ unitTaggable: false, noFormulaColumns: true, columnNameOptions }}
       />
     );
   }
 
+  const cubeSource = (): CubeSource => {
+    const rows = coerceYaml(kind, latest.current) as CubeRecord[];
+    const types = pickedRef.current;
+    const nested = nestedRef.current;
+    return { columns: recordKeys(rows).map((name) => (types[name] ? { name, type: types[name] } : { name })), rows, ...(Object.keys(nested).length ? { nested } : {}) };
+  };
+  const typesOf = (source: CubeSource): ColumnTypes =>
+    Object.fromEntries(source.columns.flatMap((c) => (c.type ? [[c.name, c.type]] : [])));
   return (
     <CubeChip
-      value={recordsToCube(items as YamlRecord[])}
+      value={recordsToCube(items as YamlRecord[], picked, nestedRef.current)}
       label={label}
       size="sm"
       accent={accent}
       edit={{
-        records: () => coerceYaml(kind, latest.current) as CubeRecord[],
-        save: (records) => commit(records),
+        source: cubeSource,
+        save: (source) => {
+          const types = typesOf(source);
+          pickedRef.current = types;
+          setPicked(types);
+          onColumnTypes?.(types, true);
+          const nested = source.nested ?? {};
+          if (JSON.stringify(nested) !== JSON.stringify(nestedRef.current)) { nestedRef.current = nested; onNestedTables?.(nested); }
+          commit(source.rows);
+        },
+        cube: () => { const s = cubeSource(); return recordsToCube(s.rows, typesOf(s), s.nested); },
+        noFormulaColumns: true,
       }}
     />
   );

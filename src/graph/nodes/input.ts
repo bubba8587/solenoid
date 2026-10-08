@@ -6,39 +6,21 @@ import namesPlugin from "colord/plugins/names";
 // Global: named CSS colors ("tomato") must parse everywhere colord is used.
 extend([namesPlugin]);
 import { numberSocket } from "../sockets";
-import { numIn, strIn, strOut, logicalOut, dateOut, readInput } from "./shared";
+import { numIn, strIn, strOut, dateOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { jsDateToSerial } from "./dateSerial";
+import { wallClockSerial } from "./dateSerial";
 import { saveTimeStore } from "../saveTimeStore";
 
-export class NumberInputNode extends ClassicPreset.Node {
-  label: string;
-  value: number;
-  width = 180;
-  height = 100;
-
-  constructor(init?: { label?: string; value?: number }) {
-    super("NumberInput");
-    this.label = init?.label ?? "Number Input";
-    this.value = init?.value ?? 0;
-    this.addOutput("value", new ClassicPreset.Output(numberSocket));
-  }
-
-  data(): { value: number } {
-    return { value: this.value };
-  }
-}
-
 export type ColorMode = "rgb" | "hsv" | "hex";
-// Output formats stay CSS-VALID only — there is no `hsv()` in CSS.
+// Output formats stay CSS-valid; CSS has no hsv().
 export type ColorFormat = "hex" | "rgb";
 
 export class ColorPickerNode extends ClassicPreset.Node {
   label: string;
   mode: ColorMode;
   format: ColorFormat;
-  // c0/c1/c2 read per mode (rgb 0–255; hsv 0–360 / 0–100); "hex" reads stringLiterals.
-  literals: Record<string, number> = { c0: 86, c1: 180, c2: 233 }; // #56b4e9
+  // c0 to c2 read per mode (rgb 0–255; hsv 0–360 and 0–100); hex mode reads stringLiterals.
+  literals: Record<string, number> = { c0: 86, c1: 180, c2: 233 };
   stringLiterals: Record<string, string> = { hex: "#56b4e9" };
   cachedString = "";
   width = 200;
@@ -55,7 +37,6 @@ export class ColorPickerNode extends ClassicPreset.Node {
     this.addOutput("color", strOut("Color"));
   }
 
-  /** The colord instance for the current channels / hex + mode. */
   toColord() {
     if (this.mode === "hex") {
       const c = colord(this.stringLiterals.hex || "#000000");
@@ -75,8 +56,7 @@ export class ColorPickerNode extends ClassicPreset.Node {
   }
 }
 
-// W3C separable compositing per RGB channel on [0,1]: A is the BACKDROP, B the blend
-// layer — the order matters for overlay, soft/hard light, dodge and burn.
+// W3C separable compositing per RGB channel on [0,1]: A is the backdrop and B the blend layer, which matters for overlay, the lights, dodge and burn.
 
 export type BlendMode =
   | "mix" | "multiply" | "screen" | "overlay" | "soft-light" | "hard-light"
@@ -103,7 +83,6 @@ export const BLEND_MODE_META: Record<BlendMode, { label: string; blend: (a: numb
 export class ColorBlendNode extends ClassicPreset.Node {
   label: string;
   mode: BlendMode;
-  // Defaults are two palette colors so the node shows a result cold.
   stringLiterals: Record<string, string> = { a: "#56b4e9", b: "#e69f00" };
   cachedString: string | SolError | null = null;
   width = 210;
@@ -112,16 +91,13 @@ export class ColorBlendNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; mode?: BlendMode }) {
     super("ColorBlend");
     this.label = init?.label ?? "Color Blend";
-    // Guard a stale mode from an old save — fall back rather than crash data().
-    this.mode = init?.mode && init.mode in BLEND_MODE_META ? init.mode : "mix";
+    this.mode = init?.mode ?? "mix";
     this.addInput("a", strIn("Color A"));
     this.addInput("b", strIn("Color B"));
     this.addOutput("color", strOut("Color"));
   }
 
   data(inputs: { a?: string[]; b?: string[] }): { color: string | SolError | null } {
-    // Colors A and B are operands: a wired blank propagates (blank in, blank out), it is
-    // not an invalid-color error. An untouched empty card ("") is still a #VALUE!.
     const parse = (key: "a" | "b", label: string) => {
       const raw = readInput(inputs[key], this.stringLiterals[key] ?? "");
       if (raw === null) return null;
@@ -131,7 +107,7 @@ export class ColorBlendNode extends ClassicPreset.Node {
     };
     const a = parse("a", "Color A");
     const b = parse("b", "Color B");
-    // An error outranks an unknown: the error branch runs before the blank one.
+    // An error outranks an unknown, so errors are checked before blanks ([[C24]] arraySemantics).
     const err = [a, b].find(isSolError);
     if (err) {
       this.cachedString = err;
@@ -180,8 +156,7 @@ export class ConstantNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ConstantOp }) {
     super("Constant");
-    // Guard a stale op from an old save rather than crash data() on CONSTANTS[op].
-    this.op = init?.op && init.op in CONSTANTS ? init.op : "pi";
+    this.op = init?.op ?? "pi";
     this.label = init?.label ?? "";
     this.addOutput("value", new ClassicPreset.Output(numberSocket));
   }
@@ -220,13 +195,10 @@ export class SliderInputNode extends ClassicPreset.Node {
   }
 
   data(inputs: { min?: number[]; max?: number[]; step?: number[] }) {
-    // A Slider's CONTROL needs finite bounds to exist, so a wired blank bound — uniquely —
-    // falls back to the card's own literal.
     const litMin  = this.literals.min  ?? 0;
     const litMax  = this.literals.max  ?? 100;
     const litStep = this.literals.step ?? 1;
-    // A non-finite bound is no bound (the card's own); inverted bounds swap so the
-    // control still spans them instead of pinning the value to one end silently.
+    // Inverted bounds swap so the control still spans them rather than pinning the value to one end.
     const finite = (v: number | null, lit: number) => (v != null && Number.isFinite(v) ? v : lit);
     let lo = finite(readInput(inputs.min, litMin), litMin);
     let hi = finite(readInput(inputs.max, litMax), litMax);
@@ -240,29 +212,7 @@ export class SliderInputNode extends ClassicPreset.Node {
   }
 }
 
-export class BooleanInputNode extends ClassicPreset.Node {
-  label: string;
-  value: 0 | 1;
-  width = 160;
-  height = 100;
-
-  constructor(init?: { label?: string; value?: 0 | 1 }) {
-    super("BooleanInput");
-    this.label = init?.label ?? "Boolean Input";
-    this.value = init?.value ?? 0;
-    // A first-class logical output, NOT a number; the socket bridge coerces it to 1/0.
-    this.addOutput("value", logicalOut("Value"));
-  }
-
-  // `value` stays 0|1 for the toggle UI + persistence; the EMITTED value is a real boolean.
-  data() {
-    return { value: this.value === 1 };
-  }
-}
-
-/** Reads the save clock (`saveTimeStore` — the leaf seam over the current SolDoc's
- *  per-document timestamps), so the two serials refresh on any recompute and the
- *  card's Refresh button is just `requestRecalc()`. */
+/** Reads saveTimeStore, so both serials refresh on any recompute and the card's Refresh is just requestRecalc(). */
 export class SaveTimesNode extends ClassicPreset.Node {
   label: string;
   cachedAutosave: number | null = null;
@@ -280,8 +230,8 @@ export class SaveTimesNode extends ClassicPreset.Node {
   data(): { autosave: number | null; filesave: number | null } {
     const auto = saveTimeStore.lastAutosaveAt();
     const file = saveTimeStore.lastFileSaveAt();
-    this.cachedAutosave = auto === null ? null : jsDateToSerial(new Date(auto));
-    this.cachedFileSave = file === null ? null : jsDateToSerial(new Date(file));
+    this.cachedAutosave = auto === null ? null : wallClockSerial(new Date(auto));
+    this.cachedFileSave = file === null ? null : wallClockSerial(new Date(file));
     return { autosave: this.cachedAutosave, filesave: this.cachedFileSave };
   }
 }

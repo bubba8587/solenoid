@@ -1,10 +1,11 @@
-// [[C10]] socketLattice
-import { describe, it, expect } from "vitest";
+// [[C10]] socketLattice, [[B12]] losslessSaves
+import { describe, it, expect, beforeAll } from "vitest";
 import { ClassicPreset } from "rete";
 import * as Nodes from "../../src/graph/rete-nodes";
 import { SolenoidSocket, canConnect } from "../../src/graph/sockets";
 import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
+import { extractInit } from "../../src/graph/copyPaste";
 
 // Validates every seed graph against the REAL node classes: each saved type
 // resolves to a constructor, each connection lands on sockets that exist with
@@ -81,19 +82,23 @@ for (const [path, mod] of Object.entries(seedModules)) {
 
   describe(`seed ${name}`, () => {
     const byId = new Map<string, AnyNode>();
-
-    it("every node type constructs", () => {
+    const unknownTypes: string[] = [];
+    // Built before any test so every test reads it whatever order the runner picks.
+    beforeAll(() => {
       for (const sn of g.nodes) {
-        const typeName = sn.type;
-        const Ctor = (Nodes as unknown as Record<string, unknown>)[typeName] as
+        const Ctor = (Nodes as unknown as Record<string, unknown>)[sn.type] as
           (new (init?: Record<string, unknown>) => AnyNode) | undefined;
-        expect(Ctor, `unknown node type "${sn.type}" (id ${sn.id})`).toBeTypeOf("function");
-        const node = new Ctor!({ ...sn.init });
+        if (typeof Ctor !== "function") { unknownTypes.push(`"${sn.type}" (id ${sn.id})`); continue; }
+        const node = new Ctor({ ...sn.init });
         const anyNode = node as unknown as Record<string, unknown>;
         if (sn.literals) anyNode.literals = { ...sn.literals };
         if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
         byId.set(sn.id, node);
       }
+    });
+
+    it("every node type constructs", () => {
+      expect(unknownTypes, `unknown node types: ${unknownTypes.join(", ")}`).toEqual([]);
     });
 
     // A seed may only author `literals` / `stringLiterals` where the user could
@@ -123,6 +128,23 @@ for (const [path, mod] of Object.entries(seedModules)) {
         }
       }
       expect(problems, problems.join("\n")).toEqual([]);
+    });
+
+    it("init holds only what extractInit captures, at every level", () => {
+      const stale: string[] = [];
+      const scan = (nodes: SavedNode[], where: string) => {
+        for (const sn of nodes) {
+          const Ctor = (Nodes as unknown as Record<string, unknown>)[sn.type] as
+            (new (init?: Record<string, unknown>) => AnyNode) | undefined;
+          if (!Ctor || !sn.init) continue;
+          const captured = extractInit(new Ctor({ ...sn.init }));
+          for (const k of Object.keys(sn.init)) if (!(k in captured)) stale.push(`${where}${sn.id} (${sn.type}) init.${k}`);
+          const inner = (sn.init.internal as { nodes?: SavedNode[] } | undefined)?.nodes;
+          if (inner) scan(inner, `${where}${sn.id} > `);
+        }
+      };
+      scan(g.nodes, "");
+      expect(stale, stale.join("\n")).toEqual([]);
     });
 
     it("every connection lands on existing, compatible sockets", () => {
@@ -266,3 +288,10 @@ for (const [path, mod] of Object.entries(seedModules)) {
     });
   });
 }
+
+describe("a seed name from a link", () => {
+  it("names no seed when it is an object's built-in property", async () => {
+    const { SEEDS } = await import("../../src/graph/seeds");
+    for (const id of ["constructor", "__proto__", "toString", "hasOwnProperty"]) expect(SEEDS[id], id).toBeUndefined();
+  });
+});

@@ -1,8 +1,7 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
-// "Animated mode": every live cable carries a stream of beads flowing output → input.
 
 const LS_KEY = "solenoid.cableFlow";
 
@@ -16,12 +15,10 @@ function persist() {
 
 export const cableFlowStore = {
   get: (): boolean => _on,
-  set: (v: boolean) => { if (_on === v) return; _on = v; persist(); notify(); },
   toggle: () => { _on = !_on; persist(); notify(); },
   subscribe,
 };
 
-/** Read the persisted flow setting. Call once at startup. */
 export function initCableFlow() {
   try { _on = localStorage.getItem(LS_KEY) === "1"; }
   catch { /* ignore */ }

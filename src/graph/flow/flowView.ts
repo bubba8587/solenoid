@@ -1,32 +1,20 @@
-// [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C87]] groupsAreSubflows
-// THE View implementation (../view.ts; specs/react-flow-surface-contract.md § the View
-// seam): model-side verbs become React Flow state through late-bound callbacks the
-// surface supplies. Positions read and write `node.position` directly; no side map.
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
 import type { View } from "../view";
-import { clampZoom } from "../viewPresets";
+import { boundZoom, clampZoom } from "../viewPresets";
 
 export type FlowViewCallbacks = {
-  /** Re-render one node card. */
   bumpNode(id: string): void;
-  /** Re-derive the edge list from the editor. */
   bumpConnections(): void;
-  /** Reflect a programmatic node move into RF state. */
   moveNode(id: string, pos: { x: number; y: number }): void;
-  /** Push the camera to the RF viewport (zoomAt, zoom pill, fly-to). */
   setViewport(v: { x: number; y: number; zoom: number }): void;
-  /** The live RF pane element (clientWidth/Height for zoomAt framing). */
   getContainer(): HTMLElement | null;
 };
 
-/** The surface-side half: what FlowSurface writes back as React Flow reports. */
 export type FlowView = View & {
-  /** RF viewport → the camera (called from onMove). */
   setTransform(t: { x: number; y: number; k: number }): void;
-  /** Track the pointer in canvas coords. */
   setPointer(p: { x: number; y: number }): void;
-  /** RF measured a card (onNodesChange `dimensions`) — the DOM-free size source. */
   setSize(id: string, size: { w: number; h: number }): void;
 };
 
@@ -73,6 +61,12 @@ export function makeFlowView(editor: NodeEditor<Schemes>, cb: FlowViewCallbacks)
     async pan(x, y) {
       transform.x = x;
       transform.y = y;
+      pushViewport();
+    },
+    async setCamera(t) {
+      transform.x = t.x;
+      transform.y = t.y;
+      transform.k = boundZoom(t.k);
       pushViewport();
     },
     async moveNode(id, pos) {

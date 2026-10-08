@@ -1,11 +1,7 @@
-// The browser half of "a cable starts from EITHER end": presses the first visible input
-// (RF target) and output (source) handles of a seed and checks each begins a cable drag
-// (cabling class + RF connection line, no node drag), then drags from an unwired input
-// onto an output on another node and checks a connection lands. The 2026-09-04
-// regression this pins: the input wrapper's rest halo (socket.css ::before) painted over
-// a `position: static` Handle, so the wrapper swallowed the press (flow.css reset).
-//
-//   node scripts/socket-drag-probe.mjs [seed-id]     (dev server on :1420)
+// Probes that a cable starts from either end: pressing the first visible input and output handles
+// of a seed must begin a cable drag (no node drag), and dragging an unwired input onto a same-type
+// output on another node must land a connection. Needs the dev server on :1420.
+//   node scripts/socket-drag-probe.mjs [seed-id]
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
@@ -42,8 +38,7 @@ try {
         const cs = getComputedStyle(h);
         out.push({
           cx, cy, node: h.dataset.nodeid, handle: h.dataset.handleid,
-          // The wrapper's title is the socket's TYPE label (NodeSocket) — equal titles
-          // are a type-compatible pair for the end-to-end drop below.
+          // The wrapper's title is the socket's type label, so equal titles make a compatible pair.
           type: h.parentElement?.getAttribute("title") ?? "",
           cls: h.className, pe: cs.pointerEvents, cursor: cs.cursor,
           hit: under === h || h.contains(under),
@@ -59,8 +54,7 @@ try {
   });
   console.log(JSON.stringify(info, null, 1));
 
-  // Re-measure each handle right before its press (an earlier release may have
-  // selected or nudged something), and release on the empty pane corner.
+  // Re-measure right before each press: an earlier release may have selected or nudged something.
   const rectOf = (h) => page.evaluate((node, handle, type) => {
     const el = document.querySelector(`.react-flow__handle.${type}.sol-rf-handle-reset[data-nodeid="${node}"][data-handleid="${handle}"]`);
     if (!el) return null;
@@ -86,15 +80,10 @@ try {
       console.log(`${side} ${h.node}/${h.handle}: hit=${h.hit} under=${h.under} hoverCursor=${hoverCursor} drag=${JSON.stringify(st)}`);
       await page.mouse.up(); await wait(250);
       await page.keyboard.press("Escape"); await wait(100);
-      await page.mouse.click(30, 960); await wait(150); // empty pane: clears any selection
+      await page.mouse.click(30, 960); await wait(150);
     }
   }
 
-  // End to end: a cable dragged from an input and released on a same-type output on
-  // another node must land — as a new cable on an unwired input, or as a re-sourced
-  // cable on a wired one (an input holds one cable). Tries visible same-type pairs
-  // until one changes the connection set; the start is the probe's point, the
-  // reverse-drop is RF's.
   const connSet = () => page.evaluate(() =>
     window.__spike.connections().map((c) => `${c.source}/${c.sourceOutput}>${c.target}/${c.targetInput}`).sort().join("\n"));
   let connected = false;
@@ -103,7 +92,7 @@ try {
     for (const s0 of info.source) {
       if (s0.node === t0.node || !t0.type || s0.type !== t0.type) continue;
       const before = await connSet();
-      if (before.includes(`${s0.node}/${s0.handle}>${t0.node}/${t0.handle}`)) continue; // already that cable
+      if (before.includes(`${s0.node}/${s0.handle}>${t0.node}/${t0.handle}`)) continue;
       const t = { ...t0, ...(await rectOf({ ...t0, side: "target" })) };
       const s = { ...s0, ...(await rectOf({ ...s0, side: "source" })) };
       if (!t.hit || !s.hit) continue;

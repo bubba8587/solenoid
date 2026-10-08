@@ -71,6 +71,19 @@ describe("serializeChartOptions", () => {
   it("serializes the pielabels mode and round-trips it", () => {
     expect(serializeChartOptions({ pielabels: "inside" })).toBe("pielabels=inside");
     expect(parseChartOptions(serializeChartOptions({ pielabels: "off" }))).toEqual({ pielabels: "off" });
-    expect(parseChartOptions(serializeChartOptions({ pielabels: "inside" }))).toEqual({ pielabels: "inside" });
+  });
+});
+
+describe("heatmap keys", () => {
+  it("reads seaborn's names, canonicalizing the cmap and dropping unreadable values", () => {
+    expect(parseChartOptions("cmap=VIRIDIS_R;vmin=-1;vmax=1;center=0;annot=on;fmt=.2f;cbar=off;origin=lower"))
+      .toEqual({ cmap: "viridis_r", vmin: -1, vmax: 1, center: 0, annot: true, fmt: ".2f", cbar: false, origin: "lower" });
+    expect(parseChartOptions("cmap=jet;fmt={:.2f};origin=middle;annot=maybe")).toEqual({});
+  });
+
+  it("serializes the heatmap fields and round-trips them", () => {
+    const s = serializeChartOptions({ cmap: "RdBu_r", annot: "off", fmt: ",.0f", cbar: "off", origin: "lower", vmin: 0, vmax: 10, center: 5 });
+    expect(s).toBe("cmap=RdBu_r;annot=off;fmt=,.0f;cbar=off;origin=lower;vmin=0;vmax=10;center=5");
+    expect(parseChartOptions(s)).toEqual({ cmap: "RdBu_r", annot: false, fmt: ",.0f", cbar: false, origin: "lower", vmin: 0, vmax: 10, center: 5 });
   });
 });

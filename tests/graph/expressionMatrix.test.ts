@@ -1,13 +1,12 @@
-// [[E5]]
+// [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { wrapNodeData } from "../../src/graph/coerceInputs";
 import { canConnect, SolenoidSocket } from "../../src/graph/sockets";
-import { isSolError } from "../../src/graph/errorValue";
 
-// ─── [[C15]] matricesInFormulas: the Expression lift ([[E5]] anydataWildcard) ────────────────────────────────────────
+// ─── [[C15]] matricesInFormulas: the Expression lift ([[C10]] socketLattice) ────────────────────────────────────────
 // The connect-time half of the matrix decision: variables are `anydata`, matrices
-// flow in, the formula computes by the broadcast table ([[D27]] oneBroadcast — semantics pinned
+// flow in, the formula computes by the broadcast table ([[C15]] matricesInFormulas — semantics pinned
 // in broadcastRules.test.ts; THIS file pins the node-boundary lift), and the
 // result socket reconciles its RANK to the value while keeping its FAMILY.
 
@@ -32,19 +31,14 @@ describe("matrices flow into a formula (the lift itself)", () => {
     expect(run("SUM(m)", { m: [M] })).toBe(10);
   });
 
-  it("per-cell null and error ride through a matrix formula ([[D36]] nullSkippedNotZero/[[D37]] errorBeatsMissing)", () => {
+  it("per-cell null and error ride through a matrix formula ([[D36]] nullSkippedNotZero/[[C24]] arraySemantics)", () => {
     const out = run("a + 1", { a: [[[1, null], [3, 4]]] }) as unknown[][];
     expect(out[0]).toEqual([2, null]);
     expect(out[1]).toEqual([4, 5]);
   });
-
-  it("the old cap's #SHAPE! is gone — this exact input used to refuse", () => {
-    const r = run("a * 2", { a: [M] });
-    expect(isSolError(r)).toBe(false);
-  });
 });
 
-describe("the connect-time gate ([[E5]] anydataWildcard acceptance)", () => {
+describe("the connect-time gate ([[C10]] socketLattice acceptance)", () => {
   it("a fresh Expression declares anydata variables", () => {
     const n = new ExpressionNode({ expr: "a + b" });
     for (const v of n.varNames) {
@@ -63,7 +57,7 @@ describe("the connect-time gate ([[E5]] anydataWildcard acceptance)", () => {
   });
 });
 
-describe("the result socket reconciles RANK, keeps FAMILY ([[E5]] anydataWildcard + [[D16]] retypeReconciles)", () => {
+describe("the result socket reconciles RANK, keeps FAMILY ([[C10]] socketLattice + [[B11]] maximalMerge)", () => {
   it("a matrix result marks the node rank-2; a scalar result marks it back", async () => {
     const node = new ExpressionNode({ expr: "a * 2" });
     wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);

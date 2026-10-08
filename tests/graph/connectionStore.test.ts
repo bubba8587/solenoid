@@ -1,4 +1,4 @@
-// [[D32]]
+// [[C23]] calcModes
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -9,6 +9,8 @@ import { connectionStore, refreshConnection, networkAllowed, requestNetwork, all
 import { docMetaStore } from "../../src/graph/docMetaStore";
 import { settingsStore } from "../../src/graph/settingsStore";
 import { alertStore } from "../../src/graph/alertStore";
+import { noticeStore } from "../../src/graph/noticeStore";
+import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { isGraphRebuilding } from "../../src/graph/process";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
@@ -80,7 +82,6 @@ describe("connectionStore refresh drives a real recompute that AlertNode still f
 
     // A manual click and an interval timer both call exactly this function.
     await refreshConnection(source.id);
-    expect(isGraphRebuilding()).toBe(false);
 
     const key2 = connectionStore.key(source.id, source.url.trim());
     expect(key2).not.toBe(key1); // the refresh actually changed the cache key
@@ -114,7 +115,6 @@ describe("C2 — per-document network permission gate", () => {
 
   it("allowNetwork() grants the foreign document and opens the gate", () => {
     docMetaStore.setDocMeta({ foreign: true });
-    expect(networkAllowed()).toBe(false);
     allowNetwork();
     expect(docMetaStore.networkAllowed()).toBe(true);
     expect(networkAllowed()).toBe(true);
@@ -128,8 +128,30 @@ describe("C2 — per-document network permission gate", () => {
     expect(requestNetwork("n4")).toBe(true);
   });
 
+  it("a stale Allow from the previous document neither grants nor lingers after a switch", async () => {
+    docMetaStore.setDocMeta({ foreign: true });
+    requestNetwork("docA-src");
+    await new Promise((r) => setTimeout(r, 0));
+    const notice = noticeStore.get().find((n) => n.action?.label === "Allow");
+    expect(notice).toBeDefined();
+    forgetAllNodes();
+    docMetaStore.setDocMeta({ foreign: true });
+    expect(noticeStore.get().some((n) => n.id === notice!.id)).toBe(false);
+    notice!.action!.onClick();
+    expect(docMetaStore.networkAllowed()).toBeUndefined();
+  });
+
   it("a prior grant persists in the meta and is honored on reload", () => {
     docMetaStore.setDocMeta({ foreign: true, networkAllowed: true });
     expect(networkAllowed()).toBe(true);
+  });
+});
+
+describe("a source with nothing fetched emits blank", () => {
+  it("Weather's daily frame is null until its fetch lands, never a column-less frame", async () => {
+    const { WeatherNode } = await import("../../src/graph/nodes/connection");
+    const w = new WeatherNode();
+    // Wired blank coordinates: nothing to fetch.
+    expect(w.data({ lat: [null as unknown as number], lon: [null as unknown as number] }).daily).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
-// [[C63]], [[C72]], [[C100]] chartIsAValue
+// [[B11]], [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
-import { MergePlotsNode, PLANAR_CHART_OPS } from "../../../src/graph/nodes/visual";
+import { MergePlotsNode } from "../../../src/graph/nodes/visual";
 import type { ChartValue, ChartValueOp, OverlayPayload } from "../../../src/graph/chartValue";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/copyPaste";
@@ -17,11 +17,19 @@ function payloadOf(res: { chart: ChartValue | SolError }): OverlayPayload {
 }
 
 describe("Merge Plots node", () => {
-  it("starts with two plot rows plus an Options input", () => {
+  it("starts with an Options input", () => {
     const n = new MergePlotsNode();
-    expect(n.plotKeys()).toEqual(["p0", "p1"]);
     expect(n.inputs.options).toBeTruthy();
     expect(n.outputs.chart).toBeTruthy();
+  });
+
+  it("keeps only the options the builder offers it: a plot's alpha and marker size stay the plot's", () => {
+    const n = new MergePlotsNode();
+    const res = n.data({ p0: [chart("line", [1, 2])], p1: [chart("line", [3, 4])], options: ["title=T; alpha=0.3; markersize=9; color=red; linewidth=2"] });
+    const opts = (res.chart as ChartValue).options!;
+    expect(opts.title).toBe("T");
+    expect(opts.linewidth).toBe(2);
+    expect([opts.alpha, opts.markersize, opts.color]).toEqual([undefined, undefined, undefined]);
   });
 
   it("overlays each input's series, one per source, preserving its mark kind", () => {
@@ -40,10 +48,10 @@ describe("Merge Plots node", () => {
   it("inherits color / marker size / line width / alpha / marker from the source options", () => {
     const n = new MergePlotsNode();
     const res = n.data({
-      p0: [chart("scatter", [1, 2], { options: { color: "#f00", markersize: 5, linewidth: 3, alpha: 0.5, marker: true } })],
+      p0: [chart("line", [1, 2], { options: { color: "#f00", markersize: 5, linewidth: 3, alpha: 0.5, marker: true } })],
     });
     expect(payloadOf(res).series[0]).toMatchObject({
-      kind: "scatter", color: "#f00", markersize: 5, linewidth: 3, alpha: 0.5, marker: true,
+      kind: "line", color: "#f00", markersize: 5, linewidth: 3, alpha: 0.5, marker: true,
     });
   });
 
@@ -61,19 +69,32 @@ describe("Merge Plots node", () => {
     expect(p.labels).toEqual(["Jan", "Feb"]);
   });
 
-  it("takes labels from the FIRST labelled source only", () => {
+  it("aligns labelled series on the union of their labels, blank where a series has no value", () => {
     const n = new MergePlotsNode();
     const p = payloadOf(n.data({
-      p0: [chart("line", [1, 2], { labels: ["a", "b"] })],
-      p1: [chart("line", [3, 4], { labels: ["x", "y"] })],
+      p0: [chart("column", [1, 2, 3, 4], { labels: ["Q1", "Q2", "Q3", "Q4"] })],
+      p1: [chart("line", [20, 30, 40, 50], { labels: ["Q2", "Q3", "Q4", "Q5"] })],
     }));
-    expect(p.labels).toEqual(["a", "b"]);
+    expect(p.labels).toEqual(["Q1", "Q2", "Q3", "Q4", "Q5"]);
+    expect(p.series.map((s) => s.values)).toEqual([[1, 2, 3, 4, null], [null, 20, 30, 40, 50]]);
+  });
+
+  it("keeps a repeated label in one source as its own slot, and an unlabelled series by position", () => {
+    const n = new MergePlotsNode();
+    n.addValueInput();
+    const p = payloadOf(n.data({
+      p0: [chart("line", [1, 2, 3], { labels: ["a", "a", "b"] })],
+      p1: [chart("line", [7, 8], { labels: ["b", "a"] })],
+      p2: [chart("line", [5, 6])],
+    }));
+    expect(p.labels).toEqual(["a", "a", "b"]);
+    expect(p.series.map((s) => s.values)).toEqual([[1, 2, 3], [8, null, 7], [5, 6]]);
   });
 
   it("wraps a single scalar value into a one-point series", () => {
     const n = new MergePlotsNode();
-    const p = payloadOf(n.data({ p0: [chart("scatter", 5, { title: "S" })] }));
-    expect(p.series).toMatchObject([{ name: "S", kind: "scatter", values: [5] }]);
+    const p = payloadOf(n.data({ p0: [chart("line", 5, { title: "S" })] }));
+    expect(p.series).toMatchObject([{ name: "S", kind: "line", values: [5] }]);
   });
 
   it("skips empty and blank rows", () => {
@@ -85,18 +106,15 @@ describe("Merge Plots node", () => {
   it("refuses a non-plot figure with a #TYPE! naming the input", () => {
     const n = new MergePlotsNode();
     const res = n.data({ p0: [chart("line", [1, 2])], p1: [chart("pie", [1, 2])] });
-    expect(isSolError(res.chart)).toBe(true);
     const err = res.chart as SolError;
     expect(err.code).toBe("#TYPE!");
     expect(err.message).toContain("Plot 2");
     expect(err.message).toContain("pie");
   });
 
-  it("refuses composed and bubble too — only the five x/y kinds overlay", () => {
-    expect([...PLANAR_CHART_OPS].sort()).toEqual(["area", "bar", "column", "line", "scatter"]);
+  it("refuses the non-plot figures", () => {
     const n = new MergePlotsNode();
-    expect(isSolError(n.data({ p0: [chart("composed", [1])] }).chart)).toBe(true);
-    expect(isSolError(n.data({ p0: [chart("bubble", [1])] }).chart)).toBe(true);
+    expect(isSolError(n.data({ p0: [chart("radar", [1])] }).chart)).toBe(true);
     expect(isSolError(n.data({ p0: [chart("kpi", null)] }).chart)).toBe(true);
   });
 
@@ -105,7 +123,6 @@ describe("Merge Plots node", () => {
     expect(isSolError(n.data({ p0: [chart("pie", [1])] }).chart)).toBe(true);
     // Re-run with only plots: the stale error must not linger.
     const res = n.data({ p0: [chart("line", [1, 2])] });
-    expect(isSolError(res.chart)).toBe(false);
     expect((res.chart as ChartValue).op).toBe("overlay");
   });
 

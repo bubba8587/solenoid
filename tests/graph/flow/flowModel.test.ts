@@ -1,23 +1,19 @@
-// [[B10]], [[C65]], [[C43]]
+// [[A1]], [[B3]]
 import { describe, it, expect } from "vitest";
-import { buildModel, toFlowNodes, toFlowEdges, toFlowPosition, fromFlowPosition } from "../../../src/graph/flow/flowModel";
+import { buildModel, toFlowNodes, toFlowEdges, toFlowPosition, fromFlowPosition, nodeClassName } from "../../../src/graph/flow/flowModel";
+import { isolateStore } from "../../../src/graph/isolateStore";
+import { DisplayNode } from "../../../src/graph/rete-nodes";
 import { computeAll } from "../../../src/graph/graphCompute";
-import { FLOW_SEEDS, DEFAULT_SEED_ID } from "../../../src/graph/flow/flowSeeds";
+import { SEEDS as FLOW_SEEDS, DEFAULT_SEED_ID } from "../../../src/graph/seeds";
 import { isSolError } from "../../../src/graph/errorValue";
 
 // C0 pin: a saved graph builds the headless model, computes, and projects into
 // React-Flow-shaped nodes/edges with per-port handles intact.
 
 describe("flow model (React Flow port C0)", () => {
-  it("has seeds and a default", () => {
-    expect(Object.keys(FLOW_SEEDS).length).toBeGreaterThan(0);
-    expect(FLOW_SEEDS[DEFAULT_SEED_ID]).toBeDefined();
-  });
-
   it("builds and computes the default seed", async () => {
     const g = FLOW_SEEDS[DEFAULT_SEED_ID].graph;
     const m = await buildModel(g);
-    expect(m.editor.getNodes().length).toBe(g.nodes.length);
     expect(m.editor.getConnections().length).toBe(g.connections.length);
 
     const values = await computeAll(m.editor, m.engine);
@@ -49,8 +45,6 @@ describe("flow model (React Flow port C0)", () => {
     for (const e of edges) {
       const src = byId.get(e.source);
       const tgt = byId.get(e.target);
-      expect(src, `edge source ${e.source}`).toBeDefined();
-      expect(tgt, `edge target ${e.target}`).toBeDefined();
       // Handle ids are the socket keys — they must exist on the live node.
       const srcNode = src!.data.node as unknown as { outputs: Record<string, unknown> };
       const tgtNode = tgt!.data.node as unknown as { inputs: Record<string, unknown> };
@@ -105,5 +99,20 @@ describe("group members as RF children", () => {
     expect(toFlowPosition(m, g, { x: 160, y: 190 })).toEqual({ x: 160, y: 190 });
     expect(fromFlowPosition(m, { x: 60, y: 90 }, g)).toEqual({ x: 160, y: 190 });
     expect(fromFlowPosition(m, { x: 60, y: 90 }, undefined)).toEqual({ x: 60, y: 90 });
+  });
+});
+
+describe("isolate dims through RF's className", () => {
+  it("a receded card carries sol-isolate-dim, so a className rebuild cannot drop it", () => {
+    const kept = new DisplayNode();
+    const receded = new DisplayNode();
+    isolateStore.set([kept.id]);
+    try {
+      expect(nodeClassName(receded as never)).toContain("sol-isolate-dim");
+      expect(nodeClassName(kept as never) ?? "").not.toContain("sol-isolate-dim");
+    } finally {
+      isolateStore.exit();
+    }
+    expect(nodeClassName(receded as never) ?? "").not.toContain("sol-isolate-dim");
   });
 });

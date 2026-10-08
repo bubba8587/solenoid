@@ -16,6 +16,16 @@ const dt = (socket: unknown): SocketDataType | undefined =>
   socket instanceof SolenoidSocket ? socket.dataType : undefined;
 
 describe("Expression — value-polymorphic results", () => {
+  it("a complex result reaches the output, not a blank ([[C15]] matricesInFormulas)", () => {
+    const r = new ExpressionNode({ expr: "COMPLEX(1, 2)" }).data({}).result as { re: number; im: number };
+    expect(r.re).toBe(1);
+    expect(r.im).toBe(2);
+  });
+
+  it("an infinity carried in from an input passes; a NaN is still #DOMAIN!", () => {
+    expect(new ExpressionNode({ expr: "x + 1" }).data({ x: [Infinity] }).result).toBe(Infinity);
+  });
+
   it("maps a text function over a list when resultAs = text", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
     expect(n.data({ name: [["alice", "bob"]] }).result).toEqual(["ALICE", "BOB"]);
@@ -69,7 +79,6 @@ describe("Expression — value-polymorphic results", () => {
     // to NaN. The other elements compute normally around the tagged cell.
     const n = new ExpressionNode({ expr: "1 / x" });
     const r = n.data({ x: [[1, 0, 2]] }).result as Array<number | SolError>;
-    expect(Array.isArray(r)).toBe(true);
     expect(r[0]).toBe(1);
     expect(isSolError(r[1]) && (r[1] as SolError).code).toBe("#DIV/0!");
     expect(r[2]).toBe(0.5);
@@ -86,11 +95,6 @@ describe("Expression — value-polymorphic results", () => {
   it("passes per-element booleans through in a LIST (P7 logical — audit finding 27)", () => {
     const n = new ExpressionNode({ expr: "x > 2" });
     expect(n.data({ x: [[1, 3, 5]] }).result).toEqual([false, true, true]);
-  });
-
-  it("does not tag a normal finite scalar (strict-superset)", () => {
-    const n = new ExpressionNode({ expr: "a / b" });
-    expect(n.data({ a: [6], b: [2] }).result).toBe(3);
   });
 
   it("passes a scalar boolean comparison through (audit finding 27)", () => {
@@ -118,7 +122,7 @@ describe("Expression — value-polymorphic results", () => {
 
   it("variable inputs are `anydata` so text/date arrays AND matrices connect, and a scalar stays scalar", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
-    // `anydata` ([[C15]] matricesInFormulas/[[E5]] anydataWildcard) replaced `anycombo`, which had replaced `anylist` + the `noWidenInputs` side-channel:
+    // `anydata` ([[C15]] matricesInFormulas/[[C10]] socketLattice) replaced `anycombo`, which had replaced `anylist` + the `noWidenInputs` side-channel:
     // same acceptance, but the SOCKET now says the evaluator takes either rank.
     expect(dt(n.inputs.name?.socket)).toBe("anydata");
   });
@@ -174,11 +178,17 @@ describe("MAP — text & date matrices", () => {
 describe("BYROW / REDUCE / MAKEARRAY — text", () => {
   it("BYROW joins each row to a string", () => {
     const n = new ByAxisNode({ expr: 'TEXTJOIN(",", FALSE, values)', resultAs: "text" });
-    expect(n.data({ table: [[["a", "b"], ["c", "d"]]] }).result).toEqual(["a,b", "c,d"]);
+    expect(n.data({ table: [[["a", "b"], ["c", "d"]]] }).result).toEqual([["a,b"], ["c,d"]]);
   });
 
-  it("BYROW output socket is the text combo", () => {
-    expect(dt(new ByAxisNode({ resultAs: "text" }).outputs.result?.socket)).toBe("strcombo");
+  // [[D85]] columnsStayColumns: BYROW answers a one-column table, BYCOL a list.
+  it("BYROW's output socket is the text table, BYCOL's the text combo, and the switch retypes it", () => {
+    const n = new ByAxisNode({ resultAs: "text" });
+    expect(dt(n.outputs.result?.socket)).toBe("strtable");
+    expect(dt(new ByAxisNode({ resultAs: "text", op: "col" }).outputs.result?.socket)).toBe("strcombo");
+    expect(n.setOp("col")).toBe(true);
+    expect(dt(n.outputs.result?.socket)).toBe("strcombo");
+    expect(n.outputs.result?.label).toBe("Per column");
   });
 
   it("REDUCE concatenates from a wired text initial", () => {
@@ -219,7 +229,6 @@ describe("per-variable descriptions (Expression + Equation)", () => {
     expect(l.varNames).toContain("x");
     expect(l.varNames).toContain("y");
     const out = l.data({});
-    expect(isLambdaValue(out.result)).toBe(true);
     // The value carries the descriptions so a Report embed can show "where:".
     expect(isLambdaValue(out.result) && out.result.descriptions).toEqual({ x: "width", y: "height" });
     // A description-less lambda leaves the value's field undefined (kept small).

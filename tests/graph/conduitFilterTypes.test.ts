@@ -1,4 +1,4 @@
-// [[C60]], [[C48]]
+// [[B11]], [[C48]]
 import { describe, it, expect } from "vitest";
 import { ConduitNode, conduitInKey } from "../../src/graph/nodes/conduit";
 import { FilterNode } from "../../src/graph/nodes/list";
@@ -27,12 +27,12 @@ describe("Conduit lane accepts any cable (trueany, not scalar any)", () => {
 });
 
 describe("List Filter output adopts the input's concrete type", () => {
-  it("both outputs are anylist-based adoptive sockets (revert to anylist unwired)", () => {
+  it("both outputs are anydata-based adoptive sockets (a list stays a list, a table a table)", () => {
     const f = new FilterNode();
     for (const key of ["result", "dropped"]) {
       const s = f.outputs[key]!.socket;
       expect(s).toBeInstanceOf(AdoptiveSocket);
-      expect((s as AdoptiveSocket).base).toBe("anylist");
+      expect((s as AdoptiveSocket).base).toBe("anydata");
     }
   });
 
@@ -51,13 +51,12 @@ describe("List Filter preserves units (passthrough) while filtering by magnitude
   it("filters on the display magnitude but keeps the dimensioned cells on the output", () => {
     const m = { length: 1 }; // meters
     const list = [tagDim(3, m), tagDim(1, m), tagDim(5, m)];
-    expect(list.every(isUnitCell)).toBe(true); // sanity: real UnitCells
     const f = new FilterNode();
     f.condConfig["0"] = { op: "gt" };
     f.stringLiterals["value0"] = "2";
     const out = f.data({ list: [list] });
-    expect(out.result!.every(isUnitCell)).toBe(true); // units survive the filter
-    expect(out.result!.map((c) => displayMagnitudeOf(c as never))).toEqual([3, 5]);
+    expect((out.result as unknown[]).every(isUnitCell)).toBe(true); // units survive the filter
+    expect((out.result as unknown[]).map((c) => displayMagnitudeOf(c as never))).toEqual([3, 5]);
     expect(out.dropped!.map((c) => displayMagnitudeOf(c as never))).toEqual([1]);
   });
 
@@ -68,5 +67,21 @@ describe("List Filter preserves units (passthrough) while filtering by magnitude
     const out = f.data({ list: [[1, 2, 3, 4]] });
     expect(out.result).toEqual([3, 4]);
     expect(out.dropped).toEqual([1, 2]);
+  });
+});
+
+describe("Filter's Column socket", () => {
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  it("shows for a table and stays when the table runs out of rows", async () => {
+    const f = new FilterNode();
+    f.data({ list: [[[1, 2], [3, 4]]] });
+    await flush();
+    expect(f.inputs.column).toBeDefined();
+    f.data({ list: [[]] });
+    await flush();
+    expect(f.inputs.column).toBeDefined();
+    f.data({ list: [[1, 2, 3]] });
+    await flush();
+    expect(f.inputs.column).toBeUndefined();
   });
 });

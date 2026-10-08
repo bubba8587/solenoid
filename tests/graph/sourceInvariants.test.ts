@@ -1,13 +1,12 @@
-// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D42]], [[D46]], [[D64]], [[C95]], [[C97]]
+// [[A1]] visualGraphCalculator, [[B14]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[B11]], [[D22]], [[C25]], [[D86]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── Source-scan enforcement for the grep-shaped rules (decisions/) ───────────
+// ─── Source-scan enforcement for the grep-shaped rules (tree/decisions/) ───────────
 // Two rules whose BEHAVIOUR was tested but whose COMPLETENESS was not — nothing
-// failed when a NEW file forgot them, which [[C9]] labelUnenforced flags as precisely the shape
-// of every Origin incident. These scans close the completeness half the same way
-// formulaPathIsReteFree.test.ts closes [[D19]] implReteFree: statically, over the real source, so
+// failed when a NEW file forgot them, which is precisely the shape of every Origin incident. These scans close the completeness half the same way
+// formulaPathIsReteFree.test.ts closes [[C17]] shareImpl: statically, over the real source, so
 // a new offender fails CI with the rule's name in the message.
 //
 // The scans are LINE-BASED with `//` comments stripped — crude but exactly as
@@ -39,7 +38,7 @@ function codeLines(file: string): string[] {
 // (the whole file passes only on a "/" OS otherwise).
 const rel = (p: string) => path.relative(SRC, p).replace(/\\/g, "/");
 
-describe("[[D16]] retypeReconciles — a file that retypes sockets in place must reconcile downstream", () => {
+describe("[[B11]] maximalMerge — a file that retypes sockets in place must reconcile downstream", () => {
   // An in-place socket retype (swapping `port.socket` or calling
   // `MutableSocket.setType`) fires no connection event, so downstream Format
   // Controllers keep stale formats unless the file also drives
@@ -54,10 +53,12 @@ describe("[[D16]] retypeReconciles — a file that retypes sockets in place must
   const SANCTIONED: Record<string, string> = {
     "sockets.ts": "defines MutableSocket.setType — the primitive itself",
     "nodes/formatController.ts": "the FC's own sockets; retyped BY the fcReconcile pass (and at construction)",
-    "nodes/control.ts": "syncOutputType returns `changed` — its component (CableSwitchNode.tsx) does the retype",
-    "nodes/frame.ts": "SettleNode.setMode retypes its own INPUT socket per mode; its component (FrameNodes.tsx SettleComponent) calls reconcileTypesAfterEdit, and an input retype changes what the node ACCEPTS, not its output type — no downstream FC restale",
+    "nodes/control.ts": "syncOutputType returns `changed` — its component (CableSwitchNode.tsx) does the retype; ValueInputNode.setDataType likewise, its component (ValueInputNode.tsx) calls retypeOutputCables",
+    "nodes/frame.ts": "SettleNode.setMode retypes its own INPUT socket per mode; its component (FrameNodes.tsx SettleComponent) calls reconcileTypesAfterEdit, and an input retype changes what the node ACCEPTS, not its output type — no downstream FC restale. GetColumn.setReadAs, SplitFrame.setColType and AddColumn.setAddAs swap sockets for frameEdit.ts, which calls retypeOutputCables / retypeInputCables",
     "nodes/composite.ts": "port adoption synced by its own pass; the end-of-process settle runs reconcileFcTypes (process.ts)",
     "conduitTrace.ts": "conduit lane adoption — driven from the same central settle",
+    "nodes/date.ts": "DateTimeValue and Workdays swap their result socket in setOp; their components (DateNodes.tsx) call retypeOutputCables",
+    "nodes/finance.ts": "ReturnsNode.setOp returns `outputChanged`; its component (ReturnsNode.tsx) calls retypeOutputCables",
   };
 
   it("every socket-retyping file references the reconciler (or is sanctioned, with a reason)", () => {
@@ -74,7 +75,7 @@ describe("[[D16]] retypeReconciles — a file that retypes sockets in place must
     expect(
       offenders,
       `These files retype sockets in place but never reference retypeOutputCables/` +
-      `reconcileFcTypes ([[D16]] retypeReconciles): downstream FCs will keep stale formats. Call the ` +
+      `reconcileFcTypes ([[B11]] maximalMerge): downstream FCs will keep stale formats. Call the ` +
       `reconciler, or add the file to SANCTIONED with the reason it is safe:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
@@ -113,7 +114,7 @@ describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keep
 
   const SANCTIONED: Record<string, string> = {
     "frame.ts": "isDateCell is ISO_DATE-gated and boolean; the typing pass runs only after every cell passed it",
-    "noteFrontmatter.ts": "DATE_ONLY is /^\d{4}-\d{2}-\d{2}$/ — ISO only, never ambiguous",
+    "nodes/dateSerial.ts": "noteDateSerial is gated on the ISO day and day-time shapes a note holds, never ambiguous",
     "nodes/annotation.ts": "returns number | null; an annotation date has no error channel",
     "nodes/cast.ts": "already LOUD — a failed date cast is #VALUE!, never a silent blank (precision upgrade, backlogged)",
     "nodes/dateOps.ts": "TIMEVALUE's datetime fallback — already answers #VALUE! on failure",
@@ -153,13 +154,13 @@ describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keep
   });
 });
 
-describe("[[D42]] perInputUnitBlind — a node file that runs the dimension algebra declares unitAware", () => {
+describe("[[C25]] firstClassUnits — a node file that runs the dimension algebra declares unitAware", () => {
   // The unit-blind boundary strips `UnitCell` tags from every input UNLESS the
   // node declares `unitAware = true` (coerceInputs). So a node that calls the
   // per-cell algebra — isUnitCell / dimOf / magnitudeOf / the *Units combinators
   // / broadcastUnit — without the flag never sees a tag: the algebra silently
   // no-ops on display magnitudes. The BEHAVIOUR is covered by unitCoercion.test;
-  // THIS is the completeness half ([[D42]] perInputUnitBlind): a new algebra
+  // THIS is the completeness half ([[C25]] firstClassUnits): a new algebra
   // node whose file forgets the flag fails here by name.
   //
   // Deliberately EXCLUDED from the consuming set: the matrix-unit family
@@ -172,6 +173,8 @@ describe("[[D42]] perInputUnitBlind — a node file that runs the dimension alge
   // Files sanctioned to call the algebra WITHOUT declaring, with the reason:
   const SANCTIONED: Record<string, string> = {
     "nodes/shared.ts": "the helper library (broadcastUnit/guardCell/anyDimensioned) — declares no node class; every caller declares unitAware in its own file",
+    "nodes/listOps.ts": "a rete-free kernel with no node class; setKey keys a unit cell for Unique, which gets tags through its passthrough() input",
+    "nodes/quality.ts": "Expect only reads unit cells, to check one in the unit it shows and to key a quantity for unique; the tags arrive through its passthrough() input and it forwards the value untouched",
     "nodes/scriptCoerce.ts": "Script is unit-blind by design; isUnitCell here unwraps CUBE cells (which ride inside the whole CubeValue, past the boundary strip) to magnitudes for the script",
   };
   const NODE_DIRS = ["nodes", "packs"].map((d) => path.join(SRC, d));
@@ -190,7 +193,7 @@ describe("[[D42]] perInputUnitBlind — a node file that runs the dimension alge
     expect(
       offenders,
       `These node files call the per-cell unit algebra but never declare ` +
-      `unitAware = true ([[D42]] perInputUnitBlind): the unit-blind boundary strips the tags before ` +
+      `unitAware = true ([[C25]] firstClassUnits): the unit-blind boundary strips the tags before ` +
       `data() runs, so the algebra silently no-ops. Declare the flag on the ` +
       `algebra-running class, or add the file to SANCTIONED with the reason:\n  ` +
       offenders.join("\n  "),
@@ -303,7 +306,7 @@ describe("[[C26]] opArgDistinct — OP pickers bind `op`, ARG pickers never do",
   });
 });
 
-describe("[[C30]] saveViaTextForm — the text form carries every SavedGraph field, both directions", () => {
+describe("[[B12]] losslessSaves — the text form carries every SavedGraph field, both directions", () => {
   // serializeGraph() returns readTextForm(writeTextForm(raw)) — the text form is
   // the NARROW WAIST of the save path, so a SavedGraph field that either
   // direction omits is deleted from EVERY save, and autosave then writes the
@@ -314,9 +317,11 @@ describe("[[C30]] saveViaTextForm — the text form carries every SavedGraph fie
   // readTextForm.
   it("every SavedGraph interface field appears in writeTextForm AND readTextForm", () => {
     const persistence = fs.readFileSync(path.join(SRC, "persistence.ts"), "utf8");
-    const iface = /export interface SavedGraph \{([\s\S]*?)\n\}/.exec(persistence);
+    const iface = /export interface SavedGraph extends SideTables \{([\s\S]*?)\n\}/.exec(persistence);
     expect(iface, "SavedGraph interface not found in persistence.ts").toBeTruthy();
-    const fields = [...iface![1].matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
+    const sideTables = /export interface SideTables \{([\s\S]*?)\n\}/.exec(fs.readFileSync(path.join(SRC, "savedNodeBody.ts"), "utf8"));
+    expect(sideTables, "SideTables interface not found in savedNodeBody.ts").toBeTruthy();
+    const fields = [...(iface![1] + sideTables![1]).matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
     expect(fields.length).toBeGreaterThanOrEqual(10); // parser sanity — the interface has ~12 fields
     // `v` is the version gate, checked structurally by its own dedicated lines
     // (too short a name to grep for honestly).
@@ -343,14 +348,14 @@ describe("[[C30]] saveViaTextForm — the text form carries every SavedGraph fie
     }
     expect(
       missing,
-      `SavedGraph fields the text-form narrow waist drops ([[C30]] saveViaTextForm) — the field ` +
+      `SavedGraph fields the text-form narrow waist drops ([[B12]] losslessSaves) — the field ` +
       `will silently vanish from every save until both directions carry it:\n  ` +
       missing.join("\n  "),
     ).toEqual([]);
   });
 });
 
-describe("[[C34]] classNameIsType — class names are load-bearing: keepNames stays in both bundler configs", () => {
+describe("[[B12]] losslessSaves — class names are load-bearing: keepNames stays in both bundler configs", () => {
   // `constructor.name` is not a label here — it is the TYPE written into every
   // save (persistence.ts), the ctor-registry key that loads resolve through, and
   // a dispatch key (SEES_ERRORS, groupCollapse, pinStore…). A build without
@@ -361,6 +366,62 @@ describe("[[C34]] classNameIsType — class names are load-bearing: keepNames st
     for (const cfg of ["vite.config.ts", "vitest.config.ts"]) {
       const src = fs.readFileSync(path.resolve(SRC, "../..", cfg), "utf8");
       expect(/keepNames:\s*true/.test(src), `${cfg} lost esbuild keepNames — class-name dispatch and save types break in production only`).toBe(true);
+    }
+  });
+});
+
+describe("[[B11]] maximalMerge — a node class reconciles on the editor that owns it", () => {
+  // The active editor is the surface on screen; a main-graph node behind an open drill-in isn't in it.
+  it("no nodes/packs file reads getActiveEditor / getActiveView (use getOwningEditor / getOwningView)", () => {
+    const offenders: string[] = [];
+    for (const dir of ["nodes", "packs"].map((d) => path.join(SRC, d))) {
+      for (const file of walk(dir)) {
+        if (codeLines(file).some((l) => /\bgetActive(?:Editor|View)\b/.test(l))) offenders.push(rel(file));
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  // tree/specs/floors/components.md rule 10: a card acts on its own graph; only chrome reads the surface on screen.
+  it("no component reads getActiveEditor / getActiveView except the chrome that acts on the surface on screen", () => {
+    const CHROME = new Set([
+      "CableInspector.tsx", "ConnectionDialog.tsx", "FieldResizeGrip.tsx", "InspectorPanel.tsx",
+      "IsolateEndpoints.tsx", "Minimap.tsx", "PinLayer.tsx", "SelectionActionsBar.tsx",
+    ]);
+    const offenders: string[] = [];
+    for (const file of walk(path.join(SRC, "components"))) {
+      if (CHROME.has(path.basename(file))) continue;
+      if (codeLines(file).some((l) => /\bgetActive(?:Editor|View)\b/.test(l))) offenders.push(rel(file));
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("[[D86]] blankRoles — a wired blank never falls back to a literal or default", () => {
+  // `inputs.x?.[0] ?? fallback` hides a wired null behind the fallback. Test connection presence
+  // (readInput, or inputs.x?.length) instead. `?? null` / `?? []` only normalize an absent cable.
+  const PATTERN = /\binputs(?:\.\w+|\[[^\]]+\])\?\.\[0\]\s*\?\?\s*([^\s,;)]+)/g;
+  const NEUTRAL = /^(?:null|undefined|\[\]|"")$/;
+  const SANCTIONED: Record<string, string> = {
+    "nodes/composite.ts::driverMarker?.defaultValue": "goal seek's starting guess, not a value: a wired blank seeds from the default",
+  };
+  // Keyed `file::fallback`, so a sanction covers one read, never a whole file.
+  const hits = (file: string) => codeLines(file).flatMap((l) =>
+    [...l.matchAll(PATTERN)].filter((m) => !NEUTRAL.test(m[1])).map((m) => `${rel(file)}::${m[1]}`));
+  it("no nodes/packs file reads a cable as `?.[0] ?? <fallback>` (or is sanctioned, with a reason)", () => {
+    const offenders: string[] = [];
+    for (const dir of ["nodes", "packs"].map((d) => path.join(SRC, d))) {
+      for (const file of walk(dir)) {
+        for (const h of hits(file)) if (!(h in SANCTIONED)) offenders.push(h);
+      }
+    }
+    expect(offenders, `A wired blank falls back here ([[D86]] blankRoles); use readInput:\n  ${offenders.join("\n  ")}`).toEqual([]);
+  });
+  it("the sanctioned list stays honest", () => {
+    for (const [key, why] of Object.entries(SANCTIONED)) {
+      const file = path.join(SRC, key.split("::")[0]);
+      expect(fs.existsSync(file), `${key} (sanctioned: ${why}) no longer exists — drop the entry`).toBe(true);
+      expect(hits(file), `${key} no longer falls back — drop the stale sanction`).toContain(key);
     }
   });
 });
@@ -512,7 +573,7 @@ describe("[[C38]] sinkRunButtonOnly — data() never touches disk", () => {
   });
 });
 
-describe("[[C39]] effectsEdgeTriggered — an outward effect from data() gates on isGraphRebuilding()", () => {
+describe("[[D79]] effectsEdgeTriggered — an outward effect from data() gates on isGraphRebuilding()", () => {
   // The post-load recompute runs INSIDE the rebuild scope, so an alert/notice
   // fired from data() without the gate replays its whole backlog on every
   // document open, doc switch and rollback (the audit-2026-07-05 class: a
@@ -529,13 +590,13 @@ describe("[[C39]] effectsEdgeTriggered — an outward effect from data() gates o
     expect(
       offenders,
       `These node files fire alerts without the isGraphRebuilding() gate ` +
-      `([[C39]] effectsEdgeTriggered): every document load will replay the alert backlog:\n  ` +
+      `([[D79]] effectsEdgeTriggered): every document load will replay the alert backlog:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });
 });
 
-describe("[[C36]] captureBeforeSwap — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
+describe("[[B12]] losslessSaves — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
   // A verb that switches which document is on screen without captureCurrent()
   // discards up to AUTOSAVE_DELAY of edits to the outgoing doc; without the
   // isGraphRebuilding() guard it races a load and can serialize a half-built
@@ -568,12 +629,13 @@ describe("[[C36]] captureBeforeSwap — every documentStore verb that swaps the 
       const body = src.slice(line, bodyEnd).join("\n");
       if (!/loadGraph\(|showCurrent/.test(body)) continue;
       if (name in SANCTIONED) continue;
-      if (!/captureCurrent/.test(body)) offenders.push(`${name} (no captureCurrent — outgoing edits discarded)`);
+      // Top-level and unconditional, and a failed capture stays on the document: duplicate once captured only when copying the current doc, and duplicating another one dropped the outgoing edits.
+      if (!/^    if \(!this\.captureCurrent\(\)\) return;$/m.test(body)) offenders.push(`${name} (no unconditional captureCurrent — outgoing edits discarded)`);
       if (!/isGraphRebuilding/.test(body)) offenders.push(`${name} (no isGraphRebuilding guard — races a load, audit 21p)`);
     }
     expect(
       offenders,
-      `documentStore verbs that swap the canvas without the discipline ([[C36]] captureBeforeSwap):\n  ` +
+      `documentStore verbs that swap the canvas without the discipline ([[B12]] losslessSaves):\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -586,15 +648,20 @@ describe("[[C36]] captureBeforeSwap — every documentStore verb that swaps the 
   });
 });
 
-describe("[[C27]] noDataInComponents — components never call node.data()", () => {
+describe("components never call node.data() (tree/specs/floors/components.md § The rules)", () => {
   // `data()` assumes the engine-driven coerceInputs wrapper (and, for most
   // nodes, installErrorGuards) has run; a component calling it raw gets
   // un-coerced inputs and can throw during render (the NoteNode/CurveNode
   // comments record exactly this). Components extract a pure helper instead.
   it("no component source calls .data(", () => {
     const offenders: string[] = [];
-    const componentsDir = path.join(SRC, "components");
-    for (const file of walk(componentsDir)) {
+    // The components floor: components/, flow/ and the top-level .tsx chrome.
+    const floor = [
+      ...walk(path.join(SRC, "components")),
+      ...walk(path.join(SRC, "flow")).filter((f) => f.endsWith(".tsx")),
+      ...fs.readdirSync(SRC).filter((f) => f.endsWith(".tsx")).map((f) => path.join(SRC, f)),
+    ];
+    for (const file of floor) {
       const hits = codeLines(file)
         .map((l, i) => ({ l, i }))
         .filter(({ l }) => /\.data\(/.test(l));
@@ -602,7 +669,7 @@ describe("[[C27]] noDataInComponents — components never call node.data()", () 
     }
     expect(
       offenders,
-      `Components must not call node.data() ([[C27]] noDataInComponents) — extract a pure helper ` +
+      `Components must not call node.data() (tree/specs/floors/components.md § The rules) — extract a pure helper ` +
       `(the coerceInputs wrapper assumes engine-driven calls):\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -629,7 +696,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
     // nodes/ and packs/ are in scope too: Computed Column's side-socket
     // reconcile moved a "these sockets are going away" moment into a node
     // class, which was exactly where the components-only scan couldn't see
-    // (the twelfth hand-rolled copy, [[D10]] onePrunePath).
+    // (the twelfth hand-rolled copy, tree/specs/canvas/input-cable-pruning.md § Why one helper).
     const offenders: string[] = [];
     const roots = ["components", "nodes", "packs"].map((d) => path.join(SRC, d));
     for (const root of roots) {
@@ -664,7 +731,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
   });
 });
 
-describe("[[C40]] storesRegisterForget — every node-keyed store registers with nodeStoreRegistry", () => {
+describe("[[A1]] visualGraphCalculator — every node-keyed store registers with nodeStoreRegistry", () => {
   // Per-node state lives in module-level stores (rete's separate React root —
   // no shared context), and the registry is the ONE answer to "what happens on
   // node delete / graph rebuild". A store that skips it leaks dead-id entries
@@ -681,7 +748,6 @@ describe("[[C40]] storesRegisterForget — every node-keyed store registers with
     "docMetaStore.ts": "per-document metadata",
     "saveTimeStore.ts": "the save-clock read seam (provider injected by documentStore) — not node-keyed",
     "calcModeStore.ts": "per-document calc mode",
-    "seedStore.ts": "which seed the document came from (one id) — not node-keyed",
     "settingsStore.ts": "app settings",
     "apiKeyStore.ts": "the AI key (settings)",
     "shortcutsStore.ts": "keyboard-shortcut prefs",
@@ -710,7 +776,6 @@ describe("[[C40]] storesRegisterForget — every node-keyed store registers with
     "pivotEditorStore.ts": "ONE transient open-editor id, not a per-node map",
     "elementPickerStore.ts": "ONE transient open-picker id, not a per-node map",
     "compositeEditorStore.ts": "ONE transient open-drill-in id, not a per-node map",
-    "reportStore.ts": "ONE transient open-overlay id (+ dock flag), not a per-node map",
   };
 
   it("every *Store*.ts references registerNodeForget (or is sanctioned, with a reason)", () => {
@@ -725,7 +790,7 @@ describe("[[C40]] storesRegisterForget — every node-keyed store registers with
     expect(
       offenders,
       `These stores hold state but never register with nodeStoreRegistry ` +
-      `([[C40]] storesRegisterForget): a deleted node's entries linger and a rebuild misses them. ` +
+      `([[A1]] visualGraphCalculator): a deleted node's entries linger and a rebuild misses them. ` +
       `registerNodeForget(+All), or add the store to SANCTIONED with the reason ` +
       `it is not node-keyed:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
@@ -745,7 +810,7 @@ describe("[[C40]] storesRegisterForget — every node-keyed store registers with
     }
     expect(
       offenders,
-      `These stores register forget but not forgetAll ([[C40]] storesRegisterForget) — the rebuild ` +
+      `These stores register forget but not forgetAll ([[A1]] visualGraphCalculator) — the rebuild ` +
       `bulk reset misses them:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -761,7 +826,7 @@ describe("[[C40]] storesRegisterForget — every node-keyed store registers with
   });
 });
 
-describe("[[C11]] socketBox12 — the socket box's greppable half", () => {
+describe("[[A1]] visualGraphCalculator — the socket box's greppable half", () => {
   // The rendering half (RF measures the Handle's box; a transform or an
   // unmeasured constant misreports the cable endpoint) is
   // scripts/socket-box-probe.mjs on the live page. The known REGRESSION VECTORS
@@ -790,7 +855,7 @@ describe("[[C11]] socketBox12 — the socket box's greppable half", () => {
   });
 });
 
-describe("[[C13]] frameLabelGrammar — frame-input labels follow the column-role grammar", () => {
+describe("[[B14]] oneDesignSystem — frame-input labels follow the column-role grammar", () => {
   // A frame input's label is the ONE place the expected columns can be read
   // before wiring (aligned columns arrive as one frame input by design). Roles
   // join with " + " in Title case; a no-expectation input is a plain noun; shape
@@ -827,12 +892,12 @@ describe("[[C13]] frameLabelGrammar — frame-input labels follow the column-rol
         }
       }
     }
-    expect(offenders, "labels violating the frameLabelGrammar grammar ([[C13]] frameLabelGrammar)").toEqual([]);
+    expect(offenders, "labels violating the frameLabelGrammar grammar ([[B14]] oneDesignSystem)").toEqual([]);
   });
 });
 
 // ─── heroChipRow: a chip in a hero box rides the shared flex row ─────────────
-// `.solenoid-node__display-value` is a BLOCK sized for an 18px text line; an inline chip
+// `.solenoid-node__display-value` is a BLOCK sized for a 16px text line; an inline chip
 // baseline-aligns in it and lands ~3px low. Five separate "center the chip" fixes were
 // per-card inline styles (a `justifyContent` without `display: flex` does nothing), and
 // each new chart card copied a broken one. The ONE home is the
@@ -862,10 +927,10 @@ describe("heroChipRow: hero-box chips use the shared --chip row, never an inline
   });
 });
 
-describe("[[D64]] oneSizeRead — the movement stack reads sizes through measuredBox", () => {
+describe("[[A1]] visualGraphCalculator — the movement stack reads sizes through measuredBox", () => {
   // Every module that moves or fits nodes. A direct DOM size read here is either a
   // leftover ad-hoc ladder or a sanctioned exception carrying its reason on the line
-  // above ([[C5]] exceptionsUnderRule); the node lists the four that stand.
+  // above; the leaf lists the four that stand.
   const STACK = ["tidyArrange.ts", "groupPush.ts", "groupPushCore.ts", "groupLogic.ts", "groupCollapse.ts",
     "standoffs.ts", "standoffSolver.ts", "flyToNode.ts", "fcDocking.ts", "canvasActions.ts", "OutlinePanel.tsx", "zoomAt.ts"];
   it("no unsanctioned offsetWidth/offsetHeight read outside nodeSize.ts", () => {
@@ -876,11 +941,11 @@ describe("[[D64]] oneSizeRead — the movement stack reads sizes through measure
         const code = line.replace(/\/\/.*$/, "");
         if (!/offset(Width|Height)\b/.test(code)) return;
         if (/void el\.offsetWidth/.test(code)) return; // the reflow kick, not a size read
-        if (/\[\[D64\]\] exception:/.test((raw[i - 1] ?? "") + (raw[i - 2] ?? ""))) return; // a two-line read shares one marker
+        if (/measuredBox exception:/.test((raw[i - 1] ?? "") + (raw[i - 2] ?? ""))) return; // a two-line read shares one marker
         bad.push(`${f}:${i + 1}`);
       });
     }
-    expect(bad, "read the size through measuredBox (nodeSize.ts), or sanction the line with `// [[D64]] exception: <reason>`").toEqual([]);
+    expect(bad, "read the size through measuredBox (nodeSize.ts), or sanction the line with `// measuredBox exception: <reason>`").toEqual([]);
   });
 });
 
@@ -909,9 +974,66 @@ describe("[[C95]] commitOnEnter — no raw text field commits per keystroke", ()
     }
     expect(bad, "route the edit through useDraftCommit; onChange must not recompute the graph").toEqual([]);
   });
+
+  // The same, one or two local calls deep: `onChange={(e) => onFlags(e.target.value)}` where onFlags recomputes.
+  it("no <input> or <textarea> onChange reaches processGraph through a local function", () => {
+    expect(rawFieldsReaching(/processGraph\(/), "route the edit through useDraftCommit; onChange must not recompute the graph").toEqual([]);
+  });
+
+  // A keystroke that writes the node or saves leaks the half-typed draft to any recompute and to the save.
+  it("no <input> or <textarea> onChange writes the node or schedules a save", () => {
+    const WRITES = /\b(?:data|node!?)\.\w+(?:\.\w+)*\s*=[^=]|scheduleAutosave\(/;
+    expect(rawFieldsReaching(WRITES), "keep the draft local and write it in useDraftCommit's commit").toEqual([]);
+  });
 });
 
-describe("[[C97]] rechartsLazyChunk — recharts is imported statically by exactly one module", () => {
+function rawFieldsReaching(effect: RegExp): string[] {
+  {
+    const bad: string[] = [];
+    for (const file of walk(SRC).filter((p) => p.endsWith(".tsx"))) {
+      const src = fs.readFileSync(file, "utf8");
+      const lines = src.split("\n");
+      const bodies = new Map<string, string>();
+      lines.forEach((line, i) => {
+        const m = line.match(/^\s*(?:function\s+(\w+)\s*\(|const\s+(\w+)\s*=\s*(?:\([^)]*\)|\w+)\s*=>)/);
+        const name = m?.[1] ?? m?.[2];
+        if (!name) return;
+        let depth = 0, end = i;
+        for (let j = i; j < Math.min(lines.length, i + 40); j++) {
+          for (const ch of lines[j]) depth += ch === "{" ? 1 : ch === "}" ? -1 : 0;
+          end = j;
+          if (depth <= 0 && (j > i || /[{}]/.test(lines[j]) || /;\s*$/.test(lines[j]))) break;
+        }
+        bodies.set(name, lines.slice(i, end + 1).join("\n"));
+      });
+      const recomputes = (text: string, depth: number): boolean => {
+        if (effect.test(text)) return true;
+        if (depth === 0) return false;
+        for (const call of text.matchAll(/\b(\w+)\(/g)) {
+          const body = bodies.get(call[1]);
+          if (body && body !== text && recomputes(body, depth - 1)) return true;
+        }
+        return false;
+      };
+      lines.forEach((line, i) => {
+        const h = line.match(/onChange=\{(.*)\}\s*$/);
+        if (!h) return;
+        let tag = "";
+        for (let j = i; j >= Math.max(0, i - 12); j--) {
+          const m = lines[j].match(/<([A-Za-z][\w.]*)\b/);
+          if (m) { tag = m[1]; break; }
+        }
+        if (tag !== "input" && tag !== "textarea") return;
+        const open = lines.slice(Math.max(0, i - 12), i + 1).join(" ");
+        if (tag === "input" && /type=["'](checkbox|radio|range|color|file|date)/.test(open)) return;
+        if (recomputes(h[1], 2)) bad.push(`${rel(file)}:${i + 1}`);
+      });
+    }
+    return bad;
+  }
+}
+
+describe("[[B2]] webTryDesktopFull — recharts is imported statically by exactly one module", () => {
   it("only components/chartRender.tsx imports recharts", () => {
     const importers = walk(SRC)
       .filter((f) => /from\s+["']recharts["']/.test(fs.readFileSync(f, "utf8")))
@@ -923,5 +1045,42 @@ describe("[[C97]] rechartsLazyChunk — recharts is imported statically by exact
       .filter((f) => /from\s+["'](mermaid|elkjs)/.test(fs.readFileSync(f, "utf8")))
       .map(rel);
     expect(importers).toEqual([]);
+  });
+});
+
+describe("[[D22]] oneNamePerCard — no component syncs a label on an op change", () => {
+  it("no component writes an op's catalog label into node.label", () => {
+    const offenders: string[] = [];
+    for (const file of walk(path.join(SRC, "components"))) {
+      codeLines(file).forEach((l, i) => {
+        if (/setLabel\(\s*[A-Z_]+_OP_META\[/.test(l) || /\.label\s*=\s*[A-Z_]+_OP_META\[/.test(l)) {
+          offenders.push(`${path.relative(SRC, file)}:${i + 1}`);
+        }
+      });
+    }
+    expect(offenders, "an op switch must leave node.label alone; nodeDisplayName derives the title from the op").toEqual([]);
+  });
+});
+
+describe("the shared test project never runs a module mock", () => {
+  // Shared-project files share one module cache per worker: a vi.mock there misses a
+  // module another file already loaded, and reaches every file after it.
+  it("every test file that calls vi.mock or vi.doMock is on vitest.config.ts's ISOLATED list", () => {
+    const root = path.resolve(SRC, "../..");
+    const cfg = fs.readFileSync(path.join(root, "vitest.config.ts"), "utf8");
+    const isolated = new Set([...(cfg.match(/const ISOLATED = \[([\s\S]*?)\];/)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+    expect(isolated.size).toBeGreaterThan(0);
+    const tests: string[] = [];
+    const scan = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (e.name === "node_modules") continue;
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) scan(p);
+        else if (/\.test\.tsx?$/.test(e.name)) tests.push(path.relative(root, p).split(path.sep).join("/"));
+      }
+    };
+    for (const d of ["tests", "scripts", "packages"]) scan(path.join(root, d));
+    const leaks = tests.filter((f) => /\bvi\.(doMock|mock)\(/.test(fs.readFileSync(path.join(root, f), "utf8")) && !isolated.has(f));
+    expect(leaks, `add to ISOLATED in vitest.config.ts: ${leaks.join(", ")}`).toEqual([]);
   });
 });

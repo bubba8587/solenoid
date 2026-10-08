@@ -6,40 +6,44 @@
   "nodes": [
     {
       "id": "3dc4458fdead68ca",
-      "type": "NumberInputNode",
-      "x": -153,
-      "y": 1202,
+      "type": "ValueInputNode",
+      "x": 754,
+      "y": 575,
       "init": {
         "label": "Monthly budget",
-        "value": 50,
-        "width": 180,
-        "height": 76
+        "op": "number",
+        "value": "50",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "707e9dcb674a0586",
-      "type": "NumberInputNode",
-      "x": -153,
-      "y": 1319,
+      "type": "ValueInputNode",
+      "x": 754,
+      "y": 790,
       "init": {
         "label": "Months",
-        "value": 12,
-        "width": 180,
-        "height": 76
+        "op": "number",
+        "value": "12",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "e69146c2dff9ae27",
       "type": "ArithmeticNode",
-      "x": 115,
-      "y": 1211,
+      "x": 1030,
+      "y": 706,
       "init": {
         "label": "Annual total",
         "op": "mul",
         "width": 180,
-        "height": 177,
-        "a": 0,
-        "b": 0
+        "height": 177
       },
       "literals": {
         "a": 0,
@@ -50,8 +54,8 @@
     {
       "id": "cac028027f370893",
       "type": "DisplayNode",
-      "x": 380,
-      "y": 1242,
+      "x": 1299,
+      "y": 766,
       "init": {
         "label": "Annual budget",
         "unitSuffix": "none",
@@ -62,8 +66,8 @@
     {
       "id": "10e354041ab33d0a",
       "type": "FormatControllerNode",
-      "x": 563,
-      "y": 1251,
+      "x": 1482,
+      "y": 774,
       "init": {
         "label": "Format",
         "hostNodeId": "cac028027f370893",
@@ -87,8 +91,8 @@
     {
       "id": "8aa83ef9f3cbce64",
       "type": "GroupNode",
-      "x": -177,
-      "y": 1144,
+      "x": 730,
+      "y": 517,
       "init": {
         "label": "Budget",
         "members": [
@@ -100,39 +104,45 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 928,
-        "height": 282
+        "width": 941,
+        "height": 474
       }
     },
     {
       "id": "bfa05e574426869f",
-      "type": "TextInputNode",
-      "x": -162,
-      "y": 1525,
+      "type": "ValueInputNode",
+      "x": -349,
+      "y": 1069,
       "init": {
         "label": "First name",
+        "op": "string",
         "value": "ada",
-        "width": 180,
-        "height": 76
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "d51023727681c51c",
-      "type": "TextInputNode",
-      "x": -162,
-      "y": 1642,
+      "type": "ValueInputNode",
+      "x": -349,
+      "y": 1284,
       "init": {
         "label": "Last name",
+        "op": "string",
         "value": "lovelace",
-        "width": 180,
-        "height": 76
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "18267a40310b0a0c",
       "type": "ConcatNode",
-      "x": 106,
-      "y": 1522,
+      "x": -74,
+      "y": 1201,
       "init": {
         "label": "Full name",
         "width": 180,
@@ -151,8 +161,8 @@
     {
       "id": "b7055a5f9c1c878c",
       "type": "DisplayNode",
-      "x": 371,
-      "y": 1570,
+      "x": 195,
+      "y": 1283,
       "init": {
         "label": "Name badge",
         "unitSuffix": "none",
@@ -163,8 +173,8 @@
     {
       "id": "fb924a7fb971dd3a",
       "type": "FormatControllerNode",
-      "x": 606,
-      "y": 1596,
+      "x": 430,
+      "y": 1310,
       "init": {
         "label": "Format",
         "hostNodeId": "b7055a5f9c1c878c",
@@ -188,8 +198,8 @@
     {
       "id": "c5276e978b610c7f",
       "type": "GroupNode",
-      "x": -186,
-      "y": 1464,
+      "x": -373,
+      "y": 1011,
       "init": {
         "label": "Name badge",
         "members": [
@@ -201,27 +211,37 @@
         ],
         "color": "lime",
         "collapsed": false,
-        "width": 946,
-        "height": 287
+        "width": 957,
+        "height": 474
       }
     },
     {
       "id": "eccce2ca25f6520e",
-      "type": "NumberInputNode",
-      "x": -240,
-      "y": -40,
+      "type": "ValueInputNode",
+      "x": 358,
+      "y": 167,
       "init": {
         "label": "Distance",
-        "value": 1.5,
+        "op": "number",
+        "value": "1.5",
         "width": 180,
-        "height": 76
+        "format": "decimal",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "mi",
+        "customUnit": "",
+        "textCase": "none"
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "81e3f277a3a0a7b2",
       "type": "ConvertNode",
-      "x": 201,
-      "y": -131,
+      "x": 627,
+      "y": 182,
       "init": {
         "label": "mi → km",
         "fromUnit": "mi",
@@ -234,8 +254,8 @@
     {
       "id": "9232ae9ba13eb334",
       "type": "DisplayNode",
-      "x": 466,
-      "y": -42,
+      "x": 896,
+      "y": 327,
       "init": {
         "label": "Distance (km)",
         "unitSuffix": "none",
@@ -244,35 +264,10 @@
       }
     },
     {
-      "id": "2326393ec84f58da",
-      "type": "FormatControllerNode",
-      "x": -57,
-      "y": -36,
-      "init": {
-        "label": "Format",
-        "hostNodeId": "eccce2ca25f6520e",
-        "socketKey": "value",
-        "side": "output",
-        "format": "decimal",
-        "customPattern": "0.00",
-        "decimalDigits": 2,
-        "decimalMode": "places",
-        "unit": "mi",
-        "customUnit": "",
-        "socketDataType": "number",
-        "textCase": "none",
-        "bold": false,
-        "italic": false,
-        "textScale": 14,
-        "width": 152,
-        "height": 91
-      }
-    },
-    {
       "id": "e4fac14f53029814",
       "type": "FormatControllerNode",
-      "x": 649,
-      "y": -33,
+      "x": 1079,
+      "y": 335,
       "init": {
         "label": "Format",
         "hostNodeId": "9232ae9ba13eb334",
@@ -295,21 +290,24 @@
     },
     {
       "id": "1b7810cc8a788307",
-      "type": "TextInputNode",
-      "x": -235,
-      "y": 320,
+      "type": "ValueInputNode",
+      "x": -349,
+      "y": 575,
       "init": {
         "label": "CSV",
+        "op": "string",
         "value": "apple,banana,cherry",
-        "width": 180,
-        "height": 76
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "c2611d5dbac7e563",
       "type": "TextSplitNode",
-      "x": 30,
-      "y": 298,
+      "x": -80,
+      "y": 635,
       "init": {
         "label": "TEXTSPLIT",
         "width": 180,
@@ -324,8 +322,8 @@
     {
       "id": "4cb6d87da6931ba9",
       "type": "TextJoinNode",
-      "x": 295,
-      "y": 286,
+      "x": 189,
+      "y": 660,
       "init": {
         "label": "TEXTJOIN",
         "ignoreEmpty": "include",
@@ -340,8 +338,8 @@
     {
       "id": "3c071df0f0f5d899",
       "type": "DisplayNode",
-      "x": 560,
-      "y": 331,
+      "x": 458,
+      "y": 727,
       "init": {
         "label": "Joined",
         "unitSuffix": "none",
@@ -352,8 +350,8 @@
     {
       "id": "fd35e7e286babf8d",
       "type": "TodayNowNode",
-      "x": -31,
-      "y": -403,
+      "x": -349,
+      "y": 167,
       "init": {
         "op": "today",
         "width": 180,
@@ -363,8 +361,8 @@
     {
       "id": "d96699eb75dc9ee3",
       "type": "DisplayNode",
-      "x": 264,
-      "y": -373,
+      "x": -50,
+      "y": 199,
       "init": {
         "label": "Today",
         "unitSuffix": "none",
@@ -375,8 +373,8 @@
     {
       "id": "c2e0bfe3d60c2820",
       "type": "FormatControllerNode",
-      "x": 447,
-      "y": -331,
+      "x": 133,
+      "y": 240,
       "init": {
         "label": "Format",
         "hostNodeId": "d96699eb75dc9ee3",
@@ -400,8 +398,8 @@
     {
       "id": "d43e296a48729cc5",
       "type": "GroupNode",
-      "x": -55,
-      "y": -461,
+      "x": -373,
+      "y": 109,
       "init": {
         "label": "Today's date",
         "members": [
@@ -411,35 +409,34 @@
         ],
         "color": "pink",
         "collapsed": false,
-        "width": 683,
-        "height": 234
+        "width": 687,
+        "height": 231
       }
     },
     {
       "id": "551f5558f6e9b0ec",
       "type": "GroupNode",
-      "x": -264,
-      "y": -189,
+      "x": 334,
+      "y": 109,
       "init": {
         "label": "Convert Mi to KM",
         "members": [
           "eccce2ca25f6520e",
           "81e3f277a3a0a7b2",
           "9232ae9ba13eb334",
-          "2326393ec84f58da",
           "e4fac14f53029814"
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 1101,
-        "height": 379
+        "width": 934,
+        "height": 388
       }
     },
     {
       "id": "610e3e14726cf88f",
       "type": "GroupNode",
-      "x": -259,
-      "y": 228,
+      "x": -373,
+      "y": 517,
       "init": {
         "label": "Split & join text",
         "members": [
@@ -450,15 +447,15 @@
         ],
         "color": "lime",
         "collapsed": false,
-        "width": 1092,
-        "height": 264
+        "width": 1083,
+        "height": 346
       }
     },
     {
       "id": "gs-sales",
       "type": "FrameInputNode",
-      "x": -349,
-      "y": 745,
+      "x": 628,
+      "y": 1204,
       "init": {
         "label": "Quarterly sales",
         "frameText": "[{\"name\": \"Quarter\", \"type\": \"string\", \"values\": [\"Q1\", \"Q2\", \"Q3\", \"Q4\"]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [1200, 1550, 1340, 1810]}]"
@@ -467,8 +464,8 @@
     {
       "id": "gs-chart",
       "type": "ChartNode",
-      "x": -14,
-      "y": 588,
+      "x": 966,
+      "y": 1069,
       "init": {
         "label": "Sales by quarter",
         "op": "column"
@@ -477,8 +474,8 @@
     {
       "id": "gs-getcol",
       "type": "GetColumnNode",
-      "x": -14,
-      "y": 911,
+      "x": 966,
+      "y": 1396,
       "init": {
         "label": "Get Column → Sales"
       },
@@ -489,8 +486,8 @@
     {
       "id": "gs-sum",
       "type": "AggregateNode",
-      "x": 311,
-      "y": 920,
+      "x": 1295,
+      "y": 1429,
       "init": {
         "label": "SUM",
         "op": "sum"
@@ -499,8 +496,8 @@
     {
       "id": "gs-total",
       "type": "DisplayNode",
-      "x": 576,
-      "y": 937,
+      "x": 1564,
+      "y": 1468,
       "init": {
         "label": "Total sales"
       }
@@ -508,8 +505,8 @@
     {
       "id": "gs-fc",
       "type": "FormatControllerNode",
-      "x": 758,
-      "y": 946,
+      "x": 1747,
+      "y": 1476,
       "init": {
         "label": "Format",
         "hostNodeId": "gs-total",
@@ -533,14 +530,14 @@
     {
       "id": "gs-group",
       "type": "GroupNode",
-      "x": -373,
-      "y": 530,
+      "x": 604,
+      "y": 1011,
       "init": {
         "label": "Tables & charts",
         "color": "amber",
         "collapsed": false,
-        "width": 1319,
-        "height": 576,
+        "width": 1332,
+        "height": 595,
         "members": [
           "gs-sales",
           "gs-chart",
@@ -569,12 +566,6 @@
       "source": "81e3f277a3a0a7b2",
       "sourceOutput": "out",
       "target": "9232ae9ba13eb334",
-      "targetInput": "in"
-    },
-    {
-      "source": "eccce2ca25f6520e",
-      "sourceOutput": "value",
-      "target": "2326393ec84f58da",
       "targetInput": "in"
     },
     {
@@ -614,8 +605,8 @@
       "targetInput": "in"
     },
     {
-      "source": "2326393ec84f58da",
-      "sourceOutput": "out",
+      "source": "eccce2ca25f6520e",
+      "sourceOutput": "value",
       "target": "81e3f277a3a0a7b2",
       "targetInput": "in"
     },

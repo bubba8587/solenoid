@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { COLOR_PALETTE, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, isNeutralShade, nextNeutral } from "../palette";
+import { COLOR_PALETTE, resolveColor, neutralHex, NEUTRAL_WHITE, NEUTRAL_DARK, isNeutralShade, nextNeutral } from "../palette";
 import "./SwatchGrid.css";
 
 /** `value`/`onPick` deal in palette SLOT ids, not hexes. The `gray` slot is special:
@@ -9,28 +9,22 @@ export function SwatchGrid({
   onPick,
   colors = COLOR_PALETTE,
   className = "",
-  readOnly = false,
 }: {
   value?: string;
   onPick?: (slot: string) => void;
   colors?: readonly string[];
   className?: string;
-  readOnly?: boolean;
 }) {
   const neutralSelected = value === "gray" || isNeutralShade(value ?? "");
   return (
-    <div className={`solenoid-swatchgrid${readOnly ? " solenoid-swatchgrid--readonly" : ""}${className ? ` ${className}` : ""}`}>
+    <div className={`solenoid-swatchgrid${className ? ` ${className}` : ""}`}>
       {colors.map((slot) => {
         const isGray = slot === "gray";
         const disc = isGray
-          ? <NeutralSwatch on={!readOnly && neutralSelected} />
+          ? <NeutralSwatch on={neutralSelected} />
           : <Swatch color={resolveColor(slot)} on={slot === value} />;
         const title = isGray ? "Neutral: cycles white / gray / dark." : slot;
-        return readOnly ? (
-          <span key={slot} className="solenoid-swatchgrid__opt" title={title}>
-            {disc}
-          </span>
-        ) : (
+        return (
           <button
             key={slot}
             type="button"
@@ -46,8 +40,7 @@ export function SwatchGrid({
   );
 }
 
-/** An SVG disc, never a CSS border-radius button: a CSS circle inscribes its border
- *  box and clips a side at a time on fractional device pixels under canvas zoom. */
+/** An SVG disc, never a CSS border-radius button, which clips a side at a time on fractional device pixels under zoom. */
 function Swatch({ color, on }: { color: string; on: boolean }) {
   return (
     <svg
@@ -56,8 +49,7 @@ function Swatch({ color, on }: { color: string; on: boolean }) {
       viewBox="-1 -1 18 18"
       style={{ overflow: "visible", display: "block" }}
     >
-      {/* The ring's inner edge OVERLAPS the disc, so the panel never shows through
-          as a hairline between them. */}
+      {/* The ring's inner edge overlaps the disc, so no hairline of panel shows between them. */}
       <circle cx="8" cy="8" r="8" fill={color} />
       {on && <circle cx="8" cy="8" r="8.6" fill="none" stroke="var(--text)" strokeWidth="1.8" />}
     </svg>
@@ -81,11 +73,10 @@ function NeutralSwatch({ on }: { on: boolean }) {
         </clipPath>
       </defs>
       <g clipPath={`url(#${clipId})`}>
-        {/* Middle band fills the disc; the extremes paint over it, divided along
-            x+y = 12.5 and x+y = 19.5 (symmetric about the centre). */}
-        <rect x="0" y="0" width="16" height="16" fill={resolveColor("gray")} />
-        <polygon points="0,0 12.5,0 0,12.5" fill={NEUTRAL_HEX[NEUTRAL_WHITE]} />
-        <polygon points="16,3.5 16,16 3.5,16" fill={NEUTRAL_HEX[NEUTRAL_DARK]} />
+        {/* The extremes paint over the middle band, divided along x+y = 12.5 and x+y = 19.5. */}
+        <rect x="0" y="0" width="16" height="16" fill={neutralHex("gray")} />
+        <polygon points="0,0 12.5,0 0,12.5" fill={neutralHex(NEUTRAL_WHITE)} />
+        <polygon points="16,3.5 16,16 3.5,16" fill={neutralHex(NEUTRAL_DARK)} />
       </g>
       <circle cx="8" cy="8" r="8" fill="none" stroke="var(--border)" strokeWidth="1" />
       {on && <circle cx="8" cy="8" r="8.6" fill="none" stroke="var(--text)" strokeWidth="1.8" />}

@@ -1,28 +1,100 @@
-// [[C17]] shareImpl, [[D19]] implReteFree
+// [[C17]] shareImpl
 // Must not import `text.ts` (it imports `excelFunctions`; the cycle would drag rete into the formula path).
 import { base64Encode, base64Decode } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
+import { decimalFromText } from "../valueKinds";
 
 export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode" | "base64" | "unbase64";
 export type RegexOp = "test" | "extract" | "extract_all" | "extract_groups" | "replace";
 
-/** TEXTSPLIT over one string — a BLANK delimiter splits into characters. */
-export function splitText(text: string, delimiter: string): string[] {
-  return delimiter === "" ? [...text] : text.split(delimiter);
+/** VALUE's reading, and Cast to Number's ([[B16]] oneFormulaSurface): `$`, `(5)` for negatives and trailing `%`, with the decimal and group separators a caller names (blank: the US form, [[C117]] usNumberText, with no group when the decimal is `,`, as NUMBERVALUE's). */
+export function parseValueText(text: string, decimalSep = "", groupSep = ""): number {
+  const d = (decimalSep || ".")[0];
+  const g: string | null = groupSep !== "" ? groupSep[0] : d === "," ? null : ",";
+  if (g === d) return NaN;
+  let t = text.trim(), pct = 0, neg = false;
+  while (t.endsWith("%")) { pct++; t = t.slice(0, -1).trim(); }
+  if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1).trim(); }
+  t = t.replace(/^([+-]?)\$/, "$1");
+  const di = t.indexOf(d);
+  const intPart = di === -1 ? t : t.slice(0, di);
+  const frac = di === -1 ? null : t.slice(di + 1);
+  if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return NaN;
+  const n = decimalFromText((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
+  return Number.isNaN(n) ? NaN : (neg ? -n : n) / Math.pow(100, pct);
 }
 
-/** TEXTAFTER / TEXTBEFORE over one string. A blank delimiter, or one this text
- *  doesn't contain, is a blank (null) rather than the whole string. */
-export function textAfterBefore(op: TextAfterBeforeOp, text: string, delimiter: string): string | null {
+/** NUMBERVALUE, shared by the formula and the card: whitespace ignored, empty text is 0, each trailing `%` divides by 100. A blank separator takes its default (`.` decimal; `,` group unless the decimal is `,`). */
+export function numberValue(text: string, decimalSep: string, groupSep: string): number | SolError {
+  const bad = solError("#VALUE!", "NUMBERVALUE needs a number");
+  const d = (decimalSep || ".")[0];
+  const g: string | null = groupSep !== "" ? groupSep[0] : d === "," ? null : ",";
+  if (g === d) return bad;
+  let s = text.replace(/\s/g, "");
+  if (s === "") return 0;
+  let pct = 0;
+  while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
+  const di = s.indexOf(d);
+  const intPart = di === -1 ? s : s.slice(0, di);
+  const frac = di === -1 ? null : s.slice(di + 1);
+  if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return bad;
+  const n = decimalFromText((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
+  return Number.isNaN(n) ? bad : n / Math.pow(100, pct);
+}
+
+/** Where `delimiter` occurs, left to right and not overlapping; `caseless` is Excel's match_mode 1. */
+function occurrences(text: string, delimiter: string, caseless: boolean): number[] {
+  const hay = caseless ? text.toLowerCase() : text;
+  const needle = caseless ? delimiter.toLowerCase() : delimiter;
+  const at: number[] = [];
+  for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + needle.length)) at.push(i);
+  return at;
+}
+
+export interface SplitOpts { rowDelimiter?: string; ignoreEmpty?: boolean; caseless?: boolean; pad?: unknown }
+
+/**
+ * TEXTSPLIT: the text split at `delimiter` into a list (one row). With a row delimiter it splits into rows first and
+ * answers a table, short rows padded with `pad` (`#N/A` when left out, as Excel's). An empty delimiter splits into
+ * single characters; `ignoreEmpty` drops the empty parts.
+ */
+/** A null `delimiter` leaves each row whole: TEXTSPLIT with a row delimiter only answers one column. */
+export function splitText(text: string, delimiter: string | null, opts: SplitOpts = {}): string[] | unknown[][] {
+  const caseless = opts.caseless ?? false;
+  const cut = (t: string, d: string | null): string[] => {
+    if (d === null) return [t];
+    if (d === "") return [...t];
+    const parts: string[] = [];
+    let from = 0;
+    for (const i of occurrences(t, d, caseless)) { parts.push(t.slice(from, i)); from = i + d.length; }
+    parts.push(t.slice(from));
+    return opts.ignoreEmpty ? parts.filter((p) => p !== "") : parts;
+  };
+  if (opts.rowDelimiter == null) return cut(text, delimiter);
+  const rows = cut(text, opts.rowDelimiter).map((r) => cut(r, delimiter));
+  const width = Math.max(0, ...rows.map((r) => r.length));
+  const pad = opts.pad !== undefined ? opts.pad : solError("#N/A", "TEXTSPLIT: this row has fewer parts than the longest");
+  return rows.map((r) => [...r, ...Array<unknown>(width - r.length).fill(pad)]);
+}
+
+export interface AfterBeforeOpts { instance?: number; caseless?: boolean; matchEnd?: boolean }
+
+/**
+ * TEXTAFTER / TEXTBEFORE at the `instance`-th delimiter, counted from the end when negative. `matchEnd` counts the end
+ * of the text (the start, counting from the end) as one more delimiter. Not found, or an empty delimiter, is blank.
+ */
+export function textAfterBefore(op: TextAfterBeforeOp, text: string, delimiter: string, opts: AfterBeforeOpts = {}): string | null | SolError {
+  const n = Math.trunc(opts.instance ?? 1);
+  if (n === 0) return solError("#VALUE!", `TEXT${op.toUpperCase()}: instance_num can't be 0`);
   if (delimiter === "") return null;
-  const idx = text.indexOf(delimiter);
-  if (idx === -1) return null;
-  return op === "after" ? text.slice(idx + delimiter.length) : text.slice(0, idx);
+  const at = occurrences(text, delimiter, opts.caseless ?? false).map((i) => ({ i, len: delimiter.length }));
+  if (opts.matchEnd) { if (n > 0) at.push({ i: text.length, len: 0 }); else at.unshift({ i: 0, len: 0 }); }
+  const hit = n > 0 ? at[n - 1] : at[at.length + n];
+  if (!hit) return null;
+  return op === "after" ? text.slice(hit.i + hit.len) : text.slice(0, hit.i);
 }
 
-/** ENCODEURL / DECODEURL / ENCODEBASE64 / DECODEBASE64 over one string — a malformed
- *  escape or non-base64 text passes through unchanged. */
 export function urlEncode(op: UrlEncodeOp, text: string): string {
   try {
     switch (op) {
@@ -40,16 +112,13 @@ export function safeRegex(pattern: string, flags: string): RegExp | null {
   try { return new RegExp(pattern, flags); } catch { return null; }
 }
 
-/** One regex op over ONE string. A blank or unparseable pattern is null (blank),
- *  matching the node's whole-output behavior. */
 export function regexApply(
   op: RegexOp, text: string, pattern: string, replacement = "", flags = "",
 ): number | string | string[] | null {
   if (!pattern) return null;
   const re = safeRegex(pattern, flags);
   if (!re) return null;
-  // `matchAll` and a global replace both need the g flag; building a fresh RegExp
-  // leaves the caller's own `lastIndex` untouched.
+  // A fresh global RegExp for matchAll and replace leaves the caller's own `lastIndex` untouched.
   const global = () => new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
   switch (op) {
     case "test":           return re.test(text) ? 1 : 0;
@@ -60,8 +129,6 @@ export function regexApply(
   }
 }
 
-/** Excel REGEXEXTRACT return_mode 2: the FIRST match's capture groups, as a list.
- *  No groups in the pattern (or no match) → empty list. */
 export function regexGroups(text: string, pattern: string, flags = ""): string[] | null {
   if (!pattern) return null;
   const re = safeRegex(pattern, flags);
@@ -70,21 +137,47 @@ export function regexGroups(text: string, pattern: string, flags = ""): string[]
   return m ? m.slice(1).map((g) => g ?? "") : [];
 }
 
-/** Excel REGEXREPLACE with a nonzero `occurrence`: replace ONLY the nth match
- *  (1-based). Fewer than n matches → the text unchanged, like Excel. */
+/** REGEXREPLACE's occurrence: blank is 0 (every match), a fraction truncates, a negative counts from the end; null when non-finite. */
+export function regexOccurrence(raw: unknown): number | null {
+  if (raw == null || raw === "") return 0;
+  const n = Math.trunc(Number(raw));
+  return Number.isFinite(n) ? n : null;
+}
+
+/** JavaScript's replacement-pattern tokens, expanded from one match's own groups. */
+function expandReplacement(
+  replacement: string, match: string, groups: (string | undefined)[], named: Record<string, string | undefined> | undefined,
+  offset: number, text: string,
+): string {
+  return replacement.replace(/\$(\$|&|`|'|<([^>]*)>|(\d\d?))/g, (token, kind: string, name: string | undefined, digits: string | undefined) => {
+    if (kind === "$") return "$";
+    if (kind === "&") return match;
+    if (kind === "`") return text.slice(0, offset);
+    if (kind === "'") return text.slice(offset + match.length);
+    if (name !== undefined) return named ? (named[name] ?? "") : token;
+    const two = Number(digits);
+    if (two >= 1 && two <= groups.length) return groups[two - 1] ?? "";
+    const one = Number(digits![0]);
+    if (digits!.length === 2 && one >= 1 && one <= groups.length) return (groups[one - 1] ?? "") + digits![1];
+    return token;
+  });
+}
+
+/** Replaces only the nth match (1-based; negative counts from the end); fewer matches leave the text unchanged. */
 export function replaceNth(text: string, pattern: string, replacement: string, n: number, flags = ""): string | null {
   if (!pattern) return null;
   const re = safeRegex(pattern, flags);
   if (!re) return null;
   const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+  const target = n < 0 ? [...text.matchAll(g)].length + n + 1 : n;
+  if (target < 1) return text;
   let i = 0;
-  return text.replace(g, (match, ...rest) => {
+  return text.replace(g, (match: string, ...rest: unknown[]) => {
     i++;
-    if (i !== n) return match;
-    // Honor $1-style backreferences by re-running the single-match replace on the
-    // matched slice (rest carries groups + offset + string; slice off the tail).
+    if (i !== target) return match;
+    const named = typeof rest[rest.length - 1] === "object" ? rest.pop() as Record<string, string | undefined> : undefined;
     const offset = rest[rest.length - 2] as number;
-    return text.slice(offset, offset + match.length).replace(re, replacement);
+    return expandReplacement(replacement, match, rest.slice(0, -2) as (string | undefined)[], named, offset, text);
   });
 }
 
@@ -108,14 +201,12 @@ function spellUnder1000(n: number): string {
   return parts.join(" ");
 }
 
-/** A whole number with its ordinal suffix: 1 → "1st", 22 → "22nd", 113 → "113th". */
 export function ordinalText(n: number): string {
   const i = Math.trunc(n), v = Math.abs(i) % 100;
   const suffix = ["th", "st", "nd", "rd"];
   return `${i}${suffix[(v - 20) % 10] || suffix[v] || suffix[0]}`;
 }
 
-/** English cardinal words for any |n| < 10^15. */
 export function spellNumber(n: number): string | SolError {
   if (!Number.isFinite(n)) return solError("#DOMAIN!", "Not a finite number");
   if (Math.abs(n) >= 1e15) return solError("#DOMAIN!", "Spell Number goes up to the trillions");
@@ -138,11 +229,23 @@ export function spellNumber(n: number): string | SolError {
     words = groups.join(" ");
   }
 
-  // Decimal digits read one by one; cap at 6 to dodge float dust.
+  // Read decimal digits one by one, at most 6, so float dust never reaches the words.
   const fracText = String(abs).includes(".") ? String(abs).split(".")[1].slice(0, 6) : "";
   if (fracText) words += ` point ${[...fracText].map((d) => SPELL_ONES[Number(d)]).join(" ")}`;
 
   return neg ? `negative ${words}` : words;
+}
+
+/** Excel's PROPER: a letter after any non-letter (digit, underscore, apostrophe) is capitalized, every other letter lowercased. */
+export function properCase(t: string): string {
+  let out = "";
+  let afterLetter = false;
+  for (const ch of t) {
+    const letter = /\p{L}/u.test(ch);
+    out += letter ? (afterLetter ? ch.toLowerCase() : ch.toUpperCase()) : ch;
+    afterLetter = letter;
+  }
+  return out;
 }
 
 export function reverseText(t: string): string {
@@ -151,7 +254,6 @@ export function reverseText(t: string): string {
 
 export type SimilarityMethod = "ratio" | "levenshtein" | "damerau" | "jaro_winkler";
 
-/** Levenshtein edit distance (insert / delete / substitute), by code point. */
 export function levenshtein(a: string, b: string): number {
   const s = [...a], t = [...b];
   if (s.length === 0) return t.length;
@@ -167,7 +269,6 @@ export function levenshtein(a: string, b: string): number {
   return prev[t.length];
 }
 
-/** Damerau–Levenshtein (optimal string alignment): Levenshtein plus adjacent transposition. */
 export function damerauLevenshtein(a: string, b: string): number {
   const s = [...a], t = [...b];
   const d: number[][] = Array.from({ length: s.length + 1 }, (_, i) => [i, ...new Array<number>(t.length).fill(0)]);
@@ -180,7 +281,6 @@ export function damerauLevenshtein(a: string, b: string): number {
   return d[s.length][t.length];
 }
 
-/** Jaro–Winkler similarity 0–1 (prefix scale 0.1, up to 4 chars) — the record-linkage standard. */
 export function jaroWinkler(a: string, b: string): number {
   const s = [...a], t = [...b];
   if (s.length === 0 && t.length === 0) return 1;
@@ -207,10 +307,6 @@ export function jaroWinkler(a: string, b: string): number {
   return jaro + prefix * 0.1 * (1 - jaro);
 }
 
-/** Similarity 0–1 by method: `ratio` = 1 − Levenshtein/maxlen (rapidfuzz's normalized
- *  Levenshtein; R stringsim), `damerau` the same with transpositions, `jaro_winkler` as is;
- *  `levenshtein` answers the raw DISTANCE (an integer, not 0–1). Case-sensitive; trim and
- *  lower-case upstream (Clean Whitespace / LOWER) when that is the intent. */
 export function textSimilarity(a: string, b: string, method: SimilarityMethod = "ratio"): number {
   if (method === "levenshtein") return levenshtein(a, b);
   if (method === "jaro_winkler") return jaroWinkler(a, b);
@@ -220,8 +316,6 @@ export function textSimilarity(a: string, b: string, method: SimilarityMethod = 
   return 1 - dist / maxLen;
 }
 
-/** The best-matching candidate for `needle` (highest similarity, first on ties) with its
- *  score; `null` when nothing clears the threshold or there are no candidates. */
 export function fuzzyBest(needle: string, candidates: readonly string[], method: SimilarityMethod = "ratio", threshold = 0):
   { index: number; text: string; score: number } | null {
   let best: { index: number; text: string; score: number } | null = null;
@@ -232,19 +326,14 @@ export function fuzzyBest(needle: string, candidates: readonly string[], method:
   return best;
 }
 
-// Letters NFD can't decompose (no combining mark) get an ASCII spelling — the
-// unidecode / iconv TRANSLIT convention.
 const TRANSLIT: Record<string, string> = {
   "ß": "ss", "æ": "ae", "Æ": "AE", "ø": "o", "Ø": "O", "œ": "oe", "Œ": "OE", "đ": "d", "Đ": "D",
   "ł": "l", "Ł": "L", "ð": "d", "Ð": "D", "þ": "th", "Þ": "TH", "ı": "i", "ŋ": "ng", "Ŋ": "NG",
 };
-/** Strip diacritics: "Crème Brûlée" → "Creme Brulee". unidecode, R stringi::stri_trans_general(…, "Latin-ASCII"), iconv TRANSLIT. */
 export function unaccent(t: string): string {
   return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[ßæÆøØœŒđĐłŁðÐþÞıŋŊ]/g, (c) => TRANSLIT[c] ?? c);
 }
 
-/** URL/filename slug: unaccent, lowercase, every non-alphanumeric run → `sep`, trimmed.
- *  python-slugify, R janitor::make_clean_names. */
 export function slugify(t: string, sep = "-"): string {
   const body = unaccent(t).toLowerCase().replace(/[^a-z0-9]+/g, sep);
   if (!sep) return body;
@@ -253,9 +342,6 @@ export function slugify(t: string, sep = "-"): string {
 }
 
 export type PadSide = "left" | "right" | "center";
-/** Pad to `width` code points; `side` is where the padding GOES (R str_pad, pandas
- *  str.pad; Python rjust = left, ljust = right). `fill` cycles; text already at least
- *  `width` long is unchanged. */
 export function padText(t: string, width: number, side: PadSide, fill = " "): string {
   const chars = [...t];
   const w = Math.max(0, Math.floor(width));
@@ -269,8 +355,6 @@ export function padText(t: string, width: number, side: PadSide, fill = " "): st
   return run(left) + t + run(need - left);
 }
 
-/** Cut to at most `width` code points, ending in `ellipsis` when anything was cut
- *  (R str_trunc, textwrap.shorten). */
 export function truncateText(t: string, width: number, ellipsis = "…"): string {
   const chars = [...t];
   const w = Math.max(0, Math.floor(width));
@@ -280,10 +364,6 @@ export function truncateText(t: string, width: number, ellipsis = "…"): string
   return chars.slice(0, keep).join("") + (keep === 0 ? e.slice(0, w).join("") : ellipsis);
 }
 
-/** Greedy word-wrap on whitespace to at most `width` code points per line (R
- *  `str_wrap`, Python `textwrap.wrap`): words join with single spaces, runs of
- *  whitespace collapse, and a single word longer than `width` sits alone on its
- *  line unbroken. `width` clamps to 1; empty or blank text → `[]`. */
 export function wrapText(t: string, width: number): string[] {
   const w = Math.max(1, Math.floor(width));
   const words = t.split(/\s+/).filter((s) => s !== "");
@@ -301,12 +381,8 @@ export function wrapText(t: string, width: number): string[] {
   return lines;
 }
 
-/** Template grammar ("Hello {name}, total {total:0.00}" — str_glue, f-strings, str.format):
- *  `{{` / `}}` are literal braces; a placeholder is `{name}` or `{name:spec}`, spec an Excel
- *  TEXT format code (or a date format) handed to the caller's `fmt`. */
 const TEMPLATE_TOKEN = /\{\{|\}\}|\{\s*([A-Za-z_][\w .-]*?|\d+)\s*(?::([^{}]*))?\}/g;
 
-/** Distinct placeholder names, in first-appearance order. */
 export function templatePlaceholders(template: string): string[] {
   const out: string[] = [];
   for (const m of template.matchAll(TEMPLATE_TOKEN)) {
@@ -316,8 +392,6 @@ export function templatePlaceholders(template: string): string[] {
   return out;
 }
 
-/** Substitute every placeholder through `lookup` + `fmt` (which decides how a number,
- *  date, logical or blank prints, with the optional spec). */
 export function renderTemplate(
   template: string,
   lookup: (name: string) => unknown,
@@ -331,13 +405,9 @@ export function renderTemplate(
 }
 
 export interface TemplateFormatters {
-  /** A number with an optional TEXT-style spec (General when absent). */
   number: (v: number, spec: string | undefined) => string;
-  /** A date serial with an optional date format. */
   date?: (v: number, spec: string | undefined) => string;
 }
-/** The value a placeholder prints as: numbers via the injected formatter, a date-typed
- *  input via the date one, logicals as TRUE/FALSE, a blank as "", an error as its code. */
 export function templateFormat(value: unknown, spec: string | undefined, f: TemplateFormatters, isDate = false): string {
   if (value === null || value === undefined) return "";
   if (isSolError(value)) return value.code;
@@ -345,4 +415,17 @@ export function templateFormat(value: unknown, spec: string | undefined, f: Temp
   if (typeof value === "number") return isDate && f.date ? f.date(value, spec) : f.number(value, spec);
   if (Array.isArray(value)) return value.map((v) => templateFormat(v, spec, f, isDate)).join(", ");
   return String(value);
+}
+
+/** CHAR and UNICHAR, the CHAR / CODE card's char op: a truncated Unicode code point from 1 to 1114111, surrogates refused. */
+export function charFromCode(code: number): string | SolError {
+  const c = Math.trunc(code);
+  if (!(c >= 1 && c <= 0x10ffff) || (c >= 0xd800 && c <= 0xdfff)) return solError("#VALUE!", "A character code is a code point from 1 to 1114111");
+  return String.fromCodePoint(c);
+}
+
+/** CODE and UNICODE, the card's code op: the first character's Unicode code point. */
+export function codeOfText(text: string): number | SolError {
+  const c = text.codePointAt(0);
+  return c === undefined ? solError("#VALUE!", "Empty text has no character code") : c;
 }

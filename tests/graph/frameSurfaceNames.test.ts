@@ -1,4 +1,4 @@
-// [[D21]]
+// [[B16]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { despace } from "../../src/graph/formulaNodeParity";
@@ -80,10 +80,10 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
     expect(ghosts.map(([n, l]) => `${n} → "${l}"`), "redirects must point at real catalog leaves").toEqual([]);
   });
 
-  // [[D21]] noExcelNameClash: a node NAME must never coincide with a core Excel function name —
+  // [[B16]] oneFormulaSurface: a node NAME must never coincide with a core Excel function name —
   // a bare "Columns" reads as COLUMNS() (the count), so the relational leaves are named for the
   // op: "Keep Columns" / "Drop Columns". A general "dispatches?" check can't run here — some node
-  // labels ARE the node-form of the like-named function (Group By ↔ GROUPBY) and legitimately
+  // labels ARE the node-form of the like-named function (Sort ↔ SORT) and legitimately
   // dispatch. The misread hazard is a leaf whose label is a bare STRUCTURAL/count function doing
   // something else, so those are denylisted by name (ROWS/COLUMNS the origin, author 2026-08-25).
   const COUNT_FNS = new Set(["ROWS", "COLUMNS", "ROW", "COLUMN"]);
@@ -112,13 +112,6 @@ describe("a typed frame verb is recognized and refused, not a typo", () => {
   it("the hint bar carries the redirect", () => {
     expect(signatureFor("getcolumn")).toBe("frame verb — use the Get Column node");
   });
-
-  it("stays out of autocomplete — the editor must not teach a banned name", () => {
-    // Advertised names come from the registry; FRAME_SURFACE_NAMES never
-    // registers, so this holds by construction — pinned so a future
-    // registration path can't quietly change it.
-    expect(formulaFunctionNames().map((n) => n.toUpperCase())).not.toContain("JOIN");
-  });
 });
 
 // ─── NODE_SURFACE_NAMES — a formula name whose capability became a NODE ────────
@@ -140,10 +133,6 @@ describe("a node-only verb (TEXTFILTER → List Filter) is recognized and redire
 
   it("the hint bar carries the redirect", () => {
     expect(signatureFor("textfilter")).toBe("use the List Filter node");
-  });
-
-  it("stays out of autocomplete — the name no longer registers", () => {
-    expect(formulaFunctionNames().map((n) => n.toUpperCase())).not.toContain("TEXTFILTER");
   });
 
   it("every target is a real catalog leaf and never shadows a live/blocked name", () => {

@@ -140,7 +140,7 @@ import { IsTestNode } from "../../../src/graph/nodes/logic";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("IS.TEST — per-cell to any depth (1-D and 2-D Any input)", () => {
-  const run = (op: "isnumber" | "istext" | "islogical" | "iserror" | "isna") =>
+  const run = (op: "isnumber" | "istext" | "islogical" | "iserror" | "iserr" | "isna") =>
     (v: unknown) => new IsTestNode({ op }).data({ value: [v] }).result;
 
   it("ISNUMBER over a 2-D table tests each cell (not its rows)", () => {
@@ -164,6 +164,15 @@ describe("IS.TEST — per-cell to any depth (1-D and 2-D Any input)", () => {
     const na = solError("#N/A", "x");
     const div0 = solError("#DIV/0!", "x");
     expect(run("isna")([na, div0, 5])).toEqual([true, false, false]);
+  });
+
+  // [[D73]] nodeCoversFormula: ISERR is current Excel, so the card carries it beside ISERROR.
+  it("ISERR flags every error but #N/A, per cell and whole, as the formula does", () => {
+    const na = solError("#N/A", "x");
+    const div0 = solError("#DIV/0!", "x");
+    expect(run("iserr")([na, div0, 5])).toEqual([false, true, false]);
+    expect(new IsTestNode({ op: "iserr" }).data({ value: [div0] }).result).toBe(true);
+    expect(new IsTestNode({ op: "iserr" }).data({ value: [na] }).result).toBe(false);
   });
 
   it("ISBLANK stays whole-input (a populated table is not blank)", () => {
@@ -297,6 +306,11 @@ describe("SwitchNode — fixed expr/default + extensible when/then pairs", () =>
     const n = new SwitchNode({ valueKeys: ["expr", "when0", "then0", "when2", "then2", "default"] });
     expect(n.valuePairKeys()).toEqual([["when0", "then0"], ["when2", "then2"]]);
     expect("expr" in n.inputs && "default" in n.inputs).toBe(true);
+  });
+  it("a rebuilt card with no saved literals has an unset Default, like a fresh one", () => {
+    const n = new SwitchNode({ valueKeys: ["expr", "when0", "then0", "default"] });
+    const r = n.data({ expr: [99], when0: [1], then0: [10] }).result;
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#N/A");
   });
 });
 

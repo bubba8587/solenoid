@@ -1,0 +1,171 @@
+---
+aliases: ["Input roles"]
+tags: [spec, values]
+---
+<!-- [[D86]] blankRoles, [[C80]] blankArgIsExcelBlank, [[C24]] arraySemantics, [[D36]] nullSkippedNotZero, [[C24]] arraySemantics, [[D35]] errorInErrorOut, [[C17]] shareImpl -->
+
+# Spec: Input roles
+
+Serves [[D86]] blankRoles (what a blank means depends on what the input is for), [[C80]] blankArgIsExcelBlank (a formula's empty slot), [[C24]] arraySemantics and [[D36]] nullSkippedNotZero (data blanks), [[C24]] arraySemantics and [[D35]] errorInErrorOut (errors first), and [[C17]] shareImpl (the card and the formula read one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+
+This file owns what a blank does once it reaches an input: the roles an input can have, the one declaration every function and card subscribes to, and how each surface reads it. How the blank gets there (unwired versus wired, `readInput`) is [[value-semantics]] "Reading an input"; what a blank then does inside a computation (totals skip it, element-wise math carries it) is the rest of [[value-semantics]]. The error codes are [[error-values]].
+
+A rule that is decided but not yet built carries a `[decided <date>]` tag and an item in the backlog (the settings sweep).
+
+## The roles
+
+An input's role answers one question: what is this input for? Decide by purpose, never by socket type: a number socket can be data (SUM's values), a setting (ROUND's digits) or a pick (INDEX's position).
+
+| Role | The input is | A blank reads as | Declared as |
+|---|---|---|---|
+| **data** | the values the node works on | a real missing value: it stays blank and follows [[value-semantics]] (totals skip it, element-wise math carries it). A node whose data is wholly blank answers blank | nothing: every undeclared input is data |
+| **setting** | how the node works: a count, a size, a mode, a digit count, a bound, a tolerance | the setting left out: the node's default | `setting(blank)`: `blank` is the value a blank reads as, or `LEFT_OUT` for the function's own omitted reading |
+| **required setting** | a setting with no sensible default | `#SYNTAX!`: "*label* is blank, and it has no default" | `required` |
+| **picks** | positions: which items, rows or columns to take | a blank pick is dropped; with none left, the picks were left out | `picks()`, or `picks({ required: true })` when there is no default (none left is `#SYNTAX!`) |
+
+The aim behind the table ([[D86]] blankRoles): as few blank answers as possible, and when something the node needs is missing, say so loudly with `#SYNTAX!` rather than going quietly blank. A half-built card that errors is fine; it names what it still needs.
+
+### By the shape of the value
+
+A role applies to the whole value and, for a list or a table, to each item:
+
+| The value is | setting | required | picks |
+|---|---|---|---|
+| blank | the declared blank | `#SYNTAX!` | left out (`#SYNTAX!` when required) |
+| a list with blank items | each blank item reads as the declared blank, in place | each blank item is `#SYNTAX!`, in place | blank items are removed; an empty result is left out |
+| a table with blank cells | each blank cell reads as the declared blank | each blank cell is `#SYNTAX!` | each blank cell is `#SYNTAX!` in place: one position answers one cell, so dropping it would break the table |
+| an error | passes on untouched ([[D35]] errorInErrorOut) | passes on | passes on |
+
+So ROUND's digits `[1, blank]` round the second value to 0 places, INDEX's positions `[3, blank, 1]` pick two items, and `INDEX(x, P)` with a blank cell in the table `P` answers `#SYNTAX!` in that cell and values everywhere else.
+
+### Left out
+
+`LEFT_OUT` is `undefined`, the value an omitted formula argument already carries ([[formula-language#Blank and omitted arguments]]). Each surface applies its own omitted reading to it: a formula kernel reads `undefined` as the argument not given (TAKE keeps the axis, INDEX takes the whole row or column), and a card maps it to its default at the read (`readRole(...) ?? 0` on TAKE, where 0 keeps all). A left-out size or position keeps the whole thing, where that applies.
+
+A setting whose Excel blank is a value rather than an omission declares that value: TEXTJOIN's `ignore_empty` blank is FALSE, XMATCH's modes are 0, ROUND's digits are 0 ([[C80]] blankArgIsExcelBlank). A blank variable in those slots reads the same as a slot left empty.
+
+## The declaration
+
+**MUST:** a role is declared once, in `ARG_ROLES` (`src/graph/inputRoles.ts`), keyed by the formula name and the zero-based argument index, and every surface reads that declaration:
+
+```ts
+TAKE: { 1: setting(LEFT_OUT), 2: setting(LEFT_OUT) },
+ROUND: { 1: setting(0) },
+CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
+```
+
+- `rest` covers every argument past the highest numbered one, for variadic functions (CHOOSEROWS's `row_num2…`).
+- An argument with no entry is data. A function with no entry has only data arguments.
+- A card points its sockets at the formula's arguments with `rolesFrom`, so the card and the formula cannot disagree ([[C17]] shareImpl):
+
+  ```ts
+  static inputRoles = rolesFrom("TAKE", { rows: 1, cols: 2 });
+  static inputRoles = rolesFrom("INDEX", { index: 1, position: 1, column: 2 });
+  ```
+
+  One entry serves every op that shares its arguments (TAKE for TAKE and DROP, ROUND for ROUNDUP and ROUNDDOWN, CHOOSEROWS for CHOOSECOLS). A card input with no formula twin declares its role inline: `static inputRoles = { end: setting(LEFT_OUT) }`.
+
+`inputRoles.test.ts` pins the declaration: every declared function exists and every declared argument is within its arity, and every card that declares a role reads that socket through `readRole`.
+
+## Reading
+
+**A card** reads a declared input with `readRole(this, key, inputs.key)` (`nodes/shared.ts`). Unwired, the value is the typed literal; wired, the cable's value, and a blank cable overrides the typed value ([[D86]] blankRoles). The value then goes through `applyRole` with the socket's label for the error. An unwired input with no typed value (CHOOSEROWS's indices) is a blank. The card still hides its typed field while a cable is plugged in, so the override is visible.
+
+**A formula** reads its arguments in `applyArgRoles` at evaluation step 6, after the arguments are evaluated and before the error check ([[formula-language#Calls]]). An empty slot and a blank value take different paths: the empty slot reads as its parameter's Excel blank ([[#Empty slots]]), and a blank value reads by the role. A declared slot, and any empty slot, is *settled*: the element-wise null rule no longer blanks the answer on it. A required picks group (CHOOSEROWS's indices across all its arguments) answers `#SYNTAX!` only when every one of them is left out, so `CHOOSEROWS(m, blank, 2)` is row 2.
+
+**A computed column** runs the formula once per row, so a blank setting cell is a whole blank setting on that row: `ROUND(@Price, @Digits)` rounds a row with a blank digits cell to 0 places, the same answer the Round card gives for a digits list with a blank item.
+
+**A kernel** never sees a blank setting or a blank pick: it receives the declared blank, `LEFT_OUT`, or a list with the blank picks gone. Kernels shared by a card and a formula (`chooseAxis`, `indexInto`) take numbers and `undefined` only.
+
+## Empty slots
+
+([[C80]] blankArgIsExcelBlank). An empty argument slot is something the user typed, so it reads as the value Excel gives it, for every parameter of every function, whatever its role. A blank *value* in the same place still reads by the role above.
+
+| The parameter takes | An empty slot reads as | Shown in the slot as |
+|---|---|---|
+| a number | 0 | `0` |
+| a logical | FALSE | `FALSE` |
+| text | "" | nothing |
+| any value (IF's branches, CHOOSE's values, SWITCH's results) | 0 | `0` |
+| a setting Excel reads as omitted when empty (TAKE's, DROP's and EXPAND's sizes) | `LEFT_OUT` | a word for the default |
+| a declared setting | its declared blank (`setting(blank)`) | that blank, or its word when `LEFT_OUT` |
+
+**The declaration.** Every parameter's empty-slot reading comes from one table beside `ARG_ROLES`: a declared role's blank where there is one, else the parameter's type. The type comes from the function's signature names ([[formula-language]], `FORMULA_SIGNATURES`), with an explicit override per function where a name misleads; a variadic tail repeats its group. A test calls every function with an empty slot in each position and compares the answer with the same call given the reading typed out, so the reading and the function cannot drift apart.
+
+**Where Excel reads an empty slot its own way** (checked in Excel 2026-10-05), a table beside the readings says so (`EXCEL_EMPTY_SLOT` in `emptySlots.ts`) and wins over the role: TEXTJOIN's empty `ignore_empty` is TRUE, where a blank value is FALSE, and XLOOKUP's empty `if_not_found` is left out, so no match is `#N/A`.
+
+## Placeholders
+
+([[D96]] emptySlotShowsItsValue). Wherever an empty slot's reading isn't "", the slot shows it as muted placeholder text, so a value nobody typed is never invisible:
+
+- **The formula editor** draws it after the slot's spaces as CSS content that takes room, so the formula spaces out around it on one line. The editor draws its own highlighted text (`FormulaEditor`, an editable box rather than a textarea under a mirror), so the reading is never part of the text and the caret steps over it.
+- **A read-only formula** (a card's formula line) draws it inline.
+- **A card's empty setting field** shows its declared blank as the field's placeholder (`fieldPlaceholder` in `emptySlots.ts`; a card setting pointed at a formula with `rolesFrom` shows the formula slot's reading). Other fields keep the placeholder their label's `(default …)` or their field kind gives.
+
+A `LEFT_OUT` reading shows a short word for the default it stands for, declared with the setting: `all` for a size that keeps the whole axis (TAKE, DROP, EXPAND), `1` where the default is the first (an instance or a start), `none` where nothing is applied, and the default value itself wherever one exists.
+
+## Choosing a role
+
+1. Does the node compute on this value, or does the value tell the node how to compute? The first is **data**.
+2. Is it which items to take, by position? **picks**.
+3. Otherwise it is a **setting**. Give it the default the node already uses when the input is unwired and untyped, or Excel's omitted reading for a formula twin. Only when no default makes sense is it **required**.
+
+## What each input kind does today
+
+The roles replace an older per-kind table in which most non-data inputs propagated a blank. The settings sweep (2026-09-26, Claude's judgement, `docs/settings-audit.md` for review) declared about 150 formula functions and their cards. Rows still marked `[decided 2026-09-26]` are settings under [[D86]] blankRoles that still propagate.
+
+| Input kind | Role | A wired blank today | Example |
+|---|---|---|---|
+| an operand, the value computed on | data | propagates, per cell | `UPPER(blank)` is blank |
+| a member of a reduction | data | skipped, as SUM skips nulls ([[D36]] nullSkippedNotZero) | `CONCAT(blank, "b")` is `"b"` |
+| a figure's datum: a chart's values, a KPI's number | data | renders an empty figure, never a `SolError` out a `chart` socket | Gauge, KPI |
+| a filter predicate, one per row | data | drops that row | Filter |
+| a distribution's parameter: a mean, a shape, a probability | data | propagates | `NORM.DIST(x, blank, 1, TRUE)` is blank |
+| a mode selector: basis, type, method, delimiter, cumulative | setting | its default; with none, `#SYNTAX!` | `NORM.DIST(x, 0, 1, blank)` is the density (FALSE); the TEXTSPLIT card's blank delimiter is `#SYNTAX!` |
+| a shape or count: rows, columns, count, wrap width, window | setting | its default; with none, `#SYNTAX!` | `RUNNING("sum", x, blank)` is cumulative; `MAKEARRAY(blank, 3, f)` is `#SYNTAX!` |
+| an optional bound or tolerance | setting | no bound, or the default tolerance | Clamp's min; Is Close's tolerance; Slice's end |
+| a position | picks, or a required setting where a list must stay aligned | dropped (picks) or `#SYNTAX!` | INDEX's position; CHOOSE's index; Get Row |
+| a check's parameter: Expect's bound or pattern | setting | skips that check and passes the data through | Expect |
+| a presentation annotation: options, decimals, a color | setting | the neutral default, never the card's styling | chart Options |
+| a filter condition's column or comparison value | setting | the condition is left out, so it keeps every row, overturning [[C24]]'s blank-filter consequence | List Filter, Frame Filter, SUMIFS |
+| a column reference: which column to sort, group or look up by | setting or required `[decided 2026-09-26]` | propagates: a blank Frame out | Frame Sort, Get Column |
+| an as-of Join's tolerance | setting `[decided 2026-09-26]` | propagates | Join |
+| a control's bound: Slider min, max, step | setting `[decided 2026-09-26]`; its default is the bound the widget needs | falls back to the card's own value | Slider |
+
+Two dispositions keep their reason under the new roles:
+
+- A **reduction** that propagated would let one blank void a whole aggregate, which is neither Excel's range behavior nor SQL's. Its members are data, and data blanks in a reduction are skipped ([[D36]] nullSkippedNotZero).
+- A **control's** widget can't work without a bound: `±Infinity` breaks `<input type="range">`, the play loop's wrap-around and the Tornado sweep's bounds. Its setting default must be a working bound, and every consumer of the published bound (`effectiveMin`, a DOM attribute, a sweep in another file) must read the resolved value, not the raw input.
+
+**An empty string** is the literal most of these kinds ship with, and it already means something on almost every frame verb: "no column chosen, pass the Frame through". It is what an unwired slot on an untouched card reads. Read the raw value first and only then `.trim()` it: in `const raw = readInput(inputs.column, this.stringLiterals.column ?? "")`, `null` is the wired blank and `""` is the untouched card.
+
+## Where the check goes
+
+Two placement rules, both found by sweeping `finance.ts`. Neither is about which role to take; both are about a guard that takes the right one in the wrong place, which typechecks and is silently wrong.
+
+- **An error outranks a blank** ([[C24]] arraySemantics). A node that both reads its settings and inspects a list for `SolError`s runs the error check first. `#DIV/0!` reaching MIRR's cash flows while a blank reaches its `finrate` is `#DIV/0!`.
+- **Scope the read to the active op.** On a multi-op node, only the inputs the current op reads can change the answer. A guard hoisted above the `switch` that combines every op's inputs turns a blank on an input this op ignores into a wrong answer: TBILLYIELD does not read `discount`. Read and guard inside the op's branch, or read op-dependently first.
+
+## Writing a new node or function
+
+1. Name each input's role ("Choosing a role"). A formula function with a setting or a pick gets an `ARG_ROLES` entry; its card points at it with `rolesFrom`.
+2. Read data through `readInput` and declared inputs through `readRole`. Never `inputs.x?.[0] ?? this.literals.x` ([[value-semantics]] "Reading an input").
+3. Check what consumes the value, not only `data()`: a published field read elsewhere must hold the resolved value.
+4. Pin it in a test: a blank setting reads as its default, a blank pick is dropped, a required one is `#SYNTAX!`, and an unwired slot still uses the literal. Worked examples are in `inputRoles.test.ts` and `nodes/wiredNull.test.ts`.
+
+## Rulings
+
+The detailed calls behind the roles, in the author's words. The call itself is [[D86]] blankRoles.
+
+- The author, 2026-09-26, on data versus settings: "ok yep data blanks are blank. but wired setting input blanks I think should be an *overriding* skip- i.e. if I type a position 5 into INDEX, then wire a blank number input cable, that 5 is suppressed until the cable is removed. this may need to be a large sweep/audit and sockets gain a declaration. formulas following the same rule: yes. but also a blank inside `m` should be skipped too, right? in almost no case I can imagine should we need to blank the entire result." The question about `m`, the table TAKE works on, was answered in the same conversation: `m` is data, so a blank cell inside it stays in place, and only an `m` that is wholly blank gives a blank answer.
+- The author, 2026-09-26, on a setting with no default: "#2. we can use the #SYNTAX! error. already have that."
+- The author, 2026-09-26, on a half-built card showing that error: "I think a half-built card erroring is fine? you could always put in default values if need be."
+- The author, 2026-09-26, on a blank or skipped size keeping the whole thing: "I think that a blank/skipped arg (and/or 0) resulting keeping the whole thing is a intuitive sub-rule in this domain. not something we have to chase, but works fine as a fallback behavior where applicable."
+- The author, 2026-09-26, on a blank inside a list of settings, correcting an earlier misreading that it stays blank at its spot: "what I meant was that it *skips* the setting at that spot. the Way B behavior is more correct. my intention is to have as few blank results as possible. if we need to make a stink about something missing or blank, we should prioritize using #SYNTAX! to alert the user."
+- The author, 2026-09-26, on blank positions: "it's fine to just drop the blank picks in INDEX. I don't know why a blank in a table would have to break the table shape. if you can't get around that without a ton of hacky patchwork, then sure, yell #SYNTAX!. as you wish." A blank cell in a table of positions is `#SYNTAX!` in that cell ("By the shape of the value"), because one position answers one cell and dropping it would break the table.
+- The author, 2026-09-26, on the Excel divergence: Excel reads an empty cell in a size slot as 0, so `TAKE(m, A1, 2)` with `A1` empty is `#CALC!` there, while here it keeps every row. "that's a fine divergence and I think it's a strict upgrade on Excel behavior in this instance".
+- The author, 2026-09-26, on the blank filter condition that overturned an older rule that an unreadable or blank filter value matches no rows: "I don't really care about C24, it's fine to override and make compliant with other changes." A blank condition is left out and keeps every row; a value that can't be read for the column's type still matches no rows ([[frame-verbs]]).
+- The author, 2026-09-26, on the sweep: "please use your own judgement and implement for now. can review later." The sweep covered about 150 formula functions and their cards, and the filter conditions; the calls and the inputs not swept yet are in `docs/settings-audit.md`.
+- The author, 2026-09-26, on where the line falls: "as few blanks as possible, emphasize errors loudly- that's shaped like a product call. a decision can talk generally about position indices vs settings vs data blank handling. but the declarations that functions will subscribe to for this? that's spec, right?"
+
+The earlier rule, blanking the whole answer when any input was blank, threw away the data that was plugged in and protected nothing; when there is truly no default, an error naming the missing input tells the user what to fix where a blank would leave them guessing.

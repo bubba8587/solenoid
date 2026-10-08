@@ -1,14 +1,61 @@
-// [[C39]] effectsEdgeTriggered, [[D17]] relaysTransparent (Expect is a pure passthrough)
+// [[D79]] effectsEdgeTriggered, [[C25]] firstClassUnits, [[C45]] excelComparisons
 import { ClassicPreset } from "rete";
 import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
-import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
+import { isFrameValue, isCubeValue, frameRowCount, type FrameValue, type CubeValue } from "../frame";
+import { isUnitCell, type UnitCell } from "../unitValue";
+import { fcUnitToUnit } from "../unitBridge";
+import { parseDate } from "./date";
 
-// Expect is always PASS-THROUGH: a failed expectation badges the node and fires an
-// alert on the rising edge of a NEW failure signature, but never blocks the value.
+/** A unit-tagged number as the card shows it: in its display unit, else its base unit. */
+function shownMagnitude(c: UnitCell): number {
+  const u = c.display ? fcUnitToUnit(c.display) : null;
+  return u ? (c.value - (u.offset ?? 0)) / u.scale : c.value;
+}
+
+/** Every scalar cell, descending into lists, Frames, Cubes and the tables nested in a Cube's cells. */
+function scalarCells(v: unknown, out: unknown[] = []): unknown[] {
+  if (Array.isArray(v)) for (const c of v) scalarCells(c, out);
+  else if (isFrameValue(v)) for (const col of v.columns) for (const c of col.values as unknown[]) scalarCells(c, out);
+  else if (isCubeValue(v)) for (const col of v.columns) for (const c of col.cells) scalarCells(c, out);
+  else out.push(isUnitCell(v) ? shownMagnitude(v) : v);
+  return out;
+}
+
+/** A row's identity for the unique check: a quantity by its base value, so 5 m and 500 cm collide; text keeps its case ([[C45]] excelComparisons). */
+function cellKey(v: unknown): string {
+  if (isUnitCell(v)) return `u:${v.value}`;
+  return typeof v === "object" && v !== null ? JSON.stringify(v) : `${typeof v}:${String(v)}`;
+}
+
+/** Membership by meaning: numbers compare as numbers, TRUE/FALSE and text ignore case ([[C45]] excelComparisons), a typed date matches its serial. */
+function allowMatcher(allowVals: unknown[]): (cell: unknown) => boolean {
+  const texts = new Set<string>();
+  const nums = new Set<number>();
+  const bools = new Set<boolean>();
+  for (const a of scalarCells(allowVals)) {
+    if (a === null || a === undefined || isSolError(a)) continue;
+    if (typeof a === "boolean") { bools.add(a); continue; }
+    if (typeof a === "number") { nums.add(a); continue; }
+    const t = String(a).trim();
+    texts.add(t.toLowerCase());
+    if (/^(true|false)$/i.test(t)) bools.add(/^true$/i.test(t));
+    const n = t === "" ? NaN : Number(t);
+    if (Number.isFinite(n)) nums.add(n);
+    else {
+      const d = parseDate(t);
+      if (typeof d === "number" && Number.isFinite(d)) nums.add(Math.floor(d));
+    }
+  }
+  return (cell) => {
+    if (typeof cell === "boolean") return bools.has(cell) || texts.has(String(cell));
+    if (typeof cell === "number") return nums.has(cell) || texts.has(String(cell));
+    return texts.has(String(cell).trim().toLowerCase());
+  };
+}
 
 function safeRegex(pattern: string): RegExp | null {
   try { return new RegExp(pattern); } catch { return null; }
@@ -19,10 +66,10 @@ export type ExpectCheck = "notNull" | "unique" | "range" | "regex" | "allowed";
 export class ExpectNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     out: "The value passes through unchanged even when a check fails. A failure badges the node and raises an alert.",
-    min: "A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",
+    min: "A value with a unit is checked in the unit it shows. A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",
     max: "A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",
     pattern: "The pattern is a regular expression and tests text cells only. An empty or invalid pattern skips the check.",
-    allowed: "A blank input skips this check instead of falling back to the card's list. Membership compares by text, so number 5 matches text 5. Blank cells pass; the not-null check covers them.",
+    allowed: "A blank input skips this check instead of falling back to the card's list. Membership goes by meaning: 5 matches 5.0 and a 5 m value, TRUE matches true, a typed date matches that day, and text ignores case. Blank cells pass; the not-null check covers them.",
   };
   label: string;
   checkNotNull: boolean;
@@ -31,18 +78,12 @@ export class ExpectNode extends ClassicPreset.Node {
   checkRegex: boolean;
   checkAllowed: boolean;
   cachedValue: unknown = null;
-  // PURE passthrough on `in` — min/max/pattern/allowed are check parameters, not
-  // value branches — so the value's type + unit carry through.
   passthrough(): PassthroughSpec[] { return [{ output: "out", inputs: ["in"], combine: "single", pure: true }]; }
-  /** Which checks currently fail (empty = passing) — the component's red badge. */
   violations: ExpectCheck[] = [];
   literals: Record<string, number> = { min: 0, max: 100 };
-  // `pattern` = regex source; `allowed` = comma-separated allowlist, used when the
-  // `allowed` socket is unwired.
   stringLiterals: Record<string, string> = { pattern: "", allowed: "" };
   width = 220;
   height = 258;
-  // Edge-detect on the SET of failing checks, so the same failure doesn't refire.
   private lastStatusKey = "";
 
   constructor(init?: {
@@ -64,8 +105,7 @@ export class ExpectNode extends ClassicPreset.Node {
     this.addInput("min", numIn("Min"));
     this.addInput("max", numIn("Max"));
     this.addInput("pattern", strIn("Pattern"));
-    // anyListIn, not listIn: the allowlist is element-agnostic, and the number-only
-    // `list` socket would block a strlist/datelist cable.
+    // anyListIn, because the number-only `list` socket would block a text or date allowlist.
     this.addInput("allowed", anyListIn("Allowed"));
     this.addOutput("out", trueAnyOut("Out"));
   }
@@ -74,51 +114,43 @@ export class ExpectNode extends ClassicPreset.Node {
     const raw = inputs.in?.[0] ?? null;
     this.cachedValue = raw;
 
-    // Expect checks DATA quality, not error propagation — no second badge on an error.
     if (isSolError(raw)) {
       this.violations = [];
       this.lastStatusKey = "";
       return { out: raw };
     }
 
-    // A wired blank bound/pattern leaves the CHECK undefined rather than reverting to
-    // the value typed on the card.
     const min = readInput(inputs.min, this.literals.min ?? 0);
     const max = readInput(inputs.max, this.literals.max ?? 100);
     const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
-    // A Frame checks its CELLS; without this branch it falls into the `[raw]` arm and
-    // every check silently no-ops.
     const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
-    const values: unknown[] = frame
-      ? frame.columns.flatMap((c) => c.values as unknown[])
-      : raw === null ? [null] : Array.isArray(raw) ? raw.flat(1) : [raw];
+    const cube: CubeValue | null = isCubeValue(raw) ? raw : null;
+    const values = scalarCells(raw === null ? [null] : raw);
 
     const violations: ExpectCheck[] = [];
 
-    // Not-null also catches a per-cell error, or a table of errored cells would pass
-    // the gate as clean (range/regex skip them as wrong-typed).
     if (this.checkNotNull && values.some((v) => v === null || v === undefined || isSolError(v))) {
       violations.push("notNull");
     }
-    if (this.checkUnique && frame) {
-      // Unique for a table means unique ROWS — per-cell uniqueness is meaningless.
+    if (this.checkUnique && (frame || cube)) {
+      // A table is unique by whole rows.
+      const cols = frame ? frame.columns.map((c) => c.values as unknown[]) : cube!.columns.map((c) => c.cells as unknown[]);
+      const rows = frame ? frameRowCount(frame) : Math.max(0, ...cols.map((c) => c.length));
       const seen = new Set<string>();
-      for (let i = 0; i < frameRowCount(frame); i++) {
-        const k = JSON.stringify(frame.columns.map((c) => c.values[i] ?? null));
+      for (let i = 0; i < rows; i++) {
+        const k = cols.map((c) => cellKey(c[i] ?? null)).join("|");
         if (seen.has(k)) { violations.push("unique"); break; }
         seen.add(k);
       }
     } else if (this.checkUnique && Array.isArray(raw)) {
       const seen = new Set<string>();
-      for (const v of values) {
+      for (const v of raw.flat(1) as unknown[]) {
         if (v === null || v === undefined) continue;
-        const k = typeof v === "object" ? JSON.stringify(v) : String(v);
+        const k = cellKey(v);
         if (seen.has(k)) { violations.push("unique"); break; }
         seen.add(k);
       }
     }
-    // A missing bound is unevaluatable, not failing, and each bound is skipped
-    // independently: a blank floor doesn't disable the ceiling.
     if (this.checkRange && (min !== null || max !== null)) {
       const bad = values.some((v) => typeof v === "number" && Number.isFinite(v) &&
         ((min !== null && v < min) || (max !== null && v > max)));
@@ -132,22 +164,17 @@ export class ExpectNode extends ClassicPreset.Node {
       }
     }
     if (this.checkAllowed) {
-      // The allowlist is a check parameter: a WIRED blank leaves it unknown and skips
-      // the check, like min/max/pattern, rather than reverting to the card's list. Only
-      // an UNWIRED slot falls back. Compare by string form so number, date-serial and
-      // text match by their rendered token.
       const wired = inputs.allowed;
       let allowVals: unknown[] | null;
       if (wired === undefined || wired.length === 0) {
         allowVals = (this.stringLiterals.allowed ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
       } else {
         const v = wired[0];
-        allowVals = v == null ? null : Array.isArray(v) ? v.flat(1) : [v];
+        allowVals = v == null ? null : Array.isArray(v) ? v : [v];
       }
       if (allowVals && allowVals.length > 0) {
-        const set = new Set(allowVals.map((v) => String(v)));
-        // A null cell is the not-null check's job, not membership's — skip it here.
-        const bad = values.some((v) => v !== null && v !== undefined && !isSolError(v) && !set.has(String(v)));
+        const allowed = allowMatcher(allowVals);
+        const bad = values.some((v) => v !== null && v !== undefined && !isSolError(v) && !allowed(v));
         if (bad) violations.push("allowed");
       }
     }

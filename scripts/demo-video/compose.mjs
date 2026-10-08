@@ -1,0 +1,267 @@
+// Cuts the recorded clips into .dev/video/<cut>.mp4 (and -silent.mp4, -poster.png): captions over each scene, title
+// cards over blurred backdrops, crossfades between, and the synthesized soundtrack (music.mjs).
+// `node compose.mjs [cut]`, the demo cut when none is named; cuts.mjs holds each cut's running order and copy.
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import puppeteer from "puppeteer-core";
+import { browserPath } from "../browser.mjs";
+import { OUT, FFMPEG, FPS, VIEW } from "./rig.mjs";
+import { SCENES } from "./scenes.mjs";
+import { CUTS } from "./cuts.mjs";
+import { captionHtml, quoteHtml, chapterLineHtml, introMarkHtml, introLineHtml, introVersionHtml, gridHtml, outroHtml, panelLabelsHtml, fastBadgeHtml } from "./cards.mjs";
+import { writeMusic } from "./music.mjs";
+
+const CUT_NAME = process.argv[2] ?? "demo";
+const CUT = CUTS[CUT_NAME];
+if (!CUT) throw new Error(`unknown cut "${CUT_NAME}"; have ${Object.keys(CUTS).join(", ")}`);
+const ORDER = CUT.order;
+if ((CUT.fps ?? 30) !== FPS) throw new Error(`the ${CUT_NAME} cut is ${CUT.fps ?? 30} fps: run with DEMO_FPS=${CUT.fps ?? 30}`);
+const XF = 0.5; // crossfade between segments, s
+const INTRO_S = 4.6;
+const OUTRO_S = 5.6;
+
+const clips = path.join(OUT, "clips");
+const cards = path.join(OUT, "cards");
+const segs = path.join(OUT, "segments", CUT_NAME);
+fs.rmSync(segs, { recursive: true, force: true }); // a scene dropped from the order leaves no stale segment
+for (const d of [cards, segs]) fs.mkdirSync(d, { recursive: true });
+
+function ff(args) {
+  const r = spawnSync(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", ...args], { stdio: "inherit" });
+  if (r.status !== 0) throw new Error(`ffmpeg failed: ${args.join(" ").slice(0, 200)}`);
+}
+const clipMeta = (name) => JSON.parse(fs.readFileSync(path.join(clips, `${name}.json`), "utf8"));
+const ENC = ["-r", String(FPS), "-c:v", "libx264", "-preset", "medium", "-crf", "12", "-pix_fmt", "yuv420p"];
+
+const browser = await puppeteer.launch({
+  executablePath: browserPath(),
+  headless: true,
+  args: ["--force-color-profile=srgb", "--font-render-hinting=none", ...(process.env.NO_SANDBOX ? ["--no-sandbox"] : [])],
+  defaultViewport: { width: VIEW.width, height: VIEW.height, deviceScaleFactor: VIEW.scale },
+});
+const page = await browser.newPage();
+async function png(html, file) {
+  await page.setContent(html, { waitUntil: "load" });
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: path.join(cards, file), omitBackground: true });
+}
+for (const name of ORDER) if (SCENES[name].caption) await png(captionHtml(SCENES[name].caption), `cap-${name}.png`);
+for (const name of ORDER) {
+  const ch = SCENES[name].chapter;
+  if (ch) await png(ch.line ? chapterLineHtml(ch.line) : introMarkHtml(ch.eyebrow, ch.mark ?? "solenoidwordmark.svg"), `chapter-${name}.png`);
+}
+// Side-by-side panels for a stills scene: Solenoid left, Obsidian right, in 1920×1080 px.
+const PANEL = { w: 936, h: 527, x: [16, 968], y: 236 };
+const LABEL = { sol: "Solenoid", obs: "Obsidian" };
+for (const order of [["sol", "obs"], ["obs", "sol"]]) {
+  await png(panelLabelsHtml(order.map((k) => LABEL[k]), { x: PANEL.x.map((x) => x / VIEW.scale), y: (PANEL.y - 34) / VIEW.scale }), `panel-labels-${order.join("-")}.png`);
+}
+for (const rate of [2, 3, 4]) await png(fastBadgeHtml(rate), `fast-${rate}.png`);
+// A cut that opens on its story (`quote`) has words for a title card, not a wordmark.
+await png(CUT.quote ? quoteHtml(CUT.quote) : introMarkHtml(CUT.eyebrow, CUT.mark), `${CUT_NAME}-intro-mark.png`);
+await png(CUT.version ? introVersionHtml(CUT.version) : introLineHtml(CUT.tagline ?? ""), `${CUT_NAME}-intro-line.png`);
+// A `grid` scene's shots, tiled on one card.
+for (const name of ORDER) {
+  const g = SCENES[name].grid;
+  if (!g) continue;
+  const dir = path.join(clips, name);
+  const shots = SCENES[name].states.map((_, i) => fs.readFileSync(path.join(dir, `${String(i).padStart(2, "0")}-obs.png`)).toString("base64"));
+  await png(gridHtml(g, shots), `grid-${name}.png`);
+}
+await png(outroHtml(CUT.end, CUT.mark), `${CUT_NAME}-outro.png`);
+await browser.close();
+
+// A slow push-in toward the center over `total` seconds. zoompan, since a crop after a per-frame scale keeps its
+// first frame size and pins the window to the top-left; on a doubled frame its whole-pixel steps stay fine.
+const pushIn = (total, amount) =>
+  `scale=3840:2160:flags=lanczos,zoompan=z='1+${amount}*it/${total.toFixed(3)}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=1920x1080:fps=${FPS}`;
+
+// A stills scene (`states`) becomes a clip: each state's shots side by side (or one, full frame), crossfaded, under a
+// slow push-in.
+const STILL_XF = 0.7;
+function stillsClip(name) {
+  const scene = SCENES[name], dir = path.join(clips, name), n = scene.states.length, d = scene.hold + STILL_XF;
+  const panels = scene.panels ?? ["sol", "obs"];
+  const frames = [];
+  for (let i = 0; i < n; i++) {
+    const k = String(i).padStart(2, "0"), out = path.join(dir, `${k}-pair.mp4`);
+    if (panels.length === 1) {
+      ff(["-loop", "1", "-i", path.join(dir, `${k}-${panels[0]}.png`), "-vf", "scale=1920:1080,format=yuv420p", "-t", String(d), ...ENC, out]);
+      frames.push(out);
+      continue;
+    }
+    const [left, right] = panels;
+    ff([
+      "-f", "lavfi", "-i", `color=c=0x0d0d0f:s=1920x1080:r=${FPS}:d=${d}`,
+      "-loop", "1", "-i", path.join(dir, `${k}-${left}.png`), "-loop", "1", "-i", path.join(dir, `${k}-${right}.png`),
+      "-loop", "1", "-i", path.join(cards, `panel-labels-${left}-${right}.png`),
+      "-filter_complex",
+      `[1:v]scale=${PANEL.w}:${PANEL.h},pad=iw+2:ih+2:1:1:color=0x3a3a3a[a];[2:v]scale=${PANEL.w}:${PANEL.h},pad=iw+2:ih+2:1:1:color=0x3a3a3a[b];` +
+        `[0:v][a]overlay=${PANEL.x[0] - 1}:${PANEL.y - 1}[t];[t][b]overlay=${PANEL.x[1] - 1}:${PANEL.y - 1}[u];[u][3:v]overlay,format=yuv420p`,
+      "-t", String(d), ...ENC, out,
+    ]);
+    frames.push(out);
+  }
+  let graph = frames.map((_, i) => `[${i}:v]settb=AVTB,setpts=PTS-STARTPTS,fps=${FPS}[s${i}]`).join(";"), prev = "s0";
+  for (let i = 1; i < n; i++) {
+    graph += `;[${prev}][s${i}]xfade=transition=fade:duration=${STILL_XF}:offset=${(i * scene.hold).toFixed(3)}[m${i}]`;
+    prev = `m${i}`;
+  }
+  const total = n * scene.hold + STILL_XF;
+  graph += `;[${prev}]${pushIn(total, 0.035)},format=yuv420p[out]`;
+  ff([...frames.flatMap((f) => ["-i", f]), "-filter_complex", graph, "-map", "[out]", "-t", total.toFixed(3), ...ENC, path.join(clips, `${name}.mp4`)]);
+  fs.writeFileSync(path.join(clips, `${name}.json`), JSON.stringify({ duration: total }));
+}
+// A grid scene is its one card under a slow push-in.
+function gridClip(name) {
+  const hold = SCENES[name].hold;
+  ff(["-loop", "1", "-framerate", String(FPS), "-i", path.join(cards, `grid-${name}.png`), "-vf", `scale=1920:1080,${pushIn(hold, 0.03)},format=yuv420p`, "-t", String(hold), ...ENC, path.join(clips, `${name}.mp4`)]);
+  fs.writeFileSync(path.join(clips, `${name}.json`), JSON.stringify({ duration: hold }));
+}
+for (const name of ORDER) if (SCENES[name].grid) gridClip(name); else if (SCENES[name].states) stillsClip(name);
+
+const blur = "gblur=sigma=11,eq=brightness=-0.1:saturation=0.85,vignette=angle=0.35";
+const backdrop = (total) => (CUT.push ? `${pushIn(total, 0.05)},${blur}` : blur);
+const parts = [];
+
+{
+  const out = path.join(segs, "00-intro.mp4");
+  ff([
+    "-i", path.join(clips, `${CUT.intro}.mp4`),
+    "-loop", "1", "-i", path.join(cards, `${CUT_NAME}-intro-mark.png`),
+    "-loop", "1", "-i", path.join(cards, `${CUT_NAME}-intro-line.png`),
+    "-filter_complex",
+    // The title card is whole from the first frame: players and link previews show frame zero before play.
+    `[0:v]${backdrop(INTRO_S)}[bg];[bg][1:v]overlay[a];[a][2:v]overlay,format=yuv420p`,
+    "-t", String(INTRO_S), ...ENC, out,
+  ]);
+  parts.push({ file: out, dur: INTRO_S });
+}
+
+// A scene's `zoom`/`unzoom` marks (and `zoom2`/`unzoom2`, …) push the frame in on a rect and back out, eased over
+// ZOOM_S each way; the spans never overlap.
+const ZOOM_S = 0.7;
+function zoomFilter(marks = {}) {
+  const spans = Object.keys(marks).filter((k) => /^zoom\d*$/.test(k)).map((k) => {
+    const { t, x, y, w, h } = marks[k];
+    return { t0: t, t1: marks[`un${k}`]?.t ?? 1e9, Z: Math.min(1920 / w, 1080 / h, 2.2), cx: (x + w / 2) * 2, cy: (y + h / 2) * 2 };
+  }).sort((a, b) => a.t0 - b.t0);
+  if (!spans.length) return "";
+  const ease = ({ t0, t1 }) =>
+    `(0.5-0.5*cos(PI*if(lt(it,${t0}),0,if(lt(it,${t0 + ZOOM_S}),(it-${t0})/${ZOOM_S},if(lt(it,${t1}),1,if(lt(it,${t1 + ZOOM_S}),1-(it-${t1})/${ZOOM_S},0))))))`;
+  const z = spans.map((sp) => `${(sp.Z - 1).toFixed(4)}*${ease(sp)}`).join("+");
+  // The center is the latest span's once it starts.
+  const at = (key) => spans.reduce((acc, sp) => `if(gte(it,${sp.t0}),${sp[key]},${acc})`, String(spans[0][key]));
+  // zoompan snaps its window to whole input pixels: doubling the frame first halves that step.
+  return `scale=3840:2160:flags=lanczos,zoompan=z='1+${z}':d=1:s=1920x1080:fps=${FPS}:` +
+    `x='max(0,min(iw-iw/zoom,${at("cx")}-iw/zoom/2))':y='max(0,min(ih-ih/zoom,${at("cy")}-ih/zoom/2))',`;
+}
+
+// A scene's `fast`/`unfast` marks play that span at its rate under a badge; the other marks move with the new timeline.
+function retimed(name) {
+  const src = path.join(clips, `${name}.mp4`), meta = clipMeta(name), marks = meta.marks ?? {};
+  if (!marks.fast) return { file: src, duration: meta.duration, marks, fast: null };
+  const t0 = marks.fast.t, t1 = marks.unfast?.t ?? meta.duration, rate = marks.fast.rate ?? 3;
+  const map = (t) => (t <= t0 ? t : t <= t1 ? t0 + (t - t0) / rate : t0 + (t1 - t0) / rate + (t - t1));
+  const file = path.join(clips, `${name}.retimed.mp4`);
+  ff([
+    "-i", src, "-filter_complex",
+    `[0:v]trim=0:${t0},setpts=PTS-STARTPTS[a];[0:v]trim=${t0}:${t1},setpts=(PTS-STARTPTS)/${rate}[b];` +
+      `[0:v]trim=${t1},setpts=PTS-STARTPTS[c];[a][b][c]concat=n=3:v=1:a=0,fps=${FPS},format=yuv420p[v]`,
+    "-map", "[v]", ...ENC, file,
+  ]);
+  const moved = Object.fromEntries(Object.entries(marks).map(([k, v]) => [k, typeof v === "number" ? map(v) : { ...v, t: map(v.t) }]));
+  return { file, duration: map(meta.duration), marks: moved, fast: { t0, t1: map(t1), rate } };
+}
+
+// A scene's `chapter` puts a card before it: the scene's first frame blurred under a wordmark, as when the story
+// moves to the other app.
+const CHAPTER_S = 1.9;
+function chapterPart(name, i) {
+  const still = path.join(segs, `${String(i + 1).padStart(2, "0")}-${name}-first.png`);
+  ff(["-ss", "0.1", "-i", path.join(clips, `${name}.mp4`), "-frames:v", "1", still]);
+  const out = path.join(segs, `${String(i + 1).padStart(2, "0")}-${name}-chapter.mp4`);
+  ff([
+    "-loop", "1", "-framerate", String(FPS), "-i", still, "-loop", "1", "-i", path.join(cards, `chapter-${name}.png`),
+    "-filter_complex", `[0:v]scale=1920:1080,${backdrop(CHAPTER_S)}[bg];[1:v]format=rgba[m];[bg][m]overlay,format=yuv420p`,
+    "-t", String(CHAPTER_S), ...ENC, out,
+  ]);
+  return { file: out, dur: CHAPTER_S };
+}
+
+ORDER.forEach((name, i) => {
+  if (SCENES[name].chapter) parts.push(chapterPart(name, i));
+  const clip = retimed(name), dur = clip.duration;
+  const out = path.join(segs, `${String(i + 1).padStart(2, "0")}-${name}.mp4`);
+  // A `caption` mark holds the caption back until then.
+  const capIn = Math.max(XF + 0.15, clip.marks.caption?.t ?? 0), capOut = dur - XF - 0.55;
+  const layers = [], inputs = ["-i", clip.file];
+  if (SCENES[name].caption) {
+    inputs.push("-loop", "1", "-i", path.join(cards, `cap-${name}.png`));
+    layers.push(`format=rgba,fade=t=in:st=${capIn}:d=0.45:alpha=1,fade=t=out:st=${capOut}:d=0.45:alpha=1`);
+  }
+  if (clip.fast) {
+    inputs.push("-loop", "1", "-i", path.join(cards, `fast-${clip.fast.rate}.png`));
+    layers.push(`format=rgba,fade=t=in:st=${clip.fast.t0.toFixed(3)}:d=0.25:alpha=1,fade=t=out:st=${(clip.fast.t1 - 0.25).toFixed(3)}:d=0.25:alpha=1`);
+  }
+  let graph = `[0:v]${zoomFilter(clip.marks)}setsar=1[v0]`;
+  layers.forEach((f, j) => { graph += `;[${j + 1}:v]${f}[l${j}];[v${j}][l${j}]overlay=shortest=1[v${j + 1}]`; });
+  graph += `;[v${layers.length}]format=yuv420p[out]`;
+  ff([...inputs, "-filter_complex", graph, "-map", "[out]", "-t", dur.toFixed(3), ...ENC, out]);
+  parts.push({ file: out, dur });
+});
+
+{
+  const out = path.join(segs, "99-outro.mp4");
+  ff([
+    "-i", path.join(clips, `${CUT.outro}.mp4`),
+    "-loop", "1", "-i", path.join(cards, `${CUT_NAME}-outro.png`),
+    "-filter_complex",
+    `[0:v]${backdrop(OUTRO_S)}[bg];[1:v]format=rgba,fade=t=in:st=${XF + 0.2}:d=0.9:alpha=1[t];` +
+      `[bg][t]overlay,fade=t=out:st=${OUTRO_S - 0.9}:d=0.9,format=yuv420p`,
+    "-t", String(OUTRO_S), ...ENC, out,
+  ]);
+  parts.push({ file: out, dur: OUTRO_S });
+}
+
+const inputs = parts.flatMap((p) => ["-i", p.file]);
+let graph = parts.map((_, i) => `[${i}:v]settb=AVTB,setpts=PTS-STARTPTS,fps=${FPS}[v${i}]`).join(";");
+let prev = "v0", offset = 0;
+for (let i = 1; i < parts.length; i++) {
+  offset += parts[i - 1].dur - XF;
+  const next = i === parts.length - 1 ? "vout" : `x${i}`;
+  graph += `;[${prev}][v${i}]xfade=transition=fade:duration=${XF}:offset=${offset.toFixed(3)}[${next}]`;
+  prev = next;
+}
+const total = offset + parts[parts.length - 1].dur;
+const silent = path.join(OUT, `${CUT.out}-silent.mp4`);
+const cut = path.join(OUT, `${CUT.out}.cut.mp4`);
+ff([
+  ...inputs, "-filter_complex", graph, "-map", "[vout]",
+  "-c:v", "libx264", "-preset", "slow", "-crf", "17", "-pix_fmt", "yuv420p", cut,
+]);
+// The poster is frame zero, the title card; each mp4 also carries it as cover art for players that show one.
+const poster = path.join(OUT, `${CUT.out}-poster.png`);
+ff(["-i", cut, "-frames:v", "1", poster]);
+const withCover = (extra, out) => ff([
+  "-i", cut, ...extra, "-i", poster,
+  "-map", "0:v", ...(extra.length ? ["-map", "[a]"] : []), "-map", `${extra.length ? 2 : 1}:v`,
+  "-c:v:0", "copy", "-c:v:1", "png", "-disposition:v:1", "attached_pic",
+  ...(extra.length ? ["-c:a", "aac", "-b:a", "192k"] : []), "-movflags", "+faststart", out,
+]);
+withCover([], silent);
+console.log(`silent cut: ${total.toFixed(1)} s → ${path.relative(process.cwd(), silent)}`);
+fs.writeFileSync(path.join(OUT, `${CUT.out}.cut.json`), JSON.stringify({ total, parts: parts.map((p) => ({ file: path.basename(p.file), dur: p.dur })) }, null, 1));
+
+const music = path.join(OUT, `${CUT.out}-music.wav`);
+writeMusic(total, music, { arpFrom: INTRO_S - XF });
+{
+  const final = path.join(OUT, `${CUT.out}.mp4`);
+  withCover([
+    "-i", music,
+    "-filter_complex", `[1:a]atrim=0:${total.toFixed(3)},loudnorm=I=-17:TP=-2:LRA=11,aresample=48000,afade=t=in:st=0:d=1.2,afade=t=out:st=${(total - 2.6).toFixed(3)}:d=2.6[a]`,
+  ], final);
+  fs.rmSync(cut);
+  console.log(`with music → ${path.relative(process.cwd(), final)}`);
+}

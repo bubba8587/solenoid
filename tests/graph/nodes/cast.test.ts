@@ -1,10 +1,12 @@
-// [[E11]] controlDrivenRetype, [[C24]]
+// [[B11]] maximalMerge, [[C24]]
 import { describe, expect, it } from "vitest";
 import { CastNode, castOutput, parseCx, type CastTarget } from "../../../src/graph/nodes/cast";
 import { cx } from "../../../src/graph/cxValue";
 import { formatNumberPattern } from "../../../src/graph/nodes/text";
 import { isSolError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, isDateType } from "../../../src/graph/sockets";
+import { applyFcUnit } from "../../../src/graph/unitBridge";
+import { wrapNodeData } from "../../../src/graph/coerceInputs";
 
 // No editor singleton in tests → sourceKind() is null, so complex INPUTS can't
 // be disambiguated here — those paths are typed by the live socket. Everything
@@ -32,10 +34,24 @@ describe("Cast node", () => {
   it("casts to number", () => {
     expect(cast("number", "42.5")).toBe(42.5);
     expect(cast("number", 7)).toBe(7);
-    const r = cast("number", [1, "2", "x"]) as Array<number | import("../../../src/graph/errorValue").SolError>;
-    expect(r[0]).toBe(1);
-    expect(r[1]).toBe(2);
-    expect(isSolError(r[2]) && (r[2] as import("../../../src/graph/errorValue").SolError).code).toBe("#VALUE!");
+  });
+
+  it("empty text and 0x/0o/0b literals are #VALUE!, never a silent number ([[B17]] typedValueModel)", () => {
+    for (const t of ["", "   ", "0x1F", "0b11", "0o7"]) {
+      const r = cast("number", t);
+      expect(isSolError(r) && r.code, JSON.stringify(t)).toBe("#VALUE!");
+    }
+  });
+
+  it("reads number text exactly as the formula VALUE does ([[B16]] oneFormulaSurface)", () => {
+    expect(cast("number", "$1,000")).toBe(1000);
+    expect(cast("number", "50%")).toBeCloseTo(0.5, 9);
+    expect(cast("number", "(5)")).toBe(-5);
+  });
+
+  it("casts a logical to text as TRUE/FALSE, as & does", () => {
+    expect(cast("text", true)).toBe("TRUE");
+    expect(cast("text", [false])).toEqual(["FALSE"]);
   });
 
   it("casts a logical to number via the 0/1 bridge (Excel N(TRUE)=1), scalar and per-cell", () => {
@@ -71,7 +87,8 @@ describe("Cast node", () => {
     expect(cast("logical", " True ")).toBe(true);   // trimmed
     expect(cast("logical", 5)).toBe(true);          // nonzero → TRUE
     expect(cast("logical", 0)).toBe(false);
-    expect(cast("logical", "1")).toBe(true);        // numeric string → nonzero
+    expect(cast("logical", "1")).toBe(true);        // numeric text → nonzero
+    expect(isSolError(cast("logical", "maybe"))).toBe(true);
     expect(cast("logical", true)).toBe(true);       // real boolean passes through
   });
 
@@ -141,5 +158,22 @@ describe("Cast node", () => {
     expect(n.cachedResult).toBe(45000);
     n.data({ value: [[45000, 45001]] });
     expect(n.cachedResult).toEqual([45000, 45001]);
+  });
+});
+
+describe("Cast keeps a value's unit where the target can hold it ([[C25]] firstClassUnits)", () => {
+  const through = (target: CastTarget, value: unknown) => {
+    const n = new CastNode({ target });
+    wrapNodeData(n as unknown as Parameters<typeof wrapNodeData>[0]);
+    return n.data({ value: [value] }).result;
+  };
+  it("text names the unit the value reads in", () => {
+    expect(through("text", applyFcUnit(5, "km"))).toBe("5 km");
+    expect(through("text", applyFcUnit(5, "usd"))).toBe("$5");
+    expect(through("text", [applyFcUnit(1.5, "km"), null])).toEqual(["1.5 km", null]);
+    expect(through("text", applyFcUnit(20, "degC"))).toBe("20 °C");
+  });
+  it("a number is the value as it reads, with no unit", () => {
+    expect(through("number", applyFcUnit(5, "km"))).toBe(5);
   });
 });

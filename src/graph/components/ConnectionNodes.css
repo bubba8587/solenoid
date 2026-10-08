@@ -1,4 +1,3 @@
-/* External-data connection nodes (Web Source; CSV-folder next). */
 .sol-conn {
   display: flex;
   flex-direction: column;
@@ -48,7 +47,6 @@
   box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
 }
 
-/* Optional date-range row (FRED). Two date pickers with an arrow between them. */
 .sol-conn__dates {
   display: flex;
   align-items: center;
@@ -73,7 +71,6 @@
 }
 .sol-conn__date-sep { color: var(--text-muted); font-size: 11px; flex: 0 0 auto; }
 
-/* Inline labeled field (Import HTML's table index). */
 .sol-conn__field {
   display: flex;
   align-items: center;
@@ -99,7 +96,6 @@
   box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
 }
 
-/* Import XML result preview — a few matched strings. */
 .sol-conn__preview {
   display: flex;
   flex-direction: column;
@@ -140,9 +136,9 @@
   border-radius: 50%;
   background: var(--text-dim);
 }
-.sol-conn__dot--ok      { background: #2fae7a; }
-.sol-conn__dot--error   { background: #e0566b; }
-.sol-conn__dot--loading { background: #d9a93b; animation: sol-conn-pulse 1s ease-in-out infinite; }
+.sol-conn__dot--ok      { background: var(--sol-ok); }
+.sol-conn__dot--error   { background: var(--sol-error); }
+.sol-conn__dot--loading { background: var(--sol-warn); animation: sol-conn-pulse 1s ease-in-out infinite; }
 /* Gated (network permission not granted): a hollow, muted ring — armed but not fired,
    the disarmed-sink idle look. */
 .sol-conn__dot--gated   { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-dim); }
@@ -192,7 +188,22 @@
   image-rendering: pixelated;
 }
 
-/* Vault Folder: the vault-path chip + its Choose button. */
+/* Collapsed, the code stays scannable at a glance, just small. */
+.solenoid-node__collapsed-only.sol-conn__qr-thumb {
+  padding: 4px;
+  background: #ffffff;
+  border-radius: 4px;
+}
+.sol-conn__qr-thumb img {
+  width: 56px;
+  height: 56px;
+  image-rendering: pixelated;
+}
+
+.sol-conn__line {
+  display: flex;
+  gap: 4px;
+}
 .sol-conn__vault {
   display: flex;
   align-items: center;

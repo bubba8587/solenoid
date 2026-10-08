@@ -14,7 +14,6 @@
   text-overflow: ellipsis;
 }
 
-/* A list of chips wraps to the box width. */
 .solenoid-node__chiplist {
   display: inline-flex;
   flex-wrap: wrap;

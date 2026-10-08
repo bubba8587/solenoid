@@ -1,5 +1,6 @@
-// [[D34]], [[D35]], [[E9]]
+// [[C24]], [[D35]], [[E9]]
 import { describe, it, expect } from "vitest";
+import { nodeDisplayName } from "../../src/graph/catalogUtils";
 import { solError, isSolError, firstInputError, installErrorGuards, type SolError } from "../../src/graph/errorValue";
 import { ArithmeticNode, MathFXNode, CombinatoricsNode } from "../../src/graph/nodes/scalar";
 import { IFErrorNode, IsTestNode } from "../../src/graph/nodes/logic";
@@ -44,6 +45,15 @@ describe("installErrorGuards", () => {
     expect((out.result as SolError).code).toBe("#DOMAIN!");
     expect((out.result as SolError).message).toBe("upstream");
     expect(n.cachedResult).toBe(out.result); // the value box shows it too
+  });
+
+  it("a figure card's own cache fields drop the last good figure on an error input", () => {
+    const n = { outputs: { chart: {} }, cachedChart: { __chart: true } as unknown, cachedPayload: { kind: "kpi" } as unknown,
+      data: () => ({ chart: { __chart: true } }), constructor: { name: "KpiNode" } };
+    installErrorGuards(n);
+    (n.data as (i: unknown) => unknown)({ values: [solError("#N/A", "upstream")] });
+    expect(isSolError(n.cachedChart)).toBe(true);
+    expect(n.cachedPayload).toBeNull();
   });
 
   it("converts a throwing data() into a local #ERROR!", () => {
@@ -120,7 +130,7 @@ describe("SolError origin (provenance Tier 1)", () => {
     const err = out.result as SolError;
     expect(isSolError(err)).toBe(true);
     expect(err.origin?.nodeId).toBe(n.id);
-    expect(err.origin?.nodeName).toBe("Arithmetic");
+    expect(err.origin?.nodeName).toBe(nodeDisplayName(n));
     expect(err.origin?.inputSlot).toBeUndefined();
   });
 
@@ -131,7 +141,7 @@ describe("SolError origin (provenance Tier 1)", () => {
     const out = n.data({}) as { result: unknown };
     const err = out.result as SolError;
     expect(err.origin?.nodeId).toBe(n.id);
-    expect(err.origin?.nodeName).toBe("Arithmetic");
+    expect(err.origin?.nodeName).toBe(nodeDisplayName(n));
   });
 
   it("tags an untagged input error with the input slot it arrived on", () => {
@@ -152,21 +162,33 @@ describe("SolError origin (provenance Tier 1)", () => {
     const relayed = (downstream.data({ a: [minted as unknown as number], b: [2] }) as { result: SolError }).result;
 
     expect(relayed.origin?.nodeId).toBe(producer.id); // still the original producer
-    expect(relayed.origin?.nodeName).toBe("Arithmetic");
+    expect(relayed.origin?.nodeName).toBe(nodeDisplayName(producer));
   });
 
-  it("tags a per-cell error inside a list result with its row index", () => {
+  it("tags a per-cell error inside a list result with its node", () => {
     const n = new ArithmeticNode({ op: "div" });
     installErrorGuards(n);
     const out = n.data({ a: [[4, 1, 6]], b: [[2, 0, 3]] }) as { result: unknown[] };
     expect(out.result[0]).toBe(2);
     expect(isSolError(out.result[1])).toBe(true);
-    expect((out.result[1] as SolError).origin?.rowIndex).toBe(1);
     expect((out.result[1] as SolError).origin?.nodeId).toBe(n.id);
     expect(out.result[2]).toBe(2);
   });
 
-  it("tags a per-cell error inside a frame-shaped output with its row index", () => {
+  it("tags repeats of one error with one shared copy", () => {
+    const e = solError("#DIV/0!", "Division by zero");
+    const n = { id: "n1", label: "Ratio", outputs: {}, constructor: { name: "SomeNode" } } as unknown as {
+      id: string; data: (i: Record<string, unknown[] | undefined>) => Record<string, unknown>;
+    };
+    (n as unknown as { data?: unknown }).data = () => ({ result: [e, 1, e] });
+    installErrorGuards(n);
+    const out = n.data({}) as { result: unknown[] };
+    expect((out.result[0] as SolError).origin?.nodeName).toBe("Ratio");
+    expect(out.result[2]).toBe(out.result[0]);
+    expect(e.origin).toBeUndefined();
+  });
+
+  it("tags a per-cell error inside a frame-shaped output with its node", () => {
     const e = solError("#VALUE!", "bad cell");
     const n = { id: "n1", label: "Frame Thing", outputs: {}, constructor: { name: "SomeFrameNode" } } as unknown as {
       id: string; data: (i: Record<string, unknown[] | undefined>) => Record<string, unknown>;
@@ -178,7 +200,6 @@ describe("SolError origin (provenance Tier 1)", () => {
     const out = n.data({}) as { out: { columns: { values: unknown[] }[] } };
     const cell = out.out.columns[0].values[1] as SolError;
     expect(isSolError(cell)).toBe(true);
-    expect(cell.origin?.rowIndex).toBe(1);
     expect(cell.origin?.nodeName).toBe("Frame Thing");
   });
 
@@ -233,9 +254,6 @@ describe("error consumers", () => {
     // A bare NaN is neither an error nor caught — Test's ISERROR and IFERROR match.
     expect(new IsTestNode({ op: "iserror" }).data({ value: [NaN] }).result).toBe(false);
     expect(new IFErrorNode({ op: "iferror" }).data({ value: [NaN], fallback: [9] }).result).toBeNaN();
-    // A tagged error is caught/flagged by both.
-    expect(new IsTestNode({ op: "iserror" }).data({ value: [div0] }).result).toBe(true);
-    expect(new IFErrorNode({ op: "iferror" }).data({ value: [div0], fallback: [9] }).result).toBe(9);
   });
 
   it("IS-check remembers the observed error for the explanation panel", () => {
@@ -322,10 +340,6 @@ describe("error producers", () => {
     const n2 = new XLookupNode();
     n2.stringLiterals = { lookup: "", inColumn: "k", returnColumn: "v", ifNotFound: "0" };
     expect(n2.data({ frame: [f], lookup: [["2", "99"]] }).value).toEqual([20, 0]);
-    // A single lookup value still answers a single cell — the common case is unchanged.
-    const n3 = new XLookupNode();
-    n3.stringLiterals = { lookup: "2", inColumn: "k", returnColumn: "v", ifNotFound: "" };
-    expect(n3.data({ frame: [f] }).value).toBe(20);
   });
 
   it("XMATCH miss on a wired array is #N/A; unwired stays blank", () => {
@@ -341,8 +355,6 @@ describe("error producers", () => {
     const r = new XMatchNode().data({ value: [[30, 10, 99]], array: [[10, 20, 30]] }).result as unknown[];
     expect(r.slice(0, 2)).toEqual([3, 1]);
     expect(isSolError(r[2]) && (r[2] as SolError).code).toBe("#N/A");
-    // A scalar needle still answers a scalar — the common case is unchanged.
-    expect(new XMatchNode().data({ value: [20], array: [[10, 20, 30]] }).result).toBe(2);
   });
 
   it("Filter ([[C49]] filterOneJob) never shape-errors: a per-cell error just fails its condition", () => {

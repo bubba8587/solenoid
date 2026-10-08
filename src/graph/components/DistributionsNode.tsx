@@ -1,10 +1,10 @@
-// [[C61]]
+// [[B11]]
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import {
-  DIST_SPECS, DIST_FORM_META, isInverseForm,
+  DIST_SPECS, DIST_FORM_META,
   type DistributionsNode as DistributionNodeType, type DistKey, type DistForm,
 } from "../nodes/distribution";
 
@@ -22,16 +22,16 @@ export function DistributionsComponent({ data, emit }: NodeProps<DistributionNod
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
     setFormField(data.form); // the switch may have remapped the form
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     setOpField(next);
   }
 
   async function pickForm(next: DistForm) {
     if (next === data.form) return;
-    const crossing = isInverseForm(next) !== isInverseForm(data.form);
-    if (crossing) await dropInputCables(data.id, [isInverseForm(next) ? data.xKey : "prob"]);
+    const departing = data.keysDroppedByForm(next);
+    if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setForm(next);
-    if (crossing) await getActiveView()?.rerenderNode(data.id);
+    if (departing.length > 0) await getOwningView(data.id)?.rerenderNode(data.id);
     setFormField(next);
   }
 
@@ -44,7 +44,7 @@ export function DistributionsComponent({ data, emit }: NodeProps<DistributionNod
       <InlineInputs
         node={data}
         emit={emit}
-        keys={[isInverseForm(form) ? "prob" : spec.xKey, ...spec.params.map((p) => p.key)]}
+        keys={data.inputKeys}
       />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

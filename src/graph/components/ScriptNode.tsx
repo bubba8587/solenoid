@@ -21,8 +21,7 @@ const FIELD_CHROME = 10; // padding + borders around the text box
 const FIELD_MAX_H = 360;
 
 export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>) {
-  // The source drafts locally and commits on blur (Ctrl+Enter blurs; Escape reverts): a
-  // commit re-derives the parameter sockets ([[C95]] commitOnEnter, [[C66]] scriptNode).
+  // Drafts locally and commits on blur (Ctrl+Enter blurs, Escape reverts), since a commit re-derives the parameter sockets.
   const [draft, setDraft] = useState(node.expr);
   const [, forceUpdate] = useState(0);
   const canceled = useRef(false);

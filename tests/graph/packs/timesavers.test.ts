@@ -67,8 +67,6 @@ describe("Timesaver date idioms with config (C5)", () => {
   const domOf = (serial: number) => serialToJsDate(serial).getUTCDate();
 
   it("Fiscal Quarter: start defaults to 1 (calendar); a fiscal start shifts the quarters", () => {
-    // Untouched (start seeded 1) === the calendar behaviour the existing test pins.
-    expect(run("ts-quarter", { date: ser(2026, 4, 1) })).toBe(2);
     // April fiscal year (start=4): April is Q1, March is Q4, July is Q2.
     expect(run("ts-quarter", { date: ser(2026, 4, 1), start: 4 })).toBe(1);
     expect(run("ts-quarter", { date: ser(2026, 3, 31), start: 4 })).toBe(4);

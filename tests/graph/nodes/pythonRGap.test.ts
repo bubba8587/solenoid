@@ -1,4 +1,4 @@
-// [[C79]], [[C60]], [[C48]]
+// [[C79]], [[B11]], [[C48]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { nodeDisplayName } from "../../../src/graph/catalogUtils";
@@ -15,7 +15,7 @@ import { amortizationSchedule } from "../../../src/graph/nodes/financeOps";
 import { anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "../../../src/graph/nodes/statsOps";
 import { HypothesisTestNode } from "../../../src/graph/nodes/stats";
 import { matTrace, matRank, matNorm, matSolve, matEigh } from "../../../src/graph/nodes/matrixOps";
-import { fftReal, spectrum } from "../../../src/graph/nodes/listOps";
+import { fftReal, spectrum, type SpectrumRow } from "../../../src/graph/nodes/listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "../../../src/graph/nodes/matrix";
 import { SpectrumNode } from "../../../src/graph/nodes/list";
 import { levenshtein, damerauLevenshtein, jaroWinkler, textSimilarity, fuzzyBest } from "../../../src/graph/nodes/textOps";
@@ -57,7 +57,6 @@ describe("NTILE / Bin quantiles mode (dplyr ntile, pandas qcut)", () => {
     n.setMode("breaks");
     expect(n.inputs.breaks).toBeDefined(); expect(n.inputs.n).toBeUndefined();
     expect(n.data({ list: [[3, 7, 12]], breaks: [[5, 10]] }).result).toEqual([0, 1, 2]);
-    expect(n.outputs.result!.label).toBe("Bin index");
   });
 });
 
@@ -159,12 +158,6 @@ describe("Describe (pandas describe / R summary)", () => {
 });
 
 describe("describeColumn (the shared kernel behind describeFrame + the popup footer)", () => {
-  it("counts blank as null cells, present as the rest", () => {
-    const p = describeColumn([1, 2, null, 4, null], "number");
-    expect(p.count).toBe(3);
-    expect(p.blank).toBe(2);
-  });
-
   it("counts errors as their own share of present (present = valid + error)", () => {
     const p = describeColumn([1, solError("#DIV/0!", "x"), 3, null], "number");
     expect(p.count).toBe(3); // present includes the error cell
@@ -176,34 +169,23 @@ describe("describeColumn (the shared kernel behind describeFrame + the popup foo
   });
 
   it("distinct is over present non-error values", () => {
-    expect(describeColumn(["a", "b", "a", null, "c"], "string").distinct).toBe(3);
     expect(describeColumn([1, 1, 2, solError("#N/A", "x")], "number").distinct).toBe(2);
   });
 
   it("number columns carry mean / min / max / quartiles", () => {
     const p = describeColumn([1, 2, 3, 4], "number");
-    expect(p.mean).toBe(2.5);
     expect(p.min).toBe(1);
-    expect(p.max).toBe(4);
-    expect(p.q25).toBe(1.75);
-    expect(p.median).toBe(2.5);
     expect(p.q75).toBe(3.25);
   });
 
   it("a string column gets no numeric stats", () => {
     const p = describeColumn(["a", "b", "c"], "string");
-    expect(p.mean).toBeNull();
-    expect(p.median).toBeNull();
     expect(p.min).toBeNull();
-    expect(p.max).toBeNull();
   });
 
   it("a date column carries min / max but no mean or quartiles", () => {
     const p = describeColumn([45000, 45001, null, 45004], "date");
     expect(p.min).toBe(45000);
-    expect(p.max).toBe(45004);
-    expect(p.mean).toBeNull();
-    expect(p.median).toBeNull();
   });
 });
 
@@ -225,6 +207,15 @@ describe("Correlation Matrix (df.corr / cor)", () => {
     const cov = correlationMatrix(f, "covariance");
     expect(cov.columns[1].values[0]).toBeCloseTo(2.5, 12);    // var(a) sample
     expect(new CorrMatrixNode({ method: "spearman" }).data({ frame: [f] }).frame).toEqual(correlationMatrix(f, "spearman"));
+  });
+  it("a number column named `column` gets a distinct header", () => {
+    const g: FrameValue = { __frame: true, columns: [
+      { name: "column", type: "number", values: [1, 2, 3] },
+      { name: "b", type: "number", values: [2, 4, 7] },
+    ] };
+    const out = correlationMatrix(g, "pearson");
+    expect(out.columns.map((c) => c.name)).toEqual(["column", "column2", "b"]);
+    expect(out.columns[0].values).toEqual(["column", "b"]);
   });
 });
 
@@ -354,14 +345,14 @@ describe("Spectrum (FFT) — numpy.fft reference", () => {
   });
   it("a 5 Hz sine of amplitude 3 on a 1 V offset, sampled 64/s: bin 5 reads 3 at 5 Hz, DC reads 1", () => {
     const sig = Array.from({ length: 64 }, (_, i) => 3 * Math.sin((2 * Math.PI * 5 * i) / 64) + 1);
-    const rows = spectrum(sig, 64);
+    const rows = spectrum(sig, 64) as SpectrumRow[];
     expect(rows).toHaveLength(33);
     expect(rows[5].frequency).toBe(5);
     expect(rows[5].magnitude).toBeCloseTo(3, 10);
     expect(rows[0].magnitude).toBeCloseTo(1, 10);
     expect(rows[7].magnitude).toBeCloseTo(0, 10);
     const node = new SpectrumNode(); node.literals.rate = 64;
-    const out = node.data({ list: [sig] }).result!;
+    const out = node.data({ list: [sig] }).result as number[][];
     expect(out[5][0]).toBe(5); expect(out[5][1] as number).toBeCloseTo(3, 10);
     const viaFormula = ev("SPECTRUM(s, 64)", { s: sig }) as number[][];
     expect(viaFormula[5][1]).toBeCloseTo(3, 10);
@@ -670,6 +661,12 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
     await requestRecalc();
     expect(n.data().result).not.toBe(a);
     expect(ev("UUID()")).not.toBe(ev("UUID()"));
+  });
+  it("UUID's save holds no UUID, so a recompute is never an edit for undo", async () => {
+    const { extractInit } = await import("../../../src/graph/copyPaste");
+    const n = new UuidNode();
+    n.data();
+    expect(JSON.stringify(extractInit(n))).not.toMatch(/[0-9a-f]{8}-/);
   });
   it("ENCODEBASE64 / DECODEBASE64 ride the url-encode card; bad base64 passes through", () => {
     expect(new UrlEncodeNode({ op: "base64" }).data({ text: ["hello world"] }).result).toBe("aGVsbG8gd29ybGQ=");

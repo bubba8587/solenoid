@@ -1,6 +1,6 @@
-// [[B10]] reactFlowView (module-singleton store)
-// Version/flag stores the surface raises and cards subscribe to.
-// Bumped by the surface's editor pipe on connectioncreated / connectionremoved.
+// [[A1]] visualGraphCalculator (module-singleton store)
+// Version and flag stores the surface raises and cards subscribe to.
+// Bumped on connectioncreated and connectionremoved.
 let _connVersion = 0;
 const _connListeners = new Set<() => void>();
 
@@ -35,8 +35,7 @@ export const cableDragStore = {
   },
 };
 
-// Bumped whenever a Conduit's `angle` is mutated from OUTSIDE its own React root
-// (the Canvas keyboard rotate); ConduitComponent subscribes here.
+// Bumped when a Conduit's `angle` changes from outside its own React root (the keyboard rotate).
 let _conduitAngleVersion = 0;
 const _conduitAngleListeners = new Set<() => void>();
 
@@ -53,3 +52,20 @@ export const conduitAngleStore = {
   },
 };
 
+
+// Bumped when a verb reorders the editor's nodes (the stacking order), so every surface re-projects its RF nodes.
+let _stackVersion = 0;
+const _stackListeners = new Set<() => void>();
+
+export function bumpStackOrder() {
+  _stackVersion++;
+  for (const l of _stackListeners) l();
+}
+
+export const stackOrderStore = {
+  get: () => _stackVersion,
+  subscribe: (l: () => void) => {
+    _stackListeners.add(l);
+    return () => { _stackListeners.delete(l); };
+  },
+};

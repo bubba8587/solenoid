@@ -1,21 +1,15 @@
 import { ClassicPreset } from "rete";
 import { numIn, numOut } from "./shared";
 
-// The sweep lives in tornadoRun.ts; the node is a pass-through so it sits inline in a chain.
-
 export interface TornadoResult {
   nodeId: string;
   label: string;
   base: number;
   low: number;
   high: number;
-  /** The input values actually swept — the swing is only readable against this width. */
   inputLow: number;
   inputHigh: number;
-  /** Perturbation width source — the tornado ranks RAW swing, so this marks the basis
-   *  rather than normalizing it away. */
   basis: "slider" | "number";
-  /** Non-finite result at an extreme — such a leaf is kept and MARKED, never dropped. */
   diverged: boolean;
 }
 
@@ -26,9 +20,8 @@ export class TornadoNode extends ClassicPreset.Node {
 
   label: string;
   cachedResult: number | null = null;
-  /** Last completed run's ranking, best (biggest swing) first. Null = never run. */
   results: TornadoResult[] | null = null;
-  // Must track the --wide card and TORNADO_W, or ELK reserves the wrong footprint.
+  // Must match the --wide card and TORNADO_W, or ELK reserves the wrong footprint.
   width = 240;
   height = 280;
 

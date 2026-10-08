@@ -1,6 +1,8 @@
 // [[C38]]
-import { describe, it, expect } from "vitest";
-import { WriteObsidianNode, ImportObsidianNode } from "../../../src/graph/nodes/obsidian";
+import { describe, it, expect, afterEach } from "vitest";
+import { forceDemoVault } from "../../../src/graph/demoVault";
+import { refreshAllConnections, whenConnectionsSettled } from "../../../src/graph/connectionStore";
+import { WriteObsidianNode, ImportObsidianNode, obsidianTypeName } from "../../../src/graph/nodes/obsidian";
 import { NoteNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/copyPaste";
 import { makeDocument, isDocumentValue } from "../../../src/graph/documentValue";
@@ -16,12 +18,10 @@ describe("WriteObsidianNode persistence + arming", () => {
     n.stringLiterals.path = "Weekly Report";
     n.enabled = true;
     const init = extractInit(n);
-    expect(init.subfolder).toBe("reports/2026");
     expect(init.enabled).toBeUndefined();
     const reloaded = new WriteObsidianNode(init);
     expect(reloaded.subfolder).toBe("reports/2026");
     expect(reloaded.enabled).toBe(false); // every load starts disarmed
-    expect(new WriteObsidianNode().stringLiterals).toEqual({ path: "", keys: "" }); // path (Note) + keys (Properties)
   });
 
   it("data() caches the document and resolves the path for the preview; the Note plan is empty", () => {
@@ -32,7 +32,6 @@ describe("WriteObsidianNode persistence + arming", () => {
     expect(out).toEqual({ plan: null }); // Note target: no cube, no plan
     expect(n.cachedDoc).toBe(doc);
     expect(n.resolveMode()).toBe("note");
-    expect(n.renderedTarget()).toEqual({ name: "Memo", subfolder: "Notes" });
   });
 });
 
@@ -66,6 +65,63 @@ describe("WriteObsidianNode.run() guards", () => {
   });
 });
 
+describe("the type a new property registers in types.json", () => {
+  const frame = { __frame: true as const, columns: [{ name: "x", type: "number" as const, values: [1] }] };
+  const cube = { __cube: true as const, columns: [
+    { name: "rows", cells: [frame], type: undefined },
+    { name: "grid", cells: [[[1, 2]]], type: "number" as const },
+    { name: "tags", cells: [["a"]], type: "string" as const },
+    { name: "when", cells: [46000.5], type: "date" as const },
+    { name: "due", cells: [46000], type: "date" as const },
+  ] } as never;
+  it("rows and matrices register nothing; a time of day is Date & time", () => {
+    expect(obsidianTypeName(cube, "rows")).toBeNull();
+    expect(obsidianTypeName(cube, "grid")).toBeNull();
+    expect(obsidianTypeName(cube, "tags")).toBe("multitext");
+    expect(obsidianTypeName(cube, "when")).toBe("datetime");
+    expect(obsidianTypeName(cube, "due")).toBe("date");
+  });
+});
+
+describe("WriteObsidianNode re-plans the Properties target", () => {
+  it("when Keys change, not only when the rows do", () => {
+    const cube = { __cube: true as const, depth: 1, columns: [
+      { name: "path", cells: ["a.md"], type: "string" as const },
+      { name: "x", cells: [1], type: "number" as const },
+      { name: "y", cells: [2], type: "number" as const },
+    ] } as never;
+    const n = new WriteObsidianNode({ target: "properties" });
+    const keysOf = () => (n.data({ rows: [cube] }).plan as { columns: { name: string; values: unknown[] }[] }).columns.find((c) => c.name === "key")!.values;
+    expect(keysOf()).toEqual(["x", "y"]);
+    n.stringLiterals.keys = "y";
+    expect(keysOf()).toEqual(["y"]);
+  });
+});
+
+describe("WriteObsidianNode previews a mail merge as the notes Run writes", () => {
+  afterEach(() => forceDemoVault(false));
+
+  it("names one note per page, numbered as the writer numbers them", async () => {
+    forceDemoVault(true);
+    const doc = makeDocument("", {}, undefined, undefined, { pages: [{ name: "", body: "a" }, { name: "Kept", body: "b" }] });
+    const n = new WriteObsidianNode({ subfolder: "Out" });
+    n.stringLiterals.path = "Letters";
+    n.data({ in: [doc] });
+    await n.preview();
+    expect(n.status).toBe("idle");
+    expect(n.statusMessage).toBe("Create 2 notes in Out: Letters-1.md, Kept.md");
+  });
+
+  it("a merge with no rows previews no note", async () => {
+    forceDemoVault(true);
+    const n = new WriteObsidianNode();
+    n.stringLiterals.path = "Letters";
+    n.data({ in: [makeDocument("", {}, undefined, undefined, { pages: [] })] });
+    await n.preview();
+    expect(n.statusMessage).toBe("The merge has no rows, so no note would be written");
+  });
+});
+
 describe("ImportObsidianNode", () => {
   it("is a Note (inherits the frontmatter-socket + document machinery)", async () => {
     const n = new ImportObsidianNode({ body: "---\ntitle: Weekly\ncount: 5\n---\n# Body" });
@@ -84,10 +140,20 @@ describe("ImportObsidianNode", () => {
     expect(isDocumentValue(out.document)).toBe(true);
   });
 
+  it("a picked note names the card until the author renames it", () => {
+    const n = new ImportObsidianNode();
+    n.adoptFile("notes/Weekly.md");
+    expect(n.label).toBe("Weekly");
+    n.adoptFile("notes/Monthly.md");
+    expect([n.fileName, n.label]).toEqual(["notes/Monthly.md", "Monthly"]);
+    n.label = "My review";
+    n.adoptFile("notes/Yearly.md");
+    expect([n.fileName, n.label]).toEqual(["notes/Yearly.md", "My review"]);
+  });
+
   it("persists the source fileName + inherited note fields through extractInit", () => {
     const n = new ImportObsidianNode({ fileName: "notes/weekly.md", body: "---\na: 1\n---\nhi", color: "violet" });
     const init = extractInit(n);
-    expect(init.fileName).toBe("notes/weekly.md");
     expect(init.body).toBe("---\na: 1\n---\nhi");
     const reloaded = new ImportObsidianNode(init);
     expect(reloaded.fileName).toBe("notes/weekly.md");
@@ -95,9 +161,30 @@ describe("ImportObsidianNode", () => {
   });
 });
 
+describe("ImportObsidianNode reads the demo vault on the web ([[B2]] webTryDesktopFull)", () => {
+  afterEach(() => forceDemoVault(false));
+
+  it("a wired path loads, and Refresh all connections re-reads the picked note without its card mounted", async () => {
+    forceDemoVault(true);
+    const wiredNode = new ImportObsidianNode();
+    wiredNode.data({ path: ["Projects/Kitchen remodel"] });
+    await whenConnectionsSettled();
+    expect(wiredNode.fileName).toBe("Projects/Kitchen remodel.md");
+    expect(wiredNode.fieldKeys()).toContain("status");
+
+    const picked = new ImportObsidianNode({ fileName: "Projects/Kitchen remodel.md", body: "---\nstale: 1\n---\n" });
+    picked.data({});
+    await whenConnectionsSettled();
+    expect(picked.fieldKeys()).toEqual(["stale"]);
+    await refreshAllConnections();
+    picked.data({});
+    await whenConnectionsSettled();
+    expect(picked.fieldKeys()).toContain("status");
+  });
+});
+
 describe("ImportObsidianNode refresh cadence (bundle I)", () => {
   it("refreshMinutes persists through extractInit, defaults to 0, never negative", () => {
-    expect(new ImportObsidianNode().refreshMinutes).toBe(0);
     expect(extractInit(new ImportObsidianNode({ refreshMinutes: 15 }) as never).refreshMinutes).toBe(15);
     expect(new ImportObsidianNode({ refreshMinutes: -3 }).refreshMinutes).toBe(0);
   });

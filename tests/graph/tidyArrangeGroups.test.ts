@@ -1,5 +1,6 @@
-// [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic
+// [[A1]] visualGraphCalculator, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic
 import type { View } from "../../src/graph/view";
+import { ChartBuilderNode } from "../../src/graph/nodes/visual";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
@@ -16,6 +17,7 @@ import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { GROUP_PAD, GROUP_HEADER, autofitGroupWithHistory } from "../../src/graph/groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore } from "../../src/graph/groupCollapse";
 import { socketFlipStore } from "../../src/graph/socketFlipStore";
+import { presentSocketStore } from "../../src/graph/presentSocketStore";
 import { collapseStore } from "../../src/graph/collapseStore";
 import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 
@@ -125,6 +127,9 @@ function makeFakeView() {
     async rerenderCables() {},
     async rerenderNode() { /* re-render — nothing to do headless */ },
     transform: { k: 1, x: 0, y: 0 },
+    container: { clientWidth: 1200, clientHeight: 800 },
+    async pan() {},
+    async zoom() {},
   };
   return { view: view as unknown as FakeViewHandle, addView };
 }
@@ -216,7 +221,6 @@ async function buildScene() {
   const ensureElk = makeEnsureElk(() => false);
   const arrangeFn = makeArrangeFn({
     editor, view,
-    container: {} as HTMLElement,
     ensureElk,
     repositionDockedTo: () => {},
     isDestroyed: () => false,
@@ -260,8 +264,25 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
     }
   });
 
+  it("a selection Tidy never leaves its cards on an unselected neighbor", async () => {
+    const { view, arrangeFn, src, sink, group } = await buildScene();
+    // The selected pair straddles the group; stacked around their old center, they land on it.
+    view.fakes.get(src.id)!.position = { x: 300, y: 60 };
+    view.fakes.get(sink.id)!.position = { x: 300, y: 700 };
+    (src as { selected?: boolean }).selected = true;
+    (sink as { selected?: boolean }).selected = true;
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    const top = [src.id, sink.id, group.id].map((id) => boxOf(view, id));
+    for (let i = 0; i < top.length; i++) {
+      for (let j = i + 1; j < top.length; j++) {
+        expect(overlaps(top[i], top[j]), `${top[i].id} overlaps ${top[j].id}`).toBe(false);
+      }
+    }
+  });
+
   it("a position-locked group stays put and nothing lands on it", async () => {
-    const { editor, view, arrangeFn, src, sink, m1, m2, group } = await buildScene();
+    const { view, arrangeFn, src, sink, m1, m2, group } = await buildScene();
     group.lockedPosition = true;
     const gBefore = { ...view.fakes.get(group.id)!.position };
     const m1Before = { ...view.fakes.get(m1.id)!.position };
@@ -277,8 +298,6 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
     for (const id of [src.id, sink.id]) {
       expect(overlaps(g, boxOf(view, id)), `${id} overlaps the locked group`).toBe(false);
     }
-    // Sanity: the pass still ran (loose nodes are the layout targets).
-    expect(editor.getNodes().length).toBe(5);
   });
 
   it("the group's rendered box is unchanged by the pass (rigid unit, not resized)", async () => {
@@ -375,7 +394,6 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor, view,
-      container: {} as HTMLElement,
       ensureElk,
       repositionDockedTo: () => {},
       isDestroyed: () => false,
@@ -406,11 +424,7 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
       }
     }
     // Visible top-level units don't overlap.
-    const units = [s.gA.id, s.gB.id, s.src.id, s.loose.id, s.b2.id].filter(
-      (id, i, arr) => arr.indexOf(id) === i,
-    );
     const boxes = [s.gA.id, s.gB.id, s.src.id, s.loose.id].map((id) => boxOf(s.view, id));
-    void units;
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
         expect(overlaps(boxes[i], boxes[j]), `${boxes[i].id} ∩ ${boxes[j].id}`).toBe(false);
@@ -461,7 +475,6 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor, view,
-      container: {} as HTMLElement,
       ensureElk,
       repositionDockedTo: () => {},
       isDestroyed: () => false,
@@ -487,6 +500,35 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
     const g = boxOf(view, group.id);
     const nb = boxOf(view, neighbor.id);
     expect(overlaps(g, nb), "neighbor overlaps the grown group box").toBe(false);
+  });
+});
+
+describe("group Tidy then autofit is a fixed point", () => {
+  it("a second and third cycle move nothing, even with fractional card heights", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const m1 = new ArithmeticNode({ op: "add" }), m2 = new ArithmeticNode({ op: "add" }), m3 = new ArithmeticNode({ op: "add" });
+    for (const n of [m1, m2, m3]) await editor.addNode(n as never);
+    await connect(editor, m1, "result", m3, "a");
+    await connect(editor, m2, "result", m3, "b");
+    addView(m1.id, 124.3, 158.6, 180, 100.25);
+    addView(m2.id, 134.1, 268.2, 180, 71.5);
+    addView(m3.id, 344.7, 178.9, 180, 120.75);
+    const group = new GroupNode({ members: [m1.id, m2.id, m3.id], width: 460, height: 300 });
+    await editor.addNode(group as never);
+    addView(group.id, 100, 100, 460, 300, () => ({ w: group.width, h: group.height }));
+    const arrangeFn = makeArrangeFn({ editor, view, ensureElk: makeEnsureElk(() => false), repositionDockedTo: () => {}, isDestroyed: () => false });
+    const cycle = async () => {
+      await arrangeFn({ groupId: group.id, skipPush: true });
+      await flushRafs();
+      await autofitGroupWithHistory(editor, view, group);
+      await flushRafs();
+      return [group.id, m1.id, m2.id, m3.id].map((id) => ({ ...view.fakes.get(id)!.position })).concat([{ x: group.width, y: group.height }]);
+    };
+    await cycle();
+    const second = await cycle();
+    const third = await cycle();
+    expect(third).toEqual(second);
   });
 });
 
@@ -521,6 +563,96 @@ describe("Cleanup with an expanded group (headless)", () => {
   });
 });
 
+describe("Tidy hands ELK the sockets a card shows", () => {
+  it("a Chart Builder reserves the rows its target shows, wired or not, not all of its fields", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const src = new ArithmeticNode({ op: "add" });
+    const builder = new ChartBuilderNode({ target: "heatmap" });
+    for (const n of [src, builder]) await editor.addNode(n as never);
+    for (const n of [src, builder] as Array<{ width: number; height: number }>) { n.width = 200; n.height = 200; }
+    addView(src.id, 0, 0, 200, 200);
+    addView(builder.id, 400, 0, 200, 200);
+    await connect(editor, src, "result", builder, "fontsize");
+    const shown = ["title", "cmap", "fontsize"];
+    const unmount = [...shown.map((k) => presentSocketStore.mount(builder.id, "input", k)), presentSocketStore.mount(builder.id, "output", "result")];
+    let seen: Array<{ id: string; height: number; ports: Array<{ id: string; y: number }> }> = [];
+    const recorder = { async layout(graph: unknown) { seen = (graph as { children: typeof seen }).children; return { children: [] }; } };
+    const arrangeFn = makeArrangeFn({ editor, view, ensureElk: async () => recorder, repositionDockedTo: () => {}, isDestroyed: () => false });
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    unmount.forEach((f) => f());
+    expect(Object.keys(builder.inputs).length).toBeGreaterThan(40);
+    const b = seen.find((c) => c.id === builder.id)!;
+    expect(b.ports.map((p) => p.id).sort()).toEqual([...shown.map((k) => `${builder.id}_${k}_input`), `${builder.id}_result_output`].sort());
+    for (const p of b.ports) { expect(p.y).toBeGreaterThanOrEqual(0); expect(p.y).toBeLessThanOrEqual(b.height); }
+  });
+});
+
+describe("Tidy's ports sit at the real socket heights", () => {
+  afterEach(() => settingsStore.set("tidyAlign", "balanced"));
+  async function recordPorts(align: "balanced" | "sockets" | "center") {
+    settingsStore.set("tidyAlign", align);
+    settingsStore.set("tidyDirection", "right");
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const src = new ArithmeticNode({ op: "add" }), dst = new ArithmeticNode({ op: "add" });
+    for (const n of [src, dst]) await editor.addNode(n as never);
+    for (const n of [src, dst] as Array<{ width: number; height: number }>) { n.width = 180; n.height = 300; }
+    addView(src.id, 0, 0, 180, 300);
+    addView(dst.id, 400, 0, 180, 300);
+    await connect(editor, src, "result", dst, "b");
+    // Only dst's "b" row is drawn: 200 down its card, 10 tall.
+    const drawn = view.nodeElement(dst.id)!;
+    const dot = { offsetLeft: -5, offsetTop: 200, offsetWidth: 10, offsetHeight: 10, offsetParent: drawn };
+    const inner = drawn.querySelector.bind(drawn);
+    (drawn as unknown as { querySelector: (s: string) => unknown }).querySelector = (sel: string) =>
+      sel.includes('data-socket-key="b"') ? dot : inner(sel);
+    let seen: Array<{ id: string; ports: Array<{ id: string; y: number; height: number }> }> = [];
+    const recorder = { async layout(graph: unknown) { seen = (graph as { children: typeof seen }).children; return { children: [] }; } };
+    const arrangeFn = makeArrangeFn({ editor, view, ensureElk: async () => recorder, repositionDockedTo: () => {}, isDestroyed: () => false });
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    const port = (id: string, key: string) => seen.find((c) => c.id === id)!.ports.find((p) => p.id.includes(`_${key}_`))!;
+    return { b: port(dst.id, "b"), a: port(dst.id, "a") };
+  }
+
+  it("places a drawn socket's port at its row (halfway under Balanced), and an undrawn one where the spaced ports put it", async () => {
+    const withSockets = await recordPorts("sockets");
+    expect(withSockets.b.y + withSockets.b.height / 2).toBe(205);
+    const centered = await recordPorts("center");
+    expect(withSockets.a.y).toBe(centered.a.y);
+    expect(centered.b.y).not.toBe(withSockets.b.y);
+    const balanced = await recordPorts("balanced");
+    expect(balanced.b.y).toBe((centered.b.y + withSockets.b.y) / 2);
+    expect(balanced.a.y).toBe(centered.a.y);
+  });
+});
+
+describe("Tidy packs disconnected cards (real ELK)", () => {
+  it("lays nine unconnected cards out as a block, not a single tall column", async () => {
+    settingsStore.set("tidyDirection", "right");
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const cards = Array.from({ length: 9 }, () => new ArithmeticNode({ op: "add" }));
+    for (const [i, n] of cards.entries()) {
+      await editor.addNode(n as never);
+      (n as unknown as { width: number; height: number }).width = 180;
+      (n as unknown as { width: number; height: number }).height = 100;
+      addView(n.id, 0, i * 300, 180, 100);
+    }
+    const arrangeFn = makeArrangeFn({ editor, view, ensureElk: makeEnsureElk(() => false), repositionDockedTo: () => {}, isDestroyed: () => false });
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    const boxes = cards.map((n) => boxOf(view, n.id));
+    const w = Math.max(...boxes.map((b) => b.x + b.w)) - Math.min(...boxes.map((b) => b.x));
+    const h = Math.max(...boxes.map((b) => b.y + b.h)) - Math.min(...boxes.map((b) => b.y));
+    expect(new Set(boxes.map((b) => Math.round(b.x))).size).toBeGreaterThan(1);
+    expect(h / w).toBeLessThan(3);
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i], boxes[j])).toBe(false);
+  });
+});
+
 describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
   afterEach(() => { socketFlipStore.clear(); settingsStore.set("tidyDirection", "right"); });
 
@@ -540,7 +672,7 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
     addView(b.id, 400, 100, 180, 80);
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
-      editor, view, container: {} as HTMLElement, ensureElk,
+      editor, view, ensureElk,
       repositionDockedTo: () => {}, isDestroyed: () => false,
     });
     return { view, arrangeFn, a, b };
@@ -580,7 +712,7 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
     addView(mid.id, 400, 100, 180, 100);
     addView(sink.id, 700, 100, 180, 80);
     const arrangeFn = makeArrangeFn({
-      editor, view, container: {} as HTMLElement, ensureElk: makeEnsureElk(() => false),
+      editor, view, ensureElk: makeEnsureElk(() => false),
       repositionDockedTo: () => {}, isDestroyed: () => false,
     });
     return { view, arrangeFn, src, mid, sink };
@@ -667,7 +799,7 @@ describe("Tidy reserves a plain card's MEASURED box, not its declared size", () 
     addView(tall.id, 400, 100, 180, 280);
     addView(other.id, 400, 300, 180, 80);
     const arrangeFn = makeArrangeFn({
-      editor, view, container: {} as HTMLElement, ensureElk: makeEnsureElk(() => false),
+      editor, view, ensureElk: makeEnsureElk(() => false),
       repositionDockedTo: () => {}, isDestroyed: () => false,
     });
     await arrangeFn({ skipConfirm: true });

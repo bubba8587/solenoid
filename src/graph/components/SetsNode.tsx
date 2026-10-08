@@ -1,4 +1,4 @@
-// [[E11]] controlDrivenRetype, [[D16]] retypeReconciles, [[C26]] opArgDistinct
+// [[B11]] maximalMerge, [[C26]] opArgDistinct
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SetsNode as SetNodeType, SetOpAll } from "../rete-nodes";
 import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../rete-nodes";
@@ -7,7 +7,7 @@ import { descriptionText } from "../descriptionMd";
 import { useKatexRender } from "./katexLoader";
 import { NodeShell, OpSelect, ValueDisplay, type NodeProps, type OpOption } from "./nodeKit";
 import type { DisplayValue } from "./valueDisplayFormat";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { processGraph } from "../process";
 import "./SetOpNode.css";
@@ -19,15 +19,14 @@ const OPS: ReadonlyArray<OpOption<SetOpAll>> = (Object.keys(SET_META) as SetOpAl
   group: SET_META[op].group,
 }));
 
-// An operation (list) ↔ relation (logical) switch swaps the result socket in place and
-// retypes downstream cables ([[E11]] controlDrivenRetype, [[D16]] retypeReconciles).
+// An operation (list) and relation (logical) switch swaps the result socket in place and retypes downstream cables.
 export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void> {
   if (node.op === op) return;
   const crossed = isSetRelationOp(node.op) !== isSetRelationOp(op);
   node.op = op;
   if (crossed) {
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(node.id);
+    const view = getOwningView(node.id);
     const out = node.outputs.result;
     if (out) out.socket = (isSetRelationOp(op) ? logicalOut("Result") : adoptiveListOut("Result")).socket;
     if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
@@ -38,7 +37,6 @@ export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void>
 
 export function SetsComponent({ data, emit }: NodeProps<SetNodeType>) {
   const [op, setOpState] = useState<SetOpAll>(data.op);
-  // Mirror external changes (undo/paste) back into local state.
   useEffect(() => { setOpState(data.op); }, [data.op]);
   const setOp = useCallback((v: SetOpAll) => { setOpState(v); void applySetOp(data, v); }, [data]);
   const meta = SET_META[op];

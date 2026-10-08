@@ -546,7 +546,7 @@
    }
   },
   {
-   "name": "an unparseable numeric value matches no rows (no comma stripping)",
+   "name": "a value grouped in thousands reads as its number",
    "frames": {
     "in": {
      "columns": [
@@ -572,7 +572,9 @@
      {
       "name": "v",
       "type": "number",
-      "values": []
+      "values": [
+       1234
+      ]
      }
     ]
    }
@@ -747,6 +749,40 @@
    }
   },
   {
+   "name": "a logical column reads the text \"0\" as FALSE",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "flag",
+       "type": "logical",
+       "values": [
+        true,
+        false
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "flag",
+    "op": "eq",
+    "value": "0"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "flag",
+      "type": "logical",
+      "values": [
+       false
+      ]
+     }
+    ]
+   }
+  },
+  {
    "name": "a logical column accepts the text \"TRUE\"",
    "frames": {
     "in": {
@@ -852,6 +888,301 @@
     "value": "t"
    },
    "expectError": "#TYPE!"
+  },
+  {
+   "name": "a value spelling infinity matches no number",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        1,
+        {
+         "__nf": "-inf"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "neq",
+    "value": "Infinity"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "a value that isn't TRUE or FALSE on a logical column is #TYPE!",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "b",
+       "type": "logical",
+       "values": [
+        true,
+        false
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "b",
+    "op": "eq",
+    "value": "nan"
+   },
+   "expectError": "#TYPE!"
+  },
+  {
+   "name": "a hex value matches no number",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        16,
+        10
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "eq",
+    "value": "0x10"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "a decimal comma matches no number",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        3.5,
+        35
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "v",
+    "op": "eq",
+    "value": "3,5"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: iserror keeps a number column's error cells",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        null,
+        {
+         "__nf": "nan"
+        },
+        {
+         "__err": "#DIV/0!"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "iserror",
+    "value": null
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#DIV/0!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: noterror keeps blanks and NaN",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        null,
+        {
+         "__nf": "nan"
+        },
+        {
+         "__err": "#DIV/0!"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "noterror",
+    "value": null
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       {
+        "__nf": "nan"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: an error cell fails neq, a NaN passes it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        2,
+        {
+         "__nf": "nan"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "neq",
+    "value": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       2,
+       {
+        "__nf": "nan"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: iserror on a string column keeps nothing",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a",
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "s",
+    "op": "iserror",
+    "value": null
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "s",
+      "type": "string",
+      "values": []
+     }
+    ]
+   }
   }
  ]
 }

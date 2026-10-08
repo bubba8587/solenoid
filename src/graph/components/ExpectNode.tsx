@@ -1,22 +1,22 @@
-// [[C12]] socketRows, [[C28]] literalsIffEditable
+// [[C28]] literalsIffEditable
 import { useEffect, useState } from "react";
 import type { ExpectNode as ExpectNodeType } from "../rete-nodes";
 import { EXPECT_CHECK_LABEL } from "../nodes/quality";
-import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
+import { NodeShell, type NodeProps } from "./nodeKit";
+import { ResultDisplay } from "./ResultDisplay";
+import { nodeDisplayName } from "../catalogUtils";
 import { InlineInputs, InlineCsvField, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
-import { solError } from "../errorValue";
-import { ErrorChip } from "./ErrorChip";
-import type { DisplayValue } from "./valueDisplayFormat";
 import { stopDragStart } from "../coarse";
 
 type CheckKey = "checkNotNull" | "checkUnique" | "checkRange" | "checkRegex" | "checkAllowed";
 
-function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+/** A failing check's label turns the error color, so the card says which check failed where it was set. */
+function CheckRow({ label, checked, failed, onChange }: { label: string; checked: boolean; failed?: boolean; onChange: (v: boolean) => void }) {
   return (
     <label
-      style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "1px 0", cursor: "pointer" }}
+      style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "1px 0", cursor: "pointer", color: failed ? "var(--sol-error)" : undefined }}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
@@ -31,24 +31,22 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
   );
 }
 
-/** Always pass-through: a failed check badges an ErrorChip and fires an Alert, but the
- *  output stays the real value. */
+/** Always pass-through: a failed check marks its row and the card and fires an Alert, but the output stays the real value. */
 export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
   const connected = useConnectedInputs(data.id);
   const incoming = useIncomingSources(data.id);
-  // The checkboxes are CONTROLLED and the pass-through value never changes, so a node-only
-  // write wouldn't re-render — mirror to state here and write the node in the handler.
+  // The checkboxes are controlled and the pass-through value never changes, so a node-only write wouldn't re-render.
   const [checks, setChecks] = useState({
     checkNotNull: data.checkNotNull, checkUnique: data.checkUnique,
     checkRange: data.checkRange, checkRegex: data.checkRegex, checkAllowed: data.checkAllowed,
   });
-  // Resync if the flags change externally (paste, load, undo).
   useEffect(() => {
     setChecks({
       checkNotNull: data.checkNotNull, checkUnique: data.checkUnique,
       checkRange: data.checkRange, checkRegex: data.checkRegex, checkAllowed: data.checkAllowed,
     });
   }, [data.checkNotNull, data.checkUnique, data.checkRange, data.checkRegex, data.checkAllowed]);
+  const failed = new Set(data.violations);
   const toggle = (key: CheckKey) => (v: boolean) => {
     data[key] = v;
     setChecks((c) => ({ ...c, [key]: v }));
@@ -70,13 +68,13 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
           : null
       }
     >
-      <CheckRow label="Not null" checked={checks.checkNotNull} onChange={toggle("checkNotNull")} />
-      <CheckRow label="Unique (list)" checked={checks.checkUnique} onChange={toggle("checkUnique")} />
-      <CheckRow label="In range" checked={checks.checkRange} onChange={toggle("checkRange")} />
+      <CheckRow label="Not null" failed={failed.has("notNull")} checked={checks.checkNotNull} onChange={toggle("checkNotNull")} />
+      <CheckRow label="Unique" failed={failed.has("unique")} checked={checks.checkUnique} onChange={toggle("checkUnique")} />
+      <CheckRow label="In range" failed={failed.has("range")} checked={checks.checkRange} onChange={toggle("checkRange")} />
       {showRange && <InlineInputs node={data} emit={emit} keys={["min", "max"]} />}
-      <CheckRow label="Matches regex" checked={checks.checkRegex} onChange={toggle("checkRegex")} />
+      <CheckRow label="Matches regex" failed={failed.has("regex")} checked={checks.checkRegex} onChange={toggle("checkRegex")} />
       {showRegex && <InlineInputs node={data} emit={emit} keys={["pattern"]} />}
-      <CheckRow label="In list" checked={checks.checkAllowed} onChange={toggle("checkAllowed")} />
+      <CheckRow label="In list" failed={failed.has("allowed")} checked={checks.checkAllowed} onChange={toggle("checkAllowed")} />
       {showAllowed && data.inputs.allowed && (
         <MeasuredSocketRow side="input" socketKey="allowed" nodeId={data.id} emit={emit} payload={data.inputs.allowed.socket}>
           <span className="solenoid-node__io-label">List</span>
@@ -92,12 +90,10 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
           )}
         </MeasuredSocketRow>
       )}
-      <ValueDisplay value={data.cachedValue as DisplayValue} />
+      <ResultDisplay value={data.cachedValue} label={nodeDisplayName(data)} />
       {data.violations.length > 0 && (
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2 }}>
-          <ErrorChip
-            err={solError("#VALUE!", `Failed: ${data.violations.map((v) => EXPECT_CHECK_LABEL[v]).join(", ")}`)}
-          />
+        <div style={{ textAlign: "right", fontSize: 11, marginTop: 3, color: "var(--sol-error)" }}>
+          {`Failed: ${data.violations.map((v) => EXPECT_CHECK_LABEL[v]).join(", ")}`}
         </div>
       )}
     </NodeShell>

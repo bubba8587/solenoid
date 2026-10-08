@@ -1,4 +1,4 @@
-// [[C68]]
+// [[C68]] knapIsTheDocumentSyntax
 import { useEffect, useState } from "react";
 import { hasKnapSyntax, knapErrorText, renderKnap, renderKnapPages, type KnapPage } from "../knapTemplate";
 
@@ -17,10 +17,7 @@ export interface KnapBatch {
   pageName: string;
 }
 
-/** A body's Knap render for a LIVE preview, against the host node's current
- *  variables. Synchronous passthrough for a tag-less body with no batch; otherwise
- *  the last render stays up while the next one settles, so the pane never flashes
- *  empty. `version` re-renders on demand (the graph recomputed the variables). */
+/** A synchronous passthrough for a tag-less body with no batch; otherwise the last render stays up while the next settles, so the pane never flashes empty. `version` re-renders on demand. */
 export function useKnapRender(body: string, variables: Record<string, unknown>, version = 0, batch: KnapBatch | null = null, keepUnknown = false): KnapPreview {
   const live = batch !== null || hasKnapSyntax(body);
   const [state, setState] = useState<KnapPreview>({ text: live ? "" : body, errors: "", pages: null });

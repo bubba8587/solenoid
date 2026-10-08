@@ -24,8 +24,7 @@ export function FillComponent({ data, emit }: NodeProps<FillNodeType>) {
     );
   }
 
-  // A WIRED socket must never disappear (its endpoint would dangle), so a
-  // connected row stays visible in modes that don't use it.
+  // A wired socket must never disappear (its endpoint would dangle), so a connected row stays visible in modes that don't use it.
   const keys = ["list"];
   if (op === "constant" || connected.has("value")) keys.push("value");
   for (const k of elseKeys) if (connected.has(k)) keys.push(k);

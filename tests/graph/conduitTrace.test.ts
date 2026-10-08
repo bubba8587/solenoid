@@ -1,4 +1,4 @@
-// [[D17]]
+// [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { resolveTypedSource, reconcileConduitTypes, conduitPath, type PathConn } from "../../src/graph/conduitTrace";
@@ -203,7 +203,6 @@ describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
     const conn = new ClassicPreset.Connection(dateSrc, "result", cond, conduitInKey(0)) as Schemes["Connection"];
     await editor.addConnection(conn);
     reconcileConduitTypes(editor);
-    expect((cond.outputs[conduitOutKey(0)]?.socket as { dataType?: string })?.dataType).toBe("date");
 
     await editor.removeConnection(conn.id);
     reconcileConduitTypes(editor);

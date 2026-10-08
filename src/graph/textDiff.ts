@@ -1,6 +1,5 @@
 // [[B13]] aiInScope
-// Line diff for the AI apply-approval view. The quadratic LCS table is affordable at
-// text-form size, and exactness matters: every add/del row shown is a REAL change.
+// Line diff for the AI apply view. A quadratic LCS is affordable at text-form size, and every row shown is a real change.
 
 export interface DiffLine {
   kind: "same" | "add" | "del";
@@ -37,7 +36,6 @@ export function diffLines(oldText: string, newText: string): DiffLine[] {
   return out;
 }
 
-/** True when the diff contains any change at all. */
 export function hasChanges(diff: DiffLine[]): boolean {
   return diff.some((d) => d.kind !== "same");
 }

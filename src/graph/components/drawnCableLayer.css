@@ -1,5 +1,3 @@
-/* Free-drawn cables, drawn OVER the graph (z 6). Spec: subsystem-invariants § Drawn cables. */
-
 .solenoid-drawn-cable-svg {
   position: absolute;
   left: 0;
@@ -55,7 +53,6 @@
   fill: var(--surface-raised, #262626);
 }
 
-/* The point the angle dial edits. */
 .solenoid-drawn-cable__handle--active,
 .solenoid-drawn-cable__handle--active:hover {
   fill: var(--handle-ink, var(--text));
@@ -80,7 +77,6 @@
   touch-action: none;
 }
 
-/* The armed strip: state plus the way out. */
 .solenoid-drawn-hint {
   position: absolute;
   top: calc(var(--chrome-top, 66px) + 12px);
@@ -114,7 +110,6 @@
   color: var(--text, #e8e8e8);
 }
 
-/* A pinned heading's needle. */
 .solenoid-drawn-cable__needle {
   stroke-linecap: round;
   pointer-events: none;

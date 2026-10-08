@@ -1,8 +1,4 @@
-/* Import-from-Obsidian file picker — a small file explorer that takes the note
-   card's body area while open (the body is unmounted, not stacked under it). The
-   card has a fixed height and no overflow clip, so the picker must shrink to fit:
-   it and its list are min-height:0 flex items and the list scrolls. Collapsed, the
-   card is auto-height and the list caps at its max. */
+/* The picker takes the card's body area while open, so in the fixed-height card it and its list are min-height 0 flex items and the list scrolls. */
 .sol-import__picker {
   display: flex;
   flex: 1 1 auto;
@@ -95,7 +91,6 @@
   font-size: 10.5px;
   color: var(--text-muted);
 }
-/* The bar carries only controls; the spacer keeps them on the right. */
 .sol-import__bar-spacer {
   margin-right: auto;
 }

@@ -1,10 +1,6 @@
-// [[C43]] oneFlowSurface. Static export, deliberately separate from [[C42]] htmlInCanvasRenderer.
+// [[B3]] sameNodeEverywhere, [[C42]] htmlInCanvasRenderer
 import { getView, getEditor } from "./process";
-// Capture for STATIC EXPORT, deliberately separate from the live HTML-in-Canvas
-// renderer, whose `drawElementImage` needs a Chrome flag a recipient won't have.
 
-/** Inline every same-origin stylesheet rule — a rasterized foreignObject inherits no
- *  live stylesheets; an unreadable cross-origin sheet is skipped, not fatal. */
 function inlineStylesheetText(): string {
   const chunks: string[] = [];
   for (const sheet of Array.from(document.styleSheets)) {
@@ -26,8 +22,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Rasterizes the CURRENT viewport (not the whole world) to a PNG data URL; null
- *  when unmounted or the browser refuses the foreignObject, so export fails soft. */
+/** The current viewport only, not the whole world; null when unmounted or the browser refuses the foreignObject. */
 export async function captureCanvasImage(): Promise<string | null> {
   const container = getView()?.container;
   if (!container) return null;
@@ -68,68 +63,91 @@ export async function captureCanvasImage(): Promise<string | null> {
   }
 }
 
-// The exported document ships no app stylesheet, so anything a chart takes from class
-// rules or `var(--…)` must be baked in as computed inline style.
 const SVG_STYLE_PROPS = [
   "fill", "stroke", "stroke-width", "stroke-dasharray", "opacity",
   "font-family", "font-size", "font-weight", "color",
 ] as const;
 
-/** Serialize a live in-document SVG with its rendered styles inlined; original and
- *  clone are walked in lockstep because getComputedStyle is blank on a detached node. */
+/** Original and clone are walked in lockstep, because getComputedStyle is blank on a detached node. */
 export function serializeSvgWithComputedStyles(svgEl: SVGSVGElement): string {
   const clone = svgEl.cloneNode(true) as SVGSVGElement;
   const origs: Element[] = [svgEl, ...Array.from(svgEl.querySelectorAll("*"))];
   const clones: Element[] = [clone, ...Array.from(clone.querySelectorAll("*"))];
   for (let i = 0; i < origs.length; i++) {
     const target = clones[i] as Element & Partial<ElementCSSInlineStyle>;
-    if (!target?.style) continue; // non-styleable node — nothing to inline
+    if (!target?.style) continue;
     const computed = getComputedStyle(origs[i]);
     for (const prop of SVG_STYLE_PROPS) {
       const value = computed.getPropertyValue(prop);
       if (!value) continue;
-      if (target.getAttribute(prop) === value) continue; // already stated verbatim
+      if (target.getAttribute(prop) === value) continue;
       target.style.setProperty(prop, value);
     }
   }
   return clone.outerHTML;
 }
 
-// A figure whose drawn form is NOT a single <svg> — the Gantt tree grid beside a
-// stack of per-row banded SVGs — can't be captured by the largest-SVG scan below
-// (it would grab one band). Such a figure registers a serializer here, keyed by the
-// node it draws in, and the export paths ask it for a standalone SVG string instead.
-// This is the `data-chart-svg-provider` seam (subsystem-invariants, figure payload).
 export type ChartSvgProvider = () => string | null;
 const chartSvgProviders = new Map<string, ChartSvgProvider>();
 
-/** Register a node's own SVG serializer; returns a disposer that removes only this
- *  provider (a later mount replacing it wins, and unmount can't delete the winner). */
 export function registerChartSvgProvider(nodeId: string, provider: ChartSvgProvider): () => void {
   chartSvgProviders.set(nodeId, provider);
   return () => { if (chartSvgProviders.get(nodeId) === provider) chartSvgProviders.delete(nodeId); };
 }
 
-/** The provider's SVG string for a node, or null when none is registered (or it
- *  declined). The Obsidian raster path checks this first, so an ordinary chart keeps
- *  its live-measured element path untouched. */
-export function nodeChartSvgProvided(nodeId: string): string | null {
+function nodeChartSvgProvided(nodeId: string): string | null {
   return chartSvgProviders.get(nodeId)?.() ?? null;
 }
 
-/** A node's chart as standalone SVG markup: the registered provider (the Gantt figure)
- *  if one drew there, else the largest in-document `<svg>` with its computed styles
- *  inlined. Null when the node draws no chart on the live canvas. */
+export interface LegendEntry { color: string; label: string }
+
+const xmlText = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+export const LEGEND_ROW_H = 18;
+
+/** A multi-series legend as one centered SVG row of swatches and names, `width` wide. */
+export function legendToSvg(entries: readonly LegendEntry[], width: number, textColor: string, fontSize = 9, fontFamily = "sans-serif"): string {
+  const itemW = entries.map((e) => 12 + e.label.length * fontSize * 0.6);
+  const total = itemW.reduce((a, w) => a + w, 0) + 10 * Math.max(0, entries.length - 1);
+  let x = Math.max(0, (width - total) / 2);
+  const mid = LEGEND_ROW_H / 2;
+  const parts = entries.map((e, i) => {
+    const g = `<rect x="${x.toFixed(1)}" y="${mid - 4}" width="8" height="8" rx="2" fill="${xmlText(e.color)}"/>`
+      + `<text x="${(x + 12).toFixed(1)}" y="${mid}" dominant-baseline="central" font-size="${fontSize}" font-family="${xmlText(fontFamily)}" fill="${xmlText(textColor)}">${xmlText(e.label)}</text>`;
+    x += itemW[i] + 10;
+    return g;
+  });
+  return `<g class="sol-chart-legend">${parts.join("")}</g>`;
+}
+
+/** An element's size in canvas units: its screen box with the React Flow zoom taken out. */
+function canvasSizeOf(el: Element): { w: number; h: number } {
+  const viewport = el.closest<HTMLElement>(".react-flow__viewport");
+  const zoom = viewport ? new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a || 1 : 1;
+  const box = el.getBoundingClientRect();
+  return { w: Math.round(box.width / zoom), h: Math.round(box.height / zoom) };
+}
+
+/** A chart card's SVG for export, its root sized in canvas units, with a multi-series legend drawn under the plot. */
 export function nodeChartSvgString(nodeId: string): string | null {
   const provided = nodeChartSvgProvided(nodeId);
   if (provided) return provided;
   const el = nodeChartSvg(nodeId);
-  return el ? serializeSvgWithComputedStyles(el) : null;
+  if (!el) return null;
+  const svg = serializeSvgWithComputedStyles(el);
+  const { w, h } = canvasSizeOf(el);
+  // The multi-series legend is DOM beside the plot, so an export of the plot's SVG alone can't tell the series apart.
+  const legend = getView()?.nodeElement(nodeId)?.querySelector(".sol-chart-legend");
+  const entries: LegendEntry[] = legend ? Array.from(legend.children).map((item) => ({
+    color: getComputedStyle(item.firstElementChild as Element).backgroundColor,
+    label: (item.textContent ?? "").trim(),
+  })).filter((e) => e.label) : [];
+  const legendH = entries.length > 0 ? LEGEND_ROW_H : 0;
+  const style = legend && legendH ? getComputedStyle(legend) : null;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h + legendH}" viewBox="0 0 ${w} ${h + legendH}">${svg}`
+    + `${style ? `<g transform="translate(0,${h})">${legendToSvg(entries, w, style.color, 9, style.fontFamily)}</g>` : ""}</svg>`;
 }
 
-/** A node's chart `<svg>` — its largest SVG that isn't card chrome (the frame
- *  overlays are the biggest SVGs on every card and paint nothing off-canvas) or
- *  glyph-sized furniture. Null when the node isn't on the live canvas or draws no chart. */
 export function nodeChartSvg(nodeId: string): SVGSVGElement | null {
   const el = getView()?.nodeElement(nodeId);
   if (!el) return null;
@@ -137,15 +155,13 @@ export function nodeChartSvg(nodeId: string): SVGSVGElement | null {
   let bestArea = 40 * 40;
   for (const svg of Array.from(el.querySelectorAll("svg"))) {
     if (svg.classList.contains("solenoid-node__frame")) continue;
-    const box = svg.getBoundingClientRect();
-    const area = box.width * box.height;
+    const { w, h } = canvasSizeOf(svg);
+    const area = w * h;
     if (area > bestArea) { bestArea = area; best = svg; }
   }
   return best;
 }
 
-/** Every currently-rendered chart node's `<svg>` as self-contained markup with its
- *  node's display name; `includeNodeIds` narrows to the report-referenced set. */
 export function captureChartSvgs(
   names: Map<string, string>,
   includeNodeIds?: ReadonlySet<string>,

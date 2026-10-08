@@ -1,0 +1,94 @@
+---
+aliases: ["Formula.js divergences"]
+tags: [spec, computation]
+---
+<!-- [[C17]] shareImpl, [[C15]] matricesInFormulas -->
+
+# Spec: Formula.js divergences
+
+Serves [[C17]] shareImpl. Formula.js is the vendored library that backs every Excel function Solenoid does not register itself. Where its answer differs from Excel's, `excelFunctions.ts` registers an override (`registerInternal`) that gives Excel's answer, usually by calling the same kernel the matching node calls. This spec lists each override and the evidence for it. Read it before deleting an override, widening the Formula.js fallthrough, or folding a registration back into the library: each entry is the reason the library's answer is wrong for Solenoid. `tests/graph/formulaDivergence.test.ts` pins each one both ways, the override right and Formula.js still wrong.
+
+Deliberate differences from Excel itself (not from Formula.js) are in [[formula-language]] under *Function notes*.
+
+## Overrides and tripwires
+
+**MUST:** where Formula.js gives a different answer from Excel, Solenoid registers an override that gives Excel's answer, backed by the same implementation as the node ([[C17]] shareImpl). Each divergence is pinned in both directions: a test that the override is right, and a tripwire that Formula.js is still wrong. A Formula.js update that changes either answer then fails the suite and forces a fresh look.
+
+Without the tripwire, a vendor update that fixes or changes a function passes silently, and the override either shadows a fix or starts diverging in a new way. The first divergence list lived in a sweep script that was later lost and had to be rebuilt from notes, so the evidence lives in the suite, with the per-name reasons below.
+
+## Scalar math
+
+- **MOD** takes the divisor's sign, as Excel does: `MOD(10, -3)` is -2, where Formula.js gives -1. A zero divisor is `#DIV/0!`, and so is a blank one, which reads as 0.
+- **QUOTIENT** by zero is `#DIV/0!`; Formula.js returns null.
+- **ROUNDUP, ROUNDDOWN**: Formula.js scales and rounds the raw binary value, so `ROUNDUP(0.1+0.2, 1)` is 0.4 where Excel answers 0.3. All three rounding names run `roundDigits`, the ROUND card's kernel, which reads the scaled value at 15 significant digits and truncates a fractional digits count.
+- **POWER(0, 0)** is 1, the answer of `^` and the Arithmetic card ([[B16]] oneFormulaSurface); Formula.js answers `#NUM!`.
+- **ATAN2**: Excel's `ATAN2(x, y)` is `atan2(y, x)`, x first. Formula.js computes `atan2(x, y)`.
+- **GCD, LCM** run `gcdLcm` (`mathUtils.ts`), the GCD card's kernel: each value is truncated, as in Excel, and a negative value, or a value or an LCM at 2^53 or more, is `#DOMAIN!`. Formula.js runs Euclid's algorithm on the raw decimals, so `GCD(4.5, 6.9)` is about 1.8e-15 and `LCM(4.5, 6)` is 27, and it takes negatives. The card, which read each pair after rounding, reads it the same way now.
+- **LN, LOG10, SQRTPI, ASIN, ACOS, ACOSH, ATANH** outside their domain answer `#DOMAIN!` ("Input is outside this function's domain"). Formula.js silently returns null for some of them.
+
+These match the Math node's own compute.
+
+## Logic
+
+- **IFS** reads each test with `ifTest`, IF's reading, which the IFS card shares: text counts only as TRUE or FALSE, and other text is `#VALUE!`. Formula.js takes any truthy JavaScript value, so `IFS("FALSE", 1)` answered 1.
+
+## Statistics
+
+- **RANK, RANK.EQ, RANK.AVG** (`excelRank`): descending, largest is rank 1. Ties share the lowest rank (RANK, RANK.EQ) or the average rank (RANK.AVG). A value not in the list is `#N/A`; Formula.js answers 0.
+- **TRIMMEAN** (`excelTrimmean`) drops `floor(n · percent / 2)` values from each end, so the total trimmed is rounded down to an even count, then averages the rest. Formula.js over-trims: `TRIMMEAN([2,4,4,4,5,5,7,9], 0.2)` is 5 in Excel and 4.83 in Formula.js. Trimming every value is `#DOMAIN!`.
+- **PERCENTRANK, PERCENTRANK.INC, PERCENTRANK.EXC** (`excelPercentRank`) interpolate linearly between the bracketing points and truncate, never round, to `significance` digits (default 3). The inclusive forms use an (n−1) basis and the exclusive form an (n+1) basis. A value outside the data's range is `#N/A`, where Formula.js's dotted forms answer 0 below it and an error above it; an exact match takes the first occurrence. Blanks and text in the array are skipped and an error in it is the answer. A one-value array ranks its value 1 in every form, as Excel does (checked in Excel 2026-10-05), where the (n−1) basis would divide by zero and the (n+1) one would give 0.5. The card truncates its significance as the formula does.
+- **MIN, MAX** are owned because Formula.js spreads the whole list into `Math.min` and `Math.max`, which throws past about 125k values. They run the Aggregate card's kernel over the numbers Formula.js reads, with text and logicals skipped; no numbers is 0, and a NaN cell is `#DOMAIN!`.
+- **QUARTILE.INC** is PERCENTILE.INC at q/4, so quartile 0 is the minimum and quartile 4 the maximum, matching the Rank & Percentile node's interpolation. Formula.js's QUARTILE.INC errors on 0 and 4.
+- **T.TEST**: Formula.js ignores `tails` and `type`. Ours honors both: type 1 is paired, 2 equal variance, 3 Welch; tails 1 halves the two-tailed p-value.
+- **F.TEST**: Formula.js returns the variance ratio instead of the p-value.
+
+RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim Mean nodes call, and T.TEST and F.TEST are the Hypothesis Test node's kernels.
+
+## Text and number parsing
+
+- **CONCAT, CONCATENATE, TEXTJOIN** are owned so a number is written with `numberToText` (15 significant digits) rather than Formula.js's formatting.
+- **SEARCH** is Solenoid's own: Formula.js matches `?`, `*` and `~` literally, where Excel reads them as wildcards (`wildcardSource` in `excelCriteria.ts`, shared with the criteria functions). Its start and empty-find rules are FIND's below.
+- **Text pass-throughs.** LEFT, RIGHT, UPPER, LOWER, TRIM, REPLACE, EXACT and FIND stay Formula.js for their semantics, but each text-position argument (`TEXT_PASS_THROUGHS`; REPLACE's first and fourth) first goes through `numberToText`, so `LEFT(0.1+0.2, 3)` reads "0.3". LEFT and RIGHT with a count below 0, and FIND and SEARCH with a start below 1, are `#VALUE!` as in Excel, where Formula.js clamps them; the Text Slice and Text Find cards call the same registrations with their numbers as given.
+- **BASE, DEC2HEX, BIN2HEX, OCT2HEX** stay Formula.js with the result uppercased: Excel writes the letter digits A to Z in uppercase (`DEC2HEX(255)` is `FF`), and Formula.js in lowercase.
+- **PROPER** runs `properCase` (`nodes/textOps.ts`), the Text Transform card's kernel: a letter after any non-letter is capitalized and every other letter lowercased, Excel's rule, so `PROPER("76BudGet")` is `76Budget` and `o'neil 2nd` is `O'Neil 2Nd`. Formula.js capitalizes only after certain separators.
+- **MID** of length 0 is `""`, as in Excel; Formula.js answers an error. A start below 1 or a negative length is `#VALUE!`. The Text Slice card calls the same registration.
+- **REPT** truncates a fractional count (`REPT("ab", 2.9)` is `abab`), refuses a negative one, and refuses a result past Excel's 32,767 characters, all with `#VALUE!`. Formula.js throws a raw `RangeError` on a fractional count.
+- **CHAR, CODE, UNICHAR, UNICODE** run the CHAR / CODE card's kernels, `charFromCode` and `codeOfText` (`nodes/textOps.ts`), which cover every code point: `CHAR(128512)` is 😀 and `CODE("😀")` is 128512. A code outside 1 to 1114111, a surrogate, or empty text is `#VALUE!`. Formula.js works in UTF-16 units, so it answers a lone surrogate half, and its CHAR wraps a code past 65535. That CHAR and CODE reach past Excel's 255 is a difference from Excel itself, listed in [[formula-language]].
+- **SUBSTITUTE** is owned: Formula.js replaces the (instance + 1)th match, while Excel truncates `instance` like every numeric argument and replaces that match. An instance below 1 is `#VALUE!`; an empty search text returns the text unchanged.
+- **VALUE** is strict. It accepts a plain number, an optional `$` after the sign, thousands commas, a wrapping pair of parentheses for a negative, and any number of trailing `%` (each divides by 100). The number itself is `decimalFromText`'s reading, so a `0x`, `0b` or `0o` literal and `Infinity` are `#VALUE!`, as in Excel. Anything else is `#VALUE!`, including a logical (`VALUE(TRUE)`) and empty text. Formula.js returns 0 for any unparseable text, which silently corrupts a result. VALUE deliberately does not parse date or time text; that is DATEVALUE's job. Number text is read in the US form only ([[C117]] usNumberText): `.` is the decimal point and a comma anywhere before it is a grouping mark (`VALUE("1,5")` is 15, as in US Excel), while a comma after it makes the text not a number, so the European `1.234,5` is `#VALUE!`, never reread as 1.2345. Only `$` is stripped, so `€5` is `#VALUE!`. Cast to Number reads the same way (`parseValueText`).
+- **NUMBERVALUE(text, [decimal], [group])**: formula only; its kernel is `numberValue` (`textOps.ts`). Its card is Cast to Number, which reads as VALUE does (`parseValueText`, `$` and `(5)` included) with the same separator rules, so empty text is `#VALUE!` on the card and 0 here ([[B11]] maximalMerge). Only the first character of each separator argument counts, whitespace is stripped anywhere, trailing `%` each divide by 100, and empty text is 0. The group separator is legal only before the decimal point. The default group separator `,` steps aside when the decimal separator is `,`; only two explicitly identical separators are `#VALUE!`. The digits left after the separators go through `decimalFromText`, so `NUMBERVALUE("0x1F")` is `#VALUE!` where JavaScript's `Number` reads 31. Formula.js returns null when only a decimal separator is given.
+- **DOLLAR**: Excel writes a negative in accounting form as `($1,234.57)`, the `$` inside the parentheses. Formula.js writes `$(1,234.57)`, and the override moves the `$`. A negative that rounds to zero keeps the form, `($0.00)`, where Formula.js writes `-$0.00`. The DOLLAR card calls the same registration.
+- **FIXED, DOLLAR** round with `roundDigits` first, so `FIXED(1.005, 2)` is "1.01" as in Excel; Formula.js's `toFixed` reads the binary 1.00499… and writes "1.00". A value that rounds to zero goes through unrounded, so its sign survives. The FIXED card calls the same registration.
+- **CONVERT** runs Solenoid's unit system on the same unit keys as the Convert node's dropdown. An unknown or cross-category unit is `#N/A`, as in Excel. Formula.js's CONVERT errors even on Celsius to Fahrenheit.
+- **TEXT** stays Formula.js, with its holes patched up front:
+  - text that is not a number passes through unchanged, where Formula.js throws;
+  - `@` and `General` use `numberToText`;
+  - a code of only zeros (`000`) zero-pads the rounded magnitude;
+  - a scientific code (`0.00E+00`) writes `1.23E+06`;
+  - a date-shaped code (letters from `ymdhs`, once quoted literals are removed, and no `#`, `0` or `?`) hands Formula.js the serial's UTC `Date`, because Formula.js formats through UTC getters. Building a local wall-clock `Date` instead shifts the day twice on any machine outside UTC.
+
+  Three kinds of code stay broken on purpose and are not chased: section codes (`pos;neg`), fractions (`# ?/?`), and time tokens (`hh:mm` renders only the date part).
+
+## Dates
+
+- **YEAR, MONTH, DAY, HOUR, MINUTE, SECOND** read Solenoid's serial through `serialToJsDate` and the UTC getters, the one serial model the Date Part node uses, not Formula.js's Date and 1900 conventions.
+- **EDATE** wraps Formula.js and converts its result, a local-midnight `Date`, to a serial with `toSerialIfDate`. `jsDateToSerial` reads UTC, so the raw serial is off by the machine's time-zone offset; rounding recovers the day because the result is date-only.
+- **WORKDAY, WORKDAY.INTL** never reach Formula.js, which walks one day at a time (a count of 1e9 hangs) and takes only the numeric weekend codes. Both run `addWorkdays` (`nodes/dateOps.ts`), shared with the Workdays node: it jumps whole weeks, then walks the remainder, and an answer outside the years 1 to 9999 is `#DOMAIN!` (Excel: `#NUM!`). WORKDAY.INTL also takes Excel's seven-character mask of `0` and `1`, Monday first, where 1 is a day off; an all-ones mask, any other string or an undefined code is `#VALUE!`.
+- **NETWORKDAYS, NETWORKDAYS.INTL** never reach Formula.js, which miscounts a reversed span and a date carrying a time of day. Both run `networkDays` (`nodes/dateOps.ts`), shared with the Workdays node: it counts calendar days, whatever the times, and a reversed span is the negation of the forward count. The weekend argument reads as WORKDAY.INTL's does, so an undefined code is `#VALUE!` on the card and in the formula.
+
+## Finance
+
+- **TBILLEQ, TBILLPRICE, TBILLYIELD** run the T-Bill node's actual/360 kernel. Formula.js counts 30/360 and misses Microsoft's worked examples by a day.
+- **IRR, XIRR** run the IRR node's solver, `financeOps.solveDiscountRate`: Newton's method with a rate floor, then bracket and bisect, answering `#CONV!` only when no root exists above the floor. Formula.js's IRR returns a fabricated 1000 (100,000%) when the root sits close to the floor: `IRR([-4943, -2458, 285])` is −0.903. The `guess` argument is accepted and ignored, because this solver needs no seed and the node takes none ([[D73]] nodeCoversFormula). Pinned across both surfaces in `tests/graph/nodes/financeIterative.test.ts`.
+- **MIRR** runs the node's `mirr` kernel on the same cash-flow preparation as IRR.
+- **NPV** stays Formula.js but is `RANGE_ZERO_FILL`: a blank period is a zero cash flow, as the nodes' `cashPrep` treats it. Dropping the blank would shift every later period.
+
+## Array-returning names and complex numbers
+
+UNIQUE, SORT, MODE.MULT, FREQUENCY and the regression quartet (TREND, GROWTH, LINEST, LOGEST) are registered internally. Formula.js writes its array functions against 2-D spreadsheet ranges with unvetted quirks, and has been caught changing its arguments in place ([[formula-language#The dispatch ladder]]). The IM* family is internal for the same reason: Formula.js's IM* functions accept complex numbers only as text and refuse the graph's own complex values.
+
+## Name walking
+
+A Formula.js function is itself a container: `FX.CEILING` is the CEILING function and also the parent of `FX.CEILING.MATH`, and Formula.js hangs `.MATH`, `.PRECISE`, `.INTL` and `.TEST` children off callable parents. Both walks, `fxLookup` (dispatch) and `FX_FUNCTION_NAMES` (autocomplete and highlighting), therefore descend into functions as well as plain objects, to a depth of two (`NORM.S.DIST`), and skip Formula.js's internal `FX.utils` namespace.
+
+The two walks must match. If they differ, a name is advertised and then fails at dispatch with "Unknown function", or dispatches but is never offered. `formulaTier1.test.ts` and `formulaNodeParity.test.ts` dispatch the dotted names.

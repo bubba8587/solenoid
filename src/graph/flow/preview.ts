@@ -1,8 +1,7 @@
-// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[D45]] maxRankMatrix
-// Crude value previews for the generic fallback card (SolFlowNode); the real
-// display pipeline lives in the node components.
+// [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator, [[C24]] arraySemantics
 import { isSolError } from "../errorValue";
 import { isFrameRef } from "../frameBackend";
+import { isFrameValue, isCubeValue, frameRowCount, cubeRowCount } from "../frame";
 
 function num(n: number): string {
   if (!Number.isFinite(n)) return String(n);
@@ -25,16 +24,9 @@ export function previewValue(v: unknown): string {
     return v.length > 4 ? `[${head}, … ${v.length}]` : `[${head}]`;
   }
   if (typeof v === "object") {
+    if (isFrameValue(v)) return `${frameRowCount(v)}×${v.columns.length} Frame`;
+    if (isCubeValue(v)) return `${cubeRowCount(v)}×${v.columns.length}×${v.depth ?? 1} Cube`;
     const o = v as Record<string, unknown>;
-    // Containers spell their shape the way the chips do: rows × cols (× depth) Name.
-    if (o.__frame && Array.isArray(o.columns)) {
-      const cols = o.columns as { values?: unknown[] }[];
-      return `${cols[0]?.values?.length ?? 0}×${cols.length} Frame`;
-    }
-    if (o.__cube && Array.isArray(o.columns)) {
-      const cols = o.columns as { cells?: unknown[] }[];
-      return `${cols[0]?.cells?.length ?? 0}×${cols.length}×${(o.depth as number) ?? 1} Cube`;
-    }
     if (o.__cx) return `${num(o.re as number)}${(o.im as number) < 0 ? "" : "+"}${num(o.im as number)}i`;
     return `{${Object.keys(o).slice(0, 3).join(", ")}}`;
   }

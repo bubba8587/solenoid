@@ -1,5 +1,4 @@
 // [[C107]] obsidianPlugin
-// A property is an eager value; there is no lazy frame handle to collect.
 import type { SolError } from "../../../src/graph/errorValue";
 import type { FrameColType, FrameValue } from "../../../src/graph/frame";
 

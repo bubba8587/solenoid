@@ -1,0 +1,95 @@
+{
+  "label": "datascience",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Data Science\n\n- Smooth\n- Find Peaks\n- K-Means\n- Fit Distribution",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "s",
+      "type": "ListInputNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "Readings",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2",
+          "v3",
+          "v4",
+          "v5",
+          "v6",
+          "v7",
+          "v8",
+          "v9",
+          "v10",
+          "v11"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "3",
+        "v1": "6",
+        "v2": "4",
+        "v3": "8",
+        "v4": "7",
+        "v5": "11",
+        "v6": "9",
+        "v7": "13",
+        "v8": "12",
+        "v9": "16",
+        "v10": "14",
+        "v11": "18"
+      }
+    },
+    {
+      "id": "sm",
+      "type": "SmoothNode",
+      "x": 640,
+      "y": 0,
+      "init": {
+        "label": "Smooth"
+      },
+      "literals": {
+        "window": 5,
+        "order": 2
+      }
+    },
+    {
+      "id": "ch",
+      "type": "ChartNode",
+      "x": 920,
+      "y": 0,
+      "init": {
+        "label": "Smoothed",
+        "op": "line"
+      },
+      "stringLiterals": {
+        "options": "title=Smoothed readings"
+      }
+    },
+    {
+      "id": "pk",
+      "type": "FindPeaksNode",
+      "x": 640,
+      "y": 230,
+      "init": {
+        "label": "Find Peaks"
+      }
+    }
+  ],
+  "cables": [
+    "s.list -> sm.list",
+    "sm.result -> ch.values",
+    "s.list -> pk.list"
+  ]
+}

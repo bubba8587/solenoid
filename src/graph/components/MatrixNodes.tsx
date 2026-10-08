@@ -14,17 +14,20 @@ import type {
   ExpandNode as ExpandNodeType,
   TableInfoNode as TableInfoNodeType,
 } from "../rete-nodes";
+import { dropInputCables } from "./cablePrune";
 import {
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META, STACK_OP_META,
 } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";
-import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
+import { SegToggle } from "./SegToggle";
+import type { SkipCells } from "../nodes/matrixOps";
+import { NodeShell, OpSelect, ArgSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import type { DisplayValue } from "./valueDisplayFormat";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { makeToggleNodeComponent } from "./standardNode";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { nodeDisplayName } from "../catalogUtils";
 
@@ -39,8 +42,8 @@ export function MatDetComponent({ data, emit }: NodeProps<MatDetNodeType>) {
     data.setOp(next);
     // The output retyped in place (number ↔ table): drop cables the new type can't feed
     // and let docked FCs re-resolve — no connection event fires.
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);
@@ -95,7 +98,7 @@ export function TableMultComponent({ data, emit }: NodeProps<TableMultNodeType>)
 
 const offDiagOptions = (zeroTitle: string) => [
   { value: "zero" as const, label: "0", title: zeroTitle },
-  { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank (null) — skipped by sums and element-wise ops" },
+  { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank, so sums and element-wise ops skip them" },
 ];
 
 export const TableUnitComponent = makeToggleNodeComponent<TableUnitNodeType, TableUnitNodeType["offDiag"]>(
@@ -147,14 +150,41 @@ const RESHAPE_OPS = (Object.keys(TABLE_RESHAPE_OP_META) as TableReshapeOp[]).map
   value: op, label: TABLE_RESHAPE_OP_META[op].label,
 }));
 
+const SCAN_OPTS: ReadonlyArray<{ value: "row" | "col"; label: string; title: string }> = [
+  { value: "row", label: "By row", title: "Read the table row by row" },
+  { value: "col", label: "By column", title: "Read the table column by column" },
+];
+const SKIP_OPTS: ReadonlyArray<{ value: SkipCells; label: string }> = [
+  { value: "none", label: "Keep every value" },
+  { value: "blanks", label: "Skip blanks" },
+  { value: "errors", label: "Skip errors" },
+  { value: "both", label: "Skip blanks and errors" },
+];
+
+// [[B11]] maximalMerge: the wrap ops and the flatten ops have different sockets, so the switch reshapes the card.
 export function TableReshapeComponent({ data, emit }: NodeProps<TableReshapeNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  const isWrap = op === "wraprows" || op === "wrapcols";
+  const [op, setOpField] = useNodeField(data, "op");
+  async function pickOp(next: TableReshapeOp) {
+    if (next === data.op) return;
+    const departing = data.keysDroppedBySwitch(next);
+    if (departing.length > 0) await dropInputCables(data.id, departing);
+    const { outputChanged } = data.setOp(next);
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
+    if (outputChanged && editor && view) await retypeOutputCables(editor, view, data.id, "result");
+    if (view) await view.rerenderNode(data.id);
+    setOpField(next);
+  }
+  const [scanBy, setScanBy] = useNodeField(data, "scanBy");
+  const [skipCells, setSkipCells] = useNodeField(data, "skipCells");
+  const flattens = op === "tocol" || op === "torow";
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={RESHAPE_OPS} />
-      {isWrap
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={RESHAPE_OPS} />
+      {flattens && <SegToggle value={scanBy} onChange={setScanBy} options={SCAN_OPTS} />}
+      {flattens && <ArgSelect value={skipCells} onChange={setSkipCells} options={SKIP_OPTS} />}
+      {op !== "torow"
         ? <TableDisplay table={data.cachedMatrix} label={nodeDisplayName(data)} elem="number" />
         : /* flattened list is homogeneous at runtime (matches the input's element
              type); ValueDisplay branches number-vs-text on the first cell. */

@@ -7,8 +7,8 @@
     {
       "id": "note0",
       "type": "NoteNode",
-      "x": -40,
-      "y": -678,
+      "x": 425,
+      "y": 1094,
       "init": {
         "label": "Subgraphs in one card",
         "body": "# Composite workbench\nA **Composite** is a computing subgraph behind one typed card. Right-click a card (or its **Edit contents** button) to drill in: rewire, add nodes, add **+ Input / + Output** boundary ports, or **Unpack** it back onto the canvas. Select nodes and press **Ctrl+Shift+G** to make your own.",
@@ -19,29 +19,39 @@
     },
     {
       "id": "price",
-      "type": "NumberInputNode",
-      "x": 210,
-      "y": 3283,
+      "type": "ValueInputNode",
+      "x": 711,
+      "y": 1814,
       "init": {
         "label": "Unit price",
-        "value": 250
+        "op": "number",
+        "value": "250",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "qty",
-      "type": "NumberInputNode",
-      "x": 210,
-      "y": 3589,
+      "type": "ValueInputNode",
+      "x": 711,
+      "y": 2028,
       "init": {
         "label": "Quantity",
-        "value": 4
+        "op": "number",
+        "value": "4",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "lineComp",
       "type": "CompositeNode",
-      "x": 486,
-      "y": 3353,
+      "x": 985,
+      "y": 1924,
       "init": {
         "label": "Line total (drill in!)",
         "runMode": "single",
@@ -135,8 +145,8 @@
     {
       "id": "totalDisp",
       "type": "DisplayNode",
-      "x": 758,
-      "y": 3431,
+      "x": 1252,
+      "y": 2040,
       "init": {
         "label": "Order total"
       }
@@ -144,8 +154,8 @@
     {
       "id": "note1",
       "type": "NoteNode",
-      "x": -40,
-      "y": -262,
+      "x": 1517,
+      "y": 787,
       "init": {
         "label": "Simulation mode",
         "body": "# Simulation mode\nThis container holds a REAL cable cycle (add deposit → grow 5% → back into add). In **Simulation** mode the loop runs as bounded feedback: one entry per step. Every other mode dead-ends the same loop as **#CIRC!**. Drill in to see (and rewire) the loop.",
@@ -156,19 +166,24 @@
     },
     {
       "id": "deposit",
-      "type": "NumberInputNode",
-      "x": 210,
-      "y": 1765,
+      "type": "ValueInputNode",
+      "x": -40,
+      "y": 1819,
       "init": {
         "label": "Deposit / step",
-        "value": 100
+        "op": "number",
+        "value": "100",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "simComp",
       "type": "CompositeNode",
-      "x": 486,
-      "y": 1654,
+      "x": 227,
+      "y": 1814,
       "init": {
         "label": "Savings simulator",
         "runMode": "simulation",
@@ -266,8 +281,8 @@
     {
       "id": "seriesDisp",
       "type": "DisplayNode",
-      "x": 758,
-      "y": 1675,
+      "x": 494,
+      "y": 1976,
       "init": {
         "label": "Balance per step"
       }
@@ -275,8 +290,8 @@
     {
       "id": "note2",
       "type": "NoteNode",
-      "x": -40,
-      "y": 1883,
+      "x": 890,
+      "y": 1094,
       "init": {
         "label": "#CIRC! on the open canvas",
         "body": "# The same loop, unboxed\nThese two cards feed each other OUTSIDE a Simulate container, so the pass dead-ends them with **#CIRC!** instead of recursing. Everything downstream shows the propagated error. Collapse them into a composite (Ctrl+Shift+G) and switch it to Simulation to resolve the loop.",
@@ -288,8 +303,8 @@
     {
       "id": "loopA",
       "type": "ArithmeticNode",
-      "x": 486,
-      "y": 1308,
+      "x": 1257,
+      "y": 1576,
       "init": {
         "label": "Feeds B",
         "op": "add"
@@ -301,8 +316,8 @@
     {
       "id": "loopB",
       "type": "ArithmeticNode",
-      "x": 210,
-      "y": 1391,
+      "x": 984,
+      "y": 1462,
       "init": {
         "label": "Feeds A",
         "op": "add"
@@ -314,8 +329,8 @@
     {
       "id": "circDisp",
       "type": "DisplayNode",
-      "x": 486,
-      "y": 1519,
+      "x": 1257,
+      "y": 1439,
       "init": {
         "label": "Propagates the error"
       }
@@ -324,7 +339,7 @@
       "id": "note-gs",
       "type": "NoteNode",
       "x": -40,
-      "y": 2677,
+      "y": 1094,
       "init": {
         "label": "Goal-seek mode",
         "body": "# Goal-seek mode\nThis composite computes **profit = units × $25 margin − $500 fixed**. The container is in **Goal seek** mode: it drives the **Units** input until **Profit** hits the target (0 = break-even) and shows the solved value, 20. Excel: Goal Seek.",
@@ -336,8 +351,8 @@
     {
       "id": "gsComp",
       "type": "CompositeNode",
-      "x": 210,
-      "y": 2289,
+      "x": 1370,
+      "y": 1094,
       "init": {
         "label": "Break-even finder",
         "runMode": "goal-seek",
@@ -437,8 +452,8 @@
     {
       "id": "gsDisp",
       "type": "DisplayNode",
-      "x": 486,
-      "y": 2412,
+      "x": 1637,
+      "y": 1178,
       "init": {
         "label": "Profit at solution"
       }
@@ -446,8 +461,8 @@
     {
       "id": "note-fv",
       "type": "NoteNode",
-      "x": 33,
-      "y": 2111,
+      "x": -40,
+      "y": 787,
       "init": {
         "label": "Goal-seek a savings plan",
         "body": "Solve asks: what monthly deposit reaches a **$500k** nest egg in 30 years at 7%? Drill in to change the rate or horizon.",
@@ -458,8 +473,8 @@
     {
       "id": "fvComp",
       "type": "CompositeNode",
-      "x": 93,
-      "y": 2895,
+      "x": 1315,
+      "y": 787,
       "init": {
         "label": "Retirement deposit finder",
         "runMode": "goal-seek",
@@ -537,10 +552,10 @@
     {
       "id": "note-mc",
       "type": "NoteNode",
-      "x": 33,
-      "y": -450,
+      "x": 630,
+      "y": 787,
       "init": {
-        "label": "Monte Carlo — profit at risk",
+        "label": "Monte Carlo: profit at risk",
         "body": "Each input carries a **± error bar**. Solve runs the model hundreds of times, sampling the spreads, and reports the profit as **mean ± sd** with a histogram. Drill in to set each error bar.",
         "width": 300,
         "height": 150
@@ -549,8 +564,8 @@
     {
       "id": "mcComp",
       "type": "CompositeNode",
-      "x": 210,
-      "y": -44,
+      "x": 474,
+      "y": 1401,
       "init": {
         "label": "Profit at risk",
         "runMode": "montecarlo",
@@ -601,8 +616,7 @@
               "init": {
                 "label": "Cost",
                 "defaultValue": 600,
-                "uncertainty": 80,
-                "distribution": "normal"
+                "uncertainty": 80
               },
               "x": 0,
               "y": 160
@@ -653,8 +667,8 @@
     {
       "id": "mcDisp",
       "type": "DisplayNode",
-      "x": 486,
-      "y": 80,
+      "x": 741,
+      "y": 1575,
       "init": {
         "label": "Profit (mean ± sd)"
       }
@@ -662,10 +676,10 @@
     {
       "id": "note-sc",
       "type": "NoteNode",
-      "x": 33,
-      "y": 1144,
+      "x": 295,
+      "y": 787,
       "init": {
-        "label": "Scenarios — revenue cases",
+        "label": "Scenarios: revenue cases",
         "body": "Name a few input sets (Base / Bull / Bear); Solve runs each and lays the results **side by side** as a list. A blank cell falls back to the wired value.",
         "width": 300,
         "height": 140
@@ -674,8 +688,8 @@
     {
       "id": "scComp",
       "type": "CompositeNode",
-      "x": 210,
-      "y": 718,
+      "x": 1510,
+      "y": 1401,
       "init": {
         "label": "Revenue scenarios",
         "runMode": "scenarios",
@@ -797,8 +811,8 @@
     {
       "id": "scDisp",
       "type": "DisplayNode",
-      "x": 486,
-      "y": 855,
+      "x": 1777,
+      "y": 1619,
       "init": {
         "label": "Revenue per scenario"
       }
@@ -806,10 +820,10 @@
     {
       "id": "note-dt",
       "type": "NoteNode",
-      "x": 33,
-      "y": 3401,
+      "x": 965,
+      "y": 787,
       "init": {
-        "label": "Data table — a what-if grid",
+        "label": "Data table: a what-if grid",
         "body": "Sweep one or more inputs over a list of values; Solve computes the **full grid** (Excel's one- and two-variable Data Table, generalized to N axes). Here: Price {8,10,12} × Qty {100,200}.",
         "width": 300,
         "height": 150
@@ -818,8 +832,8 @@
     {
       "id": "dtComp",
       "type": "CompositeNode",
-      "x": 210,
-      "y": 369,
+      "x": -25,
+      "y": 1401,
       "init": {
         "label": "Line total grid",
         "runMode": "data-table",
@@ -926,8 +940,8 @@
     {
       "id": "dtDisp",
       "type": "DisplayNode",
-      "x": 486,
-      "y": 458,
+      "x": 242,
+      "y": 1561,
       "init": {
         "label": "Totals grid (row-major)"
       }

@@ -1,0 +1,42 @@
+# The native half of the frame-verb parity corpus: every fixture in fixtures/frame-verbs runs through
+# Polars too (`corpus_cases`), so an engine change is held to the same cases the JS oracle is. It runs
+# only when the engine or the corpus changes, so an ordinary push asks for one runner, not two.
+name: Engine test
+
+on:
+  push:
+    paths:
+      - "src-tauri/**"
+      - "fixtures/frame-verbs/**"
+      - ".github/workflows/engine-test.yml"
+  pull_request:
+    paths:
+      - "src-tauri/**"
+      - "fixtures/frame-verbs/**"
+      - ".github/workflows/engine-test.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: engine-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install Tauri's Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Engine tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml

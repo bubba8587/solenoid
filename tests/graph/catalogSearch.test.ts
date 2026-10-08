@@ -1,12 +1,15 @@
 // [[C79]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { flattenLeaves, searchLeaves, filterByCompatibleSocket } from "../../src/graph/catalogSearch";
+import { flattenLeaves, searchLeaves, filterByCompatibleSocket, quickWireCompatibleTypes } from "../../src/graph/catalogSearch";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { SolenoidSocket, type SocketDataType } from "../../src/graph/sockets";
 import type { NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 import { packsStore, BUILTIN_PACKS } from "../../src/graph/packs";
 import type { Pack } from "../../src/graph/packs/packShared";
 import { NODE_OPS } from "../../src/graph/nodeOps";
+import { NODE_EXCEL } from "../../src/graph/nodeExcel";
+import { CATALOG_TO_EXCEL } from "../../src/graph/excelToCatalog";
+import { LEGACY_ALIASES } from "../../src/graph/excelFunctions";
 
 // Search against the REAL catalog tree (active entries only, as the menu does).
 const leaves = flattenLeaves(buildCatalog(true));
@@ -16,7 +19,6 @@ const types = (q: string, n = 5) => search(q).slice(0, n).map((l) => l.type);
 describe("Add-menu search — category + type + keywords are searchable", () => {
   it("'arithmetic' surfaces the Arithmetic-category leaves (was: nothing)", () => {
     const r = search("arithmetic");
-    expect(r.length).toBeGreaterThan(0);
     // The Add/Subtract/Multiply/Divide leaves all live under the Arithmetic
     // category; at least the core four should appear.
     const arithTypes = r.map((l) => l.type).filter((t) => t.startsWith("arith-"));
@@ -29,13 +31,12 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
   });
 
   it("'text input' and 'frame input' find their input nodes", () => {
-    expect(types("text input")).toContain("text-input");
+    expect(types("text input")).toContain("value-input__op-string");
     expect(types("frame input")).toContain("frame-input");
   });
 
   it("an exact label still wins (no regression from the wider haystack)", () => {
     expect(types("multiply")[0]).toBe("arith-mul");
-    expect(types("convert")[0]).toBe("convert");
   });
 
   it("an op-glyph label prefix doesn't demote the exact match ('add' → + Add first)", () => {
@@ -119,6 +120,15 @@ describe("filterByCompatibleSocket — memoized socket signatures", () => {
     expect(compat.length).toBeGreaterThan(0);
     expect(compat.length).toBeLessThan(all.length); // it filters, not passes-through
   });
+
+  it("quick-wire's dim set holds catalog leaf types: a number cable lights Arithmetic, not UPPER", () => {
+    const set = quickWireCompatibleTypes(buildCatalog(true), new SolenoidSocket("number"), "output");
+    const types = flattenLeaves(buildCatalog(true)).map((l) => l.leaf.type);
+    expect(set.size).toBeLessThan(types.length);
+    expect([...set].every((t) => types.includes(t))).toBe(true);
+    expect(set.has("arith-add")).toBe(true);
+    expect(set.has("text-upper")).toBe(false); // element families never auto-cross
+  });
 });
 
 // The Node Packs settings section toggles packsStore, and buildCatalog(true) reads it —
@@ -196,5 +206,109 @@ describe("Add-menu search — hyphenated tokens and word hits over description n
   it("'sunm' ranks SUM ahead of leaves whose descriptions merely contain the letters", () => {
     const top = types("sunm", 3);
     expect(top[0]).toBe("reduce-sum");
+  });
+});
+
+describe("Excel-alias rows never repeat a name a card already wears", () => {
+  const all = flattenLeaves(buildCatalog(false));
+  const bare = (s: string) => s.replace(/\s*\([^)]*\)\s*$/, "").trim().toUpperCase();
+  const worn = new Set(all.filter((l) => !l.leaf.type.includes("__")).flatMap(({ leaf }) => [leaf.label, ...(leaf.hiddenOps ?? []).map((o) => o.label)]).map(bare));
+
+  it("no alias row names another card or op", () => {
+    const clashes = all.filter((l) => l.leaf.type.includes("__excel-")).map((l) => l.leaf.label).filter((label) => worn.has(bare(label.split(" → ")[0])));
+    expect(clashes).toEqual([]);
+  });
+
+  it("GROUPBY and SCAN find their own cards, not Group Lists or Running", () => {
+    expect(types("GROUPBY", 1)).toEqual(["group-by-frame"]);
+    expect(types("SCAN", 1)).toEqual(["scan-lambda"]);
+    expect(search("GROUPBY").map((l) => l.label)).not.toContain("Group Lists: GROUPBY");
+  });
+
+  // [[D73]] nodeCoversFormula: ISERR is current Excel, so it is a real Type Check op, not an alias row.
+  it("ISERR is a real Type Check op, and ISERROR ranks its own op first", () => {
+    expect(types("ISERR", 1)).toEqual(["is-test__op-iserr"]);
+    expect(types("ISERROR", 1)).toEqual(["is-test__op-iserror"]);
+  });
+
+  it("the Table Reshape card's family name finds its four ops first", () => {
+    expect(types("table reshape", 4).sort()).toEqual(["reshape-tocol", "reshape-torow", "reshape-wrapcols", "reshape-wraprows"]);
+  });
+
+  // An alias row shows the Excel name before an arrow, so it never reads as an op row ("Card: Op").
+  it("alias rows read Excel → Card, or Excel → Card: Op for one op's formula name", () => {
+    const labels = all.filter((l) => l.leaf.type.includes("__excel-")).map((l) => l.leaf.label);
+    expect(labels).toContain("SORTBY → List Sort");
+    expect(labels.every((l) => l.includes(" → "))).toBe(true);
+    expect(search("NORM.DIST")[0].label).toBe("NORM.DIST → Distributions: Normal");
+  });
+
+  // "SORT → List Sort" and "List Sort" place the same card: a search shows only the better match.
+  it("no search shows two rows that place the same thing", () => {
+    for (const q of ["SORT", "SORTBY", "list sort", "NORM.DIST", "Standard Normal", "EXPON.DIST", "COUNTA", "ROWS", "ISERR"]) {
+      const placed = search(q).map((l) => l.places ?? l.type);
+      expect(new Set(placed).size, q).toBe(placed.length);
+    }
+    expect(search("SORT").map((l) => l.label)).not.toContain("List Sort");
+    expect(search("EXPON.DIST")[0].label).toBe("EXPON.DIST → Distributions: Exponential");
+  });
+
+  it("a card's family name finds its rows", () => {
+    expect(types("bessel", 4).every((t) => t.startsWith("bessel-"))).toBe(true);
+    expect(types("coupon", 3).every((t) => t.startsWith("coupon-"))).toBe(true);
+  });
+
+  it("no card lists the same Excel name twice", () => {
+    const dupes = Object.entries(NODE_EXCEL).filter(([, eqs]) => new Set(eqs.map((e) => e.excel)).size !== eqs.length).map(([t]) => t);
+    expect(dupes).toEqual([]);
+  });
+});
+
+// Common queries, Excel names and card names, each with the card it must land on first.
+describe("Add-menu search — the top hit for common queries", () => {
+  const TOP: [string, string][] = [
+    ["sum", "reduce-sum"], ["average", "reduce-avg"], ["if", "if"], ["xlookup", "lookup-xlookup"],
+    ["vlookup", "lookup-xlookup"], ["hlookup", "lookup-xlookup"], ["match", "lookup-xmatch"],
+    ["index", "list-index"], ["unique", "list-unique"], ["countif", "sumifs__excel-COUNTIF"], ["sumif", "sumifs"],
+    ["concat", "text-concat"], ["today", "date-today"], ["round", "roundn-round"], ["len", "text-len"],
+    ["trim", "text-trim"], ["npv", "npv"], ["irr", "irr"], ["lambda", "lambda-make"],
+    ["transpose", "table-transpose"], ["number input", "value-input__op-number"], ["text input", "value-input__op-string"],
+    ["date input", "value-input__op-date"], ["boolean input", "value-input__op-logical"], ["list input", "list-input"],
+    ["note", "note"], ["join", "join"], ["convert", "convert"], ["median", "reduce-median"],
+    ["stdev", "reduce-stdev"], ["std dev", "reduce-stdev"], ["standard deviation", "reduce-stdev"],
+    ["regex", "regex"], ["switch", "switch"], ["choose", "choose"], ["sequence", "list-sequence"],
+    ["random", "randbetween"], ["group by", "group-by-frame"], ["histogram", "histogram"],
+    ["slope", "regression-steyx__op-slope"], ["intercept", "regression-steyx__op-intercept"],
+    ["rsq", "correl-correl__op-rsq"], ["steyx", "regression-steyx"],
+    ["floor.precise", "math-floor"], ["ceiling.precise", "math-ceiling"], ["iso.ceiling", "math-ceiling"],
+    ["dsum", "reduce-sum"], ["daverage", "reduce-avg"], ["dget", "lookup-xlookup"],
+  ];
+  it.each(TOP)("%s → %s", (q, type) => {
+    expect(types(q, 1)).toEqual([type]);
+  });
+
+  it("every card and row label finds a row with that label first", () => {
+    const misses = leaves.filter(({ leaf }) => search(leaf.label)[0]?.label !== leaf.label)
+      .map(({ leaf }) => `${leaf.label} → ${search(leaf.label)[0]?.label}`);
+    expect(misses).toEqual([]);
+  });
+
+  it("a retired Excel name lands on the card that answers to its replacement", () => {
+    const answering = (name: string) => leaves.filter(({ leaf }) => (CATALOG_TO_EXCEL.get(leaf.type) ?? []).includes(name)).map(({ leaf }) => leaf.type);
+    const misses: string[] = [];
+    for (const [legacy, target] of Object.entries(LEGACY_ALIASES)) {
+      const hosts = answering(target);
+      // A name a row already wears ("Sparkline: Column") keeps its own row first.
+      if (!hosts.length || leaves.some(({ leaf }) => leaf.label.split(": ").pop()!.toUpperCase() === legacy)) continue;
+      const top = search(legacy)[0]?.type.split("__")[0];
+      if (!top || !hosts.includes(top)) misses.push(`${legacy} → ${top} (want ${hosts.join(", ")})`);
+    }
+    expect(misses).toEqual([]);
+  });
+
+  it("SLOPE, INTERCEPT and RSQ belong to the cards whose ops compute them", () => {
+    expect(CATALOG_TO_EXCEL.get("regression-steyx")).toEqual(expect.arrayContaining(["SLOPE", "INTERCEPT"]));
+    expect(CATALOG_TO_EXCEL.get("correl-correl")).toContain("RSQ");
+    expect(CATALOG_TO_EXCEL.get("linest")).not.toEqual(expect.arrayContaining(["SLOPE"]));
   });
 });

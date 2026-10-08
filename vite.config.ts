@@ -1,10 +1,11 @@
-// [[C34]], [[C69]]
+// [[B12]] losslessSaves, [[C69]]
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
+import { SITE_ORIGIN, SITE_PAGES, pageHtml, robotsTxt, sitemapXml, withPrerender, type SitePage } from "./src/graph/landing/siteMeta";
 const host = process.env.TAURI_DEV_HOST;
 
 /** Dev-only endpoint for the in-app copy-edit freeze (`src/devCopyEdit.ts`): maps an
@@ -179,6 +180,7 @@ function devGraphMirror(): Plugin {
 function devDemoVault(): Plugin {
   const ROOT = path.resolve("demo-vault");
   const EXT = /\.(md|base|yaml|csv)$/;
+  const SETTINGS = new Set([".obsidian/types.json", ".obsidian/daily-notes.json"]);
   async function list(dir: string, rel: string, out: string[]): Promise<void> {
     let entries: import("node:fs").Dirent[];
     try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
@@ -200,12 +202,13 @@ function devDemoVault(): Plugin {
           if (rel === null) {
             const out: string[] = [];
             await list(ROOT, "", out);
+            out.push(...SETTINGS);
             res.setHeader("content-type", "application/json");
             res.end(JSON.stringify(out));
             return;
           }
           const abs = path.resolve(ROOT, rel);
-          if (!abs.startsWith(ROOT + path.sep) || !EXT.test(abs)) { res.statusCode = 404; res.end(); return; }
+          if (!abs.startsWith(ROOT + path.sep) || !(EXT.test(abs) || SETTINGS.has(rel))) { res.statusCode = 404; res.end(); return; }
           try {
             const text = await readFile(abs, "utf8");
             res.setHeader("content-type", "text/plain; charset=utf-8");
@@ -217,9 +220,32 @@ function devDemoVault(): Plugin {
   };
 }
 
+/** Writes `<page>.html` beside `index.html` for every site page, each with its own title and link-preview tags; `vercel.json` routes each path to its file. */
+function sitePageHtml(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "solenoid-site-page-html",
+    configResolved(config) { outDir = path.resolve(config.root, config.build.outDir); },
+    // index.html names the site as %SITE_ORIGIN%, so a domain move is the one line in siteMeta.ts.
+    transformIndexHtml: (html) => html.replaceAll("%SITE_ORIGIN%", SITE_ORIGIN),
+    async closeBundle() {
+      const index = await readFile(path.join(outDir, "index.html"), "utf8");
+      for (const name of Object.keys(SITE_PAGES) as SitePage[]) {
+        const page = SITE_PAGES[name];
+        // The page's text, snapshotted by scripts/prerender-site.mjs, so crawlers read it without JavaScript.
+        const snapshot = await readFile(path.resolve(`prerender/${name}.html`), "utf8").catch(() => null);
+        const html = pageHtml(index, page);
+        await writeFile(path.join(outDir, `${name}.html`), snapshot ? withPrerender(html, snapshot) : html);
+      }
+      await writeFile(path.join(outDir, "robots.txt"), robotsTxt());
+      await writeFile(path.join(outDir, "sitemap.xml"), sitemapXml());
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), copyEditEndpoint(), devGraphMirror(), devDemoVault()],
+  plugins: [react(), copyEditEndpoint(), devGraphMirror(), devDemoVault(), sitePageHtml()],
 
   // Preserve class / function names through minification. Node components
   // derive their human-readable type hint from `constructor.name` (see

@@ -6,7 +6,7 @@ import { runGraph, nodeFsProvider } from "./run-graph";
 import { setFsProvider } from "../src/graph/fileBridge";
 import { settingsStore } from "../src/graph/settingsStore";
 import { WriteObsidianNode } from "../src/graph/nodes/obsidian";
-import { isCubeValue, type CubeValue } from "../src/graph/frame";
+import type { CubeValue } from "../src/graph/frame";
 
 // Bundle 24 J — the headless seam: `run-graph --vault <path>` installs a Node file
 // provider behind fileBridge so the Obsidian nodes read a vault with no window, and
@@ -24,7 +24,6 @@ describe("run-graph --vault", () => {
       { vault: DEMO },
     );
     const cube = (out["Projects"] as { cube: CubeValue }).cube;
-    expect(isCubeValue(cube)).toBe(true);
     expect(cube.columns[0]?.cells.length ?? 0).toBeGreaterThan(0);
     const names = cube.columns.map((c) => c.name);
     expect(names).toContain("name");
@@ -59,7 +58,6 @@ describe("run-graph --vault", () => {
     };
     const out = await runGraph(graph, { vault: DEMO });
     const cube = (out["Vault"] as { cube: CubeValue }).cube;
-    expect(isCubeValue(cube)).toBe(true);
     const folderCol = cube.columns.find((c) => c.name === "folder");
     expect(folderCol?.cells.length ?? 0).toBeGreaterThan(0);
     expect(folderCol?.cells.every((c) => c === "Projects")).toBe(true); // read only the wired subfolder
@@ -117,7 +115,27 @@ describe("run-graph --vault", () => {
     expect(after.startsWith(fmBefore)).toBe(true);          // the frontmatter block untouched
   }, 30_000);
 
-  it("--run a Write Properties over the vault writes current scalar values back with no byte change", async () => {
+  it("Write Properties writes a stamp key the cube sets as the cube's value, not now", async () => {
+    tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
+    cpSync(DEMO, tmp, { recursive: true });
+    const noteRel = path.join("Tasks", "Order cabinets.md");
+    setFsProvider(nodeFsProvider);
+    settingsStore.set("obsidianVault", tmp);
+    const n = new WriteObsidianNode({ target: "properties" });
+    const cube: CubeValue = { __cube: true, depth: 1, columns: [
+      { name: "path", cells: ["Tasks/Order cabinets.md"], type: "string" },
+      { name: "status", cells: ["done"], type: "string" },
+      { name: "dateModified", cells: ["2020-01-02T03:04:05"], type: "string" },
+    ] };
+    n.data({ rows: [cube] });
+    n.enabled = true;
+    await n.run();
+    const after = readFileSync(path.join(tmp, noteRel), "utf8");
+    expect(after).toContain("status: done");
+    expect(after).toContain("dateModified: 2020-01-02T03:04:05");
+  }, 30_000);
+
+  it("--run a Write Properties over the vault leaves current values byte-identical and writes a new key", async () => {
     tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
     cpSync(DEMO, tmp, { recursive: true });
     const noteRel = path.join("Projects", "Kitchen remodel.md");
@@ -134,5 +152,15 @@ describe("run-graph --vault", () => {
     expect(readFileSync(path.join(tmp, noteRel), "utf8")).toBe(before); // wiring never writes
     await runGraph(graph, { vault: tmp, run: "Sync status" });
     expect(readFileSync(path.join(tmp, noteRel), "utf8")).toBe(before); // current value → unchanged
+
+    // A key the notes lack is a real change, so Run must write it.
+    const adding = {
+      nodes: [graph.nodes[0], { id: "w", type: "WriteObsidianNode", init: { label: "Add folder", target: "properties", addMissing: true }, stringLiterals: { keys: "folder" } }],
+      connections: graph.connections,
+    };
+    await runGraph(adding, { vault: tmp, run: "Add folder" });
+    const after = readFileSync(path.join(tmp, noteRel), "utf8");
+    expect(after).toContain("folder: Projects\n");
+    expect(after.replace("folder: Projects\n", "")).toBe(before);
   }, 30_000);
 });

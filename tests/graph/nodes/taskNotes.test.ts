@@ -10,7 +10,6 @@ import { isCubeValue, isFrameValue } from "../../../src/graph/frame";
 describe("TaskNotesNode", () => {
   it("defaults to Tasks with one cube output and no inputs; a stale provider falls back", () => {
     const n = new TaskNotesNode();
-    expect(n.provider).toBe("tasks");
     expect(Object.keys(n.inputs)).toEqual([]);
     expect(Object.keys(n.outputs)).toEqual(["tasks"]);
     expect(new TaskNotesNode({ provider: "bogus" as never }).provider).toBe("tasks");

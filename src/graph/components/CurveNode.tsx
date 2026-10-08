@@ -9,8 +9,6 @@ import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 import { nodeDisplayName } from "../catalogUtils";
 
-// A curve keeps ≥ 2 control points; the monotone spline through them draws live and
-// the node samples it into a list.
 
 const PAD_W = 196;
 const PAD_H = 110;
@@ -62,15 +60,15 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     return best;
   };
 
-  const sortByX = (arr: Array<[number, number]>) => [...arr].sort((a, b) => a[0] - b[0]);
   const update = (next: Array<[number, number]>) => { live.current = next; setPts(next); };
   const commit = () => {
-    update(sortByX(live.current));
+    // Points that landed on one x collapse as the output does (curvePoints), so the pad never shows a point the output lacks.
+    update(curvePoints(pointsToText(live.current)));
     data.pointsText = pointsToText(live.current);
     void processGraph(data.id);
   };
   const removeAt = (i: number) => {
-    if (live.current.length <= 2) return; // a curve keeps at least its endpoints
+    if (live.current.length <= 2) return;
     update(live.current.filter((_, k) => k !== i));
     commit();
   };
@@ -79,9 +77,9 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     void processGraph(data.id);
   };
 
-  // Display only — the node's own sampling drives the outputs.
+  // Display only: the node's own sampling drives the outputs.
   const path = useMemo(() => {
-    const sorted = sortByX(pts);
+    const sorted = curvePoints(pointsToText(pts));
     if (sorted.length === 0) return "";
     const f = monotoneCubic(sorted.map((p) => p[0]), sorted.map((p) => p[1]));
     const seg: string[] = [];

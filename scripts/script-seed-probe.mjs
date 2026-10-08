@@ -1,5 +1,6 @@
-// Probe: load the script-tour seed on the running dev server, screenshot it,
-// dump Display readouts + Script errors, and measure the field grip geometry.
+// Probes the script-tour seed: screenshots it, dumps Display readouts and Script errors, and measures
+// the field grip geometry, with a 4x close-up of the pi Script card. Needs the dev server on :1420.
+//   node scripts/script-seed-probe.mjs
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 import path from "node:path";
@@ -28,13 +29,11 @@ try {
   await page.evaluate((sid) => window.__solenoidTuneSeed(sid), "script-tour");
   await sleep(2000);
 
-  // Chrome-aware fit (the nav pill's Fit button).
   const fitBtn = await page.$('[title*="Fit"], [aria-label*="Fit"]');
   if (fitBtn) { await fitBtn.click(); await sleep(800); }
 
   await page.screenshot({ path: path.join(OUT, "seed-overview.png") });
 
-  // Display readouts + script errors, by card title.
   const readouts = await page.evaluate(() => {
     const out = [];
     for (const card of document.querySelectorAll(".solenoid-node")) {
@@ -48,7 +47,6 @@ try {
   });
   console.log(JSON.stringify(readouts, null, 1));
 
-  // Grip geometry on the first Script card.
   const geo = await page.evaluate(() => {
     const field = document.querySelector(".solenoid-script__field");
     if (!field) return null;
@@ -63,7 +61,6 @@ try {
   });
   console.log("GEO", JSON.stringify(geo, null, 1));
 
-  // Close-up of the pi Script card, at 4x device pixels so the grip is judgeable.
   await page.setViewport({ width: 1700, height: 1100, deviceScaleFactor: 4 });
   await sleep(500);
   const cards = await page.$$(".solenoid-node");

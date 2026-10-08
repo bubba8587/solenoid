@@ -1,13 +1,11 @@
 // [[C98]] paletteMirrorsMenubar (the one menu model)
-// ONE source of truth for the MenuBar dropdowns AND the Command Palette, so every menubar
-// action is a palette command by construction. `buildMenus()` re-reads store state per call.
+// One source for the MenuBar and the Command Palette, so every menubar action is a palette command by construction.
 import { appThemeStore } from "./appTheme";
 import { canvasLockStore } from "./canvasLock";
 import { frStore } from "./frStore";
 import { shortcutsStore } from "./shortcutsStore";
 import { outlineSearch } from "./outlineStore";
 import { requestRecalc } from "./process";
-import { autoArrange, cleanup } from "./canvasCommands";
 import { calcModeStore } from "./calcModeStore";
 import { refreshAllConnections } from "./connectionStore";
 import { runModelFuzz } from "./modelFuzz";
@@ -25,14 +23,13 @@ import { helpDialogStore } from "./helpDialogStore";
 import { gridSnapStore } from "./gridSnapStore";
 import { APP_LOCALE } from "./locale";
 import { drawModeStore } from "./drawnCables";
+import { SITE_ORIGIN, SITE_PAGES } from "./landing/siteMeta";
 
-// The public marketing site. Desktop has no address bar, so this is the only way there;
-// on web the current origin serves the same route (dev/preview/prod each land on their
-// own landing), so open that and fall back to the hosted site off-origin.
-const HOSTED_SITE = "https://solenoid-ngc.vercel.app";
+// Desktop has no address bar, so this is the only way to the site; on web the current origin serves the same route.
+const HOSTED_SITE = SITE_ORIGIN;
 function openWebsite(): void {
   const onOrigin = /^https?:$/.test(window.location.protocol);
-  void openExternal(isDesktop() || !onOrigin ? `${HOSTED_SITE}/?landing` : `${window.location.origin}/?landing`);
+  void openExternal(isDesktop() || !onOrigin ? `${HOSTED_SITE}${SITE_PAGES.about.path}` : `${window.location.origin}${SITE_PAGES.about.path}`);
 }
 
 export type MenuItem =
@@ -40,18 +37,13 @@ export type MenuItem =
   | { label: string; shortcut?: string; onClick?: () => void; disabled?: boolean; checked?: boolean };
 export type Menu = { label: string; items: MenuItem[] };
 
-// A synthetic keydown, so the Canvas keyboard handler runs the real command.
+/** Presses a canvas key as a real keyboard would: down on the document, where React Flow's Delete listens (the event
+ *  bubbles on to the canvas keyboard on window), and up a task later. Without the release RF's key trackers keep the
+ *  synthetic key as held, and a later Ctrl-click no longer multi-selects. */
 export function fireMenuKey(code: string, opts: { key?: string; ctrl?: boolean; shift?: boolean } = {}) {
-  window.dispatchEvent(
-    new KeyboardEvent("keydown", {
-      code,
-      key: opts.key ?? "",
-      ctrlKey: !!opts.ctrl,
-      shiftKey: !!opts.shift,
-      bubbles: true,
-      cancelable: true,
-    }),
-  );
+  const init = { code, key: opts.key ?? "", ctrlKey: !!opts.ctrl, shiftKey: !!opts.shift, bubbles: true, cancelable: true };
+  document.dispatchEvent(new KeyboardEvent("keydown", init));
+  setTimeout(() => document.dispatchEvent(new KeyboardEvent("keyup", init)), 0);
 }
 
 export function buildMenus(): Menu[] {
@@ -68,13 +60,11 @@ export function buildMenus(): Menu[] {
         { label: "New Document", onClick: () => void documentStore.newBlank() },
         { label: "Open…", shortcut: "Ctrl+O", onClick: () => void openFromDisk() },
         { sep: true },
-        // Work autosaves continuously; Save writes the graph out to its .json file.
         { label: "Save", shortcut: "Ctrl+S", onClick: () => void saveToDisk() },
         { label: "Save As…", shortcut: "Ctrl+Shift+S", onClick: () => void saveToDisk({ forceDialog: true }) },
         { sep: true },
         { label: "Document properties…", onClick: () => docPropertiesPanel.open() },
         { sep: true },
-        // A full rebuild from the saved graph, which replays the cinematic load reveal.
         { label: "Reload document", shortcut: "Ctrl+Shift+L", onClick: () => void documentStore.reloadCurrent() },
         ...(isDesktop() ? ([{ sep: true }, {
           label: "Open documents folder",
@@ -106,6 +96,11 @@ export function buildMenus(): Menu[] {
         { label: "Wrap as Composite", shortcut: "Ctrl+Shift+G", onClick: () => fireMenuKey("KeyG", { ctrl: true, shift: true }) },
         { label: "Group Autofit", shortcut: "F", onClick: () => fireMenuKey("KeyF") },
         { sep: true },
+        { label: "Bring to front", shortcut: "Ctrl+Shift+]", onClick: () => fireMenuKey("BracketRight", { ctrl: true, shift: true }) },
+        { label: "Bring forward", shortcut: "Ctrl+]", onClick: () => fireMenuKey("BracketRight", { ctrl: true }) },
+        { label: "Send backward", shortcut: "Ctrl+[", onClick: () => fireMenuKey("BracketLeft", { ctrl: true }) },
+        { label: "Send to back", shortcut: "Ctrl+Shift+[", onClick: () => fireMenuKey("BracketLeft", { ctrl: true, shift: true }) },
+        { sep: true },
         { label: "Find", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },
       ],
     },
@@ -115,8 +110,8 @@ export function buildMenus(): Menu[] {
         { label: mode === "dark" ? "Light theme" : "Dark theme", onClick: () => appThemeStore.toggleMode() },
         { label: "Lock canvas", checked: locked, onClick: () => canvasLockStore.toggle() },
         { sep: true },
-        { label: "Tidy", shortcut: "T", onClick: () => autoArrange() },
-        { label: "Cleanup", shortcut: "C", onClick: () => cleanup() },
+        { label: "Tidy", shortcut: "T", onClick: () => fireMenuKey("KeyT") },
+        { label: "Cleanup", shortcut: "C", onClick: () => fireMenuKey("KeyC") },
         { label: "Snap to grid", checked: snap, onClick: () => gridSnapStore.toggle() },
         { sep: true },
         { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
@@ -165,7 +160,7 @@ export function buildMenus(): Menu[] {
         {
           label: "Automatic",
           checked: calcMode === "auto",
-          // Switching to Automatic catches up on everything suppressed while manual.
+          // Catches up on everything suppressed while manual.
           onClick: () => { if (calcModeStore.setMode("auto")) void requestRecalc(); },
         },
         {
@@ -176,7 +171,7 @@ export function buildMenus(): Menu[] {
         {
           label: "Sketch",
           checked: calcMode === "sketch",
-          // Sketch recomputes live, so catch up like switching to Automatic does.
+          // Sketch recomputes live, so it catches up like Automatic.
           onClick: () => { if (calcModeStore.setMode("sketch")) void requestRecalc(); },
         },
       ],

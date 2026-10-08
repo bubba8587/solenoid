@@ -19,7 +19,7 @@ function containsEquals(n: Ast): boolean {
   }
 }
 
-/** Null on a syntax error; a STRING return is a human-readable shape problem. */
+/** Null on a syntax error; a string answer is a readable shape problem. */
 export function parseEquation(expr: string): ParsedEquation | string | null {
   const root = parseFormula(expr);
   if (!root) return null;
@@ -28,7 +28,6 @@ export function parseEquation(expr: string): ParsedEquation | string | null {
   return { lhs: root.l, rhs: root.r, lhsText: astToFormula(root.l), rhsText: astToFormula(root.r) };
 }
 
-/** Occurrences of a variable name in a tree. */
 export function countOccurrences(n: Ast, name: string): number {
   switch (n.t) {
     case "name": return n.name === name ? 1 : 0;
@@ -40,8 +39,6 @@ export function countOccurrences(n: Ast, name: string): number {
   }
 }
 
-/** Unparse an AST to formula text, FULLY parenthesised so precedence never has to be
- *  reconstructed on the round trip. */
 export function astToFormula(n: Ast): string {
   switch (n.t) {
     case "num": return n.v;
@@ -63,7 +60,6 @@ const bin = (op: string, l: Ast, r: Ast): Ast => ({ t: "bin", op, l, r });
 const call = (name: string, ...args: Ast[]): Ast => ({ t: "call", name, args });
 const num = (v: number): Ast => ({ t: "num", v: String(v) });
 
-// Single-argument functions with a clean inverse: f(u) = O → u = f⁻¹(O).
 const CALL_INVERSE: Record<string, (o: Ast) => Ast> = {
   SQRT: (o) => bin("^", o, num(2)),
   EXP: (o) => call("LN", o),
@@ -85,8 +81,7 @@ const CALL_INVERSE: Record<string, (o: Ast) => Ast> = {
   RADIANS: (o) => call("DEGREES", o),
 };
 
-/** Isolate `unknown` from `side = other`; null when a step has no clean inverse. The
- *  unknown must appear EXACTLY ONCE in `side` — the caller checks that. */
+/** The unknown must appear exactly once in `side`; the caller checks that. */
 export function isolate(side: Ast, other: Ast, unknown: string): Ast | null {
   let s = side;
   let o = other;
@@ -100,7 +95,6 @@ export function isolate(side: Ast, other: Ast, unknown: string): Ast | null {
         s = s.arg;
         continue;
       case "percent":
-        // u% = O → u = O·100
         o = bin("*", o, num(100));
         s = s.arg;
         continue;
@@ -114,7 +108,6 @@ export function isolate(side: Ast, other: Ast, unknown: string): Ast | null {
           case "-": o = inL ? bin("+", o, oth) : bin("-", oth, o); break;
           case "/": o = inL ? bin("*", o, oth) : bin("/", oth, o); break;
           case "^":
-            // u^n = O → u = O^(1/n) (principal); b^u = O → u = LN(O)/LN(b).
             o = inL ? bin("^", o, bin("/", num(1), oth)) : bin("/", call("LN", o), call("LN", oth));
             break;
           default:
@@ -124,7 +117,6 @@ export function isolate(side: Ast, other: Ast, unknown: string): Ast | null {
         continue;
       }
       case "call": {
-        // POWER/LOG take two args with per-arg inverses; the rest are unary.
         if (s.name.toUpperCase() === "POWER" && s.args.length === 2) {
           const inBase = countOccurrences(s.args[0], unknown) > 0;
           o = inBase
@@ -137,10 +129,10 @@ export function isolate(side: Ast, other: Ast, unknown: string): Ast | null {
           const base: Ast = s.args[1] ?? num(10);
           const inArg = s.args.length < 2 || countOccurrences(s.args[0], unknown) > 0;
           if (inArg) {
-            o = bin("^", base, o); // log_b(u) = O → u = b^O
+            o = bin("^", base, o);
             s = s.args[0];
           } else {
-            o = bin("^", s.args[0], bin("/", num(1), o)); // log_u(x) = O → u = x^(1/O)
+            o = bin("^", s.args[0], bin("/", num(1), o));
             s = s.args[1];
           }
           continue;
@@ -160,8 +152,6 @@ export function isolate(side: Ast, other: Ast, unknown: string): Ast | null {
   }
 }
 
-/** The evaluator solving `eq` for `unknown` symbolically; null (→ `solveNumeric`) when
- *  isolation can't. It takes the KNOWN variables' env and yields the unknown. */
 export function compileSolver(eq: ParsedEquation, unknown: string): ExprEvaluator | null {
   const inL = countOccurrences(eq.lhs, unknown);
   const inR = countOccurrences(eq.rhs, unknown);
@@ -171,9 +161,6 @@ export function compileSolver(eq: ParsedEquation, unknown: string): ExprEvaluato
   return compileEvaluator(astToFormula(iso));
 }
 
-// Sniffs a degree-≤2 residual so BOTH roots survive — symbolic isolation would take the
-// principal square root and lose one. A 3-point fit is exact for a true polynomial; the
-// 4 verification points are what reject SQRT/trig/1/x arrangements.
 
 export interface QuadraticFit { a: number; b: number; c: number }
 
@@ -197,19 +184,16 @@ export function sniffQuadratic(residual: (x: number) => number | null): Quadrati
   return { a, b, c };
 }
 
-/** Real roots of a·x² + b·x + c = 0: ascending list, scalar for a double root, #SOLVE! for
- *  a negative discriminant, null for degree < 2 (the caller falls through). */
 export function solveQuadratic(q: QuadraticFit): number | number[] | SolError | null {
   const { a, b, c } = q;
   const cscale = Math.max(Math.abs(a), Math.abs(b), Math.abs(c));
   if (cscale === 0 || Math.abs(a) <= 1e-12 * cscale) return null;
   const disc = b * b - 4 * a * c;
   const dscale = Math.max(b * b, Math.abs(4 * a * c));
-  if (Math.abs(disc) <= 1e-12 * dscale) return -b / (2 * a); // double root
+  if (Math.abs(disc) <= 1e-12 * dscale) return -b / (2 * a);
   if (disc < 0) {
-    return solError("#SOLVE!", "No real solution — the quadratic's discriminant is negative");
+    return solError("#SOLVE!", "No real solution: the quadratic's discriminant is negative");
   }
-  // Numerically stable form: avoid subtracting nearly-equal magnitudes.
   const s = Math.sqrt(disc);
   const qq = -(b + Math.sign(b || 1) * s) / 2;
   const r1 = qq / a;
@@ -217,9 +201,19 @@ export function solveQuadratic(q: QuadraticFit): number | number[] | SolError | 
   return r1 < r2 ? [r1, r2] : [r2, r1];
 }
 
-/** Residual sign-change scan over a symmetric log grid, then bisection. EVERY bracket is
- *  bisected and the root CLOSEST TO ZERO wins — taking the first bracket in ascending
- *  order picks the most negative root (a TVM rate of −290% is never the answer). */
+/** The seven probes can't tell a parabola from a piecewise form that matches it there (MIN(x,30)*x), so every root is put back in. */
+export function rootHolds(q: QuadraticFit, residual: (x: number) => number | null, x: number): boolean {
+  const f = residual(x);
+  if (f === null) return false;
+  return Math.abs(f) <= 1e-9 * Math.max(1, Math.abs(q.a * x * x), Math.abs(q.b * x), Math.abs(q.c));
+}
+
+/** The root of a fit with no x² term, −c/b, or null when it has no x term either. */
+export function solveLinear(q: QuadraticFit): number | null {
+  const scale = Math.max(Math.abs(q.a), Math.abs(q.b), Math.abs(q.c));
+  return Math.abs(q.b) > 1e-12 * scale ? -q.c / q.b : null;
+}
+
 export function solveNumeric(residual: (x: number) => number | null): number | SolError {
   const grid: number[] = [0];
   for (let k = -6; k <= 12; k++) {
@@ -232,8 +226,7 @@ export function solveNumeric(residual: (x: number) => number | null): number | S
     if (best === null || Math.abs(root) < Math.abs(best)) best = root;
   };
   const finite = (v: number | null): v is number => v !== null && Number.isFinite(v);
-  // Bisect a sign change on [lo, hi]. A pole changes sign too (1/(x-3) at 3), so the
-  // converged point counts only when the residual is actually small there.
+  // A pole changes sign too (1/(x-3) at 3), so a converged point counts only when its residual is small.
   const bisect = (lo: number, hi: number, flo: number, fhi: number): number | null => {
     let l = lo, h = hi, fl = flo;
     for (let i = 0; i < 200; i++) {
@@ -247,31 +240,37 @@ export function solveNumeric(residual: (x: number) => number | null): number | S
     const mid = (l + h) / 2;
     const fm = residual(mid);
     if (!finite(fm)) return null;
-    // Small against the bracket it started from: a true root drives the residual toward 0
-    // while a pole's stays as large as the ends (or larger).
     const scale = Math.max(1, Math.abs(flo), Math.abs(fhi));
     return Math.abs(fm) <= 1e-6 * scale ? mid : null;
   };
-  // The first x in (lo, hi] where the residual is finite: the edge of the domain.
-  const domainEdge = (lo: number, hi: number): { x: number; f: number } | null => {
-    let l = lo, h = hi;
-    for (let i = 0; i < 100; i++) {
-      const mid = (l + h) / 2;
-      if (finite(residual(mid))) h = mid; else l = mid;
+  /** The last finite point between a finite end and a non-finite end, found by bisection. */
+  const domainEdge = (inside: number, outside: number): { x: number; f: number } | null => {
+    let i = inside, o = outside;
+    for (let k = 0; k < 100; k++) {
+      const mid = (i + o) / 2;
+      if (finite(residual(mid))) i = mid; else o = mid;
     }
-    const f = residual(h);
-    return finite(f) ? { x: h, f } : null;
+    const f = residual(i);
+    return finite(f) ? { x: i, f } : null;
   };
   let prevX: number | null = null;
   let prevF: number | null = null;
   for (const x of grid) {
     const f = residual(x);
-    if (!finite(f)) { prevX = x; prevF = null; continue; }
+    if (!finite(f)) {
+      if (prevX !== null && prevF !== null && prevF !== 0) {
+        const edge = domainEdge(prevX, x);
+        if (edge && edge.f === 0) consider(edge.x);
+        else if (edge && Math.sign(edge.f) !== Math.sign(prevF)) {
+          const r = bisect(prevX, edge.x, prevF, edge.f);
+          if (r !== null) consider(r);
+        }
+      }
+      prevX = x; prevF = null; continue;
+    }
     if (f === 0) { consider(x); prevX = x; prevF = f; continue; }
     if (prevX !== null && prevF === null) {
-      // The residual just came into its domain (sqrt(x-2) below 2): a root between the
-      // domain's edge and this grid point would otherwise never bracket.
-      const edge = domainEdge(prevX, x);
+      const edge = domainEdge(x, prevX);
       if (edge && edge.f !== 0 && Math.sign(edge.f) !== Math.sign(f)) {
         const r = bisect(edge.x, x, edge.f, f);
         if (r !== null) consider(r);
@@ -283,10 +282,9 @@ export function solveNumeric(residual: (x: number) => number | null): number | S
     prevX = x; prevF = f;
   }
   if (best !== null) return best;
-  return solError("#SOLVE!", "No solution found between \u00b110\u00b9\u00b2 \u2014 the equation may have no real root here");
+  return solError("#SOLVE!", "No solution found between \u00b110\u00b9\u00b2. The equation may have no real root here");
 }
 
-/** Relative-tolerance equality for the all-variables-wired truth check. */
 export function equalsWithin(l: number, r: number): boolean {
   return Math.abs(l - r) <= 1e-9 * Math.max(1, Math.abs(l), Math.abs(r));
 }

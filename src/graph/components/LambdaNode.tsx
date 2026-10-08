@@ -1,7 +1,7 @@
-// [[C50]] lambdaBindsByName, [[C95]] commitOnEnter
+// [[C50]] lambdaBindsByName, [[C95]] commitOnEnter, [[C22]] rowFormulaRefs
 import { useState, useEffect } from "react";
 import type { LambdaNode as LambdaNodeType } from "../rete-nodes";
-import { formatLambda } from "../nodes/lambda";
+import { formatLambda, perRowParamClashes } from "../nodes/lambda";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { FormulaField } from "./FormulaField";
@@ -26,11 +26,6 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.params]);
 
-  async function handleExprChange(next: string) {
-    setExpr(next);
-    await applyLambdaChange(node, { expr: next });
-  }
-
   // [[C95]] commitOnEnter: a per-keystroke commit would churn sockets.
   async function commitParams() {
     if (params === node.params) return;
@@ -39,10 +34,11 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
 
   return (
     <NodeShell node={node} emit={emit}>
-      <div className="solenoid-node__io-row">
+      <div className="solenoid-node__io-row solenoid-lambda__params-row">
         <span className="solenoid-node__io-label">λ(</span>
         <input
-          className="solenoid-node__inline-input"
+          className="solenoid-node__inline-input solenoid-lambda__params"
+          style={{ width: `calc(${(params || "x, y").length + 1}ch + 14px)` }}
           value={params}
           placeholder="x, y"
           onChange={(e) => setParams(e.target.value)}
@@ -57,20 +53,23 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
       </div>
       <FormulaField
         value={expr}
-        onChange={handleExprChange}
         placeholder="x * rate …"
         onOpen={() => formulaPopup.open(node.id)}
       />
       {node.cachedError && (
         <div className="solenoid-expr__error">{node.cachedError}</div>
       )}
+      {perRowParamClashes(node.paramList(), node.expr).map((p) => (
+        <div key={p} className="solenoid-expr__lambda-hint">
+          LAMBDA parameter <code>{p}</code> and body <code>@{p}</code> are per-row operators. For whole-column references, use <code>[{p}]</code> and/or exclude <code>{p}</code> from the parameters list &amp; place it only in the expression body.
+        </div>
+      ))}
       <InlineInputs
         node={node}
         emit={emit}
         titleFor={(k) => node.varDescriptions[k] || undefined}
       />
-      {/* An FC's view-as applies DOWNSTREAM, never to this source card; a plain div
-          rather than ValueDisplay, whose string path applies a docked FC's textScale. */}
+      {/* An FC's view-as applies downstream, never to this source card; a plain div, since ValueDisplay's string path applies a docked FC's textScale. */}
       {node.cachedValue
         ? <div className="solenoid-node__display-value">{formatLambda(node.cachedValue)}</div>
         : <ValueDisplay value={null} />}

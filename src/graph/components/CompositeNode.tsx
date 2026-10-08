@@ -1,4 +1,4 @@
-// [[C77]] compositeIsSubgraph. Mechanics: specs/composite-drill-in-mount-lifecycle.md.
+// [[C77]] compositeIsSubgraph. Mechanics: tree/specs/canvas/composite-drill-in-mount-lifecycle.md.
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../rete-nodes";
 import { CompositeInputNode, type CompositeStopOp } from "../nodes/composite";
@@ -14,6 +14,7 @@ import type { DisplayValue } from "./valueDisplayFormat";
 import { processGraph } from "../process";
 import { compositeEditorStore } from "../compositeEditorStore";
 import { compositeStaleStore } from "../compositeStaleStore";
+import { connectionStore } from "../connectionStore";
 import { stopDragStart } from "../coarse";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
@@ -27,7 +28,6 @@ import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import { nodeDisplayName } from "../catalogUtils";
 
-/** A boundary value renders by its KIND, never stringified. */
 function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} full={false} />;
   if (isCubeValue(value)) return <CubeDisplay cube={value} label={label} full={false} />;
@@ -38,8 +38,7 @@ function CompositeBoundaryValue({ value, label }: { value: unknown; label: strin
   return <ValueDisplay value={value as DisplayValue} />;
 }
 
-// Only modes with a real data() branch appear here — this list grows in lockstep
-// with the driver, never ahead of it.
+// Only modes with a real data() branch; this list grows in lockstep with the driver, never ahead of it.
 export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "single", label: "Single run" },
   { value: "manual", label: "Manual refresh" },
@@ -51,7 +50,6 @@ export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "by-row", label: "By row" },
 ];
 
-// The FC's chip-foot expander pattern; open state is local, not persisted.
 function AdvancedFoot({ open, onToggle, title, children }: { open: boolean; onToggle: () => void; title: string; children: React.ReactNode }) {
   return (
     <>
@@ -76,8 +74,7 @@ function AdvancedFoot({ open, onToggle, title, children }: { open: boolean; onTo
   );
 }
 
-/** "" → undefined, which CLEARS the override back to the port's wired/default value.
- *  Scenario cells are untyped scalar overrides — ports are `any` end to end. */
+/** "" gives undefined, which clears the override back to the port's wired or default value. */
 function parseOverride(text: string): unknown {
   const t = text.trim();
   if (t === "") return undefined;
@@ -87,6 +84,29 @@ function parseOverride(text: string): unknown {
 
 function overrideToText(v: unknown): string {
   return v === undefined || v === null ? "" : String(v);
+}
+
+function ScenarioField({ value, placeholder, toText, parse, apply }: {
+  value: unknown;
+  placeholder?: string;
+  toText: (v: unknown) => string;
+  parse: (t: string) => unknown;
+  apply: (v: unknown) => void;
+}) {
+  const field = useDraftCommit(value, toText, parse, apply);
+  return (
+    <input
+      className="solenoid-node__inline-input"
+      value={field.draft}
+      placeholder={placeholder}
+      onChange={(e) => field.setDraft(e.target.value)}
+      onBlur={field.onBlur}
+      onKeyDown={field.onKeyDown}
+      onPointerDown={stopDragStart}
+      onMouseDown={(e) => e.stopPropagation()}
+      spellCheck={false}
+    />
+  );
 }
 
 function ScenarioTable({ node }: { node: CompositeNodeType }) {
@@ -107,25 +127,20 @@ function ScenarioTable({ node }: { node: CompositeNodeType }) {
           </div>
           {node.scenarios.map((s) => (
             <div key={s.id} style={{ display: "grid", gridTemplateColumns: cols, gap: 6, alignItems: "center" }}>
-              <input
-                className="solenoid-node__inline-input"
+              <ScenarioField
                 value={s.name}
-                onChange={(e) => { node.renameScenario(s.id, e.target.value); recompute(); }}
-                onPointerDown={stopDragStart}
-                onMouseDown={(e) => e.stopPropagation()}
-                spellCheck={false}
+                toText={(v) => String(v ?? "")}
+                parse={(t) => t}
+                apply={(v) => { node.renameScenario(s.id, String(v)); recompute(); }}
               />
               {exposed.map((p) => (
-                <input
+                <ScenarioField
                   key={p.id}
-                  className="solenoid-node__inline-input"
-                  defaultValue={overrideToText(s.overrides[p.id])}
+                  value={s.overrides[p.id]}
                   placeholder="—"
-                  onBlur={(e) => { node.setScenarioOverride(s.id, p.id, parseOverride(e.target.value)); recompute(); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                  onPointerDown={stopDragStart}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  spellCheck={false}
+                  toText={overrideToText}
+                  parse={parseOverride}
+                  apply={(v) => { node.setScenarioOverride(s.id, p.id, v); recompute(); }}
                 />
               ))}
               <button
@@ -151,7 +166,6 @@ function ScenarioTable({ node }: { node: CompositeNodeType }) {
   );
 }
 
-/** "2, 4, 6.5, hot" → [2, 4, 6.5, "hot"] — one number-or-string per cell. */
 function parseCsvValues(text: string): unknown[] {
   return text.split(",").map((s) => s.trim()).filter((s) => s !== "").map((s) => {
     const n = Number(s);
@@ -163,8 +177,6 @@ function valuesToCsv(values: unknown[] | undefined): string {
   return (values ?? []).join(", ");
 }
 
-// One row per exposed input port; a blank field means that port doesn't vary, so
-// the sweep is a full-factorial grid over whichever ports DO carry a list.
 function DataTableEditor({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const recompute = () => { void processGraph(node.id); };
@@ -202,15 +214,13 @@ const STOP_OPS: ReadonlyArray<{ value: CompositeStopOp; label: string }> = [
   { value: "ne", label: "≠" },
 ];
 
-// Output markers are trueany and ADOPT the wired type, so the PICKER is filtered by
-// the adopted socket type; unresolved wildcards stay in (a guardrail, not a gate).
+// Output markers adopt the wired type, so the picker filters by it; unresolved wildcards stay in (a guardrail, not a gate).
 const STOP_COMPARABLE = new Set(["number", "numlist", "logical", "logicalcombo", "any", "trueany"]);
 function outputComparable(node: CompositeNodeType, portId: string): boolean {
   const dt = (node.outputs[portId]?.socket as { dataType?: string } | undefined)?.dataType;
   return dt === undefined || STOP_COMPARABLE.has(dt);
 }
 
-// With a stop condition the step count becomes a CAP; a logical output compares as 1/0.
 function SimulationEditor({ node }: { node: CompositeNodeType }) {
   const hasStop = !!node.stopWhenPortId;
   const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
@@ -252,7 +262,6 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
               />
             </div>
           )}
-          {/* Did the condition converge, or did it run out of steps? */}
           {hasStop && node.simLastSteps != null && (
             <div style={{ gridColumn: "1 / -1", fontSize: 10, color: "var(--text-muted)" }}>
               {node.simLastSteps < node.simulationSteps
@@ -289,8 +298,8 @@ function ByRowEditor({ node }: { node: CompositeNodeType }) {
 }
 
 const DIST_OPTIONS: ReadonlyArray<{ value: DistributionKind; label: string; title: string }> = [
-  { value: "normal", label: "Normal", title: "Gaussian — the ± is a standard deviation (1σ)" },
-  { value: "uniform", label: "Uniform", title: "Flat — the ± is a half-width around the value" },
+  { value: "normal", label: "Normal", title: "Gaussian: the ± is one standard deviation (1σ)" },
+  { value: "uniform", label: "Uniform", title: "Flat: the ± is a half-width around the value" },
 ];
 
 function MiniHistogram({ samples }: { samples: readonly number[] }) {
@@ -327,18 +336,14 @@ function MiniSparkline({ series }: { series: readonly number[] }) {
   );
 }
 
-/** A plain numeric series earns a sparkline; uncertain / frame / string lists don't. */
 function isNumericSeries(v: unknown): v is number[] {
   return Array.isArray(v) && v.length >= 2 && v.every((x) => typeof x === "number" && Number.isFinite(x));
 }
 
-// The ± spread lives on each exposed input's drill-in marker; the seed is fixed so
-// the draws are reproducible.
 function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const [advanced, setAdvanced] = useState(false);
   const recompute = () => { void processGraph(node.id); };
-  // Ensure a config exists so the advanced defaults show real numbers.
   useEffect(() => { if (!node.monteCarlo) { node.setMonteCarlo({}); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
   const mc = node.monteCarlo;
 
@@ -356,7 +361,6 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
     }
     return null;
   })();
-  // Draws a pass could not count: the mean is over the rest, so say so.
   const dropped = node.outputPorts.reduce((m, p) => {
     const v = node.cachedOutputs[p.id];
     return isUncertain(v) && v.dropped ? Math.max(m, v.dropped) : m;
@@ -395,7 +399,7 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
           <InlineNumberField value={mc?.samples ?? 500} onChange={(v) => { node.setMonteCarlo({ samples: v && v >= 1 ? Math.round(v) : 500 }); recompute(); }} />
           <span className="solenoid-node__io-label">Seed</span>
           <InlineNumberField value={mc?.seed ?? 1} onChange={(v) => { node.setMonteCarlo({ seed: v != null ? Math.round(v) : 1 }); recompute(); }} />
-          <span className="solenoid-node__io-label" title="Correlate inputs (Gaussian copula): label ~ label = ρ, several separated by ; — each input keeps its own ± and shape, only the dependence changes">Correlations</span>
+          <span className="solenoid-node__io-label" title="Correlate inputs with a Gaussian copula: label ~ label = ρ, several separated by semicolons. Each input keeps its own ± and shape; only the dependence changes.">Correlations</span>
           <InlineTextField
             value={mc?.correlations ?? ""}
             onChange={(v) => { node.setMonteCarlo({ correlations: v }); recompute(); }}
@@ -412,7 +416,6 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
   const outputs = node.outputPorts;
   const [advanced, setAdvanced] = useState(false);
   const recompute = () => { void processGraph(node.id); };
-  // Initialize the config the first time the mode is entered so it solves immediately.
   useEffect(() => {
     if (!node.goalSeek && exposed.length > 0 && outputs.length > 0) { node.setGoalSeek({}); recompute(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -461,13 +464,10 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
         </div>
       </AdvancedFoot>
       {result != null && node.outputs[outputId] && (
-        <div className="solenoid-composite__output" style={{ marginTop: 4 }}>
+        <div className="solenoid-composite__output solenoid-node__io-row--output" style={{ marginTop: 4 }}>
           <span className="solenoid-node__io-label">
             Solution: {exposed.find((p) => p.id === inputId)?.label ?? "input"}
           </span>
-          {/* On the OUTER card (emit) the Solution carries the target port's
-              output socket (wireable); inside the drill-in (no emit) it's a plain
-              display — the socket belongs to the outer node, not this editor. */}
           {emit ? (
             <MeasuredSocketRow side="output" socketKey={outputId} nodeId={node.id} emit={emit} payload={node.outputs[outputId]!.socket}>
               <ValueDisplay value={result} />
@@ -481,9 +481,9 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
   );
 }
 
-// An SVG circle, not a CSS box — a small CSS box reads as an oval in the flex row.
+// An SVG circle: a small CSS box reads as an oval in the flex row.
 function StatusDot({ state }: { state: "stale" | "failed" | "ok" }) {
-  const color = state === "stale" ? "#d9822b" : state === "failed" ? "var(--sol-error)" : "var(--sock-lambda)";
+  const color = state === "stale" ? "var(--sol-warn)" : state === "failed" ? "var(--sol-error)" : "var(--sock-lambda)";
   const title = state === "stale" ? "Stale" : state === "failed" ? "No solution" : "Up to date";
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0, display: "block" }}>
@@ -518,13 +518,13 @@ const EditSvg = () => (
   </svg>
 );
 
-/** Shared by the outer Composite card AND the drill-in overlay; `emit` is present
- *  only outside, where the goal-seek Solution's output socket anchors. */
 export function CompositeRunControls({ node, emit, insideOnly = false }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"]; insideOnly?: boolean }) {
   const [runMode, setRunMode] = useNodeField(node, "runMode");
   // A held composite's output doesn't change, so processGraph won't re-render it.
   useSyncExternalStore(compositeStaleStore.subscribe, compositeStaleStore.getVersion);
+  useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
   const heavy = node.isHeavyMode();
+  const gated = heavy && node.gatedInside();
   const stale = compositeStaleStore.isStale(node.id);
   const failed = heavy && runMode === "goal-seek" && isSolError(node.goalSeekResult);
   return (
@@ -548,6 +548,11 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
           <StatusDot state={stale ? "stale" : failed ? "failed" : "ok"} />
         </div>
       )}
+      {gated && (
+        <div className="sol-conn__status-text" style={{ marginTop: 4 }} title="Waiting for permission. Allow this document to connect in Settings ▸ Data.">
+          Waiting for permission
+        </div>
+      )}
       {runMode === "scenarios" && <ScenarioTable node={node} />}
       {runMode === "data-table" && <DataTableEditor node={node} />}
       {runMode === "simulation" && <SimulationEditor node={node} />}
@@ -567,7 +572,6 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         type="button"
         className="solenoid-node__inline-input"
         style={{ width: "100%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-        // Open a fresh level from the canvas, drill one deeper when already editing.
         onClick={(e) => {
           e.stopPropagation();
           if (compositeEditorStore.isOpen()) compositeEditorStore.drillInto(node);
@@ -579,20 +583,15 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         <EditSvg />
         Edit contents
       </button>
-      {/* The goal-seek DRIVER shows too: its field or cable is how you feed the
-          solver's SEED — the marker inside the subgraph is only a boundary. */}
       <InlineInputs node={node} emit={emit} />
       <CompositeRunControls node={node} emit={emit} />
-      {/* Goal-seek's achieved output just equals the target, so its box is suppressed
-          — the GoalSeekEditor owns the one hero box. */}
       {runMode !== "goal-seek" && node.outputPorts.map((p) => {
         const port = node.outputs[p.id];
         if (!port) return null;
         const value = node.cachedOutputs[p.id] ?? null;
-        // MeasuredSocketRow wraps only the box, so the output dot centers on the
-        // box rather than the label above it.
+        // MeasuredSocketRow wraps only the box, so the output dot centers on the box, not the label.
         return (
-          <div key={p.id} className="solenoid-composite__output">
+          <div key={p.id} className="solenoid-composite__output solenoid-node__io-row--output">
             <span className="solenoid-node__io-label">{p.label}</span>
             <MeasuredSocketRow side="output" socketKey={p.id} nodeId={node.id} emit={emit} payload={port.socket}>
               {isNumericSeries(value) && <MiniSparkline series={value} />}
@@ -608,7 +607,6 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
   );
 }
 
-// Boundary markers render ONLY inside the drill-in editor's own rete root.
 
 function MarkerNote({ tag, children }: { tag: string; children: React.ReactNode }) {
   return (
@@ -620,8 +618,6 @@ function MarkerNote({ tag, children }: { tag: string; children: React.ReactNode 
 }
 
 export function CompositeInputMarkerComponent({ data, emit }: NodeProps<CompositeInputNodeType>) {
-  // The value this input carries when the port isn't externally wired (and the
-  // goal-seek seed); a wired value or a solve overrides it.
   const field = useDraftCommit<number>(
     data.defaultValue ?? 0,
     String,
@@ -635,7 +631,6 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
   return (
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">
       {data.externallyWired ? (
-        // Fed from outside — a number field can't represent a wired list/frame.
         <CompositeBoundaryValue value={data.value} label={nodeDisplayName(data)} />
       ) : (
         <input
@@ -648,7 +643,6 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
           step="any"
         />
       )}
-      {/* The solver's answer shows here rather than overwriting the seed above. */}
       {data.goalDriver && (
         <MarkerNote tag="solves to">
           {data.solvedValue == null ? <span style={{ color: "var(--text-muted)" }}>—</span>

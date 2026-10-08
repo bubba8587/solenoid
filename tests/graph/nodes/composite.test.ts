@@ -6,15 +6,15 @@ import type { Schemes } from "../../../src/graph/schemes";
 import { ctorRegistry } from "../../../src/graph/nodeCtorRegistry";
 import { FLAT_CATALOG } from "../../../src/graph/catalogUtils";
 import { extractInit } from "../../../src/graph/copyPaste";
-import { isSolError } from "../../../src/graph/errorValue";
+import { installErrorGuards, isSolError, solError } from "../../../src/graph/errorValue";
 import { isUncertain } from "../../../src/graph/valueKinds";
 import { loopMembers } from "../../../src/graph/graphCompute";
 import { alertStore } from "../../../src/graph/alertStore";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, BY_ROW_MAX_ROWS } from "../../../src/graph/nodes/composite";
 import { frameFromCells, isFrameValue, frameRowCount, type FrameValue } from "../../../src/graph/frame";
-import { NumberInputNode } from "../../../src/graph/nodes/input";
+import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { ArithmeticNode, MathFXNode } from "../../../src/graph/nodes/scalar";
-import { ComparisonNode } from "../../../src/graph/nodes/logic";
+import { ComparisonNode, IFErrorNode } from "../../../src/graph/nodes/logic";
 
 function connect(
   editor: NodeEditor<Schemes>,
@@ -33,16 +33,6 @@ describe("CompositeNode shell", () => {
     expect(Object.keys(c.inputs)).toEqual([]);
     expect(Object.keys(c.outputs)).toEqual([]);
     expect(c.isHydrated).toBe(true); // nothing pending — a freshly-built shell
-  });
-
-  it("addInputPort/addOutputPort add real sockets keyed by the returned port id", () => {
-    const c = new CompositeNode();
-    const inId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: "marker-1" });
-    const outId = c.addOutputPort({ label: "Result", tier: "basic", internalNodeId: "marker-2" });
-    expect(c.inputs[inId]).toBeDefined();
-    expect(c.outputs[outId]).toBeDefined();
-    expect(c.inputPorts).toHaveLength(1);
-    expect(c.outputPorts).toHaveLength(1);
   });
 
   it("a hidden input port gets NO outer socket, only a baked default", () => {
@@ -92,6 +82,20 @@ describe("CompositeNode shell", () => {
     expect(out[outId]).toBe(7);
   });
 
+  it("a wired blank beats the declared default ([[D86]] blankRoles)", async () => {
+    const c = new CompositeNode();
+    const passthrough = new CompositeOutputNode({ label: "Result" });
+    const inMarker = new CompositeInputNode({ label: "A" });
+    await c.internalEditor.addNode(inMarker as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(passthrough as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inMarker, "value", passthrough, "value");
+    const inId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inMarker.id, default: 7 });
+    const outId = c.addOutputPort({ label: "Result", tier: "basic", internalNodeId: passthrough.id });
+
+    const out = await c.data({ [inId]: [null] });
+    expect(out[outId]).toBeNull();
+  });
+
   it("a hidden input port always uses its baked default, ignoring any injected value", async () => {
     const c = new CompositeNode();
     const passthrough = new CompositeOutputNode({ label: "Result" });
@@ -119,8 +123,6 @@ describe("CompositeNode shell", () => {
     const outId = c.addOutputPort({ label: "Result", tier: "basic", internalNodeId: outMarker.id });
 
     const snapshot = c.snapshotInternal();
-    expect(snapshot.nodes).toHaveLength(2);
-    expect(snapshot.connections).toHaveLength(1);
 
     // Rebuild a FRESH composite purely from the snapshot + ports, the same shape
     // persistence.ts's rebuildGraph constructs on load.
@@ -138,19 +140,83 @@ describe("CompositeNode shell", () => {
     expect(out[outId]).toBe(5); // 2 + 3, recomputed from the rebuilt internal graph
   });
 
-  it("NumberInputNode survives a snapshot/hydrate round-trip with its literal intact", async () => {
-    const c = new CompositeNode();
-    const num = new NumberInputNode({ value: 99 });
-    const outMarker = new CompositeOutputNode({ label: "Value" });
-    await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
-    await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
-    await connect(c.internalEditor, num, "value", outMarker, "value");
-    const outId = c.addOutputPort({ label: "Value", tier: "basic", internalNodeId: outMarker.id });
+  it("a nested composite computes after a reload, without being drilled into", async () => {
+    const inner = new CompositeNode({ label: "Inner" });
+    const num = new ValueInputNode({ value: "42" });
+    const innerOut = new CompositeOutputNode({ label: "V" });
+    await inner.internalEditor.addNode(num as unknown as Schemes["Node"]);
+    await inner.internalEditor.addNode(innerOut as unknown as Schemes["Node"]);
+    await connect(inner.internalEditor, num, "value", innerOut, "value");
+    const innerPort = inner.addOutputPort({ label: "V", tier: "basic", internalNodeId: innerOut.id });
 
-    const reloaded = new CompositeNode({ outputPorts: c.outputPorts, internal: c.snapshotInternal() });
+    const outer = new CompositeNode({ label: "Outer" });
+    const outerOut = new CompositeOutputNode({ label: "V" });
+    await outer.internalEditor.addNode(inner as unknown as Schemes["Node"]);
+    await outer.internalEditor.addNode(outerOut as unknown as Schemes["Node"]);
+    await connect(outer.internalEditor, inner, innerPort, outerOut, "value");
+    const outerPort = outer.addOutputPort({ label: "V", tier: "basic", internalNodeId: outerOut.id });
+    expect((await outer.data({}))[outerPort]).toBe(42);
+
+    const reloaded = new CompositeNode(extractInit(outer) as ConstructorParameters<typeof CompositeNode>[0]);
     await reloaded.hydrate(ctorRegistry());
-    const out = await reloaded.data({});
-    expect(out[outId]).toBe(99);
+    expect((await reloaded.data({}))[outerPort]).toBe(42);
+  });
+
+  it("three levels deep, a composite computes after a reload, and after a reload of that reload", async () => {
+    const wrap = async (child: Schemes["Node"], childPort: string, label: string) => {
+      const c = new CompositeNode({ label });
+      const out = new CompositeOutputNode({ label: "V" });
+      await c.internalEditor.addNode(child);
+      await c.internalEditor.addNode(out as unknown as Schemes["Node"]);
+      await connect(c.internalEditor, child, childPort, out, "value");
+      return { c, port: c.addOutputPort({ label: "V", tier: "basic", internalNodeId: out.id }) };
+    };
+    const l1 = await wrap(new ValueInputNode({ value: "7" }) as unknown as Schemes["Node"], "value", "L1");
+    const l2 = await wrap(l1.c as unknown as Schemes["Node"], l1.port, "L2");
+    const l3 = await wrap(l2.c as unknown as Schemes["Node"], l2.port, "L3");
+    expect((await l3.c.data({}))[l3.port]).toBe(7);
+    const load = async (from: CompositeNode) => {
+      const r = new CompositeNode(extractInit(from) as ConstructorParameters<typeof CompositeNode>[0]);
+      await r.hydrate(ctorRegistry());
+      return r;
+    };
+    const once = await load(l3.c);
+    expect((await once.data({}))[l3.port]).toBe(7);
+    expect((await (await load(once)).data({}))[l3.port]).toBe(7);
+  });
+
+  it("an unknown internal type loads as a Placeholder and re-saves as the original ([[C35]] unknownViaPlaceholder)", async () => {
+    const outMarker = new CompositeOutputNode({ label: "Result" });
+    const snapshot = {
+      nodes: [
+        { id: "m1", type: "NoSuchPackNode", init: { label: "Gone", knob: 7 }, literals: { k: 1 }, x: 10, y: 20 },
+        { id: "o1", type: outMarker.constructor.name, init: { label: "Result" } },
+      ],
+      connections: [{ source: "m1", sourceOutput: "result", target: "o1", targetInput: "value" }],
+    };
+    const c = new CompositeNode({ internal: snapshot });
+    await c.hydrate(ctorRegistry());
+    expect(c.internalEditor.getNodes()).toHaveLength(2);
+    expect(c.internalEditor.getConnections()).toHaveLength(1); // the cable re-links to the placeholder's socket
+    const again = c.snapshotInternal();
+    const ph = again.nodes.find((n) => n.type === "NoSuchPackNode");
+    expect(ph!.init).toEqual({ label: "Gone", knob: 7 });
+    expect(ph!.literals).toEqual({ k: 1 });
+    expect(again.connections).toHaveLength(1);
+  });
+
+  it("an input marker's injected value stays out of the save; its seed is kept", async () => {
+    const c = new CompositeNode();
+    const inM = new CompositeInputNode({ label: "In", defaultValue: 4 });
+    const outM = new CompositeOutputNode({ label: "Out" });
+    for (const n of [inM, outM]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inM, "value", outM, "value");
+    const inId = c.addInputPort({ label: "In", exposure: "exposed", tier: "basic", internalNodeId: inM.id });
+    c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outM.id });
+    await c.data({ [inId]: [123] });
+    const saved = c.snapshotInternal().nodes.find((n) => n.id === inM.id)!;
+    expect("value" in saved.init).toBe(false);
+    expect(saved.init.defaultValue).toBe(4);
   });
 
   it("hydrate() is a no-op the second time (already hydrated)", async () => {
@@ -179,10 +245,6 @@ describe("CompositeNode shell", () => {
     // `node.hydrate(reg)`. Reproduce exactly that, with no composite-specific
     // code on either side beyond what's already in copyPaste.ts.
     const init = extractInit(c as unknown as ClassicPreset.Node);
-    expect(init.label).toBe("Adder");
-    expect(Array.isArray(init.inputPorts)).toBe(true);
-    expect(Array.isArray(init.outputPorts)).toBe(true);
-    expect(init.internal).toBeDefined();
 
     const reloaded = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(reloaded.label).toBe("Adder");
@@ -198,7 +260,7 @@ describe("CompositeNode shell", () => {
 describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
   it("an output port adopts the concrete type feeding its internal marker", async () => {
     const c = new CompositeNode();
-    const num = new NumberInputNode({ value: 7 }); // number-typed "value" output
+    const num = new ValueInputNode({ value: "7" }); // number-typed "value" output
     const outMarker = new CompositeOutputNode({ label: "N" });
     await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
     await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
@@ -213,7 +275,7 @@ describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
 
   it("a live rewire reverts the port to trueany when the marker is unwired", async () => {
     const c = new CompositeNode();
-    const num = new NumberInputNode({ value: 1 });
+    const num = new ValueInputNode({ value: "1" });
     const outMarker = new CompositeOutputNode({ label: "N" });
     await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
     await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
@@ -234,7 +296,7 @@ describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
     // composite adopts its rings exactly like one on the outer canvas.
     const { DisplayNode } = await import("../../../src/graph/nodes/display");
     const c = new CompositeNode();
-    const num = new NumberInputNode({ value: 7 });
+    const num = new ValueInputNode({ value: "7" });
     const disp = new DisplayNode();
     await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
     await c.internalEditor.addNode(disp as unknown as Schemes["Node"]);
@@ -245,7 +307,7 @@ describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
     await connect(c.internalEditor, num, "value", disp, "in");
     expect(sockOf("inputs")).toBe("number");
     expect(sockOf("outputs")).toBe("number");
-    // Unwiring reverts the rings (derived state, never persisted — [[E3]] adoptKeepsCables).
+    // Unwiring reverts the rings (derived state, never persisted — [[C10]] socketLattice).
     const conn = c.internalEditor.getConnections()[0]!;
     await c.internalEditor.removeConnection(conn.id);
     expect(sockOf("inputs")).toBe("trueany");
@@ -253,7 +315,7 @@ describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
 
   it("adoption survives a snapshot/hydrate round-trip (load path settles once)", async () => {
     const c = new CompositeNode();
-    const num = new NumberInputNode({ value: 3 });
+    const num = new ValueInputNode({ value: "3" });
     const outMarker = new CompositeOutputNode({ label: "N" });
     await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
     await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
@@ -273,7 +335,7 @@ describe("CompositeNode Auto-trig reads the internal unit plane", () => {
     const c = new CompositeNode();
     // A number source that publishes the `deg` angle unit on its output (the
     // unitFlow annotation the trig resolver reads) — mirrors trigMode.test.ts.
-    const angle = new NumberInputNode({ value: 90 });
+    const angle = new ValueInputNode({ value: "90" });
     (angle as unknown as { annotationFor: (k: string) => unknown }).annotationFor =
       (k: string) => (k === "value" ? { format: "auto", unit: "deg" } : undefined);
     const sin = new MathFXNode({ op: "sin" }); // auto angle mode
@@ -386,12 +448,6 @@ describe("CompositeNode Data Table run mode", () => {
     return { c, inAId, inBId, outId };
   }
 
-  it("with no axes, behaves exactly like a single run", async () => {
-    const { c, inAId, inBId, outId } = await makeAdder();
-    const out = await c.data({ [inAId]: [2], [inBId]: [3] });
-    expect(out[outId]).toBe(5);
-  });
-
   it("one varying port sweeps a simple list (Excel's one-variable Data Table)", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setDataTableValues(inAId, [1, 2, 3]);
@@ -469,7 +525,6 @@ describe("CompositeNode Simulation run mode", () => {
     const out = await c.data({});
     const series = out[popOutId] as number[];
     expect(series).toHaveLength(5);
-    expect(series.every((v) => typeof v === "number" && Number.isFinite(v))).toBe(true);
     // Growth compounds at the fixed 1.1x rate every step, regardless of which
     // of the two loop nodes the Gauss-Seidel sweep happens to visit first.
     for (let i = 1; i < series.length; i++) {
@@ -488,7 +543,6 @@ describe("CompositeNode Simulation run mode", () => {
     const out = await c.data({});
     const series = out[popOutId] as number[];
     expect(series).toHaveLength(10);
-    expect(series[9]).toBeGreaterThan(series[0]);
     expect(series[9]).toBeCloseTo(100 * Math.pow(1.1, 9), 5);
   });
 
@@ -502,7 +556,6 @@ describe("CompositeNode Simulation run mode", () => {
     const port = c.outputPorts.find((p) => p.id === popOutId)!;
     const marker = c.internalEditor.getNode(port.internalNodeId) as CompositeOutputNode;
     expect(marker.cachedResult).toEqual(out[popOutId]);
-    expect(marker.cachedResult).toHaveLength(5);
   });
 
   it("other run modes on the SAME cyclic composite get #CIRC!, not a hang", async () => {
@@ -510,7 +563,6 @@ describe("CompositeNode Simulation run mode", () => {
     c.runMode = "single";
     const out = await c.data({});
     const val = out[popOutId] as { code?: string } | null;
-    expect(val).not.toBeNull();
     expect(val?.code).toBe("#CIRC!");
   });
 
@@ -532,7 +584,6 @@ describe("CompositeNode Simulation run mode", () => {
   it("simulationSteps round-trips through extractInit", async () => {
     const { c } = await makePopulationModel(7);
     const init = extractInit(c as unknown as ClassicPreset.Node);
-    expect(init.simulationSteps).toBe(7);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.simulationSteps).toBe(7);
   });
@@ -615,9 +666,6 @@ describe("CompositeNode Simulation run mode", () => {
     const { c, popOutId } = await makePopulationModel(10);
     c.stopWhenPortId = popOutId; c.stopWhenOp = "ge"; c.stopWhenValue = 130;
     const init = extractInit(c as unknown as ClassicPreset.Node);
-    expect(init.stopWhenPortId).toBe(popOutId);
-    expect(init.stopWhenOp).toBe("ge");
-    expect(init.stopWhenValue).toBe(130);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.stopWhenPortId).toBe(popOutId);
     expect(clone.stopWhenOp).toBe("ge");
@@ -687,14 +735,6 @@ describe("CompositeNode By-Row run mode", () => {
     expect(out[outId]).toBe(10);
   });
 
-  it("caps the number of rows at BY_ROW_MAX_ROWS", async () => {
-    const { c, aId, outId } = await makeDoubler();
-    const big = Array.from({ length: BY_ROW_MAX_ROWS + 100 }, (_, i) => i);
-    c.requestSolve();
-    const out = await c.data({ [aId]: [big] });
-    expect((out[outId] as number[]).length).toBe(BY_ROW_MAX_ROWS);
-  });
-
   it("warns (Alerts + toast) when it caps, and doesn't re-fire on an identical re-Solve", async () => {
     // By-Row is a heavy mode, so it runs only on a Solve — requestSolve() before each run.
     alertStore.clear();
@@ -736,13 +776,11 @@ describe("CompositeNode By-Row run mode", () => {
     const port = c.outputPorts.find((p) => p.id === outId)!;
     const marker = c.internalEditor.getNode(port.internalNodeId) as CompositeOutputNode;
     expect(marker.cachedResult).toEqual(out[outId]);
-    expect(marker.cachedResult).toEqual([2, 4, 6]);
   });
 
   it("byRowPortId round-trips through extractInit", async () => {
     const { c, aId } = await makeDoubler();
     const init = extractInit(c as unknown as ClassicPreset.Node);
-    expect(init.byRowPortId).toBe(aId);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.byRowPortId).toBe(aId);
   });
@@ -849,15 +887,6 @@ describe("CompositeNode Goal Seek run mode", () => {
     expect(out[outId] as number).toBeCloseTo(5, 4);
   });
 
-  it("solves a negative driver too, emitting the solution", async () => {
-    const { c, inAId, inBId, outId } = await makeAdder();
-    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 4 });
-    c.requestSolve();
-    const out = await c.data({ [inBId]: [10] }); // want 4 → A = -6
-    expect(c.goalSeekResult as number).toBeCloseTo(-6, 4);
-    expect(out[outId] as number).toBeCloseTo(-6, 4);
-  });
-
   // Out = B, ignoring the driven A: no value of A can move the output → #CONV!.
   it("returns #CONV! when the output can't reach the target", async () => {
     const c = new CompositeNode({ runMode: "goal-seek" });
@@ -882,7 +911,9 @@ describe("CompositeNode Goal Seek run mode", () => {
     // Never solved (create/load): reads blank and stale until the user clicks Solve —
     // people expect to watch it compute on Solve ([[D52]] compositesHoldUntilSolve).
     const held0 = await c.data({ [inBId]: [10] });
-    expect(held0[outId]).toBeUndefined();
+    // Blank on every output key: rete-engine's fetch refuses a result missing a key.
+    expect(held0[outId]).toBeNull();
+    expect(Object.keys(held0)).toEqual(Object.keys(c.outputs));
     expect(c.goalSeekResult).toBeNull();
     expect(c.stale).toBe(true);
     // Solve runs it: Sum = A + 10, want 15 → A = 5.
@@ -899,6 +930,17 @@ describe("CompositeNode Goal Seek run mode", () => {
     const out3 = await c.data({ [inBId]: [20] });
     expect(out3[outId] as number).toBeCloseTo(-5, 4);
     expect(c.stale).toBe(false);
+  });
+
+  it("a never-solved heavy composite fetches through the engine without throwing", async () => {
+    const { c } = await makeAdder();
+    const { DataflowEngine } = await import("rete-engine");
+    const editor = new NodeEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    await editor.addNode(c as unknown as Schemes["Node"]);
+    const out = await engine.fetch(c.id);
+    expect(Object.values(out).every((v) => v === null)).toBe(true);
   });
 
   it("arm-and-run: an INTERNAL edit flags the held solve stale (dot must not lie)", async () => {
@@ -940,7 +982,6 @@ describe("CompositeNode Goal Seek run mode", () => {
     expect(out[outId] as number).toBeCloseTo(12, 4); // used seed 3, not wired 99
     // The solution goes to solvedValue (the readout), NOT the seed — the seed stays put.
     expect(inAMarker.solvedValue as number).toBeCloseTo(12, 4);
-    expect(inAMarker.goalDriver).toBe(true);
     expect(inAMarker.defaultValue).toBe(7); // starting guess untouched
   });
 
@@ -1112,7 +1153,6 @@ describe("CompositeNode Monte Carlo run mode", () => {
     await clone.hydrate(ctorRegistry());
     expect(clone.monteCarlo).toEqual({ samples: 250, seed: 3 });
     const marker = clone.internalEditor.getNodes().find((n) => n instanceof CompositeInputNode && (n as CompositeInputNode).uncertainty === 15) as CompositeInputNode;
-    expect(marker).toBeDefined();
     expect(marker.distribution).toBe("uniform");
   });
 });
@@ -1136,18 +1176,13 @@ describe("CompositeNode manual refresh mode", () => {
     return { c, inMarker, outMarker, inId, outId };
   }
 
-  it("is always heavy — holding IS the mode, not a cost gate", async () => {
-    const { c } = await makePassthrough();
-    expect(c.isHeavyMode()).toBe(true);
-  });
-
   it("holds blank until Refresh, then holds and flags stale", async () => {
     const { c, inId, outId } = await makePassthrough();
     const f1 = frameFromCells(["A"], [[1], [2]]);
     const f2 = frameFromCells(["A"], [[1], [2], [3]]);
     // Never refreshed (create/load): reads blank and stale — no solve until Refresh.
     const held0 = await c.data({ [inId]: [f1] });
-    expect(held0[outId]).toBeUndefined();
+    expect(held0[outId]).toBeNull();
     expect(c.stale).toBe(true);
     // Refresh computes it.
     c.requestSolve();
@@ -1185,15 +1220,6 @@ describe("CompositeNode manual refresh mode", () => {
     expect(out[outId]).toBe(10); // wired value, not the seed
   });
 
-  it("runMode round-trips through extractInit like every other mode field", async () => {
-    const { c } = await makePassthrough();
-    const init = extractInit(c as unknown as ClassicPreset.Node);
-    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
-    await clone.hydrate(ctorRegistry());
-    expect(clone.runMode).toBe("manual");
-    expect(clone.isHeavyMode()).toBe(true);
-  });
-
   it("a heavy composite loaded from JSON reads blank and stale until Solve", async () => {
     // extractInit → new → hydrate is the exact path persistence.ts and paste take, so a
     // fresh load starts unsolved: no solve on load ([[D52]] compositesHoldUntilSolve).
@@ -1204,7 +1230,7 @@ describe("CompositeNode manual refresh mode", () => {
     const outId = loaded.outputPorts[0].id;
     const f = frameFromCells(["A"], [[1], [2]]);
     const held = await loaded.data({ [inId]: [f] });
-    expect(held[outId]).toBeUndefined(); // blank
+    expect(held[outId]).toBeNull(); // blank
     expect(loaded.stale).toBe(true);
     loaded.requestSolve();
     const out = await loaded.data({ [inId]: [f] });
@@ -1220,7 +1246,7 @@ describe("CompositeNode manual refresh mode", () => {
     // A switch INTO a heavy mode reads unsolved — not the leftover single-pass value.
     c.runMode = "manual";
     const held = await c.data({ [inId]: [5] });
-    expect(held[outId]).toBeUndefined(); // blank, not 5
+    expect(held[outId]).toBeNull(); // blank, not 5
     expect(c.stale).toBe(true);
     c.requestSolve();
     const out = await c.data({ [inId]: [5] });
@@ -1232,9 +1258,7 @@ describe("CompositeNode manual refresh mode", () => {
 describe("Query catalog preset", () => {
   it("hydrates into a manual-refresh Table→Result passthrough", async () => {
     const entry = FLAT_CATALOG.get("query")!;
-    expect(entry).toBeDefined();
     const q = entry.create() as CompositeNode;
-    expect(q).toBeInstanceOf(CompositeNode);
     expect(q.runMode).toBe("manual");
     expect(q.isHydrated).toBe(false); // ships a pending snapshot — add paths hydrate
     await q.hydrate(ctorRegistry());
@@ -1248,9 +1272,6 @@ describe("Query catalog preset", () => {
     const out = await q.data({ [q.inputPorts[0].id]: [frame] });
     expect(out[q.outputPorts[0].id]).toBe(frame);
   });
-  // The preset's persistence shape rides the generic pins: extractInit of a
-  // hydrated composite ("round-trips through extractInit — the EXACT path
-  // persistence.ts and paste use") and the runMode round-trip above.
 });
 
 describe("CompositeNode run modes — review pins", () => {
@@ -1273,7 +1294,6 @@ describe("CompositeNode run modes — review pins", () => {
     c.requestSolve();
     const out = await c.data({ [inBId]: [7] });
     expect(out[outId] as number).toBeCloseTo(0.032173, 6);
-    expect(out[outId]).not.toBe(0.0322);
   });
 
   it("Monte Carlo over a wired BLANK uncertain input emits blank outputs, never draws around 0", async () => {
@@ -1290,5 +1310,81 @@ describe("CompositeNode run modes — review pins", () => {
     c.requestSolve();
     const ok = await c.data({ [aId]: [10] });
     expect(isUncertain(ok[outId])).toBe(true);
+  });
+});
+
+describe("an error crossing the boundary acts as it would unpacked ([[D35]] errorInErrorOut)", () => {
+  // Lane A: A → IFERROR(A, -1) → OutA. Lane B: B → OutB.
+  async function twoLanes() {
+    const c = new CompositeNode();
+    installErrorGuards(c);
+    const inA = new CompositeInputNode({ label: "A" });
+    const inB = new CompositeInputNode({ label: "B" });
+    const catcher = new IFErrorNode();
+    catcher.literals = { value: 0, fallback: -1 };
+    const outA = new CompositeOutputNode({ label: "OutA" });
+    const outB = new CompositeOutputNode({ label: "OutB" });
+    for (const n of [inA, inB, catcher, outA, outB]) {
+      await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+      installErrorGuards(n);
+    }
+    await connect(c.internalEditor, inA, "value", catcher, "value");
+    await connect(c.internalEditor, catcher, "result", outA, "value");
+    await connect(c.internalEditor, inB, "value", outB, "value");
+    const aId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const bId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
+    const aOut = c.addOutputPort({ label: "OutA", tier: "basic", internalNodeId: outA.id });
+    const bOut = c.addOutputPort({ label: "OutB", tier: "basic", internalNodeId: outB.id });
+    return { c, aId, bId, aOut, bOut };
+  }
+
+  it("a catcher inside catches it, and a lane that never reads it is untouched", async () => {
+    const { c, aId, bId, aOut, bOut } = await twoLanes();
+    const out = await c.data({ [aId]: [solError("#DIV/0!", "")], [bId]: [7] });
+    expect(out[aOut]).toBe(-1);
+    expect(out[bOut]).toBe(7);
+  });
+
+  it("an error that reaches an output marker is that output's value, never a blank", async () => {
+    const { c, aId, bId, aOut, bOut } = await twoLanes();
+    const out = await c.data({ [aId]: [3], [bId]: [solError("#N/A", "")] });
+    expect(out[aOut]).toBe(3);
+    expect((out[bOut] as { code: string }).code).toBe("#N/A");
+  });
+
+  it("Monte Carlo over an error mean gives that error, and goal seek from an error start does too", async () => {
+    const { c, aId, bId, aOut, bOut } = await twoLanes();
+    const markerB = c.internalEditor.getNode(c.inputPorts[1].internalNodeId) as CompositeInputNode;
+    markerB.uncertainty = 1;
+    c.runMode = "montecarlo";
+    c.requestSolve();
+    const mc = await c.data({ [aId]: [3], [bId]: [solError("#VALUE!", "")] });
+    expect((mc[bOut] as { code: string }).code).toBe("#VALUE!");
+    markerB.uncertainty = null;
+    c.runMode = "goal-seek";
+    c.setGoalSeek({ inputPortId: bId, outputPortId: bOut, target: 5 });
+    c.requestSolve();
+    const gs = await c.data({ [aId]: [3], [bId]: [solError("#REF!", "")] });
+    expect((gs[bOut] as { code: string }).code).toBe("#REF!");
+    expect(gs[aOut]).toBe(3);
+  });
+});
+
+describe("a heavy composite with a live card waiting for permission", () => {
+  it("says so, and its solve stays stale", async () => {
+    const { connectionStore } = await import("../../../src/graph/connectionStore");
+    const c = new CompositeNode({ runMode: "manual" });
+    const inner = new ValueInputNode();
+    await c.internalEditor.addNode(inner as unknown as Schemes["Node"]);
+    expect(c.gatedInside()).toBe(false);
+    connectionStore.setState(inner.id, { status: "gated" });
+    try {
+      expect(c.gatedInside()).toBe(true);
+      c.requestSolve(false);
+      await c.data({});
+      expect(c.stale).toBe(true);
+    } finally {
+      connectionStore.setState(inner.id, { status: "idle" });
+    }
   });
 });

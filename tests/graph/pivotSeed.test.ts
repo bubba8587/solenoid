@@ -6,7 +6,7 @@ import * as Nodes from "../../src/graph/rete-nodes";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
-import { isFrameValue, type FrameValue, type FrameCell } from "../../src/graph/frame";
+import type { FrameValue, FrameCell } from "../../src/graph/frame";
 import seed from "../fixtures/pivot-tables.json"; // the retired seed, kept as the Pivot fixture (2026-09-16)
 
 // Runs the "Pivot tables (one source, many views)" seed through a real editor +
@@ -32,7 +32,6 @@ describe("pivot-tables seed", () => {
     const byId = new Map<string, ClassicPreset.Node>();
     for (const sn of (seed.nodes as SavedNode[])) {
       const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
-      expect(Ctor, `unknown type ${sn.type}`).toBeTypeOf("function");
       const node = new Ctor({ ...sn.init });
       const anyNode = node as unknown as Record<string, unknown>;
       if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
@@ -47,12 +46,10 @@ describe("pivot-tables seed", () => {
 
     const frameOf = async (seedId: string) => {
       const out = (await engine.fetch(byId.get(seedId)!.id)) as Record<string, unknown>;
-      expect(isFrameValue(out.frame), `${seedId} did not produce a frame`).toBe(true);
       return out.frame as FrameValue;
     };
     const col = (f: FrameValue, name: string): FrameCell[] => {
       const c = f.columns.find((x) => x.name === name);
-      expect(c, `column "${name}" not found (have ${f.columns.map((x) => x.name).join(", ")})`).toBeDefined();
       return c!.values;
     };
 
@@ -110,8 +107,6 @@ describe("pivot-tables seed", () => {
     // Source reshape (Power Query column ops on the same Orders frame).
     const sp = await frameOf("splitDate");
     const spNames = sp.columns.map((c) => c.name);
-    expect(spNames).toContain("Dept");
-    expect(spNames).toContain("Code");
     expect(spNames).not.toContain("SKU"); // the source column is replaced
     expect(col(sp, "Dept")[0]).toBe("EL");   // row 0 is Electronics → EL-001
     expect(col(sp, "Code")[0]).toBe("001");

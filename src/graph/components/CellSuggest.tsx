@@ -1,5 +1,6 @@
-import { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
+import { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
+import { stepListSel } from "./gridKeyboard";
 import { useHangUnder } from "./columnHeadControls";
 
 /** What the host input's keydown asks first: true = the list took the key. */
@@ -7,24 +8,19 @@ export interface CellSuggestHandle { onKey: (e: { key: string; preventDefault: (
 
 const MAX_ITEMS = 50;
 
-/** A Text column's existing values, offered on the ONE cell being edited: an opener on
- *  the cell's right edge and a list hung under the cell. It filters as the draft is
- *  typed and never opens on focus alone (arrowing through the grid must not pop lists).
- *  Anything new still types: the list suggests, it never constrains. The host input
- *  keeps focus throughout, so a press here must not blur it. */
-export function CellSuggest({ options, draft, onPick, handle }: {
+/** Never opens on focus alone and never constrains; the host input keeps focus throughout, so a press here must not blur it. */
+export function CellSuggest({ options, draft, onPick, handle, detail, opener = { title: "Existing values", label: "Show this column's existing values" } }: {
   options: string[];
   draft: string;
   onPick: (value: string) => void;
   handle: Ref<CellSuggestHandle>;
+  opener?: { title: string; label: string };
+  /** Drawn after a value, when there is something to add. */
+  detail?: (value: string) => ReactNode;
 }) {
   const anchorRef = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLUListElement>(null);
-  // The opener shows every value; typing shows the matches. `settled` is the draft the
-  // list last closed on (the cell's text at focus, then each pick), so it stays shut
-  // until the text moves again.
-  // `allAt` = the draft the opener was pressed on: every value shows only until the
-  // text moves, then typing filters like anywhere else.
+  // `settled` is the draft the list last closed on, so it stays shut until the text moves; `allAt` is the draft the opener was pressed on, and every value shows only until the text moves.
   const [allAt, setAllAt] = useState<string | null>(null);
   const [settled, setSettled] = useState(draft);
   const [sel, setSel] = useState(-1);
@@ -34,8 +30,7 @@ export function CellSuggest({ options, draft, onPick, handle }: {
     const viaOpener = allAt !== null;
     if (viaOpener && (draft === allAt || q === "")) return options.slice(0, MAX_ITEMS);
     if (q === "" || (!viaOpener && draft === settled)) return [];
-    // A fully typed value STAYS, first: it confirms the value already exists in a column
-    // the user may not have in view, and a short one ("A") is a prefix of others anyway.
+    // An exact match stays, first: it confirms the value exists in a column the user may not have in view.
     const exact: string[] = [], starts: string[] = [], holds: string[] = [];
     for (const o of options) {
       const t = o.toLowerCase();
@@ -48,7 +43,6 @@ export function CellSuggest({ options, draft, onPick, handle }: {
   const open = items.length > 0;
   const style = useHangUnder(open, anchorRef, menuRef, "left", true, items.length);
 
-  // A keyboard selection past the visible rows scrolls into view.
   useLayoutEffect(() => {
     if (sel >= 0) menuRef.current?.children[sel]?.scrollIntoView({ block: "nearest" });
   }, [sel]);
@@ -65,7 +59,7 @@ export function CellSuggest({ options, draft, onPick, handle }: {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const n = items.length;
-        setSel((s) => (e.key === "ArrowDown" ? (s + 1) % n : (s - 1 + n) % n));
+        setSel((s) => stepListSel(s, n, e.key === "ArrowDown" ? 1 : -1));
         return true;
       }
       if ((e.key === "Enter" || e.key === "Tab") && sel >= 0) { e.preventDefault(); pick(items[sel]); return true; }
@@ -78,14 +72,14 @@ export function CellSuggest({ options, draft, onPick, handle }: {
     <span
       className="table-popup__affix"
       onMouseDown={keepFocus}
-      // The list hangs under the whole cell (or Form box), not under this small button.
-      ref={(el) => { anchorRef.current = el?.closest<HTMLElement>("td, .table-popup__form-box") ?? null; }}
+      // The list hangs under the whole cell (or header, or Form box), not under this small button.
+      ref={(el) => { anchorRef.current = el?.closest<HTMLElement>("td, th, .table-popup__form-box") ?? null; }}
     >
       <button
         type="button"
         className="table-popup__affix-btn"
-        title="Existing values"
-        aria-label="Show this column's existing values"
+        title={opener.title}
+        aria-label={opener.label}
         aria-expanded={open}
         tabIndex={-1}
         onClick={() => { if (open) close(draft); else { setAllAt(draft); setSel(-1); } }}
@@ -111,6 +105,7 @@ export function CellSuggest({ options, draft, onPick, handle }: {
               onClick={() => pick(v)}
             >
               {v}
+              {detail?.(v)}
             </li>
           ))}
         </ul>,

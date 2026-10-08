@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import type { GanttNode as GanttNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
@@ -6,22 +6,21 @@ import { ChartChip } from "./ChartChip";
 import { isSolError } from "../errorValue";
 import { registerChartSvgProvider } from "../canvasCapture";
 import { ganttSvg } from "@solenoid/gantt-layout";
+import { CardSection, useRowsInUse } from "./CardSection";
+import { GANTT_DEFAULT_LITERALS } from "../nodes/gantt";
+import { collapseStore } from "../collapseStore";
 
-// A width the serialized/exported Gantt draws at, independent of any on-screen size.
 const GANTT_EXPORT_W = 1000;
+const CALENDAR_KEYS = ["holidays", "weekend_code"];
 
-// The card never draws the timeline — squished at card width it reads as noise
-// ([[C63]] oneRecordNode). The hero box holds the [Chart] chip; the figure draws where the
-// chart output lands: a resizable Display, the popup, a Report embed.
 export function GanttComponent({ data, emit }: NodeProps<GanttNodeType>) {
   const cv = data.cachedChart;
   const chart = cv && !isSolError(cv) ? cv : null;
   const payload = chart?.payload?.kind === "gantt" ? chart.payload : null;
+  const calendar = useRowsInUse(data, CALENDAR_KEYS, GANTT_DEFAULT_LITERALS);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
 
-  // The figure isn't drawn on this card, but the card CAN serialize it — so it
-  // registers the export SVG provider under its OWN node id (canvasCapture's
-  // data-chart-svg-provider seam). A Report referencing this node then exports the
-  // whole chart (webpage + Obsidian raster) via ganttSvg, with no mounted figure.
+  // Registered under its own node id, so a Report exports the whole chart with no mounted figure.
   useEffect(() => {
     if (!payload) return;
     return registerChartSvgProvider(data.id, () => ganttSvg(payload, { width: GANTT_EXPORT_W }));
@@ -29,7 +28,12 @@ export function GanttComponent({ data, emit }: NodeProps<GanttNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} keys={["schedule", "baseline", "holidays", "weekend_code", "status", "options"]} />
+      <InlineInputs node={data} emit={emit} keys={collapsed ? undefined : ["schedule", "baseline", "status", "options"]} />
+      {!collapsed && (
+        <CardSection label="Calendar" collapsible defaultOpen={calendar} sockets={{ node: data, emit, keys: CALENDAR_KEYS }}>
+          <InlineInputs node={data} emit={emit} keys={CALENDAR_KEYS} />
+        </CardSection>
+      )}
       <div className="solenoid-node__section-divider" />
       {chart
         ? <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={chart} /></div>

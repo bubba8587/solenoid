@@ -1,6 +1,7 @@
-// [[C97]] rechartsLazyChunk
+// [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import { buildQrPayload, qrModulesToSvg, svgDataUrl } from "../../src/graph/qrCode";
+import { QrCodeNode } from "../../src/graph/nodes/qr";
 
 // C1 QR Code — payload assembly + SVG rendering are pure + fixture-tested (widget rule 5).
 // The encoding itself is the `qrcode` package, imported lazily in the node.
@@ -29,6 +30,10 @@ describe("buildQrPayload — wifi", () => {
   it("hidden adds H:true", () => {
     expect(buildQrPayload("wifi", { ssid: "N", wifiPass: "p", wifiAuth: "WPA", wifiHidden: true }))
       .toBe("WIFI:T:WPA;S:N;P:p;H:true;;");
+  });
+  it("hidden with no password keeps H:true before the closing ;;", () => {
+    expect(buildQrPayload("wifi", { ssid: "N", wifiAuth: "nopass", wifiHidden: true }))
+      .toBe("WIFI:T:nopass;S:N;H:true;;");
   });
   it("no SSID → empty (no code)", () => {
     expect(buildQrPayload("wifi", { ssid: "", wifiPass: "p" })).toBe("");
@@ -66,5 +71,18 @@ describe("svgDataUrl", () => {
   it("wraps an SVG as a utf8 data URL", () => {
     const url = svgDataUrl("<svg/>");
     expect(url).toBe("data:image/svg+xml,%3Csvg%2F%3E");
+  });
+});
+
+describe("QR Code node image", () => {
+  it("a new height or label redraws the image for the same payload", async () => {
+    const n = new QrCodeNode();
+    n.stringLiterals.text = "https://example.com";
+    const first = (await n.data({})).chart!;
+    n.height = 320;
+    n.label = "Site";
+    const second = (await n.data({})).chart!;
+    expect([second.height, second.alt]).toEqual([320, "Site"]);
+    expect(first.height).toBe(200);
   });
 });

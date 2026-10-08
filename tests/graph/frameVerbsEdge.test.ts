@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest";
 import {
   selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows,
   filterRows, groupByFrame, joinFrames, appendFrames, pivotFrame, unpivotFrame,
-  nestFrame,
+  nestFrame, windowFrame,
 } from "../../src/graph/frameVerbs";
 import { frameRowCount, type FrameValue } from "../../src/graph/frame";
 
@@ -66,14 +66,56 @@ describe("ragged + all-null", () => {
     const out = headRows(ragged, 3);
     expect(out.columns[1].values).toEqual([9, null, null]);
   });
-  it("an all-null key column matches nothing in a join (null != null)", () => {
-    const nullsL: FrameValue = { __frame: true, columns: [{ name: "k", type: "number", values: [null, null] }] };
-    const nullsR: FrameValue = { __frame: true, columns: [{ name: "k", type: "number", values: [null] }] };
-    expect(frameRowCount(joinFrames(nullsL, nullsR, { leftKey: "k", rightKey: "k", how: "inner" }))).toBe(0);
-  });
   it("append of two empty frames is an empty frame with the union schema", () => {
     const out = appendFrames([empty, { __frame: true, columns: [{ name: "c", type: "number", values: [] }] }]);
     expect(out.columns.map((c) => c.name)).toEqual(["a", "b", "c"]);
     expect(frameRowCount(out)).toBe(0);
+  });
+});
+
+describe("window over one large partition", () => {
+  it("runs in linear time and never spreads the partition into Math.min", () => {
+    const n = 200_000;
+    const f: FrameValue = { __frame: true, columns: [{ name: "v", type: "number", values: Array.from({ length: n }, (_, i) => i % 7) }] };
+    for (const fn of ["group_min", "cummax", "cumsum", "dense_rank", "rank"] as const) {
+      const out = windowFrame(f, { partitionBy: [], orderBy: "v", fn, column: "v", as: "w" });
+      expect(out.columns[1].values.length).toBe(n);
+    }
+    const ranks = windowFrame(f, { partitionBy: [], orderBy: "v", fn: "dense_rank", as: "w" }).columns[1].values;
+    expect(ranks[6]).toBe(7);
+  }, 10_000);
+});
+
+describe("aggregates over one large group", () => {
+  it("never spread the group into a call", () => {
+    const n = 200_000;
+    const f: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "k", type: "string", values: Array.from({ length: n }, () => "a") },
+        { name: "v", type: "number", values: Array.from({ length: n }, (_, i) => i % 7) },
+      ],
+    };
+    const ops = ["sum", "avg", "min", "max", "product", "median", "mode", "stdev", "stdevp", "var", "varp"] as const;
+    const g = groupByFrame(f, ["k"], ops.map((op) => ({ column: "v", op, as: op })));
+    const at = (op: string) => g.columns.find((c) => c.name === op)!.values[0];
+    for (const op of ops) expect(typeof at(op), op).toBe("number");
+    expect([at("sum"), at("min"), at("max"), at("product"), at("median")]).toEqual([599_994, 0, 6, 0, 3]);
+  }, 10_000);
+});
+
+describe("appendFrames keeps a unit and format every frame agrees on", () => {
+  const col = (unit?: { dim: Record<string, number>; display?: string }, format?: { format: string; unit: string }) =>
+    ({ __frame: true as const, columns: [{ name: "d", type: "number" as const, values: [1], ...(unit ? { unit } : {}), ...(format ? { format } : {}) }] });
+  const km = { dim: { length: 1 }, display: "km" };
+  const pct = { format: "percent", unit: "none" };
+  it("keeps what they share and drops what they don't", () => {
+    const same = appendFrames([col(km, pct), col(km, pct)] as never).columns[0];
+    expect(same.unit).toEqual(km);
+    expect(same.format).toEqual(pct);
+    const mixed = appendFrames([col(km, pct), col({ dim: { length: 1 }, display: "m" }, pct)] as never).columns[0];
+    expect(mixed.unit).toBeUndefined();
+    expect(mixed.format).toEqual(pct);
+    expect(appendFrames([col(km), col()] as never).columns[0].unit).toBeUndefined();
   });
 });

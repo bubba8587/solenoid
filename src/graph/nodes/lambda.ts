@@ -1,30 +1,31 @@
 import { ClassicPreset } from "rete";
 import { anyListIn, lambdaOut, readInput } from "./shared";
-import { extractVariables, atColNames, compilePositional, formulaSyntaxHint } from "../excelFormula";
+import { extractVariables, atColNames, compilePositional, formulaSyntaxHint, isFormulaConstant } from "../excelFormula";
 export { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { type LambdaValue } from "../lambdaValue";
 import { solError, type SolError } from "../errorValue";
-
-// Declared PARAMETERS stay unbound; every OTHER variable becomes an input socket and is
-// CAPTURED into the closure at compute time. No recursion, no lambdas returning lambdas.
+import { readCapturedColumn } from "../computedColumnCore";
 
 export function formatLambda(v: LambdaValue): string {
   return `λ(${v.params.join(", ")})`;
 }
 
-/** A consumer's call signature; the first `required` vars are mandatory. A by-name
- *  consumer's params must be drawn from these names, order-free ([[C50]] lambdaBindsByName). */
+/** The first `required` vars are mandatory; a lambda's params are drawn from `vars` in any order ([[C50]] lambdaBindsByName). */
 export interface LambdaSig { vars: string[]; required: number }
 
-/** Human signature for the advisory, optional slots in brackets: `acc, x, [i]`. */
 export function formatLambdaSig(sig: LambdaSig): string {
   return sig.vars.map((v, i) => (i < sig.required ? v : `[${v}]`)).join(", ");
 }
 
-/** Consumer variables the lambda USED but did not DECLARE — by-name binding can't reach
- *  them, so they silently became captured constants (0); non-empty → the card advises. */
 export function undeclaredConsumerVars(captured: string[] | undefined, sig: LambdaSig): string[] {
   return (captured ?? []).filter((c) => sig.vars.includes(c));
+}
+
+/** Parameters the body writes both bare and `@`: both read this row, so the bare one likely means the column ([[C22]] rowFormulaRefs). */
+export function perRowParamClashes(params: string[], expr: string): string[] {
+  const bare = new Set(extractVariables(expr));
+  const at = new Set(atColNames(expr));
+  return params.filter((p) => bare.has(p) && at.has(p));
 }
 
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -33,7 +34,6 @@ type Compiled = (...args: unknown[]) => unknown;
 
 export class LambdaNode extends ClassicPreset.Node {
   label: string;
-  /** Comma-separated parameter names, e.g. "x" or "acc, x". */
   params: string;
   expr: string;
   literals: Record<string, number> = {};
@@ -42,14 +42,11 @@ export class LambdaNode extends ClassicPreset.Node {
   width = 220;
   height = 212;
 
-  /** Prose per variable, kept OUT of the formula so KaTeX never renders it. */
   varDescriptions: Record<string, string> = {};
 
-  // Derived — recomputed by _rebuild() whenever expr/params change.
   captured: string[] = [];
   compiled: Compiled | null = null;
 
-  /** Params + captured, deduped — extractInit filters varDescriptions against it. */
   get varNames(): string[] {
     const params = this.paramList();
     return [...params, ...this.captured.filter((v) => !params.includes(v))];
@@ -70,15 +67,11 @@ export class LambdaNode extends ClassicPreset.Node {
     return this.params.split(",").map((s) => s.trim()).filter(Boolean);
   }
 
-  /** Returns { added, removed } so the caller drops cables for removed sockets BEFORE
-   *  removeInput (same contract as ExpressionNode._rebuild). */
   _rebuild(): { added: string[]; removed: string[] } {
     const params = this.paramList();
     const prev = new Set(this.captured);
-    // Free variables AND @names both grow a socket; at row-eval, columns/builtins win
-    // over the capture, and `row`/`rows` are builtins so they capture nothing.
     const next = [...new Set([...extractVariables(this.expr), ...atColNames(this.expr)])]
-      .filter((v) => !params.includes(v) && v !== "row" && v !== "rows");
+      .filter((v) => !params.includes(v));
     const nextSet = new Set(next);
 
     const added: string[] = [];
@@ -98,13 +91,23 @@ export class LambdaNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[]>): { result: LambdaValue | SolError | null } {
-    // A broken lambda emits a tagged error down its cable so the consumer's guard chains
-    // it; a blank lambda would silently no-op instead.
     const params = this.paramList();
     if (!params.every((p) => IDENT.test(p))) {
       this.cachedValue = null;
       this.cachedError = "Bad parameter name";
       return { result: solError("#NAME?", "A lambda parameter name isn't a valid identifier") };
+    }
+    if (new Set(params).size !== params.length) {
+      this.cachedValue = null;
+      this.cachedError = "A parameter appears twice";
+      return { result: solError("#NAME?", "A lambda parameter name appears twice") };
+    }
+    const constant = params.find(isFormulaConstant);
+    if (constant) {
+      // [[D77]] constantsAlwaysWin
+      this.cachedValue = null;
+      this.cachedError = `${constant} is a constant`;
+      return { result: solError("#NAME?", `${constant} is a constant, so it can't name a lambda parameter`) };
     }
     if (!this.compiled) {
       this.cachedValue = null;
@@ -114,10 +117,8 @@ export class LambdaNode extends ClassicPreset.Node {
       return { result: solError("#SYNTAX!", hint ?? "The lambda body has a syntax error") };
     }
     const compiled = this.compiled;
-    // Captured values resolve NOW, so a consumer never reaches back into the graph.
     const capturedVals = this.captured.map((v) => readInput(inputs[v], this.literals[v] ?? 0));
-    // IDENTITY-STABLE output: consumers and the backend upload cache key memos on value
-    // identity, so an unchanged recompute must return the SAME LambdaValue object.
+    // An unchanged recompute must return the same LambdaValue object: consumers and the backend upload cache memo on identity.
     const descJson = JSON.stringify(this.varDescriptions);
     const last = this._lastBuild;
     if (
@@ -127,16 +128,20 @@ export class LambdaNode extends ClassicPreset.Node {
     ) {
       return { result: this.cachedValue };
     }
+    const captured = [...this.captured];
+    // [[C22]] rowFormulaRefs: inside a computed column a column outranks a capture.
     const fn: Compiled = (...args) =>
-      compiled(...args.slice(0, params.length), ...capturedVals);
+      compiled(...args.slice(0, params.length), ...captured.map((c, i) => {
+        const col = readCapturedColumn(c);
+        return col.hit ? col.v : capturedVals[i];
+      }));
     const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
-    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, captured: [...this.captured], descriptions };
+    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, captured, descriptions };
     this._lastBuild = { expr: this.expr, params: this.params, descJson, capturedVals };
     this.cachedValue = value;
     this.cachedError = null;
     return { result: value };
   }
 
-  /** What the last emitted LambdaValue was built from (identity memo). */
   private _lastBuild: { expr: string; params: string; descJson: string; capturedVals: unknown[] } | null = null;
 }

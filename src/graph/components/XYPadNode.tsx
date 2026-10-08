@@ -8,12 +8,10 @@ export function XYPadComponent({ data, emit }: NodeProps<XYPadNodeType>) {
   const [fx, setFx] = useState(data.literals.fx ?? 0.5);
   const [fy, setFy] = useState(data.literals.fy ?? 0.5);
   const padRef = useRef<HTMLDivElement>(null);
-  // The handle follows these live, but the graph only recomputes on release —
-  // processGraph per move is laggy.
+  // The handle follows these live; the graph recomputes only on release, since processGraph per move lags.
   const live = useRef({ fx, fy });
 
-  // getBoundingClientRect already folds in the canvas zoom, so the fraction holds at
-  // any scale; Y is flipped so up = 1. Visual only — no recompute.
+  // getBoundingClientRect already folds in the canvas zoom, so the fraction holds at any scale.
   const track = useCallback((clientX: number, clientY: number) => {
     const el = padRef.current;
     if (!el) return;
@@ -56,11 +54,11 @@ export function XYPadComponent({ data, emit }: NodeProps<XYPadNodeType>) {
           track(e.clientX, e.clientY);
         }}
         onPointerMove={(e) => {
-          if (e.buttons === 0) return;
+          if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
           track(e.clientX, e.clientY);
         }}
-        onPointerUp={commit}
-        onPointerCancel={commit}
+        onPointerUp={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) commit(); }}
+        onPointerCancel={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) commit(); }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div

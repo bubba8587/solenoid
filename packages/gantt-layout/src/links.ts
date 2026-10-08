@@ -1,12 +1,9 @@
 // [[C69]] ganttPackages
-// Dependency arrows: orthogonal polylines with the endpoint conventions FS right→left,
-// SS left→left, FF right→right, SF left→right, plus an arrowhead; the view adds a hit path from the same points.
 
 import type { GanttPayload, GanttLink, LinkType } from "./payload";
 import type { FrameRow, FrameBar, FrameScale, FrameLink } from "./frame";
 import { xOf, drawnLastDay } from "./scale";
 
-/** Horizontal stub length off a bar edge before the arrow turns, in px. */
 const STUB = 11;
 
 interface Anchor {
@@ -16,7 +13,6 @@ interface Anchor {
   milestone: boolean;
 }
 
-/** Which edge each link end attaches to, and the arrow's pointing direction at the target. */
 function ends(type: LinkType): { srcRight: boolean; tgtLeft: boolean } {
   switch (type) {
     case "FS": return { srcRight: true, tgtLeft: true };
@@ -36,7 +32,6 @@ export function buildLinks(
 ): FrameLink[] {
   if (payload.view.arrows === false) return [];
 
-  // Anchor points for every task row (links must route even to a culled row's neighbor).
   const anchors = new Map<string, Anchor>();
   for (const row of rows) {
     if (row.section || row.taskIndex < 0) continue;
@@ -56,7 +51,7 @@ export function buildLinks(
   for (const link of payload.links) {
     const a = anchors.get(link.from);
     const b = anchors.get(link.to);
-    if (!a || !b) continue; // an endpoint is collapsed/hidden — no arrow drawn
+    if (!a || !b) continue;
 
     if (cull) {
       const loY = Math.min(a.midY, b.midY);
@@ -77,13 +72,11 @@ function route(link: GanttLink, a: Anchor, b: Anchor): FrameLink {
   const ty = b.midY;
 
   const sdir = srcRight ? 1 : -1;
-  const tdir = tgtLeft ? 1 : -1; // arrow points +x into a left edge, -x into a right edge
+  const tdir = tgtLeft ? 1 : -1;
   const exitX = sx + sdir * STUB;
   const entryX = tx - tdir * STUB;
   const midY = (sy + ty) / 2;
 
-  // Six-point orthogonal route; collinear points are collapsed below. Handles forward links
-  // and backward loops (entryX < exitX) alike.
   const raw = [
     { x: sx, y: sy },
     { x: exitX, y: sy },
@@ -105,7 +98,6 @@ function route(link: GanttLink, a: Anchor, b: Anchor): FrameLink {
   };
 }
 
-/** Drop the middle of any three collinear points so the polyline has no redundant vertices. */
 function collapseCollinear(pts: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> {
   const out: Array<{ x: number; y: number }> = [];
   for (const p of pts) {
@@ -115,9 +107,8 @@ function collapseCollinear(pts: Array<{ x: number; y: number }>): Array<{ x: num
       const b = out[n - 1];
       const abx = b.x - a.x, aby = b.y - a.y;
       const bcx = p.x - b.x, bcy = p.y - b.y;
-      // collinear if the cross product is ~0 and same direction (both horizontal or vertical)
       if (Math.abs(abx * bcy - aby * bcx) < 1e-6) {
-        out[n - 1] = p; // replace the middle point
+        out[n - 1] = p;
         continue;
       }
     }

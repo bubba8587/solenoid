@@ -11,6 +11,8 @@ sample-data
 __pycache__
 # Agent worktrees hold full repo copies; scanning them double-counts everything.
 .claude
+# Inside a worktree .git is a file, which the scanner's .git-directory skip misses.
+.git
 # Generated dev-graph mirror + coverage output.
 .dev
 coverage
@@ -32,3 +34,18 @@ tools/dte.py
 *.ics
 # Vendored DTE rule text: its citations are DTE's tree, not this one.
 dte-rules/*
+# The author's Obsidian config for the tree vault (git-ignored, local).
+.obsidian
+# Git-ignored local files the coverage gauge must not count: logs, editor state, generated copy-rewrite files.
+logs
+*.log
+dist-ssr
+*.local
+.vscode
+.idea
+.DS_Store
+*.sw?
+*.suo
+*~lock~
+copy-inventory.md
+copy-inventory.md.orig.json

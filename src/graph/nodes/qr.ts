@@ -1,12 +1,8 @@
-// [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk
+// [[C100]] chartIsAValue
 import { ClassicPreset } from "rete";
 import { chartOut, strIn, readInput } from "./shared";
 import { type ImageValue } from "../imageValue";
 import { buildQrPayload, qrModulesToSvg, svgDataUrl, type QrTemplate, type QrFields } from "../qrCode";
-
-// Text → a QR image on the `chart` socket ([[C100]] chartIsAValue); a template shapes the
-// payload (text/URL, Wi-Fi join, vCard). The `qrcode` encoder is a lazy import
-// ([[C97]] rechartsLazyChunk); the SVG build is the pure qrCode.ts.
 
 export class QrCodeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -18,7 +14,6 @@ export class QrCodeNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = { wifiAuth: "WPA" };
   height = 200;
   width = 240;
-  /** Read by the component's preview; never persisted. */
   cachedResult: ImageValue | null = null;
   private _cache: { key: string; value: ImageValue | null } | null = null;
 
@@ -44,12 +39,13 @@ export class QrCodeNode extends ClassicPreset.Node {
   async data(inputs: { text?: string[] }): Promise<{ chart: ImageValue | null }> {
     const wired = this.qrTemplate === "text" ? readInput(inputs.text, this.stringLiterals.text ?? "") : "";
     const payload = buildQrPayload(this.qrTemplate, this.fields(typeof wired === "string" ? wired : ""));
-    if (this._cache && this._cache.key === payload) {
+    const key = JSON.stringify([payload, this.height, this.label]);
+    if (this._cache && this._cache.key === key) {
       this.cachedResult = this._cache.value;
       return { chart: this._cache.value };
     }
     if (payload === "") {
-      this._cache = { key: payload, value: null };
+      this._cache = { key, value: null };
       this.cachedResult = null;
       return { chart: null };
     }
@@ -58,7 +54,7 @@ export class QrCodeNode extends ClassicPreset.Node {
     const qr = QRCode.create(payload, { errorCorrectionLevel: "M" });
     const svg = qrModulesToSvg(qr.modules.size, qr.modules.data);
     const value: ImageValue = { __image: true, src: svgDataUrl(svg), height: this.height, alt: this.label, title: this.label };
-    this._cache = { key: payload, value };
+    this._cache = { key, value };
     this.cachedResult = value;
     return { chart: value };
   }

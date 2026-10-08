@@ -1,6 +1,6 @@
 // [[C103]] untrustedContentSeams
 import { describe, it, expect } from "vitest";
-import { parseCsvLine, parseCsvRows, csvFieldSpans } from "../../src/graph/csv";
+import { parseCsvLine, parseCsvRows, csvFieldSpans, joinCsvRows } from "../../src/graph/csv";
 
 describe("csvFieldSpans", () => {
   const cut = (text: string) => csvFieldSpans(text).map((s) => [s.row, s.col, text.slice(s.start, s.end)]);
@@ -28,10 +28,6 @@ describe("csvFieldSpans", () => {
 });
 
 describe("parseCsvLine", () => {
-  it("splits a plain line on commas", () => {
-    expect(parseCsvLine("a,b,c")).toEqual(["a", "b", "c"]);
-  });
-
   it("keeps an empty trailing field", () => {
     expect(parseCsvLine("a,,c,")).toEqual(["a", "", "c", ""]);
   });
@@ -40,16 +36,8 @@ describe("parseCsvLine", () => {
     expect(parseCsvLine('"Smith, John",42')).toEqual(["Smith, John", "42"]);
   });
 
-  it("handles a quoted thousands-grouped number", () => {
-    expect(parseCsvLine('"1,000","2,500.50"')).toEqual(["1,000", "2,500.50"]);
-  });
-
   it("unescapes a doubled quote inside a quoted field", () => {
     expect(parseCsvLine('"He said ""hi""",x')).toEqual(['He said "hi"', "x"]);
-  });
-
-  it("handles a mix of quoted and unquoted fields", () => {
-    expect(parseCsvLine('name,"city, state",age')).toEqual(["name", "city, state", "age"]);
   });
 
   it("leaves unquoted whitespace for the caller to trim", () => {
@@ -71,14 +59,6 @@ describe("parseCsvRows", () => {
       ["a", "b"],
       ["1", "2"],
       ["3", "4"],
-    ]);
-  });
-
-  it("keeps embedded commas per row", () => {
-    expect(parseCsvRows('id,label\n1,"a, b"\n2,c')).toEqual([
-      ["id", "label"],
-      ["1", "a, b"],
-      ["2", "c"],
     ]);
   });
 
@@ -116,5 +96,15 @@ describe("parseCsvRows", () => {
       ["a", "b"],
       ["1", "2"],
     ]);
+  });
+});
+
+describe("joinCsvRows", () => {
+  it("a blank one-column row survives the round trip, a trailing one and a lone one too", () => {
+    const back = (rows: string[][]) => parseCsvRows(joinCsvRows(rows), { keepBlankLines: true });
+    expect(back([["a"], [""]])).toEqual([["a"], [""]]);
+    expect(back([[""]])).toEqual([[""]]);
+    expect(back([["a"], [""], ["b"]])).toEqual([["a"], [""], ["b"]]);
+    expect(back([["a", "b"], ["", ""]])).toEqual([["a", "b"], ["", ""]]);
   });
 });

@@ -1,12 +1,7 @@
-// Run with: npm run ai-prompt -- "<prompt>" [doc.txt] [--out new.txt]
-// The palette's EXACT authoring loop, from a terminal: same service module,
-// same system prompt, same validator gate and repair rounds (`aiService.ts`) —
-// so the first real-key end-to-end run doesn't need the UI, and a regression in
-// the loop can be reproduced headlessly. Reads the key from ANTHROPIC_API_KEY.
-//
-// The doc argument is a text-form file (omit for an empty document). An
-// answer prints as prose; a rewrite prints as a line diff and, with --out,
-// writes the new text form (runnable via `npm run run-graph`).
+// Runs the AI palette's authoring loop from a terminal (the same aiService.ts prompt, validator gate and
+// repair rounds), reading the key from ANTHROPIC_API_KEY. The doc is a text-form file (omit for empty).
+// An answer prints as prose; a rewrite prints as a line diff, and --out writes the new text form.
+//   npm run ai-prompt -- "<prompt>" [doc.txt] [--out new.txt]
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { apiKeyStore } from "../src/graph/apiKeyStore";

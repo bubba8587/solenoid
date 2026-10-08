@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { compileEvaluator } from "../../src/graph/excelFormula";
-import { isLambdaValue } from "../../src/graph/lambdaValue";
+import { compileEvaluator, compilePositional, extractVariables } from "../../src/graph/excelFormula";
+import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNode } from "../../src/graph/nodes/tableLambda";
-import { GroupByNode, RunningNode } from "../../src/graph/nodes/list";
+import { GroupListsNode, RunningNode } from "../../src/graph/nodes/list";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas lambda tranche: the language feature, node-equals-formula ────────────
@@ -16,18 +16,46 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator
 const M = [[1, 2], [3, 4]];
 const code = (v: unknown) => (isSolError(v) ? (v as SolError).code : v);
 
-describe("LAMBDA — the special form", () => {
-  it("evaluates to the LAMBDA node's own tagged currency, unevaluated until applied", () => {
-    // Reaching inside via a host proves construction; the raw special form is
-    // checked through MAP rather than the top level (which refuses, below).
-    const out = ev("MAP(x, LAMBDA(v, v * 2))", { x: [1, 2, 3] });
-    expect(out).toEqual([2, 4, 6]);
+describe("LAMBDA parameters and eta names are not the host's variables", () => {
+  it("a LAMBDA's parameters grow no socket", () => {
+    expect(extractVariables("MAP(x, LAMBDA(v, v * 2))")).toEqual(["x"]);
+    expect(extractVariables("REDUCE(0, xs, LAMBDA(acc, v, acc + v * k))")).toEqual(["xs", "k"]);
   });
 
+  it("a bare function name in a lambda slot is eta, not a variable", () => {
+    expect(extractVariables("MAP(x, SQRT)")).toEqual(["x"]);
+  });
+
+  it("a constant keeps its meaning inside a LAMBDA body ([[D77]] constantsAlwaysWin)", () => {
+    expect(ev("LAMBDA(x, x + e)(1)")).toBeCloseTo(1 + Math.E);
+    expect(ev("MAP(xs, LAMBDA(v, v * PI))", { xs: [1, 2] })).toEqual([Math.PI, 2 * Math.PI]);
+  });
+
+  it("a parameter named after a constant is refused, on the formula and the card ([[D77]] constantsAlwaysWin)", () => {
+    const f = ev("LAMBDA(e, e + 1)(5)") as SolError;
+    expect(code(f)).toBe("#NAME?");
+    expect(f.message).toMatch(/e is a constant/);
+    expect(code(ev("LAMBDA(x, Tau, x + Tau)(1, 2)"))).toBe("#NAME?");
+    const card = new LambdaNode({ params: "x, phi", expr: "x + phi" });
+    expect(code(card.data({}).result)).toBe("#NAME?");
+    expect(card.cachedError).toBe("phi is a constant");
+  });
+
+  it("a parameter named twice is refused, not silently bound to the last argument", () => {
+    expect(code(ev("LAMBDA(x, x, x + 1)(1, 2)"))).toBe("#NAME?");
+    expect(code(new LambdaNode({ params: "x, x", expr: "x + 1" }).data({}).result)).toBe("#NAME?");
+  });
+
+  it("a positional binding never shadows a constant ([[D77]] constantsAlwaysWin)", () => {
+    expect(compilePositional("e + 1", ["e"])!(5)).toBeCloseTo(Math.E + 1);
+    expect(compilePositional("pi * r", ["r"])!(1)).toBeCloseTo(Math.PI);
+  });
+});
+
+describe("LAMBDA — the special form", () => {
   it("an UNAPPLIED lambda at the top level is a typed #VALUE!, not a leaked object", () => {
     const r = ev("LAMBDA(v, v * 2)");
     expect(code(r)).toBe("#VALUE!");
-    expect(isLambdaValue(r)).toBe(false);
   });
 
   it("parameters must be plain names; a closure captures the outer env", () => {
@@ -52,8 +80,6 @@ describe("each host computes what its node computes ([[C17]] shareImpl)", () => 
     const node2 = new MapTableNode({ expr: "value * value2" });
     expect(ev("MAP(a, b, LAMBDA(v, w, v * w))", { a: M, b: M }))
       .toEqual(node2.data({ table: [M], table2: [M] }).result);
-    // A LIST maps to a list (rank preserved), matching the row convention.
-    expect(ev("MAP(x, LAMBDA(v, v + 1))", { x: [1, 2, 3] })).toEqual([2, 3, 4]);
   });
 
   it("BYROW / BYCOL — the whole row/column reaches the lambda as a LIST", () => {
@@ -83,13 +109,14 @@ describe("each host computes what its node computes ([[C17]] shareImpl)", () => 
     const node = new MakeArrayNode({ expr: "row * 10 + col", literals: { rows: 2, cols: 3 } });
     expect(ev("MAKEARRAY(2, 3, LAMBDA(row, col, row * 10 + col))"))
       .toEqual(node.data({}).result);
-    expect(ev("MAKEARRAY(3, 1, LAMBDA(r, c, r))")).toEqual([1, 2, 3]);
+    // [[D85]] columnsStayColumns: one column stays a column.
+    expect(ev("MAKEARRAY(3, 1, LAMBDA(r, c, r))")).toEqual([[1], [2], [3]]);
     expect(code(ev("MAKEARRAY(2000, 2000, LAMBDA(r, c, r))"))).toBe("#OVERFLOW!");
   });
 
   it("GROUPBY — first-seen groups, VALUE-keyed, lambda per group's value list", () => {
     const k = ["a", "b", "a", "b"], v = [1, 2, 3, 4];
-    const node = new GroupByNode({ agg: "sum" });
+    const node = new GroupListsNode({ agg: "sum" });
     // The node emits one Key/Value frame now (C5); the GROUPBY formula still spills [key, value] rows.
     const cols = node.data({ keys: [k], values: [v] }).result!.columns;
     const fx = ev("GROUPBY(k, v, LAMBDA(g, SUM(g)))", { k, v }) as unknown[][];
@@ -97,7 +124,7 @@ describe("each host computes what its node computes ([[C17]] shareImpl)", () => 
     expect(fx.map((r) => r[1])).toEqual(cols[1].values); // aggregated Value
     expect(cols.map((c) => c.name)).toEqual(["Key", "Value"]);
     // A wired blank keys list → null frame (propagate).
-    expect(new GroupByNode().data({ keys: [null as unknown as unknown[]], values: [v] }).result).toBeNull();
+    expect(new GroupListsNode().data({ keys: [null as unknown as unknown[]], values: [v] }).result).toBeNull();
   });
 });
 
@@ -125,7 +152,7 @@ describe("eta-lambdas and application — the recorded deviations, closed", () =
   // MEANINGFUL arity only (etaFn): a raw SQRT never sees MAP's row/col tuple.
   it("eta: a bare function name in a host's fn slot", () => {
     expect(ev("MAP(x, SQRT)", { x: [1, 4, 9] })).toEqual([1, 2, 3]);
-    expect(ev("BYROW(m, SUM)", { m: M })).toEqual([3, 7]);
+    expect(ev("BYROW(m, SUM)", { m: M })).toEqual([[3], [7]]);
     expect(ev("BYCOL(m, MAX)", { m: M })).toEqual([3, 4]);
     expect(ev("REDUCE(0, x, SUM)", { x: [1, 2, 3, 4] })).toBe(10);
     expect(ev("SCAN(0, x, SUM)", { x: [1, 2, 3] })).toEqual([1, 3, 6]);

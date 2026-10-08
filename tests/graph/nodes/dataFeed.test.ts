@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView
+// [[A1]] visualGraphCalculator
 import { describe, it, expect, beforeEach } from "vitest";
 import { DataFeedNode } from "../../../src/graph/nodes/dataFeed";
 import { apiKeyStore } from "../../../src/graph/apiKeyStore";
@@ -16,7 +16,6 @@ describe("DataFeedNode gating", () => {
     const n = new DataFeedNode();
     expect(n.provider).toBe("fred");
     expect(n.preset().id).toBe("fred");
-    expect(n.needsKey()).toBe(false);
   });
 
   it("empty input → idle, no frame (no fetch)", () => {

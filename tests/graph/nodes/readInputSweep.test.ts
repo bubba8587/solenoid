@@ -9,7 +9,7 @@ import * as path from "node:path";
 // the box. `readInput()` (shared.ts) is the fix: a CONNECTED cable wins even when
 // its value is null; only an UNWIRED slot falls back.
 //
-// THE SPEC IS `docs/value-semantics.md` -> "Reading an input" — what a wired blank
+// THE SPEC IS `tree/specs/values/value-semantics.md` -> "Reading an input" — what a wired blank
 // does, by the input's ROLE (operand / mode / shape / column reference / reduction
 // member / check parameter / control bound / filter condition), where the guard GOES,
 // and how `undefined` (omitted) stays distinct from `null` (unknown). Settled by the
@@ -36,11 +36,17 @@ function stripComments(src: string): string {
 }
 
 function offenders(): { file: string; lines: number[] }[] {
-  const dir = path.resolve(__dirname, "../../../src/graph/nodes");
+  const root = path.resolve(__dirname, "../../..");
+  const dir = path.join(root, "src/graph/nodes");
+  const files = fs.readdirSync(dir)
+    .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
+    .map((f) => path.join(dir, f));
+  // The scaffolder's class templates are where new nodes start.
+  files.push(path.join(root, "scripts/new-node.mjs"));
   const out: { file: string; lines: number[] }[] = [];
-  for (const f of fs.readdirSync(dir)) {
-    if (!f.endsWith(".ts") || f.endsWith(".test.ts")) continue;
-    const src = stripComments(fs.readFileSync(path.join(dir, f), "utf8"));
+  for (const file of files) {
+    const f = path.relative(root, file);
+    const src = stripComments(fs.readFileSync(file, "utf8"));
     const lines: number[] = [];
     for (const m of src.matchAll(SWALLOW)) {
       lines.push(src.slice(0, m.index).split("\n").length);
@@ -62,7 +68,7 @@ describe("wired-null swallow — swept, and stays swept", () => {
         `disposition rather than being replaced by whatever is typed in the node's box.\n` +
         `Omit the \`?? default\` when the input has a genuine OMITTED reading — readInput\n` +
         `then hands back undefined for that and null for a blank cable.\n` +
-        `Spec: docs/value-semantics.md -> "Reading an input". Worked examples of every\n` +
+        `Spec: tree/specs/values/value-semantics.md -> "Reading an input". Worked examples of every\n` +
         `role: nodes/wiredNull.test.ts.`,
     ).toEqual([]);
   });

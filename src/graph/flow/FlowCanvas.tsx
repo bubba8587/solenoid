@@ -1,8 +1,4 @@
-// [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C33]] saveBindsMain, [[C40]] storesRegisterForget, [[C89]] standoffsSolveLast, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead
-// THE app canvas: one editor/engine/view stack lives for the app's lifetime;
-// documents load through the REAL persistence/documentStore path; chrome talks
-// to it through the process.ts slots. The surface itself is FlowSurface, shared
-// with the composite drill-in.
+// [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { NodeEditor } from "rete";
@@ -10,13 +6,11 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode } from "../schemes";
 import { FlowSurfaceContext } from "../flowSurface";
 import { cableSelectionStore } from "../cableState";
-import { deleteSelection } from "../canvasActions";
+import { deleteSelection, settleNodeRemoved } from "../canvasActions";
 import { makeFlowView, type FlowView } from "./flowView";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
-import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, markBulkTopoDirty, isGraphRebuilding } from "../process";
+import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, isGraphRebuilding } from "../process";
 import { setUnselectAllNodes, setSelectNode, setDeleteSelected, setClearHistory, setAutoArrange, setCleanup, setRepositionDocked } from "../canvasCommands";
-import { markGraphCustom } from "../seedStore";
-import { bumpConnectionVersion } from "../graphSignals";
 import { setCtorRegistryProvider } from "../ctorProvider";
 import { flowHistory } from "./flowHistory";
 import { installInputCoercion } from "../coerceInputs";
@@ -30,25 +24,20 @@ import { CommandPalette } from "../CommandPalette";
 import { CableFlourish } from "../components/CableFlourish";
 import { SocketLegend, ConfirmDialog, NoticeToasts } from "../components";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
-import { reconcileFcTypes } from "../fcReconcile";
-import { syncGroupCollapse } from "../groupCollapse";
-import { FormatControllerNode, GroupNode } from "../rete-nodes";
-import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "../formatAnnotationStore";
-import { standoffStore, setStandoffSettle, type SettleOpts } from "../standoffs";
+import { settleCableChange } from "../cableSettle";
+import { groupCollapseStore } from "../groupCollapse";
+import { standoffStore, setStandoffSettle, liveStandoffs, standoffsTouching, type SettleOpts } from "../standoffs";
 import { solveStandoffs } from "../standoffSolver";
 import { withLockedGroupsPinned } from "../groupLogic";
 import { measuredBox } from "../nodeSize";
 import { translateEntityBy } from "../groupPush";
 import { repositionDockedFor } from "../fcDocking";
-import { forgetNode } from "../nodeStoreRegistry";
-import { rebuildGroupMembership } from "../groupMembership";
-import { restoreSettledPushes } from "../groupPush";
-import { setDrawnCommit } from "../drawnCables";
+import { drawnCableStore, setDrawnCommit } from "../drawnCables";
 import { LoadOverlay } from "../components/LoadOverlay";
 import { ComputeOverlay } from "../components/ComputeOverlay";
 import { IsolatePill } from "../components/IsolatePill";
 import { settingsStore } from "../settingsStore";
-import { IS_MOBILE } from "../coarse";
+import { useIsMobile } from "../useDeviceMode";
 
 type Stack = {
   editor: NodeEditor<Schemes>;
@@ -56,7 +45,8 @@ type Stack = {
   view: FlowView;
   handlers: SurfaceHandlers;
   docInit: boolean;
-  cablePipeInstalled?: boolean;
+  nodePipeInstalled?: boolean;
+  afterCableChange: (cable: { source?: string; target?: string }) => void;
   standoffSettle?: (pinned?: Set<string>, opts?: SettleOpts) => void;
 };
 
@@ -79,8 +69,6 @@ function getStack(): Stack {
     setViewport: (v) => handlers.setViewport(v),
     getContainer: () => handlers.getContainer(),
   });
-  // The topology pipe coalesces a rebuild into ONE commit
-  // (specs/graph-load-teardown-performance.md).
   let queued = false;
   const trySync = () => {
     if (isGraphRebuilding()) {
@@ -105,7 +93,15 @@ function getStack(): Stack {
   });
   setEditorRefs(editor, engine, view);
   setCtorRegistryProvider(ctorRegistry);
-  _stack = { editor, engine, view, handlers, docInit: false };
+  const afterCableChange = (cable: { source?: string; target?: string }) => {
+    if (cable.target && editor.getNode(cable.target)) {
+      void processGraph(cable.target, undefined, { topology: true });
+      if (cable.source && editor.getNode(cable.source)) void view.rerenderNode(cable.source);
+    } else {
+      void processGraph(undefined, undefined, { topology: true });
+    }
+  };
+  _stack = { editor, engine, view, handlers, docInit: false, afterCableChange };
   return _stack;
 }
 
@@ -117,19 +113,15 @@ const MAIN_HOOKS: SurfaceHooks = {
     await deleteSelected();
   },
   afterMove: () => {
-    markGraphCustom();
     scheduleAutosave();
     flowHistory.schedule();
   },
-  // Position-only changes (nudge, group push, standoffs) never run
-  // processGraph, so they record here; load/undo rebuilds are guarded out.
+  // Position-only changes (nudge, group push, standoffs) never run processGraph, so they record here.
   afterProgrammaticMove: () => flowHistory.schedule(),
   afterNodeAdded: async (nodeId) => {
     await processGraph(nodeId, undefined, { topology: true });
-    markGraphCustom();
     scheduleAutosave();
   },
-  afterConnect: () => markGraphCustom(),
   standoffs: true,
   drawnCables: true,
   standsDownWhenDrilled: true,
@@ -138,7 +130,6 @@ const MAIN_HOOKS: SurfaceHooks = {
 function FlowCanvasInner() {
   const s = useMemo(getStack, []);
 
-  // Chrome contract (process.ts slots) + the document lifecycle, once.
   useEffect(() => {
     setUnselectAllNodes(() => {
       for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = false;
@@ -151,28 +142,21 @@ function FlowCanvasInner() {
       }
       s.handlers.syncSelection();
     });
-    // The single delete verb (RF's own deleteKeyCode is off): deleteSelection gates
-    // the removal and splices the ghost cable / Conduit lanes.
     setDeleteSelected(async () => {
       const doomed = s.editor.getNodes().some((n) => (n as { selected?: boolean }).selected);
-      if (!doomed && cableSelectionStore.ids().length === 0 && !standoffStore.selected()) return;
+      if (!doomed && cableSelectionStore.ids().length === 0 && !standoffStore.selected() && !drawnCableStore.selected()) return;
       await deleteSelection(s.editor, s.view);
-      markGraphCustom();
       scheduleAutosave();
     });
 
-    // Docked FCs ride their host, driven through the view adapter (shared with the
-    // drill-in via repositionDockedFor).
     const repositionDockedTo = (hostId: string) =>
       repositionDockedFor(s.editor, s.view, s.handlers.getContainer(), hostId);
     setRepositionDocked(repositionDockedTo);
 
-    // Tidy + Cleanup over this surface's editor/view.
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor: s.editor,
       view: s.view,
-      container: s.handlers.getContainer() ?? document.body,
       ensureElk,
       repositionDockedTo,
       isDestroyed: () => false,
@@ -180,56 +164,25 @@ function FlowCanvasInner() {
     setAutoArrange(arrangeFn);
     setCleanup(makeCleanupFn(s.editor, s.view, arrangeFn));
 
-    // FC ↔ neighbor unit-mismatch badges — rescanned on every cable change and
-    // annotation edit.
-    const rescanMismatches = () => {
-      for (const n of s.editor.getNodes()) {
-        if (!(n instanceof FormatControllerNode)) continue;
-        const mine = n.annotatedSocket();
-        if (!mine) { formatMismatchStore.setMismatch(n.id, false); continue; }
-        const myAnn = formatAnnotationStore.get(mine.nodeId, mine.socketKey);
-        if (!myAnn || myAnn.unit === "none") { formatMismatchStore.setMismatch(n.id, false); continue; }
-        let hasMismatch = false;
-        for (const conn of s.editor.getConnections()) {
-          const srcKey = `${conn.source}::${conn.sourceOutput}`;
-          const tgtKey = `${conn.target}::${conn.targetInput}`;
-          const myKey = `${mine.nodeId}::${mine.socketKey}`;
-          const other = srcKey === myKey ? tgtKey : tgtKey === myKey ? srcKey : null;
-          if (!other) continue;
-          const sep = other.lastIndexOf("::");
-          const otherAnn = formatAnnotationStore.get(other.slice(0, sep), other.slice(sep + 2));
-          if (otherAnn && !unitsCompatible(myAnn.unit, otherAnn.unit)) { hasMismatch = true; break; }
-        }
-        formatMismatchStore.setMismatch(n.id, hasMismatch);
-      }
-    };
-    const unsubFmt = formatAnnotationStore.subscribe(rescanMismatches);
-
-    // The ONE settle after a bulk topology change (paste, unpack, load-adjacent
-    // sweeps).
     setBulkSettle(async (renderOnly?: Set<string>) => {
-      reconcileFcTypes(s.editor, s.view);
-      bumpConnectionVersion();
-      rescanMismatches();
+      settleCableChange(s.editor, s.view);
       await processGraph(undefined, renderOnly);
-      syncGroupCollapse(s.editor, s.view);
     });
 
-    // Standoff network: the pure solver, registered as the settle slot and driven
-    // on drags ([[C89]] standoffsSolveLast).
     let standoffSolving = false;
     const settleStandoffNetwork = (pinned: Set<string> = new Set(), opts?: SettleOpts) => {
       if (standoffSolving || standoffStore.isEmpty()) return;
+      const all = liveStandoffs(groupCollapseStore.isNodeHidden);
+      const live = opts?.touching ? standoffsTouching(all, opts.touching) : all;
       const boxes = new Map<string, { x: number; y: number; w: number; h: number }>();
-      for (const st of standoffStore.all()) {
+      for (const st of live) {
         for (const end of [st.a, st.b]) {
           if (boxes.has(end.nodeId)) continue;
           const b = measuredBox(s.view, end.nodeId, s.editor);
           if (b) boxes.set(end.nodeId, { x: b.x, y: b.y, w: b.w, h: b.h });
         }
       }
-      // A position-locked group is pinned in the solve ([[D63]] lockedGroupIsObstacle).
-      const disp = solveStandoffs(boxes, standoffStore.all(), withLockedGroupsPinned(s.editor, pinned), opts);
+      const disp = solveStandoffs(boxes, live, withLockedGroupsPinned(s.editor, pinned), opts);
       if (disp.size === 0) return;
       standoffSolving = true;
       try {
@@ -241,39 +194,12 @@ function FlowCanvasInner() {
     setStandoffSettle(settleStandoffNetwork);
     s.standoffSettle = settleStandoffNetwork;
 
-    // Every LIVE cable change — including ones components make themselves —
-    // settles: FC retype reconcile, mismatch rescan, targeted recompute.
-    // Installed once for the app-lifetime stack.
-    if (!s.cablePipeInstalled) {
-      s.cablePipeInstalled = true;
+    if (!s.nodePipeInstalled) {
+      s.nodePipeInstalled = true;
       s.editor.addPipe((ctx) => {
         const t = (ctx as { type?: string }).type;
-        if (t === "noderemoved" && !isGraphRebuilding()) {
-          // Live deletion ([[C40]] storesRegisterForget; a rebuild runs forgetAllNodes
-          // once instead): membership/collapse re-derive, and deleting an expanded
-          // group settles the pushes it caused.
-          const n = (ctx as unknown as { data: SolenoidNode }).data;
-          forgetNode(n.id);
-          rebuildGroupMembership(s.editor);
-          syncGroupCollapse(s.editor, s.view);
-          if (n instanceof GroupNode) restoreSettledPushes(s.editor, s.view);
-        }
-        if (t === "connectioncreated" || t === "connectionremoved") {
-          if (!isGraphRebuilding()) {
-            reconcileFcTypes(s.editor, s.view);
-            bumpConnectionVersion();
-            rescanMismatches();
-            const cable = (ctx as unknown as { data: { source?: string; target?: string } }).data;
-            if (cable.target && s.editor.getNode(cable.target)) {
-              void processGraph(cable.target, undefined, { topology: true });
-              if (cable.source && s.editor.getNode(cable.source)) void s.view.rerenderNode(cable.source);
-            } else {
-              void processGraph(undefined, undefined, { topology: true });
-            }
-            syncGroupCollapse(s.editor, s.view);
-          } else {
-            markBulkTopoDirty();
-          }
+        if (t === "noderemoved") {
+          settleNodeRemoved(s.editor, s.view, (ctx as unknown as { data: SolenoidNode }).data, isGraphRebuilding());
         }
         return ctx;
       });
@@ -281,35 +207,28 @@ function FlowCanvasInner() {
 
     if (!s.docInit) {
       s.docInit = true;
-      // Component-internal edits reach us here (processGraph's graphChanged);
-      // each settled change autosaves AND records an undo step.
       setGraphChanged(() => {
         scheduleAutosave();
         flowHistory.schedule();
       });
-      // Drawn-cable edits never run processGraph, so they record the same way here.
       setDrawnCommit(() => {
         scheduleAutosave();
         flowHistory.schedule();
       });
-      // loadGraph clears history at the end of every document load — for the
-      // snapshot history that IS the new document's baseline.
       setClearHistory(() => flowHistory.reset());
       void (async () => {
         const restored = await documentStore.restore();
-        // The Examples page deep-links a seed as /?seed=<id>. Open it as a NEW document
-        // (never clobbering restored ones), then strip the param so a reload or autosave
-        // doesn't keep minting fresh copies.
         const seedId = new URLSearchParams(window.location.search).get("seed");
         if (seedId && SEEDS[seedId]) {
           await documentStore.newFromTemplate(seedId);
-          window.history.replaceState({}, "", window.location.pathname);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("seed");
+          window.history.replaceState(window.history.state, "", url);
         } else if (!restored) {
           await ensureFirstDocument();
         }
       })();
     }
-    return () => unsubFmt();
   }, [s]);
 
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
@@ -317,11 +236,10 @@ function FlowCanvasInner() {
     settingsStore.subscribe,
     () => settingsStore.get("commandPaletteAlwaysOn"),
   );
-  const paletteAlwaysOn = Boolean(paletteAlwaysOnSetting) && !IS_MOBILE;
+  const mobile = useIsMobile();
+  const paletteAlwaysOn = Boolean(paletteAlwaysOnSetting) && !mobile;
 
-  // The app chrome renders BESIDE the surface, not inside it: the main wrapper is
-  // visibility:hidden under a drill-in, and toasts / dialogs / the palette must
-  // stay visible there.
+  // App chrome renders beside the surface, because the main wrapper is visibility:hidden under a drill-in.
   return (
     <>
       <FlowSurface stack={s} hooks={MAIN_HOOKS} />

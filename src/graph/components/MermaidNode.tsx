@@ -44,7 +44,6 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
     void processGraph();
   }
 
-  // Measured against the card so the socket lines up with the textarea / preview block.
   const feedRef = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<HTMLTextAreaElement>(null);
   const [top, setTop] = useState<number | undefined>(undefined);
@@ -98,8 +97,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
       </div>
       <div className="solenoid-node__section-divider" />
       <MermaidView source={source} className="solenoid-mermaid--card" />
-      {/* Collapsed: the leading socket is gone, so the pill's input dot comes from the
-          collapsed InlineInputs (the Chart card's pattern), and the Diagram chip sits beside it. */}
+      {/* Collapsed, the leading socket is gone, so the pill's input dot comes from the collapsed InlineInputs. */}
       {collapsed && <InlineInputs node={data} emit={emit} keys={["source"]} />}
       <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
         <DiagramChip value={{ __mermaid: true, source, title: data.label }} pinNodeId={data.id} />

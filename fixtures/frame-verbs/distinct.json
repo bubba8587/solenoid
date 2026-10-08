@@ -52,5 +52,11 @@
         { "name": "v", "type": "string", "values": ["inf", "-inf", "nan", "inf"] } ] } },
       "op": { "kind": "distinct" },
       "expect": { "columns": [
-        { "name": "v", "type": "string", "values": ["inf", "-inf", "nan"] } ] } }
+        { "name": "v", "type": "string", "values": ["inf", "-inf", "nan"] } ] } },
+    { "name": "error cells: error cells merge by code, apart from blanks and NaN",
+      "frames": { "in": { "columns": [
+        { "name": "n", "type": "number", "values": [{ "__err": "#N/A" }, { "__err": "#DIV/0!" }, { "__err": "#N/A" }, null, { "__nf": "nan" }, { "__err": "#DIV/0!" }, { "__nf": "nan" }] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "n", "type": "number", "values": [{ "__err": "#N/A" }, { "__err": "#DIV/0!" }, null, { "__nf": "nan" }] } ] } }
   ] }

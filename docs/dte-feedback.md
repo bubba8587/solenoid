@@ -1,6 +1,5 @@
 # DTE feedback from Solenoid
 
-<!-- [[B8]] treeIsTheHome -->
 Difficulties met while running the vendored tool here, for the author to carry to the DTE
 repo. One numbered item each: what was run, what happened, what would have helped. Delete an
 item once it is processed upstream. Written against DTE `3050da4` (vendored 2026-09-18).
@@ -16,7 +15,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
 3. **`vendor` duplicated the ignore entry.** `.dteignore` already had `dte-rules`; `vendor`
    appended `dte-rules/*` because it matches the literal `<dir>/*` form only. Treat `dir` and
    `dir/*` as the same entry.
-4. **`scope` re-lists deliberate ring skips forever.** SKIPPED RING flags 20 C nodes whose
+4. **`scope` re-lists deliberate ring skips forever.** SKIPPED RING flags 20 C leaves whose
    parents A5 / A6 the owner placed at ring A on purpose. There is no way to say "this skip is
    intended", so the finding never clears and buries real ones. Suggest: a skip under a
    human-held parent is not a finding, or a per-node `skip_ok` the owner can set.
@@ -26,7 +25,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
    code, would make it a gauge.
 6. **No tool support for the A8 migration.** A8 threeLayers says a node stores nothing from
    below, but an adopted tree is full of `*Enforced by:*` / `*Where:*` lines naming files. The
-   safe migration is "delete the pointer only where the named file already cites the node
+   safe migration is "delete the pointer only where the named file already cites the leaf
    back", and nothing computes that. I wrote a one-off script; a `dte scope --pointers` (file
    and test names found in node bodies, with whether the file cites back) would make it
    mechanical. The `*Where:*` lines are still in this tree for that reason.
@@ -49,7 +48,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     per-session protocol (cite what you touch, migrate comments as you go); `dte-rules/ADOPTING.md`'s
     "Growing the tree" reads as day-one advice. An agent that re-vendors sees new commands
     and absorbs the rules that *fail validate* (names, pointers) and stops there. Needed: a
-    "when the rules change" section, or `vendor` printing the A/B nodes added since the
+    "when the rules change" section, or `vendor` printing the A/B leaves added since the
     last stamp with the action each one implies; and `dte-rules/ADOPTING.md` naming the sweep for an
     existing tree ("`dte spec` each ring-C root, fill Requirements from your mechanics docs,
     then `scope --comments` file by file") as an explicit step, not something to infer.
@@ -81,6 +80,12 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     consequence of it, so the per-name evidence is a spec serving that node, not twelve
     nodes. State the test and the example where `dte spec` and B38 commentsMigrate are
     introduced; it is the difference between a tree of 200 nodes and one of 2000.
+    **Sharpened 2026-09-24:** "reversible and something breaks" still let mechanics in (a leaf
+    fixing the order two load steps run in passes it). The owner's sharper test: a leaf is a call
+    a person could *decide*, in plain product words; anything that describes how the code fires is
+    spec. About 65 of this tree's ~190 leaves failed it. The vendored `CLAUDE.md` protocol never
+    states the test, so agents who read only it create such leaves; it belongs in the protocol
+    where `dte new` is introduced.
 13. **The Decision section needs a "feature description" tripwire.** When an agent lifts a
     mechanics doc into nodes, the easiest Decision to write opens by describing what the
     thing IS (a standoff's band formula, what a readout row shows, what fields a drawn
@@ -113,7 +118,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     should print the vendored copy's own path (`python tools/dte.py vendor --from <checkout>
     --dir dte-rules`) and nothing about where the source was.
 16. **A rule that governs a class of files needs a scope declaration, not a citation per member.**
-    "Components never call `node.data()`" ([[C27]]) is a real decision with a sweep behind it, and
+    "Components never call `node.data()`" (C27 noDataInComponents (retired)) is a real decision with a sweep behind it, and
     its blast radius is every component; today the only way `blast`, `coverage` and `show` know that
     is 265 identical header lines, which drown the citation that says what each file is FOR. A leaf
     could declare `governs: src/graph/components/*` (the `.dteignore` syntax); `coverage` then counts
@@ -133,8 +138,8 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     error underneath item 16: an artifact does not have to cite a TREE node; citing (or being
     covered by) the spec it is built to is the three-layer model working as A8 says.
 18. **Coverage should be spec-based, and the rules should say so.** After items 14 and 16 the gauge
-    still reads as "does every file cite a tree node", which is the wrong question: A8's layers make
-    the chain code → spec → tree, and a file citing a tree node directly is the exception (a MUST
+    still reads as "does every file cite a tree leaf", which is the wrong question: A8's layers make
+    the chain code → spec → tree, and a file citing a tree leaf directly is the exception (a MUST
     the file is the one home of), not the norm. What the adopter landed here, proposed as the
     upstream shape:
     - **A spec is the scope of the files built to it.** Its header carries `covers: <globs>`
@@ -144,7 +149,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
       numbers, one per hop, are more honest than one blended percentage; `coverage` should print
       them (code→spec, spec→tree, MUST→test) rather than "artifacts that cite a decision".
     - **`show` and `blast` walk both hops.** `show C27` derives "implemented by" through the
-      components spec ("via specs/components.md"); `blast C27` lists the spec, then "Built to" the
+      components spec ("via tree/specs/floors/components.md"); `blast C27` lists the spec, then "Built to" the
       files it covers. A file's own citations still add to both.
     - **A stale `covers:` glob is a finding**, like a stale exclusion: it means the class moved and the
       spec did not.
@@ -162,3 +167,68 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
       `coverage-store` branch of the DTE checkout (`covers:` parsing, `covered_by`/`covered_files`,
       `cited_by` "via", `blast` "Built to", stale-glob check; comment-line only, so a markdown heading
       that says "covers:" does not count).
+
+19. **The scanner treats a git worktree's `.git` file as an artifact.** `coverage --check` in a
+    `git worktree` fails with `.git` as the one uncited file: the walk skips a `.git` directory
+    (`dirs[:] = ... d != ".git"`) but a worktree's `.git` is a file. Worked around with `.git` in
+    `.dteignore`; the tool should skip `.git` whether file or directory.
+
+20. **"Node" collides with the adopter's own vocabulary; DTE should call a decision a leaf.**
+    Solenoid is a node-graph app, so "node" already means a card on its canvas, and reports like
+    "E11 moved, 25 nodes' citations rewritten" were ambiguous. The owner ruled (2026-09-24) that a
+    tree item is a **leaf** here. The local rename can only go so far: `validate` prints "195 nodes"
+    and "Nodes changed in this working tree", `show`/`blast` and the ledger say node, the generated
+    `DTE.base` view is "All nodes", the vendored `dte-rules/` (its CLAUDE, SPEC and DECISIONS files) says node
+    throughout, and the next `vendor` puts it all back. Suggest DTE adopt "leaf" as its own term (it
+    fits the tree metaphor better than "node"), or at least a `term = leaf` key in `dte.cfg` that the
+    tool's output and the vendored text follow. One snag: the README already calls code, config and
+    docs "the leaves and bark", so adopting "leaf" for decisions means renaming that half of the
+    metaphor (the tool already says "artifacts", which would do).
+21. **A wording-only sweep costs a History line per leaf.** The rename above touched 129 leaves; the
+    "body changed with no new History line" warning demanded a line in each, all identical ("node
+    reads leaf; the rule is unchanged"). That is 129 lines of History that say nothing about any
+    one decision. Suggest a way to mark a change as editorial (a `--editorial` flag on a commit-level
+    record, or one line in a tree-wide log) so History stays about the decision.
+22. **`retire --superseded-by` rewrites the ID but keeps the old name.** Superseding D11 noAutoCross by
+    C10 socketLattice turned the D11 citation (`[[`D11`]] noAutoCross`) into `[[C10]] noAutoCross`, a pair that names the wrong
+    leaf, and a line citing both became `[[C10]] socketLattice, [[C10]] noAutoCross`. Thirty files needed a
+    follow-up script (rename the pair, drop the repeat), and dropping a repeat inside prose left empty
+    brackets to clean by hand. The rewrite should write the winner's name and collapse a citation the
+    line already carries.
+23. **`reparent` takes no `--authorized-by`.** `set`, `retire` and `move` all accept it, so a reparent
+    done on the owner's word can't say so in the tool; the History line records only the agent. It also
+    works on any leaf, not just orphans, though `--help` describes it as "fix an orphan", which makes it
+    the right tool for a same-ring re-parent (item 17 asked `move` for that). Suggest: accept
+    `--authorized-by` and describe it as the general re-parent.
+24. **`name` and `aliases` are one fact kept twice.** The owner asked to keep only `aliases` (2026-09-24):
+    Obsidian needs `aliases` for `[[name]]` links, and `name` duplicated it on every leaf. Local patch: a
+    leaf's name is its first alias; `new` writes only `aliases`; `set name` rewrites the alias. Upstream
+    B32 nameHandle can keep the idea (a camelCase handle beside the title) and drop the second field.
+25. **The owner removed `made_by` and `by` from every leaf.** In practice provenance came from
+    `ratified_by` (the owner's mark) and git (who wrote what, when); the two fields were noise in the
+    vault's properties pane. Local patch: both optional, an unratified leaf reads as the agent's work,
+    and `new` stops writing them. Upstream A3 provenance / B7 provenanceFields could say the same:
+    "ratified or not" is the provenance that matters, and the rest is derivable from history.
+26. **On ratified leaves the owner also deleted the History and the contest record** and rewrote the
+    body in their own voice. A ratified leaf reads as present governance by its owner; the agent-written
+    activity log on it was clutter. B41 presentGovernance already drops the Contest section on ratify;
+    it could drop History too, leaving git as the record.
+27. **DTE has no rule that an unenforced MUST is labeled.** Solenoid kept one as a leaf (C9
+    labelUnenforced, retired 2026-09-24 as a rule about rules, now `docs/dte.md` § Solenoid
+    practice): a leaf whose Decision states a MUST is cited by the test that enforces it, or its
+    Consequences carry an `*Unenforced:*` line saying why nothing can check it, and a bug fix ships
+    with the check that would have caught it. `rules.test.ts` pins the labeling. It is the one habit
+    that separates a spec from folk memory, and A8 threeLayers already derives "enforced by" from
+    citations, so the check is cheap. Suggest: a B rule, and a `validate` warning for a MUST node
+    that no test file cites and that carries no `*Unenforced:*` line.
+28. **`set_field` leaves a block list's items behind.** `reparent D62 --parents C1` on a leaf whose
+    `parents` Obsidian had rewritten as a block list (`parents:` then `  - "[[C1]]"` lines) wrote
+    `parents: ["[[C1]]"]` and kept the old `  - ` lines under it, so the front matter read as a
+    flow list followed by stray items. Any field write (`retire`'s `supersedes`, `authorize`) hits the
+    same path. Patched locally: `set_field` drops the indented `- ` lines that follow the key it
+    replaces. The fix belongs upstream beside B30 obsidianVault's tolerance for vault edits.
+29. **`dte init` writes a literal `100%%`.** `COVERAGE_TEMPLATE` is formatted with `%` escapes, so a fresh
+    `.dtecoverage` reads `100%%` where it means `100%`. Escape it once, or build the template without `%` formatting.
+30. **`excluded_from_coverage` ignores `covers:` citations.** A spec whose front matter carries a `covers:` glob
+    governs the files it matches, but the coverage numbers still count those files as uncited. Only the numbers are
+    off; `coverage --check` passes. Count a file a `covers:` glob matches as cited.

@@ -1,13 +1,10 @@
-/* Single source of truth for the tagged-error (#CODE!) treatment. Every error
-   surface (result box, frame/table cell, cable inspector, pins/HUD, group readout,
-   IS-check panel) draws its red from --sol-error so the color can't drift between
-   them. appTheme writes --sol-error from the palette's `vermilion` slot (so a
-   custom palette retints errors) — this :root value is the pre-apply fallback. */
+/* The status colors come from the palette (--sol-error vermilion, --sol-ok green, --sol-warn gold); appTheme writes them, and these :root values are the pre-apply fallback. */
 :root {
   --sol-error: #e0473a;
+  --sol-ok: #00b862;
+  --sol-warn: #f5b914;
 }
 
-/* The inline badge: a red monospace #CODE! that reads as a state, not a value. */
 .sol-error-chip {
   color: var(--sol-error);
   font-family: var(--font-mono);
@@ -17,7 +14,7 @@
   white-space: nowrap;
 }
 
-/* Set only when the error carries an origin — clicking flies to that node. */
+/* Set only when the error carries an origin: clicking flies to that node. */
 .sol-error-chip--clickable {
   cursor: pointer;
 }

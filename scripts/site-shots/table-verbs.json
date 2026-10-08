@@ -1,0 +1,145 @@
+{
+  "label": "Orders",
+  "nodes": [
+    {
+      "id": "orders",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Orders"
+      },
+      "frame": [
+        {
+          "name": "Rep",
+          "cells": [
+            "Ada",
+            "Ben",
+            "Cy",
+            "Di",
+            "Ada",
+            "Ben",
+            "Cy",
+            "Di",
+            "Ada",
+            "Ben",
+            "Cy",
+            "Di"
+          ]
+        },
+        {
+          "name": "Region",
+          "cells": [
+            "North",
+            "South",
+            "East",
+            "West",
+            "North",
+            "South",
+            "East",
+            "West",
+            "South",
+            "North",
+            "West",
+            "East"
+          ]
+        },
+        {
+          "name": "Product",
+          "cells": [
+            "Desk",
+            "Chair",
+            "Lamp",
+            "Desk",
+            "Chair",
+            "Desk",
+            "Chair",
+            "Lamp",
+            "Lamp",
+            "Desk",
+            "Desk",
+            "Chair"
+          ]
+        },
+        {
+          "name": "Amount",
+          "cells": [
+            420,
+            180,
+            65,
+            390,
+            210,
+            450,
+            160,
+            80,
+            70,
+            380,
+            410,
+            190
+          ]
+        }
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "group",
+      "type": "GroupByFrameNode",
+      "init": {
+        "label": "Sales by rep",
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "keys": "Rep",
+        "column": "Amount"
+      },
+      "x": 320,
+      "y": 250
+    },
+    {
+      "id": "sort",
+      "type": "SortFrameNode",
+      "init": {
+        "label": "Best first",
+        "dir": "desc"
+      },
+      "stringLiterals": {
+        "column": "Amount"
+      },
+      "x": 640,
+      "y": 0
+    },
+    {
+      "id": "chart",
+      "type": "ChartNode",
+      "init": {
+        "label": "Leaderboard",
+        "op": "bar"
+      },
+      "stringLiterals": {
+        "options": "title=Sales by rep"
+      },
+      "x": 640,
+      "y": 290
+    },
+    {
+      "id": "pivot",
+      "type": "PivotNode",
+      "init": {
+        "label": "Region by product",
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "rowFields": "Region",
+        "colFields": "Product",
+        "values": "Amount"
+      },
+      "x": 0,
+      "y": 280
+    }
+  ],
+  "cables": [
+    "group.frame -> sort.frame",
+    "sort.frame -> chart.values",
+    "orders.frame -> pivot.frame",
+    "orders.frame -> group.frame"
+  ]
+}

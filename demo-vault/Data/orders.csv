@@ -1,0 +1,61 @@
+Order,Placed,Customer,SKU,Qty,Total,Status,Rep,Paid,Note
+SO-1001,2026-02-19,Stark Industries,SKU-0113,6,113.94,Delivered,John McCarthy,TRUE,
+SO-1002,2026-07-13,Tyrell,SKU-0112,11,406.89,Delivered,Mary Jackson,TRUE,
+SO-1003,2026-08-08,Umbrella,SKU-0116,1,23.99,Delivered,Tim Berners-Lee,TRUE,
+SO-1004,2026-07-26,Wayne Enterprises,SKU-0108,10,419.90,Delivered,Claude Shannon,TRUE,
+SO-1005,2026-05-03,Soylent,SKU-0102,12,239.88,Delivered,Barbara Liskov,TRUE,
+SO-1006,2026-07-09,Hooli,SKU-0122,7,1854.93,Shipped,Radia Perlman,TRUE,
+SO-1007,2026-06-14,Hooli,SKU-0103,12,239.88,Cancelled,Mary Jackson,FALSE,
+SO-1008,2026-02-08,Hooli,SKU-0118,6,1037.94,Cancelled,Hedy Lamarr,FALSE,
+SO-1009,2026-05-19,Stark Industries,SKU-0118,12,2075.88,Cancelled,Tim Berners-Lee,FALSE,
+SO-1010,2026-01-18,Hooli,SKU-0114,2,49.98,Shipped,Tim Berners-Lee,TRUE,
+SO-1011,2026-01-28,Globex,SKU-0118,11,1902.89,Open,Tim Berners-Lee,TRUE,
+SO-1012,2026-05-31,Wonka,SKU-0113,3,56.97,Delivered,Ada Lovelace,TRUE,
+SO-1013,2026-06-05,Tyrell,SKU-0111,12,191.88,Open,Radia Perlman,TRUE,Backordered until the next shipment arrives.
+SO-1014,2026-05-08,Wonka,SKU-0116,11,263.89,Delivered,Dennis Ritchie,TRUE,Deliver to the loading dock after 2pm.
+SO-1015,2026-07-13,Umbrella,SKU-0117,3,662.97,Shipped,Grace Hopper,TRUE,
+SO-1016,2026-01-04,Tyrell,SKU-0110,8,495.92,Delivered,Hedy Lamarr,TRUE,
+SO-1017,2026-05-16,Hooli,SKU-0115,2,41.98,Open,Ada Lovelace,FALSE,Backordered until the next shipment arrives.
+SO-1018,2026-06-16,Stark Industries,SKU-0121,6,1055.94,Cancelled,Barbara Liskov,FALSE,
+SO-1019,2026-06-17,Tyrell,SKU-0111,8,127.92,Open,Alan Turing,FALSE,Backordered until the next shipment arrives.
+SO-1020,2026-01-21,Tyrell,SKU-0107,3,146.97,Delivered,Katherine Johnson,TRUE,
+SO-1021,2026-03-28,Acme Corp,SKU-0106,8,1111.92,Delivered,Radia Perlman,TRUE,
+SO-1022,2026-07-24,Acme Corp,SKU-0124,1,174.99,Delivered,Dennis Ritchie,TRUE,
+SO-1023,2026-06-25,Stark Industries,SKU-0119,8,1167.92,Cancelled,Katherine Johnson,FALSE,
+SO-1024,2026-03-31,Acme Corp,SKU-0111,1,15.99,Shipped,Hedy Lamarr,FALSE,
+SO-1025,2026-04-01,Umbrella,SKU-0117,4,883.96,Delivered,Alan Turing,TRUE,
+SO-1026,2026-02-24,Soylent,SKU-0111,10,159.90,Delivered,Barbara Liskov,TRUE,
+SO-1027,2026-02-01,Soylent,SKU-0104,11,252.89,Delivered,Dennis Ritchie,TRUE,
+SO-1028,2026-03-06,Umbrella,SKU-0118,6,1037.94,Delivered,John McCarthy,TRUE,
+SO-1029,2026-03-28,Initech,SKU-0102,6,119.94,Shipped,Alan Turing,TRUE,
+SO-1030,2026-07-30,Wonka,SKU-0102,8,159.92,Shipped,Frances Allen,TRUE,"Gift wrap, and leave out the receipt."
+SO-1031,2026-04-01,Umbrella,SKU-0108,3,125.97,Delivered,Grace Hopper,TRUE,
+SO-1032,2026-02-26,Acme Corp,SKU-0110,5,309.95,Shipped,Tim Berners-Lee,FALSE,"Gift wrap, and leave out the receipt."
+SO-1033,2026-01-28,Initech,SKU-0118,8,1383.92,Cancelled,Tim Berners-Lee,FALSE,
+SO-1034,2026-01-30,Tyrell,SKU-0120,3,524.97,Delivered,Claude Shannon,TRUE,"Gift wrap, and leave out the receipt."
+SO-1035,2026-03-01,Stark Industries,SKU-0111,3,47.97,Shipped,Dennis Ritchie,TRUE,
+SO-1036,2026-07-14,Initech,SKU-0104,8,183.92,Delivered,Katherine Johnson,TRUE,Call ahead; the office is closed Fridays.
+SO-1037,2026-06-13,Tyrell,SKU-0101,10,209.90,Delivered,Katherine Johnson,TRUE,
+SO-1038,2026-02-26,Tyrell,SKU-0108,4,167.96,Delivered,Claude Shannon,TRUE,
+SO-1039,2026-05-18,Hooli,SKU-0117,5,1104.95,Delivered,Tim Berners-Lee,TRUE,
+SO-1040,2026-08-07,Wayne Enterprises,SKU-0123,12,4919.88,Open,Alan Turing,TRUE,
+SO-1041,2026-03-14,Hooli,SKU-0120,8,1399.92,Cancelled,Hedy Lamarr,FALSE,
+SO-1042,2026-03-28,Soylent,SKU-0114,6,149.94,Delivered,Mary Jackson,TRUE,
+SO-1043,2026-07-19,Hooli,SKU-0118,12,2075.88,Delivered,Alan Turing,TRUE,
+SO-1044,2026-01-29,Umbrella,SKU-0104,10,229.90,Open,John McCarthy,TRUE,
+SO-1045,2026-02-04,Acme Corp,SKU-0121,1,175.99,Delivered,Mary Jackson,TRUE,
+SO-1046,2026-02-13,Wayne Enterprises,SKU-0113,3,56.97,Cancelled,Frances Allen,FALSE,
+SO-1047,2026-04-13,Wayne Enterprises,SKU-0110,12,743.88,Delivered,Margaret Hamilton,TRUE,
+SO-1048,2026-05-11,Globex,SKU-0115,6,125.94,Delivered,Ada Lovelace,TRUE,
+SO-1049,2026-04-25,Globex,SKU-0101,12,251.88,Delivered,Mary Jackson,TRUE,
+SO-1050,2026-02-05,Initech,SKU-0113,2,37.98,Delivered,Radia Perlman,TRUE,
+SO-1051,2026-08-02,Wonka,SKU-0118,12,2075.88,Delivered,Ada Lovelace,TRUE,
+SO-1052,2026-07-09,Globex,SKU-0121,8,1407.92,Shipped,Hedy Lamarr,TRUE,
+SO-1053,2026-08-05,Soylent,SKU-0121,10,1759.90,Delivered,Grace Hopper,TRUE,Deliver to the loading dock after 2pm.
+SO-1054,2026-01-08,Initech,SKU-0103,4,79.96,Delivered,Margaret Hamilton,TRUE,
+SO-1055,2026-04-08,Tyrell,SKU-0109,5,324.95,Delivered,Alan Turing,TRUE,
+SO-1056,2026-02-12,Initech,SKU-0120,6,1049.94,Delivered,Mary Jackson,TRUE,"Gift wrap, and leave out the receipt."
+SO-1057,2026-03-09,Wonka,SKU-0109,6,389.94,Delivered,Edsger Dijkstra,TRUE,Deliver to the loading dock after 2pm.
+SO-1058,2026-06-28,Soylent,SKU-0108,12,503.88,Open,Alan Turing,TRUE,Backordered until the next shipment arrives.
+SO-1059,2026-08-10,Hooli,SKU-0123,6,2459.94,Open,Margaret Hamilton,TRUE,
+SO-1060,2026-03-28,Hooli,SKU-0124,3,524.97,Delivered,John McCarthy,TRUE,

@@ -1,14 +1,10 @@
-// [[C43]] oneFlowSurface, [[C77]] compositeIsSubgraph (specs/composite-drill-in-mount-lifecycle.md), [[C33]] saveBindsMain
-// The composite drill-in: a full-viewport FlowSurface over the composite's INTERNAL
-// editor, plus the drill-in-specific chrome (breadcrumb strip, port promotion, run
-// controls) and a per-composite snapshot history. The level registers as the ACTIVE
-// graph and takes over the selection / arrange verbs while open.
+// [[B3]] sameNodeEverywhere, [[C77]] compositeIsSubgraph
 import type { View } from "../view";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { FlowSurfaceContext } from "../flowSurface";
-import { makeFlowView, type FlowView } from "./flowView";
-import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
+import { FlowSurface, type SurfaceHooks } from "./FlowSurface";
+import { getDrillStack, recordNow, scheduleRecord, syncPositionsToComp } from "./drillStack";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
@@ -20,121 +16,23 @@ import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
-import { cableSelectionStore } from "../cableState";
+import { deleteSelection as deleteSelectionIn } from "../canvasActions";
 import { isolateStore } from "../isolateStore";
 import { pushNotice } from "../noticeStore";
+import { reconcileLeftPorts } from "../compositeLogic";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
+import { rebuildGroupMembership } from "../groupMembership";
+import { syncGroupCollapse } from "../groupCollapse";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
-import { IS_MOBILE } from "../coarse";
+import { isMobile } from "../coarse";
 import "../components/compositeEditor.css";
 
-const HISTORY_DEPTH = 50;
-const HISTORY_COALESCE_MS = 400;
-
-type DrillStack = {
-  editor: CompositeNode["internalEditor"];
-  engine: CompositeNode["internalEngine"];
-  view: FlowView;
-  handlers: SurfaceHandlers;
-  /** True through hydrate/restore; the topology pipe waits it out (the drill-in's
-   *  local rebuild gate, specs/graph-load-teardown-performance.md). */
-  rebuilding: boolean;
-  isRebuilding: () => boolean;
-  history: { stack: string[]; index: number; timer: ReturnType<typeof setTimeout> | null };
-};
-
-type DrillHolder = { __flowDrill?: DrillStack };
-
-/** One stack per composite, cached on the node (the spec's DrillStack rule). */
-function getDrillStack(comp: CompositeNode): DrillStack {
-  const holder = comp as unknown as DrillHolder;
-  if (holder.__flowDrill) return holder.__flowDrill;
-  const handlers = idleHandlers();
-  const view = makeFlowView(comp.internalEditor, {
-    bumpNode: (id) => handlers.bumpNode(id),
-    bumpConnections: () => handlers.bumpConnections(),
-    moveNode: (id, pos) => handlers.moveNode(id, pos),
-    setViewport: (v) => handlers.setViewport(v),
-    getContainer: () => handlers.getContainer(),
-  });
-  const s: DrillStack = {
-    editor: comp.internalEditor,
-    engine: comp.internalEngine,
-    view,
-    handlers,
-    rebuilding: true,
-    isRebuilding: () => s.rebuilding,
-    history: { stack: [], index: -1, timer: null },
-  };
-  let queued = false;
-  const trySync = () => {
-    if (s.rebuilding) {
-      setTimeout(trySync, 0);
-      return;
-    }
-    queued = false;
-    handlers.syncTopology();
-    // Component-driven topology changes settle here: retarget the breadcrumb
-    // root and persist.
-    void processGraph(compositeEditorStore.stack()[0]?.id ?? comp.id);
-    scheduleAutosave();
-    scheduleRecord(comp, s);
-  };
-  comp.internalEditor.addPipe((ctx) => {
-    const t = (ctx as { type?: string }).type;
-    if (
-      t === "nodecreated" || t === "noderemoved" ||
-      t === "connectioncreated" || t === "connectionremoved"
-    ) {
-      if (!queued) {
-        queued = true;
-        queueMicrotask(trySync);
-      }
-    }
-    return ctx;
-  });
-  holder.__flowDrill = s;
-  return s;
-}
-
-function syncPositionsToComp(comp: CompositeNode, s: DrillStack) {
-  const out: Record<string, { x: number; y: number }> = {};
-  for (const n of s.editor.getNodes()) {
-    const pos = n.position;
-    if (pos) out[n.id] = { x: pos.x, y: pos.y };
-  }
-  comp.internalPositions = out;
-}
-
-function recordNow(comp: CompositeNode, s: DrillStack) {
-  if (s.rebuilding) return;
-  if (s.history.timer) {
-    clearTimeout(s.history.timer);
-    s.history.timer = null;
-  }
-  syncPositionsToComp(comp, s);
-  const json = JSON.stringify(comp.snapshotInternal());
-  const h = s.history;
-  if (json === h.stack[h.index]) return;
-  h.stack = h.stack.slice(0, h.index + 1);
-  h.stack.push(json);
-  if (h.stack.length > HISTORY_DEPTH) h.stack.shift();
-  h.index = h.stack.length - 1;
-}
-
-function scheduleRecord(comp: CompositeNode, s: DrillStack) {
-  if (s.rebuilding) return;
-  if (s.history.timer) clearTimeout(s.history.timer);
-  s.history.timer = setTimeout(() => {
-    s.history.timer = null;
-    recordNow(comp, s);
-  }, HISTORY_COALESCE_MS);
-}
+const isBoundaryMarker = (n: object) => n instanceof CompositeInputNode || n instanceof CompositeOutputNode;
 
 function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   const s = useMemo(() => getDrillStack(comp), [comp]);
   const [ready, setReady] = useState(false);
-  const [controlsOpen, setControlsOpen] = useState(!IS_MOBILE);
+  const [controlsOpen, setControlsOpen] = useState(!isMobile());
   const wrapperRef = useRef<HTMLDivElement>(null);
   useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
   useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.version);
@@ -150,17 +48,15 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     return i > 0 ? st[i - 1].internalEditor : getEditor();
   })();
 
-  // The top bar's Tidy / Cleanup reach this level through the arrange slots.
   const tidyRef = useRef<(opts?: { groupId?: string }) => Promise<void>>(async () => {});
 
-  // Open: hydrate, seed positions, publish as the ACTIVE graph; the selection
-  // and arrange verbs point here while open.
   useEffect(() => {
     let canceled = false;
     let restoreSelection: (() => void) | null = null;
     let restoreArrange: (() => void) | null = null;
     let restoreDelete: (() => void) | null = null;
     let restoreReposition: (() => void) | null = null;
+    s.open = true;
     s.rebuilding = true;
     void (async () => {
       await comp.hydrate(ctorRegistry());
@@ -173,11 +69,14 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
         n.position = { ...pos };
       }
       s.rebuilding = false;
+      rebuildGroupMembership(comp.internalEditor);
+      syncGroupCollapse(comp.internalEditor, s.view as unknown as View);
       s.handlers.syncTopology();
       setReady(true);
       setActiveGraph({
         editor: comp.internalEditor,
         view: s.view as unknown as View,
+        scope: s.scope,
       });
       restoreSelection = swapSelectionSlots({
         unselectAllNodes: () => {
@@ -196,13 +95,10 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
         autoArrange: (opts) => tidyRef.current(opts),
         cleanup: () => cleanupRef.current(),
       });
-      // The keyboard-less delete button (mobile / tablet) goes through the slot, not RF's
-      // per-surface Delete key — swap it to this level's delete so it can't hit MAIN.
       restoreDelete = swapDeleteSlot(() => deleteSelection());
-      // Docked-FC reposition: the component/keyboard callers go through the slot, which
-      // otherwise stays pointed at MAIN (a no-op for a host inside the drill-in).
       restoreReposition = swapRepositionDockedSlot(repositionDockedTo);
-      if (s.history.stack.length === 0) recordNow(comp, s);
+      // Also catches edits made while closed, which no pipe recorded; an unchanged level records nothing.
+      recordNow(comp, s);
     })();
     return () => {
       canceled = true;
@@ -213,15 +109,13 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       isolateStore.exit();
       setActiveGraph(null);
       syncPositionsToComp(comp, s);
+      s.open = false;
       const mainView = getView();
       if (mainView) syncSemanticZoomFor(mainView.transform.k);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comp, s]);
 
-  // A pass that RAN this composite (`runSeq` advanced) re-renders every internal
-  // card and records for undo (the spec's runSeq gate); the restore path's own pass
-  // records a no-op (JSON dedupe).
   useEffect(() => {
     let lastRunSeq = -1;
     return compositePassStore.subscribe(() => {
@@ -232,37 +126,25 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     });
   }, [comp, s]);
 
-  /** Save positions + reconcile this level's ports against its PARENT graph. */
-  const leaveLevel = useCallback(async () => {
+  // Every level the jump leaves reconciles its ports, not just the one on screen.
+  const leaveLevels = useCallback(async (to: number) => {
     if (s.history.timer) recordNow(comp, s);
     syncPositionsToComp(comp, s);
-    if (parentEditor) {
-      let droppedCables = 0;
-      let droppedPorts = 0;
-      for (const p of [...comp.inputPorts]) {
-        if (comp.internalEditor.getNode(p.internalNodeId)) continue;
-        const cables = parentEditor.getConnections().filter((c) => c.target === comp.id && c.targetInput === p.id);
-        for (const c of cables) await parentEditor.removeConnection(c.id);
-        if (cables.length > 0) { droppedCables += cables.length; droppedPorts++; }
-        comp.removeInputPort(p.id);
-      }
-      for (const p of [...comp.outputPorts]) {
-        if (comp.internalEditor.getNode(p.internalNodeId)) continue;
-        const cables = parentEditor.getConnections().filter((c) => c.source === comp.id && c.sourceOutput === p.id);
-        for (const c of cables) await parentEditor.removeConnection(c.id);
-        if (cables.length > 0) { droppedCables += cables.length; droppedPorts++; }
-        comp.removeOutputPort(p.id);
-      }
-      if (droppedCables > 0) {
-        const name = comp.label?.trim() || "Composite";
+    const st = compositeEditorStore.stack();
+    for (let i = st.length - 1; i > to; i--) {
+      const level = st[i];
+      const parent = i > 0 ? st[i - 1].internalEditor : getEditor();
+      if (!parent) { level.syncPortLabels(); continue; }
+      const dropped = await reconcileLeftPorts(level, parent);
+      if (dropped.cables > 0) {
+        const name = level.label?.trim() || "Composite";
         pushNotice(
-          `Removed ${droppedCables} cable${droppedCables === 1 ? "" : "s"} connected to ${name}; ${droppedPorts === 1 ? "a port was" : `${droppedPorts} ports were`} deleted inside.`,
+          `Removed ${dropped.cables} cable${dropped.cables === 1 ? "" : "s"} connected to ${name}; ${dropped.ports === 1 ? "a port was" : `${dropped.ports} ports were`} deleted inside.`,
           "warn",
         );
       }
     }
-    comp.syncPortLabels();
-  }, [comp, s, parentEditor]);
+  }, [comp, s]);
 
   const settleAfterLeave = useCallback(async () => {
     if (parentEditor === getEditor()) {
@@ -275,14 +157,13 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
 
   const drillTo = useCallback(
     async (i: number) => {
-      await leaveLevel();
+      await leaveLevels(i);
       compositeEditorStore.backTo(i);
       await settleAfterLeave();
     },
-    [leaveLevel, settleAfterLeave],
+    [leaveLevels, settleAfterLeave],
   );
 
-  /** The promotion gesture: a fresh boundary marker + its exposed port. */
   async function addPort(kind: "input" | "output") {
     const rect = wrapperRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -309,29 +190,14 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     scheduleAutosave();
   }
 
-  /** Delete the drill-in selection, cables first; boundary markers excluded. */
-  const deleteSelection = useCallback(async () => {
-    const editor = comp.internalEditor;
-    for (const id of cableSelectionStore.ids()) {
-      if (editor.getConnection(id)) await editor.removeConnection(id);
-    }
-    cableSelectionStore.clear();
-    const selected = editor.getNodes().filter(
-      (n) => (n as { selected?: boolean }).selected === true &&
-        !(n instanceof CompositeInputNode) && !(n instanceof CompositeOutputNode),
-    );
-    for (const node of selected) {
-      for (const c of editor.getConnections().filter((c) => c.source === node.id || c.target === node.id)) {
-        await editor.removeConnection(c.id);
-      }
-      await editor.removeNode(node.id);
-    }
-  }, [comp]);
+  const deleteSelection = useCallback(
+    () => deleteSelectionIn(comp.internalEditor, s.view as unknown as View, { ...s.scope, mainLayers: false, keeps: isBoundaryMarker }),
+    [comp, s],
+  );
 
-  /** Undo/redo over the per-composite snapshot stack. */
   const historyStep = useCallback(
     async (redo: boolean) => {
-      // One restore at a time (flowHistory's _restoring rule).
+      // One restore at a time.
       if (s.rebuilding) return;
       const h = s.history;
       if (h.timer) recordNow(comp, s);
@@ -355,20 +221,15 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     [comp, s, recomputeTarget],
   );
 
-  // Docked FCs at THIS level follow their host: the main canvas's reposition, bound
-  // to this surface.
   const repositionDockedTo = useCallback(
     (hostId: string) => repositionDockedFor(comp.internalEditor, s.view as unknown as View, s.handlers.getContainer(), hostId),
     [comp, s],
   );
-  // The SAME arrange factory as the main canvas over this level (a bare ELK pass
-  // would move group bodies without their members).
   const arrange = useMemo(() => {
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor: comp.internalEditor,
       view: s.view as unknown as View,
-      container: s.handlers.getContainer() ?? document.body,
       ensureElk,
       repositionDockedTo,
       isDestroyed: () => false,
@@ -381,7 +242,6 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     scheduleAutosave();
     scheduleRecord(comp, s);
   }, [comp, s, fitView, recomputeTarget]);
-  // A group-scoped tidy (the group header's Tidy) lays out just its members, no refit.
   const tidyDrill = useCallback(async (opts?: { groupId?: string }) => { await arrange.tidy(opts); settleArrange(!opts?.groupId); }, [arrange, settleArrange]);
   const cleanupDrill = useCallback(async () => { await arrange.cleanup(); settleArrange(); }, [arrange, settleArrange]);
   tidyRef.current = tidyDrill;
@@ -395,7 +255,6 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     deleteSelected: deleteSelection,
     afterMove: () => { scheduleRecord(comp, s); scheduleAutosave(); },
     afterProgrammaticMove: () => scheduleRecord(comp, s),
-    // The level's editor pipe already recomputes + persists a topology change.
     afterNodeAdded: () => scheduleAutosave(),
     fitViewOnInit: true,
     onEscape: () => void drillTo(compositeEditorStore.stack().length - 2),

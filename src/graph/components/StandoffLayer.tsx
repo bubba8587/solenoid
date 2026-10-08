@@ -1,6 +1,7 @@
-// [[C89]] standoffsSolveLast, [[C65]] domOrderStacking
+// [[C89]] standoffsSolveLast
 import { measuredSize } from "../nodeSize";
-import { useSyncExternalStore } from "react";
+import { memo, useSyncExternalStore } from "react";
+import { useStore, type ReactFlowState } from "@xyflow/react";
 import { createPortal } from "react-dom";
 import {
   standoffStore,
@@ -37,15 +38,14 @@ function BandField({ value, onCommit }: { value: number; onCommit: (v: number) =
 import { getEditor, getView } from "../process";
 import { unselectAllNodes } from "../canvasCommands";
 import { cableSelectionStore } from "../cableState";
+import { drawnCableStore } from "../drawnCables";
 import { groupCollapseStore } from "../groupCollapse";
 import { scheduleAutosave } from "../persistence";
 import "./conduit.css"; // reuse the docked-toolbar chrome
 import "./StandoffLayer.css";
 import { CloseIcon } from "./CloseIcon";
 
-// Bars render UNDER the graph at z-index -3 (below expanded groups -2, conduits -1,
-// nodes 0). A bar slants to show perpendicular slack — the constrained axis is the line
-// between the anchors' boxes, not the drawn angle.
+// Bars render under the graph at z -3; a bar slants to show perpendicular slack, since the constrained axis is the line between the anchors' boxes, not the drawn angle.
 
 const BAR_WIDTH = 9;
 const HIT_WIDTH = 18;
@@ -64,7 +64,18 @@ function liveBox(id: string): Box | null {
   return { x: pos.x, y: pos.y, w, h };
 }
 
-function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
+// Its two cards' boxes as one compared string, so a drag re-renders only the bars on what moved.
+function endsKey(st: ReactFlowState, s: Standoff): string {
+  return [s.a.nodeId, s.b.nodeId].map((id) => {
+    const n = st.nodeLookup.get(id);
+    return n ? `${n.internals.positionAbsolute.x},${n.internals.positionAbsolute.y},${n.measured.width},${n.measured.height}` : "";
+  }).join("|");
+}
+
+const StandoffBar = memo(function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
+  useStore((st) => endsKey(st, s));
+  useSyncExternalStore(standoffLayoutTick.subscribe, standoffLayoutTick.version);
+  useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   // Hidden endpoints (collapsed-group members) make the standoff dormant.
   if (groupCollapseStore.isNodeHidden(s.a.nodeId) || groupCollapseStore.isNodeHidden(s.b.nodeId)) {
     return null;
@@ -84,6 +95,7 @@ function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
       // Standoff + node + cable selections stay mutually exclusive.
       unselectAllNodes();
       cableSelectionStore.set(null);
+      drawnCableStore.select(null);
     }
   };
 
@@ -103,7 +115,7 @@ function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
       />
     </g>
   );
-}
+});
 
 function StandoffToolbar({ s }: { s: Standoff }) {
   const onBand = (min: number, max: number) => {
@@ -167,7 +179,7 @@ function StandoffToolbar({ s }: { s: Standoff }) {
   );
 }
 
-export function StandoffLayer() {
+export const StandoffLayer = memo(function StandoffLayer() {
   useSyncExternalStore(standoffStore.subscribe, standoffStore.version);
   useSyncExternalStore(standoffLayoutTick.subscribe, standoffLayoutTick.version);
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
@@ -187,4 +199,4 @@ export function StandoffLayer() {
       {selected && <StandoffToolbar s={selected} />}
     </>
   );
-}
+});

@@ -1,4 +1,3 @@
-/* Embedded inline in the TopBar — no panel chrome of its own. */
 .solenoid-apptools {
   display: flex;
   align-items: center;
@@ -6,7 +5,6 @@
   user-select: none;
 }
 
-/* Accent picker + theme toggle share one stadium pill (relative for the popover). */
 .solenoid-apptools__pill {
   position: relative;
   display: inline-flex;
@@ -22,7 +20,6 @@
 .solenoid-apptools__pill .solenoid-apptools__btn:first-of-type { border-radius: 999px 0 0 999px; }
 .solenoid-apptools__pill .solenoid-apptools__btn:last-of-type  { border-radius: 0 999px 999px 0; }
 
-/* Paintbrush accent button: the current accent shows as a small dot, not a fill. */
 .solenoid-apptools__paint { position: relative; }
 .solenoid-apptools__paint-dot {
   position: absolute;
@@ -35,7 +32,6 @@
   pointer-events: none;
 }
 
-/* Position the palette popover (SwatchGrid + the mobile theme row) under the pill. */
 .solenoid-apptools__palette {
   position: absolute;
   top: 34px;
@@ -47,8 +43,6 @@
   gap: 6px;
 }
 
-/* The light/dark row inside the palette — mobile only (desktop has the standalone
-   toggle in the pill). Styled as a panel row matching the swatch popover. */
 .solenoid-apptools__palette-theme {
   display: none;
   align-items: center;

@@ -1,35 +1,24 @@
-// Fuzz layer ON the parity corpus (FX-12): generate random frames + ops, compute
-// the EXPECTED result with the JS oracle, and write the cases as ordinary corpus
-// fixture files (fuzz-*.json in fixtures/frame-verbs/). Both corpus runners then
-// execute them — the JS side as a tautology check (expectations came from the
-// oracle), the cargo side as the actual divergence hunt. The fixture format is
-// the wire format, so nothing here invents a representation.
-//
+// Fuzzes the frame-verb parity corpus: random frames and ops, expected results from the JS oracle,
+// written as ordinary fixtures (fixtures/frame-verbs/fuzz-*.json) that the cargo corpus runner then checks.
 //   npx tsx scripts/fuzz-frame-verbs.ts [seed] [casesPerVerb]
-//   cd src-tauri && cargo test corpus_cases   # the hunt
-//   rm fixtures/frame-verbs/fuzz-*.json       # cleanup (keep any find as a
-//                                             # hand-named permanent case)
-//
-// Error CELLS: an expect frame carries them as {"__err": code} — the wire's
-// download form, which the engine's aggregate guard emits — so single-verb
-// guard cases are real corpus cases. PIPELINE cases with error cells at ANY
-// step still skip (mid-chain error semantics are the oracle's alone). An
-// oracle throw that is NOT a SolError is reported loudly as an oracle crash.
+//   cd src-tauri && cargo test corpus_cases       # the divergence hunt
+//   rm fixtures/frame-verbs/fuzz-*.json           # cleanup; keep any find as a hand-named case
+// Error cells ride in number and date columns, encoded as {"__err": code}; pipelines (2-5 chained
+// ops, which cargo fuses into one Polars plan) keep them mid-chain too.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { applyVerb, joinFrames, appendFrames, type FrameOp, type JoinOpts, type FilterOp, type AggOp } from "../src/graph/frameVerbs";
-import { isSolError } from "../src/graph/errorValue";
+import { applyVerb, joinFrames, appendFrames, bindColumns, type FrameOp, type JoinOpts, type FilterOp, type AggOp } from "../src/graph/frameVerbs";
+import { isSolError, solError } from "../src/graph/errorValue";
 import type { FrameValue, FrameCell, FrameColType } from "../src/graph/frame";
 
 const SEED = Number(process.argv[2] ?? 20260729);
 const PER_VERB = Number(process.argv[3] ?? 40);
 const OUT = path.resolve(__dirname, "../fixtures/frame-verbs");
 
-// ─── deterministic PRNG (mulberry32) ──────────────────────────────────────────
 let s = SEED >>> 0;
 function rnd(): number {
   s |= 0; s = (s + 0x6d2b79f5) | 0;
@@ -41,17 +30,17 @@ const pick = <T,>(a: readonly T[]): T => a[Math.floor(rnd() * a.length)];
 const int = (lo: number, hi: number) => lo + Math.floor(rnd() * (hi - lo + 1));
 const chance = (p: number) => rnd() < p;
 
-// ─── random frames ────────────────────────────────────────────────────────────
 const NUMBERS: FrameCell[] = [
   0, 1, -1, 2, 2.5, -3, 0.1, 10, 1234, 1e10, 1e308, -0, null, NaN, Infinity, -Infinity,
   -2.5, 0.30000000000000004, 1e-15, -1e-300, 9007199254740993, 46096.25, 0.5, 100,
+  solError("#N/A", "fuzz"), solError("#DIV/0!", "fuzz"),
 ];
 const STRINGS: FrameCell[] = [
   "", "a", "A", "b", "Oslo", "oslo", "OSLO", " x ", "1", "1,234", "x\u0001s:y", "Jos\u00e9",
   "true", null, "null", "NaN", "-0", "  ", "a b", "\u00df", "\u0130", "0", "false", "Stra\u00dfe",
 ];
 const LOGICALS: FrameCell[] = [true, false, null];
-const DATES: FrameCell[] = [46000, 46010, 46096, 46096.25, 0, -30000, null];
+const DATES: FrameCell[] = [46000, 46010, 46096, 46096.25, 0, -30000, null, solError("#AMBIGUOUS!", "fuzz")];
 const CELLS: Record<FrameColType, FrameCell[]> = { number: NUMBERS, string: STRINGS, logical: LOGICALS, date: DATES };
 const NAME_POOL = ["a", "b", "c", "k", "v", "qty", "city", "when", "flag"];
 
@@ -72,35 +61,33 @@ const colNames = (f: FrameValue) => f.columns.map((c) => c.name);
 const someCol = (f: FrameValue) => (f.columns.length === 0 || chance(0.08) ? "missing" : pick(colNames(f)));
 const numericCol = (f: FrameValue) => f.columns.find((c) => c.type === "number" || c.type === "date");
 
-// ─── wire encoding (the __nf sentinel, both directions) ───────────────────────
 function enc(v: FrameCell): unknown {
   if (typeof v === "number") {
     if (Number.isNaN(v)) return { __nf: "nan" };
     if (v === Infinity) return { __nf: "inf" };
     if (v === -Infinity) return { __nf: "-inf" };
   }
-  // A per-cell SolError in an EXPECT frame encodes as the wire's download form
-  // — the engine's aggregate guard emits the same shape, and both corpus
-  // runners compare error cells by code in this one representation.
   if (isSolError(v)) return { __err: v.code };
   return v;
 }
 const encFrame = (f: FrameValue) => ({ columns: f.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(enc) })) });
 
-// ─── op generators per verb ───────────────────────────────────────────────────
-const FILTER_OPS: FilterOp[] = ["eq", "neq", "lt", "lte", "gt", "gte", "contains", "startsWith", "endsWith", "isblank", "notblank"];
+const FILTER_OPS: FilterOp[] = ["eq", "neq", "lt", "lte", "gt", "gte", "contains", "startsWith", "endsWith", "isblank", "notblank", "iserror", "noterror"];
 const FILTER_VALUES: FrameCell[] = [0, 1, 12, "oslo", "OS", "a", "garbage", " 1100 ", "1,234", "false", "TRUE", true, null];
 const AGG_OPS: AggOp[] = ["sum", "avg", "min", "max", "count", "product", "median", "mode", "stdev", "stdevp", "var", "varp"];
+const WINDOW_FNS = [
+  "row_number", "rank", "dense_rank", "percent_rank", "ntile", "cumsum", "cumavg", "cummin", "cummax", "cumcount",
+  "lag", "lead", "diff", "pct_change", "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
+  "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
+];
+const READING_SCALES = [1, 5 / 9];
+const UNIT_SCALES = [1000, 0.3048, 1e-6];
+const REPLACE_TEXT = ["", " ", "1", " 2 ", "0x10", "1e3", "Infinity", "inf", "nan", "oslo", "a", "TRUE", "false", "0", "garbage"];
 
 type Gen = () => { frames: Record<string, FrameValue>; op: Record<string, unknown> };
 const cond = (f: FrameValue) => ({ column: someCol(f), op: pick(FILTER_OPS), value: pick(FILTER_VALUES), ...(chance(0.3) ? { matchCase: true } : {}) });
 
-// ─── unary op makers (op built FROM the frame it will see) ────────────────────
-// Split out of the generators so the pipeline generator can build each chained
-// op against the INTERMEDIATE frame the previous op produced — column-aware
-// chains, not blind ones. Every maker must tolerate any frame shape (a chain
-// can drop to one column or zero rows mid-way); someCol already yields
-// "missing" for a column-less frame.
+// Every maker must tolerate any frame shape: a chain can drop to one column or zero rows mid-way.
 type OpMaker = (f: FrameValue) => Record<string, unknown>;
 const UNARY_MAKERS: Record<string, OpMaker> = {
   select: (f) => ({ kind: "select", columns: Array.from({ length: int(1, 3) }, () => someCol(f)) }),
@@ -120,8 +107,16 @@ const UNARY_MAKERS: Record<string, OpMaker> = {
     ...(chance(0.3) ? { complement: true } : {}),
   }),
   groupBy: (f) => {
-    const keys = [...new Set(Array.from({ length: int(1, 2) }, () => someCol(f)))];
-    return { kind: "groupBy", keys, aggs: Array.from({ length: int(1, 3) }, () => ({ column: someCol(f), op: pick(AGG_OPS), as: pick(NAME_POOL) })) };
+    const keys = [...new Set(Array.from({ length: int(0, 2) }, () => someCol(f)))];
+    const agg = () => {
+      const op = pick(AGG_OPS);
+      return {
+        column: someCol(f), op, as: pick(NAME_POOL),
+        ...(chance(0.25) ? { readingScale: pick(READING_SCALES) } : {}),
+        ...((op === "var" || op === "varp") && chance(0.4) ? { unitScale: pick(UNIT_SCALES) } : {}),
+      };
+    };
+    return { kind: "groupBy", keys, aggs: Array.from({ length: int(1, 3) }, agg) };
   },
   unpivot: (f) => {
     const names = colNames(f);
@@ -132,9 +127,24 @@ const UNARY_MAKERS: Record<string, OpMaker> = {
       ...(chance(0.3) ? { variableName: "var", valueName: "val" } : {}),
     };
   },
+  window: (f) => ({
+    kind: "window",
+    partitionBy: chance(0.4) ? [] : [someCol(f)],
+    ...(chance(0.7) ? { orderBy: someCol(f), orderDir: pick(["asc", "desc"]) } : {}),
+    fn: pick(WINDOW_FNS), column: someCol(f), as: pick(["", "w", ...NAME_POOL]),
+    ...(chance(0.6) ? { n: pick([1, 2, 3, 0, -1, 2.5]) } : {}),
+    ...(chance(0.25) ? { readingScale: pick(READING_SCALES) } : {}),
+  }),
+  fillBlanks: (f) => ({ kind: "fillBlanks", columns: chance(0.3) ? [] : [someCol(f)], dir: pick(["down", "up"]) }),
+  replaceValues: (f) => ({
+    kind: "replaceValues", column: chance(0.3) ? "" : someCol(f),
+    find: pick(REPLACE_TEXT), replaceWith: pick(REPLACE_TEXT), mode: pick(["cell", "substring"]),
+  }),
+  sliceRows: () => {
+    const mode = pick(["first", "last", "skip", "range"]);
+    return { kind: "sliceRows", mode, n: pick([0, 1, 2, 3, 5, -2, 2.7]), ...(mode === "range" ? { to: pick([0, 2, 4, 99, 1.5]) } : {}) };
+  },
 };
-// Verbs whose ops are near-degenerate on a 1-column frame — their standalone
-// generators start from ≥2 columns so the interesting shapes actually occur.
 const WANT_TWO_COLS = new Set(["groupBy", "unpivot"]);
 
 const GENERATORS: Record<string, Gen> = Object.fromEntries(
@@ -144,16 +154,9 @@ const GENERATORS: Record<string, Gen> = Object.fromEntries(
   }]),
 );
 
-// The fusion hunt: 2–5 chained unary ops over one input. The oracle (and the
-// JS corpus runner) applies them SEQUENTIALLY; the cargo runner fuses the list
-// into one lazy Polars plan via apply_ops — so these cases probe predicate
-// pushdown, projection reordering and group-by-mid-chain interactions no
-// single-op case can reach. Ops are built against the running intermediate
-// frame; a mid-generation SolError ends the chain there (the case then pins
-// WHICH error a fused plan must surface).
 GENERATORS.pipeline = () => {
   const f0 = randFrame({ minCols: 2 });
-  let cur = f0; // verbs never mutate their input (corpus-checked), so f0 survives
+  let cur = f0;
   const ops: Record<string, unknown>[] = [];
   const len = int(2, 5);
   for (let i = 0; i < len; i++) {
@@ -164,10 +167,11 @@ GENERATORS.pipeline = () => {
   return { frames: { in: f0 }, op: { kind: "pipeline", ops } };
 };
 GENERATORS.join = () => {
-  const how = pick(["inner", "left", "right", "outer", "semi", "anti", "asof"] as const);
+  const how = pick(["inner", "left", "right", "outer", "semi", "anti", "asof", "cross"] as const);
   if (how === "asof") {
-    const left = randFrame({ types: ["number"], rows: int(0, 6) });
-    const right = randFrame({ types: ["number"], rows: int(0, 6) });
+    const keyType: FrameColType = pick(["number", "date"]);
+    const left = randFrame({ types: [keyType], rows: int(0, 6) });
+    const right = randFrame({ types: [keyType], rows: int(0, 6) });
     return { frames: { left, right }, op: {
       kind: "join", leftKey: someCol(left), rightKey: someCol(right), how,
       ...(chance(0.7) ? { asofDirection: pick(["backward", "forward", "nearest"]) } : {}),
@@ -177,6 +181,13 @@ GENERATORS.join = () => {
   const left = randFrame(); const right = randFrame();
   return { frames: { left, right }, op: { kind: "join", leftKey: someCol(left), rightKey: someCol(right), how } };
 };
+GENERATORS.bindColumns = () => {
+  const n = int(1, 3);
+  const frames: Record<string, FrameValue> = {};
+  const order: string[] = [];
+  for (let i = 0; i < n; i++) { const k = `f${i + 1}`; frames[k] = randFrame(); order.push(k); }
+  return { frames, op: { kind: "bindColumns", frames: order } };
+};
 GENERATORS.append = () => {
   const n = int(2, 3);
   const frames: Record<string, FrameValue> = {};
@@ -185,15 +196,7 @@ GENERATORS.append = () => {
   return { frames, op: { kind: "append", frames: order } };
 };
 
-// ─── run the oracle, build fixture files ──────────────────────────────────────
-const hasErrorCell = (f: FrameValue) => f.columns.some((c) => c.values.some((v) => isSolError(v)));
-// A pipeline with SolError cells at ANY step (intermediate or final) is
-// skipped: the engine's guard markers behave as plain NaN inside a fused plan,
-// so a chain that OPERATES on error cells follows the oracle's richer error
-// semantics only approximately — not a fair parity case. Single-verb guard
-// outputs are fair (the {"__err"} download form) and are kept.
-const SKIP = Symbol("skip: error cells mid-chain");
-let written = 0, errCases = 0, skippedErrCells = 0;
+let written = 0, errCases = 0;
 const crashes: string[] = [];
 
 for (const [verb, gen] of Object.entries(GENERATORS)) {
@@ -204,17 +207,14 @@ for (const [verb, gen] of Object.entries(GENERATORS)) {
     try {
       if (verb === "join") { const { kind: _k, ...opts } = op; out = joinFrames(frames.left, frames.right, opts as unknown as JoinOpts); }
       else if (verb === "append") out = appendFrames((op.frames as string[]).map((k) => frames[k]));
+      else if (verb === "bindColumns") out = bindColumns((op.frames as string[]).map((k) => frames[k]));
       else if (verb === "pipeline") {
         let cur = frames.in;
-        for (const o of op.ops as FrameOp[]) {
-          cur = applyVerb(cur, o);
-          if (hasErrorCell(cur)) throw SKIP;
-        }
+        for (const o of op.ops as FrameOp[]) cur = applyVerb(cur, o);
         out = cur;
       }
       else out = applyVerb(frames.in, op as unknown as FrameOp);
     } catch (e) {
-      if (e === SKIP) { skippedErrCells++; continue; }
       err = e;
     }
     const name = `fuzz seed=${SEED} ${verb} #${i}`;
@@ -223,10 +223,6 @@ for (const [verb, gen] of Object.entries(GENERATORS)) {
       if (!isSolError(err)) { crashes.push(`${name}: ${(err as Error)?.message ?? err}`); continue; }
       cases.push({ ...base, expectError: err.code }); errCases++;
     } else {
-      // Single-verb error cells (the groupBy aggregate guard) are REAL cases
-      // now — the expect frame carries them as {"__err": code}. Only pipeline
-      // cases still skip (the SKIP throw above): mid-chain error semantics are
-      // the oracle's alone.
       cases.push({ ...base, expect: encFrame(out!) });
     }
   }
@@ -235,7 +231,6 @@ for (const [verb, gen] of Object.entries(GENERATORS)) {
 }
 
 console.log(`wrote ${written} cases (${errCases} expectError) across ${Object.keys(GENERATORS).length} fuzz-*.json files`);
-console.log(`skipped ${skippedErrCells} pipeline cases with SolError cells mid-chain (oracle-only semantics)`);
 if (crashes.length) {
   console.log(`\nORACLE CRASHES (non-SolError throws — real bugs, investigate):\n  ${crashes.join("\n  ")}`);
   process.exitCode = 1;

@@ -1,15 +1,7 @@
-// Gantt figure screenshotter — the author's eyeball tool. Drives the running Vite dev server
-// (port 1420) with system Edge, loads each Gantt seed via the in-app hook
-// window.__solenoidTuneSeed(id), and writes PNGs to .dev/shots/gantt/ in BOTH themes (toggled
-// through the app's own moon/sun button, since the theme store re-applies its saved mode):
-//   <seed>-<theme>-canvas.png     the whole canvas
-//   <seed>-<theme>-display-N.png  each on-canvas Gantt/Calendar figure
-//   <seed>-<theme>-popup.png      the first chart chip expanded
-//
-// Seeds are auto-detected (any seed JSON with a GanttNode); pass ids to limit the set.
-//   node scripts/gantt-shots.mjs                         # all Gantt seeds, both themes
-//   node scripts/gantt-shots.mjs product-launch-gantt    # one seed
-//   URL=http://localhost:1421 CHROME=<chromium> node scripts/gantt-shots.mjs   # a worktree's own server
+// Screenshots each Gantt seed (any seed JSON with a GanttNode, or the ids given) in both themes, toggled
+// through the app's own theme button, into .dev/shots/gantt/: <seed>-<theme>-canvas.png, one
+// -display-N.png per on-canvas figure, and -popup.png for the first chart chip. Needs :1420.
+//   node scripts/gantt-shots.mjs [seed-id…]
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -55,13 +47,11 @@ async function shotSeed(page, seed) {
     await sleep(400);
     await page.screenshot({ path: path.join(outDir, `${seed}-${theme}-canvas.png`) });
 
-    // Each on-canvas figure (Gantt timeline and/or calendar) as a Display shot.
     const figures = await page.$$(".solenoid-gantt");
     for (let i = 0; i < figures.length; i++) {
       try { await figures[i].screenshot({ path: path.join(outDir, `${seed}-${theme}-display-${i + 1}.png`) }); } catch { /* off-screen */ }
     }
 
-    // Expand the first chart chip into the popup.
     const box = await page.evaluate(() => {
       const chip = document.querySelector(".solenoid-array-chip--chart");
       if (!chip) return null;

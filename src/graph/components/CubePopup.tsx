@@ -1,27 +1,42 @@
 // [[C10]] socketLattice
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { cubePopup, type DrillView } from "../cubePopupStore";
-import { CubeEditCell, ListEditCell, CubeEditRows, CubeEditHeader } from "./cubeEditCell";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import type * as React from "react";
+import { cubePopup, gridPosOf, type DrillView, type CellRef } from "../cubePopupStore";
+import { CubeEditCell, ListEditCell, GridEditCell, CubeEditChip, cubeEditAxes, CubeEditHeader } from "./cubeEditCell";
+import { TableEditMenus, TableContextMenu, useEditShortcuts } from "./TableEditMenu";
+import { pickIndex, type AxisSelection } from "../tableEdit";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount, type CubeCell } from "../frame";
-import { CubeCellChip, frameCellNode, cubeCellToken } from "./cubeCell";
+import { CubeCellChip, frameCellNode, cubeCellToken, cubeCellShown } from "./cubeCell";
+import { cubeLevelColumns, statValues, isContainer } from "../cubeLevelTable";
+import { cardMatches } from "../cardLayout";
+import { TableCards } from "./TableCards";
+import { ChevronDownIcon } from "./Icons";
+import { SearchField } from "./SearchField";
+import { settingsStore } from "../settingsStore";
+import { type FooterStat, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, summarizeColumn } from "./tableFooterStats";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton, type SortKey } from "./columnSort";
+import { HeaderHelpButton } from "./columnHeadControls";
 import { copyText } from "../clipboard";
 import { saveCsvFileDialog } from "../fileBridge";
+import { csvField } from "../csvSafety";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
-// The current drill level, normalized across the view kinds so the table markup
-// below is written once. A list lies across ONE ROW unless `listVertical`.
-function describe(view: DrillView, listVertical: boolean): {
-  headers: string[] | null; // null → numeric column labels (grid view)
+/** What was typed, for the Source switch: a value as its text, a nested container still a chip. */
+function sourceItem(v: unknown, crumb: string, at: CellRef): ReactNode {
+  if (v !== null && typeof v === "object") return <CubeCellChip cell={v as CubeCell} crumb={crumb} size="sm" at={at} />;
+  return v == null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
+}
+
+function describe(view: DrillView, listVertical: boolean, source: boolean): {
+  headers: string[] | null;
   rows: number;
   cols: number;
-  depth: number | null;     // cube only
+  depth: number | null;
   cell: (r: number, c: number) => ReactNode;
-  /** The RAW cell reduced for sorting — never the rendered node. */
   sortKey: (r: number, c: number) => SortKey;
 } {
   if (view.kind === "cube") {
@@ -48,13 +63,16 @@ function describe(view: DrillView, listVertical: boolean): {
   }
   if (view.kind === "list") {
     const items = view.items;
+    const item = (i: number) => (source
+      ? sourceItem(items[i] ?? null, "item", { item: i })
+      : <CubeCellChip cell={(items[i] ?? null) as CubeCell} crumb="item" size="sm" type={view.type} at={{ item: i }} />);
     if (!listVertical) {
       return {
         headers: null,
         rows: 1,
         cols: items.length,
         depth: null,
-        cell: (_r, c) => <CubeCellChip cell={(items[c] ?? null) as CubeCell} crumb="item" size="sm" at={{ r: 0, c }} />,
+        cell: (_r, c) => item(c),
         sortKey: (_r, c) => sortKeyOf(items[c] ?? null),
       };
     }
@@ -63,7 +81,7 @@ function describe(view: DrillView, listVertical: boolean): {
       rows: items.length,
       cols: 1,
       depth: null,
-      cell: (r) => <CubeCellChip cell={(items[r] ?? null) as CubeCell} crumb="item" size="sm" at={{ r, c: 0 }} />,
+      cell: (r) => item(r),
       sortKey: (r) => sortKeyOf(items[r] ?? null),
     };
   }
@@ -78,9 +96,6 @@ function describe(view: DrillView, listVertical: boolean): {
   };
 }
 
-/** The current level's cell as export text — same reducer as the compact
- *  preview, so a nested container serializes as its chip token
- *  ("[3×2×1 Cube]", "[5×2 Frame]", "[a, b, c…]"), never expanded. */
 function tokenAt(view: DrillView, r: number, c: number, listVertical: boolean): string {
   if (view.kind === "cube") {
     const col = view.cube.columns[c];
@@ -94,19 +109,10 @@ function tokenAt(view: DrillView, r: number, c: number, listVertical: boolean): 
   return cubeCellToken(view.cells[r]?.[c] ?? null);
 }
 
-// RFC 4180 quoting; the viewer is read-only, so formula-trigger text is
-// apostrophe-neutralized on export (the TablePopup read-only posture).
-function csvEsc(s: string): string {
-  let out = s;
-  if (/^[=+\-@\t\r]/.test(out) && Number.isNaN(Number(out))) out = `'${out}`;
-  return /[",\n]/.test(out) ? `"${out.replace(/"/g, '""')}"` : out;
-}
+const csvEsc = (s: string): string => csvField(s, true);
 function mdEsc(s: string): string {
   return s.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }
-/** Full source-order serialization of the CURRENT drill level — every row, not
- *  just the rendered window (text is cheap; only the DOM needed the cap). */
-/** The level as text — every row, in the given (visual-sort) order. */
 function levelText(view: DrillView, headers: string[] | null, order: readonly number[], cols: number, kind: "csv" | "md", listVertical: boolean): string {
   const head = headers ?? Array.from({ length: cols }, (_, c) => `Col ${c + 1}`);
   const row = (r: number) => Array.from({ length: cols }, (_, c) => tokenAt(view, r, c, listVertical));
@@ -120,27 +126,41 @@ function levelText(view: DrillView, headers: string[] | null, order: readonly nu
   return md.map((cells) => `| ${cells.join(" | ")} |`).join("\n");
 }
 
-/** The one read-only viewer for every nesting kind: a nested-container cell drills
- *  DEEPER IN PLACE via the breadcrumb, so a second window never opens. */
 export function CubePopup() {
   const state = useSyncExternalStore(cubePopup.subscribe, cubePopup.get);
-  // An editing level: the Cube Input's records at this level's path back the cells.
   const last = state?.stack[state.stack.length - 1];
   const editView = state?.edit && last && last.path ? last : null;
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  // Keyed on the DRILL LEVEL, so the sort drops instead of carrying a column
-  // index across to an unrelated table.
-  const { sort, cycle: cycleSort } = useColumnSort(state?.stack[state.stack.length - 1]);
-  // DISPLAY-ONLY list layout: a list is a CSV row, so it lies across one row unless
-  // switched to one item per line. The value is unchanged either way.
+  const { sort, cycle: cycleSort, set: setSort } = useColumnSort(state?.stack[state.stack.length - 1]);
   const [listVertical, setListVertical] = useState(false);
+  const armEditShortcuts = useEditShortcuts();
+  const [sourceMode, setSourceMode] = useState(false);
+  const [sel, setSel] = useState<AxisSelection | null>(null);
+  const [focusCell, setFocusCell] = useState<{ r: number; c: number } | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [layout, setLayout] = useState<"grid" | "cards">("grid");
+  const [query, setQuery] = useState("");
+  const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
+  const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
+  // A cube or frame level reads as a table: filter, Cards and the summary footer.
+  const table = useMemo(() => (last ? cubeLevelColumns(last) : null), [last]);
+  const summaries = useMemo(
+    () => (table && showSummary ? table.columns.map((col) => summarizeColumn(statValues(col), col.type)) : null),
+    [table, showSummary],
+  );
+  // A new level starts with nothing selected.
+  const levelKey = state ? `${state.stack.length}:${JSON.stringify(state.stack[state.stack.length - 1]?.path ?? null)}` : "";
+  const [seenLevel, setSeenLevel] = useState(levelKey);
+  if (levelKey !== seenLevel) { setSeenLevel(levelKey); setSel(null); setFocusCell(null); setCtxMenu(null); setQuery(""); setColStat({}); }
 
-  // A return from a drilled level scrolls its origin cell into view and flashes it.
   const gridRef = useRef<HTMLDivElement>(null);
+  const listVerticalRef = useRef(listVertical);
+  listVerticalRef.current = listVertical;
   const focus = state?.stack[state.stack.length - 1]?.focus;
   useEffect(() => {
     if (!focus || !gridRef.current) return;
-    const sel = focus.c === undefined ? `[data-r="${focus.r}"]` : `[data-r="${focus.r}"][data-c="${focus.c}"]`;
+    const at = gridPosOf(focus, listVerticalRef.current);
+    const sel = at.c === undefined ? `[data-r="${at.r}"]` : `[data-r="${at.r}"][data-c="${at.c}"]`;
     const el = gridRef.current.querySelector<HTMLElement>(sel);
     if (!el) return;
     el.scrollIntoView({ block: "center", inline: "center" });
@@ -151,29 +171,53 @@ export function CubePopup() {
 
   if (!state) return null;
   const view = state.stack[state.stack.length - 1];
-  const { headers, rows, cols, depth, cell, sortKey } = describe(view, listVertical);
-  // A list across a row has nothing to sort by column.
+  const { headers, rows, cols, depth, cell, sortKey } = describe(view, listVertical, sourceMode);
   const sortable = !(view.kind === "list" && !listVertical);
-  // Cap rendered rows — a large nested frame would otherwise put the whole table
-  // in the DOM and kill the renderer.
-  const MAX_VISIBLE_ROWS = 1000;
-  const rowsTruncated = rows > MAX_VISIBLE_ROWS;
-  // Visual-only sort over EVERY row: `cell()` is handed the SOURCE row index, so
-  // drilling still lands on the right nested value; the render shows the first
-  // MAX_VISIBLE_ROWS of the order, Copy emits all of it.
+  const MAX_VISIBLE = 1000;
+  const rowsTruncated = rows > MAX_VISIBLE;
+  const colsTruncated = cols > MAX_VISIBLE;
+  const shownCols = colsTruncated ? MAX_VISIBLE : cols;
   const sortOrder = sortedOrder(rows, sort, sortKey);
-  const visibleOrder = rowsTruncated ? sortOrder.slice(0, MAX_VISIBLE_ROWS) : sortOrder;
+  const rowText = (r: number): string[] => (table?.columns ?? []).map((col) => cubeCellShown(col.cells[r] ?? null, col.declared, col.format));
+  const filtering = !!table && query.trim() !== "";
+  const matchedOrder = filtering ? sortOrder.filter((r) => cardMatches(rowText(r), query)) : sortOrder;
+  const visibleOrder = matchedOrder.length > MAX_VISIBLE ? matchedOrder.slice(0, MAX_VISIBLE) : matchedOrder;
+  const cards = !!table && layout === "cards";
 
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
+
+  // A list across a row shows its items as columns; the menus still count items.
+  const itemsAcross = view.kind === "list" && !listVertical;
+  const editAxes = editView && state.edit ? cubeEditAxes(state.edit, editView, {
+    rows: sel?.axis === "row" ? sel.indices : focusCell ? [itemsAcross ? focusCell.c : focusCell.r] : [],
+    cols: sel?.axis === "col" ? sel.indices : focusCell ? [focusCell.c] : [],
+  }) : null;
+  const menuRow = sel?.axis === "col" ? undefined : editAxes?.row;
+  const menuCol = sel?.axis === "row" && !itemsAcross ? undefined : editAxes?.col;
+  armEditShortcuts(cards ? undefined : menuRow, cards ? undefined : menuCol, sel?.axis === "col");
+  const selRows = new Set(sel?.axis === "row" ? sel.indices : []);
+  const selCols = new Set(sel?.axis === "col" ? sel.indices : []);
+  const isSel = (r: number, c: number) => (itemsAcross ? selRows.has(c) : selRows.has(r) || selCols.has(c));
+  const onControl = (e: React.SyntheticEvent) => !!(e.target as HTMLElement).closest("button, input, select, textarea, label");
+  const openMenuAt = (e: React.MouseEvent) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY }); };
+  const pick = (e: React.MouseEvent, axis: "row" | "col", i: number, order: readonly number[]) => {
+    if (onControl(e)) return;
+    setSel((prev) => pickIndex(prev, axis, i, e.shiftKey, order));
+    setFocusCell(null);
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  };
+  const allCols = Array.from({ length: shownCols }, (_, c) => c);
 
   return (
     <PopupShell
       title={view.label}
       onClose={() => cubePopup.close()}
-      // Esc pops one drill level; at the root it closes.
       onEscape={() => {
-        if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
+        if (query && (document.activeElement as HTMLElement | null)?.closest(".sol-search")) setQuery("");
+        else if (sel) setSel(null);
+        else if (focusCell) setFocusCell(null);
+        else if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
         else cubePopup.close();
       }}
       cardClassName="table-popup"
@@ -182,7 +226,10 @@ export function CubePopup() {
       resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={
         <>
-          <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
+          {table && (cards || rows > 1) && (
+            <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${rows}` : undefined} />
+          )}
+          <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{rowsTruncated || colsTruncated ? ` · first ${MAX_VISIBLE.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (
             <span
               className="table-popup__dims"
@@ -199,6 +246,7 @@ export function CubePopup() {
       headerActions={
         <PopupOverflowMenu
           items={[
+            ...(table ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
             { label: "Copy CSV", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "csv", listVertical)) },
             { label: "Copy as Markdown", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "md", listVertical)) },
             {
@@ -227,16 +275,60 @@ export function CubePopup() {
         </div>
       )}
 
+      {cards && table ? (
+        <TableCards
+          names={table.columns.map((c) => c.name)}
+          types={table.columns.map((c) => c.type)}
+          computed={new Set()}
+          chipCols={new Set()}
+          nestedCols={new Set(table.columns.flatMap((col, c) => (col.nested ? [c] : [])))}
+          listCols={new Set(table.columns.flatMap((col, c) => (col.lists ? [c] : [])))}
+          rowCount={rows}
+          order={sortOrder}
+          rawAt={(r, c) => {
+            const v = table.columns[c]?.cells[r] ?? null;
+            return v === null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : typeof v === "object" ? cubeCellToken(v) : String(v);
+          }}
+          shownRow={rowText}
+          itemsAt={(r, c) => {
+            const v = table.columns[c]?.cells[r];
+            return Array.isArray(v) ? v.map((x) => cubeCellToken(x)).filter((t) => t !== "") : null;
+          }}
+          cellNodeAt={(r, c) => {
+            const col = table.columns[c];
+            const v = col?.cells[r] ?? null;
+            if (!col || !isContainer(v)) return null;
+            if (editView && state.edit && editView.kind === "cube") return <CubeEditChip edit={state.edit} path={editView.path!} row={r} column={col.name} />;
+            return <CubeCellChip cell={v} crumb={col.name} size="sm" type={col.declared} format={col.format} at={{ r, c }} />;
+          }}
+          dataKey={table}
+          sort={sort}
+          onSort={setSort}
+          query={query}
+        />
+      ) : (
       <div ref={gridRef} className="table-popup__grid-scroll sol-popup__scroll">
         <table className="table-popup__grid">
           <thead>
             <tr>
-              <th className="table-popup__corner" />
-              {Array.from({ length: cols }, (_, c) => (
+              <th className="table-popup__corner">
+                {editView && state.edit && headers && editView.kind !== "list" && editView.kind !== "grid" && (
+                  <HeaderHelpButton formulas={(editView.path ?? []).length === 0 && !state.edit.noFormulaColumns} lambdas={false} cube />
+                )}
+              </th>
+              {Array.from({ length: shownCols }, (_, c) => (
                 <th
                   key={c}
                   title={headers?.[c]}
-                  className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}`}
+                  className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}${isSel(-1, c) && !itemsAcross ? " table-popup__colhead--sel" : ""}`}
+                  onClick={editAxes ? (e) => (itemsAcross ? pick(e, "row", c, allCols) : editAxes.col && pick(e, "col", c, allCols)) : undefined}
+                  onContextMenu={editAxes ? (e) => {
+                    if ((e.target as HTMLElement).closest("input, textarea")) return;
+                    const axis = itemsAcross ? "row" : "col";
+                    if (!itemsAcross && !editAxes.col) return;
+                    if (!(axis === "row" ? selRows : selCols).has(c)) { setSel({ axis, indices: [c], anchor: c }); setFocusCell(null); }
+                    openMenuAt(e);
+                  } : undefined}
                 >
                   {editView && state.edit && headers && editView.kind !== "list"
                     ? <CubeEditHeader edit={state.edit} path={editView.path!} column={headers[c]} />
@@ -246,33 +338,100 @@ export function CubePopup() {
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody
+            onFocus={editAxes ? (e) => {
+              const el = (e.target as HTMLElement).closest<HTMLElement>("[data-r]");
+              if (!el) return;
+              setFocusCell({ r: Number(el.dataset.r), c: Number(el.dataset.c) });
+              setSel(null);
+            } : undefined}
+            onContextMenu={editAxes ? (e) => {
+              const el = (e.target as HTMLElement).closest<HTMLElement>("[data-r]");
+              if (!el) return;
+              const r = Number(el.dataset.r), c = Number(el.dataset.c);
+              if (!isSel(r, c)) { setSel(null); setFocusCell({ r, c }); }
+              openMenuAt(e);
+            } : undefined}
+          >
             {visibleOrder.map((r) => (
               <tr key={r}>
-                <th className="table-popup__rowhead">{r + 1}</th>
-                {Array.from({ length: cols }, (_, c) => (
-                  <td key={c} className="table-popup__cell" data-r={r} data-c={c} style={{ padding: "2px 6px", textAlign: "left" }}>
+                <th
+                  className={`table-popup__rowhead${editAxes && !itemsAcross ? " table-popup__rowhead--pick" : ""}${!itemsAcross && selRows.has(r) ? " table-popup__rowhead--sel" : ""}`}
+                  onClick={editAxes && !itemsAcross ? (e) => pick(e, "row", r, visibleOrder) : undefined}
+                  onContextMenu={editAxes && !itemsAcross ? (e) => {
+                    e.stopPropagation();
+                    if (!selRows.has(r)) { setSel({ axis: "row", indices: [r], anchor: r }); setFocusCell(null); }
+                    openMenuAt(e);
+                  } : undefined}
+                >{r + 1}</th>
+                {Array.from({ length: shownCols }, (_, c) => (
+                  <td key={c} className={`table-popup__cell${editAxes && isSel(r, c) ? " table-popup__cell--sel" : ""}${editAxes && focusCell?.r === r && focusCell.c === c ? " table-popup__cell--active" : ""}`} data-r={r} data-c={c} style={{ padding: "2px 6px", textAlign: "left" }}>
                     {editView && state.edit
                       ? (editView.kind === "list"
-                          ? <ListEditCell edit={state.edit} path={editView.path!} row={listVertical ? r : c} />
-                          : <CubeEditCell edit={state.edit} path={editView.path!} row={r} column={headers?.[c] ?? String(c)} />)
+                          ? <ListEditCell edit={state.edit} path={editView.path!} row={listVertical ? r : c} source={sourceMode} />
+                          : editView.kind === "grid"
+                            ? <GridEditCell edit={state.edit} path={editView.path!} row={r} col={c} source={sourceMode} />
+                            : <CubeEditCell edit={state.edit} path={editView.path!} row={r} column={headers?.[c] ?? String(c)} source={sourceMode} />)
                       : cell(r, c)}
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
+          {table && summaries && (
+            <tfoot className="table-popup__sumfoot">
+              <tr>
+                <th className="table-popup__corner" />
+                {table.columns.slice(0, shownCols).map((col, c) => {
+                  const stat = footerStatFor(col.type, colStat[c]);
+                  return (
+                    <td key={c} className="table-popup__statcell">
+                      <span className="table-popup__statpick">
+                        <span className="table-popup__statlabel">{FOOTER_STAT_LABEL[stat]}<ChevronDownIcon size={10} strokeWidth={2} /></span>
+                        <select
+                          className="table-popup__statselect"
+                          value={stat}
+                          aria-label="Summary statistic"
+                          onChange={(e) => setColStat((m) => ({ ...m, [c]: e.target.value as FooterStat }))}
+                        >
+                          {STATS_BY_TYPE[col.type].map((k) => <option key={k} value={k}>{FOOTER_STAT_LABEL[k]}</option>)}
+                        </select>
+                      </span>
+                      <span className="table-popup__statvalue">{formatFooterStat(stat, footerStatValue(stat, summaries[c]))}</span>
+                    </td>
+                  );
+                })}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
+      )}
 
+      {ctxMenu && editAxes && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
       <div className="table-popup__footer">
+        {table && (
+          <div className="table-popup__view" role="group" aria-label="View">
+            <button type="button" aria-pressed={!cards} onClick={() => setLayout("grid")}>Grid</button>
+            <button type="button" aria-pressed={cards} onClick={() => setLayout("cards")}>Cards</button>
+          </div>
+        )}
         {view.kind === "list" && (
           <div className="table-popup__view" role="group" aria-label="List layout">
             <button type="button" aria-pressed={!listVertical} onClick={() => setListVertical(false)} title="Show the list across a row">Row</button>
-            <button type="button" aria-pressed={listVertical} onClick={() => setListVertical(true)} title="Show the list down a column — one value per line (display only, the value is unchanged)">Column</button>
+            <button type="button" aria-pressed={listVertical} onClick={() => setListVertical(true)} title="Show the list down a column. Display only; the value doesn't change.">Column</button>
           </div>
         )}
-        {editView && state.edit && <CubeEditRows edit={state.edit} view={editView} />}
+        {(editView || view.kind === "list") && (
+          <label
+            className="table-popup__source-check"
+            title={editView ? "Show and edit exactly what you typed, instead of each column's typed reading." : "Show the source text instead of the formatted value."}
+          >
+            <input type="checkbox" checked={sourceMode} onChange={(e) => setSourceMode(e.target.checked)} />
+            Source
+          </label>
+        )}
+        {editAxes && !cards && <TableEditMenus row={menuRow} col={menuCol} />}
         <div className="table-popup__spacer" />
         <div className="table-popup__actions">
           <button className="table-popup__btn table-popup__btn--primary" onClick={() => cubePopup.close()}>Done</button>

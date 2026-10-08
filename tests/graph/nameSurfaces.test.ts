@@ -1,4 +1,4 @@
-// [[C19]]
+// [[B16]]
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -8,10 +8,10 @@ import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { opsFor } from "../../src/graph/nodeOps";
 import { despace } from "../../src/graph/formulaNodeParity";
 
-// [[C19]] namingModel: the naming model. Two of its surfaces are pinned here; the card
+// [[B16]] oneFormulaSurface: the naming model. Two of its surfaces are pinned here; the card
 // title is cardTitle.test.ts, casing is nameCase.test.ts.
 
-describe("[[C19]] namingModel — an Excel name a node answers to is a search row that SHOWS the name", () => {
+describe("[[B16]] oneFormulaSurface — an Excel name a node answers to is a search row that SHOWS the name", () => {
   const leaves = flattenLeaves(buildCatalog(false));
   const byType = new Map(leaves.map((l) => [l.leaf.type, l.leaf]));
 
@@ -22,7 +22,7 @@ describe("[[C19]] namingModel — an Excel name a node answers to is a search ro
       for (const eq of equivs) {
         const name = eq.excel.toUpperCase();
         const top = searchLeaves(leaves, eq.excel).slice(0, 3);
-        const hit = top.some((l) => l.label.toUpperCase().replace(/\s*\([^)]*\)/g, "").split(/[:/,]/).map((t) => t.trim()).includes(name));
+        const hit = top.some((l) => l.label.toUpperCase().replace(/\s*\([^)]*\)/g, "").split(/[:/,→]/).map((t) => t.trim()).includes(name));
         if (!hit) bad.push(`${eq.excel} (${type}) → ${top.map((l) => l.label).join(" | ") || "nothing"}`);
       }
     }
@@ -30,7 +30,7 @@ describe("[[C19]] namingModel — an Excel name a node answers to is a search ro
   });
 });
 
-describe("[[C19]] namingModel — a description's 'Excel: X.' sign-off agrees with NODE_EXCEL", () => {
+describe("[[B16]] oneFormulaSurface — a description's 'Excel: X.' sign-off agrees with NODE_EXCEL", () => {
   // The sign-off is a SECOND copy of the node's Excel names, whose one home is
   // NODE_EXCEL[type] (or the op's fx). Every function name a sign-off states must
   // resolve to this leaf's own Excel/formula names — else the card claims an
@@ -73,7 +73,7 @@ describe("[[C19]] namingModel — a description's 'Excel: X.' sign-off agrees wi
   });
 });
 
-describe("[[C19]] namingModel — no surface derives a node's name from its class name", () => {
+describe("[[B16]] oneFormulaSurface — no surface derives a node's name from its class name", () => {
   // The class name is internal (the save type key); the ONE fallback that reads it is
   // nodeTypeName in catalogUtils.ts, and only for a node with no catalog entry.
   const SRC = path.join(__dirname, "../../src/graph");

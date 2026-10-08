@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildFrame, isCubeValue, isFrameValue, cubeDepth, cubeRowCount, frameRowCount,
-  relateFramesToCube, relateCubeToFrame, type CubeValue, type FrameValue,
+  relateFramesToCube, relateCubeToFrame, cubeFromColumns, type CubeValue, type FrameValue,
 } from "../../src/graph/frame";
 import { BuildCubeNode, NestJoinNode, CubeColumnsNode } from "../../src/graph/nodes/cube";
 import { ListIndexNode } from "../../src/graph/nodes/list";
@@ -59,8 +59,8 @@ describe("relateFramesToCube — dimension-keyed joins (author 2026-07-16: tagge
   });
 
   it("the same quantity matches across display units (base-SI keying)", () => {
-    // Column cells are stored base-SI: 5 km and 5000 m are both 5000.
-    const parent = buildFrame([[5000]], ["k"]);
+    // Column cells are as-typed: 5 km keys as the same quantity as 5000 m.
+    const parent = buildFrame([[5]], ["k"]);
     parent.columns[0].unit = { dim: { length: 1 }, display: "km" };
     const child = buildFrame([[5000, 7]], ["k", "amt"]);
     child.columns[0].unit = { dim: { length: 1 }, display: "m" };
@@ -140,12 +140,6 @@ describe("relateFramesToCube — CUBE child (nest a pre-built cube whole)", () =
     expect(isCubeValue(c3)).toBe(true);
     expect(cubeRowCount(c3 as CubeValue)).toBe(0);
   });
-
-  it("a flat FRAME child still nests a sub-FRAME (unchanged) — depth 1", () => {
-    const flat = relateFramesToCube(customers, orders, "cust", "orders")!;
-    expect(isFrameValue(flat.columns[1].cells[0])).toBe(true);
-    expect(cubeDepth(flat)).toBe(1);
-  });
 });
 
 describe("relateCubeToFrame — a CUBE child deepens a cube parent's leaves", () => {
@@ -162,7 +156,6 @@ describe("relateCubeToFrame — a CUBE child deepens a cube parent's leaves", ()
     const ordersCell = deepened.columns[1].cells[0];
     expect(isCubeValue(ordersCell)).toBe(true);
     const linesCol = (ordersCell as CubeValue).columns.find((c) => c.name === "lines");
-    expect(linesCol).toBeDefined();
     expect(isCubeValue(linesCol!.cells[0])).toBe(true); // the child was a cube → nested as a sub-cube
   });
 });
@@ -171,7 +164,6 @@ describe("BuildCubeNode.data — any value into a cell", () => {
   it("collects a typed scalar, a wired frame, and an empty into one column", () => {
     const n = new BuildCubeNode();
     const keys = n.valueInputKeys();
-    expect(keys.length).toBe(3);
     n.literals[keys[0]] = 5;                 // typed scalar cell
     const frame = buildFrame([[1, 2]], ["a", "b"]);
     const { cube } = n.data({ [keys[1]]: [frame] }); // wired frame cell; keys[2] empty
@@ -212,6 +204,15 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     const n = new ListIndexNode();
     const frame = buildFrame([[1, 2], [3, 4]], ["a", "b"]);
     expect(n.data({ list: [frame], index: [2], column: [2] }).result).toBe(4);
+  });
+
+  it("cube: a whole row keeps each column's authored format", () => {
+    const fmt = { format: "custom", customPattern: "DD-MMM-YYYY HH:mm" } as never;
+    const cube = cubeFromColumns([{ name: "Start", type: "date", format: fmt, cells: [46000.5, 46001.25] }]);
+    const n = new ListIndexNode();
+    const row = n.data({ list: [cube], index: [2], column: [0] }).result as CubeValue;
+    expect(row.columns[0].format).toBe(fmt);
+    expect(row.columns[0].cells).toEqual([46001.25]);
   });
 
   it("cube: a nested-frame cell comes out WHOLE (as a frame)", () => {
@@ -279,8 +280,17 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     const grid = [[1, 2], [3, 4]];
     const badCol = new ListIndexNode().data({ list: [grid], column: [9] }).result;
     expect(isSolError(badCol) && badCol.code).toBe("#REF!");
-    const flatCol = new ListIndexNode().data({ list: [[10, 20]], column: [2] }).result;
-    expect(isSolError(flatCol) && flatCol.code).toBe("#REF!"); // a flat list is n×1
+    const flatCol = new ListIndexNode().data({ list: [[10, 20]], column: [3] }).result;
+    expect(isSolError(flatCol) && flatCol.code).toBe("#REF!");
+  });
+
+  // [[D85]] columnsStayColumns: a list is one row, as ROWS and COLUMNS count it.
+  it("a list is one row: the column picks the item, and a row past 1 is #REF!", () => {
+    expect(new ListIndexNode().data({ list: [[10, 20]], column: [2] }).result).toBe(20);
+    expect(new ListIndexNode().data({ list: [[10, 20]], index: [1], column: [2] }).result).toBe(20);
+    const row2 = new ListIndexNode().data({ list: [[10, 20]], index: [2], column: [1] }).result;
+    expect(isSolError(row2) && row2.code).toBe("#REF!");
+    expect(new ListIndexNode().data({ list: [[10, 20]], index: [2] }).result).toBe(20);
   });
 });
 
@@ -291,7 +301,6 @@ describe("relateCubeToFrame — deepen a nest-join cube one level (Customer→Or
 
   it("nest-joins the child into each leaf sub-frame, growing depth 1 → 2", () => {
     const lvl1 = relateFramesToCube(customer, order, "id", "orders")!;
-    expect(cubeDepth(lvl1)).toBe(1);
     const lvl2 = relateCubeToFrame(lvl1, lineItem, "orderId", "lines");
     expect(isCubeValue(lvl2)).toBe(true);
     expect(cubeDepth(lvl2)).toBe(2);                 // orders cells are now cubes

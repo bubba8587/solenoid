@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 // ─── The two touch bars must not drift ───────────────────────────────────────
 // A phone gets the bottom action bar; a tablet gets the same actions in the TOP
 // bar, because a tablet runs the desktop chrome and has no bottom bar at all
-// (IS_MOBILE is false there — iPadOS ships a desktop UA on purpose). The author's
+// (isMobile() is false there — iPadOS ships a desktop UA on purpose). The author's
 // standing instruction when this was queued: reuse the mobile bar's controls
 // exactly — same handlers, same icons, same disabled logic, new location.
 //
@@ -54,15 +54,15 @@ describe("the mobile bar and the tablet top-bar actions share one source", () =>
 
   it("a device is never both mobile and tablet, and never neither", () => {
     const coarse = read("./coarse.ts");
-    // Derived, not sniffed: IS_TABLET is exactly "coarse but not mobile".
-    expect(coarse).toContain("export const IS_TABLET = IS_COARSE && !IS_MOBILE;");
+    // Derived, not sniffed: a tablet is exactly "coarse but not mobile".
+    expect(coarse).toContain("return IS_COARSE && !_mobile;");
   });
 });
 
 // ─── The header envelope is MEASURED, not written down ───────────────────────
 // Six top-anchored overlays used to hard-code an offset derived from the same
 // 66px header height. That is the documented source of the recurring "overlay
-// overlaps a bar" bug (layout-chrome.md was started for it: the align pill
+// overlaps a bar" bug (tree/specs/canvas/layout-chrome.md was started for it: the align pill
 // shipped at 56px against an 82px bar and landed inside the toolbar). A TABLET
 // wraps the bar to a second row, and where it wraps depends on the viewport —
 // so the envelope stopped being a number anyone could write down. Header.tsx

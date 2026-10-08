@@ -1,124 +1,87 @@
-# Solenoid — Subsystem invariants
+# Solenoid: subsystem specs
 
-The index of the subsystem specs. Each subsystem's mechanics live in `../specs/<name>.md`
-(one spec per subsystem; its first line names the leaves it serves); read the spec in full before touching
-that subsystem. A section here is a pointer, never the mechanics.
+The index of `../tree/specs/`, grouped by the folders the specs live in. Each spec states what its subsystem does, in enough detail to rebuild it, and names the decision leaves it serves on its first line. Read the whole spec before changing its subsystem. This page only points; it never holds mechanics.
 
-## The floor specs (`covers:` globs)
+## Floors
 
-`../specs/components.md` (every React component), `../specs/node-classes.md` (every node class and op
-module), `../specs/stores.md` (every module-singleton store). Each ends its header with a `covers:`
-glob; a file the glob matches is built to that spec and cites nothing class-wide itself.
+Three specs govern whole classes of files through a `covers:` glob in their header. A file the glob matches is built to that spec and cites nothing class-wide itself.
 
-## React Flow surface contract (`flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`)
+| Spec | Governs |
+|---|---|
+| `../tree/specs/floors/components.md` | every React component |
+| `../tree/specs/floors/node-classes.md` | every node class and op module |
+| `../tree/specs/floors/stores.md` | every module-singleton store |
+| `../tree/specs/floors/engineering.md` | cross-cutting code-hygiene rules (no `covers:` glob; each rule binds every file that does what it names) |
 
-`../specs/react-flow-surface-contract.md`.
+## Computation
 
-## Cable rendering knobs
+| Spec | Subsystem | Main code |
+|---|---|---|
+| `../tree/specs/computation/compute-pass.md` | the recompute pass, calc modes, the per-node wrappers and arrival coercion | `graphCompute.ts`, `process.ts`, `coerceInputs.ts`, `nodeRegistry.ts` |
+| `../tree/specs/computation/formula-language.md` | the formula grammar, operators, name resolution, dispatch, broadcasting, LAMBDA, Expression | `excelFormula.ts`, `excelFunctions.ts`, `formulaSignatures.ts` |
+| `../tree/specs/computation/formulajs-divergences.md` | why each `registerInternal` override exists | `excelFunctions.ts` |
+| `../tree/specs/computation/computed-columns.md` | per-row formulas on a Frame: Fx columns and the Computed Column node | `computedColumnCore.ts`, `nodes/frame.ts` |
+| `../tree/specs/computation/frame-verbs.md` | the Frame value, lazy frames, the JS / Polars backend seam, every relational verb | `frame.ts`, `frameVerbs.ts`, `frameBackend.ts`, `src-tauri/src/engine.rs` |
+| `../tree/specs/computation/composite-nodes.md` | composite nodes: ports, run modes, the heavy-mode hold, loops, save and load | `nodes/composite.ts`, `components/CompositeNode.tsx` |
+| `../tree/specs/computation/chart-figures.md` | the values on the `chart` socket, the figure nodes, the options string, rendering | `nodes/visual.ts`, `nodes/chartOptions.ts`, `chartRender.tsx` |
+| `../tree/specs/computation/schedule-and-gantt.md` | the tasks cube, the Schedule and Gantt nodes, plan import, the Gantt figure, dates and precision | `scheduleCpm.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `ganttPayload.ts`, `planImport.ts`, `packages/schedule-engine`, `packages/gantt-layout`, `packages/gantt-react` |
+| `../tree/specs/computation/equation-solver.md` | solving a relation for any one variable | `equationSolve.ts` |
+| `../tree/specs/computation/bordered-grid-fill.md` | filling blank cells in a bordered grid | `mathUtils.ts` `fillBorderedGrid` |
+| `../tree/specs/computation/script-sandbox.md` | running Script code in a worker | `scriptWorker.ts`, `scriptExecutor.ts`, `nodes/scriptRun.ts` |
+| `../tree/specs/computation/live-connections.md` | fetched data: caching, refresh, the network gate | `connectionStore.ts`, `nodes/connection.ts`, `httpBridge.ts` |
+| `../tree/specs/computation/alert-node-alerts-hud.md` | the Alert node and the Alerts HUD | `nodes/display.ts`, `alertStore.ts`, `AlertLayer.tsx` |
 
-`../specs/cable-rendering-knobs.md`.
+## Values and types
 
-## Group expand push (`groupPush.ts` + `groupPushCore.ts`)
+| Spec | Subsystem | Main code |
+|---|---|---|
+| `../tree/specs/values/socket-lattice.md` | which sockets connect, and the wildcard ladder | `sockets.ts` |
+| `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` | reconciling downstream when a socket retypes in place | `fcReconcile.ts` |
+| `../tree/specs/values/unit-flow.md` | units on values and formats flowing downstream | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts` |
+| `../tree/specs/values/error-values.md` | error codes, propagation and display | `errorValue.ts` |
+| `../tree/specs/values/value-semantics.md` | null, NaN, infinity and errors per context, and reading an input (wired blank vs literal) | every `data()` |
+| `../tree/specs/values/input-roles.md` | what a blank means per input role (data, setting, picks) and the one declaration cards and formulas read | `inputRoles.ts`, `readRole`, every `data()` |
+| `../tree/specs/values/format-model.md` | the Format Controller's render pipeline, per-family controls and precision | `formatModel.ts`, `formatAnnotationStore.ts` |
 
-`../specs/group-expand-push.md`.
+## Documents
 
-## Group collapse — the retain rule (`groupCollapse.ts`)
+| Spec | Subsystem | Main code |
+|---|---|---|
+| `../tree/specs/documents/save-format.md` | the saved document, the text form, loading | `persistence.ts`, `textForm.ts`, `graphValidate.ts` |
+| `../tree/specs/documents/table-popup.md` | the Table popup: modes, editing, write-back, the Form view, copy and export | `components/TablePopup.tsx`, `tablePopupStore.ts` |
+| `../tree/specs/documents/reports-and-notes.md` | Notes, Reports and Knap: the body syntax, rendering, mail merge, vault writes, export | `knapTemplate.ts`, `templateValue.ts`, `nodes/report.ts`, `nodes/annotation.ts` |
+| `../tree/specs/documents/addressable-model.md` | node names and name-addressed references | `nodeNameStore.ts`, `nodeNaming.ts` |
+| `../tree/specs/documents/per-doc-autosave-persistence.md` | per-document autosave slots | `documentStore.ts` |
+| `../tree/specs/documents/inline-literal-maps.md` | values edited on a card, and which classes restore them | node classes, `persistence.ts` |
+| `../tree/specs/documents/literal-input-editors.md` | the table popup as the editor for literal sources | `TablePopup.tsx`, `columnHeadControls.tsx` |
+| `../tree/specs/documents/graph-load-teardown-performance.md` | building and tearing down a large graph | `persistence.ts` `rebuildGraph`, `flow/FlowCanvas.tsx` |
 
-`../specs/group-collapse.md`.
+## Canvas
 
-## Equation solver (`equationSolve.ts`)
+| Spec | Subsystem | Main code |
+|---|---|---|
+| `../tree/specs/canvas/react-flow-surface-contract.md` | what React Flow owns, sub-flows, cables, sockets, overlays, ghost cables | `flow/*` |
+| `../tree/specs/canvas/pointer-gestures.md` | pinch, pan, drag and their priority (with `tree/specs/canvas/touch-gestures.md`) | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` |
+| `../tree/specs/canvas/html-in-canvas.md` | the HTML-in-Canvas gesture layer | `htmlCanvasRenderer.ts`, `HtmlCanvasLayer.tsx` |
+| `../tree/specs/canvas/cable-rendering-knobs.md` | cable shapes, ribbons and the walk router | `cablePaths.ts`, `flow/FlowCableEdge.tsx` |
+| `../tree/specs/canvas/drawn-cables.md` | annotation cables drawn by hand | `drawnCables.ts`, `DrawnCableLayer.tsx` |
+| `../tree/specs/canvas/auto-arrange-tidy.md` | Tidy and Cleanup | `tidyArrange.ts` |
+| `../tree/specs/canvas/group-expand-push.md` | how expanding a group moves its neighbors | `groupPush.ts`, `groupPushCore.ts` |
+| `../tree/specs/canvas/group-collapse.md` | what a collapsed group shows and hides | `groupCollapse.ts` |
+| `../tree/specs/canvas/standoffs.md` | standoff constraints and their solver | `standoffs.ts`, `standoffSolver.ts`, `StandoffLayer.tsx` |
+| `../tree/specs/canvas/conduit-lane-faces.md` | Conduit lane geometry | Conduit components |
+| `../tree/specs/canvas/resizable-content-nodes.md` | cards whose content the user resizes | Conduit, Display |
+| `../tree/specs/canvas/input-cable-pruning.md` | dropping cables before their sockets go | `components/cablePrune.ts` |
+| `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` | opening and leaving a composite's inner canvas | `flow/FlowCompositeOverlay.tsx`, `flow/drillStack.ts` |
+| `../tree/specs/canvas/add-menu.md` | the Add menu tree, search rows and scoring | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` |
+| `../tree/specs/canvas/layout-chrome.md` | where every bar and floating overlay sits, and what its offsets derive from | `Header.tsx`, `chromeBottom.ts`, the chrome CSS |
+| `../tree/specs/canvas/touch-gestures.md` | the inventory of every pointer and touch gesture per device | `flow/*`, `pointerGesture.ts` |
+| `../tree/specs/canvas/palette-and-theme.md` | palettes, slots, the neutral chrome ramp, document and report palettes, the accent and light or dark theme | `palette.ts`, `appTheme.ts`, `themeVars.ts` |
+| `../tree/specs/canvas/command-palette.md` | the Command Palette: what it lists, search, and AI mode | `CommandPalette.tsx` |
+| `../tree/specs/canvas/outline-panel.md` | the Navigator list: tree, filters, sorting, focusing | `OutlinePanel.tsx` |
 
-`../specs/equation-solver.md`.
+## Integrations
 
-## Bordered-grid fill (`mathUtils.ts` `fillBorderedGrid`)
-
-`../specs/bordered-grid-fill.md`.
-
-## Standoffs (`standoffs.ts`, `standoffSolver.ts`, `StandoffLayer.tsx`)
-
-`../specs/standoffs.md`.
-
-## Drawn cables (`drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCableLayer.tsx`, `components/DrawnCableCapture.tsx`, `components/DrawnCableInspector.tsx`)
-
-`../specs/drawn-cables.md`.
-
-## Auto-arrange / Tidy (elkjs called directly — `tidyArrange.ts`)
-
-`../specs/auto-arrange-tidy.md`.
-
-## Conduit lane faces
-
-`../specs/conduit-lane-faces.md`.
-
-## Resizable-content nodes (the Conduit pattern)
-
-`../specs/resizable-content-nodes.md`.
-
-## Input-cable pruning — ONE loop (`components/cablePrune.ts`, onePrunePath)
-
-`../specs/input-cable-pruning.md`.
-
-## Pointer gestures — pinch priority by listener PHASE (`pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts`)
-
-`../specs/pointer-gestures.md`.
-
-## Add menu — catalog, search rows, and what a label may carry (`AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts`)
-
-`../specs/add-menu.md`.
-
-## Socket lattice (`sockets.ts`)
-
-`../specs/socket-lattice.md`.
-
-## Type propagation on in-place socket retype (`fcReconcile.ts`)
-
-`../specs/type-propagation-on-in-place-socket-retype.md`.
-
-## Unit flow — the FC is VALUE-MUTATING; format is a display annotation (`unitFlow.ts`)
-
-`../specs/unit-flow.md`.
-
-## Error values (`errorValue.ts`)
-
-`../specs/error-values.md`.
-
-## Alert node + Alerts HUD (`nodes/display.ts` AlertNode, `alertStore.ts`, `components/AlertLayer.tsx`, `HudStack.tsx`)
-
-`../specs/alert-node-alerts-hud.md`.
-
-## Addressable model (`nodeNameStore.ts`, `nodeNaming.ts`, `textForm.ts`)
-
-`../specs/addressable-model.md`.
-
-## Live connections — cache + refresh (`connectionStore.ts`, `nodes/connection.ts`, `httpBridge.ts`)
-
-`../specs/live-connections.md`.
-
-## Graph load / teardown performance (`persistence.ts` `rebuildGraph`, `flow/FlowCanvas.tsx`)
-
-`../specs/graph-load-teardown-performance.md`.
-
-## Per-doc autosave persistence (`documentStore.ts`, 2026-07-05)
-
-`../specs/per-doc-autosave-persistence.md`.
-
-## Literal input editors — one popup surface (2026-09-07)
-
-`../specs/literal-input-editors.md`.
-
-## Inline literal maps — declaration gates restore (2026-07-19)
-
-`../specs/inline-literal-maps.md`.
-
-## Composite drill-in mount lifecycle (`flow/FlowCompositeOverlay.tsx`)
-
-`../specs/composite-drill-in-mount-lifecycle.md`.
-
-## Script sandbox (`scriptWorker.ts`, `scriptExecutor.ts`, `nodes/scriptRun.ts`)
-
-`../specs/script-sandbox.md`.
-
-## Solenoid Properties, the Obsidian plugin (`obsidian-plugin/`, 2026-09-20)
-
-`../specs/obsidian-plugin.md`.
-
+| Spec | Subsystem | Main code |
+|---|---|---|
+| `../tree/specs/integrations/obsidian-plugin.md` | Solenoid Properties, the Obsidian plugin | `obsidian-plugin/` |

@@ -1,11 +1,12 @@
-// [[D10]] onePrunePath
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { collapseStore } from "../collapseStore";
+import { CollapsedInputPill } from "./CollapsedInputPill";
 import type { SumIfsNode as SumIfsNodeType, CondAggOp } from "../rete-nodes";
 import { COND_AGG_OP_META } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -26,6 +27,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
   const strLiterals = (data.stringLiterals ??= {});
   const pairs = data.valuePairKeys();
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
 
   const rowCfg = (id: string): FilterCondConfig => cfg[id] ?? data.condConfig[id] ?? { op: "eq" };
   const updateCfg = (id: string, patch: Partial<FilterCondConfig>) => {
@@ -41,20 +43,24 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
 
   async function addPair() {
     data.addValuePair();
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removePair(colKey: string, valKey: string) {
     await dropInputCables(data.id, [colKey, valKey]);
     data.removeValuePair(colKey);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }
 
   return (
     <NodeShell node={data} emit={emit}>
+      {/* Collapsed, every input rides one pill; the rows below would hide their sockets with them. */}
+      {collapsed ? (
+        <CollapsedInputPill node={data} emit={emit} keys={["frame", ...(op !== "countifs" ? ["values"] : []), ...pairs.flat()]} />
+      ) : (<>
       <InlineInputs node={data} emit={emit} keys={["frame"]} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
       {op !== "countifs" && (
@@ -135,6 +141,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
       >
         Add Criterion
       </button>
+      </>)}
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

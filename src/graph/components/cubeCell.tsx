@@ -1,7 +1,5 @@
 // [[C24]] arraySemantics, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity
-// The one place mapping a Cube cell's kind to how it renders and what drilling it
-// pushes onto the breadcrumb stack — a nested container drills IN PLACE.
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import {
   isFrameValue, isCubeValue, cubeRowCount, cubeDepth, frameRowCount, formatFrameCell,
   type CubeCell, type FrameColType, type FrameCell,
@@ -12,36 +10,40 @@ import { isUnitCell } from "../unitValue";
 import { cubePopup, type CellRef } from "../cubePopupStore";
 import { formatScalar } from "./format";
 import { formatListCell } from "./valueDisplayFormat";
-import { elemFamilyOfCells, type ElemFamily } from "../valuePopup";
+import { elemFamilyOfCells, elemChipClass, type ElemFamily } from "../valuePopup";
 import { errorTip } from "./ErrorChip";
+import { cellImageSrc } from "../recordLayout";
+import { appThemeStore } from "../appTheme";
+import { resolveColor } from "../palette";
+import { repaintSparkline, SPARK_SLOTS } from "../nodes/visualOps";
 import "./ArrayChip.css";
 
+/** A text cell holding a data:image picture ([[C103]] untrustedContentSeams); a sparkline paints in the active palette ([[D82]] sparklineCell). */
+export function CellImage({ src, className = "sol-cell-img", alt = "" }: { src: string; className?: string; alt?: string }): ReactNode {
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const shown = repaintSparkline(src, {
+    line: resolveColor(SPARK_SLOTS.line), pos: resolveColor(SPARK_SLOTS.pos), neg: resolveColor(SPARK_SLOTS.neg),
+  });
+  return <img className={className} src={shown} alt={alt} draggable={false} />;
+}
+
 const LIST_PREVIEW = 3;
-/** The hover title shows more of a list than the compact token does. */
 const HOVER_PREVIEW = 8;
-/** A list cell in brackets with its first `max` items (`[a, b, c…]`); a 2-D cell by
- *  its shape (`[3×4 Table]`), like the chips. */
 function listToken(cell: unknown[], max = LIST_PREVIEW, type?: FrameColType): string {
   if (Array.isArray(cell[0])) return `[${cell.length}×${(cell[0] as unknown[]).length} Table]`;
-  // The column's element type prints each item (a date list's serials as dates).
   const items = cell.slice(0, max).map((x) => cubeCellToken(x as CubeCell, type));
   return `[${items.join(", ")}${cell.length > max ? "…" : ""}]`;
 }
 
-/** The element family a nested list chip tints by: the column's declared type when the
- *  cube carries one, else the cells (a mixed list stays untinted, like a wildcard). */
 function listFamily(cell: unknown[], type?: FrameColType): ElemFamily | undefined {
   return type ?? elemFamilyOfCells(cell as Parameters<typeof elemFamilyOfCells>[0]);
 }
 
-/** A short, drill-free token for the compact preview, spelled like the chips
- *  (`[3×2×1 Cube]`, `[5×2 Frame]`, `[a, b, c…]`); `type` renders a flat scalar cell by
- *  its source column's element type. */
 export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: FormatAnnotation): string {
   if (cell === null || cell === undefined) return "";
   if (isCubeValue(cell)) return `[${cubeRowCount(cell)}×${cell.columns.length}×${cubeDepth(cell)} Cube]`;
   if (isFrameValue(cell)) return `[${frameRowCount(cell)}×${cell.columns.length} Frame]`;
-  if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
+  if (isUnitCell(cell)) return formatListCell(cell, formatScalar);
   if (Array.isArray(cell)) return listToken(cell, LIST_PREVIEW, type);
   if (isSolError(cell)) return cell.code;
   if (type) { const f = formatFrameCell(type, cell, format); return f === null ? "" : String(f); }
@@ -50,31 +52,34 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: Form
   return String(cell);
 }
 
-/** A flat Frame cell by column type: serial → date, logical → TRUE/FALSE, error →
- *  red #CODE!. */
+/** A cell as a card shows it: a typed number in the General style ([[D94]] oneNumberDisplay), anything else as its token, which copies keep. */
+export function cubeCellShown(cell: CubeCell, type?: FrameColType, format?: FormatAnnotation): string {
+  if (type && cell !== null && typeof cell !== "object") {
+    const f = formatFrameCell(type, cell, format);
+    if (typeof f === "number") return formatScalar(f);
+  }
+  return cubeCellToken(cell, type, format);
+}
+
 export function frameCellNode(type: FrameColType, cell: FrameCell, format?: FormatAnnotation): ReactNode {
   if (cell === null || cell === undefined || cell === "") {
     return <span style={{ color: "var(--text-muted)" }}>—</span>;
   }
   if (isSolError(cell)) {
-    return <span title={errorTip(cell)} style={{ color: "var(--error, #d33)" }}>{cell.code}</span>;
+    return <span title={errorTip(cell)} style={{ color: "var(--sol-error)" }}>{cell.code}</span>;
   }
+  const img = cellImageSrc(cell);
+  if (img) return <CellImage src={img} />;
   const f = formatFrameCell(type, cell, format);
-  return <>{f === null ? "" : String(f)}</>;
+  return <>{f === null ? "" : typeof f === "number" ? formatScalar(f) : f}</>;
 }
 
-/** A drillable cell for the viewer grid (cube + grid views). A nested container
- *  drills IN PLACE via the breadcrumb stack; a scalar renders as inline text. */
 export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   cell: CubeCell;
-  /** Breadcrumb label a drilled-into view should carry (the column name). */
   crumb: string;
-  /** This chip's cell in the popup grid, so a return from the drilled level lands on it. */
   at?: CellRef;
   size?: "sm" | "md";
-  /** The source frame column's element type (a flat scalar cell renders by it). */
   type?: FrameColType;
-  /** The source column's display format (a date cell renders by its pattern). */
   format?: FormatAnnotation;
 }): ReactNode {
   if (cell === null || cell === undefined) {
@@ -116,9 +121,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   }
   if (Array.isArray(cell)) {
     const is2D = Array.isArray(cell[0]);
-    // Tinted by element family like the node-level chip (numeric keeps the default).
-    const family = listFamily(cell, type);
-    const famClass = family && family !== "number" ? ` solenoid-array-chip--elem-${family}${is2D ? "-table" : ""}` : "";
+    const famClass = elemChipClass(cell as Parameters<typeof elemChipClass>[0], is2D, listFamily(cell, type));
     return (
       <button
         type="button"
@@ -126,18 +129,19 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
         title={is2D ? `${cell.length}×${(cell[0] as unknown[]).length} table. Drill in.` : `${cell.length}-item list ${listToken(cell, HOVER_PREVIEW, type)}. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
-        onClick={(e) => { stop(e); cubePopup.drill(is2D ? { kind: "grid", cells: cell as CubeCell[][], label: crumb } : { kind: "list", items: cell, label: crumb }, at); }}
+        onClick={(e) => { stop(e); cubePopup.drill(is2D ? { kind: "grid", cells: cell as CubeCell[][], label: crumb } : { kind: "list", items: cell, label: crumb, type }, at); }}
       >
         [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length} Table` : `${cell.length}× List`}]
       </button>
     );
   }
   if (isSolError(cell)) {
-    return <span title={errorTip(cell)} style={{ color: "var(--error, #d33)" }}>{cell.code}</span>;
+    return <span title={errorTip(cell)} style={{ color: "var(--sol-error)" }}>{cell.code}</span>;
   }
-  if (isUnitCell(cell)) return <>{formatListCell(cell, formatScalar)}</>; // "5 km"
+  if (isUnitCell(cell)) return <>{formatListCell(cell, formatScalar)}</>;
   if (type) return frameCellNode(type, cell, format);
   if (typeof cell === "boolean") return <>{cell ? "TRUE" : "FALSE"}</>;
   if (typeof cell === "number") return <>{formatScalar(cell)}</>;
-  return <>{String(cell)}</>;
+  const img = cellImageSrc(cell);
+  return img ? <CellImage src={img} /> : <>{String(cell)}</>;
 }

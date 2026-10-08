@@ -1,16 +1,15 @@
-// [[C12]]
-// Maps every node class to its React component — one row per node.
+// [[A1]] visualGraphCalculator
 
 import type { Emit } from "./components/nodeKit";
 import { ClassicPreset } from "rete";
 import type { JSXElementConstructor } from "react";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
-  SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DateInputNode, DateRangeNode, XYPadNode,
+  SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, ValueInputNode, DateRangeNode, XYPadNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode,
-  NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
+  ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
   ColorPickerNode, SaveTimesNode,
   ColorBlendNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -20,7 +19,7 @@ import {
   UniqueNode, SetsNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, PolyRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode,
   CorrelNode, BesselNode, CombinatoricsNode, TwoInputMathNode,
-  SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, IsTestNode,
+  SumProductNode, ChooseNode, SliderInputNode, IsTestNode,
   NaNode, AlertNode, NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode,
   StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
@@ -33,11 +32,11 @@ import {
   EtsForecastNode, DecomposeNode, OdeIntegrateNode, FitDistributionNode, InterpolateNode, LinestNode, BinomDistRangeNode,
   FvScheduleNode, IspmtNode, DollarNode, ProbNode,
   WeightedNode, BaseConvertNode,
-  TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
+  TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, PadTextNode, TruncateTextNode, WrapTextNode, ExactNode, TextSimilarityNode, FuzzyMatchNode,
   CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
-  NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode, TemplateNode,
+  RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode, TemplateNode,
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateTimeValueNode, DatePartNode, WeekInfoNode,
   DateDiffNode, DateAddNode, WorkdaysNode, EpochNode, DateTruncNode,
@@ -66,7 +65,7 @@ import {
   ScriptNode,
   EquationNode,
   RegexNode,
-  GroupByNode,
+  GroupListsNode,
   ParallelCombineNode, ESeriesNode, AwgNode,
   PhysicsConstantNode,
   ColebrookNode,
@@ -82,11 +81,11 @@ import {
 } from "./rete-nodes";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
-  SparklineComponent, ChartComponent, MergePlotsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DateInputComponent, DateRangeComponent, XYPadComponent,
+  SparklineComponent, ChartComponent, MergePlotsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapComponent, ChartBuilderComponent, ValueInputComponent, DateRangeComponent, XYPadComponent,
   WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, RecordComponent, GanttComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
-  NumberInputComponent, ArithmeticComponent, DisplayComponent, ComparisonComponent,
+  ArithmeticComponent, DisplayComponent, ComparisonComponent,
   MathFnComponent, ClampComponent, BooleanComponent, NotComponent, IfComponent, ConduitComponent, CastComponent,
   ConstantComponent, MRoundComponent, ListInputComponent, AggregateComponent,
   SeriesComponent, ListLengthComponent, ListIndexComponent, SortComponent,
@@ -95,7 +94,7 @@ import {
   RoundNComponent, ConvertComponent, UniqueComponent, SetsComponent,
   ConcatListsComponent, FrameFromListsComponent, QuadraticRootsComponent, PolyRootsComponent, RunningComponent, DiffComponent, ArgMinMaxComponent,
   ContainsComponent, RankPercentileComponent, CorrelComponent, CombinatoricsComponent,
-  TwoInputMathComponent, SumProductComponent, ChooseComponent, BooleanInputComponent,
+  TwoInputMathComponent, SumProductComponent, ChooseComponent, 
   SliderInputComponent, ColorPickerComponent, ColorBlendComponent, IsTestComponent, NaComponent, AlertComponent,
   NormalizeComponent, BinComponent, OutliersComponent, SmoothComponent, FindPeaksComponent, EpochComponent, DateTruncComponent, ShiftComponent, CombinationsComponent, EwmaComponent, ConvolveComponent, CrossComponent, PolyfitComponent, TrapzComponent, RleComponent, BetweenComponent, IsCloseComponent, ShuffleComponent,
   NthElementComponent, InterleaveComponent, PadComponent,
@@ -111,11 +110,11 @@ import {
   EtsForecastComponent, DecomposeComponent, OdeIntegrateComponent, FitDistributionComponent, InterpolateComponent, LinestComponent, BinomDistRangeComponent,
   FvScheduleComponent, IspmtComponent, DollarComponent, ProbComponent,
   WeightedComponent, BaseConvertComponent,
-  TextInputComponent, TextTransformComponent, TextLenComponent, ConcatComponent,
+  TextTransformComponent, TextLenComponent, ConcatComponent,
   TextSliceComponent, TextFindComponent, SubstituteComponent, TextReplaceComponent,
   ReptComponent, PadTextComponent, TruncateTextComponent, WrapTextComponent, ExactComponent, TextSimilarityComponent, FuzzyMatchComponent,
   CharCodeComponent, TextJoinComponent, TextSplitComponent, TextAfterBeforeComponent,
-  NumberValueComponent, RomanArabicComponent, FixedComponent, UrlEncodeComponent, HashComponent, UuidComponent, TemplateComponent,
+  RomanArabicComponent, FixedComponent, UrlEncodeComponent, HashComponent, UuidComponent, TemplateComponent,
   SaveTimesComponent,
   TodayNowComponent, DateConstructComponent, TimeConstructComponent,
   DateTimeValueComponent, DatePartComponent,
@@ -146,7 +145,7 @@ import {
   ScriptComponent,
   EquationComponent,
   RegexComponent,
-  GroupByComponent,
+  GroupListsComponent,
   ParallelCombineComponent, ESeriesComponent, AwgComponent,
   PhysicsConstantComponent,
   ColebrookComponent,
@@ -215,12 +214,11 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [WindowNode,        comp(WindowComponent)],
   [MermaidNode,     comp(MermaidComponent)],
   [GaugeNode,       comp(GaugeComponent)],
-  [HeatmapCellNode, comp(HeatmapCellComponent)],
+  [HeatmapNode, comp(HeatmapComponent)],
   [ChartBuilderNode, comp(ChartBuilderComponent)],
-  [DateInputNode,  comp(DateInputComponent)],
+  [ValueInputNode, comp(ValueInputComponent)],
   [DateRangeNode,   comp(DateRangeComponent)],
   [XYPadNode,       comp(XYPadComponent)],
-  [NumberInputNode, comp(NumberInputComponent)],
   [ArithmeticNode,  comp(ArithmeticComponent)],
   [DisplayNode,     comp(DisplayComponent)],
   [ComparisonNode,  comp(ComparisonComponent)],
@@ -283,7 +281,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [TwoInputMathNode,  comp(TwoInputMathComponent)],
   [SumProductNode,    comp(SumProductComponent)],
   [ChooseNode,        comp(ChooseComponent)],
-  [BooleanInputNode,  comp(BooleanInputComponent)],
   [SliderInputNode,   comp(SliderInputComponent)],
   [ColorPickerNode,   comp(ColorPickerComponent)],
   [ColorBlendNode,    comp(ColorBlendComponent)],
@@ -333,7 +330,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [ProbNode,         comp(ProbComponent)],
   [WeightedNode,     comp(WeightedComponent)],
   [BaseConvertNode,  comp(BaseConvertComponent)],
-  [TextInputNode,  comp(TextInputComponent)],
   [TextTransformNode,comp(TextTransformComponent)],
   [TextLenNode,      comp(TextLenComponent)],
   [ConcatNode,       comp(ConcatComponent)],
@@ -352,7 +348,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [TextJoinNode,          comp(TextJoinComponent)],
   [TextSplitNode,         comp(TextSplitComponent)],
   [TextAfterBeforeNode,   comp(TextAfterBeforeComponent)],
-  [NumberValueNode,       comp(NumberValueComponent)],
   [RomanArabicNode,       comp(RomanArabicComponent)],
   [FixedNode,             comp(FixedComponent)],
   [UrlEncodeNode,         comp(UrlEncodeComponent)],
@@ -455,7 +450,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [CubeRollupNode,        comp(CubeRollupComponent)],
   [GroupNode,             comp(GroupComponent)],
   [CompositeNode,         comp(CompositeComponent)],
-  // Boundary markers — rendered only inside the drill-in editor's own rete root.
   [CompositeInputNode,    comp(CompositeInputMarkerComponent)],
   [CompositeOutputNode,   comp(CompositeOutputMarkerComponent)],
   [ComplexFromNode,       comp(ComplexFromComponent)],
@@ -468,7 +462,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [ScriptNode,            comp(ScriptComponent)],
   [EquationNode,          comp(EquationComponent)],
   [RegexNode,             comp(RegexComponent)],
-  [GroupByNode,           comp(GroupByComponent)],
+  [GroupListsNode,           comp(GroupListsComponent)],
   // Packs: registered ALWAYS, so a saved graph renders with the pack deactivated.
   [ParallelCombineNode,   comp(ParallelCombineComponent)],
   [ESeriesNode,           comp(ESeriesComponent)],
@@ -492,14 +486,12 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [TriangleSolverNode,    comp(TriangleSolverComponent)],
   [MolarMassNode,         comp(MolarMassComponent)],
   [PromoNode,             comp(PromoComponent)],
-  // Load-time stand-in for an unregistered saved type (pack off / renamed).
   [PlaceholderNode,       comp(PlaceholderComponent)],
   [ExpectNode,            comp(ExpectComponent)],
   [TornadoNode,           comp(TornadoComponent)],
 ];
 
-// Exact constructor first, then the ordered `instanceof` scan for subclasses that
-// reuse a base component — so entry order matters only for UNregistered subclasses.
+// Exact constructor first, then the ordered `instanceof` scan, so entry order matters only for unregistered subclasses.
 const componentByCtor = new Map<NodeCtor, AnyNodeComponent>(NODE_COMPONENTS);
 
 export function componentForNode(payload: object): AnyNodeComponent | null {

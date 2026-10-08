@@ -1,4 +1,4 @@
-// [[D13]] widenNeverNarrow
+// [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { toMatrix, toList, toScalar, ShapeError } from "../../../src/graph/nodes/coerce";
 

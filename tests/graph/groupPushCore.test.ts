@@ -1,6 +1,6 @@
-// [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle
+// [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
-import { computeExpandPush, separateOverlaps, PushBox, Satellite, ExpandSpec, PUSH_GAP, Pt } from "../../src/graph/groupPushCore";
+import { computeExpandPush, separateOverlaps, separateAll, PushBox, Satellite, ExpandSpec, PUSH_GAP, Pt } from "../../src/graph/groupPushCore";
 
 // A group at (0,0) collapsing to a 100×40 card, expanding to 400×300.
 const spec: ExpandSpec = { x: 0, y: 0, preW: 100, preH: 40, postW: 400, postH: 300 };
@@ -254,12 +254,6 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
     }
   });
 
-  it("leaves baseline (pre-existing) overlaps alone", () => {
-    const boxes = [box("A", 0, 0, 200, 200), box("B", 50, 50, 200, 200)];
-    const baseline = new Set(["A|B"]);
-    expect(separateOverlaps(boxes, baseline).size).toBe(0);
-  });
-
   it("no overlaps → no movement", () => {
     const boxes = [box("A", 0, 0, 100, 100), box("B", 200, 0, 100, 100)];
     expect(separateOverlaps(boxes).size).toBe(0);
@@ -270,7 +264,7 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
     // fixed locked group and F a tidied node dropped onto it — F must be the mover.
     const L = box("L", 0, 0, 200, 150);
     const F = box("F", 40, 30, 200, 150);
-    const disp = separateOverlaps([L, F], undefined, PUSH_GAP, new Set(["L"]));
+    const disp = separateOverlaps([L, F], PUSH_GAP, new Set(["L"]));
     expect(disp.get("L")).toBeUndefined();          // pinned: unmoved
     expect(disp.has("F")).toBe(true);               // partner yielded
     expect(anyOverlap([L, F], disp)).toBe(false);
@@ -279,13 +273,35 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
   it("pushes a free node off a pinned box even when the free node is top-left", () => {
     const F = box("F", 0, 0, 200, 150);   // top-left, but free
     const L = box("L", 40, 30, 200, 150); // pinned obstacle
-    const disp = separateOverlaps([F, L], undefined, PUSH_GAP, new Set(["L"]));
+    const disp = separateOverlaps([F, L], PUSH_GAP, new Set(["L"]));
     expect(disp.get("L")).toBeUndefined();
     expect(anyOverlap([F, L], disp)).toBe(false);
   });
 
   it("leaves two pinned obstacles overlapping (neither can move)", () => {
     const boxes = [box("A", 0, 0, 200, 200), box("B", 50, 50, 200, 200)];
-    expect(separateOverlaps(boxes, undefined, PUSH_GAP, new Set(["A", "B"])).size).toBe(0);
+    expect(separateOverlaps(boxes, PUSH_GAP, new Set(["A", "B"])).size).toBe(0);
+  });
+});
+
+describe("separateAll with standoff clusters", () => {
+  it("a box between a cluster's members, touching neither, stays put", () => {
+    const boxes: PushBox[] = [
+      { id: "g", x: 0, y: 0, w: 300, h: 60 },
+      { id: "n", x: 0, y: 400, w: 300, h: 80 },
+      { id: "mid", x: 50, y: 150, w: 180, h: 60 },
+    ];
+    expect(separateAll(boxes, { clusters: [["g", "n"]] }).size).toBe(0);
+  });
+
+  it("a box that does touch a member moves the cluster or itself, never tearing the cluster", () => {
+    const boxes: PushBox[] = [
+      { id: "g", x: 0, y: 0, w: 300, h: 60 },
+      { id: "n", x: 0, y: 400, w: 300, h: 80 },
+      { id: "hit", x: 50, y: 420, w: 180, h: 60 },
+    ];
+    const d = separateAll(boxes, { clusters: [["g", "n"]] });
+    expect(d.get("g")).toEqual(d.get("n"));
+    expect(d.size).toBeGreaterThan(0);
   });
 });

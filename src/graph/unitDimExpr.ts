@@ -1,72 +1,94 @@
-// [[C25]] firstClassUnits, [[D47]] noMixCurrencies. Mechanics: specs/unit-flow.md.
-// A second interpretation over the numeric evaluator's `Ast`: the DIMENSION a
-// formula's result carries. Never evaluates a value. Returns one of:
-//   • a `Dim`      — the determined result dimension (`{}` = dimensionless);
-//   • a `SolError` — a genuine dimensional CONFLICT (`#UNIT!`: meters + seconds,
-//                    SIN of a length, comparing incommensurable quantities);
-//   • `null`       — INDETERMINATE (a non-constant exponent, an unknown function,
-//                    IF branches that disagree): the caller drops the unit rather
-//                    than guessing. Distinct from a conflict — no error is raised.
+// [[C25]] firstClassUnits, [[D47]] noMixCurrencies
 
 import type { Ast } from "./excelFormula";
 import {
   type Dim, DIMENSIONLESS, dimMul, dimDiv, dimPow, dimEqual, isDimensionless,
 } from "./dimension";
-import { unitError } from "./unitValue";
+import { unitError, READINGS_ADD, READINGS_SCALE, READINGS_FOLD } from "./unitValue";
 import { isSolError, type SolError } from "./errorValue";
+import { resolveExcelFunction, ELIMINATED_FUNCTIONS } from "./excelFunctions";
 
 export type DimResult = Dim | SolError | null;
 
-/** A named input's dimension (from an upstream FC / tagged value). Absent ⇒ the
- *  input is dimensionless. */
 export type DimEnv = Record<string, Dim>;
 
 const isDim = (r: DimResult): r is Dim => r !== null && !isSolError(r);
 
-/** Result ALWAYS dimensionless AND every argument must be too (angle counts as
- *  dimensionless for trig) — a length into SIN is a `#UNIT!`. */
 const DIMENSIONLESS_FNS = new Set([
-  // trig + inverse
   "SIN", "COS", "TAN", "ASIN", "ACOS", "ATAN", "ATAN2", "SINH", "COSH", "TANH",
   "ASINH", "ACOSH", "ATANH", "CSC", "SEC", "COT", "ACOT",
-  // exp / log
   "EXP", "LN", "LOG", "LOG10",
 ]);
 
-/** Result dimensionless, arguments UNCONSTRAINED — these count / test / read a
- *  sign, so a dimensioned input is fine. */
 const RESULT_DIMLESS_FNS = new Set([
-  "COUNT", "COUNTA", "ISNUMBER", "ISBLANK", "ISERROR", "SIGN",
-  "LEN", "EXACT",
+  "COUNT", "COUNTA", "COUNTBLANK", "COUNTIF", "COUNTIFS", "ISNUMBER", "ISBLANK", "ISERROR",
+  "ISERR", "ISNA", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISEVEN", "ISODD", "SIGN",
+  "LEN", "EXACT", "TEXT", "FIXED", "DOLLAR", "CONCAT", "CONCATENATE", "TEXTJOIN",
+  "AND", "OR", "NOT", "XOR", "ROWS", "COLUMNS", "MATCH", "XMATCH", "RANK", "RANK.EQ",
+  "RANK.AVG", "TYPE", "SKEW", "SKEW.P", "KURT", "CORREL", "PEARSON",
 ]);
 
-/** PRESERVE the arguments' shared dimension; mixed-dimension inputs are a `#UNIT!`. */
+/** Spreads keep the dimension; over °C they are a difference. */
+const SPREAD_FNS = new Set(["STDEV", "STDEV.S", "STDEV.P", "AVEDEV"]);
+
 const PRESERVE_FNS = new Set([
   "ABS", "MIN", "MAX", "MEDIAN", "SUM", "AVERAGE", "AVG",
   "ROUND", "ROUNDUP", "ROUNDDOWN", "MROUND", "CEILING", "FLOOR",
-  "INT", "TRUNC", "MOD",
+  "INT", "TRUNC", "MOD", "GEOMEAN", "HARMEAN", ...SPREAD_FNS,
 ]);
 
-/** The trig family accepts a pure-angle argument as well as a dimensionless one. */
+/** Square the shared dimension. VAR and DEVSQ are squared spreads, a difference² over °C. */
+const SQUARE_FNS = new Set(["VAR", "VAR.S", "VAR.P", "DEVSQ", "SUMSQ"]);
+const SQUARED_SPREAD_FNS = new Set(["VAR", "VAR.S", "VAR.P", "DEVSQ"]);
+
+/** Answer one of the first argument's values; every other argument is a plain number. */
+const PICK_SCALAR_FNS = new Set([
+  "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE",
+  "QUARTILE.INC", "QUARTILE.EXC", "MODE", "MODE.SNGL", "INDEX",
+]);
+const PICK_LIST_FNS = new Set(["SORT", "UNIQUE", "TAKE", "DROP", "FILTER", "TRANSPOSE", "CHOOSEROWS", "CHOOSECOLS"]);
+
+/** Criteria aggregates and lookups: the dimension of the value argument; keys and criteria are compared, not carried. */
+const CRITERIA_VALUE_ARG: Record<string, (argc: number) => number> = {
+  AVERAGEIF: (n) => (n > 2 ? 2 : 0),
+  SUMIFS: () => 0, AVERAGEIFS: () => 0, MAXIFS: () => 0, MINIFS: () => 0,
+  XLOOKUP: () => 2,
+};
+const CRITERIA_SUMS = new Set(["SUMIFS"]);
+
+/** The answer is one of these arguments, as IF's is one of its branches. */
+function branchArgs(fn: string, argc: number): number[] | null {
+  if (fn === "IF") return argc > 2 ? [1, 2] : [1];
+  if (fn === "IFERROR" || fn === "IFNA") return [0, 1];
+  if (fn === "CHOOSE") return Array.from({ length: Math.max(0, argc - 1) }, (_, i) => i + 1);
+  if (fn === "IFS") return Array.from({ length: Math.floor(argc / 2) }, (_, i) => 2 * i + 1);
+  if (fn === "SWITCH") {
+    const out: number[] = [];
+    for (let i = 2; i < argc; i += 2) out.push(i);
+    if (argc > 1 && argc % 2 === 0) out.push(argc - 1);
+    return out;
+  }
+  return null;
+}
+
 const ANGLE_DIM: Dim = { angle: 1 };
 function isAngleOrScalar(d: Dim): boolean {
   return isDimensionless(d) || dimEqual(d, ANGLE_DIM);
 }
 
-/** Combine dims that must AGREE: the shared dim, `#UNIT!` on disagreement, or null
- *  if any argument was itself indeterminate. */
+// A dimensionless argument adopts, as it does under `+` (ROUND's digits, MIN(5 km, 3)).
 function requireSame(args: DimResult[], what: string): DimResult {
   let acc: Dim | null = null;
   for (const a of args) {
     if (a === null) return null;
     if (isSolError(a)) return a;
+    if (isDimensionless(a)) continue;
     if (acc === null) acc = a;
     else if (!dimEqual(acc, a)) return unitError(`${what} needs matching units.`);
   }
   return acc ?? DIMENSIONLESS;
 }
 
-/** Multiply argument dims (PRODUCT). Propagates an error/indeterminate arg. */
 function multiplyAll(args: DimResult[]): DimResult {
   let acc: Dim = DIMENSIONLESS;
   for (const a of args) {
@@ -79,9 +101,11 @@ function multiplyAll(args: DimResult[]): DimResult {
 
 function callDim(name: string, argDims: DimResult[]): DimResult {
   const fn = name.toUpperCase();
+  // A blocked name answers its #NAME?, united input or not.
+  if (ELIMINATED_FUNCTIONS.has(fn)) return null;
 
   if (RESULT_DIMLESS_FNS.has(fn)) {
-    for (const a of argDims) if (isSolError(a)) return a; // propagate a conflict from within an arg
+    for (const a of argDims) if (isSolError(a)) return a;
     return DIMENSIONLESS;
   }
 
@@ -89,7 +113,7 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
     const trig = fn === "SIN" || fn === "COS" || fn === "TAN" ||
       fn === "CSC" || fn === "SEC" || fn === "COT";
     for (const a of argDims) {
-      if (a === null) continue;         // indeterminate arg — don't force a conflict
+      if (a === null) continue;
       if (isSolError(a)) return a;
       const ok = trig ? isAngleOrScalar(a) : isDimensionless(a);
       if (!ok) return unitError(`${fn} needs a dimensionless argument.`);
@@ -98,7 +122,11 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
   }
 
   if (PRESERVE_FNS.has(fn)) return requireSame(argDims, fn);
-  if (fn === "PRODUCT") return multiplyAll(argDims);
+  if (SQUARE_FNS.has(fn)) {
+    const d = requireSame(argDims, fn);
+    return isDim(d) ? dimPow(d, 2) : d;
+  }
+  if (fn === "PRODUCT" || fn === "SUMPRODUCT") return multiplyAll(argDims);
 
   if (fn === "SQRT") {
     const a = argDims[0] ?? DIMENSIONLESS;
@@ -107,32 +135,52 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
     return dimPow(a, 0.5);
   }
   if (fn === "POWER") {
-    // Only the exponent's DIM is visible here, not its value, so this is determinable
-    // only for a dimensionless base.
     const base = argDims[0] ?? DIMENSIONLESS;
     if (base === null) return null;
     if (isSolError(base)) return base;
     return isDimensionless(base) ? DIMENSIONLESS : null;
   }
-  if (fn === "IF") {
-    // Disagreeing branches make the dim runtime-dependent → indeterminate, not a
-    // conflict.
-    const a = argDims[1] ?? DIMENSIONLESS;
-    const b = argDims[2];
-    if (a === null) return null;
-    if (isSolError(a)) return a;
-    if (b === undefined) return a;
-    if (b === null) return null;
-    if (isSolError(b)) return b;
-    return dimEqual(a, b) ? a : null;
+  const branches = branchArgs(fn, argDims.length);
+  if (branches) {
+    // A dimensionless branch adopts, as under `+` (IF(c, 5 km, 0) is km).
+    let acc: Dim | null = null;
+    for (const i of branches) {
+      const a = argDims[i] ?? DIMENSIONLESS;
+      if (a === null) return null;
+      if (isSolError(a)) return a;
+      if (isDimensionless(a)) continue;
+      if (acc === null) acc = a;
+      else if (!dimEqual(acc, a)) return null;
+    }
+    return acc ?? DIMENSIONLESS;
   }
 
-  // Unknown / not-yet-signed function → indeterminate (drop the unit).
-  return null;
+  if (PICK_SCALAR_FNS.has(fn) || PICK_LIST_FNS.has(fn)) {
+    for (const a of argDims) if (isSolError(a)) return a;
+    for (const a of argDims.slice(1)) {
+      if (isDim(a) && !isDimensionless(a)) return unitError(`${fn} needs a plain number beside its values.`);
+    }
+    return argDims[0] ?? DIMENSIONLESS;
+  }
+
+  const valueArg = CRITERIA_VALUE_ARG[fn];
+  if (valueArg) {
+    for (const a of argDims) if (isSolError(a)) return a;
+    return argDims[valueArg(argDims.length)] ?? DIMENSIONLESS;
+  }
+
+  // A bound LAMBDA's body is not visible, as for a computed application.
+  if (fn === "LAMBDA" || !resolveExcelFunction(fn)) return null;
+  // Any other function reads plain numbers: a unit going in would be dropped, so it is loud.
+  let indeterminate = false;
+  for (const a of argDims) {
+    if (a === null) { indeterminate = true; continue; }
+    if (isSolError(a)) return a;
+    if (!isDimensionless(a)) return unitError(`${fn} doesn't carry units.`);
+  }
+  return indeterminate ? null : DIMENSIONLESS;
 }
 
-/** Constant-fold a pure-number subtree (num literals under unary/± × ÷ ^) to its
- *  value, else null — the exponent form `1/2` an isolated SQRT produces. */
 function constNum(node: Ast): number | null {
   switch (node.t) {
     case "num": return Number(node.v);
@@ -156,39 +204,73 @@ function constNum(node: Ast): number | null {
   }
 }
 
-// Currency's IDENTITY is the display CODE ([[D47]] noMixCurrencies), so dims can agree while values
-// are incommensurable; the numeric evaluator can't see codes, so they ride here.
 export type CodeEnv = Record<string, string>;
 
-/** A determined dim plus, for pure-currency operands, its identifying display code. */
+// ─── LAMBDA hosts ─────────────────────────────────────────────────────────────
+// A host binds each parameter of its lambda to an argument's element (MAP, a fold's
+// value), to the whole argument (BYROW's row), or to a plain number (MAKEARRAY's index).
+
+export type Lam = { params: string[]; body: Ast };
+type HostParam = { arg: number; whole: boolean } | null;
+type Host = { lamArg: number; params: HostParam[]; fold: boolean };
+
+function hostOf(fn: string, argc: number): Host | null {
+  const el = (arg: number): HostParam => ({ arg, whole: false });
+  switch (fn) {
+    case "REDUCE": case "SCAN": return argc === 3 ? { lamArg: 2, params: [el(0), el(1)], fold: true } : null;
+    case "BYROW": case "BYCOL": return argc === 2 ? { lamArg: 1, params: [{ arg: 0, whole: true }], fold: false } : null;
+    case "MAP": return argc >= 2 ? { lamArg: argc - 1, params: Array.from({ length: argc - 1 }, (_, i) => el(i)), fold: false } : null;
+    case "MAKEARRAY": return argc === 3 ? { lamArg: 2, params: [null, null], fold: false } : null;
+    default: return null;
+  }
+}
+
+/** A written LAMBDA, or a bare function name a host calls with `arity` arguments (`REDUCE(0, a, MAX)`). */
+function lambdaOf(n: Ast | undefined, arity: number, isVar: (name: string) => boolean): Lam | null {
+  if (!n) return null;
+  if (n.t === "call" && n.name.toUpperCase() === "LAMBDA" && n.args.length >= 1) {
+    const ps = n.args.slice(0, -1);
+    const params = ps.flatMap((p) => (p.t === "name" ? [p.name] : []));
+    return params.length === ps.length ? { params, body: n.args[n.args.length - 1] } : null;
+  }
+  if (n.t === "name" && !isVar(n.name) && resolveExcelFunction(n.name.toUpperCase())) {
+    const params = Array.from({ length: arity }, (_, i) => `#${i}`);
+    return { params, body: { t: "call", name: n.name, args: params.map((name): Ast => ({ t: "name", name })) } };
+  }
+  return null;
+}
+
 type Op = { dim: Dim; code?: string };
 type OpResult = Op | SolError | null;
 
 const codeClash = (l: Op, r: Op): boolean =>
   l.code !== undefined && r.code !== undefined && l.code !== r.code;
 const clashError = (l: Op, r: Op): SolError =>
-  unitError(`Can't combine ${l.code} and ${r.code} — different currencies, no exchange rate. Convert one side first.`);
+  unitError(`Can't combine ${l.code} and ${r.code}: they are different currencies with no exchange rate. Convert one side first.`);
 
 function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
   switch (node.t) {
     case "num":
     case "bool":
     case "str":
-    case "blank": // an omitted argument is a bare missing value
-    case "atcol": // a this-row cell is a plain value — frame units live on the COLUMN (unitGranularity)
-    case "wholecol": // likewise the whole column (a list of plain values)
+    case "blank":
+    case "atcol":
+    case "wholecol":
       return { dim: DIMENSIONLESS };
     case "name":
       return { dim: env[node.name] ?? DIMENSIONLESS, code: codes[node.name] };
     case "unary":
-      return opEval(node.arg, env, codes); // ±x keeps x's dimension
+      return opEval(node.arg, env, codes);
     case "percent":
-      return opEval(node.arg, env, codes); // x% = x/100 — same dimension
-    case "apply":
-      // A computed-lambda application: the body isn't visible here → indeterminate.
-      return null;
+      return opEval(node.arg, env, codes);
+    case "apply": {
+      const lam = lambdaOf(node.fn, node.args.length, (n) => n in env);
+      return lam ? applyDim(lam, node.args.map((a) => opEval(a, env, codes)), env, codes) : null;
+    }
     case "call": {
-      // Codes DROP at calls (see the header note); dims flow as before.
+      const host = hostOf(node.name.toUpperCase(), node.args.length);
+      const lam = host && lambdaOf(node.args[host.lamArg], host.params.length, (n) => n in env);
+      if (host && lam) return hostDim(node.args, host, lam, env, codes);
       const d = callDim(node.name, node.args.map((a) => {
         const r = opEval(a, env, codes);
         return r === null || isSolError(r) ? r : r.dim;
@@ -204,8 +286,6 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
         case "*":
         case "/": {
           if (l === null || r === null) return null;
-          // ÷ across currencies would fabricate an exchange rate; the code carries
-          // only while the result stays in the coded operand's dimension.
           if (codeClash(l, r)) return clashError(l, r);
           const rd = node.op === "*" ? dimMul(l.dim, r.dim) : dimDiv(l.dim, r.dim);
           const code = l.code && dimEqual(rd, l.dim) ? l.code
@@ -215,7 +295,6 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
         case "+":
         case "-": {
           if (l === null || r === null) return null;
-          // A dimensionless operand ADOPTS the other's unit; two real dims → #UNIT!.
           if (codeClash(l, r)) return clashError(l, r);
           if (dimEqual(l.dim, r.dim)) return { dim: l.dim, code: l.code ?? r.code };
           if (isDimensionless(l.dim)) return r;
@@ -223,16 +302,13 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
           return unitError(`Can't ${node.op === "+" ? "add" : "subtract"} values with different units.`);
         }
         case "^": {
-          // Determinable only for a CONSTANT exponent (or a dimensionless base).
           if (l === null) return null;
           const k = constNum(node.r);
           if (k !== null) return { dim: dimPow(l.dim, k) };
           return isDimensionless(l.dim) ? { dim: DIMENSIONLESS } : null;
         }
-        case "&": return { dim: DIMENSIONLESS }; // string concatenation → unitless
+        case "&": return { dim: DIMENSIONLESS };
         default: {
-          // A dimensionless side may compare against a dimensioned one; only two
-          // real dims — or two currency CODES — are a #UNIT!.
           if (l === null || r === null) return { dim: DIMENSIONLESS };
           if (codeClash(l, r)) return clashError(l, r);
           if (!dimEqual(l.dim, r.dim) && !isDimensionless(l.dim) && !isDimensionless(r.dim)) {
@@ -245,20 +321,225 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
   }
 }
 
+/** The body's dimension with each parameter bound to its argument's; an unbound parameter is dimensionless. */
+function applyDim(lam: Lam, args: OpResult[], env: DimEnv, codes: CodeEnv): OpResult {
+  const inner: DimEnv = { ...env };
+  const innerCodes: CodeEnv = { ...codes };
+  for (const [i, p] of lam.params.entries()) {
+    const a = args[i] ?? { dim: DIMENSIONLESS };
+    if (a === null || isSolError(a)) return a;
+    inner[p] = a.dim;
+    if (a.code === undefined) delete innerCodes[p]; else innerCodes[p] = a.code;
+  }
+  return opEval(lam.body, inner, innerCodes);
+}
+
+/** A fold's accumulator adopts the element's dimension when it starts dimensionless, as under `+`;
+ *  a step that changes the accumulator's dimension is indeterminate. */
+function hostDim(args: Ast[], host: Host, lam: Lam, env: DimEnv, codes: CodeEnv): OpResult {
+  const vals = args.map((a, i) => (i === host.lamArg ? { dim: DIMENSIONLESS } : opEval(a, env, codes)));
+  for (const v of vals) if (v === null || isSolError(v)) return v;
+  const bound = host.params.map((p): Op => (p ? vals[p.arg] as Op : { dim: DIMENSIONLESS }));
+  if (host.fold) {
+    const [acc, elem] = bound;
+    const start: Op = isDimensionless(acc.dim) ? elem : acc;
+    const step = applyDim(lam, [start, elem], env, codes);
+    if (step === null || isSolError(step)) return step;
+    return dimEqual(step.dim, start.dim) ? step : null;
+  }
+  return applyDim(lam, bound, env, codes);
+}
+
 export function dimEval(node: Ast, env: DimEnv, codes: CodeEnv = {}): DimResult {
   const r = opEval(node, env, codes);
   return r === null || isSolError(r) ? r : r.dim;
 }
 
-/** dimEval's code-carrying form, for a caller whose TOP LEVEL is itself a
- *  combination — no operator inside either side ever sees both codes. */
 export function dimEvalWithCode(node: Ast, env: DimEnv, codes: CodeEnv = {}): { dim: Dim; code?: string } | SolError | null {
   return opEval(node, env, codes);
 }
 
-/** The result dim as `Dim | null`, folding a `#UNIT!` conflict into null — use
- *  `dimEval` when the conflict must surface as an error. */
 export function formulaResultDim(node: Ast, env: DimEnv): Dim | null {
   const r = dimEval(node, env);
   return isDim(r) ? r : null;
+}
+
+// ─── Affine units (°C, °F) ────────────────────────────────────────────────────
+// A reading on an offset scale is a POINT; a difference of two is a DELTA. Each
+// subexpression carries its point weight: the sum of the coefficients on the point
+// inputs, so a point is 1, a delta or a bare number 0, and (a + b) / 2 is 1 again. The
+// result is a point at weight 1, a delta at 0, and #UNIT! otherwise; a point times,
+// over or to the power of anything but a constant is #UNIT!, as in `arithmeticCell`.
+// `list` marks a value spread over a list, whose SUM has no weight until its length
+// is known. `scaled` marks a weight a constant factor produced, so `@t * 2` reports a
+// scaled reading rather than a sum. `bare` marks a wired plain number, which MIN and IF read as they
+// read a literal.
+
+type Aff = { w: number; list: boolean; konst: number | null; scaled?: boolean; bare?: boolean };
+const affErr = (): SolError => unitError(READINGS_SCALE);
+const sumErr = (): SolError => unitError(READINGS_ADD);
+const ZERO: Aff = { w: 0, list: false, konst: null };
+
+/** The result is the reading one argument already is (MIN of readings is a reading). */
+const AFF_SELECT = new Set(["MIN", "MAX", "MEDIAN", "AVERAGE", "AVG"]);
+/** Rounds its FIRST argument and keeps its kind; the other arguments are plain numbers. */
+const AFF_FIRST = new Set(["ABS", "ROUND", "ROUNDUP", "ROUNDDOWN", "MROUND", "CEILING", "FLOOR", "INT", "TRUNC"]);
+
+const isLiteral = (n: Ast | undefined): boolean =>
+  !n || n.t === "str" || n.t === "bool" || n.t === "blank" || constNum(n) !== null;
+
+/** The columns and variables that are readings, and the names a lambda binds. */
+type AffScope = { points: ReadonlySet<string>; lists: ReadonlySet<string>; locals: ReadonlyMap<string, Aff>; fns: ReadonlyMap<string, Lam>; bare: ReadonlySet<string> };
+
+function affApply(lam: Lam, args: Aff[], scope: AffScope): Aff | SolError {
+  const locals = new Map(scope.locals);
+  lam.params.forEach((p, i) => locals.set(p, args[i] ?? ZERO));
+  return affEval(lam.body, { ...scope, locals });
+}
+
+/** A fold must answer the accumulator's kind each step; a literal seed beside readings is a reading. */
+function affHost(fn: string, args: Ast[], host: Host, lam: Lam, scope: AffScope): Aff | SolError {
+  const vals: Aff[] = [];
+  for (const [i, a] of args.entries()) {
+    const r = i === host.lamArg ? ZERO : affEval(a, scope);
+    if (isSolError(r)) return r;
+    vals.push(r);
+  }
+  const bound = host.params.map((p): Aff => (p ? { w: vals[p.arg].w, list: p.whole && vals[p.arg].list, konst: null } : ZERO));
+  if (!host.fold) {
+    const body = affApply(lam, bound, scope);
+    return isSolError(body) ? body : { w: body.w, list: true, konst: null };
+  }
+  const [acc, elem] = bound;
+  const start: Aff = { w: isLiteral(args[0]) && elem.w !== 0 ? elem.w : acc.w, list: false, konst: null };
+  const step = affApply(lam, [start, elem], scope);
+  if (isSolError(step)) return step;
+  if (Math.abs(step.w - start.w) > 1e-12) return step.w > 1 ? sumErr() : unitError(READINGS_FOLD);
+  return { w: start.w, list: fn === "SCAN", konst: null };
+}
+
+function affEval(node: Ast, scope: AffScope): Aff | SolError {
+  const { points, lists, locals, fns, bare } = scope;
+  const sub = (n: Ast) => affEval(n, scope);
+  const isVar = (n: string) => locals.has(n) || points.has(n) || lists.has(n);
+  switch (node.t) {
+    case "num": return { w: 0, list: false, konst: Number(node.v) };
+    case "name": return locals.get(node.name) ?? { w: points.has(node.name) ? 1 : 0, list: lists.has(node.name), konst: null, bare: bare.has(node.name) };
+    case "atcol": return { w: points.has(node.name) ? 1 : 0, list: false, konst: null };
+    case "wholecol": return { w: points.has(node.name) ? 1 : 0, list: true, konst: null };
+    case "unary": {
+      const a = sub(node.arg);
+      if (isSolError(a)) return a;
+      return node.op === "-" ? { w: -a.w, list: a.list, konst: a.konst === null ? null : -a.konst, scaled: a.scaled, bare: a.bare } : a;
+    }
+    case "percent": {
+      const a = sub(node.arg);
+      if (isSolError(a)) return a;
+      return { w: a.w / 100, list: a.list, konst: a.konst === null ? null : a.konst / 100, scaled: a.scaled || a.w !== 0 };
+    }
+    case "bin": {
+      const l = sub(node.l), r = sub(node.r);
+      if (isSolError(l)) return l;
+      if (isSolError(r)) return r;
+      const list = l.list || r.list;
+      switch (node.op) {
+        case "+": return { w: l.w + r.w, list, konst: l.konst !== null && r.konst !== null ? l.konst + r.konst : null, scaled: l.scaled || r.scaled };
+        case "-": return { w: l.w - r.w, list, konst: l.konst !== null && r.konst !== null ? l.konst - r.konst : null, scaled: l.scaled || r.scaled };
+        case "*":
+          if (l.w !== 0 && r.w !== 0) return affErr();
+          if (l.w !== 0) return r.konst === null ? affErr() : { w: l.w * r.konst, list, konst: null, scaled: true };
+          if (r.w !== 0) return l.konst === null ? affErr() : { w: r.w * l.konst, list, konst: null, scaled: true };
+          return { w: 0, list, konst: l.konst !== null && r.konst !== null ? l.konst * r.konst : null };
+        case "/":
+          if (r.w !== 0) return affErr();
+          if (l.w !== 0) return r.konst === null || r.konst === 0 ? affErr() : { w: l.w / r.konst, list, konst: null, scaled: true };
+          return { w: 0, list, konst: l.konst !== null && r.konst ? l.konst / r.konst : null };
+        case "^":
+          return l.w !== 0 || r.w !== 0 ? affErr() : { w: 0, list, konst: null };
+        default: // comparisons and `&` read the numbers as shown
+          return ZERO;
+      }
+    }
+    case "call": {
+      const fn = node.name.toUpperCase();
+      const host = hostOf(fn, node.args.length);
+      const hosted = host && lambdaOf(node.args[host.lamArg], host.params.length, isVar);
+      if (host && hosted) return affHost(fn, node.args, host, hosted, scope);
+      const args: Aff[] = [];
+      for (const a of node.args) {
+        const r = sub(a);
+        if (isSolError(r)) return r;
+        args.push(r);
+      }
+      const named = locals.has(node.name) ? undefined : fns.get(node.name);
+      if (named) return affApply(named, args, scope);
+      if (RESULT_DIMLESS_FNS.has(fn)) return ZERO;
+      if (AFF_SELECT.has(fn)) {
+        // A bare number beside readings is a reading (MIN(a, 30), MIN(a, n)); the rest must agree.
+        const ws = args.filter((a) => a.konst === null && !a.bare).map((a) => a.w);
+        if (ws.some((w) => w !== ws[0])) return affErr();
+        return { w: ws[0] ?? 0, list: false, konst: null };
+      }
+      if (SPREAD_FNS.has(fn) || SQUARED_SPREAD_FNS.has(fn)) {
+        const ws = args.filter((a) => a.konst === null).map((a) => a.w);
+        return ws.some((w) => w !== ws[0]) ? affErr() : ZERO;
+      }
+      if (fn === "SUM") {
+        if (args.some((a) => a.list && a.w !== 0)) return sumErr();
+        return { w: args.reduce((s, a) => s + a.w, 0), list: false, konst: null };
+      }
+      if (AFF_FIRST.has(fn) || PICK_SCALAR_FNS.has(fn) || PICK_LIST_FNS.has(fn)) {
+        if (args.slice(1).some((a) => a.w !== 0)) return affErr();
+        return { w: args[0]?.w ?? 0, list: !PICK_SCALAR_FNS.has(fn) && (args[0]?.list ?? false), konst: null };
+      }
+      const valueArg = CRITERIA_VALUE_ARG[fn];
+      if (valueArg) {
+        const v = args[valueArg(args.length)] ?? ZERO;
+        if (CRITERIA_SUMS.has(fn)) return v.w !== 0 ? sumErr() : ZERO;
+        return { w: v.w, list: false, konst: null };
+      }
+      const branches = branchArgs(fn, args.length);
+      if (branches) {
+        // A literal or wired bare branch beside readings is a reading (IF(c, a, 0)), as in MIN(a, 30).
+        const bs = branches.map((i) => args[i] ?? ZERO);
+        const ws = branches.filter((i) => !isLiteral(node.args[i]) && !args[i]?.bare).map((i) => args[i]?.w ?? 0);
+        if (ws.some((w) => w !== ws[0])) return affErr();
+        return { w: ws[0] ?? 0, list: bs.some((b) => b.list), konst: null };
+      }
+      return args.some((a) => a.w !== 0) ? affErr() : ZERO;
+    }
+    case "apply": {
+      const lam = lambdaOf(node.fn, node.args.length, isVar);
+      if (lam) {
+        const args: Aff[] = [];
+        for (const a of node.args) {
+          const r = sub(a);
+          if (isSolError(r)) return r;
+          args.push(r);
+        }
+        return affApply(lam, args, scope);
+      }
+      for (const a of node.args) {
+        const r = sub(a);
+        if (isSolError(r)) return r;
+        if (r.w !== 0) return affErr();
+      }
+      return ZERO;
+    }
+    default:
+      return ZERO;
+  }
+}
+
+/** The point weight of a formula over affine inputs: 1 is a reading, 0 a delta or a
+ *  plain number, `#UNIT!` for anything an offset scale can't answer. */
+export function affineWeight(
+  node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<string> = new Set(), fns: ReadonlyMap<string, Lam> = new Map(),
+  bare: ReadonlySet<string> = new Set(),
+): 0 | 1 | SolError {
+  const r = affEval(node, { points, lists, locals: new Map(), fns, bare });
+  if (isSolError(r)) return r;
+  if (Math.abs(r.w - 1) < 1e-12) return 1;
+  if (Math.abs(r.w) < 1e-12) return 0;
+  return r.w > 1 && !r.scaled ? sumErr() : affErr();
 }

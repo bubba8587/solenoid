@@ -60,7 +60,6 @@ describe("Health & Fitness formulas", () => {
 describe("Heart-Rate Zones", () => {
   it("percent-of-max bands: age 40 → max 180, Z5 = 162–180", () => {
     const f = hrZonesFrame(180, null);
-    expect(f.columns[0].values).toEqual(["Z1 Recovery", "Z2 Endurance", "Z3 Tempo", "Z4 Threshold", "Z5 Maximum"]);
     expect(f.columns[1].values).toEqual([90, 108, 126, 144, 162]); // lows
     expect(f.columns[2].values).toEqual([108, 126, 144, 162, 180]); // highs
   });

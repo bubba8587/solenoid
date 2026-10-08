@@ -1,13 +1,10 @@
 // [[C51]] formulaNaming, [[C14]] currentExcelParity
-// DERIVED from NODE_EXCEL — don't hand-edit; declare the equivalence on the node
-// and both maps update.
+// Derived from NODE_EXCEL, never hand-edited: declare an equivalence there and both maps follow.
 
 import { NODE_EXCEL } from "./nodeExcel";
 
-/** Excel function name → catalog type. */
 export const EXCEL_TO_CATALOG: Record<string, string> = {};
 
-/** catalog type → all Excel function names that map to it. */
 export const CATALOG_TO_EXCEL: Map<string, string[]> = new Map();
 
 for (const [type, equivs] of Object.entries(NODE_EXCEL)) {

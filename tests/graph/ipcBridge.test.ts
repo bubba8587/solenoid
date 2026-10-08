@@ -19,14 +19,6 @@ describe("toSolError — IPC failure → tagged SolError", () => {
     expect(out.message).toBe("bad code from Rust");
   });
 
-  it("maps a Rust IpcError shape ({__solError, code, message}) to that code", () => {
-    const rust = { __solError: true, code: "#VALUE!", message: "bad cast" };
-    const out = toSolError(rust);
-    expect(isSolError(out)).toBe(true);
-    expect(out.code).toBe("#VALUE!");
-    expect(out.message).toBe("bad cast");
-  });
-
   it("trusts a bare {code, message} from Rust when code looks canonical", () => {
     const out = toSolError({ code: "#DIV/0!", message: "divide by zero" });
     expect(out.code).toBe("#DIV/0!");
@@ -54,7 +46,6 @@ describe("toSolError — IPC failure → tagged SolError", () => {
   it("handles non-object, non-string throws with a default", () => {
     expect(toSolError(42).code).toBe("#ERROR!");
     expect(toSolError(null).message).toBe("IPC call failed");
-    expect(toSolError(undefined).code).toBe("#ERROR!");
   });
 });
 

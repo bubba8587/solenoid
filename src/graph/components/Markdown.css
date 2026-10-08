@@ -1,12 +1,10 @@
-/* Styled rendering for in-app markdown docs (Reference ▸ Help / Notes). */
 .sol-md {
   max-width: 760px;
   margin: 0 auto;
   color: var(--text);
   font-size: 13.5px;
   line-height: 1.6;
-  /* A run with no break opportunity (a URL, a hash, a long identifier) wraps
-     mid-run rather than pushing the column wider than its box. */
+  /* A run with no break opportunity (a URL, a hash) wraps mid-run rather than widening the column. */
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -25,10 +23,7 @@
 .sol-md a { color: var(--accent); text-decoration: none; }
 .sol-md a:hover { text-decoration: underline; }
 .sol-md strong { color: var(--text-bright); font-weight: 600; }
-/* Obsidian inline forms (noteMarkdown.ts): a wikilink reads as a link with a dotted
-   underline to tell it from a URL; a tag is a chip — a wash at chip radius. Both take
-   the NOTE's colour (`--note-color`, set by the Note / Import cards; the Report overlay
-   falls back to the app accent) at the `--mix-ink` rung, like the card's own labels. */
+/* A wikilink has a dotted underline to tell it from a URL, and a tag is a chip; both take the note's color (--note-color, else the app accent) at the --mix-ink rung. */
 .sol-md .sol-md__wikilink { color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-ink), var(--text)); text-decoration: underline dotted; text-underline-offset: 3px; cursor: default; }
 .sol-md .sol-md__wikilink--embed::before { content: "⤵ "; opacity: 0.6; }
 .sol-md .sol-md__hl {
@@ -37,8 +32,7 @@
   border-radius: 3px;
   padding: 0 3px;
 }
-/* A callout is a tinted box (Quiet Accent: tint the element, never a stripe) with a
-   titled first row carrying the kind's icon; the danger kinds take the error ink. */
+/* A tinted box, never a stripe (Quiet Accent); the danger kinds take the error ink. */
 .sol-md .sol-md__callout {
   --callout-ink: var(--note-color, var(--accent));
   margin: 10px 0;
@@ -58,8 +52,7 @@
 .sol-md .sol-md__callout-icon { flex: 0 0 auto; }
 .sol-md .sol-md__callout-body > :first-child { margin-top: 6px; }
 .sol-md .sol-md__callout-body > :last-child { margin-bottom: 0; }
-/* Math: KaTeX output inline; a block formula centred on its own row. Before the chunk
-   lands (and on a TeX error) the source shows verbatim in mono. */
+/* Before the KaTeX chunk lands, and on a TeX error, the source shows verbatim in mono. */
 .sol-md .sol-md__math-row { text-align: center; margin: 10px 0; overflow-x: auto; }
 .sol-md .sol-md__math--pending, .sol-md .sol-md__math--error { font-family: var(--font-mono); color: var(--text-dim); }
 .sol-md .sol-md__math--error { color: var(--sol-error, #e0473a); }
@@ -69,9 +62,7 @@
   font-size: 0.85em;
   line-height: 1.5;
   color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-ink), var(--text));
-  /* An OPAQUE sunken fill (the code-span surface): the note's own background is a
-     wash of the same hue, so a tinted wash would vanish into it. The edge is the
-     object chips' 40% hairline in the note's colour. */
+  /* Opaque: the note's background is a wash of the same hue, so a tinted wash would vanish into it. */
   background: var(--surface-sunken);
   border: 1px solid color-mix(in srgb, var(--note-color, var(--accent)) 40%, transparent);
   padding: 0 6px;
@@ -86,9 +77,6 @@
 .sol-md pre {
   margin: 10px 0; padding: 10px 12px; overflow: auto;
   background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 6px;
-  /* Code wraps greedily. The Note and Report set `pretty` on the whole rendered
-     body, and rebreaking a wrapped code line to even out its tail moves the
-     break away from where the code actually reads. */
   text-wrap-style: auto;
 }
 .sol-md pre code { padding: 0; border: none; background: none; }
@@ -107,11 +95,7 @@
 .sol-md th, .sol-md td { border: 1px solid var(--border); padding: 4px 9px; text-align: left; }
 .sol-md th { background: var(--surface-sunken); font-weight: 600; }
 
-/* Inline-ref live value (components/inlineRefDisplay.tsx) — swapped in for a
-   `` `=name` `` span. Plain text in the Value face (DESIGN.md §3) — no pill, no
-   fill, no border: a decorative box mid-sentence would read as a hero-metric
-   chip, which the design system explicitly rejects. Shared by the Note card and
-   the standalone Report document so a ref renders identically everywhere. */
+/* Plain text in the Value face, no pill: a box mid-sentence would read as a hero-metric chip (DESIGN.md §3); shared by the Note card and the Report. */
 .solenoid-ref-inline {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-weight: 600;
@@ -120,17 +104,13 @@
 .solenoid-ref-inline--error {
   color: var(--sol-error);
 }
-/* The `=name!` highlight flag — an author-flagged emphasis mark (Obsidian's
-   ==mark==). Opt-in intent, so it clears the no-decoration rule above: a muted
-   accent tint of the value itself (Quiet Accent — tint the element, no stripe),
-   tracking the live app accent. */
+/* The `=name!` flag is opt-in emphasis (Obsidian's ==mark==), so it clears the no-decoration rule above. */
 .solenoid-ref-inline--hl {
   background: color-mix(in srgb, var(--accent) 24%, transparent);
   border-radius: 3px;
   padding: 0 3px;
 }
-/* Lambda view-as "mono"/"syntax" (FC lambdaView): full formula source — regular
-   weight so a long body reads as code, not a bolded metric. */
+/* Regular weight, so a long lambda body reads as code, not a bolded metric. */
 .solenoid-ref-inline--mono {
   font-weight: 500;
 }
@@ -139,8 +119,7 @@
   font-weight: 500;
 }
 
-/* A wired chart ref renders as a block figure where its `=name` span sits — the
-   Report is charts' main destination. Title is a quiet caption above the plot. */
+/* A wired chart ref renders as a block figure where its `=name` span sits. */
 .solenoid-ref-figure {
   display: block;
   margin: 12px 0;
@@ -154,10 +133,7 @@
 }
 .solenoid-ref-formula { display: block; margin: 12px 0; overflow-x: auto; }
 
-/* Collapsible Report embed (components/inlineRefDisplay.tsx CollapsibleFigure):
-   every chart / table / diagram / embedded note folds under a titled bar so a
-   long report stays skimmable. Span-based (it's portaled into an inline `=name`
-   slot) but laid out as a block. */
+/* Span-based, since it is portaled into an inline `=name` slot, but laid out as a block. */
 .solenoid-ref-embed { display: block; margin: 12px 0; }
 .solenoid-ref-embed__bar {
   display: flex;
@@ -175,8 +151,7 @@
   text-align: left;
 }
 .solenoid-ref-embed__bar:hover { color: var(--text-bright); border-color: var(--border-strong); }
-/* The same chevron the node header uses (nodeCard.css) — a masked ::glyph on the
-   M3 1l4 4-4 4 path, so an embed's collapse control matches a node's. */
+/* The node header's chevron glyph (nodeCard.css), so an embed's collapse control matches a card's. */
 .solenoid-ref-embed__chev {
   display: block;
   flex-shrink: 0;
@@ -192,9 +167,7 @@
 .solenoid-ref-embed__body { display: block; margin-top: 6px; }
 .solenoid-ref-chartbody { display: block; }
 
-/* A wired lambda's "where:" legend in a Report — prose beneath the KaTeX
-   formula, the math-renders/prose-explains split. Muted, not competing with
-   the equation above it. */
+/* Muted, so the "where:" legend doesn't compete with the formula above it. */
 .solenoid-ref-formula-block { display: block; margin: 12px 0; }
 .solenoid-ref-formula-block .solenoid-ref-formula { margin: 0 0 6px 0; }
 .solenoid-ref-where {

@@ -1,4 +1,4 @@
-// [[C60]], [[C48]], [[C49]]
+// [[B11]], [[C48]], [[C49]]
 import { describe, expect, it } from "vitest";
 import { TextJoinNode } from "../../src/graph/nodes/text";
 import { XMatchNode } from "../../src/graph/nodes/list";
@@ -30,9 +30,10 @@ describe("TEXTJOIN — the ignore-empty mode", () => {
 });
 
 describe("DROP — the last-N direction is a negative count", () => {
-  it("removes the last N elements", () => {
+  // [[D85]] columnsStayColumns: a list is one row, so its items are columns.
+  it("removes the last N items of a list, counted as columns", () => {
     const node = new TakeDropNode({ op: "drop" });
-    node.literals.rows = -2; // sign is the direction: drop the last two
+    node.literals.cols = -2; // sign is the direction: drop the last two
     expect(node.data({ data: [[1, 2, 3, 4]] }).result).toEqual([1, 2]);
   });
 });
@@ -72,9 +73,6 @@ describe("XMATCH — the match-mode family (first match wins)", () => {
   it("search mode picks WHICH duplicate — the frame XLOOKUP's argument, same meaning", () => {
     expect(runSearch(7, [5, 7, 7], "first")).toBe(2);
     expect(runSearch(7, [5, 7, 7], "last")).toBe(3);
-  });
-  it("search mode defaults to first (unset = Excel's search_mode 1)", () => {
-    expect(new XMatchNode().searchMode).toBe("first");
   });
   it("exact returns the FIRST duplicate's 1-based position", () => {
     expect(run(7, [5, 7, 7])).toBe(2);

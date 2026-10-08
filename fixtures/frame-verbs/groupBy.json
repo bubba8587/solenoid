@@ -945,7 +945,7 @@
    }
   },
   {
-   "name": "a text column contributes nothing numeric: sum 0, min null, count still counts",
+   "name": "a text column: sum 0, min is its alphabetical first, count still counts",
    "frames": {
     "in": {
      "columns": [
@@ -1011,7 +1011,7 @@
       "name": "lo",
       "type": "string",
       "values": [
-       null
+       "x"
       ]
      },
      {
@@ -1722,6 +1722,892 @@
       "values": [
        null
       ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "text min and max order by code unit: uppercase before lowercase, digits as text",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "banana",
+        "Banana",
+        "apple",
+        "9",
+        "10",
+        "x"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "s",
+      "op": "min",
+      "as": "lo"
+     },
+     {
+      "column": "s",
+      "op": "max",
+      "as": "hi"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "lo",
+      "type": "string",
+      "values": [
+       "Banana",
+       "10"
+      ]
+     },
+     {
+      "name": "hi",
+      "type": "string",
+      "values": [
+       "banana",
+       "x"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "text min and max skip blanks and empty strings; a group of only those is blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        null,
+        "",
+        "m",
+        null,
+        ""
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "s",
+      "op": "min",
+      "as": "lo"
+     },
+     {
+      "column": "s",
+      "op": "max",
+      "as": "hi"
+     },
+     {
+      "column": "s",
+      "op": "count",
+      "as": "n"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "lo",
+      "type": "string",
+      "values": [
+       "m",
+       null
+      ]
+     },
+     {
+      "name": "hi",
+      "type": "string",
+      "values": [
+       "m",
+       null
+      ]
+     },
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       2,
+       1
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings on an offset scale: sum and product are #UNIT! in every group, the averages and picks stay readings, count is plain",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        20,
+        22.5,
+        26,
+        30,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "t",
+      "op": "sum",
+      "as": "sum",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "product",
+      "as": "product",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "avg",
+      "as": "avg",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "min",
+      "as": "min",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "max",
+      "as": "max",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "median",
+      "as": "median",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "mode",
+      "as": "mode",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "count",
+      "as": "count",
+      "readingScale": 1
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "sum",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     },
+     {
+      "name": "product",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     },
+     {
+      "name": "avg",
+      "type": "number",
+      "values": [
+       22.833333333333332,
+       30
+      ]
+     },
+     {
+      "name": "min",
+      "type": "number",
+      "values": [
+       20,
+       30
+      ]
+     },
+     {
+      "name": "max",
+      "type": "number",
+      "values": [
+       26,
+       30
+      ]
+     },
+     {
+      "name": "median",
+      "type": "number",
+      "values": [
+       22.5,
+       30
+      ]
+     },
+     {
+      "name": "mode",
+      "type": "number",
+      "values": [
+       20,
+       30
+      ]
+     },
+     {
+      "name": "count",
+      "type": "number",
+      "values": [
+       3,
+       1
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings in °F: a spread is a delta in kelvin, var a squared one, and a one-reading group has no sample spread",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        20,
+        22.5,
+        26,
+        30,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "t",
+      "op": "stdev",
+      "as": "stdev",
+      "readingScale": 0.5555555555555556
+     },
+     {
+      "column": "t",
+      "op": "stdevp",
+      "as": "stdevp",
+      "readingScale": 0.5555555555555556
+     },
+     {
+      "column": "t",
+      "op": "var",
+      "as": "var",
+      "readingScale": 0.5555555555555556
+     },
+     {
+      "column": "t",
+      "op": "varp",
+      "as": "varp",
+      "readingScale": 0.5555555555555556
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "stdev",
+      "type": "number",
+      "values": [
+       1.6743649370393634,
+       null
+      ]
+     },
+     {
+      "name": "stdevp",
+      "type": "number",
+      "values": [
+       1.3671132463179076,
+       0
+      ]
+     },
+     {
+      "name": "var",
+      "type": "number",
+      "values": [
+       2.803497942386832,
+       null
+      ]
+     },
+     {
+      "name": "varp",
+      "type": "number",
+      "values": [
+       1.8689986282578879,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a variance over a scaled linear unit lands in base SI: var and varp scale by unitScale squared, a stdev and a sum keep the unit's numbers",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        3,
+        2,
+        6
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "d",
+      "op": "var",
+      "as": "var",
+      "unitScale": 1000
+     },
+     {
+      "column": "d",
+      "op": "varp",
+      "as": "varp",
+      "unitScale": 1000
+     },
+     {
+      "column": "d",
+      "op": "stdevp",
+      "as": "stdevp"
+     },
+     {
+      "column": "d",
+      "op": "sum",
+      "as": "sum"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "var",
+      "type": "number",
+      "values": [
+       2000000,
+       8000000
+      ]
+     },
+     {
+      "name": "varp",
+      "type": "number",
+      "values": [
+       1000000,
+       4000000
+      ]
+     },
+     {
+      "name": "stdevp",
+      "type": "number",
+      "values": [
+       1,
+       2
+      ]
+     },
+     {
+      "name": "sum",
+      "type": "number",
+      "values": [
+       4,
+       8
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: an error key groups by its code",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        {
+         "__err": "#N/A"
+        },
+        1,
+        {
+         "__err": "#DIV/0!"
+        },
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__nf": "nan"
+        },
+        1
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "v",
+      "op": "sum",
+      "as": "s"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       },
+       1,
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__nf": "nan"
+       }
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       5,
+       8,
+       3,
+       5
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: an error in a group answers the first one; count counts it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#DIV/0!"
+        },
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__nf": "nan"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "v",
+      "op": "sum",
+      "as": "s"
+     },
+     {
+      "column": "v",
+      "op": "count",
+      "as": "c"
+     },
+     {
+      "column": "v",
+      "op": "max",
+      "as": "m"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__err": "#DOMAIN!"
+       }
+      ]
+     },
+     {
+      "name": "c",
+      "type": "number",
+      "values": [
+       3,
+       1
+      ]
+     },
+     {
+      "name": "m",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__err": "#DOMAIN!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: a refused op over readings beats an error cell",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        20,
+        {
+         "__err": "#N/A"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "t",
+      "op": "sum",
+      "as": "s",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "stdev",
+      "as": "sd",
+      "readingScale": 0.5555555555555556
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a"
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     },
+     {
+      "name": "sd",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "no keys: one group over every row",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [],
+    "aggs": [
+     {
+      "column": "v",
+      "op": "sum",
+      "as": "s"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       6
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "no keys over no rows: no groups",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": []
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [],
+    "aggs": [
+     {
+      "column": "v",
+      "op": "sum",
+      "as": "s"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "s",
+      "type": "number",
+      "values": []
      }
     ]
    }

@@ -1,9 +1,11 @@
-// [[C88]] collapseIsVisual
+// [[C88]] collapsedGroupCard
 import { describe, it, expect, afterEach } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
-import { GroupNode, FormatControllerNode, DisplayNode, NumberInputNode } from "../../src/graph/rete-nodes";
+import { GroupNode, FormatControllerNode, DisplayNode, ValueInputNode } from "../../src/graph/rete-nodes";
 import { recomputeGroupCollapse, groupCollapseStore, groupReadouts } from "../../src/graph/groupCollapse";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
+import { presentSocketStore } from "../../src/graph/presentSocketStore";
+import { resolveVisibleTarget } from "../../src/graph/flyToNode";
 import type { Schemes } from "../../src/graph/schemes";
 
 type Editor = NodeEditor<Schemes>;
@@ -23,9 +25,9 @@ function dock(fcId: string, hostId: string) {
 
 async function build() {
   const editor = new NodeEditor<Schemes>() as Editor;
-  const host = new NumberInputNode();
+  const host = new ValueInputNode();
   const fc = new FormatControllerNode();
-  const outside = new NumberInputNode();
+  const outside = new ValueInputNode();
   await editor.addNode(host as never);
   await editor.addNode(fc as never);
   await editor.addNode(outside as never);
@@ -44,10 +46,11 @@ describe("group collapse — docked satellites are virtual members", () => {
     expect(groupCollapseStore.isNodeHidden(outside.id)).toBe(false);
   });
 
-  it("an undocked FC outside the group stays visible", async () => {
-    const { editor, fc } = await build();
+  it("flying to a hidden docked FC frames its group card", async () => {
+    const { editor, host, fc, group } = await build();
+    dock(fc.id, host.id);
     recomputeGroupCollapse(editor);
-    expect(groupCollapseStore.isNodeHidden(fc.id)).toBe(false);
+    expect(resolveVisibleTarget(editor, fc.id)).toBe(group.id);
   });
 
   it("a docked FC to a NON-member host is untouched", async () => {
@@ -73,5 +76,57 @@ describe("group collapse — docked satellites are virtual members", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].displayId).toBe(disp.id);
     expect(rows[0].effNodeId).toBe(fc.id);
+  });
+
+  it("a Display read through a member FC still gets a pill for its own cable leaving the group", async () => {
+    const editor = new NodeEditor<Schemes>() as Editor;
+    const disp = new DisplayNode();
+    const fc = new FormatControllerNode();
+    const outA = new DisplayNode();
+    const outB = new DisplayNode();
+    for (const n of [disp, fc, outA, outB]) await editor.addNode(n as never);
+    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", fc as never, "in") as never);
+    await editor.addConnection(new ClassicPreset.Connection(fc as never, "out", outA as never, "in") as never);
+    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", outB as never, "in") as never);
+    const group = new GroupNode({ members: [disp.id, fc.id], collapsed: true });
+    await editor.addNode(group as never);
+    recomputeGroupCollapse(editor);
+    const viaFc = groupCollapseStore.outPillFor(fc.id, "out");
+    expect(viaFc).toBeDefined();
+    expect(groupCollapseStore.outPillFor(disp.id, "out")).toEqual(viaFc);
+  });
+});
+
+describe("collapse state is per editor", () => {
+  it("a drill-in's recompute leaves the main canvas's hidden members alone", async () => {
+    const main = await build();
+    const drill = await build();
+    drill.group.collapsed = false;
+    recomputeGroupCollapse(main.editor);
+    recomputeGroupCollapse(drill.editor);
+    expect(groupCollapseStore.isNodeHidden(main.host.id)).toBe(true);
+    expect(groupCollapseStore.isNodeHidden(drill.host.id)).toBe(false);
+    main.group.collapsed = false;
+    recomputeGroupCollapse(main.editor);
+    expect(groupCollapseStore.isNodeHidden(main.host.id)).toBe(false);
+  });
+});
+
+describe("group collapse — a member's row uses an output its card shows", () => {
+  it("an unwired member exposes its first shown output, not its first declared one", async () => {
+    const editor = new NodeEditor<Schemes>() as Editor;
+    const member = new ClassicPreset.Node("Two outs");
+    member.addOutput("hidden", new ClassicPreset.Output(new ClassicPreset.Socket("number")));
+    member.addOutput("shown", new ClassicPreset.Output(new ClassicPreset.Socket("number")));
+    await editor.addNode(member as never);
+    const group = new GroupNode({ members: [member.id], collapsed: true });
+    await editor.addNode(group as never);
+    recomputeGroupCollapse(editor);
+    expect(groupCollapseStore.retainedFor(group.id)[0]?.effSocketKey).toBe("hidden");
+    const off = presentSocketStore.mount(member.id, "output", "shown");
+    await Promise.resolve();
+    recomputeGroupCollapse(editor);
+    off();
+    expect(groupCollapseStore.retainedFor(group.id)[0]?.effSocketKey).toBe("shown");
   });
 });

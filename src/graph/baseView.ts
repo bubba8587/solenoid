@@ -1,24 +1,19 @@
 // [[B1]] obsidianBet, [[C67]] mdbaseCeiling (the one sanctioned `.base` writer)
-// Write Properties' optional `<node>.base` companion: a Bases view over the folder it
-// wrote to, so a managed block can embed `![[<node>.base#View]]`. Pure YAML building;
-// graph/DOM-free.
+// Write Properties' optional `<node>.base` companion: a Bases view over the folder it wrote to. Pure YAML.
 
 import { yamlScalar } from "./obsidianMarkdown";
 
-/** A safe single filename segment for the `.base` file (mirrors graphStub's rule). */
 export function sanitizeBaseName(name: string): string {
   const s = (name || "").replace(/[\\/:*?"<>|#^[\]]/g, "-").trim();
   return s || "Solenoid";
 }
 
-/** The `.base` file's vault-relative path, beside the notes in `folder` ("" = vault root). */
 export function baseRelPath(folder: string, nodeName: string): string {
   const file = `${sanitizeBaseName(nodeName)}.base`;
   return folder ? `${folder}/${file}` : file;
 }
 
-/** A Bases view YAML: a table over `folder`, ordered by file.name then the written keys.
- *  A blank folder scopes to the whole vault (no folder filter). */
+/** A blank folder scopes to the whole vault. */
 export function buildBaseView(folder: string, keys: readonly string[], viewName: string): string {
   const lines: string[] = [];
   if (folder) {

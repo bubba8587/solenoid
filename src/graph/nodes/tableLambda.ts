@@ -1,39 +1,28 @@
-// [[C13]], [[C50]]
+// [[B14]], [[C50]]
 import { ClassicPreset } from "rete";
-import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, readInput, type ResultType } from "./shared";
+import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, readInput, type ResultType, type ResultDim } from "./shared";
 import { toAnyMatrix } from "./coerce";
 import { compilePositional, parseFormula, formulaSyntaxHint, extractVariables } from "../excelFormula";
 import { isLambdaValue, type LambdaValue } from "./lambda";
 import { solError, isSolError, type SolError, type SolErrorCode } from "../errorValue";
-import { isUnitCell, tagDim, magnitudeOf, unitError, type UnitCell } from "../unitValue";
-import { dimEval, type DimEnv } from "../unitDimExpr";
-import { type Dim, dimEqual, isDimensionless } from "../dimension";
+import { guardFinite } from "../valueKinds";
+import { MAX_GENERATED } from "./listOps";
+import { isUnitCell, tagDim, magnitudeOf, unitError, fromUnit, READINGS_FOLD, type UnitCell } from "../unitValue";
+import { dimEval, affineWeight, type DimEnv } from "../unitDimExpr";
+import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
+import { fcUnitToUnit } from "../unitBridge";
 
-// ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE ─────────────────
-// A wired LAMBDA supersedes the inline formula text; those are the only two authoring
-// paths. Fixed variables per host:
-//   MAP        → `value` (cell; `value2`,`value3` from optional 2nd/3rd tables),
-//                plus `row`,`col` (1-based position)
-//   BYROW/BYCOL→ `values` (the row/column as a list — reduce it with SUM/MAX/…)
-//   MAKEARRAY  → `row`,`col` (1-based indices)
-//   REDUCE/SCAN→ `acc` (running accumulator), `value` (element at this step),
-//                `step` (1-based position in the sequence)
-// VALUE-POLYMORPHIC: the result-type selector swaps the output socket at the node's
-// OWN dimensionality (MAP/MAKEARRAY → matrix, BYROW/BYCOL → combo, REDUCE → scalar).
+// ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE / SCAN ─────────
 
-type Cell = number | string | boolean | null | SolError; // a mapped value — number (date serial), text, logical, null (missing), or a per-cell error
+type Cell = number | string | boolean | null | SolError;
 type Mat = Cell[][];
 type LambdaFn = (...args: unknown[]) => unknown;
 
-/** Hosts call the compiled fn POSITIONALLY; the evaluator decides broadcast-vs-aggregate
- *  per call site, so a BYROW vector flows whole into `SUM(values)`. */
 export function compileLambda(expr: string, varNames: string[]): LambdaFn | null {
   return compilePositional(expr, varNames) as LambdaFn | null;
 }
 
-/** A wired LAMBDA wins over the inline text. Its params bind by POSITION (`provided` =
- *  how many the node passes), or by NAME under `byName` (SCAN/REDUCE, [[C50]] lambdaBindsByName).
- *  `err` is the inline node message; `code` tags the propagating SolError. */
+/** `err` is the inline node message; `code` tags the propagating SolError. */
 export function resolveFn(
   lam: unknown, inline: string | undefined,
   fallback: string, varNames: string[], provided: number,
@@ -41,8 +30,6 @@ export function resolveFn(
 ): { fn: LambdaFn | null; err: string | null; code: SolErrorCode } {
   if (isLambdaValue(lam)) {
     if (byName) {
-      // By NAME, not position ([[C50]] lambdaBindsByName), so a param named `acc` always gets the accumulator
-      // and the names can't silently lie; an unknown param can't be supplied → error.
       const unknown = lam.params.filter((p) => !varNames.includes(p));
       if (unknown.length) {
         return { fn: null, err: `Lambda param ${unknown.join(", ")} isn't one of this node's variables (${varNames.join(", ")})`, code: "#VALUE!" };
@@ -60,8 +47,6 @@ export function resolveFn(
   const src = inline && inline.trim() ? inline : fallback;
   const fn = compileLambda(src, varNames);
   if (!fn) return { fn: null, err: formulaSyntaxHint(src) ?? "Syntax error", code: "#SYNTAX!" };
-  // An outside name would evaluate against undefined and produce garbage deep inside a
-  // function, so reject it here and point at the LAMBDA node's capture inputs.
   const unknown = extractVariables(src).filter((v) => !varNames.includes(v));
   if (unknown.length) {
     return {
@@ -73,8 +58,7 @@ export function resolveFn(
   return { fn, err: null, code: "#SYNTAX!" };
 }
 
-/** Propagates a tagged value for the downstream chain while `cachedResult` stays null,
- *  so the node's own box keeps the richer inline message. */
+/** Returns the tagged error downstream while cachedResult stays null, so the card keeps the richer inline message. */
 function fnError(err: string, code: SolErrorCode): { result: SolError } {
   return { result: solError(code, err) };
 }
@@ -84,24 +68,17 @@ function transpose<T>(m: T[][]): T[][] {
   return Array.from({ length: cols }, (_, j) => m.map((row) => row[j]));
 }
 
-/** Guard one mapped result: a per-cell error PROPAGATES (`#DIV/0!` from `1/0`, …);
- *  text, a BOOLEAN and a finite number (a date serial is one) pass through;
- *  anything else (non-finite, undefined, a wired-in null) → `null`, the MISSING
- *  sentinel (skipped by aggregators). */
 function cell(v: unknown): Cell {
   if (isSolError(v)) return v;
   if (typeof v === "string") return v;
   if (typeof v === "boolean") return v;
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
+  return typeof v === "number" ? guardFinite(v, [v]) : null;
 }
 
-// ─── Unit carry over a 1-D list (FC A4) ────────────────────────────────────────
-// Strip to base-SI for the fold, dimEval the formula, re-tag. Matrix producers
-// (MAP/MAKEARRAY/SCAN) are unit-agnostic, so this fires only for a widened 1-D list.
+// ─── Unit carry over a 1-D list ───────────────────────────────────────────────
+// Only a widened 1-D list carries units; the matrix producers (MAP, MAKEARRAY, SCAN) are unit-agnostic.
 
-/** The single unit shared by a matrix's UnitCell cells (dim + a shared display id
- *  when every tagged cell agrees). `null` = nothing tagged; a `#UNIT!` = the tagged
- *  cells carry different dimensions (mixed units in one list). */
+/** Null when nothing is tagged and #UNIT! when tagged cells disagree on dimension; the display survives only when every tagged cell agrees. */
 function elemUnitOf(m: Mat): { dim: Dim; display?: string } | null | SolError {
   let dim: Dim | null = null;
   let display: string | undefined;
@@ -112,59 +89,74 @@ function elemUnitOf(m: Mat): { dim: Dim; display?: string } | null | SolError {
     if (dim === null) dim = cell.dim;
     else if (!dimEqual(dim, cell.dim)) return unitError("Can't fold a list with mixed units.");
     if (!displaySet) { display = cell.display; displaySet = true; }
-    else if (display !== cell.display) display = undefined; // displays disagree → drop it
+    else if (display !== cell.display) display = undefined;
   }
   return dim === null ? null : { dim, display };
 }
 
-/** Strip UnitCells to base-SI magnitudes (other kinds pass through) so the numeric
- *  fold never sees an object. */
-function stripCells(m: Mat): Mat {
-  return m.map((row) => row.map((c) => (isUnitCell(c) ? (c as unknown as UnitCell).value : c)));
+/** The linear display unit the tagged cells share, which the fold then runs in, so a bare
+ *  `+ 1` means 1 km as it does on the Arithmetic card; null folds in base SI. */
+function foldUnit(elem: { dim: Dim; display?: string } | null): Unit | null {
+  const u = elem?.display ? fcUnitToUnit(elem.display) : null;
+  return u && dimEqual(u.dim, elem!.dim) ? u : null;
 }
 
-/** `dimVars` bind to the element dim (REDUCE: acc, value; BYROW/BYCOL: values); every
- *  other variable stays dimensionless. Returns the dim, a `#UNIT!`, or null. */
+/** A base-SI magnitude as read in `u` (the reading, offset included). */
+const readIn = (base: number, u: Unit | null) => (u ? (base - (u.offset ?? 0)) / u.scale : base);
+
+function stripCells(m: Mat, u: Unit | null): Mat {
+  return m.map((row) => row.map((c) => (isUnitCell(c) ? readIn((c as unknown as UnitCell).value, u) : c)));
+}
+
+/** Over an affine unit (°C) the fold's point weight ([[C25]] firstClassUnits): 1 a reading,
+ *  0 a difference; null over a linear unit. */
+function foldPoint(expr: string, u: Unit | null, points: string[], lists: string[]): 0 | 1 | SolError | null {
+  if (!u?.offset) return null;
+  const ast = parseFormula(expr);
+  return ast ? affineWeight(ast, new Set(points), new Set(lists)) : null;
+}
+
+/** `dimVars` take the element dim; every other variable is dimensionless. */
 function foldResultDim(expr: string, dimVars: string[], elemDim: Dim): Dim | SolError | null {
   const ast = parseFormula(expr);
   if (!ast) return null;
   const env: DimEnv = {};
   for (const v of dimVars) env[v] = elemDim;
   const r = dimEval(ast, env);
-  return r; // Dim | SolError | null
+  return r;
 }
 
-/** A wired lambda's source body, else the inline formula — for the dimensional twin. */
 function foldExpr(lam: unknown, inline: string | undefined, fallback: string): string {
   if (isLambdaValue(lam)) return (lam as LambdaValue).expr || fallback;
   return inline && inline.trim() ? inline : fallback;
 }
 
-/** Preserves the input list's display unit when the dimension is unchanged (a sum of
- *  km stays km); anything non-numeric or indeterminate is returned untouched. */
 function retagFold(
   out: Cell,
   dr: Dim | SolError | null,
   elem: { dim: Dim; display?: string },
+  u: Unit | null,
+  point: 0 | 1 | null = null,
 ): Cell | UnitCell {
   if (typeof out !== "number" || dr === null || isSolError(dr) || isDimensionless(dr)) return out;
+  if (u && point === 1) return fromUnit(out, u, elem.display) as UnitCell;
+  if (u && point === 0) return tagDim(out * u.scale ** (dimPowerOf(dr, elem.dim) ?? 1), dr);
   const display = dimEqual(dr, elem.dim) ? elem.display : undefined;
-  return tagDim(out, dr, display);
+  const k = u ? dimPowerOf(dr, elem.dim) : null;
+  if (u && k === null) return unitError("The fold's result unit can't be read back from the list's unit.");
+  return tagDim(u ? out * u.scale ** k! : out, dr, display);
 }
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
-// Up to three zipped arrays; an extra table must match the first's shape or be 1×1,
-// which broadcasts — the stand-in for a captured constant.
 
 export class MapTableNode extends ClassicPreset.Node {
-  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
   resultAs: ResultType;
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // A wired lambda binds by name ([[C50]] lambdaBindsByName); `value` is the primary, the rest optional.
   readonly lambdaSig = { vars: ["value", "value2", "value3", "row", "col"], required: 1 };
   width = 210;
   height = 270;
@@ -220,16 +212,20 @@ export class MapTableNode extends ClassicPreset.Node {
 export type ByAxis = "row" | "col";
 export const BY_AXIS_OP_META: Record<ByAxis, { label: string }> = { row: { label: "BYROW" }, col: { label: "BYCOL" } };
 
+/** BYROW answers a one-column table beside the rows it came from, BYCOL a list ([[D85]] columnsStayColumns). */
 export class ByAxisNode extends ClassicPreset.Node {
-  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  static dimFor(op: ByAxis): ResultDim { return op === "row" ? "matrix" : "combo"; }
+  static labelFor(op: ByAxis): string { return op === "row" ? "Per row" : "Per column"; }
+  get resultDim(): ResultDim { return ByAxisNode.dimFor(this.op); }
+
+  /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
   op: ByAxis;
   resultAs: ResultType;
   stringLiterals: Record<string, string>;
-  cachedResult: (Cell | UnitCell)[] | SolError | null = null;
+  cachedResult: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null = null;
   cachedError: string | null = null;
-  // A wired lambda binds by name ([[C50]] lambdaBindsByName); `values` is the row/column as a list.
   readonly lambdaSig = { vars: ["values"], required: 1 };
   width = 210;
   height = 218;
@@ -242,32 +238,45 @@ export class ByAxisNode extends ClassicPreset.Node {
     this.stringLiterals = { formula: init?.expr ?? "SUM(values)" };
     this.addInput("table", anyTableIn("Table"));
     this.addInput("lambda", lambdaIn("Lambda"));
-    this.addOutput("result", resultOut("Per-" + this.op, "combo", this.resultAs));
+    this.addOutput("result", resultOut(ByAxisNode.labelFor(this.op), ByAxisNode.dimFor(this.op), this.resultAs));
   }
 
-  data(inputs: { table?: unknown[]; lambda?: unknown[] }): { result: (Cell | UnitCell)[] | SolError | null } {
+  /** Retypes the output in place and fires no connection event, so the component follows with retypeOutputCables. */
+  setOp(next: ByAxis): boolean {
+    if (next === this.op) return false;
+    this.op = next;
+    const spec = resultOut(ByAxisNode.labelFor(next), ByAxisNode.dimFor(next), this.resultAs);
+    this.outputs.result!.socket = spec.socket;
+    this.outputs.result!.label = spec.label;
+    return true;
+  }
+
+  data(inputs: { table?: unknown[]; lambda?: unknown[] }): { result: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null } {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
       "SUM(values)", ["values"], 1, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m || m.length === 0) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    // FC A4 — carry units over a 1-D list: strip the tagged cells for the numeric
-    // reduction, then re-tag each per-vector result with the aggregate's dimension.
     const elem = elemUnitOf(m);
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
-    const mm = elem ? stripCells(m) : m;
+    const fu = foldUnit(elem);
+    const mm = elem ? stripCells(m, fu) : m;
     try {
       const vectors = this.op === "row" ? mm : transpose(mm);
       let out: (Cell | UnitCell)[] = vectors.map((vec) => cell(fn(vec)));
       if (elem) {
-        const dr = foldResultDim(foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "SUM(values)"), ["values"], elem.dim);
+        const expr = foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "SUM(values)");
+        const dr = foldResultDim(expr, ["values"], elem.dim);
         if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
-        out = out.map((c) => retagFold(c as Cell, dr, elem));
+        const point = foldPoint(expr, fu, ["values"], ["values"]);
+        if (isSolError(point)) { this.cachedResult = point; this.cachedError = null; return { result: point }; }
+        out = out.map((c) => retagFold(c as Cell, dr, elem, fu, point));
       }
-      this.cachedResult = out;
+      const shaped = this.op === "row" ? out.map((c) => [c]) : out;
+      this.cachedResult = shaped;
       this.cachedError = null;
-      return { result: out };
+      return { result: shaped };
     } catch {
       this.cachedResult = null;
       this.cachedError = "Evaluation error";
@@ -277,14 +286,13 @@ export class ByAxisNode extends ClassicPreset.Node {
 }
 
 // ─── REDUCE ───────────────────────────────────────────────────────────────────────
-// Row-major fold (matching Excel) from Initial; `Values` widens any shape to a matrix.
 
 export class ReduceLambdaNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     table: "Cells fold in row order, left to right across each row.",
   };
 
-  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
   resultAs: ResultType;
@@ -292,7 +300,6 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Cell | UnitCell | SolError | null = null;
   cachedError: string | null = null;
-  // Wired lambdas bind to (acc, value, step) by name ([[C50]] lambdaBindsByName) — the card advises it.
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -317,21 +324,25 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
       "acc + value", ["acc", "value", "step"], 3, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    // FC A4 — carry units over a 1-D list: strip the tagged cells (and the initial)
-    // for the numeric fold, then re-tag the scalar result with the fold's dimension.
     const elem = elemUnitOf(m);
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
-    const mm = elem ? stripCells(m) : m;
-    const initial = isUnitCell(initialRaw) ? magnitudeOf(initialRaw) : initialRaw;
+    const fu = foldUnit(elem);
+    const mm = elem ? stripCells(m, fu) : m;
+    const initial = isUnitCell(initialRaw) ? readIn(magnitudeOf(initialRaw), fu) : initialRaw;
     try {
       let acc: unknown = initial;
       let i = 0;
       for (const row of mm) for (const x of row) acc = fn(acc, x, ++i);
       let out: Cell | UnitCell = cell(acc);
       if (elem) {
-        const dr = foldResultDim(foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "acc + value"), ["acc", "value"], elem.dim);
+        const expr = foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "acc + value");
+        const dr = foldResultDim(expr, ["acc", "value"], elem.dim);
         if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
-        out = retagFold(out as Cell, dr, elem);
+        // The accumulator is a reading step after step only when each step answers one.
+        const point = foldPoint(expr, fu, ["acc", "value"], []);
+        const bad = isSolError(point) ? point : point === 0 ? unitError(READINGS_FOLD) : null;
+        if (bad) { this.cachedResult = bad; this.cachedError = null; return { result: bad }; }
+        out = retagFold(out as Cell, dr, elem, fu, point as 1 | null);
       }
       this.cachedResult = out;
       this.cachedError = null;
@@ -345,15 +356,13 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
 }
 
 // ─── SCAN ───────────────────────────────────────────────────────────────────────
-// REDUCE's twin: the same row-major fold, but it EMITS the accumulator after every
-// cell, so the output keeps the input's shape.
 
 export class ScanLambdaNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     table: "Cells fold in row order, left to right across each row.",
   };
 
-  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
   resultAs: ResultType;
@@ -361,7 +370,6 @@ export class ScanLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // Wired lambdas bind to (acc, value, step) by name ([[C50]] lambdaBindsByName) — the card advises it.
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -389,8 +397,7 @@ export class ScanLambdaNode extends ClassicPreset.Node {
     try {
       let acc: unknown = initial;
       let i = 0;
-      // The carried accumulator stays RAW — normalizing it would corrupt the fold
-      // (a valid intermediate flattened to null).
+      // The carried accumulator stays raw: normalizing it would flatten a valid intermediate to null.
       const out: Mat = m.map((row) => row.map((x) => { acc = fn(acc, x, ++i); return cell(acc); }));
       this.cachedResult = out;
       this.cachedError = null;
@@ -405,10 +412,9 @@ export class ScanLambdaNode extends ClassicPreset.Node {
 
 // ─── MAKEARRAY ────────────────────────────────────────────────────────────────────
 
-const MAKEARRAY_MAX_CELLS = 40000;
 
 export class MakeArrayNode extends ClassicPreset.Node {
-  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
   resultAs: ResultType;
@@ -416,7 +422,6 @@ export class MakeArrayNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // A wired lambda binds by name ([[C50]] lambdaBindsByName); `row`,`col` are the 1-based indices.
   readonly lambdaSig = { vars: ["row", "col"], required: 2 };
   width = 210;
   height = 246;
@@ -434,18 +439,17 @@ export class MakeArrayNode extends ClassicPreset.Node {
   }
 
   data(inputs: { rows?: number[]; cols?: number[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    // A blank dimension leaves the SHAPE unknown; the `< 1` guard below answers it.
     const rowsRaw = readInput(inputs.rows, this.literals.rows ?? 0);
     const colsRaw = readInput(inputs.cols, this.literals.cols ?? 0);
-    const rows = rowsRaw === null ? 0 : Math.round(rowsRaw);
-    const cols = colsRaw === null ? 0 : Math.round(colsRaw);
+    const rows = rowsRaw === null ? 0 : Math.floor(rowsRaw);
+    const cols = colsRaw === null ? 0 : Math.floor(colsRaw);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
       "row * col", ["row", "col"], 2, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (rows < 1 || cols < 1) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    if (rows * cols > MAKEARRAY_MAX_CELLS) {
-      const msg = `Too large: ${rows}×${cols}`;
+    if (rows * cols > MAX_GENERATED) {
+      const msg = `MAKEARRAY count ${rows * cols} exceeds the ${MAX_GENERATED} element limit`;
       this.cachedResult = null;
       this.cachedError = msg;
       return fnError(msg, "#OVERFLOW!");

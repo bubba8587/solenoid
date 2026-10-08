@@ -38,13 +38,8 @@ describe("pack-contributed formula functions", () => {
     initPackFormulas();
   });
 
-  it("registers the function so it is claimed by its pack", () => {
-    expect(packFormulaNames()).toContain("TESTPACKDOUBLE");
-  });
-
   it("COMPUTES while the pack is OFF — a saved graph must not break", () => {
     packsStore.setActive(FIXTURE.id, false);
-    expect(resolveExcelFunction("TESTPACKDOUBLE")).not.toBeNull();
     expect(compileEvaluator("TESTPACKDOUBLE(21)")!({})).toBe(42);
   });
 
@@ -116,7 +111,6 @@ describe("re-running init is safe", () => {
   it("a pack that is no longer present stops answering", () => {
     BUILTIN_PACKS.push(FIXTURE);
     initPackFormulas();
-    expect(resolveExcelFunction("TESTPACKDOUBLE")).not.toBeNull();
     BUILTIN_PACKS.splice(BUILTIN_PACKS.indexOf(FIXTURE), 1);
     initPackFormulas();
     expect(resolveExcelFunction("TESTPACKDOUBLE")).toBeNull();

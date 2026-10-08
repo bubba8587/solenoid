@@ -1,14 +1,7 @@
-// [[C99]] chromeEnvelopeVars (publishes --chrome-bottom)
+// [[B14]] oneDesignSystem (publishes --chrome-bottom)
 import { useEffect, useRef, type RefObject } from "react";
+import { chromeZoomStore } from "./chromeZoom";
 
-// The BOTTOM chrome envelope, measured — the mirror of Header.tsx's
-// `--chrome-top` (layout-chrome.md). Two bars can own the bottom edge (the
-// desktop/tablet status bar, the mobile action bar); whichever is visible is
-// taller, so the published value is the max over the registered elements
-// (a display:none bar measures 0). The mobile bar's height INCLUDES its
-// safe-area padding, so consumers drop their own env() terms when they adopt
-// the var. Every `var(--chrome-bottom, …)` keeps a static fallback for the
-// first paint, before the observers fire.
 
 const els = new Set<HTMLElement>();
 let ro: ResizeObserver | null = null;
@@ -16,13 +9,14 @@ let ro: ResizeObserver | null = null;
 function publish() {
   let max = 0;
   for (const el of els) max = Math.max(max, el.getBoundingClientRect().height);
-  // FLOOR, never round or ceil: `bottom: var(--chrome-bottom)` puts a panel's
-  // bottom edge AT the published height, so a value above the bar's true
-  // fractional height lifts the edge off the bar — a 1px gap at fractional
-  // device pixel ratios (Chrome Android). Published at-or-under, the panel
-  // tucks beneath the opaque bar, whose z-index is above the docked panels.
+  // Floor, never round or ceil: a value above the bar's fractional height lifts the panel edge off the bar by a pixel.
   document.documentElement.style.setProperty("--chrome-bottom", `${Math.floor(max)}px`);
+  // The same height under a name zoomed chrome can divide by its zoom (chromeZoom.css).
+  document.documentElement.style.setProperty("--chrome-bottom-px", `${Math.floor(max)}px`);
 }
+
+// A zoom change moves the bar's on-screen height without resizing it in its own pixels.
+chromeZoomStore.subscribe(() => { if (els.size) requestAnimationFrame(publish); });
 
 function register(el: HTMLElement): () => void {
   if (!ro) ro = new ResizeObserver(publish);
@@ -32,13 +26,14 @@ function register(el: HTMLElement): () => void {
   return () => {
     els.delete(el);
     ro?.unobserve(el);
-    if (els.size === 0) document.documentElement.style.removeProperty("--chrome-bottom");
+    if (els.size === 0) {
+      document.documentElement.style.removeProperty("--chrome-bottom");
+      document.documentElement.style.removeProperty("--chrome-bottom-px");
+    }
     else publish();
   };
 }
 
-/** Attach to a bottom-chrome bar's root; the element's measured height joins
- *  the `--chrome-bottom` envelope while mounted. */
 export function useBottomChrome<T extends HTMLElement>(): RefObject<T | null> {
   const ref = useRef<T>(null);
   useEffect(() => (ref.current ? register(ref.current) : undefined), []);

@@ -4,8 +4,7 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
-import { getActiveEditor, getActiveView } from "../activeGraph";
-import { processGraph } from "../process";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 const OPS = (Object.keys(ARG_MIN_MAX_OP_META) as ArgMinMaxOp[]).map((op) => ({
   value: op,
   label: ARG_MIN_MAX_OP_META[op].label,
@@ -17,15 +16,14 @@ export function ArgMinMaxComponent({ data, emit }: NodeProps<ArgMinMaxNodeType>)
   async function pickOp(next: ArgMinMaxOp) {
     if (next === data.op) return;
     // WHICH swaps the input family (number ↔ logical list): prune BEFORE the in-place
-    // retype ([[D10]] onePrunePath); the output rank swap (number ↔ list) prunes after.
+    // retype; the output rank swap (number ↔ list) prunes after.
     if ((next === "which") !== (data.op === "which")) await dropInputCables(data.id, ["list"]);
     const { outputChanged } = data.setOp(next);
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (outputChanged && editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);
-    await processGraph(data.id);
   }
   return (
     <NodeShell node={data} emit={emit}>

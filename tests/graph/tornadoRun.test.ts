@@ -1,7 +1,8 @@
-// [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[C34]] classNameIsType
+// [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
 import { findUpstreamLeaves, rankTornado } from "../../src/graph/tornadoRun";
-import { NumberInputNode, SliderInputNode } from "../../src/graph/nodes/input";
+import { SliderInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import type { TornadoResult } from "../../src/graph/nodes/tornado";
 
 // Regression: a Slider carries its own min/max/step input sockets, so the old
@@ -19,6 +20,14 @@ function fakeEditor(nodes: Record<string, unknown>, connections: Conn[]) {
 }
 
 describe("findUpstreamLeaves", () => {
+  it("takes a Number-mode Value Input as a leaf, and walks past any other mode", () => {
+    const num = new ValueInputNode({ label: "Price", op: "number", value: "25" });
+    const txt = new ValueInputNode({ label: "Name", op: "string", value: "x" });
+    const nodes = { num, txt, tornado: {} };
+    const leaves = findUpstreamLeaves(fakeEditor(nodes, [{ source: "num", target: "tornado" }, { source: "txt", target: "tornado" }]), "tornado");
+    expect(leaves.map((l) => l.label)).toEqual(["Price"]);
+  });
+
   it("recognizes a Slider feeding the target (despite its min/max/step sockets)", () => {
     const slider = new SliderInputNode({ label: "Growth" });
     const nodes = { slider, tornado: {} };
@@ -28,11 +37,11 @@ describe("findUpstreamLeaves", () => {
   });
 
   it("recognizes both a Number and a Slider, and does not walk past the slider's bounds", () => {
-    const num = new NumberInputNode({ label: "Base" });
+    const num = new ValueInputNode({ label: "Base" });
     const slider = new SliderInputNode({ label: "Rate" });
     // A Number driving the slider's `min` — the walk must STOP at the slider, so
     // this upstream number is NOT swept (perturbing it changes the range, not value).
-    const boundSource = new NumberInputNode({ label: "MinFeed" });
+    const boundSource = new ValueInputNode({ label: "MinFeed" });
     const nodes = { num, slider, boundSource, tornado: {} };
     const leaves = findUpstreamLeaves(
       fakeEditor(nodes, [

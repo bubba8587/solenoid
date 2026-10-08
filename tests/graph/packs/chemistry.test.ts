@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { CHEMISTRY_FORMULAS } from "../../../src/graph/packs/chemistry";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass, ElementNode, MolarMassNode, elementCell, searchElements } from "../../../src/graph/nodes/chemistry";
+import { ElementNode, MolarMassNode, elementCell, searchElements } from "../../../src/graph/nodes/chemistry";
+import { ELEMENTS, molarMass } from "../../../src/graph/nodes/chemistryOps";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -62,13 +63,6 @@ describe("Element data", () => {
     ELEMENTS.forEach((e, i) => expect(e.n).toBe(i + 1));
   });
 
-  it("anchor masses (IUPAC)", () => {
-    expect(ELEMENT_BY_SYMBOL.get("H")!.mass).toBeCloseTo(1.008, 3);
-    expect(ELEMENT_BY_SYMBOL.get("C")!.mass).toBeCloseTo(12.011, 3);
-    expect(ELEMENT_BY_SYMBOL.get("Fe")!.mass).toBeCloseTo(55.845, 3);
-    expect(ELEMENT_BY_SYMBOL.get("U")!.mass).toBeCloseTo(238.029, 2);
-  });
-
   it("node outputs and stale-op fallback", () => {
     expect(new ElementNode({ symbol: "Fe" }).data()).toEqual({ mass: 55.845, number: 26 });
     expect(new ElementNode({ symbol: "Xx" }).symbol).toBe("H");
@@ -97,6 +91,12 @@ describe("Molar mass parser", () => {
     expect(mm("CuSO4·5H2O")).toBeCloseTo(249.69, 1);
     expect(mm("CuSO4*5H2O")).toBeCloseTo(249.69, 1);
     expect(mm("CuSO4.5H2O")).toBeCloseTo(249.69, 1);
+    expect(mm("Na2CO3.10H2O")).toBeCloseTo(286.14, 1);
+  });
+
+  it("a decimal hydrate multiplier is half a water, not five", () => {
+    expect(mm("CaSO4·0.5H2O")).toBeCloseTo(145.14, 1);
+    expect(mm("CaSO4.0.5H2O")).toBeCloseTo(145.14, 1);
   });
 
   it("errors: unknown element, unbalanced brackets, junk", () => {

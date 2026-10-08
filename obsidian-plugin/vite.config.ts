@@ -35,6 +35,7 @@ const SHIMMED: Record<string, string> = {
   [path.join(REPO, "src/graph/appTheme.ts")]: path.join(SHIMS, "appTheme.ts"),
   [path.join(REPO, "src/graph/clipboard.ts")]: path.join(SHIMS, "clipboard.ts"),
   [path.join(REPO, "src/graph/mobileUa.ts")]: path.join(SHIMS, "mobileUa.ts"),
+  [path.join(REPO, "src/graph/components/Markdown.tsx")]: path.join(SHIMS, "components/Markdown.tsx"),
 };
 const REACT_DOM_SHIM = path.join(SHIMS, "reactDom.ts");
 
@@ -145,7 +146,8 @@ function shadowCss(): Plugin {
       // `PLUGIN_MODULES=<file>`: every source file this build read, for the snapshot export.
       if (process.env.PLUGIN_MODULES) {
         const ids = [...this.getModuleIds()].map((id) => id.split("?")[0]).filter((id) => path.isAbsolute(id) && !id.includes("node_modules"));
-        writeFileSync(process.env.PLUGIN_MODULES, JSON.stringify([...new Set(ids)].map((id) => path.relative(REPO, id)).sort(), null, 1));
+        // Posix paths whatever the platform: the export matches them against `src/…`.
+        writeFileSync(process.env.PLUGIN_MODULES, JSON.stringify([...new Set(ids)].map((id) => path.relative(REPO, id).split(path.sep).join("/")).sort(), null, 1));
       }
       if (!process.env.PLUGIN_REPORT) return;
       const rows: [number, string][] = [];
@@ -202,7 +204,7 @@ export default defineConfig({
     minify: !process.env.PLUGIN_DEBUG,
     lib: { entry: path.join(import.meta.dirname, "src/main.tsx"), formats: ["cjs"], fileName: () => "main.js" },
     rollupOptions: {
-      external: ["obsidian", "electron"],
+      external: ["obsidian", "electron", "@codemirror/language", "@codemirror/state", "@codemirror/view"],
       // Tracing only: lets a build finish while a shim is still short an export.
       shimMissingExports: !!process.env.PLUGIN_TRACE,
       output: { exports: "default", codeSplitting: false },

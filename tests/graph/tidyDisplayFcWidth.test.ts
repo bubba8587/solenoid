@@ -1,4 +1,4 @@
-// [[C84]] tidyTranslatesOnly
+// [[A1]] visualGraphCalculator
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
@@ -44,6 +44,7 @@ interface FakeView {
 
 function makeFakeView() {
   const nodeViews = new Map<string, FakeView>();
+  const pane = { reads: 0, screenReads: 0, socketsDrawn: false };
   // rootClass models the card root's CSS class: "solenoid-node" for standard
   // NodeCard roots, "solenoid-note" etc. for React-sized roots the pin-drop
   // loop must leave alone.
@@ -60,7 +61,14 @@ function makeFakeView() {
         get offsetHeight() { return (view.stampedH ?? view.naturalH) + BORDER; },
         querySelector(sel: string) {
           // The socket lookups the FC-footprint path makes have no DOM here.
-          if (sel.startsWith("[data-socket")) return null;
+          if (sel.startsWith("[data-socket")) {
+            // A drawn socket sits 300 down its card; the screen is never asked, so a zoom cannot enter.
+            return pane.socketsDrawn ? {
+              offsetLeft: 0, offsetTop: 300, offsetWidth: 10, offsetHeight: 10,
+              get offsetParent() { return view.element; },
+              getBoundingClientRect: () => { pane.screenReads++; return { left: 500, top: 300, width: 10, height: 10 }; },
+            } : null;
+          }
           // The pin-drop loop selects the card and clears the inline dims.
           return {
             classList: { contains: (c: string) => c === rootClass },
@@ -83,6 +91,8 @@ function makeFakeView() {
   };
   const view = {
     fakes: nodeViews,
+    pane,
+    container: { getBoundingClientRect: () => { pane.reads++; return { left: 0, top: 120, width: 1000, height: 700 }; } },
     hasNode: (id: string) => nodeViews.has(id),
     position: (id: string) => nodeViews.get(id)?.position,
     nodeElement: (id: string) => (nodeViews.get(id)?.element ?? null) as unknown as HTMLElement | null,
@@ -95,7 +105,7 @@ function makeFakeView() {
     async rerenderNode() { /* no-op headless */ },
     transform: { k: 1, x: 0, y: 0 },
   };
-  return { view: view as unknown as View & { fakes: Map<string, FakeView> }, add };
+  return { view: view as unknown as View & { fakes: Map<string, FakeView>; pane: typeof pane }, add };
 }
 
 let rafQueue: FrameRequestCallback[] = [];
@@ -150,7 +160,6 @@ async function buildScene() {
 
   const arrangeFn = makeArrangeFn({
     editor, view,
-    container: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 700 }) } as unknown as HTMLElement,
     ensureElk: makeEnsureElk(() => false),
     repositionDockedTo: () => {},
     isDestroyed: () => false,
@@ -191,6 +200,18 @@ describe("Tidy with a docked FC does not widen the host on repeat", () => {
 
     // The card carries the manual width (re-applied), not a dropped/CSS default.
     expect(fv.stampedW).toBe(260);
+  });
+
+  // A screen rect divided by the zoom is quantized by the zoom, and that fraction of a pixel changed the layout from run to run.
+  it("measures a docked FC's host socket from the card's layout, never the screen", async () => {
+    const { view, arrangeFn } = await buildScene();
+    view.pane.socketsDrawn = true;
+
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+
+    expect(view.pane.screenReads).toBe(0);
+    expect(view.pane.reads).toBe(0);
   });
 
   // Regression: "Tidy makes Notes very very wide (sockets misaligned), fixed by

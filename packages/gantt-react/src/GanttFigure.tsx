@@ -1,8 +1,9 @@
-// [[C69]] ganttPackages, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C100]] chartIsAValue, [[C94]] formatFamilyGates, [[C70]] oneScheduleRule
+// [[C69]] ganttPackages, [[C71]] noBarEditing, [[C100]] chartIsAValue, [[C118]] formatTravelsWithValue, [[C70]] oneScheduleRule
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, UIEvent, PointerEvent as ReactPointerEvent, ReactElement } from "react";
 import {
   buildRows,
+  collapsedAtLevel,
   buildScale,
   buildBars,
   buildLinks,
@@ -23,24 +24,18 @@ import { CalendarView } from "./CalendarView";
 
 export interface GanttFigureProps {
   payload: GanttPayload;
-  /** Total figure width in px (grid pane + timeline); split at an internal splitter. */
   width: number;
   height: number;
-  /** Windowed rows (the popup) vs a capped snapshot (the canvas). */
   virtualize?: boolean;
   fontScale?: number;
-  /** Optional overrides; omitted, the figure reads the app's CSS variables. */
   colors?: Partial<GanttColors>;
 }
 
-/** Canvas snapshot row cap, the Record precedent ([[C63]] oneRecordNode); the popup virtualizes instead. */
 const CANVAS_CAP = 60;
 const MIN_GRID_W = 96;
 const MIN_TIMELINE_W = 80;
 const BUFFER_ROWS = 6;
 
-/** The figure entry point: the Gantt timeline, or the calendar month grid when
- *  `view.layout === "calendar"` (§ 6.3). A thin dispatch so each view owns its own hooks. */
 export function GanttFigure(props: GanttFigureProps) {
   if (props.payload.view.layout === "calendar") {
     return <CalendarView payload={props.payload} width={props.width} height={props.height} fontScale={props.fontScale} />;
@@ -52,31 +47,24 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
   const rowHeight = Math.round(DEFAULT_ROW_HEIGHT * fontScale);
   const tierHeight = Math.round(TIER_HEIGHT * fontScale);
 
-  // Geometry that only depends on the payload + row height (not on scroll or the splitter).
-  const columns = useMemo(() => buildColumns(payload), [payload]);
+  const columns = useMemo(() => buildColumns(payload, fontScale), [payload, fontScale]);
   const gridNaturalW = useMemo(() => columns.reduce((s, c) => s + c.width, 0), [columns]);
 
-  // The grid defaults to its CONTENT width (name + the columns that fit), not a fixed fraction —
-  // so no empty band, and never a clipped header. The user can drag the splitter from there.
   const [gridWRaw, setGridW] = useState(() => {
     const target = Math.min(gridNaturalW, Math.max(MIN_GRID_W, width * 0.55));
     return fitColumns(columns, target).reduce((s, c) => s + c.width, 0);
   });
-  // The pane never outgrows the figure: a popup shrunk below the pane's width keeps a
-  // timeline (MIN_TIMELINE_W) and drops trailing columns instead of clipping them.
   const gridW = Math.max(Math.min(MIN_GRID_W, width - MIN_TIMELINE_W), Math.min(gridWRaw, width - MIN_TIMELINE_W));
-  // Columns that fit the current grid width; trailing ones are DROPPED, never clipped.
   const visibleCols = useMemo(() => fitColumns(columns, gridW), [columns, gridW]);
   const timelineW = Math.max(MIN_TIMELINE_W, width - gridW - 1);
 
-  // Ephemeral per-row collapse (the treegrid's expand/collapse), seeded from the view.collapse
-  // floor: every phase at or below that level starts collapsed. Keyboard/click toggles from there.
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
-    const s = new Set<string>();
-    const lvl = payload.view.collapse;
-    if (lvl != null) for (const t of payload.tasks) if (t.summary && t.level >= lvl) s.add(t.id);
-    return s;
-  });
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => collapsedAtLevel(payload));
+  // A new collapse= reseeds the folds; toggles made since are dropped.
+  const [seededLevel, setSeededLevel] = useState(payload.view.collapse);
+  if (seededLevel !== payload.view.collapse) {
+    setSeededLevel(payload.view.collapse);
+    setCollapsed(collapsedAtLevel(payload));
+  }
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
   const rows = useMemo(() => buildRows(payload, rowHeight, collapsed), [payload, rowHeight, collapsed]);
@@ -98,7 +86,6 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
   const headerH = scale.tiers.length * tierHeight;
   const bodyH = Math.max(0, height - headerH);
 
-  // Vertical scroll shared between the two panes.
   const [scrollTop, setScrollTop] = useState(0);
   const gridScrollRef = useRef<HTMLDivElement>(null);
   const timeScrollRef = useRef<HTMLDivElement>(null);
@@ -111,7 +98,6 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
     if (other && other.scrollTop !== top) { syncing.current = true; other.scrollTop = top; }
   }, []);
 
-  // Which rows to render. Virtualized: a window around the scroll; capped: the first N.
   const capped = !virtualize && rows.length > CANVAS_CAP;
   const rowWindow = useMemo(() => {
     if (!virtualize) return { start: 0, end: Math.min(rows.length, CANVAS_CAP) };
@@ -122,10 +108,9 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
   }, [virtualize, rows.length, rowHeight, scrollTop, bodyH]);
 
   const visibleRows = rows.slice(rowWindow.start, rowWindow.end);
-  const visTop = rowWindow.start * rowHeight; // rows are uniform height
+  const visTop = rowWindow.start * rowHeight;
   const cappedRows = capped ? rows.slice(0, CANVAS_CAP) : rows;
 
-  // Links whose either endpoint is in (or near) the visible band.
   const visLinks = useMemo(() => {
     if (!virtualize) return allLinks;
     const lo = visTop - rowHeight * BUFFER_ROWS;
@@ -137,7 +122,6 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
     });
   }, [virtualize, allLinks, visTop, visibleRows.length, rowHeight]);
 
-  // Splitter drag.
   const dragRef = useRef<{ x0: number; w0: number } | null>(null);
   const onSplitDown = useCallback((e: ReactPointerEvent) => {
     e.preventDefault();
@@ -157,8 +141,6 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
 
   const rowsToShow = virtualize ? visibleRows : cappedRows;
 
-  // ── Treegrid keyboard ──
-  // The focusable rows are the task rows (section bands are skipped by navigation).
   const navRows = useMemo(() => rows.filter((r) => !r.section && r.taskIndex >= 0), [rows]);
   const activeId = focusedId != null && navRows.some((r) => r.id === focusedId) ? focusedId : navRows[0]?.id;
 
@@ -182,12 +164,11 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
       case "End": go(nav.length - 1); break;
       case "ArrowRight":
         if (isParent && isCollapsed) { e.preventDefault(); expand(row.id); }
-        else if (isParent) go(idx + 1); // already expanded → step to the first child
+        else if (isParent) go(idx + 1);
         break;
       case "ArrowLeft":
         if (isParent && !isCollapsed) { e.preventDefault(); collapse(row.id); }
         else {
-          // Leaf or collapsed parent → move focus to the parent row.
           e.preventDefault();
           for (let j = idx - 1; j >= 0; j--) if (nav[j].level < row.level) { setFocusedId(nav[j].id); break; }
         }
@@ -199,8 +180,6 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
     }
   }, [navRows, activeId, collapsed, expand, collapse, toggle]);
 
-  // Bring the focused row into view: vertical in both panes, and the bar horizontally in the
-  // timeline. Instant scroll (no smooth animation) — nothing to gate on reduced-motion.
   useEffect(() => {
     if (activeId == null) return;
     const r = rows.find((x) => x.id === activeId);
@@ -223,8 +202,6 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
-  // Move DOM focus onto the active row once it is rendered (it may have just scrolled in). Keyed
-  // only on focusedId/scrollTop so it never steals focus back on an unrelated re-render.
   useEffect(() => {
     if (focusedId == null) return;
     const el = gridScrollRef.current?.querySelector<HTMLElement>(`[data-row-id="${cssEscape(focusedId)}"]`);
@@ -371,8 +348,6 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
   );
 }
 
-/** The resource histogram: stacked unit columns per day, a legend, a 1-unit capacity line, and
- *  an over-allocation cue (error color + hatch) — mirrors the headless serializer. */
 function HistogramBand({ histogram, contentW, top }: { histogram: FrameHistogram; contentW: number; top: number }) {
   const h = histogram;
   let lx = 4;
@@ -482,8 +457,6 @@ function Bar({ bar, payload }: { bar: FrameBar; payload: GanttPayload }) {
   );
 }
 
-/** A pushpin at the bar start marking a Manual task ([[C70]] oneScheduleRule); its own cue,
- *  distinct from the violated dash. */
 function PinGlyph({ x, y }: { x: number; y: number }) {
   return (
     <g className="solenoid-gantt__pin">
@@ -493,8 +466,6 @@ function PinGlyph({ x, y }: { x: number; y: number }) {
   );
 }
 
-/** A pennant at the deadline day ([[C70]] oneScheduleRule: a flag, never a move); a late task
- *  turns it the error color, the pennant shape itself being the non-color cue. */
 function DeadlineFlag({ x, rowY, rowH, late }: { x: number; rowY: number; rowH: number; late: boolean }) {
   const top = rowY - 2;
   const h = rowH + 4;
@@ -510,8 +481,6 @@ function Link({ link }: { link: FrameLink }) {
   const d = link.points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x} ${p.y}`).join(" ");
   const cls = `solenoid-gantt__link${link.violated ? " is-violated" : link.critical ? " is-critical" : ""}`;
   const arrow = arrowPath(link.arrow.x, link.arrow.y, link.arrow.dir);
-  // The dependency is stated in the visible grid (Predecessors column); the tooltip is
-  // structural only — the relationship type, never dynamic names/dates.
   const label = `${link.type} dependency`;
   return (
     <g>
@@ -536,17 +505,16 @@ function cssEscape(s: string): string {
   return s.replace(/["\\]/g, "\\$&");
 }
 
-/** The prefix of `cols` that fits `avail` px; the name column is always kept even if it alone
- *  exceeds the width. Trailing columns that don't fit are dropped, never clipped. */
 function fitColumns(cols: ReturnType<typeof buildColumns>, avail: number): ReturnType<typeof buildColumns> {
   const out: typeof cols = [];
   let used = 0;
   for (const c of cols) {
-    if (out.length && used + c.width > avail) break;
+    if (used + c.width > avail) break;
     out.push(c);
     used += c.width;
   }
-  return out.length ? out : cols.slice(0, 1);
+  // The first column always shows; narrower than the pane needs, it truncates with "…" instead of running off it.
+  return out.length || !cols.length ? out : [{ ...cols[0], width: Math.max(0, Math.floor(avail)) }];
 }
 
 function shadingRects(payload: GanttPayload, scale: { from: number; to: number; pxPerDay: number }, h: number) {

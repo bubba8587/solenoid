@@ -1,14 +1,13 @@
-// [[C94]] formatFamilyGates (the lambda view-as: docs/format-model.md)
+// [[C118]] formatTravelsWithValue (the lambda view-as: tree/specs/values/format-model.md)
 // The Report's inline embed has a separate KaTeX-first variant honoring the same annotation.
 import { useKatexRender } from "./katexLoader";
-import { formulaToLatex } from "../excelFormula";
+import { lambdaToLatex } from "../excelFormula";
 import { highlightFormula } from "../formulaSyntax";
 import { formatLambda, type LambdaValue } from "../nodes/lambda";
 import type { LambdaView } from "../formatAnnotationStore";
 import "./FormulaEditor.css";
 import "./LambdaView.css";
 
-/** Plain-text source form: `λ(params) = expr` (signature alone when the body is empty). */
 export function lambdaSourceText(v: LambdaValue): string {
   const sig = `λ(${v.params.join(", ")})`;
   const expr = (v.expr ?? "").trim();
@@ -16,15 +15,15 @@ export function lambdaSourceText(v: LambdaValue): string {
 }
 
 export function LambdaValueView({ value, view }: { value: LambdaValue; view: LambdaView | undefined }) {
-  // Unconditional — hook order must not depend on the view.
+  // Unconditional: hook order must not depend on the view.
   const render = useKatexRender();
   const expr = (value.expr ?? "").trim();
 
   if (view === "katex" && expr && render) {
-    const params = value.params.map((p) => p.replace(/[\\{}]/g, "")).join(",\\,");
+    const latex = lambdaToLatex(value.params, expr);
     let html: string | null = null;
     try {
-      html = render(`f(${params}) = ${formulaToLatex(expr)}`, { throwOnError: false, displayMode: true });
+      html = latex ? render(latex, { throwOnError: false, displayMode: true }) : null;
     } catch { html = null; /* unparseable body — fall through to the source form */ }
     if (html) {
       return (

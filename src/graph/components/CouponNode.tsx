@@ -9,10 +9,8 @@ const OPS = (Object.keys(COUPON_OP_META) as CouponOp[]).map(op => ({
 
 export function CouponComponent({ data, emit }: NodeProps<CouponNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: CouponOp) {
     setOp(next);
-    setLabel(COUPON_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>

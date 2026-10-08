@@ -1,12 +1,11 @@
-// [[C73]] inspectorIsStatic, [[C77]] compositeIsSubgraph, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast
+// [[C73]] inspectorIsStatic, [[C77]] compositeIsSubgraph, [[C112]] noOverlapsEver, [[C89]] standoffsSolveLast
 import React, { useEffect } from "react";
 import { useMenuClamp } from "./menuClamp";
 import { inspectorStore } from "../inspectorStore";
 import "./SocketContextMenu.css";
 import { FocusIcon, LinkIcon, TetherIcon } from "./Icons";
 
-// The single right-click menu for a node / group body — a node's right-click has
-// one home, so new items land here rather than in a second menu.
+// A node's right-click has one home, so new items land here rather than in a second menu.
 
 // Lucide "pin" icon — https://lucide.dev/icons/pin
 const PinSvg = () => (
@@ -78,26 +77,36 @@ const UnpackSvg = () => (
 
 export type NodeContextTarget = {
   nodeId: string;
-  /** What Isolate acts on: the selection if the clicked node is part of it,
-   *  else just the clicked node. */
   seedIds: string[];
   screenX: number;
   screenY: number;
-  /** Whether this item carries a pinnable value (real value node, not a group). */
   canPin?: boolean;
-  /** The clicked node is a Composite — offers Edit contents / Unpack. */
   isComposite?: boolean;
-  /** The clicked node is a Group — offers Lock / Unlock position. */
   isGroup?: boolean;
-  /** A group's current position-lock state (drives the Lock ↔ Unlock label). */
   lockedPosition?: boolean;
-  /** The clicked node opts into socketFlipStore — offers Flip / Unflip sockets. */
   isFlippable?: boolean;
-  /** Its current flip state (drives the Flip ↔ Unflip label). */
   flipped?: boolean;
-  /** Present only when a Standoff link is on offer (exactly two selected). */
   standoff?: { aId: string; bId: string };
+  /** A locked canvas: the items that edit the graph or its layout stay out. */
+  viewOnly?: boolean;
 };
+
+// Lucide "bring-to-front" / "send-to-back". https://lucide.dev/icons/bring-to-front
+const FrontSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <rect x="8" y="8" width="8" height="8" rx="2" />
+    <path d="M4 10a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2" />
+    <path d="M14 20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2" />
+  </svg>
+);
+const BackSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <rect x="14" y="14" width="8" height="8" rx="2" />
+    <rect x="2" y="2" width="8" height="8" rx="2" />
+    <path d="M7 14v1a2 2 0 0 0 2 2h1" />
+    <path d="M14 7h1a2 2 0 0 1 2 2v1" />
+  </svg>
+);
 
 type Props = {
   target: NodeContextTarget;
@@ -111,10 +120,11 @@ type Props = {
   onUnpackComposite?: (nodeId: string) => void;
   onToggleLock?: (nodeId: string) => void;
   onToggleFlip?: (nodeId: string) => void;
+  onStack?: (ids: string[], move: "front" | "back") => void;
   onClose: () => void;
 };
 
-export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onToggleLock, onToggleFlip, onClose }: Props) {
+export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onToggleLock, onToggleFlip, onStack, onClose }: Props) {
   const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
@@ -166,7 +176,7 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       </button>
       {target.isComposite && onEditComposite &&
         item(<EditSvg />, "Edit contents", () => onEditComposite!(target.nodeId))}
-      {target.isComposite && onUnpackComposite &&
+      {target.isComposite && !target.viewOnly && onUnpackComposite &&
         item(<UnpackSvg />, "Unpack composite", () => onUnpackComposite!(target.nodeId))}
       {item(<FocusIcon size={13} />, "Isolate", () => onIsolate(target.seedIds))}
       {item(<LinkIcon size={13} />, "Isolate chain", () => onIsolateChain(target.seedIds),
@@ -177,10 +187,12 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       {onAddComment && item(<CommentSvg />, "Add comment", () => onAddComment!(target.nodeId))}
       {target.standoff && onLinkStandoff &&
         item(<TetherIcon size={13} />, "Link with Standoff", () => onLinkStandoff!(target.standoff!))}
-      {target.isFlippable && onToggleFlip &&
+      {target.isFlippable && !target.viewOnly && onToggleFlip &&
         item(<FlipSvg />, target.flipped ? "Unflip sockets" : "Flip sockets", () => onToggleFlip!(target.nodeId),
           "Swap the inputs and outputs to the opposite sides")}
-      {target.isGroup && onToggleLock && (
+      {!target.viewOnly && onStack && item(<FrontSvg />, "Bring to front", () => onStack!(target.seedIds, "front"))}
+      {!target.viewOnly && onStack && item(<BackSvg />, "Send to back", () => onStack!(target.seedIds, "back"))}
+      {target.isGroup && !target.viewOnly && onToggleLock && (
         target.lockedPosition
           ? item(<UnlockSvg />, "Unlock position", () => onToggleLock!(target.nodeId),
               "Let the group be dragged again and included in Tidy / Cleanup")

@@ -1,4 +1,4 @@
-// [[B10]], [[C65]], [[C43]]
+// [[A1]], [[B3]]
 import { describe, it, expect } from "vitest";
 import {
   buildModel,
@@ -19,10 +19,10 @@ import { isSolError } from "../../../src/graph/errorValue";
 const FIXTURE: SavedGraphLite = {
   v: 2,
   nodes: [
-    { id: "a", type: "NumberInputNode", name: "A", x: 0, y: 0, init: { value: 2 } },
-    { id: "b", type: "NumberInputNode", name: "B", x: 0, y: 120, init: { value: 3 } },
+    { id: "a", type: "ValueInputNode", name: "A", x: 0, y: 0, init: { value: "2" } },
+    { id: "b", type: "ValueInputNode", name: "B", x: 0, y: 120, init: { value: "3" } },
     { id: "sum", type: "ArithmeticNode", name: "Sum", x: 240, y: 60, init: { op: "add" } },
-    { id: "txt", type: "TextInputNode", name: "Txt", x: 0, y: 240, init: { value: "hi" } },
+    { id: "txt", type: "ValueInputNode", name: "Txt", x: 0, y: 240, init: { op: "string", value: "hi" } },
   ],
   connections: [
     { source: "a", sourceOutput: "value", target: "sum", targetInput: "a" },
@@ -85,8 +85,7 @@ describe("flow controller (React Flow port C1)", () => {
 
   it("addNode places a catalog entry and it computes", async () => {
     const { m } = await build();
-    const node = await addNode(m, "number-input", { x: 500, y: 500 });
-    expect(node).not.toBeNull();
+    const node = await addNode(m, "value-input", { x: 500, y: 500 });
     expect(m.editor.getNode(node!.id)?.position).toEqual({ x: 500, y: 500 });
     moveNode(m, node!.id, { x: 10, y: 20 });
     expect(m.editor.getNode(node!.id)?.position).toEqual({ x: 10, y: 20 });

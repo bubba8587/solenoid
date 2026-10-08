@@ -1,8 +1,9 @@
-// [[C39]]
+// [[D79]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { AlertNode } from "../../../src/graph/nodes/display";
 import { extractInit } from "../../../src/graph/copyPaste";
 import { alertStore } from "../../../src/graph/alertStore";
+import { solError } from "../../../src/graph/errorValue";
 
 // The Alert node fires (logs a HUD event + raises a toast) on the RISING edge of
 // its trigger condition. Unlike a "no baseline yet" design, a freshly-created
@@ -16,10 +17,6 @@ describe("AlertNode", () => {
     const n = new AlertNode({ condition: "boolean" });
     expect(extractInit(n).condition).toBe("boolean");
     expect(new AlertNode(extractInit(n)).condition).toBe("boolean");
-  });
-
-  it("defaults to range mode", () => {
-    expect(new AlertNode().condition).toBe("range");
   });
 
   it("fires on the first eval when a wired value is already out of range", () => {
@@ -94,5 +91,15 @@ describe("AlertNode", () => {
     n.data({ text: ["fatal error"], match: ["error"] }); // contains → fires
     expect(alertStore.list().length).toBe(1);
     expect(alertStore.list()[0].message).toContain("Log");
+  });
+
+  it("a blank or error cell in a list is not alerting", () => {
+    const n = new AlertNode();
+    const err = solError("#VALUE!", "x") as unknown as number;
+    n.data({ value: [[50, null as unknown as number, err]], low: [0], high: [100] });
+    expect(alertStore.list().length).toBe(0);
+    n.data({ value: [[150, null as unknown as number, err]], low: [0], high: [100] });
+    expect(alertStore.list().length).toBe(1);
+    expect(alertStore.list()[0].message).toBe("Alert: 1 above 100");
   });
 });

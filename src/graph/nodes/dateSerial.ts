@@ -1,84 +1,73 @@
-// [[C17]], [[D19]], [[D54]]
-// Nothing here may import a module that reaches rete — the formula path stays
-// headless ([[D19]] implReteFree, enforced by formulaPathIsReteFree.test.ts). chrono-node and
-// errorValue are both headless, so they're allowed.
+// [[C17]], [[D54]]
+// Must not import a module that reaches rete; chrono-node and errorValue are headless.
 import * as chrono from "chrono-node";
 import { solError, isSolError, type SolError } from "../errorValue";
 
-// Excel serial 1 = Jan 1, 1900; JS epoch (Jan 1, 1970) = serial 25569.
+// Serial 1 is 1900-01-01, so the Unix epoch is serial 25569.
 
+/** Rounded to the millisecond: `new Date` truncates, so 04:00 as a float serial would read 03:59:59.999. */
 export function serialToJsDate(serial: number): Date {
-  return new Date((serial - 25569) * 86400000);
+  return new Date(Math.round((serial - 25569) * 86400000));
 }
 
 export function jsDateToSerial(d: Date): number {
   return d.getTime() / 86400000 + 25569;
 }
 
-// A numeric date whose non-year parts are both ≤ 12 (year last): could be D/M or M/D.
+/** The local wall clock as a serial, the day alone with `dateOnly`: what TODAY, NOW and a relative date read. */
+export function wallClockSerial(now: Date = new Date(), dateOnly = false): number {
+  const ms = dateOnly
+    ? Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+    : Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+  return ms / 86400000 + 25569;
+}
+
 const NUMERIC_DMY = /^(\d{1,2})[-/.](\d{1,2})[-/.]\d{4}$/;
-// Relative expressions chrono understands but a spreadsheet date value must NOT (they'd be
-// volatile): today/next friday/in 3 days/… — Excel's DATEVALUE refuses these too.
 const RELATIVE = /\b(today|tonight|tomorrow|yesterday|now|next|last|this|coming|upcoming|ago|from now|in \d|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/i;
 
-/** True when the text names a date RELATIVE to now (today / next friday / in 3 days / a
- *  bare weekday) — the phrases `parseDate` refuses unless asked to resolve them. A text
- *  carrying a four-digit year is never relative ("Monday, 16 March 2026" is absolute). */
 export function isRelativeDateText(s: string): boolean {
   const t = s.trim();
   return !/\d{4}/.test(t) && RELATIVE.test(t);
 }
 
 export interface ParseDateOptions {
-  /** Resolve relative phrases against `now` (default: the wall clock). OFF by default —
-   *  a stored date is a fixed calendar day; only an opted-in Date Input turns this on
-   *  (Settings ▸ Data ▸ Relative dates), and it re-resolves on every recalculation. */
   relative?: boolean;
   now?: Date;
 }
 
-/** The ONE canonical text→date parser (DATEVALUE, Cast(date), Frame/Table date columns,
- *  Date Input, Get Column read-as). Returns the Excel serial, a `#AMBIGUOUS!` SolError when
- *  a numeric date could read as either D/M or M/D, or NaN when it isn't a date at all.
- *  Widened via chrono-node (ordinals, month names, natural forms); day-first where a numeric
- *  part forces it, never a silent guess on the ambiguous case. Time is NOT floored. */
+/** Answers the serial, `#AMBIGUOUS!` when a numeric date reads as either D/M or M/D, or NaN when the text is not a date. */
 export function parseDate(s: string, opts?: ParseDateOptions): number | SolError {
   const t = s.trim();
   if (!t) return NaN;
   if (isRelativeDateText(t)) {
-    if (!opts?.relative) return NaN; // a stored date is a fixed calendar day, never relative
-    // Opted in: chrono resolves the phrase against `now`, forward-looking ("friday" = the
-    // coming one); the answer is the calendar DAY in the local wall-clock, as a UTC serial.
+    if (!opts?.relative) return NaN;
     const ref = opts.now ?? new Date();
-    const r = chrono.parse(t, ref, { forwardDate: true })[0];
+    const r = chrono.parse(t, ref, { forwardDate: !/\blast\b/i.test(t) })[0];
     if (!r || r.index !== 0 || !/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
-    const d = r.start.date();
-    return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
+    return wallClockSerial(r.start.date(), true);
   }
-  // A year must be four explicit digits — no 2-digit-year century pivot in any form.
   if (!/\d{4}/.test(t)) return NaN;
-  // ISO date-only is unambiguous, and new Date reads it as UTC with no 0–99 century pivot
-  // (chrono pivots "0026"). Time-bearing ISO keeps chrono's zone handling below.
-  if (/^[+-]?\d{4,6}-\d{2}(?:-\d{2})?$/.test(t)) {
+  // ISO date-only goes through `new Date`, which reads it as UTC with no 0–99 century pivot (chrono pivots "0026").
+  const isoParts = /^[+-]?\d{4,6}-(\d{2})(?:-(\d{2}))?$/.exec(t);
+  if (isoParts) {
     const iso = new Date(t);
-    return Number.isNaN(iso.getTime()) ? NaN : iso.getTime() / 86400000 + 25569;
+    // `new Date` rolls 2024-02-30 over to March 1; a day the month does not have is not a date.
+    const rolled = isoParts[2] !== undefined && iso.getUTCDate() !== +isoParts[2];
+    return Number.isNaN(iso.getTime()) || rolled || iso.getUTCMonth() + 1 !== +isoParts[1] ? NaN : iso.getTime() / 86400000 + 25569;
   }
   const num = NUMERIC_DMY.exec(t);
   if (num) {
     const a = +num[1], b = +num[2];
     if (a <= 12 && b <= 12 && a !== b) {
-      return solError("#AMBIGUOUS!", `"${t}" could be day/month or month/day — write the month as a name (3-Apr-2026) or use ISO (2026-04-03)`);
+      return solError("#AMBIGUOUS!", `"${t}" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)`);
     }
   }
   const r = chrono.parse(t, undefined, { forwardDate: false })[0];
-  if (!r || r.index !== 0) return NaN;                       // no date, or date buried in noise
-  if (!/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN; // trailing non-date text
+  if (!r || r.index !== 0) return NaN;
+  if (!/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
   const c = r.start;
-  if (!c.isCertain("day") || !c.isCertain("month") || !c.isCertain("year")) return NaN; // incomplete/relative
+  if (!c.isCertain("day") || !c.isCertain("month") || !c.isCertain("year")) return NaN;
   const d = c.date();
-  // An explicit zone designator is an absolute instant (keep it). A zone-LESS value must mean
-  // the same calendar wall-clock on every machine, so rebuild it as UTC from chrono's local
-  // components — the timezone-independence the v1.0 audit pinned.
   const ms = c.isCertain("timezoneOffset")
     ? d.getTime()
     : c.isCertain("hour")
@@ -87,14 +76,31 @@ export function parseDate(s: string, opts?: ParseDateOptions): number | SolError
   return ms / 86400000 + 25569;
 }
 
-/** Back-compat wrapper for the many callers that only distinguish "date vs not": the serial,
- *  or NaN for any failure (an ambiguous date included). Surfaces that should REPORT
- *  `#AMBIGUOUS!` call `parseDate` directly. */
+/** NaN for every failure, an ambiguous date included; a surface that reports `#AMBIGUOUS!` calls `parseDate`. */
 export function parseDateToSerial(s: string): number {
   const r = parseDate(s);
   return isSolError(r) ? NaN : r;
 }
 
+
+const NOTE_DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** Obsidian's Date & time property, as it and Write to Obsidian spell it: no zone, so a wall-clock time. */
+const NOTE_DAY_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+
+/** A note's date text as a serial (a whole day for a bare date), or null for any other text. App and plugin read with this one. */
+export function noteDateSerial(text: string): number | null {
+  const day = NOTE_DAY.test(text);
+  if (!day && !NOTE_DAY_TIME.test(text)) return null;
+  const serial = parseDateToSerial(text);
+  if (!Number.isFinite(serial)) return null;
+  return day ? Math.round(serial) : serial;
+}
+
+/** A date serial as the text a note holds: the day, or the day and time when it has one. App and plugin write with this one. */
+export function noteDateText(serial: number): string {
+  const wholeDay = Math.abs(serial - Math.round(serial)) < 1e-6;
+  return formatDateSerial(wholeDay ? Math.round(serial) : serial, wholeDay ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss");
+}
 
 export const DEFAULT_DATE_FORMAT = "DD-MMM-YYYY";
 export const DEFAULT_DATETIME_FORMAT = "DD-MMM-YYYY HH:mm";
@@ -103,7 +109,6 @@ const FORMAT_MONTHS = ["January","February","March","April","May","June",
                        "July","August","September","October","November","December"];
 const FORMAT_DAYS   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-/** Format a date serial with a token pattern (YYYY, MM, DD, MMMM, HH, mm, A, …). */
 export function formatDateSerial(serial: number, pattern: string): string {
   if (!Number.isFinite(serial)) return String(serial);
   const d = serialToJsDate(serial);

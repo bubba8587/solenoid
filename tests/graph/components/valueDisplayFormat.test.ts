@@ -1,4 +1,4 @@
-// [[C60]], [[C48]]
+// [[B11]], [[C48]]
 import { describe, it, expect, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate, nodeOutputElemFamily, formatRowValue } from "../../../src/graph/components/valueDisplayFormat";
@@ -25,12 +25,6 @@ const ser = (y: number, m: number, d: number) => jsDateToSerial(new Date(Date.UT
 describe("dateFormatDisplay", () => {
   it("formats a scalar serial as a date string when the output is date-typed", () => {
     expect(dateFormatDisplay(ser(2026, 1, 3), true, false)).toBe("03-Jan-2026");
-  });
-
-  it("formats a list of serials, so the value renders as a chip of dates", () => {
-    const out = dateFormatDisplay([ser(2026, 1, 3), ser(2026, 2, 4)], true, false);
-    expect(Array.isArray(out)).toBe(true);
-    expect(out).toEqual(["03-Jan-2026", "04-Feb-2026"]);
   });
 
   it("shows the time when the serial carries a fraction (e.g. NOW())", () => {
@@ -85,8 +79,8 @@ describe("dateFormatDisplay", () => {
     expect(shown).toEqual(["13-Apr-2026", "#AMBIGUOUS!"]);
   });
 
-  it("renders a non-finite serial in a list as blank, not NaN text", () => {
-    expect(dateFormatDisplay([ser(2026, 1, 3), NaN], true, false)).toEqual(["03-Jan-2026", ""]);
+  it("renders a non-finite serial in a list as NaN, as a Frame's date column does", () => {
+    expect(dateFormatDisplay([ser(2026, 1, 3), NaN], true, false)).toEqual(["03-Jan-2026", "NaN"]);
   });
 });
 
@@ -193,11 +187,11 @@ describe("nodeOutputElemFamily — the declared family, whatever the cells say",
 
   it("still reports `logical` when EVERY entry was unparseable (the reported bug)", async () => {
     const n = await listInputOf("logical");
-    // The data really is all-null — nothing here could vote for a family.
+    // Every entry is NaN, so nothing here could vote for a family.
     const node = n as unknown as ListInputNode;
     node.stringLiterals.v0 = "xyz, pqr";
     wrapNodeData(node as never);
-    expect((node.data({}) as { list: unknown[] }).list).toEqual([null, null]);
+    expect((node.data({}) as { list: unknown[] }).list).toEqual([NaN, NaN]);
     // The socket is unmoved, so the box stays a Bool list.
     expect(nodeOutputElemFamily(n.id)).toBe("logical");
   });
@@ -250,7 +244,6 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     const { iff, disp } = await ifOver(dateSocket, numberSocket);
     expect(nodeOutputIsDate(iff.id)).toBe(false);
     expect(nodeOutputIsDate(disp.id)).toBe(false); // and it doesn't leak downstream
-    expect(dateFormatDisplay(46000, nodeOutputIsDate(iff.id), false)).toBe(46000);
   });
 
   it("AGREEING branches still resolve, through the selector and past it", async () => {
@@ -325,7 +318,7 @@ describe("formatRowValue — annotated inline-output rows", () => {
   const ann2dp = { format: "decimal", unit: "none", decimalDigits: 2, decimalMode: "places" } as never;
 
   it("unannotated cells keep the plain forms", () => {
-    expect(formatRowValue(1.5)).toBe("1.5000");
+    expect(formatRowValue(1.5)).toBe("1.5");
     expect(formatRowValue(null)).toBe("—");
     expect(formatRowValue(true)).toBe("TRUE");
     expect(formatRowValue("abc")).toBe("abc");

@@ -1,4 +1,4 @@
-// [[C61]], [[E11]], [[B10]]
+// [[B11]], [[A1]]
 // The distributions Formula.js LACKS (the T family, right-tail variants, GAMMA.DIST/INV)
 // are registered with OUR impls (excelFunctions.ts). This locks formula == the visual
 // dist NODE. As of 2026-08-23 both surfaces call the SAME shared kernels (mathUtils
@@ -88,10 +88,27 @@ describe("Formula.js-overlap distributions run the NODE's DIST_SPECS", () => {
     expect(ev("HYPGEOM.DIST(1, 4, 8, 20, FALSE)")).toBeCloseTo(0.363261094, 8);
     expect(ev("NEGBINOM.DIST(10, 5, 0.25, FALSE)")).toBeCloseTo(0.0550486603, 8);
   });
-  it("a domain refusal is a blank on both surfaces, never a number", () => {
-    expect(ev("NORM.DIST(1, 0, -1, TRUE)")).toBeNull();
-    expect(dist("normal", "cdf").data({x:[1],mean:[0],stdev:[-1]}).result).toBeNull();
-    expect(ev("BINOM.DIST(11, 10, 0.5, FALSE)")).toBeNull();
+  // [[D70]] nullNotEnoughData: a parameter outside the domain is a wrong input, Excel's #NUM!.
+  const domain = (v: unknown) => (v as { code?: string } | null)?.code;
+  it("a domain refusal is #DOMAIN! on both surfaces, never a number", () => {
+    expect(domain(ev("NORM.DIST(1, 0, -1, TRUE)"))).toBe("#DOMAIN!");
+    expect(domain(dist("normal", "cdf").data({x:[1],mean:[0],stdev:[-1]}).result)).toBe("#DOMAIN!");
+    expect(domain(ev("BINOM.DIST(11, 10, 0.5, FALSE)"))).toBe("#DOMAIN!");
+    expect(domain(ev("BETA.DIST(0.5, 2, 3, TRUE, 1, 1)"))).toBe("#DOMAIN!");
+    expect(domain(ev("T.INV(1.5, 3)"))).toBe("#DOMAIN!");
+  });
+  it("CHISQ, F and GAMMA at x = 0 and below, as Excel answers", () => {
+    expect(ev("CHISQ.DIST(0, 2, FALSE)")).toBe(0.5);
+    expect(ev("CHISQ.DIST(0, 4, FALSE)")).toBe(0);
+    expect(domain(ev("CHISQ.DIST(0, 1, FALSE)"))).toBe("#DOMAIN!");
+    expect(ev("F.DIST(0, 2, 7, FALSE)")).toBe(1);
+    expect(ev("F.DIST(0, 5, 7, FALSE)")).toBe(0);
+    expect(ev("GAMMA.DIST(0, 1, 2, FALSE)")).toBe(0.5);
+    expect(ev("GAMMA.DIST(0, 3, 2, FALSE)")).toBe(0);
+    expect(domain(ev("GAMMA.DIST(0, 0.5, 2, FALSE)"))).toBe("#DOMAIN!");
+    for (const f of ["CHISQ.DIST(-1, 2, TRUE)", "CHISQ.DIST(-1, 2, FALSE)", "CHISQ.DIST.RT(-1, 2)", "F.DIST(-1, 2, 7, TRUE)",
+      "F.DIST.RT(-1, 2, 7)", "GAMMA.DIST(-1, 1, 2, TRUE)", "GAMMA.DIST(-1, 1, 2, FALSE)"]) expect(domain(ev(f))).toBe("#DOMAIN!");
+    expect(dist("gamma", "pdf").data({x:[0],alpha:[1],beta:[2]}).result).toBe(0.5);
   });
 });
 

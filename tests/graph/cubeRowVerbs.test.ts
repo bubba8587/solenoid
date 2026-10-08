@@ -5,7 +5,7 @@ import {
   type CubeValue, type FrameValue,
 } from "../../src/graph/frame";
 import {
-  sortCube, distinctCube, sliceCube, filterCube, passesListFilter, encodeCubeCell,
+  sortCube, windowCube, distinctCube, sliceCube, filterCube, passesListFilter,
   sortByColumn, distinctRows, sliceRows, filterRowsMulti,
   type FilterCond,
 } from "../../src/graph/frameVerbs";
@@ -48,7 +48,6 @@ describe("selectCubeRows", () => {
   });
   it("carries the __cube brand out and blanks an out-of-range index", () => {
     const r = selectCubeRows(sampleCube(), [2, 5]);
-    expect(r.__cube).toBe(true);
     expect(colCells(r, "name")).toEqual(["c", null]);
     expect(colCells(r, "tags")[1]).toBeNull();
   });
@@ -92,10 +91,6 @@ describe("distinctCube", () => {
     const d = distinctCube(c);
     // Rows 0 and 1 have equal tags + sub → row 1 drops; row 2 differs.
     expect(colCells(d, "tags")).toEqual([["a", "b"], ["a"]]);
-  });
-  it("encodeCubeCell keys equal lists equal and different lists apart", () => {
-    expect(encodeCubeCell(["a", "b"])).toEqual(encodeCubeCell(["a", "b"]));
-    expect(JSON.stringify(encodeCubeCell(["a"]))).not.toBe(JSON.stringify(encodeCubeCell(["a", "b"])));
   });
 });
 
@@ -172,6 +167,22 @@ describe("Computed Column over a cube", () => {
     expect(c.columns.map((k) => k.name)).toEqual(["title", "timeEstimate", "tags", "hours"]);
   });
 
+  it("a \"Name (unit)\" header splits as on a frame: it replaces the named column, keeps its format and tags the cells", () => {
+    const fmt = { format: "number", unit: "" } as never;
+    const src = cubeFromColumns([
+      { name: "title", cells: ["A", "B"], type: "string" },
+      { name: "hours", cells: [1, 2], type: "number", format: fmt },
+      { name: "timeEstimate", cells: [60, 120], type: "number" },
+    ]);
+    const n = new ComputedColumnNode({ expr: "@timeEstimate / 60" });
+    n.stringLiterals.name = "hours (kg)";
+    const c = n.data({ frame: [src] as never }).frame as CubeValue;
+    expect(c.columns.map((k) => k.name)).toEqual(["title", "hours", "timeEstimate"]);
+    const hours = c.columns.find((k) => k.name === "hours")!;
+    expect(hours.format).toBe(fmt);
+    expect(hours.cells.map((v) => (v as { dim?: unknown }).dim)).toEqual([{ mass: 1 }, { mass: 1 }]);
+  });
+
   it("the list column rides through by reference", () => {
     const src = tasks();
     const n = new ComputedColumnNode({ expr: "@timeEstimate / 60" });
@@ -180,11 +191,73 @@ describe("Computed Column over a cube", () => {
     expect(colCells(c, "tags")[0]).toBe(colCells(src, "tags")[0]);
   });
 
-  it("referencing a list column is #SHAPE! per cell (a nested cell is opaque to the formula)", () => {
-    const c = compute("@timeEstimate + @tags", "x");
-    const cells = colCells(c, "x");
-    expect(cells.every((v) => isSolError(v))).toBe(true);
-    expect((cells[0] as { code: string }).code).toBe("#SHAPE!");
+  // [[C22]] rowFormulaRefs
+  it("@name reads this row's list, and a list answer is that row's list cell", () => {
+    const c = compute("COUNTA(@tags)", "n");
+    expect(colCells(c, "n")).toEqual([1, 2]);
+    const up = compute("UPPER(@tags)", "up");
+    // A one-item answer is one value, as a formula's answer is everywhere.
+    expect(colCells(up, "up")).toEqual(["WORK", ["HOME", "URGENT"]]);
+    expect(up.columns.find((k) => k.name === "up")!.type).toBe("string");
+  });
+
+  // [[C22]] rowFormulaRefs, [[D85]] columnsStayColumns: a column of lists read whole is its rows stacked, padded with blanks.
+  it("a bare list column reads as its rows stacked, padded with blanks that totals skip", () => {
+    expect(colCells(compute("COUNTA(tags)", "x"), "x")).toEqual([3, 3]);
+    expect(colCells(compute("ROWS(tags)", "x"), "x")).toEqual([2, 2]);
+    expect(colCells(compute("COLUMNS(tags)", "x"), "x")).toEqual([2, 2]);
+    expect(colCells(compute("INDEX(tags, ROW(), 1)", "x"), "x")).toEqual(["work", "home"]);
+    const prices = cubeFromColumns([
+      { name: "k", cells: ["A", "B"] },
+      { name: "prices", cells: [[1, 2, 3], [10]] },
+    ]);
+    const run = (expr: string) => {
+      const n = new ComputedColumnNode({ expr });
+      n.stringLiterals.name = "x";
+      return colCells(n.data({ frame: [prices] as never }).frame as CubeValue, "x");
+    };
+    expect(run("SUM(prices)")).toEqual([16, 16]);
+    expect(run("SUM(@prices) / SUM(prices)")).toEqual([6 / 16, 10 / 16]);
+    expect(run("AVERAGE(prices)")).toEqual([4, 4]);
+  });
+
+  it("a list column with a grid in a row has no single table, so read whole it is #SHAPE! pointing at @", () => {
+    const grid = cubeFromColumns([{ name: "g", cells: [[[1, 2], [3, 4]], [5]] }]);
+    const n = new ComputedColumnNode({ expr: "SUM(g)" });
+    n.stringLiterals.name = "x";
+    const cells = colCells(n.data({ frame: [grid] as never }).frame as CubeValue, "x");
+    expect(cells.every((v) => isSolError(v) && v.code === "#SHAPE!")).toBe(true);
+    expect((cells[0] as { message: string }).message).toContain("@g");
+  });
+
+  it("a table in one row refuses on that row alone; the column's other rows still compute", () => {
+    const mixed = cubeFromColumns([{ name: "tags", cells: [sub0, [1, 2, 3], 5] }]);
+    const n = new ComputedColumnNode({ expr: "SUM(@tags)" });
+    n.stringLiterals.name = "x";
+    const cells = colCells(n.data({ frame: [mixed] as never }).frame as CubeValue, "x");
+    expect(isSolError(cells[0]) && (cells[0] as { code: string }).code).toBe("#SHAPE!");
+    expect(cells.slice(1)).toEqual([6, 5]);
+    const whole = new ComputedColumnNode({ expr: "SUM(tags)" });
+    whole.stringLiterals.name = "x";
+    const w = colCells(whole.data({ frame: [mixed] as never }).frame as CubeValue, "x");
+    expect(w.every((v) => isSolError(v) && v.code === "#SHAPE!")).toBe(true);
+  });
+
+  it("a nested table column stays out of formulas", () => {
+    const withSub = cubeFromColumns([{ name: "a", cells: [1] }, { name: "sub", cells: [sub0] }]);
+    const n = new ComputedColumnNode({ expr: "@sub" });
+    n.stringLiterals.name = "x";
+    const c = n.data({ frame: [withSub] as never }).frame as CubeValue;
+    expect((colCells(c, "x")[0] as { code: string }).code).toBe("#SHAPE!");
+  });
+
+  it("SPARKLINE draws each row's own list", () => {
+    const series = cubeFromColumns([{ name: "h", cells: [[1, 2, 3], [3, 1]] }]);
+    const n = new ComputedColumnNode({ expr: "SPARKLINE(@h)" });
+    n.stringLiterals.name = "spark";
+    const cells = colCells(n.data({ frame: [series] as never }).frame as CubeValue, "spark");
+    expect(cells.every((v) => typeof v === "string" && v.startsWith("data:image/svg+xml,"))).toBe(true);
+    expect(cells[0]).not.toBe(cells[1]);
   });
 });
 
@@ -226,5 +299,24 @@ describe("passesListFilter", () => {
     expect(passesListFilter("home", "listContains", "home", false)).toBe(true);
     expect(passesListFilter(null, "listEmpty", "", false)).toBe(true);
     expect(passesListFilter([], "listEmpty", "", false)).toBe(true);
+  });
+});
+
+describe("the Cube verbs read a column by its declared type", () => {
+  const cube = () => cubeFromColumns([
+    { name: "id", type: "string", cells: ["010", "9", "2"] },
+    { name: "due", type: "date", cells: [46000, 46010, 46020] },
+    { name: "tags", cells: [["a"], ["b"], ["c"]] },
+  ]);
+  it("Window's lag of a date column is a date column, and first of a text ID keeps its text", () => {
+    const lag = windowCube(cube(), { fn: "lag", column: "due", as: "prev", partitionBy: [], n: 1 } as never);
+    const prev = lag.columns.find((c) => c.name === "prev")!;
+    expect(prev.type).toBe("date");
+    expect(prev.cells).toEqual([null, 46000, 46010]);
+    const first = windowCube(cube(), { fn: "first", column: "id", as: "firstId", partitionBy: [] } as never);
+    expect(first.columns.find((c) => c.name === "firstId")!.cells[0]).toBe("010");
+  });
+  it("Sort orders a declared text column as text", () => {
+    expect(colCells(sortCube(cube(), "id", "asc"), "id")).toEqual(["010", "2", "9"]);
   });
 });

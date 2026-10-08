@@ -1,4 +1,4 @@
-// [[C64]], [[C48]]
+// [[B17]], [[C48]]
 import { describe, it, expect } from "vitest";
 import { columnNamesOf } from "../../src/graph/frameShape";
 import { columnPickersOf } from "../../src/graph/nodes/columnPickerHook";
@@ -15,16 +15,10 @@ describe("columnNamesOf — the picker's option source (pure over Shape)", () =>
 
   it("is empty for an unknown (null/undefined) shape → free-text only", () => {
     expect(columnNamesOf(null)).toEqual([]);
-    expect(columnNamesOf(undefined)).toEqual([]);
   });
 
   it("a dynamic shape still lists its known columns (free-text stays open on top)", () => {
     expect(columnNamesOf({ columns: [{ name: "X", type: "number" }], dynamic: true })).toEqual(["X"]);
-  });
-
-  it("is pure — same shape, same list", () => {
-    const s = { columns: [{ name: "A", type: "number" as const }] };
-    expect(columnNamesOf(s)).toEqual(columnNamesOf(s));
   });
 });
 

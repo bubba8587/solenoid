@@ -1,4 +1,4 @@
-// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere, [[D62]] demoVaultResolution
+// [[B3]] sameNodeEverywhere, [[D62]] demoVaultResolution
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
@@ -6,13 +6,11 @@ import { NODE_KIND_ACCENTS, type NodeKind } from "../nodes/shared";
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "../schemes";
 import { nodeNameStore } from "../nodeNameStore";
-import { NumberInputNode } from "../nodes/input";
-import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
 import { FrameInputNode, JoinNode, GroupByFrameNode, FilterFrameNode, SortFrameNode } from "../nodes/frame";
 import { collapseStore } from "../collapseStore";
-import { PointPlotterNode, CurveNode, DateInputNode } from "../nodes/control";
+import { PointPlotterNode, CurveNode, ValueInputNode } from "../nodes/control";
 import { ListInputNode } from "../nodes/list";
 import { DisplayNode } from "../nodes/display";
 import { NoteNode } from "../nodes/annotation";
@@ -26,8 +24,7 @@ import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
 
-// ── Scene build helpers (every scene adds nodes and wires them the same way) ──
-/** Add each node to the scene's editor and register its class-derived family name. */
+// ── Scene build helpers ──
 async function addNodes(s: SurfaceStack, nodes: ClassicPreset.Node[]): Promise<void> {
   for (const n of nodes) {
     await s.editor.addNode(asNode(n));
@@ -35,7 +32,6 @@ async function addNodes(s: SurfaceStack, nodes: ClassicPreset.Node[]): Promise<v
   }
 }
 
-/** Wire one output socket to one input socket — the scenes' one cable-adding idiom. */
 function wire(s: SurfaceStack, src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) {
   return s.editor.addConnection(
     new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection,
@@ -43,12 +39,9 @@ function wire(s: SurfaceStack, src: ClassicPreset.Node, out: string, tgt: Classi
 }
 
 // ─── Landing scene primitives ───────────────────────────────────────────────────
-// STATIC vignettes in plain DOM+SVG; a page hosts ONE live stage ([[C2]] realCanvasScenes).
 
 // ── Reveal animation gate ──
-// Motion lives only under `.sol-landing--anim`, and only without reduced motion. A
-// LAYOUT effect (before paint), so the hidden state paints once and the reveal a frame
-// later has a committed frame to transition FROM.
+// A layout effect, so the hidden state paints once and the reveal has a committed frame to transition from.
 export function useRevealAnim(): boolean {
   const [anim, setAnim] = useState(false);
   useLayoutEffect(() => {
@@ -58,8 +51,6 @@ export function useRevealAnim(): boolean {
 }
 
 // ── Reveal: scroll-triggered entrance ──
-// The hidden state exists only under `.sol-landing--anim`, so content is never
-// gated on the transition.
 export function Reveal({
   children,
   className = "",
@@ -108,7 +99,6 @@ export function Diagram({
   h: number;
   children: ReactNode;
   className?: string;
-  /** Draw the canvas dot-grid ground behind the scene. */
   canvas?: boolean;
 }) {
   const outerRef = useRef<HTMLDivElement>(null);
@@ -208,26 +198,22 @@ export function MNode({
 }
 
 // ─── Scene: the typed cable board (real nodes, computed once) ────────────────────
-// A source of each value TYPE wired into a Display, so the cables show their real
-// per-type colors: a number, a text list, a date, a frame. Manual layout: half the
-// pairs sit on the left, half on the right, each Display a fixed span to its source.
 export function CableBoardScene() {
   return (
     <SceneStage
       className="sol-scene-stage--sockets"
       manualLayout
       build={async (s) => {
-        const num = new NumberInputNode({ label: "Number", value: 42 });
+        const num = new ValueInputNode({ label: "Number", value: "42" });
         const list = new ListInputNode({ label: "Text list", dataType: "string" });
         list.stringLiterals.v0 = "red, green, blue";
-        const date = new DateInputNode({ label: "Date" });
+        const date = new ValueInputNode({ label: "Date", op: "date" });
         const frame = new FrameInputNode({ label: "Frame", frameText: "a, b\n1, 2\n3, 4" });
-        // [source, outputKey, sourceX, sourceY]; the Display sits SPAN to the right.
         const SPAN = 240;
         const pairs: [ClassicPreset.Node, string, number, number][] = [
           [num, "value", 0, 0],
           [list, "list", 0, 260],
-          [date, "result", 660, 0],
+          [date, "value", 660, 0],
           [frame, "frame", 650, 260],
         ];
         for (const [src, outKey, x, y] of pairs) {
@@ -243,40 +229,30 @@ export function CableBoardScene() {
 }
 
 // ─── Scene: real units (real nodes, computed once) ──────────────────────────────
-// A real locked FlowSurface: two plain numbers take units from undocked Format
-// Controllers, and dividing them carries the dimensions — 300 km ÷ 5 hr = 60 km/hr.
-// Positions come from the app's own Tidy/ELK; SceneStage reconciles the FCs' mutable
-// sockets and computes the value once.
 export function UnitsScene() {
   return (
     <SceneStage
       className="sol-scene-stage--units"
       build={async (s) => {
-        const dist = new NumberInputNode({ label: "Distance", value: 300 });
-        const fcKm = new FormatControllerNode({ label: "km", unit: "km", side: "output" });
-        const time = new NumberInputNode({ label: "Time", value: 5 });
-        const fcHr = new FormatControllerNode({ label: "hr", unit: "hr", side: "output" });
+        const dist = new ValueInputNode({ label: "Distance", value: "300", unit: "km" });
+        const time = new ValueInputNode({ label: "Time", value: "5", unit: "hr" });
         const speed = new ArithmeticNode({ label: "Speed", op: "div" });
-        await addNodes(s, [dist, fcKm, time, fcHr, speed]);
-        await wire(s, dist, "value", fcKm, "in");
-        await wire(s, fcKm, "out", speed, "a");
-        await wire(s, time, "value", fcHr, "in");
-        await wire(s, fcHr, "out", speed, "b");
+        await addNodes(s, [dist, time, speed]);
+        await wire(s, dist, "value", speed, "a");
+        await wire(s, time, "value", speed, "b");
       }}
     />
   );
 }
 
 // ─── Scene: the Equation node (real nodes, computed once) ───────────────────────
-// Two knowns feed an Equation node holding V = I × R; the third variable is left
-// unwired, so the node solves for it (I = 12 / 240).
 export function EquationScene() {
   return (
     <SceneStage
       className="sol-scene-stage--equation"
       build={async (s) => {
-        const volts = new NumberInputNode({ label: "Volts", value: 12 });
-        const ohms = new NumberInputNode({ label: "Ohms", value: 240 });
+        const volts = new ValueInputNode({ label: "Volts", value: "12" });
+        const ohms = new ValueInputNode({ label: "Ohms", value: "240" });
         const eq = new EquationNode({ label: "Ohm's law", expr: "V = I * R" });
         await addNodes(s, [volts, ohms, eq]);
         await wire(s, volts, "value", eq, "V");
@@ -287,8 +263,6 @@ export function EquationScene() {
 }
 
 // ─── Scene: relational verbs (real nodes, computed once) ────────────────────────
-// A sales frame joined to a regions frame on `region`, then grouped by region
-// summing sales — the real Join and Group By nodes over inline literal frames.
 export function VerbsScene() {
   return (
     <SceneStage
@@ -317,8 +291,6 @@ export function VerbsScene() {
 }
 
 // ─── Scene: draw your data (real nodes, computed once) ──────────────────────────
-// Two real input nodes whose value is their own drawn data: a Point Plotter seeded
-// with a scatter and a Curve seeded with control points. No wiring; each stands alone.
 export function DrawScene() {
   return (
     <SceneStage
@@ -338,7 +310,6 @@ export function DrawScene() {
           ymax: 10,
         });
         await addNodes(s, [plot, curve]);
-        // Unwired cards: place them side by side (ELK has no edges to arrange them by).
         await s.view.moveNode(plot.id, { x: 20, y: 20 });
         await s.view.moveNode(curve.id, { x: 300, y: 20 });
       }}
@@ -347,9 +318,6 @@ export function DrawScene() {
 }
 
 // ─── Scene: Obsidian — a plain note's frontmatter as typed values ───────────────
-// A real Note whose body opens with a YAML block is a typed record: its frontmatter
-// keys become typed outputs, wired here into a Time Value of Money node that solves
-// the monthly payment. No vault needed — the note lives on the canvas.
 export function ObsidianScene() {
   return (
     <SceneStage
@@ -383,9 +351,6 @@ export function ObsidianScene() {
 }
 
 // ─── Scene: import a note — frontmatter as typed outputs (Obsidian page) ─────────
-// The real Note node parsing a YAML frontmatter block: each key becomes a typed
-// output (numbers, dates), and one is wired into a Display to show a property in use.
-// No vault and no IO — unlike the vault-reader nodes, a Note lives on the canvas.
 export function NoteImportScene() {
   return (
     <SceneStage
@@ -412,8 +377,6 @@ export function NoteImportScene() {
 }
 
 // ─── Scene: the vault as a table (real nodes reading the demo vault) ─────────────
-// Vault Folder → Filter (tagged `book`) → Sort by rating → Display. The Obsidian page
-// forces the demo vault ([[D62]] demoVaultResolution), so this reads real notes on the web.
 export function VaultTableScene() {
   return (
     <SceneStage
@@ -435,8 +398,7 @@ export function VaultTableScene() {
         await wire(s, notes, "cube", filter, "frame");
         await wire(s, filter, "frame", sort, "frame");
         await wire(s, sort, "frame", disp, "in");
-        // Compact 3x3 preview, not the full table: a full frame grows the card to fit
-        // every row and column and blows the scene's zoom out.
+        // Collapsed to the compact preview: a full frame grows the card and zooms the scene out.
         collapseStore.set(disp.id, true);
       }}
     />
@@ -444,8 +406,6 @@ export function VaultTableScene() {
 }
 
 // ─── Scene: TaskNotes (the real connection node) ─────────────────────────────────
-// TaskNotes in "tasks" mode feeding a collapsed Display; the /obsidian page fakes the
-// TaskNotes API behind the demo flag ([[D62]] demoVaultResolution).
 export function TaskNotesScene() {
   return (
     <SceneStage
@@ -463,7 +423,6 @@ export function TaskNotesScene() {
 }
 
 // ─── Scene: Excel over CSV (a real Local File reading a bundled CSV) ─────────────
-// Local File reads the demo vault's expenses.csv into a Display ([[D62]] demoVaultResolution).
 export function LocalFileScene() {
   return (
     <SceneStage
@@ -479,18 +438,17 @@ export function LocalFileScene() {
 }
 
 // ─── The Obsidian page's live hero graph (driven by LiveGraph, not a locked scene) ──
-// Two values → a Report whose `{{ }}` tags embed them → Write to Obsidian. Clears
-// first so LiveGraph's Reset rebuilds it.
+// Clears first, because LiveGraph's Reset calls this again on the same stack.
 export async function buildReportPipeline(s: SurfaceStack): Promise<void> {
   await s.editor.clear();
-  const focus = new NumberInputNode({ label: "Focus hours", value: 18.5 });
-  const tasks = new NumberInputNode({ label: "Tasks done", value: 12 });
+  const focus = new ValueInputNode({ label: "Focus hours", value: "18.5" });
+  const tasks = new ValueInputNode({ label: "Tasks done", value: "12" });
   const report = new ReportNode({
     label: "Weekly review",
     body:
       "# Weekly review\n\n" +
       "Logged **{{ focus }} h** of deep work across **{{ tasks }}** finished tasks. " +
-      "Nice momentum — keep the streak going.",
+      "Nice momentum. Keep the streak going.",
   });
   const write = new WriteObsidianNode({ label: "Write to Obsidian", target: "note" });
   write.stringLiterals.path = "Weekly review";
@@ -527,10 +485,6 @@ export function PresenterScene() {
 }
 
 // ─── The function wall ──────────────────────────────────────────────────────────
-// Two marquee rows, each a rainbow of node kinds rather than one domain per row —
-// lookup (violet), text (lime), math (blue), date (pink), array (gold), logic
-// (purple), lambda (green) and complex (sky) interleave so the color varies as it
-// scrolls. Every name is a real Excel function Solenoid answers.
 const FN_ROW_A = [
   "XLOOKUP", "TEXTJOIN", "NPV", "EOMONTH", "FILTER", "IFS", "REDUCE", "IMSQRT",
   "INDEX", "LEFT", "PMT", "NETWORKDAYS", "SORT", "SWITCH", "MAKEARRAY", "IMABS",
@@ -542,26 +496,17 @@ const FN_ROW_B = [
   "DATEDIF", "VSTACK", "OR", "BYCOL", "UPPER",
 ];
 
-// Each function reads in the accent of the node kind that provides it.
 const FN_KIND: Record<string, NodeKind> = {
-  // lookup / reference (frame)
   XLOOKUP: "frame", INDEX: "frame", XMATCH: "frame", PIVOTBY: "frame",
-  // text (string)
   TEXTJOIN: "string", LEFT: "string", SUBSTITUTE: "string", CONCAT: "string",
   TRIM: "string", MID: "string", UPPER: "string",
-  // math / stats / finance
   NPV: "math", PMT: "math", SUMIFS: "math", FV: "math", "STDEV.S": "math",
   "FORECAST.LINEAR": "math",
-  // date / time
   EOMONTH: "date", NETWORKDAYS: "date", WEEKDAY: "date", WORKDAY: "date",
   EDATE: "date", DATEDIF: "date",
-  // dynamic arrays (list)
   FILTER: "list", SORT: "list", UNIQUE: "list", SORTBY: "list", DROP: "list", VSTACK: "list",
-  // logical
   IFS: "logic", SWITCH: "logic", IFERROR: "logic", AND: "logic", NOT: "logic", OR: "logic",
-  // lambda helpers
   REDUCE: "lambda", MAKEARRAY: "lambda", MAP: "lambda", SCAN: "lambda", BYCOL: "lambda",
-  // complex numbers
   IMSQRT: "complex", IMABS: "complex", IMLN: "complex", IMEXP: "complex",
 };
 

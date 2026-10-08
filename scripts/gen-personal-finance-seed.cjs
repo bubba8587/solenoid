@@ -4,8 +4,8 @@
 // connection / group definitions. The seed is large and heavily cross-wired, so
 // it's authored in code (coordinates + auto-sized group rects) rather than by
 // hand. Run with:  node scripts/gen-personal-finance-seed.cjs
-// The data lives in public/data/personal-finance/*.csv (fetched same-origin by
-// the Web Source nodes). After editing, `npx vitest run src/graph/seeds.test.ts`
+// The data lives in demo-vault/Data/*.csv (read by the Local File nodes from the
+// demo vault when no data folder is set). After editing, `npx vitest run src/graph/seeds.test.ts`
 // validates every node / socket / group against the real classes.
 //
 // Design notes:
@@ -19,8 +19,6 @@
 const fs = require("fs");
 const path = require("path");
 
-const RAW = "/data/personal-finance"; // same-origin static path (public/)
-
 const nodes = [];
 const conns = [];
 
@@ -28,9 +26,13 @@ function n(id, type, x, y, init = {}, extra = {}) {
   const node = { id, type, x, y, init };
   if (extra.literals) node.literals = extra.literals;
   if (extra.stringLiterals) node.stringLiterals = extra.stringLiterals;
+  if (extra.collapsed) node.collapsed = true;
+  if (extra.sections) node.sections = extra.sections;
   nodes.push(node);
   return id;
 }
+// A Value Input with its Format section folded.
+const FOLDED_INPUT = { sections: { Format: false } };
 function c(source, sourceOutput, target, targetInput) {
   conns.push({ source, sourceOutput, target, targetInput });
 }
@@ -66,23 +68,23 @@ function fc(id, host, kind, members, label) {
 // ─── Title ──────────────────────────────────────────────────────────────────
 note("note-title", 180, -940,
   "Personal Finance dashboard",
-  "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the repo at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. A **Display** chip opens the table; **Ctrl+/** opens the function reference.",
+  "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the demo vault at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. A **Display** chip opens the table; **Ctrl+/** opens the function reference.",
   "blue", 580, 220);
 
 // ─── A · Data Sources ─────────────────────────────────────────────────────────
 note("note-data", -1920, -560,
   "1 · Data sources",
-  "# Live from the repo\nEach **Web Source** pulls a CSV and types every column automatically. It stores the URL, not the data; **Data ▸ Refresh** re-pulls. Desktop can read a local file via the **CSV File** node.",
+  "# From the demo vault\nEach **Local File** reads a CSV and types every column automatically. It stores the file name, not the data; **Data ▸ Refresh** re-reads. With no data folder set in Settings, it reads the demo vault's copies.",
   "blue", 360, 230);
-n("ws-tx",   "WebSourceNode", -1900, -300, { label: "Transactions", url: `${RAW}/transactions.csv` });
-n("ws-acct", "WebSourceNode", -1900,  -40, { label: "Accounts",     url: `${RAW}/accounts.csv` });
-n("ws-bud",  "WebSourceNode", -1900,  200, { label: "Budgets",      url: `${RAW}/budgets.csv` });
+n("ws-tx",   "LocalFileNode", -1900, -300, { label: "Transactions", fileName: "transactions.csv" });
+n("ws-acct", "LocalFileNode", -1900,  -40, { label: "Accounts",     fileName: "accounts.csv" });
+n("ws-bud",  "LocalFileNode", -1900,  200, { label: "Budgets",      fileName: "budgets.csv" });
 const GRP_DATA = ["ws-tx", "ws-acct", "ws-bud"];
 
 // ─── B · Cash flow ─────────────────────────────────────────────────────────────
 note("note-cash", -1480, -560,
   "2 · Cash flow this quarter",
-  "# Income vs. expenses\n**SUMIFS** works straight off the transactions frame: one node sums `Amount` where `Amount > 0` (income), a second where `< 0` (spend) — criteria rows exactly like Excel's SUMIFS, no intermediate lists. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
+  "# Income vs. expenses\n**SUMIFS** works straight off the transactions frame: one node sums `Amount` where `Amount > 0` (income), a second where `< 0` (spend). Criteria rows work exactly like Excel's SUMIFS, no intermediate lists. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
   "green", 380, 200);
 n("col-amt", "GetColumnNode", -1460, -260, { label: "Amount", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("red-net", "AggregateNode",    -1180, -360, { label: "Net cash flow", op: "sum" });
@@ -95,9 +97,9 @@ n("sumif-out","SumIfsNode", -900,  310, { label: "Spend (Amount < 0)", op: "sumi
 n("disp-out","DisplayNode",      -640, 100, { label: "Expenses (3 mo)" });
 n("expr-rate","ExpressionNode",-680,  380, { label: "Savings rate", expr: "(income + expense) / income" });
 n("gauge-rate","GaugeNode",    -420,  360, { label: "Savings rate" }, { literals: { value: 0 } });
-n("sld-savetarget","SliderInputNode", -420, 560, { label: "Target savings rate %", value: 20, min: 0, max: 60, step: 1 }, { literals: { min: 0, max: 60, step: 1 } });
+n("sld-savetarget","SliderInputNode", -420, 560, { label: "Target savings rate %", value: 20 }, { literals: { min: 0, max: 60, step: 1 } });
 n("expr-savet","ExpressionNode",-680, 560, { label: "Target (fraction)", expr: "t / 100" });
-n("alert-rate","AlertNode",    -160,  360, { label: "Low-savings watch", mode: "range" }, { literals: { value: 50, low: 0.2, high: 1, target: 0 } });
+n("alert-rate","AlertNode",    -160,  360, { label: "Low-savings watch" }, { literals: { value: 50, low: 0.2, high: 1, target: 0 } });
 n("cd-cash", "ConduitNode",    -260,  540, { angle: 0, seq: 1 });
 const GRP_CASH = ["col-amt","red-net","disp-net","sumif-in","disp-in","sumif-out","disp-out","expr-rate","gauge-rate","sld-savetarget","expr-savet","alert-rate","cd-cash"];
 
@@ -126,10 +128,10 @@ fc("fc-out", "disp-out", "currency_usd", GRP_CASH);
 // ─── C · Spending pivot (expenses only) ─────────────────────────────────────────
 note("note-pivot", 40, -600,
   "3 · Spending pivot",
-  "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** — the frame verb, native Polars on desktop — collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
+  "# GROUPBY as a pivot table\nA **Slicer** drops the income rows, then **GROUPBY** (the frame verb, native Polars on desktop) collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second GROUPBY counts transactions.",
   "gold", 380, 200);
 n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColumn: "Category", selectedValues: ["Housing","Groceries","Dining","Transport","Utilities","Entertainment","Shopping","Health"], multiSelect: true });
-// The frame Group By is one relational verb over the frame, then Get Column
+// The frame GROUPBY is one relational verb over the frame, then Get Column
 // pulls the lists the chart/sparkline need. Coords in the TUNED frame.
 n("gbf-spend","GroupByFrameNode", 900, -150, { label: "Spend by category", agg: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
 n("col-ptotal","GetColumnNode", 1230,  60, { label: "Category totals", readAs: "number" }, { stringLiterals: { name: "Amount" } });
@@ -154,15 +156,15 @@ c("col-pcnt","values","spark-cnt","values");
 // ─── D · Accounts / net worth ───────────────────────────────────────────────────
 note("note-acct", 40, 560,
   "4 · Net worth",
-  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt — the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
+  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt, and the split holds in any account order. **GROUPBY** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
   "violet", 380, 230);
 n("col-bal", "GetColumnNode", 60,  860, { label: "Balance", readAs: "number" }, { stringLiterals: { name: "Balance" } });
 n("red-nw",  "AggregateNode",   340,  820, { label: "Net worth", op: "sum" });
 n("disp-nw", "DisplayNode",  620,  800, { label: "Net worth" });
 n("gauge-nw","GaugeNode",    620, 1020, { label: "Toward goal" }, { literals: { value: 0 } });
 n("ratio-nw","ExpressionNode", 430, 1180, { label: "Progress", expr: "nw / goal" });
-n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000, min: 50000, max: 250000, step: 5000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
-// SUMIFS (conditional aggregate over one frame) + the frame Group By
+n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
+// SUMIFS (conditional aggregate over one frame) + the frame GROUPBY
 // (keys+values through GetColumn). Coords in the TUNED frame.
 n("sumif-assets","SumIfsNode", 1250, 1110, { label: "Assets (Balance > 0)", op: "sumifs", condConfig: { "0": { op: "gt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
 n("sumif-liab", "SumIfsNode",  1050, 1680, { label: "Debt (Balance < 0)", op: "sumifs", condConfig: { "0": { op: "lt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
@@ -171,7 +173,7 @@ n("gbf-type", "GroupByFrameNode",  881, 2042, { label: "By asset class", agg: "s
 n("col-tbal", "GetColumnNode",     881, 2270, { label: "Class totals", readAs: "number" }, { stringLiterals: { name: "Balance" } });
 n("chart-type","ChartNode",  620, 1260, { label: "Assets vs liabilities", op: "column" });
 n("disp-type","DisplayNode", 900, 1080, { label: "Class totals" });
-n("alert-nw","AlertNode",    900,  820, { label: "Emergency-fund watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000, target: 0 } });
+n("alert-nw","AlertNode",    900,  820, { label: "Emergency-fund watch" }, { literals: { value: 50, low: 0, high: 1000000000, target: 0 } });
 n("cd-acct", "ConduitNode", 1160,  900, { angle: 0, seq: 2 });
 const GRP_ACCT = ["col-bal","red-nw","disp-nw","gauge-nw","ratio-nw","slider-goal","sumif-assets","sumif-liab","expr-debt","gbf-type","col-tbal","chart-type","disp-type","alert-nw","cd-acct"];
 
@@ -200,9 +202,9 @@ note("note-assump", -1920, 820,
   "Assumptions (your numbers)",
   "# Stray inputs\nHand-entered values that appear in no CSV. They feed the projections and alerts; change one and the right side recomputes.",
   "vermilion", 360, 170);
-n("in-emerg",    "SliderInputNode", -1900, 1020, { label: "Emergency-fund target $", value: 15000, min: 0, max: 60000, step: 1000 }, { literals: { min: 0, max: 60000, step: 1000 } });
-n("in-takehome", "NumberInputNode", -1900, 1320, { label: "Monthly take-home $", value: 5200 });
-n("in-years",    "NumberInputNode", -1900, 1500, { label: "Years to retire", value: 30 });
+n("in-emerg",    "SliderInputNode", -1900, 1020, { label: "Emergency-fund target $", value: 15000 }, { literals: { min: 0, max: 60000, step: 1000 } });
+n("in-takehome", "ValueInputNode", -1900, 1320, { label: "Monthly take-home $", op: "number", value: "5200", width: 180 }, FOLDED_INPUT);
+n("in-years",    "ValueInputNode", -1900, 1500, { label: "Years to retire", op: "number", value: "30", width: 180 }, FOLDED_INPUT);
 const GRP_ASSUMP = ["in-emerg","in-takehome","in-years"];
 
 c("in-emerg","value","alert-nw","low");
@@ -212,8 +214,8 @@ note("note-proj", 1420, -560,
   "5 · Retirement what-if",
   "# Retirement projection\n**TVM (FV)** grows today's net worth plus monthly contributions at the assumed return; that is the headline number. The **year-by-year** curve broadcasts the same FV formula across a **SEQUENCE** of years, one Expression over a list, so its last point equals the headline. Drag **Contribution** or **Return** and the projection updates.",
   "green", 400, 220);
-n("sld-contrib","SliderInputNode", 1420, -360, { label: "Monthly contribution $", value: 600, min: 0, max: 3000, step: 50 }, { literals: { min: 0, max: 3000, step: 50 } });
-n("sld-return", "SliderInputNode", 1420,  -60, { label: "Annual return %", value: 7, min: 0, max: 15, step: 0.5 }, { literals: { min: 0, max: 15, step: 0.5 } });
+n("sld-contrib","SliderInputNode", 1420, -360, { label: "Monthly contribution $", value: 600 }, { literals: { min: 0, max: 3000, step: 50 } });
+n("sld-return", "SliderInputNode", 1420,  -60, { label: "Annual return %", value: 7 }, { literals: { min: 0, max: 15, step: 0.5 } });
 n("expr-pmt",  "ExpressionNode", 1700, -360, { label: "Contribution (outflow)", expr: "-contrib" });
 n("expr-mrate","ExpressionNode", 1700,  -60, { label: "Monthly rate", expr: "ret / 100 / 12" });
 n("expr-nper", "ExpressionNode", 1960, -360, { label: "Months", expr: "years * 12" });
@@ -222,8 +224,8 @@ n("tvm-fv",    "TvmNode",        2220, -260, { label: "Projected nest egg", paym
 n("disp-proj", "DisplayNode",    2480, -300, { label: "Projected nest egg" });
 n("gauge-proj","GaugeNode",      2480,  -60, { label: "Toward target" }, { literals: { value: 0 } });
 n("ratio-proj","ExpressionNode", 2340,  100, { label: "Progress", expr: "fv / target" });
-n("sld-target","SliderInputNode",2220,  200, { label: "Retirement target $", value: 1000000, min: 100000, max: 3000000, step: 50000 }, { literals: { min: 100000, max: 3000000, step: 50000 } });
-n("alert-proj","AlertNode",      2480,  200, { label: "Off-track watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000000, target: 0 } });
+n("sld-target","SliderInputNode",2220,  200, { label: "Retirement target $", value: 1000000 }, { literals: { min: 100000, max: 3000000, step: 50000 } });
+n("alert-proj","AlertNode",      2480,  200, { label: "Off-track watch" }, { literals: { value: 50, low: 0, high: 1000000000000, target: 0 } });
 n("seq-years","SeriesNode",      1960,  440, { label: "Growth horizon (months)", op: "sequence" }, { literals: { start: 12, step: 12 } });
 n("tvm-traj","TvmNode",           2240,  440, { label: "Projected balance curve", paymentTiming: "end" });
 n("spark-growth","SparklineNode", 2520,  440, { label: "Growth trajectory", op: "line" });
@@ -265,15 +267,15 @@ note("note-mort", 1420, 660,
   "6 · Mortgage stress-test",
   "# Mortgage stress test\n**TVM (PMT)** turns a loan, rate and term into a monthly payment; **CUMIPMT** totals lifetime interest. The **Alert** trips when the payment exceeds 28% of take-home pay.",
   "vermilion", 380, 200);
-n("sld-loan", "SliderInputNode", 1420,  860, { label: "Home loan $", value: 350000, min: 100000, max: 800000, step: 10000 }, { literals: { min: 100000, max: 800000, step: 10000 } });
-n("sld-apr",  "SliderInputNode", 1420, 1140, { label: "Mortgage APR %", value: 6.25, min: 2, max: 9, step: 0.05 }, { literals: { min: 2, max: 9, step: 0.05 } });
-n("in-term",  "NumberInputNode", 1420, 1420, { label: "Term (years)", value: 30 });
+n("sld-loan", "SliderInputNode", 1420,  860, { label: "Home loan $", value: 350000 }, { literals: { min: 100000, max: 800000, step: 10000 } });
+n("sld-apr",  "SliderInputNode", 1420, 1140, { label: "Mortgage APR %", value: 6.25 }, { literals: { min: 2, max: 9, step: 0.05 } });
+n("in-term",  "ValueInputNode", 1420, 1420, { label: "Term (years)", op: "number", value: "30", width: 180 }, FOLDED_INPUT);
 // TVM's fv must be WIRED, not a literal — the Equation-family card is
 // wire-driven, so a seed literal would be an invisible hardcoded known
 // (seeds.test.ts rejects it). fv = 0 ⇒ fully amortized at end of term.
 // Coords are in the TUNED frame (committed JSON), inside grp-mort's left
 // input column between sld-apr and in-term.
-n("in-endbal","NumberInputNode", 2216, 1900, { label: "End balance", value: 0 });
+n("in-endbal","ValueInputNode", 2216, 1900, { label: "End balance", op: "number", value: "0", width: 180 }, FOLDED_INPUT);
 n("expr-mapr","ExpressionNode",  1700, 1140, { label: "Monthly rate", expr: "apr / 100 / 12" });
 n("expr-mnper","ExpressionNode", 1700, 1420, { label: "Payments", expr: "term * 12" });
 n("tvm-pmt",  "TvmNode",         1960,  980, { label: "Monthly payment", paymentTiming: "end" });
@@ -283,7 +285,7 @@ n("cumipmt",  "PaymentBreakdownNode", 1960, 1280, { label: "Interest (signed)", 
 n("expr-absint","ExpressionNode",2240, 1280, { label: "Total interest", expr: "-i" });
 n("disp-int", "DisplayNode",     2520, 1280, { label: "Total interest" });
 n("expr-aff", "ExpressionNode",  2240, 1540, { label: "Affordable (28%)", expr: "0.28 * take" });
-n("alert-afford","AlertNode",    2520, 1540, { label: "Affordability watch", mode: "range" }, { literals: { value: 50, low: 0, high: 100, target: 0 } });
+n("alert-afford","AlertNode",    2520, 1540, { label: "Affordability watch" }, { literals: { value: 50, low: 0, high: 100, target: 0 } });
 n("cd-mort", "ConduitNode",      2800, 1080, { angle: 0, seq: 3 });
 const GRP_MORT = ["sld-loan","sld-apr","in-term","in-endbal","expr-mapr","expr-mnper","tvm-pmt","expr-absp","disp-pmt","cumipmt","expr-absint","disp-int","expr-aff","alert-afford","cd-mort"];
 
@@ -325,7 +327,7 @@ n("col-bud", "GetColumnNode",  1700, 2320, { label: "MonthlyBudget", readAs: "nu
 n("red-bud", "AggregateNode",     1960, 2320, { label: "Monthly budget", op: "sum" });
 n("expr-qbud","ExpressionNode",2220, 2320, { label: "Quarterly budget", expr: "m * 3" });
 n("disp-bud","DisplayNode",    2480, 2300, { label: "Budget (3 mo)" });
-n("alert-g", "AlertNode",      2760, 2160, { label: "Over-budget watch", mode: "range" }, { literals: { value: 50, low: 0, high: 100, target: 0 } });
+n("alert-g", "AlertNode",      2760, 2160, { label: "Over-budget watch" }, { literals: { value: 50, low: 0, high: 100, target: 0 } });
 n("cd-bud",  "ConduitNode",    3020, 2200, { angle: 0, seq: 4 });
 const GRP_BUD = ["slicer","col-gamt","red-g","expr-gabs","disp-g","slicer-bud","col-bud","red-bud","expr-qbud","disp-bud","alert-g","cd-bud"];
 
@@ -354,7 +356,7 @@ function frameText(cols) {
 }
 note("note-v12", 40, 1960,
   "9 · New in 1.2",
-  "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left — its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **Group By** can sum it properly.",
+  "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left, and its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **GROUPBY** can sum it properly.",
   "gold", 400, 200);
 n("fi-bridge", "FrameInputNode", 60, 2240, {
   label: "Monthly budget bridge",
@@ -454,7 +456,7 @@ note("note-advisor", 4460, -940,
 const REPORT_BODY = [
   "# The advisor's letter",
   "",
-  "You brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }} — {% if rateNow >= rateTarget %}healthy{% else %}running thin{% endif %} against the target you set.",
+  "You brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }}, {% if rateNow >= rateTarget %}healthy{% else %}running thin{% endif %} against the target you set.",
   "",
   "{{ spendChart }}",
   "",
@@ -466,7 +468,7 @@ const REPORT_BODY = [
   "",
   "## Retirement",
   "",
-  "Keep contributing at today's pace and the nest egg reaches **{{ nestEgg }}** — {% if eggNow >= eggTarget %}on track for{% else %}coming up short of{% endif %} your target.",
+  "Keep contributing at today's pace and the nest egg reaches **{{ nestEgg }}**, {% if eggNow >= eggTarget %}on track for{% else %}coming up short of{% endif %} your target.",
   "",
   "{{ growthChart }}",
   "",
@@ -476,7 +478,7 @@ const REPORT_BODY = [
   "",
   "## Groceries",
   "",
-  "**{{ spent }}** spent against a **{{ budget }}** budget for the quarter — you're {% if spendNow <= spendLimit %}under{% else %}over{% endif %} so far.",
+  "**{{ spent }}** spent against a **{{ budget }}** budget for the quarter, so you're {% if spendNow <= spendLimit %}under{% else %}over{% endif %} so far.",
   "",
   "*Move any slider and this letter rewrites itself.*",
 ].join("\n");

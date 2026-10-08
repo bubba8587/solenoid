@@ -2,7 +2,7 @@
 import { type Cell, type TablePopupState } from "../tablePopupStore";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
-import { openArrayPopup, isArrayValue, is2D, elemFamilyOfCells, type ElemFamily } from "../valuePopup";
+import { openArrayPopup, isArrayValue, is2D, elemFamilyOfCells, elemChipClass, type ElemFamily } from "../valuePopup";
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
 
@@ -10,8 +10,7 @@ export { isArrayValue, type ElemFamily };
 
 type ArrayValue = Cell[] | Cell[][];
 
-/** Mirrors the `--elem-*` classes in ArrayChip.css; `undefined` (a genuine wildcard)
- *  falls back to the plain list/table color. */
+/** Mirrors the `--elem-*` classes in ArrayChip.css; `undefined`, a genuine wildcard, takes the plain list or table color. */
 export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): string {
   const suffix = twoD ? "table" : "list";
   switch (family) {
@@ -23,43 +22,32 @@ export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): s
   }
 }
 
-/** A clickable chip that opens the full grid in the table popup; `label` titles it. */
-export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId, elem, popupOverrides, twoD }: {
+export function ArrayChip({ value, label, size = "md", accent, pinNodeId, elem, popupOverrides, twoD }: {
   value: ArrayValue;
   label?: string;
-  /** `"sm"` is the compact chip for node result boxes; `"md"` the default. */
   size?: "sm" | "md";
-  /** Popup-header accent; defaults to the host's sniffed `--node-accent`. Pass it
-   *  when the chip itself is recolored, so the popup still gets a TYPE accent. */
+  /** Pass it when the chip itself is recolored, so the popup still gets a type accent. */
   accent?: string;
-  /** When set, the popup opens editable and Save writes the grid back through this. */
-  onSave?: (next: (number | null)[][]) => void;
   /** The node the popup's Pin action targets; defaults to the host node from context. */
   pinNodeId?: string;
-  /** The SOCKET-declared element family (`nodeOutputElemFamily`); REQUIRED so a host can't
-   *  fall back to cell-guessing. `undefined` = an unresolved wildcard rung, the one case
-   *  cells are sniffed. */
+  /** Required, so a host can't fall back to cell-guessing; `undefined` is an unresolved wildcard, the one case cells are sniffed. */
   elem: ElemFamily | undefined;
   /** Merged into the popup open() — Table Input passes raw cells + onSaveRaw ([[C58]] tableInputRawText). */
   popupOverrides?: Partial<TablePopupState>;
-  /** The declared rank, for a host whose value may be EMPTY: `[]` cannot show whether it is a
-   *  list or a matrix. Absent = read it off the value. */
+  /** For a host whose value may be empty: `[]` can't show whether it is a list or a matrix. */
   twoD?: boolean;
 }) {
-  // The hook must run every render (Rules of Hooks), so read it, then prefer the prop.
+  // The hook runs every render (Rules of Hooks); the prop wins.
   const ctxHostId = useHostNodeId();
   const hostId = pinNodeId ?? ctxHostId;
   const table = twoD ?? is2D(value);
   const rows = value.length;
   const cols = table ? ((value[0] as number[] | undefined)?.length ?? 0) : 1;
-  // Explicit socket knowledge wins; numeric keeps the container default.
   const family = elem ?? elemFamilyOfCells(value);
-  const famClass = family && family !== "number"
-    ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
-    : "";
+  const famClass = elemChipClass(value, table, family);
 
   const chipLabel = table ? `${rows}×${cols} Table` : `${rows}× List`;
-  const verb = onSave || popupOverrides?.onSaveRaw ? "Edit" : "View";
+  const verb = popupOverrides?.onSaveRaw ? "Edit" : "View";
   const titleText = table ? `${rows}×${cols} table. ${verb}.` : `${rows}-item list. ${verb}.`;
 
   return (
@@ -71,7 +59,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
         e.stopPropagation();
         const st = readChipPopupStyle(e.currentTarget, "--sock-list");
         openArrayPopup(value, {
-          label, hostId, elem: family, onSave, popupOverrides,
+          label, hostId, elem: family, popupOverrides,
           accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
         });
       }}

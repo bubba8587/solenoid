@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { LinestNode as LinestNodeType, FitOp } from "../rete-nodes";
 import { FIT_OP_OPTIONS } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { OpToggle } from "./SegToggle";
@@ -14,7 +14,7 @@ export function LinestComponent({ data, emit }: NodeProps<LinestNodeType>) {
     if (next === data.op) return;
     data.setOp(next);
     setOp(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 

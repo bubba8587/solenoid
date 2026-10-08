@@ -1,12 +1,8 @@
 // [[C69]] ganttPackages, [[B14]] oneDesignSystem
-// The tree-grid columns for the left pane from view.columns (default name, start, finish,
-// duration); widths are suggestions the view may override, the name column is the flexible one.
 
 import type { GanttPayload } from "./payload";
 import type { GridColumn } from "./frame";
 
-// Dates are fixed-width (DD-MMM-YYYY, 11 mono chars at the 12px value rung); their columns
-// are exactly that wide plus the cell padding.
 const DEFAULTS: GridColumn[] = [
   { key: "name", label: "Task", width: 190, align: "left" },
   { key: "start", label: "Start", width: 94, align: "left" },
@@ -17,7 +13,8 @@ const DEFAULTS: GridColumn[] = [
   { key: "predecessors", label: "Predecessors", width: 150, align: "left" },
 ];
 
-export function buildColumns(payload: GanttPayload): GridColumn[] {
+/** Widths are sized for 12px text and scale with `fontScale`, so a larger face still fits a DD-MMM-YYYY date. */
+export function buildColumns(payload: GanttPayload, fontScale = 1): GridColumn[] {
   const want = payload.view.columns ?? ["name", "start", "finish", "duration"];
   const byKey = new Map(DEFAULTS.map((c) => [c.key, c]));
   const cols: GridColumn[] = [];
@@ -25,7 +22,7 @@ export function buildColumns(payload: GanttPayload): GridColumn[] {
     const c = byKey.get(key);
     if (c && !cols.some((x) => x.key === key)) cols.push({ ...c });
   }
-  // Name is mandatory and leads.
   if (!cols.some((c) => c.key === "name")) cols.unshift({ ...DEFAULTS[0] });
+  if (fontScale !== 1) for (const c of cols) c.width = Math.round(c.width * fontScale);
   return cols;
 }

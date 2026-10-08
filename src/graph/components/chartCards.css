@@ -1,5 +1,4 @@
 /* [[C100]] chartIsAValue */
-/* KPI stat card + bullet graph — quiet, no decorative fills (DESIGN.md). */
 
 .sol-kpi {
   display: flex;
@@ -86,8 +85,6 @@
 }
 .sol-bullet__tgt-label { color: var(--text-muted, var(--text-dim)); }
 
-/* Record card: labeled boxes on a grid. Each box is a sunken field; the type
-   signal stays on the sockets, so the boxes are neutral (Quiet Accent Rule). */
 .sol-record {
   display: grid;
   align-items: stretch;
@@ -102,8 +99,7 @@
   padding: 4px 6px 5px;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  /* Boxes touch, square (author call): overlap the shared 1px borders so
-     adjacent edges read as one hairline. */
+  /* Overlap the shared 1px borders so adjacent edges read as one hairline. */
   margin: 0 -1px -1px 0;
 }
 .sol-record__label {
@@ -124,16 +120,12 @@
   flex: 1;
 }
 .sol-record__value--empty { color: var(--text-muted, var(--text-dim)); }
-/* Layout-authored placeholder in an empty box — quieter than a real value. */
 .sol-record__value--hint { color: var(--text-muted, var(--text-dim)); opacity: 0.75; }
-/* Title field (a `#name` marker): label-less and prominent in every view. */
 .sol-record__box--title .sol-record__value {
   font-family: inherit;
   font-size: calc(14px * var(--chart-fscale, 1));
   font-weight: 600;
 }
-/* The `clamp` option: cap long tile values at 3 lines with an ellipsis (gallery only;
-   the popup shows the whole card). */
 .sol-record-gallery--clamp .sol-record__value {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -148,9 +140,6 @@
   object-fit: cover;
 }
 
-/* Gallery: masonry — justified tracks, each card packed into the shortest
-   column (masonryLayout.ts owns the geometry; height comes inline). Board:
-   one column per lane. */
 .sol-record-gallery {
   position: relative;
 }
@@ -179,8 +168,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* List view: an indented outline, one block per record. The title leads; the
-   trailing fields sit beneath it, each a single ellipsized "label  value" line. */
 .sol-record-list {
   display: flex;
   flex-direction: column;
@@ -204,7 +191,7 @@
 .sol-record-list__field {
   display: flex;
   gap: 8px;
-  padding-left: 12px; /* the indent under the title */
+  padding-left: 12px;
   font-size: calc(11px * var(--chart-fscale, 1));
   line-height: calc(15px * var(--chart-fscale, 1));
   min-width: 0;
@@ -222,8 +209,6 @@
   white-space: nowrap;
 }
 
-/* Figure title (the explicit options title), matching the series charts'
-   in-figure title: centered, 11px at fscale 1, single ellipsized line. */
 .sol-record-figtitle {
   font-size: calc(11px * var(--chart-fscale, 1));
   font-weight: 600;
@@ -236,35 +221,25 @@
   margin-bottom: 4px;
 }
 
-/* Card view as a column that fills a definite host box (a resized Display), so a
-   box too short for the card clips the GRID and never the pager. Nothing here
-   applies where the host height is auto — the 100% resolves to auto. */
 .sol-record-card {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 .sol-record-card__grid {
-  /* Take the height left after the flex:none pager below, so a definite-height host
-     (the popup, a resized Display) sizes the grid to host - pager and never lets the
-     grid grow under the stepper. flex-grow is inert on an auto-height host. */
+  /* Takes the height the pager leaves; inert on an auto-height host. */
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
 }
 .sol-record-card > .sol-record-figtitle,
 .sol-record-card > .sol-record-nav { flex: none; }
-/* Fill the grid AREA the pager leaves: the tile grid takes the whole height and its
-   rows stretch to share it (align-items:stretch already stretches each box). On an
-   auto-height host the 100% resolves to auto and the 1fr rows fall back to content,
-   so the node card / unsized Display are unchanged. Card view only — gallery, board
-   and list own their sizing. */
+/* On an auto-height host the 100% resolves to auto and the 1fr rows fall back to content. */
 .sol-record-card__grid > .sol-record {
   height: 100%;
   grid-auto-rows: minmax(0, 1fr);
 }
 
-/* Row pager under a drawn card (Display / popup); mirrors the node card's pager. */
 .sol-record-nav {
   display: flex;
   align-items: center;

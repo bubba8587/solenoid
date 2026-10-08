@@ -1,43 +1,35 @@
-// [[C17]], [[C60]], [[D19]], [[C21]] matchNodeLimits (MAX_GENERATED)
+// [[C17]], [[B11]] (MAX_GENERATED), [[C110]] rangeIncludesStop
 import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
-import { forAggregate, isMissing } from "../valueKinds";
+import { isUnitCell, type UnitCell, forAggregateUnits, isAffineDisplay, tagDim, unitError, READINGS_ADD } from "../unitValue";
+import { dimEqual, dimPow, isDimensionless } from "../dimension";
+import { forAggregate, ifTest, isMissing, DOMAIN_MESSAGE } from "../valueKinds";
+import { compareStrings } from "../stringOrder";
 import { iterMin, iterMax } from "./mathUtils";
-import { percentileOf } from "./statsOps";
-
-// ONE implementation per list op, called by both the node's `data()` and the formula
-// registration, so the two surfaces cannot disagree. Kept out of list.ts, which pulls in rete.
+import { percentileOf, noMode } from "./statsOps";
 
 export type Cell = number | null | SolError;
 
-/** The first SolError anywhere in the list, or null. Element-wise ops carry a cell
- *  error through in place; whole-list reducers surface it instead of a number. */
 export function firstError(arr: readonly unknown[]): SolError | null {
   for (const v of arr) if (isSolError(v)) return v;
   return null;
 }
 
 // ─── Shape: list in, list out ─────────────────────────────────────────────────
-// All POSITION-preserving: a null stays a null in its slot and a cell error rides along.
 
 export function reverseList<T>(arr: readonly T[]): T[] {
   return [...arr].reverse();
 }
 
-/** 1-based inclusive, matching the node's Start/End fields. `end === undefined`
- *  runs to the end of the list — the OMITTED reading, not a blank one. */
 export function sliceList<T>(arr: readonly T[], start: number, end?: number): T[] {
   return arr.slice(Math.max(0, Math.round(start) - 1), end === undefined ? undefined : Math.round(end));
 }
 
-/** Every Nth element, counting from the first (n=1 is the identity). */
 export function nthElement<T>(arr: readonly T[], n: number): T[] {
   const step = Math.max(1, Math.round(n));
   return arr.filter((_, i) => i % step === 0);
 }
 
-/** Ragged inputs pad to the LONGEST with null, so the A/B alternation stays aligned
- *  and no tail element is silently dropped. */
 export function interleave<T>(a: readonly T[], b: readonly T[]): (T | null)[] {
   const n = Math.max(a.length, b.length);
   const out: (T | null)[] = [];
@@ -54,8 +46,6 @@ export function padList<T>(arr: readonly T[], n: number, fill: T, dir: PadDir): 
   return dir === "left" ? [...pad, ...arr] : [...arr, ...pad];
 }
 
-/** Successive differences, one shorter than the input; a missing neighbour makes that
-*  difference missing and a cell error propagates into each difference it touches. */
 export function diffList(arr: readonly Cell[]): Cell[] {
   return arr.slice(1).map((v, i) => {
     const prev = arr[i];
@@ -66,8 +56,6 @@ export function diffList(arr: readonly Cell[]): Cell[] {
   });
 }
 
-/** Rescale to 0–1 by the list's own min/max (a flat list is all zeros). The SCALE is a
- *  reduction: an error anywhere poisons it, a null is skipped and stays null in place. */
 export function normalizeList(arr: readonly Cell[]): Cell[] | SolError {
   const err = firstError(arr);
   if (err) return err;
@@ -79,8 +67,6 @@ export function normalizeList(arr: readonly Cell[]): Cell[] | SolError {
 }
 
 
-/** Slide every element k places (k > 0 = later, toward the end). Vacated slots are
- *  blank; `wrap` fills them from the elements that fell off the other end (numpy.roll). */
 export function shiftList(arr: readonly Cell[], k: number, wrap: boolean): Cell[] {
   const n = arr.length;
   if (n === 0) return [];
@@ -95,8 +81,6 @@ export function shiftList(arr: readonly Cell[], k: number, wrap: boolean): Cell[
   });
 }
 
-/** Consecutive percent change (x[i] − x[i−1]) / x[i−1], one shorter than the input; a
- *  missing neighbour makes that entry blank, a zero base is #DIV/0!, an error propagates. */
 export function pctChangeList(arr: readonly Cell[]): Cell[] {
   return arr.slice(1).map((v, i) => {
     const prev = arr[i];
@@ -108,8 +92,6 @@ export function pctChangeList(arr: readonly Cell[]): Cell[] {
   });
 }
 
-/** Standardize to z-scores (x − mean) / stdev, population stdev; a flat list → all
- *  zeros. Like normalizeList, the reduction poisons on any error and skips nulls. */
 export function zscoreList(arr: readonly Cell[]): Cell[] | SolError {
   const err = firstError(arr);
   if (err) return err;
@@ -121,12 +103,8 @@ export function zscoreList(arr: readonly Cell[]): Cell[] | SolError {
     typeof v === "number" && Number.isFinite(v) ? (sd === 0 ? 0 : (v - mean) / sd) : null);
 }
 
-/** Which half-open bin each value falls in: the count of breakpoints ≤ the value
- *  (0 = below the first break, so n breaks give bins 0..n). R findInterval / numpy.digitize. */
 export function binIndex(arr: readonly Cell[], breaks: readonly Cell[], rightInclusive = false): Cell[] {
   const edges = presentNumbers(breaks).slice().sort((a, b) => a - b);
-  // numpy.digitize (right=False): an edge belongs to the bucket above it. pandas qcut's
-  // intervals are right-inclusive, so the quantile path counts only edges strictly below.
   return arr.map((v) => {
     if (isSolError(v)) return v;
     if (!(typeof v === "number" && Number.isFinite(v))) return null;
@@ -136,21 +114,17 @@ export function binIndex(arr: readonly Cell[], breaks: readonly Cell[], rightInc
   });
 }
 
-/** All k-length combinations (order-independent) or permutations (ordered) of a list,
- *  each returned as one row — itertools.combinations / permutations. Capped: the count is
- *  computed first (multiplicatively, no factorial overflow) and an explosive request is
- *  refused with #NUM! rather than generating an enormous table. */
 const COMBO_CAP = 10_000;
 export function combinationsOf(arr: readonly Cell[], k: number, kind: "combinations" | "permutations"): Cell[][] | SolError {
   const n = arr.length;
   const kk = Math.round(k);
   if (kk < 0) return solError("#VALUE!", "Choose count must be zero or more");
-  if (kk > n) return []; // can't pick more than the list holds
+  if (kk > n) return [];
   let count = 1;
   if (kind === "combinations") for (let i = 0; i < kk; i++) count = (count * (n - i)) / (i + 1);
   else for (let i = 0; i < kk; i++) count *= n - i;
   count = Math.round(count);
-  if (count > COMBO_CAP) return solError("#OVERFLOW!", `That makes ${count} ${kind} — over the ${COMBO_CAP} cap. Use a shorter list or a smaller k.`);
+  if (count > COMBO_CAP) return solError("#OVERFLOW!", `That makes ${count} ${kind}, over the ${COMBO_CAP} cap. Use a shorter list or a smaller k.`);
   const out: Cell[][] = [];
   const cur: Cell[] = [];
   if (kind === "combinations") {
@@ -170,9 +144,6 @@ export function combinationsOf(arr: readonly Cell[], k: number, kind: "combinati
   return out;
 }
 
-/** Central-difference gradient (numpy.gradient): interior points use both neighbours,
- *  the ends a one-sided difference. Same length as the input; a missing neighbour blanks
- *  that entry. `dx` is the uniform spacing. */
 export function gradientList(arr: readonly Cell[], dx = 1): Cell[] | SolError {
   const err = firstError(arr);
   if (err) return err;
@@ -190,12 +161,9 @@ export function gradientList(arr: readonly Cell[], dx = 1): Cell[] | SolError {
   return out;
 }
 
-/** Exponentially weighted moving average: y[0] = x[0], y[i] = α·x[i] + (1−α)·y[i−1].
- *  A blank carries the previous value forward. pandas ewm. */
 export function ewmaList(arr: readonly Cell[], alpha: number): Cell[] | SolError {
   const err = firstError(arr);
   if (err) return err;
-  // pandas ewm refuses alpha outside (0, 1]; a clamp would quietly return the input.
   if (!(alpha > 0 && alpha <= 1)) return solError("#DOMAIN!", "Alpha must be above 0 and at most 1");
   const a = alpha;
   let prev: number | null = null;
@@ -206,8 +174,6 @@ export function ewmaList(arr: readonly Cell[], alpha: number): Cell[] | SolError
   });
 }
 
-/** Trapezoidal integral of sampled points with uniform spacing `dx` (numpy.trapz) — the
- *  area under the piecewise-linear curve through them. A gap makes the area undefined. */
 export function trapzList(arr: readonly Cell[], dx = 1): Cell | SolError {
   const err = firstError(arr);
   if (err) return err;
@@ -222,8 +188,6 @@ export function trapzList(arr: readonly Cell[], dx = 1): Cell | SolError {
   return s;
 }
 
-/** Discrete linear convolution (numpy.convolve 'full'): length a+b−1, out[k] = Σ a[i]·b[k−i].
- *  A blank counts as zero. */
 export function convolveList(a: readonly Cell[], b: readonly Cell[]): Cell[] | SolError {
   const err = firstError(a) ?? firstError(b);
   if (err) return err;
@@ -235,7 +199,6 @@ export function convolveList(a: readonly Cell[], b: readonly Cell[]): Cell[] | S
   return out;
 }
 
-/** Run-length encode: each run of consecutive equal values → a row [value, count]. R rle. */
 export function rleEncode(arr: readonly Cell[]): Cell[][] {
   const out: Cell[][] = [];
   for (let i = 0; i < arr.length; ) {
@@ -247,7 +210,6 @@ export function rleEncode(arr: readonly Cell[]): Cell[][] {
   return out;
 }
 
-/** 3-D vector cross product a × b (numpy.cross). Both operands must have three numbers. */
 export function crossProduct(a: readonly Cell[], b: readonly Cell[]): Cell[] | SolError {
   const err = firstError(a) ?? firstError(b);
   if (err) return err;
@@ -256,7 +218,6 @@ export function crossProduct(a: readonly Cell[], b: readonly Cell[]): Cell[] | S
   return [A[1] * B[2] - A[2] * B[1], A[2] * B[0] - A[0] * B[2], A[0] * B[1] - A[1] * B[0]];
 }
 
-/** Gaussian elimination with partial pivoting; null when the matrix is singular. */
 function solveLinear(A: number[][], b: number[]): number[] | null {
   const n = b.length;
   const M = A.map((row, i) => [...row, b[i]]);
@@ -274,11 +235,6 @@ function solveLinear(A: number[][], b: number[]): number[] | null {
   return M.map((row, i) => row[n] / row[i]);
 }
 
-/** Least-squares polynomial fit of degree d through (x, y), evaluated back at each x —
- *  numpy.polyfit + polyval in one. Solves the normal equations (VᵀV)c = Vᵀy. The fit uses
- *  the PAIRS where both x and y are present (a blank on either side drops that pair, it
- *  never shifts the pairing); the result is position-preserving over x — every present
- *  x gets its fitted value, a missing x stays blank. */
 export function polyfitEval(xs: readonly Cell[], ys: readonly Cell[], degree: number): Cell[] | SolError {
   const err = firstError(xs) ?? firstError(ys);
   if (err) return err;
@@ -301,19 +257,37 @@ export function polyfitEval(xs: readonly Cell[], ys: readonly Cell[], degree: nu
     for (let r = 0; r < m; r++) { for (let c = 0; c < m; c++) ATA[r][c] += powers[r] * powers[c]; ATy[r] += powers[r] * Y[k]; }
   }
   const coeffs = solveLinear(ATA, ATy);
-  if (!coeffs) return solError("#SOLVE!", "Polynomial fit is singular — the points may be collinear for this degree");
+  if (!coeffs) return solError("#SOLVE!", "The polynomial fit is singular. The points may be collinear for this degree");
   const evalAt = (xv: number): number => { let acc = 0; for (let j = m - 1; j >= 0; j--) acc = acc * xv + coeffs[j]; return acc; };
   return xs.map((xv) => (isNum(xv) ? evalAt(xv) : null));
 }
 
 export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev";
 
-/** One aggregate per element over the window ending there: every element so far
- *  (window null; the window GROWS) or the last N (the window SLIDES, running short at
- *  the start). Per window: an error propagates to that cell and every later cell it
- *  stays in reach of, a null is SKIPPED, and an all-null window is 0 for sum and null
- *  otherwise. */
-export function running(op: RunningOp, arr: readonly Cell[], window: number | null): Cell[] {
+/** A list of one unit runs on its magnitudes and keeps the unit, as Reduce does: a product's power grows with its count,
+ *  and over °C a spread is a delta and two readings have no sum. */
+export function running(op: RunningOp, arr: readonly (Cell | UnitCell)[], window: number | null): (Cell | UnitCell)[] | SolError {
+  if (!arr.some(isUnitCell)) return runningPlain(op, arr as readonly Cell[], window);
+  // An error cell stays in place and runs as it does without units.
+  const prep = forAggregateUnits(arr.filter((v) => !isSolError(v)), op !== "sum");
+  if (prep.error) return prep.error;
+  const affine = isAffineDisplay(prep.display);
+  if (affine && op === "sum" && arr.filter((c) => isUnitCell(c) && isAffineDisplay(c.display)).length > 1) return unitError(READINGS_ADD);
+  let k = 0;
+  const mags: Cell[] = arr.map((v) => (isSolError(v) ? v : isMissing(v) ? null : prep.nums[k++]));
+  const out = runningPlain(op, mags, window);
+  const w = window !== null && Math.round(window) >= 1 ? Math.round(window) : Infinity;
+  const counted = mags.map((v) => (typeof v === "number" && Number.isFinite(v) ? 1 : 0));
+  const display = affine && op === "stdev" ? undefined : prep.display;
+  return out.map((v, i) => {
+    if (typeof v !== "number" || isDimensionless(prep.dim)) return v;
+    const n = counted.slice(Math.max(0, i - w + 1), i + 1).reduce((a: number, b) => a + b, 0);
+    const dim = op === "product" ? dimPow(prep.dim, n) : prep.dim;
+    return tagDim(v, dim, dimEqual(dim, prep.dim) ? display : undefined);
+  });
+}
+
+function runningPlain(op: RunningOp, arr: readonly Cell[], window: number | null): Cell[] {
   if (window !== null && Math.round(window) >= 1) {
     const w = Math.max(1, Math.round(window));
     return arr.map((_, i) => {
@@ -328,7 +302,7 @@ export function running(op: RunningOp, arr: readonly Cell[], window: number | nu
         case "max": return iterMax(nums);
         case "product": return nums.reduce((a, b) => a * b, 1);
         case "stdev": {
-          if (nums.length < 2) return null; // sample stdev undefined (matches var_s)
+          if (nums.length < 2) return null;
           const m = nums.reduce((a, b) => a + b, 0) / nums.length;
           return Math.sqrt(nums.reduce((s, v) => s + (v - m) ** 2, 0) / (nums.length - 1));
         }
@@ -340,12 +314,11 @@ export function running(op: RunningOp, arr: readonly Cell[], window: number | nu
       }
     });
   }
-  // The grow path streams in one pass (a slice recompute would be O(n²)); it must
-  // answer exactly what the slice path would with window = arr.length.
+  // The cumulative path streams in one pass and must answer exactly what the sliding path would with window = arr.length.
   let err: SolError | null = null;
   let count = 0, sum = 0, product = 1, mn = Infinity, mx = -Infinity;
-  let mean = 0, m2 = 0;        // Welford, for stdev
-  const sorted: number[] = []; // for median
+  let mean = 0, m2 = 0;
+  const sorted: number[] = [];
   return arr.map((v) => {
     if (!err && isSolError(v)) err = v;
     if (err) return err;
@@ -384,11 +357,8 @@ export function running(op: RunningOp, arr: readonly Cell[], window: number | nu
 // ─── Find: list in, scalar out ────────────────────────────────────────────────
 
 export type ArgMinMaxOp = "argmax" | "argmin" | "argsort" | "argsort_desc" | "which";
-/** The ops whose answer is a LIST of positions (the card's output retypes number ↔ list). */
 export const ARG_LIST_OPS: ReadonlySet<ArgMinMaxOp> = new Set(["argsort", "argsort_desc", "which"]);
 
-/** 1-based positions that would sort the list (numpy.argsort, R order): numbers by value,
- *  stable on ties; blank and error cells go to the end in either direction. */
 export function argsortList(arr: readonly Cell[], desc = false): number[] {
   const isTail = (v: unknown) => isMissing(v) || isSolError(v) || typeof v !== "number" || !Number.isFinite(v);
   const idx = arr.map((_, i) => i);
@@ -401,8 +371,6 @@ export function argsortList(arr: readonly Cell[], desc = false): number[] {
   return idx.map((i) => i + 1);
 }
 
-/** 1-based positions of the TRUE cells (R which, numpy.flatnonzero). A number counts
- *  when non-zero, text when non-empty; blanks and errors never do. */
 export function whichPositions(arr: readonly unknown[]): number[] {
   const out: number[] = [];
   arr.forEach((v, i) => {
@@ -412,8 +380,6 @@ export function whichPositions(arr: readonly unknown[]): number[] {
   return out;
 }
 
-/** 1-based position of the extreme value; null for an empty or all-missing list, with the
-*  usual reducer policy (error propagates, null skipped). */
 export function argMinMax(op: ArgMinMaxOp, arr: readonly Cell[]): number | SolError | null {
   const err = firstError(arr);
   if (err) return err;
@@ -429,21 +395,10 @@ export function argMinMax(op: ArgMinMaxOp, arr: readonly Cell[]): number | SolEr
 export type XMatchMatchMode = "exact" | "next_larger" | "next_smaller";
 export type XMatchSearchMode = "first" | "last";
 
-/** Excel's lookup equality: text compares case-insensitively (EXACT is the
- *  case-sensitive escape hatch), everything else strictly. */
 export function lookupEq(a: unknown, b: unknown): boolean {
   return typeof a === "string" && typeof b === "string" ? a.toLowerCase() === b.toLowerCase() : a === b;
 }
 
-/** XMATCH over a 1-D list — the kernel behind the XMATCH node and the
- *  XLOOKUP/XMATCH formulas, so the surfaces can't drift. Returns the 0-based
- *  index of the winning cell, or −1 for a miss. Null and error cells never match
- *  (the join-key rule; a positional caller keeps errors IN PLACE, so an
- *  unreferenced error must not decide the answer). Approximate modes mirror the
- *  frame kernel (lookupFrameRowIndex): an exact hit always wins, else the closest
- *  ≤/≥ NUMERIC key — so they need a numeric lookup value. `searchMode` sets the
- *  scan direction, i.e. which DUPLICATE wins; ties in an approximate best keep
- *  the first seen in scan order. */
 export function xmatchIndex(
   lookup: unknown, keys: readonly unknown[],
   matchMode: XMatchMatchMode = "exact", searchMode: XMatchSearchMode = "first",
@@ -460,22 +415,20 @@ export function xmatchIndex(
     return -1;
   }
   if (typeof lookup !== "number" || !Number.isFinite(lookup)) {
-    return solError("#VALUE!", "Approximate match compares numbers — use exact match (0) for text");
+    return solError("#VALUE!", "Approximate match compares numbers. Use exact match (0) for text");
   }
   let bestIdx = -1, bestKey = NaN;
   for (let s = 0; s < n; s++) {
     const i = at(s);
     const k = keys[i];
     if (typeof k !== "number" || !Number.isFinite(k)) continue;
-    if (k === lookup) return i; // an exact hit always wins, first in scan order
+    if (k === lookup) return i;
     if (matchMode === "next_smaller" && k < lookup && (bestIdx === -1 || k > bestKey)) { bestIdx = i; bestKey = k; }
     if (matchMode === "next_larger"  && k > lookup && (bestIdx === -1 || k < bestKey)) { bestIdx = i; bestKey = k; }
   }
   return bestIdx;
 }
 
-/** 1 / 0 rather than a logical, matching the node's numeric output socket. Membership keys
-*  by VALUE (setKey, [[D39]] keyByValue); blank and error cells are not members. */
 export function containsValue(arr: readonly unknown[], v: unknown): boolean {
   const k = setKey(v);
   return arr.some((x) => !isMissing(x) && !isSolError(x) && setKey(x) === k);
@@ -485,8 +438,6 @@ export function containsValue(arr: readonly unknown[], v: unknown): boolean {
 
 export type WeightedOp = "wavg" | "wvar" | "wstdev";
 
-/** Values paired to weights BY POSITION, skipping a pair when either side is missing.
-*  Variance is the Bessel-corrected reliability-weight form `Σw·(x−μ)² / (Σw − Σw²/Σw)`. */
 export function weighted(op: WeightedOp, values: readonly Cell[], weights: readonly Cell[]): number | SolError | null {
   const err = firstError(values) ?? firstError(weights);
   if (err) return err;
@@ -513,11 +464,29 @@ export function weighted(op: WeightedOp, values: readonly Cell[], weights: reado
 }
 
 // ─── Build: scalars in, list out ──────────────────────────────────────────────
-// UNCAPPED here — each surface applies the `#OVERFLOW!` / MAX_GENERATED convention at its
-// own boundary rather than these silently truncating.
 
-/** Shared with RANDARRAY / SEQUENCE — the app's one generated-length ceiling. */
 export const MAX_GENERATED = 1_000_000;
+
+/** A generated array's row or column count, Excel's reading: truncated, and `#VALUE!` below 0 or unreadable. */
+export function arrayCount(n: number, fn: string): number | SolError {
+  const k = Math.trunc(n);
+  return k >= 0 ? k : solError("#VALUE!", `${fn} needs a count of 0 or more`);
+}
+
+/** RANDARRAY's bounds check, shared by the formula and the card. */
+export function randArrayRange(lo: number, hi: number, whole: boolean): SolError | null {
+  if (Number.isNaN(lo) || Number.isNaN(hi)) return solError("#VALUE!", "RANDARRAY's Min and Max must be numbers");
+  if (lo > hi) return solError("#VALUE!", "RANDARRAY's Min is above its Max");
+  if (whole && Math.ceil(lo) > Math.floor(hi)) return solError("#VALUE!", "RANDARRAY's Min and Max hold no whole number");
+  return null;
+}
+
+/** One RANDARRAY value from a [0,1) roll: uniform over [lo, hi), or over the whole numbers in [lo, hi] with each equally likely. */
+export function randArrayDraw(roll: number, lo: number, hi: number, whole: boolean): number {
+  if (!whole) return lo + roll * (hi - lo);
+  const a = Math.ceil(lo);
+  return a + Math.floor(roll * (Math.floor(hi) - a + 1));
+}
 
 export function linspace(start: number, end: number, count: number): number[] {
   const n = Math.round(count);
@@ -538,14 +507,11 @@ export function geometric(start: number, ratio: number, count: number): number[]
   return out;
 }
 
-/** SEQUENCE's arithmetic core; uncapped — each surface applies MAX_GENERATED itself. */
 export function sequenceList(count: number, start: number, step: number): number[] {
   const n = Math.max(0, Math.floor(count));
   return Array.from({ length: n }, (_, i) => start + i * step);
 }
 
-/** Capped at 78 terms — the last Fibonacci number exactly representable as a double
- *  (F79 exceeds 2^53 and would silently start rounding). */
 export function fibonacci(count: number): number[] {
   const n = Math.min(78, Math.max(0, Math.round(count)));
   if (n === 0) return [];
@@ -556,14 +522,14 @@ export function fibonacci(count: number): number[] {
 }
 
 // ─── Sets ─────────────────────────────────────────────────────────────────────
-// Membership is by VALUE ([[D39]] keyByValue), but JS Sets key OBJECTS by reference, so only a tagged
-// complex ([[D44]] tagSpecialScalars) canonicalizes to a string; primitives stay themselves.
+// JavaScript Sets key objects by reference, so a complex value canonicalizes to a string; primitives key as themselves.
+/** Equal values share a key: complex by parts, a unit cell by base-SI magnitude (15 significant digits) and dimension, so 5 km and 5000 m, or 1.1 h and 3960 s, are one member ([[C25]] firstClassUnits). */
 export function setKey(v: unknown): unknown {
-  return isCx(v) ? `\x00cx:${v.re},${v.im}` : v;
+  if (isCx(v)) return `\x00cx:${v.re},${v.im}`;
+  if (isUnitCell(v)) return `\x00u:${+v.value.toPrecision(15)}:${Object.keys(v.dim).sort().map((k) => `${k}${v.dim[k]}`).join(",")}`;
+  return v;
 }
 
-/** A side's distinct members; blank and error cells can't be equal to anything, so they
- *  are NOT members. */
 function memberSet(arr: readonly unknown[]): Set<unknown> {
   const s = new Set<unknown>();
   for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(setKey(v));
@@ -572,8 +538,6 @@ function memberSet(arr: readonly unknown[]): Set<unknown> {
 
 export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 
-/** First-seen order, deduped the way UNIQUE does. An error cell matches nothing, so it
- *  passes through where it belongs rather than silently vanishing. */
 export function setOperation(op: SetOp, a: readonly unknown[], b: readonly unknown[]): unknown[] {
   const aSet = memberSet(a), bSet = memberSet(b);
   const out: unknown[] = [];
@@ -600,8 +564,6 @@ export function setOperation(op: SetOp, a: readonly unknown[], b: readonly unkno
 
 export type SetRelation = "equal" | "subset" | "superset" | "disjoint";
 
-/** The empty-set edge cases follow set theory: ∅ ⊆ anything, ∅ is disjoint with
- *  anything, ∅ = ∅. */
 export function setRelation(op: SetRelation, a: readonly unknown[], b: readonly unknown[]): boolean {
   const aSet = memberSet(a), bSet = memberSet(b);
   const subsetOf = (x: Set<unknown>, y: Set<unknown>) => {
@@ -625,21 +587,19 @@ export type FillOp =
   | "constant" | "ffill" | "bfill" | "mean" | "median" | "mode"
   | "interpolate" | "drop" | "coalesce";
 
-/** Present finite numbers only, so an imputed statistic uses the values actually there. */
 export function presentNumbers(arr: readonly Cell[]): number[] {
   return arr.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
 }
 
 export function imputeStat(arr: readonly Cell[], op: "mean" | "median" | "mode"): number | null {
   const nums = presentNumbers(arr);
-  if (nums.length === 0) return null; // nothing present → can't impute, leave gaps null
+  if (nums.length === 0) return null;
   if (op === "mean") return nums.reduce((a, b) => a + b, 0) / nums.length;
   if (op === "median") {
     const s = [...nums].sort((a, b) => a - b);
     const m = Math.floor(s.length / 2);
     return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
   }
-  // mode: most frequent; ties broken by first occurrence (Excel MODE behavior).
   const counts = new Map<number, number>();
   let best = nums[0], bestCount = 0;
   for (const v of nums) {
@@ -650,8 +610,6 @@ export function imputeStat(arr: readonly Cell[], op: "mean" | "median" | "mode")
   return best;
 }
 
-/** INTERIOR gaps only — an open-ended run, or one bounded by an error, has nothing to
- *  interpolate between, so its nulls stay. */
 export function interpolateList(arr: readonly Cell[]): Cell[] {
   const out: Cell[] = arr.slice();
   let i = 0;
@@ -670,8 +628,6 @@ export function interpolateList(arr: readonly Cell[]): Cell[] {
   return out;
 }
 
-/** `fallbacks` are coalesce's ordered sources: a LIST extends the output to its length, a
- *  bare number broadcasts without extending, and null contributes nothing. */
 export function fillList(
   op: FillOp,
   arr: readonly Cell[],
@@ -727,9 +683,6 @@ export function fillList(
 
 // ─── Range ────────────────────────────────────────────────────────────────────
 
-/** INCLUSIVE `[start, stop]`, Step apart (author 2026-08-24 — Range now ends ON Stop, unlike
- *  numpy arange). An UNSET stop means no series yet, not a blank cable. The returned length is
- *  what callers cap on (there is no Count field), and is Infinity when the walk never terminates. */
 export function rangeCount(start: number, stop: number | undefined, step: number): number {
   if (stop === undefined) return 0;
   if (step === 0) return start === stop ? 1 : Infinity;
@@ -742,8 +695,7 @@ export function rangeList(start: number, stop: number | undefined, step: number)
   if (!Number.isFinite(n)) return [];
   const out: number[] = [];
   for (let i = 0; i < n; i++) {
-    // start + i*step, NOT accumulated (float drift); snap the LAST value onto Stop exactly
-    // so e.g. 0→1 by 0.1 ends on 1, not 0.9999999.
+    // Compute start + i*step rather than accumulating, and snap the last value onto Stop, so float drift never ends 0→1 by 0.1 at 0.9999999.
     let v = start + i * step;
     if (i === n - 1 && stop !== undefined && step !== 0 && Math.abs(v - stop) < Math.abs(step) * 1e-9) v = stop;
     out.push(v);
@@ -751,27 +703,18 @@ export function rangeList(start: number, stop: number | undefined, step: number)
   return out;
 }
 
-/** End-to-end concatenation, staying 1-D. An unwired row contributes nothing. */
 export function concatLists(...lists: (readonly unknown[] | null | undefined)[]): unknown[] {
-  const out: unknown[] = [];
-  for (const l of lists) if (l != null) out.push(...l);
-  return out;
+  return lists.flatMap((l) => l ?? []);
 }
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 
-/** Efraimidis–Spirakis weighted-shuffle key from a per-slot uniform `u` ∈ [0,1) and a
- *  weight: sorting these ASCENDING (via `shuffleList`) yields a permutation where
- *  P(element lands first) ∝ its weight — `np.random.choice(replace=False, p=)`. A
- *  non-positive or non-finite weight sinks the element to the end (Infinity key). */
 export function weightedShuffleKey(u: number, weight: number): number {
   if (!(weight > 0) || !Number.isFinite(weight)) return Infinity;
   const uu = u <= 0 ? Number.EPSILON : u >= 1 ? 1 - Number.EPSILON : u;
   return -Math.log(uu) / weight;
 }
 
-/** Permute by caller-supplied SORT KEYS, leaving volatility outside: the node holds keys
- *  until the next recalc, a formula generates fresh ones per evaluation. */
 export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] {
   return arr
     .map((v, i) => ({ v, k: keys[i] }))
@@ -779,10 +722,8 @@ export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] 
     .map((p) => p.v);
 }
 
-// ─── [[C15]] matricesInFormulas tranche 2: the array-returning core ──────────────────────────────────
+// ─── Array-returning core ([[C15]] matricesInFormulas) ──────────────────────────
 
-/** UNIQUE: first-seen dedupe by VALUE (setKey, [[D39]] keyByValue); every ERROR cell survives, so the
- *  count of errors to fix is deterministic. */
 export function uniqueList(arr: readonly unknown[]): unknown[] {
   const seen = new Set<unknown>();
   const out: unknown[] = [];
@@ -796,38 +737,39 @@ export function uniqueList(arr: readonly unknown[]): unknown[] {
   return out;
 }
 
-/** SORT: numeric, stable; nulls and per-cell errors sort LAST in both directions — a bare
- *  compare would coerce null to 0 and scatter them mid-list. */
-export function sortNumericList(arr: readonly Cell[], desc = false): Cell[] {
-  const isTail = (v: unknown) => isMissing(v) || isSolError(v);
-  const idx = arr.map((_, i) => i);
-  idx.sort((i, j) => {
-    const ti = isTail(arr[i]), tj = isTail(arr[j]);
-    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last, stable
-    const c = (arr[i] as number) - (arr[j] as number);
-    return c !== 0 ? (desc ? -c : c) : i - j; // stable on ties
-  });
-  return idx.map((i) => arr[i]);
+const sortKind = (v: unknown): number => (typeof v === "number" ? 0 : typeof v === "string" ? 1 : typeof v === "boolean" ? 2 : 3);
+const sortsLast = (v: unknown): boolean => isMissing(v) || isSolError(v) || (typeof v === "number" && Number.isNaN(v));
+
+/** One order for every list sort: numbers by value, then text by character code ([[C59]] byteStringOrder), then FALSE and TRUE, Excel's order across kinds. Blanks, errors and NaN go last in either direction. */
+export function compareListCells(a: unknown, b: unknown): number {
+  const ka = sortKind(a), kb = sortKind(b);
+  if (ka !== kb) return ka - kb;
+  if (ka === 0) return (a as number) - (b as number);
+  if (ka === 1) return compareStrings(a as string, b as string);
+  if (ka === 2) return Number(a) - Number(b);
+  return 0;
 }
 
-/** SORTBY: reorder `arr` by parallel numeric keys; ragged pads to the LONGEST with
- *  null; a null/error KEY sends its row to the tail, stably (in either direction). */
-export function sortByKeys<T>(arr: readonly T[], by: readonly Cell[], desc = false): (T | null)[] {
-  const n = Math.max(arr.length, by.length);
-  const isTail = (v: unknown) => isMissing(v) || isSolError(v);
+function sortedIndex(keys: readonly unknown[], n: number, desc: boolean): number[] {
   const idx = Array.from({ length: n }, (_, i) => i);
   idx.sort((i, j) => {
-    const ki = i < by.length ? by[i] : null, kj = j < by.length ? by[j] : null;
-    const ti = isTail(ki), tj = isTail(kj);
-    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last in both directions
-    const c = ki - kj;
-    return c !== 0 ? (desc ? -c : c) : i - j; // stable on ties
+    const ki = i < keys.length ? keys[i] : null, kj = j < keys.length ? keys[j] : null;
+    const ti = sortsLast(ki), tj = sortsLast(kj);
+    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1;
+    const c = compareListCells(ki, kj);
+    return c !== 0 ? (desc ? -c : c) : i - j;
   });
-  return idx.map((i) => (i < arr.length ? arr[i] : null));
+  return idx;
 }
 
-/** TAKE/DROP's signed count slice (positive from the start, negative from the end, 0 =
- *  identity). ONE kernel for the 1-D nodes, the 2-D node per axis, and the formula. */
+export function sortList(arr: readonly Cell[], desc = false): Cell[] {
+  return sortedIndex(arr, arr.length, desc).map((i) => arr[i]);
+}
+
+export function sortByKeys<T>(arr: readonly T[], by: readonly unknown[], desc = false): (T | null)[] {
+  return sortedIndex(by, Math.max(arr.length, by.length), desc).map((i) => (i < arr.length ? arr[i] : null));
+}
+
 export function takeSlice<T>(arr: readonly T[], n: number): T[] {
   if (n === 0) return [...arr];
   return n > 0 ? arr.slice(0, n) : arr.slice(Math.max(0, arr.length + n));
@@ -837,21 +779,124 @@ export function dropSlice<T>(arr: readonly T[], n: number): T[] {
   return n > 0 ? arr.slice(Math.min(n, arr.length)) : arr.slice(0, Math.max(0, arr.length + n));
 }
 
-/** FILTER by a parallel boolean/number mask (Excel's include array). A mask cell
- *  error propagates whole; sizes must match (#SHAPE! is the caller's job). */
+/** FILTER's include array read as IF reads a condition ([[E10]] pickVsAggregateErrors: the mask is read whole, so its first error is the answer). A blank keeps nothing. */
 export function filterByMask<T>(arr: readonly T[], mask: readonly unknown[]): T[] | SolError {
-  const err = firstError(mask);
-  if (err) return err;
-  return arr.filter((_, i) => {
-    const m = mask[i];
-    return m === true || (typeof m === "number" && m !== 0);
-  });
+  const keep: boolean[] = [];
+  for (const m of mask) {
+    const t = ifTest(m);
+    if (isSolError(t)) return t;
+    keep.push(t === true);
+  }
+  return arr.filter((_, i) => keep[i]);
 }
 
-/** MODE.MULT: every most-frequent value (count ≥ 2), first-seen order, keyed by VALUE. */
+// ─── Table sorts, filters and uniques ([[D85]] columnsStayColumns: a list is one row) ──────────
+// Excel's SORT, SORTBY, FILTER and UNIQUE on a table. The caller turns a list into its one row and back.
+
+/** [[D85]] columnsStayColumns: a list is one row, so its items are columns; a lone value is a 1 × 1 table. */
+export const asRowsOf = (v: unknown): { m: unknown[][]; list: boolean } =>
+  Array.isArray(v) && v.length > 0 && Array.isArray(v[0]) ? { m: v as unknown[][], list: false }
+  : { m: [Array.isArray(v) ? v : v == null ? [] : [v]], list: true };
+/** A list's answer is a list again while one row is left. */
+export const backToList = (m: unknown[][], list: boolean): unknown => (list && m.length === 1 ? m[0] : list && m.length === 0 ? [] : m);
+
+export const transposeGrid = <T>(m: readonly (readonly T[])[]): T[][] =>
+  (m[0] ?? []).map((_, j) => m.map((r) => r[j]));
+
+/** Stable order of `n` positions by several keys, earliest key first; a blank, error or NaN key goes last either way. */
+function sortedIndexByKeys(keys: readonly { vals: readonly unknown[]; desc: boolean }[], n: number): number[] {
+  const idx = Array.from({ length: n }, (_, i) => i);
+  idx.sort((i, j) => {
+    for (const { vals, desc } of keys) {
+      const ki = vals[i] ?? null, kj = vals[j] ?? null;
+      const ti = sortsLast(ki), tj = sortsLast(kj);
+      if (ti || tj) { if (ti && tj) continue; return ti ? 1 : -1; }
+      const c = compareListCells(ki, kj);
+      if (c !== 0) return desc ? -c : c;
+    }
+    return i - j;
+  });
+  return idx;
+}
+
+/** SORT: the rows by the values in column `index`, or with `byCol` the columns by the values in row `index`. */
+export function sortGrid<T>(m: readonly (readonly T[])[], index: number, desc: boolean, byCol: boolean): T[][] | SolError {
+  const g = byCol ? transposeGrid(m) : m.map((r) => [...r]);
+  const width = g[0]?.length ?? 0;
+  // Nothing to sort is nothing sorted, never a sort_index out of range.
+  if (g.length === 0 || width === 0) return m.map((r) => [...r]);
+  if (!(Number.isInteger(index) && index >= 1 && index <= width))
+    return solError("#VALUE!", `SORT: sort_index ${index} is outside the ${width} ${byCol ? "rows" : "columns"}`);
+  const out = sortedIndexByKeys([{ vals: g.map((r) => r[index - 1]), desc }], g.length).map((i) => g[i]);
+  return byCol ? transposeGrid(out) : out;
+}
+
+/** A key or mask's shape: a list or 1 × n table is a row, an n × 1 table a column, one value either; anything else neither. */
+function lineShape(v: unknown): { dir: "row" | "col" | "any" | null; vals: unknown[] } {
+  if (!Array.isArray(v)) return { dir: "any", vals: [v] };
+  if (!(v.length > 0 && Array.isArray(v[0]))) return { dir: v.length === 1 ? "any" : "row", vals: v };
+  const t = v as unknown[][];
+  if (t.length === 1) return { dir: t[0].length === 1 ? "any" : "row", vals: t[0] };
+  return t.every((r) => r.length === 1) ? { dir: "col", vals: t.map((r) => r[0]) } : { dir: null, vals: [] };
+}
+
+/** Rows when the lines are columns, columns when they are rows; lines that are all one value follow the table's long side. */
+function lineAxis(m: readonly (readonly unknown[])[], dirs: readonly ("row" | "col" | "any" | null)[]): "rows" | "cols" | null {
+  if (dirs.some((d) => d === null)) return null;
+  const set = dirs.filter((d) => d !== "any");
+  if (set.some((d) => d !== set[0])) return null;
+  if (set[0] === "col") return "rows";
+  if (set[0] === "row") return "cols";
+  return m.length === 1 ? "cols" : "rows";
+}
+
+/** SORTBY: keys that are columns sort the rows, keys that are rows (a list is one) sort the columns, as Excel reads each by_array. */
+export function sortGridByKeys<T>(m: readonly (readonly T[])[], keys: readonly { key: unknown; desc: boolean }[]): T[][] | SolError {
+  if (keys.length === 0) return m.map((r) => [...r]);
+  const lines = keys.map((k) => lineShape(k.key));
+  const axis = lineAxis(m, lines.map((l) => l.dir));
+  if (!axis) return solError("#VALUE!", "SORTBY: every sort key must be one row or one column, all the same way");
+  const n = axis === "rows" ? m.length : (m[0]?.length ?? 0);
+  const bad = lines.find((l) => l.vals.length !== n);
+  if (bad) return solError("#VALUE!", `SORTBY: a sort key has ${bad.vals.length} values but the table has ${n} ${axis === "rows" ? "rows" : "columns"}`);
+  const order = sortedIndexByKeys(lines.map((l, i) => ({ vals: l.vals, desc: keys[i].desc })), n);
+  return axis === "rows" ? order.map((i) => [...m[i]]) : m.map((r) => order.map((j) => r[j]));
+}
+
+/** FILTER: a column mask keeps rows, a row mask (a list is one) keeps columns; each value is read as IF reads a condition. */
+export function filterGrid<T>(m: readonly (readonly T[])[], include: unknown): T[][] | SolError {
+  const line = lineShape(include);
+  const axis = lineAxis(m, [line.dir]);
+  if (!axis) return solError("#VALUE!", "FILTER: include must be one row or one column");
+  const n = axis === "rows" ? m.length : (m[0]?.length ?? 0);
+  if (line.vals.length !== n) return solError("#VALUE!", `FILTER: include has ${line.vals.length} values but the data has ${n} ${axis === "rows" ? "rows" : "columns"}`);
+  const keep = filterByMask(Array.from({ length: n }, (_, i) => i), line.vals);
+  if (isSolError(keep)) return keep;
+  return axis === "rows" ? keep.map((i) => [...m[i]]) : m.map((r) => keep.map((j) => r[j]));
+}
+
+/** UNIQUE: distinct rows (or with `byCol` columns) in first-seen order; `exactlyOnce` keeps only those that appear once. */
+export function uniqueGrid<T>(m: readonly (readonly T[])[], byCol: boolean, exactlyOnce: boolean): T[][] {
+  const g = byCol ? transposeGrid(m) : m.map((r) => [...r]);
+  const keyOf = (r: readonly T[]) => JSON.stringify(r.map((v) => (isSolError(v) ? `\x00err:${v.code}` : setKey(v) ?? null)));
+  const keys = g.map(keyOf);
+  const counts = new Map<string, number>();
+  for (const k of keys) counts.set(k, (counts.get(k) ?? 0) + 1);
+  const seen = new Set<string>();
+  const out: T[][] = [];
+  for (const [i, r] of g.entries()) {
+    const k = keys[i];
+    if (seen.has(k) || (exactlyOnce && counts.get(k)! > 1)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return byCol ? transposeGrid(out) : out;
+}
+
 export function modeMult(arr: readonly unknown[]): unknown[] | SolError {
   const err = firstError(arr);
   if (err) return err;
+  if (arr.some((v) => typeof v === "number" && Number.isNaN(v))) return solError("#DOMAIN!", DOMAIN_MESSAGE);
   const counts = new Map<unknown, { v: unknown; n: number }>();
   for (const v of arr) {
     if (isMissing(v)) continue;
@@ -861,12 +906,10 @@ export function modeMult(arr: readonly unknown[]): unknown[] | SolError {
   }
   let best = 0;
   for (const e of counts.values()) best = Math.max(best, e.n);
-  if (best < 2) return [];
+  if (best < 2) return noMode();
   return [...counts.values()].filter((e) => e.n === best).map((e) => e.v);
 }
 
-/** FREQUENCY(data, bins): counts per interval (≤ bin, ascending) plus one OVERFLOW bucket;
- *  with unsorted bins the counts follow sorted order but report in the GIVEN order. */
 export function frequencyBins(data: readonly Cell[], bins: readonly Cell[]): number[] | SolError {
   const err = firstError(data) ?? firstError(bins);
   if (err) return err;
@@ -880,14 +923,11 @@ export function frequencyBins(data: readonly Cell[], bins: readonly Cell[]): num
       const lo = k === 0 ? -Infinity : sorted[k - 1].b;
       if (x > lo && x <= sorted[k].b) { counts[sorted[k].i]++; placed = true; break; }
     }
-    if (!placed) counts[bins.length]++; // overflow: greater than every bin
+    if (!placed) counts[bins.length]++;
   }
   return counts;
 }
 
-/** Quantile buckets 1..n (pandas qcut, right-inclusive edges): the edges are the
- *  PERCENTILE.INC quantiles at k/n and a value on an edge stays in the bucket below.
- *  Position-preserving: a blank stays blank, an error rides along. */
 export function ntileList(arr: readonly Cell[], n: number): Cell[] | SolError {
   const k = Math.round(n);
   if (!(k >= 1)) return solError("#VALUE!", "NTILE needs at least one bucket");
@@ -900,11 +940,8 @@ export function ntileList(arr: readonly Cell[], n: number): Cell[] | SolError {
 }
 
 export type OutlierMethod = "z" | "iqr" | "mad";
-/** The conventional cutoffs: |z| > 3, 1.5 × IQR beyond the quartiles, modified z (0.6745·dev/MAD) > 3.5. */
 export const OUTLIER_DEFAULT_THRESHOLD: Record<OutlierMethod, number> = { z: 3, iqr: 1.5, mad: 3.5 };
 
-/** Flag each value as an outlier by the chosen rule; blank → blank, error → error, and a
- *  list too small or too flat to judge flags nothing (all FALSE). */
 export function outlierFlags(arr: readonly Cell[], method: OutlierMethod, threshold: number): (boolean | null | SolError)[] {
   const nums = presentNumbers(arr);
   const no = () => arr.map((v) => (isSolError(v) ? v : v == null ? null : false));
@@ -931,9 +968,6 @@ export function outlierFlags(arr: readonly Cell[], method: OutlierMethod, thresh
   return arr.map((v) => (isSolError(v) ? v : typeof v === "number" && Number.isFinite(v) ? test(v) : null));
 }
 
-/** Discrete Fourier transform of a real list — Bluestein's chirp-z for any length (a
- *  power-of-two inner FFT), so no padding changes the answer (numpy.fft.fft, R fft).
- *  Returns the full complex spectrum as [re[], im[]]. */
 export function fftReal(x: readonly number[]): { re: number[]; im: number[] } {
   const n = x.length;
   if (n === 0) return { re: [], im: [] };
@@ -941,7 +975,7 @@ export function fftReal(x: readonly number[]): { re: number[]; im: number[] } {
   const isPow2 = (n & (n - 1)) === 0;
   const re = [...x], im = new Array<number>(n).fill(0);
   if (isPow2) { fftInPlace(re, im, false); return { re, im }; }
-  // Bluestein: x_k · w^{k²/2} convolved with the chirp w^{-k²/2}, via a size-m FFT (m ≥ 2n−1, power of 2).
+  // Bluestein: multiply by the chirp, convolve with its conjugate through a power-of-two FFT of size m ≥ 2n−1, multiply back.
   let m = 1; while (m < 2 * n - 1) m <<= 1;
   const cosT: number[] = [], sinT: number[] = [];
   for (let k = 0; k < n; k++) { const ang = (Math.PI * ((k * k) % (2 * n))) / n; cosT.push(Math.cos(ang)); sinT.push(Math.sin(ang)); }
@@ -958,7 +992,6 @@ export function fftReal(x: readonly number[]): { re: number[]; im: number[] } {
   return { re: outRe, im: outIm };
 }
 
-/** Iterative radix-2 Cooley–Tukey in place; `inverse` divides by n. */
 function fftInPlace(re: number[], im: number[], inverse: boolean): void {
   const n = re.length;
   for (let i = 1, j = 0; i < n; i++) {
@@ -986,10 +1019,10 @@ function fftInPlace(re: number[], im: number[], inverse: boolean): void {
 }
 
 export interface SpectrumRow { bin: number; frequency: number; magnitude: number; phase: number }
-/** The one-sided amplitude spectrum of a real signal sampled at `rate` (numpy.fft.rfft +
- *  rfftfreq): bins 0..⌊n/2⌋, magnitude scaled 2/n (1/n at DC and Nyquist) so a pure
- *  sine of amplitude A reads A; phase in radians. A blank in the signal counts as 0. */
-export function spectrum(x: readonly Cell[], rate = 1): SpectrumRow[] {
+export function spectrum(x: readonly Cell[], rate: number | SolError = 1): SpectrumRow[] | SolError {
+  if (isSolError(rate)) return rate;
+  const err = firstError(x);
+  if (err) return err;
   const sig = x.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0));
   const n = sig.length;
   if (n === 0) return [];
@@ -1002,4 +1035,28 @@ export function spectrum(x: readonly Cell[], rate = 1): SpectrumRow[] {
     rows.push({ bin: k, frequency: (k * rate) / n, magnitude: mag * scale, phase: Math.atan2(im[k], re[k]) });
   }
   return rows;
+}
+
+/** Shared with the pack's ISIN formula. */
+export function isInMask(a: readonly unknown[], b: readonly unknown[]): (boolean | null | SolError)[] {
+  const members = new Set<unknown>();
+  for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(setKey(v));
+  return a.map((v) => {
+    if (isMissing(v)) return null;
+    if (isSolError(v)) return v as SolError;
+    return members.has(setKey(v));
+  });
+}
+
+/** Shared with the pack's TALLY formula. */
+export function tallyPairs(list: readonly unknown[]): { values: unknown[]; counts: number[] } {
+  const counts = new Map<unknown, { value: unknown; count: number }>();
+  for (const v of list) {
+    if (isMissing(v) || isSolError(v)) continue;
+    const k = setKey(v);
+    const e = counts.get(k);
+    if (e) e.count++; else counts.set(k, { value: v, count: 1 });
+  }
+  const entries = [...counts.values()];
+  return { values: entries.map((e) => e.value), counts: entries.map((e) => e.count) };
 }

@@ -1,3 +1,4 @@
+// [[C50]] lambdaBindsByName
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
   MapTableNode as MapTableNodeType,
@@ -7,7 +8,8 @@ import type {
   ScanLambdaNode as ScanLambdaNodeType,
 } from "../rete-nodes";
 import { isLambdaValue, formatLambda, formatLambdaSig, undeclaredConsumerVars, type LambdaSig } from "../nodes/lambda";
-import { processGraph } from "../process";
+import { getOwningView, getOwningEditor } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { formulaPopup } from "../formulaPopupStore";
 import { cableValueStore } from "../cableValueStore";
 import { InlineInputs, useIncomingSources } from "./inlineInput";
@@ -27,8 +29,6 @@ export const FORMULA_KEYS = new Set(["lambda"]);
 
 type FormulaNode = { id: string; label?: string; stringLiterals: Record<string, string>; lambdaSig?: LambdaSig };
 
-/** Formula editor bound to node.stringLiterals.formula; a wired LAMBDA value
- *  supersedes the inline text. */
 export function FormulaBox({ node }: { node: FormulaNode }) {
   const incoming = useIncomingSources(node.id);
   const lambdaSrc = incoming.get("lambda");
@@ -44,16 +44,9 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.stringLiterals.formula]);
 
-  async function onChange(next: string) {
-    setVal(next);
-    node.stringLiterals.formula = next;
-    await processGraph();
-  }
-
   if (lambdaSrc) {
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
-    // Params bind BY NAME ([[C50]] lambdaBindsByName), so a body variable that is one of this node's variables
-    // but isn't declared a param silently reads as a captured constant rather than binding.
+    // A body variable that is one of this node's variables but not a declared param reads as a captured constant, never a binding.
     const undeclared = node.lambdaSig && isLambdaValue(live) ? undeclaredConsumerVars(live.captured, node.lambdaSig) : [];
     return (
       <>
@@ -67,7 +60,7 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
         {undeclared.length > 0 && (
           <div
             className="solenoid-expr__lambda-hint"
-            title="Used but not declared as a parameter — binds as a captured constant, not the live value."
+            title="Used but not declared as a parameter, so it binds as a captured constant, not the live value."
           >
             {undeclared.join(", ")} not declared — λ({formatLambdaSig(node.lambdaSig!)})
           </div>
@@ -77,7 +70,7 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
   }
 
   return (
-    <FormulaField value={val} onChange={onChange} onOpen={() => formulaPopup.open(node.id)} />
+    <FormulaField value={val} onOpen={() => formulaPopup.open(node.id)} />
   );
 }
 
@@ -102,15 +95,26 @@ const AXIS_OPTS: ReadonlyArray<{ value: ByAxis; label: string }> = [
   { value: "col", label: "By column" },
 ];
 
+// [[B11]] maximalMerge: BYROW answers a one-column table and BYCOL a list, so the switch retypes the output.
 export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [op, setOpField] = useNodeField(data, "op");
+  async function pickOp(next: ByAxis) {
+    if (!data.setOp(next)) return;
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
+    if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
+    if (view) await view.rerenderNode(data.id);
+    setOpField(next);
+  }
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
-      <OpSelect value={op} onChange={setOp} options={AXIS_OPTS} />
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={AXIS_OPTS} />
       <FormulaBox node={data} />
-      <ResultTypeToggle node={data} dim="combo" />
-      <ValueDisplay value={data.cachedResult as ListVal} />
+      <ResultTypeToggle node={data} dim={data.resultDim} />
+      {op === "row"
+        ? <TableDisplay table={data.cachedResult as (number | string | null)[][] | null} label={nodeDisplayName(data)} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
+        : <ValueDisplay value={data.cachedResult as ListVal} />}
       <FormulaError msg={data.cachedError} />
     </NodeShell>
   );

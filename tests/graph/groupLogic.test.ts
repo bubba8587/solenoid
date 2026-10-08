@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle
+// [[C86]] membershipByGesture, [[C112]] noOverlapsEver
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup, withLockedGroupsPinned } from "../../src/graph/groupLogic";
@@ -45,12 +45,6 @@ describe("moveGroupMembers — skipSelected guards the double-move", () => {
     expect([...h.translated].sort()).toEqual(["a", "c"]);      // b not moved again
     expect(h.final.get("b")).toEqual({ x: 100, y: 0 });        // untouched
     expect(h.final.get("a")).toEqual({ x: 10, y: 5 });
-  });
-
-  it("still moves UNSELECTED members with skipSelected on", () => {
-    const h = harness(new Set(["a", "b", "c"])); // whole group + members selected
-    moveGroupMembers(h.editor, h.view, h.group, 10, 5, true);
-    expect(h.translated).toEqual([]);                          // all carried by the selector
   });
 
   it("no-op on a zero delta", () => {

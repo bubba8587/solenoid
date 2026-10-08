@@ -6,6 +6,7 @@ import { formulaPopup } from "../formulaPopupStore";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
+import { closeParens } from "../closeParens";
 import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
 import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../rete-nodes";
 import { appThemeStore } from "../appTheme";
@@ -19,11 +20,11 @@ import { formatScalar } from "./format";
 import { PopupShell } from "./PopupShell";
 import "./FormulaPopup.css";
 import { nodeDisplayName } from "../catalogUtils";
+import { ChevronRightIcon } from "./Icons";
 
-// Step-by-step evaluator: built, then shelved; flip to re-enable its intact wiring.
+// The step-by-step evaluator is shelved; true re-enables its intact wiring.
 const SHOW_STEPS = false;
 
-// One adapter shape, so the popup stays node-type-agnostic across the formula hosts.
 type FormulaHost = {
   label: string;
   text: string;
@@ -31,13 +32,12 @@ type FormulaHost = {
   setText: (s: string) => void | Promise<void>;
   /** The Equation node: no "=" prefix — the text carries its own. */
   equation?: boolean;
-  /** Per-variable prose; undefined = this host doesn't support variable descriptions. */
+  /** Undefined when this host doesn't support variable descriptions. */
   varDescriptions?: Record<string, string>;
   setVarDescription?: (name: string, desc: string) => void;
 };
 
-// Identify hosts by constructor NAME, never instanceof — a Vite hot swap replaces the class
-// objects while rete keeps instances built from the old ones, silently breaking the gate.
+// By constructor name, never instanceof: a Vite hot swap replaces the classes while old instances live on.
 const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode", "ReduceLambdaNode", "ScanLambdaNode", "OdeIntegrateNode"]);
 
 /** Display-only, so no recompute — just re-render the card for its tooltip. */
@@ -67,7 +67,6 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
       varDescriptions: n.varDescriptions, setVarDescription: (name, desc) => setVarDesc(n, name, desc) };
   }
   if (typeName === "ComputedColumnNode") {
-    // Its variables are column names, so there are no variable descriptions.
     const n = node as unknown as { id: string; expr: string };
     return { label, text: n.expr, locked: false,
       setText: async (s) => { n.expr = s; await processGraph(n.id); } };
@@ -84,8 +83,7 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
   return null;
 }
 
-// Descriptions are notes, not formula: kept OUT of the formula string, committed per
-// keystroke, and editable even when the formula is locked.
+// Notes, not formula: kept out of the formula string and editable while it is locked, so they commit per keystroke ([[C95]] commitOnEnter).
 function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHost }) {
   const [local, setLocal] = useState<Record<string, string>>(() => ({ ...host.varDescriptions }));
   const set = (v: string, desc: string) => {
@@ -93,8 +91,11 @@ function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHos
     host.setVarDescription?.(v, desc);
   };
   return (
-    <div className="formula-popup__vars">
-      <div className="formula-popup__vars-title">Variables</div>
+    <details className="formula-popup__vars">
+      <summary className="formula-popup__vars-title">
+        <span className="formula-popup__vars-chevron"><ChevronRightIcon size={10} strokeWidth={2} /></span>
+        Variable Definitions
+      </summary>
       {vars.map((v) => (
         <div key={v} className="formula-popup__var-row">
           <span className="formula-popup__var-name" dangerouslySetInnerHTML={{ __html: renderTex(v) }} />
@@ -107,12 +108,11 @@ function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHos
           />
         </div>
       ))}
-    </div>
+    </details>
   );
 }
 
-// Falls back to the raw string while katex is still loading; useKatexRender re-renders
-// the popup once the chunk arrives.
+// The raw string while katex loads; useKatexRender re-renders once the chunk arrives.
 function renderTex(latex: string): string {
   const render = getKatexRenderer();
   if (!render) return latex;
@@ -120,8 +120,7 @@ function renderTex(latex: string): string {
   catch { return latex; }
 }
 
-// Mirrors ExpressionNode.data's variable resolution; null when any input isn't a plain
-// number, since the step-by-step walk is scalar-only.
+// Mirrors ExpressionNode.data's variable resolution; null when any input isn't a plain number (the walk is scalar-only).
 function gatherVars(node: ExpressionNode, expr: string): Record<string, number> | null {
   const editor = getOwningEditor(node.id);
   const out: Record<string, number> = {};
@@ -135,7 +134,6 @@ function gatherVars(node: ExpressionNode, expr: string): Record<string, number> 
   return out;
 }
 
-/** The formula popup, mounted once in App and opened from any FormulaField. */
 export function FormulaPopup() {
   const nodeId = useSyncExternalStore(formulaPopup.subscribe, formulaPopup.get);
 
@@ -146,20 +144,19 @@ export function FormulaPopup() {
   const [text, setText] = useState("");
   const initedFor = useRef<string | null>(null);
   const renderRef = useRef<HTMLDivElement>(null);
-  // The formula is written ONCE on exit, never per keystroke — a half-typed formula would
-  // drop a variable mid-edit and destroy the cables already wired to it. `textRef` exists
-  // because the Escape listener closes over a stale `text`.
+  // Written once on exit, never per keystroke ([[C95]] commitOnEnter); `textRef` because the Escape listener closes over a stale `text`.
   const textRef = useRef("");
   const committedRef = useRef("");
 
-  // The single place the formula (and, via applyExprChange, its sockets) is written.
+  // The one place the formula, and through applyExprChange its sockets, is written.
   function commit(id: string | null) {
     if (!id) return;
     const host = formulaHostOf(getOwningEditor(id)?.getNode(id));
     if (!host || host.locked) return;
-    if (textRef.current === committedRef.current) return;
-    committedRef.current = textRef.current;
-    void host.setText(textRef.current);
+    const next = closeParens(textRef.current);
+    if (next === committedRef.current) return;
+    committedRef.current = next;
+    void host.setText(next);
   }
 
   function commitAndClose() {
@@ -196,20 +193,19 @@ export function FormulaPopup() {
 
   useFormulaFit(renderRef, [katexHtml, nodeId], { useHeight: false, max: 1 });
 
-  // Owning editor, not main — a card inside a composite drill-in opens this same popup.
+  // Owning editor: a card inside a drill-in opens this same popup.
   const node = nodeId ? getOwningEditor(nodeId)?.getNode(nodeId) : undefined;
   const host = formulaHostOf(node);
   if (!node || !host) return null;
   const locked = host.locked;
 
-  // Mirror NodeCard's accent + group-color CSS vars so the chrome matches the node.
   const mode = appThemeStore.getMode();
   const rawAccent = NODE_KIND_ACCENTS[nodeKindOf(node)];
   const groupColor = groupMembershipStore.color(node.id);
   const grouped = !!groupColor;
   const style: CSSProperties = {};
   const cssVars = style as Record<string, string>;
-  // `--node-accent` must ship with its own ink — the app-wide --accent-ink is a different hue.
+  // `--node-accent` ships with its own ink; the app-wide --accent-ink is a different hue.
   if (rawAccent) {
     const accent = themeAccent(rawAccent, mode);
     cssVars["--node-accent"] = accent;
@@ -239,8 +235,9 @@ export function FormulaPopup() {
       cardStyle={style}
       headerExtra={locked && <span className="formula-popup__lock-tag" title="This formula can't be edited here.">Locked</span>}
       pinNodeId={node.id}
+      resizable={{ min: { w: 360, h: 260 } }}
     >
-      <div className="formula-popup__body">
+      <div className="formula-popup__body sol-popup__scroll">
         <div className="formula-popup__render" ref={renderRef}>
           {katexHtml != null ? (
             <span dangerouslySetInnerHTML={{ __html: katexHtml }} />
@@ -266,18 +263,13 @@ export function FormulaPopup() {
           />
         </div>
 
-        {/* Engine note: the formula path resolves through the same registry as the
-            visual nodes, so they match wherever they overlap. The load-bearing thing
-            to tell the user is the SHAPE boundary as of matricesInFormulas/tableRefSemantics: scalars, lists and
-            MATRICES are in (with complex); frames/cubes stay out — the verb nodes
-            are their surface, and a computed column's references are the row door. */}
         {host.equation ? (
           <div className="formula-popup__engine-note">
-            ƒ One <strong>=</strong> with variables on either side. Leave exactly one variable unwired and the node solves for it — a quadratic in the unknown returns <strong>both roots</strong>; no real solution is <code>#SOLVE!</code>. Wire every variable and Check turns TRUE/FALSE.
+            One <strong>=</strong>, with variables on both sides. Leave one variable unwired and the node solves for it: a quadratic returns <strong>both roots</strong>, and no real solution is <code>#SOLVE!</code>. With every variable wired, Check shows TRUE or FALSE.
           </div>
         ) : (
         <div className="formula-popup__engine-note">
-          The Formula surface does not support Frame-related nodes, such as JOIN.
+          The Formula surface does not support Frame/Cube-related nodes, such as JOIN.
         </div>
         )}
 

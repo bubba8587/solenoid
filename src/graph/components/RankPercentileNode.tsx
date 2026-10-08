@@ -1,10 +1,9 @@
-// [[D10]] onePrunePath
 import { RANK_PERCENTILE_OP_META } from "../rete-nodes";
 import type { RankPercentileNode as RankPercentileNodeType, RankPercentileOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 
 const OPS = (Object.keys(RANK_PERCENTILE_OP_META) as RankPercentileOp[]).map((op) => ({
   value: op,
@@ -19,7 +18,7 @@ export function RankPercentileComponent({ data, emit }: NodeProps<RankPercentile
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     setOpField(next);
   }
 

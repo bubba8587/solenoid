@@ -1,29 +1,20 @@
 // [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet
-// The markdown renderer for NOTE-shaped text (Note, Import Obsidian Note, Report, a
-// wired document embed, the webpage export): GFM plus Obsidian's own forms —
-// `[[wikilinks]]`, `#tags`, `==highlights==`, `> [!kind]` callouts, `$math$` /
-// `$$math$$` (KaTeX, once loaded), `%% comments %%` (hidden) and
-// trailing `^block-ids` (hidden) — decorated as elements the stylesheet dresses
-// (`.sol-md__*`). Its own Marked instance, so help prose and catalog descriptions
-// (`Markdown.tsx`, `descriptionMd.ts`) stay untouched: an error code like `#NAME?` in
-// a description is not a tag. Pure apart from the KaTeX lookup; callers sanitize.
 import { Marked, type TokenizerAndRendererExtension, type Tokens } from "marked";
 import { getKatexRenderer } from "./components/katexLoader";
+import { TAG_BODY, isTagBody } from "./vaultCube";
+import { fencedLines } from "./managedBlock";
+import { parseNoteFrontmatter } from "./noteFrontmatter";
 
 const WIKILINK = /^(!?)\[\[([^[\]|#]+?)(#[^[\]|]+)?(?:\|([^[\]]+))?\]\]/;
-// A tag: `#` then a letter or underscore, then letters, digits, `_`, `-` or `/`.
-const TAG = /^#([\p{L}_][\p{L}\p{N}_\-/]*)/u;
-// A Solenoid / Excel error code (`#NAME?`, `#DIV/0!`, `#N/A`) is never a tag.
+const TAG = new RegExp(`^#(${TAG_BODY})`, "u");
 const ERROR_CODE = /^#[A-Z][A-Z0-9/]*[!?]?$/;
 const HIGHLIGHT = /^==([^\s=](?:[^\n]*?[^\s=])?)==/;
-// Inline math: `$…$` with no space just inside either `$` and no digit right after.
 const MATH_INLINE = /^\$([^\s$](?:[^$\n]*?[^\s$])?)\$(?!\d)/;
 const MATH_BLOCK = /^\$\$\n?([\s\S]+?)\n?\$\$(?:\n|$)/;
 const CALLOUT_HEAD = /^\[!([A-Za-z-]+)\]([+-]?)[ \t]*/;
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-// ─── Inline forms ─────────────────────────────────────────────────────────────
 
 interface WikilinkToken extends Tokens.Generic { type: "wikilink"; target: string; heading: string; alias: string; embed: boolean }
 const wikilink: TokenizerAndRendererExtension = {
@@ -46,19 +37,21 @@ interface TagToken extends Tokens.Generic { type: "hashtag"; tag: string }
 const hashtag: TokenizerAndRendererExtension = {
   name: "hashtag",
   level: "inline",
-  // Only a `#` opening a word: at the start, or after whitespace or an opening bracket.
   start(src) {
     for (let i = src.indexOf("#"); i !== -1; i = src.indexOf("#", i + 1)) {
       if (i === 0 || /[\s([{]/.test(src[i - 1])) return i;
     }
     return -1;
   },
-  tokenizer(src): TagToken | undefined {
+  // `start` only suggests where to look; marked still tries the tokenizer at every offset, so the word-start rule is checked here too.
+  tokenizer(src, tokens): TagToken | undefined {
+    const prev = tokens[tokens.length - 1]?.raw.slice(-1) ?? "";
+    if (prev !== "" && !/[\s([{]/.test(prev)) return undefined;
     const m = TAG.exec(src);
     if (!m) return undefined;
     const after = src[m[0].length] ?? "";
     if (ERROR_CODE.test(m[0] + (after === "!" || after === "?" ? after : ""))) return undefined;
-    if (/^\p{N}+$/u.test(m[1])) return undefined; // a bare number is a heading count, not a tag
+    if (!isTagBody(m[1])) return undefined;
     return { type: "hashtag", raw: m[0], tag: m[1] };
   },
   renderer(token) {
@@ -82,12 +75,17 @@ const highlight: TokenizerAndRendererExtension = {
 };
 
 interface MathToken extends Tokens.Generic { type: "mathInline" | "mathBlock"; tex: string }
+let _mathOutput: "html" | "mathml" = "html";
+// DOMPurify drops <semantics>/<annotation> but keeps their text, which would print the TeX beside the formula.
+const TEX_ANNOTATION = /<annotation encoding="application\/x-tex">[\s\S]*?<\/annotation>/g;
+
 function renderMath(tex: string, display: boolean): string {
-  const katex = getKatexRenderer(); // null until the chunk lands; the sites re-render then
+  const katex = getKatexRenderer();
   const cls = `sol-md__math${display ? " sol-md__math--block" : ""}`;
   if (!katex) return `<span class="${cls} sol-md__math--pending">${esc(display ? `$$${tex}$$` : `$${tex}$`)}</span>`;
   try {
-    return `<span class="${cls}">${katex(tex, { displayMode: display, throwOnError: false })}</span>`;
+    const html = katex(tex, { displayMode: display, throwOnError: false, output: _mathOutput });
+    return `<span class="${cls}">${_mathOutput === "mathml" ? html.replace(TEX_ANNOTATION, "") : html}</span>`;
   } catch {
     return `<span class="${cls} sol-md__math--error">${esc(tex)}</span>`;
   }
@@ -114,9 +112,7 @@ const mathBlock: TokenizerAndRendererExtension = {
   renderer(token) { return `<div class="sol-md__math-row">${renderMath((token as MathToken).tex, true)}</div>\n`; },
 };
 
-// ─── Callouts: a blockquote whose first line is `[!kind] Title` ──────────────────
 
-/** Kind → icon group (the Lucide glyph the title carries) and whether it reads as danger. */
 const CALLOUT_KIND: Record<string, { icon: string; danger?: boolean }> = {
   note: { icon: "pencil" }, abstract: { icon: "list" }, summary: { icon: "list" }, tldr: { icon: "list" },
   info: { icon: "info" }, todo: { icon: "check" }, tip: { icon: "flame" }, hint: { icon: "flame" }, important: { icon: "flame" },
@@ -143,9 +139,6 @@ const ICON_PATH: Record<string, string> = {
 const calloutIcon = (name: string) =>
   `<svg class="sol-md__callout-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICON_PATH[name]}"/></svg>`;
 
-/** A blockquote opening with `[!kind] Title` renders as a callout: the kind picks the
- *  icon (and the danger ink), the rest of the first line is the title (the kind's
- *  name when blank), the remaining lines the body. Any other blockquote is untouched. */
 function blockquoteRenderer(this: { parser: { parse(tokens: Tokens.Generic[]): string; parseInline(tokens: Tokens.Generic[]): string } }, token: Tokens.Blockquote): string | false {
   const first = token.tokens[0];
   if (!first || first.type !== "paragraph") return false;
@@ -155,7 +148,6 @@ function blockquoteRenderer(this: { parser: { parse(tokens: Tokens.Generic[]): s
   const m = CALLOUT_HEAD.exec(lead.raw)!;
   const kind = m[1].toLowerCase();
   const spec = CALLOUT_KIND[kind] ?? CALLOUT_KIND.note;
-  // Split the paragraph at its first line break: title inline tokens, then the rest.
   const rest = para.raw.slice(m[0].length);
   const nl = rest.indexOf("\n");
   const titleSrc = (nl === -1 ? rest : rest.slice(0, nl)).trim();
@@ -166,16 +158,23 @@ function blockquoteRenderer(this: { parser: { parse(tokens: Tokens.Generic[]): s
   return `<div class="sol-md__callout sol-md__callout--${esc(kind)}${spec.danger ? " sol-md__callout--danger" : ""}"><div class="sol-md__callout-title">${calloutIcon(spec.icon)}<span>${title}</span></div>${body}</div>\n`;
 }
 
-// ─── Pre-parse: comments and block ids ───────────────────────────────────────────
 
-/** Split on fenced code so a transform never touches a fence's contents. */
 function outsideFences(md: string, fn: (chunk: string) => string): string {
-  const parts = md.split(/(^(?:```|~~~)[\s\S]*?^(?:```|~~~)[ \t]*$)/m);
-  return parts.map((p, i) => (i % 2 === 1 ? p : fn(p))).join("");
+  const lines = md.split("\n");
+  const fenced = fencedLines(lines);
+  const out: string[] = [];
+  for (let i = 0; i < lines.length;) {
+    let j = i;
+    while (j < lines.length && fenced[j] === fenced[i]) j++;
+    const run = lines.slice(i, j).join("\n");
+    out.push(fenced[i] ? run : fn(run));
+    i = j;
+  }
+  return out.join("\n");
 }
 
-// A comment on a line of its own takes the line with it; an inline one just vanishes.
-const COMMENT_LINE = /^[ \t]*%%[\s\S]*?%%[ \t]*(?:\n|$)/gm;
+// A line (or run of lines) that is one comment and nothing else goes whole; the body never crosses a `%%`.
+const COMMENT_LINE = /^[ \t]*%%(?:(?!%%)[\s\S])*%%[ \t]*(?:\n|$)/gm;
 const COMMENT = /%%[\s\S]*?%%/g;
 const BLOCK_ID = /[ \t]+\^[A-Za-z0-9-]+[ \t]*$/gm;
 
@@ -190,9 +189,28 @@ const noteMarked = new Marked({
   renderer: { blockquote: blockquoteRenderer as never },
 });
 
-/** Note-shaped markdown → HTML (unsanitized: the caller runs DOMPurify, as every render
- *  site does). Math renders through KaTeX once its chunk has loaded; before that the
- *  source shows verbatim and a subscribed site re-renders when it lands. */
-export function renderNoteMarkdown(md: string): string {
-  return noteMarked.parse(prepare(md), { async: false }) as string;
+/** `math: "mathml"` renders formulas as MathML, which lays out with no KaTeX stylesheet or fonts (a standalone export). */
+export function renderNoteMarkdown(md: string, opts?: { math?: "html" | "mathml" }): string {
+  _mathOutput = opts?.math ?? "html";
+  try {
+    return noteMarked.parse(prepare(md), { async: false }) as string;
+  } finally {
+    _mathOutput = "html";
+  }
+}
+
+const checkboxStates = (md: string): boolean[] =>
+  (renderNoteMarkdown(parseNoteFrontmatter(md).body).match(/<input\b[^>]*\btype="checkbox"[^>]*>/g) ?? []).map((tag) => /\schecked\b/.test(tag));
+
+/** Flips the source marker behind the `index`th checkbox of the read view; a marker is found by flipping it and watching which box the renderer changes. */
+export function toggleTaskMarker(body: string, index: number): string {
+  const before = checkboxStates(body);
+  if (index < 0 || index >= before.length) return body;
+  for (const m of body.matchAll(/\[([ xX])\]/g)) {
+    const at = m.index + 1;
+    const next = body.slice(0, at) + (m[1] === " " ? "x" : " ") + body.slice(at + 1);
+    const after = checkboxStates(next);
+    if (after.length === before.length && after[index] !== before[index] && after.every((c, i) => i === index || c === before[i])) return next;
+  }
+  return body;
 }

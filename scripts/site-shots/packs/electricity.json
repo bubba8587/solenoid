@@ -1,0 +1,62 @@
+{
+  "label": "electricity",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Electricity & Circuits\n\n- Resistor Color Code\n- AWG Wire\n- Ohm's Law\n- E-Series Value",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "res",
+      "type": "ResistorCodeNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "Resistor Color Code"
+      },
+      "stringLiterals": {
+        "b1": "yellow",
+        "b2": "violet",
+        "b3": "black",
+        "mult": "red",
+        "tol": "gold"
+      }
+    },
+    {
+      "id": "awg",
+      "type": "AwgNode",
+      "x": 660,
+      "y": 0,
+      "init": {
+        "label": "AWG Wire"
+      },
+      "literals": {
+        "gauge": 12
+      }
+    },
+    {
+      "id": "ohm",
+      "type": "ExpressionNode",
+      "x": 940,
+      "y": 0,
+      "init": {
+        "label": "Voltage (Ohm's Law)",
+        "expr": "i*r",
+        "locked": true
+      },
+      "literals": {
+        "i": 0.02,
+        "r": 470
+      }
+    }
+  ],
+  "cables": []
+}

@@ -1,7 +1,4 @@
-/* Segmented button toggle — ONE segmented-button definition:
-   full-width in a stacked node body (Get Column / Add Column read-as), or the
-   inline-row variant (`--inline`) that fills the remaining row space (the FC's
-   places/sig-figs toggle). */
+/* The one segmented-button definition: full-width in a stacked body, or the inline-row variant (--inline) that fills the rest of a row. */
 .solenoid-seg {
   display: flex;
   width: 100%;
@@ -10,9 +7,7 @@
   width: auto;
   flex: 1 1 auto;
 }
-/* The RESTING look is neutral: SegToggle is an ARGUMENT control. Selection reads as
-   a tonal step (recessed field to raised fill), no color injection. OpToggle, the
-   family's op picker in this shape, layers the accent on top from nodeCard.css. */
+/* Neutral at rest, since SegToggle is an argument control; OpToggle layers the accent on top (nodeCard.css). */
 .solenoid-segbtn {
   flex: 1 1 auto;
   height: 22px;
@@ -26,9 +21,13 @@
   cursor: pointer;
   white-space: nowrap;
 }
+.solenoid-segbtn + .solenoid-segbtn { margin-left: -1px; }
 .solenoid-segbtn:first-child { border-radius: 3px 0 0 3px; }
-.solenoid-segbtn:last-child  { border-radius: 0 3px 3px 0; border-left: none; }
+.solenoid-segbtn:last-child  { border-radius: 0 3px 3px 0; }
+/* Neighbors share one seam; the selected segment draws its whole border over them. */
 .solenoid-segbtn--on {
-  background: var(--surface-raised);
+  position: relative;
+  z-index: 1;
+  background: color-mix(in srgb, var(--text) 10%, var(--surface-sunken));
   color: var(--text);
 }

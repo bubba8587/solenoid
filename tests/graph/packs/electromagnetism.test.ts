@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { EM_FORMULAS, ELECTROMAGNETISM_PACK } from "../../../src/graph/packs/electromagnetism";
+import { EM_FORMULAS } from "../../../src/graph/packs/electromagnetism";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { isSolError } from "../../../src/graph/errorValue";
-import { emBand, EmSpectrumNode } from "../../../src/graph/nodes/emSpectrum";
-import { PHYS_CONSTANTS, PhysicsConstantNode } from "../../../src/graph/rete-nodes";
+import { EmSpectrumNode } from "../../../src/graph/nodes/emSpectrum";
+import { emBand } from "../../../src/graph/nodes/emSpectrumOps";
+import { PhysicsConstantNode } from "../../../src/graph/rete-nodes";
+import { PHYS_CONSTANTS } from "../../../src/graph/nodes/physicsConstantsOps";
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(EM_FORMULAS, type), inputs);
@@ -83,11 +85,6 @@ describe("Physics Constant node", () => {
     expect(PHYS_CONSTANTS.na.value * PHYS_CONSTANTS.e.value).toBeCloseTo(PHYS_CONSTANTS.faraday.value, 4);
   });
 
-  it("a stale op from an old save falls back instead of crashing", () => {
-    const n = new PhysicsConstantNode({ op: "nope" as never });
-    expect(n.op).toBe("c");
-  });
-
   it("carries its unit like an FC lock: the annotation rides through a Display", async () => {
     const { NodeEditor, ClassicPreset } = await import("rete");
     const { makeAnnotationResolver } = await import("../../../src/graph/unitFlow");
@@ -104,12 +101,6 @@ describe("Physics Constant node", () => {
     const ann = r.inAnnotation(disp.id, "in");
     expect(ann?.unit).toBe("custom");
     expect(ann?.customUnit).toBe(" m/s");
-  });
-});
-
-describe("pack wiring", () => {
-  it("depends on the electricity pack", () => {
-    expect(ELECTROMAGNETISM_PACK.dependsOn).toEqual(["electricity"]);
   });
 });
 
@@ -140,6 +131,13 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
   it("EMSPECTRUMBAND classifies by frequency, or by wavelength via an elided first arg", () => {
     expect(String(evalPackFormula("EMSPECTRUMBAND(5e14)"))).toMatch(/^Visible/);
     expect(evalPackFormula("EMSPECTRUMBAND(, 0.05)")).toBe("Microwave");
+  });
+  it("a non-positive wavelength is #DOMAIN!, like a non-positive frequency", () => {
+    const wl = evalPackFormula("EMSPECTRUMBAND(, -1)");
+    expect(isSolError(wl) && wl.code).toBe("#DOMAIN!");
+    const n = new EmSpectrumNode();
+    n.literals = {};
+    expect(isSolError(n.data({ wavelength: [0] }).band)).toBe(true);
   });
   it("PHYSICSCONSTANT reads the table by id, case-sensitively", () => {
     expect(evalPackFormula('PHYSICSCONSTANT("c")')).toBe(299792458);

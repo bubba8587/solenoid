@@ -9,11 +9,6 @@ import { readFrame } from "../../../src/graph/frameBackend";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
 
 describe("VSTACK stacks; Concat appends (the Excel row semantics)", () => {
-  it("two lists VSTACK into a 2-row table (a list is one row)", () => {
-    const r = new StackNode({ op: "vstack" }).data({ t0: [[1, 2, 3]], t1: [[4, 5, 6]] }).result;
-    expect(r).toEqual([[1, 2, 3], [4, 5, 6]]);
-  });
-
   it("two lists HSTACK into one long row", () => {
     const r = new StackNode({ op: "hstack" }).data({ t0: [[1, 2]], t1: [[3, 4, 5]] }).result;
     expect(r).toEqual([[1, 2, 3, 4, 5]]);

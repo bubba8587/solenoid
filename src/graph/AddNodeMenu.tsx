@@ -1,43 +1,58 @@
-// [[D5]], [[D6]]
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+// [[B16]] oneFormulaSurface
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
-import { IS_COARSE } from "./coarse";
+import { IS_COARSE, deviceModeStore } from "./coarse";
+import { addMenuRequest } from "./addMenuStore";
 import { descriptionText } from "./descriptionMd";
 import "./AddNodeMenu.css";
-import { ChevronRightIcon } from "./components/Icons";
+import { NODE_KIND_ACCENTS, type NodeKind } from "./nodes/shared";
+import { themeAccent } from "./palette";
+import { appThemeStore } from "./appTheme";
+import { SOCKET_COLORS, type SocketDataType } from "./sockets";
 
-// Leaf entry — produces a node when selected.
+/** A row takes its kind's color as a card of that kind shows it: the current palette, adjusted for light mode. */
+const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kind], appThemeStore.getMode());
+import { ChevronRightIcon, ChevronLeftIcon } from "./components/Icons";
+
+function leafHighlight(leaf: NodeCatalogEntry): { className: string; style?: CSSProperties } {
+  // One type tints the row like a kind accent, in that type's socket color; several make the flag.
+  if (leaf.accents?.length === 1) return { className: " solenoid-add-menu__item--accent", style: { "--item-accent": SOCKET_COLORS[leaf.accents[0]] } as CSSProperties };
+  if (leaf.accents?.length) return { className: " solenoid-add-menu__item--accent solenoid-add-menu__item--bands" };
+  if (leaf.accent) return { className: " solenoid-add-menu__item--accent", style: { "--item-accent": leafAccent(leaf.accent) } as CSSProperties };
+  return { className: "" };
+}
+
+/** A type-toggle node's flag: one slanted tile per type at the row's trailing end, in that type's socket color. */
+function TypeBands({ types }: { types?: readonly SocketDataType[] }) {
+  if (!types || types.length < 2) return null;
+  return (
+    <span className="solenoid-add-menu__bands" aria-hidden="true">
+      {types.map((t) => <span key={t} className="solenoid-add-menu__band" style={{ "--band-color": SOCKET_COLORS[t] } as CSSProperties} />)}
+    </span>
+  );
+}
+
 export type NodeCatalogEntry = {
   type: string;
   label: string;
   description?: string;
   create: () => unknown;
-  // Node-kind accent, drawn as a filled rounded-rect; highlights user-input nodes.
-  accent?: string;
-  // true (default) = fully equivalent to the Excel counterpart(s); false = known
-  // limitations (see `note`). An ExcelEquiv may override this per Excel function.
+  /** The node kind whose palette color tints the row, resolved when the menu draws so a palette switch reaches it. */
+  accent?: NodeKind;
+  /** A type toggle's choices, in toggle order: the row's highlight splits into one band per type, in that type's socket color. */
+  accents?: readonly SocketDataType[];
   parity?: boolean;
-  // Stays registered so saved graphs still load, but is hidden from the Add menu and the
-  // Function Reference so new ones can't be created.
   hidden?: boolean;
-  // Pack id(s) contributing this node; undefined/empty = built-in. Set by the catalog builder.
   packs?: string[];
-  // Ops with no Add-menu leaf of their own, DERIVED from `nodeOps.ts` — never hand-set, so
-  // the `{ }` marker can't claim something the menu contradicts.
   hiddenOps?: Array<{ op: string; label: string }>;
-  // Opts out of the `{ }` glyph; the ops stay in `hiddenOps` and stay searchable.
   hideOpsMark?: boolean;
-  // The node's OWN reference metadata, so the Function Reference generates from the catalog
-  // rather than a parallel hand-list; empty = a Solenoid-native node.
   excel?: ExcelEquiv[];
-  // Space-separated search synonyms, matched by the Add-menu search only, never displayed.
   keywords?: string;
-  // The formula name(s) this leaf answers to when the despaced label can't be the name
-  // (punctuation, or one node splitting into several functions).
   fx?: string[];
+  /** A generated row that places what another row places (the host, or `host__op-op`); search shows one of them. */
+  places?: string;
 };
 
-// `parity`/`note` override the entry's defaults for this one Excel function.
 export type ExcelEquiv = {
   excel: string;
   syntax: string;
@@ -45,12 +60,11 @@ export type ExcelEquiv = {
   note?: string;
 };
 
-// `▶` is reserved for an expanding category and parentheses would collide with formula
-// syntax, so hidden-op cards take braces. Rendered, not baked into the label, so search and
-// the node header keep the clean name.
+/** Which side of a pair a half-width row sits on; false for a full row. */
+type Half = "start" | "end" | false;
+const halfClass = (h: Half | undefined) => (h ? ` solenoid-add-menu__item--half solenoid-add-menu__item--half-${h}` : "");
+
 function OpsMark() {
-  // aria-hidden keeps the glyph out of the announced name; the title is a mouse-hover
-  // hint for the marker, generic by design (no op names — tooltips are structural).
   return <span className="solenoid-add-menu__ops-mark" aria-hidden="true" title="Node contains multiple operations">{"{ }"}</span>;
 }
 
@@ -64,7 +78,6 @@ function PackDot({ packs }: { packs: string[] }) {
   );
 }
 
-// Category entry — opens a submenu.
 export type CatalogCategory = {
   type: "category";
   label: string;
@@ -72,7 +85,6 @@ export type CatalogCategory = {
   children: CatalogEntry[];
 };
 
-// Pair entry — two leaf entries shown side by side (for opposites).
 export type CatalogPair = {
   type: "pair";
   children: [NodeCatalogEntry, NodeCatalogEntry];
@@ -88,18 +100,16 @@ function isPair(e: CatalogEntry): e is CatalogPair {
 }
 
 // ─── Render/nav items ───────────────────────────────────────────────────
-// Pairs flatten into two half-leaves so the keyboard moves through every node and the grid
-// lays the halves into its two columns.
 type RenderItem =
-  | { kind: "leaf"; entry: NodeCatalogEntry; half: boolean }
+  | { kind: "leaf"; entry: NodeCatalogEntry; half: Half }
   | { kind: "category"; entry: CatalogCategory };
 
 function toRenderItems(entries: CatalogEntry[]): RenderItem[] {
   const out: RenderItem[] = [];
   for (const e of entries) {
     if (isPair(e)) {
-      out.push({ kind: "leaf", entry: e.children[0], half: true });
-      out.push({ kind: "leaf", entry: e.children[1], half: true });
+      out.push({ kind: "leaf", entry: e.children[0], half: "start" });
+      out.push({ kind: "leaf", entry: e.children[1], half: "end" });
     } else if (isCategory(e)) {
       out.push({ kind: "category", entry: e });
     } else {
@@ -119,7 +129,6 @@ function levelItemsAt(entries: CatalogEntry[], path: number[]): RenderItem[] {
   return items;
 }
 
-// Rows match the grid layout, so the keyboard moves up/down by row and left/right in a pair.
 function rowsOf(items: RenderItem[]): number[][] {
   const rows: number[][] = [];
   for (let i = 0; i < items.length; ) {
@@ -130,9 +139,6 @@ function rowsOf(items: RenderItem[]): number[][] {
   return rows;
 }
 
-// ─── Fuzzy search ───────────────────────────────────────────────────────
-// Scoring lives in catalogSearch.ts, over label + description + Excel names + ancestor
-// category path + kebab type id + keywords.
 
 const VIEWPORT_MARGIN = 8;
 
@@ -175,13 +181,10 @@ type TreeMenuProps = {
   entries: CatalogEntry[];
   depth: number;
   path: number[];
-  // The parent gates this so a click-PINNED submenu isn't collapsed by mousing elsewhere.
   onHover: (p: number[]) => void;
-  // Click on a category: pin its submenu open.
   onOpenCategory: (p: number[]) => void;
   onSelect: (entry: NodeCatalogEntry) => void;
   onSubmenuSide: (s: "left" | "right") => void;
-  // Quick-wire only: a leaf that can't wire to the dragged socket is grayed + inert.
   isDim: (leaf: NodeCatalogEntry) => boolean;
 };
 
@@ -204,8 +207,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
               className={`solenoid-add-menu__item solenoid-add-menu__item--category${onPath ? " solenoid-add-menu__item--active" : ""}${open ? " solenoid-add-menu__item--open" : ""}`}
               title={it.entry.description && descriptionText(it.entry.description)}
               onMouseEnter={() => onHover([...prefix, i, 0])}
-              // Submenus are DOM children of this div, so without stopping the bubble the
-              // outermost ancestor's handler wins and re-pins to the top.
+              // Submenus are DOM children of this div: without stopping the bubble, the outermost ancestor re-pins to the top.
               onClick={(e) => { e.stopPropagation(); onOpenCategory([...prefix, i]); }}
             >
               <span>{it.entry.label}</span>
@@ -221,24 +223,121 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
         const leaf = it.entry;
         const active = onPath && deepest;
         const dim = isDim(leaf);
+        const hl = leafHighlight(leaf);
         return (
           <div
             key={`leaf:${leaf.type}`}
             ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
-            className={`solenoid-add-menu__item${it.half ? " solenoid-add-menu__item--half" : ""}${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
+            className={`solenoid-add-menu__item${halfClass(it.half)}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
             title={leaf.description && descriptionText(leaf.description)}
-            style={leaf.accent ? ({ "--item-accent": leaf.accent } as CSSProperties) : undefined}
+            style={hl.style}
             onMouseEnter={() => onHover([...prefix, i])}
             onClick={(e) => { e.stopPropagation(); onSelect(leaf); }}
           >
             {leaf.label}
             {leaf.hiddenOps?.length && !leaf.hideOpsMark ? <OpsMark /> : null}
             {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
+            <TypeBands types={leaf.accents} />
           </div>
         );
       })}
     </>
   );
+}
+
+// ─── Drill-down list (phone): one level at a time, a back row on top ────
+
+function LeafRow({ leaf, half, active, dim, onSelect, onMouseEnter, rowRef }: {
+  leaf: NodeCatalogEntry; half?: Half; active?: boolean; dim: boolean;
+  onSelect: () => void; onMouseEnter?: () => void; rowRef?: React.Ref<HTMLDivElement>;
+}) {
+  const hl = leafHighlight(leaf);
+  return (
+    <div
+      ref={rowRef}
+      className={`solenoid-add-menu__item${halfClass(half)}${hl.className}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
+      title={leaf.description && descriptionText(leaf.description)}
+      style={hl.style}
+      onMouseEnter={onMouseEnter}
+      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+    >
+      {leaf.label}
+      {leaf.hiddenOps?.length && !leaf.hideOpsMark ? <OpsMark /> : null}
+      {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
+      <TypeBands types={leaf.accents} />
+    </div>
+  );
+}
+
+/** No hover and no resting highlight: a finger has no hover, so nothing lights until it lands. */
+function DrillMenu({ entries, stack, onPush, onPop, onSelect, isDim }: {
+  entries: CatalogEntry[];
+  stack: number[];
+  onPush: (i: number) => void;
+  onPop: () => void;
+  onSelect: (leaf: NodeCatalogEntry) => void;
+  isDim: (leaf: NodeCatalogEntry) => boolean;
+}) {
+  let items = toRenderItems(entries);
+  let parent: CatalogCategory | null = null;
+  for (const i of stack) {
+    const it = items[i];
+    if (!it || it.kind !== "category") break;
+    parent = it.entry;
+    items = toRenderItems(it.entry.children);
+  }
+  return (
+    <>
+      {parent && (
+        <div className="solenoid-add-menu__item solenoid-add-menu__item--back" onClick={(e) => { e.stopPropagation(); onPop(); }}>
+          <ChevronLeftIcon size={14} />
+          <span>{parent.label}</span>
+        </div>
+      )}
+      {items.map((it, i) => it.kind === "category" ? (
+        <div
+          key={`cat:${it.entry.label}`}
+          className="solenoid-add-menu__item solenoid-add-menu__item--category"
+          onClick={(e) => { e.stopPropagation(); onPush(i); }}
+        >
+          <span>{it.entry.label}</span>
+          <span className="solenoid-add-menu__arrow"><ChevronRightIcon size={12} /></span>
+        </div>
+      ) : (
+        <LeafRow key={`leaf:${it.entry.type}`} leaf={it.entry} half={it.half} dim={isDim(it.entry)} onSelect={() => onSelect(it.entry)} />
+      ))}
+    </>
+  );
+}
+
+// ─── Phone sheet fit: one uniform scale that fills the free height ─────
+
+// The panel's height cap (AddNodeMenu.css), the size a full 12-row level is tuned to.
+const PANEL_CAP = 448;
+const SHEET_WIDTH = 232;
+const FILL_H = 0.92;
+const FILL_W = 0.86;
+
+/** The sheet keeps its narrow shape and scales up as one piece until a full level fills the height between the bars, centered there. Sized to the full cap, so drilling never moves it. */
+function useSheetFit(ref: React.RefObject<HTMLDivElement | null>, on: boolean): { scale: number; top: number } {
+  const [fit, setFit] = useState({ scale: 1, top: 0 });
+  useLayoutEffect(() => {
+    if (!on) return;
+    const measure = () => {
+      const root = getComputedStyle(document.documentElement);
+      const chromeTop = parseFloat(root.getPropertyValue("--chrome-top")) || 82;
+      const chromeBottom = parseFloat(root.getPropertyValue("--chrome-bottom")) || 57;
+      const heading = ref.current?.querySelector<HTMLElement>(".solenoid-add-menu__heading")?.offsetHeight ?? 22;
+      const baseH = PANEL_CAP + heading;
+      const free = window.innerHeight - chromeTop - chromeBottom;
+      const scale = Math.max(1, Math.min((free * FILL_H) / baseH, (window.innerWidth * FILL_W) / SHEET_WIDTH));
+      setFit({ scale, top: chromeTop + Math.max(6, (free - baseH * scale) / 2) });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [ref, on]);
+  return fit;
 }
 
 // ─── Root menu ──────────────────────────────────────────────────────────
@@ -249,20 +348,27 @@ type AddNodeMenuProps = {
   entries: CatalogEntry[];
   onSelect: (entry: NodeCatalogEntry) => void;
   onClose: () => void;
-  // When present the menu shows the WHOLE catalog but grays out every leaf not in the set.
   compatibleTypes?: Set<string>;
 };
 
 export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, compatibleTypes }: AddNodeMenuProps) {
+  // A palette or theme switch while the menu is open repaints its row tints (the theme store notifies on both).
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0); // search results
-  const [treePath, setTreePath] = useState<number[]>([0]); // tree nav
-  // While `pinned` is set, hover navigates WITHIN that subtree but can't collapse it.
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [treePath, setTreePath] = useState<number[]>([0]);
   const [pinned, setPinned] = useState<number[] | null>(null);
   const [submenuSide, setSubmenuSide] = useState<"left" | "right">("right");
   const [rootOpensLeft, setRootOpensLeft] = useState(false);
+  // A phone drills one level at a time in a docked sheet instead of opening flyouts beside the finger.
+  const drill = useSyncExternalStore(deviceModeStore.subscribe, deviceModeStore.get);
+  const [stack, setStack] = useState<number[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [stack]);
+  useEffect(() => { addMenuRequest.setOpen(true); return () => addMenuRequest.setOpen(false); }, []);
+  const sheet = useSheetFit(ref, drill);
   const [pos, setPos] = useState<{ left: number; top: number; visible: boolean }>({
     left: screenX, top: screenY, visible: false,
   });
@@ -274,12 +380,9 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   );
   const searching = !!query.trim();
 
-  // `select` is the one gate every pick path goes through, so a dimmed leaf can't be chosen
-  // by click OR keyboard.
   const isDim = (leaf: NodeCatalogEntry) => compatibleTypes != null && !compatibleTypes.has(leaf.type);
   const select = (leaf: NodeCatalogEntry) => { if (!isDim(leaf)) onSelect(leaf); };
 
-  // Ignore hover that would leave the pinned subtree.
   const startsWith = (p: number[], base: number[]) => base.every((v, i) => p[i] === v);
   const handleHover = (p: number[]) => {
     if (pinned && !startsWith(p, pinned)) return;
@@ -290,20 +393,17 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     setTreePath([...p, 0]);
   };
 
-  // Desktop only: on touch this pops the on-screen keyboard over the category list.
   useEffect(() => { if (pos.visible && !IS_COARSE) inputRef.current?.focus(); }, [pos.visible]);
 
-  // Keep the highlighted search result in view as the list scrolls.
   const activeRef = useRef<HTMLDivElement>(null);
   useEffect(() => { activeRef.current?.scrollIntoView({ block: "nearest" }); }, [activeIndex]);
 
-  // Only ever move UP/LEFT, never back down/right, so the menu doesn't jump as search
-  // results come and go.
+  // Only ever move up or left, so the menu doesn't jump as results come and go.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (drill) { setPos((p) => (p.visible ? p : { ...p, visible: true })); return; }
     const rect = el.getBoundingClientRect();
-    // Predict which side submenus open on, from the root's position.
     setRootOpensLeft(screenX + rect.width * 2 + 8 > window.innerWidth - VIEWPORT_MARGIN);
     setPos((p) => {
       let left = p.visible ? p.left : screenX;
@@ -317,15 +417,15 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       return { left, top, visible: true };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screenX, screenY, searching, results.length, treePath.length]);
+  }, [screenX, screenY, searching, results.length, treePath.length, drill]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    // Capture phase: RF's d3 handlers stop a canvas mousedown at the target, so a bubble
-    // listener never hears the click that should dismiss the menu.
+    // Capture phase: React Flow's handlers stop a canvas mousedown before it bubbles.
     const onDown = (e: PointerEvent) => {
       const t = e.target as Element | null;
-      if (t?.closest?.(".solenoid-add-menu, .solenoid-add-menu__panel--submenu")) return;
+      // The phone's + button toggles the menu itself; closing here would reopen it on the same tap.
+      if (t?.closest?.(".solenoid-add-menu, .solenoid-add-menu__panel--submenu, .solenoid-mobile-bar__add")) return;
       onClose();
     };
     const t = window.setTimeout(() => window.addEventListener("pointerdown", onDown, true), 0);
@@ -345,7 +445,6 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       else if (e.key === "Escape") { e.stopPropagation(); setQuery(""); }
       return;
     }
-    // Keyboard nav releases any click-pin, so arrowing out of a pinned branch can't strand it.
     if (pinned) setPinned(null);
     const items = levelItemsAt(entries, treePath);
     const rows = rowsOf(items);
@@ -369,10 +468,8 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       const goRight = e.key === "ArrowRight";
-      // Spatial move within a pair takes priority (toward the partner).
       if (rows[r].length === 2 && goRight && c === 0) { setActive(rows[r][1]); return; }
       if (rows[r].length === 2 && !goRight && c === 1) { setActive(rows[r][0]); return; }
-      // Flipped when submenus open leftward, so the arrow toward the submenu enters.
       const openLeft = treePath.length > 1 ? submenuSide === "left" : rootOpensLeft;
       const isDescend = openLeft ? !goRight : goRight;
       if (isDescend) { if (active?.kind === "category") setTreePath([...treePath, 0]); }
@@ -386,13 +483,15 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   return (
     <div
       ref={ref}
-      className="solenoid-add-menu"
-      style={{ left: pos.left, top: pos.top, visibility: pos.visible ? "visible" : "hidden" }}
+      className={`solenoid-add-menu${drill ? " solenoid-add-menu--sheet" : ""}`}
+      style={drill
+        ? { visibility: pos.visible ? "visible" : "hidden", "--sheet-scale": sheet.scale, "--sheet-top": `${sheet.top}px` } as CSSProperties
+        : { left: pos.left, top: pos.top, visibility: pos.visible ? "visible" : "hidden" }}
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div className="solenoid-add-menu__heading">Add node</div>
       <div className="solenoid-add-menu__panel">
-        <div className="solenoid-add-menu__scroll">
+        <div className="solenoid-add-menu__scroll" ref={scrollRef}>
         <input
           ref={inputRef}
           className="solenoid-add-menu__search"
@@ -406,25 +505,25 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
         {searching ? (
           results.length > 0 ? (
             results.map((leaf, i) => (
-              <div
+              <LeafRow
                 key={leaf.type}
-                ref={i === activeIndex ? activeRef : undefined}
-                className={`solenoid-add-menu__item${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${i === activeIndex ? " solenoid-add-menu__item--active" : ""}${isDim(leaf) ? " solenoid-add-menu__item--incompatible" : ""}`}
-                title={leaf.description && descriptionText(leaf.description)}
-                style={leaf.accent ? ({ "--item-accent": leaf.accent } as CSSProperties) : undefined}
-                onMouseEnter={() => setActiveIndex(i)}
-                onClick={() => select(leaf)}
-              >
-                {leaf.label}
-                {leaf.hiddenOps?.length && !leaf.hideOpsMark ? <OpsMark /> : null}
-                {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
-              </div>
+                leaf={leaf}
+                rowRef={i === activeIndex ? activeRef : undefined}
+                active={i === activeIndex}
+                dim={isDim(leaf)}
+                onMouseEnter={drill ? undefined : () => setActiveIndex(i)}
+                onSelect={() => select(leaf)}
+              />
             ))
           ) : (
             <div className="solenoid-add-menu__empty">No matches</div>
           )
         ) : (
-          <TreeMenu entries={entries} depth={0} path={treePath} onHover={handleHover} onOpenCategory={handleOpenCategory} onSelect={select} onSubmenuSide={setSubmenuSide} isDim={isDim} />
+          drill ? (
+            <DrillMenu entries={entries} stack={stack} onPush={(i) => setStack((st) => [...st, i])} onPop={() => setStack((st) => st.slice(0, -1))} onSelect={select} isDim={isDim} />
+          ) : (
+            <TreeMenu entries={entries} depth={0} path={treePath} onHover={handleHover} onOpenCategory={handleOpenCategory} onSelect={select} onSubmenuSide={setSubmenuSide} isDim={isDim} />
+          )
         )}
         </div>
       </div>

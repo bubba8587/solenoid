@@ -1,6 +1,7 @@
 // [[C68]]
 import { ClassicPreset } from "rete";
 import { sourceHasLayer } from "../svgLayer";
+import { sanitizeSvg } from "../svgSanitize";
 import {
   numberSocket, stringSocket, logicalSocket, dateSocket,
   listSocket, strListSocket, logicalListSocket, dateListSocket, frameSocket,
@@ -9,36 +10,33 @@ import {
   SolenoidSocket, cubeSocket, elementFamilyOf, latticeRank, typeAtRank,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
+import { noteDateText } from "./dateSerial";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
-import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
+import { hasKnapSyntax, knapErrorText, renderKnap } from "../knapTemplate";
+import { toTemplateValue } from "../templateValue";
+import { guessScalarText } from "../scalarText";
 import { solError, type SolError } from "../errorValue";
-import { getActiveView, getOwningEditor } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
-import { isFrameValue, recordsToCube, coerceFrameCell, type FrameValue, type FrameColumn, type FrameColType, type CubeValue } from "../frame";
+import { isFrameValue, recordsToCube, coerceFrameCell, guessNoteColumnType, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
+import type { NestedTables } from "../cubeTypes";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
   parseNoteFrontmatter,
-  guessScalarText,
   type FrontmatterFieldType,
   type FrontmatterScalar,
   type FrontmatterRow,
   type FrontmatterValue,
 } from "../noteFrontmatter";
 
-/** The value a frontmatter key emits: a scalar/list (FrontmatterValue) or, for a `frame`
- *  field, a built FrameValue. */
 type EmittedValue = FrontmatterValue | FrameValue | CubeValue | SolError;
 
 const KNAP_UNQUOTED = 'Knap vars in frontmatter require quoted "{{var}}" syntax';
 
-// A Note is a pure SOURCE: `---`-fenced frontmatter keys become typed OUTPUT
-// sockets, and it deliberately mints no inputs — that is the Report node's job.
-
-/** The one output every Note reserves from frontmatter reconciliation. */
 const NOTE_RESERVED: ReadonlySet<string> = new Set(["document"]);
 
 const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
@@ -63,8 +61,6 @@ const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
 
 type FieldBase = "number" | "string" | "logical" | "date" | "complex";
 
-/** A pin carries only its ELEMENT family: reshape it onto the guess's rank (scalar, list or
- *  matrix), or drop it when either side is a frame or cube (no element family to pin). */
 function reshapePin(
   pinned: FrontmatterFieldType | undefined,
   guessed: FrontmatterFieldType,
@@ -74,44 +70,27 @@ function reshapePin(
   return (typeAtRank(pinned, rank as 0 | 1 | 2) ?? undefined) as FrontmatterFieldType | undefined;
 }
 
-/** A frame column's type from its cells, first non-null wins; a plain ISO date is still text
- *  here, so the reader's `dateColumns` says which columns are dates. */
-function frameColType(cells: FrontmatterScalar[], isDate: boolean): FrameColType {
-  if (isDate) return "date";
-  for (const v of cells) {
-    if (v === null) continue;
-    if (typeof v === "boolean") return "logical";
-    if (typeof v === "number") return "number";
-    return "string";
-  }
-  return "string";
-}
-
-/** Rows of `{name: value}` → a FrameValue: columns are the keys in first-appearance order
- *  (the mirror of the Script node's frame form). A missing key in a row is a null cell. A
- *  column's type is the user's pick (the Solenoid Properties plugin's `columnTypes`) when there
- *  is one, else the cells'. Every cell crosses the app's own value boundary (`coerceFrameCell`)
- *  with its source text kept as `raw`, as Frame Input's literal source does: a type that cannot
- *  read a cell shows NaN over the text, never a silent blank ([[D72]]). */
+/** A plain ISO date is still text here; the reader's `dateColumns` names the date columns. */
+/** Every cell crosses coerceFrameCell with its text kept as `raw`, so a type that cannot read a cell shows NaN over the text ([[D72]]). */
 function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = [], picks: ColumnPicks = {}): FrameValue {
   const names: string[] = [];
   for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);
   const columns: FrameColumn[] = names.map((name) => {
-    // A frame cell is scalar; a list that slipped in keeps its first element, a table nothing.
+    // A frame cell is scalar: a stray list keeps its first element, a table nothing.
     const cells = rows.map((r): FrontmatterScalar => {
       const v = name in r ? r[name] : null;
       if (!Array.isArray(v)) return v;
       const first = v[0] ?? null;
       return typeof first === "object" ? null : first;
     });
-    const type = picks[name] ?? frameColType(cells, dateColumns.includes(name));
+    const isDate = dateColumns.includes(name);
+    const type = picks[name] ?? guessNoteColumnType(cells, () => isDate);
     const raw = cells.map((c) => (c === null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));
     return { name, type, values: raw.map((r) => coerceFrameCell(type, r)), raw };
   });
   return { __frame: true, columns };
 }
 
-// Only bites when a per-key TYPE override disagrees with the guessed value.
 function coerceScalar(v: FrontmatterScalar, base: FieldBase): FrontmatterScalar {
   if (v === null) return null;
   switch (base) {
@@ -126,24 +105,23 @@ function coerceScalar(v: FrontmatterScalar, base: FieldBase): FrontmatterScalar 
       return typeof v === "boolean" ? v : v === 1 || v === "1" || String(v).toLowerCase() === "true";
     case "date": {
       const s = typeof v === "number" ? v : parseDateToSerial(String(v));
-      return Number.isFinite(s) ? Math.round(s) : null;
+      return Number.isFinite(s) ? s : null;
     }
   }
 }
 
-function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks): EmittedValue {
+/** `guessed` is what the reader saw: a date pinned to text keeps the ISO text written, not its serial. */
+function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks, guessed?: FrontmatterFieldType, nested?: NestedTables): EmittedValue {
   if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : [], dateColumns, picks);
-  // A row list with a list value is a cube (recordsToCube keeps the list as a list cell).
-  if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : [], picks);
+  if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : [], picks, nested);
   const base = elementFamilyOf(type) as FieldBase;
   const rank = latticeRank(type);
+  const datesAsText = guessed !== undefined && elementFamilyOf(guessed) === "date" && (base === "string" || base === "complex");
+  const one = (e: unknown) => coerceScalar((datesAsText && typeof e === "number" ? noteDateText(e) : e) as FrontmatterScalar, base);
   const items: unknown[] = Array.isArray(value) ? value : value === null ? [] : [value];
-  if (rank === 2) {
-    return items.map((row) => (Array.isArray(row) ? row : [row]).map((e) => coerceScalar(e as FrontmatterScalar, base)));
-  }
-  if (rank === 1) return items.flat().map((e) => coerceScalar(e as FrontmatterScalar, base));
-  const scalar = items.flat()[0] ?? null;
-  return coerceScalar(scalar as FrontmatterScalar, base);
+  if (rank === 2) return items.map((row) => (Array.isArray(row) ? row : [row]).map(one));
+  if (rank === 1) return items.flat().map(one);
+  return one(items.flat()[0] ?? null);
 }
 
 export class NoteNode extends ClassicPreset.Node {
@@ -151,26 +129,19 @@ export class NoteNode extends ClassicPreset.Node {
     document: "Carries the note's full text, frontmatter included and the template rendered, for a document sink such as Write to Obsidian.",
   };
 
-  body: string;        // markdown — may open with a `---`-fenced YAML frontmatter block
-  color: string;       // palette SLOT id (resolved to a hex at render); tints the note bg + accent
+  body: string;
+  color: string;
   width: number;
   height: number;
-  collapsed: boolean;  // when true, only the header bar shows
-  // A user's per-key type pick, persisted. The pin holds the ELEMENT family only; the
-  // value's dimensionality (scalar / list / frame) always comes from the body.
+  collapsed: boolean;
   fieldTypes: Record<string, FrontmatterFieldType>;
-  /** A frame property's picked column types, by key: what the Solenoid Properties plugin
-   *  recorded in the vault. A bare Note has no vault and keeps none; Import Obsidian Note
-   *  reads them with the note. Not saved: the vault is the source. */
   columnPicks: PluginColumnTypes = {};
+  /** This note's nested-table picks, per property ([[D90]] cubeTypesAtDepth). */
+  nestedPicks: Readonly<Record<string, NestedTables>> = {};
 
-  // Derived from `body` on every sync (NOT persisted — the body is the source).
-  private _renderBody = "";                              // markdown below the block
-  private _fieldKeys: string[] = [];                     // output keys in source order
+  private _renderBody = "";
+  private _fieldKeys: string[] = [];
   private _fieldValues = new Map<string, EmittedValue>();
-  /** Keys whose value is a quoted Knap expression (→ its tag text): the socket carries
-   *  the RENDERED value, kept here from the last render with the type it guessed, so a
-   *  re-sync (the retype, a later body edit) keeps it while the tag text is unchanged. */
   private _knapRaw = new Map<string, string>();
   private _knapRendered = new Map<string, { raw: string; value: FrontmatterValue; type: FrontmatterFieldType }>();
 
@@ -185,39 +156,20 @@ export class NoteNode extends ClassicPreset.Node {
     this.height = init?.height ?? 150;
     this.collapsed = init?.collapsed ?? false;
     this.fieldTypes = { ...(init?.fieldTypes ?? {}) };
-    // The FIXED output — syncFields skips it when reconciling the per-key ones.
     this.addOutput("document", documentOut("Document"));
-    // At construction `outputs` is empty, so this only ADDS — connections restored
-    // after node creation then find their outputs present.
+    // At construction `outputs` is empty, so this only adds, and cables restored after creation find their outputs.
     this.syncFields();
   }
 
-  /** Output keys `syncFields` must never treat as a (removable) frontmatter key. The
-   *  base reserves only `document`; Import adds its `path` identity output. */
   protected reservedOutputs(): ReadonlySet<string> { return NOTE_RESERVED; }
 
-  /** The markdown to render — the body with any frontmatter block stripped. */
   get renderBody(): string { return this._renderBody; }
-  /** Output keys (frontmatter keys) in source order, for socket layout. */
   fieldKeys(): string[] { return this._fieldKeys; }
-  /** A field's current socket type (override or guess), or undefined. */
   fieldType(key: string): FrontmatterFieldType | undefined {
     const sock = this.outputs[key]?.socket;
     return sock instanceof SolenoidSocket ? (sock.dataType as FrontmatterFieldType) : undefined;
   }
 
-  /**
-   * Reconcile the output sockets to the body's frontmatter. Adds new keys, drops
-   * vanished ones, and retypes a key whose socket family changed. Returns BOTH:
-   *  - `removed`: keys whose output is GONE — the caller must drop their cables.
-   *  - `retyped`: keys whose output stayed but changed TYPE — the caller keeps a
-   *    cable iff the downstream input still accepts the new type (an `any` input
-   *    always does), else drops it. The output is removed+re-added (same key, new
-   *    socket) so the dot re-renders with the new color; the editor connection,
-   *    which references the KEY, survives that as long as the caller doesn't drop it.
-   * Connection cleanup is the CALLER's job (the node has no editor handle); at
-   * construction there are none.
-   */
   syncFields(): {
     removed: string[];
     retyped: { key: string; type: FrontmatterFieldType }[];
@@ -241,17 +193,16 @@ export class NoteNode extends ClassicPreset.Node {
         else this.fieldTypes[f.key] = pin;
       }
       const type = pin ?? guessed;
-      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type, f.dateColumns, this.columnPicks[f.key]), type });
+      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type, f.dateColumns, this.columnPicks[f.key], guessed, this.nestedPicks[f.key]), type });
     }
     for (const k of [...this._knapRendered.keys()]) if (!this._knapRaw.has(k)) this._knapRendered.delete(k);
-    // Prune overrides for keys no longer present (keep the save lean).
     for (const k of Object.keys(this.fieldTypes)) if (!wanted.has(k)) delete this.fieldTypes[k];
 
     const removed: string[] = [];
     const retyped: { key: string; type: FrontmatterFieldType }[] = [];
     const reserved = this.reservedOutputs();
     for (const key of Object.keys(this.outputs)) {
-      if (reserved.has(key)) continue; // fixed outputs (document, a subclass's path) aren't frontmatter keys
+      if (reserved.has(key)) continue;
       const w = wanted.get(key);
       const cur = this.outputs[key]!.socket;
       if (!w) {
@@ -273,23 +224,17 @@ export class NoteNode extends ClassicPreset.Node {
     return { removed, retyped };
   }
 
-  /** A rows-of-objects frontmatter key emits a built frame, so its columns are known. */
   frameShape(outKey: string): Shape | null {
     const v = this.fieldValues()[outKey];
     return isFrameValue(v) ? shapeOfFrameValue(v) : null;
   }
 
-  /** The frontmatter fields as template data: a Note's Knap variables are its OWN
-   *  fields (dates as ISO text), so `{{ title }}` in the body reads the block above. */
   templateVariables(): Record<string, unknown> {
     const vars: Record<string, unknown> = {};
     for (const [k, v] of this._fieldValues) vars[k] = toTemplateValue(v, this.fieldType(k));
     return vars;
   }
 
-  /** A quoted Knap field's socket carries what the field RENDERS to, typed by the
-   *  render's guess (or the key's pin). Re-parses the rendered block; a key whose
-   *  guess moved retypes its socket through the same reconcile as a body edit. */
   private renderedFields(rendered: string): void {
     if (this._knapRaw.size === 0) return;
     const byKey = new Map(parseNoteFrontmatter(rendered).fields.map((f) => [f.key, f]));
@@ -298,29 +243,24 @@ export class NoteNode extends ClassicPreset.Node {
       const rf = byKey.get(k);
       let value: FrontmatterValue = rf?.value ?? null;
       let type: FrontmatterFieldType = rf?.guessed ?? "string";
-      // The render lands inside the quotes the tag was written in, so read it plain.
       if (typeof value === "string") { const g = guessScalarText(value); value = g.value; type = g.kind; }
       if (this.fieldTypes[k] === undefined && this.fieldType(k) !== type) retype = true;
       this._knapRendered.set(k, { raw, value, type });
-      this._fieldValues.set(k, coerceValue(value, this.fieldTypes[k] ?? type));
+      this._fieldValues.set(k, coerceValue(value, this.fieldTypes[k] ?? type, undefined, undefined, type));
     }
     if (!retype) return;
     queueMicrotask(() => {
       void (async () => {
         const { removed, retyped } = this.syncFields();
         await dropStrandedFrontmatterCables(this.id, removed, retyped);
-        const view = getActiveView();
+        const view = getOwningView(this.id);
         await view?.rerenderNode(this.id);
         const editor = getOwningEditor(this.id);
-        if (editor && view && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
+        if (editor && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
       })();
     });
   }
 
-  // Async ONLY when the body carries a template tag; a plain note stays synchronous.
-  // The document carries the RAW body as `source` beside the render, so a Report
-  // wired to this note can use it as its template. A tag naming no field stays
-  // literal (renderKnap keepUnknown): a template note reads as one.
   data(): Record<string, EmittedValue | DocumentValue> | Promise<Record<string, EmittedValue | DocumentValue | SolError>> {
     const extra = { source: this.body };
     if (!hasKnapSyntax(this.body)) return { ...this.fieldValues(), document: makeDocument(this.body, {}, undefined, this.id, extra) };
@@ -333,8 +273,7 @@ export class NoteNode extends ClassicPreset.Node {
     });
   }
 
-/** Use this from the UI: the installErrorGuards wrapper calls `firstInputError`
- *  OUTSIDE its try/catch, so calling `data()` with no args throws. */
+  /** Use from the UI: the error-guard wrapper calls firstInputError outside its try/catch, so data() with no args throws. */
   fieldValues(): Record<string, EmittedValue> {
     const out: Record<string, EmittedValue> = {};
     for (const [k, v] of this._fieldValues) out[k] = v;
@@ -342,18 +281,14 @@ export class NoteNode extends ClassicPreset.Node {
   }
 }
 
-// A LOCAL file's bytes never enter the save JSON (`dataUrl` is off copyPaste's
-// extractInit whitelist); desktop bundles the file beside the doc and persists
-// `assetPath`, web keeps a local attach session-only.
-
 export class ImageNode extends ClassicPreset.Node {
-  url: string;        // web URL — persisted
-  dataUrl: string;    // local file as a base64 data: URL — session-only, NOT persisted
-  fileName: string;   // the attached file's original name — names the bundled copy
-  assetPath: string;  // doc-relative bundled file ("images/photo.png") — persisted
-  height: number;     // rendered image height in px (the inline height field)
-  width: number;      // node card width
-  collapsed: boolean; // when true, only the header bar shows
+  url: string;
+  dataUrl: string;
+  fileName: string;
+  assetPath: string;
+  height: number;
+  width: number;
+  collapsed: boolean;
 
   constructor(init?: { label?: string; url?: string; fileName?: string; assetPath?: string; height?: number; width?: number; collapsed?: boolean }) {
     super(init?.label ?? "Image");
@@ -364,11 +299,9 @@ export class ImageNode extends ClassicPreset.Node {
     this.height = init?.height ?? 160;
     this.width = init?.width ?? 240;
     this.collapsed = init?.collapsed ?? false;
-    // A chart-family figure value, so it wires into a Report or any `chart` consumer.
     this.addOutput("image", chartOut("Image"));
   }
 
-  /** The image to show: a freshly-attached local file wins, else the saved URL. */
   get src(): string {
     return this.dataUrl || this.url;
   }
@@ -380,36 +313,24 @@ export class ImageNode extends ClassicPreset.Node {
   }
 }
 
-// A LINK to a file on disk — the path, never the bytes. A canvas object with NO
-// sockets: it carries nothing into the graph, it just points at a file you can open.
-// Desktop persists the absolute `path`; on web there is no path (the browser sandbox
-// has none), so an attach is session-only and only `fileName` survives a reload —
-// the same "local file, not saved with the document" bargain the Image node strikes.
 export class FileLinkNode extends ClassicPreset.Node {
-  path: string;        // absolute path — persisted (desktop); "" on web
-  fileName: string;    // display name (with extension) — persisted, carries web reloads
-  collapsed: boolean;  // when true, only the header bar shows
-  // Fixed-width card (no resize gesture), so it deliberately owns no width/height —
-  // the width lives in CSS, and it stays out of the persistence SIZE_OWNERS set.
+  path: string;
+  fileName: string;
+  collapsed: boolean;
+  // Fixed-width card: it owns no width or height, so it stays out of SIZE_OWNERS.
 
   constructor(init?: { label?: string; path?: string; fileName?: string; collapsed?: boolean }) {
     super(init?.label ?? "File Link");
     this.path = init?.path ?? "";
     this.fileName = init?.fileName ?? "";
     this.collapsed = init?.collapsed ?? false;
-    // No addInput/addOutput: a link is not a value in the dataflow.
   }
 
-  // No outputs, but the dataflow engine still calls data() on every node — return
-  // nothing (the Presentation / Session History pattern for a sockets-less node).
+  // The engine still calls data() on a socketless node, so return nothing.
   data(): Record<string, never> {
     return {};
   }
 }
-
-// A visual slicer: clicking a shape emits that layer's NAME on `Layer`, and the
-// picture flows out `chart` carrying the selection. The markup is just text, so it
-// persists in `stringLiterals.source`.
 
 const DEFAULT_SVG_HOVER = "#4f9dff";
 
@@ -418,12 +339,12 @@ export class SvgPickerNode extends ClassicPreset.Node {
     layer: "Carries the clicked layer's name and stays blank until a shape is picked.",
   };
 
-  url: string;                                  // last web source URL — persisted
-  stringLiterals: Record<string, string> = {}; // .source = inlined SVG markup — persisted
-  hoverColor: string;                           // hover/selection highlight color — persisted
-  selectedLayer: string;                        // the clicked layer name ("" = none) — persisted
-  height: number;                               // rendered SVG-well height in px
-  width: number;                                // node card width
+  url: string;
+  stringLiterals: Record<string, string> = {};
+  hoverColor: string;
+  selectedLayer: string;
+  height: number;
+  width: number;
 
   constructor(init?: {
     label?: string; url?: string; source?: string; hoverColor?: string;
@@ -431,7 +352,7 @@ export class SvgPickerNode extends ClassicPreset.Node {
   }) {
     super(init?.label ?? "SVG");
     this.url = init?.url ?? "";
-    // On load, persistence restores stringLiterals separately (extractInit skips it).
+    // Persistence restores stringLiterals separately on load; extractInit skips it.
     this.stringLiterals.source = init?.source ?? "";
     this.hoverColor = init?.hoverColor ?? DEFAULT_SVG_HOVER;
     this.selectedLayer = init?.selectedLayer ?? "";
@@ -441,12 +362,20 @@ export class SvgPickerNode extends ClassicPreset.Node {
     this.addOutput("layer", strOut("Layer"));
   }
 
-  /** The inlined SVG markup to render (source of truth for the figure + picking). */
-  get source(): string { return this.stringLiterals.source ?? ""; }
+  private cleanSource = "";
+
+  /** Every path in (typed, fetched, loaded, pasted) is scrubbed here, before the markup leaves on a cable ([[C103]] untrustedContentSeams). */
+  get source(): string {
+    const raw = this.stringLiterals.source ?? "";
+    if (raw !== this.cleanSource) {
+      this.cleanSource = sanitizeSvg(raw);
+      this.stringLiterals.source = this.cleanSource;
+    }
+    return this.cleanSource;
+  }
 
   data(): { chart: SvgValue | null; layer: string | null } {
     const source = this.source;
-    // A pick names a layer of THIS picture; after the source changes it reads blank.
     const layer = this.selectedLayer && sourceHasLayer(source, this.selectedLayer) ? this.selectedLayer : null;
     const chart: SvgValue | null = source
       ? { __svg: true, source, selected: layer, hoverColor: this.hoverColor, height: this.height, title: this.label }

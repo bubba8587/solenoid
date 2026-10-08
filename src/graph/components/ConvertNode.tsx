@@ -1,14 +1,15 @@
-// [[C25]] firstClassUnits, [[D40]] unitOnValue (Convert primacy), [[C11]] socketBox12
+// [[C25]] firstClassUnits (Convert primacy)
 import { useState, useRef, useLayoutEffect, useSyncExternalStore, type ChangeEvent } from "react";
 import type { ConvertNode as ConvertNodeType, ConvertCategory, ConvertUnitDef } from "../rete-nodes";
 import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, FormatControllerNode } from "../rete-nodes";
 import {
-  applyFormatStyle, FORMAT_STYLE_GROUPS, FORMAT_STYLE_LABELS, type FormatStyle,
+  applyFormatStyle, type FormatStyle,
 } from "../formatAnnotationStore";
-import { processGraph } from "../process";
+import { notifyGraphChanged, processGraph } from "../process";
 import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { LazySelect } from "./LazySelect";
+import { numberFormatOptions } from "./fcControls";
 import { NodeSocket } from "./NodeSocket";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 
@@ -42,17 +43,7 @@ function FormatSelect({ value, onChange }: { value: FormatStyle; onChange: (e: C
       onMouseDown={(e) => e.stopPropagation()}
       title="Display format"
     >
-      {Object.entries(FORMAT_STYLE_GROUPS).map(([group, styles]) =>
-        styles.length === 1 && group === "General" ? (
-          <option key={styles[0]} value={styles[0]}>{FORMAT_STYLE_LABELS[styles[0]]}</option>
-        ) : (
-          <optgroup key={group} label={group}>
-            {styles.map((s) => (
-              <option key={s} value={s}>{FORMAT_STYLE_LABELS[s]}</option>
-            ))}
-          </optgroup>
-        )
-      )}
+      {numberFormatOptions()}
     </LazySelect>
   );
 }
@@ -85,9 +76,9 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   const [outFormat, setOutFormat] = useState(node.outFormat);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
 
-  // Convert primacy ([[D40]] unitOnValue): adjacent FCs relock on a from/to change.
+  // Convert primacy ([[C25]] firstClassUnits): adjacent FCs relock on a from/to change.
   function refreshFcs() {
-    const editor = getOwningEditor(node.id); // relock FCs in this node's own graph (drill-in too)
+    const editor = getOwningEditor(node.id);
     if (!editor) return;
     for (const n of editor.getNodes()) {
       if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
@@ -124,11 +115,13 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
     const next = e.target.value as FormatStyle;
     node.inFormat = next;
     setInFormat(next);
+    notifyGraphChanged();
   }
   function onOutFormatChange(e: ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value as FormatStyle;
     node.outFormat = next;
     setOutFormat(next);
+    notifyGraphChanged();
   }
 
   const fromCat    = CONVERT_UNIT_DEFS[fromUnit]?.category;
@@ -136,7 +129,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   const fromCode   = CONVERT_UNIT_DEFS[fromUnit]?.excelCode ?? "";
   const toCode     = CONVERT_UNIT_DEFS[toUnit]?.excelCode ?? "";
 
-  // Socket tops are measured from the in/out boxes ([[C11]] socketBox12).
+  // Socket tops are measured from the in/out boxes.
   const inBoxRef  = useRef<HTMLDivElement>(null);
   const outBoxRef = useRef<HTMLDivElement>(null);
   const [inTop, setInTop]   = useState<number | undefined>(undefined);
@@ -197,7 +190,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
           );
         })}
       </LazySelect>
-      <div style={{ textAlign: "center", fontSize: "0.65rem", color: "rgba(255,255,255,0.3)", margin: "2px 0" }}>
+      <div style={{ textAlign: "center", fontSize: "0.65rem", color: "var(--text-muted)", margin: "2px 0" }}>
         ↓ convert to
       </div>
       <LazySelect

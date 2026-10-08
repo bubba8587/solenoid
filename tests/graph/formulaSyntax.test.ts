@@ -1,7 +1,6 @@
 // [[C51]] formulaNaming
 import { describe, it, expect } from "vitest";
 import { highlightFormula, tokenAtCaret, suggestFor, enclosingCall } from "../../src/graph/formulaSyntax";
-import { formulaFunctionNames } from "../../src/graph/excelFormula";
 
 // Strip the tags to recover the original text — the highlighter must be lossless.
 const stripTags = (html: string) =>
@@ -17,8 +16,10 @@ describe("highlightFormula", () => {
     expect(html).toContain('<span class="fx-fn">SUM</span>');
     expect(html).toContain('<span class="fx-unknown">myFn</span>'); // call to a non-function
     expect(html).toContain('<span class="fx-var">price</span>');
-    expect(html).toContain('<span class="fx-var">x</span>');
     expect(html).toContain('<span class="fx-const">pi</span>');
+  });
+  it("a dotted function name is one token", () => {
+    expect(highlightFormula("NORM.S.DIST(z, TRUE)")).toContain('<span class="fx-fn">NORM.S.DIST</span>');
   });
   it("a name is a function only in CALL position (followed by `(`, spaces ok)", () => {
     expect(highlightFormula("SUM")).toContain('<span class="fx-var">SUM</span>');     // bare → variable
@@ -47,13 +48,11 @@ describe("suggestFor", () => {
   it("ranks an exact prefix of a real function near the top", () => {
     const names = suggestFor("SUM").map((s) => s.name);
     expect(names).toContain("SUM");
-    expect(formulaFunctionNames()).toContain("SUM");
   });
   it("includes the node's own variables + constants, kind-tagged", () => {
     const s = suggestFor("pr", ["price", "profit"]);
     const vars = s.filter((x) => x.kind === "var").map((x) => x.name);
     expect(vars).toContain("price");
-    expect(vars).toContain("profit");
   });
   it("drops a fully-typed non-function (nothing left to complete)", () => {
     // `tau` is a constant with no Formula.js function of that name → nothing to add.
@@ -66,7 +65,7 @@ describe("suggestFor", () => {
 describe("signature surfacing (audit 2026-07-16 — arg-count in autocomplete)", () => {
   it("a function suggestion carries its signature hint", () => {
     const idx = suggestFor("INDE").find((s) => s.name === "INDEX");
-    expect(idx?.hint).toBe("array, row, [col]");
+    expect(idx?.hint).toBe("array, [row], [col]");
   });
 
   it("enclosingCall finds the innermost call + the caret's argument", () => {

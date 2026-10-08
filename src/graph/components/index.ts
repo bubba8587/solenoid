@@ -1,29 +1,21 @@
-// [[C34]] classNameIsType.
-// Barrel re-export — mirrors rete-nodes.ts for node classes.
+// [[B12]] losslessSaves.
 
-// ─── Canvas infrastructure ────────────────────────────────────────────────────
 export { SocketComponent } from "./SocketComponent";
 export { ConduitComponent } from "./ConduitComponent";
 export { SocketLegend } from "./SocketLegend";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { NoticeToasts } from "./NoticeToasts";
 
-// ─── Control ──────────────────────────────────────────────────────────────────
 export { AngleDialComponent } from "./AngleDialNode";
 export { SlicerComponent } from "./SlicerNode";
 
-// ─── Input ────────────────────────────────────────────────────────────────────
-export { NumberInputComponent } from "./NumberInputNode";
 export { ConstantComponent } from "./ConstantNode";
-export { BooleanInputComponent } from "./BooleanInputNode";
 export { SliderInputComponent } from "./SliderInputNode";
 export { ColorPickerComponent } from "./ColorPickerNode";
 export { ColorBlendComponent } from "./ColorBlendNode";
-export { RandComponent } from "./RandNode";
 export { RandBetweenComponent } from "./RandBetweenNode";
 export { NaComponent } from "./NaNode";
 
-// ─── Numbers — arithmetic / math functions ────────────────────────────────────
 export { ArithmeticComponent } from "./ArithmeticNode";
 export { MathFnComponent } from "./MathFnNode";
 export { ClampComponent } from "./ClampNode";
@@ -38,7 +30,6 @@ export { BitwiseComponent } from "./BitwiseNode";
 export { BaseConvertComponent } from "./BaseConvertNode";
 export { BesselComponent } from "./BesselNode";
 
-// ─── Logic ────────────────────────────────────────────────────────────────────
 export { BooleanComponent } from "./BooleanNode";
 export { NotComponent } from "./NotNode";
 export { IfComponent } from "./IfNode";
@@ -51,11 +42,9 @@ export { IfsComponent } from "./IfsNode";
 export { BetweenComponent } from "./BetweenNode";
 export { IsCloseComponent } from "./IsCloseNode";
 
-// ─── Lists — build ────────────────────────────────────────────────────────────
 export { ListInputComponent } from "./ListInputNode";
 export { SeriesComponent } from "./SeriesNode";
 
-// ─── Lists — shape ────────────────────────────────────────────────────────────
 export { SortComponent } from "./SortNode";
 export { ReverseComponent } from "./ReverseNode";
 export { SliceComponent } from "./SliceNode";
@@ -81,13 +70,11 @@ export { InterleaveComponent } from "./InterleaveNode";
 export { NthElementComponent } from "./NthElementNode";
 export { PadComponent } from "./PadNode";
 
-// ─── Lists — find / lookup ────────────────────────────────────────────────────
 export { ListLengthComponent } from "./ListLengthNode";
 export { ListIndexComponent } from "./ListIndexNode";
 export { ArgMinMaxComponent } from "./ArgMinMaxNode";
 export { ContainsComponent } from "./ContainsNode";
 
-// ─── Lists — aggregate / stats ────────────────────────────────────────────────
 export { AggregateComponent } from "./AggregateNode";
 export { SumProductComponent } from "./SumProductNode";
 export { RankPercentileComponent } from "./RankPercentileNode";
@@ -102,7 +89,6 @@ export { TrimMeanComponent } from "./TrimMeanNode";
 export { FrequencyComponent } from "./FrequencyNode";
 export { ConfidenceComponent } from "./ConfidenceNode";
 
-// ─── Finance ──────────────────────────────────────────────────────────────────
 export { DepreciationComponent } from "./DepreciationNode";
 export { TvmComponent } from "./TvmNode";
 export { PaymentBreakdownComponent } from "./PaymentBreakdownNode";
@@ -118,11 +104,9 @@ export { AccruedInterestComponent } from "./AccruedInterestNode";
 export { DurationComponent } from "./DurationNode";
 export { BondPricingComponent } from "./BondPricingNode";
 
-// ─── Currency formatting ──────────────────────────────────────────────────────
 export { FormatDollarComponent } from "./TypeCoerceNodes";
 export { IsEvenOddComponent } from "./IsEvenOddNode";
 
-// ─── 2D Tables / Matrix ───────────────────────────────────────────────────────
 export { TableInputComponent } from "./TableInputNode";
 export {
   MatDetComponent, MatSolveComponent, MatEigenComponent, TableMultComponent, TableUnitComponent, TableDiagComponent, TableOuterComponent,
@@ -133,7 +117,6 @@ export { SetCellComponent } from "./SetCellNode";
 export { MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent, ScanLambdaComponent } from "./TableLambdaNodes";
 export { LambdaComponent } from "./LambdaNode";
 
-// ─── Frames (named-column data tables) ─────────────────────────────────────────
 export {
   FrameInputComponent, BuildFrameComponent, SplitFrameComponent, GetColumnComponent, AddColumnComponent, ComputedColumnComponent, GetRowComponent,
   DistinctComponent, HeadComponent, SortFrameComponent, FilterFrameComponent, JoinComponent, XLookupComponent,
@@ -145,73 +128,52 @@ export {
   DescribeComponent, CorrMatrixComponent, KMeansComponent, PcaComponent, LogisticComponent, WindowComponent,
 } from "./FrameNodes";
 
-// ─── Trust & data quality ───────────────────────────────────────────────────────
 export { ExpectComponent } from "./ExpectNode";
 export { TornadoComponent } from "./TornadoNode";
 
-// ─── Cubes (recursive nested tables) ───────────────────────────────────────────
 export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollupComponent } from "./CubeNodes";
 
-// ─── External-data connections (Web Source, CSV folder, Parquet folder) ─────────
 export { WebSourceComponent, LocalFileComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent, GeocodeComponent, WeatherComponent, HolidaysComponent, FxComponent, VaultFolderComponent, TaskNotesComponent } from "./ConnectionNodes";
 export { QrCodeComponent } from "./QrNode";
 
-// ─── File sinks (Write File — CSV/JSON, Write to Obsidian) ────────────────────────
 export { WriteFileComponent, WriteObsidianComponent, WriteTasksComponent } from "./WriteNodes";
 
-// ─── Import from Obsidian Vault (read a .md into a read-only Note) ────────────────
 export { ImportObsidianComponent } from "./ImportObsidianNode";
 
-// ─── Cable Switch (control multiplexer) ─────────────────────────────────────────
 export { CableSwitchComponent } from "./CableSwitchNode";
 
-// ─── Note (canvas annotation) ───────────────────────────────────────────────────
 export { NoteComponent } from "./NoteNode";
 
-// ─── Report (standalone markdown document — canvas anchor card) ────────────────
 export { ReportComponent } from "./ReportNode";
 
-// ─── Session History (live undo/redo digest readout) ───────────────────────────
 export { SessionHistoryComponent } from "./SessionHistoryNode";
 
-// ─── Presentation (step list + camera-only presenter mode) ─────────────────────
 export { PresentationComponent } from "./PresentationNode";
 
-// ─── Image (canvas annotation) ──────────────────────────────────────────────────
 export { ImageComponent } from "./ImageNode";
 export { FileLinkComponent } from "./FileLinkNode";
 export { SvgPickerComponent } from "./SvgPickerNode";
 
-// ─── Group (framing container) ────────────────────────────────────────────────
 export { GroupComponent } from "./GroupNode";
 
-// ─── Composite (computing subgraph container) ──────────────────────────────────
 export { CompositeComponent, CompositeInputMarkerComponent, CompositeOutputMarkerComponent } from "./CompositeNode";
-// CompositeEditorOverlay is deliberately NOT re-exported here: it imports
-// nodeRegistry, which imports this barrel — that closes a module-init cycle (TDZ).
+// CompositeEditorOverlay is not re-exported: it imports nodeRegistry, which imports this barrel (a module-init cycle).
 
-// ─── Complex numbers ──────────────────────────────────────────────────────────
 export { ComplexFromComponent } from "./ComplexFromNode";
 export { ComplexUnpackComponent } from "./ComplexUnpackNode";
 export { ComplexUnaryComponent } from "./ComplexUnaryNode";
 export { ComplexBinaryComponent } from "./ComplexBinaryNode";
 export { ComplexPowerComponent } from "./ComplexPowerNode";
 
-// ─── Distributions — normal / t / chi-squared ─────────────────────────────────
 export { DistributionsComponent } from "./DistributionsNode";
 
-// ─── Distributions — discrete (extra) ────────────────────────────────────────
 export { BinomDistRangeComponent } from "./BinomDistRangeNode";
 
-// ─── Statistical tests ────────────────────────────────────────────────────────
 export { HypothesisTestComponent } from "./HypothesisTestNode";
 
-// ─── Regression (extended) ────────────────────────────────────────────────────
 export { InterpolateComponent } from "./InterpolateNode";
 export { LinestComponent } from "./LinestNode";
 
-// ─── Text ─────────────────────────────────────────────────────────────────────
-export { TextInputComponent } from "./TextInputNode";
 export { TextTransformComponent } from "./TextTransformNode";
 export { TextLenComponent } from "./TextLenNode";
 export { ConcatComponent } from "./ConcatNode";
@@ -229,7 +191,6 @@ export { CharCodeComponent } from "./CharCodeNode";
 export { TextJoinComponent } from "./TextJoinNode";
 export { TextSplitComponent } from "./TextSplitNode";
 export { TextAfterBeforeComponent } from "./TextAfterBeforeNode";
-export { NumberValueComponent } from "./NumberValueNode";
 export { RomanArabicComponent } from "./RomanArabicNode";
 export { FixedComponent } from "./FixedNode";
 export { UrlEncodeComponent } from "./UrlEncodeNode";
@@ -237,7 +198,6 @@ export { HashComponent } from "./HashNode";
 export { TemplateComponent } from "./TemplateNode";
 export { UuidComponent } from "./UuidNode";
 
-// ─── Date & Time ──────────────────────────────────────────────────────────────
 export {
   TodayNowComponent, DateConstructComponent, TimeConstructComponent,
   DateTimeValueComponent, DatePartComponent,
@@ -245,15 +205,12 @@ export {
   WorkdaysComponent, TimeZoneConvertComponent, WorldClockComponent,
 } from "./DateNodes";
 
-// ─── Stats (extended) ─────────────────────────────────────────────────────────
 export { ProbComponent } from "./ProbNode";
 export { WeightedComponent } from "./WeightedNode";
 
-// ─── List extras ──────────────────────────────────────────────────────────────
 export { RandArrayComponent } from "./RandArrayNode";
 export { XMatchComponent } from "./XMatchNode";
 
-// ─── Convert / output ─────────────────────────────────────────────────────────
 export { ConvertComponent } from "./ConvertNode";
 export { DisplayComponent } from "./DisplayNode";
 export { AlertComponent } from "./AlertNode";
@@ -266,7 +223,7 @@ export { SankeyComponent } from "./SankeyNode";
 export { SurfaceComponent } from "./SurfaceNode";
 export {
   WaterfallComponent, CandlestickComponent, BoxplotComponent,
-  CalendarHeatmapComponent, ProportionComponent, QuiverComponent,
+  CalendarHeatmapComponent, HeatmapComponent, ProportionComponent, QuiverComponent,
 } from "./FigureNodes";
 export { RecordComponent } from "./RecordNode";
 export { GanttComponent } from "./GanttNode";
@@ -275,26 +232,21 @@ export { CurveComponent } from "./CurveNode";
 export { GridPainterComponent } from "./GridPainterNode";
 export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
-export { HeatmapCellComponent } from "./HeatmapCellNode";
 export { ChartBuilderComponent } from "./ChartBuilderNode";
-export { DateInputComponent } from "./DateInputNode";
+export { ValueInputComponent } from "./ValueInputNode";
 export { DateRangeComponent } from "./DateRangeNode";
 export { SaveTimesComponent } from "./SaveTimesNode";
 export { XYPadComponent } from "./XYPadNode";
 
-// ─── Format Controller ────────────────────────────────────────────────────────
 export { FormatControllerComponent } from "./FormatControllerNode";
 
-// ─── Expression ───────────────────────────────────────────────────────────────
 export { ExpressionComponent } from "./ExpressionNode";
 export { ScriptComponent } from "./ScriptNode";
 
-// ─── Equation (bidirectional solve) ─────────────────────────────────────────────
 export { EquationComponent } from "./EquationNode";
 
-// ─── Regex / GroupBy ──────────────────────────────────────────────────────────
 export { RegexComponent } from "./RegexNode";
-export { GroupByComponent } from "./GroupByNode";
+export { GroupListsComponent } from "./GroupListsNode";
 export { SocketContextMenu } from "./SocketContextMenu";
 export type { SocketContextTarget } from "./SocketContextMenu";
 export { CableContextMenu } from "./CableContextMenu";
@@ -305,40 +257,29 @@ export { NodeContextMenu } from "./NodeContextMenu";
 export type { NodeContextTarget } from "./NodeContextMenu";
 export { StandoffLayer } from "./StandoffLayer";
 
-// ─── Electricity & Circuits pack ───────────────────────────────────────────────
 export { ParallelCombineComponent, ESeriesComponent, AwgComponent, ResistorCodeComponent } from "./ElectricalNodes";
 
-// ─── Electromagnetism pack ───────────────────────────────────────────────────────
 export { PhysicsConstantComponent } from "./PhysicsConstantNode";
 
-// ─── Fluid Mechanics pack ────────────────────────────────────────────────────────
 export { ColebrookComponent } from "./FluidsNodes";
 
-// ─── Thermodynamics & Air pack ───────────────────────────────────────────────────
 export { IsaAtmosphereComponent, AntoineComponent } from "./ThermoNodes";
 
-// ─── Set & Relational pack ───────────────────────────────────────────────────────
 export { IsInComponent, TallyComponent } from "./SetPackNodes";
 
-// ─── Timesavers pack custom nodes ────────────────────────────────────────────────
 export { ReverseTextComponent, SpellNumberComponent } from "./TimesaverNodes";
 
-// ─── Earth & Sky pack ────────────────────────────────────────────────────────────
 export { SolarPositionComponent, SunriseSunsetComponent, MoonPhaseComponent } from "./AstroNodes";
 
-// ─── Chemistry Basics pack ───────────────────────────────────────────────────────
 export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
 
-// ─── Lists → tables fast path ─────────────────────────────────────────────────
 export { ConcatListsComponent } from "./ConcatListsNode";
 export { FrameFromListsComponent } from "./FrameFromListsNode";
 export { QuadraticRootsComponent } from "./QuadraticRootsNode";
 export { PolyRootsComponent } from "./PolyRootsNode";
 
-// ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 
-// ─── Other (easter egg) ───────────────────────────────────────────────────────
 export { PromoComponent } from "./PromoNode";
 export { OutliersComponent } from "./OutliersNode";
 export { SmoothComponent } from "./SmoothNode";

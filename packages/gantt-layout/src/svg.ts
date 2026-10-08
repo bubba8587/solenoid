@@ -1,6 +1,4 @@
 // [[C69]] ganttPackages, [[C100]] chartIsAValue, [[B14]] oneDesignSystem
-// ganttSvg(payload, opts) → a standalone SVG string, the headless export: tree grid and timeline
-// together; colors are passed in (an SVG cannot read CSS variables), a light-legible default when omitted.
 
 import type { GanttPayload } from "./payload";
 import type { GanttColors, GridColumn } from "./frame";
@@ -15,7 +13,6 @@ export interface GanttSvgOptions {
   width: number;
   height?: number;
   colors?: Partial<GanttColors>;
-  /** Grid pane width in px; default: the sum of the columns' widths. */
   gridWidth?: number;
   rowHeight?: number;
   fontFamily?: string;
@@ -49,19 +46,15 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
       `<line x1="0" y1="0" x2="0" y2="5" stroke="rgba(0,0,0,0.32)" stroke-width="1.2"/></pattern></defs>`,
   );
 
-  // ── Timeline group, offset right of the grid pane ──
   parts.push(`<g transform="translate(${gridWidth},0)">`);
 
-  // Non-working shading (behind everything), full body height.
   for (const s of frame.shading) {
     const fill = s.kind === "holiday" ? colors.holiday : colors.weekend;
     parts.push(`<rect x="${r(s.x)}" y="${headerH}" width="${r(s.w)}" height="${r(bodyH)}" fill="${fill}"/>`);
   }
-  // Vertical grid lines.
   for (const x of frame.gridColumns) {
     parts.push(`<line x1="${r(x)}" y1="${headerH}" x2="${r(x)}" y2="${r(totalH)}" stroke="${colors.gridLine}" stroke-width="1"/>`);
   }
-  // Header tiers.
   let ty = 0;
   for (const tier of frame.scale.tiers) {
     for (const c of tier.cells) {
@@ -76,12 +69,10 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
   }
   parts.push(`<line x1="0" y1="${headerH}" x2="${r((frame.scale.to - frame.scale.from) * frame.scale.pxPerDay)}" y2="${headerH}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
 
-  // Row baselines (faint).
   for (const row of frame.rows) {
     parts.push(`<line x1="0" y1="${r(headerH + row.y + row.h)}" x2="${r((frame.scale.to - frame.scale.from) * frame.scale.pxPerDay)}" y2="${r(headerH + row.y + row.h)}" stroke="${colors.gridLine}" stroke-width="1"/>`);
   }
 
-  // Baseline ghosts (under the bars).
   for (const bar of frame.bars) {
     if (!bar.baseline) continue;
     parts.push(
@@ -89,7 +80,6 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
     );
   }
 
-  // Bars / diamonds / brackets.
   for (const bar of frame.bars) {
     const y = headerH + bar.y;
     if (bar.kind === "milestone") {
@@ -100,13 +90,11 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
       parts.push(`<path d="M${r(cx)} ${r(cy - rr)} L${r(cx + rr)} ${r(cy)} L${r(cx)} ${r(cy + rr)} L${r(cx - rr)} ${r(cy)} Z" fill="${fill}" stroke="${strokeFor(bar, colors)}" stroke-width="${bar.violated ? 1.5 : 0}"/>`);
     } else if (bar.kind === "summary") {
       const fill = bar.critical ? colors.critical : colors.summary;
-      // A bracket: a bar with downward end-caps.
       parts.push(`<path d="${bracketPath(bar.x, y, bar.w, bar.h)}" fill="${fill}"/>`);
     } else {
       const fill = bar.color ?? (bar.critical ? colors.critical : colors.bar);
       const prog = bar.critical ? colors.criticalProgress : colors.barProgress;
       const segs = bar.segments ?? [{ x: bar.x, w: bar.w }];
-      // Dotted connectors across a split bar's gaps.
       if (bar.segments) {
         for (let s = 0; s < bar.segments.length - 1; s++) {
           const a = bar.segments[s], b = bar.segments[s + 1];
@@ -116,7 +104,6 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
       for (const seg of segs) {
         parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="${fill}" opacity="${bar.color ? 1 : 0.85}"/>`);
         if (bar.critical && !bar.color) {
-          // Non-color cue for the critical path (WCAG 1.4.1): a hatch texture + darker outline.
           parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="url(#gantt-crit-hatch)"/>`);
           parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="none" stroke="${darken(colors.critical, 0.45)}" stroke-width="1"/>`);
         }
@@ -135,7 +122,6 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
       parts.push(`<path d="M${r(dx)} ${r(top)} L${r(dx + 6)} ${r(top + 3)} L${r(dx)} ${r(top + 6)} Z" fill="${dc}"/>`);
     }
     if (payload.tasks[bar.taskIndex]?.manual) {
-      // Pushpin at the bar start: a manually pinned task, its own cue.
       parts.push(`<line x1="${r(bar.x)}" y1="${r(y - 6)}" x2="${r(bar.x)}" y2="${r(y + 1)}" stroke="${colors.text}" stroke-width="1"/>`);
       parts.push(`<circle cx="${r(bar.x)}" cy="${r(y - 6)}" r="2.6" fill="${colors.text}" stroke="${colors.surface}" stroke-width="0.75"/>`);
     }
@@ -145,7 +131,6 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
     }
   }
 
-  // Dependency links.
   for (const link of frame.links) {
     const d = link.points.map((p, i) => `${i === 0 ? "M" : "L"}${r(p.x)} ${r(headerH + p.y)}`).join(" ");
     const stroke = link.violated ? colors.violated : link.critical ? colors.critical : colors.link;
@@ -154,7 +139,6 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
     parts.push(arrowHead(link.arrow.x, headerH + link.arrow.y, link.arrow.dir, stroke));
   }
 
-  // Today / status lines.
   if (frame.todayX != null) {
     parts.push(`<line x1="${r(frame.todayX)}" y1="${headerH}" x2="${r(frame.todayX)}" y2="${r(totalH)}" stroke="${colors.today}" stroke-width="1.5"/>`);
   }
@@ -162,13 +146,11 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
     parts.push(`<line x1="${r(frame.statusX)}" y1="${headerH}" x2="${r(frame.statusX)}" y2="${r(totalH)}" stroke="${colors.status}" stroke-width="1.5" stroke-dasharray="2 2"/>`);
   }
 
-  // ── Resource histogram band, under the rows ──
   if (frame.histogram) {
     const h = frame.histogram;
     const bandY = headerH + bodyH;
     const timelineW = (frame.scale.to - frame.scale.from) * frame.scale.pxPerDay;
     parts.push(`<line x1="0" y1="${r(bandY)}" x2="${r(timelineW)}" y2="${r(bandY)}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
-    // Legend.
     let lx = 4;
     for (const lg of h.legend) {
       const col = RESOURCE_RAMP[lg.resourceIndex % RESOURCE_RAMP.length];
@@ -176,29 +158,24 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
       parts.push(`<text x="${r(lx + 12)}" y="${r(bandY + 13)}" fill="${colors.textDim}" font-size="11">${esc(clip(lg.label, 90))}</text>`);
       lx += 18 + Math.min(90, lg.label.length * 6);
     }
-    // Columns.
     for (const seg of h.segments) {
       const col = seg.over ? colors.violated : RESOURCE_RAMP[seg.resourceIndex % RESOURCE_RAMP.length];
       parts.push(`<rect x="${r(seg.x)}" y="${r(bandY + seg.y)}" width="${r(Math.max(seg.w - 0.5, 0.5))}" height="${r(seg.h)}" fill="${col}"/>`);
       if (seg.over) parts.push(`<rect x="${r(seg.x)}" y="${r(bandY + seg.y)}" width="${r(Math.max(seg.w - 0.5, 0.5))}" height="${r(seg.h)}" fill="url(#gantt-crit-hatch)"/>`);
     }
-    // Capacity line at 1 unit.
     parts.push(`<line x1="0" y1="${r(bandY + h.capacityY)}" x2="${r(timelineW)}" y2="${r(bandY + h.capacityY)}" stroke="${colors.textDim}" stroke-width="1" stroke-dasharray="3 2"/>`);
   }
 
-  parts.push(`</g>`); // end timeline
+  parts.push(`</g>`);
 
-  // ── Grid pane (left) ──
   parts.push(gridPane(payload, frame.rows, gridCols, gridWidth, headerH, colors));
 
-  // Divider between panes.
   parts.push(`<line x1="${gridWidth}" y1="0" x2="${gridWidth}" y2="${r(totalH)}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
 
   parts.push(`</svg>`);
   return parts.join("");
 }
 
-/** The calendar month-grid serializer (§ 6.3). Same payload as the Gantt, drawn as months. */
 function calendarSvg(payload: GanttPayload, opts: GanttSvgOptions, colors: GanttColors): string {
   const frame = layoutCalendar(payload, { width: opts.width });
   const totalH = frame.height;
@@ -212,14 +189,11 @@ function calendarSvg(payload: GanttPayload, opts: GanttSvgOptions, colors: Gantt
   parts.push(`<rect width="${opts.width}" height="${totalH}" fill="${colors.surface}"/>`);
 
   for (const m of frame.months) {
-    // Title.
     parts.push(`<text x="4" y="${r(m.y + 16)}" fill="${colors.text}" font-size="13" font-weight="600">${esc(m.label)}</text>`);
-    // Weekday header.
     const wdY = m.y + m.headerH;
     for (let c = 0; c < 7; c++) {
       parts.push(`<text x="${r(c * cellW + 4)}" y="${r(wdY + 13)}" fill="${colors.textDim}" font-size="10">${esc(frame.weekdayLabels[c])}</text>`);
     }
-    // Cells.
     for (const cell of m.cells) {
       if (cell.weekend || cell.holiday) {
         parts.push(`<rect x="${r(cell.x)}" y="${r(cell.y)}" width="${r(cell.w)}" height="${r(cell.h)}" fill="${cell.holiday ? colors.holiday : colors.weekend}"/>`);
@@ -230,7 +204,6 @@ function calendarSvg(payload: GanttPayload, opts: GanttSvgOptions, colors: Gantt
       }
       parts.push(`<text x="${r(cell.x + 4)}" y="${r(cell.y + 12)}" fill="${cell.inMonth ? colors.text : colors.textDim}" font-size="10" opacity="${cell.inMonth ? 1 : 0.5}">${cell.day}</text>`);
     }
-    // Chips.
     for (const ch of m.chips) {
       const fill = ch.color ?? (ch.critical ? colors.critical : colors.bar);
       parts.push(`<rect x="${r(ch.x)}" y="${r(ch.y)}" width="${r(ch.w)}" height="${r(ch.h)}" rx="2" fill="${fill}" opacity="${ch.color ? 1 : 0.85}"/>`);
@@ -238,18 +211,15 @@ function calendarSvg(payload: GanttPayload, opts: GanttSvgOptions, colors: Gantt
       if (ch.violated || ch.late) parts.push(`<rect x="${r(ch.x)}" y="${r(ch.y)}" width="${r(ch.w)}" height="${r(ch.h)}" rx="2" fill="none" stroke="${colors.violated}" stroke-width="1.2" stroke-dasharray="${ch.violated ? "3 2" : "0"}"/>`);
       if (ch.w > 24) parts.push(`<text x="${r(ch.x + 4)}" y="${r(ch.y + ch.h - 3)}" fill="${colors.text}" font-size="10">${esc(clip(ch.label, ch.w - 6))}</text>`);
     }
-    // Milestones.
     for (const ms of m.milestones) {
       const fill = ms.critical ? colors.critical : colors.milestone;
       parts.push(`<circle cx="${r(ms.cx)}" cy="${r(ms.cy)}" r="3.2" fill="${fill}"/>`);
     }
-    // Overflow markers.
     for (const o of m.overflow) {
       parts.push(`<text x="${r(o.x)}" y="${r(o.y)}" fill="${colors.textDim}" font-size="9">+${o.count}</text>`);
     }
   }
 
-  // Reuse the critical hatch pattern for the calendar too.
   parts.splice(1, 0, `<defs><pattern id="gantt-crit-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="rgba(0,0,0,0.32)" stroke-width="1.2"/></pattern></defs>`);
   parts.push(`</svg>`);
   return parts.join("");
@@ -264,7 +234,6 @@ function gridPane(
   colors: GanttColors,
 ): string {
   const parts: string[] = [];
-  // Column headers on the bottom tier row.
   let x = 0;
   for (const c of cols) {
     parts.push(`<text x="${r(c.align === "right" ? x + c.width - 6 : x + 6)}" y="${headerH - 6}" fill="${colors.textDim}" font-size="11" text-anchor="${c.align === "right" ? "end" : "start"}">${esc(c.label)}</text>`);
@@ -296,7 +265,6 @@ function gridPane(
 }
 
 function bracketPath(x: number, y: number, w: number, h: number): string {
-  // A thin top rail with triangular legs dropping the full height at each end.
   const rail = 3;
   const legW = Math.min(8, w / 2);
   return (
@@ -336,7 +304,7 @@ function colsFor(keys: GanttPayload["view"]["columns"] & {}): GridColumn[] {
 function r(n: number): number {
   return Math.round(n * 100) / 100;
 }
-/** Scale a #rrggbb toward black by `factor` (0.45 → 45% of the original). Non-hex passes through. */
+/** 0.45 keeps 45% of each channel; a non-hex color passes through. */
 function darken(hex: string, factor: number): string {
   const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return hex;
@@ -347,7 +315,6 @@ function darken(hex: string, factor: number): string {
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (ch) => (ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : "&quot;"));
 }
-/** Truncate text to roughly fit `px` at a font size (drop, don't overflow). */
 function clip(s: string, px: number, fontPx = 11): string {
   const max = Math.max(0, Math.floor(px / (fontPx * 0.6)));
   return s.length <= max ? s : s.slice(0, Math.max(0, max - 1)).trimEnd() + "…";

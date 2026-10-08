@@ -1,0 +1,15 @@
+.solenoid-valin__digits {
+  flex: 0 0 auto;
+  width: 36px;
+  text-align: center;
+}
+
+/* Against the body's 6px row gap: the type toggle stands a little apart from the field, Format hangs right under
+   the field it formats, and the result box sits a short step below Format. */
+.solenoid-valin__type {
+  margin-bottom: 4px;
+}
+.solenoid-valin__format > .solenoid-node__section-caption {
+  margin-top: -4px;
+  margin-bottom: -2px;
+}

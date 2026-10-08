@@ -27,7 +27,6 @@ const view: GanttViewOptions = { histogram: true, window: [S(2026, 9, 7), S(2026
 describe("resource histogram", () => {
   it("sums units per day per resource with a first-seen resource order", () => {
     const frame = layoutGantt(payload(tasks, view), { width: 700 });
-    expect(frame.histogram).toBeDefined();
     expect(frame.histogram!.resources).toEqual(["Ana", "Bob"]);
     // Peak is Sep 8: Ana 2 + Bob 1 = 3.
     expect(frame.histogram!.maxUnits).toBe(3);
@@ -39,6 +38,17 @@ describe("resource histogram", () => {
     expect(over.length).toBeGreaterThan(0);
     // Ana (index 0) carries 2 units on the double-booked days.
     expect(over.every((s) => s.resourceIndex === 0 && s.units === 2)).toBe(true);
+  });
+
+  it("adds no load on a non-working day", () => {
+    const acrossWeekend = [
+      task({ id: "F", start: S(2026, 9, 11), finish: S(2026, 9, 14), resource: "Ana" }),
+      task({ id: "G", start: S(2026, 9, 11), finish: S(2026, 9, 14), resource: "Ana" }),
+    ];
+    const p = { ...payload(acrossWeekend, { histogram: true, window: [S(2026, 9, 11), S(2026, 9, 14)] }), nonWorking: [[S(2026, 9, 12), S(2026, 9, 13)]] as Array<[number, number]> };
+    const segs = layoutGantt(p, { width: 700 }).histogram!.segments;
+    expect(segs.length).toBe(2); // Friday and Monday only
+    expect(segs.every((s) => s.over)).toBe(true);
   });
 
   it("is absent when no task carries a resource", () => {

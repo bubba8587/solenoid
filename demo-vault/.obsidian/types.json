@@ -15,11 +15,15 @@
     "sessions": "solenoid-cube",
     "readings": "solenoid-list",
     "crew": "solenoid-strlist",
-    "milestones": "solenoid-datelist",
+    "inspections": "solenoid-datelist",
+    "milestones": "solenoid-frame",
     "signed_off": "solenoid-logicallist",
     "impedance": "solenoid-complexlist",
     "grid": "solenoid-table",
-    "budget": "solenoid-frame",
-    "phases": "solenoid-cube"
+    "purchases": "solenoid-frame",
+    "budget": "number",
+    "phases": "solenoid-cube",
+    "q3": "solenoid-frame",
+    "roster": "solenoid-frame"
   }
 }

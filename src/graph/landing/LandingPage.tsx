@@ -1,4 +1,5 @@
-// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem (DESIGN.md § Voice)
+// [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem (DESIGN.md § Voice)
+import { useEffect } from "react";
 import { LandingGraph } from "./LandingGraph";
 import { SocketLegendRows } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";
@@ -16,14 +17,15 @@ import {
   PresenterScene,
   FnWall,
 } from "./LandingScenes";
+import { SITE_PAGES } from "./siteMeta";
 import "./LandingPage.css";
 
-// A standalone route App.tsx swaps the whole app for under ?landing. The hero is the
-// ONE live stage; motion is gated on a `--anim` class set after mount, so content
-// never depends on a transition firing. Chrome comes from siteNav.
 
 export default function LandingPage() {
   const anim = useRevealAnim();
+  useEffect(() => {
+    document.title = SITE_PAGES.about.title;
+  }, []);
 
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>
@@ -39,8 +41,8 @@ export default function LandingPage() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Build your spreadsheets piece by piece. Solenoid makes wiring up complex spreadsheet operations fast 
-                  and easy to understand. 
+                  Build your spreadsheets piece by piece. Each step is a card on a canvas, wired
+                  to the next, so a complex calculation stays easy to follow.
                 </p>
               </Reveal>
               <Reveal delay={220}>
@@ -71,9 +73,8 @@ export default function LandingPage() {
             <Reveal>
               <h2>Typed sockets and cables</h2>
               <p className="sol-landing__lede">
-                Sockets and cables are all colored according to their value type. Value
-                types and dimensions are preserved so you'll
-                never confuse a date with a number or text value.
+                Sockets and cables are colored by value type. Types and dimensions carry
+                through every step, so a date never passes for a number or a piece of text.
               </p>
             </Reveal>
             <Reveal delay={100}>
@@ -83,40 +84,36 @@ export default function LandingPage() {
 
           <Feature title="Units" scene={<UnitsScene />}>
             <p>
-              Values carry real units - not just annotations - everywhere they can.
-            </p>
-            <p> 
-              {" "}<code>SUM(5 km, 3)</code> is <code>8 km</code>, <code>2 m × 4 m </code>
-               makes <code>8 m²</code>.
+              Values carry real units through the math. <code>SUM(5 km, 3)</code> is{" "}
+              <code>8 km</code>, and <code>2 m × 4 m</code> makes <code>8 m²</code>.
             </p>
           </Feature>
 
           <Feature title="Solve for any variable" flip scene={<EquationScene />}>
             <p>
-              Instead of setting up the same equation rearranged 3 different ways, just use
-              Solenoid's Equation node. Plug in all but one variable and it solves for the remaining one.
-              Limited support for multiple quadratic roots.
+              Write an equation once in the Equation node, with no rearranging. Fill in all
+              but one variable and it solves for the one that's left. A quadratic gives both
+              roots; any other equation with several solutions gives the one nearest zero.
             </p>
           </Feature>
 
           <Feature title="Relational verbs" scene={<VerbsScene />}>
             <p>
-              Filter, Sort, Join, Group By, Append, Distinct, Pivot, Unpivot. 
-               The desktop build runs data table functions via Rust + Polars,
-              handling million-row operations with ease.
+              Filter, Sort, Join, GROUPBY, Append, Distinct, Pivot and Unpivot. The desktop
+              build runs them on Rust and Polars, fast enough for million-row tables.
             </p>
           </Feature>
 
           <Feature title="Draw your data" flip scene={<DrawScene />}>
             <p>
-              Solenoid includes a variety of interactive, visual widget nodes for data input. 
+              Sketch a curve or place points by hand, and the graph reads them as data.
             </p>
           </Feature>
 
-          <Feature title="YAML Frontmatter Inputs" scene={<ObsidianScene />}>
+          <Feature title="Frontmatter inputs" scene={<ObsidianScene />}>
             <p>
-              Author or import Markdown documents with frontmatter properties to use them
-              as real inputs in your graph.
+              Write a Markdown note with frontmatter properties, or import one, and use each
+              property as an input in the graph.
             </p>
           </Feature>
 
@@ -135,7 +132,7 @@ export default function LandingPage() {
             <Reveal>
               <h2>Excel parity</h2>
               <p className="sol-landing__lede">
-                Solenoid functions use Excel names, syntax, and math.  
+                Solenoid's functions use Excel's names, syntax and math.
               </p>
             </Reveal>
             <Reveal delay={100}>

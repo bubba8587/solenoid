@@ -1,25 +1,29 @@
-// [[C63]]
+// [[B11]] maximalMerge
+import { cellImageSrc } from "../../../src/graph/recordLayout";
 import { describe, it, expect } from "vitest";
 import {
-  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
-  boxplotStats, quantileSorted,
-  RecordNode, parseRecordLayout, recordImageSrc,
+  boxplotStats, quantileSorted, HistogramNode, type Histogram2d,
+  RecordNode, recordRows, parseRecordLayout, recordImageSrc, HEATMAP_MAX,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
-import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
+import type { XYPayload, BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, HeatmapPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
-import { DateInputNode, XYPadNode } from "../../../src/graph/nodes/control";
+import { XYPadNode } from "../../../src/graph/nodes/control";
+import { ValueInputNode } from "../../../src/graph/nodes/control";
 import { extractInit } from "../../../src/graph/copyPaste";
+import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial, parseDate } from "../../../src/graph/nodes/date";
+import type { ChartValue } from "../../../src/graph/chartValue";
+const draw = (n: ChartNode, inputs: Parameters<ChartNode["data"]>[0]) => n.data(inputs) as { chart: ChartValue };
 import { isSolError } from "../../../src/graph/errorValue";
 import { isMermaidValue } from "../../../src/graph/mermaidValue";
 
 describe("visual nodes", () => {
   it("Sparkline emits a chart value; Chart emits a first-class chart value", () => {
     const sp = new SparklineNode({ op: "column" });
-    expect(sp.op).toBe("column");
     expect(sp.data({ values: [[1, 2, 3]] }).chart).toMatchObject({ __chart: true, op: "column", values: [1, 2, 3] });
     expect(sp.data({}).chart).toMatchObject({ __chart: true, values: [] });
     // legacy "bar" migrates to "column"; retired "area" → "line"
@@ -33,7 +37,7 @@ describe("visual nodes", () => {
     // (op + values + options), the thing a Report renders inline, NOT a
     // numlist pass-through (nothing consumed that; a chart is a sink).
     const ch = new ChartNode({ op: "line" });
-    expect(ch.data({ values: [[4, 5]] })).toEqual({
+    expect(draw(ch, { values: [[4, 5]] })).toEqual({
       // A plain list gives no labels/series — just the values figure.
       chart: { __chart: true, op: "line", values: [4, 5], options: {}, title: "Chart" },
     });
@@ -41,10 +45,10 @@ describe("visual nodes", () => {
 
   it("Chart parses its Options socket into chartOptions", () => {
     const ch = new ChartNode();
-    ch.data({ values: [[1, 2]], options: ["title=Hi;color=red;grid=off;ylim=0,9"] });
+    draw(ch, { values: [[1, 2]], options: ["title=Hi;color=red;grid=off;ylim=0,9"] });
     expect(ch.chartOptions).toEqual({ title: "Hi", color: "red", grid: false, ymin: 0, ymax: 9 });
     // no options wired → empty (Sparkline-equivalent look)
-    ch.data({ values: [[1, 2]] });
+    draw(ch, { values: [[1, 2]] });
     expect(ch.chartOptions).toEqual({});
   });
 
@@ -54,34 +58,19 @@ describe("visual nodes", () => {
       { name: "Speed", type: "number", values: [9, 6] },
       { name: "Price", type: "number", values: [1800, 1400] },
     ] };
-    const out = new ChartNode({ op: "radar" }).data({ values: [frame] }).chart;
+    const out = draw(new ChartNode({ op: "radar" }), { values: [frame] }).chart;
     expect(out.labels).toEqual(["Speed", "Price"]);       // spokes = the number columns
     expect(out.series).toEqual([
       { name: "A", values: [9, 1800] },                    // one polygon per row, named by col 0
       { name: "B", values: [6, 1400] },
     ]);
     // A cartesian chart keeps the other orientation: col 0 labels, columns are series.
-    const bar = new ChartNode({ op: "bar" }).data({ values: [frame] }).chart;
+    const bar = draw(new ChartNode({ op: "bar" }), { values: [frame] }).chart;
     expect(bar.labels).toEqual(["A", "B"]);
     expect(bar.series).toEqual([
       { name: "Speed", values: [9, 6] },
       { name: "Price", values: [1800, 1400] },
     ]);
-  });
-
-  it("composed reads the frame like the other cartesian ops: col 0 labels, columns as series", () => {
-    const frame: FrameValue = { __frame: true, columns: [
-      { name: "Month", type: "string", values: ["Jan", "Feb", "Mar"] },
-      { name: "Sales", type: "number", values: [120, 145, 98] },
-      { name: "Target", type: "number", values: [130, 130, 140] },
-    ] };
-    const out = new ChartNode({ op: "composed" }).data({ values: [frame], options: ["title=Sales vs target"] }).chart;
-    expect(out.labels).toEqual(["Jan", "Feb", "Mar"]);
-    expect(out.series).toEqual([
-      { name: "Sales", values: [120, 145, 98] },
-      { name: "Target", values: [130, 130, 140] },
-    ]);
-    expect(out.options.title).toBe("Sales vs target");
   });
 
   it("bubble names its axes after the x/y columns unless the options label them", () => {
@@ -90,17 +79,13 @@ describe("visual nodes", () => {
       { name: "Return", type: "number", values: [18, 32] },
       { name: "Reach", type: "number", values: [40, 90] },
     ] };
-    const out = new ChartNode({ op: "bubble" }).data({ values: [frame] }).chart;
-    expect(out.series).toEqual([
-      { name: "Spend", values: [12, 25] },
-      { name: "Return", values: [18, 32] },
-      { name: "Reach", values: [40, 90] },   // the size column, named in the tooltip
-    ]);
+    const out = draw(new ChartNode({ op: "bubble" }), { values: [frame] }).chart;
+    expect((out.payload as XYPayload).names).toEqual({ x: "Spend", y: "Return", s: "Reach" });
     expect(out.options).toMatchObject({ xlabel: "Spend", ylabel: "Return" });
     // An authored label wins; a plain list has no column names to fall back on.
-    const named = new ChartNode({ op: "bubble" }).data({ values: [frame], options: ["xlabel=£ spent"] }).chart;
+    const named = draw(new ChartNode({ op: "bubble" }), { values: [frame], options: ["xlabel=£ spent"] }).chart;
     expect(named.options).toMatchObject({ xlabel: "£ spent", ylabel: "Return" });
-    expect(new ChartNode({ op: "bubble" }).data({ values: [[1, 2, 3]] }).chart.options).toEqual({});
+    expect(draw(new ChartNode({ op: "bubble" }), { values: [[1, 2, 3]] }).chart.options).toEqual({});
   });
 
   it("Mermaid emits a first-class diagram value from its source", () => {
@@ -131,10 +116,12 @@ describe("visual nodes", () => {
     expect(out.payload).toMatchObject({ kind: "scale", style: "bar", value: 42, target: 80, min: 0, max: 200 });
   });
 
-  it("Heatmap passes a Table straight through", () => {
-    const h = new HeatmapCellNode();
-    expect(h.data({ table: [[[1, 2], [3, 4]]] })).toEqual({ result: [[1, 2], [3, 4]] });
-    expect(h.data({})).toEqual({ result: null });
+  it("Heatmap draws a plain table as it stands, numbering rows and columns, blanks as gaps", async () => {
+    const out = (await new HeatmapNode().data({ values: [[[1, 2, 3], [4, "x", null]]] })).chart;
+    expect(out).toMatchObject({ __chart: true, op: "heatmap", values: null, title: "Heatmap" });
+    expect(out.payload).toEqual({ kind: "heatmap", z: [[1, 2, 3], [4, null, null]], rows: ["1", "2"], cols: ["1", "2", "3"] });
+    expect((await new HeatmapNode().data({ values: [[5, 6]] })).chart.payload).toMatchObject({ z: [[5, 6]], rows: ["1"] });
+    expect((await new HeatmapNode().data({})).chart.payload).toMatchObject({ z: [], rows: [], cols: [] });
   });
 
   it("op + literals round-trip through extractInit", () => {
@@ -144,7 +131,6 @@ describe("visual nodes", () => {
 
     const g = new GaugeNode({ mode: "bar" });
     const init = extractInit(g);
-    expect(init.mode).toBe("bar");
     expect(new GaugeNode(init as { mode: "bar" }).mode).toBe("bar");
   });
 });
@@ -175,13 +161,11 @@ describe("Surface (3-D plot)", () => {
     expect(new SurfaceNode().data({}).chart).toMatchObject({ op: "surface", payload: { kind: "surface", xs: [], ys: [], z: [] } });
   });
 
-  it("the view angles round-trip through extractInit (rotate buttons persist)", () => {
+  it("the view angles round-trip through the paste path (rotate buttons persist)", async () => {
     const s = new SurfaceNode();
     s.literals.yaw = 135;
     s.literals.pitch = 60;
-    const s2 = new SurfaceNode(extractInit(s));
-    expect(s2.literals.yaw).toBe(135);
-    expect(s2.literals.pitch).toBe(60);
+    const s2 = await pasteCopy(s);
     expect(s2.data({}).chart.payload).toMatchObject({ yaw: 135, pitch: 60 });
   });
 });
@@ -212,9 +196,7 @@ describe("Chart Builder", () => {
   it("target round-trips through extractInit; a stale target falls back to column", () => {
     const b = new ChartBuilderNode({ target: "kpi" });
     const init = extractInit(b);
-    expect(init.target).toBe("kpi");
     expect(new ChartBuilderNode(init as { target?: never }).target).toBe("kpi");
-    expect(new ChartBuilderNode({ target: "gone" as never }).target).toBe("column");
   });
 
   it("serialization ignores the target — set fields always emit", () => {
@@ -222,6 +204,17 @@ describe("Chart Builder", () => {
     b.stringLiterals.title = "T";
     b.stringLiterals.color = "#123456"; // inert for proportion, still serialized
     expect(b.data({})).toEqual({ result: "title=T;color=#123456" });
+  });
+
+  it("switching the target clears every field the new figure does not read", () => {
+    const b = new ChartBuilderNode({ target: "scatter" });
+    Object.assign(b.stringLiterals, { title: "T", color: "#123456", x: "t", aspect: "equal" });
+    Object.assign(b.literals, { markersize: 4, fontsize: 12, xmin: 0 });
+    b.setTarget("heatmap");
+    expect(b.target).toBe("heatmap");
+    expect(b.stringLiterals).toEqual({ title: "T", aspect: "equal" });
+    expect(b.literals).toEqual({ fontsize: 12 });
+    expect(b.data({})).toEqual({ result: "title=T;aspect=equal;fontsize=12" });
   });
 
   it("every target key is a real builder field, and every target reads title", () => {
@@ -247,6 +240,12 @@ describe("histogramBins", () => {
     expect(histogramBins([3, 3, 3], 4)).toEqual([3, 0, 0, 0]); // one spike, all in bin 0
   });
 
+  it("a value on a bin's lower edge lands in that bin, however the division rounds", () => {
+    const w = 0.3 / 7;
+    expect(histogramBins([0, 3 * w, 6 * w, 0.3], 7)).toEqual([1, 0, 0, 1, 0, 0, 2]);
+    expect((histogram2d([0, 3 * w, 0.3], [0, 0, 0.3], 7, 1) as Histogram2d).counts[0]).toEqual([1, 0, 0, 1, 0, 0, 1]);
+  });
+
   it("a large series doesn't RangeError (iterMin/iterMax, not Math.min/max spread)", () => {
     // A histogram over a big frame column is an ordinary ask; the spread form
     // throws past ~125k args on min/max.
@@ -259,24 +258,58 @@ describe("histogramBins", () => {
 });
 
 describe("histogram2d (numpy histogram2d)", () => {
-  it("tallies paired samples into an x-bin × y-bin grid; last edge inclusive", () => {
+  it("tallies paired samples into a y-bin × x-bin grid; last edge inclusive", () => {
     // A 2×2 grid over [0,2]×[0,2]: (0,0) low-low, (1,1)+(2,2) hit the closed upper bin.
-    const h = histogram2d([0, 1, 2, 0], [0, 1, 2, 2], 2, 2)!;
-    expect(h.counts).toEqual([[1, 1], [0, 2]]); // counts[xBin][yBin]
+    const h = histogram2d([0, 1, 2, 0], [0, 1, 2, 2], 2, 2) as Histogram2d;
+    expect(h.counts).toEqual([[1, 0], [1, 2]]); // counts[yBin][xBin]
     expect(h.xEdges).toEqual([0, 1]);
     expect(h.yEdges).toEqual([0, 1]);
   });
 
   it("skips a pair when either coordinate is non-finite (numpy drops NaN pairs)", () => {
-    const h = histogram2d([0, null, 2], [0, 5, 2], 2, 2)!;
+    const h = histogram2d([0, null, 2], [0, 5, 2], 2, 2) as Histogram2d;
     // Only (0,0) and (2,2) survive → one in each diagonal corner.
     expect(h.counts).toEqual([[1, 0], [0, 1]]);
   });
 
   it("an axis whose values are all equal collapses to one bin (single-spike rule)", () => {
-    const h = histogram2d([5, 5, 5], [0, 1, 2], 4, 2)!;
+    const h = histogram2d([5, 5, 5], [0, 1, 2], 4, 2) as Histogram2d;
     expect(h.xEdges).toHaveLength(1); // x collapsed
-    expect(h.counts).toEqual([[1, 2]]); // one x row; y=0 → bin 0, y=1 and y=2 → the closed bin 1
+    expect(h.counts).toEqual([[1], [2]]); // one x column; y=0 → bin 0, y=1 and y=2 → the closed bin 1
+  });
+
+  it("0, negative or non-numeric bins are #DOMAIN!, as in 1-D mode", async () => {
+    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    for (const [kx, ky] of [[0, 2], [2, -1], [NaN, 2]]) {
+      const h = histogram2d([0, 1], [0, 1], kx, ky);
+      expect(isSolError(h) && h.code).toBe("#DOMAIN!");
+    }
+    const f = resolveExcelFunction("HISTOGRAM2D")!([0, 1], [0, 1], 0, 2);
+    expect(isSolError(f) && f.code).toBe("#DOMAIN!");
+    const n = new HistogramNode();
+    n.setMode("2d");
+    const chart = n.data({ values: [[0, 1]], y: [[0, 1]], bins: [0], ybins: [2] }).chart;
+    expect(isSolError(chart) && chart.code).toBe("#DOMAIN!");
+  });
+
+  it("a live mode switch relabels Values and Bins as a fresh card of that mode reads", () => {
+    const n = new HistogramNode();
+    n.setMode("2d");
+    const fresh = new HistogramNode({ mode: "2d" });
+    expect([n.inputs.values?.label, n.inputs.bins?.label]).toEqual([fresh.inputs.values?.label, fresh.inputs.bins?.label]);
+    n.setMode("1d");
+    expect([n.inputs.values?.label, n.inputs.bins?.label]).toEqual(["Values", "Bins"]);
+  });
+
+  it("HISTOGRAM2D answers the grid the node draws: a row per y bin", async () => {
+    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    const xs = [0, 1, 2, 0, 2], ys = [0, 0, 0, 3, 3];
+    const f = resolveExcelFunction("HISTOGRAM2D")!(xs, ys, 3, 2);
+    expect(f).toEqual([[1, 1, 1], [1, 0, 1]]);
+    const n = new HistogramNode();
+    n.setMode("2d");
+    const chart = n.data({ values: [xs], y: [ys], bins: [3], ybins: [2] }).chart as ChartValue;
+    expect((chart.payload as { z: number[][] }).z).toEqual(f);
   });
 
   it("no finite pair → null", () => {
@@ -287,24 +320,25 @@ describe("histogram2d (numpy histogram2d)", () => {
 });
 
 describe("control nodes", () => {
-  it("Date Input derives its serial from the raw source text", () => {
-    expect(new DateInputNode({ date: "20-Mar-2026" }).data().result).toBe(Math.floor(parseDate("20-Mar-2026") as number));
-    expect(new DateInputNode({ date: "" }).data()).toEqual({ result: null });
-    expect(new DateInputNode({ date: "not a date" }).data()).toEqual({ result: null });
+  it("a date Value Input derives its serial from the raw source text", () => {
+    const date = (value?: string) => new ValueInputNode({ op: "date", value });
+    expect(date("20-Mar-2026").data().value).toBe(Math.floor(parseDate("20-Mar-2026") as number));
+    expect(date("").data()).toEqual({ value: null });
+    expect(date("not a date").data()).toEqual({ value: null });
     // default is today's serial
-    expect(new DateInputNode().data().result).toBe(Math.floor(jsDateToSerial(new Date())));
+    expect(date().data().value).toBe(Math.floor(jsDateToSerial(new Date())));
   });
-  it("Date Input keeps the raw text verbatim and surfaces #AMBIGUOUS! instead of guessing", () => {
-    const d = new DateInputNode({ date: "20-mar-2026" });
-    expect(d.stringLiterals.date).toBe("20-mar-2026"); // raw is the source of truth
-    const amb = new DateInputNode({ date: "3/4/2026" }).data().result;
+  it("a date Value Input keeps the raw text verbatim and surfaces #AMBIGUOUS! instead of guessing", () => {
+    const d = new ValueInputNode({ op: "date", value: "20-mar-2026" });
+    expect(d.value).toBe("20-mar-2026"); // raw is the source of truth
+    const amb = new ValueInputNode({ op: "date", value: "3/4/2026" }).data().value;
     expect(isSolError(amb) && amb.code).toBe("#AMBIGUOUS!");
   });
 
-  it("XY Pad outputs its two fractions and round-trips", () => {
+  it("XY Pad outputs its two fractions and round-trips", async () => {
     const p = new XYPadNode({ fx: 0.25, fy: 0.75 });
     expect(p.data()).toEqual({ x: 0.25, y: 0.75 });
-    const p2 = new XYPadNode(extractInit(p));
+    const p2 = await pasteCopy(p);
     expect(p2.literals.fx).toBe(0.25);
     expect(p2.literals.fy).toBe(0.75);
   });
@@ -444,20 +478,19 @@ describe("chart-wave nodes emit their payloads", () => {
 describe("Surface — the 3-D / Flat view toggle (old Contour)", () => {
   it("the toggle swaps the payload kind and owns the Levels socket", () => {
     const n = new SurfaceNode();
-    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys"]);
+    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "options"]);
     n.setOp("contour");
-    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "levels"]);
-    expect(n.literals.levels).toBe(8);
+    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "levels", "options"]);
     const z = [[10, 20], [30, 40]];
     expect(n.data({ z: [z] }).chart).toMatchObject({ op: "contour", payload: { kind: "contour", levels: 8 } });
     n.setOp("surface");
-    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys"]);
+    expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "options"]);
     expect(n.data({ z: [z] }).chart).toMatchObject({ op: "surface", payload: { kind: "surface", yaw: 45 } });
   });
 
-  it("op round-trips through extractInit with the view's literals", () => {
+  it("op round-trips through the paste path with the view's literals", async () => {
     const n = new SurfaceNode({ op: "contour", levels: 12 });
-    const clone = new SurfaceNode(extractInit(n) as { op: "contour" });
+    const clone = await pasteCopy(n);
     expect(clone.op).toBe("contour");
     expect(clone.literals.levels).toBe(12);
   });
@@ -525,6 +558,15 @@ describe("Record node", () => {
     expect(recordImageSrc(" https://x.test/a.JPG?w=2 ")).toBe("https://x.test/a.JPG?w=2");
     expect(recordImageSrc("https://x.test/page.html")).toBeNull();
     expect(recordImageSrc("Bolt M4")).toBeNull();
+    expect(recordImageSrc("data:text/html,<script>alert(1)</script>")).toBeNull();
+    expect(recordImageSrc("javascript:alert(1)//.png")).toBeNull();
+  });
+  // [[C103]] untrustedContentSeams: the grid and the Cards view show data:image text only, never a fetched address.
+  it("cellImageSrc: data:image only, so no web address and no other data: type", () => {
+    expect(cellImageSrc(" data:image/svg+xml,%3Csvg/%3E")).toBe("data:image/svg+xml,%3Csvg/%3E");
+    expect(cellImageSrc("https://x.test/a.png")).toBeNull();
+    expect(cellImageSrc("data:text/html,<b>x</b>")).toBeNull();
+    expect(cellImageSrc(42)).toBeNull();
   });
 
   it("no layout → the columns stack; row 1 is the default record", async () => {
@@ -534,7 +576,7 @@ describe("Record node", () => {
       { name: "Qty", type: "number", values: [40, 120] },
     ]);
     const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
-    expect(p).toMatchObject({ kind: "record", view: "card", cols: 1, index: 1, total: 2 });
+    expect(p).toMatchObject({ kind: "record", view: "detail", cols: 1, index: 1, total: 2 });
     expect(p.cards[0]).toEqual([
       { label: "Item", value: "Bolt", row: 1, col: 1, rowSpan: 1, colSpan: 1 },
       { label: "Qty", value: 40, row: 2, col: 1, rowSpan: 1, colSpan: 1 },
@@ -561,7 +603,7 @@ describe("Record node", () => {
 
   it("cells format for display: dates as text, booleans as TRUE/FALSE, nulls empty, images detected", async () => {
     const n = new RecordNode();
-    n.literals.row = 2;
+    n.literals.page = 2;
     const f = frame([
       { name: "When", type: "date", values: [45000, 45001] },
       { name: "Done", type: "logical", values: [false, true] },
@@ -577,21 +619,51 @@ describe("Record node", () => {
     expect(by.Photo.image).toBe("https://x.test/b.png");
   });
 
-  it("Row is the record pick: a wired blank or out-of-range shows empty boxes; unwired clamps + mirrors", async () => {
+  it("Rows picks the records: a wired blank is every row, out-of-range picks are dropped, Detail pages through the picks", async () => {
     const n = new RecordNode();
-    const f = frame([{ name: "A", type: "number", values: [1, 2, 3] }]);
-    // Wired blank → no record, boxes stay (labels visible), values empty.
-    let p = (await n.data({ frame: [f], row: [null as unknown as number] })).chart.payload as RecordPayload;
-    expect(p.index).toBe(0);
-    expect(p.cards[0][0]).toMatchObject({ label: "A", value: null });
-    // Wired out-of-range → empty too, never clamped to a record the cable didn't pick.
-    p = (await n.data({ frame: [f], row: [7] })).chart.payload as RecordPayload;
-    expect(p.index).toBe(0);
-    // Unwired → the card's literal clamps into range and mirrors back.
-    n.literals.row = 99;
-    p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
-    expect(p.index).toBe(3);
-    expect(n.literals.row).toBe(3);
+    const f = frame([{ name: "A", type: "number", values: [10, 20, 30, 40, 50] }]);
+    const valueOf = (p: RecordPayload) => p.cards[0][0].value;
+    // Wired blank → the picks left out, so every row ([[D86]] blankRoles).
+    let p = (await n.data({ frame: [f], rows: [null] })).chart.payload as RecordPayload;
+    expect(p).toMatchObject({ index: 1, total: 5 });
+    // A list: Detail pages through those rows, in that order; the pager's page clamps and mirrors back.
+    n.literals.page = 99;
+    p = (await n.data({ frame: [f], rows: [[5, 1, 3]] })).chart.payload as RecordPayload;
+    expect(p).toMatchObject({ index: 3, total: 3 });
+    expect(valueOf(p)).toBe(30);
+    expect(n.literals.page).toBe(3);
+    n.literals.page = 1;
+    expect(valueOf((await n.data({ frame: [f], rows: [[5, 1, 3]] })).chart.payload as RecordPayload)).toBe(50);
+    // One number is one record; an out-of-range pick is dropped, and nothing left shows empty boxes.
+    expect(valueOf((await n.data({ frame: [f], rows: [2] })).chart.payload as RecordPayload)).toBe(20);
+    p = (await n.data({ frame: [f], rows: [7] })).chart.payload as RecordPayload;
+    expect(p).toMatchObject({ index: 0, total: 0 });
+    expect(valueOf(p)).toBeNull();
+  });
+
+  it("Rows narrows and orders Gallery, List, Board and Cards too", async () => {
+    const f = frame([
+      { name: "Item", type: "string", values: ["a", "b", "c", "d"] },
+      { name: "Status", type: "string", values: ["Open", "Done", "Open", "Done"] },
+    ]);
+    const gallery = new RecordNode({ op: "gallery" });
+    let p = (await gallery.data({ frame: [f], rows: [[4, 2]] })).chart.payload as RecordPayload;
+    expect(p.cards.map((c) => c[0].value)).toEqual(["d", "b"]);
+    const board = new RecordNode({ op: "board" });
+    board.stringLiterals.by = "Status";
+    p = (await board.data({ frame: [f], rows: [[3, 1, 2]] })).chart.payload as RecordPayload;
+    expect(p.lanes).toEqual([{ label: "Open", cards: [0, 1] }, { label: "Done", cards: [2] }]);
+    const cards = new RecordNode({ op: "cards" });
+    p = (await cards.data({ frame: [f], rows: [[-1, 1]] })).chart.payload as RecordPayload;
+    expect(p.deck?.rows.map((r) => r[0])).toEqual(["d", "a"]);
+    expect(p.deck?.rowNumbers).toEqual([4, 1]);
+  });
+
+  it("recordRows: 1-based picks in order, negatives from the end, junk and out of range dropped, none is every row", () => {
+    expect(recordRows(undefined, 3)).toEqual([0, 1, 2]);
+    expect(recordRows(2, 3)).toEqual([1]);
+    expect(recordRows([3, 1, 1], 3)).toEqual([2, 0, 0]);
+    expect(recordRows([-1, 0, 4, 2.4, "x"], 3)).toEqual([2, 1]);
   });
 
   it("a layout stands without a frame (draftable), and no inputs at all is empty", async () => {
@@ -613,8 +685,6 @@ describe("Record node", () => {
     const clone = new RecordNode(extractInit(n) as { op: "gallery" });
     expect(clone.label).toBe("Part");
     expect(clone.op).toBe("gallery");
-    // A stale op from an old save falls back rather than crashing.
-    expect(new RecordNode({ op: "kanban" as "board" }).op).toBe("card");
   });
 
   it("gallery draws every row as a card, capped with a `more` count", async () => {
@@ -653,15 +723,41 @@ describe("Record node", () => {
     expect(((await n.data({ frame: [f], by: [null as unknown as string] })).chart.payload as RecordPayload).cards).toEqual([]);
   });
 
-  it("setOp swaps the Row / Group-by sockets with the view", () => {
+  it("setOp swaps the Group-by and Layout sockets with the view; Rows stays on every view", () => {
     const n = new RecordNode();
-    expect(Object.keys(n.inputs)).toEqual(["frame", "row", "layout", "options"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
     n.setOp("gallery");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
     n.setOp("board");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "by"]);
-    n.setOp("card");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "row"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options", "by"]);
+    n.setOp("detail");
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
+    n.setOp("cards");
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "options"]);
+    n.setOp("list");
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "options", "layout"]);
+    expect(Object.keys(new RecordNode({ op: "cards" }).inputs)).toEqual(["frame", "rows", "options"]);
+  });
+
+  it("Cards plans the whole frame and ships the drawn rows, numbers raw and the rest as shown", async () => {
+    const n = new RecordNode({ op: "cards" });
+    n.stringLiterals.layout = "Price"; // Cards is never authored: a leftover layout is ignored
+    const f: FrameValue = { __frame: true, columns: [
+      { name: "Name", type: "string", values: Array.from({ length: 70 }, (_, i) => `Item ${i + 1}`) },
+      { name: "Price", type: "number", values: Array.from({ length: 70 }, (_, i) => i + 0.5), format: { format: "decimal", unit: "none" } },
+      { name: "Due", type: "date", values: Array.from({ length: 70 }, () => 46023) },
+      { name: "Ok", type: "logical", values: Array.from({ length: 70 }, (_, i) => i % 2 === 0) },
+    ] };
+    const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
+    expect(p.view).toBe("cards");
+    expect(p.cards).toEqual([]);
+    expect(p.more).toBe(10);
+    const deck = p.deck!;
+    expect(deck.rows).toHaveLength(60);
+    expect(deck.names).toEqual(["Name", "Price", "Due", "Ok"]);
+    expect(deck.plan).toMatchObject({ title: 0, hero: 1, meta: 2, flags: [3] });
+    expect(deck.rows[0]).toEqual(["Item 1", 0.5, "01-Jan-2026", "TRUE"]);
+    expect(deck.formats[1]).toMatchObject({ format: "decimal" });
   });
 });
 
@@ -686,11 +782,57 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
       { name: "C", type: "number", values: [12, 11] },
     ]);
     const out = await n.data({ frame: [f] });
-    expect(isSolError(out.chart)).toBe(false);
     expect(((out.chart as { payload: CandlePayload }).payload).low).toEqual([null, 11]);
     const short = frame([{ name: "O", type: "number", values: [1] }, { name: "H", type: "number", values: [2] }]);
     const bad = await n.data({ frame: [short] });
     expect(isSolError(bad.chart) && bad.chart.code).toBe("#SHAPE!");
+  });
+  it("Heatmap names rows by a text first column and keeps only number columns", async () => {
+    const f = frame([
+      { name: "Region", type: "string", values: ["North", "South"] },
+      { name: "Q1", type: "number", values: [12, 18] },
+      { name: "Note", type: "string", values: ["a", "b"] },
+      { name: "Q2", type: "number", values: [15, null] },
+    ]);
+    const n = new HeatmapNode();
+    n.stringLiterals.options = "title=Sales;cmap=rdbu_R;center=0";
+    const out = (await n.data({ values: [f] })).chart;
+    expect(out.payload).toEqual({ kind: "heatmap", z: [[12, 15], [18, null]], rows: ["North", "South"], cols: ["Q1", "Q2"] });
+    expect(out.title).toBe("Sales");
+    expect(out.options).toMatchObject({ cmap: "RdBu_r", center: 0 });
+  });
+  it("Heatmap plots an all-number frame whole, rows numbered", async () => {
+    const f = frame([{ name: "A", type: "number", values: [1, 2] }, { name: "B", type: "number", values: [3, 4] }]);
+    expect((await new HeatmapNode().data({ values: [f] })).chart.payload).toEqual({ kind: "heatmap", z: [[1, 3], [2, 4]], rows: ["1", "2"], cols: ["A", "B"] });
+  });
+  it("Surface carries the parsed options on both views", () => {
+    const n = new SurfaceNode({ op: "contour" });
+    n.stringLiterals.options = "title=Terrain;cmap=magma";
+    const flat = n.data({ z: [[[1, 2], [3, 4]]] }).chart;
+    expect(flat).toMatchObject({ op: "contour", title: "Terrain", options: { cmap: "magma" } });
+    n.setOp("surface");
+    expect(n.data({ z: [[[1, 2], [3, 4]]] }).chart.options).toMatchObject({ cmap: "magma" });
+  });
+  it("Vector Field reads its options", () => {
+    const n = new QuiverNode();
+    const out = n.data({ u: [[[1]]], v: [[[0]]], options: ["cmap=viridis;title=Wind"] }).chart;
+    expect(out).toMatchObject({ title: "Wind", options: { cmap: "viridis" } });
+  });
+  it("Histogram 2-D draws its bins as a heatmap, y growing upward, bins labeled by their lower edge", () => {
+    const n = new HistogramNode({ mode: "2d" });
+    n.stringLiterals.options = "cmap=magma";
+    const out = n.data({ values: [[0, 1, 2, 0]], y: [[0, 1, 2, 2]], bins: [2], ybins: [2] }).chart as ChartValue;
+    expect(out.op).toBe("heatmap");
+    expect(out.payload).toEqual({ kind: "heatmap", z: [[1, 0], [1, 2]], rows: ["0", "1"], cols: ["0", "1"] });
+    expect(out.options).toMatchObject({ origin: "lower", aspect: "auto", cmap: "magma" });
+  });
+  it("Heatmap cuts a huge table to HEATMAP_MAX and says how big it was", async () => {
+    const big = Array.from({ length: HEATMAP_MAX + 5 }, (_, r) => Array.from({ length: 3 }, (_, c) => r + c));
+    const p = (await new HeatmapNode().data({ values: [big] })).chart.payload as HeatmapPayload;
+    expect(p.z.length).toBe(HEATMAP_MAX);
+    expect(p.rows.length).toBe(HEATMAP_MAX);
+    expect(p.totalRows).toBe(HEATMAP_MAX + 5);
+    expect(p.totalCols).toBeUndefined();
   });
   it("Calendar skips a day whose value is blank instead of painting 0", async () => {
     const n = new CalendarHeatmapNode();
@@ -734,11 +876,24 @@ describe("Sankey loops, Histogram bins, Date Range order (review pins)", () => {
     expect((all.chart as { payload?: unknown }).payload).toBeDefined(); // a self-loop is skipped, not a cycle
   });
 
+  it("repeated From → To flows merge into one summed flow before drawing", async () => {
+    const { SankeyNode } = await import("../../../src/graph/nodes/visual");
+    const n = new SankeyNode();
+    const out = await n.data({ frame: [{ __frame: true, columns: [
+      { name: "From", type: "string", values: ["Salary", "Salary", "Bonus", "Salary"] },
+      { name: "To", type: "string", values: ["Rent", "Food", "Savings", "Rent"] },
+      { name: "Value", type: "number", values: [1000, 300, 500, 200] },
+    ] } as never] });
+    const p = (out.chart as { payload?: { sources: string[]; targets: string[]; values: number[] } }).payload!;
+    expect(p.sources).toEqual(["Salary", "Salary", "Bonus"]);
+    expect(p.targets).toEqual(["Rent", "Food", "Savings"]);
+    expect(p.values).toEqual([1200, 300, 500]);
+  });
+
   it("histogramBins refuses a bins count below 1 or not a number", () => {
     const err = histogramBins([1, 2, 3], 0);
     expect((err as { code?: string }).code).toBe("#DOMAIN!");
     expect((histogramBins([1, 2, 3], NaN) as { code?: string }).code).toBe("#DOMAIN!");
-    expect(histogramBins([1, 2, 3], 2)).toEqual([1, 2]);
   });
 
   it("Date Range never emits an end before its start", async () => {

@@ -4,7 +4,7 @@ Ready-to-paste issue texts for `formulajs/formulajs` (verified against 4.6.1, 20
 These are the overrides in `excelFunctions.ts` whose reason is a genuine Formula.js
 defect against Excel — NOT Solenoid design choices (null-skip, `#AMBIGUOUS!`, DATE's
 literal year, the units system, number-only VALUE stay ours; see
-`../specs/formulajs-divergences.md`). Submitting is the author's call, from the author's account.
+`../tree/specs/computation/formulajs-divergences.md`). Submitting is the author's call, from the author's account.
 An upstream fix changes nothing here: every override stays (the null/error contract needs
 it); `tripwireVendorDrift` is what tells us when the vendor catches up.
 

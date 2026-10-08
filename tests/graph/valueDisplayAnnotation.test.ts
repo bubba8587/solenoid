@@ -4,7 +4,8 @@ import type { NodeEditor as Ed } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { formatAnnotationStore, type FormatAnnotation } from "../../src/graph/formatAnnotationStore";
-import { resolveDisplayAnnotation, formatListCell, annotationForValue } from "../../src/graph/components/valueDisplayFormat";
+import { frameFormatStore, MATRIX_FORMAT_KEY } from "../../src/graph/frameFormatStore";
+import { resolveDisplayAnnotation, resolveMatrixAnnotation, formatListCell, annotationForValue } from "../../src/graph/components/valueDisplayFormat";
 import { formatTableCell } from "../../src/graph/components/TableDisplay";
 import { solError } from "../../src/graph/errorValue";
 import { fromUnit } from "../../src/graph/unitValue";
@@ -158,5 +159,19 @@ describe("formatListCell — the same annotation reaches every list cell", () =>
   it("blanks and errors keep their literal cell form", () => {
     expect(formatListCell(null, formatScalar, places1)).toBe("null");
     expect(formatListCell(solError("#VALUE!", "bad value"), formatScalar, places1)).toBe("#VALUE!");
+  });
+});
+
+describe("resolveMatrixAnnotation", () => {
+  it("a matrix popup's format pick governs the card, over an FC", async () => {
+    const editor = newEditor();
+    const m = node("Matrix");
+    await editor.addNode(m as never);
+    formatAnnotationStore.set(m.id, "out", eur);
+    expect(resolveMatrixAnnotation(m.id)?.unit).toBe("eur");
+    const pick: FormatAnnotation = { format: "percent", unit: "none" };
+    frameFormatStore.set(m.id, MATRIX_FORMAT_KEY, pick);
+    expect(resolveMatrixAnnotation(m.id)).toEqual(pick);
+    frameFormatStore.clear();
   });
 });

@@ -1,41 +1,52 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
-// The open nested-data viewer, or null: ONE popup with a drill stack, never two windows.
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit), [[D90]] cubeTypesAtDepth
 import { createValueStore } from "./storeKit";
-import { recordsToCube, frameFromRecords, type CubeValue, type FrameValue, type CubeCell } from "./frame";
-import { getAtPath, type CubePath, type CubeRecord } from "./literalEditors";
+import { recordsToCube, frameCellFromRecords, type CubeValue, type FrameValue, type CubeCell, type FrameColType } from "./frame";
+import { getAtPath, type CubePath, type CubeRecord, type CubeSource } from "./literalEditors";
+import { isSolError, type SolError } from "./errorValue";
+import { typesAt } from "./cubeTypes";
 
-/** A Cube Input's editing seam: the popup reads the records and writes them back whole. */
 export interface CubeEditBinding {
-  records(): CubeRecord[];
-  save(records: CubeRecord[]): void;
+  source(): CubeSource;
+  save(source: CubeSource): void;
+  /** The cube the source derives, typed and formula columns filled: the root level shows it. */
+  cube(): CubeValue | SolError | null;
+  /** The store can't hold a formula (a note's YAML), so the type button stops short of Formula. */
+  noFormulaColumns?: boolean;
 }
 
-/** A cell in a level's grid, by SOURCE row (and column when known). */
-export interface CellRef { r: number; c?: number }
+/** The root level shows the derived cube; a nested level its records, read by the types declared for that one table. */
+export function editLevelCube(edit: CubeEditBinding, path: CubePath, rows: CubeRecord[]): CubeValue {
+  if (path.length === 0) {
+    const c = edit.cube();
+    if (c && !isSolError(c)) return c;
+  }
+  const nested = edit.source().nested ?? {};
+  return recordsToCube(rows, typesAt(nested, path), nested, path);
+}
 
-/** One drill-stack level; `label` is its breadcrumb crumb (node name at the root,
- *  column name deeper). A `grid` view holds a list (one row) or matrix of cells.
- *  `from` is the parent cell this level was drilled out of; `focus` is the cell a
- *  level should scroll back to after a return from below it. */
+/** A cell drilled from: a grid position, or a list item by index, since its row and column depend on the layout. */
+export type CellRef = { r: number; c?: number } | { item: number };
+
+/** Where a cell sits in the shown grid: a list item lies across row 0 in Row layout and down column 0 in Column. */
+export function gridPosOf(ref: CellRef, listVertical: boolean): { r: number; c?: number } {
+  if ("item" in ref) return listVertical ? { r: ref.item, c: 0 } : { r: 0, c: ref.item };
+  return ref;
+}
+
 export type DrillView = (
   | { kind: "cube"; label: string; cube: CubeValue; /** Records path when the popup is an editor. */ path?: CubePath }
   | { kind: "frame"; label: string; frame: FrameValue; path?: CubePath }
-  /** A 2-D array level. */
-  | { kind: "grid"; label: string; cells: CubeCell[][]; path?: undefined }
-  /** A list level: one row by default (a list is a CSV row), or one item per row by the
-   *  popup's layout switch. `path` is present when it edits a Cube Input's list cell. */
-  | { kind: "list"; label: string; items: unknown[]; path?: CubePath }
+  | { kind: "grid"; label: string; cells: CubeCell[][]; path?: CubePath }
+  | { kind: "list"; label: string; items: unknown[]; path?: CubePath; /** The column's declared type, when the list came out of a typed column. */ type?: FrameColType }
 ) & { from?: CellRef; focus?: CellRef };
 
 export interface CubePopupState {
-  /** [root, ...drilled]; the LAST entry is the view currently shown. */
+  /** The last entry is the view shown. */
   stack: DrillView[];
   accent?: string;
   groupColor?: string;
   groupColorDark?: string;
-  /** Host node id for the header Pin action (root only). */
   pinNodeId?: string;
-  /** Present → the popup EDITS a Cube Input's records (cubeEditCell.tsx). */
   edit?: CubeEditBinding;
 }
 
@@ -46,13 +57,11 @@ export const cubePopup = {
   open(view: DrillView, opts?: Omit<CubePopupState, "stack">) {
     core.open({ stack: [view], ...opts });
   },
-  /** Push a level; `from` is the parent cell it was opened from, so a return lands there. */
   drill(view: DrillView, from?: CellRef) {
     const s = core.get();
     if (!s) return;
     core.open({ ...s, stack: [...s.stack, { ...view, from }] });
   },
-  /** Jump back to breadcrumb level `i` (0 = root), focusing the cell the next level came from. */
   backTo(i: number) {
     const s = core.get();
     if (!s || i < 0 || i >= s.stack.length) return;
@@ -60,18 +69,19 @@ export const cubePopup = {
     stack[i] = { ...stack[i], focus: s.stack[i + 1]?.from };
     core.open({ ...s, stack });
   },
-  /** After an edit saved: rebuild every cube level from the records along its path. */
   refresh() {
     const s = core.get();
     if (!s?.edit) return;
-    const records = s.edit.records();
+    const edit = s.edit;
+    const records = edit.source().rows;
     const stack = s.stack.map((v): DrillView => {
       if (!v.path) return v;
       const sub = v.path.length ? getAtPath(records, v.path) : records;
       const rows = Array.isArray(sub) ? (sub as CubeRecord[]) : [];
-      if (v.kind === "cube") return { ...v, cube: recordsToCube(rows) };
-      if (v.kind === "frame") return { ...v, frame: frameFromRecords(rows) };
+      if (v.kind === "cube") return { ...v, cube: editLevelCube(edit, v.path, rows) };
+      if (v.kind === "frame") return { ...v, frame: frameCellFromRecords(rows, typesAt(edit.source().nested ?? {}, v.path)) };
       if (v.kind === "list") return { ...v, items: Array.isArray(sub) ? (sub as unknown[]) : [] };
+      if (v.kind === "grid") return { ...v, cells: Array.isArray(sub) ? (sub as unknown[]).map((row) => (Array.isArray(row) ? (row as CubeCell[]) : [])) : [] };
       return v;
     });
     core.open({ ...s, stack });

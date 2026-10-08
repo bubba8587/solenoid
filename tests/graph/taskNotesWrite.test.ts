@@ -5,6 +5,7 @@ import { WriteTasksNode } from "../../src/graph/rete-nodes";
 import { cubeFromColumns, isFrameValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { solError } from "../../src/graph/errorValue";
+import { forceDemoTaskNotes } from "../../src/graph/demoTaskNotes";
 
 // F6 Write Tasks: rows → the API's create/update payloads and the plan frame, pure.
 
@@ -88,6 +89,20 @@ describe("WriteTasksNode", () => {
     n.data({ tasks: [null] });
     await n.run();
     expect(n.statusMessage).toMatch(/Nothing to write/);
+  });
+  it("Preview and Run refuse while the reader shows the demo, so demo paths never reach a real server", async () => {
+    forceDemoTaskNotes(true);
+    try {
+      const n = new WriteTasksNode();
+      n.enabled = true;
+      n.data({ tasks: [cubeFromColumns([{ name: "path", cells: ["Tasks/Demolition.md"] }, { name: "status", cells: ["done"] }])] });
+      await n.preview();
+      expect(n.statusMessage).toMatch(/demo/);
+      await n.run();
+      expect(n.statusMessage).toMatch(/demo/);
+    } finally {
+      forceDemoTaskNotes(false);
+    }
   });
   it("the keys literal narrows the plan's fields", () => {
     const n = new WriteTasksNode();

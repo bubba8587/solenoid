@@ -1,17 +1,13 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
-// Open state for the node Inspector; the root class `html.sol-inspector-docked` drives
-// the canvas squeeze (docs/layout-chrome.md). The two right-side docks are mutually
-// exclusive; InspectorPanel watches reportStore for the reverse direction.
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 import { createToggleStore } from "./storeKit";
 import { reportStore } from "./reportStore";
 
 const s = createToggleStore();
 
-// An explicit "inspect THIS node" (the context menu's (i)) outranks a stale
-// selection until the user selects something new; InspectorPanel clears it.
 let _focus: string | null = null;
 
 function syncClass(): void {
+  if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("sol-inspector-docked", s.get());
 }
 
@@ -25,12 +21,12 @@ export const inspectorStore = {
     this.open();
   },
   open(): void {
-    // The one that opens last takes the slot; close (never undock) the other.
     if (reportStore.isDocked()) reportStore.close();
     s.open();
     syncClass();
   },
   close(): void {
+    _focus = null;
     s.close();
     syncClass();
   },

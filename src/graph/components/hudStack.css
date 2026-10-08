@@ -1,11 +1,7 @@
-/* The right-side HUD column (pinned values + fired alerts). Owns the screen-fixed
-   positioning; each child section just lays out its trigger + chips inside.
-   align-items:flex-end keeps every section (and its collapse button) hugging the
-   right edge regardless of chip width. pointer-events:none lets clicks fall
-   through the empty gaps to the canvas; the chips/buttons re-enable themselves. */
+/* flex-end keeps every section hugging the right edge; pointer-events none lets clicks fall through the gaps, and the chips re-enable themselves. */
 .solenoid-hud-stack {
   position: fixed;
-  /* below the nav pill: envelope + 14 (pill top) + 34 (pill height) + 10 (gap). */
+  /* Below the nav pill: envelope + 14 (pill top) + 34 (pill height) + 10 (gap). */
   top: calc(var(--chrome-top, 66px) + 58px);
   right: 12px;
   z-index: 110;
@@ -17,10 +13,7 @@
   pointer-events: none;
 }
 
-/* Mobile: the Fit/Lock pill sits lower (top: 92px + notch) and grows with the
-   safe-area, so the fixed desktop 124px overlapped it — worse in fullscreen, where
-   the safe-area changes but a fixed top can't track it. Anchor the HUD below the
-   pill using the SAME safe-area term, so the gap holds in both modes. */
+/* Mobile: anchored below the Fit and Lock pill with the same safe-area term, so the gap holds in fullscreen too. */
 html.is-mobile .solenoid-hud-stack {
   top: calc(136px + env(safe-area-inset-top));
   max-width: min(260px, calc(100vw - 24px));

@@ -1,10 +1,9 @@
-// [[D4]] noManualList (sanctioned exception: a display-only mirror of the bindings)
 import { useSyncExternalStore } from "react";
 import { shortcutsStore } from "./shortcutsStore";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import "./ShortcutsOverlay.css";
 
-/** A static, HAND-MAINTAINED mirror of the bindings wired in Canvas's keydown handler. */
+/** A hand-kept mirror of the bindings in Canvas's keydown handler: keep the two in step. */
 
 type Row = { keys: string[]; label: string };
 type Group = { title: string; rows: Row[] };
@@ -30,6 +29,9 @@ const GROUPS: Group[] = [
   {
     title: "Edit",
     rows: [
+      { keys: ["Ctrl", "S"], label: "Save" },
+      { keys: ["Ctrl", "Shift", "S"], label: "Save as" },
+      { keys: ["Ctrl", "O"], label: "Open a document" },
       { keys: ["Ctrl", "Z"], label: "Undo" },
       { keys: ["Ctrl", "Shift", "Z"], label: "Redo" },
       { keys: ["Ctrl", "Y"], label: "Alternate redo" },

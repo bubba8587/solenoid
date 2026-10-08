@@ -1,13 +1,5 @@
-// [[C62]] paletteAllOrNone
-// Categorical color assignment for the Chip text style (B2.2): each distinct string value
-// gets a palette INDEX by first appearance. Pure and order-deterministic — the same value
-// resolves to the same index wherever it sits in `values`, so a chip keeps its color when
-// rows are reordered for display. The index maps to the shared chart palette
-// (components/chartCore.useSeriesColors, mod its length) at render time; charts color by
-// position, this dedupes by category so a column of repeats reads as categories.
+// [[B14]] oneDesignSystem
 
-/** Distinct string values → first-appearance index (0, 1, 2, …). `null`/`undefined` cells
- *  don't take a slot. A scalar (one value) yields `{value: 0}`. */
 export function categoryColorIndex(values: readonly (string | null | undefined)[]): Map<string, number> {
   const index = new Map<string, number>();
   for (const v of values) {
@@ -15,5 +7,14 @@ export function categoryColorIndex(values: readonly (string | null | undefined)[
     const key = String(v);
     if (!index.has(key)) index.set(key, index.size);
   }
+  return index;
+}
+
+const indexBySource = new WeakMap<object, Map<string, number>>();
+
+/** `categoryColorIndex` of a value that never changes in place (a column's values, a table), worked out once per value. */
+export function categoryColorIndexOf(source: object, values: () => readonly (string | null | undefined)[]): Map<string, number> {
+  let index = indexBySource.get(source);
+  if (!index) { index = categoryColorIndex(values()); indexBySource.set(source, index); }
   return index;
 }

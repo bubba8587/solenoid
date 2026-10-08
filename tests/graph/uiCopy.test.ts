@@ -1,5 +1,7 @@
 // [[B14]]
 import { describe, it, expect } from "vitest";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { uiStrings, attrStrings, collectCopyRecords, type Unit } from "../../src/graph/copyCorpus";
 import { NODE_EXCEL, EXCEL_GAP } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -19,10 +21,9 @@ import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 // the corpus as written. "Is this sentence Captain Obvious?" is semantic and
 // stays a human call; what a regex can settle is caught below. A rule that would
 // flag legitimate prose was dropped rather than softened into a warning nobody
-// reads. Two section-7 rules are deliberately absent, both because the shipped
-// corpus predates them at a scale this test cannot arbitrate: the em-dash ban
-// (95 uses across help + catalog) and the no-trailing-parenthetical rule (113).
-// Enforcing either means a prose sweep first; see the 2026-07-27 dev-notes digest.
+// reads. The em-dash ban covers every shipped string. The no-trailing-parenthetical
+// rule covers catalog descriptions, socket docs and Excel notes only; help and
+// seed prose would need a sweep first.
 
 // The corpus collector lives in copyCorpus.ts, shared with scripts/copy-inventory.ts.
 
@@ -52,7 +53,7 @@ const GESTURE =
  *  be instructing at all, which depends on what the string is: a tooltip must
  *  not instruct, a demo document exists to be poked at. Seed prose is held to
  *  these only. */
-const GENRE_FREE = new Set(["british-spelling", "slogan", "tease-count", "chummy-aside", "widget-narration"]);
+const GENRE_FREE = new Set(["british-spelling", "slogan", "tease-count", "chummy-aside", "widget-narration", "em-dash"]);
 
 const RULES: Rule[] = [
   {
@@ -142,6 +143,12 @@ const RULES: Rule[] = [
     re: /\b(?:with|from|via|using)\s+the\s+(?:dropdown|checkbox|button|toggle|slider|menu|picker|selector|field|box)\b|\b(?:dropdown|checkbox|button|toggle)\s+(?:lets|allows|selects|sets)\b/i,
   },
   {
+    id: "em-dash",
+    why: 'section 7 "no em dashes" — use a period, a colon, or restructure',
+    // Every genre, seeds and help included: the whole shipped corpus is swept.
+    re: /—/,
+  },
+  {
     id: "chummy-aside",
     why: 'section 7 "second person for instructions, not for asides" — no knowing wink, no editorializing clause',
     re: /\bbehind your back\b|\bfor you\b\s*[.!?]?$|\bwe(?:'ve| have)\b/i,
@@ -219,7 +226,7 @@ describe("UI copy", () => {
   // The other two prose surfaces the corpus lint never reached: a node's socketDocs
   // (socket-hint tooltips, incl. the shared BASIS_DOC) and nodeExcel.ts's per-name
   // `note`s (the Inspector's Excel-equivalent rows). Same two section-7 rules.
-  // The λ-binding parentheticals [[C13]] frameLabelGrammar sanctions live on LABELS, not
+  // The λ-binding parentheticals [[B14]] oneDesignSystem sanctions live on LABELS, not
   // here, so they don't reach this scan — no exemption needed.
   it("no socketDoc or Excel note uses an em dash or ends in a trailing parenthetical (section 7)", () => {
     const strings: { where: string; text: string }[] = [];
@@ -271,6 +278,7 @@ describe("UI copy", () => {
         "A flow diagram: wire a 3-column frame (From, To, Value).",
       ],
       slogan: ["Every chart Excel has, and then some"],
+      "em-dash": ["the whole app comes with you — toolbar, minimap, zoom"],
       // Every string the 2026-07-27 aggressive sweep removed, verbatim.
       "gesture-narration": [
         "Hover any dot for its name.",
@@ -340,5 +348,23 @@ describe("UI copy", () => {
       const hit = RULES.find((r) => r.re.test(text));
       expect(hit?.id, `false positive on: ${text}`).toBeUndefined();
     }
+  });
+});
+
+describe("messages built in code follow section 7 too", () => {
+  // The copy corpus reads catalog and component strings; an error message or a hint is assembled in code, so it is swept here.
+  const files = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? files(path.join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [path.join(dir, e.name)] : []);
+  it("no error message, formula hint or thrown message holds an em dash", () => {
+    const offenders: string[] = [];
+    for (const f of files(path.resolve(__dirname, "../../src"))) {
+      fs.readFileSync(f, "utf8").split("\n").forEach((line, i) => {
+        if (/^\s*\/\//.test(line) || !line.includes("\u2014")) return;
+        if (/(solError|unitError|new Error)\(|message:|return "[^"]*\u2014/.test(line) && !/"\u2014"/.test(line) && !/Duplicate formula registration/.test(line)) {
+          offenders.push(`${path.relative(process.cwd(), f)}:${i + 1}`);
+        }
+      });
+    }
+    expect(offenders, "section 7 \"no em dashes\" in messages built in code").toEqual([]);
   });
 });

@@ -660,6 +660,270 @@
      }
     ]
    }
+  },
+  {
+   "name": "max over a text column stays text, so a text filter reads it and drops the blank group",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "number",
+       "values": [
+        1,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "pipeline",
+    "ops": [
+     {
+      "kind": "groupBy",
+      "keys": [
+       "g"
+      ],
+      "aggs": [
+       {
+        "column": "s",
+        "op": "max",
+        "as": "m"
+       }
+      ]
+     },
+     {
+      "kind": "filter",
+      "column": "m",
+      "op": "gt",
+      "value": "a"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "number",
+      "values": [
+       1
+      ]
+     },
+     {
+      "name": "m",
+      "type": "string",
+      "values": [
+       "b"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings in °F: a stdev delta in kelvin, then a filter on it, fused",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        20,
+        22.5,
+        26,
+        30,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "pipeline",
+    "ops": [
+     {
+      "kind": "groupBy",
+      "keys": [
+       "k"
+      ],
+      "aggs": [
+       {
+        "column": "t",
+        "op": "stdevp",
+        "as": "spread",
+        "readingScale": 0.5555555555555556
+       }
+      ]
+     },
+     {
+      "kind": "filter",
+      "column": "spread",
+      "op": "gt",
+      "value": 1
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a"
+      ]
+     },
+     {
+      "name": "spread",
+      "type": "number",
+      "values": [
+       1.3671132463179076
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: a chain of aggregates keeps the error's code",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        {
+         "__err": "#N/A"
+        },
+        1,
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "pipeline",
+    "ops": [
+     {
+      "kind": "groupBy",
+      "keys": [
+       "k"
+      ],
+      "aggs": [
+       {
+        "column": "v",
+        "op": "sum",
+        "as": "s"
+       }
+      ]
+     },
+     {
+      "kind": "groupBy",
+      "keys": [],
+      "aggs": [
+       {
+        "column": "s",
+        "op": "avg",
+        "as": "a"
+       }
+      ]
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "a",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "last n past a key-less groupBy's one row keeps that row",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "b",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "pipeline",
+    "ops": [
+     {
+      "kind": "groupBy",
+      "keys": [],
+      "aggs": [
+       {
+        "column": "b",
+        "op": "sum",
+        "as": "c"
+       }
+      ]
+     },
+     {
+      "kind": "sliceRows",
+      "mode": "last",
+      "n": 5
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "c",
+      "type": "number",
+      "values": [
+       6
+      ]
+     }
+    ]
+   }
   }
  ]
 }

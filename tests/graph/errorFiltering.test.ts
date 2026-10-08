@@ -5,7 +5,7 @@ import { MakeArrayNode } from "../../src/graph/nodes/tableLambda";
 import { FilterNode } from "../../src/graph/nodes/list";
 import { solError, isSolError, type SolError } from "../../src/graph/errorValue";
 import { compilePositional } from "../../src/graph/excelFormula";
-import { passesFilter, filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS } from "../../src/graph/frameVerbs";
+import { passesFilter, filterRowsMulti } from "../../src/graph/frameVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 
 const code = (v: unknown) => (isSolError(v) ? (v as SolError).code : v);
@@ -49,8 +49,6 @@ describe("error filter predicates", () => {
     expect(passesFilter(err, "noterror", "", "number", false)).toBe(false);
     expect(passesFilter(5, "noterror", "", "number", false)).toBe(true);
     expect(passesFilter(null, "noterror", "", "number", false)).toBe(true); // null isn't an error
-    expect(VALUELESS_FILTER_OPS.has("noterror")).toBe(true);
-    expect(ERROR_FILTER_OPS.has("iserror")).toBe(true);
   });
 
   it("List Filter 'noterror' drops error cells; Dropped keeps them", () => {
@@ -58,7 +56,7 @@ describe("error filter predicates", () => {
     // one condition row (value0), op noterror (no value needed)
     f.condConfig["0"] = { op: "noterror" };
     const out = f.data({ list: [[1, solError("#DIV/0!", "x"), 3, solError("#N/A", "y")]] });
-    expect(out.result!.map(code)).toEqual([1, 3]);
+    expect((out.result as unknown[]).map(code)).toEqual([1, 3]);
     expect(out.dropped!.map(code)).toEqual(["#DIV/0!", "#N/A"]);
   });
 
@@ -66,7 +64,7 @@ describe("error filter predicates", () => {
     const f = new FilterNode();
     f.condConfig["0"] = { op: "iserror" };
     const out = f.data({ list: [[1, solError("#DIV/0!", "x"), 3]] });
-    expect(out.result!.map(code)).toEqual(["#DIV/0!"]);
+    expect((out.result as unknown[]).map(code)).toEqual(["#DIV/0!"]);
   });
 
   it("filterRowsMulti drops rows whose column holds an error (frame path)", () => {

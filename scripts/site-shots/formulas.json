@@ -1,0 +1,87 @@
+{
+  "label": "Mortgage",
+  "nodes": [
+    {
+      "id": "rate",
+      "type": "ValueInputNode",
+      "collapsed": true,
+      "init": {
+        "label": "Rate",
+        "op": "number",
+        "value": "0.06",
+        "format": "percent",
+        "decimalDigits": 1
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "years",
+      "type": "ValueInputNode",
+      "collapsed": true,
+      "init": {
+        "label": "Years",
+        "op": "number",
+        "value": "30"
+      },
+      "x": 0,
+      "y": 105
+    },
+    {
+      "id": "loan",
+      "type": "ValueInputNode",
+      "collapsed": true,
+      "init": {
+        "label": "Loan",
+        "op": "number",
+        "value": "300000",
+        "format": "decimal",
+        "decimalDigits": 0
+      },
+      "x": 0,
+      "y": 210
+    },
+    {
+      "id": "budget",
+      "type": "ValueInputNode",
+      "collapsed": true,
+      "init": {
+        "label": "Monthly budget",
+        "op": "number",
+        "value": "2200",
+        "format": "decimal",
+        "decimalDigits": 0
+      },
+      "x": 0,
+      "y": 315
+    },
+    {
+      "id": "pmt",
+      "type": "ExpressionNode",
+      "init": {
+        "label": "Monthly payment",
+        "expr": "ROUND(PMT(rate / 12, years * 12, -loan), 2)"
+      },
+      "x": 300,
+      "y": -262
+    },
+    {
+      "id": "afford",
+      "type": "EquationNode",
+      "init": {
+        "label": "Most I can borrow",
+        "expr": "principal * (rate / 12) / (1 - (1 + rate / 12) ^ (-years * 12)) = budget"
+      },
+      "x": 680,
+      "y": -60
+    }
+  ],
+  "cables": [
+    "loan.value -> pmt.loan",
+    "rate.value -> pmt.rate",
+    "years.value -> pmt.years",
+    "budget.value -> afford.budget",
+    "rate.value -> afford.rate",
+    "years.value -> afford.years"
+  ]
+}

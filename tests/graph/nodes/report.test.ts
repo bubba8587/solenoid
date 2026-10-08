@@ -1,7 +1,7 @@
 // [[C68]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { ReportNode } from "../../../src/graph/nodes/report";
-import { installErrorGuards, isSolError, type SolError } from "../../../src/graph/errorValue";
+import { installErrorGuards, isSolError, solError, type SolError } from "../../../src/graph/errorValue";
 import { isDocumentValue, type DocumentValue } from "../../../src/graph/documentValue";
 
 const body = (out: { document: DocumentValue | SolError }) => (out.document as DocumentValue).body;
@@ -162,6 +162,17 @@ describe("ReportNode — records: a mail merge, one page per record", () => {
     expect(doc.pages?.map((p) => p.name)).toEqual(["1", "2"]);
     expect(doc.pages?.[0].body).toBe("Ada of `=records`");
     expect(doc.refs.records).toBe(people);
+    // The card and the export read the same span through refValue, not only the vault write.
+    expect(n.refValue("records")).toBe(people);
+    await n.data({ records: [null] });
+    expect(n.refValue("records")).toBeUndefined();
+    expect(n.refValue("template")).toBeUndefined(); // unwired
+  });
+
+  it("a records cable carrying no value yet still reserves `record` and `index`", async () => {
+    const n = new ReportNode({ body: "{{ record.Name }} {{ index }} {{ other }}" });
+    await n.data({ records: [null] });
+    expect(n.refKeys()).toEqual(["other"]);
   });
 
   it("no records wired → no pages, a single document", async () => {
@@ -180,5 +191,18 @@ describe("ReportNode — an unwired input is absent to the template, not null", 
     expect(body(out)).toBe("1. a\n2. b none");
     expect(n.templateVars).toEqual({ items: ["a", "b"] });
     expect(n.refValue("numbered")).toBeNull(); // the card still shows the empty socket
+  });
+});
+
+describe("ReportNode — a broken template passes its error and keeps its inputs", () => {
+  it("a #SYNTAX! template leaves the variable inputs wired and answers the error", async () => {
+    const tpl = { __document: true, body: "Dear {{ name }}", refs: {} };
+    const n = new ReportNode({ body: "" });
+    await n.data({ template: [tpl as never], name: ["Ada"] });
+    expect(Object.keys(n.inputs)).toContain("name");
+    const bad = solError("#SYNTAX!", "unclosed if");
+    const out = await n.data({ template: [bad], name: ["Ada"] });
+    expect(isSolError(out.document) && out.document.code).toBe("#SYNTAX!");
+    expect(Object.keys(n.inputs)).toContain("name");
   });
 });

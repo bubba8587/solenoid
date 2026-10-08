@@ -1,0 +1,12 @@
+{
+ "nodes": [
+  {
+   "id": "c1",
+   "type": "CubeInputNode",
+   "init": {
+    "label": "Tasks",
+    "cubeText": "{\"columns\": [{\"name\": \"task\"}, {\"name\": \"owner\"}, {\"name\": \"hours\", \"type\": \"number\"}, {\"name\": \"tags\", \"type\": \"string\"}, {\"name\": \"mine\", \"expr\": \"SUM(@hours)\"}, {\"name\": \"share\", \"expr\": \"SUM(@hours) / SUM(hours)\"}, {\"name\": \"rank\", \"expr\": \"RANK.EQ(SUM(@hours), BYROW(hours, LAMBDA(r, SUM(r))))\"}, {\"name\": \"owner total\", \"expr\": \"SUMIFS(BYROW(hours, LAMBDA(r, SUM(r))), owner, @owner)\"}, {\"name\": \"urgent\", \"expr\": \"COUNTIF(@tags, \\\"urgent\\\") > 0\"}, {\"name\": \"all tags\", \"expr\": \"TEXTJOIN(\\\", \\\", TRUE, UNIQUE(TOCOL(tags, 1)))\"}], \"rows\": [{\"task\": \"Design\", \"owner\": \"ana\", \"hours\": [2, 3, 1.5], \"tags\": [\"ui\", \"urgent\"]}, {\"task\": \"Build\", \"owner\": \"ben\", \"hours\": [5, 6, 4, 7], \"tags\": [\"backend\"]}, {\"task\": \"Test\", \"owner\": \"ana\", \"hours\": [1], \"tags\": [\"qa\", \"urgent\", \"ui\"]}, {\"task\": \"Ship\", \"owner\": \"cy\", \"hours\": [], \"tags\": []}]}"
+   }
+  }
+ ]
+}

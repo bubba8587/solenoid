@@ -4,8 +4,8 @@ Living document, kept at **module granularity** (one line per concern, not one
 line per node file — there are ~300 of those and the registry is the real
 index). Update when a new module or concern lands, in the same commit.
 
-Mechanics and gotchas live in `docs/subsystem-invariants.md`; rules and rulings in the
-decision tree (`decisions/`, see `docs/dte.md`); the running log in `docs/dev-notes.md`.
+Mechanics and gotchas live in the specs under `tree/specs/` (indexed by `docs/subsystem-invariants.md`); rules and rulings in the
+decision tree (`tree/decisions/`, see `docs/dte.md`); the running log in `docs/dev-notes.md`.
 This file is the map.
 
 ---
@@ -21,6 +21,8 @@ This file is the map.
 │                             #     suite lives at the mirrored path)
 ├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins
 ├── public/                   # Static assets served by Vite
+├── assets/                   # loose design sources and test inputs (logo, cube glyph, CSVs); video/ holds the
+│                             #     kept cut of the demo video and its poster (scripts/demo-video/)
 ├── fixtures/                 # frame-verbs/ — the shared JS↔Rust verb corpus (oneVerbCorpus);
 │                             #     schedule/ — MSPDI goldens + divergences.json for the scheduling engine
 ├── packages/                 # In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest):
@@ -28,7 +30,9 @@ This file is the map.
 ├── obsidian-plugin/          # Solenoid Properties, the Obsidian plugin ([[C107]] obsidianPlugin): the real
 │                             #     chips + popups behind the shims in src/shims/, in Shadow DOM. `npm run
 │                             #     plugin:build` writes it into obsidian-plugin/dist/ (ignored; the demo vault
-│                             #     installs the plugin from the community store); src/yamlValue.ts is the pure YAML ⇄ value mapping
+│                             #     installs the plugin from the community store); src/yamlValue.ts is the pure YAML ⇄ value mapping;
+│                             #     src/knapNote.ts renders a `knap: true` note's body, src/knapBody.ts draws it in
+│                             #     Reading view, src/knapLive.ts in Live Preview ([[D87]] knapNotes)
 ├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs +
 │                             #     socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the
 │                             #     dev server: undo position fidelity, socketBox12's rendering half, a
@@ -38,16 +42,21 @@ This file is the map.
 │                             #     validate-graph.ts (strict-reader CLI), ai-grounding.ts
 │                             #     (model-facing spec CLI), ai-prompt.ts (the palette's AI
 │                             #     loop from a terminal, real key),
-│                             #     formula-node-parity.ts (oneMetricImpl gap report), op-exposure.ts,
+│                             #     formula-node-parity.ts (oneMetricImpl gap report),
 │                             #     socket-inventory.ts (regenerates socket-reference counts),
 │                             #     copy-inventory.ts (shipped-string extract/apply),
 │                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's
 │                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts,
 │                             #     release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share),
+│                             #     shot-graph.mjs (a graph JSON, short form or saved, loaded into the dev app and
+│                             #     screenshotted, canvas or a frame popup; examples in shot-graphs/; the shot-graph skill),
+│                             #     drag-probe.mjs (counts the components a 30-step card drag renders; Drag performance),
 │                             #     debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs
-│                             #     (pinnable .desktop launchers for the local release + debug apps)
-├── .claude/                  # Claude Code project config: skills/ (add-node), commands/, settings.json
-├── .github/workflows/        # CI: test.yml (tsc+vitest), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
+│                             #     (pinnable .desktop launchers for the local release + debug apps),
+│                             #     demo-video/ (the demo video: scripted scenes filmed in Chromium and a real
+│                             #     Obsidian, cut with ffmpeg; the demo-video skill runs it)
+├── .claude/                  # Claude Code project config: skills/ (add-node, demo-video, shot-graph), commands/, settings.json
+├── .github/workflows/        # CI: test.yml (tsc+vitest), engine-test.yml (cargo test, on engine or corpus changes), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
 ├── package.json              # JS deps + scripts (dev, build, test, tauri)
 ├── vite.config.ts            # Vite config (keepNames: constructor.name is load-bearing)
@@ -62,7 +71,7 @@ This file is the map.
 - **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
   + `rete-engine` (DataflowEngine, pull-based recompute). No rete render/area
   plugins exist; `elkjs` is called directly for Tidy. The core stays on purpose
-  ([[B10]] reactFlowView — author-ratified 2026-08-27).
+  ([[A1]] visualGraphCalculator — author-ratified 2026-08-27).
 - **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
   KaTeX (formula popup), marked (help panel).
 - Cross-surface state stays in module-level singleton stores (`storeKit.ts`
@@ -89,9 +98,9 @@ src/
 | Module | Role |
 |---|---|
 | `process.ts` | The app's recompute ONLY: the MAIN `_editor/_engine/_area` refs, the graph-rebuild guard, `processGraph()` (the `graphCompute` pass + targeted re-render, cable values, perf, the compute overlay, calc mode), recalc generation (volatile nodes), `bulkSettle`. **STAYS MAIN-ONLY** (persistence/serialize read it) |
-| `graphCompute.ts` | THE model-level pass, one definition for every caller ([[D30]] targetedEqualsFull): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
+| `graphCompute.ts` | THE model-level pass, one definition for every caller (`../tree/specs/computation/compute-pass.md` § The targeted pass equals the full pass): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
 | `canvasCommands.ts` | The chrome → surface command slots (select/unselect, Tidy/Cleanup, delete, dock reposition, clear history) the mounted FlowSurface registers and the drill-in swaps (`swapSelectionSlots`/`swapArrangeSlots`) |
-| `seedStore.ts`, `graphSignals.ts`, `ctorProvider.ts` | Seed selection (`custom` once edited) + the load slot; the tiny version/flag stores cards subscribe to (connection version, cable-drag, conduit angle); the ctor-registry provider copyPaste reads (a cycle-breaker) |
+| `graphSignals.ts`, `ctorProvider.ts` | The tiny version/flag stores cards subscribe to (connection version, cable-drag, conduit angle); the ctor-registry provider copyPaste reads (a cycle-breaker) |
 | `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore). Also an OWNERSHIP-only registry (`registerOwnedGraph`, distinct from the action-target override) so locked landing scene canvases resolve their OWN nodes for render-time cross-node resolvers (output-socket type → date/unit rendering); scenes are never the action target |
 | `viewPresets.ts` | The pure zoom module both surfaces share: `MIN_ZOOM`/`MAX_ZOOM`, `clampZoom`, `wheelZoomDelta` (the proportional wheel curve — px slope, step cap, line/page normalization) |
 | `view.ts` | THE canvas-view seam, `View`: what model-side code may ask of the view — `position(id)`/`nodeElement(id)`/`connectionElement(id)`/`hasNode(id)` (position reads `node.position`, the model's one source of truth; elements resolve to the live RF DOM per call), `container`/`viewport`, the camera (`transform`, `zoom`, `pan`), `moveNode`, `rerenderNode`/`rerenderCables`, `onRender`, `measured`; `flow/flowView.ts` is the one implementation |
@@ -99,11 +108,11 @@ src/
 | `schemes.ts` | Rete scheme types (`SolenoidConnection` must use `ClassicPreset.Node` — variance) |
 | `rete-nodes.ts` | Node class re-exports for the editor |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
-| `coerceInputs.ts` | `nodecreated` pipe wrapping every `data()` — normalizes incoming shapes to the socket's declared type (`#SHAPE!` on coercion failure); widens scalar/list/matrix → `frame` (list = ROW), bridges logical↔number. Per-input policy: a node lists `rawInputs` (a `ReadonlySet<string>`) to receive an input UNCOERCED and branch on the runtime shape itself (XLOOKUP's `frame` — a polymorphic frame-or-cube source); ACCEPTANCE stays lattice-driven, COERCION is the node's call |
+| `coerceInputs.ts` | The `nodecreated` wrapper around every `data()` that normalizes each arriving value to its socket's type. Mechanics: `../tree/specs/computation/compute-pass.md` § Arrival coercion |
 | `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts` | The scheduling bindings: a tasks cube → `@solenoid/schedule-engine` and back with the computed columns at every level (Schedule); a scheduled table → the Gantt figure's data-only payload (`GanttPayload`, contract in `packages/gantt-layout/src/payload.ts`); a Project XML / grammar CSV → the plan cube (Local File's `plan` socket) |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
-| `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (own `cloneNode`/`pasteClipboard` path); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
+| `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (`copySelected`/`pasteClipboard`); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
 | `nodeCtorRegistry.ts` | The ctor lookup, DERIVED from the catalog (calls every `FLAT_CATALOG` factory, keys by `ctor.name`) — what persistence resolves types through |
 | `documentStore.ts` (+`documentStoreCore.ts`) | Multi-document library: current doc + open tabs; per-doc autosave as ONE two-slot pair per doc id (`solenoid.docs.doc.<id>.a/.b`) plus a light two-slot index, object-identity change-detection so an unchanged doc costs zero serialization (`documentStorePersist.test.ts`); `documentStoreCore` holds the pure validate/transform helpers |
 | `textForm.ts` | The addressable model's text projection: pure `SavedGraph ↔ text` (one node per line, topological + alphabetical-tie order, name-addressed connections); `serializeGraph`'s JSON is generated by round-tripping through it, not hand-maintained; robustness fuzzed in `textFormFuzz.test.ts` (clean rejection or round-trip closure, never a hang) |
@@ -122,14 +131,15 @@ src/
 | `flow/SolNodeAdapter.tsx` + `flow/SolFlowNode.tsx` | The RF node type: adapts a rete node instance to the registered card component (version-bumped re-renders, ErrorBoundary per card) |
 | `flow/FlowCableEdge.tsx` | The cable renderer (RF edge type; paths from `cablePaths.ts`, visible strokes as `<BaseEdge>`s styled inline, ribbons, run selection, hit path `.solenoid-cable-hit`) |
 | `flow/FlowConnectionLine.tsx` | The cable being DRAGGED from a socket (RF `connectionLineComponent`): same router + type color as a live cable |
-| `flow/FlowSocketHandle.tsx` | The RF `<Handle>` each socket renders through (measurement + cable anchoring); lights the socket a dragged cable would land on (`useConnection`) |
+| `flow/FlowSocketHandle.tsx` | The RF `<Handle>` each socket renders through (measurement + cable anchoring); lights the socket a dragged cable would land on (`litTargetStore`, published by `FlowConnectionLine.tsx` so sockets never watch the RF store) |
 | `flow/FlowResizeGrip.tsx` | The corner resize grip: RF `NodeResizeControl` wearing the app's grip mark; the model keeps the size (FlowSurface drops the resizer's own dimension changes) |
 | `flowSurface.ts` | The injection seam: node components ask for the RF `Handle` (`useFlowSocket`) and the resize grip (`useFlowResizeGrip`); the flow chunk injects both so shared component code never imports @xyflow/react |
-| `flow/flowPinch.ts`, `flow/flowTouchPan.ts`, `flow/flowWheel.ts` | The gesture installers both surfaces wire (see subsystem-invariants § Pointer gestures) |
+| `flow/flowPinch.ts`, `flow/flowTouchPan.ts`, `flow/flowWheel.ts` | The gesture installers both surfaces wire (see `tree/specs/canvas/pointer-gestures.md`) |
 | `flow/flowHistory.ts` + `flow/flowHistoryDigest.ts` (+tests) | Snapshot undo — THE undo: debounced full-graph snapshots + `describeGraphDelta` labels |
-| `flow/FlowCompositeOverlay.tsx` | The drill-in host: a `FlowSurface` over the composite internal editor plus the breadcrumb strip, port promotion, run controls and the per-composite snapshot history; registers the active graph and swaps the select / arrange slots while open (see subsystem-invariants § Composite drill-in mount lifecycle) |
+| `flow/drillStack.ts` | The per-composite drill stack that outlives the drill-in: its flow view, topology pipe, open gate and snapshot history |
+| `flow/FlowCompositeOverlay.tsx` | The drill-in host: a `FlowSurface` over the composite internal editor plus the breadcrumb strip, port promotion and run controls; registers the active graph and swaps the select / arrange slots while open (see `tree/specs/canvas/composite-drill-in-mount-lifecycle.md`) |
 | `flow/StaticFlowStage.tsx` | Non-interactive RF stage (landing demo, node showcase): `makeStaticStack` + controlled viewport |
-| `flow/flowSeeds.ts`, `flow/preview.ts` | Own seed glob (no persistence import — headless-harness-safe); generic-card value previews |
+| `flow/preview.ts` | Generic-card value previews |
 | `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |
 | `modalGuard.ts` | `modalOwnsKeyboard()` — the one gate every canvas-level key handler (canvasKeyboard, the surface's Escape, RF's delete hook) asks first: an `aria-modal` dialog / pop-up overlay in the DOM, or an open palette / reference / settings / shortcuts, and the canvas shortcuts stand down (F9 excepted) |
 | `canvasLasso.ts` | `installLassoSelection(deps)` — shift-drag / touch-select lasso: winding-direction touch vs enclose modes, cached node rects, frame-coalesced live apply, release-time cable path sampling |
@@ -137,7 +147,7 @@ src/
 | `canvasActions.ts` | The graph actions those menus/keys invoke: `deleteSelection` (ghost-splicing bulk delete), `insertConduitForCables` (lane-bundled Conduit splice), `linkStandoffBetween`, `deleteCables`, `attachFormatController` |
 | `canvasGeometry.ts` | Screen ↔ canvas coordinate helpers (`getSocketScreenCenter`, `screenToCanvas`) shared by FC docking + quick-wire placement |
 | `fcDocking.ts` | FC docking: `findDockTarget` (canvas-unit snap), `computeDockedCanvasPos`/`dockedRenderedDims`, and the inline splice/unsplice (`insertFcInline`/`removeFcInline`) |
-| `tidyArrange.ts` | Tidy + Cleanup: `makeEnsureElk` (lazy elkjs), `elkTidyLayout` (the direct ELK call — symmetric FIXED_POS ports, port-id edges), `makeArrangeFn` (the group/standoff/docked-FC-aware layout — see subsystem-invariants "Auto-arrange / Tidy"), `makeCleanupFn` |
+| `tidyArrange.ts` | Tidy + Cleanup: `makeEnsureElk` (lazy elkjs), `elkTidyLayout` (the direct ELK call — symmetric FIXED_POS ports, port-id edges), `makeArrangeFn` (the group/standoff/docked-FC-aware layout — see `tree/specs/canvas/auto-arrange-tidy.md`), `makeCleanupFn` |
 | `storeKit.ts` | The module-singleton store kit (`createNotifier` / `createToggleStore` / `createValueStore`) every app-wide store builds on (see Conventions) |
 | `pointerGesture.ts` | THE two-finger gesture definition: window-capture contact census, `isPinching()` (≥2 fingers) — what the pinch-priority rule stands on |
 | `historyDigest.ts` | Human-readable session-history text (`digestLabeled` over flowHistory's labeled records) |
@@ -147,7 +157,8 @@ src/
 | `saveTimeStore.ts` | The save-clock read seam (per-doc autosave + file-save stamps) documentStore injects, since node classes can't import it |
 | `noteFrontmatterSync.ts` | THE one cable-drop for cables stranded by a frontmatter re-sync (Note on-blur commit + Import file-load share it) |
 | `noteInlineRefs.ts` | The INTERNAL `` `=name` `` ref span (Expression's identifier grammar; trailing `!` is display-only tinting). Nobody types it: the Report's render emits it for a bare `{{ name }}` |
-| `knapTemplate.ts` | Knap (knap.md) IS the Note/Report body syntax: `hasKnapSyntax` gates the async render, `extractKnapVariables` walks the AST for the ROOT names a Report mints as inputs, `embedBareVariables` rewrites a bare `{{ input }}` to the ref span so it embeds by kind, `toTemplateValue` flattens frames/cubes to rows and date serials to ISO text by SOURCE socket type, `renderKnap` wraps the `knap` engine (standard filters) |
+| `knapTemplate.ts` | Knap (knap.md) IS the Note/Report body syntax: `hasKnapSyntax` gates the async render, `extractKnapVariables` walks the AST for the ROOT names a Report mints as inputs, `bareTags` finds a bare `{{ input }}` and `embedBareVariables` rewrites it to the ref span so it embeds by kind, `renderKnap` wraps the `knap` engine (standard filters). The only module that calls `knap`; the Obsidian plugin bundles it, so it imports no value modules |
+| `templateValue.ts` | `toTemplateValue` flattens frames/cubes to rows and date serials to ISO text by SOURCE socket type: what Knap reads for a value |
 | `reportStore.ts` + `reportExport.ts` | Report chrome seam (open/docked state) and the static HTML export (document-valued refs render as embed blocks) |
 
 ### Typing / sockets / units
@@ -155,6 +166,7 @@ src/
 | Module | Role |
 |---|---|
 | `sockets.ts` | `SocketDataType` + `SOCKET_COLORS` (CSS vars, incl. purple = logical); `FAMILIES` (element × dim lattice) DERIVES `SOCKET_ACCEPTS`; `accepts`/`areCompatible`/`canConnect`. Governing rule: enforce TYPE separation (Cast to cross families; only logical↔number bridges), allow DIMENSIONAL flow (scalar→list→matrix→frame); `anytable`/`frame` widen from lower rank. The wildcard ladder (wildcardLadder): `any` = untyped SCALAR, `anycombo` = 0-or-1-D, `anylist`/`anytable` = 1-D/2-D, `anydata` = rank ≤ 2 (matricesInFormulas), `trueany` = the adopt-anything supremum (hollow ring; `AdoptiveSocket`/`MutableSocket`, `isWildcardType`) |
+| `inputRoles.ts` | `ARG_ROLES`, the one declaration of which arguments are settings or picks and what a blank there reads as; `applyRole` / `applyArgRoles` read it for cards (`readRole`) and formulas |
 | `valueKinds.ts` | First-class value-model kinds: `null` (missing), logical (boolean), Kleene 3-valued logic helpers; aggregators skip null / propagate `SolError` |
 | `errorValue.ts` | Tagged `SolError` values (Excel-style `#CODE!`); `installErrorGuards(node)` wraps every `data()` at `nodecreated` (error in → error out); `withOrigin`/`SolErrorOrigin` stamp the FIRST mint site (nodeId/name, row index for list/frame cells) so a chain of passthroughs still points at the true source; `registerErrorSink` is the seam the Problems panel taps (reports `null` on a clean pass so a relapse re-fires) |
 | `nodeStoreRegistry.ts` | The forget seam: any node-keyed module store (collapse, manual size, cable values, socket angles…) calls `registerNodeForget(fn)` once; `forgetNode(id)` runs from the `noderemoved` pipe AND the bulk-delete path (`canvasActions`), so a deleted node's entries don't leak — a new store never threads its own cleanup |
@@ -167,21 +179,23 @@ src/
 | `unitColumn.ts` | Per-column frame units: `ColumnUnit`, `columnUnitFromSpec`, `parseColumnUnitFromHeader` — the unitGranularity frame granularity, incl. computed columns |
 | `unitFlow.ts` | Format-annotation resolver: `makeAnnotationResolver` (+ the cached `sharedAnnotationResolver` most callers use, and `resolveValueOrigin` for the popup Go-to-source walk) walks the graph: an FC locks, Convert imposes its `toUnit`, a passthrough/selector carries (data-aware), a transform breaks. BIDIRECTIONAL — `inAnnotation` (upstream FC) + `downstreamAnnotation` (an FC ahead through pure passthroughs, for boxes in front of a trailing FC) |
 | `unitFormat.ts` | Unit + number-format rendering helpers |
-| `formatModel.ts` | The FC control truth table (`familyOf`/`controlsFor`/`precisionApplies`) — the machine mirror of `docs/format-model.md` |
+| `formatModel.ts` | The FC control truth table (`familyOf`/`controlsFor`/`precisionApplies`) — the machine mirror of `tree/specs/values/format-model.md` |
 | `formatAnnotationStore.ts` | Per-socket display annotations (Format Controller writes, value boxes read) |
 | `fcReconcile.ts` | Type propagation: `reconcileFcTypes` re-adapts every FC to its upstream type (shared by the Canvas connection pipe + in-place retypes); `retypeOutputCables` keeps still-valid cables + reconciles after a Cast/LAMBDA/Get Column/Note output retype |
 | `trueAnyAdopt.ts` | trueany ADOPTION (wildcardLadder): every `AdoptiveSocket` port takes the wired cable's type / reverts on disconnect; outputs adopt only where honest (passthroughs, agreeing selectors). `settleWildcardTypes` = the ONE settle point, alternating this with `conduitTrace.ts`'s lane reconcile to a joint fixpoint (called by `reconcileFcTypes` + the load path, where it MUST precede FC docking — waitForTypeSettle) |
 | `conduitTrace.ts` | Conduit lane type adoption: `resolveTypedSource` traces an output lane back through chained Conduits to the real source socket (cable colors); `reconcileConduitTypes` makes lanes adopt the feeding type (fixpoint). Also `conduitPath` — the whole RUN a cable belongs to (origin producer, every terminal consumer, Conduits crossed), used by the Cable inspector and double-click cable selection |
 | `trigMode.ts` | `resolveTrigModes(editor)` — the ONE compute-time unit read: an Auto-mode trig `Math` node computes degrees when its input resolves to the `deg` unit, else radians (Excel parity). Run from `processGraph` before the engine pull, stamps a transient `_resolvedAngleMode`. Main-editor only |
 | `noteFrontmatter.ts` | Pure parser: a Note body's YAML frontmatter → typed fields (→ NoteNode output sockets) + the markdown below the block |
+| `scalarText.ts` | `guessScalarText`: how a note reads one scalar's text (null, Boolean, number, ISO date, complex, else text), shared by the frontmatter parser, a Note's quoted Knap fields and the Obsidian plugin |
 | `frame.ts` | Frame value model (named typed columns) + helpers; also the Cube model (recursive cells), cached `depth`, and `relateFramesToCube`; `FrameSourceColumn` carries the column-source model (Data, or a formula `expr?` that may name a λ socket) |
-| `computedColumnCore.ts` | THE shared computed-column row-eval core (tableRefSemantics/noPerCellFormulas): binding resolution (bare name = whole column, `@` = this row), `readRowCell`/`readWholeColumn`, side values, `tagComputedCell` — one home so the Frame Input popup and the Computed Column verb cannot disagree |
+| `computedColumnCore.ts` | THE shared computed-column row-eval core (tableRefSemantics/noPerCellFormulas): binding resolution (bare name = whole column, `@` = this row), `readRowCell`/`readWholeColumn`, side values, `tagComputedCell` / `tagCubeComputedCell` — one home so the Frame Input popup, Cube Input and the Computed Column verb cannot disagree |
+| `cubeRows.ts` | `cubeRowTable`: a Cube as a row formula reads it (typed scalar columns, each row's list, `#SHAPE!` table cells) and `cubeCellsType` |
 | `nodes/cube.ts` | Cube nodes: Build Cube (extensible any-cell constructor), Nest Join, Cube Columns, Cube Rollup |
 | `nodes/equation.ts` + `equationSolve.ts` | The ACAUSAL Equation node (equationNode): every variable is an input AND an output + a logical Check; one unknown → solved. `equationSolve.ts` = the pure solver (symbolic AST isolation, quadratic multi-root, numeric log-grid + bisection fallback returning the smallest-magnitude root, `#SOLVE!`). `nodes/finance.ts` TvmNode/Compound Growth/Effective Rate + the pack presets subclass/lock it |
 | `cubePopupStore.ts` + `components/CubePopup.tsx` / `CubeChip.tsx` / `CubeDisplay.tsx` / `cubeCell.tsx` | Cube drill-in popup (depth + breadcrumb), result-box chip + preview, per-cell rendering |
 | `components/ResultDisplay.tsx` | Dispatches a result box to CubeDisplay / FrameDisplay / ValueDisplay by container kind (used by `makeNodeComponent`) |
 | `chartValue.ts` / `mermaidValue.ts` | First-class FIGURE values (`__chart` / `__mermaid`) riding the green `chart` "Special" socket; a node output, embedded in Reports |
-| `nodes/visual.ts` + `components/{ChartNode,MermaidNode,MermaidView}.tsx` | Visual nodes (Sparkline/Chart/Gauge/Heatmap/**Mermaid**); `MermaidView` dynamically imports mermaid.js (heavy) only when a diagram is on screen |
+| `nodes/visual.ts` + `components/{ChartNode,MermaidNode,MermaidView}.tsx` | Visual nodes (Sparkline/Chart/Gauge/Heatmap/**Mermaid**; Heatmap's colormaps in `colormaps.ts`); `MermaidView` dynamically imports mermaid.js (heavy) only when a diagram is on screen |
 | `components/inlineRefDisplay.tsx` | The ONE render path for a Report/Note inline `` `=name` `` ref → live value by kind (scalar/frame/chart/mermaid/lambda-KaTeX/document — a wired Note embeds whole); `CollapsibleFigure` (Report embeds fold); `InlineRefBody` swaps `=name` code spans via imperative innerHTML + portals |
 | `compositeEditorStore.ts` + `flow/FlowCompositeOverlay.tsx` + `compositeLogic.ts` | Composite drill-in, a FIRST-CLASS canvas: a breadcrumb STACK of composite instances (multi-layer, `Canvas ▸ A ▸ B`); the subgraph canvas sits IN the canvas region (`html.sol-drilled-in`) so the app chrome stays and drives it via `activeGraph.ts`; own minimap + `CompositeRunControls` panel; recompute retargets `stack[0]`; `compositeLogic.ts` = create/unpack |
 | `compositeStaleStore.ts` | Which composites are STALE (a heavy run mode — goal-seek/scenarios/data-table/simulation — whose inputs/config changed since the last Solve). Drives the arm-and-run status dot; a module store because a HELD composite's output doesn't change, so processGraph's re-render pruning would skip the card |
@@ -199,8 +213,8 @@ src/
 ### Relational engine (WS2/WS3 — the FrameBackend seam + verbs)
 | Module | Role |
 |---|---|
-| `frameBackend.ts` (+`.test.ts`) | The engine seam: a `FrameBackend` interface (`source`/`apply`/`join`/`append`/`collect`/`preview`/`column`/`drop`) over opaque `FrameHandle`s, so the frame layer runs on either the in-process `JsFrameBackend` (web/dev) or the **`PolarsBackend`** (desktop, over `ipcBridge`; selected by `initFrameBackend()` when `engine_ping` says `"polars"`). Also holds the node-facing **runners** `runFrameUnary`/`runFrameJoin`/`runFrameAppend` (which now return a **lazy `FrameRef`** that chains in the backend), `readFrame`/`collectPreview` (the materialization boundary — full / head-N), `flushRef` (a plan → handle, ONE `applyMany`, rebased onto the longest prefix already flushed this pass so a chain of previewing cards costs one op per card), `dropFrameRef` (lifecycle: only an empty-plan ref owns its handle), and `materialize()` (error-as-value bridge). Data crosses back at `collect`/`preview`/`column`; verb cards use `collectPreview` (head-N for a large frame); a no-op verb forwards its input as a non-owning ref (empty `drop`). `coerceInputs` collects a ref to a `FrameValue` for every consumer not in `LAZY_FRAME_NODES` (pinned complete by `lazyChain.test.ts`); consumers that need less than the frame read through `column`/`preview` instead. Module-singleton; `setFrameBackend` swaps it |
-| `frameVerbs.ts` (+`.test.ts`) | The pure relational verb engine — ONE definition of each verb (FrameValue→FrameValue), shared by the JS backend's `apply`, the Polars parity oracle, and (later) the verb nodes. Unary (`applyVerb`): select/drop/rename/sort/distinct/head/filter/groupBy/pivot/unpivot; binary: join (inner/left/right/outer, fan-out, key-coalesce, null≠null), append (union-by-name); cube bridge: nest/unnest; `reconcileFrames` (two-frame key diff, surfaces blank/invalid-key rows + a PVM price/volume/mix breakdown that excludes errored cells — `reconcile.test.ts`). Reuses `compareOp` + `forAggregate` so semantics can't drift from the nodes |
+| `frameBackend.ts` (+`.test.ts`) | The `FrameBackend` seam (JS oracle on web, Polars over IPC on desktop), the lazy `FrameRef` runners and the materialization boundary. Mechanics: `../tree/specs/computation/frame-verbs.md` |
+| `frameVerbs.ts` (+`.test.ts`) | The pure relational verbs, one definition each, which the JS backend runs and the Polars engine is held to; also the Cube bridge (nest / unnest) and `reconcileFrames`. Contracts: `../tree/specs/computation/frame-verbs.md` |
 | `ipcBridge.ts` (+`.test.ts`) | Web→Rust door: `engineAvailable`/`ipcInvoke`/`enginePing` (guarded by `isDesktop()`), `toSolError` maps a rejected `invoke` to a tagged `SolError`. Lazy `@tauri-apps/api/core` import → node/web-safe |
 | `frameShape.ts` (+`.test.ts`) | Static frame shape: column names/types computed AHEAD of running anything, mirroring each verb's column-reshaping logic without touching row data (a mismatch with the real JS/Rust output is a caught test failure, not a silent divergence). `emptyFrameOf` is the other route — a zero-row frame a producer runs its OWN verb over. Nest/Unnest and Frame Lookup fall outside this on purpose (their outputs aren't a Frame shape) |
 | `frameShapeResolver.ts` | The graph walk alone (`makeFrameShapeResolver(editor)` → `outShape(nodeId, outKey)`, memoized + cycle-guarded): resolve the input shapes, then read the producer's own `frameShape()` declaration (`nodes/frameShapeHook.ts`). Node-agnostic — it names only the Conduit lane case and reads `passthrough()` for forwarders; anything undeclared is unknown (`null`) |
@@ -216,7 +230,6 @@ src/
 | `cableFlowStore.ts`, `cableFlourishStore.ts` | Flow-bead animation toggle; decorative flourish |
 | `ribbonCable.ts` | Ribbon (bundled trunk + fans) membership/geometry — derived fresh per render |
 | `flow/FlowCableEdge.tsx` | The cable renderer (RF edge type: hit strokes, ribbon/pill rerouting, flow-bead overlay, run selection) |
-| `highlightUtils.ts` | Hover-highlight traversal, deliberately asymmetric and depth-limited: an origin lights its whole fan, a destination lights one cable |
 
 ### Renderers — the RF DOM surface + the HTML-in-Canvas gesture layer
 
@@ -236,8 +249,8 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `components/HtmlCanvasLayer.tsx` | Mounted by FlowSurface (both canvases) over the editor/area it renders; engages when mode is `html` ≥100 weighted nodes: gesture swap (RF viewport hidden ↔ canvas), held on at rest below 40% zoom (DOM muted, selected/focused cards live), targeted re-capture per changed node id (the flowView `render` pipe), DOM-only escape hatch (conduits) |
 | `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (the transform `htmlCanvasRenderer` drives; the Pixi-era pan/zoom/pinch/fit helpers are deleted) |
 | `hicCableGeom.ts` (+`.test.ts`) | `cablePolyline` — the app's REAL router (`getCablePath`) flattened via `pathPoints.ts`, so canvas cables match DOM cables |
-| `hicGraphSnapshot.ts` | snapshots the live graph (node rects, kind colors, socket world-positions, connections) for capture |
-| `hicColors.ts`, `hicSocketGlyph.ts` (+tests) | color helpers + socket-glyph classification the snapshot uses |
+| `hicGraphSnapshot.ts` | measures socket world-positions and lists the cables the HTML-in-Canvas layer draws |
+| `hicSocketGlyph.ts` (+tests) | socket-glyph classification the snapshot uses |
 | `pathPoints.ts` (+`.test.ts`) | pure M/L/C/Q path → polyline flattening (`parsePathPoints`) |
 | `rasterAtlas.ts` (+`.test.ts`) | the capture atlas (`packAtlas`) — one canvas read-back per paint |
 | `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB mixing — a canvas can't evaluate `color-mix`/`var()` |
@@ -255,8 +268,9 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `groupPush.ts` + `groupPushCore.ts` (+`.test.ts`) | Expand-push displacement (rails/clear/cascade) + snap-back records; pure core is unit-tested |
 | `standoffs.ts`, `standoffSolver.ts` (+`.test.ts`), `components/StandoffLayer.tsx` | User-declared axis-band constraints; iterative-projection solver runs after every layout pass |
 | `drawnCables.ts`, `drawnCablePath.ts` (+`.test.ts`), `components/DrawnCableLayer.tsx` + `DrawnCableCapture.tsx` + `DrawnCableInspector.tsx` | Free-drawn annotation curves: the store + draw-mode store, the pure span-chaining geometry over `getCablePath`, the world-space layer ABOVE the graph, the armed tool's capture sheet, and the selected cable's shape / ends / width / head / color panel |
-| `layoutInvariants.test.ts` | Seeded-PRNG property tests over the pure layout cores (`groupPushCore`'s `separateOverlaps`, a `computeExpandPush` NaN fuzz, `distributeDeltas`, `solveStandoffs`) machine-checking the "nodes/groups never overlap after a layout op" rule. `alignDeltas` is pinned per arm in `selectionOps.test.ts`; ELK Tidy integration lives in `tidyArrangeGroups.test.ts` |
+| `layoutInvariants.test.ts` | Seeded-PRNG property tests over the pure layout cores (`groupPushCore`'s `separateOverlaps` and `separateAll`, a `computeExpandPush` NaN fuzz, `distributeDeltas`, `solveStandoffs`) machine-checking the "nodes/groups never overlap after a layout op" rule. `alignDeltas` is pinned per arm in `selectionOps.test.ts`; ELK Tidy integration lives in `tidyArrangeGroups.test.ts` |
 | `lasso.ts`, `canvasLock.ts`, `nodeSizeStore.ts`, `collapseStore.ts`, `dockedNodeStore.ts` | Box-select, lock, per-node size/collapse, FC docking |
+| `sectionFoldStore.ts`, `cableEndMotion.ts` | A card section's saved hand fold (per node and label, the save's `sections`); the transient cable ends a fold's liquid carries |
 | `selectionOps.ts` + `components/SelectionActionsBar.tsx`/`selectionActions.css` | Align/distribute deltas (pure) + the bottom-center overlay pill (≥2 nodes selected) that surfaces them outside the Command Palette |
 | `calcModeStore.ts` | Manual/automatic calculation mode + the dirty flag (`processGraph` short-circuits in manual; F9/Calculate Now forces) — persisted like Excel's per-workbook flag |
 | `computeOverlayStore.ts` + `components/ComputeOverlay.tsx` | Deferred "Computing…" curtain over an irreducibly heavy pass (150 ms reveal / 350 ms min) |
@@ -278,6 +292,7 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `AddNodeMenu.tsx`, `addMenuStore.ts`, `fuzzy.ts`, `catalogSearch.ts` (+`.test.ts`) | Right-click add menu + search; `catalogSearch.ts` extracts the scoring (per query word over label/description/Excel names/category path/keywords, one-edit typo tolerance via `fuzzy.ts`) plus the quick-wire drop filter, which memoizes each catalog type's socket signature so a drop doesn't re-`create()` every leaf |
 | `excelFunctions.ts` | The single declared home for "which of the two parallel Excel implementations is authoritative for this function" (the ~150 native nodes vs Formula.js via `excelFormula.ts` `dispatch`) — per the per-family verdicts in `docs/archive/formulajs-vs-native-audit.md` |
 | `excelFormula.ts` (+`.test.ts`) | The Expression/LAMBDA formula compiler (Formula.js scope); also owns the tableRefSemantics structured-reference syntax (`[Col]` whole column / `@[Col]` this row — tokenizer `colref`/`rowref` → AST `wholecol`/`atcol`) that the computed-column surfaces read |
+| `closeParens.ts` | `closeParens` for every formula surface's commit ([[C115]] closeParensOnCommit); outside `excelFormula.ts` so the Obsidian plugin doesn't bundle the engine |
 | `formulaSignatures.ts`, `formulaSyntax.ts`, `formulaExtensions.ts`, `formulaNodeParity.ts` | The formula-surface cluster: signature metadata + syntax hints, highlighting, registered extensions, and the node↔formula parity model (`inFormula`/`excelCovered` — oneMetricImpl/oneThingPerMetric/useEveryNotSome) |
 | `nodeOps.ts` | Per-class op declarations (`kind: "op" \| "argument"`) — what the Add-menu search may surface and how ops are counted; aggregator hosts are `argument` (never searchable) |
 | `formulaDivergence.test.ts` | Durable CI guard for the node-vs-Formula.js divergence audit: pins every Excel-correct override (`resolveExcelFunction`) the 2026-06-25 consolidation made because FX is wrong (MOD/QUOTIENT/ATAN2/ROUND/RANK/TRIMMEAN/PERCENTRANK), plus FX-still-buggy tripwires — an FX upgrade that fixes those trips the test instead of silently re-introducing drift |
@@ -350,6 +365,8 @@ One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `stats`, `dist-*`, `finance`, `financeOps`, `text`, `textOps`, `date`,
 `dateSerial`, `complex`, `matrix`, `matrixOps`, `frame`, `cube`,
 `tableLambda`, `lambda`, `expression`, `script` (+ `scriptRun`, `scriptCoerce`), `convert`, `convertUnits`,
+the pack kernels (`astroOps`, `chemistryOps`, `electricalOps`, `emSpectrumOps`, `fluidsOps`,
+`healthOps`, `physicsConstantsOps`, `thermoOps`, `triangleOps`),
 `logic`, `input`, `control`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,
@@ -380,8 +397,9 @@ OpSelect, InlineOutputRows), `NodeCard.tsx`, `NodeSocket.tsx`
 (MeasuredSocketRow), `SocketComponent.tsx`, `inlineInput.tsx`,
 `ExtensibleInputs.tsx` (flat variadic value rows, optional fixed `leadingKeys`),
 `PairedExtensibleInputs.tsx` (variadic input PAIRS — IFS/SWITCH — with optional
-fixed leading/trailing rows), `ArrayChip` / `TablePopup` / `FormulaPopup` (+
-`popupChrome.css`), `FrameChip` / `FrameDisplay`, `SegToggle`, `SwatchGrid`, `PaletteEditor`
+fixed leading/trailing rows), `CardSection.tsx` (a captioned, optionally folding run of rows; its liquid fold is
+`SocketGoo.tsx`), `CardOpenButton.tsx` (an input card's Edit Frame / Edit Table), `ArrayChip` / `TablePopup` (+ `TableCards`, its Cards view,
+planned by `cardLayout.ts`) / `FormulaPopup` (+ `popupChrome.css`), `FrameChip` / `FrameDisplay`, `SegToggle`, `SwatchGrid`, `PaletteEditor`
 (F-1 app custom-palette editor, Settings-only), `DocumentProperties` (F-2
 doc metadata + per-doc palette base modal), `ResizeHandle`, `RecalcButton`.
 Adding a node: see the `add-node` skill /
@@ -398,7 +416,8 @@ overlay tabs.
 
 One file per pack on `packs/packShared.ts` (authoring types,
 `formulaNode`/`placeFormulas`, Equation presets; a pack file may import ONLY
-packShared, `../rete-nodes`, and type-only app seams — never core internals),
+packShared, its `<id>Formulas.ts`, `../rete-nodes`, and type-only app seams — never core internals),
+its `formulas` in `packs/<id>Formulas.ts`, which imports only rete-free kernels (`../tree/specs/floors/engineering.md` § The formula path is rete-free),
 each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`).
 Framework + activation live with the catalog cluster (`packs.ts` /
 `fcExtensions.ts` above); the settled calls are [[B15]] leanCore and its children, the
@@ -418,15 +437,15 @@ the app's bindings are `scheduleCpm.ts` / `ganttPayload.ts` / `planImport.ts` ab
 The marketing site: four pages sharing one chrome. `siteNav.tsx` owns the header, nav,
 footer, theme toggle and `Feature` row (the nav lists Obsidian/Examples/Packs/Download, marks
 the active route, and the wordmark covers Home). Pages: `LandingPage.tsx` (overview, the
-one live rete hero) + `ObsidianPage.tsx` (integration) + `DownloadPage.tsx` +
-`ExamplesPage.tsx` (a gallery of the seed library; each tile deep-links `/?seed=<id>`,
+one live rete hero) + `ObsidianPage.tsx` (the plugin and the app over a vault; `PropertiesDemo.tsx` renders the plugin's own `PropertyChip` over the demo vault's Property types note) + `DownloadPage.tsx` +
+`ExamplesPage.tsx` (the seed library from `SEED_GROUPS`; each tile deep-links `/?seed=<id>`,
 which `flow/FlowCanvas.tsx` boot opens as a new document) + `PacksPage.tsx` (the domain
-packs, mirroring `packs.ts` metadata). Scenes live in `LandingScenes.tsx` (+
+packs from `BUILTIN_PACKS` and `PACK_GROUP_ORDER`). Scenes live in `LandingScenes.tsx` (+
 `LandingGraph.tsx` with its hero scene switcher, `SceneStage.tsx`, and `SceneThread.tsx`, the
 decorative bezier joining the scene viewports); styles in `LandingPage.css` + `ObsidianPage.css` +
 `SitePages.css`. `App.tsx` routes each page by pathname (`/obsidian`, `/download`,
-`/examples`, `/packs`) or `?landing`, off the Vercel catch-all rewrite. `public/` carries
-`robots.txt`, `sitemap.xml` and `og-hero.png` (the link-preview image `index.html` points at). `siteChrome.ts`
+`/examples`, `/packs`, and `/about`, the landing page, since `/` is the app). `siteMeta.ts` holds each page's title and link-preview text; the build writes `<page>.html` per page (`vite.config.ts` sitePageHtml) and `vercel.json` routes each path to its file ahead of the catch-all. The build also writes `robots.txt` and `sitemap.xml` from `SITE_ORIGIN`, and `index.html` names the site as `%SITE_ORIGIN%` (filled in by the same plugin), so a domain move is one line in `siteMeta.ts`. Each page's HTML also carries a plain-text snapshot of the page (headings, paragraphs, list items, links) inside `#root`, from `prerender/<page>.html`, so crawlers and link previews read it without JavaScript; React replaces it on mount. Vercel's build can't run a browser, so the snapshots are committed: the agent that changes a site page's copy reruns `node scripts/prerender-site.mjs`, which also records a fingerprint of the sources the text comes from (`prerender/fingerprint.txt`); `prerender.test.ts` fails when a page has no snapshot or those sources moved on without a rerun. `public/` carries
+each page's link-preview card (`og-hero.png`, `og-obsidian.png`, `og-download.png`, `og-examples.png`, `og-packs.png`; `siteMeta.ts` names one per page and `pageHtml` swaps it in) and `obsidian-look.png` (the plugin's theme, from the plugin repo's screenshots). The cards and the README screenshots are drawn from the live app by `scripts/site-shots.mjs`; rerun it after a UI change. The /examples and /packs tiles show `public/thumbs/<kind>/<id>-<theme>.webp` through `SiteThumb` (`siteNav.tsx`), drawn by `site-shots.mjs --thumbs`; a pack's picture is its graph in `scripts/site-shots/packs/`, and `siteThumbs.test.ts` fails when an example or pack has none. `siteChrome.ts`
 lets a page suppress app-only overlay chrome (the Report's Export/Dock). The dev node
 gallery is `showcase/NodeShowcase.tsx`.
 
@@ -438,7 +457,7 @@ gallery is `showcase/NodeShowcase.tsx`.
 src-tauri/
 ├── Cargo.toml                # Crate manifest (+ fs/dialog plugin deps)
 ├── tauri.conf.json           # Window, identifier, build hooks
-├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope also lists `http://localhost:*` / `http://127.0.0.1:*`: a URL pattern with no port matches only the scheme's default port, and TaskNotes serves on 8080. The text read / write / rename scopes name `$HOME/**/.obsidian/*.json` literally: on Unix a `**` never matches a dot-directory (the fs plugin's `requireLiteralLeadingDot` defaults true there, false on Windows), so without the entry `.obsidian/types.json` and `daily-notes.json` fail silently on Linux. The plugin default stays, which keeps every other hidden directory closed to the webview
+├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope is `http://*:*` / `https://*:*`: the http plugin wildcards a pattern's path, query and hash but not its port, so a pattern with no port matches only the scheme's default one (TaskNotes serves on 8080, a LAN server anywhere). The text read / write / rename scopes name `$HOME/**/.obsidian/*.json` literally: on Unix a `**` never matches a dot-directory (the fs plugin's `requireLiteralLeadingDot` defaults true there, false on Windows), so without the entry `.obsidian/types.json` and `daily-notes.json` fail silently on Linux. The plugin default stays, which keeps every other hidden directory closed to the webview
 ├── src/ipc.rs                # IPC command surface (WS1): `engine_ping` (reports backend "polars") + `IpcError` (serializes SolError-shaped).
 ├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.46; `engine_source/apply/join/append/collect/preview/column/drop` commands. Verb parity vs the frameVerbs JS oracle runs from the shared corpus (`fixtures/frame-verbs/`, oneVerbCorpus): `corpus_cases` in engine/tests.rs + `frameVerbCorpus.test.ts` read the same wire-format fixture files.
 └── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `engine_ping` + the `engine_*` command set
@@ -466,17 +485,13 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `mental-model.md` | living | how the system runs, end to end — the onboarding story |
 | `architecture.md` | living | (this file) module map |
 | `glossary.md` | living | the invented vocabulary |
-| `dte.md` | living | the decision tree how-to — every rule (MUST + enforcing test) and settled decision is a node under `decisions/` |
-| `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
-| `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
-| `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
+| `dte.md` | living | the decision tree how-to — every rule (MUST + enforcing test) and settled decision is a node under `tree/decisions/` |
+| `subsystem-invariants.md` | living | the index of every spec under `tree/specs/` (the mechanics, one per subsystem) |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |
 | `deferrals.md` | living | the deferred/parked/author-gated set, incl. Pushed-to-1.4/2.0 |
 | `2.0-plan.md` | living | the author-present flagships — release view over `v2.0/` |
 | `release-notes-features.md` | living | curated feature list — release-notes source + What's-New slide content |
-| `format-model.md` | living | the FC function model — control truth table + precision rule (mirrored in `formatModel.ts`) |
-| `value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context |
 | `socket-reference.md` | living | every socket variant in plain English (connection lists machine-checked by `socketReference.test.ts`) |
 | `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
@@ -508,5 +523,5 @@ rationale, point-in-time research, the dev-notes history) is indexed in
   Function Reference are generated, never hand-listed.
 - **Stable ids** from `crypto.randomUUID()`; loads remap ids.
 - Rendering/measurement gotchas (socket boxes, measured rows, async
-  `area.moveNode`, pointer-event traps): `docs/subsystem-invariants.md`
-  § React Flow surface contract and § Pointer gestures.
+  `area.moveNode`, pointer-event traps): `tree/specs/canvas/react-flow-surface-contract.md`
+  and `tree/specs/canvas/pointer-gestures.md`.

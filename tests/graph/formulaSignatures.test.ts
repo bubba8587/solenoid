@@ -14,8 +14,7 @@ describe("formula signatures (display hints)", () => {
   });
 
   it("signatureFor: curated first, synthesized named args for registered impls, null otherwise", () => {
-    expect(signatureFor("INDEX")).toBe("array, row, [col]");
-    expect(signatureFor("index")).toBe("array, row, [col]"); // case-insensitive
+    expect(signatureFor("index")).toBe("array, [row], [col]"); // case-insensitive
     expect(signatureFor("NOT_A_FUNCTION_XYZ")).toBeNull();
   });
 
@@ -70,6 +69,7 @@ describe("formula signatures (display hints)", () => {
     expect(signatureParams("array, row, [col]")).toEqual(["array", "row", "[col]"]);
     expect(signatureParams("")).toEqual([]);
     expect(signatureParams("frame verb — use the Join node")).toBeNull();
+    expect(signatureParams(signatureFor("TEXTFILTER")!)).toBeNull();
   });
 });
 

@@ -1,6 +1,5 @@
-// Repro: rename a wired captured variable in a LAMBDA via the formula popup in
-// the LIVE app, and report whether the old socket/cable actually disappear.
-// Drives the running Vite dev server (port 1420) with system Edge, headless.
+// Reproduces renaming a wired captured LAMBDA variable through the formula popup in the live app and
+// reports whether the old socket and cable disappear. Needs the dev server on :1420.
 //   node scripts/repro-lambda-rename.mjs
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
@@ -63,7 +62,6 @@ const main = async () => {
   const before = await page.evaluate(snapshotFn);
   console.log("BEFORE:", JSON.stringify(before, null, 2));
 
-  // Click the LAMBDA node's formula box to open the popup.
   const opened = await page.evaluate(() => {
     const nodes = [...document.querySelectorAll(".solenoid-node")];
     const lambda = nodes.find((n) => n.textContent.includes("× rate"));
@@ -83,12 +81,10 @@ const main = async () => {
   console.log("popup overlay present:", await page.evaluate(() => !!document.querySelector(".sol-popup-overlay")));
   await page.waitForSelector(".formula-popup__textarea", { timeout: 5000 });
 
-  // Replace the formula text wholesale.
   await page.click(".formula-popup__textarea");
   await page.keyboard.down("Control"); await page.keyboard.press("KeyA"); await page.keyboard.up("Control");
   await page.keyboard.type("x * bazinga");
   if (process.argv[2] === "overlay") {
-    // Close by clicking off the popup (the overlay), like a user clicking away.
     await page.mouse.click(60, 1000);
   } else {
     await page.keyboard.press("Escape");

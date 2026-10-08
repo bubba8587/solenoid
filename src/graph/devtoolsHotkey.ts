@@ -1,5 +1,5 @@
-// WebView2 doesn't reliably bind F12 inside a Tauri shell, so we bind it here; the
-// Rust `open_devtools` command needs the tauri crate's `devtools` feature.
+// WebView2 doesn't reliably bind F12 in a Tauri shell, so it is bound here; `open_devtools` needs the tauri crate's
+// `devtools` feature.
 import { isDesktop } from "./fileBridge";
 
 export function initDevtoolsHotkey(): void {

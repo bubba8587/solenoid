@@ -1,7 +1,3 @@
-/* Node showcase (?showcase) — the node-level UI-audit harness. Dev-tool chrome:
-   neutral surfaces off the app vars, nothing decorative, the staged node is the
-   only thing that matters visually. */
-
 .sol-showcase {
   position: fixed;
   inset: 0;
@@ -128,7 +124,6 @@
   gap: 4px;
 }
 
-/* The rete mount. Fixed transform (no pan/zoom handlers), node parked at PAD. */
 .sol-showcase__stage {
   position: relative;
   flex: 1;

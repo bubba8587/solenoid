@@ -1,0 +1,73 @@
+{
+  "label": "earthsky",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Earth & Sky\n\n- Moon Phase\n- Sun Position\n- Great-Circle Distance",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "day",
+      "type": "ValueInputNode",
+      "x": 380,
+      "y": 0,
+      "collapsed": true,
+      "init": {
+        "label": "Solstice",
+        "op": "date",
+        "value": "21-Jun-2026"
+      }
+    },
+    {
+      "id": "moon",
+      "type": "MoonPhaseNode",
+      "x": 640,
+      "y": 0,
+      "init": {
+        "label": "Moon Phase"
+      }
+    },
+    {
+      "id": "sun",
+      "type": "SolarPositionNode",
+      "x": 640,
+      "y": 240,
+      "init": {
+        "label": "Sun Position"
+      },
+      "literals": {
+        "lat": 47.61,
+        "lon": -122.33
+      }
+    },
+    {
+      "id": "hav",
+      "type": "ExpressionNode",
+      "x": 940,
+      "y": 0,
+      "init": {
+        "label": "Great-Circle Distance",
+        "expr": "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))",
+        "locked": true
+      },
+      "literals": {
+        "lat1": 47.61,
+        "lon1": -122.33,
+        "lat2": 35.68,
+        "lon2": 139.69
+      }
+    }
+  ],
+  "cables": [
+    "day.value -> moon.when",
+    "day.value -> sun.when"
+  ]
+}

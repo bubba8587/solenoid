@@ -1,0 +1,6 @@
+{ "nodes": [
+  { "id": "l1", "type": "LambdaNode", "init": { "label": "Quartile band", "params": "",
+    "expr": "IFS(@x > QUARTILE(x, 3), \"top\", @x > QUARTILE(x, 2), \"upper mid\", @x > QUARTILE(x, 1), \"lower mid\", TRUE, \"bottom\")" } },
+  { "id": "f1", "type": "FrameInputNode", "init": { "label": "Scores" }, "lambdaKeys": ["fn1"],
+    "frame": [ { "name": "x", "cells": [12, 47, 3, 88, 25, 61, 9, 70] }, { "name": "band", "type": "string", "expr": "λ1" } ] } ],
+  "cables": [ "l1.result -> f1.fn1" ] }

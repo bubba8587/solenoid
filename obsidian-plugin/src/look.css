@@ -1,19 +1,7 @@
-/* [[C107]] obsidianPlugin
-   The Solenoid look: Solenoid's palette on Obsidian, the workbench neutrals, the gold accent
-   and the typed socket hues (DESIGN.md § 2), following the plugin's palette setting. Color
-   means type here too: a property's icon wears the color Solenoid gives that type, strings in
-   code are lime, numbers are gold. THE ONE SOURCE of the rules: the build scopes it under
-   `body.solenoid-look` into the plugin's styles.css (the settings toggle adds that class) and
-   writes it, with the Default palette's tokens, to the demo vault's snippet. The faces are
-   Atkinson Hyperlegible, which the plugin's styles.css registers. */
+/* [[C107]] obsidianPlugin */
 
 /* ── Tokens ─────────────────────────────────────────────────────────────────── */
-/* No hex here. The colors (workbench ramp, accent, typed hues, Obsidian's named colors) come
-   from lookTokens.ts, derived from palette.ts as the chips' are: the build appends one block per
-   built-in palette, and one per accent, to styles.css, and the snippet carries the Default
-   palette's under gold. Below is what holds under every palette. The accent (--sol-accent, and
-   --sol-ink-accent as text) is the UI's: tabs, the top line, links, the active item, the h1,
-   rules; a type's hue (--sol-number and the rest) means that type and nothing else. */
+/* No hex here: every color token comes from lookTokens.ts. */
 
 body {
   --sol-mix-hairline: 30%;
@@ -33,7 +21,6 @@ body {
 
 .theme-dark {
   --sol-header-tint: 22%;
-  /* A hue used as TEXT or as a line icon is itself on the dark workbench. */
   --sol-ink-pct: 100%;
   --sol-wash: 14%;
   --sol-ink-number: var(--sol-number);
@@ -61,10 +48,6 @@ body {
 
 .theme-light {
   --sol-header-tint: 52%;
-  /* On white a color is either NEUTRAL or the FULL accent, never a hue greyed toward the ink:
-     no hue here reaches 4.5:1 as text (lime is 1.6:1), and dark yellow is brown. So gold and
-     lime text is the ink and their color moves into fills, rules and badges; the other hues
-     darken along their own hue in OKLCH, which stays a color. */
   --sol-ink-pct: 0%;
   --sol-wash: 38%;
   --sol-ink-number: var(--sol-text);
@@ -127,7 +110,6 @@ body {
   --interactive-accent: var(--sol-accent);
   --interactive-accent-hover: color-mix(in srgb, var(--sol-accent) 88%, var(--sol-text-bright));
 
-  /* Obsidian's named colors, so callouts, canvas cards and graph groups pull from the palette. */
   --color-red: var(--sol-error);
   --color-orange: var(--sol-amber);
   --color-yellow: var(--sol-number);
@@ -137,7 +119,6 @@ body {
   --color-purple: var(--sol-frame);
   --color-pink: var(--sol-date);
 
-  /* Chrome */
   --titlebar-background: var(--sol-canvas);
   --titlebar-background-focused: var(--sol-canvas);
   --ribbon-background: var(--sol-app-bg);
@@ -165,7 +146,6 @@ body {
   --scrollbar-thumb-bg: color-mix(in srgb, var(--sol-text) 14%, transparent);
   --scrollbar-active-thumb-bg: color-mix(in srgb, var(--sol-accent) 50%, transparent);
 
-  /* Canvas and graph sit on the void, dot grid and all. */
   --canvas-background: var(--sol-canvas);
   --canvas-dot-pattern: var(--sol-canvas-dot);
   --graph-line: var(--sol-border-strong);
@@ -176,7 +156,6 @@ body {
   --graph-node-attachment: var(--sol-complex);
   --graph-text: var(--sol-text-dim);
 
-  /* Writing */
   --h1-color: var(--sol-ink-accent);
   --h2-color: var(--sol-ink-string);
   --h3-color: var(--sol-ink-date);
@@ -216,7 +195,6 @@ body {
   --checkbox-radius: 3px;
   --checklist-done-color: var(--sol-text-muted);
 
-  /* A quote is a tinted block, never a side stripe. */
   --blockquote-border-thickness: 0px;
   --blockquote-background-color: color-mix(in srgb, var(--sol-accent) 7%, var(--sol-raised));
   --blockquote-color: var(--sol-text);
@@ -259,7 +237,6 @@ body {
   --pill-border-width: 1px;
   --pill-radius: 999px;
 
-  /* Code wears the type colors: a string is lime, a number is gold. */
   --code-background: var(--sol-sunken);
   --code-border-color: var(--sol-border);
   --code-border-width: 1px;
@@ -316,16 +293,12 @@ body {
 
 /* ── Surfaces ───────────────────────────────────────────────────────────────── */
 
-/* The note sits on the void like a node card: a lit surface, a hairline, 8px corners. */
 .workspace-split.mod-root {
   background-color: var(--sol-canvas);
 }
 .workspace-split.mod-root .workspace-tabs .workspace-leaf {
   border-radius: 8px 8px 0 0;
 }
-/* A tab is a node header: 6px top corners, a tinted band under a 2px cap, and the small
-   uppercase title in the same color's ink. The accent, so a note's tab belongs to the accent
-   line it stands on; a base, a canvas and media keep a color of their own. */
 .mod-root .workspace-tab-header {
   --sol-tab: var(--sol-accent);
   --sol-tab-ink: color-mix(in srgb, var(--sol-tab) var(--sol-ink-pct), var(--sol-text-bright));
@@ -341,7 +314,6 @@ body {
 .mod-root .workspace-tab-header[data-type="audio"],
 .mod-root .workspace-tab-header[data-type="video"] { --sol-tab: var(--sol-complex); }
 
-/* Every tab stands on the pane below it, active or not. */
 .mod-root .workspace-tabs .workspace-tab-header-container .workspace-tab-header,
 .mod-root .workspace-tabs .workspace-tab-header-container .workspace-tab-header.is-active {
   padding: 0 2px;
@@ -382,7 +354,6 @@ body {
   color: var(--sol-tab-ink);
 }
 
-/* Sidebar tabs are bare icons; the active one wears the accent and nothing around it. */
 .mod-left-split .workspace-tab-header.is-active .workspace-tab-header-inner,
 .mod-right-split .workspace-tab-header.is-active .workspace-tab-header-inner {
   background: none;
@@ -393,7 +364,6 @@ body {
   color: var(--sol-ink-accent);
 }
 
-/* Icon buttons: a circle that fills on hover and turns to the accent. */
 .side-dock-ribbon-action,
 .sidebar-toggle-button .clickable-icon,
 .view-header-nav-buttons .clickable-icon,
@@ -411,7 +381,6 @@ body {
   background: none;
 }
 
-/* Fields: sunken, one hairline, the accent on focus and nothing else. */
 input[type="text"],
 input[type="search"],
 input[type="number"],
@@ -470,9 +439,6 @@ button.mod-cta {
 
 /* ── Instrument chrome, after the app's own bars and floating windows ───────── */
 
-/* The top bar: a hairline with the 2px accent line under it. A pane's line takes its active
-   tab's color, so the header and the line it stands on read as one piece; every pane in the
-   center gets one, split or not. */
 .workspace-tabs.mod-top > .workspace-tab-header-container,
 .mod-root .workspace-tabs > .workspace-tab-header-container {
   --sol-line: var(--sol-accent);
@@ -491,7 +457,6 @@ button.mod-cta {
   --sol-line: var(--sol-complex);
 }
 
-/* Icon buttons group into one pill, as the top bar's clusters do. */
 .nav-header {
   display: flex;
   justify-content: center;
@@ -508,8 +473,7 @@ button.mod-cta {
 .view-actions .clickable-icon {
   border-radius: 50%;
 }
-/* The pane's bar clears the accent line by the same 6px the explorer's pill does: the line
-   paints over the bar's top 2px, so the bar takes them back as padding. */
+/* The accent line paints over the bar's top 2px, so the bar takes them back as padding. */
 .view-header {
   flex: 0 0 44px;
   height: 44px;
@@ -526,10 +490,6 @@ button.mod-cta {
   background-color: color-mix(in srgb, var(--sol-accent) 12%, transparent);
 }
 
-/* The Navigator's rows: 6px corners, the selected one washed in the accent, and a
-   9px square of color in front of each folder. Top-level folders take the palette in its own
-   order (gold, green, amber, blue, lime, purple, gray, vermilion, violet, pink, sky, teal) and
-   loop back to gold; a subfolder shares its top folder's color. */
 .tree-item-self {
   border-radius: 6px;
 }
@@ -559,13 +519,11 @@ button.mod-cta {
   color: var(--sol-text-bright);
   font-weight: 600;
 }
-/* A row with its menu open gets the one-edge focus, not a 2px ring. */
 .tree-item-self.has-active-menu,
 .tree-item-self.has-focus {
   box-shadow: inset 0 0 0 1px var(--sol-accent);
 }
 
-/* Section headings, as the Navigator and the socket legend set theirs. */
 .vertical-tab-header-group-title,
 .backlink-pane > .tree-item-self,
 .search-results-info,
@@ -577,14 +535,12 @@ button.mod-cta {
   color: var(--sol-text-dim);
 }
 
-/* The vault's name is the one brand mark. */
 .workspace-drawer-vault-name {
   color: var(--sol-ink-accent);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
-/* Floating windows wear the overlay border the minimap and the legend do. */
 .menu,
 .suggestion-container,
 .popover.hover-popover,
@@ -608,7 +564,6 @@ button.mod-cta {
 
 /* ── Writing ────────────────────────────────────────────────────────────────── */
 
-/* A heading's rule is its own hue at the hairline rung. */
 .markdown-rendered h1,
 .markdown-rendered h2,
 .cm-s-obsidian .HyperMD-header-1,
@@ -649,8 +604,6 @@ button.mod-cta {
   border-radius: 8px;
 }
 
-/* A callout is a group: a solid header in its color over a tinted body with a 2px dashed
-   outline. The header's ink is picked per color, as the app picks a header's. */
 .callout {
   --callout-head: color-mix(in srgb, var(--callout-color) 86%, #000);
   --callout-ink: #ffffff;
@@ -697,8 +650,6 @@ button.mod-cta {
   background-color: color-mix(in srgb, var(--callout-color) 9%, var(--sol-surface));
 }
 
-/* A rule is a cable in the default draw shape, diagonal: a socket out, a straight run, a
-   45 degree leg centered between the runs, a straight run, a socket in. */
 .markdown-rendered hr,
 .markdown-source-view.mod-cm6 .hr hr {
   --sol-ring: color-mix(in srgb, var(--sol-accent) 62%, #000);
@@ -719,7 +670,6 @@ button.mod-cta {
   mask: var(--sol-cable);
 }
 
-/* Bullets are sockets: a circle for one thing, a square for a list under it. */
 .markdown-rendered ul ul > li > .list-bullet::after,
 .cm-s-obsidian .HyperMD-list-line:not(.HyperMD-list-line-1) .list-bullet::after {
   border-radius: 1px;
@@ -740,7 +690,6 @@ button.mod-cta {
   border-bottom: 1px solid var(--sol-border);
   border-radius: 0 0 8px 8px;
 }
-/* A table is one rounded box: the outline is the table's, the cells keep inner rules only. */
 .markdown-rendered table {
   border-collapse: separate;
   border-spacing: 0;
@@ -770,15 +719,13 @@ button.mod-cta {
   color: var(--sol-text-bright);
 }
 
-/* Obsidian nudges the panel 4px left so bare icons line up with the text; a bordered card
-   lines up by its edge. */
+/* Obsidian nudges the panel 4px left for bare icons; a bordered card lines up by its edge. */
 .markdown-source-view.mod-cm6 .cm-sizer > .metadata-container,
 .markdown-preview-view .metadata-container,
 .markdown-rendered .metadata-container {
   transform: none;
 }
 
-/* In light a link is ink over a rule in the full color: the cable carries the hue. */
 .theme-light .markdown-rendered a,
 .theme-light .cm-s-obsidian .cm-hmd-internal-link .cm-underline,
 .theme-light .cm-s-obsidian .cm-link .cm-underline,
@@ -822,25 +769,20 @@ button.mod-cta {
 .metadata-container .metadata-content {
   padding: 0 var(--size-4-2);
 }
-/* On a phone Obsidian makes the content its own full-bleed panel, shifted 12px left and 24px
-   wider than the card, which the card's edge clips: the icon lands 1px from the border. Here the
-   card IS the panel, so the content stays inside it, 11px to the icon as on the desktop. */
+/* On a phone Obsidian shifts the content 12px left and 24px wider than the card; here the card is the panel. */
 .is-mobile .metadata-container .metadata-content {
   width: auto;
   transform: none;
   background-color: transparent;
   border-radius: 0;
 }
-/* Obsidian stacks rows with a 3px gap ABOVE each and draws the divider right under the
-   content, so with dividers on nothing sits centered between its lines. The gap goes, and the
-   key and value take it back as 2px above and below. */
+/* Obsidian's 3px gap above each row goes, and key and value take it back as 2px above and below. */
 .metadata-container .metadata-property-key,
 .metadata-container .metadata-property-value {
   padding-block: 2px;
 }
 
-/* One-line rows are all 28px of content: a text value's 21px line and the tag pills' borders
-   made theirs 29 and 31, so the same badge sat differently from row to row. */
+/* Every one-line row is 28px of content, or a text value and the tag pills would seat the badge differently. */
 .metadata-container .metadata-input-longtext {
   line-height: 20px;
 }
@@ -848,7 +790,6 @@ button.mod-cta {
   padding-block: 2.5px;
 }
 
-/* A property row is a label and a value, not two boxed fields. */
 .metadata-container input.metadata-property-key-input,
 .metadata-container .metadata-property-value input:not([type="checkbox"]),
 .metadata-container .metadata-property-value textarea {
@@ -864,9 +805,7 @@ button.mod-cta {
 }
 
 .metadata-property { --sol-type: var(--sol-any); --sol-type-ink: var(--sol-ink-on-any); }
-/* Obsidian seats the icon behind a 4px zero-width spacer, which leaves it 12px from the card
-   and 8px from its label, and pushes a badge's glyph off center. The icon takes an 18px box
-   with 2px either side instead: 10px to the card, 10px to the label. */
+/* Obsidian's 4px zero-width spacer pushes the icon and a badge's glyph off center, so the icon takes an 18px box with 2px either side. */
 .metadata-property .metadata-property-icon {
   flex: 0 0 18px;
   justify-content: center;
@@ -877,14 +816,10 @@ button.mod-cta {
 .metadata-property .metadata-property-icon::before {
   content: none;
 }
-/* In light the icon is a socket: an 18px badge filled with the full type color, a 12px glyph
-   in the ink that reads on THAT color under the current palette (--sol-ink-on-*, lookTokens.ts,
-   the chips' own contrast rule; author 2026-09-22). It keeps the 22px column the bare icon had,
-   centered on the 28px label. */
 .theme-light .metadata-property .metadata-property-icon {
   height: 18px;
   margin: 0 2px;
-  align-self: center; /* the 28px label on the desktop, the 36px one on a phone */
+  align-self: center;
   padding: 0;
   color: var(--sol-type-ink, #1a1a1a);
   background-color: var(--sol-type);
@@ -965,15 +900,12 @@ button.mod-cta {
 
 /* ── Graph view ─────────────────────────────────────────────────────────────── */
 
-/* The graph sits on Solenoid's canvas: the void and its dot grid. */
 .workspace-leaf-content[data-type="graph"] .view-content,
 .workspace-leaf-content[data-type="localgraph"] .view-content {
   background-color: var(--sol-canvas);
   background-image: radial-gradient(var(--sol-canvas-dot) 1px, transparent 1px);
   background-size: 20px 20px;
 }
-/* A note is a node in the accent; the active one is the ink (author 2026-09-22). Tags and
-   attachments keep their type's hue. */
 .graph-view.color-fill { color: var(--sol-accent); }
 .graph-view.color-fill-focused { color: var(--sol-text-bright); }
 .graph-view.color-fill-tag { color: var(--sol-string); }

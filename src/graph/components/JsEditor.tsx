@@ -1,4 +1,4 @@
-// [[C66]]
+// [[C66]] scriptNode
 import { useMemo, useRef, type KeyboardEvent, type RefObject } from "react";
 import { highlightJs } from "../jsSyntax";
 import "./FormulaEditor.css";
@@ -6,9 +6,7 @@ import "./JsEditor.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-/** The Script source editor: a transparent <textarea> layered exactly over a
- *  highlighted <pre> (the FormulaEditor overlay technique, with lezer's JS grammar
- *  doing the coloring). Pure presentational — drafting/commit is the caller's. */
+/** The FormulaEditor overlay technique (a transparent <textarea> over a highlighted <pre>) with lezer's JS grammar; drafting and commit are the caller's. */
 export function JsEditor({
   value, onChange, onBlur, onKeyDown, placeholder, autoFocus, taRef,
 }: {
@@ -19,7 +17,6 @@ export function JsEditor({
   onKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   autoFocus?: boolean;
-  /** The host's ref onto the textarea (focus, resize). */
   taRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const ownRef = useRef<HTMLTextAreaElement>(null);

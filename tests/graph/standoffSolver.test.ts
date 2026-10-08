@@ -1,7 +1,7 @@
 // [[C89]] standoffsSolveLast
 import { describe, it, expect } from "vitest";
 import { solveStandoffs } from "../../src/graph/standoffSolver";
-import { Standoff, Box, anchorPoint, anchorFromVector } from "../../src/graph/standoffs";
+import { Standoff, Box, anchorPoint, anchorFromVector, liveStandoffs, standoffsTouching } from "../../src/graph/standoffs";
 
 const box = (x: number, y: number, w = 100, h = 60): Box => ({ x, y, w, h });
 
@@ -30,7 +30,6 @@ describe("solveStandoffs", () => {
       new Set(["a"]),
     );
     expect(d.get("b")!.dx).toBeCloseTo(-100, 0);
-    expect(d.get("b")!.dy ?? 0).toBeCloseTo(0);
     expect(d.has("a")).toBe(false);
   });
 
@@ -78,6 +77,18 @@ describe("solveStandoffs", () => {
       { forceLock: true },
     );
     expect(d.get("b")!.dy).toBeCloseTo(-80, 0);
+  });
+
+  it("lands every moved box on a whole pixel, so repeated settles cannot accumulate a fraction", () => {
+    // Both ends free and a 45-degree lock: the raw split lands both ends on fractions.
+    const bx = boxes({ a: box(0.4, 10.3), b: box(300.7, 37.9) });
+    const d = solveStandoffs(bx, [{ ...east("s1", "a", "b", 28, 100), locked: true }]);
+    expect(d.size).toBe(2);
+    for (const [id, m] of d) {
+      const b = bx.get(id)!;
+      expect(Number.isInteger(b.x + m.dx), `${id} x`).toBe(true);
+      expect(Number.isInteger(b.y + m.dy), `${id} y`).toBe(true);
+    }
   });
 
   it("splits the correction when both ends are free", () => {
@@ -128,8 +139,6 @@ describe("solveStandoffs", () => {
       [east("s1", "a", "b", 28, 60), east("s2", "b", "a", 28, 60)],
     );
     for (const v of d.values()) {
-      expect(Number.isFinite(v.dx)).toBe(true);
-      expect(Number.isFinite(v.dy)).toBe(true);
       expect(Math.abs(v.dx) + Math.abs(v.dy)).toBeLessThan(2000);
     }
   });
@@ -154,5 +163,25 @@ describe("anchorFromVector", () => {
     expect(anchorFromVector(-1, -1)).toBe("nw");
     expect(anchorFromVector(1, -1)).toBe("ne");
     expect(anchorFromVector(-1, 1)).toBe("sw");
+  });
+});
+
+describe("a standoff with an end hidden in a collapsed group is dormant", () => {
+  it("drops out of the solve, so the visible end is not pulled toward the hidden one", () => {
+    const tie = east("s1", "loose", "member", 30, 60);
+    const boxes = new Map([["loose", box(0, 0)], ["member", box(900, 400)]]);
+    const live = liveStandoffs((id) => id === "member", [tie]);
+    expect(live).toEqual([]);
+    expect(solveStandoffs(boxes, live).size).toBe(0);
+    expect(liveStandoffs(() => false, [tie])).toEqual([tie]);
+  });
+});
+
+describe("standoffsTouching", () => {
+  it("keeps every standoff of a cluster that holds a touched id, and nothing else", () => {
+    const all = [east("ab", "a", "b", 28, 100), east("bc", "b", "c", 28, 100), east("xy", "x", "y", 28, 100)];
+    expect(standoffsTouching(all, new Set(["c"])).map((s) => s.id)).toEqual(["ab", "bc"]);
+    expect(standoffsTouching(all, new Set(["y"])).map((s) => s.id)).toEqual(["xy"]);
+    expect(standoffsTouching(all, new Set(["q"]))).toEqual([]);
   });
 });

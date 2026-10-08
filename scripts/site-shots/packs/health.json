@@ -1,0 +1,62 @@
+{
+  "label": "health",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Health & Fitness\n\n- Heart-Rate Zones\n- BMI\n- Body Surface Area",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "hr",
+      "type": "HrZonesNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "Heart-Rate Zones"
+      },
+      "literals": {
+        "age": 35,
+        "resting": 58
+      }
+    },
+    {
+      "id": "bmi",
+      "type": "ExpressionNode",
+      "x": 700,
+      "y": 0,
+      "init": {
+        "label": "BMI",
+        "expr": "w/h^2",
+        "locked": true
+      },
+      "literals": {
+        "w": 72,
+        "h": 1.78
+      }
+    },
+    {
+      "id": "bsa",
+      "type": "ExpressionNode",
+      "x": 700,
+      "y": 260,
+      "init": {
+        "label": "Body Surface Area (Mosteller)",
+        "expr": "SQRT(w*hcm/3600)",
+        "locked": true
+      },
+      "literals": {
+        "w": 72,
+        "hcm": 178
+      }
+    }
+  ],
+  "cables": []
+}

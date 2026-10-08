@@ -1,0 +1,44 @@
+.sol-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+.sol-search:focus-within { border-color: var(--node-accent, var(--accent)); }
+.sol-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.sol-search input::placeholder { color: var(--text-muted); }
+.sol-search__count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+/* In a popup's header: beside the dims, never wider than the title wants to give up. */
+.sol-popup__header .sol-search { flex: 0 1 220px; min-width: 90px; }
+@media (pointer: coarse) {
+  .sol-search { height: 32px; }
+  .sol-search input { font-size: 14px; }
+}
+/* A phone's header has no room beside the title: the filter takes a second line inside the band. */
+@media (max-width: 560px) {
+  .sol-popup__header:has(.sol-search) { flex-wrap: wrap; row-gap: 6px; }
+  .sol-popup__header .sol-search { order: 10; flex: 1 1 100%; }
+}

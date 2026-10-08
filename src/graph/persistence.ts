@@ -1,63 +1,41 @@
-// [[E8]]
+// [[B12]] losslessSaves
+import { flushDrafts } from "./draftFlush";
+import { isDesktop } from "./fileBridge";
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { repositionDockedNodes, clearHistory } from "./canvasCommands";
-import { getCurrentSeedId } from "./seedStore";
-import type { SeedSelection } from "./seedStore";
-import { extractInit } from "./copyPaste";
+import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SavedStandoff, type SideTables } from "./savedNodeBody";
 import { ctorRegistry } from "./nodeCtorRegistry";
-import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode } from "./rete-nodes";
+import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode, placeholderFor } from "./rete-nodes";
 import { settleWildcardTypes } from "./trueAnyAdopt";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
-import { nodeSizeStore } from "./nodeSizeStore";
 import { forgetAllNodes } from "./nodeStoreRegistry";
-import { collapseStore } from "./collapseStore";
-import { socketFlipStore } from "./socketFlipStore";
-import { standoffStore, type StandoffEnd } from "./standoffs";
 import { drawnCableStore, type SavedDrawnCable } from "./drawnCables";
 import { nodeNameStore } from "./nodeNameStore";
 import { writeTextForm, readTextForm } from "./textForm";
-import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets } from "./persistenceCore";
+import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets, remapNodeRefs, type NodeRefs } from "./persistenceCore";
 import { packsStore, allPacks } from "./packs";
 import { pushNotice } from "./noticeStore";
 import { documentStore } from "./documentStore";
-import { pinStore, type Pin } from "./pinStore";
-import { reportStore } from "./reportStore";
+import "./reportStore"; // registers its forget-all, which closes the report on load
 import { presentationStore } from "./presentationStore";
 import { compositeEditorStore } from "./compositeEditorStore";
-import { commentStore, type SavedCommentData } from "./commentStore";
-import { frameFormatStore, type FrameColumnFormat } from "./frameFormatStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
 import { loadRevealStore } from "./loadReveal";
 import { zoomAt } from "./zoomAt";
 
 
-/** Curtain threshold in nodes+connections across BOTH sides (teardown + build), so
- *  only a genuinely big load flashes the overlay. Undo/redo restores never curtain
- *  regardless (they pass curtain:false) — this governs opens/switches/pastes. */
 const SWITCH_CURTAIN_MIN_WORK = 300;
 
-// A node serializes as { type, init } where `type` is the CLASS NAME — production
-// depends on esbuild `keepNames` to keep it stable.
 
-export interface SavedNode {
+export interface SavedNode extends SavedNodeBody {
   id: string;
-  type: string;                              // node class name
-  // The addressable name — separate from `id`, which stays rete's regenerated key.
-  // Optional in the TYPE only for older saves; serializeGraph always writes one.
   name?: string;
   x: number;
   y: number;
-  init: Record<string, unknown>;             // constructor args (extractInit)
-  literals?: Record<string, number>;         // inline numeric inputs
-  stringLiterals?: Record<string, string>;   // inline text inputs
-  size?: { w: number; h: number };           // manual resize (resizable nodes)
-  collapsed?: boolean;                       // per-node body collapse (collapseStore —
-                                             // distinct from init.collapsed, the Group field)
-  flipped?: boolean;                         // sockets mirrored left<->right (socketFlipStore)
 }
 
 export interface SavedConnection {
@@ -67,50 +45,20 @@ export interface SavedConnection {
   targetInput: string;
 }
 
-export interface SavedStandoff {
-  a: StandoffEnd;
-  b: StandoffEnd;
-  min: number;
-  max: number;
-  locked?: boolean;
-}
+export type { SavedStandoff };
 
-export interface SavedGraph {
-  // Only the CURRENT version loads: newer is refused rather than opened lossily,
-  // older because there is no backward migration (pre-alpha).
+export interface SavedGraph extends SideTables {
   v: number;
   nodes: SavedNode[];
   connections: SavedConnection[];
-  standoffs?: SavedStandoff[];
-  // Free-drawn annotation curves; they reference no node, so they carry no name
-  // addressing through the text form.
   drawnCables?: SavedDrawnCable[];
-  pins?: Pin[];
-  comments?: SavedCommentData[];
-  frameFormats?: FrameColumnFormat[];
-  // Which seed the dropdown shows after restore ("custom" once edited); seed files
-  // omit it and set the selection from their filename.
-  seedId?: SeedSelection;
-  // Layered over the app-wide palette choice while this doc is open.
   palette?: { base?: string; overrides?: Record<string, string> };
-  // Scoped to report/export rendering surfaces, never the editing canvas.
   reportPalette?: { base?: string; overrides?: Record<string, string> };
-  // Author + tags; the document TITLE is the documentStore name, not carried here.
-  // `foreign`/`networkAllowed` carry the C2 per-document network permission (docMetaStore).
   meta?: { author?: string; tags?: string[]; foreign?: boolean; networkAllowed?: boolean };
-  // Epoch ms of the write that produced this file — stamped by the FILE-WRITE path
-  // (fileSession) only, never by serializeGraph, so autosave captures and seed
-  // fixtures stay stable. Read once, at adoption: importAsDocument seeds BOTH save
-  // clocks from it (fileSavedAt and updatedAt — saveToDisk captures right before
-  // writing, so at that instant the two facts coincide).
   savedAt?: number;
-  // Pack provenance breadcrumb: the ACTIVE SET at save time, not a per-node
-  // dependency list. Recorded now, not consumed on load until dormant packs ship.
   packs?: string[];
 }
 
-// The JSON save is GENERATED from the text form, never maintained in parallel — the
-// round trip also canonicalizes ids to names and node order to topological.
 
 export function serializeGraph(): SavedGraph | null {
   const raw = buildRawSavedGraph();
@@ -125,45 +73,14 @@ function buildRawSavedGraph(): SavedGraph | null {
 
   const nodes: SavedNode[] = editor.getNodes().map((n) => {
     const pos = view.position(n.id) ?? { x: 0, y: 0 };
-    // A placeholder re-emits its ORIGINAL type, never "PlaceholderNode", so a build
-    // that has the type restores the real node.
-    if (n instanceof PlaceholderNode) {
-      const sn: SavedNode = {
-        id: n.id,
-        type: n.missingType,
-        name: nodeNameStore.ensure(n.id, n.missingType),
-        x: Math.round(pos.x),
-        y: Math.round(pos.y),
-        init: { ...n.savedInit },
-      };
-      if (n.savedLiterals) sn.literals = { ...n.savedLiterals };
-      if (n.savedStringLiterals) sn.stringLiterals = { ...n.savedStringLiterals };
-      const sz = nodeSizeStore.get(n.id);
-      if (sz) sn.size = { w: Math.round(sz.w), h: Math.round(sz.h) };
-      if (collapseStore.get(n.id)) sn.collapsed = true;
-      if (socketFlipStore.get(n.id)) sn.flipped = true;
-      return sn;
-    }
-    const anyN = n as unknown as Record<string, unknown>;
-    const sn: SavedNode = {
+    const body = savedNodeBody(n);
+    return {
       id: n.id,
-      type: n.constructor.name,
-      name: nodeNameStore.ensure(n.id, n.constructor.name),
+      name: nodeNameStore.ensure(n.id, body.type),
       x: Math.round(pos.x),
       y: Math.round(pos.y),
-      init: extractInit(n),
+      ...body,
     };
-    if (anyN.literals && typeof anyN.literals === "object") {
-      sn.literals = { ...(anyN.literals as Record<string, number>) };
-    }
-    if (anyN.stringLiterals && typeof anyN.stringLiterals === "object") {
-      sn.stringLiterals = { ...(anyN.stringLiterals as Record<string, string>) };
-    }
-    const sz = nodeSizeStore.get(n.id);
-    if (sz) sn.size = { w: Math.round(sz.w), h: Math.round(sz.h) };
-    if (collapseStore.get(n.id)) sn.collapsed = true;
-    if (socketFlipStore.get(n.id)) sn.flipped = true;
-    return sn;
   });
 
   const connections: SavedConnection[] = editor.getConnections().map((c) => ({
@@ -173,24 +90,9 @@ function buildRawSavedGraph(): SavedGraph | null {
     targetInput: c.targetInput,
   }));
 
-  const standoffs: SavedStandoff[] = standoffStore.all().map((s) => ({
-    a: { ...s.a },
-    b: { ...s.b },
-    min: Math.round(s.min),
-    max: Math.round(s.max),
-    ...(s.locked ? { locked: true } : {}),
-  }));
-
-  const g: SavedGraph = { v: 2, nodes, connections, seedId: getCurrentSeedId() };
-  if (standoffs.length > 0) g.standoffs = standoffs;
+  const g: SavedGraph = { v: CURRENT_SAVE_VERSION, nodes, connections, ...savedSideTables((id) => !!editor.getNode(id)) };
   const drawnCables = drawnCableStore.serialize();
   if (drawnCables.length > 0) g.drawnCables = drawnCables;
-  const pins = pinStore.serialize();
-  if (pins.length > 0) g.pins = pins;
-  const comments = commentStore.serialize();
-  if (comments.length > 0) g.comments = comments;
-  const frameFormats = frameFormatStore.serialize();
-  if (frameFormats.length > 0) g.frameFormats = frameFormats;
   const palette = paletteStore.docPalette();
   if (palette) g.palette = palette;
   const reportPalette = reportPaletteStore.reportPalette();
@@ -202,47 +104,38 @@ function buildRawSavedGraph(): SavedGraph | null {
   return g;
 }
 
-// Tooling only (seedTune.ts reads geometry back by SAVED id); the app never reads it.
 let _lastLoadIdMap: ReadonlyMap<string, string> = new Map();
 export function getLastLoadIdMap(): ReadonlyMap<string, string> {
   return _lastLoadIdMap;
 }
 
-/** False = refused or rolled back, with the existing graph left intact.
- *  `curtain: false` suppresses the "Loading graph" overlay — an undo/redo restore is
- *  a reload under the hood, but it must feel like an edit, not a document open. */
+/** The notice a load would refuse this graph with (the structural gate, then the version gate), or null when it loads. */
+export function loadRefusal(g: SavedGraph): string | null {
+  const valid = validateSavedGraph(g);
+  if (!valid.ok) return `Couldn't open this graph: ${valid.reason}. Your current work is unchanged.`;
+  if (g.v !== CURRENT_SAVE_VERSION) {
+    return g.v > CURRENT_SAVE_VERSION
+      ? `This file was saved by a newer version of Solenoid (format v${g.v}) and can't be opened here. Update the app to load it.`
+      : `This file uses an old save format (v${g.v}) that this build no longer opens.`;
+  }
+  return null;
+}
+
 export async function loadGraph(g: SavedGraph, opts?: { curtain?: boolean }): Promise<boolean> {
   const editor = getEditor();
   const view = getView();
   if (!editor || !view) return false;
 
-  // Structural gate BEFORE the destructive clear — a malformed file would otherwise
-  // throw partway through the rebuild, after the user's graph was gone.
-  const valid = validateSavedGraph(g);
-  if (!valid.ok) {
-    pushNotice(`Couldn't open this graph: ${valid.reason}. Your current work is unchanged.`, "error", 0);
+  const refusal = loadRefusal(g);
+  if (refusal) {
+    pushNotice(refusal, "error", 0);
     return false;
   }
 
-  // Exactly one format loads: refuse a FUTURE format before touching anything (it
-  // would load with its new fields dropped, and the next autosave would overwrite
-  // the slot with the loss), and an OLDER one because there is no backward migration.
-  if (g.v !== CURRENT_SAVE_VERSION) {
-    pushNotice(
-      g.v > CURRENT_SAVE_VERSION
-        ? `This file was saved by a newer version of Solenoid (format v${g.v}) and can't be opened here. Update the app to load it.`
-        : `This file uses an old save format (v${g.v}) that this build no longer opens.`,
-      "error",
-      0,
-    );
-    return false;
-  }
-
-  // Snapshot the live graph so a mid-rebuild failure can roll back to it.
   const snapshot = serializeGraph();
 
   suspendAutosave();
-  beginGraphRebuild(); // suppress live-creation behaviors (group absorb) while loading
+  beginGraphRebuild();
   try {
     const { placeholdered } = await rebuildGraph(g, editor, view, opts?.curtain ?? true);
     if (placeholdered.length > 0) {
@@ -261,8 +154,7 @@ export async function loadGraph(g: SavedGraph, opts?: { curtain?: boolean }): Pr
         pushNotice("That graph couldn't be loaded, so your previous work was restored.", "error");
       } catch (err2) {
         console.error("[solenoid] rollback also failed", err2);
-        // Deliberately unbalanced suspend: autosave must never overwrite the good
-        // copy with the wreckage before the reload the notice asks for.
+        // Deliberately unbalanced: autosave must never write the wreckage over the good copy.
         suspendAutosave();
         pushNotice(
           "That graph couldn't be loaded and the previous graph couldn't be restored. Reload the app to recover your last autosave.",
@@ -275,39 +167,28 @@ export async function loadGraph(g: SavedGraph, opts?: { curtain?: boolean }): Pr
     }
     return false;
   } finally {
-    // A failed or rolled-back load must never leave nodes/cables stuck hidden.
     loadRevealStore.finish();
     endGraphRebuild();
     resumeAutosave();
-    // Undo history is per-document-session: left in place, Ctrl+Z would unwind the
-    // load itself, resurrecting the previous document's nodes and pinning them.
     clearHistory();
   }
 }
 
-// Assumes the graph passed validateSavedGraph and that the caller owns the autosave-
-// suspend / beginGraphRebuild scope, since rollback calls this a second time.
 async function rebuildGraph(
   g: SavedGraph,
   editor: NonNullable<ReturnType<typeof getEditor>>,
   view: NonNullable<ReturnType<typeof getView>>,
   allowCurtain = true,
 ): Promise<{ placeholdered: string[] }> {
-  // Build mode must be entered FIRST so the node-by-node construction is never seen;
-  // a doc switch gets the same overlay as a plain curtain over teardown + rebuild.
   const oldWork = editor.getNodes().length + editor.getConnections().length;
   const newWork = (g.nodes?.length ?? 0) + (g.connections?.length ?? 0);
   const curtain = allowCurtain && oldWork + newWork > SWITCH_CURTAIN_MIN_WORK;
-  // A paint boundary (rAF, then a task after it): the build below yields only to
-  // microtasks, so without this the curtain never shows and the bar never moves.
+  // rAF then a task: the build yields only to microtasks, so without a real paint the curtain never shows.
   const paint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
   if (curtain) { loadRevealStore.begin(); await paint(); }
-  // The curtain also counts teardown, which dominates when leaving a big doc.
   const buildTotal = Math.max(1, curtain ? oldWork + newWork : newWork);
   let buildDone = 0;
   const bump = () => { if (curtain) loadRevealStore.setProgress((buildDone += 1) / buildTotal); };
-  // removeNode fires `noderemoved`, which undocks any FC, so no extra cleanup here.
-  // Under the curtain teardown and build yield in chunks so the bar repaints.
   const yieldEvery = 24;
   let n = 0;
   const chunkYield = async () => { if (curtain && ++n % yieldEvery === 0) await paint(); };
@@ -321,50 +202,28 @@ async function rebuildGraph(
     if (curtain) bump();
     await chunkYield();
   }
-  // The per-node `noderemoved` handler skips `forgetNode` while rebuilding: some
-  // stores scan their whole map per forget, which is O(nodes × entries).
   forgetAllNodes();
-  // Overlay singletons keyed to an OUTGOING node id would otherwise keep their
-  // chrome (the docked-report canvas squeeze) across a document switch.
-  reportStore.close();
   presentationStore.stop();
-  // A drill-in left open would keep rendering a CompositeNode belonging to no live
-  // graph; closing also unmounts its internal views, killing their timers.
   compositeEditorStore.close();
-  // BEFORE rebuilding, so every node/group color resolves through the right palette.
   paletteStore.setDocPalette(g.palette ?? null);
   reportPaletteStore.setReportPalette(g.reportPalette ?? null);
   docMetaStore.setDocMeta(g.meta ?? null);
 
   const reg = ctorRegistry();
-  const idMap = new Map<string, string>(); // saved id → fresh id
+  const idMap = new Map<string, string>();
   _lastLoadIdMap = idMap;
   const created: ClassicPreset.Node[] = [];
   const placeholdered: string[] = [];
 
-  // Unknown-type nodes become PLACEHOLDERS keeping wiring + state; their sockets are
-  // synthesized from the saved connections so the cables re-link.
   const unknownIds = new Set(g.nodes.filter((sn) => !reg.has(sn.type)).map((sn) => sn.id));
   const phSockets = deriveMissingNodeSockets(unknownIds, g.connections ?? []);
 
-  // Construct synchronously, THEN add + position concurrently: a per-node await
-  // chain is ~2N layout-gated hops and was the dominant load cost.
   const toBuild: Array<{ node: ClassicPreset.Node; x: number; y: number }> = [];
   for (const sn of g.nodes) {
     const Ctor = reg.get(sn.type);
     let node: ClassicPreset.Node;
     if (!Ctor) {
-      const sockets = phSockets.get(sn.id);
-      const initLabel = sn.init?.label;
-      node = new PlaceholderNode({
-        missingType: sn.type,
-        savedInit: sn.init,
-        savedLiterals: sn.literals,
-        savedStringLiterals: sn.stringLiterals,
-        inputKeys: sockets?.inputs,
-        outputKeys: sockets?.outputs,
-        label: typeof initLabel === "string" ? initLabel : sn.type,
-      });
+      node = placeholderFor(sn, phSockets.get(sn.id));
       placeholdered.push(sn.type);
     } else {
       node = new Ctor({ ...sn.init });
@@ -374,9 +233,7 @@ async function rebuildGraph(
     }
     idMap.set(sn.id, node.id);
     nodeNameStore.claim(node.id, sn.name, sn.type);
-    if (sn.size) nodeSizeStore.set(node.id, { ...sn.size });
-    if (sn.collapsed) collapseStore.set(node.id, true);
-    if (sn.flipped) socketFlipStore.set(node.id, true);
+    restoreNodeState(node.id, sn);
     created.push(node);
     toBuild.push({ node, x: sn.x ?? 0, y: sn.y ?? 0 });
   }
@@ -389,27 +246,12 @@ async function rebuildGraph(
     if (curtain) await paint();
   }
 
-  // Rewrite node-id references through the remap: FC hosts and Group member lists.
+  const isLive = (id: string) => !!editor.getNode(id);
   for (const node of created) {
-    const anyNode = node as unknown as { hostNodeId?: string; members?: string[]; steps?: Array<{ nodeIds?: string[] }> };
-    if (typeof anyNode.hostNodeId === "string" && anyNode.hostNodeId) {
-      const mapped = idMap.get(anyNode.hostNodeId);
-      if (mapped) anyNode.hostNodeId = mapped;
-    }
-    if (Array.isArray(anyNode.members)) {
-      anyNode.members = anyNode.members.map((m) => idMap.get(m) ?? m).filter((m) => editor.getNode(m));
-    }
-    // Presentation steps' node ids were written as names, so they remap too.
-    if (Array.isArray(anyNode.steps)) {
-      for (const step of anyNode.steps) {
-        if (Array.isArray(step.nodeIds)) {
-          step.nodeIds = step.nodeIds.map((m) => idMap.get(m) ?? m).filter((m) => editor.getNode(m));
-        }
-      }
-    }
+    remapNodeRefs(node as unknown as NodeRefs, idMap, isLive);
+    if (node instanceof PlaceholderNode) remapNodeRefs(node.savedInit, idMap, isLive);
   }
 
-  // Each fires `connectioncreated`, re-deriving FC annotations + Convert arrows.
   for (const sc of g.connections) {
     const s = idMap.get(sc.source);
     const t = idMap.get(sc.target);
@@ -422,18 +264,19 @@ async function rebuildGraph(
         new ClassicPreset.Connection(src, sc.sourceOutput, tgt, sc.targetInput) as SolenoidConnection,
       );
     } catch {
-      // Skip incompatible/duplicate connections.
     }
     bump();
   }
 
-  // A Composite's subgraph serializes independently; hydrate it with the SAME
-  // class registry as the outer rebuild.
+  restoreSideTables(g, (id) => {
+    const live = idMap.get(id);
+    return live && editor.getNode(live) ? live : undefined;
+  });
+
   for (const node of created) {
     if (node instanceof CompositeNode) await node.hydrate(reg);
   }
-  // ORDER MATTERS: derived socket types must settle before dockSelf and the FC
-  // refresh, or an FC resolves against the wildcard instead of the real type.
+  // Wildcard types must settle before dockSelf and refreshAnnotation, or an FC resolves against the wildcard.
   settleWildcardTypes(editor);
   for (const node of created) {
     if (node instanceof FormatControllerNode) node.dockSelf(editor);
@@ -445,48 +288,16 @@ async function rebuildGraph(
     if (node instanceof FormatControllerNode) node.refreshAnnotation(editor);
   }
 
-  for (const ss of g.standoffs ?? []) {
-    const aId = idMap.get(ss.a.nodeId);
-    const bId = idMap.get(ss.b.nodeId);
-    if (!aId || !bId || aId === bId) continue;
-    standoffStore.add(
-      { nodeId: aId, anchor: ss.a.anchor },
-      { nodeId: bId, anchor: ss.b.anchor },
-      ss.min,
-      ss.max,
-      ss.locked ?? false,
-    );
-  }
-
   drawnCableStore.load(g.drawnCables ?? []);
-
-  pinStore.load(
-    (g.pins ?? [])
-      .map((p) => ({ nodeId: idMap.get(p.nodeId) ?? "", outputKey: p.outputKey }))
-      .filter((p) => p.nodeId && editor.getNode(p.nodeId)),
-  );
-
-  commentStore.load(
-    (g.comments ?? [])
-      .map((c) => ({ ...c, nodeId: idMap.get(c.nodeId) ?? "" }))
-      .filter((c) => c.nodeId && editor.getNode(c.nodeId)),
-  );
-
-  frameFormatStore.load(
-    (g.frameFormats ?? [])
-      .map((f) => ({ ...f, nodeId: idMap.get(f.nodeId) ?? "" }))
-      .filter((f) => f.nodeId && editor.getNode(f.nodeId)),
-  );
 
   rebuildGroupMembership(editor);
 
   await processGraph();
-  // zoomAt over an empty node set produces a NaN transform.
+  // zoomAt over an empty node set yields a NaN transform.
   if (editor.getNodes().length > 0) await zoomAt(view, editor.getNodes());
-  syncGroupCollapse(editor, view); // restore any collapsed groups' hidden members
+  syncGroupCollapse(editor, view);
 
-  // Two RAFs: docked FCs can only snap once heights settle (a Decimal chip lays
-  // out a frame late).
+  // Two frames: a Decimal chip lays out late, so docked FCs can snap only once heights settle.
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const hosts = new Set<string>();
     for (const n of editor.getNodes()) {
@@ -499,8 +310,6 @@ async function rebuildGraph(
   return { placeholdered };
 }
 
-// Autosave keeps only the debounce + suspend gate; the storage itself (slots,
-// restore, migration) lives in documentStore.
 
 const AUTOSAVE_DELAY = 700;
 
@@ -516,20 +325,25 @@ export function scheduleAutosave(): void {
   _timer = setTimeout(() => {
     _timer = null;
     if (_suspend > 0) return;
-    documentStore.captureCurrent();
+    documentStore.captureCurrent({ keepDrafts: true });
   }, AUTOSAVE_DELAY);
 }
 
-// Flush a pending autosave on pagehide, or closing within the debounce window drops
-// the last edit; captureCurrent is a synchronous localStorage write, so it is safe.
-if (typeof window !== "undefined") {
-  window.addEventListener("pagehide", () => {
-    if (_timer === null || _suspend > 0) return;
-    clearTimeout(_timer);
-    _timer = null;
-    documentStore.captureCurrent();
-  });
+function flushOnExit(): void {
+  if (_suspend > 0) return;
+  const flushed = flushDrafts();
+  if (_timer === null && !flushed) return;
+  if (_timer) clearTimeout(_timer);
+  _timer = null;
+  documentStore.captureCurrent();
 }
 
-// Disk save/open lives in fileSession.ts (native dialogs on desktop, download/
-// upload in the browser). serializeGraph + loadGraph above are its building blocks.
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flushOnExit);
+  // Closing the desktop window has no guaranteed pagehide; a throwing handler would keep the window open.
+  if (isDesktop()) {
+    void import("@tauri-apps/api/window").then((m) =>
+      m.getCurrentWindow().onCloseRequested(() => { try { flushOnExit(); } catch (e) { console.error("[solenoid] close flush failed", e); } }));
+  }
+}
+

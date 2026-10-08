@@ -1,18 +1,7 @@
-// A6 regression probe — the dead drill-in finger pan.
-//
-// Drives the running Vite dev server (port 1420) with system Edge, emulates TOUCH,
-// loads the sudoku-solver seed (a composite whose subgraph is 44 nodes), and dispatches
-// a one-finger drag that STARTS ON a node card — first on the main canvas, then inside
-// the composite drill-in. The guard (installNodeDragGuard) makes an unselected card
-// drag-transparent to touch, so the press must fall through to a PAN: the camera moves
-// and 0 nodes move, on BOTH surfaces. Before A6 the drill-in did nothing (no guard).
-// Also checks that a stationary tap SELECTS a card (installTapSelect), by confirming a
-// second drag on the now-selected card MOVES the node instead of panning.
-//
+// Probes the touch pan: a one-finger drag that starts on an unselected card must pan (camera moves,
+// no node moves) on the main canvas and inside the sudoku-solver composite's drill-in, and after a tap
+// selects a card, a second drag must move it. Needs the dev server on :1420.
 //   node scripts/touch-pan-probe.mjs
-//
-// Pure measurement (camera deltas / node-move counts), agent-run per the backlog line —
-// not a visual eyeball. Keep it: it is the regression probe for this class of bug.
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
@@ -22,7 +11,6 @@ const SEED = "sudoku-solver";
 const NODE_SEL = ".solenoid-node, .solenoid-note, .solenoid-group, .solenoid-conduit";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Median of an array of numbers.
 const median = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)] ?? 0; };
 
 async function main() {
@@ -32,12 +20,7 @@ async function main() {
   const fail = [];
   try {
     const page = await browser.newPage();
-    // MOBILE emulation is required, not just touch: the guard makes an unselected card
-    // drag-transparent, but a press on the card's read-only chrome only BUBBLES to the pan
-    // when `stopDragStart` is in its mobile mode (on desktop it swallows the press — correct
-    // for a mouse). The bug was reported on mobile; emulate it, or the pan is masked.
-    // Pass the UA-Client-Hints metadata too: IS_MOBILE_UA reads navigator.userAgentData.mobile
-    // FIRST (?? the UA regex), and puppeteer leaves it false unless we set it here.
+    // Mobile, not just touch: on desktop stopDragStart swallows a press on card chrome; IS_MOBILE_UA reads userAgentData.mobile first.
     await page.setUserAgent(
       "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
       { mobile: true, platform: "Android", platformVersion: "14", architecture: "", model: "Pixel 8", brands: [] },
@@ -45,10 +28,7 @@ async function main() {
     await page.setViewport({ width: 900, height: 1300, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
     page.setDefaultTimeout(120000);
     const client = await page.target().createCDPSession();
-    // IS_COARSE reads matchMedia("(pointer: coarse)") at import, which headless reports false
-    // even under the mobile viewport. Patch it BEFORE the app's modules load, so IS_MOBILE
-    // (= coarse AND mobile-UA) is genuinely true and the whole card is pan-through (otherwise
-    // stopDragStart swallows a press on non-header chrome and the pan is masked).
+    // Before the app loads: IS_COARSE reads (pointer: coarse) at import, which headless reports false.
     await page.evaluateOnNewDocument(() => {
       const orig = window.matchMedia.bind(window);
       window.matchMedia = (q) =>
@@ -67,8 +47,6 @@ async function main() {
     await page.waitForSelector(".solenoid-node");
     await sleep(4000);
 
-    // Load the seed into the live editor (tuneSeed calls clearAndLoadSeed then tidies —
-    // the tidy is harmless here, we only need the graph on screen).
     process.stdout.write(`loading seed "${SEED}" ... `);
     await page.evaluate((id) => window.__solenoidTuneSeed(id), SEED);
     await sleep(1500);
@@ -78,7 +56,6 @@ async function main() {
     console.log(`mobile model: ${isMobile ? "on (html.is-mobile)" : "OFF — probe would mis-measure"}`);
     if (!isMobile) fail.push("app is not in the mobile model — emulation did not take");
 
-    // Measure the on-screen center of every node card under a surface root.
     const measure = (rootSel) => page.evaluate((sel, nodeSel) => {
       const root = document.querySelector(sel);
       if (!root) return [];
@@ -88,8 +65,7 @@ async function main() {
       });
     }, rootSel, NODE_SEL);
 
-    // A pan shifts every card by the same screen delta; a node drag moves just one. So the
-    // camera delta is the MEDIAN shift and "nodes moved" is how many deviate from it.
+    // A pan shifts every card equally, so the camera delta is the median shift and a moved node deviates from it.
     const metrics = (before, after) => {
       const n = Math.min(before.length, after.length);
       const dx = [], dy = [];
@@ -100,7 +76,6 @@ async function main() {
       return { camDx: Math.round(mdx), camDy: Math.round(mdy), nodesMoved: moved, count: n };
     };
 
-    // One-finger touch drag from a point, in steps.
     const drag = async (x0, y0, dx, dy, steps = 10) => {
       await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: x0, y: y0, id: 0 }] });
       for (let i = 1; i <= steps; i++) {
@@ -120,25 +95,22 @@ async function main() {
       await sleep(120);
     };
 
-    // The card closest to viewport center, minus any composite (its face is a button). A
-    // safe grab point sits just below the top edge (header), clear of inline controls.
     const pickCard = (rootSel) => page.evaluate((sel, nodeSel) => {
       const root = document.querySelector(sel);
       if (!root) return null;
       const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
       let best = null, bestD = Infinity;
       for (const el of root.querySelectorAll(nodeSel)) {
-        if (el.querySelector(".solenoid-node__inline-input")) continue; // composite / button-faced
+        if (el.querySelector(".solenoid-node__inline-input")) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 40 || r.height < 30) continue;
-        if (r.top < 60 || r.bottom > window.innerHeight - 60) continue; // fully on-screen
+        if (r.top < 60 || r.bottom > window.innerHeight - 60) continue;
         const d = Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy);
         if (d < bestD) { bestD = d; best = { x: r.left + r.width / 2, y: r.top + 10, id: el.className }; }
       }
       return best;
     }, rootSel, NODE_SEL);
 
-    // ── Main canvas (the control — this path already worked) ──
     const mainCard = await pickCard(".solenoid-canvas");
     if (!mainCard) { fail.push("main: no draggable card found"); }
     else {
@@ -150,7 +122,6 @@ async function main() {
       if (!(Math.hypot(m.camDx, m.camDy) > 20 && m.nodesMoved === 0)) fail.push("main: expected a pan with 0 nodes moved");
     }
 
-    // ── Drill into the composite ──
     process.stdout.write("drilling into the composite ... ");
     const drilled = await page.evaluate(() => {
       const btns = [...document.querySelectorAll(".solenoid-node__inline-input")];
@@ -166,7 +137,6 @@ async function main() {
       console.log("done");
 
       const DRILL = ".solenoid-composite-editor__canvas";
-      // ── Drill-in pan (THE fix) ──
       const card = await pickCard(DRILL);
       if (!card) { fail.push("drill-in: no draggable card found"); }
       else {
@@ -177,7 +147,6 @@ async function main() {
         console.log(`DRILL-IN     finger-drag on a card → cam Δ(${m.camDx}, ${m.camDy})  nodesMoved=${m.nodesMoved}  (${m.count} cards)`);
         if (!(Math.hypot(m.camDx, m.camDy) > 20 && m.nodesMoved === 0)) fail.push("drill-in: expected a pan with 0 nodes moved");
 
-        // ── A stationary tap SELECTS a card (installTapSelect) ──
         const card2 = await pickCard(DRILL);
         if (card2) {
           const before2 = await page.evaluate((s) => document.querySelectorAll(`${s} .solenoid-node--selected`).length, DRILL);

@@ -1,10 +1,9 @@
-// [[D5]], [[D6]]
-// Add-menu search scoring. A leaf's searchable text is deliberately WIDER than what
-// is shown — label, description, Excel names, category path, kebab type, keywords.
-
+// [[B16]] oneFormulaSurface
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
-import { fuzzyScore, fieldScore, tokenWordScore, withinOneEdit } from "./fuzzy";
+import { LEGACY_ALIASES } from "./excelFunctions";
+import { fuzzyScoreLower, fieldScoreLower, tokenWordScore, withinOneEdit } from "./fuzzy";
 import { opsFor, opEntry, excelEntry } from "./nodeOps";
+import { nodeTypeName } from "./nodeNamer";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
 
@@ -15,25 +14,29 @@ function isPair(e: CatalogEntry): e is CatalogPair {
   return (e as CatalogPair).type === "pair";
 }
 
-/** A leaf plus the labels of the categories it lives under (outermost first). */
 export type LeafWithContext = { leaf: NodeCatalogEntry; categoryPath: string[] };
 
-/** Flatten the catalog to leaves, PLUS a row per hidden op — folding a family onto
- *  one leaf must never make an op unfindable. The rows are generated at SEARCH time,
- *  never inserted into the tree, so catalog walkers don't count them as extra nodes. */
 export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = []): LeafWithContext[] {
   const out = flattenTree(entries, ancestors);
+  // A name any card or op already wears gets no alias row, so the menu never shows "Group Lists: GROUPBY" beside GROUPBY.
+  const worn = new Set(out.flatMap(({ leaf }) => [leaf.label, ...(leaf.hiddenOps ?? []).map((o) => o.label)]).map(bareName));
   for (const { leaf, categoryPath } of [...out]) {
     const decl = leaf.hiddenOps?.length ? opsFor(leaf.type) : undefined;
-    // hiddenOps is only ever populated for a declaration that lists ops, so `create`
-    // is present — the guard keeps that guarantee visible to the type checker.
+    // hiddenOps is set only for a declaration that lists ops, so `create` is present; the guard tells the type checker.
     if (decl?.create) for (const op of leaf.hiddenOps!) out.push({ leaf: opEntry(decl, leaf, op), categoryPath });
-    // An Excel name the leaf answers to that is not its own name or one of its ops ([[C19]] namingModel).
-    // A hidden op has a row of its own; the host's PRIMARY op does not, so an Excel
-    // name that is the primary op (Type Check's ISNUMBER) still gets its alias row.
-    const own = new Set([leaf.label, ...(leaf.hiddenOps ?? []).map((o) => o.label)].map(bareName));
+    // An op whose formula name differs from its label gets a row that shows that name and places the op
+    // ("NORM.DIST → Distributions: Normal"); it wins over the card-level row for the same name.
+    const ops = opsFor(leaf.type);
+    if (ops?.create) {
+      for (const entry of ops.ops) {
+        const name = entry.fx?.toUpperCase();
+        if (!name || worn.has(name)) continue;
+        worn.add(name);
+        out.push({ leaf: excelEntry(leaf, entry.fx!, { decl: ops, entry }), categoryPath });
+      }
+    }
     for (const name of CATALOG_TO_EXCEL.get(leaf.type) ?? []) {
-      if (!own.has(name.toUpperCase())) out.push({ leaf: excelEntry(leaf, name), categoryPath });
+      if (!worn.has(name.toUpperCase())) { worn.add(name.toUpperCase()); out.push({ leaf: excelEntry(leaf, name), categoryPath }); }
     }
   }
   return out;
@@ -49,92 +52,141 @@ function flattenTree(entries: CatalogEntry[], ancestors: string[] = []): LeafWit
   return out;
 }
 
-/** A label's name without a trailing parenthetical hint, upper-cased: "T.TEST (paired)"
- *  and "DATE (Build)" answer to T.TEST and DATE without a redundant alias row. */
 function bareName(label: string): string {
   return label.replace(/\s*\([^)]*\)\s*$/, "").trim().toUpperCase();
+}
+
+const LEGACY_BY_TARGET = new Map<string, string[]>();
+for (const [legacy, target] of Object.entries(LEGACY_ALIASES)) {
+  LEGACY_BY_TARGET.set(target, [...(LEGACY_BY_TARGET.get(target) ?? []), legacy]);
+}
+
+function legacyNamesOf(names: string[]): string[] {
+  return [...new Set(names.flatMap((n) => LEGACY_BY_TARGET.get(n) ?? []))];
 }
 
 function typeWords(type: string): string {
   return type.replace(/[-_]/g, " ");
 }
 
-// En/em dashes read as hyphens, so "savitzky-golay" finds a keyword spelled "savitzky–golay".
 const dashes = (s: string) => s.replace(/[\u2010-\u2015]/g, "-");
-// The one separator class both the leaf's words and the query's tokens split on, so a
-// hyphenated query ("k-means", "savitzky-golay") lands word by word.
 const WORD_SEP = /[^\p{L}\p{N}.]+/u;
 
-// An op-glyph prefix ("+ Add") otherwise demotes an exact query to the word-start
-// tier, letting "Add Column" outrank the Add node itself.
 function stripGlyphPrefix(label: string): string {
   return label.replace(/^[^\p{L}\p{N}]+\s*/u, "");
 }
 
-/** Score one leaf against a query, or null when some query word lands nowhere on
- *  the leaf. Higher = better. */
-export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext): number | null {
+type Prepared = {
+  haystack: string;
+  words: string[];
+  // Each lowercased field the whole query is scored against, with its penalty.
+  fields: [string, number][];
+  // Lowercased names a query one typo away still lands on.
+  names: string[];
+};
+
+// Everything scoreLeaf reads from a leaf but not the query, built once per leaf: the Add menu and the label sweep score every leaf per query.
+const prepared = new WeakMap<LeafWithContext, Prepared>();
+
+function prepare(lc: LeafWithContext): Prepared {
+  const hit = prepared.get(lc);
+  if (hit) return hit;
+  const { leaf, categoryPath } = lc;
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
   const keywords = leaf.keywords ?? "";
-  const haystack = dashes(`${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`);
+  const haystack = dashes(`${leaf.label} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords} ${familyOf(leaf)}`).toLowerCase();
   const bare = stripGlyphPrefix(leaf.label);
-  // Per-WORD gate and base score: every query word must land — as a subsequence of
-  // the wide haystack (order-free across words, so "input frame" finds Frame Input)
-  // or within one edit of a word the leaf answers to ("frane" finds Frame). Word
-  // hits score far above the scattered-subsequence noise a long description
-  // generates, so a typo'd word no longer buries its target under leaves whose
-  // descriptions happen to contain the letters.
-  const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")}`)
+  const colon = leaf.label.indexOf(": ");
+  const opName = colon > 0 && leaf.type.includes("__") ? leaf.label.slice(colon + 2) : null;
+  const arrow = leaf.label.indexOf(" → ");
+  const aliasName = arrow > 0 && leaf.type.includes("__excel-") ? leaf.label.slice(0, arrow) : null;
+  const family = familyOf(leaf);
+  // A retired Excel spelling (MATCH, FLOOR.PRECISE) finds the card that answers to its replacement.
+  const legacy = legacyNamesOf([...excelNames, bare, ...(opName ? [opName] : [])]);
+  const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")} ${legacy.join(" ")} ${family}`)
     .toLowerCase().split(WORD_SEP).filter(Boolean);
+  const own = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
+  if (bare && bare !== leaf.label) own.push(bare);
+  if (opName) own.push(opName);
+  const fields: [string, number][] = [
+    ...own.filter((f) => f.trim()).map((f): [string, number] => [f.toLowerCase(), 0]),
+    // A row that shows the typed Excel name beats one that only hides it in its keywords, since only one of them shows.
+    ...(aliasName ? [[aliasName.toLowerCase(), -5] as [string, number]] : []),
+    ...(family ? [[family.toLowerCase(), 5] as [string, number]] : []),
+    ...excelNames.map((n): [string, number] => [n.toLowerCase(), 10]),
+    ...legacy.map((n): [string, number] => [n.toLowerCase(), 20]),
+  ];
+  const names = [leaf.label, bare, ...excelNames, ...(aliasName ? [aliasName] : [])].map((n) => n.toLowerCase());
+  const p = { haystack, words, fields, names };
+  prepared.set(lc, p);
+  return p;
+}
+
+// The card's family name, the hover hint's ("Table Reshape", "Bessel"), read off the class once per host type.
+const families = new Map<string, string>();
+function familyOf(leaf: NodeCatalogEntry): string {
+  const host = leaf.type.split("__")[0];
+  let f = families.get(host);
+  if (f === undefined) {
+    try { f = nodeTypeName(leaf.create() as { constructor: { name: string } }); } catch { f = ""; }
+    families.set(host, f);
+  }
+  return f;
+}
+
+type Query = { tokens: string[]; squashed: string; trimmed: string };
+
+function parseQuery(query: string): Query {
+  const lower = dashes(query).toLowerCase();
+  return {
+    tokens: lower.split(WORD_SEP).filter(Boolean),
+    squashed: query.toLowerCase().replace(/\s+/g, ""),
+    trimmed: lower.trim(),
+  };
+}
+
+function scoreLeaf(query: Query, lc: LeafWithContext): number | null {
+  const { haystack, words, fields, names } = prepare(lc);
   let s = 0;
-  for (const token of dashes(query).toLowerCase().split(WORD_SEP)) {
-    if (!token) continue;
-    const sub = fuzzyScore(token, haystack);
+  for (const token of query.tokens) {
+    const sub = fuzzyScoreLower(token, haystack);
     const word = tokenWordScore(token, words);
     if (sub === null && word === 0) return null;
-    // A word hit (exact / prefix / one edit) stands alone: the scattered-subsequence
-    // score a long description generates must not lift IMSUM over SUM for "sunm".
     s += word >= 90 ? word : (sub ?? 0) + word;
   }
-  // Strongest whole-query tier across the fields; Excel names weigh slightly under
-  // the rest so an exact label still wins a tie.
-  const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
-  if (bare && bare !== leaf.label) fields.push(bare);
-  // A generated "Host: Name" row is FOUND by the name after the colon — an exact hit
-  // on it ranks like an exact hit on a leaf's own label.
-  const colon = leaf.label.indexOf(": ");
-  if (colon > 0 && leaf.type.includes("__")) fields.push(leaf.label.slice(colon + 2));
+  const q = query.trimmed;
+  const phrase = q.includes(" ");
   let bonus = 0;
-  for (const f of fields) {
-    const fs = f.trim() ? fieldScore(query, f) : null;
-    if (fs !== null) bonus = Math.max(bonus, fs);
+  for (const [f, penalty] of fields) {
+    let fs = fieldScoreLower(query.squashed, f);
+    // A typed phrase that opens a field ("date input" in "date input day …") ranks as a one-word prefix would.
+    if (fs !== null && fs < 400 && phrase && f.startsWith(q)) fs += 400;
+    if (fs !== null) bonus = Math.max(bonus, fs - penalty);
   }
-  for (const name of excelNames) {
-    const fs = fieldScore(query, name);
-    if (fs !== null) bonus = Math.max(bonus, fs - 10);
-  }
-  // A typo of the NAME itself ("sunm" for SUM) outranks a leaf that merely carries the
-  // corrected word somewhere in its type or keywords (IMSUM's "cx-binary-sum").
-  const q = dashes(query).toLowerCase().trim();
-  if (q.length >= 4 && [leaf.label, bare, ...excelNames].some((n) => withinOneEdit(q, n.toLowerCase()))) bonus = Math.max(bonus, 200);
+  if (q.length >= 4 && names.some((n) => withinOneEdit(q, n))) bonus = Math.max(bonus, 200);
   return s + bonus;
 }
 
-/** Rank leaves for a query (best first), dropping non-matches. */
+/** Best first, one row per thing placed: "SORT → List Sort" and "List Sort" place the same card, so only the better match shows. */
 export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCatalogEntry[] {
+  const q = parseQuery(query);
   const scored: { leaf: NodeCatalogEntry; score: number }[] = [];
   for (const lc of leaves) {
-    const score = scoreLeaf(query, lc);
+    const score = scoreLeaf(q, lc);
     if (score !== null) scored.push({ leaf: lc.leaf, score });
   }
   scored.sort((a, b) => b.score - a.score);
-  return scored.map((x) => x.leaf);
+  const placed = new Set<string>();
+  const out: NodeCatalogEntry[] = [];
+  for (const { leaf } of scored) {
+    const key = leaf.places ?? leaf.type;
+    if (placed.has(key)) continue;
+    placed.add(key);
+    out.push(leaf);
+  }
+  return out;
 }
-
-// Quick-wire narrows the Add menu by socket type, which a leaf carries no metadata
-// for: the types come off a throwaway `leaf.create()`, memoized because a node
-// type's INITIAL sockets are deterministic per catalog `type`.
 
 type PortLike = { socket?: unknown };
 type NodeLike = {
@@ -142,8 +194,6 @@ type NodeLike = {
   outputs?: Record<string, PortLike | undefined>;
 };
 
-/** The set of input / output socket dataTypes a node type exposes when freshly
- *  created — stable per catalog `type`, so it's cached for the app's lifetime. */
 type SocketSignature = { inputs: SocketDataType[]; outputs: SocketDataType[] };
 const _sigCache = new Map<string, SocketSignature>();
 
@@ -167,9 +217,6 @@ function socketSignature(leaf: NodeCatalogEntry): SocketSignature {
   return sig;
 }
 
-/** `originSide` is which side the cable's ORIGIN socket is on: "output" means the
- *  user dragged from an output, so a candidate needs a compatible INPUT (and vice
- *  versa). True if the leaf's memoized socket signature has one matching socket. */
 function hasCompatibleSocket(
   leaf: NodeCatalogEntry,
   origin: SolenoidSocket,
@@ -184,7 +231,6 @@ function hasCompatibleSocket(
   return false;
 }
 
-/** Narrow leaves to those quick-wire can actually splice onto the dragged cable. */
 export function filterByCompatibleSocket(
   leaves: LeafWithContext[],
   origin: SolenoidSocket,
@@ -193,8 +239,14 @@ export function filterByCompatibleSocket(
   return leaves.filter((lc) => hasCompatibleSocket(lc.leaf, origin, originSide));
 }
 
-/** First socket key on `node`, on the given side, that's compatible with
- *  `origin` — used to wire the freshly-created node once quick-wire's pick lands. */
+export function quickWireCompatibleTypes(
+  entries: CatalogEntry[],
+  origin: SolenoidSocket,
+  originSide: "input" | "output",
+): Set<string> {
+  return new Set(filterByCompatibleSocket(flattenLeaves(entries), origin, originSide).map((lc) => lc.leaf.type));
+}
+
 export function firstCompatibleSocketKey(
   node: NodeLike,
   origin: SolenoidSocket,

@@ -1,19 +1,19 @@
-// [[C93]] gestureByPointerType, [[C99]] chromeEnvelopeVars
+// [[C93]] gestureByPointerType
 import { useSyncExternalStore } from "react";
 import { deleteSelected } from "./canvasCommands";
 import { touchSelectStore } from "./touchSelectStore";
 import { paletteStore } from "./paletteStore";
-import { IS_TABLET } from "./coarse";
+import { IS_COARSE } from "./coarse";
+import { useIsMobile } from "./useDeviceMode";
 import {
   fireUndo, fireGroup, useHasSelection,
   CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph,
 } from "./touchActions";
 
-/** The keyboard-less edit actions in the TOP BAR, for a tablet — `MobileControls` never
- *  mounts there. Rendered unconditionally and gated by `html.is-tablet` in CSS; only the
+/** A tablet's keyboard-less edit actions (MobileControls never mounts there). Gated by `html.is-tablet` in CSS; only the
  *  selection poll is gated in JS, so a desktop never watches a control it can't see. */
 export function TabletActions() {
-  const hasSelection = useHasSelection(IS_TABLET);
+  const hasSelection = useHasSelection(IS_COARSE && !useIsMobile());
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
 
   return (

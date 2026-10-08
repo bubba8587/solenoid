@@ -1,8 +1,795 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-12 (the 09-07 → 09-11 digests, verbatim).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-10-02 (the 09-29 and 09-30 digests, verbatim).
 
 ---
+
+## Sweep 2026-10-02 — session digests 2026-09-29 and 09-30 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-30c: 1.5 release notes, the cube formulas seed; cloud session)
+- `docs/release-notes-features.md` is the 1.5 selling list and carries the 1.4.1 and 1.4.2 headliners (author); Heatmap is not a headliner, Cubes take two slides, and the plugin release ships beside the app. The What's New deck is still 1.4.1's.
+- New seed **Cubes: records with their own lists and tables** (`cube-formulas.json`, Tables): a gradebook (per-student score lists: drop the two lowest, missing count, quiz slope, weighted grade, a check-in filter) and a portfolio (per-holding lot tables and price histories: cost basis, harvestable loss, max drawdown via SCAN), each ending in charts and totals rather than a Display of the cube (author).
+- **A range function's one-value arguments lift** (formula-language § Range functions, `RANGE_SCALAR_ARGS`): a list where LARGE's k, PERCENTILE's p, RANK's number or a criteria value goes runs the function per item, as Excel does. It never worked (v1.4.2 answers the same): range routing hands every list whole, and nothing said which arguments were ranges, so each implementation misread the list (LARGE blank, PERCENTILE a false `#OVERFLOW!`, COUNTIF and SUMIFS a silent 0). `orient` was not the gap; it covers only the whole-list natives. LARGE and SMALL with k below 1 are `#DOMAIN!` now, card and formula ([[D70]]).
+- **Narrow screens tightened** (author: the popup editor first, then the app), each checked in true mobile mode (the CDP user-agent override with `userAgentData.mobile`, since headless Chromium reports false) at 390 and 360 px: the table and Cube popups' grid is compact, not finger-sized (a header name as wide as its text through the input's `size`, no format chevron, 60% height), the popup title bar is 44 px, the Cards sort box shows its whole pick (the backlog item), the CSV view gets real height, the tools row fits under 380 px (30 px buttons), the Reference tabs scroll on one line with a plain close, and a long formula's typeset preview scrolls from its start instead of clipping both ends (desktop too).
+- **Table editors: Insert and Delete menus replace the footer's button row** (table-popup § The grid, § The Form view, § Editing a Cube Input; author): rows and columns insert and delete anywhere, on the selected rows or columns (row numbers, column headers, a focused header name, Shift to extend; the author removed a column-letter strip), else the focused cell's, else the last. A right click opens both at the pointer. Every per-column state follows a moved column (names, types, formulas, formats, footer stat, sort, live format keys, computed values); a Cube level's nested declarations follow their rows (`shiftNestedRows`). An open menu takes Escape before the popup (`escapeLayers.ts`), which also fixes the ⋯ menu closing the whole popup. Checked in the app through Playwright (Frame, Form, Table Input, Cube record and list levels, a Save round trip) and measured at 412 and 360 px under a coarse pointer. The demo-video scripts click the menus now; the videos need a re-film.
+- **Collapse sweep** (components § Collapsed; author: measure, don't eyeball): `scripts/collapse-sweep.mjs` mounts all 678 collapsible catalog cards, computes them, and measures every socket, the pill and React Flow's cable bounds expanded, collapsed and (`--wired`) with every input cabled; `--empty` lists cards that show nothing collapsed. Fixed: a pill hanging halfway off an emptied body (the 36 px floor), several cards drawing two pills or leaving sockets unpilled (Fx, SUMIFS, Filter, Join, Reconcile, Chart Builder, Composite outputs), and every card that went blank collapsed now shows its value, chip or a placeholder (Slider, Candlestick, Import XML, Vault Folder, Write to Obsidian, QR Code; connection cards through `sol-conn`). Found on the way: `__collapsed-only` boxes also showed on open chart cards (a specificity loss to `--chip`). Still flagged, on purpose until the author rules: the solver cards (TVM, Ohm's Law, Triangle Solver and kin) keep one row per variable collapsed instead of a pill, Conduit's sockets sit outside its edge, and some settings still show collapsed (Expect, Grid Painter, Curve, Point Plotter, RANDARRAY, Color, Resistor Code, Query's buttons).
+- **Minified Sparkline and Gauge dial hide an unwired output socket** (components § Collapsed); hover or selection shows it.
+- **DTE:** C88 (now `collapsedGroupCard`) and C17 ratified after rewrites; `docs/dte.md` § Solenoid practice now says what a Why is (the plain reason for the call, never history or an argument) and that the agent adds the ID to `OWNER_RATIFIED` on the author's word. C13 was cut down (label pattern moved to the node-classes spec) and the author wasn't happy with it; it stays unratified. CLAUDE.md orders one random unratified leaf shown at session start and wrap-up.
+
+### SESSION DIGEST (2026-09-30b: oldest-first code review, 1.0 import through August; cloud session)
+- Walked every file whose last hand edit (sweep commits of 40+ files excluded) predates September; September's 589 files are left for a later walk (the author: confident in them for now). Open leads: `backlog.md` § From the 2026-09-30 oldest-first review.
+- Two security holes closed: the SVG Picker scrubs markup in its class (`source` getter), so a loaded or pasted file can't inline script through an `SvgFigure` ([[C103]] untrustedContentSeams); the string editor's save endpoint binds 127.0.0.1, takes only scanned `src/` files and refuses a foreign Origin.
+- One complex operand reading for card and formula (`cxValue.ts` `toCx`: a real is z + 0i, text parses, else #TYPE!); Polynomial Roots keeps every coefficient in its slot (an error propagates, a blank leaves the roots unknown).
+- `graphSettled()` (`process.ts`, compute-pass spec § Single flight): a caller outside a pass awaits it after `processGraph` before reading results; Tornado and model fuzz do.
+- Every hand-rolled draft field found now runs on `useDraftCommit` (Document Properties, Angle Dial, Date Range, Color Picker hex): Escape cancels, a pending draft flushes ([[C95]] commitOnEnter).
+- `makeOpNodeComponent` (`standardNode.tsx`) is the op-picker card; 32 cards moved onto the standard factories. Pass-through cards (IF, IFS, CHOOSE, SWITCH, IFERROR, Expect) show tables through `ResultDisplay`.
+- The readInput sweep also scans `scripts/new-node.mjs`, whose template now reads through `readInput` ([[D86]] blankRoles).
+- Deleted as dead: `highlightUtils`, `hicColors`, `flow/flowSeeds`, `RandNode`, FormulaField's unreachable inline editor, cssColor's `toCss`/`mixSrgb`/`flowTint`, `parseFredObservations`, `snapCoord` and a dozen unused store members and exports.
+
+### SESSION DIGEST (2026-09-30: the Heatmap figure, Tidy fixed points, group collapse round trips; cloud session)
+- Heatmap is a figure node now: frame, table or list in, a `heatmap` chart value out; the pass-through `HeatmapCellNode` and its hardcoded blue-yellow-red card are gone (`tree/specs/computation/chart-figures.md` § Heatmap, § The CSS and canvas figures).
+- Square, touching cells by default (`aspect=auto` fills); seaborn's `cmap`, `center`, `vmin`, `vmax`, `annot`, `fmt`, `cbar` plus `origin`, all in the Chart Builder's new Heatmap target. No `cmap` means the palette's height ramp, or its diverging ramp with a center, so the default follows the theme.
+- Histogram 2-D emits the heatmap figure (matplotlib's `hist2d`: discrete bins, y upward) instead of a smoothed contour, and takes every heatmap key. Calendar Heatmap takes `cmap`, `center`, `vmin`, `vmax`, `cbar` (a colorbar, on by default) and shows the hovered day's date and value; with no cmap it keeps the accent.
+- Calendar Heatmap wraps its weeks into up to four bands and sizes its card to them, so a year reads at 8 px or more a day on the card.
+- Surface and Vector Field have an Options input (Chart Builder targets Contour, Surface, Vector Field): `cmap` on all three; the Flat view adds axes with round ticks, axis titles, `center`/`vmin`/`vmax`, a colorbar and a hover readout of the interpolated height.
+- Chart Builder: switching the target clears the fields and cables the new figure does not read (author); only Gantt's calendar layout still dims rows it ignores.
+- Tidy and Cleanup: ELK packs disconnected components (no `INCLUDE_CHILDREN` on the root; flipped layouts keep it), Cleanup waits for the collapsed sizes before its top-level Tidy (a second Cleanup is now a fixed point), each card moves once, and the layer split no longer lives in a module variable (the landing scene read a stale one) (`tree/specs/canvas/auto-arrange-tidy.md`).
+- Tidy and Cleanup are fixed points: a sub-pixel change in what ELK is handed flipped whole layouts, so Tidy, the standoff solve and autofit land on whole pixels and a docked FC's socket is read from layout offsets, not the zoomed screen (a second run moves 0 px on the eight seeds probed).
+- Tidy alignment gains Balanced (the default: ports halfway to the real socket heights) and Sockets (level cables). Scored against the joined cards' heights, Balanced keeps cables within their cards' band without Sockets' staircase. Every seed is re-baked; `seedTune` tidies with groups expanded. The Power features seed's standoff now pins the Standoffs note under Monitoring, per [[C89]]; it tied Sensor B to its consumer, which left Sensor B stranded.
+- Group collapse and expand round-trip exactly: every group of all 28 seeds, three trips each, returns every card to the pixel (it drifted up to 1000 px on unit flow). The collapse read the card's old size from React Flow's cache; standoff solves snapped unrelated slanted standoffs (now scoped to the clusters an op touched); a collapse's standoff re-solve went unrecorded and could shove the canvas (now recorded and undone on expand, and skipped when it would land on a box); and the no-overlap pass treated a cluster's bounding box as solid. Specs: `tree/specs/canvas/group-expand-push.md`, `tree/specs/canvas/standoffs.md`.
+- `presentSocketStore`: which sockets each card shows. Tidy reserves those (a Chart Builder no longer lays out as its 53-field variant) and a collapsed group's leaf row takes the first shown output.
+- Canvas figure text draws in the app's faces (`canvasFont`), not `system-ui`.
+- New pure modules: `colormaps.ts` (matplotlib's maps, `_r`, `heatScale`), `numberSpec.ts` (the Python format spec behind `fmt`), `components/heatmapLayout.ts` (`tests/graph/heatmap.test.ts`).
+
+### SESSION DIGEST (2026-09-29c: commit-walk review of 08-01 to 09-29; cloud session)
+- A collapsed XLOOKUP, Cast, Schedule, Gantt or Earned Value card shows one input pill: collapsed, it drops its socketed section and one `InlineInputs` carries every input (`tree/specs/floors/components.md` § Sections).
+- The Table popup's CSV view reads the added columns' inferred types everywhere (`typesShown`), and CSV pressed in CSV does nothing, so a pasted text column no longer turns to NaN.
+- INDEX and Filter keep their sockets and cables when a wired table empties: an empty array says nothing about shape ([[D85]] columnsStayColumns; `indexPosition.test.ts`, `conduitFilterTypes.test.ts`).
+- Drilling into a Cube cell holding one record saves it as a one-row table first, so the drill shows it and Add Row keeps it.
+- Chart exports size their root in canvas units (zoom taken out) and vault PNGs carry the legend (`nodeChartSvgString`).
+- Removed: the native pivot's unit tail (Pivot runs in JS; nothing reached it). A computed column builds each whole-column reading once per run.
+- Undo flushes a pending edit before it restores, keeps the last edit on documents past the byte budget, and restores the exact camera (`flowHistory.ts`, `View.setCamera`).
+- Volatile formula text (TODAY, NOW) folds the recalc generation into the Frame Input, Cube Input and Computed Column memos; Holidays and World Clock recompute at midnight ([[D46]] freezeVolatilePerCalc).
+- Lazy frame reads go through `readRefColumn` (sketch scaling and the aggregate guard), and a sink's Run in Sketch mode writes from a forced exact pass (`withExactPass`).
+- A superseded Local File load and a stale Pivot pass drop their result; Script calls run one at a time in the worker, each timed from its start.
+- Out-of-order odd-coupon dates, T-bills past a year and PRICEMAT after maturity are refused; XIRR's date check is one helper for node and formula; QUARTILE truncates; REGEXREPLACE counts a negative occurrence from the end (author).
+- Out-of-range finance arguments (frequency, basis, date order, T-bill term, amounts) are #DOMAIN! with a message naming the need, on node and formula alike; a missing date stays blank ([[D70]] nullNotEnoughData, the author's ruling).
+- DAYS360, YEARFRAC basis 0 and the coupon 30/360 follow Excel's end-of-February rules (unchecked in Excel: backlog).
+- NETWORKDAYS counts calendar days with its own kernel (`networkDays`, off Formula.js); PERCENTRANK skips blanks; the Z test reads a typed σ; Save Times shows the wall clock; a document's autosave time moves only when its graph changed.
+- Tests that assert a module's first state or mock a module run in the ISOLATED project (`noteMarkdown`, `sketchExport`, `localFileRace`, `flowHistory`).
+- Open leads the walk found and left: `backlog.md` § From the 2026-09-29 commit-walk review.
+
+### SESSION DIGEST (2026-09-29b: ROW(), the shape model, one text reading and number display, Cast, palette follow-ups, type icons, card sections and the liquid fold; cloud session)
+
+- **`ROW()` replaces the bare `row`/`rows` names; a computed column's whole column is a one-column table**
+  ([[C22]] rowFormulaRefs, [[C14]] currentExcelParity): `ROW()` reads the row context (`currentRowNumber`),
+  `ROWS(price)` is the row count, and a column may be named `row`. COLUMN stays blocked (`POSITION_NAMES`,
+  `blockedNameMessage`).
+- **One shape model, D85 columnsStayColumns** (E17 folded in and retired): a List is one CSV row, a Frame column a
+  one-column table, Frame from Lists the named transposer.
+- **Every list-taking function declares `orient`** ([[D85]] columnsStayColumns): `free` (direction means nothing; a
+  one-column or one-row table reads as its items and a list answer comes back the way it went in) or `axis`
+  (the Excel shapers read rows and columns themselves). `readVectors` / `asColumn` in `excelFormula.ts` apply it;
+  `vectorOrient.test.ts` runs every `free` function on a list and a column. A computed column's row-aligned wired
+  list reads as a column. INTERPOLATE and DIAGONAL are `free` for their vector mode and keep their grid mode.
+  A Cube column of list cells reads whole as its rows stacked, padded with blanks ([[C22]] rowFormulaRefs), so
+  `SUM(prices)`, `ROWS(prices)` and `INDEX(prices, ROW(), 2)` work; a grid in some row keeps it `#SHAPE!`.
+- **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
+  The Cube popup's editable levels carry it too (None type, `COUNTA(@tags)`; Fx rows on the root only).
+- **One number display** ([[D94]] oneNumberDisplay): `formatScalar` is the FC's General style (integer as is,
+  else the "Decimal places" setting, default 4, trimmed; extremes scientific) and every unformatted display uses it: value boxes, Frame
+  and Table cards, the Table and Cube popups, complex parts, unit suffixes, Alert messages. `formatCx` (data) keeps
+  4 decimals; the Constant and Physics Constant cards and chart ticks keep theirs. `listPreview` was dead and went.
+- **A list popup's CSV view followed the Source switch backwards**: the list path of `buildText` ignored the mode
+  it was handed and read the not-yet-updated toggle. It now takes the mode like the table path.
+- **One text reading** ([[D93]] oneTextReading): every place text becomes a typed value (List Input typed or
+  wired, every inline list field via `parseListLiteral`, typed Cube list items via `coerceListItem`, Get Column's Number/Date read, the vault reader's typed properties) reads it with
+  `coerceFrameCell`, so unreadable text is NaN, never blank, and `dateFormatDisplay` shows a NaN date as `NaN`.
+  `parseBoolText` (yes/no in list fields) is gone. List Input keeps its typed text (`cachedSource`) for the
+  popup's Source view and sets `ownsListLiterals` so `coerceInputs` doesn't pre-parse its rows.
+- **Sparklines paint in the palette's gold, green and red** ([[D82]] sparklineCell): a SPARKLINE picture keeps the
+  Default hexes in its text, and `CellImage` (every grid, card and record picture) repaints them in the active
+  palette; the Sparkline node's line and columns paint gold.
+- **Type icons** (DESIGN.md § Type icons): every type segment, column type button, the (i) legend and the Pivot
+  chips draw `TypeIcon` (`#`, `Aa`, calendar, checkbox, double-struck C) instead of words or `T`/`D`/`B`.
+- **Card sections** (DESIGN.md § Card sections; `CardSection.tsx`, `sectionFoldStore`): a caption over
+  a run of rows, folding when the rows are secondary: Cast's Separators, Frame Input's Advanced (λ inputs, Form
+  Layout), XLOOKUP's Options, the Calendar of Schedule, Gantt and Earned Value, Schedule's Rules. Plain captions on
+  Join (Keys), Reconcile (Columns), Decision Matrix and Chart Builder's "Not used by …". A section opens by default
+  when anything inside is set away from the node's seeded literals or wired; a hand fold saves (a node's `sections`,
+  text form included). Folded, wired sockets tuck onto the caption behind a pill that replaces the chevron and
+  reopens the section; the chevron hangs in the body's left margin so caption text stays aligned.
+- **The fold is liquid** (`SocketGoo.tsx`): a gooey SVG filter fuses the dots into the pill and buds them back off,
+  with each type's ring traced on every neck (a ring-shade layer under the fill layer cut 2px in on the same
+  field), and each wired cable rides its drop (`cableEndMotion.ts`, the second frame-rate store). The click pins
+  the cable ends so no frame shows them at a moved socket. Reduced motion skips it.
+- **Ring shades:** the collapsed input pill and a collapsed group's pills took the translucent global
+  `--socket-ring`; they now use the fill's own ring shade (`socketRingVar`), like socket dots.
+- **Input cards open first-class:** Frame Input and Table Input carry an Edit Frame / Edit Table button, two thirds
+  wide in the card's full accent and its ink (`NodeCard` now publishes `--node-accent-ink`), sharing the chip's
+  opener (`openFrameChipPopup`).
+- **A collapsed table card centers its chip:** the chip row's inline spacing beat the collapsed rule; it moved to CSS.
+- **The Table popup asks before dropping edits** (`tree/specs/documents/table-popup.md` § Closing): a close with
+  unsaved edits raises Save your changes? (Discard / Keep Editing / Save) inside the popup. `shot-graph` gained
+  `--click-edge` to press a popup's overlay outside the card.
+- **Cast absorbs NUMBERVALUE** (the NumberValue card is gone): to Text takes a `format`, to Number takes Decimal and
+  Group separators under a small Separators label, read by VALUE's own reader (`parseValueText`); a retarget drops
+  the departing inputs' cables. Cast sits on the default width tiers now that its segments are icons.
+- **A Cube row holding a table is `#SHAPE!` on that row alone** ([[C22]] rowFormulaRefs); the column's other rows
+  compute. SORT of nothing answers nothing.
+- **Palette follow-ups:** Add menu leaf tints follow the palette (`accent` is a node kind, `leafAccent`), and the
+  three neutral accents take on the palette's chrome ([[B14]] oneDesignSystem: `neutralHex`, tinted toward the
+  app background within a lightness range).
+- **CI:** four pack formulas lacked `orient`; `vectorOrient.test.ts` now loads the packs itself, so the check no
+  longer depends on test order.
+- **Left for the author:** ratify D85, D93, D94, D95 and the amended C14, C22, D81, D82, D90; re-film the demo
+  video; decide whether `Aa` meaning both Text and Filter's match case is a problem; eyeball the liquid fold at
+  real speed (light theme, a card inside a group, mixed socket types).
+
+### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
+
+- **Frame headers suggest column names** ([[C107]] obsidianPlugin): the plugin hands the Frame editor a
+  `columnNameOptions` function (read on header focus) over every column typed under a Frame or Cube property;
+  the header runs the popup's own `CellSuggest`, a pick sets the column's type, and a Suggest column names toggle
+  (on by default) turns it off. API v1 grows `columnNames()`, which the Decision Matrix view's Add criterion reads.
+  Specs: [[obsidian-plugin]] § Column name suggestions, [[table-popup]] § Editing a cell. Not yet exported to
+  Solenoid-Properties or checked in the rig (no Obsidian in the cloud container); the header list was checked in
+  the app's popup through the dev server; the Decision Matrix e2e now covers it in Obsidian 1.13.7. A name typed more than one way shows each type's glyph (`#` `T`, the type button's) and a
+  pick sets the name only; the API's options carry `types` beside `type`.
+
+---
+
+## Sweep 2026-09-30 — session digests 2026-09-27 and 09-28 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-28: Cube types at every depth, cell kinds; cloud session)
+
+- **Cube types at every depth, cell by cell** ([[D90]] cubeTypesAtDepth, superseding D80 on the author's word): a
+  column's type holds its values, lists and Tables; each Frame or Cube nested in a cell has its own declarations, kept
+  in the source's `nested` map keyed by the table's records path (`cubeTypes.ts`: `{ frame?, types? }`), so one
+  column's rows can hold differently shaped, differently typed tables. The plugin keeps them per note
+  (`nestedTables` in `data.json`), which Vault Folder and Import Obsidian Note read. Specs: [[frame-verbs]] § The Cube
+  value, [[table-popup]] § Editing a Cube Input.
+- **Cell kinds** (E16 cubeCellKinds (retired)): every Cube editing cell, list items included, has a Value / List / Table /
+  Frame / Cube menu at its edge (`CellKindMenu`, `convertCellKind`), Table being the app's 2-D shape. A Frame cell is
+  declared, derives a real Frame (`frameCellFromRecords`) and holds only values; undeclared records are a Cube, so
+  the editor no longer labels a flat nested table "Frame" by its contents.
+- **Review plan block 15** (the hand-resolved merges): `getOwningEditor` finds a node in a closed composite on any live
+  canvas; an Import Obsidian Note Refresh re-reads plugin picks for an unchanged note; every card component reads its
+  own graph (`getOwning*`), pinned by `sourceInvariants.test.ts`. The `engine.rs` auto-merges pass `cargo test`.
+- **Review plan block 1** (the settings sweep): cards whose formula twin has a blank role but ignored it now read it
+  (Date Diff basis, DDB / VDB factor, DOLLAR / FIXED decimals, LOG base, GESTEP step), Find Peaks' minimums read a blank
+  as no minimum, Clamp's tooltip matches its code, and the audit sheet gained the QUARTILE rows with
+  `settingsAudit.test.ts` holding its formula table to `ARG_ROLES`. MAKEARRAY's required Rows / Cols wait on the author.
+- **Review plan blocks 2 and 3:** the one-row list convention checks out against [[D85]] columnsStayColumns (TAKE / DROP
+  tooltips now say it). Against [[D48]] classifyNonFinite, the MODEs, the Mode card and PRODUCT answer `#DOMAIN!` on a
+  NaN (PRODUCT moved onto the shared kernel), and no repeated value is Excel's `#N/A`. A pivot group past a call's
+  argument limit no longer throws (`pivotFrame`), nor do the chart renderers on long data.
+- **Table popup formats:** a Custom column format gets its pattern box (`CustomPatternField`), and the summary footer's
+  sums, means, extremes and dates read through the column's format (`statReadsAsCell`).
+- **Review plan, the rest (blocks 4–44):** every block is checked; what stands is recorded in place in
+  `docs/review-plan.md`, and the open lines left are author decisions or need the Obsidian rig. The fixes carry their
+  tests; the ones worth knowing: native Polars now runs in CI (`test.yml` `rust` job; the fuzzer then found and the
+  engine fixed a rolling-sum drift and a last-n-after-groupBy row loss), frontmatter reads and writes as Obsidian's
+  js-yaml does (CRLF, control characters, ambiguous keys, indented blocks), a vault Write subfolder can't climb out on
+  Windows, °F reads back as typed, a wired plain number beside °C readings is a reading, live cards drop a reply for a
+  URL they moved past, a locked canvas drops keyboard focus in cards, and the midnight rollover sees Cube Input and
+  Knap `'now'`. New leaf: [[C117]] usNumberText (US number text only, the author's rule). Inbox:
+  `temperature-difference-converts-by-scale`. For 1.6 in the backlog: Equation outputs vs the formula surface.
+- **Cloud sessions can run `cargo test`** once WebKitGTK's dev packages are installed (`libwebkit2gtk-4.1-dev
+  libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev`); the first build takes about six minutes.
+
+### SESSION DIGEST (2026-09-27: Cards view, resizable formula popup; cloud session)
+
+- **Cards view** ([[C114]] cardsView, asked for by the author, who judges the result): every frame popup has Grid,
+  Cards, (Form,) CSV. Each row is a card in one narrow column; `planCards` (`cardLayout.ts`) derives the card's parts
+  (key, title, subtitle, date, headline number, chips, flags, stat tiles, clamped prose, thumbnail) from the column
+  names, types and cells, deterministically. A filter, a one-key sort and Show More sit above; Edit in Form jumps an
+  editable row to the Form view. Every popup opens in Grid; Cards is an option. Spec: [[table-popup]] § The Cards view.
+  Checked in headless Chromium at 1400 and 390 pixels, both themes.
+- **Cards, second pass:** a name pair joins into the title, Start/End dates make a range, Tags split into chips, hex
+  colors get swatches, Rating stars, percent and progress-like columns get meters, a currency column can be the
+  hero, http and email cells are links, and a card past 6 fields folds behind Show All N Fields. Pictures are
+  `data:image` only, never fetched, as in the grid (D83 imageTextCells (retired)); the first pass fetched web images.
+- **Record ↔ Cards** ([[B11]] maximalMerge, [[C114]] cardsView): Record's single-record view is renamed **Detail**
+  (`detail`), and a **Cards** view (`cards`, no layout socket) draws the popup's derived cards as a figure in the Gallery's
+  masonry (`MasonryGallery`), planned in the node over up to 2000 rows (`RecordDeck`). The card is one component,
+  `AutoCard`, in both places. The popup's overflow menu adds **Add Record: Cards**, placing a wired Record node in the
+  first clear spot right of the host. The Cards from files seed gained a Catalog gallery.
+- **Record Rows:** the scalar Row (Detail only) became **Rows** on every view: a number or a list (`numlist`, typed
+  `1, 3, 5`, `picks` role, negatives from the end), blank for every row. Detail's pager is its own `page` among the
+  picks, so a wired list still pages. The CSV field now takes a `(default X)` placeholder (`all` here).
+- **Cards demo data:** `scripts/gen-cards-demo.cjs` writes `demo-vault/Data/{crew,products,orders}.csv` (drawn
+  `data:image` avatars and product pictures, tags, colors, ratings, progress, date ranges, links) and the
+  **Cards from files** seed (Tables): Local File nodes into Filter, Sort, Head, a Computed Column, Keep lookups, two
+  Joins, a Keep that picks the order card's fields, and two GROUPBYs. It runs on the web build through the bundled
+  demo vault. The data hangs together (skills and bios by team, Paid by status, backorder notes on out-of-stock
+  lines); joining whole tables made nonsense cards, so the joins take lean lookups. The joined frame led to two planner fixes: a second picture column
+  draws as a picture, never prose, and a lone Last Name no longer counts as name-like.
+- **The formula popup resizes** (Expression, Equation, LAMBDA, the table lambdas): the Table popup's corner grip, and
+  the editor's own vertical grip before the first drag, as the CSV block has; once sized the editor fills.
+
+### SESSION DIGEST (2026-09-28: plugin 0.1.5 on Solenoid-Properties main, its whatsnew video; cloud session)
+
+- **Plugin 0.1.5 replaces 0.1.4** (whose release failed the Obsidian review): TableCards' dead eslint directives are
+  gone, the Knap marker regexes are built from their constants, and the Knap views use `createSpan`/`createDiv`. Only
+  the Release run is left (`docs/backlog.md` § Obsidian).
+- **The whatsnew cut is 0.1.5's** (author approved the render): typing about 2.5x faster, the Knap totals held against
+  the Frame's qty column and its footer Sum, and `wn-cards`, a crew Frame on Obsidian's phone emulation panned across
+  in Grid, then Cards and a filter. Recorded in a cloud container; the setup that works there is in the `demo-video`
+  skill. Not yet in `assets/video/` (backlog).
+- **The plugin's `main.js` is 626 kB again** (960 kB after 09-27): `closeParens` moved to its own `closeParens.ts`, since
+  importing it from `excelFormula.ts` pulled Formula.js and jstat into the plugin; the plugin draws the Cards rules with
+  Obsidian's `MarkdownRenderer` through a `components/Markdown` shim, so `marked` stays out (spec: [[obsidian-plugin]]).
+  The Cards view itself is the rest of the growth over 581 kB. Checked in a real Obsidian 1.13.7 through the rig.
+- **The export refuses an unpinned package:** a copied file importing a package missing from the snapshot's
+  `package.json` stops `plugin:export` (it had shipped a snapshot whose `tsc` failed on `marked` and Formula.js).
+
+### SESSION DIGEST (2026-09-27: Knap notes in the Obsidian plugin; cloud session)
+
+- **Knap notes** ([[D87]] knapNotes, asked for by the author): a note with `knap: true` renders its body in Reading view
+  as its Note card does, from its own properties; a bare `{{ name }}` on a List, Matrix, Frame or Cube property is the
+  property's chip in the body, editing the property. Live Preview renders too, piece by piece: a tag, or an `if` /
+  `for` block whole, shows its output until the cursor enters it (`knapLive.ts`). Spec: [[obsidian-plugin]]
+  § Knap notes. Checked in a real Obsidian 1.13.7 through the rig (loop and `if` across paragraphs, chip Save writing
+  the property, refresh on a property change, errors, embeds, switching off).
+- **Module split** so the plugin can bundle Knap without the formula engine: `toTemplateValue` moved to
+  `templateValue.ts`, `guessScalarText` to `scalarText.ts`; `bareTags` in `knapTemplate.ts` finds the bare tags
+  `embedBareVariables` rewrites. The plugin's `main.js` is 581 kB (477 kB before; the difference is Knap).
+- **Live Preview details:** an error waits for a 1.5 s pause in typing (a half-typed tag fails to render), and Up/Down
+  enter a drawn block, which the editor stepped over.
+- **The `whatsnew` video cut** (`scripts/demo-video/whatsnew.mjs`, plugin 0.1.4, 1080p60 via `DEMO_FPS=60`), approved by
+  the author; the render sits in `.dev/video/`, uncommitted, and ships with the next app version bump.
+- **Rig in a cloud container:** Obsidian's Linux tarball unpacks to `/opt/Obsidian`; Xephyr is absent, so a stand-in
+  script running `Xvfb` on the same display (and a no-op `metacity`) lets `npm run plugin:rig` run unchanged.
+
+---
+
+## Sweep 2026-09-29 — session digests 2026-09-26 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-26: XY plots from issue #3; branch `claude/feature-requests-vh44bk`)
+
+- **XY plots** (D91 xyColumnMapping (retired), new): Scatter, the new **XY Line** op (Cartesian) and Bubble emit an `xy`
+  payload drawn by one `XYView`. Options name the columns: `x`, `y` (comma list), `s` size, `c` color (numeric ramp
+  with a colorbar, or text categories), `annotate` point text, `by` split into series. `linestyle` joins points in row
+  order, broken at gaps; `aspect=equal` and `xlim` for parametric curves. A missing column is `#REF!` on the card.
+- **Merge Plots** overlays XY sources on one numeric plane (Bubble no longer refused); a Line or Area joins by numeric
+  label or row position, bars are `#TYPE!`. The old index-plotted Scatter and `BubbleView` paths are gone.
+- Chart Builder gains the ten XY rows; chart-showcase seed has a Lissajous XY Line group. Contests recorded on
+  [[C96]] chartOptionsAreMatplotlib and D75 builderExposesEveryOption (retired) (keep).
+- **Checked after the merge (2026-09-28):** an XY Line draws right in a Display and embedded in a Report (equal aspect,
+  colorbar). Not yet: a Composite boundary shot, and the demo video isn't re-filmed.
+
+### SESSION DIGEST (2026-09-26: SPARKLINE, typed Cube columns, lists, Add-menu search; author present)
+
+- **SPARKLINE(range, [type])** answers an 80 × 20 SVG as `data:image/svg+xml` text (line, column or win/loss, the
+  Sparkline node's types; Default gold, win/loss in green and vermilion), averaged to 40 points past that ([[D82]]
+  sparklineCell). A text cell holding a `data:image` picture shows as the picture in Frame and Cube cards and popups
+  (D83 imageTextCells (retired)).
+- **Typed Cube columns** ([[D90]] cubeTypesAtDepth): Cube Input's root header has the type button (None, Number, Text,
+  Date, Boolean, Formula). A type overrides every kind in its column: scalars and list items read as Frame cells
+  (NaN when unreadable, [[D93]] oneTextReading). Nested tables: see the 2026-09-28 Cube digest. `cubeText` stays
+  plain records until a column is typed or computed, then `{ columns, rows }`. The plugin's cube editor has the button
+  without Formula and saves the picks as a Frame's.
+- **Cube formulas read lists** (D81 cubeRowLists (retired)): in Cube Input's Fx columns and the Computed Column node over a
+  Cube, `@name` on a list column is this row's list and a row may answer a list; `SPARKLINE(@history)` per row works.
+- **Lists** ([[D85]] columnsStayColumns, the author's call): a list is one row everywhere, so INDEX is strict on it
+  (`INDEX(x, 2, 1)` is `#REF!`); TOCOL, BYROW and MAKEARRAY(n, 1) answer one-column tables; TOROW is the list and reads
+  row by row as Excel's does; SEQUENCE(n) stays a list. TOCOL and TOROW take Excel's `ignore` and `scan_by_column`, on
+  the Table Reshape card as a By row / By column toggle and a skip picker. TAKE and DROP count a list's items as
+  columns (`TAKE(x, , 2)`), on the formula and the TAKE / DROP card. SORT, SORTBY and List Sort order text and
+  mixed kinds (`compareListCells`); SORTBY keeps its `sort_order`. Every list popup has the Source checkbox; a mixed
+  list opens as text with a gray chip. Type Check gains ISERR.
+- **INDEX** (the author's call): the card shows one Position socket on a list and Row / Column on anything else, through
+  the ordinary socket swap; one index walks a one-row or one-column table as in Excel (`INDEX(TOCOL(x), 3)`); the hint
+  reads `INDEX(array, [row], [col])`. Positions may be lists, on the card and in the formula, as Excel's array
+  arguments; CHOOSEROWS and CHOOSECOLS stay table verbs on a list. A typed skip reads as Excel's in INDEX, EXPAND,
+  TAKE and DROP (`EXPAND(m, 3, , 0)`, [[C80]] blankArgIsExcelBlank).
+- **Blank roles** ([[D86]] blankRoles, the author's call, absorbing D33 and E15): data blanks stay blank; a blank setting
+  (count, size, mode, digits) is its default, overriding the typed value, item by item in a list; a blank pick is dropped;
+  no fallback is `#SYNTAX!`. One declaration, `ARG_ROLES` (`inputRoles.ts`), read by formulas (`applyArgRoles`) and by
+  cards (`static inputRoles = rolesFrom(...)`, `readRole`); spec [[input-roles]], which also took value-semantics' role
+  table. A blank in a table of positions is `#SYNTAX!` in that cell. D86 is written in the author's words.
+- **SORT, SORTBY, FILTER, UNIQUE on tables** ([[D85]], the author's call: strict Excel): formulas take tables and Excel's full
+  signatures; on a list SORT and UNIQUE change nothing without by_col. List Sort (Rows / Columns, key rows with their own
+  order), List Filter (a table's rows tested on one Column) and UNIQUE (Rows / Columns, Only singles) take `anydata`, so a
+  list stays a list. Kernels `sortGrid`, `sortGridByKeys`, `filterGrid`, `uniqueGrid`.
+- **Excel-signature parity** ([[A5]] excelParity): `excelArityParity.test.ts` checks every registered Excel name's arity
+  against Excel's (`fixtures/excelArity.ts`); the ones still short are listed with a reason and the list only shrinks.
+  Filled in the author's absence: MODE.MULT's several ranges; TEXTSPLIT's row delimiter, ignore_empty, match_mode and
+  pad_with; TEXTAFTER / TEXTBEFORE's instance_num, match_mode, match_end and if_not_found; VDB's no_switch; TREND and
+  GROWTH's const. `settings-audit.md` proposes the settings sweep's roles for review.
+- **The settings sweep** ([[D86]] blankRoles, built on Claude's judgement at the author's word): `ARG_ROLES` covers about
+  150 functions; the cards read their settings through `readRole` (Series per op, `readAsRole`); a blank filter condition
+  skips the condition ([[C24]]'s consequence overturned). A required setting with a working Excel blank reads as it
+  (a blank `cumulative` is FALSE), otherwise `#SYNTAX!`; distribution parameters are data; CLAMP's blank bound is no
+  bound. For review: `settings-audit.md`.
+- **Socket labels** carry no parentheticals: "(1-based)" moved to the Inspector's socket notes (C19 namingModel (retired), the
+  author's words); the rest are a backlog sweep.
+- **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
+- **Add-menu search:** Excel-name rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name
+  is one op's formula name (C19 namingModel (retired), amended on the author's word); a search shows one row per thing placed
+  (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
+  46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
+- **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); a review of the settings sweep
+  (`settings-audit.md`); whether List Sort and List Filter keep their names now they take tables; the parity list's
+  remaining gaps (backlog); the Cubes and lists section of the backlog, next up a blank in a typed list literal; the
+  plugin release (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The
+  outbox is empty.
+
+## Sweep 2026-09-26b — session digest 2026-09-25b (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-25b: the demo video, and what filming it found; author present)
+
+- **The demo video is generated, not edited by hand:** `scripts/demo-video/` films the real app in headless Chromium
+  and a real Obsidian running the Solenoid Properties plugin on a virtual display, then cuts it with ffmpeg: captions,
+  title cards, crossfades, callout boxes, post zooms and a synthesized soundtrack. Obsidian scenes are filmed live
+  (the plugin's look switched on, a 40-row Frame pasted into a new property, the written note opened); side-by-side
+  scenes pair a Solenoid screenshot with an Obsidian grab per state (palettes and light mode, the imported note).
+  Running and redoing it, and every mechanic that bit: `.claude/skills/demo-video/SKILL.md`.
+- **Two cuts** (`cuts.mjs`): `demo`, the app tour, kept as `assets/video/solenoid-demo.mp4` (2:27) with its poster;
+  and `obsidian`, a story for Obsidian users: meeting notes and an attendees String List property, the popup's Grid
+  and CSV views, then an emailed table typed into a Frame property through its Form view, all in Obsidian; then,
+  after a card that opens Solenoid, the note joined to a roster note and totaled with PIVOTBY, the chart written back
+  into the note, and the look in both apps. Its Solenoid scenes film Obsidian and a real Solenoid window side by side
+  on one display. Frame zero of each is its title card, also embedded as cover art. Renders land in `.dev/video/`
+  (gitignored).
+- **Solenoid Properties wordmark**: `src/logo/solenoidpropertieswordmark.svg`, the coil beside SOLENOID PROPERTIES in
+  Atkinson Hyperlegible Next 800, outlined at the Solenoid wordmark's size, baseline and spacing. The demo vault
+  gains `Sales/Q3 review` and `Sales/Divisions` for the obsidian cut's story.
+- **App fixes it found**, one commit each: opening a Report no longer takes the app down (a hook after an early
+  return); chart value axes write compact ticks in a gutter that fits them; the vault cards gate on `hasFs()` like
+  their nodes; Open in Obsidian on the Write card follows the write, not the shell; a frame's CSV edit types the
+  columns it adds from their values (`columnTypesAfterCsvEdit`, once the block is left or saved from); the demo
+  vault's showcase note no longer retypes every project's `budget` and `milestones` (its keys are `purchases` and
+  `inspections`; the projects' `milestones` is a Frame); an Equation linear in an unknown that appears more than
+  once (`p = n*25 - (f + n*10)`) solves it exactly instead of by bisection (`solveLinear`).
+- **Open:** the author listens to the soundtracks and picks where each video is published (backlog, Demo video); the
+  Frame popup's blank-header-line item in the backlog (the author held that behavior until a change is shown
+  rigorous). The outbox still lists A1, B1, B2, B3, B7.
+
+---
+
+## Sweep 2026-09-26 — session digest 2026-09-25 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-25: formulas and aggregates at scale and at the edges; author asleep, one check-in)
+
+- **Long lists:** a list past about 125k values no longer throws. `guardFinite(result, inputs)` takes an array (callers
+  spread whole data lists into it, so web GROUPBY and most range formulas threw), `mapCells` measures each operand once
+  (a tall column was N²: 40k rows took 1.9 s, now 54 ms), and MAP, BYCOL, HSTACK, CONCATLISTS, Set Cells and a script's
+  table result read widths with `reduce`. The remaining `Math.max(...)` spreads run over bounded counts (canvas layout,
+  chart axes, Frame from Lists, Template, Triangle). SUM still throws inside Formula.js past 125k values.
+- **One answer per aggregate** ([[D51]] oneAnswerOneDivergence): the statistics formulas keep a first-class ∞ and a NaN
+  cell, as the Aggregate card and GROUPBY do. `aggregate()` classifies its own result and answers `#DOMAIN!` for a NaN
+  input on every op but the counts; the percentile, quartile, correlation, covariance and regression kernels classify
+  theirs, and percentile interpolation returns a bracketing value both ends hold (PERCENTILE.INC of 1, 2, ∞ at 1 is ∞).
+  MIN and MAX are owned (Formula.js spread the list into `Math.min`) on the card's kernel; PERCENTRANK.INC and .EXC run
+  the card's kernel (Formula.js said 0 below the data).
+- **Retired on the author's suggestion:** AVERAGEA, MINA, MAXA, STDEVA, STDEVPA, VARA and VARPA redirect to their plain
+  forms ([[C14]] currentExcelParity, a new consequence line); lists are typed, so only the logical reading was left.
+- **Excel parity at the edges, card and formula alike:** YEARFRAC basis 1 is Excel's actual/actual (211/366 for Excel's
+  own example), truncates its dates, takes them in either order and refuses a basis outside 0 to 4; GCD and LCM share
+  one kernel (`gcdLcm`) that truncates each value and refuses a negative or one at 2^53 or more; LEFT, RIGHT, FIND
+  and SEARCH refuse a negative count or a start below 1 (the text cards pass their numbers as given); PEARSON and
+  FVSCHEDULE are range functions on the card kernels (`fvSchedule` in `financeOps.ts`); BASE and the `*2HEX`
+  functions write uppercase.
+- **Other fixes:** Nest Join keys round like Join's converted key (`roundAtLargerTerm`, shared in `frame.ts`), so 1 in
+  matches 2.54 cm; a pasted Missing placeholder stays a placeholder for its node (`placeholderFor`, shared by load,
+  composite hydration and paste); the signature hints mark the second value optional, as Excel's do; the `display`
+  node kind is gone (charts resolve the gold slot directly).
+- **Open:** inbox `aggregate-list-cells` asks how every aggregate formula reads a logical (`SUM(x > 5)` is 0 while
+  `AVERAGE(x > 5)` counts); owning SUM waits on it. Backlog "Formula parity leads" holds TEXTAFTER's later arguments,
+  SEARCH wildcards, and the author's call on N, T, TYPE and ERROR.TYPE (out of scope, still callable). The outbox
+  still lists A1, B1, B2, B3, B7 (left alone per the backlog).
+
+## Sweep 2026-09-25b — session digest 2026-09-24b (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-24b: the review leads closed, and the tree made ratifiable; author present, then remote)
+
+- **Review leads:** every "2026-09-24 review rounds" lead is fixed with a failing test first, or inboxed (units,
+  formulas vs Excel, frames, charts and schedule, stores, documents, engines, composite inner state), plus two
+  rounds of follow-ups. One text-to-number reader everywhere (`decimalFromText`, hex is text, "1,234" is 1234,
+  desktop engine included); the native engine carries error cells with their code; joins on units match 68 °F to
+  20 °C. Full suite 6573 green, tsc clean, `dte validate` and `coverage --check` green.
+- **Tree, the author's rulings:** a leaf is a product call a person could decide, in plain words, following
+  from its parent (A thus B thus C); mechanics, code order and designs are specs (`docs/dte.md` § What is a leaf
+  and what is a spec). "Leaf" means a tree item and "node" an app node. Our `dte-feedback.md` is the input to
+  DTE's next version, and practice here leads the vendored text.
+- **Tree, what stands:** about 190 leaves down to 127. About 70 moved into specs (new
+  `tree/specs/floors/engineering.md`), four duplicates merged, the rules-about-rules (tree home, author-ruled,
+  exceptions, spec-first, comments, wikilinks, outbox, enforcement labels) retired as DTE's job with Solenoid's
+  practice in `docs/dte.md`; 16 leaves reparented to the leaf they follow from; two new B leaves ([[B18]]
+  safeToShare, [[B19]] spreadsheetHabits). Every leaf's Why argues from its parent and its Decision names the
+  rejected option. The author ratified A1, B1, B2, B3, B7 and E10, rewrote A5, A6 and those B leaves in their
+  own words, and removed `made_by`/`by` and `name` (local `tools/dte.py` patch: the name is the first alias).
+- **Open:** the ratification walk continues with the rest of ring B; 34 inbox items; desktop window-close check on
+  the next build (backlog).
+
+## Sweep 2026-09-25 — session digest 2026-09-24 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-24: adversarial review rounds over the tree and specs; author checking in)
+
+- **What stands:** about 20 reviewer branches, one slice each (compute, frames, values, documents, canvas,
+  charts, chrome, composites, Obsidian, node classes, packs), checked code against specs and nodes; well over
+  100 bugs fixed with tests, specs corrected where the code was right. Full suite about 6500 tests, green
+  under `--sequence.shuffle`; `dte validate`, `coverage --check` and `cargo test --lib` green.
+- **Author rulings, author present:** GROUPBY min/max over text is alphabetical ([[D76]] textMinMax); constants
+  always win in a LAMBDA and a parameter named `e`/`pi`/`tau`/`phi` is `#NAME?` ([[D77]] constantsAlwaysWin,
+  reversing two agent commits); the list Group By is Group Lists all the way down and prose calls the frame
+  card GROUPBY; the Group card is Node Group; questions for the author go to `tree/decisions/inbox/`, never chat.
+- **Tree:** the author's outbox notes were processed: D4 rewritten plainly with E1 folded in, E2 into D13 and the
+  lattice spec, E4 into D15 and the spec, E5's Why says why Any Matrix can't stand in. New: [[C112]]
+  noOverlapsEver (every layout op ends with `separateAll`). Contested and kept: C16, D29, C85, C89, D63, C112,
+  C11 (Conduit lane exception), C43 (names its hooks), C95.
+- **Units:** °C/°F are classified statically (`affineWeight`): a reading plus a number is a reading, two readings
+  subtract to a delta in K, two readings added are `#UNIT!` (`READINGS_ADD`) on every surface: formulas, the
+  Arithmetic and Aggregate cards, frame verbs on both engines (`readingScale` on the wire), computed columns.
+  Expression computes in a shared linear display unit; a function the dimension pass doesn't know refuses a
+  united argument; lookups carry their return column's unit.
+- **Engines:** the frame-verb fuzzer covers window, fill, replace, slice, bind and cross join; every divergence it
+  found is a named corpus case.
+- **Saves and edits:** keys with `.`/`λ`/`-` are quoted in the text form (a save could break for good); literals
+  no longer enter `init`; composites keep inner references, nested composites, FC docks and store state across
+  reload, wrap and undo; one delete path for main canvas and drill-in; paste works from a snapshot.
+- **Tests:** a `vi.mock` file outside ISOLATED fails `sourceInvariants.test.ts`; the flaky shared-pool failures
+  are gone.
+- **Late merges:** the webpage export escapes values after rendering and embeds images; open drafts flush before a
+  switch, save or close (`draftFlush.ts`); composite inner cards keep size, collapse and flip (`savedNodeBody.ts`);
+  Thermo presets declare their input units (`readInDeclaredUnit`); Triangle Solver solves in one unit; FIXED rounds
+  like ROUND.
+- **Open:** 30 inbox items await the author. A DTE tool patch (processed outbox items leave a review card in the
+  inbox; a node dragged into `outbox/` stays a node) is stashed, not applied, pending the author's go.
+
+---
+
+## Sweep 2026-09-24b — session digest 2026-09-23 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-23: decisions, specs and code comments lined up; author away)
+
+- **What stands:** each fact has one home. Rulings and reasons live in `tree/decisions/`, mechanics in
+  `tree/specs/`, and code keeps only one-sentence line constraints (`tree/specs/floors/engineering.md` § Comments). About 14,000
+  comment lines left roughly 820 files, comment-only (verified token-for-token against the parse tree); what
+  they said landed in a spec or node first. tsc, the full vitest suite, `dte validate` and `coverage --check`
+  are green.
+- **Tree:** C72 merged into B11 and C104 into C103; D73 nodeCoversFormula split out of C17; new C109
+  linuxOwnWindowControls and D74 webkitgtkNoNodeLayers give the Linux window chrome its reasons. About 30
+  nodes gained a Why or a correction from the lift, each with a History line. The E14 vs C48 stack merge is
+  deferred (`deferrals.md`).
+- **Specs:** `format-model`, `value-semantics`, `layout-chrome` and `touch-gestures` moved into the vault and
+  are cited as wikilinks. New: `table-popup`, `palette-and-theme`, `command-palette`, `outline-panel`. Nearly
+  every other spec was restructured for reading in Obsidian with no fact dropped. Stale
+  "subsystem-invariants §" pointers across docs now name the spec itself.
+- **Tests:** the suite runs in about 15s instead of about 100s. `vitest.config.ts` splits a shared project
+  (`isolate: false`, reset by `tests/setup/sharedWorker.ts`) from a short isolated list of files that need
+  a fresh module graph.
+- **Code fixes riding along:** the Composed chart draws its legend below the plot like Scatter; the
+  HTML-in-Canvas renderer draws `anycombo` as a split square like the DOM socket.
+- **Comment-lift suspects:** fixed or ruled (`a6cb19b2`); the last one, Range including Stop, is now
+  [[C110]] rangeIncludesStop on the author's reason (not an Excel function, so it matches LinSpace).
+- **Author rulings, author present:** C90 retired (the drawn-cables spec covers its files); D62 ratified;
+  Conduit N and the Slider's per-change speed are exceptions under D22 and C95; op switches stop writing
+  `node.label` (a sweep in `sourceInvariants.test.ts` holds it, [[D22]]).
+- **Demo data:** Local File's folder falls back to the demo vault's `Data` like the vault does ([[C1]]), and
+  Personal Finance reads its CSVs from there with Local File cards. The demo vault serves
+  `.obsidian/types.json` and `daily-notes.json`, so demo reads match a real vault.
+- **Formula side:** every kernel a pack formula calls lives in a rete-free `nodes/*Ops.ts`, each pack's
+  formulas in `packs/<id>Formulas.ts`, and `formulaPathIsReteFree.test.ts` roots at them (`../tree/specs/floors/engineering.md` § The formula path is rete-free).
+- **Site:** the Packs and Examples pages render from `BUILTIN_PACKS` and `SEED_GROUPS`; the Obsidian page
+  leads with Solenoid Properties, a live panel of the plugin's own `PropertyChip` over the demo vault; each
+  page gets its own title and link-preview tags (`siteMeta.ts`, `<page>.html`, `vercel.json`). Phone
+  layout: the scene thread hides in one column and scene frames cap at 82vw. The author's own copy is theirs:
+  flag, don't rewrite ("turbocharges" restored).
+- **Also:** the Schedule and Gantt spec is in the vault (`schedule-and-gantt`); dependencies are on latest,
+  `mermaid` 12 with a `lodash-es` override. **For the author:** C70's per-row faults vs the whole-run error,
+  and Local File's grammar-text Predecessors (both in the backlog).
+- **Charts:** every figure the Chart Builder titles now draws its title, and the Sankey, KPI and Gauge cards
+  render through `ChartFigure`, so options apply on the card (D75 builderExposesEveryOption (retired): a type's
+  builder keys are exactly what its renderer honors; `chartTitles.test.ts`). The audit made alpha, radar,
+  canvas-figure fontsize and the Gantt view keys real. Sankey merges repeated From/To pairs (`mergeFlows`)
+  and lifts a flow on hover. Every chart card, Chart Builder, Mermaid and Record included, is the chart
+  kind; an unfiled card with one non-numeric output wears its output's color (C111 unfiledCardTakesOutputColor (retired)).
+
+---
+
+## Sweep 2026-09-24 — session digests 2026-09-22d and 2026-09-22c (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-22d: fixing what the rebuild specs found; author away)
+
+- **What stands:** the backlog section "Found writing the rebuild specs" is empty; each item was fixed or
+  ruled, and its spec says what the code now does. Every round ran tsc, the full vitest suite, `dte validate`
+  and, when the engine changed, `cargo test --lib`.
+- **Two engines, one answer:** units ride through the desktop's native verbs (schema shadows in
+  `PolarsBackend`), Join and Nest Join compare unit keys as quantities (`joinKeyTransform`, #UNIT! across
+  dimensions), a join keeps every column's unit and format, Window reads NaN as blank on both engines,
+  and share / pct_change agree on blanks. A parity fuzz (every corpus case re-run with NaN, infinities, blanks
+  and -0 added, prepended, or with every cell blank) found one more break, NaN order keys in the ranks, now
+  fixed. The generator lives in the session scratchpad, not the repo.
+- **Formulas:** LAMBDA parameters shadow variables but never a constant (a parameter named `e` is refused, [[D77]] constantsAlwaysWin), a blank scalar argument gives a blank answer
+  while an empty argument slot does not, arithmetic on text is #VALUE! with advice, malformed numbers are
+  lexed as errors.
+- **Documents:** composites re-save byte-identical (saved ids), `seedStore.ts` and `SavedGraph.seedId` are
+  gone, the save version is one constant, a Placeholder's references follow renames. Reports export and write
+  to Obsidian what the card shows (format picks, highlights, frames as tables, frontmatter stripped); an empty
+  merge writes nothing; a blank page name numbers off the sink's name.
+- **Canvas:** Composed and Bubble honor the axis options the Chart Builder offers; the pointer census drops
+  stranded fingers (a primary touch or a window blur); expand push leaves the user's own overlaps alone;
+  standoffs draw under nodes.
+- **Ruled, not changed:** a one-element list collapsing on scalar rungs is D13's design, and Frames and Cubes
+  crossing the unit boundary untouched is the design (compute-pass spec). E14's stack-merge line stands (the
+  merge hasn't landed).
+
+### SESSION DIGEST (2026-09-22c: DTE and specs, merged and made rebuildable; author present)
+
+- **What stands:** the tree has one node per decision. Merged into survivors: D8→D7, D44→D45, E3→D15,
+  C56→C26, D2→C1, C12→C11, and the seven HTML-in-Canvas tuning nodes D55–D61→C42 (their knobs now live in
+  `../tree/specs/canvas/html-in-canvas.md`). C52's audit half became C108 auditDefaultsToFix. Every unratified node below
+  ring A was rewritten for plain reading; the Why no longer restates the Decision.
+- **The rebuild test:** five new specs cover the computational core, written from the code: `compute-pass`,
+  `formula-language`, `computed-columns`, `frame-verbs`, `save-format`. Every other spec was rewritten, and
+  the thin ones (conduit faces, input-cable pruning, live connections, stores) now state behavior.
+  `subsystem-invariants.md` is one table; the docs that held pieces of these specs point at them.
+- **Nodes corrected against code:** C60 (Running has no mode toggle), C63 (Record's views are ops), C62,
+  C65 (the standoff depth isn't set anywhere; labeled), C95, C1, C45 (ordering is case-sensitive), C48,
+  C51, C61, C72, D10, D20, D22, B16.
+- **Open:** node candidates the spec writers flagged in the drawn-cable rulings are unmoved.
+  `../tree/specs/documents/literal-input-editors.md`'s were settled as spec content (2026-09-24): the text-is-truth rule is
+  [[C58]]'s and List Input's is [[C28]]'s, both cited; the one-row column header is a layout ruling. Still without a spec: the node families (`node-coverage.md`
+  stands in).
+
+---
+
+## Sweep 2026-09-23 — session digest 2026-09-22b (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-22b: the connective-core copy pass; author present, reviewing samples)
+
+- **What stands:** the shipped copy is free of em dashes and `uiCopy.test.ts` enforces it over every genre,
+  seeds included (DESIGN.md §7 now says so). Help tabs (`help.md`, `data-model.md`, `notes.md`), catalog
+  descriptions, Inspector Excel notes, socket docs, tooltips and error messages along the computed-column,
+  socket-lattice, unit-flow and type-propagation paths are rewritten in the author's register: short, plain,
+  Excel names where they help, no wiring narration.
+- **Facts corrected, not just reworded** (each verified against code): the help tab said a format resets at
+  the first transform (it carries through meaning-preserving ops, [[D41]]); Saving said examples replace the
+  canvas (they open as new documents) and only newer formats are refused (older are too); six Excel notes
+  (ISNA, ISERR, ISTEXT/ISNONTEXT, MINVERSE, CONCAT/CONCATENATE) and the CONCAT description misdescribed the
+  node; XLOOKUP's advice named Build Frame for pairing two lists (Frame from Lists does); node-coverage put
+  `anydata` below `anytable` and said a computed column's formula sees only scalars.
+- **Specs** `error-values`, `unit-flow`, `type-propagation…`, `socket-lattice`, `literal-input-editors` are
+  restructured into sections; every spec header drops the "Lifted from subsystem-invariants" line.
+  `mental-model.md`, `tree/specs/values/value-semantics.md`, `glossary.md` and all of `node-coverage.md` are reworked; build
+  history goes to git.
+- **DTE:** about 70 AI-made nodes reworded with rules unchanged, each with a History line; every `*Origin:*`
+  paragraph and duplicate `*Why:*` label is gone; 56 bare rule names became `[[ID]]` wikilinks. Human-held
+  nodes (A ring, B7, C80) were not touched; author quotes stay verbatim.
+- **Open:** the before/after log for the author lives outside the repo (session scratchpad). The trailing
+  parenthetical rule still covers only catalog, socket docs and Excel notes (279 sentence-level hits in seeds
+  and catalog, mostly legitimate glosses).
+
+---
+
+## Sweep 2026-09-22b — session digest 2026-09-22 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-22 — 1.4.2 and plugin 0.1.3 shipped: the look follows the palette and accent, the app reads the picks, a Save writes source text; author present)
+
+- **1.4.2 SHIPPED 2026-09-22** (tag `v1.4.2` on `5d2bc6f1`: merged, bumped and tagged by the agent on the author's
+  word; `desktop-build.yml` publishes the release on the tag). What's New and the selling list stay 1.4.1's (the
+  author's call). **Plugin 0.1.3 is PUBLISHED**: the snapshot in `bubba8587/Solenoid-Properties` is the 1.4.2
+  commit (`3458955` there, builds byte-identical to this repository's build), tag `0.1.3` pushed; the directory
+  rescans it.
+- **Releasing is the agent's, on the author's word, from the dev machine** (CLAUDE.md § Releasing, author
+  2026-09-22): "the tag is the author's" was written for the cloud harness, where a tag push fails.
+- **The Solenoid look wears the plugin's palette setting, not just the chips.** `look.css` authors no hex any
+  more: `obsidian-plugin/src/lookTokens.ts` derives every color token from `palette.ts` exactly as the chips'
+  sheet does (`themeVars`), the build appends one block per built-in palette and mode to `styles.css` under
+  `body.solenoid-look.solenoid-palette-<name>`, and `main.tsx` swaps that class beside the look class (every
+  window, settings included; `onunload` sheds both). Pure value swaps, author's word: the app already settled
+  contrast, so the look's own ink/rule/wash formulas stand unchanged under every palette. The snippet stays
+  the Default palette (rules + its two generated blocks; `look.test.ts` pins it).
+- The build config now imports app TypeScript, so Vite bundles it to load; `VITE_CONFIG_NATIVE_IGNORE_WARNING`
+  in the build scripts (here and in the exported snapshot's) is Vite's own switch for that.
+- **Checked as a phone** (author's ask): `scripts/obsidian-rig-mobile.mjs` puts the rig into Obsidian's mobile
+  emulation at 412 and 360 px with touch and a coarse pointer, and the claims are measured boxes. Fixed: the
+  property icon sat 1px from the card (Obsidian's phone stylesheet bleeds the content 12px past the card and the
+  look clipped it; now the desktop's 11px), the light badge rode 4px high on the taller row, a wrapped footer's
+  rows were 10px out of line, the cube's Done stranded left, a button's label wrapped inside itself, the settings
+  links broke mid-URL. And a scoper bug: a look rule on a body class other than `.theme-*` (`.is-mobile`) nested
+  under the look class and never matched in the plugin; the rig's snippet had masked it. Real devices remain
+  unchecked (spec § Out of scope). The author looked at the captures and caught the icon inset I had passed.
+  Footer buttons on a phone go SMALLER under the coarse pointer (11px text at 412, 10px under 380), measured
+  until the row/column buttons and Cancel/Save share one row; the author saw both tiers and ruled them fine.
+- **An accent picker too** (author's ask): the settings swatch grid is now the toolbar's picker, not a legend, and
+  the accent (a slot id, the gray swatch cycling the neutrals) persists in `data.json`. The chips' sheet takes
+  it, and the look wears it as a third body class: `lookTokens.ts` splits each palette's tokens into the
+  palette's block and one block per accent (its color, ink, HSL, and for Orchard and Blueprint the chrome ramp,
+  which follows the accent's hue as in the app). So Blueprint under a blue accent is the authored cyanotype;
+  under gold it is the sepia print the app shows at its default accent, which is what I had misread as a plugin
+  divergence. Then the accent had to OWN the UI: the look had bound tabs, the top line, links, the active
+  item, the h1 and the hr cable to the number hue (gold under Default), so `--sol-ink-accent` (the accent as
+  text: itself on dark, the look's yellow rule on white) took those roles, graph nodes wear the accent (the
+  active one the ink), and a type's hue means that type only. A light property badge's glyph is the ink that
+  reads on its type color under the current palette (`--sol-ink-on-*`, the chips' contrast rule); dark icons
+  keep the type hue (author's ruling after a wrong turn to all-ink icons).
+- **Two cross-window bugs the rig caught once reproduced from a fresh start**: Obsidian's `toggleClass` tests
+  `instanceof Array`, which an array from the main window fails in the settings window (its own window in
+  1.13), so the look's classes toggle one at a time; and the graph view (a canvas) reads colors only on
+  `css-change`, which a class swap never fired, so palette, accent and look changes trigger it.
+- **The app reads the plugin's column picks** (the 1.4.2 backlog item): `pluginColumnTypes.ts`, read by Vault
+  Folder beside `types.json` and by Import Obsidian Note with the note; a pick types that column above the
+  guesser. The reader now keeps a row's ISO date as text until the column's type is known, so a Text pick
+  holds and a mixed column no longer carries a bare serial. Desktop scope widened to that one path. The
+  author's check in the desktop build found the imported frame's Source blank and no NaN: the importer typed
+  cells before the app's boundary. Now every imported cell crosses `coerceFrameCell` with its text kept as
+  the frame's `raw` (the existing FrameColumn field, Frame Input's own path), so a Number pick over a date
+  column shows NaN over the text and the note keeps its text. Found beside it: a read-only popup grid ignored
+  the Source toggle (`formatRenderActive` followed it only when editable).
+- **A plugin editor's Save writes SOURCE TEXT, never a value through a type** (author 2026-09-22: a Number pick
+  over a date column showed NaN and the Save wiped the dates). List, matrix and frame Saves keep an unchanged
+  cell's scalar and write an edited one as YAML reads it (`parseCellText`, the cube's rule); a type switch keeps
+  every cell's scalar; `validate` is shape-only inside a list or matrix (the family is a lens, not Obsidian's
+  gate); the Complex field alone refuses what it cannot read. Verified in the rig by driving each editor's own
+  Save and reading the note back: frame (the repro), numeric list, date list, matrix, cube, complex scalar. The
+  rule is a node, [[D72]] pluginSaveWritesSourceText under C58 and C107 (author's ask; unratified).
+- The column-format panel closed on any press inside it in the plugin: `useDismissOnOutside` read `e.target`,
+  which a shadow root retargets to its host; now `composedPath()[0]`, the spec's rule. Verified in the rig.
+- **The demo vault is BLOCK-STYLE YAML, what Obsidian writes.** Two reverts in one session had flipped
+  Obsidian's rewrite of `Property types.md` back to flow style (author: "didn't we say multiple times to just
+  do everything in the block style"); the repo copy is now block style (empty lists stay `[]`, `_types/` as
+  authored). A block-style rewrite is never a stray edit; the `.obsidian/` config flips while the author tests
+  live still are. The notes also lost their hard wraps: Obsidian renders a single newline as a break.
+- Open (author 2026-09-22, not tracked further): the Linux desktop build pans a small graph less smoothly than
+  Chromium on the same machine. Lead: WebKitGTK's compositing path; `WEBKIT_DISABLE_DMABUF_RENDERER=1` and
+  `WEBKIT_DISABLE_COMPOSITING_MODE=1` bisect it (`layout-chrome.md` § Desktop window frame has the zoom fixes).
+
+---
+
+## Sweep 2026-09-22 — session digests 2026-09-20b → 2026-09-21c (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-21c — plugin 0.1.2, the directory review's findings; author present)
+
+tsc + vitest green; the plugin was checked in the rig (Obsidian 1.13.7: settings tab, a popped-out note, a
+palette change under an open editor).
+- **Plugin `0.1.2` is PUBLISHED** (2026-09-21, the author's go): built from `solenoid@b233cee2`, the three
+  release files byte-identical to the build checked in the rig, attested (`refs/tags/0.1.2`). The directory
+  rescans each release; its next report is the check on what is left.
+- **Most of the review's warnings were one defect: the snapshot did not typecheck.** The review lints WITH
+  types, and the ten shimmed modules (plus one type-only import) did not resolve there, so everything through
+  them was `any`: about ninety "unsafe" findings and many "unnecessary assertion" ones. The export now follows
+  type-only imports, the snapshot's tsconfig lays the shims over `src/graph` with `rootDirs`, the shims carry
+  the app modules' signatures, and the snapshot's build runs `tsc --noEmit` first (the guard on a shim).
+- **The plugin was writing to Obsidian's `<html>`**, against its own requirement 3: `appTheme.ts` subscribes
+  `apply()` to the palette at module level, so a palette change wrote 63 variables, `data-theme`, a forced
+  `color-scheme` and a `theme-color` meta. `themeVars()` moved to `themeVars.ts` (pure) and `appTheme` is
+  shimmed; checked in the rig, nothing is written.
+- Two more shims for the review's Errors: `clipboard` (no `execCommand` fallback in a secure context) and
+  `mobileUa` (split out of `coarse.ts`; Obsidian's `Platform` answers). The settings tab serves 1.13's
+  `getSettingDefinitions()` and keeps `display()` for older Obsidian.
+- The review is reproducible: `eslint-plugin-obsidianmd`'s recommended config run in the exported snapshot
+  matched its counts. What stands, and why, is `specs/obsidian-plugin.md` § Publishing.
+
+### SESSION DIGEST (2026-09-21b — plugin release readiness, the vault look; author present)
+
+On `develop`, NOT pushed (the author's call). tsc + vitest green.
+- **Plugin `0.1.1` is PUBLISHED** (2026-09-21): the directory's review REQUIRES the listed repository to hold
+  the source, and recommended attestations, no extra release files, no `localStorage` and a clipboard
+  disclosure. The plugin repo now carries a snapshot (`npm run plugin:export -- "<clone>"`: 87 app files + the
+  plugin folder, its own pinned `package.json` and lock) and builds from it; the three release files are
+  attested and verify (`gh attestation verify`), byte-identical to the build here. Vite takes any 1.2.x
+  rolldown and a patch bump minifies React differently, so the export pins it. The directory reviews RELEASES,
+  so a fix to a finding needs a new version.
+- **Plugin `0.1.0` is PUBLISHED** (2026-09-21, the author's go): `bubba8587/Solenoid-Properties` release `0.1.0`,
+  built from `solenoid@635905d9`, with the author's README and screenshots. It is LISTED at
+  community.obsidian.md/plugins/solenoid-properties (Health: Excellent, Review: Pending), and the 1.4.1 release
+  notes link it. The plugin repo clone
+  is `~/projects/solenoid properties`; the release steps moved from its README to the spec's § Publishing.
+- **Plugin settings** end with one "Solenoid" row carrying the deploy and the repository as bare URLs; the Property
+  types sentence is gone (spec § settings page).
+- **The vault look** is `demo-vault/.obsidian/snippets/solenoid.css`, switched on by `appearance.json` (now a
+  fixture), with `Planning board.canvas` to show it on. What stands: dark wears the hues as ink; LIGHT is neutral or
+  the full accent, never a hue mixed toward the ink (dark yellow is brown: gold and lime text go neutral and their
+  color moves to fills, rules and 18px property badges; other hues darken with `oklch(from …)`). Tabs are node
+  headers, gold unless a base / canvas / media, and each pane's accent line takes its active tab's color. Callouts
+  and canvas groups wear the group look, a rule is a diagonal cable between two sockets, folder dots run the palette
+  in order, and nothing anywhere is a side stripe. It targets Obsidian 1.13 (`--callout-<type>`, `--bases-*`).
+  Shipping it with the plugin is the next step and needs its spec rule first (`backlog.md`).
+- **Obsidian DOM facts that cost time:** `data-property-type` sits on `.metadata-property-value`, so a row is typed
+  with `:has()`; `.metadata-container` is shifted `translateX(-4px)`; the property icon hides a 4px zero-width
+  `::before`; rows stack with the gap ABOVE and the divider right under the content; the tab title color and the
+  inactive tab's padding only yield to Obsidian's own long selectors or its `--tab-text-color-*` variables;
+  settings is a second window (a second CDP page).
+- **1.4.1 SHIPPED 2026-09-21** (tag `v1.4.1` on `907b5813`, pushed by the agent on the author's word): the
+  release carries the Windows exe, the Linux AppImage and the `.deb`. A NEW workflow file cannot be run by hand
+  until it is on the default branch, so the first Linux CI build was the push to `main` itself.
+- **CI builds Linux too:** `desktop-build.yml` (was `windows-portable.yml`)
+  has a windows job, a linux job (ubuntu-22.04, AppImage + .deb) and a release job that needs both. The Linux
+  bundles build locally and the AppImage starts and computes on a scratch profile; neither job has run in CI
+  since, and Windows has not compiled since v1.4.0. Product copy says Windows and Linux; one `DownloadLink`
+  (siteNav.tsx) names the visitor's platform. Remaining steps: `backlog.md` § Release planning.
+- **Desktop looks more saturated than the dev server on this machine, and that is color management, not the
+  app.** The monitor is a P3-gamut panel (LG UltraGear; EDID primaries red 0.686/0.309, green 0.264/0.669) and
+  colord set an EDID profile on the X root (`xprop -root _ICC_PROFILE`). Chromium reads it and maps the app's
+  sRGB hexes into the panel's gamut, so it shows true sRGB; WebKitGTK ignores it and sends the values raw, so the
+  same hexes stretch to P3 and read hotter. `chromium --force-color-profile=srgb` makes Chromium match the
+  desktop. Neither look is rare: sRGB panels and fully managed setups (an iPhone, Chromium with a profile) show
+  the muted one; unmanaged or boosted paths (WebKitGTK, Windows with no display profile, an Android phone in its
+  default Vivid / Adaptive mode, where the author also sees it) show the vivid one the palette was tuned on.
+  Whether to author the palette in `display-p3` is a design call (`backlog.md` § Canvas chrome).
+  On the dev machine the display's DEFAULT colord profile is now standard sRGB (`colormgr
+  device-make-profile-default`; the EDID profile stays listed), so `_ICC_PROFILE` is sRGB and every managed app
+  (Chrome, Obsidian) shows the vivid look the desktop build does. Undo: System Settings → Color, or make the
+  EDID profile default again.
+- **The plugin's follow-ups are closed** (author: nothing left in the backlog for it). A frame column keeps the
+  type the user PICKED (`data.json` by property then column; first guess from the YAML value's own type, never
+  its text: re-inferring made the selector a lie and a Save turned `"0012"` into 12). A popped-out note keeps its
+  editor: the popup layer follows the chip's window and the build rewrites the components' free `document` /
+  `window` to the layer's (`popupGlobals`). A Complex scalar type, the look behind a toggle from one source
+  (`look.css`), and the rig as `npm run plugin:rig`. Two backlog lines were simply WRONG when checked in real
+  Obsidian: Bases cells show the chip, and a cube level has no type selector to persist.
+- **Solenoid reads the plugin's types back as the same socket.** The Note node already read lists, frames and
+  cubes right (the author's hunch held); three things did not survive: a matrix (a text list of `"[1,2,3]"`), a
+  complex list (text) and a frame's date column (numbers). The Note node's three hand maps became lattice
+  lookups (`typeAtRank`). Left in the spec's § Gaps: a column type picked in the plugin is not read here.
+- **Rig note:** `pkill -f` with a plain pattern matches its own shell and exits 144 before the next command; write
+  the pattern as `[X]ephyr :7`. The rig scripts are still scratch-only (`backlog.md`, plugin follow-ups (5)).
+
+### SESSION DIGEST (2026-09-21 — publishing the Solenoid Properties plugin; author away)
+
+On `develop`, pushed. tsc + vitest green. The path is `specs/obsidian-plugin.md` § Publishing.
+- **Obsidian's list points at a repository, never a branch or folder**, and reads `manifest.json` from the default
+  branch's root, so the plugin publishes from `bubba8587/Solenoid-Properties` (release-only: manifest, versions,
+  README, LICENSE, a workflow). Its `source.json` pins a commit here; the workflow builds that commit and attaches
+  `main.js`, `manifest.json`, `styles.css` and `third-party-licenses.txt` to a release tagged with the bare version.
+- **The bundle is the reviewed artifact.** `perfProbe` is now shimmed (it registered two globals and logged on
+  import); the rest of the `console.log` strings left in `main.js` are chrono-node's debug branch. The plugin
+  build emits `third-party-licenses.txt` beside its files, and `test.yml` runs `npm run plugin:build`.
+- **Bundle hygiene since:** `nativeAccent` is shimmed (it carried the Tauri API into `main.js`), and `onload`
+  always sets the palette from the vault's `data.json`, because the store also reads `localStorage` and Obsidian
+  shares that across vaults. The release workflow's build-only run passes against the pin.
+- **The manifest stands as written** (author 2026-09-21): `minAppVersion` `1.9.0`, Title Case type names,
+  `isDesktopOnly` false.
+- **Left for the author:** a README rewrite with screenshots in the plugin repo, then the go to publish release
+  `0.1.0`, and the submission through community.obsidian.md (the `obsidian-releases` PR path is retired).
+
+### SESSION DIGEST (2026-09-20b — Solenoid Properties, the Obsidian plugin; author present)
+
+On `develop`, pushed. tsc + vitest green. The rule is [[C107]] obsidianPlugin and the mechanics, the type table and
+every divergence from the app are `specs/obsidian-plugin.md`; this is what is in neither.
+- **Build and try:** `npm run plugin:build` (or `plugin:dev` to watch) writes `main.js`, `styles.css` and
+  `manifest.json` into `demo-vault/.obsidian/plugins/solenoid-properties/`; reload Obsidian after a build. The test
+  note is `demo-vault/Solenoid/Property types.md`; its keys are typed in `.obsidian/types.json`.
+- **Obsidian's property-widget API is undocumented.** Read from the 1.13.7 `app.js`: a widget is
+  `{type, icon, name(), validate(value), render(el, value, ctx)}` in `app.metadataTypeManager.registeredTypeWidgets`,
+  `ctx` is `{app, key, onChange, sourcePath, blur}`, and `render` returns an object with `focus()`. On a value
+  `validate` refuses it warns and shows the inferred type (the one exception is the type-switch bullet below), it
+  skips re-rendering a focused property (the chip keeps its own state for that), and it turns an empty list into
+  null on save.
+- **What Shadow DOM cost:** a click-outside handler must read `composedPath()[0]` (the target is the host), a portal
+  aimed at `document.body` is redirected into the popup layer (`shims/reactDom.ts`, app code only: react-dom/client
+  needs the real module), and `@font-face` has to live in the document, so the fonts ride `styles.css` as data URIs.
+- **Cutting the bundle** (693 modules to about 190, `main.js` 450 KB): the shims, plus three app-side import fixes
+  that stand on their own. `useHeaderHeightVar` and the Record layout helpers (`recordLayout.ts`) moved out of files
+  that import every node class, and date formatting imports `nodes/dateSerial`, not `nodes/date`.
+- **Found on the way:** the note reader dropped a cube row whose value is a table (it read the key as a text list);
+  `readRow` now nests. A YAML boolean column infers as Number through `frameFromRecords`, so the plugin types a
+  frame from the cell text instead.
+- **Verify against REAL Obsidian, not a fake module.** The fake passed while the plugin was broken twice: the
+  settings page is a separate window (its own document, so shared constructed stylesheets adopt nowhere), and a
+  property row is built off-document and attached after `render` returns (so a "drop disconnected mounts" sweep
+  unmounted every chip but the last). The rig: `Xephyr :7`, then `/opt/Obsidian/obsidian --no-sandbox
+  --user-data-dir=<scratch> --remote-debugging-port=9333` with an `obsidian.json` naming a COPY of the vault;
+  puppeteer `connect` reaches `window.app` (`plugins.disablePlugin/enablePlugin` to reload a build,
+  `setting.openTabById`, `metadataTypeManager.setType`, a leaf's `view.metadataEditor.rendered`). The author's own
+  Obsidian is untouched. Spec § Verifying against real Obsidian.
+- **A type switch hands a widget the OLD value.** Property menu → a type over incompatible data → "Update" calls
+  `renderProperty(entry, true, true)`, the chosen widget over a value its `validate` refused; `setType` alone never
+  does. `coerceYaml` reshapes it for display and edit, and nothing is written until Save. Not verified: Bases.
+- **"Refresh All Connections does nothing in the release build" was settings, not refresh.** The two desktop apps
+  keep separate settings: the release app's origin is `tauri://localhost`, the debug app's `http://localhost:1420`
+  (`~/.local/share/com.solenoid.app/localstorage/` holds one store each). A vault folder set in one is unset in the
+  other, and an unset vault falls back to the demo vault ([[D62]] demoVaultResolution), which a BUILT app bakes in
+  as a snapshot while the dev server reads it live from disk. The Vault Folder card now says "Demo vault" when that
+  is what it reads.
+- **Author rulings this session**, all recorded in the spec: `sm` chips; a popup wears its TYPE's socket color
+  (no launching node to inherit from); a popup sizes to the note's pane, not the window; the list editor the app
+  does not have is a fine workaround; the settings page is the app's palette row with the real `SwatchGrid` and no
+  sample chips; a list or matrix wears its family's Obsidian icon. Open follow-ups: `backlog.md` § Obsidian.
 
 ## Sweep 2026-09-20 — session digests 2026-09-16 → 2026-09-18 (moved verbatim from the live window)
 
@@ -71,7 +858,7 @@ On `develop`, pushed.
   which is the refresh path from now on (it also rewrites `tools/dte.py`). The upstream PROTOCOL file is gone: the agent
   protocol is `dte-rules/CLAUDE.md`, and CLAUDE.md now routes agents to it; `dte-rules/DECISIONS.md` is a render of DTE's own tree.
 - **A8 threeLayers absorbed**: the 86 `*Enforced by:*` blocks are deleted (every named test already cited its node, D8's
-  test now does); [[C9]] labelUnenforced inverted (a MUST is cited FROM its test or labelled `*Unenforced:*`);
+  test now does); C9 labelUnenforced (retired) inverted (a MUST is cited FROM its test or labelled `*Unenforced:*`);
   `rules.test.ts` checks the citation direction and no longer pins quoted test names. `dte.cfg` declares the
   `specs` / `tests` / `agents` layers. `*Where:*` lines remain (backlog).
 - **A5 idPlusName absorbed**: every node has a camelCase `name` (17 were unnamed, four carried `NAME-n`
@@ -79,9 +866,9 @@ On `develop`, pushed.
 - **The mechanics docs ARE the spec layer** (author's rule: every system-describing doc is a node or a spec; on-ramps,
   proposals and history stay). `subsystem-invariants.md` is split into `specs/` (27 files, each serving a named node)
   and is the index now; the other mechanics docs are declared in the `specs` glob. `specs/socket-lattice.md` was the
-  pilot (12 numbered requirements, each naming its node); the rationale docs followed: the comment policy is [[C57]]
-  commentMinimalism's Consequences now, `agent-coordination.md` is [[C83]] parallelAgents (new) plus a bare claim board,
-  the divergences doc is `../specs/formulajs-divergences.md` under [[D28]] tripwireVendorDrift. `out-of-scope.md` waits on the author placing
+  pilot (12 numbered requirements, each naming its node); the rationale docs followed: the comment policy is C57 (retired)
+  commentMinimalism's Consequences now, `agent-coordination.md` is C83 parallelAgents (retired) (new) plus a bare claim board,
+  the divergences doc is `../specs/formulajs-divergences.md` under D28 tripwireVendorDrift (retired). `out-of-scope.md` waits on the author placing
   `inbox/scope-boundary`; its categories are that node's children; `sockets.ts` / `trueAnyAdopt.ts` cite their nodes and their WHY/HOW comments moved
   into the node / the spec; `fcReconcile.ts`, `conduitTrace.ts`, `unitLattice.ts` cite. The pattern for the other
   ring-C roots is in the backlog.
@@ -89,13 +876,13 @@ On `develop`, pushed.
   matters: nothing in the package tells an adopter that a new A-ring node means a migration sweep; item 13: a
   Decision must state a call, not describe a feature, after the author caught three of eight).
 - **The cite-and-prune sweep, second half of the day.** Sixteen leaves lifted out of specs and docs that had only a
-  nearest-ancestor governor: the layout cluster under B10 ([[C84]] tidyTranslatesOnly, [[C85]] groupPushDeterministic,
-  [[C86]] membershipByGesture, [[C87]] groupsAreSubflows, [[C88]] collapseIsVisual, [[C89]] standoffsSolveLast,
-  [[C90]] drawnCablesAnnotate, [[C91]] cableWalkRouter, with [[D63]] lockedGroupIsObstacle and [[D64]] oneSizeRead),
+  nearest-ancestor governor: the layout cluster under B10 (C84 tidyTranslatesOnly (retired), [[C85]] groupPushDeterministic,
+  [[C86]] membershipByGesture, C87 groupsAreSubflows (retired), [[C88]] collapseIsVisual, [[C89]] standoffsSolveLast,
+  C90 drawnCablesAnnotate (retired), C91 cableWalkRouter (retired), with D63 lockedGroupIsObstacle (retired) and D64 oneSizeRead (retired)),
   the input model ([[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; C42 was the wrong governor), and the
-  UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers ([[C94]]
-  formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, [[C97]] rechartsLazyChunk,
-  [[C98]] paletteMirrorsMenubar, [[C99]] chromeEnvelopeVars, [[C100]] chartIsAValue, [[C101]] onePatchPath, [[C102]] gridFillThenForecast; the last two
+  UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers (C94 formatFamilyGates (retired)
+  formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, C97 rechartsLazyChunk (retired),
+  [[C98]] paletteMirrorsMenubar, C99 chromeEnvelopeVars (retired), [[C100]] chartIsAValue, [[C101]] onePatchPath, [[C102]] gridFillThenForecast; the last two
   replaced a plan-doc 'candidate' and a core-only A5 citation). D64 / C95 / C97 are enforced by
   source sweeps now; the four sanctioned size reads carry their reason in place.
 - **`.dtecoverage` makes 100% coverage reachable** (author's ask): a store of artifacts that need no citation,
@@ -106,10 +893,10 @@ On `develop`, pushed.
   leaf on the way: [[C103]] untrustedContentSeams (CSV escaping, SVG sanitizing, external links at one seam each).
 - **Five agents made the thin citations specific** (206 files with only class-wide citations: components, node
   ops/classes, packages, core modules; disjoint lists, no agent ran tests, one full run at the end). Net ~470 comment
-  lines gone, ~150 turned into pointers at a leaf or spec. Their candidate lists yielded ten leaves: [[C104]]
-  foreignDocNetworkGate (the stale "C2 gate" comments), [[C105]] apiKeysStayLocal, [[C106]] noNativeDialogs, [[D65]]
-  serialsNeverDate, [[D66]] daysMinutesModes, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed, [[D69]]
-  convertBadPickIsNA, [[D70]] nullNotEnoughData, [[D71]] zoomLatticeDiscreteOnly; the rest were spec content or
+  lines gone, ~150 turned into pointers at a leaf or spec. Their candidate lists yielded ten leaves: [[C103]]
+  foreignDocNetworkGate (the stale "C2 gate" comments), [[C105]] apiKeysStayLocal, [[C106]] noNativeDialogs, D65 serialsNeverDate (retired)
+  serialsNeverDate, [[D66]] daysMinutesModes, D67 grammarOnlyAtBorder (retired), [[D68]] importUnsupportedIsNamed, D69 convertBadPickIsNA (retired)
+  convertBadPickIsNA, [[D70]] nullNotEnoughData, D71 zoomLatticeDiscreteOnly (retired); the rest were spec content or
   consequences (C70, C100). Six relapses they found are a backlog item for the author; the Lambda tooltip that
   contradicted [[C50]] is fixed.
 - **The B ring grew its two missing parents** (author's ask): [[B16]] oneFormulaSurface under A5 (the parity families:
@@ -139,14 +926,14 @@ On `develop`, nothing pushed.
   B3's demotion to C needs C2/C3 pushed to D first (13 citing files); not done, the owner decides. The inline-tag regex
   had carried a raw backspace byte since the flat-tag commit (inline tags were never detected); fixed from a byte-level
   script. `--done` now removes a whole paragraph that opens with a tag, but stops at a list or heading line.
-- **DTE citations are wikilinks** ([[C81]] wikilinkCitations, created this session): every `dte:ID` token in code,
+- **DTE citations are wikilinks** (C81 wikilinkCitations (retired), created this session): every `dte:ID` token in code,
   tests and docs is `[[ID]]`, node link fields are quoted wikilinks, and node prose links its in-tree IDs, so the
   repo opened as an Obsidian vault shows the tree's lineage and backlinks. The vendored `tools/dte.py` reads both
   forms and writes per the new `links` key in `dte.cfg`; the patch passes DTE's own 74 tests untouched and is
   logged in DTE's FEEDBACK.md beside a note on how DTE sits against ADR/MADR, RFC 2119 and the spec-kit tools.
   Node titles are now double-quoted (the `name: summary` colon made 157 frontmatters invalid YAML, so Obsidian
   showed every property as invalid); the tool quotes titles on write.
-- **Vault outbox** ([[C82]] vaultOutbox, created this session): `python tools/dte.py outbox` lists what the author
+- **Vault outbox** (C82 vaultOutbox (retired), created this session): `python tools/dte.py outbox` lists what the author
   changed in Obsidian (notes in `decisions/outbox/`, `ratify`/`retire`/`contest`/`ask` tags (flat, the author's ruling), a typed `ratified_by`,
   never bare diffs) with the command each needs; `--done` clears one; validate prints the count; CLAUDE.md
   makes it the session-start step. Nodes carry `name` (the camelCase handle, split out of the title at the author's request) and `aliases` from it, `null`/block-list rewrites parse,
@@ -242,14 +1029,14 @@ off the release, then ordered "ingest DTE rules and follow them": every change b
 its node, the two nodes acted under got their one contest (D42 perInputUnitBlind, E11
 controlDrivenRetype: keep), and the new rule landed as a node before its code (C6).
 
-- **Input Switch pending ghosts are drawn** ([[E11]]): `PendingCableLayer` (a ViewportPortal
+- **Input Switch pending ghosts are drawn** (C113 controlDrivenRetype (retired)): `PendingCableLayer` (a ViewportPortal
   layer beside the drawn cables) draws each `cablePendingStore` entry dashed in the Option A
   stroke from RF's measured handle bounds; no edge exists to carry it.
 - **Tidy reserves a plain card's MEASURED box**: the ELK proxy read `node.width/height` for an
   ordinary card (`tidyArrange.ts`), so a stale constructor height or a collapsed card
   mis-spaced. History checked: the 2026-07-16 measuredBox unification simply never reached that
   branch. Regression in `tidyArrangeGroups.test.ts` (fails without the fix).
-- **Triangle Solver is unit-aware** ([[D42]]): an angle-dimensioned cell converts base radians
+- **Triangle Solver is unit-aware** (D42 perInputUnitBlind (retired)): an angle-dimensioned cell converts base radians
   to degrees whatever its display unit; a side takes its display magnitude as the strip did.
   `geometry.test.ts`.
 - **TaskNotes chip** reports `cols` beside `rows` on every provider (`reportOk`), so `6×0` is gone.

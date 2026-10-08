@@ -3,14 +3,9 @@ import { ClassicPreset } from "rete";
 import { AdoptiveSocket, trueAnySocket } from "../sockets";
 import { solError } from "../errorValue";
 
-// A stand-in for a saved node whose `type` isn't registered in this build: wiring survives
-// on synthesized `any` sockets and it re-saves as the ORIGINAL type, so the round trip is
-// lossless. NOT in the Add-menu catalog — only the loader constructs one.
 export class PlaceholderNode extends ClassicPreset.Node {
   label: string;
-  /** The unregistered class name this stands in for. */
   readonly missingType: string;
-  /** The original `init` / inline literals, kept verbatim for a lossless re-save. */
   readonly savedInit: Record<string, unknown>;
   readonly savedLiterals?: Record<string, number>;
   readonly savedStringLiterals?: Record<string, string>;
@@ -47,4 +42,20 @@ export class PlaceholderNode extends ClassicPreset.Node {
     for (const k of Object.keys(this.outputs)) out[k] = err;
     return out;
   }
+}
+
+export function placeholderFor(
+  sn: { type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string> },
+  sockets?: { inputs: string[]; outputs: string[] },
+): PlaceholderNode {
+  const label = sn.init?.label;
+  return new PlaceholderNode({
+    missingType: sn.type,
+    savedInit: { ...sn.init },
+    savedLiterals: sn.literals,
+    savedStringLiterals: sn.stringLiterals,
+    inputKeys: sockets?.inputs,
+    outputKeys: sockets?.outputs,
+    label: typeof label === "string" ? label : sn.type,
+  });
 }

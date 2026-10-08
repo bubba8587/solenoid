@@ -1,17 +1,12 @@
-// [[C69]], [[C70]], [[C71]]
-// A plan file → the tasks CUBE the Schedule node reads. MSPDI (Project XML) nests by
-// outline level; a Smartsheet / Project CSV carries the `3FS+2d` predecessor grammar,
-// which is resolved to task names HERE, at the border, and never lives in a cell
-// (25-gantt.md § 6.1). Pure: no I/O, no rete.
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing
+// A plan file into the tasks cube the Schedule node reads; predecessor grammar (`3FS+2d`) resolves to task names
+// here, at the border, and never lives in a cell (tree/specs/computation/schedule-and-gantt.md). Pure: no I/O, no rete.
 
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue } from "./frame";
-import { readMspdi, readGan, isGanText, readXer, isXerText, parsePredecessorText, predecessorText, type PlanTask, type PlanDependency, type CalendarSpec } from "@solenoid/schedule-engine";
+import { readMspdi, readGan, isGanText, readXer, isXerText, parsePredecessorText, type PlanTask, type PlanDependency, type CalendarSpec } from "@solenoid/schedule-engine";
 
 export interface ImportedPlan {
   cube: CubeValue;
-  /** The flat view of the same plan, for the frame socket. */
-  frame: FrameValue;
-  /** The project start the file carries (MSPDI), else null. */
   start: number | null;
   calendar: CalendarSpec | null;
   title: string;
@@ -22,31 +17,34 @@ export interface ImportedPlan {
 const PRED_HEADERS = ["predecessors", "predecessor", "depends on", "after"];
 const GRAMMAR_TOKEN = /^\s*\d+\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+(\.\d+)?\s*(e?d|w|wk|h)?)?\s*$/i;
 
-/** A Predecessors cell is FS/0 names as a list cell; anything typed or lagged is a
- *  nested Task · Type · Lag table (the cube ruling: never a grammar string in a cell). */
-function predecessorCell(deps: PlanDependency[]): CubeCell {
-  if (deps.length === 0) return [];
-  if (deps.every((d) => d.type === "FS" && d.lag === 0 && !d.elapsed)) return deps.map((d) => d.task);
+/** Plain FS/0 dependencies are a list of names; anything typed or lagged is a nested Task · Type · Lag table. */
+const plainLink = (d: PlanDependency) => d.type === "FS" && d.lag === 0 && !d.elapsed;
+
+export function predecessorCell(deps: PlanDependency[], typed = !deps.every(plainLink)): CubeCell {
+  if (!typed) return deps.map((d) => d.task);
   return cubeFromColumns([
-    { name: "Task", cells: deps.map((d) => d.task), type: "string" },
+    { name: "Predecessor", cells: deps.map((d) => d.task), type: "string" },
     { name: "Type", cells: deps.map((d) => d.type), type: "string" },
     { name: "Lag", cells: deps.map((d) => d.lag), type: "number" },
     ...(deps.some((d) => d.elapsed) ? [{ name: "Elapsed", cells: deps.map((d) => d.elapsed === true), type: "logical" as const }] : []),
   ]);
 }
 
-/** The engine's task tree as a nested cube: Task · Duration · Predecessors [· Start ·
- *  Finish · Deadline · Manual · Complete] · Tasks (the children, when any row has some).
- *  Optional columns appear only when some row uses them. */
+/** A Predecessors column is one kind: name lists while every link is a plain FS, else a table in every row, so Unnest
+ *  reads it whole. A null row (an inactive task) stays null. */
+export function predecessorColumn(rows: ReadonlyArray<PlanDependency[] | null>): CubeCell[] {
+  const typed = rows.some((deps) => deps != null && !deps.every(plainLink));
+  return rows.map((deps) => (deps == null ? null : predecessorCell(deps, typed)));
+}
+
+/** Optional columns appear only when some row uses them. */
 export function planToCube(tasks: PlanTask[]): CubeValue {
   const has = (f: (t: PlanTask) => boolean) => tasks.some(f);
   const cols: Array<{ name: string; cells: CubeCell[]; type?: "string" | "number" | "date" | "logical" }> = [
     { name: "Task", cells: tasks.map((t) => t.name), type: "string" },
     { name: "Duration", cells: tasks.map((t) => (t.children?.length ? null : t.duration)), type: "number" },
-    { name: "Predecessors", cells: tasks.map((t) => predecessorCell(t.predecessors)) },
+    { name: "Predecessors", cells: predecessorColumn(tasks.map((t) => t.predecessors)) },
   ];
-  // Start / Finish are the floor / ceiling, and the pinned dates when Manual is TRUE (the
-  // one rule: the same two columns, read differently under the flag).
   if (has((t) => t.start != null)) cols.push({ name: "Start", cells: tasks.map((t) => t.start ?? null), type: "date" });
   if (has((t) => t.finish != null)) cols.push({ name: "Finish", cells: tasks.map((t) => t.finish ?? null), type: "date" });
   if (has((t) => t.deadline != null)) cols.push({ name: "Deadline", cells: tasks.map((t) => t.deadline ?? null), type: "date" });
@@ -63,23 +61,20 @@ export function planToCube(tasks: PlanTask[]): CubeValue {
   return cubeFromColumns(cols);
 }
 
-/** True when the text is an MSPDI document (a `<Project` root). */
 export function isMspdiText(text: string): boolean {
   return /^\s*(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*<Project[\s>]/.test(text);
 }
 
 export function mspdiToPlan(text: string): ImportedPlan {
   const plan = readMspdi(text);
-  return { cube: planToCube(plan.tasks), frame: planToFrame(plan.tasks), start: plan.start || null, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
+  return { cube: planToCube(plan.tasks), start: plan.start || null, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
 }
 
-/** Any plan file by its text: Project XML, GanttProject `.gan`, or Primavera XER. Null when
- *  the text is none of them. */
 export function planFileToPlan(text: string): ImportedPlan | null {
   if (isMspdiText(text)) return mspdiToPlan(text);
   if (isGanText(text) || isXerText(text)) {
     const plan = isXerText(text) ? readXer(text) : readGan(text);
-    return { cube: planToCube(plan.tasks), frame: planToFrame(plan.tasks), start: plan.start, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
+    return { cube: planToCube(plan.tasks), start: plan.start, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
   }
   return null;
 }
@@ -100,30 +95,10 @@ export function csvPlanToCube(f: FrameValue): CubeValue | null {
   const names = taskCol.values.map((v) => (v == null ? "" : String(v)));
   const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
   const cols: Array<{ name: string; cells: CubeCell[]; type?: "string" | "number" | "date" | "logical" }> = f.columns.map((c) => {
-    if (c === pred) return { name: "Predecessors", cells: cells.map((s) => predecessorCell(parsePredecessorText(s, names).deps)) };
+    if (c === pred) return { name: "Predecessors", cells: predecessorColumn(cells.map((s) => parsePredecessorText(s, names).deps)) };
     return { name: c.name, cells: [...c.values], type: c.type };
   });
-  // Ragged safety: every column the same length.
   for (const c of cols) while (c.cells.length < rows) c.cells.push(null);
   return cubeFromColumns(cols);
 }
 
-/** The flat frame beside the plan cube: nesting dropped, dependencies as grid text. */
-export function planToFrame(tasks: PlanTask[]): FrameValue {
-  const flat: Array<{ t: PlanTask; level: number }> = [];
-  const walk = (list: PlanTask[], level: number) => { for (const t of list) { flat.push({ t, level }); if (t.children?.length) walk(t.children, level + 1); } };
-  walk(tasks, 0);
-  return {
-    __frame: true,
-    columns: [
-      { name: "Task", type: "string", values: flat.map((x) => x.t.name) },
-      { name: "Level", type: "number", values: flat.map((x) => x.level) },
-      { name: "Duration", type: "number", values: flat.map((x) => (x.t.children?.length ? null : x.t.duration)) },
-      { name: "Predecessors", type: "string", values: flat.map((x) => predecessorText(x.t.predecessors)) },
-      { name: "Start", type: "date", values: flat.map((x) => x.t.start ?? null) },
-      { name: "Finish", type: "date", values: flat.map((x) => x.t.finish ?? null) },
-      { name: "Deadline", type: "date", values: flat.map((x) => x.t.deadline ?? null) },
-      { name: "Complete", type: "number", values: flat.map((x) => x.t.complete ?? 0) },
-    ],
-  };
-}

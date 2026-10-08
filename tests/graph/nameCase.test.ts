@@ -1,4 +1,4 @@
-// [[C19]], [[D23]], [[E12]]
+// [[B16]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { formulaFunctionNames } from "../../src/graph/excelFormula";
@@ -8,7 +8,7 @@ import { NODE_OPS } from "../../src/graph/nodeOps";
 import { despace } from "../../src/graph/formulaNodeParity";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
-// [[D23]] capsClaimsFunction: an ALL-CAPS (incl. dotted) leaf/op label claims a formula-callable
+// [[B16]] oneFormulaSurface: an ALL-CAPS (incl. dotted) leaf/op label claims a formula-callable
 // name; anything else is Title Case. The label is a card title ([[D22]] oneNamePerCard), so the case IS the
 // signal — an all-caps name a user can't call, or a Title-Case name that shadows a real Excel
 // function, both misreport what the node does.
@@ -21,14 +21,14 @@ const TITLECASE_EXCEL_ALLOW = new Set(["CONVERT"]);
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
 const isPair = (e: CatalogEntry): e is CatalogPair => e.type === "pair";
 // One all-caps identifier token (a name a user could type): letters/digits/dots, no lowercase.
-// Tested on ORIGINAL casing — "NumberInput" (from "Number Input") is Title Case, not all-caps.
+// Tested on ORIGINAL casing — "ValueInput" (from "Value Input") is Title Case, not all-caps.
 // (despace() UPPERCASES, so it can't be used for the case test — strip spaces case-preserving.)
 const isAllCapsTok = (s: string) => /^[A-Z][A-Z0-9.]*$/.test(s);
 const strip = (s: string) => s.replace(/\s+/g, "");
 // An "X / Y" (or "X, Y") label enumerates several names — split and check each (case preserved).
 const tokens = (label: string) => label.split(/[/,]/).map((t) => strip(t)).filter(Boolean);
 
-describe("[[D23]] capsClaimsFunction — ALL CAPS ⟺ callable function name", () => {
+describe("[[B16]] oneFormulaSurface — ALL CAPS ⟺ callable function name", () => {
   initPackFormulas();
   // Excel + Solenoid dispatch, plus the refused frame verbs: a FRAME_SURFACE_NAMES key IS a real
   // Excel function, and typing it redirects to the node that carries the name (GROUPBY, PIVOTBY).

@@ -1,4 +1,4 @@
-// [[C89]] standoffsSolveLast: the pure solver, the last word after every layout pass.
+// [[C89]] standoffsSolveLast
 import { Standoff, Box, anchorPoint, ANCHOR_DIR } from "./standoffs";
 
 export interface Disp {
@@ -15,7 +15,6 @@ export function solveStandoffs(
   pinned: Set<string> = new Set(),
   opts: { forceLock?: boolean } = {},
 ): Map<string, Disp> {
-  // forceLock makes every standoff rigid for THIS solve without mutating saved state.
   const forceLock = opts.forceLock === true;
   const disp = new Map<string, Disp>();
   if (standoffs.length === 0) return disp;
@@ -80,8 +79,13 @@ export function solveStandoffs(
     if (worst <= EPSILON) break;
   }
 
+  // Land each moved box on a whole pixel. The solve stops within EPSILON, so an unrounded result leaves a fraction,
+  // and a layout that preserves offsets (a Tidy's cluster block) carried it forward and grew by it on every pass.
   for (const [id, d] of [...disp]) {
-    if (Math.abs(d.dx) < EPSILON && Math.abs(d.dy) < EPSILON) disp.delete(id);
+    if (Math.abs(d.dx) < EPSILON && Math.abs(d.dy) < EPSILON) { disp.delete(id); continue; }
+    const b = boxes.get(id)!;
+    d.dx = Math.round(b.x + d.dx) - b.x;
+    d.dy = Math.round(b.y + d.dy) - b.y;
   }
   return disp;
 }

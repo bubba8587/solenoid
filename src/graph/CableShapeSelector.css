@@ -1,4 +1,3 @@
-/* Embedded inline in the TopBar — no panel chrome of its own. */
 .solenoid-toolbar {
   display: flex;
   align-items: center;
@@ -32,15 +31,12 @@
   padding: 4px 7px;
   background: transparent;
   border: none;
-  /* Match the icon buttons (.solenoid-nav__btn): full --text at rest. */
   color: var(--text);
   font-family: inherit;
   font-size: 12px;
   cursor: pointer;
   border-radius: 999px;
   transition: background-color 80ms ease, color 80ms ease;
-  /* Fill color for the open input-socket ring — matches the segment bg so the
-     ring reads hollow against whatever is behind it. */
   --icon-bg: var(--btn-bg);
 }
 
@@ -50,12 +46,9 @@
   height: 15px;
 }
 
-/* Guard pure hover so it can't stick after a tap on touch (see NavMenu.css). The
-   --active state below stays unconditional, so the selected segment is always shown
-   selected regardless of a lingering touch-hover. */
+/* Hover only where a pointer can hover, so it can't stick after a tap; the --active state below stays unconditional. */
 @media (hover: hover) {
   .solenoid-toolbar__segment:hover {
-    /* Match the icon buttons: accent on hover. */
     color: var(--accent);
     background: var(--btn-hover);
     --icon-bg: var(--btn-hover);
@@ -69,7 +62,6 @@
   --icon-bg: var(--accent);
 }
 
-/* Animated-mode toggle — a round pill matching the segmented control's chrome. */
 .solenoid-toolbar__flow {
   display: flex;
   align-items: center;
@@ -102,9 +94,6 @@
   height: 13px;
 }
 
-/* When the toggle is on, the dash overlay flows left → right. A negative
-   dashoffset moves the dashes toward the line's end (it's drawn x:2 → 26), and
-   the offset distance equals one dash period so the loop is seamless. */
 .solenoid-toolbar__flow--active .solenoid-toolbar__flow-beads {
   animation: solenoid-flow-bead 1.1s linear infinite;
 }

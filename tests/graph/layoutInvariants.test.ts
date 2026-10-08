@@ -1,6 +1,6 @@
-// [[C85]] groupPushDeterministic, [[C52]], [[C89]] standoffsSolveLast
+// [[C85]] groupPushDeterministic, [[C52]], [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
-import { separateOverlaps, computeExpandPush, type PushBox, type ExpandSpec, type Disp } from "../../src/graph/groupPushCore";
+import { separateOverlaps, separateAll, computeExpandPush, type PushBox, type ExpandSpec, type Disp } from "../../src/graph/groupPushCore";
 import { distributeDeltas, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";
 import { solveStandoffs } from "../../src/graph/standoffSolver";
 import { anchorPoint, ANCHOR_DIR, STANDOFF_MIN, type Standoff, type StandoffAnchor, type Box } from "../../src/graph/standoffs";
@@ -11,9 +11,9 @@ import { anchorPoint, ANCHOR_DIR, STANDOFF_MIN, type Standoff, type StandoffAnch
 // suite makes every failure reproducible: re-run and the same fixtures regenerate.
 //
 // What each op actually guarantees (do NOT over-assert):
-//   • separateOverlaps  — the HARD no-overlap backstop: after it, no non-baseline
-//     pair overlaps (this is the guarantee the group-expand pipeline leans on;
-//     computeExpandPush alone is heuristic and CAN leave overlaps by design).
+//   • separateOverlaps / separateAll — the HARD no-overlap backstop: after it no pair
+//     overlaps bar two pinned (fixed) ones. Every layout op ends with separateAll;
+//     computeExpandPush alone is heuristic and CAN leave overlaps by design.
 //   • distributeDeltas  — ≥ DISTRIBUTE_GAP between neighbors ALONG the distributed
 //     axis (overlap-free on that axis; the cross axis is intentionally untouched).
 //   • alignDeltas       — aligns the chosen edge; it is DELIBERATELY not overlap-free
@@ -54,16 +54,6 @@ function firstOverlap(boxes: Rect[], baseline: Set<string> = new Set()): string 
   }
   return null;
 }
-function overlappingPairs(boxes: Rect[]): Set<string> {
-  const s = new Set<string>();
-  for (let i = 0; i < boxes.length; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
-      if (overlaps(boxes[i], boxes[j])) s.add(pairKey(boxes[i].id, boxes[j].id));
-    }
-  }
-  return s;
-}
-
 function randBoxes(rng: () => number, n: number, spread = 600): PushBox[] {
   const boxes: PushBox[] = [];
   for (let i = 0; i < n; i++) {
@@ -73,13 +63,12 @@ function randBoxes(rng: () => number, n: number, spread = 600): PushBox[] {
 }
 
 describe("separateOverlaps — the hard no-overlap backstop (randomized)", () => {
-  it("clears every non-baseline overlap across 300 seeded fixtures", () => {
+  it("clears every overlap across 300 seeded fixtures", () => {
     const rng = mulberry32(0x0A11);
     for (let iter = 0; iter < 300; iter++) {
       const boxes = randBoxes(rng, ri(rng, 3, 10));
       const disp = separateOverlaps(boxes);
       const moved = boxes.map((b) => applyDisp(b, disp));
-      // The guarantee: no two boxes overlap after (no baseline exemptions here).
       expect(firstOverlap(moved)).toBeNull();
       // Monotonic: it only ever shifts down/right (preserves the anchor corner).
       for (const [, d] of disp) {
@@ -88,17 +77,53 @@ describe("separateOverlaps — the hard no-overlap backstop (randomized)", () =>
       }
     }
   });
+});
 
-  it("leaves baseline (pre-existing user) overlaps alone but clears the rest", () => {
-    const rng = mulberry32(0x0B22);
-    for (let iter = 0; iter < 200; iter++) {
-      const boxes = randBoxes(rng, ri(rng, 3, 9), 400); // denser → more pre-overlaps
-      const baseline = overlappingPairs(boxes);
-      const disp = separateOverlaps(boxes, baseline);
+describe("separateAll — every op's final no-overlap pass (randomized)", () => {
+  it("leaves no overlap bar fixed pairs, never moves a fixed box, and keeps clusters rigid", () => {
+    const rng = mulberry32(0x5A11);
+    for (let iter = 0; iter < 300; iter++) {
+      const boxes = randBoxes(rng, ri(rng, 3, 12), 450);
+      const ids = boxes.map((b) => b.id);
+      const fixed = new Set(ids.filter(() => rng() < 0.15));
+      const prefer = new Set(ids.filter((id) => !fixed.has(id) && rng() < 0.3));
+      const pool = ids.filter(() => rng() < 0.4);
+      const clusters = pool.length >= 2 ? [pool.slice(0, 2), pool.slice(2)] : [];
+      const disp = separateAll(boxes, { clusters, fixed, prefer });
       const moved = boxes.map((b) => applyDisp(b, disp));
-      // Every NON-baseline pair must be separated; baseline pairs are exempt.
-      expect(firstOverlap(moved, baseline)).toBeNull();
+      const unit = new Map(ids.map((id) => [id, id]));
+      for (const cl of clusters) if (cl.length >= 2) for (const id of cl) unit.set(id, cl[0]);
+      const fixedUnits = new Set([...fixed].map((id) => unit.get(id)!));
+      const fixedPairs = new Set<string>();
+      for (const a of ids) for (const b of ids) {
+        const ua = unit.get(a)!, ub = unit.get(b)!;
+        if (a !== b && (ua === ub || (fixedUnits.has(ua) && fixedUnits.has(ub)))) fixedPairs.add(pairKey(a, b));
+      }
+      expect(firstOverlap(moved, fixedPairs)).toBeNull();
+      for (const id of ids) if (fixedUnits.has(unit.get(id)!)) expect(disp.has(id)).toBe(false);
+      for (const cl of clusters) {
+        if (cl.length < 2) continue;
+        const d0 = disp.get(cl[0]) ?? { dx: 0, dy: 0 };
+        for (const id of cl) expect(disp.get(id) ?? { dx: 0, dy: 0 }).toEqual(d0);
+      }
     }
+  });
+
+  it("clears a dense 300-box pile completely", () => {
+    const rng = mulberry32(0x7E57);
+    const boxes = randBoxes(rng, 300, 3000);
+    const moved = boxes.map((b) => applyDisp(b, separateAll(boxes)));
+    expect(firstOverlap(moved)).toBeNull();
+  });
+
+  it("a preferred box holds still when its partner can yield", () => {
+    const boxes: PushBox[] = [
+      { id: "placed", x: 200, y: 200, w: 300, h: 200 },
+      { id: "neighbor", x: 100, y: 100, w: 180, h: 150 },
+    ];
+    const disp = separateAll(boxes, { prefer: new Set(["placed"]) });
+    expect(disp.has("placed")).toBe(false);
+    expect(disp.has("neighbor")).toBe(true);
   });
 });
 

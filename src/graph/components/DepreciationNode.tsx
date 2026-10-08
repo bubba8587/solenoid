@@ -1,14 +1,14 @@
-// [[D10]] onePrunePath
 import type { DepreciationNode as DepreciationNodeType, DepreciationOp } from "../rete-nodes";
 import { DEPRECIATION_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 
 const OPS = (Object.keys(DEPRECIATION_OP_META) as DepreciationOp[]).map((op) => ({
   value: op,
   label: DEPRECIATION_OP_META[op].label,
+  title: DEPRECIATION_OP_META[op].description,
 }));
 
 export function DepreciationComponent({ data, emit }: NodeProps<DepreciationNodeType>) {
@@ -19,7 +19,7 @@ export function DepreciationComponent({ data, emit }: NodeProps<DepreciationNode
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     setOpField(next);
   }
 

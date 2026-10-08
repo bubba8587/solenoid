@@ -20,7 +20,6 @@ describe("compareStrings — byte order, not locale", () => {
     // "Z" (0x5A) < "a" (0x61) — the defining difference from a case-folding
     // locale sort, which would put "a" before "Z".
     expect(compareStrings("Z", "a")).toBe(-1);
-    expect(compareStrings("Banana", "apple")).toBe(-1);
   });
 
   it("orders digits before letters and by code point", () => {

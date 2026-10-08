@@ -1,0 +1,85 @@
+{
+  "label": "sets",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Sets & Membership\n\n- Is In\n- Tally\n- Count Distinct",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "a",
+      "type": "ListInputNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "Invited",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2",
+          "v3"
+        ],
+        "dataType": "string"
+      },
+      "stringLiterals": {
+        "v0": "Ada",
+        "v1": "Grace",
+        "v2": "Alan",
+        "v3": "Edsger"
+      }
+    },
+    {
+      "id": "b",
+      "type": "ListInputNode",
+      "x": 380,
+      "y": 320,
+      "init": {
+        "label": "Replied",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2",
+          "v3"
+        ],
+        "dataType": "string"
+      },
+      "stringLiterals": {
+        "v0": "Grace",
+        "v1": "Edsger",
+        "v2": "Ada",
+        "v3": "Grace"
+      }
+    },
+    {
+      "id": "isin",
+      "type": "IsInNode",
+      "x": 660,
+      "y": 0,
+      "init": {
+        "label": "Is In"
+      }
+    },
+    {
+      "id": "tally",
+      "type": "TallyNode",
+      "x": 660,
+      "y": 320,
+      "init": {
+        "label": "Tally"
+      }
+    }
+  ],
+  "cables": [
+    "a.list -> isin.a",
+    "b.list -> isin.b",
+    "b.list -> tally.list"
+  ]
+}

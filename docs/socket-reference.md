@@ -1,4 +1,4 @@
-<!-- [[C10]] socketLattice, [[D14]] derivedSocketTypes -->
+<!-- [[C10]] socketLattice -->
 # Socket reference
 
 Every socket variant in Solenoid, in plain English: what it carries, what it looks
@@ -6,7 +6,7 @@ like, what may connect to it, what is blocked, and what happens to a value the
 moment it arrives.
 
 There are **31 socket variants**, the family × rank product of [[C10]] socketLattice with the
-wildcard rungs and the structural types beside it; a new one is a derived edit ([[D14]]
+wildcard rungs and the structural types beside it; a new one is a derived edit (`../tree/specs/values/socket-lattice.md` § New socket types are derived
 derivedSocketTypes). This document has one section for each. It
 describes only what the system **does** and what it **blocks** — a rule that is
 absent is simply not listed.
@@ -870,8 +870,7 @@ this rung exists. There is no element conversion, because the family is unknown.
 rank-≤2 wildcard (anydataWildcard), added by matricesInFormulas so a formula variable can take a matrix.
 What `anycombo` is to rank 1, this is to rank 2. Frames and cubes stay out: the
 matrices-only endpoint is the decision, permanently.
-**Dot:** the anycombo split square with a small rank-2 cross in its lower half
-(author call 2026-07-29 — the old full-square cross read as noise).
+**Dot:** hollow gray square, outline only (`SocketComponent.tsx`, `hicSocketGlyph.ts` `hollowSquare`).
 **Ports:** Expression's formula variables (the matricesInFormulas lift). The result output is
 NOT this type — it keeps its `resultAs` family and reconciles its RANK to the
 computed value (combo rung for a scalar/list result, the family's matrix rung
@@ -1114,7 +1113,8 @@ container input, projected per the container's kind — three cases:
 - A **homogeneous container** (list/combo/matrix) projects to that family's
   **combo** rung, because whether INDEX returns one element or a whole slice
   depends on runtime arguments. Feeding INDEX a `datelist` gives a `datecombo`
-  output.
+  output. A matrix with a wired position projects to `trueany` instead, since
+  a wired list of positions can pick a whole table.
 - A **frame** consults the projection CONTEXT (the frame's static shape and
   which ports are wired), not just the socket type: a column literal that
   resolves against the static shape projects the COLUMN's family combo (`numlist`
@@ -1285,7 +1285,7 @@ When the cause is a type mismatch, there are three ways forward:
   `logical` ↔ `number`, which connects directly at every rank.
 - **Wrong direction on the rank ladder** (a list into a scalar, a matrix into a
   list, a frame into a matrix): the value is wider than the port. Reshape
-  explicitly — Get Column, TOCOL, INDEX — rather than expecting the socket to
+  explicitly — Get Column, TOROW, INDEX — rather than expecting the socket to
   narrow. The one narrowing that connects on its own is a **combo** into its own
   family's scalar.
 - **A container into something narrower** (a `cube` into a `frame`, a `frame` into

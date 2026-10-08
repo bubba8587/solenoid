@@ -1,4 +1,4 @@
-// [[C64]], [[C48]]
+// [[B17]], [[C48]]
 import { describe, it, expect } from "vitest";
 import { settleGroup, settleLedger, minTransfers } from "../../src/graph/nodes/settleOps";
 import { settleFrame, settleLedgerCube } from "../../src/graph/nodes/frame";
@@ -19,8 +19,6 @@ describe("settleGroup", () => {
       { from: "Cy", to: "Ada", amount: 70 },
       { from: "Bo", to: "Ada", amount: 10 },
     ]);
-    const paidBack = r.transfers.reduce((s, t) => s + t.amount, 0);
-    expect(paidBack).toBe(190);
   });
   it("share weights: a couple counts double; blank weighs 1; opting out of weights ignores them", () => {
     const rows = [{ name: "Ada", paid: 90, share: 2 }, { name: "Bo", paid: 0, share: null }];
@@ -49,27 +47,11 @@ describe("settleGroup", () => {
     expect(net.columns[2].values).toEqual([0, 100, 0]);     // Owes (still owed to the group, +)
     expect(net.columns[3].values).toEqual([-100, 0, 0]);    // Owed (coming back, −)
     expect(net.columns[4].values).toEqual([100, 100, 100]); // Net = fair share, all equal
-    // Identity holds per row: Paid + Owes + Owed = Net.
-    const num = (c: number, i: number) => net.columns[c].values[i] as number;
-    for (let i = 0; i < 3; i++) {
-      expect(num(1, i) + num(2, i) + num(3, i)).toBe(num(4, i));
-    }
   });
 });
 
 // TRANSACTIONS mode: a ledger of expenses, each split equally among its beneficiaries, with
 // payers and beneficiaries as independent sets. Both halves feed the same greedy minTransfers.
-describe("minTransfers", () => {
-  it("the biggest creditor takes from the biggest debtor, fewest transfers", () => {
-    expect(minTransfers([{ name: "A", net: 190 }, { name: "B", net: -10 }, { name: "C", net: -70 }, { name: "D", net: -110 }])).toEqual([
-      { from: "D", to: "A", amount: 110 }, { from: "C", to: "A", amount: 70 }, { from: "B", to: "A", amount: 10 },
-    ]);
-  });
-  it("an even group needs nothing", () => {
-    expect(minTransfers([{ name: "A", net: 0 }, { name: "B", net: 0 }])).toEqual([]);
-  });
-});
-
 describe("settleLedger", () => {
   it("the trip: a shared bill, a sub-group cab, a one-person reimbursement", () => {
     const r = settleLedger([

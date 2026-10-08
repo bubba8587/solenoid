@@ -20,6 +20,7 @@ describe("earnedValueOps", () => {
     const s = d("2026-01-07"), f = d("2026-01-09"); // Wed–Fri, 3 working days
     expect(plannedFraction(s, f, d("2026-01-05"), monFri)).toBe(0);      // before start
     expect(plannedFraction(s, f, d("2026-01-12"), monFri)).toBe(1);      // after finish
+    expect(plannedFraction(s, f, d("2026-01-07"), monFri)).toBeCloseTo(1 / 3, 6); // the start day counts
     expect(plannedFraction(s, f, d("2026-01-08"), monFri)).toBeCloseTo(2 / 3, 6); // Wed+Thu of 3
     expect(plannedFraction(null, f, d("2026-01-08"), monFri)).toBe(0);   // no baseline dates
   });

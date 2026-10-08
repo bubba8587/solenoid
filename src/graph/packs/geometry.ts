@@ -2,8 +2,9 @@
 // Trig is in RADIANS, per the core Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
-import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode, solveGivenParts, type TriangleGiven } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
+import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { GEOMETRY_PACK_FORMULAS } from "./geometryFormulas";
 
 const GEOMETRY_FORMULAS: FormulaPackEntry[] = [
   { type: "geo-circle-area",    label: "Circle Area",          expr: "PI()*r^2",
@@ -50,8 +51,6 @@ export const GEOMETRY_CIRCLES: FormulaPackEntry[] = [
 export const GEOMETRY_SOLIDS: FormulaPackEntry[] = [
   { type: "geo-distance-3d", label: "Distance (3D)", expr: "SQRT((x2-x1)^2+(y2-y1)^2+(z2-z1)^2)",
     description: "Straight-line distance between two points (x1,y1,z1) and (x2,y2,z2) in space" },
-  { type: "geo-haversine", label: "Haversine Distance (km)", expr: "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))",
-    description: "Great-circle distance in km between two lat/lon points in DEGREES (mean Earth radius 6371.0088 km). geopy / R geosphere distHaversine; ×0.621371 for miles" },
   { type: "geo-cuboid-diag", label: "Box Diagonal", expr: "SQRT(a^2+b^2+c^2)",
     description: "Space diagonal of an a×b×c box   (d = √(a²+b²+c²))" },
   { type: "geo-cone-slant", label: "Cone Slant Height", expr: "SQRT(r^2+h^2)",
@@ -83,8 +82,7 @@ function toDMS(n: number): string {
   return `${sign}${d}°${m}′${s}″`;
 }
 
-// Defined once and claimed by BOTH packs — the catalog builder dedupes by `type` and
-// records both owners. HYPOTENUSE is TwoInputMath's `hypot` op.
+// Claimed by both Geometry and Timesavers; the catalog builder dedupes by `type` and records both owners.
 export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   type: "twomath-hypot",
   label: TWO_INPUT_MATH_OP_META.hypot.label,
@@ -93,38 +91,16 @@ export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   create: () => new TwoInputMathNode({ op: "hypot" }),
 };
 
-// Which formulas file under which Add-menu subcategory.
 const CIRCLE_IDS = new Set(["geo-circle-area", "geo-circle-circum", "geo-ellipse-area"]);
 const SOLID_IDS = new Set(["geo-sphere-vol", "geo-sphere-area", "geo-cylinder-vol", "geo-cone-vol"]);
 const DISTANCE_IDS = new Set(["geo-distance-3d", "geo-cuboid-diag"]);
-
-// The formula delegates to the node's own `solveGivenParts` ([[C17]] shareImpl).
-const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
-  {
-    name: "TRIANGLESOLVER",
-    impl: (...args: unknown[]) => {
-      const keys = ["a", "b", "c", "A", "B", "C"] as const;
-      const given: Record<string, number> = {};
-      let any = false;
-      keys.forEach((k, i) => {
-        const v = args[i];
-        if (typeof v === "number" && Number.isFinite(v)) { given[k] = v; any = true; }
-      });
-      if (!any) return null;
-      const r = solveGivenParts(given as TriangleGiven);
-      return keys.map((k) => r.values[k]);
-    },
-    returns: "number", rank: "list", arity: [3, 6],
-    signature: "a, b, c, A°, B°, C° — any 3 incl. a side; returns all six",
-  },
-];
 
 export const GEOMETRY_PACK: Pack = {
   formulas: GEOMETRY_PACK_FORMULAS,
   id: "geometry",
   group: "Everyday",
   name: "Geometry",
-  description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids. On by default. Turn off to declutter.",
+  description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids.",
   builtin: true,
   defaultActive: true,
   nodes: [
@@ -139,15 +115,12 @@ export const GEOMETRY_PACK: Pack = {
         create: () => new TriangleSolverNode(),
       },
     },
-    // Menu placement is by SUBJECT; the arrays stay grouped by WAVE, which is how the
-    // tests slice them.
+    // Menu placement is by subject, but the arrays stay grouped by wave because the tests slice them that way.
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_FORMULAS.filter((f) => !CIRCLE_IDS.has(f.type) && !SOLID_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_SOLIDS.filter((f) => DISTANCE_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry", "Circles & Arcs"], [...GEOMETRY_FORMULAS.filter((f) => CIRCLE_IDS.has(f.type)), ...GEOMETRY_CIRCLES]),
     ...placeFormulas(["Packs", "Geometry", "Solids"], [...GEOMETRY_FORMULAS.filter((f) => SOLID_IDS.has(f.type)), ...GEOMETRY_SOLIDS.filter((f) => !DISTANCE_IDS.has(f.type))]),
   ],
-  // Format Controller contributions: units in an existing and a new group, plus a
-  // custom-logic number format.
   units: [
     { id: "turn", label: " turns", group: "angle" },
     { id: "px", label: " px", group: "geometry", groupLabel: "Geometry" },

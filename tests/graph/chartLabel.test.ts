@@ -14,8 +14,6 @@ describe("sanitizeChartLabel", () => {
 
   it("caps length with an ellipsis", () => {
     const out = sanitizeChartLabel("Supercalifragilistic category name", 16);
-    expect(out.length).toBeLessThanOrEqual(16);
-    expect(out.endsWith("…")).toBe(true);
     expect(out).toBe("Supercalifragil…");
   });
 

@@ -1,17 +1,16 @@
-// [[C39]] effectsEdgeTriggered. Layout: specs/alert-node-alerts-hud.md.
+// [[D79]] effectsEdgeTriggered. Layout: tree/specs/computation/alert-node-alerts-hud.md.
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
-import { IS_MOBILE } from "../coarse";
+import { isMobile } from "../coarse";
 import { alertStore, type AlertKind } from "../alertStore";
 import { registerChrome } from "../chromeToggle";
 import { flyToNode } from "../flyToNode";
 import "./alertLayer.css";
 import { CloseIcon } from "./CloseIcon";
+import { resolveColor } from "../palette";
+import { appThemeStore } from "../appTheme";
 
-const KIND_COLOR: Record<AlertKind, string> = {
-  info:     "#4c8bf5",
-  warning:  "#d9822b",
-  critical: "#e0524d",
-};
+const kindColor = (kind: AlertKind): string =>
+  kind === "critical" ? "var(--sol-error)" : kind === "warning" ? "var(--sol-warn)" : resolveColor("blue");
 
 // Lucide "bell" (https://lucide.dev/icons/bell) — the warning triangle marks Problems.
 const AlertSvg = ({ size = 14 }: { size?: number }) => (
@@ -21,14 +20,14 @@ const AlertSvg = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-/** The fired-alerts HUD section, positioned by its parent <HudStack/>. */
 export function AlertLayer() {
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [collapsed, setCollapsed] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Mobile: a tap outside re-collapses, so chips don't linger over the canvas.
   useEffect(() => {
-    if (!IS_MOBILE || collapsed) return;
+    if (!isMobile() || collapsed) return;
     const onDown = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setCollapsed(true);
     };
@@ -58,15 +57,14 @@ export function AlertLayer() {
   );
 
   const chips = events.map((ev) => {
-    // Only the leading label is kind-colored; match the label exactly first, since a
-    // label may itself contain a colon.
+    // Only the leading label is kind-colored; match it exactly first, since a label may contain a colon.
     const title = ev.message.startsWith(ev.label) ? ev.label : (ev.message.split(":")[0] ?? ev.message);
     const rest = ev.message.slice(title.length);
     return (
     <div
       key={ev.id}
       className="solenoid-alert"
-      style={{ ["--alert-color" as string]: KIND_COLOR[ev.kind] }}
+      style={{ ["--alert-color" as string]: kindColor(ev.kind) }}
       onClick={() => flyToNode(ev.nodeId)}
       title="Go to this alert"
     >

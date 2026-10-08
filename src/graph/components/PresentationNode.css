@@ -1,5 +1,4 @@
-/* Presentation — an ordered step list + prev/next camera controls. Mirrors Note/
-   Report's 2px border + tinted header formula for card-family consistency. */
+/* Mirrors the Note and Report's 2px border and tinted header, for card-family consistency. */
 .solenoid-pres {
   position: relative;
   --node-accent: var(--pres-color);
@@ -194,8 +193,7 @@
   min-width: 40px;
   text-align: center;
 }
-/* The Present button is a pill, not a round stepper — overrides the shared
-   footer-button circle sizing. */
+/* A pill, not a round stepper: overrides the shared footer-button circle sizing. */
 .solenoid-pres__footer button.solenoid-pres__present {
   width: auto;
   height: 24px;
@@ -208,8 +206,7 @@
   border-color: color-mix(in srgb, var(--pres-color, var(--border-strong)) var(--mix-edge), var(--border));
 }
 
-/* Selection ring = the card's OWN border, recolored (see NoteNode.css — a
-   separate ::after box rounded apart from the card edge under zoom). */
+/* The ring is the card's own border, recolored: a separate ::after box rounds apart from the card edge under zoom (NoteNode.css). */
 .solenoid-pres--selected {
   border-color: color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
   box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);

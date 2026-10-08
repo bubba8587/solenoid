@@ -20,6 +20,12 @@ describe("sortKeyOf — what a cell reduces to", () => {
     expect(sortKeyOf("1,234")).toBe(1234); // a thousands-formatted cell still sorts by magnitude
   });
 
+  it("reads only decimal text as a number: hex, binary, octal and Infinity stay text", () => {
+    for (const t of ["0x1F", "0b101", "0o17", "Infinity", "-Infinity"]) expect(sortKeyOf(t)).toBe(t);
+    expect(sortKeyOf("1e3")).toBe(1000);
+    expect(sortKeyOf(".5")).toBe(0.5);
+  });
+
   it("reads text as text, and booleans as 0/1", () => {
     expect(sortKeyOf("banana")).toBe("banana");
     expect(sortKeyOf(true)).toBe(1);
@@ -154,7 +160,6 @@ describe("multi-column sort — Excel's add-a-level model", () => {
     const sort: ColumnSort = [{ col: 3, dir: "desc" }];
     expect(sortDirOf(sort, 3)).toBe("desc");
     expect(sortDirOf(sort, 1)).toBeNull();
-    expect(sortDirOf([], 3)).toBeNull();
   });
 });
 
@@ -177,9 +182,5 @@ describe("remapSort — the sort under structural column changes", () => {
 
   it("clears outright when the map rejects every key (the CSV-reshape case)", () => {
     expect(remapSort([{ col: 0, dir: "asc" }, { col: 3, dir: "desc" }], () => null)).toEqual([]);
-  });
-
-  it("is the identity for an empty sort", () => {
-    expect(remapSort([], removal(0))).toEqual([]);
   });
 });

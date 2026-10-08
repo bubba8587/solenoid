@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView
+// [[A1]] visualGraphCalculator
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";

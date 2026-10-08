@@ -80,6 +80,24 @@ describe("QUARTILE", () => {
       expect(q(fn, 3)).toBe(4);
     }
   });
+  it("an out-of-range INC quartile is #DOMAIN! on the card, as in the formula ([[C17]] shareImpl)", () => {
+    const node = new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [5] }).result;
+    expect(isSolError(node) && node.code).toBe("#DOMAIN!");
+    const fx = compileEvaluator("QUARTILE.INC(x, 5)")!({ x: [1, 2, 3, 4, 5] });
+    expect(isSolError(fx) && fx.code).toBe("#DOMAIN!");
+  });
+  it("a fractional quart truncates like Excel, node and formula alike", () => {
+    const fx = (expr: string) => compileEvaluator(expr)!({ x: [1, 2, 3, 4, 5] });
+    const node = (op: "quartile-inc" | "quartile-exc", q: number) => new RankPercentileNode({ op }).data({ list: data, q: [q] }).result;
+    expect(fx("QUARTILE(x, 2.6)")).toBe(3);
+    expect(node("quartile-inc", 2.6)).toBe(3);
+    expect(fx("QUARTILE(x, 0.5)")).toBe(1);
+    expect(node("quartile-inc", 0.5)).toBe(1);
+    expect(fx("QUARTILE.EXC(x, 3.9)")).toBe(4.5);
+    expect(node("quartile-exc", 3.9)).toBe(4.5);
+    const exc = fx("QUARTILE.EXC(x, 0.5)");
+    expect(isSolError(exc) && exc.code).toBe("#DOMAIN!");
+  });
   it("EXC interpolates the in-domain quartiles (= PERCENTILE.EXC(q/4))", () => {
     expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [1] }).result).toBe(1.5);
     expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [2] }).result).toBe(3);
@@ -111,6 +129,22 @@ describe("PERCENTRANK", () => {
     const dups = [[2, 4, 4, 4, 5, 5, 7, 9]];
     expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: dups, value: [4], significance: [3] }).result).toBe(0.142);
   });
+  it("skips blanks, ranks within a single value, and truncates a fractional significance, node and formula alike", () => {
+    const node = (op: "percentrank-inc" | "percentrank-exc", list: (number | null)[], value: number, significance = 3) =>
+      new RankPercentileNode({ op }).data({ list: [list], value: [value], significance: [significance] }).result;
+    const fx = (expr: string, x: (number | null)[]) => compileEvaluator(expr)!({ x });
+    expect(node("percentrank-inc", [1, null, 3, 5], 3)).toBe(0.5);
+    expect(fx("PERCENTRANK.INC(x, 3)", [1, null, 3, 5])).toBe(0.5);
+    expect(node("percentrank-exc", [1, null, 3, 5], 3)).toBe(0.5);
+    expect(fx("PERCENTRANK.EXC(x, 3)", [1, null, 3, 5])).toBe(0.5);
+    expect(node("percentrank-inc", [5], 5)).toBe(1);
+    expect(fx("PERCENTRANK.INC(x, 5)", [5])).toBe(1);
+    expect(node("percentrank-exc", [5], 5)).toBe(1);
+    expect(fx("PERCENTRANK.EXC(x, 5)", [5])).toBe(1); // as Excel answers
+    const dups = [2, 4, 4, 4, 5, 5, 7, 9];
+    expect(node("percentrank-inc", dups, 4, 2.6)).toBe(0.14);
+    expect(fx("PERCENTRANK.INC(x, 4, 2.6)", dups)).toBe(0.14);
+  });
   it("returns #N/A for a value outside the data range", () => {
     const r = new RankPercentileNode({ op: "percentrank-inc" }).data({ list: [[1, 2, 3]], value: [9], significance: [3] }).result;
     expect(isSolError(r) && r.code).toBe("#N/A");
@@ -131,6 +165,16 @@ describe("RANK", () => {
   it("returns #N/A when the value is absent", () => {
     const r = new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [99] }).result;
     expect(isSolError(r) && r.code).toBe("#N/A");
+  });
+  it("a nonzero Order ranks ascending, on the card and in the formula ([[D73]] nodeCoversFormula)", () => {
+    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [10], order: [1] }).result).toBe(1);
+    expect(new RankPercentileNode({ op: "rank-avg" }).data({ list: data, value: [20], order: [1] }).result).toBe(2.5);
+    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [40], order: [1] }).result).toBe(4);
+    const fx = (f: string) => compileEvaluator(f)!({ x: [10, 20, 20, 40] });
+    expect(fx("RANK.EQ(10, x, 1)")).toBe(1);
+    expect(fx("RANK.EQ(10, x, 0)")).toBe(4);
+    expect(fx("RANK(40, x, 1)")).toBe(4);
+    expect(fx("RANK.AVG(20, x, 1)")).toBe(2.5);
   });
 });
 
@@ -177,6 +221,12 @@ describe("REGRESSION / FORECAST zero-variance Xs", () => {
     const r = new ForecastNode().data({ x: [3], ys: [[1, 2, 3]], xs: [[5, 5, 5]] }).result;
     expect(isSolError(r) && r.code).toBe("#DIV/0!");
   });
+  it("exponential FORECAST is #DIV/0! over zero-variance Xs, #DOMAIN! only for a y at or below 0", () => {
+    const flat = new ForecastNode({ op: "exponential" }).data({ x: [3], ys: [[1, 2, 3]], xs: [[5, 5, 5]] }).result;
+    expect(isSolError(flat) && flat.code).toBe("#DIV/0!");
+    const neg = new ForecastNode({ op: "exponential" }).data({ x: [3], ys: [[1, -2, 3]], xs: [[1, 2, 3]] }).result;
+    expect(isSolError(neg) && neg.code).toBe("#DOMAIN!");
+  });
 });
 
 describe("INTERPOLATE (piecewise-linear lookup)", () => {
@@ -196,8 +246,11 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
     expect(interpolateLinear([20, 0, 10], [300, 0, 100], [5])).toEqual([50]);
   });
   it("resolves a duplicated x to its first-seen y (no divide-by-zero)", () => {
-    const r = interpolateLinear([0, 5, 5, 10], [0, 50, 999, 100], [5]);
-    expect(Number.isFinite(r[0])).toBe(true);
+    expect(interpolateLinear([0, 5, 5, 10], [0, 50, 999, 100], [5])).toEqual([50]);
+    expect(interpolateLinear([5, 5, 10], [50, 999, 100], [5])).toEqual([50]);
+    expect(interpolateLinear([0, 1, 1], [0, 5, 9], [1])).toEqual([5]);
+    // Past the repeat, the line leaves from the later point.
+    expect(interpolateLinear([0, 5, 5, 10], [0, 50, 999, 100], [7.5])).toEqual([549.5]);
   });
   it("holds flat with a single known point", () => {
     expect(interpolateLinear([7], [42], [0, 7, 100])).toEqual([42, 42, 42]);
@@ -412,7 +465,6 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
   });
   it("forecast defaults ON, drives the grid fill, and round-trips through extractInit", () => {
     const n = new InterpolateNode({ mode: "grid" });
-    expect(n.forecast).toBe(true);
     const z = [[5, 15, null]]; // slope 1 across xs [0,10,20]; X=20 is past the data
     expect((n.data({ z: [z], xs: [[0, 10, 20]] }).result as (number | null)[][])[0][2]).toBeCloseTo(25, 3); // forecast → trend 25
     n.forecast = false;
@@ -432,6 +484,15 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
     expect(isSolError(sh) && sh.code).toBe("#SHAPE!");
     const vl = gridAxes(z, [1, NaN], undefined);
     expect(isSolError(vl) && vl.code).toBe("#VALUE!");
+  });
+
+  it("gridAxes and fillGrid take a table too tall to spread into Math.max", () => {
+    const z = Array.from({ length: 300_000 }, (_, i) => [i]);
+    const axes = gridAxes(z, undefined, undefined);
+    expect(axes && !isSolError(axes) && axes.xs).toEqual([1]);
+    const out = fillGrid(z, [1], Array.from({ length: z.length }, (_, i) => i + 1));
+    expect(out.length).toBe(300_000);
+    expect(out[299_999][0]).toBe(299_999);
   });
 });
 
@@ -532,6 +593,20 @@ describe("Hypothesis Test — one node, six tests", () => {
     expect(cp).toBeLessThanOrEqual(1);
   });
 
+  it("Z reads σ from the card when unwired, skips blanks, and agrees with Z.TEST", () => {
+    const z = new HypothesisTestNode({ op: "z" });
+    z.literals.x = 2;
+    const sampleSd = z.data({ a: [A] }).result!;
+    z.literals.sigma = 10;
+    const typed = z.data({ a: [A] }).result!;
+    expect(typed).not.toBeCloseTo(sampleSd, 6);
+    expect(typed).toBeCloseTo(compileEvaluator("Z.TEST(x, 2, 10)")!({ x: A }) as number, 12);
+    delete z.literals.sigma;
+    const gappy = z.data({ a: [[1, 2, null, 3, 4, 5] as unknown as number[]] }).result!;
+    expect(gappy).toBeCloseTo(sampleSd, 12);
+    expect(compileEvaluator("Z.TEST(x, 2)")!({ x: [1, 2, null, 3, 4, 5] })).toBeCloseTo(sampleSd, 12);
+  });
+
   it("a switch between two-sample tests keeps both cables and relabels the rows", () => {
     const n = new HypothesisTestNode({ op: "t-equal" });
     expect(n.keysDroppedBySwitch("f")).toEqual([]);
@@ -559,7 +634,6 @@ describe("Hypothesis Test — one node, six tests", () => {
     const init = extractInit(n as never);
     expect(init.op).toBe("t-welch");
     const clone = new HypothesisTestNode(init as { op: "t-welch" });
-    expect(clone.op).toBe("t-welch");
     expect(Object.keys(clone.inputs).sort()).toEqual(["a", "b"]);
   });
 });
@@ -567,8 +641,8 @@ describe("Hypothesis Test — one node, six tests", () => {
 describe("Rank & Percentile — one node, op-switch mechanics", () => {
   it("rank ↔ percentrank keeps the shared Value cable; percentile drops it", () => {
     const n = new RankPercentileNode({ op: "rank-eq" });
-    expect(n.keysDroppedBySwitch("percentrank-inc")).toEqual([]);
-    expect(n.keysDroppedBySwitch("percentile-inc")).toEqual(["value"]);
+    expect(n.keysDroppedBySwitch("percentrank-inc")).toEqual(["order"]);
+    expect(n.keysDroppedBySwitch("percentile-inc")).toEqual(["value", "order"]);
     n.setOp("percentrank-inc");
     expect(Object.keys(n.inputs).sort()).toEqual(["list", "significance", "value"]);
     expect(n.outputs.result!.label).toBe("Rank (0–1)");

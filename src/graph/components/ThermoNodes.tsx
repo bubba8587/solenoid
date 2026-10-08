@@ -1,9 +1,8 @@
 import {
   IsaAtmosphereNode as IsaAtmosphereNodeType,
   AntoineNode as AntoineNodeType,
-  ANTOINE,
-  type AntoineOp,
 } from "../rete-nodes";
+import { ANTOINE, type AntoineOp } from "../nodes/thermoOps";
 import { NodeShell, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 

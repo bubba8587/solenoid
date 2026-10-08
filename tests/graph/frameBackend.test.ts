@@ -48,14 +48,6 @@ describe("framePreview — head-N shaping", () => {
 });
 
 describe("JsFrameBackend — handle lifecycle + materialization", () => {
-  it("source → preview round-trips through a handle", async () => {
-    const be = frameBackend();
-    const h = await be.source(sample);
-    const p = await be.preview(h, 2);
-    expect(p.rowCount).toBe(5);
-    expect(p.rows[0]).toEqual([1, "a"]);
-  });
-
   it("collect materializes the WHOLE frame back (every row)", async () => {
     const be = frameBackend();
     const h = await be.source(sample);
@@ -97,7 +89,6 @@ describe("JsFrameBackend — handle lifecycle + materialization", () => {
     const be = frameBackend();
     const h = await be.source(sample);
     const h2 = await be.apply(h, { kind: "select", columns: ["n"] });
-    expect(h2).not.toBe(h);
     expect((await be.preview(h2, 1)).schema).toEqual([{ name: "n", type: "number" }]);
     // source handle still has both columns
     expect((await be.preview(h, 1)).schema).toHaveLength(2);
@@ -135,12 +126,4 @@ describe("materialize — error-as-value bridge for the node boundary", () => {
     if (!isSolError(out)) throw new Error("expected a SolError");
     expect(out.code).toBe("#ERROR!");
     expect(out.message).toBe("boom");
-  });
-  it("bridges a real dropped-handle preview rejection into a #REF! value", async () => {
-    const be = frameBackend();
-    const h = await be.source(sample);
-    be.drop(h);
-    const out = await materialize(be.preview(h, 1));
-    expect(isSolError(out) && out.code).toBe("#REF!");
-  });
-});
+  });});

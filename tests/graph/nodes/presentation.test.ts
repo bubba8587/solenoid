@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView
+// [[A1]] visualGraphCalculator
 import { describe, it, expect, afterEach } from "vitest";
 import { PresentationNode } from "../../../src/graph/nodes/presentation";
 
@@ -47,6 +47,14 @@ describe("PresentationNode", () => {
     n.removeStep(1);
     expect(n.steps).toEqual([{ title: "1", nodeIds: [] }]);
     expect(n.activeIndex).toBe(0);
+  });
+
+  it("removeStep before the active step keeps the same step active", () => {
+    const n = new PresentationNode();
+    for (const t of ["A", "B", "C", "D"]) n.addStep(t, []);
+    n.goTo(1);
+    n.removeStep(0);
+    expect(n.steps[n.activeIndex]?.title).toBe("B");
   });
 
   it("moveStep swaps neighbors and follows activeIndex", () => {

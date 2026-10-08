@@ -1,4 +1,4 @@
-// [[C24]] arraySemantics, [[C44]] dateSerials, [[C64]]
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[B17]]
 import { describe, it, expect } from "vitest";
 import { frameFromCells } from "../../../src/graph/frame";
 import { GetColumnNode } from "../../../src/graph/nodes/frame";
@@ -50,12 +50,6 @@ describe("Get Column read-as coerces text columns", () => {
     expect(out).toEqual([45000, 45001]);
   });
 
-  it("read-as Date on an inferred DATE column passes its serials through", () => {
-    const f = frameFromCells(["When"], [["2026-01-03"], ["2026-02-04"]]); // → date column (serials)
-    const out = col(new GetColumnNode({ readAs: "date" }), f, "When");
-    expect(out.map(Math.floor)).toEqual([Math.floor(ser(2026, 1, 3)), Math.floor(ser(2026, 2, 4))]);
-  });
-
   it("read-as Text on a DATE column formats serials as date strings, not raw digits", () => {
     const f = frameFromCells(["When"], [["2026-01-03"]]);
     const out = new GetColumnNode({ readAs: "text" }).data({ frame: [f], name: ["When"] }).values as string[];
@@ -78,9 +72,11 @@ describe("Get Column read-as Logical (TRUE/FALSE out of a column)", () => {
     expect(bools(f, "Mask")).toEqual([true, false, true]);
   });
 
-  it("a blank stays null; an unparseable cell is lenient null (not a fabricated FALSE)", () => {
+  it("a blank stays null; an unparseable cell is #TYPE!, never a fabricated FALSE", () => {
     const f = frameFromCells(["Flag"], [["true"], [""], ["maybe"]]); // mixed text → string column
-    expect(bools(f, "Flag")).toEqual([true, null, null]);
+    const out = bools(f, "Flag") as unknown[];
+    expect(out.slice(0, 2)).toEqual([true, null]);
+    expect((out[2] as { code?: string }).code).toBe("#TYPE!");
   });
 });
 

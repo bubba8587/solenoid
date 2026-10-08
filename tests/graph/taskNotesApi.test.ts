@@ -1,7 +1,7 @@
 // [[D54]], [[C24]] arraySemantics
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
-  tasksUrl, eventsUrl, statsUrl, authHeaders, isoToSerial, linkName, unwrap,
+  tasksUrl, eventsUrl, statsUrl, authHeaders, isoToSerial, cellToTaskField, linkName, unwrap,
   parseTasksPage, tasksToCube, parseEvents, parseStats, taskRecord,
 } from "../../src/graph/taskNotesApi";
 import { parseDateToSerial, formatDateSerial } from "../../src/graph/nodes/dateSerial";
@@ -52,7 +52,7 @@ describe("urls + auth", () => {
 describe("value parsing", () => {
   it("dates and ISO datetimes → serials (a datetime keeps its fraction); blanks → null", () => {
     expect(isoToSerial("2026-09-12")).toBe(d("2026-09-12"));
-    expect(isoToSerial("2026-09-05T12:00:00Z")).toBeCloseTo(d("2026-09-05") + 0.5, 9);
+    expect(isoToSerial("2026-09-05T12:00:00")).toBeCloseTo(d("2026-09-05") + 0.5, 9);
     expect(isoToSerial("")).toBeNull();
     expect(isoToSerial(undefined)).toBeNull();
     expect(isoToSerial("not a date")).toBeNull();
@@ -135,5 +135,39 @@ describe("calendar + stats", () => {
     expect(parseStats('{"success":true,"data":{"total":12,"completed":5,"active":7,"overdue":2,"archived":1}}'))
       .toEqual({ total: 12, completed: 5, active: 7, overdue: 2, archived: 1 });
     expect(parseStats('{"success":true,"data":{"total":1}}').overdue).toBeNull();
+  });
+});
+
+describe("a timestamp whose day the month does not have", () => {
+  it("is no date, as the date alone is not, rather than rolling into the next month", () => {
+    expect(isoToSerial("2026-02-30T10:00:00")).toBeNull();
+    expect(isoToSerial("2026-03-02T12:00:00")).toBeCloseTo(46083.5, 6);
+  });
+});
+
+describe("timestamps read and write as the local wall clock", () => {
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  });
+  const day = (iso: string) => parseDateToSerial(iso);
+  it("a zone-less timestamp keeps its written time in any zone", () => {
+    for (const tz of ["UTC", "America/New_York", "Asia/Kolkata"]) {
+      process.env.TZ = tz;
+      expect(isoToSerial("2026-09-05T14:30:00")).toBeCloseTo(day("2026-09-05") + 14.5 / 24, 9);
+      expect(isoToSerial("2026-09-05T14:30")).toBeCloseTo(day("2026-09-05") + 14.5 / 24, 9);
+    }
+  });
+  it("a zoned timestamp becomes the local wall clock of that instant", () => {
+    process.env.TZ = "America/New_York";
+    expect(isoToSerial("2026-09-05T12:00:00Z")).toBeCloseTo(day("2026-09-05") + 8 / 24, 9);
+    expect(isoToSerial("2026-09-05T12:00:00+02:00")).toBeCloseTo(day("2026-09-05") + 6 / 24, 9);
+  });
+  it("a fractional due date writes back with its time; a whole day writes the date alone", () => {
+    process.env.TZ = "America/New_York";
+    expect(cellToTaskField("due", day("2026-09-05") + 14.5 / 24)).toBe("2026-09-05T14:30");
+    expect(cellToTaskField("due", day("2026-09-05"))).toBe("2026-09-05");
+    expect(cellToTaskField("scheduled", "2026-09-05T09:15:00")).toBe("2026-09-05T09:15");
   });
 });

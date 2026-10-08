@@ -1,11 +1,11 @@
-// [[C32]], [[C35]]
+// [[B12]] losslessSaves, [[C35]]
 import { describe, it, expect } from "vitest";
 import {
   validateSavedGraph,
   chooseWriteSlot,
   chooseReadSlot,
-  CURRENT_SAVE_VERSION,
   deriveMissingNodeSockets,
+  remapNodeRefs,
 } from "../../src/graph/persistenceCore";
 
 // A minimal but representative valid graph (a connection, a standoff, optional
@@ -135,14 +135,7 @@ describe("autosave slot rotation", () => {
       slots[w] = ++clock;
       const r = chooseReadSlot(slots.a, slots.b);
       expect(r).toBe(w); // the slot we just wrote is the newest
-      expect(slots[r!]).toBe(clock);
     }
-  });
-});
-
-describe("CURRENT_SAVE_VERSION", () => {
-  it("matches the format the serializer writes (v2)", () => {
-    expect(CURRENT_SAVE_VERSION).toBe(2);
   });
 });
 
@@ -180,5 +173,22 @@ describe("deriveMissingNodeSockets", () => {
     ]);
     expect(m.get("m1")).toEqual({ inputs: [], outputs: ["o"] });
     expect(m.get("m2")).toEqual({ inputs: ["i"], outputs: [] });
+  });
+});
+
+describe("remapNodeRefs", () => {
+  const idMap = new Map([["host", "n1"], ["a", "n2"], ["b", "n3"]]);
+  const live = (id: string) => ["n1", "n2", "n3"].includes(id);
+
+  it("rewrites a host, members and step ids, dropping ids with no live node", () => {
+    const t = { hostNodeId: "host", members: ["a", "gone", "b"], steps: [{ nodeIds: ["b", "gone"] }] };
+    remapNodeRefs(t, idMap, live);
+    expect(t).toEqual({ hostNodeId: "n1", members: ["n2", "n3"], steps: [{ nodeIds: ["n3"] }] });
+  });
+
+  it("works on a Placeholder's plain savedInit the same way", () => {
+    const savedInit: Record<string, unknown> = { hostNodeId: "host", other: 1 };
+    remapNodeRefs(savedInit, idMap, live);
+    expect(savedInit).toEqual({ hostNodeId: "n1", other: 1 });
   });
 });

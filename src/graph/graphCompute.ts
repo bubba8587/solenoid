@@ -1,45 +1,39 @@
-// [[D30]], [[D31]]
-// The model-level compute pass — ONE definition, no view. processGraph (the app),
-// the composite's internal engine, the headless runner and the seed tests all run
-// the same steps: invalidate, seed loops, fetch every node ([[D30]] targetedEqualsFull).
+// [[C23]] calcModes
 import type { NodeEditor } from "rete";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
 import { solError } from "./errorValue";
 import { resolveTrigModes } from "./trigMode";
+import { clearCollectMemo } from "./frameBackend";
 import type { Schemes } from "./schemes";
 
 type Editor = NodeEditor<Schemes>;
 type Engine = DataflowEngine<Schemes>;
 
 export type NodeOutputs = Record<string, unknown>;
-/** node id → its outputs, or null when a newer pass cancelled the fetch. */
 export type PassValues = Map<string, NodeOutputs | null>;
 
 export const CIRC_MESSAGE =
   "This node is part of a circular dependency: the calculation feeds back into itself";
 
-// The TRUE members of every dependency loop (a self-loop or an SCC of 2+), NOT the nodes
-// downstream of one: seeding only these with #CIRC! leaves everything downstream computing
-// normally and showing the propagated error.
 export function loopMembers(editor: Editor): Set<string> {
   const ids = editor.getNodes().map((n) => n.id);
-  const adj = new Map<string, string[]>();
-  for (const id of ids) adj.set(id, []);
+  const targets = new Map<string, Set<string>>();
+  for (const id of ids) targets.set(id, new Set());
   const selfLoops = new Set<string>();
   for (const c of editor.getConnections()) {
     if (c.source === c.target) { selfLoops.add(c.source); continue; }
-    if (adj.has(c.source) && adj.get(c.source)!.indexOf(c.target) === -1 && ids.includes(c.target)) {
-      adj.get(c.source)!.push(c.target);
-    }
+    if (targets.has(c.target)) targets.get(c.source)?.add(c.target);
   }
+  const adj = new Map<string, string[]>();
+  for (const [id, ts] of targets) adj.set(id, [...ts]);
   const index = new Map<string, number>();
   const low = new Map<string, number>();
   const onStack = new Set<string>();
   const stack: string[] = [];
   const members = new Set<string>(selfLoops);
   let counter = 0;
-  // Iterative Tarjan (recursion would blow the stack on big graphs).
+  // Iterative: recursion would overflow the stack on a large graph.
   for (const start of ids) {
     if (index.has(start)) continue;
     const work: Array<{ node: string; i: number }> = [{ node: start, i: 0 }];
@@ -77,7 +71,6 @@ export function loopMembers(editor: Editor): Set<string> {
   return members;
 }
 
-// Downstream closure over outgoing connections — the nodes a single value edit can affect.
 export function downstreamClosure(editor: Editor, startId: string): Set<string> {
   const out = new Map<string, string[]>();
   for (const c of editor.getConnections()) {
@@ -85,28 +78,21 @@ export function downstreamClosure(editor: Editor, startId: string): Set<string> 
   }
   const seen = new Set<string>([startId]);
   const queue = [startId];
-  while (queue.length) {
-    const id = queue.shift()!;
+  for (let head = 0; head < queue.length; head++) {
+    const id = queue[head];
     for (const t of out.get(id) ?? []) if (!seen.has(t)) { seen.add(t); queue.push(t); }
   }
   return seen;
 }
 
-/** Drop the caches a pass must recompute: the downstream cone of `changedId`, or
- *  everything. Walks the cone by hand — `engine.reset(id)` recurses over outgoing
- *  connections with no visited set, so a cable cycle blows the stack before the
- *  #CIRC! seeding runs. Returns the cone, or null for a full reset. */
-export function invalidate(editor: Editor, engine: Engine, changedId?: string): Set<string> | null {
-  if (!changedId) { engine.reset(); return null; }
+// Never `engine.reset(id)`: it recurses with no visited set and overflows on a cable cycle.
+export function invalidate(editor: Editor, engine: Engine, changedId?: string, keepCaches = false): Set<string> | null {
+  if (!changedId) { if (!keepCaches) engine.reset(); return null; }
   const cone = downstreamClosure(editor, changedId);
   for (const id of cone) engine.cache.delete(id);
   return cone;
 }
 
-/** A dependency loop must be seeded BEFORE fetching: the pull engine resolves inputs
- *  recursively before calling data(), so a cycle would deadlock. Every member's cache
- *  entry and its value-box field (`cachedResult` / `cachedValue` / `cachedList`) take
- *  the #CIRC! error; the member never runs. */
 export function seedLoopErrors(editor: Editor, engine: Engine, loop: Set<string>, message = CIRC_MESSAGE): void {
   if (loop.size === 0) return;
   const circ = solError("#CIRC!", message);
@@ -115,41 +101,43 @@ export function seedLoopErrors(editor: Editor, engine: Engine, loop: Set<string>
     if (!node) continue;
     const outputs: NodeOutputs = {};
     for (const k of Object.keys(node.outputs ?? {})) outputs[k] = circ;
-    const n = node as unknown as { cachedResult?: unknown; cachedValue?: unknown; cachedList?: unknown };
+    const n = node as unknown as { cachedResult?: unknown; cachedValue?: unknown; cachedList?: unknown; cachedChart?: unknown; cachedPayload?: unknown };
     if ("cachedResult" in n) n.cachedResult = circ;
     if ("cachedValue" in n) n.cachedValue = circ;
     if ("cachedList" in n) n.cachedList = circ;
+    if ("cachedChart" in n) n.cachedChart = circ;
+    if ("cachedPayload" in n) n.cachedPayload = null;
     const seeded = Object.assign(Promise.resolve(outputs), { cancel() {} });
     try { engine.cache.add(id, seeded); } catch { engine.cache.patch(id, seeded); }
   }
 }
 
-/** Fetch every node's outputs in editor order. A fetch a newer pass cancelled lands as
- *  null; any other failure propagates (the guards already turned real compute errors
- *  into SolError values). */
 export async function fetchAll(
   editor: Editor,
   engine: Engine,
   onNode?: (id: string, outputs: NodeOutputs) => void,
-): Promise<PassValues> {
+  opts: { stopOnCancel?: boolean } = {},
+): Promise<PassValues | null> {
   const out: PassValues = new Map();
   for (const node of editor.getNodes()) {
+    if (!editor.getNode(node.id)) continue;
     try {
       const outputs = (await engine.fetch(node.id)) as NodeOutputs;
       out.set(node.id, outputs);
       onNode?.(node.id, outputs);
     } catch (e) {
-      if (e instanceof Cancelled) out.set(node.id, null);
-      else throw e;
+      if (!(e instanceof Cancelled)) throw e;
+      if (opts.stopOnCancel) return null;
+      out.set(node.id, null);
     }
   }
   return out;
 }
 
-/** The whole headless pass: trig modes, invalidate, seed loops, fetch all. */
 export async function computeAll(editor: Editor, engine: Engine, changedId?: string): Promise<PassValues> {
+  clearCollectMemo();
   resolveTrigModes(editor);
   invalidate(editor, engine, changedId);
   seedLoopErrors(editor, engine, loopMembers(editor));
-  return fetchAll(editor, engine);
+  return (await fetchAll(editor, engine))!;
 }

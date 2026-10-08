@@ -1,12 +1,11 @@
 // [[C95]] commitOnEnter
 import { useRef, useState, type CSSProperties } from "react";
 import type { GridPainterNode as GridPainterNodeType } from "../rete-nodes";
-import { parsePaintGrid, paintGridToText } from "../nodes/control";
+import { gridPainterDim, parsePaintGrid, paintGridToText } from "../nodes/control";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
-// The Grid Painter's well: left-drag paints the brush value into cells,
-// right-drag (or Alt-drag) erases back to blank (null).
+// Left-drag paints the brush value into cells; right-drag or Alt-drag erases back to blank (null).
 
 const WELL_W = 208;
 const MAX_WELL_H = 160;
@@ -23,8 +22,8 @@ const wellStyle = (rows: number, cols: number, cell: number): CSSProperties => (
 });
 
 export function GridPainterComponent({ data, emit }: NodeProps<GridPainterNodeType>) {
-  const rows = Math.max(1, Math.round(data.literals.rows ?? 6));
-  const cols = Math.max(1, Math.round(data.literals.cols ?? 8));
+  const rows = gridPainterDim(data.literals.rows ?? 6);
+  const cols = gridPainterDim(data.literals.cols ?? 8);
   const [grid, setGrid] = useState<(number | null)[][]>(() => parsePaintGrid(data.tableText, rows, cols));
   const live = useRef(grid);
   const mode = useRef<"paint" | "erase" | null>(null);
@@ -65,18 +64,17 @@ export function GridPainterComponent({ data, emit }: NodeProps<GridPainterNodeTy
   };
 
   const setLit = (key: "rows" | "cols" | "brush") => (v: number) => {
-    data.literals[key] = v;
+    data.literals[key] = key === "brush" ? v : gridPainterDim(v);
     if (key !== "brush") {
       live.current = parsePaintGrid(paintGridToText(live.current),
-        Math.max(1, Math.round(key === "rows" ? v : data.literals.rows ?? 6)),
-        Math.max(1, Math.round(key === "cols" ? v : data.literals.cols ?? 8)));
+        gridPainterDim(data.literals.rows ?? 6),
+        gridPainterDim(data.literals.cols ?? 8));
       setGrid(live.current);
       data.tableText = paintGridToText(live.current);
     }
     void processGraph(data.id);
   };
 
-  // Tint by |value| relative to the grid's own max.
   let maxAbs = 0;
   for (const row of grid) for (const v of row) if (v != null) maxAbs = Math.max(maxAbs, Math.abs(v));
 

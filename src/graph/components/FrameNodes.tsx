@@ -1,5 +1,5 @@
-// Frame (data-table) node components: Frame Input, Build, Split, Get Column, Add Column.
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type MouseEvent } from "react";
+// [[C58]] tableInputRawText
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import type {
   FrameInputNode as FrameInputNodeType,
   BuildFrameNode as BuildFrameNodeType,
@@ -59,7 +59,6 @@ import { isCubeValue } from "../frame";
 import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn, type FrameValue, type CubeValue } from "../frame";
 import type { SolError } from "../errorValue";
 
-/** A row verb (A′) caches a Frame OR a Cube; render whichever it is. */
 function FrameOrCubeDisplay({ value, label }: { value: FrameValue | CubeValue | SolError | null; label?: string }) {
   return isCubeValue(value)
     ? <CubeDisplay cube={value} label={label} />
@@ -68,7 +67,7 @@ function FrameOrCubeDisplay({ value, label }: { value: FrameValue | CubeValue | 
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { scheduleAutosave } from "../persistence";
-import { getActiveView, getActiveEditor, getOwningEditor, getOwningView } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { SolenoidSocket } from "../sockets";
 import { cableGhostStore } from "../cableState";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
@@ -78,7 +77,8 @@ import { InlineInputs, InlineTextField, useConnectedInputs } from "./inlineInput
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
-import { FrameChip } from "./FrameChip";
+import { FrameChip, openFrameChipPopup } from "./FrameChip";
+import { CardOpenButton } from "./CardOpenButton";
 import { FormulaField } from "./FormulaField";
 import { formulaPopup } from "../formulaPopupStore";
 import { ResultDisplay } from "./ResultDisplay";
@@ -87,6 +87,8 @@ import { ArrayChip } from "./ArrayChip";
 import { readChipPopupStyle } from "./chipStyle";
 import { NodeShell, ValueDisplay, OpSelect, ArgSelect, useNodeField, renderTextMarkdownHtml, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
+import { TypeIcon } from "./TypeIcon";
+import { CardSection, useRowsInUse } from "./CardSection";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
 import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
@@ -103,25 +105,18 @@ const ALLOCATE_MODE_OPTIONS: OpOption<AllocateMode>[] =
 const BUDGET_CABLE_ONLY_PROP = new Set(["amount"]);
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
-// Like Table Input: the single result box doubles as the editor, and Save serializes
-// the popup's body + headers back into the node's frameText.
 
 export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType>) {
-  // The RAW source is stored verbatim and the typed frame derived in data(), so a "1"
-  // typed into a Boolean column stays "1" ([[C58]] tableInputRawText).
   const source = useMemo(() => parseFrameSource(data.frameText), [data.frameText]);
   const onSaveSource = useCallback((columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
-    // A text edit fires no connection event, so settle the derived downstream types by
-    // hand — a retyped/renamed column can retype a socket that reads it.
+    // A text edit fires no connection event, so downstream types are settled by hand.
     const ed = getOwningEditor(data.id);
     const ar = getOwningView(data.id);
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
     scheduleAutosave();
     void processGraph();
   }, [data]);
-  // LIVE write-through: an in-popup edit commits and recomputes NOW, handing the open
-  // popup fresh derived cells + types with no Save/close round trip.
   const onCommitSource = useCallback(async (columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
     const ed = getOwningEditor(data.id);
@@ -139,17 +134,12 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
       columnTypes: src.map((c, j) => (c.expr ? (derived.columns[j]?.type ?? "number") : c.type)),
     };
   }, [data]);
-  // The popup Form view's layout, authored HERE exactly like the Record card;
-  // an emptied layout deletes the key so the form falls back to stacked.
   function commitLayout(next: string) {
     if (next.trim()) data.stringLiterals.layout = next;
     else delete data.stringLiterals.layout;
     scheduleAutosave();
   }
-  // The Form-view layout is opt-in: an unauthored one stays hidden behind a button so the
-  // card isn't carrying an empty textarea most Frame Inputs never fill.
   const [showLayout, setShowLayout] = useState(false);
-  // Mirrors data.layoutHidden so the card re-renders on the toggle; hiding keeps the text.
   const [layoutHidden, setLayoutHidden] = useState(data.layoutHidden);
   function setHidden(next: boolean) {
     data.layoutHidden = next;
@@ -160,33 +150,47 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
 
   return (
     <NodeShell node={data} emit={emit}>
-      {/* Addable λ inputs: a column formula in the grid editor reaches each by its
-          socket name. */}
-      <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
-      {!layoutHidden && (hasLayout || showLayout) ? (
-        <div className="solenoid-layout-field">
-          <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
+      <CardOpenButton
+        label="Edit Frame"
+        onOpen={(el) => openFrameChipPopup(el, {
+          value: isFrameValue(data.cachedResult) ? data.cachedResult : { __frame: true, columns: [] },
+          label: nodeDisplayName(data), hostId: data.id, source, onSaveSource, onCommitSource,
+          lambdaOptions: data.lambdaKeys.map(lambdaSocketName), formLayout: data.activeLayout,
+        })}
+      />
+      <CardSection
+        label="Advanced"
+        collapsible
+        defaultOpen={data.lambdaKeys.length > 0 || (hasLayout && !layoutHidden)}
+        sockets={{ node: data, emit, keys: data.lambdaKeys }}
+      >
+        {/* A column formula in the grid editor reaches each λ input by its socket name. */}
+        <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
+        {!layoutHidden && (hasLayout || showLayout) ? (
+          <div className="solenoid-layout-field">
+            <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
+            <button
+              type="button"
+              className="solenoid-layout-field__hide"
+              title="Hide the form layout"
+              aria-label="Hide the form layout"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setHidden(true); }}
+            >
+              <CloseIcon size={10} />
+            </button>
+          </div>
+        ) : (
           <button
             type="button"
-            className="solenoid-layout-field__hide"
-            title="Hide the form layout"
-            aria-label="Hide the form layout"
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); setHidden(true); }}
+            className="solenoid-node__add-input"
+            onClick={(e) => { e.stopPropagation(); if (layoutHidden) setHidden(false); setShowLayout(true); }}
           >
-            <CloseIcon size={10} />
+            {layoutHidden && hasLayout ? "Show Form Layout" : "Form Layout"}
           </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="solenoid-node__add-input"
-          onClick={(e) => { e.stopPropagation(); if (layoutHidden) setHidden(false); setShowLayout(true); }}
-        >
-          {layoutHidden && hasLayout ? "Show Form Layout" : "Form Layout"}
-        </button>
-      )}
+        )}
+      </CardSection>
       <FrameDisplay
         frame={data.cachedResult} label={nodeDisplayName(data)} source={source}
         onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys.map(lambdaSocketName)}
@@ -225,7 +229,6 @@ const HEAD_OP_OPTIONS = (Object.entries(HEAD_OP_META) as [HeadOp, { label: strin
 
 export function HeadComponent({ data, emit }: NodeProps<HeadNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  // The To row only exists in range mode — the other modes read Rows alone.
   const keys = op === "range" ? ["frame", "rows", "to"] : ["frame", "rows"];
   return (
     <NodeShell node={data} emit={emit}>
@@ -270,17 +273,12 @@ export const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
   { value: "notblank", label: "not blank" },
 ];
 
-// The ERROR predicates stay OFF the base FILTER_OP_OPTIONS so SUMIFS doesn't offer
-// them; only the List/Frame Filters do.
 export const FILTER_OP_OPTIONS_WITH_ERROR: { value: FilterOp; label: string }[] = [
   ...FILTER_OP_OPTIONS,
   { value: "noterror", label: "no error" },
   { value: "iserror", label: "has error" },
 ];
 
-// The Frame Filter also takes a cube (A′): a list-cell column answers Bases' membership
-// predicates. "list …" keeps them distinct from the string "contains" above; on a frame
-// column they are a #SHAPE! (a frame holds no list).
 export const FILTER_OP_OPTIONS_WITH_LIST: { value: FilterOp; label: string }[] = [
   ...FILTER_OP_OPTIONS_WITH_ERROR,
   { value: "listContains", label: "list contains" },
@@ -289,20 +287,15 @@ export const FILTER_OP_OPTIONS_WITH_LIST: { value: FilterOp; label: string }[] =
   { value: "listEmpty", label: "list is empty" },
 ];
 
-// The blank + error predicates take no comparison value — the Value field hides
-// and a wired value is ignored. (Single source of truth in frameVerbs.)
 export const VALUELESS_OPS: ReadonlySet<FilterOp> = VALUELESS_FILTER_OPS;
 
-// The ops where case can matter — string eq/neq + the three text predicates.
-// Numeric/date/logical comparisons ignore the flag, so the checkbox hides.
 export const TEXT_MATCH_OPS: ReadonlySet<FilterOp> = new Set(["eq", "neq", "contains", "startsWith", "endsWith"]);
 
-/** The Aa toggle beside a text-matching condition, tinted with the card's family colour. */
-export function MatchCaseButton({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+export function MatchCaseButton({ on, onToggle, label = "Aa", title = "Match case. Off matches text like Excel's = does." }: { on: boolean; onToggle: () => void; label?: string; title?: string }) {
   return (
     <button
       type="button"
-      title="Match case. Off matches text like Excel's = does."
+      title={title}
       aria-pressed={on}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
       onPointerDown={stopDragStart}
@@ -314,7 +307,7 @@ export function MatchCaseButton({ on, onToggle }: { on: boolean; onToggle: () =>
         color: on ? "var(--surface)" : "var(--text-muted)",
       }}
     >
-      Aa
+      {label}
     </button>
   );
 }
@@ -324,8 +317,6 @@ export const FILTER_COMBINE_OPTIONS: { value: FilterCombine; label: string; titl
   { value: "or", label: "OR", title: "Keep rows matching any condition" },
 ];
 
-// Paired Column/Value rows; per-row {op, matchCase} mirrors onto data.condConfig, with
-// local useState driving the controlled selects (the useNodeField rule, per-key).
 export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeType>) {
   const connected = useConnectedInputs(data.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
@@ -348,14 +339,14 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
 
   async function addPair() {
     data.addValuePair();
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removePair(aKey: string, bKey: string) {
     await dropInputCables(data.id, [aKey, bKey]);
     data.removeValuePair(aKey);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }
@@ -422,8 +413,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
       <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={data.outputs.frame!.socket} hero>
         <FrameOrCubeDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
       </MeasuredSocketRow>
-      {/* The complement stays a LAZY ref — no preview here, just its socket
-          (materializing it for a chip would collect a frame nobody asked for). */}
+      {/* The complement stays a lazy ref: a chip here would collect a frame nobody asked for. */}
       <MeasuredSocketRow side="output" socketKey="dropped" nodeId={data.id} emit={emit} payload={data.outputs.dropped!.socket}>
         <span className="solenoid-node__io-label">Dropped</span>
       </MeasuredSocketRow>
@@ -438,10 +428,10 @@ const JOIN_HOW_OPTIONS: OpOption<JoinHow>[] = [
   { value: "left", label: "Left", title: "All left rows. Unmatched right side is blank." },
   { value: "right", label: "Right", title: "All right rows. Unmatched left side is blank." },
   { value: "outer", label: "Outer", title: "All rows from both sides" },
-  { value: "semi", label: "Semi", title: "Left rows whose key matches in right — left columns only" },
-  { value: "anti", label: "Anti", title: "Left rows with no match in right — left columns only" },
+  { value: "semi", label: "Semi", title: "Left rows with a match in right. Keeps left columns only." },
+  { value: "anti", label: "Anti", title: "Left rows with no match in right. Keeps left columns only." },
   { value: "asof", label: "As-of", title: "Nearest match on a sorted number or date key. No exact match required." },
-  { value: "cross", label: "Cross", title: "Every left row paired with every right row — all columns, no keys" },
+  { value: "cross", label: "Cross", title: "Every left row paired with every right row. No keys." },
 ];
 
 const ASOF_DIRECTION_OPTIONS: { value: AsofDirection; label: string; title: string }[] = [
@@ -453,9 +443,16 @@ const ASOF_DIRECTION_OPTIONS: { value: AsofDirection; label: string; title: stri
 export function JoinComponent({ data, emit }: NodeProps<JoinNodeType>) {
   const [how, setHow] = useNodeField(data, "how");
   const [asofDirection, setAsofDirection] = useNodeField(data, "asofDirection");
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      {/* Collapsed, one InlineInputs carries every input, so the card shows one pill, not one per group. */}
+      {collapsed ? <InlineInputs node={data} emit={emit} keys={["left", "right", "leftKey", "rightKey", "tolerance"]} /> : <>
+      <InlineInputs node={data} emit={emit} keys={["left", "right"]} />
+      <CardSection label="Keys">
+        <InlineInputs node={data} emit={emit} keys={["leftKey", "rightKey", "tolerance"]} />
+      </CardSection>
+      </>}
       <ArgSelect value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
       {how === "asof" && <SegToggle value={asofDirection} options={ASOF_DIRECTION_OPTIONS} onChange={setAsofDirection} />}
       <FrameOrCubeDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
@@ -481,15 +478,11 @@ export function ColumnsComponent({ data, emit }: NodeProps<ColumnsNodeType>) {
 
 // ─── GROUP BY / PIVOT (shared aggregate-op selector) ─────────────────────────
 
-// Derived from AGG_OP_META ([[C8]] declareOnce); `pivotOnly` ops stay off these cards because only
-// the pivot assembly can run them.
 export const AGG_OP_OPTIONS: { value: AggOp; label: string }[] =
   (Object.keys(AGG_OP_META) as AggOp[])
     .filter((op) => !AGG_OP_META[op].pivotOnly)
     .map((value) => ({ value, label: AGG_OP_META[value].label }));
 
-// Same depth encoding as the Pivot editor's totals selector (PivotSpec's
-// rowTotalDepth): 0/1/2, negative ⇒ totals placed at the top.
 const GROUP_TOTAL_OPTIONS = [
   { value: "0", label: "No totals" }, { value: "1", label: "Grand total" }, { value: "2", label: "Grand + subtotals" },
   { value: "-1", label: "Grand at start" }, { value: "-2", label: "Grand + sub at start" },
@@ -509,8 +502,6 @@ export function GroupByFrameComponent({ data, emit }: NodeProps<GroupByFrameNode
 }
 
 // ─── PIVOT (full Excel PIVOTBY) ────────────────────────────────────────────────
-// The card keeps only the sockets and a summary line — all of Rows/Columns/Values/
-// functions/totals/sort/% live in PivotEditorPopup.
 
 const PIVOT_CABLE_ONLY = new Set(["rowFields", "colFields", "values", "filter"]);
 const splitNames = (s: string | undefined) => (s ?? "").split(",").map((x) => x.trim()).filter(Boolean);
@@ -528,8 +519,6 @@ function pivotSummary(data: PivotNodeType): string {
 }
 
 export function PivotComponent({ data, emit }: NodeProps<PivotNodeType>) {
-  // Read the node's category accent (Frame violet) off the live DOM so the popup
-  // header tints to match the node it opened from — same trick FrameChip uses.
   const openEditor = (e: MouseEvent<HTMLButtonElement>) => {
     const { accent } = readChipPopupStyle(e.currentTarget);
     pivotEditor.open({ node: data, nodeId: data.id, title: nodeDisplayName(data), accent });
@@ -716,9 +705,6 @@ const DECISION_DETAIL_OPTIONS: { value: DecisionDetail; label: string; title: st
   { value: "breakdown", label: "Breakdown", title: "Add a signed column per criterion: its weighted contribution. The contributions sum to the Score." },
 ];
 
-// The per-criterion weight and normalize live on the wired Weights frame (a Criterion ·
-// Weight · Norm table you build with a Frame Input), not on the card. The card keeps only
-// the node-wide defaults: the fallback Normalize and the Summary/Breakdown output shape.
 export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrixNodeType>) {
   const [normalize, setNormalize] = useNodeField(data, "normalize");
   const [detail, setDetail] = useNodeField(data, "detail");
@@ -726,25 +712,27 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <div className="solenoid-node__dm-caption" title="The fallback for a criterion whose Weights-frame Norm cell is blank.">Normalize</div>
-      <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
-      <div className="solenoid-node__dm-caption">Output</div>
-      <SegToggle value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
+      <CardSection label="Normalize" title="The fallback for a criterion whose Weights-frame Norm cell is blank.">
+        <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      </CardSection>
+      <CardSection label="Output">
+        <SegToggle value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
+      </CardSection>
       <FrameOrCubeDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }
 
 // ─── DECISION SENSITIVITY ───────────────────────────────────────────────────────
-// Scores × weight-scenarios → a Cube of rankings, one nested table per scenario.
 
 export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionSensitivityNodeType>) {
   const [normalize, setNormalize] = useNodeField(data, "normalize");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <div className="solenoid-node__dm-caption" title="The fallback for a criterion whose Norm cell is blank; applies across every scenario.">Normalize</div>
-      <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      <CardSection label="Normalize" title="The fallback for a criterion whose Norm cell is blank; applies across every scenario.">
+        <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      </CardSection>
       <CubeDisplay cube={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -752,9 +740,7 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
 
 export function AllocatorComponent({ data, emit }: NodeProps<AllocatorNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
-  // The amount field is hidden in Min proportional (which uses neither budget nor target);
-  // its socket stays so nothing is ever left wired to an undrawn dot. (Weights ride the
-  // categories frame's Weight column — orderedColumnsAreFrames — so there is no list socket.)
+  // The amount socket stays when its field hides, so no cable is left on an undrawn dot.
   const cableOnly = mode === "minProportional" ? BUDGET_CABLE_ONLY_PROP : undefined;
   return (
     <NodeShell node={data} emit={emit}>
@@ -788,8 +774,6 @@ export function PayoffPlannerComponent({ data, emit }: NodeProps<PayoffPlannerNo
 }
 
 // ─── GROUP COST SETTLE ───────────────────────────────────────────────────────
-// Two frame outputs hand-placed (the Reconcile / Split Frame pattern): the transfers hero
-// and the per-person net table under it.
 const SETTLE_SPLIT_OPTIONS: { value: "equal" | "weighted"; label: string; title: string }[] = [
   { value: "equal", label: "Equal split", title: "Everyone owes the same share" },
   { value: "weighted", label: "By Share", title: "Each person owes in proportion to their Share column (blank = 1)" },
@@ -801,18 +785,14 @@ const SETTLE_MODE_OPTIONS: { value: SettleMode; label: string; title: string }[]
 
 export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
   const [mode, setModeMirror] = useState<SettleMode>(data.mode);
-  useEffect(() => { setModeMirror(data.mode); }, [data.mode]); // resync on undo/redo/load
+  useEffect(() => { setModeMirror(data.mode); }, [data.mode]);
   const [split, setSplit] = useNodeField(data, "split");
 
-  // The mode retypes the single input socket in place (People frame ↔ Ledger cube). A wired
-  // cable SURVIVES the swap: if the source no longer fits the new type it becomes a dashed
-  // GHOST (one click to reconnect once the source is compatible again — reusing the splice
-  // ghost machinery), and un-ghosts when it fits again.
   async function pickMode(next: SettleMode) {
     if (next === data.mode) return;
     data.setMode(next);
     setModeMirror(next);
-    const ed = getActiveEditor();
+    const ed = getOwningEditor(data.id);
     const inSock = data.inputs.in?.socket;
     if (ed && inSock) {
       for (const c of ed.getConnections()) {
@@ -822,9 +802,9 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
         if (fits) cableGhostStore.commit(c.id); else cableGhostStore.mark(c.id);
       }
     }
-    const view = getActiveView();
+    const view = getOwningView(data.id);
     if (ed && view) reconcileTypesAfterEdit(ed, view);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 
@@ -835,8 +815,7 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
       <SegToggle value={mode} options={SETTLE_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
       <InlineInputs node={data} emit={emit} />
       {mode === "totals" && <SegToggle value={split} options={SETTLE_SPLIT_OPTIONS} onChange={setSplit} />}
-      {/* The per-person breakdown sits on top as a compact chip; the settle-up (the main
-          output) is the hero at the BOTTOM, labelled like the net row. */}
+      {/* The per-person chip sits on top; the settle-up output is the hero at the bottom. */}
       {netOut && (
         <MeasuredSocketRow side="output" socketKey="net" nodeId={data.id} emit={emit} payload={netOut.socket}>
           <span className="solenoid-node__io-label">NET</span>
@@ -858,15 +837,19 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
 }
 
 // ─── RECONCILE ───────────────────────────────────────────────────────────────
-// Two frame outputs are one too many dots to auto-place, so both rows are hand-placed
-// (like Split Frame).
 
 export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>) {
+  const reconcileCollapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const frameOut = data.outputs.frame;
   const summaryOut = data.outputs.summary;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["left", "right", "key", "priceColumn", "qtyColumn"]} />
+      {reconcileCollapsed ? <InlineInputs node={data} emit={emit} keys={["left", "right", "key", "priceColumn", "qtyColumn"]} /> : <>
+      <InlineInputs node={data} emit={emit} keys={["left", "right"]} />
+      <CardSection label="Columns">
+        <InlineInputs node={data} emit={emit} keys={["key", "priceColumn", "qtyColumn"]} />
+      </CardSection>
+      </>}
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>
@@ -876,9 +859,7 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
       )}
       {summaryOut && (
         <MeasuredSocketRow hero side="output" socketKey="summary" nodeId={data.id} emit={emit} payload={summaryOut.socket}>
-          {/* The summary is markdown (bold counts + a Δ paragraph) — render it here
-              in its own hero box; the raw markdown flows out the socket for a
-              Display + markdown FC downstream. */}
+          {/* The markdown summary renders here; the raw markdown also flows out the socket. */}
           {data.cachedSummary ? (
             <div
               className="solenoid-node__display-value solenoid-node__md"
@@ -895,19 +876,16 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
 }
 
 // ─── SPLIT FRAME ───────────────────────────────────────────────────────────────
-// Two outputs (Matrix + Headers), each a labeled row with its socket and a chip.
 
-const SPLIT_COLTYPE_OPTIONS: { value: SplitColType; label: string; title: string }[] = [
+const SPLIT_COLTYPE_OPTIONS: { value: SplitColType; label: ReactNode; title: string }[] = [
   { value: "all", label: "All", title: "Keep every column" },
-  { value: "number", label: "Num", title: "Keep only number columns" },
-  { value: "date", label: "Date", title: "Keep only date columns. The Matrix carries serials." },
-  { value: "logical", label: "Bool", title: "Keep only logical columns. The Matrix carries 1/0." },
-  { value: "string", label: "Text", title: "Keep only text columns. Headers only, since text has no numeric Matrix." },
+  { value: "number", label: <TypeIcon type="number" />, title: "Keep only number columns" },
+  { value: "date", label: <TypeIcon type="date" />, title: "Keep only date columns. The Matrix carries serials." },
+  { value: "logical", label: <TypeIcon type="logical" />, title: "Keep only logical columns. The Matrix carries 1/0." },
+  { value: "string", label: <TypeIcon type="text" />, title: "Keep only text columns. Headers only, since text has no numeric Matrix." },
 ];
 
 export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType>) {
-  // Local mirror so the toggle re-renders; the change handler swaps the Matrix
-  // output socket type (see applySplitColType) — like Get Column's read-as.
   const [colType, setColType] = useState<SplitColType>(data.colType);
   useEffect(() => { setColType(data.colType); }, [data.colType]);
   const matrix = data.cachedMatrix;
@@ -938,16 +916,14 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
 
 // ─── GET COLUMN ────────────────────────────────────────────────────────────────
 
-const GET_COLUMN_READ_OPTIONS: { value: GetColumnReadAs; label: string; title: string }[] = [
-  { value: "number", label: "Number", title: "Read the column as numbers" },
-  { value: "text", label: "Text", title: "Read the column as text" },
-  { value: "date", label: "Date", title: "Read the column as dates, stored as Excel serials" },
-  { value: "logical", label: "Boolean", title: "Read the column as logicals (TRUE/FALSE). A 0/1 or true/false column coerces." },
+const GET_COLUMN_READ_OPTIONS: { value: GetColumnReadAs; label: ReactNode; title: string }[] = [
+  { value: "number", label: <TypeIcon type="number" />, title: "Read the column as numbers" },
+  { value: "text", label: <TypeIcon type="text" />, title: "Read the column as text" },
+  { value: "date", label: <TypeIcon type="date" />, title: "Read the column as dates, stored as Excel serials" },
+  { value: "logical", label: <TypeIcon type="logical" />, title: "Read the column as logicals (TRUE/FALSE). A 0/1 or true/false column coerces." },
 ];
 
 export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>) {
-  // Local mirror of readAs so the control re-renders on change; the change handler
-  // swaps the output socket type (see applyGetColumnReadAs).
   const [readAs, setReadAs] = useState<GetColumnReadAs>(data.readAs);
   useEffect(() => { setReadAs(data.readAs); }, [data.readAs]);
 
@@ -966,16 +942,14 @@ export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>)
 
 // ─── ADD COLUMN ────────────────────────────────────────────────────────────────
 
-const ADD_COLUMN_OPTIONS: { value: AddColumnAddAs; label: string; title: string }[] = [
-  { value: "number", label: "Number", title: "Add a numeric column" },
-  { value: "text", label: "Text", title: "Add a text column" },
-  { value: "date", label: "Date", title: "Add a date column of Excel serials" },
-  { value: "logical", label: "Boolean", title: "Add a logical column (TRUE/FALSE). A 0/1 list coerces." },
+const ADD_COLUMN_OPTIONS: { value: AddColumnAddAs; label: ReactNode; title: string }[] = [
+  { value: "number", label: <TypeIcon type="number" />, title: "Add a numeric column" },
+  { value: "text", label: <TypeIcon type="text" />, title: "Add a text column" },
+  { value: "date", label: <TypeIcon type="date" />, title: "Add a date column of Excel serials" },
+  { value: "logical", label: <TypeIcon type="logical" />, title: "Add a logical column (TRUE/FALSE). A 0/1 list coerces." },
 ];
 
 export function AddColumnComponent({ data, emit }: NodeProps<AddColumnNodeType>) {
-  // Local mirror of addAs; the change handler swaps the Values input socket type
-  // (see applyAddColumnAddAs).
   const [addAs, setAddAs] = useState<AddColumnAddAs>(data.addAs);
   useEffect(() => { setAddAs(data.addAs); }, [data.addAs]);
 
@@ -1005,13 +979,6 @@ const COMPUTED_AS_OPTIONS: { value: ComputedColumnAs; label: string }[] = [
 export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumnNodeType>) {
   const [expr, setExpr] = useState(data.expr);
   useEffect(() => { setExpr(data.expr); }, [data.expr]);
-  const commit = useCallback(async (next: string) => {
-    setExpr(next);
-    data.expr = next;
-    await processGraph(data.id);
-  }, [data]);
-  // The output type: Auto infers from the computed cells; Date is the case
-  // inference can't reach (a serial is indistinguishable from a number).
   const [addAs, setAddAs] = useNodeField(data, "addAs");
   const [, bumpBindings] = useState(0);
   const bind = useCallback((v: string, col: string) => {
@@ -1022,22 +989,15 @@ export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumn
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      {/* Variables are column names, `row`, or side inputs the node grows; a
-          wired λ takes over and the field goes quiet. Editing routes to the
-          shared formula popup like Expression. */}
+      {/* A wired λ takes over and the field goes quiet. */}
       <FormulaField
         value={expr}
-        onChange={commit}
         placeholder="@price * @qty …"
         locked={false}
         onOpen={() => formulaPopup.open(data.id)}
       />
       <ArgSelect value={addAs} onChange={setAddAs} options={COMPUTED_AS_OPTIONS} />
-      {/* Binding pickers — one quiet row per variable/param, shown once a
-          frame is wired. Auto = the by-name ladder (column, else `row`/`rows`,
-          else a grown side input); a picked column ALWAYS reads that column,
-          so a variable can reach "Unit Price" or a column its own name
-          doesn't match. */}
+      {/* Auto binds by name; a picked column always reads that column. */}
       {data.defVars.length > 0 && data.sourceColumns.length > 0 && data.defVars.map((v) => (
         <div key={v} className="solenoid-node__field-row" title={`Where ${v} reads from`}>
           <span className="solenoid-node__field-label">{v}</span>
@@ -1077,17 +1037,28 @@ const LOOKUP_SEARCH_OPTIONS: { value: LookupSearchMode; label: string; title: st
   { value: "last", label: "Last", title: "On duplicate keys, return the last match, scanning bottom to top" },
 ];
 
+const XLOOKUP_MAIN_KEYS = ["frame", "lookup", "inColumn", "returnColumn"];
+const XLOOKUP_OPTION_KEYS = ["ifNotFound"];
+
 export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
   const [matchMode, setMatchMode] = useNodeField(data, "matchMode");
   const [searchMode, setSearchMode] = useNodeField(data, "searchMode");
+  const fallback = useRowsInUse(data, XLOOKUP_OPTION_KEYS);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
-      <SegToggle value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
-      {/* Return = * gives a whole row; a cube lookup can return a nested frame/cube
-          cell — ResultDisplay routes Frame → FrameDisplay, Cube → CubeDisplay, else
-          ValueDisplay (scalar). */}
+      <InlineInputs node={data} emit={emit} keys={collapsed ? undefined : XLOOKUP_MAIN_KEYS} />
+      {!collapsed && <CardSection
+        label="Options"
+        collapsible
+        defaultOpen={fallback || matchMode !== "exact" || searchMode !== "first"}
+        sockets={{ node: data, emit, keys: XLOOKUP_OPTION_KEYS }}
+      >
+        <InlineInputs node={data} emit={emit} keys={XLOOKUP_OPTION_KEYS} />
+        <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
+        <SegToggle value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
+      </CardSection>}
+      {/* ResultDisplay routes a whole-row or nested-cell return to its display. */}
       <ResultDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -1138,8 +1109,8 @@ export function KMeansComponent({ data, emit }: NodeProps<KMeansNodeType>) {
 }
 
 const PCA_SCALE_OPTIONS: { value: "cov" | "corr"; label: string; title: string }[] = [
-  { value: "cov", label: "Centered", title: "Covariance PCA — features keep their scale (prcomp default)" },
-  { value: "corr", label: "Standardized", title: "Correlation PCA — each feature scaled to unit variance first (prcomp scale. = TRUE)" },
+  { value: "cov", label: "Centered", title: "Covariance PCA: features keep their scale (prcomp's default)" },
+  { value: "corr", label: "Standardized", title: "Correlation PCA: each feature is scaled to unit variance first (prcomp scale. = TRUE)" },
 ];
 
 export function PcaComponent({ data, emit }: NodeProps<PcaNodeType>) {

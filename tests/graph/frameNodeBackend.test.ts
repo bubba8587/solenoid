@@ -5,9 +5,10 @@
 // identically to the old direct-verb path. A structural failure comes back as a
 // tagged SolError VALUE, never a throw.
 import { describe, it, expect, beforeEach } from "vitest";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, frameBackend, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { ReplaceValuesNode } from "../../src/graph/nodes/frame";
+import { takesAutoLiteral, takesTextLiteral } from "../../src/graph/components/inlineInput";
 import {
   selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows,
   filterRows, groupByFrame, pivotFrame, unpivotFrame, joinFrames, appendFrames,
@@ -29,17 +30,6 @@ const sample: FrameValue = {
     { name: "flag", type: "logical", values: [true, false, true, false] },
   ],
 };
-
-describe("collect — full frame round-trip through a handle", () => {
-  it("returns every row, not a head-N preview", async () => {
-    resetFrameBackendToJs();
-    const be = frameBackend();
-    const h = await be.source(sample);
-    const got = await be.collect(h);
-    expect(got.__frame).toBe(true);
-    expect(got.columns).toEqual(sample.columns);
-  });
-});
 
 describe("runFrameUnary — parity with each pure verb", () => {
   it("select", async () => {
@@ -149,13 +139,28 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
     ];
     const out = await readFrame(await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs }));
     if (isSolError(out) || out == null) throw new Error("expected a frame");
-    expect(out.__approx).toBeDefined();
     expect(out.__approx!.factor).toBeCloseTo(2, 5); // 2×SKETCH_SAMPLE_ROWS rows sampled to SKETCH_SAMPLE_ROWS
     // sum/count are EXTRAPOLATED (scaled by the factor) — never the sample's raw total
     const total = out.columns.find((c) => c.name === "total")!.values.reduce((a, b) => (a as number) + (b as number), 0);
     expect(total).toBeCloseTo(SKETCH_SAMPLE_ROWS * 2, 5);
     // avg is NOT scaled — extrapolating an average would be wrong, not approximate
     for (const v of out.columns.find((c) => c.name === "avg")!.values) expect(v).toBe(1);
+    calcModeStore.setMode("auto");
+  });
+
+  it("a truncated card preview is scaled like the full collect", async () => {
+    calcModeStore.setMode("sketch");
+    const rows = SKETCH_SAMPLE_ROWS * 2;
+    const wide: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "number", values: Array.from({ length: rows }, (_, i) => i) },
+      { name: "qty", type: "number", values: Array.from({ length: rows }, () => 1) },
+    ] };
+    const ref = await runFrameUnary(wide, { kind: "groupBy", keys: ["id"], aggs: [{ column: "qty", op: "sum", as: "total" }] });
+    const prev = await collectPreview(ref);
+    if (isSolError(prev) || prev == null) throw new Error("expected a frame");
+    expect(prev.__totalRows).toBeDefined(); // the preview really is truncated
+    expect(prev.__approx).toBeDefined();
+    for (const v of prev.columns.find((c) => c.name === "total")!.values) expect(v).toBeCloseTo(2, 5);
     calcModeStore.setMode("auto");
   });
 
@@ -233,5 +238,18 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
     const n = new ReplaceValuesNode({ mode: "cell" });
     n.stringLiterals.column = "qty";
     expect((await n.data({ frame: [f], find: [null], replace: [0] })).frame).toBeNull();
+  });
+
+  it("the card's typed Find and Replace are text kept exactly as typed", async () => {
+    resetFrameBackendToJs();
+    const n = new ReplaceValuesNode({ mode: "substring" });
+    expect(takesAutoLiteral(n, "any")).toBe(false);
+    expect(takesTextLiteral(n, "any")).toBe(true);
+    const f: FrameValue = { __frame: true, columns: [{ name: "s", type: "string", values: ["a_b", "007"] }] };
+    n.stringLiterals.find = "_";
+    n.stringLiterals.replace = " ";
+    const out = await collect(n, { frame: [f] });
+    if (isSolError(out) || out == null) throw new Error("expected a frame");
+    expect(out.columns[0].values).toEqual(["a b", "007"]);
   });
 });

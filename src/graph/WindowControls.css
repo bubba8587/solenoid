@@ -4,7 +4,6 @@
   margin-left: auto;
 }
 
-/* in flow, so no overlay reserve */
 html[data-shell="desktop"] .solenoid-menubar:has(.solenoid-wincontrols) {
   padding-right: 0;
 }
@@ -30,7 +29,6 @@ html[data-shell="desktop"] .solenoid-menubar:has(.solenoid-wincontrols) {
   color: #fff;
 }
 
-/* resize grips: 5px edges, 10px corners, above every overlay */
 .solenoid-wingrip {
   position: fixed;
   z-index: 10000;

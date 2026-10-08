@@ -1,20 +1,18 @@
 import { InlineInputs, type InlineNode } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps, type OpOption, type ShellNode } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
-import { processGraph } from "../process";
+import { getOwningView } from "../activeGraph";
+import type { SolError } from "../errorValue";
 
 interface SpecOpNode<Op extends string> {
   id: string;
   op: Op;
-  cachedResult: number | null;
+  cachedResult: number | SolError | null;
   keysDroppedBySwitch(next: Op): string[];
   setOp(next: Op): void;
 }
 
-/** The card for a spec-table op family (finance.ts § Spec-table op cards): a grouped op
- *  dropdown, the op's inputs, one result. The switch prunes the departing sockets'
- *  cables BEFORE the node reshapes ([[D10]] onePrunePath). */
+/** The switch prunes the departing sockets' cables before the node reshapes. */
 export function makeSpecOpComponent<Op extends string, N extends SpecOpNode<Op> & ShellNode & InlineNode>(
   meta: Record<Op, { label: string; description: string; group: string }>,
 ) {
@@ -29,9 +27,8 @@ export function makeSpecOpComponent<Op extends string, N extends SpecOpNode<Op> 
       const departing = data.keysDroppedBySwitch(next);
       if (departing.length > 0) await dropInputCables(data.id, departing);
       data.setOp(next);
-      await getActiveView()?.rerenderNode(data.id);
+      await getOwningView(data.id)?.rerenderNode(data.id);
       setOpField(next);
-      await processGraph();
     }
 
     return (

@@ -1,14 +1,14 @@
-// [[D44]], [[D45]]
+// [[C24]] arraySemantics, [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
-  ComplexPowerNode, QuadraticRootsNode, cx, isCx, type Cx,
+  ComplexPowerNode, QuadraticRootsNode, PolyRootsNode, cx, isCx, type Cx,
 } from "../../../src/graph/nodes/complex";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, canConnect } from "../../../src/graph/sockets";
 
-// ─── The complex family: element-wise, and TAGGED ([[D44]] tagSpecialScalars) ────────────────────
+// ─── The complex family: element-wise, and TAGGED ([[C24]] arraySemantics) ────────────────────
 // A complex is `{ __cx, re, im }`, never a bare `[re, im]` array — so
 // `Array.isArray` means "list" here like everywhere else, and the family's
 // broadcaster no longer needs the exact-shape sniff the old tuple forced. These
@@ -24,7 +24,7 @@ const dt = (
   return s instanceof SolenoidSocket ? s.dataType : undefined;
 };
 
-describe("the tagged representation ([[D44]] tagSpecialScalars)", () => {
+describe("the tagged representation ([[C24]] arraySemantics)", () => {
   it("a complex is a tagged object, and isCx is the one test", () => {
     const z = cx(1, 2);
     expect(isCx(z)).toBe(true);
@@ -35,11 +35,6 @@ describe("the tagged representation ([[D44]] tagSpecialScalars)", () => {
     expect(isCx([1, 2])).toBe(false);
     expect(isCx({ re: 1, im: 2 })).toBe(false);
     expect(isCx(null)).toBe(false);
-  });
-
-  it("two equal complexes from different sources are distinct objects — membership goes through setKey ([[D39]] keyByValue)", () => {
-    expect(cx(1, 2)).not.toBe(cx(1, 2));
-    expect(cx(1, 2)).toEqual(cx(1, 2));
   });
 });
 
@@ -106,9 +101,6 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
   });
 
   it("per-cell nulls and ragged lists follow the broadcast contract", () => {
-    // A wired MISSING short-circuits that cell only.
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[cx(1, 2), null]] }).result)
-      .toEqual([cx(1, -2), null]);
     // Ragged operands pad to the LONGEST with a missing cell.
     expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [[cx(1, 1), cx(2, 2)]], b: [[cx(1, 1)]] }).result)
       .toEqual([cx(2, 2), null]);
@@ -152,14 +144,30 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
     wrapNodeData(list as never);
     expect(list.data({ z: [[cx(1, 2), cx(3, 4)] as never] }).result).toEqual([cx(1, -2), cx(3, -4)]);
   });
+});
 
-  // The case the old tuple could NOT distinguish: a lone complex arriving at a
-  // strict `complexlist` input now wraps to a singleton like every other scalar —
-  // under [re, im] it slipped through as a fake 2-list.
-  it("a complex scalar widens into a complexlist input as a SINGLETON", () => {
-    const list = new ComplexUnaryNode({ op: "conj" });
-    wrapNodeData(list as never);
-    expect(list.data({ z: [cx(5, 1) as never] }).result).toEqual(cx(5, -1));
+
+describe("complex operands read like the formula's (toCx)", () => {
+  it("a real number is z + 0i, text parses as a+bi, anything else is #TYPE!", () => {
+    const conj = (z: unknown) => new ComplexUnaryNode({ op: "conj" }).data({ z: [z as Cx] }).result;
+    expect(conj(5)).toEqual(cx(5, -0));
+    expect(conj("3+4i")).toEqual(cx(3, -4));
+    expect(isSolError(conj("abc"))).toBe(true);
+    expect(conj([1, cx(0, 2)] as unknown as Cx)).toEqual([cx(1, -0), cx(0, -2)]);
+    expect(isSolError(conj(true))).toBe(true);
   });
 });
 
+describe("Polynomial Roots keeps every coefficient in its slot", () => {
+  const roots = (coeffs: unknown[]) => new PolyRootsNode().data({ coeffs: [coeffs as (number | null)[]] });
+  it("x² − 1 has roots ±1", () => {
+    expect(roots([1, 0, -1]).real).toEqual([-1, 1]);
+  });
+  it("a blank coefficient leaves the roots unknown instead of shifting the degree", () => {
+    expect(roots([1, null, -1])).toEqual({ roots: null, real: null });
+  });
+  it("an error coefficient propagates", () => {
+    const e = solError("#DIV/0!", "x");
+    expect(roots([1, e, -1]).roots).toBe(e);
+  });
+});

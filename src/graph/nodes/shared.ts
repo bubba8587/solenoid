@@ -4,11 +4,10 @@ import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, d
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
+import { applyRole, type InputRole } from "../inputRoles";
 import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../unitValue";
 import { dimOf } from "../unitValue";
 
-/** Shared socketDocs string for every finance/date node's day-count `basis` input,
- *  so the legend lives in ONE place ([[C8]] declareOnce) instead of a copy per node. */
 export const BASIS_DOC = "Day-count basis: 0 = US 30/360, 1 = actual/actual, 2 = actual/360, 3 = actual/365, 4 = European 30/360.";
 
 export const numIn      = (label: string) => new ClassicPreset.Input(numberSocket, label);
@@ -21,43 +20,21 @@ export const strIn      = (label: string) => new ClassicPreset.Input(stringSocke
 export const strListIn  = (label: string) => new ClassicPreset.Input(strListSocket, label);
 export const dateIn     = (label: string) => new ClassicPreset.Input(dateSocket,    label);
 export const dateListIn = (label: string) => new ClassicPreset.Input(dateListSocket,label);
-// `any` = element-agnostic SCALAR; a true accept-anything port uses trueany below.
 export const anyIn      = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("any"), label);
-// ADOPTIVE trueany ports (the accept-anything default) take a fresh AdoptiveSocket
-// each; the STATIC variants are only for a type that stays unknowable while wired.
 export const trueAnyIn        = (label: string) => new ClassicPreset.Input(new AdoptiveSocket(), label);
 export const trueAnyOut       = (label: string) => new ClassicPreset.Output(new AdoptiveSocket(), label);
-// These ADOPT the wired cable's concrete type so the node can read the element
-// family off the socket — the one thing values can't recover (a date serial is
-// indistinguishable from a number).
 export const adoptiveTableIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
 export const adoptiveListIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
-// Adoptive OUTPUTS for element-preserving ops: the output adopts the input's
-// element type, so a reversed date list stays a date list downstream.
 export const adoptiveTableOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anytable"), label);
 export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anylist"), label);
-// Rank-preserving (≤2) adoptive output: adopts the wired input's rank AND element type,
-// so a same-rank op (TAKE/DROP) hands back a list for a list, a matrix for a matrix.
 export const adoptiveDataOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anydata"), label);
-/** A NON-adoptive `trueany` output for a generative result whose type can't be
- *  derived from any input; an EXTRACTION uses `trueAnyOut` + `passthrough()`. */
+/** Never adopts: only for a generative result no input types; an extraction uses `trueAnyOut` plus `passthrough()`. */
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
-// The cube-family adoptive ports (A′): a row verb's table INPUT accepts a Frame OR a Cube
-// (base "cube", which accepts both); with a `single` passthrough over it the OUTPUT hands
-// the SAME rank back — a Frame in yields a Frame out, a Cube in a Cube out. The output base
-// is "frame" (NOT "cube") so that unadopted — a fresh node, or a static validateText check
-// before adoption runs — the output reads as a Frame, which feeds a frame-only consumer
-// (GroupBy / Pivot / Join) as well as a cube one; a cube wired in adopts it to `cube`.
 export const cubeAdoptIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("cube"), label);
 export const tableAdoptOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("frame"), label);
-// Adoption here is purely informative: acceptance is unchanged and coerceInputs
-// treats an adopted concrete type identically to the neutral rung.
 export const anyTableIn = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
 export const anyListIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
-// `anycombo` accepts what `anyListIn` does, but a scalar reaches data() as a SCALAR
-// instead of widening to a singleton — for a producer whose rank follows its input.
 export const anyComboIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anycombo"), label);
-/** The rank-≤2 element-agnostic input ([[E5]] anydataWildcard), adoptive like anyComboIn. */
 export const anyDataIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anydata"), label);
 export const anyComboOut = (label: string) => new ClassicPreset.Output(anyComboSocket, label);
 export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);
@@ -100,60 +77,76 @@ export const chartOut     = (label: string) => new ClassicPreset.Output(chartSoc
 export const documentIn   = (label: string) => new ClassicPreset.Input(documentSocket, label);
 export const documentOut  = (label: string) => new ClassicPreset.Output(documentSocket, label);
 
-// ─── Polyform result-type selector ────────────────────────────────────────────
-// A polyform producer's element type can't be inferred from a runtime-polymorphic
-// lambda, so the user declares it and the output socket swaps AT THE NODE'S OWN
-// DIMENSIONALITY:
-//
-//   scalar  (REDUCE)               → number / string / date / any
-//   combo   (Expression, BYROW/…)  → numlist / strcombo / datecombo / any
-//   matrix  (MAP, MAKEARRAY)       → table / strtable / datetable / anytable
 export type ResultType = "number" | "text" | "date" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 
 export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string }> = {
-  number: { label: "Number", title: "Result is numeric, the default. Matches Excel arithmetic" },
-  text:   { label: "Text",   title: "Result is text: UPPER(x), TEXTJOIN(…), x & \" \" & y" },
-  date:   { label: "Date",   title: "Result is a date (Excel serial): DATE(y,m,d), EDATE(x,1)" },
-  auto:   { label: "Auto",   title: "Untyped: the wildcard socket accepts whatever the formula returns" },
+  number: { label: "Number", title: "The result is a number, the default" },
+  text:   { label: "Text",   title: "The result is text, like UPPER(x) or x & \" \" & y" },
+  date:   { label: "Date",   title: "The result is a date, like DATE(y,m,d) or EDATE(x,1)" },
+  auto:   { label: "Auto",   title: "The result takes whatever type the formula returns" },
 };
 
 const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, ClassicPreset.Socket>> = {
   scalar: { number: numberSocket,  text: stringSocket,   date: dateSocket,        auto: anySocket },
-  // combo/auto is anyCOMBO, not `any`: an Auto result IS a list whenever a list
-  // variable broadcasts, and `any` would let it reach strict scalar inputs.
   combo:  { number: numListSocket, text: strComboSocket, date: dateComboSocket,   auto: anyComboSocket },
   matrix: { number: tableSocket,   text: strTableSocket, date: dateTableSocket,   auto: anyTableSocket },
 };
 
-/** The output socket a producer carries for a result type at its dimensionality —
- *  used both to build the port and to swap it in place. */
 export function resultSocket(dim: ResultDim, t: ResultType): ClassicPreset.Socket {
   return RESULT_SOCKETS[dim][t];
 }
 
-/** Build the result output port for a producer node. */
 export function resultOut(label: string, dim: ResultDim, t: ResultType): ClassicPreset.Output<ClassicPreset.Socket> {
   return new ClassicPreset.Output(resultSocket(dim, t), label);
 }
 
-// Read a slot distinguishing UNWIRED from a wired MISSING: a connected cable's
-// value wins even when `null` and only `undefined` falls back to the literal, so
-// the `inputs.x?.[0] ?? literal` idiom is wrong (`??` swallows a wired null).
+/** Re-seats a fixed input after a grown row, so the live key order is the one a reload rebuilds. */
+export function keepInputLast(node: ClassicPreset.Node, key: string): void {
+  const input = node.inputs[key];
+  if (!input) return;
+  delete node.inputs[key];
+  node.inputs[key] = input;
+}
+
 export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | null {
   return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? null);
 }
 
-// A broadcaster's output: a scalar, a list whose cells may each carry a
-// first-class `null`/`SolError`, or a whole-value short-circuit.
+/** A card's input roles: its class's, or for a card whose roles change with its op (Series), the current op's. */
+export function rolesOf(node: ClassicPreset.Node): Record<string, InputRole> | undefined {
+  return (node as { currentInputRoles?: () => Record<string, InputRole> }).currentInputRoles?.()
+    ?? (node.constructor as { inputRoles?: Record<string, InputRole> }).inputRoles;
+}
+
+/** A declared input read by its role ([[D86]] blankRoles): unwired, the typed value; wired, the cable's; a blank as the role reads it. */
+export function readRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined): T {
+  const role = rolesOf(node)?.[key];
+  if (!role) throw new Error(`${node.constructor.name}: no input role declared for "${key}"`);
+  return readAsRole<T>(node, key, wired, role);
+}
+
+/** A setting read as left out takes the card's default, whole or item by item in a list ([[D86]] blankRoles). */
+export function leftOutAs<T>(v: T | readonly (T | undefined)[] | undefined, dflt: T): T | T[] {
+  if (v === undefined) return dflt;
+  // Array.isArray narrows a generic to any[], so the list is named for what it is.
+  return Array.isArray(v) ? (v as readonly (T | undefined)[]).map((x) => (x === undefined ? dflt : x)) : (v as T);
+}
+
+/** `readRole` with the role given, for a card whose roles change with its op (Series). */
+export function readAsRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
+  const n = node as { literals?: Record<string, unknown>; stringLiterals?: Record<string, unknown> };
+  const literal = n.literals?.[key] ?? n.stringLiterals?.[key];
+  const v = wired === undefined || wired.length === 0 ? literal : wired[0];
+  return applyRole(role, v ?? null, node.inputs[key]?.label ?? key) as T;
+}
+
 export type CellResult<T> = T | (T | SolError | null)[] | SolError | null;
 
-/** The numeric broadcasters' output — `CellResult` at the number family. */
 export type BroadcastResult = CellResult<number>;
 
 export function broadcast(
   fn: (...xs: number[]) => number | null,
-  // A scalar `null` (a wired MISSING) short-circuits per the per-cell contract.
   ...args: Array<number | number[] | null>
 ): BroadcastResult {
   const lists = args.filter((a): a is number[] => Array.isArray(a));
@@ -161,7 +154,7 @@ export function broadcast(
     const sc = cellShortCircuit(args);
     if (sc !== COMPUTE) return sc;
     const r = fn(...(args as number[]));
-    return r === null ? null : guardFinite(r, ...args);
+    return r === null ? null : guardFinite(r, args);
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | SolError | null)[] = [];
@@ -171,13 +164,11 @@ export function broadcast(
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; }
     const r = fn(...(ops as number[]));
-    out.push(r === null ? null : guardFinite(r, ...ops));
+    out.push(r === null ? null : guardFinite(r, ops));
   }
   return out;
 }
 
-// Like `broadcast`, but the per-element fn may emit a tagged `SolError`, so a list
-// carries per-cell errors and a scalar ÷0 reads identically to a list ÷0.
 export function broadcastErr(
   fn: (...xs: number[]) => number | SolError | null,
   ...args: Array<number | number[] | null>
@@ -187,7 +178,7 @@ export function broadcastErr(
     const sc = cellShortCircuit(args);
     if (sc !== COMPUTE) return sc;
     const r = fn(...(args as number[]));
-    return typeof r === "number" ? guardFinite(r, ...args) : r;
+    return typeof r === "number" ? guardFinite(r, args) : r;
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | SolError | null)[] = [];
@@ -197,17 +188,12 @@ export function broadcastErr(
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; }
     const r = fn(...(ops as number[]));
-    out.push(typeof r === "number" ? guardFinite(r, ...ops) : r);
+    out.push(typeof r === "number" ? guardFinite(r, ops) : r);
   }
   return out;
 }
 
-// ─── Element-agnostic broadcast (the non-numeric families' broadcaster) ─────────
-// The number-typed broadcasters above can't take text, whose operands are MIXED and
-// whose result is often another family; same ragged-zip and per-cell contract, with
-// the element type opened up. Overloaded by ARITY so each call site keeps precise
-// per-operand types. Element types are constrained to `Cell` because the list check
-// is `Array.isArray` — an array-shaped element needs its own broadcaster.
+// No array-shaped element: the list check is `Array.isArray`, so such an element needs its own broadcaster.
 type Cell = string | number | boolean;
 
 export function broadcastCells<A extends Cell, R extends Cell>(
@@ -236,7 +222,7 @@ export function broadcastCells(
     const sc = cellShortCircuit(args);
     if (sc !== COMPUTE) return sc;
     const r = call(...(args as Cell[]));
-    return typeof r === "number" ? guardFinite(r, ...args) : r;
+    return typeof r === "number" ? guardFinite(r, args) : r;
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (Cell | SolError | null)[] = [];
@@ -246,31 +232,24 @@ export function broadcastCells(
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; }
     const r = call(...(ops as Cell[]));
-    out.push(typeof r === "number" ? guardFinite(r, ...ops) : r);
+    out.push(typeof r === "number" ? guardFinite(r, ops) : r);
   }
   return out;
 }
 
-// ─── Unit-aware broadcast ───────────────────────────────────────────────────────
-// The dimensional twin of `broadcastErr`: the per-cell `fn` sees RAW
-// `number | UnitCell` operands, and the plain-number path stays byte-identical to
-// `broadcastErr` so an untagged graph is unaffected.
 export type UnitOperand = number | UnitCell;
 export type BroadcastUnitResult =
   number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
 
-/** Classify a numeric-or-cell result: apply `guardFinite` to its magnitude (so an
- *  overflowing dimensioned product still becomes `#OVERFLOW!`), keeping the tag. */
-function guardCell(r: number | UnitCell | SolError | null, ...inputs: unknown[]): number | UnitCell | SolError | null {
+function guardCell(r: number | UnitCell | SolError | null, inputs: ReadonlyArray<unknown>): number | UnitCell | SolError | null {
   if (r === null || typeof r === "string") return r;
   if (isUnitCell(r)) {
-    const g = guardFinite(r.value, ...inputs);
+    const g = guardFinite(r.value, inputs);
     if (typeof g !== "number") return g;
-    // Keep the RATIO brand — tagDim would collapse the empty-dim ratio cell to a
-    // bare number, un-minting it.
+    // tagDim would collapse an empty-dim ratio cell to a bare number, so re-mint the ratio.
     return r.ratio === true ? tagRatio(g) : tagDim(g, r.dim, r.display);
   }
-  if (typeof r === "number") return guardFinite(r, ...inputs);
+  if (typeof r === "number") return guardFinite(r, inputs);
   return r;
 }
 
@@ -282,7 +261,7 @@ export function broadcastUnit(
   if (lists.length === 0) {
     const sc = cellShortCircuit(args);
     if (sc !== COMPUTE) return sc;
-    return guardCell(fn(...(args as UnitOperand[])), ...args);
+    return guardCell(fn(...(args as UnitOperand[])), args);
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | UnitCell | SolError | null)[] = [];
@@ -291,13 +270,11 @@ export function broadcastUnit(
     const ops = args.map((a) => (Array.isArray(a) ? a[i] : a)) as UnitOperand[];
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; }
-    out.push(guardCell(fn(...ops), ...ops));
+    out.push(guardCell(fn(...ops), ops));
   }
   return out;
 }
 
-/** True when any operand (scalar or a list cell) carries a real dimension — the
- *  cheap gate a unit-aware node uses to skip the unit path entirely for plain data. */
 export function anyDimensioned(...args: Array<UnitOperand | UnitOperand[] | null>): boolean {
   for (const a of args) {
     if (Array.isArray(a)) { if (a.some((c) => isUnitCell(c))) return true; }
@@ -308,36 +285,29 @@ export function anyDimensioned(...args: Array<UnitOperand | UnitOperand[] | null
 
 export { dimOf, magnitudeOf };
 
-// ─── Node kind → header accent ─────────────────────────────────────────────────
-// A kind is the node's FAMILY (what it does), distinct from socket type.
 
-export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart" | "document";
+export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart" | "document";
 
-// A kind picks a palette SLOT, not a raw hex, so retuning a color in palette.ts
-// moves every use of it together.
 export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   input:   "amber",
   math:    "blue",
   convert: "teal",
   logic:   "purple",
-  // A list is not a first-class socket type, so list nodes share the neutral gold.
   list:    "gold",
   lambda:  "green",
   util:    "gray",
-  display: "gold",
-  chart:   "green",     // the chart socket's green (author 2026-08-25; a card may override via headerAccent)
-  string:  "lime",      // text / string nodes (matches string socket)
-  date:    "pink",      // date / time nodes (matches date socket)
-  complex: "sky",       // complex number nodes (matches complex socket)
-  table:   "gold",      // matches the table socket's gold matrix-shade
-  frame:   "violet",    // matches frame socket
+  chart:   "green",
+  string:  "lime",
+  date:    "pink",
+  complex: "sky",
+  table:   "gold",
+  frame:   "violet",
   format:  "gold",
-  boundary: "green",    // green = "special"
-  document: "green",    // the Report — a document sink, green to stand apart from Note's util gray
+  boundary: "green",
+  document: "green",
 };
 
-// Kept LIVE by mutating in place: consumers index this object, so swapping the
-// binding (or a const map) would freeze them at the startup palette.
+// Refreshed by mutating in place; replacing the object would freeze consumers at the startup palette.
 export const NODE_KIND_ACCENTS: Record<NodeKind, string> = Object.fromEntries(
   (Object.entries(NODE_KIND_SLOTS) as [NodeKind, PaletteSlot][]).map(([k, slot]) => [k, resolveColor(slot)]),
 ) as Record<NodeKind, string>;
@@ -348,23 +318,3 @@ function refreshKindAccents() {
   }
 }
 paletteStore.subscribe(refreshKindAccents);
-
-export const NODE_KIND_LABELS: Record<NodeKind, string> = {
-  input:   "Input",
-  math:    "Math",
-  convert: "Convert",
-  logic:   "Logic",
-  list:    "List",
-  lambda:  "Lambda",
-  util:    "Utility",
-  display: "Display",
-  chart:   "Chart",
-  string:  "Text",
-  date:    "Date",
-  complex: "Complex",
-  table:   "Table",
-  frame:   "Frame",
-  format:  "Format",
-  boundary: "Boundary",
-  document: "Document",
-};

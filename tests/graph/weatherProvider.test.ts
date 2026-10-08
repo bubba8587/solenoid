@@ -1,4 +1,4 @@
-// [[D32]] refreshOutsideRebuild
+// [[C23]] calcModes
 import { describe, it, expect } from "vitest";
 import { weatherUrl, parseWeather, wmoText } from "../../src/graph/weatherProvider";
 

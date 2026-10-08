@@ -2,24 +2,17 @@
 import { themeVars, type ThemeMode } from "../../src/graph/themeVars";
 import { DEFAULT_ACCENT } from "./lookTokens";
 
-/** The app's component CSS, `:root` rewritten to `:host`; filled in by the build. */
 declare const __SOLENOID_CSS__: string;
 
-/** The accent slot the chips and popups wear; the plugin's setting (main.tsx) sets it. */
 let accentSlot: string = DEFAULT_ACCENT;
 export function setAccentSlot(slot: string): void {
   accentSlot = slot;
 }
 
 const hosts = new Set<HTMLElement>();
-// One set of sheets PER DOCUMENT: Obsidian's settings and its popout notes are windows of their
-// own, and a constructed stylesheet can only be adopted in the document that made it.
 const sheetsByDoc = new Map<Document, CSSStyleSheet[]>();
 let layer: HTMLElement | null = null;
 
-/** The document and window the ONE popup layer lives in: the main window's, or a popped-out
- *  note's. The build points every free `document` / `window` in the app's components here
- *  (`popupGlobals` in vite.config.ts), so a popup listens, measures and portals in its own window. */
 export let popupDocument: Document = document;
 export let popupWindow: typeof window = window;
 
@@ -38,7 +31,6 @@ function styleSheets(doc: Document): CSSStyleSheet[] {
   const made = sheetsByDoc.get(doc);
   if (made) return made;
   const Sheet = (doc.defaultView ?? window).CSSStyleSheet;
-  // Obsidian's inherited text styles stop at the host; the app's own follow.
   const reset = new Sheet();
   reset.replaceSync(":host{all:initial}");
   const app = new Sheet();
@@ -50,18 +42,15 @@ function styleSheets(doc: Document): CSSStyleSheet[] {
   return sheets;
 }
 
-/** Rewrite the palette-derived tokens; a document's sheet is shared, so every host retints at once. */
 export function refreshTokens(): void {
   const css = tokenCss();
   for (const [doc, sheets] of sheetsByDoc) {
-    if (!doc.defaultView) sheetsByDoc.delete(doc); // a closed window
+    if (!doc.defaultView) sheetsByDoc.delete(doc);
     else sheets[2].replaceSync(css);
   }
   bumpTheme();
 }
 
-// A popup's ink and light-mode border derive from a HEX, so a chip resolves its type color
-// here and re-renders when the palette or Obsidian's mode moves.
 let themeTick = 0;
 const themeListeners = new Set<() => void>();
 function bumpTheme(): void {
@@ -76,7 +65,6 @@ export const themeVersion = {
   get: (): number => themeTick,
 };
 
-/** A token's value (`--sock-strlist`) under the current palette and Obsidian mode. */
 export function tokenHex(name: string): string | undefined {
   return themeVars(accentSlot, obsidianMode())[name] ?? undefined;
 }
@@ -85,9 +73,8 @@ function obsidianMode(): ThemeMode {
   return document.body.classList.contains("theme-light") ? "light" : "dark";
 }
 
-/** A host element, made in `doc`, whose shadow root carries the app's styles and tokens. */
 export function createShadowHost(tag: "span" | "div", className: string, doc: Document = document): { host: HTMLElement; root: ShadowRoot } {
-  // The window's own `createEl`: a host made in another document loses its sheets when it moves.
+  // The window's own createEl: a host made in another document loses its sheets when it moves.
   const host = (doc.win as typeof window).createEl(tag);
   host.className = className;
   host.dataset.theme = obsidianMode();
@@ -97,9 +84,6 @@ export function createShadowHost(tag: "span" | "div", className: string, doc: Do
   return { host, root };
 }
 
-/** Obsidian builds a property row in the main window and may move it into a popped-out one,
- *  and a constructed sheet does not survive the move: adopt the sheets of the document the host
- *  is in NOW. */
 export function adoptSheets(host: HTMLElement): void {
   const root = host.shadowRoot;
   if (!root) return;
@@ -111,7 +95,6 @@ export function releaseShadowHost(host: HTMLElement): void {
   hosts.delete(host);
 }
 
-/** Obsidian fires `css-change` on a light/dark switch. */
 export function syncTheme(): void {
   const mode = obsidianMode();
   for (const host of hosts) {
@@ -121,8 +104,6 @@ export function syncTheme(): void {
   bumpTheme();
 }
 
-// The overlay still dims the whole window, but the card centers over the note's pane and takes
-// its default width from it, where the app measures the viewport.
 const PANE_CSS =
   ".sol-popup-overlay{padding-left:calc(10px + var(--sol-pane-left,0px));padding-right:calc(10px + var(--sol-pane-right,0px))}" +
   ".table-popup{width:min(1100px,calc(var(--sol-pane-width,100vw)*0.94))}";
@@ -131,7 +112,6 @@ function popupLayer(): ShadowRoot {
   if (!layer) {
     const made = createShadowHost("div", "solenoid-popup-layer", popupDocument);
     layer = made.host;
-    // A constructed sheet can only be adopted in the window that made it.
     const paneSheet = new popupWindow.CSSStyleSheet();
     paneSheet.replaceSync(PANE_CSS);
     made.root.adoptedStyleSheets = [...made.root.adoptedStyleSheets, paneSheet];
@@ -150,8 +130,7 @@ function dropLayer(): void {
   layer = null;
 }
 
-/** Move the popup layer to `doc`'s window. True when it moved (or its window had closed): the
- *  caller renders the popups again, since the old React root went with the old layer. */
+/** True when the layer moved or its window closed: the caller renders the popups again, since the old React root went with the old layer. */
 export function homePopupLayer(doc: Document): boolean {
   const gone = layer !== null && !layer.isConnected;
   if (popupDocument === doc && !gone) return false;
@@ -172,19 +151,17 @@ function placeOverPane(): void {
   ] as const) layer.style.setProperty(name, `${px}px`);
 }
 
-/** The pane the next popup opens over; null measures the window. */
+/** Null measures the window. */
 export function openPopupsOver(el: HTMLElement | null): void {
   pane = el;
   popupLayer();
   placeOverPane();
 }
 
-/** The one fixed layer the popups render into. */
 export function popupLayerRoot(): HTMLElement {
   return popupLayer().children[0] as HTMLElement;
 }
 
-/** Where a body-aimed portal (a cell's suggestion list) lands: beside the popups, above them. */
 export function popupPortalRoot(): HTMLElement {
   return popupLayer().children[1] as HTMLElement;
 }

@@ -6,8 +6,7 @@ import {
   FitDistributionNode, DecomposeNode,
 } from "../rete-nodes";
 
-// The scipy-shaped toolkit as real placements (not tags). Catalog type strings must
-// not change (saves + formula names).
+// Catalog type strings must not change: saves and formula names key on them.
 const PATH = ["Packs", "Scientific Computing"];
 
 export const SCIENTIFIC_PACK: Pack = {

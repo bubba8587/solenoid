@@ -1,11 +1,6 @@
-// Per-card DOM census for the backlog "Per-card CSS conversion" sweep, STEP 1.
-// Drives the running Vite dev server (port 1420) with system Edge headless and calls
-// the in-app hook window.__solenoidCardCensus() (census.ts), which mounts one card of
-// every catalog node type, walks its DOM, and splits each element into "carries a value
-// or a handler" vs "paint only" (a decorative div/svg step 2 could move to CSS). Prints a
-// per-card table (biggest paint-only cards first) plus the aggregate paint-only class
-// histogram — the step-2 conversion targets. Pure measurement; nothing is written.
-//
+// Censuses every catalog card's DOM through window.__solenoidCardCensus() (census.ts): each element is
+// either carrying a value or handler, or paint only (a CSS conversion target). Prints a per-card table,
+// biggest paint-only first, and the paint-only class histogram. Writes nothing. Needs the dev server on :1420.
 //   node scripts/card-css-census.mjs
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";

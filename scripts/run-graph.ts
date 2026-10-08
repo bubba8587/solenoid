@@ -1,17 +1,8 @@
-// Run with: npx tsx scripts/run-graph.ts <graph.json>
-// Loads a saved Solenoid graph and runs it headlessly (no browser, no Tauri) —
-// instantiates a real editor + DataflowEngine exactly like framesSeed.test.ts
-// (and its siblings — cubesSeed/pivotSeed/errorSeed/errorIntegration/
-// polyformIntegration/perfScaling.test.ts), fetches every node's output, and
-// prints the results as JSON.
-//
-// Deliberately NEVER calls initFrameBackend(): frameBackend() (src/graph/
-// frameBackend.ts) lazily defaults to the pure-JS JsFrameBackend, and
-// initFrameBackend is the ONLY place that swaps to the Tauri-IPC PolarsBackend
-// (gated on engineAvailable(), which needs window.__TAURI_INTERNALS__ — never
-// present under Node). So simply never calling it keeps every Polars-backed
-// verb node (Join, Group By, …) transparently routed through the JS oracle,
-// with zero Tauri dependency.
+// Runs a saved graph (JSON or the text form) headlessly through a real editor and engine and prints
+// every node's outputs as JSON, keyed by label (else type, with a #n suffix on repeats). The strict
+// validator gates the run (--force skips it). Never calls initFrameBackend, so every frame verb runs
+// on the JS oracle with no Tauri dependency.
+//   npx tsx scripts/run-graph.ts <graph.json|graph.txt>
 
 import { readFileSync } from "node:fs";
 import { promises as nodeFs } from "node:fs";
@@ -42,10 +33,6 @@ type SavedGraph = { nodes: SavedNode[]; connections: SavedConnection[] };
 
 type NodeCtor = new (init?: Record<string, unknown>) => ClassicPreset.Node;
 
-/** A verb card's live output is a lazy handle on desktop-shaped chains (the
- *  "Lazy handles on cables" architecture — see CLAUDE.md); printed JSON is only
- *  useful materialized, so walk every result and collect a FrameRef back to a
- *  real FrameValue through the (here, JS-oracle) backend before printing. */
 async function resolveFrameRefs(v: unknown): Promise<unknown> {
   if (isFrameRef(v)) return readFrame(v);
   if (Array.isArray(v)) return Promise.all(v.map(resolveFrameRefs));
@@ -58,7 +45,6 @@ async function resolveFrameRefs(v: unknown): Promise<unknown> {
   return v;
 }
 
-/** The Node file provider a headless run installs behind fileBridge (bundle 24 J). */
 export const nodeFsProvider: FsProvider = {
   readTextFile: (p) => nodeFs.readFile(p, "utf8"),
   readDir: async (p) => (await nodeFs.readdir(p, { withFileTypes: true })).map((e) => ({ name: e.name, isDirectory: e.isDirectory(), isFile: e.isFile() })),
@@ -74,18 +60,11 @@ export const nodeFsProvider: FsProvider = {
 };
 
 export interface RunOptions {
-  /** Absolute vault path: installs the Node file provider and points the Obsidian nodes at it. */
   vault?: string;
-  /** The TaskNotes API base url (Node's fetch reaches it). */
   tasknotes?: string;
-  /** Arm and run ONE named sink after the compute — the Run button's headless equivalent. */
   run?: string;
 }
 
-/** Build a real editor + engine from a saved graph and run it — the reusable
- *  half of the CLI, also exercised directly by run-graph.test.ts. With a vault or a
- *  TaskNotes url the connection nodes' background loads are awaited and the graph
- *  computed again, so the printed values include what they read. */
 export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Record<string, unknown>> {
   if (opts.vault) { setFsProvider(nodeFsProvider); settingsStore.set("obsidianVault", opts.vault); }
   if (opts.tasknotes) settingsStore.set("taskNotesUrl", opts.tasknotes);
@@ -122,9 +101,6 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
     );
   }
 
-  // Print every node's output, keyed by its label — falling back to its type,
-  // disambiguated with a #n suffix on a repeat — the same "what does each box
-  // show" a human gets from opening the app, minus the canvas.
   let values = await computeAll(editor, engine);
   if (opts.vault || opts.tasknotes) {
     await whenConnectionsSettled();
@@ -135,7 +111,7 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
     const sink = [...byId.values()].find((n) => ((n as unknown as { label?: string }).label ?? "").trim().toLowerCase() === want) as
       (ClassicPreset.Node & { enabled?: boolean; run?: () => Promise<void>; status?: string; statusMessage?: string }) | undefined;
     if (!sink || typeof sink.run !== "function") throw new Error(`--run: no sink named "${opts.run}" in the graph.`);
-    sink.enabled = true; // the CLI's explicit flag is the Run button ([[C38]] sinkRunButtonOnly)
+    sink.enabled = true; // [[C38]] sinkRunButtonOnly: this explicit flag is the Run button
     await sink.run();
     if (sink.status === "error") throw new Error(`--run ${opts.run}: ${sink.statusMessage ?? "failed"}`);
     console.error(`${opts.run}: ${sink.statusMessage ?? sink.status ?? "ran"}`);
@@ -144,7 +120,7 @@ export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Re
   const out: Record<string, unknown> = {};
   for (const sn of g.nodes) {
     const node = byId.get(sn.id);
-    if (!node) continue; // unreachable: every sn.id was just inserted above
+    if (!node) continue;
     const label = ((node as unknown as { label?: string }).label ?? "").trim() || sn.type;
     const n = (seen.get(label) ?? 0) + 1;
     seen.set(label, n);
@@ -166,11 +142,6 @@ async function main() {
     console.error("Usage: npx tsx scripts/run-graph.ts <graph.json|graph.txt> [--force] [--vault <path>] [--tasknotes <url>] [--run <sink name>]");
     process.exit(1);
   }
-  // Either surface of the same document runs: a saved JSON graph or the text
-  // form ("Name: Type … --- sidecar"). The strict validator gates both — this
-  // is the generate → validate → run loop for programmatic/AI authors, so a
-  // graph the loader would silently repair fails loudly here instead
-  // (--force runs it anyway).
   const raw = readFileSync(file, "utf8");
   let g: SavedGraph;
   if (raw.trimStart().startsWith("{")) {
@@ -195,9 +166,7 @@ async function main() {
   console.log(JSON.stringify(out, null, 2));
 }
 
-// Only run as a CLI when invoked directly (not when imported by a test).
-// pathToFileURL (not a manual `file://` template) so this also matches on
-// Windows, where argv[1] is a backslashed drive path.
+// pathToFileURL, not a `file://` template, so this matches a backslashed Windows argv[1].
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => {
     console.error(e instanceof Error ? e.message : String(e));

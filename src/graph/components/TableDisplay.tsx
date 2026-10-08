@@ -1,42 +1,32 @@
-// [[C24]] arraySemantics, [[C94]] formatFamilyGates, [[C44]] dateSerials, [[C58]] tableInputRawText
+// [[C24]] arraySemantics, [[C118]] formatTravelsWithValue, [[C44]] dateSerials, [[C58]] tableInputRawText
 import { useSyncExternalStore } from "react";
 import { ArrayChip, type ElemFamily } from "./ArrayChip";
 import { CategoryChip } from "./CategoryChip";
-import { categoryColorIndex } from "../categoryColor";
+import { categoryColorIndexOf } from "../categoryColor";
 import type { TablePopupState } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import { extremeSci } from "./format";
+import { formatScalar } from "./format";
 import { useHostNodeId } from "./nodeContext";
-import { resolveDisplayAnnotation } from "./valueDisplayFormat";
+import { resolveMatrixAnnotation } from "./valueDisplayFormat";
+import { frameFormatStore } from "../frameFormatStore";
 import {
   formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, applyTextCase,
   type FormatAnnotation,
 } from "../formatAnnotationStore";
 import type { ResultType } from "../nodes/shared";
 
-// A polyform matrix cell: number (date serial included), text, logical, null, or SolError.
 type Cell = number | string | boolean | null | SolError;
 type Mat = Cell[][];
 
-function fmtNum(v: number): string {
-  if (Number.isNaN(v)) return "NaN"; // dirty data, not the #N/A error — tinted at the cell
-  if (!Number.isFinite(v)) return v > 0 ? "∞" : "-∞";
-  const sci = extremeSci(v);
-  if (sci !== null) return sci;
-  return Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/\.?0+$/, "");
-}
+const fmtNum = formatScalar;
 
-/** A NaN cell (dirty numeric data) — for the per-cell tint at the td. */
 function isNanCell(v: Cell): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
-/** Render one cell. A resolved FC annotation formats it and owns dates once present
- *  ([[C94]] formatFamilyGates); without one, text passes through, a logical shows
- *  TRUE/FALSE, a date matrix formats its serials. */
 export function formatTableCell(v: Cell, dateLike: boolean, ann?: FormatAnnotation): string {
   if (v === null) return "";
   if (isSolError(v)) return v.code;
@@ -47,32 +37,22 @@ export function formatTableCell(v: Cell, dateLike: boolean, ann?: FormatAnnotati
   return fmtNum(v);
 }
 
-export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annProp, popupOverrides, peek }: {
+export function TableDisplay({ table, label, full, kind, elem, ann: annProp, popupOverrides, peek }: {
   table: Mat | SolError | null;
   label?: string;
-  /** Socket hover-peek: a compact head-5 preview with NO chip (read-only, no popup). */
   peek?: boolean;
-  /** When set, the chip opens the grid editable and Save writes back through this. */
-  onSave?: (next: (number | null)[][]) => void;
-  /** The SOCKET-declared element family (see ArrayChip.elem) — REQUIRED; pass
-   *  `"number"` for a concretely numeric matrix, the derived value otherwise. */
+  /** The socket-declared element family: pass `"number"` for a concretely numeric matrix. */
   elem: ElemFamily | undefined;
-  /** Forwarded to the chip's popup open(): the grid edits source text, never derived. */
   popupOverrides?: Partial<TablePopupState>;
-  /** Render the full matrix, no 4×4 cap and no chip; default is the compact preview. */
   full?: boolean;
-  /** Drives text passthrough / date formatting of cells; omitted for numeric tables. */
   kind?: ResultType;
-  /** The FC annotation to format cells with; omitted, it resolves from the host node. */
   ann?: FormatAnnotation;
 }) {
-  // Every matrix card is inside a NodeShell, so the host's FC resolves without a prop;
-  // the subscription is what restyles the grid live on an FC edit.
   const hostId = useHostNodeId();
-  const hostAnn = useSyncExternalStore(formatAnnotationStore.subscribe, () => resolveDisplayAnnotation(hostId));
+  useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
+  const hostAnn = useSyncExternalStore(formatAnnotationStore.subscribe, () => resolveMatrixAnnotation(hostId));
   const ann = annProp ?? hostAnn;
 
-  // Every result display tolerates a SolError (specs/error-values.md).
   if (isSolError(table)) {
     return (
       <div
@@ -87,14 +67,12 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
     );
   }
   if (!table || table.length === 0) {
-    // An EDITABLE input must never lose its chip: text that parses to nothing would blank
-    // the node to "—" and make it wholly uneditable.
-    if (onSave || popupOverrides) {
+    if (popupOverrides) {
       return (
         <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
           <div style={{ color: "var(--text-muted)", fontSize: 11, fontStyle: "italic" }}>empty</div>
-          <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-            <ArrayChip value={[[0]]} label={label} size="sm" onSave={onSave} elem={elem} popupOverrides={popupOverrides} />
+          <div className="solenoid-table-display__chip">
+            <ArrayChip value={[[0]]} label={label} size="sm" elem={elem} popupOverrides={popupOverrides} />
           </div>
         </div>
       );
@@ -104,12 +82,9 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
   const rows = table.length, cols = table[0]?.length ?? 0;
   const maxR = full ? rows : Math.min(rows, peek ? 5 : 4), maxC = full ? cols : Math.min(cols, 4);
   const dateLike = kind === "date" || elem === "date";
-  // Chip style: one categorical map over the whole matrix, so a value is the same color
-  // in any cell (docs/format-model.md).
-  const chipMap = ann?.chip ? categoryColorIndex(table.flat().map((v) => (typeof v === "string" ? v : null))) : null;
+  const chipMap = ann?.chip ? categoryColorIndexOf(table, () => table.flat().map((v) => (typeof v === "string" ? v : null))) : null;
 
   return (
-    // The class lets the collapsed-node CSS hide the grid and keep only the chip.
     <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
       <table className="solenoid-table-display__grid" style={{ borderCollapse: "collapse", width: "100%", tableLayout: full ? "auto" : "fixed" }}>
         <tbody>
@@ -136,8 +111,8 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
         </tbody>
       </table>
       {!full && !peek && (
-        <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-          <ArrayChip value={table} label={label} size="sm" onSave={onSave} elem={elem} popupOverrides={popupOverrides} />
+        <div className="solenoid-table-display__chip">
+          <ArrayChip value={table} label={label} size="sm" elem={elem} popupOverrides={popupOverrides} />
         </div>
       )}
     </div>

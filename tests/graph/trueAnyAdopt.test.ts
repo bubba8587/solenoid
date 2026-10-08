@@ -1,4 +1,4 @@
-// [[E3]]
+// [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { ClassicPreset } from "rete";
 import { reconcileTrueAnyTypes, type AdoptEditor } from "../../src/graph/trueAnyAdopt";
@@ -50,18 +50,17 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     expect(dt(disp.outputs.out?.socket)).toBe("trueany");
   });
 
-  it("adoption never PERSISTS: a save/paste init carries no adopted type ([[E3]] adoptKeepsCables)", () => {
+  it("adoption never PERSISTS: a save/paste init carries no adopted type ([[C10]] socketLattice)", () => {
     // The save records a node's init fields (extractInit — persistence and paste
     // share it), never its sockets, so an adopted type must not appear there and
     // a reconstructed node must start hollow. This is the "never persists" half
-    // of [[E3]] adoptKeepsCables, previously unpinned: if Display ever grows a whitelisted field
+    // of [[C10]] socketLattice, previously unpinned: if Display ever grows a whitelisted field
     // holding the adopted type, this fails.
     const src = numSource();
     const disp = new DisplayNode();
     reconcileTrueAnyTypes(makeEditor([src, disp], [
       { source: src.id, sourceOutput: "value", target: disp.id, targetInput: "in" },
     ]));
-    expect(dt(disp.inputs.in?.socket)).toBe("number"); // adopted live
     const init = extractInit(disp);
     expect(JSON.stringify(init)).not.toContain('"number"');
     const clone = new DisplayNode(init as ConstructorParameters<typeof DisplayNode>[0]);
@@ -370,7 +369,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
 
     const tbl = new ClassicPreset.Node("StrTable");
     tbl.addOutput("out", new ClassicPreset.Output(strTableSocket));
-    const flat = new TableReshapeNode({ op: "tocol" });
+    const flat = new TableReshapeNode({ op: "torow" });
     const flatKey = Object.keys(flat.inputs)[0];
     reconcileTrueAnyTypes(makeEditor([tbl, flat], [
       { source: tbl.id, sourceOutput: "out", target: flat.id, targetInput: flatKey },

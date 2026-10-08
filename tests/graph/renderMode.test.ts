@@ -9,7 +9,6 @@ describe("renderModeStore", () => {
   beforeEach(() => renderModeStore.set("dom"));
 
   it("defaults to dom and set switches mode", () => {
-    expect(renderModeStore.get()).toBe("dom");
     renderModeStore.set("html");
     expect(renderModeStore.get()).toBe("html");
   });

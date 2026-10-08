@@ -1,11 +1,11 @@
-// [[D30]]
+// [[C23]] calcModes
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, isSolError, type SolError } from "../../src/graph/errorValue";
+import { installErrorGuards, type SolError } from "../../src/graph/errorValue";
 import { setEditorRefs, processGraph } from "../../src/graph/process";
 import { cableValueStore } from "../../src/graph/cableValueStore";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
@@ -69,10 +69,29 @@ describe("closing a cycle with a live cable (targeted topology pass)", () => {
     // The loop members must carry the seeded #CIRC! error, like a full pass gives.
     for (const n of [a, b]) {
       const out = cableValueStore.get(n.id, "result");
-      expect(isSolError(out)).toBe(true);
       expect((out as SolError).code).toBe("#CIRC!");
-      expect(isSolError(n.cachedResult)).toBe(true);
       expect((n.cachedResult as SolError).code).toBe("#CIRC!");
     }
+  });
+});
+
+describe("pasting a loop (additive pass)", () => {
+  it("seeds #CIRC! on the pasted members instead of hanging on a stale loop set", async () => {
+    const { editor } = makeGraph();
+    const src = new ArithmeticNode({ op: "add" });
+    await editor.addNode(src);
+    await processGraph(); // caches a loop set with no members
+
+    const a = new ArithmeticNode({ op: "add" });
+    const b = new ArithmeticNode({ op: "add" });
+    await editor.addNode(a);
+    await editor.addNode(b);
+    await connect(editor, a, "result", b, "a");
+    await connect(editor, b, "result", a, "a");
+
+    const settled = processGraph(undefined, new Set([a.id, b.id])).then(() => "settled");
+    const timeout = new Promise((r) => setTimeout(() => r("hung"), 500));
+    expect(await Promise.race([settled, timeout])).toBe("settled");
+    for (const n of [a, b]) expect((cableValueStore.get(n.id, "result") as SolError).code).toBe("#CIRC!");
   });
 });

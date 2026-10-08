@@ -1,8 +1,6 @@
-// [[C69]], [[C70]], [[C71]]
-// The Gantt figure's payload from a Schedule output: data, never geometry (25-gantt.md
-// § 6.3). The Gantt node reads the schedule CUBE the Schedule node emitted (its computed
-// columns are the contract), so any node between them (Filter, Sort, a pasted frame) still
-// draws. A baseline is a second scheduled table joined back by task name.
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing
+// The Gantt figure's payload, data and never geometry, read from any table with the Schedule node's computed
+// columns, so a Filter or Sort between them still draws (tree/specs/computation/schedule-and-gantt.md).
 
 import { isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type FrameValue, type CubeColumn } from "./frame";
 import { solError, type SolError } from "./errorValue";
@@ -10,6 +8,7 @@ import { parseGanttViewOptions, type GanttPayload, type GanttTask, type GanttLin
 import { predecessorText, Calendar, type PlanDependency } from "@solenoid/schedule-engine";
 import { parseDate } from "./nodes/dateSerial";
 import { isSolError } from "./errorValue";
+import { isInactive, readLogicalCell, ACTIVE_NAMES } from "./scheduleCpm";
 
 const norm = (s: string) => s.trim().toLowerCase();
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -34,7 +33,7 @@ function depsOf(cell: CubeCell | undefined): PlanDependency[] {
   if (isText(cell)) return cell.trim() ? [{ task: cell.trim(), type: "FS", lag: 0 }] : [];
   if (isTable(cell)) {
     const t = asCube(cell);
-    const nameCol = col(t, ...TASK_NAMES) ?? t.columns.find((x) => x.cells.some(isText));
+    const nameCol = col(t, "predecessor", ...TASK_NAMES) ?? t.columns.find((x) => x.cells.some(isText));
     const typeCol = col(t, "type", "link", "kind");
     const lagCol = col(t, "lag", "lead", "offset");
     if (!nameCol) return [];
@@ -52,16 +51,16 @@ function depsOf(cell: CubeCell | undefined): PlanDependency[] {
   return [];
 }
 
-/** Flatten a scheduled cube depth-first into rows keyed by column name (lower-cased). */
 function flatten(c: CubeValue, level: number, out: Row[]): void {
   const task = col(c, ...TASK_NAMES) ?? c.columns.find((x) => x.cells.some(isText));
   if (!task) throw solError("#VALUE!", "Gantt needs a Task column naming each task");
   const pred = col(c, ...PRED_NAMES);
   const children = col(c, ...CHILD_NAMES) ?? c.columns.find((x) => x !== pred && norm(x.name) !== "segments" && x.cells.some((v) => isTable(v) && !!col(asCube(v), ...TASK_NAMES)));
+  const active = col(c, ...ACTIVE_NAMES);
   const rows = c.columns.reduce((m, x) => Math.max(m, x.cells.length), 0);
   for (let i = 0; i < rows; i++) {
     const name = String(task.cells[i] ?? "").trim();
-    if (!name) continue;
+    if (!name || isInactive(active?.cells[i])) continue;
     const cells: Record<string, CubeCell> = {};
     for (const x of c.columns) cells[norm(x.name)] = x.cells[i] ?? null;
     out.push({ name, level, cells, deps: pred ? depsOf(pred.cells[i]) : [] });
@@ -70,7 +69,6 @@ function flatten(c: CubeValue, level: number, out: Row[]): void {
   }
 }
 
-const bool = (v: CubeCell | undefined) => v === true || v === 1 || (isText(v) && ["true", "yes", "1"].includes(norm(v)));
 const num = (v: CubeCell | undefined) => (isNum(v) ? v : null);
 /** A date cell that may still be text (a passthrough Deadline from a Cube Input). */
 const date = (v: CubeCell | undefined) => {
@@ -91,8 +89,6 @@ export interface GanttPayloadOptions {
   calendar?: { workingDays?: boolean; weekendCode?: number | null; holidays?: readonly (number | null)[] | null } | null;
 }
 
-/** Build the figure payload from a scheduled table (the Schedule node's `cube`, or any
- *  table carrying Task · Start · Finish and, optionally, the other computed columns). */
 export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts: GanttPayloadOptions): GanttPayload | SolError {
   try {
     const cube = asCube(schedule);
@@ -108,9 +104,8 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
     rows.forEach((r, ri) => {
       const start = num(r.cells.start), finish = num(r.cells.finish);
       if (start === null || finish === null) throw solError("#VALUE!", `Gantt: "${r.name}" has no Start or Finish; it needs a Schedule node's output`);
-      // Depth-first order: a row's children follow it directly, so it is a summary exactly
-      // when the next row sits one level deeper.
-      const summary = bool(r.cells.summary) || rows[ri + 1]?.level === r.level + 1;
+      // Depth-first order: a row is a summary exactly when the next row sits one level deeper.
+      const summary = readLogicalCell(r.cells.summary) || rows[ri + 1]?.level === r.level + 1;
       const dur = num(r.cells.duration) ?? num(r.cells.days);
       const fl = num(r.cells.float);
       const base = baseByKey.get(norm(r.name));
@@ -120,8 +115,8 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
         milestone: !summary && (dur === 0 || (dur === null && start === finish && !summary)),
         start, finish,
         complete: Math.max(0, Math.min(100, num(r.cells.complete) ?? num(r.cells["% complete"]) ?? 0)),
-        critical: bool(r.cells.critical),
-        late: bool(r.cells.late),
+        critical: readLogicalCell(r.cells.critical),
+        late: readLogicalCell(r.cells.late),
         violated: fl !== null && fl < 0,
         float: summary ? null : fl,
       };
@@ -133,7 +128,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
         const parts = ss.map((a, k) => [num(a), num(sf[k])] as const).filter((x): x is readonly [number, number] => x[0] !== null && x[1] !== null).map(([a, b]) => [a, b] as [number, number]);
         if (parts.length > 1) t.segments = parts;
       }
-      if (bool(r.cells.manual)) t.manual = true;
+      if (readLogicalCell(r.cells.manual)) t.manual = true;
       if (deadline !== null) t.deadline = Math.floor(deadline);
       const group = r.cells.project ?? r.cells.section ?? r.cells.group;
       if (group != null && String(group).trim()) t.group = String(group).trim();
@@ -158,7 +153,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
         const driving = drivingName === norm(d.task);
         links.push({
           from: pred.name, to: succ.name, type: d.type, lag: d.lag,
-          critical: driving && bool(pred.cells.critical) && bool(succ.cells.critical),
+          critical: driving && readLogicalCell(pred.cells.critical) && readLogicalCell(succ.cells.critical),
           violated: linkViolated(d, pred, succ),
         });
       }
@@ -194,11 +189,8 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
 function linkViolated(d: PlanDependency, pred: Row, succ: Row): boolean {
   const ps = num(pred.cells.start), pf = num(pred.cells.finish), ss = num(succ.cells.start), sf = num(succ.cells.finish);
   if (ps === null || pf === null || ss === null || sf === null || d.lag < 0) return false;
-  // The visible break only (the engine's Diagnostics has the exact working-day case): an
-  // FS successor may not start before its predecessor finishes. On whole-day serials a
-  // task starts the NEXT day, so an equal day is a break too — except for a milestone,
-  // which sits on its predecessor's finish day, and in Minutes mode, where a same-day
-  // afternoon start is the rule (the serials then carry a clock fraction).
+  // Only the visible break: on whole-day serials an FS successor starting on its predecessor's finish day breaks
+  // the link, except for a milestone, and except in Minutes mode, where a same-day afternoon start is the rule.
   const wholeDays = Number.isInteger(ss) && Number.isInteger(pf);
   const succMilestone = num(succ.cells.duration) === 0 || (num(succ.cells.duration) === null && ss === sf);
   switch (d.type) {

@@ -1,0 +1,64 @@
+{
+  "label": "fluids",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Fluid Mechanics\n\n- Reynolds Number\n- Friction Factor\n- Hydrostatic Pressure",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "re",
+      "type": "ExpressionNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "Reynolds Number",
+        "expr": "rho*v*d/mu",
+        "locked": true
+      },
+      "literals": {
+        "rho": 998,
+        "v": 2,
+        "d": 0.05,
+        "mu": 0.001
+      }
+    },
+    {
+      "id": "cb",
+      "type": "ColebrookNode",
+      "x": 680,
+      "y": 0,
+      "init": {
+        "label": "Friction Factor (Colebrook)"
+      },
+      "literals": {
+        "re": 99800,
+        "rr": 0.0001
+      }
+    },
+    {
+      "id": "hp",
+      "type": "ExpressionNode",
+      "x": 980,
+      "y": 0,
+      "init": {
+        "label": "Hydrostatic Pressure",
+        "expr": "rho*9.80665*h",
+        "locked": true
+      },
+      "literals": {
+        "rho": 1025,
+        "h": 30
+      }
+    }
+  ],
+  "cables": []
+}

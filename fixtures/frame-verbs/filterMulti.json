@@ -849,6 +849,57 @@
     ]
    },
    "expectError": "#TYPE!"
+  },
+  {
+   "name": "error cells: iserror or a comparison",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        46000,
+        {
+         "__err": "#AMBIGUOUS!"
+        },
+        46010,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "or",
+    "conditions": [
+     {
+      "column": "d",
+      "op": "iserror",
+      "value": null
+     },
+     {
+      "column": "d",
+      "op": "gt",
+      "value": 46005
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "date",
+      "values": [
+       {
+        "__err": "#AMBIGUOUS!"
+       },
+       46010
+      ]
+     }
+    ]
+   }
   }
  ]
 }

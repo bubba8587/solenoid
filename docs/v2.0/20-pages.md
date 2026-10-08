@@ -1,6 +1,6 @@
 # Bundle 20 — Pages: tabs are pages in ONE document
 
-**Source:** the document-tabs audit + the author's 2026-08-30 call (recorded evidence, not ARR — [[C7]] authorRuled) (`../archive/dev-notes-history.md`,
+**Source:** the document-tabs audit + the author's 2026-08-30 call (recorded evidence, not ARR) (`../archive/dev-notes-history.md`,
 sweep 2026-08-31). **Verdict:** IN, whole feature deferred to 2.0. **Score:** Strong · Core ·
 High · Wide. **Written:** 2026-09-01, plan-only.
 
@@ -16,7 +16,7 @@ list of separate documents; the tab strip becomes the page strip of the OPEN doc
 The audit named it: one-doc-one-file means a SINGLE editor/engine can plausibly serve all
 pages. **Recommend: one editor, one engine, pages as view scopes.**
 - FOR: cross-page references are then REAL connections (no bridge machinery, no second
-  recompute path — [[D30]] targetedEqualsFull holds untouched); `nodeNameStore`'s one flat
+  recompute path — `../tree/specs/computation/compute-pass.md` § The targeted pass equals the full pass holds untouched); `nodeNameStore`'s one flat
   per-document namespace is exactly right (a name is unique in the document, which is what a
   cross-page reference needs); `forgetAllNodes()` wiping node-keyed stores on document switch
   stays correct; save/load stays one `rebuildGraph`; undo stays one snapshot history.
@@ -32,9 +32,9 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
 
 - **A node carries `page: string`** (a page id; default page for every existing seed). It is
   VISUAL state → it lives in the text form's sidecar block beside `positions`, never inline in
-  the per-node line (subsystem-invariants § Addressable model). New top-level `pages:
+  the per-node line (`tree/specs/documents/addressable-model.md`). New top-level `pages:
   [{id, name, order}]` in `SavedGraph` — add to BOTH `writeTextForm` and `readTextForm`
-  ([[C30]] saveViaTextForm) or it is silently dropped on every save.
+  (`../tree/specs/documents/save-format.md` § Every save passes through the text form) or it is silently dropped on every save.
 - **Groups, standoffs, docked FCs, conduits are single-page**: a group's members share its
   page (moving a group moves its page); a standoff between two pages is refused; a docked FC
   lives on its host's page. Enforce in the edit verbs (`flowModel.ts` `moveNode`/`connect`
@@ -71,7 +71,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
   Pins, Alerts, Comments panels list the page beside the node and fly across pages. Report and
   Presentation references are name-addressed already and work unchanged; Presentation steps
   gain the page implicitly from the node.
-- **The page strip**: a `layout-chrome.md` decision — recommend the strip lives in the top
+- **The page strip**: a `tree/specs/canvas/layout-chrome.md` decision — recommend the strip lives in the top
   bar's middle gap on desktop (the empty div the art slot was reserved for — the author
   decides which wins) and as a row in the mobile menu bar; rename inline, reorder by drag,
   add/close with the usual guards (closing a page with nodes asks; nodes move to a page, never
@@ -92,7 +92,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
 2. Projection filter + stubs + camera-per-page; `syncTopology` identity across switches
    (perf probe at 200 nodes).
 3. Edit-verb guards (single-page groups/standoffs/docks); paste onto the active page.
-4. The page strip (desktop + mobile), rename/reorder/add/close, `layout-chrome.md` row.
+4. The page strip (desktop + mobile), rename/reorder/add/close, `tree/specs/canvas/layout-chrome.md` row.
 5. Page-scoped Tidy/Cleanup/fit/isolate/lasso; `flyToNode` page switch; panels show pages.
 6. Validator + grounding; a seed with two pages and a cross-page reference; What's-New.
 

@@ -1,5 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
-// Lets TopBar's logo button toggle the sheet MenuBar renders; unused on desktop.
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 import { createToggleStore } from "./storeKit";
 
 export const mobileMenuStore = createToggleStore();

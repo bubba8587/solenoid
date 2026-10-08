@@ -14,6 +14,7 @@ describe("renderNoteMarkdown — Obsidian inline forms", () => {
   it("a tag renders as a chip; it ends at whitespace and punctuation", () => {
     expect(renderNoteMarkdown("#learning #spanish, done")).toBe('<p><span class="sol-md__tag">#learning</span> <span class="sol-md__tag">#spanish</span>, done</p>\n');
     expect(renderNoteMarkdown("nested #area/home-office ok")).toContain('<span class="sol-md__tag">#area/home-office</span> ok');
+    expect(renderNoteMarkdown("read #1984/books")).toContain('<span class="sol-md__tag">#1984/books</span>');
   });
 
   it("an error code, a mid-word hash, a bare number and a heading are not tags", () => {
@@ -58,7 +59,15 @@ describe("renderNoteMarkdown — Obsidian inline forms", () => {
     expect(renderNoteMarkdown("a\n%% solenoid:begin x %%\nmanaged\n%% solenoid:end %%\nb")).toBe("<p>a<br>managed<br>b</p>\n");
     expect(renderNoteMarkdown("A line ^abc-123\nnext")).toBe("<p>A line<br>next</p>\n");
     expect(renderNoteMarkdown("```\n%% kept %% ^kept\n```")).toContain("%% kept %% ^kept");
+    expect(renderNoteMarkdown("````\n```\n%% kept %%\n````")).toContain("%% kept %%");
+    expect(renderNoteMarkdown("~~~\n```\n%% kept %%\n~~~")).toContain("%% kept %%");
     expect(renderNoteMarkdown("x^2 stays")).toContain("x^2 stays");
+  });
+
+  it("a comment that opens a line hides only itself, never the text after it", () => {
+    expect(renderNoteMarkdown("%%a%% visible %%b%%")).toBe("<p> visible </p>\n");
+    expect(renderNoteMarkdown("%%todo%% Buy milk\n\nSome text %%x%%")).toBe("<p> Buy milk</p>\n<p>Some text </p>\n");
+    expect(renderNoteMarkdown("a\n%%\nhidden\nlines\n%%\nb")).toBe("<p>a<br>b</p>\n");
   });
 
   it("math renders through KaTeX once loaded, and shows its source before that", async () => {
@@ -78,5 +87,13 @@ describe("renderNoteMarkdown — Obsidian inline forms", () => {
   it("leaves the shared marked instance alone: help prose keeps `#NAME?` and [[ ]] as text", () => {
     const html = marked.parse("#NAME? and [[not a link]]", { async: false }) as string;
     expect(html).not.toContain("sol-md__");
+  });
+});
+
+describe("a tag starts a word", () => {
+  it("a # inside a word is plain text; after a space, a bracket or a line break it is a tag", () => {
+    const tagged = (md: string) => renderNoteMarkdown(md).includes("sol-md__tag");
+    for (const md of ["a#b c", "foo#bar#baz"]) expect(tagged(md), md).toBe(false);
+    for (const md of ["#start", "x #tag", "(#paren)", "**#bold**", "line\n#next"]) expect(tagged(md), md).toBe(true);
   });
 });

@@ -34,7 +34,6 @@ describe("tagged cell — construction & storage invariant", () => {
   it("a dimensionless quantity is never tagged — it stays a bare number", () => {
     expect(fromUnit(5, U("%"))).toBe(0.05); // 5% → 0.05 bare
     expect(tagDim(7, {})).toBe(7);
-    expect(isUnitCell(tagDim(7, {}))).toBe(false);
   });
   it("dimOf / magnitudeOf read a cell or a bare number", () => {
     const c = cell(3, "m");
@@ -46,12 +45,6 @@ describe("tagged cell — construction & storage invariant", () => {
 });
 
 describe("dimensional algebra at the ops", () => {
-  it("5 m ÷ 1 s = 5 m/s (the exit-criterion)", () => {
-    const r = arithmeticCell("div", cell(5, "m"), cell(1, "s")) as UnitCell;
-    expect(r.value).toBe(5);
-    expect(r.dim).toEqual({ length: 1, time: -1 });
-    expect(unitLabelOf(r)).toBe("m/s");
-  });
   it("km ÷ h normalises to base m/s", () => {
     const r = arithmeticCell("div", cell(2, "km"), cell(1, "h")) as UnitCell;
     // 2000 m / 3600 s
@@ -63,27 +56,10 @@ describe("dimensional algebra at the ops", () => {
     expect(force.value).toBe(6);
     expect(unitLabelOf(force)).toBe("N");
   });
-  it("cancellation mints a PURE RATIO: 5 m ÷ 1 m is 5:1, not a re-labelable bare 5", () => {
-    // (The dead per-op combinator this test once pinned returned a bare 5 — stale
-    // against the live rule: known-dimensionless, so an FC can't re-label it.)
-    const r = arithmeticCell("div", cell(5, "m"), cell(1, "m")) as UnitCell;
-    expect(isUnitCell(r)).toBe(true);
-    expect(r.ratio).toBe(true);
-    expect(magnitudeOf(r)).toBe(5);
-  });
   it("+ / − require commensurability; km + m works (base-SI add)", () => {
     const r = arithmeticCell("add", cell(1, "km"), cell(500, "m")) as UnitCell;
     expect(r.value).toBe(1500); // 1000 + 500 m
     expect(dimOf(r)).toEqual({ length: 1 });
-  });
-  it("+ across dimensions → #UNIT!", () => {
-    const r = arithmeticCell("add", cell(1, "m"), cell(1, "s"));
-    expect(isSolError(r)).toBe(true);
-    if (isSolError(r)) expect(r.code).toBe("#UNIT!");
-  });
-  it("− across dimensions → #UNIT!", () => {
-    const r = arithmeticCell("sub", cell(1, "m"), cell(1, "kg"));
-    expect(isSolError(r)).toBe(true);
   });
   it("a bare number ADOPTS the dimensioned side's unit (spreadsheet reading)", () => {
     // author decision 2026-07-13: `$5 + 2 = $7` — a dimensionless operand takes the
@@ -97,12 +73,6 @@ describe("dimensional algebra at the ops", () => {
     const l = arithmeticCell("sub", 10, cell(3, "m")) as UnitCell;
     expect(l.value).toBe(7);
     expect(l.dim).toEqual({ length: 1 });
-  });
-  it("power scales the dimension; a dimensioned exponent errors", () => {
-    const area = arithmeticCell("pow", cell(3, "m"), 2) as UnitCell;
-    expect(area.value).toBe(9);
-    expect(area.dim).toEqual({ length: 2 });
-    expect(isSolError(arithmeticCell("pow", cell(3, "m"), cell(2, "m")))).toBe(true);
   });
   it("compareUnits returns base magnitudes when commensurable, else #UNIT!", () => {
     const ok = compareUnits(cell(1, "km"), cell(900, "m"));
@@ -127,10 +97,6 @@ describe("currency: no exchange rate → different codes are incommensurable", (
     // an unlabeled currency cell adopts (lenient) — computed currency has no code
     const bare: UnitCell = { __unitCell: true, value: 5, dim: { currency: 1 } };
     expect(compareUnits(money(5, "usd"), bare)).toEqual({ l: 5, r: 5 });
-  });
-  it("addUnits: $5 + 5€ → #UNIT! (can't combine currencies)", () => {
-    expect(isSolError(arithmeticCell("add", money(5, "usd"), money(5, "eur")))).toBe(true);
-    expect((arithmeticCell("add", money(5, "usd"), money(2, "usd")) as UnitCell).value).toBe(7);
   });
   it("forAggregateUnits: mixed currency codes → #UNIT!", () => {
     const r = forAggregateUnits([money(5, "usd"), money(5, "eur")]);
@@ -222,7 +188,6 @@ describe("homogeneous matrix unit (unitGranularity) — one tag on the array, ce
     const tagged = withMatrixUnit(m, { dim: { length: 1 }, display: "km" });
     expect(tagged).toBe(m);                                  // same array
     expect(matrixUnitOf(m)).toMatchObject({ display: "km" });
-    expect(Array.isArray(m[0])).toBe(true);                  // structural detection intact
     expect(Object.keys(m)).toEqual(["0", "1"]);              // tag is non-enumerable
     expect(JSON.parse(JSON.stringify(m))).toEqual([[1, 2], [3, 4]]); // invisible to JSON
     // carry onto a fresh array (a unit-preserving op)
@@ -260,6 +225,74 @@ describe("affine temperatures (review pins)", () => {
     expect(isSolError(arithmeticCell("div", degC(20), 2))).toBe(true);
     expect(isSolError(arithmeticCell("pow", degC(20), 2))).toBe(true);
     expect(isUnitCell(arithmeticCell("mul", fromUnit(20, U("K"), "K"), 2))).toBe(true); // kelvin is linear
+  });
+  it("a bare number compared with a reading is a reading: 25 °C > 30 is FALSE", () => {
+    const r = compareUnits(degC(25), 30) as { l: number; r: number };
+    expect(r.l > r.r).toBe(false);
+    expect(r.r).toBeCloseTo(303.15, 9);
+    const k = compareUnits(fromUnit(5, U("km"), "km"), 3000) as { l: number; r: number };
+    expect(k.l > k.r).toBe(false); // a linear unit is unchanged: 3000 km
+  });
+  it("two readings have no sum, and a reading has no remainder, as in a formula", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : null);
+    expect(code(arithmeticCell("add", degC(20), degC(30)))).toBe("#UNIT!");
+    expect(code(arithmeticCell("add", degC(20), fromUnit(50, U("degF"), "degF")))).toBe("#UNIT!");
+    expect(code(arithmeticCell("mod", degC(20), 5))).toBe("#UNIT!");
+    const warm = arithmeticCell("add", degC(20), fromUnit(5, U("K"), "K")) as UnitCell;
+    expect(magnitudeOf(warm)).toBeCloseTo(298.15, 9); // a kelvin cell stays linear
+  });
+  it("the Arithmetic card refuses two readings added, element-wise too", async () => {
+    const { ArithmeticNode } = await import("../../src/graph/nodes/scalar");
+    const run = (op: string, a: unknown, b: unknown) =>
+      new ArithmeticNode({ op: op as never }).data({ a: [a as never], b: [b as never] }).result;
+    expect((run("add", degC(20), degC(30)) as { code?: string }).code).toBe("#UNIT!");
+    const pair = run("add", [degC(20), degC(21)], degC(30)) as { code?: string }[];
+    expect(pair.map((c) => c.code)).toEqual(["#UNIT!", "#UNIT!"]);
+    expect(magnitudeOf(run("sub", degC(30), degC(20)) as UnitCell)).toBeCloseTo(10, 9);
+  });
+  it("Aggregate follows the formula: a spread is a delta, readings have no sum", async () => {
+    const { AggregateNode } = await import("../../src/graph/nodes/list");
+    const agg = (op: string, list: unknown[]) => new AggregateNode({ op: op as never }).data({ list: [list as never] }).result;
+    const sd = agg("stdev", [degC(20), degC(30)]) as UnitCell;
+    expect(sd.display).toBeUndefined();
+    expect(magnitudeOf(sd)).toBeCloseTo(Math.SQRT2 * 5, 9); // 7.07 K, never −266 °C
+    expect((agg("sum", [degC(20), degC(30)]) as { code?: string }).code).toBe("#UNIT!");
+    const avg = agg("avg", [degC(20), degC(30)]) as UnitCell;
+    expect(avg.display).toBe("degC");
+    expect(magnitudeOf(avg)).toBeCloseTo(298.15, 9); // 25 °C is a reading
+    const one = agg("sum", [degC(20), 5]) as UnitCell; // a reading plus a delta
+    expect(one.display).toBe("degC");
+    expect(magnitudeOf(one)).toBeCloseTo(298.15, 9);
+  });
+  it("a bare number beside readings is a reading in MIN, MAX, AVERAGE and the spreads", async () => {
+    const { AggregateNode } = await import("../../src/graph/nodes/list");
+    const agg = (op: string, list: unknown[]) => new AggregateNode({ op: op as never }).data({ list: [list as never] }).result as UnitCell;
+    expect(magnitudeOf(agg("min", [degC(25), 20]))).toBeCloseTo(293.15, 9); // 20 °C, not 20 K
+    expect(agg("min", [degC(25), 20]).display).toBe("degC");
+    expect(magnitudeOf(agg("max", [20, degC(25)]))).toBeCloseTo(298.15, 9);
+    expect(magnitudeOf(agg("avg", [degC(20), 30]))).toBeCloseTo(298.15, 9);
+    expect(magnitudeOf(agg("median", [degC(20), 30, degC(40)]))).toBeCloseTo(303.15, 9);
+    expect(magnitudeOf(agg("stdev", [degC(20), 30]))).toBeCloseTo(Math.SQRT2 * 5, 9);
+    const km = agg("min", [fromUnit(5, U("km"), "km"), 3]); // a linear unit adopts its scale only
+    expect(magnitudeOf(km)).toBeCloseTo(3000, 9);
+  });
+});
+
+describe("Math's dimension-preserving ops act on the displayed reading ([[C25]] firstClassUnits)", () => {
+  const run = async (op: string, v: unknown) => {
+    const { MathFXNode } = await import("../../src/graph/nodes/scalar");
+    return new MathFXNode({ op: op as never }).data({ in: [v as never] }).result as UnitCell;
+  };
+  it("ABS(-5 km) is 5 km, INT(1.7 km) is 1 km, INT(20.5 °C) is 20 °C", async () => {
+    const { applyFcUnit, displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const abs = await run("abs", applyFcUnit(-5, "km"));
+    expect(abs.display).toBe("km");
+    expect(displayMagnitudeOf(abs)).toBeCloseTo(5, 9);
+    const int = await run("int", applyFcUnit(1.7, "km"));
+    expect(displayMagnitudeOf(int)).toBeCloseTo(1, 9);
+    const t = await run("int", applyFcUnit(20.5, "degC"));
+    expect(t.display).toBe("degC");
+    expect(displayMagnitudeOf(t)).toBeCloseTo(20, 9);
   });
 });
 

@@ -4,15 +4,13 @@ import { chartPopup } from "../chartPopupStore";
 import { useHostNodeId } from "./nodeContext";
 import type { ChartShape } from "./chartView";
 import type { ChartOptions } from "../nodes/chartOptions";
-import "./ExpressionNode.css"; // for .solenoid-expr__expand (shared expand button)
+import "./ExpressionNode.css";
 import { stopDragStart } from "../coarse";
 
 export function ChartExpandButton({
   title, op, axes, series, opts, signColors, labels, value,
 }: {
   title: string;
-  /** The whole chart value (series, legend, labels); when given, the popup renders it
-   *  through the same figure path as the card, so a multi-series chart expands intact. */
   value?: ChartValue;
   op: ChartShape;
   axes: boolean;

@@ -1,24 +1,24 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
-// Metric inputs throughout (kg, cm, years). Sex-specific equations ship as TWO presets
-// rather than one formula hiding a ±sign input.
+// Metric inputs throughout (kg, cm, years); a sex-specific equation ships as two presets, never a hidden ±sign input.
 
-import { HrZonesNode, hrZonesMatrix } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
+import { HrZonesNode } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { HEALTH_PACK_FORMULAS } from "./healthFormulas";
 
 export const HEALTH_BODY: FormulaPackEntry[] = [
   { type: "hf-bmi", label: "BMI", expr: "w/h^2",
     description: "Body mass index: weight w (kg) ÷ height h (m) squared. 18.5–25 is the WHO normal range.",
-    keywords: "body mass index" },
+    keywords: "body mass index", units: { w: "kg", h: "m" } },
   { type: "hf-bsa-mosteller", label: "Body Surface Area (Mosteller)", expr: "SQRT(w*hcm/3600)",
     description: "BSA in m² from weight w (kg) and height hcm (cm), by √(w·h/3600). The dosing standard.",
-    keywords: "bsa dosing" },
+    keywords: "bsa dosing", units: { w: "kg", hcm: "cm" } },
   { type: "hf-bsa-dubois", label: "Body Surface Area (Du Bois)", expr: "0.007184*w^0.425*hcm^0.725",
     description: "BSA in m² from weight w (kg) and height hcm (cm), by the 1916 Du Bois & Du Bois formula",
-    keywords: "bsa" },
+    keywords: "bsa", units: { w: "kg", hcm: "cm" } },
   { type: "hf-ibw-devine-m", label: "Ideal Body Weight (Men, Devine)", expr: "50+2.3*(hcm/2.54-60)",
-    description: "Devine ideal weight (kg) for men from height hcm (cm): 50 kg + 2.3 kg per inch over 5 ft" },
+    description: "Devine ideal weight (kg) for men from height hcm (cm): 50 kg + 2.3 kg per inch over 5 ft", units: { hcm: "cm" } },
   { type: "hf-ibw-devine-w", label: "Ideal Body Weight (Women, Devine)", expr: "45.5+2.3*(hcm/2.54-60)",
-    description: "Devine ideal weight (kg) for women from height hcm (cm): 45.5 kg + 2.3 kg per inch over 5 ft" },
+    description: "Devine ideal weight (kg) for women from height hcm (cm): 45.5 kg + 2.3 kg per inch over 5 ft", units: { hcm: "cm" } },
 ];
 
 export const HEALTH_COMPOSITION: FormulaPackEntry[] = [
@@ -28,31 +28,31 @@ export const HEALTH_COMPOSITION: FormulaPackEntry[] = [
     description: "Body-fat % for women from BMI and age. Deurenberg 1991: 1.2·BMI + 0.23·age − 5.4." },
   { type: "hf-bodyfat-navy-m", label: "Body Fat % (Men, US Navy)", expr: "495/(1.0324-0.19077*LOG10(waist-neck)+0.15456*LOG10(hcm))-450",
     description: "US Navy circumference method for men: waist and neck girth, height hcm, all in cm",
-    keywords: "tape measure circumference" },
+    keywords: "tape measure circumference", units: { waist: "cm", neck: "cm", hcm: "cm" } },
   { type: "hf-bodyfat-navy-w", label: "Body Fat % (Women, US Navy)", expr: "495/(1.29579-0.35004*LOG10(waist+hip-neck)+0.221*LOG10(hcm))-450",
     description: "US Navy circumference method for women: waist, hip and neck girth, height hcm, all in cm",
-    keywords: "tape measure circumference" },
+    keywords: "tape measure circumference", units: { waist: "cm", hip: "cm", neck: "cm", hcm: "cm" } },
 ];
 
 export const HEALTH_ENERGY: FormulaPackEntry[] = [
   { type: "hf-bmr-mifflin-m", label: "BMR (Men, Mifflin-St Jeor)", expr: "10*w+6.25*hcm-5*age+5",
     description: "Resting calories/day for men: weight w (kg), height hcm (cm), age in years. The current ADA standard",
-    keywords: "basal metabolic rate calories" },
+    keywords: "basal metabolic rate calories", units: { w: "kg", hcm: "cm" } },
   { type: "hf-bmr-mifflin-w", label: "BMR (Women, Mifflin-St Jeor)", expr: "10*w+6.25*hcm-5*age-161",
     description: "Resting calories/day for women: weight w (kg), height hcm (cm), age in years. The current ADA standard",
-    keywords: "basal metabolic rate calories" },
+    keywords: "basal metabolic rate calories", units: { w: "kg", hcm: "cm" } },
   { type: "hf-bmr-harris-m", label: "BMR (Men, Harris-Benedict)", expr: "88.362+13.397*w+4.799*hcm-5.677*age",
     description: "Resting calories/day for men, by the revised 1984 Harris-Benedict equation",
-    keywords: "basal metabolic rate" },
+    keywords: "basal metabolic rate", units: { w: "kg", hcm: "cm" } },
   { type: "hf-bmr-harris-w", label: "BMR (Women, Harris-Benedict)", expr: "447.593+9.247*w+3.098*hcm-4.33*age",
     description: "Resting calories/day for women, by the revised 1984 Harris-Benedict equation",
-    keywords: "basal metabolic rate" },
+    keywords: "basal metabolic rate", units: { w: "kg", hcm: "cm" } },
   { type: "hf-tdee", label: "TDEE", expr: "bmr*activity",
     description: "Total daily energy: BMR × activity factor: 1.2 sedentary, 1.375 light, 1.55 moderate, 1.725 hard, 1.9 athlete",
     keywords: "total daily energy expenditure calories maintenance" },
   { type: "hf-calories-mets", label: "Calories Burned (METs)", expr: "met*w*hrs",
     description: "kcal burned: activity MET value × weight w (kg) × duration hrs. Running ≈ 9.8, cycling ≈ 7.5, walking ≈ 3.5",
-    keywords: "exercise energy" },
+    keywords: "exercise energy", units: { w: "kg", hrs: "hr" } },
 ];
 
 export const HEALTH_CARDIO: FormulaPackEntry[] = [
@@ -65,36 +65,20 @@ export const HEALTH_CARDIO: FormulaPackEntry[] = [
     keywords: "heart rate reserve zone training" },
   { type: "hf-vo2max-cooper", label: "VO₂max (Cooper Test)", expr: "(d-504.9)/44.73",
     description: "Aerobic capacity (ml/kg/min) from the 12-minute run distance d in meters",
-    keywords: "aerobic fitness running" },
+    keywords: "aerobic fitness running", units: { d: "m" } },
 ];
 
 export const HEALTH_CLINICAL: FormulaPackEntry[] = [
   { type: "hf-crcl-cockcroft-m", label: "Creatinine Clearance (Men)", expr: "(140-age)*w/(72*scr)",
     description: "Cockcroft-Gault estimate (ml/min): age, weight w (kg), serum creatinine scr in mg/dL",
-    keywords: "kidney renal gfr" },
+    keywords: "kidney renal gfr", units: { w: "kg", scr: "mg/dL" } },
   { type: "hf-crcl-cockcroft-w", label: "Creatinine Clearance (Women)", expr: "0.85*(140-age)*w/(72*scr)",
     description: "Cockcroft-Gault estimate for women (ml/min): the male formula × 0.85",
-    keywords: "kidney renal gfr" },
+    keywords: "kidney renal gfr", units: { w: "kg", scr: "mg/dL" } },
 ];
 
 export const HEALTH_FORMULAS: FormulaPackEntry[] = [
   ...HEALTH_BODY, ...HEALTH_COMPOSITION, ...HEALTH_ENERGY, ...HEALTH_CARDIO, ...HEALTH_CLINICAL,
-];
-
-// The MATRIX form of the node's frame ([[C15]] matricesInFormulas).
-const HEALTH_PACK_FORMULAS: PackFormula[] = [
-  {
-    name: "HEARTRATEZONES",
-    impl: (max, resting) => {
-      if (max == null) return null;
-      const m = Number(max);
-      if (!Number.isFinite(m)) return null;
-      const r = resting == null ? null : Number(resting);
-      return hrZonesMatrix(m, r !== null && Number.isFinite(r) ? r : null);
-    },
-    returns: "number", rank: "matrix", arity: [1, 2],
-    signature: "max HR, resting HR — five [low, high] rows",
-  },
 ];
 
 export const HEALTH_PACK: Pack = {
@@ -121,7 +105,7 @@ export const HEALTH_PACK: Pack = {
     ...placeFormulas(["Packs", "Health & Fitness", "Body Composition"], HEALTH_COMPOSITION),
     ...placeFormulas(["Packs", "Health & Fitness", "Energy & Metabolism"], HEALTH_ENERGY),
     ...placeFormulas(["Packs", "Health & Fitness", "Heart & Cardio"], HEALTH_CARDIO),
-    ...placeFormulas(["Packs", "Health & Fitness", "Clinical"], HEALTH_CLINICAL),
+    ...placeFormulas(["Packs", "Health & Fitness"], HEALTH_CLINICAL),
   ],
   units: [
     { id: "kcal", label: " kcal", group: "health", groupLabel: "Health" },

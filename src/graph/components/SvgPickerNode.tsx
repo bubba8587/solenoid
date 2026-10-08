@@ -1,10 +1,9 @@
-// [[C95]] commitOnEnter, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[C100]] chartIsAValue, [[C104]] foreignDocNetworkGate
+// [[C95]] commitOnEnter, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[C100]] chartIsAValue
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SvgPickerNode as SvgPickerNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { resolveLayer, elementName, sourceHasLayer } from "../svgLayer";
-import { sanitizeSvg } from "../svgSanitize";
 import { requestNetwork } from "../connectionStore";
 import type { NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
@@ -18,8 +17,7 @@ const MAX_H = 800;
 const hoverGlow = (color: string) => `drop-shadow(0 0 2px ${color}) drop-shadow(0 0 1px ${color})`;
 const selectedGlow = (color: string) => `drop-shadow(0 0 3px ${color}) drop-shadow(0 0 2px ${color})`;
 
-// The DISPLAY svg for the idle <img>: the source with the selected layer's glow
-// baked in, so the selection still reads while the live SVG isn't mounted.
+// The idle <img> bakes in the selected layer's glow, so the selection reads while the live SVG isn't mounted.
 function bakeSelectionGlow(source: string, sel: string, color: string): string {
   if (!source || !sel) return source;
   try {
@@ -36,33 +34,29 @@ function bakeSelectionGlow(source: string, sel: string, color: string): string {
   }
 }
 
-/** The SVG Picker — outputs the name of whatever layer you click. Highlighting is
- *  IMPERATIVE (React state per pointermove would thrash): hovered and selected
- *  elements are painted with filters directly and restored on change. */
+/** Highlighting is imperative, since React state per pointermove would thrash: painted with filters and restored on change. */
 export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>) {
   const [url, setUrl] = useState(data.url);
-  const [source, setSource] = useState(data.stringLiterals.source ?? "");
+  const [source, setSource] = useState(() => data.source);
   const [hoverColor, setHoverColor] = useState(data.hoverColor);
   const [selectedLayer, setSelectedLayer] = useState(data.selectedLayer);
   const [height, setHeight] = useState(data.height);
   const [loadError, setLoadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // The heavy inline markup (tens of thousands of paths) is mounted ONLY while the
-  // pointer is over the well, for hit-testing; the idle view is a rasterized <img>.
+  // The live markup (tens of thousands of paths) mounts only while the pointer is over the well; idle is a rasterized <img>.
   const [hovering, setHovering] = useState(false);
   const [rasterUrl, setRasterUrl] = useState<string | null>(null);
   const rasterUrlRef = useRef<string | null>(null);
 
   const title = useEditableLabel(data, () => { void processGraph(data.id); });
 
-  // Mirror external changes (undo / paste / load replace the node instance).
   useEffect(() => { setUrl(data.url); }, [data.url]);
-  // Loaded markup is scrubbed too and the clean form written back ([[C103]] untrustedContentSeams).
+  // Loaded markup is scrubbed and the clean form written back.
   useEffect(() => {
     const raw = data.stringLiterals.source ?? "";
-    const clean = sanitizeSvg(raw);
-    if (clean !== raw) { data.stringLiterals.source = clean; scheduleAutosave(); }
+    const clean = data.source;
+    if (clean !== raw) scheduleAutosave();
     setSource(clean);
   }, [data.stringLiterals.source]);
   useEffect(() => { setHoverColor(data.hoverColor); }, [data.hoverColor]);
@@ -100,7 +94,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     }
     return null;
   }
-  // Repaint from scratch, never double-painting the same element.
   function paint(sel: string, hoverEl: Element | null, color: string) {
     clearPainted();
     const selEl = sel ? findNamed(sel) : null;
@@ -108,8 +101,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     if (hoverEl && hoverEl !== selEl) { apply(hoverEl, hoverGlow(color)); paintedRef.current.push(hoverEl); }
   }
 
-  // Mount the live SVG markup ONLY while hovering, then highlight against the
-  // fresh DOM; on leave the well div unmounts, so just null the root.
+  // On leave the well div unmounts, so just null the root.
   useLayoutEffect(() => {
     const well = wellRef.current;
     if (!hovering || !well) { svgRootRef.current = null; return; }
@@ -129,8 +121,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, hovering]);
 
-  // Rasterize the source to a blob URL, debounced so a color drag doesn't re-parse
-  // a big SVG per tick; the previous url is revoked only once the new one exists.
+  // Debounced, so a color drag doesn't re-parse a big SVG per tick; the old url is revoked only once the new one exists.
   useEffect(() => {
     if (!source) {
       if (rasterUrlRef.current) { URL.revokeObjectURL(rasterUrlRef.current); rasterUrlRef.current = null; }
@@ -153,8 +144,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLayer, hoverColor]);
 
-  // Resolve a target ONLY if it is actually inside the SVG — otherwise resolveLayer
-  // walks UP out of the svg into the node-card DOM and mis-picks.
+  // Only inside the SVG: otherwise resolveLayer walks up into the node-card DOM and mis-picks.
   function hitLayer(target: EventTarget | null): { el: Element; name: string } | null {
     const root = svgRootRef.current;
     if (!root || !(target instanceof Element) || !root.contains(target)) return null;
@@ -175,7 +165,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     setHovering(false);
   }
 
-  // A pick applies immediately ([[C95]] commitOnEnter); re-clicking it clears it.
   function onClickWell(e: React.MouseEvent) {
     if (!svgRootRef.current) return;
     const name = hitLayer(e.target)?.name ?? "";
@@ -187,15 +176,14 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   }
 
 
-  // Committing a URL fetches the SVG text and inlines it; cross-origin hosts may
-  // block the fetch (CORS), so the local-file path is the primary route.
+  // Cross-origin hosts may block the fetch (CORS), so the local file is the primary route.
   async function loadFromUrl(u: string) {
     if (!u) { setLoadError(null); return; }
-    if (!requestNetwork(data.id)) return; // a foreign document fetches nothing until the user allows it
+    if (!requestNetwork(data.id)) return;
     try {
       const res = await fetch(u);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = sanitizeSvg(await res.text());
+      const text = await res.text();
       if (!/<svg[\s>]/i.test(text)) throw new Error("not an SVG");
       adoptSource(text);
       setLoadError(null);
@@ -205,23 +193,25 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
       setLoadError("Couldn't load an SVG from that URL");
     }
   }
-  // A new picture: the stored markup swaps and a pick that names nothing in it clears.
   function adoptSource(text: string) {
-    setSource(text); data.stringLiterals.source = text;
-    if (data.selectedLayer && !sourceHasLayer(text, data.selectedLayer)) { data.selectedLayer = ""; setSelectedLayer(""); }
+    data.stringLiterals.source = text;
+    const clean = data.source;
+    setSource(clean);
+    if (data.selectedLayer && !sourceHasLayer(clean, data.selectedLayer)) { data.selectedLayer = ""; setSelectedLayer(""); }
   }
-  function onUrl(v: string) { setUrl(v); data.url = v; scheduleAutosave(); }
-  function onUrlCommit() { void loadFromUrl(url); }
+  const urlField = useDraftCommit<string>(url, (v) => v, (t) => t.trim(), (v) => {
+    setUrl(v); data.url = v; scheduleAutosave();
+    void loadFromUrl(v);
+  });
 
-  // A local .svg is read to TEXT, not a data URL — the picker needs live markup;
-  // SVG is text, so it persists directly in stringLiterals, unlike the Image node.
+  // Read as text, not a data URL: the picker needs live markup, which persists in stringLiterals.
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const text = sanitizeSvg(String(reader.result));
+      const text = String(reader.result);
       adoptSource(text);
       if (url) { setUrl(""); data.url = ""; }
       setLoadError(null);
@@ -231,8 +221,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     reader.readAsText(file);
   }
 
-  // Live swatch while dragging (repaints via state); commit downstream on blur so
-  // a wired Report re-reads the new color once, not per drag tick.
+  // Commit on blur, so a wired Report re-reads the color once rather than per drag tick.
   function onColorInput(v: string) { setHoverColor(v); data.hoverColor = v; }
   function onColorCommit() { scheduleAutosave(); void processGraph(data.id); }
 
@@ -316,12 +305,12 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
         <div className="solenoid-svgpick__controls" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>
           <input
             className="solenoid-svgpick__url"
-            value={url}
+            value={urlField.draft}
             placeholder="https://…svg"
             spellCheck={false}
-            onChange={(e) => onUrl(e.target.value)}
-            onBlur={onUrlCommit}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onChange={(e) => urlField.setDraft(e.target.value)}
+            onBlur={urlField.onBlur}
+            onKeyDown={urlField.onKeyDown}
           />
           <label className="solenoid-svgpick__swatch" title="Highlight color">
             <input

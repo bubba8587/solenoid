@@ -3,50 +3,62 @@
   "nodes": [
     {
       "id": "2bf2c29cf071406f",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -8,
       "y": 4,
       "init": {
         "label": "Turns N",
-        "value": 500,
-        "width": 180,
-        "height": 76
+        "op": "number",
+        "value": "500",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "9c386e25850282ae",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -8,
       "y": 114,
       "init": {
         "label": "Length ℓ (m)",
-        "value": 0.2,
-        "width": 180,
-        "height": 76
+        "op": "number",
+        "value": "0.2",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "ad3d4bc8a14a0bbf",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -8,
       "y": 224,
       "init": {
         "label": "Current I (A)",
-        "value": 3,
-        "width": 180,
-        "height": 76
+        "op": "number",
+        "value": "3",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "19858360558ae13e",
-      "type": "NumberInputNode",
+      "type": "ValueInputNode",
       "x": -8,
       "y": 334,
       "init": {
         "label": "Radius r (m)",
-        "value": 0.02,
-        "width": 180,
-        "height": 76
+        "op": "number",
+        "value": "0.02",
+        "width": 180
+      },
+      "sections": {
+        "Format": false
       }
     },
     {

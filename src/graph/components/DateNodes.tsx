@@ -1,4 +1,6 @@
-// [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[D16]] retypeReconciles, [[C26]] opArgDistinct, [[C44]] dateSerials
+// [[B11]] maximalMerge, [[C26]] opArgDistinct, [[C44]] dateSerials
+import { useSyncExternalStore } from "react";
+import { collapseStore } from "../collapseStore";
 import type {
   TodayNowNode as TodayNowNodeType,
   DateConstructNode as DateConstructNodeType,
@@ -17,7 +19,7 @@ import {
   TODAY_NOW_OP_META, DATE_TIME_VALUE_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
   DATE_DIFF_OP_META, DATE_ADD_OP_META, WORKDAYS_OP_META, dateDiffNeedsBasis,
 } from "../rete-nodes";
-import { getActiveView, getActiveEditor } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
@@ -27,8 +29,7 @@ import { nodeDisplayName } from "../catalogUtils";
 import { dropInputCables } from "./cablePrune";
 import { IANA_ZONES } from "../timeZone";
 
-// Date nodes never format their own serials — ValueDisplay does it for any date-typed
-// output socket, so scalars and lists format consistently.
+// Date nodes never format their own serials: ValueDisplay does it for any date-typed output socket.
 
 const TODAY_NOW_OPS = (Object.keys(TODAY_NOW_OP_META) as TodayNowOp[]).map(op => ({
   value: op, label: TODAY_NOW_OP_META[op].label,
@@ -36,10 +37,8 @@ const TODAY_NOW_OPS = (Object.keys(TODAY_NOW_OP_META) as TodayNowOp[]).map(op =>
 
 export function TodayNowComponent({ data, emit }: NodeProps<TodayNowNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: TodayNowOp) {
     setOp(next);
-    setLabel(TODAY_NOW_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -74,18 +73,16 @@ const DATE_TIME_VALUE_OPS = (Object.keys(DATE_TIME_VALUE_OP_META) as DateTimeVal
 
 export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNodeType>) {
   const [op, setOpField] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
 
   async function pickOp(next: DateTimeValueOp) {
     if (next === data.op) return;
     data.setOp(next);
-    // In-place output retype ([[D16]] retypeReconciles).
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    // In-place output retype ([[B11]] maximalMerge).
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);
-    setLabel(DATE_TIME_VALUE_OP_META[next].label);
   }
 
   return (
@@ -103,10 +100,8 @@ const DATE_PART_OPS = (Object.keys(DATE_PART_OP_META) as DatePartOp[]).map(op =>
 
 export function DatePartComponent({ data, emit }: NodeProps<DatePartNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: DatePartOp) {
     setOp(next);
-    setLabel(DATE_PART_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -123,10 +118,8 @@ const WEEK_INFO_OPS = (Object.keys(WEEK_INFO_OP_META) as WeekInfoOp[]).map(op =>
 
 export function WeekInfoComponent({ data, emit }: NodeProps<WeekInfoNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: WeekInfoOp) {
     setOp(next);
-    setLabel(WEEK_INFO_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -144,15 +137,13 @@ const DATE_DIFF_OPS = (Object.keys(DATE_DIFF_OP_META) as DateDiffOp[]).map(op =>
 
 export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   async function handleOp(next: DateDiffOp) {
-    // [[D10]] onePrunePath: prune before removeInput.
+    // Prune before removeInput.
     if (!dateDiffNeedsBasis(next) && data.inputs.basis) {
       await dropInputCables(data.id, ["basis"]);
     }
-    setOp(next); // sets data.op + reconciles + recomputes (useNodeField)
-    setLabel(DATE_DIFF_OP_META[next].label);
-    if (data.syncBasisInput()) await getActiveView()?.rerenderNode(data.id);
+    setOp(next);
+    if (data.syncBasisInput()) await getOwningView(data.id)?.rerenderNode(data.id);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -169,10 +160,8 @@ const DATE_ADD_OPS = (Object.keys(DATE_ADD_OP_META) as DateAddOp[]).map(op => ({
 
 export function DateAddComponent({ data, emit }: NodeProps<DateAddNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: DateAddOp) {
     setOp(next);
-    setLabel(DATE_ADD_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -195,9 +184,9 @@ export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
-    // In-place output retype ([[D16]] retypeReconciles).
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    // In-place output retype ([[B11]] maximalMerge).
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);
@@ -223,10 +212,21 @@ export function TimeZoneConvertComponent({ data, emit }: NodeProps<TimeZoneConve
 }
 
 export function WorldClockComponent({ data, emit }: NodeProps<WorldClockNodeType>) {
+  // Collapsed: the first zone's time, to the minute, under its place.
+  const cols = data.cachedResult?.columns;
+  const place = cols?.[0]?.values[0];
+  const time = cols?.[1]?.values[0];
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} squareCollapse>
       <InlineInputs node={data} emit={emit} suggest={{ zones: IANA_ZONES }} />
-      <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+      {!collapsed && <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />}
+      <div className="solenoid-node__collapsed-only solenoid-node__mini-value">
+        {typeof time === "string" ? <>
+          <span className="solenoid-node__mini-label">{String(place ?? "")}</span>
+          {time.replace(/^\S+\s+/, "")}
+        </> : "—"}
+      </div>
     </NodeShell>
   );
 }

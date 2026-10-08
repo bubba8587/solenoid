@@ -1,16 +1,19 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { stepListSel } from "./gridKeyboard";
 import { tokenAtCaret } from "../formulaSyntax";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { PaintbrushIcon } from "./PaintbrushIcon";
+import { InfoIcon } from "./Icons";
+import { TypeIcon } from "./TypeIcon";
+import { closeParens } from "../closeParens";
 
-// Both floating panels PORTAL to <body> and sit `position: fixed` under their anchor,
-// above the popup layer: the header lives in the grid's scroll container, which would
-// clip (and be reflowed by) anything rendered in place.
+type ColType = "number" | "string" | "date" | "logical";
+export const COLTYPE_ORDER: ColType[] = ["number", "string", "date", "logical"];
+export const COLTYPE_NAME: Record<ColType, string> = { number: "Number", string: "Text", date: "Date", logical: "Boolean" };
 
-/** Hang `panel` under `anchor` while open, clamped into the viewport, re-placed on any
- *  scroll or resize. Returns the style the panel carries: hidden until first placed,
- *  plus the popup's accent, which a portal would otherwise lose. */
+
+/** Hidden until first placed; carries the popup's accent, which a portal would otherwise lose. */
 export function useHangUnder(
   open: boolean,
   anchor: RefObject<HTMLElement | null>,
@@ -31,7 +34,6 @@ export function useHangUnder(
       const pad = 8;
       const wanted = align === "left" ? a.left : a.right - p.width;
       const left = Math.min(Math.max(wanted, pad), window.innerWidth - p.width - pad);
-      // Flip above the anchor when there is no room below.
       const below = a.bottom + 3;
       const top = below + p.height + pad > window.innerHeight ? Math.max(pad, a.top - 3 - p.height) : below;
       const accent = getComputedStyle(anchor.current!).getPropertyValue("--node-accent").trim();
@@ -58,8 +60,7 @@ const stopAll = {
   onPointerDown: (e: { stopPropagation: () => void }) => e.stopPropagation(),
 };
 
-/** Paintbrush + chevron: the column's Format Controller picks, in a dropdown panel.
- *  `picked` = this node made a pick for the column (state, so it earns the accent). */
+/** `picked`: this node made a pick for the column, so the button earns the accent. */
 export function ColumnFormatButton({ picked, children }: { picked: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -95,14 +96,71 @@ export function ColumnFormatButton({ picked, children }: { picked: boolean; chil
   );
 }
 
-/** A column's row-wise formula. The draft is the parent's (`value`/`onDraft`); blur or
- *  Enter commits, Escape reverts ([[C95]] commitOnEnter). While the field is focused the
- *  host's λ socket names list below it; picking one types the name at the caret. */
+/** The header legend: what a column's type button cycles, and the names an Fx formula reads ([[C22]] rowFormulaRefs). */
+const FX_LEGEND: [string, string][] = [
+  ["@price", "this row's price"],
+  ["price", "the whole price column"],
+  ["@[Unit Price]", "a name with spaces"],
+  ["ROW()", "this row's number"],
+  ["ROWS(price)", "the row count"],
+  ["@price / SUM(price)", "this row's share of the total"],
+];
+
+/** `cube`: the Cube popup's legend, which adds the None type and a list column's `@` read ([[C22]] rowFormulaRefs). */
+export function HeaderHelpButton({ formulas, lambdas, cube = false }: { formulas: boolean; lambdas: boolean; cube?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDismissOnOutside(open, () => setOpen(false), [btnRef, panelRef]);
+  const style = useHangUnder(open, btnRef, panelRef, "left");
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        className="table-popup__helpbtn"
+        title="Column headers"
+        aria-label="Column headers"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+      >
+        <InfoIcon size={14} />
+      </button>
+      {open && createPortal(
+        <div ref={panelRef} className="table-popup__helppanel" style={style} {...stopAll}>
+          <div className="table-popup__helphead">Column Type</div>
+          <dl className="table-popup__helplist">
+            {cube && <div><dt>–</dt><dd>None, any kind per cell</dd></div>}
+            {COLTYPE_ORDER.map((t) => <div key={t}><dt><TypeIcon type={t} size={12} /></dt><dd>{COLTYPE_NAME[t]}</dd></div>)}
+            {formulas && <div><dt>Fx</dt><dd>a formula, run once per row</dd></div>}
+          </dl>
+          {formulas && (
+            <>
+              <div className="table-popup__helphead">In an Fx Formula</div>
+              <dl className="table-popup__helplist">
+                {FX_LEGEND.map(([code, meaning]) => (
+                  <div key={code}><dt>{code}</dt><dd>{meaning}</dd></div>
+                ))}
+                {cube && <div><dt>COUNTA(@tags)</dt><dd>how many tags this row's list holds</dd></div>}
+                {lambdas && <div><dt>λ1</dt><dd>runs that LAMBDA, each parameter reading the column of its name</dd></div>}
+              </dl>
+            </>
+          )}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+/** The draft is the parent's (`value`, `onDraft`). */
 export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRevert }: {
   value: string;
   lambdaOptions: string[];
   onDraft: (next: string) => void;
-  onCommit: () => void;
+  onCommit: (text: string) => void;
   onRevert: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -149,13 +207,15 @@ export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRev
           setFocused(false);
           setSel(-1);
           if (escaped.current) { escaped.current = false; return; }
-          onCommit();
+          const text = closeParens(value);
+          if (text !== value) onDraft(text);
+          onCommit(text);
         }}
         onKeyDown={(e) => {
           if (open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
             e.preventDefault();
             const n = lambdaOptions.length;
-            setSel((s) => (e.key === "ArrowDown" ? (s + 1) % n : (s - 1 + n) % n));
+            setSel((s) => stepListSel(s, n, e.key === "ArrowDown" ? 1 : -1));
           } else if (open && sel >= 0 && (e.key === "Enter" || e.key === "Tab")) {
             e.preventDefault();
             accept(lambdaOptions[sel]);

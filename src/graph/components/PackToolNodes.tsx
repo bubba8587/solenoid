@@ -1,19 +1,20 @@
-// [[C76]] formulaPackDefault, [[C12]] socketRows, [[C26]] opArgDistinct
-// Cards for the pack tool nodes — the domain logic lives in their node files.
+// [[C76]] formulaPackDefault, [[C26]] opArgDistinct
 
 import {
   EmSpectrumNode as EmSpectrumNodeType,
   HrZonesNode as HrZonesNodeType,
   PipeRoughnessNode as PipeRoughnessNodeType,
   TriangleSolverNode as TriangleSolverNodeType,
-  PIPE_ROUGHNESS,
-  type TriangleSolved,
 } from "../rete-nodes";
+import { PIPE_ROUGHNESS } from "../nodes/fluidsOps";
+import type { TriangleSolved } from "../nodes/triangleOps";
+import { isUnitCell } from "../unitValue";
 import { NodeShell, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";
 import { EquationVarRow, EquationOutRow } from "./EquationNode";
 import type { DisplayValue } from "./valueDisplayFormat";
+import { iterMin, iterMax } from "../nodes/mathUtils";
 
 export function EmSpectrumComponent({ data, emit }: NodeProps<EmSpectrumNodeType>) {
   return (
@@ -68,13 +69,14 @@ function TriangleFigure({ t }: { t: Partial<TriangleSolved> }) {
   };
   const xs = Object.values(raw).map((p) => p.x);
   const ys = Object.values(raw).map((p) => p.y);
-  const spanX = Math.max(...xs) - Math.min(...xs);
-  const spanY = Math.max(...ys) - Math.min(...ys);
+  const minX = iterMin(xs), minY = iterMin(ys);
+  const spanX = iterMax(xs) - minX;
+  const spanY = iterMax(ys) - minY;
   if (!(spanX > 0) || !Number.isFinite(spanX) || !Number.isFinite(spanY)) return null;
   const scale = Math.min((W - 2 * PAD) / spanX, (H - 2 * PAD) / Math.max(spanY, spanX * 0.15));
   const px = (p: { x: number; y: number }) => ({
-    x: PAD + (p.x - Math.min(...xs)) * scale + (W - 2 * PAD - spanX * scale) / 2,
-    y: H - PAD - (p.y - Math.min(...ys)) * scale, // flip: SVG y runs down
+    x: PAD + (p.x - minX) * scale + (W - 2 * PAD - spanX * scale) / 2,
+    y: H - PAD - (p.y - minY) * scale, // flip: SVG y runs down
   });
   const P = { A: px(raw.A), B: px(raw.B), C: px(raw.C) };
   const centroid = {
@@ -122,14 +124,13 @@ function TriangleFigure({ t }: { t: Partial<TriangleSolved> }) {
 
 const TRIANGLE_KEYS = ["a", "b", "c", "A", "B", "C"] as const;
 
-// The Equation design applied to the triangle: every part is ONE hero row, input
-// socket left, output socket right.
+// Every part is one hero row, input socket left and output right, as on the Equation card.
 export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolverNodeType>) {
   const v = data.cachedValues;
   // The figure draws ONE triangle — index 0 when parts are broadcast lists.
   const scalarPart = (val: unknown): number | undefined => {
     const cell = Array.isArray(val) ? val[0] : val;
-    return typeof cell === "number" ? cell : undefined;
+    return typeof cell === "number" ? cell : isUnitCell(cell) ? cell.value : undefined;
   };
   const figureParts = Object.fromEntries(
     TRIANGLE_KEYS.map((k) => [k, scalarPart(v[k])]),

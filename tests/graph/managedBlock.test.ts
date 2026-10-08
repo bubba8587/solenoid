@@ -1,6 +1,7 @@
 // [[B1]] obsidianBet
 import { describe, it, expect } from "vitest";
-import { spliceBlock, readBlock, beginMarker, END_MARKER } from "../../src/graph/managedBlock";
+import { spliceBlock, readBlock, beginMarker, END_MARKER, fencedLines } from "../../src/graph/managedBlock";
+import { toggleTaskMarker } from "../../src/graph/noteMarkdown";
 
 // Bundle item C, `mode: block`: the writer owns the span between its markers.
 
@@ -37,6 +38,20 @@ describe("spliceBlock", () => {
     const r = spliceBlock(before, "Weekly", "x");
     expect(r.text).toBe(`${B}\norphan\n\n${B}\nx\n${END_MARKER}\n`);
   });
+  it("a second write after an orphan replaces only its own pair, never the text after the orphan", () => {
+    const once = spliceBlock(`${B}\nmy notes\n`, "Weekly", "x").text;
+    const twice = spliceBlock(once, "Weekly", "y").text;
+    expect(twice).toBe(`${B}\nmy notes\n\n${B}\ny\n${END_MARKER}\n`);
+    expect(readBlock(once, "Weekly")).toBe("x");
+  });
+  it("an orphan begin never pairs with another writer's end", () => {
+    const B2 = beginMarker("Monthly");
+    const before = `${B}\nprose\n${B2}\nb\n${END_MARKER}\n`;
+    const r = spliceBlock(before, "Weekly", "w");
+    expect(r.text).toBe(`${before}\n${B}\nw\n${END_MARKER}\n`);
+    expect(readBlock(before, "Weekly")).toBeNull();
+    expect(readBlock(before, "Monthly")).toBe("b");
+  });
   it("content carrying %% outside a fence is refused with the line; inside a fence it is fine", () => {
     const r = spliceBlock("body\n", "Weekly", "ok\n%% hidden %%");
     expect(r.refused).toMatch(/line 2/);
@@ -44,8 +59,26 @@ describe("spliceBlock", () => {
     const ok = spliceBlock("body\n", "Weekly", "```\n%% in code %%\n```");
     expect(ok.refused).toBeUndefined();
   });
-  it("CRLF input is normalized", () => {
-    const r = spliceBlock("a\r\nb\r\n", "Weekly", "x");
-    expect(r.text).toBe(`a\nb\n\n${B}\nx\n${END_MARKER}\n`);
+  it("a CRLF note keeps its line endings, new block included", () => {
+    const r = spliceBlock("a\r\nb\r\n", "Weekly", "x\ny");
+    expect(r.text).toBe(`a\r\nb\r\n\r\n${B}\r\nx\r\ny\r\n${END_MARKER}\r\n`);
+    expect(spliceBlock(r.text, "Weekly", "z").text).toBe(`a\r\nb\r\n\r\n${B}\r\nz\r\n${END_MARKER}\r\n`);
+  });
+});
+
+describe("fencedLines (CommonMark fences, shared with the task toggle)", () => {
+  it("a shorter run or one with an info string does not close a fence", () => {
+    expect(fencedLines(["````", "```", "x", "```js", "````", "y"])).toEqual([true, true, true, true, true, false]);
+    expect(fencedLines(["~~~", "```", "~~~~", "z"])).toEqual([true, true, true, false]);
+  });
+
+  it("the task toggle skips a checkbox inside a fence a shorter run did not close", () => {
+    const body = "````\n```\n- [ ] in code\n````\n- [ ] real";
+    expect(toggleTaskMarker(body, 0)).toBe("````\n```\n- [ ] in code\n````\n- [x] real");
+  });
+
+  it("a managed block's markers inside such a fence are not the block", () => {
+    const text = `\`\`\`\`\n\`\`\`\n${B}\nold\n${END_MARKER}\n\`\`\`\`\n`;
+    expect(readBlock(text, "Weekly")).toBeNull();
   });
 });

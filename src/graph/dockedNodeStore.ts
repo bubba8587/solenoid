@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
+// [[A1]] visualGraphCalculator (module-singleton store, storeKit)
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
@@ -29,8 +29,6 @@ export const dockedNodeStore = {
     }
     return result;
   },
-  /** Registry forget: the node may be the DOCKED FC or a HOST, and every relationship
-   *  it takes part in is dead either way. */
   removeForNode(nodeId: string): void {
     let changed = _store.delete(nodeId);
     for (const [id, rel] of [..._store]) {

@@ -10,7 +10,7 @@ import { ExpressionNode } from "../../../src/graph/nodes/expression";
 import { ClampNode, ArithmeticNode, MathFXNode, MRoundNode, CombinatoricsNode } from "../../../src/graph/nodes/scalar";
 import { MirrNode, DiscountSecurityNode, IRRNode, BondPricingNode, NPVNode, DepreciationNode } from "../../../src/graph/nodes/finance";
 import { SortFrameNode, JoinNode, HeadNode, ColumnsNode, XLookupNode } from "../../../src/graph/nodes/frame";
-import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "../../../src/graph/nodes/list";
+import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode, FindPeaksNode } from "../../../src/graph/nodes/list";
 import { GaugeNode, KpiNode, HistogramNode } from "../../../src/graph/nodes/visual";
 import { AlertNode } from "../../../src/graph/nodes/display";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
@@ -27,6 +27,9 @@ import { readFrame } from "../../../src/graph/frameBackend";
 import { extractInit } from "../../../src/graph/copyPaste";
 import type { FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
+import { FormatDollarNode, FixedNode } from "../../../src/graph/nodes/text";
+import { TwoInputMathNode } from "../../../src/graph/nodes/scalar";
+import { compileEvaluator } from "../../../src/graph/excelFormula";
 
 // ─── A wired blank must not resurrect the typed literal ───────────────────────
 // The `inputs.x?.[0] ?? this.literals.x` idiom swallows a WIRED null into the
@@ -42,6 +45,9 @@ import { solError, isSolError } from "../../../src/graph/errorValue";
 // A wired input arrives as `[null]` (the slot is connected, the value is missing);
 // an unwired one arrives as `undefined`.
 
+// [[D86]] blankRoles: a blank setting is its default, or #SYNTAX! when it has none; data blanks stay blank.
+const isSyntax = (v: unknown) => isSolError(v) && v.code === "#SYNTAX!";
+
 describe("text operands", () => {
   it("UPPER: a wired blank yields blank, not the text typed in the box", () => {
     const node = new TextTransformNode({ op: "upper" });
@@ -56,10 +62,10 @@ describe("text operands", () => {
     expect(node.data({}).result).toBe("ABC");
   });
 
-  it("LEFT: a wired blank COUNT propagates rather than falling back to 1", () => {
+  it("LEFT: a wired blank count is Excel's omitted count, 1, overriding the typed 3", () => {
     const node = new TextSliceNode({ op: "left" });
     node.literals.n = 3;
-    expect(node.data({ text: ["abcdef"], n: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ text: ["abcdef"], n: [null as unknown as number] }).result).toBe("a");
     // Unwired count keeps the literal.
     expect(node.data({ text: ["abcdef"] }).result).toBe("abc");
   });
@@ -70,32 +76,28 @@ describe("text operands", () => {
       .toEqual(["A", null, "C"]);
   });
 
-  it("REPT: a wired blank count propagates", () => {
+  it("REPT: a wired blank count has no default, so #SYNTAX!", () => {
     const node = new ReptNode();
     node.literals.times = 2;
-    expect(node.data({ text: ["ab"], times: [null as unknown as number] }).result).toBeNull();
+    expect(isSyntax(node.data({ text: ["ab"], times: [null as unknown as number] }).result)).toBe(true);
     expect(node.data({ text: ["ab"] }).result).toBe("abab");
   });
 });
 
-describe("mode selectors — the project's model, not Excel's", () => {
-  // The real choice here: a wired blank could mean "the mode is unknown, so the
-  // answer is unknown" (this app's P6 model) or "nothing supplied, use the default"
-  // (Excel's reading of an omitted optional argument). Author call: follow THIS
-  // project. A blank you deliberately wired is not silently reinterpreted.
-  it("TEXTSPLIT: a wired blank delimiter yields blank, not a character split", () => {
+describe("mode selectors are settings ([[D86]] blankRoles)", () => {
+  it("TEXTSPLIT: a wired blank delimiter has no default, so #SYNTAX!, not a character split", () => {
     const node = new TextSplitNode();
     node.stringLiterals.delimiter = ",";
-    expect(node.data({ text: ["a,b"], delimiter: [null as unknown as string] }).result).toBeNull();
+    expect(isSyntax(node.data({ text: ["a,b"], delimiter: [null as unknown as string] }).result)).toBe(true);
     // Unwired keeps the typed delimiter.
     expect(node.data({ text: ["a,b"] }).result).toEqual(["a", "b"]);
   });
 
-  it("NETWORKDAYS: a wired blank weekend code yields blank, not the default week", () => {
+  it("NETWORKDAYS: a wired blank weekend code is the default week", () => {
     const node = new WorkdaysNode({ op: "networkdays" });
     expect(node.data({
       start: [46096], end: [46196], weekend_code: [null as unknown as number],
-    }).result).toBeNull();
+    }).result).toBe(node.data({ start: [46096], end: [46196] }).result);
     expect(typeof node.data({ start: [46096], end: [46196] }).result).toBe("number");
   });
 });
@@ -164,7 +166,6 @@ describe("a CONTROL needs a usable bound — Slider keeps the card's", () => {
     node.literals.max = 100;
     node.data({ max: [null as unknown as number], min: [null as unknown as number] });
     expect(Number.isFinite(node.effectiveMin)).toBe(true);
-    expect(Number.isFinite(node.effectiveMax)).toBe(true);
     expect(node.effectiveMax).toBe(100);
   });
 
@@ -204,9 +205,10 @@ describe("\"absent\" is not \"unknown\" — the optional-input trap", () => {
     expect(node.data({ value: [-5] }).result).toBe(-5); // no floor applied
   });
 
-  it("Clamp: a WIRED blank min is unknown, not unclamped", () => {
+  it("Clamp: a WIRED blank min is no bound, on the card and in CLAMP", () => {
     const node = new ClampNode();
-    expect(node.data({ value: [-5], min: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ value: [-5], min: [null as unknown as number] }).result).toBe(-5);
+    expect(node.data({ value: [[-5, 5]], min: [[0, null as unknown as number]] }).result).toEqual([0, 5]);
   });
 
   it("Clamp: a WIRED min still clamps", () => {
@@ -320,22 +322,20 @@ describe("the THIRD state — undefined is omitted, null is unknown", () => {
   // Excel's omitted-argument readings are real and stay. They just belong to the
   // `undefined` branch, which readInput hands back only for an unwired slot with
   // nothing typed. A `?? 0` on the literal would collapse the two.
-  it("INDEX: an omitted axis is the WHOLE axis; a wired blank axis is unknown", () => {
+  it("INDEX: an omitted axis is the WHOLE axis, and so is a wired blank one ([[D86]])", () => {
     const m = [[1, 2], [3, 4]];
-    // Omitted column → the whole row (Excel INDEX).
     expect(new ListIndexNode().data({ list: [m], index: [1] }).result).toEqual([1, 2]);
-    // A cable carrying blank is not an omission.
     expect(new ListIndexNode().data({
       list: [m], index: [1], column: [null as unknown as number],
-    }).result).toBeNull();
+    }).result).toEqual([1, 2]);
   });
 
-  it("Slice: an omitted end runs to the end; a wired blank end is unknown", () => {
+  it("Slice: an omitted end runs to the end, and so does a wired blank one", () => {
     const arr = [1, 2, 3, 4];
     expect(new SliceNode().data({ list: [arr], start: [2] }).result).toEqual([2, 3, 4]);
     expect(new SliceNode().data({
       list: [arr], start: [2], end: [null as unknown as number],
-    }).result).toBeNull();
+    }).result).toEqual([2, 3, 4]);
   });
 });
 
@@ -369,8 +369,7 @@ describe("figure sinks — empty figure for a datum, neutral default for styling
   });
 
   it("KPI: a wired blank prior shows NO comparison, not a compare against the card's number", () => {
-    // The "absent is not unknown" trap: prev is an optional comparison, and a wired
-    // blank leaves it unknown (no delta) rather than reusing the card's prior.
+    // Prior is a setting: a wired blank is the prior left out, so no delta, and the card's typed prior stays unused ([[D86]] blankRoles).
     const node = new KpiNode();
     node.literals.value = 5;
     node.literals.prev = 10;
@@ -385,14 +384,17 @@ describe("figure sinks — empty figure for a datum, neutral default for styling
 });
 
 describe("Date mode-selector + active-op guard", () => {
-  // A basis is a MODE selector: a wired blank propagates (unknown basis -> unknown
-  // answer) on the ops that read it, but DAYS never reads basis so a blank there is
-  // ignored. (The propagate-vs-default disposition is the recorded author call.)
-  it("DAYS ignores a wired blank basis; YEARFRAC blanks on it", () => {
+  // A basis is a setting ([[D86]] blankRoles): a wired blank is the basis left out, as in YEARFRAC(a, b, ).
+  it("DAYS ignores a wired blank basis; YEARFRAC and DAYS360 read it as left out", () => {
     const days = new DateDiffNode({ op: "days" });
     expect(days.data({ start: [46000], end: [46010], basis: [null as unknown as number] }).result).toBe(10);
-    const yf = new DateDiffNode({ op: "yearfrac" });
-    expect(yf.data({ start: [46000], end: [46010], basis: [null as unknown as number] }).result).toBeNull();
+    for (const op of ["yearfrac", "days360"] as const) {
+      const n = new DateDiffNode({ op });
+      n.literals.basis = 1;
+      const blank = n.data({ start: [46000], end: [46100], basis: [null as unknown as number] }).result;
+      expect(blank).toBe(new DateDiffNode({ op }).data({ start: [46000], end: [46100] }).result);
+      expect(typeof blank).toBe("number");
+    }
   });
 });
 
@@ -514,7 +516,7 @@ describe("a column-LIST reference — same rule as the scalar column", () => {
 
   it("Columns (Drop): removes the named column and ignores an unknown name", async () => {
     const res = await new ColumnsNode({ op: "drop" }).data({ frame: [f], columns: [["b", "nope"]] });
-    const out = (await readFrame(res.frame)) as FrameValue;
+    const out = (await readFrame(res.frame as FrameValue)) as FrameValue;
     expect(out.columns.map((c) => c.name)).toEqual(["a"]);
   });
 
@@ -582,7 +584,7 @@ describe("figure controls never clobber the typed literal", () => {
 });
 
 describe("Distribution — a wired blank parameter propagates", () => {
-  // The [[C61]] oneDistributionNode flagship: every param reads through readInput, so a wired
+  // The [[B11]] maximalMerge flagship: every param reads through readInput, so a wired
   // blank mean blanks the result while an unwired slot uses the seeded literal.
   it("NORM.DIST: a wired blank mean blanks the result; unwired uses the literals", () => {
     const node = new DistributionsNode({ op: "normal", form: "cdf" });
@@ -595,9 +597,9 @@ describe("Distribution — a wired blank parameter propagates", () => {
 describe("Rank & Percentile — active-family param guard", () => {
   // LARGE reads k: a wired blank k blanks the result, an unwired slot uses the seeded
   // literal. The list operand skips its own nulls before ranking.
-  it("LARGE: a wired blank k blanks the result; unwired uses the literal", () => {
+  it("LARGE: a wired blank k has no default, so #SYNTAX!; unwired uses the literal", () => {
     const node = new RankPercentileNode({ op: "large" });
-    expect(node.data({ list: [[3, 1, 2]], k: [null as unknown as number] }).result).toBeNull();
+    expect(isSyntax(node.data({ list: [[3, 1, 2]], k: [null as unknown as number] }).result)).toBe(true);
     expect(node.data({ list: [[3, 1, 2]] }).result).toBe(3); // k defaults to 1 -> largest
     expect(node.data({ list: [[3, 1, 2]], k: [2] }).result).toBe(2); // 2nd largest
   });
@@ -652,31 +654,28 @@ describe("Input family — wired blank by role", () => {
 describe("Lists ▸ Find — INDEX three-state read", () => {
   // INDEX reads an OMITTED axis (unwired, nothing typed) as the whole axis, a wired
   // blank as unknown (null), and a number as that 1-based position.
-  it("INDEX: a wired blank index is null; a typed literal still indexes", () => {
+  it("INDEX: a wired blank index overrides the typed one and reads as left out; a typed literal still indexes", () => {
     const node = new ListIndexNode();
     node.literals.index = 2;
-    expect(node.data({ list: [[10, 20, 30]], index: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ list: [[10, 20, 30]], index: [null as unknown as number] }).result).toEqual([10, 20, 30]);
     expect(node.data({ list: [[10, 20, 30]] }).result).toBe(20);
     expect(node.data({ list: [[10, 20, 30]], index: [3] }).result).toBe(30);
   });
 });
 
 describe("Lists ▸ Build/Shape — shape params and filter conditions", () => {
-  // A Series shape param (count) blanks the whole list; unwired uses the seeded default.
-  it("Series (linspace): a wired blank count blanks the list; unwired builds it", () => {
+  it("Series (linspace): a wired blank count has no default, so #SYNTAX!; unwired builds it", () => {
     const node = new SeriesNode({ op: "linspace" });
-    expect(node.data({ count: [null as unknown as number] }).list).toBeNull();
+    expect(isSyntax(node.data({ count: [null as unknown as number] }).list)).toBe(true);
     expect(Array.isArray(node.data({}).list)).toBe(true);
   });
 
-  // A filter condition's comparison value is unevaluable when blank, so the whole result
-  // is unknown (NOT the unfiltered list); an empty literal just skips the condition.
-  it("List Filter: a wired blank comparison value blanks the result; empty literal passes through", () => {
+  it("List Filter: a wired blank comparison value skips the condition, as an empty literal does", () => {
     const node = new FilterNode();
     const [valueKey] = node.valueInputKeys();
     node.stringLiterals[valueKey] = "";
     expect(node.data({ list: [null as unknown as unknown[]] }).result).toBeNull();
-    expect(node.data({ list: [[1, 2, 3]], [valueKey]: [null] }).result).toBeNull();
+    expect(node.data({ list: [[1, 2, 3]], [valueKey]: [null] }).result).toEqual([1, 2, 3]);
     expect(node.data({ list: [[1, 2, 3]] }).result).toEqual([1, 2, 3]);
   });
 });
@@ -725,11 +724,11 @@ describe("Numbers ▸ Arithmetic/Functions/Rounding — operands propagate", () 
     expect(node.data({}).result).toBe(5);
   });
 
-  it("MROUND: a wired blank on value OR multiple propagates; unwired rounds", () => {
+  it("MROUND: a wired blank value propagates; a blank multiple has no default, so #SYNTAX!; unwired rounds", () => {
     const node = new MRoundNode({ op: "nearest" });
     node.literals.value = 7; node.literals.multiple = 5;
     expect(node.data({ value: [null as unknown as number] }).result).toBeNull();
-    expect(node.data({ multiple: [null as unknown as number] }).result).toBeNull();
+    expect(isSyntax(node.data({ multiple: [null as unknown as number] }).result)).toBe(true);
     expect(node.data({}).result).toBe(5);
   });
 });
@@ -864,5 +863,55 @@ describe("Set Cell — wired blank by role", () => {
     const node = new SetCellNode();
     node.literals = { row0: 2, col0: 2, value0: 99 };
     expect(node.data({ matrix: [M()] }).result).toEqual([[1, 2], [3, 99]]);
+  });
+});
+
+// [[D86]] blankRoles: a card with a formula twin reads a blank setting as the twin does, so a wired blank on the card
+// and a blank argument in the formula agree.
+describe("cards agree with their formula twin on a blank setting", () => {
+  const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
+  const blank = [null as unknown as number];
+
+  it("DDB and VDB: a blank factor is the default 2", () => {
+    const ddb = new DepreciationNode({ op: "ddb" });
+    ddb.literals.factor = 3;
+    expect(ddb.data({ cost: [1000], salvage: [100], life: [5], per: [1], factor: blank }).result).toBe(ev("DDB(1000, 100, 5, 1, f)", { f: null }));
+    expect(ev("DDB(1000, 100, 5, 1, f)", { f: null })).toBe(ev("DDB(1000, 100, 5, 1)"));
+    const vdb = new DepreciationNode({ op: "vdb" });
+    vdb.literals.factor = 3;
+    expect(vdb.data({ cost: [1000], salvage: [100], life: [5], start: [0], end: [1], factor: blank }).result).toBe(ev("VDB(1000, 100, 5, 0, 1, f)", { f: null }));
+  });
+
+  it("DOLLAR and FIXED: a blank decimals is the default 2, item by item in a list", () => {
+    const d = new FormatDollarNode();
+    d.literals.decimals = 0;
+    expect(d.data({ number: [1234.567], decimals: blank }).result).toBe(ev("DOLLAR(1234.567, d)", { d: null }));
+    const f = new FixedNode();
+    expect(f.data({ number: [1234.567], decimals: [[0, null] as unknown as number] }).result).toEqual([ev("FIXED(1234.567, 0)"), ev("FIXED(1234.567)")]);
+  });
+
+  it("LOG's base and GESTEP's step are settings; B stays data under the other ops", () => {
+    const log = new TwoInputMathNode({ op: "log" });
+    log.literals.b = 2;
+    expect(log.data({ a: [100], b: blank }).result).toBe(ev("LOG(100, b)", { b: null }));
+    expect(log.data({ a: [100], b: blank }).result).toBeCloseTo(2);
+    const ge = new TwoInputMathNode({ op: "gestep" });
+    expect(ge.data({ a: [0.5], b: blank }).result).toBe(ev("GESTEP(0.5, s)", { s: null }));
+    expect(new TwoInputMathNode({ op: "hypot" }).data({ a: [3], b: blank }).result).toBeNull();
+  });
+});
+
+describe("FindPeaks — a blank minimum is no minimum ([[D86]] blankRoles)", () => {
+  const Y = [[0, 1, 0, 3, 0, 2, 0]];
+  it("a wired blank height, distance or prominence filters nothing, overriding the typed value", () => {
+    for (const k of ["height", "distance", "prominence"] as const) {
+      const n = new FindPeaksNode();
+      n.literals[k] = 2.5;
+      expect(n.data({ list: Y, [k]: [null as unknown as number] }).result!.columns[0].values).toEqual([2, 4, 6]);
+    }
+  });
+  it("an unwired empty field means no minimum", () => {
+    const out = new FindPeaksNode().data({ list: Y }).result!;
+    expect(out.columns[0].values).toEqual([2, 4, 6]);
   });
 });

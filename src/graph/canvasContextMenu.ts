@@ -1,8 +1,4 @@
 // [[C98]] paletteMirrorsMenubar (the one menu model)
-// Context-menu TARGET resolution for the flow surface: React Flow says which
-// layer was hit (node / edge / pane); these resolve the app's finer targets — a
-// socket dot (or the nearest one within reach), a cable + its ribbon lanes, a
-// node with its standoff / pin / composite affordances.
 import type { NodeEditor } from "rete";
 import type { Schemes, SolenoidNode } from "./schemes";
 import type { SocketContextTarget, CableContextTarget, NodeContextTarget } from "./components";
@@ -14,17 +10,15 @@ import { dockedNodeStore } from "./dockedNodeStore";
 import { isFlippableNode } from "./flippableNodes";
 import { socketFlipStore } from "./socketFlipStore";
 import { unselectAllNodes as unselectAllNodesFromProcess } from "./canvasCommands";
+import { canAttachFc } from "./canvasActions";
 type Point = { clientX: number; clientY: number; target: EventTarget | null };
 
-/** An actively-edited field keeps the browser's own menu. */
 export function keepsNativeMenu(e: Point): boolean {
   const target = e.target as HTMLElement | null;
   const editable = target?.closest?.("textarea, input, [contenteditable='true']");
   return !!editable && editable === document.activeElement;
 }
 
-/** The socket under the pointer — or the nearest within a small radius, since the dot
- *  is ~12px and a press can land beside it. */
 export function socketTargetAt(container: HTMLElement, e: Point): SocketContextTarget | null {
   const target = e.target as HTMLElement | null;
   let socketEl = target?.closest?.("[data-socket-key][data-socket-side][data-node-id]") as HTMLElement | null;
@@ -46,10 +40,14 @@ export function socketTargetAt(container: HTMLElement, e: Point): SocketContextT
   };
 }
 
-/** Acts on the whole multi-selection when the clicked cable is part of it, else on just
- *  that cable; ribbons expand to their member lanes either way. Ghosts: no menu. */
-export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: string, e: Point): CableContextTarget | null {
-  if (cableGhostStore.isGhost(clickedConnId)) return null;
+/** The Attach Format Controller menu, or null: it adds a node, so a locked canvas never offers it. */
+export function socketMenuFor(editor: NodeEditor<Schemes>, sock: SocketContextTarget | null, locked: boolean): SocketContextTarget | null {
+  return sock && !locked && canAttachFc(editor, sock.nodeId) ? sock : null;
+}
+
+/** Null on a locked canvas: every cable item edits, and resolving the target would select the cable. */
+export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: string, e: Point, locked = false): CableContextTarget | null {
+  if (locked || cableGhostStore.isGhost(clickedConnId)) return null;
   const conns = editor.getConnections();
   const expand = (id: string): string[] => {
     const conn = conns.find((c) => c.id === id);
@@ -74,8 +72,7 @@ export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: strin
   return { connIds, screenX: e.clientX, screenY: e.clientY };
 }
 
-/** No selection surgery on right-click: acts on the selection only if it contains the node. */
-export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e: Point): NodeContextTarget | null {
+export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e: Point, locked = false): NodeContextTarget | null {
   const clickedNode = editor.getNode(clickedId);
   if (!clickedNode) return null;
   const selectedIds = editor.getNodes()
@@ -83,7 +80,6 @@ export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e:
     .map((n) => n.id);
   const seedIds = selectedIds.includes(clickedId) ? selectedIds : [clickedId];
 
-  // Pinnable = a group or a real value node, but never a bundler / FC.
   const canPin =
     clickedNode instanceof GroupNode || (
       Object.keys((clickedNode as unknown as { outputs?: Record<string, unknown> }).outputs ?? {}).length > 0
@@ -105,6 +101,7 @@ export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e:
   );
   let standoff: { aId: string; bId: string } | undefined;
   if (
+    !locked &&
     linkableSel.length === 2 &&
     linkableSel.some((n) => n.id === clickedId) &&
     !standoffStore.hasPair(linkableSel[0].id, linkableSel[1].id)
@@ -117,5 +114,5 @@ export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e:
   const lockedPosition = isGroup ? clickedNode.lockedPosition : undefined;
   const isFlippable = isFlippableNode(clickedNode);
   const flipped = isFlippable ? socketFlipStore.get(clickedId) : undefined;
-  return { nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, isGroup, lockedPosition, isFlippable, flipped, standoff };
+  return { nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, isGroup, lockedPosition, isFlippable, flipped, standoff, viewOnly: locked };
 }

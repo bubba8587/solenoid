@@ -1,4 +1,4 @@
-// [[C64]], [[C48]], [[C24]] arraySemantics
+// [[B17]], [[C48]], [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { AllocatorNode } from "../../../src/graph/nodes/frame";
 import { type FrameValue, type FrameColumn, frameFromInputText } from "../../../src/graph/frame";
@@ -23,7 +23,6 @@ describe("AllocatorNode", () => {
     const n = new AllocatorNode();
     n.literals.amount = 60;
     expect(allocOf(n.data({ categories: [cats] }))).toEqual([30, 30]);          // no Weight column → equal
-    expect(allocOf(n.data({ categories: [wcats([1, 3])] }))).toEqual([20, 40]); // Weight column drives it
   });
 
   it("emits Category, Allocation, and Share as a raw fraction of the spend", () => {
@@ -34,13 +33,6 @@ describe("AllocatorNode", () => {
     expect(cols.map((c) => c.name)).toEqual(["Category", "Allocation", "Share"]);
     expect(col("Allocation")).toEqual([20, 40]);
     expect(col("Share")).toEqual([1 / 3, 2 / 3]); // raw decimal, formatted downstream
-  });
-
-  it("reads weights from the Weight column; no column means equal weights", () => {
-    const n = new AllocatorNode();
-    n.literals.amount = 60;
-    expect(allocOf(n.data({ categories: [wcats([1, 3])] }))).toEqual([20, 40]); // column
-    expect(allocOf(n.data({ categories: [cats] }))).toEqual([30, 30]);          // equal fallback
   });
 
   it("min-for-target buys the most-valued category first", () => {

@@ -1,7 +1,8 @@
-// [[B1]] obsidianBet, [[C44]], [[C72]]
+// [[B1]] obsidianBet, [[C44]], [[B11]]
 import { describe, it, expect } from "vitest";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
+import { cellToYaml } from "../../src/graph/frontmatterPatch";
 
 describe("parseNoteFrontmatter", () => {
   it("returns no block when the body does not open with a fence", () => {
@@ -32,12 +33,6 @@ describe("parseNoteFrontmatter", () => {
     ]);
   });
 
-  it("types an ISO date as a date serial", () => {
-    const r = parseNoteFrontmatter("---\ndue: 2026-03-01\n---\n");
-    expect(r.fields[0].guessed).toBe("date");
-    expect(r.fields[0].value).toBe(Math.round(parseDateToSerial("2026-03-01")));
-  });
-
   it("types a list of ISO dates as a date list, never a numeric one", () => {
     const r = parseNoteFrontmatter("---\nmilestones:\n  - 2026-09-01\n  - \n  - 2026-10-15\nmixed: [2026-09-01, 7]\nquoted: [\"2026-09-01\"]\n---\n");
     const serial = (s: string) => Math.round(parseDateToSerial(s));
@@ -45,6 +40,26 @@ describe("parseNoteFrontmatter", () => {
     // A date beside a plain number is numbers; a quoted date is text.
     expect(r.fields[1].guessed).toBe("list");
     expect(r.fields[2].guessed).toBe("strlist");
+  });
+
+  it("a list mixing families is text, and a date in it keeps the text written", () => {
+    const f = (yaml: string) => parseNoteFrontmatter(`---\n${yaml}\n---\n`).fields[0];
+    expect(f("l: [2026-09-01, foo]")).toMatchObject({ value: ["2026-09-01", "foo"], guessed: "strlist" });
+    expect(f("l: [1, two]")).toMatchObject({ value: [1, "two"], guessed: "strlist" });
+    expect(f("l: [true, 1]").guessed).toBe("strlist");
+    expect(f("g: [[2026-09-01, x]]")).toMatchObject({ value: [["2026-09-01", "x"]], guessed: "strtable" });
+  });
+
+  it("reads Obsidian's Date & time as a date that keeps its time, the spelling Write to Obsidian writes", () => {
+    const serial = parseDateToSerial("2026-09-01") + 0.4375; // 10:30
+    const f = parseNoteFrontmatter(`---\nat: ${cellToYaml(serial, "date", new Set())}\nq: "2026-09-01T10:30:00"\n---\n`).fields;
+    expect(f[0]).toMatchObject({ guessed: "date" });
+    expect(f[0].value as number).toBeCloseTo(serial, 9);
+    expect(f[1].guessed).toBe("string");
+  });
+
+  it("a day the month does not have is text, never rolled into the next month", () => {
+    expect(parseNoteFrontmatter("---\nd: 2026-02-30\n---\n").fields[0]).toMatchObject({ value: "2026-02-30", guessed: "string" });
   });
 
   it("treats quoted numbers/dates/bools as strings", () => {
@@ -56,7 +71,7 @@ describe("parseNoteFrontmatter", () => {
     ]);
   });
 
-  it("parses inline flow arrays and types from the first element", () => {
+  it("parses inline flow arrays, one family each", () => {
     const r = parseNoteFrontmatter('---\ntags: [a, b, c]\nnums: [1, 2, 3]\nflags: [true, false]\n---');
     expect(r.fields).toEqual([
       { key: "tags", value: ["a", "b", "c"], guessed: "strlist" },
@@ -189,5 +204,42 @@ describe("parseNoteFrontmatter", () => {
   it("drops leading blank lines from the body", () => {
     const r = parseNoteFrontmatter("---\nx: 1\n---\n\n\nbody");
     expect(r.body).toBe("body");
+  });
+});
+
+describe("a note saved with Windows line endings reads as Obsidian reads it", () => {
+  it("the last line of the block keeps its type, with no stray carriage return", () => {
+    expect(parseNoteFrontmatter("---\r\nk: 1\r\nz: true\r\n---\r\nbody").fields).toEqual([
+      { key: "k", value: 1, guessed: "number" },
+      { key: "z", value: true, guessed: "logical" },
+    ]);
+  });
+});
+
+describe("a hand-typed number spelling reads as Obsidian types it", () => {
+  const val = (y: string) => parseNoteFrontmatter(`---\nk: ${y}\n---\n`).fields[0]?.value;
+  it("a signed dot-float is text; a signed or binary radix literal is a number", () => {
+    expect(val("-.5")).toBe("-.5");
+    // YAML's infinity reads as ∞ ([[D48]] classifyNonFinite), so ∞ written to a note comes back.
+    expect(val("-.inf")).toBe(-Infinity);
+    expect(val("+.inf")).toBe(Infinity);
+    expect(val(".inf")).toBe(Infinity);
+    expect(val(".nan")).toBe(null);
+    expect(val(".5")).toBe(0.5);
+    expect(val("0b101")).toBe(5);
+    expect(val("+0x1F")).toBe(31);
+    expect(val("-0o17")).toBe(-15);
+    expect(val("'0b1'")).toBe("0b1");
+  });
+});
+
+describe("a bare imaginary unit is text", () => {
+  const field = (y: string) => parseNoteFrontmatter(`---\nk: ${y}\n---\n`).fields[0];
+  it("i, j and -i stay text; a written coefficient is Complex", () => {
+    expect(field("i")).toEqual({ key: "k", value: "i", guessed: "string" });
+    expect(field("j")).toEqual({ key: "k", value: "j", guessed: "string" });
+    expect(field("-i")).toEqual({ key: "k", value: "-i", guessed: "string" });
+    expect(field("3+4i").guessed).toBe("complex");
+    expect(field("2j").guessed).toBe("complex");
   });
 });

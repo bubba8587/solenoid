@@ -1,5 +1,4 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[B14]] oneDesignSystem
-// The DCMA 14-point checks that fit a table of tasks, one row per finding, under plain names (DESIGN.md § 7).
 
 import type { Diagnostic, ScheduleLink, ScheduledTask } from "./types";
 
@@ -10,8 +9,6 @@ export function diagnose(
   opts: { statusDate: number | null; longTask: number },
 ): Diagnostic[] {
   const out: Diagnostic[] = [];
-  // A link on a phase counts for every task beneath it (rule 12), so a leaf whose phase
-  // waits on something is not "unlinked".
   const withAncestors = (name: string) => {
     const i = tasks.findIndex((t) => t.name === name);
     const names = [name.toLowerCase()];

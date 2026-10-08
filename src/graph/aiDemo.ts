@@ -1,11 +1,9 @@
 // [[B13]] aiInScope
-// The AI palette's DEMO transport. The fake sits at the TRANSPORT seam (a fetch answering
-// like the Messages API), so every production layer above it runs for real.
 
 import { readTextForm, writeTextForm } from "./textForm";
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
+import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 
-/** The magic "key" that routes `aiService` onto this transport. */
 export const DEMO_KEY = "demo";
 
 const QUESTION_RE = /(\?\s*$)|^(what|how|why|which|who|where|when|does|do|is|are|can|show me)\b/i;
@@ -16,7 +14,6 @@ interface DemoNode {
   init?: Record<string, unknown>;
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
-  /** Column offset within the stage (× the node pitch). */
   col: number;
   row?: number;
 }
@@ -28,7 +25,6 @@ const SALES_FRAME =
   '{"name":"Price","type":"number","values":[9.5,14,22,9.5,14,22]}]';
 
 interface Stage {
-  /** The stage is DONE when this node already exists. */
   marker: string;
   blurb: string;
   nodes: DemoNode[];
@@ -53,7 +49,7 @@ const STAGES: Stage[] = [
     marker: "DemoByRegion",
     blurb: "Added revenue totals by region.",
     nodes: [
-      { name: "DemoRegionKey", type: "TextInputNode", init: { label: "Group key", value: "Region" }, col: 1, row: 1 },
+      { name: "DemoRegionKey", type: "ValueInputNode", init: { label: "Group key", op: "string", value: "Region" }, col: 1, row: 1 },
       { name: "DemoByRegion", type: "GroupByFrameNode", init: { label: "Revenue by region", op: "sum" }, stringLiterals: { column: "Revenue" }, col: 2, row: 1 },
       { name: "DemoTotals", type: "DisplayNode", init: { label: "Totals" }, col: 3, row: 1 },
     ],
@@ -78,13 +74,12 @@ const STAGES: Stage[] = [
 const PITCH_X = 300;
 const PITCH_Y = 230;
 
-/** Prose or a fenced rewrite — the demo model's raw reply for one prompt. */
 export function demoReply(prompt: string, currentText: string): string {
   let current: SavedGraph;
   try {
     current = readTextForm(currentText);
   } catch {
-    current = { v: 2, nodes: [], connections: [] };
+    current = { v: CURRENT_SAVE_VERSION, nodes: [], connections: [] };
   }
 
   if (QUESTION_RE.test(prompt.trim())) return describeDocument(current);
@@ -99,7 +94,6 @@ export function demoReply(prompt: string, currentText: string): string {
     );
   }
 
-  // New nodes land to the RIGHT of everything already on the canvas.
   const baseX = current.nodes.length > 0 ? Math.max(...current.nodes.map((n) => n.x)) + PITCH_X : 40;
   const baseY = current.nodes.length > 0 ? Math.min(...current.nodes.map((n) => n.y)) : 40;
 
@@ -147,8 +141,7 @@ function describeDocument(g: SavedGraph): string {
 const DOC_RE = /```solenoid\n([\s\S]*?)```/;
 const PROMPT_RE = /Request: ([\s\S]*)$/;
 
-/** Answers like `POST /v1/messages`; the delay keeps the palette's busy state visible
- *  so the demo reads as a round trip. */
+/** The delay keeps the palette's busy state visible, so the demo reads as a round trip. */
 export function makeDemoFetch(delayMs = 600): typeof globalThis.fetch {
   return async (_input, init) => {
     const body = typeof init?.body === "string" ? init.body : "";

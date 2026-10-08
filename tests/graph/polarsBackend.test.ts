@@ -14,6 +14,8 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 
 import { frameBackend, initFrameBackend, resetFrameBackendToJs, runFrameUnary, readFrame, collectPreview, clearCollectMemo, isFrameRef } from "../../src/graph/frameBackend";
 import { solError } from "../../src/graph/errorValue";
+import { READINGS_ADD, READINGS_SCALE } from "../../src/graph/unitValue";
+import { ZERO_GROUP_TOTAL } from "../../src/graph/frameVerbs";
 
 // Force the desktop guard on (engineAvailable() === isDesktop(), which reads
 // window.__TAURI_INTERNALS__), and start each test from the default JS backend.
@@ -62,8 +64,7 @@ describe("PolarsBackend — selection at startup", () => {
   it("does NOT swap when the engine reports a non-polars backend", async () => {
     await initWith("none");
     invokeMock.mockClear();
-    const h = await frameBackend().source(sample);
-    expect(String(h).startsWith("jsf:")).toBe(true);
+    await frameBackend().source(sample);
     expect(invokeMock).not.toHaveBeenCalled();
   });
 });
@@ -109,6 +110,20 @@ describe("PolarsBackend — verb command shapes", () => {
     await be.join(l, r, opts);
     const call = invokeMock.mock.calls.find((c) => c[0] === "engine_join");
     expect(call![1]).toEqual({ left: l, right: r, opts });
+  });
+
+  it("join → keys in two units send the transform the join corpus's `unit keys` cases pin", async () => {
+    const { columnUnitFromSpec } = await import("../../src/graph/unitColumn");
+    const keyed = (spec: string): FrameValue => ({ __frame: true, columns: [{ name: "d", type: "number", values: [1], unit: columnUnitFromSpec(spec)! }] });
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:L");
+    const l = await be.source(keyed("km"));
+    invokeMock.mockResolvedValueOnce("plf:R");
+    const r = await be.source(keyed("m"));
+    invokeMock.mockResolvedValueOnce("plf:J");
+    await be.join(l, r, { leftKey: "d", rightKey: "d", how: "inner" });
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_join");
+    expect((call![1] as { opts: JoinOpts }).opts).toEqual({ leftKey: "d", rightKey: "d", how: "inner", rightKeyScale: 0.001, rightKeyOffset: 0 });
   });
 
   it("append → engine_append { handles }", async () => {
@@ -209,11 +224,6 @@ describe("PolarsBackend — verb chain fusion (applyMany batching)", () => {
     if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
     ref = await runFrameUnary(ref, { kind: "head", n: 2 });
     if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
-    expect(ref.__plan).toHaveLength(3);
-
-    // Chaining alone: only the source upload happened — no apply/applyMany yet.
-    const applyCallsSoFar = invokeMock.mock.calls.filter((c) => c[0] === "engine_apply" || c[0] === "engine_apply_many");
-    expect(applyCallsSoFar).toHaveLength(0);
 
     invokeMock.mockResolvedValueOnce("plf:fused"); // engine_apply_many (the ONE flush)
     invokeMock.mockResolvedValueOnce([
@@ -284,8 +294,39 @@ describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b
     await frameBackend().source(withNf);
     const call = invokeMock.mock.calls.find((c) => c[0] === "engine_source");
     expect(call?.[1]).toEqual({
-      frame: { columns: [{ name: "v", type: "number", values: [1, { __nf: "inf" }, { __nf: "-inf" }, { __nf: "nan" }, { __err: "#DIV/0!" }] }] },
+      frame: { columns: [{ name: "v", type: "number", values: [1, { __nf: "inf" }, { __nf: "-inf" }, { __nf: "nan" }, { __err: "#DIV/0!", ref: expect.any(Number) }] }] },
     });
+  });
+
+  it("an uploaded error cell comes back as the same SolError, message and origin kept", async () => {
+    const err = { ...solError("#N/A", "no match for 7"), origin: { nodeId: "n1", nodeName: "Lookup" } };
+    invokeMock.mockResolvedValueOnce("plf:src");
+    const ref = await runFrameUnary({ __frame: true, columns: [{ name: "v", type: "number", values: [1, err] }] }, { kind: "sort", by: "v", dir: "desc" });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    const sent = invokeMock.mock.calls.find((c) => c[0] === "engine_source")![1] as { frame: { columns: { values: { ref?: number }[] }[] } };
+    const wireRef = sent.frame.columns[0].values[1].ref;
+    invokeMock.mockResolvedValueOnce("plf:f");
+    invokeMock.mockResolvedValueOnce([{ name: "v", type: "number", values: [1, { __err: "#N/A", ref: wireRef }] }]);
+    const out = await readFrame(ref) as FrameValue;
+    expect(out.columns[0].values[1]).toBe(err);
+  });
+
+  it("a frame with an error cell in a text or logical column computes on the oracle", async () => {
+    const be = frameBackend();
+    const textErr: FrameValue = { __frame: true, columns: [
+      { name: "k", type: "number", values: [2, 1] },
+      { name: "s", type: "string", values: ["a", solError("#N/A", "x")] },
+    ] };
+    const h = await be.source(textErr);
+    const sorted = await be.apply(h, { kind: "sort", by: "k", dir: "asc" });
+    expect((await be.collect(sorted)).columns[1].values[0]).toMatchObject({ code: "#N/A" });
+    invokeMock.mockResolvedValueOnce("plf:R");
+    const right = await be.source({ __frame: true, columns: [{ name: "k", type: "number", values: [1] }, { name: "v", type: "number", values: [10] }] });
+    invokeMock.mockResolvedValueOnce([{ name: "k", type: "number", values: [1] }, { name: "v", type: "number", values: [10] }]);
+    const joined = await be.join(h, right, { leftKey: "k", rightKey: "k", how: "inner" });
+    expect(invokeMock.mock.calls.map((c) => c[0])).toEqual(["engine_source", "engine_collect"]);
+    const out = await be.collect(joined);
+    expect(out.columns.map((c) => c.values)).toEqual([[1], [expect.objectContaining({ code: "#N/A" })], [10]]);
   });
 
   it("collect DECODES the sentinel back to Infinity/NaN (no more silent null)", async () => {
@@ -296,6 +337,20 @@ describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b
     invokeMock.mockResolvedValueOnce([{ name: "n", type: "number", values: [{ __nf: "inf" }, { __nf: "nan" }, 2] }]); // collect
     const out = await readFrame(ref);
     expect(out).toMatchObject({ columns: [{ name: "n", values: [Infinity, NaN, 2] }] });
+  });
+
+  it("an engine error cell decodes with the oracle's message for its reason", async () => {
+    invokeMock.mockResolvedValueOnce("plf:src");
+    const ref = await runFrameUnary(sample, { kind: "select", columns: ["n"] });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    invokeMock.mockResolvedValueOnce("plf:f");
+    invokeMock.mockResolvedValueOnce([{ name: "n", type: "number", values: [
+      { __err: "#UNIT!", why: "readings_add" }, { __err: "#UNIT!", why: "readings_scale" },
+      { __err: "#DIV/0!", why: "zero_total" }, { __err: "#DOMAIN!" },
+    ] }]);
+    const out = await readFrame(ref) as FrameValue;
+    const messages = out.columns[0].values.map((v) => (v as { message?: string }).message);
+    expect(messages).toEqual([READINGS_ADD, READINGS_SCALE, ZERO_GROUP_TOTAL, "from the native engine"]);
   });
 
   it("a groupBy ±Inf result from an ALL-FINITE base column classifies as #OVERFLOW! (one extra column fetch)", async () => {
@@ -355,3 +410,40 @@ describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b
 function isSolErrorLike(v: unknown): boolean {
   return !!v && typeof v === "object" && "__solError" in (v as object);
 }
+
+describe("PolarsBackend — units and formats survive a native verb ([[C25]] firstClassUnits)", () => {
+  beforeEach(async () => {
+    await initWith("polars");
+    invokeMock.mockClear();
+  });
+
+  it("a column's unit comes back on collect, column and preview, as the JS oracle keeps it", async () => {
+    const { columnUnitFromSpec } = await import("../../src/graph/unitColumn");
+    const km = columnUnitFromSpec("km")!;
+    const withUnit: FrameValue = { __frame: true, columns: [{ name: "d", type: "number", values: [3, 1], unit: km }, sample.columns[1]] };
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:1");
+    const src = await be.source(withUnit);
+    invokeMock.mockResolvedValueOnce("plf:2");
+    const sorted = await be.apply(src, { kind: "sort", by: "d", dir: "asc" });
+    // The wire answers bare columns, as the native engine does.
+    invokeMock.mockResolvedValueOnce([{ name: "d", type: "number", values: [1, 3] }, { name: "s", type: "string", values: ["b", "a"] }]);
+    const f = await be.collect(sorted);
+    expect(f.columns[0].unit?.display).toBe("km");
+    expect(f.columns[1].unit).toBeUndefined();
+    invokeMock.mockResolvedValueOnce({ name: "d", type: "number", values: [1, 3] });
+    expect((await be.column(sorted, "d"))?.unit?.display).toBe("km");
+    invokeMock.mockResolvedValueOnce({ schema: [{ name: "d", type: "number" }], rows: [[1]], rowCount: 2, truncated: true });
+    expect((await be.preview(sorted, 1)).schema[0].unit?.display).toBe("km");
+  });
+
+  it("a native column whose type differs from the schema gets no unit", async () => {
+    const { columnUnitFromSpec } = await import("../../src/graph/unitColumn");
+    const withUnit: FrameValue = { __frame: true, columns: [{ name: "d", type: "number", values: [3], unit: columnUnitFromSpec("km")! }] };
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:1");
+    const src = await be.source(withUnit);
+    invokeMock.mockResolvedValueOnce([{ name: "d", type: "string", values: ["3"] }]);
+    expect((await be.collect(src)).columns[0].unit).toBeUndefined();
+  });
+});

@@ -1,22 +1,20 @@
-// [[C43]] oneFlowSurface, [[C97]] rechartsLazyChunk (this module stays recharts-FREE)., [[C100]] chartIsAValue
-// Mechanics: specs/react-flow-surface-contract.md.
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+// [[B3]] sameNodeEverywhere, [[C100]] chartIsAValue
+import { lazy, memo, Suspense, useEffect, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
-import { toSeries } from "./chartCore";
+import { toSeries, partSlices } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
-import type { ChartValue, ScalePayload, OverlayPayload } from "../chartValue";
+import type { ChartValue, ScalePayload, OverlayPayload, XYPayload } from "../chartValue";
 import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
 import { SurfaceView } from "./SurfaceView";
 import { useSeriesColors, useChartColors } from "./chartCore";
-// The Gantt figure is its own lazy chunk (recharts-free); `ganttSvg` is a small pure
-// serializer, imported eagerly because the export provider must return a string
-// synchronously (captureChartSvgs runs at export time, not on a promise).
+// `ganttSvg` is imported eagerly: the export provider must return a string synchronously.
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 import { registerChartSvgProvider } from "../canvasCapture";
 import { useHostNodeId } from "./nodeContext";
+import { ChartTitle, titleHeight, UNTITLED_FIGURES } from "./chartTitle";
 import {
-  WaterfallView, CandleView, BoxplotView, CalHeatView, WaffleView, QuiverView, ContourView,
+  WaterfallView, CandleView, BoxplotView, CalHeatView, HeatmapView, WaffleView, QuiverView, ContourView,
 } from "./chartCanvasViews";
 
 export { useChartColors, toSeries } from "./chartCore";
@@ -28,22 +26,15 @@ const GaugeArcInner = lazy(() => import("./chartRender").then((m) => ({ default:
 const TornadoBarsInner = lazy(() => import("./chartRender").then((m) => ({ default: m.TornadoBars })));
 const TreemapViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.TreemapView })));
 const SankeyViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.SankeyView })));
-const ComposedViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.ComposedView })));
-const BubbleViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.BubbleView })));
+const XYViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.XYView })));
 const MultiSeriesViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.MultiSeriesView })));
 const OverlayViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.OverlayView })));
 const GanttFigureInner = lazy(() => import("@solenoid/gantt-react").then((m) => ({ default: m.GanttFigure })));
 
-// A width the exported/serialized Gantt draws at, independent of the (possibly capped or
-// measured) on-screen size — the webpage export and Obsidian raster want the whole chart.
 const GANTT_EXPORT_W = 1000;
 
-// The cartesian ops that draw one child per named series; the rest stay single-series
-// (pie/radialbar/funnel plot the first series, the payload figures ignore `series`).
-const MULTI_SERIES_OPS = new Set<ChartShape>(["column", "bar", "line", "area", "scatter", "radar"]);
+const MULTI_SERIES_OPS = new Set<ChartShape>(["column", "bar", "line", "area", "radar"]);
 
-// A blank box the chart's size so the card doesn't reflow (and sockets don't
-// re-measure) before recharts arrives; no spinner — it flashes too fast to read.
 function box(width: number | string, height: number): ReactNode {
   return <div style={{ width, height }} />;
 }
@@ -55,11 +46,8 @@ type ChartViewProps = {
   height: number;
   axes: boolean;
   opts?: ChartOptions;
-  /** Color bars/columns by value sign (win/loss). */
   signColors?: { pos: string; neg: string };
-  /** X-axis category labels (Frame col 0) — shown instead of the 1,2,3… index. */
   labels?: (string | number)[];
-  /** Display-layer text multiplier (an FC on the chart socket). */
   fontScale?: number;
 };
 
@@ -87,20 +75,10 @@ export function SankeyView(props: { sources: string[]; targets: string[]; values
   );
 }
 
-type SeriesArg = { name: string; values: (number | null)[] }[];
-
-export function ComposedView(props: { series: SeriesArg; labels?: (string | number)[]; width: number; height: number; opts?: ChartOptions; fscale?: number }) {
+export function XYView(props: { payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
-      <ComposedViewInner {...props} />
-    </Suspense>
-  );
-}
-
-export function BubbleView(props: { series: SeriesArg; width: number; height: number; opts?: ChartOptions; fscale?: number }) {
-  return (
-    <Suspense fallback={box(props.width, props.height)}>
-      <BubbleViewInner {...props} />
+      <XYViewInner {...props} />
     </Suspense>
   );
 }
@@ -125,16 +103,12 @@ export function OverlayView(props: { payload: OverlayPayload; width: number; hei
   );
 }
 
-// The Gantt view: the grid + banded SVGs from `@solenoid/gantt-react`. On the canvas
-// Display (not virtualized) it registers a serializer keyed by its host node, so the
-// export paths (webpage, Obsidian raster) get a whole-chart SVG from `ganttSvg` instead
-// of scraping the largest DOM <svg> (canvasCapture's data-chart-svg-provider seam).
 export function GanttView({ payload, width, height, virtualize, fontScale }: {
   payload: GanttPayload; width: number; height: number; virtualize?: boolean; fontScale?: number;
 }) {
   const hostId = useHostNodeId();
   useEffect(() => {
-    if (!hostId || virtualize) return; // the popup is transient; the canvas owns the snapshot
+    if (!hostId || virtualize) return;
     return registerChartSvgProvider(hostId, () => ganttSvg(payload, { width: GANTT_EXPORT_W }));
   }, [hostId, virtualize, payload]);
   return (
@@ -144,75 +118,76 @@ export function GanttView({ payload, width, height, virtualize, fontScale }: {
   );
 }
 
-/** The ONE place that maps a chart value to a figure (a report embed keeps its own
- *  width-measured wrapper); empty → the muted em-dash box. */
-export function ChartFigure({ value, width, height, axes = true, fontScale, recordNav, virtualize }: {
+export const ChartFigure = memo(function ChartFigure({ value, width, height, axes = true, fontScale, recordNav, virtualize }: {
   value: ChartValue; width: number; height: number; axes?: boolean;
-  /** Composes with the value's own options.fontsize (10 = the built-in sizes). */
   fontScale?: number;
-  /** Row stepper for a drawn record card; surfaces that can reach the Record
-   *  node (Display, the chart popup via recordNav.ts) provide it. */
   recordNav?: (delta: number) => void;
-  /** The popup passes true so the Gantt windows its rows; the canvas Display caps them. */
   virtualize?: boolean;
 }) {
-  // The payload/matrix figures don't read options, so fold both factors here.
   const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
-  // Hook BEFORE any early return — a conditional hook here black-screens the app.
+  // Before any early return: a conditional hook here black-screens the app.
   const seriesColors = useSeriesColors();
+  const title = value.options?.title?.trim();
+  if (title && UNTITLED_FIGURES.has(value.op)) {
+    const th = titleHeight(fscale);
+    return (
+      <div style={{ width, margin: "0 auto" }}>
+        <ChartTitle text={title} fs={fscale} />
+        <ChartFigure
+          value={{ ...value, options: { ...value.options, title: undefined } }}
+          width={width} height={Math.max(0, height - th)} axes={axes} fontScale={fontScale} recordNav={recordNav} virtualize={virtualize}
+        />
+      </div>
+    );
+  }
   if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} />;
   if (value.op === "scale" && value.payload?.kind === "scale")
     return value.payload.style === "dial"
-      ? <ScaleDial payload={value.payload} width={width} />
+      ? <ScaleDial payload={value.payload} width={width} fscale={fscale} />
       : <BulletBar payload={value.payload} width={width} fscale={fscale} />;
   if (value.op === "proportion" && value.payload?.kind === "proportion")
     return value.payload.layout === "treemap"
       ? <TreemapView names={value.payload.names} values={value.payload.values} width={width} height={height} fscale={fscale} />
-      : <WaffleView payload={value.payload} width={width} height={height} colors={seriesColors} />;
+      : <WaffleView payload={value.payload} width={width} height={height} colors={seriesColors} fscale={fscale} />;
   if (value.op === "sankey" && value.payload?.kind === "sankey")
     return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "surface" && value.payload?.kind === "surface")
-    return <SurfaceView payload={value.payload} width={width} height={height} />;
+    return <SurfaceView payload={value.payload} options={value.options} width={width} height={height} />;
   if (value.op === "contour" && value.payload?.kind === "contour")
-    return <ContourView payload={value.payload} width={width} height={height} />;
+    return <ContourView payload={value.payload} options={value.options} width={width} height={height} fscale={fscale} />;
   if (value.op === "waterfall" && value.payload?.kind === "waterfall")
-    return <WaterfallView payload={value.payload} width={width} height={height} />;
+    return <WaterfallView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "candle" && value.payload?.kind === "candle")
-    return <CandleView payload={value.payload} width={width} height={height} />;
+    return <CandleView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "boxplot" && value.payload?.kind === "boxplot")
-    return <BoxplotView payload={value.payload} width={width} height={height} />;
+    return <BoxplotView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "calheat" && value.payload?.kind === "calheat")
-    return <CalHeatView payload={value.payload} width={width} height={height} />;
+    return <CalHeatView payload={value.payload} options={value.options} width={width} height={height} fscale={fscale} />;
+  if (value.op === "heatmap" && value.payload?.kind === "heatmap")
+    return <HeatmapView payload={value.payload} options={value.options} width={width} height={height} fscale={fscale} />;
   if (value.op === "quiver" && value.payload?.kind === "quiver")
-    return <QuiverView payload={value.payload} width={width} height={height} />;
+    return <QuiverView payload={value.payload} options={value.options} width={width} height={height} />;
   if (value.op === "record" && value.payload?.kind === "record")
     return <RecordCardView payload={value.payload} width={width} fscale={fscale} title={value.options?.title} onStep={recordNav} />;
+  if (value.payload?.kind === "xy")
+    return <XYView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} />;
   if (value.op === "overlay" && value.payload?.kind === "overlay")
     return <OverlayView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} />;
   if (value.op === "gantt" && value.payload?.kind === "gantt")
     return <GanttView payload={value.payload} width={width} height={height} virtualize={virtualize} fontScale={fscale} />;
-  // Composed/Bubble read the frame's numeric columns as series; a plain list (no series)
-  // falls back to the single-series column/scatter render.
-  const hasSeries = !!value.series && value.series.length > 0;
-  if (value.op === "composed") {
-    if (hasSeries) return <ComposedView series={value.series!} labels={value.labels} width={width} height={height} opts={value.options} fscale={fscale} />;
-    return renderSeries(value, "column", width, height, axes, fontScale);
-  }
-  if (value.op === "bubble") {
-    if (hasSeries) return <BubbleView series={value.series!} width={width} height={height} opts={value.options} fscale={fscale} />;
-    return renderSeries(value, "scatter", width, height, axes, fontScale);
-  }
+  if (value.op === "scatter" || value.op === "xyline" || value.op === "bubble") return EMPTY_FIGURE;
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
-}
+});
 
-/** The single-series path, shared with the matrix ops' no-matrix fallback. */
+const EMPTY_FIGURE = <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
+
 function renderSeries(value: ChartValue, op: ChartShape, width: number, height: number, axes: boolean, fontScale?: number) {
-  // A frame with ≥ 2 numeric columns draws one series per column (with a legend).
   if (value.series && value.series.length >= 2 && MULTI_SERIES_OPS.has(op)) {
+    if (!value.series.some((s) => toSeries(s.values).length > 0)) return EMPTY_FIGURE;
     return <MultiSeriesView op={op} series={value.series} labels={value.labels} width={width} height={height} axes={axes} opts={value.options} fontScale={fontScale} />;
   }
-  const series = toSeries(value.values);
-  if (series.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
+  const series = partSlices(op, toSeries(value.values));
+  if (series.length === 0) return EMPTY_FIGURE;
   return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} labels={value.labels} fontScale={fontScale} />;
 }
 
@@ -224,10 +199,7 @@ export function GaugeArc(props: { pct: number; track: string; size: number }) {
   );
 }
 
-/** The DIAL figure — a radial arc (Value read as a fraction of 1, clamped onto the fixed
- *  0→100% arc) with the true percent below. Shared by the Gauge node's card and the chart
- *  popup / Report embed, so both draw the same dial. */
-export function ScaleDial({ payload, width, size }: { payload: ScalePayload; width?: number; size?: number }) {
+export function ScaleDial({ payload, width, size, fscale = 1 }: { payload: ScalePayload; width?: number; size?: number; fscale?: number }) {
   const { track } = useChartColors();
   const v = typeof payload.value === "number" && Number.isFinite(payload.value) ? payload.value : null;
   const frac = v === null ? 0 : Math.min(1, Math.max(0, v));
@@ -235,17 +207,17 @@ export function ScaleDial({ payload, width, size }: { payload: ScalePayload; wid
   return (
     <div style={{ position: "relative", width: dim, height: Math.round(dim * 0.55), margin: "2px auto 0", overflow: "hidden" }}>
       <GaugeArc pct={frac * 100} track={track} size={dim} />
-      <div style={{ position: "absolute", left: 0, right: 0, top: Math.round(dim * 0.31), textAlign: "center", fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: Math.round(dim * 0.31), textAlign: "center", fontSize: 16 * fscale, fontWeight: 600, color: "var(--text)" }}>
         {v === null ? "—" : `${Math.round(v * 1000) / 10}%`}
       </div>
-      <div style={{ position: "absolute", left: 4, bottom: 0, fontSize: 9, color: "var(--text-dim)" }}>0%</div>
-      <div style={{ position: "absolute", right: 4, bottom: 0, fontSize: 9, color: "var(--text-dim)" }}>100%</div>
+      <div style={{ position: "absolute", left: 4, bottom: 0, fontSize: 9 * fscale, color: "var(--text-dim)" }}>0%</div>
+      <div style={{ position: "absolute", right: 4, bottom: 0, fontSize: 9 * fscale, color: "var(--text-dim)" }}>100%</div>
     </div>
   );
 }
 
 export function TornadoBars(props: { data: TornadoBar[]; grid: string; axis: string }) {
-  // 218 = TORNADO_W, a literal so reading it doesn't pull the lazy chunk eagerly.
+  // 218 is TORNADO_W, as a literal so reading it doesn't pull the lazy chunk.
   return (
     <Suspense fallback={box(218, Math.max(70, props.data.length * 22 + 16))}>
       <TornadoBarsInner {...props} />

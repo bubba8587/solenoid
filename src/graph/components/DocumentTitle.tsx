@@ -2,12 +2,11 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { documentStore } from "../documentStore";
 import { requestConfirm } from "../confirmStore";
-import { IS_MOBILE } from "../coarse";
+import { isMobile } from "../coarse";
+import { chromeZoomStore } from "../chromeZoom";
 import { SEEDS, SEED_GROUPS } from "../seeds";
 import "./documentTitle.css";
 
-/** The current document's name + the documents menu — the home of the "file system";
- *  examples appear only as starting points, not as a working-graph picker. */
 export function DocumentTitle() {
   useSyncExternalStore(documentStore.subscribe, documentStore.version);
   const name = documentStore.currentName();
@@ -16,13 +15,11 @@ export function DocumentTitle() {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
   const [menuOpen, setMenuOpen] = useState(false);
-  // The example groups are an accordion: one open at a time keeps a long list of seeds
-  // from flooding the menu. Default to the first group ("Start here").
+  // An accordion, one group open at a time, so a long list of seeds can't flood the menu.
   const [openGroup, setOpenGroup] = useState<string | null>(SEED_GROUPS[0]?.head ?? null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [rowDraft, setRowDraft] = useState("");
-  // Portaled to <body> to escape the app bar's stacking context, which otherwise traps
-  // the menu below the pin/alert HUD.
+  // Portaled to <body> to escape the app bar's stacking context, which traps the menu below the HUD.
   const [menuPos, setMenuPos] = useState<{ top: number; left?: number }>({ top: 0 });
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -30,7 +27,9 @@ export function DocumentTitle() {
 
   function openMenu() {
     const r = rootRef.current?.getBoundingClientRect();
-    if (r) setMenuPos(IS_MOBILE ? { top: r.bottom + 4 } : { top: r.bottom + 5, left: r.left + r.width / 2 });
+    // Screen pixels; the menu shrinks with the chrome (chromeZoom.css), which scales its own offsets too.
+    const z = chromeZoomStore.get();
+    if (r) setMenuPos(isMobile() ? { top: (r.bottom + 4) / z } : { top: (r.bottom + 5) / z, left: (r.left + r.width / 2) / z });
     setMenuOpen((o) => !o);
     setRenaming(false);
     setRenamingId(null);
@@ -111,7 +110,7 @@ export function DocumentTitle() {
         <div
           className="solenoid-doctitle__menu"
           ref={menuRef}
-          style={{ top: menuPos.top, left: menuPos.left, transform: IS_MOBILE ? "none" : "translateX(-50%)" }}
+          style={{ top: menuPos.top, left: menuPos.left, transform: isMobile() ? "none" : "translateX(-50%)" }}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="solenoid-doctitle__section-head">Recent documents</div>

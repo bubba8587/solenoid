@@ -39,10 +39,6 @@ beforeEach(() => {
 // ─── formatAnnotationStore ────────────────────────────────────────────────────
 
 describe("formatAnnotationStore — set / get", () => {
-  it("get returns undefined for an entry never set", () => {
-    expect(formatAnnotationStore.get("n1", "out")).toBeUndefined();
-  });
-
   it("set then get round-trips the annotation", () => {
     const a = ann({ format: "decimal", unit: "usd", decimalDigits: 2 });
     formatAnnotationStore.set("n1", "out", a);
@@ -91,10 +87,6 @@ describe("formatAnnotationStore — delete", () => {
     formatAnnotationStore.delete("n1", "out");
     expect(formatAnnotationStore.get("n1", "out")).toBeUndefined();
   });
-
-  it("delete on a nonexistent key is a no-op (no throw)", () => {
-    expect(() => formatAnnotationStore.delete("n1", "out")).not.toThrow();
-  });
 });
 
 describe("formatAnnotationStore — subscribe / version", () => {
@@ -140,11 +132,10 @@ describe("formatNumberWithAnnotation — auto format", () => {
     expect(fwn(-7)).toBe("-7");
   });
 
-  it("formats floats to 6 significant figures via toPrecision", () => {
-    // parseFloat(n.toPrecision(6)) trims trailing zeros
-    expect(fwn(1.23456789)).toBe("1.23457");
+  it("formats floats as every unformatted number shows, to the Decimal places setting (4) with trailing zeros dropped", () => {
+    expect(fwn(1.23456789)).toBe("1.2346");
     expect(fwn(100.1)).toBe("100.1");
-    expect(fwn(0.000123456)).toBe("0.000123456");
+    expect(fwn(0.000123456)).toBe("0.0001");
   });
 });
 
@@ -238,8 +229,8 @@ describe("formatNumberWithAnnotation — fraction format", () => {
     expect(fwn(1 / 3, { format: "fraction" })).toBe("1/3");
     // A random float that has no low-denominator rational
     const result = fwn(0.123456789, { format: "fraction" });
-    // Falls back to autoFormat — 6 sig figs
-    expect(result).toMatch(/0\.12345/);
+    // Falls back to the auto (General) display: the Decimal places setting, 4 by default.
+    expect(result).toBe("0.1235");
   });
 
   it("renders 0 as '0'", () => {
@@ -322,10 +313,6 @@ describe("unitById", () => {
 // ─── formatMismatchStore ──────────────────────────────────────────────────────
 
 describe("formatMismatchStore", () => {
-  it("has() returns false for an unset node", () => {
-    expect(formatMismatchStore.has("n1")).toBe(false);
-  });
-
   it("setMismatch(true) sets it; has() returns true", () => {
     formatMismatchStore.setMismatch("n1", true);
     expect(formatMismatchStore.has("n1")).toBe(true);

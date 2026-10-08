@@ -1,8 +1,3 @@
-/* Formula editor — a transparent <textarea> layered exactly over a highlighted
-   <pre>. The two MUST share identical text metrics (font, size, line-height,
-   padding, wrapping, tab-size) or the colored layer drifts from the caret. The
-   container owns the border/background; both layers are borderless and share the
-   same padding so their text boxes coincide. */
 .fx-editor {
   position: relative;
   border: 1px solid var(--border);
@@ -12,8 +7,7 @@
   font-size: 12.5px;
   line-height: 1.5;
 }
-.fx-editor__hl,
-.fx-editor__ta {
+.fx-editor__input {
   margin: 0;
   padding: 7px 9px;
   font: inherit;
@@ -23,50 +17,34 @@
   overflow-wrap: break-word;
   word-break: break-word;
   box-sizing: border-box;
-  border: 0;
-}
-.fx-editor__hl {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
   color: var(--text);
-}
-.fx-editor__ta {
-  position: relative;
-  display: block;
-  width: 100%;
-  background: transparent;
-  color: transparent;       /* only the highlighted <pre> shows the text */
-  caret-color: var(--text); /* but keep a visible caret */
-  resize: none;
+  caret-color: var(--text);
   outline: none;
   overflow: auto;
+  cursor: text;
 }
-.fx-editor__ta::placeholder { color: var(--text-muted); opacity: 1; }
+.fx-editor__input:empty::before { content: attr(data-placeholder); color: var(--text-muted); pointer-events: none; }
+.fx-editor__input[contenteditable="false"] { cursor: default; }
 
-/* Token colors — variables use the number-socket amber (they become input
-   sockets), an unknown call / stray char reads as an error. Scoped to
-   `.fx-tokens` so any surface can paint highlightFormula() output (the editor's
-   <pre> and the FC's highlighted lambda view both carry the class). */
-.fx-tokens .fx-fn      { color: #4aa3df; font-weight: 600; }
-.fx-tokens .fx-unknown { color: #e0707a; }
-/* A frame verb: a REAL name whose data type can't flow through formulas — wears
-   the frame socket violet (color conveys type), distinct from the typo red. */
+/* Token colors are socket colors: a variable becomes a number input, a string literal is text, a constant is a logical-like name. Light mode mixes each 70% toward the ink so it reads on a pale card, as frameHint does. Scoped to `.fx-tokens` so any surface can paint highlightFormula() output. */
+.fx-tokens, .fx-editor__menu, .md-code { --fx-mix: 100%; }
+:root[data-theme="light"] :is(.fx-tokens, .fx-editor__menu, .md-code) { --fx-mix: 70%; }
+.fx-tokens .fx-fn      { color: color-mix(in srgb, var(--sock-complex) var(--fx-mix), var(--text)); font-weight: 600; }
+.fx-tokens .fx-unknown { color: var(--sol-error); }
+/* A frame verb is a real name whose type can't flow through formulas, so it wears the frame violet, distinct from the typo red. */
 .fx-tokens .fx-frame   { color: var(--sock-frame); font-weight: 600; }
-.fx-tokens .fx-var     { color: #d9a521; }
-.fx-tokens .fx-const   { color: #b48cff; }
-.fx-tokens .fx-num     { color: #4cae8f; }
-.fx-tokens .fx-str     { color: #8aab46; }
+.fx-tokens .fx-var     { color: color-mix(in srgb, var(--sock-number) var(--fx-mix), var(--text)); }
+.fx-tokens .fx-const   { color: color-mix(in srgb, var(--sock-logical) var(--fx-mix), var(--text)); }
+.fx-tokens .fx-num     { color: color-mix(in srgb, var(--sock-lambda) var(--fx-mix), var(--text)); }
+.fx-tokens .fx-str     { color: color-mix(in srgb, var(--sock-string) var(--fx-mix), var(--text)); }
 .fx-tokens .fx-op,
 .fx-tokens .fx-paren,
 .fx-tokens .fx-comma   { color: var(--text-muted); }
-.fx-tokens .fx-err     { color: #e0707a; text-decoration: underline wavy; }
+.fx-tokens .fx-err     { color: var(--sol-error); text-decoration: underline wavy; }
 /* JS-only tokens (jsSyntax.ts — the Script node's source). */
-.fx-tokens .fx-kw      { color: #b48cff; font-weight: 600; }
+.fx-tokens .fx-kw      { color: color-mix(in srgb, var(--sock-logical) var(--fx-mix), var(--text)); font-weight: 600; }
 .fx-tokens .fx-comment { color: var(--text-muted); font-style: italic; }
 
-/* Autocomplete menu — drops just below the field. */
 .fx-editor__menu {
   position: absolute;
   top: calc(100% + 3px);
@@ -98,9 +76,9 @@
 .fx-editor__item--on { background: color-mix(in srgb, var(--node-accent, #4aa3df) 24%, transparent); }
 .fx-editor__item:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .fx-editor__kind { width: 13px; text-align: center; font-size: 11px; opacity: 0.85; }
-.fx-editor__kind--fn { color: #4aa3df; }
-.fx-editor__kind--const { color: #b48cff; }
-.fx-editor__kind--var { color: #d9a521; }
+.fx-editor__kind--fn { color: color-mix(in srgb, var(--sock-complex) var(--fx-mix, 100%), var(--text)); }
+.fx-editor__kind--const { color: color-mix(in srgb, var(--sock-logical) var(--fx-mix, 100%), var(--text)); }
+.fx-editor__kind--var { color: color-mix(in srgb, var(--sock-number) var(--fx-mix, 100%), var(--text)); }
 .fx-editor__name { letter-spacing: 0.01em; }
 .fx-editor__sig-hint {
   margin-left: 2px;
@@ -111,8 +89,7 @@
   max-width: 260px;
 }
 
-/* Param-hint bar — the enclosing call's signature, caret's argument emphasized.
-   Sits where the menu would (mutually exclusive with it). */
+/* Sits where the menu would; the two are mutually exclusive. */
 .fx-editor__sigbar {
   position: absolute;
   top: calc(100% + 3px);
@@ -139,3 +116,9 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* An empty argument slot's reading, muted ([[D96]] emptySlotShowsItsValue). In the editor's mirror it takes no width, so the
+   typed text and the caret above it never move; drawn read-only it sits in the text. */
+.fx-tokens .fx-ghost { user-select: none; }
+.fx-tokens .fx-ghost::after { content: attr(data-ghost); color: var(--text-dim); opacity: 0.6; font-style: italic; pointer-events: none; }
+.fx-tokens .fx-ghost-inline { color: var(--text-dim); opacity: 0.6; font-style: italic; }

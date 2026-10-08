@@ -1,4 +1,3 @@
-// [[C90]] drawnCablesAnnotate (the dial convention)
 import { useCallback, useRef, useState, type PointerEvent } from "react";
 
 import "./AngleDial.css";
@@ -19,8 +18,7 @@ function snap(deg: number, step: number): number {
   return normalize(Math.round(deg / step) * step);
 }
 
-/** Angles are screen-space: 0° = right, 90° = DOWN. Pointer events stopPropagation
- *  or rete-area-plugin grabs them as a node drag. */
+/** Screen-space angles: 0° is right, 90° is down. Pointer events stop propagation, or the canvas takes them as a node drag. */
 export function AngleDial({
   value,
   step = 15,

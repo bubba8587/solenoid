@@ -1,9 +1,7 @@
-// Group/layout coherence probe on the REAL page: collapse (E) -> mouse-drag the
-// collapsed group -> expand (E): every member must follow by the group's exact delta
-// (the desync this pins: onNodeDrag's member-follow must not gate on collapsed).
-// Then T (tidy), C (cleanup), F (autofit) each run with __spike.mismatches() checked.
-//
-//   node scripts/layout-probe.mjs        (dev server on :1420)
+// Probes group layout on the real page: collapse (E), drag a collapsed group, expand (E), and every
+// member must follow by the group's exact delta; then Tidy (T), Cleanup (C) and Autofit (F) must each
+// run with no page errors and no __spike.mismatches(). Needs the dev server on :1420.
+//   node scripts/layout-probe.mjs
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
@@ -29,7 +27,6 @@ try {
   const mism = () => page.evaluate(() => window.__spike.mismatches());
   const groupsOf = (rows) => rows.filter((r) => r.type === "GroupNode");
 
-  // members of each group, from the model
   const membership = await page.evaluate(() => {
     const out = {};
     for (const n of window.__spike.connections ? [] : []) void n;
@@ -37,18 +34,16 @@ try {
   });
   void membership;
 
-  await page.mouse.click(1300, 900); // empty pane: focus canvas, clear selection
+  await page.mouse.click(1300, 900);
   await wait(150);
 
   const before = await snap();
   const g0 = groupsOf(before)[0];
   check(!!g0, "seed has a group");
 
-  // Collapse every group.
   await page.keyboard.press("KeyE");
   await wait(600);
 
-  // Drag the first (collapsed) group by ~ (140, 90), from its header.
   const t = await page.evaluate(() => window.__spike.transform());
   const gNow = groupsOf(await snap()).find((r) => r.id === g0.id);
   const sx = gNow.x * t.k + t.x + 60, sy = gNow.y * t.k + t.y + 14;
@@ -58,7 +53,6 @@ try {
   await page.mouse.up();
   await wait(400);
 
-  // Expand again and settle.
   await page.keyboard.press("KeyE");
   await wait(800);
 
@@ -67,9 +61,7 @@ try {
   const dx = gAfter.x - g0.x, dy = gAfter.y - g0.y;
   check(Math.hypot(dx, dy) > 60, `group actually dragged (Δ ${dx.toFixed(1)},${dy.toFixed(1)})`);
 
-  // The dragged group's MEMBERS must follow by exactly its delta — anything else is
-  // the desync. (Non-members may legitimately move: the expand push shoves neighbors
-  // aside when the group re-expands at its new spot.)
+  // Only members are checked: the expand push may legitimately shove neighbors aside.
   const members = (await page.evaluate(() => window.__spike.groups())).find((g) => g.id === g0.id).members;
   check(members.length > 0, `group has members (${members.length})`);
   let coherent = true;
@@ -86,7 +78,6 @@ try {
   const m1 = await mism();
   check(m1.length === 0, `no model/DOM mismatches after collapsed drag (${m1.length})`);
 
-  // Layout verbs: each runs without page errors or mismatches.
   for (const [key, label, settle] of [["KeyT", "tidy", 2500], ["KeyC", "cleanup", 3500], ["KeyF", "autofit", 1200]]) {
     await page.mouse.click(1300, 900);
     await wait(100);

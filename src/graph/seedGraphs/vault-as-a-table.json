@@ -7,8 +7,8 @@
     {
       "id": "noteIntro",
       "type": "NoteNode",
-      "x": 1150,
-      "y": 1296,
+      "x": -40,
+      "y": 1366,
       "init": {
         "label": "Write it back to Obsidian",
         "body": "# Your vault as a table\n\n**Vault Folder** reads a folder of notes as one table: a row per note, a column per frontmatter key, with lists and sub-tables kept in the cells. Filter keeps the notes whose tags contain `book`; Sort orders them by rating.\n\nThe second chain writes back. Read the project notes, add a **health** label from status and priority, and **Write to Obsidian** puts it on each note as a property; a Bases view over the folder then shows the new column. It loads disarmed and previews every change, so nothing is written until you press Run.\n\nWith no vault folder set in Settings, the readers use the bundled sample vault (which refuses writes); point them at your own to write for real.\n\nThe last group reads the **Daily** folder: with the daily-notes date format set, each file name becomes a `date`, so the notes sort like a series and a 7-day rolling average smooths the nightly sleep into a trend.",
@@ -20,8 +20,8 @@
     {
       "id": "health",
       "type": "ComputedColumnNode",
-      "x": 2798,
-      "y": 2214,
+      "x": 746,
+      "y": 1424,
       "init": {
         "label": "health from status + priority",
         "expr": "IF(@status=\"done\",\"done\",IF(@status=\"blocked\",\"at risk\",IF(@priority>=4,\"push\",\"steady\")))",
@@ -35,8 +35,8 @@
     {
       "id": "write",
       "type": "WriteObsidianNode",
-      "x": 3145,
-      "y": 2214,
+      "x": 1093,
+      "y": 1424,
       "init": {
         "label": "Write to Obsidian",
         "target": "properties",
@@ -50,8 +50,8 @@
     {
       "id": "planDisplay",
       "type": "DisplayNode",
-      "x": 3474,
-      "y": 2311,
+      "x": 1422,
+      "y": 1579,
       "init": {
         "label": "The plan"
       }
@@ -59,8 +59,8 @@
     {
       "id": "vault",
       "type": "VaultFolderNode",
-      "x": 2436,
-      "y": 2214,
+      "x": 399,
+      "y": 1424,
       "init": {
         "label": "Projects",
         "folder": "Projects"
@@ -69,8 +69,8 @@
     {
       "id": "grp-compute",
       "type": "GroupNode",
-      "x": 2774,
-      "y": 2156,
+      "x": 722,
+      "y": 1366,
       "init": {
         "label": "Compute",
         "members": [
@@ -85,8 +85,8 @@
     {
       "id": "grp-write",
       "type": "GroupNode",
-      "x": 3121,
-      "y": 2156,
+      "x": 1069,
+      "y": 1366,
       "init": {
         "label": "Write back",
         "members": [
@@ -102,8 +102,8 @@
     {
       "id": "grp-live",
       "type": "GroupNode",
-      "x": 2412,
-      "y": 2156,
+      "x": 375,
+      "y": 1366,
       "init": {
         "label": "Read the folder",
         "members": [
@@ -112,14 +112,14 @@
         "color": "slate",
         "collapsed": false,
         "width": 292,
-        "height": 505
+        "height": 503
       }
     },
     {
       "id": "notes",
       "type": "VaultFolderNode",
       "x": -16,
-      "y": 2757,
+      "y": 2688,
       "init": {
         "label": "Notes",
         "folder": "Notes"
@@ -129,7 +129,7 @@
       "id": "bookFilter",
       "type": "FilterFrameNode",
       "x": 313,
-      "y": 2829,
+      "y": 2810,
       "init": {
         "label": "tags contains book",
         "condConfig": {
@@ -152,7 +152,7 @@
       "id": "bookSort",
       "type": "SortFrameNode",
       "x": 642,
-      "y": 2869,
+      "y": 2915,
       "init": {
         "label": "by rating",
         "dir": "desc"
@@ -165,7 +165,7 @@
       "id": "bookDisplay",
       "type": "DisplayNode",
       "x": 971,
-      "y": 2911,
+      "y": 2978,
       "init": {
         "label": "Book notes"
       }
@@ -174,7 +174,7 @@
       "id": "grp-read",
       "type": "GroupNode",
       "x": -40,
-      "y": 2699,
+      "y": 2630,
       "init": {
         "label": "A folder is a table",
         "members": [
@@ -183,15 +183,15 @@
           "bookSort",
           "bookDisplay"
         ],
-        "width": 2759,
-        "height": 505
+        "width": 2966,
+        "height": 540
       }
     },
     {
       "id": "dh-vault",
       "type": "VaultFolderNode",
-      "x": 560,
-      "y": 1652,
+      "x": -16,
+      "y": 1947,
       "init": {
         "label": "Vault Folder",
         "folder": "Daily",
@@ -201,8 +201,8 @@
     {
       "id": "dh-sort",
       "type": "SortFrameNode",
-      "x": 889,
-      "y": 1748,
+      "x": 313,
+      "y": 2081,
       "init": {
         "label": "by date",
         "dir": "asc"
@@ -214,8 +214,8 @@
     {
       "id": "dh-window",
       "type": "WindowNode",
-      "x": 1218,
-      "y": 1767,
+      "x": 642,
+      "y": 2119,
       "init": {
         "label": "7-day rolling average",
         "agg": "rolling_avg"
@@ -232,8 +232,8 @@
     {
       "id": "dh-columns",
       "type": "ColumnsNode",
-      "x": 1547,
-      "y": 1831,
+      "x": 971,
+      "y": 2256,
       "init": {
         "label": "Keep sleep + trend"
       },
@@ -244,8 +244,8 @@
     {
       "id": "dh-chart",
       "type": "ChartNode",
-      "x": 1876,
-      "y": 1761,
+      "x": 1300,
+      "y": 2253,
       "init": {
         "label": "Sleep, smoothed",
         "op": "line"
@@ -257,8 +257,8 @@
     {
       "id": "dh-grp",
       "type": "GroupNode",
-      "x": 536,
-      "y": 1594,
+      "x": -40,
+      "y": 1889,
       "init": {
         "label": "Daily notes as a time series",
         "members": [
@@ -269,7 +269,7 @@
           "dh-chart"
         ],
         "width": 1608,
-        "height": 524
+        "height": 721
       }
     }
   ],

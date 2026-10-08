@@ -1,21 +1,45 @@
 // [[B1]] obsidianBet, [[C101]] onePatchPath
-// The impure half of obsidianMarkdown.ts: charts rasterize from the source node's
-// LIVE svg, so this runs only from the Write node's Run click.
 
 import {
-  hasFs, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath, readTextFilePath,
+  hasFs, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath, readTextFilePath, listVaultFiles,
 } from "./fileBridge";
-import { nodeChartSvg, nodeChartSvgProvided, serializeSvgWithComputedStyles } from "./canvasCapture";
+import { nodeChartSvgString } from "./canvasCapture";
 import { dataUrlToBytes, sanitizeName } from "./imageAssets";
 import { assembleDocumentMarkdown, valueToObsidianBlock } from "./obsidianMarkdown";
 import { isImageValue, type ImageValue } from "./imageValue";
+import { refPreview, resolveRefAnnotation } from "./components/inlineRefDisplay";
 import { type DocumentValue } from "./documentValue";
 import { spliceBlock } from "./managedBlock";
 
 const EXT_MIME: Record<string, string> = { png: "image/png", jpeg: "image/jpeg", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml" };
 
-/** The narrowest PNG worth embedding in a note. */
 const MIN_RASTER_W = 640;
+
+/** Case-insensitive, because the vault may sit on a case-insensitive filesystem. */
+function claimName(stem: string, ext: string, taken: Set<string>): string {
+  let k = stem;
+  for (let i = 2; taken.has(`${k}.${ext}`.toLowerCase()); i++) k = `${stem} (${i})`;
+  taken.add(`${k}.${ext}`.toLowerCase());
+  return k;
+}
+
+/** `#`, `^`, `[`, `]` and `|` end or redirect a wikilink target, so an embedded file cannot carry them. */
+const linkSafe = (s: string) => s.replace(/[#^[\]|]/g, "");
+
+/** Obsidian's "shortest path when possible": the bare name when no other vault file shares it, else the vault path. */
+export function assetLinkTarget(relPath: string, vaultFiles: readonly string[]): string {
+  const name = relPath.split("/").pop() ?? relPath;
+  const lower = name.toLowerCase();
+  const self = relPath.toLowerCase();
+  const shared = vaultFiles.some((f) => f.toLowerCase() !== self && (f.split("/").pop() ?? f).toLowerCase() === lower);
+  return shared ? relPath : name;
+}
+
+export function imageMarkdown(alt: string, url: string): string {
+  const a = alt.replace(/[\r\n]+/g, " ").replace(/([\\[\]])/g, "\\$1");
+  const u = url.replace(/[ ()<>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `![${a}](${u})`;
+}
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -26,8 +50,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** The SVG's own pixel size — a width/height attribute (stripping a unit), else the
- *  viewBox's extent; 0 when neither is stated. */
 function svgIntrinsic(root: Element, dim: "width" | "height"): number {
   const attr = parseFloat(root.getAttribute(dim) ?? "");
   if (Number.isFinite(attr) && attr > 0) return attr;
@@ -36,14 +58,8 @@ function svgIntrinsic(root: Element, dim: "width" | "height"): number {
   return Number.isFinite(v) && v > 0 ? v : 0;
 }
 
-/** Rasterize SVG markup to PNG bytes — the vault has none of our CSS, so styles are
- *  already baked in by the caller. The chart is small, so the raster scales it up to a
- *  note-sized width (vector all the way). `size` gives a live element's measured box; a
- *  provider's SVG (Gantt) carries its own width/height, read off the root. Null if the
- *  SVG is too small or the raster fails. */
 async function rasterizeSvgMarkup(markup: string, size?: { w: number; h: number }): Promise<Uint8Array | null> {
-  // Size the root through the DOM, not a string prepend: a root may already have
-  // width/height, and a duplicated attribute is a fatal XML parse error.
+  // Size the root through the DOM: a root may already carry width/height, and a duplicate attribute is a fatal XML parse error.
   const holder = document.createElement("div");
   holder.innerHTML = markup;
   const root = holder.querySelector("svg");
@@ -74,19 +90,9 @@ async function rasterizeSvgMarkup(markup: string, size?: { w: number; h: number 
   }
 }
 
-/** Rasterize a live `<svg>`, baking its computed styles in first and sizing from its
- *  measured box (a recharts root has no reliable intrinsic size until it's drawn). */
-async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
-  const box = svgEl.getBoundingClientRect();
-  return rasterizeSvgMarkup(serializeSvgWithComputedStyles(svgEl), { w: box.width, h: box.height });
-}
-
-/** overwrite = the note is the document; append = the document is added at the end;
- *  block = the writer owns one `%% solenoid:begin <name> %%` span (managedBlock.ts). */
+/** Sized from the measured box, since a recharts root has no reliable intrinsic size until drawn. */
 export type ObsidianWriteMode = "overwrite" | "append" | "block";
 
-/** The note's next text from its current text (null = no note yet) and the assembled
- *  markdown, per mode. Pure; throws on a refused block splice. */
 export function mergeNoteText(existing: string | null, md: string, mode: ObsidianWriteMode, blockName: string): string {
   if (mode === "overwrite" || existing === null) {
     if (mode === "block") return spliceBlock("", blockName, md).text;
@@ -102,92 +108,87 @@ export function mergeNoteText(existing: string | null, md: string, mode: Obsidia
 }
 
 export interface WriteVaultOptions {
-  /** Absolute path to the vault root. */
   vault: string;
-  /** Vault-relative subfolder to write the note into ("" = vault root). */
   subfolder: string;
-  /** Vault-relative subfolder for image assets ("" = beside the note). */
   assetSubfolder: string;
-  /** The note file name (no extension; ".md" is appended). */
   name: string;
-  /** ref name → the source node id feeding it (for chart rasterization). */
   refSources: Map<string, string>;
-  /** How the note takes the document; default overwrite. */
   mode?: ObsidianWriteMode;
-  /** The managed block's name (mode block); the writer's node name. */
   blockName?: string;
 }
 
 export interface WriteVaultResult {
-  /** The written note's vault-relative path (a batch's FIRST page). */
   file: string;
-  /** How many image assets were written. */
   assets: number;
-  /** How many notes a batch document wrote (1 for a single document). */
   pages: number;
 }
 
-/** Desktop only — THROWS off-desktop (the node guards first); overwrites an existing
- *  note of the same name. */
+/** A subfolder setting as path segments that stay inside the vault: a backslash separates too (Windows), and `.`, `..`
+ *  and a drive segment, which would climb out or reset the join, are dropped. */
+export function vaultSubfolderParts(p: string): string[] {
+  return p.split(/[\\/]/).map((s) => s.trim()).filter((s) => s && s !== "." && s !== ".." && !/^[A-Za-z]:$/.test(s));
+}
+
+/** The file base name each page writes to, in page order; Preview and Run both name notes with this. */
+export function pageNoteNames(doc: DocumentValue, name: string): string[] {
+  const sinkName = sanitizeName(name, "note");
+  const taken = new Set<string>();
+  const pages = doc.pages ?? [{ name, body: doc.body }];
+  return pages.map((page, i) => claimName(sanitizeName(page.name, doc.pages ? `${sinkName}-${i + 1}` : sinkName), "md", taken));
+}
+
 export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultOptions): Promise<WriteVaultResult> {
   if (!hasFs()) throw new Error("Desktop app only");
-  // Drop empty / "." / ".." segments so a stray ".." can't climb out of the vault.
-  const cleanParts = (p: string) =>
-    p.split("/").map((s) => s.trim()).filter((s) => s && s !== "." && s !== "..");
-  const subParts = cleanParts(opts.subfolder);
+  const subParts = vaultSubfolderParts(opts.subfolder);
   const noteDir = subParts.length ? await joinPath(opts.vault, ...subParts) : opts.vault;
   await ensureDir(noteDir);
 
-  const assetParts = cleanParts(opts.assetSubfolder);
+  const assetParts = vaultSubfolderParts(opts.assetSubfolder);
   const assetDir = assetParts.length ? await joinPath(opts.vault, ...assetParts) : noteDir;
 
   let assetCount = 0;
-  // A batch document writes one note per page, each named by its page; a single
-  // document writes under the sink's name.
-  const pages = doc.pages?.length ? doc.pages : [{ name: opts.name, body: doc.body }];
-  let base = sanitizeName(opts.name) || "note";
+  const pages = doc.pages ?? [{ name: opts.name, body: doc.body }];
+  const bases = pageNoteNames(doc, opts.name);
+  let base = sanitizeName(opts.name, "note");
+  const takenAssets = new Set<string>();
+  let vaultFiles: Promise<string[]> | null = null;
 
-  // Returns the Obsidian embed token, which resolves by FILENAME across the vault.
   async function writeAsset(refName: string, bytes: Uint8Array, ext: string): Promise<string> {
     if (assetParts.length) await ensureDir(assetDir);
-    const fileName = `${base}-${sanitizeName(refName)}.${ext}`;
+    const fileName = `${claimName(linkSafe(`${base}-${sanitizeName(refName)}`), ext, takenAssets)}.${ext}`;
+    vaultFiles ??= listVaultFiles(opts.vault).catch(() => []);
+    const others = await vaultFiles;
     await writeBinaryFilePath(await joinPath(assetDir, fileName), bytes);
     assetCount++;
-    return `![[${fileName}]]`;
+    return `![[${assetLinkTarget([...(assetParts.length ? assetParts : subParts), fileName].join("/"), others)}]]`;
   }
 
   async function resolveRef(name: string, value: unknown): Promise<string> {
-    // A web-URL image embeds its URL directly; a data:-URL image writes an asset.
     if (isImageValue(value)) {
       const img = value as ImageValue;
       const alt = img.alt ?? img.title ?? name;
-      if (/^https?:/i.test(img.src)) return `![${alt}](${img.src})`;
+      if (/^https?:/i.test(img.src)) return imageMarkdown(alt, img.src);
       const parsed = dataUrlToBytes(img.src);
       if (!parsed) return "";
       const ext = Object.entries(EXT_MIME).find(([, m]) => m === parsed.mime)?.[0] ?? "png";
       return writeAsset(name, parsed.bytes, ext);
     }
     const block = valueToObsidianBlock(value);
-    if (block.kind === "md") return block.md;
-    // A chart — rasterize the source node's SVG to a PNG asset. A figure that serializes
-    // itself (the Gantt grid + banded SVGs) supplies its own markup; every other chart is
-    // its live element, measured. Either way, null = not on the live canvas.
+    if (block.kind === "md") {
+      if (!block.plain || value == null) return block.md;
+      return refPreview(value, doc.sourceId ? resolveRefAnnotation(doc.sourceId, name) : undefined);
+    }
     const srcId = opts.refSources.get(name);
-    const provided = srcId ? nodeChartSvgProvided(srcId) : null;
-    const bytes = provided
-      ? await rasterizeSvgMarkup(provided)
-      : await (async () => {
-          const svg = srcId ? nodeChartSvg(srcId) : null;
-          return svg ? rasterizeSvg(svg) : null;
-        })();
+    const markup = srcId ? nodeChartSvgString(srcId) : null;
+    const bytes = markup ? await rasterizeSvgMarkup(markup) : null;
     if (!bytes) return "";
     return writeAsset(name, bytes, "png");
   }
 
   const mode = opts.mode ?? "overwrite";
   let first = "";
-  for (const page of pages) {
-    base = sanitizeName(page.name) || "note";
+  for (const [i, page] of pages.entries()) {
+    base = bases[i];
     const md = await assembleDocumentMarkdown({ ...doc, body: page.body }, resolveRef);
     const notePath = await joinPath(noteDir, `${base}.md`);
     let existing: string | null = null;

@@ -57,7 +57,7 @@ killOnPort();
 }
 
 // Dependencies guard.
-if (!existsSync(join(HERE, "node_modules"))) {
+if (!existsSync(join(HERE, "node_modules", "@babel", "parser"))) {
   console.error(`dependencies missing — run first:  cd tools/string-editor && npm install`);
   process.exit(1);
 }

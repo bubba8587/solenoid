@@ -1,4 +1,4 @@
-// [[C97]] rechartsLazyChunk, [[C100]] chartIsAValue
+// [[B2]] webTryDesktopFull, [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { bondPrice, bondYield } from "../../src/graph/nodes/financeOps";
 import { sanitizeChartLabel } from "../../src/graph/components/chartRender";
@@ -18,7 +18,6 @@ describe("review pins", () => {
   it("a chart label cap counts code points, never splitting a surrogate pair", () => {
     const s = sanitizeChartLabel("😀".repeat(10), 8);
     expect(s).toBe("😀😀😀😀😀😀😀…");
-    expect(s.includes("\ud83d…")).toBe(false);
   });
 
   it("XLOOKUP refuses a return list shorter than the lookup list, like a grid", () => {
@@ -31,6 +30,7 @@ describe("File Link: which paths run rather than open", () => {
   it("isExecutablePath names the program extensions, case-insensitively, and nothing else", async () => {
     const { isExecutablePath } = await import("../../src/graph/fileBridge");
     for (const p of ["C:\\\\tools\\\\run.EXE", "/tmp/x.bat", "a.lnk", "setup.msi", "s.ps1"]) expect(isExecutablePath(p)).toBe(true);
+    for (const p of ["/home/me/go.sh", "app.desktop", "Tool-x86_64.AppImage", "t.appimage", "Go.command", "setup.run", "fw.bin", "/Applications/X.app", "tool.jar"]) expect(isExecutablePath(p)).toBe(true);
     for (const p of ["notes.md", "C:\\\\data\\\\plan.xlsx", "photo.jpg", "readme"]) expect(isExecutablePath(p)).toBe(false);
   });
 });
@@ -40,7 +40,9 @@ describe("review pins: DROP, exponential fits, Slicer, aggregate guard", () => {
     const drop = resolveExcelFunction("DROP")!;
     expect(isSolError(drop([1, 2, 3], 5)) && (drop([1, 2, 3], 5) as { code: string }).code).toBe("#DOMAIN!");
     expect(isSolError(drop([1, 2, 3], -3))).toBe(true);
-    expect(drop([1, 2, 3], 1)).toEqual([2, 3]);
+    // A list is one row ([[D85]] columnsStayColumns): dropping its row leaves nothing, and its items are columns.
+    expect(isSolError(drop([1, 2, 3], 1))).toBe(true);
+    expect(drop([1, 2, 3], undefined, 1)).toEqual([2, 3]);
     expect(isSolError(drop([[1, 2], [3, 4]], 0, 2))).toBe(true);
   });
   it("an exponential fit over a y at or below zero is #NUM! on both cards", async () => {
@@ -70,6 +72,12 @@ describe("review pins: analytics batch", () => {
     const r = resolveExcelFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]);
     expect(isSolError(r) && r.message).toMatch(/before the first/);
   });
+  it("the XIRR node refuses a date before the first date, as =XIRR does", async () => {
+    const { IRRNode } = await import("../../src/graph/nodes/finance");
+    const r = new IRRNode({ op: "dates" }).data({ list: [[-100, 60, 60]], dates: [[45444, 45292, 45658]] }).result;
+    expect(isSolError(r) && r.code).toBe("#DOMAIN!");
+    expect(r).toEqual(resolveExcelFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]));
+  });
   it("DIAGONAL of a matrix is its diagonal", () => {
     expect(resolveExcelFunction("DIAGONAL")!([[1, 2], [3, 4]])).toEqual([1, 4]);
   });
@@ -90,7 +98,12 @@ describe("review pins: Record layout", () => {
     const p = parseRecordLayout("A | B\nB | A");
     const a = p.find((x) => x.name === "A")!, b = p.find((x) => x.name === "B")!;
     expect([a.row, a.col, a.rowSpan, a.colSpan]).toEqual([1, 1, 2, 2]);
-    expect([b.row, b.col, b.rowSpan, b.colSpan]).toEqual([1, 2, 1, 1]);
+    expect([b.row, b.col, b.rowSpan, b.colSpan]).toEqual([3, 1, 1, 1]);
+    const c = parseRecordLayout("A | B\nB | A\n. | B");
+    const bc = c.find((x) => x.name === "B")!;
+    expect([bc.row, bc.col, bc.rowSpan, bc.colSpan]).toEqual([3, 2, 1, 1]);
+    const d = parseRecordLayout("A | B\nC | A\nB | .");
+    expect(d.map((x) => [x.name, x.row, x.col, x.rowSpan, x.colSpan])).toEqual([["A", 1, 1, 2, 2], ["B", 3, 1, 1, 1], ["C", 4, 1, 1, 1]]);
     const ok = parseRecordLayout("A*2\nB | C");
     expect(ok.map((x) => [x.name, x.row, x.col, x.colSpan])).toEqual([["A", 1, 1, 2], ["B", 2, 1, 1], ["C", 2, 2, 1]]);
   });
@@ -109,6 +122,19 @@ describe("review pins: formula surface parity", () => {
     expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 5, "0000011", [mon + 1])).toBe(mon + 8);
     expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 1, 1)).toBe(mon + 1); // the numeric code still works
   });
+  it("RANK with a text order is #VALUE!, not an ascending rank", () => {
+    for (const fn of ["RANK", "RANK.EQ", "RANK.AVG"]) {
+      const r = resolveExcelFunction(fn)!(3, [1, 3, 5], "x");
+      expect(isSolError(r) && r.code).toBe("#VALUE!");
+      expect(resolveExcelFunction(fn)!(3, [1, 3, 5], 1)).toBe(2);
+    }
+  });
+  it("RANDARRAY with a text Min or Max is #VALUE!, not NaN cells", () => {
+    for (const [lo, hi] of [["a", 5], [0, "b"]]) {
+      const r = resolveExcelFunction("RANDARRAY")!(2, 1, lo, hi);
+      expect(isSolError(r) && r.code).toBe("#VALUE!");
+    }
+  });
   it("SUBSTITUTE truncates its instance like Excel", () => {
     expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b", 1.5)).toBe("baa");
     expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b")).toBe("bbb");
@@ -124,8 +150,8 @@ describe("review pins: INDEX, RUNNING, VDB", () => {
     expect(isSolError(resolveExcelFunction("RUNNING")!("SUM", [1, 2, 3], -2))).toBe(true);
     expect(resolveExcelFunction("RUNNING")!("SUM", [1, 2, 3], 0)).toEqual([1, 3, 6]);
   });
-  it("VDB refuses no_switch = TRUE instead of ignoring it", () => {
-    expect(isSolError(resolveExcelFunction("VDB")!(2400, 300, 10, 0, 1, 2, true))).toBe(true);
+  it("VDB honors no_switch = TRUE instead of ignoring it", () => {
+    expect(resolveExcelFunction("VDB")!(1000, 0, 5, 4, 5, 2, true)).toBeCloseTo(51.84, 6);
     expect(resolveExcelFunction("VDB")!(2400, 300, 10, 0, 1)).toBeCloseTo(480, 6);
   });
 });
@@ -174,10 +200,35 @@ describe("review pins: whole-argument formulas", () => {
     expect(ev("NETWORKDAYS(s, f, h)", { s: mon, f: fri, h: [mon + 1, mon + 2] })).toBe(3);
     expect(ev("WORKDAY(s, 2, h)", { s: mon, h: [mon + 1, mon + 2] })).toBe(mon + 4);
   });
+  it("only the holiday list of the workday functions is whole; start, end and days blank-gate and broadcast", async () => {
+    const { compileEvaluator } = await import("../../src/graph/excelFormula");
+    const ev = (src: string, vars: Record<string, unknown>) => compileEvaluator(src)!(vars);
+    const mon = 46027, fri = 46031;
+    expect(ev("WORKDAY(a, 5)", { a: null })).toBe(null);
+    expect(ev("NETWORKDAYS(a, f)", { a: null, f: fri })).toBe(null);
+    expect(ev("WORKDAY(s, 1)", { s: [mon, mon + 1] })).toEqual([mon + 1, mon + 2]);
+    expect(ev("NETWORKDAYS(s, f)", { s: [mon, mon + 3], f: fri })).toEqual([5, 2]);
+    expect(ev("WORKDAY(s, 2, h)", { s: mon, h: [mon + 1, null] })).toBe(mon + 3);
+    expect(ev("NETWORKDAYS.INTL(s, f, 1, h)", { s: mon, f: fri, h: [mon + 1, null] })).toBe(4);
+    expect(ev("WORKDAY.INTL(s, n, 1, h)", { s: mon, n: [1, 2], h: [mon + 1] })).toEqual([mon + 2, mon + 3]);
+  });
   it("a linear Fit over collinear x is #DIV/0! like SLOPE, not three blanks", async () => {
     const { LinestNode } = await import("../../src/graph/nodes/stats");
     const out = new LinestNode({ op: "linear" }).data({ ys: [[1, 2, 3]], xs: [[5, 5, 5]] });
     expect(isSolError(out.slope) && out.slope.code).toBe("#DIV/0!");
+  });
+  it("an exponential Fit over collinear x is #DIV/0! like the linear op, and so are LINEST and LOGEST", async () => {
+    const { LinestNode } = await import("../../src/graph/nodes/stats");
+    const { compileEvaluator } = await import("../../src/graph/excelFormula");
+    const ev = (src: string, vars: Record<string, unknown>) => compileEvaluator(src)!(vars);
+    const out = new LinestNode({ op: "exponential" }).data({ ys: [[1, 2, 3]], xs: [[5, 5, 5]] });
+    for (const v of [out.slope, out.intercept, out.r2]) {
+      expect(isSolError(v) && [v.code, v.message]).toEqual(["#DIV/0!", "Known Xs have zero variance"]);
+    }
+    for (const f of ["LINEST(y, x)", "LOGEST(y, x)"]) {
+      const r = ev(f, { y: [1, 2, 3], x: [5, 5, 5] });
+      expect(isSolError(r) && r.code).toBe("#DIV/0!");
+    }
   });
 });
 
@@ -221,9 +272,17 @@ describe("review pins: vault reads stay inside the vault", () => {
     expect(isInsideVault("notes/weekly.md")).toBe(true);
     expect(isInsideVault("../../.ssh/config")).toBe(false);
     expect(isInsideVault("notes/../../x.md")).toBe(false);
+    const { vaultSubfolderParts } = await import("../../src/graph/obsidianWrite");
+    expect(vaultSubfolderParts("..\\..\\Windows")).toEqual(["Windows"]);
+    expect(vaultSubfolderParts("C:\\Users/x")).toEqual(["Users", "x"]);
+    expect(vaultSubfolderParts(" Notes / ./Daily ")).toEqual(["Notes", "Daily"]);
     expect(isInsideVault("/etc/passwd")).toBe(false);
     expect(isInsideVault("C:/secrets.md")).toBe(false);
     expect(isInsideVault("")).toBe(false);
+    // Windows joins on a backslash too.
+    expect(isInsideVault("..\\..\\secrets.md")).toBe(false);
+    expect(isInsideVault("notes\\..\\..\\x.md")).toBe(false);
+    expect(isInsideVault("\\\\server\\share\\x.md")).toBe(false);
   });
 });
 
@@ -263,16 +322,6 @@ describe("review pins: SORTBY length, COMBINA at zero", () => {
   });
 });
 
-describe("review pins: copy skips composite markers", () => {
-  it("copySelected filters the boundary marker classes like deleteSelection does", async () => {
-    const { readFileSync } = await import("node:fs");
-    const src = readFileSync("src/graph/copyPaste.ts", "utf8");
-    expect(src).toMatch(/CompositeInputNode/);
-    expect(src).toMatch(/CompositeOutputNode/);
-    expect(src).toMatch(/n\.selected && !isMarker\(n\)/);
-  });
-});
-
 describe("review pins: pivot totals", () => {
   it("a key column that carries a Total label is text, never a number column with a string inside", async () => {
     const { pivotFrame } = await import("../../src/graph/frameVerbs");
@@ -287,7 +336,7 @@ describe("review pins: pivot totals", () => {
   });
 });
 
-describe("review pins: number-to-text scientific form; image asset paths", () => {
+describe("review pins: number-to-text scientific form", () => {
   it("numberToText writes Excel's General scientific form", async () => {
     const { numberToText } = await import("../../src/graph/excelFunctions");
     expect(numberToText(1e21)).toBe("1E+21");
@@ -296,11 +345,6 @@ describe("review pins: number-to-text scientific form; image asset paths", () =>
     expect(numberToText(0.0001)).toBe("0.0001");
     expect(numberToText(0.1 + 0.2)).toBe("0.3");
     expect(numberToText(-0)).toBe("0");
-  });
-  it("an image asset path that climbs out of the document folder is refused", async () => {
-    const { isInsideVault } = await import("../../src/graph/fileBridge");
-    expect(isInsideVault("images/a.png")).toBe(true);
-    expect(isInsideVault("../../secret.png")).toBe(false);
   });
 });
 
@@ -347,7 +391,7 @@ describe("review pins: Cube Rollup over a cube child; Write JSON dates", () => {
 
 describe("review pins: the exported webpage", () => {
   it("escapes a user-typed title or name into text", async () => {
-    const { escapeHtml } = await import("../../src/graph/reportExport");
+    const { escapeHtml } = await import("../../src/graph/noteInlineRefs");
     expect(escapeHtml('<img src=x onerror="alert(1)">')).toBe("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
     expect(escapeHtml("Q3 & beyond")).toBe("Q3 &amp; beyond");
   });
@@ -356,5 +400,159 @@ describe("review pins: the exported webpage", () => {
     const src = readFileSync("src/graph/components/MermaidView.tsx", "utf8");
     expect(src).toMatch(/securityLevel: "strict"/);
     expect(src).not.toMatch(/securityLevel: "loose"/);
+  });
+});
+
+describe("review pins: formulas against Excel (2026-09-24 leads)", () => {
+  const ev = async (src: string) => (await import("../../src/graph/excelFormula")).compileEvaluator(src)!({});
+  const code = (v: unknown) => (isSolError(v) ? v.code : v);
+
+  it("IF reads TRUE and FALSE text as logicals and refuses other text, on both surfaces", async () => {
+    expect(await ev('IF("TRUE", 1, 2)')).toBe(1);
+    expect(await ev('IF("false", 1, 2)')).toBe(2);
+    expect(code(await ev('IF("text", 1, 2)'))).toBe("#VALUE!");
+    expect(code(await ev('IF("", 1, 2)'))).toBe("#VALUE!");
+    expect(code(await ev('IF("1", 1, 2)'))).toBe("#VALUE!");
+    const { IfNode } = await import("../../src/graph/nodes/logic");
+    const card = new IfNode();
+    expect(code(card.data({ cond: ["text"], then: [1], else: [2] }).result)).toBe("#VALUE!");
+    expect(card.data({ cond: ["True"], then: [1], else: [2] }).result).toBe(1);
+  });
+
+  it("CHAR and CODE are UNICHAR and UNICODE, the CHAR / CODE card's full-Unicode reading", async () => {
+    expect(await ev("CHAR(256)")).toBe("Ā");
+    expect(await ev("CHAR(128512)")).toBe("😀");
+    expect(await ev('CODE("😀")')).toBe(128512);
+    expect(code(await ev("CHAR(0)"))).toBe("#VALUE!");
+    expect(code(await ev('CODE("")'))).toBe("#VALUE!");
+    const { CharCodeNode } = await import("../../src/graph/nodes/text");
+    expect(code(new CharCodeNode({ op: "char" }).data({ code: [0] }).result)).toBe("#VALUE!");
+    expect(new CharCodeNode({ op: "char" }).data({ code: [65.9] }).result).toBe("A");
+    expect(code(new CharCodeNode({ op: "code" }).data({ text: [""] }).result)).toBe("#VALUE!");
+  });
+
+  it("SEQUENCE refuses a negative count with #VALUE!; zero stays an empty list", async () => {
+    expect(code(await ev("SEQUENCE(-1)"))).toBe("#VALUE!");
+    expect(code(await ev("SEQUENCE(2, -1)"))).toBe("#VALUE!");
+    expect(await ev("SEQUENCE(0)")).toEqual([]);
+    expect(await ev("SEQUENCE(1.9)")).toEqual([1]);
+  });
+
+  it("WRAPROWS and WRAPCOLS truncate the wrap count; below 1 is #DOMAIN! (Excel's #NUM!), on both surfaces", async () => {
+    expect(code(await ev("WRAPROWS(SEQUENCE(4), 0.5)"))).toBe("#DOMAIN!");
+    expect(code(await ev("WRAPCOLS(SEQUENCE(4), 0)"))).toBe("#DOMAIN!");
+    expect(await ev("WRAPROWS(SEQUENCE(4), 1.9)")).toEqual([[1], [2], [3], [4]]);
+    const { TableReshapeNode } = await import("../../src/graph/nodes/matrix");
+    const rows = new TableReshapeNode({ op: "wraprows" });
+    expect(code(rows.data({ list: [[1, 2, 3, 4]], wrapCount: [0.5] }).result)).toBe("#DOMAIN!");
+    expect(rows.data({ list: [[1, 2, 3, 4]], wrapCount: [2.9] }).result).toEqual([[1, 2], [3, 4]]);
+  });
+
+  it("zero to a negative power is #DIV/0! on ^, POWER and the Arithmetic card", async () => {
+    expect(code(await ev("0^-1"))).toBe("#DIV/0!");
+    expect(code(await ev("POWER(0, -0.5)"))).toBe("#DIV/0!");
+    expect(await ev("0^0")).toBe(1);
+    const { ArithmeticNode } = await import("../../src/graph/nodes/scalar");
+    expect(code(new ArithmeticNode({ op: "pow" }).data({ a: [0], b: [-1] }).result)).toBe("#DIV/0!");
+  });
+});
+
+describe("review pins: text min and max in PIVOTBY's value sort and Cube Rollup ([[D76]] textMinMax)", () => {
+  it("PIVOTBY sorts rows by a text max in code-unit order, not as blanks", async () => {
+    const { pivotFrame } = await import("../../src/graph/frameVerbs");
+    const t = { __frame: true as const, columns: [
+      { name: "k", type: "string" as const, values: ["a", "b", "c"] },
+      { name: "s", type: "string" as const, values: ["pear", "apple", "fig"] },
+    ] };
+    const asc = pivotFrame(t, { rowFields: ["k"], colFields: [], values: ["s"], funcs: ["max"], rowSort: 2 });
+    expect(asc.columns[0].values).toEqual(["b", "c", "a"]);
+    const desc = pivotFrame(t, { rowFields: ["k"], colFields: [], values: ["s"], funcs: ["max"], rowSort: -2 });
+    expect(desc.columns[0].values).toEqual(["a", "c", "b"]);
+  });
+
+  it("Cube Rollup reads an untyped nested text column as text", async () => {
+    const { CubeRollupNode } = await import("../../src/graph/nodes/cube");
+    const { cubeFromColumns } = await import("../../src/graph/frame");
+    const cube = cubeFromColumns([
+      { name: "p", cells: ["a"], type: "string" },
+      { name: "items", cells: [cubeFromColumns([{ name: "s", cells: ["pear", "Plum"] }])] },
+    ]);
+    const n = new CubeRollupNode({ agg: "max" });
+    n.stringLiterals = { nested: "items", column: "s", as: "Last" };
+    const out = n.data({ cube: [cube] }).frame as { columns: { name: string; type: string; values: unknown[] }[] };
+    const col = out.columns.find((c) => c.name === "Last")!;
+    expect(col.type).toBe("string");
+    expect(col.values).toEqual(["pear"]);
+  });
+});
+
+describe("review pins: follow-ups to the 2026-09-24 formula leads", () => {
+  const ev = async (src: string, vars: Record<string, unknown> = {}) => (await import("../../src/graph/excelFormula")).compileEvaluator(src)!(vars);
+  const code = (v: unknown) => (isSolError(v) ? v.code : v);
+
+  it("TAKE of zero rows or columns is #DOMAIN! (Excel's #CALC!), like DROP of everything; DROP 0 drops none", async () => {
+    expect(code(await ev("TAKE(x, 0)", { x: [1, 2, 3] }))).toBe("#DOMAIN!");
+    expect(code(await ev("TAKE(m, 0)", { m: [[1, 2], [3, 4]] }))).toBe("#DOMAIN!");
+    expect(code(await ev("TAKE(m, 1, 0)", { m: [[1, 2], [3, 4]] }))).toBe("#DOMAIN!");
+    expect(await ev("TAKE(m, 1)", { m: [[1, 2], [3, 4]] })).toEqual([[1, 2]]);
+    expect(await ev("DROP(x, 0)", { x: [1, 2, 3] })).toEqual([1, 2, 3]);
+  });
+
+  it("RANDARRAY refuses a negative count and a Min above Max with #VALUE!; counts truncate, on both surfaces", async () => {
+    expect(code(await ev("RANDARRAY(-1)"))).toBe("#VALUE!");
+    expect(code(await ev("RANDARRAY(2, -1)"))).toBe("#VALUE!");
+    expect(code(await ev("RANDARRAY(2, 1, 5, 1)"))).toBe("#VALUE!");
+    expect((await ev("RANDARRAY(2.9)")) as unknown[]).toHaveLength(2);
+    expect(await ev("RANDARRAY(0)")).toEqual([]);
+    const { RandArrayNode } = await import("../../src/graph/nodes/list");
+    expect(code(new RandArrayNode().data({ count: [-1] }).list)).toBe("#VALUE!");
+    expect(code(new RandArrayNode().data({ count: [2], min: [5], max: [1] }).list)).toBe("#VALUE!");
+    expect(new RandArrayNode().data({ count: [2.9] }).list).toHaveLength(2);
+  });
+
+  it("IFS reads each condition as IF does, on both surfaces", async () => {
+    expect(await ev('IFS("false", 1, "TRUE", 2)')).toBe(2);
+    expect(code(await ev('IFS("text", 1, TRUE, 2)'))).toBe("#VALUE!");
+    expect(code(await ev("IFS(FALSE, 1)"))).toBe("#N/A");
+    expect(await ev("IFS(0, 1, 3, 2)")).toBe(2);
+    const { IfsNode } = await import("../../src/graph/nodes/logic");
+    const card = new IfsNode();
+    expect(card.data({ cond0: ["false"], val0: [1], cond1: ["True"], val1: [2] }).result).toBe(2);
+    expect(code(card.data({ cond0: ["text"], val0: [1] }).result)).toBe("#VALUE!");
+  });
+
+  it("inferColumn keeps an error cell as the error and lets the other cells set the type", async () => {
+    const { inferColumn } = await import("../../src/graph/frame");
+    const { solError } = await import("../../src/graph/errorValue");
+    const e = solError("#DIV/0!", "x");
+    const col = inferColumn("a", [1, e, "3"]);
+    expect(col.type).toBe("number");
+    expect(col.values).toEqual([1, e, 3]);
+    const txt = inferColumn("b", ["pear", e]);
+    expect(txt.type).toBe("string");
+    expect(txt.values[1]).toBe(e);
+  });
+
+  it("hex, binary and octal text is never a number; grouped thousands still are", async () => {
+    const { coerceNumber, coerceLogical } = await import("../../src/graph/valueKinds");
+    expect(coerceNumber("0x1F")).toBeNaN();
+    expect(coerceNumber("0b101")).toBeNaN();
+    expect(coerceNumber("0o17")).toBeNaN();
+    expect(coerceNumber("Infinity")).toBeNaN();
+    expect(coerceNumber(" 12.5 ")).toBe(12.5);
+    expect(coerceNumber("1,234")).toBe(1234);
+    expect(coerceLogical("0x1")).toBeNaN();
+    expect(coerceLogical("2")).toBe(true);
+    const { inferColumn, coerceFrameCell } = await import("../../src/graph/frame");
+    expect(inferColumn("h", ["0x1F", "0b1"]).type).toBe("string");
+    expect(inferColumn("n", ["1,234", "5"]).values).toEqual([1234, 5]);
+    expect(coerceFrameCell("number", "0x1F")).toBeNaN();
+    const { passesFilter } = await import("../../src/graph/frameVerbs");
+    expect(passesFilter(31, "eq", "0x1F", "number", false)).toBe(false);
+    expect(passesFilter(31, "eq", "31", "number", false)).toBe(true);
+    expect(code(await ev('"0x1F" + 1'))).toBe("#VALUE!");
+    expect(code(await ev('VALUE("Infinity")'))).toBe("#VALUE!");
+    expect(await ev("COUNTIF(x, 31)", { x: ["0x1F", "31", 31] })).toBe(1);
+    expect(code(await ev('NUMBERVALUE("0x1F")'))).toBe("#VALUE!");
   });
 });

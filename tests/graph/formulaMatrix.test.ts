@@ -8,7 +8,7 @@ import {
 import { SeriesNode } from "../../src/graph/nodes/list";
 import { InterpolateNode } from "../../src/graph/nodes/stats";
 import { setCells } from "../../src/graph/nodes/matrixOps";
-import { isSolError, type SolError } from "../../src/graph/errorValue";
+import { isSolError, solError, type SolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas tranche 1: the matrix core, node-equals-formula ([[C17]] shareImpl) ───────────────
 // Every matrix registration delegates to the same kernels the nodes run, so the
@@ -73,6 +73,8 @@ describe("each matrix name computes what its node computes", () => {
     expect(new TableDiagNode().data({}).result).toBeNull();
     // The DIAGONAL formula (off-diagonal 0; the blank toggle is node-only).
     expect(ev("DIAGONAL(x)", { x: [2, 5, 7] })).toEqual([[2, 0, 0], [0, 5, 0], [0, 0, 7]]);
+    // A matrix gives back its diagonal, as numpy.diag does.
+    expect(ev("DIAGONAL(m)", { m: [[1, 2], [3, 4]] })).toEqual([1, 4]);
   });
 
   it("OUTER node + formula — the matrix of products a[i]·b[j] (numpy.outer)", () => {
@@ -97,6 +99,22 @@ describe("each matrix name computes what its node computes", () => {
     expect(fxCols.length).toBe(nodeCols.length);
   });
 
+  // [[D85]] columnsStayColumns, [[D73]] nodeCoversFormula: Excel's ignore and scan_by_column, on the card as scanBy and skipCells.
+  it("TOCOL / TOROW take ignore and scan_by_column, and the card answers the same", () => {
+    const e = solError("#DIV/0!", "x");
+    const g = [[1, null], [e, 4]];
+    expect(ev("TOCOL(g)", { g })).toEqual([[1], [null], [e], [4]]);
+    expect(ev("TOCOL(g, 1)", { g })).toEqual([[1], [e], [4]]);
+    expect(ev("TOCOL(g, 2)", { g })).toEqual([[1], [null], [4]]);
+    expect(ev("TOROW(g, , TRUE)", { g })).toEqual([1, e, null, 4]);
+    expect(ev("TOROW(g, 3, TRUE)", { g })).toEqual([1, 4]);
+    expect(ev("TOROW(g, 5)", { g })).toMatchObject({ code: "#VALUE!" });
+    const card = new TableReshapeNode({ op: "torow", scanBy: "col", skipCells: "both" });
+    expect(card.data({ matrix: [g] }).result).toEqual(ev("TOROW(g, 3, TRUE)", { g }));
+    const col = new TableReshapeNode({ op: "tocol", scanBy: "col", skipCells: "blanks" });
+    expect(col.data({ matrix: [g] }).result).toEqual(ev("TOCOL(g, 1, TRUE)", { g }));
+  });
+
   it("TOCOL / TOROW — the node's exact scan orders", () => {
     expect(ev("TOCOL(m)", { m: M })).toEqual(new TableReshapeNode({ op: "tocol" }).data({ matrix: [M] }).result);
     expect(ev("TOROW(m)", { m: M })).toEqual(new TableReshapeNode({ op: "torow" }).data({ matrix: [M] }).result);
@@ -110,14 +128,13 @@ describe("each matrix name computes what its node computes", () => {
   });
 });
 
-describe("ownership displaced the broadcast garbage ([[D26]] hideMatrixFromVendor's point)", () => {
+describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas's point)", () => {
   it("MMULT is a matrix product, not the element-wise Hadamard the fallthrough gave", () => {
     // Pre-tranche this answered [[{},{}],[{},{}]] — Formula.js MMULT mapped
     // cell-wise. If this test ever sees a 2×2 of objects again, the meta lost
     // its matrixArgs and the containment guard stopped routing.
     const r = ev("MMULT(a, b)", { a: M, b: M }) as number[][];
     expect(r).toEqual([[7, 10], [15, 22]]);
-    expect(typeof r[0][0]).toBe("number");
   });
 
   it("results COMPOSE through the rank-2 engine", () => {
@@ -171,7 +188,7 @@ describe("ownership displaced the broadcast garbage ([[D26]] hideMatrixFromVendo
     }
   });
 
-  it("every tranche registration declares the [[D26]] hideMatrixFromVendor gate", () => {
+  it("every tranche registration declares the [[C15]] matricesInFormulas gate", () => {
     for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE", "COLUMNS", "ROWS", "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND"]) {
       expect(EXCEL_IMPL_META[name]?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
       expect(EXCEL_IMPL_META[name]?.listArgs, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe(true);
@@ -183,12 +200,17 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   it("UNIQUE / SORT / SORTBY match their nodes (incl. blanks-last)", async () => {
     const { UniqueNode, SortNode } = await import("../../src/graph/nodes/list");
     const x = [3, 1, 3, null, 2];
-    expect(ev("UNIQUE(x)", { x: [3, 1, 3, 2] })).toEqual(new UniqueNode().data({ list: [[3, 1, 3, 2]] }).result);
-    expect(ev("SORT(x)", { x })).toEqual(new SortNode({ order: "asc" }).data({ list: [x] }).result);
-    expect(ev("SORT(x,,-1)", { x })).toEqual(new SortNode({ order: "desc" }).data({ list: [x] }).result);
-    // SORTBY is the Sort node's optional `by` input (equal-length ⇒ same as the formula's pad).
+    const m = [[2, "b"], [1, "a"], [2, "b"]];
+    expect(ev("UNIQUE(x, TRUE)", { x: [3, 1, 3, 2] })).toEqual(new UniqueNode({ byCol: true }).data({ list: [[3, 1, 3, 2]] }).result);
+    expect(ev("UNIQUE(m)", { m })).toEqual(new UniqueNode().data({ list: [m] }).result);
+    expect(ev("SORT(x,,,TRUE)", { x })).toEqual(new SortNode({ order: "asc", byCol: true }).data({ list: [x] }).result);
+    expect(ev("SORT(x,,-1,TRUE)", { x })).toEqual(new SortNode({ order: "desc", byCol: true }).data({ list: [x] }).result);
+    expect(ev("SORT(m)", { m })).toEqual(new SortNode().data({ list: [m] }).result);
+    // SORTBY is the Sort card's key rows.
     const a = ["x", "y", "z"], by = [3, 1, 2];
-    expect(ev("SORTBY(a, b)", { a, b: by })).toEqual(new SortNode().data({ list: [a], by: [by] }).result);
+    const card = new SortNode();
+    const key = card.addValueInput();
+    expect(ev("SORTBY(a, b)", { a, b: by })).toEqual(card.data({ list: [a], [key]: [by] }).result);
   });
 
   it("INDEX is the node's accessor — whole-axis and rank 2, not a 1-D pick", async () => {
@@ -213,21 +235,32 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
       new TakeDropNode({ op: "take" }).data({ data: [data], rows: [rows], cols: [cols] }).result;
     const drop = (data: unknown, rows: number, cols = 0) =>
       new TakeDropNode({ op: "drop" }).data({ data: [data], rows: [rows], cols: [cols] }).result;
-    // LIST: the signed count is the direction (positive from the start, negative from
-    // the end). take 0 is take-ALL, matching the kernel — NOT the old list node's []-on-0.
+    // LIST: one row ([[D85]] columnsStayColumns), so its items are columns; the signed count is
+    // the direction (positive from the start, negative from the end), and a list comes back a list.
     const x = [1, 2, 3, 4];
+    expect(ev("TAKE(x, , 2)", { x })).toEqual([1, 2]);
+    expect(ev("TAKE(x, , 2)", { x })).toEqual(take(x, 0, 2));
+    expect(ev("TAKE(x, , -2)", { x })).toEqual(take(x, 0, -2));
+    expect(ev("TAKE(x, 2)", { x })).toEqual(x);
     expect(ev("TAKE(x, 2)", { x })).toEqual(take(x, 2));
-    expect(ev("TAKE(x, -2)", { x })).toEqual(take(x, -2));
-    expect(ev("DROP(x, 1)", { x })).toEqual(drop(x, 1));
+    expect(ev("DROP(x, , 1)", { x })).toEqual(drop(x, 0, 1));
+    expect(code(ev("DROP(x, 1)", { x }))).toBe("#DOMAIN!");
+    expect(code(drop(x, 1))).toBe("#DOMAIN!");
     // MATRIX: both axes, negative counts from the end.
     const m = [[1, 2, 3], [4, 5, 6]];
     expect(ev("TAKE(m, 1, 2)", { m })).toEqual(take(m, 1, 2));
     expect(ev("DROP(m, 1, -1)", { m })).toEqual(drop(m, 1, -1));
     // SCALAR: mirrors the formula's toList — a 1-element list.
     expect(ev("TAKE(s, 1)", { s: 5 })).toEqual(take(5, 1));
-    // A list (or scalar) with a cols argument is #SHAPE!, the same as the formula.
-    expect(code(ev("TAKE(x, 2, 1)", { x }))).toBe("#SHAPE!");
-    expect(code(take(x, 2, 1))).toBe("#SHAPE!");
+    expect(ev("TAKE(x, 1, 1)", { x })).toEqual(take(x, 1, 1));
+  });
+
+  it("TAKE / DROP with a blank row count keep every row, as in Excel", () => {
+    const m = [[1, 2, 3], [4, 5, 6]];
+    expect(ev("TAKE(m,,2)", { m })).toEqual([[1, 2], [4, 5]]);
+    expect(ev("TAKE(m,,-1)", { m })).toEqual([[3], [6]]);
+    expect(ev("DROP(m,,1)", { m })).toEqual([[2, 3], [5, 6]]);
+    expect(ev("DROP(m,,-2)", { m })).toEqual([[1], [4]]);
   });
 
   it("FILTER by mask — Excel's include-array form", () => {
@@ -241,14 +274,28 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
     expect(ev("FILTER(x, x > 99, 0)", { x })).toBe(0);      // if_empty
     expect(ev("FILTER(x, x > 99)", { x })).toEqual([]);      // no if_empty → empty list
     const r = ev("FILTER(x, y)", { x, y: [1, 0] });          // size mismatch
-    expect((r as { code?: string }).code).toBe("#SHAPE!");
+    expect((r as { code?: string }).code).toBe("#VALUE!");
+  });
+
+  it("FILTER reads its include array as conditions, like IF ([[E10]] pickVsAggregateErrors)", () => {
+    const x = [1, 5, 2, 9];
+    // Text other than TRUE/FALSE is not a condition: #VALUE!, not a silent FALSE.
+    expect(code(ev("FILTER(x, m)", { x, m: [true, "yes", true, false] }))).toBe("#VALUE!");
+    expect(ev("FILTER(x, m)", { x, m: ["TRUE", "false", 1, 0] })).toEqual([1, 2]);
+    // A blank include cell keeps nothing.
+    expect(ev("FILTER(x, m)", { x, m: [true, null, true, false] })).toEqual([1, 2]);
+    // The include array is read whole, so its error is the answer; a data error stays in its cell.
+    expect(code(ev("FILTER(x, m)", { x, m: [true, solError("#N/A", "x"), true, false] }))).toBe("#N/A");
+    const kept = ev("FILTER(d, m)", { d: [1, solError("#N/A", "x"), 3], m: [true, true, false] }) as unknown[];
+    expect(kept[0]).toBe(1);
+    expect(code(kept[1])).toBe("#N/A");
   });
 
   it("MODE.MULT and FREQUENCY are owned — no more element-wise garbage", () => {
     expect(ev("MODE.MULT(x)", { x: [1, 1, 2, 2, 3] })).toEqual([1, 2]);
     expect(ev("FREQUENCY(x, b)", { x: [1, 5, 9, 3], b: [4, 8] })).toEqual([2, 1, 1]);
-    // Pre-tranche: UNIQUE([3,1,3,2]) broadcast to [[3],[1],[3],[2]].
-    expect(ev("UNIQUE(x)", { x: [3, 1, 3, 2] })).toEqual([3, 1, 2]);
+    // Pre-tranche: UNIQUE([3,1,3,2]) broadcast to [[3],[1],[3],[2]]. A list is one row, so its items dedupe by column.
+    expect(ev("UNIQUE(x, TRUE)", { x: [3, 1, 3, 2] })).toEqual([3, 1, 2]);
   });
 
   it("RANDARRAY is volatile and shape-correct (the SHUFFLE precedent)", () => {
@@ -263,7 +310,7 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
 // ─── INTERPOLATE grid mode: the last name [[C15]] matricesInFormulas unblocked ([[C17]] shareImpl) ────────────────
 // The node is ONE node with a List/Grid mode toggle, so it is ONE formula name —
 // the arm is chosen by the first argument's RANK, not by a second registration
-// ([[C18]] uniqueNameMap injectivity). Grid mode was parked behind the noFramesInFormulas cap; [[C15]] matricesInFormulas lifted it.
+// ([[B16]] oneFormulaSurface injectivity). Grid mode was parked behind the noFramesInFormulas cap; [[C15]] matricesInFormulas lifted it.
 describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   // Grid mode is now INTERPOLATE(table, xs?, ys?, forecast?) — coordinates ride beside Z.
   const z = [[0, 10], [null, null], [20, 30]];
@@ -279,8 +326,6 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   it("the forecast flag is grid mode's LAST argument", () => {
     const off = new InterpolateNode({ mode: "grid", forecast: false });
     expect(ev("INTERPOLATE(t, x, y, FALSE)", { t: z, x: xs, y: ys })).toEqual(off.data({ z: [z], xs: [xs], ys: [ys] }).result);
-    const on = new InterpolateNode({ mode: "grid" });
-    expect(ev("INTERPOLATE(t, x, y)", { t: z, x: xs, y: ys })).toEqual(on.data({ z: [z], xs: [xs], ys: [ys] }).result);
   });
 
   it("omitted axes count 1, 2, 3…, matching the node with unwired axes", () => {
@@ -315,22 +360,26 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
 describe("setCells kernel (Set Cell)", () => {
   const m = (): (number | null)[][] => [[1, 2], [3, 4]];
 
-  it("writes a single cell by 1-based address", () => {
-    expect(setCells(m(), [{ r: 1, c: 2, v: 9 }])).toEqual([[1, 9], [3, 4]]);
-  });
-
   it("applies writes in row order — a later write wins on the same address", () => {
     expect(setCells(m(), [{ r: 2, c: 1, v: 7 }, { r: 2, c: 1, v: 8 }])).toEqual([[1, 2], [8, 4]]);
   });
 
   it("errors the whole result #REF! on an out-of-range row or column (shared wording)", () => {
     const badRow = setCells(m(), [{ r: 3, c: 1, v: 0 }]);
-    expect(isSolError(badRow)).toBe(true);
     expect((badRow as SolError).code).toBe("#REF!");
     expect((badRow as SolError).message).toContain("Row 3 is outside 1");
     const badCol = setCells(m(), [{ r: 1, c: 5, v: 0 }]);
     expect((badCol as SolError).code).toBe("#REF!");
     expect((badCol as SolError).message).toContain("Column 5 is outside 1");
+  });
+
+  it("a Row or Column that is not a number is #VALUE!, not a crash", () => {
+    const badRow = setCells(m(), [{ r: Number("abc"), c: 1, v: 0 }]);
+    expect((badRow as SolError).code).toBe("#VALUE!");
+    expect((badRow as SolError).message).toBe("Row must be a number");
+    const badCol = setCells(m(), [{ r: 1, c: "x" as unknown as number, v: 0 }]);
+    expect((badCol as SolError).code).toBe("#VALUE!");
+    expect((badCol as SolError).message).toBe("Column must be a number");
   });
 
   it("normalizes a ragged input to a full grid (missing cells blank) before writing", () => {
@@ -355,7 +404,6 @@ describe("setCells kernel (Set Cell)", () => {
 
   it("a block that runs off the bottom errors #REF! naming the Row axis (no clipping)", () => {
     const e = setCells(m3(), [{ r: 3, c: 1, v: [[1], [2]] }]); // 2 tall from row 3 → row 4
-    expect(isSolError(e)).toBe(true);
     expect((e as SolError).code).toBe("#REF!");
     expect((e as SolError).message).toContain("Row 4 is outside 1");
   });

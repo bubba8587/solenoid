@@ -1,0 +1,114 @@
+{
+  "label": "Solar payback",
+  "nodes": [
+    {
+      "id": "savings",
+      "type": "ValueInputNode",
+      "x": 0,
+      "y": 0,
+      "collapsed": true,
+      "init": {
+        "label": "Monthly savings",
+        "op": "number",
+        "value": "107",
+        "format": "decimal",
+        "decimalDigits": 0,
+        "unit": "usd"
+      }
+    },
+    {
+      "id": "cost",
+      "type": "ValueInputNode",
+      "x": 0,
+      "y": 105,
+      "collapsed": true,
+      "init": {
+        "label": "Install cost",
+        "op": "number",
+        "value": "14500",
+        "format": "decimal",
+        "decimalDigits": 0,
+        "unit": "usd"
+      }
+    },
+    {
+      "id": "rise",
+      "type": "ValueInputNode",
+      "x": 0,
+      "y": 210,
+      "collapsed": true,
+      "init": {
+        "label": "Rate rise / yr",
+        "op": "number",
+        "value": "0.03",
+        "format": "percent",
+        "decimalDigits": 0
+      }
+    },
+    {
+      "id": "installed",
+      "type": "ValueInputNode",
+      "x": 0,
+      "y": 315,
+      "collapsed": true,
+      "init": {
+        "label": "Installed",
+        "op": "date",
+        "value": "15-Apr-2026"
+      }
+    },
+    {
+      "id": "net",
+      "type": "ExpressionNode",
+      "x": 262,
+      "y": 0,
+      "init": {
+        "label": "Net by year",
+        "expr": "12 * savings * ((1 + rise) ^ SEQUENCE(25) - 1) / rise - cost"
+      }
+    },
+    {
+      "id": "payback",
+      "type": "ExpressionNode",
+      "x": 262,
+      "y": 296,
+      "init": {
+        "label": "Payback years",
+        "expr": "COUNTIF(net, \"<0\") + 1"
+      }
+    },
+    {
+      "id": "chart",
+      "type": "ChartNode",
+      "x": 562,
+      "y": 0,
+      "init": {
+        "label": "25 years",
+        "op": "column"
+      },
+      "stringLiterals": {
+        "options": "title=Net savings"
+      }
+    },
+    {
+      "id": "even",
+      "type": "ExpressionNode",
+      "x": 562,
+      "y": 312,
+      "init": {
+        "label": "Breaks even on",
+        "expr": "EDATE(installed, years * 12)",
+        "resultAs": "date"
+      }
+    }
+  ],
+  "cables": [
+    "savings.value -> net.savings",
+    "cost.value -> net.cost",
+    "rise.value -> net.rise",
+    "net.result -> chart.values",
+    "net.result -> payback.net",
+    "installed.value -> even.installed",
+    "payback.result -> even.years"
+  ]
+}

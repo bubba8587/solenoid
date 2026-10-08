@@ -1,5 +1,5 @@
-// [[C56]] aggregatorsAreArguments, [[C44]] dateSerials
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+// [[C26]] opArgDistinct, [[C44]] dateSerials
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { pivotEditor } from "../pivotEditorStore";
 import { processGraph } from "../process";
 import { appThemeStore } from "../appTheme";
@@ -9,6 +9,7 @@ import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import "./PivotEditorPopup.css";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
+import { TypeIcon } from "./TypeIcon";
 
 // The per-value function list derives from AGG_OP_META; the pivot is the one surface
 // that also offers the pivotOnly ops.
@@ -22,7 +23,8 @@ const REL_TO_OPTIONS = [
   { value: "0", label: "% of column total" }, { value: "1", label: "% of row total" }, { value: "2", label: "% of grand total" },
   { value: "3", label: "% of parent column" }, { value: "4", label: "% of parent row" },
 ];
-const TYPE_GLYPH: Record<string, string> = { number: "#", string: "T", date: "D", logical: "B" };
+const TYPE_GLYPH = (t: string | undefined): ReactNode =>
+  t === "number" || t === "string" || t === "date" || t === "logical" ? <TypeIcon type={t} size={10} /> : "?";
 
 type Zone = "rows" | "cols" | "vals";
 interface Cfg {
@@ -176,7 +178,7 @@ export function PivotEditorPopup() {
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop(zone, zoneArr(cfg, zone).indexOf(field)); }}
       title={`${field} · ${typeOf(field)}`}
     >
-      <span className="pivot-chip__glyph">{TYPE_GLYPH[typeOf(field)] ?? "?"}</span>
+      <span className="pivot-chip__glyph">{TYPE_GLYPH(typeOf(field))}</span>
       <span className="pivot-chip__name">{field}</span>
       <button className="pivot-chip__x" onClick={() => removeField(zone, field)} aria-label="Remove" title="Remove">×</button>
     </span>
@@ -258,7 +260,7 @@ export function PivotEditorPopup() {
           return (
             <div key={field} className="pivot-filter">
               <span className="pivot-chip pivot-filter__chip" draggable onDragStart={() => { drag.current = { from: "fields", field }; }}>
-                <span className="pivot-chip__glyph">{TYPE_GLYPH[typeOf(field)] ?? "?"}</span>
+                <span className="pivot-chip__glyph">{TYPE_GLYPH(typeOf(field))}</span>
                 <button className="pivot-filter__name" onClick={() => setOpenFilter(open ? null : field)} title="Choose which values to keep">
                   {field}{hidden ? ` · ${hidden} hidden` : ""} <span className="pivot-filter__caret">{open ? <ChevronDownIcon size={10} strokeWidth={2} /> : <ChevronRightIcon size={10} strokeWidth={2} />}</span>
                 </button>
@@ -299,7 +301,7 @@ export function PivotEditorPopup() {
             {fields.map((f) => (
               <span key={f.name} className={`pivot-chip pivot-chip--${f.type}${usedSet.has(f.name) ? " pivot-chip--used" : ""}`} draggable
                 onDragStart={() => { drag.current = { from: "fields", field: f.name }; }} title={`${f.name} · ${f.type}`}>
-                <span className="pivot-chip__glyph">{TYPE_GLYPH[f.type] ?? "?"}</span>
+                <span className="pivot-chip__glyph">{TYPE_GLYPH(f.type)}</span>
                 <span className="pivot-chip__name">{f.name}</span>
               </span>
             ))}

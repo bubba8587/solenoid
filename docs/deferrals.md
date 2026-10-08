@@ -27,6 +27,10 @@ the decision tree (`dte.md`).
 - **INDEX — marked for later (2026-07-01, `archive/cube-node-scope.md`)**: output socket
   should express Cube (today singular `any`); Excel range forms (`row=0`/`col=0` whole
   row/col, the reference form) — Solenoid INDEX is cell-only. (`archive/1.4-plan.md` D6 HOLD.)
+- **The stack merge (author 2026-09-23: deferred).** Append and Bind Columns (Frames) sit beside
+  XSTACK (lists and tables). `../tree/specs/computation/formula-language.md` § Excel names on nodes says the Frame pair becomes VSTACK and
+  HSTACK when the merge lands; [[C48]] appendLadder keeps one append node per rank. Reopening it
+  means picking one of the two and rewording the other.
 
 ## Reopen only if the trigger returns
 
@@ -118,8 +122,8 @@ the decision tree (`dte.md`).
   solver and answers a question a simple user rarely asks). If it returns, it is the Optimize
   run mode (A6), not a node. The calendar-shaped siblings are `archive/1.4-plan.md` Track H H4–H7.
 - **Staffing requirement (Erlang C)** — same sweep, parked: demand per interval + a service
-  target → minimum staff per interval. Closed-form but call-centre specific; the schedule that
-  covers it is set-cover (solver). Reopen on a real contact-centre use case.
+  target → minimum staff per interval. Closed-form but call-center specific; the schedule that
+  covers it is set-cover (solver). Reopen on a real contact-center use case.
 
 ## Parked bugs (explicitly parked by the author)
 
@@ -130,11 +134,65 @@ the decision tree (`dte.md`).
   `archive/dev-notes-history.md` (sweep 2026-08-25). Reopens only on the author's say-so,
   and then starts at T1/T2 (pin `k`, trace inside vs outside the band), nothing built before.
 
+- **AppImage catalog listing (author 2026-09-30: wait for Tauri upstream).** The catalog's bot
+  opened AppImage/appimage.github.io#9072; its firejail test fails because Tauri's bundler writes
+  the AppRun launcher 0770, so a non-root user can't start the app (tauri-apps/tauri#16155).
+  The workaround (seed `~/.cache/tauri/AppRun-x86_64` at 0755 before bundling) is passed over:
+  it adds a downloaded-binary build step. Reopens when a Tauri release carries the fix: bump Tauri, rename
+  the release asset to `solenoid-<v>-x86_64.AppImage` (the catalog rejects "linux" in the name),
+  cut a release, comment `/retest` on the PR. The glibc 2.35 note is the chosen floor, not a blocker.
+
 ## Parked features (revisit only if the trigger returns)
 
+- **Known leads parked by the author (2026-10-05):**
+  - *Desktop window close:* verify on the next desktop build that the window still closes (Windows: overlay title bar
+    and Alt+F4; Linux: the app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy`),
+    and that drafts survive it. The author is on mobile.
+  - *Sketch sample aliasing:* the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs`
+    verb_sample) aliases on periodic data; a fixed-seed well-mixed sample in both samplers would fix it. *Sketch Run*
+    (`withExactPass`) leaves the canvas on exact values until the next edit, and the table popup's Copy/Export CSV
+    export the sampled table it shows.
+  - *Pack follow-ups:* inputs in units with no unit id (coulomb, farad, henry, tesla, weber, mAh, years, bpm) stay
+    undeclared and results come back bare (`preset-declared-units` in the inbox); Forecast (ETS) needs a confidence
+    socket (D73); FORECAST.ETS ignores `data_completion` and `aggregation`; DECOMPOSE, FUZZYMATCH, RANDDIST,
+    SHARPE/SORTINO and REGEX case options unchecked against their cards; Antoine has no per-substance range check.
+  - *Node showcase* (`flow/StaticFlowStage.tsx`): a hand-built React Flow surface beside `FlowSurface`'s `locked` +
+    `staticView` mode ([[B3]] sameNodeEverywhere), unverified that the showcase runs on FlowSurface unchanged; its type
+    switch may race (`NodeShowcase.tsx`: a cancelled run's `addNode` landing after the next `clear()`).
+- **Matrix format precedence** (author 2026-10-05: deferred). The matrix popup's own format pick wins over a
+  Format Controller wired to the same card, as a Frame column's own pick does (`resolveMatrixAnnotation`, pinned in
+  `valueDisplayAnnotation.test.ts`); the reverse is defensible.
+- **Vault Folder vs Write Properties collection lookup** (author 2026-10-05: no call yet). Vault Folder finds mdbase
+  collections only at or below the folder it reads, while Write Properties walks up to the vault root; one rule should
+  serve both.
+- **TYPE with Solenoid's own answers** (author 2026-10-05: keep TYPE, deferred). Mostly redundant beside the socket
+  types, but friendly: give TYPE a code for every Solenoid kind, including the ones Excel has no number for (blank,
+  LAMBDA, complex, unit value, frame), and move it out of `EXCEL_GAP`'s `oos` rows. Today it leaks Formula.js:
+  `undefined` for a blank, a LAMBDA or a complex number, one answer per element on a list, `#SHAPE!` on a matrix,
+  and `TYPE(1/0)` is `#DIV/0!` (Excel checked 2026-10-05: 16 for an error, 64 for an array). N, T and ERROR.TYPE
+  stay `oos` until then.
+- **An Excel parity checker** (author 2026-10-05: deferred). A script writes a workbook of every Excel-named function
+  in `EXCEL_IMPL_META` at its edge cases (empty slots in every position, blank and text arguments, out-of-domain
+  values, fractional counts, month-end and leap dates, list arguments), each row a live Excel formula beside
+  Solenoid's answer and a Same/Differs cell, errors written as text; a reader takes the workbook back after the
+  author saves it in Excel, records Excel's answers as a fixture, and fails a test on each row where Solenoid
+  differs until it is fixed or listed as a deliberate difference. Excel-only names need the `_xlfn.` prefix, and
+  Solenoid's list arguments stand in for `{…}` constants. The two one-off sheets (2026-10-05) are pinned in
+  `excelChecked.test.ts`; their generator lived in a scratchpad, so start fresh.
+- **Array constants and nested arrays in formulas** (author 2026-09-26: "let's defer in-array constants indefinitely
+  until Excel nested syntax reaches stable channel"; author 2026-09-24: take Excel's syntax). Excel's Beta
+  Channel (Insider post 2026-09-24) lets a cell hold an array: braces nest (`={{1,2,3};{4,5,6}}`),
+  TEXTSPLIT over a column answers one array per row, and FLATTEN, HAS, HASANY and HASALL arrive.
+  Flat constants included: `{1,2,3}` a list, `{1;2;3}` a one-column table ([[D85]]), `{1,2;3,4}`
+  a matrix, literal-only as Excel, ragged rows and `{}` errors. Nesting needs [[C15]]
+  matricesInFormulas and `tree/specs/values/value-semantics.md` revised first (a new nesting
+  scheme reopens the bare-array ambiguity) and a ruling on how a nested value meets a Cube's
+  list cells. The functions go onto existing kernels ([[C17]] shareImpl): FLATTEN on Unnest's
+  list path (`unnestCube`), HAS on Is In, HASANY/HASALL on Sets (`applySetOp`). The braces syntax
+  hint in `excelFormula.ts` stays until then.
 - **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks; don't build
   per-panel resize. **Moveable / resizable / hideable toolbar chrome** is the same
-  customization slice (`archive/1.4-plan.md` F3 HOLD; `layout-chrome.md` shows the cost).
+  customization slice (`archive/1.4-plan.md` F3 HOLD; `tree/specs/canvas/layout-chrome.md` shows the cost).
 - **Cable collision avoidance** — spec: `archive/cable-routing.md` §2. Superseded by the
   obstacle-router shape if the author accepts its license (`archive/1.4-plan.md` F1); delete this
   entry when F1 lands.

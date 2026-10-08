@@ -1,8 +1,9 @@
-// [[B10]] reactFlowView
+// [[A1]] visualGraphCalculator
 import { describe, it, expect } from "vitest";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
 import { alertStore } from "../../../src/graph/alertStore";
 import { solError } from "../../../src/graph/errorValue";
+import { applyFcUnit } from "../../../src/graph/unitBridge";
 import type { FrameValue, FrameCell, FrameColType } from "../../../src/graph/frame";
 
 // Expect checks over FRAMES (the audit-found blind spot: a FrameValue fell into
@@ -154,5 +155,57 @@ describe("Expect alert edge-detect (fires on a NEW failure signature, not per ba
     n.data({ in: [[99, "ok"]] });
     expect(n.violations).toEqual(["range"]);
     expect(alertsFor(n.id)).toBe(3);
+  });
+});
+
+describe("Expect reads values as they're shown: units, Cubes and the allowlist by meaning", () => {
+  it("range checks a unit value in its display unit, scalar or list", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkRange: true });
+    n.literals.min = 0;
+    n.literals.max = 100;
+    expect(run(n, applyFcUnit(500, "m"))).toEqual(["range"]);
+    expect(run(n, applyFcUnit([5, 500], "m"))).toEqual(["range"]);
+    expect(run(n, applyFcUnit(50, "m"))).toEqual([]);
+  });
+
+  it("matches the allowlist by meaning: unit magnitudes, numbers, TRUE/FALSE, dates, text without case", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
+    n.stringLiterals.allowed = "5, 10";
+    expect(run(n, applyFcUnit(5, "m"))).toEqual([]);
+    n.stringLiterals.allowed = "1.0, 2";
+    expect(run(n, 1)).toEqual([]);
+    n.stringLiterals.allowed = "TRUE";
+    expect(run(n, true)).toEqual([]);
+    expect(run(n, false)).toEqual(["allowed"]);
+    n.stringLiterals.allowed = "15-Mar-2026";
+    expect(run(n, 46096)).toEqual([]);
+    n.stringLiterals.allowed = "apple, banana";
+    expect(run(n, ["Apple", "BANANA"])).toEqual([]);
+    expect(run(n, "cherry")).toEqual(["allowed"]);
+  });
+
+  it("matches a wired allowlist of mixed types", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
+    n.data({ in: [[1, "a", true]], allowed: [[1, "A", true]] });
+    expect(n.violations).toEqual([]);
+  });
+
+  it("unique treats the same quantity in two units as a duplicate, and text by case", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkUnique: true });
+    const fiveM = applyFcUnit(5, "m");
+    const fiveHundredCm = applyFcUnit(500, "cm");
+    expect(run(n, [fiveM, fiveHundredCm])).toEqual(["unique"]);
+    expect(run(n, ["Apple", "apple"])).toEqual([]);
+  });
+
+  it("checks a Cube's cells, nested tables included, and its rows for unique", () => {
+    const cube = (cols: [string, unknown[]][]) => ({ __cube: true, depth: 1, columns: cols.map(([name, cells]) => ({ name, cells })) });
+    const nn = new ExpectNode({ checkNotNull: true });
+    expect(run(nn, cube([["a", [1, null]]]))).toEqual(["notNull"]);
+    expect(run(nn, cube([["a", [1, 2]], ["kids", [frame([["x", "number", [1, null]]]), frame([["x", "number", [3]]])]]]))).toEqual(["notNull"]);
+    expect(run(nn, cube([["a", [1, 2]]]))).toEqual([]);
+    const u = new ExpectNode({ checkNotNull: false, checkUnique: true });
+    expect(run(u, cube([["a", [1, 1]], ["b", ["x", "x"]]]))).toEqual(["unique"]);
+    expect(run(u, cube([["a", [1, 1]], ["b", ["x", "y"]]]))).toEqual([]);
   });
 });

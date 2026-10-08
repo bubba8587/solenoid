@@ -1,20 +1,14 @@
-// [[C63]], [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk
-// Structured-payload figures, so they render as plain CSS/SVG rather than going
-// through the lazy recharts chunk.
-import { useLayoutEffect, useRef, useState } from "react";
+// [[B11]] maximalMerge, [[C100]] chartIsAValue, [[C114]] cardsView
+import { CellImage } from "./cubeCell";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
-import { titleIndexFor } from "../chartValue";
+import { recordFieldText, recordLaneText, recordNumberText, titleIndexFor } from "../chartValue";
 import { formatScalar } from "./format";
 import { planColumns, packMasonry } from "./masonryLayout";
 import { stopDragStart } from "../coarse";
+import { AutoCard, cardChipColors } from "./AutoCard";
 import "./chartCards.css";
 
-// A semantic state color, deliberately NOT a palette slot: a KPI trend reads
-// up=good / down=bad, not "teal".
-const POS = "#2fae7a";
-
-// Published as a CSS var the stylesheet's calc() sizes read, so one factor scales
-// every label.
 function fscaleStyle(fscale: number | undefined): React.CSSProperties | undefined {
   return fscale && fscale !== 1 ? ({ "--chart-fscale": fscale } as React.CSSProperties) : undefined;
 }
@@ -26,7 +20,7 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   const pct = delta !== null && prev !== null && prev !== 0 ? (delta / Math.abs(prev)) * 100 : null;
   const dir = delta === null ? 0 : Math.sign(delta);
   const good = (dir > 0 && goodUp) || (dir < 0 && !goodUp);
-  const color = dir === 0 ? "var(--text-dim)" : good ? POS : "var(--sol-error)";
+  const color = dir === 0 ? "var(--text-dim)" : `color-mix(in srgb, ${good ? "var(--sol-ok)" : "var(--sol-error)"} 70%, var(--text))`;
   return (
     <div className="sol-kpi" style={fscaleStyle(fscale)}>
       <div className="sol-kpi__value">
@@ -44,9 +38,6 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   );
 }
 
-// One card of labeled boxes on a CSS grid, placements resolved in the node. Shared:
-// the Frame Input popup's Form view (Source Off) renders through this exact component,
-// so the editable form and the Record figure are one look.
 export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; cols: number }) {
   return (
     <div className="sol-record" style={{ gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))` }}>
@@ -58,10 +49,10 @@ export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][nu
         >
           {f.isTitle ? null : <div className="sol-record__label">{f.label}</div>}
           {f.image ? (
-            <img className="sol-record__img" src={f.image} alt={f.label} draggable={false} />
+            <CellImage className="sol-record__img" src={f.image} alt={f.label} />
           ) : (
             <div className={`sol-record__value${f.value === null ? (f.hint ? " sol-record__value--hint" : " sol-record__value--empty") : ""}`}>
-              {f.value === null ? (f.hint ?? "—") : typeof f.value === "number" ? formatScalar(f.value) : f.value}
+              {recordFieldText(f)}
             </div>
           )}
         </div>
@@ -71,27 +62,26 @@ export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][nu
 }
 
 const GALLERY_GAP = 6;
-// Track band: aim at `ideal`, compress to `min` before dropping a column, and
-// never stretch past `max` (a lone wide track reads as a stacked list). Three presets
-// (the `cardsize` option, gallery only); medium is the default band.
 const GALLERY_TRACK_BY_SIZE: Record<RecordSize, { ideal: number; min: number; max: number }> = {
   s: { ideal: 130, min: 110, max: 190 },
   m: { ideal: 170, min: 140, max: 260 },
   l: { ideal: 230, min: 190, max: 340 },
 };
 
-// Masonry gallery (see masonryLayout.ts): tracks justified to the measured
-// container, each card packed into the shortest column. Card heights are
-// text-driven, so they are measured from the DOM; the ResizeObserver re-packs
-// on container resizes, wrap changes, and fscale changes. Tiles stay hidden
-// until the first measurement at the final track width, so the mount never
-// paints a mispacked frame.
-function RecordGallery({ payload }: { payload: RecordPayload }) {
+type Track = { ideal: number; min: number; max: number };
+
+/** The masonry both galleries pack into; `layoutKey` changes when the tiles do, so they are re-measured. */
+function MasonryGallery({ count, track, className, layoutKey, tile }: {
+  count: number;
+  track: Track;
+  className: string;
+  layoutKey: unknown;
+  tile: (i: number) => React.ReactNode;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
   const shownOnce = useRef(false);
-  const n = payload.cards.length;
-  const track = GALLERY_TRACK_BY_SIZE[payload.size ?? "m"];
+  const n = count;
   const [box, setBox] = useState<{ w: number; heights: number[]; settled: boolean } | null>(null);
 
   useLayoutEffect(() => {
@@ -115,7 +105,8 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
     ro.observe(el);
     for (const t of tileRefs.current.slice(0, n)) if (t) ro.observe(t);
     return () => ro.disconnect();
-  }, [n, payload]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [n, layoutKey]);
 
   const plan = planColumns(box?.w ?? 0, GALLERY_GAP, { ...track, items: n });
   const colWidth = Math.round(plan.colWidth);
@@ -123,8 +114,8 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
   const show = box !== null && (box.settled || shownOnce.current);
   const packed = box ? packMasonry(box.heights, plan.count, GALLERY_GAP) : null;
   return (
-    <div ref={ref} className={`sol-record-gallery${payload.clamp ? " sol-record-gallery--clamp" : ""}`} style={show && packed ? { height: packed.height } : undefined}>
-      {payload.cards.map((c, i) => (
+    <div ref={ref} className={className} style={show && packed ? { height: packed.height } : undefined}>
+      {Array.from({ length: n }, (_, i) => (
         <div
           key={i}
           ref={(t) => { tileRefs.current[i] = t; }}
@@ -135,10 +126,71 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
               : { width: colWidth, visibility: "hidden" }
           }
         >
-          <RecordGrid fields={c} cols={payload.cols} />
+          {tile(i)}
         </div>
       ))}
     </div>
+  );
+}
+
+function RecordGallery({ payload }: { payload: RecordPayload }) {
+  return (
+    <MasonryGallery
+      count={payload.cards.length}
+      track={GALLERY_TRACK_BY_SIZE[payload.size ?? "m"]}
+      className={`sol-record-gallery${payload.clamp ? " sol-record-gallery--clamp" : ""}`}
+      layoutKey={payload}
+      tile={(i) => <RecordGrid fields={payload.cards[i]} cols={payload.cols} />}
+    />
+  );
+}
+
+// Wider than Gallery's tracks: a card carries a header row and a grid of field tiles.
+const CARDS_TRACK_BY_SIZE: Record<RecordSize, Track> = {
+  s: { ideal: 240, min: 210, max: 310 },
+  m: { ideal: 300, min: 250, max: 400 },
+  l: { ideal: 380, min: 320, max: 500 },
+};
+const NO_COMPUTED: ReadonlySet<number> = new Set();
+
+function RecordCards({ payload }: { payload: RecordPayload }) {
+  const deck = payload.deck;
+  const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
+  const texts = useMemo(() => (deck?.rows ?? []).map((row) => row.map((v, c) => {
+    if (v === null) return "";
+    return typeof v === "number" ? recordNumberText(v, deck!.formats[c]) : v;
+  })), [deck]);
+  const chipColors = useMemo(() => (deck
+    ? cardChipColors(deck.plan, new Set(deck.chipCols), deck.rows.length, (r, c) => String(deck.rows[r]?.[c] ?? ""))
+    : new Map<number, Map<string, number>>()), [deck]);
+  if (!deck) return null;
+  const toggle = (r: number) => setOpen((s) => {
+    const next = new Set(s);
+    if (next.has(r)) next.delete(r); else next.add(r);
+    return next;
+  });
+  return (
+    <MasonryGallery
+      count={deck.rows.length}
+      track={CARDS_TRACK_BY_SIZE[payload.size ?? "m"]}
+      className="sol-record-gallery"
+      layoutKey={`${deck.rows.length}|${[...open].join(",")}|${payload.clamp ? 1 : 0}`}
+      tile={(r) => (
+        <AutoCard
+          plan={deck.plan}
+          names={deck.names}
+          types={deck.types}
+          computed={NO_COMPUTED}
+          chipColors={chipColors}
+          texts={texts[r]}
+          raw={(c) => String(deck.rows[r]?.[c] ?? "")}
+          rowNumber={deck.rowNumbers[r] ?? r + 1}
+          fold={!!payload.clamp}
+          open={open.has(r)}
+          onToggle={() => toggle(r)}
+        />
+      )}
+    />
   );
 }
 
@@ -153,15 +205,6 @@ function NavChevron({ back }: { back?: boolean }) {
   );
 }
 
-// One field's display text (numbers formatted, empty → its hint or a dash) — the outline
-// shows text only, so a long value / image URL clamps to its line rather than drawing.
-function cellText(f: RecordPayload["cards"][number][number]): string {
-  if (f.value === null) return f.hint ?? "—";
-  return typeof f.value === "number" ? formatScalar(f.value) : f.value;
-}
-
-// List view: one indented outline block per record — the title field on its own line,
-// the remaining fields as "label: value" rows beneath it.
 function RecordList({ payload }: { payload: RecordPayload }) {
   return (
     <div className="sol-record-list">
@@ -169,11 +212,11 @@ function RecordList({ payload }: { payload: RecordPayload }) {
         const ti = titleIndexFor(fields);
         return (
           <div key={i} className="sol-record-list__item">
-            <div className="sol-record-list__title">{ti >= 0 ? cellText(fields[ti]) : "—"}</div>
+            <div className="sol-record-list__title">{ti >= 0 ? recordFieldText(fields[ti]) : "—"}</div>
             {fields.map((f, j) => j === ti ? null : (
               <div key={j} className="sol-record-list__field">
                 <span className="sol-record-list__flabel">{f.label}</span>
-                <span className="sol-record-list__fvalue">{cellText(f)}</span>
+                <span className="sol-record-list__fvalue">{recordFieldText(f)}</span>
               </div>
             ))}
           </div>
@@ -183,18 +226,21 @@ function RecordList({ payload }: { payload: RecordPayload }) {
   );
 }
 
-// The record figure: the picked card, a gallery of cards, board lanes, or a list outline.
-// Height is content-driven (layouts vary), so the passed figure height is ignored.
-// `title` is the explicit options title (the label fallback stays off the figure,
-// matching the series charts); popup/report surfaces strip it — their header
-// already carries it. `onStep` puts the row pager ON the drawn card (the node
-// card only chips the chart), provided by surfaces that can reach the node.
 export function RecordCardView({ payload, width, fscale, title, onStep }: {
   payload: RecordPayload; width?: number; fscale?: number; title?: string; onStep?: (delta: number) => void;
 }) {
   const outer = { ...(width ? { width } : undefined), ...fscaleStyle(fscale) };
   const titleLine = title ? <div className="sol-record-figtitle">{title}</div> : null;
   const moreLine = payload.more ? <div className="sol-record__more">+{payload.more} more</div> : null;
+  if (payload.view === "cards") {
+    return (
+      <div style={outer}>
+        {titleLine}
+        <RecordCards payload={payload} />
+        {moreLine}
+      </div>
+    );
+  }
   if (payload.view === "gallery") {
     return (
       <div style={outer}>
@@ -218,9 +264,9 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
       <div style={outer}>
         {titleLine}
         <div className="sol-record-board">
-          {(payload.lanes ?? []).map((lane) => (
-            <div key={lane.label} className="sol-record-lane">
-              <div className="sol-record-lane__label">{lane.label}</div>
+          {(payload.lanes ?? []).map((lane, li) => (
+            <div key={li} className="sol-record-lane">
+              <div className="sol-record-lane__label">{recordLaneText(lane)}</div>
               {lane.cards.map((ci) => <RecordGrid key={ci} fields={payload.cards[ci] ?? []} cols={payload.cols} />)}
             </div>
           ))}
@@ -229,10 +275,7 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
       </div>
     );
   }
-  // Card view: the pager is a CONTROL, so a host box shorter than the card must
-  // never clip it away — the column fills a definite height and only the grid
-  // area gives. A host with no definite height (the unsized Display, the popup)
-  // resolves the 100% to auto and stays content-driven as before.
+  // The column fills a definite height and only the grid gives, so a short host never clips the pager away.
   return (
     <div className="sol-record-card" style={outer}>
       {titleLine}
@@ -266,8 +309,6 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
 
 export function BulletBar({ payload, width, fscale }: { payload: ScalePayload; width?: number; fscale?: number }) {
   const { value, target } = payload;
-  // A non-finite min/max from dirty upstream data makes every frac() NaN — a
-  // "NaN%" bar width and "NaN" labels.
   const min = Number.isFinite(payload.min) ? payload.min : 0;
   const max = Number.isFinite(payload.max) ? payload.max : min + 1;
   const span = max - min || 1;
@@ -282,7 +323,7 @@ export function BulletBar({ payload, width, fscale }: { payload: ScalePayload; w
         <div className="sol-bullet__track">
           <div
             className="sol-bullet__value"
-            style={{ width: `${vFrac * 100}%`, background: met ? POS : "var(--accent)" }}
+            style={{ width: `${vFrac * 100}%`, background: met ? "var(--sol-ok)" : "var(--accent)" }}
           />
           {tFrac !== null && <div className="sol-bullet__target" style={{ left: `${tFrac * 100}%` }} />}
         </div>

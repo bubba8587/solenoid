@@ -1,20 +1,4 @@
-import { COMBINATORICS_OP_META } from "../rete-nodes";
-import type { CombinatoricsNode as CombinatoricsNodeType, CombinatoricsOp } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { COMBINATORICS_OP_META, type CombinatoricsOp, type CombinatoricsNode as CombinatoricsNodeType } from "../rete-nodes";
+import { makeOpNodeComponent } from "./standardNode";
 
-const OPS = (Object.keys(COMBINATORICS_OP_META) as CombinatoricsOp[]).map((op) => ({
-  value: op,
-  label: COMBINATORICS_OP_META[op].label,
-}));
-
-export function CombinatoricsComponent({ data, emit }: NodeProps<CombinatoricsNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={OPS} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
+export const CombinatoricsComponent = makeOpNodeComponent<CombinatoricsOp, CombinatoricsNodeType>(COMBINATORICS_OP_META, (n) => n.cachedResult);

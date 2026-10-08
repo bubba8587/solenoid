@@ -8,7 +8,7 @@
 //   node server.mjs        (or: npm start)
 
 import http from 'node:http';
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scrapeStrings } from './scrape.mjs';
@@ -17,6 +17,7 @@ import { buildIndex, findMatches, applyEdit, REPO_ROOT } from './literals.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PORT = 5599;
 const SRC_DIR = path.join(REPO_ROOT, 'src');
+const ALLOWED_ORIGINS = new Set([`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`]);
 
 // --- list src/**/*.{ts,tsx,md} ------------------------------------------------
 async function listSourceFiles() {
@@ -67,8 +68,9 @@ async function handleScan() {
 async function handleSave(body) {
   const { abs, start, end, quote, raw, kind, newText, fromText, status, context } = body;
   if (typeof newText !== 'string') throw new Error('newText required');
-  if (!abs || !abs.startsWith(SRC_DIR)) throw new Error('refusing to edit outside src/');
-  const result = await applyEdit({ abs, start, end, quote, raw, kind, newText, fromText, status, context });
+  const target = typeof abs === 'string' ? path.resolve(abs) : '';
+  if (!(await listSourceFiles()).includes(target)) throw new Error('refusing to edit a file outside src/');
+  const result = await applyEdit({ abs: target, start, end, quote, raw, kind, newText, fromText, status, context });
   return { ok: true, ...result };
 }
 
@@ -93,6 +95,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method === 'POST' && req.url === '/api/save') {
+      // Only this tool's own page may save: a JSON content type forces a CORS preflight, which is never answered, and the Origin must be ours.
+      const origin = req.headers.origin;
+      if (!String(req.headers['content-type'] || '').startsWith('application/json') || (origin && !ALLOWED_ORIGINS.has(origin))) {
+        send(res, 403, { error: 'forbidden' });
+        return;
+      }
       let raw = '';
       for await (const chunk of req) raw += chunk;
       const body = JSON.parse(raw || '{}');
@@ -106,7 +114,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  Solenoid String Editor running`);
   console.log(`  Open  ->  http://localhost:${PORT}`);
   console.log(`  App   ->  http://localhost:1420 (must be running)\n`);

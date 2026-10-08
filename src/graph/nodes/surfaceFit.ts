@@ -1,11 +1,7 @@
-// [[C102]] gridFillThenForecast: the forecast surface. Mechanics: specs/bordered-grid-fill.md.
-// A THIN-PLATE SPLINE fit through scattered (x, y, z) points: exact through every
-// point, extrapolating a LINEAR trend at the edges (the "forecast"). Degenerate
-// inputs fall back to a ridge-regularised least-squares plane.
+// [[C102]] gridFillThenForecast
 
 export interface FitPoint { x: number; y: number; z: number; }
 
-// Solve A·x = b by Gauss–Jordan with partial pivoting. Returns null if singular.
 export function solveLinear(A: number[][], b: number[]): number[] | null {
   const n = b.length;
   const M = A.map((row, i) => [...row, b[i]]);
@@ -25,10 +21,9 @@ export function solveLinear(A: number[][], b: number[]): number[] | null {
   return M.map((row) => row[n]);
 }
 
-// r²·log(r), the thin-plate kernel (= ½·r²·log r²); 0 at r = 0.
+// Takes r², so r²·log r is ½·r²·log r².
 const phi = (r2: number): number => (r2 <= 1e-12 ? 0 : 0.5 * r2 * Math.log(r2));
 
-// The slope terms are regularised so the plane is always solvable.
 function planeFit(P: Array<[number, number]>, z: number[]): (nx: number, ny: number) => number {
   const n = P.length;
   const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
@@ -44,14 +39,12 @@ function planeFit(P: Array<[number, number]>, z: number[]): (nx: number, ny: num
   return (nx, ny) => c[0] + c[1] * nx + c[2] * ny;
 }
 
-// Above this the O(n³) spline solve isn't worth it — fall back to the plane.
 const TPS_MAX_POINTS = 220;
 
 export function fitSurface(points: FitPoint[]): ((x: number, y: number) => number) | null {
   const n = points.length;
   if (n === 0) return null;
-  // Normalize x,y for numerical stability; a loop, not Math.min(...spread), so a
-  // huge wired grid can't blow the argument limit.
+  // A loop, not Math.min(...spread), so a huge wired grid can't exceed the argument limit.
   let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
   for (const p of points) {
     if (p.x < xmin) xmin = p.x;
@@ -65,7 +58,6 @@ export function fitSurface(points: FitPoint[]): ((x: number, y: number) => numbe
   const z = points.map((p) => p.z);
 
   if (n >= 3 && n <= TPS_MAX_POINTS) {
-    // Thin-plate spline system: [K P; Pᵀ 0]·[w; a] = [z; 0].
     const m = n + 3;
     const A = Array.from({ length: m }, () => new Array<number>(m).fill(0));
     const b = new Array<number>(m).fill(0);
@@ -85,7 +77,6 @@ export function fitSurface(points: FitPoint[]): ((x: number, y: number) => numbe
         return f;
       };
     }
-    // singular (collinear points) → fall through to the plane
   }
   const plane = planeFit(P, z);
   return (x, y) => plane(nx(x), ny(y));

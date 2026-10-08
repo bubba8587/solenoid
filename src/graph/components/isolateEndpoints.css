@@ -1,9 +1,4 @@
-/* Auto-endpoint terminals + cables for the Isolate overlay, rendered in the
-   area's transformed plane (canvas coords). The terminal boxes reuse the node
-   card chrome (.solenoid-node / __header / __io-row) so they're visually
-   identical to real nodes; only the canvas placement, the straddling socket
-   dots, and the dashed virtual cables are bespoke. Shares its look with the
-   future Portal nodes. */
+/* The terminal boxes reuse the card chrome (.solenoid-node, __header, __io-row); only the placement, the dots and the dashed virtual cables are bespoke. */
 
 .solenoid-iso-ep-svg {
   position: absolute;
@@ -16,28 +11,24 @@
 }
 .solenoid-iso-ep-cable {
   fill: none;
-  /* Neutral "Any" gray — NOT the app accent, which reads as a socket type color. */
+  /* Neutral "Any" gray, not the app accent, which would read as a socket type color. */
   stroke: var(--sock-any);
   stroke-width: 2;
   opacity: 0.85;
   stroke-dasharray: 5 4; /* dashed: these are auto / virtual links, not real cables */
 }
 
-/* Canvas placement only — the border, radius, shadow, and surface come from
-   .solenoid-node. NO overflow:hidden, so the dots straddle the edge uncut. */
+/* No overflow hidden, so the dots straddle the edge uncut. */
 .solenoid-iso-ep {
   position: absolute;
   box-sizing: border-box;
 }
-/* This card is its own positioning context (canvas cards anchor absolutes to
-   rete's exactly-card-sized holder instead), so the frame must reach back over
-   the card's transparent 1px border to cover the full border box. */
+/* Its own positioning context (canvas cards anchor to an exactly card-sized holder), so the frame reaches back over the transparent 1px border. */
 .solenoid-iso-ep {
   --frame-outset: 1px;
 }
 
-/* Fixed-height header, text vertically centered (the card header is content-
-   height; ours is a deterministic HEAD_H so the lane/dot maths line up). */
+/* A fixed height (HEAD_H), so the lane, dot and cable math line up. */
 .solenoid-iso-ep__head {
   box-sizing: border-box;
   display: flex;
@@ -49,8 +40,6 @@
   color: var(--text);
 }
 
-/* Socket dots straddle the box edge, like real node sockets (left/right: -6px),
-   centered on the lane row (top set inline). */
 .solenoid-iso-ep__dot {
   position: absolute;
   width: 12px;
@@ -64,7 +53,5 @@
 .solenoid-iso-ep__dot--right { right: -6px; }
 .solenoid-iso-ep__dot--left { left: -6px; }
 
-/* Output (exit) terminals carry the socket on the LEFT, so nudge their labels
-   right to clear the dot. (Entry sockets sit on the right; labels are left-
-   aligned and already clear.) */
+/* Exit terminals carry the socket on the left, so their labels move right to clear the dot. */
 .solenoid-iso-ep--exit .solenoid-node__io-label { padding-left: 10px; }

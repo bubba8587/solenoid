@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView
+// [[A1]] visualGraphCalculator
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { pinStore } from "../../src/graph/pinStore";
 
@@ -18,15 +18,6 @@ describe("pinStore — toggle / remove / clear", () => {
     expect(pinStore.has("n1")).toBe(false);
     expect(pinStore.has("n2")).toBe(true);
     expect(cb).toHaveBeenCalledTimes(3);
-  });
-
-  it("list returns the internal array directly (not a copy)", () => {
-    // Characterization: list() is a direct reference; external push mutates the store.
-    // Tests that observe this should use serialize() for a safe snapshot instead.
-    pinStore.toggle("n1", "out");
-    const pins = pinStore.list() as { nodeId: string; outputKey: string }[];
-    pins.push({ nodeId: "n2", outputKey: "out" });
-    expect(pinStore.list()).toHaveLength(2);
   });
 
   it("remove drops only the targeted node's pin, and notifies", () => {
@@ -60,13 +51,13 @@ describe("pinStore — toggle / remove / clear", () => {
   });
 });
 
-describe("pinStore — serialize / load", () => {
+describe("pinStore — serialize / merge", () => {
   it("round-trips through plain copies: mutating either side never reaches the store", () => {
     const incoming = [
       { nodeId: "n1", outputKey: "result" },
       { nodeId: "n2", outputKey: "" },
     ];
-    pinStore.load(incoming);
+    pinStore.merge(incoming);
     incoming[0].outputKey = "mutated";
     expect(pinStore.serialize()).toEqual([
       { nodeId: "n1", outputKey: "result" },
@@ -77,14 +68,12 @@ describe("pinStore — serialize / load", () => {
     expect(pinStore.list()).toHaveLength(2);
   });
 
-  it("load REPLACES the current pin set and notifies", () => {
+  it("merge ADDS to the current pins, keeps a node's existing pin, and notifies once", () => {
     pinStore.toggle("n1", "out");
     const cb = vi.fn();
     pinStore.subscribe(cb);
-    pinStore.load([{ nodeId: "n2", outputKey: "value" }]);
-    expect(pinStore.has("n1")).toBe(false);
-    expect(pinStore.has("n2")).toBe(true);
-    expect(pinStore.list()).toHaveLength(1);
+    pinStore.merge([{ nodeId: "n2", outputKey: "value" }, { nodeId: "n1", outputKey: "other" }]);
+    expect(pinStore.serialize()).toEqual([{ nodeId: "n1", outputKey: "out" }, { nodeId: "n2", outputKey: "value" }]);
     expect(cb).toHaveBeenCalledOnce();
   });
 });

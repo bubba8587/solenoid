@@ -1,11 +1,14 @@
-// [[C46]]
+// [[B16]]
 import { ClassicPreset } from "rete";
-import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
-import { lnGamma } from "./mathUtils";
-import { solError, type SolError } from "../errorValue";
+import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readRole, numListIn, numListOut, numIn, numOut, listIn, readAsRole, leftOutAs, type BroadcastResult, type UnitOperand } from "./shared";
+import { rolesFrom, required, argRole } from "../inputRoles";
+import { lnGamma, roundDigits, gcdLcm } from "./mathUtils";
+import { solError, type SolError, isSolError } from "../errorValue";
+import { guardFinite, powerOf } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
-import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, type ArithmeticOp } from "../unitValue";
+import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
+import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimEqual, dimPow, isDimensionless } from "../dimension";
 
 // ─── Bessel helpers ───────────────────────────────────────────────────────────
@@ -83,7 +86,7 @@ function _besselK(x: number, n: number): number {
   if (x <= 0) return NaN;
   if (n === 0) return _besselK0(x);
   const k0 = _besselK0(x);
-  const k1 = (Math.PI / 2) * (_besselI(x, -1) - _besselI(x, 1));  // K_1 = π/2*(I_{-1}-I_1)
+  const k1 = (Math.PI / 2) * (_besselI(x, -1) - _besselI(x, 1));
   let kPrev = k0, kCur = k1;
   for (let k = 1; k < n; k++) {
     const kNext = (2 * k / x) * kCur + kPrev;
@@ -94,13 +97,8 @@ function _besselK(x: number, n: number): number {
 
 // ─── Arithmetic ──────────────────────────────────────────────────────────────
 
-// The op union + per-cell dimensional algebra live in ../unitValue (rete-free);
-// re-exported here as the family's home module.
 export { arithmeticCell, type ArithmeticOp } from "../unitValue";
 
-// `carry`: the op PRESERVES the kind of value, so a styled operand's format flows on
-// ([[D41]] formatFlowsDownstream). Only add/sub keep it — 5% + 3% is still a percent, a date +
-// days is still a date; a product / quotient / power / remainder is a new kind of value.
 export const ARITHMETIC_OP_META = {
   add:      { label: "Add",        carry: true,  description: "`A + B`" },
   sub:      { label: "Subtract"  , carry: true,  description: "`A − B`" },
@@ -108,11 +106,11 @@ export const ARITHMETIC_OP_META = {
   div:      { label: "Divide",     carry: false, description: "`A ÷ B`. `#DIV/0!` when `B = 0`." },
   mod:      { label: "MOD",        carry: false, description: "Remainder of `A ÷ B`. Excel: `MOD`." },
   quotient: { label: "QUOTIENT",   carry: false, description: "Integer part of `A ÷ B`, truncated toward zero. Excel: `QUOTIENT`." },
-  pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1` (JS/Python/Polars; Excel gives `#NUM!`). A result too large to represent is `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
+  pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1` (JS/Python/Polars; Excel gives `#NUM!`). 0 to a negative power is `#DIV/0!`, and a result too large to represent is `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
 } satisfies Record<ArithmeticOp, { label: string; description: string; carry: boolean }>;
 
 export class ArithmeticNode extends ClassicPreset.Node {
-  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
   op: ArithmeticOp;
@@ -131,8 +129,6 @@ export class ArithmeticNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
-  /** add / sub keep the operands' kind of value, so a styled operand's format carries
-   *  ([[D41]] formatFlowsDownstream); the source of truth is the op table's `carry` flag. */
   formatCarry(): FormatCarrySpec[] {
     return ARITHMETIC_OP_META[this.op].carry ? [{ output: "result", inputs: ["a", "b"] }] : [];
   }
@@ -140,13 +136,9 @@ export class ArithmeticNode extends ClassicPreset.Node {
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
     const a = readInput(inputs.a, this.literals.a);
     const b = readInput(inputs.b, this.literals.b);
-    // ÷ 0 is #DIV/0! at EVERY dimensionality: a tagged SolError for a scalar, a
-    // per-cell error inside a list. Same for MOD / QUOTIENT.
     const divZero = () => solError("#DIV/0!", "Division by zero");
     let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
     if (a !== null && b !== null) {
-      // The unit-aware path runs only when a dimension is present; plain numbers keep
-      // the broadcastErr fast path.
       if (anyDimensioned(a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[])) {
         result = broadcastUnit((x, y) => arithmeticCell(this.op, x, y),
           a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[]);
@@ -157,10 +149,9 @@ export class ArithmeticNode extends ClassicPreset.Node {
             case "sub": return x - y;
             case "mul": return x * y;
             case "div": return y === 0 ? divZero() : x / y;
-            // Excel MOD's sign follows the DIVISOR (MOD(-3,2)=1); JS % follows the
-            // dividend, so use the floored definition.
+            // Excel MOD's sign follows the divisor and JS % the dividend, so use the floored form.
             case "mod": return y === 0 ? divZero() : x - y * Math.floor(x / y);
-            case "pow":      return Math.pow(x, y);
+            case "pow":      return powerOf(x, y);
             case "quotient": return y === 0 ? divZero() : Math.trunc(x / y);
           }
           return null;
@@ -224,52 +215,41 @@ export const MATH_FN_OP_META = {
   gammaln: { label: "GAMMALN", group: "Special",      description: "Natural log of the Gamma function `ln(Γ(x))`. Excel: `GAMMALN`." },
 } satisfies Record<MathFnOp, { label: string; description: string; group: string }>;
 
-// Split by which side is the ANGLE; only these show the deg/rad/auto toggle, since
-// hyperbolic ops take and return plain reals.
+// Only these show the angle-mode toggle; hyperbolic ops take and return plain reals.
 export const FORWARD_TRIG_OPS = new Set<MathFnOp>(["sin", "cos", "tan", "cot", "csc", "sec"]);
 export const INVERSE_TRIG_OPS = new Set<MathFnOp>(["asin", "acos", "atan", "acot"]);
 export function isTrigOp(op: MathFnOp): boolean {
   return FORWARD_TRIG_OPS.has(op) || INVERSE_TRIG_OPS.has(op);
 }
 
-// `rad` is Excel parity, `deg` converts, `auto` reads the incoming unit — auto's
-// effective mode is resolved at recompute time into `_resolvedAngleMode`.
 export type AngleMode = "auto" | "rad" | "deg";
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 
-// Ops that PRESERVE their argument's dimension — a rounded length is still a length.
 const MATHFN_PRESERVE = new Set<MathFnOp>(["abs", "trunc", "int", "even", "odd"]);
-const MATHFN_FORWARD_TRIG = FORWARD_TRIG_OPS;   // accept angle/dimensionless → number
-const MATHFN_INVERSE_TRIG = INVERSE_TRIG_OPS;   // dimensionless → angle
+const MATHFN_FORWARD_TRIG = FORWARD_TRIG_OPS;
 
-/** The dimensional signature of a Math-fn op applied to an input of dimension `dim`.
- *  Returns the result dim, a `#UNIT!` when the op needs a dimensionless argument it
- *  didn't get, or `"strip"` when the input is dimensionless (compute plainly). */
+/** Returns the result dim, #UNIT! for a dimensioned argument the op cannot take, or "strip" for a dimensionless input. */
 export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip" {
   if (isDimensionless(dim)) return "strip";
   if (MATHFN_PRESERVE.has(op)) return dim;
   if (op === "sqrt") return dimPow(dim, 0.5);
-  if (op === "sqrtpi") return dimPow(dim, 0.5); // √(x·π) — π is dimensionless
+  if (op === "sqrtpi") return dimPow(dim, 0.5);
   if (op === "sign") return DIMENSIONLESS;
   if (MATHFN_FORWARD_TRIG.has(op)) {
     return dimEqual(dim, { angle: 1 }) ? DIMENSIONLESS
       : unitError(`${op.toUpperCase()} needs an angle or a plain number.`);
   }
-  if (MATHFN_INVERSE_TRIG.has(op)) return { angle: 1 }; // result is an angle (radians)
-  // Transcendentals / special functions: a dimensioned argument is meaningless.
   return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
 }
 
 export class MathFXNode extends ClassicPreset.Node {
-  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
   op: MathFnOp;
-  /** Angle interpretation for trig ops (ignored by every other op). */
   angleMode: AngleMode;
-  /** Stamped by the recompute-time unit read; defaults to rad so a node computed
-   *  before any reconcile still matches Excel. Not persisted. */
+  /** Stamped by resolveTrigModes each recompute; rad until then, matching Excel. */
   _resolvedAngleMode: "rad" | "deg" = "rad";
   cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
   literals: Record<string, number> = { in: 0 };
@@ -286,23 +266,16 @@ export class MathFXNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
-  /** The effective mode for THIS pass: an explicit pin wins; `auto` uses the
-   *  unit-resolved mode (default rad). */
   effectiveAngleMode(): "rad" | "deg" {
     return this.angleMode === "auto" ? this._resolvedAngleMode : this.angleMode;
   }
 
-  /** An inverse trig op in degree mode carries a real `deg` unit out, so it reads as
-   *  30° and chains into another trig node's Auto mode. */
   annotationFor(outKey: string): FormatAnnotation | undefined {
     return outKey === "result" && INVERSE_TRIG_OPS.has(this.op) && this.effectiveAngleMode() === "deg"
       ? { format: "auto", unit: "deg" }
       : undefined;
   }
 
-  /** The DIMENSION-preserving ops (abs / trunc / int / even / odd) also preserve the
-   *  MEANING, so a percent stays a percent; sqrt / log / trig / exp make a new value
-   *  ([[D41]] formatFlowsDownstream). Same set as MATHFN_PRESERVE, its one home. */
   formatCarry(): FormatCarrySpec[] {
     return MATHFN_PRESERVE.has(this.op) ? [{ output: "result", inputs: ["in"] }] : [];
   }
@@ -310,11 +283,8 @@ export class MathFXNode extends ClassicPreset.Node {
   data(inputs: { in?: (number | number[])[] }) {
     const input = readInput(inputs.in, this.literals.in);
     const mode = this.effectiveAngleMode();
-    // Deg mode converts a forward op's INPUT and an inverse op's RESULT.
     const fwdDeg = mode === "deg" && FORWARD_TRIG_OPS.has(this.op);
     const invDeg = mode === "deg" && INVERSE_TRIG_OPS.has(this.op);
-    // A valid input with no defined result is #DOMAIN! (the specific half of Excel's
-    // #NUM!) at every dimensionality; `compute` returns null and broadcastErr maps it.
     const domainErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
     const computeRaw = (x: number): number | null => {
         switch (this.op) {
@@ -369,8 +339,6 @@ export class MathFXNode extends ClassicPreset.Node {
         }
         return null;
     };
-    // Degree conversion wraps the raw radian math at the boundary only; every other
-    // op is untouched.
     const compute = (x: number): number | null => {
       const r = computeRaw(fwdDeg ? x * DEG2RAD : x);
       return r !== null && invDeg ? r * RAD2DEG : r;
@@ -378,16 +346,18 @@ export class MathFXNode extends ClassicPreset.Node {
     let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
     if (input !== null) {
       if (anyDimensioned(input as UnitOperand | UnitOperand[])) {
-        // Per-cell unit interpretation over a mixed list. mathFnResultDim gates a
-        // dimensioned argument. A UnitCell angle is already base RADIANS, so it computes
-        // on its magnitude with NO deg conversion — it carries its own unit. A BARE cell
-        // has no unit of its own, so it follows the node's resolved angle mode (the deg
-        // conversion the all-plain path applies) — so one list can mix tagged-radian
-        // angle cells with bare degree numbers and read each correctly.
+        // A UnitCell angle is already base radians and carries its own unit; a plain or dimensionless cell follows the node's angle mode, so one list can mix both.
         result = broadcastUnit((cell) => {
           const rd = mathFnResultDim(this.op, dimOf(cell));
           if (typeof rd !== "string" && (rd as SolError).code) return rd as SolError;
-          const bare = !isUnitCell(cell);
+          const bare = !isUnitCell(cell) || rd === "strip";
+          // abs / int / even… act on the number the user reads (5 km, 20.5 °C), never
+          // its base-SI magnitude, and the reading keeps its display unit.
+          const shown = !bare && cell.display && MATHFN_PRESERVE.has(this.op) ? fcUnitToUnit(cell.display) : null;
+          if (shown && !bare && dimEqual(shown.dim, cell.dim)) {
+            const r = computeRaw(displayMagnitudeOf(cell));
+            return r === null ? domainErr() : fromUnit(r, shown, cell.display);
+          }
           const x = magnitudeOf(cell);
           const raw = computeRaw(bare && fwdDeg ? x * DEG2RAD : x);
           if (raw === null) return domainErr();
@@ -404,7 +374,6 @@ export class MathFXNode extends ClassicPreset.Node {
 }
 
 // ─── Base Convert ─────────────────────────────────────────────────────────────
-// Bases > 10 whose output would need digits A-F return null (there is no string type).
 
 export const BASE_CONVERT_META = {
   label: "Base Convert",
@@ -412,6 +381,7 @@ export const BASE_CONVERT_META = {
 };
 
 export class BaseConvertNode extends ClassicPreset.Node {
+  static inputRoles = { from: required, to: required };
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { value: 1010, from: 2, to: 10 };
@@ -426,11 +396,13 @@ export class BaseConvertNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { value?: number[]; from?: number[]; to?: number[] }): { result: number | null } {
+  data(inputs: { value?: number[]; from?: number[]; to?: number[] }): { result: number | SolError | null } {
     const rawVal = readInput(inputs.value, this.literals.value ?? 0);
-    const fromRaw = readInput(inputs.from, this.literals.from ?? 2);
-    const toRaw   = readInput(inputs.to,   this.literals.to   ?? 10);
-    if (rawVal === null || fromRaw === null || toRaw === null) { this.cachedResult = null; return { result: null }; }
+    const fromRaw = readRole<number | SolError>(this, "from", inputs.from);
+    const toRaw   = readRole<number | SolError>(this, "to", inputs.to);
+    if (isSolError(fromRaw)) { this.cachedResult = null; return { result: fromRaw }; }
+    if (isSolError(toRaw)) { this.cachedResult = null; return { result: toRaw }; }
+    if (rawVal === null) { this.cachedResult = null; return { result: null }; }
     const from = Math.round(fromRaw);
     const to   = Math.round(toRaw);
 
@@ -479,9 +451,10 @@ export class BaseConvertNode extends ClassicPreset.Node {
 // ─── Clamp ────────────────────────────────────────────────────────────────────
 
 export class ClampNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("CLAMP", { min: 1, max: 2 });
   static socketDocs: Record<string, string> = {
-    min: "Empty and unwired, there is no floor. A wired blank makes the whole result blank.",
-    max: "Empty and unwired, there is no ceiling. A wired blank makes the whole result blank.",
+    min: "Empty, there is no floor; a blank item in a list of bounds is no floor for that item.",
+    max: "Empty, there is no ceiling; a blank item in a list of bounds is no ceiling for that item.",
   };
 
   label: string;
@@ -499,21 +472,18 @@ export class ClampNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
-  /** Clamping keeps the value's kind (a clamped percent is still a percent); the format
-   *  rides Value, never the bounds ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["value"] }];
   }
 
   data(inputs: { value?: (number | number[])[]; min?: (number | number[])[]; max?: (number | number[])[] }) {
     const value = readInput(inputs.value, this.literals.value);
-    // "Absent" is not "unknown": an UNWIRED bound means no floor/ceiling, but a WIRED
-    // blank makes the result unknown — routing it to no-bound would stop clamping.
-    const minWired = inputs.min !== undefined, maxWired = inputs.max !== undefined;
-    const min = minWired ? (inputs.min?.[0] ?? null) : (this.literals.min ?? null);
-    const max = maxWired ? (inputs.max?.[0] ?? null) : (this.literals.max ?? null);
+    // A blank bound, whole or one item of a list, is no bound there ([[D86]] blankRoles).
+    const bound = (v: unknown, open: number): number | number[] | null =>
+      v === undefined ? null : Array.isArray(v) ? v.map((x) => (x === undefined ? open : x)) : (v as number);
+    const min = bound(readRole(this, "min", inputs.min), -Infinity);
+    const max = bound(readRole(this, "max", inputs.max), Infinity);
     if (value === null) { this.cachedResult = null; return { result: null }; }
-    if ((minWired && min === null) || (maxWired && max === null)) { this.cachedResult = null; return { result: null }; }
     let result: number | number[] = value;
     if (min !== null) result = broadcast((v, mn) => Math.max(v, mn), result, min) as number | number[];
     if (max !== null) result = broadcast((v, mx) => Math.min(v, mx), result, max) as number | number[];
@@ -524,8 +494,6 @@ export class ClampNode extends ClassicPreset.Node {
 
 // ─── MROUND ───────────────────────────────────────────────────────────────────
 
-// Round-to-a-multiple; direction is an OP, so CEILING / FLOOR are this node pre-set
-// with `multiple` defaulting to 1. Rounding is toward ±∞ (the .MATH variants).
 export type MRoundOp = "nearest" | "up" | "down";
 
 export const MROUND_OP_META = {
@@ -535,6 +503,7 @@ export const MROUND_OP_META = {
 } satisfies Record<MRoundOp, { label: string; description: string }>;
 
 export class MRoundNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("MROUND", { multiple: 1 });
   static socketDocs: Record<string, string> = {
     multiple: "A multiple of zero gives zero rather than an error.",
   };
@@ -555,22 +524,20 @@ export class MRoundNode extends ClassicPreset.Node {
     this.addOutput("result",  numListOut("Result"));
   }
 
-  /** Rounding to a multiple keeps the value's kind; the format rides Value, not the
-   *  multiple ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["value"] }];
   }
 
   data(inputs: { value?: (number | number[])[]; multiple?: (number | number[])[] }) {
     const value    = readInput(inputs.value,    this.literals.value);
-    const multiple = readInput(inputs.multiple, this.literals.multiple);
+    const multiple = readRole<number | number[] | SolError>(this, "multiple", inputs.multiple);
     const snap = this.op === "up" ? Math.ceil : this.op === "down" ? Math.floor : Math.round;
     let result: BroadcastResult = null;
-    if (value !== null && multiple !== null) {
+    if (isSolError(multiple)) result = multiple;
+    else if (value !== null) {
       result = broadcastErr((v, m) => {
         if (m === 0) return 0;
-        // MROUND needs value and multiple to share a sign (#DOMAIN!); CEILING/FLOOR
-        // impose no such restriction, so the guard is scoped to nearest.
+        // Only MROUND requires value and multiple to share a sign; CEILING and FLOOR do not.
         if (this.op === "nearest" && v !== 0 && Math.sign(v) !== Math.sign(m)) {
           return solError("#DOMAIN!", "MROUND needs the value and multiple to share a sign");
         }
@@ -593,6 +560,7 @@ export const ROUNDN_OP_META = {
 } satisfies Record<RoundNOp, { label: string; description: string }>;
 
 export class RoundNNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("ROUND", { digits: 1 });
   label: string;
   op: RoundNOp;
   cachedResult: BroadcastResult = null;
@@ -609,28 +577,16 @@ export class RoundNNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
-  /** Rounding keeps the value's kind (a rounded percent is still a percent); the format
-   *  rides Value, not Digits ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["value"] }];
   }
 
   data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
     const value  = readInput(inputs.value, this.literals.value);
-    // UNWIRED → 0 places; a WIRED blank is an unknown precision and propagates.
-    const digits = readInput(inputs.digits, this.literals.digits ?? 0);
+    const digits = readRole<number | number[]>(this, "digits", inputs.digits);
     let result: BroadcastResult = null;
     if (value !== null) {
-      result = broadcast((v, d) => {
-        const factor = Math.pow(10, Math.round(d));
-        switch (this.op) {
-          // Halves away from zero (Excel), not toward +∞ (JS Math.round).
-          case "round":     return Math.sign(v) * Math.round(Math.abs(v) * factor) / factor;
-          case "roundup":   return (v >= 0 ? Math.ceil(v * factor) : Math.floor(v * factor)) / factor;
-          case "rounddown": return (v >= 0 ? Math.floor(v * factor) : Math.ceil(v * factor)) / factor;
-        }
-        return null;
-      }, value, digits);
+      result = broadcast((v, d) => roundDigits(v, d, this.op), value, digits);
     }
     this.cachedResult = result;
     return { result };
@@ -646,7 +602,6 @@ export const GCD_OP_META = {
   lcm: { label: "LCM", description: "Least common multiple of two integers. Excel: `LCM`." },
 } satisfies Record<GcdOp, { label: string; description: string }>;
 
-// Inputs are rounded to integers; gcd(0,0)=0.
 export class GCDNode extends ClassicPreset.Node {
   label: string;
   op: GcdOp;
@@ -667,17 +622,7 @@ export class GCDNode extends ClassicPreset.Node {
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
     const a = readInput(inputs.a, this.literals.a);
     const b = readInput(inputs.b, this.literals.b);
-    const result = broadcast((x, y) => {
-      let p = Math.abs(Math.round(x));
-      let q = Math.abs(Math.round(y));
-      while (q) { [p, q] = [q, p % q]; }
-      const gcd = p;
-      if (this.op === "lcm") {
-        const product = Math.abs(Math.round(x) * Math.round(y));
-        return gcd === 0 ? 0 : product / gcd;
-      }
-      return gcd;
-    }, a, b);
+    const result = broadcastErr((x, y) => gcdLcm(this.op, [x, y]), a, b);
     this.cachedResult = result;
     return { result };
   }
@@ -722,10 +667,8 @@ export class CombinatoricsNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[]; k?: number[] }): { result: number | SolError | null } {
-    // Excel TRUNCATES a non-integer argument and Formula.js floors, so floor keeps the
-    // node agreeing with `=FACT(2.9)` across the non-negative domain.
-    // FACT/FACTDOUBLE are single-arg (Excel FACT(n)) — they never read k, so a wired-blank
-    // k must not blank the result (value-semantics.md, "Reading an input").
+    // floor, not Excel's truncate, to match Formula.js and `=FACT(2.9)` over the non-negative domain.
+    // FACT and FACTDOUBLE never read k, so a wired blank k must not blank them.
     const usesK = this.op !== "fact" && this.op !== "factdouble";
     const nRaw = readInput(inputs.n, this.literals.n ?? 0);
     if (nRaw === null) { this.cachedResult = null; return { result: null }; }
@@ -744,8 +687,7 @@ export class CombinatoricsNode extends ClassicPreset.Node {
         else domainOk = false;
         break;
       case "combina":
-        // C(n+k-1, k) as a product, never a negative factorial: COMBINA(0,0) = 1 (Excel),
-        // COMBINA(0,k>0) = 0.
+        // C(n+k−1, k) as a product, never a negative factorial: COMBINA(0,0) is 1 and COMBINA(0,k>0) is 0.
         if (n >= 0 && k >= 0) {
           if (n === 0) result = k === 0 ? 1 : 0;
           else { let r = 1; for (let i = 1; i <= k; i++) r = r * (n + k - i) / i; result = r; }
@@ -772,8 +714,6 @@ export class CombinatoricsNode extends ClassicPreset.Node {
         break;
       }
     }
-    // Negative / out-of-order arguments are a domain error; a finite formula that
-    // overflowed to ±∞ is too large to represent.
     if (!domainOk) {
       const err = solError("#DOMAIN!", "Combinatorics needs non-negative whole numbers with k ≤ n");
       this.cachedResult = err;
@@ -820,8 +760,10 @@ export class TwoInputMathNode extends ClassicPreset.Node {
 
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
     const a = readInput(inputs.a, this.literals.a);
-    const b = readInput(inputs.b, this.literals.b);
-    // x ≤ 0 or a degenerate base is #DOMAIN!, tagged per-cell in a list.
+    // LOG's base and GESTEP's step are settings; B is data under every other op.
+    const b = this.op === "log" ? leftOutAs(readAsRole<number | (number | undefined)[] | undefined>(this, "b", inputs.b, argRole("LOG", 1)!), 10)
+      : this.op === "gestep" ? leftOutAs(readAsRole<number | (number | undefined)[] | undefined>(this, "b", inputs.b, argRole("GESTEP", 1)!), 0)
+      : readInput(inputs.b, this.literals.b);
     const domainErr = () => solError("#DOMAIN!", "LOG needs x > 0 and a base > 0, ≠ 1");
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (a !== null && b !== null) {
@@ -896,10 +838,9 @@ export class SumProductNode extends ClassicPreset.Node {
 
 // ─── SERIESSUM ────────────────────────────────────────────────────────────────
 
-// SERIESSUM(x, n, m, coef) = Σᵢ coef[i] × x^(n + i×m)
 export class SeriesSumNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { x: 1, n: 0, m: 1 };
   width = 180;
   height = 215;
@@ -925,20 +866,19 @@ export class SeriesSumNode extends ClassicPreset.Node {
     for (let i = 0; i < coef.length; i++) {
       result += coef[i] * Math.pow(x, n + i * m);
     }
-    this.cachedResult = Number.isFinite(result) ? result : null;
+    this.cachedResult = guardFinite(result, [x, n, m, ...coef]);
     return { result: this.cachedResult };
   }
 }
 
 // ─── MULTINOMIAL ──────────────────────────────────────────────────────────────
 
-// MULTINOMIAL(n1, n2, …, nk) = (n1+n2+…+nk)! / (n1! × n2! × … × nk!)
 export class MultinomialNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "The category counts n₁, n₂, …: the multinomial coefficient of their sum.",
   };
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   width = 180;
   height = 135;
 
@@ -957,7 +897,7 @@ export class MultinomialNode extends ClassicPreset.Node {
     const total = ns.reduce((s, v) => s + v, 0);
     const lnResult = lnGamma(total + 1) - ns.reduce((s, v) => s + lnGamma(v + 1), 0);
     const result = Math.round(Math.exp(lnResult));
-    this.cachedResult = Number.isFinite(result) ? result : null;
+    this.cachedResult = guardFinite(result, vals);
     return { result: this.cachedResult };
   }
 }
@@ -974,6 +914,7 @@ export const BESSEL_OP_META = {
 } satisfies Record<BesselOp, { label: string; description: string }>;
 
 export class BesselNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("BESSELJ", { n: 1 });
   static socketDocs: Record<string, string> = {
     n: "Integer order, 0 or greater.",
   };
@@ -994,8 +935,8 @@ export class BesselNode extends ClassicPreset.Node {
 
   data(inputs: { x?: number[]; n?: number[] }): { result: number | null } {
     const x = readInput(inputs.x, this.literals.x ?? 1);
-    const nRaw = readInput(inputs.n, this.literals.n ?? 0);
-    if (x === null || nRaw === null) { this.cachedResult = null; return { result: null }; }
+    const nRaw = readRole<number>(this, "n", inputs.n);
+    if (x === null) { this.cachedResult = null; return { result: null }; }
     const n = Math.max(0, Math.round(nRaw));
     let result: number;
     switch (this.op) {

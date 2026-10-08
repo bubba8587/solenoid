@@ -8,7 +8,7 @@
       "id": "note0",
       "type": "NoteNode",
       "x": -156,
-      "y": 232,
+      "y": 216,
       "init": {
         "label": "Kitchen remodel from TaskNotes",
         "body": "# Kitchen remodel, from your tasks\n\n**TaskNotes** reads every task off the plugin's API. Filter keeps the ones whose projects contain \"Kitchen remodel\". Computed Column turns each task's timeEstimate into a Duration in days. **Schedule** works out Start, Finish and the critical path, and the **Gantt** draws it, as Mermaid text and as the figure.\n\nWith no TaskNotes URL set in Settings, the node reads a bundled sample of tasks, so this runs anywhere.",
@@ -20,7 +20,7 @@
     {
       "id": "tasknotes",
       "type": "TaskNotesNode",
-      "x": -68,
+      "x": -156,
       "y": -36,
       "init": {
         "label": "TaskNotes",
@@ -53,8 +53,8 @@
     {
       "id": "days",
       "type": "ComputedColumnNode",
-      "x": 672,
-      "y": -32,
+      "x": 676,
+      "y": 56,
       "init": {
         "label": "Duration = timeEstimate ÷ 8h",
         "expr": "@timeEstimate / 480",
@@ -67,21 +67,24 @@
     },
     {
       "id": "start",
-      "type": "DateInputNode",
-      "x": 702,
-      "y": 364,
+      "type": "ValueInputNode",
+      "x": 706,
+      "y": 456,
       "init": {
-        "label": "Project start"
+        "label": "Project start",
+        "op": "date",
+        "value": "05-Jan-2026",
+        "width": 180
       },
-      "stringLiterals": {
-        "date": "05-Jan-2026"
+      "sections": {
+        "Format": false
       }
     },
     {
       "id": "schedule",
       "type": "ScheduleNode",
-      "x": 1013,
-      "y": 185,
+      "x": 1015,
+      "y": 269,
       "init": {
         "label": "Schedule",
         "mode": "working"
@@ -90,8 +93,8 @@
     {
       "id": "gantt",
       "type": "MermaidNode",
-      "x": 1354,
-      "y": 476,
+      "x": 1359,
+      "y": 607,
       "init": {
         "label": "Gantt"
       },
@@ -102,8 +105,8 @@
     {
       "id": "finishDisplay",
       "type": "DisplayNode",
-      "x": 1354,
-      "y": 353,
+      "x": 1359,
+      "y": 483,
       "init": {
         "label": "Project finish"
       }
@@ -122,7 +125,7 @@
         "color": "amber",
         "collapsed": false,
         "width": 448,
-        "height": 760
+        "height": 544
       }
     },
     {
@@ -144,15 +147,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 2084,
-        "height": 745
+        "width": 2093,
+        "height": 859
       }
     },
     {
       "id": "ganttFigure",
       "type": "GanttNode",
-      "x": 1354,
-      "y": 71,
+      "x": 1359,
+      "y": 203,
       "init": {
         "label": "Gantt figure"
       },
@@ -163,8 +166,8 @@
     {
       "id": "ganttDisplay",
       "type": "DisplayNode",
-      "x": 1679,
-      "y": -12,
+      "x": 1688,
+      "y": 155,
       "size": {
         "w": 700,
         "h": 360
@@ -192,7 +195,7 @@
     },
     {
       "source": "start",
-      "sourceOutput": "result",
+      "sourceOutput": "value",
       "target": "schedule",
       "targetInput": "start"
     },

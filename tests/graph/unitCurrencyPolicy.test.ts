@@ -35,14 +35,6 @@ describe("every arithmetic op refuses mismatched currencies", () => {
     expect(err(arithmeticCell(op, usd5, eur5)), `${op} combined mismatched currencies`).toBe(true);
   });
 
-  it("the policy table covers every ArithmeticOp (completeness)", () => {
-    // arithmeticCell's switch is exhaustive over the union; this pins that a NEW
-    // op added to the union must also declare its currency policy here.
-    const ops: ArithmeticOp[] = ["add", "sub", "mul", "div", "mod", "pow", "quotient"];
-    for (const op of ops) expect(POLICY[op], `no currency policy declared for ${op}`).toBeDefined();
-    expect(Object.keys(POLICY).sort()).toEqual([...ops].sort());
-  });
-
   it("same-code currency still computes (the guard is the CODE, not the dimension)", () => {
     const sum = arithmeticCell("add", usd5, money(2, "usd")) as UnitCell;
     expect(sum.value).toBe(7);

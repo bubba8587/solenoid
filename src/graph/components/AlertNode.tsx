@@ -1,7 +1,6 @@
-// [[D10]] onePrunePath
 import { useSyncExternalStore } from "react";
 import type { AlertNode as AlertNodeType, AlertMode } from "../rete-nodes";
-import { ALERT_MODE_KEYS } from "../rete-nodes";
+import { ALERT_MODE_KEYS, isAlertMet } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
@@ -15,7 +14,7 @@ const MODES: { value: AlertMode; label: string }[] = [
   { value: "text",    label: "Text contains" },
 ];
 
-// Neutral wording only — an Alert is a watch/notify, not a pass/fail, so no ✓/⚠.
+// Neutral wording: an Alert is a watch and notify, not a pass or fail.
 const STATUS: Record<AlertMode, { calm: string; met: (v: number) => string }> = {
   range:   { calm: "in range", met: (v) => (v === 1 ? "below" : "above") },
   equals:  { calm: "no match", met: () => "equal" },
@@ -45,7 +44,7 @@ export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
       <ValueDisplay
         value={data.cachedResult}
         render={(v) => {
-          const met = Array.isArray(v) ? v.some((x) => x !== 0) : v !== 0;
+          const met = Array.isArray(v) ? v.some(isAlertMet) : isAlertMet(v);
           const desc = Array.isArray(v)
             ? (met ? "some out" : "all clear")
             : (met ? STATUS[condition].met(v as number) : STATUS[condition].calm);

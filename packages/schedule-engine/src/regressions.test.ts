@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { schedule, readMspdi, mermaidGantt, type PlanTask } from "./index";
+import { schedule, readMspdi, mermaidGantt, ScheduleError, type PlanTask } from "./index";
 
 // The public trackers' known-bug list (25-gantt.md § 3.2) and the DCMA invariants over the
 // corpus, as regressions this engine must not grow.
@@ -41,6 +41,20 @@ describe("known-bug regressions", () => {
     const o = schedule({ tasks: [t("A", 5)], start: S(2026, 1, 5), calendar: { workingDays: true } });
     const src = mermaidGantt(o, iso);
     expect(src).toContain("A :crit, t0, 2026-01-05, 2026-01-10");
+  });
+});
+
+describe("the date range bounds every calendar walk", () => {
+  it("a Duration or lead that runs past 9999 or before year 1 is an error, and returns at once", () => {
+    const began = Date.now();
+    for (const tasks of [
+      [t("A", 3e6)],
+      [t("A", 1e9)],
+      [t("A", 1), { ...t("B", 1), predecessors: [{ task: "A", type: "FS" as const, lag: -1e9 }] }],
+    ]) {
+      expect(() => schedule({ tasks, start: S(2026, 1, 5), calendar: { workingDays: true } })).toThrow(ScheduleError);
+    }
+    expect(Date.now() - began).toBeLessThan(2000);
   });
 });
 

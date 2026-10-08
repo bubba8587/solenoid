@@ -6,209 +6,73 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-09-22 — plugin 0.1.3: the look follows the palette; author present)
+### SESSION DIGEST (2026-10-08: the scalar input fold)
+- **Value Input is the only scalar input** ([[B11]] maximalMerge): Number, Text, Boolean and Date Input are gone, and the Add menu's Number / Text / Date / Boolean rows are Value Input's ops (`primaryRow` in `nodeOps.ts` gives the host's own op a row; the old names are keywords; a typed phrase that opens a search field ranks as a prefix, `catalogSearch.ts`). A date Value Input's output is `value` and takes relative dates under [[D54]] relativeDatesOptIn. Its Format section carries the FC's display picks (bold, italic, text size, alignment, markdown, monospace; grouping, negative style, scale) in its own annotation, so an FC that only formatted a scalar input merged into it in the seeds. Seeds hold Value Inputs collapsed with Format folded; the Unit Flow seed is out of the repo for now (`backlog.md`). Pinned by `seeds.test.ts`, `nodeOps.test.ts`, `catalogSearch.test.ts`.
 
-- **The Solenoid look wears the plugin's palette setting, not just the chips.** `look.css` authors no hex any
-  more: `obsidian-plugin/src/lookTokens.ts` derives every color token from `palette.ts` exactly as the chips'
-  sheet does (`themeVars`), the build appends one block per built-in palette and mode to `styles.css` under
-  `body.solenoid-look.solenoid-palette-<name>`, and `main.tsx` swaps that class beside the look class (every
-  window, settings included; `onunload` sheds both). Pure value swaps, author's word: the app already settled
-  contrast, so the look's own ink/rule/wash formulas stand unchanged under every palette. The snippet stays
-  the Default palette (rules + its two generated blocks; `look.test.ts` pins it). Manifest `0.1.3`, not yet
-  published; the plugin repository's README still says "Default palette only" — fix it on export.
-- The build config now imports app TypeScript, so Vite bundles it to load; `VITE_CONFIG_NATIVE_IGNORE_WARNING`
-  in the build scripts (here and in the exported snapshot's) is Vite's own switch for that.
-- **Checked as a phone** (author's ask): `scripts/obsidian-rig-mobile.mjs` puts the rig into Obsidian's mobile
-  emulation at 412 and 360 px with touch and a coarse pointer, and the claims are measured boxes. Fixed: the
-  property icon sat 1px from the card (Obsidian's phone stylesheet bleeds the content 12px past the card and the
-  look clipped it; now the desktop's 11px), the light badge rode 4px high on the taller row, a wrapped footer's
-  rows were 10px out of line, the cube's Done stranded left, a button's label wrapped inside itself, the settings
-  links broke mid-URL. And a scoper bug: a look rule on a body class other than `.theme-*` (`.is-mobile`) nested
-  under the look class and never matched in the plugin; the rig's snippet had masked it. Real devices remain
-  unchecked (spec § Out of scope). The author looked at the captures and caught the icon inset I had passed.
-  Footer buttons on a phone go SMALLER under the coarse pointer (11px text at 412, 10px under 380), measured
-  until the row/column buttons and Cancel/Save share one row; the author saw both tiers and ruled them fine.
-- **An accent picker too** (author's ask): the settings swatch grid is now the toolbar's picker, not a legend, and
-  the accent (a slot id, the gray swatch cycling the neutrals) persists in `data.json`. The chips' sheet takes
-  it, and the look wears it as a third body class: `lookTokens.ts` splits each palette's tokens into the
-  palette's block and one block per accent (its color, ink, HSL, and for Orchard and Blueprint the chrome ramp,
-  which follows the accent's hue as in the app). So Blueprint under a blue accent is the authored cyanotype;
-  under gold it is the sepia print the app shows at its default accent, which is what I had misread as a plugin
-  divergence. Then the accent had to OWN the UI: the look had bound tabs, the top line, links, the active
-  item, the h1 and the hr cable to the number hue (gold under Default), so `--sol-ink-accent` (the accent as
-  text: itself on dark, the look's yellow rule on white) took those roles, graph nodes wear the accent (the
-  active one the ink), and a type's hue means that type only. A light property badge's glyph is the ink that
-  reads on its type color under the current palette (`--sol-ink-on-*`, the chips' contrast rule); dark icons
-  keep the type hue (author's ruling after a wrong turn to all-ink icons).
-- **Two cross-window bugs the rig caught once reproduced from a fresh start**: Obsidian's `toggleClass` tests
-  `instanceof Array`, which an array from the main window fails in the settings window (its own window in
-  1.13), so the look's classes toggle one at a time; and the graph view (a canvas) reads colors only on
-  `css-change`, which a class swap never fired, so palette, accent and look changes trigger it.
-- The demo vault's notes lost their hard wraps: Obsidian renders a single newline as a break.
-- **Plugin 0.1.3 exported and pushed** to `bubba8587/Solenoid-Properties` (snapshot of `3b7024b4`, builds there
-  byte-identical to the rig's build); the release is the author's (workflow or the `0.1.3` tag).
-- **The app reads the plugin's column picks** (the 1.4.2 backlog item): `pluginColumnTypes.ts`, read by Vault
-  Folder beside `types.json` and by Import Obsidian Note with the note; a pick types that column above the
-  guesser. The reader now keeps a row's ISO date as text until the column's type is known, so a Text pick
-  holds and a mixed column no longer carries a bare serial. Desktop scope widened to that one path. NOT yet
-  checked in the desktop build against the demo vault (the author's step: pick a type in Obsidian, reopen the
-  Vault Folder / import).
-- **A plugin editor's Save writes SOURCE TEXT, never a value through a type** (author 2026-09-22: a Number pick
-  over a date column showed NaN and the Save wiped the dates). List, matrix and frame Saves keep an unchanged
-  cell's scalar and write an edited one as YAML reads it (`parseCellText`, the cube's rule); a type switch keeps
-  every cell's scalar; `validate` is shape-only inside a list or matrix (the family is a lens, not Obsidian's
-  gate); the Complex field alone refuses what it cannot read. Verified in the rig by driving each editor's own
-  Save and reading the note back: frame (the repro), numeric list, date list, matrix, cube, complex scalar. The
-  rule is a node, [[D72]] pluginSaveWritesSourceText under C58 and C107 (author's ask; unratified).
-- The column-format panel closed on any press inside it in the plugin: `useDismissOnOutside` read `e.target`,
-  which a shadow root retargets to its host; now `composedPath()[0]`, the spec's rule. Verified in the rig.
-- The author's live test had wiped `ordered` in the repo's demo note; restored from git.
+### SESSION DIGEST (2026-10-07: solenoid-ngc.com, site-shots, the image set; cloud session)
+- **The site lives at solenoid-ngc.com** (`SITE_ORIGIN`); `vercel.json` 308s `solenoid-ngc.vercel.app` and `www.` to it by host, so previews of `develop` are untouched. Each site page now names its own link-preview card (`image`/`imageAlt` in `siteMeta.ts`, swapped by `pageHtml`; `siteMeta.test.ts` checks the file exists).
+- **`scripts/site-shots.mjs` draws every marketing image from the live app**: README shots, `public/og-*.png`, the GitHub social card. Graphs and framing in `scripts/site-shots/`; shots frame chosen cards inside the visible canvas band, `zoom` is browser zoom (smaller CSS viewport, same pixels), `phone` is the real mobile layout (needs the UA client-hint `mobile`, a portrait screen and a coarse pointer). Cards are HTML in the app's fonts, served from the app origin. shot-graph's short graph form moved to `shot-graph-expand.mjs`.
+- **A formula field's text clears its expand pill** (`ExpressionNode.css`).
 
-### SESSION DIGEST (2026-09-21c — plugin 0.1.2, the directory review's findings; author present)
+### SESSION DIGEST (2026-10-06b: Value Input; cloud session)
+- **Value Input** (`ValueInputNode`, `nodes/control.ts`; [[B11]] maximalMerge): one scalar source whose type is a `SegToggle` (Number, Text, Date, Boolean), the FC's dropdowns embedded under it (`fcControls`), the typed field, then the hero box. The format is the card's own `annotationFor`, so a downstream FC can inherit it ([[C118]] formatTravelsWithValue, contested once: keep). The date field is `DateEntry` and the checkbox `LogicalCheck`, and the relative-date alert is one helper (`resolveDateText`). `NodeCard` hangs the output dot on the result box before an input field. The card's accent follows its output socket; the format rows fold under a Format section (open on load only when a pick is set); the multi-line quoted field takes a `FieldResizeGrip` (`resizable`), and a dragged height holds until the text outgrows it. Parity pass: it collapses, a relative date arms the midnight rollover (`volatileDates.ts`), and Tornado and Model Health fuzz take it as a leaf. Add menu: a type-toggle node's row goes neutral and ends in a flag of slanted per-type tiles (`accents`, [[add-menu]]) on Value, List and Table Input. `FieldResizeGrip` takes the popup grip's hit area and is `nodrag` (it used to drag the card); the quoted text field's grip is two-axis. `shot-graph` gained `--drag`, and `--size` now runs the real phone model. On a phone the field grip is live only once its card is selected: live on an unselected card, touch adjustment snapped any pan that started near a Value Input's text field onto it, so the canvas didn't move and every frame resized the field (measured on 200 text input cards at 0.1 zoom: card-start pan script 1.7 s → 0.53 s, layouts 76 → 0, hit tests 94 → 18). A finger pan that starts on or snaps onto a cable now pans too (`flowTouchPan`; React Flow marks a selectable cable `nopan`). The Display card's resize grip is selected-only on a phone too (author's call), so no grip catches a pan. Pan cost: overlays mount through `ViewportLayer` (RF's `ViewportPortal` re-ran a canvas-wide `querySelector` every store update) and the minimap isn't mounted on a phone; 150 Display + 150 Number cards at 0.6 zoom, phone pan script −34% from a card, −24% from empty canvas. Making the canvas pointer-transparent during a desktop pan stopped the hover churn but cost a whole-canvas restyle at each pan's start and end, so it was dropped. Phone Add menu ([[add-menu]]): a narrow sheet scaled up as one piece to fill the space between the bars (`useSheetFit`), that drills one level at a time with a back row, no resting highlight or sticky hover, and a + that toggles (row sizes stay as tuned, so the 12-item level fits unscrolled). Value Input's type is now its `op` (`VALUE_INPUT_OP_META`, an `OpToggle`, a `NODE_OPS` family) with per-op search rows tinted by `OpEntryDecl.accents`; saves from before the rename reopen as Number ([[B7]] preAlphaBreakFreely). Phone Row B: Tidy, its options and Cleanup share one dropdown pill (Tidy icon plus a chevron). Add-menu tree pass: one-entry categories fold into their parent, and two-entry ones where the parent stays at 12 rows or fewer, the default level size (Data Quality into Output, Distributions into Numbers, Bessel, Rate conversion, Bond pricing, Select, the Electromagnetism pack's Induction, Health's Clinical); Pipe Roughness's stray "Fluid Mechanics" path joins Fluids › Pipe Flow. Expect audit: unit values were invisible to range and broke in-list, Cubes passed every check, and in-list compared raw text (TRUE, 1.0, dates); all fixed and pinned in `quality.test.ts`, and a failing check now marks its own row instead of a `#VALUE!` chip.
 
-tsc + vitest green; the plugin was checked in the rig (Obsidian 1.13.7: settings tab, a popped-out note, a
-palette change under an open editor).
-- **Plugin `0.1.2` is PUBLISHED** (2026-09-21, the author's go): built from `solenoid@b233cee2`, the three
-  release files byte-identical to the build checked in the rig, attested (`refs/tags/0.1.2`). The directory
-  rescans each release; its next report is the check on what is left.
-- **Most of the review's warnings were one defect: the snapshot did not typecheck.** The review lints WITH
-  types, and the ten shimmed modules (plus one type-only import) did not resolve there, so everything through
-  them was `any`: about ninety "unsafe" findings and many "unnecessary assertion" ones. The export now follows
-  type-only imports, the snapshot's tsconfig lays the shims over `src/graph` with `rootDirs`, the shims carry
-  the app modules' signatures, and the snapshot's build runs `tsc --noEmit` first (the guard on a shim).
-- **The plugin was writing to Obsidian's `<html>`**, against its own requirement 3: `appTheme.ts` subscribes
-  `apply()` to the palette at module level, so a palette change wrote 63 variables, `data-theme`, a forced
-  `color-scheme` and a `theme-color` meta. `themeVars()` moved to `themeVars.ts` (pure) and `appTheme` is
-  shimmed; checked in the rig, nothing is written.
-- Two more shims for the review's Errors: `clipboard` (no `execCommand` fallback in a secure context) and
-  `mobileUa` (split out of `coarse.ts`; Obsidian's `Platform` answers). The settings tab serves 1.13's
-  `getSettingDefinitions()` and keeps `display()` for older Obsidian.
-- The review is reproducible: `eslint-plugin-obsidianmd`'s recommended config run in the exported snapshot
-  matched its counts. What stands, and why, is `specs/obsidian-plugin.md` § Publishing.
+### SESSION DIGEST (2026-10-06: performance hunt at 100k rows; cloud session)
+- **Quadratic paths gone, outputs unchanged** (fixture corpus + cargo tests green): Decision Matrix rank (20k rows 33s → 44ms); a computed column's whole-column range call is memoized per call site by argument identity (`memoRangeCall`, [[computed-columns]]; `@price / SUM(price)` 10k rows 12.3s → 39ms); pivot "% of" sums each denominator span once (100k rows, 1000×12 leaves: 154s → 0.3s).
+- **Frame verbs**: filters compile once (`compileFilter`), single-key group/distinct/window partitions key on the raw cell (`rowKeyer`), sort and window ORDER BY classify blanks once, rolling windows sum in place, `describeColumn` sorts once, `inferColumn` parses once. **Engine**: preview converts only its rows, `cells_of` reads typed columns, `reorder_rows` uses `DataFrame::take` on canonical dtypes.
+- **An error's origin names a node, never a row** ([[E9]] errorsKeepOrigin; error-values § Producers and provenance): `rowIndex` had no reader and went stale at the first sort; repeats of one error in an output now share one tagged copy.
+- **The lessons are rules now** ([[C120]] linearWork, new; [[engineering#Performance]]): nothing whole-table once per row, comparators compare precomputed keys, a cache names every input or doesn't exist, drawing stops at the screen, no spreading a big list into a call, and a speed-up proves its answer didn't move. B19 spreadsheetHabits took its one contest (keep).
+- **Second pass**: formula calls keep per-site and per-name facts (`callPlan`, `callRefusal`, `nameTraits`, cached `resolveExcelFunction`) and a plain formula's env is built once per column; undo stores per-node strings shared between steps (a 4 MB table no longer crowds history to 3 steps; [[react-flow-surface-contract#Undo history]]); dense line/area charts draw their min/max envelope (`minMaxDecimate`, [[chart-figures]]); Frame Input parses its text once per text; the engine serializes results straight from typed columns (`OutValues`), builds uploads without a cell vector, keys Distinct with `CellKey`, and stacks Append/Bind natively; `dimMul`/`dimDiv` share one frozen dim per pair.
+- **Compute pass**: `loopMembers` O(edges), `cableValueStore` nested by node; value boxes cache their formatted list per array (keyed on display settings for numbers).
 
-### SESSION DIGEST (2026-09-21b — plugin release readiness, the vault look; author present)
+### SESSION DIGEST (2026-10-05: known-bug sweep from the backlog's commit-walk leads; cloud session)
+- **Chart value axes keep the decimals close ticks need** (`valueTickFormat`/`compactTick(n, step)` in `chartCore.ts`): 100000, 100250 read "100K", "100.25K"; the gutter measures with the same formatter.
+- **A Board's number lanes format when drawn** (`recordLaneText`), so Decimal places shows without a recompute ([[chart-figures]] Record).
+- **Schedule converts Work and hour Durations at the task's own Hours**; **MSPDI writes a typed Start's floor even when it doesn't bind** (`startFloor` on `ScheduledTask`).
+- **YEARFRAC truncates its basis** as Excel does. **The criteria functions never read text as a number** ([[B17]] typedValueModel, author 2026-10-05): numeric text never sums or meets a number criterion, a typed criterion over a text range stays text, and a number ordering (`>15`) over a range holding text is `#TYPE!` (formula-language § criteria).
+- **Desktop HTTP scope is `http://*:*` / `https://*:*`** (the plugin never wildcards a port); unverified in a desktop build. **The plugin drops a mount never attached after 10 s.**
+- **Group member tints resolve when read** and follow every palette change on their own. **A Predecessors column is one kind** (`predecessorColumn`): name lists while every link is plain FS, else a Predecessor · Type · Lag table in every row, so Unnest reads it and its rows feed the Links input. **Merge Plots keeps only its builder's keys.** **A held composite shows "Waiting for permission"** when a live card inside is gated.
+- **Drags stay off the render path and the layer tree** ([[react-flow-surface-contract#Drag performance]]): FlowSurface's overlay layers are memoized (a standoff bar follows its own two cards through an RF-store selector); group cards and pills read their own socket's highlight; a dragged open group clips its paint and its members ride as layers (`sol-riding`); what moves floats above the cards mid-drag and the canvas chrome keeps its own layer, so nothing flips layers mid-drag (the phone's blinking cards and header). `scripts/drag-probe.mjs` counts what a drag renders. **Local File reads a plan file as the plan cube alone.**
 
-On `develop`, NOT pushed (the author's call). tsc + vitest green.
-- **Plugin `0.1.1` is PUBLISHED** (2026-09-21): the directory's review REQUIRES the listed repository to hold
-  the source, and recommended attestations, no extra release files, no `localStorage` and a clipboard
-  disclosure. The plugin repo now carries a snapshot (`npm run plugin:export -- "<clone>"`: 87 app files + the
-  plugin folder, its own pinned `package.json` and lock) and builds from it; the three release files are
-  attested and verify (`gh attestation verify`), byte-identical to the build here. Vite takes any 1.2.x
-  rolldown and a patch bump minifies React differently, so the export pins it. The directory reviews RELEASES,
-  so a fix to a finding needs a new version.
-- **Plugin `0.1.0` is PUBLISHED** (2026-09-21, the author's go): `bubba8587/Solenoid-Properties` release `0.1.0`,
-  built from `solenoid@635905d9`, with the author's README and screenshots. It is LISTED at
-  community.obsidian.md/plugins/solenoid-properties (Health: Excellent, Review: Pending), and the 1.4.1 release
-  notes link it. The plugin repo clone
-  is `~/projects/solenoid properties`; the release steps moved from its README to the spec's § Publishing.
-- **Plugin settings** end with one "Solenoid" row carrying the deploy and the repository as bare URLs; the Property
-  types sentence is gone (spec § settings page).
-- **The vault look** is `demo-vault/.obsidian/snippets/solenoid.css`, switched on by `appearance.json` (now a
-  fixture), with `Planning board.canvas` to show it on. What stands: dark wears the hues as ink; LIGHT is neutral or
-  the full accent, never a hue mixed toward the ink (dark yellow is brown: gold and lime text go neutral and their
-  color moves to fills, rules and 18px property badges; other hues darken with `oklch(from …)`). Tabs are node
-  headers, gold unless a base / canvas / media, and each pane's accent line takes its active tab's color. Callouts
-  and canvas groups wear the group look, a rule is a diagonal cable between two sockets, folder dots run the palette
-  in order, and nothing anywhere is a side stripe. It targets Obsidian 1.13 (`--callout-<type>`, `--bases-*`).
-  Shipping it with the plugin is the next step and needs its spec rule first (`backlog.md`).
-- **Obsidian DOM facts that cost time:** `data-property-type` sits on `.metadata-property-value`, so a row is typed
-  with `:has()`; `.metadata-container` is shifted `translateX(-4px)`; the property icon hides a 4px zero-width
-  `::before`; rows stack with the gap ABOVE and the divider right under the content; the tab title color and the
-  inactive tab's padding only yield to Obsidian's own long selectors or its `--tab-text-color-*` variables;
-  settings is a second window (a second CDP page).
-- **1.4.1 SHIPPED 2026-09-21** (tag `v1.4.1` on `907b5813`, pushed by the agent on the author's word): the
-  release carries the Windows exe, the Linux AppImage and the `.deb`. A NEW workflow file cannot be run by hand
-  until it is on the default branch, so the first Linux CI build was the push to `main` itself.
-- **CI builds Linux too:** `desktop-build.yml` (was `windows-portable.yml`)
-  has a windows job, a linux job (ubuntu-22.04, AppImage + .deb) and a release job that needs both. The Linux
-  bundles build locally and the AppImage starts and computes on a scratch profile; neither job has run in CI
-  since, and Windows has not compiled since v1.4.0. Product copy says Windows and Linux; one `DownloadLink`
-  (siteNav.tsx) names the visitor's platform. Remaining steps: `backlog.md` § Release planning.
-- **Desktop looks more saturated than the dev server on this machine, and that is color management, not the
-  app.** The monitor is a P3-gamut panel (LG UltraGear; EDID primaries red 0.686/0.309, green 0.264/0.669) and
-  colord set an EDID profile on the X root (`xprop -root _ICC_PROFILE`). Chromium reads it and maps the app's
-  sRGB hexes into the panel's gamut, so it shows true sRGB; WebKitGTK ignores it and sends the values raw, so the
-  same hexes stretch to P3 and read hotter. `chromium --force-color-profile=srgb` makes Chromium match the
-  desktop. Neither look is rare: sRGB panels and fully managed setups (an iPhone, Chromium with a profile) show
-  the muted one; unmanaged or boosted paths (WebKitGTK, Windows with no display profile, an Android phone in its
-  default Vivid / Adaptive mode, where the author also sees it) show the vivid one the palette was tuned on.
-  Whether to author the palette in `display-p3` is a design call (`backlog.md` § Canvas chrome).
-  On the dev machine the display's DEFAULT colord profile is now standard sRGB (`colormgr
-  device-make-profile-default`; the EDID profile stays listed), so `_ICC_PROFILE` is sRGB and every managed app
-  (Chrome, Obsidian) shows the vivid look the desktop build does. Undo: System Settings → Color, or make the
-  EDID profile default again.
-- **The plugin's follow-ups are closed** (author: nothing left in the backlog for it). A frame column keeps the
-  type the user PICKED (`data.json` by property then column; first guess from the YAML value's own type, never
-  its text: re-inferring made the selector a lie and a Save turned `"0012"` into 12). A popped-out note keeps its
-  editor: the popup layer follows the chip's window and the build rewrites the components' free `document` /
-  `window` to the layer's (`popupGlobals`). A Complex scalar type, the look behind a toggle from one source
-  (`look.css`), and the rig as `npm run plugin:rig`. Two backlog lines were simply WRONG when checked in real
-  Obsidian: Bases cells show the chip, and a cube level has no type selector to persist.
-- **Solenoid reads the plugin's types back as the same socket.** The Note node already read lists, frames and
-  cubes right (the author's hunch held); three things did not survive: a matrix (a text list of `"[1,2,3]"`), a
-  complex list (text) and a frame's date column (numbers). The Note node's three hand maps became lattice
-  lookups (`typeAtRank`). Left in the spec's § Gaps: a column type picked in the plugin is not read here.
-- **Rig note:** `pkill -f` with a plain pattern matches its own shell and exits 144 before the next command; write
-  the pattern as `[X]ephyr :7`. The rig scripts are still scratch-only (`backlog.md`, plugin follow-ups (5)).
+- **An empty argument slot reads as Excel's blank for its parameter, and shows it** ([[C80]] blankArgIsExcelBlank, [[D96]] emptySlotShowsItsValue, author 2026-10-05; input-roles § Empty slots / § Placeholders): one table in `emptySlots.ts` beside `ARG_ROLES`, pinned by an every-function test; the formula editor draws its own highlighted text (an editable box, not a textarea under a mirror) so the reading takes real width in the slot, read-only formulas and KaTeX draw it inline, and a card's empty setting field shows it as a muted placeholder. `IF(c,,x)` is now 0, as in Excel. **Polars engine switch** in Settings (desktop); a NaN logical uploads as blank with a notice. **The web node soft limit is 300.**
+- **Wrong inputs error instead of answering blank** ([[D70]] nullNotEnoughData): LOG2 of x ≤ 0, the distributions (formula and card) outside their domain, BETA with B ≤ A, GROWTH and LOGEST over a y ≤ 0, and the Depreciation card, which now answers its formula's errors. **Running keeps a list's unit**, as Reduce does. **Cancel in the table popup takes back formats picked on unsaved columns. UUID no longer saves its value**, so a recompute is never an undo step.
+- **Excel-checked answers** (the author's parity sheet, 2026-10-05; `excelChecked.test.ts` pins every row): TEXTJOIN's empty ignore_empty is TRUE and XLOOKUP's empty if_not_found is left out (`EXCEL_EMPTY_SLOT`); CUMIPMT/CUMPRINC past the loan are `#DOMAIN!` (card and formula share `cumulativePayment`); SLN with a zero life is `#DIV/0!`; coupon dates count back from maturity and keep a month end; LARGE/SMALL truncate a fractional k's ascending position; PERCENTRANK of one value is 1 in every form; TEXTSPLIT takes a row delimiter alone. **CI**: Rust tests run in `engine-test.yml` only on engine or corpus changes.
+- **A load adopts its graph without moving the time** (`adoptLoadedGraph`), so an imported file's first autosave only moves its time for a real edit. **The Gantt grid's first column truncates with "…"** when the pane is narrower than it. **The string editor scans with @babel/parser**, so regex literals, JSX text and nested templates no longer break the literal index (24 UI strings it used to miss).
+- **Author's calls, built (2026-10-05):** physical pack presets declare their input units (wired km, kΩ, cm convert; a wrong dimension is `#UNIT!`; `packs.test.ts` checks every id resolves); Cast and Series show defaults as ghosts only (`fieldPlaceholders`, `rolesOf`); TaskNotes' blank URL ghosts "Demo vault"; ∞ round-trips a note as `.inf`; Constant cards copy; World Clock ticks each minute; List Filter answers a mixed list per item; Currency converts a list; Append keeps agreed units and formats; IFERROR catches per cell in frames and cubes; Series remembers typed fields (`typedKeys`); the hero box is 16px.
+- **1.5 polish from the commit-history review (author's picks, 2026-10-05):** a scientific cutoff setting (`sciAbove`, default 9 digits); read-only cells show their exact number while focused; groups select only on a thin edge and the header; the Table popup's filter also filters Grid; Excel's insert/delete row keys in both popups (`useEditShortcuts`); Pie, Funnel and Radial slices lift on hover and spotlight on click; Settings has a search box; KPI, Gauge bar, Slider and World Clock square-collapse to minis; the Cube popup's table levels get the filter, Cards and the summary footer (`cubeLevelTable.ts`).
+- **Cards and chips (author 2026-10-05):** a cube card shows nested cells as drill chips and a list tag column by item; value chips tint like a header band (opaque, no border); the series color order stays blue-first (a purple-first, gray-free order was tried and reverted: it looked wrong in charts, and chips must not diverge from charts). Footer Insert/Delete menus drop the key hints.
+- **Search fields (author 2026-10-06):** one `SearchField` everywhere; the Table and Cube popups' filter sits in the header (its own header line under 560px), Settings' at the right beside close. **Settings** is a 580px column, content-tall up to 80%, hung 10% from the top so a search never moves its header. `shot-graph --size WxH` shoots phones.
+### SESSION DIGEST (2026-10-04: XY gradient line, drag frame rate, Chart Builder sections, stacking commands, landscape phones, installable app, pinch hand-off, site SEO; cloud session)
+- **Site SEO**: one origin (`SITE_ORIGIN` in `siteMeta.ts`; `index.html` says `%SITE_ORIGIN%`), robots and sitemap generated at build, canonicals and SoftwareApplication JSON-LD; the landing page moved from `?landing` to `/about` (the app keeps `/`); each site page's HTML carries a plain-text snapshot from `prerender/`, kept current by a source fingerprint `prerender.test.ts` checks (architecture.md). The domain solenoid-ngc.com is bought and pointed at Vercel; the cutover is a backlog item.
+- **Lifting one finger of a pinch** pans on from the leftover finger, without the jump or a stray card drag or select (`flowPinch.ts`, [[touch-gestures]]).
+- **An XY line with a numeric `c` draws in the ramp too**, segment by segment, and `cmap` picks the ramp from the Heatmap's colormap list ([[chart-figures]] XY).
+- **A phone turned sideways runs the tablet layout, scaled to fit** ([[C119]] landscapePhoneIsTablet; [[layout-chrome#Phones in landscape]]): `IS_MOBILE`/`IS_TABLET` became the live `isMobile()`/`isTablet()`, the viewport meta's scale does the zoom. Fullscreen drops the scale (Chrome pins it to 1), so the app is now installable to a home screen (`manifest.webmanifest`, `scripts/pwa-icons.mjs`), which hides the browser bars and keeps it (installed as `standalone`; an installed `fullscreen` window pins the scale too). Fullscreen on a sideways phone shrinks the app chrome with CSS `zoom` instead, never the canvas (`chromeZoom.ts`). A fullscreen touch screen insets the bars 18px from its rounded corners. The Command Palette no longer lists "Toggle <setting>" items.
+- **The Theme palette colormap is the palette's own colors**: blue, green, teal, gold sorted by luminance, and blue, gray, vermilion when centered; no more forced lightness ([[palette-and-theme]]). Home-screen icons use the six-rung mark.
+- **Stacking commands**: Bring to front / forward, Send backward / to back on the selection (Ctrl+Shift+], Ctrl+], Ctrl+[, Ctrl+Shift+[; Edit menu; front and back on right-click). Expanding a card brings it to the front (setting `frontOnExpand`, on by default). The order is the editor's node order and the save keeps it in the `positions` key order ([[react-flow-surface-contract#Stacking]]).
+- **Chart Builder is a wide card and folds its secondary rows into sections** when its chart offers more than ten (DESIGN.md § Card sections); its select options no longer repeat their row label.
+- **A drag never re-renders a card** (`SolNodeAdapter` memo ignores RF's position and `dragging` props); a dragged card is one composited layer and chart internals drop pointer events while anything moves ([[react-flow-surface-contract#Drag performance]]). Measured 36 charts × 250 points: a 30-step drag 13.3 s → under 1 s, worst frame 1.2 s → ~70 ms (dev build, headless).
 
-### SESSION DIGEST (2026-09-21 — publishing the Solenoid Properties plugin; author away)
+### SESSION DIGEST (2026-10-03: settings accent picker; cloud session)
+- **Settings ▸ Appearance's swatches pick the accent**: the same `SwatchGrid` on `appThemeStore` as the toolbar's paintbrush, so the two stay in step. The read-only legend mode is gone.
 
-On `develop`, pushed. tsc + vitest green. The path is `specs/obsidian-plugin.md` § Publishing.
-- **Obsidian's list points at a repository, never a branch or folder**, and reads `manifest.json` from the default
-  branch's root, so the plugin publishes from `bubba8587/Solenoid-Properties` (release-only: manifest, versions,
-  README, LICENSE, a workflow). Its `source.json` pins a commit here; the workflow builds that commit and attaches
-  `main.js`, `manifest.json`, `styles.css` and `third-party-licenses.txt` to a release tagged with the bare version.
-- **The bundle is the reviewed artifact.** `perfProbe` is now shimmed (it registered two globals and logged on
-  import); the rest of the `console.log` strings left in `main.js` are chrono-node's debug branch. The plugin
-  build emits `third-party-licenses.txt` beside its files, and `test.yml` runs `npm run plugin:build`.
-- **Bundle hygiene since:** `nativeAccent` is shimmed (it carried the Tauri API into `main.js`), and `onload`
-  always sets the palette from the vault's `data.json`, because the store also reads `localStorage` and Obsidian
-  shares that across vaults. The release workflow's build-only run passes against the pin.
-- **The manifest stands as written** (author 2026-09-21): `minAppVersion` `1.9.0`, Title Case type names,
-  `isDesktopOnly` false.
-- **Left for the author:** a README rewrite with screenshots in the plugin repo, then the go to publish release
-  `0.1.0`, and the submission through community.obsidian.md (the `obsidian-releases` PR path is retired).
+### SESSION DIGEST (2026-10-02: palettes, status colors and ink; cloud session)
+- **New palettes, all derived from Default, none authored** ([[B14]] oneDesignSystem; `palette-and-theme` § The built-in palettes): **Neon** (HSV push to 65% of full, a brightness-seeking hue nudge capped at a third of each neighbor gap, 4.5:1 on black, never closer than Default's gold/lime; chrome polarized off Default's ramps) and **Dawn and Dusk** (Default's slots at 65% chroma, tinted 10% toward plasma's dusk burgundy; chrome takes plasma's two ends, ground from one and ink from the other). Plasma is Dawn and Dusk's inspiration only; the author ruled harmony with the grounds over separation (gold/lime closest at about 68% of the socket floor).
+- **Equinox** keeps Default's OKLab lightness as grays, stretched onto 0.42 to 0.9, and its chrome is polarized at 0.3 (`polarizeRamp` takes a strength).
+- **Tinted canvases sit further below their cards** (`deepenCanvas`, § The canvas step on tinted ramps): Solarized, Orchard, Blueprint, Dawn and Dusk step 0.10 (dark) / 0.05 (light); the dot grid keeps its contrast; judge against ungrouped cards, since a group's tint already lifts its members.
+- **Status colors are palette tokens**: `--sol-ok` (green) and `--sol-warn` (gold) beside `--sol-error`; every hard-coded success, warning and error hex reads them. Slider thumb, syntax highlighting and autocomplete tags follow the palette (DESIGN.md § Status).
+- **Ink follows Android Chrome's rule** (`contrastInk`): white only where white clears 3:1 WCAG contrast, so the accent's ink matches the browser's theme-color toolbar.
+- `shot-graph.mjs` takes `--palette <name>` and `--light`. PIVOTBY list/grid cells are parked on `pivot-list-cells` (reverted on `develop`; a merge needs the revert reverted).
 
-### SESSION DIGEST (2026-09-20b — Solenoid Properties, the Obsidian plugin; author present)
+### SESSION DIGEST (2026-10-01b: mechanical backlog sweep; cloud session)
+- Seven 09-29 commit-walk leads landed (author: "anything mechanical you're confident in"): the Distribution card's form and op switches (right cable pruned, kept params relabeled, the Sample form's hidden Draws field back), CHISQ/F/GAMMA at x = 0 and below as Excel answers (the three stray formula paths now run `DIST_SPECS`), SUMIFS and Get Column drop a stale async read, AI Apply refuses when the document moved under its diff, dead VARP/STDEVP rows, the value-semantics `autoLiterals` list.
+- Second batch ("keep going"): Write Tasks refuses while TaskNotes shows the demo (and the fetch key carries the demo state), section folds record undo, SEARCH reads Excel's wildcards (one kernel with the criteria functions, card and formula), XNPV refuses an earlier date on card and formula, GROUPBY totals keep a min/max of dates a date, Add Column's Add as keeps a cable the new type accepts (`retypeInputCables`; the three Frame-card socket swaps moved into their classes), binomial sampling walks the CDF once (100k draws over 1000 trials: ~7 s to ~45 ms, same draws), Convert shares `numberFormatOptions`.
+- Left for a ruling, though small: chart compact ticks (nine call sites and the gutter-width measure), Running over unit lists (per-position dimension for PRODUCT, °C sums), the Frame popup's stray format on a cancelled new column (which names Cancel should drop), UUID and undo, CI on `develop` (build minutes).
 
-On `develop`, pushed. tsc + vitest green. The rule is [[C107]] obsidianPlugin and the mechanics, the type table and
-every divergence from the app are `specs/obsidian-plugin.md`; this is what is in neither.
-- **Build and try:** `npm run plugin:build` (or `plugin:dev` to watch) writes `main.js`, `styles.css` and
-  `manifest.json` into `demo-vault/.obsidian/plugins/solenoid-properties/`; reload Obsidian after a build. The test
-  note is `demo-vault/Solenoid/Property types.md`; its keys are typed in `.obsidian/types.json`.
-- **Obsidian's property-widget API is undocumented.** Read from the 1.13.7 `app.js`: a widget is
-  `{type, icon, name(), validate(value), render(el, value, ctx)}` in `app.metadataTypeManager.registeredTypeWidgets`,
-  `ctx` is `{app, key, onChange, sourcePath, blur}`, and `render` returns an object with `focus()`. On a value
-  `validate` refuses it warns and shows the inferred type (the one exception is the type-switch bullet below), it
-  skips re-rendering a focused property (the chip keeps its own state for that), and it turns an empty list into
-  null on save.
-- **What Shadow DOM cost:** a click-outside handler must read `composedPath()[0]` (the target is the host), a portal
-  aimed at `document.body` is redirected into the popup layer (`shims/reactDom.ts`, app code only: react-dom/client
-  needs the real module), and `@font-face` has to live in the document, so the fonts ride `styles.css` as data URIs.
-- **Cutting the bundle** (693 modules to about 190, `main.js` 450 KB): the shims, plus three app-side import fixes
-  that stand on their own. `useHeaderHeightVar` and the Record layout helpers (`recordLayout.ts`) moved out of files
-  that import every node class, and date formatting imports `nodes/dateSerial`, not `nodes/date`.
-- **Found on the way:** the note reader dropped a cube row whose value is a table (it read the key as a text list);
-  `readRow` now nests. A YAML boolean column infers as Number through `frameFromRecords`, so the plugin types a
-  frame from the cell text instead.
-- **Verify against REAL Obsidian, not a fake module.** The fake passed while the plugin was broken twice: the
-  settings page is a separate window (its own document, so shared constructed stylesheets adopt nowhere), and a
-  property row is built off-document and attached after `render` returns (so a "drop disconnected mounts" sweep
-  unmounted every chip but the last). The rig: `Xephyr :7`, then `/opt/Obsidian/obsidian --no-sandbox
-  --user-data-dir=<scratch> --remote-debugging-port=9333` with an `obsidian.json` naming a COPY of the vault;
-  puppeteer `connect` reaches `window.app` (`plugins.disablePlugin/enablePlugin` to reload a build,
-  `setting.openTabById`, `metadataTypeManager.setType`, a leaf's `view.metadataEditor.rendered`). The author's own
-  Obsidian is untouched. Spec § Verifying against real Obsidian.
-- **A type switch hands a widget the OLD value.** Property menu → a type over incompatible data → "Update" calls
-  `renderProperty(entry, true, true)`, the chosen widget over a value its `validate` refused; `setType` alone never
-  does. `coerceYaml` reshapes it for display and edit, and nothing is written until Save. Not verified: Bases.
-- **"Refresh All Connections does nothing in the release build" was settings, not refresh.** The two desktop apps
-  keep separate settings: the release app's origin is `tauri://localhost`, the debug app's `http://localhost:1420`
-  (`~/.local/share/com.solenoid.app/localstorage/` holds one store each). A vault folder set in one is unset in the
-  other, and an unset vault falls back to the demo vault ([[D62]] demoVaultResolution), which a BUILT app bakes in
-  as a snapshot while the dev server reads it live from disk. The Vault Folder card now says "Demo vault" when that
-  is what it reads.
-- **Author rulings this session**, all recorded in the spec: `sm` chips; a popup wears its TYPE's socket color
-  (no launching node to inherit from); a popup sizes to the note's pane, not the window; the list editor the app
-  does not have is a fine workaround; the settings page is the app's palette row with the real `SwatchGrid` and no
-  sample chips; a list or matrix wears its family's Obsidian icon. Open follow-ups: `backlog.md` § Obsidian.
+### SESSION DIGEST (2026-10-01: the unratified tree rewritten to the author's leaf test; cloud session)
+- **A Why may lean on its parent, downhill only** (`docs/dte.md` § Solenoid practice; author): "we want A, thus we want B", never specifics piled up to justify the parent; a parent the call doesn't follow from is usually the wrong parent.
+- **Every unratified B to E leaf rewritten** to the author's test (a call a person could weigh; "this works and doesn't not work" is spec): Decisions cut to the call in plain words, Whys to the plain reason, mechanics, per-function lists and the author's detail rulings moved into their specs (input-roles § Rulings, obsidian-plugin, formula-language § Lists, columns and tables, and others).
+- **New C118 formatTravelsWithValue** (a value's format is set with a node and travels with it), the call C94 stood in for; D41 and D94 refine it.
+- **Retired into specs:** C64, C94, D16, D18, D34, D37, D42, D75 (how a feature works, not a call); citations repoint to the call each served.
+- **Reparented:** C92 and C93 to B20 alone, C117 to B16, D85 to C15, B19 to A5, C38 to B18.
+- Stale claims dropped on the way: C60 (a blank Window reads as left out, so cumulative), C68 (no file-name date tokens), C70 (a row fault is the node's `#VALUE!`, per E10), C107 (the plugin's opt-in look does restyle Obsidian).
+- **Second, aggressive pass** (author: "another pass. aggressive"): 25 more leaves retired into their specs (C13, C19, C21, C43, C60, C61, C62, C109, C111, C113, C116, D5, D21, D23, D63, D69, D71, D81, D83, D91, D92, D95, E16, B10, C41: conventions, applications of a parent, how a feature works, a library choice, a process order). MUST markers dropped except D73. The 98 unratified leaves now average 30 words of Decision and 22 of Why (the author's ratified ones run 22 to 46 and 14 to 44). D21 and D22 hang off B16, C42 off A1, D82 off C100 and C54.

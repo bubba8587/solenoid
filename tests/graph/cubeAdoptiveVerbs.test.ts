@@ -1,11 +1,12 @@
-// [[E2]]
+// [[C10]]
 import { describe, it, expect } from "vitest";
-import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode } from "../../src/graph/rete-nodes";
+import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode, ColumnsNode } from "../../src/graph/rete-nodes";
 import { wrapNodeData } from "../../src/graph/coerceInputs";
-import { cubeFromColumns, flatCubeToFrame, isFrameValue } from "../../src/graph/frame";
+import { cubeFromColumns, flatCubeToFrame, isFrameValue, isCubeValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
-import { canConnect } from "../../src/graph/sockets";
 import { collectPreview } from "../../src/graph/frameBackend";
+import type { ChartValue } from "../../src/graph/chartValue";
+const draw = (n: ChartNode, inputs: Parameters<ChartNode["data"]>[0]) => n.data(inputs) as { chart: ChartValue };
 
 // The author's ruling (2026-09-12): a cube never enters a frame socket through the lattice;
 // a verb that wants one gets a cube-adoptive INPUT and flattens inside data().
@@ -30,30 +31,44 @@ describe("flatCubeToFrame", () => {
 });
 
 describe("the lattice stays narrow; the nodes widen", () => {
-  it("cube → frame is still refused at the lattice", () => {
-    expect(canConnect("cube", "frame")).toBe(false);
-  });
-
   it("Window, GROUPBY and Chart declare cube-adoptive inputs", () => {
-    for (const n of [new WindowNode(), new GroupByFrameNode()]) expect(String((n.inputs.frame!.socket as { base?: string }).base)).toBe("cube");
+    for (const n of [new WindowNode(), new GroupByFrameNode(), new ColumnsNode()]) expect(String((n.inputs.frame!.socket as { base?: string }).base)).toBe("cube");
     expect(String((new ChartNode().inputs.values!.socket as { base?: string }).base)).toBe("cube");
   });
 
-  it("Window over a flat cube runs; over a nested cube it is the loud #SHAPE!", async () => {
-    const w = new WindowNode({ agg: "rolling" } as never);
+  it("Window over a cube appends its column and keeps the cube, nested columns included", async () => {
+    const w = new WindowNode({ agg: "rolling_avg" });
     w.stringLiterals.column = "Steps"; w.stringLiterals.name = "Avg"; w.literals.n = 2;
-    const ok = await w.data({ frame: [flat] });
-    const out = await collectPreview(ok.frame as never);
-    expect(isFrameValue(out) && out.columns.some((c) => c.name === "Avg")).toBe(true);
-    const bad = await w.data({ frame: [nested] });
-    expect(isSolError(bad.frame) && bad.frame.code).toBe("#SHAPE!");
+    const ok = (await w.data({ frame: [flat] })).frame;
+    expect(isCubeValue(ok) && ok.columns.map((c) => c.name)).toEqual(["Day", "Steps", "Avg"]);
+    expect(isCubeValue(ok) && ok.columns[2].cells).toEqual([null, 5000, 5500]);
+    const withTags = cubeFromColumns([...flat.columns, { name: "Tags", cells: [["a"], [], ["b"]] }]);
+    const kept = (await w.data({ frame: [withTags] })).frame;
+    expect(isCubeValue(kept) && kept.columns.map((c) => c.name)).toEqual(["Day", "Steps", "Tags", "Avg"]);
+    // A column the function READS must still be scalar.
+    w.stringLiterals.column = "Tags";
+    const bad = (await w.data({ frame: [withTags] })).frame;
+    expect(isSolError(bad) && bad.code).toBe("#SHAPE!");
+  });
+
+  it("Columns keeps or drops cube columns, so a vault cube can be trimmed to flat rows", async () => {
+    const withTags = cubeFromColumns([...flat.columns, { name: "Tags", cells: [["a"], [], ["b"]] }]);
+    const keep = new ColumnsNode(); keep.stringLiterals.columns = "Steps,Day";
+    const k = (await keep.data({ frame: [withTags], columns: [["Steps", "Day"]] })).frame;
+    expect(isCubeValue(k) && k.columns.map((c) => c.name)).toEqual(["Steps", "Day"]);
+    const d = (await new ColumnsNode({ op: "drop" }).data({ frame: [withTags], columns: [["Tags", "nope"]] })).frame;
+    expect(isCubeValue(d) && d.columns.map((c) => c.name)).toEqual(["Day", "Steps"]);
+    const miss = (await new ColumnsNode().data({ frame: [withTags], columns: [["nope"]] })).frame;
+    expect(isSolError(miss) && miss.code).toBe("#REF!");
   });
 
   it("Chart over a flat cube draws its numeric column", () => {
     const c = new ChartNode();
-    const out = c.data({ values: [flat] });
+    const out = draw(c, { values: [flat] });
     expect(out.chart.values).toEqual([4000, 6000, 5000]);
-    expect(c.data({ values: [nested] }).chart.values).toBeNull();
+    // A list column has nothing to plot; the chart draws the rest.
+    const withTags = cubeFromColumns([...flat.columns, { name: "Tags", cells: [["a"], [], ["b"]] }]);
+    expect(draw(c, { values: [withTags] }).chart.values).toEqual([4000, 6000, 5000]);
   });
 });
 
@@ -62,6 +77,21 @@ describe("the cube-adoptive input still widens a bare list / matrix (the old fra
     wrapNodeData(n as Parameters<typeof wrapNodeData>[0]);
     return (n as { data: (i: Record<string, unknown[]>) => Promise<{ frame: unknown }> }).data(inputs);
   };
+  it("GROUPBY over a cube reads only its key and value columns, list columns elsewhere included", async () => {
+    const g = new GroupByFrameNode();
+    g.stringLiterals.column = "Steps";
+    const cube = cubeFromColumns([
+      { name: "Day", cells: ["Mon", "Mon", "Tue"], type: "string" },
+      { name: "Steps", cells: [1, 2, 3], type: "number" },
+      { name: "Tags", cells: [["a"], [], ["b"]] },
+    ]);
+    const out = await g.data({ frame: [cube], keys: [["Day"]] });
+    const f = await collectPreview(out.frame as never);
+    expect(isFrameValue(f) && f.columns.map((c) => c.values)).toEqual([["Mon", "Tue"], [3, 3]]);
+    g.stringLiterals.column = "Tags";
+    const bad = await g.data({ frame: [cube], keys: [["Day"]] });
+    expect(isSolError(bad.frame) && bad.frame.code).toBe("#SHAPE!");
+  });
   it("GROUPBY over a wired 2-D table groups it", async () => {
     const g = new GroupByFrameNode();
     g.stringLiterals.column = "Col2";
@@ -70,7 +100,7 @@ describe("the cube-adoptive input still widens a bare list / matrix (the old fra
     expect(isFrameValue(f) && f.columns.map((c) => c.values)).toEqual([["x"], [3]]);
   });
   it("Window over a wired list runs on the one-row frame", async () => {
-    const w = new WindowNode({ agg: "rolling" } as never);
+    const w = new WindowNode({ agg: "rolling_avg" });
     w.stringLiterals.column = "Col1"; w.stringLiterals.name = "Avg"; w.literals.n = 1;
     const out = await drive(w, { frame: [[1, 2, 3]] });
     const f = await collectPreview(out.frame as never);
@@ -86,5 +116,28 @@ describe("the cube-adoptive input still widens a bare list / matrix (the old fra
     const c = cubeFromColumns([{ name: "When", cells: [46000], type: "date", format: { format: "datetime", unit: "none" } as never }]);
     const f = flatCubeToFrame(c);
     expect(isFrameValue(f) && f.columns[0].format?.format).toBe("datetime");
+  });
+});
+
+describe("a vault-shaped cube (list columns beside scalar ones) reaches the aggregators", () => {
+  const vault = cubeFromColumns([
+    { name: "status", cells: ["open", "done", "open"], type: "string" },
+    { name: "hours", cells: [2, 3, 4], type: "number" },
+    { name: "tags", cells: [["a"], [], ["b"]] },
+  ]);
+
+  it("PIVOTBY offers the scalar columns as fields and pivots on them", async () => {
+    const { PivotNode } = await import("../../src/graph/rete-nodes");
+    const p = new PivotNode();
+    const out = await p.data({ frame: [vault], rowFields: [["status"]], colFields: [[]], values: [["hours"]] });
+    expect(p.sourceColumns.map((c) => c.name)).toEqual(["status", "hours"]);
+    expect(isFrameValue(out.frame) && out.frame.columns[1].values.slice(0, 2)).toEqual([6, 3]);
+  });
+
+  it("SUMIFS sums a cube's column by a condition", async () => {
+    const { SumIfsNode } = await import("../../src/graph/rete-nodes");
+    const s = new SumIfsNode();
+    s.stringLiterals.values = "hours"; s.stringLiterals.column0 = "status"; s.stringLiterals.value0 = "open";
+    expect(s.data({ frame: [vault] }).result).toBe(6);
   });
 });

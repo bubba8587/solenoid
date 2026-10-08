@@ -1,12 +1,12 @@
-// Result-type selector for the value-polymorphic producers (Expression, MAP,
-// BYROW/BYCOL, REDUCE, MAKEARRAY) — an in-place socket retype, so it must reconcile.
+// [[B11]] maximalMerge: the result-type toggle is an in-place socket retype, so it must reconcile.
 import { useEffect, useState } from "react";
 import type { ClassicPreset } from "rete";
 import { resultSocket, RESULT_TYPE_META, type ResultType, type ResultDim } from "../nodes/shared";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { SegToggle } from "./SegToggle";
+import { TypeIcon } from "./TypeIcon";
 
 type Producer = {
   id: string;
@@ -16,7 +16,7 @@ type Producer = {
 
 const RESULT_TYPE_OPTIONS = (Object.keys(RESULT_TYPE_META) as ResultType[]).map((value) => ({
   value,
-  label: RESULT_TYPE_META[value].label,
+  label: value === "auto" ? RESULT_TYPE_META[value].label : <TypeIcon type={value} />,
   title: RESULT_TYPE_META[value].title,
 }));
 
@@ -24,8 +24,8 @@ export async function applyResultAs(node: Producer, dim: ResultDim, resultAs: Re
   if (node.resultAs === resultAs) return;
   node.resultAs = resultAs;
 
-  const editor = getActiveEditor(); // active graph: result-type toggle inside a drill-in
-  const view = getActiveView();
+  const editor = getOwningEditor(node.id); // active graph: result-type toggle inside a drill-in
+  const view = getOwningView(node.id);
   const out = node.outputs.result;
   if (out) out.socket = resultSocket(dim, resultAs);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "result");

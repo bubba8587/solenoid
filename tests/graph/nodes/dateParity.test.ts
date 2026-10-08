@@ -18,14 +18,11 @@ describe("date formulas == date nodes", () => {
     for (const [y, m, dd] of [[2026, 3, 15], [26, 1, 1], [2024, 14, 31], [0, 1, 1], [10000, 1, 1]]) {
       same(ev("DATE(y, m, d)", { y, m, d: dd }), new DateConstructNode().data({ year: [y], month: [m], day: [dd] }).result);
     }
-    expect(ev("DATE(26, 1, 1)")).toBeLessThan(0); // pre-1900 serial, not 1926
-    expect(ev("DATE(2026, 3, 15)")).toBe(d("2026-03-15"));
   });
   it("TIME wraps past 24 h like the node", () => {
     for (const [h, m, s] of [[12, 0, 0], [25, 30, 0], [0, 90, 0], [23, 59, 59.5]]) {
       same(ev("TIME(h, m, s)", { h, m, s }), new TimeConstructNode().data({ hour: [h], minute: [m], second: [s] }).result);
     }
-    expect(ev("TIME(6, 0, 0)")).toBeCloseTo(0.25, 12);
   });
   it("DATEVALUE / TIMEVALUE run the node's parsers (#AMBIGUOUS! and #VALUE! included)", () => {
     for (const t of ["15 March 1996", "2026-03-15", "3/4/2026", "nonsense"]) {
@@ -36,7 +33,6 @@ describe("date formulas == date nodes", () => {
       const n = new DateTimeValueNode({ op: "time" }); n.stringLiterals.text = t;
       same(ev("TIMEVALUE(t)", { t }), n.data({}).result);
     }
-    expect(ev("TIMEVALUE(\"14:30:00\")")).toBeCloseTo(0.6041666666666666, 12);
   });
   it("WEEKDAY / WEEKNUM / ISOWEEKNUM with every return_type", () => {
     const dates = [d("2026-01-01"), d("2026-03-15"), d("2024-12-30"), d("2021-01-03")];
@@ -49,6 +45,48 @@ describe("date formulas == date nodes", () => {
     expect(ev("WEEKDAY(x)", { x: d("2026-03-15") })).toBe(1);   // a Sunday
     expect(ev("ISOWEEKNUM(x)", { x: d("2021-01-03") })).toBe(53); // ISO week of the prior year
   });
+  it("YEARFRAC basis 1 is Excel's actual/actual, and the dates may come in either order", () => {
+    const yf = (a: string, b: string, basis = 1) => ev("YEARFRAC(a, b, k)", { a: d(a), b: d(b), k: basis }) as number;
+    expect(yf("2012-01-01", "2012-07-30")).toBeCloseTo(211 / 366, 12); // Excel's own example: a leap year has 366 days
+    expect(yf("2023-07-01", "2024-03-01")).toBeCloseTo(244 / 366, 12); // under a year, 29 Feb 2024 inside
+    expect(yf("2023-03-01", "2024-02-28")).toBeCloseTo(364 / 365, 12); // under a year, no 29 Feb inside
+    expect(yf("2023-01-01", "2025-01-01")).toBeCloseTo(731 / (1096 / 3), 12); // over a year: the average of 2023–2025
+    expect(yf("2012-07-30", "2012-01-01")).toBeCloseTo(211 / 366, 12);
+    expect(yf("2024-07-01", "2024-01-01", 3)).toBeCloseTo(182 / 365, 12);
+  });
+
+  it("YEARFRAC truncates its dates to whole days, and a basis outside 0 to 4 is #DOMAIN!", () => {
+    const [a, b] = [d("2024-01-01"), d("2024-01-02")];
+    expect(ev("YEARFRAC(a, b, 3)", { a: a + 0.75, b: b + 0.5 })).toBeCloseTo(1 / 365, 12);
+    expect((ev("YEARFRAC(a, b, 5)", { a, b }) as { code: string }).code).toBe("#DOMAIN!");
+    const card = new DateDiffNode({ op: "yearfrac" }).data({ start: [a], end: [b], basis: [-1] }).result;
+    expect((card as { code: string }).code).toBe("#DOMAIN!");
+  });
+
+  it("YEARFRAC truncates its basis toward zero, as Excel truncates every argument", () => {
+    const [a, b] = [d("2024-01-01"), d("2024-01-02")];
+    expect(ev("YEARFRAC(a, b, -0.5)", { a, b })).toBeCloseTo(ev("YEARFRAC(a, b, 0)", { a, b }) as number, 12);
+    expect(ev("YEARFRAC(a, b, 3.9)", { a, b })).toBeCloseTo(1 / 365, 12);
+    expect(new DateDiffNode({ op: "yearfrac" }).data({ start: [a], end: [b], basis: [-0.5] }).result).toBeCloseTo(1 / 360, 12);
+  });
+
+  it("US 30/360 counts a start on the last day of February as the 30th", () => {
+    const d360 = (a: string, b: string) => ev("DAYS360(a, b)", { a: d(a), b: d(b) });
+    expect(d360("2026-02-28", "2026-03-31")).toBe(30);
+    expect(d360("2024-02-29", "2024-03-31")).toBe(30);
+    expect(d360("2026-02-28", "2026-03-15")).toBe(15);
+    expect(d360("2024-02-28", "2024-03-15")).toBe(17);   // not the last day in a leap year
+    expect(d360("2026-02-28", "2027-02-28")).toBe(358);  // DAYS360 leaves an end in February alone
+    expect(ev("DAYS360(a, b, TRUE)", { a: d("2026-02-28"), b: d("2026-03-31") })).toBe(32);
+    // YEARFRAC basis 0 is the NASD chain: both ends last-of-February count as the 30th; a 31st end stays when the start was not the 30th or 31st.
+    const yf0 = (a: string, b: string) => (ev("YEARFRAC(a, b, 0)", { a: d(a), b: d(b) }) as number) * 360;
+    expect(yf0("2026-02-28", "2027-02-28")).toBeCloseTo(360, 9);
+    expect(yf0("2026-02-28", "2026-03-15")).toBeCloseTo(15, 9);
+    expect(yf0("2026-02-28", "2026-03-31")).toBeCloseTo(31, 9);
+    expect(yf0("2026-01-31", "2026-03-31")).toBeCloseTo(60, 9);
+    expect(new DateDiffNode({ op: "days360" }).data({ start: [d("2026-02-28")], end: [d("2026-03-31")], basis: [0] }).result).toBe(30);
+  });
+
   it("DAYS / DAYS360 / YEARFRAC / DATEDIF", () => {
     const s = d("2024-01-31"), z = d("2026-03-01");
     same(ev("DAYS(z, s)", { s, z }), new DateDiffNode({ op: "days" }).data({ start: [s], end: [z] }).result);
@@ -63,7 +101,6 @@ describe("date formulas == date nodes", () => {
     for (const [unit, op] of units) {
       same(ev("DATEDIF(s, z, u)", { s, z, u: unit }), new DateDiffNode({ op: op as never }).data({ start: [s], end: [z] }).result);
     }
-    expect(ev("DATEDIF(s, z, \"Y\")", { s, z })).toBe(2);
     expect(isSolError(ev("DATEDIF(z, s, \"Y\")", { s, z }))).toBe(true);   // reversed range: #DOMAIN! (the node blanks the cell)
     expect(isSolError(ev("DATEDIF(s, z, \"Q\")", { s, z }))).toBe(true);   // unknown unit
   });

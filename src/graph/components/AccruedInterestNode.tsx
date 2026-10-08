@@ -1,8 +1,7 @@
-// [[D10]] onePrunePath
 import { useState } from "react";
 import { ACCRUED_INTEREST_OP_OPTIONS, type AccruedInterestNode as AccruedInterestNodeType, type AccruedInterestOp } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { OpToggle } from "./SegToggle";
@@ -17,7 +16,7 @@ export function AccruedInterestComponent({ data, emit }: NodeProps<AccruedIntere
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
     setOp(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 

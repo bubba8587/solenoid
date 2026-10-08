@@ -6,9 +6,10 @@ import { ListIndexNode } from "../../../src/graph/nodes/list";
 import { InterpolateNode } from "../../../src/graph/nodes/stats";
 import { NODE_COMPONENTS } from "../../../src/graph/nodeRegistry";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
-import { MutableSocket, SolenoidSocket, AdoptiveSocket } from "../../../src/graph/sockets";
+import { MutableSocket } from "../../../src/graph/sockets";
 import { withMatrixUnit, matrixUnitOf, fromUnit, isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
-import { fcUnitToUnit } from "../../../src/graph/unitBridge";
+import { fcUnitToUnit, applyFcUnit } from "../../../src/graph/unitBridge";
+import { FormatControllerNode } from "../../../src/graph/nodes/formatController";
 
 // ─── The matrix-unit POLICY guard (unitGranularity) ──────────────────────────────────────
 // A matrix carries ONE whole-grid unit as a non-enumerable Symbol tag (unitValue.ts).
@@ -55,7 +56,7 @@ const POLICY: Record<string, Policy> = {
   ChartNode: "na",                // visuals: a chart value out, no dimensioned matrix output
   SurfaceNode: "na",
   QuiverNode: "na",
-  HeatmapCellNode: "na",
+  HeatmapNode: "na",
   TableInputNode: "author",       // a literal source that tags its own output
 };
 
@@ -155,9 +156,9 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
       .toBeUndefined();
   });
 
-  it("convert-to-list: TOCOL / TOROW flatten a grid unit into per-cell list tags", () => {
-    const col = new M.TableReshapeNode({ op: "tocol" }).data({ matrix: [kmGrid()] }).result as unknown[];
-    expect(col.every((c) => isUnitCell(c) && (c as UnitCell).display === "km")).toBe(true);
+  it("TOCOL keeps the grid unit on its column; TOROW flattens it into per-cell list tags", () => {
+    const col = new M.TableReshapeNode({ op: "tocol" }).data({ matrix: [kmGrid()] }).result;
+    expect(matrixUnitOf(col)).toMatchObject({ display: "km" });
     const row = new M.TableReshapeNode({ op: "torow" }).data({ matrix: [kmGrid()] }).result as unknown[];
     expect(row.every((c) => isUnitCell(c) && (c as UnitCell).display === "km")).toBe(true);
   });
@@ -216,5 +217,25 @@ describe("matrix-unit policy — INDEX extraction (list.ts) carries the unit out
   });
 });
 
-// Guard the guard: keep the imports honest (unused-import trip if a helper is dropped).
-void SolenoidSocket; void AdoptiveSocket;
+describe("an FC on a matrix that already carries a unit never relabels it ([[C25]] firstClassUnits)", () => {
+  const km = () => withMatrixUnit([[5, 2]], { dim: fcUnitToUnit("km")!.dim, display: "km" });
+
+  it("an incommensurable unit is #UNIT!, not a new tag", () => {
+    const out = applyFcUnit(km(), "s") as { code?: string };
+    expect(out.code).toBe("#UNIT!");
+  });
+  it("a commensurable unit re-displays: the cells rescale, the value stands", () => {
+    const out = applyFcUnit(km(), "m") as number[][];
+    expect(out).toEqual([[5000, 2000]]);
+    expect(matrixUnitOf(out)?.display).toBe("m");
+  });
+  it("the FC mirrors a grid's unit and locks, as it does for a scalar", () => {
+    const fc = new FormatControllerNode();
+    fc.unit = "m";
+    const out = fc.data({ in: [km()] }).out as number[][];
+    expect(fc.unit).toBe("km");
+    expect(fc.forwarding).toBe(true);
+    expect(out).toEqual([[5, 2]]);
+    expect(matrixUnitOf(out)?.display).toBe("km");
+  });
+});

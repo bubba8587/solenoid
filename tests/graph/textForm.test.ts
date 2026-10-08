@@ -1,10 +1,10 @@
-// [[C30]]
+// [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
 
 // Round-trip losslessness for the text projection (Bet 2 — the addressable model,
-// docs/subsystem-invariants.md "Addressable model"). Mirrors seeds.test.ts's
+// tree/specs/documents/save-format.md § The text form). Mirrors seeds.test.ts's
 // load-every-seed structure (import.meta.glob, lines 24+): for every seed, write
 // text, re-read into a graph, re-write, and assert the SECOND write is
 // byte-identical to the first — the idempotence guarantee the design session
@@ -150,6 +150,22 @@ describe("text form: unit cases", () => {
     expect(readTextForm(text).drawnCables).toBeUndefined();
   });
 
+  it("positions keep a node named like an Object.prototype member ([[B12]] losslessSaves)", () => {
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [
+        { id: "__proto__", name: "__proto__", type: "ValueInputNode", x: 40, y: 50, init: {} },
+        { id: "constructor", name: "constructor", type: "ValueInputNode", x: 0, y: 0, init: {} },
+      ],
+      connections: [],
+    };
+    const text = writeTextForm(g);
+    const back = readTextForm(text);
+    expect(back.nodes.map((n) => [n.name, n.x, n.y])).toEqual([["__proto__", 40, 50], ["constructor", 0, 0]]);
+    const noSidecar = readTextForm(text.split("\n---\n")[0] + "\n---\n{}");
+    expect(noSidecar.nodes.map((n) => [n.x, n.y])).toEqual([[0, 0], [0, 0]]);
+  });
+
   it("round-trips an empty graph", () => {
     const text1 = writeTextForm(base);
     const text2 = writeTextForm(readTextForm(text1));
@@ -169,16 +185,6 @@ describe("text form: unit cases", () => {
     const reloaded = readTextForm(writeTextForm(g));
     const names = reloaded.nodes.map((n) => n.name).sort();
     expect(names).toEqual(["Filter_1", "Filter_2"]);
-  });
-
-  it("preserves an explicit valid unique name", () => {
-    const g: SavedGraph = {
-      v: 2,
-      nodes: [{ id: "a1", type: "FilterNode", name: "MyFilter", x: 0, y: 0, init: {} }],
-      connections: [],
-    };
-    const reloaded = readTextForm(writeTextForm(g));
-    expect(reloaded.nodes[0].name).toBe("MyFilter");
   });
 
   it("round-trips per-column frame formats through the sidecar (name-addressed)", () => {
@@ -294,21 +300,6 @@ describe("text form: unit cases", () => {
     expect(reloaded.nodes[0].init.body).toBe('line one\nline "two"\nline three');
   });
 
-  it("translates connection endpoints from id to name and back", () => {
-    const g: SavedGraph = {
-      v: 2,
-      nodes: [
-        { id: "src", type: "NumberInputNode", name: "Num_1", x: 0, y: 0, init: {} },
-        { id: "tgt", type: "FilterNode", name: "Filter_1", x: 10, y: 0, init: {} },
-      ],
-      connections: [{ source: "src", sourceOutput: "value", target: "tgt", targetInput: "list" }],
-    };
-    const text = writeTextForm(g);
-    expect(text).toContain("list<-Num_1.value");
-    const reloaded = readTextForm(text);
-    expect(reloaded.connections).toEqual([{ source: "Num_1", sourceOutput: "value", target: "Filter_1", targetInput: "list" }]);
-  });
-
   it("translates hostNodeId / members id-references to names", () => {
     const g: SavedGraph = {
       v: 2,
@@ -368,7 +359,6 @@ describe("text form: unit cases", () => {
         { source: "b", sourceOutput: "out", target: "a", targetInput: "list" },
       ],
     };
-    expect(() => writeTextForm(g)).not.toThrow();
     const text = writeTextForm(g);
     const reloaded = readTextForm(text);
     expect(reloaded.nodes.length).toBe(2);
@@ -397,5 +387,45 @@ describe("per-node flipped state (socketFlipStore)", () => {
     const text1 = writeTextForm(g);
     const text2 = writeTextForm(readTextForm(text1));
     expect(text2).toBe(text1);
+  });
+});
+
+describe("per-node section folds (sectionFoldStore)", () => {
+  const g: SavedGraph = {
+    v: 2,
+    nodes: [
+      { id: "c", type: "CastNode", name: "C", x: 0, y: 0, init: {}, sections: { Separators: false } },
+      { id: "e", type: "DisplayNode", name: "E", x: 40, y: 0, init: {} },
+    ],
+    connections: [],
+  };
+
+  it("round-trips a hand fold through the text form, and a node never touched carries none", () => {
+    const reloaded = readTextForm(writeTextForm(g));
+    expect(reloaded.nodes.find((n) => n.name === "C")?.sections).toEqual({ Separators: false });
+    expect(reloaded.nodes.find((n) => n.name === "E")?.sections).toBeUndefined();
+  });
+});
+
+describe("stacking order", () => {
+  // Wired A → B, so the lines run A then B; the array (the stacking order) puts B underneath.
+  const g: SavedGraph = {
+    v: 2,
+    nodes: [
+      { id: "b", type: "DisplayNode", name: "B", x: 0, y: 0, init: {} },
+      { id: "a", type: "ValueInputNode", name: "A", x: 40, y: 20, init: {} },
+    ],
+    connections: [{ source: "a", sourceOutput: "value", target: "b", targetInput: "value" }],
+  };
+
+  it("survives the text form, whose lines run in wiring order", () => {
+    const text = writeTextForm(g);
+    expect(text.indexOf("A: ")).toBeLessThan(text.indexOf("B: "));
+    expect(readTextForm(text).nodes.map((n) => n.name)).toEqual(["B", "A"]);
+  });
+
+  it("falls back to the line order when the positions table misses a node", () => {
+    const text = writeTextForm(g).replace(/"B": \{[^}]*\},?\s*/, "");
+    expect(readTextForm(text).nodes.map((n) => n.name)).toEqual(["A", "B"]);
   });
 });

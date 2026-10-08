@@ -5,6 +5,7 @@ import { NodeShell, ArgSelect, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
+import { useDraftCommit } from "./inlineInput";
 import "./ColorPickerNode.css";
 import { stopDragStart } from "../coarse";
 
@@ -34,7 +35,7 @@ const CHANNELS: Record<"rgb" | "hsv", { key: ChKey; label: string; max: number }
   ],
 };
 
-// The slider track gradient: the color as THAT channel sweeps, others held.
+// The color as that channel sweeps, the others held.
 function channelGradient(mode: "rgb" | "hsv", key: ChKey, ch: Ch): string {
   if (mode === "rgb") {
     const { c0: r, c1: g, c2: b } = ch;
@@ -55,7 +56,14 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
   const [mode, setMode] = useState<ColorMode>(data.mode);
   const [format, setFormat] = useState<ColorFormat>(data.format);
   const [ch, setCh] = useState<Ch>({ c0: data.literals.c0, c1: data.literals.c1, c2: data.literals.c2 });
-  const [hexDraft, setHexDraft] = useState(data.stringLiterals.hex ?? "#56b4e9");
+  const [hex, setHex] = useState(data.stringLiterals.hex ?? "#56b4e9");
+  // The hex field commits on Enter or blur, while the swatch tracks the draft live as a preview.
+  const hexField = useDraftCommit(hex, (v) => v, (t) => t, (v) => {
+    setHex(v);
+    data.stringLiterals.hex = v;
+    void processGraph(data.id);
+  });
+  const hexDraft = hexField.draft;
 
   const raw = mode === "hex"
     ? colord(hexDraft || "#000000")
@@ -77,7 +85,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
     if (next === mode) return;
     if (next === "hex") {
       const hx = c.toHex();
-      setHexDraft(hx);
+      setHex(hx);
       data.stringLiterals.hex = hx;
     } else {
       const nc: Ch = next === "hsv"
@@ -97,13 +105,6 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
     void processGraph(data.id);
   }
 
-  // Hex field commits on Enter / blur (project rule) but the swatch tracks the
-  // draft live so typing previews.
-  function commitHex() {
-    data.stringLiterals.hex = hexDraft;
-    void processGraph(data.id);
-  }
-
   const colorOut = data.outputs.color;
 
   return (
@@ -115,9 +116,9 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
             className="solenoid-colorpicker__hex"
             value={hexDraft}
             spellCheck={false}
-            onChange={(e) => setHexDraft(e.target.value)}
-            onBlur={commitHex}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+            onChange={(e) => hexField.setDraft(e.target.value)}
+            onBlur={hexField.onBlur}
+            onKeyDown={hexField.onKeyDown}
           />
         </div>
       ) : (
@@ -151,8 +152,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
         <ArgSelect value={format} onChange={changeFormat} options={FORMAT_OPTS} />
       </div>
 
-      {/* The color output socket is measured onto the swatch row so it sits next
-          to what it emits. */}
+        {/* Measured onto the swatch row, so the socket sits next to what it emits. */}
       {colorOut && (
         <MeasuredSocketRow side="output" socketKey="color" nodeId={data.id} emit={emit} payload={colorOut.socket}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, width: "100%" }}>

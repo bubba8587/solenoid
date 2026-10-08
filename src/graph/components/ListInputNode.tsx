@@ -1,30 +1,30 @@
-// [[D16]] retypeReconciles, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct (the type toggle is an argument)
-import { useEffect, useState } from "react";
+// [[D93]] oneTextReading, [[B11]] maximalMerge, [[C26]] opArgDistinct (the type toggle is an argument)
+import { useEffect, useState, type ReactNode } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { SolenoidSocket, canConnect } from "../sockets";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
+import { TypeIcon } from "./TypeIcon";
 import type { DisplayValue } from "./valueDisplayFormat";
 
-const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: string; title: string }> = [
-  { value: "number",  label: "Num",  title: "Number list" },
-  { value: "string",  label: "Text", title: "Text list" },
-  { value: "date",    label: "Date", title: "Date list" },
-  { value: "logical", label: "Bool", title: "TRUE or FALSE list" },
+const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: ReactNode; title: string }> = [
+  { value: "number",  label: <TypeIcon type="number" />, title: "Number list" },
+  { value: "string",  label: <TypeIcon type="string" />, title: "Text list" },
+  { value: "date",    label: <TypeIcon type="date" />, title: "Date list" },
+  { value: "logical", label: <TypeIcon type="logical" />, title: "Boolean list: TRUE or FALSE" },
 ];
 
-/** Switch the list's element type in place ([[D16]] retypeReconciles). */
 export async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
-  // Active graph: a List Input inside a Composite drill-in retypes its own graph's cables.
-  const editor = getActiveEditor();
-  const view = getActiveView();
+  // Active graph: a List Input inside a drill-in retypes its own graph's cables.
+  const editor = getOwningEditor(node.id);
+  const view = getOwningView(node.id);
   if (editor && view) {
-    // The row INPUT sockets were retyped too, and retypeOutputCables only walks outputs.
+    // The row input sockets were retyped too, and retypeOutputCables only walks outputs.
     const inType = (node.valueSocket as SolenoidSocket).dataType;
     for (const c of [...editor.getConnections()]) {
       if (c.target !== node.id) continue;
@@ -39,7 +39,6 @@ export async function applyListType(node: ListInputNodeType, dt: ListElemType): 
 }
 
 export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>) {
-  // Local mirror so the toggle re-renders on change; the handler swaps the socket types.
   const [dt, setDt] = useState<ListElemType>(data.dataType);
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
   return (
@@ -50,7 +49,10 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
         onChange={(next) => { setDt(next); void applyListType(data, next); }}
       />
       <ExtensibleInputs node={data} emit={emit} />
-      <ValueDisplay value={data.cachedList as DisplayValue} />
+      <ValueDisplay
+        value={data.cachedList as DisplayValue}
+        popupOverrides={data.cachedSource.some((t) => t !== null) ? { sourceCells: [data.cachedSource] } : undefined}
+      />
     </NodeShell>
   );
 }

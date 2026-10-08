@@ -6,6 +6,7 @@ import { coerceScriptResult } from "../../../src/graph/nodes/scriptCoerce";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/copyPaste";
+import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial } from "../../../src/graph/nodes/dateSerial";
 
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
@@ -176,10 +177,6 @@ describe("ScriptNode.data — frames and cubes in", () => {
       { name: "sales", type: "number", values: [10, 7] },
     ],
   };
-  it("a frame arrives as rows of {name: value} — the mirror of the output form", async () => {
-    const { result } = await run("(f) => f.map((r) => r.city + ':' + r.sales).join(' ')", { f: [frame] });
-    expect(result).toBe("Oslo:10 Riga:7");
-  });
   it("a script can round-trip a frame: read rows, return transformed rows", async () => {
     const { result, node } = await run("(f) => f.map((r) => ({ city: r.city, big: r.sales * 100 }))", { f: [frame] });
     const out = result as { __frame: true; columns: Array<{ name: string; type: string; values: unknown[] }> };
@@ -249,8 +246,17 @@ describe("persistence", () => {
     const back = new ScriptNode(init as ConstructorParameters<typeof ScriptNode>[0]);
     expect(back.expr).toBe("(a, b) => a");
     expect(back.label).toBe("Mine");
-    expect(init.a).toBe(2); // literals spread flat into the snapshot; the clone path copies the map
+    expect(init.a).toBeUndefined();
     expect(Object.keys(back.inputs)).toEqual(["a", "b"]);
+  });
+
+  it("a parameter named like an init field keeps both through the paste path", async () => {
+    const n = new ScriptNode({ expr: "(label) => label", literals: { label: 7 } });
+    n.label = "Mine";
+    expect(extractInit(n).label).toBe("Mine");
+    const back = await pasteCopy(n);
+    expect(back.label).toBe("Mine");
+    expect(back.literals.label).toBe(7);
   });
 });
 

@@ -1,25 +1,27 @@
-// [[D19]]
+// [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── [[D19]] implReteFree: the formula path must not pull in rete or the socket lattice ──────
+// ─── [[C17]] shareImpl: the formula path must not pull in rete or the socket lattice ──────
 // The headless evaluator (run-graph, the Expression host) loads excelFormula →
 // excelFunctions → the shared op modules. None of that may reach rete or
 // sockets.ts: the shared-impl modules exist precisely so both surfaces call one
-// implementation WITHOUT the formula surface loading the editor ([[D19]] implReteFree —
+// implementation WITHOUT the formula surface loading the editor ([[C17]] shareImpl —
 // previously UNENFORCED, and violated twice: excelFunctions reached rete through
 // nodes/date.ts and nodes/convert.ts until the serial layer and the unit table
 // were extracted to dateSerial.ts / convertUnits.ts).
 //
-// Walk the RELATIVE import graph from the formula roots and assert no visited
+// Walk the RELATIVE import graph from the formula roots (every pack's
+// packs/*Formulas.ts included) and assert no visited
 // module imports rete or sockets. The walk is static (import statements only),
 // which is exactly the property that matters — a type-only import still loads
 // the module at runtime under Vite unless marked `import type`, so plain
 // `import ... from "rete"` anywhere in the closure fails here.
 
 const SRC = path.resolve(__dirname, "../../src/graph");
-const ROOTS = ["excelFormula.ts", "excelFunctions.ts"];
+const PACK_FORMULAS = fs.readdirSync(path.join(SRC, "packs")).filter((f) => f.endsWith("Formulas.ts")).map((f) => `packs/${f}`);
+const ROOTS = ["excelFormula.ts", "excelFunctions.ts", ...PACK_FORMULAS];
 const BANNED = /^rete($|-)/;
 const BANNED_LOCAL = new Set(["sockets"]); // the lattice — nodes/shared.ts imports it, so shared is transitively banned too
 
@@ -43,8 +45,8 @@ function resolveLocal(fromFile: string, spec: string): string | null {
   return null;
 }
 
-describe("[[D19]] implReteFree — the formula path is rete-free", () => {
-  it("no module reachable from excelFormula/excelFunctions imports rete or sockets", () => {
+describe("[[C17]] shareImpl — the formula path is rete-free", () => {
+  it("no module reachable from excelFormula/excelFunctions/packs/*Formulas imports rete or sockets", () => {
     const offenders: string[] = [];
     const seen = new Set<string>();
     const queue: Array<{ file: string; via: string }> = ROOTS.map((r) => ({ file: path.join(SRC, r), via: r }));
@@ -62,6 +64,7 @@ describe("[[D19]] implReteFree — the formula path is rete-free", () => {
         queue.push({ file: local, via: `${via} → ${short}` });
       }
     }
+    expect(PACK_FORMULAS.length).toBeGreaterThan(0); // the pack roots were found
     expect(seen.size).toBeGreaterThan(5); // the walk actually walked
     expect(offenders, offenders.join("\n")).toEqual([]);
   });

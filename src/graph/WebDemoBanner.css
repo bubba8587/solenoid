@@ -1,6 +1,5 @@
 .solenoid-webdemo {
   position: absolute;
-  /* Clear of the full-width header (menu bar + toolbar). */
   top: calc(var(--chrome-top, 66px) + 14px);
   left: 50%;
   transform: translateX(-50%);
@@ -35,7 +34,6 @@
   filter: brightness(1.08);
 }
 
-/* Temporarily non-navigating (repo not public yet). */
 .solenoid-webdemo__download--disabled {
   opacity: 0.5;
   cursor: not-allowed;

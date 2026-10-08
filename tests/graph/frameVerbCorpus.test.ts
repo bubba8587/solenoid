@@ -1,10 +1,10 @@
-// [[D29]], [[D49]]
+// [[C16]] polarsEngine, [[D49]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { applyVerb, joinFrames, appendFrames, bindColumns, FRAME_OP_KINDS, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
 import type { FrameValue, FrameColumn, FrameCell } from "../../src/graph/frame";
-import { isSolError } from "../../src/graph/errorValue";
+import { isSolError, solError, ERROR_EXPLANATIONS, type SolErrorCode } from "../../src/graph/errorValue";
 
 // ─── The backend parity corpus, JS side ───────────────────────────────────────
 // One fixture set, both engines: every case here also runs through the Polars
@@ -58,10 +58,16 @@ const decodeCell = (v: unknown): FrameCell => {
   return v as FrameCell;
 };
 
+/** An input's `{"__err": code}` is a SolError cell, as the engine's upload reads it. */
+const decodeInputCell = (v: unknown): FrameCell => {
+  const code = (v as { __err?: string } | null)?.__err;
+  return typeof code === "string" ? solError(code as SolErrorCode, "corpus") : decodeCell(v);
+};
+
 function brand(wire: { columns: WireColumn[] }): FrameValue {
   return {
     __frame: true,
-    columns: wire.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(decodeCell) })),
+    columns: wire.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(decodeInputCell) })),
   };
 }
 
@@ -100,9 +106,6 @@ const corpus: CorpusFile[] = files.map((f) => JSON.parse(fs.readFileSync(path.jo
 
 describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, file) => {
   it.each(file.cases.map((c) => [c.name, c] as const))("%s", (_name, kase) => {
-    // Structural sanity the cargo side relies on too.
-    expect(kase.expect !== undefined || kase.expectError !== undefined, "a case needs expect XOR expectError").toBe(true);
-    expect(kase.expect !== undefined && kase.expectError !== undefined, "not both").toBe(false);
     const inputs = Object.fromEntries(Object.entries(kase.frames).map(([k, w]) => [k, brand(w)]));
     const before = Object.fromEntries(Object.entries(inputs).map(([k, f]) => [k, dump(f)]));
     let out: FrameValue | undefined;
@@ -139,7 +142,7 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
 });
 
 describe("corpus completeness — every verb has a fixture file", () => {
-  // The closed ratchet (bundle 18 step 3, promoted as [[D29]] oneVerbCorpus): the migration
+  // The closed ratchet (bundle 18 step 3, promoted as [[C16]] polarsEngine): the migration
   // whitelist emptied and died — every verb both engines speak computes from
   // this ONE fixture corpus. Adding a NEW FrameOp kind fails compile
   // (FRAME_OP_KINDS) and then fails here until it ships with corpus cases; a
@@ -160,5 +163,14 @@ describe("corpus completeness — every verb has a fixture file", () => {
       const names = file.cases.map((c) => c.name);
       expect(new Set(names).size, `${file.verb}.json has duplicate case names`).toBe(names.length);
     }
+  });
+});
+
+describe("error codes on the wire", () => {
+  it("the engine's ERR_CODES lists every SolError code, so an uploaded error keeps its code", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "../../src-tauri/src/engine.rs"), "utf8");
+    const list = /const ERR_CODES: &\[&str\] = &\[([^\]]*)\]/.exec(src)?.[1] ?? "";
+    const engineCodes = [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    expect(engineCodes.sort()).toEqual(Object.keys(ERROR_EXPLANATIONS).sort());
   });
 });

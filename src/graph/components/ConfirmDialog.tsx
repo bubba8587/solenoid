@@ -13,7 +13,8 @@ export function ConfirmDialog() {
     if (!pending) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") { e.preventDefault(); answerConfirm(false); }
-      if (e.key === "Enter")  { e.preventDefault(); answerConfirm(true); }
+      // A focused button answers for itself, so Enter on Cancel cancels.
+      if (e.key === "Enter" && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); answerConfirm(true); }
     }
     // Capture so it wins over the canvas's global shortcut handler.
     window.addEventListener("keydown", onKey, true);

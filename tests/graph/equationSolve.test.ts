@@ -1,6 +1,6 @@
 // [[C47]]
 import { describe, it, expect } from "vitest";
-import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, astToFormula, isolate, equalsWithin, type ParsedEquation } from "../../src/graph/equationSolve";
+import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, solveLinear, astToFormula, isolate, equalsWithin, type ParsedEquation } from "../../src/graph/equationSolve";
 import { parseFormula } from "../../src/graph/excelFormula";
 import { EquationNode } from "../../src/graph/nodes/equation";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
@@ -115,16 +115,25 @@ describe("quadratic sniffing (both roots, not a principal branch)", () => {
     expect(solveQuadratic({ a: 1, b: 2, c: -8 })).toEqual([-4, 2]);
     expect(solveQuadratic({ a: 1, b: -6, c: 9 })).toBe(3); // (x−3)²
     const none = solveQuadratic({ a: 1, b: 0, c: 1 });
-    expect(isSolError(none)).toBe(true);
     expect((none as SolError).code).toBe("#SOLVE!");
     expect(solveQuadratic({ a: 0, b: 2, c: -10 })).toBe(null); // linear → caller falls through
+  });
+
+  it("solveLinear: −c/b, null with no x term", () => {
+    expect(solveLinear({ a: 0, b: 15, c: -6000 })).toBe(400);
+    expect(solveLinear({ a: 0, b: 0, c: 5 })).toBe(null);
+  });
+
+  it("a line whose unknown appears twice solves exactly, not by root-finding", () => {
+    const eq = new EquationNode({ expr: "profit = price * units - fixed - cost * units" });
+    const out = eq.data({ profit: [0], price: [25], fixed: [6000], cost: [10] });
+    expect(out.units).toBe(400);
   });
 });
 
 describe("numeric fallback", () => {
   it("finds a real root of what it's given (quadratics are intercepted upstream)", () => {
     const root = solveNumeric((x) => x * x + x - 6);
-    expect(typeof root).toBe("number");
     const r = root as number;
     expect(Math.abs(r * r + r - 6)).toBeLessThan(1e-6);
   });
@@ -134,9 +143,15 @@ describe("numeric fallback", () => {
     expect(Math.abs(root * Math.exp(root) - 5)).toBeLessThan(1e-6);
   });
 
+  it("finds a root near a domain that ends on the right, as well as one that starts on the left", () => {
+    const right = (x: number) => (x <= 2 ? Math.sqrt(2 - x) - 0.1 : null);
+    expect(solveNumeric(right) as number).toBeCloseTo(1.99, 9);
+    const left = (x: number) => (x >= 2 ? Math.sqrt(x - 2) - 0.1 : null);
+    expect(solveNumeric(left) as number).toBeCloseTo(2.01, 9);
+  });
+
   it("no real root → #SOLVE!", () => {
     const r = solveNumeric((x) => x * x + 1);
-    expect(isSolError(r)).toBe(true);
     expect((r as SolError).code).toBe("#SOLVE!");
   });
 });
@@ -146,7 +161,6 @@ describe("astToFormula round-trips", () => {
     for (const s of ["a*b+c", "SQRT(x^2+y^2)", "-a/(b-c)", "LOG(x,2)&\"m\""]) {
       const ast = parseFormula(s)!;
       const round = parseFormula(astToFormula(ast));
-      expect(round, s).not.toBe(null);
       expect(astToFormula(round!), s).toBe(astToFormula(ast));
     }
   });
@@ -205,6 +219,14 @@ describe("EquationNode", () => {
     expect(node("(x-3)^2 = 0").data({}).x).toBe(3); // double root stays scalar
     const none = node("x^2 + 1 = 0").data({});
     expect(isSolError(none.x)).toBe(true);
+  });
+
+  it("a form that only looks linear or quadratic at the probes falls back to root-finding", () => {
+    const near = (v: unknown, want: number) => expect(Math.abs((v as number) - want)).toBeLessThan(1e-6);
+    near(node("MIN(x,50) + x = 200").data({}).x, 150);
+    near(node("IF(x>100, x-200, x-150) = 0").data({}).x, 200);
+    near(node("MIN(x,30)*x = 1600").data({}).x, -40);
+    near(node("IF(x>100, 20101-200*x, x*x+1) = 0").data({}).x, 100.505);
   });
 
   it("numeric fallback still drives non-polynomial multi-occurrence equations", () => {

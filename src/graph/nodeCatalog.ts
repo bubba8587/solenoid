@@ -1,12 +1,12 @@
-// [[C19]], [[C53]], [[E13]], [[C14]]
+// [[B16]] oneFormulaSurface, [[C53]] queryIsCompositePreset, [[C14]] currentExcelParity
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, ValueInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
-  SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
+  SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode,
-  NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
-  FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupByNode,
+  ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
+  FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupListsNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
@@ -14,7 +14,7 @@ import {
   UniqueNode, SetsNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
-  SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
+  SumProductNode, ChooseNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
   SaveTimesNode,
   AlertNode, NormalizeNode, BinNode, OutliersNode, ShiftNode, CombinationsNode, EwmaNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode,
@@ -23,11 +23,11 @@ import {
   TvmNode, PaymentBreakdownNode, NPVNode, IRRNode, MirrNode, AmortizationNode, ReturnsNode,
   FvScheduleNode, IspmtNode, DollarNode, ProbNode,
   WeightedNode, BaseConvertNode,
-  TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
+  TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, PadTextNode, TruncateTextNode, WrapTextNode, ExactNode, TextSimilarityNode, FuzzyMatchNode,
   CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
-  NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode, TemplateNode,
+  RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode, TemplateNode,
   PromoNode,
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateTimeValueNode, DATE_TIME_VALUE_OP_META, DatePartNode, WeekInfoNode,
@@ -62,7 +62,6 @@ import {
   SeriesSumNode, MultinomialNode, SwitchNode, IfsNode,
   HypothesisTestNode, HYPOTHESIS_TEST_OP_META, type HypothesisTestOp,
   EtsForecastNode, InterpolateNode, LinestNode, BinomDistRangeNode,
-  NODE_KIND_ACCENTS,
   ARITHMETIC_OP_META, MATH_FN_OP_META, BOOLEAN_OP_META, REDUCE_OP_META,
   COMBINATORICS_OP_META, ARG_MIN_MAX_OP_META,
   SUM_PRODUCT_OP_META, CORREL_OP_META, TWO_INPUT_MATH_OP_META,
@@ -88,19 +87,17 @@ import {
 } from "./rete-nodes";
 import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 
-// Label + description come from OP_META; tree structure and ordering are hand-authored.
 
 const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     keywords: "arithmetic", create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
 const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFXNode({ op }), ...overrides, keywords: ["math", overrides?.keywords].filter(Boolean).join(" ") });
 const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${op}`,      label: BOOLEAN_OP_META[op].label,        description: BOOLEAN_OP_META[op].description,        create: () => new BooleanOpNode({ op })     });
-const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         keywords: "aggregate", create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
+const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         keywords: ["aggregate", (REDUCE_OP_META[op] as { keywords?: string }).keywords].filter(Boolean).join(" "), create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
 const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  keywords: "combinatorics", create: () => new CombinatoricsNode({ op }) });
-// One Series node; the leaf types keep their historical spellings (nodeExcel keys).
+// NODE_EXCEL keys on these leaf types, so they don't follow the op names.
 const SERIES_LEAF_TYPE: Record<SeriesOp, string> = { range: "list-range", sequence: "list-sequence", linspace: "list-linspace", geometric: "list-geometric", fibonacci: "list-fibonacci", repeat: "list-repeat" };
-// Every op is a leaf of the ONE Series card, so "series" must find all of them in search.
 const seriesLeaf   = (op: SeriesOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: SERIES_LEAF_TYPE[op], label: SERIES_OP_META[op].label, description: SERIES_OP_META[op].description, keywords: "series generate list", create: () => new SeriesNode({ op }), ...overrides });
 
-// One Rank & Percentile node; the leaf types keep their historical spellings (nodeExcel keys).
+// NODE_EXCEL keys on these leaf types, so they don't follow the op names.
 const RP_LEAF_TYPE: Partial<Record<RankPercentileOp, string>> = { large: "nth-large", small: "nth-small", "rank-eq": "rank-eq", "rank-avg": "rank-avg", "percentile-inc": "stat-percentile", "quartile-inc": "stat-quartile", "percentrank-inc": "stat-percentrank" };
 const rpLeaf       = (op: RankPercentileOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: RP_LEAF_TYPE[op]!, label: RANK_PERCENTILE_OP_META[op].label, description: RANK_PERCENTILE_OP_META[op].description, create: () => new RankPercentileNode({ op }), ...overrides, keywords: ["rank & percentile", overrides?.keywords].filter(Boolean).join(" ") });
 const argLeaf      = (op: ArgMinMaxOp):    NodeCatalogEntry => ({ type: `arg-${op}`,       label: ARG_MIN_MAX_OP_META[op].label,    description: ARG_MIN_MAX_OP_META[op].description,    create: () => new ArgMinMaxNode({ op })     });
@@ -111,8 +108,8 @@ const covLeaf      = (op: CovarianceOp):   NodeCatalogEntry => ({ type: `cov-${o
 const fisherLeaf   = (op: FisherOp):       NodeCatalogEntry => ({ type: `fisher-${op}`,    label: FISHER_OP_META[op].label,         description: FISHER_OP_META[op].description,         create: () => new FisherNode({ op })        });
 const bitwiseLeaf  = (op: BitwiseOp):      NodeCatalogEntry => ({ type: `bitwise-${op}`,   label: BITWISE_OP_META[op].label,        description: BITWISE_OP_META[op].description,        create: () => new BitwiseNode({ op })       });
 const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${op}`,      label: DEPRECIATION_OP_META[op].label,   description: DEPRECIATION_OP_META[op].description,   create: () => new DepreciationNode({ op })  });
-const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     keywords: "slope", create: () => new RegressionNode({ op })    });
-// One Hypothesis Test node; the leaf types keep their historical spellings (nodeExcel keys).
+const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     keywords: "regression", create: () => new RegressionNode({ op })    });
+// NODE_EXCEL keys on these leaf types, so they don't follow the op names.
 const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = {
   z: "z-test", "t-paired": "t-test-paired", "t-equal": "t-test-equal-var", "t-welch": "t-test-unequal-var", f: "f-test", chisq: "chisq-test",
   anova: "anova-test", mannwhitney: "mannwhitney-test", wilcoxon: "wilcoxon-test", kruskal: "kruskal-test", fisher: "fisher-exact-test", ks: "ks-test", proptest: "proportion-test", binomtest: "binomial-test",
@@ -120,9 +117,8 @@ const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = {
 const testLeaf     = (op: HypothesisTestOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: TEST_LEAF_TYPE[op], label: HYPOTHESIS_TEST_OP_META[op].label, description: HYPOTHESIS_TEST_OP_META[op].description, create: () => new HypothesisTestNode({ op }), ...overrides, keywords: ["hypothesis test", overrides?.keywords].filter(Boolean).join(" ") });
 const dollarLeaf    = (op: DollarOp):      NodeCatalogEntry => ({ type: `dollar-${op}`,     label: DOLLAR_OP_META[op].label,          description: DOLLAR_OP_META[op].description,          create: () => new DollarNode({ op }) });
 const weightedLeaf   = (op: WeightedOp):      NodeCatalogEntry => ({ type: `weighted-${op}`,    label: WEIGHTED_OP_META[op].label,          description: WEIGHTED_OP_META[op].description,          create: () => new WeightedNode({ op }) });
-const DT = NODE_KIND_ACCENTS.date;
-// The Parse pair keeps its Excel-name types: `date-value` / `time-value` key the
-// Excel-equivalent table, and the op is not part of either name.
+const DT = "date";
+// NODE_EXCEL keys on `date-value` and `time-value`, so they don't follow the op names.
 const dateTimeValueLeaf = (op: DateTimeValueOp): NodeCatalogEntry => ({ type: op === "date" ? "date-value" : "time-value", label: DATE_TIME_VALUE_OP_META[op].label, description: DATE_TIME_VALUE_OP_META[op].description, create: () => new DateTimeValueNode({ op }), parity: false });
 const datePartLeaf  = (op: DatePartOp):  NodeCatalogEntry => ({ type: `date-part-${op}`,  label: DATE_PART_OP_META[op].label,  description: DATE_PART_OP_META[op].description,  create: () => new DatePartNode({ op }),  parity: false });
 const weekInfoLeaf  = (op: WeekInfoOp):  NodeCatalogEntry => ({ type: `date-week-${op}`,  label: WEEK_INFO_OP_META[op].label,  description: WEEK_INFO_OP_META[op].description,  create: () => new WeekInfoNode({ op }),  parity: false });
@@ -134,14 +130,14 @@ const durationLeaf  = (op: DurationOp):  NodeCatalogEntry => ({ type: `duration-
 
 const couponLeaf = (op: CouponOp): NodeCatalogEntry => ({ type: `coupon-${op}`, label: COUPON_OP_META[op].label, description: COUPON_OP_META[op].description, create: () => new CouponNode({ op }), parity: false });
 
-const CX = NODE_KIND_ACCENTS.complex;
+const CX = "complex";
 const complexUnaryLeaf  = (op: ComplexUnaryOp):  NodeCatalogEntry => ({ type: `cx-unary-${op}`,  label: COMPLEX_UNARY_OP_META[op].label,  description: COMPLEX_UNARY_OP_META[op].description,  create: () => new ComplexUnaryNode({ op }),  parity: false });
 const complexBinaryLeaf = (op: ComplexBinaryOp): NodeCatalogEntry => ({ type: `cx-binary-${op}`, label: COMPLEX_BINARY_OP_META[op].label, description: COMPLEX_BINARY_OP_META[op].description, create: () => new ComplexBinaryNode({ op }), parity: false });
 
 const besselLeaf = (op: BesselOp): NodeCatalogEntry => ({ type: `bessel-${op}`, label: BESSEL_OP_META[op].label, description: BESSEL_OP_META[op].description, create: () => new BesselNode({ op }), parity: false });
 
 const matDetLeaf    = (op: MatDetOp):      NodeCatalogEntry => ({ type: `matdet-${op}`,    label: MAT_DET_OP_META[op].label,    description: MAT_DET_OP_META[op].description,    create: () => new MatDetNode({ op }),    parity: false });
-const reshapeLeaf   = (op: TableReshapeOp):NodeCatalogEntry => ({ type: `reshape-${op}`,   label: TABLE_RESHAPE_OP_META[op].label, description: TABLE_RESHAPE_OP_META[op].description, create: () => new TableReshapeNode({ op }), parity: false });
+const reshapeLeaf   = (op: TableReshapeOp):NodeCatalogEntry => ({ type: `reshape-${op}`,   label: TABLE_RESHAPE_OP_META[op].label, description: TABLE_RESHAPE_OP_META[op].description, keywords: op === "tocol" || op === "torow" ? "table reshape flatten scan by column ignore skip blanks errors" : "table reshape wrap", create: () => new TableReshapeNode({ op }), parity: false });
 const selectLeaf    = (op: TableSelectOp): NodeCatalogEntry => ({ type: `tblsel-${op}`,    label: TABLE_SELECT_OP_META[op].label, description: TABLE_SELECT_OP_META[op].description, create: () => new TableSelectNode({ op }), parity: false });
 
 const romanArabicLeaf = (op: RomanArabicOp): NodeCatalogEntry => ({
@@ -156,11 +152,11 @@ const romanArabicLeaf = (op: RomanArabicOp): NodeCatalogEntry => ({
 
 
 
-const STR = NODE_KIND_ACCENTS.string;
-const textXformLeaf         = (op: TextTransformOp):   NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_TRANSFORM_OP_META[op].label,        description: TEXT_TRANSFORM_OP_META[op].description,        create: () => new TextTransformNode({ op }),     parity: false });
+const STR = "string";
+const textXformLeaf         = (op: TextTransformOp, keywords?: string): NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_TRANSFORM_OP_META[op].label,        description: TEXT_TRANSFORM_OP_META[op].description,        create: () => new TextTransformNode({ op }),     parity: false, ...(keywords ? { keywords } : {}) });
 const textSliceLeaf         = (op: TextSliceOp):       NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_SLICE_OP_META[op].label,            description: TEXT_SLICE_OP_META[op].description,            create: () => new TextSliceNode({ op }),         parity: false });
 const textFindLeaf          = (op: TextFindOp):        NodeCatalogEntry => ({ type: `text-find-${op}`,         label: TEXT_FIND_OP_META[op].label,             description: TEXT_FIND_OP_META[op].description,             create: () => new TextFindNode({ op }),           parity: false });
-const charCodeLeaf          = (op: CharCodeOp):        NodeCatalogEntry => ({ type: `char-code-${op}`,         label: op === "char" ? "CHAR" : "CODE",         description: op === "char" ? "Character at Unicode code point N (0–1114111). Excel: `CHAR` / `UNICHAR`." : "Unicode code point of the first character. Excel: `CODE` / `UNICODE`.", create: () => new CharCodeNode({ op }), parity: false });
+const charCodeLeaf          = (op: CharCodeOp):        NodeCatalogEntry => ({ type: `char-code-${op}`,         label: op === "char" ? "CHAR" : "CODE",         description: op === "char" ? "Character at Unicode code point N (1–1114111). Excel: `CHAR` / `UNICHAR`." : "Unicode code point of the first character. Excel: `CODE` / `UNICODE`.", create: () => new CharCodeNode({ op }), parity: false });
 const textAfterBeforeLeaf   = (op: TextAfterBeforeOp): NodeCatalogEntry => ({ type: `text-after-before-${op}`, label: TEXT_AFTER_BEFORE_OP_META[op].label,     description: TEXT_AFTER_BEFORE_OP_META[op].description,     create: () => new TextAfterBeforeNode({ op }), parity: false });
 
 // ─── Catalog tree ─────────────────────────────────────────────────────────────
@@ -170,27 +166,26 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Input", description: "Source nodes: where values enter your graph.",
     children: [
-      { type: "number-input",        label: "Number Input",  description: "A literal number value.", accent: NODE_KIND_ACCENTS.input, keywords: "scalar value literal", create: () => new NumberInputNode() },
-      { type: "list-input",  label: "List Input",    description: "Concatenates comma-separated values and other wired-in Lists into a single-row List.", accent: NODE_KIND_ACCENTS.list, keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
-      { type: "text-input",    label: "Text Input",    description: "A literal string value.", accent: STR, keywords: "string literal", create: () => new TextInputNode() },
-      { type: "boolean-input", label: "Boolean Input", description: "A `TRUE` or `FALSE` toggle that outputs a logical. It coerces to `1` or `0` where a number is needed.", accent: NODE_KIND_ACCENTS.logic, create: () => new BooleanInputNode() },
-      { type: "date-input",    label: "Date Input",    description: "A single date value.", accent: DT, create: () => new DateInputNode(), parity: false, keywords: "date calendar day picker serial input" },
-      { type: "table-input",   label: "Table Input",   description: "A typed-in 2-D table, one row per line, comma-separated. One element type (Num/Text/Date/Bool; mixed columns belong in Frame Input). Typed text is the stored truth: an unparseable cell shows `NaN` and keeps its text.", accent: NODE_KIND_ACCENTS.table, create: () => new TableInputNode() },
-      { type: "frame-input",   label: "Frame Input", description: "A typed-in data table with named, typed columns and editable cells.", accent: NODE_KIND_ACCENTS.frame, create: () => new FrameInputNode(), parity: false },
-      { type: "cube-input", label: "Cube Input", description: "A typed-in Cube: rows of records whose values can be numbers, text, lists, or nested tables. Each cell edits in place in a popup.", accent: NODE_KIND_ACCENTS.frame, create: () => new CubeInputNode(), parity: false, keywords: "cube input literal type records nested list json source" },
+      { type: "value-input",         label: "Value Input", accents: ["number", "string", "date", "logical"],   description: "One value you type in: a number, text, a date or `TRUE`/`FALSE`, with its display format and a number's unit set on the card.", accent: "input", keywords: "scalar literal constant number numeric text string date calendar boolean logical checkbox type format unit", create: () => new ValueInputNode(), parity: false },
+      { type: "list-input",  label: "List Input", accents: ["numlist", "strlist", "datelist", "logicallist"],    description: "Concatenates comma-separated values and other wired-in Lists into a single-row List.", accent: "list", keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
+      { type: "table-input",   label: "Table Input", accents: ["table", "strtable", "datetable", "logicaltable"],   description: "A grid you type in, one row per line with commas between cells. Every cell shares one type; for columns of different types, use Frame Input. A cell that doesn't parse shows `NaN` but keeps what you typed.", accent: "table", create: () => new TableInputNode() },
+      { type: "pair", children: [
+        { type: "frame-input",   label: "Frame Input", description: "A data table you type in, with named, typed columns. An `Fx` column is calculated from the others, like Computed Column.", accent: "frame", create: () => new FrameInputNode(), parity: false },
+        { type: "cube-input", label: "Cube Input", description: "A typed-in Cube: rows of records whose values can be numbers, text, lists, or nested tables. Each cell edits in place in a popup.", accent: "frame", create: () => new CubeInputNode(), parity: false, keywords: "cube input literal type records nested list json source" },
+      ]},
       { type: "pair", children: [
         { type: "cx-from",       label: "COMPLEX",     description: "Builds a complex number from real and imaginary parts. Excel: `COMPLEX`.", accent: CX, create: () => new ComplexFromNode(), parity: false },
-        { type: "lambda-make",   label: "LAMBDA",      description: "A reusable formula as a value: parameters bound positionally, other variables captured. Evaluates like Expression. Excel: `LAMBDA`.", accent: NODE_KIND_ACCENTS.lambda, create: () => new LambdaNode(), parity: false },
+        { type: "lambda-make",   label: "LAMBDA",      description: "A reusable formula for MAP, BYROW, REDUCE and computed columns. Parameters fill in order, and any other variable becomes an input. Excel: `LAMBDA`.", accent: "lambda", create: () => new LambdaNode(), parity: false },
       ]},
       { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
       { type: "pair", children: [
-        { type: "randbetween", label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel `RAND()`). Bottom and Top give a custom range.", create: () => new RandBetweenNode(), parity: false },
+        { type: "randbetween", label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel `RAND()`). Bottom and Top give a custom range.", create: () => new RandBetweenNode(), parity: false, keywords: "random" },
         { type: "na",          label: "NA",          description: "Outputs `#N/A`, which propagates through calculations like Excel. Catch it with `IFERROR` or `IFNA`.", create: () => new NaNode() },
       ]},
       {
         type: "category", label: "Control", description: "Interactive widgets that drive values in your graph.",
         children: [
-          { type: "slider",      label: "Slider",      description: "A slider value, with configurable min, max, and step.", accent: NODE_KIND_ACCENTS.input, create: () => new SliderInputNode() },
+          { type: "slider",      label: "Slider",      description: "A slider value, with configurable min, max, and step.", accent: "input", create: () => new SliderInputNode() },
           { type: "angle-dial",  label: "Angle Dial",  description: "A rotary dial: spin or type to set an angle in degrees, 0–359.", create: () => new AngleDialNode() },
           { type: "date-range",  label: "Date Range",  description: "Picks a start and end date. It outputs both serials. Subtract them for a duration.", create: () => new DateRangeNode(), parity: false, keywords: "date range period start end duration between from to picker" },
           { type: "xy-pad",      label: "XY Pad",      description: "Two values at once, from a handle in a square pad. Each is 0–1. Scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
@@ -200,7 +195,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "color-picker", label: "Color", description: "A color in RGB or HSV, out as a hex or `rgb()` string.", create: () => new ColorPickerNode(), parity: false },
           { type: "color-blend", label: "Color Blend", description: "Blends two colors with a standard blend mode: mix, multiply, screen, overlay, darken, lighten, difference, dodge, burn. Any CSS color string in, hex out.", create: () => new ColorBlendNode(), parity: false, keywords: "color blend mix multiply screen overlay tint shade combine average darken lighten" },
           { type: "slicer",      label: "Slicer",      description: "Filters a Frame like an Excel slicer: choose a column, then the values whose rows to keep.", create: () => new SlicerNode() },
-          { type: "cable-switch", label: "Input Switch", description: "A multiplexer, distinct from the logical `SWITCH`: several named slots, any type, pick which passes through. Many mode chooses several; the result is a Cube of name · value rows.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
+          { type: "cable-switch", label: "Input Switch", description: "Passes on the value from the named slot you pick, of any type. Unlike `SWITCH`, it picks by name, not by matching a value. Many mode passes several, as a Cube of name and value rows.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
         ],
       },
       {
@@ -208,13 +203,12 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "web-source",    label: "Web Source",  description: "A Frame from a CSV or JSON URL, columns auto-typed. Stores the URL, not the data. Desktop fetches any URL; the browser needs CORS.", create: () => new WebSourceNode(), parity: false },
           { type: "data-feed",     label: "Data Feed",   description: "Live economic and market data as a Frame: FRED series with no key, Alpha Vantage stock history with a free key. Stores the id, not the data.", create: () => new DataFeedNode(), parity: false },
-          { type: "local-file",   label: "Local File",  description: "Loads a Frame from your data folder (Settings ▸ Data). Parquet reads straight into the native engine with its types intact; anything else reads as CSV with columns auto-typed. A Project XML, GanttProject, Primavera XER or plan CSV also comes out as a Plan for Schedule. Stores the file name. Refresh to re-read. Desktop only.", create: () => new LocalFileNode(), parity: false, keywords: "csv parquet arrow column columnar native engine polars file load import project xml mspdi plan smartsheet gantt gan primavera xer" },
+          { type: "local-file",   label: "Local File",  description: "Loads a Frame from your data folder (Settings ▸ Data). Parquet reads straight into the native engine with its types intact; anything else reads as CSV with columns auto-typed. A Project XML, GanttProject or Primavera XER file comes out as a Plan for Schedule instead, and a plan CSV as both. Stores the file name. Refresh to re-read. Desktop only.", create: () => new LocalFileNode(), parity: false, keywords: "csv parquet arrow column columnar native engine polars file load import project xml mspdi plan smartsheet gantt gan primavera xer" },
           { type: "pair", children: [
             { type: "import-html",   label: "Import HTML", description: "Grab the Nth HTML table on a page as a Frame, columns auto-typed. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: `IMPORTHTML`.", create: () => new ImportHtmlNode(), parity: false },
             { type: "import-xml",    label: "Import XML",  description: "A page's XPath matches as a text list. Stores the URL; refresh re-pulls. Desktop any URL, browser CORS-only. Sheets: `IMPORTXML`.", create: () => new ImportXmlNode(), parity: false },
           ]},
           { type: "write-file",    label: "Write File",  description: "Writes a Frame as CSV or JSON rows, or Text as-is. Pick the format, arm it, then press Run. Never writes on its own. Desktop only.", create: () => new WriteFileNode(), parity: false, keywords: "csv json text write export save file sink xml mspdi verbatim string" },
-          // Keyless lookups: Geocode feeds Weather; Holidays feeds WORKDAY / NETWORKDAYS and Schedule.
           { type: "pair", children: [
             { type: "geocode",       label: "Geocode",     description: "A place name to latitude, longitude and timezone, with a pick among matches when the name is ambiguous. No key needed.", create: () => new GeocodeNode(), parity: false, keywords: "geocode place location city coordinates latitude longitude timezone lookup open-meteo" },
             { type: "weather",       label: "Weather",     description: "A daily forecast frame and the current temperature for a latitude and longitude. °C or °F carries as a unit. No key needed.", create: () => new WeatherNode(), parity: false, keywords: "weather forecast rain temperature precipitation climate open-meteo garden watering" },
@@ -232,20 +226,19 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Output", description: "Display, convert, and visualize values at the end of a chain.",
     children: [
-      { type: "display",   label: "Display",  description: "Shows a value. Pass-through, so wiring continues after it.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
-      { type: "format-controller", label: "Format Controller", description: "Sets a docked socket's number format (decimal, fraction, %, currency…) and a unit label like `°C`, `m`, or `kg`. Units must match on connected cables.", create: () => new FormatControllerNode() },
+      { type: "display",   label: "Display",  description: "Shows a value and passes it on unchanged.", create: () => new DisplayNode(), accent: "util" },
+      { type: "format-controller", label: "Format Controller", description: "Sets how a docked socket's value reads (decimals, fractions, percent, currency, a date style) and its unit, like `°C`, `m` or `kg`. A value that already has a unit locks it; Convert changes it.", create: () => new FormatControllerNode() },
       {
-        // General plotters stay top-level; specialist figures cluster by what they show.
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",
         children: [
-          { type: "chart",     label: "Chart (Recharts)",     description: "Plots a list or a frame as a column, bar, line, area, scatter, pie, radar, radial, or funnel chart; a frame's number columns become named series with a legend, or a composed (bars + lines) or bubble chart.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter pie radar radial funnel composed bubble multi-series legend" },
+          { type: "chart",     label: "Chart (Recharts)",     description: "Plots a List or a Frame as a column, bar, line, area, scatter, XY line, pie, radar or funnel chart, among others. A Frame's number columns become named series with a legend. Scatter, XY Line and Bubble take their x, y, size, color, point labels and series from columns named in the options.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter xy line connected scatter parametric curve pie radar radial funnel bubble multi-series legend" },
           { type: "kpi",       label: "KPI",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, colored green/red.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
           { type: "sparkline", label: "Sparkline", description: "A small inline chart of a list: line, column, or win/loss. Collapses to a headerless square. Excel puts these in cells via Insert ▸ Sparklines.", create: () => new SparklineNode(), parity: false, keywords: "sparkline spark line column win loss winloss" },
           { type: "record",    label: "Record",    description: "One frame row as labeled boxes, or every row as a gallery, a board of lanes, or an indented list. An image URL cell shows the picture.", create: () => new RecordNode(), parity: false, keywords: "record card form detail row browse fields layout boxes airtable gallery kanban board lanes list outline title size clamp" },
           { type: "gantt",     label: "Gantt",     description: "A scheduled project: a bar per task, milestones, summary brackets, dependency arrows, the critical path, a baseline and a status line.", create: () => new GanttNode(), parity: false, keywords: "gantt chart project schedule timeline plan tasks bars milestones critical path dependencies predecessors baseline waterfall roadmap pert cpm" },
           { type: "gauge",     label: "Gauge",     description: "A value on a fixed scale: a radial Dial reading it as a fraction of 1, or a Bar from zero to Max with a target tick. Excel has no equivalent.", create: () => new GaugeNode(), parity: false, keywords: "gauge dial bar bullet graph target progress goal percent speedometer meter scale kpi" },
           { type: "chart-builder", label: "Chart Builder", description: "Styles any chart, producing an options string: title, axes, color, grid, range, line, markers, per chart type. Fields follow `matplotlib`.", create: () => new ChartBuilderNode(), parity: false, keywords: "chart builder options style title axes color grid range markers histogram kpi proportion treemap waffle sankey waterfall" },
-          { type: "merge-plots", label: "Merge Plots", description: "Overlays several line, area, column, bar or scatter charts on one plot with shared axes; the legend names each source. Pie, gauge and other non-plot figures are refused.", create: () => new MergePlotsNode(), parity: false, keywords: "merge plots overlay combine superimpose layer stack multi series legend line scatter area column bar composed matplotlib" },
+          { type: "merge-plots", label: "Merge Plots", description: "Overlays several line, area, column, bar, scatter, XY line or bubble charts on one plot with shared axes; the legend names each source. Scatters, XY lines and bubbles share one numeric x/y plane, which bars can't join. Pie, gauge and other non-plot figures are refused.", create: () => new MergePlotsNode(), parity: false, keywords: "merge plots overlay combine superimpose layer stack multi series legend line scatter xy line bubble area column bar composed matplotlib" },
           { type: "mermaid",   label: "Mermaid Charts",   description: "Draws text-based Mermaid.js diagrams.", create: () => new MermaidNode(), parity: false, keywords: "mermaid diagram flowchart flow chart graph sequence class state gantt pie mindmap uml erd tree" },
           {
             type: "category", label: "Distribution", description: "How a sample spreads: binned counts and five-number summaries.",
@@ -264,7 +257,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Grids & Fields", description: "Figures over a 2-D grid: cell color, height, and direction.",
             children: [
-              { type: "heatmap-cell", label: "Heatmap", description: "Color every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
+              { type: "heatmap", label: "Heatmap", description: "A table as a grid of square cells colored by value, with a colorbar and each value written in its cell when it fits. A frame's text first column names the rows. seaborn `heatmap`, matplotlib `imshow`.", create: () => new HeatmapNode(), parity: false, keywords: "heatmap heat map matrix grid colormap cmap correlation conditional formatting imshow seaborn viridis diverging" },
               { type: "surface", label: "Surface", description: "A shaded 3-D surface plot over a table of heights, with optional Xs and Ys coordinate lists; absent axes count 1, 2, 3, and so on, the same shape Grid Interpolate fills.", create: () => new SurfaceNode(), parity: false, keywords: "surface 3d mesh plot height field terrain contour wireframe grid" },
               { type: "contour", label: "Contour", description: "The flat twin of Surface: the same table of heights drawn as filled height bands with iso-lines.", create: () => new SurfaceNode({ op: "contour" }), parity: false, keywords: "contour iso lines level topo topographic height map bands field 2d surface" },
               { type: "quiver", label: "Vector Field", description: "One arrow per grid cell from two same-shaped matrices (the X and Y components), colored by magnitude. For gradients, flows, and wind fields.", create: () => new QuiverNode(), parity: false, keywords: "quiver vector field arrows flow gradient wind direction magnitude" },
@@ -281,12 +274,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       { type: "pair", children: [
-        { type: "convert", label: "Convert", description: "Converts between measurement units: degrees ↔ radians, length, mass, temperature, time, area, volume, speed, energy, pressure. Excel: `CONVERT`.", create: () => new ConvertNode() },
-        { type: "cast", label: "Cast", description: "Change a value's data type: number, text, date serial, Boolean `TRUE` or `FALSE`, or complex. Works element-wise on lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
+        { type: "convert", label: "Convert", keywords: "units", description: "Converts a value to another unit and rescales the number: length, mass, temperature, time, speed, energy and more. Excel: `CONVERT`.", create: () => new ConvertNode() },
+        { type: "cast", label: "Cast", description: "Changes a value's type to number, text, date, `TRUE`/`FALSE` or complex, item by item on Lists. To text it takes a format like `0.00%`; to number it takes decimal and group separators, for text like `1.234,56`. Excel: `TEXT`, `VALUE`, `NUMBERVALUE`.", create: () => new CastNode(), parity: false },
       ]},
-      { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press Ctrl+G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
-      // Query ships a PENDING internal snapshot, so every add path must hydrate the
-      // CompositeNode right after create().
+      { type: "group", label: "Node Group", description: "A container: drop it around nodes, or select them and press G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
       { type: "pair", children: [
         { type: "composite", label: "Composite", description: "A reusable subgraph as one card with a typed boundary. Built inside via Edit contents, or from selected nodes with Ctrl+Shift+G.", create: () => new CompositeNode(), parity: false },
         { type: "query", label: "Query", description: "A Composite shaped for data transformation: table in, verb chain inside, result out. Recomputes only on Refresh. Excel: Power Query.", create: () => new CompositeNode({
@@ -303,21 +294,14 @@ export const NODE_CATALOG: CatalogEntry[] = [
           },
         }), parity: false, keywords: "power query get transform etl refresh manual steps applied pipeline shape clean data table verbs" },
       ]},
-      // FLAT_CATALOG-only: these live inside a Composite's internal graph, never on
-      // the main canvas, but hydrate() must rebuild them from a save/paste snapshot.
       { type: "composite-input", label: "Composite Input", description: "Internal: a Composite's exposed-input boundary marker.", create: () => new CompositeInputNode(), parity: false, hidden: true },
       { type: "composite-output", label: "Composite Output", description: "Internal: a Composite's output boundary marker.", create: () => new CompositeOutputNode(), parity: false, hidden: true },
       { type: "conduit",    label: "Conduit",   description: "Bundle up to 8 cables into one block. They travel onward as a single ribbon that splits back into lanes at the destination. Rotate or extend it.", create: () => new ConduitNode(), parity: false },
       { type: "alert",     label: "Alert",    description: "Watches a value and fires a toast and an Alerts HUD entry on a status change: a Low/High range, `TRUE`, any new value, or a threshold cross.", create: () => new AlertNode() },
-      {
-        type: "category", label: "Data Quality", description: "Trust the graph: validate values in place, and rank which upstream inputs matter most.",
-        children: [
-          { type: "expect", label: "Expect", description: "Data validation: opt-in checks for not-null, unique, in range, regex or allowlist. A failure never blocks the value; it shows a red badge and fires an Alert once per new failure.", create: () => new ExpectNode(), parity: false, keywords: "expect validate validation data quality check rule assert not null unique range regex allowlist in list membership enum whitelist trust" },
-          { type: "tornado", label: "Tornado", description: "One-at-a-time sensitivity: Run perturbs each upstream Number or Slider ±10% and ranks them by how far this value swings, as a tornado chart.", create: () => new TornadoNode(), parity: false, keywords: "tornado sensitivity analysis what-if one at a time impact ranking swing trust" },
-        ],
-      },
+      { type: "expect", label: "Expect", description: "Data validation: opt-in checks for not-null, unique, in range, regex or allowlist. A failure never blocks the value; it shows a red badge and fires an Alert once per new failure.", create: () => new ExpectNode(), parity: false, keywords: "expect validate validation data quality check rule assert not null unique range regex allowlist in list membership enum whitelist trust" },
+      { type: "tornado", label: "Tornado", description: "One-at-a-time sensitivity: Run perturbs each upstream Number or Slider ±10% and ranks them by how far this value swings, as a tornado chart.", create: () => new TornadoNode(), parity: false, keywords: "tornado sensitivity analysis what-if one at a time impact ranking swing trust" },
       { type: "presentation", label: "Presentation", description: "Presenter mode: select nodes, Add step captures them, Prev/Next steps through. Each step flies the camera to fit its nodes.", create: () => new PresentationNode(), parity: false },
-      { type: "session-history", label: "Session History", description: "A live, dated log of this session's undo/redo actions (nodes added, removed, or moved; connections made or broken) with a copy button. No inputs or outputs. It doesn't persist. It autogenerates while it's on canvas.", create: () => new SessionHistoryNode(), parity: false },
+      { type: "session-history", label: "Session History", description: "A live log of this session's undo and redo actions, like nodes added, moved or removed and connections made or broken, with a copy button. It isn't saved.", create: () => new SessionHistoryNode(), parity: false },
     ],
   },
 
@@ -326,10 +310,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Numbers", description: "Scalar math: arithmetic, functions, rounding, and trigonometry.",
     children: [
       { type: "pair", children: [
-        { type: "expression", label: "Expression", description: "A formula like `a*b+1`; named variables become inputs. Math functions, constants `pi` / `e` / `phi`, broadcasting over lists and matrices, complex numbers, `LAMBDA`. Frames and cubes stay out.", create: () => new ExpressionNode(), accent: NODE_KIND_ACCENTS.math },
-        { type: "equation", label: "Equation", description: "A relation like `V = I * R`: the one empty variable solves, a quadratic giving every real root. All given, Check turns `TRUE` or `FALSE`.", create: () => new EquationNode(), accent: NODE_KIND_ACCENTS.math, keywords: "solve rearrange unknown goal seek formula bidirectional check quadratic roots" },
+        { type: "expression", label: "Expression", description: "A formula like `a*b+1`, where each variable becomes an input. Works on single values, Lists and matrices, with the Excel functions and the constants `pi`, `tau`, `e` and `phi`. For Frames, use a computed column.", create: () => new ExpressionNode(), accent: "math" },
+        { type: "equation", label: "Equation", description: "A relation like `V = I * R`: the one empty variable solves, a quadratic giving every real root. All given, Check turns `TRUE` or `FALSE`.", create: () => new EquationNode(), accent: "math", keywords: "solve rearrange unknown goal seek formula bidirectional check quadratic roots" },
       ]},
-      { type: "script", label: "Script", description: "A node for JavaScript input. `[ ]` returns a List, `[[ ]]` a Table, `[{name: value}, …]` a Frame, `[{name: [rows]}, …]` a Cube; `Solenoid.date(serial)` returns a Date. Runs sandboxed and time-gated to 1 second.", keywords: "script javascript js code function program custom", create: () => new ScriptNode(), accent: NODE_KIND_ACCENTS.math },
+      { type: "script", label: "Script", description: "Runs JavaScript. Return `[ ]` for a List, `[[ ]]` for a table, `[{name: value}, …]` for a Frame or `[{name: [rows]}, …]` for a Cube; `Solenoid.date(serial)` returns a date. Runs sandboxed, with a 1-second limit.", keywords: "script javascript js code function program custom", create: () => new ScriptNode(), accent: "math" },
       {
         type: "category", label: "Arithmetic", description: "Two-input operations on numbers.",
         children: [
@@ -346,8 +330,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Functions", description: "Single-input math functions.",
         children: [
-          { type: "pair", children: [mathLeaf("abs"), mathLeaf("sign")] },
-          { type: "pair", children: [mathLeaf("sqrt"), mathLeaf("sqrtpi")] },
+          { type: "pair", children: [mathLeaf("abs", { keywords: "absolute value" }), mathLeaf("sign")] },
+          { type: "pair", children: [mathLeaf("sqrt", { keywords: "square root" }), mathLeaf("sqrtpi")] },
           mathLeaf("exp"),
           { type: "pair", children: [mathLeaf("erf"), mathLeaf("erfc")] },
           { type: "pair", children: [mathLeaf("gamma"), mathLeaf("gammaln")] },
@@ -417,13 +401,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [bitwiseLeaf("bitand"), bitwiseLeaf("bitor")] },
           { type: "pair", children: [bitwiseLeaf("bitxor"), bitwiseLeaf("bitlshift")] },
           bitwiseLeaf("bitrshift"),
-          {
-            type: "category", label: "Bessel", description: "Bessel and modified Bessel functions (J, Y, I, K), used in signal processing, heat transfer, and physics.",
-            children: [
-              { type: "pair", children: [besselLeaf("besselj"), besselLeaf("bessely")] },
-              { type: "pair", children: [besselLeaf("besseli"), besselLeaf("besselk")] },
-            ],
-          },
+          { type: "pair", children: [besselLeaf("besselj"), besselLeaf("bessely")] },
+          { type: "pair", children: [besselLeaf("besseli"), besselLeaf("besselk")] },
         ],
       },
       {
@@ -454,28 +433,21 @@ export const NODE_CATALOG: CatalogEntry[] = [
           },
         ],
       },
-      {
-        type: "category", label: "Distributions", description: "Probability distributions and related helpers.",
-        children: [
-          { type: "distributions", label: "Distributions", description: "Any distribution as CDF, PDF, PMF, tail, or inverse: normal, t, chi-squared, binomial, Poisson. Excel: the `NORM.DIST` / `T.INV` families.", create: () => new DistributionsNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
-          { type: "pair", children: [
-            { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
-            { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
-          ]},
-        ],
-      },
+      { type: "distributions", label: "Distributions", description: "Any distribution as CDF, PDF, PMF, tail, or inverse: normal, t, chi-squared, binomial, Poisson. Excel: the `NORM.DIST` / `T.INV` families.", create: () => new DistributionsNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
+      { type: "pair", children: [
+        { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
+        { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
+      ]},
     ],
   },
 
   // ── DOCS & FILES ─────────────────────────────────────────────────────────────
-  // Also the pack fallback bucket (catalogUtils placementPath, packShared): an
-  // uncategorized pack node lands here, so it is never empty.
   {
     type: "category", label: "Docs & Files", description: "Documents and files: markdown notes and reports, your Obsidian vault, and attached pictures, files and graphics.",
     children: [
       { type: "pair", children: [
         { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source. The body is a Knap template over those fields: `{{ title }}`, `{% if %}`, `{% for %}` and the standard filters.", create: () => new NoteNode(), parity: false },
-        { type: "report", label: "Report", description: "A standalone markdown document written as a Knap template. A bare `{{ name }}` embeds the wired value as the canvas shows it; `{% for %}` repeats over a frame, `{% if %}` gates a section, and filters shape the text. A Note on Template supplies the text instead. Records makes it a mail merge, one page per row. The Knap tab in Help has the syntax.", keywords: "mail merge merge fields letters one note per row batch template document markdown knap", create: () => new ReportNode(), parity: false },
+        { type: "report", label: "Report", description: "A markdown document written as a Knap template. `{{ name }}` shows a value the way the canvas does, `{% for %}` repeats over a Frame and `{% if %}` gates a section. A Note on Template supplies the text instead, and Records turns it into a mail merge, one page per row. The Knap tab in Help has the syntax.", keywords: "mail merge merge fields letters one note per row batch template document markdown knap", create: () => new ReportNode(), parity: false },
       ]},
       { type: "pair", children: [
         { type: "image", label: "Image", description: "A free-floating picture from a local file or a web URL. Annotation only, no data. Web URLs persist; local files are session-only.", create: () => new ImageNode(), parity: false },
@@ -505,7 +477,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Build", description: "Create lists.",
         children: [
-          seriesLeaf("range", { accent: NODE_KIND_ACCENTS.list }),
+          seriesLeaf("range", { accent: "list" }),
           seriesLeaf("linspace"),
           { type: "list-concat",   label: "Concat Lists", description: "Joins lists end-to-end, in row order. A lone value counts as a 1-element list. Any element type. To stack lists as rows of a table instead, use `VSTACK`.", create: () => new ConcatListsNode(), keywords: "append join combine concatenate push" },
           seriesLeaf("repeat"),
@@ -560,17 +532,17 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Shape", description: "Reorder, trim, and filter lists.",
         children: [
-          { type: "list-filter",  label: "List Filter", description: "Keeps list values passing condition rows (op + value, rows AND/OR; text ops ignore case, Match case per row); failures exit Dropped. 'No error' drops error cells. 'Has error' keeps only them. Any element type. For a TABLE's rows, use Frame Filter. Excel: `FILTER`.", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode(), keywords: "keep where condition predicate drop errors iserror noterror div0 remove errors clean" },
-          { type: "list-fill",  label: "Fill", keywords: "coalesce fill missing null impute interpolate", description: "Handles missing cells: a constant, forward/back-fill, mean/median/mode, interpolate, drop, or coalesce lists in order like SQL `COALESCE`.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
+          { type: "list-filter",  label: "List Filter", description: "Keeps the list items, or the table rows, that pass its condition rows, joined by AND or OR; the rest go to Dropped. A table is tested on its Column. Text tests ignore case unless a row's Match case is on. `No error` drops error cells and `Has error` keeps only them. Excel: `FILTER`.", accent: "list", create: () => new FilterNode(), keywords: "keep where condition predicate drop errors iserror noterror div0 remove errors clean" },
+          { type: "list-fill",  label: "Fill", keywords: "coalesce fill missing null impute interpolate", description: "Handles missing cells: a constant, forward/back-fill, mean/median/mode, interpolate, drop, or coalesce lists in order like SQL `COALESCE`.", accent: "list", create: () => new FillNode() },
           { type: "pair", children: [
-            { type: "list-sort",    label: "List Sort", description: "Sorts a list ascending or descending, by its own values or by a parallel key list (sort names by their scores). Excel: `SORT` / `SORTBY`.", create: () => new SortNode() },
+            { type: "list-sort",    label: "List Sort", description: "Sorts a table's rows by one column, or with Columns its columns by one row; a list is one row, so Columns sorts its items. Add sort keys to sort by other lists, like names by their scores, each with its own order. Excel: `SORT` / `SORTBY`.", keywords: "ascending descending order by key", create: () => new SortNode() },
             { type: "list-reverse", label: "REVERSE", description: "Reverses the order of the list", create: () => new ReverseNode() },
           ]},
           { type: "pair", children: [
             { type: "list-slice", label: "SLICE",  description: "Sublist from Start to End, 1-based inclusive. Leave End blank to run to the end.", create: () => new SliceNode() },
             { type: "list-pad",   label: "Pad", description: "Extends a list to a target length by prepending or appending a fill value. Excel: `PADLEFT` / `PADRIGHT`.", create: () => new PadNode() },
           ]},
-          { type: "list-unique",  label: "UNIQUE", description: "Removes duplicates, preserving first-occurrence order. Excel: `UNIQUE`.", create: () => new UniqueNode() },
+          { type: "list-unique",  label: "UNIQUE", keywords: "remove duplicates dedupe distinct", description: "Removes repeated rows, keeping the first of each; with Columns it removes repeated columns, and a list is one row, so Columns dedupes its items. Only singles keeps what appears exactly once. Excel: `UNIQUE`.", create: () => new UniqueNode() },
           { type: "list-sets",  label: "Sets", description: "Set operations on two lists: union, intersection, difference, symmetric difference; the relations equal, subset, superset, disjoint give `TRUE` or `FALSE`. Excel builds these from `COUNTIF`.", create: () => new SetsNode(), parity: false, keywords: "set union intersect intersection difference except minus complement symmetric relation equal same identical subset superset disjoint overlap contains all within compare two lists distinct dedupe subtract exclude common membership issubset issuperset predicate test boolean" },
           { type: "pair", children: [
             { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorders the list, Fisher-Yates. With a weight per element, higher weights tend to land earlier: a weighted draw without replacement.", create: () => new ShuffleNode(), keywords: "shuffle random reorder permutation weighted weights sample without replacement np.random.choice pick draw lottery" },
@@ -605,7 +577,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Find", description: "Look up values and positions.",
         children: [
           { type: "pair", children: [
-            { type: "lookup-xlookup", label: "XLOOKUP", description: "Looks a value up in one Frame (or Cube) column and returns the matching cell from another; a list of lookup values returns one match each. Return = `*` gives the whole row. A Cube's matched cell comes out whole; drill in with `INDEX`. Exact match by default; ≤/≥ falls back to the closest smaller/larger number or date; First/Last picks which duplicate wins; If-not-found, else `#N/A`. Two aligned lists: Build Frame first. Excel: `XLOOKUP` or `VLOOKUP`.", accent: NODE_KIND_ACCENTS.frame, keywords: "xlookup vlookup hlookup lookup frame cube table list match find nested column", create: () => new XLookupNode() },
+            { type: "lookup-xlookup", label: "XLOOKUP", description: "Finds a value in one column of a Frame or Cube and returns the matching cell from another. A List of lookup values returns one match each, and Return = `*` gives the whole row. Exact match by default; ≤ or ≥ falls back to the closest smaller or larger number or date. First or Last picks which duplicate wins, and If not found replaces `#N/A`. For two Lists, combine them with Frame from Lists first. Excel: `XLOOKUP`, `VLOOKUP`.", accent: "frame", keywords: "xlookup vlookup hlookup lookup frame cube table list match find nested column", create: () => new XLookupNode() },
             { type: "lookup-xmatch",  label: "XMATCH",  description: "1-based position with match mode selector (exact / next larger / next smaller); a list of lookup values returns one position each. Supersedes the classic `MATCH`. Excel: `XMATCH`.", create: () => new XMatchNode() },
           ]},
           { type: "pair", children: [
@@ -617,7 +589,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "list-contains", label: "CONTAINS", description: "`TRUE` if the list contains the value, any element type, keyed by value. Excel: `ISNUMBER(MATCH(value,range,0))`.", create: () => new ContainsNode() },
         ],
       },
-      { type: "list-groupby", label: "Group Lists", description: "Groups a key list and a parallel value list, one aggregate per key, as a Key, Value frame. Whole tables use Group By. Excel: `GROUPBY`, 1D.", create: () => new GroupByNode(), parity: false },
+      { type: "group-lists", label: "Group Lists", description: "Groups a key list and a parallel value list, one aggregate per key, as a Key, Value frame. Whole tables use GROUPBY. Excel: `GROUPBY`, 1D.", create: () => new GroupListsNode(), parity: false },
       {
         type: "category", label: "Rank", description: "Rank, percentile, and distribution queries.",
         children: [
@@ -631,12 +603,12 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Regression", description: "Fit or interpolate: predict y from known data and measure the fit.",
         children: [
-          { type: "linest",  label: "LINEST",  description: "Fits a line (`LINEST`: slope, intercept, R²) or a growth curve (`LOGEST`: m, b, R² on the log scale). Supersedes `SLOPE`, `INTERCEPT`, `RSQ`.", create: () => new LinestNode(), parity: false, keywords: "linest logest slope intercept rsq regression fit linear exponential growth curve least squares" },
+          { type: "linest",  label: "LINEST",  description: "Fits a line with `LINEST`, giving slope, intercept and R², or a growth curve with `LOGEST`, giving m, b and R² on the log scale.", create: () => new LinestNode(), parity: false, keywords: "linest logest slope intercept rsq regression fit linear exponential growth curve least squares" },
           { type: "forecast", label: "FORECAST.LINEAR", description: "Predict Y for one X or a list of them from known data: a straight line or a growth curve y = b·mˣ. Excel: `FORECAST.LINEAR` / `TREND`, or `GROWTH`.", create: () => new ForecastNode(), parity: false, keywords: "forecast trend growth predict linear exponential regression fit extrapolate" },
           regressionLeaf("steyx"),
           { type: "polyfit", label: "Poly Fit", description: "Least-squares polynomial fit of the chosen degree, evaluated back over the data. Degree 1 is a line, 2 a parabola, and so on. `numpy.polyfit` + `polyval`.", create: () => new PolyfitNode(), parity: false, keywords: "polynomial fit polyfit polyval regression curve degree quadratic cubic least squares numpy trendline" },
           { type: "ets-forecast", label: "Forecast (ETS)", description: "Holt-Winters smoothing: a forecast N steps ahead with a 95% band. statsmodels `ExponentialSmoothing`, R `HoltWinters`. Excel `FORECAST.ETS`, roughly.", create: () => new EtsForecastNode(), parity: false, keywords: "forecast ets exponential smoothing holt winters seasonal time series predict trend season confint seasonality" },
-          { type: "interpolate", label: "INTERPOLATE", description: "Interpolates between known points (not a regression fit). List mode: 1-D, y for a query x. Grid mode: 2-D bilinear over a table of heights, with optional Xs and Ys (absent axes count 1, 2, 3…); Forecast (default on) extrapolates beyond the range. For lookup tables: hardness conversions, pump curves, steam tables.", create: () => new InterpolateNode(), parity: false },
+          { type: "interpolate", label: "INTERPOLATE", description: "Estimates values between known points, not a regression fit. List mode finds y for an x along a line of points. Grid mode interpolates over a table of heights, with optional Xs and Ys that count 1, 2, 3… when left out. Forecast, on by default, extends past the range. Useful for lookup tables like steam tables, pump curves and hardness conversions.", create: () => new InterpolateNode(), parity: false },
         ],
       },
       {
@@ -670,11 +642,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Logic", description: "Decisions, comparisons, boolean operations, and fallback handling.",
     children: [
-      { type: "if", label: "IF", description: "If Condition is true → Value if true, else → Value if false. Excel: `IF`.", create: () => new IfNode(), accent: NODE_KIND_ACCENTS.logic },
+      { type: "if", label: "IF", description: "Returns Value if true when Condition is true, and Value if false otherwise. Excel: `IF`.", create: () => new IfNode(), accent: "logic" },
       { type: "comparison", label: "Comparison",  description: "Compares two values (`=`, `≠`, `<`, `>`, `≤`, `≥`) and emits a logical `TRUE` or `FALSE`. Broadcasts over a list.", keywords: "compare", create: () => new ComparisonNode() },
       { type: "choose",  label: "CHOOSE",        description: "Returns one of several values by a 1-based index. Excel: `CHOOSE`.", create: () => new ChooseNode() },
       { type: "switch",  label: "SWITCH",         description: "Matches a value against as many cases as you add and returns the matching result, or a default. Excel: `SWITCH`.", create: () => new SwitchNode() },
-      { type: "ifs",     label: "IFS",            description: "Returns the first value whose condition is non-zero, like chained `IF`, plus an Otherwise fallback. Excel: `IFS`.", create: () => new IfsNode() },
+      { type: "ifs",     label: "IFS",            description: "Returns the value of the first true condition, like chained `IF`, plus an Otherwise fallback. Excel: `IFS`.", create: () => new IfsNode() },
       { type: "pair", children: [
         { type: "iferror", label: "IFERROR", description: "Returns Fallback when Value is an error. A blank is not an error and passes through. Excel: `IFERROR`.", create: () => new IFErrorNode() },
         { type: "ifna", label: "IFNA", description: "Returns Fallback only when Value is `#N/A`; other errors pass through. Excel: `IFNA`.", create: () => new IFErrorNode({ op: "ifna" }) },
@@ -708,17 +680,12 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Time value of money", description: "The annuity and compound-growth relations as acausal Equation nodes.",
         children: [
           { type: "tvm", label: "Time Value of Money", description: "One relation over rate, nper, pmt, pv and fv: any four given and the fifth solves; all five and Check answers TRUE or FALSE. Excel: `PMT`, `PV`, `FV`, `NPER`, `RATE`.", create: () => new TvmNode(), keywords: "pmt pv fv nper rate loan annuity payment mortgage present future value" },
-          { type: "amortization", label: "Amortization Schedule", description: "The loan table Excel users build by hand: one row per period with Payment, Interest, Principal and the remaining Balance (Excel's `PMT` / `IPMT` / `PPMT` laid out; R `amort.table`, `numpy_financial`). Rate is per period; payment timing is the dropdown.", create: () => new AmortizationNode(), parity: false, keywords: "amortization amortisation schedule loan mortgage table payment interest principal balance ipmt ppmt pmt" },
+          { type: "amortization", label: "Amortization Schedule", description: "A loan table with one row per period: Payment, Interest, Principal and the remaining Balance. The rate is per period, and payment timing is set on the node. Excel: `PMT`, `IPMT`, `PPMT`.", create: () => new AmortizationNode(), parity: false, keywords: "amortization amortisation schedule loan mortgage table payment interest principal balance ipmt ppmt pmt" },
           { type: "returns", label: "Returns", description: "The return-series one-liners: log or simple returns, cumulative return, drawdown, CAGR, volatility, Sharpe and Sortino. pandas `pct_change`.", create: () => new ReturnsNode(), parity: false, keywords: "log returns returns log return pct_change cumulative drawdown max drawdown cagr volatility sharpe sortino risk-free annualize annualise quant performance portfolio price series" },
           { type: "fin-compound-growth", label: "Compound Growth", description: "Lump-sum growth `fv = pv·(1+rate)^nper`: any three give the fourth. Excel: `FV` or `PV` without `pmt`, `PDURATION` for `nper`, `RRI` for `rate`.", create: () => new EquationNode({ label: "Compound Growth", expr: "fv = pv * (1 + rate)^nper", locked: true }), keywords: "pduration rri compound interest growth doubling lump sum" },
         ],
       },
-      {
-        type: "category", label: "Rate conversion", description: "Convert between nominal and effective interest rates.",
-        children: [
-          { type: "fin-effective-rate", label: "Effective Rate", description: "APR ↔ APY: `eff = (1 + nom/npery)^npery − 1`. Two of nominal rate, effective rate, and compounds-per-year. The third solves. Excel: `EFFECT`, `NOMINAL`.", create: () => new EquationNode({ label: "Effective Rate", expr: "eff = (1 + nom/npery)^npery - 1", locked: true }), keywords: "effect nominal apr apy compounding annual percentage yield" },
-        ],
-      },
+      { type: "fin-effective-rate", label: "Effective Rate", description: "APR ↔ APY: `eff = (1 + nom/npery)^npery − 1`. Two of nominal rate, effective rate, and compounds-per-year. The third solves. Excel: `EFFECT`, `NOMINAL`.", create: () => new EquationNode({ label: "Effective Rate", expr: "eff = (1 + nom/npery)^npery - 1", locked: true }), keywords: "effect nominal apr apy compounding annual percentage yield" },
       {
         type: "payment-breakdown", label: "Payment Breakdown",
         description: "Splits a loan payment into interest and principal, for one period or cumulatively across a range of periods. Excel: `IPMT`, `PPMT`, `CUMIPMT`, `CUMPRINC`.",
@@ -735,12 +702,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: `XNPV`.", create: () => new NPVNode({ op: "dates" }), parity: false },
         ],
       },
-      {
-        type: "category", label: "Bond pricing", description: "Price and yield for coupon bonds.",
-        children: [
-          { type: "bond-pricing", label: "Bond Pricing", description: "A coupon bond's price from its yield, or yield from price, `30/360` basis, odd first or last coupons too. Excel: `PRICE`, `YIELD`, `ODDF` / `ODDL`.", create: () => new BondPricingNode(), parity: false, keywords: "bond price yield coupon clean price yield to maturity ytm odd first last irregular period redemption par frequency" },
-        ],
-      },
+      { type: "bond-pricing", label: "Bond Pricing", description: "A coupon bond's price from its yield, or yield from price, `30/360` basis, odd first or last coupons too. Excel: `PRICE`, `YIELD`, `ODDF` / `ODDL`.", create: () => new BondPricingNode(), parity: false, keywords: "bond price yield coupon clean price yield to maturity ytm odd first last irregular period redemption par frequency" },
       {
         type: "category", label: "Depreciation", description: "Depreciate an asset over its useful life.",
         children: [
@@ -758,7 +720,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "discount-security", label: "Discount Security", description: "Price, yield and discount rate for non-coupon securities. Excel: `TBILLEQ`, `TBILLPRICE`, `TBILLYIELD`, `DISC`, `PRICEDISC`, `YIELDDISC`, `INTRATE`, `RECEIVED`, `PRICEMAT`, `YIELDMAT`.", create: () => new DiscountSecurityNode(), parity: false, keywords: "treasury bill t-bill tbill discount discounted security paper note zero coupon price yield rate redemption investment received interest at maturity money market bond equivalent" },
           { type: "accrued-interest", label: "Accrued Interest", description: "Interest a security has earned since issue but not yet paid at settlement, periodic or at maturity. Excel: `ACCRINT`, `ACCRINTM`.", create: () => new AccruedInterestNode(), parity: false, keywords: "accrued interest accrint accrintm coupon issue settlement periodic maturity bond par" },
           { type: "pair", children: [durationLeaf("duration"),  durationLeaf("mduration")] },
-          // XNPV lives in Cash flow analysis beside XIRR, not here.
           {
             type: "category", label: "Coupon dates", description: "Coupon period day counts and dates for bond calculations.",
             children: [
@@ -834,8 +795,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Transform", description: "Case, whitespace, and character manipulation.",
         children: [
-          { type: "pair", children: [textXformLeaf("upper"), textXformLeaf("lower")] },
-          { type: "pair", children: [textXformLeaf("trim"),  textXformLeaf("proper")] },
+          { type: "pair", children: [textXformLeaf("upper", "uppercase capitals"), textXformLeaf("lower", "lowercase")] },
+          { type: "pair", children: [textXformLeaf("trim", "spaces"),  textXformLeaf("proper", "title case capitalize")] },
           { type: "pair", children: [textXformLeaf("clean"), textXformLeaf("unaccent")] },
           textXformLeaf("slugify"),
           { type: "pair", children: [
@@ -848,7 +809,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Build & Slice", description: "Concatenate, split, and extract substrings.",
         children: [
-          { type: "text-concat", label: "CONCAT",    description: "Joins up to 4 strings together (`A + B + C + D`). Excel: `CONCAT`.",                            accent: STR, create: () => new ConcatNode(),    parity: false },
+          { type: "text-concat", label: "CONCAT",    description: "Joins pieces of text in order, one per row. Excel: `CONCAT`.",                            accent: STR, create: () => new ConcatNode(),    parity: false },
           { type: "template", label: "Template", description: "Fills a text with named values: `{name}` inserts the input of that name, `{total:0.00}` formats it with an Excel `TEXT` code, `{{ }}` print braces. A list on any name spills a list. R `str_glue` / `glue`, Python f-strings and `str.format`. Excel: `TEXT` & \"…\" chains.", create: () => new TemplateNode(), parity: false, keywords: "template glue format f-string interpolate placeholder string.format sprintf mail merge message label" },
           { type: "text-join",   label: "TEXTJOIN",  description: "Joins a list of strings with a delimiter, optionally ignoring empty strings. Excel: `TEXTJOIN`.",             create: () => new TextJoinNode(),  parity: false },
           { type: "text-split",  label: "TEXTSPLIT", description: "Splits text at a delimiter into a list of strings. Excel: `TEXTSPLIT`.",                                      create: () => new TextSplitNode(), parity: false },
@@ -870,7 +831,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Measure & Encode", description: "String length, comparison, and character encoding.",
         children: [
-          { type: "text-len",   label: "LEN",   description: "Number of characters in the string. Excel: `LEN`.",                          create: () => new TextLenNode(), parity: false },
+          { type: "text-len",   label: "LEN",   keywords: "length characters", description: "Number of characters in the string. Excel: `LEN`.",                          create: () => new TextLenNode(), parity: false },
           { type: "text-exact", label: "EXACT", description: "`1` if two strings are identical (case-sensitive), else `0`. Excel: `EXACT`.", create: () => new ExactNode(),   parity: false },
           { type: "pair", children: [
             { type: "text-similarity", label: "Text Similarity", description: "How alike two strings are: Levenshtein, Damerau, Jaro-Winkler, or the raw edit distance. `rapidfuzz`, R `stringdist`. Excel: the Fuzzy Lookup add-in.", create: () => new TextSimilarityNode(), parity: false, keywords: "similarity fuzzy levenshtein edit distance jaro winkler damerau stringdist rapidfuzz typo match" },
@@ -891,9 +852,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           ]},
         ],
       },
-      { type: "text-dollar", label: "DOLLAR",  description: "Format a number as a currency string, for example `\"$1,234.56\"` or `\"-$78.90\"`. Excel: `DOLLAR`.", create: () => new FormatDollarNode(), parity: false },
-      { type: "text-numbervalue", label: "NUMBERVALUE", description: "Parses a number from a string with custom decimal and group separators, for example `\"1.234,56\"` with `decimal=\",\"` `group=\".\"`. Excel: `NUMBERVALUE`.", create: () => new NumberValueNode(), parity: false },
-      { type: "text-fixed", label: "FIXED",     description: "Format a number as a fixed-decimal string with optional thousands separators. Excel: `FIXED`.", create: () => new FixedNode(), parity: false },
+      { type: "text-dollar", label: "DOLLAR",  description: "Format a number as a currency string, for example `\"$1,234.56\"`, or `\"($78.90)\"` for a negative. Excel: `DOLLAR`.", create: () => new FormatDollarNode() },
+      { type: "text-fixed", label: "FIXED",     description: "Format a number as a fixed-decimal string with optional thousands separators. Excel: `FIXED`.", create: () => new FixedNode() },
       { type: "pair", children: [romanArabicLeaf("roman"), romanArabicLeaf("arabic")] },
     ],
   },
@@ -905,29 +865,29 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Frames (named columns)", description: "A data table = a Matrix plus a header list. Build one, take it apart, and read or add columns.",
         children: [
-          { type: "build-frame", label: "Build Frame", description: "Combines a Matrix and a header text-list into a Frame. Missing headers auto-fill as `Col1`, `Col2`…. Duplicates are made unique.", create: () => new BuildFrameNode(), parity: false },
+          { type: "build-frame", label: "Build Frame", description: "Combines a Matrix and a List of headers into a Frame. Missing headers become `Col1`, `Col2`…, and duplicates are made unique.", create: () => new BuildFrameNode(), parity: false },
           { type: "frame-from-lists", label: "Frame from Lists", description: "Builds a Frame straight from lists: each column pairs a typed name with a list of any type. Ragged columns pad with blanks.", create: () => new FrameFromListsNode(), parity: false, keywords: "lists to frame columns table build fast assemble" },
           { type: "split-frame", label: "Split Frame", description: "Takes a Frame apart into its numeric Matrix body and header text-list; the inverse of Build Frame. The type filter (All / Num / Date / Bool / Text) keeps only columns of that type.", create: () => new SplitFrameNode(), parity: false },
           { type: "get-column",  label: "Get Column",  description: "Pulls one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date.", create: () => new GetColumnNode(), parity: false },
-          { type: "get-row",     label: "Get Row",     description: "Pulls one row out of a Frame by 1-based number, giving a 1-row Frame: a row mixes types, so it's not a list.", create: () => new GetRowNode(), parity: false },
+          { type: "get-row",     label: "Get Row",     description: "Pulls one row out of a Frame by 1-based number, as a one-row Frame, since a row can mix types.", create: () => new GetRowNode(), parity: false },
           { type: "add-column",  label: "Add Column",  description: "Appends a list to a Frame or Cube as a named column, or replaces the column of that name. Shorter lists pad with blanks.", create: () => new AddColumnNode(), parity: false },
-          { type: "computed-column", label: "Computed Column", description: "Adds a column computed row by row: `@name` reads this row's cell, a bare name is the whole column; `@revenue` / `SUM(revenue)` is share-of-total. `[Unit Price]` / `@[Unit Price]` spell names a variable can't. Power Query: Custom Column.", keywords: "custom column calculated field formula derive mutate row-wise index this-row @", create: () => new ComputedColumnNode(), parity: false },
+          { type: "computed-column", label: "Computed Column", description: "Adds a column calculated once per row. `@Price` reads this row's Price and a bare `Price` is the whole column, so `@Price / SUM(Price)` is each row's share. Bracket a name with spaces: `@[Unit Price]`. `ROW()` is this row's number and `ROWS(Price)` the row count. Power Query: Custom Column.", keywords: "custom column calculated field formula derive mutate row-wise index this-row @ row number rownum ROW ROWS", create: () => new ComputedColumnNode(), parity: false },
         ],
       },
       {
         type: "category", label: "Table verbs", description: "Relational verbs over a Frame: filter, sort, join, group, reshape, nest and unnest.",
         children: [
-          { type: "distinct",    label: "Distinct",    description: "Removes duplicate rows from a Frame, keeping the first of each. The table form of `UNIQUE`. Rows compare case-sensitively: keys are identity, unlike Excel.", create: () => new DistinctNode(), parity: false },
-          { type: "head",        label: "Head",        description: "Row slices: keep the first N, last N, skip the first N, or keep rows N–To (1-based). Power Query's Keep or Remove Rows family on one mode dropdown.", create: () => new HeadNode(), parity: false, keywords: "head tail first last skip range keep remove top bottom rows limit offset" },
-          { type: "sort-frame",  label: "Frame Sort",  description: "Orders a Frame's rows by one column, ascending or descending; blanks and errors sort last. Stable, so chained sorts give a multi-key order, innermost key first. Excel: `SORT`.", create: () => new SortFrameNode(), parity: false, keywords: "sort order multi key then by stable" },
-          { type: "filter-frame",label: "Frame Filter", description: "Keeps rows passing conditions (column, test, value; AND/OR); the rest go to Dropped. Blanks and errors fail a value test; 'is blank' and 'has error' select them. The SQL `WHERE`. Excel: `FILTER`.", create: () => new FilterFrameNode(), parity: false, keywords: "filter rows where keep drop errors iserror noterror clean" },
-          { type: "join",        label: "Join",        description: "Combines two Frames on a key column: inner, left, right, outer or as-of. Several matches fan out; as-of never does. Keys are case-sensitive, unlike Excel's `VLOOKUP` / `XLOOKUP`.", create: () => new JoinNode(), parity: false },
-          { type: "sumifs", label: "SUMIFS", description: "One frame column aggregated under criteria on the others, matching all or any. Excel: `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame all any or" },
-          { type: "window", label: "Window", description: "A per-group column keeping every row: running totals, ranks, lag and lead, rolling windows, shares. SQL `OVER`, pandas `transform`, dplyr `mutate`.", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
-          { type: "group-by-frame", label: "GROUPBY", description: "Rows grouped by key columns with one column aggregated, plus optional total and subtotal rows. Excel: `GROUPBY`.", create: () => new GroupByFrameNode(), parity: false },
+          { type: "distinct",    label: "Distinct",    description: "Removes duplicate rows from a Frame, keeping the first of each. Rows compare case-sensitively, unlike Excel. Excel: `UNIQUE`.", create: () => new DistinctNode(), parity: false },
+          { type: "head",        label: "Head",        description: "Keeps a slice of rows: the first N, the last N, all but the first N, or rows N to To (1-based). Power Query: Keep Rows and Remove Rows.", create: () => new HeadNode(), parity: false, keywords: "head tail first last skip range keep remove top bottom rows limit offset" },
+          { type: "sort-frame",  label: "Frame Sort",  description: "Sorts a Frame's rows by one column, ascending or descending, with blanks and errors last. Ties keep their order, so to sort by several columns, chain Frame Sorts from the least important column to the most. Excel: `SORT`.", create: () => new SortFrameNode(), parity: false, keywords: "sort order multi key then by stable" },
+          { type: "filter-frame",label: "Frame Filter", description: "Keeps the rows that pass its conditions, joined by AND or OR; the rest go to Dropped. Blanks and errors fail a value test, and `is blank` and `has error` select them. SQL: `WHERE`. Excel: `FILTER`.", create: () => new FilterFrameNode(), parity: false, keywords: "filter rows where keep drop errors iserror noterror clean" },
+          { type: "join",        label: "Join",        description: "Combines two Frames on a key column: inner, left, right, outer or as-of. A key with several matches gives one row per match, except in as-of. Keys are case-sensitive, unlike Excel's `XLOOKUP`.", create: () => new JoinNode(), parity: false },
+          { type: "sumifs", label: "SUMIFS", description: "Aggregates one Frame column over the rows that meet criteria on other columns, matching all or any. Excel: `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame all any or" },
+          { type: "window", label: "Window", description: "Adds a column calculated per group while keeping every row: running totals, ranks, lag and lead, rolling windows, shares. SQL `OVER`, pandas `transform`, dplyr `mutate`.", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
+          { type: "group-by-frame", label: "GROUPBY", description: "Groups rows by key columns and aggregates one column, with optional total and subtotal rows. Excel: `GROUPBY`.", create: () => new GroupByFrameNode(), parity: false },
           { type: "pair", children: [
-            { type: "append",      label: "Append",      description: "Stacks Frames vertically. Columns match by name, a missing column fills blank, a type clash is `#TYPE!`. Excel's `VSTACK`, for frames.", create: () => new AppendNode(), parity: false },
-            { type: "bind-columns", label: "Bind Columns", description: "Frames side by side by position: a repeated name gets a suffix, a shorter Frame pads with blanks. pandas `concat`, R `bind_cols`, Excel `HSTACK`.", create: () => new BindColumnsNode(), parity: false, keywords: "bind_cols cbind concat axis 1 side by side zip frames columns hstack horizontal" },
+            { type: "append",      label: "Append",      description: "Stacks Frames vertically. Columns match by name, a missing column fills with blanks, and a type clash is `#TYPE!`. Excel: `VSTACK`.", create: () => new AppendNode(), parity: false },
+            { type: "bind-columns", label: "Bind Columns", description: "Places Frames side by side by position. A repeated name gets a suffix, and a shorter Frame pads with blanks. pandas `concat`, R `bind_cols`, Excel `HSTACK`.", create: () => new BindColumnsNode(), parity: false, keywords: "bind_cols cbind concat axis 1 side by side zip frames columns hstack horizontal" },
           ]},
           {
             type: "category", label: "Clean", description: "The everyday cleanup verbs: fill blanks from above, find and replace, drop spacer rows.",
@@ -937,7 +897,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
               { type: "drop-blank-rows", label: "Drop Blank Rows", description: "Removes blank rows: only fully blank spacer rows, or any row with a blank cell. Errors count as values. Power Query: Remove Blank Rows.", create: () => new DropBlankRowsNode(), parity: false, keywords: "drop remove blank empty rows spacers nulls complete clean" },
             ],
           },
-          // Everyday verbs stay top-level; surgery/reshape/compare fold into subcategories.
           {
             type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
             children: [
@@ -945,7 +904,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
                 { type: "keep-columns", label: "Keep Columns", description: "Keeps only the named columns, in the order given. Like Excel's `CHOOSECOLS`, but by column name.", keywords: "columns select keep choosecols", create: () => new ColumnsNode(), parity: false },
                 { type: "drop-columns", label: "Drop Columns", description: "Removes the named columns; the rest pass through.", keywords: "columns drop remove", create: () => new ColumnsNode({ op: "drop" }), parity: false },
               ]},
-              { type: "rename",      label: "Rename",      description: "Renames columns using two parallel lists zipped by position: From `[\"qty\"]` → To `[\"Quantity\"]`.", create: () => new RenameNode(), parity: false },
+              { type: "rename",      label: "Rename",      description: "Renames columns from two Lists matched by position: From `[\"qty\"]` → To `[\"Quantity\"]`.", create: () => new RenameNode(), parity: false },
               { type: "split-column", label: "Split Column", description: "Splits one text column into several by a delimiter, the parts replacing the source. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
               { type: "add-index",   label: "Add Index",   description: "Prepends a row-number column from a start value (default 1). Power Query: Add Index Column.", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },
               { type: "merge-columns", label: "Merge Columns", description: "Joins two or more columns into one text column with a separator, in the first source\'s place. The inverse of Split Column. Power Query: Merge Columns.", create: () => new MergeColumnsNode(), parity: false, keywords: "merge combine concatenate join columns text textjoin concat inverse split" },
@@ -955,8 +914,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Reshape", description: "Change the layout: pivot wide, melt long, nest into a Cube and back.",
             children: [
-              { type: "pivot",       label: "PIVOTBY",     description: "Cross-tab long to wide: Row and Column fields, multi-level headers, `SUM` / `AVERAGE` / `COUNT` per value, totals and subtotals, sort, filter.", create: () => new PivotNode(), parity: true },
-              { type: "unpivot",     label: "Unpivot",     description: "Reshapes wide → long (melt): keep the Id columns, turn each chosen Value column into variable/value rows. Excel's Power Query Unpivot.", create: () => new UnpivotNode(), parity: false },
+              { type: "pivot",       label: "PIVOTBY",     description: "Turns long data into a cross-tab by Row and Column fields, with `SUM`, `AVERAGE` or `COUNT` per value and optional totals and subtotals. Excel: `PIVOTBY`.", create: () => new PivotNode(), parity: true },
+              { type: "unpivot",     label: "Unpivot",     description: "Turns wide data long: the Id columns stay, and each chosen Value column becomes variable and value rows. Power Query: Unpivot. pandas: `melt`.", create: () => new UnpivotNode(), parity: false },
               { type: "pair", children: [
                 { type: "nest",   label: "Nest",   description: "Groups a flat Frame by key into a Cube. Each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
                 { type: "unnest", label: "Unnest", description: "A Cube's nested column expanded one level, each parent row repeating per nested row; a nested Frame flattens fully. The inverse of Nest.", create: () => new UnnestNode(), parity: false },
@@ -966,8 +925,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Analyze", description: "Score, profile, and compare Frames: weighted decisions, column summaries and correlations, version reconciliation.",
             children: [
-              { type: "decision-matrix", label: "Decision Matrix", description: "Scores and ranks a Frame of options: rows are options, number columns criteria, an optional leading text column names them. Score = `Σ(value × weight) / Σ|weight|`, then competition rank on the rounded score. A negative weight penalizes a lower-is-better criterion such as cost. Weights come from a Weights table: one row per criterion with its Weight and an optional Norm (Raw / ÷Max / Rank); a criterion left out weighs 1. Each criterion normalizes Raw (use the numbers as they are), ÷Max (divide by the column's biggest value; the default), or Rank (keep only the order) so dollars and out-of-10 scores compare. Breakdown adds each criterion's signed contribution; the contributions sum to the Score. Output: Option · Score · Rank, best first.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda" },
-              { type: "decision-sensitivity", label: "Sensitivity", description: "Re-scores the same options (the Scores frame) under several weight Scenarios to see whether the winner holds. The Scenarios table is the Decision Matrix weights table widened: one row per criterion, and a number column per scenario, named by its header, holding that scenario\'s weight. An optional Norm column applies per criterion across every scenario; a criterion a scenario leaves out weighs 1. Output: a Cube, one row per scenario. Scenario · Winner · Margin · Ranking: Margin is the top score minus the runner-up, Ranking nests the full Option·Score·Rank table to drill into, and options tied for first are listed together in Winner. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda" },
+              { type: "decision-matrix", label: "Decision Matrix", description: "Scores and ranks a Frame of options: rows are options and number columns are criteria. Score = `Σ(value × weight) / Σ|weight|`, ranked on the rounded score. Weights come from a Weights table, one row per criterion; a negative weight favors lower values like cost, and a criterion left out weighs 1. Norm scales each criterion so dollars and out-of-10 scores compare: Raw, ÷Max (the default) or Rank. Breakdown adds each criterion's contribution to the Score.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda" },
+              { type: "decision-sensitivity", label: "Sensitivity", description: "Re-scores the same options under several weight Scenarios to see whether the winner holds. The Scenarios table is the Decision Matrix's Weights table with one weight column per scenario, and an optional Norm column. The result is a Cube with one row per scenario: the Winner, the Margin over the runner-up, and the full Ranking to drill into. Options tied for first are listed together. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda" },
               { type: "describe",    label: "Describe",    description: "One row per column: count, blank, distinct, and for numbers mean, std, min, quartiles, max. pandas `describe`, R `summary`.", create: () => new DescribeNode(), parity: false, keywords: "describe summary summarize profile statistics count mean std quartile overview explore eda" },
               { type: "corr-matrix", label: "Correlation Matrix", description: "Pearson, Spearman or Kendall correlation, or covariance, between every pair of number columns, with a leading name column. pandas `df.corr`, R `cor`.", create: () => new CorrMatrixNode(), parity: false, keywords: "correlation matrix corr cov covariance pearson spearman kendall pairwise heatmap" },
               { type: "reconcile",   label: "Reconcile",   description: "Two Frame versions compared by key: each row Added, Removed, Changed or Unchanged, with before, after and Δ per number column.", create: () => new ReconcileNode(), parity: false, keywords: "reconcile compare diff variance price volume mix pvm audit changed added removed data quality trust" },
@@ -994,35 +953,27 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "cube-rollup", label: "Cube Rollup", description: "Aggregates a column inside each row's nested table and flattens the Cube to a Frame with the roll-up appended: an assembly's cost as a `SUM` of parts.", create: () => new CubeRollupNode(), parity: false, keywords: "cube rollup aggregate sum bom bill of materials costing nested cost roll up assembly subtotal" },
         ],
       },
-      {
-        type: "category", label: "Select", description: "Pick rows or columns, by index or from the table's edges.",
-        children: [
-          { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
-          // One rank-preserving card (list, matrix or scalar), so both ops get a bare
-          // Add-menu leaf — no "TAKE: Drop" colon row. The family keywords carry the old
-          // "list take" / "table take" spellings onto both.
-          { type: "pair", children: [
-            { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
-            { type: "takedrop-drop", label: "DROP", description: TAKEDROP_OP_META.drop.description, create: () => new TakeDropNode({ op: "drop" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
-          ]},
-        ],
-      },
+      { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
+      { type: "pair", children: [
+        { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: false, keywords: "take drop list table rows columns elements edge first last head tail" },
+        { type: "takedrop-drop", label: "DROP", description: TAKEDROP_OP_META.drop.description, create: () => new TakeDropNode({ op: "drop" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
+      ]},
       {
         type: "category", label: "Shape", description: "Reshape between 1D lists and 2D tables, stack tables side-by-side.",
         children: [
           { type: "pair", children: [reshapeLeaf("wraprows"), reshapeLeaf("wrapcols")] },
           { type: "pair", children: [reshapeLeaf("tocol"),    reshapeLeaf("torow")]    },
           { type: "xstack", label: "XSTACK", description: "Stacks tables top-to-bottom or side by side, in row order. A list counts as one row; a ragged edge pads with `#N/A`. Excel: `VSTACK` / `HSTACK`.", create: () => new StackNode(), parity: false, keywords: "stack vertical horizontal rows side by side rbind cbind lists to table" },
-          { type: "table-expand", label: "EXPAND", description: "Grow a table to a target row or column count. New cells take the Fill value, or stay empty (`null`) without one; put `NA` in Fill for Excel's `#N/A` pad. Shrinking is `#VALUE!`, which is `TAKE`'s job. Excel: `EXPAND`.", create: () => new ExpandNode(), parity: false, keywords: "grow pad resize table fill" },
+          { type: "table-expand", label: "EXPAND", description: "Grows a table to a target number of rows or columns. New cells take the Fill value, or stay blank without one; use `NA` as Fill for Excel's `#N/A`. Shrinking is `#VALUE!`; use `TAKE` for that. Excel: `EXPAND`.", create: () => new ExpandNode(), parity: false, keywords: "grow pad resize table fill" },
           { type: "table-set-cell", label: "Set Cell", description: "Writes values into a table at a 1-based `(row, column)` address: a list writes a row, a table a block. Later writes win; a value past the edge errors. Excel has no equivalent.", create: () => new SetCellNode(), keywords: "set cell overwrite poke write address table matrix block row" },
         ],
       },
       {
         type: "category", label: "Lambda (per-cell / per-row)", description: "Apply a formula over a table: each cell, each row or column, fold to one value, or generate from indices.",
         children: [
-          { type: "map-table",  label: "MAP",       description: "Applies a formula to every cell of up to three same-shaped tables. Variables `value`, `value2`, `value3` = each table's cell; `row`, `col` = 1-based position (a scalar `value2` or `value3` broadcasts). Result type for text or date. Excel: `MAP`.", create: () => new MapTableNode(),  parity: false },
+          { type: "map-table",  label: "MAP",       description: "Applies a formula to every cell of up to three tables of the same shape. `value`, `value2` and `value3` are each table's cell, and `row` and `col` are its 1-based position; a single value in `value2` or `value3` is repeated to fit. Set Result type for text or dates. Excel: `MAP`.", create: () => new MapTableNode(),  parity: false },
           { type: "pair", children: [
-            { type: "by-axis",    label: "BYROW", description: "Reduces each row or column of a table to one value. Variable `v` = the row or column as a list. Pick the result type for text or date. Excel: `BYROW`.", create: () => new ByAxisNode(), parity: false },
+            { type: "by-axis",    label: "BYROW", description: "Reduces each row of a table to one value in a column, or each column to one value in a list. Variable `values` = the row or column as a list. Pick the result type for text or date. Excel: `BYROW`.", create: () => new ByAxisNode(), parity: false },
             { type: "by-col",    label: "BYCOL", description: "Reduces each row or column of a table to one value. Variable `v` = the row or column as a list. Pick the result type for text or date. Excel: `BYCOL`.", create: () => new ByAxisNode({ op: "col" }), parity: false },
           ]},
           { type: "make-array", label: "MAKEARRAY", description: "A rows×cols table from a formula of its indices, `row` and `col` 1-based. Pick the result type for text or date. Excel: `MAKEARRAY`.", create: () => new MakeArrayNode(), parity: false },
@@ -1050,9 +1001,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
     ],
   },
 
-  // Declared EMPTY so it sits last among the core rows: the catalog builder fills it
-  // per active pack and prunes the row when no pack targets it. Cross-woven pack nodes
-  // stay put. Uncategorized pack nodes fall to "Docs & Files" (the placement fallback).
   {
     type: "category", label: "Packs", description: "Nodes from your enabled packs, by domain. Manage packs in Settings.",
     children: [],

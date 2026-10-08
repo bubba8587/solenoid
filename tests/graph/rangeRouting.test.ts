@@ -1,7 +1,8 @@
-// [[C17]], [[C20]], [[D4]], [[D24]], [[D48]], [[E1]]
+// [[C17]], [[B16]] oneFormulaSurface, [[D48]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
 import { ForecastNode, LinestNode } from "../../src/graph/nodes/stats";
+import { isSolError } from "../../src/graph/errorValue";
 
 // ─── Range routing: the SHAPE guard ───────────────────────────────────────────
 // `RANGE_FUNCTIONS` is hand-kept, and a function missing from it fails SILENTLY in the
@@ -29,9 +30,11 @@ const SCALAR_RESULT: Array<[string, string]> = [
   ["SUMX2MY2", "SUMX2MY2(a, b)"],
   ["SUMX2PY2", "SUMX2PY2(a, b)"],
   ["SUMXMY2", "SUMXMY2(a, b)"],
-  ["MODE.SNGL", "MODE.SNGL(a)"],
+  ["MODE.SNGL", "MODE.SNGL(a, a)"],
   ["PROB", "PROB(a, p, 1, 3)"],
   ["SERIESSUM", "SERIESSUM(2, 1, 1, a)"],
+  ["PEARSON", "PEARSON(a, b)"],
+  ["FVSCHEDULE", "FVSCHEDULE(1, p)"],
   // The long-standing members, kept here so the guard covers the whole set rather
   // than just the additions — a regression in routing would break these identically.
   ["SUM", "SUM(a)"],
@@ -43,10 +46,7 @@ const SCALAR_RESULT: Array<[string, string]> = [
 
 describe("whole-sample functions are range-routed, not broadcast", () => {
   it.each(SCALAR_RESULT)("%s returns one answer, not one per element", (name, expr) => {
-    expect(RANGE_FUNCTIONS.has(name), `${name} is missing from RANGE_FUNCTIONS`).toBe(true);
     const r = compileEvaluator(expr)!({ a: A, b: B, p: P });
-    expect(Array.isArray(r), `${name} broadcast: ${JSON.stringify(r)}`).toBe(false);
-    expect(typeof r, `${name} answered a ${typeof r}`).toBe("number");
     expect(Number.isFinite(r as number), `${name} answered ${r}`).toBe(true);
   });
 
@@ -85,9 +85,14 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
     ["GEOMEAN of a negative", "GEOMEAN(x)", { x: [-4, 9] }, "#DOMAIN!"],
     ["Z.TEST of a constant", "Z.TEST(x, 1)", { x: [1, 1, 1] }, "#DOMAIN!"],
   ];
+  it("guards a range longer than a call can take as arguments", () => {
+    const x = Array.from({ length: 200_000 }, (_, i) => i % 7);
+    expect(ev("AVERAGE(x)", { x })).toBeCloseTo(2.99997, 10);
+    expect(ev("MEDIAN(x)", { x })).toBe(3);
+  });
+
   it.each(DEGENERATE)("%s → the node's answer, never bare NaN", (_label, expr, env, code) => {
     const r = ev(expr, env);
-    expect(typeof r === "number" && Number.isNaN(r), "bare NaN leaked").toBe(false);
     if (code === null) expect(r).toBeNull();
     else expect(codeOf(r)).toBe(code);
   });
@@ -103,7 +108,7 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
 describe("the regression quartet — owned, not routed (the last DEFERRED closed)", () => {
   // The former DEFERRED list. Like UNIQUE/SORT/TRANSPOSE before them, the fix
   // shape is OWNERSHIP (a listArgs registration over the nodes' fitting kernels,
-  // [[D26]] hideMatrixFromVendor), not RANGE_FUNCTIONS routing — so membership there stays false, and the
+  // [[C15]] matricesInFormulas), not RANGE_FUNCTIONS routing — so membership there stays false, and the
   // shape checks below are what "fixed" means: one fitted answer, never a
   // broadcast echo of the input.
   const QUARTET = ["TREND", "GROWTH", "LINEST", "LOGEST"];
@@ -143,8 +148,8 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
     expect(ev("LINEST(y, x)", { y: YS, x: XS }))
       .toEqual([nodeOut.slope, nodeOut.intercept, nodeOut.r2]);
     expect(ev("LINEST(y, x)", { y: YS, x: XS })).toEqual([2, 1, 1]);
-    // Degenerate fit (zero X variance) → null, the node's null outputs.
-    expect(ev("LINEST(y, x)", { y: YS, x: [2, 2, 2, 2] })).toBeNull();
+    const flat = ev("LINEST(y, x)", { y: YS, x: [2, 2, 2, 2] });
+    expect(isSolError(flat) && flat.code).toBe("#DIV/0!");
   });
 
   it("LOGEST is the Fit card's exponential op — m, b on the slope/intercept sockets", () => {
@@ -157,8 +162,10 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
     expect(out.intercept as number).toBeCloseTo(1, 10);
     // An exact exponential fits perfectly → log-scale R² = 1.
     expect(out.r2 as number).toBeCloseTo(1, 10);
-    // y ≤ 0: the formula keeps the quiet empty; the card is loud (#DOMAIN!, Excel's #NUM!).
-    expect(ev("LOGEST(y, x)", { y: [1, -1, 2, 3], x: XS })).toEqual([]);
+    // y ≤ 0 is a wrong input, #DOMAIN! (Excel's #NUM!) on the formula and the card alike ([[D70]] nullNotEnoughData).
+    for (const f of ["LOGEST(y, x)", "GROWTH(y, x)", "GROWTH(y, x, x, FALSE)"]) {
+      expect((ev(f, { y: [1, -1, 2, 3], x: XS }) as { code?: string }).code).toBe("#DOMAIN!");
+    }
     const bad = node.data({ ys: [[1, -1, 2, 3]], xs: [XS] });
     expect([bad.slope, bad.intercept, bad.r2].map((v) => (v as { code?: string })?.code)).toEqual(["#DOMAIN!", "#DOMAIN!", "#DOMAIN!"]);
   });

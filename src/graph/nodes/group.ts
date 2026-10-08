@@ -1,14 +1,14 @@
-// [[C87]] groupsAreSubflows, [[C86]] membershipByGesture, [[C88]] collapseIsVisual, [[D63]] lockedGroupIsObstacle, [[C37]] observerOwnsSize
+// [[C86]] membershipByGesture, [[C88]] collapsedGroupCard, [[C112]] noOverlapsEver
 import { ClassicPreset } from "rete";
 
 export class GroupNode extends ClassicPreset.Node {
   label: string;
   members: string[];      // the authoritative set ([[C86]] membershipByGesture)
-  color: string;          // palette SLOT id (resolved to a hex at render); header / outline color
+  color: string;
   collapsed: boolean;
   width: number;
   height: number;
-  lockedPosition: boolean; // [[D63]] lockedGroupIsObstacle
+  lockedPosition: boolean; // [[C112]] noOverlapsEver
 
   constructor(init?: {
     label?: string;
@@ -19,8 +19,8 @@ export class GroupNode extends ClassicPreset.Node {
     height?: number;
     lockedPosition?: boolean;
   }) {
-    super("Group");
-    this.label = init?.label ?? "Group";
+    super("Node Group");
+    this.label = init?.label ?? "Node Group";
     this.members = init?.members ? [...init.members] : [];
     this.color = init?.color ?? "violet";
     this.collapsed = init?.collapsed ?? false;

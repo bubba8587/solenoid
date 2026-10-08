@@ -8,6 +8,7 @@ import { type LambdaValue } from "../../src/graph/lambdaValue";
 import { buildFrame } from "../../src/graph/frame";
 import { type MermaidValue } from "../../src/graph/mermaidValue";
 import { makeDocument } from "../../src/graph/documentValue";
+import { parse as parseYaml } from "yaml";
 
 describe("frontmatterToYaml", () => {
   it("emits a --- fenced block; numbers/booleans bare, order preserved", () => {
@@ -31,6 +32,8 @@ describe("frontmatterToYaml", () => {
     expect(yamlScalar("-")).toBe('"-"');
     expect(yamlScalar(".5")).toBe('".5"');
     expect(yamlScalar(".inf")).toBe('".inf"');
+    expect(yamlScalar(Infinity)).toBe(".inf");
+    expect(yamlScalar(-Infinity)).toBe("-.inf");
     expect(yamlScalar("-item")).toBe("-item"); // plain '-' + non-space stays a plain scalar
   });
   it("a multi-line / tabbed string is quoted with the newline escaped (stays valid one-line YAML)", () => {
@@ -45,6 +48,22 @@ describe("frontmatterToYaml", () => {
     expect(yamlScalar("back\\slash\nnl")).toBe('"back\\\\slash\\nnl"');
     // the emitted block is a single line per key — no stray newline splices in
     expect(frontmatterToYaml({ notes: "one\ntwo" })).toBe('---\nnotes: "one\\ntwo"\n---\n');
+  });
+  it("every text value reads back as the same text through the yaml package", () => {
+    const texts = ["+1", "-.5", "+.5", "-.inf", "+.INF", ".NaN", "'quoted'", "0x1F", "1e3", "~", "Null", "- x", "a #b", "plain", "-item", "it's"];
+    for (const t of texts) expect(parseYaml(`k: ${yamlScalar(t)}`), t).toEqual({ k: t });
+  });
+  it("a control character is escaped, since Obsidian's reader refuses a block holding one raw", () => {
+    for (const t of ["\u0001ctl", "a\u007fb", "a: \u0002", "x\u0080"]) {
+      const y = yamlScalar(t);
+      expect(y, JSON.stringify(t)).toMatch(/^".*\\x[0-9a-f]{2}/);
+      expect(parseYaml(`k: ${y}`)).toEqual({ k: t });
+    }
+  });
+  it("a key YAML would read as something else is quoted, so it reads back as typed", () => {
+    for (const k of ["007", "1.50", "+1", "0x1F", "null", "~", "<<", "2024", "a b", "-item", "yes"]) {
+      expect(Object.keys(parseYaml(frontmatterToYaml({ [k]: 5 }).replace(/^---\n|---\n$/g, ""))), k).toEqual([k]);
+    }
   });
   it("renders a list as a YAML block sequence", () => {
     expect(frontmatterToYaml({ tags: ["finance", "q3"] })).toBe(
@@ -88,6 +107,10 @@ describe("lambdaToMarkdown", () => {
     expect(md.endsWith("\n$$")).toBe(true);
     expect(md).not.toContain("[object Object]");
   });
+  it("the f(params) head writes each parameter as the body does", () => {
+    const md = lambdaToMarkdown(lam({ params: ["a_b_c", "rate"], expr: "a_b_c * rate" }));
+    expect(md).toContain("f(a_{{b_c}},\\,\\mathrm{rate}) = a_{{b_c}}");
+  });
   it("descriptions follow as a plain where-legend; an unparsable body falls back to code", () => {
     const md = lambdaToMarkdown(lam({ expr: "base * t", descriptions: { t: "months ahead", base: "latest run-rate" } }));
     expect(md).toContain("\n\nwhere\n- *t* — months ahead\n- *base* — latest run-rate");
@@ -109,7 +132,12 @@ describe("valueToObsidianBlock — kind dispatch", () => {
     const chart = valueToObsidianBlock({ __chart: true, kind: "line" });
     expect(chart.kind).toBe("chart");
     // a plain scalar falls back to its string form
-    expect(valueToObsidianBlock(42)).toEqual({ kind: "md", md: "42" });
+    expect(valueToObsidianBlock(42)).toEqual({ kind: "md", md: "42", plain: true });
+  });
+
+  it("an embedded Note writes its body without its own frontmatter", () => {
+    const note = makeDocument("---\ntitle: Inner\n---\nThe body.", {});
+    expect(valueToObsidianBlock(note)).toEqual({ kind: "md", md: "The body." });
   });
 });
 

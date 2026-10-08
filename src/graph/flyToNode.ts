@@ -1,15 +1,15 @@
-// [[C88]] collapseIsVisual.
+// [[C88]] collapsedGroupCard
 import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";
 
 import { getOwningEditor, getOwningView } from "./activeGraph";
 import { groupCollapseStore } from "./groupCollapse";
+import { dockedNodeStore } from "./dockedNodeStore";
 import { GroupNode } from "./rete-nodes";
 import type { Schemes } from "./schemes";
 import { getActiveView, getActiveEditor } from "./activeGraph";
 
-// Camera targets resolve the nearest VISIBLE ancestor ([[C88]] collapseIsVisual).
-function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): string {
+export function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): string {
   let targetId = nodeId;
   const seen = new Set<string>();
   while (groupCollapseStore.isNodeHidden(targetId) && !seen.has(targetId)) {
@@ -17,14 +17,15 @@ function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): stri
     const grp = editor
       .getNodes()
       .find((n) => n instanceof GroupNode && n.members.includes(targetId));
-    if (!grp) break;
-    targetId = grp.id;
+    const host = grp ? null : dockedNodeStore.get(targetId)?.hostNodeId;
+    if (grp) targetId = grp.id;
+    else if (host) targetId = host;
+    else break;
   }
   return targetId;
 }
 
-// A collapsed group still carries its EXPANDED width/height, which zoomAt would frame;
-// pass a SIZELESS ref so it falls back to the rendered (compact) element size.
+// A collapsed group still carries its expanded size, so pass a sizeless ref and zoomAt uses the rendered box.
 function visibleRef(editor: NodeEditor<Schemes>, nodeId: string): Schemes["Node"] | null {
   const targetId = resolveVisibleTarget(editor, nodeId);
   const node = editor.getNode(targetId);
@@ -35,7 +36,6 @@ function visibleRef(editor: NodeEditor<Schemes>, nodeId: string): Schemes["Node"
 }
 
 export function flyToNode(nodeId: string): void {
-  // Drill-in aware: a node inside an open composite flies the DRILL-IN camera.
   const editor = getOwningEditor(nodeId);
   const view = getOwningView(nodeId);
   if (!editor || !view) return;
@@ -44,8 +44,7 @@ export function flyToNode(nodeId: string): void {
   void zoomAt(view, [ref]);
 }
 
-/** Fits a bounding box over every node; unknown/removed ids are skipped and an empty
- *  result is a no-op. */
+/** Unknown or removed ids are skipped; an empty result does nothing. */
 export function flyToNodes(nodeIds: string[]): void {
   const editor = getActiveEditor();
   const view = getActiveView();
@@ -61,10 +60,9 @@ const FLASH_CLASS = "solenoid-node-flash";
 const FLASH_MS = 1000;
 const _flashTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-/** Flashes the nearest VISIBLE ancestor, so a node inside a collapsed group lights up
- *  the group box rather than nothing. */
+/** A node inside a collapsed group lights up the group box. */
 export function flashNode(nodeId: string): void {
-  const editor = getOwningEditor(nodeId); // drill-in aware, like flyToNode
+  const editor = getOwningEditor(nodeId);
   const view = getOwningView(nodeId);
   if (!editor || !view) return;
   const targetId = resolveVisibleTarget(editor, nodeId);

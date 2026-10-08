@@ -1,11 +1,9 @@
-// [[D17]] relaysTransparent
 import { useSyncExternalStore } from "react";
 import { pinStore, pinNodeValue } from "../pinStore";
 import { flyToNodeAndFlash } from "../flyToNode";
 import { getOwningEditor } from "../activeGraph";
 import { resolveValueOrigin } from "../unitFlow";
 
-// Lucide "pin"; even-sized (DESIGN.md: icon-only buttons use even-sized icons).
 const PinGlyph = () => (
   <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }} aria-hidden="true">
     <path d="M12 17v5" />
@@ -13,8 +11,6 @@ const PinGlyph = () => (
   </svg>
 );
 
-/** The Pin action shared by the value popups; the host node id comes from the popup,
- *  which learns it from NodeFormatContext. */
 export function PopupPinButton({ nodeId }: { nodeId: string }) {
   useSyncExternalStore(pinStore.subscribe, pinStore.version);
   const pinned = pinStore.has(nodeId);
@@ -32,7 +28,6 @@ export function PopupPinButton({ nodeId }: { nodeId: string }) {
   );
 }
 
-// Lucide "crosshair"; even-sized.
 const LocateGlyph = () => (
   <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }} aria-hidden="true">
     <circle cx="12" cy="12" r="10" />
@@ -43,8 +38,6 @@ const LocateGlyph = () => (
   </svg>
 );
 
-/** "Go to source" — flies the camera to the node that PRODUCED the shown value, resolved
- *  upstream through relays ([[D17]] relaysTransparent); a producer resolves to itself. */
 export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: () => void }) {
   return (
     <button
@@ -52,7 +45,6 @@ export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: 
       className="sol-popup__pin"
       onClick={() => {
         onClose();
-        // A popup opened inside a drill-in resolves its origin within the SUBGRAPH.
         const editor = getOwningEditor(nodeId);
         flyToNodeAndFlash(editor ? resolveValueOrigin(editor, nodeId) : nodeId);
       }}

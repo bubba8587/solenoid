@@ -1,4 +1,4 @@
-// [[C63]] oneRecordNode
+// [[B11]] maximalMerge
 import { describe, it, expect } from "vitest";
 import { planColumns, packMasonry } from "../../../src/graph/components/masonryLayout";
 

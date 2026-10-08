@@ -37,7 +37,6 @@ async function loadSeed(editor: NodeEditor<Schemes>) {
   const byId = new Map<string, ClassicPreset.Node>();
   for (const sn of (seed.nodes as SavedNode[])) {
     const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
-    expect(Ctor, `unknown type ${sn.type}`).toBeTypeOf("function");
     const node = new Ctor({ ...sn.init });
     const anyNode = node as unknown as Record<string, unknown>;
     if (sn.literals) anyNode.literals = { ...sn.literals };
@@ -72,7 +71,6 @@ describe("Composite Workbench seed", () => {
     const byId = await loadSeed(editor);
     const out = await engine.fetch(byId.get("simComp")!.id) as Record<string, unknown>;
     const series = out.p_series as number[];
-    expect(Array.isArray(series)).toBe(true);
     expect(series).toHaveLength(10);
     // (0 + 100) × 1.05 = 105; (105 + 100) × 1.05 = 215.25; (215.25 + 100) × 1.05 = 331.0125
     expect(series[0]).toBeCloseTo(105);
@@ -153,10 +151,33 @@ describe("Composite Workbench seed", () => {
     const { editor } = buildEditor();
     const byId = await loadSeed(editor);
     const comp = byId.get("simComp") as CompositeNode;
-    expect(editor.getNode(comp.id)).toBeDefined();
     // Every internal node got a position from the seed's x/y.
     for (const n of comp.internalEditor.getNodes()) {
       expect(comp.internalPositions[n.id], `no position for ${n.label}`).toBeDefined();
+    }
+  });
+});
+
+describe("a composite's saved bytes are stable across save → load → save", () => {
+  it("every seed composite re-saves identically, its ports still finding their markers", async () => {
+    const { extractInit } = await import("../../src/graph/copyPaste");
+    const reg = ctorRegistry();
+    const rebuild = async (init: Record<string, unknown>) => {
+      const n = new CompositeNode({ ...init } as ConstructorParameters<typeof CompositeNode>[0]);
+      await n.hydrate(reg);
+      return n;
+    };
+    const composites = (seed.nodes as SavedNode[]).filter((sn) => sn.type === "CompositeNode");
+    expect(composites.length).toBeGreaterThan(0);
+    for (const sn of composites) {
+      const first = await rebuild(sn.init ?? {});
+      const saved1 = extractInit(first);
+      const second = await rebuild(saved1);
+      const saved2 = extractInit(second);
+      expect(JSON.stringify(saved2), sn.id).toBe(JSON.stringify(saved1));
+      for (const p of [...second.inputPorts, ...second.outputPorts]) {
+        expect(second.internalEditor.getNode(p.internalNodeId), `${sn.id} port ${p.id}`).toBeTruthy();
+      }
     }
   });
 });

@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D16]] retypeReconciles, [[C107]] obsidianPlugin
+// [[C10]] socketLattice, [[B11]] maximalMerge, [[C107]] obsidianPlugin
 import { describe, it, expect } from "vitest";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { isFrameValue } from "../../src/graph/frame";
@@ -18,6 +18,21 @@ describe("a Note's frontmatter at every rank", () => {
     const n = note("grid: [[1, 2], [3, 4]]\nn: 5", { grid: "string", n: "strlist" });
     expect(n.fieldType("grid")).toBe("strtable");
     expect(n.fieldType("n")).toBe("string");
+  });
+
+  it("a date read as text is the ISO text written, never its serial; a mixed list loses nothing", () => {
+    const n = note("due: 2026-09-02\nwhen: [2026-09-02]\nmixed: [1, two]", { due: "string", when: "strlist" }) as unknown as { _fieldValues: Map<string, unknown> };
+    expect(n._fieldValues.get("due")).toBe("2026-09-02");
+    expect(n._fieldValues.get("when")).toEqual(["2026-09-02"]);
+    expect(n._fieldValues.get("mixed")).toEqual(["1", "two"]);
+  });
+
+  it("a Date & time property keeps its time on the date socket, and as text keeps it too", () => {
+    const n = note("at: 2026-09-02T18:00:00\nas: 2026-09-02T18:00:00", { as: "string" });
+    const values = (n as unknown as { _fieldValues: Map<string, unknown> })._fieldValues;
+    expect(n.fieldType("at")).toBe("date");
+    expect((values.get("at") as number) % 1).toBeCloseTo(0.75, 9);
+    expect(values.get("as")).toBe("2026-09-02T18:00:00");
   });
 
   it("types a frame column as Date when every cell in it is a date", () => {

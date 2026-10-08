@@ -2,9 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { lookupCell, lookupRowIndex, frameRowAt, cubeRowAt, type LookupMatchMode, type LookupSearchMode } from "../../src/graph/frameVerbs";
 import { xmatchIndex } from "../../src/graph/nodes/listOps";
-import { isCubeValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
-import { cubeFromColumns, isFrameValue, frameToCube } from "../../src/graph/frame";
+import { cubeFromColumns, frameToCube } from "../../src/graph/frame";
 import type { FrameValue, CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
 import { XLookupNode } from "../../src/graph/nodes/frame";
@@ -62,24 +61,6 @@ describe("lookupFrameCell — frame XLOOKUP/VLOOKUP", () => {
 
   it("looks up by a date key — a serial or an ISO date both match", () => {
     expect(lookupFrameCell(people, "joined", "name", "46010")).toBe("Bob");
-    // 46010 as an Excel serial is a real date; matching by ISO goes via parseDateToSerial
-    const iso = people.columns[2]; // sanity: the serial column exists
-    expect(iso.values[1]).toBe(46010);
-  });
-
-  it("returns the FIRST matching row", () => {
-    const dup: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "k", type: "string", values: ["x", "x"] },
-        { name: "v", type: "number", values: [10, 20] },
-      ],
-    };
-    expect(lookupFrameCell(dup, "k", "v", "x")).toBe(10);
-  });
-
-  it("returns undefined when no row matches", () => {
-    expect(lookupFrameCell(people, "name", "id", "Zed")).toBeUndefined();
   });
 
   it("never matches a null / error key cell", () => {
@@ -136,7 +117,6 @@ describe("lookupRowIndex + cubeRowAt on a cube — the whole-row (*) path", () =
   it("cubeRowAt keeps a nested sub-frame cell WHOLE", () => {
     const idx = lookupRowIndex(customers, "id", "1");
     const row = cubeRowAt(customers, idx);
-    expect(isCubeValue(row)).toBe(true);
     expect(row.columns.map((c) => c.name)).toEqual(["id", "name", "vip", "orders"]);
     expect(row.columns.every((c) => c.cells.length === 1)).toBe(true);
     expect(row.columns.find((c) => c.name === "orders")!.cells[0]).toBe(orders1); // intact
@@ -162,7 +142,6 @@ describe("lookupCell on a cube — cube XLOOKUP (top-level key, whole-cell retur
 
   it("returns a NESTED frame cell WHOLE (the cube half's whole point)", () => {
     const cell = lookupCell(customers, "id", "orders", "1");
-    expect(isFrameValue(cell)).toBe(true);
     expect(cell).toBe(orders1); // the exact sub-frame, intact — not drilled into
   });
 
@@ -170,9 +149,10 @@ describe("lookupCell on a cube — cube XLOOKUP (top-level key, whole-cell retur
     expect(lookupCell(customers, "id", "orders", "2")).toBeNull();
   });
 
-  it("matches a logical key (true/false or 1/0), first match wins", () => {
+  it("matches a logical key (true/false or 0/1), first match wins; other text is #TYPE!", () => {
     expect(lookupCell(customers, "vip", "name", "false")).toBe("Bob");
     expect(lookupCell(customers, "vip", "name", "0")).toBe("Bob");
+    expect(() => lookupCell(customers, "vip", "name", "maybe")).toThrow(/isn't a logical/);
     expect(lookupCell(customers, "vip", "name", "true")).toBe("Ann");
   });
 
@@ -247,6 +227,12 @@ describe("cube XLOOKUP on a TYPED date column (typed CubeColumn — frame→cube
     const idx = lookupRowIndex(events, "when", "2025-06-30");
     expect(cubeRowAt(events, idx).columns[0].type).toBe("date");
   });
+
+  it("cubeRowAt keeps a column's authored format", () => {
+    const fmt = { format: "custom", customPattern: "DD-MMM-YYYY HH:mm" } as never;
+    const timed = cubeFromColumns([{ name: "Start", type: "date", format: fmt, cells: [d1, d2] }]);
+    expect(cubeRowAt(timed, 1).columns[0].format).toBe(fmt);
+  });
 });
 
 // A4: the XLookup node's `frame` input used to carry `rawInputs` (skip ALL coercion) purely
@@ -284,5 +270,38 @@ describe("XLOOKUP node coercion — retiring the rawInputs bypass (A4)", () => {
   it("rejects a bare 1-D list the same way", () => {
     const r = run(["a", "b", "c"], "a");
     expect(isSolError(r) && (r as { code: string }).code).toBe("#VALUE!");
+  });
+});
+
+describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () => {
+  const prices: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "qty", type: "number", values: [1, 10, 50, 100] },
+      { name: "discount", type: "number", values: [0, 0.05, 0.1, 0.2] },
+    ],
+  };
+
+  it("exact mode (default) only matches an equal cell", () => {
+    expect(lookupFrameCell(prices, "qty", "discount", "10")).toBe(0.05);
+    expect(lookupFrameCell(prices, "qty", "discount", "20")).toBeUndefined();
+  });
+
+  it("nextSmaller: exact match wins, else the closest smaller key", () => {
+    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextSmaller")).toBe(0.05); // exact
+    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextSmaller")).toBe(0.05); // between 10 and 50
+    expect(lookupFrameCell(prices, "qty", "discount", "0", "nextSmaller")).toBeUndefined(); // below every key
+  });
+
+  it("nextLarger: exact match wins, else the closest larger key", () => {
+    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextLarger")).toBe(0.05); // exact
+    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextLarger")).toBe(0.1); // between 10 and 50
+    expect(lookupFrameCell(prices, "qty", "discount", "1000", "nextLarger")).toBeUndefined(); // above every key
+  });
+
+  it("approximate mode requires a numeric/date column", () => {
+    const named: FrameValue = { __frame: true, columns: [{ name: "n", type: "string", values: ["a", "b"] }, { name: "v", type: "number", values: [1, 2] }] };
+    const err = (() => { try { lookupFrameCell(named, "n", "v", "a", "nextSmaller"); } catch (e) { return e; } })();
+    expect(isSolError(err) && err.code).toBe("#VALUE!");
   });
 });

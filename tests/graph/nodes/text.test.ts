@@ -1,22 +1,20 @@
 // [[C17]]
 import { describe, it, expect } from "vitest";
 import {
-  ExactNode, TextFindNode, NumberValueNode, TextTransformNode, TextLenNode,
+  ExactNode, TextFindNode, TextTransformNode, TextLenNode,
   TextSliceNode, SubstituteNode, TextReplaceNode, ReptNode, CharCodeNode,
   TextAfterBeforeNode, UrlEncodeNode, RomanArabicNode, FixedNode,
   FormatDollarNode, ReverseTextNode, SpellNumberNode, TextJoinNode,
   TextSplitNode, ConcatNode,
 } from "../../../src/graph/nodes/text";
-import { isSolError } from "../../../src/graph/errorValue";
+import { isSolError, solError } from "../../../src/graph/errorValue";
+import { CastNode } from "../../../src/graph/nodes/cast";
+import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { SolenoidSocket, canConnect } from "../../../src/graph/sockets";
 
 describe("NUMBERVALUE — strict full-string parse", () => {
   const nv = (text: string, decimal_sep?: string, group_sep?: string) =>
-    new NumberValueNode().data({
-      text: [text],
-      ...(decimal_sep !== undefined ? { decimal_sep: [decimal_sep] } : {}),
-      ...(group_sep !== undefined ? { group_sep: [group_sep] } : {}),
-    }).result;
+    compileEvaluator(`NUMBERVALUE(${[text, decimal_sep, group_sep].filter((a) => a !== undefined).map((a) => JSON.stringify(a)).join(",")})`)!({});
 
   it("a trailing non-numeric char is #VALUE! (not parseFloat's greedy 12)", () => {
     const r = nv("12x");
@@ -32,9 +30,45 @@ describe("NUMBERVALUE — strict full-string parse", () => {
   it("swapped separators parse", () => {
     expect(nv("1.234,56", ",", ".")).toBe(1234.56);
   });
-  it("blank is null; a plain number parses", () => {
-    expect(nv("")).toBe(null);
+  it("blank is 0, as in Excel; a plain number parses", () => {
+    expect(nv("")).toBe(0);
     expect(nv("42")).toBe(42);
+  });
+});
+
+// [[B11]] maximalMerge: Cast to Number is VALUE's reading, with NUMBERVALUE's separators on the card.
+describe("Cast to Number reads as VALUE does, with the separators it is given", () => {
+  const cast = (text: string, decimal_sep?: string, group_sep?: string) => {
+    const n = new CastNode({ target: "number" });
+    if (decimal_sep !== undefined) n.stringLiterals.decimal_sep = decimal_sep;
+    if (group_sep !== undefined) n.stringLiterals.group_sep = group_sep;
+    return n.data({ value: [text] }).result;
+  };
+  it("with blank separators it answers as VALUE, case by case ([[C17]] shareImpl)", () => {
+    for (const text of ["42", "12%", "$1,234.5", "(5)", "12x", "1,234", "1.2.3"]) {
+      const formula = compileEvaluator(`VALUE(${JSON.stringify(text)})`)!({});
+      const card = cast(text);
+      if (isSolError(formula)) expect(isSolError(card) && card.code, text).toBe(formula.code);
+      else expect(card, text).toBe(formula);
+    }
+  });
+  it("a separator reads other conventions and keeps VALUE's $, % and (5)", () => {
+    expect(cast("1.234,56", ",", ".")).toBe(1234.56);
+    expect(cast("$1.234,5", ",", ".")).toBe(1234.5);
+    expect(cast("(3,5)", ",")).toBe(-3.5);
+    expect(cast("3,5%", ",")).toBe(0.035);
+    expect(isSolError(cast("1,5", ",", ","))).toBe(true);
+  });
+  it("Format and the separators exist only on the target that reads them, and a switch keeps the other target's text", () => {
+    const n = new CastNode({ target: "text" });
+    expect(Object.keys(n.inputs)).toEqual(["value", "format"]);
+    n.stringLiterals.format = "0.00%";
+    expect(n.data({ value: [0.1234] }).result).toBe("12.34%");
+    expect(n.keysDroppedBySwitch("number")).toEqual(["format"]);
+    n.setTarget("number");
+    expect(Object.keys(n.inputs)).toEqual(["value", "decimal_sep", "group_sep"]);
+    n.setTarget("date");
+    expect(Object.keys(n.inputs)).toEqual(["value"]);
   });
 });
 
@@ -86,6 +120,7 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
 
   it("a scalar operand still yields a SCALAR — the widening is additive", () => {
     expect(new TextTransformNode({ op: "upper" }).data({ text: ["abc"] }).result).toBe("ABC");
+    expect(new TextTransformNode({ op: "proper" }).data({ text: ["76BudGet a_b"] }).result).toBe("76Budget A_B");
     expect(new TextLenNode().data({ text: ["hello"] }).result).toBe(5);
     expect(new TextSliceNode({ op: "left" }).data({ text: ["hello"], n: [2] }).result).toBe("he");
     expect(new SubstituteNode().data({ text: ["a-b"], old_text: ["-"], new_text: ["+"] }).result).toBe("a+b");
@@ -112,7 +147,7 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(new TextReplaceNode().data({ text: [["abcd", "wxyz"]], start: [2], num_chars: [2], new_text: ["-"] }).result)
       .toEqual(["a-d", "w-z"]);
     expect(new FixedNode().data({ number: [[1234.5, 2]], decimals: [1] }).result).toEqual(["1,234.5", "2.0"]);
-    expect(new FormatDollarNode().data({ number: [[1.5, -2]], decimals: [2] }).result).toEqual(["$1.50", "-$2.00"]);
+    expect(new FormatDollarNode().data({ number: [[1.5, -2]], decimals: [2] }).result).toEqual(["$1.50", "($2.00)"]);
   });
 
   it("FIXED/DOLLAR round LEFT of the point on a negative decimals count (Excel)", () => {
@@ -120,11 +155,12 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     // =FIXED(12345.678, -2) = "12,300", =DOLLAR(12345.678, -2) = "$12,300".
     expect(new FixedNode().data({ number: [12345.678], decimals: [-2] }).result).toBe("12,300");
     expect(new FormatDollarNode().data({ number: [12345.678], decimals: [-2] }).result).toBe("$12,300");
-    // Sign is preserved through the left-rounding. FIXED matches Excel; DOLLAR keeps our
-    // leading-minus convention (Excel/Formula.js use accounting parens "$(12,300)") — a
-    // pre-existing, separately-pinned choice, not part of the decimals fix.
+    // Sign is preserved through the left-rounding; DOLLAR's negative is Excel's accounting form, as in the formula ([[C17]] shareImpl).
     expect(new FixedNode().data({ number: [-12345.678], decimals: [-2] }).result).toBe("-12,300");
-    expect(new FormatDollarNode().data({ number: [-12345.678], decimals: [-2] }).result).toBe("-$12,300");
+    expect(new FormatDollarNode().data({ number: [-12345.678], decimals: [-2] }).result).toBe("($12,300)");
+    expect(new FormatDollarNode().data({ number: [-0.004], decimals: [2] }).result).toBe("($0.00)");
+    expect(new FormatDollarNode().data({ number: [1.005], decimals: [2] }).result).toBe("$1.01");
+    expect(new FixedNode().data({ number: [1.005], decimals: [2] }).result).toBe("1.01");
     expect(new SpellNumberNode().data({ value: [[1, 2]] }).result).toEqual(["one", "two"]);
   });
 
@@ -140,11 +176,11 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     const found = new TextFindNode({ op: "find" }).data({ needle: ["l"], haystack: [["hello", "abc"]] }).result as unknown[];
     expect(found[0]).toBe(3);
     expect(isSolError(found[1])).toBe(true);
-    // One unparseable string errors alone; a blank stays a blank.
-    const nums = new NumberValueNode().data({ text: [["42", "12x", ""]] }).result as unknown[];
+    // One unparseable string errors alone.
+    const nums = new CastNode({ target: "number" }).data({ value: [["42", "12x", "7"]] }).result as unknown[];
     expect(nums[0]).toBe(42);
     expect(isSolError(nums[1]) && (nums[1] as { code: string }).code).toBe("#VALUE!");
-    expect(nums[2]).toBeNull();
+    expect(nums[2]).toBe(7);
     // A delimiter this element doesn't contain is a per-cell blank.
     expect(new TextAfterBeforeNode({ op: "after" }).data({ text: [["a-b", "cd"]], delimiter: ["-"] }).result)
       .toEqual(["b", null]);
@@ -182,8 +218,7 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(dt(new TextLenNode(), "out", "result")).toBe("numlist");
     expect(dt(new TextSliceNode(), "in", "n")).toBe("numlist");
     // NUMBERVALUE's separators pick a parsing CONVENTION, not a per-element operand.
-    const nv = new NumberValueNode();
-    expect(dt(nv, "in", "text")).toBe("strcombo");
+    const nv = new CastNode({ target: "number" });
     expect(dt(nv, "in", "decimal_sep")).toBe("string");
     expect(dt(nv, "in", "group_sep")).toBe("string");
   });
@@ -199,6 +234,17 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(dt(new TextSplitNode(), "out", "result")).toBe("strlist");
     expect(new TextJoinNode().data({ strings: [["a", "b"]], delimiter: ["-"] }).result).toBe("a-b");
     expect(new TextSplitNode().data({ text: ["a-b"], delimiter: ["-"] }).result).toEqual(["a", "b"]);
+  });
+
+  it("TEXTJOIN answers like the formula: blanks drop, logicals read TRUE, an error wins ([[C17]] shareImpl)", () => {
+    const fx = (ign: string, xs: unknown[]) => compileEvaluator(`TEXTJOIN(",", ${ign}, x)`)!({ x: xs });
+    const cases: unknown[][] = [["a", null, "b"], ["a", "", "b"], ["a", 1, true], ["a", solError("#N/A", "gone"), "b"]];
+    for (const ign of ["ignore", "include"] as const) {
+      for (const xs of cases) {
+        const node = new TextJoinNode({ ignoreEmpty: ign }).data({ strings: [xs as string[]], delimiter: [","] }).result;
+        expect(node, `${ign} ${JSON.stringify(xs)}`).toEqual(fx(ign === "ignore" ? "TRUE" : "FALSE", xs));
+      }
+    }
   });
 
   it("strcombo is a pure widening — it wires everywhere `string` did", () => {

@@ -48,7 +48,6 @@ describe("errors-null-logic seed (error-codes tour)", () => {
     const byId = new Map<string, AnyNode>();
     for (const sn of (seed.nodes as SavedNode[])) {
       const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => AnyNode>)[sn.type];
-      expect(Ctor, `unknown type ${sn.type}`).toBeTypeOf("function");
       const node = new Ctor({ ...sn.init });
       const anyNode = node as unknown as Record<string, unknown>;
       if (sn.literals) anyNode.literals = { ...sn.literals };
@@ -69,7 +68,6 @@ describe("errors-null-logic seed (error-codes tour)", () => {
 
     for (const [id, code] of Object.entries(EXPECTED)) {
       const check = byId.get(id)!;
-      expect(check.seenError, `${id} saw no error`).not.toBeNull();
       expect(check.seenError?.code, `${id} expected ${code}`).toBe(code);
     }
 

@@ -1,14 +1,7 @@
 // [[C68]] knapIsTheDocumentSyntax
-// The INTERNAL ref span. Nobody types it: a Report's Knap render rewrites a bare
-// `{{ name }}` to `` `=name` `` (knapTemplate.ts embedBareVariables) and the span then
-// resolves by kind — inlineRefDisplay.tsx on screen, obsidianMarkdown.ts at write,
-// reportExport.ts at export. Same identifier grammar as Expression's bare names. The
-// trailing `!` (`=name!`, from `{{ name | highlight }}`) is display-only tinting,
-// kept OUT of the identifier so `=rate` and `=rate!` share one input.
 
 const REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)!?`/g;
 
-/** Ordered, de-duplicated ref names found in a RENDERED body (first-seen order). */
 export function extractInlineRefs(body: string): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -18,4 +11,23 @@ export function extractInlineRefs(body: string): string[] {
     if (!seen.has(m[1])) { seen.add(m[1]); out.push(m[1]); }
   }
   return out;
+}
+
+export function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+const CODE_REF_RE = /(<p>)?<code>=([A-Za-z_][A-Za-z0-9_]*)(!?)<\/code>(<\/p>)?/g;
+
+/** A block result that fills its paragraph replaces the paragraph; null leaves the span. */
+export function substituteRefCodes(
+  html: string,
+  render: (name: string, highlight: boolean) => { html: string; block?: boolean } | null,
+): string {
+  return html.replace(CODE_REF_RE, (full, open: string | undefined, name: string, hl: string, close: string | undefined) => {
+    const r = render(name, hl === "!");
+    if (!r) return full;
+    if (r.block && open && close) return r.html;
+    return `${open ?? ""}${r.html}${close ?? ""}`;
+  });
 }

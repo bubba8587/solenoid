@@ -1,14 +1,12 @@
-// [[C61]], [[E11]], [[D46]] freezeVolatilePerCalc
+// [[B11]], [[D46]] freezeVolatilePerCalc
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
-import { DIST_SPECS, isInverseForm, formAfterSwitch, sampleQuantile, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
+import { numIn, numListIn, numListOut, readInput, broadcastErr, type BroadcastResult } from "./shared";
+import { DIST_SPECS, isInverseForm, formAfterSwitch, sampleQuantiles, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 import { mulberry32 } from "../monteCarlo";
 import { getRecalcGen } from "../process";
+import { solError } from "../errorValue";
 export { DIST_SPECS, DIST_FORM_META, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 
-// ─── The one Distribution node ────────────────────────────────────────────────
-/** The first socket follows the form: an x for the curves, a probability for the
- *  inverses, a count for `sample`. */
 function firstKeyFor(op: DistKey, form: DistForm): string {
   return form === "sample" ? "count" : isInverseForm(form) ? "prob" : DIST_SPECS[op].xKey;
 }
@@ -46,6 +44,7 @@ export class DistributionsNode extends ClassicPreset.Node {
   get spec(): DistSpec { return DIST_SPECS[this.op]; }
   get xKey(): string { return this.spec.xKey; }
   get paramKeys(): string[] { return this.spec.params.map((p) => p.key); }
+  get inputKeys(): string[] { return inputKeysFor(this.op, this.form); }
 
   private makeInput(key: string) {
     const spec = this.spec;
@@ -64,8 +63,6 @@ export class DistributionsNode extends ClassicPreset.Node {
     for (const p of spec.params) this.literals[p.key] ??= p.def;
   }
 
-  /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: DistKey): string[] {
     const keep = new Set(inputKeysFor(next, formAfterSwitch(this.form, next)));
     return inputKeysFor(this.op, this.form).filter((k) => !keep.has(k));
@@ -78,13 +75,20 @@ export class DistributionsNode extends ClassicPreset.Node {
     this.op = next;
     const after = inputKeysFor(next, this.form);
     for (const k of before) if (!after.includes(k)) this.removeInput(k);
-    for (const k of after) if (!this.inputs[k]) this.addInput(k, this.makeInput(k));
+    for (const k of after) {
+      const input = this.inputs[k];
+      if (input) input.label = this.makeInput(k).label;
+      else this.addInput(k, this.makeInput(k));
+    }
     this.seedLiterals();
     this.height = 203 + 28 * this.spec.params.length;
   }
 
-  /** Crossing the forward/inverse line swaps the first input; callers prune the
-   *  departing key's cables first. */
+  keysDroppedByForm(next: DistForm): string[] {
+    const before = firstKeyFor(this.op, this.form);
+    return before === firstKeyFor(this.op, next) ? [] : [before];
+  }
+
   setForm(next: DistForm): void {
     if (next === this.form || !this.spec.forms.includes(next)) return;
     const before = firstKeyFor(this.op, this.form);
@@ -96,8 +100,6 @@ export class DistributionsNode extends ClassicPreset.Node {
     this.seedLiterals();
   }
 
-  /** The `sample` form's draws re-roll once per recalculation (getRecalcGen, like RAND) and
-   *  are otherwise stable, seeded from the node id so two cards don't share a stream. */
   private lastSampleGen = -1;
   private sampleSeed = 0;
 
@@ -118,17 +120,17 @@ export class DistributionsNode extends ClassicPreset.Node {
         this.sampleSeed = h >>> 0;
       }
       const rng = mulberry32(this.sampleSeed);
-      const out: (number | null)[] = [];
-      for (let i = 0; i < n; i++) { const v = sampleQuantile(this.op, rng(), ps); out.push(v !== null && Number.isFinite(v) ? v : null); }
+      const out = sampleQuantiles(this.op, Array.from({ length: n }, () => rng()), ps);
       this.cachedResult = out;
       return { result: out };
     }
     const firstKey = firstKeyFor(this.op, form);
     const first = readInput(inputs[firstKey], this.literals[firstKey]);
     const params = spec.params.map((p) => readInput(inputs[p.key], this.literals[p.key]));
-    const result = broadcast((v, ...ps) => {
+    const result = broadcastErr((v, ...ps) => {
       const r = spec.compute(form, v, ps);
-      return r !== null && Number.isFinite(r) ? r : null;
+      // [[D70]] nullNotEnoughData: a parameter outside the domain is a wrong input.
+      return r !== null && Number.isFinite(r) ? r : solError("#DOMAIN!", "A parameter is outside the distribution's domain");
     }, first, ...params);
     this.cachedResult = result;
     return { result };

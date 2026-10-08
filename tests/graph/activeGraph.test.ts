@@ -1,4 +1,4 @@
-// [[C33]]
+// [[B12]] losslessSaves
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { NodeEditor } from "rete";
@@ -10,6 +10,9 @@ import {
   getActiveEditor,
   getOwningEditor,
   getOwningView,
+  registerOwnedGraph,
+  editScopeFor,
+  MAIN_EDIT_SCOPE,
 } from "../../src/graph/activeGraph";
 
 // The action layer (keyboard, copy/paste, right-click, in-node socket/row edits)
@@ -21,7 +24,7 @@ import {
 
 function fakeEditor(ids: string[]): NodeEditor<Schemes> {
   const nodes = new Map(ids.map((id) => [id, { id }]));
-  return { getNode: (id: string) => nodes.get(id) } as unknown as NodeEditor<Schemes>;
+  return { getNode: (id: string) => nodes.get(id), getNodes: () => [...nodes.values()] } as unknown as NodeEditor<Schemes>;
 }
 const fakeView = {} as unknown as View;
 const subView = { sub: true } as unknown as View;
@@ -60,6 +63,15 @@ describe("activeGraph resolver", () => {
     expect(getOwningEditor("m1")).toBe(main); // a MAIN node is never routed to the override
   });
 
+  it("a node in a closed composite on an owned canvas resolves to that composite's editor, not main", () => {
+    const inner = fakeEditor(["deep"]);
+    const scene = fakeEditor(["c1"]);
+    (scene.getNode("c1") as unknown as { internalEditor: NodeEditor<Schemes> }).internalEditor = inner;
+    const off = registerOwnedGraph({ editor: scene, view: fakeView });
+    try { expect(getOwningEditor("deep")).toBe(inner); } finally { off(); }
+    expect(getOwningEditor("deep")).toBe(main);
+  });
+
   it("getOwningView mirrors getOwningEditor (per-node, not per-surface)", () => {
     expect(getOwningView("m1")).toBe(fakeView); // no drill-in → main view
     setActiveGraph({ editor: sub, view: subView });
@@ -68,7 +80,15 @@ describe("activeGraph resolver", () => {
     // view (getActiveView() would wrongly return the drill-in here).
     expect(getOwningView("m1")).toBe(fakeView);
     setActiveGraph(null);
-    expect(getOwningView("s1")).toBe(fakeView); // closed → main (s1 unresolvable)
+    expect(getOwningView("s1")).toBeNull(); // no surface shows it, so no view may pan to or move it
+  });
+
+  it("a bulk edit takes the open drill-in's scope only for the drill-in's own editor", () => {
+    const scope = { begin: () => {}, end: () => {}, settle: async () => {} };
+    expect(editScopeFor(main)).toBe(MAIN_EDIT_SCOPE);
+    setActiveGraph({ editor: sub, view: subView, scope });
+    expect(editScopeFor(sub)).toBe(scope);
+    expect(editScopeFor(main)).toBe(MAIN_EDIT_SCOPE);
   });
 
   it("clears back to main on close", () => {
@@ -77,5 +97,27 @@ describe("activeGraph resolver", () => {
     expect(isSubgraphActive()).toBe(false);
     expect(getActiveEditor()).toBe(main);
     expect(getOwningEditor("s1")).toBe(main); // sub no longer owns anything resolvable
+  });
+});
+
+describe("a main-graph node retypes on its own surface while a drill-in is open ([[B11]] maximalMerge)", () => {
+  it("SEQUENCE and Expression swap their result socket and re-render on the main view", async () => {
+    const { SeriesNode } = await import("../../src/graph/nodes/list");
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const seq = new SeriesNode({ op: "sequence" });
+    const expr = new ExpressionNode({ expr: "SEQUENCE(2, 2)" });
+    const rerendered: string[] = [];
+    const mainView = { rerenderNode: async (id: string) => { rerendered.push(id); } } as unknown as View;
+    const drillView = { rerenderNode: async () => { throw new Error("the drill-in view must not be touched"); } } as unknown as View;
+    const owner = { getNode: (id: string) => (id === seq.id ? seq : id === expr.id ? expr : undefined), getNodes: () => [seq, expr], getConnections: () => [] } as unknown as NodeEditor<Schemes>;
+    setEditorRefs(owner, {} as never, mainView);
+    setActiveGraph({ editor: sub, view: drillView });
+    seq.literals.count = 2; seq.literals.cols = 2;
+    seq.data({});
+    expr.data({});
+    await new Promise((r) => setTimeout(r, 0));
+    expect(seq.outputs.list!.socket.name).toBe("table");
+    expect(String(expr.outputs.result!.socket.name)).toMatch(/table/);
+    expect(rerendered.sort()).toEqual([seq.id, expr.id].sort());
   });
 });

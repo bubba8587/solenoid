@@ -1,10 +1,11 @@
-// [[D10]] onePrunePath
+// [[B11]] maximalMerge
 import { SERIES_OP_META } from "../rete-nodes";
 import type { SeriesNode as SeriesNodeType, SeriesOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 
 const OPS = (Object.keys(SERIES_OP_META) as SeriesOp[]).map((op) => ({
   value: op,
@@ -18,8 +19,11 @@ export function SeriesComponent({ data, emit }: NodeProps<SeriesNodeType>) {
     if (next === data.op) return;
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
+    const socketBefore = data.outputs.list?.socket;
     data.setOp(next);
-    await getActiveView()?.rerenderNode(data.id);
+    const editor = getOwningEditor(data.id);
+    if (editor && data.outputs.list?.socket !== socketBefore) await retypeOutputCables(editor, getOwningView(data.id), data.id, "list");
+    await getOwningView(data.id)?.rerenderNode(data.id);
     setOpField(next);
   }
 

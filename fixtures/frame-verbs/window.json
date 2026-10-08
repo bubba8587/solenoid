@@ -2148,6 +2148,2588 @@
      }
     ]
    }
+  },
+  {
+   "name": "share: a blank row, and every row of an all-blank group, stays blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        null,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "share",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "b",
+       "b"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       null,
+       null
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "pct_change: a blank row after a zero stays blank; the zero check is for a present value",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        0,
+        null,
+        0,
+        5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "pct_change",
+    "column": "v",
+    "as": "out",
+    "orderBy": "t",
+    "orderDir": "asc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       0,
+       null,
+       0,
+       5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       null,
+       {
+        "__err": "#DIV/0!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a logical value computes as 1/0 (the one bridge)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "logical",
+       "values": [
+        true,
+        false,
+        true
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "cumsum",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "logical",
+      "values": [
+       true,
+       false,
+       true
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       1,
+       1,
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an infinity is a real value, not a blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "inf"
+        },
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "cumsum",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "inf"
+       },
+       2
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "inf"
+       },
+       {
+        "__nf": "inf"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unknown window function is #VALUE! on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "median_ish",
+    "column": "v",
+    "as": "out"
+   },
+   "expectError": "#VALUE!"
+  },
+  {
+   "name": "cumsum: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "cumsum",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "group_sum: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "group_sum",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       4,
+       4,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "share: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "share",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       0.25,
+       null,
+       0.75
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling_sum: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "rolling_sum",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "diff: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "diff",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "group_avg: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "group_avg",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       2,
+       2,
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rank: a NaN order key is blank, as Sort reads it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        5,
+        {
+         "__nf": "nan"
+        },
+        7,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "fn": "rank",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       5,
+       {
+        "__nf": "nan"
+       },
+       7,
+       null
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       2,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "dense_rank: a NaN order key is blank, as Sort reads it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        5,
+        {
+         "__nf": "nan"
+        },
+        7,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "fn": "dense_rank",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       5,
+       {
+        "__nf": "nan"
+       },
+       7,
+       null
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       2,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "percent_rank: a NaN order key is blank, as Sort reads it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        5,
+        {
+         "__nf": "nan"
+        },
+        7,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "fn": "percent_rank",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       5,
+       {
+        "__nf": "nan"
+       },
+       7,
+       null
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       0,
+       null,
+       1,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "cummax over a prefix of only -inf is -inf, not the float floor",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "-inf"
+        },
+        {
+         "__nf": "-inf"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "cummax",
+    "column": "v",
+    "as": "w"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "-inf"
+       },
+       {
+        "__nf": "-inf"
+       },
+       3
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "-inf"
+       },
+       {
+        "__nf": "-inf"
+       },
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "cummin over a prefix of only +inf is +inf",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "cummin",
+    "column": "v",
+    "as": "w"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       },
+       2
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       },
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling min and max read past a blank inside the window",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        5,
+        null,
+        3,
+        7,
+        null,
+        null,
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "rolling_min",
+    "column": "v",
+    "as": "w",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       5,
+       null,
+       3,
+       7,
+       null,
+       null,
+       2
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       3,
+       3,
+       null,
+       null,
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling max of one row past a blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "number",
+       "values": [
+        1,
+        1,
+        1,
+        1
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        4,
+        null,
+        0,
+        9
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "rolling_max",
+    "column": "v",
+    "as": "w",
+    "n": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "number",
+      "values": [
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       4,
+       null,
+       0,
+       9
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       4,
+       null,
+       0,
+       9
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling avg averages only the present values",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        2,
+        null,
+        4,
+        8
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "rolling_avg",
+    "column": "v",
+    "as": "w",
+    "n": 3
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       2,
+       null,
+       4,
+       8
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       3,
+       6
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "first and last with no partition fill every row",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "c"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "last",
+    "column": "v",
+    "as": "w"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "c"
+      ]
+     },
+     {
+      "name": "w",
+      "type": "string",
+      "values": [
+       "c",
+       "c",
+       "c"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the output may take the name of the column it reads",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "v",
+    "orderDir": "asc",
+    "fn": "cumsum",
+    "column": "v",
+    "as": "v"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       6,
+       1,
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an arithmetic function over a text column reads every cell as blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "string",
+       "values": [
+        "1",
+        "x",
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "cumsum",
+    "column": "v",
+    "as": "w"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "string",
+      "values": [
+       "1",
+       "x",
+       null
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "two infinite order keys tie for one rank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        1,
+        {
+         "__nf": "inf"
+        },
+        {
+         "__nf": "-inf"
+        },
+        {
+         "__nf": "-inf"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "orderDir": "desc",
+    "fn": "rank",
+    "column": "k",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       },
+       1,
+       {
+        "__nf": "inf"
+       },
+       {
+        "__nf": "-inf"
+       },
+       {
+        "__nf": "-inf"
+       }
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       1,
+       3,
+       1,
+       4,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "infinite order keys count once in a dense rank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        1,
+        {
+         "__nf": "inf"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "orderDir": "asc",
+    "fn": "dense_rank",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       },
+       1,
+       {
+        "__nf": "inf"
+       }
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       2,
+       1,
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: cumsum is #UNIT! in every row, since readings have no sum",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "cumsum",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: rolling_sum is #UNIT! in every row, since readings have no sum",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "rolling_sum",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1,
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: group_sum is #UNIT! in every row, since readings have no sum",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "group_sum",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: share is #UNIT! in every row, since a reading can't be divided",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "share",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: pct_change is #UNIT! in every row, since a reading can't be divided",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "pct_change",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings in °F: diff is a delta in kelvin",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "diff",
+    "column": "t",
+    "as": "out",
+    "readingScale": 0.5555555555555556
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       5,
+       null,
+       null,
+       1.9444444444444446
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: a rolling average stays a reading, unscaled",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "rolling_avg",
+    "column": "t",
+    "as": "out",
+    "readingScale": 0.5555555555555556,
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       54.5,
+       null,
+       null,
+       69.75
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: an error in a partition answers every cumulative row",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "p",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "o",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        2,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__err": "#DIV/0!"
+        },
+        4,
+        5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "p"
+    ],
+    "orderBy": "o",
+    "orderDir": "asc",
+    "fn": "cumsum",
+    "column": "v",
+    "as": "c"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "p",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a",
+       "b",
+       "b"
+      ]
+     },
+     {
+      "name": "o",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       2,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#DIV/0!"
+       },
+       4,
+       5
+      ]
+     },
+     {
+      "name": "c",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#N/A"
+       },
+       4,
+       9
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: lag passes error cells through",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "lag",
+    "column": "v",
+    "as": "l",
+    "n": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__err": "#N/A"
+       },
+       3
+      ]
+     },
+     {
+      "name": "l",
+      "type": "number",
+      "values": [
+       null,
+       1,
+       {
+        "__err": "#N/A"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: error partition keys split by code",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "p",
+       "type": "number",
+       "values": [
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__err": "#DIV/0!"
+        },
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__nf": "nan"
+        }
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "p"
+    ],
+    "fn": "group_sum",
+    "column": "v",
+    "as": "g"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "p",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__nf": "nan"
+       }
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     {
+      "name": "g",
+      "type": "number",
+      "values": [
+       4,
+       2,
+       4,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling_avg sums each window fresh, so a large value leaving it leaves no rounding behind",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        0,
+        1e-15,
+        10,
+        null,
+        -1e-300,
+        -2.5,
+        0.30000000000000004,
+        2,
+        1e-15
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "a",
+    "orderDir": "desc",
+    "fn": "rolling_avg",
+    "column": "a",
+    "as": "b",
+    "n": 3
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "a",
+      "type": "number",
+      "values": [
+       0,
+       1e-15,
+       10,
+       null,
+       -1e-300,
+       -2.5,
+       0.30000000000000004,
+       2,
+       1e-15
+      ]
+     },
+     {
+      "name": "b",
+      "type": "number",
+      "values": [
+       6.666666666666667e-16,
+       0.7666666666666669,
+       null,
+       null,
+       3.3333333333333336e-16,
+       -0.8333333333333334,
+       4.1000000000000005,
+       null,
+       0.10000000000000069
+      ]
+     }
+    ]
+   }
   }
  ]
 }

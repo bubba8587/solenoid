@@ -1,24 +1,21 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import { useFocusTrap } from "./useFocusTrap";
+import { useDraftCommit } from "./inlineInput";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { CloseIcon } from "./CloseIcon";
 import { documentStore } from "../documentStore";
 import { docMetaStore, docPropertiesPanel } from "../docMetaStore";
 import { paletteStore } from "../palette";
-import { getEditor } from "../process";
-import { rebuildGroupMembership } from "../groupMembership";
 import "../Settings.css";
 import "./DocumentProperties.css";
 
-// Commits on Enter/blur (Escape reverts), never per keystroke.
 function TextRow({ label, value, placeholder, onCommit }: {
   label: string;
   value: string;
   placeholder?: string;
   onCommit: (v: string) => void;
 }) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => { setDraft(value); }, [value]);
+  const field = useDraftCommit(value, (v) => v, (t) => t, onCommit);
   return (
     <label className="solenoid-settings__row">
       <span className="solenoid-settings__row-text">
@@ -26,14 +23,11 @@ function TextRow({ label, value, placeholder, onCommit }: {
       </span>
       <input
         className="sol-docprops__input"
-        value={draft}
+        value={field.draft}
         placeholder={placeholder}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
-          if (e.key === "Escape") { setDraft(value); e.currentTarget.blur(); }
-        }}
-        onBlur={() => { if (draft !== value) onCommit(draft); }}
+        onChange={(e) => field.setDraft(e.target.value)}
+        onKeyDown={field.onKeyDown}
+        onBlur={field.onBlur}
       />
     </label>
   );
@@ -41,8 +35,7 @@ function TextRow({ label, value, placeholder, onCommit }: {
 
 const splitTags = (v: string) => v.split(",").map((t) => t.trim()).filter(Boolean);
 
-/** Title lives in documentStore, author/tags in docMetaStore (→ SavedGraph.meta);
- *  edits capture into the current document so they persist. */
+/** The title lives in documentStore, author and tags in docMetaStore (SavedGraph.meta); edits capture into the current document so they persist. */
 export function DocumentProperties() {
   const open = useSyncExternalStore(docPropertiesPanel.subscribe, docPropertiesPanel.get);
   useSyncExternalStore(documentStore.subscribe, documentStore.version);
@@ -65,8 +58,6 @@ export function DocumentProperties() {
   function setDocBase(name: string) {
     const overrides = paletteStore.docPalette()?.overrides;
     paletteStore.setDocPalette(name ? { base: name, overrides } : overrides ? { overrides } : null);
-    const ed = getEditor();
-    if (ed) rebuildGroupMembership(ed);
     capture();
   }
 

@@ -14,10 +14,8 @@ import { ElementPicker } from "../components/ElementPicker";
 import { PivotEditorPopup } from "../components/PivotEditorPopup";
 import "./NodeShowcase.css";
 
-// The ?showcase UI-audit harness: ONE real node on a static stage, driven by URL,
-// arrow keys or window.__showcase. Pan/zoom off, so screenshots are stable.
 
-const PAD = 48; // canvas-units from the stage origin to the node's top-left
+const PAD = 48;
 
 export default function NodeShowcase({ initialType }: { initialType: string }) {
   const entries = useMemo(
@@ -47,9 +45,7 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
     setType(visible[i].type);
   }
 
-  // The same flow stage as the canvas, so the card here IS the real one.
-  // Point the module singletons at THIS stack; safe only because the app canvas
-  // never mounts in showcase mode, so no persistence hook can reach documents.
+  // Pointing the module singletons at this stack is safe only because the app canvas never mounts in showcase mode.
   useEffect(() => {
     setEditorRefs(stack.editor, stack.engine, stack.view);
   }, [stack]);
@@ -71,7 +67,6 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
     return () => { canceled = true; };
   }, [stack, type]);
 
-  // Deep-link stays current so a reload lands on the same node.
   useEffect(() => {
     if (!type) return;
     const url = new URL(window.location.href);

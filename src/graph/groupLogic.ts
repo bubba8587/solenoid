@@ -1,10 +1,9 @@
-// [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle, [[C87]] groupsAreSubflows.
-// Mechanics: specs/group-expand-push.md.
+// [[C86]] membershipByGesture, [[C112]] noOverlapsEver, [[A1]] visualGraphCalculator, [[C52]] visibleSelection
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { ClassicPreset } from "rete";
 import type { Schemes } from "./schemes";
-import { GroupNode, nodeKindOf, NODE_KIND_SLOTS } from "./rete-nodes";
+import { GroupNode, nodeAccentSlot } from "./rete-nodes";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { cableSelectionStore } from "./cableState";
 import { rebuildGroupMembership } from "./groupMembership";
@@ -14,16 +13,15 @@ import { scheduleAutosave } from "./persistence";
 import { settleStandoffs } from "./standoffs";
 import { measuredBox } from "./nodeSize";
 import { getOwningEditor } from "./activeGraph";
+import { settleOverlaps } from "./groupPush";
 
-export const GROUP_DEFAULT_COLOR = "gray"; // palette slot — neutral gray when there's no clear majority
+export const GROUP_DEFAULT_COLOR = "gray";
 
-// The color of the most common node kind in the selection; a tie (or all
-// distinct) falls back to gray. Returns a palette SLOT id, not a hex.
-function majorityColor(nodes: ClassicPreset.Node[]): string {
+export function majorityColor(nodes: ClassicPreset.Node[]): string {
   const tally = new Map<string, number>();
   for (const n of nodes) {
-    const c = NODE_KIND_SLOTS[nodeKindOf(n)];
-    if (c) tally.set(c, (tally.get(c) ?? 0) + 1);
+    const c = nodeAccentSlot(n);
+    tally.set(c, (tally.get(c) ?? 0) + 1);
   }
   let best = GROUP_DEFAULT_COLOR, bestN = 0, tie = false;
   for (const [c, k] of tally) {
@@ -35,31 +33,22 @@ function majorityColor(nodes: ClassicPreset.Node[]): string {
 
 type Editor = NodeEditor<Schemes>;
 
-// Shared by creation, the within-group tidy AND autofit — they MUST agree or a
-// tidy-then-autofit cycle (Cleanup) drifts the box a few px each run.
-export const GROUP_PAD = 24;     // gap between the box edge and the nodes it wraps
-export const GROUP_HEADER = 34;  // header height (matches GroupNode.css)
-// Shared with the resize grip so a fit can never shrink below what the grip allows.
+// Creation, within-group Tidy and autofit must share these, or Cleanup's tidy-then-autofit cycle drifts the box each run.
+export const GROUP_PAD = 24;
+export const GROUP_HEADER = 34; // matches GroupNode.css
 export const GROUP_MIN_W = 140;
 export const GROUP_MIN_H = 90;
 
-/** The pinned set for a standoff solve: every locked group ([[D63]]) and its members.
- *  `solveStandoffs` ignores ids that aren't endpoints, so passing them all is harmless. */
 export function withLockedGroupsPinned(editor: Editor, pinned: Set<string> = new Set()): Set<string> {
   const set = new Set(pinned);
   for (const g of editor.getNodes()) {
     if (!(g instanceof GroupNode) || !g.lockedPosition) continue;
     set.add(g.id);
-    // The solver works on raw endpoint ids, so a member standoff would slide the member
-    // out of the locked box: its members hold too.
     for (const m of g.members) set.add(m);
   }
   return set;
 }
 
-/** Pin / unpin a group's corner ([[D63]] lockedGroupIsObstacle). rebuildGroupMembership
- *  fires the topology re-projection that repaints `draggable`; the rerender refreshes
- *  the header lock. */
 export function setGroupLocked(editor: Editor, view: View, node: GroupNode, locked: boolean): void {
   if (node.lockedPosition === locked) return;
   node.lockedPosition = locked;
@@ -69,30 +58,27 @@ export function setGroupLocked(editor: Editor, view: View, node: GroupNode, lock
 }
 
 function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: number } | null {
-  // measuredBox guarantees a non-zero size: an unpainted member reading
-  // offsetWidth/Height = 0 collapses the wrapped bbox to that member's corner.
   return measuredBox(view, id, getOwningEditor(id) ?? undefined);
 }
 
-/** Pin a group's view element behind its members ([[C65]] domOrderStacking). */
 export function sendGroupToBack(view: View, groupId: string): void {
   const el = view.nodeElement(groupId);
-  // Behind members and behind member Conduits (-1) so a Conduit inside a group
-  // stays selectable. The GroupNode effect keeps this in sync on later renders.
   if (el) el.style.zIndex = "-2";
 }
 
-/** Create a group wrapping the current selection. Returns the new group's id, or null. */
 export async function createGroupFromSelection(editor: Editor, view: View): Promise<string | null> {
-  // Clear the separate cable-selection channel first — a "selected" cable carried
-  // into the group-forming reflow garbles its rendering.
+  // Clear the cable selection first: a selected cable carried into the group-forming reflow garbles its rendering.
   cableSelectionStore.set(null);
-  // Nodes hidden inside a collapsed group are excluded: they already belong to one,
-  // and any selection path (Ctrl+A + G, …) would silently absorb them.
   const sel = editor
     .getNodes()
     .filter((n) => n.selected && !(n instanceof GroupNode) && !groupCollapseStore.isNodeHidden(n.id));
   if (sel.length === 0) return null;
+  const selIds = new Set(sel.map((n) => n.id));
+  for (const g of editor.getNodes()) {
+    if (g instanceof GroupNode && g.members.some((m) => selIds.has(m))) {
+      g.members = g.members.filter((m) => !selIds.has(m));
+    }
+  }
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of sel) {
@@ -108,24 +94,21 @@ export async function createGroupFromSelection(editor: Editor, view: View): Prom
   const group = new GroupNode({
     members: sel.map((n) => n.id),
     color: majorityColor(sel),
-    // Integer dims (same rule as the resize grips): a fractional width/height
-    // puts the right/bottom edge on a half-pixel and the selection ring drifts.
     width: Math.round((maxX - minX) + GROUP_PAD * 2),
     height: Math.round((maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER),
   });
   await editor.addNode(group);
-  rebuildGroupMembership(editor); // members tint now, not on the next unrelated rebuild
+  rebuildGroupMembership(editor);
   await view.moveNode(group.id, { x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER });
   sendGroupToBack(view, group.id);
+  settleOverlaps(editor, view, new Set([group.id]));
   return group.id;
 }
 
 export type GroupGeom = { x: number; y: number; width: number; height: number };
 
-/** Wrap the box tightly around the current members, using the same padding/header
- *  offsets as creation. Returns { before, after } for an undo entry, or null. */
 export async function autofitGroupBox(
-  _editor: Editor, view: View, group: GroupNode,
+  editor: Editor, view: View, group: GroupNode,
 ): Promise<{ before: GroupGeom; after: GroupGeom } | null> {
   const gv = view.position(group.id);
   if (!gv) return null;
@@ -141,14 +124,20 @@ export async function autofitGroupBox(
   if (!Number.isFinite(minX)) return null;
 
   const before: GroupGeom = { x: gv.x, y: gv.y, width: group.width, height: group.height };
+  // Each edge rounds on its own. Rounding the size instead left the interior up to half a pixel lopsided, and a
+  // within-group Tidy, which centers the members in the interior, then moved them a fraction on every Cleanup.
+  const x = Math.round(minX - GROUP_PAD), y = Math.round(minY - GROUP_PAD - GROUP_HEADER);
   const after: GroupGeom = {
-    x: minX - GROUP_PAD,
-    y: minY - GROUP_PAD - GROUP_HEADER,
-    // Clamp to the same minimums the manual resize grip enforces; integer dims
-    // like every other resize source (half-pixel edges drift the selection ring).
-    width:  Math.round(Math.max(GROUP_MIN_W, (maxX - minX) + GROUP_PAD * 2)),
-    height: Math.round(Math.max(GROUP_MIN_H, (maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER)),
+    x, y,
+    width:  Math.max(GROUP_MIN_W, Math.round(maxX + GROUP_PAD) - x),
+    height: Math.max(GROUP_MIN_H, Math.round(maxY + GROUP_PAD) - y),
   };
+  if (group.lockedPosition) {
+    // [[C112]] noOverlapsEver: the lock holds the corner, so the members come to it.
+    moveGroupMembers(editor, view, group, gv.x - after.x, gv.y - after.y);
+    after.x = gv.x;
+    after.y = gv.y;
+  }
 
   group.width = after.width;
   group.height = after.height;
@@ -157,27 +146,19 @@ export async function autofitGroupBox(
   return { before, after };
 }
 
-/** Autofit, then push ONE undo entry (position + size + members) so the resize-grip
- *  double-press and the autofit hotkey undo as a single step. */
 export async function autofitGroupWithHistory(editor: Editor, view: View, group: GroupNode): Promise<void> {
   const res = await autofitGroupBox(editor, view, group);
   if (!res) return;
-  // No reconcileGroupBox ([[C86]] membershipByGesture); rebuildGroupMembership only
-  // refreshes color markers from the unchanged list.
   rebuildGroupMembership(editor);
   syncGroupCollapse(editor, view);
-  // Autofit moved the box edges; re-settle any standoffs anchored to this group
-  // (or its members) as a rigid block, pinning the just-fitted group.
-  settleStandoffs(new Set([group.id]), { forceLock: true });
+  settleStandoffs(new Set([group.id]), { forceLock: true, touching: new Set([group.id]) });
+  settleOverlaps(editor, view, new Set([group.id]));
   scheduleAutosave();
 }
 
-/** Move every member of a group by (dx, dy) — called as the group is dragged. */
 export function moveGroupMembers(
   editor: Editor, view: View, group: GroupNode, dx: number, dy: number,
-  // Rete's selector already translates selected members, so drag callers pass
-  // `skipSelected` or those members move at double speed; a programmatic push isn't
-  // selector-driven and leaves it off.
+  // Drag callers pass `skipSelected`, because RF already moves selected members; a programmatic push leaves it off.
   skipSelected = false,
 ): void {
   if (dx === 0 && dy === 0) return;
@@ -189,11 +170,9 @@ export function moveGroupMembers(
   }
 }
 
-// Containment must use the RENDERED element — a collapsed group draws as a small card,
-// so its stored width/height would absorb nodes dropped where the box merely would be.
 function groupRenderedSize(view: View, g: GroupNode): { w: number; h: number } {
   const el = view.nodeElement(g.id);
-  // [[D64]] exception: containment wants the RENDERED box, falling back to the stored one.
+  // measuredBox exception: containment wants the RENDERED box, falling back to the stored one.
   return { w: el?.offsetWidth || g.width, h: el?.offsetHeight || g.height };
 }
 
@@ -206,11 +185,9 @@ function centerInside(view: View, group: GroupNode, b: { x: number; y: number; w
          cy >= gv.y && cy <= gv.y + h;
 }
 
-/** EXCLUSIVE and STABLE: a node belongs to at most one group and keeps it while its
- *  center is inside, so an overlapping group can never steal it. */
 export function reconcileGroupMembership(editor: Editor, view: View, draggedId: string): void {
   const dn = editor.getNode(draggedId);
-  if (!dn || dn instanceof GroupNode) return; // groups don't nest
+  if (!dn || dn instanceof GroupNode) return;
   const b = nodeBox(view, draggedId);
   if (!b) return;
 
@@ -222,12 +199,9 @@ export function reconcileGroupMembership(editor: Editor, view: View, draggedId: 
     host = undefined;
   }
   if (!host) {
-    // Never join a collapsed group ([[C86]]).
     const target = groups.find((g) => g !== current && !g.collapsed && centerInside(view, g, b));
     if (target) { target.members = [...target.members, draggedId]; host = target; }
   }
-  // A docked FC follows its host's group membership (it moves programmatically
-  // with the host, so it never gets its own reconcile).
   for (const rel of dockedNodeStore.getDockedTo(draggedId)) {
     for (const g of groups) {
       const has = g.members.includes(rel.id);
@@ -237,10 +211,7 @@ export function reconcileGroupMembership(editor: Editor, view: View, draggedId: 
   }
 }
 
-/** Re-evaluate a single group's membership against all nodes — after its box is resized. */
 export function reconcileGroupBox(editor: Editor, view: View, group: GroupNode): void {
-  // Only while expanded ([[C86]]): against the collapsed card every member would fall
-  // outside and every bystander under it would be absorbed.
   if (group.collapsed) return;
   const gv = view.position(group.id);
   if (!gv) return;
@@ -252,7 +223,6 @@ export function reconcileGroupBox(editor: Editor, view: View, group: GroupNode):
     const inside = centerInside(view, group, b);
     const isMember = group.members.includes(n.id);
     if (inside && !isMember) {
-      // Don't steal a node that already belongs to another group.
       if (!groups.some((g) => g !== group && g.members.includes(n.id))) {
         group.members = [...group.members, n.id];
       }
@@ -262,19 +232,15 @@ export function reconcileGroupBox(editor: Editor, view: View, group: GroupNode):
   }
 }
 
-/** For LIVE creation (Add menu, paste) ONLY — during a load/seed rebuild membership
- *  is restored from the saved list instead. Returns true if added. */
 export function absorbIntoContainingGroup(editor: Editor, view: View, nodeId: string): boolean {
   const n = editor.getNode(nodeId);
   if (!n || n instanceof GroupNode) return false;
-  // Already in a group (e.g. a pasted member of its pasted group) → leave it.
   for (const g of editor.getNodes()) {
     if (g instanceof GroupNode && g.members.includes(nodeId)) return false;
   }
   const b = nodeBox(view, nodeId);
   if (!b) return false;
   for (const g of editor.getNodes()) {
-    // Skip collapsed groups ([[C86]]).
     if (!(g instanceof GroupNode) || g.collapsed) continue;
     const gv = view.position(g.id);
     if (!gv) continue;
@@ -290,7 +256,6 @@ export function absorbIntoContainingGroup(editor: Editor, view: View, nodeId: st
   return false;
 }
 
-/** Drop a removed node's id from every group's member list. */
 export function dropFromGroups(editor: Editor, removedId: string): void {
   for (const g of editor.getNodes()) {
     if (g instanceof GroupNode && g.members.includes(removedId)) {

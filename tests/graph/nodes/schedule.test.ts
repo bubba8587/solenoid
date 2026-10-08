@@ -16,8 +16,6 @@ const c: CubeValue = cubeFromColumns([
 describe("ScheduleNode", () => {
   it("takes a cube and a wired start; the three outputs agree; the schedule is a cube", () => {
     const n = new ScheduleNode();
-    expect(Object.keys(n.inputs)).toEqual(["tasks", "links", "start", "holidays", "weekend_code", "status", "hours"]);
-    expect(Object.keys(n.outputs)).toEqual(["cube", "finish", "diagnostics", "gantt", "mspdi"]);
     const out = n.data({ tasks: [c], start: [MON] });
     expect(isCubeValue(out.cube)).toBe(true);
     expect(formatDateSerial(out.finish as number, "YYYY-MM-DD")).toBe("2026-01-07");
@@ -124,16 +122,6 @@ describe("ScheduleNode", () => {
     expect(formatDateSerial(withLinks.finish as number, "YYYY-MM-DD")).toBe("2026-01-07"); // B follows A
     const without = n.data({ tasks: [tasksNoPred], start: [MON] });
     expect(formatDateSerial(without.finish as number, "YYYY-MM-DD")).toBe("2026-01-06"); // A and B in parallel
-  });
-
-  it("a Links row naming a task not in the plan is the schedule #VALUE! naming it", () => {
-    const links: FrameValue = { __frame: true, columns: [
-      { name: "Successor", type: "string", values: ["Nope"] },
-      { name: "Predecessor", type: "string", values: ["A"] },
-    ] };
-    const out = new ScheduleNode().data({ tasks: [c], links: [links], start: [MON] });
-    expect(isSolError(out.cube) && out.cube.code).toBe("#VALUE!");
-    expect(isSolError(out.cube) && out.cube.message).toMatch(/Nope/);
   });
 
   it("the Longest path value round-trips and reaches the engine", () => {

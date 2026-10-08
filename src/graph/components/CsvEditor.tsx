@@ -1,22 +1,16 @@
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { csvFieldSpans } from "../csv";
 
-/** The table popup's CSV text block. COMPUTED columns' values are marked in place: a
- *  textarea can't style (or lock) part of its text, so a mirror behind it paints the
- *  marks and the transparent textarea types over them. Marked text stays editable; the
- *  table ignores it (a computed column has no cells of its own), so the next time the
- *  text is built it reads the computed values again. */
+/** Computed columns' values are marked by a mirror painted behind the transparent textarea, since a textarea can't style part of its text; the table ignores marked text, so the next build reads the computed values again. */
 export function CsvEditor({ value, onChange, onFocus, onBlur, readOnly, markedCols, firstBodyRow, error }: {
   value: string;
   onChange: (next: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   readOnly: boolean;
-  /** Column indices whose body fields are marked (empty = no mirror at all). */
   markedCols: ReadonlySet<number>;
   /** 1 when the text opens with a header line (never marked), else 0. */
   firstBodyRow: number;
-  /** Shown under the block while the text can't be read back into the table. */
   error?: string | null;
 }) {
   const innerRef = useRef<HTMLDivElement>(null);
@@ -24,8 +18,7 @@ export function CsvEditor({ value, onChange, onFocus, onBlur, readOnly, markedCo
   const taRef = useRef<HTMLTextAreaElement>(null);
   const marked = markedCols.size > 0;
 
-  // The mirror carries the block's background, so it takes the TEXTAREA's box, not the
-  // wrapper's: the textarea's own resize grip can make it shorter than the wrapper.
+  // The mirror takes the textarea's box, not the wrapper's: the textarea's resize grip can make it shorter.
   useLayoutEffect(() => {
     const ta = taRef.current;
     if (!marked || !ta) return;
@@ -67,8 +60,7 @@ export function CsvEditor({ value, onChange, onFocus, onBlur, readOnly, markedCo
       onFocus={onFocus}
       onBlur={onBlur}
       onScroll={marked ? (e) => {
-        // A translate, not scrollTop: the mirror has no scrollbars, so its own scroll
-        // range is a little shorter than the textarea's and would clamp at the ends.
+        // A translate, not scrollTop: the mirror has no scrollbars, so its scroll range is shorter and would clamp at the ends.
         const t = e.currentTarget;
         if (innerRef.current) innerRef.current.style.transform = `translate(${-t.scrollLeft}px, ${-t.scrollTop}px)`;
       } : undefined}

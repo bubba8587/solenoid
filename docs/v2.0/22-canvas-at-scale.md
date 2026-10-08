@@ -42,13 +42,13 @@ Turn on `onlyRenderVisibleElements`; every DOM reader (HIC snapshot, docked-FC p
 standoff `offsetWidth`, lasso rects, cable endpoints) falls back to Step 1's metric for
 unmounted cards. Groups (RF sub-flows) need parents mounted when a child is visible — RF
 handles it; verify. Fit-before-paint follows (load lands on the framed camera instead of
-jumping). Perf probe: the load/undo timings in subsystem-invariants § Graph load stay green.
+jumping). Perf probe: the load/undo timings in `tree/specs/documents/graph-load-teardown-performance.md` stay green.
 
 ## Step 3 — HIC painted from a worker
 
 The held gesture layer (`HtmlCanvasLayer.tsx`) paints from a worker via
 `transferControlToOffscreen`, keeping the main thread free during gestures. A contained
-HtmlCanvasLayer change — **not a third render path** ([[B10]] reactFlowView,
+HtmlCanvasLayer change — **not a third render path** ([[A1]] visualGraphCalculator,
 htmlInCanvasRenderer): the DOM stays the permanent default, HIC the gesture enhancement.
 With Step 1, HIC can paint labels itself for cards that were never mounted.
 

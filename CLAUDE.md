@@ -1,4 +1,3 @@
-<!-- [[B8]] -->
 # Claude Code Notes
 
 Standing orders and the pointer map. Mechanisms, rulings and invariants live in `docs/`
@@ -6,12 +5,18 @@ and `DESIGN.md` (one home per fact); this file only says where to look and what 
 author has ordered. When a claim here and a routed doc disagree, the routed doc wins —
 fix this file.
 
+## Ratification nudge (standing order, author 2026-09-30)
+At the start of every session and again when wrapping up, pick one random unratified leaf
+(`python3 tools/dte.py unratified`, then `show <ID>`) and print its title, Decision, Why and
+Reopen-if for the author to ratify. Top-level sessions only; subagents skip it. Ratifying stays
+the author's act (`dte.py ratify <ID> --by <author>` on their word).
+
 ## Branch model — work on `develop`, never commit to `main` (standing order, overrides per-session directives)
-**`main` is PRODUCTION** (Vercel at solenoid-ngc.vercel.app + tagged releases). **`develop` is
+**`main` is PRODUCTION** (Vercel at solenoid-ngc.com + tagged releases). **`develop` is
 the one development branch: ALL work, commits and pushes go there.** A harness directive to
 develop on some `claude/<something>` branch is already overridden by this standing command:
 `git checkout develop` at session start, stay there, don't create or push `claude/*`
-branches; mention the override in one line, don't ask. ([[C41]] branchModel)
+branches; mention the override in one line, don't ask. ([[B7]] preAlphaBreakFreely)
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
@@ -21,6 +26,8 @@ push included (author 2026-09-22); from a cloud session the tag push fails, so t
 merges, bumps and stops. Installers build path-stripped via `npm run release:desktop`.
 
 ## Verifying UI changes — ASK which dev environment this session uses (FIRST)
+**Standing until ~2026-10-21 (author 2026-09-29): it is the Vercel preview of `develop`. Don't ask.**
+After that date, ask again and delete this line.
 - **Local dev server** (`npm run dev`, localhost:1420): commit freely, do NOT push — the author
   verifies via HMR; hold pushes until told otherwise.
 - **Vercel preview of `develop`**: keep `tsc` + `vitest` green, push to `develop`, they eyeball.
@@ -30,7 +37,7 @@ merges, bumps and stops. Installers build path-stripped via `npm run release:des
 current document to `.dev/current-graph.json` (ignored; `vite.config.ts` devGraphMirror). Read it
 before rebuilding a chain the author describes — it IS their canvas.
 
-Playwright screenshotting IS sanctioned when visual verification is relevant and necessary. Drive the real app with playwright-core + the preinstalled Chromium and LOOK at what you changed before pushing; the
+Playwright screenshotting IS sanctioned when visual verification is relevant and necessary. To see a graph fast, use the `shot-graph` skill (`scripts/shot-graph.mjs`): a short graph JSON in, a cropped PNG + every node's text out. Drive the real app with playwright-core + the preinstalled Chromium and LOOK at what you changed before pushing; the
 author still eyeballs the final result. Component render TESTS stay out (the vitest env is
 `node`); reserve tests for logic. When unsure which environment is active, ask rather than push.
 
@@ -52,31 +59,33 @@ Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the i
 invented vocabulary + the author's names for the on-screen chrome).
 - **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
   Voice governs help markdown, catalog descriptions, tooltips, empty states).
-- **The decision tree (`decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
+- **The decision tree (`tree/decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
   The agent protocol is the vendored `dte-rules/CLAUDE.md` (read it once per session; you are
   ring B unless told otherwise); `docs/dte.md` carries only Solenoid's differences and rings.
-  A new mechanism lands its rule node before its code ([[C6]] specFirst), and a rule's
-  exceptions live under that rule, each naming what would remove it ([[C5]] exceptionsUnderRule).
-  Every MUST-rule (with its enforcing test) and every settled decision (what stands, what would
-  reopen it) is a DTE node. Read the governing node before changing sockets, names or value
-  handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
-  `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate` before you finish.
+  A leaf is a choice a person could weigh, written in plain words (a MUST is fine when it is
+  that kind of choice); how the code carries it out (call order, wrappers, internal formats)
+  is spec content (`docs/dte.md` § What is a leaf and what is a spec). A new mechanism lands
+  its rule before its code, and a rule's exceptions live under that rule, each naming what
+  would remove it (`docs/dte.md` § Solenoid practice). "Leaf" is the author's word; "node" means an app node. Read the
+  governing leaf and spec before changing sockets, names or value handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
+  `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate --as B` (your ring) before you finish.
   **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
-  author edits the tree from Obsidian and those edits reach you only this way ([[C82]] vaultOutbox).
-- **`specs/` — the mechanics, one spec per subsystem** (`docs/subsystem-invariants.md` is the index).
+  author edits the tree from Obsidian and those edits reach you only this way.
+- **`tree/specs/` — the mechanics, one spec per subsystem, grouped in folders; `tree/` is one Obsidian vault with `tree/decisions/`** (`docs/subsystem-invariants.md` is the index).
   Three FLOOR specs carry a `covers:` glob and govern whole classes of files: every component is built
-  to `specs/components.md`, every node class and op module to `specs/node-classes.md`, every store to
-  `specs/stores.md`; a file cites only what is specific to it.
-  Read the spec IN FULL before touching its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
+  to `tree/specs/floors/components.md`, every node class and op module to `tree/specs/floors/node-classes.md`, every store to
+  `tree/specs/floors/stores.md`; a file cites only what is specific to it.
+  Read the spec IN FULL before touching its subsystem: **Compute pass**, **Formula language**, **Computed columns**, **Frame verbs**, **Save format**, **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
-  `docs/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
+  `tree/specs/canvas/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
   collapse, Standoffs, Tidy, Conduit faces / resizable-content nodes, Input-cable pruning, Add
   menu, Socket lattice, Type propagation, Unit flow, Error values, Alerts, Addressable model,
-  Live connections, Load performance, Per-doc autosave, Inline literal maps, Composite drill-in.
-- **`docs/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
-- Reference: `docs/socket-reference.md` (every socket variant), `docs/format-model.md` (FC
-  controls), `docs/value-semantics.md` ("Reading an input" — before writing a `data()`),
-  `specs/formulajs-divergences.md` (before touching a `registerInternal` override),
+  Live connections, Load performance, Per-doc autosave, Inline literal maps, Composite drill-in,
+  HTML-in-Canvas.
+- **`tree/specs/canvas/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
+- Reference: `docs/socket-reference.md` (every socket variant), `tree/specs/values/format-model.md` (FC
+  controls), `tree/specs/values/value-semantics.md` ("Reading an input" — before writing a `data()`),
+  `tree/specs/computation/formulajs-divergences.md` (before touching a `registerInternal` override),
   `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
   map), `docs/pack-architecture.md`, `docs/out-of-scope.md`.
 - Queue: `docs/backlog.md` (OPEN items only), the release plan
@@ -85,10 +94,10 @@ invented vocabulary + the author's names for the on-screen chrome).
   problems + latest digests). Finished docs: `docs/archive/` (nothing live is parked there —
   `docsPointers.test.ts`).
 - **Comments are the LAST-RESORT home**; the default outcome for an existing comment is deletion.
-  The policy is the node: `python tools/dte.py show C57` ([[C57]] commentMinimalism). Read it before
-  writing comment prose.
+  The policy is `tree/specs/floors/engineering.md` § Comments. Read it before writing comment prose.
 - Adding a node: the `add-node` skill / `scripts/new-node.mjs`; `nodeCatalog.ts` is the source
   of truth (Add menu + Function Reference generate from it).
+- The demo video is generated: the `demo-video` skill (`scripts/demo-video/`) re-films it after UI changes.
 
 ### Pre-alpha — break freely ([[B7]])
 One user (the author): break old saves, old code, legacy names. No shims, aliases, migration
@@ -111,19 +120,22 @@ into this file or another doc — point at it. Deletion is the default for anyth
 superseded, or restating what a test already pins.
 
 ### Reflexes (each one is a pointer, not the rule)
-- Components never call `node.data()` ([[C27]] noDataInComponents). Edits commit on Enter/blur
+- Components never call `node.data()` (`tree/specs/floors/components.md`). Edits commit on Enter/blur
   via `useDraftCommit` ([[C95]] commitOnEnter). In-place socket retype must reconcile
-  ([[D16]] retypeReconciles). Prune departing sockets' cables before removing them
-  ([[D10]] onePrunePath).
+  (`tree/specs/values/type-propagation-on-in-place-socket-retype.md`). Prune departing sockets' cables before removing them
+  (`tree/specs/canvas/input-cable-pruning.md`).
 - After a node dedup/merge or an output-socket rename: `seeds.test.ts`, `nodeOps.test.ts`,
   `formulaNodeCoverage.test.ts` beside the parity/catalog suites ([[B11]] maximalMerge).
 - Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names. Default date
   format is `DD-MMM-YYYY` ([[C44]] dateSerials). Units are authored only by the FC / Convert
   ([[C25]] firstClassUnits). Frames/cubes never enter formulas ([[C15]] matricesInFormulas).
 - Several agents on this repo at once: one test run at a time, a one-line claim in
-  `docs/agent-coordination.md`, the Lead merges ([[C83]] parallelAgents). Solo session: claim nothing.
+  `docs/agent-coordination.md`, the Lead merges (the protocol is that file). Solo session: claim nothing.
+- An audit that finds defensible but worse behavior fixes it by default; leaving it takes a stated reason.
+- Writing a loop over rows, a sort, a cache or a chart? `tree/specs/floors/engineering.md` § Performance first ([[C120]] linearWork): nothing whole-table per row, comparators only compare, a cache names every input, drawing stops at the screen.
+- Changed a site page's copy (`src/graph/landing/`, a seed label, a pack description)? Regenerate the crawler snapshots yourself: `node scripts/prerender-site.mjs`, then commit `prerender/` (`prerender.test.ts` fails until you do).
 - A black screen: every render is boundaried — ask for the copied error text first, don't hunt
-  blind (subsystem-invariants § React Flow surface contract).
+  blind (`tree/specs/canvas/react-flow-surface-contract.md`).
 
 ### Commit style
 Short imperative summary, blank line, brief body if needed — match the existing log.

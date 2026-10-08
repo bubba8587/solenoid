@@ -1,5 +1,4 @@
-/* Chrome (overlay, card, header, title, close, group framing) is shared — see
-   popupChrome.css (.sol-popup*). This file holds only formula-specific bits. */
+/* The shared chrome is popupChrome.css (.sol-popup*); this file holds only the formula-specific parts. */
 .formula-popup {
   width: min(880px, 94vw);
 }
@@ -22,12 +21,12 @@
   padding: 14px;
 }
 
-/* The rendered equation — the whole point of the popup: roomy, centered, in
-   display mode so fractions and roots get their full vertical extent. */
+/* Display mode, so fractions and roots get their full vertical extent. */
 .formula-popup__render {
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* Centered by auto margins, not justify-content: those fall to 0 when a long formula overflows, so it scrolls from its start instead of clipping both ends. */
+  justify-content: flex-start;
   min-height: 76px;
   padding: 16px 14px;
   background: var(--border-subtle);
@@ -35,7 +34,13 @@
   border-radius: 8px;
   overflow-x: auto;
 }
+.formula-popup__render > * { margin-inline: auto; }
 .formula-popup__render .katex { font-size: 1.35em; }
+@media (max-width: 640px) {
+  .formula-popup__body { padding: 10px; }
+  .formula-popup__render { min-height: 60px; padding: 12px 10px; }
+  .formula-popup__render .katex { font-size: 1.15em; }
+}
 
 .formula-popup__raw {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -50,7 +55,7 @@
 .formula-popup__error {
   margin-top: 8px;
   font-size: 11px;
-  color: #e06c2e;
+  color: var(--sol-error);
 }
 
 .formula-popup__edit-row {
@@ -93,11 +98,30 @@
   cursor: default;
 }
 
-/* The highlighted formula editor fills the edit row in place of the bare textarea. */
-.formula-popup__edit-row .fx-editor { flex: 1; min-width: 0; max-height: 180px; }
-.formula-popup__edit-row .fx-editor__ta { min-height: 30px; }
+.formula-popup__edit-row .fx-editor { flex: 1; min-width: 0; }
+.formula-popup__edit-row .fx-editor__input { min-height: 30px; max-height: 56vh; max-height: 56dvh; }
 
-/* ── Step-by-step evaluation ─────────────────────────────────────────────── */
+/* Sized by the corner grip: the body scrolls and the editor takes the spare height. */
+.sol-popup--sized .formula-popup__body {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+.sol-popup--sized .formula-popup__body > * { flex-shrink: 0; }
+.sol-popup--sized .formula-popup__edit-row {
+  flex: 1 1 auto;
+  min-height: 90px;
+  align-items: stretch;
+}
+.sol-popup--sized .formula-popup__edit-row .fx-editor {
+  display: flex;
+  flex-direction: column;
+}
+.sol-popup--sized .formula-popup__edit-row .fx-editor__input {
+  flex: 1 1 auto;
+  max-height: none;
+}
+
 .formula-popup__steps {
   margin-top: 14px;
   padding-top: 12px;
@@ -150,7 +174,6 @@
   border-radius: 6px;
   overflow-x: auto;
 }
-/* Number each step quietly down the left. */
 .formula-popup__steplist {
   counter-reset: step;
 }
@@ -195,8 +218,6 @@
 }
 .formula-popup__engine-note strong { color: var(--text); font-weight: 600; }
 
-/* Per-variable explanations (Expression / Equation): the name typeset via KaTeX,
-   an editable prose description that stays OUT of the formula. Legend + editor. */
 .formula-popup__vars {
   margin-top: 10px;
   padding: 8px;
@@ -204,11 +225,24 @@
   border-radius: 6px;
 }
 .formula-popup__vars-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
-  margin-bottom: 6px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
 }
+.formula-popup__vars-title::-webkit-details-marker { display: none; }
+.formula-popup__vars-title:hover { color: var(--text); }
+.formula-popup__vars[open] .formula-popup__vars-title { margin-bottom: 6px; }
+.formula-popup__vars-chevron {
+  display: inline-flex;
+  transition: transform 0.12s;
+}
+.formula-popup__vars[open] .formula-popup__vars-chevron { transform: rotate(90deg); }
 .formula-popup__var-row {
   display: flex;
   align-items: center;

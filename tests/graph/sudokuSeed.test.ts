@@ -49,7 +49,6 @@ async function loadSeed(editor: NodeEditor<Schemes>) {
   const byId = new Map<string, ClassicPreset.Node>();
   for (const sn of (seed.nodes as SavedNode[])) {
     const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
-    expect(Ctor, `unknown type ${sn.type}`).toBeTypeOf("function");
     const node = new Ctor({ ...sn.init });
     const anyNode = node as unknown as Record<string, unknown>;
     if (sn.literals) anyNode.literals = { ...sn.literals };

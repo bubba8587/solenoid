@@ -1,0 +1,64 @@
+<p><a href="/obsidian">Obsidian</a></p>
+<p><a href="/examples">Examples</a></p>
+<p><a href="/packs">Packs</a></p>
+<p><a href="/download">Download</a></p>
+<p><a href="https://github.com/bubba8587/solenoid">GitHub</a></p>
+<p><a href="/">Open the app</a></p>
+<h1>The computation layer for your vault.</h1>
+<p>Solenoid turbocharges your Obsidian notes with real spreadsheet capabilities. You can manage frontmatter properties, read <a href="https://tasknotes.dev/">TaskNotes</a> data, and insert values into your notes via <a href="https://github.com/obsidianmd/knap">Knap</a> + Reports. The Solenoid Properties plugin puts lists, tables, frames and cubes into Obsidian's properties, edited in Solenoid's own table editor.</p>
+<p>New to Solenoid? It is a visual alternative to Excel: values flow through cards on a canvas, and every Excel function works by its own name. This page covers the Obsidian side.</p>
+<p><a href="https://community.obsidian.md/plugins/solenoid-properties">Get the plugin</a></p>
+<p><a href="https://github.com/bubba8587/solenoid/releases/latest">Download for Linux</a></p>
+<p><a href="/about">What is Solenoid?</a></p>
+<h2>Solenoid Properties, the plugin</h2>
+<p>An Obsidian plugin that adds Solenoid's value types to your properties. Each one shows as a chip and opens Solenoid's editor, and the note underneath stays plain YAML.</p>
+<p>The plugin's own chips and editor, over the demo vault's Property types note. Open one, change a cell and save; the YAML follows.</p>
+<h2>The Solenoid look</h2>
+<p>Turn on the plugin's theme and the whole vault takes Solenoid's palette, with the accent you pick.</p>
+<h3>Thirteen property types</h3>
+<p>A list and a matrix for each of numbers, text, dates, complex numbers and booleans, plus Frame, Cube and a Complex value.</p>
+<h3>Plain YAML underneath</h3>
+<p>A list saves as a sequence, a matrix as rows, a frame as rows of key: value. Without the plugin, the note still reads.</p>
+<h3>In Bases too</h3>
+<p>A Bases table shows the same chip, and opens the same editor.</p>
+<h3>Stays on your machine</h3>
+<p>No network access and no telemetry. Settings and column types live in the plugin's own data file.</p>
+<h2>Solenoid, the app</h2>
+<p>The app reads the vault as tables, computes like a spreadsheet, and writes the answers back as properties, notes and tasks.</p>
+<p>This graph is live. Edit an input and everything downstream recomputes, or open the report to read the note it writes.</p>
+<h2>Between your vault and Excel</h2>
+<h2>Reading the vault</h2>
+<h2>Your vault as a table</h2>
+<p>A folder of notes, read as one table.</p>
+<h2>Import a note</h2>
+<p>Pick a note from your vault and Solenoid shows it on the canvas, with every frontmatter property as a value you can use as an input. The plugin's types come through: a Frame arrives as a frame, with the column types you picked.</p>
+<h2>TaskNotes API and .mdbase</h2>
+<p>Solenoid reads task and calendar data from the local TaskNotes HTTP API, and reads .mdbase schemas to type values where it can.</p>
+<h2>Writing it back</h2>
+<h3>Update note properties</h3>
+<p>Each column becomes a properly typed property, so dates, lists and links come out right. With the plugin, a table written back opens as a chip in the note.</p>
+<h3>Create notes and reports</h3>
+<p>As portable markdown, with frontmatter, tables, diagrams, math and chart images baked in.</p>
+<h3>Create and update tasks</h3>
+<p>From a table: a row matched to an existing task updates it, a new row creates one.</p>
+<h2>Examples</h2>
+<h3>Rank what to do next</h3>
+<p>Score each task by priority, due date and estimate, then write the score back so a Bases view sorts your list by it.</p>
+<h3>Trend your daily notes</h3>
+<p>Read the Daily folder, where the file name becomes a date and mood, sleep and weight become columns. Chart the trend and count streaks.</p>
+<h3>Roll up a folder</h3>
+<p>Sum budgets by status across a folder of project notes, count the open tasks in each, and write the totals into a summary note.</p>
+<h3>Bring a spreadsheet in</h3>
+<p>Join a CSV of expenses against your project notes, then write a per-project total back to each one.</p>
+<h2>Excel too, over CSV</h2>
+<p>Export a sheet to CSV and Solenoid reads it as a table with columns typed for you, then sends a table back out as CSV for Excel to open. The functions you know come along: Solenoid keeps Excel's names and Excel's answers.</p>
+<h2>Preview every change</h2>
+<p>Every writer shows you a plan before it touches a file. Nothing is written until you approve it.</p>
+<p>Your notes change the way you would change them by hand, and a value that does not fit its type is refused rather than written.</p>
+<h2>Getting started</h2>
+<li>1Install Solenoid Properties. In Obsidian, open Settings ▸ Community plugins, search for Solenoid Properties and turn it on. It needs nothing else.</li>
+<li>2Get the desktop app. The integration reads and writes your files, so it runs in the desktop build.</li>
+<li>3Point it at your vault. Under Settings ▸ Obsidian, choose your vault folder. Every reader and writer defaults to it.</li>
+<li>4For TaskNotes, turn on the HTTP API in the plugin's settings, then set the address (localhost:8080 by default) and paste the token into Solenoid.</li>
+<p>Free and open source. Point it at your vault and start computing.</p>
+<p><a href="/">Open Solenoid</a></p>

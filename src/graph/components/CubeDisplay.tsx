@@ -1,8 +1,11 @@
 // [[E9]] errorsKeepOrigin (an error chip flies to its origin)
-// Mirrors FrameDisplay so the collapse-to-chip CSS applies unchanged.
+// Mirrors FrameDisplay's classes, so the collapse-to-chip CSS applies unchanged.
+import { useSyncExternalStore } from "react";
 import { CubeChip } from "./CubeChip";
+import { frameFormatStore } from "../frameFormatStore";
 import { cubeRowCount, isCubeValue, type CubeValue } from "../frame";
-import { cubeCellToken } from "./cubeCell";
+import { cubeCellShown, CellImage } from "./cubeCell";
+import { cellImageSrc } from "../recordLayout";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
@@ -11,14 +14,13 @@ import type { CubeEditBinding } from "../cubePopupStore";
 export function CubeDisplay({ cube, label, full, peek, edit }: {
   cube: CubeValue | SolError | null;
   label?: string;
-  /** A Cube Input's records seam: the chip opens the popup as an editor. */
   edit?: CubeEditBinding;
-  /** Render every column/row instead of the compact 3×3 preview. MUST switch tableLayout to
-   *  `auto` — a `fixed` width:100% table inside a `width:max-content` card sizes runaway. */
+  /** A full grid must use `tableLayout: auto`: a fixed full-width table in a max-content card grows without bound. */
   full?: boolean;
-  /** Socket hover-peek: a compact head-5 preview with NO chip (read-only, no popup). */
   peek?: boolean;
 }) {
+  // Its cells follow the Decimal places setting ([[D94]] oneNumberDisplay), which this store announces.
+  useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
   if (isSolError(cube)) {
     return (
       <div
@@ -36,7 +38,6 @@ export function CubeDisplay({ cube, label, full, peek, edit }: {
     return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   }
   const rows = cubeRowCount(cube);
-  // Cap rendered rows even when "full" — a Display card is not a browser.
   const maxR = full ? Math.min(rows, 100) : Math.min(rows, peek ? 5 : 3);
   const maxC = full ? cube.columns.length : Math.min(cube.columns.length, 3);
   const extraCols = !full && cube.columns.length > maxC;
@@ -59,7 +60,7 @@ export function CubeDisplay({ cube, label, full, peek, edit }: {
             <tr key={i}>
               {cube.columns.slice(0, maxC).map((c, j) => (
                 <td key={j} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: "left", fontSize: full ? 12 : 11, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: "nowrap", ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
-                  {cubeCellToken(c.cells[i] ?? null, c.type, c.format)}
+                  {(() => { const img = cellImageSrc(c.cells[i]); return img ? <CellImage src={img} /> : cubeCellShown(c.cells[i] ?? null, c.type, c.format); })()}
                 </td>
               ))}
               {extraCols && <td style={{ color: "var(--text-muted)", fontSize: 10 }}>…</td>}
@@ -73,7 +74,7 @@ export function CubeDisplay({ cube, label, full, peek, edit }: {
         </tbody>
       </table>
       {!full && !peek && (
-        <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+        <div className="solenoid-table-display__chip">
           <CubeChip value={cube} label={label} size="sm"  edit={edit} />
         </div>
       )}

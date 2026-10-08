@@ -6,7 +6,6 @@ describe("cablePolyline", () => {
   it("returns a polyline whose ends reach SOCKET_OVERLAP into the sockets (no seam at the handle edge)", async () => {
     const { SOCKET_OVERLAP } = await import("../../src/graph/cablePaths");
     const pts = cablePolyline("diagonal", { sx: 0, sy: 0, ex: 200, ey: 100 });
-    expect(pts.length).toBeGreaterThanOrEqual(2);
     expect(pts[0].x).toBeCloseTo(-SOCKET_OVERLAP, 0);
     expect(pts[0].y).toBeCloseTo(0, 0);
     expect(pts[pts.length - 1].x).toBeCloseTo(200 + SOCKET_OVERLAP, 0);

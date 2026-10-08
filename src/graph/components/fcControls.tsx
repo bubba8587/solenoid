@@ -1,8 +1,7 @@
-// [[C94]] formatFamilyGates, [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits, [[C79]] packActivationIsPresentation
-// The FC's format/unit dropdowns, shared with other surfaces so the option data can't drift.
-// Plain controlled selects — none of the FC node's value-mutating behavior lives here.
+// [[C118]] formatTravelsWithValue, [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits, [[C79]] packActivationIsPresentation
 
-import { useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import type * as React from "react";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
   LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, unitGroupLabel, type FormatStyleId, type LogicalStyle, type TextCase,
@@ -10,18 +9,17 @@ import {
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { LazySelect } from "./LazySelect";
+import { usePendingDraft } from "../draftFlush";
+import { stopDragStart } from "../coarse";
 
-// The FC's flow states (authored ← →, inherited → →, dictated ← ←): docs/format-model.md.
+// The FC's flow states (authored ← →, inherited → →, dictated ← ←): tree/specs/values/format-model.md.
 
 export type FcDir = "back" | "fwd" | null;
 export interface FcFlowState { left: FcDir; right: FcDir }
 
-/** Authored here: set on this box, rides forward with the value (← →). */
 export const FLOW_AUTHORED: FcFlowState = { left: "back", right: "fwd" };
-/** Inherited from upstream: the value already carries it (→ →) — pairs with a lock. */
 export const FLOW_INHERITED: FcFlowState = { left: "fwd", right: "fwd" };
 
-/** Color inherits (currentColor) so the arrow reads muted in any container. */
 export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string }) {
   return (
     <span
@@ -40,8 +38,7 @@ export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string })
   );
 }
 
-/** Flank a control with the flow arrows, a spacer where a side has none so a stack of
- *  these stays column-aligned. */
+/** A spacer stands in for a missing side, so a stack of these stays column-aligned. */
 export function FcFlow({ flow, backTitle, fwdTitle, children }: {
   flow?: FcFlowState;
   backTitle?: string;
@@ -61,7 +58,7 @@ export function FcFlow({ flow, backTitle, fwdTitle, children }: {
   );
 }
 
-// Base unit-group order; pack groups append before "custom". Mirrors FormatControllerNode.
+// Pack groups append before "custom"; mirrors FormatControllerNode.
 const BASE_UNIT_GROUP_ORDER: string[] = [
   "none", "angle", "length", "mass", "temperature",
   "time", "area", "volume", "speed", "data", "currency",
@@ -75,8 +72,6 @@ export interface FcFormatOptions {
   packFormatGroups: Map<string, FcOption[]>;
 }
 
-/** Built-in styles/units merged with active packs', re-derived when packs toggle; shared so
- *  the FC node and the table popup can't show different menus. */
 export function useFcFormatOptions(): FcFormatOptions {
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   return useMemo(() => {
@@ -103,9 +98,7 @@ export function useFcFormatOptions(): FcFormatOptions {
   }, [packsVersion]);
 }
 
-/** The <option>/<optgroup> tree for the NUMBER-format dropdown, rendered inside a caller's
- *  <select> so the FC and the popup share the exact list. */
-export function numberFormatOptions(packFormatGroups: Map<string, FcOption[]>) {
+export function numberFormatOptions(packFormatGroups: Map<string, FcOption[]> = new Map()) {
   return (
     <>
       {Object.entries(FORMAT_STYLE_GROUPS).map(([group, styles]) =>
@@ -130,7 +123,6 @@ export function numberFormatOptions(packFormatGroups: Map<string, FcOption[]>) {
   );
 }
 
-/** The <option>/<optgroup> tree for the UNIT dropdown, in group order. */
 export function unitOptions(opts: FcFormatOptions) {
   return (
     <>
@@ -156,16 +148,12 @@ export function unitOptions(opts: FcFormatOptions) {
   );
 }
 
-// ─── Standalone selects (for non-FC surfaces — the table popup) ───────────────
 
-/** The inherit pick ([[D41]] formatFlowsDownstream): a caller passing `inherit` must handle
- *  `""` in `onChange` by dropping its stored pick. Returns the <option> ELEMENT, not a
- *  component — LazySelect's collapsed render walks for `type === "option"`. */
+/** A caller passing `inherit` handles `""` in `onChange` by dropping its pick; an element, not a component, because LazySelect's collapsed render walks for `type === "option"`. */
 function inheritOption(show?: boolean) {
   return show ? <option value="" title="Inherit the upstream format">—</option> : null;
 }
 
-/** A number-format <select> matching the FC's, driven by external state. */
 export function FormatStyleSelect({ value, onChange, className, title, inherit }: {
   value: FormatStyleId | "";
   onChange: (v: FormatStyleId | "") => void;
@@ -187,7 +175,6 @@ export function FormatStyleSelect({ value, onChange, className, title, inherit }
   );
 }
 
-/** A date-format <select> matching the FC's date socket. */
 export function DateStyleSelect({ value, onChange, className, title, inherit }: {
   value: FormatStyleId | "";
   onChange: (v: FormatStyleId | "") => void;
@@ -212,8 +199,6 @@ export function DateStyleSelect({ value, onChange, className, title, inherit }: 
   );
 }
 
-/** A logical show-as <select> matching the FC's logical socket (TRUE/FALSE · 1/0 ·
- *  Yes/No · ✓/✗). */
 export function LogicalStyleSelect({ value, onChange, className, title, inherit }: {
   value: string | undefined;
   onChange: (v: LogicalStyle | "") => void;
@@ -236,8 +221,6 @@ export function LogicalStyleSelect({ value, onChange, className, title, inherit 
   );
 }
 
-/** A letter-case <select> matching the FC's text socket — display-only; `"chip"` is the
- *  categorical color-chip style, exclusive with the cases. */
 export function TextCaseSelect({ value, onChange, className, title, inherit }: {
   value: string | undefined;
   onChange: (v: TextCase | "" | "chip") => void;
@@ -261,7 +244,7 @@ export function TextCaseSelect({ value, onChange, className, title, inherit }: {
   );
 }
 
-/** A unit <select> matching the FC's; `disabled` is the LOCKED state ([[C25]] firstClassUnits). */
+/** `disabled` is the locked state ([[C25]] firstClassUnits). */
 export function UnitSelect({ value, onChange, className, title, disabled }: {
   value: string;
   onChange: (v: string) => void;
@@ -280,5 +263,45 @@ export function UnitSelect({ value, onChange, className, title, disabled }: {
     >
       {unitOptions(opts)}
     </LazySelect>
+  );
+}
+
+/** A Custom style's pattern, committed on Enter or blur ([[C95]] commitOnEnter); a blank entry keeps the pattern shown. */
+export function CustomPatternField({ value, date, onCommit, className }: {
+  value: string;
+  date: boolean;
+  onCommit: (pattern: string) => void;
+  className?: string;
+}) {
+  // Its own draft, not inlineInput's useDraftCommit: that module reaches the graph editor, which the Obsidian plugin can't bundle.
+  const [draft, setDraft] = useState(value);
+  const canceled = useRef(false);
+  useEffect(() => { setDraft(value); }, [value]);
+  const commit = () => { const next = draft.trim() || value; if (next !== value) onCommit(next); else setDraft(value); };
+  usePendingDraft(draft !== value, commit);
+  const field = {
+    draft,
+    setDraft,
+    onBlur: () => { if (canceled.current) { canceled.current = false; setDraft(value); return; } commit(); },
+    onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+      else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
+    },
+  };
+  return (
+    <input
+      type="text"
+      className={className}
+      value={field.draft}
+      spellCheck={false}
+      aria-label="Custom format pattern"
+      title={date ? "Date pattern: DD, MMM, YYYY, HH, mm and so on" : "Number pattern: 0, # and . for digits, a comma for grouping"}
+      placeholder={date ? "pattern, for example YYYY-MM-DD" : 'format, for example "0.00"'}
+      onChange={(e) => field.setDraft(e.target.value)}
+      onBlur={field.onBlur}
+      onKeyDown={(e) => { e.stopPropagation(); field.onKeyDown(e); }}
+      onPointerDown={stopDragStart}
+      onMouseDown={(e) => e.stopPropagation()}
+    />
   );
 }

@@ -2,8 +2,8 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { notesToCube, dateFromName, type VaultNote, type VaultTypeSources } from "../../src/graph/vaultCube";
-import { parseMdbaseCollection, mdbaseTypeFor, mdbaseSchemaFor, validateAgainst } from "../../src/graph/mdbaseTypes";
+import { notesToCube, dateFromName, extractInlineTags, type VaultNote, type VaultTypeSources } from "../../src/graph/vaultCube";
+import { parseMdbaseCollection, mdbaseTypeFor, mdbaseSchemaFor, validateAgainst, nearestMdbaseSchema } from "../../src/graph/mdbaseTypes";
 import { parseObsidianTypes } from "../../src/graph/obsidianTypes";
 import { parseDailyNotesConfig } from "../../src/graph/dailyNotesConfig";
 import { isCubeValue, type CubeValue, type CubeColumn } from "../../src/graph/frame";
@@ -34,10 +34,25 @@ describe("a matrix property", () => {
     expect(col(cube, "grid").type).toBe("number");
   });
 
+  it("is no cell under a key typed frame, never a cube of its rows", () => {
+    const obsidian = parseObsidianTypes(JSON.stringify({ types: { grid: "solenoid-frame" } }));
+    expect(cellAt(notesToCube(notes, { ...NO_TYPES, obsidian }), "grid", 0)).toBe(null);
+  });
+
   it("follows a types.json matrix hint", () => {
     const obsidian = parseObsidianTypes(JSON.stringify({ types: { grid: "solenoid-strtable" } }));
     expect(obsidian.grid).toEqual({ kind: "matrix", elem: "string" });
     expect(cellAt(notesToCube(notes, { ...NO_TYPES, obsidian }), "grid", 0)).toEqual([["1", "2"], ["3", "4"]]);
+  });
+});
+
+describe("a date under a text type", () => {
+  it("is the ISO text written, never its serial as text", () => {
+    const notes = [{ path: "a.md", text: "---\nwhen: 2026-09-01\nalso: [2026-09-01]\n---\n" } as VaultNote];
+    const obsidian = parseObsidianTypes(JSON.stringify({ types: { when: "text", also: "multitext" } }));
+    const cube = notesToCube(notes, { ...NO_TYPES, obsidian });
+    expect(cellAt(cube, "when", 0)).toBe("2026-09-01");
+    expect(cellAt(cube, "also", 0)).toEqual(["2026-09-01"]);
   });
 });
 
@@ -229,7 +244,24 @@ describe("mdbase validation (Write Properties, item B)", () => {
     expect(validateAgainst(3, sch.constraints.priority)).toBeNull();
     expect(validateAgainst("x", sch.constraints.priority)).toMatch(/must be a number/);
   });
+
+  it("an integer property refuses a fraction; a plain number property takes one", () => {
+    expect(validateAgainst(2.5, sch.constraints.priority)).toBe("must be a whole number");
+    expect(validateAgainst(1850.5, sch.constraints.budget)).toBeNull();
+  });
 })
+
+describe("Write Properties takes the nearest mdbase collection, as Vault Folder does ([[C67]] mdbaseCeiling)", () => {
+  it("a nearer collection with no type for the note ends the walk; with no nearer collection an ancestor's type applies", async () => {
+    const project = read("Projects/_types/project.md");
+    const all = parseMdbaseCollection("spec_version: 0.3.0", [project.replace('path_glob: "*.md"', 'path_glob: "**/*.md"')]);
+    const none = parseMdbaseCollection("spec_version: 0.3.0", [project.replace('path_glob: "*.md"', 'path_glob: "other-*.md"')]);
+    const at = (colls: Record<string, typeof all>) => async (folder: string) => colls[folder] ?? null;
+    expect(await nearestMdbaseSchema("Sub/n.md", at({ "": all, Sub: none }))).toBeNull();
+    expect(await nearestMdbaseSchema("Sub/Deep/n.md", at({ "": all }))).not.toBeNull();
+    expect(await nearestMdbaseSchema("Sub/other-1.md", at({ "": all, Sub: none }))).not.toBeNull();
+  });
+});
 
 describe("review pins: path_glob `?`", () => {
   it("matches exactly one path character, never a regex quantifier", () => {
@@ -239,5 +271,40 @@ describe("review pins: path_glob `?`", () => {
     expect(mdbaseSchemaFor(one, "task-1.md")).not.toBeNull();
     expect(mdbaseSchemaFor(one, "task.md")).toBeNull();
     expect(mdbaseSchemaFor(one, "task-12.md")).toBeNull();
+  });
+});
+
+describe("extractInlineTags", () => {
+  it("reads tags as Obsidian does: no all-digit tag, any letter", () => {
+    expect(extractInlineTags("Item #1 and #2024 but #y2024, #1984/books, #café and #a-b_c/d."))
+      .toEqual(["y2024", "1984/books", "café", "a-b_c/d"]);
+  });
+
+  it("skips a tag in a code fence or a code span", () => {
+    expect(extractInlineTags("#a\n```\n#b\n```\nsee `#c` and #d")).toEqual(["a", "d"]);
+  });
+});
+
+// [[D93]] oneTextReading
+describe("a typed property reads its text as a Frame cell of that type does", () => {
+  it("text the type can't read is NaN, never a blank; a typed list's items read the same way", () => {
+    const notes: VaultNote[] = [
+      { path: "a.md", text: "---\nn: abc\nd: 2024\nok: yes\nxs:\n  - 1\n  - x\n---\n" } as VaultNote,
+    ];
+    const obsidian = parseObsidianTypes(JSON.stringify({ types: { n: "number", d: "date", ok: "checkbox" } }));
+    const cube = notesToCube(notes, { ...NO_TYPES, obsidian });
+    expect(Number.isNaN(cellAt(cube, "n", 0))).toBe(true);
+    expect(cellAt(cube, "d", 0)).toBe(2024);
+    expect(cellAt(cube, "ok", 0)).toBeNaN(); // only true and false read as a checkbox
+  });
+});
+
+describe("an mdbase path_glob with **/", () => {
+  const typeFile = (glob: string) => `---\nkind: mdbase.type\nname: t\nmatch:\n  path_glob: "${glob}"\nschema:\n  value:\n    type: object\n    properties:\n      n:\n        type: number\n---\n`;
+  it("matches a note at the collection root as well as in folders", () => {
+    const c = parseMdbaseCollection("spec_version: 0.3.0\nname: C\n", [typeFile("**/*.md")]);
+    expect(mdbaseTypeFor(c, "note.md")).toEqual(mdbaseTypeFor(c, "a/b/note.md"));
+    expect(Object.keys(mdbaseTypeFor(c, "note.md"))).toContain("n");
+    expect(Object.keys(mdbaseTypeFor(c, "note.txt"))).not.toContain("n");
   });
 });

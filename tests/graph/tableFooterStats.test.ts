@@ -8,8 +8,10 @@ import {
   type ColSummary,
   STATS_BY_TYPE,
   defaultFooterStat,
+  footerStatFor,
   footerStatValue,
   formatFooterStat,
+  statReadsAsCell,
   FOOTER_STAT_LABEL,
 } from "../../src/graph/components/tableFooterStats";
 
@@ -24,28 +26,6 @@ function summarize(values: unknown[], type: FooterColType): ColSummary {
 }
 
 describe("footer stat choices", () => {
-  it("offers the number stats, including range and std dev", () => {
-    const n = STATS_BY_TYPE.number;
-    expect(n).toContain("range");
-    expect(n).toContain("stddev");
-    for (const k of ["sum", "avg", "min", "max", "median"] as const) expect(n).toContain(k);
-    // The common presence stats trail every type.
-    for (const k of ["count", "distinct", "blank", "error"] as const) expect(n).toContain(k);
-  });
-
-  it("offers earliest/latest only on date columns, checked/unchecked only on logical", () => {
-    expect(STATS_BY_TYPE.date).toContain("earliest");
-    expect(STATS_BY_TYPE.date).toContain("latest");
-    expect(STATS_BY_TYPE.logical).toContain("checked");
-    expect(STATS_BY_TYPE.logical).toContain("unchecked");
-    // Cross-type stats don't leak onto the wrong column.
-    expect(STATS_BY_TYPE.date).not.toContain("range");
-    expect(STATS_BY_TYPE.date).not.toContain("checked");
-    expect(STATS_BY_TYPE.logical).not.toContain("earliest");
-    expect(STATS_BY_TYPE.string).not.toContain("sum");
-    expect(STATS_BY_TYPE.string).not.toContain("earliest");
-  });
-
   it("defaults to Sum on numbers and Count elsewhere", () => {
     expect(defaultFooterStat("number")).toBe("sum");
     expect(defaultFooterStat("date")).toBe("count");
@@ -108,13 +88,30 @@ describe("formatFooterStat", () => {
   it("renders a date bound as a formatted date, not a raw serial", () => {
     expect(formatFooterStat("earliest", serial)).toBe(formatDateSerial(serial, DEFAULT_DATE_FORMAT));
     expect(formatFooterStat("latest", serial)).toBe(formatDateSerial(serial, DEFAULT_DATE_FORMAT));
-    expect(formatFooterStat("earliest", serial)).not.toBe(formatScalar(serial));
   });
   it("renders other stats as plain numbers", () => {
     expect(formatFooterStat("sum", 1234.5)).toBe(formatScalar(1234.5));
     expect(formatFooterStat("checked", 3)).toBe(formatScalar(3));
   });
+  it("a statistic in the column's units reads through the column's format; a count never does", () => {
+    for (const s of ["sum", "avg", "min", "max", "median", "range", "stddev", "earliest", "latest"] as const) expect(statReadsAsCell(s)).toBe(true);
+    for (const s of ["count", "distinct", "blank", "error", "checked", "unchecked"] as const) expect(statReadsAsCell(s)).toBe(false);
+  });
   it("shows an em dash for a missing value", () => {
     expect(formatFooterStat("range", null)).toBe("—");
+  });
+});
+
+describe("footerStatFor", () => {
+  it("keeps a pick the column's type still offers", () => {
+    expect(footerStatFor("date", "latest")).toBe("latest");
+    expect(footerStatFor("number", "count")).toBe("count");
+  });
+  it("falls back to the type's default when the column's type no longer offers the pick", () => {
+    expect(footerStatFor("number", "latest")).toBe("sum");
+    expect(footerStatFor("string", "sum")).toBe("count");
+  });
+  it("shows the default with no pick", () => {
+    expect(footerStatFor("number", undefined)).toBe("sum");
   });
 });

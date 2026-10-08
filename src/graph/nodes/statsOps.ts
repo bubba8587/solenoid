@@ -1,6 +1,7 @@
-// [[C17]] shareImpl, [[D19]] implReteFree, [[D24]] prepByShape, [[D36]] nullSkippedNotZero, [[D51]] oneAnswerOneDivergence, [[D48]] classifyNonFinite, [[C14]] currentExcelParity, [[D70]] nullNotEnoughData
-// Inputs are already-prepared numbers (errors propagated, blanks skipped by the caller). `null` = undefined for this input (too few points, a flat list), shown as a blank; a SolError is a real domain failure.
+// [[C17]] shareImpl, [[D36]] nullSkippedNotZero, [[D51]] oneAnswerOneDivergence, [[D48]] classifyNonFinite, [[C14]] currentExcelParity, [[D70]] nullNotEnoughData
+// Inputs are prepared numbers (errors propagated, blanks skipped by the caller); null means not enough data and shows as a blank, a SolError is a real domain failure.
 import { solError, type SolError } from "../errorValue";
+import { guardFinite } from "../valueKinds";
 import { iterMin, iterMax, stdNormCDF, fCDF, chiSqCDF, lnCombin } from "./mathUtils";
 
 export type AggregateOp =
@@ -12,13 +13,13 @@ const sum = (a: readonly number[]) => a.reduce((x, y) => x + y, 0);
 const mean = (a: readonly number[]) => sum(a) / a.length;
 const ssd = (a: readonly number[], m: number) => a.reduce((x, y) => x + (y - m) ** 2, 0);
 
-/** The Aggregate node's reducers over PRESENT numbers (blanks already skipped). An empty
- *  list answers the op's identity for SUM (0) / PRODUCT (1) / COUNT (0) and `null` for
- *  everything else; a sample statistic under its minimum n is `null` — "not enough data"
- *  is a blank, not an error (the Running node's rule too; Excel says #DIV/0!) — as are the
- *  normalized moments of a flat list. GEOMEAN/HARMEAN over a non-positive value is a real
- *  log-domain failure: #DOMAIN!. */
 export function aggregate(op: AggregateOp, arr: readonly number[]): number | SolError | null {
+  if (op !== "count" && op !== "countdistinct" && arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr);
+  const r = aggregateRaw(op, arr);
+  return typeof r === "number" ? guardFinite(r, arr) : r;
+}
+
+function aggregateRaw(op: AggregateOp, arr: readonly number[]): number | SolError | null {
   if (arr.length === 0) return op === "sum" || op === "count" ? 0 : op === "product" ? 1 : null;
   const n = arr.length;
   switch (op) {
@@ -34,7 +35,6 @@ export function aggregate(op: AggregateOp, arr: readonly number[]): number | Sol
       const m = Math.floor(s.length / 2);
       return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
     }
-    // A sample spread of ONE value is Excel's #DIV/0!; no values stays blank.
     case "stdev":   return n === 0 ? null : n < 2 ? solError("#DIV/0!", "A sample standard deviation needs at least two values") : Math.sqrt(ssd(arr, mean(arr)) / (n - 1));
     case "stdev_p": return Math.sqrt(ssd(arr, mean(arr)) / n);
     case "var_s":   return n === 0 ? null : n < 2 ? solError("#DIV/0!", "A sample variance needs at least two values") : ssd(arr, mean(arr)) / (n - 1);
@@ -63,35 +63,34 @@ export function aggregate(op: AggregateOp, arr: readonly number[]): number | Sol
       const sum4 = arr.reduce((a, b) => a + ((b - m) / s) ** 4, 0);
       return ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * sum4 - (3 * (n - 1) ** 2) / ((n - 2) * (n - 3));
     }
-    case "ptp":  return iterMax(arr) - iterMin(arr);                                   // numpy ptp, R diff(range(x))
-    case "iqr": {                                                                       // scipy iqr, R IQR — PERCENTILE.INC quartiles
+    case "ptp":  return iterMax(arr) - iterMin(arr);
+    case "iqr": {
       const s = [...arr].sort((a, b) => a - b);
       return percentileOf(s, 0.75, false) - percentileOf(s, 0.25, false);
     }
-    case "mad": {                                                                       // median absolute deviation, UNSCALED (scipy; R's mad scales ×1.4826)
-      const med = aggregate("median", arr) as number;
-      return aggregate("median", arr.map((v) => Math.abs(v - med)));
+    case "mad": {
+      const med = aggregateRaw("median", arr) as number;
+      return aggregateRaw("median", arr.map((v) => Math.abs(v - med)));
     }
-    case "sem":  return n < 2 ? null : Math.sqrt(ssd(arr, mean(arr)) / (n - 1)) / Math.sqrt(n); // scipy sem, R sd/sqrt(n)
-    case "cv": {                                                                        // coefficient of variation sd/mean (sample sd)
+    case "sem":  return n < 2 ? null : Math.sqrt(ssd(arr, mean(arr)) / (n - 1)) / Math.sqrt(n);
+    case "cv": {
       if (n < 2) return null;
       const m = mean(arr);
       return m === 0 ? solError("#DIV/0!", "CV is undefined when the mean is 0") : Math.sqrt(ssd(arr, m) / (n - 1)) / m;
     }
-    case "rms":  return Math.sqrt(arr.reduce((a, b) => a + b * b, 0) / n);             // root mean square
+    case "rms":  return Math.sqrt(arr.reduce((a, b) => a + b * b, 0) / n);
   }
 }
 
-/** The interpolating percentile over a SORTED list; `exc` uses Excel's exclusive rank. */
 export function percentileOf(sorted: readonly number[], p: number, exc: boolean): number {
   const n = sorted.length;
   const i = exc ? p * (n + 1) - 1 : p * (n - 1);
   const lo = Math.floor(i), hi = exc ? Math.min(n - 1, Math.ceil(i)) : Math.ceil(i);
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+  const a = sorted[lo], b = sorted[hi], t = i - lo;
+  if (a === b) return a;
+  return Number.isFinite(a) && Number.isFinite(b) ? a + (b - a) * t : (1 - t) * a + t * b;
 }
 
-/** PERCENTILE.INC / .EXC with Excel's domain rules: INC needs 0 ≤ p ≤ 1, EXC needs p
- *  strictly inside (1/(n+1), n/(n+1)) — Excel answers #NUM! outside (our #DOMAIN!). */
 export function percentile(arr: readonly number[], p: number, exc: boolean): number | SolError | null {
   const n = arr.length;
   if (n === 0) return null;
@@ -99,13 +98,11 @@ export function percentile(arr: readonly number[], p: number, exc: boolean): num
   if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
     return solError("#DOMAIN!", "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)");
   }
-  return percentileOf([...arr].sort((a, b) => a - b), p, exc);
+  return guardFinite(percentileOf([...arr].sort((a, b) => a - b), p, exc), arr);
 }
 
-/** QUARTILE.INC / .EXC = PERCENTILE at q/4; INC's quart 0 = MIN and 4 = MAX, EXC has
- *  neither (and an interior q can still leave the EXC domain at small n). */
 export function quartile(arr: readonly number[], q: number, exc: boolean): number | SolError | null {
-  const qi = Math.round(q);
+  const qi = Math.trunc(q);
   if (arr.length === 0) return null;
   if (qi < 0 || qi > 4) return solError("#DOMAIN!", "Quartile must be 0, 1, 2, 3, or 4");
   if (exc && (qi === 0 || qi === 4)) return solError("#DOMAIN!", "QUARTILE.EXC is undefined for quartile 0 or 4");
@@ -113,19 +110,20 @@ export function quartile(arr: readonly number[], q: number, exc: boolean): numbe
   if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
     return solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
   }
-  return percentileOf([...arr].sort((a, b) => a - b), p, exc);
+  return guardFinite(percentileOf([...arr].sort((a, b) => a - b), p, exc), arr);
 }
 
-/** LARGE / SMALL: the k-th largest (or smallest), 1-based; out of range is `null`. */
-export function nthExtreme(arr: readonly number[], k: number, largest: boolean): number | null {
-  const ki = Math.round(k);
-  if (arr.length === 0 || ki < 1 || ki > arr.length) return null;
+/** A fractional k counts as Excel does (checked in Excel): its position in ascending order is truncated, so SMALL's
+ *  k = 2.5 is the 2nd smallest and LARGE's is the 3rd largest. */
+export function nthExtreme(arr: readonly number[], k: number, largest: boolean): number | SolError | null {
+  if (Number.isNaN(k)) return solError("#VALUE!", "k must be a number");
+  if (k < 1) return solError("#DOMAIN!", "k starts at 1, the largest or smallest value");
+  const n = arr.length;
+  if (n === 0 || k > n) return null;
   const sorted = [...arr].sort((a, b) => a - b);
-  return largest ? sorted[arr.length - ki] : sorted[ki - 1];
+  return sorted[Math.floor(largest ? n - k + 1 : k) - 1];
 }
 
-/** Pearson r (or r², `rsq`) over PAIRED numbers — the caller has already dropped pairs
- *  with a blank. Fewer than two pairs is `null`; zero variance in either list is #DIV/0!. */
 export function pearson(xs: readonly number[], ys: readonly number[], rsq = false): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
@@ -138,10 +136,9 @@ export function pearson(xs: readonly number[], ys: readonly number[], rsq = fals
   const den = Math.sqrt(dx2 * dy2);
   if (den === 0) return solError("#DIV/0!", "One of the lists has zero variance");
   const r = num / den;
-  return rsq ? r * r : r;
+  return guardFinite(rsq ? r * r : r, xs.concat(ys));
 }
 
-/** Average ranks (ties share the mean rank) — the rank transform under Spearman. */
 export function averageRanks(arr: readonly number[]): number[] {
   const idx = arr.map((_, i) => i).sort((a, b) => arr[a] - arr[b]);
   const ranks = new Array<number>(arr.length);
@@ -155,15 +152,12 @@ export function averageRanks(arr: readonly number[]): number[] {
   return ranks;
 }
 
-/** Spearman's ρ: Pearson over the average ranks (scipy spearmanr, R cor(method="spearman")). */
 export function spearman(xs: readonly number[], ys: readonly number[]): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
   return pearson(averageRanks(xs.slice(0, n)), averageRanks(ys.slice(0, n)));
 }
 
-/** Kendall's τ-b (tie-corrected; scipy kendalltau, R cor(method="kendall")). O(n²) — fine
- *  for list sizes here. All-tied in either list is #DIV/0!. */
 export function kendallTau(xs: readonly number[], ys: readonly number[]): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
@@ -180,46 +174,44 @@ export function kendallTau(xs: readonly number[], ys: readonly number[]): number
   return (conc - disc) / den;
 }
 
-/** COVARIANCE.P (`sample=false`) / .S over paired numbers; fewer than two pairs is `null`. */
-export function covariance(xs: readonly number[], ys: readonly number[], sample: boolean): number | null {
+export function covariance(xs: readonly number[], ys: readonly number[], sample: boolean): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
   const mx = mean(xs.slice(0, n)), my = mean(ys.slice(0, n));
   const cov = xs.slice(0, n).reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0);
-  return sample ? cov / (n - 1) : cov / n;
+  return guardFinite(sample ? cov / (n - 1) : cov / n, xs.concat(ys));
 }
 
-/** The mode(s): one mode → that number; a tie → every tied value, ascending (one answer
- *  for MODE.SNGL / MODE.MULT, [[C14]] currentExcelParity). Empty → `null`. */
-export function modes(arr: readonly number[]): number | number[] | null {
+/** Excel's MODE: with no value appearing twice there is no mode. */
+export const noMode = (): SolError => solError("#N/A", "No value repeats, so there is no mode");
+
+export function modes(arr: readonly number[]): number | number[] | SolError | null {
   if (arr.length === 0) return null;
+  if (arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr);
   const counts = new Map<number, number>();
   for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
   const maxCount = iterMax(counts.values());
+  if (maxCount < 2) return noMode();
   const ms = [...counts.entries()].filter(([, c]) => c === maxCount).map(([v]) => v).sort((a, b) => a - b);
   return ms.length === 1 ? ms[0] : ms;
 }
 
-/** FISHER / FISHERINV; FISHER is defined only on (−1, 1). */
 export function fisher(x: number, inverse: boolean): number | SolError {
   if (inverse) return Math.tanh(x);
   return x <= -1 || x >= 1 ? solError("#DOMAIN!", "FISHER requires −1 < x < 1") : Math.atanh(x);
 }
 
-/** Excel MODE / MODE.SNGL: the most frequent value; among ties the one that occurs FIRST
- *  in the data (Excel's rule). Empty → `null`. The node's `modes` keeps every tie. */
-export function modeSingle(arr: readonly number[]): number | null {
+export function modeSingle(arr: readonly number[]): number | SolError | null {
   if (arr.length === 0) return null;
+  if (arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr);
   const counts = new Map<number, number>();
   for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
   const maxCount = iterMax(counts.values());
+  if (maxCount < 2) return noMode();
   for (const v of arr) if (counts.get(v) === maxCount) return v;
   return null;
 }
 
-/** SLOPE / INTERCEPT / STEYX of the least-squares line over paired numbers. Fewer than
- *  two pairs is `null`; zero X variance is #DIV/0!; STEYX's (n−2) needs three points
- *  (fewer → `null`). Same SS pass as mathUtils.linearFit, plus the residual term. */
 export function regression(xs: readonly number[], ys: readonly number[], op: "slope" | "intercept" | "steyx"): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
@@ -231,19 +223,14 @@ export function regression(xs: readonly number[], ys: readonly number[], op: "sl
   }
   if (SSxx === 0) return solError("#DIV/0!", "Known Xs have zero variance");
   const slope = SSxy / SSxx;
-  if (op === "slope") return slope;
-  if (op === "intercept") return yMean - slope * xMean;
-  return n >= 3 ? Math.sqrt(Math.max(0, SSyy - slope * SSxy) / (n - 2)) : null;
+  const r = op === "slope" ? slope : op === "intercept" ? yMean - slope * xMean
+    : n >= 3 ? Math.sqrt(Math.max(0, SSyy - slope * SSxy) / (n - 2)) : null;
+  return r === null ? null : guardFinite(r, xs.concat(ys));
 }
 
 // ─── Hypothesis tests beyond Excel's four ──────────
-// Every kernel answers a two-sided p-value (ANOVA / Kruskal: the upper tail of F / χ²),
-// `null` when the data can't support the test (too few points, no variance, an empty
-// group). Conventions follow R / scipy where they agree; where they differ the
-// description on the op says which.
 
 const twoSidedZ = (z: number): number => 2 * (1 - stdNormCDF(Math.abs(z)));
-/** Σ(t³ − t) over the tie groups of a list (rank-test variance corrections). */
 function tieTerm(values: readonly number[]): number {
   const counts = new Map<number, number>();
   for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
@@ -252,7 +239,6 @@ function tieTerm(values: readonly number[]): number {
   return t;
 }
 
-/** One-way ANOVA over k groups: the upper-tail F probability (scipy f_oneway, R aov). */
 export function anovaP(groups: readonly (readonly number[])[]): number | null {
   const gs = groups.filter((g) => g.length > 0);
   const k = gs.length, N = gs.reduce((a, g) => a + g.length, 0);
@@ -265,9 +251,6 @@ export function anovaP(groups: readonly (readonly number[])[]): number | null {
   return Math.min(1, Math.max(0, 1 - fCDF(F, k - 1, N - k)));
 }
 
-/** Mann–Whitney U (Wilcoxon rank-sum), two-sided, normal approximation with tie and
- *  continuity corrections (R wilcox.test default for larger samples; scipy mannwhitneyu
- *  method="asymptotic", use_continuity=True). */
 export function mannWhitneyP(a: readonly number[], b: readonly number[]): number | null {
   const n1 = a.length, n2 = b.length, N = n1 + n2;
   if (n1 === 0 || n2 === 0) return null;
@@ -281,8 +264,6 @@ export function mannWhitneyP(a: readonly number[], b: readonly number[]): number
   return Math.min(1, twoSidedZ(Math.max(0, z)));
 }
 
-/** Wilcoxon signed-rank (paired), two-sided, zero differences dropped (Wilcoxon's rule),
- *  normal approximation with tie and continuity corrections (R wilcox.test paired). */
 export function wilcoxonSignedRankP(a: readonly number[], b: readonly number[]): number | null {
   const n0 = Math.min(a.length, b.length);
   const d: number[] = [];
@@ -299,7 +280,6 @@ export function wilcoxonSignedRankP(a: readonly number[], b: readonly number[]):
   return Math.min(1, twoSidedZ(Math.max(0, z)));
 }
 
-/** Kruskal–Wallis H over k groups, tie-corrected, χ² upper tail with k−1 df (scipy kruskal, R kruskal.test). */
 export function kruskalP(groups: readonly (readonly number[])[]): number | null {
   const gs = groups.filter((g) => g.length > 0);
   const k = gs.length, N = gs.reduce((a, g) => a + g.length, 0);
@@ -315,8 +295,6 @@ export function kruskalP(groups: readonly (readonly number[])[]): number | null 
   return Math.min(1, Math.max(0, 1 - chiSqCDF(h, k - 1)));
 }
 
-/** Fisher's exact test on a 2×2 table [[a, b], [c, d]], two-sided: the sum of every
- *  table probability no larger than the observed one (R fisher.test, scipy fisher_exact). */
 export function fisherExactP(a: number, b: number, c: number, d: number): number | null {
   const cells = [a, b, c, d].map((v) => Math.round(v));
   if (cells.some((v) => v < 0 || !Number.isFinite(v))) return null;
@@ -331,10 +309,6 @@ export function fisherExactP(a: number, b: number, c: number, d: number): number
   return Math.min(1, p);
 }
 
-/** Two-sample Kolmogorov–Smirnov, two-sided, EXACT (scipy ks_2samp method="exact", R
- *  ks.test exact=TRUE): the probability that a random interleaving of the two samples
- *  keeps every ECDF gap below the observed D — a lattice-path DP on the integer grid, so
- *  no asymptotic approximation is needed for the list sizes a card carries (O(n₁·n₂)). */
 export function ksTwoSampleP(a: readonly number[], b: readonly number[]): number | null {
   const n1 = a.length, n2 = b.length;
   if (n1 === 0 || n2 === 0) return null;
@@ -367,8 +341,6 @@ export function ksTwoSampleP(a: readonly number[], b: readonly number[]): number
   return Math.min(1, Math.max(0, 1 - prob[n2]));
 }
 
-/** Two-proportion z-test, two-sided, pooled standard error, no continuity correction
- *  (statsmodels proportions_ztest; R prop.test(correct=FALSE)). */
 export function twoProportionP(x1: number, n1: number, x2: number, n2: number): number | null {
   if (!(n1 > 0 && n2 > 0) || x1 < 0 || x2 < 0 || x1 > n1 || x2 > n2) return null;
   const p1 = x1 / n1, p2 = x2 / n2, pool = (x1 + x2) / (n1 + n2);
@@ -377,8 +349,6 @@ export function twoProportionP(x1: number, n1: number, x2: number, n2: number): 
   return twoSidedZ((p1 - p2) / se);
 }
 
-/** Exact binomial test of k successes in n at p₀, two-sided: the sum of every outcome
- *  probability no larger than the observed one (scipy binomtest, R binom.test). */
 export function binomTestP(k: number, n: number, p0: number): number | null {
   const K = Math.round(k), N = Math.round(n);
   if (!(N >= 1) || K < 0 || K > N || !(p0 >= 0 && p0 <= 1)) return null;

@@ -1,10 +1,9 @@
-// [[C43]] oneFlowSurface (installed by the surface, once), [[C52]] visibleSelection
-// Canvas keyboard shortcuts, skipped while focus is in an editable form element.
+// [[B3]] sameNodeEverywhere (installed by the surface, once), [[C52]] visibleSelection
 import type { View } from "./view";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import { processGraph, requestRecalc, withGraphRebuild } from "./process";
+import { processGraph, requestRecalc, notifyGraphChanged } from "./process";
 import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph, deleteSelected } from "./canvasCommands";
 import { bumpConduitAngle } from "./graphSignals";
 import { copySelected, pasteClipboard } from "./copyPaste";
@@ -26,7 +25,7 @@ import { drawModeStore, drawnCableStore, finishDrawing } from "./drawnCables";
 import { isolateStore } from "./isolateStore";
 import { isolateSelection } from "./isolate";
 import { addMenuRequest } from "./addMenuStore";
-import { expandMoveSet } from "./selectionOps";
+import { expandMoveSet, stackSelection } from "./selectionOps";
 import { scheduleAutosave } from "./persistence";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { DOT_SPACING } from "./gridSnapStore";
@@ -40,17 +39,13 @@ export interface CanvasKeyboardDeps {
   historyRef: MutableRefObject<{ undo(): Promise<unknown>; redo(): Promise<unknown> } | null>;
   containerRef: MutableRefObject<HTMLDivElement | null>;
   screenMouseRef: MutableRefObject<{ x: number; y: number }>;
-  /** Live "is the Add/quick-wire menu open" check for the bare-Enter palette guard. */
   isAddMenuOpen: () => boolean;
-  /** The MAIN canvas stands down while the composite drill-in owns the keyboard
-   *  (the drill-in installs its own instance over its refs). */
   standsDownWhenDrilled?: boolean;
 }
 
 export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
   const { editorRef, viewRef, historyRef, containerRef, screenMouseRef, isAddMenuOpen, standsDownWhenDrilled } = deps;
 
-  // Selected groups + the group of any selected member; all groups when none.
   function resolveGroupTargets(): GroupNode[] {
     const editor = editorRef.current;
     if (!editor) return [];
@@ -81,11 +76,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     const targets = resolveGroupTargets();
     void (async () => { for (const g of targets) await autofitGroupWithHistory(editor, view, g); })();
   }
-  // Rotate the selected Standoff / Conduits / Angle Dials one step (-1 = CCW).
-  // Returns the count rotated so the caller only swallows the key on a hit.
   function rotateSelection(dir: number): number {
-    // Standoff selection is mutually exclusive with node selection, so it goes
-    // first and on its own.
     const standoffSel = standoffStore.selected();
     if (standoffSel) {
       const s = standoffStore.get(standoffSel);
@@ -110,18 +101,15 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         dials++;
       }
     }
-    if (conduits) bumpConduitAngle();   // re-renders conduits across React roots
+    if (conduits) { bumpConduitAngle(); notifyGraphChanged(); }
     if (dials) { void processGraph(); scheduleAutosave(); }
     return conduits + dials;
   }
-  // The arrow-key nudge: each affected node moves exactly ONCE. The caller must
-  // check the selection synchronously to decide preventDefault (this is async).
+  // Async, so the caller checks the selection synchronously to decide preventDefault.
   async function nudgeSelection(dx: number, dy: number) {
     const editor = editorRef.current;
     const view = viewRef.current;
     if (!editor || !view) return;
-    // A standoff cluster moves as a whole — nudging one end and re-settling would
-    // pull it half-way back.
     const selectedIds = editor.getNodes()
       .filter((n) => (n as { selected?: boolean }).selected === true)
       .map((n) => n.id);
@@ -130,7 +118,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       const pos = view.position(id);
       if (!pos) continue;
       await view.moveNode(id, { x: pos.x + dx, y: pos.y + dy });
-      repositionDockedNodes(id); // a docked FC rides along with its host
+      repositionDockedNodes(id);
     }
     if (!standoffStore.isEmpty()) settleStandoffs();
     scheduleAutosave();
@@ -141,58 +129,36 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     const tag = target?.tagName;
     const editable = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable;
 
-    // The compute overlay blocks pointer input; block the keyboard too, so a queued
-    // key can't mutate the graph mid-pass.
     if (computeOverlayStore.visible()) return;
 
-    // The drill-in overlay owns the keyboard — shortcuts must not reach the OUTER
-    // graph underneath it.
     if (standsDownWhenDrilled && compositeEditorStore.isOpen() && e.key !== "F9") return;
 
-    // Presenter mode owns the keyboard; without this gate the arrow keys also nudge
-    // the still-selected node on the hidden canvas.
     if (presentationStore.isActive() && e.key !== "F9") return;
 
-    // A modal / pop-up owns the keyboard (modalGuard): Enter in a confirm must not
-    // also open the palette, A under a Frame Input pop-up must not open the Add menu.
     if (keyUnderModal(e) && e.key !== "F9") return;
 
-    // `.nokeys`: a figure that owns its own keyboard opts out, the keyboard mirror of
-    // `.nowheel` (specs/pointer-gestures.md). F9 still recomputes.
     if (target?.closest?.(".nokeys") && e.key !== "F9") return;
 
-    // F9 stays live while typing, presenting, drilled in and under a modal — there it
-    // is the only remaining recompute path. Only the compute gate outranks it.
     if (e.key === "F9") { e.preventDefault(); void requestRecalc(); return; }
 
-    // The armed draw tool is modal: it owns Enter / Escape / Backspace before the
-    // palette and isolate claim them.
     if (drawModeStore.armed() && !editable && !e.ctrlKey && !e.metaKey) {
       if (e.key === "Escape") { drawModeStore.disarm(); e.preventDefault(); return; }
       if (e.key === "Enter") { finishDrawing(); e.preventDefault(); return; }
       if (e.key === "Backspace") { drawModeStore.undoPoint(); e.preventDefault(); return; }
     }
 
-    // A locked canvas is view-only: the keys that move, add or remove stand down
-    // (canvasLock.ts); the view keys below (palette, isolate, chrome, Tab) keep working.
     const locked = canvasLockStore.get();
     if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      // A selected drawn cable or standoff is not React Flow's selection, so RF never
-      // fires its delete hook for it; route the key to the app's delete, which answers
-      // them first (deleteSelection).
       if ((e.key === "Delete" || e.key === "Backspace") && (drawnCableStore.selected() || standoffStore.selected())) {
         if (!locked) void deleteSelected();
         e.preventDefault(); return;
       }
-      // Bare Enter opens the palette — gated on `editable` so committing a field
-      // never opens it (the modal gate above covers every overlay).
       if (e.key === "Enter" && !isAddMenuOpen()) {
         paletteStore.open(); e.preventDefault(); return;
       }
       if (e.key === "Escape" && isolateStore.isActive()) {
         isolateStore.exit(); e.preventDefault(); return;
       }
-      // Handled before the !shiftKey split so Shift just scales the nudge step.
       if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
         const editor = editorRef.current;
         const hasSel = !!editor && editor.getNodes().some((n) => (n as { selected?: boolean }).selected === true);
@@ -203,22 +169,19 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
           void nudgeSelection(dx, dy);
           e.preventDefault(); return;
         }
-        return; // nothing selected → no nudge, and no other shortcut on an arrow
+        return;
       }
       if (!e.shiftKey) {
         const editor = editorRef.current;
         const view = viewRef.current;
-        // Tab is also the browser's focus-traversal key, so only hijack it on the
-        // canvas BACKGROUND — on a control, native traversal must win.
         if (e.key === "Tab") {
           const onBackground =
             target == null || target === document.body || target === document.documentElement;
           if (onBackground && toggleAllChrome() > 0) { e.preventDefault(); return; }
           return;
         }
-        // Match the produced CHARACTER: `[` / `]` sit on different physical keys
-        // across layouts, and the reference shows the character.
-        if (e.key === "[" || e.key === "]") {
+        // Match the produced character: `[` and `]` sit on different physical keys across layouts.
+        if ((e.key === "[" || e.key === "]") && !locked) {
           if (rotateSelection(e.key === "]" ? 1 : -1) > 0) { e.preventDefault(); return; }
         }
         switch (e.code) {
@@ -226,7 +189,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             if (isolateStore.isActive()) isolateStore.exit(); else isolateSelection();
             e.preventDefault(); return;
           case "KeyA":
-            addMenuRequest.open(screenMouseRef.current.x, screenMouseRef.current.y);
+            if (!locked) addMenuRequest.open(screenMouseRef.current.x, screenMouseRef.current.y);
             e.preventDefault(); return;
           case "KeyG":
             if (!locked && editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
@@ -249,7 +212,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             toggleChrome("navigator"); e.preventDefault(); return;
           case "BracketLeft":
           case "BracketRight":
-            if (rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {
+            if (!locked && rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {
               e.preventDefault(); return;
             }
             break;
@@ -258,21 +221,22 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     }
 
     if (e.ctrlKey || e.metaKey) {
-      // e.key for the slash — punctuation moves around on non-US layouts, unlike the
-      // letter mnemonics below, which are meant to stay at a fixed physical key.
+      // e.key for the slash, because punctuation moves on non-US layouts; the letters below stay at fixed physical keys.
       if (e.key === "/") { frStore.toggle(); e.preventDefault(); return; }
       if (e.code === "Comma") { settingsPanel.toggle(); e.preventDefault(); return; }
-      // Live even while a node field is focused; preventDefault blocks the browser's
-      // own save/open dialogs.
       if (e.code === "KeyS") { void saveToDisk({ forceDialog: e.shiftKey }); e.preventDefault(); return; }
       if (e.code === "KeyO") { void openFromDisk(); e.preventDefault(); return; }
-      // A deliberate combo that avoids the browser's own reload keys.
       if (e.code === "KeyL" && e.shiftKey) { void documentStore.reloadCurrent(); e.preventDefault(); return; }
       if (editable) return;
+      if (e.code === "BracketRight" || e.code === "BracketLeft") {
+        const up = e.code === "BracketRight";
+        if (!locked) stackSelection(up ? (e.shiftKey ? "front" : "forward") : (e.shiftKey ? "back" : "backward"));
+        e.preventDefault(); return;
+      }
       if (e.code === "KeyG" && e.shiftKey) {
         const editor = editorRef.current;
         const view = viewRef.current;
-        if (editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
+        if (!locked && editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
           void createCompositeFromSelection(editor, view);
         }
         e.preventDefault(); return;
@@ -282,7 +246,6 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         if (editor) {
           unselectAllNodesFromProcess();
           cableSelectionStore.set(null);
-          // "All" = only what the user can SEE ([[C52]] visibleSelection).
           const selectable = editor.getNodes().filter(
             (n) => !groupCollapseStore.isNodeHidden(n.id) && isolateStore.isVisible(n.id),
           );
@@ -294,7 +257,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         copySelected(); e.preventDefault(); return;
       }
       if (e.code === "KeyV") {
-        if (isolateStore.isActive() || locked) { e.preventDefault(); return; } // no new nodes while isolating or locked
+        if (isolateStore.isActive() || locked) { e.preventDefault(); return; }
         const view = viewRef.current;
         const container = containerRef.current;
         if (view && container) {
@@ -307,11 +270,10 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         e.preventDefault(); return;
       }
       const history = historyRef.current;
-      if (!history) return;
-      // withGraphRebuild settles once instead of once per restored cable.
-      if (e.code === "KeyZ" && !e.shiftKey) { void withGraphRebuild(() => history.undo()); e.preventDefault(); return; }
-      if (e.code === "KeyZ" &&  e.shiftKey) { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }
-      if (e.code === "KeyY")                { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }
+      if (!history || locked) return;
+      if (e.code === "KeyZ" && !e.shiftKey) { void history.undo(); e.preventDefault(); return; }
+      if (e.code === "KeyZ" &&  e.shiftKey) { void history.redo(); e.preventDefault(); return; }
+      if (e.code === "KeyY")                { void history.redo(); e.preventDefault(); return; }
       return;
     }
   }

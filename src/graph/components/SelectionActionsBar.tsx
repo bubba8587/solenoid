@@ -5,7 +5,7 @@ import { canvasLockStore } from "../canvasLock";
 import { alignSelection, distributeSelection, type AlignKind } from "../selectionOps";
 import "./selectionActions.css";
 
-// Placement: docs/layout-chrome.md (Align pill). Selection has no push store, so a
+// Placement: tree/specs/canvas/layout-chrome.md (Align pill). Selection has no push store, so a
 // light interval counts the selected nodes with a view.
 
 const POLL_MS = 150;
@@ -22,7 +22,6 @@ function selectedVisibleCount(): number {
   return n;
 }
 
-// Even-sized glyphs (DESIGN.md: icon-only buttons use even-sized icons).
 const AlignLeftIcon = () => (
   <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style={{ display: "block" }}>
     <rect x="2" y="2" width="1.4" height="12" rx="0.5" />

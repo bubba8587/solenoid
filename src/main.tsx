@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType (IS_MOBILE is the one mobile gate), [[C99]] chromeEnvelopeVars
+// [[C93]] gestureByPointerType (IS_MOBILE is the one mobile gate), [[B14]] oneDesignSystem
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { initAppTheme } from "./graph/appTheme";
@@ -10,42 +10,70 @@ import { initSettings } from "./graph/settingsStore";
 import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initPackFormulas } from "./graph/formulaExtensions";
-import { initFrameBackend } from "./graph/frameBackend";
+import { initFrameBackend, watchEngineSetting } from "./graph/frameBackend";
+import { documentStore } from "./graph/documentStore";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop } from "./graph/fileBridge";
 import { OWN_WINDOW_CONTROLS } from "./graph/WindowControls";
-import { IS_MOBILE, IS_TABLET } from "./graph/coarse";
+import { IS_PHONE, deviceModeStore, isMobile, isTablet } from "./graph/coarse";
+import { installChromeZoom, landscapeFit } from "./graph/chromeZoom";
 import { ErrorBoundary } from "./graph/components/ErrorBoundary";
 import "./graph/components/errorBoundary.css";
 import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
-// The italic FACE: the base import is upright-only and `font-synthesis: none`
-// (App.css) bars the synthetic fallback, so without this `*em*` renders upright.
+// The italic face: `font-synthesis: none` (App.css) bars a synthetic italic, so without this `*em*` renders upright.
 import "@fontsource-variable/atkinson-hyperlegible-next/wght-italic.css";
 import "@fontsource-variable/atkinson-hyperlegible-mono/index.css";
 import "@fontsource-variable/atkinson-hyperlegible-mono/wght-italic.css";
 import "./desktopFrame.css";
 
-// Marks the shell so the custom title bar's CSS applies and reserves its strip.
 if (isDesktop()) document.documentElement.dataset.shell = "desktop";
-// linux shim for crisp canvas zoom (docs/layout-chrome.md)
+// linux shim for crisp canvas zoom (tree/specs/canvas/layout-chrome.md)
 if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 
-// All mobile styling keys off THIS flag, never a `pointer: coarse` query — that is
-// what lets a phone's "Request desktop site" get the desktop layout.
-if (IS_MOBILE) document.documentElement.classList.add("is-mobile");
-// A tablet runs desktop chrome with touch actions in the top bar; mutually
-// exclusive with is-mobile.
-if (IS_TABLET) document.documentElement.classList.add("is-tablet");
+// Mobile styling keys off these flags, never `pointer: coarse`, so a phone's "Request desktop site" gets the desktop layout.
+// A phone turned sideways swaps to the tablet layout and scales the page to fit it, as browser zoom would ([[C119]] landscapePhoneIsTablet).
+{
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+  const portraitViewport = meta?.content ?? "";
+  const applyDeviceMode = () => {
+    const html = document.documentElement;
+    html.classList.toggle("is-mobile", isMobile());
+    // Mutually exclusive with is-mobile.
+    html.classList.toggle("is-tablet", isTablet());
+    if (!IS_PHONE || !meta) return;
+    if (isMobile()) { meta.content = portraitViewport; return; }
+    retries = 0;
+    setFit(landscapeFit());
+  };
+  const setFit = (k: number) => {
+    const s = k.toFixed(3);
+    meta!.content = `width=device-width, initial-scale=${s}, minimum-scale=${s}, maximum-scale=${s}, viewport-fit=cover`;
+  };
+  // A phone's browser can leave the old scale in place around a rotation or a fullscreen exit; this puts the fit back,
+  // nudging the value so the browser reads the meta as changed. Capped, so a browser that refuses can't loop it.
+  let retries = 0;
+  const reassert = () => {
+    if (!IS_PHONE || !meta || isMobile() || document.fullscreenElement || !window.visualViewport) return;
+    const k = landscapeFit();
+    if (Math.abs(window.visualViewport.scale - k) < 0.01 || retries >= 3) return;
+    retries++;
+    setFit(k + 0.001);
+    requestAnimationFrame(() => setFit(k));
+  };
+  applyDeviceMode();
+  deviceModeStore.subscribe(applyDeviceMode);
+  window.visualViewport?.addEventListener("resize", () => setTimeout(reassert, 150));
+  document.addEventListener("fullscreenchange", () => { retries = 0; setTimeout(reassert, 300); });
+  installChromeZoom();
+}
 
-// Last-resort surfacing for the codebase's `void asyncFn()` fire-and-forget, since
-// the desktop console is closed. Throttled so a rejection storm can't stack toasts.
+// Last-resort surfacing for `void asyncFn()` failures, since the desktop console is closed; throttled against storms.
 {
   let lastNotice = 0;
-  // The ResizeObserver loop notice is BENIGN (a callback changed layout, needing
-  // another pass) but arrives at window.onerror — suppress it, don't toast it.
+  // The ResizeObserver loop notice is benign but arrives at window.onerror.
   const isBenign = (detail: unknown): boolean => {
     const msg = detail instanceof Error ? detail.message : String(detail ?? "");
     return msg.includes("ResizeObserver loop");
@@ -62,16 +90,14 @@ if (IS_TABLET) document.documentElement.classList.add("is-tablet");
   window.addEventListener("unhandledrejection", (e) => surface("unhandled rejection", e.reason));
   window.addEventListener("error", (e) => surface("uncaught error", e.error ?? e.message));
 
-  // A code-split chunk 404s when a new deploy replaces the hashed files under an open
-  // tab; reload ONCE for fresh refs, guarded so a network outage can't loop.
+  // A new deploy 404s the hashed chunks under an open tab: reload once, guarded so an outage can't loop.
   window.addEventListener("vite:preloadError", (e) => {
     const KEY = "sol:chunkReloadAt";
     const store: ReloadStore = {
       get: () => sessionStorage.getItem(KEY),
       set: (v) => sessionStorage.setItem(KEY, v),
     };
-    // Reload only when the guard persists — private mode throws, and an unguarded
-    // reload there would loop forever.
+    // Reload only when the guard persists: private mode throws, and an unguarded reload there would loop forever.
     if (!shouldReloadForChunkError(Date.now(), store)) return;
     e.preventDefault();
     window.location.reload();
@@ -90,6 +116,7 @@ initPackFcExtensions();
 initPackFormulas();
 
 void initFrameBackend();
+watchEngineSetting(() => void documentStore.reloadCurrent());
 
 initDevtoolsHotkey();
 
@@ -100,19 +127,16 @@ if (import.meta.env.DEV) {
   import("./graph/devHarness");
 }
 
-// Intentionally NOT wrapped in <React.StrictMode>: its double-invoked mount races
-// rete's async editor init, leaving two live elements per socket.
+// Not wrapped in <React.StrictMode>: its double-invoked mount races rete's async editor init, leaving two elements per socket.
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <ErrorBoundary scope="app">
     <App />
   </ErrorBoundary>,
 );
 
-// Console-only tooling the probe scripts drive (`scripts/tune-seeds.mjs`,
-// `scripts/card-css-census.mjs`): dev builds only, loaded off the critical path.
 if (import.meta.env.DEV) {
   void import("./graph/seedTune");
   void import("./graph/census");
-  // Ctrl+Alt+E: freeze the app and edit on-screen strings straight into source.
+  void import("./graph/collapseSweep");
   void import("./devCopyEdit");
 }

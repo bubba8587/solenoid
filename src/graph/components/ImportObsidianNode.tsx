@@ -6,18 +6,18 @@ import type { ImportObsidianNode as ImportObsidianNodeType } from "../rete-nodes
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { settingsStore } from "../settingsStore";
-import { connectionStore } from "../connectionStore";
 import { SwatchGrid } from "./SwatchGrid";
 import { NodeSocket } from "./NodeSocket";
 import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useKnapRender } from "./useKnapRender";
 import { parseNoteFrontmatter } from "../noteFrontmatter";
-import { isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
+import { hasFs, isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
-import { getActiveView, getActiveEditor } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { processGraph } from "../process";
+import { connectionStore } from "../connectionStore";
 import { bumpConnectionVersion } from "../graphSignals";
 import { reconcileFcTypes } from "../fcReconcile";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
@@ -37,13 +37,11 @@ const MIN_H = 96;
 const FIELD_ROW_H = 22;
 const fieldsStripHeight = (n: number) => (n > 0 ? n * FIELD_ROW_H + 6 : 0);
 
-/** The base name (no folders, no `.md`) — the default title when a file is picked. */
 function baseName(rel: string): string {
   return (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
 }
 
-/** Desktop only for the file READ; a loaded save still shows the persisted body
- *  anywhere. */
+/** Desktop only for the file read; a loaded save shows the persisted body anywhere. */
 export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidianNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [color, setColor] = useState(data.color);
@@ -61,7 +59,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
   const desktop = isDesktop();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
-  const canRead = desktop || isDemoVaultPath(vault);
+  const canRead = hasFs() || isDemoVaultPath(vault);
 
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
@@ -79,21 +77,17 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     return q ? files.filter((f) => f.toLowerCase().includes(q)) : files;
   }, [files, search]);
 
-  // The same reconcile the Note's on-blur commit runs: re-derive the frontmatter
-  // sockets, then drop the cables a removed/retyped key stranded.
+  // The Note's on-blur reconcile: re-derive the frontmatter sockets, then drop the cables a removed or retyped key stranded.
   async function applyBody(content: string, sourcePath: string) {
     data.body = content;
-    data.fileName = sourcePath;
-    if (sourcePath && (data.label === "Import Obsidian Note" || data.label.trim() === "")) {
-      data.label = baseName(sourcePath); // the card's name elsewhere (stubs, the Inspector)
-    }
+    data.adoptFile(sourcePath);
     await data.loadColumnPicks(vault);
     const { removed, retyped } = data.syncFields();
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setBody(content);
     setFieldsVersion((v) => v + 1);
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     await view?.rerenderNode(data.id);
     if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion();
@@ -114,28 +108,13 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     try { await applyBody(await readVaultFile(vault, data.fileName), data.fileName); }
     catch { /* file gone — keep what's loaded */ }
   }
-  useEffect(() => {
-    if (minutes <= 0 || !desktop) return;
-    const id = setInterval(() => { void reload(); }, minutes * 60_000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [minutes, desktop, data.fileName, vault]);
-  // "Refresh all connections" re-reads this note too (the file is read here, not in data()).
-  const gen = useSyncExternalStore(connectionStore.subscribe, connectionStore.gen);
-  const seenGen = useRef(gen);
-  useEffect(() => {
-    if (gen === seenGen.current) return;
-    seenGen.current = gen;
-    void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gen]);
 
-  function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getOwningView(data.id)?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const fieldKeys = data.fieldKeys();
   const fieldValues = data.fieldValues();
-  // +1 for the always-present `path` row (the note's wireable identity, in + out).
+  // +1 for the always-present `path` row.
   const minH = MIN_H + fieldsStripHeight(fieldKeys.length + 1);
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -150,8 +129,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   }, [collapsed, fieldKeys.length, pickerOpen, data.height, data.width, body]);
 
   const templateVars = useMemo(() => data.templateVariables(), [data, body]);
-  // keepUnknown: like a Note, an imported note has no inputs, so a tag naming no
-  // frontmatter field stays literal on the card rather than rendering empty.
+  // keepUnknown: an imported note has no inputs, so a tag naming no frontmatter field stays literal rather than rendering empty.
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const tex = useKatexReady(); // math re-renders once KaTeX lands
@@ -169,7 +147,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   function onResize(size: { width: number; height: number }) {
     data.width = Math.max(MIN_W, size.width);
     data.height = Math.max(minH, size.height);
-    void getActiveView()?.rerenderNode(data.id);
+    void getOwningView(data.id)?.rerenderNode(data.id);
   }
 
   return (
@@ -191,7 +169,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {/* No header name: the note's body carries its own heading. */}
         <span className="sol-import__bar-spacer" />
         <button
           type="button"
@@ -286,7 +263,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
                     min={0}
                     value={minutes}
                     onChange={(e) => setMinutes(Math.max(0, Math.round(Number(e.target.value) || 0)))}
-                    onBlur={() => { if (minutes !== data.refreshMinutes) { data.refreshMinutes = minutes; scheduleAutosave(); } }}
+                    onBlur={() => { if (minutes !== data.refreshMinutes) { data.refreshMinutes = minutes; connectionStore.autoRefresh(data.id, minutes); scheduleAutosave(); } }}
                     onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
                   />
                   min
@@ -299,8 +276,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
       )}
 
       <div className="solenoid-note__fields">
-        {/* The wireable identity: `path` out to index against a Vault Folder cube, or
-            wire a path IN to load that note instead of the picked one. */}
+        {/* `path` out indexes against a Vault Folder cube; a path wired in loads that note instead of the picked one. */}
         {data.inputs.path && data.outputs.path && (
           <div className="solenoid-note__field-row">
             <NodeSocket side="input" socketKey="path" nodeId={data.id} emit={emit} payload={data.inputs.path.socket} />

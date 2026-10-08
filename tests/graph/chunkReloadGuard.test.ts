@@ -1,4 +1,4 @@
-// [[C97]] rechartsLazyChunk
+// [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import { shouldReloadForChunkError, type ReloadStore } from "../../src/graph/chunkReloadGuard";
 

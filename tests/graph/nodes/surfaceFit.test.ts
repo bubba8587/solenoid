@@ -6,7 +6,6 @@ describe("solveLinear", () => {
   it("solves a well-posed system", () => {
     // 2x + y = 5 ; x - y = 1 → x=2, y=1
     const c = solveLinear([[2, 1], [1, -1]], [5, 1]);
-    expect(c).not.toBeNull();
     expect(c![0]).toBeCloseTo(2, 9);
     expect(c![1]).toBeCloseTo(1, 9);
   });

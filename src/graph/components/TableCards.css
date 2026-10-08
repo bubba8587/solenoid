@@ -1,0 +1,101 @@
+/* The Table popup's Cards view around its cards: the sort bar and the one-column list. The cards are AutoCard.css. */
+/* The Table popup's Cards view: one narrow column of row cards. */
+.table-cards-wrap {
+  display: flex;
+  flex-direction: column;
+  margin: 12px 14px;
+  max-height: 56vh;
+  max-height: 56dvh;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.table-cards__bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding-bottom: 8px;
+  background: var(--surface);
+  box-sizing: border-box;
+}
+.table-cards__sort {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 44%;
+  height: 28px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  outline: none;
+}
+.table-cards__sort:focus { border-color: var(--node-accent, var(--accent)); }
+.table-cards__dir {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.table-cards__dir:hover:not(:disabled) { border-color: var(--node-accent, var(--accent)); }
+.table-cards__dir:disabled { opacity: 0.4; cursor: default; }
+.table-cards__dir[aria-pressed="true"] {
+  color: var(--node-accent, var(--accent));
+  border-color: var(--node-accent, var(--accent));
+}
+.table-cards__rules {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto 8px;
+  padding: 2px 12px 8px;
+  box-sizing: border-box;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.table-cards__rules .sol-md { font-size: 12px; line-height: 1.45; }
+.table-cards__rules .sol-md h2 { font-size: 13px; margin: 8px 0 6px; }
+.table-cards__rules .sol-md table { font-size: 11px; }
+.table-cards__rules .sol-md td:first-child,
+.table-cards__rules .sol-md code { white-space: nowrap; }
+.table-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+}
+.table-cards__empty {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.table-cards__more { align-self: center; margin: 4px 0 2px; }
+@media (max-width: 640px) {
+  .table-cards-wrap { margin: 10px; max-height: 62vh; max-height: 62dvh; }
+  .table-cards__sort { font-size: 14px; }
+  .table-cards__sort,
+  .table-cards__dir { height: 34px; }
+  .table-cards__dir { width: 34px; }
+  /* The sort box shows its whole pick ("Source order"). */
+  .table-cards__sort { flex: 0 0 auto; max-width: 52%; padding-right: 2px; }
+  .table-cards-wrap { margin: 8px; }
+}

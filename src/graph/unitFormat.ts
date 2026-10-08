@@ -1,6 +1,6 @@
 // [[C25]] firstClassUnits
-// Standalone unit-suffix rendering, deliberately outside the node-graph unit
-// wiring — units proper are owned by the Format Controller / Convert.
+// Standalone unit-suffix rendering, outside the unit wiring, which the Format Controller and Convert own.
+import { formatScalar } from "./components/format";
 
 export type UnitSuffix = "none" | "deg" | "rad" | "percent";
 
@@ -11,9 +11,8 @@ export const UNIT_SUFFIX_LABELS: Record<UnitSuffix, string> = {
   percent: "%",
 };
 
-/** Format a number with an optional unit suffix appended. */
 export function formatWithUnit(n: number, suffix: UnitSuffix): string {
-  const num = Number.isInteger(n) ? n.toString() : n.toFixed(4);
+  const num = formatScalar(n);
   switch (suffix) {
     case "deg":     return `${num}°`;
     case "rad":     return `${num} rad`;

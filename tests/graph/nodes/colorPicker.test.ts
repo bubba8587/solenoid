@@ -1,7 +1,7 @@
 // [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
 import { ColorPickerNode } from "../../../src/graph/nodes/input";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { pasteCopy } from "../fixtures/pasteCopy";
 
 describe("ColorPickerNode", () => {
   it("defaults to #56b4e9 and formats per the chosen format", () => {
@@ -26,13 +26,9 @@ describe("ColorPickerNode", () => {
     expect(n.data()).toEqual({ color: "#000000" });
   });
 
-  it("round-trips mode, format and channels through extractInit", () => {
+  it("round-trips mode, format and channels through the paste path", async () => {
     const n = new ColorPickerNode({ mode: "hsv", format: "rgb", c0: 120, c1: 100, c2: 100 });
-    const init = extractInit(n);
-    expect(init.mode).toBe("hsv");
-    expect(init.format).toBe("rgb");
-    expect(init.c0).toBe(120);
-    const n2 = new ColorPickerNode(init);
+    const n2 = await pasteCopy(n);
     expect(n2.data()).toEqual({ color: "rgb(0, 255, 0)" }); // pure green
   });
 });

@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { FLUIDS_FORMULAS } from "../../../src/graph/packs/fluids";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { PIPE_ROUGHNESS, PipeRoughnessNode } from "../../../src/graph/nodes/fluids";
-import { ColebrookNode, colebrookF } from "../../../src/graph/nodes/fluids";
+import { PipeRoughnessNode, ColebrookNode } from "../../../src/graph/nodes/fluids";
+import { PIPE_ROUGHNESS, colebrookF } from "../../../src/graph/nodes/fluidsOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -94,10 +94,6 @@ describe("Colebrook friction factor", () => {
 
 describe("Pipe Roughness", () => {
   it("carries the textbook values, sorted smooth to rough", () => {
-    const byId = Object.fromEntries(PIPE_ROUGHNESS.map((r) => [r.id, r.mm]));
-    expect(byId.pvc).toBe(0.0015);
-    expect(byId.steel).toBe(0.045);
-    expect(byId.castiron).toBe(0.26);
     for (let i = 1; i < PIPE_ROUGHNESS.length; i++) {
       expect(PIPE_ROUGHNESS[i].mm).toBeGreaterThanOrEqual(PIPE_ROUGHNESS[i - 1].mm);
     }

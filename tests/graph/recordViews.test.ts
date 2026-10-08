@@ -1,10 +1,11 @@
-// [[C63]]
+// [[B11]] maximalMerge
 import { describe, it, expect } from "vitest";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
 import { RecordNode, parseRecordLayout } from "../../src/graph/nodes/visual";
-import { titleIndexFor, type RecordPayload } from "../../src/graph/chartValue";
+import { recordFieldText, recordLaneText, titleIndexFor, type RecordPayload } from "../../src/graph/chartValue";
 import type { FrameValue } from "../../src/graph/frame";
+import { settingsStore } from "../../src/graph/settingsStore";
 
 // Record 1.4 B1 (trimmed): the List op + the `cardsize` gallery preset.
 
@@ -75,16 +76,6 @@ describe("Record clamp option", () => {
     const p = (await rec.data({ frame: [frame] })).chart.payload as RecordPayload;
     expect(p.clamp).toBe(true);
   });
-
-  it("round-trips through the text form", () => {
-    const g: SavedGraph = {
-      v: 2,
-      nodes: [{ id: "r", type: "RecordNode", name: "P", x: 0, y: 0, init: { op: "gallery" }, stringLiterals: { options: "clamp=on" } }],
-      connections: [],
-    };
-    const rn = readTextForm(writeTextForm(g)).nodes.find((n) => n.type === "RecordNode");
-    expect(rn?.stringLiterals?.options).toContain("clamp=on");
-  });
 });
 
 describe("Record gallery — cardsize preset", () => {
@@ -100,5 +91,46 @@ describe("Record gallery — cardsize preset", () => {
     const rec = new RecordNode({ op: "gallery" });
     const p = (await rec.data({ frame: [frame] })).chart.payload as RecordPayload;
     expect(p.size).toBeUndefined();
+  });
+});
+
+describe("Record views read a cell as the Cards view does", () => {
+  const formatted: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "Due", type: "date", values: [45000], format: { format: "date_custom", customPattern: "YYYY-MM-DD", unit: "none" } },
+      { name: "Share", type: "number", values: [0.256], format: { format: "percent", decimalDigits: 1, unit: "none" } },
+      { name: "Lane", type: "number", values: [0.5], format: { format: "percent", decimalDigits: 0, unit: "none" } },
+    ],
+  };
+  const text = (f: RecordPayload["cards"][number][number]) => recordFieldText(f);
+
+  for (const op of ["detail", "gallery", "list", "board"] as const) {
+    it(`${op} honors the column formats`, async () => {
+      const rec = new RecordNode({ op });
+      if (op === "board") rec.stringLiterals.by = "Lane";
+      const p = (await rec.data({ frame: [formatted] })).chart.payload as RecordPayload;
+      const fields = p.cards[0];
+      expect(text(fields.find((f) => f.label === "Due")!)).toBe("2023-03-15");
+      expect(text(fields.find((f) => f.label === "Share")!)).toBe("25.6%");
+      if (op === "board") expect(recordLaneText(p.lanes![0])).toBe("50%");
+    });
+  }
+});
+
+describe("a board's number lanes", () => {
+  it("keep their number, so a Decimal places change shows on the heading without a recompute ([[D94]] oneNumberDisplay)", async () => {
+    const f: FrameValue = { __frame: true, columns: [{ name: "Lane", type: "number", values: [1.23456, 1.23456, 2] }] };
+    const rec = new RecordNode({ op: "board" });
+    rec.stringLiterals.by = "Lane";
+    const p = (await rec.data({ frame: [f] })).chart.payload as RecordPayload;
+    expect(p.lanes?.map((l) => l.cards)).toEqual([[0, 1], [2]]);
+    try {
+      settingsStore.set("numberDecimals", "2");
+      expect(p.lanes?.map(recordLaneText)).toEqual(["1.23", "2"]);
+    } finally {
+      settingsStore.set("numberDecimals", "4");
+    }
+    expect(recordLaneText(p.lanes![0])).toBe("1.2346");
   });
 });

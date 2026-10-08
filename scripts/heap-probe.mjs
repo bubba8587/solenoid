@@ -1,13 +1,6 @@
-// Memory heap-snapshot investigation (1.4-plan.md § F5). Agent-run MEASUREMENT, not a
-// build: where do the retained bytes of a "light app" actually live, and does anything
-// leak across teardown/rebuild (reload) or per-doc-tab growth (repeated seeding)?
-//
-// Drives the real dev-server page via CDP: forces GC (HeapProfiler.collectGarbage),
-// reads page.metrics() (JS heap + DOM Nodes + listeners), and on the big seed diffs a
-// full heap snapshot's top retainers (grouped self_size) between the first and last
-// reload cycle to name WHERE the bytes are (detached DOM clones? atlas? RF internals?).
-//
-// Run your own dev server from the worktree first, NOT :1420:
+// Measures where a light app's retained heap lives and whether anything leaks across reloads or
+// repeated seeding: forces GC over CDP, reads page.metrics(), and diffs the top retainers of a full
+// heap snapshot between the first and last reload cycle. Run your own dev server, not :1420:
 //   npm run dev -- --port 5199 --strictPort false
 //   node scripts/heap-probe.mjs            # PORT=5199 by default
 import puppeteer from "puppeteer-core";
@@ -23,7 +16,7 @@ const fmtMB = (b) => (b / 1048576).toFixed(1);
 
 let client;
 async function gc() {
-  // Two passes: the first frees, the second collects what the first made unreachable.
+  // Two passes: the second collects what the first made unreachable.
   await client.send("HeapProfiler.collectGarbage");
   await client.send("HeapProfiler.collectGarbage");
   await wait(300);
@@ -48,7 +41,6 @@ async function measure(page, label) {
   return row;
 }
 
-// Full heap snapshot → self_size grouped so the top retainers are named.
 async function snapshotRetainers(page) {
   const chunks = [];
   const onChunk = (p) => chunks.push(p.chunk);
@@ -69,7 +61,6 @@ async function snapshotRetainers(page) {
     const size = nodes[i + si];
     total += size;
     if (name.startsWith("Detached")) detached += size;
-    // Object/native nodes carry a meaningful ctor/name; primitives group by type.
     const key = (type === "object" || type === "native") ? `${type}:${name || "(anon)"}` : type;
     bySize.set(key, (bySize.get(key) || 0) + size);
   }
@@ -129,7 +120,6 @@ try {
     tab.push(await measure(page, `tab #${i} (power-features)`));
   }
 
-  // ---- report ----
   const growth = (arr) => ({
     heap: +(arr[arr.length - 1].heapMB - arr[0].heapMB).toFixed(1),
     nodes: arr[arr.length - 1].nodes - arr[0].nodes,

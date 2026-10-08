@@ -99,6 +99,12 @@ def sub_citations(text, old_id, new_id):
     return LINK_RE.sub(lambda m: m.group(0).replace("[[" + old_id, "[[" + new_id, 1)
                        if m.group(1) == old_id else m.group(0), text)
 STATUSES = {"proposed", "active", "superseded", "reverted"}
+
+
+def _first_alias(data):
+    a = data.get("aliases")
+    a = a if isinstance(a, list) else ([a] if a else [])
+    return str(a[0]) if a else ""
 MADE_BY = {"human", "ai", "joint"}
 LIST_FIELDS = {"parents", "supersedes", "conflicts_with"}
 # No depends_on or structural fields: that axis belongs to the graph.  dte:B9
@@ -134,7 +140,8 @@ DEFAULTS = {"summaries": True, "protect_human": True, "authority": (),
             "agents": ("CLAUDE.md", "AGENTS.md", ".claude/*", ".cursorrules", ".github/copilot-instructions.md"),
             "retire": "delete",   # dte:B24
             "links": "token",     # token writes dte:ID; wikilink writes [[ID]] (Obsidian-browsable)
-            "scan_self": False}   # the tool's own file is skipped unless the tree is DTE's own (dte:C3)
+            "scan_self": False,   # the tool's own file is skipped unless the tree is DTE's own (dte:C3)
+            "decisions": "decisions"}   # the decisions dir, relative to the root (local patch; --decisions overrides)
 CONFIG = dict(DEFAULTS)
 
 
@@ -157,6 +164,8 @@ def load_config(root):
                 cfg[key] = val.lower() in ("on", "true", "yes", "1")
             elif key in ("docs", "specs", "tests", "agents"):
                 cfg[key] = tuple(x.strip() for x in val.split(",") if x.strip())
+            elif key == "decisions":
+                cfg["decisions"] = val
             elif key == "broad_fraction":
                 cfg["broad_fraction"] = float(val)
             elif key == "broad_min":
@@ -262,10 +271,10 @@ class Node:
         data = self.raw
         self.id = str(data.get("id") or "")
         self.title = str(data.get("title") or "")
-        self.name = str(data.get("name") or "")
+        self.name = str(data.get("name") or _first_alias(data))   # Solenoid patch: aliases carries the name
         self.summary = summary_of(self.name, self.title)
         self.status = str(data.get("status") or "")
-        self.made_by = str(data.get("made_by") or "")
+        self.made_by = str(data.get("made_by") or "ai")   # Solenoid patch: provenance is ratified_by + git
         self.by = str(data.get("by") or "")
         self.superseded_by = data.get("superseded_by") or None
         self.ratified_by = data.get("ratified_by") or None
@@ -331,10 +340,10 @@ class InboxItem:
         self.raw = _normalise(data)
         self.slug = os.path.splitext(os.path.basename(path))[0]
         self.title = str(self.raw.get("title") or "")
-        self.name = str(self.raw.get("name") or "")
+        self.name = str(self.raw.get("name") or _first_alias(self.raw))
         self.proposed_ring = str(self.raw.get("proposed_ring") or "").upper()
         self.ask = str(self.raw.get("ask") or "")
-        self.made_by = str(self.raw.get("made_by") or "")
+        self.made_by = str(self.raw.get("made_by") or "ai")
         self.by = str(self.raw.get("by") or "")
         self.kind = str(self.raw.get("kind") or "decision")   # decision | gap  dte:C27
         self.spec = str(self.raw.get("spec") or "")
@@ -566,8 +575,6 @@ class Tree:
                 E.append("%s: status must be one of %s" % (i, sorted(STATUSES)))
             if node.made_by not in MADE_BY:
                 E.append("%s: made_by must be one of %s" % (i, sorted(MADE_BY)))
-            if not node.by:
-                E.append("%s: 'by' is required" % i)
             if not node.title:
                 E.append("%s: title is required" % i)
             elif len(node.title) > TITLE_MAX:   # dte:B16
@@ -1545,15 +1552,12 @@ def cmd_place(tree, args):
         "supersedes: []",
         "superseded_by:",
         "conflicts_with: []",
-        "made_by: %s" % item.made_by,
-        "by: %s" % item.by,
         "date: %s" % (item.raw.get("date") or today),
         "ratified_by:",
     ]
     if item.raw.get("confidence"):
         fm.append("confidence: %s" % item.raw["confidence"])
     if item.name:
-        fm.insert(2, "name: %s" % item.name)
         fm.append("aliases: [%s]" % item.name)
     fm.append("---")
     body = item.body.rstrip("\n")
@@ -1578,7 +1582,10 @@ def set_field(text, key, value):
     new = "%s: %s" % (key, value) if value != "" else "%s:" % key
     for k in range(1, end):
         if lines[k].split(":", 1)[0].strip() == key:
-            lines[k] = new
+            j = k + 1
+            while j < end and re.match(r"^\s+-\s", lines[j]):   # a block list's items go with its key
+                j += 1
+            lines[k:j] = [new]
             return "\n".join(lines)
     lines.insert(end, new)
     return "\n".join(lines)
@@ -1941,7 +1948,6 @@ def cmd_new(tree, args):
     fields = [
         ("id", new_id), ("title", fm_str(args.title)), ("status", args.status), ("parents", parents),
         ("supersedes", []), ("superseded_by", ""), ("conflicts_with", []),
-        ("made_by", args.made_by), ("by", args.by),
         ("date", datetime.date.today().isoformat()), ("ratified_by", ""),
     ]
     if args.authorized_by:
@@ -1952,7 +1958,6 @@ def cmd_new(tree, args):
         if not NAME_RE.match(args.name):
             print("a name is a camelCase identifier like shareImpl")
             return 2
-        fields.insert(1, ("name", args.name))
         fields.append(("aliases", "[%s]" % args.name))   # so [[name]] resolves in Obsidian
     body = node_body(args)
     if body is None:
@@ -2623,9 +2628,10 @@ def cmd_set(tree, args):
     text = read_text(node.path)
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
-    text = set_field(text, field, fm_str(new) if field == "title" else new)
     if field == "name":
         text = set_field(text, "aliases", "[%s]" % new)
+    else:
+        text = set_field(text, field, fm_str(new) if field == "title" else new)
     if args.authorized_by:
         text = set_field(text, "authorized_by", args.authorized_by)
     text = append_history(text, '- %s %s changed from "%s" by %s%s.' % (
@@ -2797,10 +2803,9 @@ def settle_contest(tree, node, args):
             if not NAME_RE.match(args.name):
                 print("a name is a camelCase identifier like shareImpl")
                 return 2
-            fields.append(("name", args.name))
         fields += [("title", fm_str(args.title)), ("status", "active"), ("parents", list(node.parents)),
                    ("supersedes", []), ("superseded_by", ""), ("conflicts_with", []),
-                   ("made_by", "ai"), ("by", args.by), ("date", datetime.date.today().isoformat()),
+                   ("date", datetime.date.today().isoformat()),
                    ("ratified_by", ""), ("contested_by", args.by)]
         if args.name:
             fields.append(("aliases", "[%s]" % args.name))
@@ -3131,7 +3136,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     CONFIG.clear()
     CONFIG.update(load_config(args.root))
-    decisions = args.decisions or os.path.join(args.root, "decisions")
+    decisions = args.decisions or os.path.join(args.root, CONFIG["decisions"])
     tree = Tree(args.root, decisions)
     return {
         "validate": cmd_validate, "tree": cmd_tree, "blast": cmd_blast,

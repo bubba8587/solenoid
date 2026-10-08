@@ -4,7 +4,6 @@
   gap: 0;
 }
 
-/* Collapsed summary — "X of N" in muted type (shown only while collapsed). */
 .slicer-node__summary {
   font-size: 12px;
   color: var(--text-dim);
@@ -12,10 +11,7 @@
   padding: 2px 0;
 }
 
-/* Width tiers for the card — driven by widthClass() in the component based on how
-   many / how long the values are. Two classes beat the default frame .--wide
-   (single-class) tier via higher specificity; a manual resize (inline width)
-   still wins over both. */
+/* Two classes beat the default single-class wide tier; a manual resize (inline width) still wins. */
 .solenoid-node.solenoid-node--slicer-w2 { width: 320px; }
 .solenoid-node.solenoid-node--slicer-w3 { width: 400px; }
 
@@ -59,8 +55,7 @@
   color: var(--node-accent, var(--accent));
 }
 
-/* The buttons wrap into a grid: short values pack many per row, long values fall
-   to fewer per row. Scrolls past a few rows so the node height stays sane. */
+/* Scrolls past a few rows, so the card's height stays sane. */
 .slicer-node__values {
   display: flex;
   flex-wrap: wrap;
@@ -101,8 +96,7 @@
   color: var(--text-dim);
   border-color: var(--border-strong);
 }
-/* Selected button — background tint and border both from the node accent (not
-   the app accent), so the slicer reads as part of its (violet, frame-kind) node. */
+/* From the node accent, not the app accent, so the slicer reads as part of its node. */
 .slicer-node__pill--selected {
   background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, var(--surface));
   border-color: var(--node-accent, var(--accent));

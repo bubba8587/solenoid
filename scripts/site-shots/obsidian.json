@@ -1,0 +1,11 @@
+{
+  "label": "Sleep log",
+  "nodes": [
+    { "id": "daily", "type": "VaultFolderNode", "x": 0, "y": 0, "init": { "label": "Daily notes", "folder": "Daily", "nameFormat": "YYYY-MM-DD" } },
+    { "id": "sort", "type": "SortFrameNode", "x": 300, "y": 0, "collapsed": true, "init": { "label": "By date", "dir": "asc" }, "stringLiterals": { "column": "date" } },
+    { "id": "window", "type": "WindowNode", "x": 300, "y": 120, "init": { "label": "7-day average", "agg": "rolling_avg" }, "literals": { "n": 7 }, "stringLiterals": { "orderBy": "date", "column": "sleep", "name": "7-day avg" } },
+    { "id": "keep", "type": "ColumnsNode", "x": 600, "y": 0, "collapsed": true, "init": { "label": "Sleep and trend" }, "stringLiterals": { "columns": "date,sleep,7-day avg" } },
+    { "id": "chart", "type": "ChartNode", "x": 600, "y": 120, "init": { "label": "Sleep", "op": "line" }, "stringLiterals": { "options": "title=Hours of sleep" } }
+  ],
+  "cables": [ "daily.cube -> sort.frame", "sort.frame -> window.frame", "window.frame -> keep.frame", "keep.frame -> chart.values" ]
+}

@@ -1,6 +1,6 @@
-// [[C17]], [[D25]]
+// [[C17]], [[C14]] currentExcelParity
 import { describe, it, expect } from "vitest";
-import { resolveExcelFunction, LEGACY_ALIASES } from "../../src/graph/excelFunctions";
+import { resolveExcelFunction, LEGACY_ALIASES, POSITION_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
 import { compileEvaluator, formulaFunctionNames, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
 import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "../../src/graph/nodes/text";
@@ -68,8 +68,7 @@ describe("blocked spellings redirect to a LIVE replacement", () => {
 describe("current-Excel names the fxLookup walk used to advertise but not dispatch", () => {
   // FX hangs these off a CALLABLE parent (FX.CEILING is the function AND the home
   // of CEILING.MATH); the old object-only walk couldn't reach them.
-  it.each(["CEILING.MATH", "FLOOR.MATH",
-           "GAMMALN.PRECISE", "SKEW.P", "T.TEST", "NETWORKDAYS.INTL", "WORKDAY.INTL",
+  it.each(["GAMMALN.PRECISE", "SKEW.P", "NETWORKDAYS.INTL", "WORKDAY.INTL",
            "BINOM.DIST.RANGE"])("%s dispatches", (name) => {
     expect(resolveExcelFunction(name)).not.toBeNull();
   });
@@ -133,6 +132,36 @@ describe("text functions: formula matches node", () => {
   });
 });
 
+describe("REGEXREPLACE occurrence", () => {
+  const repl = new RegexNode({ op: "replace" });
+  const node = (text: string, pattern: string, replacement: string, occurrence: number) =>
+    repl.data({ text: [text], pattern: [pattern], replacement: [replacement], occurrence: [occurrence] }).result;
+
+  it("keeps the match's surrounding context when replacing only the nth", () => {
+    expect(ev('REGEXREPLACE("xaxa", "(?<=x)a", "#", 2)')).toBe("xax#");
+    expect(ev('REGEXREPLACE("ab ab", "a(?=b)", "#", 2)')).toBe("ab #b");
+    expect(ev('REGEXREPLACE("cat cat", "^cat|\\bcat", "dog", 2)')).toBe("cat dog");
+    expect(ev('REGEXREPLACE("cat cat", "^cat", "dog", 2)')).toBe("cat cat");
+  });
+
+  it("expands $n, $<name>, $&, $$ and the context tokens from the nth match", () => {
+    expect(ev('REGEXREPLACE("a1 b2", "(\\w)(\\d)", "$2$1", 2)')).toBe("a1 2b");
+    expect(ev('REGEXREPLACE("a1 b2", "(?<l>\\w)(?<d>\\d)", "$<d>$<l>", 2)')).toBe("a1 2b");
+    expect(ev('REGEXREPLACE("a1 b2", "\\d", "[$&$$]", 2)')).toBe("a1 b[2$]");
+    expect(ev('REGEXREPLACE("ab", "b", "<$`|$\'>", 1)')).toBe("a<a|>");
+  });
+
+  it("truncates a fractional occurrence and counts a negative one from the end, node and formula alike", () => {
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", 2.6)')).toBe("a1b#c3");
+    expect(node("a1b2c3", "\\d", "#", 2.6)).toBe("a1b#c3");
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", -1)')).toBe("a1b2c#");
+    expect(node("a1b2c3", "\\d", "#", -1)).toBe("a1b2c#");
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", -3)')).toBe("a#b2c3");
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", -9)')).toBe("a1b2c3");
+    expect(node("a1b2c3", "\\d", "#", -9)).toBe("a1b2c3");
+  });
+});
+
 describe("finance functions: formula matches node", () => {
   // 15-Mar-2026 settlement, 15-Nov-2030 maturity as date serials.
   const settle = 46096, maturity = 47787;
@@ -144,6 +173,12 @@ describe("finance functions: formula matches node", () => {
     const bs = new CouponNode({ op: "coupdaybs" });
     expect(ev(`COUPDAYBS(${settle}, ${maturity}, 2)`))
       .toBe(bs.data({ settle: [settle], maturity: [maturity], frequency: [2], basis: [0] }).result);
+  });
+
+  it("COUPDAYBS on 30/360 counts a coupon on the last day of February as the 30th", () => {
+    // previous coupon 28-Feb-2026, settlement 15-Mar-2026, maturity 28-Aug-2030
+    expect(ev(`COUPDAYBS(${settle}, DATE(2030,8,28), 2, 0)`)).toBe(15);
+    expect(ev(`COUPDAYSNC(${settle}, DATE(2030,8,28), 2, 0)`)).toBe(165);
   });
 
   it("PRICE / YIELD round-trip through each other", () => {
@@ -173,9 +208,9 @@ describe("finance functions: formula matches node", () => {
     }).result);
   });
 
-  it("returns a blank, not a number, when an argument is out of range", () => {
-    expect(ev(`COUPNUM(${settle}, ${maturity}, 3)`)).toBeNull(); // frequency must be 1/2/4
-    expect(ev("VDB(10000, 1000, 10, 5, 2)")).toBeNull();          // end before start
+  it("answers #DOMAIN!, not a number, when an argument is out of range ([[D70]] nullNotEnoughData)", () => {
+    expect(ev(`COUPNUM(${settle}, ${maturity}, 3)`)).toMatchObject({ code: "#DOMAIN!", message: "COUPNUM needs a frequency of 1, 2 or 4" });
+    expect(ev("VDB(10000, 1000, 10, 5, 2)")).toMatchObject({ code: "#DOMAIN!", message: "VDB needs 0 ≤ start ≤ end ≤ life" });
   });
 });
 
@@ -198,7 +233,7 @@ describe("FORECAST.LINEAR", () => {
   });
 });
 
-describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on every surface ([[D25]] blockedFailFast)", () => {
+describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on every surface", () => {
   it("every blocked spelling answers #NAME? naming its replacement", () => {
     for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
       const r = ev(`${name}(1)`);
@@ -207,14 +242,69 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
     }
   });
 
+  it("COLUMN says columns go by name", () => {
+    for (const [name, message] of Object.entries(POSITION_NAMES)) {
+      for (const expr of [`${name}()`, `${name}(x)`]) {
+        const r = ev(expr, { x: [1, 2, 3] });
+        expect(isSolError(r) && r.code, expr).toBe("#NAME?");
+        expect(isSolError(r) && r.message, expr).toBe(message);
+        expect(isSolError(resolveExcelFunction(name)!()), name).toBe(true);
+      }
+    }
+  });
+
   it("no blocked spelling is advertised (autocomplete/highlighting)", () => {
     const advertised = new Set(formulaFunctionNames());
-    const leaked = Object.keys(LEGACY_ALIASES).filter((n) => advertised.has(n));
+    const leaked = [...ELIMINATED_FUNCTIONS].filter((n) => advertised.has(n));
     expect(leaked, `blocked names still advertised: ${leaked.join(", ")}`).toEqual([]);
   });
 
   it("no blocked spelling gets range routing", () => {
-    const leaked = Object.keys(LEGACY_ALIASES).filter((n) => RANGE_FUNCTIONS.has(n));
+    const leaked = [...ELIMINATED_FUNCTIONS].filter((n) => RANGE_FUNCTIONS.has(n));
     expect(leaked, `blocked names still range-routed: ${leaked.join(", ")}`).toEqual([]);
+  });
+});
+
+describe("one-function Excel parity, each checked against Excel", () => {
+  const err = (expr: string) => (ev(expr) as { code?: string }).code;
+  it("FIND and SEARCH take an empty find_text one past the end, and no further", () => {
+    expect(ev('FIND("","abc",4)')).toBe(4);
+    expect(err('FIND("","abc",5)')).toBe("#VALUE!");
+    expect(err('SEARCH("","abc",5)')).toBe("#VALUE!");
+    expect(err('LEFT("abc",-1)')).toBe("#VALUE!");
+  });
+  it("SEARCH reads Excel's wildcards: ? one character, * any run, ~ a literal", () => {
+    expect(ev('SEARCH("a?c","xabc")')).toBe(2);
+    expect(ev('SEARCH("B*D","abcde")')).toBe(2);
+    expect(ev('SEARCH("~*","a*b")')).toBe(2);
+    expect(ev('SEARCH("~?","ab?")')).toBe(3);
+    expect(ev('SEARCH("a*","bca",2)')).toBe(3);
+    expect(err('SEARCH("x?","abx")')).toBe("#VALUE!");
+    expect(ev('SEARCH("","abc",2)')).toBe(2);
+  });
+  it("YEARFRAC basis 1 uses 366 when a Feb 29 falls in the span, and the average year past one year", () => {
+    expect(ev("YEARFRAC(DATE(2011,12,15),DATE(2012,3,1),1)")).toBeCloseTo(77 / 366, 12);
+    expect(ev("YEARFRAC(DATE(2012,12,15),DATE(2013,3,1),1)")).toBeCloseTo(76 / 365, 12);
+    expect(ev("YEARFRAC(DATE(2011,2,28),DATE(2012,2,29),1)")).toBeCloseTo(366 / 365.5, 12);
+  });
+  it("VALUE takes a comma before the decimal point and none after it ([[C117]] usNumberText)", () => {
+    expect(ev('VALUE("1,5")')).toBe(15);
+    expect(ev('VALUE("-$1,234.50")')).toBe(-1234.5);
+    expect(ev('VALUE("(5)")')).toBe(-5);
+    expect(err('VALUE("1.234,5")')).toBe("#VALUE!");
+  });
+  it("GCD and LCM truncate, hex is upper case", () => {
+    expect(ev("GCD(5.9,10.2)")).toBe(5);
+    expect(ev("LCM(2.5,3)")).toBe(6);
+    expect(ev("DEC2HEX(255)")).toBe("FF");
+  });
+  it("VDB with no_switch stays on the declining balance", () => {
+    expect(ev("VDB(10000,1000,5,3,5,1.5,TRUE())")).toBeCloseTo(1749.3, 9);
+    expect(ev("VDB(10000,1000,5,3,5,1.5,FALSE())")).toBeCloseTo(2430, 9);
+  });
+  it("TREND and GROWTH with const FALSE fit through the origin and through 1", () => {
+    expect((ev("TREND(y,x,4,FALSE())", { y: [1, 3, 4], x: [1, 2, 3] }) as number[])[0]).toBeCloseTo(76 / 14, 12);
+    const m = Math.exp((Math.log(3) + 2 * Math.log(4) + 3 * Math.log(8)) / 14);
+    expect((ev("GROWTH(g,x,4,FALSE())", { g: [3, 4, 8], x: [1, 2, 3] }) as number[])[0]).toBeCloseTo(m ** 4, 9);
   });
 });

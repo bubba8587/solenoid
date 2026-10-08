@@ -34,7 +34,7 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
   frontmatter keys as typed output sockets + a `document` output; manual Reload. **Write to
   Obsidian** (`obsidianMarkdown.ts` + `obsidianWrite.ts`): a Document → one overwritten `.md`
   (pipe tables, mermaid fences, `$$` math, rasterized chart PNGs, `![[asset]]` embeds),
-  Run-button only (`sinkRunButtonOnly`). Spec homes: `../node-coverage.md` § Connections &
+  Run-button only (`sinkRunButtonOnly`). Spec homes: `../node-coverage.md` § Connections and
   sinks / § Annotation, `../socket-reference.md` § `document`.
 - **Note frontmatter** → sockets (`noteFrontmatter.ts`, `FIELD_SOCKETS` in `annotation.ts`). A
   deliberate YAML subset: scalars, flow arrays, block lists, rows-of-inline-objects → a frame.
@@ -44,15 +44,14 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
   § Decision support). **H6 Schedule** is specced in `../1.4-plan.md` § Scheduling slice,
   gated on the Track H pick (`../backlog.md`).
 - **[[D54]] relativeDatesOptIn**: a stored date is a fixed calendar day; relative
-  phrases resolve only on a Date Input under a setting, re-resolving each pass with an Alert
+  phrases resolve only on a date Value Input under a setting, re-resolving each pass with an Alert
   when the day moves.
 - Constraints a vault feature meets: (1) the desktop fs allowlist
   (`src-tauri/capabilities/default.json`) is **by extension** — text read/write only for
   `$HOME/**/*.{json,csv,md}`; (2) the vault root is the app-wide `obsidianVault` setting; (3)
   **no file watcher** exists (`21-collaboration.md` Stage 0 is its home); (4) live sources are
   *connection* nodes (`nodes/connection.ts`: cache token `<globalGen>:<nodeToken>:<reference>`,
-  background fetch, `refreshConnection`, `refreshMinutes` — `../subsystem-invariants.md` § Live
-  connections); (5) the vault walk (`fileBridge.ts`) skips dot-folders, depth 6; (6) a frame
+  background fetch, `refreshConnection`, `refreshMinutes` — `../../tree/specs/computation/live-connections.md`); (5) the vault walk (`fileBridge.ts`) skips dot-folders, depth 6; (6) a frame
   column is number / string / logical / date only — lists and nested objects need a **cube**
   (`CubeCell`), and the lattice refuses a cube at a `frame` socket (`sockets.ts`); (7) the
   composite **Monte Carlo** run mode samples SCALAR ports and summarises scalar outputs;
@@ -76,7 +75,7 @@ never needs a flattening step; writers take a cube; a sink's preview is a `plan`
 `"[[Note]]"`. The vault's property-type registry is `.obsidian/types.json`
 (`{"types": {"due": "date", …}}`); a frame property's column types, as picked in the Solenoid
 Properties plugin, are its `.obsidian/plugins/solenoid-properties/data.json` (`columnTypes`),
-read as the column-level typing source above the guesser (`specs/obsidian-plugin.md` § The app
+read as the column-level typing source above the guesser (`tree/specs/integrations/obsidian-plugin.md` § The app
 reads the picks). The Daily notes core plugin stores `folder` / `format` /
 `template` (`.obsidian/daily-notes.json` — **verify** the file name against a real vault);
 templates use `{{date}}` / `{{date:FORMAT}}` (moment tokens).
@@ -293,7 +292,7 @@ Commands hotkey), and lets `vaultCube.test.ts` run the real node over `fixtures/
 - **R1 One template grammar, Obsidian's:** `{{date}}`, `{{date:FORMAT}}` (moment tokens =
   Solenoid's `formatDateSerial` set), offsets `{{date+7d}}` / `{{date-1w}}` /
   `{{date+1m:YYYY-MM}}` (ours), `{{name}}`, `{{doc}}`; `{{today}}` is an alias of `{{date}}`.
-  Resolves against the writer's optional `date` input when wired (a Date Input, `TODAY()+7`
+  Resolves against the writer's optional `date` input when wired (a date Value Input, `TODAY()+7`
   from an Expression, a column in a by-row composite), else the wall clock at Run — a file
   name is not a stored date and Run is explicit. Pure `nameTemplate.ts`.
 - **R2 `{{daily}}`** = the day's note path from the Daily notes settings (`folder`, `format`);
@@ -304,11 +303,11 @@ Commands hotkey), and lets `vaultCube.test.ts` run the real node over `fixtures/
   daily notes with `mood · sleep · weight · exercised` properties become a time series (Window,
   streaks, GROUPBY week, heatmap).
 - **R4 "Due in the next 7 days" needs no syntax:** an Expression `TODAY()+7` into Filter's
-  value (deterministic per pass, no opt-in), or a Date Input reading `in 7 days` under the
+  value (deterministic per pass, no opt-in), or a date Value Input reading `in 7 days` under the
   setting. Filter's value field stays literal.
 - **R5 Midnight rollover:** one timer to the next local midnight calls `requestRecalc()` (the
-  F9 path) so TODAY / NOW recompute and relative Date Inputs re-resolve and fire their "day
-  moved" Alert; armed only while the document contains a TODAY / NOW / relative Date Input
+  F9 path) so TODAY / NOW recompute and relative date Value Inputs re-resolve and fire their "day
+  moved" Alert; armed only while the document contains a TODAY / NOW / relative date Value Input
   (`volatileDates.ts` scan at load and on topology change). No setting.
 - **R6** is B's timestamp rule above; F6 needs nothing (the API does it).
 
@@ -361,8 +360,8 @@ step.
 ## Rules touched (cite in commits)
 
 `sinkRunButtonOnly` (every writer; J adds "or the CLI's explicit `--run <name>`"),
-`noDataInComponents` (Preview is a pure plan over the cached cube + reads), `retypeReconciles`
-avoided (one `cube` output; A′'s adoption is derived state, never persisted), `onePrunePath`
+components compute nothing (`../../tree/specs/floors/components.md` § The rules; Preview is a pure plan over the cached cube + reads), `retypeReconciles`
+avoided (one `cube` output; A′'s adoption is derived state, never persisted), input-cable pruning
 untouched, `relativeDatesOptIn` untouched (R), a new **[[C101]] onePatchPath**
 (`frontmatterPatch.ts` is the only writer of a note's YAML; `obsidianWrite.ts` writes whole
 documents). The fs allowlist gains `.yaml`/`.yml` read (one capability line, noted in
@@ -389,7 +388,7 @@ Bases"); F is independent of B and C.
 6. Import Note **stays a Note** and borrows the refresh timer + watcher hook.
 7. Readers emit **one `cube`**, the row verbs take it, writers take `cube`, a sink's preview is
    a **`plan` frame**.
-8. Relative dates live in **templates and Date Inputs only**; Filter's value stays literal.
+8. Relative dates live in **templates and date Value Inputs only**; Filter's value stays literal.
 
 ## Rejected shapes (the relapse guard — each would reopen a ruling above)
 

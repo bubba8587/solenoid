@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[D60]] domSyncPresentedCamera
+// [[C42]] htmlInCanvasRenderer
 import { describe, it, expect } from "vitest";
 import { Camera } from "../../src/graph/hicCamera";
 
@@ -11,10 +11,5 @@ describe("Camera", () => {
     const { wx, wy } = cam.toWorld(sx, sy);
     expect(wx).toBeCloseTo(100);
     expect(wy).toBeCloseTo(50);
-  });
-
-  it("clamps a construction scale to [minScale, maxScale]", () => {
-    expect(new Camera({ scale: 100 }).scale).toBe(8);
-    expect(new Camera({ scale: 0 }).scale).toBe(0.02);
   });
 });

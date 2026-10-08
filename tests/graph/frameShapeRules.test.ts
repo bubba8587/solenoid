@@ -1,4 +1,4 @@
-// [[C64]], [[C48]]
+// [[B17]], [[C48]]
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { makeFrameShapeResolver } from "../../src/graph/frameShapeResolver";
@@ -9,7 +9,7 @@ import {
   ColumnsNode, RenameNode, GroupByFrameNode, UnpivotNode, PivotNode, JoinNode,
   SplitColumnNode, AddIndexNode,
 } from "../../src/graph/nodes/frame";
-import { TextInputNode } from "../../src/graph/nodes/text";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { ListInputNode, FindPeaksNode } from "../../src/graph/nodes/list";
 import { PointPlotterNode, CurveNode, SlicerNode } from "../../src/graph/nodes/control";
 import { AmortizationNode } from "../../src/graph/nodes/finance";
@@ -52,7 +52,7 @@ async function wiredConfig(node: object, configKeys: string[], text = SALES): Pr
   await editor.addNode(n);
   await editor.addConnection(new ClassicPreset.Connection(src, "frame", n, "frame") as Schemes["Connection"]);
   for (const k of configKeys) {
-    const t = new TextInputNode() as unknown as Schemes["Node"];
+    const t = new ValueInputNode({ op: "string" }) as unknown as Schemes["Node"];
     await editor.addNode(t);
     await editor.addConnection(new ClassicPreset.Connection(t, "value", n, k) as Schemes["Connection"]);
   }
@@ -247,7 +247,7 @@ describe("a wired config socket makes the shape unknown", () => {
     }
   });
 
-  it("Group By reads the typed keys, and goes unknown once Group by or Aggregate is wired", async () => {
+  it("GROUPBY reads the typed keys, and goes unknown once Group by or Aggregate is wired", async () => {
     const g = new GroupByFrameNode();
     g.stringLiterals.keys = "Region";
     g.stringLiterals.column = "Qty";
@@ -258,6 +258,30 @@ describe("a wired config socket makes the shape unknown", () => {
       wired.stringLiterals.column = "Qty";
       expect(await wiredConfig(wired, [key]), key).toBeNull();
     }
+  });
+
+  it("totals turn a non-text key that holds a Total label into text, as the run does", async () => {
+    const DATED = "Year, Qtr, Qty\n2024, 1, 5\n2024, 2, 7\n2025, 1, 3";
+    const g = new GroupByFrameNode({ totalDepth: 1 });
+    g.stringLiterals.keys = "Year, Qtr";
+    g.stringLiterals.column = "Qty";
+    expect(cols(await shapeOf(g, "frame", DATED))).toEqual(["Year:string", "Qtr:number", "Qty:number"]);
+    g.totalDepth = 2;
+    expect(cols(await shapeOf(g, "frame", DATED))).toEqual(["Year:string", "Qtr:string", "Qty:number"]);
+    const p = new PivotNode({ rowTotalDepth: -1 });
+    p.stringLiterals.rowFields = "Year, Qtr";
+    p.stringLiterals.values = "Qty";
+    expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:string", "Qtr:number"]);
+  });
+
+  it("a min or max of dates with totals runs as a date, as its shape says", async () => {
+    const f = { __frame: true as const, columns: [
+      { name: "k", type: "string" as const, values: ["a", "a", "b"] },
+      { name: "d", type: "date" as const, values: [45000, 45010, 45020] },
+    ] };
+    const g = new GroupByFrameNode({ agg: "max", totalDepth: 1 });
+    const out = (await g.data({ frame: [f], keys: [["k"]], column: ["d"] })).frame as { columns: { name: string; type: string }[] };
+    expect(out.columns.map((c) => `${c.name}:${c.type}`)).toEqual(["k:string", "d:date"]);
   });
 
   it("Unpivot reads the typed columns, and goes unknown once Keep or Melt is wired", async () => {
@@ -297,7 +321,7 @@ describe("a wired config socket makes the shape unknown", () => {
       await editor.addConnection(new ClassicPreset.Connection(left, "frame", j, "left") as Schemes["Connection"]);
       await editor.addConnection(new ClassicPreset.Connection(right, "frame", j, "right") as Schemes["Connection"]);
       if (wireKey) {
-        const t = new TextInputNode() as unknown as Schemes["Node"];
+        const t = new ValueInputNode({ op: "string" }) as unknown as Schemes["Node"];
         await editor.addNode(t);
         await editor.addConnection(new ClassicPreset.Connection(t, "value", j, wireKey) as Schemes["Connection"]);
       }

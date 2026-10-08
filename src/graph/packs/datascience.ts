@@ -1,16 +1,13 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C8]] declareOnce
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 import type { Pack, PackPlacement } from "./packShared";
 import {
   KMeansNode, PcaNode, LogisticNode,
   HypothesisTestNode, HYPOTHESIS_TEST_OP_META, type HypothesisTestOp,
 } from "../rete-nodes";
 
-// The R/sklearn-shaped tools as real placements (not tags); the mainstream tests
-// (z, t, F, chi-squared, ANOVA, proportion, binomial) stay core. Catalog type
-// strings must not change (saves + formula names).
+// Catalog type strings must not change: saves and formula names key on them.
 const PATH = ["Packs", "Data Science"];
 
-// Label + description come from the node's own op meta ([[C8]] declareOnce).
 const testEntry = (op: HypothesisTestOp, type: string, keywords: string): PackPlacement => ({
   path: PATH,
   entry: {

@@ -3,14 +3,14 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 
-// [[C9]] labelUnenforced, [[C7]] authorRuled, [[B8]] treeIsTheHome, [[C81]] wikilinkCitations, [[C82]] vaultOutbox
+// [[A1]] visualGraphCalculator, [[B1]] obsidianBet. The practice it pins: docs/dte.md § Solenoid practice.
 // The decision tree keeps its own claims honest: a MUST that no test cites is folklore, and
 // a node never lists its tests (the list is derived from citations). The structural checks
 // (parents, citations resolve) are `python tools/dte.py validate`; this suite pins what
 // only the node bodies and the citing tests together can say.
 
 const ROOT = path.resolve(__dirname, "../..");
-const TREE = path.join(ROOT, "decisions");
+const TREE = path.join(ROOT, "tree", "decisions");
 
 interface DecisionNode {
   id: string;
@@ -40,10 +40,13 @@ function readTree(): DecisionNode[] {
         sections[chunk.slice(0, nl).trim()] = chunk.slice(nl + 1);
       }
       const title = field("title");
+      // A leaf's name is its first alias, written inline (`aliases: [x]`) or as a block list.
+      const alias = fm[1].match(/^aliases:[ \t]*\[\s*"?([A-Za-z][A-Za-z0-9-]*)/m)?.[1]
+        ?? fm[1].match(/^aliases:[ \t]*\n[ \t]+-[ \t]+"?([A-Za-z][A-Za-z0-9-]*)/m)?.[1];
       nodes.push({
         id: field("id"),
         title,
-        name: field("name") || null,
+        name: alias ?? null,
         ratifiedBy: field("ratified_by"),
         sections,
         body: fm[2],
@@ -69,7 +72,7 @@ function testFileIndex(): Map<string, string[]> {
   return found;
 }
 
-describe("the decision tree (decisions/)", () => {
+describe("the decision tree (tree/decisions/)", () => {
   const nodes = readTree();
 
   it("reads a real tree", () => {
@@ -90,7 +93,7 @@ describe("the decision tree (decisions/)", () => {
       .filter((n) => /\*\*MUST\b/.test(n.sections.Decision ?? ""))
       .filter((n) => !citedFromTests.has(n.id) && !/\*Unenforced:\*/.test(n.sections.Consequences ?? ""))
       .map((n) => n.id);
-    expect(missing, "MUST nodes no test cites (cite the node from its test, or label the debt *Unenforced:*)").toEqual([]);
+    expect(missing, "MUST leaves no test cites (cite the leaf from its test, or label the debt *Unenforced:*)").toEqual([]);
   });
 
   it("rule names are unique across the tree", () => {
@@ -99,13 +102,13 @@ describe("the decision tree (decisions/)", () => {
     expect(named.filter((n, i) => named.indexOf(n) !== i)).toEqual([]);
   });
 
-  // ─── The owner-ratification guard ([[C7]] authorRuled) ──────────────────────────────────
-  // A ruling is the owner's only when the owner ratified the node in session. This list
+  // ─── The owner-ratification guard (docs/dte.md § Solenoid practice) ──────────────────────────────────
+  // A ruling is the owner's only when the owner ratified the leaf in session. This list
   // is the owner's: an agent that runs `dte ratify` alone fails here, because moving the
   // list is part of the same owner-marked change. (If you are an agent reading this while
   // tempted: don't. The list is the author's, not yours.)
-  it("owner ratifications match the owner-kept list ([[C7]] authorRuled)", () => {
-    const OWNER_RATIFIED: string[] = ["A1", "B7", "C80"]; // author-maintained; agents must not edit
+  it("owner ratifications match the owner-kept list", () => {
+    const OWNER_RATIFIED: string[] = ["A1", "B1", "B2", "B3", "B7", "B20", "C17", "C80", "C88", "C114", "D62", "E10"]; // author-maintained; agents must not edit
     const ratified = nodes.filter((n) => n.ratifiedBy).map((n) => n.id);
     expect(ratified.sort()).toEqual([...OWNER_RATIFIED].sort());
   });
@@ -133,7 +136,7 @@ describe("the decision tree (decisions/)", () => {
         else if (/\.(ts|tsx|md|mjs|cjs|rs|css)$/.test(e.name)) scan(p);
       }
     };
-    for (const dir of ["src", "tests", "scripts", "docs", "packages", path.join("src-tauri", "src")]) {
+    for (const dir of ["src", "tests", "scripts", "docs", "packages", path.join("src-tauri", "src"), path.join("tree", "specs")]) {
       if (fs.existsSync(path.join(ROOT, dir))) walk(path.join(ROOT, dir));
     }
     for (const f of ["CLAUDE.md", "DESIGN.md", "README.md"]) scan(path.join(ROOT, f));
@@ -141,7 +144,7 @@ describe("the decision tree (decisions/)", () => {
   });
 });
 
-describe("[[B8]] treeIsTheHome — the tool's own gauges hold", () => {
+describe("the decision tree — the tool's own gauges hold", () => {
   // `validate` is the structural check and `coverage --check` the completeness one (every
   // artifact cites a decision or is listed in .dtecoverage with the reason it needs none,
   // and no exclusion is stale). Both run here so a push cannot regress them; skipped only
@@ -151,12 +154,14 @@ describe("[[B8]] treeIsTheHome — the tool's own gauges hold", () => {
   });
   const probe = spawnSync("python3", ["--version"], { encoding: "utf8" });
   const hasPython = !probe.error && probe.status === 0;
+  // Each walk reads the whole repo in a child process, so it grows with the repo; a busy CI runner needs more than the 5 s default.
+  const WALK_MS = 30_000;
   it.skipIf(!hasPython)("validate --as B is clean", () => {
     const r = dte("validate", "--as", "B");
     expect(r.status, r.stdout + r.stderr).toBe(0);
-  });
+  }, WALK_MS);
   it.skipIf(!hasPython)("coverage --check: every artifact cites or is excluded with a reason", () => {
     const r = dte("coverage", "--check");
     expect(r.status, r.stdout + r.stderr).toBe(0);
-  });
+  }, WALK_MS);
 });

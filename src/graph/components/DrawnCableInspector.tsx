@@ -1,6 +1,4 @@
-// The panel for ONE selected drawn cable, in the cable inspector's corner and chrome.
-// The wired-cable CableInspector is untouched; selections are mutually exclusive.
-import { useSyncExternalStore } from "react";
+import { memo, useSyncExternalStore } from "react";
 import {
   drawnCableStore, nearestOption, commitDrawn,
   DRAWN_WIDTHS, DRAWN_HEAD_SCALES, DRAWN_ANGLE_STEP,
@@ -105,7 +103,7 @@ function Segmented<T extends string>({
   );
 }
 
-export function DrawnCableInspector() {
+export const DrawnCableInspector = memo(function DrawnCableInspector() {
   useSyncExternalStore(drawnCableStore.subscribe, drawnCableStore.version);
 
   const id = drawnCableStore.selected();
@@ -247,4 +245,4 @@ export function DrawnCableInspector() {
       </button>
     </div>
   );
-}
+});

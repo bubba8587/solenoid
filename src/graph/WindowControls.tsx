@@ -1,9 +1,10 @@
+// [[B2]] webTryDesktopFull
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { isDesktop } from "./fileBridge";
 import "./WindowControls.css";
 
-// linux shim for window controls (docs/layout-chrome.md)
+// linux shim for window controls (tree/specs/canvas/layout-chrome.md)
 export const OWN_WINDOW_CONTROLS =
   isDesktop() && /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent);
 

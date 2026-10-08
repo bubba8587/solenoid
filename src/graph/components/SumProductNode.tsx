@@ -1,20 +1,4 @@
-import { SUM_PRODUCT_OP_META } from "../rete-nodes";
-import type { SumProductNode as SumProductNodeType, SumProductOp } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { SUM_PRODUCT_OP_META, type SumProductOp, type SumProductNode as SumProductNodeType } from "../rete-nodes";
+import { makeOpNodeComponent } from "./standardNode";
 
-const OPS = (Object.keys(SUM_PRODUCT_OP_META) as SumProductOp[]).map((op) => ({
-  value: op,
-  label: SUM_PRODUCT_OP_META[op].label,
-}));
-
-export function SumProductComponent({ data, emit }: NodeProps<SumProductNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={OPS} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
+export const SumProductComponent = makeOpNodeComponent<SumProductOp, SumProductNodeType>(SUM_PRODUCT_OP_META, (n) => n.cachedResult);

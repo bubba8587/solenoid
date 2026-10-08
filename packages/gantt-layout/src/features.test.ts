@@ -2,8 +2,9 @@
 import { describe, it, expect } from "vitest";
 import { serialFromCivil } from "./serial";
 import { layoutGantt } from "./layout";
-import { buildRows } from "./rows";
+import { buildRows, collapsedAtLevel } from "./rows";
 import { buildColumns } from "./columns";
+import { estimateWidth } from "./bars";
 import { formatCell } from "./cell";
 import { ganttSvg } from "./svg";
 import type { GanttPayload, GanttTask, GanttViewOptions } from "./payload";
@@ -26,7 +27,6 @@ describe("baseline ghost", () => {
   it("draws a ghost rect from the baseline start to finish+1", () => {
     const frame = layoutGantt(payload([t], { zoom: "day", window: [S(2026, 9, 6), S(2026, 9, 16)] }), { width: 800 });
     const bar = frame.bars[0];
-    expect(bar.baseline).toBeDefined();
     expect(bar.baseline!.x).toBeCloseTo((t.baselineStart! - frame.scale.from) * frame.scale.pxPerDay, 3);
     expect(bar.baseline!.w).toBeCloseTo(5 * frame.scale.pxPerDay, 3); // 7..11 inclusive = 5 days
   });
@@ -95,7 +95,6 @@ describe("split bars (out-of-sequence progress)", () => {
     });
     const frame = layoutGantt(payload([t], { zoom: "day", window: [S(2026, 9, 6), S(2026, 9, 20)] }), { width: 900 });
     const bar = frame.bars[0];
-    expect(bar.segments).toBeDefined();
     expect(bar.segments!.length).toBe(2);
     const ppd = frame.scale.pxPerDay;
     expect(bar.segments![0].x).toBeCloseTo((S(2026, 9, 7) - frame.scale.from) * ppd, 3);
@@ -213,5 +212,33 @@ describe("collapse level", () => {
       24,
     );
     expect(rows.map((r) => r.id)).toEqual(["parent"]);
+  });
+});
+
+describe("collapsedAtLevel", () => {
+  const tasks = [
+    task({ id: "P", start: S(2026, 1, 5), finish: S(2026, 1, 20), level: 0, summary: true }),
+    task({ id: "Q", start: S(2026, 1, 5), finish: S(2026, 1, 9), level: 1, summary: true }),
+    task({ id: "q1", start: S(2026, 1, 5), finish: S(2026, 1, 9), level: 2 }),
+  ];
+  it("folds the summaries at or below the collapse level, and none without one", () => {
+    expect([...collapsedAtLevel(payload(tasks, { collapse: 1 }))]).toEqual(["Q"]);
+    expect([...collapsedAtLevel(payload(tasks, { collapse: 0 }))]).toEqual(["P", "Q"]);
+    expect(collapsedAtLevel(payload(tasks)).size).toBe(0);
+  });
+  it("seeds the same rows the static collapse level shows", () => {
+    const p = payload(tasks, { collapse: 1, group_by: false });
+    expect(buildRows(p, 24, collapsedAtLevel(p)).map((r) => r.id)).toEqual(buildRows(p, 24).map((r) => r.id));
+  });
+});
+
+describe("column widths follow the font scale", () => {
+  const p = payload([task({ id: "a", start: S(2026, 9, 7), finish: S(2026, 9, 9) })], { columns: ["name", "start"] });
+  it("scales every width by fontScale, so a date column keeps its fit at a larger face", () => {
+    const base = buildColumns(p);
+    const big = buildColumns(p, 1.5);
+    expect(big.map((c) => c.width)).toEqual(base.map((c) => Math.round(c.width * 1.5)));
+    const start = big.find((c) => c.key === "start")!;
+    expect(estimateWidth("07-Sep-2026", 12 * 1.5)).toBeLessThan(start.width);
   });
 });

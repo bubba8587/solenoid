@@ -1,4 +1,3 @@
-// [[C99]] chromeEnvelopeVars
 import { useSyncExternalStore, useState, useEffect, useRef } from "react";
 import wordmark from "../logo/solenoidwordmark.svg";
 import { TidyOptionsPopover } from "./TidyOptionsPopover";
@@ -7,7 +6,6 @@ import { AppToolbar } from "./AppToolbar";
 import { TabletActions } from "./TabletActions";
 import { autoArrange, cleanup } from "./canvasCommands";
 import { saveToDisk, openFromDisk } from "./fileSession";
-import { frStore } from "./frStore";
 import { mobileMenuStore } from "./mobileMenuStore";
 import { toggleChrome } from "./chromeToggle";
 import { DocumentTitle } from "./components/DocumentTitle";
@@ -17,27 +15,57 @@ import { toggleAllGroups, groupCollapseSummary } from "./OutlinePanel";
 import { groupCollapseStore } from "./groupCollapse";
 import "./TopBar.css";
 
+function useClickaway(open: boolean, ref: React.RefObject<HTMLElement | null>, close: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) close();
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [open, ref, close]);
+}
+
+const TidyIcon = () => (
+  <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1.2" y="5.5" width="3.6" height="5" rx="0.8" />
+    <rect x="11.2" y="2" width="3.6" height="3.6" rx="0.8" />
+    <rect x="11.2" y="9.8" width="3.6" height="3.6" rx="0.8" />
+    <path d="M4.8 8 H8" />
+    <path d="M8 8 V3.8 H11.2" />
+    <path d="M8 8 V11.6 H11.2" />
+  </svg>
+);
+
+/** Lucide "brush" (ISC). */
+const CleanupIcon = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m11 10 3 3" />
+    <path d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z" />
+    <path d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031" />
+  </svg>
+);
+
+const ChevronDown = () => (
+  <svg className="solenoid-topbar__chev" viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 6 L8 10 L12 6" />
+  </svg>
+);
+
 export function TopBar() {
-  // Re-render on group collapse/expand so the all-groups toggle's icon + title flip.
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   const { allCollapsed } = groupCollapseSummary();
   const { snap, toggleSnap } = useGridSnap();
   const [tidyOptsOpen, setTidyOptsOpen] = useState(false);
   const layoutGroupRef = useRef<HTMLDivElement>(null);
-  // Clickaway: a pointerdown outside the layout group (opener + popover live inside it) closes.
-  useEffect(() => {
-    if (!tidyOptsOpen) return;
-    const onDown = (e: PointerEvent) => {
-      if (!layoutGroupRef.current?.contains(e.target as Node)) setTidyOptsOpen(false);
-    };
-    window.addEventListener("pointerdown", onDown, true);
-    return () => window.removeEventListener("pointerdown", onDown, true);
-  }, [tidyOptsOpen]);
+  useClickaway(tidyOptsOpen, layoutGroupRef, () => setTidyOptsOpen(false));
+  const [tidyMenuOpen, setTidyMenuOpen] = useState(false);
+  const tidyMenuRef = useRef<HTMLDivElement>(null);
+  useClickaway(tidyMenuOpen, tidyMenuRef, () => setTidyMenuOpen(false));
   return (
     <div
       className="solenoid-topbar"
       onPointerDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => { if (e.key === "?" || (e.key === "/" && e.ctrlKey)) frStore.toggle(); }}
     >
       {/* Masked, not <img>, so the mark recolors per theme; CSS swaps wordmark↔icon
           on a phone, where the icon doubles as the app-menu button. */}
@@ -99,16 +127,33 @@ export function TopBar() {
         </button>
       </div>
 
+      {/* Mobile-only: Tidy, its options and Cleanup share one dropdown pill; CSS hides it on desktop and hides those three in the layout pill on mobile. */}
+      <div className="solenoid-topbar__group solenoid-topbar__group--tidymenu" ref={tidyMenuRef}>
+        <button
+          className="solenoid-nav__btn solenoid-topbar__tidymenu-btn"
+          title="Tidy and Cleanup"
+          aria-label="Tidy and Cleanup"
+          aria-haspopup="dialog"
+          aria-expanded={tidyMenuOpen}
+          onClick={() => setTidyMenuOpen((o) => !o)}
+        >
+          <TidyIcon />
+          <ChevronDown />
+        </button>
+        {tidyMenuOpen && (
+          <TidyOptionsPopover
+            onClose={() => setTidyMenuOpen(false)}
+            actions={[
+              { label: "Tidy", hint: "Auto-arrange", icon: <TidyIcon />, run: () => void autoArrange() },
+              { label: "Cleanup", hint: "Tidy, collapse and fit", icon: <CleanupIcon />, run: () => void cleanup() },
+            ]}
+          />
+        )}
+      </div>
+
       <div className="solenoid-topbar__group solenoid-topbar__group--layout" ref={layoutGroupRef}>
-        <button className="solenoid-nav__btn" title="Tidy: auto-arrange (T)" aria-label="Tidy" onClick={() => autoArrange()}>
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="1.2" y="5.5" width="3.6" height="5" rx="0.8" />
-            <rect x="11.2" y="2" width="3.6" height="3.6" rx="0.8" />
-            <rect x="11.2" y="9.8" width="3.6" height="3.6" rx="0.8" />
-            <path d="M4.8 8 H8" />
-            <path d="M8 8 V3.8 H11.2" />
-            <path d="M8 8 V11.6 H11.2" />
-          </svg>
+        <button className="solenoid-nav__btn solenoid-topbar__tidy" title="Tidy: auto-arrange (T)" aria-label="Tidy" onClick={() => autoArrange()}>
+          <TidyIcon />
         </button>
         <button
           className="solenoid-nav__btn solenoid-topbar__tidy-opts"
@@ -118,18 +163,11 @@ export function TopBar() {
           aria-expanded={tidyOptsOpen}
           onClick={() => setTidyOptsOpen((o) => !o)}
         >
-          <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 6 L8 10 L12 6" />
-          </svg>
+          <ChevronDown />
         </button>
         {tidyOptsOpen && <TidyOptionsPopover onClose={() => setTidyOptsOpen(false)} />}
-        <button className="solenoid-nav__btn" title="Cleanup: tidy, collapse, and fit (C)" aria-label="Cleanup" onClick={() => cleanup()}>
-          {/* Lucide "brush" (ISC). */}
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m11 10 3 3" />
-            <path d="M6.5 21A3.5 3.5 0 1 0 3 17.5a2.62 2.62 0 0 1-.708 1.792A1 1 0 0 0 3 21z" />
-            <path d="M9.969 17.031 21.378 5.624a1 1 0 0 0-3.002-3.002L6.967 14.031" />
-          </svg>
+        <button className="solenoid-nav__btn solenoid-topbar__cleanup" title="Cleanup: tidy, collapse, and fit (C)" aria-label="Cleanup" onClick={() => cleanup()}>
+          <CleanupIcon />
         </button>
         {/* A duplicate of the Navigator's button (shared toggleAllGroups handler). */}
         <button

@@ -1,24 +1,21 @@
-// [[D32]] refreshOutsideRebuild (refreshConnection). Mechanics: specs/live-connections.md., [[C104]] foreignDocNetworkGate
-// A connection node holds only a *reference*, never the data. Its fetched Frame is
-// cached under key(), so an unrelated processGraph() re-hits neither network nor disk.
+// [[C103]] untrustedContentSeams
 import { createNotifier } from "./storeKit";
 import { processGraph } from "./process";
+import { allTopEditors } from "./activeGraph";
+import type { NodeEditor } from "rete";
+import type { Schemes } from "./schemes";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { docMetaStore } from "./docMetaStore";
 import { settingsStore } from "./settingsStore";
-import { pushNotice } from "./noticeStore";
+import { pushNotice, dismissNotice } from "./noticeStore";
 
-// "gated" = the per-document network permission (C2) has not been granted, so this
-// node fetched nothing (the [[C38]] sinkRunButtonOnly mirror: armed, not fired).
 export type ConnectionStatus = "idle" | "loading" | "ok" | "error" | "gated";
 
 export interface ConnectionState {
   status: ConnectionStatus;
-  /** Error text (status "error") — shown on the node. */
   message?: string;
   rows?: number;
   cols?: number;
-  /** epoch ms of the last successful fetch. */
   fetchedAt?: number;
 }
 
@@ -27,25 +24,60 @@ const IDLE: ConnectionState = { status: "idle" };
 let _gen = 0;
 const _tokens = new Map<string, number>();
 const _states = new Map<string, ConnectionState>();
+const _live = new Set<string>();
+const _landed = new Map<string, number>();
+const _timers = new Map<string, { minutes: number; handle: ReturnType<typeof setInterval> }>();
 const { notify, subscribe, version } = createNotifier();
 
 export const connectionStore = {
-  /** Global generation — bumped by "Refresh all". Part of every cache key. */
   gen: () => _gen,
-  /** Per-node refresh token — bumped by a single node's refresh button. */
   token: (id: string) => _tokens.get(id) ?? 0,
-  /** The composite cache key a connection node compares against. */
-  key: (id: string, reference: string) => `${_gen}:${_tokens.get(id) ?? 0}:${reference}`,
+  key(id: string, reference: string): string {
+    _live.add(id);
+    return `${_gen}:${_tokens.get(id) ?? 0}:${reference}`;
+  },
+
+  /** What a holder of these node ids must re-key on: every refresh and every landed fetch of a live card among them. */
+  liveStamp(ids: Iterable<string>): string {
+    const parts: string[] = [];
+    for (const id of ids) if (_live.has(id)) parts.push(`${id}:${_tokens.get(id) ?? 0}:${_landed.get(id) ?? 0}`);
+    return parts.length ? `${_gen}|${parts.join(",")}` : "";
+  },
+
+  landedCount(ids: Iterable<string>): number {
+    let n = 0;
+    for (const id of ids) n += _landed.get(id) ?? 0;
+    return n;
+  },
+
+  /** The card's own `data()` keeps its timer in step, so a card that is not mounted still refreshes. */
+  autoRefresh(id: string, minutes: number) {
+    _live.add(id);
+    const m = Math.max(0, Math.round(minutes || 0));
+    const cur = _timers.get(id);
+    if ((cur?.minutes ?? 0) === m) return;
+    clearTimer(id);
+    if (m <= 0) return;
+    const handle = setInterval(() => {
+      if (!nodeExists(id)) { clearTimer(id); return; }
+      void refreshConnection(id);
+    }, m * 60_000);
+    _timers.set(id, { minutes: m, handle });
+  },
+
+  autoRefreshMinutes: (id: string) => _timers.get(id)?.minutes ?? 0,
 
   getState: (id: string): ConnectionState => _states.get(id) ?? IDLE,
   setState(id: string, s: ConnectionState) {
     _states.set(id, s);
     notify();
   },
-  /** Drop a node's status + token (call when the node is removed). */
   forget(id: string) {
     const had = _states.delete(id);
     _tokens.delete(id);
+    _live.delete(id);
+    _landed.delete(id);
+    clearTimer(id);
     if (had) notify();
   },
 
@@ -53,96 +85,119 @@ export const connectionStore = {
   version,
 };
 
-// ─── Per-document network permission (C2 — the [[C38]] sinkRunButtonOnly mirror) ─────────
-// A FOREIGN document (opened / imported) fetches nothing until the user allows it.
-// Own documents and the global "always allow" bypass the gate. State lives on the
-// document's meta (docMetaStore, persisted in the sidecar); this reads it.
+function clearTimer(id: string): void {
+  const t = _timers.get(id);
+  if (t) clearInterval(t.handle);
+  _timers.delete(id);
+}
 
-/** May the OPEN document's connection nodes fetch? Own doc, an always-allow setting,
- *  or an explicit per-doc grant → yes; a foreign, undecided doc → no. */
+function hasDeep(editor: NodeEditor<Schemes>, id: string): boolean {
+  if (editor.getNode(id)) return true;
+  return editor.getNodes().some((n) => {
+    const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
+    return !!inner && hasDeep(inner, id);
+  });
+}
+
+// A card inside a deleted composite is never forgotten one by one, so its timer checks before it fires.
+function nodeExists(id: string): boolean {
+  return allTopEditors().some((e) => hasDeep(e, id));
+}
+
+
 export function networkAllowed(): boolean {
   if (!docMetaStore.isForeign()) return true;
   if (settingsStore.get("alwaysAllowNetwork")) return true;
   return docMetaStore.networkAllowed() === true;
 }
 
-// Nodes that tried to fetch while gated (this doc), so the one prompt can count them
-// and their cards can show the waiting state. Reset on doc rebuild (forgetAll).
 const _gated = new Set<string>();
 let _prompted = false;
 let _promptQueued = false;
+let _promptNotice: number | undefined;
+let _docGeneration = 0;
 
-/** The fetch gate the connection nodes call BEFORE hitting the network: true = go,
- *  false = blocked (the node records itself gated and the one per-doc prompt is
- *  scheduled). */
 export function requestNetwork(id: string): boolean {
   if (networkAllowed()) { _gated.delete(id); return true; }
   _gated.add(id);
   connectionStore.setState(id, { status: "gated" });
   if (!_prompted && !_promptQueued) {
     _promptQueued = true;
-    // Next tick: every node gating on this recompute has registered, so N is right.
     setTimeout(() => {
       _promptQueued = false;
       if (_prompted || networkAllowed() || _gated.size === 0) return;
       _prompted = true;
       const n = _gated.size;
-      pushNotice(
+      const generation = _docGeneration;
+      _promptNotice = pushNotice(
         `This document connects to ${n} ${n === 1 ? "service" : "services"}. Allow it to fetch?`,
         "warn",
-        0, // sticky until dismissed or Allowed
-        { label: "Allow", onClick: () => allowNetwork() },
+        0,
+        { label: "Allow", onClick: () => { if (generation === _docGeneration) allowNetwork(); } },
       );
     }, 0);
   }
   return false;
 }
 
-/** Grant the open document's network permission (the notice's Allow, or Settings ▸ Data),
- *  persist it (docMetaStore → sidecar), and re-fetch everything that was gated. */
 export function allowNetwork(): void {
   docMetaStore.setNetworkAllowed(true);
   _gated.clear();
   void refreshAllConnections();
 }
 
-// Node-forget seam: a deleted node's status/token must not linger for the tab's lifetime.
 registerNodeForget((id) => { _gated.delete(id); connectionStore.forget(id); });
 registerNodeForgetAll(() => {
   const had = _states.size > 0 || _tokens.size > 0;
   _states.clear();
   _tokens.clear();
+  _live.clear();
+  _landed.clear();
+  for (const id of [..._timers.keys()]) clearTimer(id);
   _gated.clear();
-  _prompted = false; // a fresh document re-asks
+  _prompted = false;
+  _docGeneration++;
+  if (_promptNotice !== undefined) { dismissNotice(_promptNotice); _promptNotice = undefined; }
   if (had) notify();
 });
 
-/** Called by a background fetch once its data lands; debounced to the next tick so
- *  several sources resolving together coalesce into one processGraph. */
 let _recalcQueued = false;
-// In-flight background loads, so a headless run can wait for every fetch/read to land
-// and recompute once (the app never waits — scheduleConnectionRecalc re-runs per node).
-const _inflight = new Set<Promise<unknown>>();
+const _inflight = new Map<Promise<unknown>, string | undefined>();
 
-/** Register a background load; resolves/rejects like the original. */
-export function trackInflight<T>(p: Promise<T>): Promise<T> {
-  _inflight.add(p);
+/** `id` names the card the load belongs to, so a holder of that card can wait on it. */
+export function trackInflight<T>(p: Promise<T>, id?: string): Promise<T> {
+  _inflight.set(p, id);
   const done = () => { _inflight.delete(p); };
   p.then(done, done);
   return p;
 }
 
-/** Resolves once every in-flight load registered so far has settled (errors included). */
-export async function whenConnectionsSettled(): Promise<void> {
-  while (_inflight.size > 0) await Promise.allSettled([..._inflight]);
+/** A card's background fetch: tracked until it has landed, then one coalesced recompute. */
+export function fetchInBackground(id: string, p: Promise<unknown>): void {
+  void trackInflight(p.then(() => scheduleConnectionRecalc(id)), id);
 }
 
-/** True while any background load registered via trackInflight is still pending. */
+function pendingFor(ids?: Iterable<string>): Promise<unknown>[] {
+  if (!ids) return [..._inflight.keys()];
+  const want = new Set(ids);
+  return [..._inflight].filter(([, id]) => id !== undefined && want.has(id)).map(([p]) => p);
+}
+
+/** With `ids`, only the loads of those cards. */
+export async function whenConnectionsSettled(ids?: Iterable<string>): Promise<void> {
+  const scope = ids ? [...ids] : undefined;
+  for (let pending = pendingFor(scope); pending.length > 0; pending = pendingFor(scope)) {
+    await Promise.allSettled(pending);
+  }
+}
+
 export function hasInflightConnections(): boolean {
   return _inflight.size > 0;
 }
 
-export function scheduleConnectionRecalc(): void {
+/** `id` names the card whose fetch landed, so a heavy composite holding it turns stale. */
+export function scheduleConnectionRecalc(id?: string): void {
+  if (id) _landed.set(id, (_landed.get(id) ?? 0) + 1);
   if (_recalcQueued) return;
   _recalcQueued = true;
   setTimeout(() => { _recalcQueued = false; void processGraph(); }, 0);
@@ -153,8 +208,6 @@ export async function refreshConnection(id: string): Promise<void> {
   await processGraph();
 }
 
-/** "Refresh all connections": bumps the generation every connection node keys on, and
- *  notifies subscribers that re-read outside the engine (an Import Obsidian Note). */
 export async function refreshAllConnections(): Promise<void> {
   _gen++;
   notify();

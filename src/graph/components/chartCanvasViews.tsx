@@ -1,20 +1,24 @@
 // [[C100]] chartIsAValue
-import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { appThemeStore } from "../appTheme";
-import { resolveColor } from "../palette";
+import { resolveColor, heightRampColor, divergingRampColor } from "../palette";
+import { colormapRgb, heatScale, type HeatScale } from "../colormaps";
+import { formatNumberSpec } from "../numberSpec";
+import { formatScalar } from "./format";
+import { heatmapLayout, heatCellAt, heatRowY, calendarLayout, calDayAt, calCellXY, type HeatLayout, type CalLayout } from "./heatmapLayout";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
+import type { ChartOptions } from "../nodes/chartOptions";
 import { serialToJsDate } from "../nodes/date";
-import { heightColor } from "./SurfaceView";
+import { compactTick, canvasFont, niceTicks, useAppFaces } from "./chartCore";
 import type {
-  WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload,
+  WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload,
   ProportionPayload, QuiverPayload, ContourPayload,
 } from "../chartValue";
+import { iterMin, iterMax } from "../nodes/mathUtils";
 
-// Canvas figure views: one DOM element regardless of data size, themed by reading the live
-// CSS vars at draw time (the components subscribe to appThemeStore so a flip redraws).
 
 type Ctx = CanvasRenderingContext2D;
 
-/** Supersampled 2D context: render above device resolution, let the browser downscale. */
 function setupCanvas(canvas: HTMLCanvasElement, W: number, H: number): Ctx | null {
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
@@ -27,7 +31,6 @@ function setupCanvas(canvas: HTMLCanvasElement, W: number, H: number): Ctx | nul
   return ctx;
 }
 
-/** Theme colors resolved once per draw, off the canvas's computed style. */
 function themeInk(canvas: HTMLCanvasElement) {
   const cs = getComputedStyle(canvas);
   const v = (name: string, fb: string) => cs.getPropertyValue(name).trim() || fb;
@@ -43,23 +46,10 @@ function themeInk(canvas: HTMLCanvasElement) {
   };
 }
 
-const TICK_FONT = "500 8.5px system-ui, sans-serif";
+const tickFont = (fs: number) => canvasFont(500, 8.5 * fs);
 
-/** Compact tick label: 3 significant digits, K/M/B above a thousand. */
-function fmtTick(n: number): string {
-  const a = Math.abs(n);
-  if (a >= 1e9) return `${trim3(n / 1e9)}B`;
-  if (a >= 1e6) return `${trim3(n / 1e6)}M`;
-  if (a >= 1e3) return `${trim3(n / 1e3)}K`;
-  return trim3(n);
-}
-function trim3(n: number): string {
-  return String(Number(n.toPrecision(3)));
-}
-
-/** Left-axis gridlines + ticks over [lo, hi] mapped by sy; returns the plot-left x. */
-function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: number, sy: (v: number) => number, x0: number, x1: number) {
-  ctx.font = TICK_FONT;
+function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: number, sy: (v: number) => number, x0: number, x1: number, fs: number) {
+  ctx.font = tickFont(fs);
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
   const ticks = 3;
@@ -72,12 +62,11 @@ function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: n
     ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
     ctx.globalAlpha = 0.9;
     ctx.fillStyle = ink.dim;
-    ctx.fillText(fmtTick(v), x0 - 3, y);
+    ctx.fillText(compactTick(v), x0 - 3, y);
   }
   ctx.globalAlpha = 1;
 }
 
-/** Truncate a label to fit `max` px with an ellipsis. */
 function fitLabel(ctx: Ctx, s: string, max: number): string {
   if (ctx.measureText(s).width <= max) return s;
   let t = s;
@@ -85,7 +74,6 @@ function fitLabel(ctx: Ctx, s: string, max: number): string {
   return `${t}…`;
 }
 
-/** Padded value range (never zero-span). */
 function span(lo: number, hi: number): [number, number] {
   if (!Number.isFinite(lo) || !Number.isFinite(hi)) return [0, 1];
   if (lo === hi) return [lo - 1, hi + 1];
@@ -95,15 +83,12 @@ function span(lo: number, hi: number): [number, number] {
 
 // ─── Waterfall ─────────────────────────────────────────────────────────────────
 
-function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number, H: number) {
+function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number, H: number, fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
   const n = p.values.length;
   if (n === 0) return;
-  // Running totals: bar i spans [cum, cum + v]; the Total bar spans [0, sum].
-  // A null delta is a gap: the slot is kept (so labels stay aligned) but nothing is drawn and
-  // the running total does not move — an unknown step never reads as a zero one.
   const bars: Array<{ name: string; a: number; b: number; kind: "up" | "down" | "total" | "gap" }> = [];
   let cum = 0;
   for (let i = 0; i < n; i++) {
@@ -117,9 +102,9 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
   let lo = 0, hi = 0;
   for (const b of bars) { if (b.kind !== "gap") { lo = Math.min(lo, b.a, b.b); hi = Math.max(hi, b.a, b.b); } }
   [lo, hi] = span(lo, hi);
-  const padL = 30, padR = 4, padT = 4, padB = 14;
+  const padL = Math.round(30 * fs), padR = 4, padT = Math.max(4, Math.round(4.25 * fs)), padB = Math.round(14 * fs);
   const sy = (v: number) => padT + ((hi - v) / (hi - lo)) * (H - padT - padB);
-  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR);
+  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR, fs);
 
   const plotW = W - padL - padR;
   const bw = plotW / bars.length;
@@ -145,12 +130,11 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
       ctx.globalAlpha = 1;
     }
     if (bw >= 20) {
-      ctx.font = TICK_FONT;
+      ctx.font = tickFont(fs);
       ctx.fillStyle = ink.dim;
       ctx.fillText(fitLabel(ctx, b.name, bw - 2), padL + i * bw + bw / 2, H - padB + 3);
     }
   }
-  // Zero line, over the bars so the baseline stays legible.
   ctx.strokeStyle = ink.text;
   ctx.globalAlpha = 0.5;
   ctx.lineWidth = 1;
@@ -160,14 +144,12 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
 
 // ─── Candlestick ───────────────────────────────────────────────────────────────
 
-function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: number) {
+function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: number, fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
   const n = Math.min(p.open.length, p.high.length, p.low.length, p.close.length);
   if (n === 0) return;
-  // A candle with any unknown of the four, or a high below its low, is a gap; a body that
-  // strays outside [low, high] is clamped into the wick.
   const candle = (i: number): { o: number; h: number; l: number; c: number } | null => {
     const o = p.open[i], h = p.high[i], l = p.low[i], c = p.close[i];
     if (o == null || h == null || l == null || c == null || h < l) return null;
@@ -178,9 +160,9 @@ function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: n
   for (let i = 0; i < n; i++) { const k = candle(i); if (k) { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); } }
   if (!Number.isFinite(lo)) return;
   [lo, hi] = span(lo, hi);
-  const padL = 30, padR = 4, padT = 4, padB = 13;
+  const padL = Math.round(30 * fs), padR = 4, padT = Math.max(4, Math.round(4.25 * fs)), padB = Math.round(13 * fs);
   const sy = (v: number) => padT + ((hi - v) / (hi - lo)) * (H - padT - padB);
-  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR);
+  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR, fs);
 
   const bw = (W - padL - padR) / n;
   const bodyW = Math.max(1.5, Math.min(9, bw * 0.6));
@@ -197,8 +179,7 @@ function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: n
     ctx.fillStyle = col;
     ctx.fillRect(cx - bodyW / 2, Math.min(yO, yC), bodyW, Math.max(1, Math.abs(yC - yO)));
   }
-  // First + last date under the axis (the card is too small for every tick).
-  ctx.font = TICK_FONT;
+  ctx.font = tickFont(fs);
   ctx.fillStyle = ink.dim;
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
@@ -209,7 +190,7 @@ function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: n
 
 // ─── Boxplot ───────────────────────────────────────────────────────────────────
 
-function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H: number) {
+function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H: number, fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -221,9 +202,9 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
     hi = Math.max(hi, b.hi, ...b.outliers);
   }
   [lo, hi] = span(lo, hi);
-  const padL = 30, padR = 4, padT = 4, padB = 14;
+  const padL = Math.round(30 * fs), padR = 4, padT = Math.max(4, Math.round(4.25 * fs)), padB = Math.round(14 * fs);
   const sy = (v: number) => padT + ((hi - v) / (hi - lo)) * (H - padT - padB);
-  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR);
+  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR, fs);
 
   const bw = (W - padL - padR) / boxes.length;
   const boxW = Math.max(6, Math.min(36, bw * 0.55));
@@ -251,7 +232,7 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
       ctx.beginPath(); ctx.arc(cx, sy(v), 1.6, 0, Math.PI * 2); ctx.fill();
     }
     if (b.name && bw >= 20) {
-      ctx.font = TICK_FONT;
+      ctx.font = tickFont(fs);
       ctx.fillStyle = ink.dim;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
@@ -262,97 +243,249 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
 
 // ─── Calendar heatmap ──────────────────────────────────────────────────────────
 
-/** Monday-first weekday index (0 = Mon … 6 = Sun) for a date serial. */
-function mondayIndex(serial: number): number {
-  return (serialToJsDate(serial).getUTCDay() + 6) % 7;
-}
-
-function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H: number) {
+function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, o: ChartOptions, W: number, H: number, fs: number): CalLayout | null {
   const ctx = setupCanvas(canvas, W, H);
-  if (!ctx) return;
+  if (!ctx) return null;
   const ink = themeInk(canvas);
-  if (p.days.length === 0) return;
-  // The window is capped at a year AND at what the box renders legibly, so a multi-year
-  // feed shows its most recent weeks instead of sub-pixel mush.
-  const byDay = new Map<number, number>();
-  for (let i = 0; i < p.days.length; i++) byDay.set(p.days[i], (byDay.get(p.days[i]) ?? 0) + (p.values[i] ?? 0));
-  const dayList = [...byDay.keys()];
-  const end = Math.max(...dayList);
-  const dataStart = Math.min(...dayList);
-  const padL = 14, padT = 11, padR = 1, padB = 1;
-  const MIN_CELL = 3.2; // px — below this the grid stops reading as days
-  const endMonday = end - mondayIndex(end);
-  const spanStart = Math.max(dataStart, end - 365);
-  const wantWeeks = (endMonday - (spanStart - mondayIndex(spanStart))) / 7 + 1;
-  const maxWeeks = Math.max(4, Math.floor((W - padL - padR) / MIN_CELL));
-  const weeks = Math.min(wantWeeks, maxWeeks);
-  const gridStart = endMonday - (weeks - 1) * 7; // a Monday, so columns stay week-aligned
-  const start = Math.max(spanStart, gridStart);
-  const truncated = dataStart < start;
+  if (p.days.length === 0) return null;
+  const showCbar = o.cbar !== false;
+  ctx.font = tickFont(fs);
+  let tickW = 0;
+  if (showCbar) {
+    const est = heatScale(iterMin(p.values), iterMax(p.values), o);
+    for (const v of scaleTicks(est)) tickW = Math.max(tickW, ctx.measureText(compactTick(v)).width);
+  }
+  const L = calendarLayout(p.days, p.values, W, H, fs, showCbar ? tickW : null);
+  if (!L) return null;
+  const { byDay, start, end, gridStart, weeks, cell, gap, padL, padT, perBand } = L;
+  const scale = heatScale(L.lo, L.hi, o);
+  // No cmap and no center keeps the accent, at an opacity by value over the empty-day color.
+  const color = heatColorFn(o);
+  const paint: Paint = o.cmap || o.center !== undefined
+    ? (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }
+    : (c, x, y, w, h, t) => {
+      c.fillStyle = ink.sunken; c.fillRect(x, y, w, h);
+      c.fillStyle = ink.accent; c.globalAlpha = 0.16 + 0.84 * t; c.fillRect(x, y, w, h); c.globalAlpha = 1;
+    };
 
-  let vLo = Infinity, vHi = -Infinity;
-  for (const [d, v] of byDay) { if (d >= start) { vLo = Math.min(vLo, v); vHi = Math.max(vHi, v); } }
-  const norm = (v: number) => (vHi > vLo ? (v - vLo) / (vHi - vLo) : 0.75);
-
-  const cell = Math.min((W - padL - padR) / weeks, (H - padT - padB) / 7);
-  const gap = cell > 6 ? 1 : 0.5;
-
-  // Truncation is state the reader must know — the data reaches further back than the grid.
-  if (truncated) {
-    ctx.font = TICK_FONT;
-    ctx.fillStyle = ink.dim;
+  ctx.fillStyle = ink.dim;
+  if (L.truncated) {
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
-    ctx.fillText(`last ${weeks} wk`, W - padR - 1, padT - 2);
+    ctx.fillText(`last ${weeks} wk`, padL + perBand * cell, padT - 2);
   }
-
-  // Month labels along the top: at each week whose Monday enters a new month.
-  ctx.font = TICK_FONT;
-  ctx.fillStyle = ink.dim;
   ctx.textAlign = "left";
   ctx.textBaseline = "bottom";
+  // A band's first week labels a month carried over from the band above when two clear weeks follow, so it never crowds the next.
   let lastMonth = -1;
   for (let w = 0; w < weeks; w++) {
     const m = serialToJsDate(gridStart + w * 7).getUTCMonth();
-    if (m !== lastMonth) {
-      if (w > 0 || weeks < 20) ctx.fillText("JFMAMJJASOND"[m] ?? "", padL + w * cell, padT - 2);
+    const bandStart = w % perBand === 0;
+    if (m !== lastMonth || bandStart) {
+      const clear = [1, 2].every((k) => serialToJsDate(gridStart + (w + k) * 7).getUTCMonth() === m);
+      if (m !== lastMonth ? (w > 0 || weeks < 20) : clear) {
+        const { x, y } = calCellXY(L, w, 0);
+        ctx.fillText("JFMAMJJASOND"[m] ?? "", x, y - 2);
+      }
       lastMonth = m;
     }
   }
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  for (const [row, ch] of [[0, "M"], [2, "W"], [4, "F"]] as const) {
-    ctx.fillText(ch, padL - 3, padT + (row + 0.5) * cell);
+  for (let b = 0; b < L.bands; b++) {
+    for (const [row, ch] of [[0, "M"], [2, "W"], [4, "F"]] as const) {
+      ctx.fillText(ch, padL - 3, calCellXY(L, b * perBand, row).y + cell / 2);
+    }
   }
 
   for (let w = 0; w < weeks; w++) {
     for (let r = 0; r < 7; r++) {
       const day = gridStart + w * 7 + r;
       if (day < start || day > end) continue;
-      const x = padL + w * cell, y = padT + r * cell;
+      const { x, y } = calCellXY(L, w, r);
       const v = byDay.get(day);
-      ctx.fillStyle = ink.sunken;
-      ctx.fillRect(x, y, cell - gap, cell - gap);
-      if (v != null) {
-        ctx.fillStyle = ink.accent;
-        ctx.globalAlpha = 0.16 + 0.84 * norm(v);
-        ctx.fillRect(x, y, cell - gap, cell - gap);
-        ctx.globalAlpha = 1;
+      if (v == null) { ctx.fillStyle = ink.sunken; ctx.fillRect(x, y, cell - gap, cell - gap); }
+      else paint(ctx, x, y, cell - gap, cell - gap, scale.t(v));
+    }
+  }
+  if (L.cbar) drawColorbar(ctx, ink, L.cbar, scale, paint, scaleTicks(scale), Math.ceil(10.5 * fs));
+  return L;
+}
+
+// ─── Heatmap ──────────────────────────────────────────────────────────────────
+
+type Rgb = [number, number, number];
+const rgbCss = ([r, g, b]: Rgb) => `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+const inkOn = ([r, g, b]: Rgb) => ((0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? "#1a1a1a" : "#ffffff");
+
+/** The color of `t` under the options: the named cmap, else the palette's diverging ramp with a center, else its height ramp. */
+function heatColorFn(o: ChartOptions): (t: number) => Rgb {
+  if (o.cmap) return (t) => colormapRgb(o.cmap!, t) ?? heightRampColor(t);
+  return o.center !== undefined ? divergingRampColor : heightRampColor;
+}
+
+function heatExtent(z: (number | null)[][]): [number, number] {
+  let lo = Infinity, hi = -Infinity;
+  for (const row of z) for (const v of row) if (v != null && Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  return [lo, hi];
+}
+
+type Paint = (ctx: Ctx, x: number, y: number, w: number, h: number, t: number) => void;
+
+/** A vertical scale bar, high at the top, its ticks labeled unless two would collide. */
+function drawColorbar(ctx: Ctx, ink: ReturnType<typeof themeInk>, box: { x: number; y: number; w: number; h: number; textX: number }, scale: HeatScale, paint: Paint, ticks: number[], lineH: number) {
+  const { x, y, w, h, textX } = box;
+  const span = scale.hi - scale.lo;
+  for (let i = 0; i < h; i++) {
+    const v = span > 0 ? scale.hi - (span * (i + 0.5)) / h : scale.lo;
+    paint(ctx, x, y + i, w, Math.min(1.5, h - i), scale.t(v));
+  }
+  ctx.strokeStyle = ink.border;
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = ink.dim;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  const drawn: number[] = [];
+  for (const v of ticks) {
+    const ty = span > 0 ? y + ((scale.hi - v) / span) * h : y + h / 2;
+    if (drawn.some((d) => Math.abs(d - ty) < lineH)) continue;
+    drawn.push(ty);
+    ctx.fillText(compactTick(v), textX, ty);
+  }
+}
+
+const scaleTicks = (s: HeatScale) => [s.hi, ...(s.center !== undefined && s.center > s.lo && s.center < s.hi ? [s.center] : []), s.lo];
+
+const annotText = (v: number, fmt: string | undefined) => (fmt ? formatNumberSpec(v, fmt) : null) ?? compactTick(v);
+
+function drawHeatmap(canvas: HTMLCanvasElement, p: HeatmapPayload, o: ChartOptions, W: number, H: number, fs: number): HeatLayout | null {
+  const ctx = setupCanvas(canvas, W, H);
+  if (!ctx) return null;
+  const ink = themeInk(canvas);
+  const nR = p.z.length, nC = p.cols.length;
+  const [dLo, dHi] = heatExtent(p.z);
+  if (nR === 0 || nC === 0 || !Number.isFinite(dLo)) return null;
+  const scale = heatScale(dLo, dHi, o);
+  const color = heatColorFn(o);
+  const cbarTicks = scaleTicks(scale);
+
+  ctx.font = tickFont(fs);
+  const widest = (xs: Iterable<string>) => { let m = 0; for (const x of xs) m = Math.max(m, ctx.measureText(x).width); return m; };
+  const showCbar = o.cbar !== false;
+  const note = p.totalRows !== undefined || p.totalCols !== undefined;
+  const L = heatmapLayout({
+    nR, nC, W, H, fs,
+    rowLabelW: widest(p.rows), colLabelW: widest(p.cols),
+    cbarTickW: showCbar ? widest(cbarTicks.map(compactTick)) : 0,
+    xlabel: !!o.xlabel, ylabel: !!o.ylabel, cbar: showCbar,
+    aspect: o.aspect ?? "equal", lower: o.origin === "lower", note,
+  });
+  const { gx, cw, ch } = L;
+
+  // Cells touch: each overdraws its right and bottom neighbor by half a pixel so antialiasing leaves no seam.
+  for (let r = 0; r < nR; r++) {
+    const y = heatRowY(L, r);
+    const row = p.z[r];
+    for (let c = 0; c < nC; c++) {
+      const v = row[c];
+      const x = gx + c * cw;
+      ctx.fillStyle = v == null ? ink.sunken : rgbCss(color(scale.t(v)));
+      ctx.fillRect(x, y, cw + (c < nC - 1 ? 0.5 : 0), ch + ((L.lower ? r > 0 : r < nR - 1) ? 0.5 : 0));
+    }
+  }
+
+  if (o.annot !== false) {
+    const size = Math.min(12 * fs, Math.max(8.5 * fs, Math.min(cw, ch) * 0.3));
+    ctx.font = canvasFont(500, size, "mono");
+    let fits = ch >= size + 3;
+    if (fits && o.annot === undefined) {
+      for (const row of p.z) { for (const v of row) if (v != null && ctx.measureText(annotText(v, o.fmt)).width > cw - 4) { fits = false; break; } if (!fits) break; }
+    }
+    if (fits || o.annot === true) {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (let r = 0; r < nR; r++) {
+        const cy = heatRowY(L, r) + ch / 2;
+        for (let c = 0; c < nC; c++) {
+          const v = p.z[r][c];
+          if (v == null) continue;
+          const text = annotText(v, o.fmt);
+          let f = size;
+          const w = ctx.measureText(text).width;
+          if (w > cw - 3) f = size * (cw - 3) / w;
+          if (f < 6 || ch < f + 2) continue;
+          ctx.font = canvasFont(500, f, "mono");
+          ctx.fillStyle = inkOn(color(scale.t(v)));
+          ctx.fillText(text, gx + c * cw + cw / 2, cy);
+          if (f !== size) ctx.font = canvasFont(500, size, "mono");
+        }
       }
     }
   }
+
+  ctx.font = tickFont(fs);
+  ctx.fillStyle = ink.dim;
+  if (L.rowLabels) {
+    const { x, w, step } = L.rowLabels;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let r = 0; r < nR; r += step) ctx.fillText(fitLabel(ctx, p.rows[r] ?? "", w), x, heatRowY(L, r) + ch / 2);
+  }
+  if (L.colLabels) {
+    const { y, h, rotated, step } = L.colLabels;
+    for (let c = 0; c < nC; c += step) {
+      const cx = gx + c * cw + cw / 2;
+      if (rotated) {
+        ctx.save();
+        ctx.translate(cx, y);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText(fitLabel(ctx, p.cols[c] ?? "", h), 0, 0);
+        ctx.restore();
+      } else {
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(fitLabel(ctx, p.cols[c] ?? "", Math.max(cw - 2, 8)), cx, y);
+      }
+    }
+  }
+
+  if (L.cbar) drawColorbar(ctx, ink, L.cbar, scale, (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }, cbarTicks, L.lineH);
+
+  ctx.fillStyle = ink.dim;
+  ctx.font = canvasFont(600, 9 * fs);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  if (L.xlabel && o.xlabel) ctx.fillText(fitLabel(ctx, o.xlabel, cw * nC), L.xlabel.x, L.xlabel.y);
+  if (L.ylabel && o.ylabel) {
+    ctx.save();
+    ctx.translate(L.ylabel.x, L.ylabel.y);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(fitLabel(ctx, o.ylabel, ch * nR), 0, 0);
+    ctx.restore();
+  }
+  if (L.note) {
+    const parts: string[] = [];
+    if (p.totalRows !== undefined) parts.push(`${nR} of ${p.totalRows} rows`);
+    if (p.totalCols !== undefined) parts.push(`${nC} of ${p.totalCols} columns`);
+    ctx.font = tickFont(fs);
+    ctx.textAlign = "right";
+    ctx.fillText(parts.join(", "), L.note.x, L.note.y);
+  }
+  return L;
 }
 
 // ─── Waffle ────────────────────────────────────────────────────────────────────
 
-function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, H: number, colors: string[]) {
+function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, H: number, colors: string[], fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
   const vals = p.values.filter((v) => Number.isFinite(v) && v > 0);
   if (p.values.length === 0) return;
 
-  // Multiple categories split by share via largest-remainder, so counts always sum to 100.
   let counts: Array<{ n: number; color: string; name: string }> = [];
   const single = p.values.length === 1 && p.values[0] >= 0 && p.values[0] <= 1;
   if (single) {
@@ -369,7 +502,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
   }
 
   const legend = !single && counts.some((c) => c.name);
-  const legendH = legend ? 12 : 0;
+  const legendH = legend ? Math.round(12 * fs) : 0;
   const side = Math.min(W, H - legendH);
   const cell = side / 10;
   const gap = Math.max(0.75, cell * 0.12);
@@ -378,7 +511,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
   let k = 0;
   for (const c of counts) {
     for (let j = 0; j < c.n && k < 100; j++, k++) {
-      const col = k % 10, row = 9 - Math.floor(k / 10); // fill bottom-up
+      const col = k % 10, row = 9 - Math.floor(k / 10);
       ctx.fillStyle = c.color;
       ctx.fillRect(ox + col * cell, oy + row * cell, cell - gap, cell - gap);
     }
@@ -389,7 +522,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
     ctx.fillRect(ox + col * cell, oy + row * cell, cell - gap, cell - gap);
   }
   if (legend) {
-    ctx.font = TICK_FONT;
+    ctx.font = tickFont(fs);
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     let x = ox;
@@ -399,7 +532,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
       ctx.fillStyle = c.color;
       ctx.fillRect(x, y - 3, 6, 6);
       ctx.fillStyle = ink.dim;
-      const t = fitLabel(ctx, c.name, 52);
+      const t = fitLabel(ctx, c.name, 52 * fs);
       ctx.fillText(t, x + 8, y);
       x += 8 + ctx.measureText(t).width + 8;
       if (x > ox + side - 20) break;
@@ -409,7 +542,8 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
 
 // ─── Vector field (quiver) ─────────────────────────────────────────────────────
 
-function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: number) {
+function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, o: ChartOptions, W: number, H: number) {
+  const color = heatColorFn({ cmap: o.cmap });
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -428,7 +562,6 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
   if (maxMag === 0) maxMag = 1;
   const reach = Math.min(cw, ch) * 0.46;
 
-  // +v points UP on screen (plot convention), so canvas-y is negated.
   for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
     const cx = pad + (ix + 0.5) * cw, cy = pad + (iy + 0.5) * ch;
     const u = p.u[iy]?.[ix], v = p.v[iy]?.[ix];
@@ -441,7 +574,7 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
     }
     const mag = Math.hypot(u, v);
     const t = mag / maxMag;
-    const [r, g, b] = heightColor(t);
+    const [r, g, b] = color(t);
     const col = `rgb(${r | 0},${g | 0},${b | 0})`;
     const len = reach * (0.15 + 0.85 * t);
     const ang = Math.atan2(-v, u);
@@ -449,15 +582,13 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
     const hx = cx + len * cosA, hy = cy + len * sinA;
     const tx = cx - len * cosA, ty = cy - len * sinA;
     ctx.strokeStyle = col;
-    // Thinner shaft on small arrows — a full-width stroke on a 3px arrow reads as a blob.
     ctx.lineWidth = Math.max(0.7, Math.min(cw, ch) * 0.07 * (0.55 + 0.45 * t));
     ctx.lineCap = "round";
-    // The shaft stops at the head's base so it can't poke past the tip.
     const hl = Math.min(4.5, len * 0.55);
     if (hl >= 2.2) {
-      const bx = hx - hl * cosA, by = hy - hl * sinA; // head base on the shaft
+      const bx = hx - hl * cosA, by = hy - hl * sinA;
       ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(bx, by); ctx.stroke();
-      const wh = hl * 0.45; // half-width of the head base
+      const wh = hl * 0.45;
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.moveTo(hx, hy);
@@ -473,29 +604,63 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
 
 // ─── Contour ───────────────────────────────────────────────────────────────────
 
-function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H: number) {
+export interface ContourLayout {
+  x0: number; x1: number; y0: number; y1: number;
+  xmin: number; xmax: number; ymin: number; ymax: number;
+}
+
+/** The height at a data point by bilinear interpolation in its grid cell, or null outside the grid or on a hole. */
+export function contourAt(p: ContourPayload, x: number, y: number): number | null {
+  const find = (axis: number[], v: number) => {
+    for (let i = 0; i < axis.length - 1; i++) {
+      const a = axis[i], b = axis[i + 1];
+      if ((v >= a && v <= b) || (v <= a && v >= b)) return { i, f: b === a ? 0 : (v - a) / (b - a) };
+    }
+    return null;
+  };
+  const cx = find(p.xs, x), cy = find(p.ys, y);
+  if (!cx || !cy) return null;
+  const at = (ix: number, iy: number) => { const v = p.z[iy]?.[ix]; return v != null && Number.isFinite(v) ? v : null; };
+  const z00 = at(cx.i, cy.i), z10 = at(cx.i + 1, cy.i), z01 = at(cx.i, cy.i + 1), z11 = at(cx.i + 1, cy.i + 1);
+  if (z00 == null || z10 == null || z01 == null || z11 == null) return null;
+  const { f: u } = cx, { f: v } = cy;
+  return z00 * (1 - u) * (1 - v) + z10 * u * (1 - v) + z01 * (1 - u) * v + z11 * u * v;
+}
+
+function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, o: ChartOptions, W: number, H: number, fs: number): ContourLayout | null {
   const ctx = setupCanvas(canvas, W, H);
-  if (!ctx) return;
+  if (!ctx) return null;
   const ink = themeInk(canvas);
   const { xs, ys, z } = p;
   const nx = xs.length, ny = ys.length;
   const fin = (v: number | null | undefined): v is number => v != null && Number.isFinite(v);
-  if (nx < 2 || ny < 2) return;
+  if (nx < 2 || ny < 2) return null;
   let zmin = Infinity, zmax = -Infinity;
   for (const row of z) for (const v of row) if (fin(v)) { zmin = Math.min(zmin, v); zmax = Math.max(zmax, v); }
-  if (!Number.isFinite(zmin)) return;
-  if (zmin === zmax) zmax = zmin + 1;
+  if (!Number.isFinite(zmin)) return null;
+  const scale = heatScale(zmin, zmax, o);
+  const color = heatColorFn(o);
+  const xmin = iterMin(xs), xmax = iterMax(xs);
+  const ymin = iterMin(ys), ymax = iterMax(ys);
 
-  // Real gutters: drawn over the filled bands the coordinate hints are illegible.
-  const padL = 6, padR = 6, padT = 12, padB = 12;
-  const xmin = Math.min(...xs), xmax = Math.max(...xs);
-  const ymin = Math.min(...ys), ymax = Math.max(...ys);
-  const sx = (v: number) => padL + ((v - xmin) / (xmax - xmin || 1)) * (W - padL - padR);
-  const sy = (v: number) => H - padB - ((v - ymin) / (ymax - ymin || 1)) * (H - padT - padB); // y up
-  const tz = (v: number) => (v - zmin) / (zmax - zmin);
+  // Gutters: y ticks and label left, x ticks and label below, the colorbar right, half a tick's text above.
+  ctx.font = tickFont(fs);
+  const lineH = Math.ceil(10.5 * fs);
+  const xTicks = (w: number) => niceTicks(xmin, xmax, Math.max(3, Math.floor(w / (45 * fs))));
+  const yTicks = (h: number) => niceTicks(ymin, ymax, Math.max(3, Math.floor(h / (30 * fs))));
+  const widest = (xs: number[]) => xs.reduce((m, v) => Math.max(m, ctx.measureText(compactTick(v)).width), 0);
+  const cbarTicks = scaleTicks(scale);
+  const cbarW = o.cbar === false ? 0 : 6 + 8 + 3 + widest(cbarTicks);
+  const padT = Math.ceil(5 * fs);
+  const padB = lineH + 3 + (o.xlabel ? lineH + 2 : 0);
+  const labelW = o.ylabel ? lineH + 2 : 0;
+  const padL = labelW + widest(yTicks(H - padT - padB)) + 5;
+  const padR = Math.max(cbarW, widest([xmax]) / 2 + 1);
+  const L: ContourLayout = { x0: padL, x1: W - padR, y0: padT, y1: H - padB, xmin, xmax, ymin, ymax };
+  if (L.x1 - L.x0 < 10 || L.y1 - L.y0 < 10) return null;
+  const sx = (v: number) => L.x0 + ((v - xmin) / (xmax - xmin || 1)) * (L.x1 - L.x0);
+  const sy = (v: number) => L.y1 - ((v - ymin) / (ymax - ymin || 1)) * (L.y1 - L.y0);
 
-  // Each cell subdivides into bilinear-shaded subquads; a cell with a missing corner stays
-  // blank, a hole like Surface.
   const SUB = 6;
   for (let iy = 0; iy < ny - 1; iy++) for (let ix = 0; ix < nx - 1; ix++) {
     const z00 = z[iy]?.[ix], z10 = z[iy]?.[ix + 1], z01 = z[iy + 1]?.[ix], z11 = z[iy + 1]?.[ix + 1];
@@ -504,26 +669,24 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
       const u0 = i / SUB, u1 = (i + 1) / SUB, v0 = j / SUB, v1 = (j + 1) / SUB;
       const um = (u0 + u1) / 2, vm = (v0 + v1) / 2;
       const zc = z00 * (1 - um) * (1 - vm) + z10 * um * (1 - vm) + z01 * (1 - um) * vm + z11 * um * vm;
-      const [r, g, b] = heightColor(tz(zc));
       const xa = sx(xs[ix] + (xs[ix + 1] - xs[ix]) * u0), xb = sx(xs[ix] + (xs[ix + 1] - xs[ix]) * u1);
       const ya = sy(ys[iy] + (ys[iy + 1] - ys[iy]) * v0), yb = sy(ys[iy] + (ys[iy + 1] - ys[iy]) * v1);
-      ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
+      ctx.fillStyle = rgbCss(color(scale.t(zc)));
       // Overdraw by half a px so the subquads butt together without seams.
       ctx.fillRect(Math.min(xa, xb) - 0.5, Math.min(ya, yb) - 0.5, Math.abs(xb - xa) + 1, Math.abs(yb - ya) + 1);
     }
   }
 
-  // Iso-lines by marching squares, `levels` evenly spaced strictly inside the range.
   ctx.strokeStyle = "rgba(0,0,0,0.45)";
   ctx.lineWidth = 0.8;
   const levels = Math.max(2, p.levels | 0);
+  const zTop = zmax === zmin ? zmin + 1 : zmax;
   for (let li = 1; li <= levels; li++) {
-    const t = zmin + ((zmax - zmin) * li) / (levels + 1);
+    const t = zmin + ((zTop - zmin) * li) / (levels + 1);
     for (let iy = 0; iy < ny - 1; iy++) for (let ix = 0; ix < nx - 1; ix++) {
       const z00 = z[iy]?.[ix], z10 = z[iy]?.[ix + 1], z01 = z[iy + 1]?.[ix], z11 = z[iy + 1]?.[ix + 1];
       if (!fin(z00) || !fin(z10) || !fin(z01) || !fin(z11)) continue;
-      // Edge crossings (linear interpolation), edges: top (00→10), right (10→11),
-      // bottom (01→11), left (00→01) in grid space.
+      // Edges in grid space: top (00→10), right (10→11), bottom (01→11), left (00→01).
       const pts: Array<[number, number]> = [];
       const cross = (a: number, b: number, ax: number, ay: number, bx: number, by: number) => {
         if ((a - t) * (b - t) < 0) {
@@ -539,7 +702,6 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
       if (pts.length === 2) {
         ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]); ctx.stroke();
       } else if (pts.length === 4) {
-        // Saddle: split by the cell-center value.
         const zc = (z00 + z10 + z01 + z11) / 4;
         const pairs = zc > t ? [[0, 1], [2, 3]] : [[0, 3], [1, 2]];
         for (const [a, b] of pairs) {
@@ -549,74 +711,193 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
     }
   }
 
-  // Corner coordinate hints, in the gutters (the card is too small for full axes):
-  // x range along the bottom, y max above the top-left.
-  ctx.font = TICK_FONT;
+  // Axes: a hairline frame, outward ticks at round numbers.
+  ctx.strokeStyle = ink.border;
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(L.x0, L.y0, L.x1 - L.x0, L.y1 - L.y0);
+  ctx.font = tickFont(fs);
   ctx.fillStyle = ink.dim;
-  ctx.textBaseline = "bottom";
-  ctx.textAlign = "left";
-  ctx.fillText(fmtTick(xmin), padL, H - 1);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for (const v of xTicks(L.x1 - L.x0)) {
+    const x = sx(v);
+    ctx.beginPath(); ctx.moveTo(x, L.y1); ctx.lineTo(x, L.y1 + 3); ctx.stroke();
+    ctx.fillText(compactTick(v), x, L.y1 + 3);
+  }
   ctx.textAlign = "right";
-  ctx.fillText(fmtTick(xmax), W - padR, H - 1);
-  ctx.textAlign = "left";
-  ctx.fillText(fmtTick(ymax), padL, padT - 2);
+  ctx.textBaseline = "middle";
+  for (const v of yTicks(L.y1 - L.y0)) {
+    const y = sy(v);
+    ctx.beginPath(); ctx.moveTo(L.x0 - 3, y); ctx.lineTo(L.x0, y); ctx.stroke();
+    ctx.fillText(compactTick(v), L.x0 - 4, y);
+  }
+  if (o.cbar !== false) {
+    drawColorbar(ctx, ink, { x: L.x1 + 6, y: L.y0, w: 8, h: L.y1 - L.y0, textX: L.x1 + 6 + 8 + 3 }, scale,
+      (c, x, y, w, h, t) => { c.fillStyle = rgbCss(color(t)); c.fillRect(x, y, w, h); }, cbarTicks, lineH);
+  }
+  ctx.fillStyle = ink.dim;
+  ctx.font = canvasFont(600, 9 * fs);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  if (o.xlabel) ctx.fillText(fitLabel(ctx, o.xlabel, L.x1 - L.x0), (L.x0 + L.x1) / 2, H - (lineH + 2) / 2);
+  if (o.ylabel) {
+    ctx.save();
+    ctx.translate(lineH / 2, (L.y0 + L.y1) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(fitLabel(ctx, o.ylabel, L.y1 - L.y0), 0, 0);
+    ctx.restore();
+  }
+  return L;
 }
 
 // ─── React wrappers ────────────────────────────────────────────────────────────
-// Theme-subscribed and draw-on-layout; each view checks its own emptiness and falls back to
-// the standard em-dash placeholder.
 
 function useThemedCanvas(draw: (canvas: HTMLCanvasElement) => void) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const faces = useAppFaces();
   const ref = useRef<HTMLCanvasElement>(null);
-  useLayoutEffect(() => { if (ref.current) draw(ref.current); });
+  useLayoutEffect(() => { if (faces && ref.current) draw(ref.current); });
   return ref;
 }
 
 const Empty = () => <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
 
-export function WaterfallView({ payload, width, height }: { payload: WaterfallPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawWaterfall(c, payload, width, height));
+export function WaterfallView({ payload, width, height, fscale = 1 }: { payload: WaterfallPayload; width: number; height: number; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawWaterfall(c, payload, width, height, fscale));
   if (payload.values.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function CandleView({ payload, width, height }: { payload: CandlePayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawCandle(c, payload, width, height));
+export function CandleView({ payload, width, height, fscale = 1 }: { payload: CandlePayload; width: number; height: number; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawCandle(c, payload, width, height, fscale));
   if (payload.close.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function BoxplotView({ payload, width, height }: { payload: BoxplotPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawBoxplot(c, payload, width, height));
+export function BoxplotView({ payload, width, height, fscale = 1 }: { payload: BoxplotPayload; width: number; height: number; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawBoxplot(c, payload, width, height, fscale));
   if (payload.boxes.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function CalHeatView({ payload, width, height }: { payload: CalHeatPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawCalHeat(c, payload, width, height));
-  if (payload.days.length === 0) return <Empty />;
-  return <canvas ref={ref} style={{ width, height, display: "block" }} />;
+/** A canvas that redraws only when `deps` change, keeping the layout it drew for hit tests: hovering re-renders the
+ *  view, and a big grid is too costly to repaint per move. */
+function useHoverCanvas<L>(draw: (c: HTMLCanvasElement) => L | null, deps: unknown[]) {
+  const theme = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const faces = useAppFaces();
+  const ref = useRef<HTMLCanvasElement>(null);
+  const layout = useRef<L | null>(null);
+  useLayoutEffect(() => {
+    if (faces && ref.current) layout.current = draw(ref.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, theme, faces]);
+  return [ref, layout] as const;
 }
 
-export function WaffleView({ payload, width, height, colors }: { payload: ProportionPayload; width: number; height: number; colors: string[] }) {
-  const ref = useThemedCanvas((c) => drawWaffle(c, payload, width, height, colors));
+type Hover = { x: number; y: number; cell?: { left: number; top: number; width: number; height: number }; label: string; value: number | undefined };
+
+/** The canvas plus the hovered cell's outline and its readout, flipped away from the nearer edges. */
+function HoverFrame({ width, height, canvasRef, onMove, hover }: {
+  width: number; height: number;
+  canvasRef: RefObject<HTMLCanvasElement | null>;
+  onMove: (x: number, y: number) => void;
+  hover: Hover | null;
+}) {
+  const move = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    onMove(((e.clientX - box.left) * width) / (box.width || width), ((e.clientY - box.top) * height) / (box.height || height));
+  };
+  return (
+    <div style={{ position: "relative", width, height }}>
+      <canvas ref={canvasRef} style={{ width, height, display: "block" }} onPointerMove={move} onPointerLeave={() => onMove(-1, -1)} />
+      {hover && (
+        <>
+          {hover.cell && <div style={{ position: "absolute", pointerEvents: "none", boxSizing: "border-box", ...hover.cell, outline: "1.5px solid var(--text)", outlineOffset: -0.75 }} />}
+          <div style={{
+            position: "absolute", pointerEvents: "none", whiteSpace: "nowrap", zIndex: 1,
+            fontSize: 11, padding: "2px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)",
+            ...(hover.x > width / 2 ? { right: width - hover.x + 10 } : { left: hover.x + 10 }),
+            ...(hover.y > height / 2 ? { bottom: height - hover.y + 10 } : { top: hover.y + 10 }),
+          }}>
+            <span style={{ color: "var(--text-dim)" }}>{hover.label}</span>
+            {"  "}
+            {hover.value == null ? "—" : formatScalar(hover.value)}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function CalHeatView({ payload, options, width, height, fscale = 1 }: { payload: CalHeatPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
+  const [ref, layout] = useHoverCanvas((c) => drawCalHeat(c, payload, options, width, height, fscale), [payload, JSON.stringify(options), width, height, fscale]);
+  const [hover, setHover] = useState<{ day: number; x: number; y: number } | null>(null);
+  if (payload.days.length === 0) return <Empty />;
+  const L = layout.current;
+  return (
+    <HoverFrame width={width} height={height} canvasRef={ref}
+      onMove={(x, y) => { const day = L ? calDayAt(L, x, y) : null; setHover(day === null ? null : { day, x, y }); }}
+      hover={hover && L ? {
+        x: hover.x, y: hover.y,
+        cell: { ...(({ x, y }) => ({ left: x, top: y }))(calCellXY(L, Math.floor((hover.day - L.gridStart) / 7), (hover.day - L.gridStart) % 7)), width: L.cell - L.gap, height: L.cell - L.gap },
+        label: formatDateSerial(hover.day, DEFAULT_DATE_FORMAT),
+        value: L.byDay.get(hover.day),
+      } : null}
+    />
+  );
+}
+
+export function HeatmapView({ payload, options, width, height, fscale = 1 }: { payload: HeatmapPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
+  const [ref, layout] = useHoverCanvas((c) => drawHeatmap(c, payload, options, width, height, fscale), [payload, JSON.stringify(options), width, height, fscale]);
+  const [hover, setHover] = useState<{ r: number; c: number; x: number; y: number } | null>(null);
+  const empty = payload.z.length === 0 || payload.cols.length === 0 || !payload.z.some((r) => r.some((v) => v != null));
+  if (empty) return <Empty />;
+  const L = layout.current;
+  return (
+    <HoverFrame width={width} height={height} canvasRef={ref}
+      onMove={(x, y) => { const cell = L ? heatCellAt(L, x, y) : null; setHover(cell ? { ...cell, x, y } : null); }}
+      hover={hover && L ? {
+        x: hover.x, y: hover.y,
+        cell: { left: L.gx + hover.c * L.cw, top: heatRowY(L, hover.r), width: L.cw, height: L.ch },
+        label: `${payload.rows[hover.r]} · ${payload.cols[hover.c]}`,
+        value: payload.z[hover.r]?.[hover.c] ?? undefined,
+      } : null}
+    />
+  );
+}
+
+export function WaffleView({ payload, width, height, colors, fscale = 1 }: { payload: ProportionPayload; width: number; height: number; colors: string[]; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawWaffle(c, payload, width, height, colors, fscale));
   if (payload.values.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function QuiverView({ payload, width, height }: { payload: QuiverPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawQuiver(c, payload, width, height));
+export function QuiverView({ payload, options, width, height }: { payload: QuiverPayload; options: ChartOptions; width: number; height: number }) {
+  const ref = useThemedCanvas((c) => drawQuiver(c, payload, options, width, height));
   const ny = Math.min(payload.u.length, payload.v.length);
   const nx = Math.min(payload.u[0]?.length ?? 0, payload.v[0]?.length ?? 0);
   if (nx === 0 || ny === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function ContourView({ payload, width, height }: { payload: ContourPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawContour(c, payload, width, height));
+export function ContourView({ payload, options, width, height, fscale = 1 }: { payload: ContourPayload; options: ChartOptions; width: number; height: number; fscale?: number }) {
+  const [ref, layout] = useHoverCanvas((c) => drawContour(c, payload, options, width, height, fscale), [payload, JSON.stringify(options), width, height, fscale]);
+  const [hover, setHover] = useState<{ px: number; py: number; x: number; y: number } | null>(null);
   const empty = payload.xs.length < 2 || payload.ys.length < 2 || !payload.z.some((r) => r.some((v) => v != null && Number.isFinite(v)));
   if (empty) return <Empty />;
-  return <canvas ref={ref} style={{ width, height, display: "block" }} />;
+  const L = layout.current;
+  return (
+    <HoverFrame width={width} height={height} canvasRef={ref}
+      onMove={(px, py) => {
+        if (!L || px < L.x0 || px > L.x1 || py < L.y0 || py > L.y1) { setHover(null); return; }
+        setHover({ px, py, x: L.xmin + ((px - L.x0) / (L.x1 - L.x0)) * (L.xmax - L.xmin), y: L.ymax - ((py - L.y0) / (L.y1 - L.y0)) * (L.ymax - L.ymin) });
+      }}
+      hover={hover ? {
+        x: hover.px, y: hover.py,
+        label: `x ${compactTick(hover.x)}, y ${compactTick(hover.y)}`,
+        value: contourAt(payload, hover.x, hover.y) ?? undefined,
+      } : null}
+    />
+  );
 }
 

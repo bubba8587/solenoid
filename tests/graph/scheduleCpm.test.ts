@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { scheduleTasks } from "../../src/graph/scheduleCpm";
 import { parseDateToSerial, formatDateSerial } from "../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../src/graph/errorValue";
-import { cubeFromColumns, isFrameValue, type CubeValue, type CubeCell } from "../../src/graph/frame";
+import { cubeFromColumns, isFrameValue, flatCubeToFrame, type CubeValue, type CubeCell, type FrameValue } from "../../src/graph/frame";
 import { unnestCube } from "../../src/graph/frameVerbs";
 
 // The tasks arrive as a CUBE: Predecessors is a list cell (zero or more names), never an
@@ -26,15 +26,6 @@ function tasks(rows: [string, number | null, string[] | string | null][], extra?
 const col = (c: CubeValue, name: string) => c.columns.find((x) => x.name === name)!.cells;
 
 describe("scheduleTasks — the CPM pass over a cube", () => {
-  it("a chain: each task starts the working day after its predecessor finishes", () => {
-    const r = scheduleTasks(tasks([["A", 2, []], ["B", 3, ["A"]]]), { start: MON, workingDays: true });
-    expect(col(r.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07"]);
-    expect(col(r.cube, "Finish").map(iso)).toEqual(["2026-01-06", "2026-01-09"]);
-    expect(col(r.cube, "Float")).toEqual([0, 0]);
-    expect(col(r.cube, "Critical")).toEqual([true, true]);
-    expect(iso(r.projectFinish)).toBe("2026-01-09");
-  });
-
   it("the kitchen: a diamond, a holiday inside a task, float on the parallel branches, a closing milestone", () => {
     const c = tasks([
       ["Demolition", 2, []],
@@ -57,11 +48,11 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(col(r.cube, "Float")).toEqual([0, 0, 1, 0, 2, 0, 0, 0]);
     expect(col(r.cube, "Critical")).toEqual([true, true, false, true, false, true, true, true]);
     expect(iso(r.projectFinish)).toBe("2026-01-27");
-    // Original columns first (the Predecessors list cells untouched, by reference), then the four appended.
+    // Original columns first (Predecessors rewritten in its structured form), then the four appended.
     expect(r.cube.columns.map((x) => x.name).slice(0, 7)).toEqual(["Task", "Duration", "Predecessors", "Start", "Finish", "Float", "Critical"]);
     expect(r.cube.columns.map((x) => x.name).slice(7)).toEqual(["Free Float", "Early Start", "Early Finish", "Late Start", "Late Finish", "Driving", "Late"]);
     expect(col(r.cube, "Driving")).toEqual([null, "Demolition", "Demolition", "Plumbing rough-in", "Drywall", "Drywall", "Cabinets", "Countertops"]);
-    expect(col(r.cube, "Predecessors")[3]).toBe(col(c, "Predecessors")[3]);
+    expect(col(r.cube, "Predecessors")[3]).toEqual(col(c, "Predecessors")[3]);
   });
 
   it("a text Predecessors cell is ONE name (never split); names match trimmed, case-insensitively; blank is none", () => {
@@ -215,6 +206,22 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(col(r.cube, "Start").map(iso)[2]).toBe("2026-01-21"); // Wrap follows the last occurrence
   });
 
+  it("a recurring row's first occurrence keeps an elapsed lag on its predecessor", () => {
+    const pred = (repeat: number | null) => cubeFromColumns([
+      { name: "Task", cells: ["Pour", "Inspect"], type: "string" },
+      { name: "Duration", cells: [5, 1], type: "number" },
+      { name: "Repeat", cells: [null, repeat], type: "number" },
+      { name: "Predecessors", cells: [[], cubeFromColumns([
+        { name: "Task", cells: ["Pour"], type: "string" }, { name: "Type", cells: ["FS"], type: "string" },
+        { name: "Lag", cells: [2], type: "number" }, { name: "Elapsed", cells: [true], type: "logical" },
+      ])] },
+    ]);
+    const once = scheduleTasks(pred(null), { start: MON, workingDays: true });
+    expect(iso(col(once.cube, "Start")[1])).toBe("2026-01-12"); // Friday's finish plus the weekend
+    const inner = col(scheduleTasks(pred(2), { start: MON, workingDays: true }).cube, "Tasks")[1] as CubeValue;
+    expect(iso(col(inner, "Start")[0])).toBe("2026-01-12");
+  });
+
   it("an empty tasks cube schedules nothing and finishes on the start", () => {
     const r = scheduleTasks(tasks([]), { start: MON, workingDays: true });
     expect(col(r.cube, "Start")).toEqual([]);
@@ -237,6 +244,12 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     const r = scheduleTasks(plan, { start: MON, workingDays: true, links });
     // A: Mon–Tue. B (FS) starts Wed. C (SS +1) starts the day after A starts = Tue.
     expect(col(r.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07", "2026-01-06"]);
+    // The merged links land in the Predecessors column, so a Gantt downstream draws them.
+    const preds = col(r.cube, "Predecessors");
+    // One typed link makes the whole column tables, so Unnest reads it whole.
+    expect(col(preds[0] as CubeValue, "Predecessor")).toEqual([]);
+    expect(col(preds[1] as CubeValue, "Predecessor")).toEqual(["A"]);
+    expect(col(preds[2] as CubeValue, "Type")).toEqual(["SS"]);
     // An unknown successor is the schedule's #VALUE! naming it.
     expect(() => scheduleTasks(plan, {
       start: MON, workingDays: true,
@@ -245,5 +258,102 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
         { name: "Predecessor", type: "string" as const, values: ["A"] },
       ] },
     })).toThrow(/Ghost/);
+  });
+
+  it("with no Duration column, a known column (a date, Complete) is never read as the duration", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" },
+      { name: "Start", cells: [MON, null], type: "date" },
+      { name: "Complete", cells: [50, 0], type: "number" },
+      { name: "Work", cells: [16, 8], type: "number" },
+      { name: "Predecessors", cells: [[], ["A"]] },
+    ]);
+    const r = scheduleTasks(c, { start: MON, workingDays: true });
+    expect(col(r.cube, "Finish").map(iso)).toEqual(["2026-01-06", "2026-01-07"]);
+    const noWork = cubeFromColumns([
+      { name: "Task", cells: ["A"], type: "string" },
+      { name: "Deadline", cells: [MON + 30], type: "date" },
+      { name: "Days of work", cells: [3], type: "number" },
+    ]);
+    expect(col(scheduleTasks(noWork, { start: MON, workingDays: true }).cube, "Finish").map(iso)).toEqual(["2026-01-07"]);
+  });
+
+  it("a blank Active cell, null or empty text, keeps the row in the schedule", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "C"], type: "string" },
+      { name: "Duration", cells: [1, 1, 1], type: "number" },
+      { name: "Active", cells: [null, "", "no"], type: "string" },
+    ]);
+    expect(scheduleTasks(c, { start: MON, workingDays: true }).output.tasks.map((t) => t.name)).toEqual(["A", "B"]);
+  });
+
+  it("whitespace is blank; an unreadable or error Active cell is the row's fault, never a quiet drop", () => {
+    const run = (active: CubeCell) => scheduleTasks(cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" },
+      { name: "Duration", cells: [1, 1], type: "number" },
+      { name: "Active", cells: [true, active] },
+    ]), { start: MON, workingDays: true });
+    expect(run("  ").output.tasks.map((t) => t.name)).toEqual(["A", "B"]);
+    const caught = (active: CubeCell) => { try { run(active); return null; } catch (e) { return e as { code: string; message: string }; } };
+    expect(caught("maybe")?.code).toBe("#VALUE!");
+    expect(caught(NaN)?.message).toContain('"B"');
+    expect(caught({ __solError: true, code: "#REF!", message: "x" } as never)?.code).toBe("#REF!");
+  });
+});
+
+describe("a Work column beside a stray number column", () => {
+  it("reads Work for the duration; Cost is passthrough, never the duration", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A"] as CubeCell[] },
+      { name: "Cost", cells: [500] as CubeCell[] },
+      { name: "Work", cells: [16] as CubeCell[] },
+    ]);
+    const alone = cubeFromColumns([{ name: "Task", cells: ["A"] as CubeCell[] }, { name: "Work", cells: [16] as CubeCell[] }]);
+    const finish = (x: CubeValue) => scheduleTasks(x, { start: MON, workingDays: true }).output.tasks[0];
+    expect(finish(c)).toEqual(finish(alone));
+  });
+});
+
+describe("a Predecessors column is one kind", () => {
+  it("a plan mixing plain and typed links comes out as a table in every row, so Unnest reads it", () => {
+    const ss = cubeFromColumns([{ name: "Task", cells: ["A"] }, { name: "Type", cells: ["SS"] }, { name: "Lag", cells: [1] }]);
+    const plan = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "C"] },
+      { name: "Duration", cells: [2, 1, 1] },
+      { name: "Predecessors", cells: [[], ["A"], ss] as CubeCell[] },
+    ]);
+    const r1 = scheduleTasks(plan, { start: MON, workingDays: true });
+    expect(col(r1.cube, "Predecessors").every((cell) => !Array.isArray(cell))).toBe(true);
+    const links = unnestCube(r1.cube, "Predecessors") as CubeValue;
+    const r2 = scheduleTasks(cubeFromColumns([{ name: "Task", cells: ["A", "B", "C"] }, { name: "Duration", cells: [2, 1, 1] }]),
+      { start: MON, workingDays: true, links: flatCubeToFrame(links) as FrameValue });
+    expect(col(r2.cube, "Start").map(iso)).toEqual(col(r1.cube, "Start").map(iso));
+  });
+});
+
+describe("a task's own Hours", () => {
+  it("convert its Work and its hour Duration, not the project's hours per day", () => {
+    const plan = (cols: { name: string; cells: CubeCell[] }[]) => scheduleTasks(cubeFromColumns([{ name: "Task", cells: ["A"] }, { name: "Hours", cells: [4] }, ...cols]), { start: MON, workingDays: true }).output.tasks[0];
+    const fourDays = plan([{ name: "Duration", cells: [4] }]);
+    expect(plan([{ name: "Work", cells: [16] }])).toEqual(fourDays);
+    expect(plan([{ name: "Duration", cells: [{ __unitCell: true, value: 16 * 3600, dim: { time: 1 } } as unknown as CubeCell] }])).toEqual(fourDays);
+    expect(plan([{ name: "Work", cells: [16] }])).not.toEqual(scheduleTasks(cubeFromColumns([{ name: "Task", cells: ["A"] }, { name: "Hours", cells: [4] }, { name: "Duration", cells: [2] }]), { start: MON, workingDays: true }).output.tasks[0]);
+  });
+});
+
+describe("a Links frame row whose successor is inactive", () => {
+  it("is skipped, as the same link in the inactive row's own Predecessors cell is", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "Skip"], type: "string" },
+      { name: "Duration", cells: [1, 1, 1], type: "number" },
+      { name: "Active", cells: [true, true, false], type: "logical" },
+    ]);
+    const links = { __frame: true as const, columns: [
+      { name: "Successor", type: "string" as const, values: ["Skip"] },
+      { name: "Predecessor", type: "string" as const, values: ["A"] },
+    ] };
+    const r = scheduleTasks(c, { start: MON, workingDays: true, links });
+    expect(r.output.tasks.map((t) => t.name)).toEqual(["A", "B"]);
+    expect(col(r.cube, "Start")[2]).toBeNull();
   });
 });

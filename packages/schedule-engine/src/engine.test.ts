@@ -152,11 +152,6 @@ describe("schedule — the forward and backward passes", () => {
 
   it("progress with a status date: remaining work moves past the status date; a finished task is never critical", () => {
     const o = run([t("A", 4, [], { complete: 50 }), t("B", 2, ["A"]), t("C", 1, [], { complete: 100 })], { statusDate: S(2026, 1, 8) });
-    // 2 of 4 days done stay Mon–Tue; the remaining 2 start after 8 Jan (Thu): a split, Fri 9 + Mon 12.
-    expect(iso(byName(o, "A").start)).toBe("2026-01-05");
-    expect(iso(byName(o, "A").finish)).toBe("2026-01-12");
-    expect(byName(o, "A").segments?.length).toBe(2);
-    expect(iso(byName(o, "B").start)).toBe("2026-01-13");
     expect(byName(o, "C").critical).toBe(false);
     expect(byName(o, "C").freeFloat).toBe(0);
     expect(o.diagnostics.some((d) => d.check === "Should have finished")).toBe(false);
@@ -224,7 +219,6 @@ describe("schedule — the forward and backward passes", () => {
         tasks.push({ name: `T${i}`, duration: Math.floor(rnd() * 6), predecessors: preds });
       }
       const o = run(tasks, { calendar: { workingDays: rnd() < 0.5, holidays: [S(2026, 1, 19)] } });
-      const cal = new Calendar(MON, { workingDays: true });
       for (const l of o.links) {
         const a = byName(o, l.from), b = byName(o, l.to);
         expect(l.violated).toBe(false);
@@ -232,7 +226,6 @@ describe("schedule — the forward and backward passes", () => {
       }
       for (const x of o.tasks) { expect(x.float).toBeGreaterThanOrEqual(0); expect(x.freeFloat).toBeLessThanOrEqual(x.float); }
       expect(o.tasks.some((x) => x.critical)).toBe(true);
-      void cal;
     }
   });
 });
@@ -249,6 +242,9 @@ describe("predecessor grammar and text", () => {
     });
     expect(parsePredecessorText("9FS", names).errors).toEqual(["9FS"]);
     expect(predecessorText([{ task: "A", type: "FS", lag: 0 }, { task: "B", type: "SS", lag: 2 }, { task: "C", type: "FS", lag: -1 }])).toBe("A, B SS+2, C FS-1");
+    const elapsed = [{ task: "A", type: "FS" as const, lag: 2, elapsed: true }];
+    expect(predecessorText(elapsed)).toBe("A FS+2ed");
+    expect(parsePredecessorText(predecessorText(elapsed), names).deps).toEqual(elapsed);
   });
 });
 

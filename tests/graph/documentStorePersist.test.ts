@@ -1,5 +1,5 @@
-// [[C32]]
-import { describe, it, expect } from "vitest";
+// [[B12]] losslessSaves
+import { describe, it, expect, vi } from "vitest";
 
 // Per-doc autosave keys (2026-07-05): each document persists under its own
 // two-slot pair plus a light index — an edit writes ONLY the changed doc, and
@@ -19,7 +19,18 @@ const localStorageStub = {
 };
 (globalThis as Record<string, unknown>).localStorage = localStorageStub;
 
+// A switch the tests flip to make serializeGraph throw, as a text-form refusal would.
+const captureFault = { on: false };
+// A graph the tests hand the capture in place of the editor-less null.
+const liveGraph: { g: unknown } = { g: null };
+vi.mock("../../src/graph/persistence", async (orig) => {
+  const real = await orig<typeof import("../../src/graph/persistence")>();
+  return { ...real, serializeGraph: () => { if (captureFault.on) throw new Error("capture fault"); return liveGraph.g ?? real.serializeGraph(); },
+    loadGraph: async (g: Parameters<typeof real.loadGraph>[0]) => (liveGraph.g ? true : real.loadGraph(g)) };
+});
+
 const { documentStore } = await import("../../src/graph/documentStore");
+const { noticeStore } = await import("../../src/graph/noticeStore");
 const { saveTimeStore } = await import("../../src/graph/saveTimeStore");
 
 const keysMatching = (re: RegExp) => [..._mem.keys()].filter((k) => re.test(k));
@@ -34,7 +45,6 @@ describe("per-doc autosave keys", () => {
     const beta = metas.find((m) => m.name === "Beta")!;
     expect(keysMatching(/^solenoid\.docs\.index\./).length).toBeGreaterThan(0);
     expect(docKeysFor(alpha.id).length).toBeGreaterThan(0);
-    expect(docKeysFor(beta.id).length).toBeGreaterThan(0);
 
     // Renaming Beta persists Beta + the index — Alpha's stored bytes must not move.
     const alphaBytes = docKeysFor(alpha.id).map((k) => [k, _mem.get(k)] as const);
@@ -79,13 +89,13 @@ describe("per-doc autosave keys", () => {
 });
 
 describe("the save clock — saveTimeStore reads the CURRENT doc through the provider", () => {
-  it("markCurrentFileSaved stamps only the current doc, and the stamp is persisted", () => {
+  it("markFileSaved stamps only the named doc, and the stamp is persisted", () => {
     documentStore.saveAs("Clock A");
     const a = documentStore.list().find((m) => m.name === "Clock A")!;
     expect(saveTimeStore.lastAutosaveAt()).not.toBeNull(); // stamped when the doc landed in storage
     expect(saveTimeStore.lastFileSaveAt()).toBeNull();     // never written to a file
 
-    documentStore.markCurrentFileSaved();
+    documentStore.markFileSaved(a.id);
     const stamp = saveTimeStore.lastFileSaveAt();
     expect(stamp).not.toBeNull();
 
@@ -112,6 +122,20 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     expect(stored.some((s) => s.doc?.updatedAt === 1786871100000)).toBe(true);
   });
 
+  it("a capture of the unchanged imported graph keeps the file's stamp as the autosave time; an edit moves it", async () => {
+    liveGraph.g = { v: 2, nodes: [], connections: [], meta: { foreign: true } };
+    try {
+      await documentStore.importAsDocument({ v: 2, nodes: [], connections: [], savedAt: 1786871100000 }, "Kept", "/elsewhere/Kept.json");
+      documentStore.captureCurrent();
+      expect(saveTimeStore.lastAutosaveAt()).toBe(1786871100000);
+      liveGraph.g = { v: 2, nodes: [{ id: "n", type: "ConstantNode", x: 0, y: 0, init: {} }], connections: [], meta: { foreign: true } };
+      documentStore.captureCurrent();
+      expect(saveTimeStore.lastAutosaveAt()).toBeGreaterThan(1786871100000);
+    } finally {
+      liveGraph.g = null;
+    }
+  });
+
   it("importAsDocument leaves the clocks fresh/blank for a file with no stamp (old saves)", async () => {
     const t0 = Date.now();
     await documentStore.importAsDocument({ v: 2, nodes: [], connections: [] }, "Unstamped");
@@ -120,9 +144,19 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     expect(stored.every((s) => s.doc?.fileSavedAt === undefined)).toBe(true);
     expect(stored.some((s) => (s.doc?.updatedAt ?? 0) >= t0)).toBe(true); // adoption time, not zero
   });
+
+  it("a file the version gate refuses leaves no library entry and keeps the previous document current", async () => {
+    documentStore.saveAs("Keeper");
+    const keeper = documentStore.list().find((m) => m.name === "Keeper")!;
+    const before = documentStore.list().length;
+    await documentStore.importAsDocument({ v: 1, nodes: [], connections: [] } as never, "Ancient");
+    expect(documentStore.list().some((m) => m.name === "Ancient")).toBe(false);
+    expect(documentStore.list().length).toBe(before);
+    expect(documentStore.currentId()).toBe(keeper.id);
+  });
 });
 
-// ─── [[C32]] autosaveSlotOrder — slot freshness is a PREFIX read, so `seq` must come first ────
+// ─── [[B12]] losslessSaves — slot freshness is a PREFIX read, so `seq` must come first ────
 // readSlotSeq decides which slot is newer with /^\{"seq":(\d+)/ — a prefix
 // regex, deliberately not a parse (the doc blob is large). A payload whose
 // stringify puts any other key first reads as seq null: chooseWriteSlot(null,…)
@@ -130,7 +164,7 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
 // the OLDER write — silent loss of the newest edit, with perfectly valid JSON
 // in both slots. This pins the coupling the writers currently honor by literal
 // key order alone.
-describe("[[C32]] autosaveSlotOrder — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
+describe("[[B12]] losslessSaves — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
   const slotKeys = () => [..._mem.keys()].filter((k) => /^solenoid\.docs\.(index|doc\.[^.]+)\.(a|b)$/.test(k));
 
   it("every slot payload the STORE wrote is prefix-readable", () => {
@@ -155,5 +189,25 @@ describe("[[C32]] autosaveSlotOrder — every written slot payload starts {\"seq
     documentStore.rename(d.id, "SeqCheck2 Renamed");
     const after = Math.max(...pair().map(seqOf));
     expect(after, "a rewrite must carry a strictly larger seq — a tie makes newest-slot selection ambiguous").toBeGreaterThan(before);
+  });
+});
+
+describe("[[B12]] losslessSaves — a capture that throws is loud and keeps the document on screen", () => {
+  it("returns false, raises one sticky notice, and a swap verb stays put", async () => {
+    documentStore.saveAs("Faulty");
+    const before = documentStore.currentId();
+    captureFault.on = true;
+    try {
+      expect(documentStore.captureCurrent()).toBe(false);
+      expect(documentStore.captureCurrent()).toBe(false);
+      await documentStore.newBlank();
+      expect(documentStore.currentId()).toBe(before);
+      const errors = noticeStore.get().filter((n) => n.tone === "error" && /autosave this document/.test(n.message));
+      expect(errors.length).toBe(1);
+    } finally {
+      captureFault.on = false;
+    }
+    expect(documentStore.captureCurrent()).toBe(true);
+    expect(noticeStore.get().some((n) => /autosave this document/.test(n.message))).toBe(false);
   });
 });

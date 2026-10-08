@@ -4,14 +4,12 @@ import { computeOverlayStore } from "../computeOverlayStore";
 import { loadRevealStore } from "../loadReveal";
 import "./ComputeOverlay.css";
 
-/** SWALLOWS pointer / wheel events so pan, zoom and drags are inert while the pass runs;
- *  suppressed while the load overlay is up. */
+/** Swallows pointer and wheel events, so pan, zoom and drags are inert while the pass runs; suppressed while the load overlay is up. */
 export function ComputeOverlay() {
   const visible = useSyncExternalStore(computeOverlayStore.subscribe, computeOverlayStore.visible);
   const loadPhase = useSyncExternalStore(loadRevealStore.subscribe, loadRevealStore.phase);
   if (!visible || loadPhase !== "idle") return null;
 
-  // Eat every gesture that would reach the canvas below.
   const eat = (e: PointerEvent | MouseEvent) => { e.preventDefault(); e.stopPropagation(); };
   const eatWheel = (e: WheelEvent) => { e.preventDefault(); e.stopPropagation(); };
 

@@ -1,13 +1,11 @@
 // [[B14]] oneDesignSystem (DESIGN.md § Voice)
-// Catalog descriptions are inline MARKDOWN (`code`, **bold**, *italic*) with two
-// projections: HTML for the rich surfaces (Inspector, Function Reference) and plain
-// text for title-attribute tooltips, which render no markup.
+// Catalog descriptions are inline markdown, projected to HTML for rich surfaces and to plain text for tooltips.
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
 const _html = new Map<string, string>();
 
-/** Inline markdown → sanitized HTML. Memoized: the Inspector re-renders on a poll. */
+/** Memoized: the Inspector re-renders on a poll. */
 export function descriptionHtml(md: string): string {
   const hit = _html.get(md);
   if (hit !== undefined) return hit;
@@ -20,7 +18,6 @@ export function descriptionHtml(md: string): string {
   return html;
 }
 
-/** The same string with the markdown marks removed, for `title=` tooltips. */
 export function descriptionText(md: string): string {
   return md
     .replace(/`([^`]*)`/g, "$1")

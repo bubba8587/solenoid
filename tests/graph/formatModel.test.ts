@@ -1,10 +1,10 @@
-// [[C94]] formatFamilyGates
+// [[C118]] formatTravelsWithValue
 import { describe, it, expect } from "vitest";
-import { familyOf, controlsFor, precisionApplies, COMPLEX_FORMAT_STYLES } from "../../src/graph/formatModel";
+import { familyOf, controlsFor, precisionApplies } from "../../src/graph/formatModel";
 import { applyLogicalStyle } from "../../src/graph/formatAnnotationStore";
 import type { SocketDataType } from "../../src/graph/sockets";
 
-// The spec's truth table (docs/format-model.md), machine-checked.
+// The spec's truth table (tree/specs/values/format-model.md), machine-checked.
 
 describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly none", () => {
   // Every member of the union, exhaustively — a new socket type must be added
@@ -22,7 +22,7 @@ describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly 
     frame: "none", cube: "none",  // per-column formats are the A4 units milestone
     anylist: "none",              // element-agnostic wildcard — no format family until a concrete type flows in
     anycombo: "none",             // its scalar-or-list sibling — same reason
-    anydata: "none",              // the rank-≤2 sibling ([[E5]] anydataWildcard) — same reason
+    anydata: "none",              // the rank-≤2 sibling ([[C10]] socketLattice) — same reason
     chart: "chart",               // text-scale control (display only)
     lambda: "lambda",             // view-as control (signature/KaTeX/highlighted/mono)
     document: "none",             // a whole-document value — no FC format controls
@@ -89,7 +89,6 @@ describe("controlsFor — the truth table rows", () => {
     expect(c.numberStyle).toBe(false);
     expect(c.precision).toBe(true);
     expect(c.unit).toBe(true);
-    expect(COMPLEX_FORMAT_STYLES).toEqual(["auto", "decimal", "scientific"]);
   });
 
   it("lambda family: the view-as dropdown only", () => {

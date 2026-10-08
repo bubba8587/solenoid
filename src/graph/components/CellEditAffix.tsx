@@ -1,10 +1,7 @@
 import { useRef } from "react";
 import { CalendarIcon } from "./CalendarIcon";
 
-/** The Form view's date picker / checkbox, on the right edge of the ONE grid cell being
- *  edited (never on every cell of the column). The cell's text input keeps focus: a
- *  press here must not blur it, or the edit would commit and unmount this control
- *  before the click lands. A pick writes the cell's raw text, like typing it. */
+/** The cell's text input keeps focus: a press here must not blur it, or the edit commits and unmounts this control before the click lands. A pick writes the cell's raw text, like typing it. */
 export function CellEditAffix({ type, iso, checked, onPick }: {
   type: "date" | "logical";
   /** date: the cell as an ISO day ("" when blank or unparseable). */
@@ -46,8 +43,7 @@ export function CellEditAffix({ type, iso, checked, onPick }: {
       >
         <CalendarIcon />
       </button>
-      {/* The native picker's anchor: invisible, never focusable. Clearing it writes a
-          blank cell (missing), never a fabricated date. */}
+        {/* The native picker's anchor, never focusable; clearing it writes a blank cell, never a fabricated date. */}
       <input
         ref={nativeRef}
         type="date"

@@ -10,8 +10,6 @@ export interface CalendarViewProps {
   fontScale?: number;
 }
 
-/** The Gantt figure's calendar sibling: the same payload as a month grid, read-only, scrolling
- *  vertically when the span runs to several months. */
 export function CalendarView({ payload, width, height, fontScale = 1 }: CalendarViewProps) {
   const frame = useMemo(() => layoutCalendar(payload, { width }), [payload, width]);
   const cellW = width / 7;
@@ -72,7 +70,6 @@ export function CalendarView({ payload, width, height, fontScale = 1 }: Calendar
   );
 }
 
-/** A monospace-ish ellipsis at ~6px/char, matching the layout package's estimator. */
 function ellipsis(text: string, maxPx: number): string {
   const max = Math.max(0, Math.floor(maxPx / (10 * 0.6)));
   return text.length <= max ? text : text.slice(0, Math.max(0, max - 1)).trimEnd() + "…";

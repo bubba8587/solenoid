@@ -1,6 +1,6 @@
 // [[C69]] ganttPackages
 import { describe, it, expect } from "vitest";
-import { serialFromCivil, dayOfWeek } from "./serial";
+import { serialFromCivil } from "./serial";
 import { layoutCalendar } from "./calendar";
 import { ganttSvg } from "./svg";
 import type { GanttPayload, GanttTask, GanttViewOptions } from "./payload";
@@ -26,7 +26,6 @@ describe("calendar layout", () => {
   it("groups weeks into month blocks by each week's mid day", () => {
     const frame = layoutCalendar(payload([build, launch], win), { width: 700 });
     const sep = frame.months.find((m) => m.month === 9 && m.year === 2026);
-    expect(sep).toBeDefined();
     // Sept holds the four weeks whose mid day is in September; the Sep28 week (mid = Oct 1) is October.
     expect(sep!.weeks).toBe(4);
     expect(frame.months.some((m) => m.month === 10)).toBe(true);
@@ -37,7 +36,6 @@ describe("calendar layout", () => {
     const sep = frame.months.find((m) => m.month === 9)!;
     expect(sep.cells.length).toBe(sep.weeks * 7);
     const sat = sep.cells.find((c) => c.serial === S(2026, 9, 12))!; // a Saturday
-    expect(dayOfWeek(sat.serial)).toBe(6);
     expect(sat.weekend).toBe(true);
     expect(sep.cells.find((c) => c.serial === S(2026, 9, 9))!.weekend).toBe(false); // a Wednesday
   });

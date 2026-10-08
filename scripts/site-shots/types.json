@@ -1,0 +1,182 @@
+{
+  "label": "Team roster",
+  "nodes": [
+    {
+      "id": "team",
+      "type": "FrameInputNode",
+      "init": {
+        "label": "Team"
+      },
+      "frame": [
+        {
+          "name": "Name",
+          "cells": [
+            "Ada",
+            "Grace",
+            "Alan",
+            "Katherine",
+            "Edsger"
+          ]
+        },
+        {
+          "name": "Started",
+          "type": "date",
+          "cells": [
+            "03-Mar-2021",
+            "17-Aug-2019",
+            "09-Jan-2023",
+            "22-May-2020",
+            "14-Oct-2024"
+          ]
+        },
+        {
+          "name": "Hours",
+          "cells": [
+            38,
+            40,
+            32,
+            36,
+            20
+          ]
+        },
+        {
+          "name": "Remote",
+          "cells": [
+            "TRUE",
+            "FALSE",
+            "TRUE",
+            "TRUE",
+            "FALSE"
+          ]
+        }
+      ],
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "names",
+      "type": "GetColumnNode",
+      "collapsed": true,
+      "init": {
+        "label": "Name",
+        "readAs": "text"
+      },
+      "stringLiterals": {
+        "name": "Name"
+      },
+      "x": 330,
+      "y": 0
+    },
+    {
+      "id": "starts",
+      "type": "GetColumnNode",
+      "collapsed": true,
+      "init": {
+        "label": "Started",
+        "readAs": "date"
+      },
+      "stringLiterals": {
+        "name": "Started"
+      },
+      "x": 330,
+      "y": 105
+    },
+    {
+      "id": "hours",
+      "type": "GetColumnNode",
+      "collapsed": true,
+      "init": {
+        "label": "Hours",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Hours"
+      },
+      "x": 330,
+      "y": 210
+    },
+    {
+      "id": "remote",
+      "type": "GetColumnNode",
+      "collapsed": true,
+      "init": {
+        "label": "Remote",
+        "readAs": "logical"
+      },
+      "stringLiterals": {
+        "name": "Remote"
+      },
+      "x": 330,
+      "y": 315
+    },
+    {
+      "id": "roster",
+      "type": "ExpressionNode",
+      "collapsed": true,
+      "init": {
+        "label": "Roster",
+        "expr": "TEXTJOIN(\", \", TRUE, names)"
+      },
+      "x": 580,
+      "y": 0
+    },
+    {
+      "id": "first",
+      "type": "ExpressionNode",
+      "collapsed": true,
+      "init": {
+        "label": "First hire",
+        "expr": "MIN(starts)",
+        "resultAs": "date"
+      },
+      "x": 580,
+      "y": 105
+    },
+    {
+      "id": "avg",
+      "type": "ExpressionNode",
+      "collapsed": true,
+      "init": {
+        "label": "Average hours",
+        "expr": "AVERAGE(hours)"
+      },
+      "x": 580,
+      "y": 210
+    },
+    {
+      "id": "nremote",
+      "type": "ExpressionNode",
+      "collapsed": true,
+      "init": {
+        "label": "Remote count",
+        "expr": "COUNTIF(remote, TRUE)"
+      },
+      "x": 580,
+      "y": 315
+    },
+    {
+      "id": "nest",
+      "type": "NestNode",
+      "init": {
+        "label": "Nest by Remote"
+      },
+      "stringLiterals": {
+        "keys": "Remote",
+        "nestedName": "People"
+      },
+      "x": 0,
+      "y": 290
+    }
+  ],
+  "cables": [
+    "team.frame -> names.frame",
+    "team.frame -> starts.frame",
+    "team.frame -> hours.frame",
+    "team.frame -> remote.frame",
+    "names.values -> roster.names",
+    "starts.values -> first.starts",
+    "hours.values -> avg.hours",
+    "remote.values -> nremote.remote",
+    "team.frame -> nest.frame"
+  ]
+}

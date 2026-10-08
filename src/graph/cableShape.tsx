@@ -1,4 +1,3 @@
-// [[C91]] cableWalkRouter
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
@@ -34,7 +33,6 @@ export const cableShapeStore = {
   subscribe,
 };
 
-/** Read the persisted cable shape. Call once at startup. */
 export function initCableShape() {
   try {
     const saved = localStorage.getItem(LS_KEY);

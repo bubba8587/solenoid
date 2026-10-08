@@ -1,0 +1,146 @@
+# Retired decision ids. Never reissued. Text lives in git history.  [[C11]]
+# id	date	action	successor	by	authorized_by	title
+C4	2026-09-14	reverted	-	Claude Opus 4.8	-	A WHY-comment migrates into a node's Why and is replaced by a dte:ID citation; HOW-comments stay
+A2	2026-09-15	moved	B5	Claude Opus 5	-	Excel compatibility is a promise: every Excel function works by its own name and returns Excel's answer
+A3	2026-09-15	moved	B6	Claude Opus 5	-	Values carry their type and unit honestly end to end; a date, number, text, or wrong unit is never confused
+A4	2026-09-15	moved	B7	Claude Opus 5	-	Pre-alpha, single user: break freely, with no back-compat or migration paths
+B4	2026-09-15	superseded	B8	Claude Opus 5	-	Solenoid tracks decision provenance with DTE; rules.md and decisions.md remain and are cited from the tree
+D53	2026-09-15	moved	C72	Claude Opus 5	-	nodeCombiningRound1: the eight approved round-1 merges and what each card now holds
+D1	2026-09-16	superseded	D62	Claude Fable 5.1	-	forceDemoVault(on): a non-persisted switch pinning readers and Local File to the demo vault
+B5	2026-09-17	moved	A5	Claude Fable 5.1	the author	Excel parity is the on-ramp: every Excel function keeps its name and returns Excel's answer
+B6	2026-09-17	moved	A6	Claude Fable 5.1	the author	Where Excel falls short, Solenoid diverges by design: typed values and first-class units
+D8	2026-09-22	superseded	D7	Claude	-	oneThingPerMetric: A metric measures one thing
+D44	2026-09-22	superseded	D45	Claude	-	tagSpecialScalars: A special scalar is a TAGGED OBJECT, never a bare array
+E3	2026-09-22	superseded	D15	Claude	-	adoptKeepsCables: Adoption never drops cables and never persists
+C56	2026-09-22	superseded	C26	Claude	-	aggregatorsAreArguments: aggregators are arguments of their host verb, not searchable ops
+D2	2026-09-22	superseded	C1	Claude	-	demoCsvSeam: Local File reads a bundled CSV through the demo seam, so the Excel-over-CSV scene works on web
+D55	2026-09-22	superseded	C42	Claude	-	zoomSettleWindow: HTML-canvas holds gesture state 420 ms past the last zoom before restoring the DOM
+D56	2026-09-22	superseded	C42	Claude	-	hicEngageGate: the HTML-canvas layer engages only past 100 kind-weighted DOM units
+D57	2026-09-22	superseded	C42	Claude	-	hicPaintModel: HIC is built to the WICG API as shipped (in-paint raster, requestPaint)
+D58	2026-09-22	superseded	C42	Claude	-	hicCaptureRef1: HIC captures at REF = 1, trading zoom-in crispness for faithful text
+D59	2026-09-22	superseded	C42	Claude	-	oneReadbackPerPaint: the atlas packer takes one GPU read-back per paint, never one per node
+D60	2026-09-22	superseded	C42	Claude	-	domSyncPresentedCamera: mid-gesture the DOM viewport follows the camera the canvas presented
+D61	2026-09-22	superseded	C42	Claude	-	cloneKeepsOwnPosition: the HIC clone never sets position; each root's own CSS class governs it
+C12	2026-09-22	superseded	C11	Claude	-	socketRows: A side with more than one socket renders one row per socket
+C72	2026-09-23	superseded	B11	Claude	-	nodeCombiningRound1: The eight approved round-1 merges and what each card now holds
+C104	2026-09-23	superseded	C103	Claude	-	foreignDocNetworkGate: A document not authored here fetches nothing until the user allows it for that document
+C90	2026-09-23	reverted	-	Claude Opus 5.5	the author	drawnCablesAnnotate: A drawn cable is annotation, not wiring: own store, above every card, reached only from Insert
+E1	2026-09-24	superseded	D4	Claude Opus 5.5	-	shapeGuardManualSets: An irreducibly hand-kept set is guarded by the behavior it produces
+E2	2026-09-24	superseded	D13	Claude Opus 5.5	-	cubeNeverNarrowsToFrame: A cube never enters a frame socket; the node gets the wider socket
+E4	2026-09-24	superseded	D15	Claude Opus 5.5	-	oneResolvePredicate: "Resolve past untyped passthroughs" goes through one predicate
+E14	2026-09-24	reverted	-	Claude Opus 5.5	the author	frameVerbExcelNames: A frame verb that is an Excel function carries its Excel spelling
+E12	2026-09-24	reverted	-	Claude Opus 5.5	the author	isBooleanName: The type-check op is ISBOOLEAN, a callable alias of ISLOGICAL
+E13	2026-09-24	reverted	-	Claude Opus 5.5	the author	dateBuildName: The DATE(y, m, d) node is named DATE (Build)
+E11	2026-09-24	moved	C113	Claude Opus 5.5	the author	controlDrivenRetype: a node's op, mode or arg field can swap that node's own sockets in place
+E8	2026-09-24	reverted	-	Claude Opus 5.5	the author	waitForTypeSettle: A derived-type consumer runs only after the wildcard settle
+D78	2026-09-24	reverted	-	Claude Opus 5.5	the author	textErrorsOnOracle: On desktop, a frame holding an error cell in a text or logical column computes on the JS oracle
+E5	2026-09-24	reverted	-	Claude Opus 5.5	the author	anydataWildcard: `anydata` is the rank-2-or-less element-agnostic wildcard (matricesInFormulas)
+E6	2026-09-24	reverted	-	Claude Opus 5.5	the author	portOwnsSocket: An adopting port owns its socket instance
+E7	2026-09-24	reverted	-	Claude Opus 5.5	the author	trueanyNeedsPassthrough: A `trueany` output implies a `passthrough()` declaration
+D3	2026-09-24	reverted	-	Claude Opus 5.5	the author	overrideInPlace: Where a derivation can't be total, the override lives in the same table
+D4	2026-09-24	reverted	-	Claude Opus 5.5	the author	noManualList: A list of names the code relies on is generated, not typed by hand
+D6	2026-09-24	reverted	-	Claude Opus 5.5	the author	opRowDerivesFromHost: An op's search row derives from its host leaf
+D7	2026-09-24	reverted	-	Claude Opus 5.5	the author	oneMetricImpl: A gating metric has one implementation and answers one question
+D9	2026-09-24	reverted	-	Claude Opus 5.5	the author	useEveryNotSome: Completeness quantifiers are `every`, not `some`
+D12	2026-09-24	reverted	-	Claude Opus 5.5	the author	dateValuedPortIsDateTyped: A port that carries a date is typed date
+D14	2026-09-24	reverted	-	Claude Opus 5.5	the author	derivedSocketTypes: Adding a socket type is a derived edit
+D15	2026-09-24	reverted	-	Claude Opus 5.5	the author	wildcardsKeepRank: The wildcard ladder keeps rank
+D17	2026-09-24	reverted	-	Claude Opus 5.5	the author	relaysTransparent: Relay nodes are transparent to every static derivation
+D19	2026-09-24	reverted	-	Claude Opus 5.5	the author	implReteFree: A shared implementation is rete-free
+D20	2026-09-24	reverted	-	Claude Opus 5.5	the author	declareContract: A registration declares its full contract
+D24	2026-09-24	reverted	-	Claude Opus 5.5	the author	prepByShape: Argument prep matches the function's shape, not its category
+D25	2026-09-24	reverted	-	Claude Opus 5.5	the author	blockedFailFast: A blocked spelling answers its redirect before its arguments are touched
+D26	2026-09-24	reverted	-	Claude Opus 5.5	the author	hideMatrixFromVendor: Formula.js never sees a matrix or a complex number unless a registration declares it
+D27	2026-09-24	reverted	-	Claude Opus 5.5	the author	oneBroadcast: One broadcast engine, and the table is the test
+D28	2026-09-24	reverted	-	Claude Opus 5.5	the author	tripwireVendorDrift: A vendored-engine divergence is owned, and tripwired
+D29	2026-09-24	reverted	-	Claude Opus 5.5	the author	oneVerbCorpus: The verb pair computes from one fixture corpus
+D30	2026-09-24	reverted	-	Claude Opus 5.5	the author	targetedEqualsFull: The targeted pass is observationally equal to the full pass
+D31	2026-09-24	reverted	-	Claude Opus 5.5	the author	onlyCalcModeSkips: The calc-mode gate is the only thing that skips a pass
+D32	2026-09-24	reverted	-	Claude Opus 5.5	the author	refreshOutsideRebuild: A live-data refresh never runs inside a rebuild scope
+D45	2026-09-24	reverted	-	Claude Opus 5.5	the author	maxRankMatrix: The value grammar: primitive or tagged scalar, list or matrix; nothing deeper, no bare-array scalar
+D50	2026-09-24	reverted	-	Claude Opus 5.5	the author	everyFieldClassified: Every node field is persisted or deliberately transient
+D64	2026-09-24	reverted	-	Claude Opus 5.5	the author	oneSizeRead: One size read for layout math: measuredBox()
+D65	2026-09-24	reverted	-	Claude Opus 5.5	the author	serialsNeverDate: Schedules compute on integer serials and never construct a Date
+D67	2026-09-24	reverted	-	Claude Opus 5.5	the author	grammarOnlyAtBorder: Link grammar and vendor link codes are parsed at the border; the engine keys predecessors by name
+D74	2026-09-24	reverted	-	Claude Opus 5.5	the author	webkitgtkNoNodeLayers: On WebKitGTK nothing inside a node becomes a compositor layer
+C11	2026-09-24	reverted	-	Claude Opus 5.5	the author	socketBox12: A socket is a fixed 12×12 box in its own measured row
+C18	2026-09-24	reverted	-	Claude Opus 5.5	the author	uniqueNameMap: A derived name function is TOTAL and INJECTIVE
+C20	2026-09-24	reverted	-	Claude Opus 5.5	the author	wholeArrayArgs: Array arguments arrive whole
+C29	2026-09-24	reverted	-	Claude Opus 5.5	the author	plainJsonInit: `extractInit` is a fixed point, and JSON-plain
+C30	2026-09-24	reverted	-	Claude Opus 5.5	the author	saveViaTextForm: Every save passes through the text form, so it carries every SavedGraph field both ways
+C31	2026-09-24	reverted	-	Claude Opus 5.5	the author	immutableDocStore: `documentStoreCore` transforms are structurally immutable
+C32	2026-09-24	reverted	-	Claude Opus 5.5	the author	autosaveSlotOrder: Autosave slots: write the older, read the newer, `seq` first and strictly rising
+C33	2026-09-24	reverted	-	Claude Opus 5.5	the author	saveBindsMain: Persistence binds the main graph, never the active surface
+C34	2026-09-24	reverted	-	Claude Opus 5.5	the author	classNameIsType: The class name is the persisted type: kept and unique
+C36	2026-09-24	reverted	-	Claude Opus 5.5	the author	captureBeforeSwap: A canvas-swapping verb captures first and guards the rebuild
+C37	2026-09-24	reverted	-	Claude Opus 5.5	the author	observerOwnsSize: A node's width and height mirror its rendered size; only size-owning classes read them back
+C40	2026-09-24	reverted	-	Claude Opus 5.5	the author	storesRegisterForget: A node-keyed store registers both forget and forgetAll
+C65	2026-09-24	reverted	-	Claude Opus 5.5	the author	domOrderStacking: Node stacking is each node's React Flow zIndex, set by nodeZIndex
+C74	2026-09-24	reverted	-	Claude Opus 5.5	the author	semanticZoomRawScale: The far-zoom switch reads the raw CSS scale at 0.3, never folded with the pixel ratio
+C75	2026-09-24	reverted	-	Claude Opus 5.5	the author	gpuTextureBudget: A covered canvas stops painting, and layer promotion never overruns a mobile GPU
+C84	2026-09-24	reverted	-	Claude Opus 5.5	the author	tidyTranslatesOnly: Tidy is a translate-only ELK layout: symmetric ports, leading-edge anchor, never a pinned size
+C87	2026-09-24	reverted	-	Claude Opus 5.5	the author	groupsAreSubflows: Groups are React Flow sub-flows; the model stays absolute, converted only at the boundary
+C91	2026-09-24	reverted	-	Claude Opus 5.5	the author	cableWalkRouter: One walk router for diagonal and straight cables: constraints by construction, shortest walk wins
+C97	2026-09-24	reverted	-	Claude Opus 5.5	the author	rechartsLazyChunk: recharts is one lazy chunk: only chartRender.tsx imports it
+C99	2026-09-24	reverted	-	Claude Opus 5.5	the author	chromeEnvelopeVars: Chrome envelopes are two measured CSS vars; every floating overlay derives from them
+C27	2026-09-24	reverted	-	Claude Opus 5.5	the author	noDataInComponents: Components never call `node.data()`
+D10	2026-09-24	reverted	-	Claude Opus 5.5	the author	onePrunePath: Input-cable pruning is ONE loop (`dropInputCables`)
+D39	2026-09-24	reverted	-	Claude Opus 5.5	the author	keyByValue: Sets and dedupes compare values by what they are, never by where they came from
+D11	2026-09-24	superseded	C10	Claude Opus 5.5	the author	noAutoCross: Type separation: element families never auto-cross
+D13	2026-09-24	superseded	C10	Claude Opus 5.5	the author	widenNeverNarrow: Dimensional flow: values widen up, never narrow down
+C46	2026-09-24	superseded	B16	Claude Opus 5.5	the author	consistencyOverQuirks: cross-engine consistency outranks Excel-quirk parity
+D40	2026-09-24	superseded	C25	Claude Opus 5.5	the author	unitOnValue: The unit belongs to the value
+C39	2026-09-24	moved	D79	Claude Opus 5.5	the author	effectsEdgeTriggered: An outside effect such as an alert fires only when its status changes, and never on load
+C2	2026-09-24	superseded	B3	Claude Opus 5.5	the author	realCanvasScenes: Marketing scenes are the real app: locked scenes plus at most one live scene per page
+C7	2026-09-24	reverted	-	Claude Opus 5.5	the author	authorRuled: A rule is author-ruled only when the author ratifies its leaf in session
+C5	2026-09-24	reverted	-	Claude Opus 5.5	the author	exceptionsUnderRule: A rule's exceptions live under the rule itself, each naming the condition that would remove it
+C6	2026-09-24	reverted	-	Claude Opus 5.5	the author	specFirst: Spec-first for new mechanisms: a new subsystem or cross-cutting sweep lands its rule before the code
+C8	2026-09-24	reverted	-	Claude Opus 5.5	the author	declareOnce: One declaration per fact
+C9	2026-09-24	reverted	-	Claude Opus 5.5	the author	labelUnenforced: A rule not enforced by a test is debt, and is labeled
+C57	2026-09-24	reverted	-	Claude Opus 5.5	the author	commentMinimalism: Knowledge lives in leaves, specs, tests and commits; a comment is the last resort
+C83	2026-09-24	reverted	-	Claude Opus 5.5	the author	parallelAgents: Parallel agent sessions: one test run at a time, a one-line claim board, the Lead merges
+C108	2026-09-24	reverted	-	Claude Opus 5.5	the author	auditDefaultsToFix: When an audit finds defensible but worse behavior, the default is to fix it
+C81	2026-09-24	reverted	-	Claude Opus 5.5	the author	wikilinkCitations: Leaves are cited with Obsidian links, so the tree can be browsed in Obsidian
+C82	2026-09-24	reverted	-	Claude Opus 5.5	the author	vaultOutbox: The author's vault edits reach agents through outbox notes, action tags and git
+B9	2026-09-24	reverted	-	Claude Opus 5.5	the author	rulesWithoutMemory: AI agents build Solenoid under one author, so its rules must hold without anyone remembering them
+B8	2026-09-24	reverted	-	Claude Opus 5.5	the author	treeIsTheHome: Solenoid's decisions and rules live only in the decision tree
+D84	2026-09-26	superseded	D85	claude	-	listEitherAxis: A list's position arguments work along either axis, since a column-shaped answer is a list too
+D33	2026-09-26	superseded	D86	Claude Opus 5.5	the author	unwiredNotBlank: An unplugged input uses its typed value; a plugged-in blank stays blank
+E15	2026-09-26	superseded	D86	Claude Opus 5.5	the author	settingBlankIsLeftOut: A blank wired into a setting means the setting was left out
+D88	2026-09-27	moved	C114	Claude Opus 5.5	the author	cardsView: Table popups offer a mobile-friendly, deterministic Cards layout inferred from the data
+C63	2026-09-27	reverted	-	Claude Opus 5.5	the author	oneRecordNode: The Record views (Detail, Cards, Gallery, Board, List) are choices on one Record node
+D80	2026-09-28	superseded	D90	Claude (agent)	the author	cubeColumnTypes: A Cube column may declare a type or none; a declared type holds every cell and list item to it
+E17	2026-09-29	superseded	D85	Claude Opus 5.5	the author	vectorOrient: A Frame column is a one-column table; each list function declares whether a vector's direction matters
+C64	2026-10-01	reverted	-	Claude	-	decisionMatrixFamily: Decision nodes show signed contributions, scale by each criterion's largest value, and name ties
+C94	2026-10-01	reverted	-	Claude	-	formatFamilyGates: A Format Controller shows only the controls that fit its value; decimal places follow one rule
+D16	2026-10-01	reverted	-	Claude	-	retypeReconciles: When a node retypes its own input or output, everything wired to it is updated to match
+D18	2026-10-01	reverted	-	Claude	-	frameLabelHint: A Frame input that names its columns shows an example table with exactly those columns
+D34	2026-10-01	reverted	-	Claude	-	oneErrorKind: One notion of error
+D37	2026-10-01	reverted	-	Claude	-	errorBeatsMissing: Error beats missing at the same cell
+D42	2026-10-01	reverted	-	Claude	-	perInputUnitBlind: A node that doesn't do unit math gets plain numbers, input by input
+D75	2026-10-01	reverted	-	Claude	-	builderExposesEveryOption: Chart Builder exposes every option a chart type honors, and every option it exposes works
+C13	2026-10-01	reverted	-	Claude	-	frameLabelGrammar: A Frame input's label names the columns it expects
+C19	2026-10-01	reverted	-	Claude	-	namingModel: Every name a node shows comes from one place and reads the same on every surface
+C21	2026-10-01	reverted	-	Claude	-	matchNodeLimits: A formula can't generate more values than the matching node allows
+C43	2026-10-01	reverted	-	Claude	-	oneFlowSurface: The main canvas and a composite's drill-in view are one canvas, built once
+C60	2026-10-01	reverted	-	Claude	-	oneRunningNode: One Running node: a Window of 0 runs from the start, N covers the last N items
+C61	2026-10-01	reverted	-	Claude	-	oneDistributionNode: One Distribution node: pick the distribution, then pick what to work out
+C62	2026-10-01	reverted	-	Claude	-	paletteAllOrNone: A palette sets every neutral color of the workbench, or none of them
+C109	2026-10-01	reverted	-	Claude	-	linuxOwnWindowControls: On Linux the desktop shell draws its own window controls
+C111	2026-10-01	reverted	-	Claude	-	unfiledCardTakesOutputColor: A node outside every family wears its output's color
+C113	2026-10-01	reverted	-	Claude	-	controlDrivenRetype: Picking a node's operation or mode can change that node's own inputs and outputs
+C116	2026-10-01	reverted	-	Claude	-	xyChartFamily: Scatter, XY Line and Bubble stay three Chart types, grouped as one XY family
+D5	2026-10-01	reverted	-	Claude	-	searchWiderThanLabel: An Add-menu row shows a short name; Excel spellings are search words, never added to it
+D23	2026-10-01	reverted	-	Claude	-	capsClaimsFunction: A name in capitals is a function you can type; anything else is Title Case
+D63	2026-10-01	reverted	-	Claude	-	lockedGroupIsObstacle: A group locked in place never moves in a layout action; everything else moves around it
+D69	2026-10-01	reverted	-	Claude	-	convertBadPickIsNA: Convert between units that measure different things answers #N/A for the node, not per cell
+D71	2026-10-01	reverted	-	Claude	-	zoomLatticeDiscreteOnly: Stepped zoom lands on 10% steps; a pinch never snaps while your fingers move
+D81	2026-10-01	reverted	-	Claude	-	cubeRowLists: In a Cube's computed column, @name reads this row's list, and a row may answer a list
+D83	2026-10-01	reverted	-	Claude	-	imageTextCells: A text cell holding a picture address shows as the picture in a table; a web address stays text
+D91	2026-10-01	reverted	-	Claude	-	xyColumnMapping: An XY plot's options name which columns are x, y, size, color, point text and series
+D92	2026-10-01	reverted	-	Claude	-	columnNameSuggest: Frame headers suggest column names already typed in the vault; a pick takes its type
+D95	2026-10-01	reverted	-	Claude	-	neutralsFollowChrome: The neutral swatches take the active palette's tint, as its workbench does
+E16	2026-10-01	reverted	-	Claude	-	cubeCellKinds: A Cube Input cell switches in place between value, list, Table, Frame and Cube, keeping what it can
+D21	2026-10-01	reverted	-	Claude	-	noExcelNameClash: A node's name never reads as a core Excel function that does something else
+B10	2026-10-01	reverted	-	Claude	-	reactFlowView: React Flow draws the canvas over a small library that computes it
+C41	2026-10-01	reverted	-	Claude	-	branchModel: All work goes on develop; main is production only

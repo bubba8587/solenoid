@@ -1,15 +1,14 @@
-// [[C95]] commitOnEnter, [[D17]] relaysTransparent (the static shape resolver)
+// [[C95]] commitOnEnter
 import { useMemo, useSyncExternalStore } from "react";
 import { useDraftCommit } from "./inlineInput";
 import { connectionVersionStore } from "../graphSignals";
+import { compositePassStore } from "../compositeEditorStore";
 import { getOwningEditor } from "../activeGraph";
 import { makeFrameShapeResolver } from "../frameShapeResolver";
 import { columnNamesOf } from "../frameShape";
 import { stopDragStart } from "../coarse";
 
-/** The shared column-name field: specs/type-propagation-on-in-place-socket-retype.md
- *  (column pickers). Writes the SAME string literal the plain field does; renders only for
- *  an UNWIRED socket. */
+/** Column pickers: tree/specs/values/type-propagation-on-in-place-socket-retype.md; writes the same string literal the plain field does, and renders only for an unwired socket. */
 export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeholder }: {
   nodeId: string;
   frameInput: string;
@@ -17,9 +16,9 @@ export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeho
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
-  // Resolve ONCE per wiring change, never per keystroke: the memo depends only on the
-  // connection version (+ ids), so typing (which only moves the draft) never re-walks.
+  // Resolve once per wiring change or graph pass (an upstream rename reaches the shape only through a pass), so typing never re-walks.
   const connVersion = useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
+  const passVersion = useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
   const columns = useMemo(() => {
     const editor = getOwningEditor(nodeId);
     if (!editor) return [];
@@ -27,7 +26,7 @@ export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeho
     if (!feed) return [];
     return columnNamesOf(makeFrameShapeResolver(editor).outShape(feed.source, feed.sourceOutput));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeId, frameInput, connVersion]);
+  }, [nodeId, frameInput, connVersion, passVersion]);
 
   const field = useDraftCommit(value ?? "", (v) => v, (t) => t, onChange);
   const listId = `colpick-${nodeId}-${frameInput}`;

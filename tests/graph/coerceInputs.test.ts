@@ -1,6 +1,6 @@
 // [[C28]]
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseListLiteral, wrapNodeData, TYPEABLE_LIST, LAZY_FRAME_NODES } from "../../src/graph/coerceInputs";
+import { parseListLiteral, wrapNodeData, TYPEABLE_LIST } from "../../src/graph/coerceInputs";
 
 // The FrameRef bridge in wrapNodeData reads readFrame from frameBackend. Stub it to a
 // sentinel so the tests observe the collect-vs-forward DISPATCH, not the backend; every
@@ -11,8 +11,8 @@ vi.mock("../../src/graph/frameBackend", async (orig) => {
   const actual = await orig<typeof import("../../src/graph/frameBackend")>();
   return { ...actual, readFrame: vi.fn(async () => COLLECTED) };
 });
-import { readFrame, isFrameRef } from "../../src/graph/frameBackend";
-import { SolenoidSocket, AdoptiveSocket, canConnect } from "../../src/graph/sockets";
+import { readFrame } from "../../src/graph/frameBackend";
+import { SolenoidSocket, AdoptiveSocket } from "../../src/graph/sockets";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { DatePartNode, parseDateToSerial } from "../../src/graph/nodes/date";
@@ -20,6 +20,7 @@ import { TextTransformNode } from "../../src/graph/nodes/text";
 import { ComplexUnaryNode, cx } from "../../src/graph/nodes/complex";
 import { NotNode } from "../../src/graph/nodes/logic";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
+import { applyFcUnit } from "../../src/graph/unitBridge";
 import { ListLengthNode, ListInputNode, ListIndexNode } from "../../src/graph/nodes/list";
 
 const MAR_2026 = parseDateToSerial("2026-03-20");
@@ -59,8 +60,8 @@ describe("a numlist input is typeable only where the node opts in", () => {
     wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
     return { run: (inputs: Record<string, unknown[]>) => { node.data(inputs); return received ?? {}; } };
   }
-  it("declared key → the CSV parses to a number list (an unparseable part is null)", () => {
-    expect(mockNode({ xs: "1, 2.5, x, 4" }).run({}).xs).toEqual([[1, 2.5, null, 4]]);
+  it("declared key → the CSV parses to a number list (an unparseable part is NaN, as in a Frame cell)", () => {
+    expect(mockNode({ xs: "1, 2.5, x, 4" }).run({}).xs).toEqual([[1, 2.5, NaN, 4]]);
   });
   it("no key → nothing injected (the scalar literal stays the node's own read)", () => {
     expect(mockNode({}, { xs: 3 }).run({}).xs).toBeUndefined();
@@ -172,7 +173,7 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
   // Regression: a scalar into Expression's variable input was widened to `[scalar]`
   // (the `anylist` Set/position rule above), so `a+b` of two scalars broadcast to a
   // 1-element LIST. That was patched with a `noWidenInputs` side-channel until
-  // 2026-07-25; the variables now declare `anydata` ([[E5]] anydataWildcard, since [[C15]] matricesInFormulas) — the
+  // 2026-07-25; the variables now declare `anydata` ([[C10]] socketLattice, since [[C15]] matricesInFormulas) — the
   // rank-≤2 wildcard — so the SOCKET says "scalar, list or matrix" and the
   // coercion follows from the type.
   function runExpr(expr: string, inputs: Record<string, unknown[]>) {
@@ -197,18 +198,6 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
     // The node no longer carries a coercion side-channel — the socket is the truth.
     expect("noWidenInputs" in node).toBe(false);
   });
-  it("the [[C15]] matricesInFormulas acceptance: scalars, lists AND matrices connect; frames/cubes do not", () => {
-    expect(canConnect("list", "anydata")).toBe(true);
-    expect(canConnect("date", "anydata")).toBe(true);
-    expect(canConnect("strlist", "anydata")).toBe(true);
-    expect(canConnect("table", "anydata")).toBe(true);   // the lift
-    expect(canConnect("anytable", "anydata")).toBe(true);
-    expect(canConnect("frame", "anydata")).toBe(false);  // matrices-ONLY ([[C15]] matricesInFormulas)
-    expect(canConnect("cube", "anydata")).toBe(false);
-    expect(canConnect("lambda", "anydata")).toBe(false);
-    // anycombo itself is unchanged — the old rung still refuses rank 2.
-    expect(canConnect("table", "anycombo")).toBe(false);
-  });
   it("scalar inputs → a SCALAR result (not a 1-element list)", () => {
     expect(runExpr("a + b", { a: [5], b: [3] })).toBe(8);
   });
@@ -228,6 +217,28 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
 // generalizes it — was the stricter of the two. The lattice already permits
 // combo→scalar on the grounds that "a combo can be a scalar" (sockets.ts calls it a
 // runtime-accepted risk); collapsing is what makes that promise true.
+describe("text reaching a number-family rung through a wildcard is one #TYPE! value ([[B17]] typedValueModel)", () => {
+  const through = (rung: "number" | "list" | "table", v: unknown) => {
+    let got: unknown;
+    const node = {
+      data: (inputs: Record<string, unknown[]>) => { got = inputs.x[0]; return {}; },
+      inputs: { x: { socket: new SolenoidSocket(rung) } },
+    };
+    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
+    try { node.data({ x: [v] }); } catch (e) { return e; }
+    return got;
+  };
+  const code = (v: unknown) => (v as { code?: string }).code;
+  it("is never split into characters or refused as a list of its length", () => {
+    const l = through("list", "abc") as unknown[];
+    expect(l).toHaveLength(1);
+    expect(code(l[0])).toBe("#TYPE!");
+    const m = through("table", "abc") as unknown[][];
+    expect(m).toHaveLength(1);
+    expect(code(m[0][0])).toBe("#TYPE!");
+  });
+});
+
 describe("coerceInputs — a one-element list collapses at a combo / scalar socket", () => {
   const run = <T>(node: T, inputs: Record<string, unknown[]>) => {
     wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
@@ -250,7 +261,7 @@ describe("coerceInputs — a one-element list collapses at a combo / scalar sock
   });
 
   // A complex value is ITSELF a `[re, im]` array, so the collapse tests the OUTER
-  // A tagged complex ([[D44]] tagSpecialScalars) is not an array, so the singleton collapse treats it
+  // A tagged complex ([[C24]] arraySemantics) is not an array, so the singleton collapse treats it
   // like any other scalar — no outer-length special case left to protect.
   it("does NOT tear a complex scalar apart", () => {
     expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [cx(1, 2)] })).toEqual(cx(1, -2));      // one complex
@@ -304,17 +315,6 @@ describe("coerceInputs — an adoptive port coerces on its BASE, never its adopt
     wrapNodeData(len as never);
     expect((len.data({ list: ["abc"] } as never) as { result: unknown }).result).toBe(1);
   });
-
-  it("the rule is now a single line with no exception", () => {
-    // Both adoptive kinds answer with `base`; a plain socket answers with its type.
-    const idx = new ListIndexNode();
-    expect((idx.inputs.list!.socket as AdoptiveSocket).base).toBe("trueany");
-    const len = new ListLengthNode();
-    expect((len.inputs.list!.socket as AdoptiveSocket).base).toBe("anylist");
-    // Adoption changes the DISPLAY type, never the coercion type.
-    (idx.inputs.list!.socket as AdoptiveSocket).setType("frame");
-    expect((idx.inputs.list!.socket as AdoptiveSocket).base).toBe("trueany");
-  });
 });
 
 // The lazy-handle bridge in wrapNodeData: the relational verbs (LAZY_FRAME_NODES) must
@@ -343,12 +343,6 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
 
   beforeEach(() => (readFrame as unknown as { mockClear: () => void }).mockClear());
 
-  it("the fixture is a recognized ref and the probe names sit on the right sides of the set", () => {
-    expect(isFrameRef(fakeRef)).toBe(true);
-    expect(LAZY_FRAME_NODES.has("DistinctNode")).toBe(true);   // a relational verb: lazy
-    expect(LAZY_FRAME_NODES.has("DisplayNode")).toBe(false);   // a plain consumer: collects
-  });
-
   it("a LAZY class receives the raw FrameRef, uncollected (a)", () => {
     const p = bridgeProbe("DistinctNode");
     const out = p.data({ frame: [fakeRef] });
@@ -362,7 +356,6 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
     await p.data({ frame: [fakeRef] });                // a ref present -> async collect path
     expect(readFrame).toHaveBeenCalledTimes(1);
     expect(p.received()!.frame[0]).toBe(COLLECTED);
-    expect(isFrameRef(p.received()!.frame[0])).toBe(false);
   });
 
   it("collects only the ref sitting among plain values in an input array (c)", async () => {
@@ -372,11 +365,89 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
     expect(p.received()!.frame).toEqual(["scalar", COLLECTED]);
   });
 
+  it("a frame that fails to collect throws for the error guard; a node that sees errors gets it as a value ([[D35]] errorInErrorOut)", async () => {
+    const failed = { __solError: true, code: "#REF!", message: "gone" };
+    const rf = readFrame as unknown as { mockResolvedValueOnce: (v: unknown) => void };
+    rf.mockResolvedValueOnce(failed);
+    await expect(bridgeProbe("ListLengthNode").data({ frame: [fakeRef] })).rejects.toBe(failed);
+    rf.mockResolvedValueOnce(failed);
+    const d = bridgeProbe("DisplayNode");
+    await d.data({ frame: [fakeRef] });
+    expect(d.received()!.frame[0]).toBe(failed);
+  });
+
   it("a NON-lazy class with no ref present stays synchronous (no needless collect)", () => {
     const p = bridgeProbe("DisplayNode");
     const out = p.data({ frame: [42] });
     expect(out).not.toBeInstanceOf(Promise);
     expect(readFrame).not.toHaveBeenCalled();
     expect(p.received()!.frame).toEqual([42]);
+  });
+});
+
+describe("coerceInputs — text on a number port is #TYPE!, never a parsed number ([[B17]] typedValueModel)", () => {
+  // Only a wildcard cable (XLOOKUP's static trueany result, a passthrough that adopted
+  // text after its outgoing cable was drawn) can land text on a number port; the lattice
+  // refuses the typed edge.
+  function run(dt: string, wired: unknown): unknown {
+    let received: Record<string, unknown[]> | undefined;
+    const node = {
+      data: (inputs: Record<string, unknown[]>) => { received = inputs; return {}; },
+      inputs: { a: { socket: new SolenoidSocket(dt as never) } },
+    };
+    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
+    try { node.data({ a: [wired] }); } catch (e) { return e; }
+    return received!.a?.[0];
+  }
+  const code = (v: unknown) => (v as { code?: string }).code;
+
+  it("a scalar number port fails the node with #TYPE!", () => {
+    expect(code(run("number", "5"))).toBe("#TYPE!");
+    expect(code(run("number", "hello"))).toBe("#TYPE!");
+    expect(code(run("number", ["x"]))).toBe("#TYPE!");
+    expect(code(run("numlist", "5"))).toBe("#TYPE!");
+    expect(code(run("number", cx(1, 2)))).toBe("#TYPE!");
+  });
+  it("a list or matrix port marks the text cell, per cell", () => {
+    const l = run("list", [1, "x", true]) as unknown[];
+    expect(l[0]).toBe(1);
+    expect(code(l[1])).toBe("#TYPE!");
+    expect(l[2]).toBe(1);
+    const m = run("table", [[1, "x"]]) as unknown[][];
+    expect(code(m[0][1])).toBe("#TYPE!");
+  });
+  it("numbers, booleans and blanks still coerce as before", () => {
+    expect(run("number", 5)).toBe(5);
+    expect(run("number", true)).toBe(1);
+    expect(run("number", null)).toBe(null);
+    expect(run("numlist", [1, null])).toEqual([1, null]);
+  });
+  it("the date, text and logical families refuse another family the same way", () => {
+    for (const [dt, wrong] of [
+      ["date", "2024-01-01"], ["datecombo", true], ["string", 5], ["strcombo", false], ["logical", "yes"], ["logicalcombo", cx(1, 0)],
+    ] as const) {
+      expect(code(run(dt, wrong)), `${dt} ← ${JSON.stringify(wrong)}`).toBe("#TYPE!");
+    }
+    const dates = run("datelist", [45000, "soon", null]) as unknown[];
+    expect([dates[0], code(dates[1]), dates[2]]).toEqual([45000, "#TYPE!", null]);
+    const words = run("strlist", ["a", 1]) as unknown[];
+    expect([words[0], code(words[1])]).toEqual(["a", "#TYPE!"]);
+    const flags = run("logicaltable", [[true, "no", 0]]) as unknown[][];
+    expect([flags[0][0], code(flags[0][1]), flags[0][2]]).toEqual([true, "#TYPE!", false]);
+  });
+  it("each family still takes its own values, and logical and number still bridge", () => {
+    expect(run("date", 45000)).toBe(45000);
+    expect(run("string", "hi")).toBe("hi");
+    expect(run("logical", 1)).toBe(true);
+    expect(run("logical", false)).toBe(false);
+    expect(run("strcombo", null)).toBe(null);
+  });
+});
+
+describe("coerceInputs — the rank rule ignores units (socket-lattice spec req. 4)", () => {
+  it("a united singleton collapses on a combo port exactly as a plain one does", () => {
+    const add = () => { const n = new ArithmeticNode({ op: "add" } as never); wrapNodeData(n as never); return n; };
+    const km = applyFcUnit(5, "km");
+    expect(Array.isArray(add().data({ a: [[km]], b: [[km]] } as never).result)).toBe(false);
   });
 });

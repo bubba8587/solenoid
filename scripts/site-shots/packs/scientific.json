@@ -1,0 +1,83 @@
+{
+  "label": "scientific",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Scientific Computing\n\n- Polynomial Roots\n- ODE Integrate\n- Spectrum (FFT)\n- Solve A\u00b7x = b",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "co",
+      "type": "ListInputNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "Coefficients",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2",
+          "v3"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1",
+        "v1": "0",
+        "v2": "-7",
+        "v3": "6"
+      }
+    },
+    {
+      "id": "roots",
+      "type": "PolyRootsNode",
+      "x": 640,
+      "y": 0,
+      "init": {
+        "label": "Polynomial Roots"
+      }
+    },
+    {
+      "id": "ode",
+      "type": "OdeIntegrateNode",
+      "x": 380,
+      "y": 300,
+      "init": {
+        "label": "ODE Integrate"
+      },
+      "literals": {
+        "y0": 1,
+        "t0": 0,
+        "t1": 3,
+        "steps": 60
+      },
+      "stringLiterals": {
+        "formula": "y"
+      }
+    },
+    {
+      "id": "chart",
+      "type": "ChartNode",
+      "x": 680,
+      "y": 300,
+      "init": {
+        "label": "Solution",
+        "op": "line"
+      },
+      "stringLiterals": {
+        "options": "title=y' = y"
+      }
+    }
+  ],
+  "cables": [
+    "co.list -> roots.coeffs",
+    "ode.solution -> chart.values"
+  ]
+}

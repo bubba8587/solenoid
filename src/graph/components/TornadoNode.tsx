@@ -1,4 +1,3 @@
-// [[C97]] rechartsLazyChunk
 import { useState, useSyncExternalStore } from "react";
 import type { TornadoNode as TornadoNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";

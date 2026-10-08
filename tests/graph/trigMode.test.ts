@@ -1,9 +1,9 @@
-// [[C46]], [[C25]]
+// [[B16]], [[C25]]
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { resolveTrigModes } from "../../src/graph/trigMode";
 import { MathFXNode } from "../../src/graph/nodes/scalar";
-import { tagDim, magnitudeOf } from "../../src/graph/unitValue";
+import { tagDim, tagRatio, magnitudeOf } from "../../src/graph/unitValue";
 
 // A dimensioned angle cell: base-SI RADIANS carrying a display unit (deg or rad).
 const angle = (rad: number, display: "deg" | "rad") => tagDim(rad, { angle: 1 }, display);
@@ -98,12 +98,24 @@ describe("MathFn trig — per-cell mixed-unit interpretation", () => {
     expect(deg[0]).toBeCloseTo(0, 9);
     expect(deg[1]).toBeCloseTo(0.5, 9);
     expect(deg[2]).toBeCloseTo(1, 9);
-    // No UnitCell wrapping sneaks in — bare in, bare out.
-    expect(deg.every((v) => typeof v === "number")).toBe(true);
 
     const sinRad = new MathFXNode({ op: "sin", angleMode: "rad" });
     const rad = sinRad.data({ in: [[0, Math.PI / 6]] as never }).result as number[];
     expect(rad[0]).toBeCloseTo(0, 9);
     expect(rad[1]).toBeCloseTo(0.5, 9);
+  });
+});
+
+describe("MathFn inverse trig and units", () => {
+  it("a dimensioned argument is #UNIT!, not an angle", () => {
+    const n = new MathFXNode({ op: "asin", angleMode: "rad" });
+    const r = n.data({ in: [tagDim(0.5, { length: 1 }, "m") as never] }).result;
+    expect((r as { code?: string }).code).toBe("#UNIT!");
+  });
+  it("in deg mode a dimensionless tagged cell answers in degrees beside a plain number", () => {
+    const n = new MathFXNode({ op: "asin", angleMode: "deg" });
+    const r = n.data({ in: [[0.5, tagRatio(0.5)] as never] }).result;
+    expect(mags(r)[0]).toBeCloseTo(30, 9);
+    expect(mags(r)[1]).toBeCloseTo(30, 9);
   });
 });

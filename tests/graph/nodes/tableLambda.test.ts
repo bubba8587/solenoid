@@ -43,12 +43,10 @@ describe("Lambda (LAMBDA value)", () => {
     // so a broken lambda propagates down its cable instead of silently no-op'ing.
     const bad = new LambdaNode({ params: "x, 2y", expr: "x" });
     const badR = bad.data({}).result;
-    expect(isSolError(badR)).toBe(true);
     expect((badR as SolError).code).toBe("#NAME?");
     expect(bad.cachedError).toBe("Bad parameter name");
     const syn = new LambdaNode({ params: "x", expr: "x +* 1" });
     const synR = syn.data({}).result;
-    expect(isSolError(synR)).toBe(true);
     expect((synR as SolError).code).toBe("#SYNTAX!");
     expect(syn.cachedError).toBe("Syntax error");
     // A blank body is still a legitimate no-value, not an error.
@@ -85,7 +83,6 @@ describe("Lambda wired into consumers", () => {
     const by = new ByAxisNode();
     const lam = lambdaOf("a, b", "a + b");
     const r = by.data({ table: [[[1, 2]]], lambda: [lam] }).result;
-    expect(isSolError(r)).toBe(true);
     expect((r as SolError).code).toBe("#VALUE!");
     expect(by.cachedError).toMatch(/isn't one of this node's variables/);
   });
@@ -93,7 +90,7 @@ describe("Lambda wired into consumers", () => {
   it("BYROW accepts a 1-param lambda over the row vector (values)", () => {
     const by = new ByAxisNode();
     const lam = lambdaOf("values", "MAX(values) - MIN(values)");
-    expect(by.data({ table: [[[1, 5], [10, 2]]], lambda: [lam] }).result).toEqual([4, 8]);
+    expect(by.data({ table: [[[1, 5], [10, 2]]], lambda: [lam] }).result).toEqual([[4], [8]]);
   });
 });
 
@@ -126,7 +123,6 @@ describe("MapTable (MAP)", () => {
   it("errors on a shape mismatch", () => {
     const n = new MapTableNode({ expr: "value * value2" });
     const r = n.data({ table: [[[1, 2], [3, 4]]], table2: [[[1, 2, 3]]] }).result;
-    expect(isSolError(r)).toBe(true);
     expect((r as SolError).code).toBe("#SHAPE!");
     expect(n.cachedError).toMatch(/Shape mismatch/);
   });
@@ -180,7 +176,6 @@ describe("ReduceLambda (REDUCE)", () => {
   it("flags a syntax error", () => {
     const n = new ReduceLambdaNode({ expr: "acc +* value" });
     const r = n.data({ table: [[[1]]] }).result;
-    expect(isSolError(r)).toBe(true);
     expect((r as SolError).code).toBe("#SYNTAX!");
     expect(n.cachedError).toBe("Syntax error");
   });
@@ -263,13 +258,14 @@ describe("ScanLambda (SCAN)", () => {
 // A km cell: n km stored as base-SI meters (n*1000), tagged length + display "km".
 const KM = { dim: { length: 1 }, scale: 1000 };
 const km = (n: number) => fromUnit(n, KM, "km") as UnitCell;
+// BYROW answers one-column rows ([[D85]] columnsStayColumns); this reads them back as values.
+const perRow = (r: unknown): unknown => (Array.isArray(r) ? (r as unknown[][]).map((row) => row[0]) : r);
 
 describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
   it("BYROW SUM over a km list carries the length dimension + display", () => {
     const list = [km(1), km(2), km(3)]; // base meters 1000/2000/3000
-    const out = new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [list] }).result as UnitCell[];
+    const out = perRow(new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [list] }).result) as UnitCell[];
     expect(out.length).toBe(1);
-    expect(isUnitCell(out[0])).toBe(true);
     expect(out[0].dim).toEqual({ length: 1 });
     expect(magnitudeOf(out[0])).toBeCloseTo(6000, 6); // 6 km in meters
     expect(out[0].display).toBe("km");
@@ -292,26 +288,52 @@ describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
 
   it("a dimensionless-yielding formula (COUNT) strips the unit to a plain number", () => {
     const list = [km(1), km(2), km(3)];
-    expect(new ByAxisNode({ op: "row", expr: "COUNT(values)" }).data({ table: [list] }).result).toEqual([3]);
+    expect(perRow(new ByAxisNode({ op: "row", expr: "COUNT(values)" }).data({ table: [list] }).result)).toEqual([3]);
   });
 
   it("mixed units in one list → #UNIT!", () => {
     const mixed = [km(1), fromUnit(2, { dim: { time: 1 }, scale: 1 }, "s")]; // length + time
-    const out = new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [mixed] }).result;
+    const out = perRow(new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [mixed] }).result);
     expect(isSolError(out) && (out as SolError).code).toBe("#UNIT!");
     const red = new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [mixed] }).result;
     expect(isSolError(red) && (red as SolError).code).toBe("#UNIT!");
   });
 
+  it("the fold runs in the list's display unit: a bare 1 is 1 km, as on the Arithmetic card ([[C25]] firstClassUnits)", () => {
+    const list = [km(1), km(2)];
+    const r = new ReduceLambdaNode({ expr: "acc + value + 1" }).data({ initial: [0], table: [list] }).result as UnitCell;
+    expect(magnitudeOf(r)).toBeCloseTo(5000, 6); // 0+1+1 + 2+1 = 5 km, never 3002 m
+    expect(r.display).toBe("km");
+    const cap = perRow(new ByAxisNode({ op: "row", expr: "MIN(MAX(values), 1.5)" }).data({ table: [list] }).result) as UnitCell[];
+    expect(magnitudeOf(cap[0])).toBeCloseTo(1500, 6);
+    const area = new ReduceLambdaNode({ expr: "acc * value" }).data({ initial: [1], table: [list] }).result as UnitCell;
+    expect(magnitudeOf(area)).toBeCloseTo(2e6, 3); // 2 km² in m²
+  });
+
+  it("over °C the fold is classified as Expression is: a reading, a difference, or #UNIT!", () => {
+    const C = { dim: { temperature: 1 }, scale: 1, offset: 273.15 };
+    const list = [fromUnit(20, C, "degC"), fromUnit(30, C, "degC")];
+    const by = (expr: string) => perRow(new ByAxisNode({ op: "row", expr }).data({ table: [list] }).result);
+    const avg = (by("AVERAGE(values)") as UnitCell[])[0];
+    expect(avg.display).toBe("degC");
+    expect(magnitudeOf(avg)).toBeCloseTo(298.15, 9); // 25 °C
+    const span = (by("MAX(values) - MIN(values)") as UnitCell[])[0];
+    expect(span.display).toBeUndefined();
+    expect(magnitudeOf(span)).toBeCloseTo(10, 9); // 10 K
+    expect((by("SUM(values)") as SolError).code).toBe("#UNIT!");
+    const hi = new ReduceLambdaNode({ expr: "MAX(acc, value)" }).data({ initial: [-50], table: [list] }).result as UnitCell;
+    expect(magnitudeOf(hi)).toBeCloseTo(303.15, 9); // 30 °C; the bare initial is a reading
+    expect((new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [list] }).result as SolError).code).toBe("#UNIT!");
+  });
+
   it("a bare (unitless) list is unchanged — no tagging", () => {
-    expect(new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [[1, 2, 3]] }).result).toBe(6);
-    expect(new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [[1, 2, 3]] }).result).toEqual([6]);
+    expect(perRow(new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [[1, 2, 3]] }).result)).toEqual([6]);
   });
 
   it("a wired LAMBDA's body drives the dimensional interpretation too", () => {
     const lam = new LambdaNode({ params: "values", expr: "SUM(values)" }).data({}).result;
     const list = [km(2), km(3)];
-    const out = new ByAxisNode({ op: "row" }).data({ table: [list], lambda: [lam] }).result as UnitCell[];
+    const out = perRow(new ByAxisNode({ op: "row" }).data({ table: [list], lambda: [lam] }).result) as UnitCell[];
     expect(out[0].dim).toEqual({ length: 1 });
     expect(magnitudeOf(out[0])).toBeCloseTo(5000, 6);
   });

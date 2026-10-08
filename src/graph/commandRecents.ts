@@ -1,8 +1,7 @@
 // [[C98]] paletteMirrorsMenubar
 import { createNotifier } from "./storeKit";
 
-// MRU command labels, shared by the Command Palette AND the menu bar — an action run
-// in either records here.
+// Most-recently-used command labels; a run from the Command Palette or the menu bar records here.
 const LS_KEY = "solenoid.command.recents";
 const CAP = 12;
 
@@ -24,9 +23,8 @@ function persist() {
 export const commandRecents = {
   subscribe,
   version,
-  /** Labels, most-recent first. */
   list: (): string[] => _recents,
-  /** Record a command as just-used — moves it to the front (deduped, capped). */
+  /** Moves the label to the front, deduplicated and capped. */
   record(label: string) {
     if (!label) return;
     _recents = [label, ..._recents.filter((l) => l !== label)].slice(0, CAP);

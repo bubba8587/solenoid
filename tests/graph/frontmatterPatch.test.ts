@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody } from "../../src/graph/frontmatterPatch";
+import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags, keepDateTime } from "../../src/graph/frontmatterPatch";
+import { notesToCube } from "../../src/graph/vaultCube";
 import type { CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
-import { isFrameValue } from "../../src/graph/frame";
 
 // Bundle 24 item B — the pure frontmatter line-patcher: untouched bytes stay identical,
 // and a cube round-trips through a note unchanged. [[C101]] onePatchPath: the ONE writer of a note's YAML.
@@ -99,19 +99,6 @@ describe("round trip — a demo-vault note re-patched with its own values is unc
     };
     const { text: out } = patchFrontmatter(text, patch);
     expect(out).toBe(text);
-  });
-});
-
-describe("nested frame from a cube cell writes as a block of rows", () => {
-  it("milestones round-trips as rows-of-objects", () => {
-    const frame = { __frame: true as const, columns: [
-      { name: "name", type: "string" as const, values: ["Demo", "Cabinets"] },
-      { name: "done", type: "logical" as const, values: [true, false] },
-    ] };
-    const val = cellToYaml(frame, undefined, NO_NAMES);
-    expect(isFrameValue(frame)).toBe(true);
-    const { text } = patchFrontmatter("---\nx: 1\n---\nb\n", { plan: val });
-    expect(text).toContain("plan:\n  - name: Demo\n    done: true\n  - name: Cabinets\n    done: false");
   });
 });
 
@@ -219,5 +206,68 @@ describe("review pins: a list inside a row", () => {
     const { parse } = await import("yaml");
     const back = parse(renderKey("steps", v).join("\n")) as { steps: { tags: unknown }[] };
     expect(back.steps.map((r) => r.tags)).toEqual([["x", "y"], []]);
+  });
+});
+
+describe("writing Vault Folder's tags back", () => {
+  it("leaves out a tag only the body holds, so a round trip copies no inline tag into the frontmatter", () => {
+    const note = "---\ntags:\n  - home\n---\nSome #idea and #home here.\n";
+    const cube = notesToCube([{ path: "a.md", text: note }], { mdbaseFor: () => ({}), obsidian: {} });
+    const cell = cube.columns.find((c) => c.name === "tags")!.cells[0];
+    expect(cell).toEqual(["home", "idea"]);
+    const value = frontmatterTags(note, cellToYaml(cell, "string", NO_NAMES));
+    expect(value).toEqual(["home"]);
+    expect(resolveKey(note, "tags", value).action).toBe("unchanged");
+    expect(frontmatterTags(note, ["home", "idea", "new"])).toEqual(["home", "new"]);
+  });
+});
+
+describe("patchFrontmatter never swallows a line it does not own", () => {
+  it("a CRLF note is patched in place and stays CRLF, never gains a duplicate key", () => {
+    const crlf = "---\r\ntitle: a\r\nrating: 3\r\n---\r\nbody\r\n";
+    expect(resolveKey(crlf, "rating", 3)).toEqual({ action: "unchanged", before: "3" });
+    expect(patchFrontmatter(crlf, { rating: 4 }).text).toBe("---\r\ntitle: a\r\nrating: 4\r\n---\r\nbody\r\n");
+  });
+  it("quoted keys, non-ASCII keys and comments survive a patch of the key above them", () => {
+    const note = "---\ntitle: a\n\"odd key\": b\n# a comment\nétat: c\nrating: 3\n---\n";
+    expect(patchFrontmatter(note, { title: "z" }).text).toBe("---\ntitle: z\n\"odd key\": b\n# a comment\nétat: c\nrating: 3\n---\n");
+    expect(patchFrontmatter(note, { "odd key": "q", "état": "d" }).text).toBe("---\ntitle: a\n\"odd key\": q\n# a comment\nétat: d\nrating: 3\n---\n");
+  });
+  it("a sequence written at column 0 is replaced whole", () => {
+    const note = "---\ntags:\n- a\n- b\nrating: 3\n---\n";
+    expect(patchFrontmatter(note, { tags: ["x"] }).text).toBe("---\ntags:\n  - x\nrating: 3\n---\n");
+  });
+  it("a blank line after a block stays", () => {
+    const note = "---\ntags:\n  - a\n\nrating: 3\n---\n";
+    expect(patchFrontmatter(note, { tags: ["x"] }).text).toBe("---\ntags:\n  - x\n\nrating: 3\n---\n");
+  });
+  it("a blank value is written as Obsidian writes it, and a key YAML would misread is quoted", () => {
+    expect(renderKey("due", null)).toEqual(["due:"]);
+    expect(resolveKey("---\ndue:\n---\n", "due", null).action).toBe("unchanged");
+    expect(renderKey("a: b", 1)).toEqual(['"a: b": 1']);
+    expect(resolveKey("---\n\"a: b\": 1\n---\n", "a: b", 1).action).toBe("unchanged");
+  });
+});
+
+describe("a frontmatter block indented as a whole", () => {
+  it("updates its key in place and adds a new one at the block's indent", () => {
+    expect(patchFrontmatter("---\n  k: 1\n---\n", { k: 42 }).text).toBe("---\n  k: 42\n---\n");
+    expect(patchFrontmatter("---\n  k: 1\n---\n", { j: 2 }).text).toBe("---\n  k: 1\n  j: 2\n---\n");
+    expect(resolveKey("---\n  k: 1\n---\n", "k", 42)).toEqual({ action: "update", before: "1" });
+  });
+});
+
+describe("a Date & time property at midnight is written back as a date and time", () => {
+  it("keeps the note's own text for the same moment, and a time on a new day", () => {
+    const note = "---\ndue: 2026-09-02T00:00\nwhen:\n  - 2026-09-01T00:00:00\n  - 2026-09-03\n---\n";
+    const cube = notesToCube([{ path: "a.md", text: note }], { mdbaseFor: () => ({}), obsidian: {} });
+    const rows = planPropertyWrites(cube, "due, when", NO_NAMES);
+    const due = rows.find((r) => r.key === "due")!;
+    const kept = keepDateTime(note, "due", due.value);
+    expect(kept).toBe("2026-09-02T00:00");
+    expect(resolveKey(note, "due", kept).action).toBe("unchanged");
+    expect(keepDateTime(note, "due", "2026-09-05")).toBe("2026-09-05T00:00:00");
+    expect(keepDateTime(note, "when", ["2026-09-01", "2026-09-03"])).toEqual(["2026-09-01T00:00:00", "2026-09-03"]);
+    expect(keepDateTime("---\ndue: 2026-09-02\n---\n", "due", "2026-09-05")).toBe("2026-09-05");
   });
 });

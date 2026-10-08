@@ -1,9 +1,6 @@
-/* Custom palette editor (F-1) — a modal opened from Settings; draft edits preview
-   in the sample and apply to the app only on Save. */
 .sol-pal-panel { width: min(560px, 94vw); }
 .sol-pal-panel__body { display: flex; flex-direction: column; gap: 16px; }
 
-/* Slot wells — two columns of role-labeled color inputs. */
 .sol-pal-editor__slots {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -30,8 +27,7 @@
 .sol-pal-editor__well::-moz-color-swatch { border: none; border-radius: 3px; }
 .sol-pal-editor__slot-label { font-size: 12px; color: var(--text); }
 
-/* Chrome ramp wells — the live theme's neutrals. More of them than the slots and each
-   label is shorter, so they run three across on a wide panel and fold down narrow. */
+/* More wells than slots, with shorter labels, so they run three across on a wide panel and fold down narrow. */
 .sol-pal-editor__chrome { display: flex; flex-direction: column; gap: 7px; }
 .sol-pal-editor__group-label { font-size: 12px; color: var(--text-dim); }
 .sol-pal-editor__chrome-slots {
@@ -40,7 +36,6 @@
   gap: 7px 18px;
 }
 
-/* Load-template row. */
 .sol-pal-editor__templates { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sol-pal-editor__templates-label { font-size: 12px; color: var(--text-dim); }
 .sol-pal-editor__template-btns { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -56,11 +51,7 @@
 }
 .sol-pal-editor__template-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Live sample — the REAL node/group/note chrome side by side, standing on the drafted
-   canvas ground (same 24px dot grid as .solenoid-canvas, at rest zoom). The drafted
-   ramp is scoped here as inline custom properties, so everything inside resolves
-   against the draft; the border is deliberately the LIVE --border, since it belongs to
-   the modal framing the preview, not to the preview. */
+/* The drafted ramp is scoped here as inline custom properties; the border is deliberately the live --border, since it belongs to the modal framing the preview. */
 .sol-pal-sample {
   display: flex;
   gap: 16px;
@@ -77,16 +68,11 @@
   border-radius: 7px;
   padding: 1px;
 }
-/* The node sits inside the group body (like a real member) with a little breathing room. */
 .sol-pal-sample__nodeslot { padding: 10px; }
-/* On the canvas rete's transform is the node's positioning context; the static
-   sample has none, so the membership-corner ::before (inset:0) would anchor to the
-   group body. Make the sample node its own context so the corner lands on the NODE
-   (and the socket below anchors to the content wrapper). */
+/* The static sample has no transformed wrapper, so the node is its own positioning context and the membership corner lands on it, not the group body. */
 .sol-pal-sample .solenoid-node { position: relative; }
 .sol-pal-sample .solenoid-node__content { position: relative; }
-/* With the card as its own positioning context, the frame reaches back over the
-   transparent 2px border (the sample node is --grouped) to the full border box. */
+/* As its own context, the frame reaches back over the transparent 2px grouped border. */
 .sol-pal-sample .solenoid-node { --frame-outset: 2px; }
 .sol-pal-sample__socket {
   position: absolute;
@@ -97,13 +83,12 @@
   height: 12px;
   line-height: 0;
 }
-/* The sample is a static preview — no drag cursors / hover affordances firing. */
+/* A static preview: no drag cursors or hover affordances. */
 .sol-pal-sample .solenoid-group,
 .sol-pal-sample .solenoid-node,
 .sol-pal-sample .solenoid-note { cursor: default; }
 .sol-pal-sample .solenoid-group__header { cursor: default; box-shadow: none; }
 
-/* Footer with Cancel / Save. */
 .sol-pal-panel__footer {
   display: flex;
   justify-content: flex-end;

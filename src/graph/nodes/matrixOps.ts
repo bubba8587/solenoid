@@ -1,10 +1,15 @@
-// [[C17]], [[D19]]
-import { solError, type SolError } from "../errorValue";
+// [[C17]], [[C48]] appendLadder
+import { solError, isSolError, type SolError } from "../errorValue";
 import { indexRefError } from "./indexAccess";
 import type { Cell } from "./coerce";
+import { MAX_GENERATED } from "./listOps";
 
-// ONE implementation per matrix op, called by both the nodes' `data()` and the formula
-// registrations ([[C17]] shareImpl); RETE-FREE per [[D19]] implReteFree, so the formula path never loads the editor.
+/** `#OVERFLOW!` past MAX_GENERATED cells, so a typo like EXPAND(x, 1e5, 1e5) answers an error instead of exhausting memory ([[C17]] shareImpl). */
+function cellCap(fn: string, rows: number, cols: number): SolError | null {
+  return rows * cols > MAX_GENERATED
+    ? solError("#OVERFLOW!", `${fn} would build ${rows}×${cols} cells, past the ${MAX_GENERATED} element limit`)
+    : null;
+}
 
 export type NumMat = number[][];
 
@@ -17,30 +22,26 @@ export function matTranspose<T>(m: T[][]): T[][] {
     Array.from({ length: rows }, (_, i) => m[i][j]));
 }
 
-export function matUnit(n: number, offDiag: number | null = 0): (number | null)[][] {
+export function matUnit(n: number, offDiag: number | null = 0): (number | null)[][] | SolError {
   const k = Math.round(n);
   if (k < 1) return [];
+  const cap = cellCap("MUNIT", k, k); if (cap) return cap;
   return Array.from({ length: k }, (_, i) =>
     Array.from({ length: k }, (_, j) => (i === j ? 1 : offDiag)));
 }
 
-/** numpy.diag: a length-n list becomes the diagonal of an n×n matrix; the off-diagonal
- *  is `offDiag` (0 like MUNIT, or null = blank so it stays out of sums). A null in the
- *  list is a blank diagonal cell. */
-export function matDiag(values: ReadonlyArray<number | null>, offDiag: number | null = 0): (number | null)[][] {
+export function matDiag(values: ReadonlyArray<number | null>, offDiag: number | null = 0): (number | null)[][] | SolError {
   const n = values.length;
+  const cap = cellCap("DIAGONAL", n, n); if (cap) return cap;
   return Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) => (i === j ? values[i] : offDiag)));
 }
 
-/** numpy.outer: rows × cols matrix of products a[i]·b[j]. A null in either operand
- *  makes its whole row/column blank. */
-export function outerProduct(a: ReadonlyArray<number | null>, b: ReadonlyArray<number | null>): (number | null)[][] {
+export function outerProduct(a: ReadonlyArray<number | null>, b: ReadonlyArray<number | null>): (number | null)[][] | SolError {
+  const cap = cellCap("OUTER", a.length, b.length); if (cap) return cap;
   return a.map((ai) => b.map((bj) => (ai == null || bj == null ? null : ai * bj)));
 }
 
-/** The numeric gate for linear algebra: a missing cell is #VALUE! (complete data needed),
- *  a non-number is #TYPE! (an anytable can deliver text into a homogeneous matrix). */
 export function asNumericMatrix(m: unknown[][]): NumMat | SolError {
   for (const row of m)
     for (const cell of row) {
@@ -63,7 +64,6 @@ export function matMul(a: NumMat, b: NumMat): NumMat | null {
   return r;
 }
 
-// LU decomposition with partial pivoting for det and inverse.
 function matLU(m: NumMat): { U: NumMat; sign: number } | null {
   const n = matRows(m);
   if (n !== matCols(m)) return null;
@@ -114,8 +114,12 @@ export function matInverse(m: NumMat): NumMat | null {
   return aug.map((row) => row.slice(n));
 }
 
-/** Wrap a 1-D list into a matrix; leftover cells take the caller's `pad()`, which defaults
- *  to #N/A per [[C48]] appendLadder so a pad_with argument overrides cleanly. */
+/** WRAPROWS and WRAPCOLS read their count as Excel does: truncated, and below 1 is Excel's `#NUM!`. */
+export function wrapCount(w: number, fn: "WRAPROWS" | "WRAPCOLS"): number | SolError {
+  const n = Math.trunc(w);
+  return n >= 1 ? n : solError("#DOMAIN!", `${fn} needs a wrap count of 1 or more`);
+}
+
 export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols", pad: () => T): T[][] {
   if (dir === "rows") {
     const rows: T[][] = [];
@@ -132,24 +136,18 @@ export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols"
   return mat;
 }
 
-// ── The append-ladder + selection + grow shape ops ([[C48]] appendLadder). Shape CONSTRUCTION pads
-// #N/A (the exception is EXPAND's Fill, below). The nodes add unit tagging on top;
-// these are pure shape, so both surfaces share them ([[C17]] shareImpl). ──
 
-/** HSTACK: glue matrices left-to-right, padding shorter ones DOWN with #N/A. */
 export function stackH(mats: readonly unknown[][][]): unknown[][] {
   const height = Math.max(...mats.map(matRows));
   const na = solError("#N/A", "Padded: this input is shorter than the largest one");
   const out: unknown[][] = Array.from({ length: height }, () => []);
   for (const m of mats) {
     const w = matCols(m);
-    for (let i = 0; i < height; i++) out[i].push(...(i < m.length ? m[i] : Array<unknown>(w).fill(na)));
+    for (let i = 0; i < height; i++) out[i] = out[i].concat(i < m.length ? m[i] : Array<unknown>(w).fill(na));
   }
   return out;
 }
 
-/** VSTACK: stack matrices top-to-bottom, padding narrower ones RIGHT with #N/A. A bare
- *  list is one ROW upstream, so stacking two lists yields a 2×n grid. */
 export function stackV(mats: readonly unknown[][][]): unknown[][] {
   const width = Math.max(...mats.map(matCols));
   const na = solError("#N/A", "Padded: this input is narrower than the largest one");
@@ -159,9 +157,6 @@ export function stackV(mats: readonly unknown[][][]): unknown[][] {
   return out;
 }
 
-/** CHOOSEROWS / CHOOSECOLS: select rows/columns by 1-based index (negative counts from
- *  the end, fractional truncates toward zero); any zero/out-of-range index errors the
- *  whole call (#VALUE!). Element-preserving. */
 export function chooseAxis<T>(m: T[][], indices: readonly number[], kind: "row" | "column"): T[][] | SolError {
   const size = kind === "row" ? matRows(m) : matCols(m);
   const label = kind === "row" ? "CHOOSEROWS" : "CHOOSECOLS";
@@ -175,16 +170,13 @@ export function chooseAxis<T>(m: T[][], indices: readonly number[], kind: "row" 
   return kind === "row" ? resolved.map((r) => [...m[r]]) : m.map((row) => resolved.map((c) => row[c]));
 }
 
-/** EXPAND: grow a matrix to R×C, filling new cells with `fill`. Shrinking is #VALUE!;
- *  a 0 (Excel's omitted) target keeps that axis. Unlike WRAP, the omitted-Fill default
- *  is the caller's choice — the node/formula pass first-class `null`, the author's
- *  override of Excel's #N/A (value-semantics.md). */
 export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[][] | SolError {
   const curR = matRows(m), curC = matCols(m);
   const R = reqR > 0 ? reqR : curR;
   const C = reqC > 0 ? reqC : curC;
   if (R < curR || C < curC)
     return solError("#VALUE!", `EXPAND can only grow: the table is ${curR}×${curC}, the target ${R}×${C}. Use TAKE to shrink`);
+  const cap = cellCap("EXPAND", R, C); if (cap) return cap;
   const out: T[][] = [];
   for (let i = 0; i < R; i++) {
     const src = i < curR ? m[i] : [];
@@ -195,14 +187,6 @@ export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[]
   return out;
 }
 
-/** SET CELL: overwrite cells of a 2-D table by 1-based (Row, Column) anchor. The input is
- *  normalized to a full rows×cols grid first (ragged rows pad with blank, like EXPAND).
- *  Each write extends by SHAPE from its anchor (toAnyMatrix rank detection): a scalar fills
- *  one cell, a 1-D list a row segment (rightward), a 2-D matrix a block — numpy
- *  `A[r:r+h, c:c+w] = B`. A `null`/blank scalar writes one null cell. A segment or block that
- *  runs past the table edge errors the WHOLE result (`#REF!`, the shared `indexRefError`
- *  wording, naming the OVERFLOWING axis — no clipping). Writes apply in ORDER, so a later
- *  write wins on any cell an earlier one also touched. */
 export function setCells(
   m: Cell[][],
   writes: ReadonlyArray<{ r: number; c: number; v: Cell | Cell[] | Cell[][] }>,
@@ -212,16 +196,17 @@ export function setCells(
     Array.from({ length: cols }, (_, j) => (j < (m[i]?.length ?? 0) ? m[i][j] : null)));
   for (const w of writes) {
     const r = Math.round(w.r), c = Math.round(w.c);
-    // Rank → block: scalar (incl. null/error) → 1×1; 1-D list → one row; 2-D → as-is.
+    if (!Number.isFinite(r)) return solError("#VALUE!", "Row must be a number");
+    if (!Number.isFinite(c)) return solError("#VALUE!", "Column must be a number");
     const block: Cell[][] = Array.isArray(w.v)
       ? (w.v.length === 0 ? [] : Array.isArray(w.v[0]) ? (w.v as Cell[][]) : [w.v as Cell[]])
       : [[w.v]];
     const h = block.length;
-    const wdt = h ? Math.max(...block.map((row) => row.length)) : 0;
+    const wdt = block.reduce((w, row) => Math.max(w, row.length), 0);
     if (r < 1 || r > rows) return indexRefError(r, rows, "Row");
     if (c < 1 || c > cols) return indexRefError(c, cols, "Column");
-    if (r + h - 1 > rows) return indexRefError(r + h - 1, rows, "Row");     // block runs off the bottom
-    if (c + wdt - 1 > cols) return indexRefError(c + wdt - 1, cols, "Column"); // ...or the right edge
+    if (r + h - 1 > rows) return indexRefError(r + h - 1, rows, "Row");
+    if (c + wdt - 1 > cols) return indexRefError(c + wdt - 1, cols, "Column");
     for (let i = 0; i < h; i++)
       for (let j = 0; j < block[i].length; j++)
         out[r - 1 + i][c - 1 + j] = block[i][j];
@@ -229,7 +214,6 @@ export function setCells(
   return out;
 }
 
-/** Sum of the main diagonal (numpy trace). */
 export function matTrace(m: NumMat): number {
   const n = Math.min(matRows(m), matCols(m));
   let t = 0;
@@ -237,8 +221,6 @@ export function matTrace(m: NumMat): number {
   return t;
 }
 
-/** Rank by Gaussian elimination with partial pivoting and a relative tolerance
- *  (numpy.linalg.matrix_rank's spirit: tiny pivots count as zero). */
 export function matRank(m: NumMat, tol = 1e-10): number {
   const rows = matRows(m), cols = matCols(m);
   const a = m.map((r) => [...r]);
@@ -259,8 +241,6 @@ export function matRank(m: NumMat, tol = 1e-10): number {
 }
 
 export type MatNormKind = "fro" | "1" | "inf" | "max";
-/** Matrix norms: Frobenius (numpy default), 1-norm (max column sum), ∞-norm (max row
- *  sum), max absolute entry. */
 export function matNorm(m: NumMat, kind: MatNormKind = "fro"): number {
   if (kind === "fro") return Math.sqrt(m.reduce((a, r) => a + r.reduce((x, y) => x + y * y, 0), 0));
   if (kind === "max") return Math.max(0, ...m.flat().map(Math.abs));
@@ -268,8 +248,6 @@ export function matNorm(m: NumMat, kind: MatNormKind = "fro"): number {
   return Math.max(0, ...m.map((r) => r.reduce((a, v) => a + Math.abs(v), 0)));
 }
 
-/** Solve A·x = b by Gaussian elimination with partial pivoting (numpy.linalg.solve, R
- *  solve). `null` when A is singular (or not square / b mismatched). */
 export function matSolve(A: NumMat, b: readonly number[]): number[] | null {
   const n = matRows(A);
   if (n === 0 || matCols(A) !== n || b.length !== n) return null;
@@ -288,9 +266,6 @@ export function matSolve(A: NumMat, b: readonly number[]): number[] | null {
   return M.map((row, i) => row[n] / row[i]);
 }
 
-/** Eigen-decomposition of a SYMMETRIC matrix by cyclic Jacobi rotations (numpy.linalg.eigh,
- *  R eigen(symmetric=TRUE)): eigenvalues descending, eigenvectors as the COLUMNS of `vectors`
- *  in the same order (unit length). `null` when not square or not symmetric. */
 export function matEigh(m: NumMat, tol = 1e-12): { values: number[]; vectors: NumMat } | null {
   const n = matRows(m);
   if (n === 0 || matCols(m) !== n) return null;
@@ -324,11 +299,29 @@ export function matEigh(m: NumMat, tol = 1e-12): { values: number[]; vectors: Nu
   const order = Array.from({ length: n }, (_, i) => i).sort((i, j) => a[j][j] - a[i][i]);
   const values = order.map((i) => a[i][i]);
   const vectors: NumMat = Array.from({ length: n }, (_, r) => order.map((i) => v[r][i]));
-  // Deterministic sign: the largest-magnitude component of each eigenvector is positive.
   for (let c = 0; c < n; c++) {
     let big = 0;
     for (let r = 1; r < n; r++) if (Math.abs(vectors[r][c]) > Math.abs(vectors[big][c])) big = r;
     if (vectors[big][c] < 0) for (let r = 0; r < n; r++) vectors[r][c] = -vectors[r][c];
   }
   return { values, vectors };
+}
+
+// ─── TOCOL / TOROW ([[D85]] columnsStayColumns) ─────────────────────────────
+
+export type SkipCells = "none" | "blanks" | "errors" | "both";
+/** Excel's `ignore` codes: 0 keeps every value, 1 skips blanks, 2 errors, 3 both. */
+export const SKIP_BY_CODE: readonly SkipCells[] = ["none", "blanks", "errors", "both"];
+
+/** A table's cells in reading order, row by row or column by column, skipping blanks, errors or both. */
+export function flattenCells<T>(m: readonly (readonly T[])[], byColumn: boolean, skip: SkipCells): T[] {
+  const out: T[] = [];
+  const width = m.reduce((w, row) => Math.max(w, row.length), 0);
+  const keep = (v: T) => !((skip === "blanks" || skip === "both") && v == null) && !((skip === "errors" || skip === "both") && isSolError(v));
+  if (byColumn) {
+    for (let j = 0; j < width; j++) for (const row of m) { const v = row[j] as T; if (keep(v)) out.push(v); }
+  } else {
+    for (const row of m) for (const v of row) if (keep(v)) out.push(v);
+  }
+  return out;
 }

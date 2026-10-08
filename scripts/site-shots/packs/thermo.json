@@ -1,0 +1,58 @@
+{
+  "label": "thermo",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Thermodynamics & Air\n\n- Standard Atmosphere\n- Vapor Pressure\n- Air Density",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "isa",
+      "type": "IsaAtmosphereNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "Standard Atmosphere"
+      },
+      "literals": {
+        "alt": 3000
+      }
+    },
+    {
+      "id": "ant",
+      "type": "AntoineNode",
+      "x": 660,
+      "y": 0,
+      "init": {
+        "label": "Vapor Pressure"
+      },
+      "literals": {
+        "t": 60
+      }
+    },
+    {
+      "id": "gas",
+      "type": "ExpressionNode",
+      "x": 940,
+      "y": 0,
+      "init": {
+        "label": "Air Density",
+        "expr": "p/(287.05*tk)",
+        "locked": true
+      },
+      "literals": {
+        "p": 101325,
+        "tk": 288.15
+      }
+    }
+  ],
+  "cables": []
+}

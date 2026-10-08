@@ -1,13 +1,32 @@
 ---
-readings: [12.5, 14, 13.25, 15]
-crew: [Ana, Ben, Chidi]
-milestones: [2026-09-01, 2026-10-15, 2026-12-01]
-signed_off: [true, false, true]
-impedance: [3+4i, 1-2i]
+readings:
+  - 12.5
+  - 14
+  - 13.25
+  - 15
+crew:
+  - Ana
+  - Ben
+  - Chidi
+inspections:
+  - 2026-09-01
+  - 2026-10-15
+  - 2026-12-01
+signed_off:
+  - true
+  - false
+  - true
+impedance:
+  - 3+4i
+  - 1-2i
 grid:
-  - [1, 2, 3]
-  - [4, 5, 6]
-budget:
+  - - 1
+    - 2
+    - 3
+  - - 4
+    - 5
+    - 6
+purchases:
   - item: Cabinets
     cost: 4200
     ordered: 2026-09-02
@@ -23,7 +42,9 @@ budget:
 phases:
   - phase: Demolition
     days: 3
-    crew: [Ana, Ben]
+    crew:
+      - Ana
+      - Ben
     tasks:
       - task: Strip cabinets
         hours: 6
@@ -31,7 +52,8 @@ phases:
         hours: 4
   - phase: Install
     days: 8
-    crew: [Chidi]
+    crew:
+      - Chidi
     tasks:
       - task: Hang cabinets
         hours: 20

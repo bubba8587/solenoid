@@ -1,15 +1,10 @@
 // [[B1]] obsidianBet
-// TaskNotes (the Obsidian plugin) over its local HTTP API. URL builders + PARSERS are pure
-// and fixture-tested; the node owns the fetch, the paging loop and the cache. One fixture
-// per endpoint in taskNotesApi.test.ts. Field shapes follow the plugin's TaskInfo type.
 
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "./frame";
-import { parseDateToSerial, jsDateToSerial } from "./nodes/dateSerial";
+import { parseDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 
 export const TASKNOTES_DEFAULT_URL = "http://localhost:8080";
-/** The apiKeyStore slot the bearer token lives in. */
 export const TASKNOTES_KEY_ID = "tasknotes";
-/** The API's page cap. */
 export const TASKS_PAGE = 200;
 
 export type TaskNotesProvider = "tasks" | "calendar" | "stats";
@@ -22,7 +17,6 @@ export const TASKNOTES_PROVIDER_META = {
 
 function base(url: string): string {
   const t = url.trim() || TASKNOTES_DEFAULT_URL;
-  // "localhost:8080" typed without a scheme is a bare host, not a URL.
   return (/^[a-z][a-z0-9+.-]*:\/\//i.test(t) ? t : `http://${t}`).replace(/\/+$/, "");
 }
 
@@ -39,21 +33,30 @@ export function statsUrl(url: string): string {
   return `${base(url)}/api/stats`;
 }
 
-/** The request headers: a bearer token when one is set. */
 export function authHeaders(token: string): Record<string, string> {
   const t = token.trim();
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-// ─── Value parsing ────────────────────────────────────────────────────────────────
 
-/** A date (`YYYY-MM-DD`) or an ISO datetime → a serial; null for blank / unreadable. */
+const ZONE_SUFFIX = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+const WALL_TIME = /^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/;
+
+/** Reads a TaskNotes date or timestamp as a local wall-clock serial ([[C44]] dateSerials): a zone-less time as written, a zoned one as this machine's clock at that instant. */
 export function isoToSerial(s: unknown): number | null {
   if (typeof s !== "string" || !s.trim()) return null;
   const t = s.trim();
-  if (/T/.test(t)) {
-    const ms = Date.parse(t);
-    return Number.isFinite(ms) ? jsDateToSerial(new Date(ms)) : null;
+  const tAt = t.indexOf("T");
+  if (tAt >= 0) {
+    const day = parseDateToSerial(t.slice(0, tAt));
+    if (!Number.isFinite(day)) return null;
+    if (ZONE_SUFFIX.test(t)) {
+      const ms = Date.parse(t);
+      return Number.isFinite(ms) ? wallClockSerial(new Date(ms)) : null;
+    }
+    const m = WALL_TIME.exec(t.slice(tAt + 1));
+    if (!m || +m[1] > 23 || +m[2] > 59 || +(m[3] ?? 0) > 59) return null;
+    return day + (+m[1] * 3600 + +m[2] * 60 + +(m[3] ?? 0)) / 86400;
   }
   const n = parseDateToSerial(t);
   return Number.isFinite(n) ? n : null;
@@ -64,7 +67,14 @@ function serialToIsoDate(serial: number): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 }
 
-/** `[[Name]]`, `[[folder/Name|alias]]`, `folder/Name.md` → `Name`. */
+/** The date alone for a whole-day serial, else the date and the wall-clock minute. */
+function serialToTaskDate(serial: number): string {
+  const d = new Date(Math.round((serial - 25569) * 1440) * 60000);
+  const date = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  const h = d.getUTCHours(), m = d.getUTCMinutes();
+  return h === 0 && m === 0 ? date : `${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 export function linkName(s: unknown): string {
   if (typeof s !== "string") return "";
   let t = s.trim();
@@ -75,7 +85,6 @@ export function linkName(s: unknown): string {
   return t.replace(/\.md$/i, "").trim();
 }
 
-/** The API envelope: `{success, data}` or `{success:false, error}`. Throws the error text. */
 export function unwrap(text: string): unknown {
   let json: unknown;
   try { json = JSON.parse(text); } catch { throw new Error("TaskNotes: the reply was not JSON"); }
@@ -87,7 +96,6 @@ export function unwrap(text: string): unknown {
   return json;
 }
 
-// ─── Tasks → cube ─────────────────────────────────────────────────────────────────
 
 export interface TaskRecord {
   path: string;
@@ -140,8 +148,6 @@ function instancesFrame(dates: unknown): FrameValue {
   return { __frame: true, columns: [{ name: "Date", type: "date", values: vals }] };
 }
 
-/** A user (custom) field → a cube cell: scalars as typed, a list → a list cell, an object
- *  → its JSON text (never a dropped key). */
 function userCell(v: unknown): CubeCell {
   if (v == null) return null;
   if (typeof v === "number" || typeof v === "boolean") return v;
@@ -202,7 +208,6 @@ export interface TasksPage {
   nextOffset: number;
 }
 
-/** One `GET /api/tasks` page. */
 export function parseTasksPage(text: string, offset: number): TasksPage {
   const data = unwrap(text) as { tasks?: unknown; pagination?: { total?: unknown; hasMore?: unknown; limit?: unknown } } | null;
   const list = Array.isArray(data?.tasks) ? data!.tasks as Record<string, unknown>[] : [];
@@ -213,7 +218,6 @@ export function parseTasksPage(text: string, offset: number): TasksPage {
   return { tasks, total, hasMore: hasMore && tasks.length > 0, nextOffset: offset + tasks.length };
 }
 
-/** The Tasks cube: built-ins first, then every user field in first-seen order. */
 export function tasksToCube(tasks: readonly TaskRecord[]): CubeValue {
   const col = (name: string, cells: CubeCell[], type?: FrameValue["columns"][number]["type"]) => ({ name, cells, ...(type ? { type } : {}) });
   const userKeys: string[] = [];
@@ -241,7 +245,6 @@ export function tasksToCube(tasks: readonly TaskRecord[]): CubeValue {
   ]);
 }
 
-// ─── Calendar events → frame ──────────────────────────────────────────────────────
 
 export function parseEvents(text: string): FrameValue {
   const data = unwrap(text) as { events?: unknown } | unknown[] | null;
@@ -260,7 +263,6 @@ export function parseEvents(text: string): FrameValue {
   ] };
 }
 
-// ─── Stats → scalars ──────────────────────────────────────────────────────────────
 
 export interface TaskStats { total: number | null; completed: number | null; active: number | null; overdue: number | null; archived: number | null }
 
@@ -269,7 +271,6 @@ export function parseStats(text: string): TaskStats {
   return { total: num(d.total), completed: num(d.completed), active: num(d.active), overdue: num(d.overdue), archived: num(d.archived) };
 }
 
-/** The task counts as one { Status | Count } frame, a row per count. */
 export function statsToFrame(s: TaskStats): FrameValue {
   const rows: Array<[string, number | null]> = [
     ["Total", s.total], ["Completed", s.completed], ["Active", s.active], ["Overdue", s.overdue], ["Archived", s.archived],
@@ -280,9 +281,7 @@ export function statsToFrame(s: TaskStats): FrameValue {
   ] };
 }
 
-// ─── Write Tasks (F6): rows → API payloads + the plan frame ───────────────────────
 
-/** The API's task fields a row may set; `path` picks the row's task (PUT), never a field. */
 export const WRITABLE_TASK_KEYS = [
   "title", "details", "status", "priority", "due", "scheduled", "tags", "contexts", "projects",
   "recurrence", "recurrence_anchor", "timeEstimate", "blockedBy",
@@ -291,19 +290,12 @@ const WRITABLE = new Set<string>(WRITABLE_TASK_KEYS);
 const DATE_KEYS = new Set(["due", "scheduled"]);
 const LIST_KEYS = new Set(["tags", "contexts", "projects"]);
 
-function serialToIsoDateOnly(serial: number): string {
-  return serialToIsoDate(serial);
-}
-
-/** A cube/frame cell → the API's JSON for `key`: dates from serials, lists as arrays
- *  (a comma-separated text splits), blockedBy names as FINISHTOSTART links, numbers as
- *  minutes, everything else as its text. Blank → undefined (the key is not sent). */
 export function cellToTaskField(key: string, cell: unknown): unknown {
   if (cell == null || cell === "") return undefined;
   if (DATE_KEYS.has(key)) {
-    if (typeof cell === "number") return serialToIsoDateOnly(cell);
+    if (typeof cell === "number") return serialToTaskDate(cell);
     const n = isoToSerial(String(cell));
-    return n == null ? undefined : serialToIsoDateOnly(n);
+    return n == null ? undefined : serialToTaskDate(n);
   }
   const asList = (v: unknown): string[] =>
     Array.isArray(v) ? v.map((x) => String(x ?? "").trim()).filter(Boolean)
@@ -311,22 +303,17 @@ export function cellToTaskField(key: string, cell: unknown): unknown {
   if (LIST_KEYS.has(key)) return asList(cell);
   if (key === "blockedBy") return asList(cell).map((name) => ({ uid: `[[${linkName(name) || name}]]`, reltype: "FINISHTOSTART" }));
   if (key === "timeEstimate") { const n = typeof cell === "number" ? cell : Number(cell); return Number.isFinite(n) ? n : undefined; }
-  if (typeof cell === "object") return undefined; // a nested table has no API field
+  if (typeof cell === "object") return undefined;
   return typeof cell === "string" ? cell : String(cell);
 }
 
 export interface TaskWritePlanRow {
   path: string;
   title: string;
-  /** create (no path) · update (path) · skip (nothing to send) */
   action: "create" | "update" | "skip";
-  /** The API payload for this row (the fields that will be sent). */
   payload: Record<string, unknown>;
 }
 
-/** One row of a cube/frame (column name → cell) → its write plan. `keys` limits the
- *  columns sent ("" = every writable column present); `path` always addresses, never
- *  writes; a create needs a title. */
 export function planTaskRow(row: Record<string, unknown>, keys: readonly string[]): TaskWritePlanRow {
   const path = typeof row.path === "string" ? row.path.trim() : "";
   const wanted = keys.length ? keys.filter((k) => WRITABLE.has(k)) : Object.keys(row).filter((k) => WRITABLE.has(k));
@@ -342,7 +329,6 @@ export function planTaskRow(row: Record<string, unknown>, keys: readonly string[
   return { path, title, action, payload };
 }
 
-/** Every row of a cube (or a frame widened to one) → its plan. */
 export function planTaskWrites(cube: CubeValue, keys: readonly string[]): TaskWritePlanRow[] {
   const rows = cube.columns.reduce((m, c) => Math.max(m, c.cells.length), 0);
   const out: TaskWritePlanRow[] = [];
@@ -354,7 +340,6 @@ export function planTaskWrites(cube: CubeValue, keys: readonly string[]): TaskWr
   return out;
 }
 
-/** The `plan` frame a Write Tasks card emits: path · title · action · fields. */
 export function taskPlanFrame(plan: readonly TaskWritePlanRow[], resolved?: ReadonlyMap<number, string>): FrameValue {
   return { __frame: true, columns: [
     { name: "path", type: "string", values: plan.map((r) => r.path || null) },
@@ -364,7 +349,6 @@ export function taskPlanFrame(plan: readonly TaskWritePlanRow[], resolved?: Read
   ] };
 }
 
-/** `PUT /api/tasks/:id` — the id is the URL-encoded task path. */
 export function taskUrl(url: string, path: string): string {
   return `${base(url)}/api/tasks/${encodeURIComponent(path)}`;
 }
@@ -373,7 +357,6 @@ export function createTaskUrl(url: string): string {
   return `${base(url)}/api/tasks`;
 }
 
-/** Parse the plugin's reply to a create/update: the task's path when present. */
 export function parseWrittenTaskPath(text: string): string | null {
   try {
     const d = unwrap(text) as { path?: unknown; task?: { path?: unknown } } | null;

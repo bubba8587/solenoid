@@ -1,30 +1,9 @@
 // [[C76]] formulaPackDefault, [[C17]] shareImpl
-// The classifier half of the Electromagnetism pack; the Wavelength ↔ Frequency equation node does the conversion.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, strOut, readInput } from "./shared";
-import { solError, isSolError, type SolError } from "../errorValue";
-
-const C = 299792458; // m/s
-
-/** Wavelength in METERS; boundaries are the conventional ISO 21348-adjacent ones. */
-export function emBand(wavelengthM: number): string {
-  const nm = wavelengthM * 1e9;
-  if (wavelengthM >= 1) return "Radio";
-  if (wavelengthM >= 1e-3) return "Microwave";
-  if (nm >= 750) return "Infrared";
-  if (nm >= 380) {
-    if (nm >= 620) return "Visible (red)";
-    if (nm >= 590) return "Visible (orange)";
-    if (nm >= 570) return "Visible (yellow)";
-    if (nm >= 495) return "Visible (green)";
-    if (nm >= 450) return "Visible (blue)";
-    return "Visible (violet)";
-  }
-  if (nm >= 10) return "Ultraviolet";
-  if (nm >= 0.01) return "X-ray";
-  return "Gamma";
-}
+import { isSolError, type SolError } from "../errorValue";
+import { emSpectrum } from "./emSpectrumOps";
 
 export class EmSpectrumNode extends ClassicPreset.Node {
   label: string;
@@ -38,7 +17,6 @@ export class EmSpectrumNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("EmSpectrum");
     this.label = init?.label ?? "EM Spectrum Band";
-    // Give either one; a wired/typed frequency wins when both are present.
     this.addInput("freq", numIn("Frequency Hz"));
     this.addInput("wavelength", numIn("Wavelength m"));
     this.addOutput("band", strOut("Band"));
@@ -60,16 +38,4 @@ export class EmSpectrumNode extends ClassicPreset.Node {
     if (isSolError(r)) return finish(r, r, r);
     return finish(r.band, r.freq, r.wavelength);
   }
-}
-
-/** Frequency WINS when both are given; null = no usable input, #DOMAIN! for a
- *  non-positive or non-finite frequency. Shared with the EMSPECTRUMBAND formula. */
-export function emSpectrum(f: number | null, wl: number | null): { band: string; freq: number; wavelength: number } | SolError | null {
-  const fq = typeof f === "number" ? f : typeof wl === "number" && wl > 0 ? C / wl : null;
-  if (fq === null) return null;
-  if (!(fq > 0) || !Number.isFinite(fq)) {
-    return solError("#DOMAIN!", "Needs a positive frequency or wavelength");
-  }
-  const lambda = C / fq;
-  return { band: emBand(lambda), freq: fq, wavelength: lambda };
 }

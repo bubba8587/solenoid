@@ -4,6 +4,7 @@ import type { SliderInputNode as SliderInputNodeType } from "../rete-nodes";
 import { processGraph } from "../process";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
+import { formatScalar } from "./format";
 
 // Transport icons from Tabler Icons (MIT, tabler.io/icons): player-play,
 // player-pause (filled), chevron-left / chevron-right (outline).
@@ -104,17 +105,17 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
   }, [playing, speed]);
 
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} squareCollapse>
       <InlineInputs node={data} emit={emit} />
       <style>{`
         .solenoid-slider-node-range::-webkit-slider-thumb {
           -webkit-appearance: none; appearance: none;
           width: 12px; height: 12px; border-radius: 50%;
-          background: #56b4e9; cursor: grab; border: none;
+          background: var(--node-accent, var(--accent)); cursor: grab; border: none;
         }
         .solenoid-slider-node-range::-moz-range-thumb {
           width: 12px; height: 12px; border-radius: 50%;
-          background: #56b4e9; cursor: grab; border: none;
+          background: var(--node-accent, var(--accent)); cursor: grab; border: none;
         }
         .solenoid-slider-node-range:active::-webkit-slider-thumb { cursor: grabbing; }
       `}</style>
@@ -170,6 +171,7 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
           </label>
         </div>
       </div>
+      <div className="solenoid-node__collapsed-only solenoid-node__mini-value">{formatScalar(data.value)}</div>
     </NodeShell>
   );
 }

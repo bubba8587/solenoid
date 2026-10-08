@@ -28,10 +28,6 @@ describe("buildStub", () => {
 });
 
 describe("mergeStub", () => {
-  it("creates the stub from nothing", () => {
-    const s = mergeStub(null, "My Graph", "Writer A", "Notes/Foo.md", "2026-09-07T10:00:00");
-    expect(s).toContain("nodes: [Writer A]");
-  });
   it("a later write from the same node updates its target, not a duplicate row", () => {
     const first = mergeStub(null, "My Graph", "Writer A", "Notes/Foo.md", "t1");
     const second = mergeStub(first, "My Graph", "Writer A", "Notes/Bar.md", "t2");

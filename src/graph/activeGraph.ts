@@ -1,78 +1,110 @@
-// [[C33]]
+// [[B12]] losslessSaves
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import { getEditor, getView } from "./process";
-// The graph the app CHROME acts on, and the seam any canvas-substituting surface registers
-// with. Deliberately NOT `getEditor()/getView()`, which stay MAIN-only forever because
-// persistence reads them — the override would autosave the substituted surface over the
-// document. Locked by activeGraph.test.ts.
+import { getEditor, getView, beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
+// Chrome acts on this graph; getEditor()/getView() stay main-only, or autosave would save a substituted surface.
+
+/** How a bulk edit (paste, delete, wrap or unpack a composite) gates and settles on one surface ([[B3]] sameNodeEverywhere). */
+export interface EditScope {
+  /** Raise the surface's rebuild gate, which holds its per-event settles. */
+  begin: () => void;
+  end: () => void;
+  /** The one settle after the gate; `renderOnly` names the only cards that need a re-render. */
+  settle: (renderOnly?: Set<string>) => Promise<void>;
+}
+
+export const MAIN_EDIT_SCOPE: EditScope = {
+  begin: beginGraphRebuild,
+  end: endGraphRebuild,
+  settle: (renderOnly) => bulkSettle(renderOnly),
+};
 
 export interface ActiveGraph {
   editor: NodeEditor<Schemes>;
   view: View;
+  /** Absent means the main canvas's gate and settle. */
+  scope?: EditScope;
 }
 
 let _override: ActiveGraph | null = null;
 const listeners = new Set<() => void>();
 
-// OWNERSHIP-only registry, distinct from `_override`: locked auxiliary canvases (the
-// landing scene cards) whose nodes live in their own editor and must resolve their
-// output socket type / FC annotation at render time, but which are NEVER the action
-// target — no chrome acts on them and autosave never sees them. Several can be live at
-// once, so this is a set, not a single slot.
 const owned = new Set<ActiveGraph>();
 
-/** Register a locked auxiliary graph so its nodes resolve through getOwning*; returns
- *  the unregister fn (call on unmount). Does NOT change the action target. */
 export function registerOwnedGraph(ctx: ActiveGraph): () => void {
   owned.add(ctx);
   return () => { owned.delete(ctx); };
 }
 
-/** Register the drill-in's current level as the action target (null = back to main). */
 export function setActiveGraph(ctx: ActiveGraph | null): void {
   if (_override === ctx) return;
   _override = ctx;
   for (const l of listeners) l();
 }
 
-/** Subscribe to active-graph changes (React chrome that must re-render on drill). */
 export function subscribeActiveGraph(fn: () => void): () => void {
   listeners.add(fn);
   return () => { listeners.delete(fn); };
 }
 
-/** True while a subgraph (composite drill-in) is the active action target. */
 export function isSubgraphActive(): boolean {
   return _override !== null;
+}
+
+/** The scope a bulk edit of `editor` runs under: the open drill-in's own, or the main canvas's. */
+export function editScopeFor(editor: NodeEditor<Schemes>): EditScope {
+  return (_override?.editor === editor ? _override.scope : undefined) ?? MAIN_EDIT_SCOPE;
 }
 
 export function getActiveEditor(): NodeEditor<Schemes> | null {
   return _override?.editor ?? getEditor();
 }
 
-/** The editor that OWNS `nodeId`. Render-time cross-node resolvers must key on this, not
- *  `getEditor()`, which silently returns nothing for a node inside a drill-in — or in a
- *  locked scene canvas (checked after main, so a main node always resolves to main). */
+/** Render-time resolvers key on this: `getEditor()` finds nothing for a node in a drill-in or a locked scene canvas. */
 export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
   if (_override && _override.editor.getNode(nodeId)) return _override.editor;
   const main = getEditor();
   if (main?.getNode(nodeId)) return main;
   for (const g of owned) if (g.editor.getNode(nodeId)) return g.editor;
+  for (const top of allTopEditors()) { const inner = closedSubgraphOf(top, nodeId); if (inner) return inner; }
   return main;
+}
+
+type Subgraphed = { internalEditor?: NodeEditor<Schemes> };
+
+/** A node inside a composite that isn't open: its editor is only reachable through the composite, at any depth. */
+function closedSubgraphOf(editor: NodeEditor<Schemes>, nodeId: string, depth = 0): NodeEditor<Schemes> | null {
+  if (depth > 16) return null;
+  for (const n of editor.getNodes()) {
+    const inner = (n as Subgraphed).internalEditor;
+    if (!inner) continue;
+    if (inner.getNode(nodeId)) return inner;
+    const deeper = closedSubgraphOf(inner, nodeId, depth + 1);
+    if (deeper) return deeper;
+  }
+  return null;
+}
+
+/** Every live graph's top editor: the main one, a drill-in, each owned canvas. */
+export function allTopEditors(): NodeEditor<Schemes>[] {
+  const out = new Set<NodeEditor<Schemes>>();
+  const main = getEditor();
+  if (main) out.add(main);
+  if (_override) out.add(_override.editor);
+  for (const g of owned) out.add(g.editor);
+  return [...out];
 }
 
 export function getActiveView(): View | null {
   return _override?.view ?? getView();
 }
 
-/** getOwningEditor's view twin, for code running per rendered node: `getView()` no-ops
- *  inside a drill-in, and `getActiveView()` wrongly returns the drill-in for a MAIN node. */
+/** Null for a node no surface shows (one in a closed composite): the main view would pan to, move or measure an id it doesn't hold. */
 export function getOwningView(nodeId: string): View | null {
   if (_override && _override.editor.getNode(nodeId)) return _override.view;
   const main = getEditor();
   if (main?.getNode(nodeId)) return getView();
   for (const g of owned) if (g.editor.getNode(nodeId)) return g.view;
-  return getView();
+  return null;
 }

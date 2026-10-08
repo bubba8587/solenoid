@@ -1,10 +1,11 @@
-// [[D10]] onePrunePath
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { collapseStore } from "../collapseStore";
+import { CollapsedInputPill } from "./CollapsedInputPill";
 import type { FilterNode as FilterNodeType } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -16,10 +17,10 @@ import type { DisplayValue } from "./valueDisplayFormat";
 import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
 
-// The frame Filter's condition rows minus the column picker — a list has no lanes, so a
-// row is just op + value. Kept rides the hero box; Dropped is the complement.
+// The frame Filter's rows minus the column picker, since a list has no lanes; Kept rides the hero box and Dropped is the complement.
 export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
   const connected = useConnectedInputs(data.id);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const [combine, setCombine] = useNodeField(data, "combine");
   const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
   const strLiterals = (data.stringLiterals ??= {});
@@ -39,21 +40,25 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
 
   async function addRow() {
     data.addValueInput();
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
     data.removeValueInput(key);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }
 
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["list"]} />
+      {/* Collapsed, every input rides one pill; the condition rows would hide their sockets with them. */}
+      {collapsed ? (
+        <CollapsedInputPill node={data} emit={emit} keys={[...(data.inputs.column ? ["list", "column"] : ["list"]), ...keys]} />
+      ) : (<>
+      <InlineInputs node={data} emit={emit} keys={data.inputs.column ? ["list", "column"] : ["list"]} />
       {keys.length > 1 && (
         <SegToggle value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
       )}
@@ -94,6 +99,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
       >
         Add Condition
       </button>
+      </>)}
       <MeasuredSocketRow side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result!.socket} hero>
         <ValueDisplay value={data.cachedResult as DisplayValue} />
       </MeasuredSocketRow>

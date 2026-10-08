@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { ClassicPreset } from "rete";
 import type {
   WaterfallNode, CandlestickNode, BoxplotNode,
-  CalendarHeatmapNode, ProportionNode, ProportionLayout, QuiverNode,
+  CalendarHeatmapNode, HeatmapNode, ProportionNode, ProportionLayout, QuiverNode,
 } from "../rete-nodes";
 import { PROPORTION_LAYOUT_OPTIONS } from "../rete-nodes";
 import type { ChartValue, ChartPayload } from "../chartValue";
@@ -11,14 +11,14 @@ import { isSolError, type SolError } from "../errorValue";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
+import { calendarHeight } from "./heatmapLayout";
 import { ChartChip } from "./ChartChip";
 import { OpToggle } from "./SegToggle";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 
-// One shared card for every figure node; the figure comes from ChartFigure, so a
-// node and a Report embed render identically.
+// One shared card for every figure node; the figure comes from ChartFigure, so a card and a Report embed render identically.
 
 type FigureNode = ClassicPreset.Node & {
   id: string;
@@ -28,7 +28,7 @@ type FigureNode = ClassicPreset.Node & {
 };
 
 function makeFigureComponent<N extends FigureNode>(
-  figHeight: number,
+  figHeight: number | ((cv: ChartValue, width: number) => number),
   hasData: (p: ChartPayload | undefined) => boolean,
   controls?: (data: N) => ReactNode,
 ) {
@@ -44,10 +44,9 @@ function makeFigureComponent<N extends FigureNode>(
         {controls?.(data)}
         <InlineInputs node={data} emit={emit} />
         <div className="solenoid-node__section-divider" />
-        {!collapsed && (has && cv
-          ? <ChartFigure value={cv} width={figW} height={figHeight} />
-          : <div className="solenoid-node__display-value solenoid-node__display-value--empty" title={err?.message}>{err ? err.code : "—"}</div>)}
-        {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup). */}
+        {!collapsed && has && cv
+          ? <ChartFigure value={cv} width={figW} height={typeof figHeight === "number" ? figHeight : figHeight(cv, figW)} />
+          : !(collapsed && cv) && <div className="solenoid-node__display-value solenoid-node__display-value--empty" title={err?.message}>{err ? err.code : "—"}</div>}
         {cv && (
           <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
             <ChartChip value={cv} />
@@ -73,20 +72,39 @@ export const BoxplotComponent = makeFigureComponent<BoxplotNode>(
   (p) => p?.kind === "boxplot" && p.boxes.length > 0,
 );
 
+// The height the wrapped weeks need at the card's width, plus the title strip; the tick width is a typical label's.
 export const CalendarHeatmapComponent = makeFigureComponent<CalendarHeatmapNode>(
-  110,
+  (cv, w) => cv.payload?.kind === "calheat"
+    ? calendarHeight(cv.payload.days, w, 1, cv.options.cbar === false ? null : 22) + (cv.options.title ? 16 : 0)
+    : 110,
   (p) => p?.kind === "calheat" && p.days.length > 0,
 );
 
-// The layout picker is a real component (it owns the useState hook); the figure card
-// itself is the shared one, with the toggle slotted above the inputs (the Gauge pattern).
+// Tall enough for square cells at the card's width, so a short grid leaves no dead band.
+function heatmapCardHeight(cv: ChartValue, w: number): number {
+  if (cv.payload?.kind !== "heatmap") return 170;
+  const { z, cols } = cv.payload;
+  const longest = cols.reduce((m, c) => Math.max(m, c.length), 0);
+  const cell = Math.min(40, Math.max(3, (w - 90) / Math.max(1, cols.length)));
+  const colGutter = longest * 5.2 > cell ? Math.min(longest * 5.2, 60) : 14;
+  const o = cv.options;
+  const extra = colGutter + 8 + (o.title ? 16 : 0) + (o.xlabel ? 14 : 0);
+  return Math.round(Math.max(90, Math.min(320, z.length * cell + extra)));
+}
+
+export const HeatmapComponent = makeFigureComponent<HeatmapNode>(
+  heatmapCardHeight,
+  (p) => p?.kind === "heatmap" && p.z.some((r) => r.some((v) => v != null)),
+);
+
+// A real component, since it owns a useState hook; the toggle slots above the inputs (the Gauge pattern).
 function ProportionControls({ data }: { data: ProportionNode }) {
   const [op, setOp] = useState<ProportionLayout>(data.op);
   async function pick(next: ProportionLayout) {
     if (next === data.op) return;
     data.setOp(next); // sockets are identical for both layouts — no cable prune
     setOp(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
   return <OpToggle value={op} options={PROPORTION_LAYOUT_OPTIONS} onChange={(s) => void pick(s)} />;

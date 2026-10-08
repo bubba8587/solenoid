@@ -1,6 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[C30]] saveViaTextForm
-// Node-anchored comment threads (an optional SavedGraph field). No identity or
-// permissions: a local author-name string is all of it.
+// [[A1]] visualGraphCalculator
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -14,7 +12,6 @@ export interface Comment {
   time: number;
 }
 
-/** The subset persisted in SavedGraph (see persistence.ts SavedComment). */
 export type SavedCommentData = Omit<Comment, "time"> & { time?: number };
 
 let _comments: Comment[] = [];
@@ -34,8 +31,9 @@ export const commentStore = {
     return c;
   },
 
-  update(id: string, patch: Partial<Pick<Comment, "text" | "resolved" | "author">>): void {
-    _comments = _comments.map((c) => (c.id === id ? { ...c, ...patch } : c));
+  update(id: string, patch: Partial<Pick<Comment, "text" | "resolved">>): void {
+    const { text, resolved } = patch;
+    _comments = _comments.map((c) => (c.id === id ? { ...c, ...(text !== undefined && { text }), ...(resolved !== undefined && { resolved }) } : c));
     notify();
   },
 
@@ -53,16 +51,20 @@ export const commentStore = {
     if (_comments.length > 0) { _comments = []; notify(); }
   },
 
-  /** Serialize for SavedGraph. */
   serialize: (): SavedCommentData[] => _comments.map((c) => ({ ...c })),
 
-  /** Replace the set (loadGraph, after id-remapping — the caller rewrites nodeId). */
-  load(list: SavedCommentData[]): void {
-    _comments = list.map((c) => ({ ...c, time: c.time ?? Date.now() }));
-    _seq = _comments.reduce((m, c) => {
-      const n = parseInt(c.id.replace(/\D/g, ""), 10);
-      return Number.isFinite(n) ? Math.max(m, n) : m;
-    }, _seq);
+  /** Adds loaded comments, keeping the counter above every id; one whose id is taken (a pasted composite's) gets a fresh id. */
+  merge(list: SavedCommentData[]): void {
+    if (list.length === 0) return;
+    const seqOf = (id: string) => parseInt(id.replace(/\D/g, ""), 10);
+    _seq = list.reduce((m, c) => (Number.isFinite(seqOf(c.id)) ? Math.max(m, seqOf(c.id)) : m), _seq);
+    const taken = new Set(_comments.map((c) => c.id));
+    const added = list.map((c) => {
+      const id = taken.has(c.id) ? `cm${++_seq}` : c.id;
+      taken.add(id);
+      return { ...c, id, time: c.time ?? Date.now() };
+    });
+    _comments = [..._comments, ...added];
     notify();
   },
 
@@ -73,7 +75,6 @@ export const commentStore = {
 registerNodeForget((nodeId) => commentStore.removeForNode(nodeId));
 registerNodeForgetAll(() => commentStore.clear());
 
-// Local to this machine, not per-document.
 const AUTHOR_KEY = "solenoid.commentAuthor";
 let _author = "";
 try { _author = localStorage.getItem(AUTHOR_KEY) ?? ""; } catch { /* private mode */ }
@@ -89,7 +90,6 @@ export const commentAuthorStore = {
   version: authorNotifier.version,
 };
 
-// Panel open state, lifted so a right-click "Add comment" can force the panel open.
 let _panelOpen = false;
 let _focusNodeId: string | null = null;
 const panelNotifier = createNotifier();
@@ -100,7 +100,6 @@ export const commentsPanelUi = {
     _panelOpen = open;
     panelNotifier.notify();
   },
-  /** Open the panel scrolled/focused to one node's thread (right-click → Add comment). */
   openFor(nodeId: string): void {
     _focusNodeId = nodeId;
     _panelOpen = true;

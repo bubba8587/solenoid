@@ -89,14 +89,10 @@ reducer routes through. **An "uncertain number" kind can't literally be `null`/`
 its own propagation rule added to `forAggregate` (99-109) and every element-wise
 arithmetic op, mirroring exactly how `SolError` propagates and `Missing` gets skipped.
 
-**Authoring surface — the Number node:** `NumberInputNode`
-(`src/graph/nodes/input.ts:8-24`) — fields `label: string`, `value: number`, fixed
-`width=180/height=100`, one output socket (`numberSocket`) named `"value"`, `data()`
-returns `{value: this.value}`. **This is where the `±` field gets added** (e.g. a new
-`errorValue: number` field alongside `value`, switching the output to emit an
-`UncertainNumber` when nonzero). Note: there's also a `NumberValueNode` at
-`src/graph/nodes/text.ts:610` — confirm it's not the intended target before assuming
-`NumberInputNode` is the only "Number" node.
+**Authoring surface — a number Value Input:** `ValueInputNode` (`src/graph/nodes/control.ts`),
+`op: "number"`. The typed text (`value: string`) is the one stored field and the output socket
+is `"value"`. **This is where the `±` field gets added** (e.g. an `errorValue` field shown only
+in Number mode, switching the output to emit an `UncertainNumber` when nonzero).
 
 **Build (once representation chosen):**
 1. Add the `UncertainNumber` tagged shape + predicate to `valueKinds.ts`, following the
@@ -105,7 +101,7 @@ returns `{value: this.value}`. **This is where the `±` field gets added** (e.g.
    uncertainties, products compound — real error-propagation math).
 3. Display: render the `±` like a unit suffix (reuse `ValueDisplay`'s formatting stack,
    detailed in bundle 13).
-4. Add the `±` field to `NumberInputNode` (`input.ts:8-24`).
+4. Add the `±` field to the number Value Input (`ValueInputNode`, `control.ts`).
 5. Wire as bundle 09's Monte Carlo distribution-input — an uncertain input is exactly
    what a Monte Carlo run samples; this is the connective tissue between the two bundles.
 

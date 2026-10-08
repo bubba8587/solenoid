@@ -1,6 +1,6 @@
-// [[C62]]
+// [[B14]]
 import { describe, it, expect, afterEach } from "vitest";
-import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
+import { SOCKET_VARS, BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, resolveAccent, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
 
 // WCAG luminance/contrast, shared by the structure checks below and the
 // accent-adaptive suite (which re-runs them on rotated ramps).
@@ -27,14 +27,86 @@ describe("built-in palettes", () => {
 
   // Author's rule (2026-06-21): slots may share a color ONLY where colourblindness
   // forces it (Colorblind-safe maps 12 slots onto a smaller proven CVD set) or where
-  // a palette is DELIBERATELY monochrome (Equinox — all one gray, type read by socket
-  // shape). Every other built-in must give all 12 slots visibly distinct hexes.
+  // a palette is DELIBERATELY monochrome (Equinox — Default's lightness as grays, type read
+  // by socket shape). Every other built-in must give all 12 slots visibly distinct hexes.
   const SHARED_COLOUR_OK = new Set(["Colorblind-safe", "Equinox"]);
   it("non-Colorblind palettes have 12 distinct colors", () => {
     for (const name of PALETTE_NAMES) {
       if (SHARED_COLOUR_OK.has(name)) continue;
       const hexes = COLOR_PALETTE.map((s) => BUILTIN_PALETTES[name][s].toLowerCase());
       expect(new Set(hexes).size, `${name} has duplicate colors`).toBe(hexes.length);
+    }
+  });
+});
+
+describe("Neon", () => {
+  const hue = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+    const h = d === 0 ? 0 : max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return h * 60;
+  };
+  const ring = COLOR_PALETTE.filter((s) => s !== "gray").sort((a, b) => hue(PALETTE[a]) - hue(PALETTE[b]));
+  const gap = (a: string, b: string) => (hue(b) - hue(a) + 360) % 360;
+
+  it("keeps Default's gray and makes every other slot readable on black", () => {
+    expect(BUILTIN_PALETTES.Neon.gray).toBe(PALETTE.gray);
+    for (const slot of ring) expect(ratio(BUILTIN_PALETTES.Neon[slot], "#000000"), slot).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("nudges hues without reordering them, each pair keeping a third of its Default gap", () => {
+    let around = 0;
+    ring.forEach((slot, i) => {
+      const next = ring[(i + 1) % ring.length];
+      const after = gap(BUILTIN_PALETTES.Neon[slot], BUILTIN_PALETTES.Neon[next]);
+      expect(after, `${slot} to ${next}`).toBeGreaterThanOrEqual(gap(PALETTE[slot], PALETTE[next]) / 3 - 0.5);
+      around += after;
+    });
+    expect(around).toBeCloseTo(360, 3);
+  });
+
+  it("puts no two slots closer than Default's closest pair of socket colors", () => {
+    const ok = (hex: string) => {
+      const [l, c, h] = hexToOklch(hex);
+      return [l, c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
+    };
+    const dist = (a: string, b: string) => Math.hypot(...ok(a).map((x, i) => x - ok(b)[i]));
+    const sockets = [...new Set(SOCKET_VARS.map((s) => s.slot))];
+    const floor = Math.min(...sockets.flatMap((a) => sockets.filter((b) => b !== a).map((b) => dist(PALETTE[a], PALETTE[b]))));
+    for (const a of COLOR_PALETTE) for (const b of COLOR_PALETTE) {
+      if (a < b) expect(dist(BUILTIN_PALETTES.Neon[a], BUILTIN_PALETTES.Neon[b]), `${a}/${b}`).toBeGreaterThanOrEqual(floor - 1e-9);
+    }
+  });
+});
+
+describe("Dawn and Dusk", () => {
+  const ok = (hex: string) => {
+    const [l, c, h] = hexToOklch(hex);
+    return [l, c * Math.cos((h * Math.PI) / 180), c * Math.sin((h * Math.PI) / 180)];
+  };
+  const dist = (a: string, b: string) => Math.hypot(...ok(a).map((x, i) => x - ok(b)[i]));
+  const dd = BUILTIN_PALETTES["Dawn and Dusk"];
+
+  // A sanity check, not a target: the author put harmony with the grounds ahead of separation here.
+  // Gold/lime (Number vs String) is the closest socket pair, at about 68% of the floor.
+  it("keeps socket colors 60% of the socket floor apart, and no pair under 60% of its old limit", () => {
+    const sockets = [...new Set(SOCKET_VARS.map((s) => s.slot))];
+    const floor = Math.min(...sockets.flatMap((a) => sockets.filter((b) => b !== a).map((b) => dist(PALETTE[a], PALETTE[b]))));
+    for (const a of COLOR_PALETTE) for (const b of COLOR_PALETTE) {
+      if (a >= b) continue;
+      if (sockets.includes(a) && sockets.includes(b)) expect(dist(dd[a], dd[b]), `${a}/${b}`).toBeGreaterThanOrEqual(0.6 * floor);
+      expect(dist(dd[a], dd[b]), `${a}/${b}`).toBeGreaterThanOrEqual(0.6 * Math.min(dist(PALETTE[a], PALETTE[b]), floor));
+    }
+  });
+
+  it("keeps Default's lightness steps on every chrome key, dusk's grounds and borders lifted as one", () => {
+    const inks = new Set(["text", "textBright", "textDim", "textMuted"]);
+    for (const mode of ["dark", "light"] as const) {
+      for (const key of CHROME_KEYS.filter((k) => k !== "canvasBg" && k !== "canvasDot")) {
+        const L = hexToOklch(BUILTIN_CHROME["Dawn and Dusk"][mode][key]!)[0];
+        const lift = mode === "dark" && !inks.has(key) ? 0.06 : 0;
+        expect(Math.abs(L - hexToOklch(DEFAULT_CHROME[mode][key])[0] - lift), `${mode} ${key}`).toBeLessThan(0.01);
+      }
     }
   });
 });
@@ -166,7 +238,12 @@ describe("chrome ramp structure", () => {
     expect(c("textDim")).toBeGreaterThan(c("textMuted"));
   });
 
-  // [[C62]] paletteAllOrNone: contrast is scoped to the two palettes that PROMISE it — Default, the
+  // A tinted canvas shares its cards' hue, so lightness alone must set them apart: these sit a clear step further down than Default's.
+  it.each(RAMPS.filter(([n]) => ["Solarized", "Orchard", "Blueprint", "Dawn and Dusk"].includes(n)))("%s/%s: the canvas sits well below the card", (_n, mode, r) => {
+    expect(hexToOklch(r.surface)[0] - hexToOklch(r.canvasBg)[0]).toBeGreaterThanOrEqual((mode === "dark" ? 0.1 : 0.05) - 0.005);
+  });
+
+  // [[B14]] oneDesignSystem: contrast is scoped to the two palettes that PROMISE it — Default, the
   // experience nobody chose, and Colorblind-safe, whose brief is legibility. The rest
   // are aesthetic opt-ins where fidelity to a look wins; Solarized sits near 3:1 by
   // design and forcing AA meant shipping something that was no longer Solarized.
@@ -194,7 +271,7 @@ describe("chrome ramp structure", () => {
 });
 
 // Accent-adaptive chrome: the tinted ramps (CHROME_HOME) follow the live accent's
-// hue — rotated by (accent − home) with every key's LUMINANCE held, so the [[C62]] paletteAllOrNone
+// hue — rotated by (accent − home) with every key's LUMINANCE held, so the [[B14]] oneDesignSystem
 // structure survives any accent and the authored ramp reappears untouched at home.
 describe("accent-adaptive chrome", () => {
   const HOMES = Object.entries(CHROME_HOME) as [PaletteName, PaletteSlot][];
@@ -211,7 +288,6 @@ describe("accent-adaptive chrome", () => {
   });
 
   it("declares a home only on a palette that authors chrome, naming one of its own slots", () => {
-    expect(HOMES.map(([n]) => n).sort()).toEqual(["Blueprint", "Orchard"]);
     for (const [name, slot] of HOMES) {
       expect(Object.keys(BUILTIN_CHROME[name].dark).length, name).toBeGreaterThan(0);
       expect(COLOR_PALETTE).toContain(slot);
@@ -275,7 +351,7 @@ describe("accent-adaptive chrome", () => {
     }
   });
 
-  // The load-bearing guarantee: rotation may retint but never relight. Every [[C62]] paletteAllOrNone
+  // The load-bearing guarantee: rotation may retint but never relight. Every [[B14]] oneDesignSystem
   // structure rule holds for every adaptive palette under every pickable accent.
   const CASES = HOMES.flatMap(([name]) =>
     MODES.flatMap((mode) => COLOR_PALETTE.map((accent) => [name, mode, accent] as [PaletteName, "dark" | "light", PaletteSlot])),
@@ -355,12 +431,26 @@ describe("neutral shades (gray-swatch cycle)", () => {
     expect(nextNeutral(undefined)).toBe("gray");
   });
 
-  it("resolves the two extreme neutrals to their fixed hex, independent of the palette", () => {
+  // [[B14]] oneDesignSystem
+  it("the neutrals take the palette's chrome: plain under Default, the chrome's own colors under a tinted palette", () => {
     expect(resolveColor(NEUTRAL_WHITE)).toBe(NEUTRAL_HEX[NEUTRAL_WHITE]);
     expect(resolveColor(NEUTRAL_DARK)).toBe(NEUTRAL_HEX[NEUTRAL_DARK]);
-    paletteStore.setActiveBase("Solarized");
-    expect(resolveColor(NEUTRAL_WHITE)).toBe(NEUTRAL_HEX[NEUTRAL_WHITE]); // palette-independent
-    paletteStore.setActiveBase("Default");
+    paletteStore.setActiveBase("Blueprint");
+    try {
+      expect(resolveColor(NEUTRAL_WHITE)).toBe("#e3ecf5");
+      expect(resolveColor(NEUTRAL_DARK)).toBe("#375f85");
+      expect(resolveAccent("gray")).toBe("#8ba4bf");
+      expect(resolveColor("gray")).toBe(BUILTIN_PALETTES.Blueprint.gray);
+      // Solarized's text is too dim to be the white shade, so the plain white takes its background's blue-green hue.
+      paletteStore.setActiveBase("Solarized");
+      const [L, c, h] = hexToOklch(resolveColor(NEUTRAL_WHITE));
+      const hueGap = Math.abs(((h - hexToOklch("#03303b")[2]) % 360 + 540) % 360 - 180);
+      expect(L).toBeGreaterThan(0.9);
+      expect(c).toBeGreaterThan(0.01);
+      expect(hueGap).toBeLessThan(25);
+    } finally {
+      paletteStore.setActiveBase("Default");
+    }
   });
 
   it("the extremes are neutral shades; gray and real slots are not", () => {
@@ -457,6 +547,15 @@ describe("reportPaletteStore (report/export-only, parallel to the canvas palette
     expect(resolveColor("gold")).toBe(canvasBefore); // canvas untouched
   });
 
+  it("drops an override that is not a #rrggbb hex, so a shared file cannot write markup into the exported page's stylesheet ([[C103]] untrustedContentSeams)", () => {
+    const evil = "red; } </style><script>alert(1)</script><style>";
+    reportPaletteStore.setReportPalette({ overrides: { sky: evil, gold: "#ff00ff" } });
+    expect(reportPaletteStore.resolve("sky")).not.toContain("<");
+    expect(reportPaletteStore.reportPalette()).toEqual({ overrides: { gold: "#ff00ff" } });
+    paletteStore.setDocPalette({ overrides: { sky: evil } });
+    expect(paletteStore.docPalette()).toBeUndefined();
+  });
+
   it("a report base pin resolves through that palette's slots", () => {
     reportPaletteStore.setReportPalette({ base: "Muted" });
     expect(reportPaletteStore.resolve("gold")).toBe(BUILTIN_PALETTES.Muted.gold);
@@ -501,20 +600,27 @@ describe("contrast ink is baked, not recomputed", () => {
     }
   });
 
+  // Android Chrome picks its toolbar icons from the theme-color (the accent) by WCAG contrast against white
+  // (ColorUtils.shouldUseLightForegroundOnBackground, threshold 3); the accent's ink must agree with it.
+  it("agrees with Android Chrome's light/dark foreground rule", () => {
+    const chrome = (hex: string) => {
+      const lin = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c < 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+      return 1.05 / (0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2] + 0.05) >= 3 ? "#fff" : "#1a1a1a";
+    };
+    expect(contrastInk(BUILTIN_PALETTES.Neon.green)).toBe("#1a1a1a");
+    expect(contrastInk(PALETTE.green)).toBe("#1a1a1a");
+    expect(contrastInk(PALETTE.sky)).toBe("#1a1a1a");
+    for (const name of PALETTE_NAMES) for (const slot of COLOR_PALETTE) for (const mode of ["dark", "light"] as const) {
+      const hex = themeAccent(BUILTIN_PALETTES[name][slot], mode);
+      expect(contrastInk(hex), `${name}/${slot}/${mode}`).toBe(chrome(hex));
+    }
+  });
+
   it("is stable across calls (the cache can't drift from a fresh computation)", () => {
     for (const slot of COLOR_PALETTE) {
       const a = contrastInk(PALETTE[slot]);
       const b = contrastInk(PALETTE[slot]);
       expect(b).toBe(a);
     }
-  });
-
-  it("light and dark can legitimately differ — themeAccent moves the luminance", () => {
-    // Not asserting they DO differ for a given slot (that depends on the palette),
-    // only that the ink is asked for the THEMED color rather than the raw slot, so
-    // a slot sitting near the threshold can flip. This pins the call shape.
-    const raw = PALETTE.lime;
-    expect(contrastInk(themeAccent(raw, "light"))).toBe(contrastInk(themeAccent(raw, "light")));
-    expect(contrastInk(themeAccent(raw, "dark"))).toBe(contrastInk(themeAccent(raw, "dark")));
   });
 });

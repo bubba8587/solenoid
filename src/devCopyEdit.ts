@@ -1,18 +1,9 @@
-// Dev-only copy-edit FREEZE (loaded from main.tsx in DEV builds only). Ctrl+Alt+E
-// freezes the app: every app handler is blocked in window capture, and a click on any
-// on-screen string looks it up through the Vite `/__copy-edit` endpoint
-// (vite.config.ts — the string-editor's mapper, markdown-aware) and turns the element
-// contenteditable IN ITS SOURCE FORM, backticks and all. Enter or clickaway commits;
-// the save rewrites EVERY source place the string appears, and HMR repaints. Escape
-// reverts an edit; Escape idle (or Ctrl+Alt+E) exits the freeze.
-//
-// The listeners are registered ONCE at module load and gated on `active`: module load
-// happens at app boot, BEFORE any overlay mounts, so these capture handlers run ahead
-// of every later listener (the Reference overlay's own capture-phase Escape included).
+// Dev-only copy-edit freeze: Ctrl+Alt+E blocks the app, and a click edits a string's source form through Vite's
+// `/__copy-edit` (vite.config.ts). Enter or clickaway saves every place it appears; Escape reverts, Escape idle exits.
+// Listeners register once at module load (app boot), so their capture handlers run ahead of every later listener.
 
-// `html` is the element's ORIGINAL rendered markup (a description renders markdown via
-// dangerouslySetInnerHTML): restore that on exit, not textContent, or the <strong>/<code>
-// marks flatten to plain text — and a re-render that sees the same __html won't repaint it.
+// `html` is the original rendered markup: restoring textContent instead would flatten markdown marks, and a
+// re-render that sees the same __html would not repaint it.
 type Editing = { el: HTMLElement; rendered: string; raw: string; html: string };
 
 let active = false;
@@ -53,9 +44,6 @@ function flash(msg: string): void {
   flashTimer = setTimeout(() => { if (badge) badge.textContent = IDLE_HINT; }, 4000);
 }
 
-/** The nearest BLOCK-level element rendering the clicked string: an inline fragment
- *  (a markdown <code>/<strong>, a highlight span) climbs to the paragraph, cell or
- *  label that carries the whole source string. */
 function textTarget(start: EventTarget | null): HTMLElement | null {
   let n = start instanceof HTMLElement ? start : null;
   while (n && getComputedStyle(n).display === "inline") n = n.parentElement;
@@ -79,10 +67,9 @@ async function api(payload: Record<string, unknown>): Promise<Record<string, unk
 const placeLabel = (count: number, files: string[]) =>
   `${files[0]!.replace(/^src\//, "")}${count > 1 ? ` · ${count} places` : ""}`;
 
-/** Resolve the clicked element's string to its source form, then start the edit. */
 function beginEdit(el: HTMLElement): void {
   const rendered = el.textContent ?? "";
-  const html = el.innerHTML; // original rendered markup, restored verbatim on exit
+  const html = el.innerHTML;
   const token = ++lookupToken;
   flash("Looking up…");
   void api({ action: "lookup", text: rendered })
@@ -94,10 +81,7 @@ function beginEdit(el: HTMLElement): void {
       el.setAttribute("contenteditable", "plaintext-only");
       el.classList.add("sol-copyedit-editing");
       el.focus();
-      // Hold app polls (the Inspector re-renders its selection every 150ms) while the edit is
-      // open: a re-render can repaint a dangerouslySetInnerHTML element's rendered markup back
-      // over the raw text under the caret, and the next commit would then save the flattened
-      // form. Dev-only — the class is never added in a production build.
+      // Holds app polls while editing: a re-render could repaint rendered markup over the raw text and save it flattened.
       document.documentElement.classList.add("sol-copyediting");
       flash(`Editing ${placeLabel(Number(d.count), d.files as string[])}`);
     })
@@ -113,7 +97,7 @@ function endEdit(revert: boolean): void {
   el.removeAttribute("contenteditable");
   el.classList.remove("sol-copyedit-editing");
   const after = el.textContent ?? "";
-  el.innerHTML = html; // restore the rendered markup; HMR repaints the real thing after a save
+  el.innerHTML = html;
   if (revert || after === raw) return; // untouched: no rewrite, no log line
   flash("Saving…");
   void api({ text: rendered, after })

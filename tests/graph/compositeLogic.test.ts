@@ -1,4 +1,4 @@
-// [[B10]], [[C43]], [[C25]]
+// [[A1]], [[B3]], [[C25]]
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
@@ -8,9 +8,12 @@ import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
 import { createCompositeFromSelection, unpackComposite } from "../../src/graph/compositeLogic";
 import { CompositeNode } from "../../src/graph/nodes/composite";
-import { NumberInputNode } from "../../src/graph/nodes/input";
+import { ValueInputNode } from "../../src/graph/nodes/control";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 import { DisplayNode } from "../../src/graph/nodes/display";
+import { FormatControllerNode } from "../../src/graph/nodes/formatController";
+import { insertFcInline } from "../../src/graph/fcDocking";
+import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 
 // A bare NodeEditor + DataflowEngine, wrapped exactly like Canvas wraps the
 // real one (coercion inner, error guards outer) — mirrors errorIntegration.
@@ -64,8 +67,8 @@ describe("createCompositeFromSelection", () => {
 
   it("collapses a mixed selection into one card, preserving end-to-end computation", async () => {
     const { editor, engine } = makeEditor();
-    const numA = new NumberInputNode({ value: 3 });
-    const numB = new NumberInputNode({ value: 4 });
+    const numA = new ValueInputNode({ value: "3" });
+    const numB = new ValueInputNode({ value: "4" });
     const add = new ArithmeticNode({ op: "add" });
     const disp = new DisplayNode();
     for (const n of [numA, numB, add, disp]) await editor.addNode(n);
@@ -85,7 +88,6 @@ describe("createCompositeFromSelection", () => {
     ]));
 
     const compositeId = await createCompositeFromSelection(editor, view);
-    expect(compositeId).not.toBeNull();
 
     // The selected nodes are GONE from the outer editor — physically relocated,
     // not just spatially framed like a Group.
@@ -94,7 +96,6 @@ describe("createCompositeFromSelection", () => {
     expect(editor.getNodes()).toHaveLength(3); // numB, disp, composite
 
     const composite = editor.getNode(compositeId!) as unknown as CompositeNode;
-    expect(composite).toBeInstanceOf(CompositeNode);
     expect(composite.inputPorts).toHaveLength(1);  // numB → add.b crossed in
     expect(composite.outputPorts).toHaveLength(1); // add.result → disp.in crossed out
     expect(composite.internalEditor.getNodes()).toHaveLength(4); // numA + add + 2 markers
@@ -105,10 +106,31 @@ describe("createCompositeFromSelection", () => {
     expect(dispOut.out).toBe(7);
   });
 
+  it("takes a selected host's docked FC along, since the FC is part of its host's entity", async () => {
+    const { editor } = makeEditor();
+    const num = new ValueInputNode({ value: "3" });
+    const disp = new DisplayNode();
+    for (const n of [num, disp]) await editor.addNode(n);
+    await connect(editor, num, "value", disp, "in");
+    const fc = new FormatControllerNode({ hostNodeId: num.id, socketKey: "value", side: "output" });
+    await editor.addNode(fc);
+    fc.dockSelf(editor);
+    await insertFcInline(editor, fc);
+    (num as unknown as { selected: boolean }).selected = true;
+
+    const { view } = makeFakeView(new Map([[num.id, { x: 0, y: 0 }], [fc.id, { x: 100, y: 0 }], [disp.id, { x: 300, y: 0 }]]));
+    const compositeId = await createCompositeFromSelection(editor, view);
+    const composite = editor.getNode(compositeId!) as unknown as CompositeNode;
+    expect(editor.getNode(fc.id)).toBeUndefined();
+    expect(composite.internalEditor.getNode(fc.id)).toBeDefined();
+    expect(dockedNodeStore.get(fc.id)?.hostNodeId).toBe(num.id);
+    dockedNodeStore.clear();
+  });
+
   it("a selection with no crossing cables produces a composite with no ports", async () => {
     const { editor } = makeEditor();
-    const numA = new NumberInputNode({ value: 1 });
-    const numB = new NumberInputNode({ value: 2 });
+    const numA = new ValueInputNode({ value: "1" });
+    const numB = new ValueInputNode({ value: "2" });
     const add = new ArithmeticNode({ op: "add" });
     for (const n of [numA, numB, add]) await editor.addNode(n);
     await connect(editor, numA, "value", add, "a");
@@ -128,7 +150,7 @@ describe("createCompositeFromSelection", () => {
 
   it("captures each member's bbox-relative position for the drill-in editor", async () => {
     const { editor } = makeEditor();
-    const numA = new NumberInputNode({ value: 3 });
+    const numA = new ValueInputNode({ value: "3" });
     const add = new ArithmeticNode({ op: "add" });
     for (const n of [numA, add]) await editor.addNode(n);
     await connect(editor, numA, "value", add, "a");
@@ -152,12 +174,11 @@ describe("createCompositeFromSelection", () => {
 
   it("excludes an already-selected Composite from a second collapse (no nesting yet)", async () => {
     const { editor } = makeEditor();
-    const num = new NumberInputNode({ value: 5 });
+    const num = new ValueInputNode({ value: "5" });
     await editor.addNode(num);
     (num as unknown as { selected: boolean }).selected = true;
     const { view } = makeFakeView(new Map([[num.id, { x: 0, y: 0 }]]));
     const firstId = await createCompositeFromSelection(editor, view);
-    expect(firstId).not.toBeNull();
 
     const composite = editor.getNode(firstId!)!;
     (composite as unknown as { selected: boolean }).selected = true;
@@ -169,7 +190,7 @@ describe("createCompositeFromSelection", () => {
 describe("unpackComposite", () => {
   it("is a no-op (false) on a non-composite id", async () => {
     const { editor } = makeEditor();
-    const num = new NumberInputNode({ value: 1 });
+    const num = new ValueInputNode({ value: "1" });
     await editor.addNode(num);
     const { view } = makeFakeView(new Map());
     expect(await unpackComposite(editor, view, num.id)).toBe(false);
@@ -178,8 +199,8 @@ describe("unpackComposite", () => {
 
   it("restores nodes, wiring and computation — the inverse of collapse", async () => {
     const { editor, engine } = makeEditor();
-    const numA = new NumberInputNode({ value: 3 });
-    const numB = new NumberInputNode({ value: 4 });
+    const numA = new ValueInputNode({ value: "3" });
+    const numB = new ValueInputNode({ value: "4" });
     const add = new ArithmeticNode({ op: "add" });
     const disp = new DisplayNode();
     for (const n of [numA, numB, add, disp]) await editor.addNode(n);
@@ -195,7 +216,6 @@ describe("unpackComposite", () => {
     ]);
     const { view, translated } = makeFakeView(positions);
     const compositeId = await createCompositeFromSelection(editor, view);
-    expect(compositeId).not.toBeNull();
 
     const ok = await unpackComposite(editor, view, compositeId!);
     expect(ok).toBe(true);

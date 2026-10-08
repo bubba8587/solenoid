@@ -1,6 +1,4 @@
 // [[C69]] ganttPackages
-// A dependency-free XML reader for the MSPDI subset (elements, text, CDATA, comments,
-// entities; no attributes, MSPDI carries everything as child elements): the vitest env has no DOM.
 
 export interface XmlNode {
   name: string;
@@ -20,7 +18,6 @@ function decode(s: string): string {
   });
 }
 
-/** Parse a document into its root element. Throws on a mismatched close tag. */
 export function parseXml(src: string): XmlNode {
   const root: XmlNode = { name: "", children: [], text: "" };
   const stack: XmlNode[] = [root];

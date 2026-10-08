@@ -1,8 +1,5 @@
 import { ClassicPreset } from "rete";
 
-// Sockets-free readout of the undo/redo stack; holds no state of its own —
-// it regenerates from `history.getHistorySnapshot()` on every render.
-
 export class SessionHistoryNode extends ClassicPreset.Node {
   color: string;
   width: number;

@@ -67,7 +67,6 @@
   margin: 6px 0 2px;
 }
 
-/* ── Combobox ── */
 .conn-dialog__combo {
   position: relative;
 }
@@ -141,7 +140,7 @@
   min-height: 18px;
   margin: 10px 0 4px;
   font-size: 12px;
-  color: #e26d6d;
+  color: var(--sol-error);
 }
 
 .conn-dialog__buttons {

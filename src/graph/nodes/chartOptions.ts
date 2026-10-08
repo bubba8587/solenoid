@@ -1,5 +1,7 @@
-// [[C96]] chartOptionsAreMatplotlib: a flat `key=value;…` string in pyplot kwarg names;
-// unknown keys are ignored.
+// [[C96]] chartOptionsAreMatplotlib
+import type { ChartValueOp } from "../chartValue";
+import { normalizeCmap } from "../colormaps";
+import { isNumberSpec } from "../numberSpec";
 
 export interface ChartOptions {
   title?: string;
@@ -10,21 +12,35 @@ export interface ChartOptions {
   marker?: boolean;
   ymin?: number;
   ymax?: number;
+  xmin?: number;
+  xmax?: number;
+  aspect?: AspectMode;
+  linestyle?: LineStyle;
   linewidth?: number;
-  // marker radius in px (matplotlib's markersize)
   markersize?: number;
   alpha?: number;
-  // matplotlib's font.size rcParam; render surfaces scale every text size by fontsize/10.
   fontsize?: number;
-  // Pie slice category labels: outside on a leader (the default when names are present),
-  // inside/on the slice with a backing plate, or off. Only ever carries an explicit choice.
   pielabels?: PieLabelMode;
-  // Radar radial scale: "axis" normalizes each spoke to [0,1] by its own max so no one axis
-  // (a dollar column beside /10 scores) swamps the rest, a negative plotting at the centre;
-  // "shared" keeps one raw radius.
   radarscale?: RadarScale;
+  x?: string;
+  y?: string[];
+  s?: string;
+  c?: string;
+  annotate?: string;
+  by?: string;
+  cmap?: string;
+  vmin?: number;
+  vmax?: number;
+  center?: number;
+  annot?: boolean;
+  fmt?: string;
+  cbar?: boolean;
+  origin?: HeatOrigin;
 }
 
+export type HeatOrigin = "upper" | "lower";
+export type LineStyle = "solid" | "dashed" | "dotted" | "dashdot" | "none";
+export type AspectMode = "auto" | "equal";
 export type PieLabelMode = "off" | "outside" | "inside";
 export type RadarScale = "axis" | "shared";
 
@@ -38,8 +54,6 @@ function toBool(v: string): boolean | undefined {
   return undefined;
 }
 
-/** off/outside/inside, with on→outside and center→inside as friendly aliases; a bare
- *  boolean on/off still works (an old save, or a plain toggle). */
 function toPieLabelMode(v: string): PieLabelMode | undefined {
   const s = v.trim().toLowerCase();
   if (s === "inside" || s === "center" || s === "on-chart") return "inside";
@@ -48,12 +62,26 @@ function toPieLabelMode(v: string): PieLabelMode | undefined {
   return b === undefined ? undefined : b ? "outside" : "off";
 }
 
-/** per-axis / shared, with normalize→axis and raw→shared as friendly aliases. */
 function toRadarScale(v: string): RadarScale | undefined {
   const s = v.trim().toLowerCase();
   if (s === "axis" || s === "normalize" || s === "normalized" || s === "independent") return "axis";
   if (s === "shared" || s === "raw" || s === "absolute") return "shared";
   return undefined;
+}
+
+function toLineStyle(v: string): LineStyle | undefined {
+  const s = v.trim().toLowerCase();
+  if (s === "-" || s === "solid") return "solid";
+  if (s === "--" || s === "dashed") return "dashed";
+  if (s === ":" || s === "dotted") return "dotted";
+  if (s === "-." || s === "dashdot") return "dashdot";
+  if (s === "none") return "none";
+  return undefined;
+}
+
+function toAspect(v: string): AspectMode | undefined {
+  const s = v.trim().toLowerCase();
+  return s === "equal" || s === "auto" ? s : undefined;
 }
 
 function toNum(v: string): number | undefined {
@@ -63,9 +91,6 @@ function toNum(v: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-/** Tolerant parse: whitespace trimmed, keys case-insensitive, booleans as
- *  on/off/true/false/1/0, `ylim=min,max` split into ymin/ymax (a bare side sets one
- *  bound), unrecognised keys skipped. */
 export function parseChartOptions(input: string | null | undefined): ChartOptions {
   const opts: ChartOptions = {};
   if (!input) return opts;
@@ -99,13 +124,39 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       }
       case "ymin":   { const n = toNum(val); if (n !== undefined) opts.ymin = n; break; }
       case "ymax":   { const n = toNum(val); if (n !== undefined) opts.ymax = n; break; }
-      default: break; // unrecognised matplotlib kwarg → ignored
+      case "xlim": {
+        const [lo, hi] = val.split(",");
+        const a = toNum(lo ?? "");
+        const b = toNum(hi ?? "");
+        if (a !== undefined) opts.xmin = a;
+        if (b !== undefined) opts.xmax = b;
+        break;
+      }
+      case "xmin":   { const n = toNum(val); if (n !== undefined) opts.xmin = n; break; }
+      case "xmax":   { const n = toNum(val); if (n !== undefined) opts.xmax = n; break; }
+      case "aspect": { const m = toAspect(val); if (m !== undefined) opts.aspect = m; break; }
+      case "linestyle":
+      case "ls":     { const m = toLineStyle(val); if (m !== undefined) opts.linestyle = m; break; }
+      case "x":      if (val) opts.x = val; break;
+      case "y":      { const names = val.split(",").map((t) => t.trim()).filter(Boolean); if (names.length) opts.y = names; break; }
+      case "s":      if (val) opts.s = val; break;
+      case "c":      if (val) opts.c = val; break;
+      case "annotate": if (val) opts.annotate = val; break;
+      case "by":     if (val) opts.by = val; break;
+      case "cmap":   { const m = normalizeCmap(val); if (m !== undefined) opts.cmap = m; break; }
+      case "vmin":   { const n = toNum(val); if (n !== undefined) opts.vmin = n; break; }
+      case "vmax":   { const n = toNum(val); if (n !== undefined) opts.vmax = n; break; }
+      case "center": { const n = toNum(val); if (n !== undefined) opts.center = n; break; }
+      case "annot":  { const b = toBool(val); if (b !== undefined) opts.annot = b; break; }
+      case "fmt":    if (isNumberSpec(val)) opts.fmt = val; break;
+      case "cbar":   { const b = toBool(val); if (b !== undefined) opts.cbar = b; break; }
+      case "origin": { const s = val.toLowerCase(); if (s === "upper" || s === "lower") opts.origin = s; break; }
+      default: break;
     }
   }
   return opts;
 }
 
-/** A resolved Chart Builder field set (wired value ?? inline literal per field). */
 export interface ChartBuilderFields {
   title?: string;
   xlabel?: string;
@@ -115,10 +166,7 @@ export interface ChartBuilderFields {
   marker?: string;
   pielabels?: string;
   radarscale?: string;
-  /** The Gantt's time-scale preset (`zoom=week`); read by the figure's own view parser. */
   zoom?: string;
-  // The rest of the Gantt figure's view keys (parseGanttViewOptions); each rides the
-  // options string under the same name the figure reads.
   layout?: string;
   tiers?: string;
   fit?: string;
@@ -132,19 +180,39 @@ export interface ChartBuilderFields {
   minutes?: string;
   window?: string;
   columns?: string;
-  // The Record figure's own option keys (readCardSize / readClamp in visual.ts).
+  collapse?: string;
+  week?: string;
+  fiscal_start?: string;
+  status?: string;
+  group_by?: string;
   cardsize?: string;
   clamp?: string;
+  x?: string;
+  y?: string;
+  s?: string;
+  c?: string;
+  annotate?: string;
+  by?: string;
+  linestyle?: string;
+  aspect?: string;
+  cmap?: string;
+  annot?: string;
+  fmt?: string;
+  cbar?: string;
+  origin?: string;
+  xmin?: number | null;
+  xmax?: number | null;
   ymin?: number | null;
   ymax?: number | null;
   linewidth?: number | null;
   markersize?: number | null;
   alpha?: number | null;
   fontsize?: number | null;
+  vmin?: number | null;
+  vmax?: number | null;
+  center?: number | null;
 }
 
-/** Only set fields are emitted, so an untouched builder yields ""; the two Y bounds
- *  collapse into matplotlib's single `ylim=min,max`. */
 export function serializeChartOptions(f: ChartBuilderFields): string {
   const parts: string[] = [];
   const str = (k: string, v: string | undefined) => {
@@ -175,8 +243,31 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("minutes", f.minutes);
   str("window", f.window);
   str("columns", f.columns);
+  str("collapse", f.collapse);
+  str("week", f.week);
+  str("fiscal_start", f.fiscal_start);
+  str("status", f.status);
+  str("group_by", f.group_by);
   str("cardsize", f.cardsize);
   str("clamp", f.clamp);
+  str("x", f.x);
+  str("y", f.y);
+  str("s", f.s);
+  str("c", f.c);
+  str("annotate", f.annotate);
+  str("by", f.by);
+  str("linestyle", f.linestyle);
+  str("aspect", f.aspect);
+  str("cmap", f.cmap);
+  str("annot", f.annot);
+  str("fmt", f.fmt);
+  str("cbar", f.cbar);
+  str("origin", f.origin);
+  if ((f.xmin != null && Number.isFinite(f.xmin)) || (f.xmax != null && Number.isFinite(f.xmax))) {
+    const lo = f.xmin != null && Number.isFinite(f.xmin) ? f.xmin : "";
+    const hi = f.xmax != null && Number.isFinite(f.xmax) ? f.xmax : "";
+    parts.push(`xlim=${lo},${hi}`);
+  }
   if ((f.ymin != null && Number.isFinite(f.ymin)) || (f.ymax != null && Number.isFinite(f.ymax))) {
     const lo = f.ymin != null && Number.isFinite(f.ymin) ? f.ymin : "";
     const hi = f.ymax != null && Number.isFinite(f.ymax) ? f.ymax : "";
@@ -186,103 +277,92 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   num("markersize", f.markersize);
   num("alpha", f.alpha);
   num("fontsize", f.fontsize);
+  num("vmin", f.vmin);
+  num("vmax", f.vmax);
+  num("center", f.center);
   return parts.join(";");
 }
 
-// Which option keys each figure's RENDERER actually reads; keep in sync with the render
-// layer when a view learns an option. The builder still SERIALIZES every set field — an
-// unread key is inert, and one builder can feed several charts, so narrowing is only which
-// fields the form OFFERS.
-//   • Each Chart-node op is its own target: line/area add marker + line width, pie adds
-//     pielabels (and drops the axes), the categorical slices keep only title/color/font.
-//   • Histogram renders through the column path → axes but no marker/line width.
-//   • The payload figures (KPI / Gauge / Proportion / Sankey) fold fontsize into their
-//     text scale; title flows to the figure title everywhere.
-//   • The canvas figures (Waterfall / Candlestick / Boxplot / Calendar Heatmap) read
-//     nothing but the title.
+// Update these key lists whenever a renderer learns or drops an option.
 
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "zoom"
   | "layout" | "tiers" | "fit" | "critical" | "baseline" | "arrows" | "today" | "weekends" | "labels" | "histogram" | "minutes" | "window" | "columns"
+  | "collapse" | "week" | "fiscal_start" | "status" | "group_by"
   | "cardsize" | "clamp"
-  | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
+  | "x" | "y" | "s" | "c" | "annotate" | "by" | "linestyle" | "aspect" | "xmin" | "xmax"
+  | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize"
+  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin";
 
-// The Chart node's own ops are first-class targets so the form can show ONLY the options
-// that op reads (pielabels for Pie, line width for Line, none of that for Bar); the rest are
-// the standalone figure nodes. The `group` drives the target dropdown's two-level layout.
 export type ChartTargetId =
-  | "column" | "bar" | "line" | "area" | "scatter"
+  | "column" | "bar" | "line" | "area" | "scatter" | "xyline"
   | "pie" | "radar" | "radialbar" | "funnel"
-  | "composed" | "bubble"
-  | "histogram" | "kpi" | "scale" | "proportion" | "sankey"
-  | "waterfall" | "candle" | "boxplot" | "calheat" | "gantt" | "record";
+  | "bubble" | "overlay"
+  | "histogram" | "histogram2d" | "kpi" | "scale" | "proportion" | "sankey"
+  | "waterfall" | "candle" | "boxplot" | "calheat" | "heatmap" | "contour" | "surface" | "quiver" | "gantt" | "record";
 
 const XY_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
 const LINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "markersize", "alpha", "fontsize"];
-// The categorical ops (pie / radar / radial / funnel) paint from the palette — a single
-// `color` is inert, so it isn't offered.
+  ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "s", "c", "cmap", "annotate", "by", "linestyle", "aspect",
+    "xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+const XYLINE_KEYS: readonly ChartBuilderKey[] = [...SCATTER_KEYS, "marker"];
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
-const RADAR_KEYS: readonly ChartBuilderKey[] = ["title", "grid", "radarscale", "fontsize"];
+const RADAR_KEYS: readonly ChartBuilderKey[] =
+  ["title", "grid", "marker", "radarscale", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
-const COMPOSED_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
-const BUBBLE_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "grid", "ymin", "ymax", "fontsize"];
-const AXED_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
+const OVERLAY_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "grid", "aspect", "xmin", "xmax", "ymin", "ymax", "linewidth", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
-const TITLE_ONLY: readonly ChartBuilderKey[] = ["title"];
-// The hand-rolled Gantt figure (chart op "gantt", the Gantt node), not the Schedule
-// node's Mermaid text: every view key the figure's parser reads, so the builder can
-// drive it without the options string. The two layouts read DIFFERENT keys, so the
-// builder offers different sets (see chartBuilderKeys): the timeline honors the full
-// list; the month-calendar (layout=calendar) draws its own grid and ignores the scale,
-// bars, links and grid pane — it honors only critical, minutes, window (plus title +
-// fontsize + the layout switch itself), and outlines today / shades weekends / labels
-// its chips unconditionally, so those toggles are timeline-only too.
 const GANTT_TIMELINE_KEYS: readonly ChartBuilderKey[] =
-  ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns"];
+  ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "status", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "group_by", "week", "fiscal_start"];
 const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
-  ["title", "fontsize", "layout", "critical", "minutes", "window"];
-// The Record figure: title/fontsize plus its own gallery-tile keys (cardsize, clamp).
+  ["title", "fontsize", "layout", "critical", "minutes", "window", "week"];
 const RECORD_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "cardsize", "clamp"];
+const CALHEAT_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
+const CONTOUR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "cbar", "fontsize"];
+const FIELD_KEYS: readonly ChartBuilderKey[] = ["title", "cmap", "fontsize"];
+const HEATMAP_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "cmap", "center", "vmin", "vmax", "annot", "fmt", "cbar", "aspect", "origin", "fontsize"];
 
-export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; keys: readonly ChartBuilderKey[] }> = {
-  column:    { label: "Column",           group: "Cartesian",    keys: XY_KEYS },
-  bar:       { label: "Bar",              group: "Cartesian",    keys: XY_KEYS },
-  line:      { label: "Line",             group: "Cartesian",    keys: LINE_KEYS },
-  area:      { label: "Area",             group: "Cartesian",    keys: LINE_KEYS },
-  scatter:   { label: "Scatter",          group: "Cartesian",    keys: SCATTER_KEYS },
-  pie:       { label: "Pie",              group: "Categorical",  keys: PIE_KEYS },
-  radar:     { label: "Radar",            group: "Categorical",  keys: RADAR_KEYS },
-  radialbar: { label: "Radial",           group: "Categorical",  keys: SLICE_KEYS },
-  funnel:    { label: "Funnel",           group: "Categorical",  keys: SLICE_KEYS },
-  composed:  { label: "Composed",         group: "Multi-series", keys: COMPOSED_KEYS },
-  bubble:    { label: "Bubble",           group: "Multi-series", keys: BUBBLE_KEYS },
-  histogram: { label: "Histogram",        group: "Figures",      keys: AXED_KEYS },
-  kpi:       { label: "KPI",              group: "Figures",      keys: STAT_KEYS },
-  scale:     { label: "Gauge",            group: "Figures",      keys: STAT_KEYS },
-  proportion: { label: "Proportion",      group: "Figures",      keys: STAT_KEYS },
-  sankey:    { label: "Sankey",           group: "Figures",      keys: STAT_KEYS },
-  waterfall: { label: "Waterfall",        group: "Figures",      keys: TITLE_ONLY },
-  candle:    { label: "Candlestick",      group: "Figures",      keys: TITLE_ONLY },
-  boxplot:   { label: "Boxplot",          group: "Figures",      keys: TITLE_ONLY },
-  calheat:   { label: "Calendar Heatmap", group: "Figures",      keys: TITLE_ONLY },
-  gantt:     { label: "Gantt",            group: "Figures",      keys: GANTT_TIMELINE_KEYS },
-  record:    { label: "Record",           group: "Figures",      keys: RECORD_KEYS },
+export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; op: ChartValueOp; keys: readonly ChartBuilderKey[] }> = {
+  column:    { label: "Column",           group: "Cartesian",    op: "column", keys: XY_KEYS },
+  bar:       { label: "Bar",              group: "Cartesian",    op: "bar", keys: XY_KEYS },
+  line:      { label: "Line",             group: "Cartesian",    op: "line", keys: LINE_KEYS },
+  area:      { label: "Area",             group: "Cartesian",    op: "area", keys: LINE_KEYS },
+  overlay:   { label: "Merge Plots",      group: "Cartesian",    op: "overlay", keys: OVERLAY_KEYS },
+  scatter:   { label: "Scatter",          group: "XY",           op: "scatter", keys: SCATTER_KEYS },
+  xyline:    { label: "XY Line",          group: "XY",           op: "xyline", keys: XYLINE_KEYS },
+  bubble:    { label: "Bubble",           group: "XY",           op: "bubble", keys: SCATTER_KEYS },
+  pie:       { label: "Pie",              group: "Categorical",  op: "pie", keys: PIE_KEYS },
+  radar:     { label: "Radar",            group: "Categorical",  op: "radar", keys: RADAR_KEYS },
+  radialbar: { label: "Radial",           group: "Categorical",  op: "radialbar", keys: SLICE_KEYS },
+  funnel:    { label: "Funnel",           group: "Categorical",  op: "funnel", keys: SLICE_KEYS },
+  histogram: { label: "Histogram",        group: "Figures",      op: "column", keys: XY_KEYS },
+  histogram2d: { label: "Histogram 2-D",  group: "Figures",      op: "heatmap", keys: HEATMAP_KEYS },
+  kpi:       { label: "KPI",              group: "Figures",      op: "kpi", keys: STAT_KEYS },
+  scale:     { label: "Gauge",            group: "Figures",      op: "scale", keys: STAT_KEYS },
+  proportion: { label: "Proportion",      group: "Figures",      op: "proportion", keys: STAT_KEYS },
+  sankey:    { label: "Sankey",           group: "Figures",      op: "sankey", keys: STAT_KEYS },
+  waterfall: { label: "Waterfall",        group: "Figures",      op: "waterfall", keys: STAT_KEYS },
+  candle:    { label: "Candlestick",      group: "Figures",      op: "candle", keys: STAT_KEYS },
+  boxplot:   { label: "Boxplot",          group: "Figures",      op: "boxplot", keys: STAT_KEYS },
+  calheat:   { label: "Calendar Heatmap", group: "Figures",      op: "calheat", keys: CALHEAT_KEYS },
+  heatmap:   { label: "Heatmap",          group: "Figures",      op: "heatmap", keys: HEATMAP_KEYS },
+  contour:   { label: "Contour",          group: "Figures",      op: "contour", keys: CONTOUR_KEYS },
+  surface:   { label: "Surface",          group: "Figures",      op: "surface", keys: FIELD_KEYS },
+  quiver:    { label: "Vector Field",     group: "Figures",      op: "quiver", keys: FIELD_KEYS },
+  gantt:     { label: "Gantt",            group: "Figures",      op: "gantt", keys: GANTT_TIMELINE_KEYS },
+  record:    { label: "Record",           group: "Figures",      op: "record", keys: RECORD_KEYS },
 };
 
 export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])
   .map((id) => ({ id, ...CHART_BUILDER_TARGETS[id] }));
 
-/** Which option keys the builder OFFERS for a target, narrowed by any layout-like mode.
- *  Only the Gantt target splits today: its month-calendar layout reads a smaller set than
- *  the timeline, so offering the timeline's scale/bar/link options there would be inert. */
 export function chartBuilderKeys(target: ChartTargetId, layout: string | undefined): readonly ChartBuilderKey[] {
   if (target === "gantt" && (layout ?? "").trim().toLowerCase() === "calendar") return GANTT_CALENDAR_KEYS;
-  return (CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.column).keys;
+  return CHART_BUILDER_TARGETS[target].keys;
 }

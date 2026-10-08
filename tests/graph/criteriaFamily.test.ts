@@ -1,7 +1,7 @@
-// [[C45]] excelComparisons, [[C24]], [[C60]]
+// [[C45]] excelComparisons, [[C24]], [[B11]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { criteriaAggregate, parseCriterion, criterionMatches } from "../../src/graph/excelCriteria";
+import { criteriaAggregate, parseCriterion } from "../../src/graph/excelCriteria";
 import { isSolError } from "../../src/graph/errorValue";
 import { SumIfsNode } from "../../src/graph/nodes/list";
 import { buildFrame } from "../../src/graph/frame";
@@ -33,15 +33,14 @@ describe("the *IFS family runs Excel's criteria grammar", () => {
     expect(ev("AVERAGEIF(a, \">6\")", { a })).toBe(15);
     expect(ev("AVERAGEIF(n, \"ap*\", a)", { a, n })).toBe(7.5);
   });
-  it("a blank criterion matches blank cells; a number matches numbers (numeric text too); errors never match", () => {
+  it("a blank criterion matches blank cells; a number matches only numbers; errors never match", () => {
     expect(criteriaAggregate("count", null, [[["x", null, ""], null]])).toBe(2);
     expect(criteriaAggregate("count", null, [[["x", null, ""], "<>"]])).toBe(1);
-    expect(criteriaAggregate("sum", [1, 2, 3], [[[5, "5", 5], 5]])).toBe(6); // numeric text matches a number (Excel COUNTIF)
+    expect(criteriaAggregate("sum", [1, 2, 3], [[[5, "5", 5], 5]])).toBe(4); // text "5" is text, never the number 5 ([[B17]] typedValueModel)
     expect(criteriaAggregate("sum", [1, 2, 3], [[[5, "five", true], 5]])).toBe(1);
     expect(criteriaAggregate("count", null, [[[{ __solError: true, code: "#N/A", message: "" }, 1], 1]])).toBe(1);
     const amb = parseCriterion(">1/2/2026", true);
     expect(isSolError(amb) && amb.code).toBe("#AMBIGUOUS!");
-    expect(criterionMatches(3, { op: "gte", value: 3 })).toBe(true);
   });
   it("the card and the formula agree on one probe", () => {
     const f = buildFrame([["North", 120], ["South", 80], ["North", 200]] as never, ["region", "sales"]);
@@ -51,10 +50,21 @@ describe("the *IFS family runs Excel's criteria grammar", () => {
   });
 });
 
-describe("numeric text in the ranges (the SUMIF failure mode formulajs had)", () => {
-  it("compares numerically in the criteria range and contributes its number in the value range", () => {
-    expect(ev('COUNTIF(v, ">15")', { v: ["10", "30", "20"] })).toBe(2);
-    expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] })).toBe(20);
-    expect(ev('SUMIFS(v, k, "a")', { k: ["a", "a", "b"], v: ["10", "x", "20"] })).toBe(10);
+describe("numeric text in the ranges stays text ([[B17]] typedValueModel)", () => {
+  it("never adds to a sum or an average, and never meets a number criterion", () => {
+    expect(ev('SUMIFS(v, k, "a")', { k: ["a", "a", "b"], v: ["10", 5, "20"] })).toBe(5);
+    expect((ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] }) as { code: string }).code).toBe("#DIV/0!");
+    expect(ev("COUNTIF(v, 20)", { v: ["20", 20, "20"] })).toBe(1);
+  });
+  it("a number ordering over a range holding text is #TYPE!, never an alphabetical match", () => {
+    const code = (v: unknown) => (v as { code?: string }).code;
+    expect(code(ev('COUNTIF(v, ">15")', { v: ["9", "10", "20"] }))).toBe("#TYPE!");
+    expect(code(ev('SUMIFS(n, v, "<=2")', { v: [1, "2", 3], n: [1, 1, 1] }))).toBe("#TYPE!");
+    expect(ev('COUNTIF(v, ">b")', { v: ["a", "c"] })).toBe(1);
+    expect(ev('COUNTIF(v, "<>15")', { v: ["9", "15"] })).toBe(1);
+  });
+  it("a typed criterion over a text range is text, so it matches the same text", () => {
+    expect(ev('COUNTIF(ids, "10")', { ids: ["10", "20", "10"] })).toBe(2);
+    expect(ev('COUNTIF(ids, 10)', { ids: ["10", "20", "10"] })).toBe(0);
   });
 });

@@ -92,6 +92,9 @@ export function QrCodeComponent({ data, emit }: NodeProps<QrCodeNodeType>) {
           <img src={img.src} alt={img.alt ?? "QR code"} draggable={false} />
         </div>
       )}
+      {img
+        ? <div className="solenoid-node__collapsed-only sol-conn__qr-thumb"><img src={img.src} alt={img.alt ?? "QR code"} draggable={false} /></div>
+        : <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip solenoid-node__display-value--empty">—</div>}
     </NodeShell>
   );
 }

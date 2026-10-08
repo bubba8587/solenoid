@@ -8,7 +8,7 @@ import { valueChipFor } from "../../src/graph/components/ValueChip";
 // shared choke point — EVERY chart op is a recognized chart value AND yields the chip
 // (valueChipFor → ChartChip → chartPopup.open with the value). The popup then renders
 // through the SAME ChartFigure path as the card, so covering the affordance covers the
-// figure. `chartValueOps()` derives from the op union ([[C8]] declareOnce), so a newly added
+// figure. `chartValueOps()` derives from the op union, so a newly added
 // op automatically joins this sweep and must satisfy it.
 
 const sampleValue = (op: string): ChartValue =>
@@ -18,7 +18,6 @@ describe("chart popup coverage — no op may lack a pop-out", () => {
   it("enumerates every chart op with no gaps or duplicates", () => {
     expect(chartValueOps().length).toBeGreaterThan(0);
     expect(new Set(chartValueOps()).size).toBe(chartValueOps().length);
-    for (const op of chartValueOps()) expect(typeof op).toBe("string");
   });
 
   it("every op is a recognized chart value with a popup chip", () => {

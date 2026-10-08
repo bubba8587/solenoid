@@ -1,6 +1,6 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
-import { stlDecompose } from "../../../src/graph/nodes/forecastOps";
+import { stlDecompose, runHW } from "../../../src/graph/nodes/forecastOps";
 
 // STL (R stl s.window="periodic") on a hand-built trend + season: the decomposition of a
 // clean signal must recover an exactly-periodic seasonal and a ~zero residual (a linear
@@ -33,5 +33,16 @@ describe("stlDecompose (STL, periodic seasonal)", () => {
     expect(stlDecompose(y, 1)).toBeNull();          // period < 2
     expect(stlDecompose(y.slice(0, 6), m)).toBeNull(); // n < 2*m
     expect(stlDecompose([1, 2, null, 4, 5, 6, 7, 8], 2)).toBeNull(); // a gap
+  });
+});
+
+describe("runHW (additive Holt–Winters, ETS AAA recursion)", () => {
+  it("updates the season against the previous level plus the previous trend", () => {
+    // y = 10, 20, 12, 22 with season 2 and α = β = γ = 0.5: level 15, trend 1, season [−5, 5] at the start.
+    // t0: ℓ = 15.5, b = 0.75, s0 = 0.5·(10 − 15 − 1) + 0.5·(−5) = −5.5
+    // t1: ℓ = 15.625, b = 0.4375, s1 = 0.5·(20 − 15.5 − 0.75) + 0.5·5 = 4.375
+    // t2: prediction 15.625 + 0.4375 − 5.5; ℓ = 16.78125, b = 0.796875; t3: prediction 16.78125 + 0.796875 + 4.375
+    const { fit } = runHW([10, 20, 12, 22, 14, 24], 2, 0.5, 0.5, 0.5);
+    expect(fit.fitted.slice(0, 4)).toEqual([11, 21.25, 10.5625, 21.953125]);
   });
 });

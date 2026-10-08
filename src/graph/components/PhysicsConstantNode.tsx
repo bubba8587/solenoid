@@ -1,9 +1,6 @@
-import {
-  PhysicsConstantNode as PhysicsConstantNodeType,
-  PHYS_CONSTANTS,
-  type PhysConstOp,
-} from "../rete-nodes";
-import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
+import { PhysicsConstantNode as PhysicsConstantNodeType } from "../rete-nodes";
+import { PHYS_CONSTANTS, type PhysConstOp } from "../nodes/physicsConstantsOps";
+import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
 const OPS = (Object.entries(PHYS_CONSTANTS) as [PhysConstOp, (typeof PHYS_CONSTANTS)[PhysConstOp]][]).map(
   ([value, meta]) => ({ value, label: `${meta.symbol}  ${meta.label}`, group: meta.group }),
@@ -25,11 +22,12 @@ export function PhysicsConstantComponent({ data, emit }: NodeProps<PhysicsConsta
   return (
     <NodeShell node={data} emit={emit}>
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      <div className="solenoid-node__display-value">
-        <span style={{ marginRight: 6, color: "#9aa0a6" }}>{meta.symbol}</span>
-        {formatConst(meta.value)}
-        <span style={{ marginLeft: 6, color: "#9aa0a6", fontSize: "0.85em" }}>{meta.unit}</span>
-      </div>
+      <ValueDisplay
+        value={meta.value}
+        renderWins
+        render={(v) => <>{formatConst(v)}<span style={{ marginLeft: 6, color: "var(--text-dim)", fontSize: "0.85em" }}>{meta.unit}</span></>}
+        toClipboard={(v) => String(v)}
+      />
     </NodeShell>
   );
 }

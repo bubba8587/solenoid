@@ -1,0 +1,72 @@
+{
+  "label": "timesavers",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Pack",
+        "body": "# Common Excel Timesavers\n\n- QR Code\n- Spell Number\n- World Clock\n- Percent Change",
+        "color": "slate",
+        "width": 280,
+        "height": 150
+      }
+    },
+    {
+      "id": "qr",
+      "type": "QrCodeNode",
+      "x": 380,
+      "y": 0,
+      "init": {
+        "label": "QR Code"
+      },
+      "stringLiterals": {
+        "text": "https://solenoid-ngc.com",
+        "wifiAuth": "WPA"
+      }
+    },
+    {
+      "id": "spell",
+      "type": "SpellNumberNode",
+      "x": 680,
+      "y": 0,
+      "init": {
+        "label": "Spell Number"
+      },
+      "literals": {
+        "value": 1984
+      }
+    },
+    {
+      "id": "clock",
+      "type": "WorldClockNode",
+      "x": 680,
+      "y": 220,
+      "init": {
+        "label": "World Clock"
+      },
+      "stringLiterals": {
+        "zones": "America/New_York, Europe/London, Asia/Tokyo"
+      }
+    },
+    {
+      "id": "pct",
+      "type": "ExpressionNode",
+      "x": 980,
+      "y": 0,
+      "init": {
+        "label": "Percent Change",
+        "expr": "(after-before)/before",
+        "locked": true,
+        "resultAs": "number"
+      },
+      "literals": {
+        "before": 80,
+        "after": 100
+      }
+    }
+  ],
+  "cables": []
+}

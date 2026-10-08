@@ -9,14 +9,12 @@ import { isLambdaValue, formatLambda } from "./nodes/lambda";
 import { isUncertain, type UncertainNumber } from "./valueKinds";
 import { formatScalar } from "./components/format";
 
-/** "12.3 ± 1.5" (value ± 1σ), each part through the standard scalar formatter, so the
- *  wrapper object never stringifies to "[object Object]". */
+/** Each part through the standard scalar formatter, so the wrapper never stringifies to "[object Object]". */
 export function formatUncertain(v: UncertainNumber): string {
   return `${formatScalar(v.value)} ± ${formatScalar(v.error)}`;
 }
 
-/** A short label for an OBJECT-valued kind; null for plain values, which the caller
- *  formats itself. Keep the kinds in sync with the Display node's branches. */
+/** Null for plain values, which the caller formats. Keep the kinds in step with the Display node's branches. */
 export function describeValueKind(v: unknown): string | null {
   if (isChartValue(v)) return "Chart";
   if (isMermaidValue(v)) return "Diagram";

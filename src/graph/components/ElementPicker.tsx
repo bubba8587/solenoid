@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { elementPicker } from "../elementPickerStore";
-import { ELEMENTS, elementCell, searchElements, type ElementMeta } from "../rete-nodes";
+import { elementCell, searchElements } from "../rete-nodes";
+import { ELEMENTS, type ElementMeta } from "../nodes/chemistryOps";
 import { PopupShell } from "./PopupShell";
 import "./ElementPicker.css";
 

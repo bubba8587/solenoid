@@ -1,18 +1,26 @@
 /* [[C100]] chartIsAValue */
-/* recharts renders <text> (axis ticks, labels) and <rect>/<path> marks as
-   selectable SVG content, so a click-drag over a chart produces several partial
-   text-selection highlights — the "7 different selectable boxes" that read as one
-   chart. Separately, recharts 3's accessibilityLayer (on by default) puts
-   tabIndex=0 on the root <svg> and makes Pie/sector groups focusable, so any
-   click paints the browser's focus ring — a thick white border — around
-   whatever was hit, including the chart background. A chart is a figure, not
-   prose and not a form control: nothing in it is meant to be selected or
-   focused. Kill both on the whole recharts subtree wherever a chart renders
-   (node card, Report inline figure, expand popup, Sparkline). */
+/* A chart is a figure: recharts' SVG text is selectable, and recharts 3's accessibilityLayer makes marks focusable and paints focus rings. */
 .recharts-wrapper,
 .recharts-surface,
 .recharts-wrapper * {
   user-select: none;
   -webkit-user-select: none;
   outline: none;
+}
+
+.sol-sankey .recharts-sankey-link {
+  transition: stroke-opacity 0.12s ease;
+}
+
+.sol-sankey .recharts-sankey-link:hover {
+  stroke-opacity: 0.85;
+}
+
+/* A Pie, Funnel or Radial slice lifts on hover, as a Sankey flow does; a click spotlights it. */
+.sol-slice {
+  cursor: pointer;
+  transition: filter 0.12s ease, fill-opacity 0.12s ease;
+}
+.sol-slice:hover {
+  filter: brightness(1.15);
 }

@@ -1,17 +1,16 @@
-// [[C15]], [[D26]], [[D27]], [[D45]]
+// [[C15]], [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
-import { isSolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
-// The table IS this test ([[D7]] oneMetricImpl):
+// The table IS this test:
 // a change to either without the other fails here. PAD follows the standing
 // rulings — element-wise ragged operands pad `null` (P3), never `#N/A`; shape
 // CONSTRUCTION functions own their #N/A padding inside their registered impls
 // ([[C48]] appendLadder) and never route through the broadcaster.
 //
-// Rank grammar (post-[[D44]] tagSpecialScalars): no scalar is an array, so Array.isArray at two
+// Rank grammar (post-[[C24]] arraySemantics): no scalar is an array, so Array.isArray at two
 // depths is the complete test — a matrix is an array of ROW arrays.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
@@ -74,8 +73,31 @@ describe("the eleven rows", () => {
   });
 });
 
+describe("a tall matrix maps in one pass", () => {
+  it("a column's cost grows with its rows, not with their square", () => {
+    const rows = 2000;
+    let reads = 0;
+    const col = new Proxy(Array.from({ length: rows }, (_, i) => [i]), {
+      get(target, key, receiver) {
+        if (typeof key === "string" && /^\d+$/.test(key)) reads++;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    expect((ev("x + 1", { x: col }) as number[][])[rows - 1]).toEqual([rows]);
+    expect(reads).toBeLessThan(rows * 10);
+  });
+
+  it("more rows than a call can take as arguments still map", () => {
+    const rows = 150_000;
+    const m = Array.from({ length: rows }, (_, i) => [i, -i]);
+    const out = ev("x + 1", { x: m }) as number[][];
+    expect(out.length).toBe(rows);
+    expect(out[rows - 1]).toEqual([rows, 2 - rows]);
+  });
+});
+
 describe("the per-cell value model rides through rank 2 unchanged", () => {
-  it("a cell error propagates in place ([[D37]] errorBeatsMissing)", () => {
+  it("a cell error propagates in place ([[C24]] arraySemantics)", () => {
     const err = { __solError: true, code: "#DIV/0!", message: "x" };
     const out = ev("x + 1", { x: [[1, err], [3, 4]] }) as unknown[][];
     expect(out[0][0]).toBe(2);
@@ -130,9 +152,7 @@ describe("the [[C15]] matricesInFormulas containment rule", () => {
   it("an undeclared FX name refuses a matrix with ONE clean #SHAPE!, never a broadcast array of #VALUE!s", () => {
     expect(EXCEL_IMPL_META["ROMAN"]).toBeUndefined();
     const r = ev("ROMAN(x)", { x: M22 });
-    expect(isSolError(r)).toBe(true);
     expect((r as { code: string }).code).toBe("#SHAPE!");
-    expect(Array.isArray(r)).toBe(false);
   });
 
   it("the same undeclared FX name still broadcasts over a rank-1 list", () => {
@@ -143,7 +163,6 @@ describe("the [[C15]] matricesInFormulas containment rule", () => {
 
   it("a genuinely unknown name is #NAME?, not a thrown #ERROR!", () => {
     const r = ev("NOTAFUNCTION(1)");
-    expect(isSolError(r)).toBe(true);
     expect((r as { code: string }).code).toBe("#NAME?");
   });
 });

@@ -1,13 +1,7 @@
 // [[C103]] untrustedContentSeams
 import { openExternal } from "./fileBridge";
 
-// Rendered markdown (Notes, imported vault notes, Reports, help) carries arbitrary
-// <a href>s. Left alone, a click NAVIGATES the desktop webview away from the app with
-// no way back, so one document-level guard hands every off-app link to the system
-// browser instead (web: a new tab).
 
-/** The URL a click on `href` should open OUTSIDE the app, or null when the link is
- *  in-app (same origin, a hash, a relative path) or not a browser scheme. */
 export function externalLinkTarget(href: string, origin: string): string | null {
   let url: URL;
   try { url = new URL(href, origin); } catch { return null; }
@@ -16,8 +10,7 @@ export function externalLinkTarget(href: string, origin: string): string | null 
   return url.origin === origin ? null : url.href;
 }
 
-/** Install the guard on `document`; returns the uninstaller. Capture phase, so a
- *  card's own stopPropagation can't let a link through. */
+/** Capture phase, so a card's own stopPropagation cannot let a link through. */
 export function installExternalLinkGuard(): () => void {
   const onClick = (e: MouseEvent) => {
     if (e.defaultPrevented) return;

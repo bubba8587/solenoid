@@ -1,6 +1,4 @@
-// [[C90]] drawnCablesAnnotate. World-space layer inside RF's <ViewportPortal> (the
-// standoffs' mirror, but ABOVE the cards). Spec: specs/drawn-cables.md.
-import { useCallback, useRef, useSyncExternalStore } from "react";
+import { memo, useCallback, useRef, useSyncExternalStore } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import {
   drawnCableStore, drawModeStore, commitDrawn,
@@ -17,8 +15,7 @@ import { IS_COARSE } from "../coarse";
 import { isPinching } from "../pointerGesture";
 import "./drawnCableLayer.css";
 
-// Affordance sizes are SCREEN pixels (divided by the zoom at render); the line and
-// heads are canvas units.
+// Affordance sizes are screen pixels (divided by the zoom at render); the line and heads are canvas units.
 const HIT_STROKE = IS_COARSE ? 40 : 18;
 const HANDLE_R = IS_COARSE ? 11 : 5;
 const PENDING_R = 5;
@@ -26,7 +23,7 @@ const HANDLE_STROKE = IS_COARSE ? 2.5 : 2;
 const HANDLE_HIT_R = IS_COARSE ? 22 : 9;
 const NEEDLE_LEN = 15;
 
-/** Squared distance from `p` to the chord `a`→`b`. */
+/** Squared distance from `p` to the chord from `a` to `b`. */
 function distToSpanSq(p: DrawnPoint, a: DrawnPoint, b: DrawnPoint): number {
   const vx = b.x - a.x;
   const vy = b.y - a.y;
@@ -92,8 +89,7 @@ function DrawnCableShape({
   const dHit = drawnCablePath(cable.shape, cable.points);
   const heads = drawnHeadings(cable.points);
   const activePoint = selected ? drawnCableStore.activePoint() : null;
-  // On touch an UNSELECTED body is pan surface: the tap's click selects, a drag pans
-  // (touch-gestures.md). Grabbable things carry `nopan` so RF's d3 pan stands down.
+  // On touch an unselected body is pan surface (touch-gestures spec); grabbable things carry `nopan` so RF's pan stands down.
   const bodyGrabs = !IS_COARSE || selected;
   const drag = useRef<{ index: number | null; last: DrawnPoint; moved: boolean } | null>(null);
 
@@ -134,8 +130,7 @@ function DrawnCableShape({
     (e: React.PointerEvent) => {
       const g = drag.current;
       if (!g) return;
-      // A pinch takes over mid-drag: the points already moved must still settle (autosave
-      // + an undo entry), or a reload right after loses the move.
+      // A pinch takes over mid-drag: points already moved must still settle (autosave and undo), or a reload loses the move.
       if (isPinching()) { drag.current = null; if (g.moved) commitDrawn(); return; }
       e.stopPropagation();
       const at = toFlow({ x: e.clientX, y: e.clientY });
@@ -228,7 +223,6 @@ function DrawnCableShape({
   );
 }
 
-/** The half-drawn run following the cursor while the tool is armed. */
 function PendingCable({ zoom }: { zoom: number }) {
   useSyncExternalStore(drawModeStore.subscribeCursor, drawModeStore.cursorVersion);
   const pending = drawModeStore.pending();
@@ -262,7 +256,7 @@ function PendingCable({ zoom }: { zoom: number }) {
   );
 }
 
-export function DrawnCableLayer() {
+export const DrawnCableLayer = memo(function DrawnCableLayer() {
   useSyncExternalStore(drawnCableStore.subscribe, drawnCableStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   useSyncExternalStore(drawModeStore.subscribe, drawModeStore.version);
@@ -285,4 +279,4 @@ export function DrawnCableLayer() {
       <PendingCable zoom={zoom} />
     </svg>
   );
-}
+});

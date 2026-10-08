@@ -1,7 +1,7 @@
 <!-- [[B14]] oneDesignSystem (DESIGN.md § Voice) -->
 # Help
 
-Sockets, ops, and fields carry tooltips, and the corner legend is the type key, so most of the surface explains itself. This covers the parts that behave in a way you wouldn't guess.
+Tooltips and the Socket Legend explain most of Solenoid. This page covers the parts that aren't obvious.
 
 ## Selecting
 
@@ -9,7 +9,7 @@ Shift-drag on empty canvas draws a free-form **lasso**, and its winding directio
 
 ## Wiring
 
-Most inputs take both a typed-in value and a socket. A connected cable wins over whatever is in the field. Sockets join only where their types match. A **Cast** node is the deliberate crossover.
+Most inputs have both a field and a socket, and a connected cable wins over the field. Sockets connect only where their types match; a **Cast** node converts between types.
 
 Deleting a simple pass-through node leaves a dashed **ghost cable** that offers to splice the chain back together, so removing a step doesn't orphan the rest. **Shift-drag** a node to lock its motion to one axis.
 
@@ -18,7 +18,7 @@ Deleting a simple pass-through node leaves a dashed **ghost cable** that offers 
 - A **Group** is a tinted frame around a set of nodes. Collapsed, it shows only its live readouts, and cables crossing the edge land on pills: a finished sub-calculation reads as a single box.
 - A **Conduit** bundles cables. Several outputs heading the same way travel as one wide **ribbon**. **Extend** carries the run on to a Conduit further along.
 - A **Standoff** holds two items a fixed distance apart while you rearrange everything around them, then can be edited or removed.
-- A **Note** is a label pinned to a region of canvas, outside the math, unless you open it with a `---`-fenced block of `key: value` lines, which turns each key into a typed output socket. A Note then doubles as a block of named constants.
+- A **Note** is a text label on the canvas. Start it with a `---`-fenced block of `key: value` lines and each key becomes a typed output, so the Note doubles as a set of named constants.
 
 ## Reading a graph
 
@@ -28,19 +28,21 @@ Deleting a simple pass-through node leaves a dashed **ghost cable** that offers 
 
 ## Units and formatting
 
-A **Format Controller** docks beside a socket and sets how a value reads: decimals or significant figures, percent, a date style, and a **unit** label (currency is a unit, not a number style; `$1,234.50` is "two decimals" plus "US dollars"). The format belongs to the value, so it rides downstream through anything that merely passes the value along, and resets at the first node that *transforms* it. **Convert** changes the unit itself, °C to °F or miles to km, and hands the new unit forward. Load the **Unit Flow** example to see it in one graph.
+A **Format Controller** docks beside a socket and sets how a value reads: decimals or significant figures, percent, a date style, and a **unit**. Currency is a unit, not a number style, so `$1,234.50` is "two decimals" plus "US dollars". The format rides downstream through anything that passes the value along, and through calculations that keep its meaning, like adding two percents. It resets at one that doesn't, like multiplying. The unit belongs to the value itself, and **Convert** is how you change it, °C to °F or miles to km. Load the **Unit Flow** example to see it in one graph.
 
 ## Formulas
 
-When wiring a chain of arithmetic nodes is overkill, the **Expression** node takes a formula like `a * b + 1` and turns each variable into an input socket, with the Excel functions and list-broadcasting available and `pi`/`tau`/`e`/`phi` as constants. The **lambda** nodes run that same engine over a collection: MAP transforms every cell, BYROW or BYCOL reduce each row or column, and REDUCE folds to one value; **LAMBDA** packages a formula as a value to feed any of them.
+The **Expression** node takes a formula like `a * b + 1` and turns each variable into an input, so one node can stand in for a chain of arithmetic nodes. It has the Excel functions, works over Lists and matrices, and reads `pi`, `tau`, `e` and `phi` as constants. **MAP**, **BYROW**, **BYCOL** and **REDUCE** run a formula over a collection: MAP transforms every cell, BYROW and BYCOL reduce each row or column, and REDUCE folds everything to one value. **LAMBDA** packages a formula so any of them can reuse it.
+
+Formulas don't take Frames. For math on each row of a table, use a computed column: an **Fx** column in Frame Input, or the Computed Column node. Inside one, `@Price` is this row's Price and a bare `Price` is the whole column, the same as in an Excel table.
 
 ## Recalculation
 
-Everything recomputes live. The exceptions are the random nodes and Today / Now, which hold their value until you press their ⟳ button, or **F9** to recalculate all of them at once.
+Everything recomputes live. The exceptions are the random nodes and Today / Now, which keep their value until you press their ⟳ button, or **F9** to refresh all of them at once. For heavy graphs, set **Calculate ▸ Manual**, and nothing recomputes until you press F9.
 
 ## Saving
 
-The graph autosaves and returns when you reopen, no file needed. **Save / Open** read and write a graph as JSON: a real file on the desktop app, a download and upload in the browser. The **examples** menu loads a sample in place of the canvas, so save first. A file from a newer version won't open in an older one. You get a clear message rather than a broken graph.
+Every document autosaves and comes back when you reopen. **Save / Open** read and write JSON: a real file on desktop, a download and upload in the browser. Opening a file or an **example** adds it as a new document. Files from other versions of Solenoid won't open.
 
 ## From Excel, wired
 
@@ -92,6 +94,27 @@ The graph autosaves and returns when you reopen, no file needed. **Save / Open**
 
 `title` and `fontsize` apply as on every chart.
 
+## Cards
+
+A frame's popup has a **Cards** view, and **Record: Cards** draws the same cards as a chart. Each column goes to one part of the card by its name, type and contents.
+
+| Part | Takes |
+|---|---|
+| Picture | text holding `data:image` pictures; a web image address stays text |
+| Key | unique IDs: a column named ID, SKU, Code or `#`, or ending in ID, Number or No; codes like `SO-1042`; a first column counting 1, 2, 3 |
+| Title | a First Name with its Last Name, else the most name-like text column, such as Name, Title, Product or Customer |
+| Subtitle | the next short text column, then the first date. A Start date with an End date makes a range; with no date, a Year column |
+| Headline | a number named like Total, Amount, Sales or Price; else one shown in a currency; else the rightmost number |
+| Chips | short text that repeats, a column styled Chip, and Tags, Skills or Categories split at commas |
+| Swatches | hex colors like `#d94f3d` |
+| Stars | Rating or Stars, 0 to 5 |
+| Bars | numbers shown as percents, or named like Progress, Completion or Usage, from 0 to 1 or 0 to 100 |
+| Checks | Boolean columns |
+| Notes | long text, or a column named Notes, Description, Comments or Bio |
+| Fields | everything else, in column order |
+
+A blank cell is left off its card.
+
 ## Keyboard
 
 Single keys work when you're not typing in a field.
@@ -111,6 +134,7 @@ Single keys work when you're not typing in a field.
 | **Ctrl+Z / Ctrl+Shift+Z** | Undo / redo |
 | **Ctrl+C / Ctrl+V** | Copy / paste, wiring intact |
 | **Ctrl+Shift+G** | Make a Composite from the selection |
+| **Ctrl+] / Ctrl+[** | Bring the selection forward / send it backward (with Shift: to the front / back) |
 | **Ctrl+A / Ctrl+F** | Select all / find a node |
 | **Ctrl+S / Ctrl+Shift+S** | Save / Save As |
 | **Ctrl+O / Ctrl+Shift+L** | Open / reload the document |

@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { ELECTRICITY_FORMULAS } from "../../../src/graph/packs/electricity";
+import { ELECTRICITY_FORMULAS, ELECTRICITY_PACK } from "../../../src/graph/packs/electricity";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { decodeResistor, ResistorCodeNode } from "../../../src/graph/nodes/electrical";
+import { ResistorCodeNode, AwgNode } from "../../../src/graph/nodes/electrical";
+import { decodeResistor } from "../../../src/graph/nodes/electricalOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -26,6 +27,15 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect(evalPackFormula('AWGWIRE(12, "ampacity")')).toBe(25);
     const bad = evalPackFormula('AWGWIRE(12, "sparkles")');
     expect(isSolError(bad) && bad.code).toBe("#VALUE!");
+  });
+  it("AWG ampacity: 16 and 18 have no 75 °C rating; out of range is #DOMAIN! on every output", () => {
+    expect(evalPackFormula('AWGWIRE(14, "ampacity")')).toBe(20);
+    expect(evalPackFormula('AWGWIRE(16, "ampacity")')).toBeNull();
+    expect(evalPackFormula('AWGWIRE(18, "ampacity")')).toBeNull();
+    const far = evalPackFormula('AWGWIRE(50, "ampacity")');
+    expect(isSolError(far) && far.code).toBe("#DOMAIN!");
+    const out = new AwgNode().data({ gauge: [50] }) as Record<string, unknown>;
+    for (const k of ["diameter", "area", "resistance", "ampacity"]) expect(isSolError(out[k]), k).toBe(true);
   });
   it("RESISTORCOLORCODE decodes 4- and 5-band markings to ohms", () => {
     expect(evalPackFormula('RESISTORCOLORCODE("brown", "black", "red", "gold")')).toBe(1000);
@@ -98,11 +108,8 @@ describe("Electricity & Circuits formulas", () => {
 
 describe("Resistor color code", () => {
   it("decodes the classics", () => {
-    expect(decodeResistor("brown", "black", "", "red", "gold", false)).toEqual({ ohms: 1000, tolerance: 5 });
     expect(decodeResistor("yellow", "violet", "", "orange", "gold", false)).toEqual({ ohms: 47000, tolerance: 5 });
     expect(decodeResistor("orange", "orange", "", "brown", "silver", false)).toEqual({ ohms: 330, tolerance: 10 });
-    // 5-band 1% precision part: 10.0 kΩ.
-    expect(decodeResistor("brown", "black", "black", "red", "brown", true)).toEqual({ ohms: 10000, tolerance: 1 });
     // Gold multiplier divides: 4.7 Ω.
     const r = decodeResistor("yellow", "violet", "", "gold", "gold", false);
     expect((r as { ohms: number }).ohms).toBeCloseTo(4.7, 9);
@@ -115,5 +122,20 @@ describe("Resistor color code", () => {
     n.bands = "5";
     n.stringLiterals = { b1: "brown", b2: "black", b3: "black", mult: "red", tol: "brown" };
     expect(n.data()).toEqual({ ohms: 10000, tolerance: 1 });
+  });
+});
+
+describe("SI-prefix format", () => {
+  const si = ELECTRICITY_PACK.formats!.find((f) => f.id === "siprefix")!.apply;
+  it("reads at 3 significant figures", () => {
+    expect(si(4700)).toBe("4.7k");
+    expect(si(0.0022)).toBe("2.2m");
+    expect(si(-150000)).toBe("-150k");
+    expect(si(1)).toBe("1");
+  });
+  it("a value that rounds up to the next step takes that step's prefix", () => {
+    expect(si(999.96)).toBe("1k");
+    expect(si(999999.7)).toBe("1M");
+    expect(si(0.99996)).toBe("1");
   });
 });

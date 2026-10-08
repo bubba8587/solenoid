@@ -1,4 +1,3 @@
-// [[D10]] onePrunePath
 import { useSyncExternalStore } from "react";
 import { HISTOGRAM_MODE_META } from "../rete-nodes";
 import type { HistogramNode as HistogramNodeType, HistogramMode } from "../rete-nodes";
@@ -8,7 +7,7 @@ import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { SegToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 const MODE_OPTIONS = (Object.keys(HISTOGRAM_MODE_META) as HistogramMode[]).map((m) => ({
@@ -22,8 +21,8 @@ const H = 150;
 export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const cv = data.cachedChart;
-  const has = !!cv && (cv.op === "contour"
-    ? cv.payload?.kind === "contour" && cv.payload.z.length > 0
+  const has = !!cv && (cv.op === "heatmap"
+    ? cv.payload?.kind === "heatmap" && cv.payload.z.length > 0
     : Array.isArray(cv.values) && cv.values.length > 0);
 
   async function pickMode(next: HistogramMode) {
@@ -31,7 +30,7 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
     const drop = data.keysDroppedByMode(next);
     if (drop.length) await dropInputCables(data.id, drop);
     data.setMode(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 
@@ -46,7 +45,6 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
       </div>
       <div className="solenoid-node__section-divider" />
       <InlineInputs node={data} emit={emit} />
-      {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup). */}
       {cv && (
         <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
           <ChartChip value={cv} />

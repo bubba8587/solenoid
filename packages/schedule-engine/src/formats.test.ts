@@ -77,6 +77,14 @@ describe("Primavera XER", () => {
   });
 });
 
+describe("Primavera XER pruning", () => {
+  it("drops a WBS with no tasks, and one holding only such WBSs", () => {
+    const xer = XER.replace(/(%R\t12\t1\t10\t3\tFinish)/, "$1\n%R\t13\t1\t10\t4\tEmpty\n%R\t14\t1\t13\t5\tEmptier");
+    expect(xer).toContain("Emptier");
+    expect(readXer(xer).tasks[0].children!.map((t) => t.name)).toEqual(["Build", "Finish"]);
+  });
+});
+
 describe("MSPDI write", () => {
   it("round-trips through the reader to the same schedule, in both modes", () => {
     const tasks = readGan(GAN).tasks;
@@ -84,7 +92,6 @@ describe("MSPDI write", () => {
       const cal = { workingDays: true, holidays: [isoToSerial("2026-03-09")!], precision };
       const o = schedule({ tasks, start: isoToSerial("2026-03-02")!, calendar: cal });
       const xml = writeMspdi(o, { title: "Shed", formatIso: iso, minutes: precision === "minutes", holidays: cal.holidays });
-      expect(xml).toContain("<Task>");
       const back = readMspdi(xml);
       expect(back.title).toBe("Shed");
       expect(back.calendar.holidays).toEqual([isoToSerial("2026-03-09")]);
@@ -96,6 +103,30 @@ describe("MSPDI write", () => {
       // The stored dates in the written file match what the reader's golden sees.
       for (const g of back.golden) expect(iso(g.start!)).toBe(iso(o.tasks.find((x) => x.name === g.name)!.start));
     }
+  });
+});
+
+describe("MSPDI write: a typed start", () => {
+  it("a start-no-earlier-than floor writes its date, so the re-read task keeps the floor", () => {
+    const floor = isoToSerial("2026-03-11")!;
+    for (const precision of ["days", "minutes"] as const) {
+      const o = schedule({
+        start: isoToSerial("2026-03-02")!, calendar: { workingDays: true, precision },
+        tasks: [{ name: "A", duration: 2, predecessors: [] }, { name: "B", duration: 1, predecessors: [{ task: "A", type: "FS", lag: 0 }], start: floor }],
+      });
+      expect(o.tasks[1].floored).toBe(true);
+      const back = readMspdi(writeMspdi(o, { formatIso: iso, minutes: precision === "minutes" }));
+      expect(back.tasks[1].start == null ? null : iso(back.tasks[1].start)).toBe("2026-03-11");
+    }
+  });
+  it("a floor its predecessors already pass still writes its own date", () => {
+    const o = schedule({
+      start: isoToSerial("2026-03-02")!, calendar: { workingDays: true },
+      tasks: [{ name: "A", duration: 5, predecessors: [] }, { name: "B", duration: 1, predecessors: [{ task: "A", type: "FS", lag: 0 }], start: isoToSerial("2026-03-03")! }],
+    });
+    expect(o.tasks[1].floored).toBe(false);
+    const back = readMspdi(writeMspdi(o, { formatIso: iso }));
+    expect(back.tasks[1].start == null ? null : iso(back.tasks[1].start)).toBe("2026-03-03");
   });
 });
 
@@ -122,5 +153,29 @@ describe("format border edge cases", () => {
     const o = schedule({ tasks: [{ name: "A", duration: 1, predecessors: [] }], start: isoToSerial("2026-03-02")!, calendar: { workingDays: true, precision: "minutes" } });
     const xml = writeMspdi(o, { title: "T", formatIso: iso, minutes: true });
     expect(xml).toContain("<Finish>2026-03-02T");
+  });
+});
+
+describe("a seven-day week imports as every day counting", () => {
+  const WORKDAY = "(0||0(s|08:00|f|12:00)())(0||1(s|13:00|f|17:00)())";
+  const xerWeek = (days: number[]) => XER.replace(/\(0\|\|DaysOfWeek\(\)\([\s\S]*?\)\)\)\)\(0\|\|Exceptions/, () =>
+    `(0||DaysOfWeek()(${[1, 2, 3, 4, 5, 6, 7].map((d) => `(0||${d}()(${days.includes(d) ? WORKDAY : ""}))`).join("")}))(0||Exceptions`);
+  it("GanttProject with no day off", () => {
+    const p = readGan(GAN.replace('sun="1"', 'sun="0"').replace('sat="1"', 'sat="0"'));
+    expect(p.calendar.workingDays).toBe(false);
+    expect(p.unsupported).toContain("holidays on a seven-day week");
+  });
+  it("P6 with work on all seven days, and a five-day P6 week stays Mon–Fri", () => {
+    const seven = readXer(xerWeek([1, 2, 3, 4, 5, 6, 7]));
+    expect(seven.calendar.workingDays).toBe(false);
+    const five = readXer(xerWeek([2, 3, 4, 5, 6]));
+    expect(five.calendar.workingDays).toBe(true);
+    expect(five.calendar.weekendCode).toBe(1);
+  });
+  it("Project XML only when all seven days are listed as working; no WeekDays is still the standard week", () => {
+    const day = (t: number) => `<WeekDay><DayType>${t}</DayType><DayWorking>1</DayWorking></WeekDay>`;
+    const xml = (weekDays: string) => `<?xml version="1.0"?><Project xmlns="http://schemas.microsoft.com/project"><Calendars><Calendar><UID>1</UID><Name>Standard</Name>${weekDays}</Calendar></Calendars><Tasks><Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task></Tasks></Project>`;
+    expect(readMspdi(xml(`<WeekDays>${[1, 2, 3, 4, 5, 6, 7].map(day).join("")}</WeekDays>`)).calendar.workingDays).toBe(false);
+    expect(readMspdi(xml("")).calendar.workingDays).toBe(true);
   });
 });

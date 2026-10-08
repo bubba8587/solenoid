@@ -1,14 +1,14 @@
-// [[D10]] onePrunePath
 import { HYPOTHESIS_TEST_OP_META } from "../rete-nodes";
 import type { HypothesisTestNode as HypothesisTestNodeType, HypothesisTestOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 
 const OPS = (Object.keys(HYPOTHESIS_TEST_OP_META) as HypothesisTestOp[]).map((op) => ({
   value: op,
   label: HYPOTHESIS_TEST_OP_META[op].label,
+  title: HYPOTHESIS_TEST_OP_META[op].description,
 }));
 
 export function HypothesisTestComponent({ data, emit }: NodeProps<HypothesisTestNodeType>) {
@@ -19,7 +19,7 @@ export function HypothesisTestComponent({ data, emit }: NodeProps<HypothesisTest
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     setOpField(next);
   }
 

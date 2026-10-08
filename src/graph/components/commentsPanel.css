@@ -45,7 +45,7 @@
   height: 14px;
   padding: 0 3px;
   background: var(--accent);
-  color: var(--accent-contrast, #fff);
+  color: var(--accent-ink);
   border-radius: 8px;
   font-size: 9px;
   font-weight: 700;
@@ -160,7 +160,7 @@
 .solenoid-comment-compose__btn {
   align-self: flex-end;
   background: var(--accent);
-  color: var(--accent-contrast, #fff);
+  color: var(--accent-ink);
   border: none;
   border-radius: 6px;
   font-size: 10.5px;

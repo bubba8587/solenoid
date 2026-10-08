@@ -1,4 +1,3 @@
-// [[C65]]
 import { useFlowResizeGrip } from "../flowSurface";
 import { Fragment, useState, useRef, useLayoutEffect, useSyncExternalStore, type CSSProperties } from "react";
 import type { GroupNode as GroupNodeType } from "../rete-nodes";
@@ -31,15 +30,13 @@ import { useEditableLabel } from "./inlineInput";
 import "./GroupNode.css";
 import { stopDragStart } from "../coarse";
 import { getOwningView, getOwningEditor } from "../activeGraph";
+import { socketRingColor } from "./SocketComponent";
 
-// Honors the FC annotation resolved for `annNodeId`'s output.
 function formatReadout(v: unknown, annNodeId: string, outKey?: string): string {
   if (v === undefined || v === null) return "—";
   if (isSolError(v)) return v.code;
   const ann = resolveDisplayAnnotation(annNodeId, outKey);
-  // Unannotated date serials render as DD-MMM-YYYY, exactly as the Display surface does
-  // (dateFormatDisplay); without this the readout showed the raw serial. The FC-annotated
-  // case falls through — formatNumberWithAnnotation formats dates itself.
+  // Unannotated date serials render as DD-MMM-YYYY, as on a Display; an FC formats dates itself.
   if (ann == null && nodeOutputElemFamily(annNodeId, outKey) === "date") {
     const d = dateFormatDisplay(v as Parameters<typeof dateFormatDisplay>[0], true, false);
     if (typeof d === "string") return d;
@@ -49,18 +46,15 @@ function formatReadout(v: unknown, annNodeId: string, outKey?: string): string {
   if (typeof v === "number") return one(v);
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
-  // Per-cell through the shared formatter: Cx, UnitCell, errors, blanks and
-  // logicals all have a text form — String(x) turned them into [object Object].
+  // Per cell through the shared formatter: String(x) turns a Cx, UnitCell or error into [object Object].
   if (Array.isArray(v)) return v.map((x) => formatListCell(x as Parameters<typeof formatListCell>[0], one, ann)).join(", ");
-  // Object-valued kinds get a compact label instead of "[object Object]".
   const kind = describeValueKind(v);
   if (kind != null) return kind;
-  if (typeof v === "object") return formatListCell(v as Parameters<typeof formatListCell>[0], one, ann); // scalar Cx / UnitCell
+  if (typeof v === "object") return formatListCell(v as Parameters<typeof formatListCell>[0], one, ann);
   return String(v);
 }
 
-// Falls back to `cachedResult` because LAMBDA table nodes cache there and may not
-// be in the cable store yet.
+// Falls back to `cachedResult`: LAMBDA table nodes cache there and may not be in the cable store yet.
 function readoutValue(t: RetainedTerminal): unknown {
   if (t.kind === "display") {
     const n = getOwningEditor(t.displayId)?.getNode(t.displayId) as { cachedValue?: unknown } | undefined;
@@ -78,8 +72,7 @@ function readoutText(t: RetainedTerminal): string {
     : formatReadout(readoutValue(t), t.effNodeId, t.effSocketKey);
 }
 
-// A chip renders as a DIRECT flex child so the row's align-items:center centers it —
-// wrapping it in the 15px row-val span baseline-aligns it low.
+// A chip is a direct flex child, so the row centers it; inside the 15px row-val span it baseline-aligns low.
 function renderReadout(t: RetainedTerminal) {
   const v = readoutValue(t);
   if (isSolError(v)) return <ErrorChip err={v} className="solenoid-group__row-val" />;
@@ -92,6 +85,12 @@ function renderReadout(t: RetainedTerminal) {
   return <span className="solenoid-group__row-val">{readoutText(t)}</span>;
 }
 
+// A trunk pill's glow reads its own socket's highlight, so a cable hover redraws one pill, not every group.
+function PillGlow({ socket }: { socket: string }) {
+  const lit = useSyncExternalStore(socketHighlightStore.subscribe, () => socketHighlightStore.isHighlighted(socket));
+  return lit ? <rect x="0" y="0" width="12" height="22" rx="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} /> : null;
+}
+
 export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const node = data;
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -99,33 +98,25 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const paletteRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(pickerOpen, () => setPickerOpen(false), [swatchRef, paletteRef]);
   const taRef = useRef<HTMLTextAreaElement>(null);
-  // The grip's setPointerCapture + preventDefault suppress the native dblclick, so
-  // the double-press is timed by hand.
 
-  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
   const title = useEditableLabel(node, () => { void getOwningView(node.id)?.rerenderNode(node.id); });
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const mode = appThemeStore.getMode();
-  // Group tint reads heavier on a light canvas — give it a touch more fill.
   const fillAlpha = mode === "light" ? 0.14 : 0.08;
 
   useLayoutEffect(() => {
     const el = getOwningView(node.id)?.nodeElement(node.id);
-    // Expanded sits BEHIND members (standoffs −3 < group −2 < conduit −1 < nodes 0)
-    // so a member Conduit stays clickable; collapsed must sit ABOVE the cables or
-    // they draw over the edge pill sockets.
+    // Expanded sits behind members (standoffs −3, group −2, Conduit −1, nodes 0) so a member Conduit stays clickable; collapsed sits above the cables, or they draw over the edge pills.
     if (el) el.style.zIndex = pickerOpen ? "20" : node.collapsed ? "1" : "-2";
   });
 
 
   const Grip = useFlowResizeGrip();
   function onResize(size: { width: number; height: number }) {
-    // The right/bottom edges never cross a member: a shrink past the members' extent
-    // would drop them from the group while the box still covered them (no overlaps).
+    // The right and bottom edges never cross a member: a shrink past them would drop members the box still covers.
     const view = getOwningView(node.id);
     const gv = view?.position(node.id);
     let minW = GROUP_MIN_W, minH = GROUP_MIN_H;
@@ -145,15 +136,13 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     const editor = getOwningEditor(node.id);
     const view = getOwningView(node.id);
     if (editor && view) {
-      // A MANUAL resize DOES re-evaluate membership; autofit is the exception —
-      // it wraps existing members and must not absorb bystanders.
+      // A manual resize re-evaluates membership; autofit never does, so it can't absorb bystanders.
       reconcileGroupBox(editor, view, node);
       rebuildGroupMembership(editor);
       syncGroupCollapse(editor, view);
     }
     scheduleAutosave();
-    // The solver MEASURES offsetWidth/Height, so defer a frame to let the resize
-    // paint; pinning this group makes its partner re-align to it.
+    // The standoff solver measures offsetWidth and offsetHeight, so wait a frame for the resize to paint.
     if (!standoffStore.isEmpty()) {
       requestAnimationFrame(() => settleStandoffs(new Set([node.id])));
     }
@@ -166,8 +155,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     await autofitGroupWithHistory(editor, view, node);
   }
 
-  // The within-group tidy snaps docked FCs back onto their hosts in a DEFERRED
-  // frame, so autofit must wait two frames or it wraps stale far-right ELK spots.
+  // The within-group tidy snaps docked FCs back in a deferred frame, so autofit waits two frames or it wraps stale positions.
   async function tidyThenAutofit() {
     await autoArrange({ groupId: node.id });
     await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
@@ -178,7 +166,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     node.color = c;
     const ed = getOwningEditor(node.id);
     void getOwningView(node.id)?.rerenderNode(node.id);
-    if (ed) rebuildGroupMembership(ed); // member dots follow the group color
+    if (ed) rebuildGroupMembership(ed);
     scheduleAutosave();
   }
 
@@ -200,7 +188,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     setGroupLocked(editor, view, node, false);
   }
 
-  // `node.color` stays the canonical value — a palette SLOT id, resolved here.
+  // `node.color` stays canonical: a palette slot id, resolved here.
   const baseHex = resolveColor(node.color);
   const color = themeAccent(baseHex, mode);
   const ink = contrastInk(color);
@@ -212,8 +200,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const summaryMinH = rowCount * COLLAPSE_LAYOUT.rowH
     + Math.max(0, rowCount - 1) * COLLAPSE_LAYOUT.rowGap + COLLAPSE_LAYOUT.padTop * 2;
 
-  // Published the same way a member NodeCard does, so a chip opened from the
-  // collapsed summary frames its popup with the membership border.
+  // Published as a member NodeCard does, so a chip opened from the collapsed summary frames its popup with the membership border.
   const groupVars = {
     "--node-accent": color,
     "--group-color": color,
@@ -246,7 +233,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             ref={taRef}
             className="solenoid-group__label"
             rows={1}
-            placeholder="Group"
+            placeholder="Node Group"
             style={{ color: ink }}
             {...title.inputProps}
           />
@@ -257,7 +244,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             title={node.label}
             {...title.displayProps}
           >
-            {node.label || "Group"}
+            {node.label || "Node Group"}
           </div>
         )}
         {node.lockedPosition && (
@@ -324,7 +311,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             <div className="solenoid-group__empty">no readouts</div>
           ) : (
             retained.map((t) => {
-              // A combined Conduit-output row shows the lane count, not a value.
               const combo = (t.lanes ?? 0) > 1;
               const val = combo ? null : readoutValue(t);
               return (
@@ -349,8 +335,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             })
           )}
         </div>
-        {/* Edge pills are REAL sockets, so outputs stay draggable; a lanes > 1 pill
-            is a Conduit ribbon trunk's terminus, functional socket under a stadium. */}
+        {/* Edge pills are real sockets, so outputs stay draggable; a lanes > 1 pill is a Conduit ribbon trunk's terminus. */}
         {inputPills.map((ip) => {
           const sock = getOwningEditor(ip.nodeId)?.getNode(ip.nodeId)?.inputs[ip.socketKey]?.socket;
           if (!sock) return null;
@@ -361,8 +346,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
                           nodeId={ip.nodeId} emit={emit} payload={sock} top={pillY(ip.index) - 6} />
             );
           }
-          const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "#888";
-          const pillLit = socketHighlightStore.isHighlighted(dragSocketKey(ip.nodeId, ip.socketKey));
+          const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "var(--sock-any)";
           return (
             <Fragment key={`in${ip.nodeId}-${ip.socketKey}`}>
               <NodeSocket side="input" socketKey={ip.socketKey} nodeId={ip.nodeId} emit={emit}
@@ -370,10 +354,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
               <svg className="solenoid-node__input-pill" style={{ top: pillY(ip.index) - 11, height: 22 }}
                    viewBox="0 0 12 22" aria-hidden>
                 <rect x="0" y="0" width="12" height="22" rx="6" fill={pillColor} />
-                <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
-                {pillLit && (
-                  <rect x="0" y="0" width="12" height="22" rx="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
-                )}
+                <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke={socketRingColor(pillColor)} strokeWidth="2" />
+                <PillGlow socket={dragSocketKey(ip.nodeId, ip.socketKey)} />
               </svg>
             </Fragment>
           );
@@ -381,10 +363,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
         {retained.map((t, i) => {
           const sock = getOwningEditor(t.effNodeId)?.getNode(t.effNodeId)?.outputs[t.effSocketKey]?.socket;
           if (!sock) return null;
-          // Mirrors the combined INPUT pill's stadium to the right edge.
           if ((t.lanes ?? 0) > 1) {
-            const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "#888";
-            const pillLit = socketHighlightStore.isHighlighted(dragSocketKey(t.effNodeId, t.effSocketKey));
+            const pillColor = sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "var(--sock-any)";
             return (
               <Fragment key={`out${t.effNodeId}:${t.effSocketKey}`}>
                 <NodeSocket side="output" socketKey={t.effSocketKey} nodeId={t.effNodeId} emit={emit}
@@ -392,10 +372,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
                 <svg className="solenoid-node__output-pill" style={{ top: pillY(i) - 11, height: 22 }}
                      viewBox="0 0 12 22" aria-hidden>
                   <rect x="0" y="0" width="12" height="22" rx="6" fill={pillColor} />
-                  <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
-                  {pillLit && (
-                    <rect x="0" y="0" width="12" height="22" rx="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
-                  )}
+                  <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke={socketRingColor(pillColor)} strokeWidth="2" />
+                  <PillGlow socket={dragSocketKey(t.effNodeId, t.effSocketKey)} />
                 </svg>
               </Fragment>
             );
@@ -408,9 +386,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
         </>
       ) : (
         <div className="solenoid-group__body" style={{ borderColor: borderCol, background: hexToRgba(color, fillAlpha) }}>
-          {/* Drag bands along the dashed edge — the only body surface that grabs an
-              UNSELECTED group (the wrapper is pointer-transparent, flow.css). */}
-          <div className="solenoid-group__band solenoid-group__band--n" />
+          {/* The only body surface that grabs an unselected group; the wrapper is pointer-transparent (flow.css). */}
           <div className="solenoid-group__band solenoid-group__band--e" />
           <div className="solenoid-group__band solenoid-group__band--s" />
           <div className="solenoid-group__band solenoid-group__band--w" />

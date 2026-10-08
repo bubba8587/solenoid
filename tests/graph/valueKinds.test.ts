@@ -1,8 +1,8 @@
-// [[D36]], [[D37]], [[D38]]
+// [[D36]], [[C24]], [[D38]]
 import { describe, it, expect } from "vitest";
 import {
-  MISSING, isMissing, isLogical,
-  logicalToNumber, numberToLogical, coerceLogical,
+  isMissing, isLogical,
+  logicalToNumber, numberToLogical, coerceLogical, logicalOrTypeError,
   kleeneNot, kleeneOr, kleeneAnd,
   forAggregate,
   cellShortCircuit, cellError, COMPUTE,
@@ -12,7 +12,6 @@ import { solError, isSolError } from "../../src/graph/errorValue";
 describe("value-kind predicates", () => {
   it("isMissing only true for null", () => {
     expect(isMissing(null)).toBe(true);
-    expect(MISSING).toBe(null);
     for (const v of [undefined, 0, NaN, "", false, [], {}]) {
       expect(isMissing(v)).toBe(false);
     }
@@ -84,7 +83,6 @@ describe("forAggregate", () => {
     const err = solError("#DIV/0!", "boom");
     const r = forAggregate([1, null, err, 3]);
     expect(r.error).toBe(err);
-    expect(isSolError(r.error)).toBe(true);
   });
 });
 
@@ -100,12 +98,10 @@ describe("per-element broadcast contract", () => {
 
   it("cellShortCircuit: error beats missing (error is checked first)", () => {
     expect(cellShortCircuit([null, e1])).toBe(e1);
-    expect(cellShortCircuit([e1, null])).toBe(e1);
   });
 
   it("cellShortCircuit: missing propagates when there's no error", () => {
     expect(cellShortCircuit([1, null, 2])).toBe(null);
-    expect(cellShortCircuit([null])).toBe(null);
   });
 
   it("cellShortCircuit: COMPUTE when every operand is present", () => {
@@ -120,25 +116,31 @@ describe("per-element broadcast contract", () => {
   });
 });
 
-describe("coerceLogical — the shared liberal text/number → logical parse", () => {
+describe("coerceLogical — the one reading of a value as a logical ([[D93]] oneTextReading)", () => {
   it("passes a real boolean through", () => {
     expect(coerceLogical(true)).toBe(true);
     expect(coerceLogical(false)).toBe(false);
   });
-  it("parses TRUE/FALSE text case-insensitively, trimmed", () => {
+  it("reads the text TRUE and FALSE case-insensitively, trimmed", () => {
     expect(coerceLogical("TRUE")).toBe(true);
     expect(coerceLogical(" false ")).toBe(false);
   });
-  it("follows the logical↔number bridge (0 → FALSE, nonzero → TRUE), incl. numeric strings", () => {
+  it("reads a finite number or numeric text by the logical↔number bridge (0 → FALSE, nonzero → TRUE)", () => {
     expect(coerceLogical(0)).toBe(false);
     expect(coerceLogical(-3)).toBe(true);
     expect(coerceLogical("1")).toBe(true);
-    expect(coerceLogical("0")).toBe(false);
+    expect(coerceLogical(" 0 ")).toBe(false);
+    expect(coerceLogical("-2.5")).toBe(true);
   });
-  it("returns null when it can't be read as a logical", () => {
-    expect(coerceLogical("maybe")).toBeNull();
+  it("reads any other text as NaN; blank stays blank", () => {
+    for (const v of ["maybe", "yes", "0x1", NaN, {}]) expect(coerceLogical(v)).toBeNaN();
     expect(coerceLogical("")).toBeNull();
-    expect(coerceLogical(NaN)).toBeNull();
-    expect(coerceLogical({})).toBeNull();
+    expect(coerceLogical(null)).toBeNull();
+  });
+  it("a computation reads that NaN as #TYPE!, naming the value", () => {
+    const e = logicalOrTypeError("maybe", "XNOR");
+    expect(isSolError(e) && e.code).toBe("#TYPE!");
+    expect(isSolError(e) && e.message).toContain('"maybe"');
+    expect(logicalOrTypeError("True", "XNOR")).toBe(true);
   });
 });

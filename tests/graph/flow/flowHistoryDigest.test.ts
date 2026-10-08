@@ -1,11 +1,11 @@
-// [[C43]] oneFlowSurface, [[B10]] reactFlowView
+// [[B3]] sameNodeEverywhere, [[A1]] visualGraphCalculator
 import { describe, it, expect } from "vitest";
 import { describeGraphDelta, sameIgnoringDims } from "../../../src/graph/flow/flowHistoryDigest";
 import type { SavedGraph, SavedNode } from "../../../src/graph/persistence";
 
 const node = (id: string, name: string, extra: Partial<SavedNode> = {}): SavedNode => ({
   id,
-  type: "NumberInputNode",
+  type: "ValueInputNode",
   name,
   x: 0,
   y: 0,
@@ -41,7 +41,6 @@ describe("describeGraphDelta", () => {
   it("reports a move only when nothing else changed", () => {
     const movedB = { ...b, x: 40 };
     expect(describeGraphDelta(graph([a, b]), graph([a, movedB]))).toBe("Moved node: total");
-    expect(describeGraphDelta(graph([a]), graph([a, movedB].map((n) => n)))).toBe("Added node: total");
   });
 
   it("reports an in-card edit", () => {
@@ -100,5 +99,17 @@ describe("sameIgnoringDims", () => {
     expect(sameIgnoringDims(before, dims)).toBe(true);
     expect(sameIgnoringDims(before, moved)).toBe(false);
     expect(sameIgnoringDims(before, graph([]))).toBe(false);
+  });
+
+  it("a group's resize is an edit", () => {
+    const g = (w: number) => graph([node("g1", "Group", { type: "GroupNode", init: { width: w, height: 200 } })]);
+    expect(sameIgnoringDims(g(300), g(420))).toBe(false);
+  });
+
+  it("a user resize of a Note, Import Note, Image or SVG Picker is an edit", () => {
+    for (const type of ["NoteNode", "ImportObsidianNode", "ImageNode", "SvgPickerNode"]) {
+      const n = (h: number) => graph([node("n1", "card", { type, init: { width: 300, height: h } })]);
+      expect(sameIgnoringDims(n(160), n(240))).toBe(false);
+    }
   });
 });

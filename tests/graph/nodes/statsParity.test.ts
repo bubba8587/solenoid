@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { FUNCTION_FAMILY, FAMILY_BACKING, internalFunctionNames } from "../../../src/graph/excelFunctions";
 import { AggregateNode } from "../../../src/graph/nodes/list";
-import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, ModeNode, FisherNode } from "../../../src/graph/nodes/stats";
+import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, FisherNode, ModeNode } from "../../../src/graph/nodes/stats";
 import { isSolError } from "../../../src/graph/errorValue";
 
 // capabilityParity / [[C17]] shareImpl for the STATISTICS family (the A1 backing flip): every
@@ -23,6 +23,11 @@ const SAMPLES: (number | null)[][] = [
   [1, 1, 1],
   [-4, 9],
   [0.5, 2.5, 7, 7, 7, 11],
+  [1, 2, Infinity],
+  [1, 2, -Infinity],
+  [5, Infinity, -Infinity],
+  [Infinity, Infinity],
+  [1, NaN, 3],
 ];
 
 describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
@@ -32,6 +37,7 @@ describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
     ["STDEV.P", "stdev_p"], ["VAR", "var_s"], ["VAR.S", "var_s"], ["VAR.P", "var_p"],
     ["SKEW", "skew"], ["SKEW.P", "skew_p"], ["KURT", "kurt"],
     ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
+    ["MIN", "min"], ["MAX", "max"],
   ];
   it.each(OPS)("%s(list) == Aggregate %s", (fn, op) => {
     for (const list of SAMPLES) {
@@ -41,6 +47,31 @@ describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
   });
   it("a formula over several args flattens them into one sample", () => {
     expect(ev("AVERAGE(a, 10, b)", { a: [1, 2], b: [3] })).toBeCloseTo(4, 12);
+  });
+});
+
+describe("a NaN cell poisons an aggregate, as it does in GROUPBY", () => {
+  it("every op but the counts answers #DOMAIN!, on the card and in a formula", () => {
+    const code = (v: unknown) => (v as { code?: string }).code;
+    const list = [1, NaN, 3];
+    for (const op of ["avg", "min", "max", "median", "ptp"] as const) {
+      expect(code(new AggregateNode({ op }).data({ list: [list] }).result), op).toBe("#DOMAIN!");
+    }
+    expect(new AggregateNode({ op: "count" }).data({ list: [list] }).result).toBe(3);
+  });
+});
+
+describe("a first-class infinity is a value, as on the cards", () => {
+  const code = (v: unknown) => (v as { code?: string }).code;
+  it("an order statistic lands on it or past it; a spread around it is undefined", () => {
+    expect(ev("AVERAGE(x)", { x: [1, 2, Infinity] })).toBe(Infinity);
+    expect(ev("MEDIAN(x)", { x: [1, 2, Infinity] })).toBe(2);
+    expect(ev("PERCENTILE.INC(x, 1)", { x: [1, 2, Infinity] })).toBe(Infinity);
+    expect(ev("PERCENTILE.INC(x, 0.75)", { x: [1, 2, Infinity] })).toBe(Infinity);
+    expect(ev("PERCENTILE.INC(x, 0.25)", { x: [-Infinity, 1, 2] })).toBe(-Infinity);
+    expect(code(ev("PERCENTILE.INC(x, 0.5)", { x: [-Infinity, Infinity] }))).toBe("#DOMAIN!");
+    expect(code(ev("STDEV(x)", { x: [1, 2, Infinity] }))).toBe("#DOMAIN!");
+    expect(code(ev("CORREL(x, y)", { x: [1, 2, Infinity], y: [2, 4, 6] }))).toBe("#DOMAIN!");
   });
 });
 
@@ -66,8 +97,10 @@ describe("the numpy / pandas / R one-liners answer what scipy answers", () => {
   });
 });
 
-describe("order statistics formulas == Rank & Percentile node", () => {
-  const list = [3, 1, 4, 1, 5, 9, 2, 6];
+describe.each([
+  [[3, 1, 4, 1, 5, 9, 2, 6]],
+  [[3, Infinity, 4, 1, -Infinity, 2]],
+])("order statistics formulas == Rank & Percentile node over %j", (list) => {
   const node = (op: string, key: string, v: number) => {
     const n = new RankPercentileNode({ op: op as never });
     return n.data({ list: [list], [key]: [v] } as never).result;
@@ -98,9 +131,12 @@ describe("paired statistics formulas == Correl / Covariance / Regression nodes",
     [[1, 1, 1], [1, 2, 3]],
     [[1, null, 3, 4], [2, 4, null, 8]],
     [[1, 2], [3, 3]],
+    [[1, 2, Infinity], [2, 4, 6]],
+    [[1, 2, 3], [-Infinity, 4, 6]],
   ];
   it.each(PAIRS)("CORREL/RSQ/COVARIANCE.P/.S/SLOPE/INTERCEPT/STEYX over %j, %j", (x, y) => {
     same(ev("CORREL(x, y)", { x, y }), new CorrelNode({ op: "correl" }).data({ x: [x], y: [y] }).result);
+    same(ev("PEARSON(x, y)", { x, y }), new CorrelNode({ op: "correl" }).data({ x: [x], y: [y] }).result);
     same(ev("RSQ(y, x)", { x, y }), new CorrelNode({ op: "rsq" }).data({ x: [x], y: [y] }).result);
     same(ev("COVARIANCE.P(x, y)", { x, y }), new CovarianceNode({ op: "pop" }).data({ x: [x], y: [y] }).result);
     same(ev("COVARIANCE.S(x, y)", { x, y }), new CovarianceNode({ op: "samp" }).data({ x: [x], y: [y] }).result);
@@ -114,9 +150,22 @@ describe("MODE / FISHER", () => {
   it("MODE.SNGL is Excel's first-occurring tie; the node keeps every tie", () => {
     expect(ev("MODE.SNGL(x)", { x: [4, 2, 2, 4, 1] })).toBe(4);
     expect(ev("MODE(x)", { x: [4, 2, 2, 4, 1] })).toBe(4);
-    expect(ev("MODE(x)", { x: [1, 2, 2, 3] })).toBe(2);
-    expect(new ModeNode().data({ list: [[4, 2, 2, 4, 1]] }).result).toEqual([2, 4]);
-    expect(new ModeNode().data({ list: [[1, 2, 2, 3]] }).result).toBe(2);
+  });
+  it("no value repeating is Excel's #N/A, in the formulas and on the card", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : v);
+    for (const f of ["MODE", "MODE.SNGL", "MODE.MULT"]) expect(code(ev(`${f}(x)`, { x: [1, 2, 3] })), f).toBe("#N/A");
+    expect(code(ev("MODE(5)"))).toBe("#N/A");
+    expect(code(new ModeNode().data({ list: [[1, 2, 3]] }).result)).toBe("#N/A");
+  });
+  // [[D48]] classifyNonFinite: a NaN in the data is #DOMAIN!, never skipped and never passed on bare.
+  it("a NaN makes MODE, MODE.MULT, the Mode card and PRODUCT #DOMAIN!", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : v);
+    for (const f of ["MODE", "MODE.SNGL", "MODE.MULT", "PRODUCT"]) expect(code(ev(`${f}(x)`, { x: [1, NaN, 3] })), f).toBe("#DOMAIN!");
+    expect(code(new ModeNode().data({ list: [[1, NaN, NaN, 3]] }).result)).toBe("#DOMAIN!");
+  });
+  it("PRODUCT skips text, as Excel's does, and is 0 with no numbers", () => {
+    expect(ev("PRODUCT(x)", { x: [2, 3, null, "a"] })).toBe(6);
+    expect(ev("PRODUCT(x)", { x: ["a"] })).toBe(0);
   });
   it("FISHER / FISHERINV share the domain rule", () => {
     same(ev("FISHER(0.5)"), new FisherNode({ op: "fisher" }).data({ value: [0.5] }).result);
@@ -126,10 +175,11 @@ describe("MODE / FISHER", () => {
 });
 
 describe("CHOOSE formula == Choose node", () => {
-  it("picks by 1-based index; a blank index is blank, an out-of-range one is #VALUE!, a chosen blank passes through", () => {
+  it("picks by 1-based index; a blank index is #SYNTAX!, an out-of-range one is #VALUE!, a chosen blank passes through", () => {
     expect(ev("CHOOSE(2, 10, 20, 30)")).toBe(20);
     expect(ev("CHOOSE(2, \"a\", \"b\")")).toBe("b");
-    expect(ev("CHOOSE(i, 10, 20)", { i: null })).toBeNull();
+    const blankIdx = ev("CHOOSE(i, 10, 20)", { i: null });
+    expect(isSolError(blankIdx) && blankIdx.code).toBe("#SYNTAX!");
     expect(ev("CHOOSE(1, 10, x)", { x: null })).toBe(10); // an UNCHOSEN blank doesn't poison the pick
     expect(ev("CHOOSE(2, 10, x)", { x: null })).toBeNull();
     const r = ev("CHOOSE(4, 10, 20)");

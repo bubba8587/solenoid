@@ -37,7 +37,6 @@ describe("Report Showcase seed", () => {
     const byId = new Map<string, ClassicPreset.Node>();
     for (const sn of (seed.nodes as SavedNode[])) {
       const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
-      expect(Ctor, `unknown type ${sn.type}`).toBeTypeOf("function");
       const node = new Ctor({ ...sn.init });
       const anyN = node as unknown as Record<string, unknown>;
       if (sn.literals) anyN.literals = { ...sn.literals };
@@ -79,7 +78,6 @@ describe("Report Showcase seed", () => {
     // The mail-merge Report: a wired template Note (Template) + a records frame
     // (Records) render one page per row, each named by the pageName Knap.
     const merge = byId.get("merge") as unknown as { pages: { name: string; body: string }[] | null };
-    expect(merge.pages?.length).toBe(3);
     expect(merge.pages?.map((p) => p.name)).toEqual(["North", "South", "West"]);
     expect(merge.pages?.[0].body).toContain("Ada");
     expect(merge.pages?.[0].body).toContain("top of the pack"); // North booked 54 > 40

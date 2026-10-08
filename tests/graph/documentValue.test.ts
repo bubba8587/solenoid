@@ -27,6 +27,5 @@ describe("DocumentValue", () => {
   });
 });
 
-// The `document` socket's identity-only lattice rules ride socketConnect.test.ts's
-// OBJECT_TYPES sweep ("object types are identity-only: self + trueany, never a
-// regular lattice type"), which covers every direction this file once re-asserted.
+// The `document` socket's identity-only lattice rules ride socketReference.test.ts's
+// per-variant connection lists, which cover every direction this file once re-asserted.

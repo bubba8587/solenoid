@@ -1,6 +1,4 @@
-import { useSyncExternalStore } from "react";
 import type { SaveTimesNode as SaveTimesNodeType } from "../rete-nodes";
-import { saveTimeStore } from "../saveTimeStore";
 import { saveToDisk } from "../fileSession";
 import { requestRecalc } from "../process";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -27,10 +25,6 @@ function RowButton({ title, onClick, children }: { title: string; onClick: () =>
 }
 
 export function SaveTimesComponent({ data, emit }: NodeProps<SaveTimesNodeType>) {
-  // The clock changes outside any recompute, so re-render on it; the boxes still show
-  // what the SOCKETS emit (the cached serials), which only a recalc moves.
-  useSyncExternalStore(saveTimeStore.subscribe, saveTimeStore.version);
-
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <span className="solenoid-node__io-label sol-savetimes__label">Autosaved</span>

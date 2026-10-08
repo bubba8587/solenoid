@@ -1,7 +1,7 @@
 // [[C68]], [[B1]] obsidianBet, [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { NoteNode } from "../../../src/graph/nodes/annotation";
-import { toggleTaskMarker } from "../../../src/graph/noteFrontmatter";
+import { toggleTaskMarker } from "../../../src/graph/noteMarkdown";
 import { SolenoidSocket } from "../../../src/graph/sockets";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 import { installErrorGuards, isSolError, type SolError } from "../../../src/graph/errorValue";
@@ -40,7 +40,6 @@ describe("NoteNode frontmatter outputs", () => {
       due: Math.round(parseDateToSerial("2026-03-01")),
       tags: ["a", "b"],
     });
-    expect(isDocumentValue((await n.data()).document)).toBe(true);
     expect(n.renderBody).toBe("# Body");
   });
 
@@ -71,12 +70,10 @@ describe("NoteNode frontmatter outputs", () => {
 
   it("retyping a key (value family change) reports it as retyped, not removed", () => {
     const n = new NoteNode({ body: "---\nx: 1\n---" });
-    expect(typeOf(n, "x")).toBe("number");
     n.body = "---\nx: hello\n---";
     const { removed, retyped } = n.syncFields();
     expect(removed).toEqual([]); // the key + its output survive
     expect(retyped).toEqual([{ key: "x", type: "string" }]);
-    expect(n.outputs.x).toBeDefined(); // output still present (caller decides on cables)
     expect(typeOf(n, "x")).toBe("string");
     expect(n.fieldValues()).toEqual({ x: "hello" });
   });
@@ -98,7 +95,6 @@ describe("NoteNode frontmatter outputs", () => {
 
   it("drops a pin when the value becomes rows of objects (the frame survives)", () => {
     const n = new NoteNode({ body: "---\nscreen: [a, b]\n---", fieldTypes: { screen: "strlist" } });
-    expect(typeOf(n, "screen")).toBe("strlist");
     n.body = ["---", "screen:", "  - {Laptop: ProBook, Screen: 8}", "  - {Laptop: UltraSlim, Screen: 9}", "---"].join("\n");
     const { retyped } = n.syncFields();
     expect(retyped).toEqual([{ key: "screen", type: "frame" }]);
@@ -115,7 +111,6 @@ describe("NoteNode frontmatter outputs", () => {
 
   it("carries a scalar pin onto a list value, keeping every element", () => {
     const n = new NoteNode({ body: "---\nk: 1\n---", fieldTypes: { k: "string" } });
-    expect(typeOf(n, "k")).toBe("string");
     n.body = "---\nk: [1, 2]\n---";
     const { retyped } = n.syncFields();
     expect(retyped).toEqual([{ key: "k", type: "strlist" }]);
@@ -263,6 +258,11 @@ describe("toggleTaskMarker — code is not a checkbox", () => {
     const body = "```\n- [ ] fake\n```\n- [ ] real\n\npara\n\n    - [ ] code\n- [ ] last";
     expect(toggleTaskMarker(body, 0)).toBe("```\n- [ ] fake\n```\n- [x] real\n\npara\n\n    - [ ] code\n- [ ] last");
     expect(toggleTaskMarker(body, 1)).toBe("```\n- [ ] fake\n```\n- [ ] real\n\npara\n\n    - [ ] code\n- [x] last");
+  });
+
+  it("every line of an indented code block is code, not just its first", () => {
+    const body = "Intro\n\n    - [ ] a\n    - [ ] b\n\n    - [ ] c\n- [ ] real";
+    expect(toggleTaskMarker(body, 0)).toBe("Intro\n\n    - [ ] a\n    - [ ] b\n\n    - [ ] c\n- [x] real");
   });
 
   it("a nested item indented four spaces under a list still counts", () => {

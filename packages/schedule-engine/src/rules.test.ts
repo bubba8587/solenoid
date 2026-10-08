@@ -74,11 +74,10 @@ describe("longest path (P6) and effort-driven durations (rule 16)", () => {
     const byPath = run(tasks, { longestPath: true });
     expect(byFloat.tasks.map((x) => x.critical)).toEqual([false, true, false, true]);
     expect(byPath.tasks.map((x) => x.critical)).toEqual([false, true, false, true]);
-    // A drives nothing (B's floor won) → not on the longest path either way; the float rule and
-    // the path rule differ when a task with float lies on the driving chain:
-    const gap = [t("A", 1), t("B", 1, ["A"], { deadline: S(2026, 1, 30) }), t("C", 5)];
-    expect(run(gap).tasks.map((x) => x.critical)).toEqual([false, false, true]);
-    expect(run(gap, { longestPath: true }).tasks.map((x) => x.critical)).toEqual([false, false, true]);
+    // A tight deadline zeroes A and B's float without putting them on the chain that drives the finish.
+    const due = [t("A", 1), t("B", 1, ["A"], { deadline: S(2026, 1, 6) }), t("C", 5)];
+    expect(run(due).tasks.map((x) => x.critical)).toEqual([true, true, true]);
+    expect(run(due, { longestPath: true }).tasks.map((x) => x.critical)).toEqual([false, false, true]);
   });
 
   it("work over units gives the duration when none is typed", () => {
@@ -86,6 +85,13 @@ describe("longest path (P6) and effort-driven durations (rule 16)", () => {
     expect(by(o, "A").duration).toBe(5);
     expect(by(o, "B").duration).toBe(2.5);
     expect(iso(by(o, "B").finish)).toBe("2026-01-07"); // 2.5 days rounds up to 3 whole days
+  });
+
+  it("work divides by the calendar's hours a day, the task's own calendar first", () => {
+    const tenHours = { workingDays: true, intervals: [[420, 1020]] as Array<[number, number]> };
+    const o = run([t("A", 0, [], { duration: undefined as never, work: 40 }), t("B", 0, [], { duration: undefined as never, work: 40, calendar: { intervals: [[480, 720]] } })], { calendar: tenHours });
+    expect(by(o, "A").duration).toBe(4);
+    expect(by(o, "B").duration).toBe(10);
   });
 });
 

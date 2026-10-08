@@ -15,10 +15,10 @@ index.html
 .gitignore
 .mcp.json
 .dteignore
-.vscode
 .github
 .impeccable
 src/vite-env.d.ts
+tests/setup
 src-tauri/Cargo.toml
 src-tauri/build.rs
 src-tauri/tauri.conf.json
@@ -28,8 +28,7 @@ src-tauri/.cargo
 src-tauri/capabilities
 packages/*/package.json
 obsidian-plugin/manifest.json
-public/robots.txt
-public/sitemap.xml
+public/manifest.webmanifest
 
 why: licences and the product pitch are reader on-ramps, not system descriptions (author's rule 2026-09-18)
 LICENSE
@@ -43,6 +42,7 @@ docs/grid-system.md
 docs/pack-composite-plans.md
 docs/python-r-gap.md
 docs/release-notes-features.md
+docs/release-notes-1.5.md
 docs/upstream-formulajs.md
 docs/subsystem-invariants.md
 docs/archive
@@ -54,7 +54,6 @@ docs/assets
 why: fixtures and sample data are inputs to tests and demos, not artifacts that serve a decision
 fixtures
 assets
-public/data
 public/fonts
 tests/fixtures
 
@@ -72,3 +71,6 @@ why: a stylesheet implements DESIGN.md (B14 oneDesignSystem); one that carries a
 
 why: seed documents are JSON, which cannot carry a citation; seeds.test.ts and scripts/tune-seeds.mjs pin the rules they follow ([[C89]] standoffsSolveLast: groups liberally, standoffs sparingly)
 src/graph/seedGraphs
+
+why: generated text snapshots of the site pages and their source fingerprint; scripts/prerender-site.mjs writes them and prerender.test.ts pins them current
+prerender

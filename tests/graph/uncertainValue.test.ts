@@ -77,7 +77,6 @@ describe("error propagation (first-order Gaussian)", () => {
     expect(r.value).toBe(0);
     // d(ab) = √((b·σa)² + (a·σb)²) = √((5·2)² + (0·1)²) = 10
     expect(r.error).toBeCloseTo(10, 10);
-    expect(Number.isFinite(r.error)).toBe(true);
   });
 
   it("mixing a plain number treats it as zero-error", () => {

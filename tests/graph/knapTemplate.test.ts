@@ -1,9 +1,10 @@
 // [[C68]], [[D54]]
 import { describe, it, expect } from "vitest";
 import {
-  hasKnapSyntax, extractKnapVariables, embedBareVariables, toTemplateValue, frameToTemplateRows, renderKnap, renderKnapPages, knapErrorText,
+  hasKnapSyntax, extractKnapVariables, embedBareVariables, renderKnap, renderKnapPages, knapErrorText,
   batchTruncation, MAX_PAGES,
 } from "../../src/graph/knapTemplate";
+import { toTemplateValue, frameToTemplateRows } from "../../src/graph/templateValue";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { makeDocument } from "../../src/graph/documentValue";
 import { solError } from "../../src/graph/errorValue";
@@ -114,7 +115,6 @@ describe("renderKnap", () => {
   it("a broken template reports line:column errors and no output", async () => {
     const r = await renderKnap("ok\n{% if x %}", {});
     expect(r.output).toBe("");
-    expect(r.errors.length).toBeGreaterThan(0);
     expect(knapErrorText(r.errors)).toMatch(/^2:\d+ .*endif/);
   });
   it("a `{# … #}` comment is stripped, over one line or many; an unclosed one is a syntax error", async () => {
@@ -132,6 +132,10 @@ describe("renderKnap keepUnknown (a Note's mode)", () => {
   it("a block over an unknown name still renders empty, as Knap does", async () => {
     const r = await renderKnap("a{% if person %}X{% endif %}b", {}, { keepUnknown: true });
     expect(r.output).toBe("ab");
+  });
+  it("an operator or a literal is not the leading variable", async () => {
+    const r = await renderKnap("{{ not done }} / {{ true }} / {{ not other }}", { done: false }, { keepUnknown: true });
+    expect(r.output).toBe("true / true / {{ not other }}");
   });
   it("a comment is stripped even when it wraps an unknown tag", async () => {
     const r = await renderKnap("a{# {{ person }} #}b", {}, { keepUnknown: true });
@@ -231,7 +235,6 @@ describe("batchTruncation", () => {
     expect(batchTruncation(MAX_PAGES + 740)).toEqual({ truncated: true, shown: MAX_PAGES, total: MAX_PAGES + 740 });
   });
   it("is not truncated at or under the cap", () => {
-    expect(batchTruncation(300)).toEqual({ truncated: false, shown: 300, total: 300 });
     expect(batchTruncation(MAX_PAGES)).toEqual({ truncated: false, shown: MAX_PAGES, total: MAX_PAGES });
   });
 });

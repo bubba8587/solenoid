@@ -1,5 +1,4 @@
-// [[C92]] pinchUnvetoable: two fingers zoom no matter what is under them. Wrapper, [[D71]] zoomLatticeDiscreteOnly
-// CAPTURE, TOUCH events. Mechanics: specs/pointer-gestures.md.
+// [[C92]] pinchUnvetoable
 import { boundZoom } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };
@@ -12,7 +11,11 @@ export function installFlowPinch(
   },
 ): () => void {
   let start: { dist: number; cx: number; cy: number; vp: Viewport } | null = null;
-  // A pinch never selects ([[C92]]): swallow finger 1's click.
+  // A pinch that ends with one finger still down pans from that finger's current spot. React Flow's zoom never saw the
+  // pinch's moves, so handing it the finger would pan from where the finger was when the pinch began: a jump.
+  let carry: { id: number; x: number; y: number; vp: Viewport } | null = null;
+  // A finger left over from a pinch may lift on a card long after the pinch, and its tap must not select it.
+  let pinched = false;
   let suppressClickUntil = 0;
 
   const measure = (e: TouchEvent) => {
@@ -25,39 +28,35 @@ export function installFlowPinch(
     };
   };
 
-  const dbg = (m: string) => (window as unknown as { __pinchLog?: string[] }).__pinchLog?.push(m);
-
   const touchStart = (e: TouchEvent) => {
-    dbg(`start:${e.touches.length}`);
     if (e.touches.length === 2) {
+      carry = null;
       const m = measure(e);
-      // Two contacts on one point (a palm, a stylus beside a finger) have no scale to
-      // track: arming would divide by zero and write a NaN camera.
       if (!(m.dist > 0)) { start = null; return; }
       start = { ...m, vp: opts.getViewport() };
-      dbg(`armed:${JSON.stringify(start.vp)}`);
+      pinched = true;
     } else if (e.touches.length > 2) {
       start = null;
     }
   };
 
   const touchMove = (e: TouchEvent) => {
-    dbg(`move:${e.touches.length}:${start ? "armed" : "idle"}`);
+    if (carry) {
+      const t = [...e.touches].find((x) => x.identifier === carry!.id);
+      if (!t || e.touches.length !== 1) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      opts.setViewport({ x: carry.vp.x + t.clientX - carry.x, y: carry.vp.y + t.clientY - carry.y, zoom: carry.vp.zoom });
+      return;
+    }
     if (!start || e.touches.length !== 2) return;
-    // Ours now: RF's drag/pan/zoom handlers (bubble) never see the move.
     e.preventDefault();
     e.stopImmediatePropagation();
     const m = measure(e);
     if (!(m.dist > 0)) return;
     const rect = el.getBoundingClientRect();
-    // Bound, never snapped: the scale tracks the fingers continuously. Snapping here
-    // walks the canvas in 10% jumps mid-pinch, and there is no device test to gate on
-    // — two touch contacts ARE the gate, so a touchscreen laptop pinches smoothly too.
-    // The next discrete step (pill, wheel notch, fit) rounds back onto the lattice.
     const zoom = boundZoom(start.vp.zoom * (m.dist / start.dist));
     const eff = zoom / start.vp.zoom;
-    // The world point under the start centroid stays pinned; the pan follows
-    // the centroid.
     const sx = start.cx - rect.left;
     const sy = start.cy - rect.top;
     opts.setViewport({
@@ -71,6 +70,13 @@ export function installFlowPinch(
     if (start && e.touches.length < 2) {
       start = null;
       suppressClickUntil = performance.now() + 400;
+      const t = e.touches[0];
+      if (t) carry = { id: t.identifier, x: t.clientX, y: t.clientY, vp: opts.getViewport() };
+    }
+    if (e.touches.length === 0) {
+      carry = null;
+      if (pinched) suppressClickUntil = performance.now() + 400;
+      pinched = false;
     }
   };
 

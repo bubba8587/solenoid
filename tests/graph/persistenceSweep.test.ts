@@ -1,4 +1,4 @@
-// [[C29]], [[C37]], [[D50]]
+// [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
 import type { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -19,8 +19,7 @@ type AnyNode = Record<string, unknown>;
 function rebuild(n1: ClassicPreset.Node): ClassicPreset.Node {
   const Ctor = n1.constructor as new (init?: Record<string, unknown>) => ClassicPreset.Node;
   const n2 = new Ctor(extractInit(n1));
-  // The load/paste path restores the literal maps after construction
-  // (copyPaste.cloneNode / persistence) — mirror that.
+  // The load and paste paths restore the literal maps after construction; mirror that.
   const a = n1 as unknown as AnyNode, b = n2 as unknown as AnyNode;
   if (a.literals && typeof a.literals === "object") b.literals = { ...(a.literals as object) };
   if (a.stringLiterals && typeof a.stringLiterals === "object") b.stringLiterals = { ...(a.stringLiterals as object) };
@@ -98,7 +97,7 @@ describe("varDescriptions — captured, but only for LIVE variables", () => {
   });
 });
 
-// ─── [[C29]] plainJsonInit's file half: everything extractInit captures is JSON-plain ─────
+// ─── [[B12]] losslessSaves's file half: everything extractInit captures is JSON-plain ─────
 // The fixed-point sweep above compares LIVE objects, so a Map/Set/class-instance
 // config field passes it perfectly ({} equals {} on both sides) while the FILE
 // silently empties it: the save path stringifies each init field
@@ -122,7 +121,46 @@ describe("everything extractInit captures survives a JSON round trip", () => {
   });
 });
 
-// ─── [[D50]] everyFieldClassified: the catalog-wide transient-field triage ───────────────────────
+describe("[[B12]] losslessSaves: a grown row keeps the socket order a reload rebuilds", () => {
+  it("every row-growing catalog node reloads with its live input order", () => {
+    const moved: string[] = [];
+    for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
+      let n: ClassicPreset.Node;
+      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      const a = n as unknown as { addValueInput?: () => void; addValuePair?: () => void };
+      const grow = a.addValuePair ?? a.addValueInput;
+      if (typeof grow !== "function") continue;
+      grow.call(n);
+      grow.call(n);
+      const live = Object.keys(n.inputs);
+      const back = Object.keys(rebuild(n).inputs);
+      if (JSON.stringify(live) !== JSON.stringify(back)) moved.push(`${type}: live ${live.join(",")} / reloaded ${back.join(",")}`);
+    }
+    expect(moved).toEqual([]);
+  });
+});
+
+// Literal keys share names with init fields (Pad Text's `width` input beside its card width), so the maps stay out of init.
+describe("literal values never enter init", () => {
+  it("no catalog node's init carries a literal-only key or a literal's value over a field", () => {
+    const leaked: string[] = [];
+    for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
+      let n: ClassicPreset.Node;
+      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      const a = n as unknown as AnyNode;
+      const lits = { ...((a.literals as object) ?? {}), ...((a.stringLiterals as object) ?? {}) } as Record<string, unknown>;
+      for (const k of Object.keys(lits)) {
+        if (k === "valueKeys") continue;
+        const init = extractInit(n);
+        if (!(k in init)) continue;
+        if (!(k in a) || init[k] !== a[k]) leaked.push(`${type}.${k}`);
+      }
+    }
+    expect(leaked).toEqual([]);
+  });
+});
+
+// ─── [[B12]] losslessSaves: the catalog-wide transient-field triage ───────────────────────
 // The fixed-point sweep above proves WHITELISTED fields round-trip; it is blind
 // to a field the whitelist never captured (both sides omit it identically). This
 // triage closes that blindness: every OWN field of every catalog node is either
@@ -136,25 +174,29 @@ describe("everything extractInit captures survives a JSON round trip", () => {
 // captured, silently resetting to "backward" on every reload. Now whitelisted,
 // pinned below.
 
-describe("[[D50]] everyFieldClassified — every own field is persisted or deliberately transient", () => {
+describe("[[B12]] losslessSaves — every own field is persisted or deliberately transient", () => {
   // extractInit's BESPOKE extras: object-valued fields captured by dedicated
   // blocks inside extractInit rather than the flat whitelist (deep-copy /
   // filtering semantics). Kept in sync by the honesty check below.
   const BESPOKE_EXTRAS = new Set([
-    "varDescriptions", "inputPorts", "outputPorts", "scenarios", "dataTableValues",
+    "varDescriptions", "varUnits", "inputPorts", "outputPorts", "scenarios", "dataTableValues",
     "goalSeek", "monteCarlo", "uncertainty", "distribution", "bindings",
   ]);
   const RETE_BASE = new Set(["id", "inputs", "outputs", "controls"]);
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    cleanSource: "The SVG Picker's memo of the last scrubbed markup; stringLiterals.source holds the persisted text ([[C103]])",
     columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[C107]])",
+    nestedPicks: "A Note's nested cube-table picks from the Solenoid Properties plugin's data, this note's own; the vault is the source, Import Obsidian Note re-reads them with the note ([[D90]])",
     resolved: "Write Tasks' Preview resolutions; re-derived by the next Preview, meaningless across loads",
     resolvedPath: "Write to Obsidian's last-resolved target path; re-read from the `path` input/literal on every compute",
     templateVars: "Report's last Knap render variables, for the overlay's live preview; rebuilt from the cables on every compute",
     lastWritten: "Write to Obsidian's last written note path, for Open in Obsidian; a load has written nothing",
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",
+    plannedKeys: "Write to Obsidian's Keys text as of its last plan, so a Keys edit re-plans; re-read from the literal on every compute",
     planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
+    generated: "UUID's value for this recalculation; a load is a new one, and a saved value would make every compute an edit to undo",
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
     ast: "compiled from expr", evaluator: "compiled from expr", varNames: "extracted from expr",
@@ -162,7 +204,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
     lambdaSig: "derived from the host's lambda config",
     equation: "parsed from expr", lhsEval: "compiled from expr", rhsEval: "compiled from expr",
     solvers: "derived solver table from expr", nextCondId: "counter re-derived from live row keys",
-    nextInputId: "counter re-derived from live row keys", nextPairId: "counter re-derived from live row keys",
+    nextInputId: "counter re-derived from live row keys", nextPairId: "counter re-derived from live row keys", nextKeyId: "counter re-derived from live row keys",
     effectiveMin: "derived from literals", effectiveMax: "derived from literals", effectiveStep: "derived from literals",
     // ── recomputed from inputs every engine pass ──
     chartOptions: "parsed per data() from the persisted options input/literal",
@@ -200,9 +242,9 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
     goalTarget: "re-stamped from the host's persisted goalSeek",
     // ── composite runtime (the CONFIG persists via extras; these are run state) ──
     goalSeekResult: "run result", simLastSteps: "run telemetry", lastSolveKey: "solve dedupe key",
-    solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)",
+    solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)", unsettled: "last Solve outran its fetches (session)",
     lastByRowCapTotal: "By-Row cap-warning edge-detect state (session)",
-    lastRelativeSerial: "relative Date Input shift-alert edge-detect state (session)",
+    lastRelative: "relative Date Input shift-alert edge-detect state: phrase and day (session)",
     lastSampleGen: "Distribution sample form's per-recalc re-roll marker (session)",
     sampleSeed: "Distribution sample form's per-recalc seed (derived from id + gen)",
     stale: "recomputed staleness", internalEditor: "the live internal rete stack",
@@ -214,8 +256,12 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
     passthrough: "the passthrough() declaration (a class-field function)",
     pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
     unitAware: "class-constant declaration (perInputUnitBlind)",
+    ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[D93]] oneTextReading)",
+    entryByOp: "Value Input's typed text per op this session, restored on switching back; only the shown op's text is saved ([[C28]] literalsIffEditable)",
+    cachedSource: "List Input's typed text per item, for the popup's Source view; re-split from stringLiterals on every compute",
     autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
-    // ── runtime edge-detection ([[C39]] effectsEdgeTriggered) ──
+    textLiterals: "class-constant declaration — the VALUES land in stringLiterals, which persist",
+    // ── runtime edge-detection ([[D79]] effectsEdgeTriggered) ──
     lastStatusKey: "effectsEdgeTriggered edge state", lastEvalOp: "effectsEdgeTriggered edge state",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──
     step: "AngleDial snap increment — constructor-only, no UI control",
@@ -241,7 +287,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
     }
     expect(
       [...offenders.entries()].map(([k, o]) => `${k} (${o.join(", ")})`),
-      `Unclassified node fields ([[D50]] everyFieldClassified): each must either persist (whitelist / ` +
+      `Unclassified node fields ([[B12]] losslessSaves): each must either persist (whitelist / ` +
       `bespoke extras) or join DELIBERATELY_TRANSIENT with the reason — the ` +
       `asofDirection bug is what an unclassified field looks like.`,
     ).toEqual([]);
@@ -268,7 +314,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
   });
 });
 
-// ─── [[C37]] observerOwnsSize: width/height dual-use ownership ──────────────────────────────
+// ─── [[B12]] losslessSaves: width/height dual-use ownership ──────────────────────────────
 // `width`/`height` serve two masters: NodeCard's ResizeObserver OWNS them at
 // runtime (it overwrites both with measured pixels every layout — the minimap
 // silhouette and cable geometry read them), and the persistence whitelist
@@ -285,7 +331,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
 // fails here and must update the list, which is where the "does the user's
 // drag survive reload?" question gets asked.
 
-describe("[[C37]] observerOwnsSize — the size-owner set is exactly the declared list", () => {
+describe("[[B12]] losslessSaves — the size-owner set is exactly the declared list", () => {
   const SIZE_OWNERS = new Set([
     "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
     "composite", "query",                        // the composite card (query = its preset)
@@ -309,7 +355,7 @@ describe("[[C37]] observerOwnsSize — the size-owner set is exactly the declare
     expect(
       adopts,
       `These classes now adopt persisted width/height but are not declared ` +
-      `SIZE_OWNERS ([[C37]] observerOwnsSize) — declare them (is the size a user gesture?), ` +
+      `SIZE_OWNERS ([[B12]] losslessSaves) — declare them (is the size a user gesture?), ` +
       `or stop consuming the init`,
     ).toEqual([]);
     expect(

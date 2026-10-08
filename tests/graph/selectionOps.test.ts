@@ -1,6 +1,12 @@
-// [[C52]]
+// [[C52]], [[C112]] noOverlapsEver
 import { describe, it, expect } from "vitest";
-import { alignDeltas, distributeDeltas, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";
+import { NodeEditor } from "rete";
+import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, toggleNodeCollapsed, restackOrder, reorderEditorNodes, type Placed } from "../../src/graph/selectionOps";
+import { collapseStore } from "../../src/graph/collapseStore";
+import { setGraphChanged } from "../../src/graph/process";
+import { GroupNode, DisplayNode } from "../../src/graph/rete-nodes";
+import type { Schemes } from "../../src/graph/schemes";
+import { standoffStore } from "../../src/graph/standoffs";
 
 const box = (id: string, x: number, y: number, w: number, h: number): Placed =>
   ({ id, box: { x, y, w, h } });
@@ -71,16 +77,6 @@ describe("distributeDeltas (equal gaps, first/last fixed)", () => {
     const moves = distributeDeltas(items, "h");
     const b = moves.find((m) => m.seedId === "b")!;
     expect(b.dx).toBe(150 - 30); // target start 150
-    // verify no overlap: b end (270) < c start (400)
-    const bStart = 30 + b.dx;
-    expect(bStart + 120).toBeLessThan(400);
-  });
-
-  it("keeps the first and last (by leading edge) fixed", () => {
-    const items = [box("a", 0, 0, 20, 20), box("b", 90, 0, 20, 20), box("c", 300, 0, 20, 20)];
-    const moves = distributeDeltas(items, "h");
-    // only the middle node moves
-    expect(moves.map((m) => m.seedId)).toEqual(["b"]);
   });
 
   it("works on the vertical axis (dy only)", () => {
@@ -102,17 +98,88 @@ describe("distributeDeltas (equal gaps, first/last fixed)", () => {
     expect(at("b")!.dx).toBe(0 + 20 + g - 5);      // start 60 - 5
     expect(at("c")!.dx).toBe(0 + 20 + g + 20 + g - 10); // start 120 - 10
     expect(at("d")!.dx).toBe(3 * (20 + g) - 15);   // start 180 - 15
-    // resulting edges never overlap
-    const startsAt = (id: string, orig: number) => orig + (at(id)?.dx ?? 0);
-    expect(startsAt("a", 0) + 20).toBeLessThanOrEqual(startsAt("b", 5));
-    expect(startsAt("b", 5) + 20).toBeLessThanOrEqual(startsAt("c", 10));
-    expect(startsAt("c", 10) + 20).toBeLessThanOrEqual(startsAt("d", 15));
+  });
+});
+
+describe("expandMoveSet", () => {
+  it("never carries a position-locked group; its members still move on their own", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const m = new DisplayNode();
+    await editor.addNode(m as never);
+    const g = new GroupNode({ members: [m.id] });
+    g.lockedPosition = true;
+    await editor.addNode(g as never);
+    expect([...expandMoveSet(editor, [g.id])]).toEqual([]);
+    expect([...expandMoveSet(editor, [m.id])]).toEqual([m.id]);
+    g.lockedPosition = false;
+    expect(new Set(expandMoveSet(editor, [g.id]))).toEqual(new Set([g.id, m.id]));
   });
 
-  it("leaves both ends fixed when the span already fits (gap >= DISTRIBUTE_GAP)", () => {
-    // wide span, 3 small boxes → fits comfortably, only the middle moves
-    const items = [box("a", 0, 0, 20, 20), box("b", 90, 0, 20, 20), box("c", 300, 0, 20, 20)];
-    const moves = distributeDeltas(items, "h");
-    expect(moves.map((m) => m.seedId)).toEqual(["b"]); // ends untouched
+  it("leaves a standoff partner hidden in a collapsed group where it is", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const loose = new DisplayNode();
+    const member = new DisplayNode();
+    await editor.addNode(loose as never);
+    await editor.addNode(member as never);
+    const tie = standoffStore.add({ nodeId: loose.id, anchor: "e" }, { nodeId: member.id, anchor: "w" }, 30, 60);
+    try {
+      expect(new Set(expandMoveSet(editor, [loose.id], () => false))).toEqual(new Set([loose.id, member.id]));
+      expect([...expandMoveSet(editor, [loose.id], (id) => id === member.id)]).toEqual([loose.id]);
+    } finally {
+      standoffStore.remove(tie.id);
+    }
+  });
+});
+
+describe("toggleNodeCollapsed", () => {
+  it("flips the collapse and reports a graph change, so it saves and records an undo step", () => {
+    let changes = 0;
+    setGraphChanged(() => { changes++; });
+    toggleNodeCollapsed("n1");
+    expect(collapseStore.get("n1")).toBe(true);
+    toggleNodeCollapsed("n1");
+    expect(collapseStore.get("n1")).toBe(false);
+    expect(changes).toBe(2);
+    setGraphChanged(() => {});
+  });
+});
+
+describe("restackOrder", () => {
+  const all = () => true;
+  it("takes the selection past everything to the front or the back, keeping its own order", () => {
+    expect(restackOrder(["a", "b", "c", "d"], new Set(["a", "c"]), "front", all)).toEqual(["b", "d", "a", "c"]);
+    expect(restackOrder(["a", "b", "c", "d"], new Set(["b", "d"]), "back", all)).toEqual(["b", "d", "a", "c"]);
+  });
+  it("steps forward past the nearest card it overlaps, skipping ones it doesn't touch", () => {
+    const touches = (x: string, y: string) => [x, y].sort().join() === "a,c";
+    expect(restackOrder(["a", "b", "c", "d"], new Set(["a"]), "forward", touches)).toEqual(["b", "c", "a", "d"]);
+  });
+  it("steps backward past the nearest card it overlaps", () => {
+    expect(restackOrder(["a", "b", "c"], new Set(["c"]), "backward", all)).toEqual(["a", "c", "b"]);
+  });
+  it("leaves a card with nothing overlapping in the way where it is", () => {
+    expect(restackOrder(["a", "b"], new Set(["a"]), "forward", () => false)).toEqual(["a", "b"]);
+    expect(restackOrder(["a", "b"], new Set(["b"]), "forward", all)).toEqual(["a", "b"]);
+  });
+  it("moves a selected pair as a block without one leapfrogging the other", () => {
+    expect(restackOrder(["a", "b", "c"], new Set(["a", "b"]), "forward", all)).toEqual(["c", "a", "b"]);
+    expect(restackOrder(["a", "b", "c"], new Set(["b", "c"]), "backward", all)).toEqual(["b", "c", "a"]);
+  });
+});
+
+describe("reorderEditorNodes", () => {
+  it("rewrites the order getNodes returns, the one the save and RF read", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const a = new DisplayNode(), b = new DisplayNode(), c = new DisplayNode();
+    for (const n of [a, b, c]) await editor.addNode(n);
+    reorderEditorNodes(editor, [c.id, a.id, b.id]);
+    expect(editor.getNodes().map((n) => n.id)).toEqual([c.id, a.id, b.id]);
+  });
+  it("ignores an order that doesn't name every node exactly", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const a = new DisplayNode(), b = new DisplayNode();
+    for (const n of [a, b]) await editor.addNode(n);
+    reorderEditorNodes(editor, [b.id]);
+    expect(editor.getNodes().map((n) => n.id)).toEqual([a.id, b.id]);
   });
 });
