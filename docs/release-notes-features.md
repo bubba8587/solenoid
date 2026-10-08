@@ -12,7 +12,7 @@ makes something a slide. **1.5 carries the 1.4.1 and 1.4.2 headliners too** (aut
 2026-09-30): the point releases went out without a deck of their own, so this list covers
 everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in git history
 (`git show v1.4.2:docs/release-notes-features.md`). The What's New deck
-(`HelpDialogs.tsx`, `WHATS_NEW_VERSION`) still shows 1.4.1's slides.
+(`HelpDialogs.tsx`, `WHATS_NEW_VERSION`) shows 1.5's seven slides.
 
 ## Headliners: the slide deck
 
@@ -23,7 +23,7 @@ everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in gi
   on top. Record's new Cards view puts the same cards on the canvas as a masonry
   gallery, and **Add Record: Cards** in the popup wires one up for you. The Cards from
   files example shows it off on a crew, products and orders set.
-- **[slide] Cubes with typed columns.** A Cube Input column takes a type (Number, Text,
+- **Cubes with typed columns.** A Cube Input column takes a type (Number, Text,
   Date, Boolean, Formula) the way a Frame's does, and it holds at every depth: a table
   nested inside a cell keeps its own column types, so one column's rows can hold
   differently shaped tables. Typed values read and show like a Frame's, and the
@@ -50,7 +50,7 @@ everything on `develop` since the v1.4.0 tag. The 1.4.1 list as written is in gi
   data is. A Frame Input's λ inputs are named in it (`λ1` binds by name, `λ1(@a, @b)`
   calls it), and a formula that returns a date stays a Date column with no type pick
   (`@start + 7`, `TODAY() + 7`).
-- **[slide] Table editing.** *(1.4.1)* The table popup's Form and CSV views edit in place,
+- **Table editing.** *(1.4.1)* The table popup's Form and CSV views edit in place,
   in both Source and Formatted modes. The cell being edited gets a calendar for a date and
   a checkbox for a Boolean, and a text cell suggests the values already in its column. The
   column header is one row: type, name, format and sort.

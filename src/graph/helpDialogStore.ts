@@ -4,7 +4,7 @@ import { createValueStore } from "./storeKit";
 export type HelpDialog = "about" | "whatsnew";
 
 // Bump when the What's New slides change; it is not the app version.
-export const WHATS_NEW_VERSION = "1.4.1";
+export const WHATS_NEW_VERSION = "1.5";
 const SEEN_KEY = "solenoid.whatsNewSeen";
 
 const core = createValueStore<HelpDialog>();

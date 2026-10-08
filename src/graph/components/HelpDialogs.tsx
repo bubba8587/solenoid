@@ -9,24 +9,32 @@ import "./helpDialogs.css";
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
-    title: "Linux desktop",
-    body: "Solenoid now runs as a desktop app on Linux as well as Windows. Get the AppImage or the .deb from the Download page.",
+    title: "Cards",
+    body: "Too many columns in your table? Try the Cards view to reshape your data into compact cards based on some intelligent rules about data type and string length.",
   },
   {
-    title: "Formula columns",
-    body: "Pick Fx on a Frame Input column to write a formula over the row, such as @qty * @price. A formula that returns a date stays a date.",
-  },
-  {
-    title: "Obsidian markdown in notes",
-    body: "Note, Import Obsidian Note and the Report preview now render wikilinks, tags, callouts, highlights and math the way Obsidian does.",
+    title: "Cube Input",
+    body: "You can now directly create Cubes and insert other object types into Cube cells.",
   },
   {
     title: "Solenoid Properties for Obsidian",
-    body: "A companion Obsidian plugin adds List, Matrix, Frame and Cube property types, shown as Solenoid's chips and edited in its table editor. Values stay plain YAML in the note.",
+    body: "The plugin adds List, Matrix, Frame, Cube and Complex property types, shown as Solenoid's chips and kept as plain YAML. Turn on the Solenoid look and Obsidian takes your palette and accent.",
   },
   {
-    title: "Table editing",
-    body: "The table popup's Form and CSV views now edit in place. A date cell gets a calendar, a Boolean cell a checkbox, and a text cell suggests the values already in its column.",
+    title: "Knap notes",
+    body: "Put knap: true in a note and its body renders live from its own properties. A {{ budget }} in the text shows the property's chip, and editing it edits the property.",
+  },
+  {
+    title: "Frame Input",
+    body: "Improvements to Formula columns and overall UI in the Frame Input node.",
+  },
+  {
+    title: "XY plots",
+    body: "Scatter, the new XY Line and Bubble plot real x against y, with size, color and labels from named columns.",
+  },
+  {
+    title: "Sparklines in cells",
+    body: "SPARKLINE draws a line, column or win/loss sparkline in a table cell. In a Cube, SPARKLINE(@history) gives every row its own trend.",
   },
 ];
 
