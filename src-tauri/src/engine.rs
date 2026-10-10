@@ -7,7 +7,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 use polars::prelude::*;
-use polars_plan::prelude::{ApplyOptions, FunctionFlags, FunctionOptions};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
 
@@ -86,14 +85,14 @@ struct SolFrame {
 impl SolFrame {
     fn names(&self) -> Vec<String> {
         self.df
-            .get_columns()
+            .columns()
             .iter()
             .map(|c| c.name().to_string())
             .collect()
     }
     fn type_of(&self, name: &str) -> Option<SolType> {
         self.df
-            .get_columns()
+            .columns()
             .iter()
             .position(|c| c.name().as_str() == name)
             .map(|i| self.types[i])
@@ -101,10 +100,10 @@ impl SolFrame {
     fn column_cells(&self, name: &str) -> Option<(SolType, Vec<Cell>)> {
         let idx = self
             .df
-            .get_columns()
+            .columns()
             .iter()
             .position(|c| c.name().as_str() == name)?;
-        Some((self.types[idx], cells_of(&self.df.get_columns()[idx])))
+        Some((self.types[idx], cells_of(&self.df.columns()[idx])))
     }
 }
 
@@ -167,12 +166,12 @@ fn anyvalue_to_cell(av: AnyValue) -> Cell {
 fn cells_of(column: &Column) -> Vec<Cell> {
     let s = column.as_materialized_series();
     match s.dtype() {
-        DataType::Float64 => s.f64().unwrap().into_iter().map(|o| o.map_or(Cell::Null, Cell::Num)).collect(),
-        DataType::Boolean => s.bool().unwrap().into_iter().map(|o| o.map_or(Cell::Null, Cell::Bool)).collect(),
+        DataType::Float64 => s.f64().unwrap().iter().map(|o| o.map_or(Cell::Null, Cell::Num)).collect(),
+        DataType::Boolean => s.bool().unwrap().iter().map(|o| o.map_or(Cell::Null, Cell::Bool)).collect(),
         DataType::String => s
             .str()
             .unwrap()
-            .into_iter()
+            .iter()
             .map(|o| o.map_or(Cell::Null, |x| Cell::Str(x.to_string())))
             .collect(),
         _ => (0..s.len())
@@ -299,7 +298,7 @@ fn build_df(names: &[String], types: &[SolType], columns: &[Vec<Cell>]) -> Resul
         .zip(columns.iter())
         .map(|((name, ty), cells)| series_of(name, *ty, cells))
         .collect();
-    DataFrame::new(cols).map_err(|e| IpcError::internal(format!("frame build failed: {e}")))
+    DataFrame::new_infer_height(cols).map_err(|e| IpcError::internal(format!("frame build failed: {e}")))
 }
 
 // ─── Header de-duplication (mirrors `makeHeaders` in frame.ts) ──────────────────
@@ -393,7 +392,7 @@ impl Serialize for OutValues {
         let mut seq = serializer.serialize_seq(Some(s.len()))?;
         match s.dtype() {
             DataType::Float64 => {
-                for o in s.f64().unwrap().into_iter() {
+                for o in s.f64().unwrap().iter() {
                     match o {
                         None => seq.serialize_element(&())?,
                         Some(n) if n.is_finite() => {
@@ -408,12 +407,12 @@ impl Serialize for OutValues {
                 }
             }
             DataType::String => {
-                for o in s.str().unwrap().into_iter() {
+                for o in s.str().unwrap().iter() {
                     seq.serialize_element(&o)?;
                 }
             }
             DataType::Boolean => {
-                for o in s.bool().unwrap().into_iter() {
+                for o in s.bool().unwrap().iter() {
                     seq.serialize_element(&o)?;
                 }
             }
@@ -562,7 +561,7 @@ fn wire_to_solframe(frame: WireFrame) -> Result<SolFrame, IpcError> {
         types.push(ty);
         columns.push(series_from_json(&c.name, ty, &c.values, nrows));
     }
-    let df = DataFrame::new(columns).map_err(|e| IpcError::internal(format!("frame build failed: {e}")))?;
+    let df = DataFrame::new_infer_height(columns).map_err(|e| IpcError::internal(format!("frame build failed: {e}")))?;
     Ok(SolFrame { df, types })
 }
 
@@ -607,7 +606,7 @@ fn series_from_json(name: &str, ty: SolType, values: &[Json], nrows: usize) -> C
 // ─── Native CSV read ─────────────────────────────────────────────────────────
 fn df_to_solframe(df: DataFrame) -> SolFrame {
     let types: Vec<SolType> = df
-        .get_columns()
+        .columns()
         .iter()
         .map(|c| match c.dtype() {
             DataType::Boolean => SolType::Logical,
@@ -712,7 +711,7 @@ fn parse_iso_date_serial(s: &str) -> Option<f64> {
 fn infer_iso_date_columns(frame: SolFrame) -> Result<SolFrame, IpcError> {
     let names = frame.names();
     let mut types = frame.types.clone();
-    let mut data: Vec<Vec<Cell>> = frame.df.get_columns().iter().map(cells_of).collect();
+    let mut data: Vec<Vec<Cell>> = frame.df.columns().iter().map(cells_of).collect();
     let mut changed = false;
     for i in 0..types.len() {
         if types[i] != SolType::Str {
@@ -804,7 +803,7 @@ fn read_parquet_solframe(path: &Path) -> Result<SolFrame, IpcError> {
     let mut names = Vec::with_capacity(df.width());
     let mut types = Vec::with_capacity(df.width());
     let mut columns = Vec::with_capacity(df.width());
-    for c in df.get_columns() {
+    for c in df.columns() {
         let (ty, cells) = parquet_column_to_cells(c);
         names.push(c.name().to_string());
         types.push(ty);
@@ -817,7 +816,7 @@ fn read_parquet_solframe(path: &Path) -> Result<SolFrame, IpcError> {
 // ─── Verb helpers ───────────────────────────────────────────────────────────────
 
 fn require_columns(frame: &SolFrame, names: &[String]) -> Result<(), IpcError> {
-    let have: HashSet<&str> = frame.df.get_columns().iter().map(|c| c.name().as_str()).collect();
+    let have: HashSet<&str> = frame.df.columns().iter().map(|c| c.name().as_str()).collect();
     for n in names {
         if !have.contains(n.as_str()) {
             return Err(IpcError::new("#REF!", format!("column \"{n}\" not found")));
@@ -920,7 +919,7 @@ fn lazy_sort(plan: Plan, by: &str, dir: &str) -> Result<Plan, IpcError> {
         .lf
         .with_row_index(SORT_IDX, None)
         .sort_by_exprs(vec![key, col(SORT_IDX)], opts)
-        .drop([SORT_IDX]);
+        .drop(cols([SORT_IDX]));
     Ok(Plan { lf, ..plan })
 }
 
@@ -972,7 +971,7 @@ fn lazy_window(
             })
             .collect()
     };
-    let over = |e: Expr| e.over(keys.clone());
+    let over = |e: Expr| Expr::Over { function: Arc::new(e), partition_by: keys.clone(), order_by: None, mapping: WindowMapping::default() };
     let col_ty = col_name.and_then(|c| type_of_in(&plan.names, &plan.types, c));
     let vnum = || {
         let c = col(col_name.unwrap());
@@ -1120,7 +1119,7 @@ fn lazy_fill_blanks(plan: Plan, columns: &[String], dir: &str) -> Result<Plan, I
     let exprs: Vec<Expr> = plan.names.iter().map(|n| {
         let c = col(n.as_str());
         if !targets.contains(n.as_str()) { return c; }
-        if dir == "up" { c.backward_fill(None).alias(n.as_str()) } else { c.forward_fill(None).alias(n.as_str()) }
+        if dir == "up" { c.fill_null_with_strategy(FillNullStrategy::Backward(None)).alias(n.as_str()) } else { c.fill_null_with_strategy(FillNullStrategy::Forward(None)).alias(n.as_str()) }
     }).collect();
     Ok(Plan { lf: plan.lf.with_columns(exprs), ..plan })
 }
@@ -1246,7 +1245,7 @@ fn canonical_series(column: &Column, ty: SolType, name: &str) -> Series {
 
 fn reorder_rows(frame: &SolFrame, idxs: &[usize]) -> Result<SolFrame, IpcError> {
     let height = frame.df.height();
-    let canonical = frame.df.get_columns().iter().zip(frame.types.iter()).all(|(c, t)| *c.dtype() == canonical_dtype(*t));
+    let canonical = frame.df.columns().iter().zip(frame.types.iter()).all(|(c, t)| *c.dtype() == canonical_dtype(*t));
     if canonical && idxs.iter().all(|&i| i < height) {
         let picked = IdxCa::from_vec("".into(), idxs.iter().map(|&i| i as IdxSize).collect());
         let df = frame.df.take(&picked).map_err(|e| IpcError::internal(format!("row pick failed: {e}")))?;
@@ -1258,7 +1257,7 @@ fn reorder_rows(frame: &SolFrame, idxs: &[usize]) -> Result<SolFrame, IpcError> 
     let names = frame.names();
     let cols: Vec<Vec<Cell>> = frame
         .df
-        .get_columns()
+        .columns()
         .iter()
         .map(|c| {
             let cells = cells_of(c);
@@ -1457,7 +1456,7 @@ fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json, match_cas
 
 fn expr_mask(frame: &SolFrame, expr: Expr) -> Result<Vec<bool>, IpcError> {
     let df = collect_lazy(frame.df.clone().lazy().select([expr.alias("__mask")]))?;
-    let s = df.get_columns()[0].as_materialized_series();
+    let s = df.columns()[0].as_materialized_series();
     Ok((0..s.len())
         .map(|i| matches!(s.get(i).unwrap_or(AnyValue::Null), AnyValue::Boolean(true)))
         .collect())
@@ -1546,10 +1545,10 @@ fn is_err_expr(e: Expr) -> Expr {
     e.cast(DataType::Float64).map(
         |c: Column| {
             let s = c.as_materialized_series();
-            let mask: Vec<bool> = s.f64()?.into_iter().map(|v| v.is_some_and(|x| error_of(x).is_some())).collect();
-            Ok(Some(Series::new(c.name().clone(), mask).into_column()))
+            let mask: Vec<bool> = s.f64()?.iter().map(|v| v.is_some_and(|x| error_of(x).is_some())).collect();
+            Ok(Series::new(c.name().clone(), mask).into_column())
         },
-        GetOutput::from_type(DataType::Boolean),
+        |_, f| Ok(Field::new(f.name().clone(), DataType::Boolean)),
     )
 }
 
@@ -1560,7 +1559,7 @@ fn nonfinite_label_expr(e: Expr) -> Expr {
             let s = c.as_materialized_series();
             let labels: Vec<Option<&str>> = s
                 .f64()?
-                .into_iter()
+                .iter()
                 .map(|v| match v {
                     Some(x) if x.is_finite() => None,
                     Some(x) if x.is_nan() => Some(error_of(x).map_or("nan", |(code, _)| code)),
@@ -1568,9 +1567,9 @@ fn nonfinite_label_expr(e: Expr) -> Expr {
                     None => None,
                 })
                 .collect();
-            Ok(Some(Series::new(c.name().clone(), labels).into_column()))
+            Ok(Series::new(c.name().clone(), labels).into_column())
         },
-        GetOutput::from_type(DataType::String),
+        |_, f| Ok(Field::new(f.name().clone(), DataType::String)),
     )
 }
 
@@ -1653,14 +1652,9 @@ fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
 
 /// Midpoint median `(lo + hi) / 2`; Polars' median() interpolates and loses digits when the pair spans magnitudes.
 fn median_expr(e: Expr) -> Expr {
-    let options = FunctionOptions {
-        collect_groups: ApplyOptions::GroupWise,
-        flags: FunctionFlags::default() | FunctionFlags::RETURNS_SCALAR,
-        fmt_str: "median_midpoint",
-        ..Default::default()
-    };
-    e.function_with_options(
-        move |c: Column| {
+    apply_multiple(
+        move |cs: &mut [Column]| {
+            let c = &cs[0];
             let s = c.as_materialized_series();
             let mut vals: Vec<f64> = Vec::with_capacity(s.len());
             for i in 0..s.len() {
@@ -1670,27 +1664,23 @@ fn median_expr(e: Expr) -> Expr {
             }
             let name = c.name().clone();
             if vals.is_empty() {
-                return Ok(Some(Series::new(name, &[None::<f64>]).into_column()));
+                return Ok(Series::new(name, &[None::<f64>]).into_column());
             }
             vals.sort_by(|a, b| a.total_cmp(b));
             let m = vals.len() / 2;
             let out = if vals.len() % 2 == 1 { vals[m] } else { (vals[m - 1] + vals[m]) / 2.0 };
-            Ok(Some(Series::new(name, &[out]).into_column()))
+            Ok(Series::new(name, &[out]).into_column())
         },
-        GetOutput::from_type(DataType::Float64),
-        options,
+        [e],
+        |_, fs: &[Field]| Ok(Field::new(fs[0].name().clone(), DataType::Float64)),
+        true,
     )
 }
 
 fn variance_expr(e: Expr, sample: bool, sqrt: bool) -> Expr {
-    let options = FunctionOptions {
-        collect_groups: ApplyOptions::GroupWise,
-        flags: FunctionFlags::default() | FunctionFlags::RETURNS_SCALAR,
-        fmt_str: "variance_two_pass",
-        ..Default::default()
-    };
-    e.function_with_options(
-        move |c: Column| {
+    apply_multiple(
+        move |cs: &mut [Column]| {
+            let c = &cs[0];
             let s = c.as_materialized_series();
             let mut vals: Vec<f64> = Vec::with_capacity(s.len());
             for i in 0..s.len() {
@@ -1701,7 +1691,7 @@ fn variance_expr(e: Expr, sample: bool, sqrt: bool) -> Expr {
             let name = c.name().clone();
             let n = vals.len();
             if n == 0 || (sample && n < 2) {
-                return Ok(Some(Series::new(name, &[None::<f64>]).into_column()));
+                return Ok(Series::new(name, &[None::<f64>]).into_column());
             }
             let mut sum = 0.0;
             for &v in &vals { sum += v; }
@@ -1710,10 +1700,11 @@ fn variance_expr(e: Expr, sample: bool, sqrt: bool) -> Expr {
             for &v in &vals { ss += (v - mean) * (v - mean); }
             let var = ss / if sample { (n - 1) as f64 } else { n as f64 };
             let out = if sqrt { var.sqrt() } else { var };
-            Ok(Some(Series::new(name, &[out]).into_column()))
+            Ok(Series::new(name, &[out]).into_column())
         },
-        GetOutput::from_type(DataType::Float64),
-        options,
+        [e],
+        |_, fs: &[Field]| Ok(Field::new(fs[0].name().clone(), DataType::Float64)),
+        true,
     )
 }
 
@@ -1733,14 +1724,9 @@ fn require_agg_ops(aggs: &[WireAgg]) -> Result<(), IpcError> {
 
 /// GroupWise UDF with RETURNS_SCALAR set: without the flag Polars returns null for the group.
 fn mode_expr(e: Expr) -> Expr {
-    let options = FunctionOptions {
-        collect_groups: ApplyOptions::GroupWise,
-        flags: FunctionFlags::default() | FunctionFlags::RETURNS_SCALAR,
-        fmt_str: "mode_first_occurrence",
-        ..Default::default()
-    };
-    e.function_with_options(
-        |c: Column| {
+    apply_multiple(
+        |cs: &mut [Column]| {
+            let c = &cs[0];
             let s = c.as_materialized_series();
             let mut vals: Vec<f64> = Vec::with_capacity(s.len());
             for i in 0..s.len() {
@@ -1750,7 +1736,7 @@ fn mode_expr(e: Expr) -> Expr {
             }
             let name = c.name().clone();
             if vals.is_empty() {
-                return Ok(Some(Series::new(name, &[None::<f64>]).into_column()));
+                return Ok(Series::new(name, &[None::<f64>]).into_column());
             }
             // -0 keys as 0, since JS `===` unifies them and `to_bits` would not.
             let mut counts: HashMap<u64, usize> = HashMap::new();
@@ -1765,10 +1751,11 @@ fn mode_expr(e: Expr) -> Expr {
                     best = v;
                 }
             }
-            Ok(Some(Series::new(name, &[best]).into_column()))
+            Ok(Series::new(name, &[best]).into_column())
         },
-        GetOutput::from_type(DataType::Float64),
-        options,
+        [e],
+        |_, fs: &[Field]| Ok(Field::new(fs[0].name().clone(), DataType::Float64)),
+        true,
     )
 }
 
@@ -1802,9 +1789,13 @@ fn group_by_lazy_plan(
             group_exprs.push(c.alias(format!("__gk{i}v")));
         }
     }
-    if keys.is_empty() {
-        group_exprs.push(lit(0i32).alias("__gk_all"));
-    }
+    // No keys is one group, keyed off a row index: a literal key makes a group even over no rows.
+    let lf = if keys.is_empty() {
+        group_exprs.push(col("__gk_row").is_null().alias("__gk_all"));
+        lf.with_row_index("__gk_row", None)
+    } else {
+        lf
+    };
     let mut out_types: Vec<SolType> = keys.iter().map(|k| type_of_in(names, types, k).unwrap()).collect();
     let mut agg_exprs: Vec<Expr> = keys
         .iter()
@@ -1931,7 +1922,7 @@ fn assemble_join_layout(
         nc.rename(final_names[i].as_str().into());
         out_cols.push(nc);
     }
-    let df = DataFrame::new(out_cols).map_err(|e| IpcError::internal(format!("join rebuild failed: {e}")))?;
+    let df = DataFrame::new_infer_height(out_cols).map_err(|e| IpcError::internal(format!("join rebuild failed: {e}")))?;
     Ok(SolFrame { df, types: final_types })
 }
 
@@ -1991,7 +1982,7 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
     if opts.how.as_str() == "cross" {
         let joined = left
             .df
-            .cross_join(&right.df, Some("_right".into()), None)
+            .cross_join(&right.df, Some("_right".into()), None, MaintainOrderJoin::LeftRight)
             .map_err(|e| IpcError::internal(format!("cross join failed: {e}")))?;
         let no_key = WireJoinOpts { right_key: String::new(), how: "cross".into(), ..Default::default() };
         return assemble_join_layout(left, right, &no_key, &joined);
@@ -2194,7 +2185,7 @@ fn verb_join_asof(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Res
 
     let mut names = left.names();
     let mut types = left.types.clone();
-    let mut cols: Vec<Vec<Cell>> = left.df.get_columns().iter().map(cells_of).collect();
+    let mut cols: Vec<Vec<Cell>> = left.df.columns().iter().map(cells_of).collect();
     for n in right.names() {
         if n == opts.right_key {
             continue;
@@ -2300,15 +2291,15 @@ fn append_frames(handles: &[String]) -> Result<SolFrame, IpcError> {
     for (name, &ty) in names.iter().zip(types.iter()) {
         let mut acc = Series::new_empty(name.as_str().into(), &canonical_dtype(ty));
         for f in &frames {
-            let piece = match f.df.get_columns().iter().position(|c| c.name().as_str() == name) {
-                Some(idx) => canonical_series(&f.df.get_columns()[idx], ty, name),
+            let piece = match f.df.columns().iter().position(|c| c.name().as_str() == name) {
+                Some(idx) => canonical_series(&f.df.columns()[idx], ty, name),
                 None => Series::full_null(name.as_str().into(), f.df.height(), &canonical_dtype(ty)),
             };
             acc.append(&piece).map_err(fail)?;
         }
         out_cols.push(acc.rechunk().into_column());
     }
-    let df = DataFrame::new(out_cols).map_err(fail)?;
+    let df = DataFrame::new_infer_height(out_cols).map_err(fail)?;
     Ok(SolFrame { df, types })
 }
 
@@ -2330,7 +2321,7 @@ fn bind_columns(handles: &[String]) -> Result<SolFrame, IpcError> {
     let mut types: Vec<SolType> = Vec::new();
     let mut pieces: Vec<&Column> = Vec::new();
     for f in &frames {
-        for (i, c) in f.df.get_columns().iter().enumerate() {
+        for (i, c) in f.df.columns().iter().enumerate() {
             proposed.push(c.name().to_string());
             types.push(f.types[i]);
             pieces.push(c);
@@ -2346,7 +2337,7 @@ fn bind_columns(handles: &[String]) -> Result<SolFrame, IpcError> {
         }
         out_cols.push(s.rechunk().into_column());
     }
-    let df = DataFrame::new(out_cols).map_err(fail)?;
+    let df = DataFrame::new_infer_height(out_cols).map_err(fail)?;
     Ok(SolFrame { df, types })
 }
 
@@ -2356,7 +2347,7 @@ fn preview_of(frame: &SolFrame, n: usize) -> OutPreview {
     let take = n.min(row_count);
     let schema: Vec<OutSchemaCol> = frame
         .df
-        .get_columns()
+        .columns()
         .iter()
         .zip(frame.types.iter())
         .map(|(c, t)| OutSchemaCol {
@@ -2365,7 +2356,7 @@ fn preview_of(frame: &SolFrame, n: usize) -> OutPreview {
         })
         .collect();
     let head = frame.df.head(Some(take));
-    let col_cells: Vec<Vec<Cell>> = head.get_columns().iter().map(cells_of).collect();
+    let col_cells: Vec<Vec<Cell>> = head.columns().iter().map(cells_of).collect();
     let rows: Vec<Vec<Json>> = (0..take)
         .map(|r| col_cells.iter().map(|cells| cell_to_json(&cells[r])).collect())
         .collect();
@@ -2380,7 +2371,7 @@ fn preview_of(frame: &SolFrame, n: usize) -> OutPreview {
 fn collect_of(frame: &SolFrame) -> Vec<OutColumn> {
     frame
         .df
-        .get_columns()
+        .columns()
         .iter()
         .zip(frame.types.iter())
         .map(|(c, t)| OutColumn {
@@ -2395,7 +2386,7 @@ fn column_of(frame: &SolFrame, name: &str) -> Option<OutColumn> {
     let key = name.trim();
     let idx = frame
         .df
-        .get_columns()
+        .columns()
         .iter()
         .position(|c| c.name().as_str() == key)
         .or_else(|| {
@@ -2405,7 +2396,7 @@ fn column_of(frame: &SolFrame, name: &str) -> Option<OutColumn> {
                 .filter(|&i| i >= 1 && i <= frame.df.width())
                 .map(|i| i - 1)
         })?;
-    let column = &frame.df.get_columns()[idx];
+    let column = &frame.df.columns()[idx];
     Some(OutColumn {
         name: column.name().to_string(),
         ty: frame.types[idx].tag().to_string(),

@@ -19,7 +19,7 @@ fn frame(cols: Vec<(&str, SolType, Vec<Cell>)>) -> SolFrame {
 /// Read a frame back as a column-major (name, type, json-cells) view for asserts.
 fn dump(f: &SolFrame) -> Vec<(String, String, Vec<Json>)> {
     f.df
-        .get_columns()
+        .columns()
         .iter()
         .zip(f.types.iter())
         .map(|(c, t)| {
@@ -183,7 +183,7 @@ fn parquet_round_trip_preserves_types_and_dates() {
     let date_col = Series::new(d, vec![19000i32, 19001, 19002])
         .cast(&DataType::Date)
         .unwrap();
-    let mut df = DataFrame::new(vec![
+    let mut df = DataFrame::new_infer_height(vec![
         Series::new(n, vec![1i64, 2, 3]).into_column(),
         Series::new(s, vec!["a", "b", "c"]).into_column(),
         Series::new(b, vec![true, false, true]).into_column(),
@@ -763,13 +763,13 @@ fn round_sig_matches_to_precision() {
 #[test]
 fn streamed_values_match_the_cell_path() {
     let f = SolFrame {
-        df: DataFrame::new(vec![
+        df: DataFrame::new_infer_height(vec![
             Series::new("n".into(), vec![Some(1.0), Some(-0.0), Some(2.5), None, Some(f64::INFINITY), Some(f64::NEG_INFINITY), Some(f64::NAN), Some(1e300), Some(9.1e15), Some(f64::from_bits(ERR_DOMAIN_BITS))]).into_column(),
         ])
         .unwrap(),
         types: vec![SolType::Number],
     };
-    let col = &f.df.get_columns()[0];
+    let col = &f.df.columns()[0];
     let via_cells: Vec<Json> = cells_of(col).iter().map(cell_to_json).collect();
     assert_eq!(OutValues(col.clone()).json(), via_cells);
     assert_eq!(serde_json::to_string(&OutValues(col.clone())).unwrap(), serde_json::to_string(&via_cells).unwrap());
