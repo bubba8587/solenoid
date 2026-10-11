@@ -66,6 +66,7 @@ async function main() {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
+    if (args.includes("--nohold")) await page.evaluateOnNewDocument(() => { window.__noPanHold = true; });
     page.setDefaultTimeout(120000);
     const errs = [];
     page.on("pageerror", (e) => errs.push(e.message));

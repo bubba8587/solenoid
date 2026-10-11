@@ -44,6 +44,7 @@ async function main() {
         ? { matches: true, media: q, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } }
         : orig(q);
     });
+    if (args.includes("--nohold")) await page.evaluateOnNewDocument(() => { window.__noPanHold = true; });
     const errs = [];
     page.on("pageerror", (e) => errs.push(e.message));
     await page.goto("http://localhost:1420", { waitUntil: "networkidle2" });

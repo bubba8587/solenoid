@@ -33,13 +33,22 @@ export function createPanLayer(
   dpr: () => number = () => (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1),
 ) {
   let el: HTMLElement | null = null;
+  let hold: { cancel(): void } | null = null;
   let armed = false;
   let pressing = false;
   let zoom = 0;
   const drop = () => {
     armed = false;
+    hold?.cancel();
+    hold = null;
     el?.classList.remove(CLASS);
     el = null;
+  };
+  const raise = () => {
+    el = viewportOf() ?? null;
+    if (!el) return;
+    el.classList.add(CLASS);
+    if (!(globalThis as { __noPanHold?: boolean }).__noPanHold) hold = el.animate?.([{ translate: "0 0 1px" }, { translate: "0 0 1px" }], { duration: 3.6e6, iterations: Infinity }) ?? null;
   };
   const press = (k: number) => {
     pressing = true;
@@ -62,16 +71,14 @@ export function createPanLayer(
       if (el && !pressing && alignedViewport(cam, dpr())) { drop(); return; }
       if (!armed || !pressing || cam.zoom !== zoom) return;
       armed = false;
-      el = viewportOf() ?? null;
-      el?.classList.add(CLASS);
+      raise();
     },
     /** Raise the layer at rest, so the one full re-record that raising costs lands while nothing moves instead of on a pan's
      *  first frame. The caller has put the camera on whole pixels first. */
     prime(k: number) {
       if (el || pressing || !gate()) return;
       zoom = k;
-      el = viewportOf() ?? null;
-      el?.classList.add(CLASS);
+      raise();
     },
     /** The press ended; the layer stays for the next stroke. A programmatic end (null) is not a release. */
     release(event?: { type: string } | null) {
