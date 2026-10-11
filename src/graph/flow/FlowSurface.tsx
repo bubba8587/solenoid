@@ -35,6 +35,7 @@ import { FlowConnectionLine } from "./FlowConnectionLine";
 import { ViewportLayer } from "./ViewportLayer";
 import { CanvasBacking } from "./CanvasBacking";
 import { alignedViewport, createPanLayer, promotesPans } from "./panLayer";
+import { renderModeStore } from "../renderMode";
 import { useIsMobile } from "../useDeviceMode";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { toFlowNodes, toFlowEdges, mergeFlowNodes, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
@@ -124,6 +125,7 @@ const edgeTypes = { cable: FlowCableEdge };
 // Objects handed to <ReactFlow> live at module scope, because a fresh reference per render re-renders the flow.
 const SNAP_GRID: [number, number] = [DOT_SPACING, DOT_SPACING];
 const FIT_PADDING = 0.15;
+const PRIME_AFTER_MS = 300;
 const PRO_OPTIONS = { hideAttribution: false };
 const MINIMAP_STYLE = { width: 182, height: 105 };
 const DELETE_KEYS = ["Backspace", "Delete"];
@@ -354,7 +356,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       getViewport,
       setViewport: drive,
       onPan: (zoom) => panLayer.begin(zoom),
-      onPanEnd: () => panLayer.end(),
+      onPanEnd: () => panLayer.release(),
     });
     const unWheel = stat ? noop : installWheelZoom(el, { getViewport, setViewport: drive });
     return () => {
@@ -549,7 +551,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     cableSelectionStore.set(null);
     drawnCableStore.select(null);
   }, []);
-  useEffect(() => () => panLayer.end(), [panLayer]);
+  useEffect(() => {
+    const unMode = renderModeStore.subscribe(() => panLayer.drop());
+    return () => { unMode(); panLayer.drop(); };
+  }, [panLayer]);
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
@@ -561,8 +566,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const next = alignedViewport(getViewport(), window.devicePixelRatio || 1);
       if (next) void setViewport(next);
     };
-    // A release always ends the layer, so no path that ends a pan without RF's end event can leave it promoted.
-    const release = () => panLayer.end();
+    // A release always ends the press, so no path that ends a pan without RF's end event can leave one open.
+    const release = () => panLayer.release();
     el.addEventListener("pointerdown", align, true);
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
@@ -576,10 +581,29 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     (e: MouseEvent | TouchEvent | null, viewport: Viewport) => panLayer.start(e, viewport.zoom),
     [panLayer],
   );
-  const onMoveEnd = useCallback((e: MouseEvent | TouchEvent | null) => panLayer.end(e), [panLayer]);
+  // Once the camera has been still a moment, snap it to whole pixels and raise the layer, so a pan's first frame doesn't pay for it.
+  const primeTimer = useRef(0);
+  const schedulePrime = useCallback(() => {
+    clearTimeout(primeTimer.current);
+    primeTimer.current = window.setTimeout(() => {
+      if (!promotesPans()) return;
+      const v = getViewport();
+      const next = alignedViewport(v, window.devicePixelRatio || 1);
+      if (next) void setViewport(next);
+      panLayer.prime(v.zoom);
+    }, PRIME_AFTER_MS);
+  }, [getViewport, setViewport, panLayer]);
+  useEffect(() => {
+    schedulePrime();
+    return () => clearTimeout(primeTimer.current);
+  }, [schedulePrime]);
+  const onMoveEnd = useCallback((e: MouseEvent | TouchEvent | null) => {
+    panLayer.release(e);
+    schedulePrime();
+  }, [panLayer, schedulePrime]);
   const onMove = useCallback(
     (_e: unknown, viewport: Viewport) => {
-      panLayer.move(viewport.zoom);
+      panLayer.move(viewport);
       s.view.setTransform({ x: viewport.x, y: viewport.y, k: viewport.zoom });
       syncSemanticZoomFor(viewport.zoom);
     },

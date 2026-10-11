@@ -1,6 +1,6 @@
-// Phone pan probe: in phone emulation (mobile UA, touch, coarse pointer, DPR 2.625, CPU throttled), finger-pans the canvas
-// from empty canvas and from a card, and reports the pan layer's state and layer count mid-pan, the trace cost, and flicker:
-// every composited frame is captured and a frame whose drawn content drops well below its neighbours' (a card blinking out,
+// Phone pan probe: in phone emulation (mobile UA, touch, coarse pointer, DPR 2.625, CPU throttled), finger-pans the canvas in four
+// long strokes from empty canvas and from a card, and reports the pan layer's state and layer count mid-pan, the trace cost, and flicker:
+// the three longest main-thread tasks with what they spent their time on (the hitches); every composited frame is captured and a frame whose drawn content drops well below its neighbours' (a card blinking out,
 // an unrastered tile) is counted. `--off` neutralizes the pan layer for an A/B (react-flow-surface-contract § Drag performance).
 // Needs the dev server on :1420.
 //   node scripts/mobile-pan-probe.mjs [seed] [--zooms=0.25,0.1] [--throttle=4] [--off] [--frames=dir]
@@ -103,26 +103,45 @@ async function main() {
       const onData = (d) => chunks.push(...d.value);
       client.on("Tracing.dataCollected", onData);
       const done = new Promise((r) => client.once("Tracing.tracingComplete", r));
-      await client.send("Tracing.start", { transferMode: "ReportEvents", traceConfig: { includedCategories: ["devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "cc"] } });
+      await client.send("Tracing.start", { transferMode: "ReportEvents", traceConfig: { includedCategories: ["devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "cc", "blink"] } });
       await fn();
       await client.send("Tracing.end");
       await done;
       client.off("Tracing.dataCollected", onData);
       const sum = Object.fromEntries(Object.keys(PHASES).map((k) => [k, 0]));
+      // The worst frames: the longest main-thread tasks, each with what it spent its time on.
+      const tasks = chunks.filter((e) => e.ph === "X" && e.name === "RunTask" && e.dur > 0).sort((a, b) => b.dur - a.dur).slice(0, 3);
+      sum.worst = tasks.map((t) => {
+        const inside = chunks.filter((e) => e.ph === "X" && e.tid === t.tid && e.ts >= t.ts && e.ts + (e.dur ?? 0) <= t.ts + t.dur && e !== t);
+        const by = {}; for (const e of inside) if (/^(Paint|Layerize|Commit|PrePaint|UpdateLayoutTree|Layout|FunctionCall|EventDispatch|CullRectUpdate)$/.test(e.name)) by[e.name] = (by[e.name] ?? 0) + e.dur / 1000;
+        return `${(t.dur / 1000).toFixed(0)}ms[${Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(", ")}]`;
+      }).join(" ");
+      sum.worstTask = 0;
+      for (const e of chunks) if (e.ph === "X" && e.name === "RunTask" && e.dur && e.args?.src_func !== "Idle") sum.worstTask = Math.max(sum.worstTask, e.dur / 1000);
+      const rasterByFrame = [];
+      for (const e of chunks) if (e.ph === "X" && e.name === "RasterTask" && e.dur) rasterByFrame.push([e.ts, e.dur / 1000]);
+      rasterByFrame.sort((a, b) => a[0] - b[0]);
+      let burst = 0, burstStart = -1e18; sum.worstRasterBurst = 0;
+      for (const [ts, d] of rasterByFrame) { if (ts - burstStart > 16000) { burstStart = ts; burst = 0; } burst += d; sum.worstRasterBurst = Math.max(sum.worstRasterBurst, burst); }
       for (const e of chunks) if (e.ph === "X" && e.dur) for (const [k, names] of Object.entries(PHASES)) if (names.includes(e.name)) sum[k] += e.dur / 1000;
       return sum;
     };
 
     let mid = null;
+    // Several long strokes, each across most of the screen, so the pan runs well past the layer's pre-rastered margin.
+    // Long strokes across most of the screen, so the pan runs well past the region the browser keeps painted around the screen.
     const drag = async (x0, y0, steps = 40) => {
-      await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: x0, y: y0, id: 0 }] });
-      for (let i = 1; i <= steps; i++) {
-        const t = i / steps;
-        await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x0 + Math.sin(t * Math.PI * 2) * 90, y: y0 - Math.sin(t * Math.PI) * 140, id: 0 }] });
-        if (i === Math.floor(steps / 2)) mid = { promoted: await page.evaluate(() => document.querySelector(".react-flow__viewport")?.classList.contains("sol-pan-layer")), layers: layers.length };
-        await sleep(16);
+      for (let stroke = 0; stroke < 4; stroke++) {
+        const fx = stroke === 0 ? x0 : W * 0.85, fy = stroke === 0 ? y0 : H * 0.7, dx = -W * 0.7, dy = -H * 0.4;
+        await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: fx, y: fy, id: 0 }] });
+        for (let i = 1; i <= steps; i++) {
+          await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: fx + (dx * i) / steps, y: fy + (dy * i) / steps, id: 0 }] });
+          if (stroke === 0 && i === Math.floor(steps / 2)) mid = { promoted: await page.evaluate(() => document.querySelector(".react-flow__viewport")?.classList.contains("sol-pan-layer")), layers: layers.length };
+          await sleep(16);
+        }
+        await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await sleep(60);
       }
-      await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
       await sleep(200);
     };
 
@@ -166,7 +185,7 @@ async function main() {
           frames.forEach((f, i) => fs.writeFileSync(`${FRAME_DIR}/z${z}-${onCard ? "card" : "pane"}-${String(i).padStart(3, "0")}.png`, Buffer.from(f, "base64")));
         }
         const f = (v) => Math.round(v);
-        console.log(`zoom ${z} from ${onCard ? "card" : "pane"}: mid-pan ${JSON.stringify(mid)}; script ${f(cost.script)} paint ${f(cost.paint)} layerize ${f(cost.layerize)} raster ${f(cost.raster)}; ${frames.length} frames, flicker dips ${PNG ? dips : "n/a (no pngjs)"}, worst frame ${PNG ? worst.toFixed(2) : "n/a"} of its neighbours`);
+        console.log(`zoom ${z} from ${onCard ? "card" : "pane"}: mid-pan ${JSON.stringify(mid)}; script ${f(cost.script)} paint ${f(cost.paint)} layerize ${f(cost.layerize)} raster ${f(cost.raster)}; worst tasks ${cost.worst}; worst main task ${f(cost.worstTask)} ms, worst 16 ms raster burst ${f(cost.worstRasterBurst)} ms; ${frames.length} frames, flicker dips ${PNG ? dips : "n/a (no pngjs)"}, worst frame ${PNG ? worst.toFixed(2) : "n/a"} of its neighbours`);
       }
     }
     if (errs.length) console.log("page errors:", errs.slice(0, 5));
