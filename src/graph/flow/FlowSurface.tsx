@@ -328,6 +328,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [],
   );
 
+  const panLayer = useMemo(
+    () => createPanLayer(() => wrapperRef.current?.querySelector<HTMLElement>(".react-flow__viewport")),
+    [],
+  );
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
@@ -346,7 +350,12 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     const noop = () => {};
     const stat = hooksRef.current.staticView === true;
     const unPinch = stat ? noop : installFlowPinch(el, { getViewport, setViewport: drive });
-    const unPan = stat ? noop : installTouchCardPan(el, { getViewport, setViewport: drive });
+    const unPan = stat ? noop : installTouchCardPan(el, {
+      getViewport,
+      setViewport: drive,
+      onPan: (zoom) => panLayer.begin(zoom),
+      onPanEnd: () => panLayer.end(),
+    });
     const unWheel = stat ? noop : installWheelZoom(el, { getViewport, setViewport: drive });
     return () => {
       el.removeEventListener("mousedown", guardEditable, true);
@@ -355,7 +364,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       unPan();
       unWheel();
     };
-  }, [s, getViewport, setViewport]);
+  }, [s, getViewport, setViewport, panLayer]);
 
   useEffect(() => {
     const el = wrapperRef.current;
@@ -540,17 +549,15 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     cableSelectionStore.set(null);
     drawnCableStore.select(null);
   }, []);
-  const panLayer = useMemo(
-    () => createPanLayer(() => wrapperRef.current?.querySelector<HTMLElement>(".react-flow__viewport")),
-    [],
-  );
   useEffect(() => () => panLayer.end(), [panLayer]);
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
     // Capture, so the camera is whole before d3 reads the press point the drag keeps under the pointer.
     const align = (e: PointerEvent) => {
-      if (e.pointerType === "touch" || !(e.target as Element | null)?.classList?.contains("react-flow__pane") || !promotesPans()) return;
+      // A finger pans from a card too (flowTouchPan); a mouse press on a card drags it instead, so only the pane snaps for one.
+      const pans = e.pointerType === "touch" || (e.target as Element | null)?.classList?.contains("react-flow__pane");
+      if (!pans || !promotesPans()) return;
       const next = alignedViewport(getViewport(), window.devicePixelRatio || 1);
       if (next) void setViewport(next);
     };

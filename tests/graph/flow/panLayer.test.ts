@@ -50,11 +50,10 @@ describe("pan layer", () => {
     expect(vp.promoted()).toBe(false);
   });
 
-  it("gates on Chromium with a fine pointer, outside the HTML-in-Canvas mode", () => {
-    expect(promotesPans(false, true, "dom")).toBe(true);
-    expect(promotesPans(true, true, "dom")).toBe(false);
-    expect(promotesPans(false, false, "dom")).toBe(false);
-    expect(promotesPans(false, true, "html")).toBe(false);
+  it("gates on Chromium, outside the HTML-in-Canvas mode", () => {
+    expect(promotesPans(true, "dom")).toBe(true);
+    expect(promotesPans(false, "dom")).toBe(false);
+    expect(promotesPans(true, "html")).toBe(false);
     expect(isPressPan({ type: "touchstart" })).toBe(true);
     expect(isPressPan({ type: "wheel" })).toBe(false);
   });
@@ -78,6 +77,21 @@ describe("pan layer and programmatic moves", () => {
     layer.move(1);
     expect(vp.promoted()).toBe(true);
     layer.end({ type: "mouseup" });
+    expect(vp.promoted()).toBe(false);
+  });
+});
+
+describe("an app-driven pan", () => {
+  it("promotes on its first move after begin and demotes at its end", () => {
+    const vp = fakeViewport();
+    const layer = createPanLayer(() => vp.el, () => true);
+    layer.begin(0.4);
+    layer.start(null, 0.4);
+    layer.move(0.4);
+    expect(vp.promoted()).toBe(true);
+    layer.end(null);
+    expect(vp.promoted()).toBe(true);
+    layer.end();
     expect(vp.promoted()).toBe(false);
   });
 });

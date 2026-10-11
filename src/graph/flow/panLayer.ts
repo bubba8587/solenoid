@@ -1,13 +1,12 @@
 // [[C120]] linearWork. The pan layer (react-flow-surface-contract § Drag performance).
-import { IS_COARSE } from "../coarse";
 import { renderModeStore } from "../renderMode";
 
 const CLASS = "sol-pan-layer";
 
-/** Chromium engines on fine pointers only: the layer's raster and merge behavior is measured there, WebKit (WebKitGTK, Safari)
- *  rasters a layer at 1× and stretches it, a coarse pointer may be a mobile GPU, and the HTML-in-Canvas mode promotes the viewport itself. */
-export function promotesPans(coarse = IS_COARSE, chromium = typeof navigator !== "undefined" && "userAgentData" in navigator, mode = renderModeStore.get()): boolean {
-  return !coarse && chromium && mode !== "html";
+/** Chromium engines only: the layer's raster and merge behavior is measured there, WebKit (WebKitGTK, Safari) rasters a layer
+ *  at 1× and stretches it, and the HTML-in-Canvas mode promotes the viewport itself. */
+export function promotesPans(chromium = typeof navigator !== "undefined" && "userAgentData" in navigator, mode = renderModeStore.get()): boolean {
+  return chromium && mode !== "html";
 }
 
 /** A pointer drag that moves the camera: wheel and pinch zoom and programmatic moves carry no press. */
@@ -33,6 +32,12 @@ export function createPanLayer(viewportOf: () => HTMLElement | null | undefined,
       armed = gate();
       zoom = k;
     },
+    /** A pan the app drives itself (a finger pan that starts on a card), which React Flow sees only as programmatic moves. */
+    begin(k: number) {
+      end();
+      armed = gate();
+      zoom = k;
+    },
     move(k: number) {
       if (!armed && !el) return;
       if (k !== zoom) { end(); return; }
@@ -48,7 +53,7 @@ export function createPanLayer(viewportOf: () => HTMLElement | null | undefined,
 }
 
 /** The camera moved onto whole device pixels. A promoted layer composites at a fractional offset with smoothing, so text panned
- *  soft; a press snaps the camera before the drag starts (at most half a pixel), and a mouse's deltas keep it whole. */
+ *  soft; a press snaps the camera before the drag starts (at most half a pixel), and pointer deltas, whole device pixels, keep it whole. */
 export function alignedViewport<V extends { x: number; y: number }>(v: V, dpr: number): V | null {
   const x = Math.round(v.x * dpr) / dpr;
   const y = Math.round(v.y * dpr) / dpr;
