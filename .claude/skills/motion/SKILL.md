@@ -55,7 +55,8 @@ Each clip should be able to sell the product on its own: a task someone has, don
 - **Inputs are typed, wired, picked or edited.** Sliders are rarely how anyone works; avoid them.
 - **Words on screen**: a headline naming the task (Atkinson Next 800), step captions, a closing line. The copy
   follows DESIGN.md §7: name the task, state the mechanism in a complete sentence, no slogans, no em dashes, no
-  "X, not Y", no swipe at the spreadsheet.
+  "X, not Y", no swipe at the spreadsheet. The stage fades the canvas out under the type bands, so a neighbor card
+  the camera lets in never sits behind a caption.
 
 ## Rules that keep a rebuild honest
 

@@ -250,6 +250,9 @@ export function stage(el, { width }) {
   el.appendChild(root);
   const div = (css) => { const d = document.createElement("div"); d.style.cssText = `position:absolute;opacity:0;${css}`; root.appendChild(d); return d; };
   const eyebrow = "font-weight:700;font-size:24px;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap";
+  // scrims under the headline and the caption: whatever the frame lets spill under the type fades to the canvas
+  const scrim = (edge) => div(`left:0;right:0;${edge}:0;height:250px;background:linear-gradient(to ${edge === "top" ? "bottom" : "top"},#0b0b0b 0,#0b0b0b 175px,rgba(11,11,11,0) 250px)`);
+  const scrimTop = scrim("top"), scrimBottom = scrim("bottom");
   const st = {
     headline: div("left:0;right:0;top:56px;text-align:center;font-weight:800;font-size:88px;line-height:1.05;letter-spacing:-0.01em;color:#f3f4f5;text-wrap-style:balance"),
     eyebrow: div(`left:0;right:0;top:172px;text-align:center;${eyebrow}`),
@@ -267,6 +270,8 @@ export function stage(el, { width }) {
     const k = Math.min(clamp01((t - a) / 0.35), b == null ? 1 : clamp01((b - t) / 0.3));
     e.style.opacity = String(k);
     e.style.translate = `0 ${(1 - expoOut(clamp01((t - a) / 0.35))) * rise}px`;
+    const op = (...es) => String(Math.max(...es.map((x) => Number(x.style.opacity) || 0)));
+    scrimTop.style.opacity = scrimBottom.style.opacity = op(st.headline, st.eyebrow, st.step, st.kicker);
   };
   /** A tag centered over render-px point p. */
   st.tag = (e, text, p, color, t, a, b) => {
