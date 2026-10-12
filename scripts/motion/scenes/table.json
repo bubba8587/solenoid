@@ -1,0 +1,412 @@
+{
+ "graph": {
+  "nodes": [
+   {
+    "id": "f1",
+    "type": "FrameInputNode",
+    "x": 0,
+    "y": 0,
+    "init": {
+     "label": "Orders"
+    },
+    "frame": [
+     {
+      "name": "item",
+      "cells": [
+       "Lamp",
+       "Desk",
+       "Chair",
+       "Shelf",
+       "Rug",
+       "Mirror"
+      ]
+     },
+     {
+      "name": "qty",
+      "cells": [
+       2,
+       1,
+       4,
+       2,
+       1,
+       3
+      ]
+     },
+     {
+      "name": "price",
+      "cells": [
+       45,
+       320,
+       85,
+       140,
+       210,
+       60
+      ]
+     },
+     {
+      "name": "line",
+      "expr": "@qty * @price"
+     }
+    ]
+   },
+   {
+    "id": "col",
+    "type": "GetColumnNode",
+    "x": 400,
+    "y": 20,
+    "init": {
+     "label": "Line totals",
+     "readAs": "number"
+    },
+    "stringLiterals": {
+     "name": "line"
+    }
+   },
+   {
+    "id": "sum",
+    "type": "AggregateNode",
+    "x": 740,
+    "y": 40,
+    "init": {
+     "label": "Grand total",
+     "op": "sum"
+    }
+   }
+  ],
+  "cables": [
+   "f1.frame -> col.frame",
+   "col.values -> sum.list"
+  ]
+ },
+ "states": [
+  {
+   "name": "q4",
+   "value": 4,
+   "set": {
+    "f1": {
+     "frame": [
+      {
+       "name": "item",
+       "cells": [
+        "Lamp",
+        "Desk",
+        "Chair",
+        "Shelf",
+        "Rug",
+        "Mirror"
+       ]
+      },
+      {
+       "name": "qty",
+       "cells": [
+        2,
+        1,
+        4,
+        2,
+        1,
+        3
+       ]
+      },
+      {
+       "name": "price",
+       "cells": [
+        45,
+        320,
+        85,
+        140,
+        210,
+        60
+       ]
+      },
+      {
+       "name": "line",
+       "expr": "@qty * @price"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "q5",
+   "value": 5,
+   "set": {
+    "f1": {
+     "frame": [
+      {
+       "name": "item",
+       "cells": [
+        "Lamp",
+        "Desk",
+        "Chair",
+        "Shelf",
+        "Rug",
+        "Mirror"
+       ]
+      },
+      {
+       "name": "qty",
+       "cells": [
+        2,
+        1,
+        5,
+        2,
+        1,
+        3
+       ]
+      },
+      {
+       "name": "price",
+       "cells": [
+        45,
+        320,
+        85,
+        140,
+        210,
+        60
+       ]
+      },
+      {
+       "name": "line",
+       "expr": "@qty * @price"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "q6",
+   "value": 6,
+   "set": {
+    "f1": {
+     "frame": [
+      {
+       "name": "item",
+       "cells": [
+        "Lamp",
+        "Desk",
+        "Chair",
+        "Shelf",
+        "Rug",
+        "Mirror"
+       ]
+      },
+      {
+       "name": "qty",
+       "cells": [
+        2,
+        1,
+        6,
+        2,
+        1,
+        3
+       ]
+      },
+      {
+       "name": "price",
+       "cells": [
+        45,
+        320,
+        85,
+        140,
+        210,
+        60
+       ]
+      },
+      {
+       "name": "line",
+       "expr": "@qty * @price"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "q7",
+   "value": 7,
+   "set": {
+    "f1": {
+     "frame": [
+      {
+       "name": "item",
+       "cells": [
+        "Lamp",
+        "Desk",
+        "Chair",
+        "Shelf",
+        "Rug",
+        "Mirror"
+       ]
+      },
+      {
+       "name": "qty",
+       "cells": [
+        2,
+        1,
+        7,
+        2,
+        1,
+        3
+       ]
+      },
+      {
+       "name": "price",
+       "cells": [
+        45,
+        320,
+        85,
+        140,
+        210,
+        60
+       ]
+      },
+      {
+       "name": "line",
+       "expr": "@qty * @price"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "q8",
+   "value": 8,
+   "set": {
+    "f1": {
+     "frame": [
+      {
+       "name": "item",
+       "cells": [
+        "Lamp",
+        "Desk",
+        "Chair",
+        "Shelf",
+        "Rug",
+        "Mirror"
+       ]
+      },
+      {
+       "name": "qty",
+       "cells": [
+        2,
+        1,
+        8,
+        2,
+        1,
+        3
+       ]
+      },
+      {
+       "name": "price",
+       "cells": [
+        45,
+        320,
+        85,
+        140,
+        210,
+        60
+       ]
+      },
+      {
+       "name": "line",
+       "expr": "@qty * @price"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "q9",
+   "value": 9,
+   "set": {
+    "f1": {
+     "frame": [
+      {
+       "name": "item",
+       "cells": [
+        "Lamp",
+        "Desk",
+        "Chair",
+        "Shelf",
+        "Rug",
+        "Mirror"
+       ]
+      },
+      {
+       "name": "qty",
+       "cells": [
+        2,
+        1,
+        9,
+        2,
+        1,
+        3
+       ]
+      },
+      {
+       "name": "price",
+       "cells": [
+        45,
+        320,
+        85,
+        140,
+        210,
+        60
+       ]
+      },
+      {
+       "name": "line",
+       "expr": "@qty * @price"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "q10",
+   "value": 10,
+   "set": {
+    "f1": {
+     "frame": [
+      {
+       "name": "item",
+       "cells": [
+        "Lamp",
+        "Desk",
+        "Chair",
+        "Shelf",
+        "Rug",
+        "Mirror"
+       ]
+      },
+      {
+       "name": "qty",
+       "cells": [
+        2,
+        1,
+        10,
+        2,
+        1,
+        3
+       ]
+      },
+      {
+       "name": "price",
+       "cells": [
+        45,
+        320,
+        85,
+        140,
+        210,
+        60
+       ]
+      },
+      {
+       "name": "line",
+       "expr": "@qty * @price"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

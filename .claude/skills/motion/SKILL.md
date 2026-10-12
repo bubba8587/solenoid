@@ -11,12 +11,13 @@ moves the pieces. Plain screen recordings of the app stay with the `demo-video` 
 
 | File | Job |
 |---|---|
-| `capture.mjs` | Loads a graph into the dev app at zoom 1 and reads every card as pieces in CSS paint order: box backgrounds, border rings (per-corner radii, per-side widths), SVG fills and strokes (frames, sockets, icons, CSS-mask icons, clip-paths, overflow clips), the slider thumb from its CSS rule, and each glyph at Chrome's own pen position. Also the cables' real paths and strokes, the canvas colors and dot spacing, and a reference screenshot per state. A `sweep` captures one state per step of a value. |
+| `capture.mjs` | Loads a graph into the dev app at zoom 1 and reads every card as pieces in CSS paint order: box backgrounds, border rings (per-corner radii, per-side widths), SVG fills and strokes (frames, sockets, icons, CSS-mask icons, SVG background images, clip-paths, overflow clips), the slider thumb from its CSS rule, and each glyph at Chrome's own pen position (text nodes, input and select values). Also the cables' real paths and strokes, the canvas colors and dot spacing, and a reference screenshot per state. A state overrides a node's `init`, `literals` or `frame`; a `sweep` is one state per step of a value or per item of `values` (each prefix of a formula, say). |
 | `geometry.py` | Each piece as a polygon the way the browser rasterizes it (shapely for strokes, rings, clips; glyphs from `fonts.py`), triangulated. |
 | `fonts.py` | Glyph outlines from the app's own `@fontsource-variable` woff2 files, instanced at Chrome's weight; fontconfig fallback for characters the face lacks. |
-| `export.py` | `scene.json` → `pieces.json`: every piece's triangles, color, order, part and state; later states add only the pieces they change. |
+| `export.py` | `scene.json` → `pieces.json`: every piece triangulated once, matched across states by content (a glyph, a border side), with the states it shows in and its paint position in each (`in`, `orderIn`), its part and its DOM depth. |
 | `player.js` | The three.js player: pieces as flat meshes in paint order, cables as ribbons with `reveal`/`pulse`, the dot canvas as a shader. Each frame averages N renders jittered across the lens aperture, the shutter and the pixel: real depth of field, motion blur and anti-aliasing. Light above 1.0 (pulses) blooms. |
-| `clips/<name>.js` | One clip each: `setup()` returns `pose(t)` (sets every piece and returns the camera shot) and `restError(t)`. Pure functions of time. |
+| `clips/kit.js` | What clips share: easing, `assemble`/`enter` (a card unfolds and its layers drop in by paint order), `stepper`/`showState` (the app's states swapped in, new glyphs popping), `rig` (camera shots interpolated as look point, direction, framed height and lens, so lens changes are smooth dolly-zooms), `final` (the closing straight-on shot), `drawCable`, `pulses`, `restError`. |
+| `clips/<name>.js` | One clip each, pure functions of time: `setup()` returns `pose(t)` (sets every piece, returns the camera shot) and `restError(t)`. `order-total` (assemble, cables, a slider sweep), `explode` (one card's DOM layers pulled apart and orbited), `typing` (a formula typed a key at a time), `table` (a Frame cell edited, the total following), `equation` (a solve racked into focus). |
 | `render.mjs` | Headless Chromium on software WebGL, frames piped into ffmpeg. `--stills` for previews, `--check` for the rest check. |
 | `scenes/<name>.json` | The graph a clip captures (shot-graph short form, with x/y) and its states or sweep. |
 
@@ -47,7 +48,9 @@ About 3 s a frame at 1080p with 16 samples on a 4-core container (no GPU). Previ
   `var()` color resolved inside an `<input>`.
 - **Display-referred.** Colors are their sRGB values and nothing converts them, so translucent strokes blend as
   Chrome blends them.
-- **A value that changes on camera is a captured state**, laid out by the app and swapped in by visibility.
+- **A value that changes on camera is a captured state**, laid out by the app and swapped in by visibility, each
+  piece at its paint position in that state (a re-laid-out card reorders the stack).
+- **Not readable:** anything drawn to a `<canvas>` (charts). Leave those cards out of a clip.
 - **Every clip ends at rest** and passes `--check`: the rest check prints 0 and `check.png` (app | player | diff)
   shows the same cards.
 - Keep the camera looking well down at the canvas, or the horizon shows past it.

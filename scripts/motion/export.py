@@ -18,46 +18,39 @@ names = list(scene["states"])
 base = scene["states"][names[0]]
 
 
-def pieces_of(c, keep=None, state=None):
-    out = []
-    for i, (geom, col, p, ch) in enumerate(G.piece_list(c)):
-        pi = c["prims"].index(p)
-        if keep is not None and pi not in keep:
-            continue
-        verts, faces = G.triangles(geom)
-        if not faces:
-            continue
-        minx, miny, maxx, maxy = geom.bounds
-        cx, cy = (minx + maxx) / 2, (miny + maxy) / 2
-        out.append({
-            "card": c["title"], "order": i, "prim": pi, "kind": p["kind"], "part": G.part_of(c, p["el"]),
-            "glyph": ch, "color": [round(v, 4) for v in col], "center": [round(cx, 3), round(cy, 3)],
-            "size": [round(maxx - minx, 3), round(maxy - miny, 3)],
-            "verts": [round(v, 3) for x, y in verts for v in (x - cx, y - cy)], "faces": [i for f in faces for i in f],
-            "state": state, "replacedIn": [],
-        })
-    return out
-
-
+# A piece's identity across states: its card, its prim (by content) and which of that prim's pieces it is (a glyph,
+# a border side). Each identity is triangulated once; it records the states it shows in and its paint position in
+# each, since a state that re-lays a card out moves other pieces through the stacking order.
+registry = {}
 pieces = []
-base_keys = {}
-for c in base["cards"]:
-    base_keys[c["title"]] = [G.prim_key(p) for p in c["prims"]]
-    pieces += pieces_of(c)
-by_card_prim = {(p["card"], p["prim"]): p for p in pieces}
-for name in names[1:]:
+for si, name in enumerate(names):
     for c in scene["states"][name]["cards"]:
-        keys = [G.prim_key(p) for p in c["prims"]]
-        known = set(base_keys[c["title"]])
-        keep = {i for i, k in enumerate(keys) if k not in known}
-        if keep:
-            pieces += pieces_of(c, keep, name)
-        gone = set(keys)
-        for i, k in enumerate(base_keys[c["title"]]):
-            if k not in gone:
-                for p in pieces:
-                    if p["card"] == c["title"] and p["prim"] == i and p["state"] is None:
-                        p["replacedIn"].append(name)
+        seen = {}
+        for i, (geom, col, p, ch) in enumerate(G.piece_list(c)):
+            k = G.prim_key(p)
+            seen[k] = seen.get(k, -1) + 1
+            ident = (c["title"], k, seen[k])
+            if ident not in registry:
+                verts, faces = G.triangles(geom)
+                if not faces:
+                    registry[ident] = None
+                    continue
+                minx, miny, maxx, maxy = geom.bounds
+                cx, cy = (minx + maxx) / 2, (miny + maxy) / 2
+                piece = {
+                    "card": c["title"], "order": i, "kind": p["kind"], "part": G.part_of(c, p["el"]),
+                    "depth": len(G.element_path(c, p["el"])),
+                    "glyph": ch, "color": [round(v, 4) for v in col], "center": [round(cx, 3), round(cy, 3)],
+                    "size": [round(maxx - minx, 3), round(maxy - miny, 3)],
+                    "verts": [round(v, 3) for x, y in verts for v in (x - cx, y - cy)], "faces": [i for f in faces for i in f],
+                    "state": name if si else None, "in": [], "orderIn": {},
+                }
+                registry[ident] = piece
+                pieces.append(piece)
+            piece = registry[ident]
+            if piece is not None:
+                piece["in"].append(name)
+                piece["orderIn"][name] = i
 
 cables = []
 for e in base["cables"]:
@@ -66,7 +59,7 @@ for e in base["cables"]:
         cables.append({"id": e["id"], "color": layer["color"], "verts": [round(v, 3) for xy in verts for v in xy], "u": [round(u, 5) for u in us], "faces": [i for f in faces for i in f], "ends": [list(pts[0]), list(pts[-1])], "length": sum(((pts[i][0] - pts[i - 1][0]) ** 2 + (pts[i][1] - pts[i - 1][1]) ** 2) ** 0.5 for i in range(1, len(pts)))})
 
 out = {
-    "states": [{"name": n, "value": scene["states"][n].get("value"), "reference": scene["states"][n]["reference"]} for n in names],
+    "states": [{"name": n, "value": scene["states"][n].get("value"), "reference": scene["states"][n]["reference"], "box": scene["states"][n].get("referenceBox", scene["reference"])} for n in names],
     "cards": [{"title": c["title"], "box": c["box"], "hero": c["hero"]} for c in base["cards"]],
     "pieces": pieces, "cables": cables, "background": scene["background"], "reference": scene["reference"],
 }

@@ -83,8 +83,8 @@ try {
     console.log(`rest check: worst piece ${rest.worst.toExponential(2)} from its rest place at the last frame (state ${rest.state})`);
     const result = await page.evaluate(async (t, state) => {
       const { player, c } = window.motion;
-      const ref = player.data.reference;
-      const shotFile = player.data.states.find((s) => s.name === state).reference;
+      const st = player.data.states.find((s) => s.name === state);
+      const ref = { ...st.box, scale: player.data.reference.scale }, shotFile = st.reference;
       const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = `/cap/${shotFile}`; });
       const { w, h, rgba } = player.flat(c.pose, t, ref, ref.scale);
       const cv = document.createElement("canvas"); cv.width = w * 3; cv.height = h;

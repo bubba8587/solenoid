@@ -1,0 +1,36 @@
+{
+ "graph": {
+  "nodes": [
+   {
+    "id": "h",
+    "type": "ExpressionNode",
+    "x": 0,
+    "y": 0,
+    "init": {
+     "label": "Hypotenuse",
+     "expr": "SQRT(3^2 + 4^2)"
+    }
+   }
+  ],
+  "cables": []
+ },
+ "sweep": {
+  "node": "h",
+  "init": "expr",
+  "values": [
+   "S",
+   "SQ",
+   "SQR",
+   "SQRT",
+   "SQRT(",
+   "SQRT(3",
+   "SQRT(3^",
+   "SQRT(3^2",
+   "SQRT(3^2 +",
+   "SQRT(3^2 + 4",
+   "SQRT(3^2 + 4^",
+   "SQRT(3^2 + 4^2",
+   "SQRT(3^2 + 4^2)"
+  ]
+ }
+}

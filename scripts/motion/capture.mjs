@@ -7,8 +7,9 @@
 // that strays from the app. One load per state: a state overrides node init/literals, so a value that
 // changes on camera is laid out by the app, not faked.
 //   node scripts/motion/capture.mjs <scene.json> [--out dir]
-// scene.json: { graph: <shot-graph short form with x/y>, states?: [{ name, set: { <nodeId>: { init?, literals? } } }],
-//               sweep?: { node, init: <field>, from, to, step } }  (a sweep is one state per step, named s0, s1, …)
+// scene.json: { graph: <shot-graph short form with x/y>, states?: [{ name, set: { <nodeId>: { init?, literals?, frame? } } }],
+//               sweep?: { node, init: <field>, from, to, step } or { node, init, values: [...] } }
+// A sweep is one state per value, named s0, s1, …; `values` takes any list (each prefix of a formula, say).
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -35,6 +36,7 @@ const withState = (state) => {
     if (!n) throw new Error(`state ${state.name}: no node ${id}`);
     if (over.init) n.init = { ...n.init, ...over.init };
     if (over.literals) n.literals = { ...n.literals, ...over.literals };
+    if (over.frame) n.frame = over.frame;
   }
   return expand(g);
 };
@@ -236,6 +238,43 @@ const read = () => page.evaluate(async () => {
     return prims;
   };
 
+  // An SVG background-image (a select's chevron, say): mounted at its background-position and -size inside the
+  // padding box and read in its own colors. One image, no-repeat; other backgrounds are not read.
+  const bgImagePrims = (el, card) => {
+    const cs = getComputedStyle(el);
+    const src = /url\("?data:image\/svg\+xml(?:;utf8)?,([^"]*)"?\)/.exec(cs.backgroundImage)?.[1];
+    if (!src) return [];
+    const r = el.getBoundingClientRect();
+    const bl = parseFloat(cs.borderLeftWidth), bt = parseFloat(cs.borderTopWidth);
+    const pw = r.width - bl - parseFloat(cs.borderRightWidth), ph = r.height - bt - parseFloat(cs.borderBottomWidth);
+    const [w, h] = cs.backgroundSize.split(" ").map(parseFloat);
+    // a background-position component: "Npx", "N%", "left|right|top|bottom Npx", "center", "calc(100% - Npx)"
+    const place = (v, room) => {
+      let m;
+      if ((m = /^(?:right|bottom) (-?[\d.]+)px$/.exec(v))) return room - +m[1];
+      if ((m = /^(?:left|top) (-?[\d.]+)px$/.exec(v))) return +m[1];
+      if ((m = /^calc\(100% - (-?[\d.]+)px\)$/.exec(v))) return room - +m[1];
+      if ((m = /^(-?[\d.]+)%$/.exec(v))) return (room * +m[1]) / 100;
+      if (v === "center") return room / 2;
+      return parseFloat(v) || 0;
+    };
+    const fx0 = (v) => /^(right|calc|\d+%|center)/.test(v) && !/^left/.test(v);
+    const px = cs.backgroundPositionX, py = cs.backgroundPositionY;
+    // percentages and keywords place the image's own matching point; px offsets from right/bottom place its far edge
+    const ax = /%$|^center$/.test(px) ? place(px, pw - w) : fx0(px) ? place(px, pw) - w : place(px, pw);
+    const ay = /%$|^center$/.test(py) ? place(py, ph - h) : fx0(py) ? place(py, ph) - h : place(py, ph);
+    const host = document.createElement("div");
+    host.style.cssText = `position:fixed;left:${r.left + bl + ax}px;top:${r.top + bt + ay}px;width:${w}px;height:${h}px;pointer-events:none;margin:0;padding:0`;
+    host.innerHTML = decodeURIComponent(src);
+    const svg = host.querySelector("svg");
+    svg.setAttribute("width", w); svg.setAttribute("height", h);
+    svg.style.display = "block";
+    document.body.appendChild(host);
+    const prims = svgPrims(svg, card, { alpha: alphaOf(el, card) });
+    host.remove();
+    return prims;
+  };
+
   // A box's background and borders (per-corner radii, per-side widths and colors).
   const boxPrims = (el, card, r) => {
     const cs = getComputedStyle(el);
@@ -260,9 +299,10 @@ const read = () => page.evaluate(async () => {
     const cs = getComputedStyle(el);
     const a = alphaOf(el, card);
     const ink = color(cs.color, el);
-    if (el.tagName === "INPUT") {
-      if (["range", "checkbox", "radio", "color"].includes(el.type) || !el.value) return prims;
-      const s = el.value;
+    if (el.tagName === "INPUT" || el.tagName === "SELECT") {
+      if (el.tagName === "INPUT" && (["range", "checkbox", "radio", "color"].includes(el.type) || !el.value)) return prims;
+      const s = caseOf(el.tagName === "SELECT" ? el.options[el.selectedIndex]?.text ?? "" : el.value, cs.textTransform);
+      if (!s) return prims;
       ctx2d.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
       ctx2d.letterSpacing = cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing;
       const r = el.getBoundingClientRect();
@@ -348,6 +388,7 @@ const read = () => page.evaluate(async () => {
       const add = (list) => { for (const p of list) prims.push({ ...p, el: idx }); };
       if (el instanceof SVGElement) { add(svgPrims(el, card)); return; }
       add(boxPrims(el, card, rect(el.getBoundingClientRect())));
+      add(bgImagePrims(el, card));
       add(maskPrims(el, card));
       if (el.tagName === "INPUT" && el.type === "range") add(rangePrims(el, card));
       else add(textPrims(el, card));
@@ -420,8 +461,8 @@ const read = () => page.evaluate(async () => {
 });
 
 const sweep = (sw) => {
-  const n = Math.round((sw.to - sw.from) / sw.step);
-  return Array.from({ length: n + 1 }, (_, i) => ({ name: `s${i}`, value: +(sw.from + i * sw.step).toFixed(10), set: { [sw.node]: { init: { [sw.init]: +(sw.from + i * sw.step).toFixed(10) } } } }));
+  const values = sw.values ?? Array.from({ length: Math.round((sw.to - sw.from) / sw.step) + 1 }, (_, i) => +(sw.from + i * sw.step).toFixed(10));
+  return values.map((value, i) => ({ name: `s${i}`, value, set: { [sw.node]: { init: { [sw.init]: value } } } }));
 };
 const states = scene.sweep ? sweep(scene.sweep) : scene.states?.length ? scene.states : [{ name: "base" }];
 const result = { states: {} };
@@ -439,7 +480,7 @@ for (const [si, state] of states.entries()) {
       result.reference = { file, x: x0, y: y0, w: x1 - x0, h: y1 - y0, scale: REF_SCALE, state: state.name };
       result.background = m.background;
     }
-    result.states[state.name] = { value: state.value, reference: file, cards: m.cards, cables: m.cables };
+    result.states[state.name] = { value: state.value, reference: file, referenceBox: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, cards: m.cards, cables: m.cables };
   }
   console.log(`${state.name}: ${m.cards.map((c) => `${c.title} (${c.prims.length} prims) [${c.text.slice(-20)}]`).join(" ; ")}`);
 }

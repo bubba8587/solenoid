@@ -1,0 +1,57 @@
+{
+ "graph": {
+  "nodes": [
+   {
+    "id": "d",
+    "type": "SliderInputNode",
+    "x": 0,
+    "y": 0,
+    "init": {
+     "label": "Distance (km)",
+     "value": 120
+    },
+    "literals": {
+     "min": 0,
+     "max": 300,
+     "step": 5
+    }
+   },
+   {
+    "id": "t",
+    "type": "SliderInputNode",
+    "x": 0,
+    "y": 230,
+    "init": {
+     "label": "Time (h)",
+     "value": 1.0
+    },
+    "literals": {
+     "min": 0.5,
+     "max": 4,
+     "step": 0.1
+    }
+   },
+   {
+    "id": "eq",
+    "type": "EquationNode",
+    "x": 300,
+    "y": 90,
+    "init": {
+     "label": "Find the speed",
+     "expr": "d = s * t"
+    }
+   }
+  ],
+  "cables": [
+   "d.value -> eq.d",
+   "t.value -> eq.t"
+  ]
+ },
+ "sweep": {
+  "node": "t",
+  "init": "value",
+  "from": 1.0,
+  "to": 3.0,
+  "step": 0.1
+ }
+}
