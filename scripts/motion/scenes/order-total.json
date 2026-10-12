@@ -1,0 +1,7 @@
+{ "graph": { "nodes": [
+    { "id": "price", "type": "ValueInputNode", "x": 0, "y": 0, "init": { "label": "Unit price", "op": "number", "value": "250", "width": 180 }, "sections": { "Format": false } },
+    { "id": "qty", "type": "ValueInputNode", "x": 0, "y": 175, "init": { "label": "Quantity", "op": "number", "value": "4", "width": 180 }, "sections": { "Format": false } },
+    { "id": "disc", "type": "SliderInputNode", "x": 0, "y": 350, "init": { "label": "Discount", "value": 0.15 }, "literals": { "min": 0, "max": 0.5, "step": 0.01 } },
+    { "id": "tot", "type": "ExpressionNode", "x": 300, "y": 150, "init": { "label": "Order total", "expr": "price * qty * (1 - disc)" } } ],
+    "cables": [ "price.value -> tot.price", "qty.value -> tot.qty", "disc.value -> tot.disc" ] },
+  "sweep": { "node": "disc", "init": "value", "from": 0.15, "to": 0.40, "step": 0.01 } }
