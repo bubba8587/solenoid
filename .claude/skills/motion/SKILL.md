@@ -31,6 +31,7 @@ moves the pieces. Plain screen recordings of the app stay with the `demo-video` 
 node scripts/motion/capture.mjs scripts/motion/scenes/order-total.json --out .dev/motion/order-total
 .dev/motion/venv/bin/python scripts/motion/export.py .dev/motion/order-total
 node scripts/motion/render.mjs .dev/motion/order-total order-total --check          # rest check + check.png
+node scripts/motion/render.mjs .dev/motion/order-total order-total --scale 50 --samples 2 --out draft.mp4    # a draft to watch first (~3 min)
 node scripts/motion/render.mjs .dev/motion/order-total order-total --stills 0.6,3.4,5.5,9.6 --samples 8 --scale 50
 node scripts/motion/render.mjs .dev/motion/order-total order-total --out order-total.mp4   # 1080p60
 ```

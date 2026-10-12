@@ -2,7 +2,8 @@
 // Renders a motion clip with the three.js player in headless Chromium (software WebGL), frames piped straight
 // into ffmpeg. The capture must be exported first (export.py → pieces.json).
 //   node scripts/motion/render.mjs <capture dir> <clip> [--out file.mp4] [--samples 16] [--scale 100]
-//        [--frames a-b] [--stills t1,t2,… --stills-out dir] [--check]
+//        [--fps n] [--frames a-b] [--stills t1,t2,… --stills-out dir] [--check]
+// Look at a draft first: --scale 50 --samples 2 (about 0.3 s a frame).
 // <clip> is a module in scripts/motion/clips/ (order-total). --stills writes PNGs at those times (seconds)
 // instead of a video. --check prints the rest check and renders the last frame flat (orthographic, no effects)
 // beside the app's own shot of that state: <capture>/check.png (app | player | diff ×4).
@@ -66,11 +67,12 @@ page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
 page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") console.log(`[${m.type()}] ${m.text()}`); });
 await page.goto(base, { waitUntil: "load" });
 await page.waitForFunction(() => window.motion?.ready, { timeout: 120_000 });
-const { fps, duration } = await page.evaluate(() => ({ fps: window.motion.clip.fps, duration: window.motion.clip.duration }));
+const clipTiming = await page.evaluate(() => ({ fps: window.motion.clip.fps, duration: window.motion.clip.duration }));
+const duration = clipTiming.duration, fps = Number(opt("--fps", clipTiming.fps));
 const last = Math.round(duration * fps);
 const samples = Number(opt("--samples", 16));
 const shoot = async (t) => {
-  await page.evaluate((t, samples) => { const m = window.motion; m.player.frame(m.c.pose, t, { samples, shutter: 0.5 / m.clip.fps }); }, t, samples);
+  await page.evaluate((t, samples, fps) => { const m = window.motion; m.player.frame(m.c.pose, t, { samples, shutter: 0.5 / fps }); }, t, samples, fps);
   return page.screenshot({ type: "png", clip: { x: 0, y: 0, width: W, height: H }, optimizeForSpeed: true });
 };
 

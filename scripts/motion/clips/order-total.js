@@ -77,19 +77,31 @@ export function setup({ THREE, data, cards, pieces, cables }) {
     [8.4, final, center, finalLens, 16],
     [duration, final, center, finalLens, 16],
   ];
-  // Catmull-Rom through the shots
+  // Each shot as look point, view direction, framed height and lens: the eye sits at the distance that frames
+  // that height through that lens, so a lens change mid-move is a smooth dolly-zoom, never a size wobble.
+  const KEYS = SHOTS.map(([t, eye, lookAt, lens, fstop]) => {
+    const off = eye.clone().sub(lookAt), dist = off.length();
+    return { t, look: lookAt, dir: off.normalize(), logH: Math.log((dist * sensH) / lens), logLens: Math.log(lens), logF: Math.log(fstop) };
+  });
+  // Catmull-Rom through the keys
   const spline = (get, t) => {
-    const ts = SHOTS.map((s) => s[0]);
-    if (t <= ts[0]) return get(SHOTS[0]);
-    if (t >= ts[ts.length - 1]) return get(SHOTS[SHOTS.length - 1]);
+    const ts = KEYS.map((k) => k.t);
+    if (t <= ts[0]) return get(KEYS[0]);
+    if (t >= ts[ts.length - 1]) return get(KEYS[KEYS.length - 1]);
     let i = 0;
     while (ts[i + 1] < t) i++;
     const u = (t - ts[i]) / (ts[i + 1] - ts[i]), u2 = u * u, u3 = u2 * u;
-    const P = (k) => get(SHOTS[Math.max(0, Math.min(SHOTS.length - 1, k))]);
+    const P = (k) => get(KEYS[Math.max(0, Math.min(KEYS.length - 1, k))]);
     const [p0, p1, p2, p3] = [P(i - 1), P(i), P(i + 1), P(i + 2)];
     const f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u2 + (-a + 3 * b - 3 * c + d) * u3);
     if (typeof p1 === "number") return f(p0, p1, p2, p3);
     return V(f(p0.x, p1.x, p2.x, p3.x), f(p0.y, p1.y, p2.y, p3.y), f(p0.z, p1.z, p2.z, p3.z));
+  };
+  const shotAt = (t) => {
+    const look = spline((k) => k.look, t), dir = spline((k) => k.dir, t).normalize();
+    const lens = Math.exp(spline((k) => k.logLens, t));
+    const eye = look.clone().addScaledVector(dir, (lens * Math.exp(spline((k) => k.logH, t))) / sensH);
+    return { eye, look, lens, fstop: Math.exp(spline((k) => k.logF, t)) };
   };
 
   function pose(t) {
@@ -121,10 +133,7 @@ export function setup({ THREE, data, cards, pieces, cables }) {
         if (t - k < SWEEP[1] + 0.2) un.pulse.value = lerp(-0.15, 1.15, k / 0.3);
       }
     });
-    return {
-      eye: spline((s) => s[1], t), look: spline((s) => s[2], t),
-      lens: Math.exp(spline((s) => Math.log(s[3]), t)), fstop: Math.exp(spline((s) => Math.log(s[4]), t)),
-    };
+    return shotAt(t);
   }
 
   /** How far any piece sits from its rest place at t (the rest check: 0 at the last frame). */
