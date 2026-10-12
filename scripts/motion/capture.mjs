@@ -484,6 +484,7 @@ for (const [si, state] of states.entries()) {
   }
   console.log(`${state.name}: ${m.cards.map((c) => `${c.title} (${c.prims.length} prims) [${c.text.slice(-20)}]`).join(" ; ")}`);
 }
+if (scene.sheet) result.sheet = scene.sheet; // a comparison spreadsheet, built by export.py (sheet.py)
 writeFileSync(join(out, "scene.json"), JSON.stringify(result));
 await browser.close();
 console.log(`scene → ${join(out, "scene.json")}`);

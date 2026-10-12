@@ -14,10 +14,11 @@ moves the pieces. Plain screen recordings of the app stay with the `demo-video` 
 | `capture.mjs` | Loads a graph into the dev app at zoom 1 and reads every card as pieces in CSS paint order: box backgrounds, border rings (per-corner radii, per-side widths), SVG fills and strokes (frames, sockets, icons, CSS-mask icons, SVG background images, clip-paths, overflow clips), the slider thumb from its CSS rule, and each glyph at Chrome's own pen position (text nodes, input and select values). Also the cables' real paths and strokes, the canvas colors and dot spacing, and a reference screenshot per state. A state overrides a node's `init`, `literals` or `frame`; a `sweep` is one state per step of a value or per item of `values` (each prefix of a formula, say). |
 | `geometry.py` | Each piece as a polygon the way the browser rasterizes it (shapely for strokes, rings, clips; glyphs from `fonts.py`), triangulated. |
 | `fonts.py` | Glyph outlines from the app's own `@fontsource-variable` woff2 files, instanced at Chrome's weight; fontconfig fallback for characters the face lacks. |
+| `sheet.py` | A generic spreadsheet for comparison clips (formula bar, grid, cells, a selected cell) in a neutral system font, built as pieces with per-state cell values. It is not Solenoid's UI. A scene's `sheet` spec feeds it. |
 | `export.py` | `scene.json` → `pieces.json`: every piece triangulated once, matched across states by content (a glyph, a border side), with the states it shows in and its paint position in each (`in`, `orderIn`), its part and its DOM depth. |
 | `player.js` | The three.js player: pieces as flat meshes in paint order, cables as ribbons with `reveal`/`pulse`, the dot canvas as a shader. Each frame averages N renders jittered across the lens aperture, the shutter and the pixel: real depth of field, motion blur and anti-aliasing. Light above 1.0 (pulses) blooms. |
-| `clips/kit.js` | What clips share: easing, `assemble`/`enter` (a card unfolds and its layers drop in by paint order), `stepper`/`showState` (the app's states swapped in, new glyphs popping), `rig` (camera shots interpolated as look point, direction, framed height and lens, so lens changes are smooth dolly-zooms), `final` (the closing straight-on shot), `drawCable`, `pulses`, `restError`. |
-| `clips/<name>.js` | One clip each, pure functions of time: `setup()` returns `pose(t)` (sets every piece, returns the camera shot) and `restError(t)`. `order-total` (assemble, cables, a slider sweep), `explode` (one card's DOM layers pulled apart and orbited), `typing` (a formula typed a key at a time), `table` (a Frame cell edited, the total following), `equation` (a solve racked into focus). |
+| `clips/kit.js` | What clips share: easing, `assemble`/`enter` (a card unfolds and its layers drop in by paint order), `stepper`/`showState` (the app's states swapped in, new glyphs popping), `causal` (each card shows a change one beat per cable hop after its source, with a pulse down each cable timed to land as the next card updates), `rig` (camera shots interpolated as look point, direction, framed height and lens), `front` (a straight-on shot of a box), `drawCable`, `restError`. |
+| `clips/<name>.js` | One clip each, pure functions of time: `setup()` returns `pose(t)` (sets every piece, returns the camera shot) and `restError(t)`. `order-total` (a blank graph filled in, then a slider), `versus` (a spreadsheet beside the same graph), `typing` (a formula typed a key at a time), `table` (a Frame cell edited, the total following), `equation` (a solve following its input). |
 | `render.mjs` | Headless Chromium on software WebGL, frames piped into ffmpeg. `--stills` for previews, `--check` for the rest check. |
 | `scenes/<name>.json` | The graph a clip captures (shot-graph short form, with x/y) and its states or sweep. |
 
@@ -39,6 +40,14 @@ node scripts/motion/render.mjs .dev/motion/order-total order-total --out order-t
 
 About 3 s a frame at 1080p with 16 samples on a 4-core container (no GPU). Preview with `--stills` at
 `--scale 50 --samples 8` and tile the PNGs: you can't watch video, so look at the moments that matter.
+
+## What a clip is about
+
+- **The graph is the product, not the card.** Shoot it straight on (`front`, a few degrees of tilt at most) and
+  let cards assemble quietly (`assemble(..., { flat: true })`). No swooping angles for their own sake.
+- **Causality.** Cards start blank (the app's own empty state), inputs get entered, and every result updates just
+  after its cause: a change shows where it was made, runs down the cable, then lands (`causal`). Never all at once.
+- **The comparison is with spreadsheets**: the logic in a cell string versus on the card, wired (`versus`).
 
 ## Rules that keep a rebuild honest
 

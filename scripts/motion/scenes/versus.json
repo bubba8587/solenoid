@@ -1,0 +1,497 @@
+{
+ "graph": {
+  "nodes": [
+   {
+    "id": "price",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 0,
+    "init": {
+     "label": "Unit price",
+     "op": "number",
+     "value": "250",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "qty",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 175,
+    "init": {
+     "label": "Quantity",
+     "op": "number",
+     "value": "4",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "disc",
+    "type": "SliderInputNode",
+    "x": 0,
+    "y": 350,
+    "init": {
+     "label": "Discount",
+     "value": 0.15
+    },
+    "literals": {
+     "min": 0,
+     "max": 0.5,
+     "step": 0.01
+    }
+   },
+   {
+    "id": "tot",
+    "type": "ExpressionNode",
+    "x": 300,
+    "y": 150,
+    "init": {
+     "label": "Order total",
+     "expr": "price * qty * (1 - disc)"
+    }
+   }
+  ],
+  "cables": [
+   "price.value -> tot.price",
+   "qty.value -> tot.qty",
+   "disc.value -> tot.disc"
+  ]
+ },
+ "states": [
+  {
+   "name": "d15",
+   "value": 0.15,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.15
+     }
+    }
+   }
+  },
+  {
+   "name": "d16",
+   "value": 0.16,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.16
+     }
+    }
+   }
+  },
+  {
+   "name": "d17",
+   "value": 0.17,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.17
+     }
+    }
+   }
+  },
+  {
+   "name": "d18",
+   "value": 0.18,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.18
+     }
+    }
+   }
+  },
+  {
+   "name": "d19",
+   "value": 0.19,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.19
+     }
+    }
+   }
+  },
+  {
+   "name": "d20",
+   "value": 0.2,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.2
+     }
+    }
+   }
+  },
+  {
+   "name": "d21",
+   "value": 0.21,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.21
+     }
+    }
+   }
+  },
+  {
+   "name": "d22",
+   "value": 0.22,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.22
+     }
+    }
+   }
+  },
+  {
+   "name": "d23",
+   "value": 0.23,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.23
+     }
+    }
+   }
+  },
+  {
+   "name": "d24",
+   "value": 0.24,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.24
+     }
+    }
+   }
+  },
+  {
+   "name": "d25",
+   "value": 0.25,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.25
+     }
+    }
+   }
+  },
+  {
+   "name": "d26",
+   "value": 0.26,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.26
+     }
+    }
+   }
+  },
+  {
+   "name": "d27",
+   "value": 0.27,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.27
+     }
+    }
+   }
+  },
+  {
+   "name": "d28",
+   "value": 0.28,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.28
+     }
+    }
+   }
+  },
+  {
+   "name": "d29",
+   "value": 0.29,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.29
+     }
+    }
+   }
+  },
+  {
+   "name": "d30",
+   "value": 0.3,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.3
+     }
+    }
+   }
+  },
+  {
+   "name": "d31",
+   "value": 0.31,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.31
+     }
+    }
+   }
+  },
+  {
+   "name": "d32",
+   "value": 0.32,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.32
+     }
+    }
+   }
+  },
+  {
+   "name": "d33",
+   "value": 0.33,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.33
+     }
+    }
+   }
+  },
+  {
+   "name": "d34",
+   "value": 0.34,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.34
+     }
+    }
+   }
+  },
+  {
+   "name": "d35",
+   "value": 0.35,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.35
+     }
+    }
+   }
+  },
+  {
+   "name": "d36",
+   "value": 0.36,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.36
+     }
+    }
+   }
+  },
+  {
+   "name": "d37",
+   "value": 0.37,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.37
+     }
+    }
+   }
+  },
+  {
+   "name": "d38",
+   "value": 0.38,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.38
+     }
+    }
+   }
+  },
+  {
+   "name": "d39",
+   "value": 0.39,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.39
+     }
+    }
+   }
+  },
+  {
+   "name": "d40",
+   "value": 0.4,
+   "set": {
+    "disc": {
+     "init": {
+      "value": 0.4
+     }
+    }
+   }
+  }
+ ],
+ "sheet": {
+  "x": -440,
+  "y": 150,
+  "cols": [
+   40,
+   150,
+   110
+  ],
+  "letters": [
+   "A",
+   "B"
+  ],
+  "rowH": 32,
+  "rows": [
+   [
+    "Unit price",
+    "250"
+   ],
+   [
+    "Quantity",
+    "4"
+   ],
+   [
+    "Discount",
+    "15%"
+   ],
+   [
+    "Order total",
+    "850"
+   ]
+  ],
+  "formula": "=B1*B2*(1-B3)",
+  "selected": [
+   4,
+   2
+  ],
+  "states": {
+   "d15": {
+    "B3": "15%",
+    "B4": "850"
+   },
+   "d16": {
+    "B3": "16%",
+    "B4": "840"
+   },
+   "d17": {
+    "B3": "17%",
+    "B4": "830"
+   },
+   "d18": {
+    "B3": "18%",
+    "B4": "820"
+   },
+   "d19": {
+    "B3": "19%",
+    "B4": "810"
+   },
+   "d20": {
+    "B3": "20%",
+    "B4": "800"
+   },
+   "d21": {
+    "B3": "21%",
+    "B4": "790"
+   },
+   "d22": {
+    "B3": "22%",
+    "B4": "780"
+   },
+   "d23": {
+    "B3": "23%",
+    "B4": "770"
+   },
+   "d24": {
+    "B3": "24%",
+    "B4": "760"
+   },
+   "d25": {
+    "B3": "25%",
+    "B4": "750"
+   },
+   "d26": {
+    "B3": "26%",
+    "B4": "740"
+   },
+   "d27": {
+    "B3": "27%",
+    "B4": "730"
+   },
+   "d28": {
+    "B3": "28%",
+    "B4": "720"
+   },
+   "d29": {
+    "B3": "29%",
+    "B4": "710"
+   },
+   "d30": {
+    "B3": "30%",
+    "B4": "700"
+   },
+   "d31": {
+    "B3": "31%",
+    "B4": "690"
+   },
+   "d32": {
+    "B3": "32%",
+    "B4": "680"
+   },
+   "d33": {
+    "B3": "33%",
+    "B4": "670"
+   },
+   "d34": {
+    "B3": "34%",
+    "B4": "660"
+   },
+   "d35": {
+    "B3": "35%",
+    "B4": "650"
+   },
+   "d36": {
+    "B3": "36%",
+    "B4": "640"
+   },
+   "d37": {
+    "B3": "37%",
+    "B4": "630"
+   },
+   "d38": {
+    "B3": "38%",
+    "B4": "620"
+   },
+   "d39": {
+    "B3": "39%",
+    "B4": "610"
+   },
+   "d40": {
+    "B3": "40%",
+    "B4": "600"
+   }
+  }
+ }
+}

@@ -19,9 +19,10 @@ export const SENS_H = 36 * 9 / 16; // mm: a 36 mm-wide sensor at 16:9
 
 /** Give every first-state piece of a card its entrance: the body and frame unfold from the header line down;
  *  everything else drops from a height set by its paint order, top to bottom, glyphs typing across.
- *  opts: { wave = 0.95, piece = 0.55, glyphSweep = 0.3, lift = 1 } */
+ *  opts: { wave = 0.95, piece = 0.55, glyphSweep = 0.3, lift = 1, spread = 0.35, spin = 1 }; `flat: true` is the
+ *  quiet version for straight-on shots (barely lifted, no spread, no spin). */
 export function assemble(THREE, grp, t0, opts = {}) {
-  const { wave = 0.95, piece = 0.55, glyphSweep = 0.3, lift = 1 } = opts;
+  const { wave = 0.95, piece = 0.55, glyphSweep = 0.3, lift = opts.flat ? 0.12 : 1, spread = opts.flat ? 0 : 0.35, spin = opts.flat ? 0 : 1 } = opts;
   const b = grp.userData.box;
   const n = Math.max(...grp.userData.pieces.map((m) => m.userData.order)) + 1;
   for (const m of grp.userData.pieces) {
@@ -35,8 +36,8 @@ export function assemble(THREE, grp, t0, opts = {}) {
       t0: t0 + 0.12 + wave * u + (p.glyph ? glyphSweep : 0.1) * v,
       dur: p.glyph ? 0.32 : piece,
       ease: p.part === "socket" ? backOut : expoOut,
-      from: new THREE.Vector3((cx - (b.x + b.w / 2)) * 0.35, -(cy - (b.y + b.h / 2)) * 0.35, (0.35 + 1.9 * p.order / n) * 100 * lift),
-      spin: (p.glyph ? 0.35 : 0.12) * (p.order % 2 ? 1 : -1),
+      from: new THREE.Vector3((cx - (b.x + b.w / 2)) * spread, -(cy - (b.y + b.h / 2)) * spread, (0.35 + 1.9 * p.order / n) * 100 * lift),
+      spin: (p.glyph ? 0.35 : 0.12) * (p.order % 2 ? 1 : -1) * spin,
     };
   }
 }
@@ -62,15 +63,19 @@ export function enter(m, t) {
  *  time per state after the first) or evenly over [t0, t1] eased. */
 export function stepper(states, { t0, t1, times, ease = inOut }) {
   const starts = times ?? states.slice(1).map((_, i) => t0 + ((t1 - t0) * invEase(ease, (i + 0.5) / (states.length - 1))));
-  return (t) => { let k = 0; while (k < starts.length && t >= starts[k]) k++; return { name: states[k], prev: k ? states[k - 1] : null, since: k ? t - starts[k - 1] : t, index: k }; };
+  const at = (t) => { let k = 0; while (k < starts.length && t >= starts[k]) k++; return { name: states[k], prev: k ? states[k - 1] : null, since: k ? t - starts[k - 1] : t, index: k }; };
+  at.starts = starts;
+  return at;
 }
 function invEase(f, y) { let lo = 0, hi = 1; for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (f(mid) < y) lo = mid; else hi = mid; } return (lo + hi) / 2; }
 
 /** Show the pieces of the state on screen, each at its paint position in that state; a glyph that wasn't in the
  *  state before pops in (scale 1.35 → 1) as it lands. First-state pieces keep the transform `enter` gave them. */
 export function showState(pieces, cur, t, { pop = 0.22 } = {}) {
+  const pick = typeof cur === "function" ? cur : () => cur;
   for (const m of pieces) {
     const p = m.userData;
+    cur = pick(m);
     m.visible = p.in.includes(cur.name);
     if (!m.visible) continue;
     m.renderOrder = m.parent.userData.index * 10000 + p.orderIn[cur.name];
@@ -148,4 +153,52 @@ export function pulses(c, t, t0, t1, every = 0.3, run = 0.3) {
   if (t < t0 || t > t1 + run) return;
   const k = (t - t0) % every;
   if (t - k <= t1) c.material.uniforms.pulse.value = lerp(-0.15, 1.15, k / run);
+}
+
+/** The card whose box holds flow point [x, y] (a cable end), with a little slack for sockets on the edge. */
+export function cardAt(cards, [x, y], slack = 20) {
+  for (const [title, g] of Object.entries(cards)) {
+    const b = g.userData.box;
+    if (x >= b.x - slack && x <= b.x + b.w + slack && y >= b.y - slack && y <= b.y + b.h + slack) return title;
+  }
+  return null;
+}
+
+/** Causality: a change shows on the card it was made on, then travels. Each card shows the state of `lag`
+ *  seconds per cable hop ago (its depth: 0 for a card no cable feeds, else 1 + the deepest card feeding it),
+ *  and every cable leaving a card that just changed carries a pulse that lands as the next card updates.
+ *  Returns { stateFor(m, t), pulse(t) }: use stateFor as showState's pick, call pulse after drawing cables. */
+export function causal({ cards, cables, pieces, stepAt, lag = 0.28 }) {
+  const links = cables.map((c) => ({ c, from: cardAt(cards, c.userData.ends[0]), to: cardAt(cards, c.userData.ends[1]) }));
+  const depth = Object.fromEntries(Object.keys(cards).map((k) => [k, 0]));
+  for (let i = 0; i < links.length; i++) for (const l of links) if (l.from && l.to) depth[l.to] = Math.max(depth[l.to], depth[l.from] + 1);
+  // which cards each step changes: some piece of the card appears or disappears
+  const changed = stepAt.starts.map((_, k) => {
+    const out = new Set();
+    for (const m of pieces) {
+      const p = m.userData, a = p.in.includes(stepAt(stepAt.starts[k] - 1e-6).name), b = p.in.includes(stepAt(stepAt.starts[k]).name);
+      if (a !== b) out.add(p.card);
+    }
+    return out;
+  });
+  const stateFor = (m, t) => stepAt(t - depth[m.userData.card] * lag);
+  const pulse = (t) => {
+    for (const { c, from } of links) {
+      if (!from) continue;
+      stepAt.starts.forEach((tk, k) => {
+        if (!changed[k].has(from)) return;
+        const t0 = tk + depth[from] * lag;
+        if (t >= t0 && t < t0 + lag) c.material.uniforms.pulse.value = -0.1 + 1.2 * ((t - t0) / lag);
+      });
+    }
+  };
+  return { stateFor, pulse, depth };
+}
+
+/** A straight-on shot of flow box b: the long lens from above, tilted `tilt` degrees toward the viewer. */
+export function front(THREE, b, { lens = 85, tilt = 0, margin = 1.08, dx = 0, dy = 0 } = {}) {
+  const c = new THREE.Vector3(b.x + b.w / 2 + dx, -(b.y + b.h / 2) + dy, 0);
+  const d = (lens * Math.max(b.h, (b.w * 9) / 16) * margin) / SENS_H;
+  const a = (tilt * Math.PI) / 180;
+  return [c.clone().add(new THREE.Vector3(0, -Math.sin(a) * d, Math.cos(a) * d)), c, lens, 16];
 }

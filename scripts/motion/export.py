@@ -23,34 +23,50 @@ base = scene["states"][names[0]]
 # each, since a state that re-lays a card out moves other pieces through the stacking order.
 registry = {}
 pieces = []
+
+
+def place(ident, name, si, i, geom, col, **meta):
+    """Register one piece of one state: triangulated the first time its identity is seen."""
+    if ident not in registry:
+        verts, faces = G.triangles(geom)
+        if not faces:
+            registry[ident] = None
+            return
+        minx, miny, maxx, maxy = geom.bounds
+        cx, cy = (minx + maxx) / 2, (miny + maxy) / 2
+        piece = {
+            **meta, "order": i, "color": [round(v, 4) for v in col], "center": [round(cx, 3), round(cy, 3)],
+            "size": [round(maxx - minx, 3), round(maxy - miny, 3)],
+            "verts": [round(v, 3) for x, y in verts for v in (x - cx, y - cy)], "faces": [i for f in faces for i in f],
+            "state": name if si else None, "in": [], "orderIn": {},
+        }
+        registry[ident] = piece
+        pieces.append(piece)
+    piece = registry[ident]
+    if piece is not None:
+        piece["in"].append(name)
+        piece["orderIn"][name] = i
+
+
 for si, name in enumerate(names):
     for c in scene["states"][name]["cards"]:
         seen = {}
         for i, (geom, col, p, ch) in enumerate(G.piece_list(c)):
             k = G.prim_key(p)
             seen[k] = seen.get(k, -1) + 1
-            ident = (c["title"], k, seen[k])
-            if ident not in registry:
-                verts, faces = G.triangles(geom)
-                if not faces:
-                    registry[ident] = None
-                    continue
-                minx, miny, maxx, maxy = geom.bounds
-                cx, cy = (minx + maxx) / 2, (miny + maxy) / 2
-                piece = {
-                    "card": c["title"], "order": i, "kind": p["kind"], "part": G.part_of(c, p["el"]),
-                    "depth": len(G.element_path(c, p["el"])),
-                    "glyph": ch, "color": [round(v, 4) for v in col], "center": [round(cx, 3), round(cy, 3)],
-                    "size": [round(maxx - minx, 3), round(maxy - miny, 3)],
-                    "verts": [round(v, 3) for x, y in verts for v in (x - cx, y - cy)], "faces": [i for f in faces for i in f],
-                    "state": name if si else None, "in": [], "orderIn": {},
-                }
-                registry[ident] = piece
-                pieces.append(piece)
-            piece = registry[ident]
-            if piece is not None:
-                piece["in"].append(name)
-                piece["orderIn"][name] = i
+            place((c["title"], k, seen[k]), name, si, i, geom, col, card=c["title"], kind=p["kind"], part=G.part_of(c, p["el"]),
+                  depth=len(G.element_path(c, p["el"])), glyph=ch)
+
+# a comparison spreadsheet, when the scene has one: a pseudo-card of its own, matched across states the same way
+sheet_card = None
+if scene.get("sheet"):
+    import sheet
+    for si, name in enumerate(names):
+        items, box = sheet.build(scene["sheet"], name)
+        for i, (geom, col, part, ch) in enumerate(items):
+            place(("Spreadsheet", part, ch, tuple(round(v, 2) for v in geom.bounds), tuple(col)), name, si, i, geom, col,
+                  card="Spreadsheet", kind="sheet", part=part, depth=0, glyph=ch)
+    sheet_card = {"title": "Spreadsheet", "box": box, "hero": None}
 
 cables = []
 for e in base["cables"]:
@@ -60,7 +76,7 @@ for e in base["cables"]:
 
 out = {
     "states": [{"name": n, "value": scene["states"][n].get("value"), "reference": scene["states"][n]["reference"], "box": scene["states"][n].get("referenceBox", scene["reference"])} for n in names],
-    "cards": [{"title": c["title"], "box": c["box"], "hero": c["hero"]} for c in base["cards"]],
+    "cards": [{"title": c["title"], "box": c["box"], "hero": c["hero"]} for c in base["cards"]] + ([sheet_card] if sheet_card else []),
     "pieces": pieces, "cables": cables, "background": scene["background"], "reference": scene["reference"],
 }
 json.dump(out, open(os.path.join(cap, "pieces.json"), "w"), separators=(",", ":"))

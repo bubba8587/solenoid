@@ -18,6 +18,7 @@
   "node": "h",
   "init": "expr",
   "values": [
+   "",
    "S",
    "SQ",
    "SQR",

@@ -94,3 +94,21 @@ def glyph(family, weight, italic, ch):
         gs[name].draw(pen)
         return [c for c in pen.contours if len(c) > 2], f["head"].unitsPerEm, os.path.basename(p)
     return None
+
+
+@functools.lru_cache(None)
+def system_face(spec):
+    """A system font file by fontconfig pattern ("Inter:style=Regular"), for type that isn't the app's."""
+    return subprocess.run(["fc-match", "-f", "%{file}", spec], capture_output=True, text=True).stdout.strip()
+
+
+def face_glyph(path, ch):
+    """(contours in em units with y up, advance in em units, units per em) for one character of a font file."""
+    f = _face(path, 400)
+    name = f.getBestCmap().get(ord(ch))
+    if not name:
+        return None
+    gs = f.getGlyphSet()
+    pen = _Flatten(gs)
+    gs[name].draw(pen)
+    return [c for c in pen.contours if len(c) > 2], f["hmtx"][name][0], f["head"].unitsPerEm
