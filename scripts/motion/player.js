@@ -13,6 +13,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 THREE.ColorManagement.enabled = false;
 const SENSOR_W = 36; // mm, horizontal, as a 35 mm still camera
+const PULSES = 8;
 
 export async function createPlayer({ capUrl, width, height }) {
   const data = await (await fetch(`${capUrl}/pieces.json`)).json();
@@ -22,6 +23,12 @@ export async function createPlayer({ capUrl, width, height }) {
   renderer.setPixelRatio(1);
   renderer.setSize(width, height);
   document.body.appendChild(renderer.domElement);
+  // marketing type over the canvas (headlines, side labels, step captions, a pointer): plain DOM, so it's real
+  // text in the app's fonts, and the frame's screenshot takes it with the render
+  const overlay = document.createElement("div");
+  overlay.className = "motion-overlay";
+  overlay.style.cssText = `position:absolute;left:0;top:0;width:${width}px;height:${height}px;pointer-events:none;overflow:hidden`;
+  document.body.appendChild(overlay);
 
   const scene = new THREE.Scene();
   const rgb = (c) => new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
@@ -51,10 +58,13 @@ export async function createPlayer({ capUrl, width, height }) {
     g.setAttribute("u", new THREE.BufferAttribute(new Float32Array(c.u), 1));
     g.setIndex(c.faces);
     const m = new THREE.ShaderMaterial({
-      uniforms: { color: { value: rgb(c.color) }, alpha: { value: c.color[3] }, reveal: { value: 1 }, pulse: { value: -1 }, pulseWidth: { value: 0.05 }, glow: { value: new THREE.Color(1.0, 0.86, 0.45) }, gain: { value: 4 } },
+      // up to PULSES heads at once (a fast run of changes sends several down one cable); unused slots sit at -1
+      uniforms: { color: { value: rgb(c.color) }, alpha: { value: c.color[3] }, reveal: { value: 1 }, pulses: { value: new Array(PULSES).fill(-1) }, pulseWidth: { value: 0.05 }, glow: { value: new THREE.Color(1.0, 0.86, 0.45) }, gain: { value: 4 } },
       vertexShader: "attribute float u; varying float vu; void main(){ vu = u; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-      fragmentShader: `uniform vec3 color, glow; uniform float alpha, reveal, pulse, pulseWidth, gain; varying float vu;
-        void main(){ float shown = step(vu, reveal); float d = (vu - pulse) / pulseWidth; float head = exp(-d * d) * shown;
+      fragmentShader: `uniform vec3 color, glow; uniform float alpha, reveal, pulses[${PULSES}], pulseWidth, gain; varying float vu;
+        void main(){ float shown = step(vu, reveal); float head = 0.0;
+          for (int i = 0; i < ${PULSES}; i++) { float d = (vu - pulses[i]) / pulseWidth; head = max(head, exp(-d * d)); }
+          head *= shown;
           vec3 c = color * shown * alpha + glow * head * gain; float a = max(shown * alpha, head);
           gl_FragColor = vec4(c / max(a, 1e-4), a); }`,
       transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
@@ -149,7 +159,13 @@ export async function createPlayer({ capUrl, width, height }) {
   const halton = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i % b); i = Math.floor(i / b); } return r; };
 
   /** Render one output frame: `pose(t)` sets the scene for time t and returns the camera shot. */
-  function frame(pose, t, { samples = 16, shutter = 0.5 / 60, bloomOn = true } = {}) {
+  /** Flow point (x, y in flow px, y down) → screen px under the unjittered camera of the frame just rendered. */
+  const project = (x, y, z = 0) => {
+    const v = new THREE.Vector3(x, -y, z).project(camera);
+    return { x: ((v.x + 1) / 2) * width, y: ((1 - v.y) / 2) * height };
+  };
+
+  function frame(pose, t, { samples = 16, shutter = 0.5 / 60, bloomOn = true, overlay: drawOverlay = null } = {}) {
     renderer.setRenderTarget(rtAcc);
     renderer.setClearColor(0x000000, 0);
     renderer.clear();
@@ -171,6 +187,9 @@ export async function createPlayer({ capUrl, width, height }) {
     bloom.enabled = bloomOn;
     renderer.setRenderTarget(null);
     composer.render();
+    // the overlay is laid out against the frame's own (unjittered) camera
+    place(pose(t), null);
+    drawOverlay?.(t, { project, el: overlay, width, height });
   }
 
   /** An orthographic, effect-free view of flow box b at `scale` px per flow px: the rest check's camera. */
@@ -202,5 +221,5 @@ export async function createPlayer({ capUrl, width, height }) {
     return { w, h, rgba: out };
   }
 
-  return { THREE, data, scene, cards, pieces, cables, frame, flat, renderer };
+  return { THREE, data, scene, cards, pieces, cables, frame, flat, renderer, overlay, project };
 }

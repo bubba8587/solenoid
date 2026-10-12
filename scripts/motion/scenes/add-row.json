@@ -1,0 +1,297 @@
+{
+ "graph": {
+  "nodes": [
+   {
+    "id": "f1",
+    "type": "FrameInputNode",
+    "x": 0,
+    "y": 0,
+    "init": {
+     "label": "Orders"
+    },
+    "frame": [
+     {
+      "name": "item",
+      "cells": [
+       "Lamp",
+       "Desk",
+       "Chair",
+       "Shelf",
+       "Rug"
+      ]
+     },
+     {
+      "name": "qty",
+      "cells": [
+       2,
+       1,
+       4,
+       2,
+       1
+      ]
+     },
+     {
+      "name": "price",
+      "cells": [
+       45,
+       320,
+       85,
+       140,
+       210
+      ]
+     },
+     {
+      "name": "line",
+      "expr": "@qty * @price"
+     }
+    ]
+   },
+   {
+    "id": "col",
+    "type": "GetColumnNode",
+    "x": 400,
+    "y": 20,
+    "init": {
+     "label": "Line totals",
+     "readAs": "number"
+    },
+    "stringLiterals": {
+     "name": "line"
+    }
+   },
+   {
+    "id": "sum",
+    "type": "AggregateNode",
+    "x": 740,
+    "y": 40,
+    "init": {
+     "label": "Grand total",
+     "op": "sum"
+    }
+   }
+  ],
+  "cables": [
+   "f1.frame -> col.frame",
+   "col.values -> sum.list"
+  ]
+ },
+ "states": [
+  {
+   "name": "r0"
+  },
+  {
+   "name": "r1",
+   "popup": 1
+  },
+  {
+   "name": "r2",
+   "popup": 1,
+   "set": {
+    "f1": {
+     "frame": [
+      {
+       "name": "item",
+       "cells": [
+        "Lamp",
+        "Desk",
+        "Chair",
+        "Shelf",
+        "Rug",
+        "Mirror"
+       ]
+      },
+      {
+       "name": "qty",
+       "cells": [
+        2,
+        1,
+        4,
+        2,
+        1,
+        3
+       ]
+      },
+      {
+       "name": "price",
+       "cells": [
+        45,
+        320,
+        85,
+        140,
+        210,
+        60
+       ]
+      },
+      {
+       "name": "line",
+       "expr": "@qty * @price"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "r3",
+   "set": {
+    "f1": {
+     "frame": [
+      {
+       "name": "item",
+       "cells": [
+        "Lamp",
+        "Desk",
+        "Chair",
+        "Shelf",
+        "Rug",
+        "Mirror"
+       ]
+      },
+      {
+       "name": "qty",
+       "cells": [
+        2,
+        1,
+        4,
+        2,
+        1,
+        3
+       ]
+      },
+      {
+       "name": "price",
+       "cells": [
+        45,
+        320,
+        85,
+        140,
+        210,
+        60
+       ]
+      },
+      {
+       "name": "line",
+       "expr": "@qty * @price"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "sheet": {
+  "x": -760,
+  "y": 40,
+  "cols": [
+   40,
+   110,
+   70,
+   80,
+   90
+  ],
+  "letters": [
+   "A",
+   "B",
+   "C",
+   "D"
+  ],
+  "rowH": 30,
+  "size": 15,
+  "rows": [
+   [
+    "Item",
+    "Qty",
+    "Price",
+    "Line"
+   ],
+   [
+    "Lamp",
+    "2",
+    "45",
+    "90"
+   ],
+   [
+    "Desk",
+    "1",
+    "320",
+    "320"
+   ],
+   [
+    "Chair",
+    "4",
+    "85",
+    "340"
+   ],
+   [
+    "Shelf",
+    "2",
+    "140",
+    "280"
+   ],
+   [
+    "Rug",
+    "1",
+    "210",
+    "210"
+   ],
+   [
+    "",
+    "",
+    "",
+    ""
+   ],
+   [
+    "Total",
+    "",
+    "",
+    "1240"
+   ]
+  ],
+  "states": [
+   {
+    "name": "z0",
+    "select": "A7",
+    "formula": ""
+   },
+   {
+    "name": "z1",
+    "cells": {
+     "A7": "Mirror"
+    },
+    "formula": "Mirror"
+   },
+   {
+    "name": "z2",
+    "select": "B7",
+    "cells": {
+     "B7": "3"
+    },
+    "formula": "3"
+   },
+   {
+    "name": "z3",
+    "select": "C7",
+    "cells": {
+     "C7": "60"
+    },
+    "formula": "60"
+   },
+   {
+    "name": "z4",
+    "select": "D7",
+    "cells": {
+     "D7": "180"
+    },
+    "formula": "=B7*C7"
+   },
+   {
+    "name": "z5",
+    "select": "D8",
+    "formula": "=SUM(D2:D6)",
+    "edit": true
+   },
+   {
+    "name": "z6",
+    "edit": false
+   }
+  ]
+ }
+}

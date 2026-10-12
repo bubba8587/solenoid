@@ -27,19 +27,23 @@ const W = Math.round(1920 * scale), H = Math.round(1080 * scale);
 
 // ---- a static server: the player, three, and the capture ----
 const MIME = { ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".png": "image/png", ".html": "text/html" };
-const mounts = [["/three/", join(ROOT, "node_modules", "three")], ["/motion/", HERE], ["/cap/", resolve(capDir)]];
+const mounts = [["/three/", join(ROOT, "node_modules", "three")], ["/fonts/", join(ROOT, "node_modules", "@fontsource-variable")], ["/motion/", HERE], ["/cap/", resolve(capDir)]];
 const server = createServer((req, res) => {
   const url = decodeURIComponent(req.url.split("?")[0]);
   if (url === "/favicon.ico") { res.writeHead(204); res.end(); return; }
   if (url === "/") {
     res.writeHead(200, { "content-type": "text/html" });
-    res.end(`<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+    res.end(`<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}
+@font-face{font-family:"AHN";font-weight:200 800;src:url(/fonts/atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-wght-normal.woff2) format("woff2")}
+@font-face{font-family:"AHM";font-weight:200 800;src:url(/fonts/atkinson-hyperlegible-mono/files/atkinson-hyperlegible-mono-latin-wght-normal.woff2) format("woff2")}
+.motion-overlay{font-family:"AHN",system-ui,sans-serif;color:#f3f4f5;-webkit-font-smoothing:antialiased}</style>
 <script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script>
 <script type="module">
 import { createPlayer } from "/motion/player.js";
 import * as clip from "/motion/clips/${clip}.js";
 const player = await createPlayer({ capUrl: "/cap", width: ${W}, height: ${H} });
 const c = clip.setup(player);
+await document.fonts.load('800 40px "AHN"'); await document.fonts.load('400 20px "AHM"');
 window.motion = { player, clip, c, ready: true };
 </script>`);
     return;
@@ -65,14 +69,14 @@ const page = await browser.newPage();
 await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
 page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
 page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") console.log(`[${m.type()}] ${m.text()}`); });
-await page.goto(base, { waitUntil: "load" });
+await page.goto(base + (opt("--state") ? `?state=${encodeURIComponent(opt("--state"))}` : ""), { waitUntil: "load" });
 await page.waitForFunction(() => window.motion?.ready, { timeout: 120_000 });
 const clipTiming = await page.evaluate(() => ({ fps: window.motion.clip.fps, duration: window.motion.clip.duration }));
 const duration = clipTiming.duration, fps = Number(opt("--fps", clipTiming.fps));
 const last = Math.round(duration * fps);
 const samples = Number(opt("--samples", 16));
 const shoot = async (t) => {
-  await page.evaluate((t, samples, fps) => { const m = window.motion; m.player.frame(m.c.pose, t, { samples, shutter: 0.5 / fps }); }, t, samples, fps);
+  await page.evaluate((t, samples, fps) => { const m = window.motion; m.player.frame(m.c.pose, t, { samples, shutter: samples >= 8 ? 0.5 / fps : 0, overlay: m.c.overlay }); }, t, samples, fps); // a few samples can't blur, they ghost
   return page.screenshot({ type: "png", clip: { x: 0, y: 0, width: W, height: H }, optimizeForSpeed: true });
 };
 

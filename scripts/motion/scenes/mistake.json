@@ -1,0 +1,154 @@
+{
+ "graph": {
+  "nodes": [
+   {
+    "id": "price",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 0,
+    "init": {
+     "label": "Unit price",
+     "op": "number",
+     "value": "250",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "qty",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 175,
+    "init": {
+     "label": "Quantity",
+     "op": "number",
+     "value": "4 units",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "disc",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 350,
+    "init": {
+     "label": "Discount",
+     "op": "number",
+     "value": "0.15",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "tot",
+    "type": "ExpressionNode",
+    "x": 300,
+    "y": 150,
+    "init": {
+     "label": "Order total",
+     "expr": "price * qty * (1 - disc)"
+    }
+   }
+  ],
+  "cables": [
+   "price.value -> tot.price",
+   "qty.value -> tot.qty",
+   "disc.value -> tot.disc"
+  ]
+ },
+ "states": [
+  {
+   "name": "m0"
+  },
+  {
+   "name": "m1",
+   "set": {
+    "qty": {
+     "init": {
+      "value": ""
+     }
+    }
+   }
+  },
+  {
+   "name": "m2",
+   "set": {
+    "qty": {
+     "init": {
+      "value": "4"
+     }
+    }
+   }
+  }
+ ],
+ "sheet": {
+  "x": -560,
+  "y": 120,
+  "cols": [
+   40,
+   150,
+   110
+  ],
+  "letters": [
+   "A",
+   "B"
+  ],
+  "rowH": 32,
+  "size": 15,
+  "rows": [
+   [
+    "Unit price",
+    "250"
+   ],
+   [
+    "Quantity",
+    "4 units"
+   ],
+   [
+    "Discount",
+    "15%"
+   ],
+   [
+    "Order total",
+    "#VALUE!"
+   ]
+  ],
+  "states": [
+   {
+    "name": "k0",
+    "select": "B4",
+    "formula": "=B1*B2*(1-B3)"
+   },
+   {
+    "name": "k1",
+    "edit": true
+   },
+   {
+    "name": "k2",
+    "edit": false,
+    "select": "B1",
+    "formula": "250"
+   },
+   {
+    "name": "k3",
+    "select": "B2",
+    "formula": "4 units"
+   },
+   {
+    "name": "k4",
+    "cells": {
+     "B2": "4",
+     "B4": "850"
+    },
+    "formula": "4"
+   }
+  ]
+ }
+}

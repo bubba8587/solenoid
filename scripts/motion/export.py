@@ -58,26 +58,43 @@ for si, name in enumerate(names):
                   depth=len(G.element_path(c, p["el"])), glyph=ch)
 
 # a comparison spreadsheet, when the scene has one: a pseudo-card of its own, matched across states the same way
-sheet_card = None
+sheet_card, sheet_states = None, []
 if scene.get("sheet"):
     import sheet
-    for si, name in enumerate(names):
-        items, box = sheet.build(scene["sheet"], name)
+    for si, (name, cells, view) in enumerate(sheet.states(scene["sheet"])):
+        sheet_states.append(name)
+        items, box = sheet.build(scene["sheet"], cells, view)
         for i, (geom, col, part, ch) in enumerate(items):
             place(("Spreadsheet", part, ch, tuple(round(v, 2) for v in geom.bounds), tuple(col)), name, si, i, geom, col,
                   card="Spreadsheet", kind="sheet", part=part, depth=0, glyph=ch)
-    sheet_card = {"title": "Spreadsheet", "box": box, "hero": None}
+    sheet_card = {"title": "Spreadsheet", "box": box, "hero": None, "cells": sheet.layout(scene["sheet"])}
 
+# cables by path and color across states: a state that rewires the graph adds and drops cables
+cable_reg = {}
 cables = []
-for e in base["cables"]:
-    for layer in e["layers"]:
-        verts, us, faces, pts = G.ribbon(layer)
-        cables.append({"id": e["id"], "color": layer["color"], "verts": [round(v, 3) for xy in verts for v in xy], "u": [round(u, 5) for u in us], "faces": [i for f in faces for i in f], "ends": [list(pts[0]), list(pts[-1])], "length": sum(((pts[i][0] - pts[i - 1][0]) ** 2 + (pts[i][1] - pts[i - 1][1]) ** 2) ** 0.5 for i in range(1, len(pts)))})
+for name in names:
+    for e in scene["states"][name]["cables"]:
+        for layer in e["layers"]:
+            key = (layer["d"], tuple(layer["color"]))
+            if key not in cable_reg:
+                verts, us, faces, pts = G.ribbon(layer)
+                cable_reg[key] = {"id": e["id"], "color": layer["color"], "verts": [round(v, 3) for xy in verts for v in xy], "u": [round(u, 5) for u in us], "faces": [i for f in faces for i in f], "ends": [list(pts[0]), list(pts[-1])], "length": sum(((pts[i][0] - pts[i - 1][0]) ** 2 + (pts[i][1] - pts[i - 1][1]) ** 2) ** 0.5 for i in range(1, len(pts))), "in": []}
+                cables.append(cable_reg[key])
+            if name not in cable_reg[key]["in"]:
+                cable_reg[key]["in"].append(name)
+
+# every card any state has (a popup is open in some states only), at its first box
+all_cards, seen_titles = [], set()
+for n in names:
+    for c in scene["states"][n]["cards"]:
+        if c["title"] not in seen_titles:
+            seen_titles.add(c["title"])
+            all_cards.append({"title": c["title"], "box": c["box"], "hero": c["hero"]})
 
 out = {
     "states": [{"name": n, "value": scene["states"][n].get("value"), "reference": scene["states"][n]["reference"], "box": scene["states"][n].get("referenceBox", scene["reference"])} for n in names],
-    "cards": [{"title": c["title"], "box": c["box"], "hero": c["hero"]} for c in base["cards"]] + ([sheet_card] if sheet_card else []),
-    "pieces": pieces, "cables": cables, "background": scene["background"], "reference": scene["reference"],
+    "cards": all_cards + ([sheet_card] if sheet_card else []),
+    "pieces": pieces, "cables": cables, "background": scene["background"], "reference": scene["reference"], "sheetStates": sheet_states,
 }
 json.dump(out, open(os.path.join(cap, "pieces.json"), "w"), separators=(",", ":"))
 print(f"{len(pieces)} pieces ({sum(1 for p in pieces if p['state'])} state-only), {len(cables)} cables → {os.path.join(cap, 'pieces.json')}")

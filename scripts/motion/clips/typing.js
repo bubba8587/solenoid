@@ -3,7 +3,7 @@
 // Each keystroke lands in the formula first and the rest of the card answers a beat later, in the app's own
 // layout of that prefix: the stray S becomes a socket and a 0, an open bracket reads "Missing 1 closing
 // parenthesis", the closing one lands on 5. Capture: scenes/typing.json.
-import { assemble, enter, front, restError, rig, showState, stepper } from "./kit.js";
+import { assemble, enter, fit, restError, rig, showState, stepper, titled } from "./kit.js";
 
 export const fps = 60;
 export const duration = 6.5;
@@ -26,12 +26,11 @@ export function setup({ THREE, data, cards, pieces }) {
   const tall = { ...b, h: Math.max(...data.states.map((s) => s.box.h - 56)) };
   const last = times[times.length - 1];
   const shotAt = rig(THREE, [
-    [0.0, ...front(THREE, tall, { tilt: 6, margin: 1.5 })],
-    [1.0, ...front(THREE, tall, { tilt: 5, margin: 1.3 })],
-    [last + 0.4, ...front(THREE, tall, { tilt: 3, margin: 1.22 })],
-    [last + 1.4, ...front(THREE, end, { margin: 1.15 })],
-    [duration, ...front(THREE, end, { margin: 1.15 })],
-  ]);
+    [0.0, ...fit(THREE, tall, { tilt: 4 })],
+    [last + 0.6, ...fit(THREE, tall, { tilt: 2, side: 160 })],
+    [last + 1.5, ...fit(THREE, end)],
+    [duration, ...fit(THREE, end, { side: 160 })],
+  ], { eased: true });
 
   function pose(t) {
     for (const m of pieces) if (!m.userData.state) { m.visible = true; enter(m, t); }
@@ -39,5 +38,6 @@ export function setup({ THREE, data, cards, pieces }) {
     return shotAt(t);
   }
 
-  return { pose, restError: (t) => restError(pieces, pose, t, stepAt(t).name) };
+  const overlay = titled({ headline: "Type a formula", kicker: "The card recalculates with every key, and an error says what is missing.", end: last + 0.8 });
+  return { pose, overlay, restError: (t) => restError(pieces, pose, t, stepAt(t).name) };
 }

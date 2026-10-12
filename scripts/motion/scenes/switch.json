@@ -1,0 +1,136 @@
+{
+ "graph": {
+  "nodes": [
+   {
+    "id": "store",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 0,
+    "init": {
+     "label": "Store price",
+     "op": "number",
+     "value": "250",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "online",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 175,
+    "init": {
+     "label": "Online price",
+     "op": "number",
+     "value": "215",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "qty",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 350,
+    "init": {
+     "label": "Quantity",
+     "op": "number",
+     "value": "4",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "tot",
+    "type": "ExpressionNode",
+    "x": 300,
+    "y": 165,
+    "init": {
+     "label": "Order total",
+     "expr": "price * qty"
+    }
+   }
+  ],
+  "cables": [
+   "store.value -> tot.price",
+   "qty.value -> tot.qty"
+  ]
+ },
+ "states": [
+  {
+   "name": "store"
+  },
+  {
+   "name": "online",
+   "cables": [
+    "online.value -> tot.price",
+    "qty.value -> tot.qty"
+   ]
+  }
+ ],
+ "sheet": {
+  "x": -560,
+  "y": 120,
+  "cols": [
+   40,
+   150,
+   110
+  ],
+  "letters": [
+   "A",
+   "B"
+  ],
+  "rowH": 32,
+  "size": 15,
+  "rows": [
+   [
+    "Store price",
+    "250"
+   ],
+   [
+    "Online price",
+    "215"
+   ],
+   [
+    "Quantity",
+    "4"
+   ],
+   [
+    "Order total",
+    "1000"
+   ]
+  ],
+  "states": [
+   {
+    "name": "y0",
+    "select": "B4",
+    "formula": "=B1*B3"
+   },
+   {
+    "name": "y1",
+    "edit": true
+   },
+   {
+    "name": "y2",
+    "formula": "=B*B3"
+   },
+   {
+    "name": "y3",
+    "formula": "=B2*B3"
+   },
+   {
+    "name": "y4",
+    "edit": false,
+    "cells": {
+     "B4": "860"
+    }
+   }
+  ]
+ }
+}

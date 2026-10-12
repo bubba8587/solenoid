@@ -7,7 +7,8 @@
 // that strays from the app. One load per state: a state overrides node init/literals, so a value that
 // changes on camera is laid out by the app, not faked.
 //   node scripts/motion/capture.mjs <scene.json> [--out dir]
-// scene.json: { graph: <shot-graph short form with x/y>, states?: [{ name, set: { <nodeId>: { init?, literals?, frame? } } }],
+// scene.json: { graph: <shot-graph short form with x/y>, states?: [{ name, set: { <nodeId>: { init?, literals?, frame? } }, cables?, popup? }],
+//   (popup: N opens the Nth frame chip's table popup, read as a card titled "<name> (table)")
 //               sweep?: { node, init: <field>, from, to, step } or { node, init, values: [...] } }
 // A sweep is one state per value, named s0, s1, …; `values` takes any list (each prefix of a formula, say).
 import { execFileSync } from "node:child_process";
@@ -38,6 +39,7 @@ const withState = (state) => {
     if (over.literals) n.literals = { ...n.literals, ...over.literals };
     if (over.frame) n.frame = over.frame;
   }
+  if (state?.cables) g.cables = state.cables; // a state may rewire the graph
   return expand(g);
 };
 
@@ -300,9 +302,12 @@ const read = () => page.evaluate(async () => {
     const a = alphaOf(el, card);
     const ink = color(cs.color, el);
     if (el.tagName === "INPUT" || el.tagName === "SELECT") {
-      if (el.tagName === "INPUT" && (["range", "checkbox", "radio", "color"].includes(el.type) || !el.value)) return prims;
-      const s = caseOf(el.tagName === "SELECT" ? el.options[el.selectedIndex]?.text ?? "" : el.value, cs.textTransform);
+      if (el.tagName === "INPUT" && ["range", "checkbox", "radio", "color"].includes(el.type)) return prims;
+      // an empty input shows its placeholder, in the ::placeholder color
+      const placeholder = el.tagName === "INPUT" && !el.value && el.placeholder;
+      const s = caseOf(el.tagName === "SELECT" ? el.options[el.selectedIndex]?.text ?? "" : placeholder || el.value, cs.textTransform);
       if (!s) return prims;
+      if (placeholder) { const pc = color(getComputedStyle(el, "::placeholder").color, el); if (pc) ink[0] = pc[0], ink[1] = pc[1], ink[2] = pc[2], ink[3] = pc[3]; }
       ctx2d.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
       ctx2d.letterSpacing = cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing;
       const r = el.getBoundingClientRect();
@@ -363,9 +368,10 @@ const read = () => page.evaluate(async () => {
     return [{ kind: "box", box: { x: cx - tw / 2, y: cy - th / 2, w: tw, h: th }, radii: [tw / 2, tw / 2, tw / 2, tw / 2], color: [...fill.slice(0, 3), fill[3] * alphaOf(el, card)], part: "thumb", value: val, frac, track: r }];
   };
 
-  const cards = [...document.querySelectorAll(".react-flow__node")].map((node) => {
+  // A card: a graph node, or an open table popup (the app's full grid editor), read the same way.
+  const readCard = (node, popup = false) => {
     const card = node;
-    const title = node.querySelector(".solenoid-node__label-display")?.textContent.trim() ?? node.dataset.id;
+    const title = popup ? `${node.querySelector("[class*=title], header, h2, h3")?.textContent.trim() || "Table"} (table)` : node.querySelector(".solenoid-node__label-display")?.textContent.trim() ?? node.dataset.id;
     const elements = [];
     const prims = [];
     // Elements first, in tree order, so a piece can name its element and ancestors.
@@ -434,8 +440,11 @@ const read = () => page.evaluate(async () => {
     };
     paint(node);
     const hero = node.querySelector(".solenoid-node__io-row--hero") ?? [...node.querySelectorAll(".solenoid-node__display-value")].pop();
-    return { id: node.dataset.id, title, box: rect(node.getBoundingClientRect()), hero: hero ? rect(hero.getBoundingClientRect()) : null, elements, prims, text: node.innerText.replace(/\s*\n\s*/g, " | ") };
-  });
+    return { id: popup ? "popup" : node.dataset.id, title, box: rect(node.getBoundingClientRect()), hero: hero ? rect(hero.getBoundingClientRect()) : null, elements, prims, text: node.innerText.replace(/\s*\n\s*/g, " | "), popup };
+  };
+  const cards = [...document.querySelectorAll(".react-flow__node")].map((node) => readCard(node));
+  const pop = document.querySelector(".table-popup");
+  if (pop) cards.push(readCard(pop, true));
 
   // A cable is every stroked path its <g> paints (hit paths are transparent and skipped).
   const cables = [...document.querySelectorAll(".react-flow__edge")].map((g) => ({
@@ -468,6 +477,14 @@ const states = scene.sweep ? sweep(scene.sweep) : scene.states?.length ? scene.s
 const result = { states: {} };
 for (const [si, state] of states.entries()) {
   await load(withState(state));
+  if (state.popup) { // open the Nth frame chip's table popup, as the app does on a click
+    const chips = await page.$$(".solenoid-array-chip--frame");
+    if (!chips[state.popup - 1]) throw new Error(`state ${state.name}: no frame chip #${state.popup}`);
+    await chips[state.popup - 1].click();
+    await page.waitForSelector(".table-popup");
+    await page.mouse.move(1, H - 1);
+    await new Promise((r) => setTimeout(r, 800));
+  }
   const m = await read();
   {
     const pad = 28;
