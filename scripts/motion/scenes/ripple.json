@@ -1,0 +1,537 @@
+{
+ "graph": {
+  "nodes": [
+   {
+    "id": "salary",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 0,
+    "init": {
+     "label": "Salary / month",
+     "op": "number",
+     "value": "5200",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "rent",
+    "type": "SliderInputNode",
+    "x": 0,
+    "y": 185,
+    "init": {
+     "label": "Rent",
+     "value": 1200
+    },
+    "literals": {
+     "min": 800,
+     "max": 2600,
+     "step": 50
+    }
+   },
+   {
+    "id": "food",
+    "type": "ValueInputNode",
+    "x": 0,
+    "y": 410,
+    "init": {
+     "label": "Groceries",
+     "op": "number",
+     "value": "450",
+     "width": 180
+    },
+    "sections": {
+     "Format": false
+    }
+   },
+   {
+    "id": "home",
+    "type": "ExpressionNode",
+    "x": 290,
+    "y": 0,
+    "init": {
+     "label": "Take-home",
+     "expr": "salary * (1 - 0.22)"
+    }
+   },
+   {
+    "id": "spend",
+    "type": "ExpressionNode",
+    "x": 290,
+    "y": 300,
+    "init": {
+     "label": "Spending",
+     "expr": "rent + food"
+    }
+   },
+   {
+    "id": "left",
+    "type": "ExpressionNode",
+    "x": 610,
+    "y": 140,
+    "init": {
+     "label": "Left over",
+     "expr": "home - spend"
+    }
+   },
+   {
+    "id": "rate",
+    "type": "ExpressionNode",
+    "x": 930,
+    "y": 150,
+    "init": {
+     "label": "Savings rate",
+     "expr": "left / home"
+    }
+   }
+  ],
+  "cables": [
+   "salary.value -> home.salary",
+   "rent.value -> spend.rent",
+   "food.value -> spend.food",
+   "home.result -> left.home",
+   "spend.result -> left.spend",
+   "left.result -> rate.left",
+   "home.result -> rate.home"
+  ]
+ },
+ "states": [
+  {
+   "name": "blank",
+   "set": {
+    "salary": {
+     "init": {
+      "value": ""
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1200
+     }
+    }
+   }
+  },
+  {
+   "name": "sal1",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1200
+     }
+    }
+   }
+  },
+  {
+   "name": "sal2",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "52"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1200
+     }
+    }
+   }
+  },
+  {
+   "name": "sal3",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "520"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1200
+     }
+    }
+   }
+  },
+  {
+   "name": "sal4",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1200
+     }
+    }
+   }
+  },
+  {
+   "name": "r1250",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1250
+     }
+    }
+   }
+  },
+  {
+   "name": "r1300",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1300
+     }
+    }
+   }
+  },
+  {
+   "name": "r1350",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1350
+     }
+    }
+   }
+  },
+  {
+   "name": "r1400",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1400
+     }
+    }
+   }
+  },
+  {
+   "name": "r1450",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1450
+     }
+    }
+   }
+  },
+  {
+   "name": "r1500",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1500
+     }
+    }
+   }
+  },
+  {
+   "name": "r1550",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1550
+     }
+    }
+   }
+  },
+  {
+   "name": "r1600",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1600
+     }
+    }
+   }
+  },
+  {
+   "name": "r1650",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1650
+     }
+    }
+   }
+  },
+  {
+   "name": "r1700",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1700
+     }
+    }
+   }
+  },
+  {
+   "name": "r1750",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1750
+     }
+    }
+   }
+  },
+  {
+   "name": "r1800",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1800
+     }
+    }
+   }
+  },
+  {
+   "name": "r1850",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1850
+     }
+    }
+   }
+  },
+  {
+   "name": "r1900",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1900
+     }
+    }
+   }
+  },
+  {
+   "name": "r1950",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 1950
+     }
+    }
+   }
+  },
+  {
+   "name": "r2000",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 2000
+     }
+    }
+   }
+  },
+  {
+   "name": "r2050",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 2050
+     }
+    }
+   }
+  },
+  {
+   "name": "r2100",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 2100
+     }
+    }
+   }
+  },
+  {
+   "name": "r2150",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 2150
+     }
+    }
+   }
+  },
+  {
+   "name": "r2200",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 2200
+     }
+    }
+   }
+  },
+  {
+   "name": "r2250",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 2250
+     }
+    }
+   }
+  },
+  {
+   "name": "r2300",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 2300
+     }
+    }
+   }
+  },
+  {
+   "name": "r2350",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 2350
+     }
+    }
+   }
+  },
+  {
+   "name": "r2400",
+   "set": {
+    "salary": {
+     "init": {
+      "value": "5200"
+     }
+    },
+    "rent": {
+     "init": {
+      "value": 2400
+     }
+    }
+   }
+  }
+ ]
+}

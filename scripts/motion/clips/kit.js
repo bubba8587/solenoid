@@ -69,9 +69,9 @@ export function stepper(states, { t0, t1, times, ease = inOut }) {
 }
 function invEase(f, y) { let lo = 0, hi = 1; for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (f(mid) < y) lo = mid; else hi = mid; } return (lo + hi) / 2; }
 
-/** Show the pieces of the state on screen, each at its paint position in that state; a glyph that wasn't in the
+/** Show the pieces of the state on screen, each at its paint position in that state; with `pop` (s), a glyph that wasn't in the
  *  state before pops in (scale 1.35 → 1) as it lands. First-state pieces keep the transform `enter` gave them. */
-export function showState(pieces, cur, t, { pop = 0.22 } = {}) {
+export function showState(pieces, cur, t, { pop = 0 } = {}) {
   const pick = typeof cur === "function" ? cur : () => cur;
   for (const m of pieces) {
     const p = m.userData;
