@@ -80,6 +80,7 @@
     "postcss": "8.5.29",
     "puppeteer-core": "^25.13.0",
     "rollup-plugin-license": "^3.7.1",
+    "three": "0.186.1",
     "typescript": "~7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.3"

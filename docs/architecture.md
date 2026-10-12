@@ -57,7 +57,7 @@ This file is the map.
 │                             #     demo-video/ (the demo video: scripted scenes filmed in Chromium and a real
 │                             #     Obsidian, cut with ffmpeg; the demo-video skill runs it),
 │                             #     motion/ (motion graphics: cards read off the live app as geometry, rebuilt and
-│                             #     animated in Blender, the rest frame held against the app; the motion skill)
+│                             #     animated in three.js, the rest frame held against the app; the motion skill)
 ├── .claude/                  # Claude Code project config: skills/ (add-node, demo-video, motion, shot-graph), commands/, settings.json
 ├── .github/workflows/        # CI: test.yml (tsc+vitest), engine-test.yml (cargo test, on engine or corpus changes), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
