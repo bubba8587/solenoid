@@ -142,6 +142,7 @@ describe("legendRows", () => {
     expect(legendRows(names, 90, 1)).toBe(2);
     expect(legendRows(names, 10, 1)).toBe(4);
     expect(legendRows([], 100, 1)).toBe(1);
+    expect(legendRows(names, 10, 1, 2)).toBe(2);
   });
 });
 

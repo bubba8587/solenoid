@@ -6,7 +6,8 @@ import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint, XYLine } from "../chartValue";
-import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
+import { formatDateSerial } from "../nodes/dateSerial";
+import { formatFrameCell } from "../frame";
 import { heightRampColor, resolveColor, PALETTE } from "../palette";
 import { colormapRgb } from "../colormaps";
 import { ChartTitle, titleHeight } from "./chartTitle";
@@ -294,6 +295,8 @@ function MultiTooltip({ active, payload, label, tickFmt, rawFromNorm }: {
 
 const LEGEND_H = 16;
 const MULTI_LEGEND_H = 18;
+// A legend takes at most a quarter of its figure's height, so a card-sized chart keeps its plot.
+const legendCap = (height: number) => Math.max(1, Math.floor(height / 4 / MULTI_LEGEND_H));
 
 function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetRight, isLine, rows = 1 }: {
   series: { name: string }[];
@@ -306,7 +309,7 @@ function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetR
   return (
     <div
       className="sol-chart-legend"
-      style={{ height: rows * MULTI_LEGEND_H, paddingLeft: insetLeft, paddingRight: insetRight, display: "flex", flexWrap: "wrap", alignItems: "center", alignContent: "center", justifyContent: "center", columnGap: 10, rowGap: 0, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", cursor: "pointer", userSelect: "none" }}
+      style={{ height: rows * MULTI_LEGEND_H, paddingLeft: insetLeft, paddingRight: insetRight, display: "flex", flexWrap: "wrap", alignItems: "center", alignContent: "flex-start", justifyContent: "center", columnGap: 10, rowGap: 0, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", cursor: "pointer", userSelect: "none" }}
     >
       {series.map((s, j) => (
         <span key={j} onClick={() => onPick(j)} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: MULTI_LEGEND_H, whiteSpace: "nowrap", opacity: dim(j) }}>
@@ -368,7 +371,7 @@ export function MultiSeriesView({
   const catW = op === "bar" ? categoryAxisWidth(data.map((d) => tickFmt(d.i as number)), width, fs, !!yLabel) : 0;
   const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? catW : yAxisW;
   const legendInsetRight = op === "radar" ? 0 : margin.right;
-  const legendN = legendRows(series.map((s) => s.name), width - legendInsetLeft - legendInsetRight, fs);
+  const legendN = legendRows(series.map((s) => s.name), width - legendInsetLeft - legendInsetRight, fs, legendCap(height));
   const chartH = height - titleH - legendN * MULTI_LEGEND_H;
   const legend = (
     <SeriesLegend
@@ -485,7 +488,7 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
   const margin = { top: PLOT_TOP, right: 8, bottom: xLabel ? 18 : 4, left: 0 };
   const yFmt = valueTickFormat([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax]);
   const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt);
-  const legendN = legendRows(series.map((s) => s.name), width - yAxisW - margin.right, fs);
+  const legendN = legendRows(series.map((s) => s.name), width - yAxisW - margin.right, fs, legendCap(height));
   const chartH = height - titleH - legendN * MULTI_LEGEND_H;
   const legend = (
     <SeriesLegend
@@ -648,7 +651,7 @@ function XYTooltip({ active, payload, names, xcats, xDate, multi, seriesName }: 
       <span style={{ marginLeft: "auto" }}>{v}</span>
     </div>
   ));
-  const xText = xcats ? xcats[d.x] : xDate ? formatDateSerial(d.x, DEFAULT_DATE_FORMAT) : axisTick(d.x);
+  const xText = xcats ? xcats[d.x] : xDate ? String(formatFrameCell("date", d.x)) : axisTick(d.x);
   return (
     <div style={{ fontSize: 11, padding: "3px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
       {multi && <div style={{ color: "var(--text-dim)", marginBottom: 2 }}>{seriesName(d._j)}</div>}
@@ -801,7 +804,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   const yVals = [...pts.map((p) => p.y), opts?.ymin, opts?.ymax];
   const yAxisW = valueAxisWidth(yVals, fs, !!yLabel, valueTickFormat(yVals));
   const legendW = width - yAxisW - margin.right;
-  const seriesRows = multi ? legendRows(series.map((s) => s.name), legendW, fs) : catLegend ? legendRows(cats!, legendW, fs) : 0;
+  const seriesRows = multi ? legendRows(series.map((s) => s.name), legendW, fs, legendCap(height)) : catLegend ? legendRows(cats!, legendW, fs, legendCap(height)) : 0;
   const chartH = height - (title ? titleHeight(fs) : 0) - (seriesRows + (cRange ? 1 : 0)) * MULTI_LEGEND_H;
   const xAxisH = xLabel ? 28 : 30;
 
