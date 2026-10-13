@@ -244,8 +244,9 @@ The key names are matplotlib's (`marker`, `markersize`, `fontsize`, `linestyle` 
 | `fmt` | a Python format spec, `[+][,][.N][f\|e\|g\|d\|%]` (`numberSpec.ts`) | compact, three significant figures | The cell values' format. |
 | `cbar` | boolean | on | The colorbar. |
 | `origin` | `upper` or `lower` | upper | Where row 1 sits. |
+| `yscale` | `linear` or `log` | linear | The y axis of an XY figure (matplotlib's `yscale`). `log` snaps the bounds out to whole decades unless `ymin`/`ymax` set them, ticks 1, 2 and 5 of each decade (only the 1s past four decades), and drops a point at zero or below as a gap. |
 | `axvline` | a comma list of `x[:label[:color]]` | none | Dashed vertical lines across an XY figure with a numeric x (matplotlib's `axvline`), each with an optional label at its top; labels that would overlap step down a row. A color is a palette slot name (it follows the theme) or any CSS color; the default is the axis ink. An entry whose `x` is not a number is skipped. |
-| `axvspan` | a comma list of `x0:x1[:color]` | none | Light vertical bands across an XY figure with a numeric x (matplotlib's `axvspan`), drawn behind the data at 10% opacity and clipped to the plot. Colors as `axvline`. |
+| `axvspan` | a comma list of `x0:x1[:color]` | none | Light vertical bands across an XY figure with a numeric x (matplotlib's `axvspan`), drawn behind the data at 16% opacity and clipped to the plot. Colors as `axvline`. |
 | `radarscale` | `axis` (`normalize`, `normalized`, `independent`) or `shared` (`raw`, `absolute`) | axis | Multi-series radar radius. `axis` scales each spoke to 0 to 1 by its own maximum, so one large-valued column (dollars beside scores out of 10) cannot swamp the rest, and a negative value plots at the center; `shared` keeps one raw radius. |
 
 ### Keys read elsewhere
@@ -268,7 +269,7 @@ A key a renderer does not read is inert on that figure. For each Chart Builder t
 |---|---|
 | Column, Bar, Histogram (`column`, `bar`) | `title`, `xlabel`, `ylabel`, `color`, `grid`, `ymin`/`ymax`, `alpha`, `fontsize`. On Bar the value axis is horizontal. |
 | Line, Area | as Column, plus `marker`, `linewidth`, `markersize` |
-| Scatter, Bubble | as Column, plus `x`, `y`, `s`, `c`, `cmap`, `annotate`, `by`, `linestyle`, `aspect`, `xmin`/`xmax`, `axvline`, `axvspan`, `linewidth`, `markersize` |
+| Scatter, Bubble | as Column, plus `x`, `y`, `s`, `c`, `cmap`, `annotate`, `by`, `linestyle`, `aspect`, `yscale`, `xmin`/`xmax`, `axvline`, `axvspan`, `linewidth`, `markersize` |
 | XY Line | as Scatter, plus `marker` |
 | Pie | `title`, `fontsize`, `pielabels` |
 | Radar | `title`, `grid`, `marker`, `radarscale`, `ymin`/`ymax`, `linewidth`, `markersize`, `alpha`, `fontsize` |

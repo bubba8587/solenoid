@@ -139,6 +139,13 @@ const SELECT_KEYS: readonly {
     ],
   },
   {
+    key: "yscale", label: "Y scale", clearValue: "linear",
+    options: [
+      { value: "linear", label: "Linear" },
+      { value: "log", label: "Log" },
+    ],
+  },
+  {
     key: "radarscale", label: "Radar scale", clearValue: "axis",
     options: [
       { value: "axis", label: "Per axis" },
@@ -214,7 +221,7 @@ const SECTIONED_ABOVE = 10;
 const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] = [
   { label: "Columns", keys: ["x", "y", "s", "c", "annotate", "by"] },
   { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha"] },
-  { label: "Axes", keys: ["grid", "aspect", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
+  { label: "Axes", keys: ["grid", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
   { label: "Annotations", keys: ["axvline", "axvspan"] },
   { label: "Color scale", keys: ["cmap", "center", "vmin", "vmax", "cbar", "annot", "fmt"] },
   { label: "Timeline", keys: ["zoom", "tiers", "fit", "window", "columns", "collapse", "group_by"] },

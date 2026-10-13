@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { type SyntheticEvent, type ComponentProps, useId, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle, VLine } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { heightRampColor, resolveColor, PALETTE } from "../palette";
@@ -707,7 +707,7 @@ function equalDomains(x: [number, number], y: [number, number], pw: number, ph: 
   return { x: grow(x, u * pw), y: grow(y, u * ph) };
 }
 
-const VSPAN_ALPHA = 0.1;
+const VSPAN_ALPHA = 0.16;
 
 /** An annotation color: a palette slot name follows the theme, anything else is taken as CSS. */
 function markColor(c: string | undefined, fallback: string): string {
@@ -803,6 +803,17 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     xTicks = niceTicks(eq.x[0], eq.x[1], Math.max(3, Math.round(pw / 60)));
     yTicks = niceTicks(eq.y[0], eq.y[1], Math.max(3, Math.round(ph / 40)));
   }
+  // A log axis has no place for zero or less: such points drop out as gaps, and the domain snaps out to whole decades.
+  const logY = opts?.yscale === "log";
+  if (logY) {
+    const pos = pts.map((p) => p.y).filter((v) => v > 0);
+    if (pos.length) {
+      const lo = opts?.ymin !== undefined && opts.ymin > 0 ? opts.ymin : 10 ** Math.floor(Math.log10(iterMin(pos)));
+      const hi = opts?.ymax ?? 10 ** Math.ceil(Math.log10(iterMax(pos)));
+      yDomain = [lo, hi];
+      yTicks = logTicks(lo, hi);
+    }
+  }
   const xFmt = (t: number | string) => {
     const n = Number(t);
     if (!Number.isFinite(n)) return "";
@@ -814,7 +825,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   series.forEach((s, j) => {
     let cur: XYRow[] = [];
     for (const p of s.points) {
-      if (p === null) { if (cur.length) runs.push({ j, rows: cur }); cur = []; continue; }
+      if (p === null || (logY && !(p.y > 0))) { if (cur.length) runs.push({ j, rows: cur }); cur = []; continue; }
       cur.push({ ...p, _j: j, ...(p.text ? { label: sanitizeChartLabel(p.text, 12) } : {}) });
     }
     if (cur.length) runs.push({ j, rows: cur });
@@ -832,7 +843,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
         padding={xcats ? { left: 8, right: 8 } : undefined} allowDataOverflow={opts?.xmin !== undefined || opts?.xmax !== undefined}
         label={xLabel} height={xAxisH} />
       <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} tickFormatter={valueTickFormat(yVals, yTicks)} width={yAxisW}
-        domain={yDomain} ticks={yTicks} allowDataOverflow={opts?.ymin !== undefined || opts?.ymax !== undefined} label={yLabel} />
+        scale={logY ? "log" : undefined} domain={yDomain} ticks={yTicks} allowDataOverflow={opts?.ymin !== undefined || opts?.ymax !== undefined} label={yLabel} />
       {!xcats && opts?.axvspan?.map((b, k) => (
         <ReferenceArea key={`span${k}`} x1={b.x0} x2={b.x1} fill={markColor(b.color, axis)} fillOpacity={VSPAN_ALPHA} stroke="none" ifOverflow="hidden" />
       ))}

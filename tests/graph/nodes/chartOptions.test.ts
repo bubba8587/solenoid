@@ -101,3 +101,11 @@ describe("axvline and axvspan", () => {
     expect(parseChartOptions(s)).toEqual({ axvline: [{ x: 1, label: "a" }], axvspan: [{ x0: 0, x1: 2, color: "gray" }] });
   });
 });
+
+describe("yscale", () => {
+  it("reads linear or log and ignores anything else", () => {
+    expect(parseChartOptions("yscale=LOG").yscale).toBe("log");
+    expect(parseChartOptions("yscale=linear").yscale).toBe("linear");
+    expect(parseChartOptions("yscale=symlog").yscale).toBeUndefined();
+  });
+});

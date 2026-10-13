@@ -124,6 +124,16 @@ export function valueTickFormat(values: Iterable<unknown>, ticks?: readonly numb
   return (n: number) => compactTick(n, s);
 }
 
+/** Log-axis ticks inside [lo, hi] (both above zero): 1, 2 and 5 of each decade, or only the 1s past four decades. */
+export function logTicks(lo: number, hi: number): number[] {
+  if (!(lo > 0) || !(hi >= lo)) return [];
+  const steps = Math.log10(hi / lo) > 4 ? [1] : [1, 2, 5];
+  const out: number[] = [];
+  for (let e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++)
+    for (const m of steps) { const v = Number((m * 10 ** e).toPrecision(12)); if (v >= lo && v <= hi) out.push(v); }
+  return out;
+}
+
 /** Round-number ticks inside [lo, hi], about `count` of them. */
 export function niceTicks(lo: number, hi: number, count = 5): number[] {
   const raw = (hi - lo) / count;

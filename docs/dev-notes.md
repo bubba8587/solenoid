@@ -7,7 +7,7 @@ first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
 ### SESSION DIGEST (2026-10-13b: XY annotations; cloud session)
-- **XY figures draw `axvline` and `axvspan`** ([[chart-figures#Keys read by `parseChartOptions`]]): dashed labelled vertical lines and light bands, offered in the Chart Builder's Annotations section for Scatter, XY Line and Bubble. The worked example is `scripts/shot-graphs/gpu-prices.json`.
+- **XY figures draw `axvline` and `axvspan`** ([[chart-figures#Keys read by `parseChartOptions`]]): dashed labelled vertical lines and light bands, offered in the Chart Builder's Annotations section for Scatter, XY Line and Bubble. They also read `yscale=log`. The worked example is `scripts/shot-graphs/gpu-prices.json` (Epoch AI's ML-hardware release prices, a snapshot: their CSV sends no CORS header, so a Web Source on it works on desktop only).
 
 ### SESSION DIGEST (2026-10-13: canvas frame cost; cloud session)
 - **No socket subscribes to the RF store** ([[react-flow-surface-contract#Sockets]]): `FlowSocketHandle` renders RF's handle markup and starts connections through `@xyflow/system`'s `XYHandle` itself (exact pin, bumped with `@xyflow/react`). RF's `<Handle>` ran a store selector per socket on every camera frame only to toggle pointer-events classes; personal-finance had 466 of 1,374 store listeners on sockets. Phone pan net −7 to −15%; the socket-drag probe passes unchanged.

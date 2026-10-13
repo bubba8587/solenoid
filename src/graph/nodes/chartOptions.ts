@@ -15,6 +15,7 @@ export interface ChartOptions {
   xmin?: number;
   xmax?: number;
   aspect?: AspectMode;
+  yscale?: AxisScale;
   linestyle?: LineStyle;
   linewidth?: number;
   markersize?: number;
@@ -48,6 +49,7 @@ export interface VSpan { x0: number; x1: number; color?: string }
 export type HeatOrigin = "upper" | "lower";
 export type LineStyle = "solid" | "dashed" | "dotted" | "dashdot" | "none";
 export type AspectMode = "auto" | "equal";
+export type AxisScale = "linear" | "log";
 export type PieLabelMode = "off" | "outside" | "inside";
 export type RadarScale = "axis" | "shared";
 
@@ -166,6 +168,7 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "xmin":   { const n = toNum(val); if (n !== undefined) opts.xmin = n; break; }
       case "xmax":   { const n = toNum(val); if (n !== undefined) opts.xmax = n; break; }
       case "aspect": { const m = toAspect(val); if (m !== undefined) opts.aspect = m; break; }
+      case "yscale": { const s = val.toLowerCase(); if (s === "linear" || s === "log") opts.yscale = s; break; }
       case "linestyle":
       case "ls":     { const m = toLineStyle(val); if (m !== undefined) opts.linestyle = m; break; }
       case "x":      if (val) opts.x = val; break;
@@ -228,6 +231,7 @@ export interface ChartBuilderFields {
   by?: string;
   linestyle?: string;
   aspect?: string;
+  yscale?: string;
   cmap?: string;
   annot?: string;
   fmt?: string;
@@ -293,6 +297,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("by", f.by);
   str("linestyle", f.linestyle);
   str("aspect", f.aspect);
+  str("yscale", f.yscale);
   str("cmap", f.cmap);
   str("annot", f.annot);
   str("fmt", f.fmt);
@@ -329,7 +334,7 @@ export type ChartBuilderKey =
   | "cardsize" | "clamp"
   | "x" | "y" | "s" | "c" | "annotate" | "by" | "linestyle" | "aspect" | "xmin" | "xmax"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize"
-  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin" | "axvline" | "axvspan";
+  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin" | "axvline" | "axvspan" | "yscale";
 
 export type ChartTargetId =
   | "column" | "bar" | "line" | "area" | "scatter" | "xyline"
@@ -343,7 +348,7 @@ const XY_KEYS: readonly ChartBuilderKey[] =
 const LINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "s", "c", "cmap", "annotate", "by", "linestyle", "aspect",
+  ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "s", "c", "cmap", "annotate", "by", "linestyle", "aspect", "yscale",
     "xmin", "xmax", "ymin", "ymax", "axvline", "axvspan", "linewidth", "markersize", "alpha", "fontsize"];
 const XYLINE_KEYS: readonly ChartBuilderKey[] = [...SCATTER_KEYS, "marker"];
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];

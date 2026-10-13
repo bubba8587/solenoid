@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex } from "../../../src/graph/components/chartCore";
+import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex, logTicks } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -124,5 +124,13 @@ describe("categoryAxisWidth", () => {
   });
   it("keeps room for an axis title", () => {
     expect(categoryAxisWidth(["a"], 300, 1, true)).toBe(32);
+  });
+});
+
+describe("logTicks", () => {
+  it("marks 1, 2 and 5 of each decade, and only the 1s past four decades", () => {
+    expect(logTicks(100, 10000)).toEqual([100, 200, 500, 1000, 2000, 5000, 10000]);
+    expect(logTicks(1, 1e6)).toEqual([1, 10, 100, 1000, 10000, 100000, 1e6]);
+    expect(logTicks(0, 10)).toEqual([]);
   });
 });

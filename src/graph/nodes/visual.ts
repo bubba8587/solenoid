@@ -1427,7 +1427,7 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "axvline", "axvspan"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "axvline", "axvspan", "yscale"] as const;
 const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
@@ -1486,6 +1486,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("by",        strIn("Split by"));
     this.addInput("linestyle", strIn("Line style"));
     this.addInput("aspect",    strIn("Aspect"));
+    this.addInput("yscale",    strIn("Y scale"));
     this.addInput("cmap",      strIn("Colormap"));
     this.addInput("annot",     strIn("Cell values"));
     this.addInput("fmt",       strIn("Value format"));
@@ -1554,6 +1555,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       by: str("by"),
       linestyle: str("linestyle"),
       aspect: str("aspect"),
+      yscale: str("yscale"),
       cmap: str("cmap"),
       annot: str("annot"),
       fmt: str("fmt"),
