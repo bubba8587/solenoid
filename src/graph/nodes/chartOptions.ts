@@ -125,23 +125,6 @@ function toVSpans(v: string): VSpan[] {
   return out;
 }
 
-/** Each series' color from a `color` option, pandas-style: one color for a single series, a comma list in series
- *  order, or `name:color` pairs by series name. A series the option doesn't color keeps the palette. */
-export function seriesColors(color: string | undefined, names: readonly string[]): (string | undefined)[] {
-  if (!color) return names.map(() => undefined);
-  const parts = color.split(",").map((t) => t.trim()).filter(Boolean);
-  if (parts.some((p) => p.includes(":"))) {
-    const byName = new Map<string, string>();
-    for (const p of parts) {
-      const at = p.lastIndexOf(":");
-      if (at > 0) byName.set(p.slice(0, at).trim().toLowerCase(), p.slice(at + 1).trim());
-    }
-    return names.map((n) => byName.get(n.trim().toLowerCase()));
-  }
-  if (parts.length > 1) return names.map((_, j) => parts[j]);
-  return names.length === 1 ? [color] : names.map(() => undefined);
-}
-
 export function parseChartOptions(input: string | null | undefined): ChartOptions {
   const opts: ChartOptions = {};
   if (!input) return opts;

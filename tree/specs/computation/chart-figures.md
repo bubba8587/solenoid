@@ -221,7 +221,7 @@ The key names are matplotlib's (`marker`, `markersize`, `fontsize`, `linestyle` 
 |---|---|---|---|
 | `title` | non-empty text | none | The in-figure title and the value's `title`. |
 | `xlabel`, `ylabel` | non-empty text | none | Axis titles, drawn only on axed figures. |
-| `color` | non-empty text (any CSS color or palette slot name) | the Display kind accent | The single-series mark color. On an XY figure split into several series it takes pandas' per-series forms: a comma list in series order, or `name:color` pairs matched to series names case-insensitively; a series it doesn't name keeps the palette (`seriesColors`). A palette slot name (`green`, `amber`) follows the theme. |
+| `color` | non-empty text (any CSS color or palette slot name) | the Display kind accent | The single-series mark color. A palette slot name (`green`, `amber`) follows the theme. |
 | `grid` | boolean | on | Grid lines on axed figures. |
 | `marker` | boolean | on for single-series axed line, area, radar and XY Line; off elsewhere | Dots on line, area, radar and XY Line points. |
 | `ylim` | `lo,hi`, either side may be blank | none | Sets `ymin` and `ymax`. |

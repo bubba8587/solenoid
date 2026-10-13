@@ -1,6 +1,6 @@
 // [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
-import { parseChartOptions, serializeChartOptions, seriesColors } from "../../../src/graph/nodes/chartOptions";
+import { parseChartOptions, serializeChartOptions } from "../../../src/graph/nodes/chartOptions";
 
 describe("parseChartOptions", () => {
   it("parses the full matplotlib-style string", () => {
@@ -107,16 +107,6 @@ describe("yscale", () => {
     expect(parseChartOptions("yscale=LOG").yscale).toBe("log");
     expect(parseChartOptions("yscale=linear").yscale).toBe("linear");
     expect(parseChartOptions("yscale=symlog").yscale).toBeUndefined();
-  });
-});
-
-describe("seriesColors", () => {
-  it("colors split series by list order or by name, leaving the rest to the palette", () => {
-    expect(seriesColors("red, blue", ["a", "b", "c"])).toEqual(["red", "blue", undefined]);
-    expect(seriesColors("B:green, a:#123456", ["A", "b", "c"])).toEqual(["#123456", "green", undefined]);
-    expect(seriesColors("teal", ["only"])).toEqual(["teal"]);
-    expect(seriesColors("teal", ["a", "b"])).toEqual([undefined, undefined]);
-    expect(seriesColors(undefined, ["a"])).toEqual([undefined]);
   });
 });
 

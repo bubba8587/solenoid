@@ -1,7 +1,7 @@
 // [[C96]] chartOptionsAreMatplotlib, [[C100]] chartIsAValue
 import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
 import { solError, type SolError } from "../errorValue";
-import { seriesColors, type ChartOptions, type LineStyle } from "./chartOptions";
+import type { ChartOptions, LineStyle } from "./chartOptions";
 import type { ChartValue, XYPayload, XYPoint, XYSeries } from "../chartValue";
 
 export type XYOp = "scatter" | "xyline" | "bubble";
@@ -164,10 +164,9 @@ export function buildXY(op: XYOp, raw: unknown, opts: ChartOptions): XYPayload |
     }
   }
   const marker = markerFor(op, opts, series.length);
-  const colors = series.length > 1 ? seriesColors(opts.color, series.map((s) => s.name)) : [];
   return {
     kind: "xy",
-    series: withRanges(series.map((s, j) => ({ ...s, marker, ...(colors[j] ? { color: colors[j] } : {}) }))),
+    series: withRanges(series.map((s) => ({ ...s, marker }))),
     ...(xcats ? { xcats } : {}),
     names: {
       ...(xCol ? { x: xCol.name } : {}),
