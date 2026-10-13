@@ -764,7 +764,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   const { dim, pick } = useSeriesSpotlight(series.map((s) => s.name));
   const gradId = useId().replace(/:/g, "");
   const multi = series.length > 1;
-  const paint = (j: number) => series[j]?.color || (multi ? colors[j % colors.length] : opts?.color || viz);
+  const paint = (j: number) => markColor(series[j]?.color, multi ? colors[j % colors.length] : markColor(opts?.color, viz));
   const pts = series.flatMap((s) => s.points.filter((p): p is XYPoint => p !== null));
   if (pts.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
 
