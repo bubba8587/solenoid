@@ -45,6 +45,15 @@ describe("Merge Plots node", () => {
     ]);
   });
 
+  it("passes the XY annotation keys and the y scale through", () => {
+    const n = new MergePlotsNode();
+    const res = n.data({ p0: [chart("line", [1, 2])], options: ["yscale=log; axvline=1:A; axvspan=0:1:blue"] });
+    const opts = (res.chart as ChartValue).options!;
+    expect(opts.yscale).toBe("log");
+    expect(opts.axvline).toEqual([{ x: 1, label: "A" }]);
+    expect(opts.axvspan).toEqual([{ x0: 0, x1: 1, color: "blue" }]);
+  });
+
   it("inherits color / marker size / line width / alpha / marker from the source options", () => {
     const n = new MergePlotsNode();
     const res = n.data({

@@ -274,7 +274,7 @@ A key a renderer does not read is inert on that figure. For each Chart Builder t
 | Pie | `title`, `fontsize`, `pielabels` |
 | Radar | `title`, `grid`, `marker`, `radarscale`, `ymin`/`ymax`, `linewidth`, `markersize`, `alpha`, `fontsize` |
 | Radial, Funnel | `title`, `fontsize` |
-| Merge Plots (`overlay`) | `title`, `xlabel`, `ylabel`, `grid`, `aspect`, `xmin`/`xmax`, `ymin`/`ymax`, `linewidth` (a fallback for series without one), `fontsize`; each series keeps its inherited `color`, `markersize`, `linewidth`, `alpha`, `marker` |
+| Merge Plots (`overlay`) | `title`, `xlabel`, `ylabel`, `grid`, `aspect`, `xmin`/`xmax`, `ymin`/`ymax`, and on an XY merge `yscale`, `axvline`, `axvspan`, `linewidth` (a fallback for series without one), `fontsize`; each series keeps its inherited `color`, `markersize`, `linewidth`, `alpha`, `marker` |
 | KPI, Gauge (`scale`), Proportion, Sankey, Waterfall, Candlestick, Boxplot | `title`, `fontsize` |
 | Calendar Heatmap | `title`, `cmap`, `center`, `vmin`/`vmax`, `cbar`, `fontsize` |
 | Contour (Surface, Flat view) | `title`, `xlabel`, `ylabel`, `cmap`, `center`, `vmin`/`vmax`, `cbar`, `fontsize` |
