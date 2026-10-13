@@ -63,3 +63,19 @@ Snapshot: personal-finance at zoom 0.1, static page (no React), 60 frames of 1px
   synthetic store update, phone 4x, n=5: ~9-10 ms -> 1.3 ms;
   live phone net n=5 @0.2: script 4795 [4283-5171] -> 2765 [2687-3466] (-42%). (paint also drops but only because cables aren't drawn.)
   => Candidate 4 (architecture, author's call): draw cables in one app layer that subscribes once and recomputes endpoints only on node/edge changes, not on transform.
+
+## Desktop zoom steps (live, zoom 0.2, per step, n=5)
+- base: main 66.6 [58.4-91.8], paint 31.4 [28.8-37.7], layerize 10.2
+- corner tag removed: main 62.0 [53.4-63.6], paint 11.1 [10.6-12.2] (-65%), layerize 12.1  <- carries ~all of it
+- frame-head unclipped: paint 32.2 (no change; my prediction that it flags was WRONG)
+- chevron svgs unclipped: paint 32.3 (no change; predicted, their drawing stays in their box)
+- all flaggers (earlier run): main 69.9 -> 58.1, paint 33.5 -> 9.4
+## Phone layerize puzzle (open)
+- Phone layer tree identical with/without the tag (12 layers). Trace: every pan frame takes the FULL PaintArtifactCompositor::Update in both (156/156),
+  but each full update costs ~1.8x more without the tag (with ~8.0 ms, without ~14 ms @4x, n=3). pac.cc SetNeedsUpdateAfterRepaint: full update when chunk
+  count/bounds/properties change. Why removing the clip-path makes each full update dearer is NOT proven (guess: the clip-path chunk shortens merge scans).
+  => corner-tag change: desktop zoom win, phone pan layerize loss. Not recommended for phones until explained.
+## Finding 5 — desktop minimap subscribes per card (SOURCE-VERIFIED, MEASURED)
+- @xyflow/react MiniMapNodes: useStore(selectorNodeIds, shallow) + NodeComponentWrapperInner useStore per node (position+dimensions) -> 154+1 selectors per camera update.
+- Synthetic store update, desktop (lean sockets in), n=10 each: minimap ~9.0 ms median -> no minimap ~4.5 ms. Minimap ~half of desktop per-frame store work.
+  => Candidate: own minimap drawn from one subscription that recomputes rects only when nodes change; viewport mask from the transform alone.

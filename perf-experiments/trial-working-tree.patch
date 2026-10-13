@@ -1,0 +1,163 @@
+diff --git a/src/graph/components/nodeCard.css b/src/graph/components/nodeCard.css
+index d1f14ea..70e4362 100644
+--- a/src/graph/components/nodeCard.css
++++ b/src/graph/components/nodeCard.css
+@@ -89,7 +89,7 @@
+ .solenoid-node--sized.solenoid-node--display-grow-scalar {
+   max-width: none;
+ }
+-.solenoid-node--display-grow-scalar .solenoid-node__display-value {
++.solenoid-node--display-grow-scalar .solenoid-node__display-value > .solenoid-node__display-text {
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+@@ -599,7 +599,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
+   letter-spacing: 0.04em;
+ }
+ 
+-.solenoid-node:not(.solenoid-node--resizable) .solenoid-node__display-value {
++.solenoid-node:not(.solenoid-node--resizable) .solenoid-node__display-value > .solenoid-node__display-text {
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+diff --git a/src/graph/components/nodeKit.tsx b/src/graph/components/nodeKit.tsx
+index 7afba4b..f5e572f 100644
+--- a/src/graph/components/nodeKit.tsx
++++ b/src/graph/components/nodeKit.tsx
+@@ -574,6 +574,7 @@ export function ValueDisplay({
+       onPointerDown={stopDragStart}
+       onMouseDown={(e) => e.stopPropagation()}
+     >
++      <div className="solenoid-node__display-text">
+       {isEmpty ? empty
+         : isString ? (
+             ann?.chip ? (
+@@ -612,6 +613,7 @@ export function ValueDisplay({
+           )
+         : render && !ann ? render(value as number)
+         : fmtScalar(value as number)}
++      </div>
+       {!isEmpty && (
+         <button
+           className="sol-copy-icon"
+diff --git a/src/graph/flow/FlowSocketHandle.tsx b/src/graph/flow/FlowSocketHandle.tsx
+index 6646b72..7547e4a 100644
+--- a/src/graph/flow/FlowSocketHandle.tsx
++++ b/src/graph/flow/FlowSocketHandle.tsx
+@@ -1,23 +1,108 @@
+-import { useSyncExternalStore } from "react";
+-import { Handle, Position, useNodeId } from "@xyflow/react";
++import { useSyncExternalStore, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from "react";
++import { Position, useNodeId, useStoreApi, addEdge, type Connection } from "@xyflow/react";
++import { XYHandle, isMouseEvent, getHostForElement } from "@xyflow/system";
+ import { SocketComponent } from "../components/SocketComponent";
+ import { SocketLitRing } from "../components/NodeSocket";
+ import type { FlowSocketProps } from "../flowSurface";
+ import { litTargetStore } from "./FlowConnectionLine";
+ 
++/** EXPERIMENT: React Flow's <Handle> markup and connection start without its per-handle store subscription
++ *  (connectingSelector), which every pan frame re-ran for every socket. The connecting-state classes it toggled only switch
++ *  pointer-events, so the handle wears the idle set statically; the lit ring already comes from litTargetStore. */
+ export function FlowSocketHandle({ side, socketKey, payload, shape, lit, flipped }: FlowSocketProps) {
+   const nodeId = useNodeId();
++  const store = useStoreApi();
+   const isValidTarget = useSyncExternalStore(litTargetStore.subscribe, () => litTargetStore.get() === litTargetStore.key(nodeId, socketKey));
+   const visualSide = flipped ? (side === "input" ? "output" : "input") : side;
++  const type = side === "input" ? "target" : "source";
++  const isTarget = type === "target";
++  const position = visualSide === "input" ? Position.Left : Position.Right;
++  const { rfId, noPanClassName } = store.getState();
++
++  const onConnectExtended = (params: Connection) => {
++    const { defaultEdgeOptions, onConnect, hasDefaultEdges } = store.getState();
++    const edgeParams = { ...defaultEdgeOptions, ...params };
++    if (hasDefaultEdges) {
++      const { edges, setEdges, onError } = store.getState();
++      setEdges(addEdge(edgeParams, edges, { onError }));
++    }
++    onConnect?.(edgeParams);
++  };
++
++  const onPointerDown = (event: ReactMouseEvent<HTMLDivElement> | ReactTouchEvent<HTMLDivElement>) => {
++    if (!nodeId) return;
++    const isMouseTriggered = isMouseEvent(event.nativeEvent);
++    if ((isMouseTriggered && (event as ReactMouseEvent).button === 0) || !isMouseTriggered) {
++      const s = store.getState();
++      XYHandle.onPointerDown(event.nativeEvent, {
++        handleDomNode: event.currentTarget,
++        autoPanOnConnect: s.autoPanOnConnect,
++        connectionMode: s.connectionMode,
++        connectionRadius: s.connectionRadius,
++        domNode: s.domNode,
++        nodeLookup: s.nodeLookup,
++        lib: s.lib,
++        isTarget,
++        handleId: socketKey,
++        nodeId,
++        flowId: s.rfId,
++        panBy: s.panBy,
++        cancelConnection: s.cancelConnection,
++        onConnectStart: s.onConnectStart,
++        onConnectEnd: (...args) => store.getState().onConnectEnd?.(...args),
++        updateConnection: s.updateConnection,
++        onConnect: onConnectExtended,
++        isValidConnection: (...args) => store.getState().isValidConnection?.(...args) ?? true,
++        getTransform: () => store.getState().transform,
++        getFromHandle: () => store.getState().connection.fromHandle,
++        autoPanSpeed: s.autoPanSpeed,
++        dragThreshold: s.connectionDragThreshold,
++      });
++    }
++  };
++
++  const onClick = (event: ReactMouseEvent<HTMLDivElement>) => {
++    const { onClickConnectStart, onClickConnectEnd, connectionClickStartHandle, connectionMode, isValidConnection, lib, rfId: flowId, nodeLookup, connection: connectionState, connectOnClick } = store.getState();
++    if (!connectOnClick || !nodeId) return;
++    if (!connectionClickStartHandle) {
++      onClickConnectStart?.(event.nativeEvent, { nodeId, handleId: socketKey, handleType: type });
++      store.setState({ connectionClickStartHandle: { nodeId, type, id: socketKey } });
++      return;
++    }
++    const doc = getHostForElement(event.target as HTMLElement);
++    const { connection, isValid } = XYHandle.isValid(event.nativeEvent, {
++      handle: { nodeId, id: socketKey, type },
++      connectionMode,
++      fromNodeId: connectionClickStartHandle.nodeId,
++      fromHandleId: connectionClickStartHandle.id || null,
++      fromType: connectionClickStartHandle.type,
++      isValidConnection: isValidConnection,
++      flowId,
++      doc,
++      lib,
++      nodeLookup,
++    });
++    if (isValid && connection) onConnectExtended(connection);
++    const connectionClone = structuredClone(connectionState) as Partial<typeof connectionState> & { toPosition?: unknown };
++    delete connectionClone.inProgress;
++    connectionClone.toPosition = connectionClone.toHandle ? connectionClone.toHandle.position : null;
++    onClickConnectEnd?.(event.nativeEvent, connectionClone as never);
++    store.setState({ connectionClickStartHandle: null });
++  };
++
+   return (
+-    <Handle
+-      type={side === "input" ? "target" : "source"}
+-      position={visualSide === "input" ? Position.Left : Position.Right}
+-      id={socketKey}
+-      className="sol-rf-handle-reset"
++    <div
++      data-handleid={socketKey}
++      data-nodeid={nodeId ?? undefined}
++      data-handlepos={position}
++      data-id={`${rfId}-${nodeId}-${socketKey}-${type}`}
++      className={`react-flow__handle react-flow__handle-${position} nodrag ${noPanClassName} sol-rf-handle-reset ${isTarget ? "target" : "source"} connectable connectablestart connectableend connectionindicator`}
++      onMouseDown={onPointerDown}
++      onTouchStart={onPointerDown}
++      onClick={onClick}
+     >
+       <SocketComponent data={payload} />
+       {isValidTarget && !lit && <SocketLitRing shape={shape} />}
+-    </Handle>
++    </div>
+   );
+ }

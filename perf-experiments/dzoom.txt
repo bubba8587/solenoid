@@ -1,0 +1,10 @@
+base zoom (39 steps): script 602  style 22  layout 118  prepaint 40  paint 1238  layerize 387  raster 1841  gpu 0  mainTask 2463  wall 8503  | per step: main 63.1  paint 31.7  raster 47.2
+all zoom (39 steps): script 632  style 21  layout 143  prepaint 47  paint 437  layerize 474  raster 1869  gpu 0  mainTask 2264  wall 8446  | per step: main 58.0  paint 11.2  raster 47.9
+base zoom (39 steps): script 568  style 20  layout 120  prepaint 41  paint 1316  layerize 416  raster 1885  gpu 0  mainTask 2488  wall 8461  | per step: main 63.8  paint 33.7  raster 48.3
+all zoom (39 steps): script 621  style 24  layout 145  prepaint 42  paint 385  layerize 485  raster 1788  gpu 0  mainTask 2223  wall 8391  | per step: main 57.0  paint 9.9  raster 45.8
+base zoom (39 steps): script 622  style 20  layout 131  prepaint 46  paint 1297  layerize 493  raster 2048  gpu 0  mainTask 3015  wall 8454  | per step: main 77.3  paint 33.3  raster 52.5
+all zoom (39 steps): script 614  style 20  layout 129  prepaint 46  paint 367  layerize 485  raster 1920  gpu 0  mainTask 2319  wall 8485  | per step: main 59.5  paint 9.4  raster 49.2
+base zoom (39 steps): script 694  style 31  layout 119  prepaint 46  paint 1457  layerize 470  raster 2375  gpu 0  mainTask 3182  wall 8965  | per step: main 81.6  paint 37.4  raster 60.9
+all zoom (39 steps): script 665  style 25  layout 138  prepaint 39  paint 365  layerize 441  raster 1871  gpu 0  mainTask 2414  wall 8817  | per step: main 61.9  paint 9.4  raster 48.0
+base zoom (39 steps): script 659  style 27  layout 153  prepaint 44  paint 1306  layerize 453  raster 1991  gpu 0  mainTask 2725  wall 8477  | per step: main 69.9  paint 33.5  raster 51.1
+all zoom (39 steps): script 586  style 21  layout 132  prepaint 37  paint 342  layerize 440  raster 1807  gpu 0  mainTask 1995  wall 8583  | per step: main 51.2  paint 8.8  raster 46.3

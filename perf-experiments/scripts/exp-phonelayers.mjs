@@ -1,0 +1,24 @@
+import puppeteer from "puppeteer-core";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const css = process.argv[2] ?? "";
+const b = await puppeteer.launch({ executablePath: "/opt/pw-browsers/chromium", headless: true, args: ["--no-sandbox"] });
+const page = await b.newPage();
+await page.setUserAgent("Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36", { mobile: true, platform: "Android", platformVersion: "15", architecture: "", model: "Pixel 9", brands: [{ brand: "Chromium", version: "140" }] });
+await page.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 2.625 });
+await page.evaluateOnNewDocument(() => { const o = window.matchMedia.bind(window); window.matchMedia = (q) => /pointer:\s*coarse/.test(q) ? { matches: true, media: q, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } } : o(q); });
+await page.goto("http://localhost:1420", { waitUntil: "networkidle2" }); await page.waitForSelector(".solenoid-node"); await sleep(3000);
+await page.evaluate(async () => { const { clearAndLoadSeed } = await import("/src/graph/seeds.ts"); await clearAndLoadSeed("personal-finance"); });
+await sleep(4000);
+if (css) await page.addStyleTag({ content: css });
+await page.evaluate(async () => { const { devRfStores } = await import("/src/graph/flow/devRfStores.ts"); await [...devRfStores][0].getState().panZoom.setViewport({ x: 20, y: 300, zoom: 0.2 }); });
+await sleep(1000);
+const c = await page.target().createCDPSession();
+let layers = [];
+c.on("LayerTree.layerTreeDidChange", (e) => { if (e.layers) layers = e.layers; });
+await c.send("DOM.enable"); await c.send("LayerTree.enable");
+await page.evaluate(async () => { const { devRfStores } = await import("/src/graph/flow/devRfStores.ts"); await [...devRfStores][0].getState().panZoom.setViewport({ x: 21, y: 300, zoom: 0.2 }); });
+await sleep(800);
+const rows = [];
+for (const l of layers) { let r = []; try { r = (await c.send("LayerTree.compositingReasons", { layerId: l.layerId })).compositingReasonIds; } catch {} let d = ""; if (l.backendNodeId) { try { const { node } = await c.send("DOM.describeNode", { backendNodeId: l.backendNodeId }); d = node.localName + "." + ((node.attributes ?? []).reduce((a, v, i, arr) => (arr[i - 1] === "class" ? v : a), "")).slice(0, 40); } catch {} } rows.push(`${l.width}x${l.height} ${r.join(",")} | ${d}`); }
+console.log(`${layers.length} layers`); console.log(rows.join("\n"));
+await b.close();

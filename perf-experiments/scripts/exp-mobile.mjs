@@ -136,6 +136,11 @@ async function main() {
       await client.send("Tracing.end");
       await done;
       client.off("Tracing.dataCollected", onData);
+      if (process.env.PAC) {
+        const lz = chunks.filter((e) => e.name === "Layerize" && e.ph === "X");
+        const full = chunks.filter((e) => e.name === "PaintArtifactCompositor::Update" && e.ph === "X");
+        console.log(`PAC: Layerize ${lz.length} (${lz.reduce((a, e) => a + e.dur / 1000, 0).toFixed(0)} ms), full Update ${full.length} (${full.reduce((a, e) => a + e.dur / 1000, 0).toFixed(0)} ms)`);
+      }
       if (process.env.INVAL) {
         const inv = new Map();
         for (const e of chunks) if (/Invalidation/.test(e.name)) { const d = e.args?.data ?? {}; const k = `${e.name} | ${d.nodeName ?? ""} | ${d.reason ?? ""}`.slice(0, 150); inv.set(k, (inv.get(k) ?? 0) + 1); }
