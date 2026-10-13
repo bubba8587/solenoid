@@ -109,7 +109,7 @@ export class ChartNode extends ClassicPreset.Node {
   };
 
   constructor(init?: { label?: string; op?: ChartOp }) {
-    super("Chart (Recharts)");
+    super("Chart (TanStack)");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "column";
     this.drawnOp = this.op;
