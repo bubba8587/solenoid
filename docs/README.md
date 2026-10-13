@@ -85,6 +85,9 @@ is parked there.
   A plan is deleted with its backlog line.
 - **`python-r-gap.md`** — the 2026-08-23 survey of numpy/pandas/scipy/R functions with no
   Solenoid node (ranked; Tier 1 = build next). Delete a line when its node lands.
+- **`canvas-frame-cost-findings.md`** — the 2026-10 canvas frame-cost report: what a pan/zoom
+  frame costs, the source-verified Chromium mechanisms, what shipped (desktop pan layer, socket
+  handle), what was reverted or rejected, and the open candidates (cables, minimap).
 - **`deferrals.md`** — the parked set WITHOUT a plan (reopen-only, trigger-gated,
   parked bugs and features), with the notes needed to reopen each. Planned items live
   in `2.0-plan.md`, never here too.

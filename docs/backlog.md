@@ -12,7 +12,7 @@ ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tr
 Current state (2026-10-10): everything is on latest except what's held below, Polars 0.55 included.
 Held: `lodash-es` stays overridden to ^4.18.1 (mermaid 12's `chevrotain` 11.1 asks for 4.17.23, which
 carries two high-severity advisories); drop the override once chevrotain moves off 11.1.
-`@tauri-apps/plugin-http` stays an exact pin matching the `tauri-plugin-http` crate in `Cargo.lock`;
+`@xyflow/system` stays an exact pin matching the version `@xyflow/react` pins (the socket handle calls its `XYHandle`); bump them together. `@tauri-apps/plugin-http` stays an exact pin matching the `tauri-plugin-http` crate in `Cargo.lock`;
 bump them together. `magic-string` stays on 0.30 (the plugin build's pin; 1.x is a new major).
 Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.config.ts` serves only
 the production minify, and its "esbuild options ignored" warning is expected.

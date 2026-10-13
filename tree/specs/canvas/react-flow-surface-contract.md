@@ -179,14 +179,19 @@ Every live cable change on either surface, including the ones components make th
 
 The socket box is always exactly 12×12 ([[#The socket box and its row]]): `display: block; line-height: 0`, a global rule in `nodeCard.css`. The one exception is the Conduit's lane squares, sized to the lane geometry, whose tips are computed rather than measured.
 
-- The RF `Handle` wraps the socket glyph (`FlowSocketHandle.tsx`, reset by `.sol-rf-handle-reset`). RF measures the handle's box for cable endpoints and uses its outer edge at mid-height.
+- A handle wraps the socket glyph (`FlowSocketHandle.tsx`, reset by `.sol-rf-handle-reset`). RF measures the handle's box for cable endpoints and uses its outer edge at mid-height.
+- **MUST:** the handle is RF's handle markup rendered by the app, never RF's `<Handle>`: the same `react-flow__handle` classes and `data-handleid`, `data-nodeid`, `data-handlepos` and `data-id` attributes, a connection started by `XYHandle.onPointerDown` (and click-to-connect by `XYHandle.isValid`) from `@xyflow/system` with the arguments RF's own Handle passes, and no store subscription.
+  - Why: RF's `<Handle>` subscribes every socket to the store (`useStore(connectingSelector)`) to toggle `connectingfrom`, `connectingto`, `valid` and `connectionindicator`, and a store update notifies every subscriber, so every pan frame re-ran that selector once per socket. On personal-finance that was 466 of 1,374 subscribers per camera update; without them a synthetic camera update costs about a third less (7.3 against 11.0 ms at 4× CPU slowdown, median of 15) and a phone pan about 7 to 15% less main-thread time (`docs/canvas-frame-cost-findings.md`).
+  - Those classes only switch `pointer-events` in RF's stylesheet, and `@xyflow/system` reads only `source`, `target`, `connectable` and `connectableend`, so the handle wears the idle set (`connectable connectablestart connectableend connectionindicator`) for good. The one thing lost is the dragged-from socket's `connectingfrom` class, which nothing styles; the socket a dragged cable would land on still lights from `litTargetStore` ([[#World-coordinate overlays]]).
+  - `@xyflow/system` is pinned to the exact version `@xyflow/react` pins, so the handle and RF run one `XYHandle`; the two bump together.
+  - **Reopen if:** an RF upgrade changes `HandleComponent` (its markup or what it passes `XYHandle`), a style needs the connecting classes, or RF stops subscribing a Handle to the store.
 - The reset Handle is `position: relative`, not `static`. The socket wrapper's pointer-catch halo (`[data-socket-side]::before` in socket.css) is a positioned box, so a static Handle paints under it, the wrapper swallows the press, and RF starts a node drag instead of a cable.
 - Every cable drawer then pulls that end `SOCKET_OVERLAP` (2px, via `intoSocket` in `cablePaths.ts`) into the glyph. A stroke that only touches the half-pixel handle edge leaves a lighter seam, because two anti-aliased edges never sum to a solid pixel. 2px is under every glyph, the hollow "any" ring's stroke band included. Edges paint under nodes, so the overlap is hidden. Collapsed-group pills and Conduit lanes compute their own points and skip this.
 - Every socket anchors to `.solenoid-node__content`, which excludes the header, so socket positions don't depend on the header.
 - Vertical placement is measured per row (`MeasuredSocketRow`), never a fixed constant.
 - The dot straddles the card edge with `left: -5` / `right: -5`, positioned against `__content`. Don't make the io-row or `__body` a positioning context.
 - A Conduit's socket tips come from `conduitLaneOffset`, not from the measured handle ([[conduit-lane-faces]]).
-- The card adapter (`SolNodeAdapter`) calls RF's `updateNodeInternals` whenever a card's version bumps, since a bump can mean swapped or retyped sockets. Its `emit` is a stub, because on this surface only `NodeSocket` consumes it and `NodeSocket` renders an RF Handle.
+- The card adapter (`SolNodeAdapter`) calls RF's `updateNodeInternals` whenever a card's version bumps, since a bump can mean swapped or retyped sockets. Its `emit` is a stub, because on this surface only `NodeSocket` consumes it and `NodeSocket` renders the socket handle.
 
 ### The socket box and its row
 
