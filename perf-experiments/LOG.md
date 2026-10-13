@@ -38,3 +38,18 @@ Snapshot: personal-finance at zoom 0.1, static page (no React), 60 frames of 1px
      Hypotheses: (a) at 0.2 on a 412px screen most cards are partly off-screen, so they are legitimately kMayBeClippedByCullRect
      (cull_rect does not contain visual_rect) whatever their contents; (b) live paint comes from genuine invalidations. NEXT: trace invalidations during a live touch pan.
   Open (unexplained, reproducible): removing the corner-tag ::before doubles layerize in the live phone app.
+
+## Live phone: what actually costs (dev, 4x CPU, personal-finance @0.1-0.2, pane pans, 160 frames)
+- Invalidation tracking: the ONLY invalidation per frame is the viewport's inline transform. Live paint = cull-rect re-recording (no app-side invalidations).
+- Production build (vite build + preview, ?seed=personal-finance) @0.1: script 5572, paint 4177, layerize 2293, raster 1560 -> JS is the largest cost on phone pans, prod too.
+  (A prod run "@0.2" via hidden zoom buttons is INVALID: the click left scale at 0.1 and the canvas painted nothing - likely covered by an overlay.)
+- JS profile: ~all script is touchmoved (d3) -> React Flow store.setState(transform) -> zustand listeners.forEach -> every useStore subscriber's selector:
+  checkIfSnapshotChanged / with-selector overhead per subscriber, EdgeWrapper getEdgePosition (all 172 cables), NodeWrapper, Handle connectingSelector, StandoffLayer.
+
+## Finding 3 — React Flow <Handle> subscribes every socket to the store (SOURCE-VERIFIED, MEASURED)
+- Source (@xyflow/react 12.12.0 dist): zustand setState -> `listeners.forEach(listener)`; HandleComponent: `useStore(connectingSelector(nodeId, handleId, type), shallow)` per handle (466 sockets here); useHandleConfig is a shared context (no per-handle sub).
+  The connecting classes it maintains (connectingfrom/to, valid, connectionindicator) only switch pointer-events in RF's CSS; app CSS never uses them; @xyflow/system checks only static classes (source/target/connectable/connectableend).
+- Experiment: FlowSocketHandle renders RF's handle markup itself (same classes/data attrs, static idle classes) and starts connections with XYHandle.onPointerDown exactly as RF does; no store subscription.
+- Correctness: scripts/socket-drag-probe.mjs passes identically (hit, crosshair, cable drag starts not node drag, input->output drop lands); only diff: origin socket lacks `connectingfrom` (unused).
+- Synthetic store transform update, phone emulation 4x, n=15 alternating rounds: lean 7.32 ms median [3.04-10.02] vs RF Handle 10.98 [5.52-13.71] => ~-33% per-frame store work.
+- Live net A/B (paint+layerize+script) n=5: RUNNING.

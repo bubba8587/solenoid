@@ -49,10 +49,11 @@ async function main() {
     if (args.includes("--nohold")) await page.evaluateOnNewDocument(() => { window.__noPanHold = true; });
     const errs = [];
     page.on("pageerror", (e) => errs.push(e.message));
-    await page.goto("http://localhost:1420", { waitUntil: "networkidle2" });
+    const PROD = process.env.BASE;
+    await page.goto(PROD ? `${PROD}/?seed=${SEED}` : "http://localhost:1420", { waitUntil: "networkidle2" });
     await page.waitForSelector(".solenoid-node");
     await sleep(3000);
-    await page.evaluate(async (id) => { const { clearAndLoadSeed } = await import("/src/graph/seeds.ts"); await clearAndLoadSeed(id); }, SEED);
+    if (!PROD) await page.evaluate(async (id) => { const { clearAndLoadSeed } = await import("/src/graph/seeds.ts"); await clearAndLoadSeed(id); }, SEED);
     await sleep(5000);
     if (OFF) await page.addStyleTag({ content: ".react-flow__viewport.sol-pan-layer { translate: none !important; }" });
     const mobile = await page.evaluate(() => document.documentElement.classList.contains("is-mobile"));
@@ -63,7 +64,17 @@ async function main() {
     await client.send("LayerTree.enable");
     console.log(`seed ${SEED}, phone model ${mobile ? "on" : "OFF"}, ${W}x${H}@${DPR}, cpu x${THROTTLE}, pan layer ${OFF ? "NEUTRALIZED" : "live"}`);
 
-    const setZoom = (z) => page.evaluate(async (z) => {
+    const scaleNow = () => page.evaluate(() => Number(/scale\(([\d.]+)\)/.exec(document.querySelector(".react-flow__viewport").style.transform)?.[1] ?? 1));
+    // Production has no dev hooks: zoom with the on-screen buttons until the scale matches.
+    const prodZoom = async (z) => {
+      for (let i = 0; i < 60; i++) {
+        const k = await scaleNow();
+        if (Math.abs(k - z) < 0.001) return;
+        await page.evaluate((sel) => document.querySelector(sel)?.click(), k < z ? ".solenoid-nav__btn--zoomin" : ".solenoid-nav__btn--zoomout");
+        await sleep(120);
+      }
+    };
+    const setZoom = PROD ? async (z) => { await prodZoom(z); console.log("prod scale now", await scaleNow()); } : (z) => page.evaluate(async (z) => {
       const { devRfStores } = await import("/src/graph/flow/devRfStores.ts");
       const st = [...devRfStores][0].getState();
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -106,11 +117,31 @@ async function main() {
       const onData = (d) => chunks.push(...d.value);
       client.on("Tracing.dataCollected", onData);
       const done = new Promise((r) => client.once("Tracing.tracingComplete", r));
-      await client.send("Tracing.start", { transferMode: "ReportEvents", traceConfig: { includedCategories: ["devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "cc", "blink"] } });
+      await client.send("Tracing.start", { transferMode: "ReportEvents", traceConfig: { includedCategories: ["devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "cc", "blink", ...(process.env.INVAL ? ["disabled-by-default-devtools.timeline.invalidationTracking"] : [])] } });
+      if (process.env.PROFILE) { await client.send("Profiler.enable"); await client.send("Profiler.setSamplingInterval", { interval: 200 }); await client.send("Profiler.start"); }
       await fn();
+      if (process.env.PROFILE) {
+        const { profile } = await client.send("Profiler.stop");
+        const byId = new Map(profile.nodes.map((n) => [n.id, n])); const parent = new Map();
+        for (const n of profile.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+        const dt = new Map(); for (let i = 0; i < profile.samples.length; i++) dt.set(profile.samples[i], (dt.get(profile.samples[i]) ?? 0) + (profile.timeDeltas[i] ?? 0) / 1000);
+        const key = (n) => `${n.callFrame.functionName || "(anon)"} ${n.callFrame.url.split("/").slice(-2).join("/").split("?")[0]}:${n.callFrame.lineNumber}`;
+        const self = new Map(), incl = new Map();
+        for (const [id, t] of dt) { const n = byId.get(id); self.set(key(n), (self.get(key(n)) ?? 0) + t); const seen = new Set(); for (let c = id; c != null; c = parent.get(c)) { const k = key(byId.get(c)); if (seen.has(k)) continue; seen.add(k); incl.set(k, (incl.get(k) ?? 0) + t); } }
+        const skip = /\(root\)|\(program\)|\(idle\)|\(garbage/;
+        console.log("SELF:\n" + [...self].filter(([k]) => !skip.test(k)).sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, t]) => `  ${t.toFixed(0)}\t${k}`).join("\n"));
+        console.log("INCL:\n" + [...incl].filter(([k]) => !skip.test(k)).sort((a, b) => b[1] - a[1]).slice(0, 50).map(([k, t]) => `  ${t.toFixed(0)}\t${k}`).join("\n"));
+      }
       await client.send("Tracing.end");
       await done;
       client.off("Tracing.dataCollected", onData);
+      if (process.env.INVAL) {
+        const inv = new Map();
+        for (const e of chunks) if (/Invalidation/.test(e.name)) { const d = e.args?.data ?? {}; const k = `${e.name} | ${d.nodeName ?? ""} | ${d.reason ?? ""}`.slice(0, 150); inv.set(k, (inv.get(k) ?? 0) + 1); }
+        console.log("INVALIDATIONS:\n" + [...inv].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, n]) => `  ${n}\t${k}`).join("\n"));
+        const paints = chunks.filter((e) => e.name === "Paint" && e.ph === "X");
+        console.log(`Paint events: ${paints.length}, total ${paints.reduce((a, e) => a + e.dur / 1000, 0).toFixed(0)} ms; by layer id: ${JSON.stringify(Object.entries(paints.reduce((m, e) => { const k = e.args?.data?.layerId ?? "?"; m[k] = (m[k] ?? 0) + 1; return m; }, {})).slice(0, 8))}`);
+      }
       const sum = Object.fromEntries(Object.keys(PHASES).map((k) => [k, 0]));
       // The worst frames: the longest main-thread tasks, each with what it spent its time on.
       const tasks = chunks.filter((e) => e.ph === "X" && e.name === "RunTask" && e.dur > 0).sort((a, b) => b.dur - a.dur).slice(0, 3);
