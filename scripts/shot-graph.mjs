@@ -42,10 +42,11 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--light") opt.light = true;
   else if (a === "--full") opt.full = true;
   else if (a === "--size") { const [w, h] = argv[++i].split("x").map(Number); opt.size = { width: w, height: h }; }
+  else if (a === "--scale") opt.scale = Number(argv[++i]);
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy]… [--wait ms] [--palette name] [--light] [--full] [--size WxH]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy]… [--wait ms] [--palette name] [--light] [--full] [--size WxH] [--scale N]"); process.exit(2); }
 
 const graph = expand(JSON.parse(readFileSync(opt.file, "utf8")));
 execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.meta.url))], { stdio: "inherit" });
@@ -53,7 +54,7 @@ execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.met
 const browser = await puppeteer.launch({ executablePath: browserPath(), headless: true, args: ["--no-sandbox", "--window-size=1600,1000"] });
 try {
   const page = await browser.newPage();
-  await page.setViewport(opt.size ? { ...opt.size, isMobile: true, hasTouch: true } : { width: 1600, height: 1000 });
+  await page.setViewport({ ...(opt.size ? { ...opt.size, isMobile: true, hasTouch: true } : { width: 1600, height: 1000 }), deviceScaleFactor: opt.scale || 1 });
   if (opt.size) {
     // The phone model, not just a touch viewport: a mobile UA and (pointer: coarse) before the app loads (as touch-pan-probe.mjs).
     await page.setUserAgent(

@@ -721,8 +721,8 @@ function markColor(c: string | undefined, fallback: string): string {
 
 type VLinePlace = { row: number; flip: boolean };
 
-/** Each labelled line's label place: right of the line, or left of it when the right would run past the plot, in the
- *  first row where it clears the labels already placed. */
+/** Each labelled line's label place: right of the line, or left of it when the right would run past the plot or across
+ *  another line and the left would not, in the first row where it clears the labels already placed. */
 function vlinePlaces(lines: readonly VLine[], xLo: number, xHi: number, pw: number, fs: number): VLinePlace[] {
   const pxPerX = xHi > xLo ? pw / (xHi - xLo) : 0;
   const taken: [number, number][][] = [];
@@ -732,7 +732,10 @@ function vlinePlaces(lines: readonly VLine[], xLo: number, xHi: number, pw: numb
     if (!label) return;
     const at = (lines[k].x - xLo) * pxPerX;
     const w = 6 + label.length * 5.2 * fs;
-    const flip = at + w > pw && at - w >= 0;
+    // Right of the line unless that runs past the plot or across another line and the left side doesn't.
+    const others = lines.filter((_, o) => o !== k).map((l) => (l.x - xLo) * pxPerX);
+    const clear = (a: number, b: number) => a >= 0 && b <= pw && others.every((o) => o <= a || o >= b);
+    const flip = !clear(at, at + w) && (clear(at - w, at) || (at + w > pw && at - w >= 0));
     const span: [number, number] = flip ? [at - w, at] : [at, at + w];
     let r = taken.findIndex((row) => row.every(([a, b]) => span[1] <= a || span[0] >= b));
     if (r < 0) { r = taken.length; taken.push([]); }
