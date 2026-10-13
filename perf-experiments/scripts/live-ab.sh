@@ -9,7 +9,7 @@ for r in $(seq 1 $REPS); do
   for ((i=0; i<${#args[@]}; i+=2)); do
     name=${args[i]}; f=${args[i+1]}
     css=""; [ "$f" != "-" ] && css=$(cat "$f")
-    CSS="$css" PANE_ONLY=1 NO_SHOTS=1 CSV=1 timeout 600 node scripts/.exp-mobile.mjs personal-finance --zooms=$Z 2>/dev/null | grep "^CSV" | sed "s/^CSV/$name/" >> $OUT
+    NOEDGES=$( [ "$name" = noedges ] && echo 1 ) CSS="$css" PANE_ONLY=1 NO_SHOTS=1 CSV=1 timeout 600 node scripts/.exp-mobile.mjs personal-finance --zooms=$Z 2>/dev/null | grep "^CSV" | sed "s/^CSV/$name/" >> $OUT
   done
 done
 python3 - "$OUT" <<'PY'

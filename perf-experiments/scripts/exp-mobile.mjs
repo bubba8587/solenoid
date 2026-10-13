@@ -44,6 +44,7 @@ async function main() {
         ? { matches: true, media: q, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } }
         : orig(q);
     });
+    if (process.env.NOEDGES) await page.evaluateOnNewDocument(() => { window.__noEdges = true; });
     const INJECT = process.env.CSS || "";
     if (INJECT) await page.evaluateOnNewDocument((c) => { document.addEventListener("DOMContentLoaded", () => { const s = document.createElement("style"); s.textContent = c; document.head.append(s); }); }, INJECT);
     if (args.includes("--nohold")) await page.evaluateOnNewDocument(() => { window.__noPanHold = true; });

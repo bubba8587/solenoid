@@ -53,3 +53,13 @@ Snapshot: personal-finance at zoom 0.1, static page (no React), 60 frames of 1px
 - Correctness: scripts/socket-drag-probe.mjs passes identically (hit, crosshair, cable drag starts not node drag, input->output drop lands); only diff: origin socket lacks `connectingfrom` (unused).
 - Synthetic store transform update, phone emulation 4x, n=15 alternating rounds: lean 7.32 ms median [3.04-10.02] vs RF Handle 10.98 [5.52-13.71] => ~-33% per-frame store work.
 - Live net A/B (paint+layerize+script) n=5: RUNNING.
+- Live net A/B n=5 (phone 4x): zoom 0.2 net 9991 [8891-10534] -> 8494 [7908-9387] (-15%, script 6047 -> 4575); zoom 0.5 9248 -> 8567 (-7%). Paint/layerize unchanged, as predicted. CONFIRMED.
+- Direct listener count (Set.forEach wrap during one store update): RF Handle 1374 listeners vs lean 908 -> difference exactly 466 = socket count.
+
+## Remaining per-frame store subscribers (lean sockets)
+- Phone 752 = cables 516 (EdgeWrapper x3 per edge: edgeLookup.get, defaultEdgeOptions, getEdgePosition selector) + cards 154 (NodeWrapper) + resize grips 41 + ~41 other.
+- Desktop 908 = phone + 154 minimap nodes (minimap mounted on desktop only).
+- Upper bound for cables (throwaway hack: ReactFlow edges={[]}):
+  synthetic store update, phone 4x, n=5: ~9-10 ms -> 1.3 ms;
+  live phone net n=5 @0.2: script 4795 [4283-5171] -> 2765 [2687-3466] (-42%). (paint also drops but only because cables aren't drawn.)
+  => Candidate 4 (architecture, author's call): draw cables in one app layer that subscribes once and recomputes endpoints only on node/edge changes, not on transform.

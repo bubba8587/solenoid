@@ -8,6 +8,7 @@ if (phone) {
   await page.setUserAgent("Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36", { mobile: true, platform: "Android", platformVersion: "15", architecture: "", model: "Pixel 9", brands: [{ brand: "Chromium", version: "140" }] });
   await page.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: true, deviceScaleFactor: 2.625 });
 } else await page.setViewport({ width: 1600, height: 1000 });
+if (process.env.NOEDGES) await page.evaluateOnNewDocument(() => { window.__noEdges = true; });
 await page.goto("http://localhost:1420", { waitUntil: "networkidle2" });
 await page.waitForSelector(".solenoid-node"); await sleep(3000);
 await page.evaluate(async () => { const { clearAndLoadSeed } = await import("/src/graph/seeds.ts"); await clearAndLoadSeed("personal-finance"); });
