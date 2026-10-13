@@ -840,6 +840,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     let cur: XYRow[] = [];
     for (const p of s.points) {
       if (p === null || (logY && !(p.y > 0))) { if (cur.length) runs.push({ j, rows: cur }); cur = []; continue; }
+      if (cur.length && opts?.maxgap !== undefined && Math.abs(p.x - cur[cur.length - 1].x) > opts.maxgap) { runs.push({ j, rows: cur }); cur = []; }
       cur.push({ ...p, _j: j, ...(p.text ? { label: sanitizeChartLabel(p.text, 12) } : {}) });
     }
     if (cur.length) runs.push({ j, rows: cur });
@@ -879,7 +880,8 @@ export function XYView({ payload, width, height, opts, fontScale }: {
             : { stroke: paint(j), strokeWidth: lw, strokeDasharray: LINE_DASH[s.line], strokeOpacity: lineAlpha, fill: "none" };
         const shape = (p: { cx?: number; cy?: number; payload?: XYRow }) => {
           const d = p.payload;
-          if (!s.marker || !d || p.cx == null || p.cy == null) return <g />;
+          // A lone point on a markerless line would draw nothing, so it draws as a dot.
+          if (!d || p.cx == null || p.cy == null || (!s.marker && (rows.length > 1 || s.line === "none"))) return <g />;
           return <circle cx={p.cx} cy={p.cy} r={pointR(d, j)} fill={pointFill(d, j)} fillOpacity={alpha * o} />;
         };
         return (

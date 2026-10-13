@@ -119,3 +119,11 @@ describe("seriesColors", () => {
     expect(seriesColors(undefined, ["a"])).toEqual([undefined]);
   });
 });
+
+describe("maxgap", () => {
+  it("reads a positive number and ignores the rest", () => {
+    expect(parseChartOptions("maxgap=0.35").maxgap).toBe(0.35);
+    expect(parseChartOptions("maxgap=0").maxgap).toBeUndefined();
+    expect(parseChartOptions("maxgap=wide").maxgap).toBeUndefined();
+  });
+});

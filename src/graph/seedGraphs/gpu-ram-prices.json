@@ -647,7 +647,7 @@
         ]
       },
       "stringLiterals": {
-        "options": "title=Consumer GPU and RAM prices, 2012–2026; xlabel=Monthly street prices from PCPartPicker and Tom's Hardware, launch MSRPs before 2013; ylabel=USD (log scale); xlim=2012,2026.8; ylim=50,10000; yscale=log; axvline=2023.159:CHIPS Act:pink, 2012.746:AlexNet, 2020.404:GPT-3, 2022.912:ChatGPT, 2023.197:GPT-4, 2025.052:DeepSeek-R1, 2025.597:GPT-5; axvspan=2009.052:2013.052:blue, 2013.052:2017.052:blue, 2017.052:2021.052:vermilion, 2021.052:2025.052:blue, 2025.052:2029.052:vermilion"
+        "options": "title=Consumer GPU and RAM prices, 2012–2026; xlabel=Monthly street prices from PCPartPicker and Tom's Hardware, launch MSRPs before 2013; ylabel=USD (log scale); xlim=2012,2026.8; ylim=50,10000; yscale=log; maxgap=0.35; axvline=2023.159:CHIPS Act:pink, 2012.746:AlexNet, 2020.404:GPT-3, 2022.912:ChatGPT, 2023.197:GPT-4, 2025.052:DeepSeek-R1, 2025.597:GPT-5; axvspan=2009.052:2013.052:blue, 2013.052:2017.052:blue, 2017.052:2021.052:vermilion, 2021.052:2025.052:blue, 2025.052:2029.052:vermilion"
       },
       "x": 1940,
       "y": 600

@@ -16,6 +16,7 @@ export interface ChartOptions {
   xmax?: number;
   aspect?: AspectMode;
   yscale?: AxisScale;
+  maxgap?: number;
   linestyle?: LineStyle;
   linewidth?: number;
   markersize?: number;
@@ -185,6 +186,7 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "xmin":   { const n = toNum(val); if (n !== undefined) opts.xmin = n; break; }
       case "xmax":   { const n = toNum(val); if (n !== undefined) opts.xmax = n; break; }
       case "aspect": { const m = toAspect(val); if (m !== undefined) opts.aspect = m; break; }
+      case "maxgap": { const n = toNum(val); if (n !== undefined && n > 0) opts.maxgap = n; break; }
       case "yscale": { const s = val.toLowerCase(); if (s === "linear" || s === "log") opts.yscale = s; break; }
       case "linestyle":
       case "ls":     { const m = toLineStyle(val); if (m !== undefined) opts.linestyle = m; break; }
@@ -267,6 +269,7 @@ export interface ChartBuilderFields {
   vmin?: number | null;
   vmax?: number | null;
   center?: number | null;
+  maxgap?: number | null;
 }
 
 export function serializeChartOptions(f: ChartBuilderFields): string {
@@ -339,6 +342,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   num("vmin", f.vmin);
   num("vmax", f.vmax);
   num("center", f.center);
+  num("maxgap", f.maxgap);
   return parts.join(";");
 }
 
@@ -351,7 +355,7 @@ export type ChartBuilderKey =
   | "cardsize" | "clamp"
   | "x" | "y" | "s" | "c" | "annotate" | "by" | "linestyle" | "aspect" | "xmin" | "xmax"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize"
-  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin" | "axvline" | "axvspan" | "yscale";
+  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin" | "axvline" | "axvspan" | "yscale" | "maxgap";
 
 export type ChartTargetId =
   | "column" | "bar" | "line" | "area" | "scatter" | "xyline"
@@ -367,13 +371,13 @@ const LINE_KEYS: readonly ChartBuilderKey[] =
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "s", "c", "cmap", "annotate", "by", "linestyle", "aspect", "yscale",
     "xmin", "xmax", "ymin", "ymax", "axvline", "axvspan", "linewidth", "markersize", "alpha", "fontsize"];
-const XYLINE_KEYS: readonly ChartBuilderKey[] = [...SCATTER_KEYS, "marker"];
+const XYLINE_KEYS: readonly ChartBuilderKey[] = [...SCATTER_KEYS, "marker", "maxgap"];
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
 const RADAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "grid", "marker", "radarscale", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const OVERLAY_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "grid", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "axvline", "axvspan", "linewidth", "fontsize"];
+  ["title", "xlabel", "ylabel", "grid", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "axvline", "axvspan", "maxgap", "linewidth", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const GANTT_TIMELINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "status", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "group_by", "week", "fiscal_start"];

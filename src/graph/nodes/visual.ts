@@ -1428,7 +1428,7 @@ export class QuiverNode extends ClassicPreset.Node {
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
 const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "axvline", "axvspan", "yscale"] as const;
-const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center"] as const;
+const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center", "maxgap"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -1503,6 +1503,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("vmin",      numIn("Color min"));
     this.addInput("vmax",      numIn("Color max"));
     this.addInput("center",    numIn("Color center"));
+    this.addInput("maxgap",    numIn("Break lines over x gaps"));
     this.addOutput("result", strOut("Options"));
   }
 
@@ -1574,6 +1575,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       vmin:      num("vmin"),
       vmax:      num("vmax"),
       center:    num("center"),
+      maxgap:    num("maxgap"),
     });
     this.cachedString = out;
     return { result: out };

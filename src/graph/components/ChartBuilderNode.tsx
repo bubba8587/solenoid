@@ -213,14 +213,14 @@ const TARGET_DEFAULTS: Partial<Record<ChartTargetId, Partial<Record<ChartBuilder
   heatmap: { aspect: "equal" },
   histogram2d: { origin: "lower" },
 };
-const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "center", "vmin", "vmax", "linewidth", "markersize", "alpha", "fontsize"];
+const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "center", "vmin", "vmax", "linewidth", "markersize", "alpha", "fontsize", "maxgap"];
 
 // A target offering more rows than this folds its secondary ones into sections; a shorter card stays uncaptioned.
 const SECTIONED_ABOVE = 10;
 // Keys in no section (the title, axis labels, font size, a few one-figure settings) stay at the top.
 const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] = [
   { label: "Columns", keys: ["x", "y", "s", "c", "annotate", "by"] },
-  { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha"] },
+  { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha", "maxgap"] },
   { label: "Axes", keys: ["grid", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
   { label: "Annotations", keys: ["axvline", "axvspan"] },
   { label: "Color scale", keys: ["cmap", "center", "vmin", "vmax", "cbar", "annot", "fmt"] },
