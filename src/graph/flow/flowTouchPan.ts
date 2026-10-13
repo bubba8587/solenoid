@@ -11,9 +11,6 @@ export function installTouchCardPan(
   opts: {
     getViewport(): Viewport;
     setViewport(v: Viewport): void;
-    /** The pan's first move and its release, so the surface can hold the pan layer for it. */
-    onPan?(zoom: number): void;
-    onPanEnd?(): void;
   },
 ): () => void {
   let pointerId: number | null = null;
@@ -51,23 +48,17 @@ export function installTouchCardPan(
     pointerId = e.pointerId;
     startX = e.clientX;
     startY = e.clientY;
-    startVp = null;
+    startVp = opts.getViewport();
   };
 
-  // The camera is read at the first move, after the press-time snap to whole device pixels has run.
   const move = (e: PointerEvent) => {
-    if (pointerId === null || e.pointerId !== pointerId) return;
+    if (pointerId === null || e.pointerId !== pointerId || !startVp) return;
     if (touchCount() >= 2) {
-      if (startVp) opts.onPanEnd?.();
       pointerId = null;
       startVp = null;
       return;
     }
     e.stopPropagation();
-    if (!startVp) {
-      startVp = opts.getViewport();
-      opts.onPan?.(startVp.zoom);
-    }
     opts.setViewport({
       x: startVp.x + (e.clientX - startX),
       y: startVp.y + (e.clientY - startY),
@@ -77,7 +68,6 @@ export function installTouchCardPan(
 
   const up = (e: PointerEvent) => {
     if (e.pointerId !== pointerId) return;
-    if (startVp) opts.onPanEnd?.();
     pointerId = null;
     startVp = null;
   };
