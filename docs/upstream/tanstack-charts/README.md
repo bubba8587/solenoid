@@ -1,8 +1,24 @@
-# TanStack Charts: what Solenoid needed that 1.0.0 lacked
+# TanStack Charts: where Solenoid differs, and what to send upstream
 
-Moving Solenoid's charts from Recharts to TanStack Charts 1.0.0 (branch `tan`, `docs/v2.0/26-tanstack.md`) turned up eighteen candidate gaps. Each was checked against the upstream source (TanStack/charts at `e6a51a8`). Seven became patches, four became issues, and the rest turned out to be supported already, deliberate, or not worth sending.
+TanStack Charts is new and open source, so every place Solenoid keeps its own code instead of TanStack's is a candidate fix for them. This folder is the running register of those places (below), with a patch or an issue draft for each one worth sending. Moving the charts from Recharts (branch `tan`, `docs/v2.0/26-tanstack.md`) turned up eighteen candidate gaps, each checked against the upstream source; later finds were added the same way.
 
-None of the gaps is closed in 1.1.0, which `tan` now runs. Nothing here has been submitted. Each patch is `git format-patch` output against upstream `main` with a PR description beside it. Every branch adds its friction-log entry as F-309, the next free id, so several landing together need renumbering.
+**Keeping it current.** A new helper in Solenoid that does a job TanStack nearly does gets a row in the register in the same commit, with its upstream item or the reason there isn't one. Each TanStack release is checked against the open rows, and a row whose gap closes means switching to TanStack's version and deleting ours. None of the gaps is closed in 1.1.0, which `tan` runs (upstream `main` at `57774e1` checked 2026-10-13). Nothing here has been submitted. Each patch is `git format-patch` output against upstream `main` with a PR description beside it. Every branch adds its friction-log entry as F-309, the next free id, so several landing together need renumbering.
+
+## The register
+
+| Ours | Where | Why not TanStack's | Upstream |
+|---|---|---|---|
+| `valueDomain`: round-out domain, tick floor, one fixed bound | `charts/kit.tsx` | `nice` rounds both ends and ties its count to the guide (over-wide on small cards) | [issue 01](issues/01-nice-small-charts.md), [issue 05](issues/05-nice-fixed-bound.md) |
+| `compactTick`, `valueTickFormat`: step-aware 100K / 100.25K labels | `chartCore.ts` | `ticks.format` gets one value, not the step | [issue 02](issues/02-tick-format-context.md) |
+| XY ramp-line gradients, one `link` per segment | `chartRender.tsx` (XY) | a line strokes from its first row; gradients are bounding-box only | [issue 03](issues/03-line-color-ramp.md) |
+| `SeriesLegend` + `useSeriesSpotlight`: click pins a spotlight | `charts/kit.tsx`, `chartCore.ts` | the interactive legend's click hides a series; emphasis is hover-only | [issue 06](issues/06-legend-click-emphasis.md) (the DOM placement stays ours) |
+| `fitLabel`: ellipsis-cut heatmap headers | `charts/kit.tsx`, `heatFigures.tsx` | `text` has no width limit | [issue 07](issues/07-text-max-width.md) |
+| Per-datum point and cell paint through a pass-through color scale | `chartRender.tsx` (XY), `heatFigures.tsx` | `dot` and `rect` take one fill per mark | [patch 01](patches/01-dot-rect-fill-channel.md) |
+| CSS hover keyed on generated `data-ts-key` substrings | `chartView.css`, `charts/heatFigures.tsx` | Cartesian marks take no `className` | [patch 02](patches/02-cartesian-mark-classname.md) |
+| Vector arrows split into marks by width and head length; open heads only | `charts/fieldFigures.tsx` | `vector` takes one width and head per mark | [patch 05](patches/05-vector-datum-stroke-and-head.md) |
+| Contour iso-lines drawn by our own marching squares | `charts/fieldFigures.tsx` (`isoLinesMark`) | `contour` draws band outlines, border included | [patch 06](patches/06-contour-isolines.md) |
+| A translucent `rect` under each pie and heatmap label, sized by guessed glyph widths | `chartRender.tsx` (`pieLabelMarks`) | `text` has no halo | [patch 07](patches/07-text-halo.md) |
+| `minMaxDecimate` | `chartCore.ts` | a documented non-goal (large-data guide) | none: stays ours |
 
 ## Patches
 
@@ -26,6 +42,9 @@ Each was checked with its own tests, the friction-log test and `pnpm typecheck`.
 | [02](issues/02-tick-format-context.md) | Give `ticks.format` the tick step, for compact labels like 100K / 100.25K | API shape question; includes our `compactTick` |
 | [03](issues/03-line-color-ramp.md) | Stroke a line with a per-point colour ramp | Needs `userSpaceOnUse` gradients or a new line option |
 | [04](issues/04-definechart-misleading-error.md) | A wrongly typed `focus` makes `defineChart` blame `marks` | Reordering the overloads breaks inference for ordinary static specs; needs an overload redesign |
+| [05](issues/05-nice-fixed-bound.md) | `nice` moves a bound the user fixed; let it round only the open end | API shape: which ends a spec pins |
+| [06](issues/06-legend-click-emphasis.md) | A legend click mode that pins the emphasis instead of hiding | Small, but the option's shape is theirs to pick; we offer the PR |
+| [07](issues/07-text-max-width.md) | `maxWidth` with an ellipsis on `text` | Needs their call on measuring text during SSR |
 
 ## Checked and dropped
 
@@ -38,7 +57,3 @@ Each was checked with its own tests, the friction-log test and `pnpm typecheck`.
 - **Hexbin `gridsize`**: pixel `binWidth` is decided (F-049).
 - **Stability page still alpha**: deliberate (F-153); 1.0 is `docs/compatibility.md`.
 - **Label background box**: declined for now (F-220); the halo (07) covers most of it.
-
-## Things Solenoid keeps on its side
-
-`compactTick` and `valueTickFormat` (step-aware compact ticks), `valueDomain` (round-out domains with a tick floor), `minMaxDecimate`, the XY ramp-line gradients, and the DOM series legend with click-to-spotlight. These live in `src/graph/components/chartCore.ts` and `src/graph/components/charts/kit.tsx`.
