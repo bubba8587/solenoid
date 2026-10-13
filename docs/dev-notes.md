@@ -6,6 +6,9 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-13b: XY annotations; cloud session)
+- **XY figures draw `axvline` and `axvspan`** ([[chart-figures#Keys read by `parseChartOptions`]]): dashed labelled vertical lines and light bands, offered in the Chart Builder's Annotations section for Scatter, XY Line and Bubble. The worked example is `scripts/shot-graphs/gpu-prices.json`.
+
 ### SESSION DIGEST (2026-10-13: canvas frame cost; cloud session)
 - **No socket subscribes to the RF store** ([[react-flow-surface-contract#Sockets]]): `FlowSocketHandle` renders RF's handle markup and starts connections through `@xyflow/system`'s `XYHandle` itself (exact pin, bumped with `@xyflow/react`). RF's `<Handle>` ran a store selector per socket on every camera frame only to toggle pointer-events classes; personal-finance had 466 of 1,374 store listeners on sockets. Phone pan net −7 to −15%; the socket-drag probe passes unchanged.
 - **The full measurement report is `canvas-frame-cost-findings.md`**: what shipped, what was reverted (the phone pan layer), the Chromium cull-rect mechanism behind per-frame repaint, and the open candidates (cables ~−42% upper bound, minimap ~4.5 ms a frame). Experiment scripts and raw results live on branch `exp/zoomed-out-perf`.

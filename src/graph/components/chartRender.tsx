@@ -1,12 +1,12 @@
 // [[C100]] chartIsAValue
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, ReferenceLine, ReferenceArea } from "recharts";
 import { type SyntheticEvent, type ComponentProps, useId, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
-import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
+import type { ChartOptions, LineStyle, VLine } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
-import { heightRampColor, resolveColor } from "../palette";
+import { heightRampColor, resolveColor, PALETTE } from "../palette";
 import { colormapRgb } from "../colormaps";
 import { ChartTitle, titleHeight } from "./chartTitle";
 import { iterMin, iterMax } from "../nodes/mathUtils";
@@ -707,6 +707,38 @@ function equalDomains(x: [number, number], y: [number, number], pw: number, ph: 
   return { x: grow(x, u * pw), y: grow(y, u * ph) };
 }
 
+const VSPAN_ALPHA = 0.1;
+
+/** An annotation color: a palette slot name follows the theme, anything else is taken as CSS. */
+function markColor(c: string | undefined, fallback: string): string {
+  if (!c) return fallback;
+  return c in PALETTE ? resolveColor(c) : c;
+}
+
+/** Each labelled line's label row: the first row where it clears the labels already placed to its left. */
+function vlineRows(lines: readonly VLine[], xLo: number, xHi: number, pw: number, fs: number): number[] {
+  const pxPerX = xHi > xLo ? pw / (xHi - xLo) : 0;
+  const rowEnds: number[] = [];
+  const rows = new Array<number>(lines.length).fill(0);
+  [...lines.keys()].sort((a, b) => lines[a].x - lines[b].x).forEach((k) => {
+    const label = lines[k].label;
+    if (!label) return;
+    const left = (lines[k].x - xLo) * pxPerX;
+    let r = rowEnds.findIndex((end) => end <= left);
+    if (r < 0) r = rowEnds.length;
+    rowEnds[r] = left + 6 + label.length * 5.2 * fs;
+    rows[k] = r;
+  });
+  return rows;
+}
+
+function VLineLabel({ viewBox, text, row, fs, fill }: {
+  viewBox?: { x?: number; y?: number }; text: string; row: number; fs: number; fill: string;
+}) {
+  if (viewBox?.x == null || viewBox.y == null) return null;
+  return <text x={viewBox.x + 3} y={viewBox.y + (row + 1) * 11 * fs} fontSize={9 * fs} fill={fill}>{text}</text>;
+}
+
 /** Scatter, XY Line, Bubble and an XY Merge Plots: every series on one numeric plane, broken at each gap. */
 export function XYView({ payload, width, height, opts, fontScale }: {
   payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number;
@@ -788,6 +820,9 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     if (cur.length) runs.push({ j, rows: cur });
   });
   const anyText = pts.some((p) => p.text);
+  const vlines = opts?.axvline ?? [];
+  const xExt = ext([...pts.map((p) => p.x), ...vlines.map((l) => l.x)], opts?.xmin, opts?.xmax);
+  const labelRows = vlineRows(vlines, xExt[0], xExt[1], pw, fs);
 
   const chart = (
     <ScatterChart width={width} height={chartH} margin={margin}>
@@ -798,6 +833,13 @@ export function XYView({ payload, width, height, opts, fontScale }: {
         label={xLabel} height={xAxisH} />
       <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} tickFormatter={valueTickFormat(yVals, yTicks)} width={yAxisW}
         domain={yDomain} ticks={yTicks} allowDataOverflow={opts?.ymin !== undefined || opts?.ymax !== undefined} label={yLabel} />
+      {!xcats && opts?.axvspan?.map((b, k) => (
+        <ReferenceArea key={`span${k}`} x1={b.x0} x2={b.x1} fill={markColor(b.color, axis)} fillOpacity={VSPAN_ALPHA} stroke="none" ifOverflow="hidden" />
+      ))}
+      {!xcats && vlines.map((l, k) => (
+        <ReferenceLine key={`vline${k}`} x={l.x} stroke={markColor(l.color, axis)} strokeDasharray="4 3" strokeWidth={1} ifOverflow="hidden"
+          label={l.label ? <VLineLabel text={l.label} row={labelRows[k]} fs={fs} fill={markColor(l.color, axis)} /> : undefined} />
+      ))}
       <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }}
         content={<XYTooltip names={names} xcats={xcats} multi={multi} seriesName={(j) => series[j]?.name ?? ""} />} />
       {runs.map(({ j, rows }, k) => {

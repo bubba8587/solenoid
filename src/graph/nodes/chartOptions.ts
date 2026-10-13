@@ -36,7 +36,14 @@ export interface ChartOptions {
   fmt?: string;
   cbar?: boolean;
   origin?: HeatOrigin;
+  axvline?: VLine[];
+  axvspan?: VSpan[];
 }
+
+/** A dashed vertical line across an XY plot at `x`, with an optional label at its top. */
+export interface VLine { x: number; label?: string; color?: string }
+/** A light vertical band across an XY plot from `x0` to `x1`. */
+export interface VSpan { x0: number; x1: number; color?: string }
 
 export type HeatOrigin = "upper" | "lower";
 export type LineStyle = "solid" | "dashed" | "dotted" | "dashdot" | "none";
@@ -89,6 +96,30 @@ function toNum(v: string): number | undefined {
   if (t === "") return undefined;
   const n = Number(t);
   return Number.isFinite(n) ? n : undefined;
+}
+
+// `x[:label[:color]]`, comma-separated.
+function toVLines(v: string): VLine[] {
+  const out: VLine[] = [];
+  for (const entry of v.split(",")) {
+    const [xs, label, color] = entry.split(":").map((t) => t.trim());
+    const x = toNum(xs ?? "");
+    if (x === undefined) continue;
+    out.push({ x, ...(label ? { label } : {}), ...(color ? { color } : {}) });
+  }
+  return out;
+}
+
+// `x0:x1[:color]`, comma-separated.
+function toVSpans(v: string): VSpan[] {
+  const out: VSpan[] = [];
+  for (const entry of v.split(",")) {
+    const [a, b, color] = entry.split(":").map((t) => t.trim());
+    const x0 = toNum(a ?? ""), x1 = toNum(b ?? "");
+    if (x0 === undefined || x1 === undefined) continue;
+    out.push({ x0: Math.min(x0, x1), x1: Math.max(x0, x1), ...(color ? { color } : {}) });
+  }
+  return out;
 }
 
 export function parseChartOptions(input: string | null | undefined): ChartOptions {
@@ -151,6 +182,8 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "fmt":    if (isNumberSpec(val)) opts.fmt = val; break;
       case "cbar":   { const b = toBool(val); if (b !== undefined) opts.cbar = b; break; }
       case "origin": { const s = val.toLowerCase(); if (s === "upper" || s === "lower") opts.origin = s; break; }
+      case "axvline": { const l = toVLines(val); if (l.length) opts.axvline = l; break; }
+      case "axvspan": { const l = toVSpans(val); if (l.length) opts.axvspan = l; break; }
       default: break;
     }
   }
@@ -200,6 +233,8 @@ export interface ChartBuilderFields {
   fmt?: string;
   cbar?: string;
   origin?: string;
+  axvline?: string;
+  axvspan?: string;
   xmin?: number | null;
   xmax?: number | null;
   ymin?: number | null;
@@ -263,6 +298,8 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("fmt", f.fmt);
   str("cbar", f.cbar);
   str("origin", f.origin);
+  str("axvline", f.axvline);
+  str("axvspan", f.axvspan);
   if ((f.xmin != null && Number.isFinite(f.xmin)) || (f.xmax != null && Number.isFinite(f.xmax))) {
     const lo = f.xmin != null && Number.isFinite(f.xmin) ? f.xmin : "";
     const hi = f.xmax != null && Number.isFinite(f.xmax) ? f.xmax : "";
@@ -292,7 +329,7 @@ export type ChartBuilderKey =
   | "cardsize" | "clamp"
   | "x" | "y" | "s" | "c" | "annotate" | "by" | "linestyle" | "aspect" | "xmin" | "xmax"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize"
-  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin";
+  | "cmap" | "vmin" | "vmax" | "center" | "annot" | "fmt" | "cbar" | "origin" | "axvline" | "axvspan";
 
 export type ChartTargetId =
   | "column" | "bar" | "line" | "area" | "scatter" | "xyline"
@@ -307,7 +344,7 @@ const LINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "s", "c", "cmap", "annotate", "by", "linestyle", "aspect",
-    "xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+    "xmin", "xmax", "ymin", "ymax", "axvline", "axvspan", "linewidth", "markersize", "alpha", "fontsize"];
 const XYLINE_KEYS: readonly ChartBuilderKey[] = [...SCATTER_KEYS, "marker"];
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
 const RADAR_KEYS: readonly ChartBuilderKey[] =

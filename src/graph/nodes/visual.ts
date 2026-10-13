@@ -1427,7 +1427,7 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "axvline", "axvspan"] as const;
 const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
@@ -1481,6 +1481,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("s",         strIn("Size column"));
     this.addInput("c",         strIn("Color column"));
     this.addInput("annotate",  strIn("Point labels"));
+    this.addInput("axvline",   strIn("Vertical lines"));
+    this.addInput("axvspan",   strIn("Vertical bands"));
     this.addInput("by",        strIn("Split by"));
     this.addInput("linestyle", strIn("Line style"));
     this.addInput("aspect",    strIn("Aspect"));
@@ -1557,6 +1559,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       fmt: str("fmt"),
       cbar: str("cbar"),
       origin: str("origin"),
+      axvline: str("axvline"),
+      axvspan: str("axvspan"),
       xmin:      num("xmin"),
       xmax:      num("xmax"),
       ymin:      num("ymin"),
