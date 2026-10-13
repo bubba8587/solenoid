@@ -2,7 +2,7 @@
 
 Moving Solenoid's charts from Recharts to TanStack Charts 1.0.0 (branch `tan`, `docs/v2.0/26-tanstack.md`) turned up eighteen candidate gaps. Each was checked against the upstream source (TanStack/charts at `e6a51a8`). Seven became patches, four became issues, and the rest turned out to be supported already, deliberate, or not worth sending.
 
-Nothing here has been submitted. Each patch is `git format-patch` output against upstream `main` with a PR description beside it. Every branch adds its friction-log entry as F-309, the next free id, so several landing together need renumbering.
+None of the gaps is closed in 1.1.0, which `tan` now runs. Nothing here has been submitted. Each patch is `git format-patch` output against upstream `main` with a PR description beside it. Every branch adds its friction-log entry as F-309, the next free id, so several landing together need renumbering.
 
 ## Patches
 

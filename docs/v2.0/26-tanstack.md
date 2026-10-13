@@ -89,3 +89,7 @@ Upstream findings, checked against the source, are in § 8.
 ## 8. Upstream
 
 What 1.0.0 lacked, checked against the TanStack Charts source, with seven patches and four issue drafts ready to submit: `docs/upstream/tanstack-charts/README.md`.
+
+## 9. Keeping `tan` current
+
+`tan` is rebased onto `develop` whenever `develop` moves, and runs the latest TanStack Charts and Virtual (1.1.0 and 3.14.18 as of 2026-10-13). In a conflict `develop`'s side wins and the TanStack change is reapplied on top as narrowly as it will go. `package.json` and the lock never get merged by hand: `node scripts/rebase-pkg.mjs` keeps `develop`'s manifest, reapplies the replayed commit's dependency edits and lets npm rebuild the lock. A version bump is its own commit at the tip, and each new release is checked against `docs/upstream/tanstack-charts/` for gaps it closes.
