@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex, logTicks } from "../../../src/graph/components/chartCore";
+import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex, logTicks, legendRows } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -132,5 +132,15 @@ describe("logTicks", () => {
     expect(logTicks(100, 10000)).toEqual([100, 200, 500, 1000, 2000, 5000, 10000]);
     expect(logTicks(1, 1e6)).toEqual([1, 10, 100, 1000, 10000, 100000, 1e6]);
     expect(logTicks(0, 10)).toEqual([]);
+  });
+});
+
+describe("legendRows", () => {
+  it("wraps entries onto as many rows as the width needs", () => {
+    const names = ["Alpha", "Beta", "Gamma", "Delta"];
+    expect(legendRows(names, 1000, 1)).toBe(1);
+    expect(legendRows(names, 90, 1)).toBe(2);
+    expect(legendRows(names, 10, 1)).toBe(4);
+    expect(legendRows([], 100, 1)).toBe(1);
   });
 });

@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { type SyntheticEvent, type ComponentProps, useId, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle, VLine } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { heightRampColor, resolveColor, PALETTE } from "../palette";
@@ -294,20 +294,21 @@ function MultiTooltip({ active, payload, label, tickFmt, rawFromNorm }: {
 const LEGEND_H = 16;
 const MULTI_LEGEND_H = 18;
 
-function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetRight, isLine }: {
+function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetRight, isLine, rows = 1 }: {
   series: { name: string }[];
   paint: (j: number) => string;
   dim: (j: number) => number;
   onPick: (j: number) => void;
   fs: number; color: string; insetLeft: number; insetRight: number; isLine: (j: number) => boolean;
+  rows?: number;
 }) {
   return (
     <div
       className="sol-chart-legend"
-      style={{ height: MULTI_LEGEND_H, paddingLeft: insetLeft, paddingRight: insetRight, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+      style={{ height: rows * MULTI_LEGEND_H, paddingLeft: insetLeft, paddingRight: insetRight, display: "flex", flexWrap: "wrap", alignItems: "center", alignContent: "center", justifyContent: "center", columnGap: 10, rowGap: 0, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", cursor: "pointer", userSelect: "none" }}
     >
       {series.map((s, j) => (
-        <span key={j} onClick={() => onPick(j)} style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: dim(j) }}>
+        <span key={j} onClick={() => onPick(j)} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: MULTI_LEGEND_H, whiteSpace: "nowrap", opacity: dim(j) }}>
           <span aria-hidden="true" style={{ width: 8, height: isLine(j) ? 2 : 8, borderRadius: isLine(j) ? 1 : 2, background: paint(j), flex: "none" }} />
           {s.name}
         </span>
@@ -361,15 +362,17 @@ export function MultiSeriesView({
   const yDomain = yDomainOf(opts);
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
-  const chartH = height - titleH - MULTI_LEGEND_H;
   const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
   const catW = op === "bar" ? categoryAxisWidth(data.map((d) => tickFmt(d.i as number)), width, fs, !!yLabel) : 0;
   const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? catW : yAxisW;
+  const legendInsetRight = op === "radar" ? 0 : margin.right;
+  const legendN = legendRows(series.map((s) => s.name), width - legendInsetLeft - legendInsetRight, fs);
+  const chartH = height - titleH - legendN * MULTI_LEGEND_H;
   const legend = (
     <SeriesLegend
-      series={series} paint={paint} dim={dim} fs={fs} color={axis}
-      insetLeft={legendInsetLeft} insetRight={op === "radar" ? 0 : margin.right}
+      series={series} paint={paint} dim={dim} fs={fs} color={axis} rows={legendN}
+      insetLeft={legendInsetLeft} insetRight={legendInsetRight}
       isLine={() => op === "line"}
       onPick={pick}
     />
@@ -476,15 +479,16 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
     : undefined;
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
-  const chartH = height - titleH - MULTI_LEGEND_H;
   const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis } : undefined;
   const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis } : undefined;
   const margin = { top: PLOT_TOP, right: 8, bottom: xLabel ? 18 : 4, left: 0 };
   const yFmt = valueTickFormat([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax]);
   const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt);
+  const legendN = legendRows(series.map((s) => s.name), width - yAxisW - margin.right, fs);
+  const chartH = height - titleH - legendN * MULTI_LEGEND_H;
   const legend = (
     <SeriesLegend
-      series={series} paint={paint} dim={dim} fs={fs} color={axis}
+      series={series} paint={paint} dim={dim} fs={fs} color={axis} rows={legendN}
       insetLeft={yAxisW} insetRight={margin.right}
       isLine={(j) => series[j]?.kind === "line"}
       onPick={pick}
@@ -715,28 +719,37 @@ function markColor(c: string | undefined, fallback: string): string {
   return c in PALETTE ? resolveColor(c) : c;
 }
 
-/** Each labelled line's label row: the first row where it clears the labels already placed to its left. */
-function vlineRows(lines: readonly VLine[], xLo: number, xHi: number, pw: number, fs: number): number[] {
+type VLinePlace = { row: number; flip: boolean };
+
+/** Each labelled line's label place: right of the line, or left of it when the right would run past the plot, in the
+ *  first row where it clears the labels already placed. */
+function vlinePlaces(lines: readonly VLine[], xLo: number, xHi: number, pw: number, fs: number): VLinePlace[] {
   const pxPerX = xHi > xLo ? pw / (xHi - xLo) : 0;
-  const rowEnds: number[] = [];
-  const rows = new Array<number>(lines.length).fill(0);
+  const taken: [number, number][][] = [];
+  const places: VLinePlace[] = lines.map(() => ({ row: 0, flip: false }));
   [...lines.keys()].sort((a, b) => lines[a].x - lines[b].x).forEach((k) => {
     const label = lines[k].label;
     if (!label) return;
-    const left = (lines[k].x - xLo) * pxPerX;
-    let r = rowEnds.findIndex((end) => end <= left);
-    if (r < 0) r = rowEnds.length;
-    rowEnds[r] = left + 6 + label.length * 5.2 * fs;
-    rows[k] = r;
+    const at = (lines[k].x - xLo) * pxPerX;
+    const w = 6 + label.length * 5.2 * fs;
+    const flip = at + w > pw && at - w >= 0;
+    const span: [number, number] = flip ? [at - w, at] : [at, at + w];
+    let r = taken.findIndex((row) => row.every(([a, b]) => span[1] <= a || span[0] >= b));
+    if (r < 0) { r = taken.length; taken.push([]); }
+    taken[r].push(span);
+    places[k] = { row: r, flip };
   });
-  return rows;
+  return places;
 }
 
-function VLineLabel({ viewBox, text, row, fs, fill }: {
-  viewBox?: { x?: number; y?: number }; text: string; row: number; fs: number; fill: string;
+function VLineLabel({ viewBox, text, place, fs, fill }: {
+  viewBox?: { x?: number; y?: number }; text: string; place: VLinePlace; fs: number; fill: string;
 }) {
   if (viewBox?.x == null || viewBox.y == null) return null;
-  return <text x={viewBox.x + 3} y={viewBox.y + (row + 1) * 11 * fs} fontSize={9 * fs} fill={fill}>{text}</text>;
+  return (
+    <text x={viewBox.x + (place.flip ? -3 : 3)} y={viewBox.y + (place.row + 1) * 11 * fs} fontSize={9 * fs} fill={fill}
+      textAnchor={place.flip ? "end" : "start"}>{text}</text>
+  );
 }
 
 /** Scatter, XY Line, Bubble and an XY Merge Plots: every series on one numeric plane, broken at each gap. */
@@ -780,11 +793,12 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis } : undefined;
   const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis } : undefined;
   const title = opts?.title;
-  const legendRows = (multi || catLegend ? 1 : 0) + (cRange ? 1 : 0);
-  const chartH = height - (title ? titleHeight(fs) : 0) - legendRows * MULTI_LEGEND_H;
   const margin = { top: PLOT_TOP, right: 12, bottom: xLabel ? 18 : 4, left: 0 };
   const yVals = [...pts.map((p) => p.y), opts?.ymin, opts?.ymax];
   const yAxisW = valueAxisWidth(yVals, fs, !!yLabel, valueTickFormat(yVals));
+  const legendW = width - yAxisW - margin.right;
+  const seriesRows = multi ? legendRows(series.map((s) => s.name), legendW, fs) : catLegend ? legendRows(cats!, legendW, fs) : 0;
+  const chartH = height - (title ? titleHeight(fs) : 0) - (seriesRows + (cRange ? 1 : 0)) * MULTI_LEGEND_H;
   const xAxisH = xLabel ? 28 : 30;
 
   const ext = (vals: number[], lo?: number, hi?: number): [number, number] =>
@@ -833,7 +847,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   const anyText = pts.some((p) => p.text);
   const vlines = opts?.axvline ?? [];
   const xExt = ext([...pts.map((p) => p.x), ...vlines.map((l) => l.x)], opts?.xmin, opts?.xmax);
-  const labelRows = vlineRows(vlines, xExt[0], xExt[1], pw, fs);
+  const labelPlaces = vlinePlaces(vlines, xExt[0], xExt[1], pw, fs);
 
   const chart = (
     <ScatterChart width={width} height={chartH} margin={margin}>
@@ -849,7 +863,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
       ))}
       {!xcats && vlines.map((l, k) => (
         <ReferenceLine key={`vline${k}`} x={l.x} stroke={markColor(l.color, axis)} strokeDasharray="4 3" strokeWidth={1} ifOverflow="hidden"
-          label={l.label ? <VLineLabel text={l.label} row={labelRows[k]} fs={fs} fill={markColor(l.color, axis)} /> : undefined} />
+          label={l.label ? <VLineLabel text={l.label} place={labelPlaces[k]} fs={fs} fill={markColor(l.color, axis)} /> : undefined} />
       ))}
       <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }}
         content={<XYTooltip names={names} xcats={xcats} multi={multi} seriesName={(j) => series[j]?.name ?? ""} />} />
@@ -894,14 +908,14 @@ export function XYView({ payload, width, height, opts, fontScale }: {
       {chart}
       {multi && (
         <SeriesLegend
-          series={series} paint={paint} dim={dim} fs={fs} color={axis}
+          series={series} paint={paint} dim={dim} fs={fs} color={axis} rows={seriesRows}
           insetLeft={yAxisW} insetRight={margin.right} isLine={() => series.some((s) => s.line !== "none")}
           onPick={pick}
         />
       )}
       {catLegend && (
         <SeriesLegend
-          series={cats!.map((name) => ({ name }))} paint={(k) => colors[k % colors.length]} dim={() => 1} fs={fs} color={axis}
+          series={cats!.map((name) => ({ name }))} paint={(k) => colors[k % colors.length]} dim={() => 1} fs={fs} color={axis} rows={seriesRows}
           insetLeft={yAxisW} insetRight={margin.right} isLine={() => false} onPick={() => {}}
         />
       )}

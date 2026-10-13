@@ -124,6 +124,19 @@ export function valueTickFormat(values: Iterable<unknown>, ticks?: readonly numb
   return (n: number) => compactTick(n, s);
 }
 
+/** How many rows a series legend needs to fit `names` across `width` px: each entry is an 8 px swatch, a 4 px gap
+ *  and its text at about 5.4 · fs px a character, entries 10 px apart. Rows are counted ahead of drawing so the plot
+ *  can give up their height without jumping. */
+export function legendRows(names: readonly string[], width: number, fs: number): number {
+  let rows = 1, used = 0;
+  for (const n of names) {
+    const w = 12 + n.length * 5.4 * fs;
+    if (used > 0 && used + 10 + w > width) { rows++; used = w; }
+    else used += (used > 0 ? 10 : 0) + w;
+  }
+  return rows;
+}
+
 /** Log-axis ticks inside [lo, hi] (both above zero): 1, 2 and 5 of each decade, or only the 1s past four decades. */
 export function logTicks(lo: number, hi: number): number[] {
   if (!(lo > 0) || !(hi >= lo)) return [];
