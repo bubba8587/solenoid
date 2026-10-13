@@ -124,6 +124,37 @@ export function valueTickFormat(values: Iterable<unknown>, ticks?: readonly numb
   return (n: number) => compactTick(n, s);
 }
 
+const EPOCH = 25569; // serial of 1970-01-01
+const toSerial = (y: number, m: number) => Date.UTC(y, m, 1) / 86400000 + EPOCH;
+
+/** Ticks on a date axis from serial `lo` to `hi`, about `count` of them: the first of January every 1, 2, 5, 10, 20
+ *  or 50 years across three years or more, else the first of a month every 1, 2, 3 or 6 months. `byYear` tells the
+ *  caller to label them with the year alone. */
+export function dateTicks(lo: number, hi: number, count: number): { ticks: number[]; byYear: boolean } {
+  if (!(hi > lo)) return { ticks: [lo], byYear: false };
+  const a = new Date((lo - EPOCH) * 86400000), b = new Date((hi - EPOCH) * 86400000);
+  const want = Math.max(2, count);
+  const years = (hi - lo) / 365.25;
+  if (years >= 3) {
+    const step = [1, 2, 5, 10, 20, 50].find((s) => years / s <= want) ?? 100;
+    const ticks: number[] = [];
+    for (let y = Math.ceil(a.getUTCFullYear() / step) * step; y <= b.getUTCFullYear(); y += step) {
+      const t = toSerial(y, 0);
+      if (t >= lo && t <= hi) ticks.push(t);
+    }
+    return { ticks, byYear: true };
+  }
+  const months = years * 12;
+  const step = [1, 2, 3, 6].find((s) => months / s <= want) ?? 12;
+  const ticks: number[] = [];
+  for (let k = a.getUTCFullYear() * 12 + a.getUTCMonth(); k <= b.getUTCFullYear() * 12 + b.getUTCMonth(); k++) {
+    if (k % step) continue;
+    const t = toSerial(Math.floor(k / 12), k % 12);
+    if (t >= lo && t <= hi) ticks.push(t);
+  }
+  return { ticks, byYear: false };
+}
+
 /** How many rows a series legend needs to fit `names` across `width` px: each entry is an 8 px swatch, a 4 px gap
  *  and its text at about 5.4 · fs px a character, entries 10 px apart. Rows are counted ahead of drawing so the plot
  *  can give up their height without jumping. */

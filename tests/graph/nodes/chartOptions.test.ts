@@ -88,20 +88,6 @@ describe("heatmap keys", () => {
   });
 });
 
-describe("axvline and axvspan", () => {
-  it("reads lines as x[:label[:color]] and bands as x0:x1[:color], skipping unreadable entries", () => {
-    const o = parseChartOptions("axvline=2023.16:CHIPS Act:purple, 2012.75, oops:Bad; axvspan=2017:2013:blue, 2021:x");
-    expect(o.axvline).toEqual([{ x: 2023.16, label: "CHIPS Act", color: "purple" }, { x: 2012.75 }]);
-    expect(o.axvspan).toEqual([{ x0: 2013, x1: 2017, color: "blue" }]);
-  });
-
-  it("round-trips through the Chart Builder", () => {
-    const s = serializeChartOptions({ axvline: "1:a", axvspan: "0:2:gray" });
-    expect(s).toBe("axvline=1:a;axvspan=0:2:gray");
-    expect(parseChartOptions(s)).toEqual({ axvline: [{ x: 1, label: "a" }], axvspan: [{ x0: 0, x1: 2, color: "gray" }] });
-  });
-});
-
 describe("yscale", () => {
   it("reads linear or log and ignores anything else", () => {
     expect(parseChartOptions("yscale=LOG").yscale).toBe("log");

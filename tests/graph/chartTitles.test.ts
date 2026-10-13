@@ -14,7 +14,6 @@ const SAMPLE: Record<ChartBuilderKey, string> = {
   cardsize: "l", clamp: "on",
   x: "t", y: "a,b", s: "n", c: "k", annotate: "name", by: "group", linestyle: "--", aspect: "equal", yscale: "log", maxgap: "0.5", xmin: "0", xmax: "5",
   cmap: "viridis", vmin: "0", vmax: "1", center: "0", annot: "on", fmt: ".2f", cbar: "off", origin: "lower",
-  axvline: "1:a", axvspan: "0:1",
 };
 const RECORD_ONLY = new Set<ChartBuilderKey>(["cardsize", "clamp"]);
 

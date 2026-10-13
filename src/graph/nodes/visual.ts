@@ -11,7 +11,7 @@ import { buildXY, sourceAsXY, XY_CHART_OPS, type XYOp } from "./xyPlot";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
   ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload, QuiverPayload,
-  RecordPayload, RecordField, RecordSize, RecordDeck, OverlaySeries, OverlayPayload, XYPayload, XYSeries,
+  RecordPayload, RecordField, RecordSize, RecordDeck, OverlaySeries, OverlayPayload, XYPayload,
 } from "../chartValue";
 import { solError, type SolError } from "../errorValue";
 import { columnUnitLabel } from "../unitColumn";
@@ -94,6 +94,8 @@ export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "A list plots by position; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Scatter, XY Line and Bubble also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
+    lines: "Scatter, XY Line and Bubble draw a dashed vertical line at each row's x, labeled at the top. Color takes a palette name or a CSS color.",
+    bands: "Scatter, XY Line and Bubble shade each row's span of x lightly. Color takes a palette name or a CSS color.",
   };
 
   label: string;
@@ -116,6 +118,16 @@ export class ChartNode extends ClassicPreset.Node {
       { name: "Sales", type: "number", cells: [120, 145, 98] },
       { name: "Target", type: "number", cells: [130, 130, 130] },
     ] },
+    lines: { columns: [
+      { name: "X", type: "date", cells: [44894, 44985, 45678] },
+      { name: "Label", type: "string", cells: ["ChatGPT", "CHIPS funding", "DeepSeek-R1"] },
+      { name: "Color", type: "string", cells: ["gray", "pink", "gray"] },
+    ] },
+    bands: { columns: [
+      { name: "From", type: "date", cells: [42755, 44216, 45677] },
+      { name: "To", type: "date", cells: [44216, 45677, 47138] },
+      { name: "Color", type: "string", cells: ["vermilion", "blue", "vermilion"] },
+    ] },
   };
 
   constructor(init?: { label?: string; op?: ChartOp }) {
@@ -123,11 +135,13 @@ export class ChartNode extends ClassicPreset.Node {
     this.label = init?.label ?? "";
     this.op = init?.op ?? "column";
     this.addInput("values", cubeAdoptIn("Data"));
+    this.addInput("lines", frameIn("X + Label + Color"));
+    this.addInput("bands", frameIn("From + To + Color"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: unknown[]; options?: string[] }): { chart: ChartValue | SolError } {
+  data(inputs: { values?: unknown[]; lines?: unknown[]; bands?: unknown[]; options?: string[] }): { chart: ChartValue | SolError } {
     const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
     const raw0 = inputs.values?.[0] ?? null;
     const flat = isCubeValue(raw0) ? flatCubeToFrame(raw0, "scalar") : raw0;
@@ -147,7 +161,7 @@ export class ChartNode extends ClassicPreset.Node {
         this.cachedError = xy;
         return { chart: xy };
       }
-      this.cachedPayload = xy;
+      this.cachedPayload = xy && withAnnotations(xy, inputs.lines?.[0], inputs.bands?.[0]);
       v = xy ? (xy.series[0].points.map((p) => p?.y ?? null) as unknown as number[]) : null;
       const explicit = this.op === "bubble" || this.chartOptions.x !== undefined;
       if (xy && explicit && this.chartOptions.xlabel === undefined && xy.names.x) this.chartOptions.xlabel = xy.names.x;
@@ -191,6 +205,16 @@ export class ChartNode extends ClassicPreset.Node {
     };
     return { chart };
   }
+}
+
+/** An XY payload with the rows of a Lines frame (x, label, color) and a Bands frame (from, to, color), read by position. */
+function withAnnotations(xy: XYPayload, lines: unknown, bands: unknown): XYPayload {
+  const rows = (f: unknown) => isFrameValue(f) ? Array.from({ length: f.columns[0]?.values.length ?? 0 }, (_, r) => f.columns.map((c) => c.values[r])) : [];
+  const n = (c: unknown) => (typeof c === "number" && Number.isFinite(c) ? c : null);
+  const t = (c: unknown) => (typeof c === "string" && c.trim() !== "" ? c.trim() : undefined);
+  const l = rows(lines).flatMap(([x, label, color]) => n(x) === null ? [] : [{ x: n(x)!, ...(t(label) ? { label: t(label) } : {}), ...(t(color) ? { color: t(color) } : {}) }]);
+  const b = rows(bands).flatMap(([a, z, color]) => n(a) === null || n(z) === null ? [] : [{ x0: Math.min(n(a)!, n(z)!), x1: Math.max(n(a)!, n(z)!), ...(t(color) ? { color: t(color) } : {}) }]);
+  return { ...xy, ...(l.length ? { lines: l } : {}), ...(b.length ? { bands: b } : {}) };
 }
 
 // ─── Merge Plots ──────────────────────────────────────────────────────────────
@@ -317,7 +341,7 @@ function mergeOverlay(sources: { cv: ChartValue }[]): OverlayPayload {
 
 /** Text x values are indices into their own plot's categories, so they move onto one shared list; text beside numbers has no one axis. */
 function mergeXY(sources: { cv: ChartValue; plotNo: number }[]): XYPayload | SolError {
-  const got: { plotNo: number; series: XYSeries[]; xcats?: string[] }[] = [];
+  const got: ({ plotNo: number } & Pick<XYPayload, "series" | "xcats" | "xDate" | "lines" | "bands">)[] = [];
   for (const { cv, plotNo } of sources) {
     const g = sourceAsXY(cv, plotNo);
     if (isSolError(g)) return g;
@@ -343,7 +367,12 @@ function mergeXY(sources: { cv: ChartValue; plotNo: number }[]): XYPayload | Sol
   const nx = axisName("x"), ny = axisName("y");
   if (nx) names.x = nx;
   if (ny) names.y = ny;
-  return { kind: "xy", series, ...(textX ? { xcats } : {}), names };
+  const lines = got.flatMap((g) => g.lines ?? []), bands = got.flatMap((g) => g.bands ?? []);
+  return {
+    kind: "xy", series, ...(textX ? { xcats } : {}), names,
+    ...(got.length && got.every((g) => g.xDate) ? { xDate: true } : {}),
+    ...(lines.length ? { lines } : {}), ...(bands.length ? { bands } : {}),
+  };
 }
 
 // ─── Histogram ────────────────────────────────────────────────────────────────
@@ -1427,7 +1456,7 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "axvline", "axvspan", "yscale"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect", "cmap", "annot", "fmt", "cbar", "origin", "yscale"] as const;
 const CB_NUM_FIELDS = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize", "vmin", "vmax", "center", "maxgap"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
@@ -1481,8 +1510,6 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("s",         strIn("Size column"));
     this.addInput("c",         strIn("Color column"));
     this.addInput("annotate",  strIn("Point labels"));
-    this.addInput("axvline",   strIn("Vertical lines"));
-    this.addInput("axvspan",   strIn("Vertical bands"));
     this.addInput("by",        strIn("Split by"));
     this.addInput("linestyle", strIn("Line style"));
     this.addInput("aspect",    strIn("Aspect"));
@@ -1562,8 +1589,6 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       fmt: str("fmt"),
       cbar: str("cbar"),
       origin: str("origin"),
-      axvline: str("axvline"),
-      axvspan: str("axvspan"),
       xmin:      num("xmin"),
       xmax:      num("xmax"),
       ymin:      num("ymin"),

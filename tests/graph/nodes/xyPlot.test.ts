@@ -179,3 +179,43 @@ describe("XY option keys", () => {
     expect(serializeChartOptions({ x: "t", y: "a,b", linestyle: "dashed", xmin: 1, xmax: null })).toBe("x=t;y=a,b;linestyle=dashed;xlim=1,");
   });
 });
+
+describe("date x and annotation frames", () => {
+  const dated: FrameValue = { __frame: true, columns: [
+    { name: "Month", type: "date", values: [45658, 45689, 45717] },
+    { name: "USD", type: "number", values: [10, 12, 11] },
+  ] };
+  const lines: FrameValue = { __frame: true, columns: [
+    { name: "X", type: "date", values: [45670, null] },
+    { name: "Label", type: "string", values: ["Launch", "skipped"] },
+    { name: "Color", type: "string", values: ["pink", ""] },
+  ] };
+  const bands: FrameValue = { __frame: true, columns: [
+    { name: "From", type: "date", values: [45700] },
+    { name: "To", type: "date", values: [45600] },
+    { name: "Color", type: "string", values: ["blue"] },
+  ] };
+
+  it("plots a date column as serials and marks the axis as dates", () => {
+    const p = xy("xyline", dated, "");
+    expect(p.xDate).toBe(true);
+    expect(p.xcats).toBeUndefined();
+    expect(p.series[0].points.map((q) => q?.x)).toEqual([45658, 45689, 45717]);
+  });
+
+  it("reads Lines and Bands frames by position, skipping a row with no x and ordering a band's ends", () => {
+    const n = new ChartNode({ op: "xyline" });
+    const p = (n.data({ values: [dated], lines: [lines], bands: [bands] }).chart as ChartValue).payload as XYPayload;
+    expect(p.lines).toEqual([{ x: 45670, label: "Launch", color: "pink" }]);
+    expect(p.bands).toEqual([{ x0: 45600, x1: 45700, color: "blue" }]);
+  });
+
+  it("carries both plots' lines, bands and date axis through Merge Plots", () => {
+    const a = new ChartNode({ op: "xyline" }).data({ values: [dated], lines: [lines] }).chart as ChartValue;
+    const b = new ChartNode({ op: "scatter" }).data({ values: [dated], bands: [bands] }).chart as ChartValue;
+    const m = (new MergePlotsNode().data({ p0: [a], p1: [b] }).chart as ChartValue).payload as XYPayload;
+    expect(m.xDate).toBe(true);
+    expect(m.lines).toHaveLength(1);
+    expect(m.bands).toHaveLength(1);
+  });
+});

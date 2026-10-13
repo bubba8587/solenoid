@@ -112,7 +112,7 @@ export function buildXY(op: XYOp, raw: unknown, opts: ChartOptions): XYPayload |
   let xcats: string[] | undefined;
   const xAt: (r: number) => number | null = !xCol
     ? (r) => r + 1
-    : xCol.type === "number"
+    : xCol.type === "number" || xCol.type === "date"
       ? (r) => num(xCol!.values[r])
       : (() => {
         const cats: string[] = [];
@@ -168,6 +168,7 @@ export function buildXY(op: XYOp, raw: unknown, opts: ChartOptions): XYPayload |
     kind: "xy",
     series: withRanges(series.map((s) => ({ ...s, marker }))),
     ...(xcats ? { xcats } : {}),
+    ...(xCol?.type === "date" ? { xDate: true } : {}),
     names: {
       ...(xCol ? { x: xCol.name } : {}),
       ...(yCols.length === 1 ? { y: yCols[0].name } : {}),
@@ -179,7 +180,7 @@ export function buildXY(op: XYOp, raw: unknown, opts: ChartOptions): XYPayload |
 }
 
 /** One Merge Plots source as XY series on a shared numeric plane, its own options baked in as each series' style. */
-export function sourceAsXY(cv: ChartValue, plotNo: number): { series: XYSeries[]; xcats?: string[] } | SolError {
+export function sourceAsXY(cv: ChartValue, plotNo: number): Pick<XYPayload, "series" | "xcats" | "xDate" | "lines" | "bands"> | SolError {
   const o = cv.options ?? {};
   const style = (many: boolean) => ({
     ...(o.color && !many ? { color: o.color } : {}),
@@ -193,6 +194,9 @@ export function sourceAsXY(cv: ChartValue, plotNo: number): { series: XYSeries[]
     return {
       series: cv.payload.series.map((s) => ({ ...s, ...st, name: (many ? s.name : cv.title || s.name) ?? "" })),
       xcats: cv.payload.xcats,
+      xDate: cv.payload.xDate,
+      lines: cv.payload.lines,
+      bands: cv.payload.bands,
     };
   }
   if (cv.op === "column" || cv.op === "bar") {

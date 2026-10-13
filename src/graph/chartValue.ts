@@ -180,11 +180,19 @@ export interface XYSeries {
   cRange?: [number, number];
   cCats?: string[];
 }
+/** A dashed vertical line across an XY plot at `x`, labeled at its top. */
+export interface XYLine { x: number; label?: string; color?: string }
+/** A light vertical band across an XY plot from `x0` to `x1`. */
+export interface XYBand { x0: number; x1: number; color?: string }
 export interface XYPayload {
   kind: "xy";
   series: XYSeries[];
   /** Set when x is a text column: each x is an index into these. */
   xcats?: string[];
+  /** Set when x is a date column: each x is a date serial, and the axis reads as dates. */
+  xDate?: boolean;
+  lines?: XYLine[];
+  bands?: XYBand[];
   names: { x?: string; y?: string; s?: string; c?: string; text?: string };
 }
 export type ChartPayload =

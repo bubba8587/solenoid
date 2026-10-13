@@ -3,9 +3,10 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { type SyntheticEvent, type ComponentProps, useId, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
-import type { ChartOptions, LineStyle, VLine } from "../nodes/chartOptions";
-import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
+import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
+import type { OverlayPayload, XYPayload, XYPoint, XYLine } from "../chartValue";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { heightRampColor, resolveColor, PALETTE } from "../palette";
 import { colormapRgb } from "../colormaps";
 import { ChartTitle, titleHeight } from "./chartTitle";
@@ -633,10 +634,10 @@ const BUBBLE_AREA: [number, number] = [40, 420];
 
 type XYRow = XYPoint & { _j: number; label?: string };
 
-function XYTooltip({ active, payload, names, xcats, multi, seriesName }: {
+function XYTooltip({ active, payload, names, xcats, xDate, multi, seriesName }: {
   active?: boolean;
   payload?: { payload?: XYRow }[];
-  names: XYPayload["names"]; xcats?: string[]; multi: boolean; seriesName: (j: number) => string;
+  names: XYPayload["names"]; xcats?: string[]; xDate?: boolean; multi: boolean; seriesName: (j: number) => string;
 }) {
   if (!active || !payload || !payload.length) return null;
   const d = payload[0]?.payload;
@@ -647,7 +648,7 @@ function XYTooltip({ active, payload, names, xcats, multi, seriesName }: {
       <span style={{ marginLeft: "auto" }}>{v}</span>
     </div>
   ));
-  const xText = xcats ? xcats[d.x] : axisTick(d.x);
+  const xText = xcats ? xcats[d.x] : xDate ? formatDateSerial(d.x, DEFAULT_DATE_FORMAT) : axisTick(d.x);
   return (
     <div style={{ fontSize: 11, padding: "3px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
       {multi && <div style={{ color: "var(--text-dim)", marginBottom: 2 }}>{seriesName(d._j)}</div>}
@@ -723,7 +724,7 @@ type VLinePlace = { row: number; flip: boolean };
 
 /** Each labelled line's label place: right of the line, or left of it when the right would run past the plot or across
  *  another line and the left would not, in the first row where it clears the labels already placed. */
-function vlinePlaces(lines: readonly VLine[], xLo: number, xHi: number, pw: number, fs: number): VLinePlace[] {
+function vlinePlaces(lines: readonly XYLine[], xLo: number, xHi: number, pw: number, fs: number): VLinePlace[] {
   const pxPerX = xHi > xLo ? pw / (xHi - xLo) : 0;
   const taken: [number, number][][] = [];
   const places: VLinePlace[] = lines.map(() => ({ row: 0, flip: false }));
@@ -763,7 +764,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   const colors = useSeriesColors();
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
-  const { series, xcats, names } = payload;
+  const { series, xcats, names, xDate } = payload;
   const { dim, pick } = useSeriesSpotlight(series.map((s) => s.name));
   const gradId = useId().replace(/:/g, "");
   const multi = series.length > 1;
@@ -812,6 +813,13 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   let yTicks: number[] | undefined;
   const pw = width - yAxisW - margin.left - margin.right, ph = chartH - margin.top - margin.bottom - xAxisH;
   if (!xcats && opts?.xmin !== undefined && opts?.xmax !== undefined) xTicks = niceTicks(opts.xmin, opts.xmax, Math.max(3, Math.round(pw / 60)));
+  // A date axis spans its data exactly (round serials mean nothing) and ticks on calendar boundaries.
+  let byYear = false;
+  if (xDate) {
+    const [lo, hi] = ext(pts.map((p) => p.x), opts?.xmin, opts?.xmax);
+    xDomain = [lo, hi];
+    ({ ticks: xTicks, byYear } = dateTicks(lo, hi, Math.max(3, Math.round(pw / 70))));
+  }
   if (opts?.ymin !== undefined && opts?.ymax !== undefined) yTicks = niceTicks(opts.ymin, opts.ymax, Math.max(3, Math.round(ph / 40)));
   if (opts?.aspect === "equal" && !xcats) {
     const eq = equalDomains(ext(pts.map((p) => p.x), opts?.xmin, opts?.xmax), ext(pts.map((p) => p.y), opts?.ymin, opts?.ymax), pw, ph);
@@ -835,6 +843,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     const n = Number(t);
     if (!Number.isFinite(n)) return "";
     if (xcats) { const lab = xcats[Math.round(n)]; return lab ?? ""; }
+    if (xDate) return formatDateSerial(n, byYear ? "YYYY" : "MMM YYYY");
     return axisTick(n);
   };
 
@@ -849,7 +858,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
     if (cur.length) runs.push({ j, rows: cur });
   });
   const anyText = pts.some((p) => p.text);
-  const vlines = opts?.axvline ?? [];
+  const vlines = payload.lines ?? [];
   const xExt = ext([...pts.map((p) => p.x), ...vlines.map((l) => l.x)], opts?.xmin, opts?.xmax);
   const labelPlaces = vlinePlaces(vlines, xExt[0], xExt[1], pw, fs);
 
@@ -862,7 +871,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
         label={xLabel} height={xAxisH} />
       <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} tickFormatter={valueTickFormat(yVals, yTicks)} width={yAxisW}
         scale={logY ? "log" : undefined} domain={yDomain} ticks={yTicks} allowDataOverflow={opts?.ymin !== undefined || opts?.ymax !== undefined} label={yLabel} />
-      {!xcats && opts?.axvspan?.map((b, k) => (
+      {!xcats && payload.bands?.map((b, k) => (
         <ReferenceArea key={`span${k}`} x1={b.x0} x2={b.x1} fill={markColor(b.color, axis)} fillOpacity={VSPAN_ALPHA} stroke="none" ifOverflow="hidden" />
       ))}
       {!xcats && vlines.map((l, k) => (
@@ -870,7 +879,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
           label={l.label ? <VLineLabel text={l.label} place={labelPlaces[k]} fs={fs} fill={markColor(l.color, axis)} /> : undefined} />
       ))}
       <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }}
-        content={<XYTooltip names={names} xcats={xcats} multi={multi} seriesName={(j) => series[j]?.name ?? ""} />} />
+        content={<XYTooltip names={names} xcats={xcats} xDate={xDate} multi={multi} seriesName={(j) => series[j]?.name ?? ""} />} />
       {runs.map(({ j, rows }, k) => {
         const s = series[j];
         const o = dim(j);

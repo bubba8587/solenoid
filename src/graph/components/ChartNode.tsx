@@ -90,11 +90,11 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         )}
       </div>
       <div className="solenoid-node__section-divider" />
-      {/* Collapsed, the leading `values` socket is gone, so it folds into this row. */}
+      {/* Collapsed, the leading `values` socket is gone, so it folds into this row. Only an XY figure draws Lines and Bands. */}
       <InlineInputs
         node={data}
         emit={emit}
-        keys={collapsed ? ["values", "options"] : ["options"]}
+        keys={[...(collapsed ? ["values"] : []), ...(family === "XY" ? ["lines", "bands"] : []), "options"]}
       />
       {/* Collapsed, the hero box shows only the Chart chip. */}
       <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={cv} /></div>

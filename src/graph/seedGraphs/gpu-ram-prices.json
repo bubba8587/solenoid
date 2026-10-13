@@ -214,30 +214,36 @@
       }
     },
     {
-      "id": "year",
-      "type": "ComputedColumnNode",
-      "x": 2160,
-      "y": 1050,
-      "init": {
-        "label": "Decimal year",
-        "expr": "YEAR(@Month) + (MONTH(@Month) - 0.5) / 12",
-        "addAs": "number"
-      },
-      "stringLiterals": {
-        "name": "Year"
-      }
-    },
-    {
       "id": "sort",
       "type": "SortFrameNode",
       "x": 2160,
-      "y": 1450,
+      "y": 1050,
       "init": {
         "label": "In date order",
         "dir": "asc"
       },
       "stringLiterals": {
         "column": "Month"
+      }
+    },
+    {
+      "id": "events",
+      "type": "FrameInputNode",
+      "x": 2160,
+      "y": 1400,
+      "init": {
+        "label": "AI releases and the CHIPS Act",
+        "frameText": "[{\"name\":\"Date\",\"type\":\"date\",\"cells\":[\"2020-05-28\",\"2022-11-30\",\"2023-02-28\",\"2023-03-14\",\"2025-01-20\",\"2025-08-07\"]},{\"name\":\"Event\",\"type\":\"string\",\"cells\":[\"GPT-3\",\"ChatGPT\",\"CHIPS Act\",\"GPT-4\",\"DeepSeek-R1\",\"GPT-5\"]},{\"name\":\"Color\",\"type\":\"string\",\"cells\":[\"\",\"\",\"pink\",\"\",\"\",\"\"]}]"
+      }
+    },
+    {
+      "id": "terms",
+      "type": "FrameInputNode",
+      "x": 2160,
+      "y": 1700,
+      "init": {
+        "label": "Presidential terms",
+        "frameText": "[{\"name\":\"From\",\"type\":\"date\",\"cells\":[\"2013-01-20\",\"2017-01-20\",\"2021-01-20\",\"2025-01-20\"]},{\"name\":\"To\",\"type\":\"date\",\"cells\":[\"2017-01-20\",\"2021-01-20\",\"2025-01-20\",\"2029-01-20\"]},{\"name\":\"Party color\",\"type\":\"string\",\"cells\":[\"blue\",\"vermilion\",\"blue\",\"vermilion\"]}]"
       }
     },
     {
@@ -253,20 +259,16 @@
         "title": "Consumer GPU and RAM prices, 2014–2026",
         "xlabel": "Monthly street prices from PCPartPicker, Tom's Hardware, TechSpot and archived store listings",
         "ylabel": "USD (log scale)",
-        "x": "Year",
+        "x": "Month",
         "y": "USD",
         "by": "Lineup",
         "marker": "off",
-        "yscale": "log",
-        "axvline": "2023.159:CHIPS Act:pink, 2020.404:GPT-3, 2022.912:ChatGPT, 2023.197:GPT-4, 2025.052:DeepSeek-R1, 2025.597:GPT-5",
-        "axvspan": "2009.052:2013.052:blue, 2013.052:2017.052:blue, 2017.052:2021.052:vermilion, 2021.052:2025.052:blue, 2025.052:2029.052:vermilion"
+        "yscale": "log"
       },
       "literals": {
-        "xmin": 2014,
-        "xmax": 2026.8,
         "ymin": 50,
         "ymax": 10000,
-        "maxgap": 0.35
+        "maxgap": 130
       }
     },
     {
@@ -322,10 +324,10 @@
       "id": "n_marks",
       "type": "NoteNode",
       "x": 2900,
-      "y": 1060,
+      "y": 1400,
       "init": {
         "label": "Lines and shading",
-        "body": "Dashed lines mark major AI model releases and the CHIPS Act's first funding round (28 Feb 2023), when the 2022 law began paying out. Shading marks presidential terms: blue Democratic, red Republican.",
+        "body": "The chart's Lines input takes **AI releases and the CHIPS Act**: the CHIPS row is its first funding round (28 Feb 2023), when the 2022 law began paying out. Its Bands input takes **Presidential terms**, blue Democratic and red Republican. Edit either table to change the marks.",
         "color": "gray",
         "width": 560,
         "height": 180
@@ -433,12 +435,6 @@
     {
       "source": "all",
       "sourceOutput": "frame",
-      "target": "year",
-      "targetInput": "frame"
-    },
-    {
-      "source": "year",
-      "sourceOutput": "frame",
       "target": "sort",
       "targetInput": "frame"
     },
@@ -447,6 +443,18 @@
       "sourceOutput": "frame",
       "target": "chart",
       "targetInput": "values"
+    },
+    {
+      "source": "events",
+      "sourceOutput": "frame",
+      "target": "chart",
+      "targetInput": "lines"
+    },
+    {
+      "source": "terms",
+      "sourceOutput": "frame",
+      "target": "chart",
+      "targetInput": "bands"
     },
     {
       "source": "style",

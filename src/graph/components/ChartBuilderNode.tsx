@@ -90,7 +90,7 @@ function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
 
 const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label, group: t.group }));
 
-const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "x", "y", "s", "c", "annotate", "by", "fmt", "window", "columns", "axvline", "axvspan"];
+const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "x", "y", "s", "c", "annotate", "by", "fmt", "window", "columns"];
 
 const CMAP_OPTS: readonly SelectOption[] = [
   { value: "", label: "Theme palette", group: "Palette" },
@@ -222,7 +222,6 @@ const SECTIONS: readonly { label: string; keys: readonly ChartBuilderKey[] }[] =
   { label: "Columns", keys: ["x", "y", "s", "c", "annotate", "by"] },
   { label: "Style", keys: ["color", "linestyle", "linewidth", "marker", "markersize", "alpha", "maxgap"] },
   { label: "Axes", keys: ["grid", "aspect", "yscale", "xmin", "xmax", "ymin", "ymax", "radarscale", "origin"] },
-  { label: "Annotations", keys: ["axvline", "axvspan"] },
   { label: "Color scale", keys: ["cmap", "center", "vmin", "vmax", "cbar", "annot", "fmt"] },
   { label: "Timeline", keys: ["zoom", "tiers", "fit", "window", "columns", "collapse", "group_by"] },
   { label: "Shown", keys: ["critical", "baseline", "arrows", "today", "status", "weekends", "labels", "histogram", "minutes"] },

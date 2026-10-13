@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex, logTicks, legendRows } from "../../../src/graph/components/chartCore";
+import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, valueTickFormat, toSeries, partSlices, spotlightIndex, logTicks, legendRows, dateTicks } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -142,5 +142,19 @@ describe("legendRows", () => {
     expect(legendRows(names, 90, 1)).toBe(2);
     expect(legendRows(names, 10, 1)).toBe(4);
     expect(legendRows([], 100, 1)).toBe(1);
+  });
+});
+
+describe("dateTicks", () => {
+  const serial = (y: number, m: number, d = 1) => Date.UTC(y, m, d) / 86400000 + 25569;
+  it("ticks each year start, widening the step to fit", () => {
+    const span = dateTicks(serial(2014, 0), serial(2026, 9), 7);
+    expect(span.byYear).toBe(true);
+    expect(span.ticks).toEqual([2014, 2016, 2018, 2020, 2022, 2024, 2026].map((y) => serial(y, 0)));
+  });
+  it("ticks month starts under three years", () => {
+    const span = dateTicks(serial(2025, 0, 15), serial(2025, 6, 2), 12);
+    expect(span.byYear).toBe(false);
+    expect(span.ticks).toEqual([1, 2, 3, 4, 5, 6].map((m) => serial(2025, m)));
   });
 });
