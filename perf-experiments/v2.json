@@ -1,0 +1,5 @@
+{
+ "as-is": "",
+ "cards overflow:clip + 40px margin": "const s=document.createElement('style');s.textContent='.react-flow__node{overflow:clip;overflow-clip-margin:40px}';document.head.append(s)",
+ "no cards": "document.querySelectorAll('.react-flow__node').forEach(n=>n.remove())"
+}

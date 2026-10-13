@@ -1,0 +1,9 @@
+{
+ "as-is": "",
+ "no cards": "document.querySelectorAll('.react-flow__node').forEach(n=>n.remove())",
+ "no edges": "document.querySelector('.react-flow__edges')?.remove()",
+ "no portal (backing etc)": "document.querySelector('.react-flow__viewport-portal')?.replaceChildren()",
+ "cards overflow:clip + 40px margin": "const s=document.createElement('style');s.textContent='.react-flow__node{overflow:clip;overflow-clip-margin:40px}';document.head.append(s)",
+ "cards contain:paint": "const s=document.createElement('style');s.textContent='.react-flow__node{contain:paint}';document.head.append(s)",
+ "only cards (no edges, no portal, no minimap)": "document.querySelector('.react-flow__edges')?.remove();document.querySelector('.react-flow__viewport-portal')?.replaceChildren();document.querySelector('.react-flow__minimap')?.remove()"
+}

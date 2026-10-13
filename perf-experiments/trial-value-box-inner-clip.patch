@@ -1,0 +1,42 @@
+diff --git a/src/graph/components/nodeCard.css b/src/graph/components/nodeCard.css
+index d1f14ea..70e4362 100644
+--- a/src/graph/components/nodeCard.css
++++ b/src/graph/components/nodeCard.css
+@@ -89,7 +89,7 @@
+ .solenoid-node--sized.solenoid-node--display-grow-scalar {
+   max-width: none;
+ }
+-.solenoid-node--display-grow-scalar .solenoid-node__display-value {
++.solenoid-node--display-grow-scalar .solenoid-node__display-value > .solenoid-node__display-text {
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+@@ -599,7 +599,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
+   letter-spacing: 0.04em;
+ }
+ 
+-.solenoid-node:not(.solenoid-node--resizable) .solenoid-node__display-value {
++.solenoid-node:not(.solenoid-node--resizable) .solenoid-node__display-value > .solenoid-node__display-text {
+   white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
+diff --git a/src/graph/components/nodeKit.tsx b/src/graph/components/nodeKit.tsx
+index 7afba4b..f5e572f 100644
+--- a/src/graph/components/nodeKit.tsx
++++ b/src/graph/components/nodeKit.tsx
+@@ -574,6 +574,7 @@ export function ValueDisplay({
+       onPointerDown={stopDragStart}
+       onMouseDown={(e) => e.stopPropagation()}
+     >
++      <div className="solenoid-node__display-text">
+       {isEmpty ? empty
+         : isString ? (
+             ann?.chip ? (
+@@ -612,6 +613,7 @@ export function ValueDisplay({
+           )
+         : render && !ann ? render(value as number)
+         : fmtScalar(value as number)}
++      </div>
+       {!isEmpty && (
+         <button
+           className="sol-copy-icon"

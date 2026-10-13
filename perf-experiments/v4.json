@@ -1,0 +1,7 @@
+{
+ "as-is": "",
+ "cards emptied (wrapper + card div kept)": "document.querySelectorAll('.react-flow__node > *').forEach(c=>c.replaceChildren())",
+ "cards emptied, inner card div removed": "document.querySelectorAll('.react-flow__node').forEach(n=>n.replaceChildren())",
+ "wrappers empty + no z-index": "document.querySelectorAll('.react-flow__node').forEach(n=>{n.replaceChildren();n.style.zIndex=''})",
+ "no cards": "document.querySelectorAll('.react-flow__node').forEach(n=>n.remove())"
+}
