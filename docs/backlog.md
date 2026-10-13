@@ -28,6 +28,7 @@ the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Range can't check dates**: Min and Max are number sockets, so a date value is range-checked only against typed serials. Adoptive bounds (a date range for a date value) would fix it.
 
 ## Tooling
+- [ ] **Warm vitest cache hides a new globbed file** (`fsModuleCache: true`): a new seed JSON was invisible to `seeds.ts` locally, so `siteThumbs`/`prerender` passed locally and failed in CI. Workaround: delete `node_modules/.vitest-cache`. Decide whether to keep the cache or invalidate it on glob changes.
 - [ ] **`scripts/touch-pan-probe.mjs` is stale**: its drill-in step times out waiting for `.solenoid-composite-editor__canvas .solenoid-node` (fails on develop before 2026-10-06's grip work too), and it needs `--no-sandbox` to launch as root.
 
 ## Seeds (after the 2026-10-08 scalar input fold)
