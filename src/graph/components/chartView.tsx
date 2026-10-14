@@ -1,7 +1,7 @@
 // [[B3]] sameNodeEverywhere, [[C100]] chartIsAValue
-import { lazy, memo, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, memo, Suspense, useEffect, useState, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
-import { toSeries, partSlices } from "./chartCore";
+import { toSeries, partSlices, figurePoints, HEAVY_FIGURE_POINTS } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
 import type { ChartRef, ChartValue, ScalePayload, OverlayPayload, XYPayload } from "../chartValue";
@@ -119,12 +119,43 @@ export function GanttView({ payload, width, height, virtualize, fontScale }: {
   );
 }
 
-export const ChartFigure = memo(function ChartFigure({ value, width, height, axes = true, fontScale, recordNav, virtualize }: {
+type FigureProps = {
   value: ChartValue; width: number; height: number; axes?: boolean;
   fontScale?: number;
   recordNav?: (delta: number) => void;
   virtualize?: boolean;
-}) {
+};
+
+const RESIZE_SETTLE_MS = 160;
+
+/** The size a heavy figure draws at: the live size once it has held still for a moment, else the last such size. */
+function useSettledSize(width: number, height: number, heavy: boolean): { w: number; h: number } {
+  const [settled, setSettled] = useState({ w: width, h: height });
+  useEffect(() => {
+    if (settled.w === width && settled.h === height) return;
+    if (!heavy) { setSettled({ w: width, h: height }); return; }
+    const t = setTimeout(() => setSettled({ w: width, h: height }), RESIZE_SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [width, height, heavy, settled]);
+  return heavy ? settled : { w: width, h: height };
+}
+
+// [[C120]] linearWork: a resize of a heavy figure costs a transform per frame, and one redraw when it stops.
+export const ChartFigure = memo(function ChartFigure(props: FigureProps) {
+  const { value, width, height } = props;
+  const heavy = value.op !== "gantt" && figurePoints(value) > HEAVY_FIGURE_POINTS;
+  const { w, h } = useSettledSize(width, height, heavy);
+  if (!heavy) return <FigureBody {...props} />;
+  return (
+    <div style={{ width, height, overflow: "hidden" }}>
+      <div style={{ width: w, height: h, transform: `scale(${width / w}, ${height / h})`, transformOrigin: "0 0", willChange: "transform" }}>
+        <FigureBody {...props} width={w} height={h} />
+      </div>
+    </div>
+  );
+});
+
+const FigureBody = memo(function FigureBody({ value, width, height, axes = true, fontScale, recordNav, virtualize }: FigureProps) {
   const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
   // Before any early return: a conditional hook here black-screens the app.
   const seriesColors = useSeriesColors();
@@ -134,7 +165,7 @@ export const ChartFigure = memo(function ChartFigure({ value, width, height, axe
     return (
       <div style={{ width, margin: "0 auto" }}>
         <ChartTitle text={title} fs={fscale} />
-        <ChartFigure
+        <FigureBody
           value={{ ...value, options: { ...value.options, title: undefined } }}
           width={width} height={Math.max(0, height - th)} axes={axes} fontScale={fontScale} recordNav={recordNav} virtualize={virtualize}
         />

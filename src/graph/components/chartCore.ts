@@ -5,6 +5,7 @@ import { appThemeStore } from "../appTheme";
 import { resolveColor, type PaletteSlot } from "../palette";
 import { dateTrunc, dateFromParts } from "../nodes/dateOps";
 import { serialToJsDate } from "../nodes/dateSerial";
+import type { ChartValue } from "../chartValue";
 
 export type ChartShape =
   | "line" | "area" | "bar" | "column"       // cartesian (axes-aware)
@@ -234,6 +235,101 @@ export function minMaxDecimate<P extends { v: number }>(series: P[], buckets: nu
   return out;
 }
 
+/**
+ * The rows of several index-aligned series that keep each one's envelope on `buckets` spans: every span gives each
+ * series' lowest and highest row, topped up to two distinct rows per series, so every span gives the same count of
+ * distinct rows and a category axis keeps its spacing. A span
+ * where a series is blank gives a blank row for it, so a gap wider than a pixel stays a gap. Null when the series are
+ * not dense enough to thin.
+ */
+export function envelopeRows(series: readonly (readonly (number | null)[])[], n: number, buckets: number): number[] | null {
+  const k = series.length;
+  if (buckets < 1 || k === 0 || n <= buckets * k * 4) return null;
+  const out: number[] = [];
+  const picks: number[] = [];
+  for (let b = 0; b < buckets; b++) {
+    const lo = Math.floor((b * n) / buckets), hi = Math.floor(((b + 1) * n) / buckets);
+    picks.length = 0;
+    for (const vals of series) {
+      let min = -1, max = -1;
+      for (let r = lo; r < hi; r++) {
+        const v = vals[r];
+        if (v == null) continue;
+        if (min < 0 || v < (vals[min] as number)) min = r;
+        if (max < 0 || v > (vals[max] as number)) max = r;
+      }
+      if (min < 0) picks.push(lo, lo);
+      else picks.push(min, max);
+    }
+    // Distinct rows, topped up from the span's start where series share a pick, so no category repeats.
+    const set = new Set(picks);
+    for (let r = lo; set.size < picks.length && r < hi; r++) set.add(r);
+    for (const r of [...set].sort((a, b2) => a - b2)) out.push(r);
+  }
+  return out;
+}
+
+/** How a run of XY points thins: a markerless line by its pixel columns, a line with markers by its consecutive
+ *  pixel cells, scattered dots by every pixel cell. */
+export type ThinMode = "line" | "markers" | "dots";
+
+/**
+ * An XY run without the points no one could see. `px` and `py` map a point to the pixel it lands on (fractional is
+ * fine; the scale may be coarser than the axis's real one, never finer). A markerless line whose x only climbs or only
+ * falls keeps each pixel column's first, lowest, highest and last point, which draws the same strokes; otherwise
+ * (`markers`, or x that turns back) a streak of points in one pixel keeps its first and last. Dots keep the last point
+ * in each pixel, the one drawn on top. Point order is kept.
+ */
+export function thinXY<P extends { x: number; y: number }>(rows: readonly P[], px: (x: number) => number, py: (y: number) => number, mode: ThinMode): P[] {
+  const n = rows.length;
+  if (n < 3) return rows.slice();
+  const cell = (p: P) => `${Math.floor(px(p.x))},${Math.floor(py(p.y))}`;
+  if (mode === "dots") {
+    const seen = new Set<string>();
+    const keep: P[] = [];
+    for (let r = n - 1; r >= 0; r--) {
+      const c = cell(rows[r]);
+      if (seen.has(c)) continue;
+      seen.add(c);
+      keep.push(rows[r]);
+    }
+    return keep.reverse();
+  }
+  let up = true, down = true;
+  for (let r = 1; r < n && (up || down); r++) {
+    if (rows[r].x < rows[r - 1].x) up = false;
+    if (rows[r].x > rows[r - 1].x) down = false;
+  }
+  const out: P[] = [];
+  if (mode === "line" && (up || down)) {
+    let start = 0;
+    while (start < n) {
+      const col = Math.floor(px(rows[start].x));
+      let end = start + 1;
+      while (end < n && Math.floor(px(rows[end].x)) === col) end++;
+      let min = start, max = start;
+      for (let r = start + 1; r < end; r++) {
+        if (rows[r].y < rows[min].y) min = r;
+        if (rows[r].y > rows[max].y) max = r;
+      }
+      const picks = [start, min, max, end - 1].sort((a, b) => a - b);
+      picks.forEach((r, i) => { if (i === 0 || r !== picks[i - 1]) out.push(rows[r]); });
+      start = end;
+    }
+    return out;
+  }
+  let start = 0;
+  while (start < n) {
+    const c = cell(rows[start]);
+    let end = start + 1;
+    while (end < n && cell(rows[end]) === c) end++;
+    out.push(rows[start]);
+    if (end - 1 > start) out.push(rows[end - 1]);
+    start = end;
+  }
+  return out;
+}
+
 export function toSeries(v: unknown): { i: number; v: number }[] {
   if (v == null) return [];
   const arr: unknown[] = Array.isArray(v) ? v : [v];
@@ -259,4 +355,16 @@ export function refShape(r: { x?: unknown; x2?: unknown; y?: unknown; y2?: unkno
   if (r.x !== undefined && r.y !== undefined) return "point";
   if (r.x !== undefined) return "vline";
   return r.y !== undefined ? "hline" : null;
+}
+
+/** Past this many points a figure redraws once a resize settles, stretching its last drawing until then. */
+export const HEAVY_FIGURE_POINTS = 5000;
+
+/** The points a figure draws, counted from what it holds. */
+export function figurePoints(value: ChartValue): number {
+  const p = value.payload;
+  if (p?.kind === "xy") return p.series.reduce((m, s) => m + s.points.length, 0);
+  if (p?.kind === "overlay") return p.series.reduce((m, s) => m + s.values.length, 0);
+  if (value.series) return value.series.reduce((m, s) => m + s.values.length, 0);
+  return Array.isArray(value.values) ? value.values.length : 0;
 }

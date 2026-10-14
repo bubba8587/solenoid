@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { type SyntheticEvent, type ComponentProps, useId, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, minMaxDecimate, refShape, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, minMaxDecimate, refShape, thinXY, envelopeRows, type ChartShape, type ThinMode } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint, ChartRef } from "../chartValue";
 import { formatDateSerial } from "../nodes/dateSerial";
@@ -129,8 +129,9 @@ export function ChartView({
   const margin = axes ? { top: PLOT_TOP, right: 8, bottom: bottomM, left: 0 } : { top: 2, right: 2, bottom: 2, left: 2 };
   const catInterval = series.length <= ALL_TICKS_UPTO ? 0 : undefined;
   const refCtx = { axis, fs, xLo: 0, xHi: Math.max(1, (labels?.length ?? series.length) - 1), pw: width - yAxisW - 8 };
-  const refEls = refMarks(refs, categoryAt(labels), refCtx);
-  const refElsSwap = refMarks(refs, categoryAt(labels), { ...refCtx, swap: true });
+  const refAt = snapAt(categoryAt(labels), series === given ? null : series.map((d) => d.i));
+  const refEls = refMarks(refs, refAt, refCtx);
+  const refElsSwap = refMarks(refs, refAt, { ...refCtx, swap: true });
 
   let chart;
   if (op === "line") {
@@ -354,9 +355,11 @@ export function MultiSeriesView({
   const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt);
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
-  const data = Array.from({ length: n }, (_, i) => {
+  const cols = series.map((s) => Array.from({ length: n }, (_, i) => num(s.values[i])));
+  const kept = op === "line" || op === "area" ? envelopeRows(cols, n, Math.round(width - yAxisW)) : null;
+  const data = (kept ?? Array.from({ length: n }, (_, i) => i)).map((i) => {
     const o: Record<string, number | null> = { i };
-    series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
+    cols.forEach((c, j) => { o[`s${j}`] = c[i]; });
     return o;
   });
   const tickFmt = (i: number | string) => {
@@ -381,8 +384,9 @@ export function MultiSeriesView({
   const legendInsetRight = op === "radar" ? 0 : margin.right;
   const legendN = legendRows(series.map((s) => s.name), width - legendInsetLeft - legendInsetRight, fs, legendCap(height));
   const refCtx = { axis, fs, xLo: 0, xHi: Math.max(1, n - 1), pw: width - legendInsetLeft - legendInsetRight };
-  const refEls = refMarks(refs, categoryAt(labels), refCtx);
-  const refElsSwap = refMarks(refs, categoryAt(labels), { ...refCtx, swap: true });
+  const refAt = snapAt(categoryAt(labels), kept);
+  const refEls = refMarks(refs, refAt, refCtx);
+  const refElsSwap = refMarks(refs, refAt, { ...refCtx, swap: true });
   const chartH = height - titleH - legendN * MULTI_LEGEND_H;
   const legend = (
     <SeriesLegend
@@ -480,9 +484,11 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
-  const data = Array.from({ length: n }, (_, i) => {
+  const cols = series.map((s) => Array.from({ length: n }, (_, i) => num(s.values[i])));
+  const kept = series.every((s) => s.kind === "line" || s.kind === "area") ? envelopeRows(cols, n, Math.round(width)) : null;
+  const data = (kept ?? Array.from({ length: n }, (_, i) => i)).map((i) => {
     const o: Record<string, number | null> = { i };
-    series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
+    cols.forEach((c, j) => { o[`s${j}`] = c[i]; });
     return o;
   });
   const tickFmt = (i: number | string) => {
@@ -503,7 +509,7 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
   const yFmt = valueTickFormat([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax]);
   const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel, yFmt);
   const legendN = legendRows(series.map((s) => s.name), width - yAxisW - margin.right, fs, legendCap(height));
-  const refEls = refMarks(refs, categoryAt(payload.labels), { axis, fs, xLo: 0, xHi: Math.max(1, (payload.labels?.length ?? 1) - 1), pw: width - yAxisW - margin.right });
+  const refEls = refMarks(refs, snapAt(categoryAt(payload.labels), kept), { axis, fs, xLo: 0, xHi: Math.max(1, (payload.labels?.length ?? 1) - 1), pw: width - yAxisW - margin.right });
   const chartH = height - titleH - legendN * MULTI_LEGEND_H;
   const legend = (
     <SeriesLegend
@@ -653,6 +659,8 @@ const BUBBLE_AREA: [number, number] = [40, 420];
 
 type XYRow = XYPoint & { _j: number; label?: string };
 
+const NO_SHAPE = () => <g />;
+
 function XYTooltip({ active, payload, names, xcats, xDate, multi, seriesName }: {
   active?: boolean;
   payload?: { payload?: XYRow }[];
@@ -783,6 +791,18 @@ function categoryAt(labels: readonly (string | number)[] | undefined) {
     const idx = labels.findIndex((l) => l === v || String(l) === String(v)
       || (typeof v === "number" && typeof l === "string" && l === formatFrameCell("date", v)));
     return idx >= 0 ? idx : null;
+  };
+}
+
+/** A category position moved to the nearest row a thinned series kept, so a reference never lands on a dropped row. */
+function snapAt(at: (v: number | string) => number | null, kept: readonly number[] | null) {
+  if (!kept?.length) return at;
+  return (v: number | string): number | null => {
+    const i = at(v);
+    if (i === null) return null;
+    let lo = 0, hi = kept.length - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (kept[mid] < i) lo = mid + 1; else hi = mid; }
+    return lo > 0 && i - kept[lo - 1] < kept[lo] - i ? kept[lo - 1] : kept[lo];
   };
 }
 
@@ -918,7 +938,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
     return axisTick(n);
   };
 
-  const runs: { j: number; rows: XYRow[] }[] = [];
+  const runs: { j: number; rows: XYRow[]; dots?: XYRow[] }[] = [];
   series.forEach((s, j) => {
     let cur: XYRow[] = [];
     for (const p of s.points) {
@@ -928,6 +948,25 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
     }
     if (cur.length) runs.push({ j, rows: cur });
   });
+  // A run denser than its pixels draws the same from the points that land on distinct pixels ([[C120]] linearWork).
+  // Dots and markers under an alpha would lose their stacked density, and a bubble or a labeled point is never dropped.
+  const yOf = logY ? Math.log10 : (v: number) => v;
+  const span = (d: [number | string, number | string], vals: () => number[], f: (v: number) => number): [number, number] =>
+    typeof d[0] === "number" && typeof d[1] === "number" ? [f(d[0]), f(d[1])] : ext(vals().map(f));
+  const [tx0, tx1] = xcats ? [0, Math.max(1, xcats.length - 1)] : span(xDomain, () => pts.map((p) => p.x), (v) => v);
+  const [ty0, ty1] = span(yDomain, () => pts.map((p) => p.y).filter((v) => !logY || v > 0), yOf);
+  const px = (x: number) => ((x - tx0) / (tx1 - tx0 || 1)) * pw;
+  const py = (y: number) => ((yOf(y) - ty0) / (ty1 - ty0 || 1)) * ph;
+  const gridOk = [tx0, tx1, ty0, ty1, pw, ph].every(Number.isFinite) && pw > 0 && ph > 0;
+  for (const run of gridOk ? runs : []) {
+    const s = series[run.j];
+    if (run.rows.length <= 2 * pw || s.sRange || run.rows.some((d) => d.text)) continue;
+    const mode: ThinMode = s.line === "none" ? "dots" : s.marker ? "markers" : "line";
+    if (mode !== "line" && (s.alpha ?? opts?.alpha ?? 1) < 1) continue;
+    // A line's markers are dots over it: each thins as what it draws.
+    if (mode === "markers") run.dots = thinXY(run.rows, px, py, "dots");
+    run.rows = thinXY(run.rows, px, py, mode === "markers" ? "line" : mode);
+  }
   const anyText = pts.some((p) => p.text);
   const refAt = (v: number | string) => xcats ? (typeof v === "string" && xcats.includes(v) ? xcats.indexOf(v) : null) : typeof v === "number" ? v : null;
   const refX = (refs ?? []).flatMap((r) => [r.x, r.x2]).map((v) => (v === undefined ? null : refAt(v))).filter((v): v is number => v !== null);
@@ -946,7 +985,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
       {refEls}
       <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }}
         content={<XYTooltip names={names} xcats={xcats} xDate={xDate} multi={multi} seriesName={(j) => series[j]?.name ?? ""} />} />
-      {runs.map(({ j, rows }, k) => {
+      {runs.map(({ j, rows, dots }, k) => {
         const s = series[j];
         const o = dim(j);
         const alpha = s.alpha ?? opts?.alpha ?? (s.sRange ? 0.55 : 1);
@@ -962,6 +1001,10 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
           if (!d || p.cx == null || p.cy == null || (!s.marker && (rows.length > 1 || s.line === "none"))) return <g />;
           return <circle cx={p.cx} cy={p.cy} r={pointR(d, j)} fill={pointFill(d, j)} fillOpacity={alpha * o} />;
         };
+        if (dots) return [
+          <Scatter key={`${k}l`} name={s.name} data={rows} line={line as ComponentProps<typeof Scatter>["line"]} lineType="joint" shape={NO_SHAPE} isAnimationActive={false} />,
+          <Scatter key={`${k}d`} name={s.name} data={dots} shape={shape as ComponentProps<typeof Scatter>["shape"]} isAnimationActive={false} />,
+        ];
         return (
           <Scatter key={k} name={s.name} data={rows} line={line as ComponentProps<typeof Scatter>["line"]} lineType="joint" shape={shape as ComponentProps<typeof Scatter>["shape"]} isAnimationActive={false}>
             {anyText && <LabelList dataKey="label" position="right" fill={axis} fontSize={8.5 * fs} />}

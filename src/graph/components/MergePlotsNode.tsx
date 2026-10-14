@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import type { MergePlotsNode as MergePlotsNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { ExtensibleInputs } from "./ExtensibleInputs";
@@ -29,7 +29,8 @@ export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType
   const overlay = cached && isChartValue(cached) ? cached : null;
   const hasData = !!overlay && (overlay.payload?.kind === "overlay" || overlay.payload?.kind === "xy") && overlay.payload.series.length > 0;
   // The live card title tracks the node's name; the cable value keeps its own.
-  const cv: ChartValue | null = overlay ? { ...overlay, title: overlay.options.title || nodeDisplayName(data) } : null;
+  const name = nodeDisplayName(data);
+  const cv: ChartValue | null = useMemo(() => overlay && { ...overlay, title: overlay.options.title || name }, [overlay, name]);
 
   return (
     <NodeShell node={data} emit={emit}>

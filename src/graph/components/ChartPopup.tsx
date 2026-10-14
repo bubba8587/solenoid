@@ -1,5 +1,5 @@
 // [[C100]] chartIsAValue
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { chartPopup } from "../chartPopupStore";
 import { appThemeStore } from "../appTheme";
@@ -47,6 +47,14 @@ export function ChartPopup() {
     ro.observe(el);
     return () => ro.disconnect();
   }, [state]);
+
+  // One value per opened chart, so a resize doesn't hand the figure a new value and redraw a heavy one.
+  const shown = state?.value;
+  const figValue = useMemo(() => shown && {
+    ...shown,
+    title: undefined,
+    options: shown.options ? { ...shown.options, title: undefined } : shown.options,
+  }, [shown]);
 
   // A hook before the early return. canvasKeyboard stands down under the overlay (modalGuard), so this is the only arrow handler.
   useEffect(() => {
@@ -105,13 +113,9 @@ export function ChartPopup() {
       resizable={{ min: isGantt ? { w: 520, h: 300 } : { w: 260, h: 200 }, initial: initialCard }}
     >
       <div ref={figRef} className="sol-popup__scroll" style={{ padding: FIG_PAD, display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
-        {state.value ? (
+        {figValue ? (
           <ChartFigure
-            value={{
-              ...state.value,
-              title: undefined,
-              options: state.value.options ? { ...state.value.options, title: undefined } : state.value.options,
-            }}
+            value={figValue}
             width={w}
             height={h}
             fontScale={fontScale}
