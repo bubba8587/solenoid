@@ -16,6 +16,8 @@ export const ALL_TICKS_UPTO = 12;
 // Headroom over an axed plot for the card's expand button.
 export const PLOT_TOP = 14;
 export const MULTI_LEGEND_H = 18;
+// A legend takes at most a quarter of its figure's height, so a card-sized chart keeps its plot.
+export const legendCap = (height: number) => Math.max(1, Math.floor(height / 4 / MULTI_LEGEND_H));
 
 /** A tooltip value: an object becomes its error code, so a row never prints "[object Object]". */
 export function tipValue(v: unknown): string {
@@ -100,20 +102,33 @@ export function indexTicks(n: number, px: number): number[] {
   return out;
 }
 
-export function SeriesLegend({ series, paint, dim, onPick, fs, color, isLine }: {
+/** Index ticks moved to the nearest row a thinned series kept (`kept` ascending), so each tick names a row the figure draws. */
+export function keptTicks(ticks: readonly number[], kept: readonly number[]): number[] {
+  const out = new Set<number>();
+  if (!kept.length) return [];
+  for (const t of ticks) {
+    let lo = 0, hi = kept.length - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (kept[mid] < t) lo = mid + 1; else hi = mid; }
+    out.add(lo > 0 && t - kept[lo - 1] < kept[lo] - t ? kept[lo - 1] : kept[lo]);
+  }
+  return [...out];
+}
+
+export function SeriesLegend({ series, paint, dim, onPick, fs, color, isLine, rows = 1 }: {
   series: { name: string }[];
   paint: (j: number) => string;
   dim: (j: number) => number;
   onPick: (j: number) => void;
   fs: number; color: string; isLine: (j: number) => boolean;
+  rows?: number;
 }) {
   return (
     <div
       className="sol-chart-legend"
-      style={{ height: MULTI_LEGEND_H, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+      style={{ height: rows * MULTI_LEGEND_H, display: "flex", flexWrap: "wrap", alignItems: "center", alignContent: "flex-start", justifyContent: "center", columnGap: 10, rowGap: 0, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", cursor: "pointer", userSelect: "none" }}
     >
       {series.map((s, j) => (
-        <span key={j} onClick={() => onPick(j)} style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: dim(j) }}>
+        <span key={j} onClick={() => onPick(j)} style={{ display: "inline-flex", alignItems: "center", gap: 4, height: MULTI_LEGEND_H, whiteSpace: "nowrap", opacity: dim(j) }}>
           <span aria-hidden="true" style={{ width: 8, height: isLine(j) ? 2 : 8, borderRadius: isLine(j) ? 1 : 2, background: paint(j), flex: "none" }} />
           {s.name}
         </span>

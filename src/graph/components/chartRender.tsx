@@ -5,7 +5,7 @@ import { Chart } from "@tanstack/charts/react";
 import { d3Curve } from "@tanstack/charts/d3/shape";
 import { hexbin } from "@tanstack/charts/spatial/hexbin";
 import { densityContour } from "@tanstack/charts/spatial/density";
-import { scaleSequential } from "d3-scale";
+import { scaleLog, scaleSequential } from "d3-scale";
 import { scaleBand } from "@tanstack/charts/scales/band";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
 import { scalePoint } from "@tanstack/charts/scales/point";
@@ -14,13 +14,16 @@ import { treemap } from "@tanstack/charts/hierarchy/treemap";
 import { sankeyDiagram } from "@tanstack/charts/network/sankey";
 import { curveLinearClosed, curveStepAfter } from "d3-shape";
 import "./chartView.css";
-import { LINE_DOT_R, SCATTER_DOT_R, PLOT_TOP, MULTI_LEGEND_H, tipValue, tip, fade, useTheme, valueDomain, axisLabel, indexTicker, indexTicks, SeriesLegend, legendPress, Fig, rgbCss, heatColorFn } from "./charts/kit";
+import { LINE_DOT_R, SCATTER_DOT_R, PLOT_TOP, MULTI_LEGEND_H, tipValue, tip, fade, useTheme, valueDomain, axisLabel, indexTicker, indexTicks, SeriesLegend, legendPress, legendCap, keptTicks, Fig, rgbCss, heatColorFn } from "./charts/kit";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueTickFormat, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, sanitizeChartLabel, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueTickFormat, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, sanitizeChartLabel, envelopeRows, legendRows, logTicks, dateTicks, thinXY, type ChartShape, type ThinMode } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
-import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
+import type { ChartRef, OverlayPayload, XYPayload, XYPoint } from "../chartValue";
+import { categoryAt, markColor, refMarks, snapAt } from "./charts/refs";
 import { resolveColor } from "../palette";
 import { ChartTitle, titleHeight } from "./chartTitle";
+import { formatDateSerial } from "../nodes/dateSerial";
+import { formatFrameCell } from "../frame";
 import { iterMin, iterMax } from "../nodes/mathUtils";
 
 // ─── One series ──────────────────────────────────────────────────────────────
@@ -28,7 +31,7 @@ import { iterMin, iterMax } from "../nodes/mathUtils";
 type Row = { i: number; v: number };
 
 export function ChartView({
-  op, series: given, width, height, axes, opts, signColors, labels, fontScale,
+  op, series: given, width, height, axes, opts, signColors, labels, fontScale, refs,
 }: {
   op: ChartShape;
   series: Row[];
@@ -39,13 +42,14 @@ export function ChartView({
   signColors?: { pos: string; neg: string };
   labels?: (string | number)[];
   fontScale?: number;
+  refs?: readonly ChartRef[];
 }) {
-  const { theme, paint, viz, grid } = useTheme();
+  const { theme, paint, viz, grid, axis } = useTheme();
   const series = op === "line" || op === "area" ? minMaxDecimate(given, width) : given;
   const { dim: sliceDim, pick: pickSlice } = useSeriesSpotlight(series.map((d) => String(d.i)));
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const tickFmt = indexTicker(labels);
-  const color = opts?.color || viz;
+  const color = markColor(opts?.color, viz);
   const lw = opts?.linewidth ?? 1.5;
   const showGrid = axes && (opts?.grid ?? true);
   const showMarkers = opts?.marker ?? axes;
@@ -77,15 +81,19 @@ export function ChartView({
       const catTicks = indexTicks(n, horizontal ? chartH : width);
       const catAxis = (band: boolean) => ({
         scale: band ? scaleBand<number>().domain(idx).padding(0.18) : scalePoint<number>().domain(idx).padding(0.02),
-        axis: axes ? { ticks: { values: catTicks.filter((t) => idx.includes(t)), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.ylabel : opts?.xlabel, fs) } : false as const,
+        axis: axes ? { ticks: { values: keptTicks(catTicks, idx), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.ylabel : opts?.xlabel, fs) } : false as const,
       });
       const barAlpha = opts?.alpha !== undefined ? fillAlpha : 1;
+      // A reference on a thinned category axis lands on the nearest kept row.
+      const { under, over } = axes
+        ? refMarks(refs, snapAt(categoryAt(labels), series === given ? null : idx), { axis, fs, x: [idx[0] ?? 0, idx[idx.length - 1] ?? 0], y: domain, pw: width - 40, swap: horizontal })
+        : { under: [], over: [] };
       if (op === "column") {
         const fill = signColors
           ? (d: Row) => (d.v > 0 ? signColors.pos : d.v < 0 ? signColors.neg : grid)
           : color;
         return defineChart({
-          marks: [barY(series, { x: "i", y: "v", fill, fillOpacity: barAlpha })],
+          marks: [...under, barY(series, { x: "i", y: "v", fill, fillOpacity: barAlpha }), ...over],
           scales: { x: catAxis(true), y: valueAxis },
           guides: axes, margin: axes ? { top: PLOT_TOP } : 2, clip: opts?.ymin !== undefined || opts?.ymax !== undefined, theme, keyboard: false, tooltip: tip(rowTip),
         });
@@ -93,8 +101,10 @@ export function ChartView({
       if (op === "lollipop") {
         return defineChart({
           marks: [
+            ...under,
             barY(series, { x: "i", y: "v", fill: color, fillOpacity: barAlpha, maxThickness: lw }),
             dot(series, { x: "i", y: "v", r: opts?.markersize ?? 4, fill: color }),
+            ...over,
           ],
           scales: { x: catAxis(true), y: valueAxis },
           guides: axes, margin: axes ? { top: PLOT_TOP } : 2, clip: opts?.ymin !== undefined || opts?.ymax !== undefined, theme, keyboard: false, tooltip: tip(rowTip),
@@ -102,15 +112,17 @@ export function ChartView({
       }
       if (op === "bar") {
         return defineChart({
-          marks: [barX(series, { y: "i", x: "v", fill: color, fillOpacity: barAlpha })],
+          marks: [...under, barX(series, { y: "i", x: "v", fill: color, fillOpacity: barAlpha }), ...over],
           scales: { y: catAxis(true), x: valueAxis },
           guides: axes, margin: axes ? { top: PLOT_TOP } : 2, clip: opts?.ymin !== undefined || opts?.ymax !== undefined, theme, keyboard: false, tooltip: tip(rowTip),
         });
       }
       const marks = [
+        ...under,
         ...(op === "area" ? [areaY(series, { x: "i", y1: 0, y2: "v", fill: color, fillOpacity: fillAlpha, curve })] : []),
         lineY(series, { x: "i", y: "v", stroke: color, strokeOpacity: op === "line" ? opts?.alpha ?? 1 : 1, strokeWidth: lw, curve }),
         ...(showMarkers ? [dot(series, { x: "i", y: "v", r: dotR, fill: color })] : []),
+        ...over,
       ];
       return defineChart({
         marks,
@@ -119,7 +131,7 @@ export function ChartView({
       });
     }
     return null;
-  }, [op, series, width, chartH, axes, opts, signColors, labels, theme, color, grid, lw, showGrid, showMarkers, dotR, fillAlpha, fs, n]);
+  }, [op, series, given, width, chartH, axes, opts, signColors, labels, theme, color, grid, axis, lw, showGrid, showMarkers, dotR, fillAlpha, fs, n, refs]);
 
   let chart: ReactNode;
   if (definition) {
@@ -400,20 +412,21 @@ function RadarFigure({ series, labels, indices, width, height, opts, fs, paint, 
 type SeriesRow = { i: number; j: number; v: number | null };
 
 export function MultiSeriesView({
-  op, series, labels, width, height, axes, opts, fontScale,
+  op, series, labels, width, height, axes, opts, fontScale, refs,
 }: {
   op: ChartShape;
   series: { name: string; values: (number | null)[] }[];
   labels?: (string | number)[];
   width: number; height: number; axes: boolean;
-  opts?: ChartOptions; fontScale?: number;
+  opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[];
 }) {
   const { theme, paint, axis, grid } = useTheme();
   const { dim, pick } = useSeriesSpotlight(series.map((s) => s.name));
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const tickFmt = indexTicker(labels);
   const title = opts?.title;
-  const chartH = height - (title ? titleHeight(fs) : 0) - MULTI_LEGEND_H;
+  const legendN = legendRows(series.map((s) => s.name), width - 16, fs, legendCap(height));
+  const chartH = height - (title ? titleHeight(fs) : 0) - legendN * MULTI_LEGEND_H;
   const lw = opts?.linewidth ?? 1.5;
   const showGrid = axes && (opts?.grid ?? true);
   const showMarkers = opts?.marker ?? false;
@@ -425,8 +438,10 @@ export function MultiSeriesView({
     if (op === "radar") return null;
     const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
     const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
-    const idx = Array.from({ length: n }, (_, i) => i);
-    const rows: SeriesRow[] = series.flatMap((s, j) => idx.map((i) => ({ i, j, v: num(s.values[i]) })));
+    const cols = series.map((s) => Array.from({ length: n }, (_, i) => num(s.values[i])));
+    const kept = op === "line" || op === "area" ? envelopeRows(cols, n, Math.round(width - 40)) : null;
+    const idx = kept ?? Array.from({ length: n }, (_, i) => i);
+    const rows: SeriesRow[] = cols.flatMap((c, j) => idx.map((i) => ({ i, j, v: c[i] })));
     const vals = [...rows.map((d) => d.v), opts?.ymin, opts?.ymax];
     const horizontal = op === "bar";
     const isBar = op === "bar" || op === "column";
@@ -439,8 +454,12 @@ export function MultiSeriesView({
     };
     const catAxis = {
       scale: isBar ? scaleBand<number>().domain(idx).padding(0.18) : scalePoint<number>().domain(idx).padding(0.02),
-      axis: axes ? { ticks: { values: indexTicks(n, horizontal ? chartH : width), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.ylabel : opts?.xlabel, fs) } : false as const,
+      axis: axes ? { ticks: { values: keptTicks(indexTicks(n, horizontal ? chartH : width), idx), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.ylabel : opts?.xlabel, fs) } : false as const,
     };
+    // A reference on a thinned category axis lands on the nearest kept row.
+    const refsOn = (dom: [number, number]) => axes
+      ? refMarks(refs, snapAt(categoryAt(labels), kept), { axis, fs, x: [idx[0] ?? 0, idx[idx.length - 1] ?? 0], y: dom, pw: width - 40, swap: horizontal })
+      : { under: [], over: [] };
     const valid = rows.filter((d) => d.v !== null) as (SeriesRow & { v: number })[];
     const fill = (d: SeriesRow) => fade(paint(d.j), markAlpha * dim(d.j));
     const curve = opts?.drawstyle === "steps" ? d3Curve(curveStepAfter) : undefined;
@@ -453,15 +472,16 @@ export function MultiSeriesView({
         rows: points.map((p) => { const d = p.datum as SeriesRow; return { label: series[d.j]?.name ?? "", value: tipValue(d.v), color: paint(d.j) }; }),
       };
     });
+    const { under, over } = refsOn(domain);
     if (op === "column") {
       return defineChart({
-        marks: [barY(valid, { x: "i", y: "v", z: "j", fill, layout: group(), key: (d) => `${d.j}:${d.i}` })],
+        marks: [...under, barY(valid, { x: "i", y: "v", z: "j", fill, layout: group(), key: (d) => `${d.j}:${d.i}` }), ...over],
         scales: { x: catAxis, y: valueAxis }, guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, focus: "group-x", keyboard: false, tooltip: groupTip,
       });
     }
     if (op === "bar") {
       return defineChart({
-        marks: [barX(valid, { y: "i", x: "v", z: "j", fill, layout: group(), key: (d) => `${d.j}:${d.i}` })],
+        marks: [...under, barX(valid, { y: "i", x: "v", z: "j", fill, layout: group(), key: (d) => `${d.j}:${d.i}` }), ...over],
         scales: { y: catAxis, x: valueAxis }, guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, focus: "group-y", keyboard: false, tooltip: groupTip,
       });
     }
@@ -498,26 +518,31 @@ export function MultiSeriesView({
         };
       });
       const common = { guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, keyboard: false, tooltip: stackTip } as const;
-      if (op === "column") return defineChart({ marks: [barY(spans, { x: "i", y1: "lo", y2: "hi", z: "j", fill, key: sKey })], scales: { x: catAxis, y: vAxis }, focus: "group-x", ...common });
-      if (op === "bar") return defineChart({ marks: [barX(spans, { y: "i", x1: "lo", x2: "hi", z: "j", fill, key: sKey })], scales: { y: catAxis, x: vAxis }, focus: "group-y", ...common });
+      const r = refsOn(sd.domain);
+      if (op === "column") return defineChart({ marks: [...r.under, barY(spans, { x: "i", y1: "lo", y2: "hi", z: "j", fill, key: sKey }), ...r.over], scales: { x: catAxis, y: vAxis }, focus: "group-x", ...common });
+      if (op === "bar") return defineChart({ marks: [...r.under, barX(spans, { y: "i", x1: "lo", x2: "hi", z: "j", fill, key: sKey }), ...r.over], scales: { y: catAxis, x: vAxis }, focus: "group-y", ...common });
       return defineChart({
         marks: [
+          ...r.under,
           areaY(spans, { x: "i", y1: "lo", y2: "hi", z: "j", fill: (d) => fade(paint(d.j), Math.max(fillAlpha, 0.55) * dim(d.j)), fillOpacity: 1, key: sKey, curve }),
           lineY(spans, { x: "i", y: "hi", z: "j", stroke: (d) => fade(paint(d.j), dim(d.j)), strokeWidth: lw, key: sKey, curve }),
+          ...r.over,
         ],
         scales: { x: catAxis, y: vAxis }, focus: "group-x", ...common,
       });
     }
     const marks = [
+      ...under,
       ...(op === "area" ? [areaY(rows, { x: "i", y1: 0, y2: "v", z: "j", fill: (d) => fade(paint(d.j), fillAlpha * dim(d.j)), fillOpacity: 1, key, curve })] : []),
       lineY(rows, { x: "i", y: "v", z: "j", stroke: (d) => fade(paint(d.j), (op === "line" ? markAlpha : 1) * dim(d.j)), strokeWidth: lw, key, curve }),
       ...(showMarkers ? [dot(valid, { x: "i", y: "v", r: dotR, color: (d) => fade(paint(d.j), dim(d.j)), key })] : []),
+      ...over,
     ];
     return defineChart({
       marks, scales: { x: catAxis, y: valueAxis }, guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, focus: "group-x", keyboard: false, tooltip: groupTip,
       color: { domain: series.map((_, j) => fade(paint(j), dim(j))), range: series.map((_, j) => fade(paint(j), dim(j))) },
     });
-  }, [op, series, width, chartH, axes, opts, theme, grid, paint, dim, lw, showGrid, showMarkers, dotR, fillAlpha, markAlpha, fs, tickFmt]);
+  }, [op, series, labels, refs, width, chartH, axes, opts, theme, grid, axis, paint, dim, lw, showGrid, showMarkers, dotR, fillAlpha, markAlpha, fs, tickFmt]);
 
   return (
     <div style={{ width, height }} onPointerDown={legendPress} onMouseDown={legendPress}>
@@ -525,16 +550,16 @@ export function MultiSeriesView({
       {definition
         ? <Chart definition={definition} width={width} height={chartH} ariaLabel={title || `${op} chart`} tabIndex={-1} />
         : <RadarFigure series={series} labels={labels} width={width} height={chartH} opts={opts} fs={fs} paint={paint} dim={dim} />}
-      <SeriesLegend series={series} paint={paint} dim={dim} fs={fs} color={axis} isLine={() => op === "line"} onPick={pick} />
+      <SeriesLegend series={series} paint={paint} dim={dim} fs={fs} color={axis} rows={legendN} isLine={() => op === "line"} onPick={pick} />
     </div>
   );
 }
 
 // ─── Merge Plots ─────────────────────────────────────────────────────────────
 
-export function OverlayView({ payload, width, height, opts, fontScale }: {
+export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
   payload: OverlayPayload;
-  width: number; height: number; opts?: ChartOptions; fontScale?: number;
+  width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[];
 }) {
   const { theme, axis, grid } = useTheme();
   const colors = useSeriesColors();
@@ -545,17 +570,22 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const tickFmt = indexTicker(labels);
   const title = opts?.title;
-  const chartH = height - (title ? titleHeight(fs) : 0) - MULTI_LEGEND_H;
+  const legendN = legendRows(series.map((s) => s.name), width - 16, fs, legendCap(height));
+  const chartH = height - (title ? titleHeight(fs) : 0) - legendN * MULTI_LEGEND_H;
 
   const definition = useMemo(() => {
     const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
     const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
-    const idx = Array.from({ length: n }, (_, i) => i);
-    const rows: SeriesRow[] = series.flatMap((s, j) => idx.map((i) => ({ i, j, v: num(s.values[i]) })));
+    const cols = series.map((s) => Array.from({ length: n }, (_, i) => num(s.values[i])));
+    const kept = series.every((s) => s.kind === "line" || s.kind === "area") ? envelopeRows(cols, n, Math.round(width)) : null;
+    const idx = kept ?? Array.from({ length: n }, (_, i) => i);
+    const rows: SeriesRow[] = cols.flatMap((c, j) => idx.map((i) => ({ i, j, v: c[i] })));
     const vals = [...rows.map((d) => d.v), opts?.ymin, opts?.ymax];
     const { domain, ticks } = valueDomain(vals, opts?.ymin, opts?.ymax, chartH - 30, true);
+    const { under, over } = refMarks(refs, snapAt(categoryAt(labels), kept), { axis, fs, x: [idx[0] ?? 0, idx[idx.length - 1] ?? 0], y: domain, pw: width - 40 });
     const barSeries = series.map((s, j) => ({ s, j })).filter(({ s }) => s.kind !== "line" && s.kind !== "area");
     const marks = [
+      ...under,
       ...(barSeries.length ? [barY(rows.filter((d) => d.v !== null && barSeries.some((b) => b.j === d.j)) as (SeriesRow & { v: number })[], {
         x: "i", y: "v", z: "j", layout: group(), key: (d) => `${d.j}:${d.i}`,
         fill: (d) => fade(paint(d.j), (series[d.j].alpha ?? 1) * dim(d.j)),
@@ -571,13 +601,14 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
           ...(s.marker ? [dot(mine.filter((d) => d.v !== null), { x: "i", y: "v", r: s.markersize ?? LINE_DOT_R, fill: c, key: "i" })] : []),
         ];
       }),
+      ...over,
     ];
     return defineChart({
       marks,
       scales: {
         x: {
           scale: scaleBand<number>().domain(idx).padding(0.18),
-          axis: { ticks: { values: indexTicks(n, width), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs) },
+          axis: { ticks: { values: keptTicks(indexTicks(n, width), idx), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs) },
         },
         y: {
           scale: scaleLinear().domain(domain),
@@ -594,13 +625,13 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
         };
       }),
     });
-  }, [series, width, chartH, opts, theme, grid, dim, fs, tickFmt, colors]);
+  }, [series, labels, refs, width, chartH, opts, theme, grid, axis, dim, fs, tickFmt, colors]);
 
   return (
     <div style={{ width, height }} onPointerDown={legendPress} onMouseDown={legendPress}>
       {title && <ChartTitle text={title} fs={fs} />}
       <Chart definition={definition} width={width} height={chartH} ariaLabel={title || "merged plot"} tabIndex={-1} />
-      <SeriesLegend series={series} paint={paint} dim={dim} fs={fs} color={axis} isLine={(j) => series[j]?.kind === "line"} onPick={pick} />
+      <SeriesLegend series={series} paint={paint} dim={dim} fs={fs} color={axis} rows={legendN} isLine={(j) => series[j]?.kind === "line"} onPick={pick} />
     </div>
   );
 }
@@ -715,23 +746,24 @@ function rampGradient(d: RampSeg) {
 type XYRow = XYPoint & { j: number; run: number; seg: number; label?: string; fill: string; r: number };
 
 /** Scatter, XY Line, Bubble and an XY Merge Plots: every series on one numeric plane, broken at each gap. */
-export function XYView({ payload, width, height, opts, fontScale }: {
-  payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number;
+export function XYView({ payload, width, height, opts, fontScale, refs }: {
+  payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[];
 }) {
   const { theme, viz, axis, grid } = useTheme();
   const colors = useSeriesColors();
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
-  const { series, xcats, names } = payload;
+  const { series, xcats, names, xDate } = payload;
   const { dim, pick } = useSeriesSpotlight(series.map((s) => s.name));
   const multi = series.length > 1;
-  const paint = (j: number) => series[j]?.color || (multi ? colors[j % colors.length] : opts?.color || viz);
+  const paint = (j: number) => series[j]?.color || (multi ? colors[j % colors.length] : markColor(opts?.color, viz));
   const pts = series.flatMap((s) => s.points.filter((p): p is XYPoint => p !== null));
   const cats = series.find((s) => s.cCats)?.cCats;
   const cRange = series.find((s) => s.cRange)?.cRange;
   const catLegend = !multi && !!cats && cats.length > 0;
   const title = opts?.title;
-  const legendRows = ((multi && payload.bin !== "hexbin") || catLegend ? 1 : 0) + (cRange ? 1 : 0);
-  const chartH = height - (title ? titleHeight(fs) : 0) - legendRows * MULTI_LEGEND_H;
+  const seriesRows = multi && payload.bin !== "hexbin" ? legendRows(series.map((s) => s.name), width - 16, fs, legendCap(height))
+    : catLegend ? legendRows(cats!, width - 16, fs, legendCap(height)) : 0;
+  const chartH = height - (title ? titleHeight(fs) : 0) - (seriesRows + (cRange ? 1 : 0)) * MULTI_LEGEND_H;
 
   const definition = useMemo(() => {
     if (pts.length === 0) return null;
@@ -753,35 +785,55 @@ export function XYView({ payload, width, height, opts, fontScale }: {
       }
       return s.markersize ?? opts?.markersize ?? (s.line === "none" ? SCATTER_DOT_R : LINE_DOT_R);
     };
-    // Each series splits into runs at its gaps; a run is one line.
+    // A log axis has no place for zero or less: such points drop out as gaps.
+    const logY = opts?.yscale === "log";
+    // Each series splits into runs at its gaps, and at an x step wider than `maxgap`; a run is one line.
     const rows: XYRow[] = [];
     let run = 0;
     series.forEach((s, j) => {
-      let seg = 0;
+      let seg = 0, prevX = 0;
       for (const p of s.points) {
-        if (p === null) { if (seg) run++; seg = 0; continue; }
+        if (p === null || (logY && !(p.y > 0))) { if (seg) run++; seg = 0; continue; }
+        if (seg && opts?.maxgap !== undefined && Math.abs(p.x - prevX) > opts.maxgap) { run++; seg = 0; }
         rows.push({ ...p, j, run, seg: seg++, fill: pointFill(p, j), r: pointR(p, j), ...(p.text ? { label: sanitizeChartLabel(p.text, 12) } : {}) });
+        prevX = p.x;
       }
       if (seg) run++;
     });
+    if (rows.length === 0) return null;
     const pw = width - 50, ph = chartH - 34;
     const ext = (vals: number[], lo?: number, hi?: number): [number, number] => [lo ?? iterMin(vals), hi ?? iterMax(vals)];
     let xd = xcats ? { domain: [-0.5, xcats.length - 0.5] as [number, number], ticks: indexTicks(xcats.length, pw) }
       : valueDomain(pts.map((p) => p.x), opts?.xmin, opts?.xmax, pw, false);
-    let yd = valueDomain(pts.map((p) => p.y), opts?.ymin, opts?.ymax, ph, false);
+    let yd = valueDomain(rows.map((p) => p.y), opts?.ymin, opts?.ymax, ph, false);
+    // A date axis spans its data exactly (round serials mean nothing) and ticks on calendar boundaries.
+    let byYear = false;
+    if (xDate) {
+      const [lo, hi] = ext(rows.map((p) => p.x), opts?.xmin, opts?.xmax);
+      const t = dateTicks(lo, hi, Math.max(3, Math.round(pw / 70)));
+      xd = { domain: [lo, hi], ticks: t.ticks };
+      byYear = t.byYear;
+    }
     // Room for the largest marker on an open side, so a big bubble at the edge isn't cut.
     const rMax = Math.max(0, ...rows.map((d) => d.r));
     const grow = (d: { domain: [number, number]; ticks: number[] }, px: number, lo?: number, hi?: number) => {
       const u = ((d.domain[1] - d.domain[0]) / Math.max(1, px)) * rMax;
       return { domain: [lo === undefined ? d.domain[0] - u : d.domain[0], hi === undefined ? d.domain[1] + u : d.domain[1]] as [number, number], ticks: d.ticks };
     };
-    if (rMax > 4) { yd = grow(yd, ph, opts?.ymin, opts?.ymax); if (!xcats) xd = grow(xd, pw, opts?.xmin, opts?.xmax); }
+    if (rMax > 4) { yd = grow(yd, ph, opts?.ymin, opts?.ymax); if (!xcats && !xDate) xd = grow(xd, pw, opts?.xmin, opts?.xmax); }
     if (opts?.aspect === "equal" && !xcats) {
       const eq = equalDomains(ext(pts.map((p) => p.x), opts?.xmin, opts?.xmax), ext(pts.map((p) => p.y), opts?.ymin, opts?.ymax), pw, ph);
       xd = { domain: eq.x, ticks: niceTicks(eq.x[0], eq.x[1], Math.max(3, Math.round(pw / 60))) };
       yd = { domain: eq.y, ticks: niceTicks(eq.y[0], eq.y[1], Math.max(3, Math.round(ph / 40))) };
     }
-    const xFmt = (t: number) => (xcats ? xcats[Math.round(t)] ?? "" : axisTick(t));
+    // A log axis snaps out to whole decades unless ymin and ymax set its ends.
+    if (logY) {
+      const ys = rows.map((p) => p.y);
+      const lo = opts?.ymin !== undefined && opts.ymin > 0 ? opts.ymin : 10 ** Math.floor(Math.log10(iterMin(ys)));
+      const hi = opts?.ymax ?? 10 ** Math.ceil(Math.log10(iterMax(ys)));
+      yd = { domain: [lo, hi], ticks: logTicks(lo, hi) };
+    }
+    const xFmt = (t: number) => (xcats ? xcats[Math.round(t)] ?? "" : xDate ? formatDateSerial(t, byYear ? "YYYY" : "MMM YYYY") : axisTick(t));
     const axesOf = () => ({
       x: {
         scale: scaleLinear().domain(xd.domain),
@@ -789,9 +841,9 @@ export function XYView({ payload, width, height, opts, fontScale }: {
         axis: { ticks: { values: xd.ticks, format: xFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs) },
       },
       y: {
-        scale: scaleLinear().domain(yd.domain),
+        scale: logY ? scaleLog().domain(yd.domain) : scaleLinear().domain(yd.domain),
         grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
-        axis: { ticks: { values: yd.ticks, format: valueTickFormat(pts.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs) },
+        axis: { ticks: { values: yd.ticks, format: valueTickFormat(rows.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs) },
       },
     });
     if (payload.bin === "hexbin") {
@@ -826,10 +878,32 @@ export function XYView({ payload, width, height, opts, fontScale }: {
         scales: axesOf(), margin: { top: PLOT_TOP }, clip: true, theme, keyboard: false,
       });
     }
+    // A run denser than its pixels draws the same from the points that land on distinct pixels ([[C120]] linearWork).
+    // Dots and markers under an alpha would lose their stacked density, and a bubble or a labeled point is never dropped.
+    const yOf = logY ? Math.log10 : (v: number) => v;
+    const [tx0, tx1] = xd.domain, ty0 = yOf(yd.domain[0]), ty1 = yOf(yd.domain[1]);
+    const px = (x: number) => ((x - tx0) / (tx1 - tx0 || 1)) * pw;
+    const py = (y: number) => ((yOf(y) - ty0) / (ty1 - ty0 || 1)) * ph;
+    const gridOk = [tx0, tx1, ty0, ty1, pw, ph].every(Number.isFinite) && pw > 0 && ph > 0;
+    const runs = new Map<number, XYRow[]>();
+    for (const d of rows) { const r = runs.get(d.run); if (r) r.push(d); else runs.set(d.run, [d]); }
+    const lineRows: XYRow[] = [], dotRows: XYRow[] = [];
+    for (const runRows of runs.values()) {
+      const s = series[runRows[0].j];
+      const mode: ThinMode = s.line === "none" ? "dots" : s.marker ? "markers" : "line";
+      const thin = gridOk && runRows.length > 2 * pw && !s.sRange && !runRows.some((d) => d.text)
+        && (mode === "line" || (s.alpha ?? opts?.alpha ?? 1) >= 1);
+      // A line's markers are dots over it: each thins as what it draws.
+      const asLine = thin ? thinXY(runRows, px, py, mode === "markers" ? "line" : mode) : runRows;
+      lineRows.push(...asLine);
+      // A lone point on a markerless line would draw nothing, so it draws as a dot.
+      if (s.marker) dotRows.push(...(thin && mode === "markers" ? thinXY(runRows, px, py, "dots") : asLine));
+      else if (s.line !== "none" && runRows.length === 1) dotRows.push(runRows[0]);
+    }
     const rampSegs: { x1: number; y1: number; x2: number; y2: number; fill: string; to: string; k: string; lw: number; o: number; dash?: string }[] = [];
     const lines = series.flatMap((s, j) => {
       if (s.line === "none") return [];
-      const mine = rows.filter((d) => d.j === j);
+      const mine = lineRows.filter((d) => d.j === j);
       const lw = s.linewidth ?? opts?.linewidth ?? 1.5;
       const lineAlpha = (s.alpha ?? opts?.alpha ?? 1) * dim(j);
       const ramp = !!s.cRange && mine.some((d) => typeof d.c === "number");
@@ -843,32 +917,28 @@ export function XYView({ payload, width, height, opts, fontScale }: {
       }
       return [lineY(mine, { x: "x", y: "y", z: "run", stroke: paint(j), strokeWidth: lw, strokeOpacity: lineAlpha, strokeDasharray: LINE_DASH[s.line], key: (d) => `${d.run}:${d.seg}` })];
     });
-    const dots = series.flatMap((s, j) => {
-      if (!s.marker) return [];
-      const alpha = (s.alpha ?? opts?.alpha ?? (s.sRange ? 0.55 : 1)) * dim(j);
-      return [dot(rows.filter((d) => d.j === j), { x: "x", y: "y", r: (d) => d.r, color: (d) => fade(d.fill, alpha), key: (d) => `${d.run}:${d.seg}` })];
+    const dotAlpha = (j: number) => (series[j].alpha ?? opts?.alpha ?? (series[j].sRange ? 0.55 : 1)) * dim(j);
+    const dots = series.flatMap((_, j) => {
+      const mine = dotRows.filter((d) => d.j === j);
+      if (!mine.length) return [];
+      const alpha = dotAlpha(j);
+      return [dot(mine, { x: "x", y: "y", r: (d) => d.r, color: (d) => fade(d.fill, alpha), key: (d) => `${d.run}:${d.seg}` })];
     });
+    const dotPaints = [...new Set(dotRows.map((d) => fade(d.fill, dotAlpha(d.j))))];
     const textRows = rows.filter((d) => d.label);
+    const refAt = (v: number | string) => (xcats ? (typeof v === "string" && xcats.includes(v) ? xcats.indexOf(v) : null) : typeof v === "number" ? v : null);
+    const { under, over } = refMarks(refs, refAt, { axis, fs, x: xd.domain, y: yd.domain, pw });
     return defineChart({
       marks: [
+        ...under,
         ...lines,
         ...(rampSegs.length ? [link(rampSegs, { x1: "x1", y1: "y1", x2: "x2", y2: "y2", key: "k", stroke: (d) => rampPaint(d, rampSegs.length), strokeWidth: (d) => d.lw, strokeDasharray: rampSegs[0].dash })] : []),
         ...dots,
         ...(textRows.length ? [text(textRows, { x: "x", y: "y", text: "label", dx: (d) => d.r + 3, anchor: "start", fill: axis, fontSize: 8.5 * fs, key: (d) => `t${d.run}:${d.seg}` })] : []),
+        ...over,
       ],
-      scales: {
-        x: {
-          scale: scaleLinear().domain(xd.domain),
-          grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
-          axis: { ticks: { values: xd.ticks, format: xFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs) },
-        },
-        y: {
-          scale: scaleLinear().domain(yd.domain),
-          grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
-          axis: { ticks: { values: yd.ticks, format: valueTickFormat(pts.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs) },
-        },
-      },
-      color: { domain: [...new Set(rows.flatMap((d) => series[d.j].marker ? [fade(d.fill, (series[d.j].alpha ?? opts?.alpha ?? (series[d.j].sRange ? 0.55 : 1)) * dim(d.j))] : []))], range: [...new Set(rows.flatMap((d) => series[d.j].marker ? [fade(d.fill, (series[d.j].alpha ?? opts?.alpha ?? (series[d.j].sRange ? 0.55 : 1)) * dim(d.j))] : []))] },
+      scales: axesOf(),
+      color: { domain: dotPaints, range: dotPaints },
       margin: { top: PLOT_TOP },
       gradients: rampSegs.length <= GRADIENT_SEGMENTS_MAX ? rampSegs.flatMap((d) => (rampPaint(d, rampSegs.length) === d.fill ? [] : [rampGradient(d)])) : [],
       clip: opts?.xmin !== undefined || opts?.xmax !== undefined || opts?.ymin !== undefined || opts?.ymax !== undefined,
@@ -880,7 +950,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
         return {
           title: multi ? series[d.j]?.name ?? "" : undefined,
           rows: [
-            ...row(names.x ?? "x", xcats ? xcats[d.x] : axisTick(d.x)),
+            ...row(names.x ?? "x", xcats ? xcats[d.x] : xDate ? String(formatFrameCell("date", d.x)) : axisTick(d.x)),
             ...row(names.y ?? "y", tipValue(d.y)),
             ...row(names.s ?? "size", d.s === undefined ? undefined : tipValue(d.s)),
             ...row(names.c ?? "color", d.c === undefined ? undefined : typeof d.c === "number" ? tipValue(d.c) : d.c),
@@ -889,7 +959,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
         };
       }),
     });
-  }, [payload, width, chartH, opts, theme, grid, axis, dim, fs, colors, viz]);
+  }, [payload, refs, width, chartH, opts, theme, grid, axis, dim, fs, colors, viz]);
 
   if (!definition) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   const colorbar = cRange && (
@@ -905,11 +975,11 @@ export function XYView({ payload, width, height, opts, fontScale }: {
       {title && <ChartTitle text={title} fs={fs} />}
       <Chart definition={definition} width={width} height={chartH} ariaLabel={title || "xy plot"} tabIndex={-1} />
       {multi && payload.bin !== "hexbin" && (
-        <SeriesLegend series={series} paint={paint} dim={dim} fs={fs} color={axis}
+        <SeriesLegend series={series} paint={paint} dim={dim} fs={fs} color={axis} rows={seriesRows}
           isLine={() => series.some((s) => s.line !== "none")} onPick={pick} />
       )}
       {catLegend && (
-        <SeriesLegend series={cats!.map((name) => ({ name }))} paint={(k) => colors[k % colors.length]} dim={() => 1} fs={fs} color={axis}
+        <SeriesLegend series={cats!.map((name) => ({ name }))} paint={(k) => colors[k % colors.length]} dim={() => 1} fs={fs} color={axis} rows={seriesRows}
           isLine={() => false} onPick={() => {}} />
       )}
       {colorbar}

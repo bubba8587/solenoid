@@ -18,7 +18,9 @@ TanStack Charts is new and open source, so every place Solenoid keeps its own co
 | Vector arrows split into marks by width and head length; open heads only | `charts/fieldFigures.tsx` | `vector` takes one width and head per mark | [patch 05](patches/05-vector-datum-stroke-and-head.md) |
 | Contour iso-lines drawn by our own marching squares | `charts/fieldFigures.tsx` (`isoLinesMark`) | `contour` draws band outlines, border included | [patch 06](patches/06-contour-isolines.md) |
 | A translucent `rect` under each pie and heatmap label, sized by guessed glyph widths | `chartRender.tsx` (`pieLabelMarks`) | `text` has no halo | [patch 07](patches/07-text-halo.md) |
-| `minMaxDecimate` | `chartCore.ts` | a documented non-goal (large-data guide) | none: stays ours |
+| `minMaxDecimate`, `envelopeRows`, `thinXY`, `keptTicks`: drawing a dense series from the points that land on distinct pixels | `chartCore.ts`, `charts/kit.tsx` | a documented non-goal (large-data guide) | none: stays ours |
+| `dateTicks`: date ticks on DATETRUNC's calendar boundaries | `chartCore.ts` | time scales tick `Date` values; our axis holds date serials and must agree with the formula language's calendar | none: stays ours |
+| `vlinePlaces`: reference-line labels that flip sides and step down rows to clear each other | `charts/refs.ts` | `dodge` lays out dots only; `text` has no collision avoidance | candidate issue, not drafted: label dodging for `text` |
 
 ## Patches
 
