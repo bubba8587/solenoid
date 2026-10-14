@@ -227,23 +227,13 @@
       }
     },
     {
-      "id": "events",
+      "id": "refs",
       "type": "FrameInputNode",
       "x": 2160,
       "y": 1400,
       "init": {
-        "label": "AI releases and the CHIPS Act",
-        "frameText": "[{\"name\":\"Date\",\"type\":\"date\",\"cells\":[\"2020-05-28\",\"2022-11-30\",\"2023-02-28\",\"2023-03-14\",\"2025-01-20\",\"2025-08-07\"]},{\"name\":\"Event\",\"type\":\"string\",\"cells\":[\"GPT-3\",\"ChatGPT\",\"CHIPS Act\",\"GPT-4\",\"DeepSeek-R1\",\"GPT-5\"]},{\"name\":\"Color\",\"type\":\"string\",\"cells\":[\"\",\"\",\"pink\",\"\",\"\",\"\"]}]"
-      }
-    },
-    {
-      "id": "terms",
-      "type": "FrameInputNode",
-      "x": 2160,
-      "y": 1700,
-      "init": {
-        "label": "Presidential terms",
-        "frameText": "[{\"name\":\"From\",\"type\":\"date\",\"cells\":[\"2013-01-20\",\"2017-01-20\",\"2021-01-20\",\"2025-01-20\"]},{\"name\":\"To\",\"type\":\"date\",\"cells\":[\"2017-01-20\",\"2021-01-20\",\"2025-01-20\",\"2029-01-20\"]},{\"name\":\"Party color\",\"type\":\"string\",\"cells\":[\"blue\",\"vermilion\",\"blue\",\"vermilion\"]}]"
+        "label": "References: AI releases, CHIPS Act, presidential terms",
+        "frameText": "[{\"name\":\"x\",\"type\":\"date\",\"cells\":[\"2020-05-28\",\"2022-11-30\",\"2023-02-28\",\"2023-03-14\",\"2025-01-20\",\"2025-08-07\",\"2013-01-20\",\"2017-01-20\",\"2021-01-20\",\"2025-01-20\"]},{\"name\":\"x2\",\"type\":\"date\",\"cells\":[\"\",\"\",\"\",\"\",\"\",\"\",\"2017-01-20\",\"2021-01-20\",\"2025-01-20\",\"2029-01-20\"]},{\"name\":\"label\",\"type\":\"string\",\"cells\":[\"GPT-3\",\"ChatGPT\",\"CHIPS Act\",\"GPT-4\",\"DeepSeek-R1\",\"GPT-5\",\"\",\"\",\"\",\"\"]},{\"name\":\"color\",\"type\":\"string\",\"cells\":[\"\",\"\",\"pink\",\"\",\"\",\"\",\"blue\",\"vermilion\",\"blue\",\"vermilion\"]}]"
       }
     },
     {
@@ -327,7 +317,7 @@
       "y": 1400,
       "init": {
         "label": "Lines and shading",
-        "body": "The chart's Lines input takes **AI releases and the CHIPS Act**: the CHIPS row is its first funding round (28 Feb 2023), when the 2022 law began paying out. Its Bands input takes **Presidential terms**, blue Democratic and red Republican. Edit either table to change the marks.",
+        "body": "The **References** table draws the chart's dashed lines (rows with only an x) and shaded bands (rows with x and x2). The CHIPS Act row is its first funding round (28 Feb 2023), when the 2022 law began paying out; the bands are presidential terms, blue Democratic and red Republican.",
         "color": "gray",
         "width": 560,
         "height": 180
@@ -445,16 +435,10 @@
       "targetInput": "values"
     },
     {
-      "source": "events",
+      "source": "refs",
       "sourceOutput": "frame",
       "target": "chart",
-      "targetInput": "lines"
-    },
-    {
-      "source": "terms",
-      "sourceOutput": "frame",
-      "target": "chart",
-      "targetInput": "bands"
+      "targetInput": "references"
     },
     {
       "source": "style",

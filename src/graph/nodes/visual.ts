@@ -11,7 +11,7 @@ import { buildXY, sourceAsXY, XY_CHART_OPS, type XYOp } from "./xyPlot";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
   ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, HeatmapPayload, QuiverPayload,
-  RecordPayload, RecordField, RecordSize, RecordDeck, OverlaySeries, OverlayPayload, XYPayload,
+  RecordPayload, RecordField, RecordSize, RecordDeck, OverlaySeries, OverlayPayload, XYPayload, ChartRef,
 } from "../chartValue";
 import { solError, type SolError } from "../errorValue";
 import { columnUnitLabel } from "../unitColumn";
@@ -94,8 +94,7 @@ export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "A list plots by position; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Scatter, XY Line and Bubble also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
-    lines: "Scatter, XY Line and Bubble draw a dashed vertical line at each row's x, labeled at the top. Color takes a palette name or a CSS color.",
-    bands: "Scatter, XY Line and Bubble shade each row's span of x lightly. Color takes a palette name or a CSS color.",
+    references: "Reference lines and bands, one per row, read by column name: x alone is a dashed vertical line and x with x2 a band; y alone a horizontal line and y with y2 a band; label and color are optional. On a chart of categories, x names a category. Color takes a palette name or a CSS color.",
   };
 
   label: string;
@@ -105,6 +104,7 @@ export class ChartNode extends ClassicPreset.Node {
   cachedLabels: (string | number)[] | null = null;
   cachedPayload: XYPayload | null = null;
   cachedError: SolError | null = null;
+  cachedRefs: ChartRef[] | null = null;
   // Uncoerced, because coercion would widen a wired list into a single frame row.
   rawInputs: ReadonlySet<string> = new Set(["values"]);
   chartOptions: ChartOptions = {};
@@ -118,15 +118,10 @@ export class ChartNode extends ClassicPreset.Node {
       { name: "Sales", type: "number", cells: [120, 145, 98] },
       { name: "Target", type: "number", cells: [130, 130, 130] },
     ] },
-    lines: { columns: [
-      { name: "X", type: "date", cells: [44894, 44985, 45678] },
-      { name: "Label", type: "string", cells: ["ChatGPT", "CHIPS funding", "DeepSeek-R1"] },
-      { name: "Color", type: "string", cells: ["gray", "pink", "gray"] },
-    ] },
-    bands: { columns: [
-      { name: "From", type: "date", cells: [42755, 44216, 45677] },
-      { name: "To", type: "date", cells: [44216, 45677, 47138] },
-      { name: "Color", type: "string", cells: ["vermilion", "blue", "vermilion"] },
+    references: { columns: [
+      { name: "x", type: "date", cells: [44894, 44985, 45677] },
+      { name: "label", type: "string", cells: ["ChatGPT", "CHIPS funding", "DeepSeek-R1"] },
+      { name: "color", type: "string", cells: ["gray", "pink", "gray"] },
     ] },
   };
 
@@ -135,13 +130,12 @@ export class ChartNode extends ClassicPreset.Node {
     this.label = init?.label ?? "";
     this.op = init?.op ?? "column";
     this.addInput("values", cubeAdoptIn("Data"));
-    this.addInput("lines", frameIn("X + Label + Color"));
-    this.addInput("bands", frameIn("From + To + Color"));
+    this.addInput("references", frameIn("References"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: unknown[]; lines?: unknown[]; bands?: unknown[]; options?: string[] }): { chart: ChartValue | SolError } {
+  data(inputs: { values?: unknown[]; references?: unknown[]; options?: string[] }): { chart: ChartValue | SolError } {
     const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
     const raw0 = inputs.values?.[0] ?? null;
     const flat = isCubeValue(raw0) ? flatCubeToFrame(raw0, "scalar") : raw0;
@@ -150,6 +144,8 @@ export class ChartNode extends ClassicPreset.Node {
     this.cachedSeries = null;
     this.cachedPayload = null;
     this.cachedError = null;
+    const refs = readChartRefs(inputs.references?.[0]);
+    this.cachedRefs = refs.length ? refs : null;
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
@@ -161,7 +157,7 @@ export class ChartNode extends ClassicPreset.Node {
         this.cachedError = xy;
         return { chart: xy };
       }
-      this.cachedPayload = xy && withAnnotations(xy, inputs.lines?.[0], inputs.bands?.[0]);
+      this.cachedPayload = xy;
       v = xy ? (xy.series[0].points.map((p) => p?.y ?? null) as unknown as number[]) : null;
       const explicit = this.op === "bubble" || this.chartOptions.x !== undefined;
       if (xy && explicit && this.chartOptions.xlabel === undefined && xy.names.x) this.chartOptions.xlabel = xy.names.x;
@@ -202,19 +198,31 @@ export class ChartNode extends ClassicPreset.Node {
       payload: this.cachedPayload ?? undefined,
       options: this.chartOptions,
       title: this.chartOptions.title || this.label || "Chart",
+      ...(this.cachedRefs ? { refs: this.cachedRefs } : {}),
     };
     return { chart };
   }
 }
 
-/** An XY payload with the rows of a Lines frame (x, label, color) and a Bands frame (from, to, color), read by position. */
-function withAnnotations(xy: XYPayload, lines: unknown, bands: unknown): XYPayload {
-  const rows = (f: unknown) => isFrameValue(f) ? Array.from({ length: f.columns[0]?.values.length ?? 0 }, (_, r) => f.columns.map((c) => c.values[r])) : [];
-  const n = (c: unknown) => (typeof c === "number" && Number.isFinite(c) ? c : null);
+/** A References table's rows as chart references, its columns found by name (`x`, `x2`, `y`, `y2`, `label`, `color`,
+ *  any case). A row with neither an `x` nor a `y` is skipped; an `x` is a number, a date serial or a category label. */
+export function readChartRefs(f: unknown): ChartRef[] {
+  if (!isFrameValue(f)) return [];
+  const col = (name: string) => f.columns.find((c) => c.name.trim().toLowerCase() === name);
+  const cx = col("x"), cx2 = col("x2"), cy = col("y"), cy2 = col("y2"), cl = col("label"), cc = col("color");
+  const n = (c: unknown) => (typeof c === "number" && Number.isFinite(c) ? c : undefined);
+  const nx = (c: unknown) => n(c) ?? (typeof c === "string" && c.trim() !== "" ? c.trim() : undefined);
   const t = (c: unknown) => (typeof c === "string" && c.trim() !== "" ? c.trim() : undefined);
-  const l = rows(lines).flatMap(([x, label, color]) => n(x) === null ? [] : [{ x: n(x)!, ...(t(label) ? { label: t(label) } : {}), ...(t(color) ? { color: t(color) } : {}) }]);
-  const b = rows(bands).flatMap(([a, z, color]) => n(a) === null || n(z) === null ? [] : [{ x0: Math.min(n(a)!, n(z)!), x1: Math.max(n(a)!, n(z)!), ...(t(color) ? { color: t(color) } : {}) }]);
-  return { ...xy, ...(l.length ? { lines: l } : {}), ...(b.length ? { bands: b } : {}) };
+  const out: ChartRef[] = [];
+  for (let r = 0; r < (f.columns[0]?.values.length ?? 0); r++) {
+    const ref: ChartRef = {
+      x: cx && nx(cx.values[r]), x2: cx2 && nx(cx2.values[r]), y: cy && n(cy.values[r]), y2: cy2 && n(cy2.values[r]),
+      label: cl && t(cl.values[r]), color: cc && t(cc.values[r]),
+    };
+    if (ref.x === undefined && ref.y === undefined) continue;
+    out.push(Object.fromEntries(Object.entries(ref).filter(([, v]) => v !== undefined)) as ChartRef);
+  }
+  return out;
 }
 
 // ─── Merge Plots ──────────────────────────────────────────────────────────────
@@ -286,10 +294,12 @@ export class MergePlotsNode extends ClassicPreset.Node {
       sources.push({ cv, plotNo: i + 1 });
     });
     const payload = refusal ?? (sources.some(({ cv }) => cv.payload?.kind === "xy") ? mergeXY(sources) : mergeOverlay(sources));
+    const refs = sources.flatMap(({ cv }) => cv.refs ?? []);
     if (isSolError(payload)) { this.cachedChart = payload; return { chart: payload }; }
     const chart: ChartValue = {
       __chart: true, op: "overlay", values: null, payload,
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Merged Plot",
+      ...(refs.length ? { refs } : {}),
     };
     this.cachedChart = chart;
     return { chart };
@@ -341,7 +351,7 @@ function mergeOverlay(sources: { cv: ChartValue }[]): OverlayPayload {
 
 /** Text x values are indices into their own plot's categories, so they move onto one shared list; text beside numbers has no one axis. */
 function mergeXY(sources: { cv: ChartValue; plotNo: number }[]): XYPayload | SolError {
-  const got: ({ plotNo: number } & Pick<XYPayload, "series" | "xcats" | "xDate" | "lines" | "bands">)[] = [];
+  const got: ({ plotNo: number } & Pick<XYPayload, "series" | "xcats" | "xDate">)[] = [];
   for (const { cv, plotNo } of sources) {
     const g = sourceAsXY(cv, plotNo);
     if (isSolError(g)) return g;
@@ -367,11 +377,9 @@ function mergeXY(sources: { cv: ChartValue; plotNo: number }[]): XYPayload | Sol
   const nx = axisName("x"), ny = axisName("y");
   if (nx) names.x = nx;
   if (ny) names.y = ny;
-  const lines = got.flatMap((g) => g.lines ?? []), bands = got.flatMap((g) => g.bands ?? []);
   return {
     kind: "xy", series, ...(textX ? { xcats } : {}), names,
     ...(got.length && got.every((g) => g.xDate) ? { xDate: true } : {}),
-    ...(lines.length ? { lines } : {}), ...(bands.length ? { bands } : {}),
   };
 }
 

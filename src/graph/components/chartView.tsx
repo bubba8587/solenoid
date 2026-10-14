@@ -4,7 +4,7 @@ import type { ChartShape } from "./chartCore";
 import { toSeries, partSlices } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
-import type { ChartValue, ScalePayload, OverlayPayload, XYPayload } from "../chartValue";
+import type { ChartRef, ChartValue, ScalePayload, OverlayPayload, XYPayload } from "../chartValue";
 import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
 import { SurfaceView } from "./SurfaceView";
 import { useSeriesColors, useChartColors } from "./chartCore";
@@ -49,6 +49,7 @@ type ChartViewProps = {
   signColors?: { pos: string; neg: string };
   labels?: (string | number)[];
   fontScale?: number;
+  refs?: readonly ChartRef[];
 };
 
 export function ChartView(props: ChartViewProps) {
@@ -75,7 +76,7 @@ export function SankeyView(props: { sources: string[]; targets: string[]; values
   );
 }
 
-export function XYView(props: { payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number }) {
+export function XYView(props: { payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[] }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <XYViewInner {...props} />
@@ -86,7 +87,7 @@ export function XYView(props: { payload: XYPayload; width: number; height: numbe
 export function MultiSeriesView(props: {
   op: ChartShape; series: { name: string; values: (number | null)[] }[];
   labels?: (string | number)[]; width: number; height: number; axes: boolean;
-  opts?: ChartOptions; fontScale?: number;
+  opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[];
 }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
@@ -95,7 +96,7 @@ export function MultiSeriesView(props: {
   );
 }
 
-export function OverlayView(props: { payload: OverlayPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number }) {
+export function OverlayView(props: { payload: OverlayPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number; refs?: readonly ChartRef[] }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <OverlayViewInner {...props} />
@@ -170,9 +171,9 @@ export const ChartFigure = memo(function ChartFigure({ value, width, height, axe
   if (value.op === "record" && value.payload?.kind === "record")
     return <RecordCardView payload={value.payload} width={width} fscale={fscale} title={value.options?.title} onStep={recordNav} />;
   if (value.payload?.kind === "xy")
-    return <XYView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} />;
+    return <XYView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} refs={value.refs} />;
   if (value.op === "overlay" && value.payload?.kind === "overlay")
-    return <OverlayView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} />;
+    return <OverlayView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} refs={value.refs} />;
   if (value.op === "gantt" && value.payload?.kind === "gantt")
     return <GanttView payload={value.payload} width={width} height={height} virtualize={virtualize} fontScale={fscale} />;
   if (value.op === "scatter" || value.op === "xyline" || value.op === "bubble") return EMPTY_FIGURE;
@@ -184,11 +185,11 @@ const EMPTY_FIGURE = <div className="solenoid-node__display-value solenoid-node_
 function renderSeries(value: ChartValue, op: ChartShape, width: number, height: number, axes: boolean, fontScale?: number) {
   if (value.series && value.series.length >= 2 && MULTI_SERIES_OPS.has(op)) {
     if (!value.series.some((s) => toSeries(s.values).length > 0)) return EMPTY_FIGURE;
-    return <MultiSeriesView op={op} series={value.series} labels={value.labels} width={width} height={height} axes={axes} opts={value.options} fontScale={fontScale} />;
+    return <MultiSeriesView op={op} series={value.series} labels={value.labels} width={width} height={height} axes={axes} opts={value.options} fontScale={fontScale} refs={value.refs} />;
   }
   const series = partSlices(op, toSeries(value.values));
   if (series.length === 0) return EMPTY_FIGURE;
-  return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} labels={value.labels} fontScale={fontScale} />;
+  return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} labels={value.labels} fontScale={fontScale} refs={value.refs} />;
 }
 
 export function GaugeArc(props: { pct: number; track: string; size: number }) {

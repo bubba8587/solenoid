@@ -1,7 +1,7 @@
 // [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
 import { buildXY } from "../../../src/graph/nodes/xyPlot";
-import { ChartNode, MergePlotsNode } from "../../../src/graph/nodes/visual";
+import { ChartNode, MergePlotsNode, readChartRefs } from "../../../src/graph/nodes/visual";
 import { parseChartOptions, serializeChartOptions } from "../../../src/graph/nodes/chartOptions";
 import type { ChartValue, XYPayload } from "../../../src/graph/chartValue";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
@@ -180,20 +180,17 @@ describe("XY option keys", () => {
   });
 });
 
-describe("date x and annotation frames", () => {
+describe("date x and References", () => {
   const dated: FrameValue = { __frame: true, columns: [
     { name: "Month", type: "date", values: [45658, 45689, 45717] },
     { name: "USD", type: "number", values: [10, 12, 11] },
   ] };
-  const lines: FrameValue = { __frame: true, columns: [
-    { name: "X", type: "date", values: [45670, null] },
-    { name: "Label", type: "string", values: ["Launch", "skipped"] },
-    { name: "Color", type: "string", values: ["pink", ""] },
-  ] };
-  const bands: FrameValue = { __frame: true, columns: [
-    { name: "From", type: "date", values: [45700] },
-    { name: "To", type: "date", values: [45600] },
-    { name: "Color", type: "string", values: ["blue"] },
+  const refs: FrameValue = { __frame: true, columns: [
+    { name: "Color", type: "string", values: ["pink", "blue", "", "gray"] },
+    { name: "x", type: "date", values: [45670, 45700, null, null] },
+    { name: "X2", type: "date", values: [null, 45600, null, null] },
+    { name: "y", type: "number", values: [null, null, null, 11] },
+    { name: "label", type: "string", values: ["Launch", "", "no x or y", "Target"] },
   ] };
 
   it("plots a date column as serials and marks the axis as dates", () => {
@@ -203,19 +200,21 @@ describe("date x and annotation frames", () => {
     expect(p.series[0].points.map((q) => q?.x)).toEqual([45658, 45689, 45717]);
   });
 
-  it("reads Lines and Bands frames by position, skipping a row with no x and ordering a band's ends", () => {
-    const n = new ChartNode({ op: "xyline" });
-    const p = (n.data({ values: [dated], lines: [lines], bands: [bands] }).chart as ChartValue).payload as XYPayload;
-    expect(p.lines).toEqual([{ x: 45670, label: "Launch", color: "pink" }]);
-    expect(p.bands).toEqual([{ x0: 45600, x1: 45700, color: "blue" }]);
+  it("reads References by column name, skipping a row with neither x nor y", () => {
+    expect(readChartRefs(refs)).toEqual([
+      { x: 45670, label: "Launch", color: "pink" },
+      { x: 45700, x2: 45600, color: "blue" },
+      { y: 11, label: "Target", color: "gray" },
+    ]);
   });
 
-  it("carries both plots' lines, bands and date axis through Merge Plots", () => {
-    const a = new ChartNode({ op: "xyline" }).data({ values: [dated], lines: [lines] }).chart as ChartValue;
-    const b = new ChartNode({ op: "scatter" }).data({ values: [dated], bands: [bands] }).chart as ChartValue;
-    const m = (new MergePlotsNode().data({ p0: [a], p1: [b] }).chart as ChartValue).payload as XYPayload;
-    expect(m.xDate).toBe(true);
-    expect(m.lines).toHaveLength(1);
-    expect(m.bands).toHaveLength(1);
+  it("puts References on the chart value, for any op with axes, and Merge Plots gathers them", () => {
+    const a = new ChartNode({ op: "xyline" }).data({ values: [dated], references: [refs] }).chart as ChartValue;
+    const b = new ChartNode({ op: "line" }).data({ values: [[1, 2, 3]], references: [refs] }).chart as ChartValue;
+    expect(a.refs).toHaveLength(3);
+    expect(b.refs).toHaveLength(3);
+    const m = new MergePlotsNode().data({ p0: [a], p1: [a] }).chart as ChartValue;
+    expect(m.refs).toHaveLength(6);
+    expect((m.payload as XYPayload).xDate).toBe(true);
   });
 });

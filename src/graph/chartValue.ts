@@ -180,10 +180,6 @@ export interface XYSeries {
   cRange?: [number, number];
   cCats?: string[];
 }
-/** A dashed vertical line across an XY plot at `x`, labeled at its top. */
-export interface XYLine { x: number; label?: string; color?: string }
-/** A light vertical band across an XY plot from `x0` to `x1`. */
-export interface XYBand { x0: number; x1: number; color?: string }
 export interface XYPayload {
   kind: "xy";
   series: XYSeries[];
@@ -191,8 +187,6 @@ export interface XYPayload {
   xcats?: string[];
   /** Set when x is a date column: each x is a date serial, and the axis reads as dates. */
   xDate?: boolean;
-  lines?: XYLine[];
-  bands?: XYBand[];
   names: { x?: string; y?: string; s?: string; c?: string; text?: string };
 }
 export type ChartPayload =
@@ -213,6 +207,18 @@ export function chartValueOps(): readonly ChartValueOp[] {
   return [...(Object.keys(CHART_OP_META) as ChartOp[]), ...CHART_SPECIAL_OPS];
 }
 
+/** A reference mark on an axed figure, one row of a References table: `x` alone is a dashed vertical line, `x` and
+ *  `x2` a vertical band, `y` alone a horizontal line, `y` and `y2` a horizontal band. On a category axis `x` names a
+ *  category by its label. */
+export interface ChartRef {
+  x?: number | string;
+  x2?: number | string;
+  y?: number;
+  y2?: number;
+  label?: string;
+  color?: string;
+}
+
 export interface ChartValue {
   __chart: true;
   op: ChartValueOp;
@@ -222,6 +228,7 @@ export interface ChartValue {
   payload?: ChartPayload;
   options: ChartOptions;
   title?: string;
+  refs?: ChartRef[];
 }
 
 export function isChartValue(v: unknown): v is ChartValue {

@@ -180,7 +180,7 @@ export function buildXY(op: XYOp, raw: unknown, opts: ChartOptions): XYPayload |
 }
 
 /** One Merge Plots source as XY series on a shared numeric plane, its own options baked in as each series' style. */
-export function sourceAsXY(cv: ChartValue, plotNo: number): Pick<XYPayload, "series" | "xcats" | "xDate" | "lines" | "bands"> | SolError {
+export function sourceAsXY(cv: ChartValue, plotNo: number): Pick<XYPayload, "series" | "xcats" | "xDate"> | SolError {
   const o = cv.options ?? {};
   const style = (many: boolean) => ({
     ...(o.color && !many ? { color: o.color } : {}),
@@ -195,8 +195,6 @@ export function sourceAsXY(cv: ChartValue, plotNo: number): Pick<XYPayload, "ser
       series: cv.payload.series.map((s) => ({ ...s, ...st, name: (many ? s.name : cv.title || s.name) ?? "" })),
       xcats: cv.payload.xcats,
       xDate: cv.payload.xDate,
-      lines: cv.payload.lines,
-      bands: cv.payload.bands,
     };
   }
   if (cv.op === "column" || cv.op === "bar") {
