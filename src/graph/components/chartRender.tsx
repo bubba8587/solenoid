@@ -1,9 +1,9 @@
 // [[C100]] chartIsAValue
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, ReferenceLine, ReferenceArea } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, ReferenceLine, ReferenceArea, ReferenceDot } from "recharts";
 import { type SyntheticEvent, type ComponentProps, useId, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, minMaxDecimate, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, valueTickFormat, categoryAxisWidth, niceTicks, logTicks, legendRows, dateTicks, partSlices, useSeriesSpotlight, minMaxDecimate, refShape, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint, ChartRef } from "../chartValue";
 import { formatDateSerial } from "../nodes/dateSerial";
@@ -786,34 +786,45 @@ function categoryAt(labels: readonly (string | number)[] | undefined) {
   };
 }
 
-/** A figure's references as recharts marks: bands first so they sit behind, then lines. `at` maps an x to the axis's
- *  own value, or null when it isn't on the axis. On a horizontal Bar (`swap`) the categories run down the y axis. */
+/** A figure's references as recharts marks: areas first so they sit behind, then lines, then points. `at` maps an x to
+ *  the axis's own value, or null when it isn't on the axis (the row draws nothing). On a horizontal Bar (`swap`) the
+ *  categories run down the y axis. */
 function refMarks(refs: readonly ChartRef[] | undefined, at: (v: number | string) => number | null,
   ctx: { axis: string; fs: number; xLo: number; xHi: number; pw: number; swap?: boolean }): ReactElement[] {
   if (!refs?.length) return [];
   const { axis, fs, swap } = ctx;
-  const out: ReactElement[] = [];
-  const xs = refs.map((r) => ({ r, x: r.x === undefined ? null : at(r.x), x2: r.x2 === undefined ? null : at(r.x2) }));
-  const band = (k: string, a: number, b: number, across: boolean, color?: string) => {
-    const lo = Math.min(a, b), hi = Math.max(a, b);
-    out.push(<ReferenceArea key={k} {...(across ? { x1: lo, x2: hi } : { y1: lo, y2: hi })} fill={markColor(color, axis)} fillOpacity={VSPAN_ALPHA} stroke="none" ifOverflow="hidden" />);
-  };
-  xs.forEach(({ r, x, x2 }, k) => { if (x !== null && x2 !== null) band(`rxb${k}`, x, x2, !swap, r.color); });
-  refs.forEach((r, k) => { if (r.y !== undefined && r.y2 !== undefined) band(`ryb${k}`, r.y, r.y2, !!swap, r.color); });
-  const vlines = xs.filter((v): v is { r: ChartRef; x: number; x2: null } => v.x !== null && v.x2 === null);
+  const areas: ReactElement[] = [], lines: ReactElement[] = [], dots: ReactElement[] = [];
+  const vlines: { r: ChartRef; x: number }[] = [];
+  const ordered = (a?: number, b?: number) => (a !== undefined && b !== undefined && a > b ? [b, a] : [a, b]);
+  refs.forEach((r, k) => {
+    const x = r.x === undefined ? undefined : at(r.x), x2 = r.x2 === undefined ? undefined : at(r.x2);
+    if (x === null || x2 === null) return;
+    const color = markColor(r.color, axis);
+    const shape = refShape(r);
+    if (shape === "area") {
+      const [xa, xb] = ordered(x, x2);
+      let [ya, yb] = ordered(r.y, r.y2);
+      // Recharts runs a missing end to the screen's first pixel (y1) or last (y2), and a value y axis grows upward.
+      if (!swap && (ya === undefined) !== (yb === undefined)) [ya, yb] = [yb, ya];
+      const box = swap ? { x1: ya, x2: yb, y1: xa, y2: xb } : { x1: xa, x2: xb, y1: ya, y2: yb };
+      areas.push(<ReferenceArea key={`ra${k}`} {...box} fill={color} fillOpacity={VSPAN_ALPHA} stroke="none" ifOverflow="hidden" />);
+    } else if (shape === "point") {
+      dots.push(<ReferenceDot key={`rd${k}`} {...(swap ? { x: r.y, y: x } : { x, y: r.y })} r={3} fill={color} stroke="none" ifOverflow="hidden"
+        label={r.label ? { value: r.label, position: "top", fill: color, fontSize: 9 * fs } : undefined} />);
+    } else if (shape === "vline") {
+      vlines.push({ r, x: x! });
+    } else if (shape === "hline") {
+      lines.push(<ReferenceLine key={`ry${k}`} {...(swap ? { x: r.y } : { y: r.y })} stroke={color} strokeDasharray="4 3" strokeWidth={1} ifOverflow="hidden"
+        label={r.label ? { value: r.label, position: swap ? "insideTopRight" : "insideTopLeft", fill: color, fontSize: 9 * fs } : undefined} />);
+    }
+  });
   const places = vlinePlaces(vlines.map(({ r, x }) => ({ x, label: r.label })), ctx.xLo, ctx.xHi, ctx.pw, fs);
   vlines.forEach(({ r, x }, k) => {
     const color = markColor(r.color, axis);
-    out.push(<ReferenceLine key={`rx${k}`} {...(swap ? { y: x } : { x })} stroke={color} strokeDasharray="4 3" strokeWidth={1} ifOverflow="hidden"
+    lines.push(<ReferenceLine key={`rx${k}`} {...(swap ? { y: x } : { x })} stroke={color} strokeDasharray="4 3" strokeWidth={1} ifOverflow="hidden"
       label={r.label ? (swap ? { value: r.label, position: "insideTopRight", fill: color, fontSize: 9 * fs } : <VLineLabel text={r.label} place={places[k]} fs={fs} fill={color} />) : undefined} />);
   });
-  refs.forEach((r, k) => {
-    if (r.y === undefined || r.y2 !== undefined) return;
-    const color = markColor(r.color, axis);
-    out.push(<ReferenceLine key={`ry${k}`} {...(swap ? { x: r.y } : { y: r.y })} stroke={color} strokeDasharray="4 3" strokeWidth={1} ifOverflow="hidden"
-      label={r.label ? { value: r.label, position: swap ? "insideTopRight" : "insideTopLeft", fill: color, fontSize: 9 * fs } : undefined} />);
-  });
-  return out;
+  return [...areas, ...lines, ...dots];
 }
 
 /** Scatter, XY Line, Bubble and an XY Merge Plots: every series on one numeric plane, broken at each gap. */

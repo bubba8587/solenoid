@@ -207,9 +207,8 @@ export function chartValueOps(): readonly ChartValueOp[] {
   return [...(Object.keys(CHART_OP_META) as ChartOp[]), ...CHART_SPECIAL_OPS];
 }
 
-/** A reference mark on an axed figure, one row of a References table: `x` alone is a dashed vertical line, `x` and
- *  `x2` a vertical band, `y` alone a horizontal line, `y` and `y2` a horizontal band. On a category axis `x` names a
- *  category by its label. */
+/** A reference mark on an axed figure, one row of a References table (`refShape` says which mark). On a category axis
+ *  `x` names a category by its label. */
 export interface ChartRef {
   x?: number | string;
   x2?: number | string;

@@ -82,7 +82,7 @@ area. When you coin a new load-bearing term, add it here.
 - **Unit flow**: the machinery that carries an FC's unit and format along the value,
   downstream and upstream through passthroughs, derived on read. $ is a unit, not a format.
   (`unitFlow.ts`, `unitFormat.ts`; `../tree/specs/values/unit-flow.md`)
-- **Reference** (chart): a reference line or band on a chart with axes, one row of the Chart's References table (`x`, `x2`, `y`, `y2`, `label`, `color`). Not an Annotation.
+- **Reference** (chart): a reference line, point, band or box on a chart with axes, one row of the Chart's References table (`x`, `x2`, `y`, `y2`, `label`, `color`). Not an Annotation.
 - **Annotation**: the resolved unit/format metadata attached to a value for display;
   computed by walking the graph, mostly not stored. (`formatAnnotationStore.ts`)
 - **Convert**: the node that changes a value's unit (m→ft), forwarding its target into a

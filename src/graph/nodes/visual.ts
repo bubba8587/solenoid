@@ -94,7 +94,7 @@ export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "A list plots by position; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size. Scatter, XY Line and Bubble can pick columns by name in the options.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Scatter, XY Line and Bubble also read x, y, s (size), c (color), annotate and by as column names. Unknown keys are ignored.",
-    references: "Reference lines and bands, one per row, read by column name: x alone is a dashed vertical line and x with x2 a band; y alone a horizontal line and y with y2 a band; label and color are optional. On a chart of categories, x names a category. Color takes a palette name or a CSS color.",
+    references: "Reference marks, one per row, read by column name: x alone is a dashed vertical line, y alone a horizontal one, x and y together a point. Add x2 or y2 for a shaded area: all four make a box, and a blank end runs to the edge of the plot. Label and color are optional. On a chart of categories, x names a category. Color takes a palette name or a CSS color.",
   };
 
   label: string;
@@ -219,7 +219,7 @@ export function readChartRefs(f: unknown): ChartRef[] {
       x: cx && nx(cx.values[r]), x2: cx2 && nx(cx2.values[r]), y: cy && n(cy.values[r]), y2: cy2 && n(cy2.values[r]),
       label: cl && t(cl.values[r]), color: cc && t(cc.values[r]),
     };
-    if (ref.x === undefined && ref.y === undefined) continue;
+    if (ref.x === undefined && ref.x2 === undefined && ref.y === undefined && ref.y2 === undefined) continue;
     out.push(Object.fromEntries(Object.entries(ref).filter(([, v]) => v !== undefined)) as ChartRef);
   }
   return out;

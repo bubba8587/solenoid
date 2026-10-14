@@ -6,6 +6,7 @@ import { parseChartOptions, serializeChartOptions } from "../../../src/graph/nod
 import type { ChartValue, XYPayload } from "../../../src/graph/chartValue";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
 import type { FrameValue } from "../../../src/graph/frame";
+import { refShape } from "../../../src/graph/components/chartCore";
 
 const curve: FrameValue = { __frame: true, columns: [
   { name: "t", type: "number", values: [0, 1, 2, 3] },
@@ -200,7 +201,7 @@ describe("date x and References", () => {
     expect(p.series[0].points.map((q) => q?.x)).toEqual([45658, 45689, 45717]);
   });
 
-  it("reads References by column name, skipping a row with neither x nor y", () => {
+  it("reads References by column name, skipping a row with no position", () => {
     expect(readChartRefs(refs)).toEqual([
       { x: 45670, label: "Launch", color: "pink" },
       { x: 45700, x2: 45600, color: "blue" },
@@ -216,5 +217,16 @@ describe("date x and References", () => {
     const m = new MergePlotsNode().data({ p0: [a], p1: [a] }).chart as ChartValue;
     expect(m.refs).toHaveLength(6);
     expect((m.payload as XYPayload).xDate).toBe(true);
+  });
+
+  it("draws a line, a point, or an area whose missing ends run to the plot's edges", () => {
+    expect(refShape({ x: 1 })).toBe("vline");
+    expect(refShape({ y: 1 })).toBe("hline");
+    expect(refShape({ x: 1, y: 1 })).toBe("point");
+    expect(refShape({ x: 1, x2: 2 })).toBe("area");
+    expect(refShape({ x: 1, x2: 2, y: 3 })).toBe("area");
+    expect(refShape({ x: 1, x2: 2, y: 3, y2: 4 })).toBe("area");
+    expect(refShape({ y2: 4 })).toBe("area");
+    expect(refShape({})).toBeNull();
   });
 });

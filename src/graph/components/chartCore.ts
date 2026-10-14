@@ -251,3 +251,12 @@ export function partSlices(op: ChartShape, series: readonly { i: number; v: numb
   if (op === "funnel" || op === "radialbar") return series.filter((d) => d.v >= 0);
   return [...series];
 }
+
+/** What a reference row draws: any second end makes an area whose missing ends run to the plot's edges (a box when
+ *  both axes are bounded), an x and a y alone a point, otherwise a line across the plot. */
+export function refShape(r: { x?: unknown; x2?: unknown; y?: unknown; y2?: unknown }): "area" | "point" | "vline" | "hline" | null {
+  if (r.x2 !== undefined || r.y2 !== undefined) return "area";
+  if (r.x !== undefined && r.y !== undefined) return "point";
+  if (r.x !== undefined) return "vline";
+  return r.y !== undefined ? "hline" : null;
+}
