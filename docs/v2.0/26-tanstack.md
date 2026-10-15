@@ -1,6 +1,6 @@
 # 26 — TanStack libraries: charts first
 
-Branch `tan`, 2026-10-06. Started as an investigation; the charts half is now built (§ 6). `spikes/tanstack-charts/` is now a gallery of every figure (`npx vite --config spikes/tanstack-charts/vite.config.ts`, then `shot.mjs`, `hover.mjs`, `eval.mjs`); `@tanstack/charts@1.0.0` is pinned.
+Branch `tan`, 2026-10-06. Started as an investigation; the charts half and Virtual are now built (§ 6, § 7). The investigation's harness and figure gallery were deleted once [[D98]] tanstackDrawsCharts ruled; git history has them, and `scripts/shot-graph.mjs` checks figures in the real app.
 
 ## 1. The question
 
@@ -38,8 +38,7 @@ renderer than Recharts 3.10.1 for Solenoid? Secondary: where do the other TanSta
 Dev-build numbers are worse for Recharts (3–4 s mount) because of Redux dev checks; the table uses
 `vite build` + `vite preview`. The comparison harness was removed with Recharts; git history has it.
 
-Visual parity on the shapes ported (line, area, column, bar, pie, sparkline, scatter, tornado):
-`spikes/tanstack-charts/comparison.png`.  The tornado
+Visual parity on the shapes ported (line, area, column, bar, pie, sparkline, scatter, tornado) was checked side by side in the deleted harness. The tornado
 needs no transparent-offset-bar trick: `barX` takes an explicit `x1..x2` interval.
 
 ## 4. Problems found in the first hour
@@ -72,7 +71,7 @@ would let reports and Obsidian notes export a chart that is not on screen and re
 scrape. Against it: three days at 1.0, a bug and a bad default found in an hour, a smaller
 community.
 
-**Taken, all in** (author 2026-10-06: `tan` is not a production branch, so no gradual path). Recharts is removed and every plot draws with TanStack Charts ([[D98]] tanstackDrawsCharts; mechanics in `tree/specs/computation/chart-figures.md` § The TanStack figures). The chart chunk is 76 KB gzipped for all 14 renderers. Off-canvas export landed with it: an Obsidian write or report export draws a chart value that isn't on screen through the same figure (`chartSvgOffscreen.tsx`). The payload figures followed (waffle, waterfall, candlestick, boxplot, both heatmaps, contour, vector field; only the 3-D Surface keeps its own canvas), so they export too, and the Chart node gained Lollipop, Rose, Hexbin and Density plus `stacked`, `drawstyle=steps` and `hole`.
+**Taken, all in** (author 2026-10-06: `tan` is not a production branch, so no gradual path). Recharts is removed and every plot draws with TanStack Charts ([[D98]] tanstackDrawsCharts; mechanics in `tree/specs/computation/chart-figures.md` § The TanStack figures). The plots load as two lazy chunks, about 88 KB gzipped together (TanStack with the kit and the font metrics, then the renderers; measured 2026-10-15), and each payload figure adds 3 to 5 KB. Off-canvas export landed with it: an Obsidian write or report export draws a chart value that isn't on screen through the same figure (`chartSvgOffscreen.tsx`). The payload figures followed (waffle, waterfall, candlestick, boxplot, both heatmaps, contour, vector field; only the 3-D Surface keeps its own canvas), so they export too, and the Chart node gained Lollipop, Rose, Hexbin and Density plus `stacked`, `drawstyle=steps` and `hole`.
 
 Upstream findings, checked against the source, are in § 8.
 
@@ -93,3 +92,6 @@ Every place Solenoid keeps its own code instead of TanStack's is listed in the r
 ## 9. Keeping `tan` current
 
 `tan` is rebased onto `develop` whenever `develop` moves, and runs the latest TanStack Charts and Virtual (1.1.0 and 3.14.19 as of 2026-10-14). In a conflict `develop`'s side wins and the TanStack change is reapplied on top as narrowly as it will go. `package.json` and the lock never get merged by hand: `node scripts/rebase-pkg.mjs` keeps `develop`'s manifest, reapplies the replayed commit's dependency edits and lets npm rebuild the lock. A version bump is its own commit at the tip, and each new release is checked against the register in `docs/upstream/tanstack-charts/` for gaps it closes; a new handroll gets its register row in the same commit.
+
+**Merging `tan` into `develop`** fast-forwards, since `tan` sits on `develop`'s tip. Before it: rebase once more, run `tsc`, the full `vitest`, `dte validate`, `npx vite build`, and look over `scripts/shot-graphs/` and the seeds with charts. After it, this section and `scripts/rebase-pkg.mjs` have no job and go; the upstream register stays.
+

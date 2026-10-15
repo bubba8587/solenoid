@@ -42,7 +42,9 @@ bundled npm package at `third-party-licenses.txt` (produced by
 model and dataflow engine are [Rete.js](https://retejs.org) (`rete`,
 `rete-engine`, MIT); Excel function semantics come from
 [Formula.js](https://formulajs.info) (MIT); charts are
-[Recharts](https://recharts.org) (MIT); the desktop shell is
+[TanStack Charts](https://tanstack.com/charts) (MIT) with `d3-shape` and `d3-scale`
+(ISC), and long tables window their rows with
+[TanStack Virtual](https://tanstack.com/virtual) (MIT); the desktop shell is
 [Tauri](https://tauri.app) (MIT/Apache-2.0) and the native relational engine is
 [Polars](https://pola.rs) (MIT).
 

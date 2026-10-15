@@ -145,7 +145,7 @@ results get retried and settled rulings relapse.
 | `excelFunctions.ts` overrides / dispatch walk | `../tree/specs/computation/formulajs-divergences.md` (why each override exists) |
 | `applyOp` scalar operators (`excelFormula.ts`) | `../tree/specs/computation/formula-language.md` § Scalar operators |
 | `stringOrder.ts` | [[C59]] byteStringOrder (byte order, not locale) |
-| `nodes/matrix.ts` Table Input parse, `TablePopup.tsx`, `TableCards.tsx`, `cardLayout.ts` | [[C58]] tableInputRawText (raw text is the stored truth); `../tree/specs/documents/table-popup.md` |
+| `nodes/matrix.ts` Table Input parse, `TablePopup.tsx`, `CubePopup.tsx`, `VirtualRows.tsx`, `TableCards.tsx`, `cardLayout.ts` | [[C58]] tableInputRawText (raw text is the stored truth); `../tree/specs/documents/table-popup.md` |
 | `palette.ts`, `appTheme.ts`, `themeVars.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
 | `CommandPalette.tsx` | `../tree/specs/canvas/command-palette.md` |
 | `OutlinePanel.tsx` | `../tree/specs/canvas/outline-panel.md` |
@@ -169,7 +169,7 @@ results get retried and settled rulings relapse.
 | `nodes/cube.ts` | [[C10]] socketLattice; `../tree/specs/values/socket-lattice.md` (the Cube is the recursive lattice supremum) |
 | `knapTemplate.ts`, `templateValue.ts`, `nodes/report.ts`, `nodes/annotation.ts` NoteNode.data, `components/useKnapRender.ts`, `ReportOverlay.tsx`, `reportExport.ts` | `../tree/specs/documents/reports-and-notes.md`; [[C68]] knapIsTheDocumentSyntax; `knap-upstream.md` (which workarounds are upstream bugs) |
 | `nodes/composite.ts`, `compositeLogic.ts`, `components/CompositeNode.tsx` | `../tree/specs/computation/composite-nodes.md`; [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve |
-| `nodes/visual.ts`, `nodes/chartOptions.ts`, `components/chartView.tsx`, `components/chartRender.tsx`, `components/charts/*`, `chartCards.tsx` | `../tree/specs/computation/chart-figures.md`; [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib |
+| `nodes/visual.ts`, `nodes/chartOptions.ts`, `components/chartView.tsx`, `components/chartRender.tsx`, `components/charts/*`, `components/chartCore.ts`, `components/chartSvgOffscreen.tsx`, `chartCards.tsx`, `textWidth.ts` (+ `textWidths.gen.ts` from `scripts/gen-text-widths.py`) | `../tree/specs/computation/chart-figures.md`; [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib |
 | `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[C66]] scriptNode; `out-of-scope.md` §4 (the bounded form); `../tree/specs/computation/script-sandbox.md` |
 | `excelFunctions.ts`, `excelFormula.ts`, `formulaSignatures.ts`, Expression/LAMBDA | `../tree/specs/computation/formula-language.md`; `../tree/specs/computation/formulajs-divergences.md`; the formula-surface nodes (`python3 tools/dte.py tree --under B16`) |
 | `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts`, the pack kernels (`astroOps.ts`, `chemistryOps.ts`, `electricalOps.ts`, `emSpectrumOps.ts`, `fluidsOps.ts`, `healthOps.ts`, `physicsConstantsOps.ts`, `thermoOps.ts`, `triangleOps.ts`), `packs/*Formulas.ts` — and ANY new shared node↔formula module | [[C17]] shareImpl (one impl, two surfaces) |

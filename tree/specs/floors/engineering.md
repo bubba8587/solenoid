@@ -106,7 +106,7 @@ The one exception runs the other way: a typed input reaches its node as a fresh 
 
 ### Drawing stops at the screen
 
-**MUST:** a view converts and draws only what it shows. The engine's preview takes its rows before converting them (`preview_of`); a card scans only the columns it draws; a chart series denser than its pixels draws only the points that change the picture, and a figure of thousands of points stretches its last drawing while it is resized and redraws once the resize settles ([[chart-figures#The recharts figures]]). A data structure that serves undo or a save shares what didn't change rather than copying it (the undo history's per-node strings, [[react-flow-surface-contract#Undo history]]).
+**MUST:** a view converts and draws only what it shows. The engine's preview takes its rows before converting them (`preview_of`); a card scans only the columns it draws; a chart series denser than its pixels draws only the points that change the picture, and a figure of thousands of points stretches its last drawing while it is resized and redraws once the resize settles ([[chart-figures#The TanStack figures]]). A data structure that serves undo or a save shares what didn't change rather than copying it (the undo history's per-node strings, [[react-flow-surface-contract#Undo history]]).
 
 ### No spread of a collection into a call
 
