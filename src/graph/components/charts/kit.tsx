@@ -5,7 +5,7 @@ import { type ChartPoint, type ChartTooltipContent } from "@tanstack/charts";
 import { tooltip } from "@tanstack/charts/tooltip";
 import { colord } from "colord";
 import { formatScalar } from "../format";
-import { useChartColors, useSeriesColors, axisTick, niceTicks } from "../chartCore";
+import { useChartColors, useSeriesColors, axisTick, niceTicks, legendRows } from "../chartCore";
 import { colormapRgb } from "../../colormaps";
 import { heightRampColor, divergingRampColor, resolveColor } from "../../palette";
 import type { ChartOptions } from "../../nodes/chartOptions";
@@ -18,6 +18,9 @@ export const PLOT_TOP = 14;
 export const MULTI_LEGEND_H = 18;
 // A legend takes at most a quarter of its figure's height, so a card-sized chart keeps its plot.
 export const legendCap = (height: number) => Math.max(1, Math.floor(height / 4 / MULTI_LEGEND_H));
+/** A legend's row count across `width`, from each name's measured width, capped at a quarter of the figure's `height`. */
+export const legendFit = (names: readonly string[], width: number, fs: number, height: number) =>
+  legendRows(names, width, fs, legendCap(height), (n) => measureText(n, measureFont(400, 9 * fs)));
 
 /** A tooltip value: an object becomes its error code, so a row never prints "[object Object]". */
 export function tipValue(v: unknown): string {
@@ -75,8 +78,11 @@ export function valueDomain(values: Iterable<unknown>, lo: number | undefined, h
   return { domain: [a, b], ticks };
 }
 
-export function axisLabel(textValue: string | undefined, fs: number) {
-  return textValue ? { text: textValue, fontSize: 10 * fs } : undefined;
+/** An axis title, cut with an ellipsis to `max` pixels: TanStack widens the plot's margins to fit a longer one, which
+ *  would squeeze a card-sized plot to nothing. */
+export function axisLabel(textValue: string | undefined, fs: number, max?: number) {
+  if (!textValue) return undefined;
+  return { text: max !== undefined ? fitLabel(textValue, Math.max(20, max), measureFont(400, 10 * fs)) : textValue, fontSize: 10 * fs };
 }
 
 /** The x tick text of an index axis: the row's label, or its 1-based position. */

@@ -20,6 +20,7 @@ TanStack Charts is new and open source, so every place Solenoid keeps its own co
 | A translucent `rect` under each pie and heatmap label, sized by guessed glyph widths | `chartRender.tsx` (`pieLabelMarks`) | `text` has no halo | [patch 07](patches/07-text-halo.md) |
 | `minMaxDecimate`, `envelopeRows`, `thinXY`, `keptTicks`: drawing a dense series from the points that land on distinct pixels | `chartCore.ts`, `charts/kit.tsx` | a documented non-goal (large-data guide) | none: stays ours |
 | `dateTicks`: date ticks on DATETRUNC's calendar boundaries | `chartCore.ts` | time scales tick `Date` values; our axis holds date serials and must agree with the formula language's calendar | none: stays ours |
+| `axisLabel` cuts an axis title to the plot's width with an ellipsis | `charts/kit.tsx` | a title wider than the plot widens the margins to fit it, squeezing a small plot to nothing | candidate issue, not drafted: clip or wrap an axis title instead of growing the margins |
 | `vlinePlaces`: reference-line labels that flip sides and step down rows to clear each other | `charts/refs.ts` | `dodge` lays out dots only; `text` has no collision avoidance | candidate issue, not drafted: label dodging for `text` |
 
 ## Patches

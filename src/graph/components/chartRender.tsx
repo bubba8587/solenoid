@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[D98]] tanstackDrawsCharts
 import { type ReactNode, useMemo } from "react";
-import { areaX, areaY, barX, barY, defineChart, dot, group, link, lineY, rect, text, type ChartPoint, type ChartTooltipContent } from "@tanstack/charts";
+import { areaX, areaY, barX, barY, createChartScene, defineChart, dot, group, link, lineY, rect, text, type ChartPoint, type ChartTooltipContent } from "@tanstack/charts";
 import { Chart } from "@tanstack/charts/react";
 import { d3Curve } from "@tanstack/charts/d3/shape";
 import { hexbin } from "@tanstack/charts/spatial/hexbin";
@@ -14,9 +14,9 @@ import { treemap } from "@tanstack/charts/hierarchy/treemap";
 import { sankeyDiagram } from "@tanstack/charts/network/sankey";
 import { curveLinearClosed, curveStepAfter } from "d3-shape";
 import "./chartView.css";
-import { LINE_DOT_R, SCATTER_DOT_R, PLOT_TOP, MULTI_LEGEND_H, tipValue, tip, fade, useTheme, valueDomain, axisLabel, indexTicker, indexTicks, SeriesLegend, legendPress, legendCap, keptTicks, Fig, rgbCss, heatColorFn } from "./charts/kit";
+import { LINE_DOT_R, SCATTER_DOT_R, PLOT_TOP, MULTI_LEGEND_H, tipValue, tip, fade, useTheme, valueDomain, axisLabel, indexTicker, indexTicks, SeriesLegend, legendPress, legendFit, keptTicks, Fig, rgbCss, heatColorFn } from "./charts/kit";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueTickFormat, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, sanitizeChartLabel, envelopeRows, legendRows, logTicks, dateTicks, thinXY, type ChartShape, type ThinMode } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueTickFormat, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, sanitizeChartLabel, envelopeRows, logTicks, dateTicks, thinXY, type ChartShape, type ThinMode } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { ChartRef, OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { categoryAt, markColor, refMarks, snapAt } from "./charts/refs";
@@ -75,26 +75,30 @@ export function ChartView({
       const valueAxis = {
         scale: scaleLinear().domain(domain),
         grid: showGrid ? { stroke: grid, strokeOpacity: 1 } : false,
-        axis: axes ? { ticks: { values: ticks, format: yFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.xlabel : opts?.ylabel, fs) } : false as const,
+        axis: axes ? { ticks: { values: ticks, format: yFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.xlabel : opts?.ylabel, fs, horizontal ? width - 60 : chartH - 40) } : false as const,
       };
       const idx = series.map((d) => d.i);
       const catTicks = indexTicks(n, horizontal ? chartH : width);
       const catAxis = (band: boolean) => ({
         scale: band ? scaleBand<number>().domain(idx).padding(0.18) : scalePoint<number>().domain(idx).padding(0.02),
-        axis: axes ? { ticks: { values: keptTicks(catTicks, idx), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.ylabel : opts?.xlabel, fs) } : false as const,
+        axis: axes ? { ticks: { values: keptTicks(catTicks, idx), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.ylabel : opts?.xlabel, fs, horizontal ? chartH - 40 : width - 60) } : false as const,
       });
       const barAlpha = opts?.alpha !== undefined ? fillAlpha : 1;
       // A reference on a thinned category axis lands on the nearest kept row.
-      const { under, over } = axes
-        ? refMarks(refs, snapAt(categoryAt(labels), series === given ? null : idx), { axis, fs, x: [idx[0] ?? 0, idx[idx.length - 1] ?? 0], y: domain, pw: width - 40, swap: horizontal })
-        : { under: [], over: [] };
+      const band = op !== "line" && op !== "area";
+      const { under, over, scales: refScales } = axes
+        ? refMarks(refs, snapAt(categoryAt(labels), series === given ? null : idx), {
+          axis, fs, x: [idx[0] ?? 0, idx[idx.length - 1] ?? 0], y: domain, pw: width - 40, swap: horizontal,
+          cats: { order: idx, padding: band ? 0.18 : 0.02, band },
+        })
+        : { under: [], over: [], scales: {} };
       if (op === "column") {
         const fill = signColors
           ? (d: Row) => (d.v > 0 ? signColors.pos : d.v < 0 ? signColors.neg : grid)
           : color;
         return defineChart({
           marks: [...under, barY(series, { x: "i", y: "v", fill, fillOpacity: barAlpha }), ...over],
-          scales: { x: catAxis(true), y: valueAxis },
+          scales: { x: catAxis(true), y: valueAxis, ...refScales },
           guides: axes, margin: axes ? { top: PLOT_TOP } : 2, clip: opts?.ymin !== undefined || opts?.ymax !== undefined, theme, keyboard: false, tooltip: tip(rowTip),
         });
       }
@@ -106,14 +110,14 @@ export function ChartView({
             dot(series, { x: "i", y: "v", r: opts?.markersize ?? 4, fill: color }),
             ...over,
           ],
-          scales: { x: catAxis(true), y: valueAxis },
+          scales: { x: catAxis(true), y: valueAxis, ...refScales },
           guides: axes, margin: axes ? { top: PLOT_TOP } : 2, clip: opts?.ymin !== undefined || opts?.ymax !== undefined, theme, keyboard: false, tooltip: tip(rowTip),
         });
       }
       if (op === "bar") {
         return defineChart({
           marks: [...under, barX(series, { y: "i", x: "v", fill: color, fillOpacity: barAlpha }), ...over],
-          scales: { y: catAxis(true), x: valueAxis },
+          scales: { y: catAxis(true), x: valueAxis, ...refScales },
           guides: axes, margin: axes ? { top: PLOT_TOP } : 2, clip: opts?.ymin !== undefined || opts?.ymax !== undefined, theme, keyboard: false, tooltip: tip(rowTip),
         });
       }
@@ -126,7 +130,7 @@ export function ChartView({
       ];
       return defineChart({
         marks,
-        scales: { x: catAxis(false), y: valueAxis },
+        scales: { x: catAxis(false), y: valueAxis, ...refScales },
         guides: axes, margin: axes ? { top: PLOT_TOP } : 2, clip: opts?.ymin !== undefined || opts?.ymax !== undefined, theme, keyboard: false, tooltip: tip(rowTip),
       });
     }
@@ -184,12 +188,23 @@ function pieLabelMarks(rows: readonly PieRow[], o: { outside: boolean; inside: b
   const shown = rows.filter((d) => d.fraction >= 0.03 && d.name).map((d) => {
     const edge = at(d, 1), elbow = { x: cx + Math.sin(d.angle) * (R + stub), y: cy - Math.cos(d.angle) * (R + stub) };
     const side = Math.sin(d.angle) >= 0 ? 1 : -1;
-    return { ...d, ex: edge.x, ey: edge.y, mx: elbow.x, my: elbow.y, colX: cx + (R + stub) * side, side };
+    return { ...d, ex: edge.x, ey: edge.y, mx: elbow.x, my: elbow.y, ly: elbow.y, colX: cx + (R + stub) * side, side };
   });
+  // Labels on one side keep a line apart: pushed down past the one above, then back up from the bottom edge.
+  const gap = font + 2;
+  for (const side of [1, -1]) {
+    const col = shown.filter((d) => d.side === side).sort((a, b) => a.my - b.my);
+    for (let k = 1; k < col.length; k++) col[k].ly = Math.max(col[k].ly, col[k - 1].ly + gap);
+    const last = col[col.length - 1];
+    if (last && last.ly > o.height - font / 2) {
+      last.ly = o.height - font / 2;
+      for (let k = col.length - 2; k >= 0; k--) col[k].ly = Math.min(col[k].ly, col[k + 1].ly - gap);
+    }
+  }
   return [
     link(shown, { x1: "ex", y1: "ey", x2: "mx", y2: "my", key: "i", stroke: o.grid, strokeWidth: 1 }),
-    link(shown, { x1: "mx", y1: "my", x2: "colX", y2: "my", key: "i", stroke: o.grid, strokeWidth: 1 }),
-    text(shown, { x: "colX", y: "my", dx: (d) => d.side * 3, text: "name", key: "i", fontSize: font, fill: o.axis, anchor: (d) => (d.side > 0 ? "start" : "end") }),
+    link(shown, { x1: "mx", y1: "my", x2: "colX", y2: "ly", key: "i", stroke: o.grid, strokeWidth: 1 }),
+    text(shown, { x: "colX", y: "ly", dx: (d) => d.side * 3, text: "name", key: "i", fontSize: font, fill: o.axis, anchor: (d) => (d.side > 0 ? "start" : "end") }),
   ];
 }
 
@@ -275,7 +290,9 @@ function RadialFigure({ series, width, height, labels, fs, tickFmt, dim, pick }:
 }) {
   const { theme, paint, axis, grid } = useTheme();
   const rings = partSlices("radialbar", series);
-  const legendH = labels ? MULTI_LEGEND_H : 0;
+  const names = rings.map((d) => sanitizeChartLabel(tickFmt(d.i)));
+  const legendN = labels ? legendFit(names, width, fs, height) : 0;
+  const legendH = legendN * MULTI_LEGEND_H;
   const definition = useMemo(() => {
     const max = Math.max(1e-9, ...rings.map((d) => d.v));
     const radius = { scale: () => scaleBand<number>().padding(0.15), range: [({ radius: r }: { radius: number }) => r * 0.18, ({ radius: r }: { radius: number }) => r * 0.92] as const };
@@ -300,7 +317,7 @@ function RadialFigure({ series, width, height, labels, fs, tickFmt, dim, pick }:
       <Chart definition={definition} width={width} height={height - legendH} ariaLabel="radial chart" tabIndex={-1}
         onSelect={(p) => { const d = p?.datum as Row | undefined; if (d && typeof d.i === "number") pick(d.i); }} />
       {labels && (
-        <SeriesLegend series={rings.map((d) => ({ name: sanitizeChartLabel(tickFmt(d.i)) }))} paint={(k) => paint(rings[k].i)}
+        <SeriesLegend series={names.map((name) => ({ name }))} paint={(k) => paint(rings[k].i)} rows={legendN}
           dim={(k) => dim(rings[k].i)} onPick={(k) => pick(rings[k].i)} fs={fs} color={axis} isLine={() => false} />
       )}
     </div>
@@ -411,6 +428,12 @@ function RadarFigure({ series, labels, indices, width, height, opts, fs, paint, 
 
 type SeriesRow = { i: number; j: number; v: number | null };
 
+/** A grouped tooltip's points, one per series: a line and its markers both answer a hover at the same x. */
+function oncePerSeries(points: readonly ChartPoint[]): ChartPoint[] {
+  const seen = new Set<number>();
+  return points.filter((p) => { const j = (p.datum as SeriesRow | undefined)?.j; if (j === undefined || seen.has(j)) return false; seen.add(j); return true; });
+}
+
 export function MultiSeriesView({
   op, series, labels, width, height, axes, opts, fontScale, refs,
 }: {
@@ -425,7 +448,7 @@ export function MultiSeriesView({
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const tickFmt = indexTicker(labels);
   const title = opts?.title;
-  const legendN = legendRows(series.map((s) => s.name), width - 16, fs, legendCap(height));
+  const legendN = legendFit(series.map((s) => s.name), width, fs, height);
   const chartH = height - (title ? titleHeight(fs) : 0) - legendN * MULTI_LEGEND_H;
   const lw = opts?.linewidth ?? 1.5;
   const showGrid = axes && (opts?.grid ?? true);
@@ -450,16 +473,19 @@ export function MultiSeriesView({
     const valueAxis = {
       scale: scaleLinear().domain(domain),
       grid: showGrid ? { stroke: grid, strokeOpacity: 1 } : false,
-      axis: axes ? { ticks: { values: ticks, format: yFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.xlabel : opts?.ylabel, fs) } : false as const,
+      axis: axes ? { ticks: { values: ticks, format: yFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.xlabel : opts?.ylabel, fs, horizontal ? width - 60 : chartH - 40) } : false as const,
     };
     const catAxis = {
       scale: isBar ? scaleBand<number>().domain(idx).padding(0.18) : scalePoint<number>().domain(idx).padding(0.02),
-      axis: axes ? { ticks: { values: keptTicks(indexTicks(n, horizontal ? chartH : width), idx), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.ylabel : opts?.xlabel, fs) } : false as const,
+      axis: axes ? { ticks: { values: keptTicks(indexTicks(n, horizontal ? chartH : width), idx), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(horizontal ? opts?.ylabel : opts?.xlabel, fs, horizontal ? chartH - 40 : width - 60) } : false as const,
     };
     // A reference on a thinned category axis lands on the nearest kept row.
     const refsOn = (dom: [number, number]) => axes
-      ? refMarks(refs, snapAt(categoryAt(labels), kept), { axis, fs, x: [idx[0] ?? 0, idx[idx.length - 1] ?? 0], y: dom, pw: width - 40, swap: horizontal })
-      : { under: [], over: [] };
+      ? refMarks(refs, snapAt(categoryAt(labels), kept), {
+        axis, fs, x: [idx[0] ?? 0, idx[idx.length - 1] ?? 0], y: dom, pw: width - 40, swap: horizontal,
+        cats: { order: idx, padding: isBar ? 0.18 : 0.02, band: isBar },
+      })
+      : { under: [], over: [], scales: {} };
     const valid = rows.filter((d) => d.v !== null) as (SeriesRow & { v: number })[];
     const fill = (d: SeriesRow) => fade(paint(d.j), markAlpha * dim(d.j));
     const curve = opts?.drawstyle === "steps" ? d3Curve(curveStepAfter) : undefined;
@@ -469,20 +495,20 @@ export function MultiSeriesView({
       const first = points[0]?.datum as SeriesRow | undefined;
       return {
         title: first ? tickFmt(first.i) : "",
-        rows: points.map((p) => { const d = p.datum as SeriesRow; return { label: series[d.j]?.name ?? "", value: tipValue(d.v), color: paint(d.j) }; }),
+        rows: oncePerSeries(points).map((p) => { const d = p.datum as SeriesRow; return { label: series[d.j]?.name ?? "", value: tipValue(d.v), color: paint(d.j) }; }),
       };
     });
-    const { under, over } = refsOn(domain);
+    const { under, over, scales: refScales } = refsOn(domain);
     if (op === "column") {
       return defineChart({
         marks: [...under, barY(valid, { x: "i", y: "v", z: "j", fill, layout: group(), key: (d) => `${d.j}:${d.i}` }), ...over],
-        scales: { x: catAxis, y: valueAxis }, guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, focus: "group-x", keyboard: false, tooltip: groupTip,
+        scales: { x: catAxis, y: valueAxis, ...refScales }, guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, focus: "group-x", keyboard: false, tooltip: groupTip,
       });
     }
     if (op === "bar") {
       return defineChart({
         marks: [...under, barX(valid, { y: "i", x: "v", z: "j", fill, layout: group(), key: (d) => `${d.j}:${d.i}` }), ...over],
-        scales: { y: catAxis, x: valueAxis }, guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, focus: "group-y", keyboard: false, tooltip: groupTip,
+        scales: { y: catAxis, x: valueAxis, ...refScales }, guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, focus: "group-y", keyboard: false, tooltip: groupTip,
       });
     }
     // One grouped mark per kind, so a hover finds every series at its x.
@@ -496,11 +522,14 @@ export function MultiSeriesView({
       for (const i of idx) {
         const here = valid.filter((d) => d.i === i);
         const total = here.reduce((a, d) => a + Math.abs(d.v), 0) || 1;
-        let up = 0, down = 0;
+        let up = 0, down = 0, run = 0;
         for (const d of here) {
           const size = percent ? Math.abs(d.v) / total : Math.abs(d.v);
           const share = Math.abs(d.v) / total;
-          if (d.v >= 0) { spans.push({ ...d, lo: up, hi: up + size, share }); up += size; }
+          // An area keeps one running total, as matplotlib's stackplot does, so each ribbon stays one band; bars stack
+          // their positives and negatives apart.
+          if (op === "area") { const step = percent ? d.v / total : d.v; spans.push({ ...d, lo: run, hi: run + step, share }); run += step; }
+          else if (d.v >= 0) { spans.push({ ...d, lo: up, hi: up + size, share }); up += size; }
           else { spans.push({ ...d, lo: down - size, hi: down, share }); down -= size; }
         }
       }
@@ -514,13 +543,13 @@ export function MultiSeriesView({
         const first = points[0]?.datum as SeriesRow | undefined;
         return {
           title: first ? tickFmt(first.i) : "",
-          rows: points.map((p) => { const d = p.datum as SeriesRow & { share: number }; return { label: series[d.j]?.name ?? "", value: percent ? `${tipValue(d.v)} (${pct(d.share)})` : tipValue(d.v), color: paint(d.j) }; }),
+          rows: oncePerSeries(points).map((p) => { const d = p.datum as SeriesRow & { share: number }; return { label: series[d.j]?.name ?? "", value: percent ? `${tipValue(d.v)} (${pct(d.share)})` : tipValue(d.v), color: paint(d.j) }; }),
         };
       });
       const common = { guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, keyboard: false, tooltip: stackTip } as const;
       const r = refsOn(sd.domain);
-      if (op === "column") return defineChart({ marks: [...r.under, barY(spans, { x: "i", y1: "lo", y2: "hi", z: "j", fill, key: sKey }), ...r.over], scales: { x: catAxis, y: vAxis }, focus: "group-x", ...common });
-      if (op === "bar") return defineChart({ marks: [...r.under, barX(spans, { y: "i", x1: "lo", x2: "hi", z: "j", fill, key: sKey }), ...r.over], scales: { y: catAxis, x: vAxis }, focus: "group-y", ...common });
+      if (op === "column") return defineChart({ marks: [...r.under, barY(spans, { x: "i", y1: "lo", y2: "hi", z: "j", fill, key: sKey }), ...r.over], scales: { x: catAxis, y: vAxis, ...r.scales }, focus: "group-x", ...common });
+      if (op === "bar") return defineChart({ marks: [...r.under, barX(spans, { y: "i", x1: "lo", x2: "hi", z: "j", fill, key: sKey }), ...r.over], scales: { y: catAxis, x: vAxis, ...r.scales }, focus: "group-y", ...common });
       return defineChart({
         marks: [
           ...r.under,
@@ -528,7 +557,7 @@ export function MultiSeriesView({
           lineY(spans, { x: "i", y: "hi", z: "j", stroke: (d) => fade(paint(d.j), dim(d.j)), strokeWidth: lw, key: sKey, curve }),
           ...r.over,
         ],
-        scales: { x: catAxis, y: vAxis }, focus: "group-x", ...common,
+        scales: { x: catAxis, y: vAxis, ...r.scales }, focus: "group-x", ...common,
       });
     }
     const marks = [
@@ -539,7 +568,7 @@ export function MultiSeriesView({
       ...over,
     ];
     return defineChart({
-      marks, scales: { x: catAxis, y: valueAxis }, guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, focus: "group-x", keyboard: false, tooltip: groupTip,
+      marks, scales: { x: catAxis, y: valueAxis, ...refScales }, guides: axes, margin: axes ? { top: PLOT_TOP } : 2, theme, focus: "group-x", keyboard: false, tooltip: groupTip,
       color: { domain: series.map((_, j) => fade(paint(j), dim(j))), range: series.map((_, j) => fade(paint(j), dim(j))) },
     });
   }, [op, series, labels, refs, width, chartH, axes, opts, theme, grid, axis, paint, dim, lw, showGrid, showMarkers, dotR, fillAlpha, markAlpha, fs, tickFmt]);
@@ -570,7 +599,7 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const tickFmt = indexTicker(labels);
   const title = opts?.title;
-  const legendN = legendRows(series.map((s) => s.name), width - 16, fs, legendCap(height));
+  const legendN = legendFit(series.map((s) => s.name), width, fs, height);
   const chartH = height - (title ? titleHeight(fs) : 0) - legendN * MULTI_LEGEND_H;
 
   const definition = useMemo(() => {
@@ -582,7 +611,9 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
     const rows: SeriesRow[] = cols.flatMap((c, j) => idx.map((i) => ({ i, j, v: c[i] })));
     const vals = [...rows.map((d) => d.v), opts?.ymin, opts?.ymax];
     const { domain, ticks } = valueDomain(vals, opts?.ymin, opts?.ymax, chartH - 30, true);
-    const { under, over } = refMarks(refs, snapAt(categoryAt(labels), kept), { axis, fs, x: [idx[0] ?? 0, idx[idx.length - 1] ?? 0], y: domain, pw: width - 40 });
+    const { under, over, scales: refScales } = refMarks(refs, snapAt(categoryAt(labels), kept), {
+      axis, fs, x: [idx[0] ?? 0, idx[idx.length - 1] ?? 0], y: domain, pw: width - 40, cats: { order: idx, padding: 0.18, band: true },
+    });
     const barSeries = series.map((s, j) => ({ s, j })).filter(({ s }) => s.kind !== "line" && s.kind !== "area");
     const marks = [
       ...under,
@@ -606,14 +637,15 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
     return defineChart({
       marks,
       scales: {
+        ...refScales,
         x: {
           scale: scaleBand<number>().domain(idx).padding(0.18),
-          axis: { ticks: { values: keptTicks(indexTicks(n, width), idx), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs) },
+          axis: { ticks: { values: keptTicks(indexTicks(n, width), idx), format: tickFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs, width - 60) },
         },
         y: {
           scale: scaleLinear().domain(domain),
           grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
-          axis: { ticks: { values: ticks, format: valueTickFormat(vals), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs) },
+          axis: { ticks: { values: ticks, format: valueTickFormat(vals), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs, chartH - 40) },
         },
       },
       margin: { top: PLOT_TOP }, theme, focus: "group-x",
@@ -621,7 +653,7 @@ export function OverlayView({ payload, width, height, opts, fontScale, refs }: {
         const first = points[0]?.datum as SeriesRow | undefined;
         return {
           title: first ? tickFmt(first.i) : "",
-          rows: points.map((p) => { const d = p.datum as SeriesRow; return { label: series[d.j]?.name ?? "", value: tipValue(d.v), color: paint(d.j) }; }),
+          rows: oncePerSeries(points).map((p) => { const d = p.datum as SeriesRow; return { label: series[d.j]?.name ?? "", value: tipValue(d.v), color: paint(d.j) }; }),
         };
       }),
     });
@@ -761,11 +793,12 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
   const cRange = series.find((s) => s.cRange)?.cRange;
   const catLegend = !multi && !!cats && cats.length > 0;
   const title = opts?.title;
-  const seriesRows = multi && payload.bin !== "hexbin" ? legendRows(series.map((s) => s.name), width - 16, fs, legendCap(height))
-    : catLegend ? legendRows(cats!, width - 16, fs, legendCap(height)) : 0;
+  const seriesRows = multi && payload.bin !== "hexbin" ? legendFit(series.map((s) => s.name), width, fs, height)
+    : catLegend ? legendFit(cats!, width, fs, height) : 0;
   const chartH = height - (title ? titleHeight(fs) : 0) - (seriesRows + (cRange ? 1 : 0)) * MULTI_LEGEND_H;
 
   const definition = useMemo(() => {
+  const build = (pw: number, ph: number) => {
     if (pts.length === 0) return null;
     const pointFill = (p: XYPoint, j: number): string => {
       const s = series[j];
@@ -801,7 +834,6 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
       if (seg) run++;
     });
     if (rows.length === 0) return null;
-    const pw = width - 50, ph = chartH - 34;
     const ext = (vals: number[], lo?: number, hi?: number): [number, number] => [lo ?? iterMin(vals), hi ?? iterMax(vals)];
     let xd = xcats ? { domain: [-0.5, xcats.length - 0.5] as [number, number], ticks: indexTicks(xcats.length, pw) }
       : valueDomain(pts.map((p) => p.x), opts?.xmin, opts?.xmax, pw, false);
@@ -831,19 +863,21 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
       const ys = rows.map((p) => p.y);
       const lo = opts?.ymin !== undefined && opts.ymin > 0 ? opts.ymin : 10 ** Math.floor(Math.log10(iterMin(ys)));
       const hi = opts?.ymax ?? 10 ** Math.ceil(Math.log10(iterMax(ys)));
-      yd = { domain: [lo, hi], ticks: logTicks(lo, hi) };
+      // Too short for the 1, 2 and 5 of each decade, the axis keeps the decades, so label thinning never drops them.
+      const all = logTicks(lo, hi), decades = all.filter((v) => Math.abs(Math.log10(v) - Math.round(Math.log10(v))) < 1e-9);
+      yd = { domain: [lo, hi], ticks: all.length * 14 > ph && decades.length >= 2 ? decades : all };
     }
     const xFmt = (t: number) => (xcats ? xcats[Math.round(t)] ?? "" : xDate ? formatDateSerial(t, byYear ? "YYYY" : "MMM YYYY") : axisTick(t));
     const axesOf = () => ({
       x: {
         scale: scaleLinear().domain(xd.domain),
         grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
-        axis: { ticks: { values: xd.ticks, format: xFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs) },
+        axis: { ticks: { values: xd.ticks, format: xFmt, size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.xlabel, fs, width - 60) },
       },
       y: {
         scale: logY ? scaleLog().domain(yd.domain) : scaleLinear().domain(yd.domain),
         grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
-        axis: { ticks: { values: yd.ticks, format: valueTickFormat(rows.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs) },
+        axis: { ticks: { values: yd.ticks, format: valueTickFormat(rows.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs, chartH - 40) },
       },
     });
     if (payload.bin === "hexbin") {
@@ -865,7 +899,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
       const pad = (d: { domain: [number, number]; ticks: number[] }, lo?: number, hi?: number, px = 200) => {
         const u = (d.domain[1] - d.domain[0]) * 0.25;
         const dom: [number, number] = [lo === undefined ? d.domain[0] - u : d.domain[0], hi === undefined ? d.domain[1] + u : d.domain[1]];
-        return { domain: dom, ticks: niceTicks(dom[0], dom[1], Math.max(3, Math.round(px / 60))) };
+        return { domain: dom, ticks: niceTicks(dom[0], dom[1], Math.max(4, Math.round(px / 50))) };
       };
       xd = pad(xd, opts?.xmin, opts?.xmax, pw);
       yd = pad(yd, opts?.ymin, opts?.ymax, ph);
@@ -959,6 +993,19 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
         };
       }),
     });
+  };
+    let def = build(width - 50, chartH - 34);
+    // Equal aspect needs the real plot box, which TanStack sizes from the tick labels: lay the chart out, fit the
+    // domains to the box it got, and again once the new ticks have moved the gutters.
+    if (def && opts?.aspect === "equal" && !xcats && !payload.bin) {
+      for (let k = 0; k < 2; k++) {
+        const laid = def;
+        if (!laid) break;
+        const box = createChartScene(laid as Parameters<typeof createChartScene>[0], { width, height: chartH }).chart;
+        def = build(box.width, box.height);
+      }
+    }
+    return def;
   }, [payload, refs, width, chartH, opts, theme, grid, axis, dim, fs, colors, viz]);
 
   if (!definition) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;

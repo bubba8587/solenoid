@@ -17,6 +17,7 @@
 //   --press <key>        press a key (Enter, Escape, Tab…) or a combo (Control+Shift+Equal)
 //   --drag <css> <dx> <dy>  press the first match's center, move by (dx, dy) screen px, release; prints each card's box before and after
 //   --eval <js>          run an expression in the page (awaited) and print its JSON result
+//   --hover <css> fx fy  move the mouse over the first match, at fractions fx, fy of its box (0.5 0.5 is the centre)
 // --size 390x844 shoots a phone (mobile UA, coarse pointer, touch) instead of the 1600×1000 desktop; --click taps and --drag drags a finger there.
 // Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__input.
 import { execFileSync } from "node:child_process";
@@ -39,6 +40,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
   else if (a === "--drag") opt.steps.push({ drag: argv[++i], dx: Number(argv[++i]), dy: Number(argv[++i]) });
   else if (a === "--eval") opt.steps.push({ evaluate: argv[++i] });
+  else if (a === "--hover") opt.steps.push({ hover: argv[++i], fx: Number(argv[++i]), fy: Number(argv[++i]) });
   else if (a === "--wait") opt.wait = Number(argv[++i]);
   else if (a === "--palette") opt.palette = argv[++i];
   else if (a === "--light") opt.light = true;
@@ -48,7 +50,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy] [--eval js]… [--wait ms] [--palette name] [--light] [--full] [--size WxH] [--scale N]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key] [--drag css dx dy] [--eval js] [--hover css fx fy]… [--wait ms] [--palette name] [--light] [--full] [--size WxH] [--scale N]"); process.exit(2); }
 
 const graph = expand(JSON.parse(readFileSync(opt.file, "utf8")));
 execFileSync(process.execPath, [fileURLToPath(new URL("./dev-up.mjs", import.meta.url))], { stdio: "inherit" });
@@ -136,6 +138,13 @@ try {
         await page.mouse.up();
       }
       console.log("cards after drag: ", (await boxes()).join(" | "));
+    }
+    else if (step.hover) {
+      const el = await page.$(step.hover);
+      if (!el) throw new Error(`no match for ${step.hover}`);
+      const b = await el.boundingBox();
+      await page.mouse.move(b.x + b.width * step.fx, b.y + b.height * step.fy, { steps: 4 });
+      await new Promise((r) => setTimeout(r, 400));
     }
     else if (step.evaluate) console.log("eval:", JSON.stringify(await page.evaluate(`(async () => (${step.evaluate}))()`)));
     else if (step.popup) {

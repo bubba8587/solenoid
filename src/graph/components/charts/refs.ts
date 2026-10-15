@@ -2,6 +2,7 @@
 // A figure's References as TanStack marks: the rows `readChartRefs` read, drawn as rules, rects, dots and labels.
 import { dot, rect, ruleX, ruleY, text } from "@tanstack/charts";
 import { decorative } from "@tanstack/charts/mark/decorative";
+import { scaleLinear } from "@tanstack/charts/scales/linear";
 import { refShape } from "../chartCore";
 import type { ChartRef } from "../../chartValue";
 import { formatFrameCell } from "../../frame";
@@ -74,16 +75,34 @@ export type RefContext = {
   pw: number;
   /** A horizontal Bar: categories run down the y axis. */
   swap?: boolean;
+  /** A category axis: its categories in drawing order and its scale's padding, `band` for a band scale (bars), else a
+   *  point scale. An area then spans whole bands, from the first one's start to the last one's end. */
+  cats?: { order: readonly number[]; padding: number; band: boolean };
 };
+
+/** The hidden scale an area on a category axis is drawn against: one unit per category step, lined up with the band or
+ *  point scale (d3's layout, centred), so a band's edges fall on round positions. */
+const CAT_SCALE = "refcat";
+function catScale(cats: NonNullable<RefContext["cats"]>, swap: boolean) {
+  const n = cats.order.length, p = cats.padding;
+  const span = cats.band ? n + p : Math.max(1, n - 1 + 2 * p);
+  return { span, start: (k: number) => k + p, end: (k: number) => (cats.band ? k + 1 : k + p),
+    scale: { scale: scaleLinear().domain(swap ? [span, 0] : [0, span]), channel: swap ? "y" as const : "x" as const, axis: false as const } };
+}
 
 /**
  * A figure's references as marks: `under` (areas) goes before the data, `over` (lines, points, labels) after. `at` maps
  * an x to the axis's own value, or null when it isn't on the axis (the row draws nothing). A value past the axis's ends
  * draws nothing; an area is clipped to them, and an end it leaves blank runs to the plot's edge.
  */
-export function refMarks(refs: readonly ChartRef[] | undefined, at: (v: number | string) => number | null, ctx: RefContext): { under: RefMark[]; over: RefMark[] } {
+export function refMarks(refs: readonly ChartRef[] | undefined, at: (v: number | string) => number | null, ctx: RefContext): {
+  under: RefMark[]; over: RefMark[]; scales: Record<string, ReturnType<typeof catScale>["scale"]>;
+} {
   const under: RefMark[] = [], over: RefMark[] = [];
-  if (!refs?.length) return { under, over };
+  const scales: Record<string, ReturnType<typeof catScale>["scale"]> = {};
+  if (!refs?.length) return { under, over, scales };
+  const cat = ctx.cats && ctx.cats.order.length ? catScale(ctx.cats, !!ctx.swap) : null;
+  const slot = new Map(ctx.cats?.order.map((v, k) => [v, k]));
   const { axis, fs, swap } = ctx;
   const [x0, x1] = ctx.x[0] <= ctx.x[1] ? ctx.x : [ctx.x[1], ctx.x[0]];
   const [y0, y1] = ctx.y[0] <= ctx.y[1] ? ctx.y : [ctx.y[1], ctx.y[0]];
@@ -98,13 +117,25 @@ export function refMarks(refs: readonly ChartRef[] | undefined, at: (v: number |
     const color = markColor(r.color, axis);
     const shape = refShape(r);
     if (shape === "area") {
-      const xa = Math.max(x0, Math.min(x ?? x0, x2 ?? x0)), xb = Math.min(x1, Math.max(x ?? x1, x2 ?? x1));
+      // A blank end runs to the plot's edge: x alone shades rightward from x, x2 alone leftward up to x2.
+      let xa: number, xb: number;
+      if (cat) {
+        const k = x === undefined ? undefined : slot.get(x), k2 = x2 === undefined ? undefined : slot.get(x2);
+        const lo = k !== undefined && k2 !== undefined ? Math.min(k, k2) : k, hi = k !== undefined && k2 !== undefined ? Math.max(k, k2) : k2;
+        xa = lo === undefined ? 0 : cat.start(lo);
+        xb = hi === undefined ? cat.span : cat.end(hi);
+      } else {
+        const ends = x !== undefined && x2 !== undefined ? [Math.min(x, x2), Math.max(x, x2)] : [x ?? x0, x2 ?? x1];
+        xa = Math.max(x0, ends[0]); xb = Math.min(x1, ends[1]);
+      }
       const ys = [r.y, r.y2].filter((v): v is number => v !== undefined);
       const ya = Math.max(y0, ys.length === 2 ? Math.min(...ys) : r.y2 === undefined ? (r.y ?? y0) : y0);
       const yb = Math.min(y1, ys.length === 2 ? Math.max(...ys) : r.y === undefined ? (r.y2 ?? y1) : y1);
       if (xa > xb || ya > yb) return;
       const box = swap ? { x1: ya, x2: yb, y1: xa, y2: xb } : { x1: xa, x2: xb, y1: ya, y2: yb };
-      under.push(decorative(rect([box], { x1: "x1", x2: "x2", y1: "y1", y2: "y2", fill: color, fillOpacity: VSPAN_ALPHA, inset: 0 })));
+      const bind = cat ? (swap ? { yScale: CAT_SCALE } : { xScale: CAT_SCALE }) : {};
+      if (cat) scales[CAT_SCALE] = cat.scale;
+      under.push(decorative(rect([box], { x1: "x1", x2: "x2", y1: "y1", y2: "y2", fill: color, fillOpacity: VSPAN_ALPHA, inset: 0, ...bind })));
     } else if (shape === "point") {
       if (!inX(x!) || !inY(r.y!)) return;
       const p = pos(x!, r.y!);
@@ -138,5 +169,5 @@ export function refMarks(refs: readonly ChartRef[] | undefined, at: (v: number |
       x: "x", y: "y", text: "t", anchor: flip ? "end" : "start", dx: flip ? -3 : 3, dy: (row + 0.5) * 11 * fs + 2, fill: l.color, fontSize: font,
     })));
   });
-  return { under, over };
+  return { under, over, scales };
 }

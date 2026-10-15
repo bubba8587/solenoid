@@ -113,6 +113,12 @@ describe("legendRows", () => {
     expect(legendRows([], 100, 1)).toBe(1);
     expect(legendRows(names, 10, 1, 2)).toBe(2);
   });
+  it("counts rows from measured widths when it can measure", () => {
+    const names = ["Alpha", "Beta", "Gamma", "Delta"];
+    // Each entry is 12 + 40 px wide, so two fit across 120 px with the 10 px gap, and four need two rows.
+    expect(legendRows(names, 120, 1, Infinity, () => 40)).toBe(2);
+    expect(legendRows(names, 1000, 1, Infinity, () => 40)).toBe(1);
+  });
 });
 
 describe("dateTicks", () => {

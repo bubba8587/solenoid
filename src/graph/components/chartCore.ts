@@ -155,11 +155,12 @@ export function dateTicks(lo: number, hi: number, count: number): { ticks: numbe
 
 /** How many rows a series legend takes across `width` px: each entry is an 8 px swatch, a 4 px gap and its text at
  *  about 5.4 · fs px a character, entries 10 px apart. Rows are counted ahead of drawing so the plot can give up their
- *  height without jumping, and are capped at `maxRows` so a small figure keeps its plot; entries past the cap are clipped. */
-export function legendRows(names: readonly string[], width: number, fs: number, maxRows = Infinity): number {
+ *  height without jumping, and are capped at `maxRows` so a small figure keeps its plot; entries past the cap are clipped.
+ *  `measure`, where text can be measured, replaces the per-character estimate with each name's real width. */
+export function legendRows(names: readonly string[], width: number, fs: number, maxRows = Infinity, measure?: (name: string) => number): number {
   let rows = 1, used = 0;
   for (const n of names) {
-    const w = 12 + n.length * 5.4 * fs;
+    const w = 12 + (measure ? measure(n) : n.length * 5.4 * fs);
     if (used > 0 && used + 10 + w > width) { rows++; used = w; }
     else used += (used > 0 ? 10 : 0) + w;
   }
