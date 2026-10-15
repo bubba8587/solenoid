@@ -1,5 +1,6 @@
 // [[C100]] chartIsAValue, [[D98]] tanstackDrawsCharts
 // The pieces every TanStack figure shares: theme, tooltips, value axes, index ticks and the DOM legend.
+import { textWidth, type TextFont } from "../../textWidth";
 import { createContext, useContext, type SyntheticEvent, type ReactNode } from "react";
 import { type ChartPoint, type ChartTooltipContent } from "@tanstack/charts";
 import { tooltip } from "@tanstack/charts/tooltip";
@@ -165,22 +166,16 @@ export function heatColorFn(o: Pick<ChartOptions, "cmap" | "center">): (t: numbe
   return o.center !== undefined ? divergingRampColor : heightRampColor;
 }
 
-/** A font for measuring, in the same family stack the SVG text falls back through, so an unloaded face can't skew it. */
-export function measureFont(weight: number, px: number, face: "sans" | "mono" = "sans"): string {
-  const stack = getComputedStyle(document.documentElement).getPropertyValue(face === "mono" ? "--font-mono" : "--font-sans").trim();
-  return `${weight} ${px}px ${stack || "sans-serif"}`;
+/** A font to measure text in: the app's bundled sans, or its mono. */
+export function measureFont(weight: number, px: number, face: "sans" | "mono" = "sans"): TextFont {
+  return { px, weight, mono: face === "mono" };
 }
 
-let measureCtx: CanvasRenderingContext2D | null = null;
-export function measureText(s: string, font: string): number {
-  measureCtx ??= document.createElement("canvas").getContext("2d");
-  if (!measureCtx) return s.length * 6;
-  measureCtx.font = font;
-  return measureCtx.measureText(s).width;
-}
+/** `s`'s width in pixels, from the font's own metrics (`textWidth`). */
+export const measureText = (s: string, font: TextFont): number => textWidth(s, font);
 
 /** `s`, cut with an ellipsis to fit `max` pixels in `font`. */
-export function fitLabel(s: string, max: number, font: string): string {
+export function fitLabel(s: string, max: number, font: TextFont): string {
   if (measureText(s, font) <= max) return s;
   let t = s;
   while (t.length > 1 && measureText(`${t}…`, font) > max) t = t.slice(0, -1);

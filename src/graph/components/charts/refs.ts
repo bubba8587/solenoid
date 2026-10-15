@@ -4,6 +4,7 @@ import { dot, rect, ruleX, ruleY, text } from "@tanstack/charts";
 import { decorative } from "@tanstack/charts/mark/decorative";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
 import { refShape } from "../chartCore";
+import { textWidth } from "../../textWidth";
 import type { ChartRef } from "../../chartValue";
 import { formatFrameCell } from "../../frame";
 import { PALETTE, resolveColor } from "../../palette";
@@ -54,7 +55,7 @@ export function vlinePlaces(lines: readonly { x: number; label?: string }[], xLo
     const label = lines[k].label;
     if (!label) return;
     const at = (lines[k].x - xLo) * pxPerX;
-    const w = 6 + label.length * 5.2 * fs;
+    const w = 6 + textWidth(label, { px: 9 * fs });
     const others = lines.filter((_, o) => o !== k).map((l) => (l.x - xLo) * pxPerX);
     const clear = (a: number, b: number) => a >= 0 && b <= pw && others.every((o) => o <= a || o >= b);
     const flip = !clear(at, at + w) && (clear(at - w, at) || (at + w > pw && at - w >= 0));

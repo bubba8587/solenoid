@@ -22,6 +22,7 @@ import type { ChartRef, OverlayPayload, XYPayload, XYPoint } from "../chartValue
 import { categoryAt, markColor, refMarks, snapAt } from "./charts/refs";
 import { resolveColor } from "../palette";
 import { ChartTitle, titleHeight } from "./chartTitle";
+import { textWidth } from "../textWidth";
 import { formatDateSerial } from "../nodes/dateSerial";
 import { formatFrameCell } from "../frame";
 import { iterMin, iterMax } from "../nodes/mathUtils";
@@ -177,7 +178,7 @@ function pieLabelMarks(rows: readonly PieRow[], o: { outside: boolean; inside: b
   const at = (d: PieRow, k: number) => ({ x: cx + Math.sin(d.angle) * R * k, y: cy - Math.cos(d.angle) * R * k });
   if (o.inside) {
     const shown = rows.filter((d) => d.fraction >= 0.06 && d.name).map((d) => {
-      const p = at(d, o.hole > 0 ? (1 + o.hole) / 2 : 0.62), w = d.name.length * font * 0.6 + 6, h = font + 4;
+      const p = at(d, o.hole > 0 ? (1 + o.hole) / 2 : 0.62), w = textWidth(d.name, { px: font }) + 6, h = font + 4;
       return { ...d, ...p, x1: p.x - w / 2, x2: p.x + w / 2, y1: p.y - h / 2, y2: p.y + h / 2 };
     });
     return [
