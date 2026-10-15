@@ -1,12 +1,11 @@
 // [[C100]] chartIsAValue, [[D98]] tanstackDrawsCharts
 import { useMemo } from "react";
 import { createMark, defineChart, dot, frame, vector, type ChartFocusStrategy, type SceneNode } from "@tanstack/charts";
-import { Chart } from "@tanstack/charts/react";
 import { canvasChartRenderer } from "@tanstack/charts/canvas";
 import { contour } from "@tanstack/charts/spatial/contour";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
 import "../chartView.css";
-import { Fig, tip, useTheme, axisLabel, useForExport, EmptyFigure, rgbCss, heatColorFn, measureFont, measureText, type Rgb } from "./kit";
+import { Chart, Fig, tip, useTheme, axisLabel, useForExport, EmptyFigure, rgbCss, heatColorFn, measureFont, measureText, type Rgb } from "./kit";
 import { compactTick, niceTicks } from "../chartCore";
 import { heatScale, type HeatScale } from "../../colormaps";
 import { formatScalar } from "../format";

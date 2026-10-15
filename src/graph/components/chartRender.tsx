@@ -1,7 +1,6 @@
 // [[C100]] chartIsAValue, [[D98]] tanstackDrawsCharts
 import { type ReactNode, useMemo } from "react";
 import { areaX, areaY, barX, barY, createChartScene, defineChart, dot, group, link, lineY, rect, text, type ChartPoint, type ChartTooltipContent } from "@tanstack/charts";
-import { Chart } from "@tanstack/charts/react";
 import { d3Curve } from "@tanstack/charts/d3/shape";
 import { hexbin } from "@tanstack/charts/spatial/hexbin";
 import { densityContour } from "@tanstack/charts/spatial/density";
@@ -14,7 +13,7 @@ import { treemap } from "@tanstack/charts/hierarchy/treemap";
 import { sankeyDiagram } from "@tanstack/charts/network/sankey";
 import { curveLinearClosed, curveStepAfter } from "d3-shape";
 import "./chartView.css";
-import { LINE_DOT_R, SCATTER_DOT_R, PLOT_TOP, MULTI_LEGEND_H, tipValue, tip, fade, useTheme, valueDomain, axisLabel, indexTicker, indexTicks, SeriesLegend, legendPress, legendFit, keptTicks, Fig, rgbCss, heatColorFn } from "./charts/kit";
+import { chartTextMeasurer, Chart, LINE_DOT_R, SCATTER_DOT_R, PLOT_TOP, MULTI_LEGEND_H, tipValue, tip, fade, useTheme, valueDomain, axisLabel, indexTicker, indexTicks, SeriesLegend, legendPress, legendFit, keptTicks, Fig, rgbCss, heatColorFn } from "./charts/kit";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, compactTick, valueTickFormat, niceTicks, partSlices, useSeriesSpotlight, minMaxDecimate, sanitizeChartLabel, envelopeRows, logTicks, dateTicks, thinXY, type ChartShape, type ThinMode } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
@@ -743,6 +742,7 @@ const LINE_DASH: Record<LineStyle, string | undefined> = {
   solid: undefined, dashed: "6 4", dotted: "1.5 3", dashdot: "6 3 1.5 3", none: undefined,
 };
 const BUBBLE_AREA: [number, number] = [40, 420];
+const isDecade = (v: number) => Math.abs(Math.log10(v) - Math.round(Math.log10(v))) < 1e-9;
 
 const rampCss = (t: number, cmap?: string) => rgbCss(heatColorFn({ cmap })(t));
 
@@ -864,9 +864,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
       const ys = rows.map((p) => p.y);
       const lo = opts?.ymin !== undefined && opts.ymin > 0 ? opts.ymin : 10 ** Math.floor(Math.log10(iterMin(ys)));
       const hi = opts?.ymax ?? 10 ** Math.ceil(Math.log10(iterMax(ys)));
-      // Too short for the 1, 2 and 5 of each decade, the axis keeps the decades, so label thinning never drops them.
-      const all = logTicks(lo, hi), decades = all.filter((v) => Math.abs(Math.log10(v) - Math.round(Math.log10(v))) < 1e-9);
-      yd = { domain: [lo, hi], ticks: all.length * 14 > ph && decades.length >= 2 ? decades : all };
+      yd = { domain: [lo, hi], ticks: logTicks(lo, hi) };
     }
     const xFmt = (t: number) => (xcats ? xcats[Math.round(t)] ?? "" : xDate ? formatDateSerial(t, byYear ? "YYYY" : "MMM YYYY") : axisTick(t));
     const axesOf = () => ({
@@ -878,7 +876,8 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
       y: {
         scale: logY ? scaleLog().domain(yd.domain) : scaleLinear().domain(yd.domain),
         grid: (opts?.grid ?? true) ? { stroke: grid, strokeOpacity: 1 } : false,
-        axis: { ticks: { values: yd.ticks, format: valueTickFormat(rows.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs }, label: axisLabel(opts?.ylabel, fs, chartH - 40) },
+        // Where the 1, 2 and 5 of each decade don't all fit, label thinning keeps the decades.
+        axis: { ticks: { values: yd.ticks, format: valueTickFormat(rows.map((p) => p.y), yd.ticks), size: 0 }, tickLabels: { fontSize: 9 * fs, ...(logY ? { thin: { keep: yd.ticks.filter(isDecade) } } : {}) }, label: axisLabel(opts?.ylabel, fs, chartH - 40) },
       },
     });
     if (payload.bin === "hexbin") {
@@ -1002,7 +1001,7 @@ export function XYView({ payload, width, height, opts, fontScale, refs }: {
       for (let k = 0; k < 2; k++) {
         const laid = def;
         if (!laid) break;
-        const box = createChartScene(laid as Parameters<typeof createChartScene>[0], { width, height: chartH }).chart;
+        const box = createChartScene(laid as Parameters<typeof createChartScene>[0], { width, height: chartH }, { measureText: chartTextMeasurer }).chart;
         def = build(box.width, box.height);
       }
     }

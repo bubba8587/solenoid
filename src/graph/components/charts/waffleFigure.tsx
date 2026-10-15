@@ -1,8 +1,7 @@
 // [[C100]] chartIsAValue, [[D98]] tanstackDrawsCharts
 import { useMemo } from "react";
 import { defineChart, waffleY } from "@tanstack/charts";
-import { Chart } from "@tanstack/charts/react";
-import { tip, tipValue, useTheme } from "./kit";
+import { Chart, tip, tipValue, useTheme } from "./kit";
 import { formatScalar } from "../format";
 import { resolveColor } from "../../palette";
 import type { ProportionPayload } from "../../chartValue";

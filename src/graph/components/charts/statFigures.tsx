@@ -3,11 +3,10 @@
 import { useMemo } from "react";
 import { barY, defineChart, dot, link, ruleY, tickY, waterfall, type ChartPoint, type ChartTooltipContent } from "@tanstack/charts";
 import { decorative } from "@tanstack/charts/mark/decorative";
-import { Chart } from "@tanstack/charts/react";
 import { scaleBand } from "@tanstack/charts/scales/band";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
 import { valueTickFormat, sanitizeChartLabel } from "../chartCore";
-import { PLOT_TOP, Fig, tip, tipValue, valueDomain, useInk, EmptyFigure } from "./kit";
+import { Chart, PLOT_TOP, Fig, tip, tipValue, valueDomain, useInk, EmptyFigure } from "./kit";
 import type { BoxplotPayload, CandlePayload, WaterfallPayload } from "../../chartValue";
 
 

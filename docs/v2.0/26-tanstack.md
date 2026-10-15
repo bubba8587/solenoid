@@ -88,7 +88,7 @@ Upstream findings, checked against the source, are in § 8.
 
 ## 8. Upstream
 
-Every place Solenoid keeps its own code instead of TanStack's is listed in the register at `docs/upstream/tanstack-charts/README.md`, each with a patch or issue draft ready to submit (seven patches and seven issues so far) or the reason there is none.
+Every place Solenoid keeps its own code instead of TanStack's is listed in the register at `docs/upstream/tanstack-charts/README.md`, each with a patch or issue draft ready to submit (seven patches and eleven issues so far) or the reason there is none.
 
 ## 9. Keeping `tan` current
 

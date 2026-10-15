@@ -2,7 +2,7 @@
 
 TanStack Charts is new and open source, so every place Solenoid keeps its own code instead of TanStack's is a candidate fix for them. This folder is the running register of those places (below), with a patch or an issue draft for each one worth sending. Moving the charts from Recharts (branch `tan`, `docs/v2.0/26-tanstack.md`) turned up eighteen candidate gaps, each checked against the upstream source; later finds were added the same way.
 
-**Keeping it current.** A new helper in Solenoid that does a job TanStack nearly does gets a row in the register in the same commit, with its upstream item or the reason there isn't one. Each TanStack release is checked against the open rows, and a row whose gap closes means switching to TanStack's version and deleting ours. None of the gaps is closed in 1.1.0, which `tan` runs (upstream `main` at `57774e1` checked 2026-10-13). Nothing here has been submitted. Each patch is `git format-patch` output against upstream `main` with a PR description beside it. Every branch adds its friction-log entry as F-309, the next free id, so several landing together need renumbering.
+**Keeping it current.** A new helper in Solenoid that does a job TanStack nearly does gets a row in the register in the same commit, with its upstream item or the reason there isn't one. Each TanStack release is checked against the open rows, and a row whose gap closes means switching to TanStack's version and deleting ours. None of the gaps is closed in 1.1.0, which `tan` runs (upstream `main` last checked at `9d80699`, 2026-10-15). Nothing here has been submitted. Each patch is `git format-patch` output against upstream `main` with a PR description beside it. Every branch adds its friction-log entry as F-309, the next free id, so several landing together need renumbering.
 
 ## The register
 
@@ -20,8 +20,11 @@ TanStack Charts is new and open source, so every place Solenoid keeps its own co
 | A translucent `rect` under each pie and heatmap label, sized by guessed glyph widths | `chartRender.tsx` (`pieLabelMarks`) | `text` has no halo | [patch 07](patches/07-text-halo.md) |
 | `minMaxDecimate`, `envelopeRows`, `thinXY`, `keptTicks`: drawing a dense series from the points that land on distinct pixels | `chartCore.ts`, `charts/kit.tsx` | a documented non-goal (large-data guide) | none: stays ours |
 | `dateTicks`: date ticks on DATETRUNC's calendar boundaries | `chartCore.ts` | time scales tick `Date` values; our axis holds date serials and must agree with the formula language's calendar | none: stays ours |
-| `axisLabel` cuts an axis title to the plot's width with an ellipsis | `charts/kit.tsx` | a title wider than the plot widens the margins to fit it, squeezing a small plot to nothing | candidate issue, not drafted: clip or wrap an axis title instead of growing the margins |
-| `vlinePlaces`: reference-line labels that flip sides and step down rows to clear each other | `charts/refs.ts` | `dodge` lays out dots only; `text` has no collision avoidance | candidate issue, not drafted: label dodging for `text` |
+| `axisLabel` cuts an axis title to the plot's width with an ellipsis | `charts/kit.tsx` | a title wider than the plot widens the margins to fit it, collapsing a small plot | [issue 09](issues/09-axis-title-squeezes-plot.md) |
+| `vlinePlaces` and the pie's label column: labels that flip sides and step down rows to clear each other | `charts/refs.ts`, `chartRender.tsx` (`pieLabelMarks`) | `dodge` lays out dots only; `text` has no collision avoidance | [issue 11](issues/11-text-label-dodging.md) |
+| `catScale`: a hidden linear scale so a reference area spans whole category bands | `charts/refs.ts` | a `rect` between two band categories spans centre to centre | [issue 10](issues/10-rect-band-endpoints.md) |
+| `aspect=equal`: lay out with `createChartScene`, fit the domains to the plot box, lay out again | `chartRender.tsx` (XY) | no way to tie x and y to equal units per pixel | [issue 08](issues/08-equal-aspect.md) |
+| `textWidth` and `chartTextMeasurer`: text widths from the bundled fonts' metrics, handed to TanStack | `textWidth.ts`, `charts/kit.tsx` | nothing missing: TanStack takes a `measureText` hook (host and `createChartScene`); without it a static layout estimates and the DOM host measures a canvas | none: ours plugs into theirs |
 
 ## Patches
 
@@ -48,6 +51,10 @@ Each was checked with its own tests, the friction-log test and `pnpm typecheck`.
 | [05](issues/05-nice-fixed-bound.md) | `nice` moves a bound the user fixed; let it round only the open end | API shape: which ends a spec pins |
 | [06](issues/06-legend-click-emphasis.md) | A legend click mode that pins the emphasis instead of hiding | Small, but the option's shape is theirs to pick; we offer the PR |
 | [07](issues/07-text-max-width.md) | `maxWidth` with an ellipsis on `text` | Needs their call on measuring text during SSR |
+| [08](issues/08-equal-aspect.md) | `aspect: 'equal'`: equal units on x and y | Layout-order design: domains depend on the plot box, which depends on tick labels |
+| [09](issues/09-axis-title-squeezes-plot.md) | A long axis title collapses the plot (a 218 px chart's plot goes to 1 px) | A bug, but clip, wrap or ellipsis is their call |
+| [10](issues/10-rect-band-endpoints.md) | `rect` between two band categories spans centre to centre, not band edges | Changes geometry existing charts rely on; may want an option |
+| [11](issues/11-text-label-dodging.md) | Collision layout for `text` labels | A new layout primitive |
 
 ## Checked and dropped
 
@@ -60,3 +67,9 @@ Each was checked with its own tests, the friction-log test and `pnpm typecheck`.
 - **Hexbin `gridsize`**: pixel `binWidth` is decided (F-049).
 - **Stability page still alpha**: deliberate (F-153); 1.0 is `docs/compatibility.md`.
 - **Label background box**: declined for now (F-220); the halo (07) covers most of it.
+- **Keeping chosen tick labels through thinning**: supported, `tickLabels.thin.keep`; our log axes keep their decades with it.
+- **Exact text measurement**: supported through the `measureText` hook; we pass the bundled fonts' metrics.
+
+## Seen, not yet reduced to a repro
+
+- A grouped (`focus: 'group-x'`) tooltip over a line with a `dot` mark on the same rows listed one series twice and the others once. We list each series once (`oncePerSeries` in `chartRender.tsx`); worth an issue once a minimal chart shows it.

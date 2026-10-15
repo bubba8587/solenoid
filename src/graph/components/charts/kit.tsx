@@ -1,7 +1,9 @@
 // [[C100]] chartIsAValue, [[D98]] tanstackDrawsCharts
 // The pieces every TanStack figure shares: theme, tooltips, value axes, index ticks and the DOM legend.
 import { textWidth, type TextFont } from "../../textWidth";
-import { createContext, useContext, type SyntheticEvent, type ReactNode } from "react";
+import { Chart as TanChart } from "@tanstack/charts/react";
+import type { ChartTextMeasurer } from "@tanstack/charts";
+import { createContext, useContext, type ComponentProps, type SyntheticEvent, type ReactNode } from "react";
 import { type ChartPoint, type ChartTooltipContent } from "@tanstack/charts";
 import { tooltip } from "@tanstack/charts/tooltip";
 import { colord } from "colord";
@@ -169,6 +171,24 @@ export function heatColorFn(o: Pick<ChartOptions, "cmap" | "center">): (t: numbe
 /** A font to measure text in: the app's bundled sans, or its mono. */
 export function measureFont(weight: number, px: number, face: "sans" | "mono" = "sans"): TextFont {
   return { px, weight, mono: face === "mono" };
+}
+
+/** TanStack's text measurer, from the bundled fonts' metrics, so its gutters and label thinning see the widths the
+ *  text really draws at, the same on screen, in a static layout and in an export. Boxes follow TanStack's own estimate:
+ *  one font size tall, the baseline 0.8 of it below the top. */
+export const chartTextMeasurer: ChartTextMeasurer = (text, o) => {
+  const px = o.fontSize * (o.fontScale || 1);
+  if (!text || !px) return { x: 0, y: 0, width: 0, height: 0 };
+  const width = textWidth(text, { px, weight: o.fontWeight, mono: /mono/i.test(o.fontFamily) }) + Math.max(0, [...text].length - 1) * (o.letterSpacing || 0);
+  const leftToRight = o.direction !== "rtl";
+  const x = o.anchor === "middle" ? -width / 2 : (o.anchor === "start") === leftToRight ? 0 : -width;
+  const y = o.baseline === "middle" ? -px / 2 : o.baseline === "hanging" ? 0 : -px * 0.8;
+  return { x, y, width, height: px };
+};
+
+/** TanStack's React chart, measuring text with `chartTextMeasurer`. */
+export function Chart(props: ComponentProps<typeof TanChart>) {
+  return <TanChart measureText={chartTextMeasurer} {...props} />;
 }
 
 /** `s`'s width in pixels, from the font's own metrics (`textWidth`). */
