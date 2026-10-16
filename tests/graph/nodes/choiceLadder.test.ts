@@ -26,8 +26,8 @@ describe("ChoiceLadderNode", () => {
     const { plan, n } = run("r");
     expect(col(plan, "Restaurant")).toEqual(["Kato omakase", "Marrow", "Saffron Court", "Lune bistro", "Taqueria Sol", "Bao House"]);
     expect((col(plan, "Dollars") as number[]).reduce((s, v) => s + v, 0)).toBeLessThanOrEqual(450);
-    expect(col(plan, "Vegetarian so far").at(-1)).toBe(2);
-    expect(col(plan, "Dollars so far").at(-1)).toBe(438);
+    expect(col(plan, "Vegetarian so far").slice(-1)).toEqual([2]);
+    expect(col(plan, "Dollars so far").slice(-1)).toEqual([438]);
     const p = payloadOf(n);
     expect(p.edges[p.main[0]].struck.map((i) => p.options[i].name)).toContain("Hearth & Ember");
   });
