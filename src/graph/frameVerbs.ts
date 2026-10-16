@@ -1515,10 +1515,15 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
 
 export type DecisionNormalize = "none" | "max" | "rank";
 
-function cellToScore(v: FrameCell): number {
-  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-  if (typeof v === "boolean") return v ? 1 : 0;
-  return 0;
+/** A criterion column as scores: a number as itself, a logical as 1 or 0, and a cell with no number as the median of the
+ *  column's numbers ([[C123]] decisionBlanks), or 0 when it has none. A blank logical is FALSE. */
+function criterionScores(c: FrameColumn, rows: number): number[] {
+  const cells = Array.from({ length: rows }, (_, i) => c.values[i] ?? null);
+  if (c.type === "logical") return cells.map((v) => (v === true ? 1 : typeof v === "number" && Number.isFinite(v) ? v : 0));
+  const known = cells.filter((v): v is number => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
+  const mid = known.length >> 1;
+  const median = !known.length ? 0 : known.length % 2 ? known[mid] : (known[mid - 1] + known[mid]) / 2;
+  return cells.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : typeof v === "boolean" ? (v ? 1 : 0) : median));
 }
 
 function normalizeColumn(vals: number[], mode: DecisionNormalize): number[] {
@@ -1681,7 +1686,7 @@ function decisionScores(
 
   const effective = criteriaCols.map((c) =>
     normalizeColumn(
-      Array.from({ length: rows }, (_, i) => cellToScore(c.values[i])),
+      criterionScores(c, rows),
       normalizeOverrides[c.name] ?? normalize,
     ),
   );

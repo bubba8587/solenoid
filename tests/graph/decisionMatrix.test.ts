@@ -105,19 +105,41 @@ describe("decisionMatrix", () => {
     expect(out.columns[0].values).toContain("Option 2");
   });
 
-  it("treats missing / non-numeric cells as 0 and coerces logicals", () => {
+  it("scores a cell with no number as the column's median and a logical as 1 or 0 ([[C123]] decisionBlanks)", () => {
     const g: FrameValue = {
       __frame: true,
       columns: [
-        { name: "name", type: "string", values: ["A", "B"] },
-        { name: "flag", type: "logical", values: [true, false] },
-        { name: "x", type: "number", values: [null, 4] },
+        { name: "name", type: "string", values: ["A", "B", "C"] },
+        { name: "flag", type: "logical", values: [true, false, null] },
+        { name: "x", type: "number", values: [null, 4, 2] },
       ],
     };
     const out = decisionMatrix(g, null, "none") as FrameValue;
-    // A: (1 + 0)/2 = 0.5 ; B: (0 + 4)/2 = 2 → B first
-    expect(col(out, "name").values).toEqual(["B", "A"]);
-    expect(col(out, "Score").values).toEqual([2, 0.5]);
+    // A: (1 + 3)/2 = 2 ; B: (0 + 4)/2 = 2 ; C: (0 + 2)/2 = 1
+    expect(col(out, "name").values).toEqual(["A", "B", "C"]);
+    expect(col(out, "Score").values).toEqual([2, 2, 1]);
+  });
+
+  it("an unpriced option is typical on price, not the cheapest", () => {
+    const g: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "name", type: "string", values: ["Unpriced", "Cheap", "Mid", "Dear"] },
+        { name: "price", type: "number", values: [null, 10, 20, 30] },
+      ],
+    };
+    const out = decisionMatrix(g, [-1], "max") as FrameValue;
+    expect(col(out, "name").values[0]).toBe("Cheap");
+    expect(col(out, "Score").values[col(out, "name").values.indexOf("Unpriced")]).toBe(col(out, "Score").values[col(out, "name").values.indexOf("Mid")]);
+  });
+
+  it("a criterion no option has a number for counts as 0", () => {
+    const g: FrameValue = { __frame: true, columns: [
+      { name: "name", type: "string", values: ["A", "B"] },
+      { name: "x", type: "number", values: [null, "n/a"] },
+      { name: "y", type: "number", values: [1, 2] },
+    ] };
+    expect(col(decisionMatrix(g, null, "none") as FrameValue, "Score").values).toEqual([1, 0.5]);
   });
 
   it("breakdown inserts each criterion's signed contribution, and they sum to the Score", () => {
@@ -226,7 +248,7 @@ describe("decisionMatrix", () => {
     expect(err.code).toBe("#DIV/0!");
   });
 
-  it("a null criterion cell stays a blank (0), not an error", () => {
+  it("a null criterion cell is a missing score (the median), not an error", () => {
     const g: FrameValue = {
       __frame: true,
       columns: [
@@ -235,9 +257,8 @@ describe("decisionMatrix", () => {
       ],
     };
     const out = decisionMatrix(g, null, "none") as FrameValue;
-    // B's null → 0, A's 4 → A wins; no error thrown
-    expect(col(out, "name").values).toEqual(["A", "B"]);
-    expect(col(out, "Score").values).toEqual([4, 0]);
+    // B's null takes the median of the known values, 4; no error thrown
+    expect(col(out, "Score").values).toEqual([4, 4]);
   });
 
   it("#VALUE!s when there are no numeric criteria columns", () => {

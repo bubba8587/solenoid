@@ -174,12 +174,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   weight since every score shares Σ|w|; the plugin ignores `round4`, so the flip weight lands on a near-tie
   rather than a clean handover. A home here: a Breakdown column or a Decision Sensitivity mode. Weigh it
   against `v2.0/10`'s ±N% affordance first, which answers the same "how close is the call" question.
-- [ ] **Blanks score as the criterion's median** ([[B17]] typedValueModel): a blank criterion cell scores 0
-  today, so under a negative weight an unscored option looks best (an unpriced option is the cheapest). The
-  Decision Matrix Bases View plugin scores a blank, or a number cell that reads as NaN, as that criterion's
-  median across the options (raw values, before normalizing; a blank logical stays FALSE), and shows it
-  dimmed (`fillBlanks` in its `src/scoring.ts`). Its parity fuzz fills Solenoid's blanks the same way to
-  compare the rest. Adopting it is a C64 change (frame-verbs spec step 2) and puts the two back in step.
 - [ ] **The plugin's breakdown bars in the app** (author 2026-09-29, queued as its own task): the Decision Matrix
   Bases View's Rankings view draws each option as a bar split into each criterion's signed contribution, with
   penalties hatched left of zero and a legend (`src/rankings-view.ts` and `styles.css` there). Bring that visual
