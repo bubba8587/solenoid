@@ -97,3 +97,32 @@ describe("Choice Ladder: round-5 review", () => {
     expect(bestPlan([o(0.9, [1]), o(-0.2), o(0.19)], [0, 1, 2], [], [])!.sort()).toEqual([0, 1, 2]);
   });
 });
+
+describe("Choice Ladder forks against exhaustive search", () => {
+  it("taking either side of a fork at the top gives the best plan that holds that side", () => {
+    let forks = 0;
+    for (let seed = 1; seed <= 1500; seed++) {
+      const { opts, cap, floor } = problem(seed);
+      if (brute(opts, cap, floor) == null) continue;
+      const res = [{ limit: cap }, { limit: null, floor }];
+      const l = buildLadder(opts, res, 0.15);
+      for (const e of l.edges.filter((x) => x.from === 0 && x.kind === "close")) {
+        forks++;
+        const c = buildLadder(opts, res, 0.15, [e.pick]);
+        const plan = c.main.map((k) => c.edges[k].pick);
+        const withIt = opts.map((o) => ({ ...o }));
+        // The best plan holding e.pick: exhaustive search over the rest with e.pick forced in.
+        let best = -Infinity;
+        for (let mask = 0; mask < 1 << opts.length; mask++) {
+          if (!(mask & (1 << e.pick))) continue;
+          const set = opts.map((_, i) => i).filter((i) => mask & (1 << i));
+          if (set.reduce((s, i) => s + opts[i].costs[0], 0) > cap || set.reduce((s, i) => s + opts[i].costs[1], 0) < floor) continue;
+          if (clashes(withIt, set) || !closed(withIt, set)) continue;
+          best = Math.max(best, set.reduce((s, i) => s + opts[i].score, 0));
+        }
+        expect(plan.reduce((s, i) => s + opts[i].score, 0), `seed ${seed}, fork side ${e.pick}`).toBeCloseTo(best, 6);
+      }
+    }
+    expect(forks).toBeGreaterThan(20);
+  });
+});

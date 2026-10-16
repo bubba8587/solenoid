@@ -245,10 +245,17 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
       }
 
       for (const pk of picks) {
-        // What taking it rules out is struck on its card too.
-        const ruled = open.filter((i) => i !== pk.take && !struck.includes(i) && clash(opts, i, [pk.take]));
+        // Each side skips what its own best plan leaves out ahead of it, so the other side of a fork can still take
+        // what the main side passed over.
+        const own = pk.take === a ? struck : (() => {
+          const t = [...s.taken, pk.take];
+          const rest = open.filter((i) => i !== pk.take && !clash(opts, i, t));
+          const plan = new Set(bestPlan(opts, rest, t, spend(s.left, opts[pk.take]), meet(s.need, opts[pk.take]), exact) ?? []);
+          return open.filter((i) => rank.get(i)! < rank.get(pk.take)! && i !== pk.take && !plan.has(i) && !clash(opts, i, [pk.take]));
+        })();
+        const ruled = open.filter((i) => i !== pk.take && !own.includes(i) && clash(opts, i, [pk.take]));
         const taken = [...s.taken, pk.take];
-        const out = new Set([...s.out, ...struck]);
+        const out = new Set([...s.out, ...own]);
         const left = spend(s.left, opts[pk.take]);
         const need = meet(s.need, opts[pk.take]);
         const key = futureKey(taken, out, left, need);
@@ -258,12 +265,12 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
           states.push(t);
           next.set(key, t);
         } else {
-          for (const i of struck) t.out.add(i);
+          for (const i of own) t.out.add(i);
           t.noFork = false;
         }
         t.share += pk.share;
         t.ins.push(edges.length);
-        edges.push({ from: s.id, to: t.id, pick: pk.take, share: pk.share, kind: pk.kind, struck, conflicts: ruled });
+        edges.push({ from: s.id, to: t.id, pick: pk.take, share: pk.share, kind: pk.kind, struck: own, conflicts: ruled });
       }
     }
     level = [...next.values()];

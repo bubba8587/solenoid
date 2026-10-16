@@ -279,3 +279,18 @@ describe("Choice Ladder floors reached by options worth little", () => {
     expect(col(out as FrameValue, "Place")).toContain("C");
   });
 });
+
+describe("Choice Ladder: round-6 review", () => {
+  it("choosing the other side of a fork can take what only the main side skipped", () => {
+    const opts = frame([
+      { name: "Option", type: "string", values: ["x", "a", "b", "c", "d"] },
+      { name: "Value", type: "number", values: [0.6, 0.5, 0.49, 0.48, 0.47] },
+      { name: "Cost", type: "number", values: [11, 5, 4, 5, 5] },
+      { name: "One of", type: "string", values: ["", "", "g", "g", ""] },
+      { name: "Requires", type: "string", values: ["", "", "", "", "c"] },
+    ]);
+    const n = new ChoiceLadderNode({ normalize: "none", choices: ["b"] });
+    const out = n.data({ frame: [opts], limits: [frame([{ name: "Resource", type: "string", values: ["Cost"] }, { name: "At most", type: "number", values: [15] }])] });
+    expect((col(out.frame as FrameValue, "Option") as string[]).sort()).toEqual(["b", "x"]);
+  });
+});

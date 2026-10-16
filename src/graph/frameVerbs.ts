@@ -1897,17 +1897,29 @@ function rankNested(cells: CubeCell[], rows: number, weightsFrame: FrameValue | 
   { table: FrameValue | CubeValue | null; best: Best }[] | null {
   // A nested column holding its parent row's own value in every cell (a Nest Join's key) says which row the table hangs
   // under, never how good an option is; any other column counts, whatever it's named.
+  // Judged across every table under this column, so one table whose single row happens to match isn't fooled.
   const cellsOf = (col: FrameColumn | CubeColumn): readonly unknown[] => ("values" in col ? col.values : col.cells);
-  const isKey = (col: FrameColumn | CubeColumn, i: number) => {
-    const p = parent.columns.find((pc) => pc.name === col.name);
-    return !!p && cellsOf(col).every((v) => v === p.cells[i]);
-  };
-  const labelName = cells.find(isTableCell)?.columns.find((col) => col.type === "string")?.name;
-  const tidy = (t: FrameValue | CubeValue, i: number): FrameValue | CubeValue => {
-    const firstText = t.columns.findIndex((col) => col.type === "string");
+  const keys = new Set<string>();
+  for (const pc of parent.columns) {
+    let seen = false, all = true;
+    cells.forEach((t, i) => {
+      if (!isTableCell(t)) return;
+      const col = (t.columns as (FrameColumn | CubeColumn)[]).find((c) => c.name === pc.name);
+      if (!col) { all = false; return; }
+      seen = true;
+      if (!cellsOf(col).every((v) => v === pc.cells[i])) all = false;
+    });
+    if (seen && all) keys.add(pc.name);
+  }
+  const isKey = (col: FrameColumn | CubeColumn) => keys.has(col.name);
+  const labelOf = (t: FrameValue | CubeValue) => (t.columns as (FrameColumn | CubeColumn)[]).findIndex((col) => col.type === "string" && !isKey(col));
+  const firstTable = cells.find(isTableCell);
+  const labelName = firstTable ? firstTable.columns[labelOf(firstTable)]?.name : undefined;
+  const tidy = (t: FrameValue | CubeValue, _i: number): FrameValue | CubeValue => {
+    const firstText = labelOf(t);
     // Tables pooled together name their options in one column, whatever each called its own.
     const cols = t.columns as (FrameColumn | CubeColumn)[];
-    const keep = cols.filter((col, j) => j === firstText || !isKey(col, i))
+    const keep = cols.filter((col, j) => j === firstText || !isKey(col))
       .map((col) => (labelName && cols.indexOf(col) === firstText ? { ...col, name: labelName } : col));
     return isCubeValue(t) ? cubeFromColumns(keep as CubeColumn[]) : { ...t, columns: keep as FrameColumn[] };
   };

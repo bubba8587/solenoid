@@ -778,3 +778,18 @@ describe("chained cubes, round-5 review", () => {
     expect(out.columns.map((c) => c.name)).toContain("Best in Apts");
   });
 });
+
+describe("chained cubes, round-6 review", () => {
+  it("a one-apartment neighborhood whose Rent happens to match the parent's keeps its Rent", () => {
+    const parent: FrameValue = { __frame: true, columns: [{ name: "Hood", type: "string", values: ["N", "M"] }, { name: "Rent", type: "number", values: [1050, 1600] }] };
+    const child: FrameValue = { __frame: true, columns: [
+      { name: "Apt", type: "string", values: ["A1", "A2", "B1"] }, { name: "Hood", type: "string", values: ["N", "N", "M"] },
+      { name: "Rent", type: "number", values: [1000, 1100, 1600] }, { name: "Light", type: "number", values: [5, 5, 5] },
+    ] };
+    const w: FrameValue = { __frame: true, columns: [{ name: "Criterion", type: "string", values: ["Rent", "Light"] }, { name: "Weight", type: "number", values: [-1, 1] }] };
+    const out = decisionCube(relateFramesToCube(parent, child, "Hood", "Apts")!, w, "max", true);
+    const m = out.columns.find((c) => c.name === "Apts")!.cells[out.columns[0].cells.indexOf("M")] as FrameValue;
+    expect(m.columns.map((c) => c.name)).toContain("Rent");
+    expect(m.columns.map((c) => c.name)).not.toContain("Filled in");
+  });
+});
