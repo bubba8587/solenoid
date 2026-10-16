@@ -1,0 +1,18 @@
+[
+  {
+    "id": "dominated-never-wins",
+    "title": "An option worse on every criterion never wins",
+    "kind": "dm",
+    "options": { "columns": [
+      { "name": "Vendor", "type": "string", "values": ["Acme", "Bolt", "Crest"] },
+      { "name": "Price", "type": "number", "values": [100, 120, 90] },
+      { "name": "Quality", "type": "number", "values": [7, 6, 8] }
+    ] },
+    "weights": { "columns": [
+      { "name": "Criterion", "type": "string", "values": ["Price", "Quality"] },
+      { "name": "Weight", "type": "number", "values": [-1, 1] }
+    ] },
+    "expect": { "winner": "Crest", "notWinner": ["Bolt"] },
+    "why": "Crest is cheaper and better than both others, and Bolt is pricier and worse than both."
+  }
+]
