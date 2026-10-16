@@ -751,7 +751,7 @@ export function ChoiceLadderComponent({ data, emit }: NodeProps<ChoiceLadderNode
   const [, bump] = useState(0);
   const act = (a: LadderAction) => { void applyLadderAction(data.id, a).then(() => bump((n) => n + 1)); };
   const payload = data.cachedChart && !isSolError(data.cachedChart) && data.cachedChart.payload?.kind === "ladder" ? data.cachedChart.payload : null;
-  const dropped = new Set((payload?.dropped ?? []).map((n) => n.toLowerCase()));
+  const live = new Set((payload?.choices ?? []).map((n) => n.toLowerCase()));
   const frameOut = data.outputs.frame;
   const chartOutPort = data.outputs.chart;
   const chart = data.cachedChart && !isSolError(data.cachedChart) ? data.cachedChart : null;
@@ -762,10 +762,10 @@ export function ChoiceLadderComponent({ data, emit }: NodeProps<ChoiceLadderNode
         <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       </CardSection>
       {data.choices.length > 0 && (
-        <CardSection label="Your picks" title="Options taken at toss-ups. The plan holds every one that still fits.">
+        <CardSection label="Your picks" title="Options taken at forks.">
           <div className="solenoid-ladder-picks">
             {data.choices.map((c) => (
-              <span key={c} className={`solenoid-ladder-pick${dropped.has(c.toLowerCase()) ? " is-dropped" : ""}`} title={dropped.has(c.toLowerCase()) ? "No longer fits with the other picks" : undefined}>
+              <span key={c} className={`solenoid-ladder-pick${live.has(c.toLowerCase()) ? "" : " is-dropped"}`}>
                 {c}
                 <button type="button" aria-label={`Undo ${c}`} onPointerDown={stopDragStart} onClick={() => act({ remove: c })}>×</button>
               </span>

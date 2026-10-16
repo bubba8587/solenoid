@@ -1600,17 +1600,17 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 // [[C122]] choiceLadder
 export class ChoiceLadderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. A cost column is a criterion too only when Weights names it.",
-    limits: "A row per resource: its name, matching an Options column, and its Limit. Unwired, everything fits.",
-    wiggle: "How far off the weights could be. Two plans this close are a toss-up and the ladder forks. 0.25 or 25 both read as 25%.",
-    chart: "The ladder: each rung's pick, what was struck off and why, and each toss-up's other way, which you can take from the figure.",
+    frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. Optional Requires and Excludes text columns list other options by name.",
+    limits: "A row per resource naming an Options column. With a Limit it is counted; with none it is a rough cost, like political capital, that orders the ladder by value for what it costs.",
+    close: "Two options whose places differ by no more than this share of the larger fork the ladder. 0.05 or 5 both read as 5%.",
+    chart: "The ladder: value flows down and each rung takes what it serves. Click a card at a fork to take it.",
   };
 
   label: string;
   normalize: DecisionNormalize;
-  /** Options picked at toss-ups, by name in the order picked; the plan holds every one that still fits. */
+  /** The options taken at forks, by name in the order taken. */
   choices: string[];
-  literals: Record<string, number> = { wiggle: 0.25 };
+  literals: Record<string, number> = { close: 0.05 };
   cachedResult: FrameValue | SolError | null = null;
   cachedChart: ChartValue | SolError | null = null;
   width = 240; height = 230;
@@ -1622,12 +1622,12 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
       { name: "Vibe", type: "number", cells: [7, 9, 5] },
       { name: "Dollars", type: "number", cells: [160, 75, 18] },
       { name: "Meals", type: "number", cells: [1, 1, 1] },
-      { name: "Miles", type: "number", cells: [4, 1, 2] },
+      { name: "Hours", type: "number", cells: [2, 2, 1] },
     ] },
     weights: DecisionMatrixNode.frameHints.weights,
     limits: { columns: [
-      { name: "Resource", type: "string", cells: ["Dollars", "Meals", "Miles"] },
-      { name: "Limit", type: "number", cells: [450, 6, 20] },
+      { name: "Resource", type: "string", cells: ["Dollars", "Meals", "Hours"] },
+      { name: "Limit", type: "number", cells: [450, 6, 10] },
     ] },
   };
 
@@ -1639,7 +1639,7 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Options"));
     this.addInput("weights", frameIn("Weights"));
     this.addInput("limits", frameIn("Limits"));
-    this.addInput("wiggle", numIn("Wiggle"));
+    this.addInput("close", numIn("Close"));
     this.addOutput("frame", frameOut("Plan"));
     this.addOutput("chart", chartOut("Ladder"));
   }
@@ -1654,12 +1654,12 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
     return { columns: names.map((name, i) => ({ name, type: types[i] })), dynamic: true };
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; weights?: (FrameValue | null)[]; limits?: (FrameValue | null)[]; wiggle?: (number | null)[] }) {
+  data(inputs: { frame?: (FrameValue | null)[]; weights?: (FrameValue | null)[]; limits?: (FrameValue | null)[]; close?: (number | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; this.cachedChart = null; return { frame: null, chart: null }; }
-    const wiggle = readInput(inputs.wiggle, this.literals.wiggle ?? 0.25) ?? 0;
+    const close = readInput(inputs.close, this.literals.close ?? 0.05) ?? 0;
     try {
-      const { plan, payload } = choiceLadder(f, inputs.weights?.[0] ?? null, inputs.limits?.[0] ?? null, this.normalize, wiggle, this.choices);
+      const { plan, payload } = choiceLadder(f, inputs.weights?.[0] ?? null, inputs.limits?.[0] ?? null, this.normalize, close, this.choices);
       this.cachedResult = plan;
       this.cachedChart = { __chart: true, op: "ladder", values: null, payload, options: {}, title: this.label || "Choice Ladder" };
     } catch (e) {

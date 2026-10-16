@@ -189,56 +189,24 @@ export interface XYPayload {
   xDate?: boolean;
   names: { x?: string; y?: string; s?: string; c?: string; text?: string };
 }
-/** An option ranked above a rung's pick and struck off there: it doesn't fit what's left (`over`, per resource), it doesn't
- *  fit alongside the choices still to come (`picks`), or it would crowd out `pushedOut` for `cost` less score. Options are
- *  indexes into `LadderPayload.options`. */
-export interface LadderStruck {
-  option: number;
-  why: "fit" | "picks" | "crowd";
-  over?: number[];
-  pushedOut?: number[];
-  cost?: number;
-}
-/** The other way at a rung: take `option` instead. `brings` and `drops` are what else changes in the plan; `plan` is the
- *  score it reaches, `margin` its lead over this rung's plan (negative when it trails) and `pulls` each criterion's pull toward it. */
-export interface LadderSwitch {
-  option: number;
-  brings: number[];
-  drops: number[];
-  plan: number;
-  margin: number;
-  flipsAt: number;
-  pulls: number[];
-}
-export interface LadderRung {
-  rung: number;
-  /** `tossup` offers `alt` as a choice; `chosen` is a choice already made, `alt` being the whole plan without it (its
-   *  `option` is the pick itself when the plan would take it anyway). */
-  kind: "clear" | "tossup" | "chosen" | "plan";
-  /** Per resource, what is left before this rung's pick. */
-  left: number[];
-  /** The score of the picks above this rung. */
-  total: number;
-  pick?: number;
-  /** A clear rung's nearest rival and the weight error that would let it win, null when none would. */
-  sturdy?: { rival: number; flipsAt: number | null };
-  alt?: LadderSwitch;
-  struck?: LadderStruck[];
-}
+/** A point in the ladder: the set taken so far (option indexes) and the share of the flow that reaches it. */
+export interface LadderState { id: number; depth: number; share: number; taken: number[]; end: boolean }
+/** A rung: taking `pick` from one state to the next with `share` of the flow. `close` is one side of a fork, `chosen` a
+ *  fork the user settled, `required` an option taken first because the next one needs it. `struck` options are ruled out here. */
+export interface LadderEdge { from: number; to: number; pick: number; share: number; kind: "clear" | "close" | "chosen" | "required"; struck: number[] }
 export interface LadderPayload {
   kind: "ladder";
-  /** In rank order. */
-  options: { name: string; score: number; costs: number[] }[];
+  /** In rank order; `value` is what each serves per criterion, never negative. */
+  options: { name: string; score: number; costs: number[]; value: number[] }[];
   criteria: string[];
-  resources: { name: string; limit: number; format?: FormatAnnotation | null }[];
-  /** Top rung first; the last is the plan. */
-  rungs: LadderRung[];
-  bestTotal: number;
-  rankingTotal: number;
-  wiggle: number;
-  /** The choices honored, by option name in the order made, and those that no longer fit with the rest. */
+  /** A null limit is a rough cost with no total. */
+  resources: { name: string; limit: number | null; format?: FormatAnnotation | null }[];
+  states: LadderState[];
+  edges: LadderEdge[];
+  /** The edges of the main line, top first. */
+  main: number[];
+  /** The forks the user settled, by the name of the option taken. */
   choices: string[];
-  dropped: string[];
 }
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload

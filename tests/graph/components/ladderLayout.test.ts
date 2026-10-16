@@ -10,87 +10,95 @@ const seedFrame = (id: string): FrameValue => {
   const n = seed.nodes.find((x) => x.id === id) as { init: { frameText: string } };
   return { __frame: true, columns: JSON.parse(n.init.frameText) };
 };
-const limitsFrame = (names: string[], vals: number[]): FrameValue => ({ __frame: true, columns: [
-  { name: "Resource", type: "string", values: names }, { name: "Limit", type: "number", values: vals },
-] });
-function payload(p: "r" | "h", wiggle: number, limits?: number[], choices: string[] = []): LadderPayload {
-  const lim = limits ? limitsFrame(p === "r" ? ["Dollars", "Meals"] : ["Dollars", "Weekends"], limits) : seedFrame(p + "Limits");
-  return choiceLadder(seedFrame(p + "Opts"), seedFrame(p + "Weights"), lim, "max", wiggle, choices).payload;
-}
-/** Uneven card heights, as text wrapping gives them. */
-function fakeHeights(p: LadderPayload): Map<string, number> {
-  const h = new Map<string, number>([["source", 48]]);
-  p.rungs.forEach((r, k) => h.set(`r${k}`, r.alt ? 170 : 70 + 15 * (r.struck?.length ?? 0)));
+const payload = (p: "r" | "p", close: number, choices: string[] = [], limits?: number[]): LadderPayload => {
+  const lim: FrameValue = limits
+    ? { __frame: true, columns: [{ name: "Resource", type: "string", values: ["Dollars", "Meals"] }, { name: "Limit", type: "number", values: limits }] }
+    : seedFrame(p + "Limits");
+  return choiceLadder(seedFrame(p + "Opts"), seedFrame(p + "Weights"), lim, "max", close, choices).payload;
+};
+/** Uneven card heights, as text wrapping gives them, never shorter than a card's slice needs. */
+function heightsFor(p: LadderPayload): Map<string, number> {
+  const need = layoutLadder(p, new Map(), metricsFor(1)).minHeight;
+  const h = new Map<string, number>([["source", 40]]);
+  p.edges.forEach((e, i) => h.set(`e${i}`, Math.max(need.get(`e${i}`) ?? 0, 44 + 14 * Math.min(2, e.struck.length))));
+  p.states.filter((s) => s.end).forEach((s) => h.set(`s${s.id}`, need.get(`s${s.id}`) ?? 24));
   return h;
 }
-const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
-const overlaps = (a: { x: number; y: number; w: number; h: number }, b: Box) =>
-  a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5;
+const overlaps = (a: Box, b: Box) => a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5;
+/** The box a straight trunk piece covers, read from its `M x y H x2 V y2` path. */
+const trunkBox = (d: string): Box => {
+  const [x, y, x2, y2] = d.match(/-?\d+(\.\d+)?/g)!.map(Number);
+  return { key: "", lane: 0, row: 0, x, y, w: x2 - x, h: y2 - y };
+};
 
-function check(p: LadderPayload, L: Layout) {
+function check(L: Layout) {
   const boxes = [...L.boxes.values()];
-  const R = p.resources.length;
   for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++)
     expect(overlaps(boxes[i], boxes[j]), `${boxes[i].key} overlaps ${boxes[j].key}`).toBe(false);
 
-  for (const x of L.pieces) {
-    if (x.kind === "trunk") {
-      // A trunk is a plain rectangle beside the cards, never under one but the source it leaves.
-      const rect = { x: x.x0, y: x.y0, w: x.width, h: x.y1 - x.y0 };
-      for (const b of boxes) if (b.key !== "source") expect(overlaps(rect, b), `band ${x.band} ${x.from}->${x.to} under ${b.key}`).toBe(false);
+  const sum = (pick: (x: Layout["pieces"][number]) => boolean) => L.pieces.filter(pick).reduce((t, x) => t + x.width, 0);
+  for (const [key, f] of L.flows) {
+    const b = L.boxes.get(key)!;
+    if (key !== "source") {
+      // What arrives is what this card takes plus what flows on.
+      expect(sum((x) => x.kind === "link" && x.to === key), `${key}: flow in`).toBeCloseTo(f.inW, 6);
+      expect(f.inW).toBeCloseTo(f.peelW + f.outW, 6);
+      expect(sum((x) => x.kind === "turn" && x.from === key), `${key}: its slice`).toBeCloseTo(f.peelW, 6);
+      // Every slice ends on the card's left edge, inside its height.
+      for (const t of L.pieces.filter((x) => x.kind === "turn" && x.from === key)) {
+        const m = t.d.match(/L(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/)!;
+        expect(Number(m[1])).toBeCloseTo(b.x, 6);
+        expect(Number(m[2])).toBeGreaterThanOrEqual(b.y);
+        expect(Number(m[2])).toBeLessThanOrEqual(b.y + Math.max(b.h, L.minHeight.get(key) ?? 0));
+      }
     }
-    if (x.kind === "turn") {
-      const b = L.boxes.get(x.to)!;
-      expect(near(x.x1, b.x) || near(x.x1, b.x + b.w), `turn into ${b.key} ends on its side`).toBe(true);
-      expect(x.y1 >= b.y && x.y1 + x.width <= b.y + b.h, `turn into ${b.key} lands within its height`).toBe(true);
-    }
-    if (x.kind === "line") {
-      const a = L.boxes.get(x.from)!, b = L.boxes.get(x.to)!;
-      expect(near(x.y0, a.y + a.h) && near(x.y1, b.y), `line ${a.key}->${b.key} joins bottom to top`).toBe(true);
-    }
+    // What flows on leaves this card, directly or through a meeting point.
+    if (f.outW > 1e-6) expect(sum((x) => x.kind === "link" && x.from === key), `${key}: flow out`).toBeCloseTo(f.outW, 6);
   }
-
-  p.rungs.forEach((rung, k) => {
-    const key = `r${k}`, prev = k === 0 ? "source" : `r${k - 1}`;
-    expect(L.pieces.some((x) => x.kind === "line" && x.from === prev && x.to === key), `${key} has an edge in`).toBe(true);
-    for (let r = 0; r < R; r++) {
-      const sum = (kind: string, pick: (x: typeof L.pieces[number]) => boolean) =>
-        L.pieces.filter((x) => x.kind === kind && x.band === r && pick(x)).reduce((s, x) => s + x.width, 0);
-      const into = sum("trunk", (x) => x.to === key), spent = sum("turn", (x) => x.to === key), out = sum("trunk", (x) => x.from === key);
-      // Each band conserves at each card: what flows in is what the card spends plus what flows on.
-      expect(into, `${key} band ${r}: in = spent + out`).toBeCloseTo(spent + out, 6);
-      // The flow in is exactly what was left before this rung.
-      expect(into).toBeCloseTo(Math.min(1, Math.max(0, rung.left[r] / p.resources[r].limit)) * metricsFor(1).band, 6);
-    }
-  });
-  // A plan card takes whatever is left, so nothing flows past it.
-  expect(L.pieces.some((x) => x.kind === "trunk" && x.from === `r${p.rungs.length - 1}`)).toBe(false);
-  // Trunks join end to end: each starts where the one above it ended.
+  // A meeting point passes on everything it gathers.
+  const meets = new Set(L.pieces.filter((x) => x.from.startsWith("m")).map((x) => x.from));
+  for (const mk of meets) expect(sum((x) => x.to === mk)).toBeCloseTo(sum((x) => x.from === mk), 6);
+  // The flow beside a card never runs under one.
   for (const t of L.pieces.filter((x) => x.kind === "trunk")) {
-    if (t.from === "source") { expect(t.y0).toBeCloseTo(L.boxes.get("source")!.h, 6); continue; }
-    const feeder = L.pieces.find((x) => x.kind === "trunk" && x.band === t.band && x.to === t.from);
-    expect(feeder && near(feeder.y1, t.y0), `band ${t.band} into ${t.to} continues the one above`).toBe(true);
+    const tb = trunkBox(t.d);
+    for (const b of boxes) if (b.key !== "source") expect(overlaps(tb, b), `trunk of ${t.from} under ${b.key}`).toBe(false);
   }
+  // The ends together take everything that was never served.
+  const ends = [...L.flows].filter(([k]) => k.startsWith("s")).reduce((t, [, f]) => t + f.peelW, 0);
+  const served = [...L.flows].filter(([k]) => k.startsWith("e")).reduce((t, [, f]) => t + f.peelW, 0);
+  expect(ends + served).toBeCloseTo(L.flows.get("source")!.outW, 6);
 }
 
 describe("ladder layout", () => {
   const cases: [string, LadderPayload][] = [
-    ["restaurants at 25%", payload("r", 0.25)],
-    ["restaurants at 40%", payload("r", 0.4)],
-    ["restaurants with Lune bistro chosen", payload("r", 0.25, undefined, ["Lune bistro"])],
-    ["house at 25%", payload("h", 0.25)],
-    ["house with Roof patch chosen", payload("h", 0.25, undefined, ["Roof patch"])],
-    ["restaurants on a tight budget", payload("r", 0.3, [200, 4])],
-    ["restaurants with nothing affordable", payload("r", 0.25, [10, 6])],
-    ["house with a big budget", payload("h", 0.25, [60000, 10])],
+    ["restaurants at 5%", payload("r", 0.05)],
+    ["restaurants at 2%", payload("r", 0.02)],
+    ["restaurants with Fennel chosen", payload("r", 0.05, ["Fennel"])],
+    ["restaurants on a tight budget", payload("r", 0.05, [], [200, 4])],
+    ["restaurants with nothing affordable", payload("r", 0.05, [], [10, 6])],
+    ["the policy agenda", payload("p", 0.05)],
+    ["the policy agenda at 10%", payload("p", 0.1)],
+    ["the policy agenda with the fuel holiday chosen", payload("p", 0.05, ["Fuel tax holiday"])],
   ];
-  it.each(cases)("%s: every band starts and ends on a card, and conserves", (_n, p) => {
-    check(p, layoutLadder(p, fakeHeights(p), metricsFor(1)));
+  it.each(cases)("%s: every flow starts and ends on a card and is conserved", (_n, p) => {
+    check(layoutLadder(p, heightsFor(p), metricsFor(1)));
   });
-  it("without Limits, cards still connect by lines", () => {
-    const p = choiceLadder(seedFrame("rOpts"), seedFrame("rWeights"), null, "max", 0.25).payload;
-    const L = layoutLadder(p, fakeHeights(p), metricsFor(1));
-    expect(L.pieces.every((x) => x.kind === "line")).toBe(true);
-    check(p, L);
+  it.each(cases)("%s: at every fork, the other side sits to the right of the main side's own branch", (_n, p) => {
+    const L = layoutLadder(p, heightsFor(p), metricsFor(1));
+    const reach = (sid: number): Set<number> => {
+      const seen = new Set<number>(), stack = [sid];
+      while (stack.length) {
+        const s = stack.pop()!;
+        p.edges.forEach((e, i) => { if (e.from === s && !seen.has(i)) { seen.add(i); stack.push(e.to); } });
+      }
+      return seen;
+    };
+    for (const st of p.states) {
+      const outs = p.edges.map((e, i) => ({ e, i })).filter((x) => x.e.from === st.id).sort((x, y) => y.e.share - x.e.share);
+      if (outs.length < 2) continue;
+      const theirs = reach(outs[1].e.to);
+      const mine = [...reach(outs[0].e.to)].filter((i) => !theirs.has(i)).map((i) => L.boxes.get(`e${i}`)!.lane);
+      expect(L.boxes.get(`e${outs[1].i}`)!.lane).toBeGreaterThan(Math.max(L.boxes.get(`e${outs[0].i}`)!.lane, ...mine));
+    }
   });
 });

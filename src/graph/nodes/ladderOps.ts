@@ -1,23 +1,17 @@
 // [[C122]] choiceLadder
 import { solError } from "../errorValue";
-import type { LadderRung, LadderStruck, LadderSwitch } from "../chartValue";
+import type { LadderEdge, LadderState } from "../chartValue";
 
-/** One option, in rank order: its Decision Matrix score, each criterion's signed share of it, and what it costs per resource. */
-export interface LadderOption { score: number; contrib: number[]; costs: number[] }
+/** One option, in rank order: its Decision Matrix score, the value it serves per criterion (never negative), what it costs
+ *  per resource, and the options it needs or can't share a plan with (positions in the same list). */
+export interface LadderOption { score: number; value: number[]; costs: number[]; requires: number[]; excludes: number[] }
 
-export interface LadderResult {
-  /** Top rung first; the last is the plan. */
-  rungs: LadderRung[];
-  /** The best possible score with no choices made. */
-  bestTotal: number;
-  /** What taking options straight down the ranking scores. */
-  rankingTotal: number;
-  /** The choices honored, in the order made, and those dropped because they no longer fit with the rest. */
-  kept: number[];
-  dropped: number[];
-}
+/** A resource the options spend: a countable limit, or null for a rough cost with no total (political capital). */
+export interface LadderResource { limit: number | null }
 
-/** What a viewer can do to a Choice Ladder's choices: take an option, undo one, or clear them all. */
+export interface LadderResult { states: LadderState[]; edges: LadderEdge[]; main: number[] }
+
+/** What a viewer can do to a Choice Ladder's choices: take an option at a fork, undo one, or clear them all. */
 export type LadderAction = { add: string } | { remove: string } | { reset: true };
 
 /** The choices after an action, matched by name trimmed and case-insensitive: a take appends (moving to the end if already
@@ -30,202 +24,182 @@ export function nextChoices(choices: readonly string[], a: LadderAction): string
 }
 
 export const LADDER_MAX_OPTIONS = 40;
-/** How many options outside the plan a rung weighs as its rival, best-ranked first. */
-const RIVALS_WEIGHED = 15;
 const SEARCH_BUDGET = 2_000_000;
+const MAX_ENDS = 6;
 const EPS = 1e-9;
 
-const round4 = (x: number): number => { const r = Math.round(x * 1e4) / 1e4; return r === 0 ? 0 : r; };
-
-/** Two sets of options compared. Each weight may be off by ±tol; in the worst case every one moves against the side ahead,
- *  so its lead (the sum of the signed criterion differences) shrinks by tol times the sum of their sizes. */
-export function compareSets(a: number[], b: number[], opts: LadderOption[], tol: number): { margin: number; tossUp: boolean; flipsAt: number | null; pulls: number[] } {
-  const k = opts[0]?.contrib.length ?? 0;
-  let lead = 0, swing = 0;
-  const pulls: number[] = [];
-  for (let j = 0; j < k; j++) {
-    let d = 0;
-    for (const i of a) d += opts[i].contrib[j];
-    for (const i of b) d -= opts[i].contrib[j];
-    lead += d; swing += Math.abs(d);
-    pulls.push(round4(d));
-  }
-  return {
-    margin: round4(lead),
-    tossUp: Math.abs(lead) <= tol * swing + EPS,
-    flipsAt: swing > EPS ? Math.abs(lead) / swing : null,
-    pulls,
-  };
+/** Where an option sits in the ladder's order: value for its share of the rough costs, or plain value when there are none.
+ *  An option that costs nothing rough, or earns some back, comes first, by value. */
+export function priorities(opts: LadderOption[], res: LadderResource[]): { tier: number; p: number }[] {
+  const rough = res.map((r, k) => (r.limit == null ? k : -1)).filter((k) => k >= 0);
+  const scale = rough.map((k) => Math.max(EPS, ...opts.map((o) => Math.abs(o.costs[k]))));
+  return opts.map((o) => {
+    if (!rough.length) return { tier: 1, p: o.score };
+    const share = rough.reduce((s, k, i) => s + o.costs[k] / scale[i], 0);
+    return share <= EPS ? { tier: 0, p: o.score } : { tier: 1, p: o.score / share };
+  });
 }
 
-const fits = (o: LadderOption, left: number[]): boolean => o.costs.every((c, r) => c <= left[r] + EPS);
-const spend = (left: number[], o: LadderOption): number[] => left.map((l, r) => l - o.costs[r]);
+const ahead = (a: { tier: number; p: number }, b: { tier: number; p: number }) => (a.tier !== b.tier ? a.tier < b.tier : a.p > b.p + EPS);
 
-/** The best plan from `pool` (positions into `opts`, in rank order) within `left`: the highest total score, then the most
- *  left over as a share of the limits. Exact branch and bound; each resource's fractional fill caps what a branch can reach. */
-export function bestPlan(pool: number[], left: number[], opts: LadderOption[], limits: number[]): { ids: number[]; total: number } {
-  const R = limits.length, n = pool.length;
-  const slack = (l: number[]) => l.reduce((s, v, r) => s + v / (limits[r] || 1), 0);
-  const byRatio = Array.from({ length: R }, (_, r) =>
-    [...pool.keys()].sort((x, y) => ratio(opts[pool[y]], r) - ratio(opts[pool[x]], r)));
-  let best = { total: 0, ids: [] as number[], slack: slack(left) };
+/** Two options are close when they sit in the same tier and their places differ by no more than `gap` of the larger. */
+export function isClose(a: { tier: number; p: number }, b: { tier: number; p: number }, gap: number): boolean {
+  if (a.tier !== b.tier) return false;
+  const hi = Math.max(Math.abs(a.p), Math.abs(b.p));
+  return hi <= EPS || Math.abs(a.p - b.p) / hi <= gap + EPS;
+}
+
+const fits = (o: LadderOption, left: (number | null)[]): boolean => o.costs.every((c, r) => left[r] == null || c <= left[r]! + EPS);
+const spend = (left: (number | null)[], o: LadderOption): (number | null)[] => left.map((l, r) => (l == null ? null : l - o.costs[r]));
+const clash = (opts: LadderOption[], i: number, taken: Iterable<number>): boolean => {
+  for (const t of taken) if (opts[i].excludes.includes(t) || opts[t].excludes.includes(i)) return true;
+  return false;
+};
+
+/** The best plan from what's open (in priority order): with a countable limit, the most total score within the limits,
+ *  honoring every Requires and Excludes, by exact branch and bound. With none, everything open taken in priority order,
+ *  an option that conflicts with one ahead of it left out, as is one whose Requires can't be met. */
+export function bestPlan(opts: LadderOption[], open: number[], taken: number[], left: (number | null)[]): number[] {
+  const countable = left.some((l) => l != null);
+  if (!countable) {
+    const ids: number[] = [];
+    for (const o of open) if (opts[o].score > 0 && !clash(opts, o, [...taken, ...ids])) ids.push(o);
+    const have = new Set([...taken, ...ids]);
+    // Drop whatever needs something that isn't coming, until nothing more drops.
+    for (let changed = true; changed; ) {
+      changed = false;
+      for (const i of [...have]) if (!taken.includes(i) && opts[i].requires.some((r) => !have.has(r))) { have.delete(i); changed = true; }
+    }
+    return ids.filter((i) => have.has(i));
+  }
+  const n = open.length;
+  const tail = new Array(n + 1).fill(0);
+  for (let i = n - 1; i >= 0; i--) tail[i] = tail[i + 1] + Math.max(0, opts[open[i]].score);
+  const have = new Set(taken);
+  const valid = (ids: number[]) => ids.every((i) => opts[i].requires.every((r) => have.has(r) || ids.includes(r)));
+  let best: { total: number; ids: number[] } = { total: -1, ids: [] };
   const ids: number[] = [];
   let visits = 0;
-  const bound = (from: number, l: number[]): number => {
-    let cap = Infinity;
-    for (let r = 0; r < Math.max(1, R); r++) {
-      let room = R ? l[r] : Infinity, sum = 0;
-      for (const p of R ? byRatio[r] : [...pool.keys()]) {
-        if (p < from) continue;
-        const o = opts[pool[p]];
-        if (o.score <= 0 || !fits(o, l)) continue;
-        const c = R ? o.costs[r] : 0;
-        if (c <= room + EPS) { sum += o.score; room -= c; }
-        else { sum += o.score * (room / c); break; }
-      }
-      cap = Math.min(cap, sum);
-    }
-    return cap;
-  };
-  const dfs = (i: number, l: number[], total: number) => {
-    if (++visits > SEARCH_BUDGET) throw solError("#VALUE!", "Choice Ladder: too many close combinations to search; narrow the options");
-    if (total > best.total + EPS || (Math.abs(total - best.total) <= EPS && slack(l) > best.slack + EPS)) {
-      best = { total, ids: [...ids], slack: slack(l) };
-    }
-    if (i >= n || total + bound(i, l) < best.total - EPS) return;
-    const o = opts[pool[i]];
-    if (o.score > 0 && fits(o, l)) {
-      ids.push(pool[i]);
-      dfs(i + 1, spend(l, o), total + o.score);
+  const dfs = (i: number, l: (number | null)[], total: number) => {
+    if (++visits > SEARCH_BUDGET) throw solError("#VALUE!", "Choice Ladder: too many combinations to search; narrow the options");
+    if (total > best.total + EPS && valid(ids)) best = { total, ids: [...ids] };
+    if (i >= n || total + tail[i] <= best.total + EPS) return;
+    const o = open[i];
+    if (opts[o].score > 0 && fits(opts[o], l) && !clash(opts, o, [...taken, ...ids])) {
+      ids.push(o);
+      dfs(i + 1, countable ? spend(l, opts[o]) : l, total + opts[o].score);
       ids.pop();
     }
     dfs(i + 1, l, total);
   };
   dfs(0, left, 0);
-  return { ids: best.ids, total: round4(best.total) };
+  return best.ids;
 }
 
-function ratio(o: LadderOption, r: number): number {
-  const c = o.costs[r];
-  return c > EPS ? o.score / c : o.score > 0 ? Infinity : -Infinity;
-}
-
-/** Walks the ranking one rung at a time toward the best plan that holds every choice in `chosen` (option positions, in the
- *  order made). A rung takes the best-ranked option in that plan. It is a toss-up when an option outside the plan leads to
- *  a plan that can't also hold the pick and that the wiggle can't tell from it; taking that rival is a choice, and the pick
- *  it displaced stays in the pool. A rung whose pick is a choice offers the way back. */
-export function buildLadder(opts: LadderOption[], limits: number[], tol: number, chosen: number[] = []): LadderResult {
+/** The ladder: rungs in priority order toward the best plan, forking where the next two options are close, the flow
+ *  splitting between them by score. The option not taken stays open, so a fork rejoins when both sides reach the same set.
+ *  A `chosen` option wins its fork outright. An option whose turn comes but needs another first brings that one in first. */
+export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: number, chosen: number[] = []): LadderResult {
   if (opts.length > LADDER_MAX_OPTIONS) throw solError("#VALUE!", `Choice Ladder takes at most ${LADDER_MAX_OPTIONS} options`);
-  const all = opts.map((_, i) => i);
-  const sumScore = (ids: number[]) => round4(ids.reduce((s, i) => s + opts[i].score, 0));
-  const only = (a: number[], b: number[]) => a.filter((i) => !b.includes(i));
+  const pri = priorities(opts, res);
+  const order = opts.map((_, i) => i).sort((a, b) => (ahead(pri[a], pri[b]) ? -1 : ahead(pri[b], pri[a]) ? 1 : a - b));
+  const rank = new Map(order.map((o, k) => [o, k]));
 
-  /** The best plan from what's left that holds every option in `must`, or null when they can't all fit. */
-  const planWith = (out: Set<number>, left: number[], must: number[]): { ids: number[]; total: number } | null => {
-    let l = left;
-    for (const i of must) { if (opts[i].score <= 0 || !fits(opts[i], l)) return null; l = spend(l, opts[i]); }
-    const p = bestPlan(all.filter((i) => !out.has(i) && !must.includes(i)), l, opts, limits);
-    const ids = [...must, ...p.ids].sort((x, y) => x - y);
-    return { ids, total: sumScore(ids) };
+  interface S { id: number; taken: number[]; out: Set<number>; left: (number | null)[]; share: number; depth: number; noFork: boolean; ins: number[] }
+  const states: S[] = [];
+  const edges: LadderEdge[] = [];
+  // Two paths merge when their futures match: the same options still open and the same countable limits left.
+  const futureKey = (taken: number[], out: Set<number>, left: (number | null)[]) => {
+    const has = new Set(taken);
+    const open = order.filter((i) => !has.has(i) && !out.has(i) && !clash(opts, i, taken));
+    const met = open.map((i) => (opts[i].requires.every((r) => has.has(r) || open.includes(r)) ? 1 : 0)).join("");
+    return `${open.join(",")}|${met}|${left.map((l) => (l == null ? "" : Math.round(l * 1e6))).join(",")}`;
   };
+  const root: S = { id: 0, taken: [], out: new Set(opts.map((o, i) => (o.score > 0 ? -1 : i)).filter((i) => i >= 0)), left: res.map((r) => r.limit), share: 1, depth: 0, noFork: false, ins: [] };
+  states.push(root);
+  let level: S[] = [root];
+  let ends = 0;
 
-  // Keep the choices that fit together, earliest first; a later one that no longer fits is dropped.
-  const start = new Set(all.filter((i) => opts[i].score <= 0));
-  const kept: number[] = [], dropped: number[] = [];
-  for (const c of chosen) {
-    if (c < 0 || c >= opts.length || kept.includes(c)) continue;
-    (planWith(start, limits, [...kept, c]) ? kept : dropped).push(c);
-  }
+  while (level.length) {
+    const next = new Map<string, S>();
+    for (let li = 0; li < level.length; li++) {
+      const s = level[li];
+      const has = new Set(s.taken);
+      const open = order.filter((i) => !has.has(i) && !s.out.has(i) && !clash(opts, i, s.taken));
+      const plan = new Set(bestPlan(opts, open, s.taken, s.left));
+      const takeable = (i: number) => plan.has(i);
+      let a = order.find((i) => takeable(i) && !has.has(i));
+      if (a == null) { ends++; continue; }
 
-  const rungs: LadderRung[] = [];
-  const out = new Set(start);
-  const picks: number[] = [];
-  let left = [...limits];
-  for (let k = 0; ; k++) {
-    const must = kept.filter((c) => !picks.includes(c));
-    const plan = planWith(out, left, must)!;
-    const total = sumScore(picks);
-    if (plan.ids.length === 0) { rungs.push({ rung: k, kind: "plan", left, total }); break; }
-    const pick = plan.ids[0];
-    const rung: LadderRung = { rung: k, kind: "clear", left, total, pick };
+      // Everything open and ahead of the pick that won't be taken is struck here.
+      const struck = open.filter((i) => rank.get(i)! < rank.get(a!)! && !plan.has(i));
 
-    if (kept.includes(pick)) {
-      // A choice: the way back is the whole plan without it, the other choices kept.
-      const without = planWith(start, limits, kept.filter((c) => c !== pick))!;
-      const cur = [...picks, ...plan.ids];
-      const cmp = compareSets(only(without.ids, cur), only(cur, without.ids), opts, tol);
-      const back = without.ids.find((i) => !cur.includes(i));
-      rung.kind = "chosen";
-      rung.alt = {
-        option: back ?? pick,
-        brings: only(without.ids, cur).filter((i) => i !== back),
-        drops: only(cur, without.ids),
-        plan: without.total, margin: cmp.margin, flipsAt: cmp.flipsAt ?? 0, pulls: cmp.pulls,
-      };
-    } else {
-      // The rival: the option outside the plan whose own best plan scores highest without the pick.
-      let rival: { b: number; p: { ids: number[]; total: number } } | null = null;
-      let weighed = 0;
-      for (const b of all) {
-        if (weighed >= RIVALS_WEIGHED) break;
-        if (out.has(b) || picks.includes(b) || plan.ids.includes(b) || !fits(opts[b], left)) continue;
-        weighed++;
-        const pb = planWith(out, left, [...must, b]);
-        if (!pb || pb.ids.includes(pick)) continue;
-        if (!rival || pb.total > rival.p.total + EPS) rival = { b, p: pb };
+      // The pick's turn: anything it needs comes first.
+      let kind: LadderEdge["kind"] = "clear";
+      const needs = (i: number): number | null => opts[i].requires.filter((r) => !has.has(r)).sort((x, y) => rank.get(x)! - rank.get(y)!)[0] ?? null;
+      for (let guard = 0; guard < opts.length; guard++) {
+        const nd = needs(a);
+        if (nd == null) break;
+        a = nd; kind = "required";
       }
-      if (rival) {
-        const cmp = compareSets(only(plan.ids, rival.p.ids), only(rival.p.ids, plan.ids), opts, tol);
-        if (cmp.tossUp) { rung.kind = "tossup"; rung.alt = sw(rival.b, rival.p, plan, total, { ...cmp, margin: -cmp.margin, pulls: cmp.pulls.map((v) => -v) }); }
-        else rung.sturdy = { rival: rival.b, flipsAt: cmp.flipsAt };
-      }
-    }
 
-    // Everything still open and ranked above the pick is struck off here.
-    const struck: LadderStruck[] = [];
-    for (let i = 0; i < pick; i++) {
-      if (out.has(i) || picks.includes(i)) continue;
-      if (!fits(opts[i], left)) {
-        struck.push({ option: i, why: "fit", over: opts[i].costs.map((c, r) => Math.max(0, round4(c - left[r]))) });
+      // A fork: the open option nearest the pick in priority, when close and taken by the plan or able to stand in for it.
+      let b: number | null = null;
+      if (kind === "clear" && !s.noFork) {
+        let bestGap = Infinity;
+        for (const i of open) {
+          if (i === a || struck.includes(i) || needs(i) != null || !fits(opts[i], s.left)) continue;
+          if (!isClose(pri[a], pri[i], gap)) continue;
+          const g = Math.abs(pri[a].p - pri[i].p);
+          if (g < bestGap - EPS) { bestGap = g; b = i; }
+        }
+      }
+      const picks: { take: number; share: number; kind: LadderEdge["kind"] }[] = [];
+      if (b != null && (chosen.includes(a) || chosen.includes(b))) {
+        const win = chosen.lastIndexOf(b) > chosen.lastIndexOf(a) ? b : a;
+        picks.push({ take: win, share: s.share, kind: "chosen" });
+      } else if (b != null && ends + next.size + (level.length - li) + 1 <= MAX_ENDS) {
+        const pa = Math.max(EPS, opts[a].score), pb = Math.max(EPS, opts[b].score);
+        picks.push({ take: a, share: (s.share * pa) / (pa + pb), kind: "close" }, { take: b, share: (s.share * pb) / (pa + pb), kind: "close" });
       } else {
-        const forced = planWith(out, left, [...must, i]);
-        if (!forced) { struck.push({ option: i, why: "picks" }); continue; }
-        struck.push({ option: i, why: "crowd", pushedOut: only(plan.ids, forced.ids), cost: round4(plan.total - forced.total) });
+        picks.push({ take: a, share: s.share, kind });
+      }
+
+      for (const pk of picks) {
+        // What taking it rules out is struck on its card too.
+        const ruled = open.filter((i) => i !== pk.take && !struck.includes(i) && clash(opts, i, [pk.take]));
+        const taken = [...s.taken, pk.take];
+        const out = new Set([...s.out, ...struck]);
+        const left = spend(s.left, opts[pk.take]);
+        const key = futureKey(taken, out, left);
+        let t = next.get(key);
+        if (!t) {
+          t = { id: states.length, taken, out, left, share: 0, depth: s.depth + 1, noFork: pk.kind === "close", ins: [] };
+          states.push(t);
+          next.set(key, t);
+        } else {
+          for (const i of struck) t.out.add(i);
+          t.noFork = false;
+        }
+        t.share += pk.share;
+        t.ins.push(edges.length);
+        edges.push({ from: s.id, to: t.id, pick: pk.take, share: pk.share, kind: pk.kind, struck: [...struck, ...ruled] });
       }
     }
-    if (struck.length) rung.struck = struck;
-    rungs.push(rung);
-    for (const s of struck) out.add(s.option);
-    out.add(pick);
-    picks.push(pick);
-    left = spend(left, opts[pick]);
+    level = [...next.values()];
   }
 
+  // The main line: from the top, at each fork the side with more of the flow.
+  const main: number[] = [];
+  for (let s = 0; ; ) {
+    const outs = edges.filter((e) => e.from === s);
+    if (!outs.length) break;
+    const e = outs.reduce((x, y) => (y.share > x.share + EPS ? y : x));
+    main.push(edges.indexOf(e));
+    s = e.to;
+  }
   return {
-    rungs,
-    bestTotal: planWith(start, limits, [])!.total,
-    rankingTotal: greedyTotal(opts, limits),
-    kept, dropped,
+    states: states.map((s) => ({ id: s.id, depth: s.depth, share: s.share, taken: s.taken, end: !edges.some((e) => e.from === s.id) })),
+    edges, main,
   };
-
-  /** The other way at a rung: take `option`, reaching `to`, instead of this rung's plan `from`. `cmp` is signed toward `to`. */
-  function sw(option: number, to: { ids: number[]; total: number }, from: { ids: number[]; total: number }, total: number,
-    cmp: { margin: number; flipsAt: number | null; pulls: number[] }): LadderSwitch {
-    return {
-      option,
-      brings: only(to.ids, from.ids).filter((i) => i !== option),
-      drops: only(from.ids, to.ids),
-      plan: round4(total + to.total),
-      margin: cmp.margin,
-      flipsAt: cmp.flipsAt ?? 0,
-      pulls: cmp.pulls,
-    };
-  }
-}
-
-/** Straight down the ranking, taking whatever still fits. */
-export function greedyTotal(opts: LadderOption[], limits: number[]): number {
-  let left = [...limits], total = 0;
-  for (const o of opts) if (o.score > 0 && fits(o, left)) { left = spend(left, o); total += o.score; }
-  return round4(total);
 }

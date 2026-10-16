@@ -1,99 +1,38 @@
-.sol-ladder {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-family: var(--font-sans);
-  color: var(--text);
-  user-select: none;
-}
-.sol-ladder__summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 14px;
-  font-size: calc(11px * var(--chart-fscale, 1));
-  color: var(--text-dim);
-}
-.sol-ladder__summary b { color: var(--text); font-weight: 600; }
+.sol-ladder { display: flex; flex-direction: column; font-family: var(--font-sans); color: var(--text); user-select: none; }
 .sol-ladder__scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .sol-ladder__stage { position: relative; margin: 0 auto; }
 .sol-ladder__svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
-.sol-ladder__slot { position: absolute; }
+.sol-ladder__slot { position: absolute; display: flex; }
+.sol-ladder__slot > * { flex: 1 1 auto; }
 
-/* A band's color is its resource's, from the categorical palette. */
-.sol-ladder__band { opacity: 0.88; }
-.sol-ladder__line { fill: none; stroke: var(--text-muted); stroke-width: 1.5; }
+.sol-ladder__strand { fill: var(--text-muted); opacity: 0.6; }
+.sol-ladder__need { fill: none; stroke: var(--text-muted); stroke-width: 1.25; stroke-dasharray: 3 3; }
 
 .sol-ladder__card {
-  display: grid;
-  gap: 3px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 6px 8px 7px;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 5px;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  font-size: calc(11px * var(--chart-fscale, 1));
-  line-height: 1.35;
+  display: grid; align-content: start; gap: 2px;
+  box-sizing: border-box; width: 100%;
+  padding: 5px 8px 6px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 5px;
+  text-align: left; font: inherit; color: inherit;
+  font-size: calc(11px * var(--chart-fscale, 1)); line-height: 1.3;
 }
-.sol-ladder__card.is-pick { border-color: var(--accent); }
-.sol-ladder__head { display: flex; justify-content: space-between; align-items: center; gap: 6px; color: var(--text-muted); }
-.sol-ladder__badge {
-  font-size: calc(9.5px * var(--chart-fscale, 1));
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 0 5px;
-  border-radius: 3px;
-  border: 1px solid var(--border-strong);
-  color: var(--text-dim);
-}
-.sol-ladder__badge.is-fork { color: var(--text); border-color: var(--text-dim); }
-.sol-ladder__badge.is-best { color: var(--text); border-color: var(--text); }
-.sol-ladder__badge.is-pick { color: color-mix(in srgb, var(--accent) 55%, var(--text)); border-color: var(--accent); }
+button.sol-ladder__card { cursor: pointer; }
+button.sol-ladder__card:hover { border-color: var(--text-dim); }
+button.sol-ladder__card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sol-ladder__card.is-chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.sol-ladder__card.is-required { border-style: dashed; }
+.sol-ladder__end { padding: 0; background: var(--surface-sunken); }
+
 .sol-ladder__pick { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.sol-ladder__name { font-size: calc(13px * var(--chart-fscale, 1)); font-weight: 600; color: var(--text); line-height: 1.25; }
-.sol-ladder__mono { font-family: var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; }
-.sol-ladder__note { color: var(--text-muted); }
-.sol-ladder__note b { color: var(--text-dim); font-weight: 600; }
-.sol-ladder__note.is-warn { color: color-mix(in srgb, var(--sol-warn, var(--accent)) 70%, var(--text)); }
-
-.sol-ladder__switch { display: grid; gap: 3px; margin-top: 2px; padding: 5px 7px 6px; border-radius: 4px; background: var(--surface-sunken); border: 1px solid var(--border); }
-.sol-ladder__switchhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: var(--text-dim); }
-.sol-ladder__switchhead b { color: var(--text); font-weight: 600; }
-.sol-ladder__btn {
-  justify-self: start;
-  font: 600 calc(10.5px * var(--chart-fscale, 1)) var(--font-sans);
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  padding: 2px 8px;
-  cursor: pointer;
-}
-.sol-ladder__btn:hover { border-color: var(--accent); }
-.sol-ladder__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-.sol-ladder__amounts { display: inline-flex; flex-wrap: wrap; gap: 2px 10px; font-family: var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; }
-.sol-ladder__amounts > span { display: inline-flex; align-items: center; gap: 4px; }
-.sol-ladder__amounts i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
-
-.sol-ladder__struck { list-style: none; margin: 0; padding: 4px 0 0; display: grid; gap: 2px; border-top: 1px dashed var(--border-strong); color: var(--text-muted); }
-.sol-ladder__struck s { color: var(--text-dim); font-weight: 600; text-decoration-color: var(--sol-error); text-decoration-thickness: 1.5px; }
-
-.sol-ladder__pulls { display: grid; gap: 2px; }
-.sol-ladder__pullhead { display: flex; justify-content: space-between; gap: 8px; color: var(--text-dim); font-size: calc(10px * var(--chart-fscale, 1)); }
-.sol-ladder__pullhead span:first-child::before { content: "← "; }
-.sol-ladder__pullhead span:last-child::after { content: " →"; }
-.sol-ladder__pullrow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 6px; align-items: center; }
-.sol-ladder__pullrow > span { text-align: center; color: var(--text-dim); font-size: calc(10px * var(--chart-fscale, 1)); min-width: 62px; }
-.sol-ladder__bar { height: 6px; border-radius: 2px; }
-.sol-ladder__bar.is-a { justify-self: end; background: var(--text); }
-.sol-ladder__bar.is-b { justify-self: start; background: var(--text-muted); }
-
-.sol-ladder__total { font-family: var(--font-mono); font-size: calc(16px * var(--chart-fscale, 1)); font-weight: 600; color: var(--text); }
+.sol-ladder__name { font-size: calc(12.5px * var(--chart-fscale, 1)); font-weight: 600; line-height: 1.25; }
+.sol-ladder__mono { font-family: var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: calc(10.5px * var(--chart-fscale, 1)); }
+.sol-ladder__struck { display: flex; flex-wrap: wrap; gap: 0 8px; color: var(--text-muted); font-size: calc(10.5px * var(--chart-fscale, 1)); }
+.sol-ladder__struck s { text-decoration-color: var(--sol-error); }
+.sol-ladder__bar { display: flex; height: 4px; margin-top: 2px; border-radius: 1px; overflow: hidden; background: var(--surface-sunken); }
+.sol-ladder__bar i { display: block; height: 100%; }
+.sol-ladder__key { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--text-dim); }
+.sol-ladder__key span { display: inline-flex; align-items: center; gap: 4px; }
+.sol-ladder__key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
 
 /* The Choice Ladder card's saved picks. */
 .solenoid-ladder-picks { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
@@ -102,7 +41,7 @@
   padding: 1px 2px 1px 7px; border-radius: 10px;
   border: 1px solid var(--accent); color: var(--text); font-size: 11px;
 }
-.solenoid-ladder-pick.is-dropped { border-style: dashed; color: var(--text-muted); text-decoration: line-through; }
+.solenoid-ladder-pick.is-dropped { border-style: dashed; color: var(--text-muted); }
 .solenoid-ladder-pick button, .solenoid-ladder-reset {
   font: inherit; font-size: 11px; color: var(--text-dim); background: none; border: 0; cursor: pointer; padding: 0 4px;
 }

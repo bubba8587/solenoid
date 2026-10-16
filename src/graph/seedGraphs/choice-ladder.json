@@ -11,7 +11,7 @@
       "y": 0,
       "init": {
         "label": "Choice Ladder",
-        "body": "# Choosing several options at once\nA **Decision Matrix** ranks options. When you can pick several, but only within limits like a budget and a number of meals, the ranking alone isn't the answer: the top pick can eat so much of the budget that two good meals drop out.\n\nThe **Choice Ladder** walks the ranking one rung at a time toward the best plan. Each rung takes the best option that belongs in it and strikes off anything ranked above that doesn't fit or would crowd out more score than it brings. The bands down the sides are the dollars and meals: each card takes exactly what it spends.\n\nA **toss-up** rung is where your weights, off by the **Wiggle**, can't tell two plans apart. Take the other option from the figure and the node keeps your pick; anything it displaced stays in the running if it still fits. Undo a pick on its card or on the node.",
+        "body": "# Choosing several options at once\nA **Decision Matrix** ranks options. When you can only do some of them, the **Choice Ladder** orders them: value flows down, colored by criterion, and each rung takes what it serves. Close scores fork; click a card to take it.",
         "color": "violet",
         "width": 420,
         "height": 420
@@ -57,7 +57,7 @@
         "normalize": "max"
       },
       "literals": {
-        "wiggle": 0.25
+        "close": 0.05
       }
     },
     {
@@ -71,63 +71,63 @@
       }
     },
     {
-      "id": "noteHouse",
+      "id": "notePolicy",
       "type": "NoteNode",
       "x": -520,
       "y": 1100,
       "init": {
-        "label": "House projects",
-        "body": "### A second scenario\nThe same ladder on a year of house projects: $25,000 and ten free weekends. Disruption weighs against a project. The top-ranked Heat pump and the Roof patch are a toss-up at the first rung, and the ranking alone leaves money and weekends unused.",
+        "label": "Policy agenda",
+        "body": "### Policy agenda\nCapital has no total, so the ladder is the order to spend it in. Small business relief earns capital back. Fuel levy and Fuel tax holiday exclude each other; Transit expansion requires Zoning reform.",
         "color": "amber",
         "width": 420,
         "height": 220
       }
     },
     {
-      "id": "hOpts",
+      "id": "pOpts",
       "type": "FrameInputNode",
       "x": -60,
       "y": 1100,
       "init": {
-        "label": "House projects",
-        "frameText": "[{\"name\":\"Project\",\"type\":\"string\",\"values\":[\"Roof patch\",\"Kitchen refresh\",\"Bathroom redo\",\"Attic insulation\",\"Heat pump\",\"Interior paint\",\"Back deck\",\"New windows\",\"Landscaping\",\"Smart thermostat\",\"Fence\",\"Gutter guards\",\"Water heater\"]},{\"name\":\"Urgency\",\"type\":\"number\",\"values\":[10,3,4,6,5,2,1,5,1,3,3,7,8]},{\"name\":\"Comfort\",\"type\":\"number\",\"values\":[4,8,7,7,9,6,7,7,5,5,4,2,6]},{\"name\":\"Resale\",\"type\":\"number\",\"values\":[6,9,8,4,6,6,7,7,5,2,5,3,4]},{\"name\":\"Savings\",\"type\":\"number\",\"values\":[5,2,2,9,9,1,1,7,2,6,1,6,6]},{\"name\":\"Disruption\",\"type\":\"number\",\"values\":[4,9,7,2,3,5,4,5,2,1,3,1,2]},{\"name\":\"Dollars\",\"type\":\"number\",\"values\":[8500,14000,9000,3200,11000,1800,6500,12000,2500,350,4200,1500,2800]},{\"name\":\"Weekends\",\"type\":\"number\",\"values\":[1,4,3,1,1,3,4,2,3,1,2,1,1]}]"
+        "label": "Policies",
+        "frameText": "[{\"name\":\"Policy\",\"type\":\"string\",\"values\":[\"Transit expansion\",\"Zoning reform\",\"Fuel levy\",\"Fuel tax holiday\",\"Child tax credit\",\"School meals\",\"Broadband grants\",\"Oversight board\",\"Small business relief\",\"Water mains\"]},{\"name\":\"Impact\",\"type\":\"number\",\"values\":[9,7,9,5,8,6,7,6,5,7]},{\"name\":\"Urgency\",\"type\":\"number\",\"values\":[6,7,8,6,7,6,6,7,6,9]},{\"name\":\"Support\",\"type\":\"number\",\"values\":[6,4,3,9,8,9,8,5,8,7]},{\"name\":\"Equity\",\"type\":\"number\",\"values\":[8,6,5,5,10,8,7,8,4,7]},{\"name\":\"Feasibility\",\"type\":\"number\",\"values\":[4,6,5,9,6,8,8,5,8,6]},{\"name\":\"Capital\",\"type\":\"number\",\"values\":[4,5,2,2,3,1,2,4,-1,2]},{\"name\":\"Requires\",\"type\":\"string\",\"values\":[\"Zoning reform\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"]},{\"name\":\"Excludes\",\"type\":\"string\",\"values\":[\"\",\"\",\"Fuel tax holiday\",\"Fuel levy\",\"\",\"\",\"\",\"\",\"\",\"\"]}]"
       }
     },
     {
-      "id": "hWeights",
+      "id": "pWeights",
       "type": "FrameInputNode",
       "x": -60,
       "y": 1520,
       "init": {
         "label": "Weights",
-        "frameText": "[{\"name\":\"Criterion\",\"type\":\"string\",\"values\":[\"Urgency\",\"Comfort\",\"Resale\",\"Savings\",\"Disruption\"]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[5,4,3,3,-2]}]"
+        "frameText": "[{\"name\":\"Criterion\",\"type\":\"string\",\"values\":[\"Impact\",\"Urgency\",\"Support\",\"Equity\",\"Feasibility\"]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[5,4,3,3,2]}]"
       }
     },
     {
-      "id": "hLimits",
+      "id": "pLimits",
       "type": "FrameInputNode",
       "x": -60,
       "y": 1800,
       "init": {
         "label": "Limits",
-        "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Dollars\",\"Weekends\"]},{\"name\":\"Limit\",\"type\":\"number\",\"values\":[25000,10]}]"
+        "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Capital\"]},{\"name\":\"Limit\",\"type\":\"number\",\"values\":[null]}]"
       }
     },
     {
-      "id": "hLadder",
+      "id": "pLadder",
       "type": "ChoiceLadderNode",
       "x": 360,
       "y": 1400,
       "init": {
-        "label": "House ladder",
+        "label": "Policy ladder",
         "normalize": "max"
       },
       "literals": {
-        "wiggle": 0.25
+        "close": 0.05
       }
     },
     {
-      "id": "hDisplay",
+      "id": "pDisplay",
       "type": "DisplayNode",
       "x": 720,
       "y": 1100,
@@ -163,27 +163,27 @@
       "targetInput": "in"
     },
     {
-      "source": "hOpts",
+      "source": "pOpts",
       "sourceOutput": "frame",
-      "target": "hLadder",
+      "target": "pLadder",
       "targetInput": "frame"
     },
     {
-      "source": "hWeights",
+      "source": "pWeights",
       "sourceOutput": "frame",
-      "target": "hLadder",
+      "target": "pLadder",
       "targetInput": "weights"
     },
     {
-      "source": "hLimits",
+      "source": "pLimits",
       "sourceOutput": "frame",
-      "target": "hLadder",
+      "target": "pLadder",
       "targetInput": "limits"
     },
     {
-      "source": "hLadder",
+      "source": "pLadder",
       "sourceOutput": "chart",
-      "target": "hDisplay",
+      "target": "pDisplay",
       "targetInput": "in"
     }
   ],

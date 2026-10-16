@@ -187,9 +187,9 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   environment verifies it before starting.
 
 ## Choice Ladder (built 2026-10-16, [[C122]] choiceLadder)
-- [ ] **Never flags** on options (a closed restaurant): honored by every plan. Must-haves exist as the node's choices; a way to add one without a toss-up (from the Plan table or the Options frame) is open.
-- [ ] **Undo history for a pick**: taking or undoing a pick from the figure saves but doesn't go on the undo stack.
-- [ ] **Currency on the figure**: costs read "160 dollars" unless the Options cost column carries a currency format; a Frame Input has no per-column format in the seed.
+- [ ] **Capital earned back changes what's possible next**: an option that earns rough capital only moves up the order today; letting it enable others makes order in time matter (the leaf's reopen condition).
+- [ ] **Undo history for a pick**: taking or undoing a fork from the figure saves but doesn't go on the undo stack.
+- [ ] **Never flags** on options, and a must-have that isn't a fork.
 
 ## Charts
 - [ ] **Sunrise / Sunset prints raw serials** (46194.508 for a sunrise) where a time of day is meant; and a resized Chart card keeps drawing its plot at 218 × 150 (`ChartNode.tsx` W/H).
