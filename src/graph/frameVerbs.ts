@@ -1634,12 +1634,15 @@ export function resolveDecisionWeights(
   const rowIndex = criterionRowIndex(wf);
   const nums = weightColumns(wf);
   const weightCol = nums.find((c) => ["weight", "weights", "value"].includes(critKey(c.name))) ?? nums[0] ?? null;
-  const weights = criteria.map((name) => {
+  const bounds = boundsFrom(wf, criteria, rowIndex);
+  const weights = criteria.map((name, j) => {
     const r = rowIndex.get(critKey(name));
     const v = r != null && weightCol ? numOrNull(weightCol.values[r]) : null;
-    return v ?? 1;
+    // A row that sets only a limit is a screen, not a wish for more ([[C124]] dealBreakers).
+    const screenOnly = r != null && (bounds?.[j]?.atLeast != null || bounds?.[j]?.atMost != null);
+    return v ?? (screenOnly ? 0 : 1);
   });
-  return { weights, normOverrides: normOverridesFrom(wf, criteria, rowIndex), bounds: boundsFrom(wf, criteria, rowIndex) };
+  return { weights, normOverrides: normOverridesFrom(wf, criteria, rowIndex), bounds };
 }
 
 const plainNumber = (v: number): string => v.toLocaleString("en-US", { maximumFractionDigits: 4 });

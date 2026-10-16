@@ -3714,5 +3714,3472 @@
       "error": true
     },
     "why": "Three vegetarian dishes are required but only two are on offer, so no menu can satisfy the brief; it should say so rather than return a plan."
+  },
+  {
+    "id": "laptop-blank-battery",
+    "title": "Laptop where one model's battery life isn't listed",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Laptop",
+          "type": "string",
+          "values": [
+            "Zephyr 14",
+            "Corsa 13",
+            "Nimbus 15",
+            "Titan 16"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            1300,
+            1100,
+            1000,
+            1600
+          ]
+        },
+        {
+          "name": "RAM GB",
+          "type": "number",
+          "values": [
+            16,
+            16,
+            8,
+            32
+          ]
+        },
+        {
+          "name": "Battery hours",
+          "type": "number",
+          "values": [
+            14,
+            13,
+            null,
+            9
+          ]
+        },
+        {
+          "name": "Weight kg",
+          "type": "number",
+          "values": [
+            1.2,
+            1.3,
+            1.6,
+            2.1
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Battery hours",
+            "RAM GB",
+            "Weight kg"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            2,
+            1,
+            -1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Corsa 13",
+      "notWinner": [
+        "Nimbus 15",
+        "Titan 16"
+      ]
+    },
+    "why": "Corsa is $200 cheaper than Zephyr with nearly the same battery and weight; Nimbus's unknown battery should count as typical, not as a win, and its 8GB and weight keep it behind; Titan is the priciest and heaviest."
+  },
+  {
+    "id": "bolt-supplier-quality-floor",
+    "title": "Bolt supplier with a minimum quality score",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Supplier",
+          "type": "string",
+          "values": [
+            "Fastenco",
+            "Brightline",
+            "Ironvale",
+            "Kestrel"
+          ]
+        },
+        {
+          "name": "Unit cost",
+          "type": "number",
+          "values": [
+            0.08,
+            0.11,
+            0.1,
+            0.14
+          ]
+        },
+        {
+          "name": "Quality score",
+          "type": "number",
+          "values": [
+            78,
+            92,
+            88,
+            97
+          ]
+        },
+        {
+          "name": "Lead days",
+          "type": "number",
+          "values": [
+            5,
+            7,
+            10,
+            6
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Unit cost",
+            "Quality score",
+            "Lead days"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -3,
+            2,
+            -1
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            85,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Brightline",
+      "ruledOut": [
+        "Fastenco"
+      ],
+      "notWinner": [
+        "Fastenco",
+        "Kestrel"
+      ]
+    },
+    "why": "Fastenco is cheapest but fails the quality bar so it's out; Brightline costs a cent more than Ironvale but has better quality and ships three days sooner, and Kestrel's quality isn't worth 40% more per bolt."
+  },
+  {
+    "id": "car-safety-floor-removes-favorite",
+    "title": "Most fun car fails the safety-rating minimum",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Car",
+          "type": "string",
+          "values": [
+            "Velo GT",
+            "Strada",
+            "Terra",
+            "Comet"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            34000,
+            31000,
+            36000,
+            27000
+          ]
+        },
+        {
+          "name": "Fun",
+          "type": "number",
+          "values": [
+            9,
+            7,
+            6,
+            5
+          ]
+        },
+        {
+          "name": "Safety stars",
+          "type": "number",
+          "values": [
+            3,
+            5,
+            5,
+            4
+          ]
+        },
+        {
+          "name": "MPG",
+          "type": "number",
+          "values": [
+            34,
+            36,
+            28,
+            40
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Fun",
+            "Safety stars",
+            "MPG"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -1,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            null,
+            4,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Strada",
+      "ruledOut": [
+        "Velo GT"
+      ],
+      "notWinner": [
+        "Velo GT",
+        "Terra"
+      ]
+    },
+    "why": "The Velo GT is the most fun but a 3-star safety rating is a deal-breaker; Strada beats Terra on every count, and its extra fun and fifth safety star outweigh Comet's $4k saving."
+  },
+  {
+    "id": "used-bike-decoy",
+    "title": "Used bikes with a decoy that's worse than a cheaper one",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Bike",
+          "type": "string",
+          "values": [
+            "Fenwick",
+            "Gallo",
+            "Harlow",
+            "Ivers"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            450,
+            520,
+            300,
+            700
+          ]
+        },
+        {
+          "name": "Condition",
+          "type": "number",
+          "values": [
+            8,
+            7,
+            6,
+            9
+          ]
+        },
+        {
+          "name": "Gears",
+          "type": "number",
+          "values": [
+            21,
+            18,
+            7,
+            24
+          ]
+        },
+        {
+          "name": "Weight kg",
+          "type": "number",
+          "values": [
+            11,
+            12,
+            13,
+            9.5
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Condition",
+            "Gears",
+            "Weight kg"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            2,
+            0.5,
+            -1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Fenwick",
+      "notWinner": [
+        "Gallo"
+      ]
+    },
+    "why": "Gallo costs more than Fenwick and is worse in condition, gears and weight, so it can't win; Fenwick is the sweet spot between the beat-up Harlow and the $700 Ivers."
+  },
+  {
+    "id": "coworking-luxury-outlier-capped",
+    "title": "Coworking desk with a $2,000 luxury option over budget",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Space",
+          "type": "string",
+          "values": [
+            "Hive",
+            "Loft",
+            "Nook",
+            "Summit Club"
+          ]
+        },
+        {
+          "name": "Monthly price",
+          "type": "number",
+          "values": [
+            300,
+            260,
+            340,
+            2000
+          ]
+        },
+        {
+          "name": "Wifi",
+          "type": "number",
+          "values": [
+            9,
+            6,
+            9,
+            10
+          ]
+        },
+        {
+          "name": "Commute min",
+          "type": "number",
+          "values": [
+            20,
+            35,
+            10,
+            5
+          ]
+        },
+        {
+          "name": "Quiet",
+          "type": "number",
+          "values": [
+            7,
+            5,
+            9,
+            10
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Monthly price",
+            "Wifi",
+            "Commute min",
+            "Quiet"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            1,
+            -1,
+            1
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            600,
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Nook",
+      "ruledOut": [
+        "Summit Club"
+      ],
+      "notWinner": [
+        "Loft",
+        "Summit Club"
+      ]
+    },
+    "why": "Summit Club is over budget and shouldn't distort the rest; Nook costs only $40 more than Hive for half the commute and a quieter room, while Loft's savings come with poor wifi and a long commute."
+  },
+  {
+    "id": "mortgage-bunched-rates",
+    "title": "Mortgage lenders whose rates differ by tenths of a percent",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Lender",
+          "type": "string",
+          "values": [
+            "Harbor Bank",
+            "Pinecrest Credit",
+            "Ashford Mortgage",
+            "Delta Home Loans"
+          ]
+        },
+        {
+          "name": "Rate pct",
+          "type": "number",
+          "values": [
+            6.1,
+            6.4,
+            5.9,
+            6.2
+          ]
+        },
+        {
+          "name": "Closing fees",
+          "type": "number",
+          "values": [
+            4000,
+            1500,
+            6500,
+            2500
+          ]
+        },
+        {
+          "name": "Service",
+          "type": "number",
+          "values": [
+            8,
+            9,
+            5,
+            7
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Rate pct",
+            "Closing fees",
+            "Service"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -4,
+            -1,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Ashford Mortgage",
+      "notWinner": [
+        "Pinecrest Credit"
+      ]
+    },
+    "why": "The person said rate matters four times as much as fees, and over 30 years half a point dwarfs a $5,000 fee difference, so the lowest rate should win and the highest-rate lender must not; a naive divide-by-max squashes 5.9 vs 6.4 into almost nothing and hands it to Pinecrest.",
+    "ruling": {
+      "winner": "÷Max measures each value against zero, and 5.9% and 6.4% are both far from zero; a narrow band far from zero is what Norm: Range is for (its card note says so), and making Range the default misses 9 of these scenarios against ÷Max's 3: see mortgage-rates-range.",
+      "Pinecrest Credit won": "As above."
+    }
+  },
+  {
+    "id": "mortgage-rates-range",
+    "title": "The same lenders with Rate scaled lowest to highest",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Lender",
+          "type": "string",
+          "values": [
+            "Harbor Bank",
+            "Pinecrest Credit",
+            "Ashford Mortgage",
+            "Delta Home Loans"
+          ]
+        },
+        {
+          "name": "Rate pct",
+          "type": "number",
+          "values": [
+            6.1,
+            6.4,
+            5.9,
+            6.2
+          ]
+        },
+        {
+          "name": "Closing fees",
+          "type": "number",
+          "values": [
+            4000,
+            1500,
+            6500,
+            2500
+          ]
+        },
+        {
+          "name": "Service",
+          "type": "number",
+          "values": [
+            8,
+            9,
+            5,
+            7
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Rate pct",
+            "Closing fees",
+            "Service"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -4,
+            -1,
+            1
+          ]
+        },
+        {
+          "name": "Norm",
+          "type": "string",
+          "values": [
+            "Range",
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Ashford Mortgage",
+      "notWinner": [
+        "Pinecrest Credit"
+      ]
+    },
+    "why": "With Rate spread from its lowest to its highest, its four-times weight decides, and the lowest rate wins."
+  },
+  {
+    "id": "movers-insurance-required",
+    "title": "Moving company that must be insured",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Mover",
+          "type": "string",
+          "values": [
+            "Swiftline",
+            "Carrymore",
+            "BoxBros",
+            "Haulwell"
+          ]
+        },
+        {
+          "name": "Quote",
+          "type": "number",
+          "values": [
+            1800,
+            2100,
+            1600,
+            2600
+          ]
+        },
+        {
+          "name": "Rating",
+          "type": "number",
+          "values": [
+            4.6,
+            4.7,
+            3.9,
+            4.8
+          ]
+        },
+        {
+          "name": "Insured",
+          "type": "logical",
+          "values": [
+            false,
+            true,
+            true,
+            true
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Quote",
+            "Rating",
+            "Insured"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -1,
+            3,
+            0
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            null,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Carrymore",
+      "ruledOut": [
+        "Swiftline"
+      ],
+      "notWinner": [
+        "Swiftline",
+        "BoxBros"
+      ]
+    },
+    "why": "Uninsured Swiftline is out however cheap; Carrymore rates almost as well as Haulwell for $500 less, and BoxBros' 3.9 isn't worth the saving when rating weighs three times the quote."
+  },
+  {
+    "id": "health-plan-deductible-cap",
+    "title": "Health plan with a deductible ceiling and a near-duplicate tier",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Plan",
+          "type": "string",
+          "values": [
+            "Bronze",
+            "Silver",
+            "Silver Plus",
+            "Gold"
+          ]
+        },
+        {
+          "name": "Monthly premium",
+          "type": "number",
+          "values": [
+            220,
+            340,
+            360,
+            560
+          ]
+        },
+        {
+          "name": "Deductible",
+          "type": "number",
+          "values": [
+            7000,
+            3000,
+            3200,
+            1000
+          ]
+        },
+        {
+          "name": "Network",
+          "type": "number",
+          "values": [
+            6,
+            7,
+            6,
+            8
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Monthly premium",
+            "Deductible",
+            "Network"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -3,
+            -1,
+            1
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            null,
+            5000,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Silver",
+      "ruledOut": [
+        "Bronze"
+      ],
+      "notWinner": [
+        "Silver Plus",
+        "Bronze"
+      ]
+    },
+    "why": "Bronze's $7,000 deductible is over the limit; Silver Plus costs more than Silver with a higher deductible and a smaller network, and Gold's extra $2,640 a year in premiums buys only $2,000 less deductible."
+  },
+  {
+    "id": "trade-deadline-flips",
+    "title": "Trade deadline: the prospect deal wins on future value",
+    "kind": "flips",
+    "options": {
+      "columns": [
+        {
+          "name": "Move",
+          "type": "string",
+          "values": [
+            "Stand pat",
+            "Veteran trade",
+            "Prospect trade"
+          ]
+        },
+        {
+          "name": "Wins now",
+          "type": "number",
+          "values": [
+            50,
+            56,
+            48
+          ]
+        },
+        {
+          "name": "Future value",
+          "type": "number",
+          "values": [
+            5,
+            5,
+            9
+          ]
+        },
+        {
+          "name": "Payroll",
+          "type": "number",
+          "values": [
+            125,
+            130,
+            115
+          ]
+        },
+        {
+          "name": "Fan appeal",
+          "type": "number",
+          "values": [
+            6,
+            8,
+            5
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Wins now",
+            "Future value",
+            "Payroll",
+            "Fan appeal"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            3,
+            2,
+            -1,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Prospect trade",
+      "fragile": "Future value",
+      "robust": "Payroll"
+    },
+    "why": "The prospect deal wins because the future is weighted heavily; trim that weight by a quarter and the veteran deal's extra wins and fan appeal take over, while the prospect deal is also the cheapest, so no payroll weight can unseat it."
+  },
+  {
+    "id": "phone-plan-robust-flips",
+    "title": "Phone plan that is cheapest, fastest and best covered",
+    "kind": "flips",
+    "options": {
+      "columns": [
+        {
+          "name": "Plan",
+          "type": "string",
+          "values": [
+            "Prairie Mobile",
+            "Beacon",
+            "Orbit"
+          ]
+        },
+        {
+          "name": "Monthly price",
+          "type": "number",
+          "values": [
+            35,
+            45,
+            55
+          ]
+        },
+        {
+          "name": "Data GB",
+          "type": "number",
+          "values": [
+            30,
+            25,
+            28
+          ]
+        },
+        {
+          "name": "Coverage",
+          "type": "number",
+          "values": [
+            9,
+            8,
+            7
+          ]
+        },
+        {
+          "name": "Perks",
+          "type": "number",
+          "values": [
+            2,
+            6,
+            8
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Monthly price",
+            "Data GB",
+            "Coverage",
+            "Perks"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            1,
+            2,
+            0.5
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Prairie Mobile",
+      "robust": "Monthly price"
+    },
+    "why": "Prairie is cheapest and also best on data and coverage, so it wins even if price stops mattering and only gains as price matters more; only a big push on perks could change the answer."
+  },
+  {
+    "id": "phd-lab-near-tie-flips",
+    "title": "Two PhD labs a hair apart",
+    "kind": "flips",
+    "options": {
+      "columns": [
+        {
+          "name": "Lab",
+          "type": "string",
+          "values": [
+            "Okafor Lab",
+            "Lindqvist Lab",
+            "Reyes Lab"
+          ]
+        },
+        {
+          "name": "Advisor fit",
+          "type": "number",
+          "values": [
+            9,
+            8,
+            6
+          ]
+        },
+        {
+          "name": "Funding years",
+          "type": "number",
+          "values": [
+            5,
+            5,
+            3
+          ]
+        },
+        {
+          "name": "Publications",
+          "type": "number",
+          "values": [
+            6,
+            8,
+            9
+          ]
+        },
+        {
+          "name": "Location",
+          "type": "number",
+          "values": [
+            6,
+            7,
+            5
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Advisor fit",
+            "Funding years",
+            "Publications",
+            "Location"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            3,
+            2,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Lindqvist Lab",
+      "fragile": "Location",
+      "robust": "Funding years"
+    },
+    "why": "Lindqvist edges Okafor only through its slightly better publications and location, so a small cut to Location's weight hands it to Okafor; the two leaders have the same funding, so no funding weight separates them and Reyes is too far behind."
+  },
+  {
+    "id": "hiking-boots-ruled-out-cheapest",
+    "title": "Hiking boots where the cheapest pair isn't waterproof",
+    "kind": "flips",
+    "options": {
+      "columns": [
+        {
+          "name": "Boot",
+          "type": "string",
+          "values": [
+            "Ridge",
+            "Alpine",
+            "Trail Runner"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            180,
+            240,
+            120
+          ]
+        },
+        {
+          "name": "Comfort",
+          "type": "number",
+          "values": [
+            9,
+            10,
+            7
+          ]
+        },
+        {
+          "name": "Waterproof",
+          "type": "logical",
+          "values": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "name": "Weight g",
+          "type": "number",
+          "values": [
+            900,
+            700,
+            800
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Comfort",
+            "Waterproof",
+            "Weight g"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -1,
+            2,
+            1,
+            -1
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            null,
+            1,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Alpine",
+      "robust": "Waterproof",
+      "notWinner": [
+        "Trail Runner"
+      ]
+    },
+    "why": "Trail Runner is ruled out for not being waterproof, so however much price or waterproofing matters it can never win; both remaining boots are waterproof, so that weight cannot separate them."
+  },
+  {
+    "id": "daycare-then-classroom",
+    "title": "Daycare, then the classroom inside it",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "Daycare",
+          "type": "string",
+          "values": [
+            "Little Acorns",
+            "Sunbeam",
+            "Maple Grove"
+          ]
+        },
+        {
+          "name": "Monthly fee",
+          "type": "number",
+          "values": [
+            1400,
+            1250,
+            1650
+          ]
+        },
+        {
+          "name": "Commute min",
+          "type": "number",
+          "values": [
+            10,
+            20,
+            8
+          ]
+        },
+        {
+          "name": "Hours open",
+          "type": "number",
+          "values": [
+            11,
+            10,
+            12
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Classroom",
+          "type": "string",
+          "values": [
+            "Oak Room",
+            "Pine Room",
+            "Rainbow Room",
+            "Sunflower Room",
+            "Robin Room",
+            "Wren Room"
+          ]
+        },
+        {
+          "name": "Daycare",
+          "type": "string",
+          "values": [
+            "Little Acorns",
+            "Little Acorns",
+            "Sunbeam",
+            "Sunbeam",
+            "Maple Grove",
+            "Maple Grove"
+          ]
+        },
+        {
+          "name": "Kids per teacher",
+          "type": "number",
+          "values": [
+            4,
+            6,
+            7,
+            8,
+            5,
+            4
+          ]
+        },
+        {
+          "name": "Teacher years",
+          "type": "number",
+          "values": [
+            12,
+            3,
+            2,
+            6,
+            8,
+            6
+          ]
+        }
+      ]
+    },
+    "key": "Daycare",
+    "nested": "Classrooms",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Monthly fee",
+            "Commute min",
+            "Hours open",
+            "Kids per teacher",
+            "Teacher years",
+            "Classrooms"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            -1,
+            1,
+            -2,
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Little Acorns",
+      "notWinner": [
+        "Sunbeam"
+      ],
+      "bestInside": {
+        "Little Acorns": "Oak Room",
+        "Maple Grove": "Wren Room"
+      }
+    },
+    "why": "Sunbeam is cheapest but both its rooms are crowded with junior teachers; Little Acorns' Oak Room has the best ratio and the most experienced teacher at $250 less than Maple Grove, and Wren beats Robin on ratio."
+  },
+  {
+    "id": "flight-then-seat-fare-cap",
+    "title": "Flight, then seat class, with a fare cap",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "Flight",
+          "type": "string",
+          "values": [
+            "AM Nonstop",
+            "PM Connection",
+            "Red-eye"
+          ]
+        },
+        {
+          "name": "Duration hours",
+          "type": "number",
+          "values": [
+            6,
+            9.5,
+            6.5
+          ]
+        },
+        {
+          "name": "Convenience",
+          "type": "number",
+          "values": [
+            8,
+            7,
+            3
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Seat",
+          "type": "string",
+          "values": [
+            "AM Economy",
+            "AM Premium",
+            "AM Business",
+            "PM Economy",
+            "PM Premium",
+            "RE Economy",
+            "RE Lie-flat"
+          ]
+        },
+        {
+          "name": "Flight",
+          "type": "string",
+          "values": [
+            "AM Nonstop",
+            "AM Nonstop",
+            "AM Nonstop",
+            "PM Connection",
+            "PM Connection",
+            "Red-eye",
+            "Red-eye"
+          ]
+        },
+        {
+          "name": "Fare",
+          "type": "number",
+          "values": [
+            420,
+            780,
+            2100,
+            310,
+            560,
+            350,
+            1500
+          ]
+        },
+        {
+          "name": "Comfort",
+          "type": "number",
+          "values": [
+            4,
+            7,
+            10,
+            4,
+            7,
+            3,
+            10
+          ]
+        }
+      ]
+    },
+    "key": "Flight",
+    "nested": "Seats",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Duration hours",
+            "Convenience",
+            "Fare",
+            "Comfort",
+            "Seats"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            1,
+            -1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            null,
+            null,
+            900,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "AM Nonstop",
+      "notWinner": [
+        "Red-eye"
+      ],
+      "bestInside": {
+        "AM Nonstop": "AM Premium",
+        "Red-eye": "RE Economy"
+      }
+    },
+    "why": "Business and lie-flat are over the fare cap, so the morning nonstop's best seat is premium economy, comfort weighing twice the fare; a short convenient nonstop beats a 9.5-hour connection, and the red-eye's only affordable seat is a cramped economy."
+  },
+  {
+    "id": "ski-resort-poor-lodging",
+    "title": "Best snow, worst lodging: ski resort then lodge",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "Resort",
+          "type": "string",
+          "values": [
+            "Powder Peak",
+            "Pine Hollow",
+            "Glacier Bowl"
+          ]
+        },
+        {
+          "name": "Snow",
+          "type": "number",
+          "values": [
+            10,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "Terrain",
+          "type": "number",
+          "values": [
+            9,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "Drive hours",
+          "type": "number",
+          "values": [
+            5,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Lodging",
+          "type": "string",
+          "values": [
+            "Summit Hostel",
+            "Peak Motel",
+            "Hollow Cabin",
+            "Pine Lodge",
+            "Bowl Inn",
+            "Glacier Chalet"
+          ]
+        },
+        {
+          "name": "Resort",
+          "type": "string",
+          "values": [
+            "Powder Peak",
+            "Powder Peak",
+            "Pine Hollow",
+            "Pine Hollow",
+            "Glacier Bowl",
+            "Glacier Bowl"
+          ]
+        },
+        {
+          "name": "Nightly price",
+          "type": "number",
+          "values": [
+            90,
+            160,
+            140,
+            200,
+            150,
+            260
+          ]
+        },
+        {
+          "name": "Rating",
+          "type": "number",
+          "values": [
+            4.5,
+            5.0,
+            8.8,
+            9.3,
+            7.5,
+            8.5
+          ]
+        }
+      ]
+    },
+    "key": "Resort",
+    "nested": "Lodging options",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Snow",
+            "Terrain",
+            "Drive hours",
+            "Nightly price",
+            "Rating",
+            "Lodging options"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            2,
+            1,
+            -1,
+            -1,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Pine Hollow",
+      "notWinner": [
+        "Powder Peak"
+      ],
+      "bestInside": {
+        "Pine Hollow": "Hollow Cabin",
+        "Powder Peak": "Summit Hostel"
+      }
+    },
+    "why": "Powder Peak has the best mountain but only dismal places to sleep and the longest drive, and lodging carries the most weight; Pine Hollow is closest with excellent cabins, and its Hollow Cabin nearly matches Pine Lodge's rating for $60 less."
+  },
+  {
+    "id": "bootcamp-no-cohorts",
+    "title": "Coding bootcamp whose next cohorts aren't scheduled",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "Bootcamp",
+          "type": "string",
+          "values": [
+            "Forge Academy",
+            "Launchpad",
+            "Codeyard"
+          ]
+        },
+        {
+          "name": "Rating",
+          "type": "number",
+          "values": [
+            9,
+            8,
+            7
+          ]
+        },
+        {
+          "name": "Tuition",
+          "type": "number",
+          "values": [
+            15000,
+            12000,
+            10000
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Cohort",
+          "type": "string",
+          "values": [
+            "LP January",
+            "LP March",
+            "CY February"
+          ]
+        },
+        {
+          "name": "Bootcamp",
+          "type": "string",
+          "values": [
+            "Launchpad",
+            "Launchpad",
+            "Codeyard"
+          ]
+        },
+        {
+          "name": "Weeks to start",
+          "type": "number",
+          "values": [
+            4,
+            12,
+            8
+          ]
+        },
+        {
+          "name": "Class size",
+          "type": "number",
+          "values": [
+            20,
+            15,
+            25
+          ]
+        }
+      ]
+    },
+    "key": "Bootcamp",
+    "nested": "Cohorts",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Rating",
+            "Tuition",
+            "Weeks to start",
+            "Class size",
+            "Cohorts"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            2,
+            -1,
+            -1,
+            -1,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Launchpad",
+      "ruledOut": [
+        "Forge Academy"
+      ],
+      "notWinner": [
+        "Forge Academy"
+      ],
+      "bestInside": {
+        "Launchpad": "LP January"
+      }
+    },
+    "why": "Forge is the best-rated but has no cohort to join, so it can't be chosen; Launchpad rates better than Codeyard and has a cohort starting soonest in a smaller class."
+  },
+  {
+    "id": "university-program-advisor",
+    "title": "University, then program, then advisor, with a minimum advisor fit",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "University",
+          "type": "string",
+          "values": [
+            "Northfield",
+            "Lakeshore",
+            "Westbrook"
+          ]
+        },
+        {
+          "name": "Prestige",
+          "type": "number",
+          "values": [
+            9,
+            8,
+            6
+          ]
+        },
+        {
+          "name": "Living cost",
+          "type": "number",
+          "values": [
+            8,
+            5,
+            4
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Program",
+          "type": "string",
+          "values": [
+            "NF Biology",
+            "NF Chemistry",
+            "LS Biology",
+            "WB Biology",
+            "WB Ecology"
+          ]
+        },
+        {
+          "name": "University",
+          "type": "string",
+          "values": [
+            "Northfield",
+            "Northfield",
+            "Lakeshore",
+            "Westbrook",
+            "Westbrook"
+          ]
+        },
+        {
+          "name": "Placement pct",
+          "type": "number",
+          "values": [
+            70,
+            60,
+            75,
+            50,
+            55
+          ]
+        },
+        {
+          "name": "Funding years",
+          "type": "number",
+          "values": [
+            5,
+            4,
+            5,
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    "key": "University",
+    "nested": "Programs",
+    "grandchild": {
+      "columns": [
+        {
+          "name": "Advisor",
+          "type": "string",
+          "values": [
+            "Dr Hale",
+            "Dr Ibarra",
+            "Dr Jansen",
+            "Dr Kim",
+            "Dr Lowe",
+            "Dr Moss"
+          ]
+        },
+        {
+          "name": "Program",
+          "type": "string",
+          "values": [
+            "NF Biology",
+            "NF Chemistry",
+            "LS Biology",
+            "LS Biology",
+            "WB Biology",
+            "WB Ecology"
+          ]
+        },
+        {
+          "name": "Fit",
+          "type": "number",
+          "values": [
+            4,
+            5,
+            9,
+            7,
+            8,
+            6
+          ]
+        },
+        {
+          "name": "Students graduated",
+          "type": "number",
+          "values": [
+            10,
+            3,
+            6,
+            12,
+            2,
+            5
+          ]
+        }
+      ]
+    },
+    "grandKey": "Program",
+    "grandNested": "Advisors",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Prestige",
+            "Living cost",
+            "Placement pct",
+            "Funding years",
+            "Fit",
+            "Students graduated",
+            "Programs",
+            "Advisors"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            2,
+            -1,
+            2,
+            1,
+            3,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            5,
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Lakeshore",
+      "notWinner": [
+        "Northfield"
+      ],
+      "bestInside": {
+        "Lakeshore": "LS Biology",
+        "Northfield": "NF Chemistry"
+      }
+    },
+    "why": "Northfield's biology program has only a poor-fit advisor so it drops out, leaving its weaker chemistry program; Lakeshore is nearly as prestigious, far cheaper to live in, and has the best-placing program with the best-fit advisor."
+  },
+  {
+    "id": "bakery-one-great-cake",
+    "title": "Wedding bakery with one superb cake versus one with several good ones",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "Bakery",
+          "type": "string",
+          "values": [
+            "Crumb & Co",
+            "Golden Whisk",
+            "Sugarloaf"
+          ]
+        },
+        {
+          "name": "Reliability",
+          "type": "number",
+          "values": [
+            8,
+            8,
+            6
+          ]
+        },
+        {
+          "name": "Delivery fee",
+          "type": "number",
+          "values": [
+            60,
+            50,
+            30
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Cake",
+          "type": "string",
+          "values": [
+            "Crumb Lemon Chiffon",
+            "Crumb Basic Vanilla",
+            "Crumb Fondant Tier",
+            "Crumb Carrot",
+            "GW Chocolate",
+            "GW Red Velvet",
+            "GW Vanilla",
+            "SL Funfetti",
+            "SL Marble"
+          ]
+        },
+        {
+          "name": "Bakery",
+          "type": "string",
+          "values": [
+            "Crumb & Co",
+            "Crumb & Co",
+            "Crumb & Co",
+            "Crumb & Co",
+            "Golden Whisk",
+            "Golden Whisk",
+            "Golden Whisk",
+            "Sugarloaf",
+            "Sugarloaf"
+          ]
+        },
+        {
+          "name": "Taste",
+          "type": "number",
+          "values": [
+            9.6,
+            5,
+            5.5,
+            6,
+            7.8,
+            7.6,
+            7.5,
+            6.5,
+            6
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            420,
+            380,
+            600,
+            400,
+            450,
+            430,
+            400,
+            300,
+            280
+          ]
+        }
+      ]
+    },
+    "key": "Bakery",
+    "nested": "Cakes",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Reliability",
+            "Delivery fee",
+            "Taste",
+            "Price",
+            "Cakes"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1,
+            -1,
+            3,
+            -1,
+            3
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Crumb & Co",
+      "notWinner": [
+        "Sugarloaf"
+      ],
+      "bestInside": {
+        "Crumb & Co": "Crumb Lemon Chiffon",
+        "Golden Whisk": "GW Chocolate"
+      }
+    },
+    "why": "You order one cake, so a bakery is as good as its best: Crumb's lemon chiffon is far tastier than anything else at a mid price, and its weaker cakes don't matter; Golden Whisk's consistency is no substitute."
+  },
+  {
+    "id": "backpacking-gear-weight-cap",
+    "title": "Backpacking gear under a 4 kg cap, tent or hammock",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Item",
+          "type": "string",
+          "values": [
+            "Tent",
+            "Hammock",
+            "Camp stove",
+            "Water filter",
+            "Bear canister",
+            "Camp chair",
+            "Lantern",
+            "Paperback"
+          ]
+        },
+        {
+          "name": "Usefulness",
+          "type": "number",
+          "values": [
+            10,
+            7,
+            8,
+            9,
+            7,
+            4,
+            5,
+            2
+          ]
+        },
+        {
+          "name": "Grams",
+          "type": "number",
+          "values": [
+            2200,
+            800,
+            900,
+            300,
+            1200,
+            1100,
+            400,
+            300
+          ]
+        },
+        {
+          "name": "One of",
+          "type": "string",
+          "values": [
+            "Shelter",
+            "Shelter",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Usefulness"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Grams"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            4000
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Hammock",
+        "Water filter",
+        "Camp stove",
+        "Bear canister",
+        "Lantern",
+        "Paperback"
+      ],
+      "planExcludes": [
+        "Tent",
+        "Camp chair"
+      ]
+    },
+    "why": "The tent is the most useful single item but at 2.2 kg it crowds out the stove or bear canister; the light hammock covers shelter and leaves room for everything except the heavy chair."
+  },
+  {
+    "id": "setlist-slow-song-floor",
+    "title": "Band setlist of 24 minutes needing at least two slow songs",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Song",
+          "type": "string",
+          "values": [
+            "Neon Highway",
+            "Thunder Lane",
+            "Static Hearts",
+            "Getaway",
+            "Wildfire",
+            "Encore Jam",
+            "Paper Moon",
+            "Low Tide",
+            "Ember"
+          ]
+        },
+        {
+          "name": "Crowd score",
+          "type": "number",
+          "values": [
+            9,
+            8.5,
+            8,
+            7.5,
+            7.2,
+            7,
+            6.5,
+            5,
+            6
+          ]
+        },
+        {
+          "name": "Minutes",
+          "type": "number",
+          "values": [
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4
+          ]
+        },
+        {
+          "name": "Slow",
+          "type": "logical",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Crowd score"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Minutes",
+            "Slow"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            24,
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            2
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Neon Highway",
+        "Thunder Lane",
+        "Static Hearts",
+        "Getaway",
+        "Paper Moon",
+        "Ember"
+      ],
+      "planExcludes": [
+        "Wildfire",
+        "Encore Jam",
+        "Low Tide"
+      ],
+      "planFirst": "Neon Highway"
+    },
+    "why": "Six four-minute slots: the two required ballads take two of them, so the best two slow songs go in and the fifth and sixth fast songs drop even though they score higher."
+  },
+  {
+    "id": "hospital-equipment-mri-variant",
+    "title": "Hospital capital budget with two MRI variants",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Equipment",
+          "type": "string",
+          "values": [
+            "MRI 3T",
+            "MRI 1.5T",
+            "CT scanner",
+            "Surgical robot",
+            "Dialysis units",
+            "Ultrasound x3",
+            "Ultrasound x1"
+          ]
+        },
+        {
+          "name": "Clinical value",
+          "type": "number",
+          "values": [
+            10,
+            9,
+            8,
+            9,
+            7,
+            6,
+            4
+          ]
+        },
+        {
+          "name": "Cost k",
+          "type": "number",
+          "values": [
+            2000,
+            1200,
+            900,
+            1800,
+            600,
+            300,
+            120
+          ]
+        },
+        {
+          "name": "One of",
+          "type": "string",
+          "values": [
+            "MRI",
+            "MRI",
+            null,
+            null,
+            null,
+            "Ultrasound",
+            "Ultrasound"
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Clinical value"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Cost k"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            3500
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "MRI 1.5T",
+        "CT scanner",
+        "Dialysis units",
+        "Ultrasound x3"
+      ],
+      "planExcludes": [
+        "MRI 3T",
+        "Surgical robot",
+        "Ultrasound x1"
+      ]
+    },
+    "why": "Only one MRI can be bought; the 3T is slightly better but $800k dearer, and the 1.5T leaves room for dialysis as well as the CT and full ultrasound set, which the robot or the 3T would crowd out."
+  },
+  {
+    "id": "streaming-monthly-budget",
+    "title": "Streaming subscriptions within $40 a month",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Service",
+          "type": "string",
+          "values": [
+            "Flixly",
+            "StreamMax",
+            "Tunely",
+            "Kidzone",
+            "DocuWorld",
+            "SportsNow",
+            "Retro TV"
+          ]
+        },
+        {
+          "name": "Enjoyment",
+          "type": "number",
+          "values": [
+            9,
+            8,
+            8,
+            5,
+            6,
+            7,
+            3
+          ]
+        },
+        {
+          "name": "Monthly cost",
+          "type": "number",
+          "values": [
+            15.5,
+            16,
+            11,
+            8,
+            5,
+            25,
+            4
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Enjoyment"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Monthly cost"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            40
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Flixly",
+        "Tunely",
+        "DocuWorld",
+        "Kidzone"
+      ],
+      "planExcludes": [
+        "StreamMax",
+        "SportsNow",
+        "Retro TV"
+      ],
+      "planIncludes": [
+        "Flixly"
+      ]
+    },
+    "why": "SportsNow alone eats most of the budget and a second big video service crowds out cheaper picks; Flixly plus music, documentaries and the kids' channel uses $39.50 for the most enjoyment."
+  },
+  {
+    "id": "park-projects-political-capital",
+    "title": "City park projects spending rough political capital",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Project",
+          "type": "string",
+          "values": [
+            "Playground renovation",
+            "Dog park",
+            "Skate park",
+            "Community garden",
+            "Pool rebuild"
+          ]
+        },
+        {
+          "name": "Benefit",
+          "type": "number",
+          "values": [
+            7,
+            5,
+            6,
+            6,
+            9
+          ]
+        },
+        {
+          "name": "Popularity",
+          "type": "number",
+          "values": [
+            9,
+            7,
+            4,
+            8,
+            6
+          ]
+        },
+        {
+          "name": "Political capital",
+          "type": "number",
+          "values": [
+            -2,
+            1,
+            5,
+            1,
+            8
+          ]
+        },
+        {
+          "name": "Excludes",
+          "type": "string",
+          "values": [
+            null,
+            "Skate park",
+            "Dog park",
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Benefit",
+            "Popularity"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            2,
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Political capital"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "string",
+          "values": [
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Playground renovation",
+        "Community garden",
+        "Dog park",
+        "Pool rebuild"
+      ],
+      "planExcludes": [
+        "Skate park"
+      ],
+      "planFirst": "Playground renovation"
+    },
+    "why": "The playground earns goodwill so it goes first; dog park and skate park compete for the same lot and the dog park gives more for far less capital; the costly pool rebuild comes last."
+  },
+  {
+    "id": "dinner-party-one-per-course",
+    "title": "Dinner party: one dish per course, at least two vegetarian",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Dish",
+          "type": "string",
+          "values": [
+            "Burrata salad",
+            "Shrimp cocktail",
+            "Short ribs",
+            "Eggplant parm",
+            "Truffle fries",
+            "Bacon sprouts",
+            "Chocolate torte",
+            "Panna cotta"
+          ]
+        },
+        {
+          "name": "Taste",
+          "type": "number",
+          "values": [
+            8,
+            8.5,
+            9.5,
+            7,
+            8,
+            8.2,
+            9,
+            8
+          ]
+        },
+        {
+          "name": "Vegetarian",
+          "type": "logical",
+          "values": [
+            true,
+            false,
+            false,
+            true,
+            true,
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "name": "One of",
+          "type": "string",
+          "values": [
+            "Starter",
+            "Starter",
+            "Main",
+            "Main",
+            "Side",
+            "Side",
+            "Dessert",
+            "Dessert"
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Taste"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Vegetarian"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "string",
+          "values": [
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            2
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Shrimp cocktail",
+        "Short ribs",
+        "Truffle fries",
+        "Chocolate torte"
+      ],
+      "planExcludes": [
+        "Burrata salad",
+        "Eggplant parm",
+        "Bacon sprouts",
+        "Panna cotta"
+      ]
+    },
+    "why": "The favorite in each course gives only one vegetarian dish (the torte); the cheapest way to add a second is swapping bacon sprouts for truffle fries, a 0.2 loss, rather than the starter or the main."
+  },
+  {
+    "id": "papers-reading-time-cap",
+    "title": "Research papers to read in ten hours, a follow-up needing its original",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Paper",
+          "type": "string",
+          "values": [
+            "Survey of methods",
+            "Original study",
+            "Follow-up study",
+            "Benchmark paper",
+            "Position paper",
+            "Theory monograph"
+          ]
+        },
+        {
+          "name": "Relevance",
+          "type": "number",
+          "values": [
+            8,
+            7,
+            9,
+            6,
+            4,
+            9.5
+          ]
+        },
+        {
+          "name": "Hours",
+          "type": "number",
+          "values": [
+            4,
+            2,
+            2,
+            3,
+            1,
+            8
+          ]
+        },
+        {
+          "name": "Requires",
+          "type": "string",
+          "values": [
+            null,
+            null,
+            "Original study",
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Relevance"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Hours"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            10
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Survey of methods",
+        "Original study",
+        "Follow-up study",
+        "Position paper"
+      ],
+      "planExcludes": [
+        "Theory monograph",
+        "Benchmark paper"
+      ],
+      "planIncludes": [
+        "Original study"
+      ]
+    },
+    "why": "The monograph is the single most relevant read but takes eight of the ten hours; the follow-up is almost as relevant and only makes sense after the original, and the pair plus the survey and a short position paper fill nine hours with far more."
+  },
+  {
+    "id": "startup-hires-cofounder-roles",
+    "title": "Startup's first hires: a promised cofounder and one per role",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Candidate",
+          "type": "string",
+          "values": [
+            "Priya",
+            "Marcus",
+            "Omar",
+            "Tess",
+            "Raj",
+            "Ines"
+          ]
+        },
+        {
+          "name": "Skill",
+          "type": "number",
+          "values": [
+            9,
+            8.5,
+            8,
+            7,
+            8,
+            6.5
+          ]
+        },
+        {
+          "name": "Salary k",
+          "type": "number",
+          "values": [
+            150,
+            140,
+            120,
+            90,
+            140,
+            100
+          ]
+        },
+        {
+          "name": "Must",
+          "type": "logical",
+          "values": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "One of",
+          "type": "string",
+          "values": [
+            null,
+            null,
+            "Designer",
+            "Designer",
+            "Sales",
+            "Sales"
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Skill"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Salary k"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            500
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Priya",
+        "Marcus",
+        "Tess",
+        "Ines"
+      ],
+      "planFirst": "Priya",
+      "planExcludes": [
+        "Omar",
+        "Raj"
+      ]
+    },
+    "why": "Priya was promised a cofounder seat, leaving $350k; the stronger designer or salesperson would leave no room for a third hire, so the cheaper designer and salesperson plus the backend engineer make the strongest team."
+  },
+  {
+    "id": "rental-renovation-landlord-never",
+    "title": "Renovating a rental: the landlord forbids removing walls",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Project",
+          "type": "string",
+          "values": [
+            "Remove dividing wall",
+            "Fresh paint",
+            "New light fixtures",
+            "Kitchen backsplash",
+            "Built-in shelving",
+            "Refinish floors"
+          ]
+        },
+        {
+          "name": "Value",
+          "type": "number",
+          "values": [
+            9,
+            7,
+            6,
+            5,
+            8,
+            8.5
+          ]
+        },
+        {
+          "name": "Cost",
+          "type": "number",
+          "values": [
+            2000,
+            1000,
+            1000,
+            1000,
+            2000,
+            4000
+          ]
+        },
+        {
+          "name": "Never",
+          "type": "logical",
+          "values": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Value"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Cost"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            4000
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Built-in shelving",
+        "Fresh paint",
+        "New light fixtures"
+      ],
+      "planExcludes": [
+        "Remove dividing wall",
+        "Refinish floors",
+        "Kitchen backsplash"
+      ]
+    },
+    "why": "Removing the wall would be the best value but the lease forbids it; refinishing floors eats the whole budget, so shelving, paint and lights give the most for $4,000."
+  },
+  {
+    "id": "road-trip-ferry-day",
+    "title": "Three free days on a road trip, the lighthouse needing a ferry day",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Stop",
+          "type": "string",
+          "values": [
+            "Glacier hike",
+            "Island lighthouse",
+            "Wine valley",
+            "Hot springs",
+            "Ferry day"
+          ]
+        },
+        {
+          "name": "Appeal",
+          "type": "number",
+          "values": [
+            9,
+            8.5,
+            7,
+            6.5,
+            3
+          ]
+        },
+        {
+          "name": "Days",
+          "type": "number",
+          "values": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "Requires",
+          "type": "string",
+          "values": [
+            null,
+            "Ferry day",
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Appeal"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Days"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            3
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Glacier hike",
+        "Wine valley",
+        "Hot springs"
+      ],
+      "planExcludes": [
+        "Island lighthouse",
+        "Ferry day"
+      ],
+      "planFirst": "Glacier hike"
+    },
+    "why": "The lighthouse ranks second but costs two days with its ferry, worth 11.5 together, less than the wine valley and hot springs at 13.5."
+  },
+  {
+    "id": "podcast-must-and-never",
+    "title": "Podcast lineup where a guest is both promised and banned",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Guest",
+          "type": "string",
+          "values": [
+            "Dr Vega",
+            "Sam Ortiz",
+            "Lee Park",
+            "Jo Hart"
+          ]
+        },
+        {
+          "name": "Audience draw",
+          "type": "number",
+          "values": [
+            9,
+            7,
+            6,
+            5
+          ]
+        },
+        {
+          "name": "Episodes",
+          "type": "number",
+          "values": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "Must",
+          "type": "logical",
+          "values": [
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "Never",
+          "type": "logical",
+          "values": [
+            true,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Audience draw"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Episodes"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            3
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "error": true
+    },
+    "why": "Dr Vega is marked both a must-book and never-book; that's a contradiction in the brief, and the right answer is to say so rather than quietly pick one."
+  },
+  {
+    "id": "garden-musts-exclude",
+    "title": "Garden plan with two required crops that can't share a bed",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Crop",
+          "type": "string",
+          "values": [
+            "Tomatoes",
+            "Fennel",
+            "Basil",
+            "Carrots",
+            "Beans"
+          ]
+        },
+        {
+          "name": "Harvest value",
+          "type": "number",
+          "values": [
+            9,
+            6,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "name": "Bed space",
+          "type": "number",
+          "values": [
+            2,
+            1,
+            1,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "Must",
+          "type": "logical",
+          "values": [
+            true,
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "Excludes",
+          "type": "string",
+          "values": [
+            null,
+            "Tomatoes",
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "Requires",
+          "type": "string",
+          "values": [
+            null,
+            null,
+            "Tomatoes",
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Harvest value"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Bed space"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            5
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "string",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "error": true
+    },
+    "why": "Tomatoes and fennel are both required but fennel stunts tomatoes so they exclude each other; no plan can honor both, so it should report the clash."
   }
 ]

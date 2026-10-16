@@ -722,3 +722,16 @@ describe("review regressions", () => {
     expect(out.columns.map((c) => c.name)).toContain("Notes");
   });
 });
+
+describe("a Weights row with only a limit is a screen", () => {
+  it("a blank weight beside an At most counts 0, not a wish for more", () => {
+    const g: FrameValue = { __frame: true, columns: [
+      { name: "Place", type: "string", values: ["A", "B", "C"] }, { name: "Rent", type: "number", values: [1500, 2000, 2600] }, { name: "Light", type: "number", values: [5, 5, 6] },
+    ] };
+    const n = new DecisionMatrixNode();
+    const out = n.data({ frame: [g], weights: [{ __frame: true, columns: [
+      { name: "Criterion", type: "string", values: ["Rent", "Light"] }, { name: "Weight", type: "number", values: [null, 1] }, { name: "At most", type: "number", values: [2400, null] },
+    ] }] }).frame as FrameValue;
+    expect(col(out, "Score").values.slice(0, 2)).toEqual([1, 1]);
+  });
+});

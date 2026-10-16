@@ -51,7 +51,8 @@ function RungCard({ p, e, colors, act }: { p: LadderPayload; e: LadderEdge; colo
       <div className="sol-ladder__pick"><span className="sol-ladder__name">{o.name}</span><span className="sol-ladder__mono">{fmt3(o.score)}</span></div>
       {costs && <div className="sol-ladder__mono">{costs}</div>}
       <ValueBar p={p} i={e.pick} colors={colors} />
-      {e.struck.length > 0 && <div className="sol-ladder__struck"><span>Rules out</span>{e.struck.map((i) => <s key={i}>{p.options[i].name}</s>)}</div>}
+      {e.struck.length > 0 && <div className="sol-ladder__struck"><span>Skips</span>{e.struck.map((i) => <s key={i}>{p.options[i].name}</s>)}</div>}
+      {e.conflicts.length > 0 && <div className="sol-ladder__struck"><span>Rules out</span>{e.conflicts.map((i) => <s key={i}>{p.options[i].name}</s>)}</div>}
     </>
   );
   const cls = `sol-ladder__card is-${e.kind}`;
@@ -71,7 +72,7 @@ function SourceCard({ p, colors }: { p: LadderPayload; colors: string[] }) {
           {p.resources.map((r) => <span key={r.name}>{r.name}{r.floor != null ? ` ≥${formatScalar(r.floor)}` : ""}{r.limit != null ? ` ≤${formatScalar(r.limit)}` : ""}</span>)}
         </div>
       )}
-      {p.ruledOut.length > 0 && <div className="sol-ladder__struck"><span>Ruled out</span>{p.ruledOut.map((n) => <s key={n}>{n}</s>)}</div>}
+      {p.ruledOut.length > 0 && <div className="sol-ladder__struck"><span>Left out</span>{p.ruledOut.map((n) => <s key={n}>{n}</s>)}</div>}
     </div>
   );
 }

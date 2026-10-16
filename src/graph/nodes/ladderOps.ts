@@ -70,15 +70,23 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
   const floors = need.some((x) => x > EPS);
   const countable = floors || left.some((l) => l != null);
   if (!countable) {
-    const ids: number[] = [];
-    for (const o of open) if (opts[o].score > 0 && !clash(opts, o, [...taken, ...ids])) ids.push(o);
-    const have = new Set([...taken, ...ids]);
-    // Drop whatever needs something that isn't coming, until nothing more drops.
-    for (let changed = true; changed; ) {
-      changed = false;
-      for (const i of [...have]) if (!taken.includes(i) && opts[i].requires.some((r) => !have.has(r))) { have.delete(i); changed = true; }
+    // Everything worth anything, in order, skipping clashes; an option whose Requires can't come is banned and the
+    // pass reruns, so what only clashed with it gets its chance. A negative option comes only when one taken needs it.
+    const banned = new Set<number>();
+    for (;;) {
+      const ids: number[] = [];
+      for (const o of open) if (!banned.has(o) && opts[o].score >= 0 && !clash(opts, o, [...taken, ...ids])) ids.push(o);
+      for (let grew = true; grew; ) {
+        grew = false;
+        for (const i of ids) for (const r of opts[i].requires) {
+          if (!taken.includes(r) && !ids.includes(r) && open.includes(r) && !banned.has(r) && !clash(opts, r, [...taken, ...ids])) { ids.push(r); grew = true; }
+        }
+      }
+      const have = new Set([...taken, ...ids]);
+      const unmet = ids.filter((i) => opts[i].requires.some((r) => !have.has(r)));
+      if (!unmet.length) return open.filter((o) => ids.includes(o));
+      unmet.forEach((i) => banned.add(i));
     }
-    return ids.filter((i) => have.has(i));
   }
   const n = open.length;
   const tail = new Array(n + 1).fill(0);
@@ -87,7 +95,7 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
   const need0 = need.length ? need : left.map(() => 0);
   const reach = need0.map((_, r) => {
     const t = new Array(n + 1).fill(0);
-    for (let i = n - 1; i >= 0; i--) t[i] = t[i + 1] + (opts[open[i]].score > 0 ? Math.max(0, opts[open[i]].costs[r]) : 0);
+    for (let i = n - 1; i >= 0; i--) t[i] = t[i + 1] + Math.max(0, opts[open[i]].costs[r]);
     return t;
   });
   const have = new Set(taken);
@@ -97,16 +105,21 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
   let visits = 0;
   const dfs = (i: number, l: (number | null)[], nd: number[], total: number) => {
     if (++visits > SEARCH_BUDGET) throw solError("#VALUE!", "Choice Ladder: too many combinations to search; narrow the options");
-    if ((best == null || total > best.total + EPS) && nd.every((x) => x <= EPS) && valid(ids)) best = { total, ids: [...ids] };
-    if (i >= n || (best != null && total + tail[i] <= best.total + EPS)) return;
+    // On a tie in score the plan taking more wins, so a worthless option that fits rides along.
+    const better = best == null || total > best.total + EPS || (total > best.total - EPS && ids.length > best.ids.length);
+    if (better && nd.every((x) => x <= EPS) && valid(ids)) best = { total, ids: [...ids] };
+    if (i >= n || (best != null && total + tail[i] < best.total - EPS)) return;
     if (nd.some((x, r) => x > reach[r][i] + EPS)) return;
     const o = open[i];
-    if (opts[o].score > 0 && fits(opts[o], l) && !clash(opts, o, [...taken, ...ids])) {
+    const take = () => {
+      if (!fits(opts[o], l) || clash(opts, o, [...taken, ...ids])) return;
       ids.push(o);
       dfs(i + 1, spend(l, opts[o]), meet(nd, opts[o]), total + opts[o].score);
       ids.pop();
-    }
-    dfs(i + 1, l, nd, total);
+    };
+    // A worthless option rides along when it fits (the first plan found wins a tie); a harmful one only when needed.
+    if (opts[o].score >= 0) { take(); dfs(i + 1, l, nd, total); }
+    else { dfs(i + 1, l, nd, total); take(); }
   };
   dfs(0, left, need0, 0);
   return best == null ? null : (best as { ids: number[] }).ids;
@@ -159,7 +172,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
     const num = (v: number | null) => (v == null ? "" : Math.round(v * 1e6));
     return `${open.join(",")}|${met}|${left.map(num).join(",")}|${need.map(num).join(",")}`;
   };
-  const root: S = { id: 0, taken: [], out: new Set(opts.map((o, i) => (o.score > 0 || o.must ? -1 : i)).filter((i) => i >= 0)), left: res.map((r) => r.limit), need: res.map((r) => r.floor ?? 0), share: 1, depth: 0, noFork: false, ins: [], forced: true };
+  const root: S = { id: 0, taken: [], out: new Set<number>(), left: res.map((r) => r.limit), need: res.map((r) => r.floor ?? 0), share: 1, depth: 0, noFork: false, ins: [], forced: true };
   const floored = root.need.some((x) => x > EPS);
   states.push(root);
   let level: S[] = [root];
@@ -215,7 +228,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
         // The side passed over stays in view, carrying nothing, so it can be taken instead.
         const t: S = { id: states.length, taken: [...s.taken, win === a ? b : a], out: s.out, left: s.left, need: s.need, share: 0, depth: s.depth + 1, noFork: true, ins: [edges.length], forced: false };
         states.push(t);
-        edges.push({ from: s.id, to: t.id, pick: win === a ? b : a, share: 0, kind: "passed", struck: [] });
+        edges.push({ from: s.id, to: t.id, pick: win === a ? b : a, share: 0, kind: "passed", struck: [], conflicts: [] });
       } else if (b != null && ends + next.size + (level.length - li) + 1 <= MAX_ENDS) {
         const pa = Math.max(EPS, opts[a].score), pb = Math.max(EPS, opts[b].score);
         picks.push({ take: a, share: (s.share * pa) / (pa + pb), kind: "close" }, { take: b, share: (s.share * pb) / (pa + pb), kind: "close" });
@@ -242,7 +255,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
         }
         t.share += pk.share;
         t.ins.push(edges.length);
-        edges.push({ from: s.id, to: t.id, pick: pk.take, share: pk.share, kind: pk.kind, struck: [...struck, ...ruled] });
+        edges.push({ from: s.id, to: t.id, pick: pk.take, share: pk.share, kind: pk.kind, struck, conflicts: ruled });
       }
     }
     level = [...next.values()];

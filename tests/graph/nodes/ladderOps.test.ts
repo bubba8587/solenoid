@@ -131,12 +131,13 @@ describe("Choice Ladder kernel: Requires and Excludes", () => {
     expect(mainPicks(l)).toEqual([1, 0, 2]);
     expect(l.edges[l.main[0]].kind).toBe("required");
   });
-  it("two options that exclude each other never share a path, and the one passed over is struck", () => {
+  it("two options that exclude each other never share a path, and taking one rules out the other", () => {
     const opts = [opt(0.9, [], [], [1]), opt(0.88, [], [], [0]), opt(0.5)];
     const l = buildLadder(opts, [], 0.05);
     for (const p of paths(l)) expect(p.includes(0) && p.includes(1)).toBe(false);
     expect(l.edges.filter((e) => e.from === 0)).toHaveLength(2);
-    expect(l.edges.find((e) => e.pick === 0)!.struck).toContain(1);
+    expect(l.edges.find((e) => e.pick === 0)!.conflicts).toContain(1);
+    expect(l.edges.find((e) => e.pick === 0)!.struck).not.toContain(1);
   });
   it("after a close either/or, paths whose futures match merge", () => {
     const opts = [opt(0.9, [], [], [1]), opt(0.88, [], [], [0]), opt(0.5)];
@@ -219,5 +220,17 @@ describe("Choice Ladder kernel: a Must that leaves a floor out of reach", () => 
     // [budget, head]: A is a Must costing 8 of 10; B would meet the floor but costs 5.
     const opts = [{ ...opt(0.9, [8, 0]), must: true }, opt(0.5, [5, 2]), opt(0.4, [1, 0])];
     expect(() => buildLadder(opts, [{ limit: 10 }, { limit: null, floor: 2 }], 0)).toThrow();
+  });
+});
+
+describe("Choice Ladder kernel: round-3 review", () => {
+  it("with no cap, an option that clashed only with one dropped for its Requires gets taken", () => {
+    // 0 W excludes 3 Z; 1 X requires Z and excludes 2 Y. X can't have Z, so X goes, and Y is free again.
+    const opts = [opt(0.9, [], [], [3]), opt(0.8, [], [3], [2]), opt(0.7), opt(0.6, [], [], [0])];
+    expect(mainPicks(buildLadder(opts, [], 0)).sort()).toEqual([0, 2]);
+  });
+  it("a worthless option is taken when there's room, and a prerequisite worth nothing comes when needed", () => {
+    expect(bestPlan([opt(0.9, [10]), opt(0.5, [10]), opt(0, [10])], [0, 1, 2], [], [100])!.sort()).toEqual([0, 1, 2]);
+    expect(bestPlan([opt(0.9, [5], [2]), opt(0.3, [5]), opt(-0.1, [5])], [0, 1, 2], [], [10])!.sort()).toEqual([0, 2]);
   });
 });
