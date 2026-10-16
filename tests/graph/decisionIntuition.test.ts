@@ -3,7 +3,7 @@
 // engine answers differently is either a fix or a recorded reason (`ruling`) why the math is right to differ.
 import { describe, it, expect } from "vitest";
 import { decisionMatrix, decisionCube, flipPoints, resolveDecisionWeights, decisionCriteria, type DecisionNormalize } from "../../src/graph/frameVerbs";
-import { relateFramesToCube, type FrameValue, type CubeValue } from "../../src/graph/frame";
+import { relateFramesToCube, relateCubeToFrame, type FrameValue, type CubeValue } from "../../src/graph/frame";
 import { ChoiceLadderNode } from "../../src/graph/nodes/frame";
 import { isSolError } from "../../src/graph/errorValue";
 import scenarios from "../fixtures/decision-scenarios.json";
@@ -16,6 +16,7 @@ interface Expect {
 }
 interface Scenario {
   id: string; title: string; kind: "dm" | "chain" | "flips" | "ladder"; options: Cols; child?: Cols; key?: string; nested?: string;
+  grandchild?: Cols; grandKey?: string; grandNested?: string;
   weights?: Cols; limits?: Cols; normalize?: DecisionNormalize; close?: number; expect: Expect; why: string; ruling?: Record<string, string>;
 }
 const frame = (c?: Cols): FrameValue | null => (c ? ({ __frame: true, columns: c.columns } as unknown as FrameValue) : null);
@@ -33,7 +34,7 @@ export function answer(s: Scenario): { error: boolean; ranked: string[]; ruledOu
   };
   try {
     if (s.kind === "ladder") {
-      const n = new ChoiceLadderNode();
+      const n = new ChoiceLadderNode({ normalize: norm });
       if (s.close != null) n.literals.close = s.close;
       const r = n.data({ frame: [opts], weights: [weights], limits: [frame(s.limits)] }) as { frame: unknown };
       if (isSolError(r.frame)) { out.error = true; return out; }
@@ -44,7 +45,8 @@ export function answer(s: Scenario): { error: boolean; ranked: string[]; ruledOu
       return out;
     }
     if (s.kind === "chain") {
-      const cube = relateFramesToCube(opts, frame(s.child)!, s.key!, s.nested!) as CubeValue;
+      let cube = relateFramesToCube(opts, frame(s.child)!, s.key!, s.nested!) as CubeValue;
+      if (s.grandchild) cube = relateCubeToFrame(cube, frame(s.grandchild)!, s.grandKey!, s.grandNested!);
       const r = decisionCube(cube, weights, norm);
       const col = (name: string) => r.columns.find((c) => c.name === name)?.cells ?? [];
       readRanking(r.columns[0].cells, col("Rank"), col("Ruled out by"));

@@ -3,16 +3,3716 @@
     "id": "dominated-never-wins",
     "title": "An option worse on every criterion never wins",
     "kind": "dm",
-    "options": { "columns": [
-      { "name": "Vendor", "type": "string", "values": ["Acme", "Bolt", "Crest"] },
-      { "name": "Price", "type": "number", "values": [100, 120, 90] },
-      { "name": "Quality", "type": "number", "values": [7, 6, 8] }
-    ] },
-    "weights": { "columns": [
-      { "name": "Criterion", "type": "string", "values": ["Price", "Quality"] },
-      { "name": "Weight", "type": "number", "values": [-1, 1] }
-    ] },
-    "expect": { "winner": "Crest", "notWinner": ["Bolt"] },
+    "options": {
+      "columns": [
+        {
+          "name": "Vendor",
+          "type": "string",
+          "values": [
+            "Acme",
+            "Bolt",
+            "Crest"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            100,
+            120,
+            90
+          ]
+        },
+        {
+          "name": "Quality",
+          "type": "number",
+          "values": [
+            7,
+            6,
+            8
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Quality"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -1,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Crest",
+      "notWinner": [
+        "Bolt"
+      ]
+    },
     "why": "Crest is cheaper and better than both others, and Bolt is pricier and worse than both."
+  },
+  {
+    "id": "crm-vendor-selection",
+    "title": "Choosing a CRM vendor",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Vendor",
+          "type": "string",
+          "values": [
+            "Acme CRM",
+            "Brightline",
+            "Cobalt",
+            "Dynaforce",
+            "Evergreen Suite"
+          ]
+        },
+        {
+          "name": "Annual price",
+          "type": "number",
+          "values": [
+            12000,
+            9000,
+            15000,
+            11000,
+            20000
+          ]
+        },
+        {
+          "name": "Features",
+          "type": "number",
+          "values": [
+            9,
+            6,
+            9,
+            8,
+            7
+          ]
+        },
+        {
+          "name": "Support",
+          "type": "number",
+          "values": [
+            8,
+            6,
+            9,
+            8,
+            5
+          ]
+        },
+        {
+          "name": "Integrations",
+          "type": "number",
+          "values": [
+            9,
+            5,
+            8,
+            8,
+            6
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Annual price",
+            "Features",
+            "Support",
+            "Integrations"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            3,
+            2,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Acme CRM",
+      "notWinner": [
+        "Evergreen Suite",
+        "Brightline"
+      ]
+    },
+    "why": "Acme matches Cobalt on features at a lower price and beats Dynaforce on features and integrations; Evergreen is beaten by Acme on every criterion and Brightline is cheap but weak everywhere."
+  },
+  {
+    "id": "job-offers-salary-floor",
+    "title": "Three job offers with a salary floor",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Offer",
+          "type": "string",
+          "values": [
+            "Startup",
+            "BigCorp",
+            "Agency",
+            "Nonprofit"
+          ]
+        },
+        {
+          "name": "Salary",
+          "type": "number",
+          "values": [
+            120000,
+            145000,
+            105000,
+            90000
+          ]
+        },
+        {
+          "name": "Commute minutes",
+          "type": "number",
+          "values": [
+            25,
+            50,
+            15,
+            20
+          ]
+        },
+        {
+          "name": "Growth",
+          "type": "number",
+          "values": [
+            5,
+            3,
+            3,
+            2
+          ]
+        },
+        {
+          "name": "Remote days",
+          "type": "number",
+          "values": [
+            2,
+            1,
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Salary",
+            "Commute minutes",
+            "Growth",
+            "Remote days"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            3,
+            -1,
+            2,
+            1
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            100000,
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Startup",
+      "ruledOut": [
+        "Nonprofit"
+      ],
+      "notWinner": [
+        "Nonprofit"
+      ]
+    },
+    "why": "Nonprofit pays under the stated $100k minimum so it is off the list; the startup pays well, has the best growth and a short commute, while BigCorp's extra pay comes with a 50-minute commute and middling growth."
+  },
+  {
+    "id": "apartment-dealbreaker-removes-best",
+    "title": "Apartment hunt where the dream loft is over budget",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Apartment",
+          "type": "string",
+          "values": [
+            "Loft",
+            "Garden Flat",
+            "Studio",
+            "Townhouse",
+            "Basement Unit"
+          ]
+        },
+        {
+          "name": "Rent",
+          "type": "number",
+          "values": [
+            2300,
+            1850,
+            1400,
+            1950,
+            1200
+          ]
+        },
+        {
+          "name": "Light",
+          "type": "number",
+          "values": [
+            9,
+            7,
+            5,
+            6,
+            2
+          ]
+        },
+        {
+          "name": "Size",
+          "type": "number",
+          "values": [
+            900,
+            750,
+            450,
+            1000,
+            600
+          ]
+        },
+        {
+          "name": "Commute",
+          "type": "number",
+          "values": [
+            10,
+            20,
+            15,
+            35,
+            25
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Rent",
+            "Light",
+            "Size",
+            "Commute"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            2,
+            1,
+            -1
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            2000,
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Garden Flat",
+      "ruledOut": [
+        "Loft"
+      ],
+      "notWinner": [
+        "Loft",
+        "Basement Unit"
+      ]
+    },
+    "why": "The loft is best on everything but rent, and rent is over the $2000 hard limit, so it is out however good it is; of the rest, Garden Flat has the best light, a decent size and a short commute at an affordable rent."
+  },
+  {
+    "id": "contractor-missing-bid",
+    "title": "Kitchen remodel where one bid has no price",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Contractor",
+          "type": "string",
+          "values": [
+            "Hartley Builders",
+            "Mason & Co",
+            "QuickFix",
+            "BudgetBuild"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            42000,
+            38000,
+            null,
+            30000
+          ]
+        },
+        {
+          "name": "Reviews",
+          "type": "number",
+          "values": [
+            4.8,
+            4.5,
+            3.6,
+            3.2
+          ]
+        },
+        {
+          "name": "Timeline weeks",
+          "type": "number",
+          "values": [
+            8,
+            7,
+            6,
+            10
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Reviews",
+            "Timeline weeks"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            3,
+            -1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Mason & Co",
+      "notWinner": [
+        "QuickFix",
+        "BudgetBuild"
+      ]
+    },
+    "why": "A missing price is unknown, not free, so QuickFix's weak reviews keep it from winning; Mason & Co is cheaper and faster than Hartley with nearly the same reviews."
+  },
+  {
+    "id": "laptop-dominated-option",
+    "title": "Laptop shortlist with a strictly dominated model",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Laptop",
+          "type": "string",
+          "values": [
+            "Aero 14",
+            "Titan 16",
+            "Basic 15",
+            "Clone 14",
+            "Pro 13"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            1400,
+            2200,
+            650,
+            1550,
+            1800
+          ]
+        },
+        {
+          "name": "Battery hours",
+          "type": "number",
+          "values": [
+            14,
+            6,
+            7,
+            12,
+            16
+          ]
+        },
+        {
+          "name": "Weight kg",
+          "type": "number",
+          "values": [
+            1.3,
+            2.4,
+            1.9,
+            1.5,
+            1.2
+          ]
+        },
+        {
+          "name": "Performance",
+          "type": "number",
+          "values": [
+            78,
+            95,
+            45,
+            74,
+            85
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Battery hours",
+            "Weight kg",
+            "Performance"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            2,
+            -1,
+            2
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "notWinner": [
+        "Clone 14",
+        "Titan 16",
+        "Basic 15"
+      ]
+    },
+    "why": "Clone 14 costs more than Aero 14 and is worse on battery, weight and performance, so it can never be the right pick; Titan is heavy, pricey and short on battery, and Basic is cheap but weak."
+  },
+  {
+    "id": "wedding-venue-castle-outlier",
+    "title": "Wedding venue where an absurd castle price sits in the column",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Venue",
+          "type": "string",
+          "values": [
+            "Rustic Barn",
+            "Grand Hotel",
+            "Botanic Garden",
+            "Chateau Castle"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            8000,
+            15000,
+            12000,
+            95000
+          ]
+        },
+        {
+          "name": "Quality",
+          "type": "number",
+          "values": [
+            6.5,
+            9,
+            7.5,
+            10
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Quality"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -3,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Rustic Barn",
+      "notWinner": [
+        "Chateau Castle",
+        "Grand Hotel"
+      ]
+    },
+    "why": "With price weighted three times quality, the barn at about half the hotel's price for a modestly lower quality is the sensible pick; a castle nobody can afford should not change the barn-versus-hotel call (a divide-by-max price column lets it squash every real price difference to near zero).",
+    "ruling": {
+      "winner": "An outlier sets every scale it's in, ÷Max or Range alike (Range does worse here); the person's tool is a deal-breaker, which screens it before scaling: see wedding-venue-castle-capped.",
+      "Grand Hotel won": "As above."
+    }
+  },
+  {
+    "id": "wedding-venue-castle-capped",
+    "title": "The same venues with a budget cap: the castle is screened before it can bend the scale",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Venue",
+          "type": "string",
+          "values": [
+            "Rustic Barn",
+            "Grand Hotel",
+            "Botanic Garden",
+            "Chateau Castle"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            8000,
+            15000,
+            12000,
+            95000
+          ]
+        },
+        {
+          "name": "Quality",
+          "type": "number",
+          "values": [
+            6.5,
+            9,
+            7.5,
+            10
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Quality"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -3,
+            1
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            30000,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Rustic Barn",
+      "ruledOut": [
+        "Chateau Castle"
+      ]
+    },
+    "why": "Screened out before scaling, the castle no longer squashes the price column, and the barn's lower price wins as the weights say."
+  },
+  {
+    "id": "vacation-great-on-one-thing",
+    "title": "Vacation where Antarctica is unique but bad at everything else",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Destination",
+          "type": "string",
+          "values": [
+            "Antarctica Cruise",
+            "Lisbon",
+            "Kyoto",
+            "Cancun",
+            "Iceland"
+          ]
+        },
+        {
+          "name": "Cost",
+          "type": "number",
+          "values": [
+            14000,
+            2500,
+            4000,
+            2200,
+            3500
+          ]
+        },
+        {
+          "name": "Weather",
+          "type": "number",
+          "values": [
+            2,
+            8,
+            7,
+            9,
+            4
+          ]
+        },
+        {
+          "name": "Food",
+          "type": "number",
+          "values": [
+            4,
+            8,
+            9,
+            6,
+            5
+          ]
+        },
+        {
+          "name": "Uniqueness",
+          "type": "number",
+          "values": [
+            10,
+            6,
+            8,
+            3,
+            8
+          ]
+        },
+        {
+          "name": "Travel hours",
+          "type": "number",
+          "values": [
+            30,
+            9,
+            14,
+            5,
+            7
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Cost",
+            "Weather",
+            "Food",
+            "Uniqueness",
+            "Travel hours"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            1,
+            1,
+            1,
+            -1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "notWinner": [
+        "Antarctica Cruise"
+      ]
+    },
+    "why": "Antarctica is the most unique trip but costs several times more, takes the longest to reach and is worst on weather and food; one standout criterion among five equally weighted ones shouldn't carry it."
+  },
+  {
+    "id": "restaurant-stars-range-norm",
+    "title": "Dinner spot where star ratings are bunched between 4.2 and 4.8",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Restaurant",
+          "type": "string",
+          "values": [
+            "Trattoria Bella",
+            "Corner Diner",
+            "Spice Route",
+            "Le Petit"
+          ]
+        },
+        {
+          "name": "Stars",
+          "type": "number",
+          "values": [
+            4.8,
+            4.2,
+            4.5,
+            4.6
+          ]
+        },
+        {
+          "name": "Price per person",
+          "type": "number",
+          "values": [
+            45,
+            20,
+            30,
+            70
+          ]
+        },
+        {
+          "name": "Distance km",
+          "type": "number",
+          "values": [
+            2,
+            1,
+            3,
+            5
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Stars",
+            "Price per person",
+            "Distance km"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            3,
+            -1,
+            -1
+          ]
+        },
+        {
+          "name": "Norm",
+          "type": "string",
+          "values": [
+            "Range",
+            "Max",
+            "Max"
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Trattoria Bella",
+      "notWinner": [
+        "Corner Diner",
+        "Le Petit"
+      ]
+    },
+    "why": "On review sites 4.8 against 4.2 is the gap between excellent and ordinary, and stars carry three times the weight of price, so the Range override should let Trattoria win; the diner wins only if stars are squashed by divide-by-max."
+  },
+  {
+    "id": "used-cars-mileage-cap",
+    "title": "Used car with a mileage deal-breaker",
+    "kind": "dm",
+    "options": {
+      "columns": [
+        {
+          "name": "Car",
+          "type": "string",
+          "values": [
+            "2016 Civic",
+            "2014 Accord",
+            "2018 Elantra",
+            "2015 Jetta",
+            "2017 Mazda3"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            13500,
+            11000,
+            14500,
+            9500,
+            15000
+          ]
+        },
+        {
+          "name": "Mileage",
+          "type": "number",
+          "values": [
+            82000,
+            128000,
+            45000,
+            95000,
+            52000
+          ]
+        },
+        {
+          "name": "MPG",
+          "type": "number",
+          "values": [
+            34,
+            30,
+            33,
+            31,
+            32
+          ]
+        },
+        {
+          "name": "Reliability",
+          "type": "number",
+          "values": [
+            8,
+            8,
+            7,
+            5,
+            8
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Mileage",
+            "MPG",
+            "Reliability"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            -1,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            null,
+            120000,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "ruledOut": [
+        "2014 Accord"
+      ],
+      "notWinner": [
+        "2014 Accord",
+        "2015 Jetta"
+      ]
+    },
+    "why": "The Accord's 128k miles break the 120k limit, so its low price can't buy it back; the Jetta is cheapest but has the worst reliability, which is weighted heavily."
+  },
+  {
+    "id": "vacation-then-hotel",
+    "title": "Destination, then hotel, with a nightly-rate cap",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "Destination",
+          "type": "string",
+          "values": [
+            "Lisbon",
+            "Reykjavik",
+            "Barcelona",
+            "Crete"
+          ]
+        },
+        {
+          "name": "Flight",
+          "type": "number",
+          "values": [
+            650,
+            900,
+            600,
+            750
+          ]
+        },
+        {
+          "name": "Weather",
+          "type": "number",
+          "values": [
+            9,
+            4,
+            8,
+            9
+          ]
+        },
+        {
+          "name": "Activities",
+          "type": "number",
+          "values": [
+            8,
+            7,
+            9,
+            6
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Hotel",
+          "type": "string",
+          "values": [
+            "Alfama Inn",
+            "Baixa Grand",
+            "Harbor Lodge",
+            "Aurora Suites",
+            "Rambla Palace",
+            "Gothic Penthouse",
+            "Elounda Beach",
+            "Chania Rooms"
+          ]
+        },
+        {
+          "name": "Destination",
+          "type": "string",
+          "values": [
+            "Lisbon",
+            "Lisbon",
+            "Reykjavik",
+            "Reykjavik",
+            "Barcelona",
+            "Barcelona",
+            "Crete",
+            "Crete"
+          ]
+        },
+        {
+          "name": "Nightly rate",
+          "type": "number",
+          "values": [
+            140,
+            310,
+            220,
+            380,
+            420,
+            390,
+            230,
+            95
+          ]
+        },
+        {
+          "name": "Rating",
+          "type": "number",
+          "values": [
+            8.6,
+            9.4,
+            8.2,
+            9.0,
+            9.3,
+            9.1,
+            8.9,
+            7.8
+          ]
+        }
+      ]
+    },
+    "key": "Destination",
+    "nested": "Hotels",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Flight",
+            "Weather",
+            "Activities",
+            "Nightly rate",
+            "Rating",
+            "Hotels"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -1,
+            2,
+            2,
+            -1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            null,
+            null,
+            null,
+            250,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Lisbon",
+      "ruledOut": [
+        "Barcelona"
+      ],
+      "notWinner": [
+        "Barcelona",
+        "Reykjavik"
+      ],
+      "bestInside": {
+        "Lisbon": "Alfama Inn",
+        "Reykjavik": "Harbor Lodge"
+      }
+    },
+    "why": "Barcelona looks great on its own but every hotel there is over the $250 cap, so there is nowhere to stay; Lisbon has top weather, good activities, a cheaper flight and a well-rated hotel under the cap (its only one, as Reykjavik's only one is Harbor Lodge)."
+  },
+  {
+    "id": "school-then-program",
+    "title": "University, then program: prestige vs the program you'd attend",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "University",
+          "type": "string",
+          "values": [
+            "Ivy State",
+            "Riverside Tech",
+            "Lakeshore College"
+          ]
+        },
+        {
+          "name": "Reputation",
+          "type": "number",
+          "values": [
+            9.5,
+            8,
+            7
+          ]
+        },
+        {
+          "name": "Tuition",
+          "type": "number",
+          "values": [
+            52000,
+            38000,
+            30000
+          ]
+        },
+        {
+          "name": "Location",
+          "type": "number",
+          "values": [
+            7,
+            7,
+            6
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Program",
+          "type": "string",
+          "values": [
+            "Ivy CS",
+            "Ivy Data Science",
+            "Riverside CS",
+            "Riverside Robotics",
+            "Lakeshore CS"
+          ]
+        },
+        {
+          "name": "University",
+          "type": "string",
+          "values": [
+            "Ivy State",
+            "Ivy State",
+            "Riverside Tech",
+            "Riverside Tech",
+            "Lakeshore College"
+          ]
+        },
+        {
+          "name": "Faculty",
+          "type": "number",
+          "values": [
+            6,
+            6.5,
+            9.2,
+            8,
+            7
+          ]
+        },
+        {
+          "name": "Placement",
+          "type": "number",
+          "values": [
+            0.78,
+            0.8,
+            0.95,
+            0.88,
+            0.82
+          ]
+        }
+      ]
+    },
+    "key": "University",
+    "nested": "Programs",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Reputation",
+            "Tuition",
+            "Location",
+            "Faculty",
+            "Placement",
+            "Programs"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1,
+            -1,
+            1,
+            2,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Riverside Tech",
+      "notWinner": [
+        "Ivy State"
+      ],
+      "bestInside": {
+        "Ivy State": "Ivy Data Science",
+        "Riverside Tech": "Riverside CS",
+        "Lakeshore College": "Lakeshore CS"
+      }
+    },
+    "why": "You attend a program, not a brand: Riverside's CS program is far better than anything at Ivy State and costs $14k less, which outweighs Ivy's reputation edge; Ivy Data Science beats Ivy CS on both faculty and placement."
+  },
+  {
+    "id": "gym-then-location",
+    "title": "Gym membership, then which branch, with a 5 km limit",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "Gym",
+          "type": "string",
+          "values": [
+            "FitMax",
+            "IronWorks",
+            "Pulse"
+          ]
+        },
+        {
+          "name": "Monthly fee",
+          "type": "number",
+          "values": [
+            25,
+            45,
+            35
+          ]
+        },
+        {
+          "name": "Equipment",
+          "type": "number",
+          "values": [
+            7,
+            9,
+            8
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Location",
+          "type": "string",
+          "values": [
+            "FitMax Airport",
+            "FitMax Mall",
+            "IronWorks Downtown",
+            "IronWorks North",
+            "Pulse Midtown",
+            "Pulse Eastside"
+          ]
+        },
+        {
+          "name": "Gym",
+          "type": "string",
+          "values": [
+            "FitMax",
+            "FitMax",
+            "IronWorks",
+            "IronWorks",
+            "Pulse",
+            "Pulse"
+          ]
+        },
+        {
+          "name": "Distance km",
+          "type": "number",
+          "values": [
+            12,
+            8,
+            4.5,
+            9,
+            1.5,
+            3
+          ]
+        },
+        {
+          "name": "Open 24h",
+          "type": "logical",
+          "values": [
+            true,
+            false,
+            false,
+            true,
+            true,
+            false
+          ]
+        }
+      ]
+    },
+    "key": "Gym",
+    "nested": "Locations",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Monthly fee",
+            "Equipment",
+            "Distance km",
+            "Open 24h",
+            "Locations"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -2,
+            2,
+            -1,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            null,
+            null,
+            5,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Pulse",
+      "ruledOut": [
+        "FitMax"
+      ],
+      "bestInside": {
+        "Pulse": "Pulse Midtown",
+        "IronWorks": "IronWorks Downtown"
+      }
+    },
+    "why": "FitMax is cheapest but has no branch within 5 km, so it's useless; Pulse is $10 cheaper than IronWorks with nearly as good equipment and a 24-hour branch 1.5 km away, the best branch on both counts."
+  },
+  {
+    "id": "city-neighborhood-apartment",
+    "title": "City, then neighborhood, then apartment (three levels)",
+    "kind": "chain",
+    "options": {
+      "columns": [
+        {
+          "name": "City",
+          "type": "string",
+          "values": [
+            "Austin",
+            "Denver",
+            "Portland"
+          ]
+        },
+        {
+          "name": "Jobs",
+          "type": "number",
+          "values": [
+            8,
+            9,
+            6
+          ]
+        },
+        {
+          "name": "Cost index",
+          "type": "number",
+          "values": [
+            105,
+            110,
+            108
+          ]
+        }
+      ]
+    },
+    "child": {
+      "columns": [
+        {
+          "name": "Neighborhood",
+          "type": "string",
+          "values": [
+            "Mueller",
+            "East Riverside",
+            "LoDo",
+            "Highlands",
+            "Pearl",
+            "Sellwood"
+          ]
+        },
+        {
+          "name": "City",
+          "type": "string",
+          "values": [
+            "Austin",
+            "Austin",
+            "Denver",
+            "Denver",
+            "Portland",
+            "Portland"
+          ]
+        },
+        {
+          "name": "Walkability",
+          "type": "number",
+          "values": [
+            7,
+            5,
+            9,
+            8,
+            9,
+            6
+          ]
+        },
+        {
+          "name": "Safety",
+          "type": "number",
+          "values": [
+            8,
+            5,
+            7,
+            8,
+            7,
+            9
+          ]
+        }
+      ]
+    },
+    "key": "City",
+    "nested": "Neighborhoods",
+    "grandchild": {
+      "columns": [
+        {
+          "name": "Apartment",
+          "type": "string",
+          "values": [
+            "Mueller Flats 2B",
+            "Aldrich 1B",
+            "Riverside Lofts",
+            "Union Tower",
+            "Wynkoop 1B",
+            "Tennyson House",
+            "Pearl 1B",
+            "Sellwood Cottage"
+          ]
+        },
+        {
+          "name": "Neighborhood",
+          "type": "string",
+          "values": [
+            "Mueller",
+            "Mueller",
+            "East Riverside",
+            "LoDo",
+            "LoDo",
+            "Highlands",
+            "Pearl",
+            "Sellwood"
+          ]
+        },
+        {
+          "name": "Rent",
+          "type": "number",
+          "values": [
+            1900,
+            1600,
+            1500,
+            2600,
+            2400,
+            2500,
+            2150,
+            1800
+          ]
+        },
+        {
+          "name": "Size",
+          "type": "number",
+          "values": [
+            950,
+            700,
+            650,
+            800,
+            650,
+            1000,
+            600,
+            900
+          ]
+        }
+      ]
+    },
+    "grandKey": "Neighborhood",
+    "grandNested": "Apartments",
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Jobs",
+            "Cost index",
+            "Walkability",
+            "Safety",
+            "Rent",
+            "Size",
+            "Neighborhoods",
+            "Apartments"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            2,
+            -1,
+            1,
+            2,
+            -2,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            2200,
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Austin",
+      "ruledOut": [
+        "Denver"
+      ],
+      "notWinner": [
+        "Denver"
+      ],
+      "bestInside": {
+        "Austin": "Mueller",
+        "Portland": "Sellwood"
+      }
+    },
+    "why": "Denver has the best jobs but every apartment there is over the $2200 rent cap, so it falls out; Austin beats Portland on jobs with comparable neighborhoods, Mueller is safer and more walkable than East Riverside, and Sellwood is safer than Pearl with a much better apartment."
+  },
+  {
+    "id": "near-tie-apartments-flips",
+    "title": "Two near-identical apartments: is the call fragile?",
+    "kind": "flips",
+    "options": {
+      "columns": [
+        {
+          "name": "Apartment",
+          "type": "string",
+          "values": [
+            "Maple St",
+            "Oak Ave",
+            "Pine Ct"
+          ]
+        },
+        {
+          "name": "Rent",
+          "type": "number",
+          "values": [
+            1800,
+            1700,
+            2100
+          ]
+        },
+        {
+          "name": "Light",
+          "type": "number",
+          "values": [
+            8,
+            7.6,
+            6
+          ]
+        },
+        {
+          "name": "Space",
+          "type": "number",
+          "values": [
+            700,
+            720,
+            650
+          ]
+        },
+        {
+          "name": "Laundry",
+          "type": "logical",
+          "values": [
+            true,
+            true,
+            false
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Rent",
+            "Light",
+            "Space",
+            "Laundry"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -1,
+            2,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Maple St",
+      "fragile": "Light",
+      "robust": "Laundry"
+    },
+    "why": "Maple wins only on slightly better light while Oak is cheaper and a bit larger, so a modest cut in Light's weight should hand it to Oak; both have laundry, so no weight on Laundry can separate them."
+  },
+  {
+    "id": "dentist-dominant-flips",
+    "title": "Dentist who is best on every count",
+    "kind": "flips",
+    "options": {
+      "columns": [
+        {
+          "name": "Dentist",
+          "type": "string",
+          "values": [
+            "Dr. Patel",
+            "Dr. Gomez",
+            "Dr. Lee"
+          ]
+        },
+        {
+          "name": "Wait days",
+          "type": "number",
+          "values": [
+            3,
+            10,
+            7
+          ]
+        },
+        {
+          "name": "Rating",
+          "type": "number",
+          "values": [
+            4.9,
+            4.5,
+            4.6
+          ]
+        },
+        {
+          "name": "Distance",
+          "type": "number",
+          "values": [
+            2,
+            5,
+            3
+          ]
+        },
+        {
+          "name": "Cost",
+          "type": "number",
+          "values": [
+            120,
+            150,
+            140
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Wait days",
+            "Rating",
+            "Distance",
+            "Cost"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -1,
+            2,
+            -1,
+            -1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Dr. Patel",
+      "robust": "Rating"
+    },
+    "why": "Dr. Patel is soonest, best rated, closest and cheapest, so no weight on any criterion (short of flipping its sign) can make anyone else win."
+  },
+  {
+    "id": "phone-camera-flips",
+    "title": "Phone choice decided by a camera edge",
+    "kind": "flips",
+    "options": {
+      "columns": [
+        {
+          "name": "Phone",
+          "type": "string",
+          "values": [
+            "Pixel",
+            "Galaxy",
+            "Budget"
+          ]
+        },
+        {
+          "name": "Price",
+          "type": "number",
+          "values": [
+            800,
+            750,
+            400
+          ]
+        },
+        {
+          "name": "Camera",
+          "type": "number",
+          "values": [
+            9.5,
+            8.5,
+            6
+          ]
+        },
+        {
+          "name": "Battery",
+          "type": "number",
+          "values": [
+            7,
+            9,
+            8
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Price",
+            "Camera",
+            "Battery"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            -1,
+            3,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "winner": "Pixel",
+      "fragile": "Camera"
+    },
+    "why": "Pixel edges Galaxy only through its camera while Galaxy is cheaper with a much better battery, so trimming the camera weight a little should flip the call to Galaxy."
+  },
+  {
+    "id": "conference-talks-time-cap",
+    "title": "Conference talks in a two-hour window",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Talk",
+          "type": "string",
+          "values": [
+            "Keynote: Future of AI",
+            "Rust in Prod",
+            "Postgres Tricks",
+            "Design Systems",
+            "Intro to K8s",
+            "Lightning Round"
+          ]
+        },
+        {
+          "name": "Rating",
+          "type": "number",
+          "values": [
+            9.5,
+            8.5,
+            8.0,
+            7.0,
+            6.0,
+            7.5
+          ]
+        },
+        {
+          "name": "Minutes",
+          "type": "number",
+          "values": [
+            90,
+            30,
+            30,
+            30,
+            45,
+            15
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Rating"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Minutes"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            120
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Rust in Prod",
+        "Postgres Tricks",
+        "Design Systems",
+        "Lightning Round"
+      ],
+      "planExcludes": [
+        "Keynote: Future of AI",
+        "Intro to K8s"
+      ],
+      "planFirst": "Rust in Prod"
+    },
+    "why": "The 90-minute keynote is the best single talk but would leave room for only one more; four well-rated short talks fill the window far better, and the best of those comes first."
+  },
+  {
+    "id": "project-portfolio-dependencies",
+    "title": "Project portfolio under a $500k budget with a prerequisite",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Project",
+          "type": "string",
+          "values": [
+            "Data Warehouse",
+            "Analytics Dashboard",
+            "Mobile App",
+            "CRM Upgrade",
+            "Office Refresh"
+          ]
+        },
+        {
+          "name": "Value",
+          "type": "number",
+          "values": [
+            3,
+            9,
+            7,
+            6,
+            2
+          ]
+        },
+        {
+          "name": "Strategic fit",
+          "type": "number",
+          "values": [
+            6,
+            9,
+            7,
+            6,
+            2
+          ]
+        },
+        {
+          "name": "Cost",
+          "type": "number",
+          "values": [
+            200,
+            100,
+            250,
+            150,
+            120
+          ]
+        },
+        {
+          "name": "Requires",
+          "type": "string",
+          "values": [
+            null,
+            "Data Warehouse",
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Value",
+            "Strategic fit"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            2,
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Cost"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            500
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Data Warehouse",
+        "Analytics Dashboard",
+        "CRM Upgrade"
+      ],
+      "planExcludes": [
+        "Mobile App",
+        "Office Refresh"
+      ],
+      "planFirst": "Data Warehouse"
+    },
+    "why": "The warehouse is dull alone but unlocks the dashboard, the most valuable project, and the pair plus the CRM upgrade fit in $450k; the mobile app would crowd out the dashboard pair, and the warehouse must be built first."
+  },
+  {
+    "id": "grant-portfolio-early-career",
+    "title": "Grant round with at least two early-career awards",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Proposal",
+          "type": "string",
+          "values": [
+            "Quantum Sensors",
+            "Coral Genomics",
+            "Battery Recycling",
+            "Fusion Diagnostics",
+            "Soil Microbiome",
+            "Urban Heat Maps",
+            "Bird Migration AI"
+          ]
+        },
+        {
+          "name": "Merit",
+          "type": "number",
+          "values": [
+            9.2,
+            8.8,
+            8.5,
+            9.0,
+            7.4,
+            7.0,
+            6.5
+          ]
+        },
+        {
+          "name": "Amount",
+          "type": "number",
+          "values": [
+            400,
+            350,
+            300,
+            500,
+            300,
+            250,
+            200
+          ]
+        },
+        {
+          "name": "Early career",
+          "type": "logical",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Merit"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Amount",
+            "Early career"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            1000,
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            2
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Quantum Sensors",
+        "Soil Microbiome",
+        "Urban Heat Maps"
+      ],
+      "planIncludes": [
+        "Soil Microbiome",
+        "Urban Heat Maps"
+      ],
+      "planExcludes": [
+        "Coral Genomics",
+        "Fusion Diagnostics",
+        "Bird Migration AI"
+      ]
+    },
+    "why": "Two early-career awards are required, so fund the two best of those (Soil, Urban, $550k together) and then the best senior proposal that fits the remaining $450k, Quantum Sensors."
+  },
+  {
+    "id": "fantasy-roster-positions",
+    "title": "Five-man fantasy roster under a salary cap with position minimums",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Player",
+          "type": "string",
+          "values": [
+            "G Curry",
+            "G Brunson",
+            "G White",
+            "G Bench",
+            "F Tatum",
+            "F Barnes",
+            "F Hart",
+            "C Jokic",
+            "C Lopez"
+          ]
+        },
+        {
+          "name": "Projected points",
+          "type": "number",
+          "values": [
+            52,
+            44,
+            30,
+            20,
+            50,
+            38,
+            28,
+            60,
+            30
+          ]
+        },
+        {
+          "name": "Salary",
+          "type": "number",
+          "values": [
+            11000,
+            9000,
+            5000,
+            3500,
+            10500,
+            7500,
+            5000,
+            12500,
+            5500
+          ]
+        },
+        {
+          "name": "Roster spot",
+          "type": "number",
+          "values": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "Guard",
+          "type": "logical",
+          "values": [
+            true,
+            true,
+            true,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "Forward",
+          "type": "logical",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "Center",
+          "type": "logical",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            true
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Projected points"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Salary",
+            "Roster spot",
+            "Guard",
+            "Forward",
+            "Center"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            50000,
+            5,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            null,
+            2,
+            2,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "C Jokic",
+        "G Curry",
+        "F Tatum",
+        "G Brunson",
+        "F Hart"
+      ],
+      "planExcludes": [
+        "G White",
+        "C Lopez",
+        "F Barnes"
+      ]
+    },
+    "why": "Keep the four stars (Jokic, Curry, Tatum, Brunson) and spend the last $7k on a second forward, which the position minimum demands even though a cheap guard or center projects slightly more; Hart is the only forward that fits."
+  },
+  {
+    "id": "course-schedule-clash-prereq",
+    "title": "Semester schedule with a time clash and a lab corequisite",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Course",
+          "type": "string",
+          "values": [
+            "Machine Learning",
+            "Databases",
+            "Statistics",
+            "Linear Algebra",
+            "Physics I",
+            "Physics Lab",
+            "Art History"
+          ]
+        },
+        {
+          "name": "Interest",
+          "type": "number",
+          "values": [
+            9,
+            7,
+            8,
+            6,
+            5,
+            7,
+            6.5
+          ]
+        },
+        {
+          "name": "Credits",
+          "type": "number",
+          "values": [
+            4,
+            4,
+            4,
+            4,
+            4,
+            1,
+            3
+          ]
+        },
+        {
+          "name": "Requires",
+          "type": "string",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            "Physics I",
+            null
+          ]
+        },
+        {
+          "name": "Excludes",
+          "type": "string",
+          "values": [
+            "Databases",
+            "Machine Learning",
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Interest"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Credits"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            13
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Machine Learning",
+        "Statistics",
+        "Physics I",
+        "Physics Lab"
+      ],
+      "planExcludes": [
+        "Databases",
+        "Art History",
+        "Linear Algebra"
+      ]
+    },
+    "why": "ML and Databases meet at the same time, so take the more interesting ML; after ML and Statistics, the five remaining credits buy Physics I plus its very interesting one-credit lab, worth more than Art History alone."
+  },
+  {
+    "id": "wedding-vendors-budget",
+    "title": "Wedding vendors under $20k, one photographer and one caterer",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Vendor",
+          "type": "string",
+          "values": [
+            "Lens & Light Photo",
+            "Snapshot Studio",
+            "Gourmet Feast Catering",
+            "Family Table Catering",
+            "Bloom Florist",
+            "Live Band",
+            "DJ Mike"
+          ]
+        },
+        {
+          "name": "Quality",
+          "type": "number",
+          "values": [
+            9,
+            6,
+            9,
+            7,
+            8,
+            8.5,
+            7
+          ]
+        },
+        {
+          "name": "Cost",
+          "type": "number",
+          "values": [
+            4500,
+            1800,
+            12000,
+            7000,
+            2500,
+            5000,
+            1500
+          ]
+        },
+        {
+          "name": "Photographer",
+          "type": "logical",
+          "values": [
+            true,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "Caterer",
+          "type": "logical",
+          "values": [
+            false,
+            false,
+            true,
+            true,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "Excludes",
+          "type": "string",
+          "values": [
+            "Snapshot Studio",
+            "Lens & Light Photo",
+            "Family Table Catering",
+            "Gourmet Feast Catering",
+            null,
+            "DJ Mike",
+            "Live Band"
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Quality"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Cost",
+            "Photographer",
+            "Caterer"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            20000,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Family Table Catering",
+        "Lens & Light Photo",
+        "Bloom Florist",
+        "Live Band"
+      ],
+      "planExcludes": [
+        "Gourmet Feast Catering",
+        "Snapshot Studio",
+        "DJ Mike"
+      ]
+    },
+    "why": "The $12k gourmet caterer would eat the budget for flowers and music; the solid $7k caterer leaves room for the great photographer, the florist and the live band, a much better wedding overall."
+  },
+  {
+    "id": "product-roadmap-rough-effort",
+    "title": "Product roadmap ordered by value for engineering effort",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Feature",
+          "type": "string",
+          "values": [
+            "SSO Login",
+            "Dark Mode",
+            "CSV Export",
+            "Mobile App",
+            "Audit Log"
+          ]
+        },
+        {
+          "name": "Customer value",
+          "type": "number",
+          "values": [
+            8,
+            6,
+            7,
+            9,
+            5
+          ]
+        },
+        {
+          "name": "Revenue impact",
+          "type": "number",
+          "values": [
+            9,
+            2,
+            5,
+            8,
+            7
+          ]
+        },
+        {
+          "name": "Engineering effort",
+          "type": "number",
+          "values": [
+            8,
+            2,
+            1,
+            20,
+            3
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Customer value",
+            "Revenue impact"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Engineering effort"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "SSO Login",
+        "Dark Mode",
+        "CSV Export",
+        "Mobile App",
+        "Audit Log"
+      ],
+      "planFirst": "CSV Export"
+    },
+    "why": "With effort only a rough cost the answer is an order: CSV Export is a solid win for almost no effort so it goes first, and the Mobile App, valuable but ten times the effort of most items, belongs at the end."
+  },
+  {
+    "id": "policy-agenda-political-capital",
+    "title": "Policy agenda spending rough political capital",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Policy",
+          "type": "string",
+          "values": [
+            "Infrastructure Bill",
+            "Tax Simplification",
+            "Carbon Tax",
+            "School Lunch Program",
+            "Pension Reform"
+          ]
+        },
+        {
+          "name": "Public benefit",
+          "type": "number",
+          "values": [
+            9,
+            6,
+            9,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "Popularity",
+          "type": "number",
+          "values": [
+            7,
+            8,
+            3,
+            9,
+            2
+          ]
+        },
+        {
+          "name": "Political capital",
+          "type": "number",
+          "values": [
+            6,
+            2,
+            9,
+            -1,
+            8
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Public benefit",
+            "Popularity"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            2,
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Political capital"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Infrastructure Bill",
+        "Tax Simplification",
+        "Carbon Tax",
+        "School Lunch Program",
+        "Pension Reform"
+      ],
+      "planFirst": "School Lunch Program"
+    },
+    "why": "The popular school lunch program earns goodwill rather than spending it, so it goes first and banks capital for the costly fights (carbon tax, pension reform) that come last."
+  },
+  {
+    "id": "menu-vegetarian-floor",
+    "title": "Five-course menu with at least two vegetarian dishes",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Dish",
+          "type": "string",
+          "values": [
+            "Beef Wellington",
+            "Lamb Tagine",
+            "Grilled Salmon",
+            "Chicken Marsala",
+            "Pork Belly",
+            "Mushroom Risotto",
+            "Caprese Salad",
+            "Veggie Curry",
+            "Garlic Bread"
+          ]
+        },
+        {
+          "name": "Taste",
+          "type": "number",
+          "values": [
+            9.5,
+            9,
+            8.5,
+            8,
+            8.8,
+            7.5,
+            6,
+            7,
+            5
+          ]
+        },
+        {
+          "name": "Course slot",
+          "type": "number",
+          "values": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "Vegetarian",
+          "type": "logical",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true,
+            true
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Taste"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Course slot",
+            "Vegetarian"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            5,
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            2
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Beef Wellington",
+        "Lamb Tagine",
+        "Pork Belly",
+        "Mushroom Risotto",
+        "Veggie Curry"
+      ],
+      "planExcludes": [
+        "Grilled Salmon",
+        "Chicken Marsala",
+        "Caprese Salad",
+        "Garlic Bread"
+      ]
+    },
+    "why": "Two of five slots must be vegetarian, so take the two tastiest vegetarian dishes and fill the other three with the tastiest meat dishes."
+  },
+  {
+    "id": "investment-risk-cap",
+    "title": "Four investments under a total risk budget",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Investment",
+          "type": "string",
+          "values": [
+            "Crypto Fund",
+            "Tech Growth ETF",
+            "S&P Index",
+            "Dividend Stocks",
+            "Bond Ladder",
+            "Emerging Mkts",
+            "REIT"
+          ]
+        },
+        {
+          "name": "Expected return",
+          "type": "number",
+          "values": [
+            25,
+            12,
+            9,
+            7,
+            4,
+            10.5,
+            8
+          ]
+        },
+        {
+          "name": "Risk",
+          "type": "number",
+          "values": [
+            15,
+            6,
+            4,
+            3,
+            1,
+            7,
+            4
+          ]
+        },
+        {
+          "name": "Slot",
+          "type": "number",
+          "values": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Expected return"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Risk",
+            "Slot"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            18,
+            4
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Tech Growth ETF",
+        "S&P Index",
+        "REIT",
+        "Dividend Stocks"
+      ],
+      "planExcludes": [
+        "Crypto Fund",
+        "Bond Ladder"
+      ]
+    },
+    "why": "The crypto fund's headline return uses most of the risk budget and leaves room for just one small holding; a diversified four of tech, index, REIT and dividends returns more in total within the same risk."
+  },
+  {
+    "id": "hiring-must-internal-transfer",
+    "title": "Hiring under a budget with a promised internal transfer",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Candidate",
+          "type": "string",
+          "values": [
+            "Alice",
+            "Bob",
+            "Chen",
+            "Dana",
+            "Eve"
+          ]
+        },
+        {
+          "name": "Skill",
+          "type": "number",
+          "values": [
+            9,
+            8.5,
+            8,
+            6,
+            7
+          ]
+        },
+        {
+          "name": "Salary",
+          "type": "number",
+          "values": [
+            150,
+            140,
+            120,
+            110,
+            100
+          ]
+        },
+        {
+          "name": "Must",
+          "type": "logical",
+          "values": [
+            false,
+            false,
+            false,
+            true,
+            false
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Skill"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Salary"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            380
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Dana",
+        "Alice",
+        "Chen"
+      ],
+      "planFirst": "Dana",
+      "planExcludes": [
+        "Bob",
+        "Eve"
+      ]
+    },
+    "why": "Dana was promised the job, so she's in first despite the weakest skill; the $270k left buys the best pair that fits, Alice and Chen."
+  },
+  {
+    "id": "food-tour-never",
+    "title": "Food tour where the top-rated spot is closed",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Restaurant",
+          "type": "string",
+          "values": [
+            "Sushi Kaito",
+            "Taco Loco",
+            "Pho Saigon",
+            "Pizza Napoli",
+            "Steakhouse 1890",
+            "Dumpling House"
+          ]
+        },
+        {
+          "name": "Rating",
+          "type": "number",
+          "values": [
+            9.6,
+            8.5,
+            8.2,
+            8.8,
+            9.0,
+            8.0
+          ]
+        },
+        {
+          "name": "Cost",
+          "type": "number",
+          "values": [
+            20,
+            15,
+            20,
+            25,
+            80,
+            18
+          ]
+        },
+        {
+          "name": "Stops",
+          "type": "number",
+          "values": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "Never",
+          "type": "logical",
+          "values": [
+            true,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Rating"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Cost",
+            "Stops"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            100,
+            4
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Taco Loco",
+        "Pho Saigon",
+        "Pizza Napoli",
+        "Dumpling House"
+      ],
+      "planExcludes": [
+        "Sushi Kaito",
+        "Steakhouse 1890"
+      ]
+    },
+    "why": "Sushi Kaito is closed that day, so it can't be on the tour however good it is; the steakhouse alone would eat most of the $100, so four cheap, well-rated stops win."
+  },
+  {
+    "id": "paris-day-louvre-vs-filler",
+    "title": "One day in Paris: the Louvre vs a string of meh stops",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Attraction",
+          "type": "string",
+          "values": [
+            "Louvre",
+            "Seine Walk",
+            "Wax Museum",
+            "Sewer Museum",
+            "Souvenir Street"
+          ]
+        },
+        {
+          "name": "Rating",
+          "type": "number",
+          "values": [
+            10,
+            7,
+            4.5,
+            4.5,
+            4.5
+          ]
+        },
+        {
+          "name": "Hours",
+          "type": "number",
+          "values": [
+            6,
+            2,
+            2,
+            2,
+            2
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Rating"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Hours"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            8
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Louvre",
+        "Seine Walk"
+      ],
+      "planIncludes": [
+        "Louvre"
+      ],
+      "planExcludes": [
+        "Wax Museum",
+        "Sewer Museum",
+        "Souvenir Street"
+      ]
+    },
+    "why": "A 10/10 must-see plus a lovely walk beats three below-average stops plus the walk; ratings of 4.5 are close to worthless, and adding three of them doesn't make one great experience.",
+    "ruling": {
+      "plan": "Summed scores treat a 4.5/10 as 45% of a 10/10, a true zero being nothing at all; whether a below-average stop is worth going to is the person's call, made with At least on Rating: see paris-day-minimum-rating. Range here would fix this one and break three other ladders."
+    }
+  },
+  {
+    "id": "paris-day-minimum-rating",
+    "title": "One day in Paris, skipping anything below 6/10",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Attraction",
+          "type": "string",
+          "values": [
+            "Louvre",
+            "Seine Walk",
+            "Wax Museum",
+            "Sewer Museum",
+            "Souvenir Street"
+          ]
+        },
+        {
+          "name": "Rating",
+          "type": "number",
+          "values": [
+            10,
+            7,
+            4.5,
+            4.5,
+            4.5
+          ]
+        },
+        {
+          "name": "Hours",
+          "type": "number",
+          "values": [
+            6,
+            2,
+            2,
+            2,
+            2
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Rating"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            6
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Hours"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            8
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "planExactly": [
+        "Louvre",
+        "Seine Walk"
+      ],
+      "planIncludes": [
+        "Louvre"
+      ],
+      "planExcludes": [
+        "Wax Museum",
+        "Sewer Museum",
+        "Souvenir Street"
+      ]
+    },
+    "why": "With below-average stops ruled out, the day is the Louvre and the walk."
+  },
+  {
+    "id": "menu-impossible-vegetarian-floor",
+    "title": "Menu that demands more vegetarian dishes than exist",
+    "kind": "ladder",
+    "options": {
+      "columns": [
+        {
+          "name": "Dish",
+          "type": "string",
+          "values": [
+            "Beef Wellington",
+            "Lamb Tagine",
+            "Grilled Salmon",
+            "Mushroom Risotto",
+            "Veggie Curry"
+          ]
+        },
+        {
+          "name": "Taste",
+          "type": "number",
+          "values": [
+            9.5,
+            9,
+            8.5,
+            7.5,
+            7
+          ]
+        },
+        {
+          "name": "Course slot",
+          "type": "number",
+          "values": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "Vegetarian",
+          "type": "logical",
+          "values": [
+            false,
+            false,
+            false,
+            true,
+            true
+          ]
+        }
+      ]
+    },
+    "weights": {
+      "columns": [
+        {
+          "name": "Criterion",
+          "type": "string",
+          "values": [
+            "Taste"
+          ]
+        },
+        {
+          "name": "Weight",
+          "type": "number",
+          "values": [
+            1
+          ]
+        }
+      ]
+    },
+    "limits": {
+      "columns": [
+        {
+          "name": "Resource",
+          "type": "string",
+          "values": [
+            "Course slot",
+            "Vegetarian"
+          ]
+        },
+        {
+          "name": "At most",
+          "type": "number",
+          "values": [
+            4,
+            null
+          ]
+        },
+        {
+          "name": "At least",
+          "type": "number",
+          "values": [
+            null,
+            3
+          ]
+        }
+      ]
+    },
+    "expect": {
+      "error": true
+    },
+    "why": "Three vegetarian dishes are required but only two are on offer, so no menu can satisfy the brief; it should say so rather than return a plan."
   }
 ]
