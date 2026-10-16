@@ -1,0 +1,125 @@
+{
+  "v": 2,
+  "order": 512,
+  "label": "Apartment hunt",
+  "group": "Worked examples",
+  "nodes": [
+    {
+      "id": "noteIntro",
+      "type": "NoteNode",
+      "x": -560,
+      "y": 0,
+      "init": {
+        "label": "Apartment hunt",
+        "body": "# A choice inside a choice\nFirst a neighborhood, then an apartment in it. **Nest Join** puts each neighborhood's apartments inside its row, and the **Decision Matrix** judges each neighborhood together with the best apartment it has.\n\nThe Weights table's **At most** column rules out rent over $2,400 and a commute over 40 minutes before anything is weighed. Judged alone, Old Town comes first. With its apartments, Riverside does, and Eastgate drops out with nothing under budget.",
+        "color": "violet",
+        "width": 440,
+        "height": 290
+      }
+    },
+    {
+      "id": "hoods",
+      "type": "FrameInputNode",
+      "x": -60,
+      "y": 0,
+      "init": {
+        "label": "Neighborhoods",
+        "frameText": "[{\"name\":\"Neighborhood\",\"type\":\"string\",\"values\":[\"Hillside\",\"Riverside\",\"Old Town\",\"Eastgate\"]},{\"name\":\"Safety\",\"type\":\"number\",\"values\":[9,7,6,8]},{\"name\":\"Walkability\",\"type\":\"number\",\"values\":[6,9,10,5]},{\"name\":\"Commute\",\"type\":\"number\",\"values\":[35,20,15,30]}]"
+      }
+    },
+    {
+      "id": "apts",
+      "type": "FrameInputNode",
+      "x": -60,
+      "y": 380,
+      "init": {
+        "label": "Apartments",
+        "frameText": "[{\"name\":\"Apartment\",\"type\":\"string\",\"values\":[\"Ridge View 4B\",\"Summit Loft\",\"Pine Court 2\",\"Mill Lofts 7\",\"Quay 12\",\"Ferry Flats 3\",\"Clocktower 5A\",\"Cobble Lane 1\",\"Market Walk 9\",\"Gate House 2\",\"Eastgate Tower 18\",\"Orchard Row 6\"]},{\"name\":\"Neighborhood\",\"type\":\"string\",\"values\":[\"Hillside\",\"Hillside\",\"Hillside\",\"Riverside\",\"Riverside\",\"Riverside\",\"Old Town\",\"Old Town\",\"Old Town\",\"Eastgate\",\"Eastgate\",\"Eastgate\"]},{\"name\":\"Rent\",\"type\":\"number\",\"values\":[2350,2900,2600,2150,2300,1950,2500,2050,2250,2600,2750,2450]},{\"name\":\"Light\",\"type\":\"number\",\"values\":[7,9,6,8,9,5,7,4,6,6,9,7]},{\"name\":\"Size\",\"type\":\"number\",\"values\":[780,1100,850,820,760,650,700,540,690,900,980,880]},{\"name\":\"Laundry\",\"type\":\"logical\",\"values\":[true,true,false,true,true,false,false,false,true,true,true,false]}]"
+      }
+    },
+    {
+      "id": "weights",
+      "type": "FrameInputNode",
+      "x": 360,
+      "y": 620,
+      "init": {
+        "label": "Weights",
+        "frameText": "[{\"name\":\"Criterion\",\"type\":\"string\",\"values\":[\"Safety\",\"Walkability\",\"Commute\",\"Rent\",\"Light\",\"Size\",\"Laundry\",\"Apartments\"]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[2,1,-2,-3,2,1,1,3]},{\"name\":\"At most\",\"type\":\"number\",\"values\":[null,null,40,2400,null,null,null,null]}]"
+      }
+    },
+    {
+      "id": "nest",
+      "type": "NestJoinNode",
+      "x": 360,
+      "y": 260,
+      "init": {
+        "label": "Apartments under each neighborhood"
+      },
+      "stringLiterals": {
+        "key": "Neighborhood",
+        "name": "Apartments"
+      }
+    },
+    {
+      "id": "dmAlone",
+      "type": "DecisionMatrixNode",
+      "x": 780,
+      "y": 0,
+      "init": {
+        "label": "Neighborhood alone",
+        "normalize": "max",
+        "detail": "summary"
+      }
+    },
+    {
+      "id": "dmChain",
+      "type": "DecisionMatrixNode",
+      "x": 780,
+      "y": 340,
+      "init": {
+        "label": "With its best apartment",
+        "normalize": "max",
+        "detail": "summary"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "hoods",
+      "sourceOutput": "frame",
+      "target": "nest",
+      "targetInput": "parent"
+    },
+    {
+      "source": "apts",
+      "sourceOutput": "frame",
+      "target": "nest",
+      "targetInput": "child"
+    },
+    {
+      "source": "hoods",
+      "sourceOutput": "frame",
+      "target": "dmAlone",
+      "targetInput": "frame"
+    },
+    {
+      "source": "weights",
+      "sourceOutput": "frame",
+      "target": "dmAlone",
+      "targetInput": "weights"
+    },
+    {
+      "source": "nest",
+      "sourceOutput": "cube",
+      "target": "dmChain",
+      "targetInput": "frame"
+    },
+    {
+      "source": "weights",
+      "sourceOutput": "frame",
+      "target": "dmChain",
+      "targetInput": "weights"
+    }
+  ],
+  "standoffs": []
+}
