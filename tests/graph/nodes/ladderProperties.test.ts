@@ -50,7 +50,7 @@ describe("Choice Ladder plan search against exhaustive search", () => {
     }
   });
 
-  it("with no cap, the plan is consistent and nothing worth having could still join it", () => {
+  it("with no cap, the plan is consistent, and no group worth having (an option and its Requires) could still join it", () => {
     for (let seed = 1; seed <= 1500; seed++) {
       const { opts } = problem(seed);
       const open = opts.map((_, i) => i);
@@ -62,6 +62,7 @@ describe("Choice Ladder plan search against exhaustive search", () => {
         const group: number[] = [];
         const pull = (i: number) => { if (group.includes(i) || plan.includes(i)) return; group.push(i); opts[i].requires.forEach(pull); };
         pull(o);
+        if (group.reduce((t, i) => t + opts[i].score, 0) < 0) continue;
         expect(clashes(opts, [...plan, ...group]), `seed ${seed}: option ${o} could join`).toBe(true);
       }
     }
@@ -79,5 +80,20 @@ describe("Choice Ladder plan search against exhaustive search", () => {
         expect(clashes(opts, set) || !closed(opts, set), `seed ${seed}`).toBe(false);
       }
     }
+  });
+});
+
+describe("Choice Ladder: round-5 review", () => {
+  it("a floor with no cap keeps the search exact after the floor is met", () => {
+    // A (Veg), B excludes C and D: A, C, D (1.9) beat A, B (1.7).
+    const o = (score: number, veg: number, excludes: number[] = []): LadderOption => ({ score, value: [score], costs: [veg], requires: [], excludes });
+    const opts = [o(0.9, 1), o(0.8, 0, [2, 3]), o(0.5, 0), o(0.5, 0)];
+    const l = buildLadder(opts, [{ limit: null, floor: 1 }], 0);
+    expect(l.main.map((e) => l.edges[e].pick).sort()).toEqual([0, 2, 3]);
+  });
+  it("with no cap, a harmful requirement comes only when the pair is worth having", () => {
+    const o = (score: number, requires: number[] = []): LadderOption => ({ score, value: [score], costs: [], requires, excludes: [] });
+    expect(bestPlan([o(0.33, [1]), o(-0.67), o(0.19)], [0, 1, 2], [], [])).toEqual([2]);
+    expect(bestPlan([o(0.9, [1]), o(-0.2), o(0.19)], [0, 1, 2], [], [])!.sort()).toEqual([0, 1, 2]);
   });
 });

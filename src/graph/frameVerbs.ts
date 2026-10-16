@@ -1861,10 +1861,8 @@ function rankCube(c: CubeValue, weightsFrame: FrameValue | null, normalize: Deci
   const rows = cubeRowCount(c);
   const scalar = flatCubeToFrame(c, "scalar");
   if (isSolError(scalar)) throw scalar;
-  // A nested table's copy of a parent column (a Nest Join's key) says which row it hangs under, never how good it is.
-  const parentNames = new Set(c.columns.map((col) => col.name));
   const tableCols = c.columns.filter((col) => col.cells.some(isTableCell));
-  const ranked = tableCols.map((col) => rankNested(col.cells, rows, weightsFrame, normalize, breakdown, parentNames));
+  const ranked = tableCols.map((col) => rankNested(col.cells, rows, weightsFrame, normalize, breakdown, c));
   // A nested column with nothing to score (notes, say) is carried along, not a criterion.
   const nestedCols = tableCols.filter((_, n) => ranked[n] != null);
   const inner = ranked.filter((r): r is NonNullable<typeof r> => r != null);
@@ -1895,15 +1893,27 @@ function rankCube(c: CubeValue, weightsFrame: FrameValue | null, normalize: Deci
 }
 
 /** One nested column's tables, scored together and split back to their rows, each ranked within itself. */
-function rankNested(cells: CubeCell[], rows: number, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown: boolean, parentNames: ReadonlySet<string>):
+function rankNested(cells: CubeCell[], rows: number, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown: boolean, parent: CubeValue):
   { table: FrameValue | CubeValue | null; best: Best }[] | null {
-  const dropKeys = (t: FrameValue | CubeValue): FrameValue | CubeValue => {
-    const keep = t.columns.filter((col, j) => j === 0 || !parentNames.has(col.name));
+  // A nested column holding its parent row's own value in every cell (a Nest Join's key) says which row the table hangs
+  // under, never how good an option is; any other column counts, whatever it's named.
+  const cellsOf = (col: FrameColumn | CubeColumn): readonly unknown[] => ("values" in col ? col.values : col.cells);
+  const isKey = (col: FrameColumn | CubeColumn, i: number) => {
+    const p = parent.columns.find((pc) => pc.name === col.name);
+    return !!p && cellsOf(col).every((v) => v === p.cells[i]);
+  };
+  const labelName = cells.find(isTableCell)?.columns.find((col) => col.type === "string")?.name;
+  const tidy = (t: FrameValue | CubeValue, i: number): FrameValue | CubeValue => {
+    const firstText = t.columns.findIndex((col) => col.type === "string");
+    // Tables pooled together name their options in one column, whatever each called its own.
+    const cols = t.columns as (FrameColumn | CubeColumn)[];
+    const keep = cols.filter((col, j) => j === firstText || !isKey(col, i))
+      .map((col) => (labelName && cols.indexOf(col) === firstText ? { ...col, name: labelName } : col));
     return isCubeValue(t) ? cubeFromColumns(keep as CubeColumn[]) : { ...t, columns: keep as FrameColumn[] };
   };
   const out: { table: FrameValue | CubeValue | null; best: Best }[] = Array.from({ length: rows }, (_, i) => {
     const v = cells[i];
-    return { table: isTableCell(v) ? dropKeys(v) : null, best: null };
+    return { table: isTableCell(v) ? tidy(v, i) : null, best: null };
   });
   const tables = out.map((o, i) => ({ t: o.table, i })).filter((x): x is { t: FrameValue | CubeValue; i: number } => !!x.t && tableRows(x.t) > 0);
   if (!tables.length) return out;
@@ -2203,8 +2213,10 @@ export function flipPoints(f: FrameValue, weightsFrame: FrameValue | null, norma
         const de = eff[j][i] - eff[j][win];
         if (Math.abs(de) < 1e-12) continue;
         const t = (A[win] - A[i]) / de;
-        if (de > 0 && t <= hi && (above == null || t < above.t)) above = { t: Math.max(t, w[j]), who: i };
-        if (de < 0 && t >= lo && (below == null || t > below.t)) below = { t: Math.min(t, w[j]), who: i };
+        // Reaching zero only ties, since the weight can't pass it.
+        const atZero = Math.abs(t) < 1e-9 && w[j] !== 0;
+        if (de > 0 && t <= hi && !atZero && (above == null || t < above.t)) above = { t: Math.max(t, w[j]), who: i };
+        if (de < 0 && t >= lo && !atZero && (below == null || t > below.t)) below = { t: Math.min(t, w[j]), who: i };
       }
     }
     return { name, w: w[j], below, above };

@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { decisionMatrix, decisionCriteria, decisionSensitivity, flipPoints, decisionCube } from "../../src/graph/frameVerbs";
 import { DecisionMatrixNode, DecisionSensitivityNode } from "../../src/graph/rete-nodes";
 import { isSolError, solError } from "../../src/graph/errorValue";
-import { isFrameValue, isCubeValue, relateFramesToCube, relateCubeToFrame, type FrameValue, type FrameColumn, type CubeValue } from "../../src/graph/frame";
+import { isFrameValue, isCubeValue, relateFramesToCube, relateCubeToFrame, cubeFromColumns, type FrameValue, type FrameColumn, type CubeValue } from "../../src/graph/frame";
 
 // rows are options, "name" labels them, the rest are criteria.
 const f: FrameValue = {
@@ -756,5 +756,25 @@ describe("round-4 review", () => {
     ] }, "max");
     expect(col(out, "More at").values[0]).not.toBeNull();
     expect(col(out, "Less at").values[0]).toBeNull();
+  });
+});
+
+describe("chained cubes, round-5 review", () => {
+  it("nested tables naming their options differently still show their names", () => {
+    const t1: FrameValue = { __frame: true, columns: [{ name: "Apt", type: "string", values: ["h1"] }, { name: "Light", type: "number", values: [4] }] };
+    const t2: FrameValue = { __frame: true, columns: [{ name: "Name", type: "string", values: ["r1"] }, { name: "Light", type: "number", values: [9] }] };
+    const cube = cubeFromColumns([{ name: "Hood", cells: ["Hill", "River"] }, { name: "Apts", cells: [t1, t2] }]);
+    const out = decisionCube(cube, null, "max");
+    expect(out.columns.find((c) => c.name === "Best in Apts")!.cells).toEqual(["r1", "h1"]);
+  });
+  it("a nested criterion named like a parent column still counts; only a true key is dropped", () => {
+    const parent: FrameValue = { __frame: true, columns: [{ name: "Hood", type: "string", values: ["Low", "High"] }, { name: "Rent", type: "number", values: [1800, 1800] }] };
+    const child: FrameValue = { __frame: true, columns: [
+      { name: "Apt", type: "string", values: ["a", "b"] }, { name: "Hood", type: "string", values: ["Low", "High"] }, { name: "Rent", type: "number", values: [1500, 2500] },
+    ] };
+    const w: FrameValue = { __frame: true, columns: [{ name: "Criterion", type: "string", values: ["Rent", "Apts"] }, { name: "Weight", type: "number", values: [-1, 2] }] };
+    const out = decisionCube(relateFramesToCube(parent, child, "Hood", "Apts")!, w, "max");
+    expect(out.columns[0].cells[0]).toBe("Low");
+    expect(out.columns.map((c) => c.name)).toContain("Best in Apts");
   });
 });

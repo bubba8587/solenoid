@@ -66,9 +66,9 @@ const clash = (opts: LadderOption[], i: number, taken: Iterable<number>): boolea
  *  limits that meets every floor (`need`, what each still needs), honoring every Requires and Excludes, by exact branch
  *  and bound; null when no plan meets the floors. With none, everything open taken in priority order, an option that
  *  conflicts with one ahead of it left out, as is one whose Requires can't be met. */
-export function bestPlan(opts: LadderOption[], open: number[], taken: number[], left: (number | null)[], need: number[] = []): number[] | null {
-  const floors = need.some((x) => x > EPS);
-  const countable = floors || left.some((l) => l != null);
+export function bestPlan(opts: LadderOption[], open: number[], taken: number[], left: (number | null)[], need: number[] = [], exact = false): number[] | null {
+  // `exact`: some resource is countable, so the search stays exact even once every floor is met.
+  const countable = exact || need.some((x) => x > EPS) || left.some((l) => l != null);
   if (!countable) {
     // Everything worth anything, in order, skipping clashes; an option whose Requires can't come is banned and the
     // pass reruns, so what only clashed with it gets its chance. A negative option comes only when one taken needs it.
@@ -85,6 +85,8 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
           for (const r of opts[i].requires) if (open.includes(r) && !banned.has(r)) pull(r);
         };
         pull(o);
+        // A harmful requirement comes only when the group as a whole is worth having.
+        if (group.reduce((s, g) => s + opts[g].score, 0) < 0) continue;
         if (group.every((g, k) => !clash(opts, g, [...taken, ...ids, ...group.slice(0, k)]))) ids.push(...group);
       }
       const have = new Set([...taken, ...ids]);
@@ -146,11 +148,11 @@ export function mustClash(opts: LadderOption[], res: LadderResource[]): { clash:
 }
 
 /** Whether taking `a` or `b` next ends with the same set either way. */
-function sameSet(opts: LadderOption[], open: number[], s: { taken: number[]; left: (number | null)[]; need: number[] }, a: number, b: number): boolean {
+function sameSet(opts: LadderOption[], open: number[], s: { taken: number[]; left: (number | null)[]; need: number[] }, a: number, b: number, exact: boolean): boolean {
   const after = (x: number) => {
     const taken = [...s.taken, x];
     const rest = open.filter((i) => i !== x && !clash(opts, i, taken));
-    return new Set([x, ...(bestPlan(opts, rest, taken, spend(s.left, opts[x]), meet(s.need, opts[x])) ?? [])]);
+    return new Set([x, ...(bestPlan(opts, rest, taken, spend(s.left, opts[x]), meet(s.need, opts[x]), exact) ?? [])]);
   };
   const A = after(a), B = after(b);
   return A.size === B.size && [...A].every((i) => B.has(i));
@@ -179,6 +181,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
   };
   const root: S = { id: 0, taken: [], out: new Set<number>(), left: res.map((r) => r.limit), need: res.map((r) => r.floor ?? 0), share: 1, depth: 0, noFork: false, ins: [], forced: true };
   const floored = root.need.some((x) => x > EPS);
+  const exact = res.some((r) => !isRough(r));
   states.push(root);
   let level: S[] = [root];
   let ends = 0;
@@ -191,7 +194,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
       const open = order.filter((i) => !has.has(i) && !s.out.has(i) && !clash(opts, i, s.taken));
       // Musts come before anything else, in order, and strike nothing.
       const must = order.find((i) => opts[i].must && !has.has(i));
-      const found = must != null ? [] : bestPlan(opts, open, s.taken, s.left, s.need);
+      const found = must != null ? [] : bestPlan(opts, open, s.taken, s.left, s.need, exact);
       if (found == null && s.forced) throw solError("#VALUE!", "Choice Ladder: no plan meets every At least");
       const plan = new Set(found ?? []);
       let a = must ?? order.find((i) => plan.has(i) && !has.has(i));
@@ -203,7 +206,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
       // The pick's turn: anything it needs comes first.
       let kind: LadderEdge["kind"] = must != null ? "must" : "clear";
       // Taken only because a floor still needs it: the plan without the floors would leave it.
-      if (kind === "clear" && s.need.some((x) => x > EPS) && !(bestPlan(opts, open, s.taken, s.left) ?? []).includes(a)) kind = "quota";
+      if (kind === "clear" && s.need.some((x) => x > EPS) && !(bestPlan(opts, open, s.taken, s.left, [], exact) ?? []).includes(a)) kind = "quota";
       const needs = (i: number): number | null => opts[i].requires.filter((r) => !has.has(r)).sort((x, y) => rank.get(x)! - rank.get(y)!)[0] ?? null;
       for (let guard = 0; guard < opts.length; guard++) {
         const nd = needs(a);
@@ -219,13 +222,13 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
           if (i === a || struck.includes(i) || needs(i) != null || !fits(opts[i], s.left)) continue;
           if (!isClose(pri[a], pri[i], gap)) continue;
           // A side that would leave a floor out of reach is no side at all.
-          if (floored && bestPlan(opts, open.filter((k) => k !== i && !clash(opts, k, [...s.taken, i])), [...s.taken, i], spend(s.left, opts[i]), meet(s.need, opts[i])) == null) continue;
+          if (floored && bestPlan(opts, open.filter((k) => k !== i && !clash(opts, k, [...s.taken, i])), [...s.taken, i], spend(s.left, opts[i]), meet(s.need, opts[i]), exact) == null) continue;
           const g = Math.abs(pri[a].p - pri[i].p);
           if (g < bestGap - EPS) { bestGap = g; b = i; }
         }
       }
       // Two sides that end with the same set are no choice at all, only an order.
-      if (b != null && sameSet(opts, open.filter((i) => !struck.includes(i)), s, a, b)) b = null;
+      if (b != null && sameSet(opts, open.filter((i) => !struck.includes(i)), s, a, b, exact)) b = null;
       const picks: { take: number; share: number; kind: LadderEdge["kind"] }[] = [];
       if (b != null && (chosen.includes(a) || chosen.includes(b))) {
         const win = chosen.lastIndexOf(b) > chosen.lastIndexOf(a) ? b : a;
