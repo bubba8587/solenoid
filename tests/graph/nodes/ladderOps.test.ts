@@ -113,10 +113,10 @@ describe("Choice Ladder kernel: a rough cost with no total", () => {
     const l = buildLadder(opts, [{ limit: null }], 0);
     expect(mainPicks(l)).toEqual([2, 1, 3, 0]);
   });
-  it("the order is the answer, so two close options fork even when both get taken, and the paths rejoin", () => {
+  it("two close options that both get taken either way don't fork: only their order would differ", () => {
     const l = buildLadder([opt(0.8, [1]), opt(0.79, [1]), opt(0.3, [1])], [{ limit: null }], 0.05);
-    expect(l.edges.filter((e) => e.from === 0).map((e) => e.kind)).toEqual(["close", "close"]);
-    expect(l.states.some((s) => l.edges.filter((e) => e.to === s.id).length === 2)).toBe(true);
+    expect(l.edges.every((e) => e.kind !== "close")).toBe(true);
+    expect(mainPicks(l)).toEqual([0, 1, 2]);
   });
   it("takes everything, since nothing runs out", () => {
     expect(buildLadder(opts, [{ limit: null }], 0.05).states.filter((s) => s.end).every((s) => s.taken.length === 4)).toBe(true);

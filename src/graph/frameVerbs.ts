@@ -1642,7 +1642,9 @@ export function resolveDecisionWeights(
   return { weights, normOverrides: normOverridesFrom(wf, criteria, rowIndex), bounds: boundsFrom(wf, criteria, rowIndex) };
 }
 
-/** For each row, the criteria whose deal-breakers it fails ([[C124]] dealBreakers). A cell with no number fails none. */
+const plainNumber = (v: number): string => v.toLocaleString("en-US", { maximumFractionDigits: 4 });
+
+/** For each row, why it fails a deal-breaker, as "Rent over 2,400" ([[C124]] dealBreakers). A cell with no number fails none. */
 function decisionScreen(f: FrameValue, bounds: DecisionBound[] | null): string[][] {
   const rows = frameRowCount(f);
   const out: string[][] = Array.from({ length: rows }, () => []);
@@ -1653,7 +1655,8 @@ function decisionScreen(f: FrameValue, bounds: DecisionBound[] | null): string[]
     for (let i = 0; i < rows; i++) {
       const v = numOrNull(c.values[i] ?? null);
       if (v == null) continue;
-      if ((b.atLeast != null && v < b.atLeast) || (b.atMost != null && v > b.atMost)) out[i].push(c.name);
+      if (b.atLeast != null && v < b.atLeast) out[i].push(`${c.name} under ${plainNumber(b.atLeast)}`);
+      else if (b.atMost != null && v > b.atMost) out[i].push(`${c.name} over ${plainNumber(b.atMost)}`);
     }
   });
   return out;
@@ -1670,7 +1673,6 @@ function filledIn(f: FrameValue, skip: ReadonlySet<string> = new Set()): string[
   return out;
 }
 
-const hasBounds = (bounds: DecisionBound[] | null): boolean => !!bounds?.some((b) => b.atLeast != null || b.atMost != null);
 
 function frameRows(f: FrameValue, rows: number[]): FrameValue {
   return { ...f, columns: f.columns.map((c) => ({ ...c, values: rows.map((i) => c.values[i] ?? null) })) };
@@ -1780,14 +1782,14 @@ export function decisionMatrix(
   normalizeOverrides: Record<string, DecisionNormalize> = {},
   bounds: DecisionBound[] | null = null,
 ): FrameValue {
-  return rankOptions(f, weights, normalize, breakdown, normalizeOverrides, decisionScreen(f, bounds), hasBounds(bounds)).frame;
+  return rankOptions(f, weights, normalize, breakdown, normalizeOverrides, decisionScreen(f, bounds)).frame;
 }
 
 /** The ranking, given which criteria rule out each row (`failed`), the input row behind each output row, and the best
  *  row with its score (null when every row is ruled out). */
 function rankOptions(
   f: FrameValue, weights: number[] | null, normalize: DecisionNormalize, breakdown: boolean,
-  normalizeOverrides: Record<string, DecisionNormalize>, failed: string[][], ruledOutColumn: boolean, skipFill: ReadonlySet<string> = new Set(),
+  normalizeOverrides: Record<string, DecisionNormalize>, failed: string[][], skipFill: ReadonlySet<string> = new Set(),
 ): { frame: FrameValue; rows: number[]; best: { label: FrameCell; score: number } | null; scoreAt: number; rankAt: number } {
   const rows = frameRowCount(f);
   // Deal-breakers come first: a ruled-out option is neither scored nor part of the scaling ([[C124]] dealBreakers).
@@ -1812,7 +1814,7 @@ function rankOptions(
   const scoreAt = out.length;
   out.push({ name: "Score", type: "number", values: [...order.map((o) => o.s), ...out_.map(() => null)] });
   out.push({ name: "Rank", type: "number", values: [...rank, ...out_.map(() => null)] });
-  if (ruledOutColumn || out_.length) out.push({ name: "Ruled out by", type: "string", values: [...order.map(() => null), ...out_.map((i) => failed[i].join(", "))] });
+  if (out_.length) out.push({ name: "Ruled out by", type: "string", values: [...order.map(() => null), ...out_.map((i) => failed[i].join(", "))] });
   // A guessed value is said, never silent.
   const fills = filledIn(f, skipFill);
   const fillText = (i: number) => (fills[i].length && !failed[i].length ? fills[i].join(", ") : null);
@@ -1848,7 +1850,7 @@ export function decisionCube(
 function rankAny(t: FrameValue | CubeValue, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown: boolean): RankedTable {
   if (isCubeValue(t)) return rankCube(t, weightsFrame, normalize, breakdown);
   const { weights, normOverrides, bounds } = resolveDecisionWeights(weightsFrame, decisionCriteria(t));
-  const r = rankOptions(t, weights, normalize, breakdown, normOverrides, decisionScreen(t, bounds), hasBounds(bounds));
+  const r = rankOptions(t, weights, normalize, breakdown, normOverrides, decisionScreen(t, bounds));
   return { table: r.frame, at: r.rows, scoreAt: r.scoreAt, rankAt: r.rankAt };
 }
 
@@ -1871,9 +1873,9 @@ function rankCube(c: CubeValue, weightsFrame: FrameValue | null, normalize: Deci
   ] };
   const { weights, normOverrides, bounds } = resolveDecisionWeights(weightsFrame, decisionCriteria(parent));
   const failed = decisionScreen(parent, bounds);
-  nestedCols.forEach((col, n) => inner[n].forEach((r, i) => { if (!r.best) failed[i].push(col.name); }));
+  nestedCols.forEach((col, n) => inner[n].forEach((r, i) => { if (!r.best) failed[i].push(`no acceptable ${col.name}`); }));
   const nestedNames = new Set(nestedCols.map((col) => col.name));
-  const r = rankOptions(parent, weights, normalize, breakdown, normOverrides, failed, hasBounds(bounds), nestedNames);
+  const r = rankOptions(parent, weights, normalize, breakdown, normOverrides, failed, nestedNames);
 
   const k = nestedCols.length;
   const outCols: { name: string; cells: CubeCell[]; type?: FrameColType }[] = [{ name: r.frame.columns[0].name, cells: r.frame.columns[0].values, type: "string" }];
@@ -2103,7 +2105,7 @@ export function choiceLadder(
       kind: "ladder",
       options: opts.map((o, k) => ({ name: names[k], score: o.score, costs: o.costs, value: o.value })),
       criteria: ds.criteria.map((c) => c.name),
-      resources: resources.map((r) => ({ name: r.name, limit: r.limit, floor: r.floor, format: r.col.format ?? null })),
+      resources: resources.map((r) => ({ name: r.name, limit: r.limit, floor: r.floor, logical: r.col.type === "logical", format: r.col.format ?? null })),
       states: res.states, edges: res.edges, main: res.main,
       choices: choices.filter((c) => settled.has(names[indexOf(c)] ?? "")),
       ruledOut: [...out].sort((a, b) => a - b).map(nameOf),
@@ -2153,7 +2155,7 @@ export function decisionSensitivity(
 
     scenarioCells.push(scenCol.name);
     const tied = ranking.columns[0].values.filter((_, k) => rankCol.values[k] === 1);
-    winnerCells.push(tied.length > 1 ? tied.map((v) => String(v ?? "")).join(" = ") : (tied[0] ?? null));
+    winnerCells.push(tied.length > 1 ? `Tie: ${tied.map((v) => String(v ?? "")).join(", ")}` : (tied[0] ?? null));
     marginCells.push(top !== null && second !== null ? round4(top - second) : null);
     rankingCells.push(ranking);
   }
@@ -2203,15 +2205,20 @@ export function flipPoints(f: FrameValue, weightsFrame: FrameValue | null, norma
     return { name, w: w[j], below, above };
   });
   const label = (k: number) => labels[pass[k]];
+  // "Less" and "more" are how much the criterion matters: toward zero, or away from it, whatever the weight's sign.
+  const less = (r: (typeof rows)[number]) => (r.w < 0 ? r.above : r.below);
+  const more = (r: (typeof rows)[number]) => (r.w < 0 ? r.below : r.above);
+  const at = (f: { t: number } | null) => (f ? Math.round(f.t * 100) / 100 : null);
+  const who = (f: { who: number } | null) => (n === 0 ? null : label(f ? f.who : win));
   return {
     __frame: true,
     columns: [
       { name: "Criterion", type: "string", values: rows.map((r) => r.name) },
       { name: "Weight", type: "number", values: rows.map((r) => r.w) },
-      { name: "Flips below", type: "number", values: rows.map((r) => (r.below ? round4(r.below.t) : null)) },
-      { name: "Winner below", type: "string", values: rows.map((r) => (r.below ? label(r.below.who) : null)) },
-      { name: "Flips above", type: "number", values: rows.map((r) => (r.above ? round4(r.above.t) : null)) },
-      { name: "Winner above", type: "string", values: rows.map((r) => (r.above ? label(r.above.who) : null)) },
+      { name: "Less at", type: "number", values: rows.map((r) => at(less(r))) },
+      { name: "Winner if less", type: "string", values: rows.map((r) => who(less(r))) },
+      { name: "More at", type: "number", values: rows.map((r) => at(more(r))) },
+      { name: "Winner if more", type: "string", values: rows.map((r) => who(more(r))) },
     ],
   };
 }

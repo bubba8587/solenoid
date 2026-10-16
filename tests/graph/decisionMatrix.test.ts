@@ -428,7 +428,7 @@ describe("decisionSensitivity (weight scenarios → cube)", () => {
     };
     const cube = decisionSensitivity(tie, scen, "none");
     if (!isCubeValue(cube)) throw new Error("expected a cube");
-    expect(cube.columns[1].cells[0]).toBe("A = B");
+    expect(cube.columns[1].cells[0]).toBe("Tie: A, B");
     expect(cube.columns[2].cells[0]).toBe(0);
   });
 
@@ -463,7 +463,7 @@ describe("deal-breakers ([[C124]] dealBreakers)", () => {
     expect(col(out, "Place").values.slice(-2)).toEqual(["Loft", "Studio"]);
     expect(col(out, "Score").values.slice(-2)).toEqual([null, null]);
     expect(col(out, "Rank").values).toEqual([1, 2, null, null]);
-    expect(col(out, "Ruled out by").values).toEqual([null, null, "Rent", "Commute"]);
+    expect(col(out, "Ruled out by").values).toEqual([null, null, "Rent over 2,000", "Commute over 45"]);
   });
 
   it("a ruled-out option doesn't shape the scaling of the rest", () => {
@@ -496,7 +496,7 @@ describe("deal-breakers ([[C124]] dealBreakers)", () => {
       { name: "At most", type: "number", values: [2000, null, 45] },
       { name: "Weight", type: "number", values: [-1, 2, -1] },
     ] }] }).frame as FrameValue;
-    expect(col(out, "Ruled out by").values.slice(-2)).toEqual(["Rent", "Commute"]);
+    expect(col(out, "Ruled out by").values.slice(-2)).toEqual(["Rent over 2,000", "Commute over 45"]);
     expect(col(out, "Place").values[0]).toBe("Tower");
   });
 
@@ -533,19 +533,21 @@ describe("flip points ([[C125]] flipPoints)", () => {
     return cars.columns[0].values[tot.reduce((b, v, i) => (v > tot[b] ? i : b), 0)];
   };
 
-  it("names, per criterion, the nearest weights either side where another option takes first place", () => {
+  it("names, per criterion, the weight at which another option would win if it mattered less or more", () => {
     const out = flipPoints(cars, weights, "max");
-    expect(out.columns.map((c) => c.name)).toEqual(["Criterion", "Weight", "Flips below", "Winner below", "Flips above", "Winner above"]);
+    expect(out.columns.map((c) => c.name)).toEqual(["Criterion", "Weight", "Less at", "Winner if less", "More at", "Winner if more"]);
     const now = winnerAt(0, -3);
     let checked = 0;
     out.columns[0].values.forEach((_, j) => {
-      for (const [side, dir] of [["below", -1], ["above", 1]] as const) {
-        const t = col(out, `Flips ${side}`).values[j] as number | null;
-        const who = col(out, `Winner ${side}`).values[j];
-        if (t == null) continue;
+      for (const side of ["Less", "More"] as const) {
+        const t = col(out, `${side} at`).values[j] as number | null;
+        const who = col(out, `Winner if ${side.toLowerCase()}`).values[j];
+        if (t == null) { expect(who).toBe(now); continue; }
         checked++;
-        expect(winnerAt(j, t + dir * 1e-3)).toBe(who);
-        expect(winnerAt(j, t - dir * 1e-3)).toBe(now);
+        // Further from zero is "more"; past the flip (rounded to 0.01) the named option wins, short of it the winner holds.
+        const away = Math.sign(w0[j]) * (side === "More" ? 1 : -1);
+        expect(winnerAt(j, t + away * 0.01)).toBe(who);
+        expect(winnerAt(j, t - away * 0.01)).toBe(now);
       }
     });
     expect(checked).toBeGreaterThan(2);
@@ -553,18 +555,17 @@ describe("flip points ([[C125]] flipPoints)", () => {
 
   it("never crosses zero: a cost stays a cost", () => {
     const out = flipPoints(cars, weights, "max");
-    const above = col(out, "Flips above").values[0];
-    expect(above == null || (above as number) <= 0).toBe(true);
-    for (let j = 1; j < 4; j++) {
-      const below = col(out, "Flips below").values[j];
-      expect(below == null || (below as number) >= 0).toBe(true);
+    for (const side of ["Less at", "More at"]) {
+      const price = col(out, side).values[0];
+      expect(price == null || (price as number) <= 0).toBe(true);
+      for (let j = 1; j < 4; j++) { const v = col(out, side).values[j]; expect(v == null || (v as number) >= 0).toBe(true); }
     }
   });
 
   it("a ruled-out option never wins, and one option left flips nowhere", () => {
     const capped: FrameValue = { ...weights, columns: [...weights.columns, { name: "At most", type: "number", values: [27, null, null, null] }] };
     const out = flipPoints(cars, capped, "max");
-    expect([...col(out, "Flips below").values, ...col(out, "Flips above").values].every((v) => v == null)).toBe(true);
+    expect([...col(out, "Less at").values, ...col(out, "More at").values].every((v) => v == null)).toBe(true);
   });
 
   it("the node's Flip points mode swaps its output to a frame and reads the Weights table", () => {
@@ -644,7 +645,7 @@ describe("chained decisions ([[C126]] chainedDecisions)", () => {
     const i = names.indexOf("Old Town");
     expect(i).toBe(names.length - 1);
     expect(cubeCol(out, "Rank")[i]).toBeNull();
-    expect(cubeCol(out, "Ruled out by")[i]).toBe("Apartments");
+    expect(cubeCol(out, "Ruled out by")[i]).toBe("no acceptable Apartments");
   });
 
   it("chains to any depth: a city counts its best neighborhood, which counts its best apartment", () => {
@@ -691,7 +692,7 @@ describe("review regressions", () => {
       { name: "Criterion", type: "string", values: ["q", "c"] }, { name: "Weight", type: "number", values: [1, 1] }, { name: "At least", type: "number", values: [5, null] },
     ] };
     const out = flipPoints(g, w, "max");
-    const names = [...col(out, "Winner below").values, ...col(out, "Winner above").values].filter((v) => v != null);
+    const names = [...col(out, "Winner if less").values, ...col(out, "Winner if more").values].filter((v) => v != null);
     expect(names.every((v) => v === "Option 2" || v === "Option 3")).toBe(true);
   });
 

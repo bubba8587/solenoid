@@ -1543,10 +1543,9 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
     const cols: ShapeColumn[] = [{ name: label?.name ?? "Option", type: "string" }];
     if (this.detail === "breakdown") for (const c of criteria) cols.push({ name: c.name, type: "number" });
     cols.push({ name: "Score", type: "number" }, { name: "Rank", type: "number" });
-    const w = ctx.inputShape("weights");
-    if (w?.columns.some((c) => ["at least", "at most"].includes(c.name.trim().toLowerCase()))) cols.push({ name: "Ruled out by", type: "string" });
     const names = makeHeaders(cols.map((c) => c.name), cols.length);
-    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })), dynamic: input.dynamic || !!w?.dynamic };
+    // Ruled out by and Filled in come and go with the data, so the shape is never the whole story.
+    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })), dynamic: true };
   }
 
   data(inputs: { frame?: unknown[]; weights?: (FrameValue | null)[] }) {
@@ -1573,7 +1572,7 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     scores: "The options frame a Decision Matrix takes: rows are options, number columns criteria.",
     scenarios: "Scenarios: the Decision Matrix weights frame widened, one row per Criterion and a number column per scenario (its header names it) carrying that scenario's weight; an optional Norm column and At least / At most apply across every scenario, and a criterion a scenario omits weighs 1. Flip points: the Decision Matrix's own Weights table.",
-    cube: "Scenarios: a row per scenario with its Winner, Margin and full Ranking. Flip points: a row per criterion with the nearest weight below and above its own at which another option would win, and which one.",
+    cube: "Scenarios: a row per scenario with its Winner, Margin and full Ranking. Flip points: a row per criterion with the weight at which another option would win if the criterion mattered less, and if it mattered more, and which one; with no such weight, the winner stays and is named.",
   };
 
   label: string;
@@ -1620,8 +1619,8 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     if (this.mode !== "flips") return null;
     return { columns: [
       { name: "Criterion", type: "string" }, { name: "Weight", type: "number" },
-      { name: "Flips below", type: "number" }, { name: "Winner below", type: "string" },
-      { name: "Flips above", type: "number" }, { name: "Winner above", type: "string" },
+      { name: "Less at", type: "number" }, { name: "Winner if less", type: "string" },
+      { name: "More at", type: "number" }, { name: "Winner if more", type: "string" },
     ] };
   }
 
@@ -1678,7 +1677,7 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Options"));
     this.addInput("weights", frameIn("Weights"));
     this.addInput("limits", frameIn("Limits"));
-    this.addInput("close", numIn("Close"));
+    this.addInput("close", numIn("Close within"));
     this.addOutput("frame", frameOut("Plan"));
     this.addOutput("chart", chartOut("Ladder"));
   }

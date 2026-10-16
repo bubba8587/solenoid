@@ -28,6 +28,8 @@ const OVER = 1;
 export interface Layout {
   boxes: Map<string, Box>; pieces: Piece[]; width: number; height: number; minHeight: Map<string, number>;
   flows: Map<string, { inW: number; peelW: number; outW: number }>;
+  /** Whether a piece lies on the plan's own path (the main line). */
+  onMain: (x: Piece) => boolean;
 }
 
 interface Item { key: string; lane: number; row: number; from: number; to: number; inF: number; peel: number; outF: number }
@@ -193,5 +195,9 @@ export function layoutLadder(p: LadderPayload, heights: Map<string, number>, m: 
   const minHeight = new Map(items.map((it) => [it.key, Math.ceil(ENTER + it.peel * px + 6)]));
   const flows = new Map(items.map((it) => [it.key, { inW: it.inF * px, peelW: it.peel * px, outW: it.outF * px }]));
   flows.set("source", { inW: 0, peelW: 0, outW: total * px });
-  return { boxes, pieces, width: Math.max(width, gutter + m.cw), height, minHeight, flows };
+  const mainKeys = new Set(["source", ...p.main.map((i) => `e${i}`)]);
+  const mainStates = new Set(p.main.map((i) => `m${p.edges[i].from}`));
+  const on = (k: string) => mainKeys.has(k) || mainStates.has(k);
+  const onMain = (x: Piece) => (x.kind === "link" ? on(x.from) && on(x.to) : mainKeys.has(x.from));
+  return { boxes, pieces, width: Math.max(width, gutter + m.cw), height, minHeight, flows, onMain };
 }

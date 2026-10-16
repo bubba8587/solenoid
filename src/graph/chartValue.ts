@@ -200,7 +200,7 @@ export interface LadderPayload {
   options: { name: string; score: number; costs: number[]; value: number[] }[];
   criteria: string[];
   /** A null limit is a rough cost with no total. */
-  resources: { name: string; limit: number | null; floor: number | null; format?: FormatAnnotation | null }[];
+  resources: { name: string; limit: number | null; floor: number | null; logical?: boolean; format?: FormatAnnotation | null }[];
   states: LadderState[];
   edges: LadderEdge[];
   /** The edges of the main line, top first. */

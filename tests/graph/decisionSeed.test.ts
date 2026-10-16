@@ -82,7 +82,7 @@ describe("decision-matrix seed", () => {
 
   it("main matrix: UltraSlim wins, and the breakdown contributions sum to the Score", () => {
     const out = decisionMatrix(scores, weights, dmInit.normalize, true, normOverrides);
-    expect(out.columns[0].values).toEqual(["UltraSlim", "ProBook", "Budget", "PowerLifter"]);
+    expect(out.columns[0].values).toEqual(["UltraSlim", "ProBook", "ValueBook", "PowerLifter"]);
     const score = out.columns.find((c) => c.name === "Score")!.values as number[];
     const crit = decisionCriteria(scores).map((n) => out.columns.find((c) => c.name === n)!.values as number[]);
     score.forEach((s, i) => {
@@ -99,18 +99,18 @@ describe("decision-matrix seed", () => {
     expect(keep[0]).toBe(out.columns[0].name); // labels first, values second
   });
 
-  it("sensitivity: the winner flips across scenarios and Budget lands the tie the note claims", () => {
+  it("sensitivity: the winner flips across scenarios and the Budget scenario lands the tie the note claims", () => {
     const sensInit = byId("sens").init as { normalize: DecisionNormalize };
     const cube = decisionSensitivity(scores, scenarios, sensInit.normalize);
     if (!isCubeValue(cube)) throw new Error("expected a cube");
-    expect(cube.columns[1].cells).toEqual(["UltraSlim", "PowerLifter", "UltraSlim = Budget"]);
+    expect(cube.columns[1].cells).toEqual(["UltraSlim", "PowerLifter", "Tie: UltraSlim, ValueBook"]);
     const margins = cube.columns[2].cells as number[];
     expect(margins[0]).toBeGreaterThan(0);
     expect(margins[1]).toBeGreaterThan(0);
     expect(margins[2]).toBe(0);
     // the prose states exactly these outcomes — keep the note and the engine agreeing
     const body = byId("noteSens").init!.body as string;
-    expect(body).toContain("UltraSlim = Budget");
+    expect(body).toContain("Tie: UltraSlim, ValueBook");
     expect(body).toContain("PowerLifter");
   });
 });

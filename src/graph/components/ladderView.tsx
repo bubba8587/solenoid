@@ -28,6 +28,16 @@ function ValueBar({ p, i, colors }: { p: LadderPayload; i: number; colors: strin
   );
 }
 
+/** An option's costs as a person reads them: each named, a yes/no one only when yes, and none the options all share. */
+function costText(p: LadderPayload, i: number): string {
+  return p.resources.map((r, k) => {
+    const c = p.options[i].costs[k];
+    if (p.options.every((o) => o.costs[k] === c)) return null;
+    if (r.logical) return c ? r.name : null;
+    return `${r.name} ${amount(p, k, c)}`;
+  }).filter((x): x is string => x != null).join(" · ");
+}
+
 function RungCard({ p, e, colors, act }: { p: LadderPayload; e: LadderEdge; colors: string[]; act?: (a: LadderAction) => void }) {
   const o = p.options[e.pick];
   const pickable = act && (e.kind === "close" || e.kind === "chosen" || e.kind === "passed");
@@ -35,12 +45,13 @@ function RungCard({ p, e, colors, act }: { p: LadderPayload; e: LadderEdge; colo
   const onClick = !pickable ? undefined
     : e.kind === "chosen" ? () => act!({ remove: o.name })
     : () => act!({ add: o.name, instead: instead && p.options[instead.pick].name });
+  const costs = costText(p, e.pick);
   const body = (
     <>
       <div className="sol-ladder__pick"><span className="sol-ladder__name">{o.name}</span><span className="sol-ladder__mono">{fmt3(o.score)}</span></div>
-      {p.resources.length > 0 && <div className="sol-ladder__mono">{o.costs.map((c, k) => amount(p, k, c)).join(" · ")}</div>}
+      {costs && <div className="sol-ladder__mono">{costs}</div>}
       <ValueBar p={p} i={e.pick} colors={colors} />
-      {e.struck.length > 0 && <div className="sol-ladder__struck">{e.struck.map((i) => <s key={i}>{p.options[i].name}</s>)}</div>}
+      {e.struck.length > 0 && <div className="sol-ladder__struck"><span>Rules out</span>{e.struck.map((i) => <s key={i}>{p.options[i].name}</s>)}</div>}
     </>
   );
   const cls = `sol-ladder__card is-${e.kind}`;
@@ -60,13 +71,14 @@ function SourceCard({ p, colors }: { p: LadderPayload; colors: string[] }) {
           {p.resources.map((r) => <span key={r.name}>{r.name}{r.floor != null ? ` ≥${formatScalar(r.floor)}` : ""}{r.limit != null ? ` ≤${formatScalar(r.limit)}` : ""}</span>)}
         </div>
       )}
-      {p.ruledOut.length > 0 && <div className="sol-ladder__struck">{p.ruledOut.map((n) => <s key={n}>{n}</s>)}</div>}
+      {p.ruledOut.length > 0 && <div className="sol-ladder__struck"><span>Ruled out</span>{p.ruledOut.map((n) => <s key={n}>{n}</s>)}</div>}
     </div>
   );
 }
 
-/** The Choice Ladder figure: value flows down and each card takes what its option serves. Forks
- *  split the flow by score and rejoin where the paths meet again. With `onAction` a fork's card takes that option. */
+/** The Choice Ladder figure: value flows down and each card takes what its option serves. Forks split the flow by score
+ *  and rejoin where the paths meet again; the plan's own path is drawn stronger. With `onAction` a fork's card takes that
+ *  option. */
 export function LadderView({ payload: p, width, height, fscale = 1, onAction }: { payload: LadderPayload; width: number; height: number; fscale?: number; onAction?: (a: LadderAction) => void }) {
   const colors = useSeriesColors();
   const m = metricsFor(fscale);
@@ -94,11 +106,13 @@ export function LadderView({ payload: p, width, height, fscale = 1, onAction }: 
       <div className="sol-ladder__scroll" onWheel={(e) => e.stopPropagation()}>
         <div className="sol-ladder__stage" style={{ width: L.width, height: heights ? L.height : undefined, visibility: heights ? "visible" : "hidden" }}>
           <svg className="sol-ladder__svg" width={L.width} height={heights ? L.height : 0} aria-hidden="true">
-            <g className="sol-ladder__flow" strokeWidth={SEAM}>
-              {L.pieces.map((x, i) => x.kind === "link"
-                ? <path key={i} d={x.d} className="sol-ladder__link" strokeWidth={x.width + SEAM} />
-                : x.kind !== "need" && <path key={i} d={x.d} />)}
-            </g>
+            {[false, true].map((onMain) => (
+              <g key={String(onMain)} className={`sol-ladder__flow${onMain ? " is-main" : ""}`} strokeWidth={SEAM}>
+                {L.pieces.map((x, i) => x.kind === "need" || L.onMain(x) !== onMain ? null : x.kind === "link"
+                  ? <path key={i} d={x.d} className="sol-ladder__link" strokeWidth={x.width + SEAM} />
+                  : <path key={i} d={x.d} />)}
+              </g>
+            ))}
             {L.pieces.map((x, i) => x.kind === "need" && <path key={i} d={x.d} className="sol-ladder__need" />)}
           </svg>
           {slot("source", <SourceCard p={p} colors={colors} />)}

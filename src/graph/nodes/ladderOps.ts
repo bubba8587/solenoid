@@ -146,7 +146,6 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
   const pri = priorities(opts, res);
   const order = opts.map((_, i) => i).sort((a, b) => (ahead(pri[a], pri[b]) ? -1 : ahead(pri[b], pri[a]) ? 1 : a - b));
   const rank = new Map(order.map((o, k) => [o, k]));
-  const rough = res.some(isRough);
 
   // `forced`: reached only by Musts and what they need, so no plan from here means none at all.
   interface S { id: number; taken: number[]; out: Set<number>; left: (number | null)[]; need: number[]; share: number; depth: number; noFork: boolean; ins: number[]; forced: boolean }
@@ -207,8 +206,8 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
           if (g < bestGap - EPS) { bestGap = g; b = i; }
         }
       }
-      // Without a rough cost only the set counts, so two sides that end with the same set are no choice at all.
-      if (b != null && !rough && sameSet(opts, open.filter((i) => !struck.includes(i)), s, a, b)) b = null;
+      // Two sides that end with the same set are no choice at all, only an order.
+      if (b != null && sameSet(opts, open.filter((i) => !struck.includes(i)), s, a, b)) b = null;
       const picks: { take: number; share: number; kind: LadderEdge["kind"] }[] = [];
       if (b != null && (chosen.includes(a) || chosen.includes(b))) {
         const win = chosen.lastIndexOf(b) > chosen.lastIndexOf(a) ? b : a;

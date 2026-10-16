@@ -11,7 +11,7 @@
       "y": 571,
       "init": {
         "label": "Decision Matrix",
-        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria and ranks them.\n\n**Flow:** a Frame of scores (rows are options, number columns are criteria) → **Decision Matrix** → `Option · Score · Rank`, best first. The Screen column comes from a **Note**: its frontmatter emits a keyed table, joined in by laptop name, and its text records the reasoning. A **Report** at the end pulls the results into a live memo.\n\nA small **Weights** table wires in one row per criterion: a **weight** (default 1; negative = lower is better, like Price) and an optional **Norm** override. Score = **Σ(value × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.",
+        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores each laptop against the criteria and ranks them, best first.\n\nThe **Weights** table says how much each criterion counts. A negative weight means lower is better, like Price. Change a weight and the ranking moves.\n\nThe screen scores come from a **Note** below, joined in by laptop name, and a **Report** at the end writes up the result.",
         "color": "violet",
         "width": 400,
         "height": 300
@@ -24,7 +24,7 @@
       "y": 609,
       "init": {
         "label": "Score table",
-        "frameText": "[{\"name\":\"Laptop\",\"type\":\"string\",\"values\":[\"ProBook\",\"UltraSlim\",\"PowerLifter\",\"Budget\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[9,6,10,4]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[6,9,5,7]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[1800,1400,2200,700]}]"
+        "frameText": "[{\"name\":\"Laptop\",\"type\":\"string\",\"values\":[\"ProBook\",\"UltraSlim\",\"PowerLifter\",\"ValueBook\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[9,6,10,4]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[6,9,5,7]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[1800,1400,2200,700]}]"
       }
     },
     {
@@ -34,7 +34,7 @@
       "y": 909,
       "init": {
         "label": "Screen scores",
-        "body": "---\nscreen:\n  - Laptop: ProBook\n    Screen: 8\n  - Laptop: UltraSlim\n    Screen: 9\n  - Laptop: PowerLifter\n    Screen: 7\n  - Laptop: Budget\n    Screen: 5\n---\n### Screen scores\nProBook 8: 4K panel with an anti-glare coating. UltraSlim 9: brightest of the four. PowerLifter 7: sharp but reflective. Budget 5: a review flagged weak brightness.\n\nThe frontmatter rows emit a keyed table directly, one **frame** output, so each score stays attached to its laptop however the main table is sorted.",
+        "body": "---\nscreen:\n  - Laptop: ProBook\n    Screen: 8\n  - Laptop: UltraSlim\n    Screen: 9\n  - Laptop: PowerLifter\n    Screen: 7\n  - Laptop: ValueBook\n    Screen: 5\n---\n### Screen scores\nProBook 8: 4K panel with an anti-glare coating. UltraSlim 9: brightest of the four. PowerLifter 7: sharp but reflective. ValueBook 5: a review flagged weak brightness.\n\nThe list at the top of this note is a table of its own, so each score stays with its laptop however the main table is sorted.",
         "color": "amber",
         "width": 400,
         "height": 250
@@ -78,8 +78,8 @@
     {
       "id": "noteDM",
       "type": "NoteNode",
-      "x": 1274,
-      "y": 1720,
+      "x": 1890,
+      "y": 2000,
       "init": {
         "label": "Mixed scales, one range",
         "body": "Price is in **dollars**; the rest are out of **10**. Scored raw, the dollar column would swamp everything, so each column is first squeezed onto the same footing; then only the **weights** decide influence.\n\n**÷Max** divides a column by its biggest value, so each tops out at 1. **Rank** keeps only the order: $2,200 counts as “most expensive”, not as 2,200 of anything. Price uses Rank; the rest follow the ÷Max default.\n\n**Breakdown** is on: each criterion column is its **signed contribution**, and the contributions sum to the Score. Price shows negative, the penalty it is.",
@@ -156,7 +156,7 @@
       "y": 573,
       "init": {
         "label": "Sensitivity",
-        "body": "# Stress-test the weights\nThe winner depends on the weights picked above. **Sensitivity** re-scores the same options under several weight **scenarios**, one per weight column of the Scenarios frame, and returns a **Cube**: per scenario the **Winner**, the **Margin** (top score minus runner-up), and the full **Ranking** nested in the cell. Drill in.\n\nThe winner flips: **UltraSlim** under Balanced, **PowerLifter** when performance dominates. Under Budget the Winner cell reads **UltraSlim = Budget**, a dead tie at Margin 0. That pick is fragile; the first two hold.",
+        "body": "# Stress-test the weights\nThe winner depends on the weights picked above. **Sensitivity** re-scores the same laptops under several sets of weights, one per column of the Scenarios table. For each it gives the **Winner**, the **Margin** over the runner-up, and the full **Ranking** to open.\n\n**UltraSlim** wins under Balanced and **PowerLifter** when performance dominates. Under Budget it reads **Tie: UltraSlim, ValueBook** at Margin 0: that pick is fragile, the first two hold.",
         "color": "blue",
         "width": 380,
         "height": 280
@@ -264,7 +264,7 @@
       "y": 2080,
       "init": {
         "label": "Flip points",
-        "body": "### How close is the call?\n**Flip points** reads the same Weights table. For each criterion it finds how far that weight can move, the others held, before another laptop takes first place, and which one. A flip close to the weight means the pick hangs on it.",
+        "body": "### How close is the call?\n**Flip points** reads the same Weights table. For each criterion it shows the weight at which another laptop would win if that criterion mattered less, or more. Where nothing would change, it names the laptop that stays on top. A flip near the weight means the pick hangs on it.",
         "color": "blue",
         "width": 380,
         "height": 200
