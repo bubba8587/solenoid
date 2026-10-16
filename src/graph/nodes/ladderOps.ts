@@ -6,8 +6,11 @@ import type { LadderEdge, LadderState } from "../chartValue";
  *  per resource, and the options it needs or can't share a plan with (positions in the same list). */
 export interface LadderOption { score: number; value: number[]; costs: number[]; requires: number[]; excludes: number[]; must?: boolean }
 
-/** A resource the options spend: a countable limit, or null for a rough cost with no total (political capital). */
-export interface LadderResource { limit: number | null }
+/** A resource the options spend: at most `limit` and at least `floor`, either null when absent. With neither it is a rough
+ *  cost with no total (political capital); with either it is countable. */
+export interface LadderResource { limit: number | null; floor?: number | null }
+
+export const isRough = (r: LadderResource): boolean => r.limit == null && r.floor == null;
 
 export interface LadderResult { states: LadderState[]; edges: LadderEdge[]; main: number[] }
 
@@ -32,7 +35,7 @@ const EPS = 1e-9;
 /** Where an option sits in the ladder's order: value for its share of the rough costs, or plain value when there are none.
  *  An option that costs nothing rough, or earns some back, comes first, by value. */
 export function priorities(opts: LadderOption[], res: LadderResource[]): { tier: number; p: number }[] {
-  const rough = res.map((r, k) => (r.limit == null ? k : -1)).filter((k) => k >= 0);
+  const rough = res.map((r, k) => (isRough(r) ? k : -1)).filter((k) => k >= 0);
   const scale = rough.map((k) => Math.max(EPS, ...opts.map((o) => Math.abs(o.costs[k]))));
   return opts.map((o) => {
     if (!rough.length) return { tier: 1, p: o.score };
@@ -52,16 +55,20 @@ export function isClose(a: { tier: number; p: number }, b: { tier: number; p: nu
 
 const fits = (o: LadderOption, left: (number | null)[]): boolean => o.costs.every((c, r) => left[r] == null || c <= left[r]! + EPS);
 const spend = (left: (number | null)[], o: LadderOption): (number | null)[] => left.map((l, r) => (l == null ? null : l - o.costs[r]));
+/** What each floor still needs once `o` is taken. */
+const meet = (need: number[], o: LadderOption): number[] => need.map((x, r) => Math.max(0, x - o.costs[r]));
 const clash = (opts: LadderOption[], i: number, taken: Iterable<number>): boolean => {
   for (const t of taken) if (opts[i].excludes.includes(t) || opts[t].excludes.includes(i)) return true;
   return false;
 };
 
-/** The best plan from what's open (in priority order): with a countable limit, the most total score within the limits,
- *  honoring every Requires and Excludes, by exact branch and bound. With none, everything open taken in priority order,
- *  an option that conflicts with one ahead of it left out, as is one whose Requires can't be met. */
-export function bestPlan(opts: LadderOption[], open: number[], taken: number[], left: (number | null)[]): number[] {
-  const countable = left.some((l) => l != null);
+/** The best plan from what's open (in priority order): with a countable limit or floor, the most total score within the
+ *  limits that meets every floor (`need`, what each still needs), honoring every Requires and Excludes, by exact branch
+ *  and bound; null when no plan meets the floors. With none, everything open taken in priority order, an option that
+ *  conflicts with one ahead of it left out, as is one whose Requires can't be met. */
+export function bestPlan(opts: LadderOption[], open: number[], taken: number[], left: (number | null)[], need: number[] = []): number[] | null {
+  const floors = need.some((x) => x > EPS);
+  const countable = floors || left.some((l) => l != null);
   if (!countable) {
     const ids: number[] = [];
     for (const o of open) if (opts[o].score > 0 && !clash(opts, o, [...taken, ...ids])) ids.push(o);
@@ -76,25 +83,33 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
   const n = open.length;
   const tail = new Array(n + 1).fill(0);
   for (let i = n - 1; i >= 0; i--) tail[i] = tail[i + 1] + Math.max(0, opts[open[i]].score);
+  // How much of each floored resource everything from position i on could still bring.
+  const need0 = need.length ? need : left.map(() => 0);
+  const reach = need0.map((_, r) => {
+    const t = new Array(n + 1).fill(0);
+    for (let i = n - 1; i >= 0; i--) t[i] = t[i + 1] + (opts[open[i]].score > 0 ? Math.max(0, opts[open[i]].costs[r]) : 0);
+    return t;
+  });
   const have = new Set(taken);
   const valid = (ids: number[]) => ids.every((i) => opts[i].requires.every((r) => have.has(r) || ids.includes(r)));
-  let best: { total: number; ids: number[] } = { total: -1, ids: [] };
+  let best: { total: number; ids: number[] } | null = null;
   const ids: number[] = [];
   let visits = 0;
-  const dfs = (i: number, l: (number | null)[], total: number) => {
+  const dfs = (i: number, l: (number | null)[], nd: number[], total: number) => {
     if (++visits > SEARCH_BUDGET) throw solError("#VALUE!", "Choice Ladder: too many combinations to search; narrow the options");
-    if (total > best.total + EPS && valid(ids)) best = { total, ids: [...ids] };
-    if (i >= n || total + tail[i] <= best.total + EPS) return;
+    if ((best == null || total > best.total + EPS) && nd.every((x) => x <= EPS) && valid(ids)) best = { total, ids: [...ids] };
+    if (i >= n || (best != null && total + tail[i] <= best.total + EPS)) return;
+    if (nd.some((x, r) => x > reach[r][i] + EPS)) return;
     const o = open[i];
     if (opts[o].score > 0 && fits(opts[o], l) && !clash(opts, o, [...taken, ...ids])) {
       ids.push(o);
-      dfs(i + 1, countable ? spend(l, opts[o]) : l, total + opts[o].score);
+      dfs(i + 1, spend(l, opts[o]), meet(nd, opts[o]), total + opts[o].score);
       ids.pop();
     }
-    dfs(i + 1, l, total);
+    dfs(i + 1, l, nd, total);
   };
-  dfs(0, left, 0);
-  return best.ids;
+  dfs(0, left, need0, 0);
+  return best == null ? null : (best as { ids: number[] }).ids;
 }
 
 /** Why the Must options can't all be taken ([[C124]] dealBreakers): two of them (or what they need) exclude each other,
@@ -113,11 +128,11 @@ export function mustClash(opts: LadderOption[], res: LadderResource[]): { clash:
 }
 
 /** Whether taking `a` or `b` next ends with the same set either way. */
-function sameSet(opts: LadderOption[], open: number[], s: { taken: number[]; left: (number | null)[] }, a: number, b: number): boolean {
+function sameSet(opts: LadderOption[], open: number[], s: { taken: number[]; left: (number | null)[]; need: number[] }, a: number, b: number): boolean {
   const after = (x: number) => {
     const taken = [...s.taken, x];
     const rest = open.filter((i) => i !== x && !clash(opts, i, taken));
-    return new Set([x, ...bestPlan(opts, rest, taken, spend(s.left, opts[x]))]);
+    return new Set([x, ...(bestPlan(opts, rest, taken, spend(s.left, opts[x]), meet(s.need, opts[x])) ?? [])]);
   };
   const A = after(a), B = after(b);
   return A.size === B.size && [...A].every((i) => B.has(i));
@@ -131,19 +146,21 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
   const pri = priorities(opts, res);
   const order = opts.map((_, i) => i).sort((a, b) => (ahead(pri[a], pri[b]) ? -1 : ahead(pri[b], pri[a]) ? 1 : a - b));
   const rank = new Map(order.map((o, k) => [o, k]));
-  const rough = res.some((r) => r.limit == null);
+  const rough = res.some(isRough);
 
-  interface S { id: number; taken: number[]; out: Set<number>; left: (number | null)[]; share: number; depth: number; noFork: boolean; ins: number[] }
+  interface S { id: number; taken: number[]; out: Set<number>; left: (number | null)[]; need: number[]; share: number; depth: number; noFork: boolean; ins: number[] }
   const states: S[] = [];
   const edges: LadderEdge[] = [];
-  // Two paths merge when their futures match: the same options still open and the same countable limits left.
-  const futureKey = (taken: number[], out: Set<number>, left: (number | null)[]) => {
+  // Two paths merge when their futures match: the same options still open, the same countable limits left and floors owed.
+  const futureKey = (taken: number[], out: Set<number>, left: (number | null)[], need: number[]) => {
     const has = new Set(taken);
     const open = order.filter((i) => !has.has(i) && !out.has(i) && !clash(opts, i, taken));
     const met = open.map((i) => (opts[i].requires.every((r) => has.has(r) || open.includes(r)) ? 1 : 0)).join("");
-    return `${open.join(",")}|${met}|${left.map((l) => (l == null ? "" : Math.round(l * 1e6))).join(",")}`;
+    const num = (v: number | null) => (v == null ? "" : Math.round(v * 1e6));
+    return `${open.join(",")}|${met}|${left.map(num).join(",")}|${need.map(num).join(",")}`;
   };
-  const root: S = { id: 0, taken: [], out: new Set(opts.map((o, i) => (o.score > 0 || o.must ? -1 : i)).filter((i) => i >= 0)), left: res.map((r) => r.limit), share: 1, depth: 0, noFork: false, ins: [] };
+  const root: S = { id: 0, taken: [], out: new Set(opts.map((o, i) => (o.score > 0 || o.must ? -1 : i)).filter((i) => i >= 0)), left: res.map((r) => r.limit), need: res.map((r) => r.floor ?? 0), share: 1, depth: 0, noFork: false, ins: [] };
+  const floored = root.need.some((x) => x > EPS);
   states.push(root);
   let level: S[] = [root];
   let ends = 0;
@@ -156,7 +173,9 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
       const open = order.filter((i) => !has.has(i) && !s.out.has(i) && !clash(opts, i, s.taken));
       // Musts come before anything else, in order, and strike nothing.
       const must = order.find((i) => opts[i].must && !has.has(i));
-      const plan = must != null ? new Set<number>() : new Set(bestPlan(opts, open, s.taken, s.left));
+      const found = must != null ? [] : bestPlan(opts, open, s.taken, s.left, s.need);
+      if (found == null && s.id === 0) throw solError("#VALUE!", "Choice Ladder: no plan meets every At least");
+      const plan = new Set(found ?? []);
       let a = must ?? order.find((i) => plan.has(i) && !has.has(i));
       if (a == null) { ends++; continue; }
 
@@ -165,6 +184,8 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
 
       // The pick's turn: anything it needs comes first.
       let kind: LadderEdge["kind"] = must != null ? "must" : "clear";
+      // Taken only because a floor still needs it: the plan without the floors would leave it.
+      if (kind === "clear" && s.need.some((x) => x > EPS) && !(bestPlan(opts, open, s.taken, s.left) ?? []).includes(a)) kind = "quota";
       const needs = (i: number): number | null => opts[i].requires.filter((r) => !has.has(r)).sort((x, y) => rank.get(x)! - rank.get(y)!)[0] ?? null;
       for (let guard = 0; guard < opts.length; guard++) {
         const nd = needs(a);
@@ -179,6 +200,8 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
         for (const i of open) {
           if (i === a || struck.includes(i) || needs(i) != null || !fits(opts[i], s.left)) continue;
           if (!isClose(pri[a], pri[i], gap)) continue;
+          // A side that would leave a floor out of reach is no side at all.
+          if (floored && bestPlan(opts, open.filter((k) => k !== i && !clash(opts, k, [...s.taken, i])), [...s.taken, i], spend(s.left, opts[i]), meet(s.need, opts[i])) == null) continue;
           const g = Math.abs(pri[a].p - pri[i].p);
           if (g < bestGap - EPS) { bestGap = g; b = i; }
         }
@@ -190,7 +213,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
         const win = chosen.lastIndexOf(b) > chosen.lastIndexOf(a) ? b : a;
         picks.push({ take: win, share: s.share, kind: "chosen" });
         // The side passed over stays in view, carrying nothing, so it can be taken instead.
-        const t: S = { id: states.length, taken: [...s.taken, win === a ? b : a], out: s.out, left: s.left, share: 0, depth: s.depth + 1, noFork: true, ins: [edges.length] };
+        const t: S = { id: states.length, taken: [...s.taken, win === a ? b : a], out: s.out, left: s.left, need: s.need, share: 0, depth: s.depth + 1, noFork: true, ins: [edges.length] };
         states.push(t);
         edges.push({ from: s.id, to: t.id, pick: win === a ? b : a, share: 0, kind: "passed", struck: [] });
       } else if (b != null && ends + next.size + (level.length - li) + 1 <= MAX_ENDS) {
@@ -206,10 +229,11 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
         const taken = [...s.taken, pk.take];
         const out = new Set([...s.out, ...struck]);
         const left = spend(s.left, opts[pk.take]);
-        const key = futureKey(taken, out, left);
+        const need = meet(s.need, opts[pk.take]);
+        const key = futureKey(taken, out, left, need);
         let t = next.get(key);
         if (!t) {
-          t = { id: states.length, taken, out, left, share: 0, depth: s.depth + 1, noFork: pk.kind === "close", ins: [] };
+          t = { id: states.length, taken, out, left, need, share: 0, depth: s.depth + 1, noFork: pk.kind === "close", ins: [] };
           states.push(t);
           next.set(key, t);
         } else {

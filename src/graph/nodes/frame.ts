@@ -1633,7 +1633,7 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 export class ChoiceLadderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. Optional Requires and Excludes text columns list other options by name; optional Must and Never logical columns force an option in or out.",
-    limits: "A row per resource naming an Options column. With a Limit it is counted; with none it is a rough cost, like political capital, that orders the ladder by value for what it costs.",
+    limits: "A row per resource naming an Options column (a logical one counts TRUE as 1). At most caps it and At least sets a floor, like at least two vegetarian; with neither it is a rough cost, like political capital, that orders the ladder by value for what it costs.",
     close: "Two options whose places differ by no more than this share of the larger fork the ladder. 0.05 or 5 both read as 5%.",
     chart: "The ladder: value flows down and each rung takes what it serves. Click a card at a fork to take it.",
   };
@@ -1659,7 +1659,7 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
     weights: DecisionMatrixNode.frameHints.weights,
     limits: { columns: [
       { name: "Resource", type: "string", cells: ["Dollars", "Meals", "Hours"] },
-      { name: "Limit", type: "number", cells: [450, 6, 10] },
+      { name: "At most", type: "number", cells: [450, 6, 10] },
     ] },
   };
 

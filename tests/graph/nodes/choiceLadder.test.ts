@@ -22,10 +22,12 @@ const run = (p: "r" | "p", init?: ConstructorParameters<typeof ChoiceLadderNode>
 };
 
 describe("ChoiceLadderNode", () => {
-  it("plans the restaurant trip within $450 and six meals, the expensive top pick struck", () => {
+  it("plans the restaurant trip within $450 and six meals with two vegetarian, the expensive top pick struck", () => {
     const { plan, n } = run("r");
-    expect(col(plan, "Restaurant")).toEqual(["Kato omakase", "Marrow", "Brass Oyster", "Saffron Court", "Taqueria Sol", "Ichi noodle bar"]);
+    expect(col(plan, "Restaurant")).toEqual(["Kato omakase", "Marrow", "Saffron Court", "Lune bistro", "Taqueria Sol", "Bao House"]);
     expect((col(plan, "Dollars") as number[]).reduce((s, v) => s + v, 0)).toBeLessThanOrEqual(450);
+    expect(col(plan, "Vegetarian so far").at(-1)).toBe(2);
+    expect(col(plan, "Dollars so far").at(-1)).toBe(438);
     const p = payloadOf(n);
     expect(p.edges[p.main[0]].struck.map((i) => p.options[i].name)).toContain("Hearth & Ember");
   });
@@ -59,7 +61,7 @@ describe("ChoiceLadderNode", () => {
 
   it("a blank limit is a rough cost; a number is countable", () => {
     expect(payloadOf(run("p").n).resources).toEqual([expect.objectContaining({ name: "Capital", limit: null })]);
-    expect(payloadOf(run("r").n).resources.map((r) => r.limit)).toEqual([450, 6]);
+    expect(payloadOf(run("r").n).resources.map((r) => [r.limit, r.floor])).toEqual([[450, null], [6, null], [null, 2]]);
   });
 
   it("takes a saved choice at its fork, and the plan follows", () => {
@@ -169,5 +171,44 @@ describe("Choice Ladder deal-breakers, Must and Never ([[C124]] dealBreakers)", 
     const out = n.data({ frame: [frame([...r.columns, { name: "Must", type: "logical", values: rn.map((x) => ["Hearth & Ember", "Kato omakase", "Fennel"].includes(x)) }])], weights: [seedFrame("rWeights")], limits: [seedFrame("rLimits")] });
     expect(isSolError(out.frame)).toBe(true);
     expect((out.frame as unknown as { message: string }).message).toMatch(/Dollars/);
+  });
+});
+
+describe("Choice Ladder floors (At least)", () => {
+  it("a side whose floor needs filling takes an option for it, marked Needed", () => {
+    const p = payloadOf(run("r").n);
+    const quota = p.edges.filter((e) => e.kind === "quota");
+    expect(quota.map((e) => p.options[e.pick].name)).toEqual(["Bao House"]);
+  });
+
+  it("every path meets the floor", () => {
+    const p = payloadOf(run("r").n);
+    const veg = new Set(["Saffron Court", "Bao House", "Fennel"]);
+    for (const s of p.states.filter((x) => x.end && x.share > 0)) expect(s.taken.filter((i) => veg.has(p.options[i].name)).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("a floor the options can't reach is #VALUE! naming it", () => {
+    const n = new ChoiceLadderNode();
+    const out = n.data({ frame: [seedFrame("rOpts")], weights: [seedFrame("rWeights")], limits: [frame([
+      { name: "Resource", type: "string", values: ["Vegetarian"] }, { name: "At least", type: "number", values: [4] },
+    ])] });
+    expect((out.frame as unknown as { message: string }).message).toMatch(/Vegetarian's At least/);
+  });
+
+  it("a floor that fits no plan within the caps is #VALUE!", () => {
+    const n = new ChoiceLadderNode();
+    const out = n.data({ frame: [seedFrame("rOpts")], weights: [seedFrame("rWeights")], limits: [frame([
+      { name: "Resource", type: "string", values: ["Dollars", "Vegetarian"] },
+      { name: "At most", type: "number", values: [100, null] }, { name: "At least", type: "number", values: [null, 3] },
+    ])] });
+    expect((out.frame as unknown as { message: string }).message).toMatch(/no plan meets every At least/);
+  });
+
+  it("a table without At most or At least reads its first number column as the cap", () => {
+    const n = new ChoiceLadderNode();
+    n.data({ frame: [seedFrame("rOpts")], weights: [seedFrame("rWeights")], limits: [frame([
+      { name: "Resource", type: "string", values: ["Dollars"] }, { name: "Budget", type: "number", values: [200] },
+    ])] });
+    expect(payloadOf(n).resources).toEqual([expect.objectContaining({ limit: 200, floor: null })]);
   });
 });

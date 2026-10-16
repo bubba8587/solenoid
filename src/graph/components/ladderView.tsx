@@ -57,7 +57,7 @@ function SourceCard({ p, colors }: { p: LadderPayload; colors: string[] }) {
       </div>
       {p.resources.length > 0 && (
         <div className="sol-ladder__key sol-ladder__mono">
-          {p.resources.map((r) => <span key={r.name}>{r.name}{r.limit != null ? ` ${formatScalar(r.limit)}` : ""}</span>)}
+          {p.resources.map((r) => <span key={r.name}>{r.name}{r.floor != null ? ` ≥${formatScalar(r.floor)}` : ""}{r.limit != null ? ` ≤${formatScalar(r.limit)}` : ""}</span>)}
         </div>
       )}
       {p.ruledOut.length > 0 && <div className="sol-ladder__struck">{p.ruledOut.map((n) => <s key={n}>{n}</s>)}</div>}

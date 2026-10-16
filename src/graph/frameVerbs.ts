@@ -14,7 +14,7 @@ import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
 import { allocate, type AllocateMode } from "./nodes/allocateOps";
-import { buildLadder, mustClash, type LadderOption } from "./nodes/ladderOps";
+import { buildLadder, mustClash, isRough, type LadderOption } from "./nodes/ladderOps";
 import type { LadderPayload } from "./chartValue";
 import { aggregate, percentileOf, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
@@ -1794,24 +1794,30 @@ export function decisionMatrix(
 
 // ─── Choice Ladder (several options under limits) ───────────────────────────────
 
-/** The limits a Choice Ladder spends: one row per resource, each matched to the Options column of the same name. A row
- *  with no number is a rough cost with no total. */
-function ladderResources(f: FrameValue, limits: FrameValue | null): { name: string; limit: number | null; col: FrameColumn }[] {
+/** The limits a Choice Ladder spends: one row per resource, each matched to the Options column of the same name, with
+ *  `At most` and `At least`. Without either header the first number column is At most. A row with neither number is a
+ *  rough cost with no total. */
+function ladderResources(f: FrameValue, limits: FrameValue | null): { name: string; limit: number | null; floor: number | null; col: FrameColumn }[] {
   if (!limits) return [];
   const nameCol = limits.columns.find((c) => c.type === "string");
   const nums = limits.columns.filter((c) => c.type === "number");
-  const limCol = nums.find((c) => ["limit", "limits", "value", "amount"].includes(critKey(c.name))) ?? nums[0] ?? null;
+  const named = (k: string) => nums.find((c) => critKey(c.name) === k) ?? null;
+  const loCol = named("at least");
+  const hiCol = named("at most") ?? (loCol ? null : nums[0] ?? null);
   if (!nameCol) throw solError("#VALUE!", "Limits needs a text column naming each resource");
-  const out: { name: string; limit: number | null; col: FrameColumn }[] = [];
+  const out: { name: string; limit: number | null; floor: number | null; col: FrameColumn }[] = [];
   const seen = new Set<string>();
+  const num = (c: FrameColumn | null, i: number) => {
+    const cell = c ? c.values[i] ?? null : null;
+    if (isSolError(cell)) throw cell;
+    return typeof cell === "number" && Number.isFinite(cell) ? cell : null;
+  };
   nameCol.values.forEach((v, i) => {
     if (typeof v !== "string" || !v.trim() || seen.has(critKey(v))) return;
     seen.add(critKey(v));
-    const cell = limCol ? limCol.values[i] ?? null : null;
-    if (isSolError(cell)) throw cell;
-    const col = f.columns.find((c) => c.type === "number" && critKey(c.name) === critKey(v));
+    const col = f.columns.find((c) => (c.type === "number" || c.type === "logical") && critKey(c.name) === critKey(v));
     if (!col) throw solError("#VALUE!", `Choice Ladder: no Options number column is named ${v.trim()}`);
-    out.push({ name: col.name, limit: typeof cell === "number" && Number.isFinite(cell) ? cell : null, col });
+    out.push({ name: col.name, limit: num(hiCol, i), floor: num(loCol, i), col });
   });
   return out;
 }
@@ -1869,7 +1875,7 @@ export function choiceLadder(
   const costOf = (col: FrameColumn, i: number): number => {
     const v = col.values[i] ?? null;
     if (isSolError(v)) throw v;
-    return typeof v === "number" && Number.isFinite(v) ? v : 0;
+    return typeof v === "number" && Number.isFinite(v) ? v : v === true ? 1 : 0;
   };
   const opts: LadderOption[] = order.map((k, n) => {
     const i = rowAt[n];
@@ -1877,7 +1883,7 @@ export function choiceLadder(
       score: ds.scores[k],
       // A criterion weighted against counts its lowness as value, so every strand is a share of what the option serves.
       value: ds.criteria.map((_, j) => (ds.weightShare[j] >= 0 ? ds.contrib[j][k] : -ds.weightShare[j] + ds.contrib[j][k])),
-      costs: resources.map((r) => (r.limit == null ? costOf(r.col, i) : Math.max(0, costOf(r.col, i)))),
+      costs: resources.map((r) => (isRough(r) ? costOf(r.col, i) : Math.max(0, costOf(r.col, i)))),
       requires: listed(requiresCol, i),
       excludes: listed(excludesCol, i),
       must: mustCol?.values[i] === true,
@@ -1886,10 +1892,13 @@ export function choiceLadder(
   const bad = mustClash(opts, resources);
   if (bad && "clash" in bad) throw solError("#VALUE!", `Choice Ladder: Must options ${names[bad.clash[0]]} and ${names[bad.clash[1]]} exclude each other`);
   if (bad) throw solError("#VALUE!", `Choice Ladder: the Must options need more ${resources[bad.over].name} than its limit`);
+  resources.forEach((r, k) => {
+    if (r.floor != null && opts.reduce((s, o) => s + (o.score > 0 || o.must ? o.costs[k] : 0), 0) < r.floor - 1e-9) throw solError("#VALUE!", `Choice Ladder: the options can't reach ${r.name}'s At least`);
+  });
   const gap = !Number.isFinite(close) || close < 0 ? 0 : close >= 1 ? close / 100 : close;
-  const res = buildLadder(opts, resources.map((r) => ({ limit: r.limit })), gap, choices.map(indexOf).filter((i) => i >= 0));
+  const res = buildLadder(opts, resources.map((r) => ({ limit: r.limit, floor: r.floor })), gap, choices.map(indexOf).filter((i) => i >= 0));
 
-  const CHOICE_TEXT = { clear: "Clear", close: "Close", chosen: "Your pick", passed: "Passed", must: "Must", required: "Needed" } as const;
+  const CHOICE_TEXT = { clear: "Clear pick", close: "Close", chosen: "Your pick", passed: "Passed", must: "Must", required: "Needed", quota: "Needed" } as const;
   const path = res.main.map((e) => res.edges[e]);
   const cols: FrameColumn[] = [
     { name: "Rung", type: "number", values: path.map((_, k) => k + 1) },
@@ -1900,6 +1909,14 @@ export function choiceLadder(
       name: r.name, type: "number", values: path.map((e) => opts[e.pick].costs[k]),
       ...(r.col.unit ? { unit: r.col.unit } : {}), ...(r.col.format ? { format: r.col.format } : {}),
     })),
+    // A running total per resource, so a rough cost can be cut wherever the person judges it runs out.
+    ...resources.map((r, k): FrameColumn => {
+      let run = 0;
+      return {
+        name: `${r.name} so far`, type: "number", values: path.map((e) => (run += opts[e.pick].costs[k])),
+        ...(r.col.unit ? { unit: r.col.unit } : {}), ...(r.col.format ? { format: r.col.format } : {}),
+      };
+    }),
   ];
   const headers = makeHeaders(cols.map((c) => c.name), cols.length);
   const settled = new Set(res.edges.filter((e) => e.kind === "chosen").map((e) => names[e.pick]));
@@ -1909,7 +1926,7 @@ export function choiceLadder(
       kind: "ladder",
       options: opts.map((o, k) => ({ name: names[k], score: o.score, costs: o.costs, value: o.value })),
       criteria: ds.criteria.map((c) => c.name),
-      resources: resources.map((r) => ({ name: r.name, limit: r.limit, format: r.col.format ?? null })),
+      resources: resources.map((r) => ({ name: r.name, limit: r.limit, floor: r.floor, format: r.col.format ?? null })),
       states: res.states, edges: res.edges, main: res.main,
       choices: choices.filter((c) => settled.has(names[indexOf(c)] ?? "")),
       ruledOut: [...out].sort((a, b) => a - b).map(nameOf),

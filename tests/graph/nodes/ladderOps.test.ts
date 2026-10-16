@@ -184,7 +184,7 @@ describe("Choice Ladder kernel: pieces", () => {
   });
   it("bestPlan honors Excludes within a countable limit", () => {
     const opts = [opt(0.9, [1], [], [1]), opt(0.8, [1], [], [0]), opt(0.3, [1])];
-    expect(bestPlan(opts, [0, 1, 2], [], [2]).sort()).toEqual([0, 2]);
+    expect(bestPlan(opts, [0, 1, 2], [], [2])!.sort()).toEqual([0, 2]);
   });
   it("refuses more options than it searches", () => {
     expect(() => buildLadder(Array.from({ length: 41 }, () => opt(0.5, [1])), [{ limit: 10 }], 0.05)).toThrow();
@@ -196,5 +196,20 @@ describe("Choice Ladder kernel: pieces", () => {
     const t = performance.now();
     buildLadder(opts, [{ limit: 600 }, { limit: 8 }], 0.05);
     expect(performance.now() - t).toBeLessThan(5000);
+  });
+});
+
+describe("Choice Ladder kernel: floors", () => {
+  it("bestPlan meets a floor at the least cost in score, and says null when none can", () => {
+    // value, [budget, veg]
+    const opts = [opt(0.9, [5, 0]), opt(0.8, [5, 0]), opt(0.5, [5, 1]), opt(0.4, [5, 1])];
+    expect(bestPlan(opts, [0, 1, 2, 3], [], [10, null])!.sort()).toEqual([0, 1]);
+    expect(bestPlan(opts, [0, 1, 2, 3], [], [10, null], [0, 1])!.sort()).toEqual([0, 2]);
+    expect(bestPlan(opts, [0, 1, 2, 3], [], [10, null], [0, 3])).toBeNull();
+  });
+  it("a floor alone makes a resource countable, not rough", () => {
+    const l = buildLadder([opt(0.9, [0]), opt(0.5, [1])], [{ limit: null, floor: 1 }], 0);
+    expect(mainPicks(l).sort()).toEqual([0, 1]);
+    expect(priorities([opt(0.9, [0])], [{ limit: null, floor: 1 }])[0].tier).toBe(1);
   });
 });

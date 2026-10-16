@@ -24,7 +24,7 @@
       "y": 0,
       "init": {
         "label": "Restaurants",
-        "frameText": "[{\"name\":\"Restaurant\",\"type\":\"string\",\"values\":[\"Hearth & Ember\",\"Kato omakase\",\"Lune bistro\",\"Taqueria Sol\",\"Ichi noodle bar\",\"Brass Oyster\",\"Marrow\",\"Corner Deli\",\"Saffron Court\",\"Rooftop Tiki\",\"Bao House\",\"Fennel\"]},{\"name\":\"Food\",\"type\":\"number\",\"values\":[10,9,8,8,7,8,9,6,8,5,7,8]},{\"name\":\"Uniqueness\",\"type\":\"number\",\"values\":[8,9,5,6,5,7,8,4,8,5,6,9]},{\"name\":\"Vibe\",\"type\":\"number\",\"values\":[9,7,9,5,6,8,6,4,7,10,6,8]},{\"name\":\"Buzz\",\"type\":\"number\",\"values\":[9,8,7,7,8,6,7,6,5,8,7,6]},{\"name\":\"Ease\",\"type\":\"number\",\"values\":[3,4,7,9,9,6,5,10,6,6,8,5]},{\"name\":\"Dollars\",\"type\":\"number\",\"values\":[220,160,75,18,22,90,110,15,45,60,30,140]},{\"name\":\"Meals\",\"type\":\"number\",\"values\":[2,1,1,1,1,1,1,1,1,1,1,2]}]"
+        "frameText": "[{\"name\":\"Restaurant\",\"type\":\"string\",\"values\":[\"Hearth & Ember\",\"Kato omakase\",\"Lune bistro\",\"Taqueria Sol\",\"Ichi noodle bar\",\"Brass Oyster\",\"Marrow\",\"Corner Deli\",\"Saffron Court\",\"Rooftop Tiki\",\"Bao House\",\"Fennel\"]},{\"name\":\"Food\",\"type\":\"number\",\"values\":[10,9,8,8,7,8,9,6,8,5,7,8]},{\"name\":\"Uniqueness\",\"type\":\"number\",\"values\":[8,9,5,6,5,7,8,4,8,5,6,9]},{\"name\":\"Vibe\",\"type\":\"number\",\"values\":[9,7,9,5,6,8,6,4,7,10,6,8]},{\"name\":\"Buzz\",\"type\":\"number\",\"values\":[9,8,7,7,8,6,7,6,5,8,7,6]},{\"name\":\"Ease\",\"type\":\"number\",\"values\":[3,4,7,9,9,6,5,10,6,6,8,5]},{\"name\":\"Dollars\",\"type\":\"number\",\"values\":[220,160,75,18,22,90,110,15,45,60,30,140]},{\"name\":\"Meals\",\"type\":\"number\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1]},{\"name\":\"Vegetarian\",\"type\":\"logical\",\"values\":[false,false,false,false,false,false,false,false,true,false,true,true]}]"
       }
     },
     {
@@ -44,7 +44,7 @@
       "y": 700,
       "init": {
         "label": "Limits",
-        "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Dollars\",\"Meals\"]},{\"name\":\"Limit\",\"type\":\"number\",\"values\":[450,6]}]"
+        "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Dollars\",\"Meals\",\"Vegetarian\"]},{\"name\":\"At most\",\"type\":\"number\",\"values\":[450,6,null]},{\"name\":\"At least\",\"type\":\"number\",\"values\":[null,null,2]}]"
       }
     },
     {
@@ -110,7 +110,7 @@
       "y": 1950,
       "init": {
         "label": "Limits",
-        "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Capital\"]},{\"name\":\"Limit\",\"type\":\"number\",\"values\":[null]}]"
+        "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Capital\"]},{\"name\":\"At most\",\"type\":\"number\",\"values\":[null]}]"
       }
     },
     {

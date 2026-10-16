@@ -193,14 +193,14 @@ export interface XYPayload {
 export interface LadderState { id: number; depth: number; share: number; taken: number[]; end: boolean }
 /** A rung: taking `pick` from one state to the next with `share` of the flow. `close` is one side of a fork, `chosen` a
  *  fork the user settled, `required` an option taken first because the next one needs it. `struck` options are ruled out here. */
-export interface LadderEdge { from: number; to: number; pick: number; share: number; kind: "clear" | "close" | "chosen" | "passed" | "must" | "required"; struck: number[] }
+export interface LadderEdge { from: number; to: number; pick: number; share: number; kind: "clear" | "close" | "chosen" | "passed" | "must" | "required" | "quota"; struck: number[] }
 export interface LadderPayload {
   kind: "ladder";
   /** In rank order; `value` is what each serves per criterion, never negative. */
   options: { name: string; score: number; costs: number[]; value: number[] }[];
   criteria: string[];
   /** A null limit is a rough cost with no total. */
-  resources: { name: string; limit: number | null; format?: FormatAnnotation | null }[];
+  resources: { name: string; limit: number | null; floor: number | null; format?: FormatAnnotation | null }[];
   states: LadderState[];
   edges: LadderEdge[];
   /** The edges of the main line, top first. */
