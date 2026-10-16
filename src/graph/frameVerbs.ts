@@ -3,7 +3,7 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
-  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn, flatCubeToFrame,
+  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn, flatCubeToFrame, frameToCube,
 } from "./frame";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, roundAtLargerTerm, type ColumnUnit } from "./unitValue";
@@ -1769,9 +1769,17 @@ export function decisionMatrix(
   normalizeOverrides: Record<string, DecisionNormalize> = {},
   bounds: DecisionBound[] | null = null,
 ): FrameValue {
+  return rankOptions(f, weights, normalize, breakdown, normalizeOverrides, decisionScreen(f, bounds), hasBounds(bounds)).frame;
+}
+
+/** The ranking, given which criteria rule out each row (`failed`), the input row behind each output row, and the best
+ *  row with its score (null when every row is ruled out). */
+function rankOptions(
+  f: FrameValue, weights: number[] | null, normalize: DecisionNormalize, breakdown: boolean,
+  normalizeOverrides: Record<string, DecisionNormalize>, failed: string[][], ruledOutColumn: boolean,
+): { frame: FrameValue; rows: number[]; best: { label: FrameCell; score: number } | null; scoreAt: number; rankAt: number } {
   const rows = frameRowCount(f);
   // Deal-breakers come first: a ruled-out option is neither scored nor part of the scaling ([[C124]] dealBreakers).
-  const failed = decisionScreen(f, bounds);
   const pass = failed.map((x, i) => (x.length ? -1 : i)).filter((i) => i >= 0);
   const out_ = failed.map((x, i) => (x.length ? i : -1)).filter((i) => i >= 0);
   const all = decisionScores(f, weights, normalize, normalizeOverrides);
@@ -1790,12 +1798,121 @@ export function decisionMatrix(
       out.push({ name: c.name, type: "number", values: [...order.map((o) => round4(ds!.contrib[j][o.k])), ...out_.map(() => null)] });
     });
   }
+  const scoreAt = out.length;
   out.push({ name: "Score", type: "number", values: [...order.map((o) => o.s), ...out_.map(() => null)] });
   out.push({ name: "Rank", type: "number", values: [...rank, ...out_.map(() => null)] });
-  if (hasBounds(bounds)) out.push({ name: "Ruled out by", type: "string", values: [...order.map(() => null), ...out_.map((i) => failed[i].join(", "))] });
+  if (ruledOutColumn || out_.length) out.push({ name: "Ruled out by", type: "string", values: [...order.map(() => null), ...out_.map((i) => failed[i].join(", "))] });
 
   const names = makeHeaders(out.map((c) => c.name), out.length);
-  return { __frame: true, columns: out.map((c, k) => ({ ...c, name: names[k] })) };
+  return {
+    frame: { __frame: true, columns: out.map((c, k) => ({ ...c, name: names[k] })) },
+    rows: [...order.map((o) => o.row), ...out_],
+    best: order.length ? { label: label(order[0].row), score: order[0].s } : null,
+    scoreAt, rankAt: scoreAt + 1,
+  };
+}
+
+// ─── Chained decisions (a Cube whose nested tables are further choices) ─────────
+
+const isTableCell = (v: unknown): v is FrameValue | CubeValue => isFrameValue(v) || isCubeValue(v);
+
+type Best = { label: FrameCell; score: number } | null;
+/** A ranked table, the input row behind each of its rows, and where its Score and Rank columns sit. */
+interface RankedTable { table: FrameValue | CubeValue; at: number[]; scoreAt: number; rankAt: number }
+
+/** Ranks a Cube whose nested tables are choices under each row ([[C126]] chainedDecisions): the nested tables under one
+ *  column are scored together, so an option in one row's table compares with every other row's, then ranked within their
+ *  row. Each row counts its best acceptable one as one more criterion, named after the nested column, and a row with
+ *  nothing acceptable inside is ruled out by it. The result names each row's best option and keeps the nested rankings. */
+export function decisionCube(
+  c: CubeValue, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown = false,
+): CubeValue {
+  return rankCube(c, weightsFrame, normalize, breakdown).table as CubeValue;
+}
+
+function rankAny(t: FrameValue | CubeValue, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown: boolean): RankedTable {
+  if (isCubeValue(t)) return rankCube(t, weightsFrame, normalize, breakdown);
+  const { weights, normOverrides, bounds } = resolveDecisionWeights(weightsFrame, decisionCriteria(t));
+  const r = rankOptions(t, weights, normalize, breakdown, normOverrides, decisionScreen(t, bounds), hasBounds(bounds));
+  return { table: r.frame, at: r.rows, scoreAt: r.scoreAt, rankAt: r.rankAt };
+}
+
+function rankCube(c: CubeValue, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown: boolean): RankedTable {
+  const rows = cubeRowCount(c);
+  const nestedCols = c.columns.filter((col) => col.cells.some(isTableCell));
+  const scalar = flatCubeToFrame(c, "scalar");
+  if (isSolError(scalar)) throw scalar;
+  const inner = nestedCols.map((col) => rankNested(col.cells, rows, weightsFrame, normalize, breakdown));
+  // The best inside, as a criterion: blank when nothing inside is acceptable, which rules the row out below.
+  const parent: FrameValue = { __frame: true, columns: [
+    ...scalar.columns,
+    ...nestedCols.map((col, n): FrameColumn => ({ name: col.name, type: "number", values: inner[n].map((r) => r.best?.score ?? null) })),
+  ] };
+  const { weights, normOverrides, bounds } = resolveDecisionWeights(weightsFrame, decisionCriteria(parent));
+  const failed = decisionScreen(parent, bounds);
+  nestedCols.forEach((col, n) => inner[n].forEach((r, i) => { if (!r.best) failed[i].push(col.name); }));
+  const r = rankOptions(parent, weights, normalize, breakdown, normOverrides, failed, hasBounds(bounds));
+
+  const nestedNames = new Set(nestedCols.map((col) => col.name));
+  const k = nestedCols.length;
+  const outCols: { name: string; cells: CubeCell[]; type?: FrameColType }[] = [{ name: r.frame.columns[0].name, cells: r.frame.columns[0].values, type: "string" }];
+  nestedCols.forEach((col, n) => outCols.push({ name: `Best in ${col.name}`, type: "string", cells: r.rows.map((i) => inner[n][i].best?.label ?? null) }));
+  for (const col of r.frame.columns.slice(1)) outCols.push({ name: nestedNames.has(col.name) ? `${col.name} score` : col.name, cells: col.values, type: col.type });
+  nestedCols.forEach((col, n) => outCols.push({ name: col.name, cells: r.rows.map((i) => inner[n][i].table) }));
+  return { table: cubeFromColumns(outCols), at: r.rows, scoreAt: r.scoreAt + k, rankAt: r.rankAt + k };
+}
+
+/** One nested column's tables, scored together and split back to their rows, each ranked within itself. */
+function rankNested(cells: CubeCell[], rows: number, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown: boolean):
+  { table: FrameValue | CubeValue | null; best: Best }[] {
+  const out: { table: FrameValue | CubeValue | null; best: Best }[] = Array.from({ length: rows }, (_, i) => {
+    const v = cells[i];
+    return { table: isTableCell(v) ? v : null, best: null };
+  });
+  const tables = out.map((o, i) => ({ t: o.table, i })).filter((x): x is { t: FrameValue | CubeValue; i: number } => !!x.t && tableRows(x.t) > 0);
+  if (!tables.length) return out;
+  const group: number[] = [];
+  for (const { t, i } of tables) for (let n = 0; n < tableRows(t); n++) group.push(i);
+  const pooled = poolTables(tables.map((x) => x.t));
+  if (!isCubeValue(pooled) && decisionColumns(pooled).criteriaCols.length === 0) return out;
+  const ranked = rankAny(pooled, weightsFrame, normalize, breakdown);
+  for (const { i } of tables) {
+    const mine = ranked.at.map((p, k) => (group[p] === i ? k : -1)).filter((k) => k >= 0);
+    const sub = isCubeValue(ranked.table) ? selectCubeRows(ranked.table, mine) : frameRows(ranked.table, mine);
+    out[i] = withinGroup(sub, ranked.scoreAt, ranked.rankAt);
+  }
+  return out;
+}
+
+const tableRows = (t: FrameValue | CubeValue) => (isCubeValue(t) ? cubeRowCount(t) : frameRowCount(t));
+
+/** Tables with the same columns stacked into one, frames as a frame and anything with a Cube as a Cube. */
+function poolTables(ts: (FrameValue | CubeValue)[]): FrameValue | CubeValue {
+  const names: string[] = [];
+  const types = new Map<string, FrameColType | undefined>();
+  for (const t of ts) for (const col of t.columns) if (!types.has(col.name)) { names.push(col.name); types.set(col.name, col.type); }
+  if (ts.every(isFrameValue)) {
+    return { __frame: true, columns: names.map((name): FrameColumn => {
+      const first = (ts as FrameValue[]).map((t) => t.columns.find((c) => c.name === name)).find(Boolean)!;
+      return { ...first, values: (ts as FrameValue[]).flatMap((t) => { const c = t.columns.find((x) => x.name === name); return c ? c.values : new Array(frameRowCount(t)).fill(null); }) };
+    }) };
+  }
+  const cubes = ts.map((t) => (isCubeValue(t) ? t : frameToCube(t)));
+  return cubeFromColumns(names.map((name) => ({
+    name, type: types.get(name),
+    cells: cubes.flatMap((t) => { const c = t.columns.find((x) => x.name === name); return c ? c.cells : new Array(cubeRowCount(t)).fill(null); }),
+  })));
+}
+
+/** A slice of a pooled ranking with its ranks recounted within the slice, and its best acceptable row. */
+function withinGroup(t: FrameValue | CubeValue, scoreAt: number, rankAt: number): { table: FrameValue | CubeValue; best: Best } {
+  const scores = (isCubeValue(t) ? t.columns[scoreAt].cells : t.columns[scoreAt].values) as (number | null)[];
+  const ranks: (number | null)[] = [];
+  scores.forEach((s, n) => { ranks.push(s == null ? null : n > 0 && scores[n - 1] === s ? ranks[n - 1] : n + 1); });
+  const label = (isCubeValue(t) ? t.columns[0].cells[0] : t.columns[0].values[0]) ?? null;
+  const best: Best = typeof scores[0] === "number" ? { label: label as FrameCell, score: scores[0] } : null;
+  if (isCubeValue(t)) return { table: cubeFromColumns(t.columns.map((c, j) => (j === rankAt ? { ...c, cells: ranks } : c))), best };
+  return { table: { ...t, columns: t.columns.map((c, j) => (j === rankAt ? { ...c, values: ranks } : c)) }, best };
 }
 
 // ─── Choice Ladder (several options under limits) ───────────────────────────────

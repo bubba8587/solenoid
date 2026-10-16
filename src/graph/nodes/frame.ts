@@ -32,7 +32,7 @@ import {
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, choiceLadder,
+  splitColumn, addIndexColumn, decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, choiceLadder,
   mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
@@ -1496,14 +1496,14 @@ export type DecisionDetail = "summary" | "breakdown";
 
 export class DecisionMatrixNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped.",
+    frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped. A Cube's nested tables are further choices under each row, ranked with the same Weights; each row counts the best one inside as a criterion named after the nested column.",
     weights: "A row per criterion: name, Weight (negative when lower is better), optional Norm (Raw, ÷Max, Range, Rank), and optional At least and At most, deal-breakers that rule an option out before weighing. A missing criterion weighs 1 at the default Norm.",
   };
 
   label: string;
   normalize: DecisionNormalize;
   detail: DecisionDetail;
-  cachedResult: FrameValue | SolError | null = null;
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
   width = 240; height = 205;
 
   static frameHints: Record<string, FrameHint> = {
@@ -1525,11 +1525,14 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Decision Matrix";
     this.normalize = init?.normalize ?? "max";
     this.detail = init?.detail ?? "summary";
-    this.addInput("frame", cubeIn("Scores / Cube"));
+    this.addInput("frame", cubeAdoptIn("Scores / Cube"));
     this.addInput("weights", frameIn("Weights"));
-    this.addOutput("frame", frameOut("Ranking"));
+    this.addOutput("frame", tableAdoptOut("Ranking"));
   }
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
+
+  // [[C126]] chainedDecisions: a Cube in ranks its nested choices too, so a Cube comes out.
+  passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
@@ -1549,7 +1552,11 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
   data(inputs: { frame?: unknown[]; weights?: (FrameValue | null)[] }) {
     const raw = inputs.frame?.[0] ?? null;
     if (raw == null) { this.cachedResult = null; return { frame: null }; }
-    const f = isCubeValue(raw) ? cubeToScalarFrame(raw) : (isFrameValue(raw) ? raw : widenToFrame(raw));
+    if (isCubeValue(raw)) {
+      this.cachedResult = runVerb(() => decisionCube(raw, inputs.weights?.[0] ?? null, this.normalize, this.detail === "breakdown"));
+      return { frame: this.cachedResult };
+    }
+    const f = isFrameValue(raw) ? raw : widenToFrame(raw);
     this.cachedResult = runVerb(() => {
       const { weights, normOverrides, bounds } = resolveDecisionWeights(inputs.weights?.[0] ?? null, decisionCriteria(f));
       return decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", normOverrides, bounds);

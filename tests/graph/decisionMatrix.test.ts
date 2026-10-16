@@ -1,9 +1,9 @@
 // [[B17]]
 import { describe, it, expect } from "vitest";
-import { decisionMatrix, decisionCriteria, decisionSensitivity, flipPoints } from "../../src/graph/frameVerbs";
+import { decisionMatrix, decisionCriteria, decisionSensitivity, flipPoints, decisionCube } from "../../src/graph/frameVerbs";
 import { DecisionMatrixNode, DecisionSensitivityNode } from "../../src/graph/rete-nodes";
 import { isSolError, solError } from "../../src/graph/errorValue";
-import { isFrameValue, isCubeValue, type FrameValue, type FrameColumn } from "../../src/graph/frame";
+import { isFrameValue, isCubeValue, relateFramesToCube, relateCubeToFrame, type FrameValue, type FrameColumn, type CubeValue } from "../../src/graph/frame";
 
 // rows are options, "name" labels them, the rest are criteria.
 const f: FrameValue = {
@@ -598,5 +598,72 @@ describe("Range normalize", () => {
       { name: "Criterion", type: "string", values: ["x"] }, { name: "Weight", type: "number", values: [1] }, { name: "Norm", type: "string", values: ["MinMax"] },
     ] }] }).frame as FrameValue;
     expect(col(out, "x").values).toEqual([1, 0]);
+  });
+});
+
+describe("chained decisions ([[C126]] chainedDecisions)", () => {
+  const hoods: FrameValue = { __frame: true, columns: [
+    { name: "Neighborhood", type: "string", values: ["Hillside", "Riverside", "Old Town"] },
+    { name: "Safety", type: "number", values: [9, 7, 6] },
+    { name: "Commute", type: "number", values: [20, 30, 25] },
+  ] };
+  const apts: FrameValue = { __frame: true, columns: [
+    { name: "Apartment", type: "string", values: ["Hill 1", "Hill 2", "River 1", "River 2", "Old 1"] },
+    { name: "Neighborhood", type: "string", values: ["Hillside", "Hillside", "Riverside", "Riverside", "Old Town"] },
+    { name: "Rent", type: "number", values: [2600, 2500, 1700, 1900, 3200] },
+    { name: "Light", type: "number", values: [3, 4, 9, 7, 8] },
+  ] };
+  const cube = relateFramesToCube(hoods, apts, "Neighborhood", "Apartments")!;
+  const weights = (rows: [string, number, number | null][]): FrameValue => ({ __frame: true, columns: [
+    { name: "Criterion", type: "string", values: rows.map((r) => r[0]) },
+    { name: "Weight", type: "number", values: rows.map((r) => r[1]) },
+    { name: "At most", type: "number", values: rows.map((r) => r[2]) },
+  ] });
+  const cubeCol = (c: CubeValue, name: string) => c.columns.find((x) => x.name === name)!.cells;
+
+  it("scores each row with the best option inside it, so a safe area with poor apartments loses", () => {
+    const w = weights([["Safety", 2, null], ["Commute", -1, null], ["Rent", -1, null], ["Light", 2, null], ["Apartments", 3, null]]);
+    const out = decisionCube(cube, w, "max");
+    expect(out.columns.map((c) => c.name)).toEqual(["Neighborhood", "Best in Apartments", "Score", "Rank", "Apartments"]);
+    expect(cubeCol(out, "Neighborhood")[0]).toBe("Riverside");
+    expect(cubeCol(out, "Best in Apartments")[0]).toBe("River 1");
+    const alone = decisionMatrix(hoods, [2, -1], "max");
+    expect(col(alone, "Neighborhood").values[0]).toBe("Hillside");
+  });
+
+  it("keeps every nested table, ranked best first", () => {
+    const out = decisionCube(cube, weights([["Rent", -1, null], ["Light", 2, null]]), "max");
+    const hill = cubeCol(out, "Apartments")[cubeCol(out, "Neighborhood").indexOf("Hillside")] as FrameValue;
+    expect(col(hill, "Apartment").values).toEqual(["Hill 2", "Hill 1"]);
+    expect(col(hill, "Rank").values).toEqual([1, 2]);
+  });
+
+  it("a row with nothing acceptable inside is ruled out by the nested column", () => {
+    const out = decisionCube(cube, weights([["Rent", -1, 3000], ["Light", 2, null]]), "max");
+    const names = cubeCol(out, "Neighborhood");
+    const i = names.indexOf("Old Town");
+    expect(i).toBe(names.length - 1);
+    expect(cubeCol(out, "Rank")[i]).toBeNull();
+    expect(cubeCol(out, "Ruled out by")[i]).toBe("Apartments");
+  });
+
+  it("chains to any depth: a city counts its best neighborhood, which counts its best apartment", () => {
+    const cities: FrameValue = { __frame: true, columns: [
+      { name: "City", type: "string", values: ["North", "South"] },
+      { name: "Jobs", type: "number", values: [8, 6] },
+    ] };
+    const hoodsByCity: FrameValue = { ...hoods, columns: [...hoods.columns, { name: "City", type: "string", values: ["North", "South", "South"] }] };
+    const deep = relateCubeToFrame(relateFramesToCube(cities, hoodsByCity, "City", "Neighborhoods")!, apts, "Neighborhood", "Apartments");
+    const out = decisionCube(deep, weights([["Jobs", 1, null], ["Safety", 2, null], ["Commute", -1, null], ["Rent", -1, null], ["Light", 2, null], ["Apartments", 3, null], ["Neighborhoods", 3, null]]), "max");
+    expect(cubeCol(out, "City")[0]).toBe("South");
+    expect(cubeCol(out, "Best in Neighborhoods")[0]).toBe("Riverside");
+    const inner = cubeCol(out, "Neighborhoods")[0] as CubeValue;
+    expect(cubeCol(inner, "Best in Apartments")[0]).toBe("River 1");
+  });
+
+  it("the node takes a Cube and gives one back", () => {
+    const n = new DecisionMatrixNode();
+    expect(isCubeValue(n.data({ frame: [cube], weights: [weights([["Rent", -1, null]])] }).frame)).toBe(true);
+    expect(isFrameValue(n.data({ frame: [hoods] }).frame)).toBe(true);
   });
 });
