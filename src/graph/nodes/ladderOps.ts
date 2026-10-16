@@ -148,7 +148,8 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
   const rank = new Map(order.map((o, k) => [o, k]));
   const rough = res.some(isRough);
 
-  interface S { id: number; taken: number[]; out: Set<number>; left: (number | null)[]; need: number[]; share: number; depth: number; noFork: boolean; ins: number[] }
+  // `forced`: reached only by Musts and what they need, so no plan from here means none at all.
+  interface S { id: number; taken: number[]; out: Set<number>; left: (number | null)[]; need: number[]; share: number; depth: number; noFork: boolean; ins: number[]; forced: boolean }
   const states: S[] = [];
   const edges: LadderEdge[] = [];
   // Two paths merge when their futures match: the same options still open, the same countable limits left and floors owed.
@@ -159,7 +160,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
     const num = (v: number | null) => (v == null ? "" : Math.round(v * 1e6));
     return `${open.join(",")}|${met}|${left.map(num).join(",")}|${need.map(num).join(",")}`;
   };
-  const root: S = { id: 0, taken: [], out: new Set(opts.map((o, i) => (o.score > 0 || o.must ? -1 : i)).filter((i) => i >= 0)), left: res.map((r) => r.limit), need: res.map((r) => r.floor ?? 0), share: 1, depth: 0, noFork: false, ins: [] };
+  const root: S = { id: 0, taken: [], out: new Set(opts.map((o, i) => (o.score > 0 || o.must ? -1 : i)).filter((i) => i >= 0)), left: res.map((r) => r.limit), need: res.map((r) => r.floor ?? 0), share: 1, depth: 0, noFork: false, ins: [], forced: true };
   const floored = root.need.some((x) => x > EPS);
   states.push(root);
   let level: S[] = [root];
@@ -174,7 +175,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
       // Musts come before anything else, in order, and strike nothing.
       const must = order.find((i) => opts[i].must && !has.has(i));
       const found = must != null ? [] : bestPlan(opts, open, s.taken, s.left, s.need);
-      if (found == null && s.id === 0) throw solError("#VALUE!", "Choice Ladder: no plan meets every At least");
+      if (found == null && s.forced) throw solError("#VALUE!", "Choice Ladder: no plan meets every At least");
       const plan = new Set(found ?? []);
       let a = must ?? order.find((i) => plan.has(i) && !has.has(i));
       if (a == null) { ends++; continue; }
@@ -213,7 +214,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
         const win = chosen.lastIndexOf(b) > chosen.lastIndexOf(a) ? b : a;
         picks.push({ take: win, share: s.share, kind: "chosen" });
         // The side passed over stays in view, carrying nothing, so it can be taken instead.
-        const t: S = { id: states.length, taken: [...s.taken, win === a ? b : a], out: s.out, left: s.left, need: s.need, share: 0, depth: s.depth + 1, noFork: true, ins: [edges.length] };
+        const t: S = { id: states.length, taken: [...s.taken, win === a ? b : a], out: s.out, left: s.left, need: s.need, share: 0, depth: s.depth + 1, noFork: true, ins: [edges.length], forced: false };
         states.push(t);
         edges.push({ from: s.id, to: t.id, pick: win === a ? b : a, share: 0, kind: "passed", struck: [] });
       } else if (b != null && ends + next.size + (level.length - li) + 1 <= MAX_ENDS) {
@@ -233,7 +234,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
         const key = futureKey(taken, out, left, need);
         let t = next.get(key);
         if (!t) {
-          t = { id: states.length, taken, out, left, need, share: 0, depth: s.depth + 1, noFork: pk.kind === "close", ins: [] };
+          t = { id: states.length, taken, out, left, need, share: 0, depth: s.depth + 1, noFork: pk.kind === "close", ins: [], forced: s.forced && must != null };
           states.push(t);
           next.set(key, t);
         } else {

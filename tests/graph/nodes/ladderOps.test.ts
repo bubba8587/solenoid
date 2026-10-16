@@ -213,3 +213,11 @@ describe("Choice Ladder kernel: floors", () => {
     expect(priorities([opt(0.9, [0])], [{ limit: null, floor: 1 }])[0].tier).toBe(1);
   });
 });
+
+describe("Choice Ladder kernel: a Must that leaves a floor out of reach", () => {
+  it("is an error, not a plan that stops short", () => {
+    // [budget, head]: A is a Must costing 8 of 10; B would meet the floor but costs 5.
+    const opts = [{ ...opt(0.9, [8, 0]), must: true }, opt(0.5, [5, 2]), opt(0.4, [1, 0])];
+    expect(() => buildLadder(opts, [{ limit: 10 }, { limit: null, floor: 2 }], 0)).toThrow();
+  });
+});

@@ -681,3 +681,43 @@ describe("a guessed value is said ([[C123]] decisionBlanks)", () => {
     expect(decisionMatrix(f, null, "max").columns.map((c) => c.name)).not.toContain("Filled in");
   });
 });
+
+describe("review regressions", () => {
+  it("flip points name options by their own label after screening, with no label column", () => {
+    const g: FrameValue = { __frame: true, columns: [
+      { name: "q", type: "number", values: [1, 10, 6] }, { name: "c", type: "number", values: [1, 1, 3] },
+    ] };
+    const w: FrameValue = { __frame: true, columns: [
+      { name: "Criterion", type: "string", values: ["q", "c"] }, { name: "Weight", type: "number", values: [1, 1] }, { name: "At least", type: "number", values: [5, null] },
+    ] };
+    const out = flipPoints(g, w, "max");
+    const names = [...col(out, "Winner below").values, ...col(out, "Winner above").values].filter((v) => v != null);
+    expect(names.every((v) => v === "Option 2" || v === "Option 3")).toBe(true);
+  });
+
+  it("a nested column named Score leaves the real Score column alone", () => {
+    const parent: FrameValue = { __frame: true, columns: [{ name: "Area", type: "string", values: ["A", "B"] }, { name: "x", type: "number", values: [1, 2] }] };
+    const child: FrameValue = { __frame: true, columns: [{ name: "Item", type: "string", values: ["a1", "b1"] }, { name: "Area", type: "string", values: ["A", "B"] }, { name: "y", type: "number", values: [3, 4] }] };
+    const out = decisionCube(relateFramesToCube(parent, child, "Area", "Score")!, null, "max");
+    const names = out.columns.map((c) => c.name);
+    expect(names).toContain("Best in Score");
+    expect(new Set(names).size).toBe(names.length);
+    expect(out.columns[names.indexOf("Rank")].cells).toEqual([1, 2]);
+  });
+
+  it("a numeric Nest Join key is not a criterion of the nested tables", () => {
+    const parent: FrameValue = { __frame: true, columns: [{ name: "Hood", type: "string", values: ["Low", "High"] }, { name: "HoodId", type: "number", values: [1, 100] }] };
+    const child: FrameValue = { __frame: true, columns: [{ name: "Apt", type: "string", values: ["a", "b"] }, { name: "HoodId", type: "number", values: [1, 100] }, { name: "Light", type: "number", values: [6, 5] }] };
+    const w: FrameValue = { __frame: true, columns: [{ name: "Criterion", type: "string", values: ["HoodId", "Light", "Apts"] }, { name: "Weight", type: "number", values: [0, 1, 1] }] };
+    const out = decisionCube(relateFramesToCube(parent, child, "HoodId", "Apts")!, w, "max");
+    expect(out.columns[0].cells[0]).toBe("Low");
+  });
+
+  it("a nested column with nothing to score is carried along, not a reason to rule rows out", () => {
+    const parent: FrameValue = { __frame: true, columns: [{ name: "Area", type: "string", values: ["A", "B"] }, { name: "x", type: "number", values: [1, 2] }] };
+    const notes: FrameValue = { __frame: true, columns: [{ name: "Note", type: "string", values: ["quiet", "loud"] }, { name: "Area", type: "string", values: ["A", "B"] }] };
+    const out = decisionCube(relateFramesToCube(parent, notes, "Area", "Notes")!, null, "max");
+    expect(out.columns.find((c) => c.name === "Rank")!.cells).toEqual([1, 2]);
+    expect(out.columns.map((c) => c.name)).toContain("Notes");
+  });
+});

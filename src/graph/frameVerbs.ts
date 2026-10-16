@@ -1854,10 +1854,16 @@ function rankAny(t: FrameValue | CubeValue, weightsFrame: FrameValue | null, nor
 
 function rankCube(c: CubeValue, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown: boolean): RankedTable {
   const rows = cubeRowCount(c);
-  const nestedCols = c.columns.filter((col) => col.cells.some(isTableCell));
   const scalar = flatCubeToFrame(c, "scalar");
   if (isSolError(scalar)) throw scalar;
-  const inner = nestedCols.map((col) => rankNested(col.cells, rows, weightsFrame, normalize, breakdown));
+  // A nested table's copy of a parent column (a Nest Join's key) says which row it hangs under, never how good it is.
+  const parentNames = new Set(c.columns.map((col) => col.name));
+  const tableCols = c.columns.filter((col) => col.cells.some(isTableCell));
+  const ranked = tableCols.map((col) => rankNested(col.cells, rows, weightsFrame, normalize, breakdown, parentNames));
+  // A nested column with nothing to score (notes, say) is carried along, not a criterion.
+  const nestedCols = tableCols.filter((_, n) => ranked[n] != null);
+  const inner = ranked.filter((r): r is NonNullable<typeof r> => r != null);
+  const carried = tableCols.filter((_, n) => ranked[n] == null);
   // The best inside, as a criterion: blank when nothing inside is acceptable, which rules the row out below.
   const parent: FrameValue = { __frame: true, columns: [
     ...scalar.columns,
@@ -1872,24 +1878,34 @@ function rankCube(c: CubeValue, weightsFrame: FrameValue | null, normalize: Deci
   const k = nestedCols.length;
   const outCols: { name: string; cells: CubeCell[]; type?: FrameColType }[] = [{ name: r.frame.columns[0].name, cells: r.frame.columns[0].values, type: "string" }];
   nestedCols.forEach((col, n) => outCols.push({ name: `Best in ${col.name}`, type: "string", cells: r.rows.map((i) => inner[n][i].best?.label ?? null) }));
-  for (const col of r.frame.columns.slice(1)) outCols.push({ name: nestedNames.has(col.name) ? `${col.name} score` : col.name, cells: col.values, type: col.type });
+  // Only a breakdown column (between the label and Score) is a nested criterion's contribution.
+  const criteriaCols = decisionColumns(parent).criteriaCols;
+  r.frame.columns.slice(1).forEach((col, j) => {
+    const contribution = j + 1 < r.scoreAt && nestedNames.has(criteriaCols[j]?.name ?? "");
+    outCols.push({ name: contribution ? `${col.name} score` : col.name, cells: col.values, type: col.type });
+  });
   nestedCols.forEach((col, n) => outCols.push({ name: col.name, cells: r.rows.map((i) => inner[n][i].table) }));
+  carried.forEach((col) => outCols.push({ name: col.name, cells: r.rows.map((i) => col.cells[i] ?? null) }));
   return { table: cubeFromColumns(outCols), at: r.rows, scoreAt: r.scoreAt + k, rankAt: r.rankAt + k };
 }
 
 /** One nested column's tables, scored together and split back to their rows, each ranked within itself. */
-function rankNested(cells: CubeCell[], rows: number, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown: boolean):
-  { table: FrameValue | CubeValue | null; best: Best }[] {
+function rankNested(cells: CubeCell[], rows: number, weightsFrame: FrameValue | null, normalize: DecisionNormalize, breakdown: boolean, parentNames: ReadonlySet<string>):
+  { table: FrameValue | CubeValue | null; best: Best }[] | null {
+  const dropKeys = (t: FrameValue | CubeValue): FrameValue | CubeValue => {
+    const keep = t.columns.filter((col, j) => j === 0 || !parentNames.has(col.name));
+    return isCubeValue(t) ? cubeFromColumns(keep as CubeColumn[]) : { ...t, columns: keep as FrameColumn[] };
+  };
   const out: { table: FrameValue | CubeValue | null; best: Best }[] = Array.from({ length: rows }, (_, i) => {
     const v = cells[i];
-    return { table: isTableCell(v) ? v : null, best: null };
+    return { table: isTableCell(v) ? dropKeys(v) : null, best: null };
   });
   const tables = out.map((o, i) => ({ t: o.table, i })).filter((x): x is { t: FrameValue | CubeValue; i: number } => !!x.t && tableRows(x.t) > 0);
   if (!tables.length) return out;
   const group: number[] = [];
   for (const { t, i } of tables) for (let n = 0; n < tableRows(t); n++) group.push(i);
   const pooled = poolTables(tables.map((x) => x.t));
-  if (!isCubeValue(pooled) && decisionColumns(pooled).criteriaCols.length === 0) return out;
+  if (!isCubeValue(pooled) && decisionColumns(pooled).criteriaCols.length === 0) return null;
   const ranked = rankAny(pooled, weightsFrame, normalize, breakdown);
   for (const { i } of tables) {
     const mine = ranked.at.map((p, k) => (group[p] === i ? k : -1)).filter((k) => k >= 0);
@@ -1941,7 +1957,7 @@ function ladderResources(f: FrameValue, limits: FrameValue | null): { name: stri
   const nums = limits.columns.filter((c) => c.type === "number");
   const named = (k: string) => nums.find((c) => critKey(c.name) === k) ?? null;
   const loCol = named("at least");
-  const hiCol = named("at most") ?? (loCol ? null : nums[0] ?? null);
+  const hiCol = named("at most") ?? nums.find((c) => c !== loCol) ?? null;
   if (!nameCol) throw solError("#VALUE!", "Limits needs a text column naming each resource");
   const out: { name: string; limit: number | null; floor: number | null; col: FrameColumn }[] = [];
   const seen = new Set<string>();
@@ -2036,7 +2052,7 @@ export function choiceLadder(
     return {
       score: ds.scores[k],
       // A criterion weighted against counts its lowness as value, so every strand is a share of what the option serves.
-      value: ds.criteria.map((_, j) => (ds.weightShare[j] >= 0 ? ds.contrib[j][k] : -ds.weightShare[j] + ds.contrib[j][k])),
+      value: ds.criteria.map((_, j) => Math.max(0, ds.weightShare[j] >= 0 ? ds.contrib[j][k] : -ds.weightShare[j] + ds.contrib[j][k])),
       costs: resources.map((r) => (isRough(r) ? costOf(r.col, i) : Math.max(0, costOf(r.col, i)))),
       requires: listed(requiresCol, i),
       // Options sharing a One of value exclude each other: at most one per group.
@@ -2163,10 +2179,12 @@ export function flipPoints(f: FrameValue, weightsFrame: FrameValue | null, norma
   const failed = decisionScreen(f, bounds);
   const pass = failed.map((x, i) => (x.length ? -1 : i)).filter((i) => i >= 0);
   const ds = decisionScores(frameRows(f, pass), w, normalize, normOverrides);
+  const labels = decisionScores(f, w, normalize, normOverrides).labels;
   const n = pass.length;
   const eff = ds.effective;
   const total = Array.from({ length: n }, (_, i) => criteria.reduce((s, _, j) => s + eff[j][i] * w[j], 0));
-  const win = total.reduce((b, v, i) => (v > total[b] + 1e-12 ? i : b), 0);
+  // The winner is the matrix's own first row: the top rounded score, the first in input order on a tie.
+  const win = ds.scores.reduce((b, v, i) => (v > ds.scores[b] ? i : b), 0);
 
   const rows = criteria.map((name, j) => {
     let below: { t: number; who: number } | null = null, above: { t: number; who: number } | null = null;
@@ -2184,7 +2202,7 @@ export function flipPoints(f: FrameValue, weightsFrame: FrameValue | null, norma
     }
     return { name, w: w[j], below, above };
   });
-  const label = (k: number) => ds.labels[k];
+  const label = (k: number) => labels[pass[k]];
   return {
     __frame: true,
     columns: [
