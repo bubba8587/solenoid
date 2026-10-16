@@ -5,6 +5,7 @@ import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
 import { isSolError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/copyPaste";
 import type { ChartValue, LadderPayload } from "../../../src/graph/chartValue";
+import { nextChoices } from "../../../src/graph/nodes/ladderOps";
 import seed from "../../../src/graph/seedGraphs/choice-ladder.json";
 
 const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
@@ -43,9 +44,26 @@ describe("ChoiceLadderNode", () => {
     const { n } = run("h");
     const p = payloadOf(n);
     expect(p.rungs[0].kind).toBe("tossup");
-    expect([p.options[p.rungs[0].pick!].name, p.options[p.rungs[0].rival!].name]).toEqual(["Heat pump", "Roof patch"]);
-    const best = p.rungs.find((r) => r.id === p.best)!;
-    expect(best.total).toBeGreaterThan(p.rankingTotal);
+    expect([p.options[p.rungs[0].pick!].name, p.options[p.rungs[0].alt!.option].name]).toEqual(["Heat pump", "Roof patch"]);
+    expect(p.rungs[p.rungs.length - 1].total).toBeGreaterThan(p.rankingTotal);
+  });
+
+  it("holds a saved choice: the plan takes it, marks it Your pick, and keeps what still fits", () => {
+    const n = new ChoiceLadderNode({ choices: ["lune BISTRO"] });
+    const plan = n.data({ frame: [seedFrame("rOpts")], weights: [seedFrame("rWeights")], limits: [seedFrame("rLimits")] }).frame as FrameValue;
+    const names = col(plan, "Restaurant");
+    expect(names).toEqual(expect.arrayContaining(["Lune bistro", "Marrow"]));
+    expect(col(plan, "Choice")[names.indexOf("Lune bistro")]).toBe("Your pick");
+    expect(payloadOf(n).choices).toEqual(["Lune bistro"]);
+  });
+
+  it("a saved choice that no longer fits is dropped and named, never an error", () => {
+    const n = new ChoiceLadderNode({ choices: ["Hearth & Ember", "Fennel", "Kato omakase"] });
+    n.data({ frame: [seedFrame("rOpts")], weights: [seedFrame("rWeights")], limits: [frame([
+      { name: "Resource", type: "string", values: ["Dollars", "Meals"] }, { name: "Limit", type: "number", values: [450, 4] },
+    ])] });
+    expect(payloadOf(n).choices).toEqual(["Hearth & Ember", "Fennel"]);
+    expect(payloadOf(n).dropped).toEqual(["Kato omakase"]);
   });
 
   it("emits a ladder chart titled by the card", () => {
@@ -104,11 +122,27 @@ describe("ChoiceLadderNode", () => {
     expect(n.cachedChart).toBeNull();
   });
 
-  it("round-trips its settings", () => {
-    const n = new ChoiceLadderNode({ label: "Trip", normalize: "rank" });
-    const init = extractInit(n) as { label: string; normalize: string };
-    expect(init).toMatchObject({ label: "Trip", normalize: "rank" });
+  it("round-trips its settings and choices, and a copy doesn't share them", () => {
+    const n = new ChoiceLadderNode({ label: "Trip", normalize: "rank", choices: ["Lune bistro"] });
+    const init = extractInit(n) as { label: string; normalize: string; choices: string[] };
+    expect(init).toMatchObject({ label: "Trip", normalize: "rank", choices: ["Lune bistro"] });
     const back = new ChoiceLadderNode(init as never);
     expect(back.normalize).toBe("rank");
+    back.choices.push("Marrow");
+    expect(n.choices).toEqual(["Lune bistro"]);
+  });
+
+  it("a saved choices field that isn't a list of names loads as none", () => {
+    expect(new ChoiceLadderNode({ choices: "Lune" as never }).choices).toEqual([]);
+    expect(new ChoiceLadderNode({ choices: ["Lune", 3 as never] }).choices).toEqual(["Lune"]);
+  });
+});
+
+describe("nextChoices", () => {
+  it("takes, moves a retaken pick to the end, undoes by name and clears", () => {
+    expect(nextChoices([], { add: "Lune" })).toEqual(["Lune"]);
+    expect(nextChoices(["Lune", "Kato"], { add: "lune" })).toEqual(["Kato", "lune"]);
+    expect(nextChoices(["Lune", "Kato"], { remove: " LUNE " })).toEqual(["Kato"]);
+    expect(nextChoices(["Lune", "Kato"], { reset: true })).toEqual([]);
   });
 });

@@ -92,6 +92,9 @@ import { TypeIcon } from "./TypeIcon";
 import { CardSection, useRowsInUse } from "./CardSection";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { ChartChip } from "./ChartChip";
+import { applyLadderAction } from "./ladderNav";
+import type { LadderAction } from "../nodes/ladderOps";
+import "./ladderView.css";
 import { isSolError } from "../errorValue";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
 import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
@@ -745,6 +748,10 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
 
 export function ChoiceLadderComponent({ data, emit }: NodeProps<ChoiceLadderNodeType>) {
   const [normalize, setNormalize] = useNodeField(data, "normalize");
+  const [, bump] = useState(0);
+  const act = (a: LadderAction) => { void applyLadderAction(data.id, a).then(() => bump((n) => n + 1)); };
+  const payload = data.cachedChart && !isSolError(data.cachedChart) && data.cachedChart.payload?.kind === "ladder" ? data.cachedChart.payload : null;
+  const dropped = new Set((payload?.dropped ?? []).map((n) => n.toLowerCase()));
   const frameOut = data.outputs.frame;
   const chartOutPort = data.outputs.chart;
   const chart = data.cachedChart && !isSolError(data.cachedChart) ? data.cachedChart : null;
@@ -754,6 +761,19 @@ export function ChoiceLadderComponent({ data, emit }: NodeProps<ChoiceLadderNode
       <CardSection label="Normalize" title="The fallback for a criterion whose Weights-frame Norm cell is blank.">
         <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       </CardSection>
+      {data.choices.length > 0 && (
+        <CardSection label="Your picks" title="Options taken at toss-ups. The plan holds every one that still fits.">
+          <div className="solenoid-ladder-picks">
+            {data.choices.map((c) => (
+              <span key={c} className={`solenoid-ladder-pick${dropped.has(c.toLowerCase()) ? " is-dropped" : ""}`} title={dropped.has(c.toLowerCase()) ? "No longer fits with the other picks" : undefined}>
+                {c}
+                <button type="button" aria-label={`Undo ${c}`} onPointerDown={stopDragStart} onClick={() => act({ remove: c })}>×</button>
+              </span>
+            ))}
+            <button type="button" className="solenoid-ladder-reset" onPointerDown={stopDragStart} onClick={() => act({ reset: true })}>Clear</button>
+          </div>
+        </CardSection>
+      )}
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>

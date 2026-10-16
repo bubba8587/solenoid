@@ -8,17 +8,18 @@ import { ChartView, ChartFigure } from "./chartView";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { clamp } from "../nodes/mathUtils";
 import { recordNavTarget, stepRecordRow } from "./recordNav";
+import { ladderTarget, applyLadderAction } from "./ladderNav";
+import type { LadderAction } from "../nodes/ladderOps";
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 
 const MAX_W = 1000;
-const MAX_W_LADDER = 1800;
 const MAX_H = 380;
 const MAX_H_GANTT = 680;
 const MARGIN_X = 32;
 const CHROME_Y = 32 /* overlay margin */ + 38 /* header */ + 32 /* chart padding */;
 
-function chartSize(maxH = MAX_H, maxW = MAX_W) {
-  const w = clamp(window.innerWidth - MARGIN_X - 32, 200, maxW);
+function chartSize(maxH = MAX_H) {
+  const w = clamp(window.innerWidth - MARGIN_X - 32, 200, MAX_W);
   const h = clamp(window.innerHeight - CHROME_Y, 140, maxH);
   return { w, h };
 }
@@ -81,8 +82,7 @@ export function ChartPopup() {
   const ganttPayload = isGantt && state.value?.payload?.kind === "gantt" ? (state.value.payload as GanttPayload) : null;
   // A ladder grows downward like a Gantt, so it opens as tall.
   const isTall = isGantt || state.value?.op === "ladder";
-  // A ladder also widens a lane per plan, so it opens as wide as the window allows.
-  const initialCard = (() => { const f = chartSize(isTall ? MAX_H_GANTT : MAX_H, state.value?.op === "ladder" ? MAX_W_LADDER : MAX_W); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
+  const initialCard = (() => { const f = chartSize(isTall ? MAX_H_GANTT : MAX_H); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
   const cardStyle = popupCardVars(state);
 
   const copySvg = ganttPayload
@@ -99,6 +99,15 @@ export function ChartPopup() {
   const recordStep = recordId
     ? (delta: number) => {
         void stepRecordRow(recordId, delta).then((fresh) => {
+          if (fresh) chartPopup.open({ ...state, value: fresh });
+        });
+      }
+    : undefined;
+
+  const ladderId = state.value?.op === "ladder" && state.pinNodeId ? ladderTarget(state.pinNodeId) : null;
+  const ladderAct = ladderId
+    ? (a: LadderAction) => {
+        void applyLadderAction(ladderId, a).then((fresh) => {
           if (fresh) chartPopup.open({ ...state, value: fresh });
         });
       }
@@ -124,6 +133,7 @@ export function ChartPopup() {
             height={h}
             fontScale={fontScale}
             recordNav={recordStep}
+            ladderAction={ladderAct}
             virtualize={isGantt}
           />
         ) : !state.series || state.series.length === 0 ? (

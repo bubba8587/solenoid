@@ -187,8 +187,8 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   environment verifies it before starting.
 
 ## Choice Ladder (built 2026-10-16, [[C122]] choiceLadder)
-- [ ] **Must-have and never flags** on options (a booked table, a closed restaurant): honored by every plan; the leaf's reopen condition names them.
-- [ ] **A Plans output**: every plan the ladder ends in, not only the best, as a Cube or a long frame, so a Report can compare them.
+- [ ] **Never flags** on options (a closed restaurant): honored by every plan. Must-haves exist as the node's choices; a way to add one without a toss-up (from the Plan table or the Options frame) is open.
+- [ ] **Undo history for a pick**: taking or undoing a pick from the figure saves but doesn't go on the undo stack.
 - [ ] **Currency on the figure**: costs read "160 dollars" unless the Options cost column carries a currency format; a Frame Input has no per-column format in the seed.
 
 ## Charts

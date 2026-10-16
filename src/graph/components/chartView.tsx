@@ -11,6 +11,7 @@ import { useSeriesColors, useChartColors } from "./chartCore";
 // `ganttSvg` is imported eagerly: the export provider must return a string synchronously.
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 import { LadderView } from "./ladderView";
+import type { LadderAction } from "../nodes/ladderOps";
 import { registerChartSvgProvider } from "../canvasCapture";
 import { useHostNodeId } from "./nodeContext";
 import { ChartTitle, titleHeight, UNTITLED_FIGURES } from "./chartTitle";
@@ -124,6 +125,8 @@ type FigureProps = {
   value: ChartValue; width: number; height: number; axes?: boolean;
   fontScale?: number;
   recordNav?: (delta: number) => void;
+  /** A Choice Ladder's figure can change its node's choices when the surface knows the node. */
+  ladderAction?: (a: LadderAction) => void;
   virtualize?: boolean;
 };
 
@@ -156,7 +159,7 @@ export const ChartFigure = memo(function ChartFigure(props: FigureProps) {
   );
 });
 
-const FigureBody = memo(function FigureBody({ value, width, height, axes = true, fontScale, recordNav, virtualize }: FigureProps) {
+const FigureBody = memo(function FigureBody({ value, width, height, axes = true, fontScale, recordNav, ladderAction, virtualize }: FigureProps) {
   const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
   // Before any early return: a conditional hook here black-screens the app.
   const seriesColors = useSeriesColors();
@@ -168,7 +171,7 @@ const FigureBody = memo(function FigureBody({ value, width, height, axes = true,
         <ChartTitle text={title} fs={fscale} />
         <FigureBody
           value={{ ...value, options: { ...value.options, title: undefined } }}
-          width={width} height={Math.max(0, height - th)} axes={axes} fontScale={fontScale} recordNav={recordNav} virtualize={virtualize}
+          width={width} height={Math.max(0, height - th)} axes={axes} fontScale={fontScale} recordNav={recordNav} ladderAction={ladderAction} virtualize={virtualize}
         />
       </div>
     );
@@ -209,7 +212,7 @@ const FigureBody = memo(function FigureBody({ value, width, height, axes = true,
   if (value.op === "gantt" && value.payload?.kind === "gantt")
     return <GanttView payload={value.payload} width={width} height={height} virtualize={virtualize} fontScale={fscale} />;
   if (value.op === "ladder" && value.payload?.kind === "ladder")
-    return <LadderView payload={value.payload} width={width} height={height} fscale={fscale} />;
+    return <LadderView payload={value.payload} width={width} height={height} fscale={fscale} onAction={ladderAction} />;
   if (value.op === "scatter" || value.op === "xyline" || value.op === "bubble") return EMPTY_FIGURE;
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
 });

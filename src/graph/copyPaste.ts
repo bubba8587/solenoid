@@ -122,6 +122,7 @@ export const INIT_FIELD_ORDER = [
   "scanBy", "skipCells", "indexAxes",
   "byCol", "exactlyOnce",
   "typedKeys",
+  "choices",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

@@ -1759,7 +1759,7 @@ function ladderResources(f: FrameValue, limits: FrameValue | null): { name: stri
 
 export function choiceLadder(
   f: FrameValue, weightsFrame: FrameValue | null, limitsFrame: FrameValue | null,
-  normalize: DecisionNormalize, wiggle: number,
+  normalize: DecisionNormalize, wiggle: number, choices: readonly string[] = [],
 ): { plan: FrameValue; payload: LadderPayload } {
   const resources = ladderResources(f, limitsFrame);
   // A cost column is a criterion too only when the Weights name it.
@@ -1785,19 +1785,16 @@ export function choiceLadder(
     return v == null || v === "" ? `Option ${i + 1}` : String(formatFrameCell("string", v));
   });
   const tol = !Number.isFinite(wiggle) || wiggle < 0 ? 0 : wiggle >= 1 ? wiggle / 100 : wiggle;
-  const res = buildLadder(opts, resources.map((r) => r.limit), tol);
+  // A choice names an option; the first option of that name (trimmed, case-insensitive) is the one meant.
+  const indexOf = (name: string) => names.findIndex((n) => critKey(n) === critKey(name));
+  const res = buildLadder(opts, resources.map((r) => r.limit), tol, choices.map(indexOf).filter((i) => i >= 0));
 
-  // The best plan's picks, top rung first.
-  const byId = new Map(res.rungs.map((r) => [r.id, r]));
-  const path: { pick: number; tossup: boolean }[] = [];
-  for (let r = byId.get(res.best)!; r.parent != null; r = byId.get(r.parent)!) {
-    const up = byId.get(r.parent)!;
-    path.unshift({ pick: up.kind === "tossup" && r.branch === 1 ? up.rival! : up.pick!, tossup: up.kind === "tossup" });
-  }
+  const path = res.rungs.filter((r) => r.kind !== "plan").map((r) => ({ pick: r.pick!, kind: r.kind }));
+  const CHOICE_TEXT = { clear: "Clear", tossup: "Toss-up", chosen: "Your pick", plan: "" } as const;
   const cols: FrameColumn[] = [
     { name: "Rung", type: "number", values: path.map((_, k) => k + 1) },
     { name: ds.labelName, type: "string", values: path.map((p) => names[p.pick]) },
-    { name: "Choice", type: "string", values: path.map((p) => (p.tossup ? "Toss-up" : "Clear")) },
+    { name: "Choice", type: "string", values: path.map((p) => CHOICE_TEXT[p.kind]) },
     { name: "Score", type: "number", values: path.map((p) => opts[p.pick].score) },
     ...resources.map((r, k): FrameColumn => ({
       name: r.name, type: "number", values: path.map((p) => opts[p.pick].costs[k]),
@@ -1812,7 +1809,8 @@ export function choiceLadder(
       options: opts.map((o, k) => ({ name: names[k], score: o.score, costs: o.costs })),
       criteria: ds.criteria.map((c) => c.name),
       resources: resources.map((r) => ({ name: r.name, limit: r.limit, format: r.col.format ?? null })),
-      rungs: res.rungs, best: res.best, rankingTotal: res.rankingTotal, wiggle: tol,
+      rungs: res.rungs, bestTotal: res.bestTotal, rankingTotal: res.rankingTotal, wiggle: tol,
+      choices: res.kept.map((i) => names[i]), dropped: res.dropped.map((i) => names[i]),
     },
   };
 }

@@ -1603,11 +1603,13 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
     frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. A cost column is a criterion too only when Weights names it.",
     limits: "A row per resource: its name, matching an Options column, and its Limit. Unwired, everything fits.",
     wiggle: "How far off the weights could be. Two plans this close are a toss-up and the ladder forks. 0.25 or 25 both read as 25%.",
-    chart: "The ladder: each rung's pick, what was struck off and why, and a fork at each toss-up.",
+    chart: "The ladder: each rung's pick, what was struck off and why, and each toss-up's other way, which you can take from the figure.",
   };
 
   label: string;
   normalize: DecisionNormalize;
+  /** Options picked at toss-ups, by name in the order picked; the plan holds every one that still fits. */
+  choices: string[];
   literals: Record<string, number> = { wiggle: 0.25 };
   cachedResult: FrameValue | SolError | null = null;
   cachedChart: ChartValue | SolError | null = null;
@@ -1629,10 +1631,11 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
     ] },
   };
 
-  constructor(init?: { label?: string; normalize?: DecisionNormalize }) {
+  constructor(init?: { label?: string; normalize?: DecisionNormalize; choices?: string[] }) {
     super("ChoiceLadder");
     this.label = init?.label ?? "Choice Ladder";
     this.normalize = init?.normalize ?? "max";
+    this.choices = Array.isArray(init?.choices) ? init.choices.filter((c) => typeof c === "string") : [];
     this.addInput("frame", frameIn("Options"));
     this.addInput("weights", frameIn("Weights"));
     this.addInput("limits", frameIn("Limits"));
@@ -1656,7 +1659,7 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
     if (!f) { this.cachedResult = null; this.cachedChart = null; return { frame: null, chart: null }; }
     const wiggle = readInput(inputs.wiggle, this.literals.wiggle ?? 0.25) ?? 0;
     try {
-      const { plan, payload } = choiceLadder(f, inputs.weights?.[0] ?? null, inputs.limits?.[0] ?? null, this.normalize, wiggle);
+      const { plan, payload } = choiceLadder(f, inputs.weights?.[0] ?? null, inputs.limits?.[0] ?? null, this.normalize, wiggle, this.choices);
       this.cachedResult = plan;
       this.cachedChart = { __chart: true, op: "ladder", values: null, payload, options: {}, title: this.label || "Choice Ladder" };
     } catch (e) {

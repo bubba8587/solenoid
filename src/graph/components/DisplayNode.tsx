@@ -26,10 +26,12 @@ import { isLambdaValue } from "../nodes/lambda";
 import { LambdaValueView } from "./LambdaView";
 import { isSolError } from "../errorValue";
 import { recordNavTarget, stepRecordRow } from "./recordNav";
+import { ladderTarget, applyLadderAction } from "./ladderNav";
+import type { LadderAction } from "../nodes/ladderOps";
 import { nodeDisplayName } from "../catalogUtils";
 
 // Only for a definite size: measuring a content-driven card feeds back (chart size to card size) and oscillates.
-function MeasuredChart({ value, fontScale, recordNav }: { value: ChartValue; fontScale?: number; recordNav?: (delta: number) => void }) {
+function MeasuredChart({ value, fontScale, recordNav, ladderAction }: { value: ChartValue; fontScale?: number; recordNav?: (delta: number) => void; ladderAction?: (a: LadderAction) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 210, h: 130 });
   useLayoutEffect(() => {
@@ -47,7 +49,7 @@ function MeasuredChart({ value, fontScale, recordNav }: { value: ChartValue; fon
   }, []);
   return (
     <div ref={ref} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
-      <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} recordNav={recordNav} />
+      <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} recordNav={recordNav} ladderAction={ladderAction} />
     </div>
   );
 }
@@ -73,6 +75,8 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const isError = isSolError(v);
   const recordId = isChartValue(v) && v.op === "record" ? recordNavTarget(data.id) : null;
   const recordStep = recordId ? (delta: number) => { void stepRecordRow(recordId, delta); } : undefined;
+  const ladderId = isChartValue(v) && v.op === "ladder" ? ladderTarget(data.id) : null;
+  const ladderAct = ladderId ? (a: LadderAction) => { void applyLadderAction(ladderId, a); } : undefined;
   const isFrame = isFrameValue(v);
   const isCube = isCubeValue(v);
   // Object-valued figures must not reach the number formatter, which calls .toFixed.
@@ -117,8 +121,8 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
         ) : (
           <div style={{ position: "relative", width: sized ? "100%" : undefined, height: sized ? "100%" : undefined }}>
             {sized
-              ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} />
-              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} />}
+              ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} ladderAction={ladderAct} />
+              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} ladderAction={ladderAct} />}
             <ChartExpandButton value={v} op={v.op as ChartShape} axes series={[]} title={v.title || nodeDisplayName(data)} />
           </div>
         )

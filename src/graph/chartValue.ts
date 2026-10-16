@@ -189,32 +189,40 @@ export interface XYPayload {
   xDate?: boolean;
   names: { x?: string; y?: string; s?: string; c?: string; text?: string };
 }
-/** An option ranked above a rung's pick and struck off there: it doesn't fit what's left (`over`, per resource), or it would
- *  crowd out `pushedOut` for `cost` less score. Options are indexes into `LadderPayload.options`. */
+/** An option ranked above a rung's pick and struck off there: it doesn't fit what's left (`over`, per resource), it doesn't
+ *  fit alongside the choices still to come (`picks`), or it would crowd out `pushedOut` for `cost` less score. Options are
+ *  indexes into `LadderPayload.options`. */
 export interface LadderStruck {
   option: number;
-  why: "fit" | "crowd";
+  why: "fit" | "picks" | "crowd";
   over?: number[];
   pushedOut?: number[];
   cost?: number;
 }
+/** The other way at a rung: take `option` instead. `brings` and `drops` are what else changes in the plan; `plan` is the
+ *  score it reaches, `margin` its lead over this rung's plan (negative when it trails) and `pulls` each criterion's pull toward it. */
+export interface LadderSwitch {
+  option: number;
+  brings: number[];
+  drops: number[];
+  plan: number;
+  margin: number;
+  flipsAt: number;
+  pulls: number[];
+}
 export interface LadderRung {
-  id: number;
-  parent: number | null;
-  /** 0 the main side of a toss-up above, 1 its alternative; null below a clear rung. */
-  branch: 0 | 1 | null;
   rung: number;
-  kind: "clear" | "tossup" | "plan";
+  /** `tossup` offers `alt` as a choice; `chosen` is a choice already made, `alt` being the whole plan without it (its
+   *  `option` is the pick itself when the plan would take it anyway). */
+  kind: "clear" | "tossup" | "chosen" | "plan";
   /** Per resource, what is left before this rung's pick. */
   left: number[];
   /** The score of the picks above this rung. */
   total: number;
   pick?: number;
-  rival?: number;
-  /** A clear rung's next-best plan: its lead option and the weight error that would let it win, null when none would. */
+  /** A clear rung's nearest rival and the weight error that would let it win, null when none would. */
   sturdy?: { rival: number; flipsAt: number | null };
-  /** A toss-up: what each side brings along, each side's plan score, the main side's lead and each criterion's pull toward it. */
-  duel?: { aBrings: number[]; bBrings: number[]; planA: number; planB: number; margin: number; flipsAt: number; pulls: number[] };
+  alt?: LadderSwitch;
   struck?: LadderStruck[];
 }
 export interface LadderPayload {
@@ -223,10 +231,14 @@ export interface LadderPayload {
   options: { name: string; score: number; costs: number[] }[];
   criteria: string[];
   resources: { name: string; limit: number; format?: FormatAnnotation | null }[];
+  /** Top rung first; the last is the plan. */
   rungs: LadderRung[];
-  best: number;
+  bestTotal: number;
   rankingTotal: number;
   wiggle: number;
+  /** The choices honored, by option name in the order made, and those that no longer fit with the rest. */
+  choices: string[];
+  dropped: string[];
 }
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
