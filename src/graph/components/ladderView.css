@@ -5,7 +5,8 @@
 .sol-ladder__slot { position: absolute; display: flex; }
 .sol-ladder__slot > * { flex: 1 1 auto; }
 
-.sol-ladder__strand { fill: var(--text-muted); opacity: 0.6; }
+.sol-ladder__flow { fill: var(--text-muted); stroke: var(--text-muted); stroke-linejoin: round; opacity: 0.6; }
+.sol-ladder__link { fill: none; }
 .sol-ladder__need { fill: none; stroke: var(--text-muted); stroke-width: 1.25; stroke-dasharray: 3 3; }
 
 .sol-ladder__card {
@@ -21,7 +22,8 @@ button.sol-ladder__card:hover { border-color: var(--text-dim); }
 button.sol-ladder__card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .sol-ladder__card.is-chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .sol-ladder__card.is-required { border-style: dashed; }
-.sol-ladder__end { padding: 0; background: var(--surface-sunken); }
+.sol-ladder__card.is-passed { border-style: dashed; background: transparent; opacity: 0.55; }
+button.sol-ladder__card.is-passed:hover { opacity: 1; }
 
 .sol-ladder__pick { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .sol-ladder__name { font-size: calc(12.5px * var(--chart-fscale, 1)); font-weight: 600; line-height: 1.25; }

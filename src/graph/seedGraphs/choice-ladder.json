@@ -11,7 +11,7 @@
       "y": 0,
       "init": {
         "label": "Choice Ladder",
-        "body": "# Choosing several options at once\nA **Decision Matrix** ranks options. When you can only do some of them, the **Choice Ladder** orders them: value flows down, colored by criterion, and each rung takes what it serves. Close scores fork; click a card to take it.",
+        "body": "# Choosing several options at once\nA **Decision Matrix** ranks options. When you can only do some of them, the **Choice Ladder** orders them. The band is the value you get, and each card takes its share. Where two scores are close it forks; pick either side and the plan follows.",
         "color": "violet",
         "width": 420,
         "height": 420
@@ -66,15 +66,15 @@
       "x": 720,
       "y": 0,
       "size": {
-        "w": 980,
-        "h": 900
+        "w": 1340,
+        "h": 820
       }
     },
     {
       "id": "notePolicy",
       "type": "NoteNode",
       "x": -520,
-      "y": 1100,
+      "y": 1250,
       "init": {
         "label": "Policy agenda",
         "body": "### Policy agenda\nCapital has no total, so the ladder is the order to spend it in. Small business relief earns capital back. Fuel levy and Fuel tax holiday exclude each other; Transit expansion requires Zoning reform.",
@@ -87,7 +87,7 @@
       "id": "pOpts",
       "type": "FrameInputNode",
       "x": -60,
-      "y": 1100,
+      "y": 1250,
       "init": {
         "label": "Policies",
         "frameText": "[{\"name\":\"Policy\",\"type\":\"string\",\"values\":[\"Transit expansion\",\"Zoning reform\",\"Fuel levy\",\"Fuel tax holiday\",\"Child tax credit\",\"School meals\",\"Broadband grants\",\"Oversight board\",\"Small business relief\",\"Water mains\"]},{\"name\":\"Impact\",\"type\":\"number\",\"values\":[9,7,9,5,8,6,7,6,5,7]},{\"name\":\"Urgency\",\"type\":\"number\",\"values\":[6,7,8,6,7,6,6,7,6,9]},{\"name\":\"Support\",\"type\":\"number\",\"values\":[6,4,3,9,8,9,8,5,8,7]},{\"name\":\"Equity\",\"type\":\"number\",\"values\":[8,6,5,5,10,8,7,8,4,7]},{\"name\":\"Feasibility\",\"type\":\"number\",\"values\":[4,6,5,9,6,8,8,5,8,6]},{\"name\":\"Capital\",\"type\":\"number\",\"values\":[4,5,2,2,3,1,2,4,-1,2]},{\"name\":\"Requires\",\"type\":\"string\",\"values\":[\"Zoning reform\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"]},{\"name\":\"Excludes\",\"type\":\"string\",\"values\":[\"\",\"\",\"Fuel tax holiday\",\"Fuel levy\",\"\",\"\",\"\",\"\",\"\",\"\"]}]"
@@ -97,7 +97,7 @@
       "id": "pWeights",
       "type": "FrameInputNode",
       "x": -60,
-      "y": 1520,
+      "y": 1670,
       "init": {
         "label": "Weights",
         "frameText": "[{\"name\":\"Criterion\",\"type\":\"string\",\"values\":[\"Impact\",\"Urgency\",\"Support\",\"Equity\",\"Feasibility\"]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[5,4,3,3,2]}]"
@@ -107,7 +107,7 @@
       "id": "pLimits",
       "type": "FrameInputNode",
       "x": -60,
-      "y": 1800,
+      "y": 1950,
       "init": {
         "label": "Limits",
         "frameText": "[{\"name\":\"Resource\",\"type\":\"string\",\"values\":[\"Capital\"]},{\"name\":\"Limit\",\"type\":\"number\",\"values\":[null]}]"
@@ -117,7 +117,7 @@
       "id": "pLadder",
       "type": "ChoiceLadderNode",
       "x": 360,
-      "y": 1400,
+      "y": 1550,
       "init": {
         "label": "Policy ladder",
         "normalize": "max"
@@ -130,10 +130,10 @@
       "id": "pDisplay",
       "type": "DisplayNode",
       "x": 720,
-      "y": 1100,
+      "y": 1250,
       "size": {
-        "w": 980,
-        "h": 900
+        "w": 1340,
+        "h": 1160
       }
     }
   ],

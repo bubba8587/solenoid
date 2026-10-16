@@ -74,8 +74,17 @@ describe("Choice Ladder kernel: countable limits", () => {
       expect(a.share + b.share).toBeCloseTo(s.share, 9);
     }
   });
-  it("a fork whose two options both get taken rejoins: one state reached by two rungs", () => {
-    expect(l.states.some((s) => l.edges.filter((e) => e.to === s.id).length === 2)).toBe(true);
+  it("forks only where the two sides end with different sets: two options taken either way are no choice", () => {
+    const endOf = (sid: number): string => {
+      const outs = l.edges.filter((e) => e.from === sid);
+      if (!outs.length) return [...l.states[sid].taken].sort().join(",");
+      return endOf(outs.reduce((x, y) => (y.share > x.share ? y : x)).to);
+    };
+    const forks = l.states.filter((s) => l.edges.filter((e) => e.from === s.id).length === 2);
+    for (const s of forks) {
+      const [a, b] = l.edges.filter((e) => e.from === s.id);
+      expect(endOf(a.to)).not.toBe(endOf(b.to));
+    }
   });
   it("the flow is conserved: the ends' shares sum to the whole", () => {
     expect(l.states.filter((s) => s.end).reduce((t, s) => t + s.share, 0)).toBeCloseTo(1, 9);
@@ -103,6 +112,11 @@ describe("Choice Ladder kernel: a rough cost with no total", () => {
     expect(pr[2].tier).toBe(0);
     const l = buildLadder(opts, [{ limit: null }], 0);
     expect(mainPicks(l)).toEqual([2, 1, 3, 0]);
+  });
+  it("the order is the answer, so two close options fork even when both get taken, and the paths rejoin", () => {
+    const l = buildLadder([opt(0.8, [1]), opt(0.79, [1]), opt(0.3, [1])], [{ limit: null }], 0.05);
+    expect(l.edges.filter((e) => e.from === 0).map((e) => e.kind)).toEqual(["close", "close"]);
+    expect(l.states.some((s) => l.edges.filter((e) => e.to === s.id).length === 2)).toBe(true);
   });
   it("takes everything, since nothing runs out", () => {
     expect(buildLadder(opts, [{ limit: null }], 0.05).states.filter((s) => s.end).every((s) => s.taken.length === 4)).toBe(true);
@@ -139,13 +153,18 @@ describe("Choice Ladder kernel: Requires and Excludes", () => {
 });
 
 describe("Choice Ladder kernel: choices", () => {
-  it("a chosen option wins its fork outright", () => {
+  it("a chosen option wins its fork outright, and the side passed over stays, carrying nothing and going nowhere", () => {
     const base = buildLadder(RESTAURANTS, MEALS, 0.05);
     const fork = base.edges.filter((e) => e.from === 0);
     expect(fork).toHaveLength(2);
     const other = fork.find((e) => e.pick !== base.edges[base.main[0]].pick)!.pick;
     const l = buildLadder(RESTAURANTS, MEALS, 0.05, [other]);
-    expect(l.edges.filter((e) => e.from === 0)).toEqual([expect.objectContaining({ pick: other, kind: "chosen", share: 1 })]);
+    expect(l.edges.filter((e) => e.from === 0)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ pick: other, kind: "chosen", share: 1 }),
+      expect.objectContaining({ pick: base.edges[base.main[0]].pick, kind: "passed", share: 0 }),
+    ]));
+    const passed = l.edges.find((e) => e.kind === "passed")!;
+    expect(l.edges.some((e) => e.from === passed.to)).toBe(false);
     expect(mainPicks(l)[0]).toBe(other);
   });
   it("nextChoices takes, moves a retaken pick to the end, undoes by name and clears", () => {
@@ -153,6 +172,7 @@ describe("Choice Ladder kernel: choices", () => {
     expect(nextChoices(["Lune", "Kato"], { add: "lune" })).toEqual(["Kato", "lune"]);
     expect(nextChoices(["Lune", "Kato"], { remove: " LUNE " })).toEqual(["Kato"]);
     expect(nextChoices(["Lune", "Kato"], { reset: true })).toEqual([]);
+    expect(nextChoices(["Lune", "Fennel"], { add: "Kato", instead: "fennel" })).toEqual(["Lune", "Kato"]);
   });
 });
 

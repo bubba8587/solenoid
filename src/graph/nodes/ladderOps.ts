@@ -11,16 +11,17 @@ export interface LadderResource { limit: number | null }
 
 export interface LadderResult { states: LadderState[]; edges: LadderEdge[]; main: number[] }
 
-/** What a viewer can do to a Choice Ladder's choices: take an option at a fork, undo one, or clear them all. */
-export type LadderAction = { add: string } | { remove: string } | { reset: true };
+/** What a viewer can do to a Choice Ladder's choices: take an option at a fork (`instead` of the one taken there), undo
+ *  one, or clear them all. */
+export type LadderAction = { add: string; instead?: string } | { remove: string } | { reset: true };
 
 /** The choices after an action, matched by name trimmed and case-insensitive: a take appends (moving to the end if already
- *  there), an undo removes. */
+ *  there, and dropping the one it replaces), an undo removes. */
 export function nextChoices(choices: readonly string[], a: LadderAction): string[] {
   const key = (s: string) => s.trim().toLowerCase();
   if ("reset" in a) return [];
   if ("remove" in a) return choices.filter((c) => key(c) !== key(a.remove));
-  return [...choices.filter((c) => key(c) !== key(a.add)), a.add];
+  return [...choices.filter((c) => key(c) !== key(a.add) && (a.instead == null || key(c) !== key(a.instead))), a.add];
 }
 
 export const LADDER_MAX_OPTIONS = 40;
@@ -96,14 +97,26 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
   return best.ids;
 }
 
+/** Whether taking `a` or `b` next ends with the same set either way. */
+function sameSet(opts: LadderOption[], open: number[], s: { taken: number[]; left: (number | null)[] }, a: number, b: number): boolean {
+  const after = (x: number) => {
+    const taken = [...s.taken, x];
+    const rest = open.filter((i) => i !== x && !clash(opts, i, taken));
+    return new Set([x, ...bestPlan(opts, rest, taken, spend(s.left, opts[x]))]);
+  };
+  const A = after(a), B = after(b);
+  return A.size === B.size && [...A].every((i) => B.has(i));
+}
+
 /** The ladder: rungs in priority order toward the best plan, forking where the next two options are close, the flow
  *  splitting between them by score. The option not taken stays open, so a fork rejoins when both sides reach the same set.
- *  A `chosen` option wins its fork outright. An option whose turn comes but needs another first brings that one in first. */
+ *  A `chosen` option wins its fork outright; the side passed over stays as a rung that carries nothing and goes nowhere. An option whose turn comes but needs another first brings that one in first. */
 export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: number, chosen: number[] = []): LadderResult {
   if (opts.length > LADDER_MAX_OPTIONS) throw solError("#VALUE!", `Choice Ladder takes at most ${LADDER_MAX_OPTIONS} options`);
   const pri = priorities(opts, res);
   const order = opts.map((_, i) => i).sort((a, b) => (ahead(pri[a], pri[b]) ? -1 : ahead(pri[b], pri[a]) ? 1 : a - b));
   const rank = new Map(order.map((o, k) => [o, k]));
+  const rough = res.some((r) => r.limit == null);
 
   interface S { id: number; taken: number[]; out: Set<number>; left: (number | null)[]; share: number; depth: number; noFork: boolean; ins: number[] }
   const states: S[] = [];
@@ -154,10 +167,16 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
           if (g < bestGap - EPS) { bestGap = g; b = i; }
         }
       }
+      // Without a rough cost only the set counts, so two sides that end with the same set are no choice at all.
+      if (b != null && !rough && sameSet(opts, open.filter((i) => !struck.includes(i)), s, a, b)) b = null;
       const picks: { take: number; share: number; kind: LadderEdge["kind"] }[] = [];
       if (b != null && (chosen.includes(a) || chosen.includes(b))) {
         const win = chosen.lastIndexOf(b) > chosen.lastIndexOf(a) ? b : a;
         picks.push({ take: win, share: s.share, kind: "chosen" });
+        // The side passed over stays in view, carrying nothing, so it can be taken instead.
+        const t: S = { id: states.length, taken: [...s.taken, win === a ? b : a], out: s.out, left: s.left, share: 0, depth: s.depth + 1, noFork: true, ins: [edges.length] };
+        states.push(t);
+        edges.push({ from: s.id, to: t.id, pick: win === a ? b : a, share: 0, kind: "passed", struck: [] });
       } else if (b != null && ends + next.size + (level.length - li) + 1 <= MAX_ENDS) {
         const pa = Math.max(EPS, opts[a].score), pb = Math.max(EPS, opts[b].score);
         picks.push({ take: a, share: (s.share * pa) / (pa + pb), kind: "close" }, { take: b, share: (s.share * pb) / (pa + pb), kind: "close" });

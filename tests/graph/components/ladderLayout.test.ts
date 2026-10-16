@@ -21,7 +21,6 @@ function heightsFor(p: LadderPayload): Map<string, number> {
   const need = layoutLadder(p, new Map(), metricsFor(1)).minHeight;
   const h = new Map<string, number>([["source", 40]]);
   p.edges.forEach((e, i) => h.set(`e${i}`, Math.max(need.get(`e${i}`) ?? 0, 44 + 14 * Math.min(2, e.struck.length))));
-  p.states.filter((s) => s.end).forEach((s) => h.set(`s${s.id}`, need.get(`s${s.id}`) ?? 24));
   return h;
 }
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5;
@@ -31,7 +30,7 @@ const trunkBox = (d: string): Box => {
   return { key: "", lane: 0, row: 0, x, y, w: x2 - x, h: y2 - y };
 };
 
-function check(L: Layout) {
+function check(p: LadderPayload, L: Layout) {
   const boxes = [...L.boxes.values()];
   for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++)
     expect(overlaps(boxes[i], boxes[j]), `${boxes[i].key} overlaps ${boxes[j].key}`).toBe(false);
@@ -63,10 +62,12 @@ function check(L: Layout) {
     const tb = trunkBox(t.d);
     for (const b of boxes) if (b.key !== "source") expect(overlaps(tb, b), `trunk of ${t.from} under ${b.key}`).toBe(false);
   }
-  // The ends together take everything that was never served.
-  const ends = [...L.flows].filter(([k]) => k.startsWith("s")).reduce((t, [, f]) => t + f.peelW, 0);
-  const served = [...L.flows].filter(([k]) => k.startsWith("e")).reduce((t, [, f]) => t + f.peelW, 0);
-  expect(ends + served).toBeCloseTo(L.flows.get("source")!.outW, 6);
+  // The cards together take the whole band, and a path's last card takes all that reaches it.
+  const served = [...L.flows].filter(([k]) => k !== "source").reduce((t, [, f]) => t + f.peelW, 0);
+  expect(served).toBeCloseTo(L.flows.get("source")!.outW, 6);
+  p.edges.forEach((e, i) => {
+    if (!p.edges.some((x) => x.from === e.to)) expect(L.flows.get(`e${i}`)!.outW).toBeCloseTo(0, 9);
+  });
 }
 
 describe("ladder layout", () => {
@@ -81,7 +82,15 @@ describe("ladder layout", () => {
     ["the policy agenda with the fuel holiday chosen", payload("p", 0.05, ["Fuel tax holiday"])],
   ];
   it.each(cases)("%s: every flow starts and ends on a card and is conserved", (_n, p) => {
-    check(layoutLadder(p, heightsFor(p), metricsFor(1)));
+    check(p, layoutLadder(p, heightsFor(p), metricsFor(1)));
+  });
+  it("a side passed over sits right beside the pick, in a lane no card in its row uses", () => {
+    const p = payload("r", 0.05, ["Fennel"]);
+    const L = layoutLadder(p, heightsFor(p), metricsFor(1));
+    const i = p.edges.findIndex((e) => e.kind === "passed");
+    const pick = p.edges.findIndex((e) => e.kind === "chosen");
+    expect(L.boxes.get(`e${i}`)!.lane).toBe(L.boxes.get(`e${pick}`)!.lane + 1);
+    expect(L.flows.get(`e${i}`)).toEqual({ inW: 0, peelW: 0, outW: 0 });
   });
   it.each(cases)("%s: at every fork, the other side sits to the right of the main side's own branch", (_n, p) => {
     const L = layoutLadder(p, heightsFor(p), metricsFor(1));
@@ -94,7 +103,7 @@ describe("ladder layout", () => {
       return seen;
     };
     for (const st of p.states) {
-      const outs = p.edges.map((e, i) => ({ e, i })).filter((x) => x.e.from === st.id).sort((x, y) => y.e.share - x.e.share);
+      const outs = p.edges.map((e, i) => ({ e, i })).filter((x) => x.e.from === st.id && x.e.share > 0).sort((x, y) => y.e.share - x.e.share);
       if (outs.length < 2) continue;
       const theirs = reach(outs[1].e.to);
       const mine = [...reach(outs[0].e.to)].filter((i) => !theirs.has(i)).map((i) => L.boxes.get(`e${i}`)!.lane);

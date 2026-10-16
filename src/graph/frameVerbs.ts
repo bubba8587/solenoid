@@ -1805,7 +1805,7 @@ export function choiceLadder(
   const gap = !Number.isFinite(close) || close < 0 ? 0 : close >= 1 ? close / 100 : close;
   const res = buildLadder(opts, resources.map((r) => ({ limit: r.limit })), gap, choices.map(indexOf).filter((i) => i >= 0));
 
-  const CHOICE_TEXT = { clear: "Clear", close: "Close", chosen: "Your pick", required: "Needed" } as const;
+  const CHOICE_TEXT = { clear: "Clear", close: "Close", chosen: "Your pick", passed: "Passed", required: "Needed" } as const;
   const path = res.main.map((e) => res.edges[e]);
   const cols: FrameColumn[] = [
     { name: "Rung", type: "number", values: path.map((_, k) => k + 1) },
