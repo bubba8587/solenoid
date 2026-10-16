@@ -179,6 +179,13 @@ Already flagged at scope #13, restated as a standing rule: the report projection
 comments-in-prose, no pagination beyond print CSS. If it needs a toolbar with fonts,
 it's out.
 
+### 14. Decision science beyond weighted choices — decision trees with chance, schedulers, solvers
+The decision nodes ([[C122]] choiceLadder, [[C126]] chainedDecisions) choose among known options: weighted scores,
+deal-breakers, limits, picks and chains whose later steps are known. Out: choices under chance (probability-weighted
+trees, expected value of information), planning across time periods (which quarter each project lands in, which
+semester each course), and nested ladders (several picks inside each pick of another ladder). Each needs a model
+the person can't check by eye; filter to one parent and run a ladder there instead.
+
 ---
 
 ## Why Alteryx is IN and these are OUT (the pattern, explicitly)

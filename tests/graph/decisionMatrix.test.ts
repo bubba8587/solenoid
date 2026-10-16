@@ -484,7 +484,7 @@ describe("deal-breakers ([[C124]] dealBreakers)", () => {
   });
 
   it("no bound set adds no column, and everyone ruled out still lists everyone", () => {
-    expect(decisionMatrix(apartments, null, "max").columns.map((c) => c.name)).toEqual(["Place", "Score", "Rank"]);
+    expect(decisionMatrix(apartments, null, "max").columns.map((c) => c.name)).toEqual(["Place", "Score", "Rank", "Filled in"]);
     const none = decisionMatrix(apartments, null, "max", false, {}, [{ atLeast: null, atMost: 1 }, { atLeast: null, atMost: null }, { atLeast: null, atMost: null }]);
     expect(col(none, "Rank").values.filter((v) => v != null)).toEqual([1]); // Tower's rent is missing
   });
@@ -665,5 +665,19 @@ describe("chained decisions ([[C126]] chainedDecisions)", () => {
     const n = new DecisionMatrixNode();
     expect(isCubeValue(n.data({ frame: [cube], weights: [weights([["Rent", -1, null]])] }).frame)).toBe(true);
     expect(isFrameValue(n.data({ frame: [hoods] }).frame)).toBe(true);
+  });
+});
+
+describe("a guessed value is said ([[C123]] decisionBlanks)", () => {
+  it("Filled in names the criteria whose blank took the median, and only when there is one", () => {
+    const g: FrameValue = { __frame: true, columns: [
+      { name: "Bid", type: "string", values: ["North", "South", "East"] },
+      { name: "Price", type: "number", values: [100, null, 140] },
+      { name: "Rating", type: "number", values: [7, 8, null] },
+    ] };
+    const out = decisionMatrix(g, [-1, 1], "max");
+    const by = (n: string) => col(out, "Filled in").values[col(out, "Bid").values.indexOf(n)];
+    expect([by("North"), by("South"), by("East")]).toEqual([null, "Price", "Rating"]);
+    expect(decisionMatrix(f, null, "max").columns.map((c) => c.name)).not.toContain("Filled in");
   });
 });

@@ -212,3 +212,47 @@ describe("Choice Ladder floors (At least)", () => {
     expect(payloadOf(n).resources).toEqual([expect.objectContaining({ limit: 200, floor: null })]);
   });
 });
+
+describe("Choice Ladder: unknown costs, One of, and contradictions", () => {
+  const opts = (extra: FrameColumn[] = [], dollars: (number | null)[] = [90, 80, 70, 60]) => frame([
+    { name: "Place", type: "string", values: ["Aster", "Birch", "Cedar", "Dune"] },
+    { name: "Food", type: "number", values: [9, 8, 7, 6] },
+    { name: "Dollars", type: "number", values: dollars },
+    ...extra,
+  ]);
+  const cap = (n: number) => frame([{ name: "Resource", type: "string", values: ["Dollars"] }, { name: "At most", type: "number", values: [n] }]);
+  const plan = (o: FrameValue, l = cap(150)) => {
+    const n = new ChoiceLadderNode();
+    const out = n.data({ frame: [o], limits: [l] }).frame;
+    return out as FrameValue;
+  };
+
+  it("a blank cost is the median cost, not free, and the Plan says it was filled in", () => {
+    const p = plan(opts([], [90, null, 70, 60]), cap(130));
+    // Birch costs the median, 70, so it can't sit beside Aster (90) under 130 as a free Birch would.
+    const names = col(p, "Place") as string[];
+    expect(names.includes("Aster") && names.includes("Birch")).toBe(false);
+    expect(names.sort()).toEqual(["Birch", "Dune"]);
+    const q = plan(opts([], [null, 80, 70, 60]), cap(300));
+    expect(col(q, "Filled in")[col(q, "Place").indexOf("Aster")]).toBe("Dollars");
+  });
+
+  it("options sharing a One of value exclude each other", () => {
+    const p = plan(opts([{ name: "One of", type: "string", values: ["Italian", "Italian", "", "Thai"] }]), cap(1000));
+    const names = col(p, "Place") as string[];
+    expect(names).toContain("Aster");
+    expect(names).not.toContain("Birch");
+    expect(names).toEqual(expect.arrayContaining(["Cedar", "Dune"]));
+  });
+
+  it("a Must the screen removes is #VALUE! saying why", () => {
+    const flag = (name: string, on: boolean[]): FrameColumn => ({ name, type: "logical", values: on });
+    const both = plan(opts([flag("Must", [false, true, false, false]), flag("Never", [false, true, false, false])]));
+    expect((both as unknown as { message: string }).message).toMatch(/Must option Birch is also marked Never/);
+    const n = new ChoiceLadderNode();
+    const out = n.data({ frame: [opts([flag("Must", [true, false, false, false])])], limits: [cap(500)], weights: [frame([
+      { name: "Criterion", type: "string", values: ["Food"] }, { name: "Weight", type: "number", values: [1] }, { name: "At most", type: "number", values: [8] },
+    ])] }).frame;
+    expect((out as unknown as { message: string }).message).toMatch(/Must option Aster is ruled out by Food/);
+  });
+});
