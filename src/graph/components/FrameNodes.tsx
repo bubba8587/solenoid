@@ -30,6 +30,7 @@ import type {
   DropBlankRowsNode as DropBlankRowsNodeType,
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
+  SensitivityMode,
   ChoiceLadderNode as ChoiceLadderNodeType,
   SettleNode as SettleNodeType,
   PayoffPlannerNode as PayoffPlannerNodeType,
@@ -71,7 +72,7 @@ import { scheduleAutosave } from "../persistence";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { SolenoidSocket } from "../sockets";
 import { cableGhostStore } from "../cableState";
-import { reconcileTypesAfterEdit } from "../fcReconcile";
+import { reconcileTypesAfterEdit, retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
 import { InlineInputs, InlineTextField, useConnectedInputs } from "./inlineInput";
@@ -731,15 +732,29 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
 
 // ─── DECISION SENSITIVITY ───────────────────────────────────────────────────────
 
+const SENSITIVITY_MODES: { value: SensitivityMode; label: string; title: string }[] = [
+  { value: "scenarios", label: "Scenarios", title: "Re-rank under each named set of weights." },
+  { value: "flips", label: "Flip points", title: "For each criterion, the weight at which another option would win." },
+];
+
 export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionSensitivityNodeType>) {
   const [normalize, setNormalize] = useNodeField(data, "normalize");
+  const [mode, setModeField] = useNodeField(data, "mode");
+  async function pickMode(next: SensitivityMode) {
+    const { outputChanged } = data.setMode(next);
+    const editor = getOwningEditor(data.id), view = getOwningView(data.id);
+    if (outputChanged && editor && view) await retypeOutputCables(editor, view, data.id, "cube");
+    if (view) await view.rerenderNode(data.id);
+    setModeField(next);
+  }
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <CardSection label="Normalize" title="The fallback for a criterion whose Norm cell is blank; applies across every scenario.">
+      <SegToggle value={mode} options={SENSITIVITY_MODES} onChange={(m) => void pickMode(m)} />
+      <CardSection label="Normalize" title="The fallback for a criterion whose Norm cell is blank.">
         <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       </CardSection>
-      <CubeDisplay cube={data.cachedResult} label={nodeDisplayName(data)} />
+      <FrameOrCubeDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

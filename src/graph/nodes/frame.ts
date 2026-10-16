@@ -32,7 +32,7 @@ import {
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights, allocateFrame, choiceLadder,
+  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, choiceLadder,
   mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
@@ -1560,15 +1560,19 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
 
 // ─── DECISION SENSITIVITY ───────────────────────────────────────────────────────
 
+export type SensitivityMode = "scenarios" | "flips";
+
 export class DecisionSensitivityNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     scores: "The options frame a Decision Matrix takes: rows are options, number columns criteria.",
-    scenarios: "The Decision Matrix weights frame widened to many scenarios: one row per Criterion, and a number column per scenario (its header names it) carrying that scenario's weight. An optional Norm column applies per criterion across every scenario; a criterion a scenario omits weighs 1.",
+    scenarios: "Scenarios: the Decision Matrix weights frame widened, one row per Criterion and a number column per scenario (its header names it) carrying that scenario's weight; an optional Norm column and At least / At most apply across every scenario, and a criterion a scenario omits weighs 1. Flip points: the Decision Matrix's own Weights table.",
+    cube: "Scenarios: a row per scenario with its Winner, Margin and full Ranking. Flip points: a row per criterion with the nearest weight below and above its own at which another option would win, and which one.",
   };
 
   label: string;
   normalize: DecisionNormalize;
-  cachedResult: CubeValue | SolError | null = null;
+  mode: SensitivityMode;
+  cachedResult: CubeValue | FrameValue | SolError | null = null;
   width = 220; height = 240;
 
   static frameHints: Record<string, FrameHint> = {
@@ -1581,20 +1585,44 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     ] },
   };
 
-  constructor(init?: { label?: string; normalize?: DecisionNormalize }) {
+  // [[C125]] flipPoints: the mode swaps the output between a Cube of scenarios and a Frame of flip points.
+  static outputFor(mode: SensitivityMode) { return mode === "flips" ? frameOut("Flip points") : cubeOut("By scenario"); }
+  static inputLabel(mode: SensitivityMode) { return mode === "flips" ? "Weights" : "Scenarios"; }
+
+  constructor(init?: { label?: string; normalize?: DecisionNormalize; mode?: SensitivityMode }) {
     super("DecisionSensitivity");
     this.label = init?.label ?? "Sensitivity";
     this.normalize = init?.normalize ?? "max";
+    this.mode = init?.mode === "flips" ? "flips" : "scenarios";
     this.addInput("scores", frameIn("Scores"));
-    this.addInput("scenarios", frameIn("Scenarios"));
-    this.addOutput("cube", cubeOut("By scenario"));
+    this.addInput("scenarios", frameIn(DecisionSensitivityNode.inputLabel(this.mode)));
+    this.addOutput("cube", DecisionSensitivityNode.outputFor(this.mode));
+  }
+
+  setMode(next: SensitivityMode): { outputChanged: boolean } {
+    if (next === this.mode) return { outputChanged: false };
+    this.mode = next;
+    const spec = DecisionSensitivityNode.outputFor(next);
+    this.outputs.cube!.socket = spec.socket;
+    this.outputs.cube!.label = spec.label;
+    this.inputs.scenarios!.label = DecisionSensitivityNode.inputLabel(next);
+    return { outputChanged: true };
+  }
+
+  frameShape(_outKey: string, _ctx: FrameShapeContext): Shape | null {
+    if (this.mode !== "flips") return null;
+    return { columns: [
+      { name: "Criterion", type: "string" }, { name: "Weight", type: "number" },
+      { name: "Flips below", type: "number" }, { name: "Winner below", type: "string" },
+      { name: "Flips above", type: "number" }, { name: "Winner above", type: "string" },
+    ] };
   }
 
   data(inputs: { scores?: (FrameValue | null)[]; scenarios?: (FrameValue | null)[] }) {
     const scores = inputs.scores?.[0] ?? null;
     const scenarios = inputs.scenarios?.[0] ?? null;
-    if (!scores || !scenarios) { this.cachedResult = null; return { cube: null }; }
-    this.cachedResult = runVerb(() => decisionSensitivity(scores, scenarios, this.normalize));
+    if (!scores || (!scenarios && this.mode === "scenarios")) { this.cachedResult = null; return { cube: null }; }
+    this.cachedResult = runVerb(() => (this.mode === "flips" ? flipPoints(scores, scenarios, this.normalize) : decisionSensitivity(scores, scenarios!, this.normalize)));
     return { cube: this.cachedResult };
   }
 }

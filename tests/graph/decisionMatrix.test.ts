@@ -1,7 +1,7 @@
 // [[B17]]
 import { describe, it, expect } from "vitest";
-import { decisionMatrix, decisionCriteria, decisionSensitivity } from "../../src/graph/frameVerbs";
-import { DecisionMatrixNode } from "../../src/graph/rete-nodes";
+import { decisionMatrix, decisionCriteria, decisionSensitivity, flipPoints } from "../../src/graph/frameVerbs";
+import { DecisionMatrixNode, DecisionSensitivityNode } from "../../src/graph/rete-nodes";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { isFrameValue, isCubeValue, type FrameValue, type FrameColumn } from "../../src/graph/frame";
 
@@ -509,5 +509,72 @@ describe("deal-breakers ([[C124]] dealBreakers)", () => {
     if (!isCubeValue(cube)) throw new Error("expected a cube");
     expect(cube.columns[0].cells).toEqual(["Light-first"]);
     expect(cube.columns[1].cells).toEqual(["Tower"]);
+  });
+});
+
+describe("flip points ([[C125]] flipPoints)", () => {
+  const cars: FrameValue = { __frame: true, columns: [
+    { name: "Car", type: "string", values: ["Civic", "Model 3", "RAV4", "Miata", "Outback"] },
+    { name: "Price", type: "number", values: [26, 42, 31, 30, 29] },
+    { name: "Range", type: "number", values: [450, 500, 520, 400, 480] },
+    { name: "Fun", type: "number", values: [6, 9, 4, 10, 5] },
+    { name: "Space", type: "number", values: [6, 6, 9, 2, 9] },
+  ] };
+  const weights: FrameValue = { __frame: true, columns: [
+    { name: "Criterion", type: "string", values: ["Price", "Range", "Fun", "Space"] },
+    { name: "Weight", type: "number", values: [-3, 1, 2, 2] },
+  ] };
+  const w0 = [-3, 1, 2, 2];
+  // An unrounded oracle: ÷Max values weighted and summed, the first strict best winning.
+  const winnerAt = (j: number, t: number) => {
+    const crit = cars.columns.slice(1).map((c) => { const v = c.values as number[]; const m = Math.max(...v.map(Math.abs)); return v.map((x) => x / m); });
+    const w = w0.map((x, k) => (k === j ? t : x));
+    const tot = (cars.columns[0].values as string[]).map((_, i) => crit.reduce((s, e, k) => s + e[i] * w[k], 0));
+    return cars.columns[0].values[tot.reduce((b, v, i) => (v > tot[b] ? i : b), 0)];
+  };
+
+  it("names, per criterion, the nearest weights either side where another option takes first place", () => {
+    const out = flipPoints(cars, weights, "max");
+    expect(out.columns.map((c) => c.name)).toEqual(["Criterion", "Weight", "Flips below", "Winner below", "Flips above", "Winner above"]);
+    const now = winnerAt(0, -3);
+    let checked = 0;
+    out.columns[0].values.forEach((_, j) => {
+      for (const [side, dir] of [["below", -1], ["above", 1]] as const) {
+        const t = col(out, `Flips ${side}`).values[j] as number | null;
+        const who = col(out, `Winner ${side}`).values[j];
+        if (t == null) continue;
+        checked++;
+        expect(winnerAt(j, t + dir * 1e-3)).toBe(who);
+        expect(winnerAt(j, t - dir * 1e-3)).toBe(now);
+      }
+    });
+    expect(checked).toBeGreaterThan(2);
+  });
+
+  it("never crosses zero: a cost stays a cost", () => {
+    const out = flipPoints(cars, weights, "max");
+    const above = col(out, "Flips above").values[0];
+    expect(above == null || (above as number) <= 0).toBe(true);
+    for (let j = 1; j < 4; j++) {
+      const below = col(out, "Flips below").values[j];
+      expect(below == null || (below as number) >= 0).toBe(true);
+    }
+  });
+
+  it("a ruled-out option never wins, and one option left flips nowhere", () => {
+    const capped: FrameValue = { ...weights, columns: [...weights.columns, { name: "At most", type: "number", values: [27, null, null, null] }] };
+    const out = flipPoints(cars, capped, "max");
+    expect([...col(out, "Flips below").values, ...col(out, "Flips above").values].every((v) => v == null)).toBe(true);
+  });
+
+  it("the node's Flip points mode swaps its output to a frame and reads the Weights table", () => {
+    const n = new DecisionSensitivityNode();
+    expect(n.outputs.cube!.label).toBe("By scenario");
+    expect(n.setMode("flips")).toEqual({ outputChanged: true });
+    expect(n.inputs.scenarios!.label).toBe("Weights");
+    const out = n.data({ scores: [cars], scenarios: [weights] }).cube;
+    expect(isFrameValue(out)).toBe(true);
+    expect(isFrameValue(n.data({ scores: [cars] }).cube)).toBe(true);
+    expect(new DecisionSensitivityNode({ mode: "flips" }).outputs.cube!.label).toBe("Flip points");
   });
 });

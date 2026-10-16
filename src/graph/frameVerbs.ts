@@ -1710,6 +1710,8 @@ interface DecisionScores {
   contrib: number[][];
   /** Each criterion's weight over Σ|weight|. */
   weightShare: number[];
+  /** `effective[j][i]`: option i's normalized value on criterion j, before weighting. */
+  effective: number[][];
   scores: number[];
 }
 
@@ -1750,7 +1752,7 @@ function decisionScores(
     return round4(sw);
   });
   const weightShare = criteriaCols.map((_, j) => (sumAbsW > 0 ? weightOf(j) / sumAbsW : 0));
-  return { labelName: labelCol?.name ?? "Option", labels, criteria: criteriaCols, contrib, weightShare, scores };
+  return { labelName: labelCol?.name ?? "Option", labels, criteria: criteriaCols, contrib, weightShare, effective, scores };
 }
 
 export function decisionMatrix(
@@ -1968,6 +1970,54 @@ export function decisionSensitivity(
     { name: "Margin", cells: marginCells },
     { name: "Ranking", cells: rankingCells },
   ]);
+}
+
+// ─── Flip points (how far each weight can move before the winner changes) ────────
+
+/** For each criterion, the nearest weight below and above its own at which another option would take first place, the
+ *  others held ([[C125]] flipPoints). Every score shares Σ|w|, so with one weight `t` free, option i's score orders by
+ *  `A_i + e_i·t`; the winner W is overtaken where those lines cross. The search stays on the weight's side of zero. */
+export function flipPoints(f: FrameValue, weightsFrame: FrameValue | null, normalize: DecisionNormalize): FrameValue {
+  const criteria = decisionCriteria(f);
+  if (criteria.length === 0) throw solError("#VALUE!", "Decision Matrix needs at least one numeric criterion column");
+  const { weights, normOverrides, bounds } = resolveDecisionWeights(weightsFrame, criteria);
+  const w = criteria.map((_, j) => weights?.[j] ?? 1);
+  const failed = decisionScreen(f, bounds);
+  const pass = failed.map((x, i) => (x.length ? -1 : i)).filter((i) => i >= 0);
+  const ds = decisionScores(frameRows(f, pass), w, normalize, normOverrides);
+  const n = pass.length;
+  const eff = ds.effective;
+  const total = Array.from({ length: n }, (_, i) => criteria.reduce((s, _, j) => s + eff[j][i] * w[j], 0));
+  const win = total.reduce((b, v, i) => (v > total[b] + 1e-12 ? i : b), 0);
+
+  const rows = criteria.map((name, j) => {
+    let below: { t: number; who: number } | null = null, above: { t: number; who: number } | null = null;
+    if (n > 1) {
+      const A = total.map((v, i) => v - eff[j][i] * w[j]);
+      const lo = w[j] > 0 ? 0 : -Infinity, hi = w[j] < 0 ? 0 : Infinity;
+      for (let i = 0; i < n; i++) {
+        if (i === win) continue;
+        const de = eff[j][i] - eff[j][win];
+        if (Math.abs(de) < 1e-12) continue;
+        const t = (A[win] - A[i]) / de;
+        if (de > 0 && t <= hi && (above == null || t < above.t)) above = { t: Math.max(t, w[j]), who: i };
+        if (de < 0 && t >= lo && (below == null || t > below.t)) below = { t: Math.min(t, w[j]), who: i };
+      }
+    }
+    return { name, w: w[j], below, above };
+  });
+  const label = (k: number) => ds.labels[k];
+  return {
+    __frame: true,
+    columns: [
+      { name: "Criterion", type: "string", values: rows.map((r) => r.name) },
+      { name: "Weight", type: "number", values: rows.map((r) => r.w) },
+      { name: "Flips below", type: "number", values: rows.map((r) => (r.below ? round4(r.below.t) : null)) },
+      { name: "Winner below", type: "string", values: rows.map((r) => (r.below ? label(r.below.who) : null)) },
+      { name: "Flips above", type: "number", values: rows.map((r) => (r.above ? round4(r.above.t) : null)) },
+      { name: "Winner above", type: "string", values: rows.map((r) => (r.above ? label(r.above.who) : null)) },
+    ],
+  };
 }
 
 // ─── Timesaver verbs ─────────────────────────────────────────────────────────────

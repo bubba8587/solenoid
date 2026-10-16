@@ -30,10 +30,8 @@ building a parameter-sweep mechanism from scratch.**
 ## Build
 
 Two possible build shapes — pick based on how bundle 09's Monte Carlo driver shapes up:
-1. **Minimal:** a UI affordance on `DecisionSensitivityNode` that auto-generates
-   perturbed weight scenarios (±10% per criterion) instead of requiring the user to
-   hand-author the `scenarios` frame — reusing the existing `decisionSensitivity` verb
-   unchanged.
+1. **Minimal:** landed as the node's Flip points mode ([[C125]] flipPoints): per
+   criterion, the exact weight at which another option wins, in place of ±10% scenarios.
 2. **Fuller (Monte Carlo has landed):** wire `DecisionMatrixNode`'s weights through
    the composite Monte Carlo run mode directly, sampling weight perturbations and re-running
    `decisionMatrix` many times to show ranking-outcome robustness as a distribution, not

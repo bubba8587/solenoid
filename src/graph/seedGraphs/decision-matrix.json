@@ -245,6 +245,30 @@
         "width": 621,
         "height": 419
       }
+    },
+    {
+      "id": "flips",
+      "type": "DecisionSensitivityNode",
+      "x": 1501,
+      "y": 2080,
+      "init": {
+        "label": "Flip points",
+        "normalize": "max",
+        "mode": "flips"
+      }
+    },
+    {
+      "id": "noteFlips",
+      "type": "NoteNode",
+      "x": 1074,
+      "y": 2080,
+      "init": {
+        "label": "Flip points",
+        "body": "### How close is the call?\n**Flip points** reads the same Weights table. For each criterion it finds how far that weight can move, the others held, before another laptop takes first place, and which one. A flip close to the weight means the pick hangs on it.",
+        "color": "blue",
+        "width": 380,
+        "height": 200
+      }
     }
   ],
   "connections": [
@@ -324,6 +348,18 @@
       "source": "scenarios",
       "sourceOutput": "frame",
       "target": "sens",
+      "targetInput": "scenarios"
+    },
+    {
+      "source": "join",
+      "sourceOutput": "frame",
+      "target": "flips",
+      "targetInput": "scores"
+    },
+    {
+      "source": "weights",
+      "sourceOutput": "frame",
+      "target": "flips",
       "targetInput": "scenarios"
     }
   ],

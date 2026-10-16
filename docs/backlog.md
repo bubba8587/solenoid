@@ -168,12 +168,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Decision Matrix (author 2026-09-28)
 
-- [ ] **Flip points** ([[B17]] typedValueModel): per criterion, the nearest weight at which a different
-  option takes first place with the other weights held, the way the Decision Matrix Bases View plugin shows them
-  under each weight (`flipWeights` in its `src/scoring.ts`, tested there). Pairwise order is linear in each
-  weight since every score shares Σ|w|; the plugin ignores `round4`, so the flip weight lands on a near-tie
-  rather than a clean handover. A home here: a Breakdown column or a Decision Sensitivity mode. Weigh it
-  against `v2.0/10`'s ±N% affordance first, which answers the same "how close is the call" question.
 - [ ] **The plugin's breakdown bars in the app** (author 2026-09-29, queued as its own task): the Decision Matrix
   Bases View's Rankings view draws each option as a bar split into each criterion's signed contribution, with
   penalties hatched left of zero and a legend (`src/rankings-view.ts` and `styles.css` there). Bring that visual
