@@ -31,7 +31,7 @@ Every consumer recognizes a value by its brand field, never by structure: `isCha
 | `options` | `ChartOptions` | The parsed options string (see The options string). Figures that take no options carry `{}`. |
 | `title` | string, optional | The display title: the options `title`, else the node label, else the node's default name. It labels the popup header, the Report embed bar and the chip; it is never drawn inside the figure (the in-figure title is `options.title`, see Titles). |
 
-`ChartValueOp` is the union of the Chart node's eleven ops (`column`, `bar`, `line`, `area`, `scatter`, `xyline`, `pie`, `radar`, `radialbar`, `funnel`, `bubble`, the keys of `CHART_OP_META`) and the fifteen special ops in `CHART_SPECIAL_OPS` (`kpi`, `scale`, `proportion`, `sankey`, `surface`, `contour`, `waterfall`, `candle`, `boxplot`, `calheat`, `heatmap`, `quiver`, `record`, `overlay`, `gantt`). `chartValueOps()` enumerates all 26 at runtime, and `chartPopupCoverage.test.ts` checks that every one reaches the shared popup path.
+`ChartValueOp` is the union of the Chart node's eleven ops (`column`, `bar`, `line`, `area`, `scatter`, `xyline`, `pie`, `radar`, `radialbar`, `funnel`, `bubble`, the keys of `CHART_OP_META`) and the sixteen special ops in `CHART_SPECIAL_OPS` (`kpi`, `scale`, `proportion`, `sankey`, `surface`, `contour`, `waterfall`, `candle`, `boxplot`, `calheat`, `heatmap`, `quiver`, `record`, `overlay`, `gantt`, `ladder`). `chartValueOps()` enumerates all 27 at runtime, and `chartPopupCoverage.test.ts` checks that every one reaches the shared popup path.
 
 ### Payloads
 
@@ -56,6 +56,7 @@ The figure picks its renderer, not the surface ([[C100]] chartIsAValue): rechart
 | `record` | See The Record figure. |
 | `overlay` | `series: OverlaySeries[]`, `labels?: (string \| number)[]`. An `OverlaySeries` is `{ name, kind: "line" \| "area" \| "column" \| "bar", values: (number \| null)[], color?, markersize?, linewidth?, alpha?, marker?: boolean }`. |
 | `xy` | `series: XYSeries[]`, `xcats?: string[]` (set when x is a text column; each x is then an index into it), `xDate?: true` (set when x is a date column; each x is a date serial), `names: { x?, y?, s?, c?, text? }` (the column names, for the tooltip and the colorbar). An `XYSeries` is `{ name, points: (XYPoint \| null)[], line: "solid" \| "dashed" \| "dotted" \| "dashdot" \| "none", marker: boolean, color?, markersize?, linewidth?, alpha?, sRange?, cRange?, cCats? }`, the points in row order with null a gap; an `XYPoint` is `{ x, y, s?, c?: number \| string, text? }`. `sRange`, `cRange` and `cCats` span every series from one source. Emitted with op `scatter`, `xyline` or `bubble` by Chart, and with op `overlay` by an XY Merge Plots. |
+| `ladder` | `LadderPayload`: `options` in rank order (`name`, `score`, `costs` per resource), `criteria` (names), `resources` (`name`, `limit`, the cost column's `format`), `rungs`, `best` (the best plan's rung id), `rankingTotal` and `wiggle`. A rung is `{ id, parent, branch, rung, kind: "clear" \| "tossup" \| "plan", left, total, pick?, rival?, sturdy?, duel?, struck? }`, its fields as [[frame-verbs#Choice Ladder]] computes them; options are indexes into `options`. |
 | `gantt` | `GanttPayload` from `@solenoid/gantt-layout`: tasks in depth-first WBS order, links, non-working spans, weekend days, holidays, `today`, `statusDate`, `projectStart`, `projectFinish`, per-task predecessor text and the resolved `view` options. The field list is the package README's; this spec does not restate it. |
 
 ### `MermaidValue`
@@ -90,9 +91,10 @@ Each figure node computes its value in `data()`, caches it on the node (`cachedC
 | Record | `frame`, `rows`, `by` (Board only), `layout` (all but Cards), `options` | `record` | null | yes |
 | Vector Field (Quiver) | `u`, `v` (tables), `options` | `quiver` | null | yes |
 | Gantt | `schedule` (cube), `baseline` (cube), `holidays` (date list), `weekend_code`, `status` (date), `options` | `gantt` | null | yes |
+| Choice Ladder | `frame` (Options), `weights`, `limits`, `wiggle`; outputs `frame` (Plan) and `chart` | `ladder` | null | none, `{}` |
 | Mermaid | `source` (string) | MermaidValue | n/a | n/a |
 
-Title defaults (used when neither the options `title` nor the label is set): Sparkline `"Sparkline"`, Chart `"Chart"`, Merge Plots `"Merged Plot"`, Histogram `"Histogram"`, Gauge `"Gauge"`, KPI `"KPI"`, Proportion `"Proportion"`, Sankey `"Sankey"`, Surface `"Surface"` or `"Contour"`, Waterfall `"Waterfall"`, Candlestick `"Candlestick"`, Boxplot `"Boxplot"`, Calendar Heatmap `"Calendar"`, Heatmap `"Heatmap"`, Record `"Record"`, Vector Field `"Vector Field"`, Gantt `"Gantt"`. Nodes without options take the title from the label alone.
+Title defaults (used when neither the options `title` nor the label is set): Sparkline `"Sparkline"`, Chart `"Chart"`, Merge Plots `"Merged Plot"`, Histogram `"Histogram"`, Gauge `"Gauge"`, KPI `"KPI"`, Proportion `"Proportion"`, Sankey `"Sankey"`, Surface `"Surface"` or `"Contour"`, Waterfall `"Waterfall"`, Candlestick `"Candlestick"`, Boxplot `"Boxplot"`, Calendar Heatmap `"Calendar"`, Heatmap `"Heatmap"`, Record `"Record"`, Vector Field `"Vector Field"`, Gantt `"Gantt"`, Choice Ladder `"Choice Ladder"`. Nodes without options take the title from the label alone.
 
 ### Sparkline
 
@@ -320,6 +322,7 @@ The Chart Builder node has one input per field (42 text, 11 number) and one outp
 | any op with an `xy` payload (`scatter`, `xyline`, `bubble`, an XY `overlay`) | `XYView` | recharts |
 | `overlay` | `OverlayView` | recharts |
 | `gantt` | `GanttView` (`GanttFigure` from `@solenoid/gantt-react`) | its own lazy chunk, DOM grid plus SVG |
+| `ladder` | `LadderView` (`ladderView.tsx`) | CSS cards over SVG ribbons |
 | `scatter`, `xyline`, `bubble` with no payload | the empty dash | |
 | the other Chart ops | the series path | recharts |
 
@@ -339,7 +342,7 @@ Multi-series marks, categorical slices, treemap cells, Sankey nodes and waffle c
 
 ### Titles
 
-The in-figure title is `options.title`, drawn as a centered bold strip `ceil(16 · fs)` pixels tall at `11 · fs` pixels, taken out of the plot's height, by `ChartView`, `MultiSeriesView`, `OverlayView`, `XYView` and `RecordCardView`. For the figures that draw none themselves (KPI, Gauge, Proportion, Sankey, Waterfall, Candlestick, Boxplot, Calendar Heatmap, Heatmap, Contour, Surface, Vector Field and Gantt, `UNTITLED_FIGURES` in `chartTitle.tsx`), `ChartFigure` draws the same strip (`chartTitle.tsx`) above the figure and hands it the remaining height. The Sankey, KPI and Gauge cards draw through `ChartFigure`, so their options apply on the card as they do in a Display. The popup and a Report embed remove both `title` and `options.title` before drawing, because their header or bar already shows it.
+The in-figure title is `options.title`, drawn as a centered bold strip `ceil(16 · fs)` pixels tall at `11 · fs` pixels, taken out of the plot's height, by `ChartView`, `MultiSeriesView`, `OverlayView`, `XYView` and `RecordCardView`. For the figures that draw none themselves (KPI, Gauge, Proportion, Sankey, Waterfall, Candlestick, Boxplot, Calendar Heatmap, Heatmap, Contour, Surface, Vector Field, Gantt and the ladder, `UNTITLED_FIGURES` in `chartTitle.tsx`), `ChartFigure` draws the same strip (`chartTitle.tsx`) above the figure and hands it the remaining height. The Sankey, KPI and Gauge cards draw through `ChartFigure`, so their options apply on the card as they do in a Display. The popup and a Report embed remove both `title` and `options.title` before drawing, because their header or bar already shows it.
 
 ## The recharts figures
 
@@ -381,6 +384,8 @@ All recharts figures run with animation off. Tick text is `9 · fs`, axis titles
 - **Surface.** An orthographic projection of the grid normalized to a unit box (height exaggerated 0.55), yaw about the vertical then pitch. The floor and the two farthest walls draw as faint grids behind; cells with all four corners known paint back to front (the painter's algorithm, no depth buffer), colored by mean height on the height ramp, or the `cmap`, and lit from the upper front left, at 0.86 opacity. X, Y and Z label the box edges.
 - **Vector Field.** One arrow per cell, centered on the cell, colored on the height ramp, or the `cmap`, by magnitude relative to the largest, length `0.15 + 0.85` of that fraction times 46% of the cell; positive v points up. The stroke thins on small arrows (`max(0.7, 7% of the cell × (0.55 + 0.45 · t))`), because a full-width stroke on a short arrow reads as a blob. The head is `min(4.5, 55% of the length)` long and 0.9 of that wide, drawn only when at least 2.2 pixels long (else the arrow is a plain line), and the shaft stops at the head's base so it can't poke past the tip. A cell with a null component draws a faint dot.
 
+- **The ladder figure** ([[C122]] choiceLadder). A summary line (the best plan's score, picks and what's left; what the ranking alone scores; the toss-ups and plans), then the ladder in its own scroll box. Rungs run top to bottom, one row per rung depth, each row as tall as its tallest card (measured, then placed); every plan sits on the bottom row. Lanes are assigned depth-first, one per plan, so a branch 0 continues straight down its parent's lane and a toss-up card spans from its lane to its branch 1 lane, so every ribbon is vertical. Cards are 226 by `fscale` pixels wide in lanes 24 apart. A clear card lists its struck options (struck through, with the reason), the pick, its score and costs, and its rival with the wiggle it holds to ("holds at any weights" at 100% or more). A toss-up card shows both sides (name, costs, what it brings along, plan score), a diverging bar per criterion toward the side it pulls (accent for the main side, dim for the alternative, scaled to the largest pull) and which side leads by how much. A plan card shows its picks, score, the gap to the best (or Best) and what's left. Ribbons are as wide as the first resource's remainder (up to 36 pixels at the full limit, never under 2), labeled with every resource's remainder one per line, and the width a rung spent peels off its left as a fading spur. The selected plan's path, the best by default, draws in the accent; clicking another plan card selects it, which is the figure's own state and never touches the node.
+
 Tick labels on the canvas figures are compact (`compactTick` in `chartCore.ts`): three significant figures, rounded before the unit is picked (999,999 is 1M), with K, M, B, T above a thousand. A recharts value axis sizes its gutter to its widest tick, the round ticks between the ends included (`valueAxisWidth`). Their text is `8.5 · fscale` pixels, and the gutters that hold it (the y-axis and label strips, the Calendar Heatmap's month and weekday rows, the Contour hints, the Waffle legend) grow with it.
 
 ## Mermaid
@@ -396,7 +401,7 @@ The same value draws at several sizes; the renderer is always given pixel width 
 | Figure card | Fixed per node: Chart, Histogram, Merge Plots 218 by 150; Sparkline 218 by 56 (46 by 22 square-collapsed); Sankey 218 by 170; Surface 218 by 190; Waterfall, Candlestick, Boxplot, Proportion card width minus 22 by 170; Calendar Heatmap by the height its bands take at the card's width, the fewest bands whose days reach 8 pixels, days at most 16 (`calendarHeight`); Heatmap by the height its rows take at square cells up to 40 pixels, 90 to 320; Vector Field by 190; the Dial at size 160. |
 | Display, unsized | 210 by 130. |
 | Display, resized | The body's measured size, at least 120 by 90; the card's resize floor is 230 by 150 for a chart, 200 by 120 for a diagram. |
-| Popup | The window minus chrome, capped at 1000 wide and 380 tall (680 for Gantt), at least 200 by 140; after opening it follows the measured region minus 16 pixels padding a side (at least 160 by 120). Resizable, minimum 260 by 200 (520 by 300 for Gantt). |
+| Popup | The window minus chrome, capped at 1000 wide and 380 tall (680 for Gantt and the ladder, which grow downward), at least 200 by 140; after opening it follows the measured region minus 16 pixels padding a side (at least 160 by 120). Resizable, minimum 260 by 200 (520 by 300 for Gantt). |
 | Report embed | The container's measured width capped at 640 (320 before the first measurement), 200 tall. KPI and Gauge draw before measuring; other figures wait for a width. |
 | Socket peek | 200 by 120. |
 | Composite boundary | 200 by 110. |
@@ -404,7 +409,7 @@ The same value draws at several sizes; the renderer is always given pixel width 
 ### What each card draws
 
 - **Draws its own figure:** Chart, Histogram, Merge Plots, Sankey, Surface (with the rotate pad on the 3-D view), Waterfall, Candlestick, Boxplot, Calendar Heatmap, Heatmap, Proportion, Vector Field (through `ChartFigure`); Sparkline (a bare `ChartView` without axes, win/loss bars colored green, vermilion, or grid color for zero); KPI (the card itself, not collapsible); Gauge (the Dial, or the Bar); Mermaid (the diagram under its source box).
-- **Draws only the `Chart` chip:** Record and Gantt. The figure would be squashed at card width, so it draws wherever the output goes ([[C100]] chartIsAValue). The Record node keeps its own pager in the Detail view. The Gantt card registers an SVG serializer for exports (see Exports).
+- **Draws only the `Chart` chip:** Record, Gantt and Choice Ladder (beside its Plan frame). The figure would be squashed at card width, so it draws wherever the output goes ([[C100]] chartIsAValue). The Record node keeps its own pager in the Detail view. The Gantt card registers an SVG serializer for exports (see Exports).
 - **Collapsed:** a figure card shows the `Chart` chip in its hero box instead of the figure; Sparkline and the Dial square-collapse to a miniature; Mermaid shows a `Diagram` chip that re-expands the card.
 
 The `Chart` chip (`ChartChip`) opens the popup with the value, titled by the chip's label, else the value's title, else `Chart`. An expand button in the figure's top right corner does the same on the Chart, Merge Plots, Sparkline and Display surfaces.

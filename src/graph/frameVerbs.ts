@@ -14,6 +14,8 @@ import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
 import { allocate, type AllocateMode } from "./nodes/allocateOps";
+import { buildLadder, type LadderOption } from "./nodes/ladderOps";
+import type { LadderPayload } from "./chartValue";
 import { aggregate, percentileOf, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
@@ -1650,15 +1652,19 @@ export function allocateFrame(
   };
 }
 
-export function decisionMatrix(
-  f: FrameValue,
-  weights: number[] | null,
-  normalize: DecisionNormalize,
-  breakdown = false,
-  normalizeOverrides: Record<string, DecisionNormalize> = {},
-): FrameValue {
-  const rows = frameRowCount(f);
+interface DecisionScores {
+  labelName: string;
+  labels: FrameCell[];
+  criteria: FrameColumn[];
+  /** `contrib[j][i]`: criterion j's signed share of option i's score, unrounded; they sum to the score. */
+  contrib: number[][];
+  scores: number[];
+}
 
+function decisionScores(
+  f: FrameValue, weights: number[] | null, normalize: DecisionNormalize, normalizeOverrides: Record<string, DecisionNormalize>,
+): DecisionScores {
+  const rows = frameRowCount(f);
   const { labelCol, criteriaCols } = decisionColumns(f);
   if (criteriaCols.length === 0) {
     throw solError("#VALUE!", "Decision Matrix needs at least one numeric criterion column");
@@ -1685,11 +1691,24 @@ export function decisionMatrix(
   let sumAbsW = 0;
   for (let j = 0; j < criteriaCols.length; j++) sumAbsW += Math.abs(weightOf(j));
 
+  const contrib = criteriaCols.map((_, j) => effective[j].map((e) => (sumAbsW > 0 ? (e * weightOf(j)) / sumAbsW : 0)));
   const scores: number[] = Array.from({ length: rows }, (_, i) => {
     let sw = 0;
-    for (let j = 0; j < criteriaCols.length; j++) sw += effective[j][i] * weightOf(j);
-    return round4(sumAbsW > 0 ? sw / sumAbsW : 0);
+    for (let j = 0; j < criteriaCols.length; j++) sw += contrib[j][i];
+    return round4(sw);
   });
+  return { labelName: labelCol?.name ?? "Option", labels, criteria: criteriaCols, contrib, scores };
+}
+
+export function decisionMatrix(
+  f: FrameValue,
+  weights: number[] | null,
+  normalize: DecisionNormalize,
+  breakdown = false,
+  normalizeOverrides: Record<string, DecisionNormalize> = {},
+): FrameValue {
+  const rows = frameRowCount(f);
+  const { labelName, labels, criteria: criteriaCols, contrib, scores } = decisionScores(f, weights, normalize, normalizeOverrides);
 
   const order = scores.map((s, i) => ({ s, i })).sort((a, b) => b.s - a.s);
   const rankByRow = new Array<number>(rows).fill(0);
@@ -1700,12 +1719,11 @@ export function decisionMatrix(
 
   const idx = order.map((o) => o.i);
   const out: FrameColumn[] = [
-    { name: labelCol?.name ?? "Option", type: "string", values: idx.map((i) => labels[i]) },
+    { name: labelName, type: "string", values: idx.map((i) => labels[i]) },
   ];
   if (breakdown) {
     criteriaCols.forEach((c, j) => {
-      const w = weightOf(j);
-      out.push({ name: c.name, type: "number", values: idx.map((i) => round4(sumAbsW > 0 ? (effective[j][i] * w) / sumAbsW : 0)) });
+      out.push({ name: c.name, type: "number", values: idx.map((i) => round4(contrib[j][i])) });
     });
   }
   out.push({ name: "Score", type: "number", values: idx.map((i) => scores[i]) });
@@ -1713,6 +1731,90 @@ export function decisionMatrix(
 
   const names = makeHeaders(out.map((c) => c.name), out.length);
   return { __frame: true, columns: out.map((c, k) => ({ ...c, name: names[k] })) };
+}
+
+// ─── Choice Ladder (several options under limits) ───────────────────────────────
+
+/** The limits a Choice Ladder spends: one row per resource, each matched to the Options column of the same name. */
+function ladderResources(f: FrameValue, limits: FrameValue | null): { name: string; limit: number; col: FrameColumn }[] {
+  if (!limits) return [];
+  const nameCol = limits.columns.find((c) => c.type === "string");
+  const nums = limits.columns.filter((c) => c.type === "number");
+  const limCol = nums.find((c) => ["limit", "limits", "value", "amount"].includes(critKey(c.name))) ?? nums[0];
+  if (!nameCol || !limCol) throw solError("#VALUE!", "Limits needs a text column naming each resource and a number column for its limit");
+  const out: { name: string; limit: number; col: FrameColumn }[] = [];
+  const seen = new Set<string>();
+  nameCol.values.forEach((v, i) => {
+    if (typeof v !== "string" || !v.trim() || seen.has(critKey(v))) return;
+    seen.add(critKey(v));
+    const cell = limCol.values[i] ?? null;
+    if (isSolError(cell)) throw cell;
+    if (typeof cell !== "number" || !Number.isFinite(cell)) throw solError("#VALUE!", `Choice Ladder: the limit for ${v.trim()} must be a number`);
+    const col = f.columns.find((c) => c.type === "number" && critKey(c.name) === critKey(v));
+    if (!col) throw solError("#VALUE!", `Choice Ladder: no Options number column is named ${v.trim()}`);
+    out.push({ name: col.name, limit: cell, col });
+  });
+  return out;
+}
+
+export function choiceLadder(
+  f: FrameValue, weightsFrame: FrameValue | null, limitsFrame: FrameValue | null,
+  normalize: DecisionNormalize, wiggle: number,
+): { plan: FrameValue; payload: LadderPayload } {
+  const resources = ladderResources(f, limitsFrame);
+  // A cost column is a criterion too only when the Weights name it.
+  const weighted = weightsFrame ? criterionRowIndex(weightsFrame) : new Map<string, number>();
+  const costCols = new Set(resources.map((r) => r.col));
+  const scoring: FrameValue = { ...f, columns: f.columns.filter((c) => !costCols.has(c) || weighted.has(critKey(c.name))) };
+  const { weights, normOverrides } = resolveDecisionWeights(weightsFrame, decisionCriteria(scoring));
+  const ds = decisionScores(scoring, weights, normalize, normOverrides);
+
+  const order = ds.scores.map((sc, i) => ({ sc, i })).sort((a, b) => b.sc - a.sc).map((o) => o.i);
+  const costOf = (col: FrameColumn, i: number): number => {
+    const v = col.values[i] ?? null;
+    if (isSolError(v)) throw v;
+    return typeof v === "number" && Number.isFinite(v) ? Math.max(0, v) : 0;
+  };
+  const opts: LadderOption[] = order.map((i) => ({
+    score: ds.scores[i],
+    contrib: ds.criteria.map((_, j) => ds.contrib[j][i]),
+    costs: resources.map((r) => costOf(r.col, i)),
+  }));
+  const names = order.map((i) => {
+    const v = ds.labels[i];
+    return v == null || v === "" ? `Option ${i + 1}` : String(formatFrameCell("string", v));
+  });
+  const tol = !Number.isFinite(wiggle) || wiggle < 0 ? 0 : wiggle >= 1 ? wiggle / 100 : wiggle;
+  const res = buildLadder(opts, resources.map((r) => r.limit), tol);
+
+  // The best plan's picks, top rung first.
+  const byId = new Map(res.rungs.map((r) => [r.id, r]));
+  const path: { pick: number; tossup: boolean }[] = [];
+  for (let r = byId.get(res.best)!; r.parent != null; r = byId.get(r.parent)!) {
+    const up = byId.get(r.parent)!;
+    path.unshift({ pick: up.kind === "tossup" && r.branch === 1 ? up.rival! : up.pick!, tossup: up.kind === "tossup" });
+  }
+  const cols: FrameColumn[] = [
+    { name: "Rung", type: "number", values: path.map((_, k) => k + 1) },
+    { name: ds.labelName, type: "string", values: path.map((p) => names[p.pick]) },
+    { name: "Choice", type: "string", values: path.map((p) => (p.tossup ? "Toss-up" : "Clear")) },
+    { name: "Score", type: "number", values: path.map((p) => opts[p.pick].score) },
+    ...resources.map((r, k): FrameColumn => ({
+      name: r.name, type: "number", values: path.map((p) => opts[p.pick].costs[k]),
+      ...(r.col.unit ? { unit: r.col.unit } : {}), ...(r.col.format ? { format: r.col.format } : {}),
+    })),
+  ];
+  const headers = makeHeaders(cols.map((c) => c.name), cols.length);
+  return {
+    plan: { __frame: true, columns: cols.map((c, k) => ({ ...c, name: headers[k] })) },
+    payload: {
+      kind: "ladder",
+      options: opts.map((o, k) => ({ name: names[k], score: o.score, costs: o.costs })),
+      criteria: ds.criteria.map((c) => c.name),
+      resources: resources.map((r) => ({ name: r.name, limit: r.limit, format: r.col.format ?? null })),
+      rungs: res.rungs, best: res.best, rankingTotal: res.rankingTotal, wiggle: tol,
+    },
+  };
 }
 
 // ─── Decision matrix sensitivity (weight scenarios → a Cube of rankings) ────────

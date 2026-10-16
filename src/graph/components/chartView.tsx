@@ -10,6 +10,7 @@ import { SurfaceView } from "./SurfaceView";
 import { useSeriesColors, useChartColors } from "./chartCore";
 // `ganttSvg` is imported eagerly: the export provider must return a string synchronously.
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
+import { LadderView } from "./ladderView";
 import { registerChartSvgProvider } from "../canvasCapture";
 import { useHostNodeId } from "./nodeContext";
 import { ChartTitle, titleHeight, UNTITLED_FIGURES } from "./chartTitle";
@@ -207,6 +208,8 @@ const FigureBody = memo(function FigureBody({ value, width, height, axes = true,
     return <OverlayView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} refs={value.refs} />;
   if (value.op === "gantt" && value.payload?.kind === "gantt")
     return <GanttView payload={value.payload} width={width} height={height} virtualize={virtualize} fontScale={fscale} />;
+  if (value.op === "ladder" && value.payload?.kind === "ladder")
+    return <LadderView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "scatter" || value.op === "xyline" || value.op === "bubble") return EMPTY_FIGURE;
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
 });

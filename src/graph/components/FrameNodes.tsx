@@ -30,6 +30,7 @@ import type {
   DropBlankRowsNode as DropBlankRowsNodeType,
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
+  ChoiceLadderNode as ChoiceLadderNodeType,
   SettleNode as SettleNodeType,
   PayoffPlannerNode as PayoffPlannerNodeType,
   AllocatorNode as AllocatorNodeType,
@@ -90,6 +91,8 @@ import { SegToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
 import { CardSection, useRowsInUse } from "./CardSection";
 import { MeasuredSocketRow } from "./NodeSocket";
+import { ChartChip } from "./ChartChip";
+import { isSolError } from "../errorValue";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
 import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
 import { stopDragStart } from "../coarse";
@@ -734,6 +737,37 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
         <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       </CardSection>
       <CubeDisplay cube={data.cachedResult} label={nodeDisplayName(data)} />
+    </NodeShell>
+  );
+}
+
+// ─── CHOICE LADDER ──────────────────────────────────────────────────────────────
+
+export function ChoiceLadderComponent({ data, emit }: NodeProps<ChoiceLadderNodeType>) {
+  const [normalize, setNormalize] = useNodeField(data, "normalize");
+  const frameOut = data.outputs.frame;
+  const chartOutPort = data.outputs.chart;
+  const chart = data.cachedChart && !isSolError(data.cachedChart) ? data.cachedChart : null;
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} />
+      <CardSection label="Normalize" title="The fallback for a criterion whose Weights-frame Norm cell is blank.">
+        <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      </CardSection>
+      {frameOut && (
+        <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
+          <div style={{ width: "100%" }}>
+            <FrameOrCubeDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
+          </div>
+        </MeasuredSocketRow>
+      )}
+      {chartOutPort && (
+        <MeasuredSocketRow hero side="output" socketKey="chart" nodeId={data.id} emit={emit} payload={chartOutPort.socket}>
+          {chart
+            ? <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={chart} /></div>
+            : <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
+        </MeasuredSocketRow>
+      )}
     </NodeShell>
   );
 }

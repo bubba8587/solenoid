@@ -295,6 +295,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
   - A criterion a scenario omits gets 1. If no criterion row matches at all, the result is `#VALUE!` (the renamed-criteria trap).
   - It emits a **Cube**: Scenario · Winner · Margin · Ranking, where Ranking is the full ranking frame nested per cell (drill in).
   - Margin = top − runner-up (decisiveness). A dead tie for first lists every tied option in Winner ("A = B").
+- **Choice Ladder** (`ChoiceLadderNode`, the pure `nodes/ladderOps.ts`, figure `components/ladderView.tsx`) picks several options within Limits, a row per resource naming an Options cost column ([[C122]] choiceLadder). Outputs: `Plan` (the best set) and `Ladder` (the figure, drawn wherever the chart goes; the card shows the chip). Mechanics: `../tree/specs/computation/frame-verbs.md` § Choice Ladder. **Seed** `choice-ladder.json`: a restaurant trip and a year of house projects, both scenarios where the ranking alone falls short (`choiceLadder.test.ts`).
 - Verbs: `decisionMatrix` / `decisionSensitivity` / `resolveDecisionWeights` in `frameVerbs.ts` (`decisionMatrix.test.ts`).
 - **Seed** `decision-matrix.json`, held to the engine by `decisionSeed.test.ts` (winner order, the flip, the exact tie, the report wiring):
   - One criterion comes from a Note's frontmatter frame (rows-of-objects: prose is the judgment, rows are the data), left-joined by name.

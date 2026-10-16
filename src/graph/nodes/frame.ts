@@ -1,5 +1,7 @@
 // [[B17]], [[C48]]
 import { ClassicPreset } from "rete";
+import { chartOut } from "./shared";
+import type { ChartValue } from "../chartValue";
 import { readInput, readRole, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
 import { flatCubeToFrame, coerceFrameCell } from "../frame";
@@ -30,7 +32,7 @@ import {
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights, allocateFrame,
+  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights, allocateFrame, choiceLadder,
   mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
@@ -1590,6 +1592,78 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     if (!scores || !scenarios) { this.cachedResult = null; return { cube: null }; }
     this.cachedResult = runVerb(() => decisionSensitivity(scores, scenarios, this.normalize));
     return { cube: this.cachedResult };
+  }
+}
+
+// ─── CHOICE LADDER ──────────────────────────────────────────────────────────────
+
+// [[C122]] choiceLadder
+export class ChoiceLadderNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. A cost column is a criterion too only when Weights names it.",
+    limits: "A row per resource: its name, matching an Options column, and its Limit. Unwired, everything fits.",
+    wiggle: "How far off the weights could be. Two plans this close are a toss-up and the ladder forks. 0.25 or 25 both read as 25%.",
+    chart: "The ladder: each rung's pick, what was struck off and why, and a fork at each toss-up.",
+  };
+
+  label: string;
+  normalize: DecisionNormalize;
+  literals: Record<string, number> = { wiggle: 0.25 };
+  cachedResult: FrameValue | SolError | null = null;
+  cachedChart: ChartValue | SolError | null = null;
+  width = 240; height = 230;
+
+  static frameHints: Record<string, FrameHint> = {
+    frame: { columns: [
+      { name: "Restaurant", type: "string", cells: ["Kato", "Lune", "Taqueria Sol"] },
+      { name: "Food", type: "number", cells: [9, 8, 8] },
+      { name: "Vibe", type: "number", cells: [7, 9, 5] },
+      { name: "Dollars", type: "number", cells: [160, 75, 18] },
+      { name: "Meals", type: "number", cells: [1, 1, 1] },
+      { name: "Miles", type: "number", cells: [4, 1, 2] },
+    ] },
+    weights: DecisionMatrixNode.frameHints.weights,
+    limits: { columns: [
+      { name: "Resource", type: "string", cells: ["Dollars", "Meals", "Miles"] },
+      { name: "Limit", type: "number", cells: [450, 6, 20] },
+    ] },
+  };
+
+  constructor(init?: { label?: string; normalize?: DecisionNormalize }) {
+    super("ChoiceLadder");
+    this.label = init?.label ?? "Choice Ladder";
+    this.normalize = init?.normalize ?? "max";
+    this.addInput("frame", frameIn("Options"));
+    this.addInput("weights", frameIn("Weights"));
+    this.addInput("limits", frameIn("Limits"));
+    this.addInput("wiggle", numIn("Wiggle"));
+    this.addOutput("frame", frameOut("Plan"));
+    this.addOutput("chart", chartOut("Ladder"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    const label = input.columns.find((c) => c.type === "string")?.name ?? "Option";
+    const names = makeHeaders(["Rung", label, "Choice", "Score"], 4);
+    const types = ["number", "string", "string", "number"] as const;
+    // The cost columns follow, one per Limits row.
+    return { columns: names.map((name, i) => ({ name, type: types[i] })), dynamic: true };
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; weights?: (FrameValue | null)[]; limits?: (FrameValue | null)[]; wiggle?: (number | null)[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; this.cachedChart = null; return { frame: null, chart: null }; }
+    const wiggle = readInput(inputs.wiggle, this.literals.wiggle ?? 0.25) ?? 0;
+    try {
+      const { plan, payload } = choiceLadder(f, inputs.weights?.[0] ?? null, inputs.limits?.[0] ?? null, this.normalize, wiggle);
+      this.cachedResult = plan;
+      this.cachedChart = { __chart: true, op: "ladder", values: null, payload, options: {}, title: this.label || "Choice Ladder" };
+    } catch (e) {
+      const err = isSolError(e) ? e : solError("#VALUE!", String(e));
+      this.cachedResult = err; this.cachedChart = err;
+    }
+    return { frame: this.cachedResult, chart: this.cachedChart };
   }
 }
 

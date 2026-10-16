@@ -186,6 +186,11 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   to the Decision Matrix node's card or popup, under [[B17]] typedValueModel and DESIGN.md; ask which dev
   environment verifies it before starting.
 
+## Choice Ladder (built 2026-10-16, [[C122]] choiceLadder)
+- [ ] **Must-have and never flags** on options (a booked table, a closed restaurant): honored by every plan; the leaf's reopen condition names them.
+- [ ] **A Plans output**: every plan the ladder ends in, not only the best, as a Cube or a long frame, so a Report can compare them.
+- [ ] **Currency on the figure**: costs read "160 dollars" unless the Options cost column carries a currency format; a Frame Input has no per-column format in the seed.
+
 ## Charts
 - [ ] **Sunrise / Sunset prints raw serials** (46194.508 for a sunrise) where a time of day is meant; and a resized Chart card keeps drawing its plot at 218 × 150 (`ChartNode.tsx` W/H).
 
@@ -197,7 +202,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   ([[B14]] reaches only one-output cards).
 
 ## Recharts coverage (author 2026-10-14: wire up everything recharts 3 offers that we skip)
-Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item lands as Chart Builder options and a spec line in `chart-figures.md`.
+Audited against recharts 3.10.1; only `chartRender.tsx` imports it. Each item lands as Chart Builder options and a spec line in `tree/specs/computation/chart-figures.md`.
 - [ ] **Stacking:** stacked Column, Bar and Area (`stackId`), 100% stacked (`stackOffset="expand"`), streamgraph (`silhouette`, `wiggle`); `BarStack`.
 - [ ] **Dual y axes:** a second value axis on the right (`yAxisId`, `orientation="right"`), per series, through Merge Plots too.
 - [ ] **Curve types** on Line, Area and XY lines: `monotone`, `natural`, `basis`, `step`, `stepBefore`, `stepAfter`.

@@ -189,15 +189,54 @@ export interface XYPayload {
   xDate?: boolean;
   names: { x?: string; y?: string; s?: string; c?: string; text?: string };
 }
+/** An option ranked above a rung's pick and struck off there: it doesn't fit what's left (`over`, per resource), or it would
+ *  crowd out `pushedOut` for `cost` less score. Options are indexes into `LadderPayload.options`. */
+export interface LadderStruck {
+  option: number;
+  why: "fit" | "crowd";
+  over?: number[];
+  pushedOut?: number[];
+  cost?: number;
+}
+export interface LadderRung {
+  id: number;
+  parent: number | null;
+  /** 0 the main side of a toss-up above, 1 its alternative; null below a clear rung. */
+  branch: 0 | 1 | null;
+  rung: number;
+  kind: "clear" | "tossup" | "plan";
+  /** Per resource, what is left before this rung's pick. */
+  left: number[];
+  /** The score of the picks above this rung. */
+  total: number;
+  pick?: number;
+  rival?: number;
+  /** A clear rung's next-best plan: its lead option and the weight error that would let it win, null when none would. */
+  sturdy?: { rival: number; flipsAt: number | null };
+  /** A toss-up: what each side brings along, each side's plan score, the main side's lead and each criterion's pull toward it. */
+  duel?: { aBrings: number[]; bBrings: number[]; planA: number; planB: number; margin: number; flipsAt: number; pulls: number[] };
+  struck?: LadderStruck[];
+}
+export interface LadderPayload {
+  kind: "ladder";
+  /** In rank order. */
+  options: { name: string; score: number; costs: number[] }[];
+  criteria: string[];
+  resources: { name: string; limit: number; format?: FormatAnnotation | null }[];
+  rungs: LadderRung[];
+  best: number;
+  rankingTotal: number;
+  wiggle: number;
+}
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
   | CalHeatPayload | HeatmapPayload | QuiverPayload | RecordPayload | OverlayPayload
-  | XYPayload | GanttPayload;
+  | XYPayload | GanttPayload | LadderPayload;
 
 export const CHART_SPECIAL_OPS = [
   "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",
-  "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt",
+  "candle", "boxplot", "calheat", "heatmap", "quiver", "record", "overlay", "gantt", "ladder",
 ] as const;
 
 export type ChartValueOp = ChartOp | (typeof CHART_SPECIAL_OPS)[number];

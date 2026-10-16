@@ -78,7 +78,9 @@ export function ChartPopup() {
   if (!state) return null;
   const isGantt = state.value?.op === "gantt";
   const ganttPayload = isGantt && state.value?.payload?.kind === "gantt" ? (state.value.payload as GanttPayload) : null;
-  const initialCard = (() => { const f = chartSize(isGantt ? MAX_H_GANTT : MAX_H); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
+  // A ladder grows downward like a Gantt, so it opens as tall.
+  const isTall = isGantt || state.value?.op === "ladder";
+  const initialCard = (() => { const f = chartSize(isTall ? MAX_H_GANTT : MAX_H); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
   const cardStyle = popupCardVars(state);
 
   const copySvg = ganttPayload
