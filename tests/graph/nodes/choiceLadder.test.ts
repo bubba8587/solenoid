@@ -256,3 +256,26 @@ describe("Choice Ladder: unknown costs, One of, and contradictions", () => {
     expect((out as unknown as { message: string }).message).toMatch(/Must option Aster is ruled out by Food/);
   });
 });
+
+describe("Choice Ladder floors reached by options worth little", () => {
+  const run3 = (cols: FrameColumn[], limits: FrameColumn[], weights?: FrameColumn[], normalize: "max" | "range" = "max") => {
+    const n = new ChoiceLadderNode({ normalize });
+    return n.data({ frame: [frame(cols)], limits: [frame(limits)], weights: weights ? [frame(weights)] : [] }).frame;
+  };
+  it("a floor counts an option scoring 0 under Range", () => {
+    const out = run3([
+      { name: "Who", type: "string", values: ["A", "B", "C"] }, { name: "Skill", type: "number", values: [9, 7, 5] }, { name: "Seat", type: "number", values: [1, 1, 1] },
+    ], [{ name: "Resource", type: "string", values: ["Seat"] }, { name: "At most", type: "number", values: [3] }, { name: "At least", type: "number", values: [3] }], undefined, "range");
+    expect(isSolError(out)).toBe(false);
+    expect((col(out as FrameValue, "Who") as string[]).sort()).toEqual(["A", "B", "C"]);
+  });
+  it("a floor counts an option scoring below 0, and takes it to meet the floor", () => {
+    const out = run3([
+      { name: "Place", type: "string", values: ["A", "B", "C"] }, { name: "Quality", type: "number", values: [9, 8, 2] },
+      { name: "Price", type: "number", values: [5, 5, 9] }, { name: "Veg", type: "logical", values: [false, false, true] },
+    ], [{ name: "Resource", type: "string", values: ["Veg"] }, { name: "At least", type: "number", values: [1] }],
+    [{ name: "Criterion", type: "string", values: ["Quality", "Price"] }, { name: "Weight", type: "number", values: [1, -1] }]);
+    expect(isSolError(out)).toBe(false);
+    expect(col(out as FrameValue, "Place")).toContain("C");
+  });
+});

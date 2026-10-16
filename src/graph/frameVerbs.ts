@@ -2069,7 +2069,7 @@ export function choiceLadder(
   if (bad && "clash" in bad) throw solError("#VALUE!", `Choice Ladder: Must options ${names[bad.clash[0]]} and ${names[bad.clash[1]]} exclude each other`);
   if (bad) throw solError("#VALUE!", `Choice Ladder: the Must options need more ${resources[bad.over].name} than its limit`);
   resources.forEach((r, k) => {
-    if (r.floor != null && opts.reduce((s, o) => s + (o.score > 0 || o.must ? o.costs[k] : 0), 0) < r.floor - 1e-9) throw solError("#VALUE!", `Choice Ladder: the options can't reach ${r.name}'s At least`);
+    if (r.floor != null && opts.reduce((s, o) => s + Math.max(0, o.costs[k]), 0) < r.floor - 1e-9) throw solError("#VALUE!", `Choice Ladder: the options can't reach ${r.name}'s At least`);
   });
   const gap = !Number.isFinite(close) || close < 0 ? 0 : close >= 1 ? close / 100 : close;
   const res = buildLadder(opts, resources.map((r) => ({ limit: r.limit, floor: r.floor })), gap, choices.map(indexOf).filter((i) => i >= 0));
@@ -2144,10 +2144,12 @@ export function decisionSensitivity(
   const rankingCells: CubeCell[] = [];
 
   for (const scenCol of scenarioCols) {
-    const weights = criteria.map((name) => {
+    const weights = criteria.map((name, j) => {
       const r = rowIndex.get(critKey(name));
       const v = r != null ? numOrNull(scenCol.values[r]) : null;
-      return v ?? 1;
+      // A row that sets only a limit is a screen in every scenario ([[C124]] dealBreakers).
+      const screenOnly = r != null && (bounds?.[j]?.atLeast != null || bounds?.[j]?.atMost != null);
+      return v ?? (screenOnly ? 0 : 1);
     });
     const ranking = decisionMatrix(scores, weights, normalize, false, normOverrides, bounds);
     // Positional: with breakdown off the shape is label · Score · Rank, and a criterion named "Score" would defeat a lookup by name.
@@ -2209,8 +2211,10 @@ export function flipPoints(f: FrameValue, weightsFrame: FrameValue | null, norma
   });
   const label = (k: number) => labels[pass[k]];
   // "Less" and "more" are how much the criterion matters: toward zero, or away from it, whatever the weight's sign.
-  const less = (r: (typeof rows)[number]) => (r.w < 0 ? r.above : r.below);
-  const more = (r: (typeof rows)[number]) => (r.w < 0 ? r.below : r.above);
+  // At a weight of 0 a criterion can't matter less; mattering more is the nearer crossing either way, as a benefit or a cost.
+  const nearer = (r: (typeof rows)[number]) => [r.below, r.above].filter((f): f is { t: number; who: number } => f != null).sort((a, b) => Math.abs(a.t) - Math.abs(b.t))[0] ?? null;
+  const less = (r: (typeof rows)[number]) => (r.w === 0 ? null : r.w < 0 ? r.above : r.below);
+  const more = (r: (typeof rows)[number]) => (r.w === 0 ? nearer(r) : r.w < 0 ? r.below : r.above);
   const at = (f: { t: number } | null) => (f ? Math.round(f.t * 100) / 100 : null);
   const who = (f: { who: number } | null) => (n === 0 ? null : label(f ? f.who : win));
   return {

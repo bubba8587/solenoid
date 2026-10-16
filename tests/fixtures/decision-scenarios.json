@@ -3502,7 +3502,11 @@
     },
     "why": "A 10/10 must-see plus a lovely walk beats three below-average stops plus the walk; ratings of 4.5 are close to worthless, and adding three of them doesn't make one great experience.",
     "ruling": {
-      "plan": "Summed scores treat a 4.5/10 as 45% of a 10/10, a true zero being nothing at all; whether a below-average stop is worth going to is the person's call, made with At least on Rating: see paris-day-minimum-rating. Range here would fix this one and break three other ladders."
+      "plan lacks Louvre": "Summed scores treat a 4.5/10 as 45% of a 10/10, a true zero being nothing at all; whether a below-average stop is worth going to is the person's call, made with At least on Rating: see paris-day-minimum-rating. Range here would fix this one and break three other ladders.",
+      "plan has Wax Museum": "As above.",
+      "plan has Sewer Museum": "As above.",
+      "plan has Souvenir Street": "As above.",
+      "plan Seine Walk, Wax Museum, Sewer Museum, Souvenir Street (expected": "As above."
     }
   },
   {

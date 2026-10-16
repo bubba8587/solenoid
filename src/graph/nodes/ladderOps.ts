@@ -75,12 +75,17 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
     const banned = new Set<number>();
     for (;;) {
       const ids: number[] = [];
-      for (const o of open) if (!banned.has(o) && opts[o].score >= 0 && !clash(opts, o, [...taken, ...ids])) ids.push(o);
-      for (let grew = true; grew; ) {
-        grew = false;
-        for (const i of ids) for (const r of opts[i].requires) {
-          if (!taken.includes(r) && !ids.includes(r) && open.includes(r) && !banned.has(r) && !clash(opts, r, [...taken, ...ids])) { ids.push(r); grew = true; }
-        }
+      // Each option at its own turn, with what it requires (harmful or not), all together or not at all.
+      for (const o of open) {
+        if (banned.has(o) || ids.includes(o) || opts[o].score < 0) continue;
+        const group: number[] = [];
+        const pull = (i: number) => {
+          if (group.includes(i) || ids.includes(i) || taken.includes(i)) return;
+          group.push(i);
+          for (const r of opts[i].requires) if (open.includes(r) && !banned.has(r)) pull(r);
+        };
+        pull(o);
+        if (group.every((g, k) => !clash(opts, g, [...taken, ...ids, ...group.slice(0, k)]))) ids.push(...group);
       }
       const have = new Set([...taken, ...ids]);
       const unmet = ids.filter((i) => opts[i].requires.some((r) => !have.has(r)));

@@ -145,11 +145,15 @@ describe("Choice Ladder kernel: Requires and Excludes", () => {
     const after = l.edges.filter((e) => e.from === 0).map((e) => e.to);
     expect(after[0]).toBe(after[1]);
   });
-  it("an option whose Requires can't be met is never taken", () => {
+  it("an option brings its Requires at its own turn, ahead of a lower option they'd clash with", () => {
+    // 0 needs 1; 1 excludes 2. Taking 0 with 1 (1.4) beats 2 alone (0.8).
     const opts = [opt(0.9, [], [1]), opt(0.5, [], [], [2]), opt(0.8, [], [], [1])];
-    // 0 needs 1, but 1 and 2 exclude each other and 2 comes first, so 1 never comes and neither does 0.
-    const l = buildLadder(opts, [], 0);
-    expect(mainPicks(l)).toEqual([2]);
+    expect(mainPicks(buildLadder(opts, [], 0)).sort()).toEqual([0, 1]);
+  });
+  it("an option whose Requires can't be met is never taken", () => {
+    // 0 needs 1, but 1 excludes 0.
+    const opts = [opt(0.9, [], [1]), opt(0.5, [], [], [0]), opt(0.8)];
+    expect(mainPicks(buildLadder(opts, [], 0)).sort()).toEqual([1, 2]);
   });
 });
 
@@ -232,5 +236,13 @@ describe("Choice Ladder kernel: round-3 review", () => {
   it("a worthless option is taken when there's room, and a prerequisite worth nothing comes when needed", () => {
     expect(bestPlan([opt(0.9, [10]), opt(0.5, [10]), opt(0, [10])], [0, 1, 2], [], [100])!.sort()).toEqual([0, 1, 2]);
     expect(bestPlan([opt(0.9, [5], [2]), opt(0.3, [5]), opt(-0.1, [5])], [0, 1, 2], [], [10])!.sort()).toEqual([0, 2]);
+  });
+});
+
+describe("Choice Ladder kernel: round-4 review", () => {
+  it("with no cap, an option's Requires come in at its own turn, so a lower option can't take the slot first", () => {
+    // 0 A requires 2 X; 1 B; X excludes B. A and X (16) beat B (8).
+    const opts = [opt(10, [], [2]), opt(8), opt(6, [], [], [1])];
+    expect(mainPicks(buildLadder(opts, [], 0)).sort()).toEqual([0, 2]);
   });
 });

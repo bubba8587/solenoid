@@ -735,3 +735,26 @@ describe("a Weights row with only a limit is a screen", () => {
     expect(col(out, "Score").values.slice(0, 2)).toEqual([1, 1]);
   });
 });
+
+describe("round-4 review", () => {
+  it("Sensitivity reads a limit-only row as a screen too", () => {
+    const g: FrameValue = { __frame: true, columns: [
+      { name: "Apt", type: "string", values: ["A", "B", "C"] }, { name: "Rent", type: "number", values: [1000, 2000, 1500] }, { name: "Light", type: "number", values: [3, 9, 6] },
+    ] };
+    const cube = decisionSensitivity(g, { __frame: true, columns: [
+      { name: "Criterion", type: "string", values: ["Rent", "Light"] }, { name: "At most", type: "number", values: [2500, null] }, { name: "Only light", type: "number", values: [null, 1] },
+    ] }, "max");
+    if (!isCubeValue(cube)) throw new Error("expected a cube");
+    expect(cube.columns[2].cells[0]).toBeCloseTo(0.3333, 4);
+  });
+  it("flip points at a weight of 0: nothing to lower, the nearer crossing either way is more", () => {
+    const opts: FrameValue = { __frame: true, columns: [
+      { name: "Car", type: "string", values: ["P", "Q", "R"] }, { name: "Price", type: "number", values: [20, 30, 25] }, { name: "Fun", type: "number", values: [5, 9, 7] },
+    ] };
+    const out = flipPoints(opts, { __frame: true, columns: [
+      { name: "Criterion", type: "string", values: ["Price", "Fun"] }, { name: "Weight", type: "number", values: [0, 1] },
+    ] }, "max");
+    expect(col(out, "More at").values[0]).not.toBeNull();
+    expect(col(out, "Less at").values[0]).toBeNull();
+  });
+});
