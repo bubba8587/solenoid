@@ -176,7 +176,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Choice Ladder (built 2026-10-16, [[C122]] choiceLadder)
 - [ ] **Capital earned back changes what's possible next**: an option that earns rough capital only moves up the order today; letting it enable others makes order in time matter (the leaf's reopen condition).
-- [ ] **Never flags** on options, and a must-have that isn't a fork.
 
 ## Charts
 - [ ] **Sunrise / Sunset prints raw serials** (46194.508 for a sunrise) where a time of day is meant; and a resized Chart card keeps drawing its plot at 218 × 150 (`ChartNode.tsx` W/H).
