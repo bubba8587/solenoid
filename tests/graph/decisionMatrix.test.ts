@@ -578,3 +578,25 @@ describe("flip points ([[C125]] flipPoints)", () => {
     expect(new DecisionSensitivityNode({ mode: "flips" }).outputs.cube!.label).toBe("Flip points");
   });
 });
+
+describe("Range normalize", () => {
+  it("maps each column's lowest to 0 and highest to 1, and a flat column to 0", () => {
+    const g: FrameValue = { __frame: true, columns: [
+      { name: "name", type: "string", values: ["A", "B", "C"] },
+      { name: "rating", type: "number", values: [6, 8, 10] },
+      { name: "flat", type: "number", values: [5, 5, 5] },
+    ] };
+    const out = decisionMatrix(g, [1, 1], "range", true);
+    expect(col(out, "rating").values).toEqual([0.5, 0.25, 0]);
+    expect(col(out, "flat").values).toEqual([0, 0, 0]);
+  });
+  it("a Norm cell reads Range or MinMax", () => {
+    const n = new DecisionMatrixNode({ detail: "breakdown" });
+    const out = n.data({ frame: [{ __frame: true, columns: [
+      { name: "name", type: "string", values: ["A", "B"] }, { name: "x", type: "number", values: [2, 4] },
+    ] }], weights: [{ __frame: true, columns: [
+      { name: "Criterion", type: "string", values: ["x"] }, { name: "Weight", type: "number", values: [1] }, { name: "Norm", type: "string", values: ["MinMax"] },
+    ] }] }).frame as FrameValue;
+    expect(col(out, "x").values).toEqual([1, 0]);
+  });
+});

@@ -1497,7 +1497,7 @@ export type DecisionDetail = "summary" | "breakdown";
 export class DecisionMatrixNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped.",
-    weights: "A row per criterion: name, Weight (negative when lower is better), optional Norm (Raw, ÷Max, Rank), and optional At least and At most, deal-breakers that rule an option out before weighing. A missing criterion weighs 1 at the default Norm.",
+    weights: "A row per criterion: name, Weight (negative when lower is better), optional Norm (Raw, ÷Max, Range, Rank), and optional At least and At most, deal-breakers that rule an option out before weighing. A missing criterion weighs 1 at the default Norm.",
   };
 
   label: string;

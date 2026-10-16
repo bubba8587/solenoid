@@ -1513,7 +1513,7 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
 
 // ─── Decision matrix (weighted scoring) ────────────────────────────────────────
 
-export type DecisionNormalize = "none" | "max" | "rank";
+export type DecisionNormalize = "none" | "max" | "range" | "rank";
 
 /** A criterion column as scores: a number as itself, a logical as 1 or 0, and a cell with no number as the median of the
  *  column's numbers ([[C123]] decisionBlanks), or 0 when it has none. A blank logical is FALSE. */
@@ -1531,6 +1531,11 @@ function normalizeColumn(vals: number[], mode: DecisionNormalize): number[] {
   if (mode === "max") {
     const denom = vals.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
     return denom === 0 ? vals.map(() => 0) : vals.map((v) => v / denom);
+  }
+  if (mode === "range") {
+    let lo = Infinity, hi = -Infinity;
+    for (const v of vals) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    return hi > lo ? vals.map((v) => (v - lo) / (hi - lo)) : vals.map(() => 0);
   }
   const n = vals.length;
   if (n <= 1) return vals.map(() => 1);
@@ -1582,6 +1587,7 @@ export function parseNormalize(v: FrameCell): DecisionNormalize | null {
   const s = v.trim().toLowerCase().replace(/[÷\s]/g, "");
   if (s === "raw" || s === "none") return "none";
   if (s === "max" || s === "divmax") return "max";
+  if (s === "range" || s === "minmax") return "range";
   if (s === "rank") return "rank";
   return null;
 }

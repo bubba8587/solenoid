@@ -704,6 +704,7 @@ export function DropBlankRowsComponent({ data, emit }: NodeProps<DropBlankRowsNo
 const DECISION_NORMALIZE_OPTIONS: { value: DecisionNormalize; label: string; title: string }[] = [
   { value: "none", label: "Raw", title: "Use the numbers as they are. Right when every column shares one scale, like all out of 10." },
   { value: "max", label: "÷ Max", title: "Divide each column by its biggest value so each tops out at 1. Puts dollars and out-of-10 scores on the same footing." },
+  { value: "range", label: "Range", title: "Stretch each column so its lowest value is 0 and its highest 1. Spreads out ratings that all sit between 6 and 10." },
   { value: "rank", label: "Rank", title: "Keep only each column's order, worst 0 to best 1. An extreme value counts no more than its place in line." },
 ];
 
