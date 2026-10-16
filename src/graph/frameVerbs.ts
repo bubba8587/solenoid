@@ -14,7 +14,7 @@ import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
 import { allocate, type AllocateMode } from "./nodes/allocateOps";
-import { buildLadder, type LadderOption } from "./nodes/ladderOps";
+import { buildLadder, mustClash, type LadderOption } from "./nodes/ladderOps";
 import type { LadderPayload } from "./chartValue";
 import { aggregate, percentileOf, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
@@ -1599,19 +1599,64 @@ function normOverridesFrom(f: FrameValue, criteria: string[], rowIndex: Map<stri
   return out;
 }
 
+/** A criterion's deal-breakers ([[C124]] dealBreakers): the least and most an option may have, in the column's own terms. */
+export interface DecisionBound { atLeast: number | null; atMost: number | null }
+
+const BOUND_COLUMNS = ["at least", "at most"];
+/** A weights or scenarios table's number columns that carry weights: not its deal-breakers. */
+const weightColumns = (f: FrameValue): FrameColumn[] =>
+  f.columns.filter((c) => c.type === "number" && !BOUND_COLUMNS.includes(critKey(c.name)));
+
+function boundsFrom(f: FrameValue, criteria: string[], rowIndex: Map<string, number>): DecisionBound[] | null {
+  const lo = f.columns.find((c) => critKey(c.name) === "at least"), hi = f.columns.find((c) => critKey(c.name) === "at most");
+  if (!lo && !hi) return null;
+  const at = (c: FrameColumn | undefined, r: number | undefined) => {
+    const v = c && r != null ? c.values[r] ?? null : null;
+    if (isSolError(v)) throw v;
+    return numOrNull(v);
+  };
+  return criteria.map((name) => {
+    const r = rowIndex.get(critKey(name));
+    return { atLeast: at(lo, r), atMost: at(hi, r) };
+  });
+}
+
 export function resolveDecisionWeights(
   wf: FrameValue | null, criteria: string[],
-): { weights: number[] | null; normOverrides: Record<string, DecisionNormalize> } {
-  if (!wf) return { weights: null, normOverrides: {} };
+): { weights: number[] | null; normOverrides: Record<string, DecisionNormalize>; bounds: DecisionBound[] | null } {
+  if (!wf) return { weights: null, normOverrides: {}, bounds: null };
   const rowIndex = criterionRowIndex(wf);
-  const nums = wf.columns.filter((c) => c.type === "number");
+  const nums = weightColumns(wf);
   const weightCol = nums.find((c) => ["weight", "weights", "value"].includes(critKey(c.name))) ?? nums[0] ?? null;
   const weights = criteria.map((name) => {
     const r = rowIndex.get(critKey(name));
     const v = r != null && weightCol ? numOrNull(weightCol.values[r]) : null;
     return v ?? 1;
   });
-  return { weights, normOverrides: normOverridesFrom(wf, criteria, rowIndex) };
+  return { weights, normOverrides: normOverridesFrom(wf, criteria, rowIndex), bounds: boundsFrom(wf, criteria, rowIndex) };
+}
+
+/** For each row, the criteria whose deal-breakers it fails ([[C124]] dealBreakers). A cell with no number fails none. */
+function decisionScreen(f: FrameValue, bounds: DecisionBound[] | null): string[][] {
+  const rows = frameRowCount(f);
+  const out: string[][] = Array.from({ length: rows }, () => []);
+  if (!bounds) return out;
+  decisionColumns(f).criteriaCols.forEach((c, j) => {
+    const b = bounds[j];
+    if (!b || (b.atLeast == null && b.atMost == null)) return;
+    for (let i = 0; i < rows; i++) {
+      const v = numOrNull(c.values[i] ?? null);
+      if (v == null) continue;
+      if ((b.atLeast != null && v < b.atLeast) || (b.atMost != null && v > b.atMost)) out[i].push(c.name);
+    }
+  });
+  return out;
+}
+
+const hasBounds = (bounds: DecisionBound[] | null): boolean => !!bounds?.some((b) => b.atLeast != null || b.atMost != null);
+
+function frameRows(f: FrameValue, rows: number[]): FrameValue {
+  return { ...f, columns: f.columns.map((c) => ({ ...c, values: rows.map((i) => c.values[i] ?? null) })) };
 }
 
 export function allocateFrame(
@@ -1714,28 +1759,32 @@ export function decisionMatrix(
   normalize: DecisionNormalize,
   breakdown = false,
   normalizeOverrides: Record<string, DecisionNormalize> = {},
+  bounds: DecisionBound[] | null = null,
 ): FrameValue {
   const rows = frameRowCount(f);
-  const { labelName, labels, criteria: criteriaCols, contrib, scores } = decisionScores(f, weights, normalize, normalizeOverrides);
+  // Deal-breakers come first: a ruled-out option is neither scored nor part of the scaling ([[C124]] dealBreakers).
+  const failed = decisionScreen(f, bounds);
+  const pass = failed.map((x, i) => (x.length ? -1 : i)).filter((i) => i >= 0);
+  const out_ = failed.map((x, i) => (x.length ? i : -1)).filter((i) => i >= 0);
+  const all = decisionScores(f, weights, normalize, normalizeOverrides);
+  const ds = pass.length === rows ? all : pass.length ? decisionScores(frameRows(f, pass), weights, normalize, normalizeOverrides) : null;
 
-  const order = scores.map((s, i) => ({ s, i })).sort((a, b) => b.s - a.s);
-  const rankByRow = new Array<number>(rows).fill(0);
-  for (let k = 0; k < order.length; k++) {
-    rankByRow[order[k].i] =
-      k > 0 && order[k].s === order[k - 1].s ? rankByRow[order[k - 1].i] : k + 1;
-  }
+  const order = pass.map((row, k) => ({ s: ds!.scores[k], k, row })).sort((a, b) => b.s - a.s);
+  const rank: number[] = [];
+  order.forEach((o, n) => { rank[n] = n > 0 && o.s === order[n - 1].s ? rank[n - 1] : n + 1; });
 
-  const idx = order.map((o) => o.i);
+  const label = (row: number) => all.labels[row];
   const out: FrameColumn[] = [
-    { name: labelName, type: "string", values: idx.map((i) => labels[i]) },
+    { name: all.labelName, type: "string", values: [...order.map((o) => label(o.row)), ...out_.map(label)] },
   ];
   if (breakdown) {
-    criteriaCols.forEach((c, j) => {
-      out.push({ name: c.name, type: "number", values: idx.map((i) => round4(contrib[j][i])) });
+    all.criteria.forEach((c, j) => {
+      out.push({ name: c.name, type: "number", values: [...order.map((o) => round4(ds!.contrib[j][o.k])), ...out_.map(() => null)] });
     });
   }
-  out.push({ name: "Score", type: "number", values: idx.map((i) => scores[i]) });
-  out.push({ name: "Rank", type: "number", values: idx.map((i) => rankByRow[i]) });
+  out.push({ name: "Score", type: "number", values: [...order.map((o) => o.s), ...out_.map(() => null)] });
+  out.push({ name: "Rank", type: "number", values: [...rank, ...out_.map(() => null)] });
+  if (hasBounds(bounds)) out.push({ name: "Ruled out by", type: "string", values: [...order.map(() => null), ...out_.map((i) => failed[i].join(", "))] });
 
   const names = makeHeaders(out.map((c) => c.name), out.length);
   return { __frame: true, columns: out.map((c, k) => ({ ...c, name: names[k] })) };
@@ -1767,6 +1816,8 @@ function ladderResources(f: FrameValue, limits: FrameValue | null): { name: stri
 
 const LADDER_REQUIRES = ["requires", "needs", "prerequisites", "depends on"];
 const LADDER_EXCLUDES = ["excludes", "conflicts", "conflicts with"];
+const LADDER_MUST = ["must", "must have"];
+const LADDER_NEVER = ["never"];
 
 export function choiceLadder(
   f: FrameValue, weightsFrame: FrameValue | null, limitsFrame: FrameValue | null,
@@ -1774,43 +1825,69 @@ export function choiceLadder(
 ): { plan: FrameValue; payload: LadderPayload } {
   const resources = ladderResources(f, limitsFrame);
   const relCol = (names: string[]) => f.columns.find((c) => c.type === "string" && names.includes(critKey(c.name))) ?? null;
+  const flagCol = (names: string[]) => f.columns.find((c) => c.type === "logical" && names.includes(critKey(c.name))) ?? null;
   const requiresCol = relCol(LADDER_REQUIRES), excludesCol = relCol(LADDER_EXCLUDES);
-  // A cost column is a criterion too only when the Weights name it; the relation columns never are, nor name the options.
+  const mustCol = flagCol(LADDER_MUST), neverCol = flagCol(LADDER_NEVER);
+  // A cost column is a criterion too only when the Weights name it; the relation and flag columns never are, nor name the options.
   const weighted = weightsFrame ? criterionRowIndex(weightsFrame) : new Map<string, number>();
   const costCols = new Set(resources.map((r) => r.col));
-  const scoring: FrameValue = { ...f, columns: f.columns.filter((c) => c !== requiresCol && c !== excludesCol && (!costCols.has(c) || weighted.has(critKey(c.name)))) };
-  const { weights, normOverrides } = resolveDecisionWeights(weightsFrame, decisionCriteria(scoring));
-  const ds = decisionScores(scoring, weights, normalize, normOverrides);
+  const notScored = new Set([requiresCol, excludesCol, mustCol, neverCol]);
+  const scoring: FrameValue = { ...f, columns: f.columns.filter((c) => !notScored.has(c) && (!costCols.has(c) || weighted.has(critKey(c.name)))) };
+  const { weights, normOverrides, bounds } = resolveDecisionWeights(weightsFrame, decisionCriteria(scoring));
 
-  const order = ds.scores.map((sc, i) => ({ sc, i })).sort((a, b) => b.sc - a.sc).map((o) => o.i);
-  const names = order.map((i) => {
-    const v = ds.labels[i];
+  // Before the ladder: deal-breakers, Nevers, and whatever needs one of them ([[C124]] dealBreakers).
+  const rows = frameRowCount(f);
+  const allLabels = decisionScores(scoring, weights, normalize, normOverrides).labels;
+  const nameOf = (i: number) => {
+    const v = allLabels[i];
     return v == null || v === "" ? `Option ${i + 1}` : String(formatFrameCell("string", v));
-  });
-  const indexOf = (name: string) => names.findIndex((n) => critKey(n) === critKey(name));
-  const listed = (col: FrameColumn | null, i: number): number[] => {
+  };
+  const rowOf = new Map<string, number>();
+  for (let i = 0; i < rows; i++) if (!rowOf.has(critKey(nameOf(i)))) rowOf.set(critKey(nameOf(i)), i);
+  const namesIn = (col: FrameColumn | null, i: number): number[] => {
     const v = col?.values[i];
     if (typeof v !== "string") return [];
-    return v.split(/[,;]/).map((t) => indexOf(t)).filter((k) => k >= 0);
+    return v.split(/[,;]/).map((t) => rowOf.get(critKey(t)) ?? -1).filter((k) => k >= 0 && k !== i);
   };
+  const failed = decisionScreen(scoring, bounds);
+  const out = new Set<number>();
+  for (let i = 0; i < rows; i++) if (failed[i].length || neverCol?.values[i] === true) out.add(i);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (let i = 0; i < rows; i++) if (!out.has(i) && namesIn(requiresCol, i).some((r) => out.has(r))) { out.add(i); grew = true; }
+  }
+  const kept = Array.from({ length: rows }, (_, i) => i).filter((i) => !out.has(i));
+  const ds = decisionScores(frameRows(scoring, kept), weights, normalize, normOverrides);
+
+  const order = ds.scores.map((sc, k) => ({ sc, k })).sort((a, b) => b.sc - a.sc).map((o) => o.k);
+  const rowAt = order.map((k) => kept[k]);
+  const names = rowAt.map(nameOf);
+  const indexOf = (name: string) => names.findIndex((n) => critKey(n) === critKey(name));
+  const listed = (col: FrameColumn | null, i: number): number[] => namesIn(col, i).map((r) => rowAt.indexOf(r)).filter((k) => k >= 0);
   const costOf = (col: FrameColumn, i: number): number => {
     const v = col.values[i] ?? null;
     if (isSolError(v)) throw v;
     return typeof v === "number" && Number.isFinite(v) ? v : 0;
   };
-  const opts: LadderOption[] = order.map((i) => ({
-    score: ds.scores[i],
-    // A criterion weighted against counts its lowness as value, so every strand is a share of what the option serves.
-    value: ds.criteria.map((_, j) => (ds.weightShare[j] >= 0 ? ds.contrib[j][i] : -ds.weightShare[j] + ds.contrib[j][i])),
-    costs: resources.map((r) => (r.limit == null ? costOf(r.col, i) : Math.max(0, costOf(r.col, i)))),
-    requires: listed(requiresCol, i),
-    excludes: listed(excludesCol, i),
-  }));
-  opts.forEach((o, k) => { o.requires = o.requires.filter((r) => r !== k); o.excludes = o.excludes.filter((r) => r !== k); });
+  const opts: LadderOption[] = order.map((k, n) => {
+    const i = rowAt[n];
+    return {
+      score: ds.scores[k],
+      // A criterion weighted against counts its lowness as value, so every strand is a share of what the option serves.
+      value: ds.criteria.map((_, j) => (ds.weightShare[j] >= 0 ? ds.contrib[j][k] : -ds.weightShare[j] + ds.contrib[j][k])),
+      costs: resources.map((r) => (r.limit == null ? costOf(r.col, i) : Math.max(0, costOf(r.col, i)))),
+      requires: listed(requiresCol, i),
+      excludes: listed(excludesCol, i),
+      must: mustCol?.values[i] === true,
+    };
+  });
+  const bad = mustClash(opts, resources);
+  if (bad && "clash" in bad) throw solError("#VALUE!", `Choice Ladder: Must options ${names[bad.clash[0]]} and ${names[bad.clash[1]]} exclude each other`);
+  if (bad) throw solError("#VALUE!", `Choice Ladder: the Must options need more ${resources[bad.over].name} than its limit`);
   const gap = !Number.isFinite(close) || close < 0 ? 0 : close >= 1 ? close / 100 : close;
   const res = buildLadder(opts, resources.map((r) => ({ limit: r.limit })), gap, choices.map(indexOf).filter((i) => i >= 0));
 
-  const CHOICE_TEXT = { clear: "Clear", close: "Close", chosen: "Your pick", passed: "Passed", required: "Needed" } as const;
+  const CHOICE_TEXT = { clear: "Clear", close: "Close", chosen: "Your pick", passed: "Passed", must: "Must", required: "Needed" } as const;
   const path = res.main.map((e) => res.edges[e]);
   const cols: FrameColumn[] = [
     { name: "Rung", type: "number", values: path.map((_, k) => k + 1) },
@@ -1833,6 +1910,7 @@ export function choiceLadder(
       resources: resources.map((r) => ({ name: r.name, limit: r.limit, format: r.col.format ?? null })),
       states: res.states, edges: res.edges, main: res.main,
       choices: choices.filter((c) => settled.has(names[indexOf(c)] ?? "")),
+      ruledOut: [...out].sort((a, b) => a - b).map(nameOf),
     },
   };
 }
@@ -1849,7 +1927,7 @@ export function decisionSensitivity(
   }
 
   const rowIndex = criterionRowIndex(scenarios);
-  const scenarioCols = scenarios.columns.filter((c) => c.type === "number");
+  const scenarioCols = weightColumns(scenarios);
   if (scenarioCols.length === 0) {
     throw solError("#VALUE!", "Scenarios needs a number column per scenario");
   }
@@ -1857,6 +1935,7 @@ export function decisionSensitivity(
     throw solError("#VALUE!", "No Scenarios row is named after a criterion");
   }
   const normOverrides = normOverridesFrom(scenarios, criteria, rowIndex);
+  const bounds = boundsFrom(scenarios, criteria, rowIndex);
 
   const scenarioCells: CubeCell[] = [];
   const winnerCells: CubeCell[] = [];
@@ -1869,7 +1948,7 @@ export function decisionSensitivity(
       const v = r != null ? numOrNull(scenCol.values[r]) : null;
       return v ?? 1;
     });
-    const ranking = decisionMatrix(scores, weights, normalize, false, normOverrides);
+    const ranking = decisionMatrix(scores, weights, normalize, false, normOverrides, bounds);
     // Positional: with breakdown off the shape is label · Score · Rank, and a criterion named "Score" would defeat a lookup by name.
     const scoreCol = ranking.columns[1];
     const rankCol = ranking.columns[2];

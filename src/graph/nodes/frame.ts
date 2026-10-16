@@ -1497,7 +1497,7 @@ export type DecisionDetail = "summary" | "breakdown";
 export class DecisionMatrixNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped.",
-    weights: "A row per criterion: name, Weight (negative when lower is better), optional Norm (Raw, ÷Max, Rank). A missing criterion weighs 1 at the default Norm.",
+    weights: "A row per criterion: name, Weight (negative when lower is better), optional Norm (Raw, ÷Max, Rank), and optional At least and At most, deal-breakers that rule an option out before weighing. A missing criterion weighs 1 at the default Norm.",
   };
 
   label: string;
@@ -1540,16 +1540,20 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
     const cols: ShapeColumn[] = [{ name: label?.name ?? "Option", type: "string" }];
     if (this.detail === "breakdown") for (const c of criteria) cols.push({ name: c.name, type: "number" });
     cols.push({ name: "Score", type: "number" }, { name: "Rank", type: "number" });
+    const w = ctx.inputShape("weights");
+    if (w?.columns.some((c) => ["at least", "at most"].includes(c.name.trim().toLowerCase()))) cols.push({ name: "Ruled out by", type: "string" });
     const names = makeHeaders(cols.map((c) => c.name), cols.length);
-    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })), dynamic: input.dynamic };
+    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })), dynamic: input.dynamic || !!w?.dynamic };
   }
 
   data(inputs: { frame?: unknown[]; weights?: (FrameValue | null)[] }) {
     const raw = inputs.frame?.[0] ?? null;
     if (raw == null) { this.cachedResult = null; return { frame: null }; }
     const f = isCubeValue(raw) ? cubeToScalarFrame(raw) : (isFrameValue(raw) ? raw : widenToFrame(raw));
-    const { weights, normOverrides } = resolveDecisionWeights(inputs.weights?.[0] ?? null, decisionCriteria(f));
-    this.cachedResult = runVerb(() => decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", normOverrides));
+    this.cachedResult = runVerb(() => {
+      const { weights, normOverrides, bounds } = resolveDecisionWeights(inputs.weights?.[0] ?? null, decisionCriteria(f));
+      return decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", normOverrides, bounds);
+    });
     return { frame: this.cachedResult };
   }
 }
@@ -1600,7 +1604,7 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 // [[C122]] choiceLadder
 export class ChoiceLadderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. Optional Requires and Excludes text columns list other options by name.",
+    frame: "The Decision Matrix's options frame plus a cost column per limit, named as in Limits. Optional Requires and Excludes text columns list other options by name; optional Must and Never logical columns force an option in or out.",
     limits: "A row per resource naming an Options column. With a Limit it is counted; with none it is a rough cost, like political capital, that orders the ladder by value for what it costs.",
     close: "Two options whose places differ by no more than this share of the larger fork the ladder. 0.05 or 5 both read as 5%.",
     chart: "The ladder: value flows down and each rung takes what it serves. Click a card at a fork to take it.",

@@ -4,7 +4,7 @@ import type { LadderEdge, LadderState } from "../chartValue";
 
 /** One option, in rank order: its Decision Matrix score, the value it serves per criterion (never negative), what it costs
  *  per resource, and the options it needs or can't share a plan with (positions in the same list). */
-export interface LadderOption { score: number; value: number[]; costs: number[]; requires: number[]; excludes: number[] }
+export interface LadderOption { score: number; value: number[]; costs: number[]; requires: number[]; excludes: number[]; must?: boolean }
 
 /** A resource the options spend: a countable limit, or null for a rough cost with no total (political capital). */
 export interface LadderResource { limit: number | null }
@@ -97,6 +97,21 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
   return best.ids;
 }
 
+/** Why the Must options can't all be taken ([[C124]] dealBreakers): two of them (or what they need) exclude each other,
+ *  or together they need more of a countable resource than its limit. Null when they fit. */
+export function mustClash(opts: LadderOption[], res: LadderResource[]): { clash: [number, number] } | { over: number } | null {
+  const need = new Set<number>();
+  const pull = (i: number) => { if (need.has(i)) return; need.add(i); opts[i].requires.forEach(pull); };
+  opts.forEach((o, i) => { if (o.must) pull(i); });
+  const ids = [...need].sort((a, b) => a - b);
+  for (const a of ids) for (const b of ids) if (a < b && clash(opts, a, [b])) return { clash: [a, b] };
+  for (let r = 0; r < res.length; r++) {
+    const lim = res[r].limit;
+    if (lim != null && ids.reduce((s, i) => s + opts[i].costs[r], 0) > lim + EPS) return { over: r };
+  }
+  return null;
+}
+
 /** Whether taking `a` or `b` next ends with the same set either way. */
 function sameSet(opts: LadderOption[], open: number[], s: { taken: number[]; left: (number | null)[] }, a: number, b: number): boolean {
   const after = (x: number) => {
@@ -128,7 +143,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
     const met = open.map((i) => (opts[i].requires.every((r) => has.has(r) || open.includes(r)) ? 1 : 0)).join("");
     return `${open.join(",")}|${met}|${left.map((l) => (l == null ? "" : Math.round(l * 1e6))).join(",")}`;
   };
-  const root: S = { id: 0, taken: [], out: new Set(opts.map((o, i) => (o.score > 0 ? -1 : i)).filter((i) => i >= 0)), left: res.map((r) => r.limit), share: 1, depth: 0, noFork: false, ins: [] };
+  const root: S = { id: 0, taken: [], out: new Set(opts.map((o, i) => (o.score > 0 || o.must ? -1 : i)).filter((i) => i >= 0)), left: res.map((r) => r.limit), share: 1, depth: 0, noFork: false, ins: [] };
   states.push(root);
   let level: S[] = [root];
   let ends = 0;
@@ -139,16 +154,17 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
       const s = level[li];
       const has = new Set(s.taken);
       const open = order.filter((i) => !has.has(i) && !s.out.has(i) && !clash(opts, i, s.taken));
-      const plan = new Set(bestPlan(opts, open, s.taken, s.left));
-      const takeable = (i: number) => plan.has(i);
-      let a = order.find((i) => takeable(i) && !has.has(i));
+      // Musts come before anything else, in order, and strike nothing.
+      const must = order.find((i) => opts[i].must && !has.has(i));
+      const plan = must != null ? new Set<number>() : new Set(bestPlan(opts, open, s.taken, s.left));
+      let a = must ?? order.find((i) => plan.has(i) && !has.has(i));
       if (a == null) { ends++; continue; }
 
       // Everything open and ahead of the pick that won't be taken is struck here.
-      const struck = open.filter((i) => rank.get(i)! < rank.get(a!)! && !plan.has(i));
+      const struck = must != null ? [] : open.filter((i) => rank.get(i)! < rank.get(a!)! && !plan.has(i));
 
       // The pick's turn: anything it needs comes first.
-      let kind: LadderEdge["kind"] = "clear";
+      let kind: LadderEdge["kind"] = must != null ? "must" : "clear";
       const needs = (i: number): number | null => opts[i].requires.filter((r) => !has.has(r)).sort((x, y) => rank.get(x)! - rank.get(y)!)[0] ?? null;
       for (let guard = 0; guard < opts.length; guard++) {
         const nd = needs(a);

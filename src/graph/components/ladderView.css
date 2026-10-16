@@ -20,7 +20,7 @@
 button.sol-ladder__card { cursor: pointer; }
 button.sol-ladder__card:hover { border-color: var(--text-dim); }
 button.sol-ladder__card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.sol-ladder__card.is-chosen { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.sol-ladder__card.is-chosen, .sol-ladder__card.is-must { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .sol-ladder__card.is-required { border-style: dashed; }
 .sol-ladder__card.is-passed { border-style: dashed; background: transparent; opacity: 0.55; }
 button.sol-ladder__card.is-passed:hover { opacity: 1; }

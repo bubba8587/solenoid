@@ -30,10 +30,12 @@ describe("ChoiceLadderNode", () => {
     expect(p.edges[p.main[0]].struck.map((i) => p.options[i].name)).toContain("Hearth & Ember");
   });
 
-  it("orders the policy agenda by value for capital, with no total: the earner first, a prerequisite pulled in", () => {
-    const { plan } = run("p");
+  it("orders the policy agenda by value for capital, with no total: the promise, then the earner, a prerequisite pulled in", () => {
+    const { plan, n } = run("p");
     const names = col(plan, "Policy") as string[];
-    expect(names[0]).toBe("Small business relief");
+    expect(names.slice(0, 2)).toEqual(["Child tax credit", "Small business relief"]);
+    expect(names).not.toContain("Oversight board");
+    expect(payloadOf(n).ruledOut).toEqual(["Oversight board"]);
     expect(names.indexOf("Zoning reform")).toBe(names.indexOf("Transit expansion") - 1);
     expect(col(plan, "Choice")[names.indexOf("Zoning reform")]).toBe("Needed");
   });
@@ -102,5 +104,70 @@ describe("ChoiceLadderNode", () => {
   it("a saved choices field that isn't a list of names loads as none", () => {
     expect(new ChoiceLadderNode({ choices: "Lune" as never }).choices).toEqual([]);
     expect(new ChoiceLadderNode({ choices: ["Lune", 3 as never] }).choices).toEqual(["Lune"]);
+  });
+});
+
+describe("Choice Ladder deal-breakers, Must and Never ([[C124]] dealBreakers)", () => {
+  const policies = frame(seedFrame("pOpts").columns.filter((c) => c.name !== "Must" && c.name !== "Never"));
+  const names = col(policies, "Policy") as string[];
+  const flag = (name: string, on: string[]): FrameColumn => ({ name, type: "logical", values: names.map((n) => on.includes(n)) });
+  const withCols = (...cs: FrameColumn[]) => frame([...policies.columns, ...cs]);
+  const runWith = (opts: FrameValue, weights = seedFrame("pWeights"), limits = seedFrame("pLimits")) => {
+    const n = new ChoiceLadderNode();
+    const out = n.data({ frame: [opts], weights: [weights], limits: [limits] });
+    return { n, plan: out.frame as FrameValue };
+  };
+
+  it("takes a Must first, before the earner, and marks it", () => {
+    const { plan } = runWith(withCols(flag("Must", ["Oversight board"])));
+    expect(col(plan, "Policy")[0]).toBe("Oversight board");
+    expect(col(plan, "Choice")[0]).toBe("Must");
+  });
+
+  it("a Must brings in what it needs first", () => {
+    const { plan } = runWith(withCols(flag("Must", ["Transit expansion"])));
+    expect((col(plan, "Policy") as string[]).slice(0, 2)).toEqual(["Zoning reform", "Transit expansion"]);
+    expect((col(plan, "Choice") as string[]).slice(0, 2)).toEqual(["Needed", "Must"]);
+  });
+
+  it("a Never is never taken, and whatever needs it goes too; both are listed on the figure", () => {
+    const { plan, n } = runWith(withCols(flag("Never", ["Zoning reform"])));
+    const taken = col(plan, "Policy") as string[];
+    expect(taken).not.toContain("Zoning reform");
+    expect(taken).not.toContain("Transit expansion");
+    expect(payloadOf(n).ruledOut).toEqual(["Transit expansion", "Zoning reform"]);
+  });
+
+  it("Must and Never are neither criteria nor costs", () => {
+    const { n } = runWith(withCols(flag("Must", []), flag("Never", [])));
+    expect(payloadOf(n).criteria).toEqual(["Impact", "Urgency", "Support", "Equity", "Feasibility"]);
+  });
+
+  it("a deal-breaker in the Weights rules an option out of the ladder", () => {
+    const w = seedFrame("pWeights");
+    const crit = col(w, w.columns[0].name) as string[];
+    const weights = frame([...w.columns, { name: "At least", type: "number", values: crit.map((c) => (c === "Support" ? 6 : null)) }]);
+    const support = col(policies, "Support") as number[];
+    const low = names.filter((_, i) => support[i] < 6);
+    expect(low.length).toBeGreaterThan(0);
+    const { plan, n } = runWith(policies, weights);
+    for (const name of low) expect(col(plan, "Policy")).not.toContain(name);
+    expect(payloadOf(n).ruledOut).toEqual(expect.arrayContaining(low));
+  });
+
+  it("Musts that exclude each other are #VALUE! naming both", () => {
+    const n = new ChoiceLadderNode();
+    const out = n.data({ frame: [withCols(flag("Must", ["Fuel levy", "Fuel tax holiday"]))], weights: [seedFrame("pWeights")], limits: [seedFrame("pLimits")] });
+    expect(isSolError(out.frame)).toBe(true);
+    expect((out.frame as unknown as { message: string }).message).toMatch(/Fuel levy and Fuel tax holiday exclude each other/);
+  });
+
+  it("Musts that need more than a countable limit are #VALUE!", () => {
+    const r = seedFrame("rOpts");
+    const rn = col(r, "Restaurant") as string[];
+    const n = new ChoiceLadderNode();
+    const out = n.data({ frame: [frame([...r.columns, { name: "Must", type: "logical", values: rn.map((x) => ["Hearth & Ember", "Kato omakase", "Fennel"].includes(x)) }])], weights: [seedFrame("rWeights")], limits: [seedFrame("rLimits")] });
+    expect(isSolError(out.frame)).toBe(true);
+    expect((out.frame as unknown as { message: string }).message).toMatch(/Dollars/);
   });
 });

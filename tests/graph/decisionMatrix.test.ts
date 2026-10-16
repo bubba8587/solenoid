@@ -448,3 +448,66 @@ describe("decisionSensitivity (weight scenarios → cube)", () => {
     expect(err.code).toBe("#VALUE!");
   });
 });
+
+describe("deal-breakers ([[C124]] dealBreakers)", () => {
+  const apartments: FrameValue = { __frame: true, columns: [
+    { name: "Place", type: "string", values: ["Loft", "Studio", "Garden", "Tower"] },
+    { name: "Rent", type: "number", values: [2400, 1500, 1800, null] },
+    { name: "Light", type: "number", values: [9, 4, 7, 8] },
+    { name: "Commute", type: "number", values: [20, 50, 30, 25] },
+  ] };
+  const bounds = [{ atLeast: null, atMost: 2000 }, { atLeast: null, atMost: null }, { atLeast: null, atMost: 45 }];
+
+  it("rules out an option outside a bound before weighing: listed last, unscored, naming the criteria", () => {
+    const out = decisionMatrix(apartments, [-1, 2, -1], "max", false, {}, bounds);
+    expect(col(out, "Place").values.slice(-2)).toEqual(["Loft", "Studio"]);
+    expect(col(out, "Score").values.slice(-2)).toEqual([null, null]);
+    expect(col(out, "Rank").values).toEqual([1, 2, null, null]);
+    expect(col(out, "Ruled out by").values).toEqual([null, null, "Rent", "Commute"]);
+  });
+
+  it("a ruled-out option doesn't shape the scaling of the rest", () => {
+    const kept: FrameValue = { __frame: true, columns: apartments.columns.map((c) => ({ ...c, values: [c.values[2], c.values[3]] })) };
+    const screened = decisionMatrix(apartments, [-1, 2, -1], "max", false, {}, bounds);
+    const alone = decisionMatrix(kept, [-1, 2, -1], "max");
+    expect(col(screened, "Score").values.slice(0, 2)).toEqual(col(alone, "Score").values);
+  });
+
+  it("a missing value never rules an option out", () => {
+    const out = decisionMatrix(apartments, [-1, 2, -1], "max", false, {}, bounds);
+    expect(col(out, "Rank").values[col(out, "Place").values.indexOf("Tower")]).not.toBeNull();
+  });
+
+  it("a weight of 0 makes a criterion a screen only", () => {
+    const out = decisionMatrix(apartments, [0, 1, 0], "max", false, {}, bounds);
+    expect(col(out, "Place").values.slice(0, 2)).toEqual(["Tower", "Garden"]);
+  });
+
+  it("no bound set adds no column, and everyone ruled out still lists everyone", () => {
+    expect(decisionMatrix(apartments, null, "max").columns.map((c) => c.name)).toEqual(["Place", "Score", "Rank"]);
+    const none = decisionMatrix(apartments, null, "max", false, {}, [{ atLeast: null, atMost: 1 }, { atLeast: null, atMost: null }, { atLeast: null, atMost: null }]);
+    expect(col(none, "Rank").values.filter((v) => v != null)).toEqual([1]); // Tower's rent is missing
+  });
+
+  it("the node reads At least and At most from the Weights table, and they are never weights", () => {
+    const n = new DecisionMatrixNode();
+    const out = n.data({ frame: [apartments], weights: [{ __frame: true, columns: [
+      { name: "Criterion", type: "string", values: ["Rent", "Light", "Commute"] },
+      { name: "At most", type: "number", values: [2000, null, 45] },
+      { name: "Weight", type: "number", values: [-1, 2, -1] },
+    ] }] }).frame as FrameValue;
+    expect(col(out, "Ruled out by").values.slice(-2)).toEqual(["Rent", "Commute"]);
+    expect(col(out, "Place").values[0]).toBe("Tower");
+  });
+
+  it("Sensitivity skips the bound columns as scenarios and applies them", () => {
+    const cube = decisionSensitivity(apartments, { __frame: true, columns: [
+      { name: "Criterion", type: "string", values: ["Rent", "Light", "Commute"] },
+      { name: "At most", type: "number", values: [2000, null, 45] },
+      { name: "Light-first", type: "number", values: [-1, 3, -1] },
+    ] }, "max");
+    if (!isCubeValue(cube)) throw new Error("expected a cube");
+    expect(cube.columns[0].cells).toEqual(["Light-first"]);
+    expect(cube.columns[1].cells).toEqual(["Tower"]);
+  });
+});

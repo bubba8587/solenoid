@@ -60,6 +60,7 @@ function SourceCard({ p, colors }: { p: LadderPayload; colors: string[] }) {
           {p.resources.map((r) => <span key={r.name}>{r.name}{r.limit != null ? ` ${formatScalar(r.limit)}` : ""}</span>)}
         </div>
       )}
+      {p.ruledOut.length > 0 && <div className="sol-ladder__struck">{p.ruledOut.map((n) => <s key={n}>{n}</s>)}</div>}
     </div>
   );
 }
