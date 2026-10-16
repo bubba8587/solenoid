@@ -188,7 +188,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Choice Ladder (built 2026-10-16, [[C122]] choiceLadder)
 - [ ] **Capital earned back changes what's possible next**: an option that earns rough capital only moves up the order today; letting it enable others makes order in time matter (the leaf's reopen condition).
-- [ ] **Undo history for a pick**: taking or undoing a fork from the figure saves but doesn't go on the undo stack.
 - [ ] **Never flags** on options, and a must-have that isn't a fork.
 
 ## Charts
