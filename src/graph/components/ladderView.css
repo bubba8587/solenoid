@@ -19,13 +19,14 @@
 .sol-ladder__svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
 .sol-ladder__slot { position: absolute; }
 
-.sol-ladder__rib { fill: var(--border-strong); }
-.sol-ladder__rib.is-on { fill: var(--accent); opacity: 0.9; }
-.sol-ladder__stop { stop-color: var(--border-strong); stop-opacity: 0.9; }
-.sol-ladder__stop.is-on { stop-color: var(--accent); }
-.sol-ladder__stop.is-end { stop-opacity: 0; }
-.sol-ladder__riblabel { font-family: var(--font-mono); font-size: calc(10px * var(--chart-fscale, 1)); fill: var(--text-muted); }
-.sol-ladder__riblabel.is-on { fill: color-mix(in srgb, var(--accent) 55%, var(--text)); }
+/* A band's color is its resource's; the selected plan's path draws full strength, the rest faint. */
+.sol-ladder__band { opacity: 0.3; }
+.sol-ladder__band.is-on { opacity: 0.9; }
+.sol-ladder__band.is-ghost { fill-opacity: 0.12; stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.6; }
+.sol-ladder__band.is-ghost.is-on { fill-opacity: 0.22; opacity: 1; }
+.sol-ladder__line { fill: none; stroke: var(--border-strong); stroke-width: 1.5; }
+.sol-ladder__line.is-on { stroke: var(--text-dim); }
+.sol-ladder__line.is-ghost { stroke-dasharray: 4 3; }
 
 .sol-ladder__card {
   display: grid;
@@ -41,8 +42,9 @@
   color: inherit;
   font-size: calc(11px * var(--chart-fscale, 1));
   line-height: 1.35;
+  opacity: 0.72;
 }
-.sol-ladder__card.is-on { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+.sol-ladder__card.is-on { opacity: 1; border-color: var(--text-muted); }
 .sol-ladder__head { display: flex; justify-content: space-between; align-items: center; gap: 6px; color: var(--text-muted); }
 .sol-ladder__badge {
   font-size: calc(9.5px * var(--chart-fscale, 1));
@@ -55,30 +57,32 @@
   color: var(--text-dim);
 }
 .sol-ladder__badge.is-fork { color: var(--text); border-color: var(--text-dim); }
-.sol-ladder__badge.is-best { color: color-mix(in srgb, var(--accent) 55%, var(--text)); border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+.sol-ladder__badge.is-best { color: var(--text); border-color: var(--text); }
 .sol-ladder__pick { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .sol-ladder__name { font-size: calc(13px * var(--chart-fscale, 1)); font-weight: 600; color: var(--text); line-height: 1.25; }
 .sol-ladder__mono { font-family: var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; }
-.sol-ladder__costs { font-family: var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .sol-ladder__note { color: var(--text-muted); }
 .sol-ladder__note b { color: var(--text-dim); font-weight: 600; }
 
-.sol-ladder__struck { list-style: none; margin: 0 0 2px; padding: 0 0 4px; display: grid; gap: 2px; border-bottom: 1px dashed var(--border-strong); color: var(--text-muted); }
+.sol-ladder__amounts { display: inline-flex; flex-wrap: wrap; gap: 2px 10px; font-family: var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.sol-ladder__amounts > span { display: inline-flex; align-items: center; gap: 4px; }
+.sol-ladder__amounts i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+
+.sol-ladder__struck { list-style: none; margin: 0; padding: 4px 0 0; display: grid; gap: 2px; border-top: 1px dashed var(--border-strong); color: var(--text-muted); }
 .sol-ladder__struck s { color: var(--text-dim); font-weight: 600; text-decoration-color: var(--sol-error); text-decoration-thickness: 1.5px; }
 
-.sol-ladder__duel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.sol-ladder__side { display: grid; gap: 1px; align-content: start; min-width: 0; }
-.sol-ladder__tag { font-size: calc(9.5px * var(--chart-fscale, 1)); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
-.sol-ladder__side.is-a .sol-ladder__tag { color: color-mix(in srgb, var(--accent) 55%, var(--text)); }
-.sol-ladder__pulls { display: grid; gap: 2px; margin-top: 2px; }
+.sol-ladder__pulls { display: grid; gap: 2px; margin-top: 3px; padding-top: 4px; border-top: 1px dashed var(--border-strong); }
+.sol-ladder__pullhead { display: flex; justify-content: space-between; gap: 8px; color: var(--text-dim); font-size: calc(10px * var(--chart-fscale, 1)); }
+.sol-ladder__pullhead span:first-child::before { content: "← "; }
+.sol-ladder__pullhead span:last-child::after { content: " →"; }
 .sol-ladder__pullrow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 6px; align-items: center; }
-.sol-ladder__pullrow > span { text-align: center; color: var(--text-dim); font-size: calc(10px * var(--chart-fscale, 1)); min-width: 64px; }
+.sol-ladder__pullrow > span { text-align: center; color: var(--text-dim); font-size: calc(10px * var(--chart-fscale, 1)); min-width: 62px; }
 .sol-ladder__bar { height: 6px; border-radius: 2px; }
-.sol-ladder__bar.is-a { justify-self: end; background: var(--accent); }
-.sol-ladder__bar.is-b { justify-self: start; background: var(--text-dim); }
+.sol-ladder__bar.is-a { justify-self: end; background: var(--text); }
+.sol-ladder__bar.is-b { justify-self: start; background: var(--text-muted); }
 
 .sol-ladder__plan { cursor: pointer; }
-.sol-ladder__plan:hover { border-color: var(--text-muted); }
-.sol-ladder__plan.is-sel { border-color: var(--accent); }
+.sol-ladder__plan:hover { border-color: var(--text-dim); }
+.sol-ladder__plan.is-sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .sol-ladder__plan:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .sol-ladder__total { font-family: var(--font-mono); font-size: calc(16px * var(--chart-fscale, 1)); font-weight: 600; color: var(--text); }

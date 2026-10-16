@@ -11,13 +11,14 @@ import { recordNavTarget, stepRecordRow } from "./recordNav";
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 
 const MAX_W = 1000;
+const MAX_W_LADDER = 1800;
 const MAX_H = 380;
 const MAX_H_GANTT = 680;
 const MARGIN_X = 32;
 const CHROME_Y = 32 /* overlay margin */ + 38 /* header */ + 32 /* chart padding */;
 
-function chartSize(maxH = MAX_H) {
-  const w = clamp(window.innerWidth - MARGIN_X - 32, 200, MAX_W);
+function chartSize(maxH = MAX_H, maxW = MAX_W) {
+  const w = clamp(window.innerWidth - MARGIN_X - 32, 200, maxW);
   const h = clamp(window.innerHeight - CHROME_Y, 140, maxH);
   return { w, h };
 }
@@ -80,7 +81,8 @@ export function ChartPopup() {
   const ganttPayload = isGantt && state.value?.payload?.kind === "gantt" ? (state.value.payload as GanttPayload) : null;
   // A ladder grows downward like a Gantt, so it opens as tall.
   const isTall = isGantt || state.value?.op === "ladder";
-  const initialCard = (() => { const f = chartSize(isTall ? MAX_H_GANTT : MAX_H); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
+  // A ladder also widens a lane per plan, so it opens as wide as the window allows.
+  const initialCard = (() => { const f = chartSize(isTall ? MAX_H_GANTT : MAX_H, state.value?.op === "ladder" ? MAX_W_LADDER : MAX_W); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
   const cardStyle = popupCardVars(state);
 
   const copySvg = ganttPayload

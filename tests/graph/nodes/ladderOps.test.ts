@@ -107,6 +107,16 @@ describe("Choice Ladder kernel: rungs", () => {
     expect(fork.duel!.pulls).toHaveLength(5);
     expect(l.rungs.filter((r) => r.parent === fork.id).map((r) => r.branch)).toEqual([0, 1]);
   });
+  it("a fork's main side keeps its rival open, so the runner-up plan stays reachable", () => {
+    const totals = l.rungs.filter((r) => r.kind === "plan").map((r) => r.total);
+    expect(totals).toContain(4.5452); // Marrow and Lune bistro together, dropping Brass Oyster
+    const sets = l.rungs.filter((r) => r.kind === "plan").map((r) => {
+      const picks: number[] = [];
+      for (let x = r; x.parent != null; ) { const up = l.rungs.find((q) => q.id === x.parent)!; picks.push(up.kind === "tossup" && x.branch === 1 ? up.rival! : up.pick!); x = up; }
+      return picks.sort((a, b) => a - b).join(",");
+    });
+    expect(new Set(sets).size).toBe(sets.length); // no plan appears twice
+  });
   it("a clear rung carries its rival and the wiggle that would flip it", () => {
     const sturdy = l.rungs.find((r) => r.kind === "clear" && r.sturdy)!;
     expect(sturdy.sturdy!.flipsAt).toBeGreaterThan(0.25);

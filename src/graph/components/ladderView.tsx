@@ -1,9 +1,11 @@
 // [[C122]] choiceLadder, [[C100]] chartIsAValue
-import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { LadderPayload, LadderRung, LadderStruck } from "../chartValue";
 import { formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatScalar } from "./format";
 import { stopDragStart } from "../coarse";
+import { useSeriesColors } from "./chartCore";
+import { layoutLadder, metricsFor } from "./ladderLayout";
 import "./ladderView.css";
 
 const fmt3 = (x: number) => (Math.round(x * 1000) / 1000).toFixed(3);
@@ -20,27 +22,16 @@ function resourceText(p: LadderPayload, k: number, v: number): string {
   }
   return `${formatScalar(n)} ${unit}`;
 }
-const costsText = (p: LadderPayload, costs: number[]) => costs.map((c, k) => resourceText(p, k, c)).join(" · ");
-const leftText = (p: LadderPayload, left: number[]) => left.length ? `${left.map((v, k) => resourceText(p, k, v)).join(" · ")} left` : "";
 
-interface Laid { laneX: Map<number, number>; laneR: Map<number, number>; lanes: number; kids: Map<number, LadderRung[]> }
-
-function laneLayout(rungs: LadderRung[]): Laid {
-  const kids = new Map<number, LadderRung[]>(rungs.map((r) => [r.id, []]));
-  for (const r of rungs) if (r.parent != null) kids.get(r.parent)!.push(r);
-  for (const list of kids.values()) list.sort((a, b) => (a.branch ?? 0) - (b.branch ?? 0));
-  const laneX = new Map<number, number>(), laneR = new Map<number, number>();
-  let next = 0;
-  const walk = (r: LadderRung) => {
-    const ks = kids.get(r.id)!;
-    if (!ks.length) { laneX.set(r.id, next); laneR.set(r.id, next); next++; return; }
-    ks.forEach(walk);
-    laneX.set(r.id, laneX.get(ks[0].id)!);
-    laneR.set(r.id, laneX.get(ks[ks.length - 1].id)!);
-  };
-  const root = rungs.find((r) => r.parent == null);
-  if (root) walk(root);
-  return { laneX, laneR, lanes: next, kids };
+/** Amounts per resource, each with its band's swatch. */
+function Amounts({ p, values, colors, zero = true }: { p: LadderPayload; values: number[]; colors: string[]; zero?: boolean }) {
+  return (
+    <span className="sol-ladder__amounts">
+      {values.map((v, k) => (!zero && Math.abs(v) < 1e-9 ? null : (
+        <span key={k}><i style={{ background: colors[k % colors.length] }} />{resourceText(p, k, v)}</span>
+      )))}
+    </span>
+  );
 }
 
 function Struck({ p, list }: { p: LadderPayload; list?: LadderStruck[] }) {
@@ -60,53 +51,36 @@ function Struck({ p, list }: { p: LadderPayload; list?: LadderStruck[] }) {
   );
 }
 
-function RungCard({ p, r, onPath, selected, onPick }: { p: LadderPayload; r: LadderRung; onPath: boolean; selected: boolean; onPick: (id: number) => void }) {
-  const cls = `sol-ladder__card${onPath ? " is-on" : ""}`;
-  if (r.kind === "plan") {
-    const best = p.rungs.find((x) => x.id === p.best)!;
-    const gap = best.total - r.total;
-    return (
-      <button type="button" className={`${cls} sol-ladder__plan${selected ? " is-sel" : ""}`} aria-pressed={selected} onClick={() => onPick(r.id)} onPointerDown={stopDragStart}>
-        <div className="sol-ladder__head"><span>Plan · {r.rung} {r.rung === 1 ? "pick" : "picks"}</span>{gap < 1e-9 ? <span className="sol-ladder__badge is-best">Best</span> : <span className="sol-ladder__mono">−{fmt3(gap)}</span>}</div>
-        <div className="sol-ladder__total">{fmt3(r.total)}</div>
-        <div className="sol-ladder__costs">{leftText(p, r.left)}</div>
-      </button>
-    );
-  }
-  const head = (badge: ReactNode) => <div className="sol-ladder__head"><span>Rung {r.rung + 1}</span>{badge}</div>;
-  if (r.kind === "clear") {
-    const o = p.options[r.pick!];
-    const s = r.sturdy;
-    return (
-      <div className={cls}>
-        {head(<span className="sol-ladder__badge">Clear</span>)}
-        <Struck p={p} list={r.struck} />
-        <div className="sol-ladder__pick"><span className="sol-ladder__name">{o.name}</span><span className="sol-ladder__mono">{fmt3(o.score)}</span></div>
-        <div className="sol-ladder__costs">{costsText(p, o.costs)}</div>
-        <div className="sol-ladder__note">
-          {s ? <>vs <b>{p.options[s.rival].name}</b> · {s.flipsAt == null || s.flipsAt >= 1 ? "holds at any weights" : `holds to ±${pct(s.flipsAt)}`}</> : "Nothing else could take its place"}
-        </div>
+interface CardProps { p: LadderPayload; r: LadderRung; on: boolean; colors: string[] }
+
+function ClearCard({ p, r, on, colors }: CardProps) {
+  const o = p.options[r.pick!], s = r.sturdy;
+  return (
+    <div className={`sol-ladder__card${on ? " is-on" : ""}`}>
+      <div className="sol-ladder__head"><span>Rung {r.rung + 1}</span><span className="sol-ladder__badge">Clear</span></div>
+      <div className="sol-ladder__pick"><span className="sol-ladder__name">{o.name}</span><span className="sol-ladder__mono">{fmt3(o.score)}</span></div>
+      <Amounts p={p} values={o.costs} colors={colors} />
+      <Struck p={p} list={r.struck} />
+      <div className="sol-ladder__note">
+        {s ? <>Next best without it: <b>{p.options[s.rival].name}</b>. {s.flipsAt == null || s.flipsAt >= 1 ? "Holds at any weights." : `Holds unless weights are off by ${pct(s.flipsAt)}.`}</> : "Nothing else could take its place."}
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+function TossCard({ p, r, on, colors }: CardProps) {
   const d = r.duel!, A = p.options[r.pick!], B = p.options[r.rival!];
   const maxPull = Math.max(1e-9, ...d.pulls.map(Math.abs));
   const lead = d.margin >= 0 ? A : B;
-  const side = (o: typeof A, brings: number[], plan: number, k: "a" | "b") => (
-    <div className={`sol-ladder__side is-${k}`}>
-      <span className="sol-ladder__tag">{k === "a" ? "Main" : "Alternative"}</span>
-      <span className="sol-ladder__name">{o.name}</span>
-      <span className="sol-ladder__costs">{costsText(p, o.costs)}</span>
-      {brings.length > 0 && <span className="sol-ladder__note">brings {listJoin(brings.map((i) => p.options[i].name))}</span>}
-      <span className="sol-ladder__mono">plan {fmt3(plan)}</span>
-    </div>
-  );
   return (
-    <div className={`${cls} sol-ladder__tossup`}>
-      {head(<span className="sol-ladder__badge is-fork">Toss-up</span>)}
+    <div className={`sol-ladder__card sol-ladder__toss${on ? " is-on" : ""}`}>
+      <div className="sol-ladder__head"><span>Rung {r.rung + 1} · main</span><span className="sol-ladder__badge is-fork">Toss-up</span></div>
+      <div className="sol-ladder__pick"><span className="sol-ladder__name">{A.name}</span><span className="sol-ladder__mono">{fmt3(A.score)}</span></div>
+      <Amounts p={p} values={A.costs} colors={colors} />
+      {d.aBrings.length > 0 && <div className="sol-ladder__note">Brings {listJoin(d.aBrings.map((i) => p.options[i].name))}.</div>}
       <Struck p={p} list={r.struck} />
-      <div className="sol-ladder__duel">{side(A, d.aBrings, d.planA, "a")}{side(B, d.bBrings, d.planB, "b")}</div>
       <div className="sol-ladder__pulls">
+        <div className="sol-ladder__pullhead"><span>{A.name}</span><span>{B.name}</span></div>
         {d.pulls.map((v, j) => Math.abs(v) < 1e-6 ? null : (
           <div key={j} className="sol-ladder__pullrow">
             <div className="sol-ladder__bar is-a" style={{ width: v > 0 ? pct(Math.abs(v) / maxPull) : 0 }} />
@@ -115,73 +89,84 @@ function RungCard({ p, r, onPath, selected, onPick }: { p: LadderPayload; r: Lad
           </div>
         ))}
       </div>
-      <div className="sol-ladder__note"><b>{lead.name}</b>'s side leads by {fmt3(Math.abs(d.margin))}. Weights off by {pct(d.flipsAt)} would swap them.</div>
+      <div className="sol-ladder__note"><b>{lead.name}</b>'s side leads, {fmt3(Math.max(d.planA, d.planB))} to {fmt3(Math.min(d.planA, d.planB))}. Weights off by {pct(d.flipsAt)} would swap them.</div>
     </div>
   );
 }
 
-/** The Choice Ladder figure: rungs top to bottom, one lane per plan, ribbons as wide as the first limit's remainder. */
+function AltCard({ p, r, on, colors }: CardProps) {
+  const d = r.duel!, B = p.options[r.rival!];
+  return (
+    <div className={`sol-ladder__card sol-ladder__alt${on ? " is-on" : ""}`}>
+      <div className="sol-ladder__head"><span>Rung {r.rung + 1} · alternative</span><span className="sol-ladder__badge is-fork">Toss-up</span></div>
+      <div className="sol-ladder__pick"><span className="sol-ladder__name">{B.name}</span><span className="sol-ladder__mono">{fmt3(B.score)}</span></div>
+      <Amounts p={p} values={B.costs} colors={colors} />
+      {d.bBrings.length > 0 && <div className="sol-ladder__note">Brings {listJoin(d.bBrings.map((i) => p.options[i].name))}.</div>}
+      <div className="sol-ladder__note">Instead of {p.options[r.pick!].name}: the same budget, spent this way.</div>
+    </div>
+  );
+}
+
+function PlanCard({ p, r, on, colors, selected, onPick }: CardProps & { selected: boolean; onPick: (id: number) => void }) {
+  const best = p.rungs.find((x) => x.id === p.best)!;
+  const gap = best.total - r.total;
+  const anyLeft = r.left.some((v) => v > 1e-9);
+  return (
+    <button type="button" className={`sol-ladder__card sol-ladder__plan${on ? " is-on" : ""}${selected ? " is-sel" : ""}`} aria-pressed={selected} onClick={() => onPick(r.id)} onPointerDown={stopDragStart}>
+      <div className="sol-ladder__head"><span>Plan · {r.rung} {r.rung === 1 ? "pick" : "picks"}</span>{gap < 1e-9 ? <span className="sol-ladder__badge is-best">Best</span> : <span className="sol-ladder__mono">−{fmt3(gap)}</span>}</div>
+      <div className="sol-ladder__total">{fmt3(r.total)}</div>
+      {p.resources.length > 0 && (anyLeft
+        ? <div className="sol-ladder__note">Left over: <Amounts p={p} values={r.left} colors={colors} zero={false} /></div>
+        : <div className="sol-ladder__note">Nothing left over.</div>)}
+    </button>
+  );
+}
+
+function SourceCard({ p, colors }: { p: LadderPayload; colors: string[] }) {
+  return (
+    <div className="sol-ladder__card sol-ladder__source is-on">
+      <div className="sol-ladder__head"><span>Limits</span></div>
+      {p.resources.length
+        ? <Amounts p={p} values={p.resources.map((r) => r.limit)} colors={colors} />
+        : <div className="sol-ladder__note">No limits: everything fits.</div>}
+    </div>
+  );
+}
+
+/** The Choice Ladder figure: a flowchart of rungs, one lane per plan, with each limit flowing down as a band that turns
+ *  into every card for what it spends. Layout and geometry are `ladderLayout.ts`. */
 export function LadderView({ payload: p, width, height, fscale = 1 }: { payload: LadderPayload; width: number; height: number; fscale?: number }) {
-  const gid = useId().replace(/:/g, "");
+  const colors = useSeriesColors();
   const [picked, setPicked] = useState<number | null>(null);
-  const laid = useMemo(() => laneLayout(p.rungs), [p]);
   const byId = useMemo(() => new Map(p.rungs.map((r) => [r.id, r])), [p]);
   const sel = picked != null && byId.get(picked)?.kind === "plan" ? picked : p.best;
-  const onPath = new Set<number>();
-  for (let r = byId.get(sel); r; r = r.parent != null ? byId.get(r.parent) : undefined) onPath.add(r.id);
+  const m = metricsFor(fscale);
 
-  const CW = Math.round(226 * fscale), LW = CW + Math.round(24 * fscale), GAP = Math.round(46 * fscale), TOP = Math.round(30 * fscale);
-  const cardRefs = useRef(new Map<number, HTMLElement>());
-  const [heights, setHeights] = useState<Map<number, number> | null>(null);
+  const refs = useRef(new Map<string, HTMLElement>());
+  const [heights, setHeights] = useState<Map<string, number> | null>(null);
   useLayoutEffect(() => {
-    const next = new Map<number, number>();
-    for (const [id, el] of cardRefs.current) if (byId.has(id)) next.set(id, el.offsetHeight);
+    const next = new Map<string, number>();
+    for (const [k, el] of refs.current) next.set(k, el.offsetHeight);
     const same = heights && heights.size === next.size && [...next].every(([k, v]) => heights.get(k) === v);
     if (!same) setHeights(next);
   });
 
-  const depth = Math.max(0, ...p.rungs.filter((r) => r.kind !== "plan").map((r) => r.rung + 1));
-  const rowOf = (r: LadderRung) => (r.kind === "plan" ? depth : r.rung);
-  const rowH = new Array(depth + 1).fill(0);
-  if (heights) for (const r of p.rungs) rowH[rowOf(r)] = Math.max(rowH[rowOf(r)], heights.get(r.id) ?? 0);
-  const rowY: number[] = [];
-  let y = TOP;
-  for (let k = 0; k <= depth; k++) { rowY[k] = y; y += rowH[k] + GAP; }
-  const W = Math.max(CW, (laid.lanes - 1) * LW + CW), H = y - GAP;
-
-  const lim = Math.max(1e-9, p.resources[0]?.limit ?? 0);
-  const MAXW = 36 * fscale;
-  const wOf = (left: number[]) => (p.resources.length ? Math.max(2, (Math.max(0, left[0]) / lim) * MAXW) : 6);
-  const cx = (lane: number) => lane * LW + CW / 2;
-  const ribbons: ReactNode[] = [], labels: ReactNode[] = [];
-  // One line per resource, so a label stays inside its lane.
-  const ribLabel = (key: string, x: number, y0: number, left: number[], on: boolean) => (
-    <text key={key} x={x} y={y0} className={`sol-ladder__riblabel${on ? " is-on" : ""}`}>
-      {left.map((v, j) => <tspan key={j} x={x} dy={j ? 11 * fscale : 0}>{resourceText(p, j, v)}</tspan>)}
-    </text>
-  );
-  if (heights) {
-    const root = p.rungs.find((r) => r.parent == null);
-    if (root) {
-      const w = wOf(root.left);
-      ribbons.push(<rect key="in" x={cx(laid.laneX.get(root.id)!) - w / 2} y={0} width={w} height={rowY[0]} className="sol-ladder__rib is-on" />);
-      labels.push(ribLabel("in", cx(laid.laneX.get(root.id)!) + w / 2 + 6, 10 * fscale, root.left, true));
-    }
-    for (const b of p.rungs) {
-      if (b.parent == null) continue;
-      const a = byId.get(b.parent)!;
-      const on = onPath.has(a.id) && onPath.has(b.id);
-      const x = cx(laid.laneX.get(b.id)!), y1 = rowY[rowOf(a)] + (heights.get(a.id) ?? 0), y2 = rowY[rowOf(b)];
-      const w = wOf(b.left);
-      const k = on ? " is-on" : "";
-      ribbons.push(<rect key={`r${b.id}`} x={x - w / 2} y={y1} width={w} height={Math.max(0, y2 - y1)} className={`sol-ladder__rib${k}`} />);
-      labels.push(ribLabel(`l${b.id}`, x + w / 2 + 6, y1 + 13 * fscale, b.left, on));
-      const spent = wOf(a.left) - w;
-      if (spent > 0.5) {
-        const sx = x - w / 2, sy = y1 + 1, tail = Math.min(spent, 18) * 0.5;
-        ribbons.push(<path key={`s${b.id}`} fill={`url(#${gid}${on ? "on" : "off"})`}
-          d={`M${sx} ${sy} C ${sx - 4} ${sy + 10}, ${sx - 14} ${sy + 18}, ${sx - 26} ${sy + 22} L ${sx - 26} ${sy + 22 - tail} C ${sx - 16} ${sy + 12}, ${sx - spent - 2} ${sy + 6}, ${sx - spent} ${sy} Z`} />);
-      }
+  const L = layoutLadder(p, heights ?? new Map(), m, sel);
+  const slot = (key: string, node: ReactNode) => {
+    const b = L.boxes.get(key)!;
+    return (
+      <div key={key} ref={(el) => { if (el) refs.current.set(key, el); else refs.current.delete(key); }}
+        className="sol-ladder__slot" style={{ left: b.x, top: b.y, width: b.w }}>{node}</div>
+    );
+  };
+  const cards: ReactNode[] = [slot("source", <SourceCard p={p} colors={colors} />)];
+  for (const r of p.rungs) {
+    const on = L.boxes.get(`r${r.id}`)!.on;
+    if (r.kind === "plan") cards.push(slot(`r${r.id}`, <PlanCard p={p} r={r} on={on} colors={colors} selected={r.id === sel} onPick={setPicked} />));
+    else if (r.kind === "clear") cards.push(slot(`r${r.id}`, <ClearCard p={p} r={r} on={on} colors={colors} />));
+    else {
+      cards.push(slot(`r${r.id}`, <TossCard p={p} r={r} on={on} colors={colors} />));
+      cards.push(slot(`a${r.id}`, <AltCard p={p} r={r} on={L.boxes.get(`a${r.id}`)!.on} colors={colors} />));
     }
   }
 
@@ -189,33 +174,28 @@ export function LadderView({ payload: p, width, height, fscale = 1 }: { payload:
   const plans = p.rungs.filter((r) => r.kind === "plan").length;
   const best = byId.get(p.best)!;
   const gain = best.total - p.rankingTotal;
+  const band = (k: number | null) => (k == null ? undefined : colors[k % colors.length]);
 
   return (
     <div className="sol-ladder" style={{ width, height, ["--chart-fscale" as string]: fscale }}>
       <div className="sol-ladder__summary">
-        <span><b>Best plan {fmt3(best.total)}</b> · {best.rung} {best.rung === 1 ? "pick" : "picks"}{p.resources.length ? ` · ${leftText(p, best.left)}` : ""}</span>
-        <span>Ranking alone {fmt3(p.rankingTotal)}{gain > 1e-9 ? ` (${fmt3(gain)} less)` : ""}</span>
-        <span>{forks} {forks === 1 ? "toss-up" : "toss-ups"} at ±{pct(p.wiggle)} · {plans} {plans === 1 ? "plan" : "plans"}</span>
+        <span><b>Best plan {fmt3(best.total)}</b> with {best.rung} {best.rung === 1 ? "pick" : "picks"}</span>
+        <span>Ranking alone {fmt3(p.rankingTotal)}{gain > 1e-9 ? `, ${fmt3(gain)} less` : ""}</span>
+        <span>{forks} {forks === 1 ? "toss-up" : "toss-ups"} at ±{pct(p.wiggle)}, {plans} {plans === 1 ? "plan" : "plans"}</span>
       </div>
       <div className="sol-ladder__scroll" onWheel={(e) => e.stopPropagation()}>
-        <div className="sol-ladder__stage" style={{ width: W, height: heights ? H : undefined, visibility: heights ? "visible" : "hidden" }}>
-          <svg className="sol-ladder__svg" width={W} height={heights ? H : 0} aria-hidden="true">
-            <defs>
-              <linearGradient id={`${gid}off`} x1="1" y1="0" x2="0" y2="1"><stop offset="0" className="sol-ladder__stop" /><stop offset="1" className="sol-ladder__stop is-end" /></linearGradient>
-              <linearGradient id={`${gid}on`} x1="1" y1="0" x2="0" y2="1"><stop offset="0" className="sol-ladder__stop is-on" /><stop offset="1" className="sol-ladder__stop is-on is-end" /></linearGradient>
-            </defs>
-            {ribbons}{labels}
+        <div className="sol-ladder__stage" style={{ width: L.width, height: heights ? L.height : undefined, visibility: heights ? "visible" : "hidden" }}>
+          <svg className="sol-ladder__svg" width={L.width} height={heights ? L.height : 0} aria-hidden="true">
+            {L.pieces.filter((x) => x.kind === "line").map((x, i) => (
+              <path key={`l${i}`} d={x.d} className={`sol-ladder__line${x.on ? " is-on" : ""}${x.ghost ? " is-ghost" : ""}`} />
+            ))}
+            {L.pieces.filter((x) => x.kind !== "line").map((x, i) => (
+              <path key={`b${i}`} d={x.d}
+                className={`sol-ladder__band${x.on ? " is-on" : ""}${x.ghost ? " is-ghost" : ""}`}
+                style={{ fill: band(x.band), stroke: x.ghost ? band(x.band) : undefined }} />
+            ))}
           </svg>
-          {p.rungs.map((r) => {
-            const span = r.kind === "tossup" ? laid.laneR.get(r.id)! - laid.laneX.get(r.id)! : 0;
-            return (
-              <div key={r.id} ref={(el) => { if (el) cardRefs.current.set(r.id, el); else cardRefs.current.delete(r.id); }}
-                className="sol-ladder__slot"
-                style={{ left: laid.laneX.get(r.id)! * LW, top: heights ? rowY[rowOf(r)] : 0, width: CW + span * LW }}>
-                <RungCard p={p} r={r} onPath={onPath.has(r.id)} selected={r.id === sel} onPick={setPicked} />
-              </div>
-            );
-          })}
+          {cards}
         </div>
       </div>
     </div>

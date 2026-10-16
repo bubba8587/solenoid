@@ -169,7 +169,7 @@ export function buildLadder(opts: LadderOption[], limits: number[], tol: number)
       out: new Set([...s.out, ...struckIds.filter((i) => !keep.includes(i)), ...extraOut]),
       left: spend(s.left, opts[take]), forks: s.forks + (fork ? 1 : 0), rung: s.rung + 1,
     });
-    const kids = [child(pick, fork ? [rival!] : [], fork ? 0 : null)];
+    const kids = [child(pick, [], fork ? 0 : null)];
     if (fork) kids.push(child(rival!, [pick], 1, without.ids));
     stack.push(...kids.reverse());
   }
