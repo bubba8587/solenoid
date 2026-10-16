@@ -105,6 +105,26 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
     for (let i = n - 1; i >= 0; i--) t[i] = t[i + 1] + Math.max(0, opts[open[i]].costs[r]);
     return t;
   });
+  // Per capped resource, positions by score per unit of it, for a fractional-fill bound on what the rest can add.
+  const capped = left.map((l, r) => (l == null ? -1 : r)).filter((r) => r >= 0);
+  const byRatio = capped.map((r) => open.map((_, k) => k).filter((k) => opts[open[k]].score > 0)
+    .sort((x, y) => opts[open[y]].score / Math.max(EPS, opts[open[y]].costs[r]) - opts[open[x]].score / Math.max(EPS, opts[open[x]].costs[r])));
+  const bound = (i: number, l: (number | null)[]): number => {
+    let b = tail[i];
+    capped.forEach((r, ci) => {
+      let room = l[r]!, sum = 0;
+      for (const k of byRatio[ci]) {
+        if (k < i) continue;
+        const o = opts[open[k]], c = o.costs[r];
+        if (c <= EPS) { sum += o.score; continue; }
+        if (room <= EPS) continue;
+        const f = Math.min(1, room / c);
+        sum += o.score * f; room -= c * f;
+      }
+      b = Math.min(b, sum);
+    });
+    return b;
+  };
   const have = new Set(taken);
   const valid = (ids: number[]) => ids.every((i) => opts[i].requires.every((r) => have.has(r) || ids.includes(r)));
   let best: { total: number; ids: number[] } | null = null;
@@ -115,7 +135,7 @@ export function bestPlan(opts: LadderOption[], open: number[], taken: number[], 
     // On a tie in score the plan taking more wins, so a worthless option that fits rides along.
     const better = best == null || total > best.total + EPS || (total > best.total - EPS && ids.length > best.ids.length);
     if (better && nd.every((x) => x <= EPS) && valid(ids)) best = { total, ids: [...ids] };
-    if (i >= n || (best != null && total + tail[i] < best.total - EPS)) return;
+    if (i >= n || (best != null && total + bound(i, l) < best.total - EPS)) return;
     if (nd.some((x, r) => x > reach[r][i] + EPS)) return;
     const o = open[i];
     const take = () => {
@@ -247,7 +267,7 @@ export function buildLadder(opts: LadderOption[], res: LadderResource[], gap: nu
       for (const pk of picks) {
         // Each side skips what its own best plan leaves out ahead of it, so the other side of a fork can still take
         // what the main side passed over.
-        const own = pk.take === a ? struck : (() => {
+        const own = pk.take === a ? struck.filter((i) => !clash(opts, i, [pk.take])) : (() => {
           const t = [...s.taken, pk.take];
           const rest = open.filter((i) => i !== pk.take && !clash(opts, i, t));
           const plan = new Set(bestPlan(opts, rest, t, spend(s.left, opts[pk.take]), meet(s.need, opts[pk.take]), exact) ?? []);
