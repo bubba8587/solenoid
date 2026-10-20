@@ -105,6 +105,12 @@ thead .pivot-view__label--sticky { z-index: 3; }
   white-space: nowrap;
   color: var(--text);
 }
+.pivot-view__note {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface);
+}
 .pivot-view__blank { height: 12px; padding: 0; border-bottom-color: transparent; }
 
 .pivot-view__row--header > .pivot-view__label,
@@ -137,8 +143,6 @@ thead .pivot-view__label--sticky { z-index: 3; }
   cursor: pointer;
 }
 .pivot-view__fold:hover { color: var(--node-accent, var(--accent)); }
-
-.table-popup__footer { position: relative; }
 
 @media (pointer: coarse) {
   .pivot-view__fold { width: 22px; height: 22px; }

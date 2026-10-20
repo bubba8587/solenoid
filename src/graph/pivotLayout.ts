@@ -329,6 +329,13 @@ export function filterPivotBody(body: readonly PivotBodyRow[], query: string): P
   return body.filter((_, i) => keep[i]);
 }
 
+/** The folded groups that still exist: a field change leaves keys behind that fold nothing. */
+export function livePivotFolds(layout: PivotLayout, collapsed: readonly string[]): string[] {
+  if (!collapsed.length) return [];
+  const live = new Set(layout.rows.filter((it) => it.kind === "sub").map((it) => groupKey(it.tuple.slice(0, it.fill))));
+  return collapsed.filter((k) => live.has(k));
+}
+
 /** The empty-cell text the view's option asks for. */
 export function emptyText(e: PivotEmpty): string {
   return e === "zero" ? "0" : e === "dash" ? "–" : "";

@@ -50,7 +50,7 @@ import { ChevronDownIcon } from "./Icons";
 import { PivotTableView, PivotRibbon, PivotSheetButton, type PivotRibbonProps } from "./PivotTableView";
 import { PopupChoice, segmentsWidth, useFreeWidth } from "./PopupChoice";
 import { IS_COARSE } from "../coarse";
-import { DEFAULT_PIVOT_VIEW, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
+import { DEFAULT_PIVOT_VIEW, livePivotFolds, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
 import { framePopupData } from "../valuePopup";
 import type { FrameValue } from "../frame";
 import { TableEditMenus, TableContextMenu, useEditShortcuts, type EditAxis } from "./TableEditMenu";
@@ -197,9 +197,8 @@ export function TablePopup() {
   const [roFocus, setRoFocus] = useState<{ vi: number; c: number } | null>(null);
   const [pivotOpts, setPivotOpts] = useState<PivotViewOptions>(DEFAULT_PIVOT_VIEW);
   const pivotHost = useRef<PivotHost | null>(null);
-  const footerRef = useRef<HTMLDivElement | null>(null);
   // The view switch is segments while the footer has room for them, else a dropdown.
-  const footerFree = useFreeWidth(footerRef, ".table-popup__viewswitch");
+  const { ref: footerRef, free: footerFree } = useFreeWidth(".table-popup__viewswitch");
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -251,7 +250,10 @@ export function TablePopup() {
       setColInherited([]);
     }
     pivotHost.current = state.pivot && state.pinNodeId ? getPivotHostAction()?.find(state.pinNodeId) ?? null : null;
-    setPivotOpts(pivotHost.current?.view ?? DEFAULT_PIVOT_VIEW);
+    const seeded = pivotHost.current?.view ?? DEFAULT_PIVOT_VIEW;
+    const live = state.pivot ? livePivotFolds(state.pivot, seeded.collapsed) : seeded.collapsed;
+    if (live.length !== seeded.collapsed.length) pivotHost.current?.setView({ ...seeded, collapsed: live });
+    setPivotOpts(live.length !== seeded.collapsed.length ? { ...seeded, collapsed: live } : seeded);
     setView(state.pivot ? "pivot" : "grid");
     setDisplayMode("formatted");
     setEditCell(null);
@@ -944,7 +946,8 @@ export function TablePopup() {
   const pickView = (v: PopupView) => (v === "csv" ? showCSV() : leaveCsv(v));
 
   // ── Pivot view ([[C127]] pivotView) ───────────────────────────────────────
-  const reopenWith = (f: FrameValue | null) => { if (f) tablePopup.open({ ...state, ...framePopupData(f) }); };
+  // Only while this popup is still the one open: closing it before the recompute lands keeps it closed.
+  const reopenWith = (f: FrameValue | null) => { if (f && tablePopup.get() === state) tablePopup.open({ ...state, ...framePopupData(f) }); };
   function setPivotView(next: PivotViewOptions) {
     setPivotOpts(next);
     pivotHost.current?.setView(next);

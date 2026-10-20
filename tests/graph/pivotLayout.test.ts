@@ -4,7 +4,7 @@ import { pivotFrame } from "../../src/graph/frameVerbs";
 import { frameRowCount, type FrameValue, type FrameCell } from "../../src/graph/frame";
 import {
   pivotLayoutOf, carryPivotLayout, buildPivotModel, readPivotView, savedPivotView, groupKey,
-  DEFAULT_PIVOT_VIEW, filterPivotBody, totalsModes, withSubtotals, withGrand, type PivotViewOptions, type PivotBodyRow,
+  DEFAULT_PIVOT_VIEW, filterPivotBody, livePivotFolds, totalsModes, withSubtotals, withGrand, type PivotViewOptions, type PivotBodyRow,
 } from "../../src/graph/pivotLayout";
 import { PivotNode } from "../../src/graph/nodes/frame";
 import { extractInit } from "../../src/graph/copyPaste";
@@ -174,5 +174,12 @@ describe("pivots with an empty axis", () => {
     const m = buildPivotModel(l, view(), text, text);
     expect(m.head.map((r) => r.map((c) => c.text))).toEqual([["Region", "Sum of Amt", "Count of Rep"]]);
     expect(labelsOf(m.body)).toEqual(["leaf:N", "leaf:S"]);
+  });
+});
+
+describe("saved folds", () => {
+  it("drop the groups a field change took away", () => {
+    const l = pivotLayoutOf(pivotFrame(sales, spec(2)))!;
+    expect(livePivotFolds(l, [groupKey(["N"]), groupKey(["Gone"])])).toEqual([groupKey(["N"])]);
   });
 });

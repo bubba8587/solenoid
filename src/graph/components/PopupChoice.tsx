@@ -1,5 +1,5 @@
 // [[B14]] oneDesignSystem
-import { useLayoutEffect, useState, type RefObject } from "react";
+import { useLayoutEffect, useState } from "react";
 
 export interface PopupChoiceOption<T extends string> { value: T; label: string; title?: string }
 
@@ -38,11 +38,14 @@ export function segmentsWidth(labels: readonly string[], touch = false): number 
 /**
  * The room a row leaves for one of its items: its inner width less every other item and the gaps.
  * The other items never change size with the measured one, so the answer can't feed back on itself.
+ * Attach `ref` to the row.
  */
-export function useFreeWidth(rowRef: RefObject<HTMLElement | null>, itemSelector: string): number {
-  const [free, setFree] = useState(Number.POSITIVE_INFINITY);
+export function useFreeWidth(itemSelector: string): { ref: (el: HTMLElement | null) => void; free: number } {
+  const [row, setRow] = useState<HTMLElement | null>(null);
+  // Zero until measured, which happens before the first paint: a dropdown never flashes as segments.
+  const [free, setFree] = useState(0);
+  // Measured only when the row or one of its items resizes or an item comes or goes, never per render.
   useLayoutEffect(() => {
-    const row = rowRef.current;
     if (!row) return;
     const measure = () => {
       const cs = getComputedStyle(row);
@@ -50,8 +53,10 @@ export function useFreeWidth(rowRef: RefObject<HTMLElement | null>, itemSelector
       let used = 0, n = 0;
       const count = (el: HTMLElement) => {
         if (el.matches(itemSelector) || el.classList.contains("table-popup__spacer")) return;
-        if (getComputedStyle(el).display === "contents") { for (const c of Array.from(el.children) as HTMLElement[]) count(c); return; }
-        if (el.offsetWidth === 0) return;
+        const st = getComputedStyle(el);
+        if (st.display === "contents") { for (const c of Array.from(el.children) as HTMLElement[]) count(c); return; }
+        // Out of the flow (an open sheet or menu) takes no room in the row.
+        if (el.offsetWidth === 0 || st.position === "absolute" || st.position === "fixed") return;
         used += el.offsetWidth; n++;
       };
       for (const child of Array.from(row.children) as HTMLElement[]) count(child);
@@ -59,10 +64,17 @@ export function useFreeWidth(rowRef: RefObject<HTMLElement | null>, itemSelector
       const next = Math.floor(inner - used - gap * n);
       setFree((f) => (f === next ? f : next));
     };
-    measure();
     const ro = new ResizeObserver(measure);
-    ro.observe(row);
-    return () => ro.disconnect();
-  });
-  return free;
+    const watch = () => {
+      ro.disconnect();
+      ro.observe(row);
+      for (const el of Array.from(row.querySelectorAll<HTMLElement>(":scope > *, :scope > * > *"))) if (!el.matches(itemSelector)) ro.observe(el);
+    };
+    const mo = new MutationObserver(() => { watch(); measure(); });
+    mo.observe(row, { childList: true, subtree: true });
+    watch();
+    measure();
+    return () => { ro.disconnect(); mo.disconnect(); };
+  }, [row, itemSelector]);
+  return { ref: setRow, free };
 }

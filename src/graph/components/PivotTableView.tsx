@@ -9,6 +9,7 @@ import { MinusSquareIcon, PlusSquareIcon, SlidersIcon } from "./Icons";
 import { PopupChoice, segmentsWidth, useFreeWidth } from "./PopupChoice";
 import { useEscapeLayer } from "./escapeLayers";
 import { IS_COARSE } from "../coarse";
+import { APP_LOCALE } from "../locale";
 import { ColumnFormatButton } from "./columnHeadControls";
 import "./PivotTableView.css";
 
@@ -29,6 +30,8 @@ type Banding = "none" | "rows" | "cols" | "both";
 const BAND_OPTIONS: { value: Banding; label: string }[] = [
   { value: "none", label: "No Bands" }, { value: "rows", label: "Banded Rows" }, { value: "cols", label: "Banded Columns" }, { value: "both", label: "Banded Both" },
 ];
+
+const MAX_ROWS = 1000;
 
 export interface PivotTotalsControl {
   totals: PivotTotals;
@@ -58,8 +61,7 @@ export interface PivotRibbonProps {
 
 /** The layout controls: one line over the table on a wide popup, or stacked in the footer's sheet on a phone (`sheet`). */
 export function PivotRibbon({ layout, options, onOptions, totals, valueFormat, formatPicked = false, onFields, sheet = false }: PivotRibbonProps & { sheet?: boolean }) {
-  const barRef = useRef<HTMLDivElement>(null);
-  const free = useFreeWidth(barRef, ".pivot-view__layout");
+  const { ref: barRef, free } = useFreeWidth(".pivot-view__layout");
   const set = (patch: Partial<PivotViewOptions>) => onOptions({ ...options, ...patch });
   const keyCols = layout.rowFields.length;
   const compact = options.form === "compact";
@@ -165,7 +167,12 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
     if (cur.has(key)) cur.delete(key); else cur.add(key);
     set({ collapsed: [...cur] });
   };
-  const shownBody = query.trim() ? filterPivotBody(model.body, query) : model.body;
+  const allRows = query.trim() ? filterPivotBody(model.body, query) : model.body;
+  // Drawing stops at the Grid's cap; a grand total at the bottom stays in view under it.
+  const capped = allRows.length > MAX_ROWS;
+  const shownBody = capped
+    ? [...allRows.slice(0, MAX_ROWS), ...(allRows[allRows.length - 1].kind === "grand" ? [allRows[allRows.length - 1]] : [])]
+    : allRows;
 
   const labelCell = (row: PivotBodyRow, col: number) => {
     const label = row.labels[col];
@@ -248,6 +255,13 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
                 )}
               </tr>
             ))}
+            {capped && (
+              <tr className="pivot-view__row pivot-view__row--note">
+                <td colSpan={model.labelCols + layout.cols.length} className="pivot-view__note">
+                  First {MAX_ROWS.toLocaleString(APP_LOCALE)} of {allRows.length.toLocaleString(APP_LOCALE)} rows
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

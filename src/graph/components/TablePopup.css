@@ -664,7 +664,9 @@
 }
 
 
+/* Relative, so a sheet can open above it (the Pivot view's, on a phone). */
 .table-popup__footer {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
