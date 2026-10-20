@@ -81,4 +81,9 @@ export const CheckIcon = (p: IconProps) => <Svg {...p}><path d="M20 6 9 17l-5-5"
 export const SearchIcon = (p: IconProps) => <Svg {...p}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></Svg>;
 export const InfoIcon = (p: IconProps) => <Svg {...p}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></Svg>;
 export const PlusSquareIcon = (p: IconProps) => <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 12h8" /><path d="M12 8v8" /></Svg>;
+export const SlidersIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4" />
+  </Svg>
+);
 export const MinusSquareIcon = (p: IconProps) => <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 12h8" /></Svg>;

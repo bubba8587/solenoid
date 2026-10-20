@@ -559,40 +559,65 @@
   overflow: visible;
 }
 
+/* The popup's pill family: segments, a dropdown and a lone button share one height, border and fill. */
 .table-popup__view {
   display: inline-flex;
   flex-shrink: 0;
+  box-sizing: border-box;
+  height: 28px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   overflow: hidden;
 }
-.table-popup__view button {
+.table-popup__view button,
+.sol-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   font-size: 12px;
-  padding: 5px 11px;
+  padding: 0 11px;
+  white-space: nowrap;
   background: var(--surface);
   border: none;
   color: var(--text-dim);
   cursor: pointer;
 }
 .table-popup__view button + button { border-left: 1px solid var(--border-strong); }
-.table-popup__view button[aria-pressed="true"] {
+.table-popup__view button[aria-pressed="true"],
+.sol-pill-btn[aria-pressed="true"],
+.sol-pill-btn[aria-expanded="true"] {
   background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, var(--surface));
   color: var(--text);
 }
-
-/* With four views or more the switch is a dropdown, drawn as the same pill. */
-.table-popup__viewselect {
+.table-popup__view button:hover:not(:disabled),
+.sol-pill-btn:hover:not(:disabled) { color: var(--text); }
+.table-popup__view button:disabled,
+.sol-pill-btn:disabled { opacity: 0.45; cursor: default; }
+.sol-pill-btn {
   flex-shrink: 0;
+  box-sizing: border-box;
   height: 28px;
-  padding: 0 8px 0 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+}
+.sol-pill-btn--icon { width: 34px; padding: 0; }
+.table-popup__view .sol-pill-btn--icon { width: 32px; }
+.sol-pill-select {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  height: 28px;
+  max-width: 100%;
+  padding: 0 6px 0 11px;
   font-size: 12px;
   color: var(--text);
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, var(--surface));
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   cursor: pointer;
 }
-.table-popup__viewselect:focus-visible { outline: none; border-color: var(--node-accent, var(--accent)); }
+.sol-pill-select:focus-visible,
+.sol-pill-btn:focus-visible { outline: none; border-color: var(--node-accent, var(--accent)); }
 
 .table-popup__source-check {
   display: inline-flex;
@@ -675,10 +700,17 @@
 
 @media (pointer: coarse) {
   .table-popup__btn,
-  .table-popup__view button {
+  .table-popup__view button,
+  .sol-pill-btn,
+  .sol-pill-select {
     padding: 4px 7px;
     font-size: 11px;
   }
+  .table-popup__view,
+  .sol-pill-btn,
+  .sol-pill-select { height: 30px; }
+  .table-popup__view button { padding-top: 0; padding-bottom: 0; }
+  .sol-pill-btn--icon { width: 32px; padding: 0; }
   .table-popup__footer,
   .table-popup__dim-controls,
   .table-popup__actions {
@@ -687,10 +719,13 @@
 }
 @media (pointer: coarse) and (max-width: 380px) {
   .table-popup__btn,
-  .table-popup__view button {
+  .table-popup__view button,
+  .sol-pill-btn,
+  .sol-pill-select {
     padding: 4px 6px;
     font-size: 10px;
   }
+  .table-popup__view button { padding-top: 0; padding-bottom: 0; }
   .table-popup__footer,
   .table-popup__dim-controls,
   .table-popup__actions {

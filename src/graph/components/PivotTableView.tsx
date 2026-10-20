@@ -1,11 +1,14 @@
 // [[C127]] pivotView
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   buildPivotModel, emptyText, filterPivotBody, groupKey, totalsModes, valueCaption,
   type GrandMode, type PivotBodyRow, type PivotEmpty, type PivotForm, type PivotLayout, type PivotTotals, type PivotViewOptions, type SubtotalMode,
 } from "../pivotLayout";
 import { formatFrameCell, type FrameCell } from "../frame";
-import { MinusSquareIcon, PlusSquareIcon } from "./Icons";
+import { MinusSquareIcon, PlusSquareIcon, SlidersIcon } from "./Icons";
+import { PopupChoice, segmentsWidth, useFreeWidth } from "./PopupChoice";
+import { useEscapeLayer } from "./escapeLayers";
+import { IS_COARSE } from "../coarse";
 import { ColumnFormatButton } from "./columnHeadControls";
 import "./PivotTableView.css";
 
@@ -40,52 +43,129 @@ const itemText = (types: readonly string[]) => (field: number, cell: FrameCell):
   return f == null ? "(blank)" : String(f);
 };
 
-export function PivotTableView({ layout, options, onOptions, totals, cellText, isErrorAt, valueFormat, formatPicked = false, onFields, query }: {
+export interface PivotRibbonProps {
   layout: PivotLayout;
   options: PivotViewOptions;
   onOptions: (next: PivotViewOptions) => void;
   /** The node's own totals, when the popup can reach the Pivot node. */
   totals?: PivotTotalsControl;
-  /** A value cell's shown text, by frame row and frame column. */
-  cellText: (r: number, c: number) => string;
-  isErrorAt: (r: number, c: number) => boolean;
-  /** The Number format pick for one value field, drawn after its caption. */
+  /** The Number format pick for one value field. */
   valueFormat?: (v: number) => ReactNode;
-  /** Whether any value field carries a format pick, marking the Format button. */
+  /** Whether any value field carries a format pick, marking the paintbrush. */
   formatPicked?: boolean;
   onFields?: () => void;
-  query: string;
-}) {
-  // On a narrow screen the options beyond the layout fold away behind Options.
-  const [moreOpen, setMoreOpen] = useState(false);
-  const model = buildPivotModel(layout, options, itemText(layout.rowTypes), itemText(layout.colTypes));
+}
+
+/** The layout controls: one line over the table on a wide popup, or stacked in the footer's sheet on a phone (`sheet`). */
+export function PivotRibbon({ layout, options, onOptions, totals, valueFormat, formatPicked = false, onFields, sheet = false }: PivotRibbonProps & { sheet?: boolean }) {
+  const barRef = useRef<HTMLDivElement>(null);
+  const free = useFreeWidth(barRef, ".pivot-view__layout");
   const set = (patch: Partial<PivotViewOptions>) => onOptions({ ...options, ...patch });
   const keyCols = layout.rowFields.length;
   const compact = options.form === "compact";
   const modes = totals ? totalsModes(totals.totals) : null;
-  const allFoldKeys = (): string[] => {
-    const keys = new Set<string>();
-    for (const it of layout.rows) {
-      if (it.kind === "sub") keys.add(groupKey(it.tuple.slice(0, it.fill)));
-    }
-    return [...keys];
-  };
+  const foldKeys = keyCols >= 2 ? [...new Set(layout.rows.filter((it) => it.kind === "sub").map((it) => groupKey(it.tuple.slice(0, it.fill))))] : [];
+  const banding: Banding = options.bandedRows ? (options.bandedCols ? "both" : "rows") : options.bandedCols ? "cols" : "none";
+  const select = <T extends string>(value: T, opts: { value: T; label: string }[], onChange: (v: T) => void, title: string) => (
+    <PopupChoice value={value} options={opts} onChange={onChange} label={title} segmented={false} />
+  );
+  const toggle = (key: "repeatLabels" | "blankRows" | "fieldHeaders", label: string, title: string, disabled = false) => (
+    <button type="button" aria-pressed={options[key]} disabled={disabled} title={title} onClick={() => set({ [key]: !options[key] })}>{label}</button>
+  );
+  return (
+    <div ref={barRef} className={sheet ? "pivot-sheet__body" : "pivot-view__bar"} role="toolbar" aria-label="Pivot table layout">
+      <PopupChoice
+        className="pivot-view__layout"
+        label="Report layout"
+        value={options.form}
+        options={FORM_OPTIONS}
+        onChange={(form) => set({ form })}
+        segmented={sheet || free >= segmentsWidth(FORM_OPTIONS.map((o) => o.label), IS_COARSE)}
+      />
+      {modes && totals && select(modes.sub, SUB_OPTIONS, totals.setSubtotals, "Subtotals. They change the Pivot's output.")}
+      {modes && totals && select(modes.grand, GRAND_OPTIONS, totals.setGrand, "Grand totals. They change the Pivot's output.")}
+      {select(options.emptyAs, EMPTY_OPTIONS, (emptyAs) => set({ emptyAs }), "What an empty value cell shows")}
+      {select(banding, BAND_OPTIONS, (b) => set({ bandedRows: b === "rows" || b === "both", bandedCols: b === "cols" || b === "both" }), "Shade every other row or column")}
+      <div className="table-popup__view" role="group" aria-label="Layout options">
+        {toggle("repeatLabels", "Repeat Labels", "Repeat each item's label on every row of its group", compact || keyCols < 2)}
+        {toggle("blankRows", "Blank Rows", "Put a blank row after each group", keyCols < 2)}
+        {toggle("fieldHeaders", "Headers", "Show the field names over the labels")}
+      </div>
+      <div className="pivot-view__tail">
+        {foldKeys.length > 0 && (
+          <div className="table-popup__view" role="group" aria-label="Groups">
+            <button type="button" className="sol-pill-btn--icon" onClick={() => set({ collapsed: [] })} disabled={options.collapsed.length === 0} title="Expand all groups" aria-label="Expand all groups"><PlusSquareIcon size={14} /></button>
+            <button type="button" className="sol-pill-btn--icon" onClick={() => set({ collapsed: foldKeys })} title="Collapse all groups" aria-label="Collapse all groups"><MinusSquareIcon size={14} /></button>
+          </div>
+        )}
+        {valueFormat && (
+          <ColumnFormatButton picked={formatPicked} title="Value format" buttonClassName="sol-pill-btn">
+            {layout.values.map((_, v) => (
+              <label key={v} className="pivot-view__format">
+                <span className="pivot-view__format-name">{valueCaption(layout, v)}</span>
+                {valueFormat(v)}
+              </label>
+            ))}
+          </ColumnFormatButton>
+        )}
+        {onFields && <button type="button" className="sol-pill-btn pivot-view__fields" onClick={onFields}>Fields</button>}
+      </div>
+    </div>
+  );
+}
+
+/** A phone's way to the ribbon: a footer button whose sheet opens above the footer. */
+export function PivotSheetButton({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEscapeLayer(open, () => setOpen(false));
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      const t = (e.composedPath()[0] ?? e.target) as Element | null;
+      // The paintbrush's panel portals to the body, and still belongs to the sheet.
+      if (wrapRef.current?.contains(t as Node) || t?.closest?.(".table-popup__fmtpanel")) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [open]);
+  return (
+    <div className="pivot-sheet" ref={wrapRef}>
+      <button
+        type="button"
+        className="sol-pill-btn sol-pill-btn--icon"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        title="Pivot table layout"
+        aria-label="Pivot table layout"
+        onClick={() => setOpen((o) => !o)}
+      ><SlidersIcon size={14} /></button>
+      {open && <div className="pivot-sheet__panel" role="dialog" aria-label="Pivot table layout">{children}</div>}
+    </div>
+  );
+}
+
+export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt, query, ribbon }: {
+  layout: PivotLayout;
+  options: PivotViewOptions;
+  onOptions: (next: PivotViewOptions) => void;
+  /** A value cell's shown text, by frame row and frame column. */
+  cellText: (r: number, c: number) => string;
+  isErrorAt: (r: number, c: number) => boolean;
+  query: string;
+  ribbon: ReactNode;
+}) {
+  const model = buildPivotModel(layout, options, itemText(layout.rowTypes), itemText(layout.colTypes));
+  const set = (patch: Partial<PivotViewOptions>) => onOptions({ ...options, ...patch });
+  const keyCols = layout.rowFields.length;
+  const compact = options.form === "compact";
   const toggleFold = (key: string) => {
     const cur = new Set(options.collapsed);
     if (cur.has(key)) cur.delete(key); else cur.add(key);
     set({ collapsed: [...cur] });
   };
-
   const shownBody = query.trim() ? filterPivotBody(model.body, query) : model.body;
-
-  const select = <T extends string>(value: T, opts: { value: T; label: string }[], onChange: (v: T) => void, title: string) => (
-    <select className="pivot-view__select" value={value} title={title} aria-label={title} onChange={(e) => onChange(e.target.value as T)}>
-      {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  );
-  const toggle = (key: "repeatLabels" | "blankRows" | "bandedRows" | "bandedCols" | "fieldHeaders", label: string, title: string, disabled = false) => (
-    <button type="button" className="pivot-view__toggle" aria-pressed={options[key]} disabled={disabled} title={title} onClick={() => set({ [key]: !options[key] })}>{label}</button>
-  );
 
   const labelCell = (row: PivotBodyRow, col: number) => {
     const label = row.labels[col];
@@ -118,41 +198,9 @@ export function PivotTableView({ layout, options, onOptions, totals, cellText, i
   };
 
   const empty = emptyText(options.emptyAs);
-  const banding: Banding = options.bandedRows ? (options.bandedCols ? "both" : "rows") : options.bandedCols ? "cols" : "none";
   return (
-    <div className={`pivot-view${moreOpen ? " pivot-view--more" : ""}`}>
-      <div className="pivot-view__bar" role="toolbar" aria-label="Pivot table layout">
-        {select(options.form, FORM_OPTIONS, (form) => set({ form }), "Report layout")}
-        <button type="button" className="pivot-view__toggle pivot-view__more" aria-expanded={moreOpen} onClick={() => setMoreOpen((o) => !o)}>Options</button>
-        <span className="pivot-view__extra">
-        {modes && totals && select(modes.sub, SUB_OPTIONS, totals.setSubtotals, "Subtotals. They change the Pivot's output.")}
-        {modes && totals && select(modes.grand, GRAND_OPTIONS, totals.setGrand, "Grand totals. They change the Pivot's output.")}
-        {select(options.emptyAs, EMPTY_OPTIONS, (emptyAs) => set({ emptyAs }), "What an empty value cell shows")}
-        {select(banding, BAND_OPTIONS, (b) => set({ bandedRows: b === "rows" || b === "both", bandedCols: b === "cols" || b === "both" }), "Shade every other row or column")}
-        <span className="pivot-view__group" role="group" aria-label="Layout options">
-          {toggle("repeatLabels", "Repeat Labels", "Repeat each item's label on every row of its group", compact || keyCols < 2)}
-          {toggle("blankRows", "Blank Rows", "Put a blank row after each group", keyCols < 2)}
-          {toggle("fieldHeaders", "Headers", "Show the field names over the labels")}
-        </span>
-        {model.foldable && (
-          <span className="pivot-view__group" role="group" aria-label="Groups">
-            <button type="button" className="pivot-view__toggle pivot-view__icon" onClick={() => set({ collapsed: [] })} disabled={options.collapsed.length === 0} title="Expand all groups" aria-label="Expand all groups"><PlusSquareIcon size={14} /></button>
-            <button type="button" className="pivot-view__toggle pivot-view__icon" onClick={() => set({ collapsed: allFoldKeys() })} title="Collapse all groups" aria-label="Collapse all groups"><MinusSquareIcon size={14} /></button>
-          </span>
-        )}
-        {valueFormat && (
-          <ColumnFormatButton picked={formatPicked} title="Value format">
-            {layout.values.map((_, v) => (
-              <label key={v} className="pivot-view__format">
-                <span className="pivot-view__format-name">{valueCaption(layout, v)}</span>
-                {valueFormat(v)}
-              </label>
-            ))}
-          </ColumnFormatButton>
-        )}
-        </span>
-        {onFields && <button type="button" className="pivot-view__toggle pivot-view__fields" onClick={onFields}>Fields</button>}
-      </div>
+    <div className="pivot-view">
+      {ribbon}
       <div className="pivot-view__scroll sol-popup__scroll">
         <table className={`pivot-view__table${options.bandedRows ? " pivot-view__table--band-rows" : ""}${options.bandedCols ? " pivot-view__table--band-cols" : ""}`}>
           <thead>

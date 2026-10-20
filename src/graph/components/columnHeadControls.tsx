@@ -61,7 +61,12 @@ const stopAll = {
 };
 
 /** `picked`: this node made a pick for the column, so the button earns the accent. */
-export function ColumnFormatButton({ picked, children, title = "Column format" }: { picked: boolean; children: ReactNode; title?: string }) {
+export function ColumnFormatButton({ picked, children, title = "Column format", buttonClassName = "table-popup__fmtbtn" }: {
+  picked: boolean;
+  children: ReactNode;
+  title?: string;
+  buttonClassName?: string;
+}) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -73,7 +78,7 @@ export function ColumnFormatButton({ picked, children, title = "Column format" }
       <button
         type="button"
         ref={btnRef}
-        className={`table-popup__fmtbtn${picked ? " table-popup__fmtbtn--picked" : ""}`}
+        className={`${buttonClassName}${picked ? " table-popup__fmtbtn--picked" : ""}`}
         title={title}
         aria-label={title}
         aria-haspopup="dialog"

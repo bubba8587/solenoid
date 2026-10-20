@@ -226,7 +226,7 @@ export function CubePopup() {
       headerExtra={
         <>
           {table && (cards || rows > 1) && (
-            <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${rows}` : undefined} />
+            <SearchField collapsible value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${rows}` : undefined} />
           )}
           <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{rowsTruncated || colsTruncated ? ` · first ${MAX_VISIBLE.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (

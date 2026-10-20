@@ -47,7 +47,9 @@ import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
 import "./TablePopup.css";
 import { ChevronDownIcon } from "./Icons";
-import { PivotTableView } from "./PivotTableView";
+import { PivotTableView, PivotRibbon, PivotSheetButton, type PivotRibbonProps } from "./PivotTableView";
+import { PopupChoice, segmentsWidth, useFreeWidth } from "./PopupChoice";
+import { IS_COARSE } from "../coarse";
 import { DEFAULT_PIVOT_VIEW, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
 import { framePopupData } from "../valuePopup";
 import type { FrameValue } from "../frame";
@@ -195,6 +197,9 @@ export function TablePopup() {
   const [roFocus, setRoFocus] = useState<{ vi: number; c: number } | null>(null);
   const [pivotOpts, setPivotOpts] = useState<PivotViewOptions>(DEFAULT_PIVOT_VIEW);
   const pivotHost = useRef<PivotHost | null>(null);
+  const footerRef = useRef<HTMLDivElement | null>(null);
+  // The view switch is segments while the footer has room for them, else a dropdown.
+  const footerFree = useFreeWidth(footerRef, ".table-popup__viewswitch");
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -979,6 +984,16 @@ export function TablePopup() {
     );
   } : undefined;
 
+  const pivotRibbonProps: PivotRibbonProps | null = state.pivot ? {
+    layout: state.pivot,
+    options: pivotOpts,
+    onOptions: setPivotView,
+    totals: pivotTotals,
+    valueFormat: pivotValueFormat,
+    formatPicked: state.pivot.cols.some((_, j) => !!colLocal[state.pivot!.rowFields.length + j]),
+    onFields: pivotHost.current ? editPivotFields : undefined,
+  } : null;
+
   return (
     <PopupShell
       title={state.title}
@@ -990,7 +1005,7 @@ export function TablePopup() {
       resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={<>
         {((view === "grid" && sortable && viewRows > 1) || view === "cards" || view === "pivot") && (
-          <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering && view !== "pivot" ? `${matchedOrder.length} of ${viewRows}` : undefined} />
+          <SearchField collapsible value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering && view !== "pivot" ? `${matchedOrder.length} of ${viewRows}` : undefined} />
         )}
         <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
       </>}
@@ -1039,13 +1054,10 @@ export function TablePopup() {
           layout={state.pivot}
           options={pivotOpts}
           onOptions={setPivotView}
-          totals={pivotTotals}
           cellText={pivotCellText}
           isErrorAt={(r, c) => isSolError(state.data[r]?.[c])}
-          valueFormat={pivotValueFormat}
-          formatPicked={state.pivot.cols.some((_, j) => !!colLocal[state.pivot!.rowFields.length + j])}
-          onFields={pivotHost.current ? editPivotFields : undefined}
           query={query}
+          ribbon={pivotRibbonProps && <PivotRibbon {...pivotRibbonProps} />}
         />
       ) : view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
@@ -1464,18 +1476,16 @@ export function TablePopup() {
       )}
 
       {ctxMenu && editsRows && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
-      <div className="table-popup__footer">
-        {viewOptions.length >= 4 ? (
-          <select className="table-popup__viewselect" value={view} aria-label="View" onChange={(e) => pickView(e.target.value as PopupView)}>
-            {viewOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        ) : (
-          <div className="table-popup__view" role="group" aria-label="View">
-            {viewOptions.map((o) => (
-              <button key={o.value} type="button" aria-pressed={view === o.value} onClick={() => pickView(o.value)}>{o.label}</button>
-            ))}
-          </div>
-        )}
+      <div className="table-popup__footer" ref={footerRef}>
+        <PopupChoice
+          className="table-popup__viewswitch"
+          label="View"
+          value={view}
+          options={viewOptions}
+          onChange={pickView}
+          segmented={footerFree >= segmentsWidth(viewOptions.map((o) => o.label), IS_COARSE)}
+        />
+        {view === "pivot" && pivotRibbonProps && <PivotSheetButton><PivotRibbon {...pivotRibbonProps} sheet /></PivotSheetButton>}
         {state.list && view === "grid" && (
           <div className="table-popup__view" role="group" aria-label="List layout">
             <button
