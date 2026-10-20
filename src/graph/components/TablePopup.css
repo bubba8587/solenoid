@@ -580,6 +580,20 @@
   color: var(--text);
 }
 
+/* With four views or more the switch is a dropdown, drawn as the same pill. */
+.table-popup__viewselect {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 8px 0 11px;
+  font-size: 12px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, var(--surface));
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.table-popup__viewselect:focus-visible { outline: none; border-color: var(--node-accent, var(--accent)); }
+
 .table-popup__source-check {
   display: inline-flex;
   align-items: center;

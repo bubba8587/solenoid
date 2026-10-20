@@ -11,6 +11,7 @@ import { isSolError, solError, SEES_ERRORS } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
 import { isUnitCell, carryMatrixUnit } from "./unitValue";
 import { frameFormatStore } from "./frameFormatStore";
+import { carryPivotLayout } from "./pivotLayout";
 import type { FrameValue } from "./frame";
 
 export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
@@ -192,7 +193,10 @@ function stampFrameFormats(nodeId: string, f: FrameValue): FrameValue {
     changed = true;
     return { ...c, format: ann };
   });
-  return changed ? { ...f, columns } : f;
+  if (!changed) return f;
+  const out = { ...f, columns };
+  carryPivotLayout(f, out);
+  return out;
 }
 
 type NodeLike = {

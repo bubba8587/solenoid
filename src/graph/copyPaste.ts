@@ -8,6 +8,7 @@ import { getActiveEditor, getActiveView, editScopeFor } from "./activeGraph";
 import { nodeNameStore } from "./nodeNameStore";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "./savedNodeBody";
 import { PlaceholderNode, placeholderFor } from "./nodes/placeholder";
+import { readPivotView, savedPivotView } from "./pivotLayout";
 
 // A snapshot taken at copy time, so a later edit or delete of the source never changes what pastes.
 interface ClipboardEntry {
@@ -127,7 +128,7 @@ export const INIT_FIELD_ORDER = [
 
 export const INIT_EXTRA_FIELD_ORDER = [
   "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "bindings",
-  "keyOrder",
+  "keyOrder", "pivotView",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -143,6 +144,10 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
     init.filterExclude = Object.fromEntries(
       Object.entries(n.filterExclude as Record<string, string[]>).map(([k, v]) => [k, [...v]]),
     );
+  }
+  if (n.pivotView && typeof n.pivotView === "object") {
+    const saved = savedPivotView(readPivotView(n.pivotView));
+    if (saved) init.pivotView = saved;
   }
   if (n.condConfig && typeof n.condConfig === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;

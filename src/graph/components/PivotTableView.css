@@ -1,0 +1,188 @@
+/* [[C127]] pivotView */
+
+.pivot-view__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 10px 14px 0;
+}
+.pivot-view__group {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.pivot-view__select,
+.pivot-view__toggle {
+  height: 26px;
+  box-sizing: border-box;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.pivot-view__select {
+  max-width: 100%;
+  padding: 0 6px;
+  border-radius: 4px;
+}
+.pivot-view__select:hover,
+.pivot-view__toggle:hover:not(:disabled) { border-color: var(--border-strong); background: var(--btn-hover, var(--surface-raised)); }
+.pivot-view__select:focus-visible { outline: none; border-color: var(--node-accent, var(--accent)); }
+.pivot-view__toggle {
+  padding: 0 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+.pivot-view__group .pivot-view__toggle {
+  border: none;
+  border-radius: 0;
+  background: var(--surface);
+}
+.pivot-view__group .pivot-view__toggle + .pivot-view__toggle { border-left: 1px solid var(--border-strong); }
+.pivot-view__toggle[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, var(--surface));
+  color: var(--text);
+}
+.pivot-view__toggle:disabled { opacity: 0.45; cursor: default; }
+.pivot-view__fields { margin-left: auto; }
+.pivot-view__extra { display: contents; }
+.pivot-view__more { display: none; }
+
+.pivot-view__formats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 8px 14px 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.pivot-view__formats-lead { color: var(--text-muted); }
+.pivot-view__format { display: inline-flex; align-items: center; gap: 6px; }
+.pivot-view__format .table-popup__fmtselect { width: auto; min-width: 110px; }
+
+.pivot-view__scroll {
+  margin: 10px 14px 12px;
+  max-height: 56vh;
+  max-height: 56dvh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transform: translateZ(0);
+  contain: paint;
+}
+
+/* `separate`, as the grid: a collapsed sticky cell's border scrolls away. */
+.pivot-view__table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  min-width: 100%;
+}
+.pivot-view__table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.pivot-view__head {
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 14%, var(--surface-sunken));
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: left;
+  color: color-mix(in srgb, var(--node-accent, var(--text)) 70%, var(--text));
+}
+.pivot-view__head--corner { vertical-align: bottom; font-weight: 600; }
+.pivot-view__head--item,
+.pivot-view__head--value,
+.pivot-view__head--total { text-align: right; }
+/* A label over a run of columns starts where the run does, as Excel's do. */
+.pivot-view__head--span { text-align: left; }
+.pivot-view__head--caption,
+.pivot-view__head--field { color: var(--text-dim); font-weight: 500; }
+
+.pivot-view__label,
+.pivot-view__value,
+.pivot-view__blank {
+  padding: 3px 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  background: var(--surface);
+}
+.pivot-view__label {
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+  color: var(--text);
+}
+.pivot-view__labelin { display: inline-flex; align-items: center; gap: 4px; }
+.pivot-view__label--sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+thead .pivot-view__label--sticky { z-index: 3; }
+.pivot-view__value {
+  text-align: right;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  color: var(--text);
+}
+.pivot-view__blank { height: 12px; padding: 0; border-bottom-color: transparent; }
+
+.pivot-view__row--header > .pivot-view__label,
+.pivot-view__row--header > .pivot-view__value,
+.pivot-view__row--sub > *,
+.pivot-view__row--grand > * { font-weight: 600; }
+.pivot-view__row--sub > * {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 6%, var(--surface));
+}
+.pivot-view__row--grand > * {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 14%, var(--surface));
+  border-top: 1px solid var(--border-strong);
+}
+.pivot-view__value--total { font-weight: 600; }
+.pivot-view__row--band > * { background: color-mix(in srgb, var(--text) 5%, var(--surface)); }
+.pivot-view__value--band { background: color-mix(in srgb, var(--text) 5%, var(--surface)); }
+.pivot-view__row--band > .pivot-view__value--band { background: color-mix(in srgb, var(--text) 9%, var(--surface)); }
+
+.pivot-view__fold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  margin-right: 2px;
+  background: none;
+  border: none;
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
+  cursor: pointer;
+}
+.pivot-view__fold:hover { color: var(--node-accent, var(--accent)); }
+
+@media (pointer: coarse) {
+  .pivot-view__select,
+  .pivot-view__toggle { height: 32px; font-size: 13px; }
+  .pivot-view__fold { width: 24px; height: 24px; }
+}
+@media (max-width: 640px) {
+  .pivot-view__bar { margin: 8px 8px 0; }
+  .pivot-view__more { display: inline-block; }
+  .pivot-view__more[aria-expanded="true"] { background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, var(--surface)); color: var(--text); }
+  .pivot-view:not(.pivot-view--more) .pivot-view__extra,
+  .pivot-view:not(.pivot-view--more) .pivot-view__formats { display: none; }
+  .pivot-view--more .pivot-view__extra { display: flex; flex-wrap: wrap; gap: 6px 8px; order: 10; width: 100%; }
+  .pivot-view__bar > .pivot-view__select { flex: 1 1 0; min-width: 0; }
+  .pivot-view__formats { margin: 6px 8px 0; }
+  .pivot-view__scroll { margin: 8px; max-height: 60vh; max-height: 60dvh; }
+  .pivot-view--more .pivot-view__scroll { max-height: 34vh; max-height: 34dvh; }
+  .pivot-view__extra .pivot-view__select { flex: 1 1 140px; }
+}

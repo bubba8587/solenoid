@@ -4,7 +4,7 @@ import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type * as React from "react";
 import { copyText } from "../clipboard";
-import { tablePopup, getRecordCardsAction, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
+import { tablePopup, getRecordCardsAction, getPivotHostAction, type PivotHost, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows, joinCsvRows } from "../csv";
@@ -47,10 +47,15 @@ import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
 import "./TablePopup.css";
 import { ChevronDownIcon } from "./Icons";
+import { PivotTableView } from "./PivotTableView";
+import { DEFAULT_PIVOT_VIEW, withGrand, withSubtotals, type PivotViewOptions } from "../pivotLayout";
+import { framePopupData } from "../valuePopup";
+import type { FrameValue } from "../frame";
 import { TableEditMenus, TableContextMenu, useEditShortcuts, type EditAxis } from "./TableEditMenu";
 import { insertAt, removeAt, shiftForInsert, shiftForRemove, remapKeys, insertGridCols, removeGridCols, pickIndex, type AxisSelection } from "../tableEdit";
 
 type CellType = "number" | "string" | "date" | "logical";
+type PopupView = "pivot" | "grid" | "cards" | "form" | "csv";
 
 function isTextType(t: CellType): boolean { return t === "string" || t === "logical"; }
 
@@ -145,7 +150,7 @@ export function TablePopup() {
   const [headerNames, setHeaderNames] = useState<string[]>([]);
   const [columnTypes, setColumnTypes] = useState<CellType[]>([]);
   // CSV keeps its own text buffer, so typing mid-edit isn't reshaped by cell coercion.
-  const [view, setView] = useState<"grid" | "csv" | "form" | "cards">("grid");
+  const [view, setView] = useState<PopupView>("grid");
   const [csvText, setCsvText] = useState("");
   const [csvError, setCsvError] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<"formatted" | "source">("formatted");
@@ -188,6 +193,8 @@ export function TablePopup() {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; form?: boolean } | null>(null);
   const [askClose, setAskClose] = useState(false);
   const [roFocus, setRoFocus] = useState<{ vi: number; c: number } | null>(null);
+  const [pivotOpts, setPivotOpts] = useState<PivotViewOptions>(DEFAULT_PIVOT_VIEW);
+  const pivotHost = useRef<PivotHost | null>(null);
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -238,7 +245,9 @@ export function TablePopup() {
       setColLocal([]);
       setColInherited([]);
     }
-    setView("grid");
+    pivotHost.current = state.pivot && state.pinNodeId ? getPivotHostAction()?.find(state.pinNodeId) ?? null : null;
+    setPivotOpts(pivotHost.current?.view ?? DEFAULT_PIVOT_VIEW);
+    setView(state.pivot ? "pivot" : "grid");
     setDisplayMode("formatted");
     setEditCell(null);
     setFormRow(0);
@@ -347,7 +356,7 @@ export function TablePopup() {
     unsavedPicks.current.clear();
     liveNames.current = next;
   }
-  function persistColFmt(c: number, patch: Partial<FormatAnnotation>) {
+  function persistColFmt(c: number, patch: Partial<FormatAnnotation>, recompute = true) {
     const idx = state?.formatControls === "matrix" ? 0 : c;
     setColFmtAt(idx, patch);
     setColLocalAt(idx, true);
@@ -357,12 +366,12 @@ export function TablePopup() {
     if (state?.formatControls === "columns" && !liveNames.current.includes(col)) unsavedPicks.current.add(col);
     frameFormatStore.set(nodeId, col, { ...annFor(c), ...patch, unit: "none" });
     scheduleAutosave();
-    void processGraph(nodeId);
+    if (recompute) void processGraph(nodeId);
   }
   function setColLocalAt(i: number, on: boolean) {
     setColLocal((l) => { const next = l.slice(); while (next.length <= i) next.push(false); next[i] = on; return next; });
   }
-  function clearColFmt(c: number) {
+  function clearColFmt(c: number, recompute = true) {
     const idx = state?.formatControls === "matrix" ? 0 : c;
     const fallback = colInherited[idx] ?? typeDefaultAnn(state!, idx);
     setColFmt((f) => {
@@ -377,7 +386,7 @@ export function TablePopup() {
     if (!nodeId || !col) return;
     frameFormatStore.delete(nodeId, col);
     scheduleAutosave();
-    void processGraph(nodeId);
+    if (recompute) void processGraph(nodeId);
   }
   function fmtRow(c: number): ColumnFormatRow {
     const idx = state?.formatControls === "matrix" ? 0 : c;
@@ -710,7 +719,7 @@ export function TablePopup() {
     setView("csv");
   }
   const settledColumnTypes = (): CellType[] => typesShown;
-  function leaveCsv(next: "grid" | "form" | "cards") {
+  function leaveCsv(next: Exclude<PopupView, "csv">) {
     if (view === "csv") setColumnTypes(settledColumnTypes());
     setView(next);
   }
@@ -920,6 +929,56 @@ export function TablePopup() {
     }
   };
 
+  const viewOptions: { value: PopupView; label: string }[] = [
+    ...(state.pivot ? [{ value: "pivot" as const, label: "Pivot" }] : []),
+    { value: "grid", label: "Grid" },
+    ...(cardsCapable ? [{ value: "cards" as const, label: "Cards" }] : []),
+    ...(formCapable ? [{ value: "form" as const, label: "Form" }] : []),
+    { value: "csv", label: "CSV" },
+  ];
+  const pickView = (v: PopupView) => (v === "csv" ? showCSV() : leaveCsv(v));
+
+  // ── Pivot view ([[C127]] pivotView) ───────────────────────────────────────
+  const reopenWith = (f: FrameValue | null) => { if (f) tablePopup.open({ ...state, ...framePopupData(f) }); };
+  function setPivotView(next: PivotViewOptions) {
+    setPivotOpts(next);
+    pivotHost.current?.setView(next);
+  }
+  const host = pivotHost.current;
+  const pivotTotals = host && state.pivot ? {
+    totals: host.totals,
+    setSubtotals: (mode: Parameters<typeof withSubtotals>[1]) =>
+      void host.setTotals(withSubtotals(host.totals, mode, state.pivot!.rowFields.length, state.pivot!.colFields.length)).then(reopenWith),
+    setGrand: (mode: Parameters<typeof withGrand>[1]) => void host.setTotals(withGrand(host.totals, mode)).then(reopenWith),
+  } : undefined;
+  function editPivotFields() {
+    const opened = state!;
+    tablePopup.close();
+    pivotHost.current?.editFields((f) => { if (f) tablePopup.open({ ...opened, ...framePopupData(f) }); }, opened.accent);
+  }
+  const pivotCellText = (r: number, c: number): string => {
+    const raw = state.data[r]?.[c] ?? null;
+    if (displayMode === "source") return raw === null ? "" : isSolError(raw) ? raw.code : String(raw);
+    return controlledCell(raw, c);
+  };
+  /** One Number format per value field, written to each of its columns. */
+  const pivotValueFormat = state.pivot && state.formatControls === "columns" ? (v: number) => {
+    const keyCols = state.pivot!.rowFields.length;
+    const colsOf = state.pivot!.cols.flatMap((it, j) => (it.value === v ? [keyCols + j] : []));
+    if (!colsOf.length || colTypeAt(colsOf[0]) !== "number") return null;
+    return (
+      <FormatStyleSelect
+        className="table-popup__fmtselect"
+        inherit
+        value={fmtRow(colsOf[0]).value}
+        onChange={(f) => {
+          for (const c of colsOf) { if (f) persistColFmt(c, { format: f }, false); else clearColFmt(c, false); }
+          if (state.pinNodeId) void processGraph(state.pinNodeId);
+        }}
+      />
+    );
+  } : undefined;
+
   return (
     <PopupShell
       title={state.title}
@@ -930,8 +989,8 @@ export function TablePopup() {
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={<>
-        {((view === "grid" && sortable && viewRows > 1) || view === "cards") && (
-          <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering ? `${matchedOrder.length} of ${viewRows}` : undefined} />
+        {((view === "grid" && sortable && viewRows > 1) || view === "cards" || view === "pivot") && (
+          <SearchField value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering && view !== "pivot" ? `${matchedOrder.length} of ${viewRows}` : undefined} />
         )}
         <span className="table-popup__dims">{state.list ? `${listLen} items` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
       </>}
@@ -975,7 +1034,19 @@ export function TablePopup() {
           ) : null}
         </div>
       )}
-      {view === "grid" ? (
+      {view === "pivot" && state.pivot ? (
+        <PivotTableView
+          layout={state.pivot}
+          options={pivotOpts}
+          onOptions={setPivotView}
+          totals={pivotTotals}
+          cellText={pivotCellText}
+          isErrorAt={(r, c) => isSolError(state.data[r]?.[c])}
+          valueFormat={pivotValueFormat}
+          onFields={pivotHost.current ? editPivotFields : undefined}
+          query={query}
+        />
+      ) : view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
           <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
             <thead>
@@ -1393,32 +1464,17 @@ export function TablePopup() {
 
       {ctxMenu && editsRows && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
       <div className="table-popup__footer">
-        <div className="table-popup__view" role="group" aria-label="View">
-          <button
-            type="button"
-            aria-pressed={view === "grid"}
-            onClick={() => leaveCsv("grid")}
-          >Grid</button>
-          {cardsCapable && (
-            <button
-              type="button"
-              aria-pressed={view === "cards"}
-              onClick={() => leaveCsv("cards")}
-            >Cards</button>
-          )}
-          {formCapable && (
-            <button
-              type="button"
-              aria-pressed={view === "form"}
-              onClick={() => leaveCsv("form")}
-            >Form</button>
-          )}
-          <button
-            type="button"
-            aria-pressed={view === "csv"}
-            onClick={showCSV}
-          >CSV</button>
-        </div>
+        {viewOptions.length >= 4 ? (
+          <select className="table-popup__viewselect" value={view} aria-label="View" onChange={(e) => pickView(e.target.value as PopupView)}>
+            {viewOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        ) : (
+          <div className="table-popup__view" role="group" aria-label="View">
+            {viewOptions.map((o) => (
+              <button key={o.value} type="button" aria-pressed={view === o.value} onClick={() => pickView(o.value)}>{o.label}</button>
+            ))}
+          </div>
+        )}
         {state.list && view === "grid" && (
           <div className="table-popup__view" role="group" aria-label="List layout">
             <button

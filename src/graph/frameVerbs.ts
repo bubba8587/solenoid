@@ -18,6 +18,7 @@ import { buildLadder, mustClash, isRough, type LadderOption } from "./nodes/ladd
 import type { LadderPayload } from "./chartValue";
 import { aggregate, percentileOf, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
+import { setPivotLayout } from "./pivotLayout";
 
 export type AggOp =
   | "sum" | "avg" | "min" | "max" | "count"
@@ -1217,7 +1218,14 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
     values: rowOut.map((ro) => plans[v].cell(cellValue(v, ro.span, co.span))),
   }));
 
-  return frame([...keyColumns, ...bodyColumns]);
+  const out = frame([...keyColumns, ...bodyColumns]);
+  setPivotLayout(out, {
+    rowFields, rowTypes: rowCols.map((c) => c.type), colFields, colTypes: colCols.map((c) => c.type),
+    values: valueNames, funcs,
+    rows: rowOut.map(({ kind, tuple, fill }) => ({ kind, tuple, fill })),
+    cols: bodySpecs.map(({ co, v }) => ({ kind: co.kind, tuple: co.tuple, fill: co.fill, value: v })),
+  });
+  return out;
 }
 
 // ─── Nest / Unnest (the flat ⟷ cube bridge) ───────────────────────────────────

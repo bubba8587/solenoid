@@ -31,6 +31,7 @@ import { SelectionActionsBar } from "./graph/components/SelectionActionsBar";
 import { WebDemoBanner } from "./graph/WebDemoBanner";
 import { installExternalLinkGuard } from "./graph/externalLinks";
 import { installRecordCardsAction } from "./graph/recordCardsFromPopup";
+import { installPivotHostAction } from "./graph/pivotFromPopup";
 import { armMidnightRollover, armMinuteTick } from "./graph/volatileDates";
 import { getEditor, requestRecalc, processGraph } from "./graph/process";
 import "./App.css";
@@ -109,6 +110,7 @@ function MainApp() {
   }, []);
   useEffect(installExternalLinkGuard, []);
   useEffect(installRecordCardsAction, []);
+  useEffect(installPivotHostAction, []);
   // TODAY / NOW / relative Date Inputs recompute once at each local midnight (R5).
   useEffect(() => armMidnightRollover(() => getEditor()?.getNodes() ?? [], () => { void requestRecalc(); }), []);
   useEffect(() => armMinuteTick(() => getEditor()?.getNodes() ?? [], (id) => { void processGraph(id); }), []);

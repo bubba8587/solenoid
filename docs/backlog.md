@@ -331,6 +331,9 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 - [ ] **A blank frame's CSV view starts with a blank header line** (`buildText`): a CSV pasted below it makes its
   header row the first data row, with the columns unnamed. Found filming the demo video (a new Frame property in
   Obsidian); the author held the behavior until a change is shown rigorous, so the video clicks at the top first.
+- [ ] **Pivot view follow-ups** ([[C127]] pivotView, built 2026-10-20): fold column items as rows fold; sort an
+  axis from its header (Configure Fields holds the sort today); Excel's "Merge and center cells with labels";
+  drill-through (a value cell opens the source rows behind it, which needs the Pivot's filtered source).
 
 ## Family-name polish ([[D22]] oneNamePerCard revised 2026-09-13 — card shows the class-derived family name)
 

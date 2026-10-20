@@ -4,6 +4,8 @@ import type { SolError } from "./errorValue";
 import type { FrameSourceColumn } from "./frame";
 import type { ColumnUnit } from "./unitValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
+import type { FrameValue } from "./frame";
+import type { PivotLayout, PivotTotals, PivotViewOptions } from "./pivotLayout";
 
 /** `null` is a missing cell; a SolError is a per-cell error. */
 export type Cell = number | string | boolean | null | SolError;
@@ -51,6 +53,8 @@ export interface TablePopupState {
   /** undefined is a Data column. */
   sourceExprs?: (string | undefined)[];
   computedCells?: Cell[][];
+  /** How PIVOTBY laid the frame out; present only on a pivot's own output, and it opens the Pivot view. */
+  pivot?: PivotLayout;
 }
 
 export const tablePopup = createValueStore<TablePopupState>();
@@ -63,3 +67,19 @@ export interface RecordCardsAction {
 let recordCardsAction: RecordCardsAction | null = null;
 export function setRecordCardsAction(action: RecordCardsAction | null): void { recordCardsAction = action; }
 export function getRecordCardsAction(): RecordCardsAction | null { return recordCardsAction; }
+
+/** The Pivot node behind a popup's frame: its saved view, its totals and its field editor. */
+export interface PivotHost {
+  view: PivotViewOptions;
+  setView(view: PivotViewOptions): void;
+  totals: PivotTotals;
+  /** Recomputes the Pivot and gives its new output. */
+  setTotals(totals: PivotTotals): Promise<FrameValue | null>;
+  /** Opens Configure Fields; `onClosed` gets the output as it then stands. */
+  editFields(onClosed: (output: FrameValue | null) => void, accent?: string): void;
+}
+/** Finds the Pivot node behind a host. Installed by the app; the Obsidian plugin has no graph, so its pivot views keep their options for the session. */
+export interface PivotHostAction { find(hostId: string): PivotHost | null }
+let pivotHostAction: PivotHostAction | null = null;
+export function setPivotHostAction(action: PivotHostAction | null): void { pivotHostAction = action; }
+export function getPivotHostAction(): PivotHostAction | null { return pivotHostAction; }

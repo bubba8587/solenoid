@@ -6,6 +6,7 @@ import { readFrame, type FrameRef } from "./frameBackend";
 import { matrixUnitOf, isUnitCell } from "./unitValue";
 import { isSolError } from "./errorValue";
 import { isCx } from "./cxValue";
+import { pivotLayoutOf } from "./pivotLayout";
 
 export type ElemFamily = "number" | "string" | "date" | "logical" | "complex";
 
@@ -98,21 +99,29 @@ export async function openFramePopup(
   }
   tablePopup.open({
     title: label || "Frame",
-    data: frameToGrid(resolved),
-    headers: resolved.columns.map((c) => c.name),
-    columnTypes: resolved.columns.map((c) => c.type),
-    sourceCells: !resolved.columns.some((c) => c.raw)
-      ? undefined
-      : Array.from({ length: frameRowCount(resolved) }, (_, r) => resolved.columns.map((c) => c.raw?.[r] ?? null)),
+    ...framePopupData(resolved),
     cellType: "number",
     formatControls: "columns",
-    columnUnits: resolved.columns.map((c) => c.unit),
-    columnFormats: resolved.columns.map((c) => c.format),
     accent,
     groupColor,
     groupColorDark,
     pinNodeId: hostId ?? undefined,
   });
+}
+
+/** What a frame popup shows of a whole frame: its cells, names, types, units, formats, typed text and pivot layout. */
+export function framePopupData(f: FrameValue): Pick<TablePopupState, "data" | "headers" | "columnTypes" | "sourceCells" | "columnUnits" | "columnFormats" | "pivot"> {
+  return {
+    data: frameToGrid(f),
+    headers: f.columns.map((c) => c.name),
+    columnTypes: f.columns.map((c) => c.type),
+    sourceCells: !f.columns.some((c) => c.raw)
+      ? undefined
+      : Array.from({ length: frameRowCount(f) }, (_, r) => f.columns.map((c) => c.raw?.[r] ?? null)),
+    columnUnits: f.columns.map((c) => c.unit),
+    columnFormats: f.columns.map((c) => c.format),
+    pivot: pivotLayoutOf(f) ?? undefined,
+  };
 }
 
 export function openArrayPopup(

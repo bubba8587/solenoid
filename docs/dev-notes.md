@@ -6,6 +6,12 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-20: the Pivot view, popup headers; cloud session)
+- **A Pivot's output opens on a Pivot view** ([[C127]] pivotView, unratified; mechanics [[table-popup#The Pivot view]]): Compact, Outline and Tabular forms, Repeat Labels, Blank Rows, Field Headers, banding, folding by subtotal, empty-cell text, one Number format per value field, a label filter, and Subtotals, Grand Totals and Fields, which change the node as Configure Fields does. The frame stays a plain Frame: PIVOTBY's layout lives beside it in a table keyed by the frame (`pivotLayout.ts`), carried through format stamps, so a Display wired to the Pivot opens the view too. Options save on the node (`pivotView`).
+- **The popup view switch is a dropdown at four views or more** (a pivot's output, and the Frame Input editor's Grid, Cards, Form, CSV).
+- **Popup headers stay one line**: the title wraps to two lines and then ellipsizes, and Go to Source, Pin and the Gantt's Copy SVG moved into the overflow menu (`menuItems`, `usePopupNodeItems`).
+- Checked on desktop and a 390-pixel phone, dark and light, with a 160 to 200-row sales frame pivoted over up to three row and two column fields.
+
 ### SESSION DIGEST (2026-10-16: the Choice Ladder and the decision domain; cloud session)
 - **Choice Ladder node** ([[C122]] choiceLadder, unratified; mechanics [[frame-verbs#Choice Ladder]], figure [[chart-figures]] § The ladder figure): orders a Decision Matrix's options into the sequence to take them in when you can't do everything. Limits take an At most, an At least (a floor, such as two vegetarian places) or neither (a rough cost such as political capital, ordered by value for what it costs). Requires, Excludes, Must and Never columns link and force options. Close places fork, the flow splitting by score; a pick at a fork is saved on the node (`choices`) and the passed side stays dimmed and clickable. The Plan carries running totals.
 - **The figure is a Sankey of the value served**: cards take their slice, stroked ribbons keep their thickness sideways, a merge that forks again meets in one knot, lanes never cross (`ladderLayout.test.ts`).

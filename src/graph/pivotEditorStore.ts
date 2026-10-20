@@ -7,6 +7,8 @@ export interface PivotEditorState {
   nodeId: string;
   title: string;
   accent?: string;
+  /** Called once the editor closes, to hand back to whatever opened it. */
+  onClosed?: () => void;
 }
 
 export const pivotEditor = createValueStore<PivotEditorState>();

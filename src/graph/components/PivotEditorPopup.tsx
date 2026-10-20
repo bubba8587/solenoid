@@ -86,6 +86,7 @@ export function PivotEditorPopup() {
 
   if (!state) return null;
   const node = state.node;
+  const close = () => { pivotEditor.close(); state.onClosed?.(); };
   const fields = node.sourceColumns ?? [];
   const typeOf = (name: string) => fields.find((f) => f.name === name)?.type ?? "number";
 
@@ -290,7 +291,7 @@ export function PivotEditorPopup() {
   return (
     <PopupShell
       title={state.title}
-      onClose={() => pivotEditor.close()}
+      onClose={close}
       cardClassName="pivot-editor"
       cardStyle={popupCardVars(state)}
     >
@@ -339,7 +340,7 @@ export function PivotEditorPopup() {
       </div>
 
       <div className="pivot-editor__footer">
-        <button className="pivot-editor__done" onClick={() => pivotEditor.close()}>Done</button>
+        <button className="pivot-editor__done" onClick={close}>Done</button>
       </div>
     </PopupShell>
   );

@@ -59,6 +59,7 @@ import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell, isAffineDisplay } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec, parseColumnUnitFromHeader } from "../unitColumn";
+import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 
 function runVerb<T>(fn: () => T): T | SolError {
   try {
@@ -839,6 +840,8 @@ export class PivotNode extends ClassicPreset.Node {
   relativeTo = 0;
   // Per field, the value keys (`pivotCellKey`) to hide; ANDed with the wired `filter` mask.
   filterExclude: Record<string, string[]> = {};
+  /** How the popup's Pivot view draws the output; display only. */
+  pivotView: PivotViewOptions;
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
@@ -851,8 +854,10 @@ export class PivotNode extends ClassicPreset.Node {
     label?: string; agg?: AggOp; funcs?: Record<string, AggOp>;
     rowTotalDepth?: number; colTotalDepth?: number; rowSort?: number; colSort?: number; relativeTo?: number;
     filterExclude?: Record<string, string[]>;
+    pivotView?: Partial<PivotViewOptions>;
   }) {
     super("Pivot");
+    this.pivotView = readPivotView(init?.pivotView);
     this.label = init?.label ?? "PIVOTBY";
     this.agg = init?.agg ?? "sum";
     if (init?.funcs) this.funcs = { ...init.funcs };
