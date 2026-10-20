@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useEscapeLayer } from "./escapeLayers";
 import "./popupChrome.css";
 
-export type PopupMenuItem = { label: string; onClick: () => void; disabled?: boolean };
+/** `divider` draws a rule above the item, between it and the group before. */
+export type PopupMenuItem = { label: string; onClick: () => void; disabled?: boolean; divider?: boolean };
 
 export function PopupOverflowMenu({ items, label = "More actions" }: { items: PopupMenuItem[]; label?: string }) {
   const [open, setOpen] = useState(false);
@@ -37,7 +38,8 @@ export function PopupOverflowMenu({ items, label = "More actions" }: { items: Po
       </button>
       {open && (
         <div className="sol-popup-menu__list" role="menu">
-          {items.map((it, i) => (
+          {items.map((it, i) => [
+            it.divider && i > 0 ? <div key={`sep${i}`} className="sol-popup-menu__sep" role="separator" /> : null,
             <button
               key={i}
               type="button"
@@ -45,8 +47,8 @@ export function PopupOverflowMenu({ items, label = "More actions" }: { items: Po
               className="sol-popup-menu__item"
               disabled={it.disabled}
               onClick={() => { setOpen(false); it.onClick(); }}
-            >{it.label}</button>
-          ))}
+            >{it.label}</button>,
+          ])}
         </div>
       )}
     </div>

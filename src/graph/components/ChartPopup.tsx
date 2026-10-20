@@ -35,7 +35,6 @@ export function ChartPopup() {
     : undefined;
   const figRef = useRef<HTMLDivElement>(null);
   const [{ w, h }, setFig] = useState(chartSize);
-  const [copied, setCopied] = useState(false);
   useLayoutEffect(() => {
     const el = figRef.current;
     if (!el) return;
@@ -88,10 +87,7 @@ export function ChartPopup() {
   const copySvg = ganttPayload
     ? () => {
         const svg = ganttSvg(ganttPayload, { width: Math.round(w) });
-        void navigator.clipboard?.writeText(svg).then(() => {
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
-        });
+        void navigator.clipboard?.writeText(svg);
       }
     : null;
 
@@ -119,9 +115,7 @@ export function ChartPopup() {
       onClose={() => chartPopup.close()}
       cardStyle={cardStyle}
       headerExtra={state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
-      headerActions={copySvg
-        ? <button type="button" className="sol-popup__action" onClick={copySvg}>{copied ? "Copied" : "Copy SVG"}</button>
-        : undefined}
+      menuItems={copySvg ? [{ label: "Copy SVG", onClick: copySvg }] : []}
       pinNodeId={state.pinNodeId}
       resizable={{ min: isGantt ? { w: 520, h: 300 } : { w: 260, h: 200 }, initial: initialCard }}
     >

@@ -2,7 +2,8 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
-import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
+import { PopupOverflowMenu, type PopupMenuItem } from "./PopupOverflowMenu";
+import { usePopupNodeItems } from "./popupNodeItems";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { contrastInk, darkenAccent } from "../palette";
 import { PopupResizeGrip, type PopupSize } from "./PopupResizeGrip";
@@ -34,7 +35,7 @@ export function PopupShell({
   cardStyle,
   headerExtra,
   pinNodeId,
-  headerActions,
+  menuItems = [],
   resizable,
   children,
 }: {
@@ -46,11 +47,12 @@ export function PopupShell({
   cardStyle?: CSSProperties;
   headerExtra?: ReactNode;
   pinNodeId?: string;
-  headerActions?: ReactNode;
+  menuItems?: PopupMenuItem[];
   resizable?: { min: PopupSize; initial?: PopupSize };
   children?: ReactNode;
 }) {
   useEscapeToClose(onEscape ?? onClose, true, { capture: true });
+  const items = [...menuItems, ...usePopupNodeItems(pinNodeId, onClose)];
   const cardRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   useHeaderHeightVar(headerRef);
@@ -64,9 +66,7 @@ export function PopupShell({
         <div className="sol-popup__header" ref={headerRef}>
           <div className="sol-popup__title">{title}</div>
           {headerExtra}
-          {pinNodeId && <PopupGoToButton nodeId={pinNodeId} onClose={onClose} />}
-          {pinNodeId && <PopupPinButton nodeId={pinNodeId} />}
-          {headerActions}
+          {items.length > 0 && <PopupOverflowMenu items={items} />}
           <button className="sol-popup__close" onClick={() => onClose()} aria-label="Close"><CloseIcon size={16} /></button>
         </div>
         {children}

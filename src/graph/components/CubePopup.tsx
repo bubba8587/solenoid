@@ -16,7 +16,6 @@ import { SearchField } from "./SearchField";
 import { settingsStore } from "../settingsStore";
 import { type FooterStat, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, summarizeColumn } from "./tableFooterStats";
 import { PopupShell, popupCardVars } from "./PopupShell";
-import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton, type SortKey } from "./columnSort";
 import { HeaderHelpButton } from "./columnHeadControls";
 import { copyText } from "../clipboard";
@@ -243,9 +242,7 @@ export function CubePopup() {
         </>
       }
       pinNodeId={state.stack.length === 1 ? state.pinNodeId : undefined}
-      headerActions={
-        <PopupOverflowMenu
-          items={[
+      menuItems={[
             ...(table ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
             { label: "Copy CSV", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "csv", listVertical)) },
             { label: "Copy as Markdown", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "md", listVertical)) },
@@ -256,9 +253,7 @@ export function CubePopup() {
                 void saveCsvFileDialog(`${base}.csv`, levelText(view, headers, sortOrder, cols, "csv", listVertical));
               },
             },
-          ]}
-        />
-      }
+      ]}
     >
       {state.stack.length > 1 && (
         <div className="cube-popup__crumbs">
