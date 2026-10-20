@@ -6,20 +6,25 @@ import {
 } from "../pivotLayout";
 import { formatFrameCell, type FrameCell } from "../frame";
 import { MinusSquareIcon, PlusSquareIcon } from "./Icons";
+import { ColumnFormatButton } from "./columnHeadControls";
 import "./PivotTableView.css";
 
 const FORM_OPTIONS: { value: PivotForm; label: string }[] = [
-  { value: "compact", label: "Compact Form" }, { value: "outline", label: "Outline Form" }, { value: "tabular", label: "Tabular Form" },
+  { value: "compact", label: "Compact" }, { value: "outline", label: "Outline" }, { value: "tabular", label: "Tabular" },
 ];
 const SUB_OPTIONS: { value: SubtotalMode; label: string }[] = [
-  { value: "none", label: "No Subtotals" }, { value: "bottom", label: "Subtotals at Bottom" }, { value: "top", label: "Subtotals at Top" },
+  { value: "none", label: "No Subtotals" }, { value: "bottom", label: "Subtotals Below" }, { value: "top", label: "Subtotals Above" },
 ];
 const GRAND_OPTIONS: { value: GrandMode; label: string }[] = [
-  { value: "off", label: "No Grand Totals" }, { value: "both", label: "Grand Totals for Rows and Columns" },
-  { value: "rows", label: "Grand Totals for Rows Only" }, { value: "cols", label: "Grand Totals for Columns Only" },
+  { value: "off", label: "No Grand Totals" }, { value: "both", label: "Grand Totals" },
+  { value: "rows", label: "Grand Total Column" }, { value: "cols", label: "Grand Total Row" },
 ];
 const EMPTY_OPTIONS: { value: PivotEmpty; label: string }[] = [
-  { value: "blank", label: "Empty Cells Blank" }, { value: "zero", label: "Empty Cells as 0" }, { value: "dash", label: "Empty Cells as –" },
+  { value: "blank", label: "Empty: Blank" }, { value: "zero", label: "Empty: 0" }, { value: "dash", label: "Empty: –" },
+];
+type Banding = "none" | "rows" | "cols" | "both";
+const BAND_OPTIONS: { value: Banding; label: string }[] = [
+  { value: "none", label: "No Bands" }, { value: "rows", label: "Banded Rows" }, { value: "cols", label: "Banded Columns" }, { value: "both", label: "Banded Both" },
 ];
 
 export interface PivotTotalsControl {
@@ -35,7 +40,7 @@ const itemText = (types: readonly string[]) => (field: number, cell: FrameCell):
   return f == null ? "(blank)" : String(f);
 };
 
-export function PivotTableView({ layout, options, onOptions, totals, cellText, isErrorAt, valueFormat, onFields, query }: {
+export function PivotTableView({ layout, options, onOptions, totals, cellText, isErrorAt, valueFormat, formatPicked = false, onFields, query }: {
   layout: PivotLayout;
   options: PivotViewOptions;
   onOptions: (next: PivotViewOptions) => void;
@@ -46,6 +51,8 @@ export function PivotTableView({ layout, options, onOptions, totals, cellText, i
   isErrorAt: (r: number, c: number) => boolean;
   /** The Number format pick for one value field, drawn after its caption. */
   valueFormat?: (v: number) => ReactNode;
+  /** Whether any value field carries a format pick, marking the Format button. */
+  formatPicked?: boolean;
   onFields?: () => void;
   query: string;
 }) {
@@ -111,6 +118,7 @@ export function PivotTableView({ layout, options, onOptions, totals, cellText, i
   };
 
   const empty = emptyText(options.emptyAs);
+  const banding: Banding = options.bandedRows ? (options.bandedCols ? "both" : "rows") : options.bandedCols ? "cols" : "none";
   return (
     <div className={`pivot-view${moreOpen ? " pivot-view--more" : ""}`}>
       <div className="pivot-view__bar" role="toolbar" aria-label="Pivot table layout">
@@ -120,35 +128,31 @@ export function PivotTableView({ layout, options, onOptions, totals, cellText, i
         {modes && totals && select(modes.sub, SUB_OPTIONS, totals.setSubtotals, "Subtotals. They change the Pivot's output.")}
         {modes && totals && select(modes.grand, GRAND_OPTIONS, totals.setGrand, "Grand totals. They change the Pivot's output.")}
         {select(options.emptyAs, EMPTY_OPTIONS, (emptyAs) => set({ emptyAs }), "What an empty value cell shows")}
+        {select(banding, BAND_OPTIONS, (b) => set({ bandedRows: b === "rows" || b === "both", bandedCols: b === "cols" || b === "both" }), "Shade every other row or column")}
         <span className="pivot-view__group" role="group" aria-label="Layout options">
           {toggle("repeatLabels", "Repeat Labels", "Repeat each item's label on every row of its group", compact || keyCols < 2)}
           {toggle("blankRows", "Blank Rows", "Put a blank row after each group", keyCols < 2)}
-          {toggle("fieldHeaders", "Field Headers", "Show the field names over the labels")}
-        </span>
-        <span className="pivot-view__group" role="group" aria-label="Banding">
-          {toggle("bandedRows", "Banded Rows", "Shade every other row")}
-          {toggle("bandedCols", "Banded Columns", "Shade every other column")}
+          {toggle("fieldHeaders", "Headers", "Show the field names over the labels")}
         </span>
         {model.foldable && (
           <span className="pivot-view__group" role="group" aria-label="Groups">
-            <button type="button" className="pivot-view__toggle" onClick={() => set({ collapsed: [] })} disabled={options.collapsed.length === 0}>Expand All</button>
-            <button type="button" className="pivot-view__toggle" onClick={() => set({ collapsed: allFoldKeys() })}>Collapse All</button>
+            <button type="button" className="pivot-view__toggle pivot-view__icon" onClick={() => set({ collapsed: [] })} disabled={options.collapsed.length === 0} title="Expand all groups" aria-label="Expand all groups"><PlusSquareIcon size={14} /></button>
+            <button type="button" className="pivot-view__toggle pivot-view__icon" onClick={() => set({ collapsed: allFoldKeys() })} title="Collapse all groups" aria-label="Collapse all groups"><MinusSquareIcon size={14} /></button>
           </span>
+        )}
+        {valueFormat && (
+          <ColumnFormatButton picked={formatPicked} title="Value format">
+            {layout.values.map((_, v) => (
+              <label key={v} className="pivot-view__format">
+                <span className="pivot-view__format-name">{valueCaption(layout, v)}</span>
+                {valueFormat(v)}
+              </label>
+            ))}
+          </ColumnFormatButton>
         )}
         </span>
         {onFields && <button type="button" className="pivot-view__toggle pivot-view__fields" onClick={onFields}>Fields</button>}
       </div>
-      {valueFormat && (
-        <div className="pivot-view__formats">
-          <span className="pivot-view__formats-lead">Format</span>
-          {layout.values.map((_, v) => (
-            <span key={v} className="pivot-view__format">
-              <span className="pivot-view__format-name">{valueCaption(layout, v)}</span>
-              {valueFormat(v)}
-            </span>
-          ))}
-        </div>
-      )}
       <div className="pivot-view__scroll sol-popup__scroll">
         <table className={`pivot-view__table${options.bandedRows ? " pivot-view__table--band-rows" : ""}${options.bandedCols ? " pivot-view__table--band-cols" : ""}`}>
           <thead>

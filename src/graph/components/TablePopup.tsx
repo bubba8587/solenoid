@@ -1043,6 +1043,7 @@ export function TablePopup() {
           cellText={pivotCellText}
           isErrorAt={(r, c) => isSolError(state.data[r]?.[c])}
           valueFormat={pivotValueFormat}
+          formatPicked={state.pivot.cols.some((_, j) => !!colLocal[state.pivot!.rowFields.length + j])}
           onFields={pivotHost.current ? editPivotFields : undefined}
           query={query}
         />
