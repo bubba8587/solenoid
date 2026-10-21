@@ -299,6 +299,15 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
     let r = if command == "engine_call" {
         let name = parse::<String>(args, "name")?;
         let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
+        // A name the core has no body for may be a pack's JS, which the TS calls; anything else is unknown.
+        if crate::eval::traits(&name.to_uppercase()).is_none() && !crate::excel_functions::is_ported(&name) {
+            crate::excel_functions::set_clock(None);
+            return Ok(if crate::eval::is_external(&name.to_uppercase()) {
+                CallReply::Bail
+            } else {
+                CallReply::Value(V::err(crate::error_value::sol_error("#NAME?", format!("Unknown function {name}"))))
+            });
+        }
         call_function(&name, &argv)
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
