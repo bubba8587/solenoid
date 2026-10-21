@@ -232,11 +232,10 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             } else {
                 // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
                 let src = parse::<String>(args, "src")?;
-                let table: crate::excel_formula::CallTable = parse(args, "table")?;
                 let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
                 match crate::excel_formula::parse_formula(&src) {
                     None => V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")),
-                    Some(ast) => crate::eval::Eval { table: &table }.run(&ast, &std::rc::Rc::new(env)),
+                    Some(ast) => crate::eval::Eval.run(&ast, &std::rc::Rc::new(env)),
                 }
             };
             crate::excel_functions::set_clock(None);

@@ -5,7 +5,7 @@
 use std::rc::Rc;
 
 use crate::error_value::sol_error;
-use crate::excel_formula::{apply_op, call_caught, constant_value, guard, lowered, CallTable, CallTraits, Role};
+use crate::excel_formula::{apply_op, call_caught, constant_value, guard, lowered, Refusal, Role};
 use crate::excel_functions::{fx_error_to_sol, is_ported, V};
 use crate::fxhash::FxHashMap;
 use crate::excel_formula::Ast;
@@ -22,6 +22,64 @@ pub struct LambdaV {
 }
 
 const MAX_GENERATED: f64 = 1_000_000.0;
+
+/// A function's dispatch facts (`formulaCallTable`'s entry), frozen into data/call_traits.json. Its per-position lists
+/// hold only their head; past it they repeat with period two.
+#[derive(serde::Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Traits {
+    pub kind: String,
+    pub prep: String,
+    pub inspects_null: bool,
+    pub nullable_ok: bool,
+    pub free: bool,
+    pub matrix_args: bool,
+    pub known: bool,
+    pub checks_cx: bool,
+    pub resolves: bool,
+    #[serde(default)]
+    pub refusal: Option<Refusal>,
+    roles: Vec<Option<Role>>,
+    blanks: Vec<serde_json::Value>,
+    scalar: Vec<bool>,
+}
+
+fn periodic<T>(xs: &[T], i: usize) -> Option<&T> {
+    let n = xs.len();
+    if i < n || n < 2 {
+        return xs.get(i);
+    }
+    xs.get(if (i - n) % 2 == 0 { n - 2 } else { n - 1 })
+}
+
+impl Traits {
+    pub fn role(&self, i: usize) -> Option<&Role> {
+        periodic(&self.roles, i).and_then(Option::as_ref)
+    }
+    fn has_roles(&self) -> bool {
+        self.roles.iter().any(Option::is_some)
+    }
+    /// An empty slot's reading, where the blank-slot pass sets one.
+    fn blank(&self, i: usize) -> Option<&serde_json::Value> {
+        periodic(&self.blanks, i).filter(|v| !v.is_null())
+    }
+    fn scalar(&self, i: usize) -> bool {
+        periodic(&self.scalar, i).copied().unwrap_or(false)
+    }
+}
+
+thread_local! {
+    static TRAITS: FxHashMap<String, Rc<Traits>> = serde_json::from_str::<FxHashMap<String, Traits>>(include_str!("../data/call_traits.json"))
+        .expect("data/call_traits.json reads")
+        .into_iter()
+        .map(|(k, v)| (k, Rc::new(v)))
+        .collect();
+}
+
+/// The facts of an uppercased function name, if it is one.
+pub fn traits(name: &str) -> Option<Rc<Traits>> {
+    TRAITS.with(|t| t.get(name).cloned())
+}
 
 fn is_arr(v: &V) -> bool {
     matches!(v, V::List(_))
@@ -238,11 +296,9 @@ fn js_unary(v: &V) -> f64 {
 const ETA_HOSTS: [&str; 6] = ["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"];
 const LAMBDA_HOSTS: [&str; 7] = ["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY"];
 
-pub struct Eval<'a> {
-    pub table: &'a CallTable,
-}
+pub struct Eval;
 
-impl Eval<'_> {
+impl Eval {
     /// `compileEvaluator`'s answer: a LAMBDA left uncalled is an error, a Formula.js error reads as Solenoid's.
     pub fn run(&self, ast: &Ast, env: &Rc<Env>) -> V {
         match self.eval(ast, env) {
@@ -256,7 +312,7 @@ impl Eval<'_> {
         if let Ast::Name(name) = a {
             if !env.contains_key(name) && constant_value(name).is_none() {
                 let up = name.to_uppercase();
-                if self.table.get(&up).is_some_and(|t| t.resolves) {
+                if traits(&up).is_some_and(|t| t.resolves) {
                     return V::Lambda(Rc::new(LambdaV { params: Vec::new(), body: None, env: env.clone(), eta: Some(up) }));
                 }
             }
@@ -385,7 +441,8 @@ impl Eval<'_> {
             }
             return V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body.clone())), env: env.clone(), eta: None }));
         }
-        let Some(t) = self.table.get(&name) else { return crate::excel_functions::bail() };
+        let Some(t) = traits(&name) else { return V::err(sol_error("#NAME?", format!("Unknown function {name}"))) };
+        let t = t.as_ref();
         if let Some(r) = &t.refusal {
             return V::err(sol_error(&r.code, r.message.as_str()));
         }
@@ -398,7 +455,7 @@ impl Eval<'_> {
         let settled = apply_arg_roles(&name, t, &empty, &mut argv);
         for (i, a) in args.iter().enumerate() {
             if matches!(a, Ast::Blank) {
-                if let Some(v) = t.blanks.get(&i.to_string()) {
+                if let Some(v) = t.blank(i) {
                     argv[i] = lowered(v);
                 }
             }
@@ -409,7 +466,7 @@ impl Eval<'_> {
         if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
             return e.clone();
         }
-        let lifted: Vec<usize> = t.scalar.iter().copied().filter(|&i| argv.get(i).is_some_and(is_arr)).collect();
+        let lifted: Vec<usize> = (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect();
         if lifted.is_empty() {
             return self.route_call(&name, t, argv, &settled);
         }
@@ -430,7 +487,7 @@ impl Eval<'_> {
     }
 
     /// Steps 9 to 11 of the dispatch ladder (`routeCall`).
-    fn route_call(&self, name: &str, t: &CallTraits, mut argv: Vec<V>, settled: &[bool]) -> V {
+    fn route_call(&self, name: &str, t: &Traits, mut argv: Vec<V>, settled: &[bool]) -> V {
         let mut column = false;
         if t.free {
             if let Some((read, col)) = read_vectors(&argv) {
@@ -479,7 +536,7 @@ impl Eval<'_> {
         }
     }
 
-    fn broadcast_call(&self, name: &str, t: &CallTraits, argv: &[V], blank_slots: &[bool]) -> V {
+    fn broadcast_call(&self, name: &str, t: &Traits, argv: &[V], blank_slots: &[bool]) -> V {
         let whole_at = match name {
             "WORKDAY" | "NETWORKDAYS" => Some(2),
             "WORKDAY.INTL" | "NETWORKDAYS.INTL" => Some(3),
@@ -759,18 +816,18 @@ fn prep_range_args(prep: &str, argv: Vec<V>) -> Result<Vec<V>, V> {
 }
 
 /// `applyArgRoles`: each argument read by its role; the answer is which slots the null rule must not blank on.
-fn apply_arg_roles(name: &str, t: &CallTraits, empty: &[bool], argv: &mut [V]) -> Vec<bool> {
+fn apply_arg_roles(name: &str, t: &Traits, empty: &[bool], argv: &mut [V]) -> Vec<bool> {
     let mut settled = empty.to_vec();
-    if t.roles.iter().all(Option::is_none) {
+    if !t.has_roles() {
         return settled;
     }
     let label = |i: usize| format!("{name}: argument {}", i + 1);
     for (i, v) in argv.iter_mut().enumerate() {
-        let Some(Some(role)) = t.roles.get(i) else { continue };
+        let Some(role) = t.role(i) else { continue };
         settled[i] = true;
         *v = apply_role(role, v, &label(i), true);
     }
-    let group: Vec<usize> = (0..argv.len()).filter(|&i| matches!(t.roles.get(i), Some(Some(Role::Picks { required: true })))).collect();
+    let group: Vec<usize> = (0..argv.len()).filter(|&i| matches!(t.role(i), Some(Role::Picks { required: true }))).collect();
     if !group.is_empty() && group.iter().all(|&i| matches!(argv[i], V::Undef)) {
         argv[group[0]] = V::err(sol_error("#SYNTAX!", format!("{name}: no positions given, and they have no default")));
     }
