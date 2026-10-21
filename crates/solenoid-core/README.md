@@ -57,6 +57,11 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
 The Formula.js bodies (CEILING, FLOOR, MROUND, EVEN, ODD, SWITCH, REPLACE and the pass-throughs) follow the version
 `package.json` pins: a bump means re-reading them.
 
+Moved on develop since the pin (checked at `55ee047`): PIVOTBY's `details` (a Details field lists each row group's
+source rows in the view's layout). The engine's layout doesn't carry them yet, so a pivot that asks for details runs on
+the TS (`pivotNeedsOracle` in `frameBackend.ts`); porting them means adding `sources` to the leaf rows and the detail
+columns to `engine_pivot_layout`.
+
 ## What it does and doesn't do
 
 | Capability | Status | Evidence |

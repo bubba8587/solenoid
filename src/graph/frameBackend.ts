@@ -441,8 +441,13 @@ function adoptPivot(frame: FrameValue, p: PivotWire): void {
 }
 
 /** PIVOTBY on the Rust engine when it's loaded and on, synchronously; null where the oracle should run it. */
+/** A pivot whose layout lists detail columns (develop's `details`, past this branch's pin): the engine's layout
+ *  doesn't carry them, so the TS answers. */
+const pivotNeedsOracle = (spec: object): boolean =>
+  ((spec as { details?: readonly string[] }).details ?? []).some((s) => s.trim() !== "");
+
 export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
-  if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
+  if (!wasmEngineLoaded() || !wasmEngineOn() || pivotNeedsOracle(spec)) return null;
   const { scales, units } = pivotUnits(f, spec);
   const src = wasmSourceBin(encodeBinary(f));
   let out: string | undefined;
@@ -665,7 +670,7 @@ class EngineBackend implements FrameBackend {
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
     if (isOracleHandle(handle)) return this.oracle.apply(handle, op);
-    if (op.kind === "pivot" && !this.fullCells) return this.onOracle([handle], ([h]) => this.oracle.apply(h, op));
+    if (op.kind === "pivot" && (!this.fullCells || pivotNeedsOracle(op))) return this.onOracle([handle], ([h]) => this.oracle.apply(h, op));
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
     const h = await (this.invoke<string>("engine_apply", { handle, op: this.fullCells ? encodeOpCells(wire[0]) : wire[0] }) as Promise<FrameHandle>);
     await this.rememberPivot(h, this.schemaOf(handle), op);
@@ -674,7 +679,7 @@ class EngineBackend implements FrameBackend {
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
     if (isOracleHandle(handle)) return this.oracle.applyMany(handle, ops);
-    if (!this.fullCells && ops.some((op) => op.kind === "pivot")) return this.onOracle([handle], ([h]) => this.oracle.applyMany(h, ops));
+    if (ops.some((op) => op.kind === "pivot" && (!this.fullCells || pivotNeedsOracle(op)))) return this.onOracle([handle], ([h]) => this.oracle.applyMany(h, ops));
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), ops);
     const h = await (this.invoke<string>("engine_apply_many", { handle, ops: this.fullCells ? wire.map(encodeOpCells) : wire }) as Promise<FrameHandle>);
     if (ops[ops.length - 1]?.kind === "pivot") await this.rememberPivot(h, lowerForEngine(this.schemaOf(handle), ops.slice(0, -1)).schema, ops[ops.length - 1]);
