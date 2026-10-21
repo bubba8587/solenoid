@@ -405,8 +405,6 @@ pub fn call(name: &str, a: &[V]) -> V {
                 "z" => ("z", 3.0),
                 "iqr" => ("iqr", 1.5),
                 "mad" => ("mad", 3.5),
-                // `in` finds Object.prototype's own names too; their "threshold" compares as NaN.
-                "constructor" | "__proto__" => ("mad", f64::NAN),
                 _ => return domain("ISOUTLIER method must be z, iqr or mad"),
             };
             let thr = if blank(arg(a, 2)) { dflt } else { number(arg(a, 2)) };
@@ -543,14 +541,16 @@ pub fn call(name: &str, a: &[V]) -> V {
             let m = detect_season(&nums_of(a0));
             V::Num(if m > 1 { m as f64 } else { 0.0 })
         }
-        "FORECAST.ETS" => match ets_prep(arg(a, 1), arg(a, 2), a0, arg(a, 3)) {
-            Some((_, h)) if h.is_nan() => V::Undef,
-            Some((_, h)) if h.is_infinite() => bail(),
-            Some((fit, h)) => V::Num(ets_forecast_at(&fit, h)),
-            None => value("FORECAST.ETS needs 3+ values on an equally spaced timeline and a target past its end"),
+        "FORECAST.ETS" => match ets_prep("FORECAST.ETS", arg(a, 1), arg(a, 2), a0, arg(a, 3)) {
+            Err(e) => e,
+            Ok(Some((fit, h))) => V::Num(ets_forecast_at(&fit, h)),
+            Ok(None) => value("FORECAST.ETS needs 3+ values on an equally spaced timeline and a target past its end"),
         },
         "FORECAST.ETS.CONFINT" => {
-            let p = ets_prep(arg(a, 1), arg(a, 2), a0, arg(a, 4));
+            let p = match ets_prep("FORECAST.ETS.CONFINT", arg(a, 1), arg(a, 2), a0, arg(a, 4)) {
+                Ok(p) => p,
+                Err(e) => return e,
+            };
             let c = if blank(arg(a, 3)) { 0.95 } else { to_num(arg(a, 3)) };
             if !(c > 0.0 && c < 1.0) {
                 return domain("Confidence must be between 0 and 1");
@@ -1137,7 +1137,14 @@ fn poly_fit_w(xs: &[f64], ys: &[f64], ws: &[f64], degree: f64) -> Result<Option<
 }
 
 fn savgol_problem(n: usize, window: f64, order: f64) -> Option<&'static str> {
-    let m = math_max(1.0, window.floor());
+    let whole = |x: f64| x.is_finite() && x.fract() == 0.0;
+    if !whole(window) {
+        return Some("Window must be a whole number");
+    }
+    if !whole(order) {
+        return Some("Order must be a whole number");
+    }
+    let m = math_max(1.0, window);
     if m % 2.0 == 0.0 {
         return Some("Window must be odd");
     }
@@ -1789,25 +1796,28 @@ fn ets_forecast_at(fit: &EtsFit, h: f64) -> f64 {
     fit.level + h * fit.trend + if m > 1 { fit.seasonal[((fit.fitted_len as f64 + h - 1.0) % m as f64) as usize] } else { 0.0 }
 }
 
-fn ets_prep(values: &V, timeline: &V, target: &V, seasonality: &V) -> Option<(EtsFit, f64)> {
+fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -> Result<Option<(EtsFit, f64)>, V> {
     let y = nums_of(values);
     let t = nums_of(timeline);
     if y.len() < 3 || t.len() < 2 {
-        return None;
+        return Ok(None);
     }
     let step = (t[t.len() - 1] - t[0]) / (t.len() - 1) as f64;
     let tgt = to_num(target);
     if !(step > 0.0) || tgt.is_nan() {
-        return None;
+        return Ok(None);
     }
     let h = math_round((tgt - t[t.len() - 1]) / step);
-    if h < 1.0 {
-        return None;
+    if !(h >= 1.0) {
+        return Ok(None);
+    }
+    // FORECAST.ETS steps once per period of the horizon ([[C120]] linearWork).
+    if h > 1_000_000.0 {
+        return Err(domain(&format!("{name} takes a target at most 1,000,000 steps past the timeline's end")));
     }
     let s_arg = if blank(seasonality) { 1.0 } else { math_round(to_num(seasonality)) };
     let m = if s_arg == 1.0 { detect_season(&y) as f64 } else { math_max(1.0, s_arg) };
-    let fit = fit_ets(&y, m).or_else(|| if m > 1.0 { fit_ets(&y, 1.0) } else { None })?;
-    Some((fit, h))
+    Ok(fit_ets(&y, m).or_else(|| if m > 1.0 { fit_ets(&y, 1.0) } else { None }).map(|fit| (fit, h)))
 }
 
 // ─── Distribution fits (fitOps.ts) ──────────────────────────────────────────────
@@ -2050,12 +2060,7 @@ fn interpolate(ys: &V, xs: &V, new_xs: &V, forecast: &V) -> V {
                 return V::Null;
             }
             let (i0, i1, t) = bracket(&sx, x);
-            let d = t * (number(&sy[i1]) - number(&sy[i0]));
-            // `+` joins text when the left side is text (a list reads as its joined text).
-            let r = match &sy[i0] {
-                V::Str(_) | V::List(_) => return V::str(&(js_string_of(&sy[i0]) + &number_to_string(d))),
-                other => number(other) + d,
-            };
+            let r = number(&sy[i0]) + t * (number(&sy[i1]) - number(&sy[i0]));
             if r.is_nan() { V::Null } else { V::Num(r) }
         })
         .collect();
@@ -2090,7 +2095,7 @@ fn bracket(axis: &[V], x: f64) -> (usize, usize, f64) {
     (lo, hi, if lo == hi || strict_eq(x1, x0) { 0.0 } else { (x - number(x0)) / (number(x1) - number(x0)) })
 }
 
-/// Grid mode's `gridAxes` and the forecast reading; the fill itself is still the TS's.
+/// Grid mode: `gridAxes`, the forecast reading and `fillGrid` (mathUtils.ts).
 fn grid_mode(z: &[V], xs: &V, ys: &V, forecast: &V) -> V {
     if z.is_empty() {
         return V::Null;
@@ -2100,9 +2105,9 @@ fn grid_mode(z: &[V], xs: &V, ys: &V, forecast: &V) -> V {
     if cols == 0 {
         return V::Null;
     }
-    let axis = |raw: &V, n: usize, name: &str| -> Option<V> {
+    let axis = |raw: &V, n: usize, name: &str| -> Result<Vec<f64>, V> {
         if blank(raw) {
-            return None;
+            return Ok((1..=n).map(|i| i as f64).collect());
         }
         let l = match raw {
             V::List(l) => l.as_ref().clone(),
@@ -2110,19 +2115,224 @@ fn grid_mode(z: &[V], xs: &V, ys: &V, forecast: &V) -> V {
         };
         let unit = if name == "Xs" { "columns" } else { "rows" };
         if l.len() != n {
-            return Some(V::err(sol_error("#SHAPE!", format!("{name} has {} values for {n} {unit}", l.len()))));
+            return Err(V::err(sol_error("#SHAPE!", format!("{name} has {} values for {n} {unit}", l.len()))));
         }
-        if l.iter().any(|v| finite(v).is_none()) {
-            return Some(value(&format!("{name} must be finite numbers")));
-        }
-        None
+        l.iter().map(|v| finite(v).ok_or_else(|| value(&format!("{name} must be finite numbers")))).collect()
     };
-    if let Some(e) = axis(xs, cols, "Xs") {
-        return e;
+    let col_xs = match axis(xs, cols, "Xs") {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    let row_ys = match axis(ys, rows, "Ys") {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    let fc = if matches!(forecast, V::Undef) {
+        true
+    } else {
+        match crate::excel_functions::logical_or_type_error(forecast, "INTERPOLATE's forecast") {
+            Ok(b) => b != Some(false),
+            Err(e) => return e,
+        }
+    };
+    let grid: Vec<Vec<Option<f64>>> = z
+        .iter()
+        .map(|r| (0..cols).map(|j| if let V::List(l) = r { l.get(j).and_then(finite) } else { None }).collect())
+        .collect();
+    let out = fill_grid(&grid, &col_xs, &row_ys, fc);
+    list(out.into_iter().map(|r| list(r.into_iter().map(|v| v.map_or(V::Null, V::Num)).collect())).collect())
+}
+
+/// `fillGrid`: each gap bilinear between the nearest known corners no other known point sits between, then the
+/// rest from `fitSurface` when `forecast`. The axes are finite here.
+fn fill_grid(z: &[Vec<Option<f64>>], col_xs: &[f64], row_ys: &[f64], forecast: bool) -> Vec<Vec<Option<f64>>> {
+    let (r_n, c_n) = (z.len(), col_xs.len());
+    let mut out: Vec<Vec<Option<f64>>> = z.to_vec();
+    let coarse_cols: Vec<usize> = (0..c_n).filter(|&j| z.iter().any(|r| r[j].is_some())).collect();
+    let coarse_rows: Vec<usize> = (0..r_n).filter(|&i| z[i].iter().any(Option::is_some)).collect();
+    let sides = |lines: &[usize], coord: &dyn Fn(usize) -> f64, q: f64| -> Option<(Vec<usize>, Vec<usize>)> {
+        let mut lo: Vec<usize> = lines.iter().copied().filter(|&k| coord(k) <= q).collect();
+        lo.sort_by(|&a, &b| (coord(b) - coord(a)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+        let mut hi: Vec<usize> = lines.iter().copied().filter(|&k| coord(k) >= q).collect();
+        hi.sort_by(|&a, &b| (coord(a) - coord(b)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+        (!lo.is_empty() && !hi.is_empty()).then_some((lo, hi))
+    };
+    let mut known: Vec<(f64, f64, usize, usize, f64)> = Vec::new();
+    for i in 0..r_n {
+        for j in 0..c_n {
+            if let Some(v) = z[i][j] {
+                known.push((col_xs[j], row_ys[i], i, j, v));
+            }
+        }
     }
-    if let Some(e) = axis(ys, rows, "Ys") {
-        return e;
+    const WIDEN: usize = 4;
+    for i in 0..r_n {
+        for j in 0..c_n {
+            if z[i][j].is_some() {
+                continue;
+            }
+            let (qx, qy) = (col_xs[j], row_ys[i]);
+            let (Some(rs), Some(cs)) = (sides(&coarse_rows, &|k| row_ys[k], qy), sides(&coarse_cols, &|k| col_xs[k], qx)) else { continue };
+            let cap = |v: &[usize]| v[..v.len().min(WIDEN)].to_vec();
+            let (r_lo, r_hi, c_lo, c_hi) = (cap(&rs.0), cap(&rs.1), cap(&cs.0), cap(&cs.1));
+            'search: for &rl in &r_lo {
+                for &rh in &r_hi {
+                    for &cl in &c_lo {
+                        for &ch in &c_hi {
+                            let (Some(z00), Some(z01), Some(z10), Some(z11)) = (z[rl][cl], z[rl][ch], z[rh][cl], z[rh][ch]) else { continue };
+                            let (x0, x1, y0, y1) = (col_xs[cl], col_xs[ch], row_ys[rl], row_ys[rh]);
+                            let (xa, xb, ya, yb) = (math_min(x0, x1), math_max(x0, x1), math_min(y0, y1), math_max(y0, y1));
+                            let (degen_row, degen_col) = (rl == rh, cl == ch);
+                            let contested = known.iter().any(|&(px, py, pi, pj, _)| {
+                                if (pi == rl || pi == rh) && (pj == cl || pj == ch) {
+                                    return false;
+                                }
+                                if degen_row && !degen_col {
+                                    pi == rl && px > xa && px < xb
+                                } else if degen_col && !degen_row {
+                                    pj == cl && py > ya && py < yb
+                                } else {
+                                    px >= xa && px <= xb && py >= ya && py <= yb
+                                }
+                            });
+                            if contested {
+                                continue;
+                            }
+                            let tx = if x1 == x0 { 0.0 } else { (qx - x0) / (x1 - x0) };
+                            let ty = if y1 == y0 { 0.0 } else { (qy - y0) / (y1 - y0) };
+                            let top = z00 + tx * (z01 - z00);
+                            let bot = z10 + tx * (z11 - z10);
+                            out[i][j] = Some(top + ty * (bot - top));
+                            break 'search;
+                        }
+                    }
+                }
+            }
+        }
     }
-    let _ = forecast;
-    bail()
+    if forecast {
+        let pts: Vec<(f64, f64, f64)> = known.iter().map(|&(x, y, _, _, v)| (x, y, v)).collect();
+        if let Some(f) = fit_surface(&pts) {
+            for i in 0..r_n {
+                for j in 0..c_n {
+                    if out[i][j].is_some() {
+                        continue;
+                    }
+                    let v = f(col_xs[j], row_ys[i]);
+                    if v.is_finite() {
+                        out[i][j] = Some(v);
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// `solveLinear` (surfaceFit.ts): Gauss-Jordan with partial pivoting; None on a pivot under 1e-12.
+fn surface_solve(a: Vec<Vec<f64>>, b: &[f64]) -> Option<Vec<f64>> {
+    let n = b.len();
+    let mut m: Vec<Vec<f64>> = a.into_iter().zip(b).map(|(mut r, &x)| { r.push(x); r }).collect();
+    for col in 0..n {
+        let mut piv = col;
+        for r in col + 1..n {
+            if m[r][col].abs() > m[piv][col].abs() {
+                piv = r;
+            }
+        }
+        if m[piv][col].abs() < 1e-12 {
+            return None;
+        }
+        m.swap(col, piv);
+        let d = m[col][col];
+        for k in col..=n {
+            m[col][k] /= d;
+        }
+        for r in 0..n {
+            if r == col {
+                continue;
+            }
+            let f = m[r][col];
+            if f != 0.0 {
+                for k in col..=n {
+                    m[r][k] -= f * m[col][k];
+                }
+            }
+        }
+    }
+    Some(m.into_iter().map(|r| r[n]).collect())
+}
+
+/// r²·log r, from r².
+fn tps_phi(r2: f64) -> f64 {
+    if r2 <= 1e-12 { 0.0 } else { 0.5 * r2 * log(r2) }
+}
+
+/// `fitSurface` (surfaceFit.ts): a thin-plate spline through 3 to 220 points, else a ridge plane.
+fn fit_surface(points: &[(f64, f64, f64)]) -> Option<Box<dyn Fn(f64, f64) -> f64>> {
+    let n = points.len();
+    if n == 0 {
+        return None;
+    }
+    let (mut xmin, mut xmax, mut ymin, mut ymax) = (f64::INFINITY, f64::NEG_INFINITY, f64::INFINITY, f64::NEG_INFINITY);
+    for &(x, y, _) in points {
+        if x < xmin { xmin = x }
+        if x > xmax { xmax = x }
+        if y < ymin { ymin = y }
+        if y > ymax { ymax = y }
+    }
+    let sx = if xmax > xmin { 1.0 / (xmax - xmin) } else { 0.0 };
+    let sy = if ymax > ymin { 1.0 / (ymax - ymin) } else { 0.0 };
+    let nx = move |x: f64| (x - xmin) * sx;
+    let ny = move |y: f64| (y - ymin) * sy;
+    let p: Vec<(f64, f64)> = points.iter().map(|&(x, y, _)| (nx(x), ny(y))).collect();
+    let z: Vec<f64> = points.iter().map(|&(_, _, v)| v).collect();
+    if (3..=220).contains(&n) {
+        let m = n + 3;
+        let mut a = vec![vec![0.0; m]; m];
+        let mut b = vec![0.0; m];
+        for i in 0..n {
+            for j in 0..n {
+                let (dx, dy) = (p[i].0 - p[j].0, p[i].1 - p[j].1);
+                a[i][j] = tps_phi(dx * dx + dy * dy);
+            }
+            a[i][n] = 1.0;
+            a[i][n + 1] = p[i].0;
+            a[i][n + 2] = p[i].1;
+            a[n][i] = 1.0;
+            a[n + 1][i] = p[i].0;
+            a[n + 2][i] = p[i].1;
+            b[i] = z[i];
+        }
+        if let Some(c) = surface_solve(a, &b) {
+            let (a0, a1, a2) = (c[n], c[n + 1], c[n + 2]);
+            return Some(Box::new(move |x, y| {
+                let (gx, gy) = (nx(x), ny(y));
+                let mut f = a0 + a1 * gx + a2 * gy;
+                for k in 0..n {
+                    let (dx, dy) = (gx - p[k].0, gy - p[k].1);
+                    f += c[k] * tps_phi(dx * dx + dy * dy);
+                }
+                f
+            }));
+        }
+    }
+    // `planeFit`.
+    let mut a = vec![vec![0.0; 3]; 3];
+    let mut rhs = [0.0; 3];
+    for i in 0..n {
+        let g = [1.0, p[i].0, p[i].1];
+        for r in 0..3 {
+            for c in 0..3 {
+                a[r][c] += g[r] * g[c];
+            }
+            rhs[r] += g[r] * z[i];
+        }
+    }
+    let lambda = 1e-6 * (a[0][0] + a[1][1] + a[2][2] + 1.0);
+    a[1][1] += lambda;
+    a[2][2] += lambda;
+    let mean = z.iter().fold(0.0, |s, v| s + v) / n as f64;
+    let c = surface_solve(a, &rhs).unwrap_or_else(|| vec![mean, 0.0, 0.0]);
+    Some(Box::new(move |x, y| c[0] + c[1] * nx(x) + c[2] * ny(y)))
 }

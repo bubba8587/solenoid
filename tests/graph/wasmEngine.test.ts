@@ -1315,3 +1315,16 @@ describe("the leftover one-value functions match bit for bit on realistic argume
     expect(ran, "most calls should run on the engine").toBeGreaterThan(FUZZ_RUNS / 20);
   });
 });
+
+describe("text with a lone surrogate stays whole", () => {
+  it("Distinct keeps the two halves of a split emoji apart", async () => {
+    const f: FrameValue = { __frame: true, columns: [{ name: "s", type: "string", values: ["\uD83D", "b", "\uDE00", "\uD83D"] }] };
+    const be = frameBackend();
+    try {
+      const got = await be.collect(await be.apply(await be.source(f), { kind: "distinct" } as FrameOp));
+      expect(isSolError(got) ? got : got?.columns[0].values).toEqual(["\uD83D", "b", "\uDE00"]);
+    } finally {
+      wasmInvokeSync("engine_clear");
+    }
+  });
+});

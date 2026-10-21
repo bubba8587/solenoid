@@ -252,49 +252,112 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(json!(register(FrameValue { columns })))
         }
-        "engine_call" | "engine_eval" => {
-            use crate::excel_functions::{call_function, take_thrown, V};
-            let arg_of = crate::eval::decode_value;
-            crate::excel_functions::set_clock(parse(args, "clock")?);
-            let r = if command == "engine_call" {
-                let name = parse::<String>(args, "name")?;
-                let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
-                call_function(&name, &argv)
-            } else {
-                // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
-                let src = parse::<String>(args, "src")?;
-                let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
-                match crate::excel_formula::parse_formula(&src) {
-                    None => V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")),
-                    Some(ast) => crate::eval::Eval::default().run(&ast, &std::rc::Rc::new(env)),
-                }
-            };
-            crate::excel_functions::set_clock(None);
-            if crate::excel_functions::take_bailed() {
-                take_thrown();
-                return Ok(json!({ "bail": true }));
-            }
-            if let Some(e) = take_thrown() {
-                return Ok(json!({ "thrown": e.message }));
-            }
-            fn out(r: &V) -> Json {
-                match r {
-                    V::Undef => json!({ "undef": true }),
-                    V::Fx(code) => json!({ "fx": code }),
-                    V::List(items) => json!({ "list": items.iter().map(out).collect::<Vec<_>>() }),
-                    V::Num(n) => json!({ "num": n.to_bits().to_string() }),
-                    V::Err(e) => json!({ "err": e.code, "msg": e.message }),
-                    V::Null => Json::Null,
-                    V::Str(s) => json!({ "str": s.to_string() }),
-                    V::Bool(b) => json!({ "bool": b }),
-                    V::Cx(re, im) => json!({ "cx": [re.to_bits().to_string(), im.to_bits().to_string()] }),
-                    V::Lambda(_) => json!({ "lambda": true }),
-                }
-            }
-            Ok(out(&r))
-        }
+        "engine_call" | "engine_eval" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
         "engine_ported" => Ok(json!(crate::excel_functions::ported_names())),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),
+    }
+}
+
+/// What `engine_call` and `engine_eval` answer: a bail, a JS exception, or the value. It serializes straight to
+/// JSON text (`wasm.rs`), as a big list answer built as a `Json` tree first is slow in wasm.
+pub enum CallReply {
+    Bail,
+    Thrown(String),
+    Value(crate::excel_functions::V),
+}
+
+/// `engine_call` (a body by name over wired arguments) and `engine_eval` (a formula over named values).
+pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
+    use crate::excel_functions::{call_function, take_thrown, V};
+    let arg_of = crate::eval::decode_value;
+    crate::excel_functions::set_clock(parse(args, "clock")?);
+    let r = if command == "engine_call" {
+        let name = parse::<String>(args, "name")?;
+        let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
+        call_function(&name, &argv)
+    } else {
+        // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
+        let src = parse::<String>(args, "src")?;
+        let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
+        match crate::excel_formula::parse_formula(&src) {
+            None => V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")),
+            Some(ast) => crate::eval::Eval::default().run(&ast, &std::rc::Rc::new(env)),
+        }
+    };
+    crate::excel_functions::set_clock(None);
+    if crate::excel_functions::take_bailed() {
+        take_thrown();
+        return Ok(CallReply::Bail);
+    }
+    Ok(match take_thrown() {
+        Some(e) => CallReply::Thrown(e.message),
+        None => CallReply::Value(r),
+    })
+}
+
+impl serde::Serialize for CallReply {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        match self {
+            CallReply::Bail => {
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("bail", &true)?;
+                m.end()
+            }
+            CallReply::Thrown(msg) => {
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("thrown", msg)?;
+                m.end()
+            }
+            CallReply::Value(v) => Out(v).serialize(s),
+        }
+    }
+}
+
+/// A value as the reply spells it: `{"num": "<bits>"}`, `{"list": [...]}`, `{"err", "msg"}` and so on.
+struct Out<'a>(&'a crate::excel_functions::V);
+
+impl serde::Serialize for Out<'_> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use crate::excel_functions::V;
+        use serde::ser::{SerializeMap, SerializeSeq};
+        let bits = |x: f64| x.to_bits().to_string();
+        fn one<S: serde::Serializer, T: serde::Serialize + ?Sized>(s: S, k: &str, v: &T) -> Result<S::Ok, S::Error> {
+            let mut m = s.serialize_map(Some(1))?;
+            m.serialize_entry(k, v)?;
+            m.end()
+        }
+        match self.0 {
+            V::Null => s.serialize_unit(),
+            V::Undef => one(s, "undef", &true),
+            V::Fx(code) => one(s, "fx", code),
+            V::Num(n) => one(s, "num", &bits(*n)),
+            V::Str(t) => one(s, "str", t.as_ref()),
+            V::Bool(b) => one(s, "bool", b),
+            V::Lambda(_) => one(s, "lambda", &true),
+            V::Cx(re, im) => one(s, "cx", &[bits(*re), bits(*im)]),
+            V::Err(e) => {
+                let mut m = s.serialize_map(Some(2))?;
+                m.serialize_entry("err", &e.code)?;
+                m.serialize_entry("msg", &e.message)?;
+                m.end()
+            }
+            V::List(items) => {
+                struct Items<'a>(&'a [V]);
+                impl serde::Serialize for Items<'_> {
+                    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                        let mut q = s.serialize_seq(Some(self.0.len()))?;
+                        for v in self.0 {
+                            q.serialize_element(&Out(v))?;
+                        }
+                        q.end()
+                    }
+                }
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("list", &Items(items))?;
+                m.end()
+            }
+        }
     }
 }

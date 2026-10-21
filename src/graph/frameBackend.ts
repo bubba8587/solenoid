@@ -450,7 +450,7 @@ const pivotNeedsOracle = (spec: object): boolean =>
   ((spec as { details?: readonly string[] }).details ?? []).some((s) => s.trim() !== "");
 
 export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
-  if (!wasmEngineLoaded() || !wasmEngineOn() || pivotNeedsOracle(spec)) return null;
+  if (!wasmEngineLoaded() || !wasmEngineOn() || pivotNeedsOracle(spec) || !crossesWhole(f)) return null;
   const { scales, units } = pivotUnits(f, spec);
   const src = wasmSourceBin(encodeBinary(f));
   let out: string | undefined;
@@ -732,6 +732,8 @@ class EngineBackend implements FrameBackend {
       if (holdsTextOrLogicalError(frame)) return this.oracle.source(frame);
       noteLogicalNaN(frame);
     }
+    // A lone surrogate would cross as U+FFFD and merge with its neighbours' halves.
+    if (!crossesWhole(frame)) return this.oracle.source(frame);
     if (this.bulk) return this.remember(this.bulk.source(frame), schemaOnly(frame));
     const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(encodeWireCell) })) };
     const h = await (this.invoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>);

@@ -116,6 +116,10 @@ describe("position-preserving cell contract in the extracted list core", () => {
     // 0.5 clamps below x=1 → 10. The raw cast once answered 15 via a fake (0,20).
     expect(ev("INTERPOLATE(y, x, q)", { y: [10, 20, 30], x: [1, null, 3], q: [0.5] })).toEqual([10]);
   });
+
+  it("INTERPOLATE reads a text known y as a number, as it reads its xs, never joining text", () => {
+    expect(ev("INTERPOLATE(y, x, 1.5)", { y: ["5", 7], x: [1, 2] })).toBe(6);
+  });
 });
 
 describe("generators overflow loudly", () => {

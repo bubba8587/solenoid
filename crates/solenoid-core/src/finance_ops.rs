@@ -790,13 +790,14 @@ fn date_before_first() -> SolError {
     sol_error("#DOMAIN!", "A cash-flow date comes before the first date")
 }
 
-pub fn xnpv(rate: f64, values: &[f64], dates: &[f64]) -> Fin {
+/// `before_first`: a date among the first `n` compares (JS `<`) below the first one.
+pub fn xnpv(rate: f64, values: &[f64], dates: &[f64], before_first: bool) -> Fin {
     let n = values.len().min(dates.len());
     if n == 0 {
         return Fin::Null;
     }
     let d0 = dates[0];
-    if dates[1..n].iter().any(|&d| d < d0) {
+    if before_first {
         return Fin::Err(date_before_first());
     }
     let mut sum = 0.0;
@@ -806,13 +807,13 @@ pub fn xnpv(rate: f64, values: &[f64], dates: &[f64]) -> Fin {
     if sum.is_finite() { Fin::Num(sum) } else { Fin::Null }
 }
 
-pub fn xirr(values: &[f64], dates: &[f64]) -> Fin {
+pub fn xirr(values: &[f64], dates: &[f64], before_first: bool) -> Fin {
     let n = values.len().min(dates.len());
     if n < 2 {
         return Fin::Null;
     }
     let d0 = dates[0];
-    if dates[1..n].iter().any(|&d| d < d0) {
+    if before_first {
         return Fin::Err(date_before_first());
     }
     let exps: Vec<f64> = dates[..n].iter().map(|d| (d - d0) / 365.0).collect();

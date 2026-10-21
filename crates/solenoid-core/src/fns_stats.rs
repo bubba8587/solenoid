@@ -113,8 +113,14 @@ pub fn call(name: &str, a: &[V]) -> V {
             V::List(out.into_iter().map(V::Num).collect::<Vec<_>>().into())
         }
         "BESSELI" | "BESSELJ" | "BESSELK" | "BESSELY" => {
-            if to_num(arg(a, 1)).trunc() > 1_000_000.0 {
-                return V::err(sol_error("#DOMAIN!", format!("{name} takes an order of at most 1,000,000")));
+            // bessel.js flips a negative order's sign, so an order past a million either way, or an infinite one,
+            // would hang ([[C120]] linearWork).
+            let order = to_num(arg(a, 1));
+            if matches!(arg(a, 1), V::Str(_)) && order.is_nan() {
+                return V::err(sol_error("#VALUE!", format!("{name} needs a number")));
+            }
+            if order.trunc().abs() > 1_000_000.0 {
+                return V::err(sol_error("#DOMAIN!", format!("{name} takes an order between -1,000,000 and 1,000,000")));
             }
             let (x, n) = match (parse_number(arg(a, 0)), parse_number(arg(a, 1))) {
                 (V::Num(x), V::Num(n)) => (x, n),
@@ -251,7 +257,7 @@ fn besselj1(x: f64) -> f64 {
     }
 }
 
-/// `besselj`; None where its downward recurrence would never end (an infinite order).
+/// `besselj`; None where its downward recurrence would never end (an infinite order). A NaN order skips it.
 fn besselj(x: f64, n: f64) -> Option<f64> {
     let n = math_round(n);
     if !x.is_finite() {
@@ -277,7 +283,7 @@ fn besselj(x: f64, n: f64) -> Option<f64> {
         return Some(bessel_iter(x, n, besselj0(x), besselj1(x), -1.0));
     }
     let m = 2.0 * ((n + (40.0 * n).sqrt().floor()) / 2.0).floor();
-    if !m.is_finite() {
+    if m.is_infinite() {
         return None;
     }
     let (mut jsum, mut bjp, mut sum, mut bj, mut ret) = (false, 0.0, 0.0, 1.0, 0.0);
@@ -374,7 +380,7 @@ fn besseli(x: f64, n: f64) -> Option<f64> {
     }
     let (mut ret, tox, mut bip, mut bi) = (0.0, 2.0 / x.abs(), 0.0, 1.0);
     let m = 2.0 * math_round((n + math_round((40.0 * n).sqrt())) / 2.0);
-    if !m.is_finite() {
+    if m.is_infinite() {
         return None;
     }
     let mut j = m;

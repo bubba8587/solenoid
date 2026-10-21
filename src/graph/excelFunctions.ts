@@ -1424,12 +1424,16 @@ registerInternal("PRICE", (settle, maturity, rate, yld, redemption, freq) =>
   bondPriceYield("price", toNum(settle), toNum(maturity), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
 registerInternal("YIELD", (settle, maturity, rate, pr, redemption, freq) =>
   bondPriceYield("yield", toNum(settle), toNum(maturity), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
-// Formula.js's Bessel functions recur once per order, so a huge order would hang ([[C120]] linearWork).
+// Formula.js's Bessel functions recur once per order, and bessel.js flips a negative order's sign,
+// so an order past a million either way, or an infinite one, would hang ([[C120]] linearWork).
 for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"] as const) {
   const fx = FX[name] as (...args: unknown[]) => unknown;
-  registerInternal(name, (x, n) => (Math.trunc(toNum(n)) > 1_000_000
-    ? solError("#DOMAIN!", `${name} takes an order of at most 1,000,000`)
-    : fx(x, n)));
+  registerInternal(name, (x, n) => {
+    const order = toNum(n);
+    if (typeof n === "string" && Number.isNaN(order)) return VALUE(name);
+    if (Math.abs(Math.trunc(order)) > 1_000_000) return solError("#DOMAIN!", `${name} takes an order between -1,000,000 and 1,000,000`);
+    return fx(x, n);
+  });
 }
 // Formula.js's DB and DDB step once per period, so a huge period within a huge life would hang ([[C120]] linearWork).
 for (const name of ["DB", "DDB"] as const) {
@@ -1501,7 +1505,7 @@ registerInternal("ODDLPRICE", (settle, maturity, lastInterest, rate, yld, redemp
 registerInternal("ODDLYIELD", (settle, maturity, lastInterest, rate, pr, redemption, freq) =>
   oddCoupon("oddlyield", toNum(settle), toNum(maturity), NaN, toNum(lastInterest), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
 
-const etsPrep = (values: unknown, timeline: unknown, target: unknown, seasonality: unknown) => {
+const etsPrep = (name: string, values: unknown, timeline: unknown, target: unknown, seasonality: unknown) => {
   const y = numsOf(values);
   const t = numsOf(timeline);
   if (y.length < 3 || t.length < 2) return null;
@@ -1509,18 +1513,22 @@ const etsPrep = (values: unknown, timeline: unknown, target: unknown, seasonalit
   const tgt = toNum(target);
   if (!(step > 0) || Number.isNaN(tgt)) return null;
   const h = Math.round((tgt - t[t.length - 1]) / step);
-  if (h < 1) return null;
+  if (!(h >= 1)) return null;
+  // FORECAST.ETS steps once per period of the horizon ([[C120]] linearWork).
+  if (h > 1_000_000) return solError("#DOMAIN!", `${name} takes a target at most 1,000,000 steps past the timeline's end`);
   const sArg = seasonality == null ? 1 : Math.round(toNum(seasonality));
   const m = sArg === 1 ? detectSeason(y) : Math.max(1, sArg);
   const fit = fitEts(y, m) ?? (m > 1 ? fitEts(y, 1) : null);
   return fit ? { fit, h } : null;
 };
 registerInternal("FORECAST.ETS", (target, values, timeline, seasonality) => {
-  const p = etsPrep(values, timeline, target, seasonality);
+  const p = etsPrep("FORECAST.ETS", values, timeline, target, seasonality);
+  if (isSolError(p)) return p;
   return p ? etsForecast(p.fit, p.h)[p.h - 1] : solError("#VALUE!", "FORECAST.ETS needs 3+ values on an equally spaced timeline and a target past its end");
 });
 registerInternal("FORECAST.ETS.CONFINT", (target, values, timeline, confidence, seasonality) => {
-  const p = etsPrep(values, timeline, target, seasonality);
+  const p = etsPrep("FORECAST.ETS.CONFINT", values, timeline, target, seasonality);
+  if (isSolError(p)) return p;
   const c = confidence == null ? 0.95 : toNum(confidence);
   if (!(c > 0 && c < 1)) return solError("#DOMAIN!", "Confidence must be between 0 and 1");
   return p ? etsInterval(p.fit, p.h, c) : solError("#VALUE!", "FORECAST.ETS.CONFINT needs 3+ values on an equally spaced timeline and a target past its end");
@@ -1645,7 +1653,7 @@ registerInternal("POLYFIT",    (x, y, deg) => polyfitEval(numList(x), numList(y)
 registerInternal("NTILE",      (list, n) => ntileList(numList(list), Number(n)));
 registerInternal("ISOUTLIER",  (list, method, threshold) => {
   const m = (method == null ? "z" : String(method).trim().toLowerCase()) as OutlierMethod;
-  if (!(m in OUTLIER_DEFAULT_THRESHOLD)) return solError("#DOMAIN!", "ISOUTLIER method must be z, iqr or mad");
+  if (!Object.prototype.hasOwnProperty.call(OUTLIER_DEFAULT_THRESHOLD, m)) return solError("#DOMAIN!", "ISOUTLIER method must be z, iqr or mad");
   return outlierFlags(numList(list), m, threshold == null ? OUTLIER_DEFAULT_THRESHOLD[m] : Number(threshold));
 });
 registerInternal("ISBOOLEAN",  (v) => v === true || v === false);
@@ -1772,6 +1780,7 @@ registerInternal("INTERPOLATE", (ys, xs, newXs, forecast) => {
   }
   const { error, xs: kx, ys: ky } = pairPresent(numList(xs), numList(ys));
   if (error) return error;
+  for (let i = 0; i < ky.length; i++) ky[i] = Number(ky[i]);
   const qRaw = toList(newXs);
   const qErr = qRaw.find(isSolError);
   if (qErr) return qErr;
@@ -1840,7 +1849,7 @@ registerInternal("VSTACK", (...args) => {
 });
 registerInternal("XSTACK", (axis, ...args) => {
   const a = String(axis ?? "").trim().toLowerCase();
-  if (a !== "v" && a !== "h") return VALUE("XSTACK: axis is \"v\" or \"h\"");
+  if (a !== "v" && a !== "h") return solError("#VALUE!", 'XSTACK axis must be "v" or "h"');
   const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
   return mats.length ? (a === "v" ? stackV(mats) : stackH(mats)) : null;
 });
