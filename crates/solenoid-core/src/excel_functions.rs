@@ -228,6 +228,21 @@ pub fn to_f64_js(v: &V) -> f64 {
     }
 }
 
+/// JS `a < b`: two texts (a list reads as its joined text) compare by UTF-16 units, anything else as numbers.
+pub fn js_less(a: &V, b: &V) -> bool {
+    let prim = |v: &V| match v {
+        V::Str(_) | V::List(_) | V::Err(_) | V::Fx(_) | V::Cx(..) | V::Lambda(_) => Some(js_string_of(v)),
+        _ => None,
+    };
+    match (prim(a), prim(b)) {
+        (Some(x), Some(y)) => crate::jsnum::compare_utf16(&x, &y) == std::cmp::Ordering::Less,
+        (x, y) => {
+            let num = |p: Option<String>, v: &V| p.map_or_else(|| to_f64_js(v), |t| string_to_number(&t));
+            num(x, a) < num(y, b)
+        }
+    }
+}
+
 /// `String(v)`.
 pub fn js_string_of(v: &V) -> String {
     match v {
@@ -4343,8 +4358,10 @@ fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
 }
 
 /// The first `n` dates as numbers; None where one isn't, since JS's `<` and `-` would read it, which only the TS does.
-fn date_nums(dates: &[V], n: usize) -> Option<Vec<f64>> {
-    dates[..n.min(dates.len())].iter().map(|d| if let V::Num(x) = d { Some(*x) } else { None }).collect()
+fn date_nums(dates: &[V], n: usize) -> (Vec<f64>, bool) {
+    let ds = &dates[..n.min(dates.len())];
+    let before = ds.iter().skip(1).any(|d| js_less(d, &ds[0]));
+    (ds.iter().map(to_f64_js).collect(), before)
 }
 
 /// `parseInt(x, 10)` of a number: the integer its `String` starts with.
@@ -4438,10 +4455,8 @@ fn finance_function(name: &str, a: &[V]) -> V {
             if count == 0 {
                 return V::Null;
             }
-            match date_nums(&dates, count) {
-                Some(ds) => fin(f::xnpv(r, &values, &ds)),
-                None => bail(),
-            }
+            let (ds, before) = date_nums(&dates, count);
+            fin(f::xnpv(r, &values, &ds, before))
         }
         "XIRR" => {
             let (values, dates) = match dated_prep(arg(a, 0), arg(a, 1)) {
@@ -4452,10 +4467,8 @@ fn finance_function(name: &str, a: &[V]) -> V {
             if count < 2 {
                 return V::Null;
             }
-            match date_nums(&dates, count) {
-                Some(ds) => fin(f::xirr(&values, &ds)),
-                None => bail(),
-            }
+            let (ds, before) = date_nums(&dates, count);
+            fin(f::xirr(&values, &ds, before))
         }
         "FVSCHEDULE" => {
             if matches!(arg(a, 0), V::Null | V::Undef) {
