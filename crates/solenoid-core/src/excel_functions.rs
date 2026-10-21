@@ -3855,7 +3855,8 @@ fn regex_occurrence(raw: &V) -> Option<f64> {
 }
 
 fn regex_call(name: &str, a: &[V]) -> V {
-    use crate::text_ops::{regex_extract, regex_replace_all, regex_test, replace_nth, safe_regex};
+    use crate::js_regex::{compile, Compiled};
+    use crate::text_ops::{regex_extract, regex_replace_all, regex_test, replace_nth};
     let cs = match name {
         "REGEXTEST" => arg(a, 2),
         "REGEXEXTRACT" => arg(a, 3),
@@ -3887,16 +3888,12 @@ fn regex_call(name: &str, a: &[V]) -> V {
     if [&text, &pattern, &replacement].iter().any(|s| may_hold_lone_surrogate(s)) {
         return bail();
     }
-    // Without the u flag, `i` compares by simple uppercase and never maps a non-ASCII letter to ASCII (ſ isn't s);
-    // regress folds classes the Unicode way (its caseless `\W` takes s and k, for ſ and K), so a caseless match runs
-    // here only on ASCII.
-    if icase && (!text.is_ascii() || !pattern.is_ascii() || pattern.contains("\\u") || pattern.contains("\\W")) {
-        return bail();
-    }
-    // A pattern regress refuses may be one V8 takes, and every match list (modes 1 and 2) is a list.
-    let Some(re) = safe_regex(&utf16(&pattern), icase) else {
-        return bail();
+    let re = match compile(&utf16(&pattern), icase) {
+        Compiled::Ok(re) => re,
+        Compiled::Invalid => return V::Null,
+        Compiled::Unsure => return bail(),
     };
+    // Every match list (modes 1 and 2) is a list.
     let t = utf16(&text);
     match name {
         "REGEXTEST" => V::Num(if regex_test(&re, &t) { 1.0 } else { 0.0 }),

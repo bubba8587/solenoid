@@ -1,13 +1,9 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
 //! Port of `src/graph/nodes/textOps.ts`'s regex, URL, spelling, accent and template helpers. A JS string is UTF-16
-//! and `new RegExp(p, "")` reads it by code unit, so the patterns run on `regress` in its non-Unicode mode over the
-//! text's code units.
+//! and `new RegExp(p, "")` reads it by code unit, so the patterns (lowered by `js_regex`) run on `regress` in its
+//! non-Unicode mode over the text's code units.
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
-
-use regress::{Flags, Match, Regex};
+use regress::{Match, Regex};
 use crate::jsnum::{js_lower, number_to_string};
 
 fn utf16(s: &str) -> Vec<u16> {
@@ -19,162 +15,6 @@ fn from_utf16(units: &[u16]) -> String {
 }
 
 // ─── Regex ──────────────────────────────────────────────────────────────────────
-
-type RegexCache = HashMap<(Vec<u16>, bool), Option<Rc<Regex>>>;
-
-thread_local! {
-    static COMPILED: RefCell<RegexCache> = RefCell::new(HashMap::new());
-}
-
-/// `safeRegex`: the pattern compiled as `new RegExp(pattern, icase ? "i" : "")` would be. `None` where regress refuses
-/// it: V8 refuses most of those too, but not all (Annex B leniencies), so the caller can't answer the TS's null.
-pub fn safe_regex(pattern: &[u16], icase: bool) -> Option<Rc<Regex>> {
-    if regress_may_differ(pattern) {
-        return None;
-    }
-    COMPILED.with(|c| {
-        let key = (pattern.to_vec(), icase);
-        if let Some(r) = c.borrow().get(&key) {
-            return r.clone();
-        }
-        let flags = Flags { icase, ..Flags::default() };
-        let re = Regex::from_unicode(pattern.iter().map(|&u| u32::from(u)), flags).ok().map(Rc::new);
-        let mut c = c.borrow_mut();
-        if c.len() > 256 {
-            c.clear();
-        }
-        c.insert(key, re.clone());
-        re
-    })
-}
-
-#[derive(Clone, Copy, PartialEq)]
-enum Prev {
-    Start,
-    Atom,
-    Assertion,
-    Quantifier,
-}
-
-/// Where regress reads a pattern otherwise than V8 (or V8s disagree): it takes a quantified `^`, `$`, `\b`, `\B` or
-/// lookbehind, a quantifier on a quantifier, a modifier group `(?i:…)` and a group name used twice, which V8 refuses,
-/// and reads `\u{…}` and surrogate escapes as code points.
-fn regress_may_differ(p: &[u16]) -> bool {
-    let at = |i: usize| p.get(i).copied().unwrap_or(0);
-    let is = |i: usize, c: u8| at(i) == u16::from(c);
-    let digit = |i: usize| at(i) < 0x80 && (at(i) as u8).is_ascii_digit();
-    // `{n}`, `{n,}` or `{n,m}` at i: its length.
-    let braces = |i: usize| -> Option<usize> {
-        let mut j = i + 1;
-        let start = j;
-        while digit(j) {
-            j += 1;
-        }
-        if j == start {
-            return None;
-        }
-        if is(j, b',') {
-            j += 1;
-            while digit(j) {
-                j += 1;
-            }
-        }
-        is(j, b'}').then_some(j + 1 - i)
-    };
-    // Without the u flag `\u{41}` is 41 u's, and a pair of `\u` surrogate escapes two code units; regress reads
-    // one code point for either.
-    let escape_differs = |i: usize| {
-        let surrogate = p.get(i + 2..i + 6).is_some_and(|h| {
-            String::from_utf16(h).ok().and_then(|h| u16::from_str_radix(&h, 16).ok()).is_some_and(|u| (0xd800..0xe000).contains(&u))
-        });
-        is(i + 1, b'u') && (is(i + 2, b'{') || surrogate)
-    };
-    let mut names: Vec<&[u16]> = Vec::new();
-    let mut groups: Vec<bool> = Vec::new();
-    let mut prev = Prev::Start;
-    let mut i = 0;
-    while i < p.len() {
-        let c = at(i);
-        let quantifier = if matches!(c, 0x2a | 0x2b | 0x3f) { Some(1) } else if c == 0x7b { braces(i) } else { None };
-        if let Some(len) = quantifier {
-            if matches!(prev, Prev::Assertion | Prev::Quantifier) {
-                return true;
-            }
-            // A lazy mark ends the quantifier.
-            i += len;
-            if is(i, b'?') {
-                i += 1;
-            }
-            prev = Prev::Quantifier;
-            continue;
-        }
-        prev = Prev::Atom;
-        match c {
-            0x5c => {
-                if is(i + 1, b'b') || is(i + 1, b'B') {
-                    prev = Prev::Assertion;
-                }
-                if escape_differs(i) {
-                    return true;
-                }
-                i += 2;
-                continue;
-            }
-            0x5b => {
-                let mut j = i + 1;
-                if is(j, b'^') {
-                    j += 1;
-                }
-                while j < p.len() && !is(j, b']') {
-                    if is(j, b'\\') && escape_differs(j) {
-                        return true;
-                    }
-                    j += if is(j, b'\\') { 2 } else { 1 };
-                }
-                i = j + 1;
-                continue;
-            }
-            0x28 => {
-                prev = Prev::Start;
-                if is(i + 1, b'?') {
-                    if is(i + 2, b'<') && (is(i + 3, b'=') || is(i + 3, b'!')) {
-                        groups.push(true);
-                        i += 4;
-                        continue;
-                    }
-                    if is(i + 2, b'<') {
-                        let end = p[i + 3..].iter().position(|&u| u == u16::from(b'>')).map_or(p.len(), |k| i + 3 + k);
-                        let name = &p[i + 3..end];
-                        if names.contains(&name) {
-                            return true;
-                        }
-                        names.push(name);
-                        groups.push(false);
-                        i = end + 1;
-                        continue;
-                    }
-                    if !(is(i + 2, b':') || is(i + 2, b'=') || is(i + 2, b'!')) {
-                        return true;
-                    }
-                    groups.push(false);
-                    i += 3;
-                    continue;
-                }
-                groups.push(false);
-            }
-            0x29 => {
-                if groups.pop() == Some(true) {
-                    prev = Prev::Assertion;
-                }
-            }
-            0x5e | 0x24 => prev = Prev::Assertion,
-            0x7c => prev = Prev::Start,
-            _ => {}
-        }
-        i += 1;
-    }
-    false
-}
 
 /// `RegExp.prototype.exec` from `last_index`, as a global regex runs it.
 fn exec_at(re: &Regex, text: &[u16], last_index: usize) -> Option<Match> {
@@ -655,7 +495,9 @@ pub enum Token {
 
 /// `TEMPLATE_TOKEN`'s matches, with the text between them.
 pub fn template_tokens(template: &str) -> Vec<(String, Option<Token>)> {
-    let re = safe_regex(&utf16(TEMPLATE_TOKEN), false).expect("TEMPLATE_TOKEN compiles");
+    let crate::js_regex::Compiled::Ok(re) = crate::js_regex::compile(&utf16(TEMPLATE_TOKEN), false) else {
+        unreachable!("TEMPLATE_TOKEN compiles")
+    };
     let t = utf16(template);
     let mut out = Vec::new();
     let mut next = 0;
