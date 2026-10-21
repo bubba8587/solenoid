@@ -1786,7 +1786,7 @@ function decisionScores(
   const effective = criteriaCols.map((c) =>
     normalizeColumn(
       criterionScores(c, rows),
-      normalizeOverrides[c.name] ?? normalize,
+      (Object.prototype.hasOwnProperty.call(normalizeOverrides, c.name) ? normalizeOverrides[c.name] : undefined) ?? normalize,
     ),
   );
 
