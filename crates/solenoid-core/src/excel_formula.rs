@@ -480,6 +480,18 @@ pub struct CallTraits {
     /// The error a blocked, node-only or unknown name answers before its arguments are read (`callRefusal`).
     #[serde(default)]
     pub refusal: Option<Refusal>,
+    /// `routeCall`'s facts (`nameTraits`).
+    #[serde(default)]
+    pub free: bool,
+    #[serde(rename = "matrixArgs", default)]
+    pub matrix_args: bool,
+    #[serde(default)]
+    pub known: bool,
+    #[serde(rename = "checksCx", default)]
+    pub checks_cx: bool,
+    /// The name resolves to a function, so a bare one is that function as a LAMBDA (`etaOrEval`).
+    #[serde(default)]
+    pub resolves: bool,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -491,7 +503,7 @@ pub struct Refusal {
 pub type CallTable = FxHashMap<String, CallTraits>;
 
 /// A lowered value: JSON scalars, `{"__undef": 1}` for JS `undefined` (a left-out default).
-fn lowered(v: &Json) -> V {
+pub(crate) fn lowered(v: &Json) -> V {
     match v {
         Json::Null => V::Null,
         Json::Bool(b) => V::Bool(*b),
@@ -650,7 +662,7 @@ fn shaper_supported(name: &str, args: &[Ast], cx: &Cx) -> bool {
 // ─── Evaluator ──────────────────────────────────────────────────────────────────
 
 /// `dispatch`: a body's JavaScript failure answers #VALUE! at its call, so IFERROR reads it; a bail still ends the row.
-fn call_caught(name: &str, argv: &[V]) -> V {
+pub(crate) fn call_caught(name: &str, argv: &[V]) -> V {
     let v = call_function(name, argv);
     if crate::excel_functions::thrown_pending() && !crate::excel_functions::bail_pending() {
         crate::excel_functions::take_thrown();
@@ -690,7 +702,7 @@ pub fn cell_to_v_pub(c: &FrameCell) -> V {
     cell_to_v(c)
 }
 
-fn guard(result: f64, inputs: &[V]) -> V {
+pub(crate) fn guard(result: f64, inputs: &[V]) -> V {
     if result.is_finite() {
         return V::Num(result);
     }
@@ -713,7 +725,7 @@ pub fn number_to_text(x: f64) -> String {
     crate::excel_functions::number_to_text(x)
 }
 
-fn apply_op(op: &str, a: &V, b: &V) -> V {
+pub(crate) fn apply_op(op: &str, a: &V, b: &V) -> V {
     if a.is_err() {
         return a.clone();
     }
@@ -1185,7 +1197,7 @@ fn tag_computed_cell(v: V) -> FrameCell {
         V::Err(e) => FrameCell::Err(e),
         V::Fx(code) => FrameCell::err(crate::excel_functions::fx_error_to_sol(code)),
         V::List(_) => FrameCell::err(sol_error("#SHAPE!", "A computed column needs one value per row. Use @name to read this row's cell.")),
-        V::Cx(..) => FrameCell::err(sol_error("#VALUE!", "Each row of a computed column must be a number, text, TRUE/FALSE or blank.")),
+        V::Cx(..) | V::Lambda(_) => FrameCell::err(sol_error("#VALUE!", "Each row of a computed column must be a number, text, TRUE/FALSE or blank.")),
     }
 }
 

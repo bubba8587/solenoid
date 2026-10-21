@@ -215,9 +215,8 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(json!(register(FrameValue { columns })))
         }
-        "engine_call" => {
+        "engine_call" | "engine_eval" => {
             use crate::excel_functions::{call_function, take_thrown, V};
-            let name = parse::<String>(args, "name")?;
             fn arg_of(j: &Json) -> V {
                 match j {
                     Json::Array(items) => V::List(std::rc::Rc::new(items.iter().map(arg_of).collect())),
@@ -225,9 +224,21 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     _ => crate::excel_formula::cell_to_v_pub(&crate::wire::decode_cell(j)),
                 }
             }
-            let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
             crate::excel_functions::set_clock(parse(args, "clock")?);
-            let r = call_function(&name, &argv);
+            let r = if command == "engine_call" {
+                let name = parse::<String>(args, "name")?;
+                let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
+                call_function(&name, &argv)
+            } else {
+                // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
+                let src = parse::<String>(args, "src")?;
+                let table: crate::excel_formula::CallTable = parse(args, "table")?;
+                let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
+                match crate::excel_formula::parse_formula(&src) {
+                    None => V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")),
+                    Some(ast) => crate::eval::Eval { table: &table }.run(&ast, &std::rc::Rc::new(env)),
+                }
+            };
             crate::excel_functions::set_clock(None);
             if crate::excel_functions::take_bailed() {
                 take_thrown();
@@ -247,6 +258,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     V::Str(s) => json!({ "str": s.to_string() }),
                     V::Bool(b) => json!({ "bool": b }),
                     V::Cx(re, im) => json!({ "cx": [re.to_bits().to_string(), im.to_bits().to_string()] }),
+                    V::Lambda(_) => json!({ "lambda": true }),
                 }
             }
             Ok(out(&r))

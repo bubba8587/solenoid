@@ -8,7 +8,7 @@ import * as path from "node:path";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { isCx } from "../../src/graph/cxValue";
 import { resolveExcelFunction, FX_FUNCTION_NAMES, internalFunctionNames } from "../../src/graph/excelFunctions";
-import { compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
+import { compileEvaluator, extractVariables, rowRefNames, formulaCallTable } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import { applyVerb, joinFrames, appendFrames, bindColumns, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
 import type { FrameValue, FrameCell, FrameColType } from "../../src/graph/frame";
@@ -71,6 +71,7 @@ function engineAnswer(name: string, raw: unknown): unknown {
   if (o.thrown !== undefined) return failed(name);
   if (o.num !== undefined) return { num: isNanBits(o.num) ? "NaN" : o.num };
   if (o.list) return { list: o.list.map((x) => engineAnswer(name, x)) };
+  if ((o as { lambda?: boolean }).lambda) return { lambda: true };
   if (o.cx) return { cx: o.cx.map((b) => (isNanBits(b) ? "NaN" : b)) };
   if (o.err !== undefined) return { err: o.err, msg: wf(o.msg ?? "") };
   return o;
@@ -457,7 +458,20 @@ const expressions = frozen<ExprCase>("expressions", () => {
 });
 
 describe("formulas over values answer as frozen", () => {
-  it.todo(`${expressions.length} formulas, once the core evaluates over an environment (engine_eval)`);
+  it(`${expressions.length} formulas`, { timeout: 600_000 }, () => {
+    let ran = 0;
+    const bad: unknown[] = [];
+    for (const c of expressions) {
+      const raw = wasmInvokeSync<{ bail?: boolean } | null>("engine_eval", { src: c.src, env: Object.fromEntries(Object.entries(c.env).map(([k, v]) => [k, wire(v)])), table: formulaCallTable(c.src), clock: engineClock() });
+      if (raw && raw.bail) continue;
+      ran++;
+      const got = engineAnswer("", raw);
+      if (JSON.stringify(got) !== JSON.stringify(c.want)) bad.push({ src: c.src, env: c.env, got, want: c.want });
+    }
+    if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${ran} ran, ${bad.length} differ\n` + bad.map((b) => JSON.stringify(b)).join("\n"));
+    expect(bad.slice(0, 5)).toEqual([]);
+    expect(ran, "most formulas should run in the core").toBeGreaterThan(expressions.length / 2);
+  });
 });
 
 if (FREEZING) {
