@@ -22,6 +22,51 @@ pub fn civil_from_days(z: i64) -> (i64, u32, u32) {
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
+// ─── A JS `Date` read as UTC: time values in ms, None for an Invalid Date ───────
+
+pub const MS_PER_DAY: f64 = 86_400_000.0;
+
+/// `serialToJsDate(serial).getTime()`.
+pub fn serial_to_ms(serial: f64) -> Option<f64> {
+    time_clip(crate::jsnum::math_round((serial - 25569.0) * MS_PER_DAY))
+}
+
+/// ECMAScript TimeClip.
+pub fn time_clip(ms: f64) -> Option<f64> {
+    (ms.is_finite() && ms.abs() <= 8.64e15).then(|| ms.trunc() + 0.0)
+}
+
+/// `Date.UTC(y, m, d)`: month and day carry, as MakeDay has it.
+pub fn date_utc(y: f64, m: f64, d: f64) -> Option<f64> {
+    if !(y.is_finite() && m.is_finite() && d.is_finite()) {
+        return None;
+    }
+    let (y, m, d) = (y.trunc(), m.trunc(), d.trunc());
+    let ym = y + (m / 12.0).floor();
+    let mn = m.rem_euclid(12.0);
+    if ym.abs() > 400_000.0 || d.abs() > 1e9 {
+        return None;
+    }
+    let day = days_from_civil(ym as i64, mn as u32 + 1, 1) as f64 + d - 1.0;
+    time_clip(day * MS_PER_DAY)
+}
+
+pub fn parts_of_ms(ms: f64) -> UtcParts {
+    let ms = ms as i64;
+    let days = ms.div_euclid(86_400_000);
+    let in_day = ms.rem_euclid(86_400_000);
+    let (year, month, day) = civil_from_days(days);
+    UtcParts {
+        year,
+        month,
+        day,
+        hours: in_day / 3_600_000,
+        minutes: in_day / 60_000 % 60,
+        seconds: in_day / 1000 % 60,
+        weekday: (days + 4).rem_euclid(7) as usize,
+    }
+}
+
 /// Howard Hinnant's `days_from_civil`: days since 1970-01-01.
 pub fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
     let y = if m <= 2 { y - 1 } else { y };

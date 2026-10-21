@@ -122,12 +122,13 @@ pub fn truthy(v: &FrameCell) -> bool {
     }
 }
 
-/// `Math.round`: half rounds toward +∞.
+/// `Math.round`: half rounds toward +∞, and what rounds to zero from below is -0.
 pub fn math_round(x: f64) -> f64 {
     if !x.is_finite() || x == x.trunc() {
         return x;
     }
-    (x + 0.5).floor()
+    let r = (x + 0.5).floor();
+    if r == 0.0 && x < 0.0 { -0.0 } else { r }
 }
 
 /// `Math.trunc` as an index count: NaN and negatives count as none.

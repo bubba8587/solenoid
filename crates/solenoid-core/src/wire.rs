@@ -22,6 +22,7 @@ pub fn decode_cell(v: &Json) -> FrameCell {
                 return FrameCell::Num(match nf {
                     "inf" => f64::INFINITY,
                     "-inf" => f64::NEG_INFINITY,
+                    "-0" => -0.0,
                     _ => f64::NAN,
                 });
             }

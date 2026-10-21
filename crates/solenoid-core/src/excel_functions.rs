@@ -5,7 +5,7 @@
 
 use std::rc::Rc;
 
-use crate::date_serial::serial_to_utc_parts;
+use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, serial_to_utc_parts, MS_PER_DAY};
 use crate::error_value::{sol_error, SolError};
 use crate::jsnum::{is_js_space, js_trim, math_round, number_to_string, string_to_number};
 use crate::unit_value::to_precision;
@@ -80,6 +80,7 @@ const PORTED: &[&str] = &[
     "YEAR", "MONTH", "DAY",
     "SIN", "COS", "TAN", "ATAN", "SINH", "COSH", "TANH", "ASINH", "COT", "COTH", "ACOT", "ACOTH", "SEC", "SECH", "CSC",
     "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH",
+    "HOUR", "MINUTE", "SECOND", "EOMONTH", "WEEKDAY", "WEEKNUM", "ISOWEEKNUM", "DAYS", "TIME",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
 ];
 
@@ -715,8 +716,8 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             V::Num(match name {
                 "SIN" => sin(n),
                 "COS" => cos(n),
-                "TAN" => libm::tan(n),
-                "ATAN" => libm::atan(n),
+                "TAN" => crate::fdlibm::tan(n),
+                "ATAN" => crate::fdlibm::atan(n),
                 "SINH" => (exp(n) - exp(-n)) / 2.0,
                 "COSH" => (exp(n) + exp(-n)) / 2.0,
                 "TANH" => {
@@ -725,13 +726,13 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 }
                 "ASINH" => log(n + (n * n + 1.0).sqrt()),
                 "COT" if n == 0.0 => return div0,
-                "COT" => 1.0 / libm::tan(n),
+                "COT" => 1.0 / crate::fdlibm::tan(n),
                 "COTH" if n == 0.0 => return div0,
                 "COTH" => {
                     let e2 = exp(2.0 * n);
                     (e2 + 1.0) / (e2 - 1.0)
                 }
-                "ACOT" => libm::atan(1.0 / n),
+                "ACOT" => crate::fdlibm::atan(1.0 / n),
                 "ACOTH" => {
                     let r = 0.5 * log((n + 1.0) / (n - 1.0));
                     if r.is_nan() {
@@ -769,7 +770,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if x.is_nan() || y.is_nan() {
                 return value_err("ATAN2");
             }
-            V::Num(libm::atan2(y, x))
+            V::Num(crate::fdlibm::atan2(y, x))
         }
         "SQRTPI" | "ASIN" | "ACOS" | "ACOSH" | "ATANH" => {
             let x = to_num(arg(a, 0));
@@ -787,11 +788,77 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Num(match name {
                 "SQRTPI" => (x * std::f64::consts::PI).sqrt(),
-                "ASIN" => libm::asin(x),
-                "ACOS" => libm::acos(x),
-                "ACOSH" => libm::acosh(x),
-                _ => libm::atanh(x),
+                "ASIN" => crate::fdlibm::asin(x),
+                "ACOS" => crate::fdlibm::acos(x),
+                "ACOSH" => crate::fdlibm::acosh(x),
+                _ => crate::fdlibm::atanh(x),
             })
+        }
+        "HOUR" | "MINUTE" | "SECOND" => {
+            let n = to_num(arg(a, 0));
+            if n.is_nan() {
+                return value_err(name);
+            }
+            V::Num(serial_to_ms(n).map_or(f64::NAN, |ms| {
+                let p = parts_of_ms(ms);
+                (match name {
+                    "HOUR" => p.hours,
+                    "MINUTE" => p.minutes,
+                    _ => p.seconds,
+                }) as f64
+            }))
+        }
+        "EOMONTH" => {
+            let (n, m) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
+            if n.is_nan() || m.is_nan() {
+                return value_err("EOMONTH");
+            }
+            let eom = serial_to_ms(n).and_then(|ms| {
+                let p = parts_of_ms(ms);
+                date_utc(p.year as f64, f64::from(p.month - 1) + m.trunc() + 1.0, 0.0)
+            });
+            V::Num(eom.map_or(f64::NAN, |ms| math_round(ms / MS_PER_DAY + 25569.0)))
+        }
+        "WEEKDAY" | "WEEKNUM" | "ISOWEEKNUM" => {
+            let n = to_num(arg(a, 0));
+            if n.is_nan() {
+                return value_err(name);
+            }
+            let rt = opt_num(arg(a, 1), 1.0).floor();
+            let Some(ms) = serial_to_ms(n) else { return V::Num(f64::NAN) };
+            let p = parts_of_ms(ms);
+            let dow = p.weekday as f64;
+            V::Num(match name {
+                "WEEKDAY" if rt == 2.0 => (dow + 6.0) % 7.0 + 1.0,
+                "WEEKDAY" if rt == 3.0 => (dow + 6.0) % 7.0,
+                "WEEKDAY" => dow + 1.0,
+                "WEEKNUM" => match date_utc(p.year as f64, 0.0, 1.0) {
+                    None => f64::NAN,
+                    Some(jan1) => {
+                        let jan1_dow = parts_of_ms(jan1).weekday as f64;
+                        let start_off = if rt == 2.0 { (jan1_dow + 6.0) % 7.0 } else { jan1_dow };
+                        ((ms - jan1) / MS_PER_DAY).floor().add_week(start_off)
+                    }
+                },
+                _ => iso_week(ms),
+            })
+        }
+        "DAYS" => {
+            let (e, s) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
+            if e.is_nan() || s.is_nan() {
+                return value_err("DAYS");
+            }
+            V::Num(match (serial_to_ms(s), serial_to_ms(e)) {
+                (Some(sd), Some(ed)) => math_round((ed - sd) / MS_PER_DAY),
+                _ => f64::NAN,
+            })
+        }
+        "TIME" => {
+            let (h, m, s) = (to_num(arg(a, 0)), to_num(arg(a, 1)), to_num(arg(a, 2)));
+            if h.is_nan() || m.is_nan() || s.is_nan() {
+                return value_err("TIME");
+            }
+            V::Num(((h * 3600.0 + m * 60.0 + s) % 86400.0) / 86400.0)
         }
         "PI" => V::Num(std::f64::consts::PI),
         "EXACT" => {
@@ -956,6 +1023,39 @@ fn sum_like_fx(a: &[V]) -> V {
         }
     }
     V::Num(result)
+}
+
+trait AddWeek {
+    fn add_week(self, start_off: f64) -> f64;
+}
+
+impl AddWeek for f64 {
+    /// `Math.floor((dayOfYear + startOff) / 7) + 1`.
+    fn add_week(self, start_off: f64) -> f64 {
+        ((self + start_off) / 7.0).floor() + 1.0
+    }
+}
+
+/// dateOps.ts `isoWeek`.
+fn iso_week(ms: f64) -> f64 {
+    let p = parts_of_ms(ms);
+    let week_start = |year: f64| -> Option<f64> {
+        let jan4 = date_utc(year, 0.0, 4.0)?;
+        Some(jan4 - ((parts_of_ms(jan4).weekday as f64 + 6.0) % 7.0) * MS_PER_DAY)
+    };
+    let Some(start) = week_start(p.year as f64) else { return f64::NAN };
+    let week = ((ms - start) / (7.0 * MS_PER_DAY)).floor() + 1.0;
+    if week < 1.0 {
+        return date_utc(p.year as f64 - 1.0, 11.0, 28.0).map_or(f64::NAN, iso_week);
+    }
+    if week > 52.0 {
+        if let Some(next) = week_start(p.year as f64 + 1.0) {
+            if ms >= next {
+                return 1.0;
+            }
+        }
+    }
+    week
 }
 
 fn error_type_num(code: &str) -> Option<f64> {

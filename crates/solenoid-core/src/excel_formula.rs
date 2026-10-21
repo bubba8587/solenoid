@@ -543,6 +543,10 @@ fn cell_to_v(c: &FrameCell) -> V {
     }
 }
 
+pub fn cell_to_v_pub(c: &FrameCell) -> V {
+    cell_to_v(c)
+}
+
 fn guard(result: f64, inputs: &[V]) -> V {
     match guard_finite(result, &inputs.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect::<Vec<_>>()) {
         FrameCell::Num(n) => V::Num(n),

@@ -4,7 +4,7 @@
 //! the last place on some inputs. Sun Microsystems' notice: "Permission to use, copy, modify, and distribute this
 //! software is freely granted, provided that this notice is preserved."
 
-#![allow(clippy::excessive_precision, clippy::many_single_char_names, clippy::approx_constant)]
+#![allow(clippy::excessive_precision, clippy::many_single_char_names, clippy::approx_constant, clippy::eq_op, clippy::explicit_counter_loop)]
 
 fn hi(x: f64) -> i32 {
     (x.to_bits() >> 32) as i32
@@ -824,6 +824,414 @@ pub fn cos(x: f64) -> f64 {
         2 => -kernel_cos(y[0], y[1]),
         _ => kernel_sin(y[0], y[1], 1),
     }
+}
+
+
+// ─── tan, the inverse functions and log1p: V8's ieee754.cc ─────────────────────
+
+fn kernel_tan(x: f64, y: f64, iy: i32) -> f64 {
+    const T: [f64; 13] = [
+        3.33333333333334091986e-01, 1.33333333333201242699e-01, 5.39682539762260521377e-02, 2.18694882948595424599e-02,
+        8.86323982359930005737e-03, 3.59207910759131235356e-03, 1.45620945432529025516e-03, 5.88041240820264096874e-04,
+        2.46463134818469906812e-04, 7.81794442939557092300e-05, 7.14072491382608190305e-05, -1.85586374855275456654e-05,
+        2.59073051863633712884e-05,
+    ];
+    const PIO4: f64 = 7.85398163397448278999e-01;
+    const PIO4LO: f64 = 3.06161699786838301793e-17;
+    let (mut x, mut y) = (x, y);
+    let hx = hi(x);
+    let ix = hx & 0x7FFF_FFFF;
+    if ix < 0x3E30_0000 && x as i32 == 0 {
+        if ((ix as u32 | lo(x)) | (iy + 1) as u32) == 0 {
+            return 1.0 / x.abs();
+        }
+        if iy == 1 {
+            return x;
+        }
+        let w = x + y;
+        let z = with_lo(w, 0);
+        let v = y - (z - x);
+        let a = -1.0 / w;
+        let t = with_lo(a, 0);
+        let s = 1.0 + t * z;
+        return t + a * (s + t * v);
+    }
+    if ix >= 0x3FE5_9428 {
+        if hx < 0 {
+            x = -x;
+            y = -y;
+        }
+        let z = PIO4 - x;
+        let w = PIO4LO - y;
+        x = z + w;
+        y = 0.0;
+    }
+    let z = x * x;
+    let w = z * z;
+    let r = T[1] + w * (T[3] + w * (T[5] + w * (T[7] + w * (T[9] + w * T[11]))));
+    let v = z * (T[2] + w * (T[4] + w * (T[6] + w * (T[8] + w * (T[10] + w * T[12])))));
+    let s = z * x;
+    let mut r = y + z * (s * (r + v) + y);
+    r += T[0] * s;
+    let w = x + r;
+    if ix >= 0x3FE5_9428 {
+        let v = f64::from(iy);
+        return f64::from(1 - ((hx >> 30) & 2)) * (v - 2.0 * (x - (w * w / (w + v) - r)));
+    }
+    if iy == 1 {
+        return w;
+    }
+    let z = with_lo(w, 0);
+    let v = r - (z - x);
+    let a = -1.0 / w;
+    let t = with_lo(a, 0);
+    let s = 1.0 + t * z;
+    t + a * (s + t * v)
+}
+
+pub fn tan(x: f64) -> f64 {
+    let ix = hi(x) & 0x7FFF_FFFF;
+    if ix <= 0x3FE9_21FB {
+        return kernel_tan(x, 0.0, 1);
+    }
+    if ix >= 0x7FF0_0000 {
+        return f64::NAN;
+    }
+    let mut y = [0.0; 2];
+    let n = rem_pio2(x, &mut y);
+    kernel_tan(y[0], y[1], 1 - ((n & 1) << 1))
+}
+
+const PS: [f64; 6] = [
+    1.66666666666666657415e-01, -3.25565818622400915405e-01, 2.01212532134862925881e-01, -4.00555345006794114027e-02,
+    7.91534994289814532176e-04, 3.47933107596021167570e-05,
+];
+const QS: [f64; 4] = [-2.40339491173441421878e+00, 2.02094576023350569471e+00, -6.88283971605453293030e-01, 7.70381505559019352791e-02];
+const PIO2_HI: f64 = 1.57079632679489655800e+00;
+const PIO2_LO: f64 = 6.12323399573676603587e-17;
+
+fn asin_pq(z: f64) -> (f64, f64) {
+    let p = z * (PS[0] + z * (PS[1] + z * (PS[2] + z * (PS[3] + z * (PS[4] + z * PS[5])))));
+    let q = 1.0 + z * (QS[0] + z * (QS[1] + z * (QS[2] + z * QS[3])));
+    (p, q)
+}
+
+pub fn acos(x: f64) -> f64 {
+    const PI: f64 = 3.14159265358979311600e+00;
+    let hx = hi(x);
+    let ix = hx & 0x7FFF_FFFF;
+    if ix >= 0x3FF0_0000 {
+        if ((ix - 0x3FF0_0000) as u32 | lo(x)) == 0 {
+            return if hx > 0 { 0.0 } else { PI + 2.0 * PIO2_LO };
+        }
+        return f64::NAN;
+    }
+    if ix < 0x3FE0_0000 {
+        if ix <= 0x3C60_0000 {
+            return PIO2_HI + PIO2_LO;
+        }
+        let (p, q) = asin_pq(x * x);
+        let r = p / q;
+        return PIO2_HI - (x - (PIO2_LO - x * r));
+    }
+    if hx < 0 {
+        let z = (1.0 + x) * 0.5;
+        let (p, q) = asin_pq(z);
+        let s = z.sqrt();
+        let r = p / q;
+        let w = r * s - PIO2_LO;
+        return PI - 2.0 * (s + w);
+    }
+    let z = (1.0 - x) * 0.5;
+    let s = z.sqrt();
+    let df = with_lo(s, 0);
+    let c = (z - df * df) / (s + df);
+    let (p, q) = asin_pq(z);
+    let r = p / q;
+    let w = r * s + c;
+    2.0 * (df + w)
+}
+
+pub fn asin(x: f64) -> f64 {
+    const PIO4_HI: f64 = 7.85398163397448278999e-01;
+    let hx = hi(x);
+    let ix = hx & 0x7FFF_FFFF;
+    if ix >= 0x3FF0_0000 {
+        if ((ix - 0x3FF0_0000) as u32 | lo(x)) == 0 {
+            return x * PIO2_HI + x * PIO2_LO;
+        }
+        return f64::NAN;
+    }
+    if ix < 0x3FE0_0000 {
+        let mut t = 0.0;
+        if ix < 0x3E40_0000 {
+            if HUGE + x > 1.0 {
+                return x;
+            }
+        } else {
+            t = x * x;
+        }
+        let (p, q) = asin_pq(t);
+        let w = p / q;
+        return x + x * w;
+    }
+    let w = 1.0 - x.abs();
+    let t = w * 0.5;
+    let (p, q) = asin_pq(t);
+    let s = t.sqrt();
+    let t = if ix >= 0x3FEF_3333 {
+        let w = p / q;
+        PIO2_HI - (2.0 * (s + s * w) - PIO2_LO)
+    } else {
+        let w = with_lo(s, 0);
+        let c = (t - w * w) / (s + w);
+        let r = p / q;
+        let p = 2.0 * s * r - (PIO2_LO - 2.0 * c);
+        let q = PIO4_HI - 2.0 * w;
+        PIO4_HI - (p - q)
+    };
+    if hx > 0 { t } else { -t }
+}
+
+pub fn atan(x: f64) -> f64 {
+    const ATANHI: [f64; 4] = [4.63647609000806093515e-01, 7.85398163397448278999e-01, 9.82793723247329054082e-01, 1.57079632679489655800e+00];
+    const ATANLO: [f64; 4] = [2.26987774529616870924e-17, 3.06161699786838301793e-17, 1.39033110312309984516e-17, 6.12323399573676603587e-17];
+    const AT: [f64; 11] = [
+        3.33333333333329318027e-01, -1.99999999998764832476e-01, 1.42857142725034663711e-01, -1.11111104054623557880e-01,
+        9.09088713343650656196e-02, -7.69187620504482999495e-02, 6.66107313738753120669e-02, -5.83357013379057348645e-02,
+        4.97687799461593236017e-02, -3.65315727442169155270e-02, 1.62858201153657823623e-02,
+    ];
+    let mut x = x;
+    let hx = hi(x);
+    let ix = hx & 0x7FFF_FFFF;
+    if ix >= 0x4410_0000 {
+        if ix > 0x7FF0_0000 || (ix == 0x7FF0_0000 && lo(x) != 0) {
+            return x + x;
+        }
+        return if hx > 0 { ATANHI[3] + ATANLO[3] } else { -ATANHI[3] - ATANLO[3] };
+    }
+    let id: i32;
+    if ix < 0x3FDC_0000 {
+        if ix < 0x3E40_0000 && HUGE + x > 1.0 {
+            return x;
+        }
+        id = -1;
+    } else {
+        x = x.abs();
+        if ix < 0x3FF3_0000 {
+            if ix < 0x3FE6_0000 {
+                id = 0;
+                x = (2.0 * x - 1.0) / (2.0 + x);
+            } else {
+                id = 1;
+                x = (x - 1.0) / (x + 1.0);
+            }
+        } else if ix < 0x4003_8000 {
+            id = 2;
+            x = (x - 1.5) / (1.0 + 1.5 * x);
+        } else {
+            id = 3;
+            x = -1.0 / x;
+        }
+    }
+    let z = x * x;
+    let w = z * z;
+    let s1 = z * (AT[0] + w * (AT[2] + w * (AT[4] + w * (AT[6] + w * (AT[8] + w * AT[10])))));
+    let s2 = w * (AT[1] + w * (AT[3] + w * (AT[5] + w * (AT[7] + w * AT[9]))));
+    if id < 0 {
+        return x - x * (s1 + s2);
+    }
+    let id = id as usize;
+    let z = ATANHI[id] - ((x * (s1 + s2) - ATANLO[id]) - x);
+    if hx < 0 { -z } else { z }
+}
+
+pub fn atan2(y: f64, x: f64) -> f64 {
+    const PI_O_4: f64 = 7.8539816339744827900E-01;
+    const PI_O_2: f64 = 1.5707963267948965580E+00;
+    const PI: f64 = 3.1415926535897931160E+00;
+    const PI_LO: f64 = 1.2246467991473531772E-16;
+    if x.is_nan() || y.is_nan() {
+        return x + y;
+    }
+    let (hx, lx) = (hi(x), lo(x));
+    let (hy, ly) = (hi(y), lo(y));
+    let ix = hx & 0x7FFF_FFFF;
+    let iy = hy & 0x7FFF_FFFF;
+    if (hx.wrapping_sub(0x3FF0_0000) as u32 | lx) == 0 {
+        return atan(y);
+    }
+    let m = ((hy >> 31) & 1) | ((hx >> 30) & 2);
+    if (iy as u32 | ly) == 0 {
+        return match m {
+            0 | 1 => y,
+            2 => PI + TINY,
+            _ => -PI - TINY,
+        };
+    }
+    if (ix as u32 | lx) == 0 {
+        return if hy < 0 { -PI_O_2 - TINY } else { PI_O_2 + TINY };
+    }
+    if ix == 0x7FF0_0000 {
+        return if iy == 0x7FF0_0000 {
+            match m {
+                0 => PI_O_4 + TINY,
+                1 => -PI_O_4 - TINY,
+                2 => 3.0 * PI_O_4 + TINY,
+                _ => -3.0 * PI_O_4 - TINY,
+            }
+        } else {
+            match m {
+                0 => 0.0,
+                1 => -0.0,
+                2 => PI + TINY,
+                _ => -PI - TINY,
+            }
+        };
+    }
+    if iy == 0x7FF0_0000 {
+        return if hy < 0 { -PI_O_2 - TINY } else { PI_O_2 + TINY };
+    }
+    let k = (iy - ix) >> 20;
+    let mut m = m;
+    let z = if k > 60 {
+        m &= 1;
+        PI_O_2 + 0.5 * PI_LO
+    } else if hx < 0 && k < -60 {
+        0.0
+    } else {
+        atan((y / x).abs())
+    };
+    match m {
+        0 => z,
+        1 => -z,
+        2 => PI - (z - PI_LO),
+        _ => (z - PI_LO) - PI,
+    }
+}
+
+pub fn log1p(x: f64) -> f64 {
+    const LN2_HI1: f64 = 6.93147180369123816490e-01;
+    const LN2_LO1: f64 = 1.90821492927058770002e-10;
+    const TWO54: f64 = 1.80143985094819840000e+16;
+    const LP: [f64; 7] = [
+        6.666666666666735130e-01, 3.999999999940941908e-01, 2.857142874366239149e-01, 2.222219843214978396e-01,
+        1.818357216161805012e-01, 1.531383769920937332e-01, 1.479819860511658591e-01,
+    ];
+    let hx = hi(x);
+    let ax = hx & 0x7FFF_FFFF;
+    let mut k = 1;
+    let mut f = 0.0;
+    let mut hu = 0;
+    let mut c = 0.0;
+    if hx < 0x3FDA_827A {
+        if ax >= 0x3FF0_0000 {
+            return if x == -1.0 { f64::NEG_INFINITY } else { f64::NAN };
+        }
+        if ax < 0x3E20_0000 {
+            if TWO54 + x > 0.0 && ax < 0x3C90_0000 {
+                return x;
+            }
+            return x - x * x * 0.5;
+        }
+        if hx > 0 || hx <= 0xBFD2_BEC4_u32 as i32 {
+            k = 0;
+            f = x;
+            hu = 1;
+        }
+    }
+    if hx >= 0x7FF0_0000 {
+        return x + x;
+    }
+    if k != 0 {
+        let mut u;
+        if hx < 0x4340_0000 {
+            u = 1.0 + x;
+            hu = hi(u);
+            k = (hu >> 20) - 1023;
+            c = if k > 0 { 1.0 - (u - x) } else { x - (u - 1.0) };
+            c /= u;
+        } else {
+            u = x;
+            hu = hi(u);
+            k = (hu >> 20) - 1023;
+            c = 0.0;
+        }
+        hu &= 0x000F_FFFF;
+        if hu < 0x6A09E {
+            u = with_hi(u, hu | 0x3FF0_0000);
+        } else {
+            k += 1;
+            u = with_hi(u, hu | 0x3FE0_0000);
+            hu = (0x0010_0000 - hu) >> 2;
+        }
+        f = u - 1.0;
+    }
+    let hfsq = 0.5 * f * f;
+    let dk = f64::from(k);
+    if hu == 0 {
+        if f == 0.0 {
+            if k == 0 {
+                return 0.0;
+            }
+            c += dk * LN2_LO1;
+            return dk * LN2_HI1 + c;
+        }
+        let r = hfsq * (1.0 - 0.66666666666666666 * f);
+        if k == 0 {
+            return f - r;
+        }
+        return dk * LN2_HI1 - ((r - (dk * LN2_LO1 + c)) - f);
+    }
+    let s = f / (2.0 + f);
+    let z = s * s;
+    let r = z * (LP[0] + z * (LP[1] + z * (LP[2] + z * (LP[3] + z * (LP[4] + z * (LP[5] + z * LP[6]))))));
+    if k == 0 {
+        return f - (hfsq - s * (hfsq + r));
+    }
+    dk * LN2_HI1 - ((hfsq - (s * (hfsq + r) + (dk * LN2_LO1 + c))) - f)
+}
+
+pub fn acosh(x: f64) -> f64 {
+    const LN2: f64 = 6.93147180559945286227e-01;
+    let (hx, lx) = (hi(x), lo(x));
+    if hx < 0x3FF0_0000 {
+        return f64::NAN;
+    }
+    if hx >= 0x41B0_0000 {
+        return if hx >= 0x7FF0_0000 { x + x } else { log(x) + LN2 };
+    }
+    if ((hx - 0x3FF0_0000) as u32 | lx) == 0 {
+        return 0.0;
+    }
+    if hx > 0x4000_0000 {
+        let t = x * x;
+        return log(2.0 * x - 1.0 / (x + (t - 1.0).sqrt()));
+    }
+    let t = x - 1.0;
+    log1p(t + (2.0 * t + t * t).sqrt())
+}
+
+pub fn atanh(x: f64) -> f64 {
+    let (hx, lx) = (hi(x), lo(x));
+    let ix = hx & 0x7FFF_FFFF;
+    if (ix as u32 | ((lx | lx.wrapping_neg()) >> 31)) > 0x3FF0_0000 {
+        return f64::NAN;
+    }
+    if ix == 0x3FF0_0000 {
+        return if x > 0.0 { f64::INFINITY } else { f64::NEG_INFINITY };
+    }
+    if ix < 0x3E30_0000 && (HUGE + x) > 0.0 {
+        return x;
+    }
+    let x = with_hi(x, ix);
+    let t = if ix < 0x3FE0_0000 {
+        let t = x + x;
+        0.5 * log1p(t + t * x / (1.0 - x))
+    } else {
+        0.5 * log1p((x + x) / (1.0 - x))
+    };
+    if hx >= 0 { t } else { -t }
 }
 
 #[cfg(test)]

@@ -13,6 +13,7 @@ import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorVa
 import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef } from "../../src/graph/frameBackend";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { parseFormula, compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
+import { resolveExcelFunction } from "../../src/graph/excelFunctions";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 
@@ -299,12 +300,13 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "UPPER", "LOWER", "TRIM", "REPT", "SUBSTITUTE", "YEAR", "MONTH", "DAY", "TEXT", "VLOOKUP", "XLOOKUP", "SEQUENCE",
   "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
   "SIN", "COS", "TAN", "ATAN", "SINH", "COSH", "TANH", "ASINH", "COT", "COTH", "ACOT", "ACOTH", "SEC", "SECH", "CSC",
-  "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH"];
+  "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH",
+  "HOUR", "MINUTE", "SECOND", "EOMONTH", "WEEKDAY", "WEEKNUM", "ISOWEEKNUM", "DAYS", "TIME"];
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
 
 function formulaGen(rand: () => number) {
   const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
-  const lit = () => pick(["0", "1", "2", "-0", "3.5", "1e3", ".5", "10", "100", "1e308", "0.1", "7"]);
+  const lit = () => pick(["0", "1", "2", "-0", "3.5", "1e3", ".5", "10", "100", "1e308", "0.1", "7", "45000.75", "-700000", "3e9", "45291.999"]);
   const str = () => `"${pick(["", "abc", "ABC", "TRUE", "false", "5", " a  b ", "😀x", "é", "1,000", "x", "#N/A"])}"`;
   const ref = () => pick(["@a", "@b", "@c", "@d", "[@a]", "@[b]", "[@[c]]", "@nope", "a", "pi", "E", "Tau", "s1", "@s2", "[@s1]", "s3", "@name", "b", "c", "d", "[a]", "[b]", "[d]", "[nope]"]);
   const expr = (depth: number): string => {
@@ -401,19 +403,24 @@ describe("the Rust engine's fdlibm matches V8's Math bit for bit", () => {
     expect(bad).toEqual([]);
   });
 
-  it.each(["exp", "log", "log10", "pow", "sin", "cos"])("%s", (fn) => {
+  it.each(["exp", "log", "log10", "pow", "sin", "cos", "tan", "asin", "acos", "atan", "acosh", "atanh", "log1p", "atan2"])("%s", (fn) => {
     const rand = mulberry32(31337 + FUZZ_SEED);
     const xs: number[] = [], ys: number[] = [];
     for (let i = 0; i < FUZZ_RUNS * 10; i++) {
       const nice = rand() < 0.5;
-      const x = fn === "sin" || fn === "cos" ? (nice ? Math.round(rand() * 1e5) / 100 : (rand() - 0.5) * 10 ** Math.floor(rand() * 40 - 10))
+      const x = fn === "asin" || fn === "acos" || fn === "atanh" ? (nice ? Math.round(rand() * 200 - 100) / 100 : rand() * 2 - 1)
+        : fn === "acosh" ? 1 + (nice ? Math.round(rand() * 1e4) / 100 : 10 ** (rand() * 12 - 6))
+        : fn === "log1p" ? (nice ? Math.round(rand() * 1e4) / 100 - 0.99 : 10 ** (rand() * 20 - 10) - 0.5)
+        : fn === "sin" || fn === "cos" || fn === "tan" || fn === "atan" || fn === "atan2" ? (nice ? Math.round(rand() * 1e5) / 100 - 500 : (rand() - 0.5) * 10 ** Math.floor(rand() * 40 - 10))
         : fn === "exp" ? (nice ? Math.round(rand() * 1400 - 700) / 4 : rand() * 1400 - 700)
         : fn === "pow" ? (nice ? Math.round(rand() * 400) / 10 : rand() * 50)
         : (nice ? Math.round(rand() * 1e4) / 8 : Math.exp(rand() * 300 - 150));
-      xs.push(x);
-      ys.push(nice ? Math.round(rand() * 60 - 30) / 2 : rand() * 60 - 30);
+      // engine_math takes plain JSON numbers, which carry no -0.
+      xs.push(x + 0);
+      ys.push((nice ? Math.round(rand() * 60 - 30) / 2 : rand() * 60 - 30) + 0);
     }
-    const math = { exp: Math.exp, log: Math.log, log10: Math.log10, pow: Math.pow, sin: Math.sin, cos: Math.cos }[fn as "exp"] as (a: number, b?: number) => number;
+    const math = { exp: Math.exp, log: Math.log, log10: Math.log10, pow: Math.pow, sin: Math.sin, cos: Math.cos, tan: Math.tan,
+      asin: Math.asin, acos: Math.acos, atan: Math.atan, acosh: Math.acosh, atanh: Math.atanh, log1p: Math.log1p, atan2: Math.atan2 }[fn as "exp"] as (a: number, b?: number) => number;
     const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
     const got = wasmInvokeSync<string[]>("engine_math", { fn, xs, ys });
     const bad = xs.map((x, i) => [x, ys[i], math(x, ys[i]), got[i]] as const)
@@ -489,5 +496,41 @@ describe("a computed column over a frame in the engine matches the value path", 
       if (JSON.stringify(got) !== JSON.stringify(want)) expect({ i, src, got }).toEqual({ i, src, got: want });
     }
     expect(resident).toBeGreaterThan(0);
+  });
+});
+
+describe("each ported function body matches its JS one on random arguments", () => {
+  // The IFERROR family runs in the evaluator (applyErrorHandler), never through a registered body.
+  const PORTED = FNS.filter((n) => !["TEXT", "VLOOKUP", "XLOOKUP", "SEQUENCE", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"].includes(n));
+  const POOL: unknown[] = [undefined, null, 0, -0, 1, 2, -1, 0.5, -2.5, 3.75, 7, 10, 45000.25, 1e308, -1e-9, 1e21, 123456789.123,
+    NaN, Infinity, -Infinity, "", " ", "abc", "ABC", "5", " 12 ", "1e3", "0x10", "1,000", "TRUE", "false", "Infinity",
+    "😀ab", "é", "a b  c", true, false, solError("#N/A", "x"), solError("#DIV/0!", "y")];
+  const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
+  const norm = (r: unknown): unknown => {
+    if (r === undefined) return { undef: true };
+    if (r === null) return null;
+    if (r instanceof Error) return { fx: (/#[A-Z0-9/?!.]+/.exec(r.message) ?? [""])[0] };
+    if (isSolError(r)) return { err: r.code, msg: r.message };
+    if (typeof r === "number") return { num: Number.isNaN(r) ? "NaN" : bits(r) };
+    if (typeof r === "string") return { str: (r as string & { toWellFormed(): string }).toWellFormed() };
+    if (typeof r === "boolean") return { bool: r };
+    return { other: String(r) };
+  };
+  it.each(PORTED)("%s", (name) => {
+    const rand = mulberry32(77 + FUZZ_SEED + name.length * 1000 + name.charCodeAt(0));
+    const fn = resolveExcelFunction(name)!;
+    for (let i = 0; i < FUZZ_RUNS / 3; i++) {
+      const args = Array.from({ length: Math.floor(rand() * 5) }, () => POOL[Math.floor(rand() * POOL.length)]);
+      let want: unknown;
+      try { want = norm(fn(...args)); } catch (e) { want = { thrown: (e as Error).message }; }
+      const wire = (a: unknown) => (a === undefined ? { __undef: 1 }
+        : typeof a === "number" && !Number.isFinite(a) ? { __nf: Number.isNaN(a) ? "nan" : a > 0 ? "inf" : "-inf" }
+        : Object.is(a, -0) ? { __nf: "-0" }
+        : isSolError(a) ? { __err: a.code, msg: a.message } : a);
+      const raw = wasmInvokeSync<{ num?: string }>("engine_call", { name, args: args.map(wire) });
+      const nanBits = (b: string) => (BigInt(b) & 0x7ff0000000000000n) === 0x7ff0000000000000n && (BigInt(b) & 0xfffffffffffffn) !== 0n;
+      const got = raw && raw.num && nanBits(raw.num) ? { num: "NaN" } : raw;
+      if (JSON.stringify(got) !== JSON.stringify(want)) expect({ name, args, got }).toEqual({ name, args, got: want });
+    }
   });
 });

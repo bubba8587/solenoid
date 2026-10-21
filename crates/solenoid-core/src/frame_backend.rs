@@ -166,6 +166,14 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     "prec15" => crate::unit_value::to_precision(x, 15),
                     "sin" => crate::fdlibm::sin(x),
                     "cos" => crate::fdlibm::cos(x),
+                    "tan" => crate::fdlibm::tan(x),
+                    "asin" => crate::fdlibm::asin(x),
+                    "acos" => crate::fdlibm::acos(x),
+                    "atan" => crate::fdlibm::atan(x),
+                    "acosh" => crate::fdlibm::acosh(x),
+                    "atanh" => crate::fdlibm::atanh(x),
+                    "log1p" => crate::fdlibm::log1p(x),
+                    "atan2" => crate::fdlibm::atan2(x, ys.get(i).copied().unwrap_or(f64::NAN)),
                     _ => crate::excel_functions::js_pow(x, ys.get(i).copied().unwrap_or(f64::NAN)),
                 };
                 json!(r.to_bits().to_string())
@@ -188,6 +196,28 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 columns.push(FrameColumn { name: p.as_, ty: FrameColType::from_tag(&p.ty), values: c.values.clone() });
             }
             Ok(json!(register(FrameValue { columns })))
+        }
+        "engine_call" => {
+            use crate::excel_functions::{call_function, take_thrown, V};
+            let name = parse::<String>(args, "name")?;
+            let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?
+                .iter()
+                .map(|j| if j.get("__undef").is_some() { V::Undef } else { crate::excel_formula::cell_to_v_pub(&crate::wire::decode_cell(j)) })
+                .collect();
+            let r = call_function(&name, &argv);
+            if let Some(e) = take_thrown() {
+                return Ok(json!({ "thrown": e.message }));
+            }
+            Ok(match r {
+                V::Undef => json!({ "undef": true }),
+                V::Fx(code) => json!({ "fx": code }),
+                V::List(_) => json!({ "list": true }),
+                V::Num(n) => json!({ "num": n.to_bits().to_string() }),
+                V::Err(e) => json!({ "err": e.code, "msg": e.message }),
+                V::Null => Json::Null,
+                V::Str(s) => json!({ "str": s.to_string() }),
+                V::Bool(b) => json!({ "bool": b }),
+            })
         }
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),
