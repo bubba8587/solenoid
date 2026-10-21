@@ -1987,6 +1987,30 @@ fn arg(a: &[V], i: usize) -> &V {
 
 /// `dispatch(name, ...args)`: the function body, its arguments as the evaluator hands them over.
 pub fn call_function(name: &str, a: &[V]) -> V {
+    // A range body ported for flat arguments reads a list or a table among them as its items, as the TS's does. A
+    // value nested past a table is read differently by each TS body, which no ported one follows yet.
+    if a.iter().any(|v| matches!(v, V::List(_))) && !reads_lists(name) && crate::eval::traits(name).is_some_and(|t| t.kind == "range") {
+        let mut flat = Vec::with_capacity(a.len());
+        for v in a {
+            match v {
+                V::List(items) => {
+                    for x in items.iter() {
+                        match x {
+                            V::List(row) => {
+                                if row.iter().any(|y| matches!(y, V::List(_))) {
+                                    return bail();
+                                }
+                                flat.extend(row.iter().cloned());
+                            }
+                            other => flat.push(other.clone()),
+                        }
+                    }
+                }
+                other => flat.push(other.clone()),
+            }
+        }
+        return call_function(name, &flat);
+    }
     match name {
         "FILTER" | "UNIQUE" | "SORT" | "SORTBY" | "TAKE" | "DROP" => crate::shapers::call(name, a),
         "IF" => {
