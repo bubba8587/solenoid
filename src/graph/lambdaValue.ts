@@ -6,6 +6,8 @@ export interface LambdaValue {
   fn: (...args: unknown[]) => unknown;
   expr: string;
   captured?: string[];
+  /** The captures' values, beside `captured`, so the Rust core can run the body itself ([[C130]] rustCore). */
+  capturedValues?: unknown[];
   /** A host calls an eta lambda with its meaningful arity only, never trailing row, col or pad arguments. */
   eta?: true;
   descriptions?: Record<string, string>;

@@ -327,8 +327,16 @@ export class FrameInputNode extends ClassicPreset.Node {
           ? readingsRefusal(bareLambdaCall(lam), frame, {}, new Map([["λ", lam]]))
           : readingsRefusal(c.expr!, frame, {}, lamByName);
         if (refused) { fill(i, refused); continue; }
-        const onEngine = !lam && used.length === 0
-          ? computeColumnOnEngine(frame, c.expr!, rowCount(), { sideValue: (p) => solError("#REF!", `No column "${p}"`) }) : null;
+        // A wired λ runs in the engine too: its body crosses as text with its captures ([[C130]] rustCore).
+        const onEngine = lam
+          ? computeColumnOnEngine(frame, "", rowCount(), {
+            bare: lam,
+            sideValue: (p, kind) => solError("#REF!", kind === "var" ? `No column "${p}": a table λ's side values ride its captures` : `No column "${p}"`),
+          })
+          : computeColumnOnEngine(frame, c.expr!, rowCount(), {
+            sideValue: (p) => solError("#REF!", `No column "${p}"`),
+            lambdas: Object.fromEntries(usedLams.map((l, k) => [used[k], l])),
+          });
         const r = onEngine ?? computeColumnCells(
           frame,
           lam
@@ -338,7 +346,7 @@ export class FrameInputNode extends ClassicPreset.Node {
             sideValue: (p, kind) => (!lam && lamByName.has(p)
               ? lamByName.get(p)
               : solError("#REF!", lam && kind === "var"
-                ? `No column "${p}" — a table λ's side values ride its captures`
+                ? `No column "${p}": a table λ's side values ride its captures`
                 : `No column "${p}"`)),
           },
         );

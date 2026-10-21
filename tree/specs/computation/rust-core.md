@@ -81,14 +81,16 @@ columns to `engine_pivot_layout`.
 | Readings only chrono-node does (a criterion like `">=3-Apr-2026"`, `DATEVALUE("3 Apr 2026")`) | Bail: the row stops and the whole column runs on the TS (`bail()`) | explicit cases |
 | A whole column in an argument that takes one value (`LARGE(x, x)` lifts per item) | Not ported: `formulaCallTable` lowers those positions (`scalar`) and the support check sends them to the TS | |
 | Operators and calls over whole columns (`mapCells`, `broadcastCall`): `SUM((amount > 0) * amount)`, `SUM(IF(x > 0, x, 0))`, `COUNT(IFERROR(1 / x, ""))`, `WORKDAY(@start, 5, holidays)` | Ported where the list feeds a range function (and a holiday list anywhere). A whole column is a one-column matrix in the TS; a function Solenoid doesn't know answers `#SHAPE!` there, so `formulaCallTable` lowers `mapsColumns` | explicit cases plus the fuzzer |
-| List answers (spills), matrices, LAMBDA, complex numbers, units in formulas | Not ported: runs on the TS | |
+| Wired LAMBDA columns: a bare λ column (params bound to same-named columns) and λ calls inside a formula (`λ1(@x, 2)`), captures riding as side values | Ported: a λ is lowered as params, body and captured values (`lowerLambdas`); a call's arguments must be single values, so a λ handed a whole column runs on the TS | the wired-LAMBDA fuzzer: random params and bodies, bare and called |
+| Units in a computed column | Outside the evaluator: the column's unit and the reading refusal (`readingsRefusal`) sit around the call, so a unit-carrying column runs on the engine | |
+| List answers (spills), matrices, complex numbers, applying a λ over a list (MAP, BYROW) | Not ported: runs on the TS | |
 | Expression nodes, the compute pass, node `data()` | Not started | |
 
 ## Fallback ([[D98]] wholeColumnFallback)
 
 `computeColumnOnEngine` answers null, and the TypeScript computes the column, in two ways:
 
-- **Before running:** the support check (`supported` in `excel_formula.rs`) refuses an unported function, a whole column anywhere a list can't go (a lifted argument, a lookup's spill, a list of INDEX positions), a LAMBDA call or an apply.
+- **Before running:** the support check (`supported` in `excel_formula.rs`) refuses an unported function, a whole column anywhere a list can't go (a lifted argument, a lookup's spill, a list of INDEX positions), a λ handed a whole column or called from inside another λ's body, or an apply.
 - **While running:** a body that meets a reading only the TypeScript makes calls `bail()` (a date only chrono-node parses, a loop past a million steps, text a numeric body would add as text); the row stops and `formula_column` answers `Unsupported`.
 
 ## Where it runs

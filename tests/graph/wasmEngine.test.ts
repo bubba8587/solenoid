@@ -12,6 +12,8 @@ import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "../../src
 import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
 import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef } from "../../src/graph/frameBackend";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
+import { LambdaNode } from "../../src/graph/nodes/lambda";
+import { isLambdaValue } from "../../src/graph/lambdaValue";
 import { parseFormula, compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { resolveExcelFunction } from "../../src/graph/excelFunctions";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
@@ -450,6 +452,60 @@ describe("the Rust engine's fdlibm matches V8's Math bit for bit", () => {
     const bad = xs.map((x, i) => [x, ys[i], math(x, ys[i]), got[i]] as const)
       .filter(([, , want, g]) => !(Number.isNaN(want) ? (BigInt(g) & 0x7ff0000000000000n) === 0x7ff0000000000000n : bits(want) === g));
     expect(bad.slice(0, 3)).toEqual([]);
+  });
+});
+
+describe("wired LAMBDA columns: the Rust evaluator matches the TS one", () => {
+  const well = (v: unknown) => (typeof v === "string" ? (v as string & { toWellFormed(): string }).toWellFormed() : v);
+  it(`${FUZZ_RUNS} λ columns, bare and called`, { timeout: 600_000 }, () => {
+    const rand = mulberry32(8080 + FUZZ_SEED);
+    const g = gen(rand);
+    const expr = formulaGen(rand);
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+    let ran = 0;
+    for (let i = 0; i < FUZZ_RUNS; i++) {
+      const rows = g.int(0, 6);
+      const cell = (type: FrameColType): FrameCell => {
+        const r = rand();
+        if (r < 0.1) return null;
+        if (r < 0.15) return solError("#N/A", "fuzz");
+        if (type === "number") return Math.round(rand() * 400 - 200) / 8;
+        if (type === "string") return pick(["", "abc", "12", "TRUE", "é"]);
+        if (type === "logical") return rand() < 0.5;
+        return 40000 + Math.floor(rand() * 9000);
+      };
+      const f: FrameValue = {
+        __frame: true,
+        columns: (["a:number", "b:string", "c:logical", "d:date"] as const).map((sp) => {
+          const [name, type] = sp.split(":") as [string, FrameColType];
+          return { name, type, values: Array.from({ length: rows }, () => cell(type)) };
+        }),
+      };
+      const params = pick(["x", "x, y", "a", "a, b", "", "x, a"]);
+      const body = rand() < 0.5 ? pick(["x * 2 + @a", "IF(x > 0, x, y)", "x & \"-\" & @b", "SUM(a) / x", "a + x", "LEN(x) + s1", "ROUND(x, 1) + y", "@c", "x"]) : expr(2);
+      const node = new LambdaNode({ params, expr: body });
+      const lam = node.data({ s1: [cell("number")], s2: [cell("string")], s3: [5], nope: [true] }).result;
+      if (!isLambdaValue(lam)) continue;
+      const sideValue = (p: string, kind: "var" | "row") => (p === "λ1" ? lam : solError("#REF!", kind === "var" ? `No side ${p}` : `No row side ${p}`));
+      let engine: { cells: FrameCell[]; sideVars: string[] } | null;
+      let js: unknown;
+      if (rand() < 0.4) {
+        engine = computeColumnOnEngine(f, "", rows, { bare: lam, sideValue });
+        js = computeColumnCells(f, { kind: "lambda", lam }, { sideValue });
+      } else {
+        const outer = pick(["λ1(@a)", "λ1(@a, 2)", "IF(@c, λ1(@a, @b), 0)", "SUM(a) + λ1(1, 2)", "λ1()", "λ1(@d, @a) & \"x\"", "IFERROR(λ1(@a, 1), -1)"]);
+        engine = computeColumnOnEngine(f, outer, rows, { sideValue, lambdas: { λ1: lam } });
+        const vars = [...extractVariables(outer), ...(extractVariables(outer).includes("λ1") ? [] : ["λ1"])];
+        js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(outer)!, vars }, { sideValue, rowRefs: rowRefNames(outer) });
+      }
+      if (engine === null) continue;
+      ran++;
+      const r = js as { cells: FrameCell[]; sideVars: string[] };
+      const want = isSolError(js) ? js : [view({ __frame: true, columns: [{ name: "out", type: "number", values: r.cells.map(well) as FrameCell[] }] }), r.sideVars];
+      const got = [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
+      if (JSON.stringify(got) !== JSON.stringify(want)) expect({ i, params, body, input: view(f), got }).toEqual({ i, params, body, input: view(f), got: want });
+    }
+    expect(ran, "the generator should reach the Rust evaluator often").toBeGreaterThan(FUZZ_RUNS / 4);
   });
 });
 

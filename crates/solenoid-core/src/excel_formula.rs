@@ -496,8 +496,42 @@ fn lowered(v: &Json) -> V {
 
 /// A whole column (a bare column name or `[name]`) is supported only as a direct argument of a range function
 /// whose prep this port carries, `list_ok`; anywhere else it would broadcast, which runs on the TS.
-fn supported(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHashMap<String, V>, table: &CallTable) -> bool {
-    supported_at(n, columns, sides, table, false)
+fn supported(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHashMap<String, V>, table: &CallTable, lambdas: &Lambdas) -> bool {
+    supported_at(n, &Cx { columns, sides, table, lambdas, env: None }, false)
+}
+
+/// What the support check reads: the frame's columns, the side values, the call table, the wired LAMBDAs, and the
+/// LAMBDA whose body is being checked, if any.
+struct Cx<'c, 'a> {
+    columns: &'c FxHashMap<&'a str, &'a FrameColumn>,
+    sides: &'c FxHashMap<String, V>,
+    table: &'c CallTable,
+    lambdas: &'c Lambdas,
+    env: Option<&'c Lambda>,
+}
+
+/// A wired LAMBDA lowered from the TS: `compilePositional(expr, [...params, ...captured])`. A captured name that is
+/// a column of the table reads that whole column, as a column outranks a capture.
+pub struct Lambda {
+    pub params: Vec<String>,
+    pub body: Ast,
+    pub captured: Vec<(String, V)>,
+}
+
+pub type Lambdas = FxHashMap<String, Lambda>;
+
+impl Lambda {
+    fn binds(&self, name: &str) -> bool {
+        self.params.iter().any(|p| p == name) || self.captured.iter().any(|(c, _)| c == name)
+    }
+
+    /// A captured name that reads a whole column.
+    fn captured_column<'a>(&self, name: &str, columns: &FxHashMap<&str, &'a FrameColumn>) -> Option<&'a FrameColumn> {
+        if self.params.iter().any(|p| p == name) {
+            return None;
+        }
+        self.captured.iter().any(|(c, _)| c == name).then(|| columns.get(name).copied()).flatten()
+    }
 }
 
 fn whole_column<'a>(n: &Ast, columns: &FxHashMap<&str, &'a FrameColumn>, sides: &FxHashMap<String, V>) -> Option<&'a FrameColumn> {
@@ -508,18 +542,37 @@ fn whole_column<'a>(n: &Ast, columns: &FxHashMap<&str, &'a FrameColumn>, sides: 
     }
 }
 
-fn supported_at(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHashMap<String, V>, table: &CallTable, list_ok: bool) -> bool {
-    if whole_column(n, columns, sides).is_some() {
+fn supported_at(n: &Ast, cx: &Cx, list_ok: bool) -> bool {
+    let (columns, table) = (cx.columns, cx.table);
+    // Inside a LAMBDA body a bare name is only a parameter or a capture (`compilePositional`'s env).
+    let whole = match (cx.env, n) {
+        (Some(lam), Ast::Name(name)) => constant_value(name).is_none() && lam.captured_column(name, columns).is_some(),
+        (Some(_), Ast::WholeCol(name)) => columns.contains_key(name.as_str()),
+        (Some(_), _) => false,
+        (None, _) => whole_column(n, columns, cx.sides).is_some(),
+    };
+    if whole {
         return list_ok;
     }
     match n {
         Ast::Num(..) | Ast::Str(_) | Ast::Bool(_) | Ast::Blank => true,
-        Ast::Name(name) => constant_value(name).is_some() || sides.contains_key(name),
-        Ast::AtCol(name) => columns.contains_key(name.as_str()) || sides.contains_key(name),
+        Ast::Name(name) => match cx.env {
+            Some(lam) => constant_value(name).is_some() || lam.binds(name),
+            None => constant_value(name).is_some() || cx.sides.contains_key(name),
+        },
+        Ast::AtCol(name) => columns.contains_key(name.as_str()) || cx.env.is_some_and(|l| l.binds(name)) || cx.sides.contains_key(name),
         Ast::WholeCol(_) | Ast::Apply { .. } => false,
         // An operator maps over a list cell by cell (`mapCells`): where a list may go, its operands may be lists too.
-        Ast::Unary { arg, .. } | Ast::Percent(arg) => supported_at(arg, columns, sides, table, list_ok),
-        Ast::Bin { l, r, .. } => supported_at(l, columns, sides, table, list_ok) && supported_at(r, columns, sides, table, list_ok),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => supported_at(arg, cx, list_ok),
+        Ast::Bin { l, r, .. } => supported_at(l, cx, list_ok) && supported_at(r, cx, list_ok),
+        // A wired LAMBDA: its arguments one value each, its body in its own scope; a LAMBDA inside a body reads only
+        // that body's env, which carries no LAMBDAs here.
+        Ast::Call { name, args } if cx.lambdas.contains_key(name.as_str()) => {
+            let lam = &cx.lambdas[name.as_str()];
+            cx.env.is_none()
+                && args.iter().all(|a| supported_at(a, cx, false))
+                && supported_at(&lam.body, &Cx { env: Some(lam), ..*cx }, false)
+        }
         Ast::Call { name, args } => {
             let up = name.to_uppercase();
             let roles_ok = table.get(&up).is_some_and(|t| {
@@ -544,7 +597,7 @@ fn supported_at(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHash
                 _ => lists && !lifts(i),
             };
             // A list of positions picks many (`indexMany`), which stays on the TS.
-            is_ported(&up) && roles_ok && args.iter().enumerate().all(|(i, a)| supported_at(a, columns, sides, table, list_at(i) && !picks(i)))
+            is_ported(&up) && roles_ok && args.iter().enumerate().all(|(i, a)| supported_at(a, cx, list_at(i) && !picks(i)))
         }
     }
 }
@@ -562,6 +615,9 @@ struct Row<'a> {
     /// The side values a name that isn't a column reads: one scalar for every row.
     sides: &'a FxHashMap<String, V>,
     table: &'a CallTable,
+    lambdas: &'a Lambdas,
+    /// The env of the LAMBDA body being evaluated: its parameters and captures.
+    scope: std::cell::RefCell<Vec<Rc<FxHashMap<String, V>>>>,
     cursor: usize,
 }
 
@@ -765,19 +821,37 @@ fn map_cells(argv: &[V], cell: impl Fn(&[V]) -> V) -> V {
     V::List(Rc::new(out))
 }
 
-fn reads_row(n: &Ast) -> bool {
+/// A wired LAMBDA's body may read the row, so a call to one reads it.
+fn reads_row_in(n: &Ast, lambdas: &Lambdas) -> bool {
     match n {
         Ast::AtCol(_) => true,
-        Ast::Call { args, .. } | Ast::Apply { args, .. } => args.iter().any(reads_row),
-        Ast::Unary { arg, .. } | Ast::Percent(arg) => reads_row(arg),
-        Ast::Bin { l, r, .. } => reads_row(l) || reads_row(r),
+        Ast::Call { name, .. } if lambdas.contains_key(name.as_str()) => true,
+        Ast::Call { args, .. } | Ast::Apply { args, .. } => args.iter().any(|a| reads_row_in(a, lambdas)),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => reads_row_in(arg, lambdas),
+        Ast::Bin { l, r, .. } => reads_row_in(l, lambdas) || reads_row_in(r, lambdas),
         _ => false,
     }
 }
 
 impl Row<'_> {
     fn eval(&self, n: &Ast) -> V {
-        if let Some(c) = whole_column(n, self.columns, self.sides) {
+        let env = self.scope.borrow().last().cloned();
+        if let Some(env) = &env {
+            // `compilePositional`: a name is the env's, and `@x` falls back to it when x isn't a column.
+            match n {
+                Ast::Name(name) => return constant_value(name).map_or_else(|| env.get(name).cloned().unwrap_or(V::Undef), V::Num),
+                Ast::AtCol(name) => {
+                    return match self.columns.get(name.as_str()) {
+                        Some(c) => cell_to_v(c.cell_at(self.cursor)),
+                        None => env.get(name).or_else(|| self.sides.get(name)).cloned().unwrap_or(V::Undef),
+                    }
+                }
+                Ast::WholeCol(name) => {
+                    return self.lists.get(name.as_str()).cloned().map_or(V::Undef, V::List);
+                }
+                _ => {}
+            }
+        } else if let Some(c) = whole_column(n, self.columns, self.sides) {
             return V::List(self.lists.get(c.name.as_str()).cloned().unwrap_or_default());
         }
         match n {
@@ -829,8 +903,20 @@ impl Row<'_> {
                 }
                 apply_op(op, &l, &r)
             }
+            Ast::Call { name, args } if env.is_none() && self.lambdas.contains_key(name.as_str()) => {
+                let argv: Vec<V> = args.iter().map(|a| self.eval(a)).collect();
+                if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
+                    return e.clone();
+                }
+                let lam = &self.lambdas[name.as_str()];
+                if !lam.params.is_empty() && argv.len() != lam.params.len() {
+                    let n = lam.params.len();
+                    return V::err(sol_error("#VALUE!", format!("{name} takes {n} argument{}, not {}", if n == 1 { "" } else { "s" }, argv.len())));
+                }
+                self.call_lambda(lam, argv)
+            }
             Ast::Call { name, args } => {
-                if self.row_calls.contains(&(n as *const Ast)) {
+                if env.is_some() || self.row_calls.contains(&(n as *const Ast)) {
                     return self.call(name, args);
                 }
                 let key = n as *const Ast;
@@ -844,6 +930,30 @@ impl Row<'_> {
                 self.memo.borrow_mut().insert(key, v.clone());
                 v
             }
+        }
+    }
+
+    /// `lam.fn(...argv)`: the body over its parameters and captures, its Formula.js error read as Solenoid's
+    /// (`compileEvaluator`'s `normalizeFxResult`).
+    fn call_lambda(&self, lam: &Lambda, mut argv: Vec<V>) -> V {
+        argv.resize(lam.params.len().max(argv.len()), V::Undef);
+        let mut env: FxHashMap<String, V> = FxHashMap::default();
+        for (p, v) in lam.params.iter().zip(argv) {
+            env.insert(p.clone(), v);
+        }
+        for (c, v) in &lam.captured {
+            let read = match lam.captured_column(c, self.columns) {
+                Some(col) => self.lists.get(col.name.as_str()).cloned().map_or(V::Undef, V::List),
+                None => v.clone(),
+            };
+            env.insert(c.clone(), read);
+        }
+        self.scope.borrow_mut().push(Rc::new(env));
+        let v = self.eval(&lam.body);
+        self.scope.borrow_mut().pop();
+        match v {
+            V::Fx(code) => V::err(crate::excel_functions::fx_error_to_sol(code)),
+            other => other,
         }
     }
 
@@ -1015,49 +1125,78 @@ fn tag_computed_cell(v: V) -> FrameCell {
     }
 }
 
-fn survey<'a>(
-    n: &Ast,
-    columns: &FxHashMap<&str, &'a FrameColumn>,
-    sides: &FxHashMap<String, V>,
-    wholes: &mut Vec<&'a FrameColumn>,
-    row_calls: &mut FxHashSet<*const Ast>,
-) {
-    if let Some(c) = whole_column(n, columns, sides) {
-        if !wholes.iter().any(|w| std::ptr::eq(*w, c)) {
-            wholes.push(c);
+struct Survey<'s, 'a> {
+    columns: &'s FxHashMap<&'s str, &'a FrameColumn>,
+    sides: &'s FxHashMap<String, V>,
+    lambdas: &'s Lambdas,
+    wholes: Vec<&'a FrameColumn>,
+    row_calls: FxHashSet<*const Ast>,
+}
+
+impl<'a> Survey<'_, 'a> {
+    fn whole(&mut self, c: &'a FrameColumn) {
+        if !self.wholes.iter().any(|w| std::ptr::eq(*w, c)) {
+            self.wholes.push(c);
         }
-        return;
     }
-    match n {
-        Ast::Call { args, .. } | Ast::Apply { args, .. } => {
-            if matches!(n, Ast::Call { .. }) && reads_row(n) {
-                row_calls.insert(n as *const Ast);
-            }
-            if let Ast::Apply { func, .. } = n {
-                survey(func, columns, sides, wholes, row_calls);
-            }
-            for a in args {
-                survey(a, columns, sides, wholes, row_calls);
-            }
+
+    /// The whole columns the formula reads and the calls that read the row; `env` is the LAMBDA whose body this is.
+    fn walk(&mut self, n: &Ast, env: Option<&Lambda>) {
+        let whole = match (env, n) {
+            (Some(lam), Ast::Name(name)) => lam.captured_column(name, self.columns),
+            (Some(_), Ast::WholeCol(name)) => self.columns.get(name.as_str()).copied(),
+            (Some(_), _) => None,
+            (None, _) => whole_column(n, self.columns, self.sides),
+        };
+        if let Some(c) = whole {
+            self.whole(c);
+            return;
         }
-        Ast::Unary { arg, .. } | Ast::Percent(arg) => survey(arg, columns, sides, wholes, row_calls),
-        Ast::Bin { l, r, .. } => {
-            survey(l, columns, sides, wholes, row_calls);
-            survey(r, columns, sides, wholes, row_calls);
+        match n {
+            Ast::Call { name, args } if env.is_none() && self.lambdas.contains_key(name.as_str()) => {
+                let lam = &self.lambdas[name.as_str()];
+                for (c, _) in &lam.captured {
+                    if let Some(col) = lam.captured_column(c, self.columns) {
+                        self.whole(col);
+                    }
+                }
+                self.walk(&lam.body, Some(lam));
+                for a in args {
+                    self.walk(a, None);
+                }
+            }
+            Ast::Call { args, .. } | Ast::Apply { args, .. } => {
+                if matches!(n, Ast::Call { .. }) && reads_row_in(n, self.lambdas) {
+                    self.row_calls.insert(n as *const Ast);
+                }
+                if let Ast::Apply { func, .. } = n {
+                    self.walk(func, env);
+                }
+                for a in args {
+                    self.walk(a, env);
+                }
+            }
+            Ast::Unary { arg, .. } | Ast::Percent(arg) => self.walk(arg, env),
+            Ast::Bin { l, r, .. } => {
+                self.walk(l, env);
+                self.walk(r, env);
+            }
+            _ => {}
         }
-        _ => {}
     }
 }
 
-/// The tree with every call's name uppercased once, not per row.
-fn upper_calls(n: Ast) -> Ast {
-    let all = |args: Vec<Ast>| args.into_iter().map(upper_calls).collect();
+/// The tree with every call's name uppercased once, not per row; a wired LAMBDA keeps its name, which the env
+/// matches exactly.
+fn upper_calls(n: Ast, lambdas: &FxHashSet<String>) -> Ast {
+    let all = |args: Vec<Ast>| args.into_iter().map(|a| upper_calls(a, lambdas)).collect();
     match n {
+        Ast::Call { name, args } if lambdas.contains(&name) => Ast::Call { name, args: all(args) },
         Ast::Call { name, args } => Ast::Call { name: name.to_uppercase(), args: all(args) },
-        Ast::Apply { func, args } => Ast::Apply { func: Box::new(upper_calls(*func)), args: all(args) },
-        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::new(upper_calls(*arg)) },
-        Ast::Percent(a) => Ast::Percent(Box::new(upper_calls(*a))),
-        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::new(upper_calls(*l)), r: Box::new(upper_calls(*r)) },
+        Ast::Apply { func, args } => Ast::Apply { func: Box::new(upper_calls(*func, lambdas)), args: all(args) },
+        Ast::Unary { op, arg } => Ast::Unary { op, arg: Box::new(upper_calls(*arg, lambdas)) },
+        Ast::Percent(a) => Ast::Percent(Box::new(upper_calls(*a, lambdas))),
+        Ast::Bin { op, l, r } => Ast::Bin { op, l: Box::new(upper_calls(*l, lambdas)), r: Box::new(upper_calls(*r, lambdas)) },
         other => other,
     }
 }
@@ -1067,26 +1206,120 @@ pub enum ColumnOutcome {
     Cells(Vec<FrameCell>),
 }
 
-/// A computed column's cells, `computeColumnCells` with an `expr` spec whose every name is a `@column` of `f`.
-pub fn formula_column(f: &FrameValue, expr: &str, table: &CallTable, sides: &HashMap<String, FrameCell>, rows: usize) -> Result<ColumnOutcome, SolError> {
-    let Some(ast) = parse_formula(expr) else { return Ok(ColumnOutcome::Unsupported) };
+/// A wired LAMBDA as the TS lowers it: its parameters, body text and captured values.
+#[derive(Deserialize)]
+pub struct LambdaWire {
+    pub params: Vec<String>,
+    pub expr: String,
+    #[serde(default)]
+    pub captured: Vec<CapturedWire>,
+}
+
+#[derive(Deserialize)]
+pub struct CapturedWire {
+    pub name: String,
+    #[serde(default)]
+    pub value: Json,
+}
+
+/// A bare LAMBDA column's parameter: a column of the table, read cell by cell, or a side value.
+#[derive(Deserialize)]
+pub struct BareParam {
+    #[serde(default)]
+    pub column: Option<String>,
+    #[serde(default)]
+    pub value: Json,
+}
+
+/// What a computed column computes: a formula, or a bare wired LAMBDA called with its parameters' cells.
+pub enum ColumnSpec<'a> {
+    Expr(&'a str),
+    Bare { lambda: &'a str, params: &'a [BareParam] },
+}
+
+/// A computed column's cells: `computeColumnCells` with an `expr` spec, or a `lambda` spec when the column is a bare
+/// wired LAMBDA.
+pub fn formula_column(
+    f: &FrameValue,
+    spec: ColumnSpec,
+    table: &CallTable,
+    sides: &HashMap<String, FrameCell>,
+    lambdas: &HashMap<String, LambdaWire>,
+    rows: usize,
+) -> Result<ColumnOutcome, SolError> {
     let columns: FxHashMap<&str, &FrameColumn> = f.columns.iter().map(|c| (c.name.as_str(), c)).collect();
     let sides: FxHashMap<String, V> = sides.iter().map(|(k, v)| (k.clone(), cell_to_v(v))).collect();
-    if !supported(&ast, &columns, &sides, table) {
+    let names: FxHashSet<String> = lambdas.keys().cloned().collect();
+    let mut lams: Lambdas = FxHashMap::default();
+    for (name, w) in lambdas {
+        let Some(body) = parse_formula(&w.expr) else { return Ok(ColumnOutcome::Unsupported) };
+        let captured = w.captured.iter().map(|c| (c.name.clone(), cell_to_v(&crate::wire::decode_cell(&c.value)))).collect();
+        lams.insert(name.clone(), Lambda { params: w.params.clone(), body, captured });
+    }
+    // The bare column calls its LAMBDA through a call node of its own, so one evaluator serves both.
+    let (expr, bare) = match spec {
+        ColumnSpec::Expr(e) => (e.to_string(), None),
+        ColumnSpec::Bare { lambda, params } => (String::new(), Some((lambda, params))),
+    };
+    let ast = match bare {
+        Some((lambda, params)) => Ast::Call { name: lambda.to_string(), args: params.iter().map(|_| Ast::Blank).collect() },
+        None => match parse_formula(&expr) {
+            Some(a) => a,
+            None => return Ok(ColumnOutcome::Unsupported),
+        },
+    };
+    if let Some((lambda, params)) = bare {
+        let Some(lam) = lams.get(lambda) else { return Ok(ColumnOutcome::Unsupported) };
+        let ok = params.iter().all(|p| p.column.as_deref().is_none_or(|c| columns.contains_key(c)))
+            && supported_at(&lam.body, &Cx { columns: &columns, sides: &sides, table, lambdas: &lams, env: Some(lam) }, false);
+        if !ok {
+            return Ok(ColumnOutcome::Unsupported);
+        }
+    } else if !supported(&ast, &columns, &sides, table, &lams) {
         return Ok(ColumnOutcome::Unsupported);
     }
-    let ast = upper_calls(ast);
+    let ast = upper_calls(ast, &names);
+    for lam in lams.values_mut() {
+        lam.body = upper_calls(std::mem::replace(&mut lam.body, Ast::Blank), &FxHashSet::default());
+    }
     // Once, not per row: the whole columns the formula reads, and the calls that read an `@` cell.
-    let mut wholes: Vec<&FrameColumn> = Vec::new();
-    let mut row_calls: FxHashSet<*const Ast> = FxHashSet::default();
-    survey(&ast, &columns, &sides, &mut wholes, &mut row_calls);
+    let mut survey = Survey { columns: &columns, sides: &sides, lambdas: &lams, wholes: Vec::new(), row_calls: FxHashSet::default() };
+    survey.walk(&ast, None);
+    let (wholes, row_calls) = (survey.wholes, survey.row_calls);
     let lists = wholes.iter().map(|c| (c.name.as_str(), Rc::new(c.values.iter().map(cell_to_v).collect::<Vec<_>>()))).collect();
-    let mut row = Row { lists, memo: Default::default(), row_calls, columns: &columns, sides: &sides, table, cursor: 0 };
+    let mut row = Row {
+        lists,
+        memo: Default::default(),
+        row_calls,
+        columns: &columns,
+        sides: &sides,
+        table,
+        lambdas: &lams,
+        scope: Default::default(),
+        cursor: 0,
+    };
     let mut cells = Vec::with_capacity(rows);
     crate::excel_functions::take_bailed();
     for i in 0..rows {
         row.cursor = i;
-        let v = row.eval(&ast);
+        let v = match bare {
+            // `runColumn`'s lambda spec: a parameter's error cell answers the row before the body runs.
+            Some((lambda, params)) => {
+                let argv: Vec<V> = params
+                    .iter()
+                    .map(|p| match &p.column {
+                        Some(c) => cell_to_v(columns[c.as_str()].cell_at(i)),
+                        None => cell_to_v(&crate::wire::decode_cell(&p.value)),
+                    })
+                    .collect();
+                let err = params.iter().zip(&argv).find(|(p, v)| p.column.is_some() && v.is_sol_error()).map(|(_, v)| v.clone());
+                match err {
+                    Some(e) => e,
+                    None => row.call_lambda(&lams[lambda], argv),
+                }
+            }
+            None => row.eval(&ast),
+        };
         if crate::excel_functions::take_bailed() {
             crate::excel_functions::take_thrown();
             return Ok(ColumnOutcome::Unsupported);
