@@ -164,7 +164,7 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
     // XSTACK: the node's op as a first argument; anything but v/h is #VALUE!.
     expect(ev('XSTACK("h", a, b)', { a, b })).toEqual(ev("HSTACK(a, b)", { a, b }));
     expect(ev('XSTACK("V", a, b)', { a, b })).toEqual(ev("VSTACK(a, b)", { a, b }));
-    expect(isSolError(ev('XSTACK("x", a, b)', { a, b }))).toBe(true);
+    expect(ev('XSTACK("x", a, b)', { a, b })).toMatchObject({ code: "#VALUE!", message: 'XSTACK axis must be "v" or "h"' });
     // A bare list is one ROW on both surfaces.
     expect(ev("VSTACK(u, u)", { u: [1, 2, 3] })).toEqual(new StackNode({ op: "vstack" }).data({ t0: [[1, 2, 3]], t1: [[1, 2, 3]] }).result);
     // Ragged inputs pad with #N/A (shape construction, [[C48]] appendLadder) — identical to the node.

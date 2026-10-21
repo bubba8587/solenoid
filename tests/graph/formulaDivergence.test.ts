@@ -90,6 +90,17 @@ describe("BESSELJ, I, K and Y past an order of a million answer #DOMAIN! (FX rec
     const fx = FX as unknown as Record<string, (...a: number[]) => number>;
     expect(call("BESSELJ", 1.9, 2)).toBe(fx.BESSELJ(1.9, 2));
   });
+  it("an infinite or hugely negative order answers #DOMAIN! too (bessel.js flips its sign and loops)", () => {
+    const t = performance.now();
+    for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) {
+      for (const n of [-Infinity, Infinity, -1e12, "-1e12"]) {
+        expect(call(name, 1, n)).toMatchObject({ code: "#DOMAIN!", message: `${name} takes an order between -1,000,000 and 1,000,000` });
+      }
+      // Text reads as every number text does, so "Infinity" is not a number ([[C117]] usNumberText); Formula.js would read it as one.
+      expect(call(name, 1, "-Infinity")).toMatchObject({ code: "#VALUE!", message: `${name} needs a number` });
+    }
+    expect(performance.now() - t).toBeLessThan(500);
+  });
   it("FX still recurs once per order (tripwire)", () => {
     const fx = FX as unknown as Record<string, (...a: number[]) => number>;
     const t = performance.now();
