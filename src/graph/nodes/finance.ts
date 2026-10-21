@@ -3,6 +3,7 @@ import { ClassicPreset } from "rete";
 import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, readRole, BASIS_DOC, readAsRole } from "./shared";
 import { setting, argRole } from "../inputRoles";
 import type { FrameValue } from "../frame";
+import { frameFnOnCore } from "../frameBackend";
 import type { Shape } from "../frameShape";
 import type { SolError } from "../errorValue";
 import { guardFinite } from "../valueKinds";
@@ -1092,17 +1093,28 @@ export class AmortizationNode extends ClassicPreset.Node {
     const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
     const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
     if (rate === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { frame: null }; }
-    const rows = amortizationSchedule(rate, nper, pv, fv, this.paymentTiming === "beg" ? 1 : 0);
-    const frame: FrameValue | null = rows.length === 0 ? null : { __frame: true, columns: [
-      { name: "Period",    type: "number", values: rows.map((r) => r.period) },
-      { name: "Payment",   type: "number", values: rows.map((r) => r.payment) },
-      { name: "Interest",  type: "number", values: rows.map((r) => r.interest) },
-      { name: "Principal", type: "number", values: rows.map((r) => r.principal) },
-      { name: "Balance",   type: "number", values: rows.map((r) => r.balance) },
-    ] };
+    const frame = amortizationOnCore(rate, nper, pv, fv, this.paymentTiming === "beg" ? 1 : 0) ?? amortizationFrame(rate, nper, pv, fv, this.paymentTiming === "beg" ? 1 : 0);
     this.cachedResult = frame;
     return { frame };
   }
+}
+
+/** The schedule on the core ([[D99]] rustIsSpec): undefined where it leaves it to the TS, null for no rows. */
+function amortizationOnCore(rate: number, nper: number, pv: number, fv: number, type: 0 | 1): FrameValue | null | undefined {
+  const r = frameFnOnCore("amortizationSchedule", [], [rate, nper, pv, fv, type]);
+  if (!r) return undefined;
+  return "frame" in r ? r.frame : null;
+}
+
+export function amortizationFrame(rate: number, nper: number, pv: number, fv: number, type: 0 | 1): FrameValue | null {
+  const rows = amortizationSchedule(rate, nper, pv, fv, type);
+  return rows.length === 0 ? null : { __frame: true, columns: [
+    { name: "Period",    type: "number", values: rows.map((r) => r.period) },
+    { name: "Payment",   type: "number", values: rows.map((r) => r.payment) },
+    { name: "Interest",  type: "number", values: rows.map((r) => r.interest) },
+    { name: "Principal", type: "number", values: rows.map((r) => r.principal) },
+    { name: "Balance",   type: "number", values: rows.map((r) => r.balance) },
+  ] };
 }
 
 // ─── RETURNS (return-series quant one-liners) ────────────────────────────────

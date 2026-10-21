@@ -4290,7 +4290,7 @@ fn fx_round(number: &V, num_digits: &V) -> V {
 
 /// `x.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: fd, maximumFractionDigits: fd })`:
 /// ICU rounds the shortest round-trip digits half away from zero and groups by threes.
-fn intl_usd(x: f64, fd: usize) -> String {
+pub(crate) fn intl_usd(x: f64, fd: usize) -> String {
     if x.is_nan() {
         return "$NaN".into();
     }

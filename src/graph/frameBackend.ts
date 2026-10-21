@@ -520,10 +520,10 @@ export function frameFnOnCore(name: string, frames: readonly FrameValue[], args:
   const handles = frames.map((f) => wasmSourceBin(encodeBinary(f)));
   let out: string | undefined;
   try {
-    const r = wasmInvokeSync<{ bail?: boolean; handle?: string; value?: unknown; error?: { code: string; message: string } }>(
+    const r = wasmInvokeSync<{ bail?: boolean; handle?: string; value?: unknown; error?: { code: string; message: string; ref?: number } }>(
       "engine_frame_fn", { name, handles, args: wire });
     if (r.bail) return null;
-    if (r.error) throw solError(r.error.code as SolErrorCode, r.error.message);
+    if (r.error) throw errorFromCore(r.error.code, r.error.message, r.error.ref);
     const v = r.value === undefined ? undefined : readReply(r.value);
     if (v === null) return null;
     if (r.handle) {

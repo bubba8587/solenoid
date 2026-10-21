@@ -6,7 +6,9 @@
 use std::collections::HashSet;
 use std::rc::Rc;
 
+use crate::decision::{self, Normalize};
 use crate::error_value::{sol_error, SolError};
+use crate::planners;
 use crate::excel_functions::V;
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{cell_key, unmatchable_key, CellKey};
@@ -18,7 +20,7 @@ pub enum FrameOut {
     Value(V),
     /// A frame and a value beside it (Reconcile's summary, Add Column's placement).
     FrameAnd(FrameValue, V),
-    /// What the TS throws.
+    /// What the TS throws: the caller throws it too.
     Error(SolError),
     /// A reading the core doesn't make yet: the TS computes it.
     Bail,
@@ -26,13 +28,25 @@ pub enum FrameOut {
 
 type Res<T> = Result<T, FrameOut>;
 
+impl From<Result<FrameValue, SolError>> for FrameOut {
+    fn from(r: Result<FrameValue, SolError>) -> FrameOut {
+        r.map_or_else(FrameOut::Error, FrameOut::Frame)
+    }
+}
+
+fn frame_or_null(f: Option<FrameValue>) -> FrameOut {
+    f.map_or(FrameOut::Value(V::Null), FrameOut::Frame)
+}
+
 pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
-    let out = match (name, frames.first()) {
+    let second = frames.get(1).copied();
+    let normalize = || str_arg(args, 0).ok().and_then(|t| Normalize::from_tag(&t));
+    let out = (|| match (name, frames.first()) {
         ("promoteHeaders", Some(f)) => Ok(FrameOut::Frame(promote_headers(f))),
         ("demoteHeaders", Some(f)) => Ok(FrameOut::Frame(demote_headers(f))),
         ("describeFrame", Some(f)) => Ok(FrameOut::Frame(describe_frame(f))),
         ("correlationMatrix", Some(f)) => str_arg(args, 0).map(|m| FrameOut::Frame(correlation_matrix(f, &m))),
-        ("reconcileFrames", Some(l)) => match frames.get(1) {
+        ("reconcileFrames", Some(l)) => match second {
             Some(r) => reconcile_frames(l, r, args),
             None => Err(FrameOut::Bail),
         },
@@ -50,8 +64,47 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
         ("buildFrame", _) => build_frame(args, false),
         ("buildFrameTyped", _) => build_frame(args, true),
         ("frameFromLists", _) => frame_from_lists(args),
+        // args: rate, nper, pv, fv, type (0 or 1).
+        ("amortizationSchedule", _) => (0..5).map(|i| num_arg(args, i)).collect::<Res<Vec<f64>>>().and_then(|n| match n[..] {
+            [rate, nper, pv, fv, ty] if ty == 0.0 || ty == 1.0 => Ok(frame_or_null(planners::amortization_frame(rate, nper, pv, fv, ty))),
+            _ => Err(FrameOut::Bail),
+        }),
+        // frames: options, then the Weights if wired; args: normalize, breakdown.
+        ("decisionMatrix", Some(f)) => match (normalize(), args.get(1)) {
+            (Some(n), Some(V::Bool(b))) => Ok(decision::decision_matrix(f, second, n, *b).into()),
+            _ => Err(FrameOut::Bail),
+        },
+        ("flipPoints", Some(f)) => normalize().map(|n| decision::flip_points(f, second, n).into()).ok_or(FrameOut::Bail),
+        // args: mode, amount.
+        ("allocateFrame", Some(f)) => {
+            let (mode, amount) = (str_arg(args, 0)?, num_arg(args, 1)?);
+            decision::allocate_frame(f, &mode, amount).map(FrameOut::from).ok_or(FrameOut::Bail)
+        }
+        // args: extra, order, view, the start month's serial (or null).
+        ("payoffFrame", Some(f)) => {
+            let (extra, order, view) = (num_arg(args, 0)?, str_arg(args, 1)?, str_arg(args, 2)?);
+            let start = match args.get(3) {
+                Some(V::Null) => None,
+                Some(V::Num(s)) => Some(*s),
+                _ => return Err(FrameOut::Bail),
+            };
+            Ok(planners::payoff_frame(f, extra, &order, &view, start).into())
+        }
+        ("settleFrame", Some(f)) => str_arg(args, 0).map(|split| planners::settle_frame(f, &split).into()),
+        ("kmeans", Some(f)) => match num_arg(args, 0)? {
+            k if !k.is_nan() => Ok(frame_or_null(planners::kmeans_frame(f, k))),
+            _ => Err(FrameOut::Bail),
+        },
+        ("pca", Some(f)) => match args.first() {
+            Some(V::Bool(s)) => Ok(frame_or_null(planners::pca_frame(f, *s))),
+            _ => Err(FrameOut::Bail),
+        },
+        ("logisticFit", Some(f)) => match planners::logistic_frame(f, &str_arg(args, 0)?) {
+            Some(out) => Ok(frame_or_null(out)),
+            None => Err(FrameOut::Bail),
+        },
         _ => Err(FrameOut::Bail),
-    };
+    })();
     out.unwrap_or_else(|o| o)
 }
 

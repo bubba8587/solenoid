@@ -1725,10 +1725,8 @@ function frameRows(f: FrameValue, rows: number[]): FrameValue {
   return { ...f, columns: f.columns.map((c) => ({ ...c, values: rows.map((i) => c.values[i] ?? null) })) };
 }
 
-export function allocateFrame(
-  f: FrameValue, mode: AllocateMode, amount: number,
-): FrameValue {
-  const rows = frameRowCount(f);
+/** The Allocator's weight, min and max columns: by name, else the number columns in order. */
+export function allocateColumns(f: FrameValue): { weightCol?: FrameColumn; minCol?: FrameColumn; maxCol?: FrameColumn } {
   const byName = (...names: string[]): FrameColumn | undefined => {
     const set = new Set(names.map((n) => n.toLowerCase()));
     return f.columns.find((c) => set.has(c.name.trim().toLowerCase()));
@@ -1738,6 +1736,14 @@ export function allocateFrame(
   const priceNums = nums.filter((c) => c !== weightCol);
   const minCol = byName("min") ?? priceNums[0];
   const maxCol = byName("max") ?? priceNums.filter((c) => c !== minCol)[0];
+  return { weightCol, minCol, maxCol };
+}
+
+export function allocateFrame(
+  f: FrameValue, mode: AllocateMode, amount: number,
+): FrameValue {
+  const rows = frameRowCount(f);
+  const { weightCol, minCol, maxCol } = allocateColumns(f);
   if (!minCol || !maxCol) {
     throw solError("#VALUE!", "Allocator needs a min and a max number column");
   }

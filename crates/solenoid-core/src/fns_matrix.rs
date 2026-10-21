@@ -413,7 +413,7 @@ fn solve_linear(a: &NumMat, b: &[f64]) -> Option<Vec<f64>> {
     Some(m.iter().enumerate().map(|(i, row)| row[n] / row[i]).collect())
 }
 
-fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
+pub(crate) fn mat_eigh(m: &NumMat, tol: f64) -> Option<(Vec<f64>, NumMat)> {
     let n = m.len();
     if n == 0 || mat_cols(m) != n {
         return None;

@@ -32,7 +32,7 @@ import {
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, choiceLadder,
+  decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, allocateColumns, choiceLadder,
   promoteHeaders, demoteHeaders,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames, reconcileSummaryFromList,
@@ -1588,10 +1588,11 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
       return { frame: this.cachedResult };
     }
     const f = isFrameValue(raw) ? raw : widenToFrame(raw);
-    this.cachedResult = runVerb(() => {
-      const { weights, normOverrides, bounds } = resolveDecisionWeights(inputs.weights?.[0] ?? null, decisionCriteria(f));
+    const w = inputs.weights?.[0] ?? null;
+    this.cachedResult = runVerb(() => frameOnCore("decisionMatrix", w ? [f, w] : [f], [this.normalize, this.detail === "breakdown"]) ?? (() => {
+      const { weights, normOverrides, bounds } = resolveDecisionWeights(w, decisionCriteria(f));
       return decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", normOverrides, bounds);
-    });
+    })());
     return { frame: this.cachedResult };
   }
 }
@@ -1660,7 +1661,9 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     const scores = inputs.scores?.[0] ?? null;
     const scenarios = inputs.scenarios?.[0] ?? null;
     if (!scores || (!scenarios && this.mode === "scenarios")) { this.cachedResult = null; return { cube: null }; }
-    this.cachedResult = runVerb(() => (this.mode === "flips" ? flipPoints(scores, scenarios, this.normalize) : decisionSensitivity(scores, scenarios!, this.normalize)));
+    this.cachedResult = runVerb(() => (this.mode === "flips"
+      ? frameOnCore("flipPoints", scenarios ? [scores, scenarios] : [scores], [this.normalize]) ?? flipPoints(scores, scenarios, this.normalize)
+      : decisionSensitivity(scores, scenarios!, this.normalize)));
     return { cube: this.cachedResult };
   }
 }
@@ -1786,9 +1789,18 @@ export class AllocatorNode extends ClassicPreset.Node {
     const f = inputs.categories?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
     const amount = readInput(inputs.amount, this.literals.amount ?? 0) ?? 0;
-    this.cachedResult = runVerb(() => allocateFrame(f, this.mode, amount));
+    this.cachedResult = runVerb(() => allocateOnCore(f, this.mode, amount) ?? allocateFrame(f, this.mode, amount));
     return { frame: this.cachedResult };
   }
+}
+
+/** The allocation on the core; Allocation carries the min column's unit and format. */
+function allocateOnCore(f: FrameValue, mode: AllocateMode, amount: number): FrameValue | null {
+  const out = frameOnCore("allocateFrame", [f], [mode, amount]);
+  const { minCol } = allocateColumns(f);
+  if (!out || !minCol || out.columns.length !== 3) return out;
+  const [names, alloc, share] = out.columns;
+  return { __frame: true, columns: [names, { ...alloc, ...(minCol.unit ? { unit: minCol.unit } : {}), ...(minCol.format ? { format: minCol.format } : {}) }, share] };
 }
 
 // ─── PAYOFF PLANNER ─────────────────────────────────────────────────────────
@@ -1849,7 +1861,7 @@ export class PayoffPlannerNode extends ClassicPreset.Node {
     if (!f) { this.cachedResult = null; return { frame: null }; }
     const extra = readInput(inputs.extra, this.literals.extra ?? 0) ?? 0;
     const start = inputs.start ? inputs.start[0] : localMonthStartSerial();
-    this.cachedResult = runVerb(() => payoffFrame(f, extra, this.order, this.mode, start));
+    this.cachedResult = runVerb(() => payoffOnCore(f, extra, this.order, this.mode, start) ?? payoffFrame(f, extra, this.order, this.mode, start));
     return { frame: this.cachedResult };
   }
 }
@@ -1867,13 +1879,29 @@ function addMonthsSerial(start: number, months: number): number {
   return Math.floor(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay)) / 86400000 + 25569);
 }
 
-export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, view: PayoffView, start: number | null): FrameValue {
+function payoffColumns(f: FrameValue): { balCol?: FrameColumn; aprCol?: FrameColumn; minCol?: FrameColumn } {
   const byName = (...names: string[]) => { const set = new Set(names); return f.columns.find((c) => set.has(c.name.trim().toLowerCase())); };
-  const nameCol = f.columns.find((c) => c.type === "string");
   const nums = f.columns.filter((c) => c.type === "number");
   const balCol = byName("balance", "owed", "principal") ?? nums[0];
   const aprCol = byName("apr", "rate", "interest") ?? nums.filter((c) => c !== balCol)[0];
   const minCol = byName("min", "minimum", "min payment", "payment") ?? nums.filter((c) => c !== balCol && c !== aprCol)[0];
+  return { balCol, aprCol, minCol };
+}
+
+const moneyOf = (c: FrameColumn | undefined) => ({ ...(c?.unit ? { unit: c.unit } : {}), ...(c?.format ? { format: c.format } : {}) });
+
+/** The plan on the core; its money columns carry Balance's unit and format. */
+function payoffOnCore(f: FrameValue, extra: number, order: PayoffOrder, view: PayoffView, start: number | null): FrameValue | null {
+  const out = frameOnCore("payoffFrame", [f], [extra, order, view, start]);
+  if (!out) return null;
+  const money = moneyOf(payoffColumns(f).balCol);
+  const isMoney = (k: number) => (view === "schedule" ? k > 0 : k === 2);
+  return { __frame: true, columns: out.columns.map((c, k) => (isMoney(k) ? { ...c, ...money } : c)) };
+}
+
+export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, view: PayoffView, start: number | null): FrameValue {
+  const nameCol = f.columns.find((c) => c.type === "string");
+  const { balCol, aprCol, minCol } = payoffColumns(f);
   if (!balCol || !aprCol || !minCol) throw solError("#VALUE!", "Payoff Planner needs Balance, APR and Min payment number columns");
   const rows = frameRowCount(f);
   const num = (col: FrameColumn, i: number, what: string): number => {
@@ -1986,7 +2014,7 @@ export class SettleNode extends ClassicPreset.Node {
     }
     const f = isFrameValue(raw) ? raw : isCubeValue(raw) ? cubeToScalarFrame(raw) : null;
     if (!f) return none();
-    return emit(runVerb(() => settleFrame(f, this.split)));
+    return emit(runVerb(() => settleOnCore(f, this.split) ?? settleFrame(f, this.split)));
   }
 }
 
@@ -2065,12 +2093,25 @@ function ledgerMoney(cells: CubeCell[]): ColumnUnit | undefined {
   return undefined;
 }
 
-export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: FrameValue; net: FrameValue } {
+function settleColumns(f: FrameValue): { shareCol?: FrameColumn; paidCol?: FrameColumn } {
   const byName = (...names: string[]) => { const set = new Set(names); return f.columns.find((c) => set.has(c.name.trim().toLowerCase())); };
-  const nameCol = f.columns.find((c) => c.type === "string");
   const nums = f.columns.filter((c) => c.type === "number");
   const shareCol = byName("share", "weight", "shares");
-  const paidCol = byName("paid", "amount", "spent") ?? nums.find((c) => c !== shareCol);
+  return { shareCol, paidCol: byName("paid", "amount", "spent") ?? nums.find((c) => c !== shareCol) };
+}
+
+/** Totals settled on the core: it answers the transfers and the net table side by side; the amounts carry Paid's money. */
+function settleOnCore(f: FrameValue, split: SettleSplit): { transfers: FrameValue; net: FrameValue } | null {
+  const out = frameOnCore("settleFrame", [f], [split]);
+  if (!out || out.columns.length !== 8) return null;
+  const money = moneyOf(settleColumns(f).paidCol);
+  const cols = out.columns.map((c, k) => (k === 2 || k > 3 ? { ...c, ...money } : c));
+  return { transfers: { __frame: true, columns: cols.slice(0, 3) }, net: { __frame: true, columns: cols.slice(3) } };
+}
+
+export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: FrameValue; net: FrameValue } {
+  const nameCol = f.columns.find((c) => c.type === "string");
+  const { shareCol, paidCol } = settleColumns(f);
   if (!paidCol) throw solError("#VALUE!", "Group Cost Settle needs a Paid number column");
   const rows = frameRowCount(f);
   const people: { name: string; paid: number; share: number | null }[] = [];
@@ -3076,7 +3117,7 @@ export class CorrMatrixNode extends ClassicPreset.Node {
 // ─── K-MEANS / PCA / LOGISTIC ─────────────────────────────────────────────────
 import { kmeans, pca, logisticFit } from "./mlOps";
 
-function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: number[]; total: number } {
+export function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: number[]; total: number } {
   const cols = f.columns.filter((c) => c.type === "number");
   const total = frameRowCount(f);
   const rows: number[][] = [], kept: number[] = [];
@@ -3085,6 +3126,30 @@ function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: 
     if (row.every((v) => typeof v === "number" && Number.isFinite(v))) { rows.push(row as number[]); kept.push(r); }
   }
   return { names: cols.map((c) => c.name), rows, kept, total };
+}
+
+type KMeansOutputs = { labels: (number | null)[]; centers: FrameValue };
+
+export function kmeansOutputs({ names, rows, kept, total }: ReturnType<typeof numericRows>, k: number): KMeansOutputs | null {
+  const r = kmeans(rows, k);
+  if (!r) return null;
+  const labels: (number | null)[] = new Array(total).fill(null);
+  kept.forEach((row, i) => { labels[row] = r.labels[i]; });
+  const counts = r.centers.map((_, c) => r.labels.filter((l) => l === c + 1).length);
+  return { labels, centers: { __frame: true, columns: [
+    { name: "Cluster", type: "number", values: r.centers.map((_, c) => c + 1) },
+    ...names.map((nm, j) => ({ name: nm, type: "number" as const, values: r.centers.map((c) => c[j]) })),
+    { name: "Count", type: "number", values: counts },
+  ] } };
+}
+
+/** The core answers each row's cluster, then Centers, side by side; a null value is no clustering. */
+function kmeansOnCore(f: FrameValue, k: number): KMeansOutputs | null | undefined {
+  const r = frameFnOnCore("kmeans", [f], [k]);
+  if (!r) return undefined;
+  if (!("frame" in r)) return null;
+  const [labels, ...centers] = r.frame.columns;
+  return { labels: labels.values as (number | null)[], centers: { __frame: true, columns: centers } };
 }
 
 export class KMeansNode extends ClassicPreset.Node {
@@ -3118,19 +3183,46 @@ export class KMeansNode extends ClassicPreset.Node {
     if (!f) return blank();
     const { names, rows, kept, total } = numericRows(f);
     if (names.length === 0) { const e = solError("#VALUE!", "K-Means needs at least one number column"); this.cachedLabels = e; this.cachedCenters = null; return { labels: e, centers: null }; }
-    const r = kmeans(rows, k);
+    const r = kmeansOnCore(f, k) ?? kmeansOutputs({ names, rows, kept, total }, k);
     if (!r) return blank();
-    const labels: (number | null)[] = new Array(total).fill(null);
-    kept.forEach((row, i) => { labels[row] = r.labels[i]; });
-    const counts = r.centers.map((_, c) => r.labels.filter((l) => l === c + 1).length);
-    this.cachedLabels = labels;
-    this.cachedCenters = { __frame: true, columns: [
-      { name: "Cluster", type: "number", values: r.centers.map((_, c) => c + 1) },
-      ...names.map((nm, j) => ({ name: nm, type: "number" as const, values: r.centers.map((c) => c[j]) })),
-      { name: "Count", type: "number", values: counts },
-    ] };
-    return { labels, centers: this.cachedCenters };
+    this.cachedLabels = r.labels;
+    this.cachedCenters = r.centers;
+    return { labels: r.labels, centers: r.centers };
   }
+}
+
+type PcaOutputs = { scores: FrameValue; loadings: FrameValue; explained: number[] };
+
+export function pcaOutputs({ names, rows, kept, total }: ReturnType<typeof numericRows>, standardize: boolean): PcaOutputs | null {
+  const r = pca(rows, { standardize });
+  if (!r) return null;
+  const pcNames = names.map((_, c) => `PC${c + 1}`);
+  return {
+    scores: { __frame: true, columns: pcNames.map((nm, c) => {
+      const values: (number | null)[] = new Array(total).fill(null);
+      kept.forEach((row, i) => { values[row] = r.scores[i][c]; });
+      return { name: nm, type: "number" as const, values };
+    }) },
+    loadings: { __frame: true, columns: [
+      { name: "Feature", type: "string", values: names },
+      ...pcNames.map((nm, c) => ({ name: nm, type: "number" as const, values: names.map((_, j) => r.loadings[j][c]) })),
+    ] },
+    explained: r.ratio,
+  };
+}
+
+/** The core answers Scores, Loadings and Explained side by side; a null value is no fit. */
+function pcaOnCore(f: FrameValue, standardize: boolean): PcaOutputs | null | undefined {
+  const r = frameFnOnCore("pca", [f], [standardize]);
+  if (!r) return undefined;
+  if (!("frame" in r)) return null;
+  const cols = r.frame.columns;
+  const d = (cols.length - 2) / 2;
+  return {
+    scores: { __frame: true, columns: cols.slice(0, d) },
+    loadings: { __frame: true, columns: cols.slice(d, 2 * d + 1) },
+    explained: cols[2 * d + 1].values as number[],
+  };
 }
 
 export class PcaNode extends ClassicPreset.Node {
@@ -3163,22 +3255,47 @@ export class PcaNode extends ClassicPreset.Node {
     if (!f) return blank();
     const { names, rows, kept, total } = numericRows(f);
     if (names.length === 0) { const e = solError("#VALUE!", "PCA needs at least one number column"); this.cachedScores = e; this.cachedLoadings = null; this.cachedExplained = null; return { scores: e, loadings: null, explained: null }; }
-    const r = pca(rows, { standardize: this.standardize });
+    const r = pcaOnCore(f, this.standardize) ?? pcaOutputs({ names, rows, kept, total }, this.standardize);
     if (!r) return blank();
-    const pcNames = names.map((_, c) => `PC${c + 1}`);
-    const scores: FrameValue = { __frame: true, columns: pcNames.map((nm, c) => {
-      const values: (number | null)[] = new Array(total).fill(null);
-      kept.forEach((row, i) => { values[row] = r.scores[i][c]; });
-      return { name: nm, type: "number" as const, values };
-    }) };
-    this.cachedScores = scores;
-    this.cachedLoadings = { __frame: true, columns: [
-      { name: "Feature", type: "string", values: names },
-      ...pcNames.map((nm, c) => ({ name: nm, type: "number" as const, values: names.map((_, j) => r.loadings[j][c]) })),
-    ] };
-    this.cachedExplained = r.ratio;
-    return { scores, loadings: this.cachedLoadings, explained: this.cachedExplained };
+    this.cachedScores = r.scores;
+    this.cachedLoadings = r.loadings;
+    this.cachedExplained = r.explained;
+    return { scores: r.scores, loadings: r.loadings, explained: r.explained };
   }
+}
+
+type LogisticOutputs = { coefficients: FrameValue; probabilities: (number | null)[] };
+
+export function logisticOutputs(f: FrameValue, tcol: FrameColumn, features: FrameColumn[]): LogisticOutputs | null {
+  const total = frameRowCount(f);
+  const X: number[][] = [], y: number[] = [], kept: number[] = [];
+  for (let r = 0; r < total; r++) {
+    const tv = tcol.values[r];
+    const yv = tv === true ? 1 : tv === false ? 0 : typeof tv === "number" && (tv === 0 || tv === 1) ? tv : null;
+    const row = features.map((c) => c.values[r]);
+    if (yv === null || !row.every((v) => typeof v === "number" && Number.isFinite(v))) continue;
+    X.push(row as number[]); y.push(yv); kept.push(r);
+  }
+  const fit = logisticFit(X, y);
+  if (!fit) return null;
+  const probabilities: (number | null)[] = new Array(total).fill(null);
+  kept.forEach((row, i) => { probabilities[row] = fit.probabilities[i]; });
+  return { coefficients: { __frame: true, columns: [
+    { name: "Term", type: "string", values: ["(Intercept)", ...features.map((c) => c.name)] },
+    { name: "Coefficient", type: "number", values: fit.coefficients },
+    { name: "Std Error", type: "number", values: fit.stdErrors },
+    { name: "z", type: "number", values: fit.z },
+    { name: "p", type: "number", values: fit.pValues },
+  ] }, probabilities };
+}
+
+/** The core answers Coefficients, then each row's probability, side by side; a null value is no fit. */
+function logisticOnCore(f: FrameValue, target: string): LogisticOutputs | null | undefined {
+  const r = frameFnOnCore("logisticFit", [f], [target]);
+  if (!r) return undefined;
+  if (!("frame" in r)) return null;
+  const cols = r.frame.columns;
+  return { coefficients: { __frame: true, columns: cols.slice(0, 5) }, probabilities: cols[5].values as (number | null)[] };
 }
 
 export class LogisticNode extends ClassicPreset.Node {
@@ -3214,29 +3331,11 @@ export class LogisticNode extends ClassicPreset.Node {
     if (!tcol) return blank(solError("#REF!", `Logistic Regression: no column "${t}"`));
     const features = f.columns.filter((c) => c !== tcol && c.type === "number");
     if (features.length === 0) return blank(solError("#VALUE!", "Logistic Regression needs at least one number column besides the target"));
-    const total = frameRowCount(f);
-    const X: number[][] = [], y: number[] = [], kept: number[] = [];
-    for (let r = 0; r < total; r++) {
-      const tv = tcol.values[r];
-      const yv = tv === true ? 1 : tv === false ? 0 : typeof tv === "number" && (tv === 0 || tv === 1) ? tv : null;
-      const row = features.map((c) => c.values[r]);
-      if (yv === null || !row.every((v) => typeof v === "number" && Number.isFinite(v))) continue;
-      X.push(row as number[]); y.push(yv); kept.push(r);
-    }
-    const fit = logisticFit(X, y);
-    if (!fit) return blank(solError("#DOMAIN!", "Logistic Regression: the target must take both values and there must be more rows than columns"));
-    const terms = ["(Intercept)", ...features.map((c) => c.name)];
-    this.cachedCoefficients = { __frame: true, columns: [
-      { name: "Term", type: "string", values: terms },
-      { name: "Coefficient", type: "number", values: fit.coefficients },
-      { name: "Std Error", type: "number", values: fit.stdErrors },
-      { name: "z", type: "number", values: fit.z },
-      { name: "p", type: "number", values: fit.pValues },
-    ] };
-    const probs: (number | null)[] = new Array(total).fill(null);
-    kept.forEach((row, i) => { probs[row] = fit.probabilities[i]; });
-    this.cachedProbabilities = probs;
-    return { coefficients: this.cachedCoefficients, probabilities: probs };
+    const r = logisticOnCore(f, t) ?? logisticOutputs(f, tcol, features);
+    if (!r) return blank(solError("#DOMAIN!", "Logistic Regression: the target must take both values and there must be more rows than columns"));
+    this.cachedCoefficients = r.coefficients;
+    this.cachedProbabilities = r.probabilities;
+    return { coefficients: r.coefficients, probabilities: r.probabilities };
   }
 }
 
