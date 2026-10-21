@@ -14,6 +14,7 @@ use serde_json::{json, Value as Json};
 use crate::error_value::{sol_error, SolError};
 use crate::excel_functions::{call_function, is_ported, to_f64_js, V};
 use crate::frame::{FrameCell, FrameColumn, FrameValue};
+use crate::fxhash::{FxHashMap, FxHashSet};
 use crate::jsnum::{js_trim, string_to_number};
 use crate::string_order::compare_strings;
 use crate::value_kinds::guard_finite;
@@ -22,8 +23,9 @@ use crate::value_kinds::guard_finite;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Ast {
-    Num(String),
-    Str(String),
+    /// The literal's text, and the number it reads as, parsed once.
+    Num(String, f64),
+    Str(Rc<str>),
     Bool(bool),
     Name(String),
     Call { name: String, args: Vec<Ast> },
@@ -40,8 +42,8 @@ impl Ast {
     /// The TS `Ast` object, field for field.
     pub fn to_json(&self) -> Json {
         match self {
-            Ast::Num(v) => json!({ "t": "num", "v": v }),
-            Ast::Str(v) => json!({ "t": "str", "v": v }),
+            Ast::Num(v, _) => json!({ "t": "num", "v": v }),
+            Ast::Str(v) => json!({ "t": "str", "v": v.as_ref() }),
             Ast::Bool(v) => json!({ "t": "bool", "v": v }),
             Ast::Name(n) => json!({ "t": "name", "name": n }),
             Ast::Call { name, args } => json!({ "t": "call", "name": name, "args": args.iter().map(Ast::to_json).collect::<Vec<_>>() }),
@@ -380,11 +382,12 @@ impl Parser {
             }
             K::Num => {
                 self.eat();
-                Some(Ast::Num(t.v))
+                let n = t.v.parse::<f64>().unwrap_or(f64::NAN);
+                Some(Ast::Num(t.v, n))
             }
             K::Str => {
                 self.eat();
-                Some(Ast::Str(t.v))
+                Some(Ast::Str(Rc::from(t.v)))
             }
             K::Paren if t.v == "(" => {
                 self.eat();
@@ -470,7 +473,7 @@ pub struct CallTraits {
     pub scalar: Vec<usize>,
 }
 
-pub type CallTable = HashMap<String, CallTraits>;
+pub type CallTable = FxHashMap<String, CallTraits>;
 
 /// A lowered value: JSON scalars, `{"__undef": 1}` for JS `undefined` (a left-out default).
 fn lowered(v: &Json) -> V {
@@ -487,11 +490,11 @@ fn lowered(v: &Json) -> V {
 
 /// A whole column (a bare column name or `[name]`) is supported only as a direct argument of a range function
 /// whose prep this port carries, `list_ok`; anywhere else it would broadcast, which runs on the TS.
-fn supported(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<String, V>, table: &CallTable) -> bool {
+fn supported(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHashMap<String, V>, table: &CallTable) -> bool {
     supported_at(n, columns, sides, table, false)
 }
 
-fn whole_column<'a>(n: &Ast, columns: &HashMap<&str, &'a FrameColumn>, sides: &HashMap<String, V>) -> Option<&'a FrameColumn> {
+fn whole_column<'a>(n: &Ast, columns: &FxHashMap<&str, &'a FrameColumn>, sides: &FxHashMap<String, V>) -> Option<&'a FrameColumn> {
     match n {
         Ast::Name(name) if constant_value(name).is_none() && !sides.contains_key(name) => columns.get(name.as_str()).copied(),
         Ast::WholeCol(name) => columns.get(name.as_str()).copied(),
@@ -499,13 +502,13 @@ fn whole_column<'a>(n: &Ast, columns: &HashMap<&str, &'a FrameColumn>, sides: &H
     }
 }
 
-fn supported_at(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<String, V>, table: &CallTable, list_ok: bool) -> bool {
+fn supported_at(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHashMap<String, V>, table: &CallTable, list_ok: bool) -> bool {
     let ok = |a: &Ast| supported_at(a, columns, sides, table, false);
     if whole_column(n, columns, sides).is_some() {
         return list_ok;
     }
     match n {
-        Ast::Num(_) | Ast::Str(_) | Ast::Bool(_) | Ast::Blank => true,
+        Ast::Num(..) | Ast::Str(_) | Ast::Bool(_) | Ast::Blank => true,
         Ast::Name(name) => constant_value(name).is_some() || sides.contains_key(name),
         Ast::AtCol(name) => columns.contains_key(name.as_str()) || sides.contains_key(name),
         Ast::WholeCol(_) | Ast::Apply { .. } => false,
@@ -529,12 +532,14 @@ fn supported_at(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<
 
 struct Row<'a> {
     /// Each whole column once, as the TS's `wholeCol` caches it.
-    lists: HashMap<&'a str, Rc<Vec<V>>>,
+    lists: FxHashMap<&'a str, Rc<Vec<V>>>,
     /// A call whose subtree reads no `@` cell answers the same every row (`rangeMemo`'s hit), so once.
-    memo: std::cell::RefCell<HashMap<*const Ast, V>>,
-    columns: &'a HashMap<&'a str, &'a FrameColumn>,
+    memo: std::cell::RefCell<FxHashMap<*const Ast, V>>,
+    /// The calls whose subtree reads an `@` cell, found once.
+    row_calls: FxHashSet<*const Ast>,
+    columns: &'a FxHashMap<&'a str, &'a FrameColumn>,
     /// The side values a name that isn't a column reads: one scalar for every row.
-    sides: &'a HashMap<String, V>,
+    sides: &'a FxHashMap<String, V>,
     table: &'a CallTable,
     cursor: usize,
 }
@@ -554,6 +559,9 @@ pub fn cell_to_v_pub(c: &FrameCell) -> V {
 }
 
 fn guard(result: f64, inputs: &[V]) -> V {
+    if result.is_finite() {
+        return V::Num(result);
+    }
     match guard_finite(result, &inputs.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect::<Vec<_>>()) {
         FrameCell::Num(n) => V::Num(n),
         FrameCell::Err(e) => V::Err(e),
@@ -584,7 +592,7 @@ fn apply_op(op: &str, a: &V, b: &V) -> V {
         return V::Null;
     }
     let (na, nb) = (num_of(a), num_of(b));
-    let fin = |r: f64| guard(r, &[na.clone(), nb.clone()]);
+    let fin = |r: f64| if r.is_finite() { V::Num(r) } else { guard(r, &[na.clone(), nb.clone()]) };
     if matches!(op, "+" | "-" | "*" | "/" | "^") && (matches!(na, V::Str(_)) || matches!(nb, V::Str(_))) {
         return V::err(sol_error("#VALUE!", "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE"));
     }
@@ -608,14 +616,16 @@ fn apply_op(op: &str, a: &V, b: &V) -> V {
             }
         }
         "&" => {
-            let s = |v: &V| -> String {
-                match v {
-                    V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
-                    V::Num(n) => number_to_text(*n),
-                    other => crate::excel_functions::js_string_of(other),
-                }
+            let push = |out: &mut String, v: &V| match v {
+                V::Str(s) => out.push_str(s),
+                V::Bool(b) => out.push_str(if *b { "TRUE" } else { "FALSE" }),
+                V::Num(n) => out.push_str(&number_to_text(*n)),
+                other => out.push_str(&crate::excel_functions::js_string_of(other)),
             };
-            V::Str(Rc::from(format!("{}{}", s(a), s(b)).as_str()))
+            let mut joined = String::new();
+            push(&mut joined, a);
+            push(&mut joined, b);
+            V::Str(Rc::from(joined))
         }
         "=" | "<>" => {
             let eq = match (a, b) {
@@ -680,8 +690,8 @@ impl Row<'_> {
             return V::List(self.lists.get(c.name.as_str()).cloned().unwrap_or_default());
         }
         match n {
-            Ast::Num(v) => V::Num(v.parse::<f64>().unwrap_or(f64::NAN)),
-            Ast::Str(v) => V::Str(Rc::from(v.as_str())),
+            Ast::Num(_, n) => V::Num(*n),
+            Ast::Str(v) => V::Str(v.clone()),
             Ast::Bool(b) => V::Bool(*b),
             Ast::Blank => V::Null,
             Ast::AtCol(name) => match self.columns.get(name.as_str()) {
@@ -711,7 +721,7 @@ impl Row<'_> {
                 apply_op(op, &l, &r)
             }
             Ast::Call { name, args } => {
-                if reads_row(n) {
+                if self.row_calls.contains(&(n as *const Ast)) {
                     return self.call(name, args);
                 }
                 let key = n as *const Ast;
@@ -857,6 +867,40 @@ fn tag_computed_cell(v: V) -> FrameCell {
     }
 }
 
+fn survey<'a>(
+    n: &Ast,
+    columns: &FxHashMap<&str, &'a FrameColumn>,
+    sides: &FxHashMap<String, V>,
+    wholes: &mut Vec<&'a FrameColumn>,
+    row_calls: &mut FxHashSet<*const Ast>,
+) {
+    if let Some(c) = whole_column(n, columns, sides) {
+        if !wholes.iter().any(|w| std::ptr::eq(*w, c)) {
+            wholes.push(c);
+        }
+        return;
+    }
+    match n {
+        Ast::Call { args, .. } | Ast::Apply { args, .. } => {
+            if matches!(n, Ast::Call { .. }) && reads_row(n) {
+                row_calls.insert(n as *const Ast);
+            }
+            if let Ast::Apply { func, .. } = n {
+                survey(func, columns, sides, wholes, row_calls);
+            }
+            for a in args {
+                survey(a, columns, sides, wholes, row_calls);
+            }
+        }
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => survey(arg, columns, sides, wholes, row_calls),
+        Ast::Bin { l, r, .. } => {
+            survey(l, columns, sides, wholes, row_calls);
+            survey(r, columns, sides, wholes, row_calls);
+        }
+        _ => {}
+    }
+}
+
 /// The tree with every call's name uppercased once, not per row.
 fn upper_calls(n: Ast) -> Ast {
     let all = |args: Vec<Ast>| args.into_iter().map(upper_calls).collect();
@@ -878,14 +922,18 @@ pub enum ColumnOutcome {
 /// A computed column's cells, `computeColumnCells` with an `expr` spec whose every name is a `@column` of `f`.
 pub fn formula_column(f: &FrameValue, expr: &str, table: &CallTable, sides: &HashMap<String, FrameCell>, rows: usize) -> Result<ColumnOutcome, SolError> {
     let Some(ast) = parse_formula(expr) else { return Ok(ColumnOutcome::Unsupported) };
-    let columns: HashMap<&str, &FrameColumn> = f.columns.iter().map(|c| (c.name.as_str(), c)).collect();
-    let sides: HashMap<String, V> = sides.iter().map(|(k, v)| (k.clone(), cell_to_v(v))).collect();
+    let columns: FxHashMap<&str, &FrameColumn> = f.columns.iter().map(|c| (c.name.as_str(), c)).collect();
+    let sides: FxHashMap<String, V> = sides.iter().map(|(k, v)| (k.clone(), cell_to_v(v))).collect();
     if !supported(&ast, &columns, &sides, table) {
         return Ok(ColumnOutcome::Unsupported);
     }
     let ast = upper_calls(ast);
-    let lists = columns.iter().map(|(k, c)| (*k, Rc::new(c.values.iter().map(cell_to_v).collect::<Vec<_>>()))).collect();
-    let mut row = Row { lists, memo: Default::default(), columns: &columns, sides: &sides, table, cursor: 0 };
+    // Once, not per row: the whole columns the formula reads, and the calls that read an `@` cell.
+    let mut wholes: Vec<&FrameColumn> = Vec::new();
+    let mut row_calls: FxHashSet<*const Ast> = FxHashSet::default();
+    survey(&ast, &columns, &sides, &mut wholes, &mut row_calls);
+    let lists = wholes.iter().map(|c| (c.name.as_str(), Rc::new(c.values.iter().map(cell_to_v).collect::<Vec<_>>()))).collect();
+    let mut row = Row { lists, memo: Default::default(), row_calls, columns: &columns, sides: &sides, table, cursor: 0 };
     let mut cells = Vec::with_capacity(rows);
     crate::excel_functions::take_bailed();
     for i in 0..rows {

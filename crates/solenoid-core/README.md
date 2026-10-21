@@ -91,27 +91,27 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 
 - A verb row is the op plus a 100-row preview, with the frame already in wasm.
 - An fx row includes uploading its columns and downloading the answer.
-- Frames cross as columnar buffers: uploading 200k rows takes 52 ms, a full download 55 ms.
+- Frames cross as columnar buffers: uploading 200k rows takes 55 ms, a full download 55 ms.
 
 | op | JS ms | Rust ms | × |
 | --- | ---: | ---: | ---: |
-| sort by a number | 142.4 | 45.7 | 3.1 |
-| sort by text | 179.8 | 93.1 | 1.9 |
-| filter value > 0 | 18.1 | 8.5 | 2.1 |
-| filter text contains | 13.6 | 7.8 | 1.8 |
-| distinct key | 8.5 | 10.3 | 0.8 |
-| group by key: sum, avg, median | 154.0 | 36.8 | 4.2 |
-| window: cumsum by cat over day | 140.9 | 71.3 | 2.0 |
-| window: rank by cat | 172.5 | 76.6 | 2.3 |
-| pipeline: filter, group, sort | 101.9 | 24.5 | 4.2 |
-| left join a 1000-row lookup | 102.5 | 21.7 | 4.7 |
-| fx: `@value / SUM(value)` | 198.8 | 47.1 | 4.2 |
-| fx: `@value * 1.2 + @cat` | 154.4 | 66.6 | 2.3 |
-| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 827.0 | 270.8 | 3.1 |
-| fx: `@key & "-" & UPPER(@key)` | 371.8 | 286.1 | 1.3 |
-| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 607.1 | 190.1 | 3.2 |
-| fx: `IF(@value > PERCENTILE(value, 0.9), "top", PROPER(@key))` | 996.7 | 233.3 | 4.3 |
-| fx: `SUMIFS(value, key, "k1*") + DATEDIF(45000, 45000 + @cat, "md")` | 873.2 | 234.3 | 3.7 |
+| sort by a number | 139.6 | 47.3 | 3.0 |
+| sort by text | 180.9 | 88.6 | 2.0 |
+| filter value > 0 | 14.7 | 8.9 | 1.7 |
+| filter text contains | 13.4 | 8.0 | 1.7 |
+| distinct key | 8.8 | 7.1 | 1.2 |
+| group by key: sum, avg, median | 145.9 | 34.3 | 4.3 |
+| window: cumsum by cat over day | 136.1 | 71.0 | 1.9 |
+| window: rank by cat | 165.3 | 72.4 | 2.3 |
+| pipeline: filter, group, sort | 99.1 | 24.7 | 4.0 |
+| left join a 1000-row lookup | 105.6 | 20.9 | 5.1 |
+| fx: `@value / SUM(value)` | 198.8 | 31.8 | 6.3 |
+| fx: `@value * 1.2 + @cat` | 145.4 | 42.5 | 3.4 |
+| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 926.3 | 112.5 | 8.2 |
+| fx: `@key & "-" & UPPER(@key)` | 373.6 | 205.9 | 1.8 |
+| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 662.5 | 146.7 | 4.5 |
+| fx: `IF(@value > PERCENTILE(value, 0.9), "top", PROPER(@key))` | 1048.7 | 192.0 | 5.5 |
+| fx: `SUMIFS(value, key, "k1*") + DATEDIF(45000, 45000 + @cat, "md")` | 988.6 | 175.0 | 5.7 |
 
 ## Found on the way (fixed in the TS here, worth carrying to develop)
 

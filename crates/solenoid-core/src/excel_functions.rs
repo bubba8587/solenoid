@@ -274,8 +274,9 @@ fn parse_number(v: &V) -> V {
         V::Fx(_) => v.clone(),
         V::Undef | V::Null => V::Num(0.0),
         V::Bool(b) => V::Num(f64::from(u8::from(*b))),
+        // `parseFloat(String(n))` gives n back for every number but -0, which reads as 0.
         V::Num(n) => {
-            if n.is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(&number_to_string(*n))) }
+            if n.is_nan() { V::Fx("#VALUE!") } else { V::Num(*n + 0.0) }
         }
         V::Str(s) => {
             if s.is_empty() || string_to_number(s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(s)) }
@@ -1557,7 +1558,12 @@ fn round_digits(v: f64, digits: f64, mode: &str) -> f64 {
     if !raw.is_finite() {
         return v;
     }
-    let m = to_precision(raw, 15);
+    // Reading at 15 digits moves the value by at most half a unit of its 15th digit, under raw * 5e-15: away from
+    // the rounding's boundary (a half for ROUND, a whole for the others) by more than twice that, raw rounds alike.
+    let frac = raw - raw.floor();
+    let tol = raw * 1e-14;
+    let clear = if mode == "round" { (frac - 0.5).abs() > tol } else { frac > tol && 1.0 - frac > tol };
+    let m = if clear { raw } else { to_precision(raw, 15) };
     let r = match mode {
         "round" => math_round(m),
         "roundup" => m.ceil(),

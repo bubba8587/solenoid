@@ -550,6 +550,27 @@ describe("TEXT's toFixed and toExponential match V8's digits, exact ties include
   });
 });
 
+describe("ROUND, ROUNDUP and ROUNDDOWN match bit for bit at their boundaries", () => {
+  it(`${FUZZ_RUNS * 3} values`, () => {
+    const rand = mulberry32(1005 + FUZZ_SEED);
+    const fns = ["ROUND", "ROUNDUP", "ROUNDDOWN"].map((n) => [n, resolveExcelFunction(n)!] as const);
+    const bits = (x: unknown) => (typeof x === "number" ? new DataView(Float64Array.of(x).buffer).getBigUint64(0, true).toString() : JSON.stringify(x));
+    for (let i = 0; i < FUZZ_RUNS * 3; i++) {
+      const d = Math.floor(rand() * 8) - 2;
+      const r = rand();
+      // Halves, near-halves and near-integers at the digit being rounded, plus plain values.
+      const base = Math.floor(rand() * 1e6) + (r < 0.3 ? 0.5 : r < 0.5 ? 0.5 + (rand() - 0.5) * 1e-12 : r < 0.7 ? (rand() - 0.5) * 1e-12 : rand());
+      const v = (base / 10 ** d) * (rand() < 0.5 ? -1 : 1);
+      for (const [name, fn] of fns) {
+        const want = fn(v, d);
+        const got = wasmInvokeSync<{ num?: string }>("engine_call", { name, args: [v, d] });
+        const g = got?.num !== undefined ? new DataView(new BigUint64Array([BigInt(got.num)]).buffer).getFloat64(0, true) : got;
+        if (bits(g) !== bits(want)) expect({ name, v, d, got: g }).toEqual({ name, v, d, got: want });
+      }
+    }
+  });
+});
+
 describe("the distribution functions match bit for bit on realistic parameters", () => {
   const CASES: Array<[string, (r: () => number) => unknown[]]> = [
     ["NORM.DIST", (r) => [r() * 20 - 10, r() * 4 - 2, r() * 3, r() < 0.5]],
