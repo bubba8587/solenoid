@@ -8,7 +8,7 @@ import * as path from "node:path";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { isCx } from "../../src/graph/cxValue";
 import { resolveExcelFunction, FX_FUNCTION_NAMES, internalFunctionNames } from "../../src/graph/excelFunctions";
-import { compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
+import { compileTsEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import { applyVerb, joinFrames, appendFrames, bindColumns, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
 import type { FrameValue, FrameCell, FrameColType } from "../../src/graph/frame";
@@ -274,11 +274,11 @@ function columnCases(): ColCase[] {
     const sideValue = (p: string, kind: "var" | "row") => (extra.lambdas?.[p] ?? (p in sides ? sides[p] : solError("#REF!", kind === "var" ? `No column "${p}"` : `No column "${p}"`)));
     const js = extra.bare
       ? computeColumnCells(f, { kind: "lambda", lam: extra.bare }, { sideValue })
-      : computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: [...new Set([...extractVariables(src), ...Object.keys(extra.lambdas ?? {})])] }, { sideValue, reserved: extra.reserved, rowRefs: rowRefNames(src) });
+      : computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(src)!, vars: [...new Set([...extractVariables(src), ...Object.keys(extra.lambdas ?? {})])] }, { sideValue, reserved: extra.reserved, rowRefs: rowRefNames(src) });
     return isSolError(js) ? { error: { code: js.code, message: wf(js.message) } } : { cells: cellView(js.cells), sideVars: js.sideVars };
   };
   const push = (f: FrameValue, src: string, sides: Record<string, unknown>, extra: { reserved?: string[]; bare?: LambdaValue; lambdas?: Record<string, LambdaValue> } = {}) => {
-    if (!extra.bare && !compileEvaluator(src)) return;
+    if (!extra.bare && !compileTsEvaluator(src)) return;
     cases.push({ src, frame: f, sides, reserved: extra.reserved, bare: extra.bare && lamWire(extra.bare),
       lambdas: extra.lambdas && Object.fromEntries(Object.entries(extra.lambdas).map(([k, l]) => [k, lamWire(l)])), want: answer(f, src, sides, extra) });
   };
@@ -463,7 +463,7 @@ const expressions = frozen<ExprCase>("expressions", () => {
       t: pick(["abc", "Hello World", "", "a,b,c", "2024-03-15"]), ts: pick([["a", "b", "a"], ["x"], ["10", "9", "x"]]),
     };
     const src = expr(3);
-    const ev = compileEvaluator(src);
+    const ev = compileTsEvaluator(src);
     if (!ev) continue;
     let want: unknown;
     const t = performance.now();

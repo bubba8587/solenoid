@@ -8,7 +8,8 @@ import { emptySlotReading, emptySlotOverride } from "./emptySlots";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
-import { readRowCell, readWholeColumn } from "./computedColumnCore";
+import { readRowCell, readWholeColumn, inRowFrame } from "./computedColumnCore";
+import { evaluateOnCore } from "./coreValues";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -1144,7 +1145,22 @@ export function formulaCallTable(expr: string): Record<string, FormulaCallTraits
 
 export type ExprEvaluator = (env: Record<string, unknown>) => unknown;
 
+/** A formula over named values: on the Rust core where it is loaded ([[D99]] rustIsSpec), else, or where the core
+ *  leaves a reading to the TS or a computed column's row is being read, on `evalAst`. */
 export function compileEvaluator(expr: string): ExprEvaluator | null {
+  const ts = compileTsEvaluator(expr);
+  if (!ts) return null;
+  return (env) => {
+    if (!inRowFrame()) {
+      const core = evaluateOnCore(expr, env);
+      if (core) return core.value;
+    }
+    return ts(env);
+  };
+}
+
+/** The TS evaluator alone, the reference the conformance fixtures are frozen from. */
+export function compileTsEvaluator(expr: string): ExprEvaluator | null {
   const ast = parseExpr(expr);
   if (!ast) return null;
   return (env) => {
@@ -1158,7 +1174,8 @@ export function compilePositional(
   expr: string,
   paramNames: string[],
 ): ((...args: unknown[]) => unknown) | null {
-  const evaluate = compileEvaluator(expr);
+  // Called once per cell by the nodes that map a LAMBDA, so it stays on the TS until the core takes a batch.
+  const evaluate = compileTsEvaluator(expr);
   if (!evaluate) return null;
   return (...args: unknown[]) => {
     const env: Record<string, unknown> = {};

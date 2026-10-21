@@ -14,6 +14,14 @@ import { resetPointerCensus } from "../../src/graph/pointerGesture";
 import { canvasLockStore } from "../../src/graph/canvasLock";
 import { tablePopup } from "../../src/graph/tablePopupStore";
 import { cubePopup } from "../../src/graph/cubePopupStore";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { loadWasmEngineSync, wasmEngineLoaded } from "../../src/graph/engineWasm";
+
+// CORE_EVAL=1 loads the Rust core into every file, so every formula a test evaluates runs on it ([[D99]] rustIsSpec).
+if (process.env.CORE_EVAL === "1" && !wasmEngineLoaded()) {
+  loadWasmEngineSync(fs.readFileSync(path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm")));
+}
 
 const SNAPSHOT = Symbol.for("solenoid.test.globals");
 type Snap = Map<PropertyKey, PropertyDescriptor>;

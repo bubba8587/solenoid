@@ -7,9 +7,9 @@ import {
 import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, aggUnitPlan, readingScaleOf, linearScaleOf, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp, type PivotSpec } from "./frameVerbs";
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
-import { isLambdaValue, type LambdaValue } from "./lambdaValue";
-import { isCx } from "./cxValue";
-import { wallClockSerial } from "./nodes/dateSerial";
+import type { LambdaValue } from "./lambdaValue";
+import { coreValue, errorRef, errorFromCore, wellFormed, engineClock, wasmEngineOn, syncExternalNames } from "./coreValues";
+export { engineClock, wasmEngineOn, evaluateOnCore, type EngineClock } from "./coreValues";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -282,24 +282,6 @@ class JsFrameBackend implements FrameBackend {
 // IPC argument names must match the Rust command parameters in engine.rs.
 type WireCell = unknown;
 
-// An uploaded error cell carries a reference the engine hands back, so it downloads as the same
-// SolError, message and origin included, for as long as the original is alive.
-const _errorRefs = new Map<number, WeakRef<SolError>>();
-const _errorIds = new WeakMap<SolError, number>();
-let _errorSeq = 0;
-const _errorGone = typeof FinalizationRegistry !== "undefined" ? new FinalizationRegistry<number>((id) => _errorRefs.delete(id)) : null;
-
-function errorRef(e: SolError): number | undefined {
-  if (typeof WeakRef === "undefined") return undefined;
-  let id = _errorIds.get(e);
-  if (id === undefined) {
-    id = _errorSeq = (_errorSeq % 0xffff_ffff) + 1;
-    _errorIds.set(e, id);
-    _errorRefs.set(id, new WeakRef(e));
-    _errorGone?.register(e, id);
-  }
-  return id;
-}
 
 function encodeWireCell(v: unknown): WireCell {
   if (typeof v === "number" && !Number.isFinite(v)) {
@@ -327,9 +309,7 @@ function decodeWireCell(v: WireCell): unknown {
     if (o.__nf === "nan") return NaN;
     // The code came from this module's encoder, so the cast keeps solError's union closed.
     if (typeof o.__err === "string") {
-      const original = o.ref === undefined ? undefined : _errorRefs.get(o.ref)?.deref();
-      if (original && original.code === o.__err) return original;
-      return solError(o.__err as Parameters<typeof solError>[0], o.msg || (o.why && ENGINE_ERROR_WHY[o.why]) || "from the native engine");
+      return errorFromCore(o.__err, o.msg || (o.why && ENGINE_ERROR_WHY[o.why]) || "from the native engine", o.ref);
     }
   }
   return v;
@@ -379,8 +359,7 @@ function decodeBinary(b: BinaryCells): FrameColumn[] {
         case TAG_TRUE: values[i] = true; break;
         case TAG_ERR: {
           const code = text(), message = text(), ref = b.nums[k];
-          const original = Number.isNaN(ref) ? undefined : _errorRefs.get(ref)?.deref();
-          values[i] = original && original.code === code ? original : solError(code as Parameters<typeof solError>[0], message || "from the native engine");
+          values[i] = errorFromCore(code, message || "from the native engine", ref);
           break;
         }
         default: values[i] = null;
@@ -468,28 +447,6 @@ export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null
 
 type SideValue = (name: string, kind: "var" | "row") => unknown;
 
-/** A value as the core reads it (`eval.rs` `decode_value`): arrays nest, an error keeps its message, a wired LAMBDA
- *  crosses as its body text and captures. Undefined where a value can't cross: a LAMBDA with no text, a frame, text
- *  with a lone surrogate. */
-function coreValue(v: unknown): unknown {
-  if (v === undefined) return { __undef: 1 };
-  if (typeof v === "string") return wellFormed(v) ? v : undefined;
-  if (Array.isArray(v)) {
-    const out = v.map(coreValue);
-    return out.includes(undefined) ? undefined : out;
-  }
-  if (isSolError(v)) { const ref = errorRef(v); return { __err: v.code, msg: v.message, ...(ref === undefined ? {} : { ref }) }; }
-  if (isCx(v)) return { __cx: [coreValue(v.re), coreValue(v.im)] };
-  if (isLambdaValue(v)) {
-    if (v.eta) return { __lambda: { eta: v.expr } };
-    if (!v.expr || !wellFormed(v.expr)) return undefined;
-    const values = (v.captured ?? []).map((_, i) => coreValue(v.capturedValues?.[i]));
-    return values.includes(undefined) ? undefined : { __lambda: { params: v.params, expr: v.expr, captured: v.captured ?? [], capturedValues: values } };
-  }
-  if (v === null || typeof v === "number" || typeof v === "boolean") return encodeWireCell(v);
-  return undefined;
-}
-
 interface ColumnOpts { sideValue?: SideValue; reserved?: readonly string[]; lambdas?: Record<string, LambdaValue>; bare?: LambdaValue; alias?: Record<string, string | undefined> }
 
 /** What `engine_compute_column` takes beside the frame: each name the formula reads that no column holds, bound as
@@ -499,6 +456,7 @@ function columnInputs(expr: string, columns: readonly string[], opts: ColumnOpts
   if (!wellFormed(expr)) return null;
   const lambdas = opts.lambdas ?? {};
   const bodies = [...Object.values(lambdas), ...(opts.bare ? [opts.bare] : [])].flatMap((l) => (l.expr ? [l.expr] : []));
+  syncExternalNames();
   const names = wasmInvokeSync<{ parses: boolean; vars?: string[]; rows?: string[] }>("engine_formula_names", { src: opts.bare ? "" : expr, bodies });
   if (!names.parses) return null;
   const colSet = new Set(columns);
@@ -548,37 +506,8 @@ function columnAnswer(r: { bail?: boolean; error?: { code: string; message: stri
   return { cells: read(r.handle!), sideVars: r.sideVars! };
 }
 
-const wellFormed = (s: string): boolean => (s as string & { isWellFormed(): boolean }).isWellFormed();
 
-/** The local time a row formula reads, lowered once per calc ([[D46]] freezeVolatilePerCalc): TODAY and NOW as the
- *  TS reads them now, and whether a day built at local midnight rounds back to its own serial (EDATE's
- *  `toSerialIfDate`), true where every local offset lies in (−11 h, +12 h]. East of UTC, day 0 rounds up from below
- *  to −0 (`dayZeroNegative`). */
-export interface EngineClock { now: number; today: number; midnightRounds: boolean; dayZeroNegative: boolean }
 
-let localZone: { zone: string; midnightRounds: boolean; dayZeroNegative: boolean } | null = null;
-
-function localZoneFacts(): { midnightRounds: boolean; dayZeroNegative: boolean } {
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
-  if (localZone?.zone !== zone) {
-    // Twice a month over 1700–2100: a zone's offset is constant before its first transition and its DST rule repeats after 2037.
-    let ok = true;
-    for (let y = 1700; y <= 2100 && ok; y++) {
-      for (let m = 0; m < 24 && ok; m++) {
-        const tzo = new Date(y, m >> 1, m % 2 === 0 ? 1 : 16).getTimezoneOffset();
-        ok = tzo >= -720 && tzo < 660;
-      }
-    }
-    const dayZero = Math.round(new Date(1899, 11, 30).getTime() / 86400000 + 25569);
-    localZone = { zone, midnightRounds: ok, dayZeroNegative: Object.is(dayZero, -0) };
-  }
-  return localZone;
-}
-
-export function engineClock(at: Date = new Date()): EngineClock {
-  const { midnightRounds, dayZeroNegative } = localZoneFacts();
-  return { now: wallClockSerial(at), today: wallClockSerial(at, true), midnightRounds, dayZeroNegative };
-}
 
 /** `computeColumnCells` on the core ([[D99]] rustIsSpec): a formula, or with `bare` a wired LAMBDA called with each
  *  row's cells. Null where the wasm engine is off, a value can't cross, or a body leaves the column to the TS. */
@@ -898,9 +827,6 @@ export function nativeEngineOn(): boolean {
   return engineAvailable() && settingsStore.get("nativeEngine") !== false;
 }
 
-export function wasmEngineOn(): boolean {
-  return settingsStore.get("wasmEngine") !== false;
-}
 
 /** Polars where the desktop has it on, else the Rust engine in WebAssembly where it is on, else the JS oracle. */
 export async function initFrameBackend(): Promise<void> {

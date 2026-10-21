@@ -152,5 +152,10 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 - **Lone surrogates** can't cross into wasm, whose strings are UTF-8: a frame or formula holding one stays on the
   TS (`crossesWhole`, `wellFormed` in frameBackend.ts). Once the TS goes, the core needs a rule for them, such as
   reading one as U+FFFD at the boundary, which is the author's call.
+- **Formulas run on the core** wherever it is loaded: `compileEvaluator` calls `evaluateOnCore` (coreValues.ts) and
+  keeps `evalAst` only for a bail, a value that can't cross, and a computed column's TS fallback row; a wired LAMBDA's
+  per-cell `compilePositional` stays on the TS until the core takes a batch. A pack's JS function is called back on
+  the TS (`syncExternalNames`). `CORE_EVAL=1 npx vitest run --project shared` loads the core into every test file, so
+  the whole hand-written suite checks the Rust evaluator too.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).

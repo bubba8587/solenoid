@@ -144,6 +144,10 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             Ok(Json::Null)
         }
         "engine_formula_parse" => Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json())),
+        "engine_external_names" => {
+            crate::eval::set_external(parse::<Vec<String>>(args, "names")?);
+            Ok(Json::Null)
+        }
         // [[D99]] rustIsSpec: the names a formula (and the wired LAMBDAs it calls) reads, for the caller to bind.
         "engine_formula_names" => {
             let src = parse::<Option<String>>(args, "src")?.unwrap_or_default();
@@ -338,9 +342,12 @@ impl serde::Serialize for Out<'_> {
             V::Lambda(_) => one(s, "lambda", &true),
             V::Cx(re, im) => one(s, "cx", &[bits(*re), bits(*im)]),
             V::Err(e) => {
-                let mut m = s.serialize_map(Some(2))?;
+                let mut m = s.serialize_map(None)?;
                 m.serialize_entry("err", &e.code)?;
                 m.serialize_entry("msg", &e.message)?;
+                if let Some(r) = e.reference {
+                    m.serialize_entry("ref", &r)?;
+                }
                 m.end()
             }
             V::List(items) => {

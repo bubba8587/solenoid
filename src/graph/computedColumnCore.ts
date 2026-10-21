@@ -31,6 +31,9 @@ type RowFrame = {
 };
 const rowStack: RowFrame[] = [];
 
+/** Whether a computed column's row is being evaluated, so `@name` reads it. */
+export const inRowFrame = (): boolean => rowStack.length > 0;
+
 export function readRowCell(name: unknown, fallback?: () => { hit: boolean; v?: unknown }): unknown {
   const top = rowStack[rowStack.length - 1];
   if (!top) return solError("#REF!", "@ reads the current row, so it only works inside a computed column");

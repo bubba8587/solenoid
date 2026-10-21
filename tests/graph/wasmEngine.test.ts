@@ -14,7 +14,7 @@ import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, com
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { isLambdaValue } from "../../src/graph/lambdaValue";
-import { parseFormula, compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
+import { parseFormula, compileTsEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { resolveExcelFunction } from "../../src/graph/excelFunctions";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
@@ -433,7 +433,7 @@ describe("random row formulas: the Rust evaluator matches the TS one", () => {
       const engine = computeColumnOnEngine(f, src, rows, opts);
       if (engine === null) continue;
       ran++;
-      const evaluator = compileEvaluator(src)!;
+      const evaluator = compileTsEvaluator(src)!;
       const js = computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(src) }, { ...opts, rowRefs: rowRefNames(src) });
       const want = isSolError(js) ? js : [view({ __frame: true, columns: [{ name: "out", type: "number", values: js.cells.map(well) as FrameCell[] }] }), js.sideVars];
       const got = isSolError(engine) ? engine : [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
@@ -544,7 +544,7 @@ describe("FILTER, SORT, SORTBY, UNIQUE, TAKE and DROP in a range function: the R
       const engine = computeColumnOnEngine(f, src, rows, opts);
       if (engine === null) continue;
       ran++;
-      const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { ...opts, rowRefs: rowRefNames(src) });
+      const js = computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(src)!, vars: extractVariables(src) }, { ...opts, rowRefs: rowRefNames(src) });
       const want = isSolError(js) ? js : [view({ __frame: true, columns: [{ name: "out", type: "number", values: js.cells }] }), js.sideVars];
       const got = isSolError(engine) ? engine : [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
       if (JSON.stringify(got) !== JSON.stringify(want)) {
@@ -640,7 +640,7 @@ describe("wired LAMBDA columns: the Rust evaluator matches the TS one", () => {
         const outer = pick(["λ1(@a)", "λ1(@a, 2)", "IF(@c, λ1(@a, @b), 0)", "SUM(a) + λ1(1, 2)", "λ1()", "λ1(@d, @a) & \"x\"", "IFERROR(λ1(@a, 1), -1)"]);
         engine = computeColumnOnEngine(f, outer, rows, { sideValue, lambdas: { λ1: lam } });
         const vars = [...extractVariables(outer), ...(extractVariables(outer).includes("λ1") ? [] : ["λ1"])];
-        js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(outer)!, vars }, { sideValue, rowRefs: rowRefNames(outer) });
+        js = computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(outer)!, vars }, { sideValue, rowRefs: rowRefNames(outer) });
       }
       if (engine === null) continue;
       ran++;
@@ -694,7 +694,7 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
   ])("%s", (src) => {
     const engine = computeColumnOnEngine(f, src, 5);
     expect(engine, "should run on the engine").not.toBeNull();
-    const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
+    const js = computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
     expect(isSolError(js)).toBe(false);
     if (isSolError(js)) return;
     expect(view({ __frame: true, columns: [{ name: "o", type: "number", values: (engine as { cells: FrameCell[] }).cells }] }))
@@ -710,7 +710,7 @@ describe("EDATE runs on the engine wherever a local midnight rounds to its own d
       expect(engine).toBeNull();
       return;
     }
-    const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
+    const js = computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
     if (isSolError(js)) throw js;
     const sign = (c: unknown) => (Object.is(c, -0) ? "-0" : c);
     expect((engine as { cells: FrameCell[] }).cells.map(sign)).toEqual(js.cells.map(sign));
@@ -748,7 +748,7 @@ describe("an INDEX that answers a whole column answers it on the engine, as the 
   it.each(["INDEX(a, 0, 1)", "INDEX(a, , )"])("%s", (src) => {
     const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [45000, 46115] }] };
     const engine = computeColumnOnEngine(f, src, 2);
-    const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
+    const js = computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
     expect(engine).toEqual(js);
   });
 });

@@ -82,6 +82,19 @@ thread_local! {
         .collect();
 }
 
+thread_local! {
+    static EXTERNAL: RefCell<crate::fxhash::FxHashSet<String>> = RefCell::default();
+}
+
+/// The names the TS registry holds (packs register theirs at run time), which a formula may call back into.
+pub fn set_external(names: Vec<String>) {
+    EXTERNAL.with(|e| *e.borrow_mut() = names.into_iter().map(|n| n.to_uppercase()).collect());
+}
+
+fn is_external(name: &str) -> bool {
+    EXTERNAL.with(|e| e.borrow().contains(name))
+}
+
 /// The facts of an uppercased function name, if it is one.
 pub fn traits(name: &str) -> Option<Rc<Traits>> {
     TRAITS.with(|t| t.get(name).cloned())
@@ -592,7 +605,10 @@ impl Eval<'_> {
             }
             return V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body.clone())), env: env.clone(), eta: None, captured: None }));
         }
-        let Some(t) = traits(&name) else { return V::err(sol_error("#NAME?", format!("Unknown function {name}"))) };
+        // A name the core doesn't know may be a pack's, registered in JS at run time: the TS calls it back.
+        let Some(t) = traits(&name) else {
+            return if is_external(&name) { crate::excel_functions::bail() } else { V::err(sol_error("#NAME?", format!("Unknown function {name}"))) };
+        };
         let t = t.as_ref();
         if let Some(r) = &t.refusal {
             return V::err(sol_error(&r.code, r.message.as_str()));
@@ -765,7 +781,7 @@ impl Eval<'_> {
     /// MAP, BYROW, BYCOL, REDUCE, SCAN and MAKEARRAY (excelFunctions.ts), which call their LAMBDA back.
     fn host(&self, name: &str, a: &[V]) -> V {
         let arg = |i: usize| a.get(i).cloned().unwrap_or(V::Undef);
-        let last = if name == "MAP" { a.last().cloned().unwrap_or(V::Undef) } else { arg(if name == "MAKEARRAY" || name == "REDUCE" || name == "SCAN" { 2 } else { 1 }) };
+        let last = if name == "MAP" { a.last().cloned().unwrap_or(V::Undef) } else { arg(if matches!(name, "MAKEARRAY" | "REDUCE" | "SCAN" | "GROUPBY") { 2 } else { 1 }) };
         let V::Lambda(lam) = last else {
             return V::err(sol_error("#VALUE!", format!("{name} needs a LAMBDA as its last argument")));
         };
@@ -866,6 +882,28 @@ impl Eval<'_> {
                     return V::err(sol_error("#OVERFLOW!", format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(r * c))));
                 }
                 list((0..r as usize).map(|i| list((0..c as usize).map(|j| self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)])).collect())).collect())
+            }
+            "GROUPBY" => {
+                if absent(&arg(0)) || absent(&arg(1)) {
+                    return V::Null;
+                }
+                let items = |v: V| match v {
+                    V::List(l) => l.as_ref().clone(),
+                    other => vec![other],
+                };
+                let (ks, vs) = (items(arg(0)), items(arg(1)));
+                let mut index: std::collections::HashMap<crate::fns_matrix::Key, usize> = std::collections::HashMap::new();
+                let mut groups: Vec<(V, Vec<V>)> = Vec::new();
+                for (k, v) in ks.iter().zip(&vs) {
+                    match index.get(&crate::fns_matrix::set_key(k)) {
+                        Some(&g) => groups[g].1.push(v.clone()),
+                        None => {
+                            index.insert(crate::fns_matrix::set_key(k), groups.len());
+                            groups.push((k.clone(), vec![v.clone()]));
+                        }
+                    }
+                }
+                list(groups.into_iter().map(|(k, vals)| list(vec![k, call(&[list(vals)], 1)])).collect())
             }
             _ => crate::excel_functions::bail(),
         }
@@ -1203,6 +1241,13 @@ pub fn decode_value(j: &serde_json::Value) -> V {
     match j {
         Json::Array(items) => list(items.iter().map(decode_value).collect()),
         Json::Object(o) if o.contains_key("__undef") => V::Undef,
+        Json::Object(o) if o.contains_key("__cx") => {
+            let part = |i: usize| match o["__cx"].get(i).map(|p| cell_v(&crate::wire::decode_cell(p))) {
+                Some(V::Num(n)) => n,
+                _ => f64::NAN,
+            };
+            V::Cx(part(0), part(1))
+        }
         Json::Object(o) if o.contains_key("__lambda") => {
             let w = &o["__lambda"];
             if let Some(name) = w.get("eta").and_then(Json::as_str) {

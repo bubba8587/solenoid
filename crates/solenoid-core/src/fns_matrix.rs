@@ -533,7 +533,7 @@ fn array_count(n: f64, f: &str) -> Result<f64, V> {
 // ─── listOps.ts ─────────────────────────────────────────────────────────────────
 
 #[derive(Hash, PartialEq, Eq)]
-enum Key {
+pub(crate) enum Key {
     Num(u64),
     Str(Rc<str>),
     Bool(bool),
@@ -543,7 +543,7 @@ enum Key {
 }
 
 /// `setKey` under SameValueZero: 0 and -0 are one key, an array is keyed by its identity.
-fn set_key(v: &V) -> Key {
+pub(crate) fn set_key(v: &V) -> Key {
     match v {
         V::Num(n) => Key::Num((n + 0.0).to_bits()),
         V::Str(s) => Key::Str(s.clone()),

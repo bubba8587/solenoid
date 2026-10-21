@@ -9,7 +9,7 @@ import type { FrameValue } from "../../src/graph/frame";
 import { frameBackend, useWasmBackend, resetFrameBackendToJs, type FrameHandle } from "../../src/graph/frameBackend";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 import { computeColumnOnEngine } from "../../src/graph/frameBackend";
-import { compileEvaluator, extractVariables } from "../../src/graph/excelFormula";
+import { compileTsEvaluator, extractVariables } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 
 const ROWS = Number(process.env.BENCH_ROWS ?? 200_000);
@@ -103,7 +103,7 @@ describe.skipIf(!process.env.BENCH)("frame engine timing", () => {
       rows.push(["left join a 1000-row lookup", js.toFixed(1), rs.toFixed(1), (js / rs).toFixed(1)]);
     }
     for (const expr of ["@value / SUM(value)", "@value * 1.2 + @cat", "IF(@value > 0, ROUND(@value * 1.2, 2), 0)", "@key & \"-\" & UPPER(@key)", "IFERROR(LN(@value), 0) + MAX(@cat, 10)", "IF(@value > PERCENTILE(value, 0.9), \"top\", PROPER(@key))", "SUMIFS(value, key, \"k1*\") + DATEDIF(45000, 45000 + @cat, \"md\")"]) {
-      const evaluator = compileEvaluator(expr)!;
+      const evaluator = compileTsEvaluator(expr)!;
       const js = time(() => computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(expr) }, {}));
       const rs = time(() => (computeColumnOnEngine(f, expr, ROWS) as { cells: unknown[] }).cells);
       rows.push([`fx: ${expr}`, js.toFixed(1), rs.toFixed(1), (js / rs).toFixed(1)]);
