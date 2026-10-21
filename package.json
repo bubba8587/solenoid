@@ -29,7 +29,7 @@
     "ai-grounding": "tsx scripts/ai-grounding.ts",
     "ai-prompt": "tsx scripts/ai-prompt.ts",
     "search-samples": "node scripts/search-samples-table.mjs",
-    "build:wasm": "cargo build --release --target wasm32-unknown-unknown --manifest-path crates/solenoid-core/Cargo.toml --target-dir crates/solenoid-core/target && wasm-bindgen --target web --out-dir src/graph/engineWasm --out-name solenoid_core crates/solenoid-core/target/wasm32-unknown-unknown/release/solenoid_core.wasm",
+    "build:wasm": "node scripts/build-wasm.mjs",
     "test:core": "cargo test --manifest-path crates/solenoid-core/Cargo.toml --target-dir crates/solenoid-core/target"
   },
   "dependencies": {

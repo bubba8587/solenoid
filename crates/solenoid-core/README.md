@@ -119,4 +119,6 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 - **Whole-column formula refs and the array evaluator** (`mapCells`, the range functions over lists).
 - **ROUND's `toPrecision`** still formats digits on most inputs. An exact integer-arithmetic version would close
   the gap.
-- **Size.** The module is 600 KB raw / 209 KB gzipped, with no wasm-opt yet.
+- **Size.** The module is 698 KB raw / 280 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`). Size
+  modes (`opt-level = "z"`) reach 222 KB gzipped but halve the speed, so they're out. The largest single item left is
+  serde's internally tagged `FrameOp` deserializer (67 KB raw): a hand-written `kind` dispatch would trim it.

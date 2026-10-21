@@ -19,18 +19,17 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
-  readonly engine_invoke: (a: number, b: number, c: number, d: number) => [number, number];
-  readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number) => [number, number];
-  readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
-  readonly take_lens: () => [number, number];
-  readonly take_nums: () => [number, number];
-  readonly take_strs: () => [number, number];
-  readonly take_tags: () => [number, number];
-  readonly __wbindgen_export_0: WebAssembly.Table;
-  readonly __wbindgen_malloc: (a: number, b: number) => number;
-  readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
-  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
-  readonly __wbindgen_start: () => void;
+  readonly engine_invoke: (a: number, b: number, c: number, d: number, e: number) => void;
+  readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+  readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+  readonly take_lens: (a: number) => void;
+  readonly take_nums: (a: number) => void;
+  readonly take_strs: (a: number) => void;
+  readonly take_tags: (a: number) => void;
+  readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
+  readonly __wbindgen_export_0: (a: number, b: number) => number;
+  readonly __wbindgen_export_1: (a: number, b: number, c: number, d: number) => number;
+  readonly __wbindgen_export_2: (a: number, b: number, c: number) => void;
 }
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
