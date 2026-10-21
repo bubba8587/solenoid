@@ -1,12 +1,15 @@
 // [[D99]] rustIsSpec
-// Frozen answers the Rust core is held to. FREEZE_CORE=1 runs a suite's generator through the TypeScript and writes
+// Frozen answers the Rust core is held to. FREEZE_CORE runs a suite's generator through the TypeScript and writes
 // its cases to fixtures/core/<suite>.json.gz; without it, the suite reads the file, so it needs no TypeScript body.
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 import { solError, isSolError, type SolErrorCode } from "../../src/graph/errorValue";
 
-export const FREEZING = process.env.FREEZE_CORE === "1";
+/** FREEZE_CORE=1 freezes every suite; FREEZE_CORE=frame-fns,columns only those, so the rest keep their bytes. */
+const FREEZE = process.env.FREEZE_CORE ?? "";
+export const FREEZING = FREEZE !== "";
+export const freezes = (suite: string): boolean => FREEZE === "1" || FREEZE.split(",").includes(suite);
 const DIR = path.resolve(__dirname, "../../fixtures/core");
 
 /** A value as JSON: non-finite numbers, -0, undefined and errors become tagged objects, arrays recurse. */
@@ -38,7 +41,7 @@ export function dec(v: unknown): unknown {
 /** The suite's cases: made and written when freezing, read back otherwise. `make` is the only place the TypeScript runs. */
 export function frozen<C>(suite: string, make: () => C[]): C[] {
   const file = path.join(DIR, `${suite}.json.gz`);
-  if (FREEZING) {
+  if (freezes(suite)) {
     const cases = make();
     fs.mkdirSync(DIR, { recursive: true });
     fs.writeFileSync(file, zlib.gzipSync(JSON.stringify(cases.map(enc)), { level: 9 }));

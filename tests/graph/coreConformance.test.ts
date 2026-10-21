@@ -10,9 +10,9 @@ import { isCx } from "../../src/graph/cxValue";
 import { resolveExcelFunction, FX_FUNCTION_NAMES, internalFunctionNames } from "../../src/graph/excelFunctions";
 import { compileTsEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
-import { applyVerb, joinFrames, appendFrames, bindColumns, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
+import { applyVerb, joinFrames, appendFrames, bindColumns, promoteHeaders, demoteHeaders, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
 import type { FrameValue, FrameCell, FrameColType } from "../../src/graph/frame";
-import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock } from "../../src/graph/frameBackend";
+import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { isLambdaValue, type LambdaValue } from "../../src/graph/lambdaValue";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
@@ -431,6 +431,50 @@ describe("table verbs answer as frozen", () => {
   });
 });
 
+// ─── Frame functions (frame_fns.rs) ─────────────────────────────────────────────────
+
+type FrameFnCase = { name: string; frames: FrameValue[]; args: unknown[]; want: unknown };
+type Gen = ReturnType<typeof gen>;
+/** Each TS frame function no formula shares, by the name the core knows it under, with a case generator. */
+const FRAME_FNS: Record<string, { run: (frames: FrameValue[], args: unknown[]) => unknown; make: (g: Gen) => { frames: FrameValue[]; args: unknown[] } }> = {
+  promoteHeaders: { run: ([f]) => promoteHeaders(f), make: (g) => ({ frames: [g.frame()], args: [] }) },
+  demoteHeaders: { run: ([f]) => demoteHeaders(f), make: (g) => ({ frames: [g.frame()], args: [] }) },
+};
+const fnOutcome = (run: () => unknown): unknown => {
+  try {
+    const r = run();
+    return r && typeof r === "object" && (r as FrameValue).__frame ? { frame: view(r as FrameValue) } : { value: canon(r) };
+  } catch (e) {
+    return isSolError(e) ? { error: { code: e.code, message: wf(e.message) } } : { error: { code: "thrown", message: String(e) } };
+  }
+};
+
+const frameFns = frozen<FrameFnCase>("frame-fns", () => Object.entries(FRAME_FNS).flatMap(([name, fn]) => {
+  const g = gen(mulberry32(5150 + name.length));
+  return Array.from({ length: 1000 }, () => {
+    const { frames, args } = fn.make(g);
+    return { name, frames, args, want: fnOutcome(() => fn.run(frames, args)) };
+  });
+}));
+
+describe("frame functions answer as frozen", () => {
+  const byFn = new Map<string, FrameFnCase[]>();
+  for (const c of frameFns) (byFn.get(c.name) ?? byFn.set(c.name, []).get(c.name)!).push(c);
+  for (const [name, cases] of byFn) {
+    it(`${name} (${cases.length})`, () => {
+      let ran = 0;
+      for (const c of cases) {
+        const r = frameFnOnCore(name, c.frames, c.args);
+        if (!r) continue;
+        ran++;
+        const got = "frame" in r ? { frame: view(r.frame) } : { value: canon(r.value) };
+        if (JSON.stringify(got) !== JSON.stringify(c.want)) expect({ name, frames: c.frames, args: c.args, got }).toEqual({ name, frames: c.frames, args: c.args, got: c.want });
+      }
+      checkBails(`frame fn ${name}`, cases.length - ran);
+    });
+  }
+});
+
 // ─── Formulas over values (the Expression card) ───────────────────────────────────
 
 type ExprCase = { src: string; env: Record<string, unknown>; want: unknown };
@@ -493,7 +537,7 @@ describe("formulas over values answer as frozen", () => {
 
 if (FREEZING) {
   it("froze every suite", () => {
-    expect(bodies.length + maths.length + columns.length + verbs.length + expressions.length).toBeGreaterThan(0);
+    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length).toBeGreaterThan(0);
   });
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.
