@@ -551,6 +551,9 @@ describe("text tier 2: UNACCENT / SLUGIFY / Pad Text / Truncate Text", () => {
     expect(ev('PADTEXT("7", 3, "left", "0")')).toBe("007");
     expect(ev('PADTEXT("ab", 4)')).toBe("ab  ");
     expect((ev('PADTEXT("ab", 4, "middle")') as { code?: string }).code).toBe("#DOMAIN!");
+    // [[C120]] linearWork: a huge width answers at once, at Excel's text limit like REPT.
+    expect((ev('PADTEXT("ab", 1e12)') as { code?: string }).code).toBe("#VALUE!");
+    expect((ev('PADTEXT("ab", 32767)') as string).length).toBe(32767);
     expect(ev('TRUNCATETEXT("abcdefgh", 5, "..")')).toBe("abc..");
   });
 });

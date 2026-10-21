@@ -1193,12 +1193,12 @@ fn pad_text(t: &str, width: f64, side: &str, fill: &str) -> V {
     if chars.len() as f64 >= w {
         return V::str(t);
     }
+    if w > 32767.0 {
+        return V::err(sol_error("#VALUE!", "PADTEXT's result would pass 32,767 characters, Excel's text limit"));
+    }
     let need = w - chars.len() as f64;
     if need.is_nan() {
         return V::str(t);
-    }
-    if need > 1e7 {
-        return bail();
     }
     let need = need as usize;
     let run = |n: usize| (0..n).map(|i| fill[i % fill.len()]).collect::<String>();

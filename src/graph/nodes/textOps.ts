@@ -342,11 +342,13 @@ export function slugify(t: string, sep = "-"): string {
 }
 
 export type PadSide = "left" | "right" | "center";
-export function padText(t: string, width: number, side: PadSide, fill = " "): string {
+export function padText(t: string, width: number, side: PadSide, fill = " "): string | SolError {
   const chars = [...t];
   const w = Math.max(0, Math.floor(width));
   const f = [...(fill === "" ? " " : fill)];
   if (chars.length >= w) return t;
+  // A width typed huge would build the text a character at a time ([[C120]] linearWork); REPT stops at the same limit.
+  if (w > 32767) return solError("#VALUE!", "PADTEXT's result would pass 32,767 characters, Excel's text limit");
   const need = w - chars.length;
   const run = (n: number) => Array.from({ length: n }, (_, i) => f[i % f.length]).join("");
   if (side === "left") return run(need) + t;

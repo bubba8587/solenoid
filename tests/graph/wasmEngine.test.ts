@@ -1089,8 +1089,6 @@ describe("each ported function body matches its JS one on random arguments", () 
       const args = Array.from({ length: Math.floor(rand() * 5) }, () => (LIST_BODIES.has(name) && rand() < 0.5 ? list() : one()));
       // SWITCH compares by identity, which a copy across the wire can't keep; an error never reaches it in a formula.
       if (name === "SWITCH" && args.some(isSolError)) continue;
-      // A pad to a serial-sized width builds megabytes of text per call: true on both sides, and only slow.
-      if (name === "PADTEXT" && Math.abs(Number(args[1])) > 1e4) continue;
       if (name === "BINOM.INV" && Math.abs(Number(args[0])) > 1e4) continue;
       // Formula.js's DB and DDB loop once per period, forever for an infinite life; the port bails past a million.
       if ((name === "DB" || name === "DDB") && args.some((a) => Math.abs(Number(a)) > 1e6)) continue;
