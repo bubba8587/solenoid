@@ -16,6 +16,7 @@ pub mod fxhash;
 pub mod frame_backend;
 pub mod frame_verbs;
 pub mod js_sort;
+pub mod letters;
 pub mod jsnum;
 pub mod string_order;
 pub mod unit_value;

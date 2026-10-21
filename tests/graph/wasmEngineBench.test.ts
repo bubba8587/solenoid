@@ -102,7 +102,7 @@ describe.skipIf(!process.env.BENCH)("frame engine timing", () => {
       const rs = await timeAsync(async () => { const out = await be.join(h, r, opts); await be.preview(out, 100); be.drop(out); });
       rows.push(["left join a 1000-row lookup", js.toFixed(1), rs.toFixed(1), (js / rs).toFixed(1)]);
     }
-    for (const expr of ["@value / SUM(value)", "@value * 1.2 + @cat", "IF(@value > 0, ROUND(@value * 1.2, 2), 0)", "@key & \"-\" & UPPER(@key)", "IFERROR(LN(@value), 0) + MAX(@cat, 10)"]) {
+    for (const expr of ["@value / SUM(value)", "@value * 1.2 + @cat", "IF(@value > 0, ROUND(@value * 1.2, 2), 0)", "@key & \"-\" & UPPER(@key)", "IFERROR(LN(@value), 0) + MAX(@cat, 10)", "IF(@value > PERCENTILE(value, 0.9), \"top\", PROPER(@key))", "SUMIFS(value, key, \"k1*\") + DATEDIF(45000, 45000 + @cat, \"md\")"]) {
       const evaluator = compileEvaluator(expr)!;
       const js = time(() => computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(expr) }, {}));
       const rs = time(() => computeColumnOnEngine(f, expr, ROWS)!.cells);

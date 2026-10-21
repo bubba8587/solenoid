@@ -572,19 +572,12 @@ fn holiday_set(h: &V) -> Vec<f64> {
     out
 }
 
-/// `properCase` (textOps.ts): a letter after a non-letter is capitalized, every other letter lowercased. `\p{L}` is
-/// read for ASCII and Latin-1/Latin Extended-A/B; other alphabetic text bails to the TS.
+/// `properCase` (textOps.ts): a letter after a non-letter is capitalized, every other letter lowercased.
 fn proper_case(t: &str) -> V {
     let mut out = String::with_capacity(t.len());
     let mut after_letter = false;
     for ch in t.chars() {
-        let letter = match ch as u32 {
-            0..=0x7F => ch.is_ascii_alphabetic(),
-            0xD7 | 0xF7 => false,
-            0xC0..=0x24F => true,
-            _ if !ch.is_alphabetic() => false,
-            _ => return bail(),
-        };
+        let letter = crate::letters::is_letter(ch);
         if !letter {
             out.push(ch);
         } else if after_letter {

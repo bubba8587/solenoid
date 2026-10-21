@@ -69,7 +69,7 @@ The Formula.js bodies (CEILING, FLOOR, MROUND, EVEN, ODD, SWITCH, REPLACE and th
 | Row formulas (computed columns): literals, `@column`, scalar side values, constants, every operator | Ported | 300k random computed columns match cells, messages and side sockets |
 | Formula functions | 149 ported. Logic: IF IFS AND OR NOT XOR CHOOSE SWITCH, the IFERROR family, the IS tests. Math: ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG LOG10 MOD POWER QUOTIENT PI SQRTPI DEGREES RADIANS CEILING(.MATH) FLOOR(.MATH) MROUND EVEN ODD. Trig: SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH ASINH ACOSH ATANH COT COTH ACOT ACOTH SEC SECH CSC CSCH. Aggregates: SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV(.S/.P) VAR(.S/.P) COUNT COUNTA COUNTBLANK. Order statistics: LARGE SMALL PERCENTILE(.INC/.EXC) QUARTILE(.INC/.EXC) MODE MODE.SNGL. Criteria: COUNTIF COUNTIFS SUMIFS AVERAGEIF AVERAGEIFS MINIFS MAXIFS, wildcards included. Lookups: XLOOKUP XMATCH (INDEX lowers a role the evaluator doesn't read). Text: LEN CONCAT CONCATENATE TEXTJOIN MID LEFT RIGHT REPLACE UPPER LOWER PROPER TRIM REPT SUBSTITUTE EXACT FIND SEARCH CHAR UNICHAR CODE UNICODE VALUE N T. Dates: DATE YEAR MONTH DAY HOUR MINUTE SECOND TIME DAYS DAYS360 DATEDIF YEARFRAC EOMONTH WEEKDAY WEEKNUM ISOWEEKNUM DATETRUNC FROMEPOCH TOEPOCH WORKDAY(.INTL) NETWORKDAYS(.INTL) | each body is checked directly against its JS one on random arguments; a formula calling anything else runs on the TS |
 | Whole-column refs (a bare column name, `[col]`) as a range function's argument: `@x / SUM(x)`, `MAX([x])`, `COUNTBLANK(b)`, `XLOOKUP(@id, id, price)` | Ported, with `prepRangeArgs`' error scan and blank drop, and a call that reads no `@` cell evaluated once | explicit cases plus the fuzzer |
-| Readings only chrono-node does (a criterion like `">=3-Apr-2026"`), and PROPER over non-Latin letters | Bail: the row stops and the whole column runs on the TS (`bail()`) | explicit cases |
+| Readings only chrono-node does (a criterion like `">=3-Apr-2026"`) | Bail: the row stops and the whole column runs on the TS (`bail()`) | explicit cases |
 | A whole column in an argument that takes one value (`LARGE(x, x)` lifts per item) | Not ported: `formulaCallTable` lowers those positions (`scalar`) and the support check sends them to the TS | |
 | Whole columns anywhere else (broadcast), lists and matrices, LAMBDA, complex numbers, units in formulas | Not ported: runs on the TS | |
 | Expression nodes, the compute pass, node `data()` | Not started | |
@@ -91,25 +91,27 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 
 - A verb row is the op plus a 100-row preview, with the frame already in wasm.
 - An fx row includes uploading its columns and downloading the answer.
-- Frames cross as columnar buffers: uploading 200k rows takes 52 ms, a full download 43 ms.
+- Frames cross as columnar buffers: uploading 200k rows takes 52 ms, a full download 55 ms.
 
 | op | JS ms | Rust ms | × |
 | --- | ---: | ---: | ---: |
-| sort by a number | 133.9 | 44.0 | 3.0 |
-| sort by text | 183.3 | 86.4 | 2.1 |
-| filter value > 0 | 19.3 | 8.7 | 2.2 |
-| filter text contains | 14.5 | 8.3 | 1.7 |
-| distinct key | 12.2 | 12.4 | 1.0 |
-| group by key: sum, avg, median | 151.4 | 38.3 | 3.9 |
-| window: cumsum by cat over day | 131.8 | 71.7 | 1.8 |
-| window: rank by cat | 156.5 | 84.8 | 1.8 |
-| pipeline: filter, group, sort | 97.1 | 24.8 | 3.9 |
-| left join a 1000-row lookup | 95.6 | 20.5 | 4.7 |
-| fx: `@value / SUM(value)` | 180.4 | 47.3 | 3.8 |
-| fx: `@value * 1.2 + @cat` | 138.5 | 57.3 | 2.4 |
-| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 724.7 | 403.1 | 1.8 |
-| fx: `@key & "-" & UPPER(@key)` | 356.3 | 290.1 | 1.2 |
-| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 566.5 | 159.0 | 3.6 |
+| sort by a number | 134.9 | 45.4 | 3.0 |
+| sort by text | 178.6 | 88.1 | 2.0 |
+| filter value > 0 | 15.7 | 8.7 | 1.8 |
+| filter text contains | 13.1 | 7.1 | 1.9 |
+| distinct key | 8.6 | 9.7 | 0.9 |
+| group by key: sum, avg, median | 153.9 | 36.3 | 4.2 |
+| window: cumsum by cat over day | 141.5 | 68.8 | 2.1 |
+| window: rank by cat | 192.6 | 69.7 | 2.8 |
+| pipeline: filter, group, sort | 93.0 | 28.9 | 3.2 |
+| left join a 1000-row lookup | 99.2 | 21.1 | 4.7 |
+| fx: `@value / SUM(value)` | 217.5 | 46.6 | 4.7 |
+| fx: `@value * 1.2 + @cat` | 152.9 | 66.0 | 2.3 |
+| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 801.6 | 429.0 | 1.9 |
+| fx: `@key & "-" & UPPER(@key)` | 405.5 | 282.9 | 1.4 |
+| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 755.4 | 179.4 | 4.2 |
+| fx: `IF(@value > PERCENTILE(value, 0.9), "top", PROPER(@key))` | 984.2 | 210.3 | 4.7 |
+| fx: `SUMIFS(value, key, "k1*") + DATEDIF(45000, 45000 + @cat, "md")` | 892.0 | 228.9 | 3.9 |
 
 ## Found on the way (fixed in the TS here, worth carrying to develop)
 
