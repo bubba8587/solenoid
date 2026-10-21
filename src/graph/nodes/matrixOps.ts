@@ -7,7 +7,7 @@ import { MAX_GENERATED } from "./listOps";
 /** `#OVERFLOW!` past MAX_GENERATED cells, so a typo like EXPAND(x, 1e5, 1e5) answers an error instead of exhausting memory ([[C17]] shareImpl). */
 /** An empty axis still costs a step per item of the other, and an infinite one never ends ([[C120]] linearWork). */
 function cellCap(fn: string, rows: number, cols: number): SolError | null {
-  return !(Math.max(rows, 1) * Math.max(cols, 1) <= MAX_GENERATED)
+  return Math.max(rows, 1) * Math.max(cols, 1) > MAX_GENERATED
     ? solError("#OVERFLOW!", `${fn} would build ${rows}×${cols} cells, past the ${MAX_GENERATED} element limit`)
     : null;
 }
