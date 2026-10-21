@@ -179,3 +179,17 @@ describe("eta-lambdas and application — the recorded deviations, closed", () =
     expect(code(ev("LAMBDA(f, f + 1)(SQRT)"))).toBe("#TYPE!");
   });
 });
+
+describe("a helper's LAMBDA answers one value each time, as Excel's do", () => {
+  it("a list answer is #SHAPE!, not a value nested past a table", () => {
+    const env = { ys: [3, 1, 2], m: [[1, 2], [3, 4]] };
+    expect(code((ev("BYROW(ys, LAMBDA(r, r * 2))", env) as unknown[][])[0][0])).toBe("#SHAPE!");
+    expect(code((ev("BYCOL(m, LAMBDA(c, c * 2))", env) as unknown[])[0])).toBe("#SHAPE!");
+    expect(code((ev("MAP(m, LAMBDA(v, SEQUENCE(2)))", env) as unknown[][])[0][0])).toBe("#SHAPE!");
+    expect(code((ev("MAKEARRAY(1, 1, LAMBDA(i, j, SEQUENCE(2)))", env) as unknown[][])[0][0])).toBe("#SHAPE!");
+    expect(code((ev("SCAN(0, ys, LAMBDA(a, v, SEQUENCE(v)))", env) as unknown[])[0])).toBe("#SHAPE!");
+    // One value per row still reads as before, and REDUCE may build a list.
+    expect(ev("BYROW(m, LAMBDA(r, SUM(r)))", env)).toEqual([[3], [7]]);
+    expect(ev("REDUCE(0, ys, LAMBDA(a, v, a + v))", env)).toBe(6);
+  });
+});

@@ -398,6 +398,8 @@ The hosts accept a list, a matrix or a scalar (read as a 1×1), and read a list 
 
 Arity is not checked by the hosts: missing parameters bind `null` from the host's tuple and extra host arguments are ignored.
 
+The lambda answers one value each time in MAP, BYROW, BYCOL, SCAN and MAKEARRAY, as Excel's does (its `#CALC!`): a list answer is that cell's `#SHAPE!` "{HOST}'s LAMBDA answers one value for each {cell, row, column, step}, not a list", since keeping it would nest the answer past a table, which nothing downstream reads (`oneValue`). REDUCE's accumulator may be a list, and GROUPBY's answer for a group may be one.
+
 ### The LAMBDA node and wired lambdas
 
 The LAMBDA node has a comma-separated `params` field and a body `expr`. Every name in the body that is not a parameter, together with every identifier-shaped `@name` (from `atColNames`), becomes a capture input socket. The node compiles the body with `compilePositional(expr, [...params, ...captures])` and emits `{ __lambda: true, params, fn, expr, captured, descriptions }`, where `fn(...args)` passes the first `params.length` arguments followed by the capture values resolved at compute time. An unchanged recompute returns the same object, since consumers memoize on identity. A parameter that is not an identifier, one named twice, or one named after a constant answers `#NAME?`, and the card shows the reason ("e is a constant" for the last, [[D77]] constantsAlwaysWin); a body that does not parse answers `#SYNTAX!` with the syntax hint; an empty body answers `null`.
