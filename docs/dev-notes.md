@@ -28,7 +28,7 @@ specific item.
   - CLEAN threw on a number, and the Text Transform card's CLEAN dropped DEL;
   - a function that threw escaped the evaluator, past IFERROR (now `#VALUE!` at its call, on both cores).
 - **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
-  and catching throws.
+  and catching throws. Rerun after the fixes, no call takes over 300 ms.
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
   - Whether the regex port's remaining 70 KB or so (gzipped) is worth it.
