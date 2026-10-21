@@ -21,7 +21,8 @@ import {
   type FrameValue, type FrameCell, type FrameColType, type FrameColumn, type CubeCell,
 } from "../../src/graph/frame";
 import { tagFrameCellUnit } from "../../src/graph/unitColumn";
-import type { ColumnUnit } from "../../src/graph/unitValue";
+import { isUnitCell, type ColumnUnit, type UnitCell } from "../../src/graph/unitValue";
+import { coreValue, readReply } from "../../src/graph/coreValues";
 import type { AllocateMode } from "../../src/graph/nodes/allocateOps";
 import type { PayoffOrder } from "../../src/graph/nodes/payoffOps";
 import { payoffFrame, settleFrame, settleLedgerCube, numericRows, kmeansOutputs, pcaOutputs, logisticOutputs, type PayoffView, type SettleSplit } from "../../src/graph/nodes/frame";
@@ -30,7 +31,7 @@ import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frame
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { isLambdaValue, type LambdaValue } from "../../src/graph/lambdaValue";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
-import { frozen, FREEZING } from "./coreFixtures";
+import { frozen, FREEZING, enc } from "./coreFixtures";
 import {
   mulberry32, gen, FNS, FORMULA_FNS, SORTS_NUMBERS, formulaGen, DIST_CASES, FINANCE_CASES, LEFTOVER_CASES, REGEX_ATOMS, REGEX_CHARS,
   REGEX_ASCII, REGEX_REPL, TEXT_CHARS, TEXT_UTIL_NAMES, POOL, LIST_BODIES, RAW_LISTS, SCHEDULES,
@@ -1011,9 +1012,63 @@ describe("affine weights answer as frozen", () => {
   });
 });
 
+// ─── List bodies over values with a unit ─────────────────────────────────────────
+
+type UnitListCase = { name: string; args: unknown[]; want: unknown };
+
+/** A value with its unit cells spelled out, so frozen and replayed answers compare as data. */
+function unitData(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(unitData);
+  if (isUnitCell(v)) return { __u: v.value, dim: Object.keys(v.dim).sort().map((k) => [k, v.dim[k]]), display: v.display ?? null, ratio: v.ratio ?? false };
+  return v;
+}
+
+/** The bodies that move values with a unit without reading them ([[C25]] firstClassUnits): the core takes those cells
+ *  as they are (`UNIT_READY` in unit_dims.rs). */
+const unitLists = frozen<UnitListCase>("unit-lists", () => {
+  const cases: UnitListCase[] = [];
+  const rand = mulberry32(4242);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const units: UnitCell[] = [
+    { __unitCell: true, value: 5000, dim: { length: 1 }, display: "km" }, { __unitCell: true, value: 1.5, dim: { length: 1 } },
+    { __unitCell: true, value: 293.15, dim: { temperature: 1 }, display: "degC" }, { __unitCell: true, value: 5, dim: { currency: 1 }, display: "usd" },
+    { __unitCell: true, value: 2.5, dim: {}, ratio: true }, { __unitCell: true, value: -0.25, dim: { length: 1, time: -1 }, display: "ms1" },
+    { __unitCell: true, value: 3, dim: { "custom:widget": 1 } },
+  ];
+  const cell = () => pick([...units, ...units, 1, -2.5, 0, null, "a", "", true]);
+  const list = (): unknown => (rand() < 0.15 ? cell() : Array.from({ length: Math.floor(rand() * 6) }, cell));
+  const num = () => pick([0, 1, 2, -1, -3, 3, 10, 2.5, null, undefined, "2"]);
+  for (let i = 0; i < 4000; i++) {
+    const name = pick(["REVERSE", "SLICE", "NTHELEMENT", "INTERLEAVE", "CONCATLISTS", "PADLEFT", "PADRIGHT"]);
+    const args = name === "REVERSE" ? [list()]
+      : name === "SLICE" ? [list(), num(), num()]
+      : name === "NTHELEMENT" ? [list(), num()]
+      : name === "INTERLEAVE" ? [list(), list()]
+      : name === "CONCATLISTS" ? Array.from({ length: 1 + Math.floor(rand() * 3) }, list)
+      : [list(), pick([0, 2, 5, 7, -1, null]), pick([...units, 0, null, undefined, "x"])];
+    let want: unknown;
+    try { want = unitData(resolveExcelFunction(name)!(...structuredClone(args))); } catch (e) { want = { thrown: String((e as Error).message ?? e) }; }
+    cases.push({ name, args, want });
+  }
+  return cases;
+});
+
+describe("list bodies over values with a unit answer as frozen", () => {
+  it(`${unitLists.length} calls`, () => {
+    const bad: unknown[] = [];
+    for (const c of unitLists) {
+      const r = readReply(wasmInvokeSync<unknown>("engine_call", { name: c.name, args: c.args.map((a) => coreValue(a, true)), clock: engineClock() }));
+      const got = r ? unitData(r.value) : { bailed: true };
+      if (JSON.stringify(enc(got)) !== JSON.stringify(enc(c.want))) bad.push({ name: c.name, args: c.args, got, want: c.want });
+    }
+    if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(enc(b))).join("\n"));
+    expect(bad.slice(0, 5)).toEqual([]);
+  });
+});
+
 if (FREEZING) {
   it("froze every suite", () => {
-    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length).toBeGreaterThan(0);
+    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length).toBeGreaterThan(0);
   });
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.

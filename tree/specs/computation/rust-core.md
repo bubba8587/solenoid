@@ -79,6 +79,7 @@ columns to `engine_pivot_layout`.
 | Node `data()` | moving onto `callCore` (`coreValues.ts`), node family by node family | each family's tests, with and without `CORE_EVAL` |
 | Frame computations no formula shares: headers, Describe, Correlation Matrix, Reconcile, Nest's grouping, XLOOKUP over a frame, Get Row, Get and Add Column's naming, Build and Split Frame, Frame from Lists, the Decision Matrix and its flip points, the Allocator, the Payoff Planner, Group Cost Settle's totals and its ledger (a ledger holding lists stays with the TS), Amortization, K-Means, PCA, logistic regression. A thrown error crosses as itself; a card with several outputs gets them side by side in one frame | `frame_fns.rs`, `decision.rs`, `planners.rs`, `engine_frame_fn`, `frameFnOnCore` (`frameBackend.ts`) | the frozen frame-function cases |
 | A formula's unit reading ([[unit-flow]] § Formula dimensions, § Expression): its result dimension (`dimEval`) and its point weight over readings (`affineWeight`), for Expression, the LAMBDA folds and a computed column over °C. The numbers still cross unit-blind; the display-unit choice and the re-tagging stay on the TS, and Equation still calls the TS `dimEval` on its own ASTs | `unit_dims.rs`, `engine_dim_eval`, `engine_affine_weight`, `formulaDim` and `formulaAffineWeight` (`unitDimExpr.ts`) | 18k frozen formula dimensions (`unit-dims`), 17k frozen weights (`affine-weights`) |
+| List bodies over values with a unit: the ones that move cells without reading them (`UNIT_READY`) | `V::Unit`, `coreValue(v, true)` and `readReply` (`coreValues.ts`) | 4k frozen calls (`unit-lists`) |
 | A pack's formula functions | the TS, by design: a pack registers JS at run time, and the core calls it back (`syncExternalNames`) | |
 
 ## Fallback ([[D98]] wholeColumnFallback)
@@ -86,8 +87,10 @@ columns to `engine_pivot_layout`.
 A body meeting a reading the core doesn't make yet calls `bail()`, and the whole formula or column runs on the
 TypeScript, never part of it: chrono-node's free-text dates in criteria, INDEX with a list of positions,
 REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table. A value that can't cross (a unit cell,
-a frame, text with a lone surrogate) keeps its call on the TS: a `UnitCell` has no wire form yet, so a node handing
-one to `callCore` (RUNNING over a united list, the list verbs) or a computed column's united side value runs there. `bails.json` counts what's left.
+a frame, text with a lone surrogate) keeps its call on the TS. A `UnitCell` crosses only into `callCore`, as
+`{__unit}` (`V::Unit`), and only the bodies that move values without reading them take it (`UNIT_READY` in
+`unit_dims.rs`: REVERSE, SLICE, NTHELEMENT, INTERLEAVE, CONCATLISTS, PADLEFT, PADRIGHT); any other call holding one
+bails, and a formula or computed column over one stays on the TS. `bails.json` counts what's left.
 
 ## Where it runs
 

@@ -343,11 +343,19 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
                 CallReply::Value(V::err(crate::error_value::sol_error("#NAME?", format!("Unknown function {name}"))))
             });
         }
+        if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&name.to_uppercase().as_str()) {
+            crate::excel_functions::set_clock(None);
+            return Ok(CallReply::Bail);
+        }
         call_function(&name, &argv)
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;
         let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
+        if env.values().any(crate::unit_dims::holds_unit) {
+            crate::excel_functions::set_clock(None);
+            return Ok(CallReply::Bail);
+        }
         match crate::excel_formula::parse_formula(&src) {
             None => V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")),
             Some(ast) => crate::eval::Eval::default().run(&ast, &std::rc::Rc::new(env)),
@@ -404,6 +412,10 @@ impl serde::Serialize for Out<'_> {
             V::Str(t) => one(s, "str", t.as_ref()),
             V::Bool(b) => one(s, "bool", b),
             V::Lambda(_) => one(s, "lambda", &true),
+            V::Unit(u) => {
+                let dim: Vec<(&String, String)> = u.dim.iter().map(|(k, x)| (k, bits(*x))).collect();
+                one(s, "unit", &json!({ "value": bits(u.value), "dim": dim, "display": u.display, "ratio": u.ratio }))
+            }
             V::Cx(re, im) => one(s, "cx", &[bits(*re), bits(*im)]),
             V::Err(e) => {
                 let mut m = s.serialize_map(None)?;

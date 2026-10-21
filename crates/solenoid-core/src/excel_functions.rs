@@ -30,6 +30,8 @@ pub enum V {
     Cx(f64, f64),
     /// A LAMBDA, or a function named bare where a LAMBDA goes.
     Lambda(Rc<crate::eval::LambdaV>),
+    /// A value with a unit (`unitValue.ts`' `UnitCell`), opaque to every body but the unit-aware ones.
+    Unit(Rc<crate::unit_dims::UnitCell>),
 }
 
 impl V {
@@ -246,7 +248,7 @@ pub fn js_string_of(v: &V) -> String {
         V::Num(n) => number_to_string(*n),
         V::Str(s) => s.to_string(),
         V::Bool(b) => (if *b { "true" } else { "false" }).into(),
-        V::Err(_) | V::Cx(..) | V::Lambda(_) => "[object Object]".into(),
+        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => "[object Object]".into(),
         V::Fx(code) => format!("Error: {code}"),
         // `Array.prototype.join` renders null and undefined as empty.
         V::List(items) => items.iter().map(|v| if matches!(v, V::Null | V::Undef) { String::new() } else { js_string_of(v) }).collect::<Vec<_>>().join(","),
@@ -374,7 +376,7 @@ pub(crate) fn parse_number(v: &V) -> V {
             let s = js_string_of(v);
             if string_to_number(&s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(&s)) }
         }
-        V::Err(_) | V::Cx(..) | V::Lambda(_) => V::Fx("#VALUE!"),
+        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => V::Fx("#VALUE!"),
     }
 }
 
@@ -394,7 +396,7 @@ pub(crate) fn truthy(v: &V) -> bool {
         V::Num(n) => *n != 0.0 && !n.is_nan(),
         V::Str(s) => !s.is_empty(),
         V::Bool(b) => *b,
-        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) | V::Lambda(_) => true,
+        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => true,
     }
 }
 

@@ -515,7 +515,7 @@ function columnAnswer(r: { bail?: boolean; error?: { code: string; message: stri
 export function frameFnOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = []):
   { frame: FrameValue; value?: unknown } | { value: unknown } | null {
   if (!wasmEngineLoaded() || !wasmEngineOn() || !frames.every(crossesWhole)) return null;
-  const wire = args.map(coreValue);
+  const wire = args.map((a) => coreValue(a));
   if (wire.includes(undefined)) return null;
   const handles = frames.map((f) => wasmSourceBin(encodeBinary(f)));
   let out: string | undefined;

@@ -731,3 +731,28 @@ pub fn affine_weight(node: &Ast, scope: &AffScope) -> Result<u8, SolError> {
         Err(aff_err())
     }
 }
+
+// ─── Values with a unit ─────────────────────────────────────────────────────────
+
+/// A `UnitCell` as it crosses: its base-SI value, dimension, display id and ratio brand.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnitCell {
+    pub value: f64,
+    pub dim: Dim,
+    pub display: Option<String>,
+    pub ratio: bool,
+}
+
+/// The bodies that take a value with a unit as it is: they move values, never read them. Any other call holding one
+/// stays on the TS.
+pub const UNIT_READY: &[&str] = &["REVERSE", "SLICE", "NTHELEMENT", "INTERLEAVE", "CONCATLISTS", "PADLEFT", "PADRIGHT"];
+
+pub fn holds_unit(v: &crate::excel_functions::V) -> bool {
+    use crate::excel_functions::V;
+    match v {
+        V::Unit(_) => true,
+        V::List(items) => items.iter().any(holds_unit),
+        V::Lambda(l) => l.env.values().any(holds_unit),
+        _ => false,
+    }
+}
