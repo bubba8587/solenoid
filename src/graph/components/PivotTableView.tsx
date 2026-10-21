@@ -1,11 +1,11 @@
 // [[C127]] pivotView
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  buildPivotModel, emptyText, filterPivotBody, groupKey, totalsModes, valueCaption,
+  buildPivotModel, detailCellText, emptyText, filterPivotBody, groupKey, liveDetailKeys, totalsModes, valueCaption,
   type GrandMode, type PivotBodyRow, type PivotEmpty, type PivotForm, type PivotLayout, type PivotTotals, type PivotViewOptions, type SubtotalMode,
 } from "../pivotLayout";
 import { formatFrameCell, type FrameCell } from "../frame";
-import { MinusSquareIcon, PlusSquareIcon, SlidersIcon } from "./Icons";
+import { ChevronDownIcon, ChevronRightIcon, MinusSquareIcon, PlusSquareIcon, SlidersIcon } from "./Icons";
 import { PopupChoice, segmentsWidth, useFreeWidth } from "./PopupChoice";
 import { useEscapeLayer } from "./escapeLayers";
 import { IS_COARSE } from "../coarse";
@@ -32,6 +32,8 @@ const BAND_OPTIONS: { value: Banding; label: string }[] = [
 ];
 
 const MAX_ROWS = 1000;
+/** A group's source rows draw at most this many under it ([[C128]] pivotDetails). */
+const MAX_DETAIL_ROWS = 100;
 
 export interface PivotTotalsControl {
   totals: PivotTotals;
@@ -151,6 +153,32 @@ export function PivotSheetButton({ children }: { children: ReactNode }) {
   );
 }
 
+/** A leaf group's source rows, in source order, as a small table of the Details columns. */
+function PivotDetails({ layout, item, indent }: { layout: PivotLayout; item: number; indent: number }) {
+  const cols = layout.details ?? [];
+  const sources = layout.rows[item]?.sources ?? [];
+  const shown = sources.length > MAX_DETAIL_ROWS ? sources.slice(0, MAX_DETAIL_ROWS) : sources;
+  return (
+    <div className="pivot-view__detailin" style={indent ? { paddingLeft: 6 + indent } : undefined}>
+      <table className="pivot-view__subtable">
+        <thead>
+          <tr>{cols.map((c, k) => <th key={k} scope="col" className={c.type === "number" ? "pivot-view__subnum" : undefined}>{c.name}</th>)}</tr>
+        </thead>
+        <tbody>
+          {shown.map((r) => (
+            <tr key={r}>
+              {cols.map((c, k) => <td key={k} className={c.type === "number" ? "pivot-view__subnum" : undefined}>{detailCellText(c, c.values[r] ?? null)}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {shown.length < sources.length && (
+        <div className="pivot-view__subnote">First {MAX_DETAIL_ROWS} of {sources.length.toLocaleString(APP_LOCALE)} rows</div>
+      )}
+    </div>
+  );
+}
+
 export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt, query, ribbon }: {
   layout: PivotLayout;
   options: PivotViewOptions;
@@ -161,8 +189,15 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
   query: string;
   ribbon: ReactNode;
 }) {
-  const model = buildPivotModel(layout, options, itemText(layout.rowTypes), itemText(layout.colTypes));
+  // Which groups show their source rows is the popup's own state, never saved.
+  const [openDetails, setOpenDetails] = useState<ReadonlySet<string>>(() => new Set());
+  const model = buildPivotModel(layout, options, itemText(layout.rowTypes), itemText(layout.colTypes), liveDetailKeys(layout, openDetails));
   const set = (patch: Partial<PivotViewOptions>) => onOptions({ ...options, ...patch });
+  const toggleDetail = (key: string) => setOpenDetails((cur) => {
+    const next = new Set(cur);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
   const keyCols = layout.rowFields.length;
   const compact = options.form === "compact";
   const toggleFold = (key: string) => {
@@ -180,6 +215,10 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
   const labelCell = (row: PivotBodyRow, col: number) => {
     const label = row.labels[col];
     const fold = row.folds?.find((f) => f.col === col);
+    const sources = fold?.detail && row.src !== null ? layout.rows[row.src].sources?.length ?? 0 : 0;
+    const foldTitle = !fold ? "" : fold.detail
+      ? `${fold.collapsed ? "Show" : "Hide"} the ${sources.toLocaleString(APP_LOCALE)} source ${sources === 1 ? "row" : "rows"}`
+      : fold.collapsed ? "Expand this group" : "Collapse this group";
     const indent = compact ? row.level * 16 + (model.foldable && !fold && row.kind !== "grand" ? 18 : 0) : 0;
     return (
       <th
@@ -192,13 +231,15 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
           {fold && (
             <button
               type="button"
-              className="pivot-view__fold"
-              onClick={() => toggleFold(fold.key)}
-              title={fold.collapsed ? "Expand this group" : "Collapse this group"}
-              aria-label={fold.collapsed ? "Expand" : "Collapse"}
+              className={`pivot-view__fold${fold.detail ? " pivot-view__fold--detail" : ""}`}
+              onClick={() => (fold.detail ? toggleDetail(fold.key) : toggleFold(fold.key))}
+              title={foldTitle}
+              aria-label={foldTitle}
               aria-expanded={!fold.collapsed}
             >
-              {fold.collapsed ? <PlusSquareIcon size={12} /> : <MinusSquareIcon size={12} />}
+              {fold.detail
+                ? (fold.collapsed ? <ChevronRightIcon size={12} strokeWidth={2.2} /> : <ChevronDownIcon size={12} strokeWidth={2.2} />)
+                : fold.collapsed ? <PlusSquareIcon size={12} /> : <MinusSquareIcon size={12} />}
             </button>
           )}
           {label?.text ?? ""}
@@ -236,6 +277,14 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
               >
                 {row.kind === "blank" ? (
                   <td colSpan={model.labelCols + layout.cols.length} className="pivot-view__blank" />
+                ) : row.kind === "detail" && row.detail !== undefined ? (
+                  <>
+                    {/* Outline and Tabular start the rows under the leaf's own label column. */}
+                    {model.labelCols > 1 && <td colSpan={model.labelCols - 1} className="pivot-view__detail" />}
+                    <td colSpan={(model.labelCols > 1 ? 1 : model.labelCols) + layout.cols.length} className="pivot-view__detail">
+                      <PivotDetails layout={layout} item={row.detail} indent={compact ? (row.level + 1) * 16 + 18 : 0} />
+                    </td>
+                  </>
                 ) : (
                   <>
                     {row.kind === "grand" && model.labelCols > 1

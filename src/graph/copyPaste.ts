@@ -128,7 +128,7 @@ export const INIT_FIELD_ORDER = [
 
 export const INIT_EXTRA_FIELD_ORDER = [
   "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "bindings",
-  "keyOrder", "pivotView",
+  "keyOrder", "pivotView", "detailFields",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -149,6 +149,7 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
     const saved = savedPivotView(readPivotView(n.pivotView));
     if (saved) init.pivotView = saved;
   }
+  if (Array.isArray(n.detailFields) && n.detailFields.length) init.detailFields = [...(n.detailFields as string[])];
   if (n.condConfig && typeof n.condConfig === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     init.condConfig = Object.fromEntries(

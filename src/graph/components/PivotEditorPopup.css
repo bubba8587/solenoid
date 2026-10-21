@@ -57,6 +57,8 @@
   background: color-mix(in srgb, var(--node-accent, var(--accent)) 8%, var(--surface));
 }
 .pivot-zone--filters { background: var(--surface-sunken); border-style: solid; }
+.pivot-zone--details { grid-column: 1 / -1; min-height: 0; }
+.pivot-zone__hint { font-size: 11px; color: var(--text-muted); align-self: center; }
 
 .pivot-zone__head { display: flex; align-items: center; gap: 8px; }
 .pivot-zone__title {

@@ -843,6 +843,8 @@ export class PivotNode extends ClassicPreset.Node {
   filterExclude: Record<string, string[]> = {};
   /** How the popup's Pivot view draws the output; display only. */
   pivotView: PivotViewOptions;
+  /** Columns the Pivot view lists under each row group; display only ([[C128]] pivotDetails). */
+  detailFields: string[] = [];
   cachedResult: FrameValue | SolError | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
@@ -856,9 +858,11 @@ export class PivotNode extends ClassicPreset.Node {
     rowTotalDepth?: number; colTotalDepth?: number; rowSort?: number; colSort?: number; relativeTo?: number;
     filterExclude?: Record<string, string[]>;
     pivotView?: Partial<PivotViewOptions>;
+    detailFields?: string[];
   }) {
     super("Pivot");
     this.pivotView = readPivotView(init?.pivotView);
+    if (Array.isArray(init?.detailFields)) this.detailFields = init.detailFields.filter((n): n is string => typeof n === "string" && n !== "");
     this.label = init?.label ?? "PIVOTBY";
     this.agg = init?.agg ?? "sum";
     if (init?.funcs) this.funcs = { ...init.funcs };
@@ -910,7 +914,7 @@ export class PivotNode extends ClassicPreset.Node {
       const wanted = new Set<string>();
       for (const raw of [inputs.rowFields, inputs.colFields, inputs.values]) for (const n of readColumnList(raw) ?? []) if (have.has(n)) wanted.add(n);
       for (const key of ["rowFields", "colFields", "values"] as const) for (const n of csvList(this.stringLiterals[key])) if (have.has(n)) wanted.add(n);
-      for (const n of Object.keys(this.filterExclude)) if (have.has(n)) wanted.add(n);
+      for (const n of [...Object.keys(this.filterExclude), ...this.detailFields]) if (have.has(n)) wanted.add(n);
       const cols = await materialize(Promise.all([...wanted].map((n) => readRefColumn(f, n))));
       if (gen !== this._gen) return { frame: null };
       if (isSolError(cols)) { this.cachedResult = cols; return { frame: cols }; }
@@ -944,6 +948,7 @@ export class PivotNode extends ClassicPreset.Node {
       rowTotalDepth: this.rowTotalDepth, colTotalDepth: this.colTotalDepth,
       rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
       filter: this.combineFilter(f, inputs.filter?.[0]),
+      details: this.detailFields,
     };
     this.cachedResult = runVerb(() => pivotFrame(f, spec));
     return { frame: this.cachedResult };
@@ -958,6 +963,7 @@ export class PivotNode extends ClassicPreset.Node {
     }
     for (const k of Object.keys(this.funcs)) if (!valid.has(k)) delete this.funcs[k];
     for (const k of Object.keys(this.filterExclude)) if (!valid.has(k)) delete this.filterExclude[k];
+    if (this.detailFields.some((n) => !valid.has(n))) this.detailFields = this.detailFields.filter((n) => valid.has(n));
   }
 
   private combineFilter(f: FrameValue, wired?: (boolean | null)[]): (boolean | null)[] | undefined {

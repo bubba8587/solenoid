@@ -1010,6 +1010,8 @@ export interface PivotSpec {
   colSort?: number;
   relativeTo?: number;
   filter?: ReadonlyArray<boolean | null>;
+  /** Columns the Pivot view lists under each row group ([[C128]] pivotDetails); the output never changes with them. */
+  details?: readonly string[];
 }
 
 const tupleKey = (t: readonly FrameCell[]): string => JSON.stringify(t.map(encodeCell));
@@ -1219,11 +1221,27 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   }));
 
   const out = frame([...keyColumns, ...bodyColumns]);
+  const detailCols = rowCols.length ? (spec.details ?? []).filter((s) => s.trim() !== "").map((n) => requireColumn(f, n)) : [];
+  let leafSources: Map<string, number[]> | null = null;
+  if (detailCols.length) {
+    leafSources = new Map();
+    for (const i of rows) {
+      const k = leafKeyOf(rowCols, i);
+      const at = leafSources.get(k);
+      if (at) at.push(i); else leafSources.set(k, [i]);
+    }
+  }
   setPivotLayout(out, {
     rowFields, rowTypes: rowCols.map((c) => c.type), colFields, colTypes: colCols.map((c) => c.type),
     values: valueNames, funcs,
-    rows: rowOut.map(({ kind, tuple, fill }) => ({ kind, tuple, fill })),
+    rows: rowOut.map(({ kind, tuple, fill }) => ({
+      kind, tuple, fill,
+      ...(leafSources && kind === "leaf" ? { sources: leafSources.get(tupleKey(tuple)) ?? [] } : {}),
+    })),
     cols: bodySpecs.map(({ co, v }) => ({ kind: co.kind, tuple: co.tuple, fill: co.fill, value: v })),
+    ...(detailCols.length ? {
+      details: detailCols.map((c) => ({ name: c.name, type: c.type, values: c.values, ...(c.format ? { format: c.format } : {}) })),
+    } : {}),
   });
   return out;
 }

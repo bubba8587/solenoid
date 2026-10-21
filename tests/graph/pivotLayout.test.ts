@@ -3,9 +3,10 @@ import { describe, it, expect } from "vitest";
 import { pivotFrame } from "../../src/graph/frameVerbs";
 import { frameRowCount, type FrameValue, type FrameCell } from "../../src/graph/frame";
 import {
-  pivotLayoutOf, carryPivotLayout, buildPivotModel, readPivotView, savedPivotView, groupKey,
-  DEFAULT_PIVOT_VIEW, filterPivotBody, livePivotFolds, totalsModes, withSubtotals, withGrand, type PivotViewOptions, type PivotBodyRow,
+  pivotLayoutOf, buildPivotModel, readPivotView, savedPivotView, groupKey,
+  DEFAULT_PIVOT_VIEW, filterPivotBody, livePivotFolds, liveDetailKeys, detailCellText, totalsModes, withSubtotals, withGrand, type PivotViewOptions, type PivotBodyRow,
 } from "../../src/graph/pivotLayout";
+import { carryFrameSidecars } from "../../src/graph/frameSidecar";
 import { PivotNode } from "../../src/graph/nodes/frame";
 import { extractInit } from "../../src/graph/copyPaste";
 
@@ -38,10 +39,10 @@ describe("the pivot layout rides beside the frame", () => {
     const f = pivotFrame(sales, spec(1));
     const stamped = { ...f, columns: f.columns.map((c) => ({ ...c })) };
     expect(pivotLayoutOf(stamped)).toBeNull();
-    carryPivotLayout(f, stamped);
+    carryFrameSidecars(f, stamped);
     expect(pivotLayoutOf(stamped)).toBe(pivotLayoutOf(f));
     const filtered = { ...f, columns: f.columns.map((c) => ({ ...c, values: c.values.slice(1) })) };
-    carryPivotLayout(f, filtered);
+    carryFrameSidecars(f, filtered);
     expect(pivotLayoutOf(filtered)).toBeNull();
   });
 });
@@ -181,5 +182,60 @@ describe("saved folds", () => {
   it("drop the groups a field change took away", () => {
     const l = pivotLayoutOf(pivotFrame(sales, spec(2)))!;
     expect(livePivotFolds(l, [groupKey(["N"]), groupKey(["Gone"])])).toEqual([groupKey(["N"])]);
+  });
+});
+
+describe("Details ([[C128]] pivotDetails)", () => {
+  const withDetails = { ...(spec(2) as object), details: ["Rep", "Amt"] } as never;
+
+  it("records each leaf's source rows and leaves the output as it was", () => {
+    const f = pivotFrame(sales, withDetails);
+    expect(f).toEqual(pivotFrame(sales, spec(2)));
+    const l = pivotLayoutOf(f)!;
+    expect(l.details?.map((d) => d.name)).toEqual(["Rep", "Amt"]);
+    expect(l.rows.filter((r) => r.kind === "leaf").map((r) => r.sources)).toEqual([[0, 4], [1], [2, 3], [5]]);
+    expect(l.rows.filter((r) => r.kind !== "leaf").every((r) => r.sources === undefined)).toBe(true);
+    expect(pivotLayoutOf(pivotFrame(sales, spec(2)))!.rows.some((r) => r.sources)).toBe(false);
+  });
+
+  it("gives every leaf a fold that opens a detail row under it", () => {
+    const l = pivotLayoutOf(pivotFrame(sales, withDetails))!;
+    const closed = buildPivotModel(l, view(), text, text);
+    expect(closed.foldable).toBe(true);
+    expect(closed.body.filter((r) => r.kind === "leaf").every((r) => r.folds?.some((x) => x.detail && x.collapsed))).toBe(true);
+    const open = buildPivotModel(l, view({ form: "tabular" }), text, text, new Set([groupKey(["N", "Ann"])]));
+    const at = open.body.findIndex((r) => r.kind === "detail");
+    expect(labelsOf(open.body).slice(at - 1, at + 2)).toEqual(["leaf:N|Ann", "detail:|", "leaf:|Bo"]);
+    expect(open.body[at].detail).toBe(open.body[at - 1].src);
+    expect(open.body[at - 1].folds?.find((x) => x.detail)).toMatchObject({ collapsed: false, col: 1 });
+    expect(labelsOf(filterPivotBody(open.body, "ann"))).toEqual(["leaf:N|Ann", "detail:|", "grand:Grand Total|"]);
+  });
+
+  it("has nothing to open without row fields", () => {
+    const f = pivotFrame(sales, { rowFields: [], colFields: ["Q"], values: ["Amt"], funcs: ["sum"], details: ["Rep"] } as never);
+    expect(pivotLayoutOf(f)!.details).toBeUndefined();
+    expect(buildPivotModel(pivotLayoutOf(f)!, view(), text, text).foldable).toBe(false);
+  });
+
+  it("drops open groups a field change took away", () => {
+    const l = pivotLayoutOf(pivotFrame(sales, withDetails))!;
+    expect([...liveDetailKeys(l, new Set([groupKey(["N", "Ann"]), groupKey(["Gone", "x"])]))]).toEqual([groupKey(["N", "Ann"])]);
+  });
+
+  it("shows a cell as the Grid does by default", () => {
+    expect(detailCellText({ name: "d", type: "date", values: [] }, 45000)).toBe("15-Mar-2023");
+    expect(detailCellText({ name: "b", type: "logical", values: [] }, true)).toBe("TRUE");
+    expect(detailCellText({ name: "s", type: "string", values: [] }, null)).toBe("");
+  });
+
+  it("saves with the node and prunes a column the source lost", () => {
+    const n = new PivotNode({ detailFields: ["Rep"] });
+    expect(extractInit(n).detailFields).toEqual(["Rep"]);
+    expect(extractInit(new PivotNode()).detailFields).toBeUndefined();
+    n.stringLiterals = { rowFields: "Region", colFields: "", values: "Amt" };
+    n.detailFields = ["Rep", "Gone"];
+    n.data({ frame: [sales], rowFields: [["Region"]], colFields: [[]], values: [["Amt"]] } as never);
+    expect(n.detailFields).toEqual(["Rep"]);
+    expect(pivotLayoutOf(n.cachedResult as FrameValue)!.details?.map((d) => d.name)).toEqual(["Rep"]);
   });
 });
