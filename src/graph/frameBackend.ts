@@ -6,7 +6,7 @@ import {
 import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, aggUnitPlan, readingScaleOf, linearScaleOf, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp, type PivotSpec } from "./frameVerbs";
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
-import { formulaCallTable, rowRefNames } from "./excelFormula";
+import { formulaCallTable, rowRefNames, extractVariables } from "./excelFormula";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -458,21 +458,48 @@ export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null
   }
 }
 
-/** A computed column's cells from the Rust evaluator, when the formula reads only `@column`s of `f` through ported
- *  functions; null where the TS evaluator should run it. */
-export function computeColumnOnEngine(f: FrameValue, expr: string, rows: number): FrameCell[] | null {
+const isScalarCell = (v: unknown): v is FrameCell =>
+  v === null || typeof v === "number" || typeof v === "string" || typeof v === "boolean" || isSolError(v);
+
+/** `computeColumnCells` with an `expr` spec on the Rust evaluator, when every name is a `@column` of `f` or a scalar
+ *  side value and every function is ported; null where the TS evaluator should run it. */
+export function computeColumnOnEngine(
+  f: FrameValue, expr: string, rows: number,
+  opts: { sideValue?: (name: string, kind: "var" | "row") => unknown; reserved?: readonly string[] } = {},
+): { cells: FrameCell[]; sideVars: string[] } | null {
   // Text with a lone surrogate can't cross into Rust, whose strings are well-formed.
   if (!wasmEngineLoaded() || !wasmEngineOn() || !(expr as string & { isWellFormed(): boolean }).isWellFormed()) return null;
   const table = formulaCallTable(expr);
   if (!table) return null;
-  const refs = new Set(rowRefNames(expr));
-  const src = wasmSourceBin(encodeBinary({ __frame: true, columns: f.columns.filter((c) => refs.has(c.name)) }));
+  const columns = new Set(f.columns.map((c) => c.name));
+  const reserved = opts.reserved ?? [];
+  const sides: Record<string, unknown> = {};
+  const sideVars: string[] = [];
+  for (const p of extractVariables(expr)) {
+    if (columns.has(p) || reserved.includes(p)) return null;
+    const v = opts.sideValue?.(p, "var");
+    if (!isScalarCell(v)) return null;
+    sideVars.push(p);
+    sides[p] = encodeWireCell(v);
+  }
+  const refs = rowRefNames(expr);
+  for (const p of refs) {
+    if (reserved.includes(p)) return null;
+    if (columns.has(p)) continue;
+    if (!sideVars.includes(p)) sideVars.push(p);
+    if (!(p in sides)) {
+      const v = opts.sideValue?.(p, "row");
+      if (!isScalarCell(v)) return null;
+      sides[p] = encodeWireCell(v);
+    }
+  }
+  const src = wasmSourceBin(encodeBinary({ __frame: true, columns: f.columns.filter((c) => refs.includes(c.name)) }));
   let out: string | undefined;
   try {
-    const r = wasmInvokeSync<{ supported: boolean; handle?: string }>("engine_formula_column", { handle: src, expr, table, rows });
+    const r = wasmInvokeSync<{ supported: boolean; handle?: string }>("engine_formula_column", { handle: src, expr, table, sides, rows });
     if (!r.supported) return null;
     out = r.handle!;
-    return decodeBinary(wasmReadBin(out)!)[0].values;
+    return { cells: decodeBinary(wasmReadBin(out)!)[0].values, sideVars };
   } finally {
     wasmInvokeSync("engine_drop", { handle: src });
     if (out) wasmInvokeSync("engine_drop", { handle: out });

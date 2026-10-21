@@ -143,7 +143,9 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         "engine_formula_column" => {
             let f = get(&parse::<String>(args, "handle")?)?;
             let table: CallTable = parse(args, "table")?;
-            match formula_column(&f, &parse::<String>(args, "expr")?, &table, parse::<usize>(args, "rows")?)? {
+            let sides: HashMap<String, Json> = parse::<Option<_>>(args, "sides")?.unwrap_or_default();
+            let sides = sides.iter().map(|(k, v)| (k.clone(), crate::wire::decode_cell(v))).collect();
+            match formula_column(&f, &parse::<String>(args, "expr")?, &table, &sides, parse::<usize>(args, "rows")?)? {
                 ColumnOutcome::Unsupported => Ok(json!({ "supported": false })),
                 ColumnOutcome::Cells(cells) => {
                     let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, cells)] };

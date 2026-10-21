@@ -11,7 +11,7 @@ import type { ColumnUnit } from "../../src/graph/unitValue";
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "../../src/graph/frame";
 import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
 import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine } from "../../src/graph/frameBackend";
-import { parseFormula, compileEvaluator, extractVariables } from "../../src/graph/excelFormula";
+import { parseFormula, compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 
@@ -302,7 +302,7 @@ function formulaGen(rand: () => number) {
   const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
   const lit = () => pick(["0", "1", "2", "-0", "3.5", "1e3", ".5", "10", "100", "1e308", "0.1", "7"]);
   const str = () => `"${pick(["", "abc", "ABC", "TRUE", "false", "5", " a  b ", "😀x", "é", "1,000", "x", "#N/A"])}"`;
-  const ref = () => pick(["@a", "@b", "@c", "@d", "[@a]", "@[b]", "[@[c]]", "@nope", "a", "pi", "E", "Tau"]);
+  const ref = () => pick(["@a", "@b", "@c", "@d", "[@a]", "@[b]", "[@[c]]", "@nope", "a", "pi", "E", "Tau", "s1", "@s2", "[@s1]", "s3", "@name"]);
   const expr = (depth: number): string => {
     const r = rand();
     if (depth <= 0 || r < 0.3) return pick([lit, str, ref, ref, () => pick(["TRUE", "FALSE", "true"])])();
@@ -365,13 +365,15 @@ describe("random row formulas: the Rust evaluator matches the TS one", () => {
         }),
       };
       const src = expr(3);
-      const engine = computeColumnOnEngine(f, src, rows);
+      const sideVals: Record<string, unknown> = { s1: cell("number"), s2: cell("string"), s3: [1, 2], nope: cell("logical") };
+      const opts = { sideValue: (p: string) => sideVals[p], reserved: ["name"] };
+      const engine = computeColumnOnEngine(f, src, rows, opts);
       if (engine === null) continue;
       ran++;
       const evaluator = compileEvaluator(src)!;
-      const js = computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(src) }, {});
-      const want = isSolError(js) ? js : view({ __frame: true, columns: [{ name: "out", type: "number", values: js.cells.map(well) as FrameCell[] }] });
-      const got = view({ __frame: true, columns: [{ name: "out", type: "number", values: engine }] });
+      const js = computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(src) }, { ...opts, rowRefs: rowRefNames(src) });
+      const want = isSolError(js) ? js : [view({ __frame: true, columns: [{ name: "out", type: "number", values: js.cells.map(well) as FrameCell[] }] }), js.sideVars];
+      const got = [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
       if (JSON.stringify(got) !== JSON.stringify(want)) {
         expect({ run: i, src, input: view(f), got }).toEqual({ run: i, src, input: view(f), got: want });
       }

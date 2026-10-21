@@ -327,8 +327,9 @@ export class FrameInputNode extends ClassicPreset.Node {
           ? readingsRefusal(bareLambdaCall(lam), frame, {}, new Map([["λ", lam]]))
           : readingsRefusal(c.expr!, frame, {}, lamByName);
         if (refused) { fill(i, refused); continue; }
-        const onEngine = !lam && ex!.vars.length === 0 && used.length === 0 ? computeColumnOnEngine(frame, c.expr!, rowCount()) : null;
-        const r = onEngine ? { cells: onEngine, sideVars: [] } : computeColumnCells(
+        const onEngine = !lam && used.length === 0
+          ? computeColumnOnEngine(frame, c.expr!, rowCount(), { sideValue: (p) => solError("#REF!", `No column "${p}"`) }) : null;
+        const r = onEngine ?? computeColumnCells(
           frame,
           lam
             ? { kind: "lambda", lam }
@@ -2669,9 +2670,11 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 
     this.defVars = wired ? wired.params : this._vars;
     const rowCount = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
-    const onEngine = !wired && !isCube && this._vars.length === 0 && Object.keys(this.bindings).length === 0
-      ? computeColumnOnEngine(f as FrameValue, this.expr, rowCount) : null;
-    const computed = onEngine ? { cells: onEngine, sideVars: [] } : (isCube ? computeCubeColumnCells : computeColumnCells)(
+    const sideValue = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
+    const reserved = ["frame", "name", "fn", "after"];
+    const onEngine = !wired && !isCube && Object.keys(this.bindings).length === 0
+      ? computeColumnOnEngine(f as FrameValue, this.expr, rowCount, { sideValue, reserved }) : null;
+    const computed = onEngine ?? (isCube ? computeCubeColumnCells : computeColumnCells)(
       f,
       wired ? { kind: "lambda", lam: wired } : { kind: "expr", evaluator: this._evaluator!, vars: this._vars },
       {

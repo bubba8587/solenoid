@@ -480,20 +480,21 @@ fn lowered(v: &Json) -> V {
 
 // ─── Support check ──────────────────────────────────────────────────────────────
 
-fn supported(n: &Ast, columns: &HashMap<&str, &FrameColumn>, table: &CallTable) -> bool {
+fn supported(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<String, V>, table: &CallTable) -> bool {
+    let ok = |a: &Ast| supported(a, columns, sides, table);
     match n {
         Ast::Num(_) | Ast::Str(_) | Ast::Bool(_) | Ast::Blank => true,
-        Ast::Name(name) => constant_value(name).is_some(),
-        Ast::AtCol(name) => columns.contains_key(name.as_str()),
+        Ast::Name(name) => constant_value(name).is_some() || sides.contains_key(name),
+        Ast::AtCol(name) => columns.contains_key(name.as_str()) || sides.contains_key(name),
         Ast::WholeCol(_) | Ast::Apply { .. } => false,
-        Ast::Unary { arg, .. } | Ast::Percent(arg) => supported(arg, columns, table),
-        Ast::Bin { l, r, .. } => supported(l, columns, table) && supported(r, columns, table),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => ok(arg),
+        Ast::Bin { l, r, .. } => ok(l) && ok(r),
         Ast::Call { name, args } => {
             let up = name.to_uppercase();
             let roles_ok = table.get(&up).is_some_and(|t| {
                 matches!(t.kind.as_str(), "handler" | "whole" | "range" | "broadcast") && t.roles.len() >= args.len()
             });
-            is_ported(&up) && roles_ok && args.iter().all(|a| supported(a, columns, table))
+            is_ported(&up) && roles_ok && args.iter().all(ok)
         }
     }
 }
@@ -502,6 +503,8 @@ fn supported(n: &Ast, columns: &HashMap<&str, &FrameColumn>, table: &CallTable) 
 
 struct Row<'a> {
     columns: &'a HashMap<&'a str, &'a FrameColumn>,
+    /// The side values a name that isn't a column reads: one scalar for every row.
+    sides: &'a HashMap<String, V>,
     table: &'a CallTable,
     cursor: usize,
 }
@@ -634,8 +637,11 @@ impl Row<'_> {
             Ast::Str(v) => V::Str(Rc::from(v.as_str())),
             Ast::Bool(b) => V::Bool(*b),
             Ast::Blank => V::Null,
-            Ast::AtCol(name) => self.columns.get(name.as_str()).map_or(V::Null, |c| cell_to_v(c.cell_at(self.cursor))),
-            Ast::Name(name) => constant_value(name).map_or(V::Undef, V::Num),
+            Ast::AtCol(name) => match self.columns.get(name.as_str()) {
+                Some(c) => cell_to_v(c.cell_at(self.cursor)),
+                None => self.sides.get(name).cloned().unwrap_or(V::Undef),
+            },
+            Ast::Name(name) => constant_value(name).map_or_else(|| self.sides.get(name).cloned().unwrap_or(V::Undef), V::Num),
             Ast::WholeCol(_) | Ast::Apply { .. } => V::Undef,
             Ast::Unary { op, arg } => {
                 let a = self.eval(arg);
@@ -754,14 +760,15 @@ pub enum ColumnOutcome {
 }
 
 /// A computed column's cells, `computeColumnCells` with an `expr` spec whose every name is a `@column` of `f`.
-pub fn formula_column(f: &FrameValue, expr: &str, table: &CallTable, rows: usize) -> Result<ColumnOutcome, SolError> {
+pub fn formula_column(f: &FrameValue, expr: &str, table: &CallTable, sides: &HashMap<String, FrameCell>, rows: usize) -> Result<ColumnOutcome, SolError> {
     let Some(ast) = parse_formula(expr) else { return Ok(ColumnOutcome::Unsupported) };
     let columns: HashMap<&str, &FrameColumn> = f.columns.iter().map(|c| (c.name.as_str(), c)).collect();
-    if !supported(&ast, &columns, table) {
+    let sides: HashMap<String, V> = sides.iter().map(|(k, v)| (k.clone(), cell_to_v(v))).collect();
+    if !supported(&ast, &columns, &sides, table) {
         return Ok(ColumnOutcome::Unsupported);
     }
     let ast = upper_calls(ast);
-    let mut row = Row { columns: &columns, table, cursor: 0 };
+    let mut row = Row { columns: &columns, sides: &sides, table, cursor: 0 };
     let mut cells = Vec::with_capacity(rows);
     for i in 0..rows {
         row.cursor = i;

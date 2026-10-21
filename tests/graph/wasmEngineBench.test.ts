@@ -105,7 +105,7 @@ describe.skipIf(!process.env.BENCH)("frame engine timing", () => {
     for (const expr of ["@value * 1.2 + @cat", "IF(@value > 0, ROUND(@value * 1.2, 2), 0)", "@key & \"-\" & UPPER(@key)", "IFERROR(LN(@value), 0) + MAX(@cat, 10)"]) {
       const evaluator = compileEvaluator(expr)!;
       const js = time(() => computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(expr) }, {}));
-      const rs = time(() => computeColumnOnEngine(f, expr, ROWS));
+      const rs = time(() => computeColumnOnEngine(f, expr, ROWS)!.cells);
       rows.push([`fx: ${expr}`, js.toFixed(1), rs.toFixed(1), (js / rs).toFixed(1)]);
     }
     const width = Math.max(...rows.map((x) => x[0].length));
