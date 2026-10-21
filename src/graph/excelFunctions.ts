@@ -4,7 +4,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate, wildcardSource } from "./excelCriteria";
-import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm } from "./nodes/mathUtils";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm, combinatoric } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantiles, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -510,6 +510,12 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   POWER:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   QUOTIENT:    { returns: "number", arity: [2, 2], family: "scalar-math" },
   GCD:         { returns: "number", arity: [1, 255], family: "scalar-math" },
+  FACT:        { returns: "number", arity: [1, 1], family: "combinatorics" },
+  FACTDOUBLE:  { returns: "number", arity: [1, 1], family: "combinatorics" },
+  COMBIN:      { returns: "number", arity: [2, 2], family: "combinatorics" },
+  COMBINA:     { returns: "number", arity: [2, 2], family: "combinatorics" },
+  PERMUT:      { returns: "number", arity: [2, 2], family: "combinatorics" },
+  MULTINOMIAL: { returns: "number", arity: [1, 255], family: "combinatorics" },
   PRODUCT:     { returns: "number", arity: [1, 255], family: "scalar-math" },
   LCM:         { returns: "number", arity: [1, 255], family: "scalar-math" },
   ATAN2:       { returns: "number", arity: [2, 2], family: "scalar-math" },
@@ -970,6 +976,12 @@ for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregat
 // On the shared kernel, so a NaN is #DOMAIN! as in every aggregate ([[D48]] classifyNonFinite); no numbers is Excel's 0.
 registerInternal("PRODUCT", (...a) => { const n = numsOf(...a); return n.length === 0 ? 0 : aggregate("product", n); });
 registerInternal("GCD", (...a) => gcdLcm("gcd", numsOf(...a)));
+// Formula.js recurses through FACT, so a large count overflowed the call stack, and divides factorials, so COMBIN(30, 15)
+// missed by 3e-8 ([[C17]] shareImpl, formulajs-divergences.md).
+for (const [name, op] of [["FACT", "fact"], ["FACTDOUBLE", "factdouble"], ["COMBIN", "combin"], ["COMBINA", "combina"], ["PERMUT", "permut"]] as const) {
+  registerInternal(name, (...a) => { const v = a.map(toNum); return badNum(...v) ? VALUE(name) : combinatoric(op, v); });
+}
+registerInternal("MULTINOMIAL", (...a) => { const v = numsOf(...a); return badNum(...v) ? VALUE("MULTINOMIAL") : combinatoric("multinomial", v); });
 registerInternal("LCM", (...a) => gcdLcm("lcm", numsOf(...a)));
 for (const [name, op] of [["MIN", "min"], ["MAX", "max"]] as const) {
   registerInternal(name, (...a) => {

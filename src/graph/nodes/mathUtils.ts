@@ -218,6 +218,52 @@ export function gcdLcm(op: "gcd" | "lcm", values: readonly number[]): number | S
   return acc;
 }
 
+export type Combinatoric = "fact" | "factdouble" | "combin" | "combina" | "permut" | "multinomial";
+
+/** Excel's FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT and MULTINOMIAL. Each argument truncates, and a negative count, or
+ *  choosing more than there are, is out of the domain. Each answer is a product built by multiplying, never by
+ *  recursion, so a large argument overflows to Infinity (read as #OVERFLOW!) and never the call stack. The factorials
+ *  multiply in Formula.js's order, so their answers are its own; COMBIN divides as it goes, so its answer is the exact
+ *  integer wherever a double holds one (Formula.js's FACT(n) / (FACT(k) · FACT(n − k)) gave 155117519.99999997 for
+ *  COMBIN(30, 15)). */
+export function combinatoric(op: Combinatoric, args: readonly number[]): number | SolError {
+  const ns = args.map(Math.trunc);
+  if (ns.some((n) => !(n >= 0) || n === Infinity)) return solError("#DOMAIN!", "Counts must be finite and 0 or more");
+  const [n, k] = ns;
+  const chosen = () => solError("#DOMAIN!", "Can't choose more items than there are");
+  switch (op) {
+    case "fact": return product(2, n, 1);
+    case "factdouble": return product(n % 2 === 0 ? 2 : 1, n, 2);
+    case "combin": return n < k ? chosen() : combinations(n, k);
+    case "combina": return n < k ? chosen() : n === 0 && k === 0 ? 1 : combinations(n + k - 1, n - 1);
+    case "permut": return n < k ? chosen() : product(n - k + 1, n, 1);
+    case "multinomial": {
+      let total = 0, r = 1;
+      for (const a of ns) {
+        total += a;
+        r *= combinations(total, a);
+        if (!Number.isFinite(r)) break;
+      }
+      return r;
+    }
+  }
+}
+
+/** `from · (from + step) · … ≤ to`, multiplied from the small end; stops once it overflows. */
+function product(from: number, to: number, step: number): number {
+  let r = 1;
+  for (let i = from; i <= to && Number.isFinite(r); i += step) r *= i;
+  return r;
+}
+
+/** n choose k by the multiplicative formula over the smaller side: each step's product divides exactly while it fits. */
+function combinations(n: number, k: number): number {
+  const m = Math.min(k, n - k);
+  let r = 1;
+  for (let i = 1; i <= m && Number.isFinite(r); i++) r = (r * (n - m + i)) / i;
+  return r < 2 ** 53 ? Math.round(r) : r;
+}
+
 export function lnCombin(n: number, k: number): number {
   if (k < 0 || k > n) return -Infinity;
   return lnFactorial(n) - lnFactorial(k) - lnFactorial(n - k);
