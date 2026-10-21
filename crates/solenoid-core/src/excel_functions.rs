@@ -661,6 +661,76 @@ fn js_sign(x: f64) -> f64 {
     if x.is_nan() || x == 0.0 { x } else { x.signum() }
 }
 
+/// `kendallCounts` (statsOps.ts): the pairwise counts in O(n log n), finite values only.
+fn kendall_counts(xs: &[f64], ys: &[f64]) -> (f64, f64, f64, f64) {
+    let n = xs.len();
+    // In f64, as the TS counts: usize is 32 bits in wasm.
+    let pairs = |t: usize| {
+        let t = t as f64;
+        t * (t - 1.0) / 2.0
+    };
+    let mut idx: Vec<usize> = (0..n).collect();
+    idx.sort_by(|&a, &b| xs[a].partial_cmp(&xs[b]).unwrap_or(std::cmp::Ordering::Equal).then(ys[a].partial_cmp(&ys[b]).unwrap_or(std::cmp::Ordering::Equal)));
+    let (mut n1, mut n3) = (0.0, 0.0);
+    let mut i = 0;
+    while i < n {
+        let mut j = i;
+        while j + 1 < n && xs[idx[j + 1]] == xs[idx[i]] {
+            j += 1;
+        }
+        n1 += pairs(j - i + 1);
+        let mut k = i;
+        while k <= j {
+            let mut m = k;
+            while m < j && ys[idx[m + 1]] == ys[idx[k]] {
+                m += 1;
+            }
+            n3 += pairs(m - k + 1);
+            k = m + 1;
+        }
+        i = j + 1;
+    }
+    let mut y: Vec<f64> = idx.iter().map(|&i| ys[i]).collect();
+    let mut buf = vec![0.0; n];
+    let mut swaps = 0.0;
+    let mut w = 1;
+    while w < n {
+        let mut lo = 0;
+        while lo < n {
+            let (mid, hi) = ((lo + w).min(n), (lo + 2 * w).min(n));
+            let (mut a, mut b, mut o) = (lo, mid, lo);
+            while a < mid && b < hi {
+                if y[b] < y[a] {
+                    swaps += (mid - a) as f64;
+                    buf[o] = y[b];
+                    b += 1;
+                } else {
+                    buf[o] = y[a];
+                    a += 1;
+                }
+                o += 1;
+            }
+            buf[o..o + mid - a].copy_from_slice(&y[a..mid]);
+            o += mid - a;
+            buf[o..o + hi - b].copy_from_slice(&y[b..hi]);
+            lo += 2 * w;
+        }
+        std::mem::swap(&mut y, &mut buf);
+        w *= 2;
+    }
+    let mut n2 = 0.0;
+    let mut i = 0;
+    while i < n {
+        let mut j = i;
+        while j + 1 < n && y[j + 1] == y[i] {
+            j += 1;
+        }
+        n2 += pairs(j - i + 1);
+        i = j + 1;
+    }
+    (pairs(n) - n1 - n2 + n3 - swaps, swaps, n1 - n3, n2 - n3)
+}
+
 /// `kendallTau` (statsOps.ts).
 fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
     let n = xs.len().min(ys.len());
@@ -668,20 +738,24 @@ fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
         return V::Null;
     }
     let (mut conc, mut disc, mut tx, mut ty) = (0.0f64, 0.0, 0.0, 0.0);
-    for i in 0..n {
-        for j in i + 1..n {
-            let (dx, dy) = (js_sign(xs[i] - xs[j]), js_sign(ys[i] - ys[j]));
-            if dx == 0.0 && dy == 0.0 {
-                continue;
-            }
-            if dx == 0.0 {
-                tx += 1.0;
-            } else if dy == 0.0 {
-                ty += 1.0;
-            } else if dx == dy {
-                conc += 1.0;
-            } else {
-                disc += 1.0;
+    if xs[..n].iter().chain(&ys[..n]).all(|v| v.is_finite()) {
+        (conc, disc, tx, ty) = kendall_counts(&xs[..n], &ys[..n]);
+    } else {
+        for i in 0..n {
+            for j in i + 1..n {
+                let (dx, dy) = (js_sign(xs[i] - xs[j]), js_sign(ys[i] - ys[j]));
+                if dx == 0.0 && dy == 0.0 {
+                    continue;
+                }
+                if dx == 0.0 {
+                    tx += 1.0;
+                } else if dy == 0.0 {
+                    ty += 1.0;
+                } else if dx == dy {
+                    conc += 1.0;
+                } else {
+                    disc += 1.0;
+                }
             }
         }
     }
