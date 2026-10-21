@@ -105,7 +105,7 @@ const PORTED: &[&str] = &[
     "CLAMP", "BETWEEN", "ISBOOLEAN", "ISCLOSE", "HYPOTENUSE", "NAND", "NOR", "XNOR", "STANDARDIZE", "FISHER", "SLN",
     "ORDINAL", "TEXTBEFORE", "TEXTAFTER", "REVERSETEXT", "PADTEXT", "TRUNCATETEXT", "NUMBERVALUE",
     "PMT", "FV", "PV", "NPER", "IPMT", "PPMT",
-    "INDEX", "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS",
+    "FIXED", "INDEX", "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS",
     "NORM.DIST", "NORM.INV", "NORM.S.DIST", "NORM.S.INV", "CHISQ.DIST", "CHISQ.INV", "CHISQ.DIST.RT", "CHISQ.INV.RT",
     "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
     "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
@@ -2561,6 +2561,29 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             best.map_or(V::Null, |(i, _)| V::Num(i as f64 + 1.0))
         }
         "LENGTH" => V::Num(to_list(arg(a, 0)).len() as f64),
+        "FIXED" => {
+            let d = opt_num(arg(a, 1), 2.0);
+            let n = to_num(arg(a, 0));
+            if n.is_nan() || d.is_nan() {
+                return value_err("FIXED");
+            }
+            let dd = crate::jsnum::math_min(d.trunc(), 100.0);
+            // `preRound`: ROUND's reading first, unless it rounds to 0, which keeps the value as given.
+            let r = round_digits(n, dd, "round");
+            let x = if r == 0.0 { n } else { r } + 0.0;
+            let no_commas = !matches!(arg(a, 2), V::Null | V::Undef) && truthy(arg(a, 2));
+            // Formula.js FIXED: a negative count rounds to tens and writes the number as it is.
+            let text = if dd < 0.0 {
+                let factor = js_pow(10.0, -dd);
+                number_to_string(math_round(x / factor) * factor)
+            } else {
+                match crate::jsnum::to_fixed(x, dd) {
+                    Some(t) => t,
+                    None => return throw(sol_error("#VALUE!", "toFixed() digits argument must be between 0 and 100")),
+                }
+            };
+            V::str(&if no_commas { text.replace(',', "") } else { group_thousands(&text) })
+        }
         "INDEX" => {
             // `axis`: a left-out or blank position as it is, anything else a number.
             let axis = |v: &V| -> Result<Option<f64>, V> {

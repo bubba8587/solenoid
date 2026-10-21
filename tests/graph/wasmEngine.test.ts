@@ -318,7 +318,7 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
   "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
   "BINOM.INV", "POISSON.DIST", "HYPGEOM.DIST", "NEGBINOM.DIST",
-  "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "INDEX"];
+  "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "INDEX", "FIXED"];
 /** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
 const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE|TRIMMEAN|PERCENTRANK/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
@@ -577,6 +577,21 @@ describe("ROUND, ROUNDUP and ROUNDDOWN match bit for bit at their boundaries", (
         const g = got?.num !== undefined ? new DataView(new BigUint64Array([BigInt(got.num)]).buffer).getFloat64(0, true) : got;
         if (bits(g) !== bits(want)) expect({ name, v, d, got: g }).toEqual({ name, v, d, got: want });
       }
+    }
+  });
+});
+
+describe("FIXED matches on near-ties and wide counts", () => {
+  it(`${FUZZ_RUNS} values`, () => {
+    const rand = mulberry32(2020 + FUZZ_SEED);
+    const fn = resolveExcelFunction("FIXED")!;
+    for (let i = 0; i < FUZZ_RUNS; i++) {
+      const d = Math.floor(rand() * 14) - 4;
+      const v = ((Math.floor(rand() * 1e7) + (rand() < 0.4 ? 0.5 : rand())) / 10 ** Math.floor(rand() * 8)) * (rand() < 0.5 ? -1 : 1);
+      const args = [v, d, rand() < 0.3];
+      const want = fn(...args);
+      const got = wasmInvokeSync<{ str?: string }>("engine_call", { name: "FIXED", args });
+      if (got?.str !== want) expect({ args, got: got?.str }).toEqual({ args, got: want });
     }
   });
 });
