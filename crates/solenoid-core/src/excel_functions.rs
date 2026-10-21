@@ -3463,11 +3463,26 @@ fn combinations(n: f64, k: f64) -> f64 {
     let m = crate::jsnum::math_min(k, n - k);
     let mut r: f64 = 1.0;
     let mut i = 1.0;
+    // Each step divides `i`'s common factor out of the running value first, so no product passes 2^53 while the
+    // answer fits under it.
     while i <= m && r.is_finite() {
-        r = (r * (n - m + i)) / i;
+        if r < 9_007_199_254_740_992.0 {
+            let g = int_gcd(r, i);
+            r = (r / g) * ((n - m + i) / (i / g));
+        } else {
+            r = (r * (n - m + i)) / i;
+        }
         i += 1.0;
     }
     if r < 9_007_199_254_740_992.0 { math_round(r) } else { r }
+}
+
+/// `while (b) [a, b] = [b, a % b]`.
+fn int_gcd(mut a: f64, mut b: f64) -> f64 {
+    while b != 0.0 && !b.is_nan() {
+        (a, b) = (b, a % b);
+    }
+    a
 }
 
 /// `binomDistRange` (mathUtils.ts).

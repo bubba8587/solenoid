@@ -40,6 +40,10 @@ pub fn ln_gamma(x: f64) -> f64 {
     0.5 * log(2.0 * PI) + (x + 0.5) * log(t) - t + log(a)
 }
 
+/// Steps the series and continued fractions below may take: about the cube root of the shape, so a fixed 300 stopped
+/// short past a million; one still unconverged answers NaN rather than its partial sum ([[C120]] linearWork).
+const SPECIAL_FN_STEPS: u32 = 100_000;
+
 pub fn regularized_gamma(a: f64, x: f64) -> f64 {
     if a <= 0.0 || x < 0.0 {
         return f64::NAN;
@@ -50,12 +54,17 @@ pub fn regularized_gamma(a: f64, x: f64) -> f64 {
     if x < a + 1.0 {
         let mut term = 1.0 / a;
         let mut sum = term;
-        for i in 1..=300 {
+        let mut converged = false;
+        for i in 1..=SPECIAL_FN_STEPS {
             term *= x / (a + f64::from(i));
             sum += term;
             if term.abs() < sum.abs() * 1e-12 {
+                converged = true;
                 break;
             }
+        }
+        if !converged {
+            return f64::NAN;
         }
         math_min(1.0, sum * exp(-x + a * log(x) - ln_gamma(a)))
     } else {
@@ -63,7 +72,8 @@ pub fn regularized_gamma(a: f64, x: f64) -> f64 {
         let mut c = 1.0 / 1e-30;
         let mut d = 1.0 / b;
         let mut h = d;
-        for i in 1..=300 {
+        let mut converged = false;
+        for i in 1..=SPECIAL_FN_STEPS {
             let i = f64::from(i);
             let an = -i * (i - a);
             b += 2.0;
@@ -79,8 +89,12 @@ pub fn regularized_gamma(a: f64, x: f64) -> f64 {
             let del = d * c;
             h *= del;
             if (del - 1.0).abs() < 1e-12 {
+                converged = true;
                 break;
             }
+        }
+        if !converged {
+            return f64::NAN;
         }
         1.0 - exp(-x + a * log(x) - ln_gamma(a)) * h
     }
@@ -108,7 +122,8 @@ pub fn regularized_beta(x: f64, a: f64, b: f64) -> f64 {
     }
     df = 1.0 / df;
     let mut f = df;
-    for m in 1..=300 {
+    let mut converged = false;
+    for m in 1..=SPECIAL_FN_STEPS {
         let m = f64::from(m);
         let mut num = m * (b - m) * x / ((a + 2.0 * m - 1.0) * (a + 2.0 * m));
         df = 1.0 + num * df;
@@ -134,10 +149,11 @@ pub fn regularized_beta(x: f64, a: f64, b: f64) -> f64 {
         let delta = df * cf;
         f *= delta;
         if (delta - 1.0).abs() < 1e-12 {
+            converged = true;
             break;
         }
     }
-    front * f
+    if converged { front * f } else { f64::NAN }
 }
 
 const CODY_A: [f64; 5] = [2.2352520354606839287, 161.02823106855587881, 1067.6894854603709582, 18154.981253343561249, 0.065682337918207449113];

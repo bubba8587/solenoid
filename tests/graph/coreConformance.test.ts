@@ -2,7 +2,7 @@
 // The Rust core against frozen answers (coreFixtures.ts). FREEZE_CORE=1 regenerates every suite from the TypeScript,
 // which only works while that TypeScript exists; after that the fixtures are the spec, and one changes only in the
 // commit that changes the behaviour. A function the core doesn't carry yet is skipped, not failed.
-import { describe, it, expect, beforeAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { isSolError, solError } from "../../src/graph/errorValue";
@@ -187,6 +187,23 @@ const bodies = frozen<FnCase>("function-bodies", bodyCases);
 const byName = new Map<string, FnCase[]>();
 for (const c of bodies) (byName.get(c.name) ?? byName.set(c.name, []).get(c.name)!).push(c);
 
+/** How many frozen cases each suite may leave to the TS (the core bails on them): a ratchet, so a bail never hides a
+ *  regression. CORE_BAILS_WRITE=1 rewrites it from this run; lower numbers are the only edits it should see. */
+const BAILS_FILE = path.resolve(__dirname, "../../fixtures/core/bails.json");
+const allowedBails: Record<string, number> = fs.existsSync(BAILS_FILE) ? JSON.parse(fs.readFileSync(BAILS_FILE, "utf8")) : {};
+const seenBails: Record<string, number> = {};
+function checkBails(key: string, bailed: number): void {
+  seenBails[key] = bailed;
+  if (process.env.CORE_BAILS_WRITE) return;
+  expect(bailed, `${key} leaves ${bailed} cases to the TS, past its ${allowedBails[key] ?? 0} (fixtures/core/bails.json)`).toBeLessThanOrEqual(allowedBails[key] ?? 0);
+}
+afterAll(() => {
+  if (!process.env.CORE_BAILS_WRITE) return;
+  const merged = { ...allowedBails, ...seenBails };
+  const out = Object.fromEntries(Object.keys(merged).sort().filter((k) => merged[k] > 0).map((k) => [k, merged[k]]));
+  fs.writeFileSync(BAILS_FILE, JSON.stringify(out, null, 1) + "\n");
+});
+
 describe("function bodies answer as frozen", () => {
   for (const [name, cases] of [...byName].sort(([a], [b]) => (a < b ? -1 : 1))) {
     it(`${name} (${cases.length})`, ({ skip }) => {
@@ -199,7 +216,7 @@ describe("function bodies answer as frozen", () => {
         const got = engineAnswer(name, raw);
         if (JSON.stringify(got) !== JSON.stringify(c.want)) expect({ name, args: c.args, got }).toEqual({ name, args: c.args, got: c.want });
       }
-      expect(ran, `${name}: most cases should run in the core`).toBeGreaterThan(0);
+      checkBails(name, cases.length - ran);
     });
   }
 });
@@ -350,7 +367,7 @@ describe("computed columns answer as frozen", () => {
       const got = { cells: cellView(engine.cells), sideVars: engine.sideVars };
       if (JSON.stringify(got) !== JSON.stringify(c.want)) expect({ src: c.src, frame: c.frame, got }).toEqual({ src: c.src, frame: c.frame, got: c.want });
     }
-    expect(ran, "most formulas should run in the core").toBeGreaterThan(columns.length / 3);
+    checkBails("computed columns", columns.length - ran);
   });
 });
 
@@ -470,7 +487,7 @@ describe("formulas over values answer as frozen", () => {
     }
     if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${ran} ran, ${bad.length} differ\n` + bad.map((b) => JSON.stringify(b)).join("\n"));
     expect(bad.slice(0, 5)).toEqual([]);
-    expect(ran, "most formulas should run in the core").toBeGreaterThan(expressions.length / 2);
+    checkBails("formulas over values", expressions.length - ran);
   });
 });
 
