@@ -226,14 +226,14 @@ fn chrono_reading(t: &str) -> DateReading {
     if !whole.is_empty() && ascii_digits(whole) && frac.is_none_or(|f| !f.is_empty() && ascii_digits(f)) {
         return DateReading::NotADate;
     }
-    if let Some(r) = month_name_little_endian(t) {
+    if let Some(r) = month_name_little_endian(t).or_else(|| slash_date_time(t)) {
         return r;
     }
     // An ISO day then " and …": chrono reads the day alone, so text is left over.
     if b.len() > 10 && b[10].is_ascii_whitespace() {
         if let DateReading::Serial(d) = parse_date(&t[..10]) {
             let rest = t[10..].trim_start_matches(|c: char| c.is_ascii_whitespace());
-            if !d.is_nan() && rest.len() > 3 && rest[..3].eq_ignore_ascii_case("and") && rest.as_bytes()[3].is_ascii_whitespace() {
+            if !d.is_nan() && rest.len() > 3 && rest.get(..3).is_some_and(|w| w.eq_ignore_ascii_case("and")) && rest.as_bytes()[3].is_ascii_whitespace() {
                 return DateReading::NotADate;
             }
         }
@@ -381,6 +381,179 @@ fn month_name_little_endian(t: &str) -> Option<DateReading> {
     let days = crate::date_serial::days_from_civil(i64::from(year), month, day);
     let (_, m2, _) = crate::date_serial::civil_from_days(days);
     Some(if m2 != month { DateReading::NotADate } else { DateReading::Serial(days as f64 + 25569.0) })
+}
+
+/// chrono's SlashDateFormatParser (month first) with a four-digit year, then optionally its time expression after
+/// spaces or one comma, merged as ENMergeDateTimeRefiner does. `None` for any other shape.
+fn slash_date_time(t: &str) -> Option<DateReading> {
+    let b = t.as_bytes();
+    let part = |b: &[u8]| -> Option<(u32, usize)> {
+        let n = b.iter().take(2).take_while(|c| c.is_ascii_digit()).count();
+        (n > 0 && (n == 1 || b[0] <= b'3')).then(|| (b[..n].iter().fold(0, |a, c| a * 10 + u32::from(c - b'0')), n))
+    };
+    let sep = |i: usize| b.get(i).is_some_and(|c| matches!(c, b'/' | b'.' | b'-'));
+    let (first, n1) = part(b)?;
+    if !sep(n1) {
+        return None;
+    }
+    let (second, n2) = part(&b[n1 + 1..])?;
+    let y0 = n1 + 1 + n2;
+    if !sep(y0) {
+        return None;
+    }
+    let year_end = y0 + 1 + 4;
+    let year = b.get(y0 + 1..year_end).filter(|y| ascii_digits(y))?;
+    let year = year.iter().fold(0i64, |a, c| a * 10 + i64::from(c - b'0'));
+    let after = &t[year_end..];
+    if year < 100 || after.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_' || c == '/') {
+        return None;
+    }
+    let (mut month, mut day) = (first, second);
+    if month > 12 {
+        if !(1..=12).contains(&day) || month > 31 {
+            return None;
+        }
+        (month, day) = (day, month);
+    }
+    if month == 0 || day == 0 || day > 31 {
+        return None;
+    }
+    let days = crate::date_serial::days_from_civil(year, month, day);
+    if crate::date_serial::civil_from_days(days).1 != month {
+        return None;
+    }
+    let tail = |s: &str| s.chars().all(|c| c == '.' || c == ',' || is_js_space(c));
+    if tail(after) {
+        return Some(DateReading::Serial(days as f64 + 25569.0));
+    }
+    let gap = after.trim_start_matches(is_js_space);
+    let gap = gap.strip_prefix(',').unwrap_or(gap).trim_start_matches(is_js_space);
+    if gap.len() == after.len() || year_month_day_overtakes(&t[y0 + 1..], year_end) {
+        return None;
+    }
+    let (ms, rest) = time_expression(gap)?;
+    tail(rest).then(|| DateReading::Serial((days as f64 * 86_400_000.0 + ms) / 86_400_000.0 + 25569.0))
+}
+
+/// Whether ENYearMonthDayParser reads the year and the time after it (`2024 12.29`) as a day longer than the slash
+/// date, so OverlapRemovalRefiner keeps it instead.
+fn year_month_day_overtakes(s: &str, date_len: usize) -> bool {
+    let mut it = s.char_indices().skip(4);
+    let Some((_, c)) = it.next() else { return false };
+    if !(matches!(c, '-' | '.' | '/') || is_js_space(c)) {
+        return false;
+    }
+    let b = &s.as_bytes()[4 + c.len_utf8()..];
+    let run = |b: &[u8]| b.iter().take_while(|c| c.is_ascii_digit()).count();
+    let mn = run(b);
+    if !(1..=2).contains(&mn) {
+        return false;
+    }
+    let Some(sep) = s[s.len() - b.len() + mn..].chars().next() else { return false };
+    if !(matches!(sep, '-' | '.' | '/') || is_js_space(sep)) {
+        return false;
+    }
+    let d = &b[mn + sep.len_utf8()..];
+    let dn = run(d);
+    if !(1..=2).contains(&dn) || d.get(dn).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_') {
+        return false;
+    }
+    let num = |b: &[u8]| b.iter().fold(0u32, |a, c| a * 10 + u32::from(c - b'0'));
+    let (month, day) = (num(&b[..mn]), num(&d[..dn]));
+    let day = if !(1..=12).contains(&month) && (1..=12).contains(&day) { month } else { day };
+    // Lengths in UTF-16 units: each separator is one.
+    (1..=31).contains(&day) && 4 + 1 + mn + 1 + dn > date_len
+}
+
+/// chrono's primary time expression (`H[.:]MM[:SS[.fff]] [am|pm]`) with no range after it, as milliseconds into the
+/// day, and the text after it.
+fn time_expression(s: &str) -> Option<(f64, &str)> {
+    let b = s.as_bytes();
+    let digits = |from: usize, max: usize| b[from..].iter().take(max).take_while(|c| c.is_ascii_digit()).count();
+    let num = |r: std::ops::Range<usize>| b[r].iter().fold(0u32, |a, c| a * 10 + u32::from(c - b'0'));
+    let hn = digits(0, 4);
+    if hn == 0 {
+        return None;
+    }
+    let mut i = hn;
+    let mut minute = None;
+    let mut second = None;
+    let mut milli = None;
+    if matches!(b.get(i), Some(b'.' | b':')) && digits(i + 1, 2) > 0 {
+        let mn = digits(i + 1, 2);
+        minute = Some((num(i + 1..i + 1 + mn), mn));
+        i += 1 + mn;
+        if b.get(i) == Some(&b':') && digits(i + 1, 2) == 2 {
+            second = Some(num(i + 1..i + 3));
+            i += 3;
+            if b.get(i) == Some(&b'.') && digits(i + 1, 6) > 0 {
+                let fnum = digits(i + 1, 6);
+                milli = Some(num(i + 1..i + 1 + fnum.min(3)));
+                i += 1 + fnum;
+            }
+        }
+    }
+    if b.get(i).is_some_and(u8::is_ascii_digit) {
+        return None;
+    }
+    let time_end = i;
+    let spaced = s[i..].trim_start_matches(is_js_space);
+    let low = spaced.get(..4).map(str::to_ascii_lowercase).unwrap_or_default();
+    let mark = if low == "a.m." || low == "p.m." {
+        Some((low.as_bytes()[0], 4))
+    } else {
+        match spaced.as_bytes() {
+            [c @ (b'a' | b'A' | b'p' | b'P'), b'm' | b'M', ..] => Some((c.to_ascii_lowercase(), 2)),
+            [c @ (b'a' | b'A' | b'p' | b'P'), ..] => Some((c.to_ascii_lowercase(), 1)),
+            _ => None,
+        }
+    };
+    let (ampm, rest) = match mark {
+        Some((c, n)) => (Some(c), &spaced[n..]),
+        None => (None, &s[time_end..]),
+    };
+    if rest.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_' || c == '/') {
+        return None;
+    }
+    // checkAndReturnWithoutFollowingPattern drops a lone digit, three or more bare digits, and `\d[ap]`.
+    if ampm.is_none() && (hn == 1 && minute.is_none() || hn >= 3 && minute.is_none()) {
+        return None;
+    }
+    if mark.is_some_and(|(_, n)| n == 1) && spaced.len() == s[time_end..].len() {
+        return None;
+    }
+    let mut hour = num(0..hn);
+    let mut min = 0;
+    if hour > 100 {
+        if minute.is_some() {
+            return None;
+        }
+        (hour, min) = (hour / 100, hour % 100);
+    }
+    if hour > 24 {
+        return None;
+    }
+    if let Some((m, n)) = minute {
+        if n == 1 && ampm.is_none() {
+            return None;
+        }
+        min = m;
+    }
+    if min >= 60 || second.is_some_and(|s| s >= 60) {
+        return None;
+    }
+    match ampm {
+        Some(_) if hour > 12 => return None,
+        Some(b'a') if hour == 12 => hour = 0,
+        Some(b'p') if hour != 12 => hour += 12,
+        _ => {}
+    }
+    // isValidDate turns hour 24 away.
+    if hour == 24 {
+        return None;
+    }
+    let ms = ((f64::from(hour) * 60.0 + f64::from(min)) * 60.0 + f64::from(second.unwrap_or(0))) * 1000.0 + f64::from(milli.unwrap_or(0));
+    Some((ms, rest))
 }
 
 /// A run of `min..=max` leading ASCII digits as a number, and the rest.
