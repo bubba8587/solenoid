@@ -91,6 +91,14 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
             Ok(planners::payoff_frame(f, extra, &order, &view, start).into())
         }
         ("settleFrame", Some(f)) => str_arg(args, 0).map(|split| planners::settle_frame(f, &split).into()),
+        // args: the columns that held unit cells.
+        ("settleLedger", Some(f)) => {
+            let units = list_arg(args, 0)?.iter().map(|v| match v {
+                V::Str(s) => Ok(s.to_string()),
+                _ => Err(FrameOut::Bail),
+            });
+            Ok(planners::settle_ledger(f, &units.collect::<Res<Vec<_>>>()?).into())
+        }
         ("kmeans", Some(f)) => match num_arg(args, 0)? {
             k if !k.is_nan() => Ok(frame_or_null(planners::kmeans_frame(f, k))),
             _ => Err(FrameOut::Bail),
