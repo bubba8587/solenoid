@@ -105,7 +105,7 @@ const PORTED: &[&str] = &[
     "CLAMP", "BETWEEN", "ISBOOLEAN", "ISCLOSE", "HYPOTENUSE", "NAND", "NOR", "XNOR", "STANDARDIZE", "FISHER", "SLN",
     "ORDINAL", "TEXTBEFORE", "TEXTAFTER", "REVERSETEXT", "PADTEXT", "TRUNCATETEXT", "NUMBERVALUE",
     "PMT", "FV", "PV", "NPER", "IPMT", "PPMT",
-    "FIXED", "INDEX", "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS",
+    "DATEVALUE", "TIMEVALUE", "FIXED", "INDEX", "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS",
     "NORM.DIST", "NORM.INV", "NORM.S.DIST", "NORM.S.INV", "CHISQ.DIST", "CHISQ.INV", "CHISQ.DIST.RT", "CHISQ.INV.RT",
     "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
     "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
@@ -1287,6 +1287,70 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
         return index_ref_error(c + 1.0, 1, "Column");
     }
     cell.clone()
+}
+
+/// `/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i`: hours, minutes, seconds and whether
+/// a meridiem reads PM.
+fn clock_time(t: &str) -> Option<(f64, f64, f64, Option<bool>)> {
+    let b: Vec<char> = t.chars().collect();
+    let mut i = 0;
+    let digits = |i: &mut usize, min: usize, max: usize| -> Option<String> {
+        let start = *i;
+        while *i < b.len() && *i - start < max && b[*i].is_ascii_digit() {
+            *i += 1;
+        }
+        (*i - start >= min).then(|| b[start..*i].iter().collect())
+    };
+    let h = digits(&mut i, 1, 2)?;
+    if b.get(i) != Some(&':') {
+        return None;
+    }
+    i += 1;
+    let m = digits(&mut i, 1, 2)?;
+    let mut sec = 0.0;
+    if b.get(i) == Some(&':') {
+        let save = i;
+        i += 1;
+        match digits(&mut i, 1, 2) {
+            Some(whole) => {
+                let mut text = whole;
+                if b.get(i) == Some(&'.') && b.get(i + 1).is_some_and(char::is_ascii_digit) {
+                    i += 1;
+                    let frac = digits(&mut i, 1, usize::MAX)?;
+                    text = format!("{text}.{frac}");
+                }
+                sec = text.parse().ok()?;
+            }
+            None => i = save,
+        }
+    }
+    let mut meridiem = None;
+    let mut j = i;
+    while j < b.len() && is_js_space(b[j]) {
+        j += 1;
+    }
+    if let Some(&c) = b.get(j) {
+        if matches!(c, 'A' | 'a' | 'P' | 'p') {
+            let mut k = j + 1;
+            if b.get(k) == Some(&'.') {
+                k += 1;
+            }
+            if matches!(b.get(k), Some('M' | 'm')) {
+                k += 1;
+            }
+            if b.get(k) == Some(&'.') {
+                k += 1;
+            }
+            if k == b.len() {
+                meridiem = Some(matches!(c, 'P' | 'p'));
+                i = k;
+            }
+        }
+    }
+    if i != b.len() {
+        return None;
+    }
+    Some((h.parse().ok()?, m.parse().ok()?, sec, meridiem))
 }
 
 /// `toList`: a list as its items, a blank as none, anything else as one.
@@ -2561,6 +2625,40 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             best.map_or(V::Null, |(i, _)| V::Num(i as f64 + 1.0))
         }
         "LENGTH" => V::Num(to_list(arg(a, 0)).len() as f64),
+        "DATEVALUE" | "TIMEVALUE" => {
+            use crate::excel_criteria::{parse_date, DateReading};
+            let raw = to_str(arg(a, 0));
+            let t = js_trim(&raw);
+            let bad = |what: &str| V::err(sol_error("#VALUE!", format!("Cannot parse \"{t}\" as a {what}")));
+            if name == "DATEVALUE" {
+                return match parse_date(t) {
+                    DateReading::Serial(d) if !d.is_nan() => V::Num(d.floor()),
+                    DateReading::Ambiguous(e) => V::err(e),
+                    DateReading::Bail => bail(),
+                    _ => bad("date"),
+                };
+            }
+            if let Some((h, m, sec, meridiem)) = clock_time(t) {
+                let hour_ok = match meridiem {
+                    Some(_) => (1.0..=12.0).contains(&h),
+                    None => h <= 23.0,
+                };
+                if !hour_ok || m > 59.0 || sec >= 60.0 {
+                    return bad("time");
+                }
+                let h = match meridiem {
+                    Some(pm) => h % 12.0 + if pm { 12.0 } else { 0.0 },
+                    None => h,
+                };
+                return V::Num((h * 3600.0 + m * 60.0 + sec) / 86400.0);
+            }
+            // `parseDateToSerial`: any failure is NaN, an ambiguous date included.
+            match parse_date(t) {
+                DateReading::Serial(d) if !d.is_nan() => V::Num(d - d.floor()),
+                DateReading::Bail => bail(),
+                _ => bad("time"),
+            }
+        }
         "FIXED" => {
             let d = opt_num(arg(a, 1), 2.0);
             let n = to_num(arg(a, 0));

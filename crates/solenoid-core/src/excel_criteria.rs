@@ -157,7 +157,7 @@ fn unescape(s: &str) -> Rc<str> {
 
 /// What `parseDate` answers for a criterion's text: a serial, NaN, or `#AMBIGUOUS!`. Text that only chrono-node
 /// reads bails the column to the TS.
-enum DateReading {
+pub(crate) enum DateReading {
     Serial(f64),
     NotADate,
     Ambiguous(SolError),
@@ -169,7 +169,7 @@ fn ascii_digits(s: &[u8]) -> bool {
 }
 
 /// `parseDate` (dateSerial.ts) up to its chrono-node step, with no relative reading.
-fn parse_date(s: &str) -> DateReading {
+pub(crate) fn parse_date(s: &str) -> DateReading {
     let t = js_trim(s);
     let b = t.as_bytes();
     // A relative phrase reads NaN without `relative`, as text with no four-digit run does: either way, not a date.
