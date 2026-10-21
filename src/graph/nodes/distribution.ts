@@ -4,7 +4,8 @@ import { numIn, numListIn, numListOut, readInput, broadcastErr, type BroadcastRe
 import { DIST_SPECS, isInverseForm, formAfterSwitch, sampleQuantiles, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 import { mulberry32 } from "../monteCarlo";
 import { getRecalcGen } from "../process";
-import { solError } from "../errorValue";
+import { solError, isSolError } from "../errorValue";
+import { callCore } from "../coreValues";
 export { DIST_SPECS, DIST_FORM_META, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 
 function firstKeyFor(op: DistKey, form: DistForm): string {
@@ -13,6 +14,33 @@ function firstKeyFor(op: DistKey, form: DistForm): string {
 function inputKeysFor(op: DistKey, form: DistForm): string[] {
   const spec = DIST_SPECS[op];
   return [firstKeyFor(op, form), ...spec.params.map((p) => p.key)];
+}
+
+/** The formula function each family's forms share with the card ([[C17]] shareImpl). The families left out, and the
+ *  forms a family lacks here, register their own bodies rather than `DIST_SPECS`, so the card keeps the spec's. */
+const DIST_FX: Partial<Record<DistKey, { dist?: string; inv?: string; rt?: string }>> = {
+  normal: { dist: "NORM.DIST", inv: "NORM.INV" },
+  "normal-s": { dist: "NORM.S.DIST", inv: "NORM.S.INV" },
+  chisq: { dist: "CHISQ.DIST", inv: "CHISQ.INV", rt: "CHISQ.DIST.RT" },
+  f: { dist: "F.DIST", inv: "F.INV", rt: "F.DIST.RT" },
+  gamma: { dist: "GAMMA.DIST" },
+  lognorm: { dist: "LOGNORM.DIST", inv: "LOGNORM.INV" },
+  weibull: { dist: "WEIBULL.DIST" },
+  expon: { dist: "EXPON.DIST" },
+  binom: { dist: "BINOM.DIST", inv: "BINOM.INV" },
+  poisson: { dist: "POISSON.DIST" },
+  hypgeom: { dist: "HYPGEOM.DIST" },
+  negbinom: { dist: "NEGBINOM.DIST" },
+};
+
+function distCall(op: DistKey, form: DistForm, v: number, ps: number[]): [string, unknown[]] | null {
+  const fx = DIST_FX[op];
+  if (!fx) return null;
+  if (form === "cdf" || form === "pdf" || form === "pmf") return fx.dist ? [fx.dist, [v, ...ps, form === "cdf"]] : null;
+  // BINOM.INV takes (trials, p, alpha).
+  if (form === "inv") return fx.inv ? [fx.inv, op === "binom" ? [...ps, v] : [v, ...ps]] : null;
+  if (form === "rt") return fx.rt ? [fx.rt, [v, ...ps]] : null;
+  return null;
 }
 
 export class DistributionsNode extends ClassicPreset.Node {
@@ -128,9 +156,11 @@ export class DistributionsNode extends ClassicPreset.Node {
     const first = readInput(inputs[firstKey], this.literals[firstKey]);
     const params = spec.params.map((p) => readInput(inputs[p.key], this.literals[p.key]));
     const result = broadcastErr((v, ...ps) => {
-      const r = spec.compute(form, v, ps);
+      const call = distCall(this.op, form, v, ps);
+      const r = call ? callCore(call[0], call[1]) : spec.compute(form, v, ps);
+      if (isSolError(r)) return r;
       // [[D70]] nullNotEnoughData: a parameter outside the domain is a wrong input.
-      return r !== null && Number.isFinite(r) ? r : solError("#DOMAIN!", "A parameter is outside the distribution's domain");
+      return typeof r === "number" && Number.isFinite(r) ? r : solError("#DOMAIN!", "A parameter is outside the distribution's domain");
     }, first, ...params);
     this.cachedResult = result;
     return { result };
