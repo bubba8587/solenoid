@@ -2,22 +2,23 @@
 aliases: ["Rust core"]
 tags: [spec, computation]
 ---
-<!-- [[C130]] rustCore, [[D97]] tsIsSpec, [[D98]] wholeColumnFallback -->
+<!-- [[C130]] rustCore, [[D99]] rustIsSpec, [[D98]] wholeColumnFallback -->
 
 # Spec: the Rust core
 
-Serves [[C130]] rustCore, [[D97]] tsIsSpec and [[D98]] wholeColumnFallback. `crates/solenoid-core` is a Rust port of the headless TypeScript core, built for two targets: WebAssembly for the app (`npm run build:wasm` writes `src/graph/engineWasm/`) and native for tests (`npm run test:core`). The method is borrowed from [tsrs](https://github.com/oxc-project/tsrs).
+Serves [[C130]] rustCore, [[D99]] rustIsSpec and [[D98]] wholeColumnFallback. `crates/solenoid-core` is a Rust port of the headless TypeScript core, built for two targets: WebAssembly for the app (`npm run build:wasm` writes `src/graph/engineWasm/`) and native for tests (`npm run test:core`). The method is borrowed from [tsrs](https://github.com/oxc-project/tsrs).
 
-## The rule: the TypeScript is the spec ([[D97]] tsIsSpec)
+## The rule: the Rust is the spec ([[D99]] rustIsSpec)
 
-- The TS on `develop` at the pinned commit below is the specification. Any difference from it
-  (a cell, an error's code or message, a thrown error) is a bug in the Rust, even when the Rust answer
-  looks more reasonable.
-- The port is mechanical. One Rust module per TS file (`frameVerbs.ts` → `frame_verbs.rs`, `excelFormula.ts` →
-  `excel_formula.rs`), functions keep their TS names in snake_case and their order of operations, and nothing
-  gets redesigned. Internal-only differences (data layout, `Rc` sharing, a faster sort where the comparator is
-  provably total) are fine when no answer changes.
-- The JavaScript the TS leans on implicitly also gets ported, because it decides answers:
+- The core is the one implementation. A change in behaviour is made in the Rust, together with the fixtures it
+  changes, in the same commit.
+- The port began as a mechanical copy of the TypeScript, so the Rust keeps the TS's names (in snake_case) and order of
+  operations wherever a fixture depends on them.
+- Moving off the TypeScript, subsystem by subsystem:
+  1. Freeze: the TS's answers on the differential tests' inputs are written to fixture files (`fixtures/core/`).
+  2. Cover: the core answers every case the subsystem's callers make, so nothing falls back.
+  3. Delete: the TS implementation, its fallback and its differential test go, and the fixtures stay as the test.
+- The JavaScript semantics the frozen answers carry stay ported, because they decided those answers:
   - `String(x)`, `Number(x)`, `trim` and UTF-16 string order, in `jsnum.rs`.
   - `Array.prototype.sort` that never panics on an inconsistent comparator, in `js_sort.rs`.
   - `toPrecision`, in `unit_value.rs` (17 correctly rounded digits decide the cut unless they read as a possible tie, and Clinger's fast path turns them back into a number); `toFixed` and `toExponential`, exact ties rounding up, in `jsnum.rs`.

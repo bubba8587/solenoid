@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D97]] tsIsSpec
+// [[C130]] rustCore, [[D99]] rustIsSpec
 //! `parseInt(s, radix)` and `Number.prototype.toString(radix)` as V8 computes them (`src/numbers/conversions.cc`,
 //! `builtins-number.cc`), for the Formula.js bodies that lean on them.
 

@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D97]] tsIsSpec
+// [[C130]] rustCore, [[D99]] rustIsSpec
 //! The Formula.js 4.6.1 bodies a formula reaches straight through `resolveExcelFunction` (no internal registration
 //! over them), with the jStat kernels they call, each named as there. Their JavaScript coercions are ported with
 //! them: a string where a number goes, `||` on a falsy argument, `new Array(n).join` on a length JS refuses.

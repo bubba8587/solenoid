@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D97]] tsIsSpec, [[C17]] shareImpl
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[C17]] shareImpl
 //! Port of `src/graph/nodes/hashOps.ts`: the digests HASH offers and base64. UTF-8 in, lowercase hex out; text a
 //! JS string holds reaches here well formed, and a lone surrogate encodes as U+FFFD either way (`TextEncoder`).
 

@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D97]] tsIsSpec, [[D98]] wholeColumnFallback
+// [[C130]] rustCore, [[D99]] rustIsSpec, [[D98]] wholeColumnFallback
 // The Rust engine (crates/solenoid-core) in WebAssembly against the JS oracle, through the real backend wrapper:
 // the parity corpus, then seeded random frames under random verbs. The oracle is the spec, so every difference,
 // a cell, an error's code or message, or a thrown error, is a Rust bug.

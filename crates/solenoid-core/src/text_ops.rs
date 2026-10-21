@@ -1,4 +1,4 @@
-// [[C130]] rustCore, [[D97]] tsIsSpec
+// [[C130]] rustCore, [[D99]] rustIsSpec
 //! Port of `src/graph/nodes/textOps.ts`'s regex, URL, spelling, accent and template helpers. A JS string is UTF-16
 //! and `new RegExp(p, "")` reads it by code unit, so the patterns run on `regress` in its non-Unicode mode over the
 //! text's code units.

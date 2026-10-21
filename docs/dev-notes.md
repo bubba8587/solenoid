@@ -7,7 +7,7 @@ first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
 ### SESSION DIGEST (2026-10-21: the Rust core, branch solenoid/tsrs; cloud session)
-- **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine), [[D97]] tsIsSpec and [[D98]] wholeColumnFallback; mechanics in [[rust-core]]. All three are unratified.
+- **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine), [[D99]] rustIsSpec and [[D98]] wholeColumnFallback; mechanics in [[rust-core]]. All three are unratified.
 - **Formula surface on the core:** 317 functions, including the finance family, the regex and text utilities, and FILTER, UNIQUE, SORT, SORTBY, TAKE and DROP inside a range function. Wired LAMBDA columns run there too. Each family has a differential fuzzer against the TS, swept at 20k runs over several seeds.
 - **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the oracle (`RUST_CORE_ONLY`).
 - **Module size:** 487 KB gzipped, with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
