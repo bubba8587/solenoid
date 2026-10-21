@@ -41,6 +41,28 @@ describe("ROUND family and POWER share the node's kernels (FX is wrong)", () => 
   });
 });
 
+describe("FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT, MULTINOMIAL multiply without recursing (FX is wrong)", () => {
+  it("exact where a double holds the answer, an overflow past it, and Excel's domain", () => {
+    expect(call("COMBIN", 30, 15)).toBe(155117520);
+    expect(call("COMBIN", 1e6, 2)).toBe(499999500000);
+    expect(call("PERMUT", 1e6, 2)).toBe(999999000000);
+    expect(call("MULTINOMIAL", 2, 3, 4)).toBe(1260);
+    expect(call("COMBINA", 4, 3)).toBe(20);
+    expect(call("FACT", 1e9)).toBe(Infinity);
+    for (const [name, args] of [["FACT", [-1]], ["COMBIN", [5, 6]], ["PERMUT", [3, 5]], ["FACTDOUBLE", [-1]]] as const) {
+      expect((call(name, ...args) as { code?: string }).code).toBe("#DOMAIN!");
+    }
+    const fx = FX as unknown as Record<string, (n: number) => number>;
+    for (let n = 0; n <= 170; n++) expect(call("FACT", n)).toBe(fx.FACT(n));
+  });
+  it("FX still overflows the call stack and divides factorials (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
+    expect(() => fx.COMBIN(1e6, 2)).toThrow(RangeError);
+    expect(() => fx.FACT(-1)).toThrow(RangeError);
+    expect(fx.COMBIN(30, 15)).not.toBe(155117520);
+  });
+});
+
 describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per period)", () => {
   it("a huge period within the life answers at once; an ordinary one is Formula.js's", () => {
     const t = performance.now();

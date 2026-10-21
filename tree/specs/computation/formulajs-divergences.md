@@ -26,6 +26,8 @@ Without the tripwire, a vendor update that fixes or changes a function passes si
 - **GCD, LCM** run `gcdLcm` (`mathUtils.ts`), the GCD card's kernel: each value is truncated, as in Excel, and a negative value, or a value or an LCM at 2^53 or more, is `#DOMAIN!`. Formula.js runs Euclid's algorithm on the raw decimals, so `GCD(4.5, 6.9)` is about 1.8e-15 and `LCM(4.5, 6)` is 27, and it takes negatives. The card, which read each pair after rounding, reads it the same way now.
 - **LN, LOG10, SQRTPI, ASIN, ACOS, ACOSH, ATANH** outside their domain answer `#DOMAIN!` ("Input is outside this function's domain"). Formula.js silently returns null for some of them.
 
+- **FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT, MULTINOMIAL** run `combinatoric` (`mathUtils.ts`). Formula.js builds FACT by recursion, so a large count, or a negative one that never reaches its base case, overflowed the call stack, and COMBIN, PERMUT and MULTINOMIAL divide factorials, so `COMBIN(30, 15)` was 155117519.99999997. Arguments truncate; a negative count or choosing more than there are is `#DOMAIN!`; COMBIN divides as it multiplies, so its answer is the exact integer wherever a double holds one; past a double's range the answer overflows to `#OVERFLOW!`. The factorials multiply in Formula.js's order, so FACT and FACTDOUBLE answer what it did up to 170.
+
 These match the Math node's own compute.
 
 ## Logic
