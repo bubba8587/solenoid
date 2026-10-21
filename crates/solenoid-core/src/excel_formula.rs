@@ -772,7 +772,11 @@ pub fn formula_column(f: &FrameValue, expr: &str, table: &CallTable, sides: &Has
     let mut cells = Vec::with_capacity(rows);
     for i in 0..rows {
         row.cursor = i;
-        cells.push(tag_computed_cell(row.eval(&ast)));
+        let v = row.eval(&ast);
+        cells.push(match crate::excel_functions::take_thrown() {
+            Some(e) => FrameCell::err(e),
+            None => tag_computed_cell(v),
+        });
     }
     Ok(ColumnOutcome::Cells(cells))
 }

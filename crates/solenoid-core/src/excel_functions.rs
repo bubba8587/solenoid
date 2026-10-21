@@ -44,6 +44,26 @@ impl V {
     }
 }
 
+thread_local! {
+    static THROWN: std::cell::RefCell<Option<SolError>> = const { std::cell::RefCell::new(None) };
+}
+
+/// A JS exception: it ends the row's evaluation, so the row answers it whatever encloses the call (the first one wins).
+fn throw(e: SolError) -> V {
+    THROWN.with(|t| {
+        let mut t = t.borrow_mut();
+        if t.is_none() {
+            *t = Some(e);
+        }
+    });
+    V::Undef
+}
+
+/// The exception the last row threw, if it did.
+pub fn take_thrown() -> Option<SolError> {
+    THROWN.with(|t| t.borrow_mut().take())
+}
+
 /// The functions this module carries. A formula calling anything else runs on the TS.
 const PORTED: &[&str] = &[
     "IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE",
@@ -52,6 +72,7 @@ const PORTED: &[&str] = &[
     "SUM", "MIN", "MAX", "AVERAGE", "MEDIAN", "PRODUCT", "STDEV", "STDEV.S", "STDEV.P", "VAR", "VAR.S", "VAR.P",
     "LEN", "CONCAT", "CONCATENATE", "MID", "LEFT", "RIGHT", "UPPER", "LOWER", "TRIM", "REPT", "SUBSTITUTE",
     "YEAR", "MONTH", "DAY",
+    "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
 ];
 
 pub fn is_ported(name: &str) -> bool {
@@ -646,7 +667,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return V::err(sol_error("#VALUE!", "REPT's result would pass 32,767 characters, Excel's text limit"));
             }
             if n.is_infinite() {
-                return V::err(sol_error("#VALUE!", format!("Invalid count value: {}", number_to_string(n))));
+                return throw(sol_error("#VALUE!", format!("Invalid count value: {}", number_to_string(n))));
             }
             V::str(&t.repeat(n as usize))
         }
@@ -689,8 +710,146 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 }),
             }
         }
+        "PI" => V::Num(std::f64::consts::PI),
+        "EXACT" => {
+            if a.len() != 2 {
+                return V::Fx("#N/A");
+            }
+            V::Bool(to_str(&a[0]) == to_str(&a[1]))
+        }
+        "FIND" => {
+            let start = arg(a, 2);
+            if !matches!(start, V::Null | V::Undef) {
+                let s = to_num(start).trunc();
+                if s < 1.0 {
+                    return V::err(sol_error("#VALUE!", "FIND starts at 1 or later"));
+                }
+                if s > utf16(&to_str(arg(a, 1))).len() as f64 + 1.0 {
+                    return V::err(sol_error("#VALUE!", "FIND starts past the end of the text"));
+                }
+            }
+            if a.len() < 2 {
+                return V::Fx("#N/A");
+            }
+            let (find, within) = (utf16(&to_str(&a[0])), utf16(&to_str(&a[1])));
+            let from = match start {
+                V::Undef => -1.0,
+                v => to_f64_js(v) - 1.0,
+            };
+            let from = clamp_index(from, within.len());
+            let hit = (from..=within.len().saturating_sub(find.len()))
+                .find(|&i| i + find.len() <= within.len() && within[i..i + find.len()] == find[..]);
+            match hit {
+                Some(i) if from <= within.len() => V::Num(i as f64 + 1.0),
+                _ => V::Fx("#VALUE!"),
+            }
+        }
+        "XOR" => {
+            let mut result: Option<f64> = None;
+            for v in a {
+                if let V::Fx(_) = v {
+                    return v.clone();
+                }
+                if matches!(v, V::Undef | V::Null | V::Str(_)) {
+                    continue;
+                }
+                let r = result.get_or_insert(0.0);
+                if truthy(v) {
+                    *r += 1.0;
+                }
+            }
+            result.map_or(V::Fx("#VALUE!"), |r| V::Bool((r.abs().floor() as i64) & 1 == 1))
+        }
+        "COUNT" => V::Num(a.iter().filter(|v| matches!(v, V::Num(_))).count() as f64),
+        "COUNTA" | "COUNTBLANK" => {
+            let blanks = a.iter().filter(|v| matches!(v, V::Undef | V::Null) || matches!(v, V::Str(s) if s.is_empty())).count();
+            V::Num(if name == "COUNTA" { a.len() - blanks } else { blanks } as f64)
+        }
+        "ISEVEN" | "ISODD" => {
+            let odd = to_int32(js_number_of(arg(a, 0)).abs().floor()) & 1 == 1;
+            V::Bool(if name == "ISODD" { odd } else { !odd })
+        }
+        "ISNONTEXT" => V::Bool(!matches!(arg(a, 0), V::Str(_))),
+        "N" => match arg(a, 0) {
+            V::Num(n) => V::Num(*n),
+            V::Bool(b) => V::Num(f64::from(u8::from(*b))),
+            v @ V::Fx(code) if matches!(*code, "#VALUE!" | "#REF!" | "#DIV/0!" | "#NUM!" | "#NAME?" | "#NULL!" | "#N/A") => v.clone(),
+            _ => V::Num(0.0),
+        },
+        "T" => match arg(a, 0) {
+            v @ (V::Fx(_) | V::Str(_)) => v.clone(),
+            _ => V::str(""),
+        },
+        "CHOOSE" => {
+            let index = arg(a, 0);
+            if matches!(index, V::Null | V::Undef) {
+                return V::Null;
+            }
+            let idx = to_num(index).trunc();
+            if idx.is_nan() {
+                return value_err("CHOOSE");
+            }
+            let n = a.len() - 1;
+            if idx < 1.0 || idx > n as f64 {
+                return V::err(sol_error("#VALUE!", format!("CHOOSE index {} is outside the range 1–{n}", number_to_string(idx))));
+            }
+            match &a[idx as usize] {
+                V::Undef => V::Null,
+                v => v.clone(),
+            }
+        }
+        "DATE" => {
+            let (y, m, d) = (to_num(arg(a, 0)), to_num(arg(a, 1)), opt_num(arg(a, 2), 0.0));
+            if y.is_nan() || m.is_nan() || d.is_nan() {
+                return value_err("DATE");
+            }
+            date_from_parts(y, m, d)
+        }
         _ => V::Undef,
     }
+}
+
+/// `Number(v)` as `Math.abs` reads it.
+fn js_number_of(v: &V) -> f64 {
+    match v {
+        V::Null => 0.0,
+        other => to_f64_js(other),
+    }
+}
+
+/// ECMAScript `ToInt32`.
+fn to_int32(x: f64) -> i32 {
+    if !x.is_finite() {
+        return 0;
+    }
+    (x.trunc().rem_euclid(4_294_967_296.0) as u64 as u32) as i32
+}
+
+/// dateOps.ts `dateFromParts`: `Date.UTC`'s month and day carry, without its 0–99 year remap.
+fn date_from_parts(raw_y: f64, raw_m: f64, raw_d: f64) -> V {
+    let (year, month, day) = (raw_y.floor(), raw_m.floor(), raw_d.floor());
+    if !(1.0..=9999.0).contains(&year) {
+        return V::err(sol_error("#DOMAIN!", "Year must be between 1 and 9999"));
+    }
+    if month.abs() > 1e9 || day.abs() > 1e12 {
+        return V::Num(f64::NAN);
+    }
+    let m0 = month - 1.0;
+    let utc_year = if year <= 99.0 { year + 1900.0 } else { year };
+    let y = utc_year + (m0 / 12.0).floor();
+    let m = m0.rem_euclid(12.0) as u32 + 1;
+    let first = crate::date_serial::days_from_civil(y as i64, m, 1) as f64;
+    let days = first + day - 1.0;
+    if (days * 86_400_000.0).abs() > 8.64e15 {
+        return V::Num(f64::NAN);
+    }
+    let days = if year <= 99.0 {
+        let p = crate::date_serial::civil_from_days(days as i64);
+        crate::date_serial::days_from_civil(p.0 - 1900, p.1, 1) as f64 + f64::from(p.2) - 1.0
+    } else {
+        days
+    };
+    V::Num(days + 25569.0)
 }
 
 fn error_type_num(code: &str) -> Option<f64> {
