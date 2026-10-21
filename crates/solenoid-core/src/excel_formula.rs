@@ -477,6 +477,15 @@ pub struct CallTraits {
     /// Whether a broadcast call maps over a whole column cell by cell.
     #[serde(rename = "mapsColumns", default)]
     pub maps_columns: bool,
+    /// The error a blocked, node-only or unknown name answers before its arguments are read (`callRefusal`).
+    #[serde(default)]
+    pub refusal: Option<Refusal>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct Refusal {
+    pub code: String,
+    pub message: String,
 }
 
 pub type CallTable = FxHashMap<String, CallTraits>;
@@ -522,6 +531,9 @@ fn supported_at(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHash
         Ast::Bin { l, r, .. } => supported_at(l, columns, sides, table, list_ok) && supported_at(r, columns, sides, table, list_ok),
         Ast::Call { name, args } => {
             let up = name.to_uppercase();
+            if table.get(&up).is_some_and(|t| t.refusal.is_some()) {
+                return true;
+            }
             let roles_ok = table.get(&up).is_some_and(|t| {
                 matches!(t.kind.as_str(), "handler" | "whole" | "range" | "broadcast")
                     && t.roles.len() >= args.len()
@@ -768,6 +780,8 @@ fn map_cells(argv: &[V], cell: impl Fn(&[V]) -> V) -> V {
 fn reads_row(n: &Ast) -> bool {
     match n {
         Ast::AtCol(_) => true,
+        // ROW() is the row's own number.
+        Ast::Call { name, .. } if name.eq_ignore_ascii_case("ROW") => true,
         Ast::Call { args, .. } | Ast::Apply { args, .. } => args.iter().any(reads_row),
         Ast::Unary { arg, .. } | Ast::Percent(arg) => reads_row(arg),
         Ast::Bin { l, r, .. } => reads_row(l) || reads_row(r),
@@ -850,6 +864,9 @@ impl Row<'_> {
     /// `name` arrives uppercased (`upper_calls`), as `callPlan` reads it.
     fn call(&self, name: &str, args: &[Ast]) -> V {
         let Some(t) = self.table.get(name) else { return V::Undef };
+        if let Some(r) = &t.refusal {
+            return V::err(sol_error(&r.code, r.message.as_str()));
+        }
         let mut argv: Vec<V> = args.iter().map(|a| self.eval(a)).collect();
         let mut settled: Vec<bool> = args.iter().map(|a| matches!(a, Ast::Blank)).collect();
         for (i, v) in argv.iter_mut().enumerate() {
@@ -1088,9 +1105,11 @@ pub fn formula_column(f: &FrameValue, expr: &str, table: &CallTable, sides: &Has
     crate::excel_functions::take_bailed();
     for i in 0..rows {
         row.cursor = i;
+        crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
         let v = row.eval(&ast);
         if crate::excel_functions::take_bailed() {
             crate::excel_functions::take_thrown();
+            crate::excel_functions::set_row_number(None);
             return Ok(ColumnOutcome::Unsupported);
         }
         cells.push(match crate::excel_functions::take_thrown() {
@@ -1098,5 +1117,6 @@ pub fn formula_column(f: &FrameValue, expr: &str, table: &CallTable, sides: &Has
             None => tag_computed_cell(v),
         });
     }
+    crate::excel_functions::set_row_number(None);
     Ok(ColumnOutcome::Cells(cells))
 }

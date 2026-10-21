@@ -3,10 +3,10 @@
 //! over them), with the jStat kernels they call, each named as there. Their JavaScript coercions are ported with
 //! them: a string where a number goes, `||` on a falsy argument, `new Array(n).join` on a length JS refuses.
 
-#![allow(clippy::excessive_precision)]
+#![allow(clippy::excessive_precision, clippy::approx_constant)]
 
 use crate::error_value::sol_error;
-use crate::excel_functions::{bail, js_pow, js_string_of, parse_number, throw, truthy, V};
+use crate::excel_functions::{bail, js_pow, js_string_of, parse_number, throw, to_num, truthy, V};
 use crate::fdlibm::{exp, log, sin};
 use crate::js_radix::{parse_int, to_int32, to_radix_string, to_uint32};
 use crate::jsnum::{math_round, number_to_string, string_to_number};
@@ -21,8 +21,17 @@ pub const NAMES: &[&str] = &[
     "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "SERIESSUM", "BASE", "DECIMAL", "ROMAN", "ARABIC", "BIN2DEC", "BIN2HEX",
     "BIN2OCT", "DEC2BIN", "DEC2HEX", "DEC2OCT", "HEX2BIN", "HEX2DEC", "HEX2OCT", "OCT2BIN", "OCT2DEC", "OCT2HEX",
     "BITAND", "BITOR", "BITXOR", "BITLSHIFT", "BITRSHIFT", "DELTA", "GESTEP", "TYPE", "ERF", "ERF.PRECISE", "ERFC",
-    "ERFC.PRECISE", "GAMMA", "GAMMALN", "GAMMALN.PRECISE", "Z.TEST", "CHISQ.TEST",
+    "ERFC.PRECISE", "GAMMA", "GAMMALN", "GAMMALN.PRECISE", "Z.TEST", "CHISQ.TEST", "NA", "GAUSS", "PHI",
+    "CONFIDENCE.NORM", "BINOM.DIST.RANGE", "CLEAN", "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "ISPMT",
+    "DOLLARDE", "DOLLARFR",
 ];
+
+/// The steps the registrations over DB, DDB and BINOM.DIST.RANGE let Formula.js's loops take.
+const MAX_STEPS: f64 = 1e6;
+
+fn too_long(name: &str) -> V {
+    V::err(sol_error("#DOMAIN!", format!("{name} takes at most a million steps")))
+}
 
 fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
@@ -532,6 +541,42 @@ fn fx_norm_s_cdf(z: f64) -> Result<f64, V> {
     }
 }
 
+fn jstat_erfcinv(p: f64) -> f64 {
+    if p >= 2.0 {
+        return -100.0;
+    }
+    if p <= 0.0 {
+        return 100.0;
+    }
+    let pp = if p < 1.0 { p } else { 2.0 - p };
+    let t = (-2.0 * log(pp / 2.0)).sqrt();
+    let mut x = -0.70711 * ((2.30753 + t * 0.27061) / (1.0 + t * (0.99229 + t * 0.04481)) - t);
+    for _ in 0..2 {
+        let err = (1.0 - jstat_erf(&V::Num(x))) - pp;
+        x += err / (1.12837916709551257 * exp(-x * x) - x * err);
+    }
+    if p < 1.0 { x } else { -x }
+}
+
+/// `jStat.normal.cdf(x, 0, 1)`.
+fn std_normal_cdf(x: f64) -> f64 {
+    0.5 * (1.0 + jstat_erf(&V::Num((x - 0.0) / (2.0f64 * 1.0 * 1.0).sqrt())))
+}
+
+/// The parsed numbers, or None where one is a Formula.js error (`anyIsError`).
+fn parsed<const N: usize>(vs: [&V; N]) -> Option<[f64; N]> {
+    let mut out = [0.0; N];
+    for (o, v) in out.iter_mut().zip(vs) {
+        *o = num_of(&parse_number(v))?;
+    }
+    Some(out)
+}
+
+/// `parseInt(x, 10)` of a number, as the finance bodies truncate.
+fn parse_int_of(x: f64) -> f64 {
+    parse_int(&number_to_string(x), 10.0)
+}
+
 /// CHISQ.TEST's `ChiSq`.
 fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, V> {
     let mut p = exp(-0.5 * xsqr);
@@ -868,6 +913,147 @@ pub fn call(name: &str, a: &[V]) -> V {
                 Ok(p) => V::Num(math_round(p * 1_000_000.0) / 1_000_000.0),
                 Err(e) => e,
             }
+        }
+        "NA" => NA,
+        "GAUSS" => match parse_number(arg(a, 0)) {
+            V::Num(z) => V::Num(std_normal_cdf(z) - 0.5),
+            e => e,
+        },
+        "PHI" => match parse_number(arg(a, 0)) {
+            V::Num(x) => V::Num(exp(-0.5 * x * x) / 2.5066282746310002),
+            _ => VALUE,
+        },
+        "CONFIDENCE.NORM" => {
+            let Some([alpha, sd, size]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2)]) else { return VALUE };
+            let inv = -1.41421356237309505 * 1.0 * jstat_erfcinv(2.0 * (alpha / 2.0)) + 0.0;
+            let change = (inv * sd / size.sqrt()).abs();
+            V::Num((1.0 + change) - 1.0)
+        }
+        "BINOM.DIST.RANGE" => {
+            let s2 = if matches!(arg(a, 3), V::Undef) { arg(a, 2) } else { arg(a, 3) };
+            if to_num(s2) - to_num(arg(a, 2)) > MAX_STEPS {
+                return too_long(name);
+            }
+            let Some([trials, p, s, s2]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), s2]) else { return VALUE };
+            let mut result = 0.0;
+            let mut i = s;
+            while i <= s2 {
+                let c = match combin(&V::Num(trials), &V::Num(i)) {
+                    V::Num(c) => c,
+                    V::Fx(_) => f64::NAN,
+                    thrown => return thrown,
+                };
+                result += c * js_pow(p, i) * js_pow(1.0 - p, trials - i);
+                i += 1.0;
+            }
+            V::Num(result)
+        }
+        "CLEAN" => match arg(a, 0) {
+            e @ V::Fx(_) => e.clone(),
+            V::Str(s) => V::str(&s.chars().filter(|&c| c > '\u{1F}').collect::<String>()),
+            v if !truthy(v) => V::str(""),
+            _ => throw(sol_error("#VALUE!", "text.replace is not a function")),
+        },
+        "DB" => {
+            if to_num(arg(a, 3)) > MAX_STEPS {
+                return too_long(name);
+            }
+            let month = if matches!(arg(a, 4), V::Undef) { &V::Num(12.0) } else { arg(a, 4) };
+            let Some([cost, salvage, life, period, month]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), month]) else { return VALUE };
+            if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 {
+                return NUM;
+            }
+            if !((1.0..=12.0).contains(&month) && month.fract() == 0.0) || period > life {
+                return NUM;
+            }
+            if salvage >= cost {
+                return V::Num(0.0);
+            }
+            let rate = crate::jsnum::to_fixed(1.0 - js_pow(salvage / cost, 1.0 / life), 3.0).map_or(f64::NAN, |t| string_to_number(&t));
+            let initial = (cost * rate * month) / 12.0;
+            let mut total = initial;
+            let mut current = 0.0;
+            let ceiling = if period == life { life - 1.0 } else { period };
+            let mut i = 2.0;
+            while i <= ceiling {
+                current = (cost - total) * rate;
+                total += current;
+                i += 1.0;
+            }
+            V::Num(if period == 1.0 { initial } else if period == life { (cost - total) * rate } else { current })
+        }
+        "DDB" => {
+            if to_num(arg(a, 3)) > MAX_STEPS {
+                return too_long(name);
+            }
+            let factor = if matches!(arg(a, 4), V::Undef) { &V::Num(2.0) } else { arg(a, 4) };
+            let Some([cost, salvage, life, period, factor]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), factor]) else { return VALUE };
+            if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 || factor <= 0.0 || period > life {
+                return NUM;
+            }
+            if salvage >= cost {
+                return V::Num(0.0);
+            }
+            let (mut total, mut current) = (0.0, 0.0);
+            let mut i = 1.0;
+            while i <= period {
+                current = crate::jsnum::math_min((cost - total) * (factor / life), cost - salvage - total);
+                total += current;
+                i += 1.0;
+            }
+            V::Num(current)
+        }
+        "SYD" => {
+            let Some([cost, salvage, life, per]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3)]) else { return VALUE };
+            if life == 0.0 || per < 1.0 || per > life {
+                return NUM;
+            }
+            let per = parse_int_of(per);
+            V::Num(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
+        }
+        "EFFECT" | "NOMINAL" => {
+            let Some([rate, npery]) = parsed([arg(a, 0), arg(a, 1)]) else { return VALUE };
+            if rate <= 0.0 || npery < 1.0 {
+                return NUM;
+            }
+            let n = parse_int_of(npery);
+            V::Num(if name == "EFFECT" { js_pow(1.0 + rate / n, n) - 1.0 } else { (js_pow(rate + 1.0, 1.0 / n) - 1.0) * n })
+        }
+        "PDURATION" => {
+            let Some([rate, pv, fv]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2)]) else { return VALUE };
+            if rate <= 0.0 {
+                return NUM;
+            }
+            V::Num((log(fv) - log(pv)) / log(1.0 + rate))
+        }
+        "RRI" => {
+            let Some([nper, pv, fv]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2)]) else { return VALUE };
+            if nper == 0.0 || pv == 0.0 {
+                return NUM;
+            }
+            V::Num(js_pow(fv / pv, 1.0 / nper) - 1.0)
+        }
+        "ISPMT" => {
+            let Some([rate, per, nper, pv]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3)]) else { return VALUE };
+            V::Num(pv * rate * (per / nper - 1.0))
+        }
+        "DOLLARDE" | "DOLLARFR" => {
+            let Some([dollar, fraction]) = parsed([arg(a, 0), arg(a, 1)]) else { return VALUE };
+            if fraction < 0.0 {
+                return NUM;
+            }
+            if fraction < 1.0 {
+                return V::Fx("#DIV/0!");
+            }
+            let fraction = parse_int_of(fraction);
+            let digits = (log(fraction) / std::f64::consts::LN_10).ceil();
+            let mut result = parse_int_of(dollar);
+            if name == "DOLLARFR" {
+                return V::Num(result + (dollar % 1.0) * js_pow(10.0, -digits) * fraction);
+            }
+            result += ((dollar % 1.0) * js_pow(10.0, digits)) / fraction;
+            let power = js_pow(10.0, (log(fraction) / std::f64::consts::LN_2).ceil() + 1.0);
+            V::Num(math_round(result * power) / power)
         }
         _ => V::Undef,
     }

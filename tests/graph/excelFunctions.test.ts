@@ -233,6 +233,15 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(isSolError(ev('CONVERT(1, "m", "kg")', {}))).toBe(true); // cross-category → #N/A
   });
 
+  it("a loop a step per period or outcome stops at a million instead of stalling the calc", () => {
+    for (const src of ["DDB(1000, 10, 1e300, 1e300)", "DB(1000, 10, 1e300, 1e300)", "BINOM.DIST.RANGE(10, 0.5, 0, 1e9)"]) {
+      expect((ev(src, {}) as SolError).code).toBe("#DOMAIN!");
+    }
+    expect(ev("DDB(1000, 10, 5, 2)", {})).toBe(240);
+    expect(ev("BINOMTEST(5, 1e9, 0.5)", {})).toBeNull();
+    expect(ev("FISHEREXACT(1e7, 1e7, 1e7, 1e7)", {})).toBeNull();
+  });
+
   it("CONVERT reads only the table's own units, not Object.prototype's members", () => {
     for (const [from, to] of [["toString", "m"], ["m", "constructor"], ["valueOf", "__proto__"]]) {
       expect((ev(`CONVERT(1, "${from}", "${to}")`, {}) as SolError).code).toBe("#N/A");

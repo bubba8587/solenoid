@@ -295,6 +295,9 @@ export function kruskalP(groups: readonly (readonly number[])[]): number | null 
   return Math.min(1, Math.max(0, 1 - chiSqCDF(h, k - 1)));
 }
 
+/** The outcomes an exact test sums before it gives no answer. */
+const MAX_OUTCOMES = 1e6;
+
 export function fisherExactP(a: number, b: number, c: number, d: number): number | null {
   const cells = [a, b, c, d].map((v) => Math.round(v));
   if (cells.some((v) => v < 0 || !Number.isFinite(v))) return null;
@@ -303,6 +306,8 @@ export function fisherExactP(a: number, b: number, c: number, d: number): number
   if (N === 0) return null;
   const pmf = (x: number): number => Math.exp(lnCombin(col1, x) + lnCombin(N - col1, row1 - x) - lnCombin(N, row1));
   const lo = Math.max(0, row1 - (N - col1)), hi = Math.min(row1, col1);
+  // The exact sum walks every table; past a million of them the calc would stall, so there is no answer.
+  if (hi - lo > MAX_OUTCOMES) return null;
   const pObs = pmf(A);
   let p = 0;
   for (let x = lo; x <= hi; x++) { const px = pmf(x); if (px <= pObs * (1 + 1e-7)) p += px; }
@@ -354,6 +359,7 @@ export function binomTestP(k: number, n: number, p0: number): number | null {
   if (!(N >= 1) || K < 0 || K > N || !(p0 >= 0 && p0 <= 1)) return null;
   if (p0 === 0) return K === 0 ? 1 : 0;
   if (p0 === 1) return K === N ? 1 : 0;
+  if (N > MAX_OUTCOMES) return null;
   const pmf = (x: number): number => Math.exp(lnCombin(N, x) + x * Math.log(p0) + (N - x) * Math.log(1 - p0));
   const pObs = pmf(K);
   let p = 0;

@@ -329,8 +329,12 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "SERIESSUM", "BASE", "DECIMAL", "ROMAN", "ARABIC", "BIN2DEC", "BIN2HEX",
   "BIN2OCT", "DEC2BIN", "DEC2HEX", "DEC2OCT", "HEX2BIN", "HEX2DEC", "HEX2OCT", "OCT2BIN", "OCT2DEC", "OCT2HEX",
   "BITAND", "BITOR", "BITXOR", "BITLSHIFT", "BITRSHIFT", "DELTA", "GESTEP", "TYPE", "ERF", "ERF.PRECISE", "ERFC",
-  "ERFC.PRECISE", "GAMMA", "GAMMALN", "GAMMALN.PRECISE", "Z.TEST", "CHISQ.TEST"];
+  "ERFC.PRECISE", "GAMMA", "GAMMALN", "GAMMALN.PRECISE", "Z.TEST", "CHISQ.TEST", "ROW", "VALUETOTEXT", "NA", "GAUSS", "PHI",
+  "CONFIDENCE.NORM", "BINOM.DIST.RANGE", "CLEAN", "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "ISPMT",
+  "DOLLARDE", "DOLLARFR", "FISHEREXACT", "PROPTEST", "BINOMTEST", "FORECAST", "VLOOKUP", "NOSUCHFN", "GETCOLUMN"];
 /** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
+/** Text built `new Array(n).join` long: a literal like 3e9 asks Formula.js for gigabytes, slow on the TS side alone; the bodies are checked directly. */
+const FORMULA_FNS = FNS.filter((n) => !/^(ROMAN|BASE|DEC2|HEX2|OCT2|BIN2)/.test(n));
 const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE|TRIMMEAN|PERCENTRANK|SPEARMAN/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
 
@@ -348,7 +352,7 @@ function formulaGen(rand: () => number) {
     if (r < 0.45) return `${expr(depth - 1)}%`;
     if (r < 0.65) return `${expr(depth - 1)} ${pick(OPS)} ${expr(depth - 1)}`;
     if (r < 0.7) return `(${expr(depth - 1)})`;
-    const name = pick(FNS);
+    const name = pick(FORMULA_FNS);
     const n = Math.floor(rand() * 4);
     const args = Array.from({ length: n }, () => (rand() < 0.15 ? "" : expr(depth - 1)));
     return `${rand() < 0.2 ? name.toLowerCase() : name}(${args.join(", ")})`;
@@ -670,7 +674,8 @@ describe("the distribution functions match bit for bit on realistic parameters",
 
 describe("each ported function body matches its JS one on random arguments", () => {
   // The IFERROR family runs in the evaluator (applyErrorHandler), never through a registered body.
-  const PORTED = FNS.filter((n) => !["VLOOKUP", "SEQUENCE", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"].includes(n));
+  // A refused name (blocked, a node's verb, unknown) answers before any body runs; the evaluator tests cover those.
+  const PORTED = FNS.filter((n) => !["VLOOKUP", "SEQUENCE", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE", "FORECAST", "NOSUCHFN", "GETCOLUMN"].includes(n));
   const POOL: unknown[] = ["14:30", "2:05:09.5 pm", "12:00 AM", "9:7", " 23:59:59 ", "24:00", "1:60", "13:00 PM", "7:30a.m.",
     "2024-03-15", "2024-02-30", "03/15/2024", "05/06/2024", "2024-03", "15-Mar-2024", "1:2:3:4", "12:34.5", 0.3, 0.975, 1.96, 4, 20, 0.01, 0.99, 6, 30, 0.05, 0.004, 360, 12, -200000, 5000, "a-b-c", "-", "B", "left", " Both ", "center", "1.234,5", ",", ".", 21, 112, 3, 0.25, "x😀", "😀", "İstanbul", "1e3%", "0.00", "#,##0.0", "$0.00%", "0.0E+00", "00000", "yyyy-mm-dd", "0.", "General", "@", "mmm \"d\" 0", 0.125, 2.5, -1234567.891, 45000, 45351.5, 36, 60, 1, 2958465, -5, "0000011", "1010101", "ms", " S ", "Quarter", "YM", "md", "y", 11, 17,
     "hello wORLD", "o'neil-x2y", "(1,234.5)", " $5% ", "-$3", "1.2.3", "ÉCOLE éa", "ΣΑΣ", "привет мИР", "ǆemal ⅷx", "a~?b", 65, 128512, 0xd800, ">5", "<>abc", "a*", "?B?", "~*", "<=0", "<>", "=", "2024-01-15", "05/01/2024", "=TRUE", undefined, null, 0, -0, 1, 2, -1, 0.5, -2.5, 3.75, 7, 10, 45000.25, 1e308, -1e-9, 1e21, 123456789.123,
@@ -814,6 +819,24 @@ describe("the leftover one-value functions match bit for bit on realistic argume
     ["FISHERINV", (r) => [r() * 8 - 4]],
     ["LOG2", (r) => [r() < 0.5 ? 2 ** int(r, -60, 60) : 10 ** (r() * 40 - 20)]],
     ["CONVERT", (r) => [r() * 2000 - 1000, UNITS[int(r, 0, UNITS.length - 1)], UNITS[int(r, 0, UNITS.length - 1)]]],
+    ["GAUSS", (r) => [r() * 8 - 4]],
+    ["FISHEREXACT", (r) => [int(r, 0, 30), int(r, 0, 30), int(r, 0, 30), int(r, 0, 30)]],
+    ["PROPTEST", (r) => { const n1 = int(r, 1, 200), n2 = int(r, 1, 200); return [int(r, 0, n1), n1, int(r, 0, n2), n2]; }],
+    ["BINOMTEST", (r) => { const n = int(r, 1, 300); return [int(r, 0, n), n, r() < 0.1 ? int(r, 0, 1) : r()]; }],
+    ["PHI", (r) => [r() * 8 - 4]],
+    ["CONFIDENCE.NORM", (r) => [r() * 0.5, r() * 10, int(r, 1, 100)]],
+    ["BINOM.DIST.RANGE", (r) => { const n = int(r, 1, 60); const s = int(r, 0, n); return [n, r(), s, ...(r() < 0.5 ? [int(r, s, n)] : [])]; }],
+    ["CLEAN", (r) => [["a\u0001b", "x\ty\n", "\u001fend", "plain", ""][int(r, 0, 4)]]],
+    ["DB", (r) => { const life = int(r, 1, 30); return [r() * 10000, r() * 2000, life, int(r, 1, life), ...(r() < 0.5 ? [int(r, 1, 12)] : [])]; }],
+    ["DDB", (r) => { const life = int(r, 1, 30); return [r() * 10000, r() * 2000, life, int(r, 1, life), ...(r() < 0.5 ? [r() * 3] : [])]; }],
+    ["SYD", (r) => { const life = int(r, 1, 30); return [r() * 10000, r() * 2000, life, r() * life + 1]; }],
+    ["EFFECT", (r) => [r() * 0.3, r() * 24 + 1]],
+    ["NOMINAL", (r) => [r() * 0.3, r() * 24 + 1]],
+    ["PDURATION", (r) => [r() * 0.3, r() * 1000, r() * 5000]],
+    ["RRI", (r) => [int(r, 1, 40), r() * 1000, r() * 5000]],
+    ["ISPMT", (r) => [r() * 0.2, int(r, 1, 12), int(r, 1, 12), r() * 1e5]],
+    ["DOLLARDE", (r) => [r() * 200 - 100, int(r, 1, 64) + (r() < 0.2 ? 0.5 : 0)]],
+    ["DOLLARFR", (r) => [r() * 200 - 100, int(r, 1, 64)]],
     ["EDATE", (r) => [r() < 0.1 ? int(r, 0, 70) : int(r, 0, 2958465), r() < 0.8 ? int(r, -2400, 2400) : [String(int(r, -40, 40)), 2.9, -0.5, " 3x", 1e21][int(r, 0, 4)]]],
   ];
   it.each(CASES)("%s", (name, gen) => {

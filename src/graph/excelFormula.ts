@@ -1039,6 +1039,8 @@ export interface FormulaCallTraits {
   /** A broadcast function maps over a whole column (a one-column matrix) cell by cell; one Solenoid doesn't know
    *  answers #SHAPE!, and one that takes matrices gets the matrix itself. */
   mapsColumns: boolean;
+  /** The error a blocked, node-only or unknown name answers before its arguments are read (`callRefusal`). */
+  refusal?: { code: string; message: string };
 }
 
 /** `undefined` (a left-out default) as the lowered table spells it. */
@@ -1090,6 +1092,8 @@ export function formulaCallTable(expr: string): Record<string, FormulaCallTraits
       scalar: [],
       mapsColumns: t.known && !t.matrixArgs,
     };
+    const refused = callRefusal(name);
+    if (refused) entry.refusal = { code: refused.code, message: refused.message };
     for (let i = entry.roles.length; i < n.args.length; i++) {
       if (takesOne(name, i)) entry.scalar.push(i);
       const role = argRole(name, i);

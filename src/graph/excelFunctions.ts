@@ -597,6 +597,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   CUMIPMT:    { returns: "number", arity: [6, 6], family: "finance", native: true },
   CUMPRINC:   { returns: "number", arity: [6, 6], family: "finance", native: true },
   SLN:        { returns: "number", arity: [3, 3], family: "finance", native: true },
+  DB:         { returns: "number", arity: [4, 5], family: "finance" },
+  DDB:        { returns: "number", arity: [4, 5], family: "finance" },
+  "BINOM.DIST.RANGE": { returns: "number", arity: [3, 4], family: "distributions" },
   ODDFPRICE:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDFYIELD:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDLPRICE:  { returns: "number", arity: [5, 7], family: "finance", native: true },
@@ -905,6 +908,15 @@ for (const [name, { text, check }] of Object.entries(TEXT_PASS_THROUGHS)) {
 for (const name of ["BASE", "DEC2HEX", "BIN2HEX", "OCT2HEX"]) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
   registerInternal(name, (...a) => { const r = f(...a); return typeof r === "string" ? r.toUpperCase() : r; });
+}
+// Formula.js loops once per period (DB, DDB) or per outcome (BINOM.DIST.RANGE); past a million steps the calc would stall.
+const LOOP_STEPS: Array<[string, (a: unknown[]) => number]> = [
+  ["DB", (a) => toNum(a[3])], ["DDB", (a) => toNum(a[3])],
+  ["BINOM.DIST.RANGE", (a) => toNum(a[3] === undefined ? a[2] : a[3]) - toNum(a[2])],
+];
+for (const [name, steps] of LOOP_STEPS) {
+  const f = fxLookup(name)!;
+  registerInternal(name, (...a) => (steps(a) > 1e6 ? solError("#DOMAIN!", `${name} takes at most a million steps`) : f(...a)));
 }
 // Excel's SEARCH reads ?, * and ~ in find_text; Formula.js's matches them literally.
 let searchPattern: { find: string; re: RegExp } | null = null;

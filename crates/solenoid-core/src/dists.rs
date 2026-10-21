@@ -272,7 +272,7 @@ fn ln_factorial(n: f64) -> f64 {
     ln_gamma(n + 1.0)
 }
 
-fn ln_combin(n: f64, k: f64) -> f64 {
+pub(crate) fn ln_combin(n: f64, k: f64) -> f64 {
     if k < 0.0 || k > n {
         return f64::NEG_INFINITY;
     }

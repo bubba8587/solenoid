@@ -113,7 +113,8 @@ const PORTED: &[&str] = &[
     "TEXT", "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
     "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
-    "TODAY", "NOW", "EDATE", "CONVERT", "SPEARMAN", "FORECAST.LINEAR", "T.TEST", "F.TEST", "PROB", "FISHERINV", "LOG2",
+    "TODAY", "NOW", "EDATE", "CONVERT", "SPEARMAN", "FORECAST.LINEAR", "T.TEST", "F.TEST", "PROB", "FISHERINV", "LOG2", "ROW",
+    "VALUETOTEXT", "FISHEREXACT", "PROPTEST", "BINOMTEST",
 ];
 
 pub fn is_ported(name: &str) -> bool {
@@ -161,6 +162,15 @@ pub fn set_clock(c: Option<Clock>) {
 
 fn clock() -> Option<Clock> {
     CLOCK.with(|k| k.get())
+}
+
+thread_local! {
+    static ROW_NUMBER: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+}
+
+/// The computed column's current row, from 1, that ROW() reads (`currentRowNumber`).
+pub fn set_row_number(n: Option<f64>) {
+    ROW_NUMBER.with(|r| r.set(n));
 }
 
 // ─── JavaScript's coercions ─────────────────────────────────────────────────────
@@ -3057,6 +3067,24 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             date_from_parts(y, m, d)
         }
+        "VALUETOTEXT" => V::str(&to_str(arg(a, 0))),
+        "FISHEREXACT" | "PROPTEST" | "BINOMTEST" => {
+            let want = if name == "BINOMTEST" { 3 } else { 4 };
+            let v: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
+            if v.iter().any(|x| x.is_nan()) {
+                return value_err(name);
+            }
+            let p = match name {
+                "FISHEREXACT" => fisher_exact_p(v[0], v[1], v[2], v[3]),
+                "PROPTEST" => two_proportion_p(v[0], v[1], v[2], v[3]),
+                _ => binom_test_p(v[0], v[1], v[2]),
+            };
+            p.map_or(V::Null, V::Num)
+        }
+        "ROW" => match ROW_NUMBER.with(|r| r.get()) {
+            Some(n) => V::Num(n),
+            None => V::err(sol_error("#NAME?", "ROW() is this row's number, so it only works inside a computed column")),
+        },
         "TODAY" | "NOW" => match clock() {
             Some(c) => V::Num(if name == "TODAY" { c.today } else { c.now }),
             None => bail(),
@@ -3152,6 +3180,82 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         _ if crate::formulajs::NAMES.contains(&name) => crate::formulajs::call(name, a),
         _ => V::Undef,
     }
+}
+
+/// `MAX_OUTCOMES` (statsOps.ts): the outcomes an exact test sums before it gives no answer.
+const MAX_OUTCOMES: f64 = 1e6;
+
+/// `fisherExactP` (statsOps.ts).
+fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Option<f64> {
+    use crate::dists::ln_combin;
+    let cells = [a, b, c, d].map(math_round);
+    if cells.iter().any(|&v| v < 0.0 || !v.is_finite()) {
+        return None;
+    }
+    let [a, b, c, d] = cells;
+    let (row1, col1, n) = (a + b, a + c, a + b + c + d);
+    if n == 0.0 {
+        return None;
+    }
+    let pmf = |x: f64| crate::fdlibm::exp(ln_combin(col1, x) + ln_combin(n - col1, row1 - x) - ln_combin(n, row1));
+    let (lo, hi) = (crate::jsnum::math_max(0.0, row1 - (n - col1)), crate::jsnum::math_min(row1, col1));
+    if hi - lo > MAX_OUTCOMES {
+        return None;
+    }
+    let p_obs = pmf(a);
+    let mut p = 0.0;
+    let mut x = lo;
+    while x <= hi {
+        let px = pmf(x);
+        if px <= p_obs * (1.0 + 1e-7) {
+            p += px;
+        }
+        x += 1.0;
+    }
+    Some(crate::jsnum::math_min(1.0, p))
+}
+
+/// `twoProportionP` (statsOps.ts).
+fn two_proportion_p(x1: f64, n1: f64, x2: f64, n2: f64) -> Option<f64> {
+    if !(n1 > 0.0 && n2 > 0.0) || x1 < 0.0 || x2 < 0.0 || x1 > n1 || x2 > n2 {
+        return None;
+    }
+    let (p1, p2, pool) = (x1 / n1, x2 / n2, (x1 + x2) / (n1 + n2));
+    let se = (pool * (1.0 - pool) * (1.0 / n1 + 1.0 / n2)).sqrt();
+    if se == 0.0 {
+        return if p1 == p2 { None } else { Some(0.0) };
+    }
+    Some(2.0 * (1.0 - crate::dists::std_norm_cdf(((p1 - p2) / se).abs())))
+}
+
+/// `binomTestP` (statsOps.ts).
+fn binom_test_p(k: f64, n: f64, p0: f64) -> Option<f64> {
+    let (k, n) = (math_round(k), math_round(n));
+    if n.is_nan() || n < 1.0 || k < 0.0 || k > n || !(0.0..=1.0).contains(&p0) {
+        return None;
+    }
+    if p0 == 0.0 {
+        return Some(if k == 0.0 { 1.0 } else { 0.0 });
+    }
+    if p0 == 1.0 {
+        return Some(if k == n { 1.0 } else { 0.0 });
+    }
+    if n > MAX_OUTCOMES {
+        return None;
+    }
+    let (lp, lq) = (crate::fdlibm::log(p0), crate::fdlibm::log(1.0 - p0));
+    let pmf = |x: f64| crate::fdlibm::exp(crate::dists::ln_combin(n, x) + x * lp + (n - x) * lq);
+    let p_obs = pmf(k);
+    let mut p = 0.0;
+    let mut x = 0.0;
+    while x <= n {
+        let px = pmf(x);
+        if px <= p_obs * (1.0 + 1e-7) {
+            p += px;
+        }
+        x += 1.0;
+    }
+    Some(crate::jsnum::math_min(1.0, p))
 }
 
 /// `averageRanks` (statsOps.ts): ties share the mean of their places.
