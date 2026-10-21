@@ -4,7 +4,9 @@
 
 #![allow(clippy::excessive_precision)]
 
-use crate::date_serial::{date_utc, days_from_civil, parts_of_ms};
+use crate::date_parse::date_parse;
+use crate::date_serial::parts_of_ms;
+use crate::zone;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
 use crate::error_value::sol_error;
 use crate::excel_functions::{
@@ -689,15 +691,12 @@ fn studentt_inv(p: f64, dof: f64) -> f64 {
 }
 
 // ─── Formula.js's date-reading finance bodies ───────────────────────────────────
-// A date is a JS Date's local wall clock, held as milliseconds read as UTC: the fields these bodies use are the ones
-// `new Date(y, m, d, h, mi, s)` was built from, whatever the zone.
+// A date is a JS time value (an instant; NaN for an Invalid Date), read and set in local time through `zone`.
 
-/// What Formula.js `parseDate` answers: a Date (NaN for an Invalid Date) or an Error.
-enum FxDate {
+/// What Formula.js `parseDate` answers: a Date, or the Error it names.
+pub(crate) enum FxDate {
     Date(f64),
-    Err,
-    /// Text, which only `new Date(text)` reads.
-    Text,
+    Err(&'static str),
 }
 
 /// `serialToDate`.
@@ -721,22 +720,40 @@ fn serial_to_date(mut serial: f64) -> f64 {
         days = 29.0;
         month = 1.0;
     }
-    match date_utc(info.year as f64, month, days) {
-        Some(day) => day + hours * 3_600_000.0 + minutes * 60_000.0 + seconds * 1000.0,
-        None => f64::NAN,
-    }
+    zone::new_local(info.year as f64, month, days, hours, minutes, seconds, 0.0)
 }
 
-/// Formula.js `parseDate`, short of reading text as a date.
-fn parse_date(v: &V) -> FxDate {
+/// `/(\d{4})-(\d\d?)-(\d\d?)$/`: whether the text ends in an ISO-like day.
+fn ends_in_iso_day(s: &str) -> bool {
+    let b = s.as_bytes();
+    let digits = |from: usize, to: usize| b[from..to].iter().all(u8::is_ascii_digit);
+    (1..=2).any(|dl| {
+        (1..=2).any(|ml| {
+            let n = 4 + 1 + ml + 1 + dl;
+            b.len() >= n && {
+                let s0 = b.len() - n;
+                digits(s0, s0 + 4) && b[s0 + 4] == b'-' && digits(s0 + 5, s0 + 5 + ml) && b[s0 + 5 + ml] == b'-' && digits(b.len() - dl, b.len())
+            }
+        })
+    })
+}
+
+/// Formula.js `parseDate`.
+pub(crate) fn parse_date(v: &V) -> FxDate {
     if !to_f64_js(v).is_nan() {
         let d = js_parse_float(&js_string_of(v));
         if d < 0.0 || d >= 2958466.0 {
-            return FxDate::Err;
+            return FxDate::Err("#NUM!");
         }
         return FxDate::Date(serial_to_date(d));
     }
-    if matches!(v, V::Str(_)) { FxDate::Text } else { FxDate::Err }
+    if let V::Str(s) = v {
+        let t = if ends_in_iso_day(s) { date_parse(&format!("{s}T00:00:00.000")) } else { date_parse(s) };
+        if !t.is_nan() {
+            return FxDate::Date(t);
+        }
+    }
+    FxDate::Err("#VALUE!")
 }
 
 /// `validateFrequency` / `validateBasis`: the parsed number when it is one of `allowed`.
@@ -755,45 +772,84 @@ fn valid_basis(v: &V) -> Option<f64> {
     one_of(v, &[0.0, 1.0, 2.0, 3.0, 4.0])
 }
 
+/// A method called on the Error `parseDate` answers for an Invalid Date: a TypeError.
+fn not_a_function(method: &str) -> V {
+    throw(sol_error("#VALUE!", format!("{method} is not a function")))
+}
+
+/// `dateToSerial`.
+fn date_to_serial(t: f64) -> f64 {
+    let d1900 = zone::new_local(1900.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0);
+    let add_on = if t > -22038912e5 { 2.0 } else { 1.0 };
+    ((t - d1900) / 86_400_000.0).ceil() + add_on
+}
+
+/// `DATEDIF(start, end, 'D')`, which is `DAYS(end, start)`: local midnights apart, through `dateToSerial`.
+fn datedif_days(start: f64, end: f64) -> Result<f64, V> {
+    if start.is_nan() || end.is_nan() {
+        return Err(not_a_function("getFullYear"));
+    }
+    Ok(date_to_serial(zone::start_of_day(end)) - date_to_serial(zone::start_of_day(start)))
+}
+
+/// `lastCoupDateBeforeSettlement`.
+fn last_coupon_before(settlement: f64, maturity: f64, frequency: f64) -> f64 {
+    let mut date = zone::set_full_year(maturity, zone::get_full_year(settlement));
+    if date < settlement {
+        date = zone::set_full_year(date, zone::get_full_year(date) + 1.0);
+    }
+    while date > settlement {
+        date = zone::set_month(date, zone::get_month(date) + -12.0 / frequency);
+    }
+    date
+}
+
 fn coupdays(a: &[V]) -> V {
     let basis = valid_basis(arg(a, 3));
     let frequency = valid_frequency(arg(a, 2));
     let (settlement, maturity) = match (parse_date(arg(a, 0)), parse_date(arg(a, 1))) {
-        (FxDate::Err, _) | (_, FxDate::Err) => return V::Fx("#VALUE!"),
         (FxDate::Date(s), FxDate::Date(m)) => (s, m),
-        _ => return bail(),
+        _ => return V::Fx("#VALUE!"),
     };
     let (Some(basis), Some(frequency)) = (basis, frequency) else { return V::Fx("#NUM!") };
     if settlement >= maturity {
         return V::Fx("#NUM!");
     }
     if basis == 1.0 {
-        return bail();
+        // `parseDate` of an Invalid Date is an Error, which has no Date methods.
+        if maturity.is_nan() {
+            return not_a_function("date.setFullYear");
+        }
+        let date = last_coupon_before(settlement, maturity, frequency);
+        if date.is_nan() {
+            return not_a_function("nextDate.getMonth");
+        }
+        let next = zone::set_month(date, zone::get_month(date) + 12.0 / frequency);
+        return match datedif_days(date, next) {
+            Ok(d) => V::Num(d),
+            Err(e) => e,
+        };
     }
     V::Num(if basis == 3.0 { 365.0 } else { 360.0 } / frequency)
 }
 
-fn days_in_month(y: i64, m: u32) -> f64 {
-    let next = if m == 12 { days_from_civil(y + 1, 1, 1) } else { days_from_civil(y, m + 1, 1) };
-    (next - days_from_civil(y, m, 1)) as f64
+/// Days in a month as `new Date(y, m + 1, 0).getDate()` counts them: a year from 0 to 99 is read as 1900 to 1999.
+fn days_in_month(y: f64, m: f64) -> f64 {
+    zone::get_date(zone::new_local(y, m + 1.0, 0.0, 0.0, 0.0, 0.0, 0.0))
 }
 
 /// Formula.js `DAYS360` over two Dates; an Invalid Date answers an Error, which the caller's arithmetic reads as NaN.
 fn days360(start: f64, end: f64, european: bool) -> f64 {
-    if start.is_nan() || end.is_nan() {
-        return f64::NAN;
-    }
-    let (s, e) = (parts_of_ms(start), parts_of_ms(end));
-    let sm = f64::from(s.month) - 1.0;
-    let mut em = f64::from(e.month) - 1.0;
-    let (sday, eday) = (f64::from(s.day), f64::from(e.day));
+    let (Some(s), Some(e)) = (zone::local_fields(start), zone::local_fields(end)) else { return f64::NAN };
+    let sm = s.month;
+    let mut em = e.month;
     let (sd, ed);
     if european {
-        sd = if sday == 31.0 { 30.0 } else { sday };
-        ed = if eday == 31.0 { 30.0 } else { eday };
+        sd = if s.date == 31.0 { 30.0 } else { s.date };
+        ed = if e.date == 31.0 { 30.0 } else { e.date };
     } else {
-        sd = if sday == days_in_month(s.year, s.month) { 30.0 } else { sday };
-        if eday == days_in_month(e.year, e.month) {
+        sd = if s.date == days_in_month(s.year, sm) { 30.0 } else { s.date };
+        if e.date == days_in_month(e.year, em) {
             if sd < 30.0 {
                 em += 1.0;
                 ed = 1.0;
@@ -801,10 +857,10 @@ fn days360(start: f64, end: f64, european: bool) -> f64 {
                 ed = 30.0;
             }
         } else {
-            ed = eday;
+            ed = e.date;
         }
     }
-    360.0 * (e.year - s.year) as f64 + 30.0 * (em - sm) + (ed - sd)
+    360.0 * (e.year - s.year) + 30.0 * (em - sm) + (ed - sd)
 }
 
 /// DISC and PRICEDISC.
@@ -817,11 +873,7 @@ fn discounted(name: &str, a: &[V]) -> V {
         b => b,
     };
     let (V::Num(pr), V::Num(redemption), V::Num(basis)) = (pr, redemption, basis) else { return V::Fx("#VALUE!") };
-    let (settlement, maturity) = match (settlement, maturity) {
-        (FxDate::Err, _) | (_, FxDate::Err) => return V::Fx("#VALUE!"),
-        (FxDate::Date(s), FxDate::Date(m)) => (s, m),
-        _ => return bail(),
-    };
+    let (FxDate::Date(settlement), FxDate::Date(maturity)) = (settlement, maturity) else { return V::Fx("#VALUE!") };
     if pr <= 0.0 || redemption <= 0.0 {
         return V::Fx("#NUM!");
     }
@@ -833,12 +885,10 @@ fn discounted(name: &str, a: &[V]) -> V {
     } else if basis == 4.0 {
         (360.0, days360(settlement, maturity, true))
     } else if basis == 1.0 || basis == 2.0 || basis == 3.0 {
-        // DATEDIF's 'D': an Invalid Date parses to an Error, which has no getFullYear (a TypeError); a valid pair
-        // counts local midnights, which the zone decides.
-        if settlement.is_nan() || maturity.is_nan() {
-            return throw(sol_error("#VALUE!", "getFullYear is not a function"));
+        match datedif_days(settlement, maturity) {
+            Ok(d) => (if basis == 2.0 { 360.0 } else { 365.0 }, d),
+            Err(e) => return e,
         }
-        return bail();
     } else {
         return V::Fx("#NUM!");
     };

@@ -3,7 +3,7 @@
 //! similarity ones (`textOps.ts`), the list padders and BIN (`listOps.ts`) and TIMEZONECONVERT (`timeZone.ts`).
 
 use crate::error_value::sol_error;
-use crate::excel_functions::{bail, js_pow, js_string_of, math_hypot, to_num, to_str, V};
+use crate::excel_functions::{js_pow, js_string_of, math_hypot, throw, to_num, to_str, V};
 use crate::fdlibm::{atan2, cos, exp, expm1, log, sin};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
 
@@ -501,24 +501,33 @@ fn bin_index(arr: &[V], breaks: &[V]) -> Vec<V> {
 
 // ─── Time zones ─────────────────────────────────────────────────────────────────
 
-/// Whether `Intl` surely refuses the zone: a blank, a bare number, or a character no IANA name or offset carries.
-/// Anything else needs the time-zone database, which the core doesn't carry.
-fn surely_bad_zone(z: &str) -> bool {
-    z.is_empty()
-        || z.bytes().all(|c| c.is_ascii_digit())
-        || !z.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'/' | b'_' | b'+' | b'-' | b':'))
-}
-
+/// `convertZone`: the wall clock in `from` read as an instant (two offset reads settle a time beside a DST
+/// transition), then that instant's wall clock in `to`.
 fn convert_zone(serial: f64, from: &str, to: &str) -> V {
+    use crate::zone::{is_valid_zone, zone_offset_ms, ZoneError};
     if !serial.is_finite() {
         return V::err(sol_error("#VALUE!", "The date/time input is empty."));
     }
-    let from = js_trim(from);
-    let _ = to;
-    if !surely_bad_zone(from) {
-        return bail();
+    let (from, to) = (js_trim(from), js_trim(to));
+    if !is_valid_zone(from) {
+        return V::err(sol_error("#VALUE!", format!("Unknown time zone \"{from}\". Use an IANA name like America/New_York.")));
     }
-    V::err(sol_error("#VALUE!", format!("Unknown time zone \"{from}\". Use an IANA name like America/New_York.")))
+    if !is_valid_zone(to) {
+        return V::err(sol_error("#VALUE!", format!("Unknown time zone \"{to}\". Use an IANA name like Asia/Tokyo.")));
+    }
+    const MS_PER_DAY: f64 = 86_400_000.0;
+    let run = || -> Result<f64, ZoneError> {
+        let wall = (serial - 25569.0) * MS_PER_DAY;
+        let off = zone_offset_ms(from, wall)?;
+        let off = zone_offset_ms(from, wall - off)?;
+        let ms = wall - off;
+        Ok((ms + zone_offset_ms(to, ms)?) / MS_PER_DAY + 25569.0)
+    };
+    match run() {
+        Ok(n) => V::Num(n),
+        // `formatToParts` of an Invalid Date is a RangeError.
+        Err(_) => throw(sol_error("#VALUE!", "Invalid time value")),
+    }
 }
 
 pub fn call(name: &str, a: &[V]) -> V {

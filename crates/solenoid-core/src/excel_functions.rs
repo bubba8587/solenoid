@@ -3369,13 +3369,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             Some(c) => V::Num(if name == "TODAY" { c.today } else { c.now }),
             None => bail(),
         },
-        "EDATE" => match clock() {
-            Some(c) if c.midnight_rounds => match fx_edate(arg(a, 0), arg(a, 1)) {
-                V::Num(n) if n == 0.0 && c.day_zero_negative => V::Num(-0.0),
-                r => r,
-            },
-            _ => bail(),
-        },
+        "EDATE" => fx_edate(arg(a, 0), arg(a, 1)),
         "CONVERT" => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
@@ -3901,71 +3895,41 @@ fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
     if text || !prob.is_finite() { V::Null } else { V::Num(clamp01(prob)) }
 }
 
-/// Formula.js EDATE under the registration's `toSerialIfDate`: a whole local day, moved by whole months with the
-/// day clamped to the month's last, rounded back to a serial. A start with a time of day lands beside midnight,
-/// where the zone decides the rounding, and a date only `new Date` parses: both stay on the TS.
+/// Formula.js EDATE under the registration's `toSerialIfDate`: the start's local day of the month, moved by whole
+/// months with the day clamped to the month's last, its time back to a serial rounded to the day.
 fn fx_edate(start: &V, months: &V) -> V {
-    let d = match start {
-        V::Undef | V::Err(_) | V::Fx(_) => return V::Fx("#VALUE!"),
-        V::List(_) | V::Cx(..) | V::Lambda(_) => return bail(),
-        V::Str(s) if string_to_number(s).is_nan() => return bail(),
-        V::Str(s) => js_parse_float(s),
-        V::Num(n) if n.is_nan() => return V::Fx("#VALUE!"),
-        V::Num(n) => *n,
-        V::Bool(_) | V::Null => f64::NAN,
-    };
-    if !(0.0..2_958_466.0).contains(&d) && !d.is_nan() {
-        return V::Fx("#NUM!");
+    use crate::fns_stats::{parse_date, FxDate};
+    use crate::zone;
+    if matches!(start, V::List(_) | V::Cx(..) | V::Lambda(_)) {
+        return bail();
     }
-    // `serialToDate`: the local wall date, or None for an invalid one.
-    let start_day = if d.is_nan() {
-        None
-    } else {
-        let serial = if d < 60.0 { d + 1.0 } else { d };
-        let utc_days = (serial - 25569.0).floor();
-        let total_seconds = (86400.0 * (serial - serial.floor() + 0.0000001)).floor();
-        if total_seconds != 0.0 {
-            return bail();
-        }
-        let (y, mut m, mut day) = crate::date_serial::civil_from_days(utc_days as i64);
-        if (60.0..61.0).contains(&serial) {
-            day = 29;
-            m = 2;
-        }
-        // `new Date(y, m, day)` carries an overflowing day into the next month.
-        Some(crate::date_serial::days_from_civil(y, m, 1) + i64::from(day) - 1)
+    let mut date = match parse_date(start) {
+        FxDate::Date(t) => t,
+        FxDate::Err(e) => return V::Fx(e),
     };
     if to_f64_js(months).is_nan() {
         return V::Fx("#VALUE!");
     }
-    let Some(start_day) = start_day else { return V::Num(f64::NAN) };
+    let mut stored = zone::get_date(date);
+    date = zone::set_date(date, 1.0);
     let m = crate::js_radix::parse_int(&js_string_of(months), 10.0);
-    if m.is_nan() {
-        return V::Num(f64::NAN);
+    date = zone::set_month(date, zone::get_month(date) + m);
+    let target = zone::get_month(date);
+    if stored > 28.0 {
+        let y = zone::get_full_year(date);
+        let leap = (y % 4.0 == 0.0 && y % 100.0 != 0.0) || y % 400.0 == 0.0;
+        // `[…][NaN]` is undefined, and `Math.min` of it is NaN.
+        let dim = if target.is_nan() {
+            f64::NAN
+        } else if target == 1.0 && leap {
+            29.0
+        } else {
+            [31.0, 28.0, 31.0, 30.0, 31.0, 30.0, 31.0, 31.0, 30.0, 31.0, 30.0, 31.0][target as usize]
+        };
+        stored = crate::jsnum::math_min(stored, dim);
     }
-    let (y, m0, stored) = crate::date_serial::civil_from_days(start_day);
-    let total = f64::from(m0 - 1) + m;
-    let y2 = y as f64 + (total / 12.0).floor();
-    // Dates past ±1e8 days from 1970 are invalid; beside that edge the local offset decides.
-    const EDGE: f64 = 100_000_000.0;
-    if y2.abs() > 300_000.0 {
-        return V::Num(f64::NAN);
-    }
-    let m2 = total.rem_euclid(12.0) as u32 + 1;
-    let first = crate::date_serial::days_from_civil(y2 as i64, m2, 1) as f64;
-    if first.abs() > EDGE + 40.0 {
-        return V::Num(f64::NAN);
-    }
-    if first.abs() > EDGE - 40.0 {
-        return bail();
-    }
-    let mut day = stored;
-    if day > 28 {
-        let leap = (y2 % 4.0 == 0.0 && y2 % 100.0 != 0.0) || y2 % 400.0 == 0.0;
-        let dim = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][(m2 - 1) as usize];
-        day = day.min(dim);
-    }
-    V::Num(first + f64::from(day) - 1.0 + 25569.0)
+    date = zone::set_date(date, stored);
+    V::Num(crate::jsnum::math_round(date / 86_400_000.0 + 25569.0))
 }
 
 // ─── Regex and text utilities (textOps.ts, hashOps.ts) ──────────────────────────

@@ -6,6 +6,7 @@
 pub mod binary;
 pub mod convert_units;
 pub mod date_ops;
+pub mod date_parse;
 pub mod date_serial;
 pub mod dists;
 pub mod error_value;
@@ -37,6 +38,7 @@ pub mod text_ops;
 pub mod unit_value;
 pub mod value_kinds;
 pub mod wire;
+pub mod zone;
 
 #[cfg(target_arch = "wasm32")]
 mod wasm;
