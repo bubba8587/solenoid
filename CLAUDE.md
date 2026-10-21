@@ -55,7 +55,7 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
 
 ## Project: Solenoid
 Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
-Tauri. The view is **React Flow**; the headless graph model + dataflow engine are **`rete` core + `rete-engine`**. Relational verbs run on native Polars on desktop and an identical JS oracle on web behind the `FrameBackend` seam ([[C16]] polarsEngine).
+Tauri. The view is **React Flow**; the headless graph model + dataflow engine are **`rete` core + `rete-engine`**. Relational verbs run on native Polars on desktop and on the Rust core in wasm (`crates/solenoid-core`) on the web, both held to the TypeScript oracle behind the `FrameBackend` seam ([[C130]] rustCore); pivots and computed-column formulas run on the core on both platforms. The port's routine is `tree/specs/computation/rust-core.md` ([[D97]] tsIsSpec).
 
 ### Docs map — read before touching code
 Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the index + the

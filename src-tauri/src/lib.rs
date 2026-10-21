@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 use tauri::Manager;
 #[cfg(not(target_os = "linux"))]
 use tauri_plugin_decorum::WebviewWindowExt;

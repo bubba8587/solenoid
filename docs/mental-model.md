@@ -91,7 +91,7 @@ desktop (native Rust, with verb chains fused into one round trip). Data material
 at the boundary: `preview` (cards show the first N rows), `column` (the bridge to scalars and
 lists) and `collect`. A shared fixture corpus, run from both vitest and cargo, keeps the two
 backends identical. There is one definition per verb (`frameVerbs.ts`); node code never
-re-implements one ([[C16]] polarsEngine).
+re-implements one ([[C130]] rustCore).
 
 Formulas stop at matrices: Frames and Cubes never enter them ([[C15]] matricesInFormulas).
 Per-row math on a Frame is a **computed column**, either Frame Input's **Fx** column or the

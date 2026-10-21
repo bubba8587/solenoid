@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! Port of the distribution kernels in `src/graph/nodes/mathUtils.ts` and of `DIST_SPECS` (distributionOps.ts):
 //! the same series, continued fractions and bisections, over V8's `Math`.
 // The constants are the TS's digits as written; a range test has to let a NaN through as the TS's does.

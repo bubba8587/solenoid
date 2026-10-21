@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[C16]] polarsEngine: readings on an offset scale (°C, °F) through
+// [[C25]] firstClassUnits, [[C130]] rustCore: readings on an offset scale (°C, °F) through
 // the frame and cube verbs answer as a formula does. Both engines are held to the values by
 // the corpus (fixtures/frame-verbs, `readingScale`); this file pins the units and the lowering.
 import { describe, it, expect } from "vitest";

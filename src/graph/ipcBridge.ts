@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 import { isDesktop } from "./fileBridge";
 import { solError, isSolError, ERROR_EXPLANATIONS, type SolError, type SolErrorCode } from "./errorValue";
 import { perfEnabled, recordIpc } from "./perfProbe";

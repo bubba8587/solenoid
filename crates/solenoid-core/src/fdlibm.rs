@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! The fdlibm routines V8 runs `Math.exp`, `Math.log`, `Math.log10` and `Math.pow` on (`src/base/ieee754.cc`),
 //! ported so a formula's answer matches the JS one bit for bit. The platform `exp`/`ln`/`powf` round differently in
 //! the last place on some inputs. Sun Microsystems' notice: "Permission to use, copy, modify, and distribute this

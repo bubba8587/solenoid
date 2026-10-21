@@ -144,3 +144,4 @@ E16	2026-10-01	reverted	-	Claude	-	cubeCellKinds: A Cube Input cell switches in 
 D21	2026-10-01	reverted	-	Claude	-	noExcelNameClash: A node's name never reads as a core Excel function that does something else
 B10	2026-10-01	reverted	-	Claude	-	reactFlowView: React Flow draws the canvas over a small library that computes it
 C41	2026-10-01	reverted	-	Claude	-	branchModel: All work goes on develop; main is production only
+C16	2026-10-21	superseded	C130	Claude Opus 5.5	the author	polarsEngine: Desktop runs tables on Polars, the web on a matching JavaScript engine

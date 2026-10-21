@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! Port of `src/graph/stringOrder.ts`: JS `<` on strings, which orders UTF-16 code units.
 
 use std::cmp::Ordering;

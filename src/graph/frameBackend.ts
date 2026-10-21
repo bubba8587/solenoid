@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine, [[C24]] arraySemantics
+// [[C130]] rustCore, [[D98]] wholeColumnFallback, [[C24]] arraySemantics
 import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,

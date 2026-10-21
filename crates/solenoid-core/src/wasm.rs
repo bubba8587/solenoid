@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! The WebAssembly entry: one string-in, string-out call per engine command, plus the columnar
 //! hand-off (`binary.rs`) for frames crossing in bulk.
 

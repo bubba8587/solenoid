@@ -101,7 +101,7 @@ area. When you coin a new load-bearing term, add it here.
   `nodeCatalog.ts`)
 - **FrameBackend**: the seam with two implementations: `JsFrameBackend` (web/dev, eager)
   and `PolarsBackend` (desktop, native Rust). One interface, chosen at startup.
-  (`frameBackend.ts`; see [[C16]] polarsEngine)
+  (`frameBackend.ts`; see [[C130]] rustCore)
 - **Frame verbs (`frameVerbs.ts`)**: the pure JS reference implementation ("the oracle")
   of every verb; the correctness standard the Rust engine is tested against.
 - **Materialization boundary**: the point where a lazy `FrameRef` is collected into a

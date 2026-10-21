@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine, [[C22]] rowFormulaRefs, [[C80]] blankArgIsExcelBlank
+// [[C130]] rustCore, [[D98]] wholeColumnFallback, [[C22]] rowFormulaRefs, [[C80]] blankArgIsExcelBlank
 //! Port of `src/graph/excelFormula.ts`: the tokenizer and parser whole, and the evaluator for a row formula over
 //! scalars (a computed column's `@price * @qty`). The table-driven facts a call needs (argument roles, an empty
 //! slot's reading, the null rule, range or broadcast) come lowered from the TS (`formulaCallTable`), as unit scales

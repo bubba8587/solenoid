@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! Port of `src/graph/excelCriteria.ts`: COUNTIF-style criteria and the IFS aggregates.
 
 use std::cmp::Ordering;

@@ -40,7 +40,7 @@ specific item.
 
 ### SESSION DIGEST (2026-10-10: dependency sweep; cloud session)
 - **Everything is on latest** but the holds named in `backlog.md` § Dependency updates. dompurify 3.4.16 closes two XSS advisories; Tauri 2.12 on both halves with plugin-http 2.8.1; KaTeX 0.19 (its break is strict callbacks, which `renderTex` never passes); `@types/dompurify` dropped (dompurify ships types).
-- **Polars 0.46 → 0.55** ([[C16]] polarsEngine): the group-wise UDFs (median, mode, variance) are `apply_multiple(…, returns_scalar: true)`, so `polars-plan` is no longer a direct dependency. A literal group key now makes one group even over no rows, so a keyless group-by keys off a row index, as the window verb already did. Cross join asks for `MaintainOrderJoin::LeftRight`. The corpus passes to the bit, plus four fuzz seeds; the one divergence they found predates the bump (backlog).
+- **Polars 0.46 → 0.55** ([[C130]] rustCore): the group-wise UDFs (median, mode, variance) are `apply_multiple(…, returns_scalar: true)`, so `polars-plan` is no longer a direct dependency. A literal group key now makes one group even over no rows, so a keyless group-by keys off a row index, as the window verb already did. Cross join asks for `MaintainOrderJoin::LeftRight`. The corpus passes to the bit, plus four fuzz seeds; the one divergence they found predates the bump (backlog).
 - **Building the desktop crate in a cloud container** needs `libwebkit2gtk-4.1-dev` (apt), and a debug build of two Polars versions overruns the disk: run cargo with `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0` (about 6.5 GB instead of 27).
 
 ### SESSION DIGEST (2026-10-08b: zoomed-out pan cost; cloud session)

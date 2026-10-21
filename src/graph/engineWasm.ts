@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 // The Rust frame engine (`crates/solenoid-core`) compiled to WebAssembly: the same commands the desktop
 // engine takes over IPC, answered in-process. `npm run build:wasm` regenerates `engineWasm/`.
 import init, { initSync, engine_invoke, engine_source_bin, engine_read_bin, take_tags, take_nums, take_strs, take_lens } from "./engineWasm/solenoid_core.js";

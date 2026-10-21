@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! `Array.prototype.sort` with a comparator: stable, and total over any comparator. A comparator
 //! that isn't a strict weak order (a NaN, mixed kinds compared as text) must not panic the engine,
 //! as `slice::sort_by` may.

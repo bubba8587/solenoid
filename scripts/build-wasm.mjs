@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 // Builds the Rust core (crates/solenoid-core) to WebAssembly into src/graph/engineWasm/: cargo, wasm-bindgen, then
 // wasm-opt -O3 when it's installed (`cargo install wasm-opt`), which strips names and trims about a fifth.
 import { execFileSync } from "node:child_process";

@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine, [[C44]] dateSerials
+// [[C130]] rustCore, [[C44]] dateSerials
 //! Port of `src/graph/nodes/dateSerial.ts` `formatDateSerial`: a serial day, read as UTC.
 
 const FORMAT_MONTHS: [&str; 12] =

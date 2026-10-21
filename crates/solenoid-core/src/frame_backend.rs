@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! Port of `JsFrameBackend` in `src/graph/frameBackend.ts`: frames held by handle, so a chain of
 //! verbs runs without crossing back to JS. The command names and argument shapes are the desktop
 //! engine's (`src-tauri/src/engine.rs`), so one TS wrapper drives either engine.

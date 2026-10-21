@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine, [[D49]]
+// [[C130]] rustCore, [[D49]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -142,7 +142,7 @@ describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, fil
 });
 
 describe("corpus completeness — every verb has a fixture file", () => {
-  // The closed ratchet (bundle 18 step 3, promoted as [[C16]] polarsEngine): the migration
+  // The closed ratchet (bundle 18 step 3, promoted as [[C130]] rustCore): the migration
   // whitelist emptied and died — every verb both engines speak computes from
   // this ONE fixture corpus. Adding a NEW FrameOp kind fails compile
   // (FRAME_OP_KINDS) and then fails here until it ships with corpus cases; a

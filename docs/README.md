@@ -177,7 +177,8 @@ results get retried and settled rulings relapse.
 | Cube Input's typed columns (`cubeFromSource`, `parseCubeSource`, `typedCubeCell`), `cubeTypes.ts`, `cubeEditCell.tsx`, `CellKindMenu.tsx` | [[D90]] cubeTypesAtDepth; `../tree/specs/computation/frame-verbs.md` § The Cube value, `../tree/specs/documents/table-popup.md` § Editing a Cube Input |
 | `SPARKLINE` (`sparklineImage` in `nodes/visualOps.ts`), picture cells (`cellImageSrc`, `CellImage`) | [[D82]] sparklineCell, [[C103]] untrustedContentSeams; `../tree/specs/computation/formula-language.md` § Lists, `../tree/specs/documents/table-popup.md` § Formatted and Source |
 | `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*` | `../tree/specs/computation/schedule-and-gantt.md` (the tasks cube, the nodes, the figure, dates and precision); `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule); [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing |
-| `frameVerbs.ts`, `frameBackend.ts`, `frame.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `src-tauri/src/engine.rs` | `../tree/specs/computation/frame-verbs.md`; [[C16]] polarsEngine |
+| `crates/solenoid-core/`, `engineWasm.ts`, `scripts/build-wasm.mjs` | `../tree/specs/computation/rust-core.md`; [[C130]] rustCore, [[D97]] tsIsSpec |
+| `frameVerbs.ts`, `frameBackend.ts`, `frame.ts`, `nodes/frame.ts`, `nodes/ladderOps.ts`, `src-tauri/src/engine.rs` | `../tree/specs/computation/frame-verbs.md`; [[C130]] rustCore |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |
 | `nodeCatalog.ts` | `node-coverage.md`; [[C14]] currentExcelParity (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |
@@ -198,7 +199,7 @@ results get retried and settled rulings relapse.
   `socket-reference.md` (the per-variant tables) + `../tree/specs/values/socket-lattice.md`.
 - **Touching the FC / formats / units:** `tree/specs/values/format-model.md` +
   `../tree/specs/values/unit-flow.md` + [[D43]] unitByGranularity (units granularity).
-- **Touching frames/the engine:** `glossary.md` + [[C16]] polarsEngine/arraySemantics + the
+- **Touching frames/the engine:** `glossary.md` + [[C130]] rustCore/arraySemantics + the
   `frameVerbs.ts` oracle and cargo parity tests.
 - **A visual/UI change:** `../DESIGN.md` (the design-system rulebook) first, always.
 - **Proposing a feature or scope change:** `out-of-scope.md` + the decision tree (`dte.md`) +

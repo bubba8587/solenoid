@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine (a lazy frame ref, head-N preview)
+// [[C130]] rustCore (a lazy frame ref, head-N preview)
 import { useEffect, useState } from "react";
 import { tablePopup, type SourceCommitRefresh, type TablePopupState } from "../tablePopupStore";
 import { frameRowCount, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";

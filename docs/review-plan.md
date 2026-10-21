@@ -382,7 +382,7 @@ Leaf: D32 refreshOutsideRebuild (retired 09-24; the rule lives in `tree/specs/co
 Commits: 54bd9e3b, 996a8ec1, 9bb10669, d1a4f44d, b4c90711, 94b25efb (units after native verb)
 Where: `src-tauri/src/engine.rs` (2458 lines, 104 fns), `frameBackend.ts` (667),
 `frameVerbs.ts` (65 exported verbs), `fixtures/frame-verbs/*.json` (19 corpora)
-Leaves: [[C16]] polarsEngine, D29 oneVerbCorpus (retired; now `tree/specs/computation/frame-verbs.md` § The parity corpus), D78 textErrorsOnOracle (retired; same spec, § PolarsBackend).
+Leaves: [[C130]] rustCore, D29 oneVerbCorpus (retired; now `tree/specs/computation/frame-verbs.md` § The parity corpus), D78 textErrorsOnOracle (retired; same spec, § PolarsBackend).
 Why risky: cloud sessions cannot run the Rust side, so every 09-24 engine change was verified
 only by whoever had the desktop. Error cells ride as reserved quiet-NaN bit patterns.
 - [x] Checked 2026-09-28, now natively: groupBy, distinct, sort, filter, fillBlanks, window and join each have error-cell corpus cases, and the groupBy and distinct ones mix `#N/A`, `#DIV/0!` and a real NaN, which stay three buckets on both engines (`cargo test`, 33 passing). Was: Reserved NaN (54bd9e3b, `ERR_*_BITS` at engine.rs:1360): a REAL NaN produced by Polars
@@ -752,7 +752,7 @@ push and the Rust half gates nothing: the 09-24 fleet's two auto-merged `engine.
 the °C `readingScale` plumbing were verified only by whoever ran cargo by hand.
 - [x] Done 2026-09-28: `test.yml` has a `rust` job (the desktop build's apt prerequisites, then `cargo test --manifest-path src-tauri/Cargo.toml`); frame-verbs § The parity corpus says both halves gate every push. Was: Add `cargo test --manifest-path src-tauri/Cargo.toml` (at least `corpus_cases`) to
       `test.yml`. It compiles already (`tauri build --no-bundle`), so the cost is the test run.
-      Governing leaf: [[C16]] polarsEngine ("a shared set of test cases both must pass"), which
+      Governing leaf: [[C130]] rustCore ("a shared set of test cases both must pass"), which
       the spec turns into a MUST that is currently *Unenforced* in CI without saying so.
 - [x] Done 2026-09-28 from the cloud session: with `libwebkit2gtk-4.1-dev` and friends installed the crate builds in a container, and all 33 engine tests pass on this head, `corpus_cases` included. Was: Until it runs: an agent with the desktop machine runs it once on this head and reports.
       A cloud session cannot ([[B2]] webTryDesktopFull; CLAUDE.md § Environment constraints).

@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! Fx, the small fast hash rustc uses: the verbs hash a key per row, where SipHash's DoS resistance
 //! buys nothing.
 

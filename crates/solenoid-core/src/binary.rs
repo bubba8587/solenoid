@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! The columnar hand-off between JS and the engine, for the frames that cross in bulk (source,
 //! collect, column, preview). Every cell has a tag; numbers ride a dense `f64` buffer (so NaN,
 //! the infinities and -0 cross as themselves); text rides one string, cut by UTF-16 lengths.

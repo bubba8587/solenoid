@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 // Timing, not a check: the JS oracle against the Rust engine in WebAssembly over one large frame.
 // `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts` prints the table; a plain run skips it.
 import { describe, it, beforeAll, afterAll } from "vitest";

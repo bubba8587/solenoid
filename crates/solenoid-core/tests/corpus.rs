@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine
+// [[C130]] rustCore
 //! The backend parity corpus (`fixtures/frame-verbs`), run through the engine's own commands:
 //! the same files `frameVerbCorpus.test.ts` holds the JS oracle to and `engine/tests.rs` holds
 //! Polars to. Cells compare as there: numbers sign-of-zero blind, errors by code.
