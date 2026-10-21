@@ -64,7 +64,7 @@
 .describe-dash__range > span,
 .describe-dash__stats > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .describe-dash__statname { font-family: var(--font-sans); color: var(--text-muted); }
-.describe-dash__caption { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.describe-dash__trend { margin-top: 2px; }
 
 .describe-dash__top { display: flex; flex-direction: column; gap: 3px; }
 .describe-dash__toprow {

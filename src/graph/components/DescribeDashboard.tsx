@@ -94,13 +94,10 @@ function Tile({ tile, width }: { tile: DescribeTile; width: number }) {
         </div>
       )}
       {tile.trend && (
-        <>
-          <div className="describe-dash__caption">In row order</div>
-          <div className="describe-dash__chart" style={{ height: TREND_H }}>
-            {seen && <ChartView op="line" series={trendSeries} width={plotW} height={TREND_H} axes={false} />}
-            <ChartExpandButton title={`${tile.name}: in row order`} op="line" axes series={trendSeries} />
-          </div>
-        </>
+        <div className="describe-dash__chart describe-dash__trend" style={{ height: TREND_H }}>
+          {seen && <ChartView op="line" series={trendSeries} width={plotW} height={TREND_H} axes={false} />}
+          <ChartExpandButton title={tile.name} op="line" axes series={trendSeries} />
+        </div>
       )}
       {tile.top && (
         <div className="describe-dash__top">
