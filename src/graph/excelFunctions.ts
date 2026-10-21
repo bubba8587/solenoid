@@ -602,6 +602,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   YIELD:      { returns: "number", arity: [4, 6], family: "finance", native: true },
   VDB:        { returns: "number", arity: [5, 7], family: "finance", native: true },
   DB:         { returns: "number", arity: [4, 5], family: "finance", native: true },
+  BESSELJ:    { returns: "number", arity: [2, 2] },
+  BESSELI:    { returns: "number", arity: [2, 2] },
+  BESSELK:    { returns: "number", arity: [2, 2] },
+  BESSELY:    { returns: "number", arity: [2, 2] },
   DDB:        { returns: "number", arity: [4, 5], family: "finance", native: true },
   CUMIPMT:    { returns: "number", arity: [6, 6], family: "finance", native: true },
   CUMPRINC:   { returns: "number", arity: [6, 6], family: "finance", native: true },
@@ -1416,6 +1420,13 @@ registerInternal("PRICE", (settle, maturity, rate, yld, redemption, freq) =>
   bondPriceYield("price", toNum(settle), toNum(maturity), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
 registerInternal("YIELD", (settle, maturity, rate, pr, redemption, freq) =>
   bondPriceYield("yield", toNum(settle), toNum(maturity), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
+// Formula.js's Bessel functions recur once per order, so a huge order would hang ([[C120]] linearWork).
+for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"] as const) {
+  const fx = FX[name] as (...args: unknown[]) => unknown;
+  registerInternal(name, (x, n) => (Math.trunc(toNum(n)) > 1_000_000
+    ? solError("#DOMAIN!", `${name} takes an order of at most 1,000,000`)
+    : fx(x, n)));
+}
 // Formula.js's DB and DDB step once per period, so a huge period within a huge life would hang ([[C120]] linearWork).
 for (const name of ["DB", "DDB"] as const) {
   const fx = FX[name] as (...args: unknown[]) => unknown;
