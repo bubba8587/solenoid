@@ -892,9 +892,8 @@ describe("the regex functions match V8 on random patterns", () => {
         if (JSON.stringify(got) !== JSON.stringify(want)) expect({ name, args, got }).toEqual({ name, args, got: want });
       }
     }
-    // A pattern regress refuses goes to the TS, and most random patterns are broken.
-    expect(ran, "the valid patterns should run on the engine").toBeGreaterThan(FUZZ_RUNS / 2);
-    expect(bailed).toBeGreaterThan(0);
+    expect(ran, "every pattern, valid or not, should run on the engine").toBe(FUZZ_RUNS * 3 - bailed);
+    expect(bailed).toBe(0);
   });
 });
 
