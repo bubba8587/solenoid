@@ -1656,23 +1656,14 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
     let at = |g: &Option<Vec<V>>, i: usize, j: usize| -> Result<Ax, V> {
         let Some(g) = g else { return Ok(Ax::Undef) };
         let gi = if g.len() == 1 { 0 } else { i };
-        let gj = if width(&Some(g.clone())) == 1 { 0 } else { j };
         let short = || Err(V::err(sol_error("#N/A", "The positions are different sizes")));
         let Some(row) = g.get(gi) else { return short() };
-        match row {
-            V::List(cells) => match cells.get(gj) {
-                Some(x) => position_of(x),
-                None => short(),
-            },
-            V::Str(s) => {
-                let units: Vec<u16> = s.encode_utf16().collect();
-                match units.get(gj) {
-                    Some(u) => position_of(&V::str(&String::from_utf16_lossy(&[*u]))),
-                    None => short(),
-                }
-            }
-            V::Null | V::Undef => Err(bail()),
-            _ => Ok(Ax::Null),
+        // A row that isn't a list is one position (a blank row, blank positions).
+        let V::List(cells) = row else { return position_of(row) };
+        let gj = if width(&Some(g.clone())) == 1 { 0 } else { j };
+        match cells.get(gj) {
+            Some(x) => position_of(x),
+            None => short(),
         }
     };
     let out: Vec<V> = (0..h).map(|i| V::List(Rc::new((0..w).map(|j| {
@@ -2672,7 +2663,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         }
         // Formula.js's trig: parseNumber, then V8's Math (fdlibm: ours, or the libm crate where it matches V8 bit for bit).
-        "SIN" | "COS" | "TAN" | "ATAN" | "SINH" | "COSH" | "TANH" | "ASINH" | "COT" | "COTH" | "ACOT" | "ACOTH" | "SEC"
+        "SIN" | "COS" | "TAN" | "ATAN" | "SINH" | "COSH" | "TANH" | "ASINH" | "COT" | "COTH" | "ACOTH" | "SEC"
         | "SECH" | "CSC" | "CSCH" | "DEGREES" | "RADIANS" => {
             use crate::fdlibm::{cos, exp, log, sin};
             let n = match parse_number(arg(a, 0)) {
@@ -2699,7 +2690,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     let e2 = exp(2.0 * n);
                     (e2 + 1.0) / (e2 - 1.0)
                 }
-                "ACOT" => crate::fdlibm::atan(1.0 / n),
                 "ACOTH" => {
                     let r = 0.5 * log((n + 1.0) / (n - 1.0));
                     if r.is_nan() {
@@ -2738,6 +2728,20 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err("ATAN2");
             }
             V::Num(crate::fdlibm::atan2(y, x))
+        }
+        // Excel's ACOT lies in (0, π), and GAMMALN refuses x <= 0 as Excel's #NUM! does (excelFunctions.ts `num1`).
+        "ACOT" | "GAMMALN" | "GAMMALN.PRECISE" => {
+            let x = to_num(arg(a, 0));
+            if x.is_nan() {
+                return value_err(name);
+            }
+            if name == "ACOT" {
+                return V::Num(std::f64::consts::FRAC_PI_2 - crate::fdlibm::atan(x));
+            }
+            if x <= 0.0 {
+                return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));
+            }
+            V::Num(crate::dists::ln_gamma(x))
         }
         "SQRTPI" | "ASIN" | "ACOS" | "ACOSH" | "ATANH" => {
             let x = to_num(arg(a, 0));
@@ -3782,6 +3786,9 @@ fn exact_test_too_large() -> V {
 /// COMBIN divides as it multiplies. A count left out reads as NaN, which no loop runs on.
 fn combinatoric(op: &str, args: &[f64]) -> V {
     let ns: Vec<f64> = args.iter().map(|x| x.trunc()).collect();
+    if op == "FACTDOUBLE" && ns.first() == Some(&-1.0) {
+        return V::Num(1.0);
+    }
     if ns.iter().any(|&n| n.is_nan() || n < 0.0 || n == f64::INFINITY) {
         return V::err(sol_error("#DOMAIN!", "Counts must be finite and 0 or more"));
     }
@@ -3793,9 +3800,8 @@ fn combinatoric(op: &str, args: &[f64]) -> V {
         "FACTDOUBLE" => product(if n % 2.0 == 0.0 { 2.0 } else { 1.0 }, n, 2.0),
         "COMBIN" if n < k => return chosen(),
         "COMBIN" => combinations(n, k),
-        "COMBINA" if n < k => return chosen(),
-        "COMBINA" if n == 0.0 && k == 0.0 => 1.0,
-        "COMBINA" => combinations(n + k - 1.0, n - 1.0),
+        "COMBINA" if n == 0.0 => if k == 0.0 { 1.0 } else { 0.0 },
+        "COMBINA" => combinations(n + k - 1.0, k),
         "PERMUT" if n < k => return chosen(),
         "PERMUT" => product(n - k + 1.0, n, 1.0),
         _ => {
