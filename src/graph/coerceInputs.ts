@@ -7,12 +7,12 @@ import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube, coerceFrameCell, type FrameColType } from "./frame";
 import { parseCsvLine } from "./csv";
 import { csvField } from "./csvSafety";
-import { isFrameRef, readFrame } from "./frameBackend";
+import { isFrameRef, readFrame, refWithFormats, type FrameRef } from "./frameBackend";
 import { isSolError, solError, SEES_ERRORS } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
 import { isUnitCell, carryMatrixUnit } from "./unitValue";
 import { frameFormatStore } from "./frameFormatStore";
-import { carryFrameSidecars } from "./frameSidecar";
+import { withFormats } from "./frameVerbs";
 import type { FrameValue } from "./frame";
 
 export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
@@ -190,21 +190,6 @@ function coerceValueNoWiden(dataType: SocketDataType, v: unknown): unknown {
   return fam ? scalarOrThrow(familyCells(fam, v)) : v;
 }
 
-/** Shallow-copies: the input frame is a cached value shared with every other consumer. */
-function stampFrameFormats(nodeId: string, f: FrameValue): FrameValue {
-  let changed = false;
-  const columns = f.columns.map((c) => {
-    const ann = frameFormatStore.get(nodeId, c.name);
-    if (ann === undefined || ann === c.format) return c;
-    changed = true;
-    return { ...c, format: ann };
-  });
-  if (!changed) return f;
-  const out = { ...f, columns };
-  carryFrameSidecars(f, out);
-  return out;
-}
-
 type NodeLike = {
   id?: string;
   data: (inputs: Record<string, unknown[]>) => unknown;
@@ -236,8 +221,19 @@ export function wrapNodeData(node: NodeLike) {
     const ver = frameFormatStore.version();
     const hit = stampMemo.get(f);
     if (hit && hit.ver === ver) return hit.out;
-    const out = stampFrameFormats(nodeId!, f);
+    const out = withFormats(f, Object.fromEntries(frameFormatStore.forNode(nodeId!)));
     stampMemo.set(f, { ver, out });
+    return out;
+  };
+  // A lazy node's output is a plan, so its picks ride as one more step of it.
+  const refMemo = new WeakMap<FrameRef, { ver: number; out: FrameRef }>();
+  const stampRef = (ref: FrameRef): FrameRef => {
+    const ver = frameFormatStore.version();
+    const hit = refMemo.get(ref);
+    if (hit && hit.ver === ver) return hit.out;
+    const own = frameFormatStore.forNode(nodeId!);
+    const out = own.size ? refWithFormats(ref, Object.fromEntries(own)) : ref;
+    refMemo.set(ref, { ver, out });
     return out;
   };
   const stampOutputs = (out: unknown): unknown => {
@@ -246,8 +242,7 @@ export function wrapNodeData(node: NodeLike) {
     let next: Record<string, unknown> | null = null;
     for (const key of Object.keys(rec)) {
       const v = rec[key];
-      if (!isFrameValue(v)) continue;
-      const stamped = stampFrame(v);
+      const stamped = isFrameValue(v) ? stampFrame(v) : isFrameRef(v) ? stampRef(v) : v;
       if (stamped !== v) (next ??= { ...rec })[key] = stamped;
     }
     return next ?? out;

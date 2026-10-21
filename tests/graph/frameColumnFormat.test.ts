@@ -86,6 +86,17 @@ describe("a per-column format rides the frame downstream", () => {
     expect(fmtCell(b.values[0], b.type, b.format)).toBe("1");
   });
 
+  it("a lazy node's own pick rides its plan, so it reaches downstream too", async () => {
+    const input = new FrameInputNode({ frameText: source([{ name: "B", type: "number", cells: ["1.23456", "0.5"] }]) });
+    frameFormatStore.set(input.id, "B", DEC3);
+    const sort = new SortFrameNode();
+    sort.stringLiterals.column = "B";
+    frameFormatStore.set(sort.id, "B", DEC0);
+    const b = col(await collected(await chain([input, sort, new ColumnsNode()])), "B");
+    expect(b.values).toEqual([0.5, 1.23456]);
+    expect(b.format).toEqual(DEC0);
+  });
+
   it("an unstamped column keeps whatever arrived; a stamp never touches its siblings", async () => {
     const input = new FrameInputNode({
       frameText: source([

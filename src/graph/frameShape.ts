@@ -56,6 +56,7 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
     case "filter":
     case "filterMulti":
     case "sliceRows":
+    case "formats":
       return input;
     case "fillBlanks":
       for (const c of op.columns) requireCol(input, c);

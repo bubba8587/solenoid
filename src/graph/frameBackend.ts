@@ -3,6 +3,7 @@ import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
 import { READINGS_ADD, READINGS_SCALE } from "./unitValue";
 import { solError, isSolError, type SolError } from "./errorValue";
@@ -342,16 +343,22 @@ function shadow(run: () => FrameValue): FrameValue | null {
 }
 
 /** Each op against the schema it will meet, so a reading column's aggregates reach the
- *  unit-blind engine with their reading scale, and the result's schema shadow. */
+ *  unit-blind engine with their reading scale, and the result's schema shadow. A `formats`
+ *  op only touches the schema; the engine never sees it. */
 export function lowerForEngine(schema: FrameValue | null, ops: readonly FrameOp[]): { wire: FrameOp[]; schema: FrameValue | null } {
   let s = schema;
-  const wire = ops.map((op) => {
-    const w = s ? withUnitScales(s, op) : op;
+  const wire: FrameOp[] = [];
+  for (const op of ops) {
+    if (op.kind !== "formats") wire.push(s ? withUnitScales(s, op) : op);
     const cur = s;
     s = cur ? shadow(() => applyVerb(cur, op)) : null;
-    return w;
-  });
+  }
   return { wire, schema: s };
+}
+
+/** A lazy node's output with its own column format picks laid over it ([[D41]] formatFlowsDownstream). */
+export function refWithFormats(ref: FrameRef, formats: Record<string, FormatAnnotation>): FrameRef {
+  return extendRef(ref, { kind: "formats", formats });
 }
 
 function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[], schema: FrameValue | null | undefined): C[] {
@@ -418,6 +425,7 @@ class PolarsBackend implements FrameBackend {
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
     if (isOracleHandle(handle)) return this.oracle.apply(handle, op);
+    if (op.kind === "formats") return this.applyMany(handle, [op]);
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
     const h = await (ipcInvoke<string>("engine_apply", { handle, op: wire[0] }) as Promise<FrameHandle>);
     return this.remember(h, schema);

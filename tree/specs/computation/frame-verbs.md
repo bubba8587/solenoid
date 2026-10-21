@@ -315,6 +315,7 @@ The two engines were once kept in agreement by hand-mirrored test pairs tied tog
 | `window` | Window | lazy | `#REF!`, `#VALUE!` (unknown function) |
 | `fillBlanks` | Fill Down | lazy | `#REF!` |
 | `replaceValues` | Replace Values | lazy | `#REF!` |
+| `formats` | none: the coercion wrapper adds it | never sent | nothing |
 | `join` | Join | command | `#REF!`, `#TYPE!`, `#UNIT!`, `#VALUE!` |
 | `append` | Append | command | `#TYPE!` |
 | `bindColumns` | Bind Columns | command | nothing |
@@ -472,6 +473,10 @@ The Window card always sends `orderDir: "asc"`, derives `as` from the function l
 
 The card's Find and Replace take a wired value of any type, stringified by `readFilterValue`.
 
+### formats
+
+`{ kind: "formats", formats }`. Sets each named column's display `format` and leaves the cells alone. No card emits it: the coercion wrapper appends it to a lazy node's output ref, carrying that node's own `frameFormatStore` picks ([[D41]] formatFlowsDownstream), as it stamps a materialized Frame. `lowerForEngine` keeps it out of the ops Polars receives and applies it to the schema shadow, which is where the Polars path's formats come back from.
+
 ### join
 
 `joinFrames(left, right, { leftKey, rightKey, how, asofDirection?, asofTolerance?, rightKeyScale?, rightKeyOffset? })`. The key columns must exist (`#REF!`) and share a type (`#TYPE!`, `Join keys must share a type ("<l>" vs "<r>")`); a Cross join needs neither. Keys of two types could never match, since element families never cross on their own ([[C10]] socketLattice), so the join refuses instead of returning a silent empty result.
@@ -536,7 +541,7 @@ The Power Query column and row tools. Each returns a new Frame, and names go thr
 
 | Function | Card | Rule |
 |---|---|---|
-| `splitColumn(f, column, delimiter, names?)` | Split Column | Splits a column's text on `delimiter` into N string columns, N being the largest part count over the rows; a short row pads with blanks, and a blank or error cell gives blanks. The new columns replace the source in place, named from `names` (trimmed) or `<column> 1` … `<column> N`. An empty delimiter changes nothing. |
+| `splitColumn(f, column, delimiter, names?)` | Split Column | Splits each cell's display text (`formatFrameCell`, so a date splits as `15-Mar-2023` and a logical as `TRUE`) on `delimiter` into N string columns, N being the largest part count over the rows; a short row pads with blanks, and a blank or error cell gives blanks. The new columns replace the source in place, named from `names` (trimmed) or `<column> 1` … `<column> N`. An empty delimiter changes nothing. |
 | `addIndexColumn(f, name, start)` | Add Index | Prepends a number column counting up from `start` in steps of 1, named `name` trimmed (default `Index`). The index name is de-duplicated first, so an existing column with that name is the one renamed. |
 | `mergeColumns(f, columns, separator, name)` | Merge Columns | Needs at least two columns (`#VALUE!`, `Merge needs at least two columns`). Joins each row's cells as display text (`formatFrameCell`, so a date merges as its date text and an error as its code; a blank contributes `""`) with `separator` into one string column named `name` trimmed (default `Merged`), placed where the first source sat. The sources are removed. It is the inverse of Split Column. |
 | `promoteHeaders(f)` | Headers | The first row becomes the column names (a blank or error cell becomes `Col{i}`, any other cell its display text trimmed). Column types stay and the first row is removed. An empty frame is unchanged. |

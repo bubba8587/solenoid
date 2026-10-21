@@ -512,7 +512,8 @@ struct CorpusCase {
 }
 
 /// Verbs with corpus fixtures but no engine op; the runner asserts `WireOp` still refuses each, so the list cannot go stale.
-const ORACLE_ONLY_VERBS: &[&str] = &["pivot"];
+/// A `formats` step never leaves the TS (`lowerForEngine` in frameBackend.ts).
+const ORACLE_ONLY_VERBS: &[&str] = &["pivot", "formats"];
 
 #[derive(serde::Deserialize)]
 struct CorpusFile {

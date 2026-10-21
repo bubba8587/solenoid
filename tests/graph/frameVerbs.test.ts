@@ -404,6 +404,18 @@ describe("splitColumn / addIndexColumn (Power Query column ops)", () => {
     expect(splitColumn(f, "name", "")).toBe(f);
   });
 
+  it("split works on display text, as Merge Columns does: a date splits its date, a logical TRUE", () => {
+    const g: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "d", type: "date", values: [45000] },
+        { name: "ok", type: "logical", values: [true] },
+      ],
+    };
+    expect(splitColumn(g, "d", "-").columns.map((c) => c.values)).toEqual([["15"], ["Mar"], ["2023"], [true]]);
+    expect(col(splitColumn(g, "ok", ","), "ok 1")).toEqual(["TRUE"]);
+  });
+
   it("addIndex prepends a 1-based row-number column by default", () => {
     const out = addIndexColumn(f, "Index", 1);
     expect(out.columns.map((c) => c.name)).toEqual(["Index", "id", "name"]);
