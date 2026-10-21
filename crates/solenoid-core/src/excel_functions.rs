@@ -1300,46 +1300,113 @@ fn truncate_text(t: &str, width: f64, ellipsis: &str) -> String {
     }
 }
 
-/// `numberValue` (textOps.ts).
+/// `numberValue` (textOps.ts), over UTF-16 units: a separator is its `[0]`, half of an astral character included.
 fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
     let bad = || V::err(sol_error("#VALUE!", "NUMBERVALUE needs a number"));
-    // A separator's first UTF-16 unit is half of an astral character: leave that to the TS.
-    if [decimal_sep, group_sep].iter().any(|t| t.chars().next().is_some_and(|c| c as u32 > 0xFFFF)) {
-        return bail();
-    }
-    let d = decimal_sep.chars().next().unwrap_or('.');
-    let g: Option<char> = if !group_sep.is_empty() { group_sep.chars().next() } else if d == ',' { None } else { Some(',') };
+    let (dot, comma, percent) = (u16::from(b'.'), u16::from(b','), u16::from(b'%'));
+    let d = decimal_sep.encode_utf16().next().unwrap_or(dot);
+    let g: Option<u16> = if !group_sep.is_empty() { group_sep.encode_utf16().next() } else if d == comma { None } else { Some(comma) };
     if g == Some(d) {
         return bad();
     }
-    let mut s: String = text.chars().filter(|&c| !is_js_space(c)).collect();
+    let mut s: Vec<u16> = utf16(&text.chars().filter(|&c| !is_js_space(c)).collect::<String>());
     if s.is_empty() {
         return V::Num(0.0);
     }
     let mut pct = 0;
-    while s.ends_with('%') {
+    while s.last() == Some(&percent) {
         pct += 1;
         s.pop();
     }
-    let (int_part, frac) = match s.find(d) {
-        Some(i) => (&s[..i], Some(&s[i + d.len_utf8()..])),
-        None => (s.as_str(), None),
+    let (int_part, frac) = match s.iter().position(|&u| u == d) {
+        Some(i) => (&s[..i], Some(&s[i + 1..])),
+        None => (&s[..], None),
     };
     if let Some(f) = frac {
-        if g.is_some_and(|g| f.contains(g)) || f.contains(d) {
+        if g.is_some_and(|g| f.contains(&g)) || f.contains(&d) {
             return bad();
         }
     }
-    let mut num: String = match g {
-        Some(g) => int_part.chars().filter(|&c| c != g).collect(),
-        None => int_part.to_string(),
-    };
+    let mut num: Vec<u16> = int_part.iter().copied().filter(|&u| Some(u) != g).collect();
     if let Some(f) = frac {
-        num.push('.');
-        num.push_str(f);
+        num.push(dot);
+        num.extend_from_slice(f);
     }
-    let n = decimal_from_text(&num);
+    let n = decimal_from_text(&from_utf16(&num));
     if n.is_nan() { bad() } else { V::Num(n / js_pow(100.0, f64::from(pct))) }
+}
+
+/// `splitText` (textOps.ts). A caseless split finds the delimiter in the lowercased text and cuts the original at
+/// those UTF-16 offsets, as the TS does, even where lowercasing changed the length.
+fn split_text(text: &str, col: Option<&str>, row: Option<&str>, ignore_empty: bool, caseless: bool, pad: &V) -> V {
+    let cut = |t: &[u16], d: Option<&str>| -> Vec<Vec<u16>> {
+        let Some(d) = d else { return vec![t.to_vec()] };
+        if d.is_empty() {
+            return from_utf16(t).chars().map(|c| utf16(&c.to_string())).collect();
+        }
+        let (hay, needle) = if caseless {
+            (utf16(&js_lower(&from_utf16(t))), utf16(&js_lower(d)))
+        } else {
+            (t.to_vec(), utf16(d))
+        };
+        let slice = |from: usize, to: usize| t[from.min(t.len())..to.clamp(from.min(t.len()), t.len())].to_vec();
+        let d_len = d.encode_utf16().count();
+        let mut parts = Vec::new();
+        let (mut from, mut i) = (0, 0);
+        while i + needle.len() <= hay.len() {
+            if hay[i..i + needle.len()] == needle[..] {
+                parts.push(slice(from, i));
+                from = i + d_len;
+                i += needle.len();
+            } else {
+                i += 1;
+            }
+        }
+        parts.push(slice(from, t.len()));
+        if ignore_empty {
+            parts.retain(|p| !p.is_empty());
+        }
+        parts
+    };
+    let strs = |parts: Vec<Vec<u16>>| parts.iter().map(|p| V::str(&from_utf16(p))).collect::<Vec<V>>();
+    let t = utf16(text);
+    let Some(row) = row else { return V::List(Rc::new(strs(cut(&t, col)))) };
+    let rows: Vec<Vec<V>> = cut(&t, Some(row)).iter().map(|r| strs(cut(r, col))).collect();
+    let width = rows.iter().map(Vec::len).max().unwrap_or(0);
+    V::List(Rc::new(
+        rows.into_iter()
+            .map(|mut r| {
+                r.resize(width, pad.clone());
+                V::List(Rc::new(r))
+            })
+            .collect(),
+    ))
+}
+
+/// `wrapText` (textOps.ts): words split on JS whitespace, a word's length in code points. A NaN width wraps every word.
+fn wrap_text(t: &str, width: f64) -> Vec<String> {
+    let w = crate::jsnum::math_max(1.0, width.floor());
+    let mut lines = Vec::new();
+    let mut line = String::new();
+    let mut line_len = 0.0;
+    for word in t.split(is_js_space).filter(|s| !s.is_empty()) {
+        let word_len = word.chars().count() as f64;
+        if line.is_empty() {
+            line = word.to_string();
+            line_len = word_len;
+        } else if line_len + 1.0 + word_len <= w {
+            line.push(' ');
+            line.push_str(word);
+            line_len += 1.0 + word_len;
+        } else {
+            lines.push(std::mem::replace(&mut line, word.to_string()));
+            line_len = word_len;
+        }
+    }
+    if !line.is_empty() {
+        lines.push(line);
+    }
+    lines
 }
 
 use crate::dists::Form;
@@ -3437,7 +3504,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if may_hold_lone_surrogate(&t) {
                 return bail();
             }
-            crate::text_ops::unaccent(&t).map_or_else(bail, |s| V::str(&s))
+            V::str(&crate::text_ops::unaccent(&t))
         }
         "SLUGIFY" => {
             let sep = match arg(a, 1) {
@@ -3447,7 +3514,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if may_hold_lone_surrogate(&sep) {
                 return bail();
             }
-            crate::text_ops::slugify(&to_str(arg(a, 0)), &sep).map_or_else(bail, |s| V::str(&s))
+            V::str(&crate::text_ops::slugify(&to_str(arg(a, 0)), &sep))
         }
         "SPELLNUMBER" => match crate::text_ops::spell_number(to_f64_js(arg(a, 0))) {
             Ok(words) => V::str(&words),
@@ -3456,21 +3523,31 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         "VALUETOTEXT" => V::str(&to_str(arg(a, 0))),
         "TEMPLATE" => template(a),
         "DOLLAR" => dollar(arg(a, 0), arg(a, 1)),
-        // Both answer a list but for these readings, and a list stays on the TS.
         "TEXTSPLIT" => {
-            if matches!(arg(a, 1), V::Null | V::Undef) && matches!(arg(a, 2), V::Null | V::Undef) {
+            let given = |v: &V| !matches!(v, V::Null | V::Undef);
+            let (col, row) = (arg(a, 1), arg(a, 2));
+            if !given(col) && !given(row) {
                 return V::err(sol_error("#SYNTAX!", "TEXTSPLIT needs a column delimiter, a row delimiter, or both"));
             }
-            bail()
+            let mode = arg(a, 4);
+            let caseless = given(mode) && to_num(mode) == 1.0;
+            let pad = match arg(a, 5) {
+                V::Undef => V::err(sol_error("#N/A", "TEXTSPLIT: this row has fewer parts than the longest")),
+                v => v.clone(),
+            };
+            let col = given(col).then(|| to_str(col));
+            let row = given(row).then(|| to_str(row));
+            split_text(&to_str(arg(a, 0)), col.as_deref(), row.as_deref(), is_true(arg(a, 3)), caseless, &pad)
         }
         "WRAPTEXT" => {
             if matches!(arg(a, 0), V::Null | V::Undef) {
                 return V::Null;
             }
-            if to_num(arg(a, 1)) < 1.0 {
+            let w = to_num(arg(a, 1));
+            if w < 1.0 {
                 return V::err(sol_error("#DOMAIN!", "Width must be at least 1"));
             }
-            bail()
+            V::List(Rc::new(wrap_text(&to_str(arg(a, 0)), w).iter().map(|l| V::str(l)).collect()))
         }
         _ => V::Undef,
     }
