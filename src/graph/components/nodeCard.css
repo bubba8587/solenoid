@@ -1296,7 +1296,7 @@ body.solenoid-scrubbing * {
   cursor: default;
 }
 .solenoid-mermaid {
-  --pele-bg: transparent;
+  --pele-bg: var(--surface);
   --pele-fg: var(--text);
   --pele-muted: var(--text-muted);
   --pele-line: var(--text-muted);
