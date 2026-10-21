@@ -96,6 +96,18 @@ describe("BESSELJ, I, K and Y past an order of a million answer #DOMAIN! (FX rec
   });
 });
 
+describe("CLEAN reads a number or logical as text and drops codes 0 to 31 only (FX is wrong)", () => {
+  it("as Excel, and the Text Transform card's CLEAN is the same function", () => {
+    expect(call("CLEAN", 5)).toBe("5");
+    expect(call("CLEAN", true)).toBe("TRUE");
+    expect(call("CLEAN", "a\u0001b\u001fc\u007f")).toBe("abc\u007f");
+  });
+  it("FX still throws on a number (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (v: unknown) => unknown>;
+    expect(() => fx.CLEAN(5)).toThrow(TypeError);
+  });
+});
+
 describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per period)", () => {
   it("a huge period within the life answers at once; an ordinary one is Formula.js's", () => {
     const t = performance.now();
