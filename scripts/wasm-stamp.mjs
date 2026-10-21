@@ -1,27 +1,23 @@
 // [[C130]] rustCore
-// A hash of the Rust core's sources (crates/solenoid-core and the crates it vendors), which `npm run build:wasm`
-// writes beside the module it builds; wasmStamp.test.ts recomputes it, so a Rust change without a rebuild fails.
+// A hash of the Rust core's committed sources (crates/solenoid-core and the crates it vendors), which `npm run
+// build:wasm` writes beside the module it builds; wasmStamp.test.ts recomputes it, so a Rust change without a rebuild
+// fails. Only files git tracks count, so a build's own leftovers (a vendored crate's Cargo.lock) never do.
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const ROOTS = ["crates/solenoid-core", "crates/vendor"];
-const SKIP = new Set(["target", "tests", "README.md"]);
-
-function files(dir) {
-  return readdirSync(dir).sort().flatMap((name) => {
-    if (SKIP.has(name)) return [];
-    const p = join(dir, name);
-    return statSync(p).isDirectory() ? files(p) : [p];
-  });
-}
+const SKIP = /(^|\/)(tests\/|README\.md$)/;
 
 export function sourceStamp(root = ".") {
+  const files = execFileSync("git", ["ls-files", "-z", ...ROOTS], { cwd: root }).toString().split("\0")
+    .filter((f) => f && !SKIP.test(f.slice(f.indexOf("/", "crates/".length) + 1))).sort();
   const h = createHash("sha256");
-  for (const r of ROOTS) for (const f of files(join(root, r))) {
-    h.update(relative(root, f).replaceAll("\\", "/"));
+  for (const f of files) {
+    h.update(f);
     h.update("\0");
-    h.update(readFileSync(f));
+    h.update(readFileSync(join(root, f)));
     h.update("\0");
   }
   return h.digest("hex");

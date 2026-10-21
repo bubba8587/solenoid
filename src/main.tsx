@@ -115,7 +115,8 @@ initPacks();
 initPackFcExtensions();
 initPackFormulas();
 
-void initFrameBackend();
+// Formulas compute on the Rust core ([[D99]] rustIsSpec), so the first calc waits for it, never past a few seconds.
+const backendReady = Promise.race([initFrameBackend(), new Promise<void>((done) => setTimeout(done, 4000))]);
 watchEngineSetting(() => void documentStore.reloadCurrent());
 
 initDevtoolsHotkey();
@@ -128,11 +129,11 @@ if (import.meta.env.DEV) {
 }
 
 // Not wrapped in <React.StrictMode>: its double-invoked mount races rete's async editor init, leaving two elements per socket.
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+void backendReady.then(() => ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <ErrorBoundary scope="app">
     <App />
   </ErrorBoundary>,
-);
+));
 
 if (import.meta.env.DEV) {
   void import("./graph/seedTune");

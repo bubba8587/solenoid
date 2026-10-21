@@ -8,7 +8,7 @@ import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, 
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
 import type { LambdaValue } from "./lambdaValue";
-import { coreValue, errorRef, errorFromCore, wellFormed, engineClock, wasmEngineOn, syncExternalNames } from "./coreValues";
+import { coreValue, errorRef, errorFromCore, wellFormed, engineClock, wasmEngineOn, syncExternalNames, readReply } from "./coreValues";
 export { engineClock, wasmEngineOn, evaluateOnCore, type EngineClock } from "./coreValues";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
@@ -508,6 +508,31 @@ function columnAnswer(r: { bail?: boolean; error?: { code: string; message: stri
 
 
 
+/** A frame computation no formula shares, on the core (`frame_fns.rs`, [[D99]] rustIsSpec): its frames as names, types
+ *  and cells (units, formats and provenance are the caller's to carry over), and its answer as a frame or a value. Null
+ *  where the wasm engine is off, a value can't cross, or the core leaves the reading to the TS. */
+export function frameFnOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = []):
+  { frame: FrameValue } | { value: unknown } | null {
+  if (!wasmEngineLoaded() || !wasmEngineOn() || !frames.every(crossesWhole)) return null;
+  const wire = args.map(coreValue);
+  if (wire.includes(undefined)) return null;
+  const handles = frames.map((f) => wasmSourceBin(encodeBinary(f)));
+  let out: string | undefined;
+  try {
+    const r = wasmInvokeSync<{ bail?: boolean; handle?: string; value?: unknown }>("engine_frame_fn", { name, handles, args: wire });
+    if (r.bail) return null;
+    if (r.handle) {
+      out = r.handle;
+      return { frame: { __frame: true, columns: decodeBinary(wasmReadBin(out)!) } };
+    }
+    const v = readReply(r.value);
+    return v && { value: v.value };
+  } finally {
+    for (const h of handles) wasmInvokeSync("engine_drop", { handle: h });
+    if (out) wasmInvokeSync("engine_drop", { handle: out });
+  }
+}
+
 /** `computeColumnCells` on the core ([[D99]] rustIsSpec): a formula, or with `bare` a wired LAMBDA called with each
  *  row's cells. Null where the wasm engine is off, a value can't cross, or a body leaves the column to the TS. */
 export function computeColumnOnEngine(f: FrameValue, expr: string, rows: number, opts: ColumnOpts = {}): ColumnAnswer | null {
@@ -835,8 +860,8 @@ export async function initFrameBackend(): Promise<void> {
       if (info?.backend === "polars") {
         await ipcInvoke("engine_clear", {}).catch(() => {});
         setFrameBackend(new EngineBackend(ipcInvoke, false));
-        // Pivots and row formulas run on the Rust core beside Polars, which has neither.
-        if (wasmEngineOn()) void loadWasmEngine();
+        // Pivots and formulas run on the Rust core beside Polars, which has neither.
+        if (wasmEngineOn()) await loadWasmEngine();
         return;
       }
     } catch {

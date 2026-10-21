@@ -91,7 +91,7 @@ pub fn set_external(names: Vec<String>) {
     EXTERNAL.with(|e| *e.borrow_mut() = names.into_iter().map(|n| n.to_uppercase()).collect());
 }
 
-fn is_external(name: &str) -> bool {
+pub fn is_external(name: &str) -> bool {
     EXTERNAL.with(|e| e.borrow().contains(name))
 }
 
