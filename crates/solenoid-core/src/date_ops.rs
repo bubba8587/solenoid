@@ -5,7 +5,7 @@
 
 use crate::date_serial::{date_utc, days_from_civil, parts_of_ms, serial_to_ms, MS_PER_DAY};
 use crate::error_value::{sol_error, SolError};
-use crate::jsnum::math_round;
+use crate::jsnum::{math_max as js_max, math_min as js_min, math_round};
 
 type Date = Option<f64>;
 
@@ -188,26 +188,7 @@ pub fn date_diff(op: DiffOp, s: f64, e: f64, basis: f64) -> Result<Option<f64>, 
     }))
 }
 
-/// `Math.min` of two: a NaN wins and -0 is below 0.
-fn js_min(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() {
-        f64::NAN
-    } else if a == b {
-        if a.is_sign_negative() { a } else { b }
-    } else {
-        a.min(b)
-    }
-}
 
-fn js_max(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() {
-        f64::NAN
-    } else if a == b {
-        if a.is_sign_positive() { a } else { b }
-    } else {
-        a.max(b)
-    }
-}
 
 pub fn epoch_to_serial(epoch: f64, ms: bool) -> f64 {
     25569.0 + epoch / if ms { 86_400_000.0 } else { 86_400.0 }

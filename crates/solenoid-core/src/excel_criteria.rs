@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use crate::error_value::{sol_error, SolError};
 use crate::excel_functions::{bail, js_string_of, V};
-use crate::jsnum::{js_lower, js_trim};
+use crate::jsnum::{js_lower, js_trim, math_max as js_max, math_min as js_min};
 use crate::string_order::compare_strings;
 use crate::value_kinds::decimal_from_text;
 
@@ -435,30 +435,8 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
     }
 }
 
-/// `Math.min` of two finite numbers: -0 is below 0.
-fn js_min(a: f64, b: f64) -> f64 {
-    if a == b {
-        if a.is_sign_negative() {
-            a
-        } else {
-            b
-        }
-    } else {
-        a.min(b)
-    }
-}
 
-fn js_max(a: f64, b: f64) -> f64 {
-    if a == b {
-        if a.is_sign_positive() {
-            a
-        } else {
-            b
-        }
-    } else {
-        a.max(b)
-    }
-}
+
 
 /// `ifsPairs`: the arguments after the values as range, criterion pairs.
 pub type Pair = (Rc<Vec<V>>, V);

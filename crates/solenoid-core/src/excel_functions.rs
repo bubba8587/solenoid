@@ -100,6 +100,9 @@ const PORTED: &[&str] = &[
     "CEILING", "CEILING.MATH", "FLOOR", "FLOOR.MATH", "MROUND", "EVEN", "ODD", "SWITCH", "REPLACE",
     "DATEDIF", "DAYS360", "YEARFRAC", "DATETRUNC", "FROMEPOCH", "TOEPOCH", "WORKDAY", "WORKDAY.INTL", "NETWORKDAYS",
     "NETWORKDAYS.INTL", "XLOOKUP", "XMATCH",
+    "AVEDEV", "GEOMEAN", "HARMEAN", "DEVSQ", "SKEW", "SKEW.P", "KURT", "PTP", "IQR", "MAD", "SEM", "CV", "RMS",
+    "CORREL", "PEARSON", "RSQ", "KENDALL", "COVAR", "COVARIANCE.P", "COVARIANCE.S", "SLOPE", "INTERCEPT", "STEYX",
+    "TEXT", "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
     "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
 ];
@@ -114,6 +117,8 @@ pub fn reads_lists(name: &str) -> bool {
         name,
         "SUM" | "LARGE" | "SMALL" | "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" | "QUARTILE" | "QUARTILE.INC" | "QUARTILE.EXC"
             | "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" | "COUNTIFS" | "COUNTIF" | "AVERAGEIF" | "TEXTJOIN" | "XLOOKUP" | "XMATCH"
+            | "CORREL" | "PEARSON" | "RSQ" | "KENDALL" | "COVAR" | "COVARIANCE.P" | "COVARIANCE.S" | "SLOPE" | "INTERCEPT"
+            | "STEYX" | "RANK" | "RANK.EQ" | "RANK.AVG" | "TRIMMEAN" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC"
     )
 }
 
@@ -325,6 +330,21 @@ fn ssd(a: &[f64], m: f64) -> f64 {
     a.iter().fold(0.0, |x, y| x + js_pow(y - m, 2.0))
 }
 
+/// `iterMin` / `iterMax`.
+fn fold_min(arr: &[f64]) -> f64 {
+    arr.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m })
+}
+
+fn fold_max(arr: &[f64]) -> f64 {
+    arr.iter().fold(f64::NEG_INFINITY, |m, &v| if v > m { v } else { m })
+}
+
+fn median_of(arr: &[f64]) -> f64 {
+    let s = sorted_nums(arr);
+    let m = s.len() / 2;
+    if s.len().is_multiple_of(2) { (s[m - 1] + s[m]) / 2.0 } else { s[m] }
+}
+
 fn aggregate(op: &str, arr: &[f64]) -> V {
     let to_v = |c: FrameCell| match c {
         FrameCell::Num(n) => V::Num(n),
@@ -341,15 +361,10 @@ fn aggregate(op: &str, arr: &[f64]) -> V {
         let mean = || sum(arr) / n as f64;
         match op {
             "avg" => V::Num(mean()),
-            "min" => V::Num(arr.iter().fold(f64::INFINITY, |m, &v| if v < m { v } else { m })),
-            "max" => V::Num(arr.iter().fold(f64::NEG_INFINITY, |m, &v| if v > m { v } else { m })),
+            "min" => V::Num(fold_min(arr)),
+            "max" => V::Num(fold_max(arr)),
             "product" => V::Num(arr.iter().fold(1.0, |a, b| a * b)),
-            "median" => {
-                let mut s = arr.to_vec();
-                crate::js_sort::js_sort_by(&mut s, |a, b| (a - b).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
-                let m = s.len() / 2;
-                V::Num(if s.len().is_multiple_of(2) { (s[m - 1] + s[m]) / 2.0 } else { s[m] })
-            }
+            "median" => V::Num(median_of(arr)),
             "stdev" => {
                 if n < 2 {
                     V::err(sol_error("#DIV/0!", "A sample standard deviation needs at least two values"))
@@ -366,6 +381,83 @@ fn aggregate(op: &str, arr: &[f64]) -> V {
                 }
             }
             "var_p" => V::Num(ssd(arr, mean()) / n as f64),
+            "geomean" => {
+                if arr.iter().any(|&v| v <= 0.0) {
+                    V::err(sol_error("#DOMAIN!", "GEOMEAN needs every value > 0"))
+                } else {
+                    V::Num(crate::fdlibm::exp(arr.iter().fold(0.0, |a, &b| a + crate::fdlibm::log(b)) / n as f64))
+                }
+            }
+            "harmean" => {
+                if arr.iter().any(|&v| v <= 0.0) {
+                    V::err(sol_error("#DOMAIN!", "HARMEAN needs every value > 0"))
+                } else {
+                    V::Num(n as f64 / arr.iter().fold(0.0, |a, &b| a + 1.0 / b))
+                }
+            }
+            "devsq" => V::Num(ssd(arr, mean())),
+            "avedev" => {
+                let m = mean();
+                V::Num(arr.iter().fold(0.0, |a, &b| a + (b - m).abs()) / n as f64)
+            }
+            "skew" | "skew_p" => {
+                let sample = op == "skew";
+                if n < if sample { 3 } else { 2 } {
+                    return V::Null;
+                }
+                let m = mean();
+                let sd = (ssd(arr, m) / if sample { (n - 1) as f64 } else { n as f64 }).sqrt();
+                if sd == 0.0 {
+                    return V::Null;
+                }
+                let cubes = arr.iter().fold(0.0, |a, &b| a + js_pow((b - m) / sd, 3.0));
+                let nf = n as f64;
+                V::Num(if sample { (nf / ((nf - 1.0) * (nf - 2.0))) * cubes } else { cubes / nf })
+            }
+            "kurt" => {
+                if n < 4 {
+                    return V::Null;
+                }
+                let m = mean();
+                let sd = (ssd(arr, m) / (n - 1) as f64).sqrt();
+                if sd == 0.0 {
+                    return V::Null;
+                }
+                let sum4 = arr.iter().fold(0.0, |a, &b| a + js_pow((b - m) / sd, 4.0));
+                let nf = n as f64;
+                V::Num(
+                    ((nf * (nf + 1.0)) / ((nf - 1.0) * (nf - 2.0) * (nf - 3.0))) * sum4
+                        - (3.0 * js_pow(nf - 1.0, 2.0)) / ((nf - 2.0) * (nf - 3.0)),
+                )
+            }
+            "ptp" => V::Num(fold_max(arr) - fold_min(arr)),
+            "iqr" => {
+                let s = sorted_nums(arr);
+                let at = |p| percentile_of(&s, p, false).unwrap_or(f64::NAN);
+                V::Num(at(0.75) - at(0.25))
+            }
+            "mad" => {
+                let med = median_of(arr);
+                V::Num(median_of(&arr.iter().map(|v| (v - med).abs()).collect::<Vec<_>>()))
+            }
+            "sem" => {
+                if n < 2 {
+                    return V::Null;
+                }
+                V::Num((ssd(arr, mean()) / (n - 1) as f64).sqrt() / (n as f64).sqrt())
+            }
+            "cv" => {
+                if n < 2 {
+                    return V::Null;
+                }
+                let m = mean();
+                if m == 0.0 {
+                    V::err(sol_error("#DIV/0!", "CV is undefined when the mean is 0"))
+                } else {
+                    V::Num((ssd(arr, m) / (n - 1) as f64).sqrt() / m)
+                }
+            }
+            "rms" => V::Num((arr.iter().fold(0.0, |a, b| a + b * b) / n as f64).sqrt()),
             _ => V::Null,
         }
     };
@@ -509,6 +601,357 @@ fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) -> Result<Opt
         }
     }
     Ok(best.map(|(i, _)| i))
+}
+
+fn mean_of(a: &[f64]) -> f64 {
+    sum(a) / a.len() as f64
+}
+
+fn finite_of(r: f64, xs: &[f64], ys: &[f64]) -> V {
+    finite_v(r, &[xs, ys].concat())
+}
+
+/// `pearson` (statsOps.ts).
+fn pearson(xs: &[f64], ys: &[f64], rsq: bool) -> V {
+    let n = xs.len().min(ys.len());
+    if n < 2 {
+        return V::Null;
+    }
+    let (mx, my) = (mean_of(&xs[..n]), mean_of(&ys[..n]));
+    let (mut num, mut dx2, mut dy2) = (0.0, 0.0, 0.0);
+    for i in 0..n {
+        let (dx, dy) = (xs[i] - mx, ys[i] - my);
+        num += dx * dy;
+        dx2 += dx * dx;
+        dy2 += dy * dy;
+    }
+    let den = (dx2 * dy2).sqrt();
+    if den == 0.0 {
+        return V::err(sol_error("#DIV/0!", "One of the lists has zero variance"));
+    }
+    let r = num / den;
+    finite_of(if rsq { r * r } else { r }, xs, ys)
+}
+
+/// `Math.sign`.
+fn js_sign(x: f64) -> f64 {
+    if x.is_nan() || x == 0.0 { x } else { x.signum() }
+}
+
+/// `kendallTau` (statsOps.ts).
+fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
+    let n = xs.len().min(ys.len());
+    if n < 2 {
+        return V::Null;
+    }
+    let (mut conc, mut disc, mut tx, mut ty) = (0.0f64, 0.0, 0.0, 0.0);
+    for i in 0..n {
+        for j in i + 1..n {
+            let (dx, dy) = (js_sign(xs[i] - xs[j]), js_sign(ys[i] - ys[j]));
+            if dx == 0.0 && dy == 0.0 {
+                continue;
+            }
+            if dx == 0.0 {
+                tx += 1.0;
+            } else if dy == 0.0 {
+                ty += 1.0;
+            } else if dx == dy {
+                conc += 1.0;
+            } else {
+                disc += 1.0;
+            }
+        }
+    }
+    let den = ((conc + disc + tx) * (conc + disc + ty)).sqrt();
+    if den == 0.0 {
+        return V::err(sol_error("#DIV/0!", "One of the lists has no variation"));
+    }
+    V::Num((conc - disc) / den)
+}
+
+/// `covariance` (statsOps.ts).
+fn covariance(xs: &[f64], ys: &[f64], sample: bool) -> V {
+    let n = xs.len().min(ys.len());
+    if n < 2 {
+        return V::Null;
+    }
+    let (mx, my) = (mean_of(&xs[..n]), mean_of(&ys[..n]));
+    let cov = (0..n).fold(0.0, |a, i| a + (xs[i] - mx) * (ys[i] - my));
+    finite_of(if sample { cov / (n - 1) as f64 } else { cov / n as f64 }, xs, ys)
+}
+
+/// `regression` (statsOps.ts), named by its Excel function.
+fn regression(xs: &[f64], ys: &[f64], op: &str) -> V {
+    let n = xs.len().min(ys.len());
+    if n < 2 {
+        return V::Null;
+    }
+    let (x_mean, y_mean) = (mean_of(&xs[..n]), mean_of(&ys[..n]));
+    let (mut sxy, mut sxx, mut syy) = (0.0, 0.0, 0.0);
+    for i in 0..n {
+        let (dx, dy) = (xs[i] - x_mean, ys[i] - y_mean);
+        sxy += dx * dy;
+        sxx += dx * dx;
+        syy += dy * dy;
+    }
+    if sxx == 0.0 {
+        return V::err(sol_error("#DIV/0!", "Known Xs have zero variance"));
+    }
+    let slope = sxy / sxx;
+    let r = match op {
+        "SLOPE" => slope,
+        "INTERCEPT" => y_mean - slope * x_mean,
+        _ if n >= 3 => (crate::jsnum::math_max(0.0, syy - slope * sxy) / (n - 2) as f64).sqrt(),
+        _ => return V::Null,
+    };
+    finite_of(r, xs, ys)
+}
+
+/// JS `a > b` with a number on the right: the left reads as a number.
+fn as_number_cmp(v: &V) -> f64 {
+    match v {
+        V::Num(n) => *n,
+        V::Bool(b) => f64::from(u8::from(*b)),
+        V::Str(s) => string_to_number(s),
+        V::Null => 0.0,
+        _ => f64::NAN,
+    }
+}
+
+/// `excelRank` (excelFunctions.ts).
+fn excel_rank(value: f64, refs: &[V], avg: bool, ascending: bool) -> V {
+    if value.is_nan() {
+        return value_err("RANK");
+    }
+    let above = refs.iter().filter(|x| {
+        let n = as_number_cmp(x);
+        if ascending { n < value } else { n > value }
+    }).count() as f64;
+    let equal = refs.iter().filter(|x| matches!(x, V::Num(n) if *n == value)).count() as f64;
+    if equal == 0.0 {
+        return V::err(sol_error("#N/A", "Value not found in the list"));
+    }
+    V::Num(if avg { above + 1.0 + (equal - 1.0) / 2.0 } else { above + 1.0 })
+}
+
+/// `excelTrimmean` over numbers.
+fn excel_trimmean(values: &[f64], percent: f64) -> V {
+    let n = values.len() as f64;
+    if values.is_empty() || percent.is_nan() {
+        return value_err("TRIMMEAN");
+    }
+    let trim = ((n * percent) / 2.0).floor();
+    if trim * 2.0 >= n {
+        return V::err(sol_error("#DOMAIN!", "TRIMMEAN trimmed away every value"));
+    }
+    let s = sorted_nums(values);
+    // `slice(trim, n - trim)` with a negative trim counts from the end.
+    let idx = |k: f64| if k < 0.0 { (n + k).max(0.0) } else { k.min(n) } as usize;
+    let (lo, hi) = (idx(trim), idx(n - trim));
+    let kept = if lo < hi { &s[lo..hi] } else { &s[0..0] };
+    V::Num(kept.iter().fold(0.0, |a, b| a + b) / kept.len() as f64)
+}
+
+/// `excelPercentRank` (excelFunctions.ts).
+fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
+    if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
+        return e.clone();
+    }
+    let nums: Vec<f64> = arr.iter().filter_map(|v| match v {
+        V::Num(n) if n.is_finite() => Some(*n),
+        _ => None,
+    }).collect();
+    let s = sorted_nums(&nums);
+    let n = s.len();
+    if n == 0 || x.is_nan() {
+        return value_err("PERCENTRANK");
+    }
+    if x < s[0] || x > s[n - 1] {
+        return V::err(sol_error("#N/A", "Value is outside the range of the data"));
+    }
+    if n == 1 {
+        return V::Num(1.0);
+    }
+    let below = s.iter().filter(|&&v| v < x).count();
+    let pos = if s[below] == x {
+        below as f64
+    } else {
+        (below as f64 - 1.0) + (x - s[below - 1]) / (s[below] - s[below - 1])
+    };
+    let nf = n as f64;
+    let rank = if exc { (pos + 1.0) / (nf + 1.0) } else { pos / (nf - 1.0) };
+    let f = js_pow(10.0, crate::jsnum::math_max(0.0, sig.trunc()));
+    V::Num((rank * f).trunc() / f)
+}
+
+/// `gcdLcm` (mathUtils.ts).
+fn gcd_lcm(gcd: bool, values: &[f64]) -> V {
+    let name = if gcd { "GCD" } else { "LCM" };
+    if values.is_empty() {
+        return V::err(sol_error("#VALUE!", format!("{name} needs at least one number")));
+    }
+    let two53 = 9_007_199_254_740_992.0;
+    let mut acc: f64 = if gcd { 0.0 } else { 1.0 };
+    for &v in values {
+        let n = v.trunc();
+        if n.is_nan() || n < 0.0 {
+            return V::err(sol_error("#DOMAIN!", format!("{name} needs values of 0 or more")));
+        }
+        if n >= two53 {
+            return V::err(sol_error("#DOMAIN!", format!("{name} needs values below 2^53")));
+        }
+        let (mut x, mut y) = (acc, n);
+        while y != 0.0 && !y.is_nan() {
+            (x, y) = (y, x % y);
+        }
+        acc = if gcd { x } else if x == 0.0 { 0.0 } else { (acc / x) * n };
+        if acc >= two53 {
+            return V::err(sol_error("#DOMAIN!", "LCM is 2^53 or more"));
+        }
+    }
+    V::Num(acc)
+}
+
+/// TEXT (excelFunctions.ts), its patched codes up front and Formula.js's TEXT after.
+fn excel_text(value: &V, fmt: &V) -> V {
+    let f = to_str(fmt);
+    let n = to_num(value);
+    if n.is_nan() {
+        return V::str(&to_str(value));
+    }
+    if f == "@" || f.eq_ignore_ascii_case("general") {
+        return V::str(&number_to_text(n));
+    }
+    if !f.is_empty() && f.bytes().all(|c| c == b'0') {
+        let digits = number_to_string(math_round(n.abs()));
+        let pad = f.len().saturating_sub(digits.encode_utf16().count());
+        return V::str(&format!("{}{}{digits}", if n < 0.0 { "-" } else { "" }, "0".repeat(pad)));
+    }
+    if let Some((frac, sign_ok, exp_zeros)) = sci_code(&f) {
+        let _ = sign_ok;
+        let Some(s) = crate::jsnum::to_exponential(n, frac as f64) else {
+            return throw(sol_error("#VALUE!", "toExponential() argument must be between 0 and 100"));
+        };
+        let (mant, e) = match s.split_once('e') {
+            Some((m, e)) => (m.to_string(), e.parse::<f64>().unwrap_or(f64::NAN)),
+            None => (s.clone(), f64::NAN),
+        };
+        let exp_text = number_to_string(e.abs());
+        let pad = exp_zeros.saturating_sub(exp_text.len());
+        return V::str(&format!("{mant}E{}{}{exp_text}", if e < 0.0 { "-" } else { "+" }, "0".repeat(pad)));
+    }
+    let bare = strip_quoted(&f);
+    let dateish = bare.chars().any(|c| "ymdhsYMDHS".contains(c)) && !bare.chars().any(|c| "#0?".contains(c));
+    if dateish {
+        // Formula.js writes any Date as its ISO date, whatever the code.
+        return match serial_to_ms(n) {
+            Some(ms) => V::str(&iso_date(ms)),
+            None => throw(sol_error("#VALUE!", "Invalid time value")),
+        };
+    }
+    fx_text_number(n, &f)
+}
+
+/// `/^0(?:\.(0+))?E([+-])(0+)$/i`: the fraction's zero count and the exponent's.
+fn sci_code(f: &str) -> Option<(usize, bool, usize)> {
+    let b = f.as_bytes();
+    if b.first() != Some(&b'0') {
+        return None;
+    }
+    let mut i = 1;
+    let mut frac = 0;
+    if b.get(i) == Some(&b'.') {
+        let z = b[i + 1..].iter().take_while(|&&c| c == b'0').count();
+        if z == 0 {
+            return None;
+        }
+        frac = z;
+        i += 1 + z;
+    }
+    if !matches!(b.get(i), Some(b'E' | b'e')) || !matches!(b.get(i + 1), Some(b'+' | b'-')) {
+        return None;
+    }
+    let rest = &b[i + 2..];
+    (!rest.is_empty() && rest.iter().all(|&c| c == b'0')).then_some((frac, true, rest.len()))
+}
+
+/// `f.replace(/"[^"]*"/g, "")`.
+fn strip_quoted(f: &str) -> String {
+    let mut out = String::with_capacity(f.len());
+    let mut rest = f;
+    while let Some(at) = rest.find('"') {
+        match rest[at + 1..].find('"') {
+            Some(close) => {
+                out.push_str(&rest[..at]);
+                rest = &rest[at + 1 + close + 1..];
+            }
+            None => break,
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// `new Date(ms).toISOString().slice(0, 10)`.
+fn iso_date(ms: f64) -> String {
+    let p = parts_of_ms(ms);
+    let year = if (0..=9999).contains(&p.year) {
+        format!("{:04}", p.year)
+    } else {
+        format!("{}{:06}", if p.year < 0 { "-" } else { "+" }, p.year.abs())
+    };
+    let full = format!("{year}-{:02}-{:02}", p.month, p.day);
+    full.chars().take(10).collect()
+}
+
+/// Formula.js's TEXT on a number: `$` and `%` read, the zeros after the point counted, then FIXED.
+fn fx_text_number(n: f64, f: &str) -> V {
+    let currency = if f.starts_with('$') { "$" } else { "" };
+    let percent = f.ends_with('%');
+    let code: String = f.chars().filter(|&c| c != '%' && c != '$').collect();
+    let places = match code.split('.').nth(1) {
+        Some(after) => match after.chars().filter(|&c| c == '0').count() {
+            0 => return throw(sol_error("#VALUE!", "Cannot read properties of null (reading 'length')")),
+            z => z as f64,
+        },
+        None => 0.0,
+    };
+    let no_commas = !code.contains(',');
+    let n = if percent { n * 100.0 } else { n };
+    let Some(fixed) = crate::jsnum::to_fixed(n, places) else {
+        return throw(sol_error("#VALUE!", "toFixed() digits argument must be between 0 and 100"));
+    };
+    let fixed = if no_commas { fixed } else { group_thousands(&fixed) };
+    let mut out = match fixed.strip_prefix('-') {
+        Some(rest) => format!("-{currency}{rest}"),
+        None => format!("{currency}{fixed}"),
+    };
+    if percent {
+        out.push('%');
+    }
+    V::str(&out)
+}
+
+/// `parts[0].replace(/\B(?=(\d{3})+$)/g, ",")` on the text before the first point.
+fn group_thousands(s: &str) -> String {
+    let (int, rest) = match s.find('.') {
+        Some(i) => (&s[..i], &s[i..]),
+        None => (s, ""),
+    };
+    let b = int.as_bytes();
+    let word = |c: u8| c.is_ascii_alphanumeric() || c == b'_';
+    let mut out = String::with_capacity(s.len() + int.len() / 3);
+    for i in 0..b.len() {
+        // A comma goes before position i when it isn't a word boundary and only whole groups of three digits follow.
+        let tail = &b[i..];
+        let boundary = i > 0 && word(b[i - 1]) != word(b[i]);
+        if i > 0 && !boundary && tail.len() % 3 == 0 && tail.iter().all(u8::is_ascii_digit) {
+            out.push(',');
+        }
+        out.push(b[i] as char);
+    }
+    out.push_str(rest);
+    out
 }
 
 /// `isTrue`: true, 1, or the text true or 1.
@@ -666,7 +1109,7 @@ fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
     let n = sorted.len() as f64;
     let i = if exc { p * (n + 1.0) - 1.0 } else { p * (n - 1.0) };
     let lo = i.floor();
-    let hi = if exc { js_min(n - 1.0, i.ceil()) } else { i.ceil() };
+    let hi = if exc { crate::jsnum::math_min(n - 1.0, i.ceil()) } else { i.ceil() };
     let at = |k: f64| (k >= 0.0 && k < n && k.fract() == 0.0).then(|| sorted[k as usize]);
     let t = i - lo;
     match (at(lo), at(hi)) {
@@ -678,10 +1121,6 @@ fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
     }
 }
 
-/// `Math.min` of two: a NaN wins, where `f64::min` drops it.
-fn js_min(a: f64, b: f64) -> f64 {
-    if a.is_nan() || b.is_nan() { f64::NAN } else { a.min(b) }
-}
 
 /// `guardFinite(undefined, inputs)`: not finite and not NaN, so it stands only beside an infinite input.
 fn finite_opt(r: Option<f64>, inputs: &[f64]) -> V {
@@ -986,6 +1425,56 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         "AVERAGE" => aggregate("avg", &nums_of(a)),
         "MEDIAN" => aggregate("median", &nums_of(a)),
+        "AVEDEV" | "GEOMEAN" | "HARMEAN" | "DEVSQ" | "SKEW" | "SKEW.P" | "KURT" | "PTP" | "IQR" | "MAD" | "SEM" | "CV" | "RMS" => {
+            let op = match name {
+                "SKEW.P" => "skew_p".to_string(),
+                other => other.to_lowercase(),
+            };
+            aggregate(&op, &nums_of(a))
+        }
+        "CORREL" | "PEARSON" => pearson(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), false),
+        "RSQ" => pearson(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), true),
+        "KENDALL" => kendall_tau(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
+        "COVAR" | "COVARIANCE.P" | "COVARIANCE.S" => {
+            covariance(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), name == "COVARIANCE.S")
+        }
+        "SLOPE" | "INTERCEPT" | "STEYX" => {
+            regression(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), name)
+        }
+        "RANK" | "RANK.EQ" | "RANK.AVG" => {
+            let order = arg(a, 2);
+            let o = if matches!(order, V::Null | V::Undef) { 0.0 } else { to_num(order) };
+            if o.is_nan() {
+                return value_err("RANK");
+            }
+            // `ref.filter` throws on anything but a list; leave that to the TS.
+            let V::List(refs) = arg(a, 1) else { return bail() };
+            excel_rank(to_num(arg(a, 0)), refs, name == "RANK.AVG", o != 0.0)
+        }
+        "TRIMMEAN" => {
+            // Text in the list would sort and add as text: leave anything but numbers to the TS.
+            let V::List(vals) = arg(a, 0) else { return bail() };
+            let mut nums = Vec::with_capacity(vals.len());
+            for v in vals.iter() {
+                let V::Num(x) = v else { return bail() };
+                nums.push(*x);
+            }
+            excel_trimmean(&nums, to_num(arg(a, 1)))
+        }
+        "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC" => {
+            let arr: Vec<V> = match arg(a, 0) {
+                V::List(items) => items.iter().flat_map(|v| match v {
+                    V::List(inner) => inner.as_ref().clone(),
+                    other => vec![other.clone()],
+                }).collect(),
+                V::Null | V::Undef => Vec::new(),
+                other => vec![other.clone()],
+            };
+            let sig = arg(a, 2);
+            let sig = if matches!(sig, V::Null | V::Undef) { 3.0 } else { to_num(sig).trunc() };
+            excel_percent_rank(&arr, to_num(arg(a, 1)), sig, name == "PERCENTRANK.EXC")
+        }
+        "GCD" | "LCM" => gcd_lcm(name == "GCD", &nums_of(a)),
         "LARGE" | "SMALL" => nth_extreme(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "LARGE"),
         "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" => {
             percentile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "PERCENTILE.EXC")
@@ -1495,6 +1984,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 l => pick(l),
             }
         }
+        "TEXT" => excel_text(arg(a, 0), arg(a, 1)),
         "SEARCH" => {
             let start = arg(a, 2);
             if !matches!(start, V::Null | V::Undef) {

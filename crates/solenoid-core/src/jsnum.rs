@@ -141,3 +141,129 @@ pub fn trunc_count(x: f64) -> usize {
         x.trunc() as usize
     }
 }
+
+/// `Math.min` of two: a NaN wins and -0 is below 0.
+pub fn math_min(a: f64, b: f64) -> f64 {
+    if a.is_nan() || b.is_nan() {
+        f64::NAN
+    } else if a == b {
+        if a.is_sign_negative() { a } else { b }
+    } else {
+        a.min(b)
+    }
+}
+
+/// `Math.max` of two: a NaN wins and 0 is above -0.
+pub fn math_max(a: f64, b: f64) -> f64 {
+    if a.is_nan() || b.is_nan() {
+        f64::NAN
+    } else if a == b {
+        if a.is_sign_positive() { a } else { b }
+    } else {
+        a.max(b)
+    }
+}
+
+/// `x.toFixed(f)`: None where JS throws (f past 100). An exact tie rounds up, where Rust's formatting rounds to even.
+pub fn to_fixed(x: f64, f: f64) -> Option<String> {
+    let f = if f.is_nan() { 0.0 } else { f.trunc() };
+    if !(0.0..=100.0).contains(&f) {
+        return None;
+    }
+    if !x.is_finite() || x.abs() >= 1e21 {
+        return Some(number_to_string(x));
+    }
+    let f = f as usize;
+    let neg = x < 0.0;
+    let a = x.abs();
+    let body = if is_tie(a, f as i32) {
+        // The exact expansion ends in a 5 one place past f: drop it and round the digits up.
+        let g = f + 1;
+        let mut digits = format!("{a:.g$}").into_bytes();
+        digits.pop();
+        if digits.last() == Some(&b'.') {
+            digits.pop();
+        }
+        increment_decimal(&mut digits);
+        String::from_utf8(digits).unwrap_or_default()
+    } else {
+        format!("{a:.f$}")
+    };
+    Some(if neg { format!("-{body}") } else { body })
+}
+
+/// Adds one in the last place of a plain decimal, carrying through nines and the point.
+fn increment_decimal(digits: &mut Vec<u8>) {
+    let mut i = digits.len();
+    while i > 0 {
+        i -= 1;
+        match digits[i] {
+            b'.' => continue,
+            b'9' => digits[i] = b'0',
+            d => {
+                digits[i] = d + 1;
+                return;
+            }
+        }
+    }
+    digits.insert(0, b'1');
+}
+
+/// Whether `a` (finite, at least 0) sits exactly halfway between two multiples of 10^-f.
+fn is_tie(a: f64, f: i32) -> bool {
+    if a == 0.0 {
+        return false;
+    }
+    let bits = a.to_bits();
+    let (exp_bits, frac) = ((bits >> 52) as i32, bits & ((1 << 52) - 1));
+    let (m, e) = if exp_bits == 0 { (frac, -1074) } else { (frac | (1 << 52), exp_bits - 1075) };
+    // a·10^f = m·5^f·2^(e+f): a tie when exactly one bit sits below the binary point.
+    let k = -(e + f);
+    f >= 0 && k >= 1 && m.trailing_zeros() as i32 == k - 1
+}
+
+/// `x.toExponential(d)`: None where JS throws (d past 100). Digits are exact, an exact tie rounding up.
+pub fn to_exponential(x: f64, d: f64) -> Option<String> {
+    let d = if d.is_nan() { 0.0 } else { d.trunc() };
+    if !x.is_finite() {
+        return Some(number_to_string(x));
+    }
+    if !(0.0..=100.0).contains(&d) {
+        return None;
+    }
+    let d = d as usize;
+    let neg = x < 0.0;
+    let a = x.abs();
+    let (digits, e) = if a == 0.0 {
+        (vec![b'0'; d + 1], 0)
+    } else {
+        // 800 significant digits hold any double's exact expansion.
+        let exact = format!("{a:.800e}");
+        let (m, ex) = exact.split_once('e').unwrap_or((&exact, "0"));
+        let all: Vec<u8> = m.bytes().filter(u8::is_ascii_digit).collect();
+        let mut kept = all[..=d].to_vec();
+        let mut e: i32 = ex.parse().unwrap_or(0);
+        if all[d + 1] >= b'5' {
+            let mut i = kept.len();
+            loop {
+                if i == 0 {
+                    kept.insert(0, b'1');
+                    kept.pop();
+                    e += 1;
+                    break;
+                }
+                i -= 1;
+                if kept[i] == b'9' {
+                    kept[i] = b'0';
+                } else {
+                    kept[i] += 1;
+                    break;
+                }
+            }
+        }
+        (kept, e)
+    };
+    let digits = String::from_utf8(digits).unwrap_or_default();
+    let mantissa = if d > 0 { format!("{}.{}", &digits[..1], &digits[1..]) } else { digits };
+    Some(format!("{}{mantissa}e{}{}", if neg { "-" } else { "" }, if e < 0 { "-" } else { "+" }, e.abs()))
+}

@@ -516,8 +516,10 @@ fn supported_at(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<
             let roles_ok = table.get(&up).is_some_and(|t| {
                 matches!(t.kind.as_str(), "handler" | "whole" | "range" | "broadcast") && t.roles.len() >= args.len()
             });
-            let lists = table.get(&up).is_some_and(|t| t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default" | "positional"));
-            let lifts = |i: usize| table.get(&up).is_some_and(|t| t.scalar.contains(&i));
+            let lists = table.get(&up).is_some_and(|t| t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default" | "positional" | "paired"));
+            // A list where one value goes lifts, and a lookup over a list spills: either answers a list, which only
+            // the TS's broadcast reads.
+            let lifts = |i: usize| table.get(&up).is_some_and(|t| t.scalar.contains(&i)) || (i == 0 && matches!(up.as_str(), "XLOOKUP" | "XMATCH"));
             is_ported(&up) && roles_ok && args.iter().enumerate().all(|(i, a)| supported_at(a, columns, sides, table, lists && !lifts(i)))
         }
     }
@@ -784,7 +786,11 @@ impl Row<'_> {
                                         other => other.clone(),
                                     };
                                 }
-                                items.iter().filter(|x| !matches!(x, V::Null)).cloned().collect()
+                                if t.prep == "paired" {
+                                    items.as_ref().clone()
+                                } else {
+                                    items.iter().filter(|x| !matches!(x, V::Null)).cloned().collect()
+                                }
                             } else {
                                 items.as_ref().clone()
                             };
@@ -794,6 +800,26 @@ impl Row<'_> {
                         other => {
                             flat.push(other.clone());
                             prepped.push(other.clone());
+                        }
+                    }
+                }
+                // RANGE_PAIRED: a row blank in any list drops from all of them.
+                if t.prep == "paired" {
+                    let lists: Vec<&Rc<Vec<V>>> = prepped.iter().filter_map(|v| if let V::List(l) = v { Some(l) } else { None }).collect();
+                    if let Some(n) = lists.iter().map(|l| l.len()).min() {
+                        let keep: Vec<usize> = (0..n).filter(|&i| !lists.iter().any(|l| matches!(l[i], V::Null))).collect();
+                        if keep.len() != n {
+                            prepped = prepped
+                                .into_iter()
+                                .map(|v| match v {
+                                    V::List(l) => V::List(Rc::new(keep.iter().map(|&i| l[i].clone()).collect())),
+                                    other => other,
+                                })
+                                .collect();
+                            flat = prepped.iter().flat_map(|v| match v {
+                                V::List(l) => l.as_ref().clone(),
+                                other => vec![other.clone()],
+                            }).collect();
                         }
                     }
                 }

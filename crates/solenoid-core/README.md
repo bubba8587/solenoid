@@ -16,7 +16,7 @@ Experimental, on the `solenoid/tsrs` branch. The method is borrowed from [tsrs](
 - The JavaScript the TS leans on implicitly also gets ported, because it decides answers:
   - `String(x)`, `Number(x)`, `trim` and UTF-16 string order, in `jsnum.rs`.
   - `Array.prototype.sort` that never panics on an inconsistent comparator, in `js_sort.rs`.
-  - `toPrecision`, in `unit_value.rs`.
+  - `toPrecision`, in `unit_value.rs`; `toFixed` and `toExponential`, exact ties rounding up, in `jsnum.rs`.
   - V8's `Math.exp`, `log`, `log10`, `log1p`, `pow`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `acosh`
     and `atanh`, in `fdlibm.rs`. These are fdlibm with V8's own tweaks, because
     the platform libm is off by an ulp on some inputs.
@@ -67,8 +67,8 @@ The Formula.js bodies (CEILING, FLOOR, MROUND, EVEN, ODD, SWITCH, REPLACE and th
 | Units, formats | Unit-blind, as Polars is: the TS lowers reading and unit scales into the op and restores metadata | `lowerForEngine`, `pivotUnits` |
 | Formula tokenizer and parser | Ported whole | 300k random strings, well-formed and broken, give the same tree |
 | Row formulas (computed columns): literals, `@column`, scalar side values, constants, every operator | Ported | 300k random computed columns match cells, messages and side sockets |
-| Formula functions | 149 ported. Logic: IF IFS AND OR NOT XOR CHOOSE SWITCH, the IFERROR family, the IS tests. Math: ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG LOG10 MOD POWER QUOTIENT PI SQRTPI DEGREES RADIANS CEILING(.MATH) FLOOR(.MATH) MROUND EVEN ODD. Trig: SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH ASINH ACOSH ATANH COT COTH ACOT ACOTH SEC SECH CSC CSCH. Aggregates: SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV(.S/.P) VAR(.S/.P) COUNT COUNTA COUNTBLANK. Order statistics: LARGE SMALL PERCENTILE(.INC/.EXC) QUARTILE(.INC/.EXC) MODE MODE.SNGL. Criteria: COUNTIF COUNTIFS SUMIFS AVERAGEIF AVERAGEIFS MINIFS MAXIFS, wildcards included. Lookups: XLOOKUP XMATCH (INDEX lowers a role the evaluator doesn't read). Text: LEN CONCAT CONCATENATE TEXTJOIN MID LEFT RIGHT REPLACE UPPER LOWER PROPER TRIM REPT SUBSTITUTE EXACT FIND SEARCH CHAR UNICHAR CODE UNICODE VALUE N T. Dates: DATE YEAR MONTH DAY HOUR MINUTE SECOND TIME DAYS DAYS360 DATEDIF YEARFRAC EOMONTH WEEKDAY WEEKNUM ISOWEEKNUM DATETRUNC FROMEPOCH TOEPOCH WORKDAY(.INTL) NETWORKDAYS(.INTL) | each body is checked directly against its JS one on random arguments; a formula calling anything else runs on the TS |
-| Whole-column refs (a bare column name, `[col]`) as a range function's argument: `@x / SUM(x)`, `MAX([x])`, `COUNTBLANK(b)`, `XLOOKUP(@id, id, price)` | Ported, with `prepRangeArgs`' error scan and blank drop, and a call that reads no `@` cell evaluated once | explicit cases plus the fuzzer |
+| Formula functions | 182 ported. Logic: IF IFS AND OR NOT XOR CHOOSE SWITCH, the IFERROR family, the IS tests. Math: ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG LOG10 MOD POWER QUOTIENT PI SQRTPI DEGREES RADIANS CEILING(.MATH) FLOOR(.MATH) MROUND EVEN ODD. Trig: SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH ASINH ACOSH ATANH COT COTH ACOT ACOTH SEC SECH CSC CSCH. Aggregates: SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV(.S/.P) VAR(.S/.P) COUNT COUNTA COUNTBLANK AVEDEV GEOMEAN HARMEAN DEVSQ SKEW(.P) KURT PTP IQR MAD SEM CV RMS GCD LCM. Paired: CORREL PEARSON RSQ KENDALL COVAR COVARIANCE.P/.S SLOPE INTERCEPT STEYX. Order statistics: LARGE SMALL PERCENTILE(.INC/.EXC) QUARTILE(.INC/.EXC) PERCENTRANK(.INC/.EXC) RANK(.EQ/.AVG) TRIMMEAN MODE MODE.SNGL. Criteria: COUNTIF COUNTIFS SUMIFS AVERAGEIF AVERAGEIFS MINIFS MAXIFS, wildcards included. Lookups: XLOOKUP XMATCH (INDEX lowers a role the evaluator doesn't read). Text: TEXT LEN CONCAT CONCATENATE TEXTJOIN MID LEFT RIGHT REPLACE UPPER LOWER PROPER TRIM REPT SUBSTITUTE EXACT FIND SEARCH CHAR UNICHAR CODE UNICODE VALUE N T. Dates: DATE YEAR MONTH DAY HOUR MINUTE SECOND TIME DAYS DAYS360 DATEDIF YEARFRAC EOMONTH WEEKDAY WEEKNUM ISOWEEKNUM DATETRUNC FROMEPOCH TOEPOCH WORKDAY(.INTL) NETWORKDAYS(.INTL) | each body is checked directly against its JS one on random arguments; a formula calling anything else runs on the TS |
+| Whole-column refs (a bare column name, `[col]`) as a range function's argument: `@x / SUM(x)`, `MAX([x])`, `COUNTBLANK(b)`, `XLOOKUP(@id, id, price)` | Ported, with `prepRangeArgs`' error scan, blank drop and row pairing, and a call that reads no `@` cell evaluated once | explicit cases plus the fuzzer |
 | Readings only chrono-node does (a criterion like `">=3-Apr-2026"`) | Bail: the row stops and the whole column runs on the TS (`bail()`) | explicit cases |
 | A whole column in an argument that takes one value (`LARGE(x, x)` lifts per item) | Not ported: `formulaCallTable` lowers those positions (`scalar`) and the support check sends them to the TS | |
 | Whole columns anywhere else (broadcast), lists and matrices, LAMBDA, complex numbers, units in formulas | Not ported: runs on the TS | |
@@ -125,6 +125,11 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   (a `1e400` cell) never finished. WORKDAY stepped a day at a time from its start, and past 2^53 a step doesn't move
   the day, so a start that was also a holiday never finished either. Both now refuse a date outside the years 1 to
   9999 with `#DOMAIN!`, as WORKDAY already did for its landing day (pinned in `datetimeParity.test.ts`).
+
+- **TEXT with a date code ignores the code.** The installed Formula.js writes any `Date` as
+  `toISOString().slice(0, 10)`, so `TEXT(@d, "mmm yyyy")` answers `2026-03-15`. `formulajs-divergences.md` says it
+  formats through the UTC getters, which isn't what the code does. The port keeps the TS answer; the fix belongs on
+  develop (route date codes through `formatDateSerial`).
 
 ## Follow-ups
 
