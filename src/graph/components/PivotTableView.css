@@ -161,7 +161,3 @@ thead .pivot-view__label--sticky { z-index: 3; }
   .pivot-view__label,
   .pivot-view__value { padding: 2px 6px; }
 }
-/* A phone: the header, the footer and an opened filter fit in the rest of the screen. */
-@media (max-width: 640px) {
-  .pivot-view__scroll { max-height: calc(100vh - 190px); max-height: calc(100dvh - 190px); }
-}

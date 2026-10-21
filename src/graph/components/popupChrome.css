@@ -185,6 +185,16 @@
   background: var(--group-color-dark, var(--border-strong));
 }
 
+/* ── Phone fit ──────────────────────────────────────────────────────────────── */
+/* A phone: a popup that opts in (`fitNarrow`) is a column capped at the screen. Its view takes the height its content needs and shrinks to fit, so no view stops short of the screen on a cap of its own; an editor that wants the room (the CSV block) asks for the whole screen and shrinks. Placed before the resize rules, which win once the grip sizes the card. */
+@media (max-width: 640px) {
+  .sol-popup--fitnarrow { display: flex; flex-direction: column; }
+  :where(.sol-popup--fitnarrow > :not(.sol-popup__scroll, .sol-popup__view)) { flex: none; }
+  .sol-popup--fitnarrow .sol-popup__scroll { flex: 0 1 auto; min-height: 0; max-height: none; }
+  .sol-popup--fitnarrow .sol-popup__view { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  :where(.sol-popup--fitnarrow .sol-popup__view > :not(.sol-popup__scroll)) { flex: none; }
+}
+
 /* ── Resize ─────────────────────────────────────────────────────────────────── */
 .sol-popup--sized {
   display: flex;

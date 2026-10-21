@@ -220,6 +220,7 @@ export function CubePopup() {
         else cubePopup.close();
       }}
       cardClassName="table-popup"
+      fitNarrow
       grouped={grouped}
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}

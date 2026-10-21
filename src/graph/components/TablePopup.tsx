@@ -1006,6 +1006,7 @@ export function TablePopup() {
       grouped={grouped}
       cardStyle={cardStyle}
       resizable={{ min: { w: 320, h: 220 } }}
+      fitNarrow
       headerExtra={<>
         {((view === "grid" && sortable && viewRows > 1) || view === "cards" || view === "pivot") && (
           <SearchField collapsible value={query} onChange={setQuery} placeholder="Filter" label="Filter rows" count={filtering && view !== "pivot" ? `${matchedOrder.length} of ${viewRows}` : undefined} />

@@ -767,7 +767,7 @@
    on screen beat bigger targets, and the popup takes the height a phone has. */
 @media (max-width: 640px) {
   .table-popup { width: calc(100vw - 16px); }
-  .table-popup__grid-scroll { max-height: 60vh; max-height: 60dvh; margin: 8px; }
+  .table-popup__grid-scroll { margin: 8px; }
   .table-popup__grid { font-size: 14px; }
   .table-popup__input {
     min-width: 52px;
@@ -793,11 +793,15 @@
   /* A header name is as wide as its text (the input's size), not the cell input's 52px floor, which is for values. */
   .table-popup__colhead-field { flex: 1 0 auto; }
   .table-popup__colhead-input { min-width: 0; width: auto; flex: 1 0 auto; font-size: 13px; padding: 3px 4px; }
-  .table-popup__csv { font-size: 14px; margin: 8px; width: calc(100% - 16px); min-height: 40vh; min-height: 40dvh; }
+  .table-popup__csv { font-size: 14px; margin: 8px; width: calc(100% - 16px); }
+  /* The CSV block is an editor: it asks for the whole screen and shrinks to what the header and footer leave. */
+  .sol-popup--fitnarrow .table-popup__csv { height: 100vh; height: 100dvh; }
+  .sol-popup--fitnarrow .table-popup__csvwrap { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .sol-popup--fitnarrow .table-popup__csvwrap .table-popup__csv--over { flex: 0 1 auto; min-height: 0; }
   .table-popup__csvwrap { margin: 8px; }
   .table-popup__csv--over { margin: 0; width: 100%; }
   .table-popup__csvmirror-inner { font-size: 14px; }
-  .table-popup__form-scroll { margin: 8px; max-height: 60vh; max-height: 60dvh; }
+  .table-popup__form-scroll { margin: 8px; }
   .table-popup__form { max-width: none; }
   .table-popup__footer { padding: 0 8px 8px; }
   /* Clear of the resize grip in the card's corner. */

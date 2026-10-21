@@ -37,6 +37,7 @@ export function PopupShell({
   pinNodeId,
   menuItems = [],
   resizable,
+  fitNarrow = false,
   children,
 }: {
   title: ReactNode;
@@ -49,6 +50,8 @@ export function PopupShell({
   pinNodeId?: string;
   menuItems?: PopupMenuItem[];
   resizable?: { min: PopupSize; initial?: PopupSize };
+  /** On a phone, a column capped at the screen whose view fits its content (popupChrome.css § Phone fit). */
+  fitNarrow?: boolean;
   children?: ReactNode;
 }) {
   useEscapeToClose(onEscape ?? onClose, true, { capture: true });
@@ -58,7 +61,7 @@ export function PopupShell({
   useHeaderHeightVar(headerRef);
   const [size, setSize] = useState<PopupSize | null>(resizable?.initial ?? null);
   const sized = !!resizable && !!size;
-  const cardClass = `sol-popup${cardClassName ? ` ${cardClassName}` : ""}${grouped ? " sol-popup--grouped" : ""}${sized ? " sol-popup--sized" : ""}`;
+  const cardClass = `sol-popup${cardClassName ? ` ${cardClassName}` : ""}${grouped ? " sol-popup--grouped" : ""}${sized ? " sol-popup--sized" : ""}${fitNarrow ? " sol-popup--fitnarrow" : ""}`;
   const style = sized ? { ...cardStyle, width: size.w, height: size.h } : cardStyle;
   return (
     <div className="sol-popup-overlay" onPointerDown={() => onClose()}>
