@@ -100,6 +100,13 @@ export function typedColumn(
   return { name, type, values };
 }
 
+/** Named lists as typed columns, as long as the longest (Frame from Lists). */
+export function frameFromLists(cols: ReadonlyArray<{ name: string; cells: ReadonlyArray<unknown>; known: FrameColType | null }>): FrameValue {
+  const length = Math.max(...cols.map((c) => c.cells.length));
+  const names = makeHeaders(cols.map((c) => c.name), cols.length);
+  return { __frame: true, columns: cols.map((c, i) => typedColumn(names[i], c.cells, length, c.known)) };
+}
+
 export function buildFrameTyped(
   matrix: ReadonlyArray<ReadonlyArray<unknown>>,
   names?: ReadonlyArray<string>,

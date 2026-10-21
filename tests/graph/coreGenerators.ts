@@ -106,7 +106,7 @@ export function gen(rand: () => number) {
     ...(rand() < 0.3 ? { asofTolerance: int(0, 3) } : {}),
     ...(rand() < 0.15 ? { rightKeyScale: pick([1, 1000, 0.001]), rightKeyOffset: pick([0, 273.15]) } : {}),
   });
-  return { frame, op, join, int };
+  return { frame, op, join, int, pick, cell, rand };
 }
 
 // FUZZ_RUNS and FUZZ_SEED widen a run by hand: `FUZZ_RUNS=200000 FUZZ_SEED=7 npx vitest run tests/graph/wasmEngine.test.ts`.

@@ -842,6 +842,24 @@ function cellsEqual(a: FrameCell, b: FrameCell): boolean {
   return a === b;
 }
 
+/** A summary as the core answers it: the five counts, the added and removed column names, and the PVM breakdown or null. */
+export function reconcileSummaryList(s: ReconcileSummary): unknown[] {
+  const p = s.pvm;
+  return [s.added, s.removed, s.changed, s.unchanged, s.skipped, s.addedColumns, s.removedColumns,
+    p ? [p.totalBefore, p.totalAfter, p.delta, p.price, p.volume, p.mix, p.excluded] : null];
+}
+
+export function reconcileSummaryFromList(l: unknown[]): ReconcileSummary {
+  const [added, removed, changed, unchanged, skipped, addedColumns, removedColumns, pvm] = l as
+    [number, number, number, number, number, string[], string[], number[] | null];
+  const s: ReconcileSummary = { added, removed, changed, unchanged, skipped, addedColumns, removedColumns };
+  if (pvm) {
+    const [totalBefore, totalAfter, delta, price, volume, mix, excluded] = pvm;
+    s.pvm = { totalBefore, totalAfter, delta, price, volume, mix, excluded };
+  }
+  return s;
+}
+
 export function reconcileFrames(
   left: FrameValue, right: FrameValue, opts: ReconcileOpts,
 ): { frame: FrameValue; summary: ReconcileSummary } {
@@ -1238,23 +1256,29 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
 // ─── Nest / Unnest (the flat ⟷ cube bridge) ───────────────────────────────────
 const cubeCellAt = (col: CubeColumn, i: number): CubeCell => (i < col.cells.length ? col.cells[i] : null);
 
-export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedName = "items"): CubeValue {
+/** Nest's grouping: the output names (the keys', then the nested column's) and each key tuple's rows, first seen first. */
+export function nestGroups(f: FrameValue, keyColumns: readonly string[], nestedName = "items"): { names: string[]; groups: number[][] } {
   const keyCols = keyColumns.map((n) => requireColumn(f, n));
-  const keySet = new Set(keyColumns);
-  const childCols = f.columns.filter((c) => !keySet.has(c.name));
   const buckets = new Map<string, number[]>();
-  const order: string[] = [];
   for (let i = 0; i < frameRowCount(f); i++) {
     const key = JSON.stringify(keyCols.map((c) => encodeCell(cellAt(c, i))));
     const rows = buckets.get(key);
-    if (rows) rows.push(i); else { buckets.set(key, [i]); order.push(key); }
+    if (rows) rows.push(i); else buckets.set(key, [i]);
   }
-  const names = makeHeaders([...keyColumns, nestedName.trim() || "items"], keyColumns.length + 1);
+  return { names: makeHeaders([...keyColumns, nestedName.trim() || "items"], keyColumns.length + 1), groups: [...buckets.values()] };
+}
+
+export function nestFrame(
+  f: FrameValue, keyColumns: readonly string[], nestedName = "items",
+  { names, groups } = nestGroups(f, keyColumns, nestedName),
+): CubeValue {
+  const keyCols = keyColumns.map((n) => requireColumn(f, n));
+  const keySet = new Set(keyColumns);
+  const childCols = f.columns.filter((c) => !keySet.has(c.name));
   const keyOut: CubeColumn[] = keyCols.map((c, k) => ({
-    name: names[k], type: c.type, ...(c.format ? { format: c.format } : {}), cells: order.map((key) => cellAt(c, buckets.get(key)![0])),
+    name: names[k], type: c.type, ...(c.format ? { format: c.format } : {}), cells: groups.map((rows) => cellAt(c, rows[0])),
   }));
-  const nestedCells: CubeCell[] = order.map((key) => {
-    const rowIdx = buckets.get(key)!;
+  const nestedCells: CubeCell[] = groups.map((rowIdx) => {
     return {
       __frame: true,
       columns: childCols.map((c) => ({

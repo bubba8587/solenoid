@@ -23,7 +23,7 @@ import { isSolError, solError, SEES_ERRORS, type SolError } from "../errorValue"
 import { logicalOrTypeError } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
-  buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
+  buildFrame, buildFrameTyped, frameFromLists, colTypeForSocket,
   splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
   formatFrameCell, isCubeValue, isFrameValue, inferColumn, frameToCube,
@@ -35,7 +35,7 @@ import {
   decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, choiceLadder,
   promoteHeaders, demoteHeaders,
   lookupCell, lookupRowIndex,
-  frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
+  frameRowAt, cubeRowAt, asLookupSource, reconcileFrames, reconcileSummaryFromList,
   VALUELESS_FILTER_OPS, LIST_FILTER_OPS,
   sortCube, distinctCube, sliceCube, filterCube, selectCubeColumns, windowCube,
   type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
@@ -1040,9 +1040,17 @@ export class NestNode extends ClassicPreset.Node {
     const nameRaw = readInput(inputs.nestedName, this.stringLiterals.nestedName ?? "items");
     if (!f || keys === null || !keys.length || nameRaw === null) { this.cachedResult = null; return { cube: null }; }
     const name = nameRaw.trim() || "items";
-    this.cachedResult = runVerb(() => nestFrame(f, keys, name));
+    this.cachedResult = runVerb(() => nestFrame(f, keys, name, nestGroupsOnCore(f, keys, name)));
     return { cube: this.cachedResult };
   }
+}
+
+/** Nest's grouping on the core; the TS assembles the cube, carrying units and formats. */
+function nestGroupsOnCore(f: FrameValue, keys: readonly string[], name: string): { names: string[]; groups: number[][] } | undefined {
+  const r = frameFnOnCore("nestGroups", [f], [keys, name]);
+  if (!r || "frame" in r) return undefined;
+  const [names, groups] = r.value as [string[], number[][]];
+  return { names, groups };
 }
 
 export class UnnestNode extends ClassicPreset.Node {
@@ -1474,6 +1482,12 @@ function headersOnCore(f: FrameValue, promote: boolean): FrameValue | null {
   if (!r || !("frame" in r)) return null;
   if (!promote || r.frame.columns.length !== f.columns.length) return r.frame;
   return { __frame: true, columns: r.frame.columns.map((c, i) => ({ ...f.columns[i], name: c.name, values: c.values })) };
+}
+
+/** A frame function's answer on the core, where it answers a frame that needs nothing carried over. */
+function frameOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = []): FrameValue | null {
+  const r = frameFnOnCore(name, frames, args);
+  return r && "frame" in r ? r.frame : null;
 }
 
 export type BlankRowMode = "all" | "any";
@@ -2139,7 +2153,8 @@ export class ReconcileNode extends ClassicPreset.Node {
       this.cachedResult = null; this.cachedSummary = "";
       return { frame: null, summary: "" };
     }
-    const outcome = runVerb(() => reconcileFrames(left, right, { leftKey: key, rightKey: key, priceColumn, qtyColumn }));
+    const outcome = runVerb(() => reconcileOnCore(left, right, key, priceColumn, qtyColumn)
+      ?? reconcileFrames(left, right, { leftKey: key, rightKey: key, priceColumn, qtyColumn }));
     if (isSolError(outcome)) {
       this.cachedResult = outcome; this.cachedSummary = "";
       return { frame: outcome, summary: outcome };
@@ -2148,6 +2163,12 @@ export class ReconcileNode extends ClassicPreset.Node {
     this.cachedSummary = summarizeReconcile(outcome.summary);
     return { frame: outcome.frame, summary: this.cachedSummary };
   }
+}
+
+function reconcileOnCore(left: FrameValue, right: FrameValue, key: string, priceColumn?: string, qtyColumn?: string):
+  { frame: FrameValue; summary: ReconcileSummary } | null {
+  const r = frameFnOnCore("reconcileFrames", [left, right], [key, key, priceColumn, qtyColumn]);
+  return r && "frame" in r ? { frame: r.frame, summary: reconcileSummaryFromList(r.value as unknown[]) } : null;
 }
 
 // Markdown without headings, so it reads as plain text in a hero box and still renders through a markdown Format Controller.
@@ -2202,14 +2223,31 @@ export class BuildFrameNode extends ClassicPreset.Node {
     if (!m || m.length === 0) { this.cachedResult = null; return { frame: null }; }
     const known = colTypeForSocket(dt);
     const allNumeric = known === null && m.every((row) => row.every((c) => c === null || isSolError(c) || typeof c === "number"));
-    this.cachedResult = known === "number" || allNumeric
-      ? buildFrame(m as number[][], headers)
-      : buildFrameTyped(m, headers, known);
+    const typed = !(known === "number" || allNumeric);
+    this.cachedResult = buildFrameOnCore(m, headers, typed, known)
+      ?? (typed ? buildFrameTyped(m, headers, known) : buildFrame(m as number[][], headers));
     this._builtFromMatrix = rawMatrix;
     this._builtFromHeaders = headers;
     this._builtFromType = dt;
     return { frame: this.cachedResult };
   }
+}
+
+/** Build Frame on the core: the headers' units are parsed off here and tagged back on (a typed column takes one only
+ *  as a number column). */
+function buildFrameOnCore(m: ReadonlyArray<ReadonlyArray<unknown>>, names: readonly string[] | undefined, typed: boolean, known: FrameColType | null):
+  FrameValue | null {
+  const parsed = (names ?? []).map((n) => parseColumnUnitFromHeader(n));
+  const clean = parsed.map((p) => p.clean);
+  const r = frameOnCore(typed ? "buildFrameTyped" : "buildFrame", [], typed ? [m, clean, known] : [m, clean]);
+  if (!r) return null;
+  return {
+    __frame: true,
+    columns: r.columns.map((c, j) => {
+      const unit = parsed[j]?.unit;
+      return unit && (!typed || c.type === "number") ? { ...c, unit } : c;
+    }),
+  };
 }
 
 // ─── FRAME FROM LISTS ─────────────────────────────────────────────────────────
@@ -2295,12 +2333,8 @@ export class FrameFromListsNode extends ClassicPreset.Node {
     if (this.cachedResult && sig.length === this._sig.length && sig.every((v, i) => Object.is(v, this._sig[i]))) {
       return { frame: this.cachedResult };
     }
-    const length = Math.max(...cols.map((c) => c.cells.length));
-    const names = makeHeaders(cols.map((c) => c.name), cols.length);
-    this.cachedResult = {
-      __frame: true,
-      columns: cols.map((c, i) => typedColumn(names[i], c.cells, length, c.known)),
-    };
+    this.cachedResult = frameOnCore("frameFromLists", [], [cols.map((c) => c.name), cols.map((c) => c.cells), cols.map((c) => c.known)])
+      ?? frameFromLists(cols);
     this._sig = sig;
     return { frame: this.cachedResult };
   }
@@ -2367,7 +2401,8 @@ export class SplitFrameNode extends ClassicPreset.Node {
     }
 
     const sub: FrameValue = { __frame: true, columns: cols };
-    const { matrix } = splitFrame(sub);
+    const r = frameFnOnCore("splitFrame", [sub]);
+    const matrix = r && !("frame" in r) ? (r.value as [number[][] | null, string[]])[0] : splitFrame(sub).matrix;
     this.cachedMatrix = matrix;
     this.cachedHeaders = headers;
     this.cachedMixed = frameHasTextColumns(sub);
@@ -2450,7 +2485,7 @@ export class GetColumnNode extends ClassicPreset.Node {
         return { values: this.readColumn(col) };
       })() as unknown as { values: GetColumnValues };
     }
-    const col = getColumn(fr, name);
+    const col = columnOnCore(fr, name);
     if (!col) { this.cachedResult = null; return { values: null }; }
     return { values: this.readColumn(col) };
   }
@@ -2490,6 +2525,30 @@ export class GetColumnNode extends ClassicPreset.Node {
     this.cachedResult = out;
     return out;
   }
+}
+
+/** `getColumn` with the name resolved on the core, which reads the names alone. */
+function columnOnCore(f: FrameValue, name: string): FrameColumn | null {
+  const r = frameFnOnCore("getColumn", [namesOnly(f)], [name]);
+  if (!r || "frame" in r) return getColumn(f, name);
+  return typeof r.value === "number" ? f.columns[r.value] : null;
+}
+
+const namesOnly = (f: FrameValue): FrameValue => ({ __frame: true, columns: f.columns.map((c) => ({ name: c.name, type: c.type, values: [] })) });
+
+/** `addColumn` with the column's place and name decided on the core, which reads the names alone; the header's unit is
+ *  parsed off here and tagged on a number column. */
+function addColumnOnCore(f: FrameValue, name: string, values: FrameCell[], type: FrameColType): FrameValue | null {
+  const { clean, unit } = parseColumnUnitFromHeader(name);
+  const r = frameFnOnCore("addColumn", [namesOnly(f)], [clean, [], type]);
+  if (!r || !("frame" in r) || typeof r.value !== "number") return null;
+  const at = r.value;
+  const unitTag = unit && type === "number" ? { unit } : {};
+  const columns = f.columns.slice();
+  columns[at] = at < f.columns.length
+    ? { ...f.columns[at], type, values, raw: undefined, ...unitTag }
+    : { name: r.frame.columns[at].name, type, values, ...unitTag };
+  return { __frame: true, columns };
 }
 
 // ─── ADD COLUMN ────────────────────────────────────────────────────────────────
@@ -2553,7 +2612,7 @@ export class AddColumnNode extends ClassicPreset.Node {
     const padded: FrameCell[] = Array.from({ length: rows }, (_, i) => (i < values.length ? values[i] : null));
     this.cachedResult = isCube
       ? cubeWithColumn(rawF as CubeValue, name, padded, colType, "")
-      : addColumn(f!, name, padded, colType);
+      : addColumnOnCore(f!, name, padded, colType) ?? addColumn(f!, name, padded, colType);
     return { frame: this.cachedResult };
   }
 }
@@ -2839,8 +2898,9 @@ export class GetRowNode extends ClassicPreset.Node {
     }
     const f = isFrameValue(raw) ? raw : widenToFrame(raw);
     if (i < 0 || i >= frameRowCount(f)) { this.cachedResult = null; return { frame: null }; }
-    const columns: FrameColumn[] = f.columns.map((c) => ({
-      ...c, values: [c.values[i] ?? null], raw: c.raw ? [c.raw[i] ?? ""] : undefined,
+    const row = frameOnCore("frameRowAt", [f], [i]);
+    const columns: FrameColumn[] = f.columns.map((c, j) => ({
+      ...c, values: row ? row.columns[j].values : [c.values[i] ?? null], raw: c.raw ? [c.raw[i] ?? ""] : undefined,
     }));
     this.cachedResult = { __frame: true, columns };
     return { frame: this.cachedResult };
@@ -2901,27 +2961,50 @@ export class XLookupNode extends ClassicPreset.Node {
     const srcCube = isCubeValue(src) ? src : frameToCube(src);
     const wholeRow = retCol === "*";
     const fb = fallbackRaw.trim();
-    const matchOne = (lookupValue: unknown): CubeCell | null => {
-      const lookup = lookupValue == null ? "" : String(lookupValue).trim();
-      if (lookup === "") return null;
-      let cell: CubeCell | undefined;
-      if (wholeRow) {
-        const idx = lookupRowIndex(srcCube, inCol, lookup, this.matchMode, this.searchMode);
-        cell = idx < 0 ? undefined : (isCubeValue(src) ? cubeRowAt(src, idx) : frameRowAt(src, idx));
-      } else {
-        cell = lookupCell(srcCube, inCol, retCol, lookup, this.matchMode, this.searchMode);
-      }
-      if (cell !== undefined) return cell;
-      if (fb === "") return solError("#N/A", "No row matched the lookup value");
-      const num = Number(fb);
-      return Number.isNaN(num) ? fb : num;
-    };
-    const result = runVerb<CubeCell | null>(() =>
-      Array.isArray(lookupRaw) ? lookupRaw.map(matchOne) : matchOne(lookupRaw),
-    );
+    const asText = (v: unknown): string => (v == null ? "" : String(v).trim());
+    const result = runVerb<CubeCell | null>(() => {
+      const lookups = (Array.isArray(lookupRaw) ? lookupRaw : [lookupRaw]).map(asText).filter((t) => t !== "");
+      const found = lookupOnCore(src, inCol, wholeRow ? null : retCol, lookups, this.matchMode, this.searchMode);
+      let k = 0;
+      const matchOne = (lookupValue: unknown): CubeCell | null => {
+        const lookup = asText(lookupValue);
+        if (lookup === "") return null;
+        const hit = found?.[k++];
+        let cell: CubeCell | undefined;
+        if (wholeRow) {
+          const idx = found ? (hit as number) : lookupRowIndex(srcCube, inCol, lookup, this.matchMode, this.searchMode);
+          cell = idx < 0 ? undefined : (isCubeValue(src) ? cubeRowAt(src, idx) : frameRowAt(src, idx));
+        } else {
+          cell = found ? (hit as CubeCell | undefined) : lookupCell(srcCube, inCol, retCol, lookup, this.matchMode, this.searchMode);
+        }
+        if (cell !== undefined) return cell;
+        if (fb === "") return solError("#N/A", "No row matched the lookup value");
+        const num = Number(fb);
+        return Number.isNaN(num) ? fb : num;
+      };
+      return Array.isArray(lookupRaw) ? lookupRaw.map(matchOne) : matchOne(lookupRaw);
+    });
     this.cachedResult = result;
     return { value: result };
   }
+}
+
+/** XLOOKUP's matches over a frame on the core, one upload for every lookup: each row index (`retCol` null) or Return
+ *  cell (undefined where nothing matched), the Return column's unit tagged back on. Null leaves them to the TS, as
+ *  for an In column with a unit, whose cube cells carry it. */
+function lookupOnCore(
+  src: FrameValue | CubeValue, inCol: string, retCol: string | null, lookups: string[],
+  matchMode: LookupMatchMode, searchMode: LookupSearchMode,
+): unknown[] | null {
+  if (!isFrameValue(src) || lookups.length === 0 || src.columns.find((c) => c.name === inCol)?.unit) return null;
+  const f: FrameValue = { __frame: true, columns: src.columns.filter((c) => c.name === inCol || c.name === retCol) };
+  const r = retCol === null
+    ? frameFnOnCore("lookupRowIndex", [f], [inCol, lookups, matchMode, searchMode])
+    : frameFnOnCore("lookupCell", [f], [inCol, retCol, lookups, matchMode, searchMode]);
+  if (!r || "frame" in r) return null;
+  const out = r.value as unknown[];
+  const unit = retCol === null ? undefined : src.columns.find((c) => c.name === retCol)?.unit;
+  return unit ? out.map((v) => (v === undefined ? v : tagFrameCellUnit(v as FrameCell, unit))) : out;
 }
 
 // ─── DESCRIBE ──────────────────────────────────────────────────────────────────
@@ -2947,7 +3030,7 @@ export class DescribeNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => describeFrame(f));
+    this.cachedResult = runVerb(() => frameOnCore("describeFrame", [f]) ?? describeFrame(f));
     return { frame: this.cachedResult };
   }
 }
@@ -2985,7 +3068,7 @@ export class CorrMatrixNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => correlationMatrix(f, this.method));
+    this.cachedResult = runVerb(() => frameOnCore("correlationMatrix", [f], [this.method]) ?? correlationMatrix(f, this.method));
     return { frame: this.cachedResult };
   }
 }

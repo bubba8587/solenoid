@@ -161,6 +161,11 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             match out {
                 crate::frame_fns::FrameOut::Frame(f) => Ok(json!({ "handle": register(f) })),
                 crate::frame_fns::FrameOut::Value(v) => Ok(json!({ "value": serde_json::to_value(CallReply::Value(v)).expect("a value serializes") })),
+                crate::frame_fns::FrameOut::FrameAnd(f, v) => Ok(json!({
+                    "handle": register(f),
+                    "value": serde_json::to_value(CallReply::Value(v)).expect("a value serializes"),
+                })),
+                crate::frame_fns::FrameOut::Error(e) => Ok(json!({ "error": { "code": e.code, "message": e.message } })),
                 crate::frame_fns::FrameOut::Bail => Ok(json!({ "bail": true })),
             }
         }

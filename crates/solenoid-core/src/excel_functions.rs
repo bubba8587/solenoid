@@ -446,7 +446,7 @@ fn median_of(arr: &[f64]) -> f64 {
     if s.len().is_multiple_of(2) { (s[m - 1] + s[m]) / 2.0 } else { s[m] }
 }
 
-fn aggregate(op: &str, arr: &[f64]) -> V {
+pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
     let to_v = |c: FrameCell| match c {
         FrameCell::Num(n) => V::Num(n),
         FrameCell::Err(e) => V::Err(e),
@@ -623,7 +623,7 @@ fn js_substr(s: &[u16], start: f64, len: Option<f64>) -> Vec<u16> {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-enum MatchMode {
+pub(crate) enum MatchMode {
     Exact,
     NextLarger,
     NextSmaller,
@@ -674,7 +674,7 @@ fn lookup_eq(a: &V, b: &V) -> bool {
 }
 
 /// `xmatchIndex` (listOps.ts): None where it answers -1.
-fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) -> Result<Option<usize>, V> {
+pub(crate) fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) -> Result<Option<usize>, V> {
     let n = keys.len();
     let at = |s: usize| if last { n - 1 - s } else { s };
     if mm == MatchMode::Exact {
@@ -713,7 +713,7 @@ fn finite_of(r: f64, xs: &[f64], ys: &[f64]) -> V {
 }
 
 /// `pearson` (statsOps.ts).
-fn pearson(xs: &[f64], ys: &[f64], rsq: bool) -> V {
+pub(crate) fn pearson(xs: &[f64], ys: &[f64], rsq: bool) -> V {
     let n = xs.len().min(ys.len());
     if n < 2 {
         return V::Null;
@@ -810,7 +810,7 @@ fn kendall_counts(xs: &[f64], ys: &[f64]) -> (f64, f64, f64, f64) {
 }
 
 /// `kendallTau` (statsOps.ts).
-fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
+pub(crate) fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
     let n = xs.len().min(ys.len());
     if n < 2 {
         return V::Null;
@@ -845,7 +845,7 @@ fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
 }
 
 /// `covariance` (statsOps.ts).
-fn covariance(xs: &[f64], ys: &[f64], sample: bool) -> V {
+pub(crate) fn covariance(xs: &[f64], ys: &[f64], sample: bool) -> V {
     let n = xs.len().min(ys.len());
     if n < 2 {
         return V::Null;
@@ -2080,7 +2080,7 @@ fn sorted_nums(arr: &[f64]) -> Vec<f64> {
 
 /// `percentileOf`. A NaN `p` indexes past the array: both ends read `undefined`, which are equal, so it answers
 /// `undefined` (None); one `undefined` end makes the blend NaN.
-fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
+pub(crate) fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
     let n = sorted.len() as f64;
     let i = if exc { p * (n + 1.0) - 1.0 } else { p * (n - 1.0) };
     let lo = i.floor();
@@ -3978,7 +3978,7 @@ pub(crate) fn average_ranks(arr: &[f64]) -> Vec<f64> {
 }
 
 /// `spearman` (statsOps.ts).
-fn spearman(xs: &[f64], ys: &[f64]) -> V {
+pub(crate) fn spearman(xs: &[f64], ys: &[f64]) -> V {
     let n = xs.len().min(ys.len());
     if n < 2 {
         return V::Null;
