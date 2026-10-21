@@ -1,6 +1,6 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
 //! Port of the planner and model cards' computations: the Payoff Planner (`payoffFrame` over `payoffOps.ts`), Group
-//! Cost Settle's totals (`settleFrame` over `settleOps.ts`), the amortization schedule (`financeOps.ts`), and K-Means,
+//! Cost Settle's totals and ledger (`settleFrame`, `settleLedgerCube` over `settleOps.ts`), the amortization schedule (`financeOps.ts`), and K-Means,
 //! PCA and logistic regression (`mlOps.ts`) with the frames their cards make.
 
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, MS_PER_DAY};
@@ -8,7 +8,7 @@ use crate::decision::sort_by_num;
 use crate::error_value::{sol_error, SolError};
 use crate::fdlibm;
 use crate::frame::{frame_row_count, FrameCell, FrameColType, FrameColumn, FrameValue};
-use crate::jsnum::{js_lower, js_string, js_trim, math_max, math_min, math_round};
+use crate::jsnum::{is_js_space, js_lower, js_string, js_trim, math_max, math_min, math_round, string_to_number};
 
 type Res<T> = Result<T, SolError>;
 
@@ -283,6 +283,120 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
             text_col("To", transfers.iter().map(|t| t.to.clone())),
             num_col("Amount", transfers.iter().map(|t| t.amount)),
             text_col(name_col.map_or("Person".to_string(), |c| f.columns[c].name.clone()), people.iter().map(|p| p.0.clone())),
+            num_col("Paid", paid_r),
+            num_col("Owes", diff.iter().map(|&d| if d > 0.0 { d } else { 0.0 })),
+            num_col("Owed", diff.iter().map(|&d| if d < 0.0 { d } else { 0.0 })),
+            num_col("Net", net),
+        ],
+    })
+}
+
+// ─── Group Cost Settle (transactions) ───────────────────────────────────────────
+
+/// `settleLedgerCube` over a ledger's scalar cells: the transfers and the net table side by side, as `settle_frame`
+/// answers. A column in `unit_cols` held unit cells: its numbers are amounts and never name anyone.
+pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
+    let amount_col = by_name(f, &["amount", "cost", "total", "price", "spend"]);
+    let payer_col = by_name(f, &["paid by", "paidby", "payer", "paid", "by", "who paid", "from"]);
+    let for_col = by_name(f, &["for", "split", "split between", "participants", "shared", "shared by", "shared with", "with", "beneficiaries", "owed by"]);
+    let Some(amount_col) = amount_col else {
+        return Err(sol_error("#VALUE!", "Group Cost Settle (Transactions) needs an Amount column"));
+    };
+    let Some(payer_col) = payer_col else {
+        return Err(sol_error("#VALUE!", "Group Cost Settle (Transactions) needs a Paid by column"));
+    };
+    let unit = |c: usize| unit_cols.iter().any(|n| n == &f.columns[c].name);
+    let mut canon: Vec<(String, String)> = Vec::new();
+    let mut names_of = |c: usize, i: usize| -> Vec<String> {
+        let cell = f.columns[c].cell_at(i);
+        if matches!(cell, FrameCell::Null) || unit(c) {
+            return Vec::new();
+        }
+        js_string(cell)
+            .split(',')
+            .map(js_trim)
+            .filter(|s| !s.is_empty())
+            .map(|raw| {
+                let k = js_lower(raw).into_owned();
+                match canon.iter().find(|x| x.0 == k) {
+                    Some(x) => x.1.clone(),
+                    None => {
+                        canon.push((k, raw.to_string()));
+                        raw.to_string()
+                    }
+                }
+            })
+            .collect()
+    };
+    let amount_of = |i: usize| -> f64 {
+        let n = match f.columns[amount_col].cell_at(i) {
+            FrameCell::Num(n) => *n,
+            FrameCell::Str(s) => {
+                let kept: String = s.chars().filter(|&ch| !matches!(ch, ',' | '$' | '£' | '€') && !is_js_space(ch)).collect();
+                string_to_number(&kept)
+            }
+            _ => 0.0,
+        };
+        if n.is_finite() { n } else { 0.0 }
+    };
+    let mut expenses: Vec<(f64, Vec<String>, Option<Vec<String>>)> = Vec::new();
+    for i in 0..frame_row_count(f) {
+        let amount = amount_of(i);
+        let payers = names_of(payer_col, i);
+        if payers.is_empty() {
+            continue;
+        }
+        let named = for_col.map_or_else(Vec::new, |c| names_of(c, i));
+        expenses.push((amount, payers, if named.is_empty() { None } else { Some(named) }));
+    }
+    // settleLedger
+    let mut order: Vec<String> = Vec::new();
+    let see = |order: &mut Vec<String>, name: &str| -> usize {
+        order.iter().position(|n| n == name).unwrap_or_else(|| {
+            order.push(name.to_string());
+            order.len() - 1
+        })
+    };
+    for e in &expenses {
+        for p in e.1.iter().chain(e.2.iter().flatten()) {
+            see(&mut order, p);
+        }
+    }
+    let uniq = |xs: &[String]| {
+        let mut out: Vec<String> = Vec::new();
+        for x in xs {
+            if !out.contains(x) {
+                out.push(x.clone());
+            }
+        }
+        out
+    };
+    let mut paid = vec![0.0; order.len()];
+    let mut shares = vec![0.0; order.len()];
+    for e in &expenses {
+        let payers = uniq(&e.1);
+        let bens = uniq(e.2.as_deref().unwrap_or(&order));
+        if payers.is_empty() || bens.is_empty() {
+            continue;
+        }
+        for p in &payers {
+            paid[see(&mut order, p)] += e.0 / payers.len() as f64;
+        }
+        for b in &bens {
+            shares[see(&mut order, b)] += e.0 / bens.len() as f64;
+        }
+    }
+    let transfers = min_transfers(&order.iter().enumerate().map(|(i, n)| (n.clone(), paid[i] - shares[i])).collect::<Vec<_>>());
+    // settleNetFrame
+    let paid_r: Vec<f64> = paid.iter().map(|&p| round2(round2(p))).collect();
+    let net: Vec<f64> = shares.iter().map(|&s| round2(round2(s))).collect();
+    let diff: Vec<f64> = net.iter().zip(&paid_r).map(|(n, p)| round2(n - p)).collect();
+    Ok(FrameValue {
+        columns: vec![
+            text_col("From", transfers.iter().map(|t| t.from.clone())),
+            text_col("To", transfers.iter().map(|t| t.to.clone())),
+            num_col("Amount", transfers.iter().map(|t| t.amount)),
+            text_col("Person", order),
             num_col("Paid", paid_r),
             num_col("Owes", diff.iter().map(|&d| if d > 0.0 { d } else { 0.0 })),
             num_col("Owed", diff.iter().map(|&d| if d < 0.0 { d } else { 0.0 })),

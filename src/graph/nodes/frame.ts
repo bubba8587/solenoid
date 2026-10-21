@@ -2010,7 +2010,7 @@ export class SettleNode extends ClassicPreset.Node {
     if (this.mode === "transactions") {
       const cube = isCubeValue(raw) ? raw : isFrameValue(raw) ? frameToCube(raw) : null;
       if (!cube) return none();
-      return emit(runVerb(() => settleLedgerCube(cube)));
+      return emit(runVerb(() => settleLedgerOnCore(cube) ?? settleLedgerCube(cube)));
     }
     const f = isFrameValue(raw) ? raw : isCubeValue(raw) ? cubeToScalarFrame(raw) : null;
     if (!f) return none();
@@ -2018,10 +2018,40 @@ export class SettleNode extends ClassicPreset.Node {
   }
 }
 
+/** A ledger settled on the core over its scalar cells; a column of unit cells crosses as their numbers, named so they
+ *  read as amounts only. A list or a column mixing units with other cells stays with the TS. */
+function settleLedgerOnCore(cube: CubeValue): { transfers: FrameValue; net: FrameValue } | null {
+  const units: string[] = [];
+  const columns: FrameColumn[] = [];
+  for (const c of cube.columns) {
+    const unit = c.cells.some(isUnitCell);
+    if (unit) {
+      if (!c.cells.every((v) => v == null || isUnitCell(v))) return null;
+      units.push(c.name);
+    }
+    const values: FrameCell[] = [];
+    for (const v of c.cells) {
+      if (Array.isArray(v)) return null;
+      values.push(isUnitCell(v) ? v.value : isFrameValue(v) || isCubeValue(v) ? null : (v as FrameCell));
+    }
+    columns.push({ name: c.name, type: "string", values });
+  }
+  const out = frameOnCore("settleLedger", [{ __frame: true, columns }], [units]);
+  if (!out || out.columns.length !== 8) return null;
+  const unit = ledgerMoney(ledgerAmountColumn(cube)?.cells ?? []);
+  const money = unit ? { unit } : {};
+  const cols = out.columns.map((c, k) => (k === 2 || k > 3 ? { ...c, ...money } : c));
+  return { transfers: { __frame: true, columns: cols.slice(0, 3) }, net: { __frame: true, columns: cols.slice(3) } };
+}
+
+const ledgerNorm = (s: string) => s.trim().toLowerCase();
+const ledgerColumn = (cube: CubeValue, ...names: string[]) => { const set = new Set(names); return cube.columns.find((c) => set.has(ledgerNorm(c.name))); };
+const ledgerAmountColumn = (cube: CubeValue) => ledgerColumn(cube, "amount", "cost", "total", "price", "spend");
+
 export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net: FrameValue } {
-  const norm = (s: string) => s.trim().toLowerCase();
-  const col = (...names: string[]) => { const set = new Set(names); return cube.columns.find((c) => set.has(norm(c.name))); };
-  const amountCol = col("amount", "cost", "total", "price", "spend");
+  const norm = ledgerNorm;
+  const col = (...names: string[]) => ledgerColumn(cube, ...names);
+  const amountCol = ledgerAmountColumn(cube);
   const payerCol = col("paid by", "paidby", "payer", "paid", "by", "who paid", "from");
   const forCol = col("for", "split", "split between", "participants", "shared", "shared by", "shared with", "with", "beneficiaries", "owed by");
   if (!amountCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs an Amount column");

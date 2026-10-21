@@ -17,11 +17,13 @@ import {
 } from "../../src/graph/frameVerbs";
 import {
   frameToCube, getColumn, addColumn, splitFrame, buildFrame, buildFrameTyped, frameFromLists,
-  type FrameValue, type FrameCell, type FrameColType, type FrameColumn,
+  type FrameValue, type FrameCell, type FrameColType, type FrameColumn, type CubeCell,
 } from "../../src/graph/frame";
+import { tagFrameCellUnit } from "../../src/graph/unitColumn";
+import type { ColumnUnit } from "../../src/graph/unitValue";
 import type { AllocateMode } from "../../src/graph/nodes/allocateOps";
 import type { PayoffOrder } from "../../src/graph/nodes/payoffOps";
-import { payoffFrame, settleFrame, numericRows, kmeansOutputs, pcaOutputs, logisticOutputs, type PayoffView, type SettleSplit } from "../../src/graph/nodes/frame";
+import { payoffFrame, settleFrame, settleLedgerCube, numericRows, kmeansOutputs, pcaOutputs, logisticOutputs, type PayoffView, type SettleSplit } from "../../src/graph/nodes/frame";
 import { amortizationFrame } from "../../src/graph/nodes/finance";
 import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
@@ -565,6 +567,16 @@ const FRAME_FNS: Record<string, { run: (frames: FrameValue[], args: unknown[]) =
     run: ([f], [split]) => { const r = settleFrame(f, split as SettleSplit); return { __frame: true, columns: [...r.transfers.columns, ...r.net.columns] }; },
     make: settleGen,
   },
+  settleLedger: {
+    run: ([f], [units]) => {
+      const cube = frameToCube(f);
+      const usd = { dim: { length: 1 } } as ColumnUnit;
+      const tagged = { ...cube, columns: cube.columns.map((c) => ((units as string[]).includes(c.name) ? { ...c, cells: c.cells.map((v) => tagFrameCellUnit(v, usd) as CubeCell) } : c)) };
+      const r = settleLedgerCube(tagged);
+      return { __frame: true, columns: [...r.transfers.columns, ...r.net.columns].map(({ unit: _u, ...c }) => c) };
+    },
+    make: ledgerGen,
+  },
   amortizationSchedule: {
     run: (_, [rate, nper, pv, fv, type]) => amortizationFrame(rate as number, nper as number, pv as number, fv as number, type as 0 | 1),
     make: (g) => {
@@ -685,6 +697,27 @@ function settleGen(g: Gen) {
   if (rand() < 0.5) columns.push({ name: pick(["Share", "Weight", "shares"]), type: "number", values: Array.from({ length: rows }, () => pick([1, 2, 0.5, 0, -1, null, 3])) });
   if (rand() < 0.2) columns.reverse();
   return { frames: [{ __frame: true, columns } as FrameValue], args: [pick(["equal", "weighted"])] };
+}
+
+/** A ledger: amounts as numbers, money text or unit cells, payers and beneficiaries as comma lists in any case. */
+function ledgerGen(g: Gen) {
+  const rand = g.rand;
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const rows = g.int(0, 7);
+  const names = () => pick(["Ada", "ada", " Bo ", "Bo, Cy", "cy,ADA", "", " , ", null, "Di;Ed", 7, true, solError("#N/A", "fuzz")]);
+  const unit = rand() < 0.3;
+  const columns: FrameColumn[] = [];
+  if (rand() < 0.92) {
+    const name = pick(["Amount", "cost", " Total ", "Spend"]);
+    const values = Array.from({ length: rows }, () => (unit ? pick([10, 0, 33.33, -5, null, 1e3]) : pick([10, 33.33, 0, -5, null, NaN, Infinity, "$1,200", "£ 3.5", "", "0x10", "abc", "1e2", true, solError("#DIV/0!", "fuzz")])));
+    columns.push({ name, type: unit ? "number" : "string", values: values as FrameCell[] });
+  }
+  if (rand() < 0.92) columns.push({ name: pick(["Paid by", "payer", "Paid", "Who paid", "From"]), type: "string", values: Array.from({ length: rows }, names) as FrameCell[] });
+  if (rand() < 0.6) columns.push({ name: pick(["For", "Split between", "shared with", "Owed by"]), type: "string", values: Array.from({ length: g.int(0, rows) }, names) as FrameCell[] });
+  if (rand() < 0.2) columns.push({ name: "Note", type: "string", values: Array.from({ length: rows }, () => pick(["x", null])) });
+  if (rand() < 0.3) columns.reverse();
+  const units = unit && columns.some((c) => c.type === "number") ? [columns.find((c) => c.type === "number")!.name] : [];
+  return { frames: [{ __frame: true, columns } as FrameValue], args: [units] };
 }
 
 /** An options frame with criteria and, mostly, a Weights frame naming them, with norms and deal-breakers. */
