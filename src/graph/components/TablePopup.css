@@ -686,14 +686,19 @@
 .table-popup__footer {
   position: relative;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   padding: 0 14px 14px;
 }
-
-.table-popup__spacer { flex: 1 1 0; min-width: 0; }
-/* Cancel and Save wrap as one item, so Save is never stranded on its own line. */
+/* Everything but the actions wraps here; Done, or Cancel and Save, stay pinned to the right of the last line. */
+.table-popup__tools {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 .table-popup__actions { display: flex; gap: 8px; flex: 0 0 auto; margin-left: auto; }
 
 .table-popup__btn {
@@ -733,6 +738,7 @@
   .table-popup__view button { padding-top: 0; padding-bottom: 0; }
   .sol-pill-btn--icon { width: 32px; padding: 0; }
   .table-popup__footer,
+  .table-popup__tools,
   .table-popup__dim-controls,
   .table-popup__actions {
     gap: 6px;
@@ -749,6 +755,7 @@
   .table-popup__view button { padding-top: 0; padding-bottom: 0; }
   .sol-pill-select { padding-right: 22px; background-position: right 8px center; }
   .table-popup__footer,
+  .table-popup__tools,
   .table-popup__dim-controls,
   .table-popup__actions {
     gap: 4px;

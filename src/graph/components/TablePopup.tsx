@@ -1479,7 +1479,8 @@ export function TablePopup() {
       )}
 
       {ctxMenu && editsRows && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
-      <div className="table-popup__footer" ref={footerRef}>
+      <div className="table-popup__footer">
+        <div className="table-popup__tools" ref={footerRef}>
         <PopupChoice
           className="table-popup__viewswitch"
           label="View"
@@ -1525,15 +1526,17 @@ export function TablePopup() {
           </label>
         )}
         {editsRows && <TableEditMenus row={menuRow} col={menuCol} />}
-        <div className="table-popup__spacer" />
-        {editable ? (
-          <div className="table-popup__actions">
-            <button className="table-popup__btn" onClick={discard}>Cancel</button>
-            <button className="table-popup__btn table-popup__btn--primary" onClick={save} disabled={csvBlocksSave}>Save</button>
-          </div>
-        ) : (
-          <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
-        )}
+        </div>
+        <div className="table-popup__actions">
+          {editable ? (
+            <>
+              <button className="table-popup__btn" onClick={discard}>Cancel</button>
+              <button className="table-popup__btn table-popup__btn--primary" onClick={save} disabled={csvBlocksSave}>Save</button>
+            </>
+          ) : (
+            <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
+          )}
+        </div>
       </div>
       {askClose && <UnsavedChangesPrompt onSave={save} onDiscard={discard} onKeepEditing={() => setAskClose(false)} />}
     </PopupShell>

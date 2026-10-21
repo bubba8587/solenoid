@@ -405,6 +405,7 @@ export function CubePopup() {
 
       {ctxMenu && editAxes && <TableContextMenu at={ctxMenu} row={menuRow} col={menuCol} onClose={() => setCtxMenu(null)} />}
       <div className="table-popup__footer">
+        <div className="table-popup__tools">
         {table && (
           <div className="table-popup__view" role="group" aria-label="View">
             <button type="button" aria-pressed={!cards} onClick={() => setLayout("grid")}>Grid</button>
@@ -427,7 +428,7 @@ export function CubePopup() {
           </label>
         )}
         {editAxes && !cards && <TableEditMenus row={menuRow} col={menuCol} />}
-        <div className="table-popup__spacer" />
+        </div>
         <div className="table-popup__actions">
           <button className="table-popup__btn table-popup__btn--primary" onClick={() => cubePopup.close()}>Done</button>
         </div>

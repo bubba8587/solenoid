@@ -52,7 +52,7 @@ export function useFreeWidth(itemSelector: string): { ref: (el: HTMLElement | nu
       const gap = parseFloat(cs.columnGap) || 0;
       let used = 0, n = 0;
       const count = (el: HTMLElement) => {
-        if (el.matches(itemSelector) || el.classList.contains("table-popup__spacer")) return;
+        if (el.matches(itemSelector)) return;
         const st = getComputedStyle(el);
         if (st.display === "contents") { for (const c of Array.from(el.children) as HTMLElement[]) count(c); return; }
         // Out of the flow (an open sheet or menu) takes no room in the row.
