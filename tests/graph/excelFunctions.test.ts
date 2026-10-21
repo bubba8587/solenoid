@@ -233,6 +233,12 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(isSolError(ev('CONVERT(1, "m", "kg")', {}))).toBe(true); // cross-category → #N/A
   });
 
+  it("CONVERT reads only the table's own units, not Object.prototype's members", () => {
+    for (const [from, to] of [["toString", "m"], ["m", "constructor"], ["valueOf", "__proto__"]]) {
+      expect((ev(`CONVERT(1, "${from}", "${to}")`, {}) as SolError).code).toBe("#N/A");
+    }
+  });
+
   it("cashflow functions pass the list whole (range functions), matching the nodes", () => {
     const cf = { c: [-1000, 300, 400, 500, 200] };
     expect(ev("NPV(0.1, c)", cf)).toBeCloseTo(105.0599, 3);

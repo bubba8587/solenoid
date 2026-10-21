@@ -137,8 +137,10 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
 };
 
 export function convertValue(x: number, fromKey: string, toKey: string): number | null {
-  const from = CONVERT_UNIT_DEFS[fromKey];
-  const to   = CONVERT_UNIT_DEFS[toKey];
+  // Own keys only: "toString" or "__proto__" would otherwise read Object.prototype's members as units.
+  const own = (k: string) => (Object.prototype.hasOwnProperty.call(CONVERT_UNIT_DEFS, k) ? CONVERT_UNIT_DEFS[k] : undefined);
+  const from = own(fromKey);
+  const to   = own(toKey);
   if (!from || !to) return null;
   return dimConvert(x, from.dim, to.dim);
 }
