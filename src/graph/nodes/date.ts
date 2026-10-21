@@ -423,7 +423,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
     const hol  = holidaySet(inputs.holidays?.[0]);
     const result = this.op === "workday"
       ? broadcastErr((s, n) => addWorkdays(s, n, off, hol), inputs.start?.[0] ?? null, readInput(inputs.days, this.literals.days ?? 5))
-      : broadcast((s, e) => networkDays(s, e, off, hol), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
+      : broadcastErr((s, e) => networkDays(s, e, off, hol), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }

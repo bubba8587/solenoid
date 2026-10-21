@@ -209,19 +209,26 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
             let r = call_function(&name, &argv);
+            if crate::excel_functions::take_bailed() {
+                take_thrown();
+                return Ok(json!({ "bail": true }));
+            }
             if let Some(e) = take_thrown() {
                 return Ok(json!({ "thrown": e.message }));
             }
-            Ok(match r {
-                V::Undef => json!({ "undef": true }),
-                V::Fx(code) => json!({ "fx": code }),
-                V::List(_) => json!({ "list": true }),
-                V::Num(n) => json!({ "num": n.to_bits().to_string() }),
-                V::Err(e) => json!({ "err": e.code, "msg": e.message }),
-                V::Null => Json::Null,
-                V::Str(s) => json!({ "str": s.to_string() }),
-                V::Bool(b) => json!({ "bool": b }),
-            })
+            fn out(r: &V) -> Json {
+                match r {
+                    V::Undef => json!({ "undef": true }),
+                    V::Fx(code) => json!({ "fx": code }),
+                    V::List(items) => json!({ "list": items.iter().map(out).collect::<Vec<_>>() }),
+                    V::Num(n) => json!({ "num": n.to_bits().to_string() }),
+                    V::Err(e) => json!({ "err": e.code, "msg": e.message }),
+                    V::Null => Json::Null,
+                    V::Str(s) => json!({ "str": s.to_string() }),
+                    V::Bool(b) => json!({ "bool": b }),
+                }
+            }
+            Ok(out(&r))
         }
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),

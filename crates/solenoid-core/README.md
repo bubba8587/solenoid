@@ -50,8 +50,12 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
   src/graph/valueKinds.ts src/graph/stringOrder.ts src/graph/unitValue.ts src/graph/pivotLayout.ts \
   src/graph/excelFormula.ts src/graph/excelFunctions.ts src/graph/inputRoles.ts src/graph/emptySlots.ts \
   src/graph/computedColumnCore.ts src/graph/nodes/statsOps.ts src/graph/nodes/mathUtils.ts \
-  src/graph/nodes/dateOps.ts src/graph/nodes/dateSerial.ts fixtures/frame-verbs
+  src/graph/nodes/dateOps.ts src/graph/nodes/dateSerial.ts src/graph/excelCriteria.ts \
+  src/graph/nodes/textOps.ts package.json fixtures/frame-verbs
 ```
+
+The Formula.js bodies (CEILING, FLOOR, MROUND, EVEN, ODD, SWITCH, REPLACE and the pass-throughs) follow the version
+`package.json` pins: a bump means re-reading them.
 
 ## What it does and doesn't do
 
@@ -63,8 +67,9 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
 | Units, formats | Unit-blind, as Polars is: the TS lowers reading and unit scales into the op and restores metadata | `lowerForEngine`, `pivotUnits` |
 | Formula tokenizer and parser | Ported whole | 300k random strings, well-formed and broken, give the same tree |
 | Row formulas (computed columns): literals, `@column`, scalar side values, constants, every operator | Ported | 300k random computed columns match cells, messages and side sockets |
-| Formula functions | 113 ported. Logic: IF IFS AND OR NOT XOR CHOOSE, the IFERROR family, the IS tests. Math: ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG LOG10 MOD POWER QUOTIENT PI SQRTPI DEGREES RADIANS. Trig: SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH ASINH ACOSH ATANH COT COTH ACOT ACOTH SEC SECH CSC CSCH. Aggregates: SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV(.S/.P) VAR(.S/.P) COUNT COUNTA COUNTBLANK. Order statistics: LARGE SMALL PERCENTILE(.INC/.EXC) QUARTILE(.INC/.EXC) MODE MODE.SNGL. Text: LEN CONCAT CONCATENATE MID LEFT RIGHT UPPER LOWER TRIM REPT SUBSTITUTE EXACT FIND N T. Dates: DATE YEAR MONTH DAY HOUR MINUTE SECOND TIME DAYS EOMONTH WEEKDAY WEEKNUM ISOWEEKNUM | each body is checked directly against its JS one on random arguments; a formula calling anything else runs on the TS |
-| Whole-column refs (a bare column name, `[col]`) as a range function's argument: `@x / SUM(x)`, `MAX([x])`, `COUNTBLANK(b)` | Ported, with `prepRangeArgs`' error scan and blank drop, and a call that reads no `@` cell evaluated once | explicit cases plus the fuzzer |
+| Formula functions | 149 ported. Logic: IF IFS AND OR NOT XOR CHOOSE SWITCH, the IFERROR family, the IS tests. Math: ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG LOG10 MOD POWER QUOTIENT PI SQRTPI DEGREES RADIANS CEILING(.MATH) FLOOR(.MATH) MROUND EVEN ODD. Trig: SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH ASINH ACOSH ATANH COT COTH ACOT ACOTH SEC SECH CSC CSCH. Aggregates: SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV(.S/.P) VAR(.S/.P) COUNT COUNTA COUNTBLANK. Order statistics: LARGE SMALL PERCENTILE(.INC/.EXC) QUARTILE(.INC/.EXC) MODE MODE.SNGL. Criteria: COUNTIF COUNTIFS SUMIFS AVERAGEIF AVERAGEIFS MINIFS MAXIFS, wildcards included. Lookups: XLOOKUP XMATCH (INDEX lowers a role the evaluator doesn't read). Text: LEN CONCAT CONCATENATE TEXTJOIN MID LEFT RIGHT REPLACE UPPER LOWER PROPER TRIM REPT SUBSTITUTE EXACT FIND SEARCH CHAR UNICHAR CODE UNICODE VALUE N T. Dates: DATE YEAR MONTH DAY HOUR MINUTE SECOND TIME DAYS DAYS360 DATEDIF YEARFRAC EOMONTH WEEKDAY WEEKNUM ISOWEEKNUM DATETRUNC FROMEPOCH TOEPOCH WORKDAY(.INTL) NETWORKDAYS(.INTL) | each body is checked directly against its JS one on random arguments; a formula calling anything else runs on the TS |
+| Whole-column refs (a bare column name, `[col]`) as a range function's argument: `@x / SUM(x)`, `MAX([x])`, `COUNTBLANK(b)`, `XLOOKUP(@id, id, price)` | Ported, with `prepRangeArgs`' error scan and blank drop, and a call that reads no `@` cell evaluated once | explicit cases plus the fuzzer |
+| Readings only chrono-node does (a criterion like `">=3-Apr-2026"`), and PROPER over non-Latin letters | Bail: the row stops and the whole column runs on the TS (`bail()`) | explicit cases |
 | A whole column in an argument that takes one value (`LARGE(x, x)` lifts per item) | Not ported: `formulaCallTable` lowers those positions (`scalar`) and the support check sends them to the TS | |
 | Whole columns anywhere else (broadcast), lists and matrices, LAMBDA, complex numbers, units in formulas | Not ported: runs on the TS | |
 | Expression nodes, the compute pass, node `data()` | Not started | |
@@ -114,13 +119,16 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   (`sumLikeFx`, pinned in `formulaDivergence.test.ts`, listed in `formulajs-divergences.md`), as MIN and MAX
   already were for the same reason.
 
+- **NETWORKDAYS and WORKDAY could hang.** NETWORKDAYS counted day by day up to its end date, so an infinite end
+  (a `1e400` cell) never finished. WORKDAY stepped a day at a time from its start, and past 2^53 a step doesn't move
+  the day, so a start that was also a holiday never finished either. Both now refuse a date outside the years 1 to
+  9999 with `#DOMAIN!`, as WORKDAY already did for its landing day (pinned in `datetimeParity.test.ts`).
+
 ## Follow-ups
 
-- **Computed columns resident in the engine.** The Computed Column node isn't lazy, so a frame ref is
-  materialized in JS and its columns re-uploaded. A lazy engine path would keep a chain in wasm end to end.
 - **Whole-column formula refs and the array evaluator** (`mapCells`, the range functions over lists).
 - **ROUND's `toPrecision`** still formats digits on most inputs. An exact integer-arithmetic version would close
   the gap.
-- **Size.** The module is 698 KB raw / 280 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`). Size
+- **Size.** The module is 784 KB raw / 314 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`). Size
   modes (`opt-level = "z"`) reach 222 KB gzipped but halve the speed, so they're out. The largest single item left is
   serde's internally tagged `FrameOp` deserializer (67 KB raw): a hand-written `kind` dispatch would trim it.

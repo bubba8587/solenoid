@@ -49,6 +49,19 @@ impl V {
 
 thread_local! {
     static THROWN: std::cell::RefCell<Option<SolError>> = const { std::cell::RefCell::new(None) };
+    static BAILED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// A reading this port leaves to the TS (a date only chrono-node reads): it ends the row like a throw, and the
+/// whole column runs on the TS.
+pub fn bail() -> V {
+    BAILED.with(|b| b.set(true));
+    throw(sol_error("#VALUE!", "left to the TS"))
+}
+
+/// Whether a row bailed since the last call.
+pub fn take_bailed() -> bool {
+    BAILED.with(|b| b.replace(false))
 }
 
 /// A JS exception: it ends the row's evaluation, so the row answers it whatever encloses the call (the first one wins).
@@ -83,7 +96,11 @@ const PORTED: &[&str] = &[
     "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH",
     "HOUR", "MINUTE", "SECOND", "EOMONTH", "WEEKDAY", "WEEKNUM", "ISOWEEKNUM", "DAYS", "TIME",
     "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
-    "MODE", "MODE.SNGL",
+    "MODE", "MODE.SNGL", "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF",
+    "CEILING", "CEILING.MATH", "FLOOR", "FLOOR.MATH", "MROUND", "EVEN", "ODD", "SWITCH", "REPLACE",
+    "DATEDIF", "DAYS360", "YEARFRAC", "DATETRUNC", "FROMEPOCH", "TOEPOCH", "WORKDAY", "WORKDAY.INTL", "NETWORKDAYS",
+    "NETWORKDAYS.INTL", "XLOOKUP", "XMATCH",
+    "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
 ];
 
@@ -96,6 +113,7 @@ pub fn reads_lists(name: &str) -> bool {
     matches!(
         name,
         "SUM" | "LARGE" | "SMALL" | "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" | "QUARTILE" | "QUARTILE.INC" | "QUARTILE.EXC"
+            | "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" | "COUNTIFS" | "COUNTIF" | "AVERAGEIF" | "TEXTJOIN" | "XLOOKUP" | "XMATCH"
     )
 }
 
@@ -130,7 +148,8 @@ pub fn js_string_of(v: &V) -> String {
         V::Bool(b) => (if *b { "true" } else { "false" }).into(),
         V::Err(_) => "[object Object]".into(),
         V::Fx(code) => format!("Error: {code}"),
-        V::List(items) => items.iter().map(js_string_of).collect::<Vec<_>>().join(","),
+        // `Array.prototype.join` renders null and undefined as empty.
+        V::List(items) => items.iter().map(|v| if matches!(v, V::Null | V::Undef) { String::new() } else { js_string_of(v) }).collect::<Vec<_>>().join(","),
     }
 }
 
@@ -366,6 +385,255 @@ fn flat_all(a: &[V]) -> Vec<V> {
         }
     }
     out
+}
+
+/// `CEILING.MATH` / `FLOOR.MATH` once their arguments are parsed.
+fn ceiling_floor_math(ceiling: bool, n: V, sig: V, mode: V) -> V {
+    let (n, sig, mode) = match (n, sig, mode) {
+        (V::Num(n), V::Num(s), V::Num(m)) => (n, s, m),
+        (n, s, m) => return [n, s, m].into_iter().find(V::is_err).unwrap_or(V::Fx("#VALUE!")),
+    };
+    if sig == 0.0 {
+        return V::Num(0.0);
+    }
+    let sig = sig.abs();
+    let (up, down) = ((n / sig).ceil() * sig, (n / sig).floor() * sig);
+    V::Num(match (ceiling, mode == 0.0 || n > 0.0) {
+        (true, true) | (false, false) => up,
+        _ => down,
+    })
+}
+
+/// `===`: an error value is equal only to the same Formula.js constant.
+fn strict_equals(x: &V, y: &V) -> bool {
+    match (x, y) {
+        (V::Num(a), V::Num(b)) => a == b,
+        (V::Str(a), V::Str(b)) => a == b,
+        (V::Bool(a), V::Bool(b)) => a == b,
+        (V::Null, V::Null) | (V::Undef, V::Undef) => true,
+        (V::Fx(a), V::Fx(b)) => a == b,
+        (V::Err(a), V::Err(b)) => Rc::ptr_eq(a, b),
+        (V::List(a), V::List(b)) => Rc::ptr_eq(a, b),
+        _ => false,
+    }
+}
+
+/// `String.prototype.substr` over UTF-16 units.
+fn js_substr(s: &[u16], start: f64, len: Option<f64>) -> Vec<u16> {
+    let size = s.len() as f64;
+    let int = |x: f64| if x.is_nan() { 0.0 } else { x.trunc() };
+    let mut st = int(start);
+    st = if st < 0.0 { (size + st).max(0.0) } else { st.min(size) };
+    let l = len.map_or(size, int);
+    let end = (st + l).min(size);
+    if st >= end { Vec::new() } else { s[st as usize..end as usize].to_vec() }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum MatchMode {
+    Exact,
+    NextLarger,
+    NextSmaller,
+}
+
+/// `xMatchModeArg`.
+fn x_match_mode(v: &V) -> Result<MatchMode, V> {
+    if matches!(v, V::Undef) {
+        return Ok(MatchMode::Exact);
+    }
+    let n = to_num(v);
+    Ok(if n == 0.0 {
+        MatchMode::Exact
+    } else if n == 1.0 {
+        MatchMode::NextLarger
+    } else if n == -1.0 {
+        MatchMode::NextSmaller
+    } else if n == 2.0 {
+        return Err(V::err(sol_error("#VALUE!", "Wildcard match (2) isn't supported")));
+    } else {
+        return Err(V::err(sol_error("#VALUE!", "match_mode is 0, 1, or -1")));
+    })
+}
+
+/// `xSearchModeArg`: whether the search runs from the last item.
+fn x_search_mode(v: &V) -> Result<bool, V> {
+    if matches!(v, V::Undef) {
+        return Ok(false);
+    }
+    let n = to_num(v);
+    if n == 1.0 {
+        Ok(false)
+    } else if n == -1.0 {
+        Ok(true)
+    } else if n == 2.0 || n == -2.0 {
+        Err(V::err(sol_error("#VALUE!", "Binary search (±2) isn't supported. Every search scans the whole list")))
+    } else {
+        Err(V::err(sol_error("#VALUE!", "search_mode is 1 or -1")))
+    }
+}
+
+/// `lookupEq`: text compares without case, anything else strictly.
+fn lookup_eq(a: &V, b: &V) -> bool {
+    match (a, b) {
+        (V::Str(x), V::Str(y)) => crate::jsnum::js_lower(x) == crate::jsnum::js_lower(y),
+        _ => strict_equals(a, b),
+    }
+}
+
+/// `xmatchIndex` (listOps.ts): None where it answers -1.
+fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) -> Result<Option<usize>, V> {
+    let n = keys.len();
+    let at = |s: usize| if last { n - 1 - s } else { s };
+    if mm == MatchMode::Exact {
+        return Ok((0..n).map(at).find(|&i| !matches!(keys[i], V::Null | V::Err(_)) && lookup_eq(&keys[i], lookup)));
+    }
+    let lookup = match lookup {
+        V::Num(x) if x.is_finite() => *x,
+        _ => return Err(V::err(sol_error("#VALUE!", "Approximate match compares numbers. Use exact match (0) for text"))),
+    };
+    let mut best: Option<(usize, f64)> = None;
+    for i in (0..n).map(at) {
+        let V::Num(k) = keys[i] else { continue };
+        if !k.is_finite() {
+            continue;
+        }
+        if k == lookup {
+            return Ok(Some(i));
+        }
+        let better = match (mm, best) {
+            (MatchMode::NextSmaller, b) => k < lookup && b.is_none_or(|(_, bk)| k > bk),
+            (_, b) => k > lookup && b.is_none_or(|(_, bk)| k < bk),
+        };
+        if better {
+            best = Some((i, k));
+        }
+    }
+    Ok(best.map(|(i, _)| i))
+}
+
+/// `isTrue`: true, 1, or the text true or 1.
+fn is_true(v: &V) -> bool {
+    match v {
+        V::Bool(b) => *b,
+        V::Num(n) => *n == 1.0,
+        V::Str(s) => {
+            let t = js_trim(s);
+            t.eq_ignore_ascii_case("true") || t == "1"
+        }
+        _ => false,
+    }
+}
+
+/// `epochUnit`: Some(true) for milliseconds, Some(false) for seconds.
+fn epoch_unit(u: &V) -> Option<bool> {
+    if matches!(u, V::Null | V::Undef) {
+        return Some(false);
+    }
+    let text = js_string_of(u);
+    let t = js_trim(&text);
+    if t.eq_ignore_ascii_case("ms") {
+        Some(true)
+    } else if t.eq_ignore_ascii_case("s") {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+/// `weekendOf`: a weekend code, or a seven-character 0/1 mask from Monday.
+fn weekend_of(w: &V) -> Option<crate::date_ops::Weekend> {
+    match w {
+        V::Null | V::Undef => crate::date_ops::weekend_days(1.0),
+        V::Str(s) if s.encode_utf16().count() == 7 => crate::date_ops::Weekend::from_mask(s),
+        other => {
+            let code = to_num(other);
+            if code.is_nan() { None } else { crate::date_ops::weekend_days(code) }
+        }
+    }
+}
+
+/// `holidaySet`: whole-day serials, once each, in the order given.
+fn holiday_set(h: &V) -> Vec<f64> {
+    let items: Vec<V> = match h {
+        V::List(items) => items.iter().flat_map(|v| match v {
+            V::List(inner) => inner.as_ref().clone(),
+            other => vec![other.clone()],
+        }).collect(),
+        V::Null | V::Undef => Vec::new(),
+        other => vec![other.clone()],
+    };
+    let mut out: Vec<f64> = Vec::with_capacity(items.len());
+    for v in &items {
+        let d = to_num(v).floor();
+        if d.is_finite() && !out.contains(&d) {
+            out.push(d);
+        }
+    }
+    out
+}
+
+/// `properCase` (textOps.ts): a letter after a non-letter is capitalized, every other letter lowercased. `\p{L}` is
+/// read for ASCII and Latin-1/Latin Extended-A/B; other alphabetic text bails to the TS.
+fn proper_case(t: &str) -> V {
+    let mut out = String::with_capacity(t.len());
+    let mut after_letter = false;
+    for ch in t.chars() {
+        let letter = match ch as u32 {
+            0..=0x7F => ch.is_ascii_alphabetic(),
+            0xD7 | 0xF7 => false,
+            0xC0..=0x24F => true,
+            _ if !ch.is_alphabetic() => false,
+            _ => return bail(),
+        };
+        if !letter {
+            out.push(ch);
+        } else if after_letter {
+            out.extend(ch.to_lowercase());
+        } else {
+            out.extend(ch.to_uppercase());
+        }
+        after_letter = letter;
+    }
+    V::str(&out)
+}
+
+/// `parseValueText` (textOps.ts) with the US separators, VALUE's reading.
+fn parse_value_text(text: &str) -> f64 {
+    let mut t = js_trim(text);
+    let mut pct = 0;
+    while let Some(rest) = t.strip_suffix('%') {
+        pct += 1;
+        t = js_trim(rest);
+    }
+    // `/^\(.*\)$/`: `.` stops at a line terminator.
+    let mut neg = false;
+    let owned;
+    if t.len() >= 2 && t.starts_with('(') && t.ends_with(')') && !t[1..t.len() - 1].contains(['\n', '\r', '\u{2028}', '\u{2029}']) {
+        neg = true;
+        t = js_trim(&t[1..t.len() - 1]);
+    }
+    let unsigned = t.strip_prefix(['+', '-']).unwrap_or(t);
+    if let Some(after) = unsigned.strip_prefix('$') {
+        owned = format!("{}{}", &t[..t.len() - unsigned.len()], after);
+        t = &owned;
+    }
+    let (int_part, frac) = match t.find('.') {
+        Some(di) => (&t[..di], Some(&t[di + 1..])),
+        None => (t, None),
+    };
+    if frac.is_some_and(|f| f.contains(',') || f.contains('.')) {
+        return f64::NAN;
+    }
+    let mut digits = int_part.replace(',', "");
+    if let Some(f) = frac {
+        digits.push('.');
+        digits.push_str(f);
+    }
+    let n = decimal_from_text(&digits);
+    if n.is_nan() {
+        return f64::NAN;
+    }
+    (if neg { -n } else { n }) / js_pow(100.0, f64::from(pct))
 }
 
 /// `numsOf`: numbers, and whatever else reads as one, lists flattened.
@@ -733,6 +1001,32 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             quartile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "QUARTILE.EXC")
         }
         "MODE" | "MODE.SNGL" => mode_single(&nums_of(a)),
+        "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" => {
+            use crate::excel_criteria::{as_range, criteria_aggregate, ifs_pairs, Kind};
+            let kind = match name {
+                "SUMIFS" => Kind::Sum,
+                "AVERAGEIFS" => Kind::Average,
+                "MINIFS" => Kind::Min,
+                _ => Kind::Max,
+            };
+            match ifs_pairs(a.get(1..).unwrap_or(&[])) {
+                Ok(pairs) => criteria_aggregate(kind, Some(&as_range(arg(a, 0))), &pairs),
+                Err(e) => e,
+            }
+        }
+        "COUNTIFS" => match crate::excel_criteria::ifs_pairs(a) {
+            Ok(pairs) => crate::excel_criteria::criteria_aggregate(crate::excel_criteria::Kind::Count, None, &pairs),
+            Err(e) => e,
+        },
+        "COUNTIF" => {
+            use crate::excel_criteria::{as_range, criteria_aggregate, Kind};
+            criteria_aggregate(Kind::Count, None, &[(as_range(arg(a, 0)), arg(a, 1).clone())])
+        }
+        "AVERAGEIF" => {
+            use crate::excel_criteria::{as_range, criteria_aggregate, Kind};
+            let values = if matches!(arg(a, 2), V::Undef) { arg(a, 0) } else { arg(a, 2) };
+            criteria_aggregate(Kind::Average, Some(&as_range(values)), &[(as_range(arg(a, 0)), arg(a, 1).clone())])
+        }
         "STDEV" | "STDEV.S" => aggregate("stdev", &nums_of(a)),
         "STDEV.P" => aggregate("stdev_p", &nums_of(a)),
         "VAR" | "VAR.S" => aggregate("var_s", &nums_of(a)),
@@ -1027,6 +1321,236 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return V::Fx("#N/A");
             }
             V::Bool(to_str(&a[0]) == to_str(&a[1]))
+        }
+        "CEILING" | "FLOOR" | "MROUND" => {
+            let (n, sig) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
+            let (V::Num(n), V::Num(sig)) = (&n, &sig) else { return if n.is_err() { n } else { sig } };
+            let (n, sig) = (*n, *sig);
+            match name {
+                "CEILING" if sig == 0.0 => V::Num(0.0),
+                "FLOOR" if sig == 0.0 || sig.is_nan() => V::Fx("#DIV/0!"),
+                "CEILING" | "FLOOR" if n > 0.0 && sig < 0.0 => V::Fx("#NUM!"),
+                "CEILING" => V::Num((n / sig).ceil() * sig),
+                "FLOOR" => V::Num((n / sig).floor() * sig),
+                _ if n * sig == 0.0 => V::Num(0.0),
+                _ if n * sig < 0.0 => V::Fx("#NUM!"),
+                _ => V::Num(math_round(n / sig) * sig),
+            }
+        }
+        "CEILING.MATH" | "FLOOR.MATH" => {
+            let raw_sig = arg(a, 1);
+            let sig = match raw_sig {
+                V::Undef if name == "CEILING.MATH" => V::Num(if to_f64_js(arg(a, 0)) > 0.0 { 1.0 } else { -1.0 }),
+                V::Undef => V::Num(1.0),
+                other => parse_number(other),
+            };
+            ceiling_floor_math(name == "CEILING.MATH", parse_number(arg(a, 0)), sig, parse_number(arg(a, 2)))
+        }
+        "EVEN" => match parse_number(arg(a, 0)) {
+            // CEILING.MATH parses again: a NaN (`parseFloat(" ")`) becomes #VALUE! there.
+            n @ V::Num(_) => ceiling_floor_math(true, parse_number(&n), V::Num(-2.0), V::Num(-1.0)),
+            e => e,
+        },
+        "ODD" => match parse_number(arg(a, 0)) {
+            V::Num(n) => {
+                let t = n.abs().ceil();
+                // `temp & 1` reads the low bit through ToInt32: an infinity reads 0.
+                let t = if t.is_finite() && t % 2.0 == 1.0 { t } else { t + 1.0 };
+                V::Num(if n >= 0.0 { t } else { -t })
+            }
+            e => e,
+        },
+        "SWITCH" => {
+            if a.is_empty() {
+                return V::Fx("#VALUE!");
+            }
+            let argc = a.len() - 1;
+            let hit = (0..argc / 2).find(|&i| strict_equals(&a[0], &a[i * 2 + 1]));
+            match hit {
+                Some(i) => a[i * 2 + 2].clone(),
+                None if !argc.is_multiple_of(2) => a[a.len() - 1].clone(),
+                None => V::Fx("#N/A"),
+            }
+        }
+        "REPLACE" => {
+            // The pass-through maps only the arguments given: a missing new_text isn't a string.
+            if a.len() < 4 {
+                return V::Fx("#VALUE!");
+            }
+            let (old, new) = (to_str(arg(a, 0)), to_str(arg(a, 3)));
+            let (V::Num(at), V::Num(len)) = (parse_number(arg(a, 1)), parse_number(arg(a, 2))) else { return V::Fx("#VALUE!") };
+            let old = utf16(&old);
+            let mut out = js_substr(&old, 0.0, Some(at - 1.0));
+            out.extend(utf16(&new));
+            out.extend(js_substr(&old, at - 1.0 + len, None));
+            V::str(&from_utf16(&out))
+        }
+        "DATEDIF" => {
+            use crate::date_ops::{date_diff, date_diff_op_for_unit};
+            let (s, e) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
+            if s.is_nan() || e.is_nan() {
+                return value_err("DATEDIF");
+            }
+            let reversed = || V::err(sol_error("#DOMAIN!", "DATEDIF needs the start date on or before the end date"));
+            if s > e {
+                return reversed();
+            }
+            let Some(op) = date_diff_op_for_unit(&to_str(arg(a, 2))) else {
+                return V::err(sol_error("#DOMAIN!", "DATEDIF unit must be Y, M, D, YM, MD or YD"));
+            };
+            match date_diff(op, s, e, 0.0) {
+                Ok(Some(n)) => V::Num(n),
+                Ok(None) => reversed(),
+                Err(e) => V::err(e),
+            }
+        }
+        "DAYS360" | "YEARFRAC" => {
+            use crate::date_ops::{date_diff, DiffOp};
+            let (s, e) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
+            if s.is_nan() || e.is_nan() {
+                return value_err(name);
+            }
+            let r = if name == "DAYS360" {
+                date_diff(DiffOp::Days360, s, e, if is_true(arg(a, 2)) { 1.0 } else { 0.0 })
+            } else {
+                date_diff(DiffOp::YearFrac, s, e, opt_num(arg(a, 2), 0.0).trunc())
+            };
+            match r {
+                Ok(Some(n)) => V::Num(n),
+                Ok(None) => V::Null,
+                Err(e) => V::err(e),
+            }
+        }
+        "DATETRUNC" => {
+            let n = to_num(arg(a, 0));
+            if n.is_nan() {
+                return value_err("DATETRUNC");
+            }
+            let unit = arg(a, 1);
+            let unit = if matches!(unit, V::Null | V::Undef) { "day".to_string() } else { js_string_of(unit) };
+            match crate::date_ops::date_trunc_unit_for(&unit) {
+                Some(u) => V::Num(crate::date_ops::date_trunc(n, u, is_true(arg(a, 2)))),
+                None => V::err(sol_error("#DOMAIN!", "DATETRUNC unit must be day, week, week_sun, month, quarter or year")),
+            }
+        }
+        "FROMEPOCH" | "TOEPOCH" => {
+            let n = to_num(arg(a, 0));
+            if n.is_nan() {
+                return value_err(name);
+            }
+            match epoch_unit(arg(a, 1)) {
+                None => V::err(sol_error("#DOMAIN!", format!("{name} unit must be s or ms"))),
+                Some(ms) if name == "FROMEPOCH" => V::Num(crate::date_ops::epoch_to_serial(n, ms)),
+                Some(ms) => V::Num(crate::date_ops::serial_to_epoch(n, ms)),
+            }
+        }
+        "WORKDAY" | "WORKDAY.INTL" | "NETWORKDAYS" | "NETWORKDAYS.INTL" => {
+            let intl = name.ends_with(".INTL");
+            let (weekend, holidays) = if intl { (arg(a, 2), arg(a, 3)) } else { (&V::Undef, arg(a, 2)) };
+            let (s, n) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
+            let off = weekend_of(weekend);
+            if s.is_nan() || n.is_nan() {
+                return value_err(name);
+            }
+            let Some(off) = off else {
+                return V::err(sol_error(
+                    "#VALUE!",
+                    format!("{name} weekend must be a code (1 to 7, 11 to 17) or seven 0/1 characters with a working day"),
+                ));
+            };
+            let hol = holiday_set(holidays);
+            let r = if name.starts_with("WORKDAY") {
+                crate::date_ops::add_workdays(s, n, off, &hol)
+            } else {
+                crate::date_ops::network_days(s, n, off, &hol)
+            };
+            r.map_or_else(V::err, V::Num)
+        }
+        "XLOOKUP" | "XMATCH" => {
+            let (mode_at, search_at) = if name == "XLOOKUP" { (4, 5) } else { (2, 3) };
+            let mm = match x_match_mode(arg(a, mode_at)) {
+                Ok(m) => m,
+                Err(e) => return e,
+            };
+            let sm_last = match x_search_mode(arg(a, search_at)) {
+                Ok(m) => m,
+                Err(e) => return e,
+            };
+            let ks = crate::excel_criteria::as_range(arg(a, 1));
+            let pick: Box<dyn Fn(&V) -> V> = if name == "XLOOKUP" {
+                let values = arg(a, 2);
+                let vs = crate::excel_criteria::as_range(values);
+                if matches!(values, V::List(_)) && vs.len() != ks.len() {
+                    return V::err(sol_error("#VALUE!", "XLOOKUP's return array must match the lookup array's length"));
+                }
+                let if_not_found = arg(a, 3).clone();
+                Box::new(move |l: &V| match xmatch_index(l, &ks, mm, sm_last) {
+                    Err(e) => e,
+                    Ok(Some(i)) if i < vs.len() => vs[i].clone(),
+                    Ok(_) if !matches!(if_not_found, V::Undef) => if_not_found.clone(),
+                    Ok(_) => V::err(sol_error("#N/A", "No match found in the lookup list")),
+                })
+            } else {
+                Box::new(move |l: &V| match xmatch_index(l, &ks, mm, sm_last) {
+                    Err(e) => e,
+                    Ok(Some(i)) => V::Num(i as f64 + 1.0),
+                    Ok(None) => V::err(sol_error("#N/A", "No match found")),
+                })
+            };
+            match arg(a, 0) {
+                V::List(items) => V::List(Rc::new(items.iter().map(&pick).collect())),
+                l => pick(l),
+            }
+        }
+        "SEARCH" => {
+            let start = arg(a, 2);
+            if !matches!(start, V::Null | V::Undef) {
+                let s = to_num(start).trunc();
+                if s < 1.0 {
+                    return V::err(sol_error("#VALUE!", "SEARCH starts at 1 or later"));
+                }
+                if s > utf16(&to_str(arg(a, 1))).len() as f64 + 1.0 {
+                    return V::err(sol_error("#VALUE!", "SEARCH starts past the end of the text"));
+                }
+            }
+            let s = if matches!(start, V::Null | V::Undef) { 1.0 } else { to_num(start).trunc() };
+            if s.is_nan() {
+                return value_err("SEARCH");
+            }
+            let (f, w) = (utf16(&to_str(arg(a, 0))), utf16(&to_str(arg(a, 1))));
+            if f.is_empty() {
+                return V::Num(s);
+            }
+            match crate::excel_criteria::wild_search(&f, &w[s as usize - 1..]) {
+                Some(at) => V::Num(at as f64 + s),
+                None => V::err(sol_error("#VALUE!", "Find text not found within the text")),
+            }
+        }
+        "PROPER" => proper_case(&to_str(arg(a, 0))),
+        "CHAR" | "UNICHAR" => {
+            let c = to_num(arg(a, 0)).trunc();
+            match (1.0..=1_114_111.0).contains(&c).then(|| char::from_u32(c as u32)).flatten() {
+                Some(ch) => V::str(&ch.to_string()),
+                None => V::err(sol_error("#VALUE!", "A character code is a code point from 1 to 1114111")),
+            }
+        }
+        "CODE" | "UNICODE" => match to_str(arg(a, 0)).chars().next() {
+            Some(c) => V::Num(f64::from(c as u32)),
+            None => V::err(sol_error("#VALUE!", "Empty text has no character code")),
+        },
+        "VALUE" => {
+            let x = arg(a, 0);
+            if let V::Num(n) = x {
+                return V::Num(*n);
+            }
+            let n = parse_value_text(&to_str(if matches!(x, V::Bool(_)) { &V::Null } else { x }));
+            if n.is_nan() { value_err("VALUE") } else { V::Num(n) }
+        }
+        "TEXTJOIN" => {
+            let parts: Vec<String> = flat_all(a.get(2..).unwrap_or(&[])).iter().map(to_str).collect();
+            let keep_all = matches!(arg(a, 1), V::Bool(false)) || matches!(arg(a, 1), V::Num(n) if *n == 0.0);
+            let kept: Vec<&str> = parts.iter().map(String::as_str).filter(|p| keep_all || !p.is_empty()).collect();
+            V::str(&kept.join(&to_str(arg(a, 0))))
         }
         "FIND" => {
             let start = arg(a, 2);

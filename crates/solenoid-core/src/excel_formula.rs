@@ -516,7 +516,7 @@ fn supported_at(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<
             let roles_ok = table.get(&up).is_some_and(|t| {
                 matches!(t.kind.as_str(), "handler" | "whole" | "range" | "broadcast") && t.roles.len() >= args.len()
             });
-            let lists = table.get(&up).is_some_and(|t| t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default"));
+            let lists = table.get(&up).is_some_and(|t| t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default" | "positional"));
             let lifts = |i: usize| table.get(&up).is_some_and(|t| t.scalar.contains(&i));
             is_ported(&up) && roles_ok && args.iter().enumerate().all(|(i, a)| supported_at(a, columns, sides, table, lists && !lifts(i)))
         }
@@ -777,7 +777,7 @@ impl Row<'_> {
                 for v in &argv {
                     match v {
                         V::List(items) => {
-                            let kept: Vec<V> = if t.prep != "raw" {
+                            let kept: Vec<V> = if !matches!(t.prep.as_str(), "raw" | "positional") {
                                 if let Some(e) = items.iter().find(|x| x.is_err()) {
                                     return match e {
                                         V::Fx(code) => V::err(crate::excel_functions::fx_error_to_sol(code)),
@@ -861,9 +861,14 @@ pub fn formula_column(f: &FrameValue, expr: &str, table: &CallTable, sides: &Has
     let lists = columns.iter().map(|(k, c)| (*k, Rc::new(c.values.iter().map(cell_to_v).collect::<Vec<_>>()))).collect();
     let mut row = Row { lists, memo: Default::default(), columns: &columns, sides: &sides, table, cursor: 0 };
     let mut cells = Vec::with_capacity(rows);
+    crate::excel_functions::take_bailed();
     for i in 0..rows {
         row.cursor = i;
         let v = row.eval(&ast);
+        if crate::excel_functions::take_bailed() {
+            crate::excel_functions::take_thrown();
+            return Ok(ColumnOutcome::Unsupported);
+        }
         cells.push(match crate::excel_functions::take_thrown() {
             Some(e) => FrameCell::err(e),
             None => tag_computed_cell(v),

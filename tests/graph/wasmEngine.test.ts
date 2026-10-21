@@ -303,15 +303,21 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH",
   "HOUR", "MINUTE", "SECOND", "EOMONTH", "WEEKDAY", "WEEKNUM", "ISOWEEKNUM", "DAYS", "TIME",
   "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
-  "MODE", "MODE.SNGL"];
+  "MODE", "MODE.SNGL", "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF",
+  "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
+  "CEILING", "CEILING.MATH", "FLOOR", "FLOOR.MATH", "MROUND", "EVEN", "ODD", "SWITCH", "REPLACE",
+  "DATEDIF", "DAYS360", "YEARFRAC", "DATETRUNC", "FROMEPOCH", "TOEPOCH", "WORKDAY", "WORKDAY.INTL", "NETWORKDAYS",
+  "NETWORKDAYS.INTL", "XMATCH"];
 /** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
 const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
 
 function formulaGen(rand: () => number) {
   const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
-  const lit = () => pick(["0", "1", "2", "-0", "3.5", "1e3", ".5", "10", "100", "1e308", "0.1", "7", "45000.75", "-700000", "3e9", "45291.999"]);
-  const str = () => `"${pick(["", "abc", "ABC", "TRUE", "false", "5", " a  b ", "😀x", "é", "1,000", "x", "#N/A"])}"`;
+  const lit = () => pick(["0", "1", "2", "-0", "3.5", "1e3", ".5", "10", "100", "1e308", "0.1", "7", "45000.75", "-700000", "3e9", "45291.999",
+    "45351", "60", "36", "11", "4"]);
+  const str = () => `"${pick(["", "abc", "ABC", "TRUE", "false", "5", " a  b ", "😀x", "é", "1,000", "x", "#N/A", ">5", "<>abc", "a*", "?b?", "~*", "*", "<=0", ">=1e3", "<>", "=", "<x", "2024-01-15",
+    "2024-02-30", "05/01/2024", "13/01/2024", "3-Apr-2026", "2024-13", ">2024-01-01", "=TRUE", "<>FALSE", "=12", "AB*", "hello wORLD", "o'neil-x2y", "(1,234.5)", "$5%", "-$3", "ÉCOLE éa", "ǅx", "0000011", "1111111", "ms", " S ", "month", "q", "YM", "md", "yd", "week_sun"])}"`;
   const ref = () => pick(["@a", "@b", "@c", "@d", "[@a]", "@[b]", "[@[c]]", "@nope", "a", "pi", "E", "Tau", "s1", "@s2", "[@s1]", "s3", "@name", "b", "c", "d", "[a]", "[b]", "[d]", "[nope]"]);
   const expr = (depth: number): string => {
     const r = rand();
@@ -363,7 +369,7 @@ describe("random row formulas: the Rust evaluator matches the TS one", () => {
         if (r < 0.1) return null;
         if (r < 0.15) return solError(rand() < 0.5 ? "#N/A" : "#DIV/0!", "fuzz");
         if (type === "number") return r < 0.22 ? [NaN, Infinity, -Infinity, -0, 1e300][Math.floor(rand() * 5)] : Math.round(rand() * 400 - 200) / 8;
-        if (type === "string") return ["", "abc", "Abc", " x ", "12", "TRUE", "😀", "é", "true"][Math.floor(rand() * 9)];
+        if (type === "string") return ["", "abc", "Abc", " x ", "12", "TRUE", "😀", "é", "true", "a*c", "ab", "xbx"][Math.floor(rand() * 12)];
         if (type === "logical") return rand() < 0.5;
         return 40000 + Math.floor(rand() * 9000);
       };
@@ -447,6 +453,11 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
   it.each([
     "@a / SUM(a)", "MAX([a]) - @a", "COUNTBLANK(b)", "AVERAGE(a, @a)", "CONCAT(b)", "AND(c)", "COUNT(d) + COUNTA(b)",
     "SUM(d)", "IFERROR(SUM(d), -1)", "MEDIAN(a) & \"|\" & @b", "PRODUCT([a], 2)", "XOR(c, @c)",
+    "LARGE(a, 2)", "SMALL(a, @a)", "PERCENTILE(a, 0.3)", "QUARTILE.EXC(a, 1)", "MODE(a, 3)",
+    "COUNTIF(b, @b)", "COUNTIF(b, \"?o\")", "COUNTIF(a, \">=0\")", "SUMIFS(a, b, \"<>\", c, TRUE)",
+    "AVERAGEIF(a, \">0\")", "MAXIFS(d, a, \"<5\")", "MINIFS(a, b, \"*\")", "COUNTIFS(a, @a, c, @c)",
+    "COUNTIF(a, \"2024-01-15\")", "COUNTIF(a, \"05/01/2024\")",
+    "XLOOKUP(@b, b, a)", "XLOOKUP(@a + 1, a, d, \"none\")", "XMATCH(@a, a, 1)", "XMATCH(@a, a, -1, -1)", "XLOOKUP(a, a, b)",
   ])("%s", (src) => {
     const engine = computeColumnOnEngine(f, src, 5);
     expect(engine, "should run on the engine").not.toBeNull();
@@ -455,6 +466,13 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
     if (isSolError(js)) return;
     expect(view({ __frame: true, columns: [{ name: "o", type: "number", values: engine!.cells }] }))
       .toEqual(view({ __frame: true, columns: [{ name: "o", type: "number", values: js.cells }] }));
+  });
+});
+
+describe("a criterion only chrono-node reads leaves the column to the TS", () => {
+  it.each(["COUNTIF(a, \"3-Apr-2026\")", "SUMIFS(a, a, \">=Jan 5 2024\")"])("%s", (src) => {
+    const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [45000, 46115] }] };
+    expect(computeColumnOnEngine(f, src, 2)).toBeNull();
   });
 });
 
@@ -506,8 +524,9 @@ describe("a computed column over a frame in the engine matches the value path", 
 
 describe("each ported function body matches its JS one on random arguments", () => {
   // The IFERROR family runs in the evaluator (applyErrorHandler), never through a registered body.
-  const PORTED = FNS.filter((n) => !["TEXT", "VLOOKUP", "XLOOKUP", "SEQUENCE", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"].includes(n));
-  const POOL: unknown[] = [undefined, null, 0, -0, 1, 2, -1, 0.5, -2.5, 3.75, 7, 10, 45000.25, 1e308, -1e-9, 1e21, 123456789.123,
+  const PORTED = FNS.filter((n) => !["TEXT", "VLOOKUP", "SEQUENCE", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"].includes(n));
+  const POOL: unknown[] = [45000, 45351.5, 36, 60, 1, 2958465, -5, "0000011", "1010101", "ms", " S ", "Quarter", "YM", "md", "y", 11, 17,
+    "hello wORLD", "o'neil-x2y", "(1,234.5)", " $5% ", "-$3", "1.2.3", "ÉCOLE éa", "ΣΑΣ", "a~?b", 65, 128512, 0xd800, ">5", "<>abc", "a*", "?B?", "~*", "<=0", "<>", "=", "2024-01-15", "05/01/2024", "=TRUE", undefined, null, 0, -0, 1, 2, -1, 0.5, -2.5, 3.75, 7, 10, 45000.25, 1e308, -1e-9, 1e21, 123456789.123,
     NaN, Infinity, -Infinity, "", " ", "abc", "ABC", "5", " 12 ", "1e3", "0x10", "1,000", "TRUE", "false", "Infinity",
     "😀ab", "é", "a b  c", true, false, solError("#N/A", "x"), solError("#DIV/0!", "y")];
   const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
@@ -519,18 +538,25 @@ describe("each ported function body matches its JS one on random arguments", () 
     if (typeof r === "number") return { num: Number.isNaN(r) ? "NaN" : bits(r) };
     if (typeof r === "string") return { str: (r as string & { toWellFormed(): string }).toWellFormed() };
     if (typeof r === "boolean") return { bool: r };
+    if (Array.isArray(r)) return { list: r.map(norm) };
     return { other: String(r) };
   };
   const LIST_BODIES = new Set(["SUM", "MIN", "MAX", "AVERAGE", "MEDIAN", "PRODUCT", "STDEV", "STDEV.S", "STDEV.P", "VAR", "VAR.S", "VAR.P",
-    "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC", "MODE", "MODE.SNGL"]);
+    "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC", "MODE", "MODE.SNGL",
+    "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF", "XLOOKUP", "XMATCH"]);
+  /** The IFS family reads its ranges raw and the lookups positionally: blanks and errors stay. */
+  const RAW_LISTS = new Set(["SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF", "XLOOKUP", "XMATCH"]);
   it.each(PORTED)("%s", (name) => {
     const rand = mulberry32(77 + FUZZ_SEED + name.length * 1000 + name.charCodeAt(0));
     const fn = resolveExcelFunction(name)!;
     for (let i = 0; i < FUZZ_RUNS / 3; i++) {
       const one = () => POOL[Math.floor(rand() * POOL.length)];
       // A range argument as prepRangeArgs leaves it: no errors, no blanks, and no NaN (see SORTS_NUMBERS).
-      const list = () => Array.from({ length: Math.floor(rand() * 7) }, one).filter((v) => v != null && !isSolError(v) && !Number.isNaN(v));
+      const list = () => Array.from({ length: Math.floor(rand() * 7) }, one)
+        .filter((v) => RAW_LISTS.has(name) ? v !== undefined : v != null && !isSolError(v) && !Number.isNaN(v));
       const args = Array.from({ length: Math.floor(rand() * 5) }, () => (LIST_BODIES.has(name) && rand() < 0.5 ? list() : one()));
+      // SWITCH compares by identity, which a copy across the wire can't keep; an error never reaches it in a formula.
+      if (name === "SWITCH" && args.some(isSolError)) continue;
       let want: unknown;
       try { want = norm(fn(...args)); } catch (e) { want = { thrown: (e as Error).message }; }
       const wire = (a: unknown): unknown => (Array.isArray(a) ? a.map(wire) : a === undefined ? { __undef: 1 }
@@ -539,7 +565,13 @@ describe("each ported function body matches its JS one on random arguments", () 
         : isSolError(a) ? { __err: a.code, msg: a.message } : a);
       const raw = wasmInvokeSync<{ num?: string }>("engine_call", { name, args: args.map(wire) });
       const nanBits = (b: string) => (BigInt(b) & 0x7ff0000000000000n) === 0x7ff0000000000000n && (BigInt(b) & 0xfffffffffffffn) !== 0n;
-      const got = raw && raw.num && nanBits(raw.num) ? { num: "NaN" } : raw;
+      if (raw && (raw as { bail?: boolean }).bail) continue;
+      const nanFix = (x: unknown): unknown => {
+        const o = x as { num?: string; list?: unknown[] } | null;
+        if (o && o.num && nanBits(o.num)) return { num: "NaN" };
+        return o && o.list ? { list: o.list.map(nanFix) } : x;
+      };
+      const got = nanFix(raw);
       if (JSON.stringify(got) !== JSON.stringify(want)) expect({ name, args, got }).toEqual({ name, args, got: want });
     }
   });
