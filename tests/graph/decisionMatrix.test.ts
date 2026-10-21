@@ -19,6 +19,15 @@ const col = (out: FrameValue, name: string): FrameColumn =>
   out.columns.find((c) => c.name === name)!;
 
 describe("decisionMatrix", () => {
+  it("a criterion named like an Object member takes the default normalization", () => {
+    const g: FrameValue = { __frame: true, columns: [
+      { name: "name", type: "string", values: ["A", "B"] },
+      { name: "toString", type: "number", values: [2, 4] },
+    ] };
+    const byMax = decisionMatrix(g, null, "max") as FrameValue;
+    expect(col(byMax, "Score").values).toEqual([1, 0.5]);
+  });
+
   it("outputs Option · Score · Rank, best first", () => {
     const out = decisionMatrix(f, null, "none") as FrameValue;
     expect(out.columns.map((c) => c.name)).toEqual(["name", "Score", "Rank"]);
