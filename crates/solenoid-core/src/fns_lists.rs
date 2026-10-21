@@ -154,6 +154,8 @@ fn key_of(v: &V, id: usize) -> Key {
         V::Bool(b) => Key::Bool(*b),
         V::Null => Key::Null,
         V::Undef => Key::Undef,
+        // `setKey`: a complex keys by its parts.
+        V::Cx(re, im) => Key::Str(format!("\u{0}cx:{},{}", number_to_string(*re), number_to_string(*im)).into()),
         _ => Key::Obj(id),
     }
 }
@@ -723,7 +725,7 @@ fn outlier_flags(arr: &[V], method: &str, threshold: f64) -> V {
 }
 
 fn member_set(arr: &[V], base: usize) -> HashSet<Key> {
-    arr.iter().enumerate().filter(|(_, v)| !matches!(v, V::Null) && !is_sol(v)).map(|(i, v)| key_of(v, base + i)).collect()
+    arr.iter().enumerate().filter(|(_, v)| !blank(v) && !is_sol(v)).map(|(i, v)| key_of(v, base + i)).collect()
 }
 
 fn set_operation(op: &str, a: &[V], b: &[V]) -> V {
@@ -737,7 +739,7 @@ fn set_operation(op: &str, a: &[V], b: &[V]) -> V {
     };
     let both = matches!(op, "SETUNION" | "SETSYMDIFF");
     for (i, v) in a.iter().enumerate() {
-        if matches!(v, V::Null) {
+        if blank(v) {
             continue;
         }
         if is_sol(v) {
@@ -758,7 +760,7 @@ fn set_operation(op: &str, a: &[V], b: &[V]) -> V {
     }
     if both {
         for (i, v) in b.iter().enumerate() {
-            if matches!(v, V::Null) {
+            if blank(v) {
                 continue;
             }
             if is_sol(v) {

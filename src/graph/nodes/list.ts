@@ -1,7 +1,7 @@
 // [[B11]], [[C48]], [[C49]]
 import { ClassicPreset } from "rete";
 import { is2DType, numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
-import { resolveExcelFunction } from "../excelFunctions";
+import { callCore } from "../coreValues";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
@@ -23,7 +23,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, asRowsOf, backToList, sortGrid, sortGridByKeys, uniqueGrid, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
+import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, asRowsOf, rangeCount, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, type RunningOp, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weightedShuffleKey, type Cell as ListCell, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
 import { isFrameRef, readRefColumn, materialize } from "../frameBackend";
 import { coerceListItem, coerceFrameCell, isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -242,14 +242,14 @@ export class SeriesNode extends ClassicPreset.Node {
         const n = rangeCount(start, stop, step);
         if (!Number.isFinite(n)) list = solError("#DOMAIN!", "Step is 0 (or signed away from Stop), so the range never ends");
         else if (n > MAX_GENERATED) list = solError("#OVERFLOW!", `Range of ${Math.round(n)} elements exceeds the ${MAX_GENERATED} element limit`);
-        else list = rangeList(start, stop, step);
+        else list = callCore("RANGE", [start, stop, step]) as number[] | SolError;
       }
     } else if (this.op === "sequence") {
       const rows  = byRole<number | SolError>("count");
       const cols  = byRole<number | undefined>("cols") ?? 1;
       const start = byRole<number | undefined>("start") ?? 1;
       const step  = byRole<number | undefined>("step") ?? 1;
-      list = isSolError(rows) ? rows : resolveExcelFunction("SEQUENCE")!(rows, cols, start, step) as number[] | number[][] | SolError;
+      list = isSolError(rows) ? rows : callCore("SEQUENCE", [rows, cols, start, step]) as number[] | number[][] | SolError;
     } else if (this.op === "linspace") {
       const start = byRole<number | SolError>("start");
       const end   = readInput(inputs.end, this.literals.end ?? 1);
@@ -259,7 +259,7 @@ export class SeriesNode extends ClassicPreset.Node {
       else if (end === null) list = null;
       else list = Math.max(0, Math.round(nRaw as number)) > MAX_GENERATED
         ? solError("#OVERFLOW!", `Linspace count ${Math.round(nRaw as number)} exceeds the ${MAX_GENERATED} element limit`)
-        : linspace(start as number, end, nRaw as number);
+        : Number.isFinite(nRaw) ? callCore("LINSPACE", [start, end, nRaw]) as number[] | SolError : [];
     } else if (this.op === "geometric") {
       const start = byRole<number | SolError>("start");
       const ratio = readInput(inputs.ratio, this.literals.ratio ?? 2);
@@ -269,11 +269,11 @@ export class SeriesNode extends ClassicPreset.Node {
       else if (ratio === null) list = null;
       else list = Math.max(0, Math.round(nRaw as number)) > MAX_GENERATED
         ? solError("#OVERFLOW!", `Geometric count ${Math.round(nRaw as number)} exceeds the ${MAX_GENERATED} element limit`)
-        : geometric(start as number, ratio, nRaw as number);
+        : Number.isFinite(nRaw) ? callCore("GEOMETRIC", [start, ratio, nRaw]) as number[] | SolError : [];
     } else if (this.op === "fibonacci") {
       // fibonacci self-caps at 78 terms (F79 loses double precision), so no overflow guard.
       const nRaw = byRole<number | SolError>("count");
-      list = isSolError(nRaw) ? nRaw : fibonacci(nRaw);
+      list = isSolError(nRaw) ? nRaw : callCore("FIBONACCI", [nRaw]) as number[] | SolError;
     } else {
       const v    = readInput(inputs.value, this.literals.value ?? 0);
       const nRaw = byRole<number | SolError>("count");
@@ -281,7 +281,7 @@ export class SeriesNode extends ClassicPreset.Node {
       else if (v === null) list = null;
       else list = Math.max(0, Math.round(nRaw)) > MAX_GENERATED
         ? solError("#OVERFLOW!", `Repeat count ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
-        : repeatValue(v, nRaw);
+        : Number.isFinite(nRaw) ? callCore("REPEAT", [v, nRaw]) as number[] | SolError : [];
     }
     this.cachedList = list;
     this.reconcileRank(list);
@@ -545,7 +545,6 @@ export class SortNode extends ClassicPreset.Node {
     const raw = inputs.list?.[0];
     const done = (r: unknown) => { this.cachedList = r; return { result: r }; };
     if (raw == null) return done(null);
-    const { m, list } = asRowsOf(raw);
     // An unwired key row adds nothing; a key is data, so a wired blank key blanks the answer.
     const keys: { key: unknown; desc: boolean }[] = [];
     for (const k of this.valueInputKeys()) {
@@ -555,10 +554,9 @@ export class SortNode extends ClassicPreset.Node {
       keys.push({ key, desc: this.keyOrder[k.slice(3)] === "desc" });
     }
     // Once key rows exist they decide, and the card hides its own order, so unwired keys leave the data as it is.
-    const out = this.valueInputKeys().length
-      ? sortGridByKeys(m, keys)
-      : sortGrid(m, readRole<number | undefined>(this, "index", inputs.index) ?? 1, this.order === "desc", this.byCol);
-    return done(isSolError(out) ? out : backToList(out, list));
+    return done(this.valueInputKeys().length
+      ? callCore("SORTBY", [raw, ...keys.flatMap((k) => [k.key, k.desc ? -1 : 1])])
+      : callCore("SORT", [raw, readRole<number | undefined>(this, "index", inputs.index) ?? 1, this.order === "desc" ? -1 : 1, this.byCol]));
   }
 }
 
@@ -578,7 +576,7 @@ export class ReverseNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    const reversed = reverseList(arr);
+    const reversed = callCore("REVERSE", [arr]) as unknown[];
     this.cachedList = reversed;
     return { result: reversed };
   }
@@ -605,7 +603,7 @@ export class ShiftNode extends ClassicPreset.Node {
   data(inputs: { list?: unknown[][]; by?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const by = readRole<number | undefined>(this, "by", inputs.by) ?? 1;
-    this.cachedList = shiftList(arr as ListCell[], by, this.wrap === "wrap");
+    this.cachedList = callCore("SHIFT", [arr, by, this.wrap === "wrap"]) as unknown[];
     return { result: this.cachedList };
   }
 }
@@ -650,9 +648,9 @@ export class BinNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? [];
     if (this.mode === "quantiles") {
       const n = readInput(inputs.n, this.literals.n ?? 4);
-      this.cachedList = n === null ? [] : ntileList(arr, n);
+      this.cachedList = n === null ? [] : callCore("NTILE", [arr, n]) as ListCell[] | SolError;
     } else {
-      this.cachedList = binIndex(arr, inputs.breaks?.[0] ?? []);
+      this.cachedList = callCore("BIN", [arr, inputs.breaks?.[0] ?? []]) as ListCell[] | SolError;
     }
     return { result: this.cachedList };
   }
@@ -689,7 +687,7 @@ export class OutliersNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? null;
     const t = readInput(inputs.threshold, this.literals.threshold ?? OUTLIER_DEFAULT_THRESHOLD[this.method]);
     if (arr === null || t === null) { this.cachedResult = null; return { result: null }; }
-    const flags = outlierFlags(arr, this.method, t);
+    const flags = callCore("ISOUTLIER", [arr, this.method, t]) as (boolean | null)[];
     const clean = arr.map((v, i) => (flags[i] === true ? null : v));
     const frame: FrameValue = {
       __frame: true,
@@ -728,7 +726,7 @@ export class CombinationsNode extends ClassicPreset.Node {
     const k = readRole<number | SolError>(this, "k", inputs.k);
     if (isSolError(k)) { this.cachedResult = k; return { result: k }; }
     if (arr.length === 0) { this.cachedResult = null; return { result: null }; }
-    this.cachedResult = combinationsOf(arr, k, this.mode);
+    this.cachedResult = callCore(this.mode === "permutations" ? "PERMUTATIONS" : "COMBINATIONS", [arr, k]) as ListCell[][] | SolError;
     return { result: this.cachedResult };
   }
 }
@@ -759,7 +757,7 @@ export class EwmaNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? [];
     const alpha = readRole<number | SolError>(this, "alpha", inputs.alpha);
     if (isSolError(alpha)) { this.cachedList = alpha; return { result: alpha }; }
-    this.cachedList = ewmaList(arr, alpha);
+    this.cachedList = callCore("EWMA", [arr, alpha]) as ListCell[] | SolError;
     return { result: this.cachedList };
   }
 }
@@ -778,7 +776,7 @@ export class ConvolveNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: ListCell[][]; b?: ListCell[][] }) {
-    this.cachedList = convolveList(inputs.a?.[0] ?? [], inputs.b?.[0] ?? []);
+    this.cachedList = callCore("CONVOLVE", [inputs.a?.[0] ?? [], inputs.b?.[0] ?? []]) as ListCell[] | SolError;
     return { result: this.cachedList };
   }
 }
@@ -800,7 +798,7 @@ export class CrossNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: ListCell[][]; b?: ListCell[][] }) {
-    this.cachedList = crossProduct(inputs.a?.[0] ?? [], inputs.b?.[0] ?? []);
+    this.cachedList = callCore("CROSSPRODUCT", [inputs.a?.[0] ?? [], inputs.b?.[0] ?? []]) as ListCell[] | SolError;
     return { result: this.cachedList };
   }
 }
@@ -827,7 +825,7 @@ export class PolyfitNode extends ClassicPreset.Node {
   data(inputs: { x?: ListCell[][]; y?: ListCell[][]; degree?: number[] }) {
     const degree = readRole<number | SolError>(this, "degree", inputs.degree);
     if (isSolError(degree)) { this.cachedList = degree; return { result: degree }; }
-    this.cachedList = polyfitEval(inputs.x?.[0] ?? [], inputs.y?.[0] ?? [], degree);
+    this.cachedList = callCore("POLYFIT", [inputs.x?.[0] ?? [], inputs.y?.[0] ?? [], degree]) as ListCell[] | SolError;
     return { result: this.cachedList };
   }
 }
@@ -852,7 +850,7 @@ export class TrapzNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][]; dx?: number[] }) {
     const dx = readRole<number | undefined>(this, "dx", inputs.dx) ?? 1;
-    this.cachedResult = trapzList(inputs.list?.[0] ?? [], dx);
+    this.cachedResult = callCore("TRAPZ", [inputs.list?.[0] ?? [], dx]) as number | ListCell | null;
     return { result: this.cachedResult };
   }
 }
@@ -874,7 +872,7 @@ export class RleNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    this.cachedResult = arr.length === 0 ? null : rleEncode(arr);
+    this.cachedResult = arr.length === 0 ? null : callCore("RLE", [arr]) as ListCell[][];
     return { result: this.cachedResult };
   }
 }
@@ -906,7 +904,7 @@ export class SliceNode extends ClassicPreset.Node {
     const startRaw = readRole<number | SolError>(this, "start", inputs.start);
     const endRaw = readRole<number | undefined>(this, "end", inputs.end);
     if (isSolError(startRaw)) { this.cachedList = null; return { result: startRaw }; }
-    const sliced = sliceList(arr, startRaw, endRaw);
+    const sliced = callCore("SLICE", [arr, startRaw, endRaw]) as unknown[];
     this.cachedList = sliced;
     return { result: sliced };
   }
@@ -1287,8 +1285,7 @@ export class UniqueNode extends ClassicPreset.Node {
   data(inputs: { list?: unknown[] }) {
     const raw = inputs.list?.[0];
     if (raw == null) { this.cachedList = null; return { result: null }; }
-    const { m, list } = asRowsOf(raw);
-    this.cachedList = backToList(uniqueGrid(m, this.byCol, this.exactlyOnce), list);
+    this.cachedList = callCore("UNIQUE", [raw, this.byCol, this.exactlyOnce]);
     return { result: this.cachedList };
   }
 }
@@ -1409,14 +1406,14 @@ export class SetsNode extends ClassicPreset.Node {
       const aRaw = inputs.a?.[0];
       const bRaw = inputs.b?.[0];
       if (aRaw === undefined && bRaw === undefined) { this.cachedRelation = null; return { result: null }; }
-      const result = setRelation(this.op, (aRaw ?? []) as unknown[], (bRaw ?? []) as unknown[]);
+      const result = callCore(SET_META[this.op].fx, [aRaw ?? [], bRaw ?? []]) as Tri;
       this.cachedRelation = result;
       return { result };
     }
     // Unit tags survive the passthrough, but membership keys by magnitude.
     const a = stripUnitCells((inputs.a?.[0] ?? []) as unknown[]) as unknown[];
     const b = stripUnitCells((inputs.b?.[0] ?? []) as unknown[]) as unknown[];
-    this.cachedList = setOperation(this.op, a, b);
+    this.cachedList = callCore(SET_META[this.op].fx, [a, b]) as unknown[];
     return { result: this.cachedList };
   }
 }
@@ -1460,7 +1457,7 @@ export class ConcatListsNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[][] | undefined>) {
-    const out = concatLists(...this.valueInputKeys().map((k) => inputs[k]?.[0]));
+    const out = callCore("CONCATLISTS", this.valueInputKeys().map((k) => inputs[k]?.[0] ?? null)) as unknown[];
     this.cachedList = out;
     return { result: out };
   }
@@ -1510,7 +1507,7 @@ export class RunningNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? [];
     const w = readRole<number | undefined>(this, "window", inputs.window) ?? 0;
     if (!Number.isFinite(w) || w < 0) { this.cachedList = []; return { result: solError("#DOMAIN!", "Window must be 0 (cumulative) or a positive count") }; }
-    const result = running(this.agg, arr, w);
+    const result = callCore("RUNNING", [RUNNING_OP_META[this.agg].label, arr, w]) as (ListCell | UnitCell)[] | SolError;
     this.cachedList = isSolError(result) ? [] : result;
     return { result };
   }
@@ -1546,13 +1543,12 @@ export class DiffNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    this.cachedList = this.mode === "percent" ? pctChangeList(arr) : this.mode === "gradient" ? gradientList(arr) : diffList(arr);
+    this.cachedList = callCore(this.mode === "percent" ? "PCTCHANGE" : this.mode === "gradient" ? "GRADIENT" : "DIFF", [arr]) as ListCell[] | SolError;
     return { result: this.cachedList };
   }
 }
 
 import type { ArgMinMaxOp } from "./listOps";
-import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./signalOps";
 export type { ArgMinMaxOp } from "./listOps";
 
 export const ARG_MIN_MAX_OP_META = {
@@ -1600,9 +1596,8 @@ export class ArgMinMaxNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? null;
     let result: number | number[] | SolError | null;
     if (arr === null) result = null;
-    else if (this.op === "which") result = whichPositions(arr);
-    else if (this.op === "argsort" || this.op === "argsort_desc") result = argsortList(arr, this.op === "argsort_desc");
-    else result = argMinMax(this.op, arr);
+    else if (this.op === "argsort" || this.op === "argsort_desc") result = callCore("ARGSORT", [arr, this.op === "argsort_desc"]) as number[] | SolError;
+    else result = callCore(this.op.toUpperCase(), [arr]) as number | number[] | SolError | null;
     this.cachedResult = result;
     return { result };
   }
@@ -1627,7 +1622,7 @@ export class ContainsNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? null;
     const v = readInput(inputs.value, this.literals.value as unknown);
     let result: boolean | null = null;
-    if (arr !== null && v !== null && v !== undefined) result = containsValue(arr, v);
+    if (arr !== null && v !== null && v !== undefined) result = callCore("CONTAINS", [arr, v]) as boolean;
     this.cachedResult = result;
     return { result };
   }
@@ -1659,7 +1654,7 @@ export class NormalizeNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    this.cachedList = this.mode === "zscore" ? zscoreList(arr) : normalizeList(arr);
+    this.cachedList = callCore(this.mode === "zscore" ? "ZSCORE" : "NORMALIZE", [arr]) as ListCell[] | SolError;
     return { result: this.cachedList };
   }
 }
@@ -1733,7 +1728,7 @@ export class NthElementNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? [];
     const nRaw = readRole<number | SolError>(this, "n", inputs.n);
     if (isSolError(nRaw)) { this.cachedList = null; return { result: nRaw }; }
-    this.cachedList = nthElement(arr, nRaw);
+    this.cachedList = callCore("NTHELEMENT", [arr, nRaw]) as unknown[];
     return { result: this.cachedList };
   }
 }
@@ -1759,7 +1754,7 @@ export class InterleaveNode extends ClassicPreset.Node {
 
   data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
     const a = inputs.a?.[0] ?? [], b = inputs.b?.[0] ?? [];
-    const out = interleave(a, b);
+    const out = callCore("INTERLEAVE", [a, b]) as unknown[];
     this.cachedList = out;
     return { result: out };
   }
@@ -1804,7 +1799,7 @@ export class PadNode extends ClassicPreset.Node {
     if (fill === null) { this.cachedList = null; return { result: null }; }
     this.cachedList = Math.round(nRaw) > MAX_GENERATED
       ? solError("#OVERFLOW!", `Pad length ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
-      : padList(arr, nRaw, fill as unknown, this.op);
+      : callCore(PAD_OP_META[this.op].label, [arr, nRaw, fill]) as unknown[] | SolError;
     return { result: this.cachedList };
   }
 }
@@ -1841,7 +1836,7 @@ export class WeightedNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | null | SolError)[][]; weights?: (number | null | SolError)[][] }) {
     const values  = inputs.values?.[0]  ?? null;
     const weights = inputs.weights?.[0] ?? null;
-    const result = values && weights ? weighted(this.op, values, weights) : null;
+    const result = values && weights ? callCore(WEIGHTED_OP_META[this.op].label, [values, weights]) as number | SolError | null : null;
     this.cachedResult = result;
     return { result };
   }
@@ -1903,6 +1898,13 @@ const DATE_READING_OPS: ReadonlySet<ReduceOp | RunningOp> = new Set(["avg", "min
 /** The dimension-preserving ops whose answer is a spread, not a reading. */
 const AFFINE_SPREAD_OPS: ReadonlySet<ReduceOp> = new Set(["stdev", "stdev_p", "avedev", "ptp", "iqr", "mad", "sem"]);
 
+/** The ops whose formula (named by the op's label) reads a list of numbers as the node does; SUM, MIN, MAX, PRODUCT,
+ *  COUNT, COUNT DISTINCT and SUMSQ read theirs differently (an empty list, Formula.js's loops). */
+const FORMULA_AGG_OPS: ReadonlySet<ReduceOp> = new Set([
+  "avg", "avedev", "median", "geomean", "harmean", "devsq", "stdev", "stdev_p", "var_s", "var_p",
+  "skew", "skew_p", "kurt", "ptp", "iqr", "mad", "sem", "cv", "rms",
+]);
+
 export class AggregateNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     list: "Blank cells are skipped, not counted as zero. One error cell makes the whole result that error.",
@@ -1949,7 +1951,7 @@ export class AggregateNode extends ClassicPreset.Node {
     }
     const arr = prep.nums;
     const dim = prep.dim;
-    const result = aggregate(this.op, arr);
+    const result = FORMULA_AGG_OPS.has(this.op) ? callCore(REDUCE_OP_META[this.op].label, [arr]) as number | SolError | null : aggregate(this.op as AggregateOp, arr);
     if (isSolError(result)) { this.cachedResult = result; return { result }; }
     const resultDim = aggregateResultDim(this.op, dim, arr.length);
     const delta = affine && AFFINE_SPREAD_OPS.has(this.op);
@@ -2241,7 +2243,7 @@ export class FillNode extends ClassicPreset.Node {
       const lit = this.literals[k];
       return typeof lit === "number" ? lit : null;
     });
-    const out = fillList(this.op, arr, { constant, fallbacks });
+    const out = callCore(FILL_OP_META[this.op].fx, this.op === "constant" ? [arr, constant] : this.op === "coalesce" ? [arr, ...fallbacks] : [arr]) as Cell[];
     this.cachedList = out;
     return { result: out };
   }
@@ -2271,9 +2273,7 @@ export class SpectrumNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? [];
     const rate = readRole<number | SolError>(this, "rate", inputs.rate);
     if (arr.length === 0) { this.cachedResult = null; return { result: null }; }
-    const rows = spectrum(arr, rate);
-    if (isSolError(rows)) { this.cachedResult = rows; return { result: rows }; }
-    this.cachedResult = rows.map((r) => [r.frequency, r.magnitude, r.phase]);
+    this.cachedResult = callCore("SPECTRUM", [arr, rate]) as ListCell[][] | SolError;
     return { result: this.cachedResult };
   }
 }
@@ -2326,15 +2326,13 @@ export class SmoothNode extends ClassicPreset.Node {
     if (arr === null) out = null;
     else if (this.op === "savgol") {
       const w = prm(readRole(this, "window", inputs.window), 5), o = prm(readRole(this, "order", inputs.order), 2);
-      {
-        const why = savgolProblem(arr.length, w, o);
-        if (why) { this.cachedList = []; return { result: solError("#DOMAIN!", why) }; }
-        out = savgol(arr, w, o);
-      }
+      const smoothed = callCore("SAVGOL", [arr, w, o]) as ListCell[] | SolError;
+      if (isSolError(smoothed)) { this.cachedList = []; return { result: smoothed }; }
+      out = smoothed;
     }
-    else if (this.op === "lowess") out = lowess(arr, prm(readRole(this, "frac", inputs.frac), 0.67));
+    else if (this.op === "lowess") out = callCore("LOWESS", [arr, prm(readRole(this, "frac", inputs.frac), 0.67)]) as ListCell[];
     else {
-      const smoothed = gaussianSmooth(arr, prm(readRole(this, "sigma", inputs.sigma), 1));
+      const smoothed = callCore("GAUSSIANSMOOTH", [arr, prm(readRole(this, "sigma", inputs.sigma), 1)]) as ListCell[] | SolError;
       if (isSolError(smoothed)) { this.cachedList = []; return { result: smoothed }; }
       out = smoothed;
     }
@@ -2375,16 +2373,17 @@ export class FindPeaksNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? null;
     const opt = (v: number | undefined) => (v === undefined || Number.isNaN(v) ? undefined : v);
     if (arr === null) { this.cachedResult = null; return { result: null }; }
-    const peaks = findPeaks(arr, {
-      height: opt(readRole<number | undefined>(this, "height", inputs.height)),
-      distance: opt(readRole<number | undefined>(this, "distance", inputs.distance)),
-      prominence: opt(readRole<number | undefined>(this, "prominence", inputs.prominence)),
-    });
+    // FINDPEAKS answers the positions; a peak's height is its own cell.
+    const positions = callCore("FINDPEAKS", [arr,
+      opt(readRole<number | undefined>(this, "height", inputs.height)),
+      opt(readRole<number | undefined>(this, "distance", inputs.distance)),
+      opt(readRole<number | undefined>(this, "prominence", inputs.prominence)),
+    ]) as number[];
     const frame: FrameValue = {
       __frame: true,
       columns: [
-        { name: "Position", type: "number", values: peaks.map((p) => p.position) },
-        { name: "Height", type: "number", values: peaks.map((p) => p.value) },
+        { name: "Position", type: "number", values: positions },
+        { name: "Height", type: "number", values: positions.map((p) => arr[p - 1]) },
       ],
     };
     this.cachedResult = frame;
