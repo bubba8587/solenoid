@@ -7,7 +7,7 @@ import { setting, required, LEFT_OUT } from "../inputRoles";
 import { flatCubeToFrame, coerceFrameCell } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
-import { affineWeight, type Lam } from "../unitDimExpr";
+import { affineWeight, formulaAffineWeight, type Lam } from "../unitDimExpr";
 import { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { volatileStamp } from "../volatileDates";
 import { computeColumnCells, computeCubeColumnCells } from "../computedColumnCore";
@@ -117,9 +117,13 @@ export function readingsRefusal(
   const ast = typeof definition === "string" ? parseFormula(definition) : definition;
   if (!ast) return null;
   const fns = new Map<string, Lam>();
+  const fnSrc: Record<string, [string[], string]> = {};
   for (const [name, lam] of lams) {
     const body = isLambdaValue(lam) && lam.expr ? parseFormula(lam.expr) : null;
-    if (body) fns.set(name, { params: (lam as LambdaValue).params, body });
+    if (body) {
+      fns.set(name, { params: (lam as LambdaValue).params, body });
+      fnSrc[name] = [(lam as LambdaValue).params, (lam as LambdaValue).expr];
+    }
   }
   const names = new Set<string>();
   const walk = (n: Ast): void => {
@@ -132,7 +136,8 @@ export function readingsRefusal(
   walk(ast);
   for (const lam of fns.values()) walk(lam.body);
   if (names.size === 0) return null;
-  const w = affineWeight(ast, names, names, fns);
+  const w = typeof definition === "string" ? formulaAffineWeight(definition, ast, names, names, fns, new Set(), fnSrc)
+    : affineWeight(ast, names, names, fns);
   return isSolError(w) ? w : null;
 }
 

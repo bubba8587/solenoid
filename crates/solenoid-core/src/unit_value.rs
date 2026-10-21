@@ -5,6 +5,7 @@ use crate::error_value::{sol_error, SolError};
 
 pub const READINGS_ADD: &str = "Temperature readings can't be added. Subtract two for a difference, or average them.";
 pub const READINGS_SCALE: &str = "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
+pub const READINGS_FOLD: &str = "A fold over readings must answer a reading each step, like MAX(acc, value).";
 
 pub fn unit_error(detail: &str) -> SolError {
     sol_error(

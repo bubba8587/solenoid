@@ -8,7 +8,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "../error
 import { guardFinite } from "../valueKinds";
 import { MAX_GENERATED } from "./listOps";
 import { isUnitCell, tagDim, magnitudeOf, unitError, fromUnit, READINGS_FOLD, type UnitCell } from "../unitValue";
-import { dimEval, affineWeight, type DimEnv } from "../unitDimExpr";
+import { formulaDim, formulaAffineWeight, type DimEnv } from "../unitDimExpr";
 import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
 import { fcUnitToUnit } from "../unitBridge";
 
@@ -113,7 +113,7 @@ function stripCells(m: Mat, u: Unit | null): Mat {
 function foldPoint(expr: string, u: Unit | null, points: string[], lists: string[]): 0 | 1 | SolError | null {
   if (!u?.offset) return null;
   const ast = parseFormula(expr);
-  return ast ? affineWeight(ast, new Set(points), new Set(lists)) : null;
+  return ast ? formulaAffineWeight(expr, ast, new Set(points), new Set(lists)) : null;
 }
 
 /** `dimVars` take the element dim; every other variable is dimensionless. */
@@ -122,8 +122,7 @@ function foldResultDim(expr: string, dimVars: string[], elemDim: Dim): Dim | Sol
   if (!ast) return null;
   const env: DimEnv = {};
   for (const v of dimVars) env[v] = elemDim;
-  const r = dimEval(ast, env);
-  return r;
+  return formulaDim(expr, ast, env);
 }
 
 function foldExpr(lam: unknown, inline: string | undefined, fallback: string): string {

@@ -193,6 +193,36 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(json!({ "parses": true, "vars": vars, "rows": rows }))
         }
+        // [[C25]] firstClassUnits: `dimEvalWithCode` over a formula, each exponent as its `String(x)`.
+        "engine_dim_eval" => {
+            let src = parse::<String>(args, "src")?;
+            let env = parse::<Option<std::collections::BTreeMap<String, crate::unit_dims::Dim>>>(args, "env")?.unwrap_or_default();
+            let codes = parse::<Option<crate::unit_dims::Codes>>(args, "codes")?.unwrap_or_default();
+            let Some(ast) = crate::excel_formula::parse_formula(&src) else { return Ok(json!({ "parses": false })) };
+            Ok(match crate::unit_dims::dim_eval_with_code(&ast, &env, &codes) {
+                Ok(Some(op)) => {
+                    let dim: Vec<Json> = op.dim.iter().filter(|(_, v)| **v != 0.0).map(|(k, v)| json!([k, crate::jsnum::number_to_string(*v)])).collect();
+                    json!({ "dim": dim, "code": op.code })
+                }
+                Ok(None) => json!({ "indeterminate": true }),
+                Err(e) => json!({ "err": e.code, "msg": e.message }),
+            })
+        }
+        // `affineWeight`: a formula over readings (°C, °F) is a reading (1), a difference (0) or #UNIT!.
+        "engine_affine_weight" => {
+            let names = |key: &str| parse::<Option<Vec<String>>>(args, key).map(Option::unwrap_or_default);
+            let (points, lists, bare) = (names("points")?, names("lists")?, names("bare")?);
+            let mut fns = crate::unit_dims::NamedLambdas::new();
+            for (name, (params, body)) in parse::<Option<std::collections::BTreeMap<String, (Vec<String>, String)>>>(args, "fns")?.unwrap_or_default() {
+                let Some(body) = crate::excel_formula::parse_formula(&body) else { continue };
+                fns.insert(name, (params, body));
+            }
+            let Some(ast) = crate::excel_formula::parse_formula(&parse::<String>(args, "src")?) else { return Ok(json!({ "parses": false })) };
+            Ok(match crate::unit_dims::affine_weight(&ast, &crate::unit_dims::AffScope::new(&points, &lists, &bare, &fns)) {
+                Ok(w) => json!({ "w": w }),
+                Err(e) => json!({ "err": e.code, "msg": e.message }),
+            })
+        }
         // `computeColumnCells` in the core: a formula or a bare wired LAMBDA over a resident frame.
         "engine_compute_column" => {
             let f = get(&parse::<String>(args, "handle")?)?;
@@ -313,11 +343,19 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
                 CallReply::Value(V::err(crate::error_value::sol_error("#NAME?", format!("Unknown function {name}"))))
             });
         }
+        if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&name.to_uppercase().as_str()) {
+            crate::excel_functions::set_clock(None);
+            return Ok(CallReply::Bail);
+        }
         call_function(&name, &argv)
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;
         let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
+        if env.values().any(crate::unit_dims::holds_unit) {
+            crate::excel_functions::set_clock(None);
+            return Ok(CallReply::Bail);
+        }
         match crate::excel_formula::parse_formula(&src) {
             None => V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")),
             Some(ast) => crate::eval::Eval::default().run(&ast, &std::rc::Rc::new(env)),
@@ -374,6 +412,10 @@ impl serde::Serialize for Out<'_> {
             V::Str(t) => one(s, "str", t.as_ref()),
             V::Bool(b) => one(s, "bool", b),
             V::Lambda(_) => one(s, "lambda", &true),
+            V::Unit(u) => {
+                let dim: Vec<(&String, String)> = u.dim.iter().map(|(k, x)| (k, bits(*x))).collect();
+                one(s, "unit", &json!({ "value": bits(u.value), "dim": dim, "display": u.display, "ratio": u.ratio }))
+            }
             V::Cx(re, im) => one(s, "cx", &[bits(*re), bits(*im)]),
             V::Err(e) => {
                 let mut m = s.serialize_map(None)?;

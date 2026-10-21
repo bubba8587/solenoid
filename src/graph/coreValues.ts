@@ -5,6 +5,7 @@
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { isCx, cx } from "./cxValue";
 import { isLambdaValue } from "./lambdaValue";
+import { isUnitCell, type UnitCell } from "./unitValue";
 import { wallClockSerial } from "./nodes/dateSerial";
 import { settingsStore } from "./settingsStore";
 import { wasmEngineLoaded, wasmInvokeSync } from "./engineWasm";
@@ -45,13 +46,17 @@ export function wireCell(v: unknown): unknown {
   return v;
 }
 
-/** A value as the core reads it: arrays nest, a wired LAMBDA crosses as its body text and captures. Undefined where
- *  a value can't cross: a LAMBDA with no text, a frame or other object, text with a lone surrogate. */
-export function coreValue(v: unknown): unknown {
+/** A value as the core reads it: arrays nest, a wired LAMBDA crosses as its body text and captures, and with `units` a
+ *  value with a unit crosses as itself ([[C25]] firstClassUnits). Undefined where a value can't cross: a LAMBDA with no
+ *  text, a frame or other object, text with a lone surrogate, a unit where `units` is off. */
+export function coreValue(v: unknown, units = false): unknown {
   if (v === undefined) return { __undef: 1 };
   if (typeof v === "string") return wellFormed(v) ? v : undefined;
+  if (units && isUnitCell(v)) {
+    return { __unit: { value: wireCell(v.value), dim: v.dim, ...(v.display === undefined ? {} : { display: v.display }), ...(v.ratio ? { ratio: true } : {}) } };
+  }
   if (Array.isArray(v)) {
-    const out = v.map(coreValue);
+    const out = v.map((x) => coreValue(x, units));
     return out.includes(undefined) ? undefined : out;
   }
   if (isCx(v)) return { __cx: [wireCell(v.re), wireCell(v.im)] };
@@ -77,7 +82,8 @@ class Uncrossable extends Error {}
 function fromReply(r: unknown): unknown {
   if (r === null) return null;
   if (Array.isArray(r)) throw new Uncrossable();
-  const o = r as { undef?: true; num?: string; str?: string; bool?: boolean; err?: string; msg?: string; ref?: number; fx?: string; list?: unknown[]; cx?: string[]; lambda?: true };
+  const o = r as { undef?: true; num?: string; str?: string; bool?: boolean; err?: string; msg?: string; ref?: number; fx?: string; list?: unknown[]; cx?: string[]; lambda?: true;
+    unit?: { value: string; dim: [string, string][]; display: string | null; ratio: boolean } };
   if (o.num !== undefined) return fromBits(o.num);
   if (o.str !== undefined) return o.str;
   if (o.bool !== undefined) return o.bool;
@@ -86,6 +92,11 @@ function fromReply(r: unknown): unknown {
   if (o.undef) return undefined;
   if (o.fx !== undefined) return new Error(o.fx);
   if (o.cx) return cx(fromBits(o.cx[0]), fromBits(o.cx[1]));
+  if (o.unit) {
+    const u = o.unit;
+    const dim = Object.fromEntries(u.dim.map(([k, b]) => [k, fromBits(b)]));
+    return { __unitCell: true, value: fromBits(u.value), dim, ...(u.display === null ? {} : { display: u.display }), ...(u.ratio ? { ratio: true } : {}) } satisfies UnitCell;
+  }
   throw new Uncrossable();
 }
 
@@ -145,7 +156,7 @@ export function evaluateOnCore(src: string, env: Record<string, unknown>): { val
  *  core isn't loaded, an argument can't cross, or the core leaves the reading to the TS. */
 export function callCore(name: string, args: readonly unknown[]): unknown {
   if (wasmEngineLoaded() && wasmEngineOn()) {
-    const wire = args.map(coreValue);
+    const wire = args.map((a) => coreValue(a, true));
     if (!wire.includes(undefined)) {
       syncExternalNames();
       const r = readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock() }));
@@ -161,4 +172,28 @@ export function callCore(name: string, args: readonly unknown[]): unknown {
     if (e instanceof TypeError || e instanceof RangeError) return solError("#VALUE!", `${name} can't compute with these arguments`);
     throw e;
   }
+}
+
+/** `dimEvalWithCode` of a formula on the core ([[C25]] firstClassUnits, [[D99]] rustIsSpec): `{ dim, code }`, a
+ *  #UNIT! conflict, or null where it is indeterminate. Undefined where the core is off or the formula doesn't parse. */
+export function dimEvalOnCore(src: string, env: Record<string, Record<string, number>>, codes: Record<string, string>):
+  { dim: Record<string, number>; code?: string } | SolError | null | undefined {
+  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return undefined;
+  const r = wasmInvokeSync<{ parses?: false; dim?: [string, string][]; code?: string | null; indeterminate?: true; err?: string; msg?: string }>(
+    "engine_dim_eval", { src, env, codes });
+  if (r.parses === false) return undefined;
+  if (r.indeterminate) return null;
+  if (r.err !== undefined) return solError(r.err as SolErrorCode, r.msg ?? "");
+  const dim = Object.fromEntries(r.dim!.map(([k, v]) => [k, Number(v)]));
+  return r.code == null ? { dim } : { dim, code: r.code };
+}
+
+/** `affineWeight` of a formula on the core: 1 a reading, 0 a difference, or #UNIT!. Undefined where the core is off or
+ *  the formula doesn't parse. `fns` are named LAMBDAs as their parameters and body text. */
+export function affineWeightOnCore(src: string, points: readonly string[], lists: readonly string[], bare: readonly string[],
+  fns: Record<string, [string[], string]>): 0 | 1 | SolError | undefined {
+  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src) || !Object.values(fns).every(([, b]) => wellFormed(b))) return undefined;
+  const r = wasmInvokeSync<{ parses?: false; w?: 0 | 1; err?: string; msg?: string }>("engine_affine_weight", { src, points, lists, bare, fns });
+  if (r.parses === false) return undefined;
+  return r.err !== undefined ? solError(r.err as SolErrorCode, r.msg ?? "") : r.w!;
 }

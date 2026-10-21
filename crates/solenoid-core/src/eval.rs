@@ -1287,6 +1287,20 @@ pub fn decode_value(j: &serde_json::Value) -> V {
             };
             V::Cx(part(0), part(1))
         }
+        Json::Object(o) if o.contains_key("__unit") => {
+            let w = &o["__unit"];
+            let num = |j: Option<&Json>| match j.map(|p| cell_v(&crate::wire::decode_cell(p))) {
+                Some(V::Num(n)) => n,
+                _ => f64::NAN,
+            };
+            let dim = w.get("dim").and_then(Json::as_object).map(|d| d.iter().map(|(k, x)| (k.clone(), num(Some(x)))).collect()).unwrap_or_default();
+            V::Unit(Rc::new(crate::unit_dims::UnitCell {
+                value: num(w.get("value")),
+                dim,
+                display: w.get("display").and_then(Json::as_str).map(String::from),
+                ratio: w.get("ratio").and_then(Json::as_bool).unwrap_or(false),
+            }))
+        }
         Json::Object(o) if o.contains_key("__lambda") => {
             let w = &o["__lambda"];
             if let Some(name) = w.get("eta").and_then(Json::as_str) {
