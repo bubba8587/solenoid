@@ -7,6 +7,7 @@ import {
 import { unitError, READINGS_ADD, READINGS_SCALE, READINGS_FOLD } from "./unitValue";
 import { isSolError, type SolError } from "./errorValue";
 import { resolveExcelFunction, ELIMINATED_FUNCTIONS } from "./excelFunctions";
+import { dimEvalOnCore } from "./coreValues";
 
 export type DimResult = Dim | SolError | null;
 
@@ -357,6 +358,13 @@ export function dimEval(node: Ast, env: DimEnv, codes: CodeEnv = {}): DimResult 
 
 export function dimEvalWithCode(node: Ast, env: DimEnv, codes: CodeEnv = {}): { dim: Dim; code?: string } | SolError | null {
   return opEval(node, env, codes);
+}
+
+/** `dimEval` of a formula's text: on the core where it is loaded ([[D99]] rustIsSpec), else on the TS. */
+export function formulaDim(src: string, ast: Ast, env: DimEnv, codes: CodeEnv = {}): DimResult {
+  const core = dimEvalOnCore(src, env, codes);
+  if (core === undefined) return dimEval(ast, env, codes);
+  return core === null || isSolError(core) ? core : core.dim;
 }
 
 export function formulaResultDim(node: Ast, env: DimEnv): Dim | null {

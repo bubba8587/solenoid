@@ -193,6 +193,21 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(json!({ "parses": true, "vars": vars, "rows": rows }))
         }
+        // [[C25]] firstClassUnits: `dimEvalWithCode` over a formula, each exponent as its `String(x)`.
+        "engine_dim_eval" => {
+            let src = parse::<String>(args, "src")?;
+            let env = parse::<Option<std::collections::BTreeMap<String, crate::unit_dims::Dim>>>(args, "env")?.unwrap_or_default();
+            let codes = parse::<Option<crate::unit_dims::Codes>>(args, "codes")?.unwrap_or_default();
+            let Some(ast) = crate::excel_formula::parse_formula(&src) else { return Ok(json!({ "parses": false })) };
+            Ok(match crate::unit_dims::dim_eval_with_code(&ast, &env, &codes) {
+                Ok(Some(op)) => {
+                    let dim: Vec<Json> = op.dim.iter().filter(|(_, v)| **v != 0.0).map(|(k, v)| json!([k, crate::jsnum::number_to_string(*v)])).collect();
+                    json!({ "dim": dim, "code": op.code })
+                }
+                Ok(None) => json!({ "indeterminate": true }),
+                Err(e) => json!({ "err": e.code, "msg": e.message }),
+            })
+        }
         // `computeColumnCells` in the core: a formula or a bare wired LAMBDA over a resident frame.
         "engine_compute_column" => {
             let f = get(&parse::<String>(args, "handle")?)?;

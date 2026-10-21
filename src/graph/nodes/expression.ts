@@ -9,7 +9,7 @@ import { isSolError, solError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell, isAffineDisplay, tagDim, fromUnit, type UnitCell } from "../unitValue";
 import { fcUnitToUnit, displayMagnitudeOf, readInDeclaredUnit } from "../unitBridge";
-import { dimEval, affineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
+import { formulaDim, affineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf } from "../dimension";
 
 function guard(v: unknown, scalar: boolean): unknown {
@@ -216,7 +216,7 @@ export class ExpressionNode extends ClassicPreset.Node {
           const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
           if (code !== undefined) codeEnv[v] = code;
         }
-        const r = dimEval(this.ast, dimEnv, codeEnv);
+        const r = formulaDim(this.expr, this.ast, dimEnv, codeEnv);
         if (isSolError(r)) {
           this.cachedResult = r; this.cachedError = null;
           return { result: r };

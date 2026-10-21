@@ -162,3 +162,17 @@ export function callCore(name: string, args: readonly unknown[]): unknown {
     throw e;
   }
 }
+
+/** `dimEvalWithCode` of a formula on the core ([[C25]] firstClassUnits, [[D99]] rustIsSpec): `{ dim, code }`, a
+ *  #UNIT! conflict, or null where it is indeterminate. Undefined where the core is off or the formula doesn't parse. */
+export function dimEvalOnCore(src: string, env: Record<string, Record<string, number>>, codes: Record<string, string>):
+  { dim: Record<string, number>; code?: string } | SolError | null | undefined {
+  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return undefined;
+  const r = wasmInvokeSync<{ parses?: false; dim?: [string, string][]; code?: string | null; indeterminate?: true; err?: string; msg?: string }>(
+    "engine_dim_eval", { src, env, codes });
+  if (r.parses === false) return undefined;
+  if (r.indeterminate) return null;
+  if (r.err !== undefined) return solError(r.err as SolErrorCode, r.msg ?? "");
+  const dim = Object.fromEntries(r.dim!.map(([k, v]) => [k, Number(v)]));
+  return r.code == null ? { dim } : { dim, code: r.code };
+}

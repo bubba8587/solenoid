@@ -8,7 +8,8 @@ import * as path from "node:path";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { isCx } from "../../src/graph/cxValue";
 import { resolveExcelFunction, FX_FUNCTION_NAMES, internalFunctionNames } from "../../src/graph/excelFunctions";
-import { compileTsEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
+import { compileTsEvaluator, extractVariables, rowRefNames, parseFormula } from "../../src/graph/excelFormula";
+import { dimEvalWithCode } from "../../src/graph/unitDimExpr";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import {
   applyVerb, joinFrames, appendFrames, bindColumns, promoteHeaders, demoteHeaders, describeFrame, correlationMatrix, reconcileFrames,
@@ -874,9 +875,85 @@ describe("formulas over values answer as frozen", () => {
   });
 });
 
+// ─── Formula dimensions (unitDimExpr.ts) ─────────────────────────────────────────
+
+type DimCase = { src: string; env: Record<string, Record<string, number>>; codes: Record<string, string>; want: unknown };
+
+/** The dimension `dimEvalWithCode` gives a formula over united names ([[C25]] firstClassUnits): mixed dimensions,
+ *  currency codes, constant and computed powers, every function class, LAMBDA hosts and applications. */
+const unitDims = frozen<DimCase>("unit-dims", () => {
+  const cases: DimCase[] = [];
+  const rand = mulberry32(2525);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const DIMS: Record<string, Record<string, number>[]> = {
+    a: [{ length: 1 }], b: [{ length: 1 }, { time: 1 }], c: [{ time: 1 }, {}], d: [{ currency: 1 }], e: [{ currency: 1 }],
+    f: [{ angle: 1 }, { angle: 2 }], g: [{}], h: [{ mass: 1, length: 1, time: -2 }, { length: 2 }],
+    w: [{ "custom:widget": 1 }, { "custom:widget": 1, time: -1 }], p: [{ currency: 1 }, { length: 1, angle: 0 }],
+  };
+  const vars = Object.keys(DIMS);
+  const fns = ["SIN", "COS", "TAN", "COT", "ATAN2", "EXP", "LN", "LOG10", "COUNT", "COUNTIF", "ISNUMBER", "LEN", "TEXT", "AND", "RANK",
+    "CORREL", "ABS", "MIN", "MAX", "MEDIAN", "SUM", "AVERAGE", "ROUND", "MOD", "STDEV", "STDEV.P", "STDEVP", "VARP", "VAR", "VAR.S", "DEVSQ",
+    "SUMSQ", "PRODUCT", "SUMPRODUCT", "SQRT", "POWER", "IF", "IFS", "SWITCH", "IFERROR", "IFNA", "CHOOSE", "LARGE", "SMALL",
+    "PERCENTILE", "INDEX", "SORT", "TAKE", "FILTER", "AVERAGEIF", "SUMIFS", "MAXIFS", "XLOOKUP", "VLOOKUP", "LOOKUP", "SIGN", "FLOOR",
+    "LAMBDA", "NOSUCHFN", "TEXTFILTER", "UPPER", "CONVERT", "NPV", "RAND", "PI", "SEQUENCE", "MMULT", "AVERAGEA", "CEILINGMATH"];
+  const lambda = () => pick(["LAMBDA(v, v * 2)", "LAMBDA(v, v * v)", "LAMBDA(acc, v, acc + v)", "LAMBDA(acc, v, acc * v)",
+    "LAMBDA(r, SUM(r))", "LAMBDA(i, j, i * j)", "LAMBDA(x, y, x / y)", "LAMBDA(v, IF(v > 0, v, 0))", "MAX", "SUM", "SQRT", "a", "LAMBDA(v)"]);
+  const leaf = () => pick([...vars, ...vars, "1", "2", "0", "-3.5", "\"t\"", "TRUE", "{1,2,3}", "@a", "a%", "-a", "t", "q"]);
+  const pow = () => pick(["2", "0.5", "1/2", "-1", "3", "1/3", "(2+1)", "g", "a", "0", "1/0", "-2^2"]);
+  const expr = (depth: number): string => {
+    const r = rand();
+    if (depth <= 0 || r < 0.22) return leaf();
+    if (r < 0.45) return `${expr(depth - 1)} ${pick(["+", "-", "*", "/", "&", "=", "<", ">=", "<>", "+", "-", "*", "/"])} ${expr(depth - 1)}`;
+    if (r < 0.52) return `(${expr(depth - 1)}) ^ ${pow()}`;
+    if (r < 0.6) {
+      const host = pick(["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY"]);
+      if (host === "REDUCE" || host === "SCAN") return `${host}(${pick(["0", "1", "a", "d"])}, ${expr(depth - 1)}, ${lambda()})`;
+      if (host === "MAKEARRAY") return `MAKEARRAY(2, 3, ${lambda()})`;
+      if (host === "MAP" && rand() < 0.4) return `MAP(${expr(depth - 1)}, ${expr(depth - 1)}, ${lambda()})`;
+      return `${host}(${expr(depth - 1)}, ${lambda()})`;
+    }
+    if (r < 0.64) return `${pick(["LAMBDA(x, x * a)", "LAMBDA(x, y, x + y)", "LAMBDA(x, x ^ 2)", "SUM", "LAMBDA(x)"])}(${expr(depth - 1)}, ${expr(depth - 1)})`;
+    const n = Math.floor(rand() * 5);
+    return `${pick(fns)}(${Array.from({ length: n }, () => (rand() < 0.08 ? "" : expr(depth - 1))).join(", ")})`;
+  };
+  for (let i = 0; i < 20000; i++) {
+    const env: Record<string, Record<string, number>> = {};
+    const codes: Record<string, string> = {};
+    for (const v of vars) if (rand() < 0.8) env[v] = pick(DIMS[v]);
+    if (env.d) codes.d = pick(["usd", "usd", "eur"]);
+    if (env.e) codes.e = pick(["eur", "gbp", "usd"]);
+    const src = expr(3);
+    const ast = parseFormula(src);
+    if (!ast) continue;
+    cases.push({ src, env, codes, want: dimAnswer(dimEvalWithCode(ast, env, codes)) });
+  }
+  return cases;
+});
+
+/** A dimension answer as comparable data: sorted axes, each exponent as its `String(x)`, zeros dropped. */
+function dimAnswer(r: ReturnType<typeof dimEvalWithCode>): unknown {
+  if (r === null) return { indeterminate: true };
+  if (isSolError(r)) return { err: r.code, msg: r.message };
+  const dim = Object.keys(r.dim).sort().filter((k) => r.dim[k] !== 0).map((k) => [k, String(r.dim[k])]);
+  return { dim, code: r.code ?? null };
+}
+
+describe("formula dimensions answer as frozen", () => {
+  it(`${unitDims.length} formulas`, () => {
+    const bad: unknown[] = [];
+    for (const c of unitDims) {
+      const raw = wasmInvokeSync<{ dim?: unknown; code?: unknown }>("engine_dim_eval", { src: c.src, env: c.env, codes: c.codes });
+      const got = raw.dim ? { dim: raw.dim, code: raw.code } : raw;
+      if (JSON.stringify(got) !== JSON.stringify(c.want)) bad.push({ src: c.src, env: c.env, codes: c.codes, got, want: c.want });
+    }
+    if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(b)).join("\n"));
+    expect(bad.slice(0, 5)).toEqual([]);
+  });
+});
+
 if (FREEZING) {
   it("froze every suite", () => {
-    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length).toBeGreaterThan(0);
+    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length).toBeGreaterThan(0);
   });
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.

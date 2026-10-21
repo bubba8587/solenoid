@@ -8,7 +8,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "../error
 import { guardFinite } from "../valueKinds";
 import { MAX_GENERATED } from "./listOps";
 import { isUnitCell, tagDim, magnitudeOf, unitError, fromUnit, READINGS_FOLD, type UnitCell } from "../unitValue";
-import { dimEval, affineWeight, type DimEnv } from "../unitDimExpr";
+import { formulaDim, affineWeight, type DimEnv } from "../unitDimExpr";
 import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
 import { fcUnitToUnit } from "../unitBridge";
 
@@ -122,8 +122,7 @@ function foldResultDim(expr: string, dimVars: string[], elemDim: Dim): Dim | Sol
   if (!ast) return null;
   const env: DimEnv = {};
   for (const v of dimVars) env[v] = elemDim;
-  const r = dimEval(ast, env);
-  return r;
+  return formulaDim(expr, ast, env);
 }
 
 function foldExpr(lam: unknown, inline: string | undefined, fallback: string): string {
