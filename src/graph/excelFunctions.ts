@@ -505,6 +505,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   DOLLAR:      { returns: "string", arity: [1, 2], family: "text" },
   FIXED:       { returns: "string", arity: [1, 3], family: "text" },
   VALUE:       { returns: "number", arity: [1, 1], family: "text" },
+  CLEAN:       { returns: "string", arity: [1, 1], family: "text" },
   NUMBERVALUE: { returns: "number", arity: [1, 3], family: "text" },
   MOD:         { returns: "number", arity: [2, 2], family: "scalar-math" },
   POWER:       { returns: "number", arity: [2, 2], family: "scalar-math" },
@@ -939,6 +940,9 @@ registerInternal("MID", (text, start, len) => {
   return t.slice(s - 1, s - 1 + n);
 });
 registerInternal("PROPER", (text) => properCase(toStr(text)));
+// Excel's CLEAN drops character codes 0 to 31 and reads a number or logical as its text; Formula.js threw on either, and
+// the Text Transform card also dropped DEL (127), which Excel keeps.
+registerInternal("CLEAN", (text) => toStr(text).replace(/[\x00-\x1F]/g, ""));
 registerInternal("REPT", (text, times) => {
   const t = toStr(text), n = Math.trunc(toNum(times));
   if (Number.isNaN(n)) return VALUE("REPT");

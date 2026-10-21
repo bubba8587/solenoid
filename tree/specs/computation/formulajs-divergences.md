@@ -32,6 +32,8 @@ Without the tripwire, a vendor update that fixes or changes a function passes si
 
 - **BESSELJ, BESSELI, BESSELK, BESSELY** call Formula.js, except that an order past 1,000,000 answers `#DOMAIN!` ("BESSELJ takes an order of at most 1,000,000"): Formula.js recurs once per order, so `BESSELJ(1, 1e12)` hung the app ([[C120]] linearWork).
 
+- **CLEAN** drops character codes 0 to 31, as Excel's does, and reads a number or logical as its text: Formula.js threw on `CLEAN(5)`. The Text Transform card's CLEAN calls it, so the card no longer also drops DEL (127), which Excel keeps.
+
 These match the Math node's own compute.
 
 ## Logic
