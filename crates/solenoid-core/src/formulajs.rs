@@ -638,9 +638,10 @@ pub fn call(name: &str, a: &[V]) -> V {
                 V::List(items) => parse_number_array(items).map(Some),
                 // Text parses from its last unit, then writing the number back into the string throws (strict mode).
                 V::Str(s) if !s.is_empty() => {
-                    let last = String::from_utf16_lossy(&[*s.encode_utf16().collect::<Vec<u16>>().last().unwrap_or(&0)]);
+                    let units: Vec<u16> = s.encode_utf16().collect();
+                    let last = String::from_utf16_lossy(&units[units.len() - 1..]);
                     return match parse_number(&V::str(&last)) {
-                        V::Num(_) => throw(sol_error("#VALUE!", "Cannot assign to read only property of string")),
+                        V::Num(_) => throw(sol_error("#VALUE!", format!("Cannot assign to read only property '{}' of string '{s}'", units.len() - 1))),
                         _ => VALUE,
                     };
                 }

@@ -3401,7 +3401,8 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if na.is_some_and(|n| n < 2.0) || nb.is_some_and(|n| n < 2.0) {
                 return V::Null;
             }
-            let (Some(sa), Some(sb)) = (sa, sb) else { return throw(sol_error("#VALUE!", "a is not iterable")) };
+            let unspread = if sa.is_none() { "a" } else { "b" };
+            let (Some(sa), Some(sb)) = (sa, sb) else { return throw(sol_error("#VALUE!", format!("{unspread} is not iterable"))) };
             let (v1, v2) = (js_sample_var(&sa), js_sample_var(&sb));
             if !(v1 > 0.0) || !(v2 > 0.0) {
                 return V::Null;
