@@ -1397,6 +1397,15 @@ registerInternal("PRICE", (settle, maturity, rate, yld, redemption, freq) =>
   bondPriceYield("price", toNum(settle), toNum(maturity), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
 registerInternal("YIELD", (settle, maturity, rate, pr, redemption, freq) =>
   bondPriceYield("yield", toNum(settle), toNum(maturity), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
+// Formula.js's DB and DDB step once per period, so a huge period within a huge life would hang ([[C120]] linearWork).
+for (const name of ["DB", "DDB"] as const) {
+  const fx = FX[name] as (...args: unknown[]) => unknown;
+  registerInternal(name, (cost, salvage, life, period, extra) => {
+    const p = toNum(period);
+    if (p > 1_000_000 && p <= toNum(life)) return solError("#DOMAIN!", `${name} needs a period of at most 1,000,000`);
+    return fx(cost, salvage, life, period, extra);
+  });
+}
 const IRR_CONV = (fn: string) => solError("#CONV!", `${fn} couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.`);
 registerInternal("IRR", (values) => {
   const { error, nums } = cashPrep(numList(values) as (number | null | SolError)[]);

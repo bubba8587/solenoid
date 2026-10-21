@@ -82,6 +82,7 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 - **TBILLEQ, TBILLPRICE, TBILLYIELD** run the T-Bill node's actual/360 kernel. Formula.js counts 30/360 and misses Microsoft's worked examples by a day.
 - **IRR, XIRR** run the IRR node's solver, `financeOps.solveDiscountRate`: Newton's method with a rate floor, then bracket and bisect, answering `#CONV!` only when no root exists above the floor. Formula.js's IRR returns a fabricated 1000 (100,000%) when the root sits close to the floor: `IRR([-4943, -2458, 285])` is −0.903. The `guess` argument is accepted and ignored, because this solver needs no seed and the node takes none ([[D73]] nodeCoversFormula). Pinned across both surfaces in `tests/graph/nodes/financeIterative.test.ts`.
 - **MIRR** runs the node's `mirr` kernel on the same cash-flow preparation as IRR.
+- **DB, DDB** call Formula.js, except that a period past 1,000,000 within the life answers `#DOMAIN!` ("DB needs a period of at most 1,000,000"). Formula.js steps once per period, so a huge period hung the app ([[C120]] linearWork); VDB, CUMIPMT and CUMPRINC stop at the same million. The tripwire checks that Formula.js still loops.
 - **NPV** stays Formula.js but is `RANGE_ZERO_FILL`: a blank period is a zero cash flow, as the nodes' `cashPrep` treats it. Dropping the blank would shift every later period.
 
 ## Array-returning names and complex numbers
