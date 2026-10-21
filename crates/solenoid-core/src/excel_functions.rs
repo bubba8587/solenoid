@@ -138,7 +138,7 @@ const PORTED: &[&str] = &[
 /// name from a ported one. The shapers read a list as a column, as a computed column hands one over, so they wait
 /// for the value model to tell a column from a row.
 pub fn ported_names() -> Vec<&'static str> {
-    PORTED.iter().chain(crate::formulajs::NAMES.iter()).copied().collect()
+    PORTED.iter().chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).copied().collect()
 }
 
 /// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
@@ -147,7 +147,7 @@ pub fn reads_matrices(_name: &str) -> bool {
 }
 
 pub fn is_ported(name: &str) -> bool {
-    PORTED.contains(&name) || crate::shapers::is_shaper(name) || crate::formulajs::NAMES.contains(&name)
+    PORTED.contains(&name) || crate::shapers::is_shaper(name) || crate::formulajs::NAMES.contains(&name) || crate::fns_complex::NAMES.contains(&name)
 }
 
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
@@ -1119,7 +1119,7 @@ fn group_thousands(s: &str) -> String {
 }
 
 /// V8's `Math.hypot`: the largest magnitude scales a Kahan-compensated sum of squares.
-fn math_hypot(xs: &[f64]) -> f64 {
+pub(crate) fn math_hypot(xs: &[f64]) -> f64 {
     let mut max: f64 = 0.0;
     let mut nan = false;
     let abs: Vec<f64> = xs.iter().map(|x| x.abs()).collect();
@@ -3324,6 +3324,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         },
         _ if crate::formulajs::NAMES.contains(&name) => crate::formulajs::call(name, a),
+        _ if crate::fns_complex::NAMES.contains(&name) => crate::fns_complex::call(name, a),
         _ if is_finance(name) => finance_function(name, a),
         "REGEXTEST" | "REGEXEXTRACT" | "REGEXREPLACE" => regex_call(name, a),
         "ENCODEURL" => {
