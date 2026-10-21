@@ -145,10 +145,11 @@ pub fn reads_matrices(name: &str) -> bool {
 }
 
 pub fn is_ported(name: &str) -> bool {
-    PORTED.contains(&name) || crate::shapers::is_shaper(name) || crate::formulajs::NAMES.contains(&name) || crate::fns_complex::NAMES.contains(&name)
-        || crate::fns_matrix::NAMES.contains(&name)
-        || crate::fns_lists::NAMES.contains(&name)
-        || crate::fns_stats::NAMES.contains(&name)
+    thread_local! {
+        static NAMES: crate::fxhash::FxHashSet<&'static str> = [PORTED, &crate::shapers::SHAPERS[..], crate::formulajs::NAMES, crate::fns_complex::NAMES,
+            crate::fns_matrix::NAMES, crate::fns_lists::NAMES, crate::fns_stats::NAMES].concat().into_iter().collect();
+    }
+    NAMES.with(|n| n.contains(name))
 }
 
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
@@ -2344,7 +2345,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if n.is_nan() || digits.is_nan() {
                 return value_err(name);
             }
-            V::Num(round_digits(n, digits, &name.to_lowercase()))
+            V::Num(round_digits(n, digits, match name { "ROUND" => "round", "ROUNDUP" => "roundup", _ => "rounddown" }))
         }
         "TRUNC" => {
             let (n, d) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));

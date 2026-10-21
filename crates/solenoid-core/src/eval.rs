@@ -430,9 +430,33 @@ pub struct Eval<'a> {
     row: Option<&'a RowCtx<'a>>,
     /// `rangeMemo`: a range function called again with the very same arguments (a whole column, row after row).
     memo: RefCell<FxHashMap<*const Ast, (Vec<V>, V)>>,
+    /// Each call site's name, facts and empty slots, read once per site rather than once per row.
+    sites: RefCell<FxHashMap<*const u8, Rc<Site>>>,
+}
+
+struct Site {
+    raw: String,
+    name: String,
+    traits: Option<Rc<Traits>>,
+    empty: Vec<bool>,
+    any_empty: bool,
 }
 
 impl Eval<'_> {
+    fn site(&self, raw: &str, args: &[Ast]) -> Rc<Site> {
+        let key = raw.as_ptr();
+        if let Some(s) = self.sites.borrow().get(&key) {
+            if s.raw == raw && s.empty.len() == args.len() {
+                return s.clone();
+            }
+        }
+        let name = raw.to_uppercase();
+        let empty: Vec<bool> = args.iter().map(|a| matches!(a, Ast::Blank)).collect();
+        let site = Rc::new(Site { raw: raw.to_string(), traits: traits(&name), any_empty: empty.contains(&true), empty, name });
+        self.sites.borrow_mut().insert(key, site.clone());
+        site
+    }
+
     /// `compileEvaluator`'s answer: a LAMBDA left uncalled is an error, a Formula.js error reads as Solenoid's.
     pub fn run(&self, ast: &Ast, env: &Rc<Env>) -> V {
         match self.eval(ast, env) {
@@ -572,7 +596,6 @@ impl Eval<'_> {
     }
 
     fn call(&self, raw: &str, args: &[Ast], env: &Rc<Env>) -> V {
-        let name = raw.to_uppercase();
         if let Some(V::Lambda(bound)) = env.get(raw) {
             let bound = bound.clone();
             let argv: Vec<V> = args.iter().map(|a| self.eval(a, env)).collect();
@@ -585,6 +608,8 @@ impl Eval<'_> {
             }
             return self.call_lambda(&bound, &argv);
         }
+        let site = self.site(raw, args);
+        let name = &site.name;
         if name == "LAMBDA" {
             let Some((body, ps)) = args.split_last() else {
                 return V::err(sol_error("#VALUE!", "LAMBDA needs a body: LAMBDA(param…, body)"));
@@ -606,10 +631,9 @@ impl Eval<'_> {
             return V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body.clone())), env: env.clone(), eta: None, captured: None }));
         }
         // A name the core doesn't know may be a pack's, registered in JS at run time: the TS calls it back.
-        let Some(t) = traits(&name) else {
-            return if is_external(&name) { crate::excel_functions::bail() } else { V::err(sol_error("#NAME?", format!("Unknown function {name}"))) };
+        let Some(t) = site.traits.as_deref() else {
+            return if is_external(name) { crate::excel_functions::bail() } else { V::err(sol_error("#NAME?", format!("Unknown function {name}"))) };
         };
-        let t = t.as_ref();
         if let Some(r) = &t.refusal {
             return V::err(sol_error(&r.code, r.message.as_str()));
         }
@@ -618,37 +642,40 @@ impl Eval<'_> {
         } else {
             args.iter().map(|a| self.eval(a, env)).collect()
         };
-        let empty: Vec<bool> = args.iter().map(|a| matches!(a, Ast::Blank)).collect();
-        let settled = apply_arg_roles(&name, t, &empty, &mut argv);
-        for (i, a) in args.iter().enumerate() {
-            if matches!(a, Ast::Blank) {
-                if let Some(v) = t.blank(i) {
-                    argv[i] = lowered(v);
+        let roled = apply_arg_roles(name, t, &site.empty, &mut argv);
+        let settled: &[bool] = roled.as_deref().unwrap_or(&site.empty);
+        if site.any_empty {
+            for (i, a) in args.iter().enumerate() {
+                if matches!(a, Ast::Blank) {
+                    if let Some(v) = t.blank(i) {
+                        argv[i] = lowered(v);
+                    }
                 }
             }
         }
         if t.kind == "handler" {
-            return apply_error_handler(&name, &argv);
+            return apply_error_handler(name, &argv);
         }
         if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
             return e.clone();
         }
-        let lifted: Vec<usize> = (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect();
+        let any_arr = argv.iter().any(is_arr);
+        let lifted: Vec<usize> = if any_arr { (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect() } else { Vec::new() };
         if lifted.is_empty() {
-            if self.row.is_some() && (t.kind == "range" || MEMO_SHAPERS.contains(&name.as_str())) && argv.iter().any(is_arr) {
+            if any_arr && self.row.is_some() && (t.kind == "range" || MEMO_SHAPERS.contains(&name.as_str())) {
                 let key = args.as_ptr();
                 if let Some((last, r)) = self.memo.borrow().get(&key) {
                     if last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
                         return r.clone();
                     }
                 }
-                let r = self.route_call(&name, t, argv.clone(), &settled);
+                let r = self.route_call(name, t, argv.clone(), settled);
                 if !is_arr(&r) || MEMO_SHAPERS.contains(&name.as_str()) {
                     self.memo.borrow_mut().insert(key, (argv, r.clone()));
                 }
                 return r;
             }
-            return self.route_call(&name, t, argv, &settled);
+            return self.route_call(name, t, argv, settled);
         }
         let cols: Vec<V> = lifted.iter().map(|&i| argv[i].clone()).collect();
         map_cells(&cols, &mut |cells| {
@@ -662,7 +689,7 @@ impl Eval<'_> {
             for (k, &i) in lifted.iter().enumerate() {
                 one[i] = cells[k].clone();
             }
-            self.route_call(&name, t, one, &settled)
+            self.route_call(name, t, one, settled)
         })
     }
 
@@ -701,15 +728,21 @@ impl Eval<'_> {
                     Ok(a) => a,
                     Err(e) => return e,
                 };
-                let flat: Vec<V> = args.iter().flat_map(|a| if let V::List(l) = a { l.as_ref().clone() } else { vec![a.clone()] }).collect();
+                let flat_owned: Vec<V>;
+                let flat: &[V] = if args.iter().any(|a| matches!(a, V::List(_))) {
+                    flat_owned = args.iter().flat_map(|a| if let V::List(l) = a { l.as_ref().clone() } else { vec![a.clone()] }).collect();
+                    &flat_owned
+                } else {
+                    &args
+                };
                 // The ported range bodies read their lists flat, but for those that read each list in place. A value
                 // nested past a matrix would reach a flat reader as a list among its numbers, a shape none reads yet.
                 let in_place = crate::excel_functions::reads_lists(name);
                 if !in_place && flat.iter().any(is_arr) {
                     return crate::excel_functions::bail();
                 }
-                match self.dispatch(name, if in_place { &args } else { &flat }) {
-                    V::Num(r) if !r.is_finite() => guard(r, &flat),
+                match self.dispatch(name, if in_place { &args } else { flat }) {
+                    V::Num(r) if !r.is_finite() => guard(r, flat),
                     r => r,
                 }
             }
@@ -1024,26 +1057,26 @@ fn prep_range_args(prep: &str, argv: Vec<V>) -> Result<Vec<V>, V> {
 }
 
 /// `applyArgRoles`: each argument read by its role; the answer is which slots the null rule must not blank on.
-fn apply_arg_roles(name: &str, t: &Traits, empty: &[bool], argv: &mut [V]) -> Vec<bool> {
-    let mut settled = empty.to_vec();
+/// The slots a role settled beside the empty ones, or None where no role applies.
+fn apply_arg_roles(name: &str, t: &Traits, empty: &[bool], argv: &mut [V]) -> Option<Vec<bool>> {
     if !t.has_roles() {
-        return settled;
+        return None;
     }
-    let label = |i: usize| format!("{name}: argument {}", i + 1);
+    let mut settled = empty.to_vec();
     for (i, v) in argv.iter_mut().enumerate() {
         let Some(role) = t.role(i) else { continue };
         settled[i] = true;
-        *v = apply_role(role, v, &label(i), true);
+        *v = apply_role(role, v, &|| format!("{name}: argument {}", i + 1), true);
     }
     let group: Vec<usize> = (0..argv.len()).filter(|&i| matches!(t.role(i), Some(Role::Picks { required: true }))).collect();
     if !group.is_empty() && group.iter().all(|&i| matches!(argv[i], V::Undef)) {
         argv[group[0]] = V::err(sol_error("#SYNTAX!", format!("{name}: no positions given, and they have no default")));
     }
-    settled
+    Some(settled)
 }
 
 /// `applyRole`; a picks role is read with `required` off, as `applyArgRoles` reads it.
-fn apply_role(role: &Role, v: &V, label: &str, picks_optional: bool) -> V {
+fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bool) -> V {
     if v.is_sol_error() {
         return v.clone();
     }
@@ -1054,7 +1087,7 @@ fn apply_role(role: &Role, v: &V, label: &str, picks_optional: bool) -> V {
             other => other.clone(),
         }
     }
-    let no_default = || V::err(sol_error("#SYNTAX!", format!("{label} is blank, and it has no default")));
+    let no_default = || V::err(sol_error("#SYNTAX!", format!("{} is blank, and it has no default", label())));
     match role {
         Role::Setting { blank } => fill(v, &lowered(blank)),
         Role::Required => match v {
@@ -1068,11 +1101,11 @@ fn apply_role(role: &Role, v: &V, label: &str, picks_optional: bool) -> V {
                     rows.iter()
                         .map(|r| match r {
                             V::List(cells) => list(cells.iter().map(|x| if matches!(x, V::Null | V::Undef) {
-                                V::err(sol_error("#SYNTAX!", format!("A position in {label} is blank")))
+                                V::err(sol_error("#SYNTAX!", format!("A position in {} is blank", label())))
                             } else {
                                 x.clone()
                             }).collect()),
-                            V::Null | V::Undef => V::err(sol_error("#SYNTAX!", format!("A position in {label} is blank"))),
+                            V::Null | V::Undef => V::err(sol_error("#SYNTAX!", format!("A position in {} is blank", label()))),
                             other => other.clone(),
                         })
                         .collect(),
@@ -1308,7 +1341,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
         row_sides: inp.row_sides,
         at_verdict: RefCell::default(),
     };
-    let ev = Eval { row: Some(&ctx), memo: RefCell::default() };
+    let ev = Eval { row: Some(&ctx), ..Eval::default() };
     let has_col = |n: &str| ctx.cols.contains_key(n);
     let side = |p: &str| inp.sides.get(p).cloned().unwrap_or(V::Undef);
     let mut side_vars: Vec<String> = Vec::new();

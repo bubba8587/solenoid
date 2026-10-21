@@ -430,12 +430,21 @@ pub fn parse_formula(expr: &str) -> Option<Ast> {
 }
 
 pub fn constant_value(name: &str) -> Option<f64> {
-    match name.to_lowercase().as_str() {
-        "pi" => Some(std::f64::consts::PI),
-        "tau" => Some(2.0 * std::f64::consts::PI),
-        "e" => Some(std::f64::consts::E),
-        "phi" => Some((1.0 + 5f64.sqrt()) / 2.0),
-        _ => None,
+    // No non-ASCII letter lowercases to an ASCII p, i, t, a, u, e or h, so a non-ASCII name is never a constant.
+    if name.len() > 3 || !name.is_ascii() {
+        return None;
+    }
+    let is = |c: &str| name.eq_ignore_ascii_case(c);
+    if is("pi") {
+        Some(std::f64::consts::PI)
+    } else if is("tau") {
+        Some(2.0 * std::f64::consts::PI)
+    } else if is("e") {
+        Some(std::f64::consts::E)
+    } else if is("phi") {
+        Some((1.0 + 5f64.sqrt()) / 2.0)
+    } else {
+        None
     }
 }
 
@@ -535,12 +544,22 @@ pub(crate) fn apply_op(op: &str, a: &V, b: &V) -> V {
     if matches!(op, "+" | "-" | "*" | "/" | "^") && (matches!(na, V::Str(_)) || matches!(nb, V::Str(_))) {
         return V::err(sol_error("#VALUE!", "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE"));
     }
-    let (x, y) = (to_f64_js(&na), to_f64_js(&nb));
+    let xy = || (to_f64_js(&na), to_f64_js(&nb));
     match op {
-        "+" => fin(x + y),
-        "-" => fin(x - y),
-        "*" => fin(x * y),
+        "+" => {
+            let (x, y) = xy();
+            fin(x + y)
+        }
+        "-" => {
+            let (x, y) = xy();
+            fin(x - y)
+        }
+        "*" => {
+            let (x, y) = xy();
+            fin(x * y)
+        }
         "/" => {
+            let (x, y) = xy();
             if matches!(nb, V::Num(n) if n == 0.0) && matches!(na, V::Num(_)) {
                 V::err(sol_error("#DIV/0!", "Division by zero"))
             } else {
@@ -548,6 +567,7 @@ pub(crate) fn apply_op(op: &str, a: &V, b: &V) -> V {
             }
         }
         "^" => {
+            let (x, y) = xy();
             if x == 0.0 && y < 0.0 {
                 V::err(sol_error("#DIV/0!", "Zero to a negative power divides by zero"))
             } else {
@@ -561,7 +581,7 @@ pub(crate) fn apply_op(op: &str, a: &V, b: &V) -> V {
                 V::Num(n) => out.push_str(&number_to_text(*n)),
                 other => out.push_str(&crate::excel_functions::js_string_of(other)),
             };
-            let mut joined = String::new();
+            let mut joined = String::with_capacity(32);
             push(&mut joined, a);
             push(&mut joined, b);
             V::Str(Rc::from(joined))
