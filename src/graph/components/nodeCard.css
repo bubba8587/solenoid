@@ -1296,6 +1296,15 @@ body.solenoid-scrubbing * {
   cursor: default;
 }
 .solenoid-mermaid {
+  --pele-bg: transparent;
+  --pele-fg: var(--text);
+  --pele-muted: var(--text-muted);
+  --pele-line: var(--text-muted);
+  --pele-surface: var(--surface);
+  --pele-surface-alt: var(--surface-sunken);
+  --pele-border: var(--border);
+  --pele-accent: var(--accent);
+  --pele-error: var(--sol-error);
   display: flex;
   justify-content: center;
   overflow: auto;
@@ -1303,7 +1312,7 @@ body.solenoid-scrubbing * {
   -webkit-user-select: none;
 }
 .solenoid-mermaid svg { max-width: 100%; height: auto; }
-/* Overrides mermaid's inline max-width, so the diagram fills a resized Display box. */
+/* Overrides the diagram's own size, so it fills a resized Display box. */
 .solenoid-node--sized .solenoid-mermaid { overflow: hidden; }
 .solenoid-node--sized .solenoid-mermaid svg {
   max-width: none !important;

@@ -6,6 +6,10 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-21c: Mermaid diagrams draw with Pele; cloud session)
+- **`MermaidView` renders with Pele** (`pele`, kepano's Mermaid renderer for Obsidian; [[chart-figures#Mermaid]]) instead of mermaid.js: loaded through `pele/lazy` (each diagram type's parser on first use), mounted with `mountAsync`, themed by `--pele-*` CSS variables on `.solenoid-mermaid` (series 1 to 8 from the categorical slots, inline), links and images off ([[C103]] untrustedContentSeams). Gone with mermaid: the `lodash-es` override and the KaTeX 0.16 advisories; `npm audit` is clean.
+- **Visible change:** Pele flips a left-to-right flowchart to top-down when the card is narrow (its `autoDirection`), and draws in its own visual style.
+
 ### SESSION DIGEST (2026-10-21b: hangs and a SUM limit found by the `solenoid/tsrs` Rust port; cloud session)
 - **SUM is owned** (`sumLikeFx`, [[formulajs-divergences]]): Formula.js's SUM spreads a list into `apply`, which throws past about 125k values, so `SUM(column)` over a long table threw in every row and re-summed per row. Pinned in `formulaDivergence.test.ts`.
 - **Four hangs now answer `#DOMAIN!`:** NETWORKDAYS with an end past the years 1 to 9999 (an infinite date never left the day loop), WORKDAY with such a start (past 2^53 a step doesn't move the day, so a start that's also a holiday looped), BINOM.INV with an infinite trial count and HYPGEOM.DIST's cumulative form with an infinite count (both summed NaN forever). Pinned in `datetimeParity.test.ts` and `distributionFormula.test.ts`.

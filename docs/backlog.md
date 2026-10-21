@@ -10,14 +10,10 @@ ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tr
 ## Dependency updates (walking them one at a time)
 
 Current state (2026-10-10): everything is on latest except what's held below, Polars 0.55 included.
-Held: `lodash-es` stays overridden to ^4.18.1 (mermaid 12's `chevrotain` 11.1 asks for 4.17.23, which
-carries two high-severity advisories); drop the override once chevrotain moves off 11.1.
 `@xyflow/system` stays an exact pin matching the version `@xyflow/react` pins (the socket handle calls its `XYHandle`); bump them together. `@tauri-apps/plugin-http` stays an exact pin matching the `tauri-plugin-http` crate in `Cargo.lock`;
 bump them together. `magic-string` stays on 0.30 (the plugin build's pin; 1.x is a new major).
 Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.config.ts` serves only
 the production minify, and its "esbuild options ignored" warning is expected.
-- [ ] **Mermaid bundles KaTeX 0.16** (two low advisories, `npm audit`): clears when mermaid moves
-  to KaTeX 0.18+; an override would hand mermaid a KaTeX major it wasn't built against.
 - [ ] **Filter parity over an empty frame** (found by `fuzz-frame-verbs.ts` seeds 1 and 4242, on
   Polars 0.46 and 0.55 alike): a filter on a logical column against a text value, e.g.
   `{ column: "city", op: "gte", value: "a" }` over no rows, is the empty frame on the oracle and
