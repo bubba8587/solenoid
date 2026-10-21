@@ -1438,7 +1438,7 @@ for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"] as const) {
     if (typeof n === "string" && Number.isNaN(order)) return VALUE(name);
     if (order < 0) return solError("#DOMAIN!", `${name} takes an order of 0 or more`);
     if (order > 1_000_000) return solError("#DOMAIN!", `${name} takes an order of at most 1,000,000`);
-    return fx(x, order);
+    return fx(x, Number.isNaN(order) ? n : order);
   });
 }
 // Formula.js's DB and DDB step once per period, so a huge period within a huge life would hang ([[C120]] linearWork).
