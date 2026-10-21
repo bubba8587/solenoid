@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import * as FX from "@formulajs/formulajs";
 import { resolveExcelFunction } from "../../src/graph/excelFunctions";
 import { isSolError } from "../../src/graph/errorValue";
-import { GCDNode } from "../../src/graph/nodes/scalar";
+import { GCDNode, MathFXNode } from "../../src/graph/nodes/scalar";
 import { TextSliceNode, TextFindNode } from "../../src/graph/nodes/text";
 
 // ─── Formula-engine divergence re-sweep (periodic, author-flagged 2026-06-25) ────
@@ -50,8 +50,12 @@ describe("FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT, MULTINOMIAL multiply withou
     expect(call("PERMUT", 1e6, 2)).toBe(999999000000);
     expect(call("MULTINOMIAL", 2, 3, 4)).toBe(1260);
     expect(call("COMBINA", 4, 3)).toBe(20);
+    expect(call("COMBINA", 2, 5)).toBe(6);
+    expect(call("COMBINA", 0, 3)).toBe(0);
+    expect(call("COMBINA", 0, 0)).toBe(1);
+    expect(call("FACTDOUBLE", -1)).toBe(1);
     expect(call("FACT", 1e9)).toBe(Infinity);
-    for (const [name, args] of [["FACT", [-1]], ["COMBIN", [5, 6]], ["PERMUT", [3, 5]], ["FACTDOUBLE", [-1]]] as const) {
+    for (const [name, args] of [["FACT", [-1]], ["COMBIN", [5, 6]], ["PERMUT", [3, 5]], ["FACTDOUBLE", [-2]]] as const) {
       expect((call(name, ...args) as { code?: string }).code).toBe("#DOMAIN!");
     }
     const fx = FX as unknown as Record<string, (n: number) => number>;
@@ -79,6 +83,23 @@ describe("BINOM.DIST.RANGE checks its range and stays finite on large trials (FX
     const fx = (FX as unknown as { BINOM: { DIST: { RANGE: (...a: number[]) => number } } }).BINOM.DIST.RANGE;
     expect(() => fx(1e5, 0.5, 0, 50000)).toThrow(RangeError);
     expect(fx(10, 0.5, 6, 5)).toBe(0);
+  });
+});
+
+describe("ACOT, GAMMALN and GAMMALN.PRECISE answer Excel's (FX is wrong)", () => {
+  it("ACOT is in (0, π) and the log-gamma of 0 or less is #DOMAIN!, as the Math Function card's", () => {
+    expect(num(call("ACOT", -1))).toBeCloseTo(3 * Math.PI / 4, 14);
+    expect(num(call("ACOT", 1))).toBeCloseTo(Math.PI / 4, 14);
+    for (const name of ["GAMMALN", "GAMMALN.PRECISE"]) {
+      for (const x of [-3.7, 0]) expect((call(name, x) as { code?: string }).code).toBe("#DOMAIN!");
+      expect(call(name, 4.5)).toBe(new MathFXNode({ op: "gammaln" }).data({ in: [4.5] }).result);
+    }
+    expect((new MathFXNode({ op: "gammaln" }).data({ in: [-3.7] }).result as { code?: string }).code).toBe("#DOMAIN!");
+  });
+  it("FX still answers atan(1/x) and a log-gamma for a negative x (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (x: number) => number>;
+    expect(fx.ACOT(-1)).toBeCloseTo(-Math.PI / 4, 14);
+    expect(fx.GAMMALN(-3.7)).toBeCloseTo(-1.3797, 4);
   });
 });
 
