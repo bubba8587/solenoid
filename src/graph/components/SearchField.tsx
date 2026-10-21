@@ -1,9 +1,10 @@
 // [[B14]] oneDesignSystem
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SearchIcon } from "./Icons";
 import "./SearchField.css";
 
-const NARROW = "(max-width: 560px)";
+const NARROW_PX = 560;
+const NARROW = `(max-width: ${NARROW_PX}px)`;
 const narrowNow = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(NARROW).matches;
 const subscribeNarrow = (l: () => void) => {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
@@ -25,19 +26,30 @@ export function SearchField({ value, onChange, placeholder, label, count, classN
   className?: string;
   collapsible?: boolean;
 }) {
-  const narrow = useSyncExternalStore(subscribeNarrow, narrowNow, () => false);
+  const narrowScreen = useSyncExternalStore(subscribeNarrow, narrowNow, () => false);
   const [opened, setOpened] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // A popup resized narrow on a wide screen collapses the field as a phone does.
+  const [el, setEl] = useState<HTMLElement | null>(null);
+  const [narrowCard, setNarrowCard] = useState(false);
+  useLayoutEffect(() => {
+    const card = collapsible ? el?.closest<HTMLElement>(".sol-popup") : null;
+    if (!card) return;
+    const ro = new ResizeObserver(() => setNarrowCard(card.clientWidth <= NARROW_PX));
+    ro.observe(card);
+    return () => ro.disconnect();
+  }, [el, collapsible]);
+  const narrow = narrowScreen || narrowCard;
   useEffect(() => { if (opened) inputRef.current?.focus(); }, [opened]);
   if (collapsible && narrow && !opened && value === "") {
     return (
-      <button type="button" className="sol-search-btn" aria-label={label} title={label} onClick={() => setOpened(true)}>
+      <button ref={setEl} type="button" className="sol-search-btn" aria-label={label} title={label} onClick={() => setOpened(true)}>
         <SearchIcon size={14} />
       </button>
     );
   }
   return (
-    <label className={`sol-search${className ? ` ${className}` : ""}`}>
+    <label ref={setEl} className={`sol-search${className ? ` ${className}` : ""}`}>
       <SearchIcon size={12} />
       <input
         ref={inputRef}

@@ -1,5 +1,7 @@
+/* A size container: the Pivot view and the header filter fit themselves to the popup, resized or not. Its width never comes from its content. */
 .table-popup {
   width: min(1100px, 94vw);
+  container: table-popup / inline-size;
 }
 
 .table-popup__dims {
