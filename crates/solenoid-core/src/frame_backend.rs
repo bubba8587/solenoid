@@ -12,12 +12,14 @@ use serde_json::{json, Value as Json};
 
 use crate::error_value::{sol_error, SolError};
 use crate::frame::{frame_row_count, get_column, FrameValue};
-use crate::frame_verbs::{append_frames, apply_verb, bind_columns, join_frames, sample_frame, FrameOp, JoinOpts};
+use crate::frame_verbs::{append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts};
 use crate::wire::{column_to_wire, encode_cell, wire_to_frame, WireFrame};
 
 #[derive(Default)]
 struct Store {
     frames: HashMap<String, Rc<FrameValue>>,
+    /// `setPivotLayout`'s side table: the layout a pivot laid its frame out with.
+    layouts: HashMap<String, Json>,
     seq: u64,
 }
 
@@ -63,16 +65,29 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
     match command {
         "engine_ping" => Ok(json!({ "name": "solenoid-core", "version": env!("CARGO_PKG_VERSION"), "backend": "rust" })),
         "engine_source" => Ok(json!(register(wire_to_frame(parse::<WireFrame>(args, "frame")?)))),
-        "engine_apply" => {
-            let f = get(&parse::<String>(args, "handle")?)?;
-            Ok(json!(register(apply_verb(&f, &parse::<FrameOp>(args, "op")?)?)))
-        }
-        "engine_apply_many" => {
+        "engine_apply" | "engine_apply_many" => {
             let mut f = get(&parse::<String>(args, "handle")?)?;
-            for op in parse::<Vec<FrameOp>>(args, "ops")? {
-                f = Rc::new(apply_verb(&f, &op)?);
+            let ops = if command == "engine_apply" { vec![parse::<FrameOp>(args, "op")?] } else { parse::<Vec<FrameOp>>(args, "ops")? };
+            let mut layout = None;
+            for (k, op) in ops.iter().enumerate() {
+                f = Rc::new(match op {
+                    FrameOp::Pivot(spec) if k + 1 == ops.len() => {
+                        let (out, l) = pivot_frame(&f, spec)?;
+                        layout = Some(l);
+                        out
+                    }
+                    _ => apply_verb(&f, op)?,
+                });
             }
-            Ok(json!(register(Rc::unwrap_or_clone(f))))
+            let handle = register(Rc::unwrap_or_clone(f));
+            if let Some(l) = layout {
+                STORE.with(|s| s.borrow_mut().layouts.insert(handle.clone(), l));
+            }
+            Ok(json!(handle))
+        }
+        "engine_pivot_layout" => {
+            let handle = parse::<String>(args, "handle")?;
+            Ok(STORE.with(|s| s.borrow().layouts.get(&handle).cloned()).unwrap_or(Json::Null))
         }
         "engine_join" => {
             let l = get(&parse::<String>(args, "left")?)?;
@@ -108,11 +123,19 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         }
         "engine_drop" => {
             let handle = parse::<String>(args, "handle")?;
-            STORE.with(|s| s.borrow_mut().frames.remove(&handle));
+            STORE.with(|s| {
+                let mut s = s.borrow_mut();
+                s.frames.remove(&handle);
+                s.layouts.remove(&handle);
+            });
             Ok(Json::Null)
         }
         "engine_clear" => {
-            STORE.with(|s| s.borrow_mut().frames.clear());
+            STORE.with(|s| {
+                let mut s = s.borrow_mut();
+                s.frames.clear();
+                s.layouts.clear();
+            });
             Ok(Json::Null)
         }
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),

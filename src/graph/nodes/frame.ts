@@ -48,7 +48,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -791,10 +791,8 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     if (this.totalDepth !== 0) {
       const mat = await readFrame(f);
       if (mat == null || isSolError(mat)) return emitFrame(this, beginPass(this), mat);
-      const out = runVerb(() => pivotFrame(mat, {
-        rowFields: keys, colFields: [], values: [col], funcs: [this.agg],
-        rowTotalDepth: this.totalDepth,
-      }));
+      const spec: PivotSpec = { rowFields: keys, colFields: [], values: [col], funcs: [this.agg], rowTotalDepth: this.totalDepth };
+      const out = runVerb(() => pivotOnEngine(mat, spec) ?? pivotFrame(mat, spec));
       // A min or max of dates stays a date, as the plain groupBy's does (`shapeOf`).
       if (!isSolError(out) && (this.agg === "min" || this.agg === "max") && getColumn(mat, col)?.type === "date") {
         const last = out.columns.length - 1;
@@ -945,7 +943,7 @@ export class PivotNode extends ClassicPreset.Node {
       rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
       filter: this.combineFilter(f, inputs.filter?.[0]),
     };
-    this.cachedResult = runVerb(() => pivotFrame(f, spec));
+    this.cachedResult = runVerb(() => pivotOnEngine(f, spec) ?? pivotFrame(f, spec));
     return { frame: this.cachedResult };
   }
 

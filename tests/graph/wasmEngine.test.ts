@@ -5,10 +5,12 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { applyVerb, joinFrames, appendFrames, bindColumns, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
+import { applyVerb, joinFrames, appendFrames, bindColumns, pivotFrame, type FrameOp, type JoinOpts, type PivotSpec, type AggOp } from "../../src/graph/frameVerbs";
+import { pivotLayoutOf } from "../../src/graph/pivotLayout";
+import type { ColumnUnit } from "../../src/graph/unitValue";
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "../../src/graph/frame";
 import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
-import { frameBackend, useWasmBackend, resetFrameBackendToJs } from "../../src/graph/frameBackend";
+import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine } from "../../src/graph/frameBackend";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 
 const WASM = path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm");
@@ -240,6 +242,46 @@ describe("random frames: the Rust engine matches the oracle", () => {
           : which === 1 ? frameBackend().append([a, b] as never) : frameBackend().bindColumns([a, b] as never));
       if (JSON.stringify(got) !== JSON.stringify(want)) {
         expect({ run: i, which, l: view(l), r: view(r), opts, got }).toEqual({ run: i, which, l: view(l), r: view(r), opts, got: want });
+      }
+    }
+  });
+});
+
+describe("random pivots: the Rust engine matches the oracle, layout and units included", () => {
+  const AGGS: AggOp[] = ["sum", "avg", "min", "max", "count", "product", "median", "mode", "stdev", "var", "varp", "percentof"];
+  const UNITS: ColumnUnit[] = [{ dim: { length: 1 }, display: "km" }, { dim: { temperature: 1 }, display: "°C" }, { dim: { temperature: 1 }, display: "°F" }];
+  const full = (f: FrameValue | null) => f && {
+    cells: view(f),
+    units: f.columns.map((c) => c.unit ?? null),
+    layout: pivotLayoutOf(f) && JSON.parse(JSON.stringify(pivotLayoutOf(f), (_k, v) => (typeof v === "number" && Number.isNaN(v) ? "NaN" : v))),
+  };
+  it(`${FUZZ_RUNS} pivots`, { timeout: 600_000 }, () => {
+    const rand = mulberry32(777 + FUZZ_SEED);
+    const g = gen(rand);
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+    for (let i = 0; i < FUZZ_RUNS; i++) {
+      const f = g.frame();
+      for (const c of f.columns) if (c.type === "number" && rand() < 0.3) c.unit = pick(UNITS);
+      const names = f.columns.map((c) => c.name);
+      const few = () => names.filter(() => rand() < 0.35);
+      const values = rand() < 0.05 ? [] : names.filter(() => rand() < 0.5).concat(rand() < 0.03 ? ["missing"] : []);
+      const spec: PivotSpec = {
+        rowFields: few(), colFields: few(), values: values.length ? values : [pick(names)],
+        funcs: Array.from({ length: g.int(0, 3) }, () => pick(AGGS)),
+        ...(rand() < 0.5 ? { rowTotalDepth: g.int(-3, 3) } : {}),
+        ...(rand() < 0.5 ? { colTotalDepth: g.int(-3, 3) } : {}),
+        ...(rand() < 0.5 ? { rowSort: g.int(-5, 5) } : {}),
+        ...(rand() < 0.5 ? { colSort: g.int(-5, 5) } : {}),
+        ...(rand() < 0.5 ? { relativeTo: g.int(0, 5) } : {}),
+        ...(rand() < 0.3 ? { filter: f.columns[0]?.values.map(() => pick([true, false, null])) ?? [] } : {}),
+      };
+      // NaN in a field the pivot sorts by makes JS's comparator inconsistent, where JS engines themselves disagree.
+      for (const c of f.columns) if ([...spec.rowFields, ...spec.colFields].includes(c.name)) c.values = c.values.map((v) => (Number.isNaN(v) ? null : v));
+      let want: unknown, got: unknown;
+      try { want = { ok: full(pivotFrame(f, spec)) }; } catch (e) { want = caught(e); }
+      try { got = { ok: full(pivotOnEngine(f, spec)) }; } catch (e) { got = caught(e); }
+      if (JSON.stringify(got) !== JSON.stringify(want)) {
+        expect({ run: i, input: view(f), units: f.columns.map((c) => c.unit ?? null), spec, got }).toEqual({ run: i, input: view(f), units: f.columns.map((c) => c.unit ?? null), spec, got: want });
       }
     }
   });

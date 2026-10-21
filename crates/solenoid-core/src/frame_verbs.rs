@@ -10,15 +10,18 @@ use std::hash::Hash;
 use std::rc::Rc;
 
 use serde::Deserialize;
+use serde_json::{json, Value as Json};
 
 use crate::error_value::{sol_error, SolError};
 use crate::fxhash::{FxHashMap, FxHashSet};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
-use crate::jsnum::{compare_utf16, js_lower, js_string, js_trim, math_round, to_number, trunc_count, truthy};
+use crate::js_sort::js_sort_by;
+use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
+use crate::jsnum::{compare_utf16, js_lower, js_string, number_to_string, js_trim, math_round, to_number, trunc_count, truthy};
 use crate::string_order::compare_strings;
 use crate::unit_value::{round_at_larger_term, unit_error, READINGS_ADD, READINGS_SCALE};
 use crate::value_kinds::{decimal_from_text, for_aggregate, guard_finite, logical_or_type_error, AggregatePrep};
-use crate::wire::de_cell;
+use crate::wire::{de_cell, encode_cell};
 
 type Res<T> = Result<T, SolError>;
 
@@ -119,6 +122,8 @@ pub enum FrameOp {
     },
     #[serde(rename = "window")]
     Window(WindowSpec),
+    #[serde(rename = "pivot")]
+    Pivot(PivotSpec),
     #[serde(rename = "fillBlanks")]
     FillBlanks { columns: Vec<String>, dir: String },
     #[serde(rename = "replaceValues")]
@@ -251,7 +256,7 @@ fn sorted_index_order<'a>(len: usize, cell_at: impl Fn(usize) -> &'a FrameCell, 
         heads.push(i);
     }
     let desc = dir == "desc";
-    heads.sort_by(|&i, &j| {
+    js_sort_by(&mut heads, |&i, &j| {
         let c = match (keys[i].as_ref().unwrap(), keys[j].as_ref().unwrap()) {
             (SortKey::N(a), SortKey::N(b)) => compare_numbers(*a, *b),
             (SortKey::S(a), SortKey::S(b)) => compare_utf16(a, b),
@@ -601,7 +606,7 @@ fn raw_aggregate(nums: &[f64], op: &str) -> Option<Option<f64>> {
         "product" => Some(nums.iter().fold(1.0, |a, b| a * b)),
         "median" => {
             let mut s = nums.to_vec();
-            s.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+            js_sort_by(&mut s, |a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
             let m = s.len() >> 1;
             Some(if s.len() % 2 == 1 { s[m] } else { (s[m - 1] + s[m]) / 2.0 })
         }
@@ -803,6 +808,7 @@ fn is_orderable_key(ty: FrameColType) -> bool {
     ty == FrameColType::Number || ty == FrameColType::Date
 }
 
+#[derive(Clone)]
 struct Keyed {
     key: f64,
     idx: usize,
@@ -855,7 +861,7 @@ fn asof_pairs(left: &FrameValue, lk: &FrameColumn, right: &FrameValue, rk: &Fram
             sorted_right.push(Keyed { key, idx: j });
         }
     }
-    sorted_right.sort_by(|a, b| a.key.partial_cmp(&b.key).unwrap_or(Ordering::Equal).then(a.idx.cmp(&b.idx)));
+    js_sort_by(&mut sorted_right, |a, b| a.key.partial_cmp(&b.key).unwrap_or(Ordering::Equal).then(a.idx.cmp(&b.idx)));
     let direction = opts.asof_direction.as_deref().unwrap_or("backward");
     Ok((0..frame_row_count(left))
         .map(|i| match asof_key(lk.cell_at(i)) {
@@ -1039,6 +1045,461 @@ pub fn unpivot_frame(
     Ok(frame(out))
 }
 
+#[derive(Deserialize, Clone, Debug, Default)]
+pub struct ValueScale {
+    #[serde(rename = "readingScale", default)]
+    pub reading_scale: Option<f64>,
+    #[serde(rename = "unitScale", default)]
+    pub unit_scale: Option<f64>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct PivotSpec {
+    #[serde(rename = "rowFields")]
+    pub row_fields: Vec<String>,
+    #[serde(rename = "colFields")]
+    pub col_fields: Vec<String>,
+    pub values: Vec<String>,
+    pub funcs: Vec<String>,
+    #[serde(rename = "rowTotalDepth", default)]
+    pub row_total_depth: Option<f64>,
+    #[serde(rename = "colTotalDepth", default)]
+    pub col_total_depth: Option<f64>,
+    #[serde(rename = "rowSort", default)]
+    pub row_sort: Option<f64>,
+    #[serde(rename = "colSort", default)]
+    pub col_sort: Option<f64>,
+    #[serde(rename = "relativeTo", default)]
+    pub relative_to: Option<f64>,
+    #[serde(default)]
+    pub filter: Option<Vec<Option<bool>>>,
+    /// Wire-only: each value field's reading and linear unit scales, as `withUnitScales` lowers an aggregate's.
+    #[serde(rename = "valueScales", default)]
+    pub value_scales: Option<Vec<ValueScale>>,
+}
+
+type Tuple = Vec<FrameCell>;
+
+fn tuple_key(t: &[FrameCell]) -> Vec<CellKey<'_>> {
+    t.iter().map(cell_key).collect()
+}
+
+fn comparator_for(ty: FrameColType) -> impl Fn(&FrameCell, &FrameCell) -> Ordering {
+    move |a, b| match ty {
+        FrameColType::String => compare_strings(&js_string(a), &js_string(b)),
+        FrameColType::Logical => (truthy(a) as i8).cmp(&(truthy(b) as i8)),
+        _ => compare_numbers(to_number(a), to_number(b)),
+    }
+}
+
+fn order_leaves(rows: &[usize], cols: &[&FrameColumn], sort_field: isize, desc: bool) -> Vec<Tuple> {
+    if cols.is_empty() {
+        return vec![vec![]];
+    }
+    let mut seen: FxHashSet<Vec<CellKey>> = FxHashSet::default();
+    let mut first_seen: Vec<Tuple> = Vec::new();
+    for &i in rows {
+        if seen.insert(cols.iter().map(|c| cell_key(c.cell_at(i))).collect()) {
+            first_seen.push(cols.iter().map(|c| c.cell_at(i).clone()).collect());
+        }
+    }
+    let mut level_rank: Vec<FxHashMap<CellKey, usize>> = cols.iter().map(|_| FxHashMap::default()).collect();
+    let mut cell_by_enc: Vec<Vec<(CellKey, &FrameCell)>> = cols.iter().map(|_| Vec::new()).collect();
+    for t in &first_seen {
+        for (lvl, cell) in t.iter().enumerate() {
+            let vk = cell_key(cell);
+            let n = level_rank[lvl].len();
+            if let Entry::Vacant(e) = level_rank[lvl].entry(vk) {
+                e.insert(n);
+                cell_by_enc[lvl].push((vk, cell));
+            }
+        }
+    }
+    let mut sorted_rank: Option<FxHashMap<CellKey, usize>> = None;
+    if sort_field >= 0 && (sort_field as usize) < cols.len() {
+        let sf = sort_field as usize;
+        let cmp = comparator_for(cols[sf].ty);
+        let is_tail = |c: &FrameCell| c.is_null() || c.is_err();
+        let mut ordered = cell_by_enc[sf].clone();
+        js_sort_by(&mut ordered, |(_, a), (_, b)| match (is_tail(a), is_tail(b)) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Greater,
+            (false, true) => Ordering::Less,
+            _ => cmp(a, b),
+        });
+        if desc {
+            ordered.reverse();
+        }
+        sorted_rank = Some(ordered.iter().enumerate().map(|(idx, (vk, _))| (*vk, idx)).collect());
+    }
+    let rank_at = |lvl: usize, vk: &CellKey| -> usize {
+        match &sorted_rank {
+            Some(r) if lvl as isize == sort_field => r[vk],
+            _ => level_rank[lvl][vk],
+        }
+    };
+    let ranks: Vec<Vec<usize>> = first_seen.iter().map(|t| t.iter().enumerate().map(|(lvl, c)| rank_at(lvl, &cell_key(c))).collect()).collect();
+    let mut order: Vec<usize> = (0..first_seen.len()).collect();
+    js_sort_by(&mut order, |&a, &b| ranks[a].cmp(&ranks[b]));
+    order.into_iter().map(|i| first_seen[i].clone()).collect()
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum AxisKind {
+    Leaf,
+    Sub,
+    Grand,
+}
+
+impl AxisKind {
+    fn tag(self) -> &'static str {
+        match self {
+            AxisKind::Leaf => "leaf",
+            AxisKind::Sub => "sub",
+            AxisKind::Grand => "grand",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct AxisOut {
+    pub kind: AxisKind,
+    pub span: Rc<Vec<usize>>,
+    pub tuple: Tuple,
+    pub fill: usize,
+}
+
+fn expand_axis(leaves: &[Tuple], depth: f64, n_fields: usize) -> Vec<AxisOut> {
+    let out: Vec<AxisOut> =
+        leaves.iter().enumerate().map(|(i, t)| AxisOut { kind: AxisKind::Leaf, span: Rc::new(vec![i]), tuple: t.clone(), fill: n_fields }).collect();
+    if depth == 0.0 || n_fields == 0 {
+        return out;
+    }
+    let top = depth < 0.0;
+    let sub_levels = (depth.abs() - 1.0).min(n_fields.saturating_sub(1) as f64);
+    let mut subs_at: FxHashMap<(usize, usize), Vec<AxisOut>> = FxHashMap::default();
+    let mut p = 1usize;
+    while p as f64 <= sub_levels {
+        let mut start = 0;
+        let prefix_at = |i: usize| tuple_key(&leaves[i][..p.min(leaves[i].len())]);
+        for i in 1..=leaves.len() {
+            if i == leaves.len() || prefix_at(i) != prefix_at(start) {
+                let span: Vec<usize> = (start..i).collect();
+                let anchor = if top { span[0] } else { span[span.len() - 1] };
+                let tuple = leaves[start][..p.min(leaves[start].len())].to_vec();
+                subs_at.entry((anchor, p)).or_default().push(AxisOut { kind: AxisKind::Sub, span: Rc::new(span), tuple, fill: p });
+                start = i;
+            }
+        }
+        p += 1;
+    }
+    let levels: Vec<usize> = (1..p).collect();
+    let mut with_subs: Vec<AxisOut> = Vec::new();
+    for (i, leaf) in out.iter().enumerate() {
+        let mut here: Vec<AxisOut> = Vec::new();
+        let order: Box<dyn Iterator<Item = &usize>> = if top { Box::new(levels.iter()) } else { Box::new(levels.iter().rev()) };
+        for &lvl in order {
+            if let Some(s) = subs_at.get(&(i, lvl)) {
+                here.extend(s.iter().cloned());
+            }
+        }
+        if top {
+            with_subs.extend(here);
+            with_subs.push(leaf.clone());
+        } else {
+            with_subs.push(leaf.clone());
+            with_subs.extend(here);
+        }
+    }
+    let grand = AxisOut { kind: AxisKind::Grand, span: Rc::new((0..out.len()).collect()), tuple: vec![], fill: 0 };
+    if top {
+        with_subs.insert(0, grand);
+    } else {
+        with_subs.push(grand);
+    }
+    with_subs
+}
+
+fn sum_group(values: &[FrameCell]) -> FrameCell {
+    let as_nums: Vec<FrameCell> =
+        values.iter().map(|v| if let FrameCell::Bool(b) = v { FrameCell::Num(f64::from(u8::from(*b))) } else { v.clone() }).collect();
+    match for_aggregate(&as_nums) {
+        AggregatePrep::Error(e) => e,
+        AggregatePrep::Nums(n) => FrameCell::Num(n.iter().filter(|x| x.is_finite()).fold(0.0, |a, b| a + b)),
+    }
+}
+
+/// `formatFrameCell` with no format annotation.
+fn format_frame_cell(ty: FrameColType, v: &FrameCell) -> String {
+    match v {
+        FrameCell::Err(e) => e.code.clone(),
+        FrameCell::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
+        FrameCell::Num(n) if ty == FrameColType::Date && n.is_finite() => format_date_serial(*n, DEFAULT_DATE_FORMAT),
+        other => js_string(other).into_owned(),
+    }
+}
+
+enum Score {
+    Null,
+    N(f64),
+    S(String),
+}
+
+/// How the pivot laid its frame out, `PivotLayout` in `pivotLayout.ts`, as wire JSON.
+pub type PivotLayoutJson = Json;
+
+pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLayoutJson)> {
+    let keep = |names: &[String]| -> Vec<String> { names.iter().filter(|s| !js_trim(s).is_empty()).cloned().collect() };
+    let row_fields = keep(&spec.row_fields);
+    let col_fields = keep(&spec.col_fields);
+    let value_names = keep(&spec.values);
+    if value_names.is_empty() {
+        return Err(sol_error("#VALUE!", "PIVOTBY needs at least one value field"));
+    }
+    let row_cols: Vec<&FrameColumn> = row_fields.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
+    let col_cols: Vec<&FrameColumn> = col_fields.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
+    let val_cols: Vec<&FrameColumn> = value_names.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
+    let funcs: Vec<String> = (0..value_names.len())
+        .map(|i| spec.funcs.get(i).or(spec.funcs.first()).cloned().unwrap_or_else(|| "sum".to_string()))
+        .collect();
+    let relative_to = spec.relative_to.unwrap_or(0.0);
+
+    let rows: Vec<usize> = (0..frame_row_count(f))
+        .filter(|&i| spec.filter.as_ref().is_none_or(|fl| fl.get(i).copied().flatten() == Some(true)))
+        .collect();
+
+    let (rs, cs) = (spec.row_sort.unwrap_or(0.0), spec.col_sort.unwrap_or(0.0));
+    let sort_field = |s: f64, n: usize| -> isize {
+        let k = s.abs() - 1.0;
+        if k < n as f64 && k.fract() == 0.0 { k as isize } else { -1 }
+    };
+    let mut row_leaves = order_leaves(&rows, &row_cols, sort_field(rs, row_cols.len()), rs < 0.0);
+    let mut col_leaves = order_leaves(&rows, &col_cols, sort_field(cs, col_cols.len()), cs < 0.0);
+    let (r_n, c_n, v_n) = (row_leaves.len(), col_leaves.len(), val_cols.len());
+
+    let mut cells: Vec<Vec<Vec<Vec<FrameCell>>>> = vec![vec![vec![Vec::new(); c_n]; r_n]; v_n];
+    {
+        let row_index: FxHashMap<Vec<CellKey>, usize> = row_leaves.iter().enumerate().map(|(i, t)| (tuple_key(t), i)).collect();
+        let col_index: FxHashMap<Vec<CellKey>, usize> = col_leaves.iter().enumerate().map(|(i, t)| (tuple_key(t), i)).collect();
+        for &i in &rows {
+            let r = row_index.get(&row_cols.iter().map(|c| cell_key(c.cell_at(i))).collect::<Vec<_>>());
+            let c = col_index.get(&col_cols.iter().map(|c| cell_key(c.cell_at(i))).collect::<Vec<_>>());
+            if let (Some(&r), Some(&c)) = (r, c) {
+                for (v, vc) in val_cols.iter().enumerate() {
+                    cells[v][r][c].push(vc.cell_at(i).clone());
+                }
+            }
+        }
+    }
+
+    let sort_key = |list: &[FrameCell], v: usize| -> Res<Score> {
+        let op = if funcs[v] == "percentof" { "sum" } else { funcs[v].as_str() };
+        Ok(match aggregate_group(list, op, Some(val_cols[v].ty))? {
+            FrameCell::Num(n) if !n.is_nan() => Score::N(n),
+            FrameCell::Str(s) => Score::S(s.to_string()),
+            _ => Score::Null,
+        })
+    };
+    let by_key = |desc: bool| {
+        move |sx: &Score, sy: &Score| -> Ordering {
+            let d = match (sx, sy) {
+                (Score::Null, Score::Null) => return Ordering::Equal,
+                (Score::Null, _) => return Ordering::Greater,
+                (_, Score::Null) => return Ordering::Less,
+                (Score::N(x), Score::N(y)) => (x - y).partial_cmp(&0.0).unwrap_or(Ordering::Equal),
+                (a, b) => {
+                    let text = |s: &Score| match s {
+                        Score::N(n) => number_to_string(*n),
+                        Score::S(t) => t.clone(),
+                        Score::Null => String::new(),
+                    };
+                    compare_strings(&text(a), &text(b))
+                }
+            };
+            if desc { d.reverse() } else { d }
+        }
+    };
+    let row_val_sort = rs.abs() - 1.0 - row_cols.len() as f64;
+    if row_val_sort >= 0.0 && row_val_sort < v_n as f64 && row_val_sort.fract() == 0.0 && r_n > 1 {
+        let vs = row_val_sort as usize;
+        let scores: Vec<Score> = (0..r_n).map(|r| sort_key(&cells[vs][r].concat(), vs)).collect::<Res<_>>()?;
+        let cmp = by_key(rs < 0.0);
+        let mut perm: Vec<usize> = (0..r_n).collect();
+        js_sort_by(&mut perm, |&x, &y| cmp(&scores[x], &scores[y]));
+        row_leaves = perm.iter().map(|&r| row_leaves[r].clone()).collect();
+        for plane in cells.iter_mut() {
+            *plane = perm.iter().map(|&r| std::mem::take(&mut plane[r])).collect();
+        }
+    }
+    let col_val_sort = cs.abs() - 1.0 - col_cols.len() as f64;
+    if col_val_sort >= 0.0 && col_val_sort < v_n as f64 && col_val_sort.fract() == 0.0 && c_n > 1 {
+        let vs = col_val_sort as usize;
+        let scores: Vec<Score> =
+            (0..c_n).map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs)).collect::<Res<_>>()?;
+        let cmp = by_key(cs < 0.0);
+        let mut perm: Vec<usize> = (0..c_n).collect();
+        js_sort_by(&mut perm, |&x, &y| cmp(&scores[x], &scores[y]));
+        col_leaves = perm.iter().map(|&c| col_leaves[c].clone()).collect();
+        for plane in cells.iter_mut() {
+            for row in plane.iter_mut() {
+                *row = perm.iter().map(|&c| std::mem::take(&mut row[c])).collect();
+            }
+        }
+    }
+
+    let collect = |v: usize, rset: &[usize], cset: &[usize]| -> Vec<FrameCell> {
+        let mut acc = Vec::new();
+        for &r in rset {
+            for &c in cset {
+                acc.extend(cells[v][r][c].iter().cloned());
+            }
+        }
+        acc
+    };
+    let all_rows: Rc<Vec<usize>> = Rc::new((0..r_n).collect());
+    let all_cols: Rc<Vec<usize>> = Rc::new((0..c_n).collect());
+    let siblings_of = |leaves: &[Tuple], all: &Rc<Vec<usize>>| -> Vec<Rc<Vec<usize>>> {
+        let parent_keys: Vec<Vec<CellKey>> = leaves.iter().map(|t| tuple_key(&t[..t.len().saturating_sub(1)])).collect();
+        let mut groups: FxHashMap<&Vec<CellKey>, Vec<usize>> = FxHashMap::default();
+        for (i, k) in parent_keys.iter().enumerate() {
+            groups.entry(k).or_default().push(i);
+        }
+        let shared: FxHashMap<&Vec<CellKey>, Rc<Vec<usize>>> = groups.into_iter().map(|(k, g)| (k, Rc::new(g))).collect();
+        leaves.iter().enumerate().map(|(i, t)| if t.len() <= 1 { all.clone() } else { shared[&parent_keys[i]].clone() }).collect()
+    };
+    let row_siblings = if relative_to == 4.0 { siblings_of(&row_leaves, &all_rows) } else { Vec::new() };
+    let col_siblings = if relative_to == 3.0 { siblings_of(&col_leaves, &all_cols) } else { Vec::new() };
+    let mut denominators: Vec<FxHashMap<(usize, usize, usize, usize), FrameCell>> = vec![FxHashMap::default(); v_n];
+
+    let row_out = expand_axis(&row_leaves, spec.row_total_depth.unwrap_or(0.0), row_cols.len());
+    let col_out = expand_axis(&col_leaves, spec.col_total_depth.unwrap_or(0.0), col_cols.len());
+
+    let mut cell_value = |v: usize, rset: &Rc<Vec<usize>>, cset: &Rc<Vec<usize>>| -> Res<FrameCell> {
+        let here = collect(v, rset, cset);
+        if here.is_empty() {
+            return Ok(FrameCell::Null);
+        }
+        if funcs[v] != "percentof" {
+            return aggregate_group(&here, &funcs[v], Some(val_cols[v].ty));
+        }
+        let num = sum_group(&here);
+        if num.is_err() {
+            return Ok(num);
+        }
+        let (mut dr, mut dc) = (rset.clone(), cset.clone());
+        if relative_to == 0.0 {
+            dr = all_rows.clone();
+        } else if relative_to == 1.0 {
+            dc = all_cols.clone();
+        } else if relative_to == 2.0 {
+            dr = all_rows.clone();
+            dc = all_cols.clone();
+        } else if relative_to == 3.0 {
+            dc = if cset.len() == 1 { col_siblings[cset[0]].clone() } else { all_cols.clone() };
+        } else if relative_to == 4.0 {
+            dr = if rset.len() == 1 { row_siblings[rset[0]].clone() } else { all_rows.clone() };
+        }
+        let key = (Rc::as_ptr(&dr) as usize, dr.len(), Rc::as_ptr(&dc) as usize, dc.len());
+        let den = denominators[v].entry(key).or_insert_with(|| sum_group(&collect(v, &dr, &dc))).clone();
+        Ok(match (num, den) {
+            (_, d @ FrameCell::Err(_)) => d,
+            (FrameCell::Num(n), FrameCell::Num(d)) => {
+                if d == 0.0 { FrameCell::Null } else { FrameCell::Num(n / d) }
+            }
+            _ => FrameCell::Null,
+        })
+    };
+
+    let key_names = make_headers(&row_fields, row_fields.len());
+    let has_totals = row_out.iter().any(|ro| ro.kind != AxisKind::Leaf);
+    let mut out_cols: Vec<FrameColumn> = Vec::new();
+    for (k, c) in row_cols.iter().enumerate() {
+        let marked = has_totals
+            && row_out.iter().any(|ro| (ro.kind == AxisKind::Grand && k == 0) || (ro.kind == AxisKind::Sub && k == ro.fill));
+        let values: Vec<FrameCell> = row_out
+            .iter()
+            .map(|ro| match ro.kind {
+                AxisKind::Grand => if k == 0 { FrameCell::str("Grand Total") } else { FrameCell::Null },
+                AxisKind::Sub => {
+                    if k < ro.fill {
+                        ro.tuple[k].clone()
+                    } else if k == ro.fill {
+                        FrameCell::str("Total")
+                    } else {
+                        FrameCell::Null
+                    }
+                }
+                AxisKind::Leaf => ro.tuple[k].clone(),
+            })
+            .collect();
+        if marked && c.ty != FrameColType::String {
+            let values = values.iter().map(|v| if v.is_null() { FrameCell::Null } else { FrameCell::str(&format_frame_cell(c.ty, v)) }).collect();
+            out_cols.push(FrameColumn::new(key_names[k].clone(), FrameColType::String, values));
+        } else {
+            out_cols.push(FrameColumn::new(key_names[k].clone(), c.ty, values));
+        }
+    }
+
+    let multi_val = v_n > 1;
+    let col_header = |co: &AxisOut, v: usize| -> String {
+        let join = |t: &[FrameCell]| t.iter().map(|x| js_string(x).into_owned()).collect::<Vec<_>>();
+        let base = match co.kind {
+            AxisKind::Grand => "Grand Total".to_string(),
+            AxisKind::Sub => {
+                let mut parts = join(&co.tuple);
+                parts.push("Total".to_string());
+                parts.join(" | ")
+            }
+            AxisKind::Leaf => join(&co.tuple).join(" | "),
+        };
+        if multi_val {
+            return if base.is_empty() { value_names[v].clone() } else { format!("{base} | {}", value_names[v]) };
+        }
+        if base.is_empty() { value_names[v].clone() } else { base }
+    };
+    let mut raw_headers = Vec::new();
+    let mut body_specs: Vec<(&AxisOut, usize)> = Vec::new();
+    for co in &col_out {
+        for v in 0..v_n {
+            raw_headers.push(col_header(co, v));
+            body_specs.push((co, v));
+        }
+    }
+    let body_names = make_headers(&raw_headers, raw_headers.len());
+    let no_scale = ValueScale::default();
+    let plans: Vec<ReadingPlan> = (0..v_n)
+        .map(|v| {
+            let s = spec.value_scales.as_ref().and_then(|x| x.get(v)).unwrap_or(&no_scale);
+            agg_unit_plan(&funcs[v], s.reading_scale, s.unit_scale)
+        })
+        .collect();
+    for (bi, (co, v)) in body_specs.iter().enumerate() {
+        let ty = if val_cols[*v].ty == FrameColType::String && (funcs[*v] == "min" || funcs[*v] == "max") {
+            FrameColType::String
+        } else {
+            FrameColType::Number
+        };
+        let mut values = Vec::with_capacity(row_out.len());
+        for ro in &row_out {
+            values.push(plans[*v].cell(cell_value(*v, &ro.span, &co.span)?));
+        }
+        out_cols.push(FrameColumn::new(body_names[bi].clone(), ty, values));
+    }
+
+    let tuple_json = |t: &[FrameCell]| Json::Array(t.iter().map(encode_cell).collect());
+    let layout = json!({
+        "rowFields": row_fields,
+        "rowTypes": row_cols.iter().map(|c| c.ty.tag()).collect::<Vec<_>>(),
+        "colFields": col_fields,
+        "colTypes": col_cols.iter().map(|c| c.ty.tag()).collect::<Vec<_>>(),
+        "values": value_names,
+        "funcs": funcs,
+        "rows": row_out.iter().map(|ro| json!({ "kind": ro.kind.tag(), "tuple": tuple_json(&ro.tuple), "fill": ro.fill })).collect::<Vec<_>>(),
+        "cols": body_specs.iter().map(|(co, v)| json!({ "kind": co.kind.tag(), "tuple": tuple_json(&co.tuple), "fill": co.fill, "value": v })).collect::<Vec<_>>(),
+    });
+    Ok((frame(out_cols), layout))
+}
+
 // ─── Append / bind ──────────────────────────────────────────────────────────────
 
 pub fn append_frames(frames: &[&FrameValue]) -> Res<FrameValue> {
@@ -1109,6 +1570,7 @@ pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
             unpivot_frame(f, id_columns, value_columns, variable_name.as_deref(), value_name.as_deref())
         }
         FrameOp::Window(spec) => window_frame(f, spec),
+        FrameOp::Pivot(spec) => pivot_frame(f, spec).map(|(out, _)| out),
         FrameOp::FillBlanks { columns, dir } => fill_blanks(f, columns, dir),
         FrameOp::ReplaceValues { column, find, replace_with, mode } => replace_values(f, column, find, replace_with, mode),
         FrameOp::SliceRows { mode, n, to } => Ok(slice_rows(f, mode, *n, *to)),
@@ -1327,7 +1789,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
             Some(oc) => {
                 let desc = spec.order_dir.as_deref() == Some("desc");
                 let (mut keyed, blanks): (Vec<usize>, Vec<usize>) = rows.iter().partition(|&&i| !blank_key(oc.cell_at(i)));
-                keyed.sort_by(|&i, &j| {
+                js_sort_by(&mut keyed, |&i, &j| {
                     let c = window_cmp(oc.cell_at(i), oc.cell_at(j));
                     if desc { c.reverse() } else { c }
                 });

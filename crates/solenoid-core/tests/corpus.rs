@@ -11,8 +11,8 @@ use solenoid_core::frame::FrameCell;
 use solenoid_core::frame_backend::invoke;
 use solenoid_core::wire::decode_cell;
 
-/// Verbs no engine speaks: they run on the TS oracle on every platform.
-const ORACLE_ONLY_VERBS: &[&str] = &["pivot"];
+/// Verbs this engine doesn't speak: they run on the TS oracle.
+const ORACLE_ONLY_VERBS: &[&str] = &[];
 
 fn cells_equal(a: &FrameCell, b: &FrameCell) -> bool {
     match (a, b) {

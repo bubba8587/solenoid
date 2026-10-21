@@ -4,11 +4,13 @@
 //! order of operations, and any difference from the TS is a bug here (PORTING.md).
 
 pub mod binary;
+pub mod date_serial;
 pub mod error_value;
 pub mod frame;
 pub mod fxhash;
 pub mod frame_backend;
 pub mod frame_verbs;
+pub mod js_sort;
 pub mod jsnum;
 pub mod string_order;
 pub mod unit_value;

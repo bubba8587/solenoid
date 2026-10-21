@@ -3,12 +3,13 @@ import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
-import { READINGS_ADD, READINGS_SCALE } from "./unitValue";
+import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, aggUnitPlan, readingScaleOf, linearScaleOf, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp, type PivotSpec } from "./frameVerbs";
+import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
+import { setPivotLayout, type PivotLayout } from "./pivotLayout";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
-import { loadWasmEngine, wasmInvoke, wasmSourceBin, wasmReadBin, type BinaryCells } from "./engineWasm";
+import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, type BinaryCells } from "./engineWasm";
 import { calcModeStore } from "./calcModeStore";
 import { pushNotice } from "./noticeStore";
 import { settingsStore } from "./settingsStore";
@@ -407,12 +408,61 @@ function shadow(run: () => FrameValue): FrameValue | null {
   try { return schemaOnly(run()); } catch { return null; }
 }
 
+/** A pivot's value fields as the unit-blind engine needs them (each one's reading and linear scale), and the unit
+ *  each one's body columns take: `aggUnitPlan` over the frame the pivot reads. */
+function pivotUnits(schema: FrameValue, spec: PivotSpec): { scales: { readingScale?: number; unitScale?: number }[]; units: (ColumnUnit | undefined)[] } {
+  const names = spec.values.filter((n) => n.trim() !== "");
+  const cols = names.map((n) => schema.columns.find((c) => c.name === n));
+  const funcs = names.map((_, i): AggOp => spec.funcs[i] ?? spec.funcs[0] ?? "sum");
+  return {
+    scales: cols.map((c) => {
+      const r = readingScaleOf(c?.unit), u = linearScaleOf(c?.unit);
+      return { ...(r !== undefined ? { readingScale: r } : {}), ...(u !== undefined ? { unitScale: u } : {}) };
+    }),
+    units: cols.map((c, v) => aggUnitPlan(funcs[v], c?.unit).unit),
+  };
+}
+
+interface PivotWire { layout: unknown; units: (ColumnUnit | undefined)[] }
+
+/** The engine's pivot layout read back onto the downloaded frame, with the units its body columns take. */
+function adoptPivot(frame: FrameValue, p: PivotWire): void {
+  const w = p.layout as PivotLayout | null;
+  if (!w) return;
+  const cells = (items: { tuple: FrameCell[] }[]) => items.map((it) => ({ ...it, tuple: it.tuple.map((x) => decodeWireCell(x) as FrameCell) }));
+  const layout: PivotLayout = { ...w, rows: cells(w.rows) as PivotLayout["rows"], cols: cells(w.cols) as PivotLayout["cols"] };
+  layout.cols.forEach((c, bi) => {
+    const col = frame.columns[layout.rowFields.length + bi];
+    const unit = p.units[c.value];
+    if (col && unit) col.unit = unit;
+  });
+  setPivotLayout(frame, layout);
+}
+
+/** PIVOTBY on the Rust engine when it's loaded and on, synchronously; null where the oracle should run it. */
+export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
+  if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
+  const { scales, units } = pivotUnits(f, spec);
+  const src = wasmSourceBin(encodeBinary(f));
+  let out: string | undefined;
+  try {
+    out = wasmInvokeSync<string>("engine_apply", { handle: src, op: { kind: "pivot", ...spec, valueScales: scales } });
+    const layout = wasmInvokeSync<unknown>("engine_pivot_layout", { handle: out });
+    const frame: FrameValue = { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
+    adoptPivot(frame, { layout, units });
+    return frame;
+  } finally {
+    wasmInvokeSync("engine_drop", { handle: src });
+    if (out) wasmInvokeSync("engine_drop", { handle: out });
+  }
+}
+
 /** Each op against the schema it will meet, so a reading column's aggregates reach the
  *  unit-blind engine with their reading scale, and the result's schema shadow. */
 export function lowerForEngine(schema: FrameValue | null, ops: readonly FrameOp[]): { wire: FrameOp[]; schema: FrameValue | null } {
   let s = schema;
   const wire = ops.map((op) => {
-    const w = s ? withUnitScales(s, op) : op;
+    const w = s ? (op.kind === "pivot" ? { ...op, valueScales: pivotUnits(s, op).scales } : withUnitScales(s, op)) : op;
     const cur = s;
     s = cur ? shadow(() => applyVerb(cur, op)) : null;
     return w;
@@ -459,6 +509,14 @@ class EngineBackend implements FrameBackend {
   constructor(private readonly invoke: EngineInvoke, private readonly fullCells: boolean, private readonly bulk?: BulkTransport) {}
 
   private schemas = new Map<string, FrameValue | null>();
+  private pivots = new Map<string, PivotWire>();
+
+  /** After a chain ending in a pivot, the engine's layout for the result. */
+  private async rememberPivot(h: FrameHandle, before: FrameValue | null, op: FrameOp | undefined): Promise<void> {
+    if (op?.kind !== "pivot") return;
+    const layout = await this.invoke<unknown>("engine_pivot_layout", { handle: h });
+    this.pivots.set(h, { layout, units: before ? pivotUnits(before, op).units : [] });
+  }
   /** Frames holding an error cell the engine can't store compute here, on the oracle. */
   private oracle = new JsFrameBackend();
 
@@ -500,17 +558,19 @@ class EngineBackend implements FrameBackend {
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
     if (isOracleHandle(handle)) return this.oracle.apply(handle, op);
-    if (op.kind === "pivot") return this.onOracle([handle], ([h]) => this.oracle.apply(h, op));
+    if (op.kind === "pivot" && !this.fullCells) return this.onOracle([handle], ([h]) => this.oracle.apply(h, op));
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
     const h = await (this.invoke<string>("engine_apply", { handle, op: this.fullCells ? encodeOpCells(wire[0]) : wire[0] }) as Promise<FrameHandle>);
+    await this.rememberPivot(h, this.schemaOf(handle), op);
     return this.remember(h, schema);
   }
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
     if (isOracleHandle(handle)) return this.oracle.applyMany(handle, ops);
-    if (ops.some((op) => op.kind === "pivot")) return this.onOracle([handle], ([h]) => this.oracle.applyMany(h, ops));
+    if (!this.fullCells && ops.some((op) => op.kind === "pivot")) return this.onOracle([handle], ([h]) => this.oracle.applyMany(h, ops));
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), ops);
     const h = await (this.invoke<string>("engine_apply_many", { handle, ops: this.fullCells ? wire.map(encodeOpCells) : wire }) as Promise<FrameHandle>);
+    if (ops[ops.length - 1]?.kind === "pivot") await this.rememberPivot(h, lowerForEngine(this.schemaOf(handle), ops.slice(0, -1)).schema, ops[ops.length - 1]);
     return this.remember(h, schema);
   }
 
@@ -562,7 +622,12 @@ class EngineBackend implements FrameBackend {
 
   async collect(handle: FrameHandle): Promise<FrameValue> {
     if (isOracleHandle(handle)) return this.oracle.collect(handle);
-    if (this.bulk) return { __frame: true, columns: withSchemaMeta(this.bulk.read(handle)!.columns, this.schemaOf(handle)) };
+    if (this.bulk) {
+      const frame: FrameValue = { __frame: true, columns: withSchemaMeta(this.bulk.read(handle)!.columns, this.schemaOf(handle)) };
+      const pivot = this.pivots.get(handle);
+      if (pivot) adoptPivot(frame, pivot);
+      return frame;
+    }
     const columns = await this.invoke<FrameColumn[]>("engine_collect", { handle });
     return { __frame: true, columns: withSchemaMeta(decodeWireColumns(columns), this.schemaOf(handle)) };
   }
@@ -582,6 +647,7 @@ class EngineBackend implements FrameBackend {
   drop(handle: FrameHandle): void {
     if (isOracleHandle(handle)) { this.oracle.drop(handle); return; }
     this.schemas.delete(handle);
+    this.pivots.delete(handle);
     void this.invoke("engine_drop", { handle }).catch(() => {});
   }
 
