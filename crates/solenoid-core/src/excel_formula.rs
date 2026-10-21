@@ -671,6 +671,16 @@ pub(crate) fn call_caught(name: &str, argv: &[V]) -> V {
     v
 }
 
+/// A body in a computed column. TEXTSPLIT's and WRAPTEXT's lists (TEXTSPLIT's a matrix) compose only through the TS's
+/// broadcast, which the column evaluator doesn't port, so they stay there.
+fn column_call(name: &str, argv: &[V]) -> V {
+    let r = call_caught(name, argv);
+    if matches!(name, "TEXTSPLIT" | "WRAPTEXT") && matches!(r, V::List(_)) {
+        return crate::excel_functions::bail();
+    }
+    r
+}
+
 struct Row<'a> {
     /// Each whole column once, as the TS's `wholeCol` caches it.
     lists: FxHashMap<&'a str, Rc<Vec<V>>>,
@@ -1087,7 +1097,7 @@ impl Row<'_> {
             }
         }
         if t.kind == "handler" {
-            return call_caught(name, &argv);
+            return column_call(name, &argv);
         }
         if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
             return e.clone();
@@ -1100,7 +1110,7 @@ impl Row<'_> {
                 if is_shaper(name) {
                     return crate::shapers::call_column(name, &argv);
                 }
-                call_caught(name, &argv)
+                column_call(name, &argv)
             }
             "range" => {
                 // prepRangeArgs: a list's first error answers, and its blanks drop, unless the function reads them raw.
@@ -1183,7 +1193,7 @@ impl Row<'_> {
                         });
                     }
                 }
-                broadcast_with(&argv, &settled, t.inspects_null, |args| call_caught(name, args))
+                broadcast_with(&argv, &settled, t.inspects_null, |args| column_call(name, args))
             }
         }
     }

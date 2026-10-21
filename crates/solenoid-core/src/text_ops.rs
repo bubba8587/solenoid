@@ -554,40 +554,63 @@ fn translit(c: char) -> Option<&'static str> {
     })
 }
 
+/// `String.prototype.normalize("NFD")`, from `nfd_table.rs`: each code point decomposed, Hangul syllables by
+/// arithmetic, then each run of non-starters sorted stably by combining class.
+pub fn nfd(t: &str) -> Vec<char> {
+    use crate::nfd_table::{CCC_KEYS, CCC_RANKS, NFD_CHARS, NFD_INDEX, NFD_KEYS};
+    const S_BASE: u32 = 0xac00;
+    let mut out: Vec<char> = Vec::with_capacity(t.len());
+    for c in t.chars() {
+        let u = c as u32;
+        if u < 0x80 {
+            out.push(c);
+        } else if (S_BASE..=0xd7a3).contains(&u) {
+            let s = u - S_BASE;
+            out.push(char::from_u32(0x1100 + s / 588).unwrap_or(c));
+            out.push(char::from_u32(0x1161 + (s % 588) / 28).unwrap_or(c));
+            if !s.is_multiple_of(28) {
+                out.push(char::from_u32(0x11a7 + s % 28).unwrap_or(c));
+            }
+        } else if let Ok(i) = NFD_KEYS.binary_search(&u) {
+            let span = usize::from(NFD_INDEX[i])..usize::from(NFD_INDEX[i + 1]);
+            out.extend(NFD_CHARS[span].iter().filter_map(|&d| char::from_u32(d)));
+        } else {
+            out.push(c);
+        }
+    }
+    let ccc = |c: char| CCC_KEYS.binary_search(&(c as u32)).map_or(0, |i| CCC_RANKS[i]);
+    let mut i = 0;
+    while i < out.len() {
+        if ccc(out[i]) == 0 {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < out.len() && ccc(out[i]) != 0 {
+            i += 1;
+        }
+        out[start..i].sort_by_key(|&c| ccc(c));
+    }
+    out
+}
+
 /// `unaccent`: NFD, the combining diacritics (U+0300–U+036F) dropped, then the letters NFD keeps whole spelled out.
-/// NFD comes from `nfd_table.rs`, which covers the scripts accents live in; text past them is None, for the TS. A
-/// decomposition there ends in marks this drops, so no reordering of marks can show.
-pub fn unaccent(t: &str) -> Option<String> {
-    use crate::nfd_table::{NFD, NFD_RANGES};
+pub fn unaccent(t: &str) -> String {
     let mut out = String::with_capacity(t.len());
-    let mut push = |c: char| {
+    for c in nfd(t) {
         if !('\u{300}'..='\u{36f}').contains(&c) {
             match translit(c) {
                 Some(s) => out.push_str(s),
                 None => out.push(c),
             }
         }
-    };
-    for c in t.chars() {
-        let u = c as u32;
-        if u < 0x80 {
-            push(c);
-            continue;
-        }
-        if !NFD_RANGES.iter().any(|&(a, b)| (a..=b).contains(&u)) {
-            return None;
-        }
-        match NFD.binary_search_by_key(&u, |&(k, _)| k) {
-            Ok(i) => NFD[i].1.chars().for_each(&mut push),
-            Err(_) => push(c),
-        }
     }
-    Some(out)
+    out
 }
 
 /// `slugify`.
-pub fn slugify(t: &str, sep: &str) -> Option<String> {
-    let lower = utf16(&js_lower(&unaccent(t)?));
+pub fn slugify(t: &str, sep: &str) -> String {
+    let lower = utf16(&js_lower(&unaccent(t)));
     let sep16 = utf16(sep);
     let keep = |u: u16| u < 0x80 && matches!(u as u8, b'a'..=b'z' | b'0'..=b'9');
     // `.replace(/[^a-z0-9]+/g, sep)`: the separator is a replacement pattern, read with no groups.
@@ -606,7 +629,7 @@ pub fn slugify(t: &str, sep: &str) -> Option<String> {
         body.extend(plain_substitution(&sep16, &lower, start, i));
     }
     if sep16.is_empty() {
-        return Some(from_utf16(&body));
+        return from_utf16(&body);
     }
     // `^(?:sep)+|(?:sep)+$`, globally: the leading run of separators, then the first place from which only
     // separators follow.
@@ -617,7 +640,7 @@ pub fn slugify(t: &str, sep: &str) -> Option<String> {
     }
     let tiled = |p: usize| p < body.len() && (body.len() - p).is_multiple_of(n) && body[p..].chunks(n).all(|c| c == sep16.as_slice());
     let tail = (lead..body.len()).find(|&p| tiled(p)).unwrap_or(body.len());
-    Some(from_utf16(&body[lead..tail]))
+    from_utf16(&body[lead..tail])
 }
 
 /// GetSubstitution for a regex without groups.

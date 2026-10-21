@@ -459,16 +459,40 @@ describe("BINOM.INV past a million trials searches the CDF instead of summing ([
   });
 });
 
-describe("UNACCENT's decomposition table matches this Node's NFD", () => {
-  it("every code point it covers, alone and after a letter", () => {
-    for (const [a, b] of [[0x80, 0x24f], [0x300, 0x36f], [0x370, 0x3ff], [0x400, 0x482], [0x48a, 0x4ff], [0x1e00, 0x1fff]]) {
-      for (let c = a; c <= b; c++) {
-        const t = `e${String.fromCodePoint(c)}x`;
-        const got = wasmInvokeSync<{ str?: string; bail?: boolean }>("engine_call", { name: "UNACCENT", args: [t] });
-        if (got.str !== unaccent(t)) expect({ c: c.toString(16), got }).toEqual({ c: c.toString(16), got: { str: unaccent(t) } });
+describe("UNACCENT's NFD matches this Node's", () => {
+  it("every code point, after a letter and before a mark", () => {
+    for (let c = 0x80; c <= 0x10ffff; c++) {
+      // U+FFFD stands in for a lone surrogate on the wire, so it goes to the TS.
+      if ((c >= 0xd800 && c <= 0xdfff) || c === 0xfffd) continue;
+      const t = `e${String.fromCodePoint(c)}\u0334x`;
+      const got = wasmInvokeSync<{ str?: string; bail?: boolean }>("engine_call", { name: "UNACCENT", args: [t] });
+      if (got.str !== unaccent(t)) expect({ c: c.toString(16), got }).toEqual({ c: c.toString(16), got: { str: unaccent(t) } });
+    }
+  });
+});
+
+describe("the chrono-node shapes the core reads match chrono-node", () => {
+  it("bare numbers, 3-Apr-2026 and an ISO day then \"and\"", { timeout: 60_000 }, () => {
+    const rand = mulberry32(99 + FUZZ_SEED);
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+    let ran = 0;
+    for (let i = 0; i < 4000; i++) {
+      const r = rand();
+      const t = r < 0.4
+        ? `${Math.floor(rand() * 40)}${pick(["-", "/", " "])}${pick(["Jan", "mar", "MAY", "June", "Sept", "sep", "Feb", "December", "Decem"])}${pick(["-", "/", " "])}${pick(["2024", "2023", "1000", "0999", "9999", "1900"])}${pick(["", ".", ",", " .,", " x"])}`
+        : r < 0.7 ? `${pick(["", "-", "+"])}${Math.floor(rand() * 10 ** Math.floor(rand() * 16))}${pick(["", `.${Math.floor(rand() * 1000)}`, "."])}`
+        : `${pick(["2024-03-15", "2024-02-30", "1999-12-31"])}${pick([" and ", " AND\t", " andx "])}${pick(["1999-12-31", "x", "10:00"])}`;
+      for (const name of ["DATEVALUE", "TIMEVALUE"]) {
+        const raw = wasmInvokeSync<{ bail?: boolean } | null>("engine_call", { name, args: [t], clock: engineClock() });
+        if (raw && raw.bail) continue;
+        ran++;
+        const want = resolveExcelFunction(name)!(t);
+        const got = raw as { num?: string; err?: string };
+        const same = isSolError(want) ? got.err === want.code : got.num !== undefined && new Float64Array(new BigUint64Array([BigInt(got.num)]).buffer)[0] === want;
+        if (!same) expect({ name, t, got }).toEqual({ name, t, want });
       }
     }
-    expect(wasmInvokeSync("engine_call", { name: "UNACCENT", args: ["한"] }), "past the table goes to the TS").toEqual({ bail: true });
+    expect(ran).toBeGreaterThan(4000);
   });
 });
 
@@ -715,7 +739,7 @@ describe("a formats step rides the schema, never the engine", () => {
 
 describe("a reading the port leaves out sends the column to the TS", () => {
   // An INDEX that answers a whole column lands somewhere only the TS's broadcast reads.
-  it.each(["COUNTIF(a, \"3-Apr-2026\")", "SUMIFS(a, a, \">=Jan 5 2024\")", "INDEX(a, 0, 1)", "INDEX(a, , )"])("%s", (src) => {
+  it.each(["COUNTIF(a, \"Apr 3, 2026\")", "SUMIFS(a, a, \">=Jan 5 2024\")", "INDEX(a, 0, 1)", "INDEX(a, , )"])("%s", (src) => {
     const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [45000, 46115] }] };
     expect(computeColumnOnEngine(f, src, 2)).toBeNull();
   });

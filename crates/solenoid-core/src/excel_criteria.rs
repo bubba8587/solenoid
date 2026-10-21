@@ -220,7 +220,63 @@ pub(crate) fn parse_date(s: &str) -> DateReading {
             }
         }
     }
+    chrono_reading(t)
+}
+
+/// The few shapes of chrono-node's reading the core carries; anything else bails.
+fn chrono_reading(t: &str) -> DateReading {
+    let b = t.as_bytes();
+    // A bare number, signed or with a fraction: no chrono parser reads digits alone.
+    let unsigned = b.strip_prefix(b"+").or_else(|| b.strip_prefix(b"-")).unwrap_or(b);
+    let (whole, frac) = match unsigned.iter().position(|&c| c == b'.') {
+        Some(i) => (&unsigned[..i], Some(&unsigned[i + 1..])),
+        None => (unsigned, None),
+    };
+    if !whole.is_empty() && ascii_digits(whole) && frac.is_none_or(|f| !f.is_empty() && ascii_digits(f)) {
+        return DateReading::NotADate;
+    }
+    if let Some(r) = month_name_little_endian(t) {
+        return r;
+    }
+    // An ISO day then " and …": chrono reads the day alone, so text is left over.
+    if b.len() > 10 && b[10].is_ascii_whitespace() {
+        if let DateReading::Serial(d) = parse_date(&t[..10]) {
+            let rest = t[10..].trim_start_matches(|c: char| c.is_ascii_whitespace());
+            if !d.is_nan() && rest.len() > 3 && rest[..3].eq_ignore_ascii_case("and") && rest.as_bytes()[3].is_ascii_whitespace() {
+                return DateReading::NotADate;
+            }
+        }
+    }
     DateReading::Bail
+}
+
+/// chrono-node's `ENMonthNameLittleEndianParser` on `15-Mar-2024`: a day of one or two digits, a month name from its
+/// dictionary, a year from 1000, each pair parted by one `-`, `/` or space, then only `[\s.,]*`. A day the month
+/// lacks is no date. None for anything else.
+fn month_name_little_endian(t: &str) -> Option<DateReading> {
+    const MONTHS: [(&str, u32); 24] = [
+        ("january", 1), ("february", 2), ("march", 3), ("april", 4), ("may", 5), ("june", 6), ("july", 7), ("august", 8),
+        ("september", 9), ("october", 10), ("november", 11), ("december", 12), ("jan", 1), ("feb", 2), ("mar", 3),
+        ("apr", 4), ("jun", 6), ("jul", 7), ("aug", 8), ("sep", 9), ("sept", 9), ("oct", 10), ("nov", 11), ("dec", 12),
+    ];
+    let b = t.as_bytes();
+    let sep = |c: &u8| matches!(c, b'-' | b'/' | b' ');
+    let (day, rest) = split_num(b, 1, 2)?;
+    let (_, rest) = rest.split_first().filter(|(c, _)| sep(c))?;
+    let n = rest.iter().take_while(|c| c.is_ascii_alphabetic()).count();
+    let word = std::str::from_utf8(&rest[..n]).ok()?.to_ascii_lowercase();
+    let month = MONTHS.iter().find(|(w, _)| *w == word)?.1;
+    let (_, rest) = rest[n..].split_first().filter(|(c, _)| sep(c))?;
+    let (year, tail) = split_num(rest, 4, 4)?;
+    if year < 1000 || !tail.iter().all(|&c| matches!(c, b'.' | b',') || c.is_ascii_whitespace()) {
+        return None;
+    }
+    if day == 0 {
+        return Some(DateReading::NotADate);
+    }
+    let days = crate::date_serial::days_from_civil(i64::from(year), month, day);
+    let (_, m2, _) = crate::date_serial::civil_from_days(days);
+    Some(if m2 != month { DateReading::NotADate } else { DateReading::Serial(days as f64 + 25569.0) })
 }
 
 /// A run of `min..=max` leading ASCII digits as a number, and the rest.
