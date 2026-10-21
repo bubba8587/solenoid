@@ -369,7 +369,8 @@ export function fisherExactP(a: number, b: number, c: number, d: number): number
 
 export function ksTwoSampleP(a: readonly number[], b: readonly number[]): number | null {
   const n1 = a.length, n2 = b.length;
-  if (n1 === 0 || n2 === 0) return null;
+  // A NaN never compares, so the merge below would never pass it.
+  if (n1 === 0 || n2 === 0 || a.some(Number.isNaN) || b.some(Number.isNaN)) return null;
   const sa = [...a].sort((x, y) => x - y), sb = [...b].sort((x, y) => x - y);
   // D as the integer |i·n2 − j·n1| (the ECDF gap scaled by n1·n2), walked over the merge.
   let i = 0, j = 0, dInt = 0;
