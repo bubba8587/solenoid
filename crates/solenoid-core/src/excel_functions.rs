@@ -228,6 +228,21 @@ pub fn to_f64_js(v: &V) -> f64 {
     }
 }
 
+/// JS `a < b`: two texts (a list reads as its joined text) compare by UTF-16 units, anything else as numbers.
+pub fn js_less(a: &V, b: &V) -> bool {
+    let prim = |v: &V| match v {
+        V::Str(_) | V::List(_) | V::Err(_) | V::Fx(_) | V::Cx(..) | V::Lambda(_) => Some(js_string_of(v)),
+        _ => None,
+    };
+    match (prim(a), prim(b)) {
+        (Some(x), Some(y)) => crate::jsnum::compare_utf16(&x, &y) == std::cmp::Ordering::Less,
+        (x, y) => {
+            let num = |p: Option<String>, v: &V| p.map_or_else(|| to_f64_js(v), |t| string_to_number(&t));
+            num(x, a) < num(y, b)
+        }
+    }
+}
+
 /// `String(v)`.
 pub fn js_string_of(v: &V) -> String {
     match v {
@@ -899,22 +914,99 @@ fn excel_rank(value: f64, refs: &[V], avg: bool, ascending: bool) -> V {
     V::Num(if avg { above + 1.0 + (equal - 1.0) / 2.0 } else { above + 1.0 })
 }
 
-/// `excelTrimmean` over numbers.
-fn excel_trimmean(values: &[f64], percent: f64) -> V {
-    let n = values.len() as f64;
-    if values.is_empty() || percent.is_nan() {
+/// JS `acc + v`: text on either side joins as text, otherwise numbers add.
+#[derive(Clone)]
+pub(crate) enum JsSum {
+    Num(f64),
+    Str(String),
+}
+
+impl JsSum {
+    pub(crate) fn add(self, v: &V) -> JsSum {
+        let texty = matches!(v, V::Str(_) | V::List(_) | V::Err(_) | V::Fx(_) | V::Cx(..) | V::Lambda(_));
+        match self {
+            JsSum::Str(s) => JsSum::Str(s + &js_string_of(v)),
+            JsSum::Num(x) if texty => JsSum::Str(number_to_string(x) + &js_string_of(v)),
+            JsSum::Num(x) => JsSum::Num(x + to_f64_js(v)),
+        }
+    }
+
+    pub(crate) fn number(&self) -> f64 {
+        match self {
+            JsSum::Num(x) => *x,
+            JsSum::Str(s) => string_to_number(s),
+        }
+    }
+}
+
+/// `[...xs].sort((a, b) => a - b)`: `undefined` goes last unseen, as V8 does. None where V8's merge would decide
+/// an inconsistent comparator's order (64 or more items, not all numbers).
+pub(crate) fn js_numeric_sort(xs: &[V]) -> Option<Vec<V>> {
+    let (mut s, undef): (Vec<V>, Vec<V>) = xs.iter().cloned().partition(|v| !matches!(v, V::Undef));
+    if s.iter().all(|v| matches!(v, V::Num(n) if !n.is_nan())) {
+        crate::js_sort::js_sort_by(&mut s, |a, b| (to_f64_js(a) - to_f64_js(b)).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+    } else {
+        crate::js_sort::v8_sort_short(&mut s, |a, b| to_f64_js(a) - to_f64_js(b))?;
+    }
+    s.extend(undef);
+    Some(s)
+}
+
+/// `(v ?? [])` as an array-like: its `length` (a string's in UTF-16 units; None where it is `undefined`) and what
+/// `[...v]` spreads (a string's code points; None where that throws).
+pub(crate) fn js_len_spread(v: &V) -> (Option<f64>, Option<Vec<V>>) {
+    match v {
+        V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
+        V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
+        V::Str(s) => (Some(s.encode_utf16().count() as f64), Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect())),
+        _ => (None, None),
+    }
+}
+
+/// `(v ?? [])[i]` for each index: a string's UTF-16 units (a lone half reads as U+FFFD, which no sum or number
+/// tells apart). None for a scalar, whose length is `undefined`.
+pub(crate) fn js_indexed(v: &V) -> Option<Vec<V>> {
+    match v {
+        V::Null | V::Undef => Some(Vec::new()),
+        V::List(vs) => Some(vs.to_vec()),
+        V::Str(s) => Some(utf16(s).iter().map(|&u| V::Str(Rc::from(String::from_utf16_lossy(&[u])))).collect()),
+        _ => None,
+    }
+}
+
+/// `arr.reduce((a, b) => a + b, 0) / arr.length`.
+pub(crate) fn js_mean(arr: &[V]) -> f64 {
+    arr.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / arr.len() as f64
+}
+
+/// `arrSampleVar` over JS values.
+fn js_sample_var(arr: &[V]) -> f64 {
+    let m = js_mean(arr);
+    arr.iter().fold(0.0, |s, v| s + js_pow(to_f64_js(v) - m, 2.0)) / (arr.len() as f64 - 1.0)
+}
+
+/// `Array.prototype.slice(start, end)`'s index.
+pub(crate) fn js_slice_index(k: f64, len: usize) -> usize {
+    let l = len as f64;
+    (if k < 0.0 { (l + k).max(0.0) } else { k.min(l) }) as usize
+}
+
+/// `excelTrimmean`: `values.length` is `n` (a string's UTF-16 length, None where it is `undefined`) and `items`
+/// what `[...values]` spreads (None where that throws).
+fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> V {
+    let n = n.unwrap_or(f64::NAN);
+    if n == 0.0 || percent.is_nan() {
         return value_err("TRIMMEAN");
     }
     let trim = ((n * percent) / 2.0).floor();
     if trim * 2.0 >= n {
         return V::err(sol_error("#DOMAIN!", "TRIMMEAN trimmed away every value"));
     }
-    let s = sorted_nums(values);
-    // `slice(trim, n - trim)` with a negative trim counts from the end.
-    let idx = |k: f64| if k < 0.0 { (n + k).max(0.0) } else { k.min(n) } as usize;
-    let (lo, hi) = (idx(trim), idx(n - trim));
+    let Some(items) = items else { return throw(sol_error("#VALUE!", "values is not iterable")) };
+    let Some(s) = js_numeric_sort(&items) else { return bail() };
+    let (lo, hi) = (js_slice_index(trim, s.len()), js_slice_index(n - trim, s.len()));
     let kept = if lo < hi { &s[lo..hi] } else { &s[0..0] };
-    V::Num(kept.iter().fold(0.0, |a, b| a + b) / kept.len() as f64)
+    V::Num(kept.iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / kept.len() as f64)
 }
 
 /// `excelPercentRank` (excelFunctions.ts).
@@ -1617,7 +1709,7 @@ fn to_list(v: &V) -> Rc<Vec<V>> {
     }
 }
 
-/// `weighted` (listOps.ts). Text among the values or weights would add as text: leave that to the TS.
+/// `weighted` (listOps.ts), over JS values: the weight sum adds as JS does, text joining; every other sum reads numbers.
 fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
     if let Some(e) = values.iter().chain(weights).find(|v| v.is_sol_error()) {
         return e.clone();
@@ -1625,29 +1717,21 @@ fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
     if values.is_empty() || weights.len() < values.len() {
         return V::Null;
     }
-    let mut pairs: Vec<(f64, f64)> = Vec::new();
-    for i in 0..values.len() {
-        let (v, w) = (&values[i], &weights[i]);
-        if matches!(v, V::Null) || matches!(w, V::Null) {
-            continue;
-        }
-        match (v, w) {
-            (V::Num(v), V::Num(w)) => pairs.push((*v, *w)),
-            _ => return bail(),
-        }
-    }
-    let w_sum = pairs.iter().fold(0.0, |a, (_, w)| a + w);
-    if pairs.is_empty() || w_sum == 0.0 {
+    let pairs: Vec<(&V, &V)> = values.iter().zip(weights).filter(|(v, w)| !matches!(v, V::Null) && !matches!(w, V::Null)).collect();
+    let w_sum = pairs.iter().fold(JsSum::Num(0.0), |a, (_, w)| a.add(w));
+    if pairs.is_empty() || matches!(w_sum, JsSum::Num(x) if x == 0.0) {
         return V::Null;
     }
-    let wavg = pairs.iter().fold(0.0, |s, (v, w)| s + v * w) / w_sum;
+    let w_sum = w_sum.number();
+    let num = |v: &V| to_f64_js(v);
+    let wavg = pairs.iter().fold(0.0, |s, (v, w)| s + num(v) * num(w)) / w_sum;
     let mut result = Some(wavg);
     if name != "WAVG" {
-        let w_sum2 = pairs.iter().fold(0.0, |a, (_, w)| a + w * w);
+        let w_sum2 = pairs.iter().fold(0.0, |a, (_, w)| a + num(w) * num(w));
         let denom = w_sum - w_sum2 / w_sum;
         result = None;
         if denom > 0.0 {
-            let wvar = pairs.iter().fold(0.0, |s, (v, w)| s + w * js_pow(v - wavg, 2.0)) / denom;
+            let wvar = pairs.iter().fold(0.0, |s, (v, w)| s + num(w) * js_pow(num(v) - wavg, 2.0)) / denom;
             result = Some(if name == "WVAR" { wvar } else { wvar.sqrt() });
         }
     }
@@ -2262,19 +2346,23 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if o.is_nan() {
                 return value_err("RANK");
             }
-            // `ref.filter` throws on anything but a list; leave that to the TS.
-            let V::List(refs) = arg(a, 1) else { return bail() };
-            excel_rank(to_num(arg(a, 0)), refs, name == "RANK.AVG", o != 0.0)
+            let value = to_num(arg(a, 0));
+            match arg(a, 1) {
+                V::List(refs) => excel_rank(value, refs, name == "RANK.AVG", o != 0.0),
+                V::Null | V::Undef => excel_rank(value, &[], name == "RANK.AVG", o != 0.0),
+                _ if value.is_nan() => value_err("RANK"),
+                // `ref.filter` on anything but a list is a TypeError.
+                _ => throw(sol_error("#VALUE!", "ref.filter is not a function")),
+            }
         }
         "TRIMMEAN" => {
-            // Text in the list would sort and add as text: leave anything but numbers to the TS.
-            let V::List(vals) = arg(a, 0) else { return bail() };
-            let mut nums = Vec::with_capacity(vals.len());
-            for v in vals.iter() {
-                let V::Num(x) = v else { return bail() };
-                nums.push(*x);
-            }
-            excel_trimmean(&nums, to_num(arg(a, 1)))
+            let (n, items) = match arg(a, 0) {
+                V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
+                V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
+                V::Str(s) => (Some(s.encode_utf16().count() as f64), Some(s.chars().map(|c| V::str(c.encode_utf8(&mut [0; 4]))).collect())),
+                _ => (None, None),
+            };
+            excel_trimmean(n, items, to_num(arg(a, 1)))
         }
         "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC" => {
             let arr: Vec<V> = match arg(a, 0) {
@@ -3392,17 +3480,31 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if n.is_nan() {
                 return value_err("FORECAST.LINEAR");
             }
-            let (xs, ys) = match (raw_numbers(arg(a, 2)), raw_numbers(arg(a, 1))) {
-                (Err(()), _) | (_, Err(())) => return bail(),
-                (Ok(xs), Ok(ys)) => (xs, ys),
-            };
-            // `(xs as number[]) ?? []`: a scalar has no length, so the fit finds no spread.
-            match xs.zip(ys).and_then(|(xs, ys)| linear_fit(&xs, &ys)) {
+            // A scalar's length is `undefined`, so the fit finds no spread.
+            match js_indexed(arg(a, 2)).zip(js_indexed(arg(a, 1))).and_then(|(xs, ys)| js_linear_fit(&xs, &ys)) {
                 Some((slope, intercept)) => V::Num(intercept + slope * n),
                 None => V::err(sol_error("#DIV/0!", "Known Xs have zero variance")),
             }
         }
-        "T.TEST" | "F.TEST" => {
+        "F.TEST" => {
+            let ((na, sa), (nb, sb)) = (js_len_spread(arg(a, 0)), js_len_spread(arg(a, 1)));
+            // `a.length < 2` is false for an `undefined` length.
+            if na.is_some_and(|n| n < 2.0) || nb.is_some_and(|n| n < 2.0) {
+                return V::Null;
+            }
+            let unspread = if sa.is_none() { "a" } else { "b" };
+            let (Some(sa), Some(sb)) = (sa, sb) else { return throw(sol_error("#VALUE!", format!("{unspread} is not iterable"))) };
+            let (v1, v2) = (js_sample_var(&sa), js_sample_var(&sb));
+            if !(v1 > 0.0) || !(v2 > 0.0) {
+                return V::Null;
+            }
+            let f = v1 / v2;
+            let (df1, df2) = (na.unwrap_or(f64::NAN) - 1.0, nb.unwrap_or(f64::NAN) - 1.0);
+            let p1 = crate::dists::regularized_beta((f * df1) / (f * df1 + df2), df1 / 2.0, df2 / 2.0);
+            let p = 2.0 * crate::jsnum::math_min(p1, 1.0 - p1);
+            if p.is_finite() { V::Num(p) } else { V::Null }
+        }
+        "T.TEST" => {
             let lists = |i: usize| match arg(a, i) {
                 V::Null | V::Undef => Ok(Vec::new()),
                 v => match raw_numbers(v) {
@@ -3410,10 +3512,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     _ => Err(()),
                 },
             };
-            if name == "F.TEST" {
-                let (Ok(xa), Ok(xb)) = (lists(0), lists(1)) else { return bail() };
-                return f_test_p(&xa, &xb).map_or(V::Null, V::Num);
-            }
             let tails = if matches!(arg(a, 2), V::Null | V::Undef) { 2.0 } else { to_f64_js(arg(a, 2)) };
             let ty = to_f64_js(arg(a, 3));
             let kind = if ty == 1.0 {
@@ -3773,23 +3871,18 @@ fn raw_numbers(v: &V) -> Result<Option<Vec<f64>>, ()> {
     }
 }
 
-/// `linearFit` (mathUtils.ts): the slope and intercept.
-fn linear_fit(xs: &[f64], ys: &[f64]) -> Option<(f64, f64)> {
+/// `linearFit` over JS values: the means add as JS does, text joining.
+fn js_linear_fit(xs: &[V], ys: &[V]) -> Option<(f64, f64)> {
     let n = xs.len().min(ys.len());
     if n < 2 {
         return None;
     }
-    let (mut x_mean, mut y_mean) = (0.0, 0.0);
-    for i in 0..n {
-        x_mean += xs[i];
-        y_mean += ys[i];
-    }
-    x_mean /= n as f64;
-    y_mean /= n as f64;
+    let x_mean = xs[..n].iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / n as f64;
+    let y_mean = ys[..n].iter().fold(JsSum::Num(0.0), |acc, v| acc.add(v)).number() / n as f64;
     let (mut sxy, mut sxx) = (0.0, 0.0);
     for i in 0..n {
-        let dx = xs[i] - x_mean;
-        sxy += dx * (ys[i] - y_mean);
+        let dx = to_f64_js(&xs[i]) - x_mean;
+        sxy += dx * (to_f64_js(&ys[i]) - y_mean);
         sxx += dx * dx;
     }
     if sxx == 0.0 {
@@ -3859,22 +3952,6 @@ fn t_test_p(kind: TTestKind, a: &[f64], b: &[f64]) -> Option<f64> {
     }
     let p = 2.0 * (1.0 - crate::dists::t_cdf(t.abs(), df));
     p.is_finite().then(|| clamp01(p))
-}
-
-/// `fTestP` (mathUtils.ts).
-fn f_test_p(a: &[f64], b: &[f64]) -> Option<f64> {
-    if a.len() < 2 || b.len() < 2 {
-        return None;
-    }
-    let (v1, v2) = (arr_sample_var(a), arr_sample_var(b));
-    if v1.is_nan() || v1 <= 0.0 || v2.is_nan() || v2 <= 0.0 {
-        return None;
-    }
-    let f = v1 / v2;
-    let (df1, df2) = (a.len() as f64 - 1.0, b.len() as f64 - 1.0);
-    let p1 = crate::dists::regularized_beta((f * df1) / (f * df1 + df2), df1 / 2.0, df2 / 2.0);
-    let p = 2.0 * crate::jsnum::math_min(p1, 1.0 - p1);
-    p.is_finite().then_some(p)
 }
 
 /// `probBetween` (mathUtils.ts) over `pairPresent`. Text added to the total turns it into text, which isn't finite.
@@ -4422,8 +4499,10 @@ fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
 }
 
 /// The first `n` dates as numbers; None where one isn't, since JS's `<` and `-` would read it, which only the TS does.
-fn date_nums(dates: &[V], n: usize) -> Option<Vec<f64>> {
-    dates[..n.min(dates.len())].iter().map(|d| if let V::Num(x) = d { Some(*x) } else { None }).collect()
+fn date_nums(dates: &[V], n: usize) -> (Vec<f64>, bool) {
+    let ds = &dates[..n.min(dates.len())];
+    let before = ds.iter().skip(1).any(|d| js_less(d, &ds[0]));
+    (ds.iter().map(to_f64_js).collect(), before)
 }
 
 /// `parseInt(x, 10)` of a number: the integer its `String` starts with.
@@ -4517,10 +4596,8 @@ fn finance_function(name: &str, a: &[V]) -> V {
             if count == 0 {
                 return V::Null;
             }
-            match date_nums(&dates, count) {
-                Some(ds) => fin(f::xnpv(r, &values, &ds)),
-                None => bail(),
-            }
+            let (ds, before) = date_nums(&dates, count);
+            fin(f::xnpv(r, &values, &ds, before))
         }
         "XIRR" => {
             let (values, dates) = match dated_prep(arg(a, 0), arg(a, 1)) {
@@ -4531,10 +4608,8 @@ fn finance_function(name: &str, a: &[V]) -> V {
             if count < 2 {
                 return V::Null;
             }
-            match date_nums(&dates, count) {
-                Some(ds) => fin(f::xirr(&values, &ds)),
-                None => bail(),
-            }
+            let (ds, before) = date_nums(&dates, count);
+            fin(f::xirr(&values, &ds, before))
         }
         "FVSCHEDULE" => {
             if matches!(arg(a, 0), V::Null | V::Undef) {

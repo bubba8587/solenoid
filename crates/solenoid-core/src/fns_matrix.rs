@@ -339,8 +339,8 @@ fn expand_mat(m: &Mat, req_r: f64, req_c: f64, fill: V) -> V {
     if let Some(e) = cell_cap("EXPAND", r, c) {
         return e;
     }
-    // A big grid answers right but crosses `engine_call`'s JSON reply slower than the conformance run allows.
-    if r * c > 50_000.0 || r > MAX_GENERATED {
+    // No columns slip past the cap: past a million empty rows (an infinite count never ends) the TS runs it.
+    if r > MAX_GENERATED {
         return crate::excel_functions::bail();
     }
     let (r, c) = (r as usize, c as usize);

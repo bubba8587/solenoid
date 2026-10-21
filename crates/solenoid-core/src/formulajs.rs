@@ -526,6 +526,27 @@ fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, V> {
     Ok(1.0 - p)
 }
 
+/// JS `v[key]` on an argument: a list's item, a string's UTF-16 unit (a lone half reads as U+FFFD) or length,
+/// `undefined` on any other value, and the TypeError `null` and `undefined` throw. `list` reads a list's member.
+fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, V> {
+    match v {
+        V::List(items) => Ok(list(items).unwrap_or(V::Undef)),
+        V::Str(s) => {
+            let units: Vec<u16> = s.encode_utf16().collect();
+            Ok(if key == "length" {
+                V::Num(units.len() as f64)
+            } else {
+                key.parse::<usize>().ok().and_then(|i| units.get(i)).map_or(V::Undef, |&u| V::str(&String::from_utf16_lossy(&[u])))
+            })
+        }
+        V::Null | V::Undef => {
+            let what = if matches!(v, V::Null) { "null" } else { "undefined" };
+            Err(throw(sol_error("#VALUE!", format!("Cannot read properties of {what} (reading '{key}')"))))
+        }
+        _ => Ok(V::Undef),
+    }
+}
+
 // ─── Dispatch ──────────────────────────────────────────────────────────────────
 
 pub fn call(name: &str, a: &[V]) -> V {
@@ -542,41 +563,52 @@ pub fn call(name: &str, a: &[V]) -> V {
             if a.is_empty() {
                 return VALUE;
             }
-            // `arguments[k][i]` on a string reads its characters: leave that to the TS.
-            if a.iter().any(|v| matches!(v, V::Str(_))) {
-                return bail();
-            }
-            let unreadable = |v: &V, key: String| {
-                let what = if matches!(v, V::Null) { "null" } else { "undefined" };
-                throw(sol_error("#VALUE!", format!("Cannot read properties of {what} (reading '{key}')")))
-            };
-            let first = match &a[0] {
-                V::List(items) => items.clone(),
-                v @ (V::Null | V::Undef) => return unreadable(v, "length".into()),
-                // A scalar has no length, so nothing is summed.
-                _ => return V::Num(0.0),
-            };
+            let at = |v: &V, i: usize| js_member(v, &i.to_string(), |items| items.get(i).cloned());
             let mut result = 0.0;
-            for i in 0..first.len() {
-                if let V::List(_) = first[i] {
-                    return bail();
+            let len = match js_member(&a[0], "length", |items| Some(V::Num(items.len() as f64))) {
+                Ok(V::Num(n)) => n as usize,
+                Ok(_) => 0,
+                Err(e) => return e,
+            };
+            let factor = |item: V| -> Result<f64, V> {
+                if let V::Fx(_) = item {
+                    return Err(item);
                 }
-                let mut product = 1.0;
-                for v in a {
-                    let item = match v {
-                        V::List(items) => items.get(i).unwrap_or(&V::Undef),
-                        V::Null | V::Undef => return unreadable(v, i.to_string()),
-                        _ => &V::Undef,
-                    };
-                    if let V::Fx(_) = item {
-                        return item.clone();
-                    }
-                    match parse_number(item) {
-                        V::Num(n) => product *= n,
-                        e => return e,
-                    }
+                match parse_number(&item) {
+                    V::Num(n) => Ok(n),
+                    e => Err(e),
                 }
-                result += product;
+            };
+            for i in 0..len {
+                let first = match at(&a[0], i) {
+                    Ok(v) => v,
+                    Err(e) => return e,
+                };
+                if let V::List(inner) = first {
+                    for j in 0..inner.len() {
+                        let mut product = 1.0;
+                        for v in a {
+                            let item = match at(v, i).and_then(|row| at(&row, j)) {
+                                Ok(x) => x,
+                                Err(e) => return e,
+                            };
+                            match factor(item) {
+                                Ok(n) => product *= n,
+                                Err(e) => return e,
+                            }
+                        }
+                        result += product;
+                    }
+                } else {
+                    let mut product = 1.0;
+                    for v in a {
+                        match at(v, i).and_then(factor) {
+                            Ok(n) => product *= n,
+                            Err(e) => return e,
+                        }
+                    }
+                    result += product;
+                }
             }
             V::Num(result)
         }
@@ -604,7 +636,15 @@ pub fn call(name: &str, a: &[V]) -> V {
             let (x, n, m) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)));
             let coefficients = match arg(a, 3) {
                 V::List(items) => parse_number_array(items).map(Some),
-                V::Str(s) if !s.is_empty() => return bail(),
+                // Text parses from its last unit, then writing the number back into the string throws (strict mode).
+                V::Str(s) if !s.is_empty() => {
+                    let units: Vec<u16> = s.encode_utf16().collect();
+                    let last = String::from_utf16_lossy(&units[units.len() - 1..]);
+                    return match parse_number(&V::str(&last)) {
+                        V::Num(_) => throw(sol_error("#VALUE!", format!("Cannot assign to read only property '{}' of string '{s}'", units.len() - 1))),
+                        _ => VALUE,
+                    };
+                }
                 // A truthy scalar has no length, so it parses as itself and reads `undefined` at [0].
                 v if truthy(v) => if let V::Fx(_) = v { Err(VALUE) } else { Ok(None) },
                 _ => Err(VALUE),
