@@ -80,6 +80,22 @@ describe("BINOM.DIST.RANGE checks its range and stays finite on large trials (FX
   });
 });
 
+describe("BESSELJ, I, K and Y past an order of a million answer #DOMAIN! (FX recurs once per order)", () => {
+  it("a huge order answers at once; an ordinary one is Formula.js's", () => {
+    const t = performance.now();
+    for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) expect((call(name, 1, 1e12) as { code?: string }).code).toBe("#DOMAIN!");
+    expect(performance.now() - t).toBeLessThan(500);
+    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
+    expect(call("BESSELJ", 1.9, 2)).toBe(fx.BESSELJ(1.9, 2));
+  });
+  it("FX still recurs once per order (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
+    const t = performance.now();
+    fx.BESSELJ(1, 2e6);
+    expect(performance.now() - t).toBeGreaterThan(5);
+  });
+});
+
 describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per period)", () => {
   it("a huge period within the life answers at once; an ordinary one is Formula.js's", () => {
     const t = performance.now();

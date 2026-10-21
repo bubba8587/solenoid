@@ -30,6 +30,8 @@ Without the tripwire, a vendor update that fixes or changes a function passes si
 
 - **BINOM.DIST.RANGE** runs `binomDistRange` (`mathUtils.ts`): Excel's constraints (0 ≤ s ≤ s2 ≤ trials, a probability from 0 to 1) answer `#DOMAIN!`, where Formula.js checks nothing and sums a reversed range to 0; each term multiplies COMBIN's exact count by the powers, or works in logs where the count overflows, so `BINOM.DIST.RANGE(1e5, 0.5, 0, 50000)` answers instead of overflowing the call stack; a range past a million outcomes is `#DOMAIN!`.
 
+- **BESSELJ, BESSELI, BESSELK, BESSELY** call Formula.js, except that an order past 1,000,000 answers `#DOMAIN!` ("BESSELJ takes an order of at most 1,000,000"): Formula.js recurs once per order, so `BESSELJ(1, 1e12)` hung the app ([[C120]] linearWork).
+
 These match the Math node's own compute.
 
 ## Logic
