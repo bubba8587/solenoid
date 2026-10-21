@@ -115,3 +115,22 @@ describe("a missing date stays a quiet blank on both surfaces", () => {
     expect(ev("DURATION(s, m, 0.08, 0.09, 2, 0)", { s: null, m })).toBeNull();
   });
 });
+
+describe("a loop of a step per period stops at a million periods instead of hanging", () => {
+  it("VDB refuses an end period past a million", () => {
+    same(new DepreciationNode({ op: "vdb" }).data({ cost: [1], salvage: [0], life: [1e300], start: [0], end: [1e300], factor: [2] }).result,
+      ev("VDB(1, 0, 1e300, 0, 1e300)", {}), "VDB needs an end period of at most 1,000,000");
+    expect(ev("VDB(1000, 0, 2e6, 0, 1e6)", {})).toBeTypeOf("number");
+  });
+
+  it("CUMIPMT and CUMPRINC refuse a million periods, and a period past 2^53, where a step no longer moves", () => {
+    expect(ev("CUMPRINC(0.01, 1e7, 1000, 1, 1e7, 0)", {})).toMatchObject({ code: "#DOMAIN!", message: "CUMPRINC sums at most 1,000,000 periods" });
+    expect(ev("CUMIPMT(2e-16, 1e17, 1000, 1e17, 1e17, 0)", {})).toMatchObject({ code: "#DOMAIN!", message: "CUMIPMT sums at most 1,000,000 periods" });
+    expect(ev("CUMIPMT(0.000001, 2e6, 1000, 1e6, 2e6 - 1, 0)", {})).toBeTypeOf("number");
+  });
+
+  it("ODDFPRICE lists the quasi-coupon periods back to an issue date millennia ago in linear time", () => {
+    const fc = d("2024-03-01");
+    expect(ev("ODDFPRICE(s, m, i, f, 0.05, 0.06, 100, 4)", { s, m, i: s - 3e7, f: fc })).toBeTypeOf("number");
+  });
+});

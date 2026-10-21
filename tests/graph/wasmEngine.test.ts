@@ -318,7 +318,12 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
   "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
   "BINOM.INV", "POISSON.DIST", "HYPGEOM.DIST", "NEGBINOM.DIST",
-  "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "INDEX", "FIXED", "DATEVALUE", "TIMEVALUE"];
+  "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "INDEX", "FIXED", "DATEVALUE", "TIMEVALUE",
+  "COUPDAYBS", "COUPDAYSNC", "COUPNCD", "COUPPCD", "COUPNUM", "ACCRINTM", "INTRATE", "RECEIVED", "YIELDDISC", "TBILLEQ",
+  "TBILLPRICE", "TBILLYIELD", "PRICEMAT", "YIELDMAT", "DURATION", "MDURATION", "PRICE", "YIELD", "IRR", "MIRR", "XNPV", "XIRR",
+  "FVSCHEDULE", "CUMIPMT", "CUMPRINC", "VDB", "ODDFPRICE", "ODDFYIELD", "ODDLPRICE", "ODDLYIELD", "MAXDRAWDOWN", "CAGR",
+  "VOLATILITY", "SHARPE", "SORTINO", "NPV", "RATE", "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "DOLLARDE",
+  "DOLLARFR", "ISPMT"];
 /** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
 const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE|TRIMMEAN|PERCENTRANK/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
@@ -461,6 +466,8 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
       { name: "b", type: "string", values: ["x", "", null, "Yo", "z"] },
       { name: "c", type: "logical", values: [true, false, null, true, true] },
       { name: "d", type: "number", values: [1, 2, solError("#N/A", "gap"), 4, 5] },
+      { name: "e", type: "date", values: [45000, 45031, 45100, 45200, 45366] },
+      { name: "g", type: "number", values: [-1000, 300, 400, null, 500] },
     ],
   };
   it.each([
@@ -478,6 +485,11 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
     "SUM(a * [c])", "COUNTA(b & \"x\")", "SUM(a / (d - 40000))",
     "WAVG(a, d)", "WSTDEV(d, a)", "COUNTDISTINCT(b)", "ARGMAX(a) + ARGMIN(d)", "LENGTH(a)", "CONTAINS(b, @b)",
     "CORREL(a, d)", "SLOPE(d, a) * @a", "RANK(@a, a)", "PERCENTRANK(a, @a)", "TRIMMEAN(a, 0.2)", "KURT(a, d)", "GCD(5, @a)",
+    "IRR(g)", "IRR(a)", "IRR(g * 2) + @a", "NPV(0.1, g)", "NPV(@a / 10, g, 5)", "XNPV(0.08, g, e)", "XNPV(0.08, a, d)",
+    "XIRR(g, e)", "MIRR(g, 0.1, 0.12)", "FVSCHEDULE(100, a / 100)", "FVSCHEDULE(@a, [a])", "MAXDRAWDOWN(e)", "CAGR(e, 12)",
+    "VOLATILITY(a, 12)", "SHARPE(a / 100, 0.001, 12)", "SORTINO(a)", "COUPNUM(@e, @e + 1000)", "PRICE(@e, @e + 3650, 0.05, 0.06)",
+    "YIELD(@e, @e + 3650, 0.05, 98)", "DURATION(@e, EOMONTH(@e, 60), 0.04, 0.05, 4)", "ODDFPRICE(@e, @e + 2000, @e - 30, @e + 100, 0.05, 0.06)",
+    "VDB(1000, 100, 10, 0, @a)", "CUMIPMT(0.01, 36, 1000, 1, 12, 0)", "DB(1000, 100, 5, 2)", "RATE(36, -30, 1000)", "EFFECT(@a, 12)",
   ])("%s", (src) => {
     const engine = computeColumnOnEngine(f, src, 5);
     expect(engine, "should run on the engine").not.toBeNull();
@@ -636,6 +648,122 @@ describe("the distribution functions match bit for bit on realistic parameters",
   });
 });
 
+describe("the finance functions match bit for bit on realistic arguments", () => {
+  type Gen = (r: () => number) => unknown[];
+  const day = (r: () => number) => 36000 + Math.floor(r() * 12000);
+  // Month ends steer the schedules onto their end-of-month branch.
+  const MONTH_ENDS = [45291, 45322, 45351, 45382, 45412, 45443, 45473, 45504, 45535, 45565, 45596, 45626, 45657, 44255, 44985];
+  const maturity = (r: () => number, settle: number) =>
+    (r() < 0.3 ? MONTH_ENDS[Math.floor(r() * MONTH_ENDS.length)] + 365 * Math.floor(r() * 30) : settle + 1 + Math.floor(r() * 11000));
+  const pick = <T,>(r: () => number, xs: readonly T[]): T => xs[Math.floor(r() * xs.length)];
+  const freq = (r: () => number) => pick(r, [1, 2, 4, 3]);
+  const basis = (r: () => number) => pick(r, [0, 1, 2, 3, 4, 5, undefined]);
+  const flows = (r: () => number, n = 2 + Math.floor(r() * 10)) =>
+    Array.from({ length: n }, (_, i) => (i === 0 ? -1000 - r() * 9000 : r() < 0.15 ? null : Math.round((r() * 3000 - 400) * 100) / 100));
+  const prices = (r: () => number) => {
+    let p = 50 + r() * 100;
+    return Array.from({ length: 2 + Math.floor(r() * 30) }, () => (r() < 0.1 ? null : (p *= 1 + (r() - 0.48) * 0.1)));
+  };
+  const rets = (r: () => number) => Array.from({ length: Math.floor(r() * 30) }, () => (r() < 0.1 ? null : (r() - 0.45) * 0.08));
+  // Dates mostly rising, now and then one before the first.
+  const ascending = (r: () => number, n: number) => {
+    let d = day(r);
+    return Array.from({ length: n }, (_, i) => (i === 0 ? d : (d += Math.floor(r() * 200) - (r() < 0.05 ? 300 : 0))));
+  };
+  const each = (names: readonly string[], gen: (name: string) => Gen): Array<[string, Gen]> => names.map((n) => [n, gen(n)]);
+  const CASES: Array<[string, Gen]> = [
+    ...each(["COUPDAYBS", "COUPDAYSNC", "COUPNCD", "COUPPCD", "COUPNUM"], () => (r) => {
+      const s = day(r) + (r() < 0.2 ? 0.5 : 0);
+      return [s, maturity(r, s), freq(r), basis(r)];
+    }),
+    ["ACCRINTM", (r) => { const i = day(r); return [i, i + Math.floor(r() * 3000) - 50, r() * 0.1, pick(r, [1000, 100, undefined, -5]), basis(r)]; }],
+    ...each(["INTRATE", "RECEIVED"], (n) => (r) => {
+      const s = day(r);
+      return [s, maturity(r, s), 900 + r() * 100, n === "RECEIVED" ? r() * 0.2 : 1000 + r() * 50, basis(r)];
+    }),
+    ["YIELDDISC", (r) => { const s = day(r); return [s, maturity(r, s), 90 + r() * 10, pick(r, [100, 105, undefined]), basis(r)]; }],
+    ...each(["TBILLEQ", "TBILLPRICE", "TBILLYIELD"], (n) => (r) => {
+      const s = pick(r, [day(r), ...MONTH_ENDS]);
+      return [s, s + 1 + Math.floor(r() * 380), n === "TBILLYIELD" ? 95 + r() * 5 : r() * 0.12];
+    }),
+    ...each(["PRICEMAT", "YIELDMAT"], (n) => (r) => {
+      const s = day(r);
+      return [s, maturity(r, s), s - Math.floor(r() * 2000), r() * 0.1, n === "YIELDMAT" ? 90 + r() * 15 : r() * 0.1, basis(r)];
+    }),
+    ...each(["DURATION", "MDURATION"], () => (r) => { const s = day(r); return [s, maturity(r, s), r() * 0.1, r() * 0.12, freq(r), basis(r)]; }),
+    ...each(["PRICE", "YIELD"], (n) => (r) => {
+      const s = day(r);
+      return [s, maturity(r, s), r() * 0.1, n === "YIELD" ? 70 + r() * 50 : r() * 0.12, pick(r, [100, 105, undefined]), freq(r)];
+    }),
+    ...each(["ODDFPRICE", "ODDFYIELD"], (n) => (r) => {
+      const s = day(r);
+      const fc = s + 1 + Math.floor(r() * 300);
+      return [s, fc + 1 + Math.floor(r() * 4000), s - Math.floor(r() * 400), fc, r() * 0.1, n === "ODDFYIELD" ? 80 + r() * 40 : r() * 0.12, pick(r, [100, undefined]), freq(r)];
+    }),
+    ...each(["ODDLPRICE", "ODDLYIELD"], (n) => (r) => {
+      const li = day(r);
+      const s = li + 1 + Math.floor(r() * 150);
+      return [s, s + 1 + Math.floor(r() * 200), li, r() * 0.1, n === "ODDLYIELD" ? 80 + r() * 40 : r() * 0.12, pick(r, [100, undefined]), freq(r)];
+    }),
+    ["VDB", (r) => {
+      const life = 1 + Math.floor(r() * 20);
+      const a = r() * life, b = r() * life;
+      return [1000 + r() * 9000, r() * 1000, life, Math.min(a, b), Math.max(a, b), pick(r, [2, 1.5, undefined, 3]), r() < 0.3];
+    }],
+    ...each(["CUMIPMT", "CUMPRINC"], () => (r) => {
+      const nper = 1 + Math.floor(r() * 360);
+      const a = 1 + Math.floor(r() * nper);
+      return [r() * 0.02, nper, 1000 + r() * 1e5, a, a + Math.floor(r() * (nper - a + 1)), r() < 0.5 ? 1 : 0];
+    }),
+    ["IRR", (r) => [flows(r)]],
+    ["MIRR", (r) => [flows(r), r() * 0.15, r() * 0.15]],
+    ["XNPV", (r) => { const v = flows(r); return [r() * 0.2 - 0.02, v, ascending(r, v.length)]; }],
+    ["XIRR", (r) => { const v = flows(r); return [v, ascending(r, v.length)]; }],
+    ["FVSCHEDULE", (r) => [1000 * r(), Array.from({ length: Math.floor(r() * 8) }, () => r() * 0.1)]],
+    ["NPV", (r) => [r() * 0.15, ...flows(r).map((x) => x ?? 0)]],
+    ["RATE", (r) => [1 + Math.floor(r() * 360), -(10 + r() * 500), 1000 + r() * 50000, pick(r, [0, 1000, undefined]), pick(r, [0, 1, undefined])]],
+    ["DB", (r) => { const life = 1 + Math.floor(r() * 30); return [1000 + r() * 1e5, r() * 2000, life, 1 + Math.floor(r() * life), pick(r, [12, 6, 1, undefined])]; }],
+    ["DDB", (r) => { const life = 1 + Math.floor(r() * 30); return [1000 + r() * 1e5, r() * 2000, life, 1 + Math.floor(r() * life), pick(r, [2, 1.5, undefined])]; }],
+    ["SYD", (r) => { const life = 1 + Math.floor(r() * 30); return [1000 + r() * 1e5, r() * 2000, life, 1 + r() * (life - 1)]; }],
+    ["EFFECT", (r) => [r() * 0.2, 1 + r() * 365]],
+    ["NOMINAL", (r) => [r() * 0.2, 1 + r() * 365]],
+    ["PDURATION", (r) => [r() * 0.1, 100 + r() * 1000, 100 + r() * 5000]],
+    ["RRI", (r) => [1 + Math.floor(r() * 40), 100 + r() * 1000, 100 + r() * 5000]],
+    ["DOLLARDE", (r) => [Math.round(r() * 1e4) / 100, pick(r, [2, 4, 8, 16, 32, 12, 7.5, 100])]],
+    ["DOLLARFR", (r) => [Math.round(r() * 1e4) / 100, pick(r, [2, 4, 8, 16, 32, 12, 7.5, 100])]],
+    ["ISPMT", (r) => [r() * 0.02, Math.floor(r() * 36), 36, 1000 + r() * 1e5]],
+    ["MAXDRAWDOWN", (r) => [prices(r)]],
+    ["CAGR", (r) => [prices(r), pick(r, [1, 12, 252, undefined])]],
+    ["VOLATILITY", (r) => [rets(r), pick(r, [1, 12, 252, undefined])]],
+    ["SHARPE", (r) => [rets(r), pick(r, [0, 0.0001, undefined]), pick(r, [12, 252, undefined])]],
+    ["SORTINO", (r) => [rets(r), pick(r, [0, 0.0001, undefined]), pick(r, [12, 252, undefined])]],
+  ];
+  const bits = (x: number) => new DataView(Float64Array.of(x).buffer).getBigUint64(0, true).toString();
+  const norm = (r: unknown): unknown => (r === undefined ? { undef: true } : r === null ? null : r instanceof Error ? { fx: (/#[A-Z0-9/?!.]+/.exec(r.message) ?? [""])[0] }
+    : isSolError(r) ? { err: r.code, msg: r.message } : typeof r === "number" ? { num: Number.isNaN(r) ? "NaN" : bits(r) } : { other: String(r) });
+  const wire = (a: unknown): unknown => (Array.isArray(a) ? a.map(wire) : a === undefined ? { __undef: 1 }
+    : typeof a === "number" && !Number.isFinite(a) ? { __nf: Number.isNaN(a) ? "nan" : a > 0 ? "inf" : "-inf" } : a);
+  type Raw = { num?: string; fx?: string; err?: string; msg?: string; thrown?: string } | null;
+  const asNum = (b: string) => new DataView(new BigUint64Array([BigInt(b)]).buffer).getFloat64(0, true);
+  it.each(CASES)("%s", (name, gen) => {
+    const rand = mulberry32(8080 + FUZZ_SEED + name.length * 31 + name.charCodeAt(1));
+    const fn = resolveExcelFunction(name)!;
+    let numbers = 0;
+    for (let i = 0; i < FUZZ_RUNS / 10; i++) {
+      const args = gen(rand);
+      // A left-out trailing argument, as a formula leaves it off.
+      while (args.length && args[args.length - 1] === undefined) args.pop();
+      const want = norm(fn(...args.map((a) => (Array.isArray(a) ? a.slice() : a))));
+      const raw = wasmInvokeSync<Raw>("engine_call", { name, args: args.map(wire) });
+      const got = raw === null ? null : raw.num !== undefined ? { num: Number.isNaN(asNum(raw.num)) ? "NaN" : raw.num }
+        : raw.fx ? { fx: raw.fx } : raw.err ? { err: raw.err, msg: raw.msg } : raw;
+      if ((want as { num?: string } | null)?.num) numbers++;
+      if (JSON.stringify(got) !== JSON.stringify(want)) expect({ name, args, got }).toEqual({ name, args, got: want });
+    }
+    expect(numbers, "the arguments should reach the computation").toBeGreaterThan(FUZZ_RUNS / 40);
+  });
+});
+
 describe("each ported function body matches its JS one on random arguments", () => {
   // The IFERROR family runs in the evaluator (applyErrorHandler), never through a registered body.
   const PORTED = FNS.filter((n) => !["VLOOKUP", "SEQUENCE", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"].includes(n));
@@ -643,7 +771,8 @@ describe("each ported function body matches its JS one on random arguments", () 
     "2024-03-15", "2024-02-30", "03/15/2024", "05/06/2024", "2024-03", "15-Mar-2024", "1:2:3:4", "12:34.5", 0.3, 0.975, 1.96, 4, 20, 0.01, 0.99, 6, 30, 0.05, 0.004, 360, 12, -200000, 5000, "a-b-c", "-", "B", "left", " Both ", "center", "1.234,5", ",", ".", 21, 112, 3, 0.25, "x😀", "😀", "İstanbul", "1e3%", "0.00", "#,##0.0", "$0.00%", "0.0E+00", "00000", "yyyy-mm-dd", "0.", "General", "@", "mmm \"d\" 0", 0.125, 2.5, -1234567.891, 45000, 45351.5, 36, 60, 1, 2958465, -5, "0000011", "1010101", "ms", " S ", "Quarter", "YM", "md", "y", 11, 17,
     "hello wORLD", "o'neil-x2y", "(1,234.5)", " $5% ", "-$3", "1.2.3", "ÉCOLE éa", "ΣΑΣ", "привет мИР", "ǆemal ⅷx", "a~?b", 65, 128512, 0xd800, ">5", "<>abc", "a*", "?B?", "~*", "<=0", "<>", "=", "2024-01-15", "05/01/2024", "=TRUE", undefined, null, 0, -0, 1, 2, -1, 0.5, -2.5, 3.75, 7, 10, 45000.25, 1e308, -1e-9, 1e21, 123456789.123,
     NaN, Infinity, -Infinity, "", " ", "abc", "ABC", "5", " 12 ", "1e3", "0x10", "1,000", "TRUE", "false", "Infinity",
-    "😀ab", "é", "a b  c", true, false, solError("#N/A", "x"), solError("#DIV/0!", "y")];
+    "😀ab", "é", "a b  c", true, false, solError("#N/A", "x"), solError("#DIV/0!", "y"),
+    43831, 44012, 45291, 45382, 45657, 46022, 0.06, 0.08, 98.5, 101.25, 100, 1000, -1000, 250, 0.9];
   const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
   const norm = (r: unknown): unknown => {
     if (r === undefined) return { undef: true };
@@ -661,9 +790,12 @@ describe("each ported function body matches its JS one on random arguments", () 
     "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF", "XLOOKUP", "XMATCH",
     "AVEDEV", "GEOMEAN", "HARMEAN", "DEVSQ", "SKEW", "SKEW.P", "KURT", "PTP", "IQR", "MAD", "SEM", "CV", "RMS",
   "CORREL", "PEARSON", "RSQ", "KENDALL", "COVAR", "COVARIANCE.P", "COVARIANCE.S", "SLOPE", "INTERCEPT", "STEYX",
-  "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM"]);
+  "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
+  "IRR", "MIRR", "XNPV", "XIRR", "MAXDRAWDOWN", "CAGR", "VOLATILITY", "SHARPE", "SORTINO", "FVSCHEDULE", "NPV"]);
   /** The IFS family reads its ranges raw and the lookups positionally: blanks and errors stay. */
-  const RAW_LISTS = new Set(["WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF", "XLOOKUP", "XMATCH"]);
+  const SCHEDULES = /^(COUP|DURATION|MDURATION|PRICE$|YIELD$|ODDF)/;
+  const RAW_LISTS = new Set(["WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF", "XLOOKUP", "XMATCH",
+    "IRR", "MIRR", "XNPV", "XIRR", "MAXDRAWDOWN", "CAGR", "VOLATILITY", "SHARPE", "SORTINO"]);
   it.each(PORTED)("%s", (name) => {
     const rand = mulberry32(77 + FUZZ_SEED + name.length * 1000 + name.charCodeAt(0));
     const fn = resolveExcelFunction(name)!;
@@ -678,13 +810,19 @@ describe("each ported function body matches its JS one on random arguments", () 
       // A pad to a serial-sized width builds megabytes of text per call: true on both sides, and only slow.
       if (name === "PADTEXT" && Math.abs(Number(args[1])) > 1e4) continue;
       if (name === "BINOM.INV" && Math.abs(Number(args[0])) > 1e4) continue;
+      // Formula.js's DB and DDB loop once per period, forever for an infinite life; the port bails past a million.
+      if ((name === "DB" || name === "DDB") && args.some((a) => Math.abs(Number(a)) > 1e6)) continue;
+      // A coupon schedule over millennia is thousands of dates per price, and a yield prices it 200 times: only slow.
+      if (SCHEDULES.test(name) && Math.max(...args.map((a) => Math.abs(Number(a)) || 0)) > 1e5) continue;
+      // Formula.js's NPV flattens into its first list, so each side gets its own copy.
+      const copy = () => args.map((a) => (Array.isArray(a) ? a.slice() : a));
       let want: unknown;
-      try { want = norm(fn(...args)); } catch (e) { want = { thrown: (e as Error).message }; }
+      try { want = norm(fn(...copy())); } catch (e) { want = { thrown: (e as Error).message }; }
       const wire = (a: unknown): unknown => (Array.isArray(a) ? a.map(wire) : a === undefined ? { __undef: 1 }
         : typeof a === "number" && !Number.isFinite(a) ? { __nf: Number.isNaN(a) ? "nan" : a > 0 ? "inf" : "-inf" }
         : Object.is(a, -0) ? { __nf: "-0" }
         : isSolError(a) ? { __err: a.code, msg: a.message } : a);
-      const raw = wasmInvokeSync<{ num?: string }>("engine_call", { name, args: args.map(wire) });
+      const raw = wasmInvokeSync<{ num?: string }>("engine_call", { name, args: copy().map(wire) });
       const nanBits = (b: string) => (BigInt(b) & 0x7ff0000000000000n) === 0x7ff0000000000000n && (BigInt(b) & 0xfffffffffffffn) !== 0n;
       if (raw && (raw as { bail?: boolean }).bail) continue;
       const nanFix = (x: unknown): unknown => {
