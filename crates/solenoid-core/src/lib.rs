@@ -19,6 +19,7 @@ pub mod frame_verbs;
 pub mod js_sort;
 pub mod letters;
 pub mod jsnum;
+pub mod shapers;
 pub mod string_order;
 pub mod unit_value;
 pub mod value_kinds;

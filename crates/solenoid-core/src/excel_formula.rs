@@ -542,6 +542,8 @@ fn whole_column<'a>(n: &Ast, columns: &FxHashMap<&str, &'a FrameColumn>, sides: 
     }
 }
 
+use crate::shapers::is_shaper;
+
 fn supported_at(n: &Ast, cx: &Cx, list_ok: bool) -> bool {
     let (columns, table) = (cx.columns, cx.table);
     // Inside a LAMBDA body a bare name is only a parameter or a capture (`compilePositional`'s env).
@@ -596,10 +598,41 @@ fn supported_at(n: &Ast, cx: &Cx, list_ok: bool) -> bool {
                 "handler" => list_ok,
                 _ => lists && !lifts(i),
             };
+            // A shaper's list goes only where a range function flattens it, or into another shaper as its data: an
+            // operator over it would pair lists of two lengths, and a lookup reads its table's shape.
+            let shaper_slot = |i: usize| cx.env.is_none() && kind == "range" && t_prep(table, &up) != "positional" && list_at(i) && !picks(i);
             // A list of positions picks many (`indexMany`), which stays on the TS.
-            is_ported(&up) && roles_ok && args.iter().enumerate().all(|(i, a)| supported_at(a, cx, list_at(i) && !picks(i)))
+            !is_shaper(&up)
+                && is_ported(&up)
+                && roles_ok
+                && args.iter().enumerate().all(|(i, a)| match a {
+                    Ast::Call { name: an, args: aa } if is_shaper(&an.to_uppercase()) => shaper_slot(i) && shaper_supported(an, aa, cx),
+                    _ => supported_at(a, cx, list_at(i) && !picks(i)),
+                })
         }
     }
+}
+
+fn t_prep<'a>(table: &'a CallTable, name: &str) -> &'a str {
+    table.get(name).map_or("", |t| t.prep.as_str())
+}
+
+/// A FILTER, UNIQUE, SORT, SORTBY, TAKE or DROP in a list slot: its data and its full-length lines (FILTER's include,
+/// SORTBY's keys) may be lists, every other argument one value.
+fn shaper_supported(name: &str, args: &[Ast], cx: &Cx) -> bool {
+    let up = name.to_uppercase();
+    let line = |i: usize| match up.as_str() {
+        "FILTER" => i == 1,
+        "SORTBY" => i % 2 == 1,
+        _ => false,
+    };
+    // DROP's columns can empty every row and leave rows of nothing, a shape a list can't carry.
+    !(up == "DROP" && args.len() > 2)
+        && cx.table.get(&up).is_some_and(|t| t.kind == "whole" && t.roles.len() >= args.len())
+        && args.iter().enumerate().all(|(i, a)| match a {
+            Ast::Call { name: an, args: aa } if i == 0 && is_shaper(&an.to_uppercase()) => shaper_supported(an, aa, cx),
+            _ => supported_at(a, cx, i == 0 || line(i)),
+        })
 }
 
 // ─── Evaluator ──────────────────────────────────────────────────────────────────

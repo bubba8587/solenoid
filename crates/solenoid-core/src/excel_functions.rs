@@ -116,7 +116,7 @@ const PORTED: &[&str] = &[
 ];
 
 pub fn is_ported(name: &str) -> bool {
-    PORTED.contains(&name)
+    PORTED.contains(&name) || crate::shapers::is_shaper(name)
 }
 
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
@@ -1760,7 +1760,7 @@ fn round_digits(v: f64, digits: f64, mode: &str) -> f64 {
 
 // ─── Conditions (valueKinds.ts `ifTest`) ────────────────────────────────────────
 
-enum Cond {
+pub enum Cond {
     Missing,
     Bool(bool),
     Err(V),
@@ -1779,6 +1779,18 @@ fn if_test(v: &V) -> Cond {
     }
 }
 
+pub fn if_test_pub(v: &V) -> Cond {
+    if_test(v)
+}
+
+pub fn to_num_pub(v: &V) -> f64 {
+    to_num(v)
+}
+
+pub fn js_number_pub(v: &V) -> f64 {
+    js_number_of(v)
+}
+
 // ─── Dispatch ───────────────────────────────────────────────────────────────────
 
 fn arg(a: &[V], i: usize) -> &V {
@@ -1788,6 +1800,7 @@ fn arg(a: &[V], i: usize) -> &V {
 /// `dispatch(name, ...args)`: the function body, its arguments as the evaluator hands them over.
 pub fn call_function(name: &str, a: &[V]) -> V {
     match name {
+        "FILTER" | "UNIQUE" | "SORT" | "SORTBY" | "TAKE" | "DROP" => crate::shapers::call(name, a),
         "IF" => {
             let test = match arg(a, 0) {
                 V::Undef => V::Null,

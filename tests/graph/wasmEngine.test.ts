@@ -422,6 +422,66 @@ describe("random row formulas: the Rust evaluator matches the TS one", () => {
   });
 });
 
+describe("FILTER, SORT, SORTBY, UNIQUE, TAKE and DROP in a range function: the Rust evaluator matches the TS one", () => {
+  it(`${FUZZ_RUNS} computed columns`, { timeout: 600_000 }, () => {
+    const rand = mulberry32(777 + FUZZ_SEED);
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+    const col = () => pick(["a", "b", "c", "d", "[a]", "a * 2", "-a", "b & \"x\"", "@a"]);
+    const mask = () => pick(["a > 0", "b = @b", "c", "@c", "TRUE", "0", "a <> @a", "d > 44000", "b = \"abc\"", "a", "b", "s1", "c = c"]);
+    const count = () => pick(["1", "2", "-1", "-2", "0", "2.5", "\"\"", "\"x\"", "\"2\"", "TRUE", "@a", "99", "-99", "1e309", ""]);
+    const data = (depth: number): string => (depth <= 0 || rand() < 0.35 ? col() : shaper(depth - 1));
+    const shaper = (depth: number): string => {
+      switch (Math.floor(rand() * 6)) {
+        case 0: return `FILTER(${data(depth)}, ${mask()}${rand() < 0.3 ? `, ${pick(["0", "\"none\"", "", "@a"])}` : ""})`;
+        case 1: return `UNIQUE(${data(depth)}${rand() < 0.5 ? `, ${pick(["FALSE", "TRUE", "", "0", "\"\""])}, ${pick(["FALSE", "TRUE", ""])}` : ""})`;
+        case 2: return `SORT(${data(depth)}${rand() < 0.6 ? `, ${pick(["1", "", "2", "0", "1.5"])}, ${pick(["1", "-1", "", "2"])}${rand() < 0.3 ? `, ${pick(["TRUE", "FALSE", "3"])}` : ""}` : ""})`;
+        case 3: return `SORTBY(${data(depth)}, ${pick(["a", "b", "d", "c", "1", "-a"])}${rand() < 0.6 ? `, ${pick(["1", "-1", "", "0"])}` : ""}${rand() < 0.3 ? `, ${pick(["b", "a"])}, -1` : ""})`;
+        case 4: return `TAKE(${data(depth)}, ${count()}${rand() < 0.3 ? `, ${count()}` : ""})`;
+        default: return `DROP(${data(depth)}, ${count()}${rand() < 0.3 ? `, ${count()}` : ""})`;
+      }
+    };
+    const outer = (inner: string) => pick([
+      `SUM(${inner})`, `COUNT(${inner})`, `COUNTA(${inner})`, `AVERAGE(${inner})`, `MAX(${inner})`, `MIN(${inner})`,
+      `TEXTJOIN(",", TRUE, ${inner})`, `TEXTJOIN("|", FALSE, ${inner})`, `MEDIAN(${inner})`, `COUNTBLANK(${inner})`,
+      `PRODUCT(${inner})`, `SUM(${inner}, 1)`, `@a + SUM(${inner})`, `IFERROR(SUM(${inner}), -1)`, `CONCAT(${inner})`,
+    ]);
+    let ran = 0;
+    for (let i = 0; i < FUZZ_RUNS; i++) {
+      const rows = Math.floor(rand() * 8);
+      const cell = (type: FrameColType): FrameCell => {
+        const r = rand();
+        if (r < 0.1) return null;
+        if (r < 0.15) return solError(rand() < 0.5 ? "#N/A" : "#DIV/0!", "fuzz");
+        if (type === "number") return r < 0.2 ? [Infinity, -Infinity, -0][Math.floor(rand() * 3)] : Math.round(rand() * 8 - 4) / 2;
+        if (type === "string") return ["", "abc", "Abc", "x", "12", "TRUE", "é", "b"][Math.floor(rand() * 8)];
+        if (type === "logical") return rand() < 0.5;
+        return 44000 + Math.floor(rand() * 4) * 100;
+      };
+      const f: FrameValue = {
+        __frame: true,
+        columns: (["a:number", "b:string", "c:logical", "d:date"] as const).map((s) => {
+          const [name, type] = s.split(":") as [string, FrameColType];
+          return { name, type, values: Array.from({ length: rows }, () => cell(type)) };
+        }),
+      };
+      const src = outer(shaper(2));
+      const sides: Record<string, unknown> = { s1: rand() < 0.5, nope: 1 };
+      const opts = { sideValue: (p: string) => sides[p] };
+      const engine = computeColumnOnEngine(f, src, rows, opts);
+      if (engine === null) continue;
+      ran++;
+      const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { ...opts, rowRefs: rowRefNames(src) });
+      const want = isSolError(js) ? js : [view({ __frame: true, columns: [{ name: "out", type: "number", values: js.cells }] }), js.sideVars];
+      const got = [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
+      if (JSON.stringify(got) !== JSON.stringify(want)) {
+        console.log(JSON.stringify({ src, input: view(f) }));
+        expect({ run: i, src, input: view(f), got }).toEqual({ run: i, src, input: view(f), got: want });
+      }
+    }
+    expect(ran, "the generator should reach the Rust evaluator often").toBeGreaterThan(FUZZ_RUNS / 2);
+  });
+});
+
 describe("the Rust engine's fdlibm matches V8's Math bit for bit", () => {
   it("toPrecision(15), exact ties included", () => {
     const rand = mulberry32(2718 + FUZZ_SEED);
