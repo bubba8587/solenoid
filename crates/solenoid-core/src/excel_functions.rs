@@ -138,7 +138,7 @@ const PORTED: &[&str] = &[
 /// name from a ported one. The shapers read a list as a column, as a computed column hands one over, so they wait
 /// for the value model to tell a column from a row.
 pub fn ported_names() -> Vec<&'static str> {
-    PORTED.iter().chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).chain(crate::fns_matrix::NAMES.iter()).chain(crate::fns_lists::NAMES.iter()).copied().collect()
+    PORTED.iter().chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).chain(crate::fns_matrix::NAMES.iter()).chain(crate::fns_lists::NAMES.iter()).chain(crate::fns_stats::NAMES.iter()).copied().collect()
 }
 
 /// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
@@ -150,6 +150,7 @@ pub fn is_ported(name: &str) -> bool {
     PORTED.contains(&name) || crate::shapers::is_shaper(name) || crate::formulajs::NAMES.contains(&name) || crate::fns_complex::NAMES.contains(&name)
         || crate::fns_matrix::NAMES.contains(&name)
         || crate::fns_lists::NAMES.contains(&name)
+        || crate::fns_stats::NAMES.contains(&name)
 }
 
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
@@ -168,7 +169,7 @@ pub fn reads_lists(name: &str) -> bool {
             | "STEYX" | "RANK" | "RANK.EQ" | "RANK.AVG" | "TRIMMEAN" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC"
             | "SUMPRODUCT" | "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" | "SERIESSUM" | "Z.TEST" | "CHISQ.TEST" | "SPEARMAN"
             | "FORECAST.LINEAR" | "T.TEST" | "F.TEST" | "PROB"
-            | "FVSCHEDULE"
+            | "FVSCHEDULE" | "ANOVA" | "KRUSKAL" | "MANNWHITNEY" | "WILCOXON" | "KSTEST"
     )
 }
 
@@ -414,11 +415,11 @@ fn clamp_index(x: f64, len: usize) -> usize {
 
 // ─── Statistics (statsOps.ts `aggregate`) ───────────────────────────────────────
 
-fn sum(a: &[f64]) -> f64 {
+pub(crate) fn sum(a: &[f64]) -> f64 {
     a.iter().fold(0.0, |x, y| x + y)
 }
 
-fn ssd(a: &[f64], m: f64) -> f64 {
+pub(crate) fn ssd(a: &[f64], m: f64) -> f64 {
     a.iter().fold(0.0, |x, y| x + js_pow(y - m, 2.0))
 }
 
@@ -695,7 +696,7 @@ fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) -> Result<Opt
     Ok(best.map(|(i, _)| i))
 }
 
-fn mean_of(a: &[f64]) -> f64 {
+pub(crate) fn mean_of(a: &[f64]) -> f64 {
     sum(a) / a.len() as f64
 }
 
@@ -1743,7 +1744,7 @@ fn parse_value_text(text: &str) -> f64 {
 }
 
 /// `numsOf`: numbers, and whatever else reads as one, lists flattened.
-fn nums_of(args: &[V]) -> Vec<f64> {
+pub(crate) fn nums_of(args: &[V]) -> Vec<f64> {
     args.iter()
         .flat_map(|v| match v {
             V::List(items) => items.iter().cloned().collect::<Vec<V>>(),
@@ -3329,6 +3330,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         _ if crate::fns_matrix::NAMES.contains(&name) => crate::fns_matrix::call(name, a),
         _ if crate::fns_complex::NAMES.contains(&name) => crate::fns_complex::call(name, a),
         _ if crate::fns_lists::NAMES.contains(&name) => crate::fns_lists::call(name, a),
+        _ if crate::fns_stats::NAMES.contains(&name) => crate::fns_stats::call(name, a),
         _ if is_finance(name) => finance_function(name, a),
         "REGEXTEST" | "REGEXEXTRACT" | "REGEXREPLACE" => regex_call(name, a),
         "ENCODEURL" => {
@@ -3591,7 +3593,7 @@ fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
 }
 
 /// `averageRanks` (statsOps.ts): ties share the mean of their places.
-fn average_ranks(arr: &[f64]) -> Vec<f64> {
+pub(crate) fn average_ranks(arr: &[f64]) -> Vec<f64> {
     let mut idx: Vec<usize> = (0..arr.len()).collect();
     crate::js_sort::js_sort_by(&mut idx, |&x, &y| (arr[x] - arr[y]).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
     let mut ranks = vec![0.0; arr.len()];
