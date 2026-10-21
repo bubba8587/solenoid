@@ -310,7 +310,10 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "NETWORKDAYS.INTL", "XMATCH",
   "AVEDEV", "GEOMEAN", "HARMEAN", "DEVSQ", "SKEW", "SKEW.P", "KURT", "PTP", "IQR", "MAD", "SEM", "CV", "RMS",
   "CORREL", "PEARSON", "RSQ", "KENDALL", "COVAR", "COVARIANCE.P", "COVARIANCE.S", "SLOPE", "INTERCEPT", "STEYX",
-  "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM"];
+  "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
+  "CLAMP", "BETWEEN", "ISBOOLEAN", "ISCLOSE", "HYPOTENUSE", "NAND", "NOR", "XNOR", "STANDARDIZE", "FISHER", "SLN",
+  "ORDINAL", "TEXTBEFORE", "TEXTAFTER", "REVERSETEXT", "PADTEXT", "TRUNCATETEXT", "NUMBERVALUE",
+  "PMT", "FV", "PV", "NPER", "IPMT", "PPMT"];
 /** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
 const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE|TRIMMEAN|PERCENTRANK/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
@@ -546,7 +549,7 @@ describe("TEXT's toFixed and toExponential match V8's digits, exact ties include
 describe("each ported function body matches its JS one on random arguments", () => {
   // The IFERROR family runs in the evaluator (applyErrorHandler), never through a registered body.
   const PORTED = FNS.filter((n) => !["VLOOKUP", "SEQUENCE", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"].includes(n));
-  const POOL: unknown[] = ["0.00", "#,##0.0", "$0.00%", "0.0E+00", "00000", "yyyy-mm-dd", "0.", "General", "@", "mmm \"d\" 0", 0.125, 2.5, -1234567.891, 45000, 45351.5, 36, 60, 1, 2958465, -5, "0000011", "1010101", "ms", " S ", "Quarter", "YM", "md", "y", 11, 17,
+  const POOL: unknown[] = [0.05, 0.004, 360, 12, -200000, 5000, "a-b-c", "-", "B", "left", " Both ", "center", "1.234,5", ",", ".", 21, 112, 3, 0.25, "x😀", "😀", "İstanbul", "1e3%", "0.00", "#,##0.0", "$0.00%", "0.0E+00", "00000", "yyyy-mm-dd", "0.", "General", "@", "mmm \"d\" 0", 0.125, 2.5, -1234567.891, 45000, 45351.5, 36, 60, 1, 2958465, -5, "0000011", "1010101", "ms", " S ", "Quarter", "YM", "md", "y", 11, 17,
     "hello wORLD", "o'neil-x2y", "(1,234.5)", " $5% ", "-$3", "1.2.3", "ÉCOLE éa", "ΣΑΣ", "привет мИР", "ǆemal ⅷx", "a~?b", 65, 128512, 0xd800, ">5", "<>abc", "a*", "?B?", "~*", "<=0", "<>", "=", "2024-01-15", "05/01/2024", "=TRUE", undefined, null, 0, -0, 1, 2, -1, 0.5, -2.5, 3.75, 7, 10, 45000.25, 1e308, -1e-9, 1e21, 123456789.123,
     NaN, Infinity, -Infinity, "", " ", "abc", "ABC", "5", " 12 ", "1e3", "0x10", "1,000", "TRUE", "false", "Infinity",
     "😀ab", "é", "a b  c", true, false, solError("#N/A", "x"), solError("#DIV/0!", "y")];
@@ -581,6 +584,8 @@ describe("each ported function body matches its JS one on random arguments", () 
       const args = Array.from({ length: Math.floor(rand() * 5) }, () => (LIST_BODIES.has(name) && rand() < 0.5 ? list() : one()));
       // SWITCH compares by identity, which a copy across the wire can't keep; an error never reaches it in a formula.
       if (name === "SWITCH" && args.some(isSolError)) continue;
+      // A pad to a serial-sized width builds megabytes of text per call: true on both sides, and only slow.
+      if (name === "PADTEXT" && Math.abs(Number(args[1])) > 1e4) continue;
       let want: unknown;
       try { want = norm(fn(...args)); } catch (e) { want = { thrown: (e as Error).message }; }
       const wire = (a: unknown): unknown => (Array.isArray(a) ? a.map(wire) : a === undefined ? { __undef: 1 }

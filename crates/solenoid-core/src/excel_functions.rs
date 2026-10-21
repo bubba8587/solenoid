@@ -102,6 +102,9 @@ const PORTED: &[&str] = &[
     "NETWORKDAYS.INTL", "XLOOKUP", "XMATCH",
     "AVEDEV", "GEOMEAN", "HARMEAN", "DEVSQ", "SKEW", "SKEW.P", "KURT", "PTP", "IQR", "MAD", "SEM", "CV", "RMS",
     "CORREL", "PEARSON", "RSQ", "KENDALL", "COVAR", "COVARIANCE.P", "COVARIANCE.S", "SLOPE", "INTERCEPT", "STEYX",
+    "CLAMP", "BETWEEN", "ISBOOLEAN", "ISCLOSE", "HYPOTENUSE", "NAND", "NOR", "XNOR", "STANDARDIZE", "FISHER", "SLN",
+    "ORDINAL", "TEXTBEFORE", "TEXTAFTER", "REVERSETEXT", "PADTEXT", "TRUNCATETEXT", "NUMBERVALUE",
+    "PMT", "FV", "PV", "NPER", "IPMT", "PPMT",
     "TEXT", "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
     "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
@@ -952,6 +955,299 @@ fn group_thousands(s: &str) -> String {
     }
     out.push_str(rest);
     out
+}
+
+/// V8's `Math.hypot`: the largest magnitude scales a Kahan-compensated sum of squares.
+fn math_hypot(xs: &[f64]) -> f64 {
+    let mut max: f64 = 0.0;
+    let mut nan = false;
+    let abs: Vec<f64> = xs.iter().map(|x| x.abs()).collect();
+    for &v in &abs {
+        if v.is_nan() {
+            nan = true;
+        } else if v > max {
+            max = v;
+        }
+    }
+    if max == f64::INFINITY {
+        return f64::INFINITY;
+    }
+    if nan {
+        return f64::NAN;
+    }
+    if max == 0.0 {
+        return 0.0;
+    }
+    let (mut sum, mut compensation) = (0.0f64, 0.0f64);
+    for &v in &abs {
+        let n = v / max;
+        let summand = n * n - compensation;
+        let preliminary = sum + summand;
+        compensation = (preliminary - sum) - summand;
+        sum = preliminary;
+    }
+    sum.sqrt() * max
+}
+
+/// `logicalOrTypeError` (valueKinds.ts): None for blank.
+fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, V> {
+    let unreadable = || {
+        let shown = match v {
+            V::Str(s) => format!("\"{s}\""),
+            other => js_string_of(other),
+        };
+        Err(V::err(sol_error("#TYPE!", format!("{place}: {shown} isn't a logical. Only TRUE, FALSE or a number read as one"))))
+    };
+    match v {
+        V::Null | V::Undef => Ok(None),
+        V::Bool(b) => Ok(Some(*b)),
+        V::Num(n) if n.is_finite() => Ok(Some(*n != 0.0)),
+        V::Str(s) => {
+            let t = crate::jsnum::js_lower(js_trim(s)).to_string();
+            if t.is_empty() {
+                return Ok(None);
+            }
+            if t == "true" {
+                return Ok(Some(true));
+            }
+            if t == "false" {
+                return Ok(Some(false));
+            }
+            let n = decimal_from_text(&t);
+            if n.is_finite() { Ok(Some(n != 0.0)) } else { unreadable() }
+        }
+        _ => unreadable(),
+    }
+}
+
+fn kleene_and(a: Option<bool>, b: Option<bool>) -> Option<bool> {
+    if a == Some(false) || b == Some(false) {
+        Some(false)
+    } else if a.is_none() || b.is_none() {
+        None
+    } else {
+        Some(true)
+    }
+}
+
+fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
+    if a == Some(true) || b == Some(true) {
+        Some(true)
+    } else if a.is_none() || b.is_none() {
+        None
+    } else {
+        Some(false)
+    }
+}
+
+/// `ordinalText` (textOps.ts).
+fn ordinal_text(n: f64) -> String {
+    const SUFFIX: [&str; 4] = ["th", "st", "nd", "rd"];
+    let i = n.trunc();
+    let v = i.abs() % 100.0;
+    let pick = |k: f64| ((0.0..4.0).contains(&k) && k.fract() == 0.0).then(|| SUFFIX[k as usize]);
+    let suffix = pick((v - 20.0) % 10.0).or_else(|| pick(v)).unwrap_or(SUFFIX[0]);
+    format!("{}{suffix}", number_to_string(i))
+}
+
+/// `textAfterBefore` (textOps.ts), over UTF-16 units: a caseless search finds its places in the lowercased text.
+fn text_after_before(after: bool, text: &str, delimiter: &str, instance: f64, caseless: bool, match_end: bool) -> V {
+    let n = instance.trunc();
+    if n == 0.0 {
+        return V::err(sol_error("#VALUE!", format!("TEXT{}: instance_num can't be 0", if after { "AFTER" } else { "BEFORE" })));
+    }
+    if delimiter.is_empty() {
+        return V::Null;
+    }
+    let t16 = utf16(text);
+    let (hay, needle) = if caseless {
+        (utf16(&crate::jsnum::js_lower(text)), utf16(&crate::jsnum::js_lower(delimiter)))
+    } else {
+        (t16.clone(), utf16(delimiter))
+    };
+    let dlen = utf16(delimiter).len();
+    let index_of = |from: usize| -> Option<usize> {
+        if needle.is_empty() {
+            return Some(from.min(hay.len()));
+        }
+        (from..hay.len()).find(|&i| hay[i..].starts_with(&needle))
+    };
+    let mut at: Vec<(usize, usize)> = Vec::new();
+    let mut i = index_of(0);
+    while let Some(k) = i {
+        at.push((k, dlen));
+        i = index_of(k + needle.len());
+    }
+    if match_end {
+        if n > 0.0 { at.push((t16.len(), 0)) } else { at.insert(0, (0, 0)) }
+    }
+    let len = at.len() as f64;
+    let idx = if n > 0.0 { n - 1.0 } else { len + n };
+    if idx.is_nan() || !(idx >= 0.0 && idx < len) {
+        return V::Null;
+    }
+    let (hit_i, hit_len) = at[idx as usize];
+    let end = t16.len();
+    V::str(&if after { from_utf16(&t16[(hit_i + hit_len).min(end)..]) } else { from_utf16(&t16[..hit_i.min(end)]) })
+}
+
+/// `padText` (textOps.ts), counting code points.
+fn pad_text(t: &str, width: f64, side: &str, fill: &str) -> V {
+    let chars: Vec<char> = t.chars().collect();
+    let w = crate::jsnum::math_max(0.0, width.floor());
+    let fill: Vec<char> = if fill.is_empty() { vec![' '] } else { fill.chars().collect() };
+    if chars.len() as f64 >= w {
+        return V::str(t);
+    }
+    let need = w - chars.len() as f64;
+    if need.is_nan() {
+        return V::str(t);
+    }
+    if need > 1e7 {
+        return bail();
+    }
+    let need = need as usize;
+    let run = |n: usize| (0..n).map(|i| fill[i % fill.len()]).collect::<String>();
+    V::str(&match side {
+        "left" => format!("{}{t}", run(need)),
+        "right" => format!("{t}{}", run(need)),
+        _ => {
+            let left = need / 2;
+            format!("{}{t}{}", run(left), run(need - left))
+        }
+    })
+}
+
+/// `truncateText` (textOps.ts), counting code points.
+fn truncate_text(t: &str, width: f64, ellipsis: &str) -> String {
+    let chars: Vec<char> = t.chars().collect();
+    let w = crate::jsnum::math_max(0.0, width.floor());
+    if (chars.len() as f64) <= w {
+        return t.to_string();
+    }
+    // A NaN width keeps no characters, as `slice(0, NaN)` does, and still adds the whole ellipsis.
+    if w.is_nan() {
+        return ellipsis.to_string();
+    }
+    let e: Vec<char> = ellipsis.chars().collect();
+    let keep = crate::jsnum::math_max(0.0, w - e.len() as f64) as usize;
+    if keep == 0 {
+        e.iter().take(w as usize).collect()
+    } else {
+        chars.iter().take(keep).collect::<String>() + ellipsis
+    }
+}
+
+/// `numberValue` (textOps.ts).
+fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
+    let bad = || V::err(sol_error("#VALUE!", "NUMBERVALUE needs a number"));
+    // A separator's first UTF-16 unit is half of an astral character: leave that to the TS.
+    if [decimal_sep, group_sep].iter().any(|t| t.chars().next().is_some_and(|c| c as u32 > 0xFFFF)) {
+        return bail();
+    }
+    let d = decimal_sep.chars().next().unwrap_or('.');
+    let g: Option<char> = if !group_sep.is_empty() { group_sep.chars().next() } else if d == ',' { None } else { Some(',') };
+    if g == Some(d) {
+        return bad();
+    }
+    let mut s: String = text.chars().filter(|&c| !is_js_space(c)).collect();
+    if s.is_empty() {
+        return V::Num(0.0);
+    }
+    let mut pct = 0;
+    while s.ends_with('%') {
+        pct += 1;
+        s.pop();
+    }
+    let (int_part, frac) = match s.find(d) {
+        Some(i) => (&s[..i], Some(&s[i + d.len_utf8()..])),
+        None => (s.as_str(), None),
+    };
+    if let Some(f) = frac {
+        if g.is_some_and(|g| f.contains(g)) || f.contains(d) {
+            return bad();
+        }
+    }
+    let mut num: String = match g {
+        Some(g) => int_part.chars().filter(|&c| c != g).collect(),
+        None => int_part.to_string(),
+    };
+    if let Some(f) = frac {
+        num.push('.');
+        num.push_str(f);
+    }
+    let n = decimal_from_text(&num);
+    if n.is_nan() { bad() } else { V::Num(n / js_pow(100.0, f64::from(pct))) }
+}
+
+/// `x || 0`: a falsy argument reads as 0.
+fn or_zero(v: &V) -> &V {
+    if truthy(v) { v } else { &V::Num(0.0) }
+}
+
+/// The parsed arguments, or None where one is an error (`anyIsError`).
+fn all_nums<const N: usize>(vals: &[V; N]) -> Option<[f64; N]> {
+    let mut out = [0.0; N];
+    for (o, v) in out.iter_mut().zip(vals) {
+        let V::Num(n) = v else { return None };
+        *o = *n;
+    }
+    Some(out)
+}
+
+/// A value in JS arithmetic: a Formula.js error object reads as NaN.
+fn js_arith(v: &V) -> f64 {
+    match v {
+        V::Num(n) => *n,
+        _ => f64::NAN,
+    }
+}
+
+/// Formula.js PMT.
+fn fx_pmt(rate: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
+    let nums = [parse_number(rate), parse_number(nper), parse_number(pv), parse_number(or_zero(fv)), parse_number(or_zero(ty))];
+    let Some([rate, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+    let result = if rate == 0.0 {
+        (pv + fv) / nper
+    } else {
+        let term = js_pow(1.0 + rate, nper);
+        let base = (fv * rate) / (term - 1.0) + (pv * rate) / (1.0 - 1.0 / term);
+        if ty == 1.0 { base / (1.0 + rate) } else { base }
+    };
+    V::Num(-result)
+}
+
+/// Formula.js FV.
+fn fx_fv(rate: &V, nper: &V, payment: &V, value: &V, ty: &V) -> V {
+    let nums = [parse_number(rate), parse_number(nper), parse_number(payment), parse_number(or_zero(value)), parse_number(or_zero(ty))];
+    let Some([rate, nper, payment, value, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+    let result = if rate == 0.0 {
+        value + payment * nper
+    } else {
+        let term = js_pow(1.0 + rate, nper);
+        if ty == 1.0 {
+            value * term + (payment * (1.0 + rate) * (term - 1.0)) / rate
+        } else {
+            value * term + (payment * (term - 1.0)) / rate
+        }
+    };
+    V::Num(-result)
+}
+
+/// Formula.js IPMT: its inner PMT and FV take the parsed numbers and parse them again.
+fn fx_ipmt(rate: &V, per: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
+    let nums = [parse_number(rate), parse_number(per), parse_number(nper), parse_number(pv), parse_number(or_zero(fv)), parse_number(or_zero(ty))];
+    let Some([rate, per, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+    let num = V::Num;
+    let payment = fx_pmt(&num(rate), &num(nper), &num(pv), &num(fv), &num(ty));
+    let interest = if per == 1.0 {
+        if ty == 1.0 { 0.0 } else { -pv }
+    } else if ty == 1.0 {
+        js_arith(&fx_fv(&num(rate), &num(per - 2.0), &payment, &num(pv), &num(1.0))) - js_arith(&payment)
+    } else {
+        js_arith(&fx_fv(&num(rate), &num(per - 1.0), &payment, &num(pv), &num(0.0)))
+    };
+    V::Num(interest * rate)
 }
 
 /// `isTrue`: true, 1, or the text true or 1.
@@ -1985,6 +2281,176 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         }
         "TEXT" => excel_text(arg(a, 0), arg(a, 1)),
+        "PMT" => fx_pmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
+        "FV" => fx_fv(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
+        "PV" => {
+            let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)), parse_number(or_zero(arg(a, 3))), parse_number(or_zero(arg(a, 4)))];
+            let Some([rate, per, pmt, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+            V::Num(if rate == 0.0 {
+                -pmt * per - fv
+            } else {
+                (((1.0 - js_pow(1.0 + rate, per)) / rate) * pmt * (1.0 + rate * ty) - fv) / js_pow(1.0 + rate, per)
+            })
+        }
+        "NPER" => {
+            let opt = |v: &V| if matches!(v, V::Undef) { V::Num(0.0) } else { v.clone() };
+            let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)), parse_number(&opt(arg(a, 3))), parse_number(&opt(arg(a, 4)))];
+            let Some([rate, pmt, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+            V::Num(if rate == 0.0 {
+                -(pv + fv) / pmt
+            } else {
+                let num = pmt * (1.0 + rate * ty) - fv * rate;
+                let den = pv * rate + pmt * (1.0 + rate * ty);
+                crate::fdlibm::log(num / den) / crate::fdlibm::log(1.0 + rate)
+            })
+        }
+        "IPMT" => fx_ipmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)),
+        "PPMT" => {
+            let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 2)), parse_number(arg(a, 3)), parse_number(or_zero(arg(a, 4))), parse_number(or_zero(arg(a, 5)))];
+            let Some([rate, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+            let (rate, nper, pv, fv, ty) = (V::Num(rate), V::Num(nper), V::Num(pv), V::Num(fv), V::Num(ty));
+            V::Num(js_arith(&fx_pmt(&rate, &nper, &pv, &fv, &ty)) - js_arith(&fx_ipmt(&rate, arg(a, 1), &nper, &pv, &fv, &ty)))
+        }
+        "CLAMP" => {
+            let n = to_num(arg(a, 0));
+            let bound = |v: &V, d: f64| if matches!(v, V::Null | V::Undef) { d } else { to_num(v) };
+            let (lo, hi) = (bound(arg(a, 1), f64::NEG_INFINITY), bound(arg(a, 2), f64::INFINITY));
+            if n.is_nan() || lo.is_nan() || hi.is_nan() {
+                return value_err("CLAMP");
+            }
+            V::Num(crate::jsnum::math_min(crate::jsnum::math_max(n, lo), hi))
+        }
+        "BETWEEN" => {
+            let (n, lo, hi) = (to_num(arg(a, 0)), to_num(arg(a, 1)), to_num(arg(a, 2)));
+            if n.is_nan() || lo.is_nan() || hi.is_nan() {
+                return value_err("BETWEEN");
+            }
+            V::Bool(n >= lo && n <= hi)
+        }
+        "ISBOOLEAN" => V::Bool(matches!(arg(a, 0), V::Bool(_))),
+        "ISCLOSE" => {
+            let (x, y) = (arg(a, 0), arg(a, 1));
+            if matches!(x, V::Null | V::Undef) || matches!(y, V::Null | V::Undef) {
+                return V::Null;
+            }
+            let tol = if matches!(arg(a, 2), V::Null | V::Undef) { 1e-9 } else { to_f64_js(arg(a, 2)) };
+            V::Bool((to_f64_js(x) - to_f64_js(y)).abs() <= tol)
+        }
+        "HYPOTENUSE" => {
+            let (x, y) = (arg(a, 0), arg(a, 1));
+            if matches!(x, V::Null | V::Undef) || matches!(y, V::Null | V::Undef) {
+                return V::Null;
+            }
+            V::Num(math_hypot(&[to_f64_js(x), to_f64_js(y)]))
+        }
+        "NAND" | "NOR" => {
+            let and = name == "NAND";
+            let mut acc: Option<bool> = Some(and);
+            for v in a {
+                let t = match logical_or_type_error(v, name) {
+                    Ok(t) => t,
+                    Err(e) => return e,
+                };
+                acc = if and { kleene_and(acc, t) } else { kleene_or(acc, t) };
+            }
+            acc.map_or(V::Null, |b| V::Bool(!b))
+        }
+        "XNOR" => {
+            let mut acc = false;
+            for v in a {
+                match logical_or_type_error(v, "XNOR") {
+                    Err(e) => return e,
+                    Ok(None) => return V::Null,
+                    Ok(Some(t)) => acc = acc != t,
+                }
+            }
+            V::Bool(!acc)
+        }
+        "STANDARDIZE" => {
+            let (x, m, sd) = (to_num(arg(a, 0)), to_num(arg(a, 1)), to_num(arg(a, 2)));
+            if x.is_nan() || m.is_nan() || sd.is_nan() {
+                return value_err("STANDARDIZE");
+            }
+            if sd <= 0.0 {
+                return V::err(sol_error("#DOMAIN!", "STANDARDIZE needs a positive standard deviation"));
+            }
+            V::Num((x - m) / sd)
+        }
+        "FISHER" => {
+            let x = to_num(arg(a, 0));
+            if x.is_nan() {
+                return value_err("FISHER");
+            }
+            if x <= -1.0 || x >= 1.0 {
+                return V::err(sol_error("#DOMAIN!", "FISHER requires \u{2212}1 < x < 1"));
+            }
+            V::Num(crate::fdlibm::atanh(x))
+        }
+        "SLN" => {
+            let l = to_num(arg(a, 2));
+            if l == 0.0 {
+                return V::err(sol_error("#DIV/0!", "Life is 0"));
+            }
+            let r = (to_num(arg(a, 0)) - to_num(arg(a, 1))) / l;
+            if r.is_finite() { V::Num(r) } else { V::Null }
+        }
+        "ORDINAL" => {
+            let n = to_num(arg(a, 0));
+            if n.is_nan() {
+                return value_err("ORDINAL");
+            }
+            V::str(&ordinal_text(n))
+        }
+        "TEXTBEFORE" | "TEXTAFTER" => {
+            let instance = arg(a, 2);
+            let instance = if matches!(instance, V::Null | V::Undef) { 1.0 } else { to_num(instance) };
+            let flag = |v: &V| to_num(if matches!(v, V::Null | V::Undef) { &V::Num(0.0) } else { v }) == 1.0;
+            let r = text_after_before(
+                name == "TEXTAFTER",
+                &to_str(arg(a, 0)),
+                &to_str(arg(a, 1)),
+                instance,
+                flag(arg(a, 3)),
+                flag(arg(a, 4)),
+            );
+            match r {
+                V::Null if !matches!(arg(a, 5), V::Undef) => arg(a, 5).clone(),
+                r => r,
+            }
+        }
+        "REVERSETEXT" => match arg(a, 0) {
+            V::Null | V::Undef => V::Null,
+            t => V::str(&to_str(t).chars().rev().collect::<String>()),
+        },
+        "PADTEXT" => {
+            let t = arg(a, 0);
+            if matches!(t, V::Null | V::Undef) {
+                return V::Null;
+            }
+            let side = arg(a, 2);
+            let side = if matches!(side, V::Null | V::Undef) {
+                "right".to_string()
+            } else {
+                crate::jsnum::js_lower(crate::jsnum::js_trim(&js_string_of(side))).replacen("both", "center", 1)
+            };
+            if !matches!(side.as_str(), "left" | "right" | "center") {
+                return V::err(sol_error("#DOMAIN!", "PADTEXT side must be left, right or center"));
+            }
+            let fill = if matches!(arg(a, 3), V::Null | V::Undef) { " ".to_string() } else { to_str(arg(a, 3)) };
+            pad_text(&to_str(t), to_num(arg(a, 1)), &side, &fill)
+        }
+        "TRUNCATETEXT" => {
+            let t = arg(a, 0);
+            if matches!(t, V::Null | V::Undef) {
+                return V::Null;
+            }
+            let e = if matches!(arg(a, 2), V::Null | V::Undef) { "\u{2026}".to_string() } else { to_str(arg(a, 2)) };
+            V::str(&truncate_text(&to_str(t), to_num(arg(a, 1)), &e))
+        }
+        "NUMBERVALUE" => {
+            let sep = |v: &V| if matches!(v, V::Null | V::Undef) { String::new() } else { to_str(v) };
+            number_value(&to_str(arg(a, 0)), &sep(arg(a, 1)), &sep(arg(a, 2)))
+        }
         "SEARCH" => {
             let start = arg(a, 2);
             if !matches!(start, V::Null | V::Undef) {
