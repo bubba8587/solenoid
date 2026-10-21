@@ -8,9 +8,13 @@ specific item.
 
 ### SESSION DIGEST (2026-10-21: the Rust core, branch solenoid/tsrs; cloud session)
 - **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine), [[D99]] rustIsSpec and [[D98]] wholeColumnFallback; mechanics in [[rust-core]]. All three are unratified.
-- **Formula surface on the core:** 317 functions, including the finance family, the regex and text utilities, and FILTER, UNIQUE, SORT, SORTBY, TAKE and DROP inside a range function. Wired LAMBDA columns run there too. Each family has a differential fuzzer against the TS, swept at 20k runs over several seeds.
+- **What runs on the core:** every formula (compileEvaluator, outside a row frame) and computed column; about 150 node
+  bodies through `callCore`; 25 frame computations through `frameFnOnCore` (headers, Describe, Correlation, Reconcile,
+  Nest, frame XLOOKUP, Build/Split Frame, the Decision Matrix and flip points, the Allocator, Payoff, Settle and its
+  ledger, Amortization, K-Means, PCA, logistic). Frozen fixtures in `fixtures/core/` hold the TS answers; `bails.json`
+  is `{}`. Still on the TS: pack functions, unit-carrying values, Cube outputs, the Choice Ladder.
 - **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the oracle (`RUST_CORE_ONLY`).
-- **Module size:** 487 KB gzipped, with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
+- **Module size:** about 2.2 MB raw, with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
 - **TS bugs fixed here and on develop:**
   - a lazy node's own column format never reached downstream (now a `formats` plan step, [[D41]] formatFlowsDownstream);
   - Split Column split a date's serial instead of its text;
@@ -26,7 +30,9 @@ specific item.
   - FACT, COMBIN, PERMUT and MULTINOMIAL overflowed the call stack or divided factorials (`COMBIN(30, 15)` was off), and
     BINOM.DIST.RANGE checked nothing;
   - CLEAN threw on a number, and the Text Transform card's CLEAN dropped DEL;
-  - a function that threw escaped the evaluator, past IFERROR (now `#VALUE!` at its call, on both cores).
+  - a function that threw escaped the evaluator, past IFERROR (now `#VALUE!` at its call, on both cores);
+  - BESSEL* rounded a fractional order (now truncated, as Excel) and the GAMMA card refused negatives; ACOT, COMBINA,
+    FACTDOUBLE, GAMMALN, INDEX's blank row, KSTEST on NaN and the decisionMatrix own-key read were fixed alongside.
 - **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
   and catching throws. Rerun after the fixes, no call takes over 300 ms.
 - **Open for the author:**
