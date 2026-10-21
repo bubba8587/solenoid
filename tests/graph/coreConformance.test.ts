@@ -101,7 +101,7 @@ function bodyCases(): FnCase[] {
     const t = performance.now();
     const want = tsAnswer(name, args);
     // A case that takes the TypeScript this long is a loop test, which the hang sweep owns.
-    if (performance.now() - t > 100 || JSON.stringify(want).includes('"other"')) return;
+    if (performance.now() - t > 1000 || JSON.stringify(want).includes('"other"')) return;
     cases.push({ name, args, want });
   };
   const everything = [...new Set([...FX_FUNCTION_NAMES, ...internalFunctionNames()])].filter((n) => !NOT_A_BODY.test(n) && resolveExcelFunction(n)).sort();
@@ -668,7 +668,7 @@ const expressions = frozen<ExprCase>("expressions", () => {
     let want: unknown;
     const t = performance.now();
     try { want = canon(ev(structuredClone(env))); } catch (e) { want = isSolError(e) ? canon(e) : { thrown: String((e as Error).message ?? e) }; }
-    if (performance.now() - t > 100 || JSON.stringify(want).includes('"other"')) continue;
+    if (performance.now() - t > 1000 || JSON.stringify(want).includes('"other"')) continue;
     cases.push({ src, env, want });
   }
   return cases;

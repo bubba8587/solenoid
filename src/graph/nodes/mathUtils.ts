@@ -229,13 +229,14 @@ export function gcdLcm(op: "gcd" | "lcm", values: readonly number[]): number | S
 export type Combinatoric = "fact" | "factdouble" | "combin" | "combina" | "permut" | "multinomial";
 
 /** Excel's FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT and MULTINOMIAL. Each argument truncates, and a negative count, or
- *  choosing more than there are, is out of the domain. Each answer is a product built by multiplying, never by
+ *  choosing more than there are without repetition, is out of the domain; FACTDOUBLE(-1) is 1, as in Excel. Each answer is a product built by multiplying, never by
  *  recursion, so a large argument overflows to Infinity (read as #OVERFLOW!) and never the call stack. The factorials
  *  multiply in Formula.js's order, so their answers are its own; COMBIN divides as it goes, so its answer is the exact
  *  integer wherever a double holds one (Formula.js's FACT(n) / (FACT(k) · FACT(n − k)) gave 155117519.99999997 for
  *  COMBIN(30, 15)). */
 export function combinatoric(op: Combinatoric, args: readonly number[]): number | SolError {
   const ns = args.map(Math.trunc);
+  if (op === "factdouble" && ns[0] === -1) return 1;
   if (ns.some((n) => !(n >= 0) || n === Infinity)) return solError("#DOMAIN!", "Counts must be finite and 0 or more");
   const [n, k] = ns;
   const chosen = () => solError("#DOMAIN!", "Can't choose more items than there are");
@@ -243,7 +244,7 @@ export function combinatoric(op: Combinatoric, args: readonly number[]): number 
     case "fact": return product(2, n, 1);
     case "factdouble": return product(n % 2 === 0 ? 2 : 1, n, 2);
     case "combin": return n < k ? chosen() : combinations(n, k);
-    case "combina": return n < k ? chosen() : n === 0 && k === 0 ? 1 : combinations(n + k - 1, n - 1);
+    case "combina": return n === 0 ? (k === 0 ? 1 : 0) : combinations(n + k - 1, k);
     case "permut": return n < k ? chosen() : product(n - k + 1, n, 1);
     case "multinomial": {
       let total = 0, r = 1;

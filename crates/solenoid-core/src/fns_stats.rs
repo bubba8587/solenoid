@@ -153,16 +153,112 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
             _ => V::Fx("#VALUE!"),
         },
-        "ACCRINT" => {
-            // The dates only matter once frequency and basis pass, and reading them is `new Date(x)`.
-            if valid_frequency(arg(a, 5)).is_none() || valid_basis(arg(a, 6)).is_none() {
-                return V::Fx("#NUM!");
-            }
-            bail()
-        }
+        "ACCRINT" => accrint(a),
         "COUPDAYS" => coupdays(a),
         "DISC" | "PRICEDISC" => discounted(name, a),
         _ => bail(),
+    }
+}
+
+/// Whether a value holds an object whose `new Date` reading the core doesn't carry.
+fn holds_object(v: &V) -> bool {
+    match v {
+        V::Cx(..) | V::Lambda(_) => true,
+        V::List(items) => items.iter().any(holds_object),
+        _ => false,
+    }
+}
+
+/// `new Date(x)`: a number is a time value, text (and anything read as text) is `Date.parse`d.
+fn new_date(v: &V) -> f64 {
+    match v {
+        V::Num(n) => zone::time_clip(*n),
+        V::Null => 0.0,
+        V::Undef => f64::NAN,
+        V::Bool(b) => f64::from(u8::from(*b)),
+        other => date_parse(&js_string_of(other)),
+    }
+}
+
+/// JS truthiness of a value.
+fn truthy_value(v: &V) -> bool {
+    match v {
+        V::Undef | V::Null => false,
+        V::Num(n) => truthy(*n),
+        V::Str(s) => !s.is_empty(),
+        V::Bool(b) => *b,
+        _ => true,
+    }
+}
+
+/// Formula.js ACCRINT: `par * rate * YEARFRAC(issue, settlement, basis)` over `new Date` readings.
+fn accrint(a: &[V]) -> V {
+    if (0..3).any(|i| holds_object(arg(a, i))) {
+        return bail();
+    }
+    let (issue, first, settlement) = (new_date(arg(a, 0)), new_date(arg(a, 1)), new_date(arg(a, 2)));
+    let (Some(_), Some(basis)) = (valid_frequency(arg(a, 5)), valid_basis(arg(a, 6))) else { return V::Fx("#NUM!") };
+    if issue.is_nan() || first.is_nan() || settlement.is_nan() {
+        return V::Fx("#VALUE!");
+    }
+    let (rate, par) = (number(arg(a, 3)), number(arg(a, 4)));
+    if rate <= 0.0 || par <= 0.0 || settlement <= issue {
+        return V::Fx("#NUM!");
+    }
+    let par = if truthy_value(arg(a, 4)) { par } else { 0.0 };
+    V::Num(par * rate * fx_yearfrac(issue, settlement, basis))
+}
+
+/// `isLeapYear`: `new Date(year, 1, 29).getMonth() === 1`.
+fn fx_is_leap(year: f64) -> bool {
+    zone::get_month(zone::new_local(year, 1.0, 29.0, 0.0, 0.0, 0.0, 0.0)) == 1.0
+}
+
+/// `daysBetween`.
+fn fx_days_between(s: f64, e: f64) -> f64 {
+    ((e - s) / 1000.0 / 60.0 / 60.0 / 24.0).ceil()
+}
+
+/// Formula.js YEARFRAC on two valid Dates, read in local time.
+fn fx_yearfrac(s: f64, e: f64, basis: f64) -> f64 {
+    let (Some(a), Some(b)) = (zone::local_fields(s), zone::local_fields(e)) else { return f64::NAN };
+    let (mut sd, sm, sy) = (a.date, a.month + 1.0, a.year);
+    let (mut ed, em, ey) = (b.date, b.month + 1.0, b.year);
+    let thirty = |sd: f64, ed: f64| (ed + em * 30.0 + ey * 360.0 - (sd + sm * 30.0 + sy * 360.0)) / 360.0;
+    match basis as u8 {
+        0 => {
+            if sd == 31.0 && ed == 31.0 {
+                sd = 30.0;
+                ed = 30.0;
+            } else if sd == 31.0 {
+                sd = 30.0;
+            } else if sd == 30.0 && ed == 31.0 {
+                ed = 30.0;
+            }
+            thirty(sd, ed)
+        }
+        1 => {
+            let feb29_between = |d1: f64, d2: f64| {
+                let y1 = zone::get_full_year(d1);
+                let mar1 = zone::new_local(y1, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0);
+                if fx_is_leap(y1) && d1 < mar1 && d2 >= mar1 {
+                    return true;
+                }
+                let y2 = zone::get_full_year(d2);
+                let mar2 = zone::new_local(y2, 2.0, 1.0, 0.0, 0.0, 0.0, 0.0);
+                fx_is_leap(y2) && d2 >= mar2 && d1 < mar2
+            };
+            if sy == ey || (sy + 1.0 == ey && (sm > em || (sm == em && sd >= ed))) {
+                let leap = (sy == ey && fx_is_leap(sy)) || feb29_between(s, e) || (em == 1.0 && ed == 29.0);
+                return fx_days_between(s, e) / if leap { 366.0 } else { 365.0 };
+            }
+            let years = ey - sy + 1.0;
+            let days = (zone::new_local(ey + 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0) - zone::new_local(sy, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0)) / 1000.0 / 60.0 / 60.0 / 24.0;
+            fx_days_between(s, e) / (days / years)
+        }
+        2 => fx_days_between(s, e) / 360.0,
+        3 => fx_days_between(s, e) / 365.0,
+        _ => thirty(sd, ed),
     }
 }
 

@@ -1072,6 +1072,7 @@ fn apply_role(role: &Role, v: &V, label: &str, picks_optional: bool) -> V {
                             } else {
                                 x.clone()
                             }).collect()),
+                            V::Null | V::Undef => V::err(sol_error("#SYNTAX!", format!("A position in {label} is blank"))),
                             other => other.clone(),
                         })
                         .collect(),

@@ -4,7 +4,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate, wildcardSource } from "./excelCriteria";
-import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm, combinatoric, binomDistRange } from "./nodes/mathUtils";
+import { roundDigits, lnGamma, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm, combinatoric, binomDistRange } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantiles, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -569,6 +569,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ACOS:       { returns: "number", arity: [1, 1], family: "scalar-math" },
   ACOSH:      { returns: "number", arity: [1, 1], family: "scalar-math" },
   ATANH:      { returns: "number", arity: [1, 1], family: "scalar-math" },
+  ACOT:       { returns: "number", arity: [1, 1], family: "scalar-math" },
+  GAMMALN:    { returns: "number", arity: [1, 1], family: "scalar-math" },
+  "GAMMALN.PRECISE": { returns: "number", arity: [1, 1], family: "scalar-math" },
   DATE:       { returns: "date", arity: [3, 3], family: "datetime" },
   EDATE:      { returns: "date", arity: [2, 2], family: "datetime" },
   DATEVALUE:  { returns: "date", arity: [1, 1], family: "datetime" },
@@ -1102,6 +1105,8 @@ num1("ASIN",   (x) => (x < -1 || x > 1 ? domErr() : Math.asin(x)));
 num1("ACOS",   (x) => (x < -1 || x > 1 ? domErr() : Math.acos(x)));
 num1("ACOSH",  (x) => (x < 1 ? domErr() : Math.acosh(x)));
 num1("ATANH",  (x) => (x <= -1 || x >= 1 ? domErr() : Math.atanh(x)));
+num1("ACOT",   (x) => Math.PI / 2 - Math.atan(x));
+for (const name of ["GAMMALN", "GAMMALN.PRECISE"]) num1(name, (x) => (x <= 0 ? domErr() : lnGamma(x)));
 
 const isTrue = (v: unknown) => v === true || v === 1 || (typeof v === "string" && /^(true|1)$/i.test(v.trim()));
 const ok = (v: number) => (Number.isFinite(v) ? v : null);

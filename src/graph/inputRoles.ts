@@ -251,7 +251,8 @@ export function applyRole(role: InputRole, v: unknown, label: string): unknown {
     case "required": return isList(v) ? v.map((x) => applyRole(role, x, label)) : (v ?? noDefault(label));
     case "picks": {
       let out: unknown = v;
-      if (isTable(v)) out = v.map((r) => r.map((x) => x ?? solError("#SYNTAX!", `A position in ${label} is blank`)));
+      const blank = (x: unknown) => x ?? solError("#SYNTAX!", `A position in ${label} is blank`);
+      if (isTable(v)) out = v.map((r) => (isList(r) ? r.map(blank) : blank(r)));
       else if (isList(v)) { const kept = v.filter((x) => x != null); out = kept.length ? kept : LEFT_OUT; }
       else if (v == null) out = LEFT_OUT;
       return out === LEFT_OUT && role.required ? noDefault(label) : out;
