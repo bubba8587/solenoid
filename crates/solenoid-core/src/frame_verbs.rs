@@ -165,6 +165,12 @@ pub fn reorder_rows(f: &FrameValue, indices: &[usize]) -> FrameValue {
     )
 }
 
+/// A number's bits as an unsigned key in the number's order, -0 with 0 (`compareNumbers` holds them equal).
+fn ordered_bits(n: f64) -> u64 {
+    let bits = (n + 0.0).to_bits();
+    if bits >> 63 == 1 { !bits } else { bits | (1 << 63) }
+}
+
 // Not `a - b`, which is NaN for two equal infinities and splits their tie.
 fn compare_numbers(a: f64, b: f64) -> Ordering {
     if a < b {
@@ -256,17 +262,38 @@ fn sorted_index_order<'a>(len: usize, cell_at: impl Fn(usize) -> &'a FrameCell, 
         heads.push(i);
     }
     let desc = dir == "desc";
-    // NaN is a tail, so the keys left are totally ordered and the std sort (stable, faster) can't trip on them.
-    heads.sort_by(|&i, &j| {
-        let c = match (keys[i].as_ref().unwrap(), keys[j].as_ref().unwrap()) {
-            (SortKey::N(a), SortKey::N(b)) => compare_numbers(*a, *b),
-            (SortKey::S(a), SortKey::S(b)) => compare_utf16(a, b),
-            _ => Ordering::Equal,
-        };
-        if desc { c.reverse() } else { c }
-    });
-    heads.extend(tails);
-    heads
+    // NaN is a tail, so the keys left are totally ordered. Sorting (key, row) pairs with the row breaking ties is the
+    // stable sort's order, and the pairs sit together in memory where an index sort chases each key.
+    let mut out: Vec<usize> = if ty == FrameColType::String {
+        let mut pairs: Vec<(&str, usize)> = heads
+            .iter()
+            .map(|&i| match &keys[i] {
+                Some(SortKey::S(s)) => (s.as_ref(), i),
+                _ => ("", i),
+            })
+            .collect();
+        pairs.sort_unstable_by(|a, b| {
+            let c = compare_utf16(a.0, b.0);
+            (if desc { c.reverse() } else { c }).then(a.1.cmp(&b.1))
+        });
+        pairs.into_iter().map(|(_, i)| i).collect()
+    } else {
+        let mut pairs: Vec<(u64, usize)> = heads
+            .iter()
+            .map(|&i| {
+                let n = match &keys[i] {
+                    Some(SortKey::N(n)) => *n,
+                    _ => 0.0,
+                };
+                let k = ordered_bits(n);
+                (if desc { !k } else { k }, i)
+            })
+            .collect();
+        pairs.sort_unstable();
+        pairs.into_iter().map(|(_, i)| i).collect()
+    };
+    out.extend(tails);
+    out
 }
 
 pub fn sort_by_column(f: &FrameValue, by: &str, dir: &str) -> Res<FrameValue> {
