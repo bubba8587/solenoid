@@ -297,7 +297,9 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "SQRT", "EXP", "LN", "LOG10", "MOD", "POWER", "QUOTIENT", "SUM", "MIN", "MAX", "AVERAGE", "MEDIAN", "PRODUCT",
   "STDEV", "STDEV.S", "STDEV.P", "VAR", "VAR.S", "VAR.P", "LEN", "CONCAT", "CONCATENATE", "MID", "LEFT", "RIGHT",
   "UPPER", "LOWER", "TRIM", "REPT", "SUBSTITUTE", "YEAR", "MONTH", "DAY", "TEXT", "VLOOKUP", "XLOOKUP", "SEQUENCE",
-  "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE"];
+  "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
+  "SIN", "COS", "TAN", "ATAN", "SINH", "COSH", "TANH", "ASINH", "COT", "COTH", "ACOT", "ACOTH", "SEC", "SECH", "CSC",
+  "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH"];
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
 
 function formulaGen(rand: () => number) {
@@ -399,18 +401,19 @@ describe("the Rust engine's fdlibm matches V8's Math bit for bit", () => {
     expect(bad).toEqual([]);
   });
 
-  it.each(["exp", "log", "log10", "pow"])("%s", (fn) => {
+  it.each(["exp", "log", "log10", "pow", "sin", "cos"])("%s", (fn) => {
     const rand = mulberry32(31337 + FUZZ_SEED);
     const xs: number[] = [], ys: number[] = [];
     for (let i = 0; i < FUZZ_RUNS * 10; i++) {
       const nice = rand() < 0.5;
-      const x = fn === "exp" ? (nice ? Math.round(rand() * 1400 - 700) / 4 : rand() * 1400 - 700)
+      const x = fn === "sin" || fn === "cos" ? (nice ? Math.round(rand() * 1e5) / 100 : (rand() - 0.5) * 10 ** Math.floor(rand() * 40 - 10))
+        : fn === "exp" ? (nice ? Math.round(rand() * 1400 - 700) / 4 : rand() * 1400 - 700)
         : fn === "pow" ? (nice ? Math.round(rand() * 400) / 10 : rand() * 50)
         : (nice ? Math.round(rand() * 1e4) / 8 : Math.exp(rand() * 300 - 150));
       xs.push(x);
       ys.push(nice ? Math.round(rand() * 60 - 30) / 2 : rand() * 60 - 30);
     }
-    const math = { exp: Math.exp, log: Math.log, log10: Math.log10, pow: Math.pow }[fn as "exp"] as (a: number, b?: number) => number;
+    const math = { exp: Math.exp, log: Math.log, log10: Math.log10, pow: Math.pow, sin: Math.sin, cos: Math.cos }[fn as "exp"] as (a: number, b?: number) => number;
     const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
     const got = wasmInvokeSync<string[]>("engine_math", { fn, xs, ys });
     const bad = xs.map((x, i) => [x, ys[i], math(x, ys[i]), got[i]] as const)

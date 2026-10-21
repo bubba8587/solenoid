@@ -78,6 +78,8 @@ const PORTED: &[&str] = &[
     "SUM", "MIN", "MAX", "AVERAGE", "MEDIAN", "PRODUCT", "STDEV", "STDEV.S", "STDEV.P", "VAR", "VAR.S", "VAR.P",
     "LEN", "CONCAT", "CONCATENATE", "MID", "LEFT", "RIGHT", "UPPER", "LOWER", "TRIM", "REPT", "SUBSTITUTE",
     "YEAR", "MONTH", "DAY",
+    "SIN", "COS", "TAN", "ATAN", "SINH", "COSH", "TANH", "ASINH", "COT", "COTH", "ACOT", "ACOTH", "SEC", "SECH", "CSC",
+    "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
 ];
 
@@ -700,6 +702,96 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     _ => f64::from(p.day),
                 }),
             }
+        }
+        // Formula.js's trig: parseNumber, then V8's Math (fdlibm: ours, or the libm crate where it matches V8 bit for bit).
+        "SIN" | "COS" | "TAN" | "ATAN" | "SINH" | "COSH" | "TANH" | "ASINH" | "COT" | "COTH" | "ACOT" | "ACOTH" | "SEC"
+        | "SECH" | "CSC" | "CSCH" | "DEGREES" | "RADIANS" => {
+            use crate::fdlibm::{cos, exp, log, sin};
+            let n = match parse_number(arg(a, 0)) {
+                V::Num(n) => n,
+                e => return e,
+            };
+            let div0 = V::Fx("#DIV/0!");
+            V::Num(match name {
+                "SIN" => sin(n),
+                "COS" => cos(n),
+                "TAN" => libm::tan(n),
+                "ATAN" => libm::atan(n),
+                "SINH" => (exp(n) - exp(-n)) / 2.0,
+                "COSH" => (exp(n) + exp(-n)) / 2.0,
+                "TANH" => {
+                    let e2 = exp(2.0 * n);
+                    (e2 - 1.0) / (e2 + 1.0)
+                }
+                "ASINH" => log(n + (n * n + 1.0).sqrt()),
+                "COT" if n == 0.0 => return div0,
+                "COT" => 1.0 / libm::tan(n),
+                "COTH" if n == 0.0 => return div0,
+                "COTH" => {
+                    let e2 = exp(2.0 * n);
+                    (e2 + 1.0) / (e2 - 1.0)
+                }
+                "ACOT" => libm::atan(1.0 / n),
+                "ACOTH" => {
+                    let r = 0.5 * log((n + 1.0) / (n - 1.0));
+                    if r.is_nan() {
+                        return V::Fx("#NUM!");
+                    }
+                    r
+                }
+                "SEC" => 1.0 / cos(n),
+                "SECH" => 2.0 / (exp(n) + exp(-n)),
+                "CSC" if n == 0.0 => return div0,
+                "CSC" => 1.0 / sin(n),
+                "CSCH" if n == 0.0 => return div0,
+                "CSCH" => 2.0 / (exp(n) - exp(-n)),
+                "DEGREES" => (n * 180.0) / std::f64::consts::PI,
+                _ => (n * std::f64::consts::PI) / 180.0,
+            })
+        }
+        "LOG" => {
+            let n = parse_number(arg(a, 0));
+            let base = if truthy(arg(a, 1)) { parse_number(arg(a, 1)) } else { V::Num(10.0) };
+            match (n, base) {
+                (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => e,
+                (V::Num(n), V::Num(b)) => {
+                    if n == 0.0 || b == 0.0 {
+                        V::Fx("#NUM!")
+                    } else {
+                        V::Num(crate::fdlibm::log(n) / crate::fdlibm::log(b))
+                    }
+                }
+                _ => V::Fx("#VALUE!"),
+            }
+        }
+        "ATAN2" => {
+            let (x, y) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
+            if x.is_nan() || y.is_nan() {
+                return value_err("ATAN2");
+            }
+            V::Num(libm::atan2(y, x))
+        }
+        "SQRTPI" | "ASIN" | "ACOS" | "ACOSH" | "ATANH" => {
+            let x = to_num(arg(a, 0));
+            if x.is_nan() {
+                return value_err(name);
+            }
+            let outside = match name {
+                "SQRTPI" => x < 0.0,
+                "ASIN" | "ACOS" => !(-1.0..=1.0).contains(&x),
+                "ACOSH" => x < 1.0,
+                _ => x <= -1.0 || x >= 1.0,
+            };
+            if outside {
+                return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));
+            }
+            V::Num(match name {
+                "SQRTPI" => (x * std::f64::consts::PI).sqrt(),
+                "ASIN" => libm::asin(x),
+                "ACOS" => libm::acos(x),
+                "ACOSH" => libm::acosh(x),
+                _ => libm::atanh(x),
+            })
         }
         "PI" => V::Num(std::f64::consts::PI),
         "EXACT" => {

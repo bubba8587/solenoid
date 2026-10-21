@@ -164,6 +164,8 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     "log" => crate::fdlibm::log(x),
                     "log10" => crate::fdlibm::log10(x),
                     "prec15" => crate::unit_value::to_precision(x, 15),
+                    "sin" => crate::fdlibm::sin(x),
+                    "cos" => crate::fdlibm::cos(x),
                     _ => crate::excel_functions::js_pow(x, ys.get(i).copied().unwrap_or(f64::NAN)),
                 };
                 json!(r.to_bits().to_string())
