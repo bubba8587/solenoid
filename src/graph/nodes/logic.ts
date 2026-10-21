@@ -6,6 +6,7 @@ import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, ifTest, type Tri } from "../valueKinds";
 import { compareUnits, isUnitCell } from "../unitValue";
+import { callCore } from "../coreValues";
 import { isFrameValue, isCubeValue, frameRowCount, type FrameValue, type FrameColType } from "../frame";
 
 function frameCells(f: FrameValue): unknown[][] {
@@ -167,7 +168,7 @@ export class BetweenNode extends ClassicPreset.Node {
     const lo = readInput(inputs.lo, this.literals.lo ?? 0);
     const hi = readInput(inputs.hi, this.literals.hi ?? 0);
     const result: Tri | Tri[] = lo === null || hi === null ? null
-      : broadcastEl<unknown, Tri>((x) => (typeof x === "number" ? x >= lo && x <= hi : null), value);
+      : broadcastEl<unknown, Tri>((x) => (typeof x === "number" ? callCore("BETWEEN", [x, lo, hi]) as boolean : null), value);
     this.cachedResult = result;
     return { result };
   }
@@ -197,7 +198,7 @@ export class IsCloseNode extends ClassicPreset.Node {
     const a = (inputs.a?.length ? inputs.a[0] : this.literals.a) ?? null;
     const b = (inputs.b?.length ? inputs.b[0] : this.literals.b) ?? null;
     const tol = readRole<number | undefined>(this, "tol", inputs.tol) ?? 1e-9;
-    const result: Tri | Tri[] = broadcastEl<unknown, Tri>((x, y) => (typeof x === "number" && typeof y === "number" ? Math.abs(x - y) <= tol : null), a, b);
+    const result: Tri | Tri[] = broadcastEl<unknown, Tri>((x, y) => (typeof x === "number" && typeof y === "number" ? callCore("ISCLOSE", [x, y, tol]) as boolean : null), a, b);
     this.cachedResult = result;
     return { result };
   }
@@ -844,11 +845,7 @@ export class IsEvenOddNode extends ClassicPreset.Node {
   data(inputs: { in?: (number | null | (number | null)[])[] }) {
     const input = readInput(inputs.in, this.literals.in ?? null);
     const result: Tri | Tri[] = input === null ? null
-      : broadcastEl((x) => {
-          if (isMissing(x)) return null;
-          const even = Math.trunc(x) % 2 === 0;
-          return this.op === "iseven" ? even : !even;
-        }, input);
+      : broadcastEl((x) => (isMissing(x) ? null : callCore(this.op === "iseven" ? "ISEVEN" : "ISODD", [x]) as boolean), input);
     this.cachedResult = result;
     return { result };
   }
