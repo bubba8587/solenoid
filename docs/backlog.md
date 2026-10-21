@@ -334,6 +334,15 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 - [ ] **Pivot view follow-ups** ([[C127]] pivotView, built 2026-10-20): fold column items as rows fold; sort an
   axis from its header (Configure Fields holds the sort today); Excel's "Merge and center cells with labels";
   drill-through (a value cell opens the source rows behind it, which needs the Pivot's filtered source).
+- [ ] **Pivot keeps or drops a missing field?** The card drops a field whose column leaves its source (frame-verbs § pivot),
+  meant for a source swap; a column briefly absent drops it too. Keeping it, flagged in Configure Fields, is the
+  alternative; the author's call.
+- [ ] **Write nodes' Keys split on bare commas** (`WriteNodes.tsx`, two places): read and write them with
+  `listLiteralItems` / `listLiteralText` so a key holding a comma survives.
+- [ ] **Escape with the column-format panel open closes the whole popup** (`ColumnFormatButton` registers no
+  escape layer); it should close the panel first, as the ⋯ menu does.
+- [ ] **The editor footer's Insert and Delete menus and Cancel / Save keep their older square style** beside the
+  pill family; Cancel and Save are dialog actions, the menus could join the pills.
 
 ## Family-name polish ([[D22]] oneNamePerCard revised 2026-09-13 — card shows the class-derived family name)
 
