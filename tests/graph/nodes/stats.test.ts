@@ -596,13 +596,13 @@ describe("Hypothesis Test — one node, six tests", () => {
   it("Z reads σ from the card when unwired, skips blanks, and agrees with Z.TEST", () => {
     const z = new HypothesisTestNode({ op: "z" });
     z.literals.x = 2;
-    const sampleSd = z.data({ a: [A] }).result!;
+    const sampleSd = z.data({ a: [A] }).result as number;
     z.literals.sigma = 10;
-    const typed = z.data({ a: [A] }).result!;
+    const typed = z.data({ a: [A] }).result as number;
     expect(typed).not.toBeCloseTo(sampleSd, 6);
     expect(typed).toBeCloseTo(compileEvaluator("Z.TEST(x, 2, 10)")!({ x: A }) as number, 12);
     delete z.literals.sigma;
-    const gappy = z.data({ a: [[1, 2, null, 3, 4, 5] as unknown as number[]] }).result!;
+    const gappy = z.data({ a: [[1, 2, null, 3, 4, 5] as unknown as number[]] }).result as number;
     expect(gappy).toBeCloseTo(sampleSd, 12);
     expect(compileEvaluator("Z.TEST(x, 2)")!({ x: [1, 2, null, 3, 4, 5] })).toBeCloseTo(sampleSd, 12);
   });
