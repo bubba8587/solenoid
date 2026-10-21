@@ -103,7 +103,7 @@ function Tile({ tile, width }: { tile: DescribeTile; width: number }) {
         <div className="describe-dash__top">
           {tile.top.values.map((t) => (
             <div key={t.text} className="describe-dash__toprow" title={`${t.text}: ${count(t.count)}`}>
-              <span className="describe-dash__toplabel">{t.text === "" ? "(empty)" : tile.type === "number" || tile.type === "date" ? text(Number(t.text)) : t.text}</span>
+              <span className="describe-dash__toplabel">{t.text === "" ? "(empty)" : (tile.type === "number" || tile.type === "date") && !t.text.startsWith("#") ? text(Number(t.text)) : t.text}</span>
               <span className="describe-dash__topbar"><span style={{ width: `${topMax ? (t.count / topMax) * 100 : 0}%`, background: viz }} /></span>
               <span className="describe-dash__topcount">{count(t.count)}</span>
             </div>
