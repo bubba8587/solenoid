@@ -2,10 +2,11 @@
 // The core's own call table (crates/solenoid-core/data/call_traits.json): every function name's dispatch facts,
 // argument roles and empty-slot readings, frozen from the TypeScript's `formulaCallTable` by FREEZE_CORE=1. A name's
 // per-position lists keep only their head: past it they repeat with period two, which the core extends.
+// FREEZE_CORE=call-traits (or 1) rewrites it.
 import { it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { FREEZING } from "./coreFixtures";
+import { freezes } from "./coreFixtures";
 import { formulaCallTable, type FormulaCallTraits } from "../../src/graph/excelFormula";
 import { FX_FUNCTION_NAMES, internalFunctionNames, resolveExcelFunction, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
 
@@ -37,6 +38,6 @@ function build(): Record<string, unknown> {
 
 it("the core's call table is the TypeScript's", () => {
   const table = build();
-  if (FREEZING) fs.writeFileSync(FILE, JSON.stringify(table) + "\n");
+  if (freezes("call-traits")) fs.writeFileSync(FILE, JSON.stringify(table) + "\n");
   expect(JSON.parse(fs.readFileSync(FILE, "utf8"))).toEqual(JSON.parse(JSON.stringify(table)));
 });

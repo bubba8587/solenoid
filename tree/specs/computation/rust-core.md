@@ -15,7 +15,8 @@ Serves [[C130]] rustCore, [[D99]] rustIsSpec and [[D98]] wholeColumnFallback. `c
 - The port began as a mechanical copy of the TypeScript, so the Rust keeps the TS's names (in snake_case) and order of
   operations wherever a fixture depends on them.
 - Moving off the TypeScript, subsystem by subsystem:
-  1. Freeze: the TS's answers on the differential tests' inputs are written to fixture files (`fixtures/core/`).
+  1. Freeze: the TS's answers on the differential tests' inputs are written to fixture files (`fixtures/core/`):
+     `FREEZE_CORE=1` rewrites every suite, `FREEZE_CORE=frame-fns,columns` only those.
   2. Cover: the core answers every case the subsystem's callers make, so nothing falls back.
   3. Delete: the TS implementation, its fallback and its differential test go, and the fixtures stay as the test.
 - The JavaScript semantics the frozen answers carry stay ported, because they decided those answers:
@@ -76,6 +77,7 @@ columns to `engine_pivot_layout`.
 | Computed columns: whole columns as one-column tables, `@name`, side values of any shape, wired LAMBDAs and their captures | `eval::column`, `engine_compute_column` | 15k frozen columns |
 | The Expression card and every `compileEvaluator` | `evaluateOnCore` (`coreValues.ts`) | as above |
 | Node `data()` | moving onto `callCore` (`coreValues.ts`), node family by node family | each family's tests, with and without `CORE_EVAL` |
+| Frame computations no formula shares (promote and demote headers so far) | `frame_fns.rs`, `engine_frame_fn`, `frameFnOnCore` (`frameBackend.ts`) | the frozen frame-function cases |
 | A pack's formula functions | the TS, by design: a pack registers JS at run time, and the core calls it back (`syncExternalNames`) | |
 
 ## Fallback ([[D98]] wholeColumnFallback)

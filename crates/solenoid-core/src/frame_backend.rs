@@ -144,6 +144,26 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             Ok(Json::Null)
         }
         "engine_formula_parse" => Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json())),
+        // A frame computation no formula shares (`frame_fns.rs`): frames by handle and plain arguments in, a frame (by a
+        // new handle) or a value out.
+        "engine_frame_fn" => {
+            let name = parse::<String>(args, "name")?;
+            let handles = parse::<Vec<String>>(args, "handles")?;
+            let frames = handles.iter().map(|h| get(h)).collect::<Result<Vec<_>, _>>()?;
+            let refs: Vec<&FrameValue> = frames.iter().map(|f| f.as_ref()).collect();
+            let argv: Vec<crate::excel_functions::V> = parse::<Option<Vec<Json>>>(args, "args")?.unwrap_or_default().iter().map(crate::eval::decode_value).collect();
+            crate::excel_functions::take_bailed();
+            let out = crate::frame_fns::call(&name, &refs, &argv);
+            if crate::excel_functions::take_bailed() {
+                crate::excel_functions::take_thrown();
+                return Ok(json!({ "bail": true }));
+            }
+            match out {
+                crate::frame_fns::FrameOut::Frame(f) => Ok(json!({ "handle": register(f) })),
+                crate::frame_fns::FrameOut::Value(v) => Ok(json!({ "value": serde_json::to_value(CallReply::Value(v)).expect("a value serializes") })),
+                crate::frame_fns::FrameOut::Bail => Ok(json!({ "bail": true })),
+            }
+        }
         "engine_external_names" => {
             crate::eval::set_external(parse::<Vec<String>>(args, "names")?);
             Ok(Json::Null)
