@@ -1557,6 +1557,138 @@ fn index_ref_error(n: f64, max: usize, what: &str) -> V {
 
 /// `indexInto` (indexAccess.ts) at one position per axis: a table, a list (one row) or one value. A null position
 /// (`row_null`) is a blank answer; None is a position left out.
+/// An INDEX position: left out, blank, a number, or several (`IndexAxis`).
+#[derive(Clone)]
+enum Ax {
+    Undef,
+    Null,
+    Num(f64),
+    Many(Rc<Vec<V>>),
+}
+
+/// `indexInto`: an empty list of positions is the positions left out ([[D86]] blankRoles).
+fn index_at(v: &V, row: Ax, col: Ax) -> V {
+    if matches!(v, V::Null | V::Undef) {
+        return V::Null;
+    }
+    let unlist = |x: Ax| match x {
+        Ax::Many(items) if items.is_empty() => Ax::Undef,
+        x => x,
+    };
+    let (row, col) = (unlist(row), unlist(col));
+    if matches!(row, Ax::Many(_)) || matches!(col, Ax::Many(_)) {
+        return index_many(v, row, col);
+    }
+    let one = |x: &Ax| match x {
+        Ax::Undef => None,
+        Ax::Num(n) => Some(*n),
+        _ => Some(f64::NAN),
+    };
+    index_into(v, one(&row), one(&col), matches!(row, Ax::Null), matches!(col, Ax::Null))
+}
+
+/// `positionOf`: blank, an error as it is, a number, or #VALUE!.
+fn position_of(x: &V) -> Result<Ax, V> {
+    let n = match x {
+        V::Null | V::Undef => return Ok(Ax::Null),
+        V::Err(_) => return Err(x.clone()),
+        V::Num(n) => *n,
+        V::Bool(b) => f64::from(u8::from(*b)),
+        V::Str(s) if !js_trim(s).is_empty() => string_to_number(s),
+        _ => f64::NAN,
+    };
+    if n.is_nan() { Err(V::err(sol_error("#VALUE!", "INDEX position must be a number"))) } else { Ok(Ax::Num(n)) }
+}
+
+/// `indexMany`: on a table whose other axis is whole, a list picks rows or columns; otherwise the axes pair up as
+/// Excel's array arguments do, one value per pair.
+fn index_many(v: &V, row: Ax, col: Ax) -> V {
+    let is_grid = |x: &[V]| matches!(x.first(), Some(V::List(_)));
+    if let V::List(grid) = v {
+        let (rm, cm) = (matches!(row, Ax::Many(_)), matches!(col, Ax::Many(_)));
+        if is_grid(grid) && rm != cm {
+            let (Ax::Many(picks), other) = (if rm { (&row, &col) } else { (&col, &row) }) else { unreachable!() };
+            let walks = matches!(col, Ax::Undef) && (grid.len() == 1 || grid.iter().all(|r| !matches!(r, V::List(c) if c.len() > 1)));
+            let whole = match other {
+                Ax::Undef => true,
+                Ax::Num(n) => n.trunc() == 0.0,
+                _ => false,
+            };
+            if !walks && whole && !is_grid(picks) {
+                let mut lists = Vec::with_capacity(picks.len());
+                for p in picks.iter() {
+                    let x = match position_of(p) {
+                        Ok(Ax::Null) => V::Null,
+                        Err(e) => e,
+                        Ok(at) => if rm { index_at(v, at, other.clone()) } else { index_at(v, other.clone(), at) },
+                    };
+                    match x {
+                        V::List(l) => lists.push(l),
+                        bad => return bad,
+                    }
+                }
+                if rm {
+                    return V::List(Rc::new(lists.into_iter().map(V::List).collect()));
+                }
+                let first = lists.first().map_or(0, |l| l.len());
+                return V::List(Rc::new((0..first).map(|i| V::List(Rc::new(lists.iter().map(|c| match c.get(i) {
+                    None | Some(V::Undef) => V::Null,
+                    Some(x) => x.clone(),
+                }).collect()))).collect()));
+            }
+        }
+    }
+    // `asGrid`: a table as it is, a list as one row, anything else as one cell.
+    let as_grid = |x: &Ax| -> Option<Vec<V>> {
+        match x {
+            Ax::Undef => None,
+            Ax::Many(items) if is_grid(items) => Some(items.as_ref().clone()),
+            Ax::Many(items) => Some(vec![V::List(items.clone())]),
+            Ax::Null => Some(vec![V::List(Rc::new(vec![V::Null]))]),
+            Ax::Num(n) => Some(vec![V::List(Rc::new(vec![V::Num(*n)]))]),
+        }
+    };
+    let (rg, cg) = (as_grid(&row), as_grid(&col));
+    let width = |g: &Option<Vec<V>>| g.as_ref().map_or(1, |g| match &g[0] { V::List(r) => r.len(), _ => 1 });
+    let h = rg.as_ref().map_or(1, Vec::len).max(cg.as_ref().map_or(1, Vec::len));
+    let w = width(&rg).max(width(&cg));
+    // `g[gi][gj]` on a row that is not a list: a string's code unit, undefined for a number; a blank row throws.
+    let at = |g: &Option<Vec<V>>, i: usize, j: usize| -> Result<Ax, V> {
+        let Some(g) = g else { return Ok(Ax::Undef) };
+        let gi = if g.len() == 1 { 0 } else { i };
+        let gj = if width(&Some(g.clone())) == 1 { 0 } else { j };
+        let short = || Err(V::err(sol_error("#N/A", "The positions are different sizes")));
+        let Some(row) = g.get(gi) else { return short() };
+        match row {
+            V::List(cells) => match cells.get(gj) {
+                Some(x) => position_of(x),
+                None => short(),
+            },
+            V::Str(s) => {
+                let units: Vec<u16> = s.encode_utf16().collect();
+                match units.get(gj) {
+                    Some(u) => position_of(&V::str(&String::from_utf16_lossy(&[*u]))),
+                    None => short(),
+                }
+            }
+            V::Null | V::Undef => Err(bail()),
+            _ => Ok(Ax::Null),
+        }
+    };
+    let out: Vec<V> = (0..h).map(|i| V::List(Rc::new((0..w).map(|j| {
+        let (r, c) = (at(&rg, i, j), at(&cg, i, j));
+        let (r, c) = match (r, c) {
+            (Err(e), _) | (_, Err(e)) => return e,
+            (Ok(r), Ok(c)) => (r, c),
+        };
+        match index_at(v, r, c) {
+            V::List(_) => V::err(sol_error("#VALUE!", "Each pair of positions must pick one value")),
+            x => x,
+        }
+    }).collect()))).collect();
+    if h == 1 { out.into_iter().next().unwrap_or(V::Null) } else { V::List(Rc::new(out)) }
+}
+
 fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_null: bool) -> V {
     if matches!(v, V::Null | V::Undef) || row_null || col_null {
         return V::Null;
@@ -3070,23 +3202,22 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             V::str(&if no_commas { text.replace(',', "") } else { group_thousands(&text) })
         }
         "INDEX" => {
-            // `axis`: a left-out or blank position as it is, anything else a number.
-            let axis = |v: &V| -> Result<Option<f64>, V> {
+            // `axis`: a left-out or blank position, or a list of them, as it is; anything else a number.
+            let axis = |v: &V| -> Result<Ax, V> {
                 match v {
-                    V::Undef => Ok(None),
-                    V::Null => Ok(Some(f64::NAN)),
-                    V::List(_) => Err(bail()),
+                    V::Undef => Ok(Ax::Undef),
+                    V::Null => Ok(Ax::Null),
+                    V::List(items) => Ok(Ax::Many(items.clone())),
                     other => {
                         let n = to_num(other);
-                        if n.is_nan() { Err(V::err(sol_error("#VALUE!", "INDEX position must be a number"))) } else { Ok(Some(n)) }
+                        if n.is_nan() { Err(V::err(sol_error("#VALUE!", "INDEX position must be a number"))) } else { Ok(Ax::Num(n)) }
                     }
                 }
             };
-            let (row, col) = match (axis(arg(a, 1)), axis(arg(a, 2))) {
-                (Err(e), _) | (_, Err(e)) => return e,
-                (Ok(r), Ok(c)) => (r, c),
-            };
-            index_into(arg(a, 0), row, col, matches!(arg(a, 1), V::Null), matches!(arg(a, 2), V::Null))
+            match (axis(arg(a, 1)), axis(arg(a, 2))) {
+                (Err(e), _) | (_, Err(e)) => e,
+                (Ok(r), Ok(c)) => index_at(arg(a, 0), r, c),
+            }
         }
         "CONTAINS" => {
             if let V::List(items) = arg(a, 0) {
@@ -4035,7 +4166,8 @@ fn regex_occurrence(raw: &V) -> Option<f64> {
 
 fn regex_call(name: &str, a: &[V]) -> V {
     use crate::js_regex::{compile, Compiled};
-    use crate::text_ops::{regex_extract, regex_replace_all, regex_test, replace_nth};
+    use crate::text_ops::{match_all, regex_extract, regex_replace_all, regex_test, replace_nth};
+    let regress_first = |re: &regress::Regex, t: &[u16]| re.find_from_ucs2(t, 0).next();
     let cs = match name {
         "REGEXTEST" => arg(a, 2),
         "REGEXEXTRACT" => arg(a, 3),
@@ -4077,7 +4209,11 @@ fn regex_call(name: &str, a: &[V]) -> V {
     match name {
         "REGEXTEST" => V::Num(if regex_test(&re, &t) { 1.0 } else { 0.0 }),
         "REGEXEXTRACT" if mode == 0.0 => V::str(&from_utf16(&regex_extract(&re, &t))),
-        "REGEXEXTRACT" => bail(),
+        "REGEXEXTRACT" if mode == 1.0 => V::List(Rc::new(match_all(&re, &t).into_iter().map(|m| V::str(&from_utf16(&t[m.range]))).collect())),
+        "REGEXEXTRACT" => V::List(Rc::new(match regress_first(&re, &t) {
+            Some(m) => m.captures.iter().map(|g| V::str(&g.as_ref().map_or_else(String::new, |r| from_utf16(&t[r.clone()])))).collect(),
+            None => Vec::new(),
+        })),
         _ if occurrence == 0.0 => V::str(&from_utf16(&regex_replace_all(&re, &t, &utf16(&replacement)))),
         _ => V::str(&from_utf16(&replace_nth(&re, &t, &utf16(&replacement), occurrence))),
     }
