@@ -82,6 +82,9 @@ describe("ISOUTLIER / Outliers node", () => {
     // A wired blank list → null frame (propagate).
     expect(new OutliersNode().data({ list: [null as unknown as number[]] }).result).toBeNull();
     expect(isSolError(ev("ISOUTLIER(x, \"huh\")", { x }))).toBe(true);
+    for (const m of ["constructor", "__proto__", "toString"]) {
+      expect(ev(`ISOUTLIER(x, "${m}")`, { x })).toMatchObject({ code: "#DOMAIN!", message: "ISOUTLIER method must be z, iqr or mad" });
+    }
   });
 });
 
@@ -426,6 +429,18 @@ describe("Forecast (ETS) — Holt–Winters", () => {
     expect(ev("FORECAST.ETS.SEASONALITY(v)", { v: [3, 5, 7, 9, 11, 13, 15, 17] })).toBe(0);
     expect(isSolError(ev("FORECAST.ETS(t, v, tl)", { t: 45000, v: y, tl: timeline }))).toBe(true); // target not past the end
   });
+  it("a target too far past the timeline is refused at once, and a NaN horizon is an error, not undefined ([[C120]] linearWork)", () => {
+    const timeline = y.map((_, i) => 45000 + i);
+    const t0 = performance.now();
+    for (const t of [1e308, Infinity]) {
+      expect(ev("FORECAST.ETS(t, v, tl)", { t, v: y, tl: timeline })).toMatchObject({ code: "#DOMAIN!", message: "FORECAST.ETS takes a target at most 1,000,000 steps past the timeline's end" });
+      expect(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t, v: y, tl: timeline })).toMatchObject({ code: "#DOMAIN!", message: "FORECAST.ETS.CONFINT takes a target at most 1,000,000 steps past the timeline's end" });
+    }
+    expect(performance.now() - t0).toBeLessThan(500);
+    const infLine = timeline.map((v, i) => (i === timeline.length - 1 ? Infinity : v));
+    expect(isSolError(ev("FORECAST.ETS(t, v, tl)", { t: Infinity, v: y, tl: infLine }))).toBe(true);
+    expect(isSolError(ev("FORECAST.ETS.CONFINT(t, v, tl)", { t: Infinity, v: y, tl: infLine }))).toBe(true);
+  });
 });
 
 describe("Window — per-group columns in original row order (pandas groupby().transform / SQL OVER)", () => {
@@ -729,6 +744,9 @@ describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalOps.t
     expect(Object.keys(n.inputs)).toEqual(["list", "frac"]);
     const ev = (e: string) => compileEvaluator(e)!({ x: X, y: Y });
     expect((ev("SAVGOL(x, 5, 2)") as number[])[11]).toBeCloseTo(10.6, 5);
+    const five = (e: string) => compileEvaluator(e)!({ v: [1, 2, 3, 4, 5] });
+    expect(five("SAVGOL(v, 3, 0.5)")).toMatchObject({ code: "#DOMAIN!", message: "Order must be a whole number" });
+    expect(five("SAVGOL(v, 3.5, 1)")).toMatchObject({ code: "#DOMAIN!", message: "Window must be a whole number" });
     expect((ev("GAUSSIANSMOOTH(x, 2)") as number[])[0]).toBeCloseTo(2.331121, 5);
     expect((ev("LOWESS(x, 0.5)") as number[]).length).toBe(12);
     expect(ev("FINDPEAKS(y)")).toEqual([2, 4, 6, 8, 10, 14]);

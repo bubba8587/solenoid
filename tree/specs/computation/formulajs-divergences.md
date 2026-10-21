@@ -30,7 +30,7 @@ Without the tripwire, a vendor update that fixes or changes a function passes si
 
 - **BINOM.DIST.RANGE** runs `binomDistRange` (`mathUtils.ts`): Excel's constraints (0 ≤ s ≤ s2 ≤ trials, a probability from 0 to 1) answer `#DOMAIN!`, where Formula.js checks nothing and sums a reversed range to 0; each term multiplies COMBIN's exact count by the powers, or works in logs where the count overflows, so `BINOM.DIST.RANGE(1e5, 0.5, 0, 50000)` answers instead of overflowing the call stack; a range past a million outcomes is `#DOMAIN!`.
 
-- **BESSELJ, BESSELI, BESSELK, BESSELY** call Formula.js, except that an order past 1,000,000 answers `#DOMAIN!` ("BESSELJ takes an order of at most 1,000,000"): Formula.js recurs once per order, so `BESSELJ(1, 1e12)` hung the app ([[C120]] linearWork).
+- **BESSELJ, BESSELI, BESSELK, BESSELY** call Formula.js, except that an order past 1,000,000 either way, infinities included, answers `#DOMAIN!` ("BESSELJ takes an order between -1,000,000 and 1,000,000"): Formula.js recurs once per order, and bessel.js flips a negative order's sign, so `BESSELJ(1, 1e12)` and `BESSELJ(1, -1e12)` hung the app ([[C120]] linearWork). An order given as text is read as every number text is ([[C117]] usNumberText), so `BESSELJ(1, "-Infinity")` is `#VALUE!` ("BESSELJ needs a number"), where Formula.js reads it as -Infinity and loops.
 
 - **CLEAN** drops character codes 0 to 31, as Excel's does, and reads a number or logical as its text: Formula.js threw on `CLEAN(5)`. The Text Transform card's CLEAN calls it, so the card no longer also drops DEL (127), which Excel keeps.
 

@@ -24,7 +24,9 @@ function polyFitW(xs: readonly number[], ys: readonly number[], ws: readonly num
 }
 
 export function savgolProblem(n: number, window: number, order: number): string | null {
-  const m = Math.max(1, Math.floor(window));
+  if (!Number.isInteger(window)) return "Window must be a whole number";
+  if (!Number.isInteger(order)) return "Order must be a whole number";
+  const m = Math.max(1, window);
   if (m % 2 === 0) return "Window must be odd";
   if (order < 0 || order >= m) return "Order must be below the window";
   if (m > n) return "Window is longer than the list";
