@@ -103,7 +103,7 @@ describe("ACOT, GAMMALN and GAMMALN.PRECISE answer Excel's (FX is wrong)", () =>
   });
 });
 
-describe("BESSELJ, I, K and Y past an order of a million answer #DOMAIN! (FX recurs once per order)", () => {
+describe("BESSELJ, I, K and Y truncate their order and answer #DOMAIN! past a million or below 0 (FX recurs once per order and rounds)", () => {
   it("a huge order answers at once; an ordinary one is Formula.js's", () => {
     const t = performance.now();
     for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) expect((call(name, 1, 1e12) as { code?: string }).code).toBe("#DOMAIN!");
@@ -111,11 +111,17 @@ describe("BESSELJ, I, K and Y past an order of a million answer #DOMAIN! (FX rec
     const fx = FX as unknown as Record<string, (...a: number[]) => number>;
     expect(call("BESSELJ", 1.9, 2)).toBe(fx.BESSELJ(1.9, 2));
   });
-  it("an infinite or hugely negative order answers #DOMAIN! too (bessel.js flips its sign and loops)", () => {
+  it("a fractional order is truncated, as Excel's (FX rounds it)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
+    for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) expect(call(name, 1.5, 2.7)).toBe(fx[name](1.5, 2));
+    expect(fx.BESSELJ(1, 2.7)).toBe(fx.BESSELJ(1, 3));
+  });
+  it("an infinite order answers #DOMAIN! too, and a negative one as Excel's #NUM!", () => {
     const t = performance.now();
     for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) {
-      for (const n of [-Infinity, Infinity, -1e12, "-1e12"]) {
-        expect(call(name, 1, n)).toMatchObject({ code: "#DOMAIN!", message: `${name} takes an order between -1,000,000 and 1,000,000` });
+      expect(call(name, 1, Infinity)).toMatchObject({ code: "#DOMAIN!", message: `${name} takes an order of at most 1,000,000` });
+      for (const n of [-Infinity, -1, -1e12, "-1e12"]) {
+        expect(call(name, 1, n)).toMatchObject({ code: "#DOMAIN!", message: `${name} takes an order of 0 or more` });
       }
       // Text reads as every number text does, so "Infinity" is not a number ([[C117]] usNumberText); Formula.js would read it as one.
       expect(call(name, 1, "-Infinity")).toMatchObject({ code: "#VALUE!", message: `${name} needs a number` });

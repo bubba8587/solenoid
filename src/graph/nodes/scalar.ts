@@ -251,7 +251,10 @@ export class MathFXNode extends ClassicPreset.Node {
             const e = (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
             return 1 - e;
           }
-          case "gamma":   return x > 0 ? Math.exp(lnGamma(x)) : null;
+          case "gamma": {
+            const g = resolveExcelFunction("GAMMA")!(x);
+            return typeof g === "number" && Number.isFinite(g) ? g : null;
+          }
           case "gammaln": return x > 0 ? lnGamma(x) : null;
         }
         return null;
@@ -780,7 +783,7 @@ export const BESSEL_OP_META = {
 export class BesselNode extends ClassicPreset.Node {
   static inputRoles = rolesFrom("BESSELJ", { n: 1 });
   static socketDocs: Record<string, string> = {
-    n: "Integer order, 0 or greater.",
+    n: "Order, 0 or greater; a fraction is truncated.",
   };
   label: string;
   op: BesselOp;
@@ -801,8 +804,7 @@ export class BesselNode extends ClassicPreset.Node {
     const x = readInput(inputs.x, this.literals.x ?? 1);
     const nRaw = readRole<number>(this, "n", inputs.n);
     if (x === null) { this.cachedResult = null; return { result: null }; }
-    const n = Math.max(0, Math.round(nRaw));
-    const result = resolveExcelFunction(this.op.toUpperCase())!(x, n);
+    const result = resolveExcelFunction(this.op.toUpperCase())!(x, nRaw);
     if (typeof result !== "number" || !Number.isFinite(result)) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = result;
     return { result };

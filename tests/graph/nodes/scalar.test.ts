@@ -75,6 +75,11 @@ describe("MathFn — selected functions", () => {
   it("GAMMA(5) = 4! = 24", () => {
     expect(fn("gamma", 5)).toBeCloseTo(24, 5);
   });
+  it("GAMMA of a negative non-integer is the formula's; a pole is #DOMAIN!", () => {
+    expect(fn("gamma", -0.5)).toBeCloseTo(-3.5449077, 6);
+    expect(fn("gamma", 0)).toMatchObject({ code: "#DOMAIN!" });
+    expect(fn("gamma", -2)).toMatchObject({ code: "#DOMAIN!" });
+  });
   it("SQRTPI(1) = sqrt(pi)", () => {
     expect(fn("sqrtpi", 1)).toBeCloseTo(Math.sqrt(Math.PI), 9);
   });
@@ -177,6 +182,10 @@ describe("Combinatorics and Bessel cards compute through the formula's kernels (
     expect(bessel("besseli", -1, 1)).toBeCloseTo(-0.5651591, 6);
     expect(bessel("bessely", 2.5, 1)).toBeCloseTo(0.1459181, 6);
     expect(bessel("besselj", 1.9, 2)).toBeCloseTo(0.3299257, 6);
+  });
+  it("a fractional order truncates and a negative one is blank, as the formula", () => {
+    expect(bessel("besselj", 1.9, 2.7)).toBe(bessel("besselj", 1.9, 2));
+    expect(bessel("besselj", 1.9, -1)).toBeNull();
   });
 });
 
