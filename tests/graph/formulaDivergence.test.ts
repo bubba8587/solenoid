@@ -45,6 +45,8 @@ describe("FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT, MULTINOMIAL multiply withou
   it("exact where a double holds the answer, an overflow past it, and Excel's domain", () => {
     expect(call("COMBIN", 30, 15)).toBe(155117520);
     expect(call("COMBIN", 1e6, 2)).toBe(499999500000);
+    expect(call("COMBIN", 56, 23)).toBe(3167295784216200);
+    expect(call("MULTINOMIAL", 23, 33)).toBe(3167295784216200);
     expect(call("PERMUT", 1e6, 2)).toBe(999999000000);
     expect(call("MULTINOMIAL", 2, 3, 4)).toBe(1260);
     expect(call("COMBINA", 4, 3)).toBe(20);
