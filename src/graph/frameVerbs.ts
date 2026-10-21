@@ -16,7 +16,7 @@ import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
 import { allocate, type AllocateMode } from "./nodes/allocateOps";
 import { buildLadder, mustClash, isRough, type LadderOption } from "./nodes/ladderOps";
 import type { LadderPayload } from "./chartValue";
-import { aggregate, percentileOf, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
+import { aggregate, percentileOf, pearson, spearman, kendallTau, covariance, averageRanks } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
 import { setPivotLayout } from "./pivotLayout";
 import { carryFrameSidecars } from "./frameSidecar";
@@ -2523,19 +2523,35 @@ export type CorrMethod = "pearson" | "spearman" | "kendall" | "covariance";
 export function correlationMatrix(f: FrameValue, method: CorrMethod): FrameValue {
   const cols = f.columns.filter((c) => c.type === "number");
   const vals = cols.map((c) => c.values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null)));
+  // A column every pair reads whole ranks once ([[C120]] linearWork); a blank anywhere drops rows pair by pair.
+  const whole = vals.map((v) => v.every((x) => x !== null));
+  const ranks = new Map<number, number[]>();
+  const rankOf = (i: number) => {
+    let r = ranks.get(i);
+    if (!r) ranks.set(i, (r = averageRanks(vals[i] as number[])));
+    return r;
+  };
   const cell = (i: number, j: number): number | null => {
-    const xs: number[] = [], ys: number[] = [];
-    const n = Math.min(vals[i].length, vals[j].length);
-    for (let r = 0; r < n; r++) { const a = vals[i][r], b = vals[j][r]; if (a !== null && b !== null) { xs.push(a); ys.push(b); } }
-    const v = method === "pearson" ? pearson(xs, ys)
-      : method === "spearman" ? spearman(xs, ys)
-      : method === "kendall" ? kendallTau(xs, ys)
-      : covariance(xs, ys, true);
+    let v: number | SolError | null;
+    if (method === "spearman" && whole[i] && whole[j] && vals[i].length === vals[j].length) {
+      v = vals[i].length < 2 ? null : pearson(rankOf(i), rankOf(j));
+    } else {
+      const xs: number[] = [], ys: number[] = [];
+      const n = Math.min(vals[i].length, vals[j].length);
+      for (let r = 0; r < n; r++) { const a = vals[i][r], b = vals[j][r]; if (a !== null && b !== null) { xs.push(a); ys.push(b); } }
+      v = method === "pearson" ? pearson(xs, ys)
+        : method === "spearman" ? spearman(xs, ys)
+        : method === "kendall" ? kendallTau(xs, ys)
+        : covariance(xs, ys, true);
+    }
     return typeof v === "number" ? v : null;
   };
+  // Every method reads its two lists symmetrically, so each pair computes once and mirrors.
+  const grid = cols.map(() => new Array<number | null>(cols.length).fill(null));
+  for (let i = 0; i < cols.length; i++) for (let j = i; j < cols.length; j++) grid[i][j] = grid[j][i] = cell(i, j);
   const names = makeHeaders(["column", ...cols.map((c) => c.name)], cols.length + 1);
   const out: FrameColumn[] = [{ name: names[0], type: "string", values: cols.map((c) => c.name) }];
-  cols.forEach((_, j) => out.push({ name: names[j + 1], type: "number", values: cols.map((_, i) => cell(i, j)) }));
+  cols.forEach((_, j) => out.push({ name: names[j + 1], type: "number", values: cols.map((_, i) => grid[i][j]) }));
   return { __frame: true, columns: out };
 }
 
