@@ -160,9 +160,9 @@ export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip
   return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
 }
 
-// Where the formula twin answers differently (last-digit noise, ACOT's range, the ERF approximation, GAMMA below 0,
-// ACOTH at 1 and -1), the card keeps its own kernel; the rest run on the core.
-const OWN_KERNEL_OPS = new Set<MathFnOp>(["tanh", "sinh", "asinh", "acot", "coth", "csch", "acoth", "erf", "erfc", "gamma", "gammaln"]);
+// Where the formula twin answers differently (last-digit noise, ACOT's range, the ERF approximation, ACOTH
+// at 1 and -1), the card keeps its own kernel; the rest run on the core.
+const OWN_KERNEL_OPS = new Set<MathFnOp>(["tanh", "sinh", "asinh", "acot", "coth", "csch", "acoth", "erf", "erfc", "gammaln"]);
 
 function ownKernel(op: MathFnOp, x: number): number | null {
   switch (op) {
@@ -180,7 +180,6 @@ function ownKernel(op: MathFnOp, x: number): number | null {
       const e = (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
       return op === "erf" ? e : 1 - e;
     }
-    case "gamma":   return x > 0 ? Math.exp(lnGamma(x)) : null;
     case "gammaln": return x > 0 ? lnGamma(x) : null;
     default:        return null;
   }
@@ -748,7 +747,7 @@ export const BESSEL_OP_META = {
 export class BesselNode extends ClassicPreset.Node {
   static inputRoles = rolesFrom("BESSELJ", { n: 1 });
   static socketDocs: Record<string, string> = {
-    n: "Integer order, 0 or greater.",
+    n: "Order, 0 or greater; a fraction is truncated.",
   };
   label: string;
   op: BesselOp;
@@ -769,8 +768,7 @@ export class BesselNode extends ClassicPreset.Node {
     const x = readInput(inputs.x, this.literals.x ?? 1);
     const nRaw = readRole<number>(this, "n", inputs.n);
     if (x === null) { this.cachedResult = null; return { result: null }; }
-    const n = Math.max(0, Math.round(nRaw));
-    const result = callCore(this.op.toUpperCase(), [x, n]);
+    const result = callCore(this.op.toUpperCase(), [x, nRaw]);
     if (typeof result !== "number" || !Number.isFinite(result)) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = result;
     return { result };

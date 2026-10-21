@@ -1429,15 +1429,16 @@ registerInternal("PRICE", (settle, maturity, rate, yld, redemption, freq) =>
   bondPriceYield("price", toNum(settle), toNum(maturity), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
 registerInternal("YIELD", (settle, maturity, rate, pr, redemption, freq) =>
   bondPriceYield("yield", toNum(settle), toNum(maturity), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
-// Formula.js's Bessel functions recur once per order, and bessel.js flips a negative order's sign,
-// so an order past a million either way, or an infinite one, would hang ([[C120]] linearWork).
+// Formula.js's Bessel functions recur once per order, so an order past a million, or an infinite one,
+// would hang ([[C120]] linearWork).
 for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"] as const) {
   const fx = FX[name] as (...args: unknown[]) => unknown;
   registerInternal(name, (x, n) => {
-    const order = toNum(n);
+    const order = Math.trunc(toNum(n));
     if (typeof n === "string" && Number.isNaN(order)) return VALUE(name);
-    if (Math.abs(Math.trunc(order)) > 1_000_000) return solError("#DOMAIN!", `${name} takes an order between -1,000,000 and 1,000,000`);
-    return fx(x, n);
+    if (order < 0) return solError("#DOMAIN!", `${name} takes an order of 0 or more`);
+    if (order > 1_000_000) return solError("#DOMAIN!", `${name} takes an order of at most 1,000,000`);
+    return fx(x, Number.isNaN(order) ? n : order);
   });
 }
 // Formula.js's DB and DDB step once per period, so a huge period within a huge life would hang ([[C120]] linearWork).
