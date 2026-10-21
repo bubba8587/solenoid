@@ -54,7 +54,8 @@ import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
   emptyFrameOf, totalLabelledKeys, type Shape, type ShapeColumn,
 } from "../frameShape";
-import { csvList, listLiteralText, type FrameShapeContext } from "./frameShapeHook";
+import { csvList, type FrameShapeContext } from "./frameShapeHook";
+import { listLiteralText } from "../coerceInputs";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell, isAffineDisplay } from "../unitValue";

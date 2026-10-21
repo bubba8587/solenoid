@@ -6,6 +6,7 @@ import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coe
 import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube, coerceFrameCell, type FrameColType } from "./frame";
 import { parseCsvLine } from "./csv";
+import { csvField } from "./csvSafety";
 import { isFrameRef, readFrame } from "./frameBackend";
 import { isSolError, solError, SEES_ERRORS } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
@@ -28,6 +29,11 @@ export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist"
 /** A list literal's items as typed: split like CSV, trimmed, blanks dropped. */
 export function listLiteralItems(csv: string): string[] {
   return parseCsvLine(csv).map((s) => s.trim()).filter((s) => s !== "");
+}
+
+/** The literal `listLiteralItems` reads back as `items`: an item holding a comma or quote is quoted (`csvField`), and items join on a bare comma, since a quote after a space doesn't open a quoted field. */
+export function listLiteralText(items: readonly string[]): string {
+  return items.map((s) => csvField(s, false)).join(",");
 }
 
 const LITERAL_READ: Partial<Record<SocketDataType, FrameColType>> = { numlist: "number", list: "number", datelist: "date", logicallist: "logical" };
