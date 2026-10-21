@@ -406,11 +406,11 @@ fn clamp_index(x: f64, len: usize) -> usize {
 
 // ─── Statistics (statsOps.ts `aggregate`) ───────────────────────────────────────
 
-fn sum(a: &[f64]) -> f64 {
+pub(crate) fn sum(a: &[f64]) -> f64 {
     a.iter().fold(0.0, |x, y| x + y)
 }
 
-fn ssd(a: &[f64], m: f64) -> f64 {
+pub(crate) fn ssd(a: &[f64], m: f64) -> f64 {
     a.iter().fold(0.0, |x, y| x + js_pow(y - m, 2.0))
 }
 
@@ -687,7 +687,7 @@ fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) -> Result<Opt
     Ok(best.map(|(i, _)| i))
 }
 
-fn mean_of(a: &[f64]) -> f64 {
+pub(crate) fn mean_of(a: &[f64]) -> f64 {
     sum(a) / a.len() as f64
 }
 
@@ -1735,7 +1735,7 @@ fn parse_value_text(text: &str) -> f64 {
 }
 
 /// `numsOf`: numbers, and whatever else reads as one, lists flattened.
-fn nums_of(args: &[V]) -> Vec<f64> {
+pub(crate) fn nums_of(args: &[V]) -> Vec<f64> {
     args.iter()
         .flat_map(|v| match v {
             V::List(items) => items.iter().cloned().collect::<Vec<V>>(),
@@ -3566,7 +3566,7 @@ fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
 }
 
 /// `averageRanks` (statsOps.ts): ties share the mean of their places.
-fn average_ranks(arr: &[f64]) -> Vec<f64> {
+pub(crate) fn average_ranks(arr: &[f64]) -> Vec<f64> {
     let mut idx: Vec<usize> = (0..arr.len()).collect();
     crate::js_sort::js_sort_by(&mut idx, |&x, &y| (arr[x] - arr[y]).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
     let mut ranks = vec![0.0; arr.len()];
