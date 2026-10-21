@@ -29,6 +29,7 @@ pub mod js_radix;
 pub mod js_sort;
 pub mod letters;
 pub mod jsnum;
+pub mod js_regex;
 pub mod nfd_table;
 pub mod shapers;
 pub mod string_order;

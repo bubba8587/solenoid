@@ -141,7 +141,7 @@ pub fn ported_names() -> Vec<&'static str> {
 
 /// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
 pub fn reads_matrices(name: &str) -> bool {
-    crate::fns_matrix::NAMES.contains(&name) || crate::fns_lists::NAMES.contains(&name) || crate::shapers::is_shaper(name)
+    matches!(name, "XLOOKUP" | "XMATCH" | "INDEX") || crate::fns_matrix::NAMES.contains(&name) || crate::fns_lists::NAMES.contains(&name) || crate::shapers::is_shaper(name)
 }
 
 pub fn is_ported(name: &str) -> bool {
@@ -1470,17 +1470,33 @@ fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
 }
 
 /// `indexRefError`.
+/// `asOneDim`: a table's one row or one column, a list as it is, a value as a list of one; None for a 2-D table.
+fn as_one_dim(v: &V) -> Option<Vec<V>> {
+    match v {
+        V::List(rows) if matches!(rows.first(), Some(V::List(_))) => {
+            if rows.len() == 1 {
+                if let V::List(r) = &rows[0] {
+                    return Some(r.as_ref().clone());
+                }
+            }
+            rows.iter().map(|r| match r {
+                V::List(c) if c.len() == 1 => Some(c[0].clone()),
+                _ => None,
+            }).collect()
+        }
+        V::List(items) => Some(items.as_ref().clone()),
+        other => Some(vec![other.clone()]),
+    }
+}
+
 fn index_ref_error(n: f64, max: usize, what: &str) -> V {
     V::err(sol_error("#REF!", format!("{what} {} is outside 1…{max}", number_to_string(n))))
 }
 
-/// `indexInto` (indexAccess.ts) for one value or a whole column, which the TS holds as a one-column table. A null
-/// position (`row_null`) is a blank answer; None is a position left out.
+/// `indexInto` (indexAccess.ts) at one position per axis: a table, a list (one row) or one value. A null position
+/// (`row_null`) is a blank answer; None is a position left out.
 fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_null: bool) -> V {
-    if matches!(v, V::Null | V::Undef) {
-        return V::Null;
-    }
-    if row_null || col_null {
+    if matches!(v, V::Null | V::Undef) || row_null || col_null {
         return V::Null;
     }
     let row_all = row.is_none_or(|r| r.trunc() == 0.0);
@@ -1491,45 +1507,66 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
         let ok = (row_all || r == 0.0) && (col_all || c == 0.0);
         return if ok { v.clone() } else { V::err(sol_error("#REF!", "Index is outside a single value. Only index 1 exists")) };
     };
-    // A one-column table: `grid[i] = [items[i]]`; an empty column is the empty list.
-    let n = items.len();
     let inside = |k: f64, len: usize| k >= 0.0 && k < len as f64;
-    if n == 0 {
-        if col.is_none() {
-            return if row_all { v.clone() } else { index_ref_error(r + 1.0, 0, "Item") };
+    let or_null = |x: Option<&V>| match x {
+        None | Some(V::Undef) => V::Null,
+        Some(x) => x.clone(),
+    };
+    if matches!(items.first(), Some(V::List(_))) {
+        let grid = items;
+        if row_all && col_all {
+            return v.clone();
         }
-        if !row_all && r != 0.0 {
-            return index_ref_error(r + 1.0, 1, "Row");
+        let width = || grid.iter().map(|row| if let V::List(r) = row { r.len() } else { 1 }).max().unwrap_or(0);
+        // One position on a one-row or one-column table walks along it, as Excel's INDEX does ([[D85]] columnsStayColumns).
+        if col.is_none() && !row_all {
+            if grid.len() == 1 {
+                if let V::List(only) = &grid[0] {
+                    return if inside(r, only.len()) { or_null(only.get(r as usize)) } else { index_ref_error(r + 1.0, only.len(), "Column") };
+                }
+            }
+            if width() == 1 {
+                if !inside(r, grid.len()) {
+                    return index_ref_error(r + 1.0, grid.len(), "Row");
+                }
+                return match &grid[r as usize] {
+                    V::List(row) => or_null(row.first()),
+                    other => other.clone(),
+                };
+            }
         }
-        return if col_all { v.clone() } else { index_ref_error(c + 1.0, 0, "Column") };
-    }
-    if row_all && col_all {
-        return v.clone();
-    }
-    if col.is_none() && !row_all {
-        if n == 1 {
-            return if inside(r, 1) { items[0].clone() } else { index_ref_error(r + 1.0, 1, "Column") };
+        if !row_all && !inside(r, grid.len()) {
+            return index_ref_error(r + 1.0, grid.len(), "Row");
         }
-        return if inside(r, n) { items[r as usize].clone() } else { index_ref_error(r + 1.0, n, "Row") };
-    }
-    if !row_all && !inside(r, n) {
-        return index_ref_error(r + 1.0, n, "Row");
-    }
-    if row_all {
-        let width = usize::from(n > 0);
-        if !inside(c, width) {
-            return index_ref_error(c + 1.0, width, "Column");
+        if row_all {
+            let w = width();
+            if !inside(c, w) {
+                return index_ref_error(c + 1.0, w, "Column");
+            }
+            let c = c as usize;
+            return V::List(Rc::new(grid.iter().map(|row| match row {
+                V::List(cells) => or_null(cells.get(c)),
+                other => if c == 0 { other.clone() } else { V::Null },
+            }).collect()));
         }
-        return v.clone();
+        let row_arr: Vec<V> = match &grid[r as usize] {
+            V::List(cells) => cells.as_ref().clone(),
+            other => vec![other.clone()],
+        };
+        if col_all {
+            return V::List(Rc::new(row_arr));
+        }
+        return if inside(c, row_arr.len()) { or_null(row_arr.get(c as usize)) } else { index_ref_error(c + 1.0, row_arr.len(), "Column") };
     }
-    let cell = &items[r as usize];
-    if col_all {
-        return V::List(Rc::new(vec![cell.clone()]));
+    // A list is one row ([[D85]] columnsStayColumns): one index walks along it; with two, the row must be 1.
+    let item = |i: f64, what: &str| if inside(i, items.len()) { items[i as usize].clone() } else { index_ref_error(i + 1.0, items.len(), what) };
+    if col.is_none() {
+        return if row_all { v.clone() } else { item(r, "Item") };
     }
-    if !inside(c, 1) {
-        return index_ref_error(c + 1.0, 1, "Column");
+    if !row_all && r != 0.0 {
+        return index_ref_error(r + 1.0, 1, "Row");
     }
-    cell.clone()
+    if col_all { v.clone() } else { item(c, "Column") }
 }
 
 /// `/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i`: hours, minutes, seconds and whether
@@ -2733,10 +2770,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Ok(m) => m,
                 Err(e) => return e,
             };
-            let ks = crate::excel_criteria::as_range(arg(a, 1));
+            let Some(ks) = as_one_dim(arg(a, 1)) else {
+                return V::err(sol_error("#VALUE!", format!("{name}'s lookup array must be a single row or a single column")));
+            };
             let pick: Box<dyn Fn(&V) -> V> = if name == "XLOOKUP" {
                 let values = arg(a, 2);
-                let vs = crate::excel_criteria::as_range(values);
+                let Some(vs) = as_one_dim(values) else {
+                    return V::err(sol_error("#VALUE!", "XLOOKUP's return array must be a single row or a single column"));
+                };
                 if matches!(values, V::List(_)) && vs.len() != ks.len() {
                     return V::err(sol_error("#VALUE!", "XLOOKUP's return array must match the lookup array's length"));
                 }
@@ -2754,7 +2795,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     Ok(None) => V::err(sol_error("#N/A", "No match found")),
                 })
             };
+            // `spillLookup`: a list of lookups answers one each; a table only as one row or column.
             match arg(a, 0) {
+                l @ V::List(items) if matches!(items.first(), Some(V::List(_))) => match as_one_dim(l) {
+                    Some(cells) => V::List(Rc::new(cells.iter().map(&pick).collect())),
+                    None => V::err(sol_error("#SHAPE!", format!("{name}'s lookup value is one value or a list, not a 2-D grid"))),
+                },
                 V::List(items) => V::List(Rc::new(items.iter().map(&pick).collect())),
                 l => pick(l),
             }
@@ -2954,11 +3000,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 (Err(e), _) | (_, Err(e)) => return e,
                 (Ok(r), Ok(c)) => (r, c),
             };
-            // A whole row or column answers a list, which only the TS's broadcast reads wherever it lands.
-            match index_into(arg(a, 0), row, col, matches!(arg(a, 1), V::Null), matches!(arg(a, 2), V::Null)) {
-                V::List(_) => bail(),
-                r => r,
-            }
+            index_into(arg(a, 0), row, col, matches!(arg(a, 1), V::Null), matches!(arg(a, 2), V::Null))
         }
         "CONTAINS" => {
             if let V::List(items) = arg(a, 0) {
@@ -3931,7 +3973,8 @@ fn regex_occurrence(raw: &V) -> Option<f64> {
 }
 
 fn regex_call(name: &str, a: &[V]) -> V {
-    use crate::text_ops::{regex_extract, regex_replace_all, regex_test, replace_nth, safe_regex};
+    use crate::js_regex::{compile, Compiled};
+    use crate::text_ops::{regex_extract, regex_replace_all, regex_test, replace_nth};
     let cs = match name {
         "REGEXTEST" => arg(a, 2),
         "REGEXEXTRACT" => arg(a, 3),
@@ -3963,16 +4006,12 @@ fn regex_call(name: &str, a: &[V]) -> V {
     if [&text, &pattern, &replacement].iter().any(|s| may_hold_lone_surrogate(s)) {
         return bail();
     }
-    // Without the u flag, `i` compares by simple uppercase and never maps a non-ASCII letter to ASCII (ſ isn't s);
-    // regress folds classes the Unicode way (its caseless `\W` takes s and k, for ſ and K), so a caseless match runs
-    // here only on ASCII.
-    if icase && (!text.is_ascii() || !pattern.is_ascii() || pattern.contains("\\u") || pattern.contains("\\W")) {
-        return bail();
-    }
-    // A pattern regress refuses may be one V8 takes, and every match list (modes 1 and 2) is a list.
-    let Some(re) = safe_regex(&utf16(&pattern), icase) else {
-        return bail();
+    let re = match compile(&utf16(&pattern), icase) {
+        Compiled::Ok(re) => re,
+        Compiled::Invalid => return V::Null,
+        Compiled::Unsure => return bail(),
     };
+    // Every match list (modes 1 and 2) is a list.
     let t = utf16(&text);
     match name {
         "REGEXTEST" => V::Num(if regex_test(&re, &t) { 1.0 } else { 0.0 }),

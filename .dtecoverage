@@ -78,3 +78,6 @@ prerender
 
 why: wasm-bindgen output for the Rust core; `npm run build:wasm` writes it from crates/solenoid-core, which cites
 src/graph/engineWasm
+
+why: JSON can't carry a citation; the core's call table is frozen from the TypeScript by tests/graph/coreCallTable.test.ts, which cites [[D99]] rustIsSpec
+crates/solenoid-core/data

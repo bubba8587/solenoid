@@ -11,9 +11,6 @@
  "MINIFS": 1,
  "NUMBERVALUE": 2,
  "PRICEDISC": 7,
- "REGEXEXTRACT": 1893,
- "REGEXREPLACE": 1893,
- "REGEXTEST": 1893,
  "SLUGIFY": 205,
  "SUMIFS": 1,
  "TEXTSPLIT": 117,
@@ -21,6 +18,6 @@
  "TIMEZONECONVERT": 3,
  "UNACCENT": 172,
  "WRAPTEXT": 138,
- "computed columns": 2984,
- "formulas over values": 176
+ "computed columns": 129,
+ "formulas over values": 164
 }

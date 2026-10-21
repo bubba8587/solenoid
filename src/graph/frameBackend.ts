@@ -7,10 +7,10 @@ import {
 import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, aggUnitPlan, readingScaleOf, linearScaleOf, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp, type PivotSpec } from "./frameVerbs";
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
-import { formulaCallTable, rowRefNames, extractVariables, referencedNames, type FormulaCallTraits } from "./excelFormula";
-import type { LambdaValue } from "./lambdaValue";
+import { isLambdaValue, type LambdaValue } from "./lambdaValue";
+import { isCx } from "./cxValue";
 import { wallClockSerial } from "./nodes/dateSerial";
-import { solError, isSolError, type SolError } from "./errorValue";
+import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
 import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, type BinaryCells } from "./engineWasm";
@@ -466,42 +466,86 @@ export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null
   }
 }
 
-const isScalarCell = (v: unknown): v is FrameCell =>
-  v === null || typeof v === "number" || typeof v === "string" || typeof v === "boolean" || isSolError(v);
-
 type SideValue = (name: string, kind: "var" | "row") => unknown;
 
-/** A row formula's side values, as `runColumn` binds them: every name that isn't a column of `columns` reads one
- *  scalar, in the order its side sockets take. Null where a side value isn't a scalar or a name is reserved. */
-function formulaSides(expr: string, columns: ReadonlySet<string>, opts: { sideValue?: SideValue; reserved?: readonly string[]; lambdas?: readonly string[] }):
-  { sides: Record<string, unknown>; sideVars: string[] } | null {
+/** A value as the core reads it (`eval.rs` `decode_value`): arrays nest, an error keeps its message, a wired LAMBDA
+ *  crosses as its body text and captures. Undefined where a value can't cross: a LAMBDA with no text, a frame, text
+ *  with a lone surrogate. */
+function coreValue(v: unknown): unknown {
+  if (v === undefined) return { __undef: 1 };
+  if (typeof v === "string") return wellFormed(v) ? v : undefined;
+  if (Array.isArray(v)) {
+    const out = v.map(coreValue);
+    return out.includes(undefined) ? undefined : out;
+  }
+  if (isSolError(v)) { const ref = errorRef(v); return { __err: v.code, msg: v.message, ...(ref === undefined ? {} : { ref }) }; }
+  if (isCx(v)) return { __cx: [coreValue(v.re), coreValue(v.im)] };
+  if (isLambdaValue(v)) {
+    if (v.eta) return { __lambda: { eta: v.expr } };
+    if (!v.expr || !wellFormed(v.expr)) return undefined;
+    const values = (v.captured ?? []).map((_, i) => coreValue(v.capturedValues?.[i]));
+    return values.includes(undefined) ? undefined : { __lambda: { params: v.params, expr: v.expr, captured: v.captured ?? [], capturedValues: values } };
+  }
+  if (v === null || typeof v === "number" || typeof v === "boolean") return encodeWireCell(v);
+  return undefined;
+}
+
+interface ColumnOpts { sideValue?: SideValue; reserved?: readonly string[]; lambdas?: Record<string, LambdaValue>; bare?: LambdaValue; alias?: Record<string, string | undefined> }
+
+/** What `engine_compute_column` takes beside the frame: each name the formula reads that no column holds, bound as
+ *  `runColumn` would, and the columns it reads. Null where the formula doesn't parse or a value can't cross. */
+function columnInputs(expr: string, columns: readonly string[], opts: ColumnOpts):
+  { args: Record<string, unknown>; named: Set<string> } | null {
+  if (!wellFormed(expr)) return null;
+  const lambdas = opts.lambdas ?? {};
+  const bodies = [...Object.values(lambdas), ...(opts.bare ? [opts.bare] : [])].flatMap((l) => (l.expr ? [l.expr] : []));
+  const names = wasmInvokeSync<{ parses: boolean; vars?: string[]; rows?: string[] }>("engine_formula_names", { src: opts.bare ? "" : expr, bodies });
+  if (!names.parses) return null;
+  const colSet = new Set(columns);
   const reserved = opts.reserved ?? [];
+  const alias = Object.fromEntries(Object.entries(opts.alias ?? {}).filter((e): e is [string, string] => e[1] !== undefined));
+  const free = (p: string) => !colSet.has(p) && !reserved.includes(p) && !(p in alias);
+  const value = (p: string, kind: "var" | "row") => (p in lambdas ? lambdas[p] : opts.sideValue?.(p, kind));
   const sides: Record<string, unknown> = {};
-  const sideVars: string[] = [];
-  const lambdas = opts.lambdas ?? [];
-  for (const p of extractVariables(expr)) {
-    if (lambdas.includes(p)) continue;
-    // A bare column name is the whole column, which the Rust evaluator reads where a range function takes it.
-    if (columns.has(p)) continue;
-    if (reserved.includes(p)) return null;
-    const v = opts.sideValue?.(p, "var");
-    if (!isScalarCell(v)) return null;
-    sideVars.push(p);
-    sides[p] = encodeWireCell(v);
+  const rowSides: Record<string, unknown> = {};
+  const vars = opts.bare ? opts.bare.params : [...names.vars!, ...Object.keys(lambdas)];
+  for (const p of vars) {
+    if (!free(p) || p in sides) continue;
+    const w = coreValue(value(p, "var"));
+    if (w === undefined) return null;
+    sides[p] = w;
   }
-  // A wired LAMBDA binds as a side value of its own (`runColumn`'s vars), after the formula's names.
-  for (const p of lambdas) if (!sideVars.includes(p)) sideVars.push(p);
-  for (const p of rowRefNames(expr)) {
-    if (reserved.includes(p)) return null;
-    if (columns.has(p)) continue;
-    if (!sideVars.includes(p)) sideVars.push(p);
-    if (!(p in sides)) {
-      const v = opts.sideValue?.(p, "row");
-      if (!isScalarCell(v)) return null;
-      sides[p] = encodeWireCell(v);
-    }
+  for (const p of names.rows!) {
+    if (!free(p) || p in rowSides) continue;
+    const w = coreValue(value(p, "row"));
+    if (w === undefined) return null;
+    rowSides[p] = w;
   }
-  return { sides, sideVars };
+  let bare: unknown;
+  if (opts.bare) {
+    bare = (coreValue(opts.bare) as { __lambda?: unknown } | undefined)?.__lambda;
+    if (bare === undefined) return null;
+  }
+  const named = new Set([...vars, ...names.rows!, ...Object.values(alias),
+    ...Object.values(lambdas).flatMap((l) => l.captured ?? []), ...(opts.bare?.captured ?? [])]);
+  return {
+    args: { src: opts.bare ? "" : expr, sides, rowSides, reserved, alias, lambdas: Object.keys(lambdas), clock: engineClock(), ...(opts.bare ? { bare } : {}) },
+    named,
+  };
+}
+
+/** A frame's string cells cross as UTF-8, where a lone surrogate would turn into U+FFFD. */
+const crossesWhole = (f: FrameValue): boolean =>
+  f.columns.every((c) => c.values.every((v) => typeof v !== "string" || wellFormed(v)));
+
+type ColumnAnswer = { cells: FrameCell[]; sideVars: string[] } | SolError;
+
+/** What `engine_compute_column` answered: the cells, the error that stopped the column, or null where a body bailed. */
+function columnAnswer(r: { bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }, read: (h: string) => FrameCell[]):
+  ColumnAnswer | null {
+  if (r.bail) return null;
+  if (r.error) return solError(r.error.code as SolErrorCode, r.error.message);
+  return { cells: read(r.handle!), sideVars: r.sideVars! };
 }
 
 const wellFormed = (s: string): boolean => (s as string & { isWellFormed(): boolean }).isWellFormed();
@@ -536,106 +580,25 @@ export function engineClock(at: Date = new Date()): EngineClock {
   return { now: wallClockSerial(at), today: wallClockSerial(at, true), midnightRounds, dayZeroNegative };
 }
 
-/** `computeColumnCells` with an `expr` spec on the Rust evaluator, when every name is a `@column` of `f` or a scalar
- *  side value and every function is ported; null where the TS evaluator should run it. */
-export function computeColumnOnEngine(
-  f: FrameValue, expr: string, rows: number,
-  opts: { sideValue?: SideValue; reserved?: readonly string[]; lambdas?: Record<string, LambdaValue>; bare?: LambdaValue } = {},
-): { cells: FrameCell[]; sideVars: string[] } | null {
-  // Text with a lone surrogate can't cross into Rust, whose strings are well-formed.
-  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(expr)) return null;
-  const colNames = new Set(f.columns.map((c) => c.name));
-  const lambdas: Record<string, LambdaValue> = { ...(opts.lambdas ?? {}), ...(opts.bare ? { λ: opts.bare } : {}) };
-  const lowered = lowerLambdas(lambdas, colNames, opts);
-  if (!lowered) return null;
-  let table: Record<string, FormulaCallTraits> | null = opts.bare ? {} : formulaCallTable(expr);
-  if (!table) return null;
-  for (const t of lowered.tables) table = mergeCallTables(table, t);
-  let bound: { sides: Record<string, unknown>; sideVars: string[] } | null;
-  let bareParams: { column?: string; value?: unknown }[] | undefined;
-  if (opts.bare) {
-    // `runColumn`'s lambda spec: a parameter is the same-named column's cell, else a side value.
-    bareParams = [];
-    const sideVars: string[] = [];
-    for (const p of opts.bare.params) {
-      if (colNames.has(p)) { bareParams.push({ column: p }); continue; }
-      if ((opts.reserved ?? []).includes(p)) return null;
-      const v = opts.sideValue?.(p, "var");
-      if (!isScalarCell(v)) return null;
-      sideVars.push(p);
-      bareParams.push({ value: encodeWireCell(v) });
-    }
-    bound = { sides: {}, sideVars };
-  } else {
-    bound = formulaSides(expr, colNames, { ...opts, lambdas: Object.keys(lambdas) });
-  }
-  if (!bound) return null;
-  const sides = { ...lowered.sides, ...bound.sides };
-  const named = new Set([...referencedNames(expr), ...lowered.names]);
-  const src = wasmSourceBin(encodeBinary({ __frame: true, columns: f.columns.filter((c) => named.has(c.name)) }));
+/** `computeColumnCells` on the core ([[D99]] rustIsSpec): a formula, or with `bare` a wired LAMBDA called with each
+ *  row's cells. Null where the wasm engine is off, a value can't cross, or a body leaves the column to the TS. */
+export function computeColumnOnEngine(f: FrameValue, expr: string, rows: number, opts: ColumnOpts = {}): ColumnAnswer | null {
+  if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
+  const inputs = columnInputs(expr, f.columns.map((c) => c.name), opts);
+  if (!inputs) return null;
+  const frame: FrameValue = { __frame: true, columns: f.columns.filter((c) => inputs.named.has(c.name)) };
+  if (!crossesWhole(frame)) return null;
+  const src = wasmSourceBin(encodeBinary(frame));
   let out: string | undefined;
   try {
-    const r = wasmInvokeSync<{ supported: boolean; handle?: string }>("engine_formula_column", {
-      handle: src, expr, table, sides, rows, lambdas: lowered.wire, clock: engineClock(), ...(opts.bare ? { bare: "λ", bareParams } : {}),
-    });
-    if (!r.supported) return null;
-    out = r.handle!;
-    return { cells: decodeBinary(wasmReadBin(out)!)[0].values, sideVars: bound.sideVars };
+    const r = wasmInvokeSync<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }>(
+      "engine_compute_column", { handle: src, rows, ...inputs.args });
+    out = r.handle;
+    return columnAnswer(r, (h) => decodeBinary(wasmReadBin(h)!)[0].values);
   } finally {
     wasmInvokeSync("engine_drop", { handle: src });
     if (out) wasmInvokeSync("engine_drop", { handle: out });
   }
-}
-
-/** Wired LAMBDAs as the Rust core reads them: body text, parameters, and captures, a capture that names a column
- *  reading the column there. Null when a body can't cross: no text, an eta function, or a capture that isn't one
- *  value. `names` are the columns the bodies read; `sides` the `@x` a body reads that no column or capture binds. */
-function lowerLambdas(lambdas: Record<string, LambdaValue>, columns: ReadonlySet<string>, opts: { sideValue?: SideValue; reserved?: readonly string[] }):
-  { wire: Record<string, unknown>; tables: Record<string, FormulaCallTraits>[]; names: string[]; sides: Record<string, unknown> } | null {
-  const wire: Record<string, unknown> = {};
-  const tables: Record<string, FormulaCallTraits>[] = [];
-  const names: string[] = [];
-  const sides: Record<string, unknown> = {};
-  for (const [name, lam] of Object.entries(lambdas)) {
-    if (!lam.expr || lam.eta || !wellFormed(lam.expr)) return null;
-    const captured = lam.captured ?? [];
-    const values = lam.capturedValues;
-    if (captured.length && (!values || values.length !== captured.length)) return null;
-    const cap: { name: string; value: unknown }[] = [];
-    for (let i = 0; i < captured.length; i++) {
-      const c = captured[i], v = values![i];
-      if (columns.has(c)) { cap.push({ name: c, value: null }); names.push(c); continue; }
-      if (!isScalarCell(v)) return null;
-      cap.push({ name: c, value: encodeWireCell(v) });
-    }
-    const t = formulaCallTable(lam.expr);
-    if (!t) return null;
-    tables.push(t);
-    names.push(...referencedNames(lam.expr), ...lam.params);
-    for (const p of rowRefNames(lam.expr)) {
-      if (columns.has(p) || lam.params.includes(p) || captured.includes(p) || p in sides) continue;
-      if ((opts.reserved ?? []).includes(p)) return null;
-      const v = opts.sideValue?.(p, "row");
-      if (!isScalarCell(v)) return null;
-      sides[p] = encodeWireCell(v);
-    }
-    wire[name] = { params: lam.params, expr: lam.expr, captured: cap };
-  }
-  return { wire, tables, names, sides };
-}
-
-/** Two formulas' call tables as one: a function's traits are its own, so the longer roles list wins. */
-function mergeCallTables(a: Record<string, FormulaCallTraits>, b: Record<string, FormulaCallTraits>): Record<string, FormulaCallTraits> {
-  const out = { ...a };
-  for (const [k, t] of Object.entries(b)) {
-    const prev = out[k];
-    out[k] = !prev ? t : {
-      ...(t.roles.length > prev.roles.length ? t : prev),
-      blanks: { ...prev.blanks, ...t.blanks },
-      scalar: [...new Set([...prev.scalar, ...t.scalar])].sort((x, y) => x - y),
-    };
-  }
-  return out;
 }
 
 /** The same over a frame already in the wasm engine: only the answer column comes back, and `col` keeps it in the
@@ -643,19 +606,19 @@ function mergeCallTables(a: Record<string, FormulaCallTraits>, b: Record<string,
 export async function computeColumnOnRef(
   ref: FrameRef, expr: string, columns: readonly string[],
   opts: { sideValue?: SideValue; reserved?: readonly string[] } = {},
-): Promise<{ cells: FrameCell[]; sideVars: string[]; base: FrameHandle; col: FrameHandle } | null> {
+): Promise<{ cells: FrameCell[]; sideVars: string[]; base: FrameHandle; col: FrameHandle } | SolError | null> {
   const be = frameBackend();
-  if (!(be instanceof EngineBackend) || !be.resident || !wellFormed(expr)) return null;
-  const table = formulaCallTable(expr);
-  if (!table) return null;
-  const bound = formulaSides(expr, new Set(columns), opts);
-  if (!bound) return null;
+  if (!(be instanceof EngineBackend) || !be.resident) return null;
+  const inputs = columnInputs(expr, columns, opts);
+  if (!inputs) return null;
   const base = await flushRef(ref);
   if (isOracleHandle(base)) return null;
-  const col = await be.formulaColumn(base, { expr, table, sides: bound.sides, clock: engineClock() });
-  if (!col) return null;
+  const r = await be.computeColumn(base, inputs.args);
+  if (r.bail) return null;
+  if (r.error) return solError(r.error.code as SolErrorCode, r.error.message);
+  const col = r.handle as FrameHandle;
   const cells = (await be.column(col, "out"))?.values ?? [];
-  return { cells, sideVars: bound.sideVars, base, col };
+  return { cells, sideVars: r.sideVars!, base, col };
 }
 
 /** A frame built in the engine from named columns of resident frames, each renamed and typed; `schema` is its
@@ -732,9 +695,10 @@ class EngineBackend implements FrameBackend {
     return this.bulk !== undefined;
   }
 
-  async formulaColumn(handle: FrameHandle, args: { expr: string; table: unknown; sides: Record<string, unknown>; clock: EngineClock }): Promise<FrameHandle | null> {
-    const r = await this.invoke<{ supported: boolean; handle?: string }>("engine_formula_column", { handle, ...args });
-    return r.supported ? this.remember(r.handle as FrameHandle, null) : null;
+  async computeColumn(handle: FrameHandle, args: Record<string, unknown>): Promise<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }> {
+    const r = await this.invoke<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }>("engine_compute_column", { handle, ...args });
+    if (r.handle) this.remember(r.handle as FrameHandle, null);
+    return r;
   }
 
   async assemble(parts: readonly { handle: FrameHandle; column: string; as: string; type: FrameColType }[], schema: FrameValue): Promise<FrameHandle> {

@@ -169,6 +169,68 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 }
             }
         }
+        // [[D99]] rustIsSpec: the names a formula (and the wired LAMBDAs it calls) reads, for the caller to bind.
+        "engine_formula_names" => {
+            let src = parse::<Option<String>>(args, "src")?.unwrap_or_default();
+            let bodies = parse::<Option<Vec<String>>>(args, "bodies")?.unwrap_or_default();
+            let mut vars = Vec::new();
+            let mut rows: Vec<String> = Vec::new();
+            if !src.is_empty() {
+                let Some(ast) = crate::excel_formula::parse_formula(&src) else { return Ok(json!({ "parses": false })) };
+                vars = crate::eval::variables(&ast);
+                rows = crate::eval::row_refs(&ast);
+            }
+            for b in bodies.iter().filter_map(|b| crate::excel_formula::parse_formula(b)) {
+                for r in crate::eval::row_refs(&b) {
+                    if !rows.contains(&r) {
+                        rows.push(r);
+                    }
+                }
+            }
+            Ok(json!({ "parses": true, "vars": vars, "rows": rows }))
+        }
+        // `computeColumnCells` in the core: a formula or a bare wired LAMBDA over a resident frame.
+        "engine_compute_column" => {
+            let f = get(&parse::<String>(args, "handle")?)?;
+            let values = |key: &str| -> Result<crate::fxhash::FxHashMap<String, crate::excel_functions::V>, SolError> {
+                let m = parse::<Option<serde_json::Map<String, Json>>>(args, key)?.unwrap_or_default();
+                Ok(m.iter().map(|(k, v)| (k.clone(), crate::eval::decode_value(v))).collect())
+            };
+            let inputs = crate::eval::ColumnInputs {
+                frame: &f,
+                sides: values("sides")?,
+                row_sides: values("rowSides")?,
+                reserved: parse::<Option<Vec<String>>>(args, "reserved")?.unwrap_or_default(),
+                alias: parse::<Option<crate::fxhash::FxHashMap<String, String>>>(args, "alias")?.unwrap_or_default(),
+                rows: parse::<Option<usize>>(args, "rows")?.unwrap_or_else(|| frame_row_count(&f)),
+            };
+            let lambdas = parse::<Option<Vec<String>>>(args, "lambdas")?.unwrap_or_default();
+            crate::excel_functions::set_clock(parse(args, "clock")?);
+            crate::excel_functions::take_bailed();
+            let outcome = match args.get("bare") {
+                Some(w) if !w.is_null() => match crate::eval::decode_value(&json!({ "__lambda": w })) {
+                    crate::excel_functions::V::Lambda(lam) => crate::eval::column(crate::eval::ColumnSpec::Lambda(&lam), inputs),
+                    _ => Ok(crate::eval::ColumnOutcome::Bail),
+                },
+                _ => match crate::excel_formula::parse_formula(&parse::<String>(args, "src")?) {
+                    None => Err(sol_error("#SYNTAX!", "The formula doesn't parse")),
+                    Some(ast) => crate::eval::column(crate::eval::ColumnSpec::Expr { ast: &ast, lambdas: &lambdas }, inputs),
+                },
+            };
+            crate::excel_functions::set_clock(None);
+            if crate::excel_functions::take_bailed() {
+                crate::excel_functions::take_thrown();
+                return Ok(json!({ "bail": true }));
+            }
+            match outcome {
+                Err(e) => Ok(json!({ "error": { "code": e.code, "message": e.message } })),
+                Ok(crate::eval::ColumnOutcome::Bail) => Ok(json!({ "bail": true })),
+                Ok(crate::eval::ColumnOutcome::Done { cells, side_vars }) => {
+                    let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, cells)] };
+                    Ok(json!({ "handle": register(out), "sideVars": side_vars }))
+                }
+            }
+        }
         "engine_math" => {
             let xs = parse::<Vec<f64>>(args, "xs")?;
             let ys = parse::<Option<Vec<f64>>>(args, "ys")?.unwrap_or_default();
@@ -233,13 +295,7 @@ pub enum CallReply {
 /// `engine_call` (a body by name over wired arguments) and `engine_eval` (a formula over named values).
 pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
     use crate::excel_functions::{call_function, take_thrown, V};
-    fn arg_of(j: &Json) -> V {
-        match j {
-            Json::Array(items) => V::List(std::rc::Rc::new(items.iter().map(arg_of).collect())),
-            _ if j.get("__undef").is_some() => V::Undef,
-            _ => crate::excel_formula::cell_to_v_pub(&crate::wire::decode_cell(j)),
-        }
-    }
+    let arg_of = crate::eval::decode_value;
     crate::excel_functions::set_clock(parse(args, "clock")?);
     let r = if command == "engine_call" {
         let name = parse::<String>(args, "name")?;
@@ -248,11 +304,10 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;
-        let table: crate::excel_formula::CallTable = parse(args, "table")?;
         let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
         match crate::excel_formula::parse_formula(&src) {
             None => V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")),
-            Some(ast) => crate::eval::Eval { table: &table }.run(&ast, &std::rc::Rc::new(env)),
+            Some(ast) => crate::eval::Eval::default().run(&ast, &std::rc::Rc::new(env)),
         }
     };
     crate::excel_functions::set_clock(None);
