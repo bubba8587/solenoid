@@ -4,12 +4,28 @@
  * `{"ok": result}` or `{"err": {"__solError", code, message}}`, as JSON text.
  */
 export function engine_invoke(command: string, args: string): string;
+export function engine_source_bin(schema: string, tags: Uint8Array, nums: Float64Array, strs: string, lens: Uint32Array): string;
+/**
+ * Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
+ * `column` names by `getColumn` rules (`null` when none), each cut to `limit` cells when it's set.
+ */
+export function engine_read_bin(handle: string, column?: string | null, limit?: number | null): string;
+export function take_tags(): Uint8Array;
+export function take_nums(): Float64Array;
+export function take_strs(): string;
+export function take_lens(): Uint32Array;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly engine_invoke: (a: number, b: number, c: number, d: number) => [number, number];
+  readonly engine_read_bin: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+  readonly engine_source_bin: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
+  readonly take_lens: () => [number, number];
+  readonly take_nums: () => [number, number];
+  readonly take_strs: () => [number, number];
+  readonly take_tags: () => [number, number];
   readonly __wbindgen_export_0: WebAssembly.Table;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;

@@ -1,20 +1,77 @@
 // [[C16]] polarsEngine
-//! The WebAssembly entry: one string-in, string-out call per engine command.
+//! The WebAssembly entry: one string-in, string-out call per engine command, plus the columnar
+//! hand-off (`binary.rs`) for frames crossing in bulk.
+
+use std::cell::RefCell;
 
 use wasm_bindgen::prelude::*;
 
-use crate::frame_backend::invoke;
+use crate::binary::{decode_frame, Columnar};
+use crate::error_value::SolError;
+use crate::frame::get_column;
+use crate::frame_backend::{get, invoke, register};
 use crate::wire::error_to_wire;
+
+fn reply(r: Result<serde_json::Value, SolError>) -> String {
+    match r {
+        Ok(v) => serde_json::json!({ "ok": v }).to_string(),
+        Err(e) => serde_json::json!({ "err": error_to_wire(&e) }).to_string(),
+    }
+}
 
 /// `{"ok": result}` or `{"err": {"__solError", code, message}}`, as JSON text.
 #[wasm_bindgen]
 pub fn engine_invoke(command: &str, args: &str) -> String {
-    let parsed = match serde_json::from_str(args) {
-        Ok(v) => v,
-        Err(e) => return serde_json::json!({ "err": { "__solError": true, "code": "#ERROR!", "message": e.to_string() } }).to_string(),
-    };
-    match invoke(command, &parsed) {
-        Ok(v) => serde_json::json!({ "ok": v }).to_string(),
-        Err(e) => serde_json::json!({ "err": error_to_wire(&e) }).to_string(),
+    match serde_json::from_str(args) {
+        Ok(parsed) => reply(invoke(command, &parsed)),
+        Err(e) => reply(Err(crate::error_value::sol_error("#ERROR!", e.to_string()))),
     }
+}
+
+#[wasm_bindgen]
+pub fn engine_source_bin(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> String {
+    reply(decode_frame(schema, tags, nums, strs, lens).map(|f| serde_json::json!(register(f))))
+}
+
+thread_local! {
+    static STAGED: RefCell<Columnar> = RefCell::new(Columnar::default());
+}
+
+/// Stages a frame's cells for the `take_*` calls and answers its schema: every column, or the one
+/// `column` names by `getColumn` rules (`null` when none), each cut to `limit` cells when it's set.
+#[wasm_bindgen]
+pub fn engine_read_bin(handle: &str, column: Option<String>, limit: Option<u32>) -> String {
+    reply(get(handle).map(|f| {
+        let cols: Vec<_> = match &column {
+            Some(name) => match get_column(&f, name) {
+                Some(c) => vec![c],
+                None => return serde_json::Value::Null,
+            },
+            None => f.columns.iter().collect(),
+        };
+        let out = Columnar::encode(&cols, limit.map(|l| l as usize));
+        let schema = serde_json::json!({ "columns": out.schema, "rowCount": crate::frame::frame_row_count(&f) });
+        STAGED.with(|s| *s.borrow_mut() = out);
+        schema
+    }))
+}
+
+#[wasm_bindgen]
+pub fn take_tags() -> Vec<u8> {
+    STAGED.with(|s| std::mem::take(&mut s.borrow_mut().tags))
+}
+
+#[wasm_bindgen]
+pub fn take_nums() -> Vec<f64> {
+    STAGED.with(|s| std::mem::take(&mut s.borrow_mut().nums))
+}
+
+#[wasm_bindgen]
+pub fn take_strs() -> String {
+    STAGED.with(|s| std::mem::take(&mut s.borrow_mut().strs))
+}
+
+#[wasm_bindgen]
+pub fn take_lens() -> Vec<u32> {
+    STAGED.with(|s| std::mem::take(&mut s.borrow_mut().lens))
 }

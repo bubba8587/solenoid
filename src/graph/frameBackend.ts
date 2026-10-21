@@ -8,7 +8,7 @@ import { READINGS_ADD, READINGS_SCALE } from "./unitValue";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
-import { loadWasmEngine, wasmInvoke } from "./engineWasm";
+import { loadWasmEngine, wasmInvoke, wasmSourceBin, wasmReadBin, type BinaryCells } from "./engineWasm";
 import { calcModeStore } from "./calcModeStore";
 import { pushNotice } from "./noticeStore";
 import { settingsStore } from "./settingsStore";
@@ -334,6 +334,71 @@ function decodeWireColumns(columns: FrameColumn[]): FrameColumn[] {
   return columns.map((c) => ({ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] }));
 }
 
+// The columnar hand-off's tags (crates/solenoid-core/src/binary.rs).
+const TAG_NULL = 0, TAG_NUM = 1, TAG_STR = 2, TAG_FALSE = 3, TAG_TRUE = 4, TAG_ERR = 5;
+
+function encodeBinary(frame: FrameValue): BinaryCells {
+  const total = frame.columns.reduce((n, c) => n + c.values.length, 0);
+  const tags = new Uint8Array(total);
+  const nums = new Float64Array(total);
+  const parts: string[] = [];
+  const lens: number[] = [];
+  const text = (t: string) => { parts.push(t); lens.push(t.length); };
+  let k = 0;
+  for (const c of frame.columns) {
+    for (const v of c.values) {
+      if (typeof v === "number") { tags[k] = TAG_NUM; nums[k] = v; }
+      else if (typeof v === "string") { tags[k] = TAG_STR; text(v); }
+      else if (typeof v === "boolean") tags[k] = v ? TAG_TRUE : TAG_FALSE;
+      else if (isSolError(v)) { tags[k] = TAG_ERR; nums[k] = errorRef(v) ?? NaN; text(v.code); text(v.message); }
+      else tags[k] = TAG_NULL;
+      k++;
+    }
+  }
+  return {
+    schema: frame.columns.map((c) => ({ name: c.name, type: c.type, len: c.values.length })),
+    tags, nums, strs: parts.join(""), lens: Uint32Array.from(lens),
+  };
+}
+
+function decodeBinary(b: BinaryCells): FrameColumn[] {
+  let k = 0, off = 0, li = 0;
+  const text = () => { const n = b.lens[li++]; const t = b.strs.slice(off, off + n); off += n; return t; };
+  return b.schema.map((c) => {
+    const values = new Array<FrameCell>(c.len);
+    for (let i = 0; i < c.len; i++, k++) {
+      switch (b.tags[k]) {
+        case TAG_NUM: values[i] = b.nums[k]; break;
+        case TAG_STR: values[i] = text(); break;
+        case TAG_FALSE: values[i] = false; break;
+        case TAG_TRUE: values[i] = true; break;
+        case TAG_ERR: {
+          const code = text(), message = text(), ref = b.nums[k];
+          const original = Number.isNaN(ref) ? undefined : _errorRefs.get(ref)?.deref();
+          values[i] = original && original.code === code ? original : solError(code as Parameters<typeof solError>[0], message || "from the native engine");
+          break;
+        }
+        default: values[i] = null;
+      }
+    }
+    return { name: c.name, type: c.type as FrameColType, values };
+  });
+}
+
+/** Frames crossing in bulk without JSON: the wasm engine shares memory with JS, so cells move as buffers. */
+interface BulkTransport {
+  source(frame: FrameValue): FrameHandle;
+  read(handle: FrameHandle, column?: string, limit?: number): { columns: FrameColumn[]; rowCount: number } | null;
+}
+
+const wasmBulk: BulkTransport = {
+  source: (frame) => wasmSourceBin(encodeBinary(frame)) as FrameHandle,
+  read: (handle, column, limit) => {
+    const b = wasmReadBin(handle, column, limit);
+    return b && { columns: decodeBinary(b), rowCount: b.rowCount };
+  },
+};
+
 function schemaOnly(frame: FrameValue): FrameValue {
   return { __frame: true, columns: frame.columns.map(({ raw: _raw, ...c }) => ({ ...c, values: [] })) };
 }
@@ -391,7 +456,7 @@ type EngineInvoke = <T>(command: string, args?: Record<string, unknown>) => Prom
 /** An engine behind handles: Polars over IPC on desktop, or the Rust engine in WebAssembly. `fullCells` says the
  *  engine stores every cell the oracle does, so no frame needs the oracle's fallback. */
 class EngineBackend implements FrameBackend {
-  constructor(private readonly invoke: EngineInvoke, private readonly fullCells: boolean) {}
+  constructor(private readonly invoke: EngineInvoke, private readonly fullCells: boolean, private readonly bulk?: BulkTransport) {}
 
   private schemas = new Map<string, FrameValue | null>();
   /** Frames holding an error cell the engine can't store compute here, on the oracle. */
@@ -427,6 +492,7 @@ class EngineBackend implements FrameBackend {
       if (holdsTextOrLogicalError(frame)) return this.oracle.source(frame);
       noteLogicalNaN(frame);
     }
+    if (this.bulk) return this.remember(this.bulk.source(frame), schemaOnly(frame));
     const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(encodeWireCell) })) };
     const h = await (this.invoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>);
     return this.remember(h, schemaOnly(frame));
@@ -476,6 +542,16 @@ class EngineBackend implements FrameBackend {
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
     if (isOracleHandle(handle)) return this.oracle.preview(handle, n);
+    if (this.bulk) {
+      const r = this.bulk.read(handle, undefined, n)!;
+      const take = Math.max(0, Math.min(n, r.rowCount));
+      const rows: FrameCell[][] = [];
+      for (let i = 0; i < take; i++) rows.push(r.columns.map((c) => (i < c.values.length ? c.values[i] : null)));
+      return {
+        schema: withSchemaMeta(r.columns.map((c) => ({ name: c.name, type: c.type })), this.schemaOf(handle)),
+        rows, rowCount: r.rowCount, truncated: r.rowCount > take,
+      };
+    }
     const p = await this.invoke<FramePreview>("engine_preview", { handle, n });
     return {
       ...p,
@@ -486,12 +562,17 @@ class EngineBackend implements FrameBackend {
 
   async collect(handle: FrameHandle): Promise<FrameValue> {
     if (isOracleHandle(handle)) return this.oracle.collect(handle);
+    if (this.bulk) return { __frame: true, columns: withSchemaMeta(this.bulk.read(handle)!.columns, this.schemaOf(handle)) };
     const columns = await this.invoke<FrameColumn[]>("engine_collect", { handle });
     return { __frame: true, columns: withSchemaMeta(decodeWireColumns(columns), this.schemaOf(handle)) };
   }
 
   async column(handle: FrameHandle, name: string): Promise<FrameColumn | null> {
     if (isOracleHandle(handle)) return this.oracle.column(handle, name);
+    if (this.bulk) {
+      const r = this.bulk.read(handle, name);
+      return r ? withSchemaMeta(r.columns, this.schemaOf(handle))[0] : null;
+    }
     const c = await this.invoke<FrameColumn | null>("engine_column", { handle, name });
     if (!c) return null;
     const [out] = withSchemaMeta([{ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] }], this.schemaOf(handle));
@@ -561,7 +642,7 @@ export async function initFrameBackend(): Promise<void> {
   }
   if (wasmEngineOn() && await loadWasmEngine()) {
     await wasmInvoke("engine_clear", {});
-    setFrameBackend(new EngineBackend(wasmInvoke, true));
+    setFrameBackend(new EngineBackend(wasmInvoke, true, wasmBulk));
     return;
   }
   if (_backend instanceof EngineBackend) resetFrameBackendToJs();
@@ -582,7 +663,7 @@ export function watchEngineSetting(onSwitched: () => void): void {
 
 /** The Rust engine in WebAssembly as the backend, for tests and scripts that loaded its bytes themselves. */
 export function useWasmBackend(): void {
-  setFrameBackend(new EngineBackend(wasmInvoke, true));
+  setFrameBackend(new EngineBackend(wasmInvoke, true, wasmBulk));
 }
 
 export async function readCsvFrame(folder: string, name: string): Promise<FrameValue | SolError> {

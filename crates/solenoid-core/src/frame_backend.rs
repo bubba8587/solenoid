@@ -25,7 +25,7 @@ thread_local! {
     static STORE: RefCell<Store> = RefCell::new(Store::default());
 }
 
-fn register(frame: FrameValue) -> String {
+pub(crate) fn register(frame: FrameValue) -> String {
     STORE.with(|s| {
         let mut s = s.borrow_mut();
         s.seq += 1;
@@ -35,7 +35,7 @@ fn register(frame: FrameValue) -> String {
     })
 }
 
-fn get(handle: &str) -> Result<Rc<FrameValue>, SolError> {
+pub(crate) fn get(handle: &str) -> Result<Rc<FrameValue>, SolError> {
     STORE.with(|s| s.borrow().frames.get(handle).cloned()).ok_or_else(|| {
         sol_error("#REF!", format!("frame handle {handle} not found (dropped or never created)"))
     })
