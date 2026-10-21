@@ -26,21 +26,19 @@ Serves [[C130]] rustCore, [[D99]] rustIsSpec and [[D98]] wholeColumnFallback. `c
     and `atanh`, in `fdlibm.rs`. These are fdlibm with V8's own tweaks, because
     the platform libm is off by an ulp on some inputs.
   - A JS exception (a function that throws) ends the row's evaluation.
-- Table-driven facts stay in the TS and get *lowered* into the call, as unit scales are for Polars:
-  - `withUnitScales` / `pivotUnits` lower unit scales.
-  - `formulaCallTable` lowers argument roles, empty-slot readings, the null rule and range vs broadcast.
-  - The Rust carries only the mechanics and the function bodies.
+- Facts the TS keeps in tables are frozen into the core, not passed per call: `data/call_traits.json` holds every
+  function name's dispatch facts, argument roles and empty-slot readings (frozen from `formulaCallTable` by
+  `tests/graph/coreCallTable.test.ts`); unit scales are still lowered into a verb (`withUnitScales`, `pivotUnits`).
 - Correctness rests on the conformance checks, not review:
-  - `npm run test:core` runs the shared corpus (`fixtures/frame-verbs`) natively.
-  - `tests/graph/wasmEngine.test.ts` runs the following through the real wasm module and backend wrapper,
-    compared with the TS:
-    - the corpus
-    - seeded random frames under random verb chains, joins, appends and binds
-    - random pivots (cells, layout record, units)
-    - random formula strings (parse trees)
-    - random computed columns (cells, error messages, side sockets)
-    - bit-exact math probes
-  - To widen a run: `FUZZ_RUNS=100000 FUZZ_SEED=7 npx vitest run tests/graph/wasmEngine.test.ts`.
+  - `tests/graph/coreConformance.test.ts` replays the frozen answers in `fixtures/core/`: every function body on random
+    and edge arguments, 18k formulas over values, 15k computed columns, 12k verb pipelines; V8's `Math` is checked live.
+  - `fixtures/core/bails.json` caps how many frozen cases each suite may leave to the TS (`CORE_BAILS_WRITE=1`
+    rewrites it; its numbers only fall).
+  - `CORE_EVAL=1 npx vitest run --project shared` loads the core into every test file, so the hand-written suite's
+    formulas check the Rust evaluator too.
+  - `npm run test:core` runs the frame-verb corpus (`fixtures/frame-verbs`) natively; `tests/graph/wasmEngine.test.ts`
+    still fuzzes verbs, pivots and the parser against the TS while the TS exists
+    (`FUZZ_RUNS=100000 FUZZ_SEED=7 npx vitest run tests/graph/wasmEngine.test.ts` widens a run).
 - Where JS engines disagree among themselves (a sort whose comparator is inconsistent, such as NaN in a pivot
   sort field), there's no single answer to match, so the fuzzers leave it out.
 
@@ -67,45 +65,33 @@ source rows in the view's layout). The engine's layout doesn't carry them yet, s
 the TS (`pivotNeedsOracle` in `frameBackend.ts`); porting them means adding `sources` to the leaf rows and the detail
 columns to `engine_pivot_layout`.
 
-## What it does and doesn't do
+## What runs on the core
 
-| Capability | Status | Evidence |
+| Surface | Where | Evidence |
 | --- | --- | --- |
-| Frame verbs: select, drop, rename, sort, distinct, head, filter, filterMulti, groupBy, unpivot, window, fillBlanks, replaceValues, sliceRows | Ported | 256 corpus cases natively; corpus and 600k+ fuzz cases through wasm |
-| join (all 8 kinds, unit-scaled keys), append, bindColumns, sample | Ported | as above |
-| dropBlankRows, addIndex, splitColumn, mergeColumns | Ported; Polars lacks them, so on desktop with Polars on they run on the oracle | corpus cases plus the verb fuzzer |
-| PIVOTBY: leaf order, subtotals, value sorts, percent-of shares, the pivot-view layout | Ported | 160k random pivots match cells, layout and units |
-| Units, formats | Unit-blind, as Polars is: the TS lowers reading and unit scales into the op and restores metadata | `lowerForEngine`, `pivotUnits` |
-| Formula tokenizer and parser | Ported whole | 300k random strings, well-formed and broken, give the same tree |
-| Row formulas (computed columns): literals, `@column`, scalar side values, constants, every operator | Ported | 300k random computed columns match cells, messages and side sockets |
-| Formula functions | 384 ported (the six list shapers below included; the Formula.js pass-throughs live in `formulajs.rs`). Logic: IF IFS AND OR NOT XOR NAND NOR XNOR CHOOSE SWITCH CLAMP BETWEEN ISBOOLEAN ISCLOSE, the IFERROR family, the IS tests. Math: ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG LOG10 MOD POWER QUOTIENT PI SQRTPI DEGREES RADIANS CEILING(.MATH) FLOOR(.MATH) MROUND EVEN ODD HYPOTENUSE STANDARDIZE FISHER SLN. Trig: SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH ASINH ACOSH ATANH COT COTH ACOT ACOTH SEC SECH CSC CSCH. Aggregates: SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV(.S/.P) VAR(.S/.P) COUNT COUNTA COUNTBLANK AVEDEV GEOMEAN HARMEAN DEVSQ SKEW(.P) KURT PTP IQR MAD SEM CV RMS GCD LCM. Paired: CORREL PEARSON RSQ KENDALL COVAR COVARIANCE.P/.S SLOPE INTERCEPT STEYX. Order statistics: LARGE SMALL PERCENTILE(.INC/.EXC) QUARTILE(.INC/.EXC) PERCENTRANK(.INC/.EXC) RANK(.EQ/.AVG) TRIMMEAN MODE MODE.SNGL. Criteria: COUNTIF COUNTIFS SUMIFS AVERAGEIF AVERAGEIFS MINIFS MAXIFS, wildcards included. Finance: PMT FV PV NPER IPMT PPMT NPV RATE DB DDB SYD VDB EFFECT NOMINAL PDURATION RRI DOLLARDE DOLLARFR ISPMT FVSCHEDULE CUMIPMT CUMPRINC IRR MIRR XNPV XIRR, the coupon family (COUPDAYBS COUPDAYSNC COUPNCD COUPPCD COUPNUM), bonds and bills (ACCRINTM INTRATE RECEIVED YIELDDISC TBILLEQ TBILLPRICE TBILLYIELD PRICEMAT YIELDMAT PRICE YIELD DURATION MDURATION ODDFPRICE ODDFYIELD ODDLPRICE ODDLYIELD) and the return ops (MAXDRAWDOWN CAGR VOLATILITY SHARPE SORTINO), COUPDAYS DISC PRICEDISC (their dates in local time through `zone.rs`, the host's `Date` and `Intl`, and text through `date_parse.rs`, V8's `Date.parse`); ACCRINT stays on the TS (its `new Date(x)` and Formula.js YEARFRAC are not ported). Lists to one value: WAVG WVAR WSTDEV COUNTDISTINCT ARGMAX ARGMIN LENGTH CONTAINS. Distributions (`dists.rs`, the mathUtils kernels and `DIST_SPECS`): NORM(.S).DIST/.INV, T.DIST(.RT/.2T), T.INV(.2T), CHISQ.DIST(.RT)/.INV(.RT), F.DIST(.RT)/.INV(.RT), GAMMA, BETA, LOGNORM .DIST/.INV, WEIBULL, EXPON, BINOM.DIST/.INV, POISSON, HYPGEOM, NEGBINOM. Lookups: XLOOKUP XMATCH INDEX (a whole column as the TS's one-column table; a list of positions stays on the TS). Text: TEXT FIXED TEXTBEFORE TEXTAFTER REVERSETEXT PADTEXT TRUNCATETEXT NUMBERVALUE ORDINAL LEN CONCAT CONCATENATE TEXTJOIN MID LEFT RIGHT REPLACE UPPER LOWER PROPER TRIM REPT SUBSTITUTE EXACT FIND SEARCH CHAR UNICHAR CODE UNICODE VALUE N T DOLLAR, and the text utilities REGEXTEST REGEXREPLACE REGEXEXTRACT (one match; the list modes stay on the TS) ENCODEURL DECODEURL ENCODEBASE64 DECODEBASE64 HASH UNACCENT SLUGIFY SPELLNUMBER VALUETOTEXT TEMPLATE (`text_ops.rs`, `hash_ops.rs`). A regex runs in `regress`'s non-Unicode mode over UTF-16 units, as `new RegExp(p)` reads it; a pattern either engine reads differently (a quantified assertion, `\u{…}`, a caseless match outside ASCII) goes to the TS. Dates: DATE DATEVALUE TIMEVALUE YEAR MONTH DAY HOUR MINUTE SECOND TIME DAYS DAYS360 DATEDIF YEARFRAC EOMONTH WEEKDAY WEEKNUM ISOWEEKNUM DATETRUNC FROMEPOCH TOEPOCH WORKDAY(.INTL) NETWORKDAYS(.INTL) EDATE TIMEZONECONVERT | each body is checked directly against its JS one on random arguments; a formula calling anything else runs on the TS |
-| Whole-column refs (a bare column name, `[col]`) as a range function's argument: `@x / SUM(x)`, `MAX([x])`, `COUNTBLANK(b)`, `XLOOKUP(@id, id, price)`, `INDEX(price, XMATCH(@id, id))`, `WAVG(price, qty)` | Ported, with `prepRangeArgs`' error scan, blank drop and row pairing, and a call that reads no `@` cell evaluated once | explicit cases plus the fuzzer |
-| Readings only chrono-node does (a criterion like `">=Apr 3, 2026"`, `DATEVALUE("3rd April 2026")`) | Bail: the row stops and the whole column runs on the TS (`bail()`). The core reads the shapes it carries (`chrono_reading` in `excel_criteria.rs`): a bare number (never a date), `3-Apr-2026` with `-`, `/` or a space, and an ISO day then " and …" | explicit cases |
-| A whole column in an argument that takes one value (`LARGE(x, x)` lifts per item) | Not ported: `formulaCallTable` lowers those positions (`scalar`) and the support check sends them to the TS | |
-| Operators and calls over whole columns (`mapCells`, `broadcastCall`): `SUM((amount > 0) * amount)`, `SUM(IF(x > 0, x, 0))`, `COUNT(IFERROR(1 / x, ""))`, `WORKDAY(@start, 5, holidays)` | Ported where the list feeds a range function (and a holiday list anywhere). A whole column is a one-column matrix in the TS; a function Solenoid doesn't know answers `#SHAPE!` there, so `formulaCallTable` lowers `mapsColumns` | explicit cases plus the fuzzer |
-| Wired LAMBDA columns: a bare λ column (params bound to same-named columns) and λ calls inside a formula (`λ1(@x, 2)`), captures riding as side values | Ported: a λ is lowered as params, body and captured values (`lowerLambdas`); a call's arguments must be single values, so a λ handed a whole column runs on the TS | the wired-LAMBDA fuzzer: random params and bodies, bare and called |
-| Units in a computed column | Outside the evaluator: the column's unit and the reading refusal (`readingsRefusal`) sit around the call, so a unit-carrying column runs on the engine | |
-| FILTER, UNIQUE, SORT, SORTBY, TAKE, DROP inside a range function: `SUM(FILTER(amount, region = @region))`, `COUNTA(UNIQUE(region))`, `AVERAGE(TAKE(SORT(x, 1, -1), 3))` | Ported (`shapers.rs`, over `listOps.ts`' grid rules: a whole column is a one-column table). The support check takes one only where a range function that flattens its lists reads it, or as another one's data; a list answer, an operator over one, a lookup reading one, and DROP's columns argument stay on the TS | the shaper fuzzer: random chains in random range functions |
-| List answers (spills), matrices, complex numbers, applying a λ over a list (MAP, BYROW) | Not ported: runs on the TS | |
-| Expression nodes, the compute pass, node `data()` | Not started | |
+| Frame verbs, joins, appends, binds, PIVOTBY | the core in wasm; Polars on desktop where it is on | the corpus natively; the verb and pivot fuzzers; frozen verb pipelines |
+| The formula parser | `excel_formula.rs` | the parser fuzzer |
+| The evaluator (`evalAst`): operators, broadcasting, argument roles, the IFERROR family, `routeCall`'s ladder, LAMBDA values, MAP BYROW BYCOL REDUCE SCAN MAKEARRAY GROUPBY | `eval.rs` | 18k frozen formulas; the suite under `CORE_EVAL=1` |
+| Every function body in the registry | `excel_functions.rs` and the `fns_*.rs` modules; dates read the host's zone through `zone.rs` and text dates through `date_parse.rs` | the frozen function-body cases |
+| Computed columns: whole columns as one-column tables, `@name`, side values of any shape, wired LAMBDAs and their captures | `eval::column`, `engine_compute_column` | 15k frozen columns |
+| The Expression card and every `compileEvaluator` | `evaluateOnCore` (`coreValues.ts`) | as above |
+| Node `data()` | moving onto `callCore` (`coreValues.ts`), node family by node family | each family's tests, with and without `CORE_EVAL` |
+| A pack's formula functions | the TS, by design: a pack registers JS at run time, and the core calls it back (`syncExternalNames`) | |
 
 ## Fallback ([[D98]] wholeColumnFallback)
 
-`computeColumnOnEngine` answers null, and the TypeScript computes the column, in two ways:
-
-- **Before running:** the support check (`supported` in `excel_formula.rs`) refuses an unported function, a whole column anywhere a list can't go (a lifted argument, a lookup's spill, a list of INDEX positions), a λ handed a whole column or called from inside another λ's body, or an apply.
-- **While running:** a body that meets a reading only the TypeScript makes calls `bail()` (a date only chrono-node parses, a loop past a million steps, text a numeric body would add as text); the row stops and `formula_column` answers `Unsupported`.
+A body meeting a reading the core doesn't make yet calls `bail()`, and the whole formula or column runs on the
+TypeScript, never part of it: chrono-node's free-text dates in criteria, INDEX with a list of positions,
+REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table. A value that can't cross (a unit cell,
+a frame, text with a lone surrogate) keeps its call on the TS. `bails.json` counts what's left.
 
 ## Where it runs
 
 - **Frame verbs:** `initFrameBackend` picks Polars on desktop when it's on. Otherwise it uses this engine in
   wasm when Settings → Rust engine is on (the default). Otherwise it uses the JS oracle.
   - The wasm engine holds every cell kind, so unlike Polars it needs no oracle fallback for text or logical errors.
-- **Pivot and computed-column formulas:** these run on the wasm engine wherever it's on, desktop included, beside
-  Polars:
-  - `pivotOnEngine` serves the PIVOTBY node and GroupBy with totals.
-  - `computeColumnOnEngine` serves the Computed Column node and Frame Input's computed columns.
-  - Both answer null for anything outside the ported surface, and the TS runs it.
+- **Formulas, computed columns, pivots:** on the wasm core wherever it's on, desktop included, beside Polars. The app's
+  first render waits for it (`main.tsx`, at most four seconds), so the first calc runs on it.
 
 ## Performance (200k rows × 5 columns, Node, best of 3)
 
@@ -137,7 +123,7 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 
 ## Follow-ups
 
-- **Size.** The module is 1.2 MB raw / 487 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`). `regress`
+- **Size.** The module is 1.9 MB raw / 680 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, V8's `Date.parse` and the full NFD table included. `regress`
   is vendored in `crates/vendor/regress` with one patch, the `no-property-escapes` feature: `\p{…}` parses only in
   Unicode mode, which Solenoid never uses, and refusing it drops the property tables (82 KB gzipped). The case-folding
   tables stay. UNACCENT and SLUGIFY decompose through `nfd_table.rs` (`scripts/gen-nfd-table.mjs`, from Node's own
@@ -152,10 +138,5 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 - **Lone surrogates** can't cross into wasm, whose strings are UTF-8: a frame or formula holding one stays on the
   TS (`crossesWhole`, `wellFormed` in frameBackend.ts). Once the TS goes, the core needs a rule for them, such as
   reading one as U+FFFD at the boundary, which is the author's call.
-- **Formulas run on the core** wherever it is loaded: `compileEvaluator` calls `evaluateOnCore` (coreValues.ts) and
-  keeps `evalAst` only for a bail, a value that can't cross, and a computed column's TS fallback row; a wired LAMBDA's
-  body too (`compilePositional`), at about 9 µs a call against the TS's 6. A pack's JS function is called back on
-  the TS (`syncExternalNames`). `CORE_EVAL=1 npx vitest run --project shared` loads the core into every test file, so
-  the whole hand-written suite checks the Rust evaluator too.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
