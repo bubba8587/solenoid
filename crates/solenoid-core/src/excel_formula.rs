@@ -739,7 +739,8 @@ fn apply_op(op: &str, a: &V, b: &V) -> V {
         }
         "=" | "<>" => {
             let eq = match (a, b) {
-                (V::Str(x), V::Str(y)) => x.to_lowercase() == y.to_lowercase(),
+                // Lowercasing allocates, so equal or all-ASCII text skips it; non-ASCII can lowercase into ASCII (K, the Kelvin sign).
+                (V::Str(x), V::Str(y)) => x == y || if x.is_ascii() && y.is_ascii() { x.eq_ignore_ascii_case(y) } else { x.to_lowercase() == y.to_lowercase() },
                 _ => match (&na, &nb) {
                     (V::Num(x), V::Num(y)) => x == y,
                     (V::Str(x), V::Str(y)) => x == y,

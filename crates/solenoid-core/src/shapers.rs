@@ -222,6 +222,26 @@ fn filter(a: &[V]) -> V {
     if absent(v) || absent(include) {
         return V::Null;
     }
+    // A column of two or more under a column mask: keep its items in place, without building rows.
+    if let (V::List(items), V::List(mask)) = (v, include) {
+        if items.len() > 1 && mask.len() > 1 {
+            if mask.len() != items.len() {
+                return V::err(sol_error("#VALUE!", format!("FILTER: include has {} values but the data has {} rows", mask.len(), items.len())));
+            }
+            let mut kept = Vec::new();
+            for (x, b) in items.iter().zip(mask.iter()) {
+                match if_test_pub(b) {
+                    Cond::Err(e) => return e,
+                    Cond::Bool(true) => kept.push(x.clone()),
+                    _ => {}
+                }
+            }
+            if kept.is_empty() && !absent(if_empty) {
+                return if_empty.clone();
+            }
+            return V::List(Rc::new(kept));
+        }
+    }
     let (m, list) = as_rows_of(v);
     let (column, vals) = line_shape(include);
     let rows = line_axis(&m, &[column]);

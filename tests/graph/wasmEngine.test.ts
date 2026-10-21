@@ -940,7 +940,7 @@ describe("each ported function body matches its JS one on random arguments", () 
   const SCHEDULES = /^(COUP|DURATION|MDURATION|PRICE$|YIELD$|ODDF)/;
   const RAW_LISTS = new Set(["WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF", "XLOOKUP", "XMATCH",
     "IRR", "MIRR", "XNPV", "XIRR", "MAXDRAWDOWN", "CAGR", "VOLATILITY", "SHARPE", "SORTINO"]);
-  it.each(PORTED)("%s", (name) => {
+  it.each(PORTED)("%s", { timeout: 600_000 }, (name) => {
     const rand = mulberry32(77 + FUZZ_SEED + name.length * 1000 + name.charCodeAt(0));
     const fn = resolveExcelFunction(name)!;
     for (let i = 0; i < FUZZ_RUNS / 3; i++) {

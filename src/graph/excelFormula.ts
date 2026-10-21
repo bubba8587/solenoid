@@ -896,7 +896,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       if (sol) return sol;
       const lifted = liftedArgs(name, argv);
       if (lifted.length === 0) {
-        return RANGE_FUNCTIONS.has(name) ? memoRangeCall(n, name, argv, blanks.settled) : routeCall(name, argv, blanks.settled);
+        return RANGE_FUNCTIONS.has(name) || MEMO_SHAPERS.has(name) ? memoRangeCall(n, name, argv, blanks.settled) : routeCall(name, argv, blanks.settled);
       }
       return mapCells(lifted.map((i) => argv[i]), (...cells) => {
         const bad = cells.find(isErr);
@@ -947,6 +947,10 @@ function callRefusal(name: string): SolError | null {
 
 const rangeMemo = new WeakMap<Ast, { gen: number; argv: unknown[]; result: unknown }>();
 
+/** These answer a list built fresh from a whole column, so they keep it: the same list each row lets the range function
+ *  reading it hit its own memo too ([[C120]] linearWork). Nothing downstream writes into it; a range call clones its arguments. */
+const MEMO_SHAPERS = new Set(["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "DROP"]);
+
 /** A range function called again with the very same arguments (a whole column, row after row) answers its last result. */
 function memoRangeCall(node: Ast, name: string, argv: unknown[], settled: readonly boolean[]): unknown {
   const gen = registryGeneration();
@@ -955,7 +959,7 @@ function memoRangeCall(node: Ast, name: string, argv: unknown[], settled: readon
     return last.result;
   }
   const result = routeCall(name, argv, settled);
-  const immutable = result === null || typeof result !== "object" || isSolError(result);
+  const immutable = result === null || typeof result !== "object" || isSolError(result) || MEMO_SHAPERS.has(name);
   if (immutable && argv.some(isArr)) rangeMemo.set(node, { gen, argv, result });
   return result;
 }
