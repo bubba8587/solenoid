@@ -13,6 +13,7 @@ pub mod excel_criteria;
 pub mod excel_formula;
 pub mod excel_functions;
 pub mod fdlibm;
+pub mod fns_complex;
 pub mod finance_ops;
 pub mod formulajs;
 pub mod frame;
