@@ -13,7 +13,7 @@ use serde_json::{json, Value as Json};
 use crate::error_value::{sol_error, SolError};
 use crate::excel_formula::{formula_column, parse_formula, CallTable, ColumnOutcome};
 use crate::frame::{frame_row_count, get_column, FrameColType, FrameColumn, FrameValue};
-use crate::frame_verbs::{append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts};
+use crate::frame_verbs::{append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts, TaggedOp};
 use crate::wire::{column_to_wire, encode_cell, wire_to_frame, WireFrame};
 
 #[derive(Default)]
@@ -68,7 +68,11 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         "engine_source" => Ok(json!(register(wire_to_frame(parse::<WireFrame>(args, "frame")?)))),
         "engine_apply" | "engine_apply_many" => {
             let mut f = get(&parse::<String>(args, "handle")?)?;
-            let ops = if command == "engine_apply" { vec![parse::<FrameOp>(args, "op")?] } else { parse::<Vec<FrameOp>>(args, "ops")? };
+            let ops: Vec<FrameOp> = if command == "engine_apply" {
+                vec![parse::<TaggedOp>(args, "op")?.0]
+            } else {
+                parse::<Vec<TaggedOp>>(args, "ops")?.into_iter().map(|t| t.0).collect()
+            };
             let mut layout = None;
             for (k, op) in ops.iter().enumerate() {
                 f = Rc::new(match op {

@@ -142,6 +142,7 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 ## Follow-ups
 
 - **Whole-column formula refs and the array evaluator** (`mapCells`, the range functions over lists).
-- **Size.** The module is 784 KB raw / 314 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`). Size
-  modes (`opt-level = "z"`) reach 222 KB gzipped but halve the speed, so they're out. The largest single item left is
-  serde's internally tagged `FrameOp` deserializer (67 KB raw): a hand-written `kind` dispatch would trim it.
+- **Size.** The module is 860 KB raw / 348 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`). Size
+  modes (`opt-level = "z"`) cut it by a fifth but halve the speed, so they're out. Ops arrive as `TaggedOp`, which reads
+  the TS's `{ kind, ... }` as serde's external tagging, because the derived internally tagged form was the largest
+  function. What's left is spread thin: `call_function` (53 KB before opt), the pivot, the command dispatcher.

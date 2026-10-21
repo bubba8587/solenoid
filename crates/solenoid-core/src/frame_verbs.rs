@@ -73,8 +73,9 @@ pub struct WindowSpec {
     pub n: Option<f64>,
 }
 
+/// Derived with serde's external tagging, `{ "select": { ... } }`; the TS writes `{ kind: "select", ... }`, which
+/// `TaggedOp` reads.
 #[derive(Deserialize, Clone, Debug)]
-#[serde(tag = "kind")]
 pub enum FrameOp {
     #[serde(rename = "select")]
     Select { columns: Vec<String> },
@@ -1579,6 +1580,21 @@ pub fn bind_columns(frames: &[&FrameValue]) -> FrameValue {
             .map(|(c, name)| FrameColumn::new(name, c.ty, (0..rows).map(|r| c.cell_at(r).clone()).collect()))
             .collect(),
     )
+}
+
+/// An op as the TS writes it, its `kind` beside its fields. The derived internally tagged form buffers the whole op
+/// before reading it and was the module's largest function; this moves `kind` out to the external tag instead.
+pub struct TaggedOp(pub FrameOp);
+
+impl<'de> Deserialize<'de> for TaggedOp {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        use serde::de::Error;
+        let Json::Object(mut fields) = Json::deserialize(d)? else { return Err(D::Error::custom("an op is an object")) };
+        let Some(Json::String(kind)) = fields.remove("kind") else { return Err(D::Error::custom("an op names its kind")) };
+        let mut outer = serde_json::Map::new();
+        outer.insert(kind, Json::Object(fields));
+        serde_json::from_value(Json::Object(outer)).map(TaggedOp).map_err(D::Error::custom)
+    }
 }
 
 pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
