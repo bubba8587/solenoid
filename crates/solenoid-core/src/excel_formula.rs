@@ -584,7 +584,7 @@ fn supported_at(n: &Ast, cx: &Cx, list_ok: bool) -> bool {
             });
             let picks = |i: usize| table.get(&up).is_some_and(|t| matches!(t.roles.get(i), Some(Some(Role::Picks { .. }))));
             let lists = table.get(&up).is_some_and(|t| {
-                (t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default" | "positional" | "paired"))
+                (t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default" | "positional" | "paired" | "zero"))
                     || (t.kind == "whole" && crate::excel_functions::takes_whole_lists(&up))
             });
             // A list where one value goes lifts, and a lookup over a list spills: either answers a list, which only
@@ -1075,6 +1075,8 @@ impl Row<'_> {
                                 }
                                 if t.prep == "paired" {
                                     items.as_ref().clone()
+                                } else if t.prep == "zero" {
+                                    items.iter().map(|x| if matches!(x, V::Null) { V::Num(0.0) } else { x.clone() }).collect()
                                 } else {
                                     items.iter().filter(|x| !matches!(x, V::Null)).cloned().collect()
                                 }

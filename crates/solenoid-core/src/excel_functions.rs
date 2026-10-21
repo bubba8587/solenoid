@@ -113,6 +113,11 @@ const PORTED: &[&str] = &[
     "TEXT", "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
     "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
+    "COUPDAYBS", "COUPDAYSNC", "COUPNCD", "COUPPCD", "COUPNUM", "ACCRINTM", "INTRATE", "RECEIVED", "YIELDDISC", "TBILLEQ",
+    "TBILLPRICE", "TBILLYIELD", "PRICEMAT", "YIELDMAT", "DURATION", "MDURATION", "PRICE", "YIELD", "IRR", "MIRR", "XNPV", "XIRR",
+    "FVSCHEDULE", "CUMIPMT", "CUMPRINC", "VDB", "ODDFPRICE", "ODDFYIELD", "ODDLPRICE", "ODDLYIELD", "MAXDRAWDOWN", "CAGR",
+    "VOLATILITY", "SHARPE", "SORTINO", "NPV", "RATE", "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "DOLLARDE",
+    "DOLLARFR", "ISPMT",
 ];
 
 pub fn is_ported(name: &str) -> bool {
@@ -122,6 +127,7 @@ pub fn is_ported(name: &str) -> bool {
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
 pub fn takes_whole_lists(name: &str) -> bool {
     matches!(name, "WAVG" | "WVAR" | "WSTDEV" | "COUNTDISTINCT" | "ARGMAX" | "ARGMIN" | "LENGTH" | "CONTAINS" | "INDEX")
+        || is_finance_whole(name)
 }
 
 /// The range functions whose body takes each argument in its place, a list as one argument.
@@ -132,6 +138,7 @@ pub fn reads_lists(name: &str) -> bool {
             | "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" | "COUNTIFS" | "COUNTIF" | "AVERAGEIF" | "TEXTJOIN" | "XLOOKUP" | "XMATCH" | "INDEX"
             | "CORREL" | "PEARSON" | "RSQ" | "KENDALL" | "COVAR" | "COVARIANCE.P" | "COVARIANCE.S" | "SLOPE" | "INTERCEPT"
             | "STEYX" | "RANK" | "RANK.EQ" | "RANK.AVG" | "TRIMMEAN" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC"
+            | "FVSCHEDULE"
     )
 }
 
@@ -3035,6 +3042,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             date_from_parts(y, m, d)
         }
+        _ if is_finance(name) => finance_function(name, a),
         _ => V::Undef,
     }
 }
@@ -3190,5 +3198,385 @@ fn error_handler(name: &str, a: &[V]) -> V {
             None => V::err(sol_error("#N/A", "ERROR.TYPE: the value is not an error")),
         }),
         _ => walk(value, &|v| V::Bool(caught(v))),
+    }
+}
+
+// ─── Finance (financeOps.ts, and Formula.js's own) ──────────────────────────────
+
+fn is_finance_whole(name: &str) -> bool {
+    matches!(name, "IRR" | "MIRR" | "XNPV" | "XIRR" | "MAXDRAWDOWN" | "CAGR" | "VOLATILITY" | "SHARPE" | "SORTINO")
+}
+
+fn is_finance(name: &str) -> bool {
+    is_finance_whole(name)
+        || matches!(
+            name,
+            "COUPDAYBS" | "COUPDAYSNC" | "COUPNCD" | "COUPPCD" | "COUPNUM" | "ACCRINTM" | "INTRATE" | "RECEIVED" | "YIELDDISC"
+                | "TBILLEQ" | "TBILLPRICE" | "TBILLYIELD" | "PRICEMAT" | "YIELDMAT" | "DURATION" | "MDURATION" | "PRICE" | "YIELD"
+                | "FVSCHEDULE" | "CUMIPMT" | "CUMPRINC" | "VDB" | "ODDFPRICE" | "ODDFYIELD" | "ODDLPRICE" | "ODDLYIELD"
+                | "NPV" | "RATE" | "DB" | "DDB" | "SYD" | "EFFECT" | "NOMINAL" | "PDURATION" | "RRI" | "DOLLARDE" | "DOLLARFR" | "ISPMT"
+        )
+}
+
+fn fin(r: crate::finance_ops::Fin) -> V {
+    use crate::finance_ops::Fin;
+    match r {
+        Fin::Num(n) => V::Num(n),
+        Fin::Err(e) => V::err(e),
+        Fin::Null => V::Null,
+        Fin::Throw(m) => throw(sol_error("#VALUE!", m)),
+    }
+}
+
+/// `numList` as financeOps reads its cells.
+fn fin_cells(v: &V) -> Vec<crate::finance_ops::Cell> {
+    use crate::finance_ops::Cell;
+    to_list(v)
+        .iter()
+        .map(|x| match x {
+            V::Num(n) => Cell::Num(*n),
+            V::Err(e) => Cell::Err(e.as_ref().clone()),
+            _ => Cell::Other,
+        })
+        .collect()
+}
+
+/// `datedPrep`: the values' first error, then the dates', then null for a blank date.
+fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
+    let values = crate::finance_ops::cash_prep(&fin_cells(values)).map_err(V::err)?;
+    let dates = to_list(dates);
+    if let Some(e) = dates.iter().find(|d| d.is_sol_error()) {
+        return Err(e.clone());
+    }
+    if dates.iter().any(|d| matches!(d, V::Null | V::Undef)) {
+        return Err(V::Null);
+    }
+    Ok((values, dates))
+}
+
+/// The first `n` dates as numbers; None where one isn't, since JS's `<` and `-` would read it, which only the TS does.
+fn date_nums(dates: &[V], n: usize) -> Option<Vec<f64>> {
+    dates[..n.min(dates.len())].iter().map(|d| if let V::Num(x) = d { Some(*x) } else { None }).collect()
+}
+
+/// `parseInt(x, 10)` of a number: the integer its `String` starts with.
+fn parse_int_of(x: f64) -> f64 {
+    let s = number_to_string(x);
+    let (neg, digits) = match s.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, s.as_str()),
+    };
+    let end = digits.bytes().position(|b| !b.is_ascii_digit()).unwrap_or(digits.len());
+    if end == 0 {
+        return f64::NAN;
+    }
+    let n: f64 = digits[..end].parse().unwrap_or(f64::NAN);
+    if neg { -n } else { n }
+}
+
+fn finance_function(name: &str, a: &[V]) -> V {
+    use crate::finance_ops::{self as f, CouponOp, OddCouponOp, ReturnsOp, SecurityDiscOp, TBillOp};
+    let n = |i: usize| to_num(arg(a, i));
+    let o = |i: usize, d: f64| opt_num(arg(a, i), d);
+    match name {
+        "COUPDAYBS" | "COUPDAYSNC" | "COUPNCD" | "COUPPCD" | "COUPNUM" => {
+            let op = match name {
+                "COUPDAYBS" => CouponOp::Coupdaybs,
+                "COUPDAYSNC" => CouponOp::Coupdaysnc,
+                "COUPNCD" => CouponOp::Coupncd,
+                "COUPPCD" => CouponOp::Couppcd,
+                _ => CouponOp::Coupnum,
+            };
+            fin(f::coupon_value(op, n(0), n(1), o(2, 2.0), o(3, 0.0)))
+        }
+        "ACCRINTM" => fin(f::accrint_m(n(0), n(1), n(2), o(3, 1000.0), o(4, 0.0))),
+        "INTRATE" | "RECEIVED" => {
+            let op = if name == "INTRATE" { SecurityDiscOp::Intrate } else { SecurityDiscOp::Received };
+            fin(f::security_disc(op, n(0), n(1), n(2), n(3), o(4, 0.0)))
+        }
+        "YIELDDISC" => fin(f::price_disc(false, n(0), n(1), n(2), o(3, 100.0), o(4, 0.0))),
+        "TBILLEQ" | "TBILLPRICE" | "TBILLYIELD" => {
+            let op = match name {
+                "TBILLEQ" => TBillOp::Tbilleq,
+                "TBILLPRICE" => TBillOp::Tbillprice,
+                _ => TBillOp::Tbillyield,
+            };
+            fin(f::tbill(op, n(0), n(1), n(2)))
+        }
+        "PRICEMAT" | "YIELDMAT" => fin(f::price_mat(name == "PRICEMAT", n(0), n(1), n(2), n(3), n(4), o(5, 0.0))),
+        "DURATION" | "MDURATION" => fin(f::duration_value(name == "MDURATION", n(0), n(1), n(2), n(3), o(4, 2.0), o(5, 0.0))),
+        "PRICE" | "YIELD" => fin(f::bond_price_yield(name == "PRICE", n(0), n(1), n(2), n(3), o(4, 100.0), o(5, 2.0))),
+        "IRR" => {
+            let nums = match f::cash_prep(&fin_cells(arg(a, 0))) {
+                Ok(nums) => nums,
+                Err(e) => return V::err(e),
+            };
+            if nums.len() <= 1 {
+                return V::Null;
+            }
+            let exps: Vec<f64> = (0..nums.len()).map(|t| t as f64).collect();
+            match f::solve_discount_rate(&nums, &exps) {
+                Some(r) => V::Num(r),
+                None => V::err(sol_error(
+                    "#CONV!",
+                    "IRR couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.",
+                )),
+            }
+        }
+        "MIRR" => {
+            let nums = match f::cash_prep(&fin_cells(arg(a, 0))) {
+                Ok(nums) => nums,
+                Err(e) => return V::err(e),
+            };
+            let (fr, rr) = (n(1), n(2));
+            if fr.is_nan() || rr.is_nan() {
+                return value_err("MIRR");
+            }
+            if nums.len() <= 1 { V::Null } else { fin(f::mirr(&nums, fr, rr)) }
+        }
+        "XNPV" => {
+            if matches!(arg(a, 0), V::Null | V::Undef) {
+                return V::Null;
+            }
+            let r = n(0);
+            if r.is_nan() {
+                return value_err("XNPV");
+            }
+            let (values, dates) = match dated_prep(arg(a, 1), arg(a, 2)) {
+                Ok(p) => p,
+                Err(v) => return v,
+            };
+            let count = values.len().min(dates.len());
+            if count == 0 {
+                return V::Null;
+            }
+            match date_nums(&dates, count) {
+                Some(ds) => fin(f::xnpv(r, &values, &ds)),
+                None => bail(),
+            }
+        }
+        "XIRR" => {
+            let (values, dates) = match dated_prep(arg(a, 0), arg(a, 1)) {
+                Ok(p) => p,
+                Err(v) => return v,
+            };
+            let count = values.len().min(dates.len());
+            if count < 2 {
+                return V::Null;
+            }
+            match date_nums(&dates, count) {
+                Some(ds) => fin(f::xirr(&values, &ds)),
+                None => bail(),
+            }
+        }
+        "FVSCHEDULE" => {
+            if matches!(arg(a, 0), V::Null | V::Undef) {
+                return V::Null;
+            }
+            let p = n(0);
+            if p.is_nan() { value_err("FVSCHEDULE") } else { V::Num(f::fv_schedule(p, &nums_of(std::slice::from_ref(arg(a, 1))))) }
+        }
+        "CUMIPMT" | "CUMPRINC" => {
+            let ty = if is_true(arg(a, 5)) { 1.0 } else { 0.0 };
+            fin(f::cumulative_payment(name == "CUMIPMT", n(0), n(1), n(2), n(3), n(4), ty))
+        }
+        "VDB" => fin(f::vdb(n(0), n(1), n(2), n(3), n(4), o(5, 2.0), is_true(arg(a, 6)))),
+        "ODDFPRICE" | "ODDFYIELD" => {
+            let op = if name == "ODDFPRICE" { OddCouponOp::Oddfprice } else { OddCouponOp::Oddfyield };
+            fin(f::odd_coupon(op, n(0), n(1), n(2), n(3), n(4), n(5), o(6, 100.0), o(7, 2.0)))
+        }
+        "ODDLPRICE" | "ODDLYIELD" => {
+            let op = if name == "ODDLPRICE" { OddCouponOp::Oddlprice } else { OddCouponOp::Oddlyield };
+            fin(f::odd_coupon(op, n(0), n(1), f64::NAN, n(2), n(3), n(4), o(5, 100.0), o(6, 2.0)))
+        }
+        "MAXDRAWDOWN" => fin(f::returns_op(ReturnsOp::Maxdrawdown, &fin_cells(arg(a, 0)), 0.0, 1.0)),
+        "CAGR" => fin(f::returns_op(ReturnsOp::Cagr, &fin_cells(arg(a, 0)), 0.0, o(1, 1.0))),
+        "VOLATILITY" => fin(f::returns_op(ReturnsOp::Volatility, &fin_cells(arg(a, 0)), 0.0, o(1, 1.0))),
+        "SHARPE" | "SORTINO" => {
+            let op = if name == "SHARPE" { ReturnsOp::Sharpe } else { ReturnsOp::Sortino };
+            fin(f::returns_op(op, &fin_cells(arg(a, 0)), o(1, 0.0), o(2, 1.0)))
+        }
+        _ => fx_finance(name, a),
+    }
+}
+
+/// Formula.js's finance bodies the TS passes through to.
+fn fx_finance(name: &str, a: &[V]) -> V {
+    let p = |i: usize| parse_number(arg(a, i));
+    // `x === undefined ? d : x`: only a left-out argument takes the default.
+    let undef_or = |i: usize, d: f64| if matches!(arg(a, i), V::Undef) { V::Num(d) } else { parse_number(arg(a, i)) };
+    let log = crate::fdlibm::log;
+    match name {
+        "NPV" => {
+            // `parseNumberArray(flatten(arguments))`, which reads from the end.
+            let args = flat_all(a);
+            if args.is_empty() {
+                return V::Fx("#VALUE!");
+            }
+            let mut nums = vec![0.0; args.len()];
+            for i in (0..args.len()).rev() {
+                match parse_number(&args[i]) {
+                    V::Num(x) => nums[i] = x,
+                    e => return e,
+                }
+            }
+            let rate = nums[0];
+            let mut value = 0.0;
+            for (j, x) in nums.iter().enumerate().skip(1) {
+                value += x / js_pow(1.0 + rate, j as f64);
+            }
+            V::Num(value)
+        }
+        "RATE" => {
+            let vals = [p(0), p(1), p(2), undef_or(3, 0.0), undef_or(4, 0.0), undef_or(5, 0.1)];
+            let Some([nper, pmt, pv, fv, ty, guess]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let eps_max = 1e-10;
+            let mut rate = guess;
+            let ty = if ty != 0.0 { 1.0 } else { 0.0 };
+            for _ in 0..100 {
+                if rate <= -1.0 {
+                    return V::Fx("#NUM!");
+                }
+                let y = if rate.abs() < eps_max {
+                    pv * (1.0 + nper * rate) + pmt * (1.0 + rate * ty) * nper + fv
+                } else {
+                    let f = js_pow(1.0 + rate, nper);
+                    pv * f + pmt * (1.0 / rate + ty) * (f - 1.0) + fv
+                };
+                if y.abs() < eps_max {
+                    return V::Num(rate);
+                }
+                let dy = if rate.abs() < eps_max {
+                    pv * nper + pmt * ty * nper
+                } else {
+                    let f = js_pow(1.0 + rate, nper);
+                    let df = nper * js_pow(1.0 + rate, nper - 1.0);
+                    pv * df + pmt * (1.0 / rate + ty) * df + pmt * (-1.0 / (rate * rate)) * (f - 1.0)
+                };
+                rate -= y / dy;
+            }
+            V::Num(rate)
+        }
+        "DB" => {
+            let vals = [p(0), p(1), p(2), p(3), undef_or(4, 12.0)];
+            let Some([cost, salvage, life, period, month]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 {
+                return V::Fx("#NUM!");
+            }
+            if !(1.0..=12.0).contains(&month) || month.fract() != 0.0 || period > life {
+                return V::Fx("#NUM!");
+            }
+            if salvage >= cost {
+                return V::Num(0.0);
+            }
+            // `toFixed(3)` answers text, which the arithmetic below reads back as a number.
+            let rate = crate::jsnum::to_fixed(1.0 - js_pow(salvage / cost, 1.0 / life), 3.0).map_or(f64::NAN, |t| string_to_number(&t));
+            let initial = (cost * rate * month) / 12.0;
+            let mut total = initial;
+            let mut current = 0.0;
+            let ceiling = if period == life { life - 1.0 } else { period };
+            // A step per period: past a million (or forever, for an infinite life) the TS takes it.
+            if ceiling > 1e6 {
+                return bail();
+            }
+            let mut i = 2.0;
+            while i <= ceiling {
+                current = (cost - total) * rate;
+                total += current;
+                i += 1.0;
+            }
+            V::Num(if period == 1.0 {
+                initial
+            } else if period == life {
+                (cost - total) * rate
+            } else {
+                current
+            })
+        }
+        "DDB" => {
+            let vals = [p(0), p(1), p(2), p(3), undef_or(4, 2.0)];
+            let Some([cost, salvage, life, period, factor]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 || factor <= 0.0 || period > life {
+                return V::Fx("#NUM!");
+            }
+            if salvage >= cost {
+                return V::Num(0.0);
+            }
+            if period > 1e6 {
+                return bail();
+            }
+            let (mut total, mut current) = (0.0, 0.0);
+            let mut i = 1.0;
+            while i <= period {
+                current = crate::jsnum::math_min((cost - total) * (factor / life), cost - salvage - total);
+                total += current;
+                i += 1.0;
+            }
+            V::Num(current)
+        }
+        "SYD" => {
+            let vals = [p(0), p(1), p(2), p(3)];
+            let Some([cost, salvage, life, per]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if life == 0.0 || per < 1.0 || per > life {
+                return V::Fx("#NUM!");
+            }
+            let per = parse_int_of(per);
+            V::Num(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
+        }
+        "EFFECT" | "NOMINAL" => {
+            let vals = [p(0), p(1)];
+            let Some([rate, npery]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if rate <= 0.0 || npery < 1.0 {
+                return V::Fx("#NUM!");
+            }
+            let npery = parse_int_of(npery);
+            V::Num(if name == "EFFECT" {
+                js_pow(1.0 + rate / npery, npery) - 1.0
+            } else {
+                (js_pow(rate + 1.0, 1.0 / npery) - 1.0) * npery
+            })
+        }
+        "PDURATION" => {
+            let vals = [p(0), p(1), p(2)];
+            let Some([rate, pv, fv]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if rate <= 0.0 {
+                return V::Fx("#NUM!");
+            }
+            V::Num((log(fv) - log(pv)) / log(1.0 + rate))
+        }
+        "RRI" => {
+            let vals = [p(0), p(1), p(2)];
+            let Some([nper, pv, fv]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if nper == 0.0 || pv == 0.0 {
+                return V::Fx("#NUM!");
+            }
+            V::Num(js_pow(fv / pv, 1.0 / nper) - 1.0)
+        }
+        "DOLLARDE" | "DOLLARFR" => {
+            let vals = [p(0), p(1)];
+            let Some([dollar, fraction]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if fraction < 0.0 {
+                return V::Fx("#NUM!");
+            }
+            if (0.0..1.0).contains(&fraction) {
+                return V::Fx("#DIV/0!");
+            }
+            let fraction = parse_int_of(fraction);
+            let mut result = parse_int_of(dollar);
+            let digits = (log(fraction) / std::f64::consts::LN_10).ceil();
+            if name == "DOLLARFR" {
+                result += (dollar % 1.0) * js_pow(10.0, -digits) * fraction;
+                return V::Num(result);
+            }
+            result += ((dollar % 1.0) * js_pow(10.0, digits)) / fraction;
+            let power = js_pow(10.0, (log(fraction) / std::f64::consts::LN_2).ceil() + 1.0);
+            V::Num(math_round(result * power) / power)
+        }
+        "ISPMT" => {
+            let vals = [p(0), p(1), p(2), p(3)];
+            let Some([rate, per, nper, pv]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            V::Num(pv * rate * (per / nper - 1.0))
+        }
+        _ => V::Undef,
     }
 }

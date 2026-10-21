@@ -131,9 +131,10 @@ export function oddfPrice(
   const periods: [Date, Date][] = [];
   for (let j = 0, d0 = firstCoupon; d0 > issue; j++) {
     const prev = couponDate(firstCoupon, -(j + 1) * step);
-    periods.unshift([prev, d0]);
+    periods.push([prev, d0]);
     d0 = prev;
   }
+  periods.reverse();
   let sumDC = 0, sumA = 0;
   for (const [qs, qe] of periods) {
     const start = qs < issue ? issue : qs;
@@ -167,6 +168,9 @@ export function oddlPrice(
   return price - couponRate / freq * 100 * A / E;
 }
 
+/** The most periods VDB steps through and CUMIPMT / CUMPRINC sum: each is a step of a loop. */
+const MAX_PERIODS = 1e6;
+
 /** With `noSwitch` the depreciation stays declining-balance to the end, as Excel's VDB no_switch; otherwise it switches to straight-line once that is larger. */
 export function vdbBookValue(cost: number, salvage: number, life: number, periodEnd: number, factor: number, noSwitch = false): number {
   let book = cost;
@@ -199,6 +203,7 @@ export function vdb(
 ): number | SolError | null {
   if (!(cost >= 0 && salvage >= 0 && life > 0 && factor > 0)) return domain("vdb", "a cost and salvage of 0 or more, and a life and factor above 0");
   if (!(start >= 0 && end >= start && end <= life)) return domain("vdb", "0 ≤ start ≤ end ≤ life");
+  if (end > MAX_PERIODS) return domain("vdb", "an end period of at most 1,000,000");
   const result = Math.max(0, vdbBookValue(cost, salvage, life, start, factor, noSwitch) - vdbBookValue(cost, salvage, life, end, factor, noSwitch));
   return Number.isFinite(result) ? result : null;
 }
@@ -702,6 +707,10 @@ export function cumulativePayment(
   const end = Math.round(endRaw);
   if (!(rate > 0 && nper > 0 && pv > 0 && start >= 1 && end >= start && end <= nper)) {
     return solError("#DOMAIN!", "Rate, periods and PV must be above 0, and the range must run from period 1 or later to the loan's last period at most");
+  }
+  // Each period is a step of the loop below, and past 2^53 a step no longer moves.
+  if (end - start >= MAX_PERIODS || end > Number.MAX_SAFE_INTEGER) {
+    return solError("#DOMAIN!", `${op.toUpperCase()} sums at most 1,000,000 periods`);
   }
   const rN = Math.pow(1 + rate, nper);
   const pmt = -(pv * rN) * rate / ((1 + rate * type) * (rN - 1));
