@@ -36,7 +36,7 @@ fn js_number(v: &V) -> f64 {
         V::Null => 0.0,
         V::Str(s) => string_to_number(s),
         V::List(_) => string_to_number(&js_string_of(v)),
-        V::Undef | V::Err(_) | V::Fx(_) | V::Cx(..) => f64::NAN,
+        V::Undef | V::Err(_) | V::Fx(_) | V::Cx(..) | V::Lambda(_) => f64::NAN,
     }
 }
 

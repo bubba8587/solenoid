@@ -767,7 +767,7 @@ enum Acc {
 fn js_add(acc: Acc, v: &V) -> Acc {
     let text = match v {
         V::Str(s) => Some(s.to_string()),
-        V::List(_) | V::Err(_) | V::Cx(..) | V::Fx(_) => Some(js_string_of(v)),
+        V::List(_) | V::Err(_) | V::Cx(..) | V::Fx(_) | V::Lambda(_) => Some(js_string_of(v)),
         _ => None,
     };
     match (acc, text) {

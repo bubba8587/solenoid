@@ -145,3 +145,23 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   modes (`opt-level = "z"`) cut it by a fifth but halve the speed, so they're out. Ops arrive as `TaggedOp`, which reads
   the TS's `{ kind, ... }` as serde's external tagging, because the derived internally tagged form was the largest
   function. What's left is spread thin: `call_function` (53 KB before opt), the pivot, the command dispatcher.
+- **Port develop `1bbf746`** (found by the 2026-10-21 review). `regularized_beta` and `regularized_gamma`
+  (`dists.rs`) stop at 300 steps and return the partial sum, so BINOM.DIST(5e8, 1e9, 0.5, TRUE) reads 0 and
+  BINOM.INV(1e8, 0.5, 0.4) answers 50000040, not 49998733; develop now takes up to 100,000 steps and answers NaN
+  unconverged. `combinations` (`excel_functions.rs`) rounds COMBIN(56,23) one high; develop divides out the gcd
+  first. Refreeze the fixtures that hold the old answers and rebuild the wasm.
+- **Lone surrogates cross into wasm as U+FFFD.** `encodeBinary` joins string cells and `engine_source_bin` takes
+  them as `&str`, so `["\uD83D", "b", "\uDE00"]` through Distinct merges the two halves into one U+FFFD row. The
+  formula path checks `wellFormed(expr)`; the cells need the same check, sending such a frame to the TS.
+- **Frozen cases that bail are skipped silently** (`coreConformance.test.ts`, the `continue` with only `ran > 0`
+  guarding it): TRIMMEAN 180/200, REGEXTEST/EXTRACT/REPLACE 1893/3200 each, F.TEST 157/400, WRAPTEXT 138/200,
+  RANK.AVG 118/200, TEXTSPLIT 117/200, RANK.EQ 106/200, RANK 100/200, WAVG/WVAR/WSTDEV 62/200 each. The suite
+  pins `TZ=UTC`, so EDATE's zone paths are checked only by the live fuzzer, and the 18k frozen formulas are
+  `it.todo`. Each needs a checked answer before its TS goes (step 3 above).
+- **AND, OR and CONCAT read a raw list differently from the TS** (`excel_functions.rs` `AND`/`OR`, the CONCAT
+  join): `AND([1,0])` is TRUE here and FALSE in the TS. No formula reaches it, since the evaluator flattens first,
+  but a body called through `engine_call` would.
+- **Nothing outside a session runs the core's own tests or checks the wasm is current.** CI's `engine-test.yml`
+  runs `src-tauri`'s tests, not `crates/solenoid-core`'s, and the committed `solenoid_core_bg.wasm` has no stamp
+  of the sources it was built from, so a Rust change without `npm run build:wasm` passes `vitest` on the old
+  module.
