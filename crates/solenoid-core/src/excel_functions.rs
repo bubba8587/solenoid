@@ -1590,7 +1590,7 @@ fn to_list(v: &V) -> Rc<Vec<V>> {
     }
 }
 
-/// `weighted` (listOps.ts). Text among the values or weights would add as text: leave that to the TS.
+/// `weighted` (listOps.ts), over JS values: the weight sum adds as JS does, text joining; every other sum reads numbers.
 fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
     if let Some(e) = values.iter().chain(weights).find(|v| v.is_sol_error()) {
         return e.clone();
@@ -1598,29 +1598,21 @@ fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
     if values.is_empty() || weights.len() < values.len() {
         return V::Null;
     }
-    let mut pairs: Vec<(f64, f64)> = Vec::new();
-    for i in 0..values.len() {
-        let (v, w) = (&values[i], &weights[i]);
-        if matches!(v, V::Null) || matches!(w, V::Null) {
-            continue;
-        }
-        match (v, w) {
-            (V::Num(v), V::Num(w)) => pairs.push((*v, *w)),
-            _ => return bail(),
-        }
-    }
-    let w_sum = pairs.iter().fold(0.0, |a, (_, w)| a + w);
-    if pairs.is_empty() || w_sum == 0.0 {
+    let pairs: Vec<(&V, &V)> = values.iter().zip(weights).filter(|(v, w)| !matches!(v, V::Null) && !matches!(w, V::Null)).collect();
+    let w_sum = pairs.iter().fold(JsSum::Num(0.0), |a, (_, w)| a.add(w));
+    if pairs.is_empty() || matches!(w_sum, JsSum::Num(x) if x == 0.0) {
         return V::Null;
     }
-    let wavg = pairs.iter().fold(0.0, |s, (v, w)| s + v * w) / w_sum;
+    let w_sum = w_sum.number();
+    let num = |v: &V| to_f64_js(v);
+    let wavg = pairs.iter().fold(0.0, |s, (v, w)| s + num(v) * num(w)) / w_sum;
     let mut result = Some(wavg);
     if name != "WAVG" {
-        let w_sum2 = pairs.iter().fold(0.0, |a, (_, w)| a + w * w);
+        let w_sum2 = pairs.iter().fold(0.0, |a, (_, w)| a + num(w) * num(w));
         let denom = w_sum - w_sum2 / w_sum;
         result = None;
         if denom > 0.0 {
-            let wvar = pairs.iter().fold(0.0, |s, (v, w)| s + w * js_pow(v - wavg, 2.0)) / denom;
+            let wvar = pairs.iter().fold(0.0, |s, (v, w)| s + num(w) * js_pow(num(v) - wavg, 2.0)) / denom;
             result = Some(if name == "WVAR" { wvar } else { wvar.sqrt() });
         }
     }
