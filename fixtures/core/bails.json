@@ -18,9 +18,6 @@
  "RANK": 100,
  "RANK.AVG": 118,
  "RANK.EQ": 106,
- "REGEXEXTRACT": 1893,
- "REGEXREPLACE": 1893,
- "REGEXTEST": 1893,
  "SERIESSUM": 8,
  "SUMIFS": 1,
  "SUMPRODUCT": 92,
@@ -31,6 +28,6 @@
  "WVAR": 62,
  "XIRR": 9,
  "XNPV": 6,
- "computed columns": 2984,
- "formulas over values": 176
+ "computed columns": 129,
+ "formulas over values": 164
 }

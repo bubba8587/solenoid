@@ -105,7 +105,7 @@ describe.skipIf(!process.env.BENCH)("frame engine timing", () => {
     for (const expr of ["@value / SUM(value)", "@value * 1.2 + @cat", "IF(@value > 0, ROUND(@value * 1.2, 2), 0)", "@key & \"-\" & UPPER(@key)", "IFERROR(LN(@value), 0) + MAX(@cat, 10)", "IF(@value > PERCENTILE(value, 0.9), \"top\", PROPER(@key))", "SUMIFS(value, key, \"k1*\") + DATEDIF(45000, 45000 + @cat, \"md\")"]) {
       const evaluator = compileEvaluator(expr)!;
       const js = time(() => computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(expr) }, {}));
-      const rs = time(() => computeColumnOnEngine(f, expr, ROWS)!.cells);
+      const rs = time(() => (computeColumnOnEngine(f, expr, ROWS) as { cells: unknown[] }).cells);
       rows.push([`fx: ${expr}`, js.toFixed(1), rs.toFixed(1), (js / rs).toFixed(1)]);
     }
     const width = Math.max(...rows.map((x) => x[0].length));

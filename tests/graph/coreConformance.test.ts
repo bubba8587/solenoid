@@ -8,7 +8,7 @@ import * as path from "node:path";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { isCx } from "../../src/graph/cxValue";
 import { resolveExcelFunction, FX_FUNCTION_NAMES, internalFunctionNames } from "../../src/graph/excelFunctions";
-import { compileEvaluator, extractVariables, rowRefNames, formulaCallTable } from "../../src/graph/excelFormula";
+import { compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import { applyVerb, joinFrames, appendFrames, bindColumns, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
 import type { FrameValue, FrameCell, FrameColType } from "../../src/graph/frame";
@@ -364,7 +364,7 @@ describe("computed columns answer as frozen", () => {
         : computeColumnOnEngine(c.frame, c.src, rows, { sideValue, reserved: c.reserved, lambdas });
       if (engine === null) continue;
       ran++;
-      const got = { cells: cellView(engine.cells), sideVars: engine.sideVars };
+      const got = isSolError(engine) ? { error: { code: engine.code, message: wf(engine.message) } } : { cells: cellView(engine.cells), sideVars: engine.sideVars };
       if (JSON.stringify(got) !== JSON.stringify(c.want)) expect({ src: c.src, frame: c.frame, got }).toEqual({ src: c.src, frame: c.frame, got: c.want });
     }
     checkBails("computed columns", columns.length - ran);
@@ -479,7 +479,7 @@ describe("formulas over values answer as frozen", () => {
     let ran = 0;
     const bad: unknown[] = [];
     for (const c of expressions) {
-      const raw = wasmInvokeSync<{ bail?: boolean } | null>("engine_eval", { src: c.src, env: Object.fromEntries(Object.entries(c.env).map(([k, v]) => [k, wire(v)])), table: formulaCallTable(c.src), clock: engineClock() });
+      const raw = wasmInvokeSync<{ bail?: boolean } | null>("engine_eval", { src: c.src, env: Object.fromEntries(Object.entries(c.env).map(([k, v]) => [k, wire(v)])), clock: engineClock() });
       if (raw && raw.bail) continue;
       ran++;
       const got = engineAnswer("", raw);

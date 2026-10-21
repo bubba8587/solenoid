@@ -1199,6 +1199,10 @@ impl Row<'_> {
     }
 }
 
+pub fn tag_computed_cell_pub(v: V) -> FrameCell {
+    tag_computed_cell(v)
+}
+
 /// `tagComputedCell` after `normalizeFxResult`.
 fn tag_computed_cell(v: V) -> FrameCell {
     match v {

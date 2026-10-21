@@ -164,6 +164,15 @@ extern crate alloc;
 
 pub use crate::api::*;
 
+/// Whether `cp` may start (`is_id_start`) or continue (`is_id_continue`) a group name, as ID_Start and ID_Continue.
+pub fn is_id_start(cp: u32) -> bool {
+    codepointset::interval_contains(unicodetables::id_start_ranges(), cp)
+}
+
+pub fn is_id_continue(cp: u32) -> bool {
+    codepointset::interval_contains(unicodetables::id_continue_ranges(), cp)
+}
+
 #[macro_use]
 mod util;
 
