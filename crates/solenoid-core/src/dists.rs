@@ -319,6 +319,22 @@ fn binom_pmf(k: f64, n: f64, p: f64) -> Option<f64> {
     Some(exp(ln_combin(n, k) + k * log(p) + (n - k) * log(1.0 - p)))
 }
 
+/// `binomInvBySearch` (distributionOps.ts): the least k whose CDF reaches `alpha`, by capped halvings of [0, n].
+fn binom_inv_by_search(n: f64, p: f64, alpha: f64) -> Option<f64> {
+    let (mut lo, mut hi) = (0.0f64, n);
+    let mut step = 0;
+    while lo < hi && step < 1100 {
+        let mid = lo + ((hi - lo) / 2.0).floor();
+        if binom_cdf(mid, n, p)? >= alpha {
+            hi = mid;
+        } else {
+            lo = mid + 1.0;
+        }
+        step += 1;
+    }
+    Some(lo)
+}
+
 fn binom_cdf(k: f64, n: f64, p: f64) -> Option<f64> {
     let (k, n) = (k.floor(), n.floor());
     if k < 0.0 || n < 0.0 || p < 0.0 || p > 1.0 {
@@ -517,7 +533,7 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
                     None
                 } else {
                     if n > LOOP_CAP {
-                        return Err(TooLong);
+                        return Ok(binom_inv_by_search(n, pv, v));
                     }
                     let mut cum = 0.0;
                     let mut k = 0.0;

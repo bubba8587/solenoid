@@ -430,6 +430,20 @@ describe("random row formulas: the Rust evaluator matches the TS one", () => {
   });
 });
 
+describe("BINOM.INV past a million trials searches the CDF instead of summing ([[C120]] linearWork)", () => {
+  it("answers fast, and the same on both sides", () => {
+    const fn = resolveExcelFunction("BINOM.INV")!;
+    const bits = (x: unknown) => (typeof x === "number" ? new BigUint64Array(new Float64Array([x]).buffer)[0].toString() : JSON.stringify(x));
+    for (const args of [[1e15, 0.5, 0.999], [2e6, 0.5, 0.5], [1e9, 1e-9, 0.9], [9007199254740993, 0.5, 0.5], [3e7, 0.01, 0], [3e7, 0.99, 1], [1e300, 0.3, 0.5], [5e6, 0, 0.5], [5e6, 1, 0.2]]) {
+      const t = performance.now();
+      const want = fn(...args);
+      expect(performance.now() - t, `BINOM.INV(${args})`).toBeLessThan(500);
+      const got = wasmInvokeSync<{ num?: string; err?: string }>("engine_call", { name: "BINOM.INV", args });
+      expect({ args, got: got.num ?? got.err }).toEqual({ args, got: isSolError(want) ? want.code : bits(want) });
+    }
+  });
+});
+
 describe("UNACCENT's decomposition table matches this Node's NFD", () => {
   it("every code point it covers, alone and after a letter", () => {
     for (const [a, b] of [[0x80, 0x24f], [0x300, 0x36f], [0x370, 0x3ff], [0x400, 0x482], [0x48a, 0x4ff], [0x1e00, 0x1fff]]) {
