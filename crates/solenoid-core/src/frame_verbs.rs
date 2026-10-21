@@ -1275,7 +1275,7 @@ fn sum_group(values: &[FrameCell]) -> FrameCell {
 }
 
 /// `formatFrameCell` with no format annotation.
-fn format_frame_cell(ty: FrameColType, v: &FrameCell) -> String {
+pub(crate) fn format_frame_cell(ty: FrameColType, v: &FrameCell) -> String {
     match v {
         FrameCell::Err(e) => e.code.clone(),
         FrameCell::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
