@@ -1,7 +1,7 @@
 // [[C130]] rustCore
-//! Excel's FILTER, UNIQUE, SORT, SORTBY, TAKE and DROP (`excelFunctions.ts`, over `listOps.ts`' grid helpers),
-//! as a computed column reaches them: a whole column is a one-column table, a lone value a one-item list. The
-//! support check lets one stand only where a range function, or another of these, takes it as a list.
+//! Excel's FILTER, UNIQUE, SORT, SORTBY, TAKE and DROP (`excelFunctions.ts`, over `listOps.ts`' grid helpers), over
+//! JavaScript-shaped values: a matrix is a table, a list one row, a lone value one cell. `call_column` is the door a
+//! computed column uses, where a list is a whole column: it goes in as a one-column table and comes back flat.
 
 use std::cmp::Ordering;
 use std::rc::Rc;
@@ -30,26 +30,35 @@ fn absent(v: &V) -> bool {
     matches!(v, V::Null | V::Undef)
 }
 
-/// `asRowsOf`: a column is n rows of one; anything else is one row, a list flagged to go back as one.
+fn is_matrix(v: &V) -> bool {
+    matches!(v, V::List(l) if matches!(l.first(), Some(V::List(_))))
+}
+
+/// A JS row's cells; a row that isn't an array has none.
+fn cells(r: &V) -> Vec<V> {
+    if let V::List(c) = r { c.as_ref().clone() } else { Vec::new() }
+}
+
+/// `asRowsOf`: a matrix is its rows; anything else is one row, flagged to go back as a list.
 fn as_rows_of(v: &V) -> (Grid, bool) {
     match v {
-        V::List(items) if !items.is_empty() => (items.iter().map(|x| vec![x.clone()]).collect(), false),
-        V::List(_) | V::Null | V::Undef => (vec![Vec::new()], true),
+        V::List(rows) if is_matrix(v) => (rows.iter().map(cells).collect(), false),
+        V::List(items) => (vec![items.as_ref().clone()], true),
+        V::Null | V::Undef => (vec![Vec::new()], true),
         other => (vec![vec![other.clone()]], true),
     }
 }
 
-/// The grid as the range function reading it sees it: flat, row by row.
-fn flat(m: Grid) -> V {
-    V::List(Rc::new(m.into_iter().flatten().collect()))
+fn matrix(m: Grid) -> V {
+    V::List(Rc::new(m.into_iter().map(|r| V::List(Rc::new(r))).collect()))
 }
 
-/// `backToList`.
+/// `backToList`: a list's answer is a list again while one row is left.
 fn back_to_list(mut m: Grid, list: bool) -> V {
-    if list && m.len() == 1 {
+    if list && m.len() <= 1 {
         return V::List(Rc::new(m.pop().unwrap_or_default()));
     }
-    flat(m)
+    matrix(m)
 }
 
 fn transpose(m: &Grid) -> Grid {
@@ -110,18 +119,46 @@ fn sorted_index_by_keys(keys: &[(Vec<V>, bool)], n: usize) -> Vec<usize> {
     idx
 }
 
-/// `lineShape`, for what reaches it here: a column, or one value. A one-item column reads either way, as does a value.
-/// Rows never arrive, since a list here is always a column.
-fn line_shape(v: &V) -> (bool, Vec<V>) {
+#[derive(Clone, Copy, PartialEq)]
+enum Dir {
+    Row,
+    Col,
+    Any,
+}
+
+/// `lineShape`: a list or 1 × n table is a row, an n × 1 table a column, one value either; anything else neither.
+fn line_shape(v: &V) -> (Option<Dir>, Vec<V>) {
     match v {
-        V::List(items) => (items.len() != 1, items.as_ref().clone()),
-        other => (false, vec![other.clone()]),
+        V::List(rows) if is_matrix(v) => {
+            if rows.len() == 1 {
+                let r = cells(&rows[0]);
+                (Some(if r.len() == 1 { Dir::Any } else { Dir::Row }), r)
+            } else if rows.iter().all(|r| matches!(r, V::List(c) if c.len() == 1)) {
+                (Some(Dir::Col), rows.iter().map(|r| cells(r).swap_remove(0)).collect())
+            } else {
+                (None, Vec::new())
+            }
+        }
+        V::List(items) => (Some(if items.len() == 1 { Dir::Any } else { Dir::Row }), items.as_ref().clone()),
+        other => (Some(Dir::Any), vec![other.clone()]),
     }
 }
 
-/// `lineAxis` over column-or-either lines: true for rows. Lines that are all one value follow the table's long side.
-fn line_axis(m: &Grid, columns: &[bool]) -> bool {
-    columns.iter().any(|&c| c) || m.len() != 1
+/// `lineAxis`: Some(true) for rows when the lines are columns, Some(false) for columns when they are rows; lines that
+/// are all one value follow the table's long side. None when they disagree or one is neither.
+fn line_axis(m: &Grid, dirs: &[Option<Dir>]) -> Option<bool> {
+    if dirs.iter().any(Option::is_none) {
+        return None;
+    }
+    let set: Vec<Dir> = dirs.iter().flatten().copied().filter(|&d| d != Dir::Any).collect();
+    if set.iter().any(|&d| d != set[0]) {
+        return None;
+    }
+    match set.first() {
+        Some(Dir::Col) => Some(true),
+        Some(Dir::Row) => Some(false),
+        _ => Some(m.len() != 1),
+    }
 }
 
 fn axis_count(m: &Grid, rows: bool) -> usize {
@@ -222,29 +259,11 @@ fn filter(a: &[V]) -> V {
     if absent(v) || absent(include) {
         return V::Null;
     }
-    // A column of two or more under a column mask: keep its items in place, without building rows.
-    if let (V::List(items), V::List(mask)) = (v, include) {
-        if items.len() > 1 && mask.len() > 1 {
-            if mask.len() != items.len() {
-                return V::err(sol_error("#VALUE!", format!("FILTER: include has {} values but the data has {} rows", mask.len(), items.len())));
-            }
-            let mut kept = Vec::new();
-            for (x, b) in items.iter().zip(mask.iter()) {
-                match if_test_pub(b) {
-                    Cond::Err(e) => return e,
-                    Cond::Bool(true) => kept.push(x.clone()),
-                    _ => {}
-                }
-            }
-            if kept.is_empty() && !absent(if_empty) {
-                return if_empty.clone();
-            }
-            return V::List(Rc::new(kept));
-        }
-    }
     let (m, list) = as_rows_of(v);
-    let (column, vals) = line_shape(include);
-    let rows = line_axis(&m, &[column]);
+    let (dir, vals) = line_shape(include);
+    let Some(rows) = line_axis(&m, &[dir]) else {
+        return V::err(sol_error("#VALUE!", "FILTER: include must be one row or one column"));
+    };
     let n = axis_count(&m, rows);
     if vals.len() != n {
         return V::err(sol_error(
@@ -267,7 +286,7 @@ fn filter(a: &[V]) -> V {
     if list {
         return V::List(Rc::new(out.into_iter().next().unwrap_or_default()));
     }
-    flat(out)
+    matrix(out)
 }
 
 fn unique(a: &[V]) -> V {
@@ -346,8 +365,10 @@ fn sort_by(a: &[V]) -> V {
     if keys.is_empty() {
         return back_to_list(m, list);
     }
-    let lines: Vec<(bool, Vec<V>)> = keys.iter().map(|(k, _)| line_shape(k)).collect();
-    let rows = line_axis(&m, &lines.iter().map(|l| l.0).collect::<Vec<_>>());
+    let lines: Vec<(Option<Dir>, Vec<V>)> = keys.iter().map(|(k, _)| line_shape(k)).collect();
+    let Some(rows) = line_axis(&m, &lines.iter().map(|l| l.0).collect::<Vec<_>>()) else {
+        return V::err(sol_error("#VALUE!", "SORTBY: every sort key must be one row or one column, all the same way"));
+    };
     let n = axis_count(&m, rows);
     if let Some((_, bad)) = lines.iter().find(|l| l.1.len() != n) {
         return V::err(sol_error(
@@ -390,6 +411,42 @@ fn drop(a: &[V]) -> V {
     }
     let cut: Grid = m.iter().map(|r| if cols_given { drop_slice(r, c) } else { r.clone() }).collect();
     back_to_list(drop_slice(&cut, n), list)
+}
+
+/// The shapers as a computed column calls them: a list is a whole column, a one-column table, and a table answer
+/// comes back flat, row by row, as the range function reading it would flatten it.
+pub fn call_column(name: &str, a: &[V]) -> V {
+    // A column of two or more under a column mask: kept in place, without building rows.
+    if name == "FILTER" {
+        if let (V::List(items), V::List(mask)) = (arg(a, 0), arg(a, 1)) {
+            if items.len() > 1 && mask.len() > 1 && mask.len() == items.len() {
+                let mut kept = Vec::new();
+                for (x, b) in items.iter().zip(mask.iter()) {
+                    match if_test_pub(b) {
+                        Cond::Err(e) => return e,
+                        Cond::Bool(true) => kept.push(x.clone()),
+                        _ => {}
+                    }
+                }
+                if kept.is_empty() && !absent(arg(a, 2)) {
+                    return arg(a, 2).clone();
+                }
+                return V::List(Rc::new(kept));
+            }
+        }
+    }
+    let column = |v: &V| match v {
+        V::List(items) if !items.is_empty() => V::List(Rc::new(items.iter().map(|x| V::List(Rc::new(vec![x.clone()]))).collect())),
+        other => other.clone(),
+    };
+    let args: Vec<V> = a.iter().map(column).collect();
+    match call(name, &args) {
+        r @ V::List(_) if is_matrix(&r) => {
+            let V::List(rows) = r else { unreachable!() };
+            V::List(Rc::new(rows.iter().flat_map(cells).collect()))
+        }
+        r => r,
+    }
 }
 
 pub fn call(name: &str, a: &[V]) -> V {

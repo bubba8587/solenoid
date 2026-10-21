@@ -534,7 +534,7 @@ impl Eval<'_> {
         if LAMBDA_HOSTS.contains(&name) {
             return self.host(name, argv);
         }
-        if !is_ported(name) || crate::shapers::is_shaper(name) || (argv.iter().any(is_matrix) && !crate::excel_functions::reads_matrices(name)) {
+        if !is_ported(name) || (argv.iter().any(is_matrix) && !crate::excel_functions::reads_matrices(name)) {
             return crate::excel_functions::bail();
         }
         call_caught(name, argv)

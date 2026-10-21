@@ -1097,6 +1097,9 @@ impl Row<'_> {
                 if !t.nullable_ok && argv.iter().enumerate().any(|(i, v)| matches!(v, V::Null) && !settled[i]) {
                     return V::Null;
                 }
+                if is_shaper(name) {
+                    return crate::shapers::call_column(name, &argv);
+                }
                 call_caught(name, &argv)
             }
             "range" => {

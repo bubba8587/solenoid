@@ -134,16 +134,14 @@ const PORTED: &[&str] = &[
     "BINOM.DIST.RANGE", "CLEAN",
 ];
 
-/// Every function the core carries over JavaScript-shaped arguments, for the conformance suites to tell a pending
-/// name from a ported one. The shapers read a list as a column, as a computed column hands one over, so they wait
-/// for the value model to tell a column from a row.
+/// Every function the core carries, for the conformance suites to tell a pending name from a ported one.
 pub fn ported_names() -> Vec<&'static str> {
-    PORTED.iter().chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).chain(crate::fns_matrix::NAMES.iter()).chain(crate::fns_lists::NAMES.iter()).chain(crate::fns_stats::NAMES.iter()).copied().collect()
+    PORTED.iter().chain(crate::shapers::SHAPERS.iter()).chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).chain(crate::fns_matrix::NAMES.iter()).chain(crate::fns_lists::NAMES.iter()).chain(crate::fns_stats::NAMES.iter()).copied().collect()
 }
 
 /// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
 pub fn reads_matrices(name: &str) -> bool {
-    crate::fns_matrix::NAMES.contains(&name) || crate::fns_lists::NAMES.contains(&name)
+    crate::fns_matrix::NAMES.contains(&name) || crate::fns_lists::NAMES.contains(&name) || crate::shapers::is_shaper(name)
 }
 
 pub fn is_ported(name: &str) -> bool {
