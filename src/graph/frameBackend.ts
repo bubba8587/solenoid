@@ -1,4 +1,5 @@
 // [[C130]] rustCore, [[D98]] wholeColumnFallback, [[C24]] arraySemantics
+import type { FormatAnnotation } from "./formatAnnotationStore";
 import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
@@ -637,15 +638,21 @@ export async function assembleOnEngine(
 
 /** Each op against the schema it will meet, so a reading column's aggregates reach the
  *  unit-blind engine with their reading scale, and the result's schema shadow. */
+/** The ops as an engine takes them, and the schema they leave. A `formats` op only touches the schema. */
 export function lowerForEngine(schema: FrameValue | null, ops: readonly FrameOp[]): { wire: FrameOp[]; schema: FrameValue | null } {
   let s = schema;
-  const wire = ops.map((op) => {
-    const w = s ? (op.kind === "pivot" ? { ...op, valueScales: pivotUnits(s, op).scales } : withUnitScales(s, op)) : op;
+  const wire: FrameOp[] = [];
+  for (const op of ops) {
+    if (op.kind !== "formats") wire.push(s ? (op.kind === "pivot" ? { ...op, valueScales: pivotUnits(s, op).scales } as FrameOp : withUnitScales(s, op)) : op);
     const cur = s;
     s = cur ? shadow(() => applyVerb(cur, op)) : null;
-    return w;
-  });
+  }
   return { wire, schema: s };
+}
+
+/** A lazy node's output with its own column format picks laid over it ([[D41]] formatFlowsDownstream). */
+export function refWithFormats(ref: FrameRef, formats: Record<string, FormatAnnotation>): FrameRef {
+  return extendRef(ref, { kind: "formats", formats });
 }
 
 function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[], schema: FrameValue | null | undefined): C[] {
@@ -671,6 +678,9 @@ function noteLogicalNaN(f: FrameValue): void {
 }
 
 const isOracleHandle = (h: FrameHandle): boolean => h.startsWith("jsf:");
+
+/** Verbs the Rust core runs and Polars doesn't ([[C130]] rustCore). */
+const RUST_CORE_ONLY: ReadonlySet<FrameOp["kind"]> = new Set(["dropBlankRows", "addIndex", "splitColumn", "mergeColumns"]);
 
 /** An op's own cells (a filter's value) in wire form, so an error, NaN or infinity crosses as itself. */
 function encodeOpCells(op: FrameOp): FrameOp {
@@ -713,6 +723,12 @@ class EngineBackend implements FrameBackend {
   /** Frames holding an error cell the engine can't store compute here, on the oracle. */
   private oracle = new JsFrameBackend();
 
+  /** An op this engine can't run: Polars has no pivot layout and none of the Rust core's cleaning verbs. */
+  private needsOracle(op: FrameOp): boolean {
+    if (op.kind === "pivot") return !this.fullCells || pivotNeedsOracle(op);
+    return !this.fullCells && RUST_CORE_ONLY.has(op.kind);
+  }
+
   private async onOracle(handles: readonly FrameHandle[], run: (hs: FrameHandle[]) => Promise<FrameHandle>): Promise<FrameHandle> {
     const temps: FrameHandle[] = [];
     try {
@@ -751,7 +767,8 @@ class EngineBackend implements FrameBackend {
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
     if (isOracleHandle(handle)) return this.oracle.apply(handle, op);
-    if (op.kind === "pivot" && (!this.fullCells || pivotNeedsOracle(op))) return this.onOracle([handle], ([h]) => this.oracle.apply(h, op));
+    if (this.needsOracle(op)) return this.onOracle([handle], ([h]) => this.oracle.apply(h, op));
+    if (op.kind === "formats") return this.applyMany(handle, [op]);
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
     const h = await (this.invoke<string>("engine_apply", { handle, op: this.fullCells ? encodeOpCells(wire[0]) : wire[0] }) as Promise<FrameHandle>);
     await this.rememberPivot(h, this.schemaOf(handle), op);
@@ -760,10 +777,12 @@ class EngineBackend implements FrameBackend {
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
     if (isOracleHandle(handle)) return this.oracle.applyMany(handle, ops);
-    if (ops.some((op) => op.kind === "pivot" && (!this.fullCells || pivotNeedsOracle(op)))) return this.onOracle([handle], ([h]) => this.oracle.applyMany(h, ops));
+    if (ops.some((op) => this.needsOracle(op))) return this.onOracle([handle], ([h]) => this.oracle.applyMany(h, ops));
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), ops);
     const h = await (this.invoke<string>("engine_apply_many", { handle, ops: this.fullCells ? wire.map(encodeOpCells) : wire }) as Promise<FrameHandle>);
-    if (ops[ops.length - 1]?.kind === "pivot") await this.rememberPivot(h, lowerForEngine(this.schemaOf(handle), ops.slice(0, -1)).schema, ops[ops.length - 1]);
+    let last = ops.length - 1;
+    while (last >= 0 && ops[last].kind === "formats") last--;
+    if (ops[last]?.kind === "pivot") await this.rememberPivot(h, lowerForEngine(this.schemaOf(handle), ops.slice(0, last)).schema, ops[last]);
     return this.remember(h, schema);
   }
 

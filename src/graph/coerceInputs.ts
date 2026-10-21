@@ -7,7 +7,7 @@ import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube, coerceFrameCell, type FrameColType } from "./frame";
 import { parseCsvLine } from "./csv";
 import { csvField } from "./csvSafety";
-import { isFrameRef, readFrame } from "./frameBackend";
+import { isFrameRef, readFrame, refWithFormats, type FrameRef } from "./frameBackend";
 import { isSolError, solError, SEES_ERRORS } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
 import { isUnitCell, carryMatrixUnit } from "./unitValue";
@@ -20,6 +20,7 @@ export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
   "ColumnsNode", "GroupByFrameNode", "UnpivotNode",
   "AppendNode", "BindColumnsNode", "RenameNode",
   "FillBlanksNode", "ReplaceValuesNode", "WindowNode",
+  "DropBlankRowsNode", "AddIndexNode", "SplitColumnNode", "MergeColumnsNode",
   "GetColumnNode", "SumIfsNode", "TableInfoNode", "WriteFileNode", "PivotNode",
   "SlicerNode", "ComputedColumnNode",
 ]);
@@ -240,14 +241,24 @@ export function wrapNodeData(node: NodeLike) {
     stampMemo.set(f, { ver, out });
     return out;
   };
+  // A lazy node's output is a plan, so its picks ride as one more step of it.
+  const refMemo = new WeakMap<FrameRef, { ver: number; out: FrameRef }>();
+  const stampRef = (ref: FrameRef): FrameRef => {
+    const ver = frameFormatStore.version();
+    const hit = refMemo.get(ref);
+    if (hit && hit.ver === ver) return hit.out;
+    const own = frameFormatStore.forNode(nodeId!);
+    const out = own.size ? refWithFormats(ref, Object.fromEntries(own)) : ref;
+    refMemo.set(ref, { ver, out });
+    return out;
+  };
   const stampOutputs = (out: unknown): unknown => {
     if (!nodeId || out === null || typeof out !== "object") return out;
     const rec = out as Record<string, unknown>;
     let next: Record<string, unknown> | null = null;
     for (const key of Object.keys(rec)) {
       const v = rec[key];
-      if (!isFrameValue(v)) continue;
-      const stamped = stampFrame(v);
+      const stamped = isFrameValue(v) ? stampFrame(v) : isFrameRef(v) ? stampRef(v) : v;
       if (stamped !== v) (next ??= { ...rec })[key] = stamped;
     }
     return next ?? out;

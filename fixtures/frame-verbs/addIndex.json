@@ -1,0 +1,202 @@
+{
+ "verb": "addIndex",
+ "cases": [
+  {
+   "name": "index from 1 in front",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        null,
+        "b",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        null,
+        null,
+        4
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "addIndex",
+    "name": "Index",
+    "start": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "Index",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       null,
+       "b",
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       null,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a name that clashes gets a suffix",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        null,
+        "b",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        null,
+        null,
+        4
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "addIndex",
+    "name": " k ",
+    "start": 0
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       0,
+       1,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "k2",
+      "type": "string",
+      "values": [
+       "a",
+       null,
+       "b",
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       null,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a blank name reads Index, a fractional start counts from it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        null,
+        "b"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "addIndex",
+    "name": "",
+    "start": -2.5
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "Index",
+      "type": "number",
+      "values": [
+       -2.5,
+       -1.5,
+       -0.5
+      ]
+     },
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       null,
+       "b"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       null
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

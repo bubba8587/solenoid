@@ -72,6 +72,7 @@ columns to `engine_pivot_layout`.
 | --- | --- | --- |
 | Frame verbs: select, drop, rename, sort, distinct, head, filter, filterMulti, groupBy, unpivot, window, fillBlanks, replaceValues, sliceRows | Ported | 256 corpus cases natively; corpus and 600k+ fuzz cases through wasm |
 | join (all 8 kinds, unit-scaled keys), append, bindColumns, sample | Ported | as above |
+| dropBlankRows, addIndex, splitColumn, mergeColumns | Ported; Polars lacks them, so on desktop with Polars on they run on the oracle | corpus cases plus the verb fuzzer |
 | PIVOTBY: leaf order, subtotals, value sorts, percent-of shares, the pivot-view layout | Ported | 160k random pivots match cells, layout and units |
 | Units, formats | Unit-blind, as Polars is: the TS lowers reading and unit scales into the op and restores metadata | `lowerForEngine`, `pivotUnits` |
 | Formula tokenizer and parser | Ported whole | 300k random strings, well-formed and broken, give the same tree |

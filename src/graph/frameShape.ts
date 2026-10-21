@@ -57,6 +57,15 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
     case "filterMulti":
     case "sliceRows":
       return input;
+    case "dropBlankRows":
+    case "formats":
+      return input;
+    case "addIndex":
+      return shapeOfAddIndex(input, op.name);
+    case "splitColumn":
+      return shapeOfSplitColumn(input, op.column, op.delimiter);
+    case "mergeColumns":
+      return shapeOfMergeColumns(input, op.columns, op.name);
     case "fillBlanks":
       for (const c of op.columns) requireCol(input, c);
       return input;
@@ -151,6 +160,19 @@ export function shapeOfAddIndex(input: Shape, name: string): Shape {
       ...input.columns.map((c, i) => ({ name: unique[i + 1], type: c.type })),
     ],
   };
+}
+
+/** `mergeColumns`' columns: the merged text column sits where the first source was. */
+export function shapeOfMergeColumns(input: Shape, columns: readonly string[], name: string): Shape {
+  const sources = columns.map((c) => requireCol(input, c));
+  if (sources.length < 2) throw solError("#VALUE!", "Merge needs at least two columns");
+  const drop = new Set(sources.map((c) => c.name));
+  const at = input.columns.findIndex((c) => c.name === sources[0].name);
+  const kept = input.columns.filter((c) => !drop.has(c.name));
+  const keptBefore = input.columns.slice(0, at).filter((c) => !drop.has(c.name)).length;
+  const out = [...kept.slice(0, keptBefore), { name: name.trim() || "Merged", type: "string" as const }, ...kept.slice(keptBefore)];
+  const unique = makeHeaders(out.map((c) => c.name), out.length);
+  return { columns: out.map((c, i) => ({ ...c, name: unique[i] })) };
 }
 
 export function shapeOfSplitColumn(input: Shape, column: string, delimiter: string): Shape {

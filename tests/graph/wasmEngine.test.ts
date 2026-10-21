@@ -17,6 +17,7 @@ import { isLambdaValue } from "../../src/graph/lambdaValue";
 import { parseFormula, compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { resolveExcelFunction } from "../../src/graph/excelFunctions";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
+import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 
 const WASM = path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm");
@@ -174,7 +175,7 @@ function gen(rand: () => number) {
   };
   const op = (f: FrameValue): FrameOp => {
     const scale = () => (rand() < 0.15 ? { readingScale: pick([1, 5 / 9]) } : {});
-    switch (int(0, 13)) {
+    switch (int(0, 17)) {
       case 0: return { kind: "select", columns: [colOf(f), ...some(f)] };
       case 1: return { kind: "drop", columns: some(f) };
       case 2: return { kind: "rename", map: Object.fromEntries(some(f).map((n) => [n, pick(NAMES)])) };
@@ -198,6 +199,13 @@ function gen(rand: () => number) {
       };
       case 11: return { kind: "fillBlanks", columns: some(f), dir: pick(["down", "up"] as const) };
       case 12: return { kind: "replaceValues", column: rand() < 0.3 ? "" : colOf(f), find: pick([...TEXT, "1", "TRUE", "-3"]), replaceWith: pick([...TEXT, "0", "7"]), mode: pick(["cell", "substring"] as const) };
+      case 13: return { kind: "dropBlankRows", mode: pick(["all", "any"] as const) };
+      case 14: return { kind: "addIndex", name: pick([...NAMES, "", " Index "]), start: pick([1, 0, -2.5, int(-3, 9)]) };
+      case 15: return {
+        kind: "splitColumn", column: colOf(f), delimiter: pick(["", ",", " ", "-", ".", "a", "TRUE", "1"]),
+        ...(rand() < 0.5 ? { into: Array.from({ length: int(0, 3) }, () => pick([...NAMES, "", " x "])) } : {}),
+      };
+      case 16: return { kind: "mergeColumns", columns: [colOf(f), ...some(f)], separator: pick(["", " ", ", ", "-"]), name: pick([...NAMES, "", " Merged "]) };
       default: return { kind: "sliceRows", mode: pick(["first", "last", "skip", "range"] as const), n: int(-1, 10), ...(rand() < 0.5 ? { to: int(-1, 10) } : {}) };
     }
   };
@@ -542,6 +550,26 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
     if (isSolError(js)) return;
     expect(view({ __frame: true, columns: [{ name: "o", type: "number", values: engine!.cells }] }))
       .toEqual(view({ __frame: true, columns: [{ name: "o", type: "number", values: js.cells }] }));
+  });
+});
+
+describe("a formats step rides the schema, never the engine", () => {
+  it("formats set after a pivot-free chain come back on collect", async () => {
+    const dec: FormatAnnotation = { format: "decimal", unit: "none", decimalDigits: 1, decimalMode: "places" };
+    const f: FrameValue = { __frame: true, columns: [{ name: "x", type: "number", values: [2, 1] }, { name: "s", type: "string", values: ["b", "a"] }] };
+    const be = frameBackend();
+    try {
+      const h = await be.source(f);
+      const out = await be.applyMany(h, [{ kind: "sort", by: "x", dir: "asc" }, { kind: "formats", formats: { x: dec } }]);
+      const got = await be.collect(out);
+      expect(isSolError(got)).toBe(false);
+      if (isSolError(got) || !got) return;
+      expect(got.columns.map((c) => [c.name, c.values, c.format])).toEqual([["x", [1, 2], dec], ["s", ["a", "b"], undefined]]);
+      const lone = await be.collect(await be.apply(h, { kind: "formats", formats: { s: dec } }));
+      expect(isSolError(lone) ? null : lone?.columns.map((c) => c.format)).toEqual([undefined, dec]);
+    } finally {
+      wasmInvokeSync("engine_clear");
+    }
   });
 });
 
