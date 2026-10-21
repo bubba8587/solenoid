@@ -1185,6 +1185,7 @@ fn tag_computed_cell(v: V) -> FrameCell {
         V::Err(e) => FrameCell::Err(e),
         V::Fx(code) => FrameCell::err(crate::excel_functions::fx_error_to_sol(code)),
         V::List(_) => FrameCell::err(sol_error("#SHAPE!", "A computed column needs one value per row. Use @name to read this row's cell.")),
+        V::Cx(..) => FrameCell::err(sol_error("#VALUE!", "Each row of a computed column must be a number, text, TRUE/FALSE or blank.")),
     }
 }
 

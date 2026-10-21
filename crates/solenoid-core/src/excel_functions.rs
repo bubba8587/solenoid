@@ -26,6 +26,8 @@ pub enum V {
     Fx(&'static str),
     /// A whole column, as a range function takes it (flattened, its cells in order).
     List(Rc<Vec<V>>),
+    /// A complex number (`cxValue.ts`' `Cx`): real part, imaginary part.
+    Cx(f64, f64),
 }
 
 impl V {
@@ -226,7 +228,7 @@ pub fn js_string_of(v: &V) -> String {
         V::Num(n) => number_to_string(*n),
         V::Str(s) => s.to_string(),
         V::Bool(b) => (if *b { "true" } else { "false" }).into(),
-        V::Err(_) => "[object Object]".into(),
+        V::Err(_) | V::Cx(..) => "[object Object]".into(),
         V::Fx(code) => format!("Error: {code}"),
         // `Array.prototype.join` renders null and undefined as empty.
         V::List(items) => items.iter().map(|v| if matches!(v, V::Null | V::Undef) { String::new() } else { js_string_of(v) }).collect::<Vec<_>>().join(","),
@@ -354,7 +356,7 @@ pub(crate) fn parse_number(v: &V) -> V {
             let s = js_string_of(v);
             if string_to_number(&s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(&s)) }
         }
-        V::Err(_) => V::Fx("#VALUE!"),
+        V::Err(_) | V::Cx(..) => V::Fx("#VALUE!"),
     }
 }
 
@@ -374,7 +376,7 @@ pub(crate) fn truthy(v: &V) -> bool {
         V::Num(n) => *n != 0.0 && !n.is_nan(),
         V::Str(s) => !s.is_empty(),
         V::Bool(b) => *b,
-        V::Err(_) | V::Fx(_) | V::List(_) => true,
+        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) => true,
     }
 }
 
@@ -3735,7 +3737,7 @@ fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
 fn fx_edate(start: &V, months: &V) -> V {
     let d = match start {
         V::Undef | V::Err(_) | V::Fx(_) => return V::Fx("#VALUE!"),
-        V::List(_) => return bail(),
+        V::List(_) | V::Cx(..) => return bail(),
         V::Str(s) if string_to_number(s).is_nan() => return bail(),
         V::Str(s) => js_parse_float(s),
         V::Num(n) if n.is_nan() => return V::Fx("#VALUE!"),

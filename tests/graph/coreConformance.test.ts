@@ -6,6 +6,7 @@ import { describe, it, expect, beforeAll, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { isSolError, solError } from "../../src/graph/errorValue";
+import { isCx } from "../../src/graph/cxValue";
 import { resolveExcelFunction, FX_FUNCTION_NAMES, internalFunctionNames } from "../../src/graph/excelFunctions";
 import { compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
@@ -48,6 +49,8 @@ function canon(r: unknown): unknown {
   if (typeof r === "string") return { str: wf(r) };
   if (typeof r === "boolean") return { bool: r };
   if (Array.isArray(r)) return { list: r.map(canon) };
+  if (isCx(r)) return { cx: [r.re, r.im].map((x) => (Number.isNaN(x) ? "NaN" : bits(x))) };
+  if (isLambdaValue(r)) return { lambda: true };
   return { other: Object.prototype.toString.call(r) };
 }
 
@@ -63,11 +66,12 @@ function tsAnswer(name: string, args: unknown[]): unknown {
 }
 
 function engineAnswer(name: string, raw: unknown): unknown {
-  const o = raw as { num?: string; list?: unknown[]; thrown?: string; msg?: string; err?: string } | null;
+  const o = raw as { num?: string; cx?: string[]; list?: unknown[]; thrown?: string; msg?: string; err?: string } | null;
   if (o === null || typeof o !== "object") return o;
   if (o.thrown !== undefined) return failed(name);
   if (o.num !== undefined) return { num: isNanBits(o.num) ? "NaN" : o.num };
   if (o.list) return { list: o.list.map((x) => engineAnswer(name, x)) };
+  if (o.cx) return { cx: o.cx.map((b) => (isNanBits(b) ? "NaN" : b)) };
   if (o.err !== undefined) return { err: o.err, msg: wf(o.msg ?? "") };
   return o;
 }

@@ -246,6 +246,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     V::Null => Json::Null,
                     V::Str(s) => json!({ "str": s.to_string() }),
                     V::Bool(b) => json!({ "bool": b }),
+                    V::Cx(re, im) => json!({ "cx": [re.to_bits().to_string(), im.to_bits().to_string()] }),
                 }
             }
             Ok(out(&r))
