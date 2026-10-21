@@ -3,6 +3,7 @@
 //! frames and plain arguments, and answers a frame or a value. `engine_frame_fn` reaches them.
 
 use crate::decision::{self, Normalize};
+use crate::planners;
 use crate::error_value::SolError;
 use crate::excel_functions::V;
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
@@ -37,7 +38,19 @@ fn num_arg(args: &[V], i: usize) -> Option<f64> {
     }
 }
 
+fn frame_or_null(f: Option<FrameValue>) -> FrameOut {
+    f.map_or(FrameOut::Value(V::Null), FrameOut::Frame)
+}
+
 pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
+    // args: rate, nper, pv, fv, type (0 or 1).
+    if name == "amortizationSchedule" {
+        let nums: Option<Vec<f64>> = (0..5).map(|i| num_arg(args, i)).collect();
+        return match nums.as_deref() {
+            Some(&[rate, nper, pv, fv, ty]) if ty == 0.0 || ty == 1.0 => frame_or_null(planners::amortization_frame(rate, nper, pv, fv, ty)),
+            _ => FrameOut::Bail,
+        };
+    }
     let Some(f) = frames.first() else { return FrameOut::Bail };
     let second = frames.get(1).copied();
     let normalize = || text_arg(args, 0).and_then(Normalize::from_tag);
@@ -54,6 +67,27 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
         "allocateFrame" => match (text_arg(args, 0), num_arg(args, 1)) {
             (Some(mode), Some(amount)) => decision::allocate_frame(f, mode, amount).map_or(FrameOut::Bail, FrameOut::from),
             _ => FrameOut::Bail,
+        },
+        // args: extra, order, view, the start month's serial (or null).
+        "payoffFrame" => match (num_arg(args, 0), text_arg(args, 1), text_arg(args, 2), args.get(3)) {
+            (Some(extra), Some(order), Some(view), Some(start @ (V::Null | V::Num(_)))) => {
+                let start = if let V::Num(s) = start { Some(*s) } else { None };
+                planners::payoff_frame(f, extra, order, view, start).into()
+            }
+            _ => FrameOut::Bail,
+        },
+        "settleFrame" => text_arg(args, 0).map_or(FrameOut::Bail, |split| planners::settle_frame(f, split).into()),
+        "kmeans" => match num_arg(args, 0) {
+            Some(k) if !k.is_nan() => frame_or_null(planners::kmeans_frame(f, k)),
+            _ => FrameOut::Bail,
+        },
+        "pca" => match args.first() {
+            Some(V::Bool(s)) => frame_or_null(planners::pca_frame(f, *s)),
+            _ => FrameOut::Bail,
+        },
+        "logisticFit" => match text_arg(args, 0).and_then(|t| planners::logistic_frame(f, t)) {
+            Some(out) => frame_or_null(out),
+            None => FrameOut::Bail,
         },
         _ => FrameOut::Bail,
     }

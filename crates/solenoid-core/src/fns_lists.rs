@@ -1077,7 +1077,7 @@ fn gaussian_smooth(values: &[V], sigma: f64) -> V {
     )
 }
 
-fn mat_solve(a: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
+pub(crate) fn mat_solve(a: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
     let n = a.len();
     if n == 0 || a[0].len() != n || b.len() != n {
         return None;

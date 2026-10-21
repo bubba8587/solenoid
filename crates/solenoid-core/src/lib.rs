@@ -34,6 +34,7 @@ pub mod letters;
 pub mod jsnum;
 pub mod js_regex;
 pub mod nfd_table;
+pub mod planners;
 pub mod shapers;
 pub mod string_order;
 pub mod text_ops;
