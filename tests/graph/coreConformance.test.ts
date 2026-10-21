@@ -9,7 +9,7 @@ import { isSolError, solError } from "../../src/graph/errorValue";
 import { isCx } from "../../src/graph/cxValue";
 import { resolveExcelFunction, FX_FUNCTION_NAMES, internalFunctionNames } from "../../src/graph/excelFunctions";
 import { compileTsEvaluator, extractVariables, rowRefNames, parseFormula } from "../../src/graph/excelFormula";
-import { dimEvalWithCode } from "../../src/graph/unitDimExpr";
+import { dimEvalWithCode, affineWeight, type Lam } from "../../src/graph/unitDimExpr";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import {
   applyVerb, joinFrames, appendFrames, bindColumns, promoteHeaders, demoteHeaders, describeFrame, correlationMatrix, reconcileFrames,
@@ -951,9 +951,69 @@ describe("formula dimensions answer as frozen", () => {
   });
 });
 
+// ─── Affine weights (unitDimExpr.ts) ────────────────────────────────────────────
+
+type AffCase = { src: string; points: string[]; lists: string[]; bare: string[]; fns: Record<string, [string[], string]>; want: unknown };
+
+/** `affineWeight` over readings (°C, °F), lists of readings, wired plain numbers and named LAMBDAs ([[C25]] firstClassUnits). */
+const affineCases = frozen<AffCase>("affine-weights", () => {
+  const cases: AffCase[] = [];
+  const rand = mulberry32(3131);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const FNS: Record<string, [string[], string]>[] = [{}, { half: [["x"], "x / 2"] }, { mid: [["x", "y"], "(x + y) / 2"], dbl: [["v"], "v * 2"] }, { diff: [["x", "y"], "x - y"] }];
+  const fns = ["MIN", "MAX", "MEDIAN", "AVERAGE", "AVG", "STDEV", "VAR", "DEVSQ", "AVEDEV", "SUM", "ABS", "ROUND", "INT", "LARGE", "INDEX", "SORT",
+    "TAKE", "AVERAGEIF", "SUMIFS", "MAXIFS", "XLOOKUP", "IF", "IFS", "SWITCH", "IFERROR", "CHOOSE", "COUNT", "LEN", "SQRT", "EXP", "LAMBDA",
+    "half", "mid", "dbl", "diff", "NOSUCH"];
+  const lambda = () => pick(["LAMBDA(v, v * 2)", "LAMBDA(v, v - 1)", "LAMBDA(acc, v, acc + v)", "LAMBDA(acc, v, MAX(acc, v))", "LAMBDA(acc, v, acc)",
+    "LAMBDA(r, SUM(r))", "LAMBDA(r, AVERAGE(r))", "LAMBDA(i, j, i * j)", "MAX", "MIN", "SUM", "LAMBDA(v)", "LAMBDA(x, y, x - y)"]);
+  const leaf = () => pick(["a", "b", "t", "xs", "n", "a", "b", "1", "2", "0", "-3.5", "0.5", "\"t\"", "TRUE", "@a", "@b", "a%", "-a", "q", "{1,2}"]);
+  const expr = (depth: number): string => {
+    const r = rand();
+    if (depth <= 0 || r < 0.22) return leaf();
+    if (r < 0.5) return `${expr(depth - 1)} ${pick(["+", "-", "*", "/", "^", "&", "=", "<", "+", "-", "*", "/", "+", "-"])} ${expr(depth - 1)}`;
+    if (r < 0.55) return `(${expr(depth - 1)})`;
+    if (r < 0.63) {
+      const host = pick(["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY"]);
+      if (host === "REDUCE" || host === "SCAN") return `${host}(${pick(["0", "1", "a", "n", "xs"])}, ${expr(depth - 1)}, ${lambda()})`;
+      if (host === "MAKEARRAY") return `MAKEARRAY(2, 3, ${lambda()})`;
+      if (host === "MAP" && rand() < 0.4) return `MAP(${expr(depth - 1)}, ${expr(depth - 1)}, ${lambda()})`;
+      return `${host}(${expr(depth - 1)}, ${lambda()})`;
+    }
+    if (r < 0.67) return `${pick(["LAMBDA(x, x * 2)", "LAMBDA(x, y, x + y)", "LAMBDA(x, (x + a) / 2)", "SUM", "LAMBDA(x)", "MAX"])}(${expr(depth - 1)}, ${expr(depth - 1)})`;
+    const n = Math.floor(rand() * 5);
+    return `${pick(fns)}(${Array.from({ length: n }, () => (rand() < 0.08 ? "" : expr(depth - 1))).join(", ")})`;
+  };
+  for (let i = 0; i < 20000; i++) {
+    const points = ["a", "b", "t", "xs"].filter(() => rand() < 0.7);
+    const lists = ["xs", "t"].filter(() => rand() < 0.6);
+    const bare = ["n", "q"].filter(() => rand() < 0.6);
+    const fnsHere = pick(FNS);
+    const src = expr(3);
+    const ast = parseFormula(src);
+    if (!ast) continue;
+    const named = new Map<string, Lam>();
+    for (const [k, [params, body]] of Object.entries(fnsHere)) named.set(k, { params, body: parseFormula(body)! });
+    const w = affineWeight(ast, new Set(points), new Set(lists), named, new Set(bare));
+    cases.push({ src, points, lists, bare, fns: fnsHere, want: isSolError(w) ? { err: w.code, msg: w.message } : { w } });
+  }
+  return cases;
+});
+
+describe("affine weights answer as frozen", () => {
+  it(`${affineCases.length} formulas`, () => {
+    const bad: unknown[] = [];
+    for (const c of affineCases) {
+      const got = wasmInvokeSync<unknown>("engine_affine_weight", { src: c.src, points: c.points, lists: c.lists, bare: c.bare, fns: c.fns });
+      if (JSON.stringify(got) !== JSON.stringify(c.want)) bad.push({ ...c, got });
+    }
+    if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(b)).join("\n"));
+    expect(bad.slice(0, 5)).toEqual([]);
+  });
+});
+
 if (FREEZING) {
   it("froze every suite", () => {
-    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length).toBeGreaterThan(0);
+    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length).toBeGreaterThan(0);
   });
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.

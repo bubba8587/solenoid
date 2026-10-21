@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use crate::error_value::SolError;
 use crate::excel_formula::Ast;
-use crate::unit_value::unit_error;
+use crate::unit_value::{unit_error, READINGS_ADD, READINGS_FOLD, READINGS_SCALE};
 
 /// Exponents over the axes; an absent axis is 0 and a zero is never stored.
 pub type Dim = BTreeMap<String, f64>;
@@ -276,31 +276,32 @@ struct Lam {
     body: Ast,
 }
 
-/// Which argument each parameter of a host's lambda reads (None: a plain index).
+/// Which argument each parameter of a host's lambda reads, and whether it takes the whole argument (None: a plain
+/// index).
 struct Host {
     lam_arg: usize,
-    params: Vec<Option<usize>>,
+    params: Vec<Option<(usize, bool)>>,
     fold: bool,
 }
 
 fn host_of(fn_: &str, argc: usize) -> Option<Host> {
     match fn_ {
-        "REDUCE" | "SCAN" if argc == 3 => Some(Host { lam_arg: 2, params: vec![Some(0), Some(1)], fold: true }),
-        "BYROW" | "BYCOL" if argc == 2 => Some(Host { lam_arg: 1, params: vec![Some(0)], fold: false }),
-        "MAP" if argc >= 2 => Some(Host { lam_arg: argc - 1, params: (0..argc - 1).map(Some).collect(), fold: false }),
+        "REDUCE" | "SCAN" if argc == 3 => Some(Host { lam_arg: 2, params: vec![Some((0, false)), Some((1, false))], fold: true }),
+        "BYROW" | "BYCOL" if argc == 2 => Some(Host { lam_arg: 1, params: vec![Some((0, true))], fold: false }),
+        "MAP" if argc >= 2 => Some(Host { lam_arg: argc - 1, params: (0..argc - 1).map(|i| Some((i, false))).collect(), fold: false }),
         "MAKEARRAY" if argc == 3 => Some(Host { lam_arg: 2, params: vec![None, None], fold: false }),
         _ => None,
     }
 }
 
-fn lambda_of(n: Option<&Ast>, arity: usize, env: &Dim2) -> Option<Lam> {
+fn lambda_of(n: Option<&Ast>, arity: usize, is_var: &dyn Fn(&str) -> bool) -> Option<Lam> {
     match n? {
         Ast::Call { name, args } if name.to_uppercase() == "LAMBDA" && !args.is_empty() => {
             let ps = &args[..args.len() - 1];
             let params: Vec<String> = ps.iter().filter_map(|p| if let Ast::Name(n) = p { Some(n.clone()) } else { None }).collect();
             (params.len() == ps.len()).then(|| Lam { params, body: args[args.len() - 1].clone() })
         }
-        Ast::Name(name) if !env.contains_key(name) && resolves(&name.to_uppercase()) => {
+        Ast::Name(name) if !is_var(name) && resolves(&name.to_uppercase()) => {
             let params: Vec<String> = (0..arity).map(|i| format!("#{i}")).collect();
             let body = Ast::Call { name: name.clone(), args: params.iter().map(|p| Ast::Name(p.clone())).collect() };
             Some(Lam { params, body })
@@ -329,7 +330,7 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
         Ast::Num(..) | Ast::Bool(_) | Ast::Str(_) | Ast::Blank | Ast::AtCol(_) | Ast::WholeCol(_) => plain(dimless()),
         Ast::Name(n) => Ok(Some(Op { dim: env.get(n).cloned().unwrap_or_default(), code: codes.get(n).cloned() })),
         Ast::Unary { arg, .. } | Ast::Percent(arg) => op_eval(arg, env, codes),
-        Ast::Apply { func, args } => match lambda_of(Some(func), args.len(), env) {
+        Ast::Apply { func, args } => match lambda_of(Some(func), args.len(), &|n| env.contains_key(n)) {
             Some(lam) => {
                 let vals: Vec<OpResult> = args.iter().map(|a| op_eval(a, env, codes)).collect();
                 apply_dim(&lam, &vals, env, codes)
@@ -339,7 +340,7 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
         Ast::Call { name, args } => {
             let up = name.to_uppercase();
             if let Some(host) = host_of(&up, args.len()) {
-                if let Some(lam) = lambda_of(args.get(host.lam_arg), host.params.len(), env) {
+                if let Some(lam) = lambda_of(args.get(host.lam_arg), host.params.len(), &|n| env.contains_key(n)) {
                     return host_dim(args, &host, &lam, env, codes);
                 }
             }
@@ -448,7 +449,7 @@ fn host_dim(args: &[Ast], host: &Host, lam: &Lam, env: &Dim2, codes: &Codes) -> 
             None => return Ok(None),
         }
     }
-    let bound: Vec<Op> = host.params.iter().map(|p| p.map_or(Op { dim: dimless(), code: None }, |i| vals[i].clone())).collect();
+    let bound: Vec<Op> = host.params.iter().map(|p| p.map_or(Op { dim: dimless(), code: None }, |(i, _)| vals[i].clone())).collect();
     if host.fold {
         let (acc, elem) = (&bound[0], &bound[1]);
         let start = if is_dimensionless(&acc.dim) { elem.clone() } else { acc.clone() };
@@ -461,4 +462,272 @@ fn host_dim(args: &[Ast], host: &Host, lam: &Lam, env: &Dim2, codes: &Codes) -> 
 /// `dimEvalWithCode`: the result's dimension and currency code, a conflict, or None where it is indeterminate.
 pub fn dim_eval_with_code(node: &Ast, env: &BTreeMap<String, Dim>, codes: &Codes) -> OpResult {
     op_eval(node, env, codes)
+}
+
+// ─── Affine units (°C, °F): `affineWeight` ───────────────────────────────────────
+
+#[derive(Clone, Copy, Debug)]
+struct Aff {
+    w: f64,
+    list: bool,
+    konst: Option<f64>,
+    scaled: bool,
+    bare: bool,
+}
+
+const ZERO: Aff = Aff { w: 0.0, list: false, konst: None, scaled: false, bare: false };
+
+fn aff(w: f64, list: bool) -> Aff {
+    Aff { w, list, ..ZERO }
+}
+
+const AFF_SELECT: &[&str] = &["MIN", "MAX", "MEDIAN", "AVERAGE", "AVG"];
+const AFF_FIRST: &[&str] = &["ABS", "ROUND", "ROUNDUP", "ROUNDDOWN", "MROUND", "CEILING", "FLOOR", "INT", "TRUNC"];
+/// The spreads and the squared spreads: their arguments must agree, and they answer a difference.
+const AFF_SPREADS: &[&str] = &["STDEV", "STDEV.S", "STDEV.P", "AVEDEV", "VAR", "VAR.S", "VAR.P", "DEVSQ"];
+const PICK_SCALAR_FNS: &[&str] =
+    &["LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC", "MODE", "MODE.SNGL", "INDEX"];
+
+fn aff_err() -> SolError {
+    unit_error(READINGS_SCALE)
+}
+
+fn sum_err() -> SolError {
+    unit_error(READINGS_ADD)
+}
+
+fn is_literal(n: Option<&Ast>) -> bool {
+    match n {
+        None | Some(Ast::Str(_) | Ast::Bool(_) | Ast::Blank) => true,
+        Some(n) => const_num(n).is_some(),
+    }
+}
+
+pub type NamedLambdas = BTreeMap<String, (Vec<String>, Ast)>;
+
+/// The readings, the names spread over a list, the wired plain numbers, the named lambdas and a lambda's locals.
+#[derive(Clone)]
+pub struct AffScope<'a> {
+    points: &'a [String],
+    lists: &'a [String],
+    bare: &'a [String],
+    fns: &'a NamedLambdas,
+    locals: BTreeMap<String, Aff>,
+}
+
+impl<'a> AffScope<'a> {
+    pub fn new(points: &'a [String], lists: &'a [String], bare: &'a [String], fns: &'a NamedLambdas) -> Self {
+        AffScope { points, lists, bare, fns, locals: BTreeMap::new() }
+    }
+    fn has(xs: &[String], n: &str) -> bool {
+        xs.iter().any(|x| x == n)
+    }
+    fn is_var(&self, n: &str) -> bool {
+        self.locals.contains_key(n) || Self::has(self.points, n) || Self::has(self.lists, n)
+    }
+    fn point(&self, n: &str) -> f64 {
+        if Self::has(self.points, n) { 1.0 } else { 0.0 }
+    }
+}
+
+fn aff_apply(params: &[String], body: &Ast, args: &[Aff], scope: &AffScope) -> Result<Aff, SolError> {
+    let mut inner = scope.clone();
+    for (i, p) in params.iter().enumerate() {
+        inner.locals.insert(p.clone(), args.get(i).copied().unwrap_or(ZERO));
+    }
+    aff_eval(body, &inner)
+}
+
+/// A fold must answer the accumulator's kind each step; a literal seed beside readings is a reading.
+fn aff_host(fn_: &str, args: &[Ast], host: &Host, lam: &Lam, scope: &AffScope) -> Result<Aff, SolError> {
+    let mut vals = Vec::with_capacity(args.len());
+    for (i, a) in args.iter().enumerate() {
+        vals.push(if i == host.lam_arg { ZERO } else { aff_eval(a, scope)? });
+    }
+    let bound: Vec<Aff> = host.params.iter().map(|p| p.map_or(ZERO, |(i, whole)| aff(vals[i].w, whole && vals[i].list))).collect();
+    if !host.fold {
+        let body = aff_apply(&lam.params, &lam.body, &bound, scope)?;
+        return Ok(aff(body.w, true));
+    }
+    let (acc, elem) = (bound[0], bound[1]);
+    let start = aff(if is_literal(args.first()) && elem.w != 0.0 { elem.w } else { acc.w }, false);
+    let step = aff_apply(&lam.params, &lam.body, &[start, elem], scope)?;
+    if (step.w - start.w).abs() > 1e-12 {
+        return Err(if step.w > 1.0 { sum_err() } else { unit_error(READINGS_FOLD) });
+    }
+    Ok(aff(start.w, fn_ == "SCAN"))
+}
+
+/// `ws.some((w) => w !== ws[0])` is false.
+fn agree(ws: &[f64]) -> bool {
+    ws.first().is_none_or(|w0| ws.iter().all(|w| w == w0))
+}
+
+fn aff_eval(node: &Ast, scope: &AffScope) -> Result<Aff, SolError> {
+    match node {
+        Ast::Num(_, v) => Ok(Aff { konst: Some(*v), ..ZERO }),
+        Ast::Name(n) => Ok(scope.locals.get(n).copied().unwrap_or(Aff {
+            w: scope.point(n),
+            list: AffScope::has(scope.lists, n),
+            bare: AffScope::has(scope.bare, n),
+            ..ZERO
+        })),
+        Ast::AtCol(n) => Ok(aff(scope.point(n), false)),
+        Ast::WholeCol(n) => Ok(aff(scope.point(n), true)),
+        Ast::Unary { op, arg } => {
+            let a = aff_eval(arg, scope)?;
+            Ok(if *op == '-' { Aff { w: -a.w, konst: a.konst.map(|k| -k), ..a } } else { a })
+        }
+        Ast::Percent(arg) => {
+            let a = aff_eval(arg, scope)?;
+            Ok(Aff { w: a.w / 100.0, list: a.list, konst: a.konst.map(|k| k / 100.0), scaled: a.scaled || a.w != 0.0, bare: false })
+        }
+        Ast::Bin { op, l, r } => {
+            let l = aff_eval(l, scope);
+            let r = aff_eval(r, scope);
+            let (l, r) = (l?, r?);
+            let list = l.list || r.list;
+            let both = |f: fn(f64, f64) -> f64| match (l.konst, r.konst) {
+                (Some(a), Some(b)) => Some(f(a, b)),
+                _ => None,
+            };
+            Ok(match op.as_str() {
+                "+" => Aff { w: l.w + r.w, list, konst: both(|a, b| a + b), scaled: l.scaled || r.scaled, bare: false },
+                "-" => Aff { w: l.w - r.w, list, konst: both(|a, b| a - b), scaled: l.scaled || r.scaled, bare: false },
+                "*" => {
+                    if l.w != 0.0 && r.w != 0.0 {
+                        return Err(aff_err());
+                    }
+                    if l.w != 0.0 {
+                        let Some(k) = r.konst else { return Err(aff_err()) };
+                        Aff { w: l.w * k, list, konst: None, scaled: true, bare: false }
+                    } else if r.w != 0.0 {
+                        let Some(k) = l.konst else { return Err(aff_err()) };
+                        Aff { w: r.w * k, list, konst: None, scaled: true, bare: false }
+                    } else {
+                        Aff { list, konst: both(|a, b| a * b), ..ZERO }
+                    }
+                }
+                "/" => {
+                    if r.w != 0.0 {
+                        return Err(aff_err());
+                    }
+                    if l.w != 0.0 {
+                        match r.konst {
+                            Some(k) if k != 0.0 => Aff { w: l.w / k, list, konst: None, scaled: true, bare: false },
+                            _ => return Err(aff_err()),
+                        }
+                    } else {
+                        let k = match (l.konst, r.konst) {
+                            (Some(a), Some(b)) if b != 0.0 && !b.is_nan() => Some(a / b),
+                            _ => None,
+                        };
+                        Aff { list, konst: k, ..ZERO }
+                    }
+                }
+                "^" => {
+                    if l.w != 0.0 || r.w != 0.0 {
+                        return Err(aff_err());
+                    }
+                    aff(0.0, list)
+                }
+                _ => ZERO,
+            })
+        }
+        Ast::Call { name, args: nodes } => {
+            let fn_ = name.to_uppercase();
+            let f = fn_.as_str();
+            if let Some(host) = host_of(f, nodes.len()) {
+                if let Some(lam) = lambda_of(nodes.get(host.lam_arg), host.params.len(), &|n| scope.is_var(n)) {
+                    return aff_host(f, nodes, &host, &lam, scope);
+                }
+            }
+            let mut args = Vec::with_capacity(nodes.len());
+            for a in nodes {
+                args.push(aff_eval(a, scope)?);
+            }
+            if !scope.locals.contains_key(name) {
+                if let Some((params, body)) = scope.fns.get(name) {
+                    return aff_apply(params, body, &args, scope);
+                }
+            }
+            if RESULT_DIMLESS_FNS.contains(&f) {
+                return Ok(ZERO);
+            }
+            if AFF_SELECT.contains(&f) {
+                let ws: Vec<f64> = args.iter().filter(|a| a.konst.is_none() && !a.bare).map(|a| a.w).collect();
+                if !agree(&ws) {
+                    return Err(aff_err());
+                }
+                return Ok(aff(ws.first().copied().unwrap_or(0.0), false));
+            }
+            if AFF_SPREADS.contains(&f) {
+                let ws: Vec<f64> = args.iter().filter(|a| a.konst.is_none()).map(|a| a.w).collect();
+                return if agree(&ws) { Ok(ZERO) } else { Err(aff_err()) };
+            }
+            if f == "SUM" {
+                if args.iter().any(|a| a.list && a.w != 0.0) {
+                    return Err(sum_err());
+                }
+                return Ok(aff(args.iter().fold(0.0, |s, a| s + a.w), false));
+            }
+            if AFF_FIRST.contains(&f) || PICK_FNS.contains(&f) {
+                if args.iter().skip(1).any(|a| a.w != 0.0) {
+                    return Err(aff_err());
+                }
+                let pick_scalar = PICK_SCALAR_FNS.contains(&f);
+                return Ok(aff(args.first().map_or(0.0, |a| a.w), !pick_scalar && args.first().is_some_and(|a| a.list)));
+            }
+            if let Some(i) = criteria_value_arg(f, args.len()) {
+                let v = args.get(i).copied().unwrap_or(ZERO);
+                if f == "SUMIFS" {
+                    return if v.w != 0.0 { Err(sum_err()) } else { Ok(ZERO) };
+                }
+                return Ok(aff(v.w, false));
+            }
+            if let Some(branches) = branch_args(f, args.len()) {
+                let list = branches.iter().any(|&i| args.get(i).is_some_and(|b| b.list));
+                let ws: Vec<f64> = branches
+                    .iter()
+                    .filter(|&&i| !is_literal(nodes.get(i)) && !args.get(i).is_some_and(|a| a.bare))
+                    .map(|&i| args.get(i).map_or(0.0, |a| a.w))
+                    .collect();
+                if !agree(&ws) {
+                    return Err(aff_err());
+                }
+                return Ok(aff(ws.first().copied().unwrap_or(0.0), list));
+            }
+            if args.iter().any(|a| a.w != 0.0) { Err(aff_err()) } else { Ok(ZERO) }
+        }
+        Ast::Apply { func, args: nodes } => {
+            if let Some(lam) = lambda_of(Some(func), nodes.len(), &|n| scope.is_var(n)) {
+                let mut args = Vec::with_capacity(nodes.len());
+                for a in nodes {
+                    args.push(aff_eval(a, scope)?);
+                }
+                return aff_apply(&lam.params, &lam.body, &args, scope);
+            }
+            for a in nodes {
+                if aff_eval(a, scope)?.w != 0.0 {
+                    return Err(aff_err());
+                }
+            }
+            Ok(ZERO)
+        }
+        Ast::Str(_) | Ast::Bool(_) | Ast::Blank => Ok(ZERO),
+    }
+}
+
+/// `affineWeight`: 1 is a reading, 0 a difference or a plain number, else #UNIT!.
+pub fn affine_weight(node: &Ast, scope: &AffScope) -> Result<u8, SolError> {
+    let r = aff_eval(node, scope)?;
+    if (r.w - 1.0).abs() < 1e-12 {
+        Ok(1)
+    } else if r.w.abs() < 1e-12 {
+        Ok(0)
+    } else if r.w > 1.0 && !r.scaled {
+        Err(sum_err())
+    } else {
+        Err(aff_err())
+    }
 }

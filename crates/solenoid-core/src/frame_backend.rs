@@ -208,6 +208,21 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 Err(e) => json!({ "err": e.code, "msg": e.message }),
             })
         }
+        // `affineWeight`: a formula over readings (°C, °F) is a reading (1), a difference (0) or #UNIT!.
+        "engine_affine_weight" => {
+            let names = |key: &str| parse::<Option<Vec<String>>>(args, key).map(Option::unwrap_or_default);
+            let (points, lists, bare) = (names("points")?, names("lists")?, names("bare")?);
+            let mut fns = crate::unit_dims::NamedLambdas::new();
+            for (name, (params, body)) in parse::<Option<std::collections::BTreeMap<String, (Vec<String>, String)>>>(args, "fns")?.unwrap_or_default() {
+                let Some(body) = crate::excel_formula::parse_formula(&body) else { continue };
+                fns.insert(name, (params, body));
+            }
+            let Some(ast) = crate::excel_formula::parse_formula(&parse::<String>(args, "src")?) else { return Ok(json!({ "parses": false })) };
+            Ok(match crate::unit_dims::affine_weight(&ast, &crate::unit_dims::AffScope::new(&points, &lists, &bare, &fns)) {
+                Ok(w) => json!({ "w": w }),
+                Err(e) => json!({ "err": e.code, "msg": e.message }),
+            })
+        }
         // `computeColumnCells` in the core: a formula or a bare wired LAMBDA over a resident frame.
         "engine_compute_column" => {
             let f = get(&parse::<String>(args, "handle")?)?;

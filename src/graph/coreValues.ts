@@ -176,3 +176,13 @@ export function dimEvalOnCore(src: string, env: Record<string, Record<string, nu
   const dim = Object.fromEntries(r.dim!.map(([k, v]) => [k, Number(v)]));
   return r.code == null ? { dim } : { dim, code: r.code };
 }
+
+/** `affineWeight` of a formula on the core: 1 a reading, 0 a difference, or #UNIT!. Undefined where the core is off or
+ *  the formula doesn't parse. `fns` are named LAMBDAs as their parameters and body text. */
+export function affineWeightOnCore(src: string, points: readonly string[], lists: readonly string[], bare: readonly string[],
+  fns: Record<string, [string[], string]>): 0 | 1 | SolError | undefined {
+  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src) || !Object.values(fns).every(([, b]) => wellFormed(b))) return undefined;
+  const r = wasmInvokeSync<{ parses?: false; w?: 0 | 1; err?: string; msg?: string }>("engine_affine_weight", { src, points, lists, bare, fns });
+  if (r.parses === false) return undefined;
+  return r.err !== undefined ? solError(r.err as SolErrorCode, r.msg ?? "") : r.w!;
+}
