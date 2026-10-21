@@ -594,6 +594,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   PRICE:      { returns: "number", arity: [4, 6], family: "finance", native: true },
   YIELD:      { returns: "number", arity: [4, 6], family: "finance", native: true },
   VDB:        { returns: "number", arity: [5, 7], family: "finance", native: true },
+  DB:         { returns: "number", arity: [4, 5], family: "finance", native: true },
+  DDB:        { returns: "number", arity: [4, 5], family: "finance", native: true },
   CUMIPMT:    { returns: "number", arity: [6, 6], family: "finance", native: true },
   CUMPRINC:   { returns: "number", arity: [6, 6], family: "finance", native: true },
   SLN:        { returns: "number", arity: [3, 3], family: "finance", native: true },
