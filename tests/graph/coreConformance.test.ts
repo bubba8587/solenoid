@@ -364,7 +364,7 @@ describe("computed columns answer as frozen", () => {
         : computeColumnOnEngine(c.frame, c.src, rows, { sideValue, reserved: c.reserved, lambdas });
       if (engine === null) continue;
       ran++;
-      const got = { cells: cellView(engine.cells), sideVars: engine.sideVars };
+      const got = isSolError(engine) ? { error: { code: engine.code, message: wf(engine.message) } } : { cells: cellView(engine.cells), sideVars: engine.sideVars };
       if (JSON.stringify(got) !== JSON.stringify(c.want)) expect({ src: c.src, frame: c.frame, got }).toEqual({ src: c.src, frame: c.frame, got: c.want });
     }
     checkBails("computed columns", columns.length - ran);

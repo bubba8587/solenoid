@@ -9,7 +9,7 @@ import { applyVerb, joinFrames, appendFrames, bindColumns, pivotFrame, type Fram
 import { pivotLayoutOf } from "../../src/graph/pivotLayout";
 import type { ColumnUnit } from "../../src/graph/unitValue";
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "../../src/graph/frame";
-import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
+import { isSolError, solError, type SolError, type SolErrorCode } from "../../src/graph/errorValue";
 import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef, engineClock, clearCollectMemo } from "../../src/graph/frameBackend";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
@@ -436,7 +436,7 @@ describe("random row formulas: the Rust evaluator matches the TS one", () => {
       const evaluator = compileEvaluator(src)!;
       const js = computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(src) }, { ...opts, rowRefs: rowRefNames(src) });
       const want = isSolError(js) ? js : [view({ __frame: true, columns: [{ name: "out", type: "number", values: js.cells.map(well) as FrameCell[] }] }), js.sideVars];
-      const got = [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
+      const got = isSolError(engine) ? engine : [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
       if (JSON.stringify(got) !== JSON.stringify(want)) {
         expect({ run: i, src, input: view(f), got }).toEqual({ run: i, src, input: view(f), got: want });
       }
@@ -522,7 +522,7 @@ describe("FILTER, SORT, SORTBY, UNIQUE, TAKE and DROP in a range function: the R
       ran++;
       const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { ...opts, rowRefs: rowRefNames(src) });
       const want = isSolError(js) ? js : [view({ __frame: true, columns: [{ name: "out", type: "number", values: js.cells }] }), js.sideVars];
-      const got = [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
+      const got = isSolError(engine) ? engine : [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
       if (JSON.stringify(got) !== JSON.stringify(want)) {
         console.log(JSON.stringify({ src, input: view(f) }));
         expect({ run: i, src, input: view(f), got }).toEqual({ run: i, src, input: view(f), got: want });
@@ -607,7 +607,7 @@ describe("wired LAMBDA columns: the Rust evaluator matches the TS one", () => {
       const lam = node.data({ s1: [cell("number")], s2: [cell("string")], s3: [5], nope: [true] }).result;
       if (!isLambdaValue(lam)) continue;
       const sideValue = (p: string, kind: "var" | "row") => (p === "λ1" ? lam : solError("#REF!", kind === "var" ? `No side ${p}` : `No row side ${p}`));
-      let engine: { cells: FrameCell[]; sideVars: string[] } | null;
+      let engine: { cells: FrameCell[]; sideVars: string[] } | SolError | null;
       let js: unknown;
       if (rand() < 0.4) {
         engine = computeColumnOnEngine(f, "", rows, { bare: lam, sideValue });
@@ -622,7 +622,7 @@ describe("wired LAMBDA columns: the Rust evaluator matches the TS one", () => {
       ran++;
       const r = js as { cells: FrameCell[]; sideVars: string[] };
       const want = isSolError(js) ? js : [view({ __frame: true, columns: [{ name: "out", type: "number", values: r.cells.map(well) as FrameCell[] }] }), r.sideVars];
-      const got = [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
+      const got = isSolError(engine) ? engine : [view({ __frame: true, columns: [{ name: "out", type: "number", values: engine.cells }] }), engine.sideVars];
       if (JSON.stringify(got) !== JSON.stringify(want)) expect({ i, params, body, input: view(f), got }).toEqual({ i, params, body, input: view(f), got: want });
     }
     expect(ran, "the generator should reach the Rust evaluator often").toBeGreaterThan(FUZZ_RUNS / 4);
@@ -673,7 +673,7 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
     const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
     expect(isSolError(js)).toBe(false);
     if (isSolError(js)) return;
-    expect(view({ __frame: true, columns: [{ name: "o", type: "number", values: engine!.cells }] }))
+    expect(view({ __frame: true, columns: [{ name: "o", type: "number", values: (engine as { cells: FrameCell[] }).cells }] }))
       .toEqual(view({ __frame: true, columns: [{ name: "o", type: "number", values: js.cells }] }));
   });
 });
@@ -689,7 +689,7 @@ describe("EDATE runs on the engine wherever a local midnight rounds to its own d
     const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
     if (isSolError(js)) throw js;
     const sign = (c: unknown) => (Object.is(c, -0) ? "-0" : c);
-    expect(engine!.cells.map(sign)).toEqual(js.cells.map(sign));
+    expect((engine as { cells: FrameCell[] }).cells.map(sign)).toEqual(js.cells.map(sign));
   });
 });
 
@@ -714,10 +714,18 @@ describe("a formats step rides the schema, never the engine", () => {
 });
 
 describe("a reading the port leaves out sends the column to the TS", () => {
-  // An INDEX that answers a whole column lands somewhere only the TS's broadcast reads.
-  it.each(["COUNTIF(a, \"3-Apr-2026\")", "SUMIFS(a, a, \">=Jan 5 2024\")", "INDEX(a, 0, 1)", "INDEX(a, , )"])("%s", (src) => {
+  it.each(["COUNTIF(a, \"3-Apr-2026\")", "SUMIFS(a, a, \">=Jan 5 2024\")"])("%s", (src) => {
     const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [45000, 46115] }] };
     expect(computeColumnOnEngine(f, src, 2)).toBeNull();
+  });
+});
+
+describe("an INDEX that answers a whole column answers it on the engine, as the TS does", () => {
+  it.each(["INDEX(a, 0, 1)", "INDEX(a, , )"])("%s", (src) => {
+    const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [45000, 46115] }] };
+    const engine = computeColumnOnEngine(f, src, 2);
+    const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
+    expect(engine).toEqual(js);
   });
 });
 

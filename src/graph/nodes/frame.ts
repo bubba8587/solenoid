@@ -2664,7 +2664,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     if (!isFrameValue(schema)) return asValue();
     const sideValue = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
     const r = await computeColumnOnRef(ref, this.expr, schema.columns.map((c) => c.name), { sideValue, reserved: ["frame", "name", "fn", "after"] });
-    if (!r) return asValue();
+    if (!r || isSolError(r)) return asValue();
     try {
       if (readingsRefusal(this.expr, schema, this.bindings)) return asValue();
       if (gen !== this._gen) return { frame: null };

@@ -2,7 +2,10 @@
 //! The array-aware evaluator (`excelFormula.ts`' `evalAst`): a formula over named values, the Expression card's
 //! core. A value is a JS value: a list is an array, a matrix an array of arrays, a LAMBDA a `V::Lambda`.
 
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+
+use crate::frame::FrameColumn;
 
 use crate::error_value::sol_error;
 use crate::excel_formula::{apply_op, call_caught, constant_value, guard, lowered, Refusal, Role};
@@ -19,6 +22,9 @@ pub struct LambdaV {
     pub body: Option<Rc<Ast>>,
     pub env: Rc<Env>,
     pub eta: Option<String>,
+    /// A wired LAMBDA (a LAMBDA card's value): its body runs over its parameters and these captures alone
+    /// (`compilePositional`), whose values `env` holds; inside a computed column a capture naming a column reads it.
+    pub captured: Option<Vec<String>>,
 }
 
 const MAX_GENERATED: f64 = 1_000_000.0;
@@ -296,9 +302,124 @@ fn js_unary(v: &V) -> f64 {
 const ETA_HOSTS: [&str; 6] = ["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"];
 const LAMBDA_HOSTS: [&str; 7] = ["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY"];
 
-pub struct Eval;
+/// A computed column's row (`runColumn`'s row frame): what `@name`, `[name]` and ROW() read.
+pub struct RowCtx<'a> {
+    cols: FxHashMap<&'a str, &'a FrameColumn>,
+    alias: FxHashMap<String, String>,
+    reserved: Vec<String>,
+    rows: usize,
+    cursor: Cell<usize>,
+    wholes: RefCell<FxHashMap<String, V>>,
+    /// `sideValue(name, "row")` for each name the formula reads by `@` that no column holds.
+    row_sides: FxHashMap<String, V>,
+    at_verdict: RefCell<FxHashMap<String, (*const Vec<V>, Option<V>)>>,
+}
 
-impl Eval {
+impl<'a> RowCtx<'a> {
+    fn column(&self, key: &str) -> Option<&'a FrameColumn> {
+        match self.alias.get(key) {
+            Some(target) => self.cols.get(target.as_str()).copied(),
+            None => self.cols.get(key).copied(),
+        }
+    }
+
+    fn reserved_err(key: &str) -> V {
+        V::err(sol_error("#REF!", format!("\"{key}\" is a reserved input name. Rename the variable or the column")))
+    }
+
+    /// `wholeOf`: a column as a one-column table, built once.
+    fn whole_of(&self, c: &FrameColumn) -> V {
+        self.wholes
+            .borrow_mut()
+            .entry(c.name.clone())
+            .or_insert_with(|| list((0..c.values.len()).map(|i| list(vec![cell_v(c.cell_at(i))])).collect()))
+            .clone()
+    }
+
+    /// A wired list with one value per row reads as a column beside the table's ([[D85]] columnsStayColumns).
+    fn aligned(&self, v: V) -> V {
+        match &v {
+            V::List(l) if l.len() == self.rows && self.rows > 1 && !l.iter().any(is_arr) => list(l.iter().map(|x| list(vec![x.clone()])).collect()),
+            _ => v,
+        }
+    }
+
+    fn at(&self, key: &str, v: &V) -> V {
+        let V::List(items) = v else { return v.clone() };
+        let ptr = Rc::as_ptr(items);
+        let mut verdicts = self.at_verdict.borrow_mut();
+        let fresh = !matches!(verdicts.get(key), Some((p, _)) if *p == ptr);
+        if fresh {
+            let n = self.rows;
+            let err = if items.iter().any(is_arr) {
+                Some(V::err(sol_error("#SHAPE!", format!("@{key} reads one value per row, and a matrix has no single this-row value"))))
+            } else if items.len() != n {
+                let l = items.len();
+                Some(V::err(sol_error("#SHAPE!", format!("@{key}: {l} value{} for {n} row{}", if l == 1 { "" } else { "s" }, if n == 1 { "" } else { "s" }))))
+            } else {
+                None
+            };
+            verdicts.insert(key.to_string(), (ptr, err));
+        }
+        if let Some((_, Some(e))) = verdicts.get(key) {
+            return e.clone();
+        }
+        match items.get(self.cursor.get()) {
+            None | Some(V::Undef) => V::Null,
+            Some(x) => x.clone(),
+        }
+    }
+
+    fn side(&self, key: &str) -> V {
+        if self.reserved.iter().any(|r| r == key) {
+            return Self::reserved_err(key);
+        }
+        self.at(key, &self.row_sides.get(key).cloned().unwrap_or(V::Undef))
+    }
+
+    fn whole(&self, key: &str) -> V {
+        if let Some(c) = self.column(key) {
+            return self.whole_of(c);
+        }
+        if self.reserved.iter().any(|r| r == key) {
+            return Self::reserved_err(key);
+        }
+        self.aligned(self.row_sides.get(key).cloned().unwrap_or(V::Undef))
+    }
+}
+
+fn cell_v(c: &crate::frame::FrameCell) -> V {
+    crate::excel_formula::cell_to_v_pub(c)
+}
+
+/// `Object.is` over the values a range call's memo compares: a list or error by identity, the rest by value.
+fn same(a: &V, b: &V) -> bool {
+    match (a, b) {
+        (V::List(x), V::List(y)) => Rc::ptr_eq(x, y),
+        (V::Err(x), V::Err(y)) => Rc::ptr_eq(x, y),
+        (V::Lambda(x), V::Lambda(y)) => Rc::ptr_eq(x, y),
+        (V::Num(x), V::Num(y)) => x.to_bits() == y.to_bits() || (x.is_nan() && y.is_nan()),
+        (V::Str(x), V::Str(y)) => x == y,
+        (V::Bool(x), V::Bool(y)) => x == y,
+        (V::Null, V::Null) | (V::Undef, V::Undef) => true,
+        (V::Fx(x), V::Fx(y)) => x == y,
+        (V::Cx(a, b), V::Cx(c, d)) => a.to_bits() == c.to_bits() && b.to_bits() == d.to_bits(),
+        _ => false,
+    }
+}
+
+/// These answer a list built fresh from a whole column, so the memo keeps it, and the range function reading it hits
+/// its own memo too ([[C120]] linearWork).
+const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "DROP"];
+
+#[derive(Default)]
+pub struct Eval<'a> {
+    row: Option<&'a RowCtx<'a>>,
+    /// `rangeMemo`: a range function called again with the very same arguments (a whole column, row after row).
+    memo: RefCell<FxHashMap<*const Ast, (Vec<V>, V)>>,
+}
+
+impl Eval<'_> {
     /// `compileEvaluator`'s answer: a LAMBDA left uncalled is an error, a Formula.js error reads as Solenoid's.
     pub fn run(&self, ast: &Ast, env: &Rc<Env>) -> V {
         match self.eval(ast, env) {
@@ -313,7 +434,7 @@ impl Eval {
             if !env.contains_key(name) && constant_value(name).is_none() {
                 let up = name.to_uppercase();
                 if traits(&up).is_some_and(|t| t.resolves) {
-                    return V::Lambda(Rc::new(LambdaV { params: Vec::new(), body: None, env: env.clone(), eta: Some(up) }));
+                    return V::Lambda(Rc::new(LambdaV { params: Vec::new(), body: None, env: env.clone(), eta: Some(up), captured: None }));
                 }
             }
         }
@@ -326,8 +447,23 @@ impl Eval {
             Ast::Str(s) => V::Str(s.clone()),
             Ast::Bool(b) => V::Bool(*b),
             Ast::Blank => V::Null,
-            Ast::AtCol(_) => V::err(sol_error("#REF!", "@ reads the current row, so it only works inside a computed column")),
-            Ast::WholeCol(_) => V::err(sol_error("#REF!", "[column] reads a whole table column, so it only works inside a computed column")),
+            Ast::AtCol(name) => match self.row {
+                None => V::err(sol_error("#REF!", "@ reads the current row, so it only works inside a computed column")),
+                Some(row) => match row.column(name) {
+                    Some(c) => match c.cell_at(row.cursor.get()) {
+                        crate::frame::FrameCell::Null => V::Null,
+                        cell => cell_v(cell),
+                    },
+                    None => match env.get(name) {
+                        Some(v) => row.at(name, v),
+                        None => row.side(name),
+                    },
+                },
+            },
+            Ast::WholeCol(name) => match self.row {
+                None => V::err(sol_error("#REF!", "[column] reads a whole table column, so it only works inside a computed column")),
+                Some(row) => row.whole(name),
+            },
             Ast::Name(name) => constant_value(name).map_or_else(|| env.get(name).cloned().unwrap_or(V::Undef), V::Num),
             Ast::Unary { op, arg } => {
                 let a = self.eval(arg, env);
@@ -399,11 +535,26 @@ impl Eval {
                 r => r,
             };
         }
+        let body = lam.body.as_ref().expect("a LAMBDA has a body");
+        if let Some(captured) = &lam.captured {
+            // `compilePositional` over the parameters, then the captures; a column outranks a capture ([[C22]] rowFormulaRefs).
+            let mut inner: Env = FxHashMap::default();
+            for (i, p) in lam.params.iter().enumerate() {
+                inner.insert(p.clone(), args.get(i).cloned().unwrap_or(V::Undef));
+            }
+            for c in captured {
+                let v = match self.row.and_then(|r| r.column(c).map(|col| r.whole_of(col))) {
+                    Some(whole) => whole,
+                    None => lam.env.get(c).cloned().unwrap_or(V::Undef),
+                };
+                inner.insert(c.clone(), v);
+            }
+            return self.run(body, &Rc::new(inner));
+        }
         let mut inner: Env = (*lam.env).clone();
         for (i, p) in lam.params.iter().enumerate() {
             inner.insert(p.clone(), args.get(i).cloned().unwrap_or(V::Undef));
         }
-        let body = lam.body.as_ref().expect("a LAMBDA has a body");
         self.eval(body, &Rc::new(inner))
     }
 
@@ -439,7 +590,7 @@ impl Eval {
                 }
                 params.push(p.clone());
             }
-            return V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body.clone())), env: env.clone(), eta: None }));
+            return V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body.clone())), env: env.clone(), eta: None, captured: None }));
         }
         let Some(t) = traits(&name) else { return V::err(sol_error("#NAME?", format!("Unknown function {name}"))) };
         let t = t.as_ref();
@@ -468,6 +619,19 @@ impl Eval {
         }
         let lifted: Vec<usize> = (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect();
         if lifted.is_empty() {
+            if self.row.is_some() && (t.kind == "range" || MEMO_SHAPERS.contains(&name.as_str())) && argv.iter().any(is_arr) {
+                let key = args.as_ptr();
+                if let Some((last, r)) = self.memo.borrow().get(&key) {
+                    if last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
+                        return r.clone();
+                    }
+                }
+                let r = self.route_call(&name, t, argv.clone(), &settled);
+                if !is_arr(&r) || MEMO_SHAPERS.contains(&name.as_str()) {
+                    self.memo.borrow_mut().insert(key, (argv, r.clone()));
+                }
+                return r;
+            }
             return self.route_call(&name, t, argv, &settled);
         }
         let cols: Vec<V> = lifted.iter().map(|&i| argv[i].clone()).collect();
@@ -522,12 +686,13 @@ impl Eval {
                     Err(e) => return e,
                 };
                 let flat: Vec<V> = args.iter().flat_map(|a| if let V::List(l) = a { l.as_ref().clone() } else { vec![a.clone()] }).collect();
-                // A value nested past a matrix reaches the body as a list among its numbers, a shape no ported body reads yet.
-                if flat.iter().any(is_arr) {
+                // The ported range bodies read their lists flat, but for those that read each list in place. A value
+                // nested past a matrix would reach a flat reader as a list among its numbers, a shape none reads yet.
+                let in_place = crate::excel_functions::reads_lists(name);
+                if !in_place && flat.iter().any(is_arr) {
                     return crate::excel_functions::bail();
                 }
-                // The ported range bodies read their lists flat, but for those that read each list in place.
-                match self.dispatch(name, if crate::excel_functions::reads_lists(name) { &args } else { &flat }) {
+                match self.dispatch(name, if in_place { &args } else { &flat }) {
                     V::Num(r) if !r.is_finite() => guard(r, &flat),
                     r => r,
                 }
@@ -934,4 +1099,275 @@ fn apply_error_handler(name: &str, argv: &[V]) -> V {
             walk(&value, &caught)
         }
     }
+}
+
+// ─── Names a formula reads ──────────────────────────────────────────────────────
+
+fn is_eta_name(a: &Ast) -> bool {
+    matches!(a, Ast::Name(n) if constant_value(n).is_none() && traits(&n.to_uppercase()).is_some_and(|t| t.resolves))
+}
+
+fn lambda_scope(args: &[Ast], bound: &[String]) -> Vec<String> {
+    let mut inner = bound.to_vec();
+    inner.extend(args[..args.len() - 1].iter().filter_map(|a| if let Ast::Name(n) = a { Some(n.clone()) } else { None }));
+    inner
+}
+
+/// `extractVariables`: the bare names a formula reads, first-seen order, past constants, LAMBDA parameters and the
+/// functions an eta host takes by name.
+pub fn variables(ast: &Ast) -> Vec<String> {
+    fn walk(n: &Ast, out: &mut Vec<String>, bound: &[String]) {
+        match n {
+            Ast::Name(name) => {
+                if constant_value(name).is_none() && !bound.contains(name) && !out.contains(name) {
+                    out.push(name.clone());
+                }
+            }
+            Ast::Call { name, args } => {
+                let up = name.to_uppercase();
+                if up == "LAMBDA" && !args.is_empty() {
+                    walk(&args[args.len() - 1], out, &lambda_scope(args, bound));
+                    return;
+                }
+                let eta = ETA_HOSTS.contains(&up.as_str());
+                for a in args {
+                    if !(eta && is_eta_name(a)) {
+                        walk(a, out, bound);
+                    }
+                }
+            }
+            Ast::Apply { func, args } => {
+                walk(func, out, bound);
+                for a in args {
+                    if !is_eta_name(a) {
+                        walk(a, out, bound);
+                    }
+                }
+            }
+            Ast::Unary { arg, .. } | Ast::Percent(arg) => walk(arg, out, bound),
+            Ast::Bin { l, r, .. } => {
+                walk(l, out, bound);
+                walk(r, out, bound);
+            }
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    walk(ast, &mut out, &[]);
+    out
+}
+
+/// `rowRefNames`: the names read by `@name` or `[name]`, first-seen order, past LAMBDA parameters.
+pub fn row_refs(ast: &Ast) -> Vec<String> {
+    fn walk(n: &Ast, out: &mut Vec<String>, bound: &[String]) {
+        match n {
+            Ast::AtCol(name) | Ast::WholeCol(name) => {
+                if !bound.contains(name) && !out.contains(name) {
+                    out.push(name.clone());
+                }
+            }
+            Ast::Call { name, args } => {
+                if name.eq_ignore_ascii_case("LAMBDA") && !args.is_empty() {
+                    walk(&args[args.len() - 1], out, &lambda_scope(args, bound));
+                    return;
+                }
+                for a in args {
+                    walk(a, out, bound);
+                }
+            }
+            Ast::Apply { func, args } => {
+                walk(func, out, bound);
+                for a in args {
+                    walk(a, out, bound);
+                }
+            }
+            Ast::Unary { arg, .. } | Ast::Percent(arg) => walk(arg, out, bound),
+            Ast::Bin { l, r, .. } => {
+                walk(l, out, bound);
+                walk(r, out, bound);
+            }
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    walk(ast, &mut out, &[]);
+    out
+}
+
+// ─── Values across the boundary ─────────────────────────────────────────────────
+
+/// A value as the TS sends it: arrays nest, `{"__undef": 1}` is undefined, `{"__lambda": …}` a wired LAMBDA or a
+/// function named bare, anything else a cell.
+pub fn decode_value(j: &serde_json::Value) -> V {
+    use serde_json::Value as Json;
+    match j {
+        Json::Array(items) => list(items.iter().map(decode_value).collect()),
+        Json::Object(o) if o.contains_key("__undef") => V::Undef,
+        Json::Object(o) if o.contains_key("__lambda") => {
+            let w = &o["__lambda"];
+            if let Some(name) = w.get("eta").and_then(Json::as_str) {
+                return V::Lambda(Rc::new(LambdaV { params: Vec::new(), body: None, env: Rc::new(Env::default()), eta: Some(name.to_uppercase()), captured: None }));
+            }
+            let strs = |k: &str| -> Vec<String> { w.get(k).and_then(Json::as_array).map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default() };
+            let (params, captured) = (strs("params"), strs("captured"));
+            let values: Vec<V> = w.get("capturedValues").and_then(Json::as_array).map(|a| a.iter().map(decode_value).collect()).unwrap_or_default();
+            let Some(body) = w.get("expr").and_then(Json::as_str).and_then(crate::excel_formula::parse_formula) else {
+                return crate::excel_functions::bail();
+            };
+            let env: Env = captured.iter().cloned().zip(values.into_iter().chain(std::iter::repeat(V::Undef))).collect();
+            V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body)), env: Rc::new(env), eta: None, captured: Some(captured) }))
+        }
+        _ => cell_v(&crate::wire::decode_cell(j)),
+    }
+}
+
+// ─── Computed columns ───────────────────────────────────────────────────────────
+
+/// What a computed column computes (`ComputedSpec`): a formula, or a bare wired LAMBDA called with each row's cells.
+pub enum ColumnSpec<'s> {
+    Expr { ast: &'s Ast, lambdas: &'s [String] },
+    Lambda(&'s LambdaV),
+}
+
+pub struct ColumnInputs<'a> {
+    pub frame: &'a crate::frame::FrameValue,
+    /// `sideValue(name, "var")` for the names the formula reads bare that no column holds.
+    pub sides: FxHashMap<String, V>,
+    pub row_sides: FxHashMap<String, V>,
+    pub reserved: Vec<String>,
+    pub alias: FxHashMap<String, String>,
+    pub rows: usize,
+}
+
+pub enum ColumnOutcome {
+    /// A body bailed: the TS computes this column.
+    Bail,
+    Done { cells: Vec<crate::frame::FrameCell>, side_vars: Vec<String> },
+}
+
+/// `computeColumnCells`: each row's cell and the side inputs the formula reads, or the error that stops it.
+pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crate::error_value::SolError> {
+    let ctx = RowCtx {
+        cols: inp.frame.columns.iter().map(|c| (c.name.as_str(), c)).collect(),
+        alias: inp.alias,
+        reserved: inp.reserved,
+        rows: inp.rows,
+        cursor: Cell::new(0),
+        wholes: RefCell::default(),
+        row_sides: inp.row_sides,
+        at_verdict: RefCell::default(),
+    };
+    let ev = Eval { row: Some(&ctx), memo: RefCell::default() };
+    let has_col = |n: &str| ctx.cols.contains_key(n);
+    let side = |p: &str| inp.sides.get(p).cloned().unwrap_or(V::Undef);
+    let mut side_vars: Vec<String> = Vec::new();
+    // One binding per parameter: a column (whole, or this row's cell for a LAMBDA) or a side value.
+    enum Bind<'c> {
+        Col(&'c FrameColumn),
+        Side(V),
+    }
+    let params: Vec<String> = match &spec {
+        ColumnSpec::Expr { ast, lambdas } => {
+            let mut vs = variables(ast);
+            for l in lambdas.iter() {
+                if !vs.contains(l) {
+                    vs.push(l.clone());
+                }
+            }
+            vs
+        }
+        ColumnSpec::Lambda(lam) => lam.params.clone(),
+    };
+    let mut binds: Vec<Bind> = Vec::with_capacity(params.len());
+    for p in &params {
+        if let Some(target) = ctx.alias.get(p) {
+            match ctx.cols.get(target.as_str()) {
+                Some(c) => binds.push(Bind::Col(c)),
+                None => return Err(sol_error("#REF!", format!("No column \"{target}\" to bind \"{p}\" to"))),
+            }
+            continue;
+        }
+        if let Some(c) = ctx.cols.get(p.as_str()) {
+            binds.push(Bind::Col(c));
+            continue;
+        }
+        if ctx.reserved.contains(p) {
+            return Err(sol_error("#REF!", format!("\"{p}\" is a reserved input name. Rename the variable or the column")));
+        }
+        side_vars.push(p.clone());
+        binds.push(Bind::Side(ctx.aligned(side(p))));
+    }
+    let mut cells = Vec::with_capacity(inp.rows);
+    crate::excel_functions::take_bailed();
+    let finish = |v: V| -> Result<crate::frame::FrameCell, ()> {
+        if crate::excel_functions::take_bailed() {
+            crate::excel_functions::take_thrown();
+            return Err(());
+        }
+        Ok(match crate::excel_functions::take_thrown() {
+            Some(e) => crate::frame::FrameCell::err(e),
+            None => crate::excel_formula::tag_computed_cell_pub(v),
+        })
+    };
+    match spec {
+        ColumnSpec::Expr { ast, .. } => {
+            for p in row_refs(ast) {
+                if ctx.reserved.contains(&p) {
+                    continue;
+                }
+                if let Some(target) = ctx.alias.get(&p) {
+                    if !has_col(target) {
+                        return Err(sol_error("#REF!", format!("No column \"{target}\" to bind \"{p}\" to")));
+                    }
+                    continue;
+                }
+                if !has_col(&p) && !side_vars.contains(&p) {
+                    side_vars.push(p);
+                }
+            }
+            // Every binding is a whole column or a side value, so one env serves every row.
+            let env: Env = params.iter().zip(&binds).map(|(p, b)| (p.clone(), match b {
+                Bind::Col(c) => ctx.whole_of(c),
+                Bind::Side(v) => v.clone(),
+            })).collect();
+            let env = Rc::new(env);
+            for i in 0..inp.rows {
+                ctx.cursor.set(i);
+                crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+                let v = ev.run(ast, &env);
+                match finish(v) {
+                    Ok(c) => cells.push(c),
+                    Err(()) => {
+                        crate::excel_functions::set_row_number(None);
+                        return Ok(ColumnOutcome::Bail);
+                    }
+                }
+            }
+        }
+        ColumnSpec::Lambda(lam) => {
+            for i in 0..inp.rows {
+                ctx.cursor.set(i);
+                crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+                let argv: Vec<V> = binds.iter().map(|b| match b {
+                    Bind::Col(c) => cell_v(c.cell_at(i)),
+                    Bind::Side(v) => v.clone(),
+                }).collect();
+                // A parameter's error cell answers the row before the body runs.
+                let err = binds.iter().zip(&argv).find(|(b, v)| matches!(b, Bind::Col(_)) && v.is_sol_error()).map(|(_, v)| v.clone());
+                let v = match err {
+                    Some(e) => e,
+                    None => ev.call_lambda(lam, &argv),
+                };
+                match finish(v) {
+                    Ok(c) => cells.push(c),
+                    Err(()) => {
+                        crate::excel_functions::set_row_number(None);
+                        return Ok(ColumnOutcome::Bail);
+                    }
+                }
+            }
+        }
+    }
+    crate::excel_functions::set_row_number(None);
+    Ok(ColumnOutcome::Done { cells, side_vars })
 }
