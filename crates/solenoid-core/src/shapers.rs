@@ -1,7 +1,6 @@
 // [[C130]] rustCore
 //! Excel's FILTER, UNIQUE, SORT, SORTBY, TAKE and DROP (`excelFunctions.ts`, over `listOps.ts`' grid helpers), over
-//! JavaScript-shaped values: a matrix is a table, a list one row, a lone value one cell. `call_column` is the door a
-//! computed column uses, where a list is a whole column: it goes in as a one-column table and comes back flat.
+//! JavaScript-shaped values: a matrix is a table, a list one row, a lone value one cell.
 
 use std::cmp::Ordering;
 use std::rc::Rc;
@@ -411,42 +410,6 @@ fn drop(a: &[V]) -> V {
     }
     let cut: Grid = m.iter().map(|r| if cols_given { drop_slice(r, c) } else { r.clone() }).collect();
     back_to_list(drop_slice(&cut, n), list)
-}
-
-/// The shapers as a computed column calls them: a list is a whole column, a one-column table, and a table answer
-/// comes back flat, row by row, as the range function reading it would flatten it.
-pub fn call_column(name: &str, a: &[V]) -> V {
-    // A column of two or more under a column mask: kept in place, without building rows.
-    if name == "FILTER" {
-        if let (V::List(items), V::List(mask)) = (arg(a, 0), arg(a, 1)) {
-            if items.len() > 1 && mask.len() > 1 && mask.len() == items.len() {
-                let mut kept = Vec::new();
-                for (x, b) in items.iter().zip(mask.iter()) {
-                    match if_test_pub(b) {
-                        Cond::Err(e) => return e,
-                        Cond::Bool(true) => kept.push(x.clone()),
-                        _ => {}
-                    }
-                }
-                if kept.is_empty() && !absent(arg(a, 2)) {
-                    return arg(a, 2).clone();
-                }
-                return V::List(Rc::new(kept));
-            }
-        }
-    }
-    let column = |v: &V| match v {
-        V::List(items) if !items.is_empty() => V::List(Rc::new(items.iter().map(|x| V::List(Rc::new(vec![x.clone()]))).collect())),
-        other => other.clone(),
-    };
-    let args: Vec<V> = a.iter().map(column).collect();
-    match call(name, &args) {
-        r @ V::List(_) if is_matrix(&r) => {
-            let V::List(rows) = r else { unreachable!() };
-            V::List(Rc::new(rows.iter().flat_map(cells).collect()))
-        }
-        r => r,
-    }
 }
 
 pub fn call(name: &str, a: &[V]) -> V {

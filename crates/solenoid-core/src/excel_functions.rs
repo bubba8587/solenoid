@@ -4257,7 +4257,7 @@ fn error_handler(name: &str, a: &[V]) -> V {
             if !matches!(value, V::List(_)) && !matches!(fallback, V::List(_)) {
                 return if caught(value) { fallback } else { value.clone() };
             }
-            crate::excel_formula::map_cells_pub(&[value.clone(), fallback], |x| if caught(&x[0]) { x[1].clone() } else { x[0].clone() })
+            crate::eval::map_cells(&[value.clone(), fallback], &mut |x| if caught(&x[0]) { x[1].clone() } else { x[0].clone() })
         }
         "ERROR.TYPE" => walk(value, &|v| match as_sol(v) {
             Some(e) => V::Num(error_type_num(&e.code).unwrap_or(3.0)),

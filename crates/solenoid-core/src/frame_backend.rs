@@ -11,7 +11,7 @@ use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
 use crate::error_value::{sol_error, SolError};
-use crate::excel_formula::{formula_column, parse_formula, BareParam, CallTable, ColumnOutcome, ColumnSpec, LambdaWire};
+use crate::excel_formula::parse_formula;
 use crate::frame::{frame_row_count, get_column, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts, TaggedOp};
 use crate::wire::{column_to_wire, encode_cell, wire_to_frame, WireFrame};
@@ -144,31 +144,6 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             Ok(Json::Null)
         }
         "engine_formula_parse" => Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json())),
-        "engine_formula_column" => {
-            let f = get(&parse::<String>(args, "handle")?)?;
-            let table: CallTable = parse(args, "table")?;
-            let sides: HashMap<String, Json> = parse::<Option<_>>(args, "sides")?.unwrap_or_default();
-            let sides = sides.iter().map(|(k, v)| (k.clone(), crate::wire::decode_cell(v))).collect();
-            let rows = parse::<Option<usize>>(args, "rows")?.unwrap_or_else(|| frame_row_count(&f));
-            let lambdas: HashMap<String, LambdaWire> = parse::<Option<_>>(args, "lambdas")?.unwrap_or_default();
-            let bare: Option<String> = parse(args, "bare")?;
-            let params: Vec<BareParam> = parse::<Option<_>>(args, "bareParams")?.unwrap_or_default();
-            let expr: String = parse::<Option<String>>(args, "expr")?.unwrap_or_default();
-            let spec = match &bare {
-                Some(name) => ColumnSpec::Bare { lambda: name, params: &params },
-                None => ColumnSpec::Expr(&expr),
-            };
-            crate::excel_functions::set_clock(parse(args, "clock")?);
-            let outcome = formula_column(&f, spec, &table, &sides, &lambdas, rows);
-            crate::excel_functions::set_clock(None);
-            match outcome? {
-                ColumnOutcome::Unsupported => Ok(json!({ "supported": false })),
-                ColumnOutcome::Cells(cells) => {
-                    let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, cells)] };
-                    Ok(json!({ "supported": true, "handle": register(out) }))
-                }
-            }
-        }
         // [[D99]] rustIsSpec: the names a formula (and the wired LAMBDAs it calls) reads, for the caller to bind.
         "engine_formula_names" => {
             let src = parse::<Option<String>>(args, "src")?.unwrap_or_default();
