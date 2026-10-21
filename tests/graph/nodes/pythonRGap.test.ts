@@ -652,6 +652,8 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
     expect(ev('HASH("abc", "SHA-1")')).toBe("a9993e364706816aba3e25717850c26c9cd0d89d");
     expect(ev('HASH("abc", "fnv1a64")')).toBe("e71fa2190541574b");
     expect((ev('HASH("abc", "blake")') as { code?: string }).code).toBe("#DOMAIN!");
+    // An inherited key such as "constructor" is not an algorithm.
+    expect((ev('HASH("abc", "Constructor")') as { code?: string }).code).toBe("#DOMAIN!");
   });
   it("UUID is stable within a recalculation and fresh after one; the formula is volatile", async () => {
     const n = new UuidNode();

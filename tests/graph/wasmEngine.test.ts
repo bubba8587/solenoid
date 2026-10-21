@@ -333,7 +333,9 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "TBILLPRICE", "TBILLYIELD", "PRICEMAT", "YIELDMAT", "DURATION", "MDURATION", "PRICE", "YIELD", "IRR", "MIRR", "XNPV", "XIRR",
   "FVSCHEDULE", "CUMIPMT", "CUMPRINC", "VDB", "ODDFPRICE", "ODDFYIELD", "ODDLPRICE", "ODDLYIELD", "MAXDRAWDOWN", "CAGR",
   "VOLATILITY", "SHARPE", "SORTINO", "NPV", "RATE", "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "DOLLARDE",
-  "DOLLARFR", "ISPMT"];
+  "DOLLARFR", "ISPMT",
+  "REGEXTEST", "REGEXEXTRACT", "REGEXREPLACE", "ENCODEURL", "DECODEURL", "ENCODEBASE64", "DECODEBASE64", "HASH", "UNACCENT",
+  "SLUGIFY", "SPELLNUMBER", "VALUETOTEXT", "TEMPLATE", "DOLLAR", "TEXTSPLIT", "WRAPTEXT"];
 /** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
 const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE|TRIMMEAN|PERCENTRANK/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
@@ -343,7 +345,7 @@ function formulaGen(rand: () => number) {
   const lit = () => pick(["0", "1", "2", "-0", "3.5", "1e3", ".5", "10", "100", "1e308", "0.1", "7", "45000.75", "-700000", "3e9", "45291.999",
     "45351", "60", "36", "11", "4"]);
   const str = () => `"${pick(["", "abc", "ABC", "TRUE", "false", "5", " a  b ", "😀x", "é", "1,000", "x", "#N/A", ">5", "<>abc", "a*", "?b?", "~*", "*", "<=0", ">=1e3", "<>", "=", "<x", "2024-01-15",
-    "2024-02-30", "05/01/2024", "13/01/2024", "3-Apr-2026", "2024-13", ">2024-01-01", "=TRUE", "<>FALSE", "=12", "AB*", "hello wORLD", "o'neil-x2y", "(1,234.5)", "$5%", "-$3", "ÉCOLE éa", "ǅx", "0000011", "1111111", "ms", " S ", "month", "q", "YM", "md", "yd", "week_sun"])}"`;
+    "2024-02-30", "05/01/2024", "13/01/2024", "3-Apr-2026", "2024-13", ">2024-01-01", "=TRUE", "<>FALSE", "=12", "AB*", "hello wORLD", "o'neil-x2y", "(1,234.5)", "$5%", "-$3", "ÉCOLE éa", "ǅx", "0000011", "1111111", "ms", " S ", "month", "q", "YM", "md", "yd", "week_sun", "[a-c]+", "(b)", "$1-", "{0}", "%41", "SGk=", "md5"])}"`;
   const ref = () => pick(["@a", "@b", "@c", "@d", "[@a]", "@[b]", "[@[c]]", "@nope", "a", "pi", "E", "Tau", "s1", "@s2", "[@s1]", "s3", "@name", "b", "c", "d", "[a]", "[b]", "[d]", "[nope]"]);
   const expr = (depth: number): string => {
     const r = rand();
@@ -614,6 +616,8 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
     "VOLATILITY(a, 12)", "SHARPE(a / 100, 0.001, 12)", "SORTINO(a)", "COUPNUM(@e, @e + 1000)", "PRICE(@e, @e + 3650, 0.05, 0.06)",
     "YIELD(@e, @e + 3650, 0.05, 98)", "DURATION(@e, EOMONTH(@e, 60), 0.04, 0.05, 4)", "ODDFPRICE(@e, @e + 2000, @e - 30, @e + 100, 0.05, 0.06)",
     "VDB(1000, 100, 10, 0, @a)", "CUMIPMT(0.01, 36, 1000, 1, 12, 0)", "DB(1000, 100, 5, 2)", "RATE(36, -30, 1000)", "EFFECT(@a, 12)",
+    "SUM(REGEXTEST(b, \"^[a-z]\"))", "COUNTA(HASH(b, \"md5\"))", "REGEXREPLACE(@b, \"[aeiou]\", \"<$&>\") & DOLLAR(@a)",
+    "TEMPLATE(\"{0}: {1:0.0}\", @b, @a)", "SUM(LEN(SLUGIFY(b)))", "COUNTDISTINCT(LOG(, FALSE, .5) <> [a])",
   ])("%s", (src) => {
     const engine = computeColumnOnEngine(f, src, 5);
     expect(engine, "should run on the engine").not.toBeNull();
@@ -748,6 +752,108 @@ describe("FIXED matches on near-ties and wide counts", () => {
       const want = fn(...args);
       const got = wasmInvokeSync<{ str?: string }>("engine_call", { name: "FIXED", args });
       if (got?.str !== want) expect({ args, got: got?.str }).toEqual({ args, got: want });
+    }
+  });
+});
+
+/** A JS argument as `engine_call` reads it, and either side's answer as comparable data. */
+const callWire = (a: unknown): unknown => (Array.isArray(a) ? a.map(callWire) : a === undefined ? { __undef: 1 }
+  : typeof a === "number" && !Number.isFinite(a) ? { __nf: Number.isNaN(a) ? "nan" : a > 0 ? "inf" : "-inf" }
+  : Object.is(a, -0) ? { __nf: "-0" } : isSolError(a) ? { __err: a.code, msg: a.message } : a);
+const jsAnswer = (fn: (...a: unknown[]) => unknown, args: unknown[]): unknown => {
+  let r: unknown;
+  try { r = fn(...args); } catch (e) { return { thrown: (e as Error).message }; }
+  if (r === null) return null;
+  if (r instanceof Error) return { fx: r.message };
+  if (isSolError(r)) return { err: r.code, msg: r.message };
+  if (typeof r === "number") return { num: new DataView(Float64Array.of(r).buffer).getBigUint64(0, true).toString() };
+  if (typeof r === "string") return { str: (r as string & { toWellFormed(): string }).toWellFormed() };
+  return { other: JSON.stringify(r) };
+};
+
+describe("the regex functions match V8 on random patterns", () => {
+  const ATOMS = ["a", "b", "A", "é", "😀", ".", "\\d", "\\w", "\\s", "\\b", "\\B", "^", "$", "[a-c]", "[^b]", "[\\w-]", "[A-z]", "(", ")",
+    "(?:", "(?=", "(?!", "(?<=", "(?<!", "(?<n>", "(?<m>", "\\1", "\\2", "\\k<n>", "\\k<q>", "*", "+", "?", "{2}", "{1,}", "{,2}", "{2,1}", "*?",
+    "+?", "??", "|", "\\", "]", "}", "{", "\\u0041", "\\u{41}", "\\x41", "\\0", "\\01", "\\8", "\\cA", "\\c1", "\\p{L}", "\\P{Lu}", "[\\b]",
+    "\\/", "-", "[", "ſ", "K", "ß", "İ", "ı", "σ", "Σ", "ς", "\\S", "\\W", "\\D", "[]", "[^]", "(?i:a)", "\\n", "\\.", "\\$", "x", " ", "[\\d-z]",
+    "\\a", "\\_", "[\\s\\S]", "\\ud83d", "\\ude00", "[😀]", "\\uD83D\\uDE00", "\\cZ", "\\c", "\\x4", "\\u004", "\\00", "\\377",
+    "\\400", "[a-]", "[-a]", "[a-\\d]", "[\\c1]", "[\\-]", "[^\\W]", "(?<n>a)|(?<n>b)", "(?=a)*", "(?!a){2}", "x{1,2}?", "x{2,}?",
+    "\\k", "\\k<", "(?<n", "(?<1a>", "(?<é>", "a{1,2", "{1", "\\B*", "\\r", "\\f", "\\v", "[\\u0041-\\u005a]", "\\3", "\\10"];
+  const CHARS = ["a", "b", "A", "B", "é", "É", "é", "😀", "1", "2", "9", " ", "-", "_", "x", "\n", "ſ", "K", "k", "ß", "İ", "i", "ı",
+    "σ", "Σ", "ς", "s", "S", "$", ".", "{", "}", " "];
+  const ASCII = ["a", "b", "A", "B", "k", "K", "s", "S", "1", " ", "-", "_", "x", "\n", "\r", "$", ".", "{", "}", "[", "]", "\\"];
+  const REPL = ["$1", "$2", "$&", "$`", "$'", "$$", "$<n>", "$<x>", "$0", "$01", "$10", "$", "<", ">", "-", "z", "é", "$<n", "$<n>$1"];
+  it(`${FUZZ_RUNS * 3} calls`, { timeout: 600_000 }, () => {
+    const rand = mulberry32(3131 + FUZZ_SEED);
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+    const run = (n: number, xs: readonly string[]) => Array.from({ length: n }, () => pick(xs)).join("");
+    let ran = 0, bailed = 0;
+    for (let i = 0; i < FUZZ_RUNS; i++) {
+      const pat = run(1 + Math.floor(rand() * 6), ATOMS);
+      const text = run(Math.floor(rand() * 12), rand() < 0.5 ? CHARS : ASCII);
+      const cs = pick([undefined, 0, 1]);
+      const calls: Array<[string, unknown[]]> = [
+        ["REGEXTEST", [text, pat, cs]],
+        ["REGEXEXTRACT", [text, pat, pick([undefined, 0]), cs]],
+        ["REGEXREPLACE", [text, pat, run(Math.floor(rand() * 4), REPL), pick([undefined, 0, 1, 2, -1, -2, 7, 1.5]), cs]],
+      ];
+      for (const [name, args] of calls) {
+        const want = jsAnswer(resolveExcelFunction(name)!, args);
+        const got = wasmInvokeSync<{ bail?: boolean }>("engine_call", { name, args: args.map(callWire) });
+        if (got && got.bail) { bailed++; continue; }
+        ran++;
+        if (JSON.stringify(got) !== JSON.stringify(want)) expect({ name, args, got }).toEqual({ name, args, got: want });
+      }
+    }
+    // A pattern regress refuses goes to the TS, and most random patterns are broken.
+    expect(ran, "the valid patterns should run on the engine").toBeGreaterThan(FUZZ_RUNS / 2);
+    expect(bailed).toBeGreaterThan(0);
+  });
+});
+
+describe("DOLLAR matches Intl's currency text on ties, huge values and negatives", () => {
+  it(`${FUZZ_RUNS * 3} values`, { timeout: 600_000 }, () => {
+    const rand = mulberry32(2121 + FUZZ_SEED);
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+    const fn = resolveExcelFunction("DOLLAR")!;
+    for (let i = 0; i < FUZZ_RUNS * 3; i++) {
+      const k = Math.floor(rand() * 12) - 2;
+      const r = rand();
+      const base = r < 0.3 ? Math.floor(rand() * 1e7) + 0.5 : r < 0.45 ? Math.floor(rand() * 1e7) + 0.5 + (rand() - 0.5) * 1e-9
+        : r < 0.6 ? 10 ** (rand() * 300) * (rand() + 0.5) : r < 0.7 ? 10 ** (-rand() * 300) : r < 0.75 ? 2 ** 53 + Math.floor(rand() * 1e6) * 2 : rand() * 1e4;
+      const v = r > 0.97 ? pick(["12.345", "abc", "", true, null, NaN, Infinity, -Infinity, -0, solError("#N/A", "x")]) : (base / 10 ** k) * (rand() < 0.5 ? -1 : 1);
+      const d = rand() < 0.85 ? Math.floor(rand() * 18) - 4 : pick([undefined, null, "2", " 3 ", "x", "", true, 2.5, -1.5, 20, 100, 100.5, 101, 1e21, NaN]);
+      const args = d === undefined ? [v] : [v, d];
+      const want = jsAnswer(fn, args);
+      const got = wasmInvokeSync("engine_call", { name: "DOLLAR", args: args.map(callWire) });
+      if (JSON.stringify(got) !== JSON.stringify(want)) expect({ args, got }).toEqual({ args, got: want });
+    }
+  });
+});
+
+describe("the text utilities match on random text", () => {
+  const CHARS = ["a", "Z", "0", " ", "\t", "é", "é", "Ç", "ñ", "Å", "ß", "Æ", "ø", "Œ", "Ł", "Þ", "ı", "İ", "ǅ", "K", "Ω", "Ⅻ", "ﬁ", "가",
+    "😀", "-", "_", ".", "/", "?", "&", "=", "%", "%2", "%41", "%C3%A9", "%E2%82", "%F0%9F%98%80", "%ED%A0%80", "%C0%80", "+", "{", "}", "{0}",
+    "{1:0.0}", "{{", "}}", "{ a }", "$", "$&", "~", "*", "'", "(", ")", "!", " ", "﻿", "̀", "ͯ", "҃"];
+  const NAMES = ["ENCODEURL", "DECODEURL", "ENCODEBASE64", "DECODEBASE64", "HASH", "UNACCENT", "SLUGIFY", "SPELLNUMBER", "VALUETOTEXT", "TEMPLATE"];
+  it(`${FUZZ_RUNS * 3} calls`, { timeout: 600_000 }, () => {
+    const rand = mulberry32(5150 + FUZZ_SEED);
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+    const text = () => Array.from({ length: Math.floor(rand() * 10) }, () => pick(CHARS)).join("");
+    for (let i = 0; i < FUZZ_RUNS * 3; i++) {
+      const name = pick(NAMES);
+      let t: unknown = rand() < 0.9 ? text() : pick([null, 12.5, -0.000125, 1e20, true, 123456789012345]);
+      if (name === "DECODEBASE64" && rand() < 0.5) t = Buffer.from(text()).toString(pick(["base64", "base64url"])).replace(/=+$/, rand() < 0.5 ? "" : "=");
+      if (name === "SPELLNUMBER") t = pick([rand() * 10 ** Math.floor(rand() * 16), -rand() * 1e6, Math.floor(rand() * 1e15), 1e-7 * rand(), "12", "x", null, 0, -0]);
+      const extra = name === "HASH" ? [pick(["sha256", "SHA-1", "md5", " CRC_32 ", "fnv1a32", "FNV-1a 64", "blake", "constructor", null])]
+        : name === "SLUGIFY" ? [pick([undefined, null, "-", "_", "--", "", "$&", "$$", "a", ".", "x.x"])]
+        : name === "TEMPLATE" ? Array.from({ length: Math.floor(rand() * 3) }, () => pick([1.5, "x", null, true, solError("#N/A", "n"), [1, "b"], 45000]))
+        : [];
+      const args = [t, ...extra];
+      const want = jsAnswer(resolveExcelFunction(name)!, args);
+      const got = wasmInvokeSync<{ bail?: boolean }>("engine_call", { name, args: args.map(callWire) });
+      if (got && got.bail) continue;
+      if (JSON.stringify(got) !== JSON.stringify(want)) expect({ name, args, got }).toEqual({ name, args, got: want });
     }
   });
 });
@@ -916,7 +1022,11 @@ describe("each ported function body matches its JS one on random arguments", () 
     "hello wORLD", "o'neil-x2y", "(1,234.5)", " $5% ", "-$3", "1.2.3", "ÉCOLE éa", "ΣΑΣ", "привет мИР", "ǆemal ⅷx", "a~?b", 65, 128512, 0xd800, ">5", "<>abc", "a*", "?B?", "~*", "<=0", "<>", "=", "2024-01-15", "05/01/2024", "=TRUE", undefined, null, 0, -0, 1, 2, -1, 0.5, -2.5, 3.75, 7, 10, 45000.25, 1e308, -1e-9, 1e21, 123456789.123,
     NaN, Infinity, -Infinity, "", " ", "abc", "ABC", "5", " 12 ", "1e3", "0x10", "1,000", "TRUE", "false", "Infinity",
     "😀ab", "é", "a b  c", true, false, solError("#N/A", "x"), solError("#DIV/0!", "y"),
-    43831, 44012, 45291, 45382, 45657, 46022, 0.06, 0.08, 98.5, 101.25, 100, 1000, -1000, 250, 0.9];
+    43831, 44012, 45291, 45382, 45657, 46022, 0.06, 0.08, 98.5, 101.25, 100, 1000, -1000, 250, 0.9,
+    "[a-c]+", "(\\d+)-(\\d+)", "(?<y>\\d{4})-(?<m>\\d\\d)", "^\\s*", "x*", "(", "a{2,1}", "\\bW", "$2:$1", "$<y>/$<m>", "$&$$$`$'", "$10$01$0",
+    "2024-03-15 and 1999-12-31", "%E2%82%AC 100%", "%zz%41", "a%2Fb%20c", "aGVsbG8gd29ybGQ=", "SGk-_w", "77u/aGk=", "sha1", "MD5", " crc-32 ",
+    "FNV1a_64", "fnv1a32", "constructor", "Crème Brûlée Ærø", "Ⅻ ŁÓDŹ ß", "{0} and {1:0.00}", "{{x}} { 0 }", "{name} {0}", "{0:#,##0} {9}", "--", "_",
+    "$&", 1234.5, -0.004, 1e15, 999999999999999, 0.0000012, 101, 100, -3];
   const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
   const norm = (r: unknown): unknown => {
     if (r === undefined) return { undef: true };

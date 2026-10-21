@@ -12,6 +12,8 @@ crate-type = ["cdylib", "rlib"]
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 ryu-js = "1"
+regress = { version = "=0.12.0", default-features = false, features = ["std", "utf16"] }
+unicode-normalization = { version = "=0.1.25", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "=0.2.100"

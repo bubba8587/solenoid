@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, serial_to_utc_parts, MS_PER_DAY};
 use crate::error_value::{sol_error, SolError};
-use crate::jsnum::{is_js_space, js_trim, math_round, number_to_string, string_to_number};
+use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
 use crate::unit_value::to_precision;
 use crate::value_kinds::{decimal_from_text, guard_finite};
 use crate::frame::FrameCell;
@@ -118,6 +118,8 @@ const PORTED: &[&str] = &[
     "FVSCHEDULE", "CUMIPMT", "CUMPRINC", "VDB", "ODDFPRICE", "ODDFYIELD", "ODDLPRICE", "ODDLYIELD", "MAXDRAWDOWN", "CAGR",
     "VOLATILITY", "SHARPE", "SORTINO", "NPV", "RATE", "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "DOLLARDE",
     "DOLLARFR", "ISPMT",
+    "REGEXTEST", "REGEXEXTRACT", "REGEXREPLACE", "ENCODEURL", "DECODEURL", "ENCODEBASE64", "DECODEBASE64", "HASH", "UNACCENT",
+    "SLUGIFY", "SPELLNUMBER", "VALUETOTEXT", "TEMPLATE", "DOLLAR", "TEXTSPLIT", "WRAPTEXT",
 ];
 
 pub fn is_ported(name: &str) -> bool {
@@ -2605,12 +2607,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
                 return e.clone();
             }
-            // A Set's SameValueZero: NaN is one value, -0 is 0, text by its characters, anything else only itself.
+            // A Set's SameValueZero: NaN is one value, -0 is 0, text by its characters, a Formula.js error (one shared
+            // object per code) by its code, anything else only itself.
             #[derive(Hash, PartialEq, Eq)]
             enum Key<'a> {
                 Num(u64),
                 Str(&'a str),
                 Bool(bool),
+                Fx(&'static str),
                 Other(usize),
             }
             let mut seen: crate::fxhash::FxHashSet<Key> = Default::default();
@@ -2621,6 +2625,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     V::Num(x) => Key::Num((x + 0.0).to_bits()),
                     V::Str(s) => Key::Str(s),
                     V::Bool(b) => Key::Bool(*b),
+                    V::Fx(code) => Key::Fx(code),
                     _ => Key::Other(i),
                 });
             }
@@ -3043,8 +3048,333 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             date_from_parts(y, m, d)
         }
         _ if is_finance(name) => finance_function(name, a),
+        "REGEXTEST" | "REGEXEXTRACT" | "REGEXREPLACE" => regex_call(name, a),
+        "ENCODEURL" => {
+            let t = to_str(arg(a, 0));
+            if may_hold_lone_surrogate(&t) {
+                return bail();
+            }
+            V::str(&crate::text_ops::encode_uri_component(&t))
+        }
+        "DECODEURL" | "ENCODEBASE64" | "DECODEBASE64" | "UNACCENT" | "SPELLNUMBER" | "HASH" | "SLUGIFY" | "TEMPLATE"
+            if matches!(arg(a, 0), V::Null | V::Undef) =>
+        {
+            V::Null
+        }
+        "DECODEURL" => {
+            let t = to_str(arg(a, 0));
+            V::str(&crate::text_ops::decode_uri_component(&t).unwrap_or(t))
+        }
+        "ENCODEBASE64" => V::str(&crate::hash_ops::base64_encode(&to_str(arg(a, 0)))),
+        "DECODEBASE64" => {
+            let t = to_str(arg(a, 0));
+            V::str(&crate::hash_ops::base64_decode(&t).unwrap_or(t))
+        }
+        "HASH" => {
+            let alg: String = match arg(a, 1) {
+                V::Null | V::Undef => "sha256".into(),
+                v => js_lower(js_trim(&js_string_of(v))).chars().filter(|&c| c != '-' && c != '_' && !is_js_space(c)).collect(),
+            };
+            match crate::hash_ops::hash_text(&to_str(arg(a, 0)), &alg) {
+                Some(h) => V::str(&h),
+                None => V::err(sol_error(
+                    "#DOMAIN!",
+                    format!("HASH algorithm must be one of {}", crate::hash_ops::HASH_ALGORITHMS.join(", ")),
+                )),
+            }
+        }
+        "UNACCENT" => {
+            let t = to_str(arg(a, 0));
+            // Dropping a mark can join the two halves of a pair the wire turned into U+FFFD.
+            if may_hold_lone_surrogate(&t) {
+                return bail();
+            }
+            V::str(&crate::text_ops::unaccent(&t))
+        }
+        "SLUGIFY" => {
+            let sep = match arg(a, 1) {
+                V::Null | V::Undef => "-".to_string(),
+                v => to_str(v),
+            };
+            if may_hold_lone_surrogate(&sep) {
+                return bail();
+            }
+            V::str(&crate::text_ops::slugify(&to_str(arg(a, 0)), &sep))
+        }
+        "SPELLNUMBER" => match crate::text_ops::spell_number(to_f64_js(arg(a, 0))) {
+            Ok(words) => V::str(&words),
+            Err(msg) => V::err(sol_error("#DOMAIN!", msg)),
+        },
+        "VALUETOTEXT" => V::str(&to_str(arg(a, 0))),
+        "TEMPLATE" => template(a),
+        "DOLLAR" => dollar(arg(a, 0), arg(a, 1)),
+        // Both answer a list but for these readings, and a list stays on the TS.
+        "TEXTSPLIT" => {
+            if matches!(arg(a, 1), V::Null | V::Undef) && matches!(arg(a, 2), V::Null | V::Undef) {
+                return V::err(sol_error("#SYNTAX!", "TEXTSPLIT needs a column delimiter, a row delimiter, or both"));
+            }
+            bail()
+        }
+        "WRAPTEXT" => {
+            if matches!(arg(a, 0), V::Null | V::Undef) {
+                return V::Null;
+            }
+            if to_num(arg(a, 1)) < 1.0 {
+                return V::err(sol_error("#DOMAIN!", "Width must be at least 1"));
+            }
+            bail()
+        }
         _ => V::Undef,
     }
+}
+
+// ─── Regex and text utilities (textOps.ts, hashOps.ts) ──────────────────────────
+
+/// Text that crossed the wire with half a surrogate pair holds U+FFFD where the TS holds the half, which a regex,
+/// an encoder or a joined pair reads differently.
+fn may_hold_lone_surrogate(s: &str) -> bool {
+    s.contains('\u{FFFD}')
+}
+
+/// `caseFlag`: whether the match ignores case.
+fn case_flag(f: &str, cs: &V) -> Result<bool, V> {
+    let v = if matches!(cs, V::Null | V::Undef) { 0.0 } else { to_f64_js(cs) };
+    if v == 0.0 {
+        Ok(false)
+    } else if v == 1.0 {
+        Ok(true)
+    } else {
+        Err(V::err(sol_error("#VALUE!", format!("{f}: case_sensitivity must be 0 or 1"))))
+    }
+}
+
+/// `regexOccurrence`: blank is 0 (every match), a fraction truncates; None when non-finite.
+fn regex_occurrence(raw: &V) -> Option<f64> {
+    if matches!(raw, V::Null | V::Undef) || matches!(raw, V::Str(s) if s.is_empty()) {
+        return Some(0.0);
+    }
+    let n = to_f64_js(raw).trunc();
+    n.is_finite().then_some(n)
+}
+
+fn regex_call(name: &str, a: &[V]) -> V {
+    use crate::text_ops::{regex_extract, regex_replace_all, regex_test, replace_nth, safe_regex};
+    let cs = match name {
+        "REGEXTEST" => arg(a, 2),
+        "REGEXEXTRACT" => arg(a, 3),
+        _ => arg(a, 4),
+    };
+    let icase = match case_flag(name, cs) {
+        Ok(f) => f,
+        Err(e) => return e,
+    };
+    let mut occurrence = 0.0;
+    let mut mode = 0.0;
+    if name == "REGEXREPLACE" {
+        match regex_occurrence(arg(a, 3)) {
+            Some(n) => occurrence = n,
+            None => return V::err(sol_error("#VALUE!", "REGEXREPLACE: occurrence must be a number")),
+        }
+    }
+    if name == "REGEXEXTRACT" {
+        mode = if matches!(arg(a, 2), V::Null | V::Undef) { 0.0 } else { to_f64_js(arg(a, 2)) };
+        if mode != 0.0 && mode != 1.0 && mode != 2.0 {
+            return V::err(sol_error("#VALUE!", "REGEXEXTRACT: return_mode must be 0, 1 or 2"));
+        }
+    }
+    let (text, pattern) = (to_str(arg(a, 0)), to_str(arg(a, 1)));
+    if pattern.is_empty() {
+        return V::Null;
+    }
+    let replacement = if name == "REGEXREPLACE" { to_str(arg(a, 2)) } else { String::new() };
+    if [&text, &pattern, &replacement].iter().any(|s| may_hold_lone_surrogate(s)) {
+        return bail();
+    }
+    // Without the u flag, `i` compares by simple uppercase and never maps a non-ASCII letter to ASCII (ſ isn't s);
+    // regress folds classes the Unicode way (its caseless `\W` takes s and k, for ſ and K), so a caseless match runs
+    // here only on ASCII.
+    if icase && (!text.is_ascii() || !pattern.is_ascii() || pattern.contains("\\u") || pattern.contains("\\W")) {
+        return bail();
+    }
+    // A pattern regress refuses may be one V8 takes, and every match list (modes 1 and 2) is a list.
+    let Some(re) = safe_regex(&utf16(&pattern), icase) else {
+        return bail();
+    };
+    let t = utf16(&text);
+    match name {
+        "REGEXTEST" => V::Num(if regex_test(&re, &t) { 1.0 } else { 0.0 }),
+        "REGEXEXTRACT" if mode == 0.0 => V::str(&from_utf16(&regex_extract(&re, &t))),
+        "REGEXEXTRACT" => bail(),
+        _ if occurrence == 0.0 => V::str(&from_utf16(&regex_replace_all(&re, &t, &utf16(&replacement)))),
+        _ => V::str(&from_utf16(&replace_nth(&re, &t, &utf16(&replacement), occurrence))),
+    }
+}
+
+/// `templateFormat`, numbers through TEXT.
+fn template_format(v: &V, spec: Option<&str>) -> String {
+    match v {
+        V::Null | V::Undef => String::new(),
+        V::Err(e) => e.code.clone(),
+        V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
+        V::Num(n) => js_string_of(&excel_text(&V::Num(*n), &V::str(spec.unwrap_or("@")))),
+        V::List(items) => items.iter().map(|x| template_format(x, spec)).collect::<Vec<_>>().join(", "),
+        other => js_string_of(other),
+    }
+}
+
+/// TEMPLATE: positional placeholders, `{0}` the first value after the template.
+fn template(a: &[V]) -> V {
+    use crate::text_ops::{template_tokens, Token};
+    let tokens = template_tokens(&to_str(arg(a, 0)));
+    let bad = tokens.iter().find_map(|(_, t)| match t {
+        Some(Token::Placeholder(n, _)) if !n.bytes().all(|b| b.is_ascii_digit()) => Some(n),
+        _ => None,
+    });
+    if let Some(bad) = bad {
+        return V::err(sol_error(
+            "#NAME?",
+            format!("TEMPLATE placeholders are positional here: {{0}}, {{1}}… (got {{{bad}}}); the Template node takes names"),
+        ));
+    }
+    let values = a.get(1..).unwrap_or(&[]);
+    let mut out = String::new();
+    for (lit, token) in &tokens {
+        out.push_str(lit);
+        match token {
+            Some(Token::Open) => out.push('{'),
+            Some(Token::Close) => out.push('}'),
+            Some(Token::Placeholder(n, spec)) => {
+                let k = string_to_number(n);
+                let v = if k < values.len() as f64 { &values[k as usize] } else { &V::Null };
+                let spec = spec.as_deref().map(js_trim).filter(|s| !s.is_empty());
+                out.push_str(&template_format(v, spec));
+            }
+            None => {}
+        }
+    }
+    V::str(&out)
+}
+
+/// Formula.js ROUND (`roundBase` with `Math.round`): the shift by `num_digits` goes through the number's text.
+fn fx_round(number: &V, num_digits: &V) -> V {
+    let (n, d) = match (parse_number(number), parse_number(num_digits)) {
+        (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => return e,
+        (V::Num(n), V::Num(d)) => (n, d),
+        _ => return V::Fx("#VALUE!"),
+    };
+    let sign = if n >= 0.0 { 1.0 } else { -1.0 };
+    // `(x + "e" + e).split("e")`, its first two parts read back as one number.
+    let shift = |x: f64, e: f64| {
+        let s = format!("{}e{}", number_to_string(x), number_to_string(e));
+        let mut parts = s.split('e');
+        string_to_number(&format!("{}e{}", parts.next().unwrap_or(""), parts.next().unwrap_or("")))
+    };
+    let shifted = math_round(shift(n.abs(), d));
+    V::Num(shift(shifted, -d) * sign)
+}
+
+/// `x.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: fd, maximumFractionDigits: fd })`:
+/// ICU rounds the shortest round-trip digits half away from zero and groups by threes.
+fn intl_usd(x: f64, fd: usize) -> String {
+    if x.is_nan() {
+        return "$NaN".into();
+    }
+    let sign = if x.is_sign_negative() { "-$" } else { "$" };
+    if x.is_infinite() {
+        return format!("{sign}∞");
+    }
+    // The digits of `String(|x|)` (the shortest that round-trip, an even last digit on a tie), as 0.ddd × 10^point.
+    let s = number_to_string(x.abs());
+    let (m, exp) = s.split_once('e').unwrap_or((&s, "0"));
+    let (int, frac) = m.split_once('.').unwrap_or((m, ""));
+    let all: Vec<u8> = int.bytes().chain(frac.bytes()).map(|b| b - b'0').collect();
+    let zeros = all.iter().take_while(|&&d| d == 0).count();
+    let digits = &all[zeros..];
+    let point = int.len() as i64 + exp.parse::<i64>().unwrap_or(0) - zeros as i64;
+    // The digits of the value times 10^fd, rounded.
+    let keep = point + fd as i64;
+    let mut scaled: Vec<u8> = if keep <= 0 {
+        vec![u8::from(keep == 0 && digits.first().is_some_and(|&d| d >= 5))]
+    } else {
+        let k = keep as usize;
+        let mut v: Vec<u8> = (0..k).map(|i| digits.get(i).copied().unwrap_or(0)).collect();
+        if digits.get(k).is_some_and(|&d| d >= 5) {
+            let mut i = k;
+            loop {
+                if i == 0 {
+                    v.insert(0, 1);
+                    break;
+                }
+                i -= 1;
+                if v[i] == 9 {
+                    v[i] = 0;
+                } else {
+                    v[i] += 1;
+                    break;
+                }
+            }
+        }
+        v
+    };
+    while scaled.len() < fd + 1 {
+        scaled.insert(0, 0);
+    }
+    let int_len = scaled.len() - fd;
+    let int: String = scaled[..int_len].iter().map(|d| char::from(b'0' + d)).collect();
+    let int = match int.trim_start_matches('0') {
+        "" => "0",
+        t => t,
+    };
+    let mut out = String::from(sign);
+    for (i, c) in int.chars().enumerate() {
+        if i > 0 && (int.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    if fd > 0 {
+        out.push('.');
+        out.extend(scaled[int_len..].iter().map(|d| char::from(b'0' + d)));
+    }
+    out
+}
+
+/// DOLLAR: `preRound`, then Formula.js DOLLAR, its negative form rewritten in parentheses.
+fn dollar(value: &V, decimals: &V) -> V {
+    let n = to_num(value);
+    let d = opt_num(decimals, 2.0);
+    let pre = if n.is_nan() || d.is_nan() {
+        value.clone()
+    } else {
+        let r = round_digits(n, d, "round");
+        V::Num(if r == 0.0 { n } else { r })
+    };
+    // Formula.js DOLLAR(number, decimals = 2).
+    let decimals = if matches!(decimals, V::Undef) { V::Num(2.0) } else { decimals.clone() };
+    let number = match parse_number(&pre) {
+        V::Num(x) if !x.is_nan() => x,
+        _ => return V::Fx("#VALUE!"),
+    };
+    let out = match fx_round(&V::Num(number), &decimals) {
+        V::Num(x) => {
+            let dn = to_f64_js(&decimals);
+            let fd = if dn >= 0.0 { dn } else { 0.0 };
+            if fd > 100.0 {
+                return throw(sol_error("#VALUE!", "minimumFractionDigits value is out of range."));
+            }
+            let formatted = intl_usd(x, fd.floor() as usize);
+            if x < 0.0 { format!("$({})", formatted.get(2..).unwrap_or("")) } else { formatted }
+        }
+        // An Error's toLocaleString is its toString.
+        other => js_string_of(&other),
+    };
+    V::str(&if let Some(rest) = out.strip_prefix("$(") {
+        format!("(${rest}")
+    } else if let Some(rest) = out.strip_prefix("-$") {
+        format!("(${rest})")
+    } else {
+        out
+    })
 }
 
 /// `Number(v)` as `Math.abs` reads it.

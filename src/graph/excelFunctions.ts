@@ -2146,7 +2146,7 @@ registerInternal("DECODEBASE64", (t) => (t == null ? null : urlEncode("unbase64"
 registerInternal("HASH", (t, algorithm) => {
   if (t == null) return null;
   const a = (algorithm == null ? "sha256" : String(algorithm).trim().toLowerCase().replace(/[-_\s]/g, "")) as HashAlgorithm;
-  if (!(a in HASH_ALGORITHM_META)) return solError("#DOMAIN!", `HASH algorithm must be one of ${Object.keys(HASH_ALGORITHM_META).join(", ")}`);
+  if (!Object.prototype.hasOwnProperty.call(HASH_ALGORITHM_META, a)) return solError("#DOMAIN!", `HASH algorithm must be one of ${Object.keys(HASH_ALGORITHM_META).join(", ")}`);
   return hashText(toStr(t), a);
 });
 registerInternal("UUID", () => uuidV4());
