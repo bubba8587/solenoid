@@ -2,9 +2,10 @@
 import { ClassicPreset } from "rete";
 import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readRole, numListIn, numListOut, numIn, numOut, listIn, readAsRole, leftOutAs, type BroadcastResult, type UnitOperand } from "./shared";
 import { rolesFrom, required, argRole } from "../inputRoles";
-import { lnGamma, roundDigits, gcdLcm } from "./mathUtils";
+import { lnGamma } from "./mathUtils";
+import { callCore } from "../coreValues";
 import { solError, type SolError, isSolError } from "../errorValue";
-import { guardFinite, powerOf } from "../valueKinds";
+import { guardFinite } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
 import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
@@ -150,9 +151,9 @@ export class ArithmeticNode extends ClassicPreset.Node {
             case "mul": return x * y;
             case "div": return y === 0 ? divZero() : x / y;
             // Excel MOD's sign follows the divisor and JS % the dividend, so use the floored form.
-            case "mod": return y === 0 ? divZero() : x - y * Math.floor(x / y);
-            case "pow":      return powerOf(x, y);
-            case "quotient": return y === 0 ? divZero() : Math.trunc(x / y);
+            case "mod":      return callCore("MOD", [x, y]) as number | SolError;
+            case "pow":      return callCore("POWER", [x, y]) as number | SolError;
+            case "quotient": return callCore("QUOTIENT", [x, y]) as number | SolError;
           }
           return null;
         }, a, b);
@@ -243,6 +244,32 @@ export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip
   return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
 }
 
+// Where the formula twin answers differently (last-digit noise, ACOT's range, the ERF approximation, GAMMA below 0,
+// ACOTH at 1 and -1), the card keeps its own kernel; the rest run on the core.
+const OWN_KERNEL_OPS = new Set<MathFnOp>(["tanh", "sinh", "asinh", "acot", "coth", "csch", "acoth", "erf", "erfc", "gamma", "gammaln"]);
+
+function ownKernel(op: MathFnOp, x: number): number | null {
+  switch (op) {
+    case "tanh":    return Math.tanh(x);
+    case "sinh":    return Math.sinh(x);
+    case "asinh":   return Math.asinh(x);
+    case "acot":    return Math.PI / 2 - Math.atan(x);
+    case "coth":    return Math.sinh(x) === 0 ? null : Math.cosh(x) / Math.sinh(x);
+    case "csch":    return Math.sinh(x) === 0 ? null : 1 / Math.sinh(x);
+    case "acoth":   return (x <= -1 || x >= 1) ? (Math.abs(x) === 1 ? null : Math.atanh(1 / x)) : null;
+    case "erf":
+    case "erfc": {
+      const t = 1 / (1 + 0.3275911 * Math.abs(x));
+      const p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+      const e = (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
+      return op === "erf" ? e : 1 - e;
+    }
+    case "gamma":   return x > 0 ? Math.exp(lnGamma(x)) : null;
+    case "gammaln": return x > 0 ? lnGamma(x) : null;
+    default:        return null;
+  }
+}
+
 export class MathFXNode extends ClassicPreset.Node {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
@@ -286,58 +313,12 @@ export class MathFXNode extends ClassicPreset.Node {
     const fwdDeg = mode === "deg" && FORWARD_TRIG_OPS.has(this.op);
     const invDeg = mode === "deg" && INVERSE_TRIG_OPS.has(this.op);
     const domainErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
+    const op = this.op;
+    const fn = op === "log" ? "LN" : op.toUpperCase();
     const computeRaw = (x: number): number | null => {
-        switch (this.op) {
-          case "abs":   return Math.abs(x);
-          case "sqrt":  return x < 0 ? null : Math.sqrt(x);
-          case "log":   return x <= 0 ? null : Math.log(x);
-          case "sin":   return Math.sin(x);
-          case "cos":   return Math.cos(x);
-          case "tan":   return Math.tan(x);
-          case "tanh":  return Math.tanh(x);
-          case "sinh":  return Math.sinh(x);
-          case "cosh":  return Math.cosh(x);
-          case "asin":  return (x < -1 || x > 1) ? null : Math.asin(x);
-          case "acos":  return (x < -1 || x > 1) ? null : Math.acos(x);
-          case "atan":  return Math.atan(x);
-          case "exp":   return Math.exp(x);
-          case "log10": return x <= 0 ? null : Math.log10(x);
-          case "log2":  return x <= 0 ? null : Math.log2(x);
-          case "sign":  return Math.sign(x);
-          case "trunc": return Math.trunc(x);
-          case "int":     return Math.floor(x);
-          case "even":    return (x >= 0 ? 1 : -1) * 2 * Math.ceil(Math.abs(x) / 2);
-          case "odd": {
-            const c = Math.ceil(Math.abs(x));
-            return (x < 0 ? -1 : 1) * (c % 2 === 0 ? c + 1 : c);
-          }
-          case "sqrtpi":  return x < 0 ? null : Math.sqrt(x * Math.PI);
-          case "acosh":   return x < 1 ? null : Math.acosh(x);
-          case "asinh":   return Math.asinh(x);
-          case "atanh":   return (x <= -1 || x >= 1) ? null : Math.atanh(x);
-          case "cot":     return Math.tan(x) === 0 ? null : 1 / Math.tan(x);
-          case "csc":     return Math.sin(x) === 0 ? null : 1 / Math.sin(x);
-          case "sec":     return Math.cos(x) === 0 ? null : 1 / Math.cos(x);
-          case "acot":    return Math.PI / 2 - Math.atan(x);
-          case "coth":    return Math.sinh(x) === 0 ? null : Math.cosh(x) / Math.sinh(x);
-          case "csch":    return Math.sinh(x) === 0 ? null : 1 / Math.sinh(x);
-          case "sech":    return 1 / Math.cosh(x);
-          case "acoth":   return (x <= -1 || x >= 1) ? (Math.abs(x) === 1 ? null : Math.atanh(1 / x)) : null;
-          case "erf": {
-            const t = 1 / (1 + 0.3275911 * Math.abs(x));
-            const p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-            return (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
-          }
-          case "erfc": {
-            const t = 1 / (1 + 0.3275911 * Math.abs(x));
-            const p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-            const e = (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
-            return 1 - e;
-          }
-          case "gamma":   return x > 0 ? Math.exp(lnGamma(x)) : null;
-          case "gammaln": return x > 0 ? lnGamma(x) : null;
-        }
-        return null;
+      if (OWN_KERNEL_OPS.has(op)) return ownKernel(op, x);
+      const r = callCore(fn, [x]);
+      return typeof r === "number" ? r : null;
     };
     const compute = (x: number): number | null => {
       const r = computeRaw(fwdDeg ? x * DEG2RAD : x);
@@ -484,9 +465,7 @@ export class ClampNode extends ClassicPreset.Node {
     const min = bound(readRole(this, "min", inputs.min), -Infinity);
     const max = bound(readRole(this, "max", inputs.max), Infinity);
     if (value === null) { this.cachedResult = null; return { result: null }; }
-    let result: number | number[] = value;
-    if (min !== null) result = broadcast((v, mn) => Math.max(v, mn), result, min) as number | number[];
-    if (max !== null) result = broadcast((v, mx) => Math.min(v, mx), result, max) as number | number[];
+    const result = broadcast((v, mn, mx) => callCore("CLAMP", [v, mn, mx]) as number, value, min ?? -Infinity, max ?? Infinity) as number | number[];
     this.cachedResult = result;
     return { result };
   }
@@ -531,7 +510,6 @@ export class MRoundNode extends ClassicPreset.Node {
   data(inputs: { value?: (number | number[])[]; multiple?: (number | number[])[] }) {
     const value    = readInput(inputs.value,    this.literals.value);
     const multiple = readRole<number | number[] | SolError>(this, "multiple", inputs.multiple);
-    const snap = this.op === "up" ? Math.ceil : this.op === "down" ? Math.floor : Math.round;
     let result: BroadcastResult = null;
     if (isSolError(multiple)) result = multiple;
     else if (value !== null) {
@@ -541,7 +519,8 @@ export class MRoundNode extends ClassicPreset.Node {
         if (this.op === "nearest" && v !== 0 && Math.sign(v) !== Math.sign(m)) {
           return solError("#DOMAIN!", "MROUND needs the value and multiple to share a sign");
         }
-        return snap(v / m) * m;
+        // CEILING.MATH and FLOOR.MATH read the multiple's magnitude only; the card's up and down follow its sign.
+        return this.op === "nearest" ? callCore("MROUND", [v, m]) as number | SolError : (this.op === "up" ? Math.ceil : Math.floor)(v / m) * m;
       }, value, multiple);
     }
     this.cachedResult = result;
@@ -586,7 +565,8 @@ export class RoundNNode extends ClassicPreset.Node {
     const digits = readRole<number | number[]>(this, "digits", inputs.digits);
     let result: BroadcastResult = null;
     if (value !== null) {
-      result = broadcast((v, d) => roundDigits(v, d, this.op), value, digits);
+      const fn = this.op.toUpperCase();
+      result = broadcast((v, d) => callCore(fn, [v, d]) as number, value, digits);
     }
     this.cachedResult = result;
     return { result };
@@ -622,7 +602,8 @@ export class GCDNode extends ClassicPreset.Node {
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
     const a = readInput(inputs.a, this.literals.a);
     const b = readInput(inputs.b, this.literals.b);
-    const result = broadcastErr((x, y) => gcdLcm(this.op, [x, y]), a, b);
+    const fn = this.op.toUpperCase();
+    const result = broadcastErr((x, y) => callCore(fn, [x, y]) as number | SolError, a, b);
     this.cachedResult = result;
     return { result };
   }
@@ -769,11 +750,11 @@ export class TwoInputMathNode extends ClassicPreset.Node {
     if (a !== null && b !== null) {
       result = broadcastErr((x, y) => {
         switch (this.op) {
-          case "atan2":  return Math.atan2(y, x); // Excel ATAN2(x_num, y_num)
+          case "atan2":  return callCore("ATAN2", [x, y]) as number | SolError;
           case "hypot":  return Math.sqrt(x * x + y * y);
-          case "log":    return (x <= 0 || y <= 0 || y === 1) ? domainErr() : Math.log(x) / Math.log(y);
+          case "log":    return (x <= 0 || y <= 0 || y === 1) ? domainErr() : callCore("LOG", [x, y]) as number | SolError;
           case "delta":  return Math.abs(x - y) < 1e-12 ? 1 : 0;
-          case "gestep": return x >= y ? 1 : 0;
+          case "gestep": return callCore("GESTEP", [x, y]) as number | SolError;
         }
         return null;
       }, a, b);
@@ -820,16 +801,7 @@ export class SumProductNode extends ClassicPreset.Node {
     let result: number | null = null;
     if (xs && ys && xs.length > 0 && ys.length > 0) {
       const n = Math.min(xs.length, ys.length);
-      let acc = 0;
-      for (let i = 0; i < n; i++) {
-        switch (this.op) {
-          case "sumx2my2":  acc += xs[i] * xs[i] - ys[i] * ys[i]; break;
-          case "sumx2py2":  acc += xs[i] * xs[i] + ys[i] * ys[i]; break;
-          case "sumxmy2":   acc += (xs[i] - ys[i]) ** 2; break;
-          case "sumproduct": acc += xs[i] * ys[i]; break;
-        }
-      }
-      result = acc;
+      result = callCore(this.op.toUpperCase(), [xs.slice(0, n), ys.slice(0, n)]) as number;
     }
     this.cachedResult = result;
     return { result };
@@ -862,10 +834,7 @@ export class SeriesSumNode extends ClassicPreset.Node {
     if (x === null || n === null || m === null) { this.cachedResult = null; return { result: null }; }
     const coef = inputs.coef?.[0] ?? null;
     if (!coef || coef.length === 0) { this.cachedResult = null; return { result: null }; }
-    let result = 0;
-    for (let i = 0; i < coef.length; i++) {
-      result += coef[i] * Math.pow(x, n + i * m);
-    }
+    const result = callCore("SERIESSUM", [x, n, m, coef]) as number;
     this.cachedResult = guardFinite(result, [x, n, m, ...coef]);
     return { result: this.cachedResult };
   }

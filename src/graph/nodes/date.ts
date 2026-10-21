@@ -3,13 +3,14 @@ import { ClassicPreset } from "rete";
 import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, readRole, BASIS_DOC, readAsRole, type BroadcastResult } from "./shared";
 import { setting, argRole } from "../inputRoles";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { convertZone, worldClockRows, worldClockFrame } from "../timeZone";
+import { worldClockRows, worldClockFrame } from "../timeZone";
+import { callCore } from "../coreValues";
 import { type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
-import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./dateSerial";
+import { wallClockSerial } from "./dateSerial";
 import type { FormatCarrySpec } from "./formatCarry";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, addWorkdays, networkDays, weekendDays, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
+import { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
@@ -77,7 +78,7 @@ export class DateConstructNode extends ClassicPreset.Node {
   }
 
   data(inputs: { year?: (number | number[])[]; month?: (number | number[])[]; day?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcastErr(dateFromParts,
+    const result = broadcastErr((y, m, d) => callCore("DATE", [y, m, d]) as number | SolError,
       readInput(inputs.year,  this.literals.year  ?? 2024),
       readInput(inputs.month, this.literals.month ?? 1),
       readInput(inputs.day,   this.literals.day   ?? 1));
@@ -104,7 +105,7 @@ export class TimeConstructNode extends ClassicPreset.Node {
   }
 
   data(inputs: { hour?: (number | number[])[]; minute?: (number | number[])[]; second?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast(timeFraction,
+    const result = broadcast((h, m, s) => callCore("TIME", [h, m, s]) as number,
       readInput(inputs.hour,   this.literals.hour   ?? 0),
       readInput(inputs.minute, this.literals.minute ?? 0),
       readInput(inputs.second, this.literals.second ?? 0));
@@ -154,7 +155,7 @@ export class DateTimeValueNode extends ClassicPreset.Node {
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
     const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
     if (!text) { this.cachedResult = null; return { result: null }; }
-    const result = this.op === "date" ? parseDateOnly(text) : parseTimeOfDay(text);
+    const result = callCore(this.op === "date" ? "DATEVALUE" : "TIMEVALUE", [text]) as number | SolError;
     this.cachedResult = result;
     return { result };
   }
@@ -188,17 +189,8 @@ export class DatePartNode extends ClassicPreset.Node {
   }
 
   data(inputs: { date?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((serial) => {
-      const d = serialToJsDate(serial);
-      switch (this.op) {
-        case "year":   return d.getUTCFullYear();
-        case "month":  return d.getUTCMonth() + 1;
-        case "day":    return d.getUTCDate();
-        case "hour":   return d.getUTCHours();
-        case "minute": return d.getUTCMinutes();
-        case "second": return d.getUTCSeconds();
-      }
-    }, inputs.date?.[0] ?? null);
+    const fn = this.op.toUpperCase();
+    const result = broadcast((serial) => callCore(fn, [serial]) as number, inputs.date?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }
@@ -232,7 +224,7 @@ export class WeekInfoNode extends ClassicPreset.Node {
   data(inputs: { date?: (number | number[])[]; return_type?: number[] }): { result: BroadcastResult } {
     const rtRaw = readRole<number>(this, "return_type", inputs.return_type);
     const rt = Math.floor(rtRaw);
-    const result = broadcast((serial) => weekInfo(this.op, serial, rt), inputs.date?.[0] ?? null);
+    const result = broadcast((serial) => callCore(this.op.toUpperCase(), this.op === "isoweeknum" ? [serial] : [serial, rt]) as number, inputs.date?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }
@@ -250,6 +242,8 @@ export const DATE_DIFF_OP_META = {
   md:       { label: "Days ignoring months",  description: "Days past the last whole month, borrowing from the month before the end month. Excel: `DATEDIF \"MD\"`." },
   yd:       { label: "Days ignoring years",   description: "Days past the last whole year. Excel: `DATEDIF \"YD\"`." },
 } satisfies Record<DateDiffOp, { label: string; description: string }>;
+
+const DATEDIF_UNIT: Record<string, string> = { years: "Y", months: "M", ym: "YM", md: "MD", yd: "YD" };
 
 export class DateDiffNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -288,9 +282,19 @@ export class DateDiffNode extends ClassicPreset.Node {
       if (isSolError(basisRaw)) { this.cachedResult = basisRaw; return { result: basisRaw }; }
       basis = Math.trunc(basisRaw ?? 0);
     }
-    const result = broadcastErr((s, e) => dateDiff(this.op, s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
+    const result = broadcastErr((s, e) => this.dateDiffOnCore(s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
     this.cachedResult = result;
     return { result };
+  }
+
+  private dateDiffOnCore(s: number, e: number, basis: number): number | SolError | null {
+    switch (this.op) {
+      case "days":     return callCore("DAYS", [e, s]) as number | SolError;
+      case "days360":  return callCore("DAYS360", [s, e, basis !== 0]) as number | SolError;
+      case "yearfrac": return callCore("YEARFRAC", [s, e, basis]) as number | SolError;
+      // DATEDIF answers a reversed span with #DOMAIN!; the card leaves it blank.
+      default:         return s > e ? null : callCore("DATEDIF", [s, e, DATEDIF_UNIT[this.op]]) as number | SolError;
+    }
   }
 }
 
@@ -324,17 +328,9 @@ export class DateAddNode extends ClassicPreset.Node {
   }
 
   data(inputs: { start?: (number | number[])[]; months?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((s, rawM) => {
-    const d = serialToJsDate(s);
-    const m = Math.floor(rawM);
-    const y  = d.getUTCFullYear();
-    const mo = d.getUTCMonth() + m;
-    const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
-    const serial = this.op === "edate"
-      ? jsDateToSerial(new Date(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay))))
-      : jsDateToSerial(new Date(Date.UTC(y, mo + 1, 0)));
-    return serial;
-    }, inputs.start?.[0] ?? null, readInput(inputs.months, this.literals.months ?? 0));
+    const fn = this.op === "edate" ? "EDATE" : "EOMONTH";
+    const result = broadcastErr((s, m) => callCore(fn, [Math.floor(s), Math.floor(m)]) as number | SolError,
+      inputs.start?.[0] ?? null, readInput(inputs.months, this.literals.months ?? 0));
     this.cachedResult = result;
     return { result };
   }
@@ -415,15 +411,15 @@ export class WorkdaysNode extends ClassicPreset.Node {
 
   data(inputs: { start?: (number | number[])[]; days?: (number | number[])[]; end?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
     const codeRaw = readRole<number>(this, "weekend_code", inputs.weekend_code);
-    const off  = weekendDays(Math.floor(codeRaw));
-    if (!off) {
+    const code = Math.floor(codeRaw);
+    if (!((code >= 1 && code <= 7) || (code >= 11 && code <= 17))) {
       this.cachedResult = solError("#VALUE!", "Weekend must be a code: 1 to 7, or 11 to 17");
       return { result: this.cachedResult };
     }
-    const hol  = holidaySet(inputs.holidays?.[0]);
-    const result = this.op === "workday"
-      ? broadcastErr((s, n) => addWorkdays(s, n, off, hol), inputs.start?.[0] ?? null, readInput(inputs.days, this.literals.days ?? 5))
-      : broadcastErr((s, e) => networkDays(s, e, off, hol), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
+    const hol  = [...holidaySet(inputs.holidays?.[0])];
+    const fn = this.op === "workday" ? "WORKDAY.INTL" : "NETWORKDAYS.INTL";
+    const result = broadcastErr((s, x) => callCore(fn, [s, x, code, hol]) as number | SolError,
+      inputs.start?.[0] ?? null, this.op === "workday" ? readInput(inputs.days, this.literals.days ?? 5) : inputs.end?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }
@@ -459,7 +455,8 @@ export class EpochNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[] }): { result: BroadcastResult } {
     const v = this.op === "from" ? readInput(inputs.value, this.literals.value ?? 0) : (inputs.value?.[0] ?? null);
-    const result = broadcast((x) => (this.op === "from" ? epochToSerial(x, this.unit) : serialToEpoch(x, this.unit)), v);
+    const fn = this.op === "from" ? "FROMEPOCH" : "TOEPOCH";
+    const result = broadcast((x) => callCore(fn, [x, this.unit]) as number, v);
     this.cachedResult = result;
     return { result };
   }
@@ -495,7 +492,7 @@ export class DateTruncNode extends ClassicPreset.Node {
   }
 
   data(inputs: { date?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((s) => dateTrunc(s, this.unit, this.ceiling), inputs.date?.[0] ?? null);
+    const result = broadcast((s) => callCore("DATETRUNC", [s, this.unit, this.ceiling]) as number, inputs.date?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }
@@ -538,7 +535,7 @@ export class TimeZoneConvertNode extends ClassicPreset.Node {
       this.cachedResult = null;
       return { result: null };
     }
-    const result = convertZone(serial, from, to);
+    const result = callCore("TIMEZONECONVERT", [serial, from, to]) as number | SolError;
     this.cachedResult = result;
     return { result };
   }
