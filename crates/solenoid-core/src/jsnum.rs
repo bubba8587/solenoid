@@ -16,23 +16,36 @@ pub fn number_to_string(x: f64) -> String {
     ryu_js::Buffer::new().format(x).to_string()
 }
 
-/// JS string `<`: UTF-16 code-unit order. It differs from Rust's (code point) order only when an
-/// astral character meets one in U+E000..U+FFFF.
+/// JS string `<`: UTF-16 code-unit order. It differs from UTF-8 byte order only where an astral
+/// character meets one in U+E000..U+FFFF, so the bytes decide up to the first differing character.
 pub fn compare_utf16(a: &str, b: &str) -> Ordering {
-    let mut ia = a.chars();
-    let mut ib = b.chars();
-    loop {
-        match (ia.next(), ib.next()) {
-            (None, None) => return Ordering::Equal,
-            (None, Some(_)) => return Ordering::Less,
-            (Some(_), None) => return Ordering::Greater,
-            (Some(x), Some(y)) if x == y => continue,
-            (Some(x), Some(y)) => {
-                let mut bx = [0u16; 2];
-                let mut by = [0u16; 2];
-                return x.encode_utf16(&mut bx)[0].cmp(&y.encode_utf16(&mut by)[0]);
-            }
-        }
+    let (ab, bb) = (a.as_bytes(), b.as_bytes());
+    let high = |x: &[u8]| x.iter().any(|&c| c >= 0xEE);
+    let bytes = ab.cmp(bb);
+    if bytes == Ordering::Equal || (!high(ab) && !high(bb)) {
+        return bytes;
+    }
+    let n = ab.iter().zip(bb).take_while(|(x, y)| x == y).count();
+    if n == ab.len() || n == bb.len() {
+        return ab.len().cmp(&bb.len());
+    }
+    let mut s = n;
+    while !a.is_char_boundary(s) {
+        s -= 1;
+    }
+    let (ca, cb) = (a[s..].chars().next().unwrap(), b[s..].chars().next().unwrap());
+    let (mut ua, mut ub) = ([0u16; 2], [0u16; 2]);
+    ca.encode_utf16(&mut ua).cmp(&cb.encode_utf16(&mut ub))
+}
+
+/// JS `toLowerCase`, borrowing when nothing changes.
+pub fn js_lower(s: &str) -> Cow<'_, str> {
+    if s.bytes().all(|b| b.is_ascii() && !b.is_ascii_uppercase()) {
+        Cow::Borrowed(s)
+    } else if s.is_ascii() {
+        Cow::Owned(s.to_ascii_lowercase())
+    } else {
+        Cow::Owned(s.to_lowercase())
     }
 }
 

@@ -6,6 +6,7 @@
 pub mod binary;
 pub mod error_value;
 pub mod frame;
+pub mod fxhash;
 pub mod frame_backend;
 pub mod frame_verbs;
 pub mod jsnum;

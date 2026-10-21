@@ -2,15 +2,19 @@
 //! Port of `src/graph/frameVerbs.ts`: the frame verbs the backend runs (every `FrameOp` but
 //! pivot, plus join, append, bindColumns and sampling). Same names, same order of operations.
 
+use std::borrow::Cow;
 use std::cmp::Ordering;
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 use std::rc::Rc;
 
 use serde::Deserialize;
 
 use crate::error_value::{sol_error, SolError};
+use crate::fxhash::{FxHashMap, FxHashSet};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
-use crate::jsnum::{compare_utf16, js_string, js_trim, math_round, to_number, trunc_count, truthy};
+use crate::jsnum::{compare_utf16, js_lower, js_string, js_trim, math_round, to_number, trunc_count, truthy};
 use crate::string_order::compare_strings;
 use crate::unit_value::{round_at_larger_term, unit_error, READINGS_ADD, READINGS_SCALE};
 use crate::value_kinds::{decimal_from_text, for_aggregate, guard_finite, logical_or_type_error, AggregatePrep};
@@ -169,31 +173,49 @@ fn compare_numbers(a: f64, b: f64) -> Ordering {
 
 /// A cell's equality class, as `encodeCell` (and a Map's SameValueZero on a lone column) keys it:
 /// 0 and -0 one value, every NaN one value, errors by code.
-#[derive(Hash, PartialEq, Eq, Clone, Debug)]
-pub enum CellKey {
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
+pub enum CellKey<'a> {
     Null,
     Bool(bool),
-    Err(String),
+    Err(&'a str),
     Num(u64),
-    Str(Rc<str>),
+    Str(&'a str),
 }
 
-pub fn cell_key(v: &FrameCell) -> CellKey {
+pub fn cell_key(v: &FrameCell) -> CellKey<'_> {
     match v {
         FrameCell::Null => CellKey::Null,
         FrameCell::Bool(b) => CellKey::Bool(*b),
-        FrameCell::Err(e) => CellKey::Err(e.code.clone()),
+        FrameCell::Err(e) => CellKey::Err(&e.code),
         FrameCell::Num(n) if n.is_nan() => CellKey::Num(f64::NAN.to_bits()),
         FrameCell::Num(n) if *n == 0.0 => CellKey::Num(0f64.to_bits()),
         FrameCell::Num(n) => CellKey::Num(n.to_bits()),
-        FrameCell::Str(s) => CellKey::Str(s.clone()),
+        FrameCell::Str(s) => CellKey::Str(s),
     }
 }
 
-type RowKey = Vec<CellKey>;
+/// `rowKeyer`'s grouping: rows by their cells in `cols`, groups in first-seen order. A lone column
+/// keys on its cell alone, with no row vector to build.
+fn buckets_of(n: usize, cols: &[&FrameColumn]) -> Vec<Vec<usize>> {
+    match cols {
+        [c] => bucket_by(n, |i| cell_key(c.cell_at(i))),
+        _ => bucket_by(n, |i| cols.iter().map(|c| cell_key(c.cell_at(i))).collect::<Vec<_>>()),
+    }
+}
 
-fn row_keyer<'a>(cols: &'a [&'a FrameColumn]) -> impl Fn(usize) -> RowKey + 'a {
-    move |i| cols.iter().map(|c| cell_key(c.cell_at(i))).collect()
+fn bucket_by<K: Hash + Eq>(n: usize, key_at: impl Fn(usize) -> K) -> Vec<Vec<usize>> {
+    let mut index: FxHashMap<K, usize> = FxHashMap::default();
+    let mut buckets: Vec<Vec<usize>> = Vec::new();
+    for i in 0..n {
+        match index.entry(key_at(i)) {
+            Entry::Occupied(e) => buckets[*e.get()].push(i),
+            Entry::Vacant(e) => {
+                e.insert(buckets.len());
+                buckets.push(vec![i]);
+            }
+        }
+    }
+    buckets
 }
 
 fn is_nan_cell(v: &FrameCell) -> bool {
@@ -246,15 +268,15 @@ pub fn sort_by_column(f: &FrameValue, by: &str, dir: &str) -> Res<FrameValue> {
     Ok(reorder_rows(f, &sorted_index_order(frame_row_count(f), |i| col.cell_at(i), col.ty, dir)))
 }
 
-fn distinct_index_order(len: usize, key_at: impl Fn(usize) -> RowKey) -> Vec<usize> {
-    let mut seen: HashSet<RowKey> = HashSet::new();
-    let mut keep = Vec::new();
-    for i in 0..len {
-        if seen.insert(key_at(i)) {
-            keep.push(i);
-        }
+fn distinct_index_order(len: usize, cols: &[&FrameColumn]) -> Vec<usize> {
+    fn keep_first<K: Hash + Eq>(len: usize, key_at: impl Fn(usize) -> K) -> Vec<usize> {
+        let mut seen: FxHashSet<K> = FxHashSet::default();
+        (0..len).filter(|&i| seen.insert(key_at(i))).collect()
     }
-    keep
+    match cols {
+        [c] => keep_first(len, |i| cell_key(c.cell_at(i))),
+        _ => keep_first(len, |i| cols.iter().map(|c| cell_key(c.cell_at(i))).collect::<Vec<_>>()),
+    }
 }
 
 pub fn distinct_rows(f: &FrameValue, columns: Option<&[String]>) -> Res<FrameValue> {
@@ -262,7 +284,7 @@ pub fn distinct_rows(f: &FrameValue, columns: Option<&[String]>) -> Res<FrameVal
         Some(names) => names.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?,
         None => f.columns.iter().collect(),
     };
-    Ok(reorder_rows(f, &distinct_index_order(frame_row_count(f), row_keyer(&cols))))
+    Ok(reorder_rows(f, &distinct_index_order(frame_row_count(f), &cols)))
 }
 
 pub fn head_rows(f: &FrameValue, n: f64) -> FrameValue {
@@ -359,28 +381,48 @@ pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, m
     if value.is_null() {
         return Box::new(|_| Ok(false));
     }
-    let fold = move |s: &str| -> String { if match_case { s.to_string() } else { s.to_lowercase() } };
+    let fold = move |s: &'_ str| -> String { if match_case { s.to_string() } else { js_lower(s).into_owned() } };
     let absent = |c: &FrameCell| c.is_null() || c.is_err();
     if TEXT_FILTER_OPS.contains(&op) {
         let needle = fold(&js_string(value));
+        let ascii_fold = !match_case && needle.is_ascii();
         return Box::new(move |c| {
             if absent(c) {
                 return Ok(false);
             }
-            let hay = fold(&js_string(c));
+            let raw = js_string(c);
+            if ascii_fold && raw.is_ascii() {
+                let (h, n) = (raw.as_bytes(), needle.as_bytes());
+                return Ok(match op {
+                    "contains" => n.is_empty() || h.windows(n.len()).any(|w| w.eq_ignore_ascii_case(n)),
+                    "startsWith" => h.len() >= n.len() && h[..n.len()].eq_ignore_ascii_case(n),
+                    _ => h.len() >= n.len() && h[h.len() - n.len()..].eq_ignore_ascii_case(n),
+                });
+            }
+            let hay: Cow<str> = if match_case { raw } else { Cow::Owned(js_lower(&raw).into_owned()) };
             Ok(match op {
-                "contains" => hay.contains(&needle),
-                "startsWith" => hay.starts_with(&needle),
-                _ => hay.ends_with(&needle),
+                "contains" => hay.contains(needle.as_str()),
+                "startsWith" => hay.starts_with(needle.as_str()),
+                _ => hay.ends_with(needle.as_str()),
             })
         });
     }
     if ty == FrameColType::String {
         let target = js_string(value).into_owned();
         let folded = fold(&target);
+        let same = move |c: &FrameCell| -> bool {
+            let raw = js_string(c);
+            if match_case {
+                raw == folded.as_str()
+            } else if raw.is_ascii() && folded.is_ascii() {
+                raw.as_bytes().eq_ignore_ascii_case(folded.as_bytes())
+            } else {
+                js_lower(&raw) == folded.as_str()
+            }
+        };
         return match op {
-            "eq" => Box::new(move |c| Ok(!absent(c) && fold(&js_string(c)) == folded)),
-            "neq" => Box::new(move |c| Ok(!absent(c) && fold(&js_string(c)) != folded)),
+            "eq" => Box::new(move |c| Ok(!absent(c) && same(c))),
+            "neq" => Box::new(move |c| Ok(!absent(c) && !same(c))),
             _ => Box::new(move |c| Ok(!absent(c) && compare_op(op, ordering_num(compare_strings(&js_string(c), &target)), 0.0))),
         };
     }
@@ -448,7 +490,7 @@ pub fn filter_rows_multi(f: &FrameValue, combine: &str, conditions: &[FilterCond
 // ─── Aggregates ─────────────────────────────────────────────────────────────────
 
 fn mode_of(nums: &[f64]) -> f64 {
-    let mut counts: HashMap<u64, usize> = HashMap::new();
+    let mut counts: FxHashMap<u64, usize> = FxHashMap::default();
     let mut best = nums[0];
     let mut best_count = 0;
     for &v in nums {
@@ -637,28 +679,11 @@ fn agg_unit_plan(op: &str, reading_scale: Option<f64>, unit_scale: Option<f64>) 
     reading_plan(reading_scale, agg_readings_refused(op), agg_readings_delta(op), unit_scale)
 }
 
-/// Rows grouped by key, keys in first-seen order.
-fn buckets_of(n: usize, key_at: impl Fn(usize) -> RowKey) -> Vec<Vec<usize>> {
-    let mut index: HashMap<RowKey, usize> = HashMap::new();
-    let mut buckets: Vec<Vec<usize>> = Vec::new();
-    for i in 0..n {
-        let key = key_at(i);
-        match index.get(&key) {
-            Some(&b) => buckets[b].push(i),
-            None => {
-                index.insert(key, buckets.len());
-                buckets.push(vec![i]);
-            }
-        }
-    }
-    buckets
-}
-
 pub fn group_by_frame(f: &FrameValue, keys: &[String], aggs: &[AggSpec]) -> Res<FrameValue> {
     let key_cols: Vec<&FrameColumn> = keys.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
     let agg_cols: Vec<(&AggSpec, &FrameColumn)> =
         aggs.iter().map(|a| require_column(f, &a.column).map(|c| (a, c))).collect::<Res<_>>()?;
-    let buckets = buckets_of(frame_row_count(f), row_keyer(&key_cols));
+    let buckets = buckets_of(frame_row_count(f), &key_cols);
     let mut out: Vec<FrameColumn> = key_cols
         .iter()
         .map(|c| FrameColumn::new(c.name.clone(), c.ty, buckets.iter().map(|rows| c.cell_at(rows[0]).clone()).collect()))
@@ -735,8 +760,8 @@ fn unmatchable_key(cell: &FrameCell) -> bool {
     }
 }
 
-fn key_index(col: &FrameColumn, n: usize) -> HashMap<CellKey, Vec<usize>> {
-    let mut idx: HashMap<CellKey, Vec<usize>> = HashMap::new();
+fn key_index(col: &FrameColumn, n: usize) -> FxHashMap<CellKey<'_>, Vec<usize>> {
+    let mut idx: FxHashMap<CellKey, Vec<usize>> = FxHashMap::default();
     for i in 0..n {
         let cell = col.cell_at(i);
         if unmatchable_key(cell) {
@@ -1295,7 +1320,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
     };
     let big_n = math_round(spec.n.unwrap_or(1.0)).max(1.0);
     let big_n = if spec.n.is_some_and(f64::is_nan) { f64::NAN } else { big_n };
-    let parts = buckets_of(n, row_keyer(&key_cols));
+    let parts = buckets_of(n, &key_cols);
     let mut out: Vec<FrameCell> = vec![FrameCell::Null; n];
     for rows in parts {
         let ordered: Vec<usize> = match order_col {
