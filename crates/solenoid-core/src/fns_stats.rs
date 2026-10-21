@@ -111,8 +111,14 @@ pub fn call(name: &str, a: &[V]) -> V {
             V::List(out.into_iter().map(V::Num).collect::<Vec<_>>().into())
         }
         "BESSELI" | "BESSELJ" | "BESSELK" | "BESSELY" => {
-            if to_num(arg(a, 1)).trunc() > 1_000_000.0 {
-                return V::err(sol_error("#DOMAIN!", format!("{name} takes an order of at most 1,000,000")));
+            // bessel.js flips a negative order's sign, so an order past a million either way, or an infinite one,
+            // would hang ([[C120]] linearWork).
+            let order = to_num(arg(a, 1));
+            if matches!(arg(a, 1), V::Str(_)) && order.is_nan() {
+                return V::err(sol_error("#VALUE!", format!("{name} needs a number")));
+            }
+            if order.trunc().abs() > 1_000_000.0 {
+                return V::err(sol_error("#DOMAIN!", format!("{name} takes an order between -1,000,000 and 1,000,000")));
             }
             let (x, n) = match (parse_number(arg(a, 0)), parse_number(arg(a, 1))) {
                 (V::Num(x), V::Num(n)) => (x, n),

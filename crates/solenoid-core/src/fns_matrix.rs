@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use crate::error_value::sol_error;
 use crate::excel_functions::{js_number_pub as js_number, js_string_of, logical_or_type_error, math_hypot, js_pow, throw, to_num, V};
-use crate::jsnum::{js_lower, js_trim, math_round, number_to_string, string_to_number};
+use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string, string_to_number};
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
@@ -118,8 +118,9 @@ fn present_numbers(arr: &[V]) -> Vec<f64> {
     arr.iter().filter_map(finite_num).collect()
 }
 
+/// An empty axis still costs a step per item of the other, and an infinite one never ends ([[C120]] linearWork).
 fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
-    (rows * cols > MAX_GENERATED).then(|| {
+    (math_max(rows, 1.0) * math_max(cols, 1.0) > MAX_GENERATED).then(|| {
         err("#OVERFLOW!", format!("{f} would build {}×{} cells, past the 1000000 element limit", number_to_string(rows), number_to_string(cols)))
     })
 }
@@ -1050,7 +1051,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             let axis = arg(a, 0);
             let ax = if nullish(axis) { String::new() } else { js_lower(js_trim(&js_string_of(axis))).to_string() };
             if ax != "v" && ax != "h" {
-                return err("#VALUE!", "XSTACK: axis is \"v\" or \"h\" needs a number");
+                return err("#VALUE!", "XSTACK axis must be \"v\" or \"h\"");
             }
             let mats = tri!(mats_of(a.get(1..).unwrap_or(&[])));
             if mats.is_empty() {

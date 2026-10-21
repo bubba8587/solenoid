@@ -405,8 +405,6 @@ pub fn call(name: &str, a: &[V]) -> V {
                 "z" => ("z", 3.0),
                 "iqr" => ("iqr", 1.5),
                 "mad" => ("mad", 3.5),
-                // `in` finds Object.prototype's own names too; their "threshold" compares as NaN.
-                "constructor" | "__proto__" => ("mad", f64::NAN),
                 _ => return domain("ISOUTLIER method must be z, iqr or mad"),
             };
             let thr = if blank(arg(a, 2)) { dflt } else { number(arg(a, 2)) };
@@ -543,14 +541,16 @@ pub fn call(name: &str, a: &[V]) -> V {
             let m = detect_season(&nums_of(a0));
             V::Num(if m > 1 { m as f64 } else { 0.0 })
         }
-        "FORECAST.ETS" => match ets_prep(arg(a, 1), arg(a, 2), a0, arg(a, 3)) {
-            Some((_, h)) if h.is_nan() => V::Undef,
-            Some((_, h)) if h.is_infinite() => bail(),
-            Some((fit, h)) => V::Num(ets_forecast_at(&fit, h)),
-            None => value("FORECAST.ETS needs 3+ values on an equally spaced timeline and a target past its end"),
+        "FORECAST.ETS" => match ets_prep("FORECAST.ETS", arg(a, 1), arg(a, 2), a0, arg(a, 3)) {
+            Err(e) => e,
+            Ok(Some((fit, h))) => V::Num(ets_forecast_at(&fit, h)),
+            Ok(None) => value("FORECAST.ETS needs 3+ values on an equally spaced timeline and a target past its end"),
         },
         "FORECAST.ETS.CONFINT" => {
-            let p = ets_prep(arg(a, 1), arg(a, 2), a0, arg(a, 4));
+            let p = match ets_prep("FORECAST.ETS.CONFINT", arg(a, 1), arg(a, 2), a0, arg(a, 4)) {
+                Ok(p) => p,
+                Err(e) => return e,
+            };
             let c = if blank(arg(a, 3)) { 0.95 } else { to_num(arg(a, 3)) };
             if !(c > 0.0 && c < 1.0) {
                 return domain("Confidence must be between 0 and 1");
@@ -1137,7 +1137,14 @@ fn poly_fit_w(xs: &[f64], ys: &[f64], ws: &[f64], degree: f64) -> Result<Option<
 }
 
 fn savgol_problem(n: usize, window: f64, order: f64) -> Option<&'static str> {
-    let m = math_max(1.0, window.floor());
+    let whole = |x: f64| x.is_finite() && x.fract() == 0.0;
+    if !whole(window) {
+        return Some("Window must be a whole number");
+    }
+    if !whole(order) {
+        return Some("Order must be a whole number");
+    }
+    let m = math_max(1.0, window);
     if m % 2.0 == 0.0 {
         return Some("Window must be odd");
     }
@@ -1789,25 +1796,28 @@ fn ets_forecast_at(fit: &EtsFit, h: f64) -> f64 {
     fit.level + h * fit.trend + if m > 1 { fit.seasonal[((fit.fitted_len as f64 + h - 1.0) % m as f64) as usize] } else { 0.0 }
 }
 
-fn ets_prep(values: &V, timeline: &V, target: &V, seasonality: &V) -> Option<(EtsFit, f64)> {
+fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -> Result<Option<(EtsFit, f64)>, V> {
     let y = nums_of(values);
     let t = nums_of(timeline);
     if y.len() < 3 || t.len() < 2 {
-        return None;
+        return Ok(None);
     }
     let step = (t[t.len() - 1] - t[0]) / (t.len() - 1) as f64;
     let tgt = to_num(target);
     if !(step > 0.0) || tgt.is_nan() {
-        return None;
+        return Ok(None);
     }
     let h = math_round((tgt - t[t.len() - 1]) / step);
-    if h < 1.0 {
-        return None;
+    if !(h >= 1.0) {
+        return Ok(None);
+    }
+    // FORECAST.ETS steps once per period of the horizon ([[C120]] linearWork).
+    if h > 1_000_000.0 {
+        return Err(domain(&format!("{name} takes a target at most 1,000,000 steps past the timeline's end")));
     }
     let s_arg = if blank(seasonality) { 1.0 } else { math_round(to_num(seasonality)) };
     let m = if s_arg == 1.0 { detect_season(&y) as f64 } else { math_max(1.0, s_arg) };
-    let fit = fit_ets(&y, m).or_else(|| if m > 1.0 { fit_ets(&y, 1.0) } else { None })?;
-    Some((fit, h))
+    Ok(fit_ets(&y, m).or_else(|| if m > 1.0 { fit_ets(&y, 1.0) } else { None }).map(|fit| (fit, h)))
 }
 
 // ─── Distribution fits (fitOps.ts) ──────────────────────────────────────────────
@@ -2050,12 +2060,7 @@ fn interpolate(ys: &V, xs: &V, new_xs: &V, forecast: &V) -> V {
                 return V::Null;
             }
             let (i0, i1, t) = bracket(&sx, x);
-            let d = t * (number(&sy[i1]) - number(&sy[i0]));
-            // `+` joins text when the left side is text (a list reads as its joined text).
-            let r = match &sy[i0] {
-                V::Str(_) | V::List(_) => return V::str(&(js_string_of(&sy[i0]) + &number_to_string(d))),
-                other => number(other) + d,
-            };
+            let r = number(&sy[i0]) + t * (number(&sy[i1]) - number(&sy[i0]));
             if r.is_nan() { V::Null } else { V::Num(r) }
         })
         .collect();
