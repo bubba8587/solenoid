@@ -13,3 +13,10 @@ it("BINOM.INV past a million trials answers at once, near the normal approximati
     expect(z).toBeLessThan(3.1);
   }
 });
+
+it("BINOM.INV and BINOM.DIST stay right near the median past a million trials", () => {
+  const inv = resolveExcelFunction("BINOM.INV")!, dist = resolveExcelFunction("BINOM.DIST")!;
+  expect(inv(1e8, 0.5, 0.4)).toBe(49998733);
+  expect(inv(1e9, 0.5, 0.1)).toBe(499979737);
+  expect(dist(5e8, 1e9, 0.5, true) as number).toBeCloseTo(0.5, 4);
+});

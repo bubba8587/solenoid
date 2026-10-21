@@ -52,20 +52,26 @@ export function lnGamma(x: number): number {
   return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
 }
 
+/** Steps the series and continued fractions below may take. They need about the cube root of the shape (1,741 at
+ *  1e8, 36k at 1e12), so a fixed 300 stopped short past a million; one that still hasn't converged answers NaN rather
+ *  than its partial sum ([[C120]] linearWork). */
+const SPECIAL_FN_STEPS = 100_000;
+
 export function regularizedGamma(a: number, x: number): number {
   if (a <= 0 || x < 0) return NaN;
   if (x === 0) return 0;
   if (x < a + 1) {
-    let term = 1 / a, sum = term;
-    for (let i = 1; i <= 300; i++) {
+    let term = 1 / a, sum = term, i = 1;
+    for (; i <= SPECIAL_FN_STEPS; i++) {
       term *= x / (a + i);
       sum += term;
       if (Math.abs(term) < Math.abs(sum) * 1e-12) break;
     }
+    if (i > SPECIAL_FN_STEPS) return NaN;
     return Math.min(1, sum * Math.exp(-x + a * Math.log(x) - lnGamma(a)));
   } else {
-    let b = x + 1 - a, c = 1 / 1e-30, d = 1 / b, h = d;
-    for (let i = 1; i <= 300; i++) {
+    let b = x + 1 - a, c = 1 / 1e-30, d = 1 / b, h = d, i = 1;
+    for (; i <= SPECIAL_FN_STEPS; i++) {
       const an = -i * (i - a);
       b += 2;
       d = an * d + b; if (Math.abs(d) < 1e-30) d = 1e-30;
@@ -75,6 +81,7 @@ export function regularizedGamma(a: number, x: number): number {
       h *= del;
       if (Math.abs(del - 1) < 1e-12) break;
     }
+    if (i > SPECIAL_FN_STEPS) return NaN;
     return 1 - Math.exp(-x + a * Math.log(x) - lnGamma(a)) * h;
   }
 }
@@ -89,7 +96,8 @@ export function regularizedBeta(x: number, a: number, b: number): number {
   let f = 1, cf = 1, df = 1 - (a + b) * x / (a + 1);
   if (Math.abs(df) < 1e-30) df = 1e-30;
   df = 1 / df; f = df;
-  for (let m = 1; m <= 300; m++) {
+  let m = 1;
+  for (; m <= SPECIAL_FN_STEPS; m++) {
     let num = m * (b - m) * x / ((a + 2 * m - 1) * (a + 2 * m));
     df = 1 + num * df; if (Math.abs(df) < 1e-30) df = 1e-30;
     cf = 1 + num / cf; if (Math.abs(cf) < 1e-30) cf = 1e-30;
@@ -101,7 +109,7 @@ export function regularizedBeta(x: number, a: number, b: number): number {
     const delta = df * cf; f *= delta;
     if (Math.abs(delta - 1) < 1e-12) break;
   }
-  return front * f;
+  return m > SPECIAL_FN_STEPS ? NaN : front * f;
 }
 
 // ─── Normal distribution ──────────────────────────────────────────────────────
@@ -256,12 +264,23 @@ function product(from: number, to: number, step: number): number {
   return r;
 }
 
-/** n choose k by the multiplicative formula over the smaller side: each step's product divides exactly while it fits. */
+/** n choose k by the multiplicative formula over the smaller side. Each step divides `i`'s common factor out of the
+ *  running value first, so no product passes 2^53 while the answer fits under it, and the answer is exact there. */
 function combinations(n: number, k: number): number {
   const m = Math.min(k, n - k);
   let r = 1;
-  for (let i = 1; i <= m && Number.isFinite(r); i++) r = (r * (n - m + i)) / i;
+  for (let i = 1; i <= m && Number.isFinite(r); i++) {
+    if (r < 2 ** 53) {
+      const g = intGcd(r, i);
+      r = (r / g) * ((n - m + i) / (i / g));
+    } else r = (r * (n - m + i)) / i;
+  }
   return r < 2 ** 53 ? Math.round(r) : r;
+}
+
+function intGcd(a: number, b: number): number {
+  while (b) [a, b] = [b, a % b];
+  return a;
 }
 
 /** Excel's BINOM.DIST.RANGE: the chance of s to s2 successes in n trials (s2 defaults to s). Counts truncate; each
