@@ -333,7 +333,8 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   Obsidian); the author held the behavior until a change is shown rigorous, so the video clicks at the top first.
 - [ ] **Pivot view follow-ups** ([[C127]] pivotView, built 2026-10-20): fold column items as rows fold; sort an
   axis from its header (Configure Fields holds the sort today); Excel's "Merge and center cells with labels";
-  drill-through (a value cell opens the source rows behind it, which needs the Pivot's filtered source).
+  drill-through from a value cell (Details lists a leaf's rows; a cell's rows also split by its column item), and
+  Details on a subtotal or the grand total.
 - [ ] **Pivot keeps or drops a missing field?** The card drops a field whose column leaves its source (frame-verbs § pivot),
   meant for a source swap; a column briefly absent drops it too. Keeping it, flagged in Configure Fields, is the
   alternative; the author's call.

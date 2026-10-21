@@ -1,4 +1,5 @@
 // [[C58]] tableInputRawText, [[C107]] obsidianPlugin
+import type { ComponentType } from "react";
 import { createValueStore } from "./storeKit";
 import type { SolError } from "./errorValue";
 import type { FrameSourceColumn } from "./frame";
@@ -6,6 +7,7 @@ import type { ColumnUnit } from "./unitValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 import type { FrameValue } from "./frame";
 import type { PivotLayout, PivotTotals, PivotViewOptions } from "./pivotLayout";
+import type { DescribeTile } from "./describeProfile";
 
 /** `null` is a missing cell; a SolError is a per-cell error. */
 export type Cell = number | string | boolean | null | SolError;
@@ -55,6 +57,8 @@ export interface TablePopupState {
   computedCells?: Cell[][];
   /** How PIVOTBY laid the frame out; present only on a pivot's own output, and it opens the Pivot view. */
   pivot?: PivotLayout;
+  /** Describe's per-column tiles; present only on a Describe's own output, and it opens the Dashboard view. */
+  describe?: DescribeTile[];
 }
 
 export const tablePopup = createValueStore<TablePopupState>();
@@ -83,3 +87,9 @@ export interface PivotHostAction { find(hostId: string): PivotHost | null }
 let pivotHostAction: PivotHostAction | null = null;
 export function setPivotHostAction(action: PivotHostAction | null): void { pivotHostAction = action; }
 export function getPivotHostAction(): PivotHostAction | null { return pivotHostAction; }
+
+/** Draws the Dashboard view. Installed by the app; the Obsidian plugin installs none, since a note's frame never carries Describe's tiles, and so never bundles the chart renderers ([[C129]] describeDashboard). */
+export type DashboardView = ComponentType<{ tiles: readonly DescribeTile[]; query: string }>;
+let dashboardView: DashboardView | null = null;
+export function setDashboardView(view: DashboardView | null): void { dashboardView = view; }
+export function getDashboardView(): DashboardView | null { return dashboardView; }

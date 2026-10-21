@@ -61,6 +61,7 @@ import type { CubeValue, CubeCell, CubeColumn } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell, isAffineDisplay } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec, parseColumnUnitFromHeader } from "../unitColumn";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
+import { withDescribeTiles } from "../describeProfile";
 
 function runVerb<T>(fn: () => T): T | SolError {
   try {
@@ -2866,7 +2867,7 @@ export class DescribeNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => describeFrame(f));
+    this.cachedResult = runVerb(() => withDescribeTiles(f, describeFrame(f)));
     return { frame: this.cachedResult };
   }
 }
