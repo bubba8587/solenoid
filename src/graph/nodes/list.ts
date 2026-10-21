@@ -2333,7 +2333,11 @@ export class SmoothNode extends ClassicPreset.Node {
       }
     }
     else if (this.op === "lowess") out = lowess(arr, prm(readRole(this, "frac", inputs.frac), 0.67));
-    else out = gaussianSmooth(arr, prm(readRole(this, "sigma", inputs.sigma), 1));
+    else {
+      const smoothed = gaussianSmooth(arr, prm(readRole(this, "sigma", inputs.sigma), 1));
+      if (isSolError(smoothed)) { this.cachedList = []; return { result: smoothed }; }
+      out = smoothed;
+    }
     this.cachedList = out ?? [];
     return { result: out };
   }
