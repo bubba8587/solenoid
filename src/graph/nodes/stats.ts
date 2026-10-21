@@ -7,14 +7,14 @@ import type { Shape } from "../frameShape";
 import { resolveFn } from "./tableLambda";
 import { lambdaIn } from "./shared";
 import { gridAxes, fillGrid } from "./mathUtils";
-import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, expFitR2, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
+import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, expFitR2, arrMean, arrSampleVar, tCDF, pairPresent } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
+import { callCore } from "../coreValues";
 import { fitEts, etsForecast, etsInterval, detectSeason, seasonalDecompose, stlDecompose, type DecomposeModel } from "./forecastOps";
 export type { DecomposeModel } from "./forecastOps";
 import { fitAll, FIT_FAMILIES, type DistFit, type FitFamily } from "./fitOps";
 import type { FrameValue } from "../frame";
-import { percentile, quartile, nthExtreme, pearson, spearman, kendallTau, covariance, modes, fisher, regression, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
+import { mannWhitneyP, wilcoxonSignedRankP, ksTwoSampleP } from "./statsOps";
 import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
 
@@ -128,13 +128,13 @@ export class RankPercentileNode extends ClassicPreset.Node {
       if (family === "percentrank") {
         const sigRaw = readRole<number | undefined>(this, "significance", inputs.significance) ?? 3;
         if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-        const result = excelPercentRank(arr, v, Math.trunc(sigRaw), exc);
+        const result = callCore(exc ? "PERCENTRANK.EXC" : "PERCENTRANK.INC", [arr, v, sigRaw]) as number | SolError;
         this.cachedResult = result;
         return { result };
       }
       const order = readRole<number | undefined>(this, "order", inputs.order) ?? 0;
       if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-      const result = excelRank(v, arr as number[], this.op === "rank-avg", order !== 0);
+      const result = callCore(this.op === "rank-avg" ? "RANK.AVG" : "RANK.EQ", [v, arr, order]) as number | SolError;
       this.cachedResult = result;
       return { result };
     }
@@ -147,14 +147,14 @@ export class RankPercentileNode extends ClassicPreset.Node {
     if (family === "nth") {
       const kRaw = readRole<number | SolError>(this, "k", inputs.k);
       if (isSolError(kRaw)) { this.cachedResult = kRaw; return { result: kRaw }; }
-      result = nthExtreme(arr, kRaw, this.op === "large");
+      result = callCore(this.op === "large" ? "LARGE" : "SMALL", [arr, kRaw]) as number | SolError | null;
     } else if (family === "percentile") {
       const p = readRole<number | SolError>(this, "p", inputs.p);
       if (isSolError(p)) { this.cachedResult = p; return { result: p }; }
-      result = percentile(arr, p, exc);
+      result = callCore(exc ? "PERCENTILE.EXC" : "PERCENTILE.INC", [arr, p]) as number | SolError | null;
     } else {
       const qRaw = readRole<number>(this, "q", inputs.q);
-      result = quartile(arr, qRaw, exc);
+      result = callCore(exc ? "QUARTILE.EXC" : "QUARTILE.INC", [arr, qRaw]) as number | SolError | null;
     }
     this.cachedResult = result;
     return { result };
@@ -193,9 +193,8 @@ export class CorrelNode extends ClassicPreset.Node {
   data(inputs: { x?: (number | null | SolError)[][]; y?: (number | null | SolError)[][] }): { result: number | SolError | null } {
     const { error, xs, ys } = forPair(inputs.x?.[0] ?? null, inputs.y?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    const result = this.op === "spearman" ? spearman(xs, ys)
-      : this.op === "kendall" ? kendallTau(xs, ys)
-      : pearson(xs, ys, this.op === "rsq");
+    // RSQ takes (known_ys, known_xs), the others (x, y).
+    const result = (this.op === "rsq" ? callCore("RSQ", [ys, xs]) : callCore(this.op.toUpperCase(), [xs, ys])) as number | SolError | null;
     this.cachedResult = result;
     return { result };
   }
@@ -261,7 +260,7 @@ export class CovarianceNode extends ClassicPreset.Node {
   data(inputs: { x?: (number | null | SolError)[][]; y?: (number | null | SolError)[][] }) {
     const { error, xs, ys } = forPair(inputs.x?.[0] ?? null, inputs.y?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    const result = covariance(xs, ys, this.op !== "pop");
+    const result = callCore(this.op === "pop" ? "COVARIANCE.P" : "COVARIANCE.S", [xs, ys]) as number | SolError | null;
     this.cachedResult = result;
     return { result };
   }
@@ -293,7 +292,7 @@ export class FisherNode extends ClassicPreset.Node {
   data(inputs: { value?: (number | number[])[] }): { result: number | (number | SolError | null)[] | SolError | null } {
     const v = readInput(inputs.value, this.literals.value ?? null);
     let result: number | (number | SolError | null)[] | SolError | null = null;
-    if (v !== null) result = broadcastErr((x) => fisher(x, this.op === "fisherinv"), v);
+    if (v !== null) result = broadcastErr((x) => callCore(this.op.toUpperCase(), [x]) as number | SolError, v);
     this.cachedResult = result;
     return { result };
   }
@@ -333,7 +332,7 @@ export class RegressionNode extends ClassicPreset.Node {
   data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }): { result: number | SolError | null } {
     const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    const result = regression(xs, ys, this.op);
+    const result = callCore(this.op.toUpperCase(), [ys, xs]) as number | SolError | null;
     this.cachedResult = result;
     return { result };
   }
@@ -381,39 +380,31 @@ export class ForecastNode extends ClassicPreset.Node {
     if (isSolError(q)) { this.cachedResult = q; return { result: q }; }
 
     const enough = xs.length >= 2 && ys.length >= 2;
-    let predict: ((x: number) => number) | null = null;
+    // TREND / GROWTH predict every target in one fit; with no target a stand-in one still reports a failed fit.
+    let predicted: number[] | null = null;
     if (enough) {
-      if (this.op === "exponential") {
-        const fit = expFit(xs, ys);
-        if (!fit) {
-          const err = ys.slice(0, xs.length).every((y) => y > 0)
-            ? solError("#DIV/0!", "Known Xs have zero variance")
-            : solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
-          this.cachedResult = err;
-          return { result: err };
-        }
-        predict = (x) => fit.b * Math.pow(fit.m, x);
-      } else {
-        const fit = linearFit(xs, ys);
-        if (!fit) {
-          const err = solError("#DIV/0!", "Known Xs have zero variance");
-          this.cachedResult = err;
-          return { result: err };
-        }
-        predict = (x) => fit.intercept + fit.slope * x;
+      const targets = Array.isArray(q) ? q.filter((v) => v !== null && !isSolError(v)) : typeof q === "number" ? [q] : [];
+      const r = callCore(this.op === "exponential" ? "GROWTH" : "TREND", [ys, xs, targets.length > 0 ? targets : [0]]);
+      if (isSolError(r)) { this.cachedResult = r; return { result: r }; }
+      if (!Array.isArray(r) || r.length === 0) {
+        const err = solError("#DIV/0!", "Known Xs have zero variance");
+        this.cachedResult = err;
+        return { result: err };
       }
+      predicted = r as number[];
     }
 
     if (Array.isArray(q)) {
       const qErr = q.find(isSolError);
       if (qErr) { this.cachedResult = qErr as SolError; return { result: qErr as SolError }; }
-      if (predict === null || q.length === 0) { this.cachedResult = []; return { result: [] }; }
-      const result = q.map((v) => (v === null ? null : predict!(v as number)));
+      if (predicted === null || q.length === 0) { this.cachedResult = []; return { result: [] }; }
+      let i = 0;
+      const result = q.map((v) => (v === null ? null : predicted![i++]));
       this.cachedResult = result;
       return { result };
     }
-    if (q === null || predict === null) { this.cachedResult = null; return { result: null }; }
-    const result = predict(q);
+    if (q === null || predicted === null) { this.cachedResult = null; return { result: null }; }
+    const result = predicted[0];
     this.cachedResult = result;
     return { result };
   }
@@ -441,7 +432,10 @@ export class ModeNode extends ClassicPreset.Node {
   data(inputs: { list?: (number | null | SolError)[][] }): { result: number | number[] | SolError | null } {
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
-    const result = modes(prep.nums);
+    if (prep.nums.length === 0) { this.cachedResult = null; return { result: null }; }
+    // MODE.MULT lists the modes in first-seen order; the card sorts them and gives one mode bare.
+    const r = callCore("MODE.MULT", [prep.nums]) as number[] | SolError;
+    const result = Array.isArray(r) ? (r.length === 1 ? r[0] : [...r].sort((a, b) => a - b)) : r;
     this.cachedResult = result;
     return { result };
   }
@@ -473,7 +467,7 @@ export class TrimMeanNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? null;
     const percent = readRole<number>(this, "percent", inputs.percent);
     if (!arr || arr.length === 0) { this.cachedResult = null; return { result: null }; }
-    const result = excelTrimmean(arr, percent);
+    const result = callCore("TRIMMEAN", [arr, percent]) as number | SolError;
     this.cachedResult = result;
     return { result };
   }
@@ -661,7 +655,7 @@ export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec>
   },
 };
 
-const T_KERNEL_OP = { "t-paired": "paired", "t-equal": "equal-var", "t-welch": "unequal-var" } as const;
+const T_TEST_TYPE = { "t-paired": 1, "t-equal": 2, "t-welch": 3 } as const;
 
 export class HypothesisTestNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -731,7 +725,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
     };
     if (this.op === "anova" || this.op === "kruskal") {
       const g = groupsOf(inputs.groups?.[0] ?? null);
-      result = g ? (this.op === "anova" ? anovaP(g) : kruskalP(g)) : null;
+      result = g ? callCore(this.op === "anova" ? "ANOVA" : "KRUSKAL", g) as number | null : null;
     } else if (this.op === "mannwhitney" || this.op === "wilcoxon" || this.op === "ks") {
       const b = inputs.b?.[0] ?? null;
       if (a && b) result = this.op === "mannwhitney" ? mannWhitneyP(a, b) : this.op === "wilcoxon" ? wilcoxonSignedRankP(a, b) : ksTwoSampleP(a, b);
@@ -739,14 +733,14 @@ export class HypothesisTestNode extends ClassicPreset.Node {
       const t = inputs.table?.[0] ?? null;
       const cell = (r: number, c: number): number | null => { const v = t?.[r]?.[c]; return typeof v === "number" ? v : null; };
       const A = cell(0, 0), B = cell(0, 1), C = cell(1, 0), D = cell(1, 1);
-      result = A === null || B === null || C === null || D === null ? null : fisherExactP(A, B, C, D);
+      result = A === null || B === null || C === null || D === null ? null : callCore("FISHEREXACT", [A, B, C, D]) as number | SolError | null;
     } else if (this.op === "proptest") {
       const x1 = readInput(inputs.x1, this.literals.x1 ?? 0), n1 = readInput(inputs.n1, this.literals.n1 ?? 1);
       const x2 = readInput(inputs.x2, this.literals.x2 ?? 0), n2 = readInput(inputs.n2, this.literals.n2 ?? 1);
-      result = x1 === null || n1 === null || x2 === null || n2 === null ? null : twoProportionP(x1, n1, x2, n2);
+      result = x1 === null || n1 === null || x2 === null || n2 === null ? null : callCore("PROPTEST", [x1, n1, x2, n2]) as number | SolError | null;
     } else if (this.op === "binomtest") {
       const k = readInput(inputs.k, this.literals.k ?? 0), n = readInput(inputs.n, this.literals.n ?? 1), p0 = readInput(inputs.p0, this.literals.p0 ?? 0.5);
-      result = k === null || n === null || p0 === null ? null : binomTestP(k, n, p0);
+      result = k === null || n === null || p0 === null ? null : callCore("BINOMTEST", [k, n, p0]) as number | SolError | null;
     } else if (this.op === "z") {
       const x = readInput(inputs.x, this.literals.x ?? 0);
       const sigma = readInput<number | undefined>(inputs.sigma, this.literals.sigma);
@@ -773,7 +767,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
       }
     } else {
       const b = inputs.b?.[0] ?? null;
-      if (a && b) result = this.op === "f" ? fTestP(a, b) : tTestP(T_KERNEL_OP[this.op], a, b);
+      if (a && b) result = (this.op === "f" ? callCore("F.TEST", [a, b]) : callCore("T.TEST", [a, b, 2, T_TEST_TYPE[this.op]])) as number | null;
     }
     this.cachedResult = result;
     return { result };
@@ -850,14 +844,12 @@ export class InterpolateNode extends ClassicPreset.Node {
       const qErr = q.find(isSolError);
       if (qErr) { this.cachedResult = qErr as SolError; return { result: qErr as SolError }; }
       if (noData || q.length === 0) { this.cachedResult = []; return { result: [] }; }
-      const nums = q.map((v) => (v === null ? NaN : (v as number)));
-      const interp = interpolateLinear(xs, ys, nums);
-      const result = q.map((v, i) => (v === null ? null : interp[i]));
+      const result = callCore("INTERPOLATE", [ys, xs, q]) as (number | null)[];
       this.cachedResult = result;
       return { result };
     }
     if (q === null || noData) { this.cachedResult = null; return { result: null }; }
-    const result = interpolateLinear(xs, ys, [q])[0];
+    const result = callCore("INTERPOLATE", [ys, xs, q]) as number | null;
     this.cachedResult = result;
     return { result };
   }
@@ -867,6 +859,13 @@ export class InterpolateNode extends ClassicPreset.Node {
     if (isSolError(zRaw)) { this.cachedResult = zRaw; return { result: zRaw }; }
     const xs = inputs.xs === undefined ? undefined : (inputs.xs[0] ?? null);
     const ys = inputs.ys === undefined ? undefined : (inputs.ys[0] ?? null);
+    // INTERPOLATE reads a blank axis as an unwired one, where a wired blank blanks the card.
+    if (xs !== null && ys !== null && Array.isArray(zRaw) && zRaw.some(Array.isArray)) {
+      const filled = callCore("INTERPOLATE", [zRaw, xs, ys, this.forecast]) as (number | null)[][] | SolError | null;
+      const result = Array.isArray(filled) ? carryMatrixUnit(filled, zRaw) : filled;
+      this.cachedResult = result;
+      return { result };
+    }
     const axes = gridAxes(zRaw, xs, ys);
     if (axes === null) { this.cachedResult = null; return { result: null }; }
     if (isSolError(axes)) { this.cachedResult = axes; return { result: axes }; }
@@ -938,7 +937,9 @@ export class LinestNode extends ClassicPreset.Node {
       }
       fit = e ? { slope: e.m, intercept: e.b, r2: e.r2 } : null;
     } else {
-      fit = linearFitR2(xs, ys);
+      const r = callCore("LINEST", [ys, xs]) as number[] | SolError | null;
+      if (isSolError(r)) return fail(r);
+      fit = r ? { slope: r[0], intercept: r[1], r2: r[2] } : null;
     }
     if (!fit && xs.length >= 2) return fail(solError("#DIV/0!", "Known Xs have zero variance"));
     this.cachedSlope     = fit?.slope ?? null;
@@ -1015,7 +1016,7 @@ export class ProbNode extends ClassicPreset.Node {
     const lo    = readInput(inputs.lo, this.literals.lo ?? 0);
     const hi    = readInput(inputs.hi, this.literals.hi ?? 1);
     if (lo === null || hi === null) { this.cachedResult = null; return { result: null }; }
-    const result = probBetween(range, probs, lo, hi);
+    const result = callCore("PROB", [range, probs, lo, hi]) as number | SolError | null;
     this.cachedResult = result;
     return { result };
   }
