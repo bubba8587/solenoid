@@ -8,6 +8,7 @@ import { READINGS_ADD, READINGS_SCALE } from "./unitValue";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
+import { loadWasmEngine, wasmInvoke } from "./engineWasm";
 import { calcModeStore } from "./calcModeStore";
 import { pushNotice } from "./noticeStore";
 import { settingsStore } from "./settingsStore";
@@ -315,7 +316,7 @@ const ENGINE_ERROR_WHY: Readonly<Record<string, string>> = {
 
 function decodeWireCell(v: WireCell): unknown {
   if (v && typeof v === "object") {
-    const o = v as { __nf?: string; __err?: string; why?: string; ref?: number };
+    const o = v as { __nf?: string; __err?: string; why?: string; msg?: string; ref?: number };
     if (o.__nf === "inf") return Infinity;
     if (o.__nf === "-inf") return -Infinity;
     if (o.__nf === "nan") return NaN;
@@ -323,7 +324,7 @@ function decodeWireCell(v: WireCell): unknown {
     if (typeof o.__err === "string") {
       const original = o.ref === undefined ? undefined : _errorRefs.get(o.ref)?.deref();
       if (original && original.code === o.__err) return original;
-      return solError(o.__err as Parameters<typeof solError>[0], (o.why && ENGINE_ERROR_WHY[o.why]) || "from the native engine");
+      return solError(o.__err as Parameters<typeof solError>[0], o.msg || (o.why && ENGINE_ERROR_WHY[o.why]) || "from the native engine");
     }
   }
   return v;
@@ -378,7 +379,20 @@ function noteLogicalNaN(f: FrameValue): void {
 
 const isOracleHandle = (h: FrameHandle): boolean => h.startsWith("jsf:");
 
-class PolarsBackend implements FrameBackend {
+/** An op's own cells (a filter's value) in wire form, so an error, NaN or infinity crosses as itself. */
+function encodeOpCells(op: FrameOp): FrameOp {
+  if (op.kind === "filter") return { ...op, value: encodeWireCell(op.value) as FrameCell };
+  if (op.kind === "filterMulti") return { ...op, conditions: op.conditions.map((c) => ({ ...c, value: encodeWireCell(c.value) as FrameCell })) };
+  return op;
+}
+
+type EngineInvoke = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
+
+/** An engine behind handles: Polars over IPC on desktop, or the Rust engine in WebAssembly. `fullCells` says the
+ *  engine stores every cell the oracle does, so no frame needs the oracle's fallback. */
+class EngineBackend implements FrameBackend {
+  constructor(private readonly invoke: EngineInvoke, private readonly fullCells: boolean) {}
+
   private schemas = new Map<string, FrameValue | null>();
   /** Frames holding an error cell the engine can't store compute here, on the oracle. */
   private oracle = new JsFrameBackend();
@@ -409,24 +423,28 @@ class PolarsBackend implements FrameBackend {
   }
 
   async source(frame: FrameValue): Promise<FrameHandle> {
-    if (holdsTextOrLogicalError(frame)) return this.oracle.source(frame);
-    noteLogicalNaN(frame);
+    if (!this.fullCells) {
+      if (holdsTextOrLogicalError(frame)) return this.oracle.source(frame);
+      noteLogicalNaN(frame);
+    }
     const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(encodeWireCell) })) };
-    const h = await (ipcInvoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>);
+    const h = await (this.invoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>);
     return this.remember(h, schemaOnly(frame));
   }
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
     if (isOracleHandle(handle)) return this.oracle.apply(handle, op);
+    if (op.kind === "pivot") return this.onOracle([handle], ([h]) => this.oracle.apply(h, op));
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
-    const h = await (ipcInvoke<string>("engine_apply", { handle, op: wire[0] }) as Promise<FrameHandle>);
+    const h = await (this.invoke<string>("engine_apply", { handle, op: this.fullCells ? encodeOpCells(wire[0]) : wire[0] }) as Promise<FrameHandle>);
     return this.remember(h, schema);
   }
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
     if (isOracleHandle(handle)) return this.oracle.applyMany(handle, ops);
+    if (ops.some((op) => op.kind === "pivot")) return this.onOracle([handle], ([h]) => this.oracle.applyMany(h, ops));
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), ops);
-    const h = await (ipcInvoke<string>("engine_apply_many", { handle, ops: wire }) as Promise<FrameHandle>);
+    const h = await (this.invoke<string>("engine_apply_many", { handle, ops: this.fullCells ? wire.map(encodeOpCells) : wire }) as Promise<FrameHandle>);
     return this.remember(h, schema);
   }
 
@@ -438,27 +456,27 @@ class PolarsBackend implements FrameBackend {
       const t = joinKeyTransform(l.columns.find((c) => c.name === opts.leftKey), r.columns.find((c) => c.name === opts.rightKey));
       if (t) wireOpts = { ...opts, rightKeyScale: t.scale, rightKeyOffset: t.offset };
     }
-    const h = await (ipcInvoke<string>("engine_join", { left, right, opts: wireOpts }) as Promise<FrameHandle>);
+    const h = await (this.invoke<string>("engine_join", { left, right, opts: wireOpts }) as Promise<FrameHandle>);
     return this.remember(h, l && r ? shadow(() => joinFrames(l, r, wireOpts)) : null);
   }
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
     if (handles.some(isOracleHandle)) return this.onOracle(handles, (hs) => this.oracle.append(hs));
-    const h = await (ipcInvoke<string>("engine_append", { handles }) as Promise<FrameHandle>);
+    const h = await (this.invoke<string>("engine_append", { handles }) as Promise<FrameHandle>);
     const ss = handles.map((x) => this.schemaOf(x));
     return this.remember(h, ss.every(Boolean) ? shadow(() => appendFrames(ss as FrameValue[])) : null);
   }
 
   async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
     if (handles.some(isOracleHandle)) return this.onOracle(handles, (hs) => this.oracle.bindColumns(hs));
-    const h = await (ipcInvoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>);
+    const h = await (this.invoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>);
     const ss = handles.map((x) => this.schemaOf(x));
     return this.remember(h, ss.every(Boolean) ? shadow(() => bindColumns(ss as FrameValue[])) : null);
   }
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
     if (isOracleHandle(handle)) return this.oracle.preview(handle, n);
-    const p = await ipcInvoke<FramePreview>("engine_preview", { handle, n });
+    const p = await this.invoke<FramePreview>("engine_preview", { handle, n });
     return {
       ...p,
       schema: withSchemaMeta(p.schema, this.schemaOf(handle)),
@@ -468,13 +486,13 @@ class PolarsBackend implements FrameBackend {
 
   async collect(handle: FrameHandle): Promise<FrameValue> {
     if (isOracleHandle(handle)) return this.oracle.collect(handle);
-    const columns = await ipcInvoke<FrameColumn[]>("engine_collect", { handle });
+    const columns = await this.invoke<FrameColumn[]>("engine_collect", { handle });
     return { __frame: true, columns: withSchemaMeta(decodeWireColumns(columns), this.schemaOf(handle)) };
   }
 
   async column(handle: FrameHandle, name: string): Promise<FrameColumn | null> {
     if (isOracleHandle(handle)) return this.oracle.column(handle, name);
-    const c = await ipcInvoke<FrameColumn | null>("engine_column", { handle, name });
+    const c = await this.invoke<FrameColumn | null>("engine_column", { handle, name });
     if (!c) return null;
     const [out] = withSchemaMeta([{ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] }], this.schemaOf(handle));
     return out;
@@ -483,12 +501,12 @@ class PolarsBackend implements FrameBackend {
   drop(handle: FrameHandle): void {
     if (isOracleHandle(handle)) { this.oracle.drop(handle); return; }
     this.schemas.delete(handle);
-    void ipcInvoke("engine_drop", { handle }).catch(() => {});
+    void this.invoke("engine_drop", { handle }).catch(() => {});
   }
 
   async sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }> {
     if (isOracleHandle(handle)) return this.oracle.sample(handle, n);
-    const r = await (ipcInvoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>);
+    const r = await (this.invoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>);
     if (r.handle !== handle) this.remember(r.handle, this.schemaOf(handle));
     return r;
   }
@@ -524,29 +542,47 @@ export function nativeEngineOn(): boolean {
   return engineAvailable() && settingsStore.get("nativeEngine") !== false;
 }
 
-export async function initFrameBackend(): Promise<void> {
-  if (!nativeEngineOn()) { if (_backend instanceof PolarsBackend) resetFrameBackendToJs(); return; }
-  try {
-    const info = await enginePing();
-    if (info?.backend === "polars") {
-      await ipcInvoke("engine_clear", {}).catch(() => {});
-      setFrameBackend(new PolarsBackend());
-    }
-  } catch {
-  }
+export function wasmEngineOn(): boolean {
+  return settingsStore.get("wasmEngine") !== false;
 }
 
-/** Flipping the Settings switch swaps the backend and hands back so the caller reloads the document: no frame may
+/** Polars where the desktop has it on, else the Rust engine in WebAssembly where it is on, else the JS oracle. */
+export async function initFrameBackend(): Promise<void> {
+  if (nativeEngineOn()) {
+    try {
+      const info = await enginePing();
+      if (info?.backend === "polars") {
+        await ipcInvoke("engine_clear", {}).catch(() => {});
+        setFrameBackend(new EngineBackend(ipcInvoke, false));
+        return;
+      }
+    } catch {
+    }
+  }
+  if (wasmEngineOn() && await loadWasmEngine()) {
+    await wasmInvoke("engine_clear", {});
+    setFrameBackend(new EngineBackend(wasmInvoke, true));
+    return;
+  }
+  if (_backend instanceof EngineBackend) resetFrameBackendToJs();
+}
+
+/** Flipping an engine switch swaps the backend and hands back so the caller reloads the document: no frame may
  *  keep a handle from the engine it left. */
 export function watchEngineSetting(onSwitched: () => void): void {
-  let last = settingsStore.get("nativeEngine");
+  const engines = () => `${settingsStore.get("nativeEngine")}|${settingsStore.get("wasmEngine")}`;
+  let last = engines();
   settingsStore.subscribe(() => {
-    const now = settingsStore.get("nativeEngine");
+    const now = engines();
     if (now === last) return;
     last = now;
-    if (!engineAvailable()) return;
     void initFrameBackend().then(onSwitched);
   });
+}
+
+/** The Rust engine in WebAssembly as the backend, for tests and scripts that loaded its bytes themselves. */
+export function useWasmBackend(): void {
+  setFrameBackend(new EngineBackend(wasmInvoke, true));
 }
 
 export async function readCsvFrame(folder: string, name: string): Promise<FrameValue | SolError> {

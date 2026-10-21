@@ -20,6 +20,7 @@ index.html
 src/vite-env.d.ts
 tests/setup
 src-tauri/Cargo.toml
+crates/solenoid-core/Cargo.toml
 src-tauri/build.rs
 src-tauri/tauri.conf.json
 src-tauri/tauri.live.conf.json
@@ -74,3 +75,6 @@ src/graph/seedGraphs
 
 why: generated text snapshots of the site pages and their source fingerprint; scripts/prerender-site.mjs writes them and prerender.test.ts pins them current
 prerender
+
+why: wasm-bindgen output for the Rust core; `npm run build:wasm` writes it from crates/solenoid-core, which cites
+src/graph/engineWasm
