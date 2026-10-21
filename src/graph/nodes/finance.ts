@@ -4,14 +4,14 @@ import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput
 import { setting, argRole } from "../inputRoles";
 import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";
-import { solError, type SolError } from "../errorValue";
+import type { SolError } from "../errorValue";
 import { guardFinite } from "../valueKinds";
-import { resolveExcelFunction, normalizeFxResult } from "../excelFunctions";
+import { normalizeFxResult } from "../excelFunctions";
+import { callCore } from "../coreValues";
 import { EquationNode } from "./equation";
 import {
-  couponValue, accrint, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
-  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xnpv, xirr, mirr, amortizationSchedule, fvSchedule,
-  returnsOp, RETURNS_OP_META, type ReturnsOp, cumulativePayment,
+  couponValue, accrint, securityDisc, priceDisc, cashPrep, datedPrep, amortizationSchedule,
+  returnsOp, RETURNS_OP_META, type ReturnsOp,
 } from "./financeOps";
 export { RETURNS_OP_META } from "./financeOps";
 export type { ReturnsOp } from "./financeOps";
@@ -164,20 +164,20 @@ export class DepreciationNode extends ClassicPreset.Node {
       const factor = readAsRole<number | undefined>(this, "factor", inputs.factor, argRole("VDB", 5)!) ?? 2;
       result = (cost === null || salvage === null || life === null || start === null || end === null || factor === null)
         ? null
-        : vdb(cost, salvage, life, start, end, factor);
+        : callCore("VDB", [cost, salvage, life, start, end, factor]) as number | SolError | null;
     } else {
       const per    = readInput(inputs.per, this.literals.per ?? null);
       const factor = readAsRole<number | undefined>(this, "factor", inputs.factor, argRole("DDB", 4)!) ?? 2;
       // Every input present, the formula answers, its domain errors included ([[D70]] nullNotEnoughData: a wrong input is an error).
       type Answer = number | SolError;
       if (cost !== null && salvage !== null && life !== null) {
-        if (this.op === "sln") result = normalizeFxResult(resolveExcelFunction("SLN")!(cost, salvage, life)) as Answer;
+        if (this.op === "sln") result = normalizeFxResult(callCore("SLN", [cost, salvage, life])) as Answer;
         else if (per !== null) {
-          if (this.op === "syd") result = normalizeFxResult(resolveExcelFunction("SYD")!(cost, salvage, life, per)) as Answer;
-          else if (this.op === "ddb") result = factor === null ? null : normalizeFxResult(resolveExcelFunction("DDB")!(cost, salvage, life, per, factor)) as Answer;
+          if (this.op === "syd") result = normalizeFxResult(callCore("SYD", [cost, salvage, life, per])) as Answer;
+          else if (this.op === "ddb") result = factor === null ? null : normalizeFxResult(callCore("DDB", [cost, salvage, life, per, factor])) as Answer;
           else if (this.op === "db") {
             const month = readInput(inputs.month, this.literals.month ?? 12);
-            if (month !== null) result = normalizeFxResult(resolveExcelFunction("DB")!(cost, salvage, life, per, month)) as Answer;
+            if (month !== null) result = normalizeFxResult(callCore("DB", [cost, salvage, life, per, month])) as Answer;
           }
         }
       }
@@ -297,7 +297,7 @@ export class NPVNode extends ClassicPreset.Node {
       const prep = datedPrep(inputs.list?.[0] ?? null, (inputs.dates?.[0] ?? []) as (number | null | SolError)[]);
       if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
       if (prep.blank || prep.values.length === 0 || prep.dates.length === 0) { this.cachedResult = null; return { result: null }; }
-      const result = xnpv(rate, prep.values, prep.dates);
+      const result = callCore("XNPV", [rate, prep.values, prep.dates]) as number | SolError | null;
       this.cachedResult = result;
       return { result };
     }
@@ -306,7 +306,7 @@ export class NPVNode extends ClassicPreset.Node {
     if (rate === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     if (cashflows.length > 0) {
-      const npv = resolveExcelFunction("NPV")!(rate, ...cashflows) as number;
+      const npv = callCore("NPV", [rate, ...cashflows]) as number;
       result = Number.isFinite(npv) ? npv : null;
     }
     this.cachedResult = result;
@@ -354,12 +354,7 @@ export class IRRNode extends ClassicPreset.Node {
       this.cachedResult = null;
       return { result: null };
     }
-    const rate = solveDiscountRate(cashflows, cashflows.map((_, t) => t));
-    if (rate === null) {
-      const err = solError("#CONV!", "IRR couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.");
-      this.cachedResult = err;
-      return { result: err };
-    }
+    const rate = callCore("IRR", [cashflows]) as number | SolError;
     this.cachedResult = rate;
     return { result: rate };
   }
@@ -369,7 +364,7 @@ export class IRRNode extends ClassicPreset.Node {
     const prep = datedPrep(inputs.list?.[0] ?? null, (inputs.dates?.[0] ?? []) as (number | null | SolError)[]);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     if (prep.blank) { this.cachedResult = null; return { result: null }; }
-    const r = xirr(prep.values, prep.dates);
+    const r = callCore("XIRR", [prep.values, prep.dates]) as number | SolError | null;
     this.cachedResult = r;
     return { result: r };
   }
@@ -410,7 +405,7 @@ export class MirrNode extends ClassicPreset.Node {
       this.cachedResult = null;
       return { result: null };
     }
-    const result = mirr(cashflows, finrate, reinrate);
+    const result = callCore("MIRR", [cashflows, finrate, reinrate]) as number | SolError | null;
     this.cachedResult = result;
     return { result };
   }
@@ -445,7 +440,8 @@ export class FvScheduleNode extends ClassicPreset.Node {
     const { error, nums: rates } = cashPrep(inputs.schedule?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     if (pv === null) { this.cachedResult = null; return { result: null }; }
-    const result = guardFinite(fvSchedule(pv, rates), [pv, ...rates]);
+    const fv = callCore("FVSCHEDULE", [pv, rates]) as number | SolError;
+    const result = typeof fv === "number" ? guardFinite(fv, [pv, ...rates]) : fv;
     this.cachedResult = result;
     return { result };
   }
@@ -638,7 +634,7 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
       case "tbilleq": case "tbillprice": case "tbillyield": {
         const x = read(this.op === "tbillyield" ? "pr" : "discount");
         if (x === null) return fail();
-        result = tbill(this.op, s, m, x);
+        result = callCore(this.op.toUpperCase(), [s, m, x]) as number | SolError | null;
         break;
       }
       case "disc": case "intrate": case "received": {
@@ -646,7 +642,8 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
         const b = read(this.op === "received" ? "discount" : "redemption");
         const basis = read("basis");
         if (a === null || b === null || basis === null) return fail();
-        result = securityDisc(this.op, s, m, a, b, basis);
+        // DISC is Formula.js's, not this kernel.
+        result = this.op === "disc" ? securityDisc(this.op, s, m, a, b, basis) : callCore(this.op.toUpperCase(), [s, m, a, b, basis]) as number | SolError | null;
         break;
       }
       case "pricedisc": case "yielddisc": {
@@ -654,7 +651,8 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
         const redemption = read("redemption");
         const basis = read("basis");
         if (rateOrPrice === null || redemption === null || basis === null) return fail();
-        result = priceDisc(this.op, s, m, rateOrPrice, redemption, basis);
+        // PRICEDISC is Formula.js's, not this kernel.
+        result = this.op === "pricedisc" ? priceDisc(this.op, s, m, rateOrPrice, redemption, basis) : callCore("YIELDDISC", [s, m, rateOrPrice, redemption, basis]) as number | SolError | null;
         break;
       }
       case "pricemat": case "yieldmat": {
@@ -664,7 +662,7 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
         const yldOrPrice = read(this.op === "pricemat" ? "yld" : "pr");
         const basis = read("basis");
         if (rate === null || yldOrPrice === null || basis === null) return fail();
-        result = priceMat(this.op, s, m, is, rate, yldOrPrice, basis);
+        result = callCore(this.op.toUpperCase(), [s, m, is, rate, yldOrPrice, basis]) as number | SolError | null;
         break;
       }
     }
@@ -714,7 +712,8 @@ export class CouponNode extends ClassicPreset.Node {
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
     const freq  = readRole<number>(this, "frequency", inputs.frequency);
     const basis = readRole<number>(this, "basis", inputs.basis);
-    const result = couponValue(this.op, s, m, freq, basis);
+    // COUPDAYS is Formula.js's, not this kernel.
+    const result = this.op === "coupdays" ? couponValue(this.op, s, m, freq, basis) : callCore(this.op.toUpperCase(), [s, m, freq, basis]) as number | SolError | null;
     this.cachedResult = result;
     return { result };
   }
@@ -796,7 +795,7 @@ export class AccruedInterestNode extends ClassicPreset.Node {
       const freq = readRole<number>(this, "frequency", inputs.frequency);
       result = accrint(is, ss, rate, par, freq, basis);
     } else {
-      result = accrintM(is, ss, rate, par, basis);
+      result = callCore("ACCRINTM", [is, ss, rate, par, basis]) as number | SolError | null;
     }
     this.cachedResult = result;
     return { result };
@@ -887,7 +886,7 @@ export class PaymentBreakdownNode extends ClassicPreset.Node {
         if (Math.abs(rate) < 1e-12) {
           ipmt = 0;
         } else {
-          ipmt = resolveExcelFunction("IPMT")!(rate, per, nper, pv, fv, type) as number;
+          ipmt = callCore("IPMT", [rate, per, nper, pv, fv, type]) as number;
         }
         if (Number.isFinite(ipmt)) {
           result = this.op === "ipmt" ? ipmt : pmt - ipmt;
@@ -907,7 +906,7 @@ export class PaymentBreakdownNode extends ClassicPreset.Node {
     if (rate === null || nper === null || pv === null || startRaw === null || endRaw === null) {
       this.cachedResult = null; return { result: null };
     }
-    const result = cumulativePayment(this.op === "cumipmt" ? "cumipmt" : "cumprinc", rate, nper, pv, startRaw, endRaw, this.paymentTiming === "beg" ? 1 : 0);
+    const result = callCore(this.op === "cumipmt" ? "CUMIPMT" : "CUMPRINC", [rate, nper, pv, startRaw, endRaw, this.paymentTiming === "beg" ? 1 : 0]) as number | SolError | null;
     this.cachedResult = result;
     return { result };
   }
@@ -954,7 +953,7 @@ export class DurationNode extends ClassicPreset.Node {
     const freq   = readRole<number>(this, "frequency", inputs.frequency);
     const basis  = readRole<number>(this, "basis", inputs.basis);
     if (coupon === null || yld === null) { this.cachedResult = null; return { result: null }; }
-    const result = durationValue(this.op, s, m, coupon, yld, freq, basis);
+    const result = callCore(this.op.toUpperCase(), [s, m, coupon, yld, freq, basis]) as number | SolError | null;
     this.cachedResult = result;
     return { result };
   }
@@ -1045,9 +1044,11 @@ export class BondPricingNode extends ClassicPreset.Node {
       if (fl == null) return fail();
       const issue = isOddFirst(this.op) ? readInput(inputs.issue, s) : s;
       if (issue === null) return fail();
-      result = oddCoupon(this.op as OddCouponOp, s, m, issue, fl, rate, yldOrPrice, redemption, freq);
+      // ODDL* take no issue date.
+      const args = isOddFirst(this.op) ? [s, m, issue, fl, rate, yldOrPrice, redemption, freq] : [s, m, fl, rate, yldOrPrice, redemption, freq];
+      result = callCore(this.op.toUpperCase(), args) as number | SolError | null;
     } else {
-      result = bondPriceYield(this.op as BondPriceOp, s, m, rate, yldOrPrice, redemption, freq);
+      result = callCore(this.op.toUpperCase(), [s, m, rate, yldOrPrice, redemption, freq]) as number | SolError | null;
     }
     this.cachedResult = result;
     return { result };
@@ -1149,7 +1150,9 @@ export class ReturnsNode extends ClassicPreset.Node {
     const rf = readInput(inputs.rf, this.literals.rf ?? 0);
     const periods = readInput(inputs.periods, this.literals.periods ?? 1);
     if (arr === null || rf === null || periods === null) { this.cachedResult = null; return { result: null }; }
-    const result = returnsOp(this.op, arr, rf, periods);
+    const meta = RETURNS_OP_META[this.op];
+    // PCTCHANGE answers one fewer value, with no leading blank, so Simple stays on the kernel.
+    const result = this.op === "simple" ? returnsOp(this.op, arr, rf, periods) : callCore(meta.fx, [arr, ...meta.needs.map((k) => (k === "rf" ? rf : periods))]) as (number | null | SolError)[] | number | SolError | null;
     this.cachedResult = result;
     return { result };
   }
