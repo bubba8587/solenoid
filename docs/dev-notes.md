@@ -6,6 +6,21 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-21d: TS fixes from the solenoid/tsrs port; cloud session)
+- **Found while porting the formula core to Rust** (branch `solenoid/tsrs`), fixed here too:
+  - **Formats:** a lazy node's own column format never reached downstream; it now rides the plan as a `formats` step ([[D41]] formatFlowsDownstream).
+  - **Split Column** splits each cell's display text, so a date splits as its date.
+  - **Shapers memoized:** FILTER, UNIQUE, SORT, SORTBY, TAKE and DROP over a whole column keep their answer like a range call (2.8 s to 22 ms on 3,000 rows).
+  - **Correlation:** Kendall's tau counts in O(n log n), and the matrix computes each pair once.
+  - **Loops bounded by a typed number now answer an error at once** ([[C120]] linearWork): BINOM.INV (it now searches the CDF), the cumulative hypergeometric (it sums only where its terms are nonzero, to the bit), the exact tests, PADTEXT, VDB, CUMIPMT, CUMPRINC, DB, DDB, the Bessel functions, WRAPROWS, WRAPCOLS, NTILE and GAUSSIANSMOOTH.
+  - **Formula.js overrides** ([[formulajs-divergences]]):
+    - FACT, COMBIN, PERMUT and MULTINOMIAL multiply without recursing (`COMBIN(30, 15)` is exact);
+    - BINOM.DIST.RANGE checks its range;
+    - CLEAN reads a number as text and keeps DEL;
+    - HASH refuses inherited keys.
+  - **Throws:** a function that throws answers `#VALUE!` at its call, so IFERROR reads it.
+- **How they were found:** a sweep that calls every function with extreme and ordinary arguments, timing each call and catching throws.
+
 ### SESSION DIGEST (2026-10-21c: Mermaid diagrams draw with Pele; cloud session)
 - **`MermaidView` renders with Pele** (`pele`, kepano's Mermaid renderer for Obsidian; [[chart-figures#Mermaid]]) instead of mermaid.js: loaded through `pele/lazy` (each diagram type's parser on first use), mounted with `mountAsync`, themed by `--pele-*` CSS variables on `.solenoid-mermaid` (series 1 to 8 from the categorical slots, inline), links and images off ([[C103]] untrustedContentSeams). Gone with mermaid: the `lodash-es` override and the KaTeX 0.16 advisories; `npm audit` is clean.
 - **Visible change:** Pele flips a left-to-right flowchart to top-down when the card is narrow (its `autoDirection`), and draws in its own visual style.
