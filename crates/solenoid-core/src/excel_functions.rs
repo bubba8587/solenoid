@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, serial_to_utc_parts, MS_PER_DAY};
 use crate::error_value::{sol_error, SolError};
-use crate::jsnum::{is_js_space, js_trim, math_round, number_to_string, string_to_number};
+use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
 use crate::unit_value::to_precision;
 use crate::value_kinds::{decimal_from_text, guard_finite};
 use crate::frame::FrameCell;
@@ -75,6 +75,11 @@ pub(crate) fn throw(e: SolError) -> V {
     V::Undef
 }
 
+/// Whether a row bailed, without clearing it.
+pub fn bail_pending() -> bool {
+    BAILED.with(|b| b.get())
+}
+
 pub fn thrown_pending() -> bool {
     THROWN.with(|t| t.borrow().is_some())
 }
@@ -113,17 +118,26 @@ const PORTED: &[&str] = &[
     "TEXT", "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
     "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
+    "COUPDAYBS", "COUPDAYSNC", "COUPNCD", "COUPPCD", "COUPNUM", "ACCRINTM", "INTRATE", "RECEIVED", "YIELDDISC", "TBILLEQ",
+    "TBILLPRICE", "TBILLYIELD", "PRICEMAT", "YIELDMAT", "DURATION", "MDURATION", "PRICE", "YIELD", "IRR", "MIRR", "XNPV", "XIRR",
+    "FVSCHEDULE", "CUMIPMT", "CUMPRINC", "VDB", "ODDFPRICE", "ODDFYIELD", "ODDLPRICE", "ODDLYIELD", "MAXDRAWDOWN", "CAGR",
+    "VOLATILITY", "SHARPE", "SORTINO", "NPV", "RATE", "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "DOLLARDE",
+    "DOLLARFR", "ISPMT",
+    "REGEXTEST", "REGEXEXTRACT", "REGEXREPLACE", "ENCODEURL", "DECODEURL", "ENCODEBASE64", "DECODEBASE64", "HASH", "UNACCENT",
+    "SLUGIFY", "SPELLNUMBER", "VALUETOTEXT", "TEMPLATE", "DOLLAR", "TEXTSPLIT", "WRAPTEXT",
     "TODAY", "NOW", "EDATE", "CONVERT", "SPEARMAN", "FORECAST.LINEAR", "T.TEST", "F.TEST", "PROB", "FISHERINV", "LOG2", "ROW",
-    "VALUETOTEXT", "FISHEREXACT", "PROPTEST", "BINOMTEST",
+    "FISHEREXACT", "PROPTEST", "BINOMTEST", "FACT", "FACTDOUBLE", "COMBIN", "COMBINA", "PERMUT", "MULTINOMIAL",
+    "BINOM.DIST.RANGE", "CLEAN",
 ];
 
 pub fn is_ported(name: &str) -> bool {
-    PORTED.contains(&name) || crate::formulajs::NAMES.contains(&name)
+    PORTED.contains(&name) || crate::shapers::is_shaper(name) || crate::formulajs::NAMES.contains(&name)
 }
 
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
 pub fn takes_whole_lists(name: &str) -> bool {
     matches!(name, "WAVG" | "WVAR" | "WSTDEV" | "COUNTDISTINCT" | "ARGMAX" | "ARGMIN" | "LENGTH" | "CONTAINS" | "INDEX")
+        || is_finance_whole(name)
 }
 
 /// The range functions whose body takes each argument in its place, a list as one argument.
@@ -136,6 +150,7 @@ pub fn reads_lists(name: &str) -> bool {
             | "STEYX" | "RANK" | "RANK.EQ" | "RANK.AVG" | "TRIMMEAN" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC"
             | "SUMPRODUCT" | "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" | "SERIESSUM" | "Z.TEST" | "CHISQ.TEST" | "SPEARMAN"
             | "FORECAST.LINEAR" | "T.TEST" | "F.TEST" | "PROB"
+            | "FVSCHEDULE"
     )
 }
 
@@ -697,6 +712,76 @@ fn js_sign(x: f64) -> f64 {
     if x.is_nan() || x == 0.0 { x } else { x.signum() }
 }
 
+/// `kendallCounts` (statsOps.ts): the pairwise counts in O(n log n), finite values only.
+fn kendall_counts(xs: &[f64], ys: &[f64]) -> (f64, f64, f64, f64) {
+    let n = xs.len();
+    // In f64, as the TS counts: usize is 32 bits in wasm.
+    let pairs = |t: usize| {
+        let t = t as f64;
+        t * (t - 1.0) / 2.0
+    };
+    let mut idx: Vec<usize> = (0..n).collect();
+    idx.sort_by(|&a, &b| xs[a].partial_cmp(&xs[b]).unwrap_or(std::cmp::Ordering::Equal).then(ys[a].partial_cmp(&ys[b]).unwrap_or(std::cmp::Ordering::Equal)));
+    let (mut n1, mut n3) = (0.0, 0.0);
+    let mut i = 0;
+    while i < n {
+        let mut j = i;
+        while j + 1 < n && xs[idx[j + 1]] == xs[idx[i]] {
+            j += 1;
+        }
+        n1 += pairs(j - i + 1);
+        let mut k = i;
+        while k <= j {
+            let mut m = k;
+            while m < j && ys[idx[m + 1]] == ys[idx[k]] {
+                m += 1;
+            }
+            n3 += pairs(m - k + 1);
+            k = m + 1;
+        }
+        i = j + 1;
+    }
+    let mut y: Vec<f64> = idx.iter().map(|&i| ys[i]).collect();
+    let mut buf = vec![0.0; n];
+    let mut swaps = 0.0;
+    let mut w = 1;
+    while w < n {
+        let mut lo = 0;
+        while lo < n {
+            let (mid, hi) = ((lo + w).min(n), (lo + 2 * w).min(n));
+            let (mut a, mut b, mut o) = (lo, mid, lo);
+            while a < mid && b < hi {
+                if y[b] < y[a] {
+                    swaps += (mid - a) as f64;
+                    buf[o] = y[b];
+                    b += 1;
+                } else {
+                    buf[o] = y[a];
+                    a += 1;
+                }
+                o += 1;
+            }
+            buf[o..o + mid - a].copy_from_slice(&y[a..mid]);
+            o += mid - a;
+            buf[o..o + hi - b].copy_from_slice(&y[b..hi]);
+            lo += 2 * w;
+        }
+        std::mem::swap(&mut y, &mut buf);
+        w *= 2;
+    }
+    let mut n2 = 0.0;
+    let mut i = 0;
+    while i < n {
+        let mut j = i;
+        while j + 1 < n && y[j + 1] == y[i] {
+            j += 1;
+        }
+        n2 += pairs(j - i + 1);
+        i = j + 1;
+    }
+    (pairs(n) - n1 - n2 + n3 - swaps, swaps, n1 - n3, n2 - n3)
+}
+
 /// `kendallTau` (statsOps.ts).
 fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
     let n = xs.len().min(ys.len());
@@ -704,20 +789,24 @@ fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
         return V::Null;
     }
     let (mut conc, mut disc, mut tx, mut ty) = (0.0f64, 0.0, 0.0, 0.0);
-    for i in 0..n {
-        for j in i + 1..n {
-            let (dx, dy) = (js_sign(xs[i] - xs[j]), js_sign(ys[i] - ys[j]));
-            if dx == 0.0 && dy == 0.0 {
-                continue;
-            }
-            if dx == 0.0 {
-                tx += 1.0;
-            } else if dy == 0.0 {
-                ty += 1.0;
-            } else if dx == dy {
-                conc += 1.0;
-            } else {
-                disc += 1.0;
+    if xs[..n].iter().chain(&ys[..n]).all(|v| v.is_finite()) {
+        (conc, disc, tx, ty) = kendall_counts(&xs[..n], &ys[..n]);
+    } else {
+        for i in 0..n {
+            for j in i + 1..n {
+                let (dx, dy) = (js_sign(xs[i] - xs[j]), js_sign(ys[i] - ys[j]));
+                if dx == 0.0 && dy == 0.0 {
+                    continue;
+                }
+                if dx == 0.0 {
+                    tx += 1.0;
+                } else if dy == 0.0 {
+                    ty += 1.0;
+                } else if dx == dy {
+                    conc += 1.0;
+                } else {
+                    disc += 1.0;
+                }
             }
         }
     }
@@ -1155,12 +1244,12 @@ fn pad_text(t: &str, width: f64, side: &str, fill: &str) -> V {
     if chars.len() as f64 >= w {
         return V::str(t);
     }
+    if w > 32767.0 {
+        return V::err(sol_error("#VALUE!", "PADTEXT's result would pass 32,767 characters, Excel's text limit"));
+    }
     let need = w - chars.len() as f64;
     if need.is_nan() {
         return V::str(t);
-    }
-    if need > 1e7 {
-        return bail();
     }
     let need = need as usize;
     let run = |n: usize| (0..n).map(|i| fill[i % fill.len()]).collect::<String>();
@@ -1805,7 +1894,7 @@ fn round_digits(v: f64, digits: f64, mode: &str) -> f64 {
 
 // ─── Conditions (valueKinds.ts `ifTest`) ────────────────────────────────────────
 
-enum Cond {
+pub enum Cond {
     Missing,
     Bool(bool),
     Err(V),
@@ -1824,6 +1913,18 @@ fn if_test(v: &V) -> Cond {
     }
 }
 
+pub fn if_test_pub(v: &V) -> Cond {
+    if_test(v)
+}
+
+pub fn to_num_pub(v: &V) -> f64 {
+    to_num(v)
+}
+
+pub fn js_number_pub(v: &V) -> f64 {
+    js_number_of(v)
+}
+
 // ─── Dispatch ───────────────────────────────────────────────────────────────────
 
 fn arg(a: &[V], i: usize) -> &V {
@@ -1833,6 +1934,7 @@ fn arg(a: &[V], i: usize) -> &V {
 /// `dispatch(name, ...args)`: the function body, its arguments as the evaluator hands them over.
 pub fn call_function(name: &str, a: &[V]) -> V {
     match name {
+        "FILTER" | "UNIQUE" | "SORT" | "SORTBY" | "TAKE" | "DROP" => crate::shapers::call(name, a),
         "IF" => {
             let test = match arg(a, 0) {
                 V::Undef => V::Null,
@@ -2630,12 +2732,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
                 return e.clone();
             }
-            // A Set's SameValueZero: NaN is one value, -0 is 0, text by its characters, anything else only itself.
+            // A Set's SameValueZero: NaN is one value, -0 is 0, text by its characters, a Formula.js error (one shared
+            // object per code) by its code, anything else only itself.
             #[derive(Hash, PartialEq, Eq)]
             enum Key<'a> {
                 Num(u64),
                 Str(&'a str),
                 Bool(bool),
+                Fx(&'static str),
                 Other(usize),
             }
             let mut seen: crate::fxhash::FxHashSet<Key> = Default::default();
@@ -2646,6 +2750,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     V::Num(x) => Key::Num((x + 0.0).to_bits()),
                     V::Str(s) => Key::Str(s),
                     V::Bool(b) => Key::Bool(*b),
+                    V::Fx(code) => Key::Fx(code),
                     _ => Key::Other(i),
                 });
             }
@@ -3067,7 +3172,29 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             date_from_parts(y, m, d)
         }
-        "VALUETOTEXT" => V::str(&to_str(arg(a, 0))),
+        "FACT" | "FACTDOUBLE" | "COMBIN" | "COMBINA" | "PERMUT" => {
+            let v: Vec<f64> = a.iter().map(to_num).collect();
+            if v.iter().any(|x| x.is_nan()) {
+                return value_err(name);
+            }
+            combinatoric(name, &v)
+        }
+        "MULTINOMIAL" => {
+            let v = nums_of(a);
+            if v.iter().any(|x| x.is_nan()) {
+                return value_err("MULTINOMIAL");
+            }
+            combinatoric(name, &v)
+        }
+        "BINOM.DIST.RANGE" => {
+            let v: Vec<f64> = (0..3).map(|i| to_num(arg(a, i))).collect();
+            let hi = if matches!(arg(a, 3), V::Null | V::Undef) { None } else { Some(to_num(arg(a, 3))) };
+            if v.iter().any(|x| x.is_nan()) || hi.is_some_and(f64::is_nan) {
+                return value_err("BINOM.DIST.RANGE");
+            }
+            binom_dist_range(v[0], v[1], v[2], hi)
+        }
+        "CLEAN" => V::str(&to_str(arg(a, 0)).chars().filter(|&c| c > '\u{1F}').collect::<String>()),
         "FISHEREXACT" | "PROPTEST" | "BINOMTEST" => {
             let want = if name == "BINOMTEST" { 3 } else { 4 };
             let v: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
@@ -3076,10 +3203,13 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             let p = match name {
                 "FISHEREXACT" => fisher_exact_p(v[0], v[1], v[2], v[3]),
-                "PROPTEST" => two_proportion_p(v[0], v[1], v[2], v[3]),
+                "PROPTEST" => Ok(two_proportion_p(v[0], v[1], v[2], v[3])),
                 _ => binom_test_p(v[0], v[1], v[2]),
             };
-            p.map_or(V::Null, V::Num)
+            match p {
+                Ok(p) => p.map_or(V::Null, V::Num),
+                Err(e) => e,
+            }
         }
         "ROW" => match ROW_NUMBER.with(|r| r.get()) {
             Some(n) => V::Num(n),
@@ -3178,29 +3308,195 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         },
         _ if crate::formulajs::NAMES.contains(&name) => crate::formulajs::call(name, a),
+        _ if is_finance(name) => finance_function(name, a),
+        "REGEXTEST" | "REGEXEXTRACT" | "REGEXREPLACE" => regex_call(name, a),
+        "ENCODEURL" => {
+            let t = to_str(arg(a, 0));
+            if may_hold_lone_surrogate(&t) {
+                return bail();
+            }
+            V::str(&crate::text_ops::encode_uri_component(&t))
+        }
+        "DECODEURL" | "ENCODEBASE64" | "DECODEBASE64" | "UNACCENT" | "SPELLNUMBER" | "HASH" | "SLUGIFY" | "TEMPLATE"
+            if matches!(arg(a, 0), V::Null | V::Undef) =>
+        {
+            V::Null
+        }
+        "DECODEURL" => {
+            let t = to_str(arg(a, 0));
+            V::str(&crate::text_ops::decode_uri_component(&t).unwrap_or(t))
+        }
+        "ENCODEBASE64" => V::str(&crate::hash_ops::base64_encode(&to_str(arg(a, 0)))),
+        "DECODEBASE64" => {
+            let t = to_str(arg(a, 0));
+            V::str(&crate::hash_ops::base64_decode(&t).unwrap_or(t))
+        }
+        "HASH" => {
+            let alg: String = match arg(a, 1) {
+                V::Null | V::Undef => "sha256".into(),
+                v => js_lower(js_trim(&js_string_of(v))).chars().filter(|&c| c != '-' && c != '_' && !is_js_space(c)).collect(),
+            };
+            match crate::hash_ops::hash_text(&to_str(arg(a, 0)), &alg) {
+                Some(h) => V::str(&h),
+                None => V::err(sol_error(
+                    "#DOMAIN!",
+                    format!("HASH algorithm must be one of {}", crate::hash_ops::HASH_ALGORITHMS.join(", ")),
+                )),
+            }
+        }
+        "UNACCENT" => {
+            let t = to_str(arg(a, 0));
+            // Dropping a mark can join the two halves of a pair the wire turned into U+FFFD.
+            if may_hold_lone_surrogate(&t) {
+                return bail();
+            }
+            crate::text_ops::unaccent(&t).map_or_else(bail, |s| V::str(&s))
+        }
+        "SLUGIFY" => {
+            let sep = match arg(a, 1) {
+                V::Null | V::Undef => "-".to_string(),
+                v => to_str(v),
+            };
+            if may_hold_lone_surrogate(&sep) {
+                return bail();
+            }
+            crate::text_ops::slugify(&to_str(arg(a, 0)), &sep).map_or_else(bail, |s| V::str(&s))
+        }
+        "SPELLNUMBER" => match crate::text_ops::spell_number(to_f64_js(arg(a, 0))) {
+            Ok(words) => V::str(&words),
+            Err(msg) => V::err(sol_error("#DOMAIN!", msg)),
+        },
+        "VALUETOTEXT" => V::str(&to_str(arg(a, 0))),
+        "TEMPLATE" => template(a),
+        "DOLLAR" => dollar(arg(a, 0), arg(a, 1)),
+        // Both answer a list but for these readings, and a list stays on the TS.
+        "TEXTSPLIT" => {
+            if matches!(arg(a, 1), V::Null | V::Undef) && matches!(arg(a, 2), V::Null | V::Undef) {
+                return V::err(sol_error("#SYNTAX!", "TEXTSPLIT needs a column delimiter, a row delimiter, or both"));
+            }
+            bail()
+        }
+        "WRAPTEXT" => {
+            if matches!(arg(a, 0), V::Null | V::Undef) {
+                return V::Null;
+            }
+            if to_num(arg(a, 1)) < 1.0 {
+                return V::err(sol_error("#DOMAIN!", "Width must be at least 1"));
+            }
+            bail()
+        }
         _ => V::Undef,
     }
 }
 
-/// `MAX_OUTCOMES` (statsOps.ts): the outcomes an exact test sums before it gives no answer.
+/// `EXACT_TEST_OUTCOMES` (statsOps.ts): the outcomes an exact test may sum.
 const MAX_OUTCOMES: f64 = 1e6;
 
+fn exact_test_too_large() -> V {
+    V::err(sol_error("#DOMAIN!", "An exact test sums at most 1,000,000 outcomes"))
+}
+
+/// `combinatoric` (mathUtils.ts): counts truncate, products run from the small end and stop once infinite, and
+/// COMBIN divides as it multiplies. A count left out reads as NaN, which no loop runs on.
+fn combinatoric(op: &str, args: &[f64]) -> V {
+    let ns: Vec<f64> = args.iter().map(|x| x.trunc()).collect();
+    if ns.iter().any(|&n| n.is_nan() || n < 0.0 || n == f64::INFINITY) {
+        return V::err(sol_error("#DOMAIN!", "Counts must be finite and 0 or more"));
+    }
+    let n = ns.first().copied().unwrap_or(f64::NAN);
+    let k = ns.get(1).copied().unwrap_or(f64::NAN);
+    let chosen = || V::err(sol_error("#DOMAIN!", "Can't choose more items than there are"));
+    V::Num(match op {
+        "FACT" => product(2.0, n, 1.0),
+        "FACTDOUBLE" => product(if n % 2.0 == 0.0 { 2.0 } else { 1.0 }, n, 2.0),
+        "COMBIN" if n < k => return chosen(),
+        "COMBIN" => combinations(n, k),
+        "COMBINA" if n < k => return chosen(),
+        "COMBINA" if n == 0.0 && k == 0.0 => 1.0,
+        "COMBINA" => combinations(n + k - 1.0, n - 1.0),
+        "PERMUT" if n < k => return chosen(),
+        "PERMUT" => product(n - k + 1.0, n, 1.0),
+        _ => {
+            let (mut total, mut r) = (0.0, 1.0);
+            for &a in &ns {
+                total += a;
+                r *= combinations(total, a);
+                if !r.is_finite() {
+                    break;
+                }
+            }
+            r
+        }
+    })
+}
+
+/// `product`: from · (from + step) · … ≤ to, stopping once infinite.
+fn product(from: f64, to: f64, step: f64) -> f64 {
+    let mut r: f64 = 1.0;
+    let mut i = from;
+    while i <= to && r.is_finite() {
+        r *= i;
+        i += step;
+    }
+    r
+}
+
+/// `combinations`: n choose k over the smaller side, exact while it fits.
+fn combinations(n: f64, k: f64) -> f64 {
+    let m = crate::jsnum::math_min(k, n - k);
+    let mut r: f64 = 1.0;
+    let mut i = 1.0;
+    while i <= m && r.is_finite() {
+        r = (r * (n - m + i)) / i;
+        i += 1.0;
+    }
+    if r < 9_007_199_254_740_992.0 { math_round(r) } else { r }
+}
+
+/// `binomDistRange` (mathUtils.ts).
+fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
+    let (n, lo, hi) = (trials.trunc(), s.trunc(), s2.unwrap_or(s).trunc());
+    let ok = (0.0..f64::INFINITY).contains(&n) && (0.0..=1.0).contains(&p) && lo >= 0.0 && lo <= n && hi >= lo && hi <= n;
+    if !ok {
+        return V::err(sol_error("#DOMAIN!", "BINOM.DIST.RANGE needs 0 \u{2264} s \u{2264} s2 \u{2264} trials and a probability from 0 to 1"));
+    }
+    if hi - lo + 1.0 > MAX_OUTCOMES {
+        return V::err(sol_error("#DOMAIN!", "BINOM.DIST.RANGE sums at most 1,000,000 outcomes"));
+    }
+    if p == 0.0 || p == 1.0 {
+        let hit = if p == 0.0 { lo == 0.0 } else { hi == n };
+        return V::Num(if hit { 1.0 } else { 0.0 });
+    }
+    let mut sum = 0.0;
+    let mut k = lo;
+    while k <= hi {
+        let c = combinations(n, k);
+        sum += if c.is_finite() {
+            c * js_pow(p, k) * js_pow(1.0 - p, n - k)
+        } else {
+            crate::fdlibm::exp(crate::dists::ln_combin(n, k) + k * crate::fdlibm::log(p) + (n - k) * crate::fdlibm::log1p(-p))
+        };
+        k += 1.0;
+    }
+    V::Num(sum)
+}
+
 /// `fisherExactP` (statsOps.ts).
-fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Option<f64> {
+fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Result<Option<f64>, V> {
     use crate::dists::ln_combin;
     let cells = [a, b, c, d].map(math_round);
     if cells.iter().any(|&v| v < 0.0 || !v.is_finite()) {
-        return None;
+        return Ok(None);
     }
     let [a, b, c, d] = cells;
     let (row1, col1, n) = (a + b, a + c, a + b + c + d);
     if n == 0.0 {
-        return None;
+        return Ok(None);
     }
     let pmf = |x: f64| crate::fdlibm::exp(ln_combin(col1, x) + ln_combin(n - col1, row1 - x) - ln_combin(n, row1));
     let (lo, hi) = (crate::jsnum::math_max(0.0, row1 - (n - col1)), crate::jsnum::math_min(row1, col1));
-    if hi - lo > MAX_OUTCOMES {
-        return None;
+    if hi - lo + 1.0 > MAX_OUTCOMES {
+        return Err(exact_test_too_large());
     }
     let p_obs = pmf(a);
     let mut p = 0.0;
@@ -3212,7 +3508,7 @@ fn fisher_exact_p(a: f64, b: f64, c: f64, d: f64) -> Option<f64> {
         }
         x += 1.0;
     }
-    Some(crate::jsnum::math_min(1.0, p))
+    Ok(Some(crate::jsnum::math_min(1.0, p)))
 }
 
 /// `twoProportionP` (statsOps.ts).
@@ -3229,19 +3525,19 @@ fn two_proportion_p(x1: f64, n1: f64, x2: f64, n2: f64) -> Option<f64> {
 }
 
 /// `binomTestP` (statsOps.ts).
-fn binom_test_p(k: f64, n: f64, p0: f64) -> Option<f64> {
+fn binom_test_p(k: f64, n: f64, p0: f64) -> Result<Option<f64>, V> {
     let (k, n) = (math_round(k), math_round(n));
     if n.is_nan() || n < 1.0 || k < 0.0 || k > n || !(0.0..=1.0).contains(&p0) {
-        return None;
+        return Ok(None);
     }
     if p0 == 0.0 {
-        return Some(if k == 0.0 { 1.0 } else { 0.0 });
+        return Ok(Some(if k == 0.0 { 1.0 } else { 0.0 }));
     }
     if p0 == 1.0 {
-        return Some(if k == n { 1.0 } else { 0.0 });
+        return Ok(Some(if k == n { 1.0 } else { 0.0 }));
     }
-    if n > MAX_OUTCOMES {
-        return None;
+    if n + 1.0 > MAX_OUTCOMES {
+        return Err(exact_test_too_large());
     }
     let (lp, lq) = (crate::fdlibm::log(p0), crate::fdlibm::log(1.0 - p0));
     let pmf = |x: f64| crate::fdlibm::exp(crate::dists::ln_combin(n, x) + x * lp + (n - x) * lq);
@@ -3255,7 +3551,7 @@ fn binom_test_p(k: f64, n: f64, p0: f64) -> Option<f64> {
         }
         x += 1.0;
     }
-    Some(crate::jsnum::math_min(1.0, p))
+    Ok(Some(crate::jsnum::math_min(1.0, p)))
 }
 
 /// `averageRanks` (statsOps.ts): ties share the mean of their places.
@@ -3493,6 +3789,255 @@ fn fx_edate(start: &V, months: &V) -> V {
     V::Num(first + f64::from(day) - 1.0 + 25569.0)
 }
 
+// ─── Regex and text utilities (textOps.ts, hashOps.ts) ──────────────────────────
+
+/// Text that crossed the wire with half a surrogate pair holds U+FFFD where the TS holds the half, which a regex,
+/// an encoder or a joined pair reads differently.
+fn may_hold_lone_surrogate(s: &str) -> bool {
+    s.contains('\u{FFFD}')
+}
+
+/// `caseFlag`: whether the match ignores case.
+fn case_flag(f: &str, cs: &V) -> Result<bool, V> {
+    let v = if matches!(cs, V::Null | V::Undef) { 0.0 } else { to_f64_js(cs) };
+    if v == 0.0 {
+        Ok(false)
+    } else if v == 1.0 {
+        Ok(true)
+    } else {
+        Err(V::err(sol_error("#VALUE!", format!("{f}: case_sensitivity must be 0 or 1"))))
+    }
+}
+
+/// `regexOccurrence`: blank is 0 (every match), a fraction truncates; None when non-finite.
+fn regex_occurrence(raw: &V) -> Option<f64> {
+    if matches!(raw, V::Null | V::Undef) || matches!(raw, V::Str(s) if s.is_empty()) {
+        return Some(0.0);
+    }
+    let n = to_f64_js(raw).trunc();
+    n.is_finite().then_some(n)
+}
+
+fn regex_call(name: &str, a: &[V]) -> V {
+    use crate::text_ops::{regex_extract, regex_replace_all, regex_test, replace_nth, safe_regex};
+    let cs = match name {
+        "REGEXTEST" => arg(a, 2),
+        "REGEXEXTRACT" => arg(a, 3),
+        _ => arg(a, 4),
+    };
+    let icase = match case_flag(name, cs) {
+        Ok(f) => f,
+        Err(e) => return e,
+    };
+    let mut occurrence = 0.0;
+    let mut mode = 0.0;
+    if name == "REGEXREPLACE" {
+        match regex_occurrence(arg(a, 3)) {
+            Some(n) => occurrence = n,
+            None => return V::err(sol_error("#VALUE!", "REGEXREPLACE: occurrence must be a number")),
+        }
+    }
+    if name == "REGEXEXTRACT" {
+        mode = if matches!(arg(a, 2), V::Null | V::Undef) { 0.0 } else { to_f64_js(arg(a, 2)) };
+        if mode != 0.0 && mode != 1.0 && mode != 2.0 {
+            return V::err(sol_error("#VALUE!", "REGEXEXTRACT: return_mode must be 0, 1 or 2"));
+        }
+    }
+    let (text, pattern) = (to_str(arg(a, 0)), to_str(arg(a, 1)));
+    if pattern.is_empty() {
+        return V::Null;
+    }
+    let replacement = if name == "REGEXREPLACE" { to_str(arg(a, 2)) } else { String::new() };
+    if [&text, &pattern, &replacement].iter().any(|s| may_hold_lone_surrogate(s)) {
+        return bail();
+    }
+    // Without the u flag, `i` compares by simple uppercase and never maps a non-ASCII letter to ASCII (ſ isn't s);
+    // regress folds classes the Unicode way (its caseless `\W` takes s and k, for ſ and K), so a caseless match runs
+    // here only on ASCII.
+    if icase && (!text.is_ascii() || !pattern.is_ascii() || pattern.contains("\\u") || pattern.contains("\\W")) {
+        return bail();
+    }
+    // A pattern regress refuses may be one V8 takes, and every match list (modes 1 and 2) is a list.
+    let Some(re) = safe_regex(&utf16(&pattern), icase) else {
+        return bail();
+    };
+    let t = utf16(&text);
+    match name {
+        "REGEXTEST" => V::Num(if regex_test(&re, &t) { 1.0 } else { 0.0 }),
+        "REGEXEXTRACT" if mode == 0.0 => V::str(&from_utf16(&regex_extract(&re, &t))),
+        "REGEXEXTRACT" => bail(),
+        _ if occurrence == 0.0 => V::str(&from_utf16(&regex_replace_all(&re, &t, &utf16(&replacement)))),
+        _ => V::str(&from_utf16(&replace_nth(&re, &t, &utf16(&replacement), occurrence))),
+    }
+}
+
+/// `templateFormat`, numbers through TEXT.
+fn template_format(v: &V, spec: Option<&str>) -> String {
+    match v {
+        V::Null | V::Undef => String::new(),
+        V::Err(e) => e.code.clone(),
+        V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
+        V::Num(n) => js_string_of(&excel_text(&V::Num(*n), &V::str(spec.unwrap_or("@")))),
+        V::List(items) => items.iter().map(|x| template_format(x, spec)).collect::<Vec<_>>().join(", "),
+        other => js_string_of(other),
+    }
+}
+
+/// TEMPLATE: positional placeholders, `{0}` the first value after the template.
+fn template(a: &[V]) -> V {
+    use crate::text_ops::{template_tokens, Token};
+    let tokens = template_tokens(&to_str(arg(a, 0)));
+    let bad = tokens.iter().find_map(|(_, t)| match t {
+        Some(Token::Placeholder(n, _)) if !n.bytes().all(|b| b.is_ascii_digit()) => Some(n),
+        _ => None,
+    });
+    if let Some(bad) = bad {
+        return V::err(sol_error(
+            "#NAME?",
+            format!("TEMPLATE placeholders are positional here: {{0}}, {{1}}… (got {{{bad}}}); the Template node takes names"),
+        ));
+    }
+    let values = a.get(1..).unwrap_or(&[]);
+    let mut out = String::new();
+    for (lit, token) in &tokens {
+        out.push_str(lit);
+        match token {
+            Some(Token::Open) => out.push('{'),
+            Some(Token::Close) => out.push('}'),
+            Some(Token::Placeholder(n, spec)) => {
+                let k = string_to_number(n);
+                let v = if k < values.len() as f64 { &values[k as usize] } else { &V::Null };
+                let spec = spec.as_deref().map(js_trim).filter(|s| !s.is_empty());
+                out.push_str(&template_format(v, spec));
+            }
+            None => {}
+        }
+    }
+    V::str(&out)
+}
+
+/// Formula.js ROUND (`roundBase` with `Math.round`): the shift by `num_digits` goes through the number's text.
+fn fx_round(number: &V, num_digits: &V) -> V {
+    let (n, d) = match (parse_number(number), parse_number(num_digits)) {
+        (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => return e,
+        (V::Num(n), V::Num(d)) => (n, d),
+        _ => return V::Fx("#VALUE!"),
+    };
+    let sign = if n >= 0.0 { 1.0 } else { -1.0 };
+    // `(x + "e" + e).split("e")`, its first two parts read back as one number.
+    let shift = |x: f64, e: f64| {
+        let s = format!("{}e{}", number_to_string(x), number_to_string(e));
+        let mut parts = s.split('e');
+        string_to_number(&format!("{}e{}", parts.next().unwrap_or(""), parts.next().unwrap_or("")))
+    };
+    let shifted = math_round(shift(n.abs(), d));
+    V::Num(shift(shifted, -d) * sign)
+}
+
+/// `x.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: fd, maximumFractionDigits: fd })`:
+/// ICU rounds the shortest round-trip digits half away from zero and groups by threes.
+fn intl_usd(x: f64, fd: usize) -> String {
+    if x.is_nan() {
+        return "$NaN".into();
+    }
+    let sign = if x.is_sign_negative() { "-$" } else { "$" };
+    if x.is_infinite() {
+        return format!("{sign}∞");
+    }
+    // The digits of `String(|x|)` (the shortest that round-trip, an even last digit on a tie), as 0.ddd × 10^point.
+    let s = number_to_string(x.abs());
+    let (m, exp) = s.split_once('e').unwrap_or((&s, "0"));
+    let (int, frac) = m.split_once('.').unwrap_or((m, ""));
+    let all: Vec<u8> = int.bytes().chain(frac.bytes()).map(|b| b - b'0').collect();
+    let zeros = all.iter().take_while(|&&d| d == 0).count();
+    let digits = &all[zeros..];
+    let point = int.len() as i64 + exp.parse::<i64>().unwrap_or(0) - zeros as i64;
+    // The digits of the value times 10^fd, rounded.
+    let keep = point + fd as i64;
+    let mut scaled: Vec<u8> = if keep <= 0 {
+        vec![u8::from(keep == 0 && digits.first().is_some_and(|&d| d >= 5))]
+    } else {
+        let k = keep as usize;
+        let mut v: Vec<u8> = (0..k).map(|i| digits.get(i).copied().unwrap_or(0)).collect();
+        if digits.get(k).is_some_and(|&d| d >= 5) {
+            let mut i = k;
+            loop {
+                if i == 0 {
+                    v.insert(0, 1);
+                    break;
+                }
+                i -= 1;
+                if v[i] == 9 {
+                    v[i] = 0;
+                } else {
+                    v[i] += 1;
+                    break;
+                }
+            }
+        }
+        v
+    };
+    while scaled.len() < fd + 1 {
+        scaled.insert(0, 0);
+    }
+    let int_len = scaled.len() - fd;
+    let int: String = scaled[..int_len].iter().map(|d| char::from(b'0' + d)).collect();
+    let int = match int.trim_start_matches('0') {
+        "" => "0",
+        t => t,
+    };
+    let mut out = String::from(sign);
+    for (i, c) in int.chars().enumerate() {
+        if i > 0 && (int.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    if fd > 0 {
+        out.push('.');
+        out.extend(scaled[int_len..].iter().map(|d| char::from(b'0' + d)));
+    }
+    out
+}
+
+/// DOLLAR: `preRound`, then Formula.js DOLLAR, its negative form rewritten in parentheses.
+fn dollar(value: &V, decimals: &V) -> V {
+    let n = to_num(value);
+    let d = opt_num(decimals, 2.0);
+    let pre = if n.is_nan() || d.is_nan() {
+        value.clone()
+    } else {
+        let r = round_digits(n, d, "round");
+        V::Num(if r == 0.0 { n } else { r })
+    };
+    // Formula.js DOLLAR(number, decimals = 2).
+    let decimals = if matches!(decimals, V::Undef) { V::Num(2.0) } else { decimals.clone() };
+    let number = match parse_number(&pre) {
+        V::Num(x) if !x.is_nan() => x,
+        _ => return V::Fx("#VALUE!"),
+    };
+    let out = match fx_round(&V::Num(number), &decimals) {
+        V::Num(x) => {
+            let dn = to_f64_js(&decimals);
+            let fd = if dn >= 0.0 { dn } else { 0.0 };
+            if fd > 100.0 {
+                return throw(sol_error("#VALUE!", "minimumFractionDigits value is out of range."));
+            }
+            let formatted = intl_usd(x, fd.floor() as usize);
+            if x < 0.0 { format!("$({})", formatted.get(2..).unwrap_or("")) } else { formatted }
+        }
+        // An Error's toLocaleString is its toString.
+        other => js_string_of(&other),
+    };
+    V::str(&if let Some(rest) = out.strip_prefix("$(") {
+        format!("(${rest}")
+    } else if let Some(rest) = out.strip_prefix("-$") {
+        format!("(${rest})")
+    } else {
+        out
+    })
+}
+
 /// `Number(v)` as `Math.abs` reads it.
 fn js_number_of(v: &V) -> f64 {
     match v {
@@ -3644,5 +4189,385 @@ fn error_handler(name: &str, a: &[V]) -> V {
             None => V::err(sol_error("#N/A", "ERROR.TYPE: the value is not an error")),
         }),
         _ => walk(value, &|v| V::Bool(caught(v))),
+    }
+}
+
+// ─── Finance (financeOps.ts, and Formula.js's own) ──────────────────────────────
+
+fn is_finance_whole(name: &str) -> bool {
+    matches!(name, "IRR" | "MIRR" | "XNPV" | "XIRR" | "MAXDRAWDOWN" | "CAGR" | "VOLATILITY" | "SHARPE" | "SORTINO")
+}
+
+fn is_finance(name: &str) -> bool {
+    is_finance_whole(name)
+        || matches!(
+            name,
+            "COUPDAYBS" | "COUPDAYSNC" | "COUPNCD" | "COUPPCD" | "COUPNUM" | "ACCRINTM" | "INTRATE" | "RECEIVED" | "YIELDDISC"
+                | "TBILLEQ" | "TBILLPRICE" | "TBILLYIELD" | "PRICEMAT" | "YIELDMAT" | "DURATION" | "MDURATION" | "PRICE" | "YIELD"
+                | "FVSCHEDULE" | "CUMIPMT" | "CUMPRINC" | "VDB" | "ODDFPRICE" | "ODDFYIELD" | "ODDLPRICE" | "ODDLYIELD"
+                | "NPV" | "RATE" | "DB" | "DDB" | "SYD" | "EFFECT" | "NOMINAL" | "PDURATION" | "RRI" | "DOLLARDE" | "DOLLARFR" | "ISPMT"
+        )
+}
+
+fn fin(r: crate::finance_ops::Fin) -> V {
+    use crate::finance_ops::Fin;
+    match r {
+        Fin::Num(n) => V::Num(n),
+        Fin::Err(e) => V::err(e),
+        Fin::Null => V::Null,
+        Fin::Throw(m) => throw(sol_error("#VALUE!", m)),
+    }
+}
+
+/// `numList` as financeOps reads its cells.
+fn fin_cells(v: &V) -> Vec<crate::finance_ops::Cell> {
+    use crate::finance_ops::Cell;
+    to_list(v)
+        .iter()
+        .map(|x| match x {
+            V::Num(n) => Cell::Num(*n),
+            V::Err(e) => Cell::Err(e.as_ref().clone()),
+            _ => Cell::Other,
+        })
+        .collect()
+}
+
+/// `datedPrep`: the values' first error, then the dates', then null for a blank date.
+fn dated_prep(values: &V, dates: &V) -> Result<(Vec<f64>, Rc<Vec<V>>), V> {
+    let values = crate::finance_ops::cash_prep(&fin_cells(values)).map_err(V::err)?;
+    let dates = to_list(dates);
+    if let Some(e) = dates.iter().find(|d| d.is_sol_error()) {
+        return Err(e.clone());
+    }
+    if dates.iter().any(|d| matches!(d, V::Null | V::Undef)) {
+        return Err(V::Null);
+    }
+    Ok((values, dates))
+}
+
+/// The first `n` dates as numbers; None where one isn't, since JS's `<` and `-` would read it, which only the TS does.
+fn date_nums(dates: &[V], n: usize) -> Option<Vec<f64>> {
+    dates[..n.min(dates.len())].iter().map(|d| if let V::Num(x) = d { Some(*x) } else { None }).collect()
+}
+
+/// `parseInt(x, 10)` of a number: the integer its `String` starts with.
+fn parse_int_of(x: f64) -> f64 {
+    let s = number_to_string(x);
+    let (neg, digits) = match s.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, s.as_str()),
+    };
+    let end = digits.bytes().position(|b| !b.is_ascii_digit()).unwrap_or(digits.len());
+    if end == 0 {
+        return f64::NAN;
+    }
+    let n: f64 = digits[..end].parse().unwrap_or(f64::NAN);
+    if neg { -n } else { n }
+}
+
+fn finance_function(name: &str, a: &[V]) -> V {
+    use crate::finance_ops::{self as f, CouponOp, OddCouponOp, ReturnsOp, SecurityDiscOp, TBillOp};
+    let n = |i: usize| to_num(arg(a, i));
+    let o = |i: usize, d: f64| opt_num(arg(a, i), d);
+    match name {
+        "COUPDAYBS" | "COUPDAYSNC" | "COUPNCD" | "COUPPCD" | "COUPNUM" => {
+            let op = match name {
+                "COUPDAYBS" => CouponOp::Coupdaybs,
+                "COUPDAYSNC" => CouponOp::Coupdaysnc,
+                "COUPNCD" => CouponOp::Coupncd,
+                "COUPPCD" => CouponOp::Couppcd,
+                _ => CouponOp::Coupnum,
+            };
+            fin(f::coupon_value(op, n(0), n(1), o(2, 2.0), o(3, 0.0)))
+        }
+        "ACCRINTM" => fin(f::accrint_m(n(0), n(1), n(2), o(3, 1000.0), o(4, 0.0))),
+        "INTRATE" | "RECEIVED" => {
+            let op = if name == "INTRATE" { SecurityDiscOp::Intrate } else { SecurityDiscOp::Received };
+            fin(f::security_disc(op, n(0), n(1), n(2), n(3), o(4, 0.0)))
+        }
+        "YIELDDISC" => fin(f::price_disc(false, n(0), n(1), n(2), o(3, 100.0), o(4, 0.0))),
+        "TBILLEQ" | "TBILLPRICE" | "TBILLYIELD" => {
+            let op = match name {
+                "TBILLEQ" => TBillOp::Tbilleq,
+                "TBILLPRICE" => TBillOp::Tbillprice,
+                _ => TBillOp::Tbillyield,
+            };
+            fin(f::tbill(op, n(0), n(1), n(2)))
+        }
+        "PRICEMAT" | "YIELDMAT" => fin(f::price_mat(name == "PRICEMAT", n(0), n(1), n(2), n(3), n(4), o(5, 0.0))),
+        "DURATION" | "MDURATION" => fin(f::duration_value(name == "MDURATION", n(0), n(1), n(2), n(3), o(4, 2.0), o(5, 0.0))),
+        "PRICE" | "YIELD" => fin(f::bond_price_yield(name == "PRICE", n(0), n(1), n(2), n(3), o(4, 100.0), o(5, 2.0))),
+        "IRR" => {
+            let nums = match f::cash_prep(&fin_cells(arg(a, 0))) {
+                Ok(nums) => nums,
+                Err(e) => return V::err(e),
+            };
+            if nums.len() <= 1 {
+                return V::Null;
+            }
+            let exps: Vec<f64> = (0..nums.len()).map(|t| t as f64).collect();
+            match f::solve_discount_rate(&nums, &exps) {
+                Some(r) => V::Num(r),
+                None => V::err(sol_error(
+                    "#CONV!",
+                    "IRR couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.",
+                )),
+            }
+        }
+        "MIRR" => {
+            let nums = match f::cash_prep(&fin_cells(arg(a, 0))) {
+                Ok(nums) => nums,
+                Err(e) => return V::err(e),
+            };
+            let (fr, rr) = (n(1), n(2));
+            if fr.is_nan() || rr.is_nan() {
+                return value_err("MIRR");
+            }
+            if nums.len() <= 1 { V::Null } else { fin(f::mirr(&nums, fr, rr)) }
+        }
+        "XNPV" => {
+            if matches!(arg(a, 0), V::Null | V::Undef) {
+                return V::Null;
+            }
+            let r = n(0);
+            if r.is_nan() {
+                return value_err("XNPV");
+            }
+            let (values, dates) = match dated_prep(arg(a, 1), arg(a, 2)) {
+                Ok(p) => p,
+                Err(v) => return v,
+            };
+            let count = values.len().min(dates.len());
+            if count == 0 {
+                return V::Null;
+            }
+            match date_nums(&dates, count) {
+                Some(ds) => fin(f::xnpv(r, &values, &ds)),
+                None => bail(),
+            }
+        }
+        "XIRR" => {
+            let (values, dates) = match dated_prep(arg(a, 0), arg(a, 1)) {
+                Ok(p) => p,
+                Err(v) => return v,
+            };
+            let count = values.len().min(dates.len());
+            if count < 2 {
+                return V::Null;
+            }
+            match date_nums(&dates, count) {
+                Some(ds) => fin(f::xirr(&values, &ds)),
+                None => bail(),
+            }
+        }
+        "FVSCHEDULE" => {
+            if matches!(arg(a, 0), V::Null | V::Undef) {
+                return V::Null;
+            }
+            let p = n(0);
+            if p.is_nan() { value_err("FVSCHEDULE") } else { V::Num(f::fv_schedule(p, &nums_of(std::slice::from_ref(arg(a, 1))))) }
+        }
+        "CUMIPMT" | "CUMPRINC" => {
+            let ty = if is_true(arg(a, 5)) { 1.0 } else { 0.0 };
+            fin(f::cumulative_payment(name == "CUMIPMT", n(0), n(1), n(2), n(3), n(4), ty))
+        }
+        "VDB" => fin(f::vdb(n(0), n(1), n(2), n(3), n(4), o(5, 2.0), is_true(arg(a, 6)))),
+        "ODDFPRICE" | "ODDFYIELD" => {
+            let op = if name == "ODDFPRICE" { OddCouponOp::Oddfprice } else { OddCouponOp::Oddfyield };
+            fin(f::odd_coupon(op, n(0), n(1), n(2), n(3), n(4), n(5), o(6, 100.0), o(7, 2.0)))
+        }
+        "ODDLPRICE" | "ODDLYIELD" => {
+            let op = if name == "ODDLPRICE" { OddCouponOp::Oddlprice } else { OddCouponOp::Oddlyield };
+            fin(f::odd_coupon(op, n(0), n(1), f64::NAN, n(2), n(3), n(4), o(5, 100.0), o(6, 2.0)))
+        }
+        "MAXDRAWDOWN" => fin(f::returns_op(ReturnsOp::Maxdrawdown, &fin_cells(arg(a, 0)), 0.0, 1.0)),
+        "CAGR" => fin(f::returns_op(ReturnsOp::Cagr, &fin_cells(arg(a, 0)), 0.0, o(1, 1.0))),
+        "VOLATILITY" => fin(f::returns_op(ReturnsOp::Volatility, &fin_cells(arg(a, 0)), 0.0, o(1, 1.0))),
+        "SHARPE" | "SORTINO" => {
+            let op = if name == "SHARPE" { ReturnsOp::Sharpe } else { ReturnsOp::Sortino };
+            fin(f::returns_op(op, &fin_cells(arg(a, 0)), o(1, 0.0), o(2, 1.0)))
+        }
+        _ => fx_finance(name, a),
+    }
+}
+
+/// Formula.js's finance bodies the TS passes through to.
+fn fx_finance(name: &str, a: &[V]) -> V {
+    let p = |i: usize| parse_number(arg(a, i));
+    // `x === undefined ? d : x`: only a left-out argument takes the default.
+    let undef_or = |i: usize, d: f64| if matches!(arg(a, i), V::Undef) { V::Num(d) } else { parse_number(arg(a, i)) };
+    let log = crate::fdlibm::log;
+    match name {
+        "NPV" => {
+            // `parseNumberArray(flatten(arguments))`, which reads from the end.
+            let args = flat_all(a);
+            if args.is_empty() {
+                return V::Fx("#VALUE!");
+            }
+            let mut nums = vec![0.0; args.len()];
+            for i in (0..args.len()).rev() {
+                match parse_number(&args[i]) {
+                    V::Num(x) => nums[i] = x,
+                    e => return e,
+                }
+            }
+            let rate = nums[0];
+            let mut value = 0.0;
+            for (j, x) in nums.iter().enumerate().skip(1) {
+                value += x / js_pow(1.0 + rate, j as f64);
+            }
+            V::Num(value)
+        }
+        "RATE" => {
+            let vals = [p(0), p(1), p(2), undef_or(3, 0.0), undef_or(4, 0.0), undef_or(5, 0.1)];
+            let Some([nper, pmt, pv, fv, ty, guess]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let eps_max = 1e-10;
+            let mut rate = guess;
+            let ty = if ty != 0.0 { 1.0 } else { 0.0 };
+            for _ in 0..100 {
+                if rate <= -1.0 {
+                    return V::Fx("#NUM!");
+                }
+                let y = if rate.abs() < eps_max {
+                    pv * (1.0 + nper * rate) + pmt * (1.0 + rate * ty) * nper + fv
+                } else {
+                    let f = js_pow(1.0 + rate, nper);
+                    pv * f + pmt * (1.0 / rate + ty) * (f - 1.0) + fv
+                };
+                if y.abs() < eps_max {
+                    return V::Num(rate);
+                }
+                let dy = if rate.abs() < eps_max {
+                    pv * nper + pmt * ty * nper
+                } else {
+                    let f = js_pow(1.0 + rate, nper);
+                    let df = nper * js_pow(1.0 + rate, nper - 1.0);
+                    pv * df + pmt * (1.0 / rate + ty) * df + pmt * (-1.0 / (rate * rate)) * (f - 1.0)
+                };
+                rate -= y / dy;
+            }
+            V::Num(rate)
+        }
+        "DB" => {
+            let vals = [p(0), p(1), p(2), p(3), undef_or(4, 12.0)];
+            let Some([cost, salvage, life, period, month]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 {
+                return V::Fx("#NUM!");
+            }
+            if !(1.0..=12.0).contains(&month) || month.fract() != 0.0 || period > life {
+                return V::Fx("#NUM!");
+            }
+            if salvage >= cost {
+                return V::Num(0.0);
+            }
+            // `toFixed(3)` answers text, which the arithmetic below reads back as a number.
+            let rate = crate::jsnum::to_fixed(1.0 - js_pow(salvage / cost, 1.0 / life), 3.0).map_or(f64::NAN, |t| string_to_number(&t));
+            let initial = (cost * rate * month) / 12.0;
+            let mut total = initial;
+            let mut current = 0.0;
+            let ceiling = if period == life { life - 1.0 } else { period };
+            // A step per period: past a million (or forever, for an infinite life) the TS takes it.
+            if ceiling > 1e6 {
+                return bail();
+            }
+            let mut i = 2.0;
+            while i <= ceiling {
+                current = (cost - total) * rate;
+                total += current;
+                i += 1.0;
+            }
+            V::Num(if period == 1.0 {
+                initial
+            } else if period == life {
+                (cost - total) * rate
+            } else {
+                current
+            })
+        }
+        "DDB" => {
+            let vals = [p(0), p(1), p(2), p(3), undef_or(4, 2.0)];
+            let Some([cost, salvage, life, period, factor]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 || factor <= 0.0 || period > life {
+                return V::Fx("#NUM!");
+            }
+            if salvage >= cost {
+                return V::Num(0.0);
+            }
+            if period > 1e6 {
+                return bail();
+            }
+            let (mut total, mut current) = (0.0, 0.0);
+            let mut i = 1.0;
+            while i <= period {
+                current = crate::jsnum::math_min((cost - total) * (factor / life), cost - salvage - total);
+                total += current;
+                i += 1.0;
+            }
+            V::Num(current)
+        }
+        "SYD" => {
+            let vals = [p(0), p(1), p(2), p(3)];
+            let Some([cost, salvage, life, per]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if life == 0.0 || per < 1.0 || per > life {
+                return V::Fx("#NUM!");
+            }
+            let per = parse_int_of(per);
+            V::Num(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
+        }
+        "EFFECT" | "NOMINAL" => {
+            let vals = [p(0), p(1)];
+            let Some([rate, npery]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if rate <= 0.0 || npery < 1.0 {
+                return V::Fx("#NUM!");
+            }
+            let npery = parse_int_of(npery);
+            V::Num(if name == "EFFECT" {
+                js_pow(1.0 + rate / npery, npery) - 1.0
+            } else {
+                (js_pow(rate + 1.0, 1.0 / npery) - 1.0) * npery
+            })
+        }
+        "PDURATION" => {
+            let vals = [p(0), p(1), p(2)];
+            let Some([rate, pv, fv]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if rate <= 0.0 {
+                return V::Fx("#NUM!");
+            }
+            V::Num((log(fv) - log(pv)) / log(1.0 + rate))
+        }
+        "RRI" => {
+            let vals = [p(0), p(1), p(2)];
+            let Some([nper, pv, fv]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if nper == 0.0 || pv == 0.0 {
+                return V::Fx("#NUM!");
+            }
+            V::Num(js_pow(fv / pv, 1.0 / nper) - 1.0)
+        }
+        "DOLLARDE" | "DOLLARFR" => {
+            let vals = [p(0), p(1)];
+            let Some([dollar, fraction]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            if fraction < 0.0 {
+                return V::Fx("#NUM!");
+            }
+            if (0.0..1.0).contains(&fraction) {
+                return V::Fx("#DIV/0!");
+            }
+            let fraction = parse_int_of(fraction);
+            let mut result = parse_int_of(dollar);
+            let digits = (log(fraction) / std::f64::consts::LN_10).ceil();
+            if name == "DOLLARFR" {
+                result += (dollar % 1.0) * js_pow(10.0, -digits) * fraction;
+                return V::Num(result);
+            }
+            result += ((dollar % 1.0) * js_pow(10.0, digits)) / fraction;
+            let power = js_pow(10.0, (log(fraction) / std::f64::consts::LN_2).ceil() + 1.0);
+            V::Num(math_round(result * power) / power)
+        }
+        "ISPMT" => {
+            let vals = [p(0), p(1), p(2), p(3)];
+            let Some([rate, per, nper, pv]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            V::Num(pv * rate * (per / nper - 1.0))
+        }
+        _ => V::Undef,
     }
 }

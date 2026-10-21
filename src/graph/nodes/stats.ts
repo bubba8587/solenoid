@@ -670,7 +670,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
 
   label: string;
   op: HypothesisTestOp;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = {};
   width = 180;
   height = 210;
@@ -721,7 +721,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
 
   data(inputs: { a?: number[][]; b?: number[][]; x?: number[]; sigma?: number[]; groups?: (number | null)[][][]; table?: (number | null)[][][]; x1?: number[]; n1?: number[]; x2?: number[]; n2?: number[]; k?: number[]; n?: number[]; p0?: number[] }) {
     const a = inputs.a?.[0] ?? null;
-    let result: number | null = null;
+    let result: number | SolError | null = null;
     const groupsOf = (m: (number | null)[][] | null): number[][] | null => {
       if (!m || m.length === 0) return null;
       const cols = m[0].length;

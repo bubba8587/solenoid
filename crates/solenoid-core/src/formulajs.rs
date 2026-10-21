@@ -6,7 +6,7 @@
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
 use crate::error_value::sol_error;
-use crate::excel_functions::{bail, js_pow, js_string_of, parse_number, throw, to_num, truthy, V};
+use crate::excel_functions::{bail, js_pow, js_string_of, parse_number, throw, truthy, V};
 use crate::fdlibm::{exp, log, sin};
 use crate::js_radix::{parse_int, to_int32, to_radix_string, to_uint32};
 use crate::jsnum::{math_round, number_to_string, string_to_number};
@@ -17,21 +17,12 @@ const NA: V = V::Fx("#N/A");
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
-    "FACT", "FACTDOUBLE", "COMBIN", "COMBINA", "PERMUT", "PERMUTATIONA", "MULTINOMIAL", "SUMSQ", "SUMPRODUCT",
+    "PERMUTATIONA", "SUMSQ", "SUMPRODUCT",
     "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "SERIESSUM", "BASE", "DECIMAL", "ROMAN", "ARABIC", "BIN2DEC", "BIN2HEX",
     "BIN2OCT", "DEC2BIN", "DEC2HEX", "DEC2OCT", "HEX2BIN", "HEX2DEC", "HEX2OCT", "OCT2BIN", "OCT2DEC", "OCT2HEX",
     "BITAND", "BITOR", "BITXOR", "BITLSHIFT", "BITRSHIFT", "DELTA", "GESTEP", "TYPE", "ERF", "ERF.PRECISE", "ERFC",
-    "ERFC.PRECISE", "GAMMA", "GAMMALN", "GAMMALN.PRECISE", "Z.TEST", "CHISQ.TEST", "NA", "GAUSS", "PHI",
-    "CONFIDENCE.NORM", "BINOM.DIST.RANGE", "CLEAN", "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "ISPMT",
-    "DOLLARDE", "DOLLARFR",
+    "ERFC.PRECISE", "GAMMA", "GAMMALN", "GAMMALN.PRECISE", "Z.TEST", "CHISQ.TEST", "NA", "GAUSS", "PHI", "CONFIDENCE.NORM",
 ];
-
-/// The steps the registrations over DB, DDB and BINOM.DIST.RANGE let Formula.js's loops take.
-const MAX_STEPS: f64 = 1e6;
-
-fn too_long(name: &str) -> V {
-    V::err(sol_error("#DOMAIN!", format!("{name} takes at most a million steps")))
-}
 
 fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
@@ -93,7 +84,6 @@ fn parse_number_array(arr: &[V]) -> Result<Vec<f64>, V> {
     Ok(out)
 }
 
-const STACK_OVERFLOW: &str = "Maximum call stack size exceeded";
 
 fn invalid_array_length() -> V {
     throw(sol_error("#VALUE!", "Invalid array length"))
@@ -116,68 +106,6 @@ fn rept(text: &str, times: f64) -> Result<String, V> {
     array_join(times + 1.0, text)
 }
 
-/// FACT: a memoized recursion down from n. A negative or infinite n never reaches 0 or 1, so the stack overflows;
-/// past 1000 whether it overflows depends on what earlier calls memoized, which only the TS knows.
-fn fact(x: f64) -> Result<f64, V> {
-    let n = x.floor();
-    if n == 0.0 || n == 1.0 {
-        return Ok(1.0);
-    }
-    // NaN − 1 parses as #VALUE!, and an error times NaN is NaN.
-    if n.is_nan() {
-        return Ok(f64::NAN);
-    }
-    if n < 1.0 || n.is_infinite() {
-        return Err(throw(sol_error("#VALUE!", STACK_OVERFLOW)));
-    }
-    if n > 1000.0 {
-        return Err(bail());
-    }
-    let mut r = 1.0;
-    let mut k = 2.0;
-    while k <= n {
-        r *= k;
-        k += 1.0;
-    }
-    Ok(r)
-}
-
-/// FACTDOUBLE: n·(n − 2)·…, its recursion a level per factor.
-fn fact_double(x: f64) -> Result<f64, V> {
-    let n = x.floor();
-    if n <= 0.0 {
-        return Ok(1.0);
-    }
-    if n.is_nan() {
-        return Ok(f64::NAN);
-    }
-    if n.is_infinite() {
-        return Err(throw(sol_error("#VALUE!", STACK_OVERFLOW)));
-    }
-    if n > 2000.0 {
-        return Err(bail());
-    }
-    let mut k = n - 2.0 * ((n - 1.0) / 2.0).floor();
-    let mut r = 1.0;
-    while k <= n {
-        r *= k;
-        k += 2.0;
-    }
-    Ok(r)
-}
-
-fn combin(n: &V, k: &V) -> V {
-    let (n, k) = (parse_number(n), parse_number(k));
-    if let Some(e) = any_error(&[&n, &k]) {
-        return e;
-    }
-    let (n, k) = (num_of(&n).unwrap_or(f64::NAN), num_of(&k).unwrap_or(f64::NAN));
-    if n < k {
-        return NUM;
-    }
-    let r = (|| Ok::<f64, V>(fact(n)? / (fact(k)? * fact(n - k)?)))();
-    r.map_or_else(|e| e, V::Num)
-}
 
 /// The places argument the DEC2…/…2BIN family pads with.
 fn with_places(result: String, places: &V) -> V {
@@ -572,11 +500,6 @@ fn parsed<const N: usize>(vs: [&V; N]) -> Option<[f64; N]> {
     Some(out)
 }
 
-/// `parseInt(x, 10)` of a number, as the finance bodies truncate.
-fn parse_int_of(x: f64) -> f64 {
-    parse_int(&number_to_string(x), 10.0)
-}
-
 /// CHISQ.TEST's `ChiSq`.
 fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, V> {
     let mut p = exp(-0.5 * xsqr);
@@ -607,45 +530,10 @@ fn chi_sq(xsqr: f64, dof: f64) -> Result<f64, V> {
 
 pub fn call(name: &str, a: &[V]) -> V {
     match name {
-        "FACT" | "FACTDOUBLE" => match parse_number(arg(a, 0)) {
-            V::Num(n) => (if name == "FACT" { fact(n) } else { fact_double(n) }).map_or_else(|e| e, V::Num),
-            e => e,
+        "PERMUTATIONA" => match (parse_number(arg(a, 0)), parse_number(arg(a, 1))) {
+            (V::Num(n), V::Num(k)) => V::Num(js_pow(n, k)),
+            _ => VALUE,
         },
-        "COMBIN" => combin(arg(a, 0), arg(a, 1)),
-        "COMBINA" => {
-            let (n, k) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
-            if let Some(e) = any_error(&[&n, &k]) {
-                return e;
-            }
-            let (n, k) = (num_of(&n).unwrap_or(f64::NAN), num_of(&k).unwrap_or(f64::NAN));
-            if n < k {
-                return NUM;
-            }
-            if n == 0.0 && k == 0.0 { V::Num(1.0) } else { combin(&V::Num(n + k - 1.0), &V::Num(n - 1.0)) }
-        }
-        "PERMUT" | "PERMUTATIONA" => {
-            let (n, k) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
-            let (Some(n), Some(k)) = (num_of(&n), num_of(&k)) else { return VALUE };
-            if name == "PERMUTATIONA" {
-                return V::Num(js_pow(n, k));
-            }
-            (|| Ok::<f64, V>(fact(n)? / fact(n - k)?))().map_or_else(|e| e, V::Num)
-        }
-        "MULTINOMIAL" => {
-            let args = match parse_number_array(&flatten_args(a)) {
-                Ok(x) => x,
-                Err(e) => return e,
-            };
-            let (mut sum, mut divisor) = (0.0, 1.0);
-            for x in args {
-                sum += x;
-                match fact(x) {
-                    Ok(f) => divisor *= f,
-                    Err(e) => return e,
-                }
-            }
-            fact(sum).map_or_else(|e| e, |f| V::Num(f / divisor))
-        }
         "SUMSQ" => match parse_number_array(&flatten_args(a)) {
             Ok(xs) => V::Num(xs.iter().fold(0.0, |r, &x| r + if x.is_finite() { x * x } else { 0.0 })),
             Err(e) => e,
@@ -928,132 +816,6 @@ pub fn call(name: &str, a: &[V]) -> V {
             let inv = -1.41421356237309505 * 1.0 * jstat_erfcinv(2.0 * (alpha / 2.0)) + 0.0;
             let change = (inv * sd / size.sqrt()).abs();
             V::Num((1.0 + change) - 1.0)
-        }
-        "BINOM.DIST.RANGE" => {
-            let s2 = if matches!(arg(a, 3), V::Undef) { arg(a, 2) } else { arg(a, 3) };
-            if to_num(s2) - to_num(arg(a, 2)) > MAX_STEPS {
-                return too_long(name);
-            }
-            let Some([trials, p, s, s2]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), s2]) else { return VALUE };
-            let mut result = 0.0;
-            let mut i = s;
-            while i <= s2 {
-                let c = match combin(&V::Num(trials), &V::Num(i)) {
-                    V::Num(c) => c,
-                    V::Fx(_) => f64::NAN,
-                    thrown => return thrown,
-                };
-                result += c * js_pow(p, i) * js_pow(1.0 - p, trials - i);
-                i += 1.0;
-            }
-            V::Num(result)
-        }
-        "CLEAN" => match arg(a, 0) {
-            e @ V::Fx(_) => e.clone(),
-            V::Str(s) => V::str(&s.chars().filter(|&c| c > '\u{1F}').collect::<String>()),
-            v if !truthy(v) => V::str(""),
-            _ => throw(sol_error("#VALUE!", "text.replace is not a function")),
-        },
-        "DB" => {
-            if to_num(arg(a, 3)) > MAX_STEPS {
-                return too_long(name);
-            }
-            let month = if matches!(arg(a, 4), V::Undef) { &V::Num(12.0) } else { arg(a, 4) };
-            let Some([cost, salvage, life, period, month]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), month]) else { return VALUE };
-            if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 {
-                return NUM;
-            }
-            if !((1.0..=12.0).contains(&month) && month.fract() == 0.0) || period > life {
-                return NUM;
-            }
-            if salvage >= cost {
-                return V::Num(0.0);
-            }
-            let rate = crate::jsnum::to_fixed(1.0 - js_pow(salvage / cost, 1.0 / life), 3.0).map_or(f64::NAN, |t| string_to_number(&t));
-            let initial = (cost * rate * month) / 12.0;
-            let mut total = initial;
-            let mut current = 0.0;
-            let ceiling = if period == life { life - 1.0 } else { period };
-            let mut i = 2.0;
-            while i <= ceiling {
-                current = (cost - total) * rate;
-                total += current;
-                i += 1.0;
-            }
-            V::Num(if period == 1.0 { initial } else if period == life { (cost - total) * rate } else { current })
-        }
-        "DDB" => {
-            if to_num(arg(a, 3)) > MAX_STEPS {
-                return too_long(name);
-            }
-            let factor = if matches!(arg(a, 4), V::Undef) { &V::Num(2.0) } else { arg(a, 4) };
-            let Some([cost, salvage, life, period, factor]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), factor]) else { return VALUE };
-            if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 || factor <= 0.0 || period > life {
-                return NUM;
-            }
-            if salvage >= cost {
-                return V::Num(0.0);
-            }
-            let (mut total, mut current) = (0.0, 0.0);
-            let mut i = 1.0;
-            while i <= period {
-                current = crate::jsnum::math_min((cost - total) * (factor / life), cost - salvage - total);
-                total += current;
-                i += 1.0;
-            }
-            V::Num(current)
-        }
-        "SYD" => {
-            let Some([cost, salvage, life, per]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3)]) else { return VALUE };
-            if life == 0.0 || per < 1.0 || per > life {
-                return NUM;
-            }
-            let per = parse_int_of(per);
-            V::Num(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
-        }
-        "EFFECT" | "NOMINAL" => {
-            let Some([rate, npery]) = parsed([arg(a, 0), arg(a, 1)]) else { return VALUE };
-            if rate <= 0.0 || npery < 1.0 {
-                return NUM;
-            }
-            let n = parse_int_of(npery);
-            V::Num(if name == "EFFECT" { js_pow(1.0 + rate / n, n) - 1.0 } else { (js_pow(rate + 1.0, 1.0 / n) - 1.0) * n })
-        }
-        "PDURATION" => {
-            let Some([rate, pv, fv]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2)]) else { return VALUE };
-            if rate <= 0.0 {
-                return NUM;
-            }
-            V::Num((log(fv) - log(pv)) / log(1.0 + rate))
-        }
-        "RRI" => {
-            let Some([nper, pv, fv]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2)]) else { return VALUE };
-            if nper == 0.0 || pv == 0.0 {
-                return NUM;
-            }
-            V::Num(js_pow(fv / pv, 1.0 / nper) - 1.0)
-        }
-        "ISPMT" => {
-            let Some([rate, per, nper, pv]) = parsed([arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3)]) else { return VALUE };
-            V::Num(pv * rate * (per / nper - 1.0))
-        }
-        "DOLLARDE" | "DOLLARFR" => {
-            let Some([dollar, fraction]) = parsed([arg(a, 0), arg(a, 1)]) else { return VALUE };
-            if fraction < 0.0 {
-                return NUM;
-            }
-            if fraction < 1.0 {
-                return V::Fx("#DIV/0!");
-            }
-            let fraction = parse_int_of(fraction);
-            let digits = (log(fraction) / std::f64::consts::LN_10).ceil();
-            let mut result = parse_int_of(dollar);
-            if name == "DOLLARFR" {
-                return V::Num(result + (dollar % 1.0) * js_pow(10.0, -digits) * fraction);
-            }
-            result += ((dollar % 1.0) * js_pow(10.0, digits)) / fraction;
-            let power = js_pow(10.0, (log(fraction) / std::f64::consts::LN_2).ceil() + 1.0);
-            V::Num(math_round(result * power) / power)
         }
         _ => V::Undef,
     }

@@ -26,6 +26,14 @@ Without the tripwire, a vendor update that fixes or changes a function passes si
 - **GCD, LCM** run `gcdLcm` (`mathUtils.ts`), the GCD card's kernel: each value is truncated, as in Excel, and a negative value, or a value or an LCM at 2^53 or more, is `#DOMAIN!`. Formula.js runs Euclid's algorithm on the raw decimals, so `GCD(4.5, 6.9)` is about 1.8e-15 and `LCM(4.5, 6)` is 27, and it takes negatives. The card, which read each pair after rounding, reads it the same way now.
 - **LN, LOG10, SQRTPI, ASIN, ACOS, ACOSH, ATANH** outside their domain answer `#DOMAIN!` ("Input is outside this function's domain"). Formula.js silently returns null for some of them.
 
+- **FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT, MULTINOMIAL** run `combinatoric` (`mathUtils.ts`). Formula.js builds FACT by recursion, so a large count, or a negative one that never reaches its base case, overflowed the call stack, and COMBIN, PERMUT and MULTINOMIAL divide factorials, so `COMBIN(30, 15)` was 155117519.99999997. Arguments truncate; a negative count or choosing more than there are is `#DOMAIN!`; COMBIN divides as it multiplies, so its answer is the exact integer wherever a double holds one; past a double's range the answer overflows to `#OVERFLOW!`. The factorials multiply in Formula.js's order, so FACT and FACTDOUBLE answer what it did up to 170.
+
+- **BINOM.DIST.RANGE** runs `binomDistRange` (`mathUtils.ts`): Excel's constraints (0 ≤ s ≤ s2 ≤ trials, a probability from 0 to 1) answer `#DOMAIN!`, where Formula.js checks nothing and sums a reversed range to 0; each term multiplies COMBIN's exact count by the powers, or works in logs where the count overflows, so `BINOM.DIST.RANGE(1e5, 0.5, 0, 50000)` answers instead of overflowing the call stack; a range past a million outcomes is `#DOMAIN!`.
+
+- **BESSELJ, BESSELI, BESSELK, BESSELY** call Formula.js, except that an order past 1,000,000 answers `#DOMAIN!` ("BESSELJ takes an order of at most 1,000,000"): Formula.js recurs once per order, so `BESSELJ(1, 1e12)` hung the app ([[C120]] linearWork).
+
+- **CLEAN** drops character codes 0 to 31, as Excel's does, and reads a number or logical as its text: Formula.js threw on `CLEAN(5)`. The Text Transform card's CLEAN calls it, so the card no longer also drops DEL (127), which Excel keeps.
+
 These match the Math node's own compute.
 
 ## Logic
@@ -82,6 +90,7 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 - **TBILLEQ, TBILLPRICE, TBILLYIELD** run the T-Bill node's actual/360 kernel. Formula.js counts 30/360 and misses Microsoft's worked examples by a day.
 - **IRR, XIRR** run the IRR node's solver, `financeOps.solveDiscountRate`: Newton's method with a rate floor, then bracket and bisect, answering `#CONV!` only when no root exists above the floor. Formula.js's IRR returns a fabricated 1000 (100,000%) when the root sits close to the floor: `IRR([-4943, -2458, 285])` is −0.903. The `guess` argument is accepted and ignored, because this solver needs no seed and the node takes none ([[D73]] nodeCoversFormula). Pinned across both surfaces in `tests/graph/nodes/financeIterative.test.ts`.
 - **MIRR** runs the node's `mirr` kernel on the same cash-flow preparation as IRR.
+- **DB, DDB** call Formula.js, except that a period past 1,000,000 within the life answers `#DOMAIN!` ("DB needs a period of at most 1,000,000"). Formula.js steps once per period, so a huge period hung the app ([[C120]] linearWork); VDB, CUMIPMT and CUMPRINC stop at the same million. The tripwire checks that Formula.js still loops.
 - **NPV** stays Formula.js but is `RANGE_ZERO_FILL`: a blank period is a zero cash flow, as the nodes' `cashPrep` treats it. Dropping the blank would shift every later period.
 
 ## Array-returning names and complex numbers

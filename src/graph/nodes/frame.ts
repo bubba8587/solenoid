@@ -32,8 +32,8 @@ import {
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  splitColumn, addIndexColumn, decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, choiceLadder,
-  mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
+  decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, choiceLadder,
+  promoteHeaders, demoteHeaders,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
   VALUELESS_FILTER_OPS, LIST_FILTER_OPS,
@@ -327,8 +327,16 @@ export class FrameInputNode extends ClassicPreset.Node {
           ? readingsRefusal(bareLambdaCall(lam), frame, {}, new Map([["λ", lam]]))
           : readingsRefusal(c.expr!, frame, {}, lamByName);
         if (refused) { fill(i, refused); continue; }
-        const onEngine = !lam && used.length === 0
-          ? computeColumnOnEngine(frame, c.expr!, rowCount(), { sideValue: (p) => solError("#REF!", `No column "${p}"`) }) : null;
+        // A wired λ runs in the engine too: its body crosses as text with its captures ([[C130]] rustCore).
+        const onEngine = lam
+          ? computeColumnOnEngine(frame, "", rowCount(), {
+            bare: lam,
+            sideValue: (p, kind) => solError("#REF!", kind === "var" ? `No column "${p}": a table λ's side values ride its captures` : `No column "${p}"`),
+          })
+          : computeColumnOnEngine(frame, c.expr!, rowCount(), {
+            sideValue: (p) => solError("#REF!", `No column "${p}"`),
+            lambdas: Object.fromEntries(usedLams.map((l, k) => [used[k], l])),
+          });
         const r = onEngine ?? computeColumnCells(
           frame,
           lam
@@ -338,7 +346,7 @@ export class FrameInputNode extends ClassicPreset.Node {
             sideValue: (p, kind) => (!lam && lamByName.has(p)
               ? lamByName.get(p)
               : solError("#REF!", lam && kind === "var"
-                ? `No column "${p}" — a table λ's side values ride its captures`
+                ? `No column "${p}": a table λ's side values ride its captures`
                 : `No column "${p}"`)),
           },
         );
@@ -1259,16 +1267,15 @@ export class SplitColumnNode extends ClassicPreset.Node {
     return shapeOfSplitColumn(input, column, this.stringLiterals.delimiter ?? "");
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; column?: string[]; delimiter?: string[]; into?: string[][] }) {
+  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; delimiter?: string[]; into?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
     const columnRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
     const delimiter = readInput(inputs.delimiter, this.stringLiterals.delimiter ?? "");
     const into = readColumnList(inputs.into);
-    if (columnRaw === null || delimiter === null || into === null) { this.cachedResult = null; return { frame: null }; }
+    if (f == null || columnRaw === null || delimiter === null || into === null) return emitFrame(this, beginPass(this), null);
     const column = columnRaw.trim();
-    this.cachedResult = column ? runVerb(() => splitColumn(f, column, delimiter, into)) : f;
-    return { frame: this.cachedResult };
+    const gen = beginPass(this);
+    return emitFrame(this, gen, column ? await runFrameUnary(f, { kind: "splitColumn", column, delimiter, into }) : await passFrame(f));
   }
 }
 
@@ -1295,15 +1302,12 @@ export class AddIndexNode extends ClassicPreset.Node {
     return shapeOfAddIndex(input, this.stringLiterals.name || "Index");
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
+  async data(inputs: { frame?: (FrameInput | null)[]; start?: number[]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
     const start = readRole<number>(this, "start", inputs.start);
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "Index");
-    if (nameRaw === null) { this.cachedResult = null; return { frame: null }; }
-    const name = nameRaw.trim() || "Index";
-    this.cachedResult = runVerb(() => addIndexColumn(f, name, start));
-    return { frame: this.cachedResult };
+    if (f == null || nameRaw === null) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "addIndex", name: nameRaw.trim() || "Index", start }));
   }
 }
 
@@ -1411,19 +1415,18 @@ export class MergeColumnsNode extends ClassicPreset.Node {
     if (!input || ctx.wired("columns") || ctx.wired("name")) return null;
     const columns = csvList(this.stringLiterals.columns).map((c) => c.trim()).filter(Boolean);
     if (columns.length < 2) return input;
-    return shapeOfFrameValue(mergeColumns(emptyFrameOf(input), columns, "", this.stringLiterals.name ?? ""));
+    return shapeOf({ kind: "mergeColumns", columns, separator: "", name: this.stringLiterals.name ?? "" }, input);
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; columns?: string[][]; separator?: string[]; name?: string[] }) {
+  async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][]; separator?: string[]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
     const colsRaw = readColumnList(inputs.columns);
     const separator = readInput(inputs.separator, this.stringLiterals.separator ?? "");
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    if (colsRaw === null || separator === null || name === null) { this.cachedResult = null; return { frame: null }; }
+    if (f == null || colsRaw === null || separator === null || name === null) return emitFrame(this, beginPass(this), null);
     const columns = colsRaw.map((c) => c.trim()).filter(Boolean);
-    this.cachedResult = columns.length < 2 ? f : runVerb(() => mergeColumns(f, columns, separator, name));
-    return { frame: this.cachedResult };
+    const gen = beginPass(this);
+    return emitFrame(this, gen, columns.length < 2 ? await passFrame(f) : await runFrameUnary(f, { kind: "mergeColumns", columns, separator, name }));
   }
 }
 
@@ -1488,11 +1491,10 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
     return ctx.inputShape("frame");
   }
 
-  data(inputs: { frame?: (FrameValue | null)[] }) {
+  async data(inputs: { frame?: (FrameInput | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => dropBlankRows(f, this.mode));
-    return { frame: this.cachedResult };
+    if (f == null) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "dropBlankRows", mode: this.mode }));
   }
 }
 

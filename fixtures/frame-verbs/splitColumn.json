@@ -1,0 +1,670 @@
+{
+ "verb": "splitColumn",
+ "cases": [
+  {
+   "name": "split on a comma into named columns",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "splitColumn",
+    "column": "k",
+    "delimiter": ",",
+    "into": [
+     "first",
+     " ",
+     "k"
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "first",
+      "type": "string",
+      "values": [
+       "a",
+       null,
+       "c",
+       "d",
+       null
+      ]
+     },
+     {
+      "name": "k 2",
+      "type": "string",
+      "values": [
+       "b",
+       null,
+       null,
+       "e",
+       null
+      ]
+     },
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       null,
+       null,
+       null,
+       "f",
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1.5,
+       null,
+       3,
+       null,
+       -2
+      ]
+     },
+     {
+      "name": "d",
+      "type": "date",
+      "values": [
+       45000,
+       null,
+       45292.5,
+       45001,
+       null
+      ]
+     },
+     {
+      "name": "f",
+      "type": "logical",
+      "values": [
+       true,
+       null,
+       false,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "numbers split their text",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "splitColumn",
+    "column": "v",
+    "delimiter": "."
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a,b",
+       null,
+       "c",
+       "d,e,f",
+       null
+      ]
+     },
+     {
+      "name": "v 1",
+      "type": "string",
+      "values": [
+       "1",
+       null,
+       "3",
+       null,
+       "-2"
+      ]
+     },
+     {
+      "name": "v 2",
+      "type": "string",
+      "values": [
+       "5",
+       null,
+       null,
+       null,
+       null
+      ]
+     },
+     {
+      "name": "d",
+      "type": "date",
+      "values": [
+       45000,
+       null,
+       45292.5,
+       45001,
+       null
+      ]
+     },
+     {
+      "name": "f",
+      "type": "logical",
+      "values": [
+       true,
+       null,
+       false,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a date splits its display text",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "splitColumn",
+    "column": "d",
+    "delimiter": "-",
+    "into": [
+     "day",
+     "month",
+     "year"
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a,b",
+       null,
+       "c",
+       "d,e,f",
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1.5,
+       null,
+       3,
+       null,
+       -2
+      ]
+     },
+     {
+      "name": "day",
+      "type": "string",
+      "values": [
+       "15",
+       null,
+       "01",
+       "16",
+       null
+      ]
+     },
+     {
+      "name": "month",
+      "type": "string",
+      "values": [
+       "Mar",
+       null,
+       "Jan",
+       "Mar",
+       null
+      ]
+     },
+     {
+      "name": "year",
+      "type": "string",
+      "values": [
+       "2023",
+       null,
+       "2024",
+       "2023",
+       null
+      ]
+     },
+     {
+      "name": "f",
+      "type": "logical",
+      "values": [
+       true,
+       null,
+       false,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "logicals split their display text",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "splitColumn",
+    "column": "f",
+    "delimiter": "U"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a,b",
+       null,
+       "c",
+       "d,e,f",
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1.5,
+       null,
+       3,
+       null,
+       -2
+      ]
+     },
+     {
+      "name": "d",
+      "type": "date",
+      "values": [
+       45000,
+       null,
+       45292.5,
+       45001,
+       null
+      ]
+     },
+     {
+      "name": "f 1",
+      "type": "string",
+      "values": [
+       "TR",
+       null,
+       "FALSE",
+       null,
+       null
+      ]
+     },
+     {
+      "name": "f 2",
+      "type": "string",
+      "values": [
+       "E",
+       null,
+       null,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an empty delimiter keeps the frame",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "splitColumn",
+    "column": "k",
+    "delimiter": ""
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a,b",
+       null,
+       "c",
+       "d,e,f",
+       null
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1.5,
+       null,
+       3,
+       null,
+       -2
+      ]
+     },
+     {
+      "name": "d",
+      "type": "date",
+      "values": [
+       45000,
+       null,
+       45292.5,
+       45001,
+       null
+      ]
+     },
+     {
+      "name": "f",
+      "type": "logical",
+      "values": [
+       true,
+       null,
+       false,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a missing column",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "splitColumn",
+    "column": "nope",
+    "delimiter": ","
+   },
+   "expectError": "#REF!"
+  }
+ ]
+}

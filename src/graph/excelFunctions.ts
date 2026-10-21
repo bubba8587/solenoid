@@ -4,7 +4,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate, wildcardSource } from "./excelCriteria";
-import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm } from "./nodes/mathUtils";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm, combinatoric, binomDistRange } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantiles, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -505,11 +505,19 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   DOLLAR:      { returns: "string", arity: [1, 2], family: "text" },
   FIXED:       { returns: "string", arity: [1, 3], family: "text" },
   VALUE:       { returns: "number", arity: [1, 1], family: "text" },
+  CLEAN:       { returns: "string", arity: [1, 1], family: "text" },
   NUMBERVALUE: { returns: "number", arity: [1, 3], family: "text" },
   MOD:         { returns: "number", arity: [2, 2], family: "scalar-math" },
   POWER:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   QUOTIENT:    { returns: "number", arity: [2, 2], family: "scalar-math" },
   GCD:         { returns: "number", arity: [1, 255], family: "scalar-math" },
+  FACT:        { returns: "number", arity: [1, 1], family: "combinatorics" },
+  FACTDOUBLE:  { returns: "number", arity: [1, 1], family: "combinatorics" },
+  COMBIN:      { returns: "number", arity: [2, 2], family: "combinatorics" },
+  COMBINA:     { returns: "number", arity: [2, 2], family: "combinatorics" },
+  PERMUT:      { returns: "number", arity: [2, 2], family: "combinatorics" },
+  MULTINOMIAL: { returns: "number", arity: [1, 255], family: "combinatorics" },
+  "BINOM.DIST.RANGE": { returns: "number", arity: [3, 4], family: "distributions" },
   PRODUCT:     { returns: "number", arity: [1, 255], family: "scalar-math" },
   LCM:         { returns: "number", arity: [1, 255], family: "scalar-math" },
   ATAN2:       { returns: "number", arity: [2, 2], family: "scalar-math" },
@@ -594,12 +602,15 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   PRICE:      { returns: "number", arity: [4, 6], family: "finance", native: true },
   YIELD:      { returns: "number", arity: [4, 6], family: "finance", native: true },
   VDB:        { returns: "number", arity: [5, 7], family: "finance", native: true },
+  DB:         { returns: "number", arity: [4, 5], family: "finance", native: true },
+  BESSELJ:    { returns: "number", arity: [2, 2] },
+  BESSELI:    { returns: "number", arity: [2, 2] },
+  BESSELK:    { returns: "number", arity: [2, 2] },
+  BESSELY:    { returns: "number", arity: [2, 2] },
+  DDB:        { returns: "number", arity: [4, 5], family: "finance", native: true },
   CUMIPMT:    { returns: "number", arity: [6, 6], family: "finance", native: true },
   CUMPRINC:   { returns: "number", arity: [6, 6], family: "finance", native: true },
   SLN:        { returns: "number", arity: [3, 3], family: "finance", native: true },
-  DB:         { returns: "number", arity: [4, 5], family: "finance" },
-  DDB:        { returns: "number", arity: [4, 5], family: "finance" },
-  "BINOM.DIST.RANGE": { returns: "number", arity: [3, 4], family: "distributions" },
   ODDFPRICE:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDFYIELD:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDLPRICE:  { returns: "number", arity: [5, 7], family: "finance", native: true },
@@ -909,15 +920,6 @@ for (const name of ["BASE", "DEC2HEX", "BIN2HEX", "OCT2HEX"]) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
   registerInternal(name, (...a) => { const r = f(...a); return typeof r === "string" ? r.toUpperCase() : r; });
 }
-// Formula.js loops once per period (DB, DDB) or per outcome (BINOM.DIST.RANGE); past a million steps the calc would stall.
-const LOOP_STEPS: Array<[string, (a: unknown[]) => number]> = [
-  ["DB", (a) => toNum(a[3])], ["DDB", (a) => toNum(a[3])],
-  ["BINOM.DIST.RANGE", (a) => toNum(a[3] === undefined ? a[2] : a[3]) - toNum(a[2])],
-];
-for (const [name, steps] of LOOP_STEPS) {
-  const f = fxLookup(name)!;
-  registerInternal(name, (...a) => (steps(a) > 1e6 ? solError("#DOMAIN!", `${name} takes at most a million steps`) : f(...a)));
-}
 // Excel's SEARCH reads ?, * and ~ in find_text; Formula.js's matches them literally.
 let searchPattern: { find: string; re: RegExp } | null = null;
 registerInternal("SEARCH", (find, within, start) => {
@@ -938,6 +940,9 @@ registerInternal("MID", (text, start, len) => {
   return t.slice(s - 1, s - 1 + n);
 });
 registerInternal("PROPER", (text) => properCase(toStr(text)));
+// Excel's CLEAN drops character codes 0 to 31 and reads a number or logical as its text; Formula.js threw on either, and
+// the Text Transform card also dropped DEL (127), which Excel keeps.
+registerInternal("CLEAN", (text) => toStr(text).replace(/[\x00-\x1F]/g, ""));
 registerInternal("REPT", (text, times) => {
   const t = toStr(text), n = Math.trunc(toNum(times));
   if (Number.isNaN(n)) return VALUE("REPT");
@@ -980,6 +985,16 @@ for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregat
 // On the shared kernel, so a NaN is #DOMAIN! as in every aggregate ([[D48]] classifyNonFinite); no numbers is Excel's 0.
 registerInternal("PRODUCT", (...a) => { const n = numsOf(...a); return n.length === 0 ? 0 : aggregate("product", n); });
 registerInternal("GCD", (...a) => gcdLcm("gcd", numsOf(...a)));
+// Formula.js recurses through FACT, so a large count overflowed the call stack, and divides factorials, so COMBIN(30, 15)
+// missed by 3e-8 ([[C17]] shareImpl, formulajs-divergences.md).
+for (const [name, op] of [["FACT", "fact"], ["FACTDOUBLE", "factdouble"], ["COMBIN", "combin"], ["COMBINA", "combina"], ["PERMUT", "permut"]] as const) {
+  registerInternal(name, (...a) => { const v = a.map(toNum); return badNum(...v) ? VALUE(name) : combinatoric(op, v); });
+}
+registerInternal("BINOM.DIST.RANGE", (n, p, s, s2) => {
+  const v = [n, p, s].map(toNum), hi = s2 == null ? undefined : toNum(s2);
+  return badNum(...v, hi ?? 0) ? VALUE("BINOM.DIST.RANGE") : binomDistRange(v[0], v[1], v[2], hi);
+});
+registerInternal("MULTINOMIAL", (...a) => { const v = numsOf(...a); return badNum(...v) ? VALUE("MULTINOMIAL") : combinatoric("multinomial", v); });
 registerInternal("LCM", (...a) => gcdLcm("lcm", numsOf(...a)));
 for (const [name, op] of [["MIN", "min"], ["MAX", "max"]] as const) {
   registerInternal(name, (...a) => {
@@ -1409,6 +1424,22 @@ registerInternal("PRICE", (settle, maturity, rate, yld, redemption, freq) =>
   bondPriceYield("price", toNum(settle), toNum(maturity), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
 registerInternal("YIELD", (settle, maturity, rate, pr, redemption, freq) =>
   bondPriceYield("yield", toNum(settle), toNum(maturity), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
+// Formula.js's Bessel functions recur once per order, so a huge order would hang ([[C120]] linearWork).
+for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"] as const) {
+  const fx = FX[name] as (...args: unknown[]) => unknown;
+  registerInternal(name, (x, n) => (Math.trunc(toNum(n)) > 1_000_000
+    ? solError("#DOMAIN!", `${name} takes an order of at most 1,000,000`)
+    : fx(x, n)));
+}
+// Formula.js's DB and DDB step once per period, so a huge period within a huge life would hang ([[C120]] linearWork).
+for (const name of ["DB", "DDB"] as const) {
+  const fx = FX[name] as (...args: unknown[]) => unknown;
+  registerInternal(name, (cost, salvage, life, period, extra) => {
+    const p = toNum(period);
+    if (p > 1_000_000 && p <= toNum(life)) return solError("#DOMAIN!", `${name} needs a period of at most 1,000,000`);
+    return fx(cost, salvage, life, period, extra);
+  });
+}
 const IRR_CONV = (fn: string) => solError("#CONV!", `${fn} couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.`);
 registerInternal("IRR", (values) => {
   const { error, nums } = cashPrep(numList(values) as (number | null | SolError)[]);
@@ -2158,7 +2189,7 @@ registerInternal("DECODEBASE64", (t) => (t == null ? null : urlEncode("unbase64"
 registerInternal("HASH", (t, algorithm) => {
   if (t == null) return null;
   const a = (algorithm == null ? "sha256" : String(algorithm).trim().toLowerCase().replace(/[-_\s]/g, "")) as HashAlgorithm;
-  if (!(a in HASH_ALGORITHM_META)) return solError("#DOMAIN!", `HASH algorithm must be one of ${Object.keys(HASH_ALGORITHM_META).join(", ")}`);
+  if (!Object.prototype.hasOwnProperty.call(HASH_ALGORITHM_META, a)) return solError("#DOMAIN!", `HASH algorithm must be one of ${Object.keys(HASH_ALGORITHM_META).join(", ")}`);
   return hashText(toStr(t), a);
 });
 registerInternal("UUID", () => uuidV4());

@@ -16,9 +16,10 @@ import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
 import { allocate, type AllocateMode } from "./nodes/allocateOps";
 import { buildLadder, mustClash, isRough, type LadderOption } from "./nodes/ladderOps";
 import type { LadderPayload } from "./chartValue";
-import { aggregate, percentileOf, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
+import { aggregate, percentileOf, pearson, spearman, kendallTau, covariance, averageRanks } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
-import { setPivotLayout } from "./pivotLayout";
+import { setPivotLayout, carryPivotLayout } from "./pivotLayout";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 
 export type AggOp =
   | "sum" | "avg" | "min" | "max" | "count"
@@ -52,11 +53,17 @@ export type FrameOp =
   | ({ kind: "window" } & WindowSpec)
   | { kind: "fillBlanks"; columns: string[]; dir: "down" | "up" }
   | { kind: "replaceValues"; column: string; find: string; replaceWith: string; mode: "cell" | "substring" }
-  | { kind: "sliceRows"; mode: "first" | "last" | "skip" | "range"; n: number; to?: number };
+  | { kind: "sliceRows"; mode: "first" | "last" | "skip" | "range"; n: number; to?: number }
+  | { kind: "dropBlankRows"; mode: "all" | "any" }
+  | { kind: "addIndex"; name: string; start: number }
+  | { kind: "splitColumn"; column: string; delimiter: string; into?: string[] }
+  | { kind: "mergeColumns"; columns: string[]; separator: string; name: string }
+  | { kind: "formats"; formats: Record<string, FormatAnnotation> };
 
 export const FRAME_OP_KINDS = [
   "select", "drop", "rename", "sort", "distinct", "head",
   "filter", "filterMulti", "groupBy", "unpivot", "pivot", "window", "fillBlanks", "replaceValues", "sliceRows",
+  "dropBlankRows", "addIndex", "splitColumn", "mergeColumns", "formats",
 ] as const satisfies readonly FrameOp["kind"][];
 type _MissingFrameOpKind = Exclude<FrameOp["kind"], (typeof FRAME_OP_KINDS)[number]>;
 const _frameOpKindsExhaustive: _MissingFrameOpKind[] = [] satisfies never[];
@@ -559,7 +566,7 @@ export function splitColumn(f: FrameValue, column: string, delimiter: string, na
   const col = requireColumn(f, column);
   if (delimiter === "") return f;
   const idx = f.columns.indexOf(col);
-  const parts: string[][] = col.values.map((v) => (v == null || isSolError(v) ? [] : String(v).split(delimiter)));
+  const parts: string[][] = col.values.map((v) => (v == null || isSolError(v) ? [] : String(formatFrameCell(col.type, v)).split(delimiter)));
   const n = parts.reduce((m, p) => Math.max(m, p.length), 0);
   const newCols: FrameColumn[] = Array.from({ length: n }, (_, k) => ({
     name: names?.[k]?.trim() || `${column} ${k + 1}`,
@@ -1516,6 +1523,11 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
     case "fillBlanks": return fillBlanks(f, op.columns, op.dir);
     case "replaceValues": return replaceValues(f, op.column, op.find, op.replaceWith, op.mode);
     case "sliceRows": return sliceRows(f, op.mode, op.n, op.to);
+    case "dropBlankRows": return dropBlankRows(f, op.mode);
+    case "addIndex": return addIndexColumn(f, op.name, op.start);
+    case "splitColumn": return splitColumn(f, op.column, op.delimiter, op.into);
+    case "mergeColumns": return mergeColumns(f, op.columns, op.separator, op.name);
+    case "formats": return withFormats(f, op.formats);
   }
 }
 
@@ -2354,7 +2366,23 @@ export function mergeColumns(f: FrameValue, columns: readonly string[], separato
   const keptBefore = f.columns.slice(0, at).filter((c) => !drop.has(c.name)).length;
   const merged: FrameColumn = { name: (name ?? "").trim() || "Merged", type: "string", values };
   const out = [...kept.slice(0, keptBefore), merged, ...kept.slice(keptBefore)];
-  return { __frame: true, columns: out.map((c, i) => ({ ...c, name: makeHeaders(out.map((x) => x.name), out.length)[i] })) };
+  const unique = makeHeaders(out.map((x) => x.name), out.length);
+  return { __frame: true, columns: out.map((c, i) => ({ ...c, name: unique[i] })) };
+}
+
+/** A node's own column format picks laid over its output ([[D41]] formatFlowsDownstream); the cells stay as they are. */
+export function withFormats(f: FrameValue, formats: Readonly<Record<string, FormatAnnotation>>): FrameValue {
+  let changed = false;
+  const columns = f.columns.map((c) => {
+    const ann = Object.prototype.hasOwnProperty.call(formats, c.name) ? formats[c.name] : undefined;
+    if (ann === undefined || ann === c.format) return c;
+    changed = true;
+    return { ...c, format: ann };
+  });
+  if (!changed) return f;
+  const out = frame(columns);
+  carryPivotLayout(f, out);
+  return out;
 }
 
 export function promoteHeaders(f: FrameValue): FrameValue {
@@ -2486,19 +2514,35 @@ export type CorrMethod = "pearson" | "spearman" | "kendall" | "covariance";
 export function correlationMatrix(f: FrameValue, method: CorrMethod): FrameValue {
   const cols = f.columns.filter((c) => c.type === "number");
   const vals = cols.map((c) => c.values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null)));
+  // A column every pair reads whole ranks once ([[C120]] linearWork); a blank anywhere drops rows pair by pair.
+  const whole = vals.map((v) => v.every((x) => x !== null));
+  const ranks = new Map<number, number[]>();
+  const rankOf = (i: number) => {
+    let r = ranks.get(i);
+    if (!r) ranks.set(i, (r = averageRanks(vals[i] as number[])));
+    return r;
+  };
   const cell = (i: number, j: number): number | null => {
-    const xs: number[] = [], ys: number[] = [];
-    const n = Math.min(vals[i].length, vals[j].length);
-    for (let r = 0; r < n; r++) { const a = vals[i][r], b = vals[j][r]; if (a !== null && b !== null) { xs.push(a); ys.push(b); } }
-    const v = method === "pearson" ? pearson(xs, ys)
-      : method === "spearman" ? spearman(xs, ys)
-      : method === "kendall" ? kendallTau(xs, ys)
-      : covariance(xs, ys, true);
+    let v: number | SolError | null;
+    if (method === "spearman" && whole[i] && whole[j] && vals[i].length === vals[j].length) {
+      v = vals[i].length < 2 ? null : pearson(rankOf(i), rankOf(j));
+    } else {
+      const xs: number[] = [], ys: number[] = [];
+      const n = Math.min(vals[i].length, vals[j].length);
+      for (let r = 0; r < n; r++) { const a = vals[i][r], b = vals[j][r]; if (a !== null && b !== null) { xs.push(a); ys.push(b); } }
+      v = method === "pearson" ? pearson(xs, ys)
+        : method === "spearman" ? spearman(xs, ys)
+        : method === "kendall" ? kendallTau(xs, ys)
+        : covariance(xs, ys, true);
+    }
     return typeof v === "number" ? v : null;
   };
+  // Every method reads its two lists symmetrically, so each pair computes once and mirrors.
+  const grid = cols.map(() => new Array<number | null>(cols.length).fill(null));
+  for (let i = 0; i < cols.length; i++) for (let j = i; j < cols.length; j++) grid[i][j] = grid[j][i] = cell(i, j);
   const names = makeHeaders(["column", ...cols.map((c) => c.name)], cols.length + 1);
   const out: FrameColumn[] = [{ name: names[0], type: "string", values: cols.map((c) => c.name) }];
-  cols.forEach((_, j) => out.push({ name: names[j + 1], type: "number", values: cols.map((_, i) => cell(i, j)) }));
+  cols.forEach((_, j) => out.push({ name: names[j + 1], type: "number", values: cols.map((_, i) => grid[i][j]) }));
   return { __frame: true, columns: out };
 }
 

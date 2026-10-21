@@ -238,8 +238,9 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
       expect((ev(src, {}) as SolError).code).toBe("#DOMAIN!");
     }
     expect(ev("DDB(1000, 10, 5, 2)", {})).toBe(240);
-    expect(ev("BINOMTEST(5, 1e9, 0.5)", {})).toBeNull();
-    expect(ev("FISHEREXACT(1e7, 1e7, 1e7, 1e7)", {})).toBeNull();
+    for (const src of ["BINOMTEST(5, 1e9, 0.5)", "FISHEREXACT(1e7, 1e7, 1e7, 1e7)"]) {
+      expect((ev(src, {}) as SolError).code).toBe("#DOMAIN!");
+    }
   });
 
   it("CONVERT reads only the table's own units, not Object.prototype's members", () => {

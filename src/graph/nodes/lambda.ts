@@ -136,7 +136,7 @@ export class LambdaNode extends ClassicPreset.Node {
         return col.hit ? col.v : capturedVals[i];
       }));
     const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
-    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, captured, descriptions };
+    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, captured, capturedValues: capturedVals, descriptions };
     this._lastBuild = { expr: this.expr, params: this.params, descJson, capturedVals };
     this.cachedValue = value;
     this.cachedError = null;

@@ -74,6 +74,22 @@ function binomCdf(k: number, n: number, p: number): number | null {
   return Number.isFinite(r) ? Math.min(1, Math.max(0, r)) : null;
 }
 
+/** BINOM.INV sums the pmfs up to this many trials; past it, summing one per trial would hang ([[C120]] linearWork). */
+const BINOM_INV_SUMS = 1_000_000;
+
+/** The least k whose CDF reaches `alpha`, by halving [0, n]. The halvings are capped, since past 2^53 a step of one
+ *  can round to nothing; 1,100 spans any finite range. */
+function binomInvBySearch(n: number, p: number, alpha: number): number | null {
+  let lo = 0, hi = n;
+  for (let step = 0; lo < hi && step < 1100; step++) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    const c = binomCdf(mid, n, p);
+    if (c === null) return null;
+    if (c >= alpha) hi = mid; else lo = mid + 1;
+  }
+  return lo;
+}
+
 function hypgeomPmf(k: number, n: number, M: number, N: number): number | null {
   k = Math.floor(k); n = Math.floor(n); M = Math.floor(M); N = Math.floor(N);
   const lo = Math.max(0, n + M - N);
@@ -256,6 +272,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
         const n = Math.floor(nv);
         // An infinite n would sum NaN pmfs forever.
         if (!Number.isFinite(n) || n < 0 || pv < 0 || pv > 1 || v < 0 || v > 1) return null;
+        if (n > BINOM_INV_SUMS) return binomInvBySearch(n, pv, v);
         let cumP = 0;
         for (let k = 0; k <= n; k++) {
           const pmf = binomPmf(k, n, pv);
@@ -302,8 +319,16 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
       const hi = Math.min(ni, Mi);
       if (Ni <= 0 || Mi < 0 || ni < 0 || Mi > Ni || ni > Ni) return null;
       if (ki < lo) return 0;
+      // Hoeffding bounds each pmf by exp(-2(j - mean)^2 / n): past sqrt(400n) from the mean it is below e^-800, so
+      // exp gives exactly 0 and skipping those terms leaves the sum unchanged ([[C120]] linearWork).
+      let from = lo, to = Math.min(ki, hi);
+      if (to - from > 10_000) {
+        const mean = (ni * Mi) / Ni, reach = Math.ceil(Math.sqrt(400 * ni)) + 1;
+        from = Math.max(lo, Math.floor(mean) - reach);
+        to = Math.min(to, Math.ceil(mean) + reach);
+      }
       let sum = 0;
-      for (let j = lo; j <= Math.min(ki, hi); j++) {
+      for (let j = from; j <= to; j++) {
         const pmf = hypgeomPmf(j, ni, Mi, Ni);
         if (pmf === null) return null;
         sum += pmf;

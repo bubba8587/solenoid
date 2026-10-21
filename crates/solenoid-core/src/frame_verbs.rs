@@ -142,6 +142,22 @@ pub enum FrameOp {
         #[serde(default)]
         to: Option<f64>,
     },
+    #[serde(rename = "dropBlankRows")]
+    DropBlankRows { mode: String },
+    #[serde(rename = "addIndex")]
+    AddIndex { name: String, start: f64 },
+    #[serde(rename = "splitColumn")]
+    SplitColumn {
+        column: String,
+        delimiter: String,
+        #[serde(default)]
+        into: Option<Vec<String>>,
+    },
+    #[serde(rename = "mergeColumns")]
+    MergeColumns { columns: Vec<String>, separator: String, name: String },
+    /// Display formats only, which the TS keeps beside the frame; the cells pass through.
+    #[serde(rename = "formats")]
+    Formats {},
 }
 
 // ─── Shared helpers ─────────────────────────────────────────────────────────────
@@ -1618,6 +1634,11 @@ pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
         FrameOp::FillBlanks { columns, dir } => fill_blanks(f, columns, dir),
         FrameOp::ReplaceValues { column, find, replace_with, mode } => replace_values(f, column, find, replace_with, mode),
         FrameOp::SliceRows { mode, n, to } => Ok(slice_rows(f, mode, *n, *to)),
+        FrameOp::DropBlankRows { mode } => Ok(drop_blank_rows(f, mode)),
+        FrameOp::AddIndex { name, start } => Ok(add_index_column(f, name, *start)),
+        FrameOp::SplitColumn { column, delimiter, into } => split_column(f, column, delimiter, into.as_deref()),
+        FrameOp::MergeColumns { columns, separator, name } => merge_columns(f, columns, separator, name),
+        FrameOp::Formats {} => Ok(f.clone()),
     }
 }
 
@@ -1761,6 +1782,83 @@ pub fn slice_rows(f: &FrameValue, mode: &str, n: f64, to: Option<f64>) -> FrameV
             })
             .collect(),
     )
+}
+
+pub fn drop_blank_rows(f: &FrameValue, mode: &str) -> FrameValue {
+    let keep: Vec<usize> = (0..frame_row_count(f))
+        .filter(|&i| {
+            let blanks = f.columns.iter().filter(|c| matches!(c.cell_at(i), FrameCell::Null)).count();
+            !(if mode == "all" { blanks == f.columns.len() } else { blanks > 0 })
+        })
+        .collect();
+    reorder_rows(f, &keep)
+}
+
+/// Renamed columns with their names run through `makeHeaders`, so a clash gets a suffix.
+fn with_unique_names(mut out: Vec<FrameColumn>) -> FrameValue {
+    let unique = make_headers(&out.iter().map(|c| c.name.clone()).collect::<Vec<_>>(), out.len());
+    for (c, name) in out.iter_mut().zip(unique) {
+        c.name = name;
+    }
+    frame(out)
+}
+
+pub fn add_index_column(f: &FrameValue, name: &str, start: f64) -> FrameValue {
+    let nm = match js_trim(name) {
+        "" => "Index",
+        t => t,
+    };
+    let index = FrameColumn::new(nm, FrameColType::Number, (0..frame_row_count(f)).map(|i| FrameCell::Num(start + i as f64)).collect());
+    with_unique_names(std::iter::once(index).chain(f.columns.iter().cloned()).collect())
+}
+
+pub fn split_column(f: &FrameValue, column: &str, delimiter: &str, names: Option<&[String]>) -> Res<FrameValue> {
+    let col = require_column(f, column)?;
+    if delimiter.is_empty() {
+        return Ok(f.clone());
+    }
+    let idx = f.columns.iter().position(|c| std::ptr::eq(c, col)).unwrap_or(0);
+    // Each cell's display text; a blank or an error splits into nothing.
+    let texts: Vec<Option<String>> =
+        col.values.iter().map(|v| if matches!(v, FrameCell::Null | FrameCell::Err(_)) { None } else { Some(format_frame_cell(col.ty, v)) }).collect();
+    let parts: Vec<Vec<&str>> = texts.iter().map(|t| t.as_deref().map_or(Vec::new(), |t| t.split(delimiter).collect())).collect();
+    let n = parts.iter().map(Vec::len).max().unwrap_or(0);
+    let new_cols = (0..n).map(|k| {
+        let name = match names.and_then(|ns| ns.get(k)).map(|s| js_trim(s)) {
+            Some(t) if !t.is_empty() => t.to_string(),
+            _ => format!("{column} {}", k + 1),
+        };
+        let values = parts.iter().map(|p| p.get(k).map_or(FrameCell::Null, |s| FrameCell::Str(Rc::from(*s)))).collect();
+        FrameColumn::new(name, FrameColType::String, values)
+    });
+    let out = f.columns[..idx].iter().cloned().chain(new_cols).chain(f.columns[idx + 1..].iter().cloned()).collect();
+    Ok(with_unique_names(out))
+}
+
+pub fn merge_columns(f: &FrameValue, columns: &[String], separator: &str, name: &str) -> Res<FrameValue> {
+    let sources: Vec<&FrameColumn> = columns.iter().map(|c| require_column(f, c)).collect::<Res<_>>()?;
+    if sources.len() < 2 {
+        return Err(sol_error("#VALUE!", "Merge needs at least two columns"));
+    }
+    let values = (0..frame_row_count(f))
+        .map(|i| {
+            let texts: Vec<Cow<str>> = sources
+                .iter()
+                .map(|c| match c.cell_at(i) {
+                    FrameCell::Null => Cow::Borrowed(""),
+                    v => Cow::Owned(format_frame_cell(c.ty, v)),
+                })
+                .collect();
+            FrameCell::Str(Rc::from(texts.join(separator)))
+        })
+        .collect();
+    let drop: HashSet<&str> = sources.iter().map(|c| c.name.as_str()).collect();
+    let at = f.columns.iter().position(|c| c.name == sources[0].name).unwrap_or(0);
+    let kept: Vec<&FrameColumn> = f.columns.iter().filter(|c| !drop.contains(c.name.as_str())).collect();
+    let kept_before = f.columns[..at].iter().filter(|c| !drop.contains(c.name.as_str())).count();
+    let merged = FrameColumn::new(match js_trim(name) { "" => "Merged", t => t }, FrameColType::String, values);
+    let out = kept[..kept_before].iter().map(|c| (*c).clone()).chain(std::iter::once(merged)).chain(kept[kept_before..].iter().map(|c| (*c).clone())).collect();
+    Ok(with_unique_names(out))
 }
 
 // ─── Window functions by group ──────────────────────────────────────────────────

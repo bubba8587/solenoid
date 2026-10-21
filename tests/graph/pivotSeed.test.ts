@@ -7,6 +7,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
 import type { FrameValue, FrameCell } from "../../src/graph/frame";
+import { readFrame, type FrameInput } from "../../src/graph/frameBackend";
 import seed from "../fixtures/pivot-tables.json"; // the retired seed, kept as the Pivot fixture (2026-09-16)
 
 // Runs the "Pivot tables (one source, many views)" seed through a real editor +
@@ -46,7 +47,7 @@ describe("pivot-tables seed", () => {
 
     const frameOf = async (seedId: string) => {
       const out = (await engine.fetch(byId.get(seedId)!.id)) as Record<string, unknown>;
-      return out.frame as FrameValue;
+      return (await readFrame(out.frame as FrameInput)) as FrameValue;
     };
     const col = (f: FrameValue, name: string): FrameCell[] => {
       const c = f.columns.find((x) => x.name === name);

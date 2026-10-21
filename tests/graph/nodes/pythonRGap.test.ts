@@ -551,6 +551,9 @@ describe("text tier 2: UNACCENT / SLUGIFY / Pad Text / Truncate Text", () => {
     expect(ev('PADTEXT("7", 3, "left", "0")')).toBe("007");
     expect(ev('PADTEXT("ab", 4)')).toBe("ab  ");
     expect((ev('PADTEXT("ab", 4, "middle")') as { code?: string }).code).toBe("#DOMAIN!");
+    // [[C120]] linearWork: a huge width answers at once, at Excel's text limit like REPT.
+    expect((ev('PADTEXT("ab", 1e12)') as { code?: string }).code).toBe("#VALUE!");
+    expect((ev('PADTEXT("ab", 32767)') as string).length).toBe(32767);
     expect(ev('TRUNCATETEXT("abcdefgh", 5, "..")')).toBe("abc..");
   });
 });
@@ -652,6 +655,8 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
     expect(ev('HASH("abc", "SHA-1")')).toBe("a9993e364706816aba3e25717850c26c9cd0d89d");
     expect(ev('HASH("abc", "fnv1a64")')).toBe("e71fa2190541574b");
     expect((ev('HASH("abc", "blake")') as { code?: string }).code).toBe("#DOMAIN!");
+    // An inherited key such as "constructor" is not an algorithm.
+    expect((ev('HASH("abc", "Constructor")') as { code?: string }).code).toBe("#DOMAIN!");
   });
   it("UUID is stable within a recalculation and fresh after one; the formula is volatile", async () => {
     const n = new UuidNode();

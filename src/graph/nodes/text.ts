@@ -98,7 +98,7 @@ function applyTextTransform(op: TextTransformOp, text: string): string {
     case "lower": return resolveExcelFunction("LOWER")!(text) as string;
     case "trim":  return resolveExcelFunction("TRIM")!(text) as string;
     case "proper": return properCase(text);
-    case "clean":  return text.replace(/[\x00-\x1F\x7F]/g, "");
+    case "clean":  return resolveExcelFunction("CLEAN")!(text) as string;
     case "unaccent": return unaccent(text);
     case "slugify":  return slugify(text);
   }

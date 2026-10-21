@@ -931,6 +931,8 @@ export function frequencyBins(data: readonly Cell[], bins: readonly Cell[]): num
 export function ntileList(arr: readonly Cell[], n: number): Cell[] | SolError {
   const k = Math.round(n);
   if (!(k >= 1)) return solError("#VALUE!", "NTILE needs at least one bucket");
+  // One percentile per bucket edge ([[C120]] linearWork).
+  if (k > MAX_GENERATED) return solError("#DOMAIN!", `NTILE takes at most ${MAX_GENERATED} buckets`);
   const nums = presentNumbers(arr);
   if (nums.length === 0) return arr.map((v) => (isSolError(v) ? v : null));
   const sorted = [...nums].sort((a, b) => a - b);

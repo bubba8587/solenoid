@@ -315,6 +315,8 @@ The two engines were once kept in agreement by hand-mirrored test pairs tied tog
 | `window` | Window | lazy | `#REF!`, `#VALUE!` (unknown function) |
 | `fillBlanks` | Fill Down | lazy | `#REF!` |
 | `replaceValues` | Replace Values | lazy | `#REF!` |
+| `dropBlankRows`, `addIndex`, `splitColumn`, `mergeColumns` | Drop Blank Rows, Add Index, Split Column, Merge Columns | oracle (the Rust core runs them; see Table tidies) | `#REF!`, `#VALUE!` |
+| `formats` | none: the coercion wrapper adds it | never sent | nothing |
 | `join` | Join | command | `#REF!`, `#TYPE!`, `#UNIT!`, `#VALUE!` |
 | `append` | Append | command | `#TYPE!` |
 | `bindColumns` | Bind Columns | command | nothing |
@@ -532,16 +534,20 @@ These run only in the oracle, on the collected value, on both platforms. They ha
 
 ### Table tidies
 
-The Power Query column and row tools. Each returns a new Frame, and names go through `makeHeaders`.
+The Power Query column and row tools. Each returns a new Frame, and names go through `makeHeaders`. Split Column, Add Index, Merge Columns and Drop Blank Rows are also `FrameOp`s (`splitColumn`, `addIndex`, `mergeColumns`, `dropBlankRows`), so their cards run lazily like the other verbs: the Rust core runs them, and under Polars, which lacks them, `RUST_CORE_ONLY` in `frameBackend.ts` sends them to the oracle. Headers stays a direct call.
 
 | Function | Card | Rule |
 |---|---|---|
-| `splitColumn(f, column, delimiter, names?)` | Split Column | Splits a column's text on `delimiter` into N string columns, N being the largest part count over the rows; a short row pads with blanks, and a blank or error cell gives blanks. The new columns replace the source in place, named from `names` (trimmed) or `<column> 1` … `<column> N`. An empty delimiter changes nothing. |
+| `splitColumn(f, column, delimiter, names?)` | Split Column | Splits each cell's display text (`formatFrameCell`, so a date splits as `15-Mar-2023` and a logical as `TRUE`) on `delimiter` into N string columns, N being the largest part count over the rows; a short row pads with blanks, and a blank or error cell gives blanks. The new columns replace the source in place, named from `names` (trimmed) or `<column> 1` … `<column> N`. An empty delimiter changes nothing. |
 | `addIndexColumn(f, name, start)` | Add Index | Prepends a number column counting up from `start` in steps of 1, named `name` trimmed (default `Index`). The index name is de-duplicated first, so an existing column with that name is the one renamed. |
 | `mergeColumns(f, columns, separator, name)` | Merge Columns | Needs at least two columns (`#VALUE!`, `Merge needs at least two columns`). Joins each row's cells as display text (`formatFrameCell`, so a date merges as its date text and an error as its code; a blank contributes `""`) with `separator` into one string column named `name` trimmed (default `Merged`), placed where the first source sat. The sources are removed. It is the inverse of Split Column. |
 | `promoteHeaders(f)` | Headers | The first row becomes the column names (a blank or error cell becomes `Col{i}`, any other cell its display text trimmed). Column types stay and the first row is removed. An empty frame is unchanged. |
 | `demoteHeaders(f)` | Headers | The column names become a first row, and every column becomes a string column named `Col1`, `Col2` and so on (the header row is text, so a typed column would be mixed). Cells become display text; blanks and errors pass through. |
 | `dropBlankRows(f, mode)` | Drop Blank Rows | `all` drops only rows where every cell is blank (spacer rows); `any` keeps only complete rows. An error cell is a value, not a blank. |
+
+### formats
+
+`{ kind: "formats", formats }`. Sets each named column's display `format` and leaves the cells alone. No card emits it: the coercion wrapper appends it to a lazy node's output ref, carrying that node's own `frameFormatStore` picks ([[D41]] formatFlowsDownstream), as it stamps a materialized Frame. `lowerForEngine` keeps it out of the ops an engine receives and applies it to the schema shadow, which is where the engine path's formats come back from.
 
 `distinctColumnValues(cells, isExcluded?)` feeds a constrained-entry list: the distinct cell texts of one column in first-seen order, skipping blanks (`null` or `""`) and anything `isExcluded` rejects (the caller passes error codes).
 

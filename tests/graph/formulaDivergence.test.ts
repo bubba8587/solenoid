@@ -41,6 +41,87 @@ describe("ROUND family and POWER share the node's kernels (FX is wrong)", () => 
   });
 });
 
+describe("FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT, MULTINOMIAL multiply without recursing (FX is wrong)", () => {
+  it("exact where a double holds the answer, an overflow past it, and Excel's domain", () => {
+    expect(call("COMBIN", 30, 15)).toBe(155117520);
+    expect(call("COMBIN", 1e6, 2)).toBe(499999500000);
+    expect(call("PERMUT", 1e6, 2)).toBe(999999000000);
+    expect(call("MULTINOMIAL", 2, 3, 4)).toBe(1260);
+    expect(call("COMBINA", 4, 3)).toBe(20);
+    expect(call("FACT", 1e9)).toBe(Infinity);
+    for (const [name, args] of [["FACT", [-1]], ["COMBIN", [5, 6]], ["PERMUT", [3, 5]], ["FACTDOUBLE", [-1]]] as const) {
+      expect((call(name, ...args) as { code?: string }).code).toBe("#DOMAIN!");
+    }
+    const fx = FX as unknown as Record<string, (n: number) => number>;
+    for (let n = 0; n <= 170; n++) expect(call("FACT", n)).toBe(fx.FACT(n));
+  });
+  it("FX still overflows the call stack and divides factorials (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
+    expect(() => fx.COMBIN(1e6, 2)).toThrow(RangeError);
+    expect(() => fx.FACT(-1)).toThrow(RangeError);
+    expect(fx.COMBIN(30, 15)).not.toBe(155117520);
+  });
+});
+
+describe("BINOM.DIST.RANGE checks its range and stays finite on large trials (FX is wrong)", () => {
+  it("Excel's worked examples, a large range, and Excel's domain", () => {
+    expect(num(call("BINOM.DIST.RANGE", 60, 0.75, 48))).toBeCloseTo(0.083974967, 9);
+    expect(num(call("BINOM.DIST.RANGE", 60, 0.75, 45, 50))).toBeCloseTo(0.523629793, 9);
+    expect(num(call("BINOM.DIST.RANGE", 1e5, 0.5, 0, 50000))).toBeCloseTo(0.501261, 5);
+    expect(call("BINOM.DIST.RANGE", 10, 0, 0, 3)).toBe(1);
+    for (const args of [[10, 0.5, 6, 5], [10, 1.5, 1], [10, 0.5, 11], [1e7, 0.5, 0, 5e6]]) {
+      expect((call("BINOM.DIST.RANGE", ...args) as { code?: string }).code).toBe("#DOMAIN!");
+    }
+  });
+  it("FX still overflows the stack on large trials and takes a reversed range (tripwire)", () => {
+    const fx = (FX as unknown as { BINOM: { DIST: { RANGE: (...a: number[]) => number } } }).BINOM.DIST.RANGE;
+    expect(() => fx(1e5, 0.5, 0, 50000)).toThrow(RangeError);
+    expect(fx(10, 0.5, 6, 5)).toBe(0);
+  });
+});
+
+describe("BESSELJ, I, K and Y past an order of a million answer #DOMAIN! (FX recurs once per order)", () => {
+  it("a huge order answers at once; an ordinary one is Formula.js's", () => {
+    const t = performance.now();
+    for (const name of ["BESSELJ", "BESSELI", "BESSELK", "BESSELY"]) expect((call(name, 1, 1e12) as { code?: string }).code).toBe("#DOMAIN!");
+    expect(performance.now() - t).toBeLessThan(500);
+    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
+    expect(call("BESSELJ", 1.9, 2)).toBe(fx.BESSELJ(1.9, 2));
+  });
+  it("FX still recurs once per order (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => number>;
+    const t = performance.now();
+    fx.BESSELJ(1, 2e6);
+    expect(performance.now() - t).toBeGreaterThan(5);
+  });
+});
+
+describe("CLEAN reads a number or logical as text and drops codes 0 to 31 only (FX is wrong)", () => {
+  it("as Excel, and the Text Transform card's CLEAN is the same function", () => {
+    expect(call("CLEAN", 5)).toBe("5");
+    expect(call("CLEAN", true)).toBe("TRUE");
+    expect(call("CLEAN", "a\u0001b\u001fc\u007f")).toBe("abc\u007f");
+  });
+  it("FX still throws on a number (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (v: unknown) => unknown>;
+    expect(() => fx.CLEAN(5)).toThrow(TypeError);
+  });
+});
+
+describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per period)", () => {
+  it("a huge period within the life answers at once; an ordinary one is Formula.js's", () => {
+    const t = performance.now();
+    for (const name of ["DB", "DDB"]) expect((call(name, 1000, 100, 1e12, 5e11) as { code?: string }).code).toBe("#DOMAIN!");
+    expect(performance.now() - t).toBeLessThan(500);
+    expect(num(call("DB", 1000, 100, 10, 3))).toBeCloseTo(129.869816, 6);
+    expect(typeof call("DB", 1000, 100, 1e7, 2e7)).not.toBe("number");
+  });
+  it("FX still loops over the periods (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => unknown>;
+    for (const name of ["DB", "DDB"]) expect(fx[name].toString()).toMatch(/for \(let i = \d; i <= \w+; i\+\+\)/);
+  });
+});
+
 describe("MOD — Excel result takes the DIVISOR's sign (FX is wrong)", () => {
   it("our impl matches Excel across sign combinations", () => {
     expect(num(call("MOD", 10, -3))).toBeCloseTo(-2, 9); // divisor negative → negative

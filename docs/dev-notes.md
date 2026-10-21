@@ -6,6 +6,33 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-10-21: the Rust core, branch solenoid/tsrs; cloud session)
+- **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine), [[D97]] tsIsSpec and [[D98]] wholeColumnFallback; mechanics in [[rust-core]]. All three are unratified.
+- **Formula surface on the core:** 317 functions, including the finance family, the regex and text utilities, and FILTER, UNIQUE, SORT, SORTBY, TAKE and DROP inside a range function. Wired LAMBDA columns run there too. Each family has a differential fuzzer against the TS, swept at 20k runs over several seeds.
+- **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the oracle (`RUST_CORE_ONLY`).
+- **Module size:** 487 KB gzipped, with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
+- **TS bugs fixed here and on develop:**
+  - a lazy node's own column format never reached downstream (now a `formats` plan step, [[D41]] formatFlowsDownstream);
+  - Split Column split a date's serial instead of its text;
+  - VDB, CUMIPMT and CUMPRINC could hang, and the ODDF* period list was built in quadratic time;
+  - HASH accepted "constructor" as an algorithm;
+  - FILTER, UNIQUE and SORT over a whole column rebuilt their list on every row (2.8 s to 22 ms on 3,000 rows);
+  - Kendall's tau compared every pair of rows, freezing a Correlation card on a large table;
+  - Spearman re-ranked each column for every pair.
+  - BINOM.INV summed a pmf per trial (it now searches the CDF past a million);
+  - the exact tests (FISHEREXACT, BINOMTEST, the Hypothesis Test card), PADTEXT, DB, DDB, the Bessel functions,
+    WRAPROWS, WRAPCOLS, NTILE and GAUSSIANSMOOTH each looped on a huge count and now answer an error at once;
+  - the cumulative hypergeometric summed every count (it now sums only where the terms are nonzero, to the bit);
+  - FACT, COMBIN, PERMUT and MULTINOMIAL overflowed the call stack or divided factorials (`COMBIN(30, 15)` was off), and
+    BINOM.DIST.RANGE checked nothing;
+  - CLEAN threw on a number, and the Text Transform card's CLEAN dropped DEL;
+  - a function that threw escaped the evaluator, past IFERROR (now `#VALUE!` at its call, on both cores).
+- **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
+  and catching throws. Rerun after the fixes, no call takes over 300 ms.
+- **Open for the author:**
+  - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
+  - Whether the regex port's remaining 70 KB or so (gzipped) is worth it.
+
 ### SESSION DIGEST (2026-10-20/21: the Pivot view, popup chrome, saves in manual calc; cloud session)
 - **A Pivot's output opens on a Pivot view** ([[C127]] pivotView, unratified; mechanics [[table-popup#The Pivot view]]): Compact, Outline and Tabular forms, Repeat Labels, Blank Rows and Headers (checkboxes), Bands, folding by subtotal, empty-cell text, one Number format per value field (the paintbrush), a label filter, a 1,000-row render cap, and Subtotals, Grand Totals and Fields, which change the node as Configure Fields does. The frame stays a plain Frame: PIVOTBY's layout lives beside it in a table keyed by the frame (`pivotLayout.ts`), carried through format stamps, so a Display wired to the Pivot opens the view too. Options save on the node (`pivotView`).
 - **Popup chrome, one way for every view** ([[table-popup]] § The view switch, § The popup shell): one pill family (segments for a choice, pill dropdowns with the app chevron sized to their choice, checkboxes for on-off, separate buttons for actions); a choice shows segments while its row has room, else a dropdown (`PopupChoice`, `useFreeWidth`); a view's body is the scroll region or a `sol-popup__view`, so resizing needs no per-view rule; on a phone the Table and Cube popups fit the screen (`fitNarrow`) and the Pivot ribbon moves to a footer sheet; narrow layouts follow the popup's width (a `table-popup` container query); the footer's actions stay pinned right while its tools wrap; the header title wraps then ellipsizes, and Go to Source, Pin and Copy SVG live in the ⋯ menu.

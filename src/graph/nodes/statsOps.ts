@@ -124,10 +124,13 @@ export function nthExtreme(arr: readonly number[], k: number, largest: boolean):
   return sorted[Math.floor(largest ? n - k + 1 : k) - 1];
 }
 
+/** The first `n` items, without a copy when that is all of them. */
+const head = (xs: readonly number[], n: number): readonly number[] => (n === xs.length ? xs : xs.slice(0, n));
+
 export function pearson(xs: readonly number[], ys: readonly number[], rsq = false): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
-  const mx = mean(xs.slice(0, n)), my = mean(ys.slice(0, n));
+  const mx = mean(head(xs, n)), my = mean(head(ys, n));
   let num = 0, dx2 = 0, dy2 = 0;
   for (let i = 0; i < n; i++) {
     const dx = xs[i] - mx, dy = ys[i] - my;
@@ -136,7 +139,8 @@ export function pearson(xs: readonly number[], ys: readonly number[], rsq = fals
   const den = Math.sqrt(dx2 * dy2);
   if (den === 0) return solError("#DIV/0!", "One of the lists has zero variance");
   const r = num / den;
-  return guardFinite(rsq ? r * r : r, xs.concat(ys));
+  const out = rsq ? r * r : r;
+  return Number.isFinite(out) ? out : guardFinite(out, xs.concat(ys));
 }
 
 export function averageRanks(arr: readonly number[]): number[] {
@@ -158,11 +162,58 @@ export function spearman(xs: readonly number[], ys: readonly number[]): number |
   return pearson(averageRanks(xs.slice(0, n)), averageRanks(ys.slice(0, n)));
 }
 
+/** Pairs counted in O(n log n) (Knight): sort by x then y, count the tied runs, and count y's inversions while merge
+ *  sorting it; the counts are the pairwise loop's exactly. Finite values only, where a difference's sign is the order. */
+function kendallCounts(xs: readonly number[], ys: readonly number[], n: number): { conc: number; disc: number; tx: number; ty: number } {
+  const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => (xs[a] < xs[b] ? -1 : xs[a] > xs[b] ? 1 : ys[a] < ys[b] ? -1 : ys[a] > ys[b] ? 1 : 0));
+  const pairs = (t: number) => (t * (t - 1)) / 2;
+  let n1 = 0, n3 = 0;
+  for (let i = 0; i < n; ) {
+    let j = i, k = i;
+    while (j + 1 < n && xs[idx[j + 1]] === xs[idx[i]]) j++;
+    n1 += pairs(j - i + 1);
+    for (; k <= j; ) {
+      let m = k;
+      while (m + 1 <= j && ys[idx[m + 1]] === ys[idx[k]]) m++;
+      n3 += pairs(m - k + 1);
+      k = m + 1;
+    }
+    i = j + 1;
+  }
+  let y = idx.map((i) => ys[i]);
+  let buf = new Array<number>(n);
+  let swaps = 0;
+  for (let w = 1; w < n; w *= 2) {
+    for (let lo = 0; lo < n; lo += 2 * w) {
+      const mid = Math.min(lo + w, n), hi = Math.min(lo + 2 * w, n);
+      let a = lo, b = mid, o = lo;
+      while (a < mid && b < hi) {
+        if (y[b] < y[a]) { swaps += mid - a; buf[o++] = y[b++]; } else buf[o++] = y[a++];
+      }
+      while (a < mid) buf[o++] = y[a++];
+      while (b < hi) buf[o++] = y[b++];
+    }
+    [y, buf] = [buf, y];
+  }
+  let n2 = 0;
+  for (let i = 0; i < n; ) {
+    let j = i;
+    while (j + 1 < n && y[j + 1] === y[i]) j++;
+    n2 += pairs(j - i + 1);
+    i = j + 1;
+  }
+  return { conc: pairs(n) - n1 - n2 + n3 - swaps, disc: swaps, tx: n1 - n3, ty: n2 - n3 };
+}
+
 export function kendallTau(xs: readonly number[], ys: readonly number[]): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
   let conc = 0, disc = 0, tx = 0, ty = 0;
-  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+  let finite = true;
+  for (let i = 0; i < n && finite; i++) finite = Number.isFinite(xs[i]) && Number.isFinite(ys[i]);
+  if (finite) ({ conc, disc, tx, ty } = kendallCounts(xs, ys, n));
+  // NaN and two equal infinities have no sign of difference, which the pairwise reading counts as discordant.
+  else for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
     const dx = Math.sign(xs[i] - xs[j]), dy = Math.sign(ys[i] - ys[j]);
     if (dx === 0 && dy === 0) continue;
     if (dx === 0) { tx++; continue; }
@@ -177,9 +228,11 @@ export function kendallTau(xs: readonly number[], ys: readonly number[]): number
 export function covariance(xs: readonly number[], ys: readonly number[], sample: boolean): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
-  const mx = mean(xs.slice(0, n)), my = mean(ys.slice(0, n));
-  const cov = xs.slice(0, n).reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0);
-  return guardFinite(sample ? cov / (n - 1) : cov / n, xs.concat(ys));
+  const mx = mean(head(xs, n)), my = mean(head(ys, n));
+  let cov = 0;
+  for (let i = 0; i < n; i++) cov += (xs[i] - mx) * (ys[i] - my);
+  const out = sample ? cov / (n - 1) : cov / n;
+  return Number.isFinite(out) ? out : guardFinite(out, xs.concat(ys));
 }
 
 /** Excel's MODE: with no value appearing twice there is no mode. */
@@ -295,10 +348,11 @@ export function kruskalP(groups: readonly (readonly number[])[]): number | null 
   return Math.min(1, Math.max(0, 1 - chiSqCDF(h, k - 1)));
 }
 
-/** The outcomes an exact test sums before it gives no answer. */
-const MAX_OUTCOMES = 1e6;
+/** The outcomes an exact test may sum; each costs a pmf, so a count past it would hang ([[C120]] linearWork). */
+const EXACT_TEST_OUTCOMES = 1_000_000;
+const exactTestTooLarge = (): SolError => solError("#DOMAIN!", "An exact test sums at most 1,000,000 outcomes");
 
-export function fisherExactP(a: number, b: number, c: number, d: number): number | null {
+export function fisherExactP(a: number, b: number, c: number, d: number): number | SolError | null {
   const cells = [a, b, c, d].map((v) => Math.round(v));
   if (cells.some((v) => v < 0 || !Number.isFinite(v))) return null;
   const [A, B, C, D] = cells;
@@ -306,8 +360,7 @@ export function fisherExactP(a: number, b: number, c: number, d: number): number
   if (N === 0) return null;
   const pmf = (x: number): number => Math.exp(lnCombin(col1, x) + lnCombin(N - col1, row1 - x) - lnCombin(N, row1));
   const lo = Math.max(0, row1 - (N - col1)), hi = Math.min(row1, col1);
-  // The exact sum walks every table; past a million of them the calc would stall, so there is no answer.
-  if (hi - lo > MAX_OUTCOMES) return null;
+  if (hi - lo + 1 > EXACT_TEST_OUTCOMES) return exactTestTooLarge();
   const pObs = pmf(A);
   let p = 0;
   for (let x = lo; x <= hi; x++) { const px = pmf(x); if (px <= pObs * (1 + 1e-7)) p += px; }
@@ -354,12 +407,12 @@ export function twoProportionP(x1: number, n1: number, x2: number, n2: number): 
   return twoSidedZ((p1 - p2) / se);
 }
 
-export function binomTestP(k: number, n: number, p0: number): number | null {
+export function binomTestP(k: number, n: number, p0: number): number | SolError | null {
   const K = Math.round(k), N = Math.round(n);
   if (!(N >= 1) || K < 0 || K > N || !(p0 >= 0 && p0 <= 1)) return null;
   if (p0 === 0) return K === 0 ? 1 : 0;
   if (p0 === 1) return K === N ? 1 : 0;
-  if (N > MAX_OUTCOMES) return null;
+  if (N + 1 > EXACT_TEST_OUTCOMES) return exactTestTooLarge();
   const pmf = (x: number): number => Math.exp(lnCombin(N, x) + x * Math.log(p0) + (N - x) * Math.log(1 - p0));
   const pObs = pmf(K);
   let p = 0;

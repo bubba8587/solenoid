@@ -1,0 +1,407 @@
+{
+ "verb": "mergeColumns",
+ "cases": [
+  {
+   "name": "merge text, numbers, dates and logicals",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "mergeColumns",
+    "columns": [
+     "k",
+     "v",
+     "d",
+     "f"
+    ],
+    "separator": " | ",
+    "name": "all"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "all",
+      "type": "string",
+      "values": [
+       "a,b | 1.5 | 15-Mar-2023 | TRUE",
+       " |  |  | ",
+       "c | 3 | 01-Jan-2024 | FALSE",
+       "d,e,f |  | 16-Mar-2023 | ",
+       " | -2 |  | "
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "merged sits where the first source was",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "mergeColumns",
+    "columns": [
+     "f",
+     "v"
+    ],
+    "separator": "",
+    "name": ""
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a,b",
+       null,
+       "c",
+       "d,e,f",
+       null
+      ]
+     },
+     {
+      "name": "d",
+      "type": "date",
+      "values": [
+       45000,
+       null,
+       45292.5,
+       45001,
+       null
+      ]
+     },
+     {
+      "name": "Merged",
+      "type": "string",
+      "values": [
+       "TRUE1.5",
+       "",
+       "FALSE3",
+       "",
+       "-2"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a name that clashes gets a suffix",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "mergeColumns",
+    "columns": [
+     "v",
+     "d"
+    ],
+    "separator": "-",
+    "name": "k"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a,b",
+       null,
+       "c",
+       "d,e,f",
+       null
+      ]
+     },
+     {
+      "name": "k2",
+      "type": "string",
+      "values": [
+       "1.5-15-Mar-2023",
+       "-",
+       "3-01-Jan-2024",
+       "-16-Mar-2023",
+       "-2-"
+      ]
+     },
+     {
+      "name": "f",
+      "type": "logical",
+      "values": [
+       true,
+       null,
+       false,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "one column is not a merge",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "mergeColumns",
+    "columns": [
+     "v"
+    ],
+    "separator": "",
+    "name": "x"
+   },
+   "expectError": "#VALUE!"
+  },
+  {
+   "name": "a missing column",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a,b",
+        null,
+        "c",
+        "d,e,f",
+        null
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1.5,
+        null,
+        3,
+        null,
+        -2
+       ]
+      },
+      {
+       "name": "d",
+       "type": "date",
+       "values": [
+        45000,
+        null,
+        45292.5,
+        45001,
+        null
+       ]
+      },
+      {
+       "name": "f",
+       "type": "logical",
+       "values": [
+        true,
+        null,
+        false,
+        null,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "mergeColumns",
+    "columns": [
+     "v",
+     "nope"
+    ],
+    "separator": "",
+    "name": "x"
+   },
+   "expectError": "#REF!"
+  }
+ ]
+}

@@ -117,7 +117,9 @@ export function matInverse(m: NumMat): NumMat | null {
 /** WRAPROWS and WRAPCOLS read their count as Excel does: truncated, and below 1 is Excel's `#NUM!`. */
 export function wrapCount(w: number, fn: "WRAPROWS" | "WRAPCOLS"): number | SolError {
   const n = Math.trunc(w);
-  return n >= 1 ? n : solError("#DOMAIN!", `${fn} needs a wrap count of 1 or more`);
+  if (!(n >= 1)) return solError("#DOMAIN!", `${fn} needs a wrap count of 1 or more`);
+  // Every row pads out to the count, so a huge count would build that many cells ([[C120]] linearWork).
+  return n > MAX_GENERATED ? solError("#OVERFLOW!", `${fn} count ${n} exceeds the ${MAX_GENERATED} element limit`) : n;
 }
 
 export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols", pad: () => T): T[][] {

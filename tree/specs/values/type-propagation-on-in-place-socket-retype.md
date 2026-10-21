@@ -113,7 +113,9 @@ A `Shape` is `{ columns: { name, type }[], dynamic? }`. `dynamic` means the outp
 | select | the named columns, first occurrence only, in the order named |
 | drop | the input minus the named columns |
 | rename | renamed through the map, made unique by `makeHeaders` |
-| sort, distinct, head, filter, filterMulti, sliceRows | the input unchanged |
+| sort, distinct, head, filter, filterMulti, sliceRows, dropBlankRows, formats | the input unchanged |
+| addIndex, splitColumn | `shapeOfAddIndex`, `shapeOfSplitColumn` (below) |
+| mergeColumns | `shapeOfMergeColumns`: the input minus the sources, a string column (`name`, default "Merged") where the first source sat, names made unique; fewer than two columns is `#VALUE!` |
 | fillBlanks, replaceValues | the input unchanged, after checking the target columns exist |
 | groupBy | the key columns, then one column per aggregate named by its `as`; min and max keep the source column's type and every other aggregate is a number; names made unique |
 | unpivot | the id columns, a `string` variable column (`variableName`, default "variable") and a value column (`valueName`, default "value") typed like the first value column (number when none) |
