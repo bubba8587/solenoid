@@ -138,16 +138,17 @@ const PORTED: &[&str] = &[
 /// name from a ported one. The shapers read a list as a column, as a computed column hands one over, so they wait
 /// for the value model to tell a column from a row.
 pub fn ported_names() -> Vec<&'static str> {
-    PORTED.iter().chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).copied().collect()
+    PORTED.iter().chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).chain(crate::fns_matrix::NAMES.iter()).copied().collect()
 }
 
 /// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
-pub fn reads_matrices(_name: &str) -> bool {
-    false
+pub fn reads_matrices(name: &str) -> bool {
+    crate::fns_matrix::NAMES.contains(&name)
 }
 
 pub fn is_ported(name: &str) -> bool {
     PORTED.contains(&name) || crate::shapers::is_shaper(name) || crate::formulajs::NAMES.contains(&name) || crate::fns_complex::NAMES.contains(&name)
+        || crate::fns_matrix::NAMES.contains(&name)
 }
 
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
@@ -1151,7 +1152,7 @@ pub(crate) fn math_hypot(xs: &[f64]) -> f64 {
 }
 
 /// `logicalOrTypeError` (valueKinds.ts): None for blank.
-fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, V> {
+pub(crate) fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, V> {
     let unreadable = || {
         let shown = match v {
             V::Str(s) => format!("\"{s}\""),
@@ -3324,6 +3325,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         },
         _ if crate::formulajs::NAMES.contains(&name) => crate::formulajs::call(name, a),
+        _ if crate::fns_matrix::NAMES.contains(&name) => crate::fns_matrix::call(name, a),
         _ if crate::fns_complex::NAMES.contains(&name) => crate::fns_complex::call(name, a),
         _ if is_finance(name) => finance_function(name, a),
         "REGEXTEST" | "REGEXEXTRACT" | "REGEXREPLACE" => regex_call(name, a),
