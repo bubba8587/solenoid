@@ -802,7 +802,7 @@ fn convert_key(v: f64, scale: f64, offset: f64) -> f64 {
     round_at_larger_term(v * scale + offset, (v * scale).abs().max(offset.abs()))
 }
 
-fn unmatchable_key(cell: &FrameCell) -> bool {
+pub(crate) fn unmatchable_key(cell: &FrameCell) -> bool {
     match cell {
         FrameCell::Null | FrameCell::Err(_) => true,
         FrameCell::Num(n) => !n.is_finite(),

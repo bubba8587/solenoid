@@ -10,8 +10,15 @@ import { isCx } from "../../src/graph/cxValue";
 import { resolveExcelFunction, FX_FUNCTION_NAMES, internalFunctionNames } from "../../src/graph/excelFunctions";
 import { compileTsEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
-import { applyVerb, joinFrames, appendFrames, bindColumns, promoteHeaders, demoteHeaders, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
-import type { FrameValue, FrameCell, FrameColType } from "../../src/graph/frame";
+import {
+  applyVerb, joinFrames, appendFrames, bindColumns, promoteHeaders, demoteHeaders, describeFrame, correlationMatrix, reconcileFrames,
+  reconcileSummaryList, nestGroups, lookupRowIndex, lookupCell, frameRowAt, type FrameOp, type JoinOpts, type CorrMethod,
+  type LookupMatchMode, type LookupSearchMode,
+} from "../../src/graph/frameVerbs";
+import {
+  frameToCube, getColumn, addColumn, splitFrame, buildFrame, buildFrameTyped, frameFromLists,
+  type FrameValue, type FrameCell, type FrameColType,
+} from "../../src/graph/frame";
 import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { isLambdaValue, type LambdaValue } from "../../src/graph/lambdaValue";
@@ -439,10 +446,158 @@ type Gen = ReturnType<typeof gen>;
 const FRAME_FNS: Record<string, { run: (frames: FrameValue[], args: unknown[]) => unknown; make: (g: Gen) => { frames: FrameValue[]; args: unknown[] } }> = {
   promoteHeaders: { run: ([f]) => promoteHeaders(f), make: (g) => ({ frames: [g.frame()], args: [] }) },
   demoteHeaders: { run: ([f]) => demoteHeaders(f), make: (g) => ({ frames: [g.frame()], args: [] }) },
+  describeFrame: { run: ([f]) => describeFrame(f), make: (g) => ({ frames: [g.int(0, 3) ? g.frame() : numberFrame(g)], args: [] }) },
+  correlationMatrix: {
+    run: ([f], [m]) => correlationMatrix(f, m as CorrMethod),
+    make: (g) => ({ frames: [numberFrame(g)], args: [g.pick(["pearson", "spearman", "kendall", "covariance"])] }),
+  },
+  reconcileFrames: {
+    run: ([l, r], [leftKey, rightKey, priceColumn, qtyColumn]) => {
+      const out = reconcileFrames(l, r, { leftKey, rightKey, priceColumn, qtyColumn } as never);
+      return { __pair: true, frame: out.frame, value: reconcileSummaryList(out.summary) };
+    },
+    make: (g) => {
+      const l = g.int(0, 2) ? g.frame() : numberFrame(g);
+      const r = variant(g, l);
+      const key = g.rand() < 0.05 ? "missing" : l.columns.length ? g.pick(l.columns).name : "none";
+      const nums = l.columns.filter((c) => c.type === "number").map((c) => c.name);
+      const opt = () => (g.rand() < 0.3 || !nums.length ? g.pick([undefined, "", "missing"]) : g.pick(nums));
+      return { frames: [l, r], args: [key, g.rand() < 0.1 && r.columns.length ? g.pick(r.columns).name : key, opt(), opt()] };
+    },
+  },
+  nestGroups: {
+    run: ([f], [keys, name]) => { const r = nestGroups(f, keys as string[], name as string); return [r.names, r.groups]; },
+    make: (g) => {
+      const f = g.frame();
+      const keys = f.columns.filter(() => g.rand() < 0.4).map((c) => c.name);
+      if (g.rand() < 0.05) keys.push("missing");
+      return { frames: [f], args: [keys, g.pick(["items", "", " x ", "a", "Col1", " "])] };
+    },
+  },
+  lookupRowIndex: {
+    run: ([f], [col, lookup, mm, sm]) => (Array.isArray(lookup)
+      ? lookup.map((l) => lookupRowIndex(frameToCube(f), col as string, l, mm as LookupMatchMode, sm as LookupSearchMode))
+      : lookupRowIndex(frameToCube(f), col as string, lookup as string, mm as LookupMatchMode, sm as LookupSearchMode)),
+    make: (g) => { const { f, col, lookup, mm, sm } = lookupCase(g); return { frames: [f], args: [col, lookup, mm, sm] }; },
+  },
+  lookupCell: {
+    run: ([f], [col, ret, lookup, mm, sm]) => (Array.isArray(lookup)
+      ? lookup.map((l) => lookupCell(frameToCube(f), col as string, ret as string, l, mm as LookupMatchMode, sm as LookupSearchMode))
+      : lookupCell(frameToCube(f), col as string, ret as string, lookup as string, mm as LookupMatchMode, sm as LookupSearchMode)),
+    make: (g) => {
+      const { f, col, lookup, mm, sm } = lookupCase(g);
+      const ret = g.rand() < 0.05 ? "missing" : f.columns.length ? g.pick(f.columns).name : "none";
+      return { frames: [f], args: [col, ret, lookup, mm, sm] };
+    },
+  },
+  frameRowAt: { run: ([f], [i]) => frameRowAt(f, i as number), make: (g) => ({ frames: [g.frame()], args: [g.int(0, 10)] }) },
+  getColumn: {
+    run: ([f], [name]) => { const c = getColumn(f, name as string); return c ? f.columns.indexOf(c) : null; },
+    make: (g) => {
+      const f = g.frame();
+      const name = g.rand() < 0.6 && f.columns.length ? g.pick(f.columns).name : g.pick(["1", "2", "5", "0", "07", " 1 ", "missing", "", " a ", "1.0"]);
+      return { frames: [f], args: [g.rand() < 0.2 ? ` ${name} ` : name] };
+    },
+  },
+  addColumn: {
+    run: ([f], [name, values, type]) => {
+      const out = addColumn(f, name as string, values as FrameCell[], type as FrameColType);
+      const at = out.columns.length === f.columns.length ? f.columns.findIndex((c) => c.name === (name as string).trim()) : f.columns.length;
+      return { __pair: true, frame: out, value: at };
+    },
+    make: (g) => {
+      const f = g.frame();
+      const type = g.pick(["number", "string", "logical", "date"] as const);
+      const values = Array.from({ length: g.int(0, 6) }, () => g.cell(g.rand() < 0.7 ? type : g.pick(["number", "string"] as const)));
+      const name = g.rand() < 0.5 && f.columns.length ? g.pick(f.columns).name : g.pick(["a", "b", "new", "", " x ", "Col1", "Col2", " a "]);
+      return { frames: [f], args: [name, values, type] };
+    },
+  },
+  splitFrame: {
+    run: ([f]) => { const r = splitFrame(f); return [r.matrix, r.headers]; },
+    make: (g) => ({ frames: [g.int(0, 2) ? numberFrame(g) : g.frame()], args: [] }),
+  },
+  buildFrame: {
+    run: (_, [m, names]) => buildFrame(m as number[][], names as string[] | undefined),
+    make: (g) => ({ frames: [], args: [matrixOf(g, () => g.cell("number")), headersOf(g)] }),
+  },
+  buildFrameTyped: {
+    run: (_, [m, names, known]) => buildFrameTyped(m as unknown[][], names as string[] | undefined, known as FrameColType | null),
+    make: (g) => {
+      const one = g.pick(["number", "string", "logical", "date"] as const);
+      const m = matrixOf(g, () => g.cell(g.rand() < 0.6 ? one : g.pick(["number", "string", "logical"] as const)));
+      return { frames: [], args: [m, headersOf(g), g.pick([null, null, "number", "string", "logical", "date"])] };
+    },
+  },
+  frameFromLists: {
+    run: (_, [names, lists, known]) => frameFromLists((names as string[]).map((name, i) => ({ name, cells: (lists as unknown[][])[i], known: (known as (FrameColType | null)[])[i] }))),
+    make: (g) => {
+      const n = g.int(1, 4);
+      const names = Array.from({ length: n }, () => g.pick(["a", "b", "", "a", "Col1", " v "]));
+      const lists = Array.from({ length: n }, () => {
+        const one = g.pick(["number", "string", "logical", "date"] as const);
+        return Array.from({ length: g.int(0, 6) }, () => g.cell(g.rand() < 0.7 ? one : g.pick(["number", "string", "logical"] as const)));
+      });
+      return { frames: [], args: [names, lists, names.map(() => g.pick([null, null, "number", "string", "logical", "date"]))] };
+    },
+  },
 };
+
+/** A frame of mostly number columns, often whole (every cell finite), the shape correlation and splitting read. */
+function numberFrame(g: Gen): FrameValue {
+  const rows = g.int(0, 8);
+  const whole = g.rand() < 0.5;
+  const columns = Array.from({ length: g.int(0, 4) }, (_, i) => {
+    const type: FrameColType = g.rand() < 0.85 ? "number" : g.pick(["string", "logical", "date"] as const);
+    const len = g.rand() < 0.1 ? g.int(0, rows) : rows;
+    const values = Array.from({ length: len }, () => (whole && type === "number" ? g.int(-3, 5) : g.cell(type)));
+    return { name: g.pick(["a", "b", "c", "k", "a", "column", "Col2"]) + (g.rand() < 0.7 ? String(i) : ""), type, values };
+  });
+  return { __frame: true, columns };
+}
+
+/** Another version of a frame: some cells changed, rows reordered, a column dropped or added. */
+function variant(g: Gen, f: FrameValue): FrameValue {
+  const rev = g.rand() < 0.3;
+  const columns = f.columns.filter(() => g.rand() < 0.85).map((c) => {
+    const values = c.values.map((v) => (g.rand() < 0.2 ? g.cell(g.rand() < 0.9 ? c.type : "string") : v)).slice(0, g.rand() < 0.2 ? g.int(0, c.values.length) : undefined);
+    return { ...c, type: g.rand() < 0.05 ? g.pick(["number", "string"] as const) : c.type, values: rev ? values.reverse() : values };
+  });
+  if (g.rand() < 0.3) columns.push(...g.frame().columns.slice(0, 1));
+  return { __frame: true, columns };
+}
+
+function lookupCase(g: Gen) {
+  const f = g.frame();
+  const col = g.rand() < 0.05 ? "missing" : f.columns.length ? g.pick(f.columns).name : "none";
+  const c = f.columns.find((x) => x.name === col);
+  const one = (): string => {
+    if (c && c.values.length && g.rand() < 0.5) {
+      const v = g.pick(c.values);
+      return v === null || typeof v === "object" ? "" : String(v);
+    }
+    return g.pick(["x", "APPLE", "1", "2.5", "-3", "45003", " 45005 ", "true", "FALSE", "yes", "1,000", "2023-03-15", "2023-02-30",
+      "15-Mar-2023", "3/4/2023", "-0", "1e3", "NaN", "abc"]);
+  };
+  const lookup = g.rand() < 0.2 ? Array.from({ length: g.int(0, 4) }, one) : one();
+  const mm = g.pick(["exact", "exact", "nextSmaller", "nextLarger"]);
+  const sm = g.pick(["first", "last"]);
+  return { f, col, lookup, mm, sm };
+}
+
+const matrixOf = (g: Gen, cell: () => unknown): unknown[][] =>
+  Array.from({ length: g.int(0, 5) }, () => Array.from({ length: g.int(0, 4) }, cell));
+
+const headersOf = (g: Gen): string[] | undefined =>
+  (g.rand() < 0.2 ? undefined : Array.from({ length: g.int(0, 5) }, () => g.pick(["a", "b", "", " a ", "Col1", "Col2", "x"])));
+/** A frame function's answer as comparable data: a frame, a value, or (`__pair`) a frame with a value beside it. */
 const fnOutcome = (run: () => unknown): unknown => {
   try {
     const r = run();
+    if (r && typeof r === "object" && (r as { __pair?: boolean }).__pair) {
+      const p = r as { frame: FrameValue; value: unknown };
+      return { frame: view(p.frame), value: canon(p.value) };
+    }
     return r && typeof r === "object" && (r as FrameValue).__frame ? { frame: view(r as FrameValue) } : { value: canon(r) };
   } catch (e) {
     return isSolError(e) ? { error: { code: e.code, message: wf(e.message) } } : { error: { code: "thrown", message: String(e) } };
@@ -464,10 +619,14 @@ describe("frame functions answer as frozen", () => {
     it(`${name} (${cases.length})`, () => {
       let ran = 0;
       for (const c of cases) {
-        const r = frameFnOnCore(name, c.frames, c.args);
-        if (!r) continue;
+        let bailed = false;
+        const got = fnOutcome(() => {
+          const r = frameFnOnCore(name, c.frames, c.args);
+          if (!r) { bailed = true; return null; }
+          return "frame" in r ? ("value" in r ? { __pair: true, frame: r.frame, value: r.value } : r.frame) : r.value;
+        });
+        if (bailed) continue;
         ran++;
-        const got = "frame" in r ? { frame: view(r.frame) } : { value: canon(r.value) };
         if (JSON.stringify(got) !== JSON.stringify(c.want)) expect({ name, frames: c.frames, args: c.args, got }).toEqual({ name, frames: c.frames, args: c.args, got: c.want });
       }
       checkBails(`frame fn ${name}`, cases.length - ran);
