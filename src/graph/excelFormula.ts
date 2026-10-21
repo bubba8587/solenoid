@@ -1174,8 +1174,7 @@ export function compilePositional(
   expr: string,
   paramNames: string[],
 ): ((...args: unknown[]) => unknown) | null {
-  // Called once per cell by the nodes that map a LAMBDA, so it stays on the TS until the core takes a batch.
-  const evaluate = compileTsEvaluator(expr);
+  const evaluate = compileEvaluator(expr);
   if (!evaluate) return null;
   return (...args: unknown[]) => {
     const env: Record<string, unknown> = {};
