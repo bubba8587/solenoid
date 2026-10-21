@@ -56,7 +56,7 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
 
 | Capability | Status | Evidence |
 | --- | --- | --- |
-| Frame verbs: select, drop, rename, sort, distinct, head, filter, filterMulti, groupBy, unpivot, window, fillBlanks, replaceValues, sliceRows | Ported | 266 corpus cases natively; corpus and 600k+ fuzz cases through wasm |
+| Frame verbs: select, drop, rename, sort, distinct, head, filter, filterMulti, groupBy, unpivot, window, fillBlanks, replaceValues, sliceRows | Ported | 256 corpus cases natively; corpus and 600k+ fuzz cases through wasm |
 | join (all 8 kinds, unit-scaled keys), append, bindColumns, sample | Ported | as above |
 | PIVOTBY: leaf order, subtotals, value sorts, percent-of shares, the pivot-view layout | Ported | 160k random pivots match cells, layout and units |
 | Units, formats | Unit-blind, as Polars is: the TS lowers reading and unit scales into the op and restores metadata | `lowerForEngine`, `pivotUnits` |
