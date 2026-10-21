@@ -19,6 +19,16 @@ specific item.
   - FILTER, UNIQUE and SORT over a whole column rebuilt their list on every row (2.8 s to 22 ms on 3,000 rows);
   - Kendall's tau compared every pair of rows, freezing a Correlation card on a large table;
   - Spearman re-ranked each column for every pair.
+  - BINOM.INV summed a pmf per trial (it now searches the CDF past a million);
+  - the exact tests (FISHEREXACT, BINOMTEST, the Hypothesis Test card), PADTEXT, DB, DDB, the Bessel functions,
+    WRAPROWS, WRAPCOLS, NTILE and GAUSSIANSMOOTH each looped on a huge count and now answer an error at once;
+  - the cumulative hypergeometric summed every count (it now sums only where the terms are nonzero, to the bit);
+  - FACT, COMBIN, PERMUT and MULTINOMIAL overflowed the call stack or divided factorials (`COMBIN(30, 15)` was off), and
+    BINOM.DIST.RANGE checked nothing;
+  - CLEAN threw on a number, and the Text Transform card's CLEAN dropped DEL;
+  - a function that threw escaped the evaluator, past IFERROR (now `#VALUE!` at its call, on both cores).
+- **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
+  and catching throws.
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
   - Whether the regex port's remaining 70 KB or so (gzipped) is worth it.
