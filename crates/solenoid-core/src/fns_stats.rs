@@ -4,9 +4,12 @@
 
 #![allow(clippy::excessive_precision)]
 
+use crate::date_serial::{date_utc, days_from_civil, parts_of_ms};
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
 use crate::error_value::sol_error;
-use crate::excel_functions::{average_ranks, bail, js_pow, mean_of, nums_of, parse_number, ssd, sum, to_f64_js, to_num, V};
+use crate::excel_functions::{
+    average_ranks, bail, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum, throw, to_f64_js, to_num, V,
+};
 use crate::fdlibm::{cos, exp, log, pow, sin};
 use crate::formulajs::jstat_gammaln as gammaln;
 use crate::jsnum::{math_max, math_min, math_round, number_to_string};
@@ -53,7 +56,7 @@ pub const NAMES: &[&str] = &[
     "FDISTRT", "FINVRT", "TDISTRT", "TDIST.RT", "TDIST.2T", "TINV.2T", "CHIDIST.RT", "CHIINV.RT", "FDIST.RT", "FINV.RT",
     "BINOMDIST.RANGE",
     "TRUE", "FALSE", "GEOMETRIC", "FIBONACCI", "BESSELI", "BESSELJ", "BESSELK", "BESSELY", "ANOVA", "KRUSKAL",
-    "MANNWHITNEY", "WILCOXON", "KSTEST", "CONFIDENCE.T",
+    "MANNWHITNEY", "WILCOXON", "KSTEST", "CONFIDENCE.T", "ACCRINT", "COUPDAYS", "DISC", "PRICEDISC",
 ];
 
 fn arg(a: &[V], i: usize) -> &V {
@@ -142,6 +145,15 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
             _ => V::Fx("#VALUE!"),
         },
+        "ACCRINT" => {
+            // The dates only matter once frequency and basis pass, and reading them is `new Date(x)`.
+            if valid_frequency(arg(a, 5)).is_none() || valid_basis(arg(a, 6)).is_none() {
+                return V::Fx("#NUM!");
+            }
+            bail()
+        }
+        "COUPDAYS" => coupdays(a),
+        "DISC" | "PRICEDISC" => discounted(name, a),
         _ => bail(),
     }
 }
@@ -674,4 +686,165 @@ fn studentt_inv(p: f64, dof: f64) -> f64 {
     let x = ibetainv(2.0 * math_min(p, 1.0 - p), 0.5 * dof, 0.5);
     let x = (dof * (1.0 - x) / x).sqrt();
     if p > 0.5 { x } else { -x }
+}
+
+// ─── Formula.js's date-reading finance bodies ───────────────────────────────────
+// A date is a JS Date's local wall clock, held as milliseconds read as UTC: the fields these bodies use are the ones
+// `new Date(y, m, d, h, mi, s)` was built from, whatever the zone.
+
+/// What Formula.js `parseDate` answers: a Date (NaN for an Invalid Date) or an Error.
+enum FxDate {
+    Date(f64),
+    Err,
+    /// Text, which only `new Date(text)` reads.
+    Text,
+}
+
+/// `serialToDate`.
+fn serial_to_date(mut serial: f64) -> f64 {
+    if serial < 60.0 {
+        serial += 1.0;
+    }
+    let utc_days = (serial - 25569.0).floor();
+    if !utc_days.is_finite() {
+        return f64::NAN;
+    }
+    let info = parts_of_ms(utc_days * 86_400_000.0);
+    let fractional_day = serial - serial.floor() + 0.0000001;
+    let mut total_seconds = (86400.0 * fractional_day).floor();
+    let seconds = total_seconds % 60.0;
+    total_seconds -= seconds;
+    let hours = (total_seconds / 3600.0).floor();
+    let minutes = (total_seconds / 60.0).floor() % 60.0;
+    let (mut days, mut month) = (f64::from(info.day), f64::from(info.month) - 1.0);
+    if (60.0..61.0).contains(&serial) {
+        days = 29.0;
+        month = 1.0;
+    }
+    match date_utc(info.year as f64, month, days) {
+        Some(day) => day + hours * 3_600_000.0 + minutes * 60_000.0 + seconds * 1000.0,
+        None => f64::NAN,
+    }
+}
+
+/// Formula.js `parseDate`, short of reading text as a date.
+fn parse_date(v: &V) -> FxDate {
+    if !to_f64_js(v).is_nan() {
+        let d = js_parse_float(&js_string_of(v));
+        if d < 0.0 || d >= 2958466.0 {
+            return FxDate::Err;
+        }
+        return FxDate::Date(serial_to_date(d));
+    }
+    if matches!(v, V::Str(_)) { FxDate::Text } else { FxDate::Err }
+}
+
+/// `validateFrequency` / `validateBasis`: the parsed number when it is one of `allowed`.
+fn one_of(v: &V, allowed: &[f64]) -> Option<f64> {
+    match parse_number(v) {
+        V::Num(n) if allowed.contains(&n) => Some(n),
+        _ => None,
+    }
+}
+
+fn valid_frequency(v: &V) -> Option<f64> {
+    one_of(v, &[1.0, 2.0, 4.0])
+}
+
+fn valid_basis(v: &V) -> Option<f64> {
+    one_of(v, &[0.0, 1.0, 2.0, 3.0, 4.0])
+}
+
+fn coupdays(a: &[V]) -> V {
+    let basis = valid_basis(arg(a, 3));
+    let frequency = valid_frequency(arg(a, 2));
+    let (settlement, maturity) = match (parse_date(arg(a, 0)), parse_date(arg(a, 1))) {
+        (FxDate::Err, _) | (_, FxDate::Err) => return V::Fx("#VALUE!"),
+        (FxDate::Date(s), FxDate::Date(m)) => (s, m),
+        _ => return bail(),
+    };
+    let (Some(basis), Some(frequency)) = (basis, frequency) else { return V::Fx("#NUM!") };
+    if settlement >= maturity {
+        return V::Fx("#NUM!");
+    }
+    if basis == 1.0 {
+        return bail();
+    }
+    V::Num(if basis == 3.0 { 365.0 } else { 360.0 } / frequency)
+}
+
+fn days_in_month(y: i64, m: u32) -> f64 {
+    let next = if m == 12 { days_from_civil(y + 1, 1, 1) } else { days_from_civil(y, m + 1, 1) };
+    (next - days_from_civil(y, m, 1)) as f64
+}
+
+/// Formula.js `DAYS360` over two Dates; an Invalid Date answers an Error, which the caller's arithmetic reads as NaN.
+fn days360(start: f64, end: f64, european: bool) -> f64 {
+    if start.is_nan() || end.is_nan() {
+        return f64::NAN;
+    }
+    let (s, e) = (parts_of_ms(start), parts_of_ms(end));
+    let sm = f64::from(s.month) - 1.0;
+    let mut em = f64::from(e.month) - 1.0;
+    let (sday, eday) = (f64::from(s.day), f64::from(e.day));
+    let (sd, ed);
+    if european {
+        sd = if sday == 31.0 { 30.0 } else { sday };
+        ed = if eday == 31.0 { 30.0 } else { eday };
+    } else {
+        sd = if sday == days_in_month(s.year, s.month) { 30.0 } else { sday };
+        if eday == days_in_month(e.year, e.month) {
+            if sd < 30.0 {
+                em += 1.0;
+                ed = 1.0;
+            } else {
+                ed = 30.0;
+            }
+        } else {
+            ed = eday;
+        }
+    }
+    360.0 * (e.year - s.year) as f64 + 30.0 * (em - sm) + (ed - sd)
+}
+
+/// DISC and PRICEDISC.
+fn discounted(name: &str, a: &[V]) -> V {
+    let (settlement, maturity) = (parse_date(arg(a, 0)), parse_date(arg(a, 1)));
+    let (pr, redemption) = (parse_number(arg(a, 2)), parse_number(arg(a, 3)));
+    // `basis || 0`.
+    let basis = match parse_number(arg(a, 4)) {
+        V::Num(n) if n == 0.0 => V::Num(0.0),
+        b => b,
+    };
+    let (V::Num(pr), V::Num(redemption), V::Num(basis)) = (pr, redemption, basis) else { return V::Fx("#VALUE!") };
+    let (settlement, maturity) = match (settlement, maturity) {
+        (FxDate::Err, _) | (_, FxDate::Err) => return V::Fx("#VALUE!"),
+        (FxDate::Date(s), FxDate::Date(m)) => (s, m),
+        _ => return bail(),
+    };
+    if pr <= 0.0 || redemption <= 0.0 {
+        return V::Fx("#NUM!");
+    }
+    if settlement >= maturity {
+        return V::Fx("#VALUE!");
+    }
+    let (basis_val, diff) = if basis == 0.0 {
+        (360.0, days360(settlement, maturity, false))
+    } else if basis == 4.0 {
+        (360.0, days360(settlement, maturity, true))
+    } else if basis == 1.0 || basis == 2.0 || basis == 3.0 {
+        // DATEDIF's 'D': an Invalid Date parses to an Error, which has no getFullYear (a TypeError); a valid pair
+        // counts local midnights, which the zone decides.
+        if settlement.is_nan() || maturity.is_nan() {
+            return throw(sol_error("#VALUE!", "getFullYear is not a function"));
+        }
+        return bail();
+    } else {
+        return V::Fx("#NUM!");
+    };
+    V::Num(if name == "DISC" {
+        (((redemption - pr) / redemption) * basis_val) / diff
+    } else {
+        redemption - (pr * redemption * diff) / basis_val
+    })
 }
