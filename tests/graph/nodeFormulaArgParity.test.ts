@@ -22,7 +22,8 @@ import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
 // REGEX*, text.test.ts SUBSTITUTE, rangeRouting.test.ts TREND, …). [[C17]] shareImpl is the
 // normative rule; this file is one partial, greppable guard, not the whole enforcement.
 //
-// The scan reads the real node source and classifies every `resolveExcelFunction(…)` call site:
+// The scan reads the real node source and classifies every `resolveExcelFunction(…)` and literal `callCore("X", […])`
+// call site:
 //   • LITERAL + directly called — `resolveExcelFunction("NAME")(a, b, …)`: the arguments
 //     are counted (a `...spread` covers the variadic max) and must reach
 //     `EXCEL_IMPL_META[NAME].max`, else the name is a SANCTIONED shortfall with a reason.
@@ -102,6 +103,14 @@ function scanSites(): Site[] {
       }
       sites.push({ file: rel, name: literal ? literal[1] : null, inner, passed, direct });
     }
+    // `callCore("NAME", [a, b, …])` (coreValues.ts) dispatches the same way, its arguments an array literal. A name
+    // picked by an expression (an op's) is left to the behavioural tests, as an indirect site would be.
+    const CORE = /\bcallCore\(\s*"([A-Za-z0-9._]+)"\s*,\s*\[/g;
+    for (const m of src.matchAll(CORE)) {
+      const open = m.index! + m[0].length - 1;
+      const list = spanFrom(src, open);
+      sites.push({ file: rel, name: m[1], inner: `"${m[1]}"`, passed: list.spread ? Number.POSITIVE_INFINITY : list.content ? list.commas + 1 : 0, direct: true });
+    }
   }
   return sites;
 }
@@ -111,6 +120,12 @@ describe("[[D73]] nodeCoversFormula — a node dispatching to a formula function
   // with the reason the shortfall is not a real capability gap.
   const SANCTIONED: Record<string, string> = {
     TEXTJOIN: "the card's one Strings list is what the formula flattens its text arguments into; separate rows are the inbox item node-formula-reach-gaps",
+    "MODE.MULT": "the card's one list is what the formula flattens its arguments into",
+    VDB: "no_switch: the inbox item node-formula-reach-gaps",
+    IRR: "guess: the inbox item node-formula-reach-gaps",
+    XIRR: "guess: the inbox item node-formula-reach-gaps",
+    SLUGIFY: "the separator: the inbox item node-formula-reach-gaps",
+    TEXTSPLIT: "the row delimiter and options: the inbox item node-formula-reach-gaps",
   };
 
   // DYNAMIC / INDIRECT dispatches a static scan cannot arg-count, keyed by

@@ -20,6 +20,13 @@ For the rest, add a third exception to [[D73]] nodeCoversFormula: another card i
 - FILTER's parallel `include` mask and `if_empty`: List Filter filters on the list's own values ([[C49]] filterOneJob), and Frame Filter covers masks.
 - XLOOKUP over two plain lists: the card needs a Frame, and Frame from Lists builds one.
 
+More gaps of the same kind, found 2026-10-21 once the cards that compute through `callCore` came under the argument scan (`nodeFormulaArgParity.test.ts`):
+
+- VDB's `no_switch`: the Depreciation card has no switch input.
+- IRR's and XIRR's `guess`: the IRR card has no guess input.
+- SLUGIFY's separator: the Text Transform card always uses "-".
+- TEXTSPLIT's row delimiter, `ignore_empty`, `match_mode` and `pad_with`: the Text Split card takes the text and one delimiter.
+
 ## Why
 
 [[D73]] allows only two reasons for a missing argument: the argument is a cell-grid concept, or the formula lacks it too. None of these six fits either one. RANK's order, UNIQUE on text and dates, and QUARTILE's out-of-range answer were fixed in the same sweep.
