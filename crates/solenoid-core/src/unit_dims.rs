@@ -122,12 +122,9 @@ fn dimless() -> Dim {
     Dim::new()
 }
 
-/// `argDims[i] ?? DIMENSIONLESS`: an indeterminate argument reads as dimensionless here, as in the TS.
+/// A left-out argument is dimensionless; an indeterminate one stays indeterminate.
 fn arg_or_dimless(args: &[DimResult], i: usize) -> DimResult {
-    match args.get(i) {
-        None | Some(DimResult::Null) => DimResult::Dim(dimless()),
-        Some(a) => a.clone(),
-    }
+    args.get(i).cloned().unwrap_or_else(|| DimResult::Dim(dimless()))
 }
 
 fn require_same(args: &[DimResult], what: &str) -> DimResult {
@@ -423,8 +420,7 @@ fn apply_dim(lam: &Lam, args: &[OpResult], env: &Dim2, codes: &Codes) -> OpResul
     let mut inner_codes = codes.clone();
     for (i, p) in lam.params.iter().enumerate() {
         let a = match args.get(i) {
-            // `args[i] ?? DIMENSIONLESS`: an indeterminate argument binds as dimensionless, as in the TS.
-            None | Some(Ok(None)) => Op { dim: dimless(), code: None },
+            None => Op { dim: dimless(), code: None },
             Some(Ok(Some(o))) => o.clone(),
             Some(other) => return other.clone(),
         };
