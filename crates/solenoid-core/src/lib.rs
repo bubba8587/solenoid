@@ -21,6 +21,7 @@ pub mod hash_ops;
 pub mod js_sort;
 pub mod letters;
 pub mod jsnum;
+pub mod nfd_table;
 pub mod shapers;
 pub mod string_order;
 pub mod text_ops;

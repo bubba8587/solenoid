@@ -18,6 +18,7 @@ import { parseFormula, compileEvaluator, extractVariables, rowRefNames } from ".
 import { resolveExcelFunction } from "../../src/graph/excelFunctions";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
+import { unaccent } from "../../src/graph/nodes/textOps";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 
 const WASM = path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm");
@@ -426,6 +427,19 @@ describe("random row formulas: the Rust evaluator matches the TS one", () => {
       }
     }
     expect(ran, "the generator should reach the Rust evaluator often").toBeGreaterThan(FUZZ_RUNS / 2);
+  });
+});
+
+describe("UNACCENT's decomposition table matches this Node's NFD", () => {
+  it("every code point it covers, alone and after a letter", () => {
+    for (const [a, b] of [[0x80, 0x24f], [0x300, 0x36f], [0x370, 0x3ff], [0x400, 0x482], [0x48a, 0x4ff], [0x1e00, 0x1fff]]) {
+      for (let c = a; c <= b; c++) {
+        const t = `e${String.fromCodePoint(c)}x`;
+        const got = wasmInvokeSync<{ str?: string; bail?: boolean }>("engine_call", { name: "UNACCENT", args: [t] });
+        if (got.str !== unaccent(t)) expect({ c: c.toString(16), got }).toEqual({ c: c.toString(16), got: { str: unaccent(t) } });
+      }
+    }
+    expect(wasmInvokeSync("engine_call", { name: "UNACCENT", args: ["한"] }), "past the table goes to the TS").toEqual({ bail: true });
   });
 });
 

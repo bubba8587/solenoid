@@ -3089,7 +3089,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if may_hold_lone_surrogate(&t) {
                 return bail();
             }
-            V::str(&crate::text_ops::unaccent(&t))
+            crate::text_ops::unaccent(&t).map_or_else(bail, |s| V::str(&s))
         }
         "SLUGIFY" => {
             let sep = match arg(a, 1) {
@@ -3099,7 +3099,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if may_hold_lone_surrogate(&sep) {
                 return bail();
             }
-            V::str(&crate::text_ops::slugify(&to_str(arg(a, 0)), &sep))
+            crate::text_ops::slugify(&to_str(arg(a, 0)), &sep).map_or_else(bail, |s| V::str(&s))
         }
         "SPELLNUMBER" => match crate::text_ops::spell_number(to_f64_js(arg(a, 0))) {
             Ok(words) => V::str(&words),

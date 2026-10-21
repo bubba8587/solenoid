@@ -136,10 +136,11 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 
 ## Follow-ups
 
-- **Size.** The module is 1.3 MB raw / 537 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`). `regress`
+- **Size.** The module is 1.2 MB raw / 487 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`). `regress`
   is vendored in `crates/vendor/regress` with one patch, the `no-property-escapes` feature: `\p{…}` parses only in
   Unicode mode, which Solenoid never uses, and refusing it drops the property tables (82 KB gzipped). The case-folding
-  tables stay. `unicode-normalization` (UNACCENT, SLUGIFY) is about 60 KB gzipped. Size
+  tables stay. UNACCENT and SLUGIFY decompose through `nfd_table.rs` (`scripts/gen-nfd-table.mjs`, from Node's own
+  NFD) instead of `unicode-normalization`, saving 50 KB gzipped; text past the scripts it covers goes to the TS. Size
   modes (`opt-level = "z"`) cut it by a fifth but halve the speed, so they're out. Ops arrive as `TaggedOp`, which reads
   the TS's `{ kind, ... }` as serde's external tagging, because the derived internally tagged form was the largest
   function. What's left is spread thin: `call_function` (53 KB before opt), the pivot, the command dispatcher.

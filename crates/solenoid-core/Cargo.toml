@@ -13,7 +13,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 ryu-js = "1"
 regress = { path = "../vendor/regress", default-features = false, features = ["std", "utf16", "no-property-escapes"] }
-unicode-normalization = { version = "=0.1.25", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "=0.2.100"
