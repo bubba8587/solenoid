@@ -180,6 +180,9 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
     expect(ev("EXPAND(a, 3, 3)", { a })).toEqual(new ExpandNode().data({ matrix: [a], rows: [3], cols: [3] }).result);
     expect((ev("EXPAND(a, 3, 3)", { a }) as unknown[][])[2][2]).toBeNull();
     expect(code(ev("EXPAND(a, 1, 1)", { a }))).toBe("#VALUE!"); // shrink is refused, both surfaces
+    // An empty axis still costs a step per row, and an infinite count never ends: both meet the cell cap.
+    expect(code(ev("EXPAND(e, 1e9, 0)", { e: [[]] }))).toBe("#OVERFLOW!");
+    expect(code(ev("EXPAND(e, x, 0)", { e: [[]], x: Infinity }))).toBe("#OVERFLOW!");
   });
 
   it("the D* database family is BLOCKED like VLOOKUP/MATCH (superseded by Frame Filter)", () => {
