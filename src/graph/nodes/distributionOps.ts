@@ -254,7 +254,8 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
     compute: (form, v, [nv, pv]) => {
       if (form === "inv") {
         const n = Math.floor(nv);
-        if (n < 0 || pv < 0 || pv > 1 || v < 0 || v > 1) return null;
+        // An infinite n would sum NaN pmfs forever.
+        if (!Number.isFinite(n) || n < 0 || pv < 0 || pv > 1 || v < 0 || v > 1) return null;
         let cumP = 0;
         for (let k = 0; k <= n; k++) {
           const pmf = binomPmf(k, n, pv);
@@ -295,6 +296,8 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
       const ki = Math.floor(v); const ni = Math.floor(nv);
       const Mi = Math.floor(Mv); const Ni = Math.floor(Nv);
       if (form === "pmf") return hypgeomPmf(ki, ni, Mi, Ni);
+      // An infinite count would sum NaN pmfs forever.
+      if (![ki, ni, Mi, Ni].every(Number.isFinite)) return null;
       const lo = Math.max(0, ni + Mi - Ni);
       const hi = Math.min(ni, Mi);
       if (Ni <= 0 || Mi < 0 || ni < 0 || Mi > Ni || ni > Ni) return null;

@@ -150,3 +150,11 @@ describe("the `sample` form — N draws by inverse CDF, seeded per recalculation
     expect((ev("RANDDIST(\"cauchy\", 5)") as { code?: string }).code).toBe("#DOMAIN!");
   });
 });
+
+describe("BINOM.INV and HYPGEOM.DIST refuse an infinite count", () => {
+  // Each summed NaN pmfs one step at a time and never reached the target.
+  it("answers #DOMAIN!, not a hang", () => {
+    expect(compileEvaluator("BINOM.INV(1e400, 0.5, 0.5)")!({})).toMatchObject({ code: "#DOMAIN!" });
+    expect(compileEvaluator("HYPGEOM.DIST(1e400, 5, 1e400, 1e400, TRUE)")!({})).toMatchObject({ code: "#DOMAIN!" });
+  });
+});

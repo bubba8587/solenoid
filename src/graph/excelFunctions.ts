@@ -383,6 +383,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "RANK.AVG":  { returns: "number", arity: [2, 3], family: "statistics" },
   TRIMMEAN:    { returns: "number", arity: [2, 2], family: "statistics" },
   AVERAGE:     { returns: "number", arity: [1, 255], family: "statistics" },
+  SUM:         { returns: "number", arity: [1, 255], family: "arithmetic" },
   MIN:         { returns: "number", arity: [1, 255], family: "statistics" },
   MAX:         { returns: "number", arity: [1, 255], family: "statistics" },
   AVEDEV:      { returns: "number", arity: [1, 255], family: "statistics" },
@@ -977,6 +978,19 @@ for (const [name, op] of [["MIN", "min"], ["MAX", "max"]] as const) {
     return nums.length === 0 ? 0 : aggregate(op, nums);
   });
 }
+// Formula.js's SUM, read the same way but by a loop: its own recursion spreads a list into `apply`, which throws past
+// about 125k values. A nested list adds as its own subtotal, as there.
+function sumLikeFx(values: readonly unknown[]): unknown {
+  let result = 0;
+  for (const v of values) {
+    if (v instanceof Error) return v;
+    if (typeof v === "number") result += v;
+    else if (typeof v === "string") { const p = parseFloat(v); if (!Number.isNaN(p)) result += p; }
+    else if (Array.isArray(v)) { const inner = sumLikeFx(v); if (inner instanceof Error) return inner; result += inner as number; }
+  }
+  return result;
+}
+registerInternal("SUM", (...a) => sumLikeFx(a));
 const asRange = (v: unknown): unknown[] => (Array.isArray(v) ? v : [v]);
 const ifsPairs = (rest: unknown[]): Array<[unknown[], unknown]> | SolError => {
   if (rest.length === 0 || rest.length % 2 !== 0) return solError("#VALUE!", "Criteria come in range, criterion pairs");

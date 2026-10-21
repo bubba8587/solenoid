@@ -29,3 +29,20 @@ describe("NETWORKDAYS is the negation of the forward count on a reversed span", 
     expect(ev("NETWORKDAYS(DATE(2024,1,3), DATE(2024,1,3))")).toBe(1); // same weekday = 1
   });
 });
+
+describe("WORKDAY refuses a start outside the years 1 to 9999", () => {
+  // Past 2^53 a step left the day where it was, and a start that was also a holiday never finished counting.
+  it("answers #DOMAIN!, not a hang", () => {
+    expect(compileEvaluator("WORKDAY(1e308, 3, 1e308)")!({})).toMatchObject({ code: "#DOMAIN!" });
+    expect(compileEvaluator("WORKDAY(-700000, 3)")!({})).toMatchObject({ code: "#DOMAIN!" });
+  });
+});
+
+describe("NETWORKDAYS refuses a date outside the years 1 to 9999", () => {
+  // The day loop ran from a finite start up to an infinite end and never ended.
+  it("an infinite or astronomical end answers #DOMAIN!, not a hang", () => {
+    for (const end of ["1e400", "1e300"]) {
+      expect(compileEvaluator(`NETWORKDAYS(5, ${end})`)!({})).toMatchObject({ code: "#DOMAIN!" });
+    }
+  });
+});

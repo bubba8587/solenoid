@@ -205,6 +205,21 @@ describe("MIN and MAX read a list without spreading it into a call", () => {
   });
 });
 
+describe("SUM reads a list without spreading it into a call", () => {
+  const long = Array.from({ length: 150_000 }, (_, i) => i % 7);
+  it("a list past the argument limit answers", () => {
+    expect(call("SUM", long)).toBe(449_994);
+  });
+  it("it reads as Formula.js does: numbers, numeric text, a nested list as its own subtotal", () => {
+    expect(call("SUM", [1, "9", true, 3], "2")).toBe(15);
+    expect(call("SUM", [1, "9", true, 3], "2")).toBe(FX.SUM([1, "9", true, 3], "2"));
+    expect(call("SUM", 0.1, [0.2, 0.3])).toBe(FX.SUM(0.1, [0.2, 0.3]));
+  });
+  it("FX still spreads the list into a call", () => {
+    expect(() => FX.SUM(long)).toThrow(RangeError);
+  });
+});
+
 // ─── TEXT-family sweep (B-4b, 2026-07-05) — same contract as above: "Excel-correct"
 // blocks pin OUR result; "FX still …" tripwires pin FX's wrong answer so an FX
 // upgrade that fixes one surfaces the override for re-evaluation. ───────────────

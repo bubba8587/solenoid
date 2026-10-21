@@ -229,7 +229,8 @@ const FIRST_DAY = dateFromParts(1, 1, 1) as number, LAST_DAY = dateFromParts(999
 export function addWorkdays(start: number, days: number, off: ReadonlySet<number>, holidays: ReadonlySet<number>): number | SolError {
   const outside = solError("#DOMAIN!", "WORKDAY lands outside the years 1 to 9999");
   let d = Math.floor(start), left = Math.abs(Math.trunc(days));
-  if (left > LAST_DAY - FIRST_DAY) return outside;
+  // Past 2^53 a step doesn't move the day, so a start out there that is also a holiday never finished counting.
+  if (left > LAST_DAY - FIRST_DAY || d < FIRST_DAY || d > LAST_DAY) return outside;
   const step = days < 0 ? -1 : 1, perWeek = 7 - off.size;
   const weekday = (s: number) => serialToJsDate(s).getUTCDay();
   const workingHolidays = [...holidays].filter((h) => !off.has(weekday(h)));
@@ -246,9 +247,11 @@ export function addWorkdays(start: number, days: number, off: ReadonlySet<number
   return d < FIRST_DAY || d > LAST_DAY ? outside : d;
 }
 
-/** Working days from `start` to `end` counting both ends, by calendar day whatever the time; negative when `end` is earlier. */
-export function networkDays(start: number, end: number, off: ReadonlySet<number>, holidays: ReadonlySet<number>): number {
+/** Working days from `start` to `end` counting both ends, by calendar day whatever the time; negative when `end` is earlier.
+ *  A date outside the years 1 to 9999 is refused, as WORKDAY's landing is: the day loop would never end on an infinite one. */
+export function networkDays(start: number, end: number, off: ReadonlySet<number>, holidays: ReadonlySet<number>): number | SolError {
   const a = Math.floor(Math.min(start, end)), b = Math.floor(Math.max(start, end));
+  if (a < FIRST_DAY || b > LAST_DAY) return solError("#DOMAIN!", "NETWORKDAYS spans outside the years 1 to 9999");
   const weekday = (s: number) => serialToJsDate(s).getUTCDay();
   const weeks = Math.floor((b - a + 1) / 7);
   let count = weeks * (7 - off.size);
