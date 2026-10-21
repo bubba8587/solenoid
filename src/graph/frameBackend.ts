@@ -6,6 +6,7 @@ import {
 import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, aggUnitPlan, readingScaleOf, linearScaleOf, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp, type PivotSpec } from "./frameVerbs";
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
+import { formulaCallTable, rowRefNames } from "./excelFormula";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -451,6 +452,27 @@ export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null
     const frame: FrameValue = { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
     adoptPivot(frame, { layout, units });
     return frame;
+  } finally {
+    wasmInvokeSync("engine_drop", { handle: src });
+    if (out) wasmInvokeSync("engine_drop", { handle: out });
+  }
+}
+
+/** A computed column's cells from the Rust evaluator, when the formula reads only `@column`s of `f` through ported
+ *  functions; null where the TS evaluator should run it. */
+export function computeColumnOnEngine(f: FrameValue, expr: string, rows: number): FrameCell[] | null {
+  // Text with a lone surrogate can't cross into Rust, whose strings are well-formed.
+  if (!wasmEngineLoaded() || !wasmEngineOn() || !(expr as string & { isWellFormed(): boolean }).isWellFormed()) return null;
+  const table = formulaCallTable(expr);
+  if (!table) return null;
+  const refs = new Set(rowRefNames(expr));
+  const src = wasmSourceBin(encodeBinary({ __frame: true, columns: f.columns.filter((c) => refs.has(c.name)) }));
+  let out: string | undefined;
+  try {
+    const r = wasmInvokeSync<{ supported: boolean; handle?: string }>("engine_formula_column", { handle: src, expr, table, rows });
+    if (!r.supported) return null;
+    out = r.handle!;
+    return decodeBinary(wasmReadBin(out)!)[0].values;
   } finally {
     wasmInvokeSync("engine_drop", { handle: src });
     if (out) wasmInvokeSync("engine_drop", { handle: out });

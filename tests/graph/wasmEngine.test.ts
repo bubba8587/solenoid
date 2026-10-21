@@ -10,7 +10,9 @@ import { pivotLayoutOf } from "../../src/graph/pivotLayout";
 import type { ColumnUnit } from "../../src/graph/unitValue";
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "../../src/graph/frame";
 import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
-import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine } from "../../src/graph/frameBackend";
+import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine } from "../../src/graph/frameBackend";
+import { parseFormula, compileEvaluator, extractVariables } from "../../src/graph/excelFormula";
+import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 
 const WASM = path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm");
@@ -284,5 +286,131 @@ describe("random pivots: the Rust engine matches the oracle, layout and units in
         expect({ run: i, input: view(f), units: f.columns.map((c) => c.unit ?? null), spec, got }).toEqual({ run: i, input: view(f), units: f.columns.map((c) => c.unit ?? null), spec, got: want });
       }
     }
+  });
+});
+
+// ─── The formula language ──────────────────────────────────────────────────────
+
+const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE",
+  "ISBLANK", "ISNUMBER", "ISTEXT", "ISLOGICAL", "ROUND", "ROUNDUP", "ROUNDDOWN", "TRUNC", "INT", "ABS", "SIGN",
+  "SQRT", "EXP", "LN", "LOG10", "MOD", "POWER", "QUOTIENT", "SUM", "MIN", "MAX", "AVERAGE", "MEDIAN", "PRODUCT",
+  "STDEV", "STDEV.S", "STDEV.P", "VAR", "VAR.S", "VAR.P", "LEN", "CONCAT", "CONCATENATE", "MID", "LEFT", "RIGHT",
+  "UPPER", "LOWER", "TRIM", "REPT", "SUBSTITUTE", "YEAR", "MONTH", "DAY", "TEXT", "VLOOKUP", "XLOOKUP", "SEQUENCE"];
+const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
+
+function formulaGen(rand: () => number) {
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const lit = () => pick(["0", "1", "2", "-0", "3.5", "1e3", ".5", "10", "100", "1e308", "0.1", "7"]);
+  const str = () => `"${pick(["", "abc", "ABC", "TRUE", "false", "5", " a  b ", "😀x", "é", "1,000", "x", "#N/A"])}"`;
+  const ref = () => pick(["@a", "@b", "@c", "@d", "[@a]", "@[b]", "[@[c]]", "@nope", "a", "pi", "E", "Tau"]);
+  const expr = (depth: number): string => {
+    const r = rand();
+    if (depth <= 0 || r < 0.3) return pick([lit, str, ref, ref, () => pick(["TRUE", "FALSE", "true"])])();
+    if (r < 0.4) return `${pick(["-", "+"])}${expr(depth - 1)}`;
+    if (r < 0.45) return `${expr(depth - 1)}%`;
+    if (r < 0.65) return `${expr(depth - 1)} ${pick(OPS)} ${expr(depth - 1)}`;
+    if (r < 0.7) return `(${expr(depth - 1)})`;
+    const name = pick(FNS);
+    const n = Math.floor(rand() * 4);
+    const args = Array.from({ length: n }, () => (rand() < 0.15 ? "" : expr(depth - 1)));
+    return `${rand() < 0.2 ? name.toLowerCase() : name}(${args.join(", ")})`;
+  };
+  return expr;
+}
+
+describe("the Rust formula parser matches the TS one", () => {
+  it(`${FUZZ_RUNS * 5} random formulas, well-formed and not`, () => {
+    const rand = mulberry32(9001 + FUZZ_SEED);
+    const expr = formulaGen(rand);
+    const NOISE = ["(", ")", ",", "[", "]", "@", "\"", "e", ".", "1", " ", "λ", "+", "<", ">", "=", "%", "x.y", "[@", "]]"];
+    for (let i = 0; i < FUZZ_RUNS * 5; i++) {
+      let s = expr(3);
+      if (rand() < 0.3) {
+        const at = Math.floor(rand() * (s.length + 1));
+        s = s.slice(0, at) + NOISE[Math.floor(rand() * NOISE.length)] + s.slice(at + (rand() < 0.5 ? 1 : 0));
+      }
+      if (!(s as string & { isWellFormed(): boolean }).isWellFormed()) continue;
+      const canon = (v: unknown): string => JSON.stringify(v, (_k, x) =>
+        x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1))) : x);
+      const want = canon(parseFormula(s));
+      const got = canon(wasmInvokeSync("engine_formula_parse", { expr: s }));
+      if (got !== want) expect({ s, got }).toEqual({ s, got: want });
+    }
+  });
+});
+
+describe("random row formulas: the Rust evaluator matches the TS one", () => {
+  const well = (v: unknown) => (typeof v === "string" ? (v as string & { toWellFormed(): string }).toWellFormed() : v);
+  it(`${FUZZ_RUNS * 3} computed columns`, { timeout: 600_000 }, () => {
+    const rand = mulberry32(4242 + FUZZ_SEED);
+    const g = gen(rand);
+    const expr = formulaGen(rand);
+    let ran = 0;
+    for (let i = 0; i < FUZZ_RUNS * 3; i++) {
+      const rows = g.int(0, 6);
+      const cell = (type: FrameColType): FrameCell => {
+        const r = rand();
+        if (r < 0.1) return null;
+        if (r < 0.15) return solError(rand() < 0.5 ? "#N/A" : "#DIV/0!", "fuzz");
+        if (type === "number") return r < 0.22 ? [NaN, Infinity, -Infinity, -0, 1e300][Math.floor(rand() * 5)] : Math.round(rand() * 400 - 200) / 8;
+        if (type === "string") return ["", "abc", "Abc", " x ", "12", "TRUE", "😀", "é", "true"][Math.floor(rand() * 9)];
+        if (type === "logical") return rand() < 0.5;
+        return 40000 + Math.floor(rand() * 9000);
+      };
+      const f: FrameValue = {
+        __frame: true,
+        columns: (["a:number", "b:string", "c:logical", "d:date"] as const).map((s) => {
+          const [name, type] = s.split(":") as [string, FrameColType];
+          return { name, type, values: Array.from({ length: rows }, () => cell(type)) };
+        }),
+      };
+      const src = expr(3);
+      const engine = computeColumnOnEngine(f, src, rows);
+      if (engine === null) continue;
+      ran++;
+      const evaluator = compileEvaluator(src)!;
+      const js = computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(src) }, {});
+      const want = isSolError(js) ? js : view({ __frame: true, columns: [{ name: "out", type: "number", values: js.cells.map(well) as FrameCell[] }] });
+      const got = view({ __frame: true, columns: [{ name: "out", type: "number", values: engine }] });
+      if (JSON.stringify(got) !== JSON.stringify(want)) {
+        expect({ run: i, src, input: view(f), got }).toEqual({ run: i, src, input: view(f), got: want });
+      }
+    }
+    expect(ran, "the generator should reach the Rust evaluator often").toBeGreaterThan(FUZZ_RUNS / 2);
+  });
+});
+
+describe("the Rust engine's fdlibm matches V8's Math bit for bit", () => {
+  it("toPrecision(15), exact ties included", () => {
+    const rand = mulberry32(2718 + FUZZ_SEED);
+    const xs: number[] = [];
+    for (let i = 0; i < FUZZ_RUNS * 10; i++) {
+      const k = Math.floor(rand() * 1e15) * 10 + 5;
+      const r = rand();
+      xs.push(r < 0.3 ? k / 2 ** Math.floor(rand() * 8) : r < 0.6 ? (rand() - 0.5) * 10 ** Math.floor(rand() * 40 - 20) : Math.round(rand() * 1e6) / 1024 * 1.2);
+    }
+    const got = wasmInvokeSync<string[]>("engine_math", { fn: "prec15", xs });
+    const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
+    const bad = xs.filter((x, i) => bits(Number(x.toPrecision(15))) !== got[i]).slice(0, 3);
+    expect(bad).toEqual([]);
+  });
+
+  it.each(["exp", "log", "log10", "pow"])("%s", (fn) => {
+    const rand = mulberry32(31337 + FUZZ_SEED);
+    const xs: number[] = [], ys: number[] = [];
+    for (let i = 0; i < FUZZ_RUNS * 10; i++) {
+      const nice = rand() < 0.5;
+      const x = fn === "exp" ? (nice ? Math.round(rand() * 1400 - 700) / 4 : rand() * 1400 - 700)
+        : fn === "pow" ? (nice ? Math.round(rand() * 400) / 10 : rand() * 50)
+        : (nice ? Math.round(rand() * 1e4) / 8 : Math.exp(rand() * 300 - 150));
+      xs.push(x);
+      ys.push(nice ? Math.round(rand() * 60 - 30) / 2 : rand() * 60 - 30);
+    }
+    const math = { exp: Math.exp, log: Math.log, log10: Math.log10, pow: Math.pow }[fn as "exp"] as (a: number, b?: number) => number;
+    const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
+    const got = wasmInvokeSync<string[]>("engine_math", { fn, xs, ys });
+    const bad = xs.map((x, i) => [x, ys[i], math(x, ys[i]), got[i]] as const)
+      .filter(([, , want, g]) => !(Number.isNaN(want) ? (BigInt(g) & 0x7ff0000000000000n) === 0x7ff0000000000000n : bits(want) === g));
+    expect(bad.slice(0, 3)).toEqual([]);
   });
 });

@@ -6,6 +6,9 @@
 pub mod binary;
 pub mod date_serial;
 pub mod error_value;
+pub mod excel_formula;
+pub mod excel_functions;
+pub mod fdlibm;
 pub mod frame;
 pub mod fxhash;
 pub mod frame_backend;

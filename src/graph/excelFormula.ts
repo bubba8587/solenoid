@@ -1021,6 +1021,58 @@ function routeCall(name: string, argv: unknown[], settled: readonly boolean[]): 
   return broadcastCall(name, argv, settled);
 }
 
+/** A called function's dispatch facts, lowered for the Rust evaluator (crates/solenoid-core excel_formula.rs): which
+ *  step of the ladder it takes, its argument roles, and each empty slot's reading. Null when a role isn't one it reads. */
+export interface FormulaCallTraits {
+  kind: "handler" | "whole" | "range" | "broadcast";
+  inspectsNull: boolean;
+  nullableOk: boolean;
+  roles: ({ kind: "setting"; blank: unknown } | { kind: "required" } | null)[];
+  blanks: Record<number, unknown>;
+}
+
+/** `undefined` (a left-out default) as the lowered table spells it. */
+const lowerValue = (v: unknown): unknown => (v === undefined ? { __undef: 1 } : v);
+
+export function formulaCallTable(expr: string): Record<string, FormulaCallTraits> | null {
+  const ast = parseExpr(expr);
+  if (!ast) return null;
+  const calls: CallAst[] = [];
+  const walk = (n: Ast): void => {
+    switch (n.t) {
+      case "call": calls.push(n); n.args.forEach(walk); break;
+      case "apply": walk(n.fn); n.args.forEach(walk); break;
+      case "unary": case "percent": walk(n.arg); break;
+      case "bin": walk(n.l); walk(n.r); break;
+    }
+  };
+  walk(ast);
+  const table: Record<string, FormulaCallTraits> = {};
+  for (const n of calls) {
+    const name = n.name.toUpperCase();
+    const t = nameTraits(name);
+    const entry = table[name] ??= {
+      kind: ERROR_HANDLER_FUNCTIONS.has(name) ? "handler" : t.whole ? "whole" : t.range ? "range" : "broadcast",
+      inspectsNull: NULL_INSPECTING.has(name),
+      nullableOk: t.nullableOk,
+      roles: [],
+      blanks: {},
+    };
+    for (let i = entry.roles.length; i < n.args.length; i++) {
+      const role = argRole(name, i);
+      if (role?.kind === "picks") return null;
+      entry.roles.push(!role ? null : role.kind === "setting" ? { kind: "setting", blank: lowerValue(role.blank) } : { kind: "required" });
+    }
+    n.args.forEach((a, i) => {
+      if (a.t !== "blank" || i in entry.blanks) return;
+      const override = emptySlotOverride(name, i);
+      if (override) entry.blanks[i] = lowerValue(override.value);
+      else if (!argRole(name, i)) entry.blanks[i] = lowerValue(emptySlotReading(name, i).value);
+    });
+  }
+  return table;
+}
+
 export type ExprEvaluator = (env: Record<string, unknown>) => unknown;
 
 export function compileEvaluator(expr: string): ExprEvaluator | null {

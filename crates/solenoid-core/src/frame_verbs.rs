@@ -256,7 +256,8 @@ fn sorted_index_order<'a>(len: usize, cell_at: impl Fn(usize) -> &'a FrameCell, 
         heads.push(i);
     }
     let desc = dir == "desc";
-    js_sort_by(&mut heads, |&i, &j| {
+    // NaN is a tail, so the keys left are totally ordered and the std sort (stable, faster) can't trip on them.
+    heads.sort_by(|&i, &j| {
         let c = match (keys[i].as_ref().unwrap(), keys[j].as_ref().unwrap()) {
             (SortKey::N(a), SortKey::N(b)) => compare_numbers(*a, *b),
             (SortKey::S(a), SortKey::S(b)) => compare_utf16(a, b),

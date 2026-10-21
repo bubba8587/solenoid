@@ -26,20 +26,44 @@ fn pad(n: i64, width: usize) -> String {
     if n < 0 { format!("-{:0>width$}", -n, width = width) } else { format!("{n:0>width$}") }
 }
 
-pub fn format_date_serial(serial: f64, pattern: &str) -> String {
-    if !serial.is_finite() {
-        return crate::jsnum::number_to_string(serial);
-    }
-    let ms = ((serial - 25569.0) * 86_400_000.0).round();
-    if ms.abs() > 8.64e15 {
-        return "Invalid Date".to_string();
+/// `serialToJsDate`'s UTC fields: `new Date(Math.round((serial - 25569) * 86400000))`, `None` for an Invalid Date.
+pub struct UtcParts {
+    pub year: i64,
+    pub month: u32,
+    pub day: u32,
+    pub hours: i64,
+    pub minutes: i64,
+    pub seconds: i64,
+    pub weekday: usize,
+}
+
+pub fn serial_to_utc_parts(serial: f64) -> Option<UtcParts> {
+    let ms = crate::jsnum::math_round((serial - 25569.0) * 86_400_000.0);
+    if !ms.is_finite() || ms.abs() > 8.64e15 {
+        return None;
     }
     let ms = ms as i64;
     let days = ms.div_euclid(86_400_000);
     let in_day = ms.rem_euclid(86_400_000);
     let (year, month, day) = civil_from_days(days);
-    let (hours, minutes, seconds) = (in_day / 3_600_000, in_day / 60_000 % 60, in_day / 1000 % 60);
-    let weekday = (days + 4).rem_euclid(7) as usize;
+    Some(UtcParts {
+        year,
+        month,
+        day,
+        hours: in_day / 3_600_000,
+        minutes: in_day / 60_000 % 60,
+        seconds: in_day / 1000 % 60,
+        weekday: (days + 4).rem_euclid(7) as usize,
+    })
+}
+
+pub fn format_date_serial(serial: f64, pattern: &str) -> String {
+    if !serial.is_finite() {
+        return crate::jsnum::number_to_string(serial);
+    }
+    let Some(UtcParts { year, month, day, hours, minutes, seconds, weekday }) = serial_to_utc_parts(serial) else {
+        return "Invalid Date".to_string();
+    };
     let yyyy = pad(year, 4);
     let h12 = if hours % 12 == 0 { 12 } else { hours % 12 };
     let mut out = String::with_capacity(pattern.len() + 8);

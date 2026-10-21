@@ -8,6 +8,9 @@ import { applyVerb, joinFrames, type FrameOp } from "../../src/graph/frameVerbs"
 import type { FrameValue } from "../../src/graph/frame";
 import { frameBackend, useWasmBackend, resetFrameBackendToJs, type FrameHandle } from "../../src/graph/frameBackend";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
+import { computeColumnOnEngine } from "../../src/graph/frameBackend";
+import { compileEvaluator, extractVariables } from "../../src/graph/excelFormula";
+import { computeColumnCells } from "../../src/graph/computedColumnCore";
 
 const ROWS = Number(process.env.BENCH_ROWS ?? 200_000);
 
@@ -99,9 +102,15 @@ describe.skipIf(!process.env.BENCH)("frame engine timing", () => {
       const rs = await timeAsync(async () => { const out = await be.join(h, r, opts); await be.preview(out, 100); be.drop(out); });
       rows.push(["left join a 1000-row lookup", js.toFixed(1), rs.toFixed(1), (js / rs).toFixed(1)]);
     }
+    for (const expr of ["@value * 1.2 + @cat", "IF(@value > 0, ROUND(@value * 1.2, 2), 0)", "@key & \"-\" & UPPER(@key)", "IFERROR(LN(@value), 0) + MAX(@cat, 10)"]) {
+      const evaluator = compileEvaluator(expr)!;
+      const js = time(() => computeColumnCells(f, { kind: "expr", evaluator, vars: extractVariables(expr) }, {}));
+      const rs = time(() => computeColumnOnEngine(f, expr, ROWS));
+      rows.push([`fx: ${expr}`, js.toFixed(1), rs.toFixed(1), (js / rs).toFixed(1)]);
+    }
     const width = Math.max(...rows.map((x) => x[0].length));
     const lines = [
-      `${ROWS} rows × 5 columns; best of 3; Rust = the op plus a 100-row preview, the frame already in wasm`,
+      `${ROWS} rows × 5 columns; best of 3; Rust = the op plus a 100-row preview, the frame already in wasm; an fx row uploads its columns and downloads the answer`,
       `upload into wasm ${sourceMs.toFixed(1)} ms, full download ${collectMs.toFixed(1)} ms`,
       `${"op".padEnd(width)}  ${"JS ms".padStart(8)}  ${"Rust ms".padStart(8)}  ${"×".padStart(6)}`,
       ...rows.map(([n, a, b, c]) => `${n.padEnd(width)}  ${a.padStart(8)}  ${b.padStart(8)}  ${c.padStart(6)}`),

@@ -11,7 +11,8 @@ use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
 use crate::error_value::{sol_error, SolError};
-use crate::frame::{frame_row_count, get_column, FrameValue};
+use crate::excel_formula::{formula_column, parse_formula, CallTable, ColumnOutcome};
+use crate::frame::{frame_row_count, get_column, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts};
 use crate::wire::{column_to_wire, encode_cell, wire_to_frame, WireFrame};
 
@@ -137,6 +138,33 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 s.layouts.clear();
             });
             Ok(Json::Null)
+        }
+        "engine_formula_parse" => Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json())),
+        "engine_formula_column" => {
+            let f = get(&parse::<String>(args, "handle")?)?;
+            let table: CallTable = parse(args, "table")?;
+            match formula_column(&f, &parse::<String>(args, "expr")?, &table, parse::<usize>(args, "rows")?)? {
+                ColumnOutcome::Unsupported => Ok(json!({ "supported": false })),
+                ColumnOutcome::Cells(cells) => {
+                    let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, cells)] };
+                    Ok(json!({ "supported": true, "handle": register(out) }))
+                }
+            }
+        }
+        "engine_math" => {
+            let xs = parse::<Vec<f64>>(args, "xs")?;
+            let ys = parse::<Option<Vec<f64>>>(args, "ys")?.unwrap_or_default();
+            let f = parse::<String>(args, "fn")?;
+            Ok(Json::Array(xs.iter().enumerate().map(|(i, &x)| {
+                let r = match f.as_str() {
+                    "exp" => crate::fdlibm::exp(x),
+                    "log" => crate::fdlibm::log(x),
+                    "log10" => crate::fdlibm::log10(x),
+                    "prec15" => crate::unit_value::to_precision(x, 15),
+                    _ => crate::excel_functions::js_pow(x, ys.get(i).copied().unwrap_or(f64::NAN)),
+                };
+                json!(r.to_bits().to_string())
+            }).collect()))
         }
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),

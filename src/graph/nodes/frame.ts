@@ -48,7 +48,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -327,7 +327,8 @@ export class FrameInputNode extends ClassicPreset.Node {
           ? readingsRefusal(bareLambdaCall(lam), frame, {}, new Map([["λ", lam]]))
           : readingsRefusal(c.expr!, frame, {}, lamByName);
         if (refused) { fill(i, refused); continue; }
-        const r = computeColumnCells(
+        const onEngine = !lam && ex!.vars.length === 0 && used.length === 0 ? computeColumnOnEngine(frame, c.expr!, rowCount()) : null;
+        const r = onEngine ? { cells: onEngine, sideVars: [] } : computeColumnCells(
           frame,
           lam
             ? { kind: "lambda", lam }
@@ -2667,7 +2668,10 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     };
 
     this.defVars = wired ? wired.params : this._vars;
-    const computed = (isCube ? computeCubeColumnCells : computeColumnCells)(
+    const rowCount = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
+    const onEngine = !wired && !isCube && this._vars.length === 0 && Object.keys(this.bindings).length === 0
+      ? computeColumnOnEngine(f as FrameValue, this.expr, rowCount) : null;
+    const computed = onEngine ? { cells: onEngine, sideVars: [] } : (isCube ? computeCubeColumnCells : computeColumnCells)(
       f,
       wired ? { kind: "lambda", lam: wired } : { kind: "expr", evaluator: this._evaluator!, vars: this._vars },
       {
