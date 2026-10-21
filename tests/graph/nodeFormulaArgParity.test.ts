@@ -120,6 +120,8 @@ describe("[[D73]] nodeCoversFormula — a node dispatching to a formula function
       'LEFT/RIGHT (fn = op) — passes 2 args (text, num_chars), covering arity [1,2]; num_chars is a socket. Behavioural: text.test.ts.',
     'nodes/text.ts::this.op === "find" ? "FIND" : "SEARCH"':
       'FIND/SEARCH — passes 3 args (needle, haystack, start), covering arity [2,3]; start is a socket. Behavioural: text.test.ts / formulaTier1.test.ts.',
+    'nodes/scalar.ts::this.op.toUpperCase()':
+      'BESSELJ/I/K/Y (the Bessel card\'s op) — passes 2 args (x, n), covering arity [2,2]; both are sockets. Behavioural: scalar.test.ts.',
   };
 
   it("literal dispatches pass all the arguments the formula accepts", () => {

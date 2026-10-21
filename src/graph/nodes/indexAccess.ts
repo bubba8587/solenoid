@@ -123,9 +123,13 @@ function indexMany(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: UnitTag
   const w = Math.max(rg?.[0]?.length ?? 1, cg?.[0]?.length ?? 1);
   const at = (g: unknown[][] | undefined, i: number, j: number): number | null | undefined | SolError => {
     if (!g) return undefined;
-    const gi = g.length === 1 ? 0 : i, gj = g[0].length === 1 ? 0 : j;
-    if (gi >= g.length || gj >= g[gi].length) return solError("#N/A", "The positions are different sizes");
-    return positionOf(g[gi][gj]);
+    const gi = g.length === 1 ? 0 : i;
+    if (gi >= g.length) return solError("#N/A", "The positions are different sizes");
+    const line = g[gi];
+    if (!Array.isArray(line)) return positionOf(line); // a blank row is blank positions
+    const gj = (Array.isArray(g[0]) ? g[0].length : 1) === 1 ? 0 : j;
+    if (gj >= line.length) return solError("#N/A", "The positions are different sizes");
+    return positionOf(line[gj]);
   };
   const out = Array.from({ length: h }, (_, i) => Array.from({ length: w }, (_, j) => {
     const r = at(rg, i, j), c = at(cg, i, j);

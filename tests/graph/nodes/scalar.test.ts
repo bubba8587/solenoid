@@ -7,6 +7,7 @@ import {
   MRoundNode,
   GCDNode,
   CombinatoricsNode,
+  BesselNode,
   TwoInputMathNode,
   type MathFnOp,
 } from "../../../src/graph/nodes/scalar";
@@ -155,6 +156,27 @@ describe("Combinatorics — Excel truncates non-integer args", () => {
   it("FACT/FACTDOUBLE ignore k, so a WIRED-BLANK k does not blank the result", () => {
     expect(new CombinatoricsNode({ op: "fact" }).data({ n: [5], k: [null as unknown as number] }).result).toBe(120);
     expect(new CombinatoricsNode({ op: "factdouble" }).data({ n: [6], k: [null as unknown as number] }).result).toBe(48);
+  });
+});
+
+describe("Combinatorics and Bessel cards compute through the formula's kernels ([[C17]] shareImpl)", () => {
+  const comb = (op: "fact" | "combin" | "permut" | "combina" | "factdouble", n: number, k?: number) =>
+    new CombinatoricsNode({ op }).data({ n: [n], k: k === undefined ? undefined : [k] }).result;
+  const bessel = (op: "besselj" | "bessely" | "besseli" | "besselk", x: number, n: number) =>
+    new BesselNode({ op }).data({ x: [x], n: [n] }).result;
+  it("COMBIN past 170, COMBINA with k above n, FACTDOUBLE(-1)", () => {
+    expect(comb("combin", 171, 2)).toBe(14535);
+    expect(comb("combin", 30, 15)).toBe(155117520);
+    expect(comb("combina", 2, 5)).toBe(6);
+    expect(comb("factdouble", -1)).toBe(1);
+    expect((comb("factdouble", -2) as { code?: string }).code).toBe("#DOMAIN!");
+    expect((comb("fact", 171) as { code?: string }).code).toBe("#OVERFLOW!");
+  });
+  it("Bessel K and Y, and I of a negative x, are Excel's", () => {
+    expect(bessel("besselk", 2.5, 1)).toBeCloseTo(0.0738908, 6);
+    expect(bessel("besseli", -1, 1)).toBeCloseTo(-0.5651591, 6);
+    expect(bessel("bessely", 2.5, 1)).toBeCloseTo(0.1459181, 6);
+    expect(bessel("besselj", 1.9, 2)).toBeCloseTo(0.3299257, 6);
   });
 });
 

@@ -2,7 +2,8 @@
 import { ClassicPreset } from "rete";
 import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readRole, numListIn, numListOut, numIn, numOut, listIn, readAsRole, leftOutAs, type BroadcastResult, type UnitOperand } from "./shared";
 import { rolesFrom, required, argRole } from "../inputRoles";
-import { lnGamma, roundDigits, gcdLcm } from "./mathUtils";
+import { lnGamma, roundDigits, gcdLcm, combinatoric } from "./mathUtils";
+import { resolveExcelFunction } from "../excelFunctions";
 import { solError, type SolError, isSolError } from "../errorValue";
 import { guardFinite, powerOf } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
@@ -10,90 +11,6 @@ import type { FormatCarrySpec } from "./formatCarry";
 import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
 import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimEqual, dimPow, isDimensionless } from "../dimension";
-
-// ─── Bessel helpers ───────────────────────────────────────────────────────────
-
-const EULER_GAMMA = 0.5772156649015329;
-
-function _besselJ(x: number, n: number): number {
-  let sum = 0;
-  const h = x / 2;
-  for (let m = 0; m < 60; m++) {
-    const term = Math.pow(-1, m) * Math.pow(h, 2 * m + n) / Math.exp(lnGamma(m + 1) + lnGamma(m + n + 1));
-    sum += term;
-    if (Math.abs(term) < Math.abs(sum) * 1e-15) break;
-  }
-  return sum;
-}
-
-function _besselI(x: number, n: number): number {
-  let sum = 0;
-  const h = x / 2;
-  for (let m = 0; m < 60; m++) {
-    const term = Math.pow(h, 2 * m + n) / Math.exp(lnGamma(m + 1) + lnGamma(m + n + 1));
-    sum += term;
-    if (term < Math.abs(sum) * 1e-15) break;
-  }
-  return sum;
-}
-
-function _besselY0(x: number): number {
-  const j0 = _besselJ(x, 0);
-  let sum = 0;
-  let H = 0;
-  for (let m = 1; m < 60; m++) {
-    H += 1 / m;
-    const term = Math.pow(-1, m + 1) * H * Math.pow(x / 2, 2 * m) / Math.exp(2 * lnGamma(m + 1));
-    sum += term;
-  }
-  return (2 / Math.PI) * ((Math.log(x / 2) + EULER_GAMMA) * j0 + sum);
-}
-
-function _besselY(x: number, n: number): number {
-  if (x <= 0) return NaN;
-  if (n === 0) return _besselY0(x);
-  const y0 = _besselY0(x);
-  const j1 = _besselJ(x, 1);
-  let sum1 = 0; let H = 1;
-  for (let m = 1; m < 60; m++) {
-    H += 1 / (m + 1);
-    const h = x / 2;
-    const term = Math.pow(-1, m) * (H + 1 / (m + 1)) * Math.pow(h, 2 * m + 1) / Math.exp(lnGamma(m + 1) + lnGamma(m + 2));
-    sum1 += term;
-  }
-  const y1 = (2 / Math.PI) * ((Math.log(x / 2) + EULER_GAMMA) * j1 - 1 / x - sum1);
-  let yPrev = y0, yCur = y1;
-  for (let k = 1; k < n; k++) {
-    const yNext = (2 * k / x) * yCur - yPrev;
-    yPrev = yCur; yCur = yNext;
-  }
-  return yCur;
-}
-
-function _besselK0(x: number): number {
-  const i0 = _besselI(x, 0);
-  let sum = 0;
-  let H = 0;
-  for (let m = 0; m < 60; m++) {
-    if (m > 0) H += 1 / m;
-    const term = H * Math.pow(x / 2, 2 * m) / Math.exp(2 * lnGamma(m + 1));
-    sum += term;
-  }
-  return -(Math.log(x / 2) + EULER_GAMMA) * i0 + sum;
-}
-
-function _besselK(x: number, n: number): number {
-  if (x <= 0) return NaN;
-  if (n === 0) return _besselK0(x);
-  const k0 = _besselK0(x);
-  const k1 = (Math.PI / 2) * (_besselI(x, -1) - _besselI(x, 1));
-  let kPrev = k0, kCur = k1;
-  for (let k = 1; k < n; k++) {
-    const kNext = (2 * k / x) * kCur + kPrev;
-    kPrev = kCur; kCur = kNext;
-  }
-  return kCur;
-}
 
 // ─── Arithmetic ──────────────────────────────────────────────────────────────
 
@@ -641,14 +558,6 @@ export const COMBINATORICS_OP_META = {
   permutationa: { label: "PERMUTATIONA", description: "`nᵏ`: ordered arrangements with repetition. Excel: `PERMUTATIONA`." },
 } satisfies Record<CombinatoricsOp, { label: string; description: string }>;
 
-function factorial(n: number): number {
-  if (n < 0) return NaN;
-  if (n === 0) return 1;
-  let r = 1;
-  for (let i = 2; i <= n; i++) r *= i;
-  return r;
-}
-
 export class CombinatoricsNode extends ClassicPreset.Node {
   label: string;
   op: CombinatoricsOp;
@@ -667,62 +576,17 @@ export class CombinatoricsNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[]; k?: number[] }): { result: number | SolError | null } {
-    // floor, not Excel's truncate, to match Formula.js and `=FACT(2.9)` over the non-negative domain.
     // FACT and FACTDOUBLE never read k, so a wired blank k must not blank them.
     const usesK = this.op !== "fact" && this.op !== "factdouble";
-    const nRaw = readInput(inputs.n, this.literals.n ?? 0);
-    if (nRaw === null) { this.cachedResult = null; return { result: null }; }
-    const n = Math.floor(nRaw);
-    let k = 0;
-    if (usesK) {
-      const kRaw = readInput(inputs.k, this.literals.k ?? 0);
-      if (kRaw === null) { this.cachedResult = null; return { result: null }; }
-      k = Math.floor(kRaw);
-    }
-    let result: number | null = null;
-    let domainOk = true;
-    switch (this.op) {
-      case "combin":
-        if (n >= 0 && k >= 0 && k <= n) result = factorial(n) / (factorial(k) * factorial(n - k));
-        else domainOk = false;
-        break;
-      case "combina":
-        // C(n+k−1, k) as a product, never a negative factorial: COMBINA(0,0) is 1 and COMBINA(0,k>0) is 0.
-        if (n >= 0 && k >= 0) {
-          if (n === 0) result = k === 0 ? 1 : 0;
-          else { let r = 1; for (let i = 1; i <= k; i++) r = r * (n + k - i) / i; result = r; }
-        } else domainOk = false;
-        break;
-      case "permut":
-        if (n >= 0 && k >= 0 && k <= n) result = factorial(n) / factorial(n - k);
-        else domainOk = false;
-        break;
-      case "permutationa":
-        if (n >= 0 && k >= 0) result = Math.pow(n, k);
-        else domainOk = false;
-        break;
-      case "fact":
-        if (n >= 0) result = factorial(n);
-        else domainOk = false;
-        break;
-      case "factdouble": {
-        if (n < -1) { domainOk = false; break; }
-        if (n === -1 || n === 0) { result = 1; break; }
-        let r = 1;
-        for (let i = n; i > 0; i -= 2) r *= i;
-        result = r;
-        break;
-      }
-    }
-    if (!domainOk) {
-      const err = solError("#DOMAIN!", "Combinatorics needs non-negative whole numbers with k ≤ n");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    if (result !== null && !Number.isFinite(result)) {
-      const err = solError("#OVERFLOW!", "The result is too large to represent. Reduce N");
-      this.cachedResult = err;
-      return { result: err };
+    const n = readInput(inputs.n, this.literals.n ?? 0);
+    const k = usesK ? readInput(inputs.k, this.literals.k ?? 0) : 0;
+    if (n === null || k === null) { this.cachedResult = null; return { result: null }; }
+    // [[C17]] shareImpl: the formula's kernel; PERMUTATIONA is the card's own.
+    let result: number | SolError = this.op === "permutationa"
+      ? (Math.trunc(n) >= 0 && Math.trunc(k) >= 0 ? Math.pow(Math.trunc(n), Math.trunc(k)) : solError("#DOMAIN!", "Counts must be finite and 0 or more"))
+      : combinatoric(this.op, usesK ? [n, k] : [n]);
+    if (typeof result === "number" && !Number.isFinite(result)) {
+      result = solError("#OVERFLOW!", "The result is too large to represent. Reduce N");
     }
     this.cachedResult = result;
     return { result };
@@ -938,14 +802,8 @@ export class BesselNode extends ClassicPreset.Node {
     const nRaw = readRole<number>(this, "n", inputs.n);
     if (x === null) { this.cachedResult = null; return { result: null }; }
     const n = Math.max(0, Math.round(nRaw));
-    let result: number;
-    switch (this.op) {
-      case "besselj": result = _besselJ(x, n); break;
-      case "bessely": result = _besselY(x, n); break;
-      case "besseli": result = _besselI(x, n); break;
-      case "besselk": result = _besselK(x, n); break;
-    }
-    if (!Number.isFinite(result)) { this.cachedResult = null; return { result: null }; }
+    const result = resolveExcelFunction(this.op.toUpperCase())!(x, n);
+    if (typeof result !== "number" || !Number.isFinite(result)) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = result;
     return { result };
   }

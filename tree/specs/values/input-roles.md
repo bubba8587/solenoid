@@ -33,7 +33,7 @@ A role applies to the whole value and, for a list or a table, to each item:
 |---|---|---|---|
 | blank | the declared blank | `#SYNTAX!` | left out (`#SYNTAX!` when required) |
 | a list with blank items | each blank item reads as the declared blank, in place | each blank item is `#SYNTAX!`, in place | blank items are removed; an empty result is left out |
-| a table with blank cells | each blank cell reads as the declared blank | each blank cell is `#SYNTAX!` | each blank cell is `#SYNTAX!` in place: one position answers one cell, so dropping it would break the table |
+| a table with blank cells | each blank cell reads as the declared blank | each blank cell is `#SYNTAX!` | each blank cell is `#SYNTAX!` in place, and a blank row reads as its blank cells: one position answers one cell, so dropping it would break the table |
 | an error | passes on untouched ([[D35]] errorInErrorOut) | passes on | passes on |
 
 So ROUND's digits `[1, blank]` round the second value to 0 places, INDEX's positions `[3, blank, 1]` pick two items, and `INDEX(x, P)` with a blank cell in the table `P` answers `#SYNTAX!` in that cell and values everywhere else.
