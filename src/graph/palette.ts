@@ -590,7 +590,7 @@ const EQUINOX_CHROME: PaletteChrome = {
   light: polarizeRamp(EQUINOX_BASE_CHROME.light, "#ffffff", "#000000", EQUINOX_POLARIZE),
 };
 
-const DD_GROUND_CHROMA = 0.04;
+const DD_GROUND_CHROMA = 0.03;
 const DD_INK_CHROMA = 0.025;
 const DD_DUSK_LIFT = 0.06;
 function tintRamp(ramp: Record<ChromeKey, string>, groundHue: number, inkHue: number, lift: number): Record<ChromeKey, string> {
