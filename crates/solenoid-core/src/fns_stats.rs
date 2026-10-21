@@ -249,7 +249,7 @@ fn besselj1(x: f64) -> f64 {
     }
 }
 
-/// `besselj`; None where its downward recurrence would never end (an infinite order).
+/// `besselj`; None where its downward recurrence would never end (an infinite order). A NaN order skips it.
 fn besselj(x: f64, n: f64) -> Option<f64> {
     let n = math_round(n);
     if !x.is_finite() {
@@ -275,7 +275,7 @@ fn besselj(x: f64, n: f64) -> Option<f64> {
         return Some(bessel_iter(x, n, besselj0(x), besselj1(x), -1.0));
     }
     let m = 2.0 * ((n + (40.0 * n).sqrt().floor()) / 2.0).floor();
-    if !m.is_finite() {
+    if m.is_infinite() {
         return None;
     }
     let (mut jsum, mut bjp, mut sum, mut bj, mut ret) = (false, 0.0, 0.0, 1.0, 0.0);
@@ -372,7 +372,7 @@ fn besseli(x: f64, n: f64) -> Option<f64> {
     }
     let (mut ret, tox, mut bip, mut bi) = (0.0, 2.0 / x.abs(), 0.0, 1.0);
     let m = 2.0 * math_round((n + math_round((40.0 * n).sqrt())) / 2.0);
-    if !m.is_finite() {
+    if m.is_infinite() {
         return None;
     }
     let mut j = m;

@@ -1,8 +1,6 @@
 {
  "AVERAGEIF": 5,
  "AVERAGEIFS": 1,
- "BESSELI": 1,
- "BESSELJ": 1,
  "COUNTIF": 3,
  "COUNTIFS": 4,
  "COUPDAYS": 20,
@@ -10,7 +8,6 @@
  "DISC": 9,
  "EDATE": 104,
  "EXPAND": 6,
- "INTERPOLATE": 9,
  "MAXIFS": 1,
  "MINIFS": 1,
  "NUMBERVALUE": 2,
