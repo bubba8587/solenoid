@@ -1,14 +1,9 @@
-import { polyRoots } from "./mathUtils";
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complexListOut, readInput, type CellResult, type BroadcastResult } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { cellShortCircuit, COMPUTE } from "../valueKinds";
-import {
-  cx, toCx, type Cx,
-  cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
-  cxSqrt, cxConj, cxSin, cxCos, cxTan, cxSinh, cxCosh, cxSec, cxCsc, cxCot,
-  cxSech, cxCsch, quadraticRoots,
-} from "../cxValue";
+import { cx, toCx, type Cx, cxPow, quadraticRoots } from "../cxValue";
+import { callCore } from "../coreValues";
 
 export { cx, isCx, formatCx, type Cx } from "../cxValue";
 
@@ -113,8 +108,8 @@ export class ComplexUnpackNode extends ClassicPreset.Node {
     const part = (f: (c: Cx) => number) => broadcastComplex(f, cxOp(z, this.label));
     this.cachedRe  = part((c) => c.re);
     this.cachedIm  = part((c) => c.im);
-    this.cachedAbs = part(cxAbs);
-    this.cachedArg = part(cxArg);
+    this.cachedAbs = part((c) => callCore("IMABS", [c]) as number);
+    this.cachedArg = part((c) => callCore("IMARGUMENT", [c]) as number);
     return { re: this.cachedRe, im: this.cachedIm, abs: this.cachedAbs, arg: this.cachedArg };
   }
 }
@@ -158,26 +153,8 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
   }
 
   data(inputs: { z?: (Cx | (Cx | SolError | null)[])[] }): { result: CellResult<Cx> } {
-    const result = broadcastComplex((z: Cx): Cx => {
-      switch (this.op) {
-        case "conj":  return cxConj(z);
-        case "exp":   return cxExp(z);
-        case "ln":    return cxLn(z);
-        case "log10": return cxLog10(z);
-        case "log2":  return cxLog2(z);
-        case "sqrt":  return cxSqrt(z);
-        case "sin":   return cxSin(z);
-        case "cos":   return cxCos(z);
-        case "tan":   return cxTan(z);
-        case "cot":   return cxCot(z);
-        case "sec":   return cxSec(z);
-        case "csc":   return cxCsc(z);
-        case "sinh":  return cxSinh(z);
-        case "cosh":  return cxCosh(z);
-        case "sech":  return cxSech(z);
-        case "csch":  return cxCsch(z);
-      }
-    }, cxOp(inputs.z?.[0] ?? null, this.label));
+    const fn = COMPLEX_UNARY_OP_META[this.op].label;
+    const result = broadcastComplex((z: Cx) => callCore(fn, [z]) as Cx | SolError, cxOp(inputs.z?.[0] ?? null, this.label));
     this.cachedResult = result;
     return { result };
   }
@@ -211,14 +188,8 @@ export class ComplexBinaryNode extends ClassicPreset.Node {
     a?: (Cx | (Cx | SolError | null)[])[];
     b?: (Cx | (Cx | SolError | null)[])[];
   }): { result: CellResult<Cx> } {
-    const result = broadcastComplex((a: Cx, b: Cx): Cx => {
-      switch (this.op) {
-        case "sum":     return cxAdd(a, b);
-        case "sub":     return cxSub(a, b);
-        case "product": return cxMul(a, b);
-        case "div":     return cxDiv(a, b);
-      }
-    },
+    const fn = COMPLEX_BINARY_OP_META[this.op].label;
+    const result = broadcastComplex((a: Cx, b: Cx) => callCore(fn, [a, b]) as Cx | SolError,
       cxOp(inputs.a?.[0] ?? null, this.label),
       cxOp(inputs.b?.[0] ?? null, this.label));
     this.cachedResult = result;
@@ -245,7 +216,8 @@ export class ComplexPowerNode extends ClassicPreset.Node {
     n?: (number | number[])[];
   }): { result: CellResult<Cx> } {
     const result = broadcastComplex(
-      (z: Cx, n: number) => cxPow(z, n),
+      // The formula answers #VALUE! for a NaN exponent, so that one stays on cxPow.
+      (z: Cx, n: number) => (Number.isNaN(n) ? cxPow(z, n) : callCore("IMPOWER", [z, n]) as Cx | SolError),
       cxOp(inputs.z?.[0] ?? null, this.label),
       numOp(readInput(inputs.n, this.literals.n ?? 2)),
     );
@@ -284,10 +256,13 @@ export class PolyRootsNode extends ClassicPreset.Node {
       const e = solError("#VALUE!", "Polynomial Roots needs a finite number in every coefficient");
       this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null };
     }
-    const rs = polyRoots(list as number[]);
-    if (rs === null) { const e = solError("#DOMAIN!", "Polynomial Roots needs at least one non-zero coefficient"); this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null }; }
-    this.cachedRoots = rs.map(([re, im]) => cx(re, im));
-    this.cachedReal = rs.filter(([, im]) => im === 0).map(([re]) => re).sort((x, y) => x - y);
+    const rs = callCore("POLYROOTS", [list]) as Cx[] | SolError;
+    if (isSolError(rs)) {
+      const e = rs.code === "#DOMAIN!" ? solError("#DOMAIN!", "Polynomial Roots needs at least one non-zero coefficient") : rs;
+      this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null };
+    }
+    this.cachedRoots = rs;
+    this.cachedReal = rs.filter((z) => z.im === 0).map((z) => z.re).sort((x, y) => x - y);
     return { roots: this.cachedRoots, real: this.cachedReal };
   }
 }
@@ -316,7 +291,8 @@ export class QuadraticRootsNode extends ClassicPreset.Node {
     c?: (number | number[] | null)[];
   }): { x1: CellResult<Cx>; x2: CellResult<Cx> } {
     const root = (which: 1 | 2) => broadcastComplex((a: number, b: number, c: number): Cx | SolError => {
-      const r = quadraticRoots(a, b, c);
+      // The formula answers #VALUE! for a NaN coefficient, so that one stays on quadraticRoots.
+      const r = [a, b, c].some(Number.isNaN) ? quadraticRoots(a, b, c) : callCore("QUADRATICROOTS", [a, b, c]) as Cx[] | SolError;
       return isSolError(r) ? r : r[which - 1];
     },
       numOp(readInput(inputs.a, this.literals.a)),
