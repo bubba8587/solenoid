@@ -313,7 +313,11 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
   "CLAMP", "BETWEEN", "ISBOOLEAN", "ISCLOSE", "HYPOTENUSE", "NAND", "NOR", "XNOR", "STANDARDIZE", "FISHER", "SLN",
   "ORDINAL", "TEXTBEFORE", "TEXTAFTER", "REVERSETEXT", "PADTEXT", "TRUNCATETEXT", "NUMBERVALUE",
-  "PMT", "FV", "PV", "NPER", "IPMT", "PPMT"];
+  "PMT", "FV", "PV", "NPER", "IPMT", "PPMT",
+  "NORM.DIST", "NORM.INV", "NORM.S.DIST", "NORM.S.INV", "CHISQ.DIST", "CHISQ.INV", "CHISQ.DIST.RT", "CHISQ.INV.RT",
+  "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
+  "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
+  "BINOM.INV", "POISSON.DIST", "HYPGEOM.DIST", "NEGBINOM.DIST"];
 /** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
 const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE|TRIMMEAN|PERCENTRANK/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
@@ -546,10 +550,50 @@ describe("TEXT's toFixed and toExponential match V8's digits, exact ties include
   });
 });
 
+describe("the distribution functions match bit for bit on realistic parameters", () => {
+  const CASES: Array<[string, (r: () => number) => unknown[]]> = [
+    ["NORM.DIST", (r) => [r() * 20 - 10, r() * 4 - 2, r() * 3, r() < 0.5]],
+    ["NORM.INV", (r) => [r(), r() * 10, r() * 3]],
+    ["NORM.S.DIST", (r) => [r() * 16 - 8, r() < 0.5]],
+    ["NORM.S.INV", (r) => [r() ** 3]],
+    ["T.DIST", (r) => [r() * 10 - 5, 1 + r() * 40, r() < 0.5]],
+    ["T.INV", (r) => [r(), 1 + r() * 30]],
+    ["T.INV.2T", (r) => [r(), 1 + r() * 30]],
+    ["CHISQ.DIST", (r) => [r() * 30, 1 + r() * 20, r() < 0.5]],
+    ["CHISQ.INV.RT", (r) => [r(), 1 + r() * 20]],
+    ["F.DIST", (r) => [r() * 6, 1 + r() * 20, 1 + r() * 40, r() < 0.5]],
+    ["F.INV", (r) => [r(), 1 + r() * 20, 1 + r() * 40]],
+    ["GAMMA.DIST", (r) => [r() * 20, 0.2 + r() * 8, 0.2 + r() * 4, r() < 0.5]],
+    ["GAMMA.INV", (r) => [r(), 0.2 + r() * 8, 0.2 + r() * 4]],
+    ["BETA.DIST", (r) => [r(), 0.2 + r() * 6, 0.2 + r() * 6, r() < 0.5]],
+    ["BETA.INV", (r) => [r(), 0.2 + r() * 6, 0.2 + r() * 6]],
+    ["LOGNORM.DIST", (r) => [r() * 10, r() * 2 - 1, 0.1 + r() * 2, r() < 0.5]],
+    ["WEIBULL.DIST", (r) => [r() * 5, 0.3 + r() * 4, 0.3 + r() * 4, r() < 0.5]],
+    ["BINOM.DIST", (r) => [Math.floor(r() * 40), 40, r(), r() < 0.5]],
+    ["BINOM.INV", (r) => [Math.floor(r() * 200), r(), r()]],
+    ["POISSON.DIST", (r) => [Math.floor(r() * 30), r() * 20, r() < 0.5]],
+    ["HYPGEOM.DIST", (r) => [Math.floor(r() * 10), 10, 20, 50, r() < 0.5]],
+    ["NEGBINOM.DIST", (r) => [Math.floor(r() * 20), 1 + Math.floor(r() * 10), r(), r() < 0.5]],
+  ];
+  const bits = (x: unknown) => (typeof x === "number" ? (Number.isNaN(x) ? "NaN" : new DataView(Float64Array.of(x).buffer).getBigUint64(0, true).toString()) : JSON.stringify(x));
+  it.each(CASES)("%s", (name, gen) => {
+    const rand = mulberry32(4711 + FUZZ_SEED + name.length);
+    const fn = resolveExcelFunction(name)!;
+    for (let i = 0; i < FUZZ_RUNS / 10; i++) {
+      const args = gen(rand);
+      const want = fn(...args);
+      const got = wasmInvokeSync<{ num?: string; err?: string } | null>("engine_call", { name, args });
+      const g = got && got.num !== undefined ? new DataView(new BigUint64Array([BigInt(got.num)]).buffer).getFloat64(0, true) : got && got.err ? { code: got.err } : got;
+      const w = isSolError(want) ? { code: want.code } : want;
+      if (bits(g) !== bits(w)) expect({ name, args, got: g }).toEqual({ name, args, got: w });
+    }
+  });
+});
+
 describe("each ported function body matches its JS one on random arguments", () => {
   // The IFERROR family runs in the evaluator (applyErrorHandler), never through a registered body.
   const PORTED = FNS.filter((n) => !["VLOOKUP", "SEQUENCE", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"].includes(n));
-  const POOL: unknown[] = [0.05, 0.004, 360, 12, -200000, 5000, "a-b-c", "-", "B", "left", " Both ", "center", "1.234,5", ",", ".", 21, 112, 3, 0.25, "x😀", "😀", "İstanbul", "1e3%", "0.00", "#,##0.0", "$0.00%", "0.0E+00", "00000", "yyyy-mm-dd", "0.", "General", "@", "mmm \"d\" 0", 0.125, 2.5, -1234567.891, 45000, 45351.5, 36, 60, 1, 2958465, -5, "0000011", "1010101", "ms", " S ", "Quarter", "YM", "md", "y", 11, 17,
+  const POOL: unknown[] = [0.3, 0.975, 1.96, 4, 20, 0.01, 0.99, 6, 30, 0.05, 0.004, 360, 12, -200000, 5000, "a-b-c", "-", "B", "left", " Both ", "center", "1.234,5", ",", ".", 21, 112, 3, 0.25, "x😀", "😀", "İstanbul", "1e3%", "0.00", "#,##0.0", "$0.00%", "0.0E+00", "00000", "yyyy-mm-dd", "0.", "General", "@", "mmm \"d\" 0", 0.125, 2.5, -1234567.891, 45000, 45351.5, 36, 60, 1, 2958465, -5, "0000011", "1010101", "ms", " S ", "Quarter", "YM", "md", "y", 11, 17,
     "hello wORLD", "o'neil-x2y", "(1,234.5)", " $5% ", "-$3", "1.2.3", "ÉCOLE éa", "ΣΑΣ", "привет мИР", "ǆemal ⅷx", "a~?b", 65, 128512, 0xd800, ">5", "<>abc", "a*", "?B?", "~*", "<=0", "<>", "=", "2024-01-15", "05/01/2024", "=TRUE", undefined, null, 0, -0, 1, 2, -1, 0.5, -2.5, 3.75, 7, 10, 45000.25, 1e308, -1e-9, 1e21, 123456789.123,
     NaN, Infinity, -Infinity, "", " ", "abc", "ABC", "5", " 12 ", "1e3", "0x10", "1,000", "TRUE", "false", "Infinity",
     "😀ab", "é", "a b  c", true, false, solError("#N/A", "x"), solError("#DIV/0!", "y")];
@@ -586,6 +630,7 @@ describe("each ported function body matches its JS one on random arguments", () 
       if (name === "SWITCH" && args.some(isSolError)) continue;
       // A pad to a serial-sized width builds megabytes of text per call: true on both sides, and only slow.
       if (name === "PADTEXT" && Math.abs(Number(args[1])) > 1e4) continue;
+      if (name === "BINOM.INV" && Math.abs(Number(args[0])) > 1e4) continue;
       let want: unknown;
       try { want = norm(fn(...args)); } catch (e) { want = { thrown: (e as Error).message }; }
       const wire = (a: unknown): unknown => (Array.isArray(a) ? a.map(wire) : a === undefined ? { __undef: 1 }

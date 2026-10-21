@@ -16,7 +16,7 @@ Experimental, on the `solenoid/tsrs` branch. The method is borrowed from [tsrs](
 - The JavaScript the TS leans on implicitly also gets ported, because it decides answers:
   - `String(x)`, `Number(x)`, `trim` and UTF-16 string order, in `jsnum.rs`.
   - `Array.prototype.sort` that never panics on an inconsistent comparator, in `js_sort.rs`.
-  - `toPrecision`, in `unit_value.rs`; `toFixed` and `toExponential`, exact ties rounding up, in `jsnum.rs`.
+  - `toPrecision`, in `unit_value.rs` (17 correctly rounded digits decide the cut unless they read as a possible tie, and Clinger's fast path turns them back into a number); `toFixed` and `toExponential`, exact ties rounding up, in `jsnum.rs`.
   - V8's `Math.hypot` (Kahan-compensated), and V8's `Math.exp`, `log`, `log10`, `log1p`, `pow`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `acosh`
     and `atanh`, in `fdlibm.rs`. These are fdlibm with V8's own tweaks, because
     the platform libm is off by an ulp on some inputs.
@@ -67,7 +67,7 @@ The Formula.js bodies (CEILING, FLOOR, MROUND, EVEN, ODD, SWITCH, REPLACE and th
 | Units, formats | Unit-blind, as Polars is: the TS lowers reading and unit scales into the op and restores metadata | `lowerForEngine`, `pivotUnits` |
 | Formula tokenizer and parser | Ported whole | 300k random strings, well-formed and broken, give the same tree |
 | Row formulas (computed columns): literals, `@column`, scalar side values, constants, every operator | Ported | 300k random computed columns match cells, messages and side sockets |
-| Formula functions | 206 ported. Logic: IF IFS AND OR NOT XOR NAND NOR XNOR CHOOSE SWITCH CLAMP BETWEEN ISBOOLEAN ISCLOSE, the IFERROR family, the IS tests. Math: ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG LOG10 MOD POWER QUOTIENT PI SQRTPI DEGREES RADIANS CEILING(.MATH) FLOOR(.MATH) MROUND EVEN ODD HYPOTENUSE STANDARDIZE FISHER SLN. Trig: SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH ASINH ACOSH ATANH COT COTH ACOT ACOTH SEC SECH CSC CSCH. Aggregates: SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV(.S/.P) VAR(.S/.P) COUNT COUNTA COUNTBLANK AVEDEV GEOMEAN HARMEAN DEVSQ SKEW(.P) KURT PTP IQR MAD SEM CV RMS GCD LCM. Paired: CORREL PEARSON RSQ KENDALL COVAR COVARIANCE.P/.S SLOPE INTERCEPT STEYX. Order statistics: LARGE SMALL PERCENTILE(.INC/.EXC) QUARTILE(.INC/.EXC) PERCENTRANK(.INC/.EXC) RANK(.EQ/.AVG) TRIMMEAN MODE MODE.SNGL. Criteria: COUNTIF COUNTIFS SUMIFS AVERAGEIF AVERAGEIFS MINIFS MAXIFS, wildcards included. Finance: PMT FV PV NPER IPMT PPMT. Lookups: XLOOKUP XMATCH (INDEX lowers a role the evaluator doesn't read). Text: TEXT TEXTBEFORE TEXTAFTER REVERSETEXT PADTEXT TRUNCATETEXT NUMBERVALUE ORDINAL LEN CONCAT CONCATENATE TEXTJOIN MID LEFT RIGHT REPLACE UPPER LOWER PROPER TRIM REPT SUBSTITUTE EXACT FIND SEARCH CHAR UNICHAR CODE UNICODE VALUE N T. Dates: DATE YEAR MONTH DAY HOUR MINUTE SECOND TIME DAYS DAYS360 DATEDIF YEARFRAC EOMONTH WEEKDAY WEEKNUM ISOWEEKNUM DATETRUNC FROMEPOCH TOEPOCH WORKDAY(.INTL) NETWORKDAYS(.INTL) | each body is checked directly against its JS one on random arguments; a formula calling anything else runs on the TS |
+| Formula functions | 236 ported. Logic: IF IFS AND OR NOT XOR NAND NOR XNOR CHOOSE SWITCH CLAMP BETWEEN ISBOOLEAN ISCLOSE, the IFERROR family, the IS tests. Math: ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG LOG10 MOD POWER QUOTIENT PI SQRTPI DEGREES RADIANS CEILING(.MATH) FLOOR(.MATH) MROUND EVEN ODD HYPOTENUSE STANDARDIZE FISHER SLN. Trig: SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH ASINH ACOSH ATANH COT COTH ACOT ACOTH SEC SECH CSC CSCH. Aggregates: SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV(.S/.P) VAR(.S/.P) COUNT COUNTA COUNTBLANK AVEDEV GEOMEAN HARMEAN DEVSQ SKEW(.P) KURT PTP IQR MAD SEM CV RMS GCD LCM. Paired: CORREL PEARSON RSQ KENDALL COVAR COVARIANCE.P/.S SLOPE INTERCEPT STEYX. Order statistics: LARGE SMALL PERCENTILE(.INC/.EXC) QUARTILE(.INC/.EXC) PERCENTRANK(.INC/.EXC) RANK(.EQ/.AVG) TRIMMEAN MODE MODE.SNGL. Criteria: COUNTIF COUNTIFS SUMIFS AVERAGEIF AVERAGEIFS MINIFS MAXIFS, wildcards included. Finance: PMT FV PV NPER IPMT PPMT. Distributions (`dists.rs`, the mathUtils kernels and `DIST_SPECS`): NORM(.S).DIST/.INV, T.DIST(.RT/.2T), T.INV(.2T), CHISQ.DIST(.RT)/.INV(.RT), F.DIST(.RT)/.INV(.RT), GAMMA, BETA, LOGNORM .DIST/.INV, WEIBULL, EXPON, BINOM.DIST/.INV, POISSON, HYPGEOM, NEGBINOM. Lookups: XLOOKUP XMATCH (INDEX lowers a role the evaluator doesn't read). Text: TEXT TEXTBEFORE TEXTAFTER REVERSETEXT PADTEXT TRUNCATETEXT NUMBERVALUE ORDINAL LEN CONCAT CONCATENATE TEXTJOIN MID LEFT RIGHT REPLACE UPPER LOWER PROPER TRIM REPT SUBSTITUTE EXACT FIND SEARCH CHAR UNICHAR CODE UNICODE VALUE N T. Dates: DATE YEAR MONTH DAY HOUR MINUTE SECOND TIME DAYS DAYS360 DATEDIF YEARFRAC EOMONTH WEEKDAY WEEKNUM ISOWEEKNUM DATETRUNC FROMEPOCH TOEPOCH WORKDAY(.INTL) NETWORKDAYS(.INTL) | each body is checked directly against its JS one on random arguments; a formula calling anything else runs on the TS |
 | Whole-column refs (a bare column name, `[col]`) as a range function's argument: `@x / SUM(x)`, `MAX([x])`, `COUNTBLANK(b)`, `XLOOKUP(@id, id, price)` | Ported, with `prepRangeArgs`' error scan, blank drop and row pairing, and a call that reads no `@` cell evaluated once | explicit cases plus the fuzzer |
 | Readings only chrono-node does (a criterion like `">=3-Apr-2026"`) | Bail: the row stops and the whole column runs on the TS (`bail()`) | explicit cases |
 | A whole column in an argument that takes one value (`LARGE(x, x)` lifts per item) | Not ported: `formulaCallTable` lowers those positions (`scalar`) and the support check sends them to the TS | |
@@ -95,23 +95,23 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 
 | op | JS ms | Rust ms | × |
 | --- | ---: | ---: | ---: |
-| sort by a number | 134.9 | 45.4 | 3.0 |
-| sort by text | 178.6 | 88.1 | 2.0 |
-| filter value > 0 | 15.7 | 8.7 | 1.8 |
-| filter text contains | 13.1 | 7.1 | 1.9 |
-| distinct key | 8.6 | 9.7 | 0.9 |
-| group by key: sum, avg, median | 153.9 | 36.3 | 4.2 |
-| window: cumsum by cat over day | 141.5 | 68.8 | 2.1 |
-| window: rank by cat | 192.6 | 69.7 | 2.8 |
-| pipeline: filter, group, sort | 93.0 | 28.9 | 3.2 |
-| left join a 1000-row lookup | 99.2 | 21.1 | 4.7 |
-| fx: `@value / SUM(value)` | 217.5 | 46.6 | 4.7 |
-| fx: `@value * 1.2 + @cat` | 152.9 | 66.0 | 2.3 |
-| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 801.6 | 429.0 | 1.9 |
-| fx: `@key & "-" & UPPER(@key)` | 405.5 | 282.9 | 1.4 |
-| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 755.4 | 179.4 | 4.2 |
-| fx: `IF(@value > PERCENTILE(value, 0.9), "top", PROPER(@key))` | 984.2 | 210.3 | 4.7 |
-| fx: `SUMIFS(value, key, "k1*") + DATEDIF(45000, 45000 + @cat, "md")` | 892.0 | 228.9 | 3.9 |
+| sort by a number | 142.4 | 45.7 | 3.1 |
+| sort by text | 179.8 | 93.1 | 1.9 |
+| filter value > 0 | 18.1 | 8.5 | 2.1 |
+| filter text contains | 13.6 | 7.8 | 1.8 |
+| distinct key | 8.5 | 10.3 | 0.8 |
+| group by key: sum, avg, median | 154.0 | 36.8 | 4.2 |
+| window: cumsum by cat over day | 140.9 | 71.3 | 2.0 |
+| window: rank by cat | 172.5 | 76.6 | 2.3 |
+| pipeline: filter, group, sort | 101.9 | 24.5 | 4.2 |
+| left join a 1000-row lookup | 102.5 | 21.7 | 4.7 |
+| fx: `@value / SUM(value)` | 198.8 | 47.1 | 4.2 |
+| fx: `@value * 1.2 + @cat` | 154.4 | 66.6 | 2.3 |
+| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 827.0 | 270.8 | 3.1 |
+| fx: `@key & "-" & UPPER(@key)` | 371.8 | 286.1 | 1.3 |
+| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 607.1 | 190.1 | 3.2 |
+| fx: `IF(@value > PERCENTILE(value, 0.9), "top", PROPER(@key))` | 996.7 | 233.3 | 4.3 |
+| fx: `SUMIFS(value, key, "k1*") + DATEDIF(45000, 45000 + @cat, "md")` | 873.2 | 234.3 | 3.7 |
 
 ## Found on the way (fixed in the TS here, worth carrying to develop)
 
@@ -126,6 +126,9 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   the day, so a start that was also a holiday never finished either. Both now refuse a date outside the years 1 to
   9999 with `#DOMAIN!`, as WORKDAY already did for its landing day (pinned in `datetimeParity.test.ts`).
 
+- **BINOM.INV and HYPGEOM.DIST could hang.** An infinite trial count (BINOM.INV) or count (HYPGEOM.DIST's
+  cumulative form) summed NaN probabilities one step at a time and never reached the target. Both now refuse a
+  non-finite count (`distributionOps.ts`, pinned in `distributionFormula.test.ts`).
 - **TEXT with a date code ignores the code.** The installed Formula.js writes any `Date` as
   `toISOString().slice(0, 10)`, so `TEXT(@d, "mmm yyyy")` answers `2026-03-15`. `formulajs-divergences.md` says it
   formats through the UTC getters, which isn't what the code does. The port keeps the TS answer; the fix belongs on
@@ -134,8 +137,6 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 ## Follow-ups
 
 - **Whole-column formula refs and the array evaluator** (`mapCells`, the range functions over lists).
-- **ROUND's `toPrecision`** still formats digits on most inputs. An exact integer-arithmetic version would close
-  the gap.
 - **Size.** The module is 784 KB raw / 314 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`). Size
   modes (`opt-level = "z"`) reach 222 KB gzipped but halve the speed, so they're out. The largest single item left is
   serde's internally tagged `FrameOp` deserializer (67 KB raw): a hand-written `kind` dispatch would trim it.

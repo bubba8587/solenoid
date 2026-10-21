@@ -105,6 +105,10 @@ const PORTED: &[&str] = &[
     "CLAMP", "BETWEEN", "ISBOOLEAN", "ISCLOSE", "HYPOTENUSE", "NAND", "NOR", "XNOR", "STANDARDIZE", "FISHER", "SLN",
     "ORDINAL", "TEXTBEFORE", "TEXTAFTER", "REVERSETEXT", "PADTEXT", "TRUNCATETEXT", "NUMBERVALUE",
     "PMT", "FV", "PV", "NPER", "IPMT", "PPMT",
+    "NORM.DIST", "NORM.INV", "NORM.S.DIST", "NORM.S.INV", "CHISQ.DIST", "CHISQ.INV", "CHISQ.DIST.RT", "CHISQ.INV.RT",
+    "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
+    "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
+    "BINOM.INV", "POISSON.DIST", "HYPGEOM.DIST", "NEGBINOM.DIST",
     "TEXT", "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
     "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
@@ -1178,6 +1182,41 @@ fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
     }
     let n = decimal_from_text(&num);
     if n.is_nan() { bad() } else { V::Num(n / js_pow(100.0, f64::from(pct))) }
+}
+
+use crate::dists::Form;
+
+fn dist_domain() -> V {
+    V::err(sol_error("#DOMAIN!", "A parameter is outside the distribution's domain"))
+}
+
+fn finite_or_null(r: f64) -> V {
+    if r.is_finite() { V::Num(r) } else { V::Null }
+}
+
+/// `cdfOrPdf`.
+fn cdf_or_pdf(cum: &V, discrete: bool) -> Form {
+    if is_true(cum) {
+        Form::Cdf
+    } else if discrete {
+        Form::Pmf
+    } else {
+        Form::Pdf
+    }
+}
+
+/// `dist` (excelFunctions.ts): a NaN argument is blank, a refusal `#DOMAIN!`, a non-finite answer blank.
+fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
+    let vn = to_num(v);
+    let ps: Vec<f64> = params.iter().map(to_num).collect();
+    if vn.is_nan() || ps.iter().any(|x| x.is_nan()) {
+        return V::Null;
+    }
+    match crate::dists::compute(key, form, vn, &ps) {
+        Err(crate::dists::TooLong) => bail(),
+        Ok(None) => dist_domain(),
+        Ok(Some(r)) => finite_or_null(r),
+    }
 }
 
 /// `x || 0`: a falsy argument reads as 0.
@@ -2281,6 +2320,77 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         }
         "TEXT" => excel_text(arg(a, 0), arg(a, 1)),
+        "NORM.DIST" => dist("normal", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "NORM.INV" => dist("normal", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "NORM.S.DIST" => dist("normal-s", cdf_or_pdf(arg(a, 1), false), arg(a, 0), &[]),
+        "NORM.S.INV" => dist("normal-s", Form::Inv, arg(a, 0), &[]),
+        "CHISQ.DIST" => dist("chisq", cdf_or_pdf(arg(a, 2), false), arg(a, 0), &[arg(a, 1).clone()]),
+        "CHISQ.INV" => dist("chisq", Form::Inv, arg(a, 0), &[arg(a, 1).clone()]),
+        "CHISQ.DIST.RT" => dist("chisq", Form::RightTail, arg(a, 0), &[arg(a, 1).clone()]),
+        "F.DIST" => dist("f", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "F.INV" => dist("f", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "F.DIST.RT" => dist("f", Form::RightTail, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "GAMMA.DIST" => dist("gamma", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "LOGNORM.DIST" => dist("lognorm", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "LOGNORM.INV" => dist("lognorm", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "WEIBULL.DIST" => dist("weibull", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "EXPON.DIST" => dist("expon", cdf_or_pdf(arg(a, 2), false), arg(a, 0), &[arg(a, 1).clone()]),
+        "BINOM.DIST" => dist("binom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "BINOM.INV" => dist("binom", Form::Inv, arg(a, 2), &[arg(a, 0).clone(), arg(a, 1).clone()]),
+        "POISSON.DIST" => dist("poisson", cdf_or_pdf(arg(a, 2), true), arg(a, 0), &[arg(a, 1).clone()]),
+        "HYPGEOM.DIST" => dist("hypgeom", cdf_or_pdf(arg(a, 4), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone(), arg(a, 3).clone()]),
+        "NEGBINOM.DIST" => dist("negbinom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        "T.DIST" | "T.DIST.RT" | "T.DIST.2T" | "T.INV" | "T.INV.2T" | "CHISQ.INV.RT" | "F.INV.RT" | "GAMMA.INV" => {
+            use crate::dists::{bisection_inv, chi_sq_cdf, f_cdf, gamma_cdf, t_cdf, t_pdf};
+            let want = if matches!(name, "F.INV.RT" | "GAMMA.INV") { 3 } else { 2 };
+            let ns: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
+            if ns.iter().any(|x| x.is_nan()) {
+                return V::Null;
+            }
+            let (x, d) = (ns[0], ns[1]);
+            let r = match name {
+                "T.DIST" | "T.DIST.RT" | "T.DIST.2T" if d <= 0.0 => return dist_domain(),
+                "T.DIST" => if is_true(arg(a, 2)) { t_cdf(x, d) } else { t_pdf(x, d) },
+                "T.DIST.RT" => 1.0 - t_cdf(x, d),
+                "T.DIST.2T" => 2.0 * (1.0 - t_cdf(x.abs(), d)),
+                _ if d <= 0.0 || x <= 0.0 || x >= 1.0 => return dist_domain(),
+                "T.INV" => bisection_inv(|t| t_cdf(t, d), x, -1e6, 1e6),
+                "T.INV.2T" => bisection_inv(|t| t_cdf(t, d), 1.0 - x / 2.0, -1e6, 1e6),
+                "CHISQ.INV.RT" => bisection_inv(|v| chi_sq_cdf(v, d), 1.0 - x, 0.0, 1e6),
+                _ if ns[2] <= 0.0 => return dist_domain(),
+                "F.INV.RT" => bisection_inv(|v| f_cdf(v, d, ns[2]), 1.0 - x, 0.0, 1e6),
+                _ => bisection_inv(|v| gamma_cdf(v, d, ns[2]), x, 0.0, 1e6),
+            };
+            if r.is_finite() { V::Num(r) } else { V::Null }
+        }
+        "BETA.DIST" | "BETA.INV" => {
+            let inv = name == "BETA.INV";
+            let (lo_at, hi_at) = if inv { (3, 4) } else { (4, 5) };
+            let bound = |v: &V, d: f64| if matches!(v, V::Null | V::Undef) { d } else { to_num(v) };
+            let (lo, hi) = (bound(arg(a, lo_at), 0.0), bound(arg(a, hi_at), 1.0));
+            if lo.is_nan() || hi.is_nan() {
+                return V::Null;
+            }
+            if hi <= lo {
+                return dist_domain();
+            }
+            let params = [arg(a, 1).clone(), arg(a, 2).clone()];
+            if inv {
+                return match dist("beta", Form::Inv, arg(a, 0), &params) {
+                    V::Num(r) => finite_or_null(lo + r * (hi - lo)),
+                    other => other,
+                };
+            }
+            let xn = to_num(arg(a, 0));
+            if xn.is_nan() {
+                return V::Null;
+            }
+            let cum = is_true(arg(a, 3));
+            match dist("beta", if cum { Form::Cdf } else { Form::Pdf }, &V::Num((xn - lo) / (hi - lo)), &params) {
+                V::Num(r) if !cum => finite_or_null(r / (hi - lo)),
+                other => other,
+            }
+        }
         "PMT" => fx_pmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
         "FV" => fx_fv(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
         "PV" => {
