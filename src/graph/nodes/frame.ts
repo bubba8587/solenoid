@@ -54,7 +54,7 @@ import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
   emptyFrameOf, totalLabelledKeys, type Shape, type ShapeColumn,
 } from "../frameShape";
-import { csvList, type FrameShapeContext } from "./frameShapeHook";
+import { csvList, listLiteralText, type FrameShapeContext } from "./frameShapeHook";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell, isAffineDisplay } from "../unitValue";
@@ -908,7 +908,7 @@ export class PivotNode extends ClassicPreset.Node {
       const have = new Set(schema.columns.map((c) => c.name));
       const wanted = new Set<string>();
       for (const raw of [inputs.rowFields, inputs.colFields, inputs.values]) for (const n of readColumnList(raw) ?? []) if (have.has(n)) wanted.add(n);
-      for (const key of ["rowFields", "colFields", "values"] as const) for (const n of (this.stringLiterals[key] ?? "").split(",")) if (have.has(n.trim())) wanted.add(n.trim());
+      for (const key of ["rowFields", "colFields", "values"] as const) for (const n of csvList(this.stringLiterals[key])) if (have.has(n)) wanted.add(n);
       for (const n of Object.keys(this.filterExclude)) if (have.has(n)) wanted.add(n);
       const cols = await materialize(Promise.all([...wanted].map((n) => readRefColumn(f, n))));
       if (gen !== this._gen) return { frame: null };
@@ -952,7 +952,7 @@ export class PivotNode extends ClassicPreset.Node {
     for (const key of ["rowFields", "colFields", "values"] as const) {
       const cur = this.stringLiterals[key] ?? "";
       if (cur.trim() === "") continue;
-      const next = cur.split(",").map((s) => s.trim()).filter((n) => n !== "" && valid.has(n)).join(", ");
+      const next = listLiteralText(csvList(cur).filter((n) => n !== "" && valid.has(n)));
       if (next !== cur) this.stringLiterals[key] = next;
     }
     for (const k of Object.keys(this.funcs)) if (!valid.has(k)) delete this.funcs[k];

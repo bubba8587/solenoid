@@ -1,4 +1,5 @@
 // [[C58]] tableInputRawText
+import { csvList } from "../nodes/frameShapeHook";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import type {
   FrameInputNode as FrameInputNodeType,
@@ -511,7 +512,7 @@ export function GroupByFrameComponent({ data, emit }: NodeProps<GroupByFrameNode
 // ─── PIVOT (full Excel PIVOTBY) ────────────────────────────────────────────────
 
 const PIVOT_CABLE_ONLY = new Set(["rowFields", "colFields", "values", "filter"]);
-const splitNames = (s: string | undefined) => (s ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+const splitNames = (s: string | undefined) => csvList(s).filter(Boolean);
 
 function pivotSummary(data: PivotNodeType): string {
   const rows = splitNames(data.stringLiterals?.rowFields);

@@ -2,8 +2,7 @@
 import { getOwningEditor } from "./activeGraph";
 import { resolveValueOrigin } from "./unitFlow";
 import { isFrameValue, type FrameValue } from "./frame";
-import { processGraph } from "./process";
-import { scheduleAutosave } from "./persistence";
+import { notifyGraphChanged, processGraph } from "./process";
 import { PivotNode } from "./rete-nodes";
 import { pivotEditor } from "./pivotEditorStore";
 import { nodeDisplayName } from "./catalogUtils";
@@ -17,12 +16,12 @@ function findPivotHost(hostId: string): PivotHost | null {
   if (!(node instanceof PivotNode)) return null;
   return {
     view: node.pivotView,
-    setView(view) { node.pivotView = view; scheduleAutosave(); },
+    setView(view) { node.pivotView = view; notifyGraphChanged(); },
     totals: { rowTotalDepth: node.rowTotalDepth, colTotalDepth: node.colTotalDepth },
     async setTotals(t) {
       node.rowTotalDepth = t.rowTotalDepth;
       node.colTotalDepth = t.colTotalDepth;
-      scheduleAutosave();
+      notifyGraphChanged();
       await processGraph(node.id);
       return outputOf(node);
     },

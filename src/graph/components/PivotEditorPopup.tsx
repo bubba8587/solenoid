@@ -1,7 +1,8 @@
 // [[C26]] opArgDistinct, [[C44]] dateSerials
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { pivotEditor } from "../pivotEditorStore";
-import { processGraph } from "../process";
+import { notifyGraphChanged, processGraph } from "../process";
+import { csvList, listLiteralText } from "../nodes/frameShapeHook";
 import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameVerbs";
 import { AGG_OP_META, type PivotNode } from "../rete-nodes";
@@ -34,7 +35,7 @@ interface Cfg {
   exclude: Record<string, string[]>; // field-value filter: field → hidden value keys
 }
 
-const splitNames = (s: string | undefined) => (s ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+const splitNames = (s: string | undefined) => csvList(s).filter(Boolean);
 
 function cfgFromNode(node: PivotNode): Cfg {
   return {
@@ -48,9 +49,9 @@ function cfgFromNode(node: PivotNode): Cfg {
   };
 }
 function writeToNode(node: PivotNode, c: Cfg) {
-  node.stringLiterals.rowFields = c.rows.join(", ");
-  node.stringLiterals.colFields = c.cols.join(", ");
-  node.stringLiterals.values = c.vals.join(", ");
+  node.stringLiterals.rowFields = listLiteralText(c.rows);
+  node.stringLiterals.colFields = listLiteralText(c.cols);
+  node.stringLiterals.values = listLiteralText(c.vals);
   node.funcs = c.funcs;
   node.rowTotalDepth = c.rowTotalDepth; node.colTotalDepth = c.colTotalDepth;
   node.rowSort = c.rowSort; node.colSort = c.colSort; node.relativeTo = c.relativeTo;
@@ -90,8 +91,10 @@ export function PivotEditorPopup() {
   const fields = node.sourceColumns ?? [];
   const typeOf = (name: string) => fields.find((f) => f.name === name)?.type ?? "number";
 
+  // Saved and recorded at once, not on the compute's finish, which manual calculation or an early-out pass would skip.
   function commit(next: Cfg) {
     writeToNode(node, next);
+    notifyGraphChanged();
     void processGraph(node.id);
     setCfg(next);
   }

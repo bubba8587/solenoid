@@ -133,6 +133,8 @@ export function graphSettled(): Promise<void> {
 export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
   if (calcModeStore.isManual() && !opts?.force && !isGraphRebuilding()) {
     calcModeStore.markDirty();
+    // The edit that asked for this pass still changed the document, so it saves now rather than at the next F9.
+    _graphChanged();
     return;
   }
   if (_passActive) {
