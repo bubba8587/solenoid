@@ -75,6 +75,11 @@ fn throw(e: SolError) -> V {
     V::Undef
 }
 
+/// Whether a row bailed, without clearing it.
+pub fn bail_pending() -> bool {
+    BAILED.with(|b| b.get())
+}
+
 pub fn thrown_pending() -> bool {
     THROWN.with(|t| t.borrow().is_some())
 }

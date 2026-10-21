@@ -1,5 +1,5 @@
 // [[C17]] shareImpl, [[C24]] arraySemantics, [[D36]] nullSkippedNotZero
-import { isSolError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 import { matSolve } from "./matrixOps";
 
 export type Cell = number | null | SolError;
@@ -51,10 +51,12 @@ export function savgol(values: readonly Cell[], window: number, order: number): 
   });
 }
 
-export function gaussianSmooth(values: readonly Cell[], sigma: number): Cell[] {
+export function gaussianSmooth(values: readonly Cell[], sigma: number): Cell[] | SolError {
   const n = values.length;
   if (!(sigma > 0)) return values.map((v) => (isSolError(v) ? v : finite(v) ? v : null));
   const r = Math.ceil(4 * sigma);
+  // Each value weighs 2r + 1 neighbours ([[C120]] linearWork).
+  if ((2 * r + 1) * n > 1e8) return solError("#DOMAIN!", "Sigma is too wide for this list: keep 8 × sigma × its length under 100 million");
   const k: number[] = [];
   for (let d = -r; d <= r; d++) k.push(Math.exp(-(d * d) / (2 * sigma * sigma)));
   const reflect = (j: number): number => {

@@ -637,6 +637,16 @@ fn shaper_supported(name: &str, args: &[Ast], cx: &Cx) -> bool {
 
 // ─── Evaluator ──────────────────────────────────────────────────────────────────
 
+/// `dispatch`: a body's JavaScript failure answers #VALUE! at its call, so IFERROR reads it; a bail still ends the row.
+fn call_caught(name: &str, argv: &[V]) -> V {
+    let v = call_function(name, argv);
+    if crate::excel_functions::thrown_pending() && !crate::excel_functions::bail_pending() {
+        crate::excel_functions::take_thrown();
+        return V::err(sol_error("#VALUE!", format!("{name} can't compute with these arguments")));
+    }
+    v
+}
+
 struct Row<'a> {
     /// Each whole column once, as the TS's `wholeCol` caches it.
     lists: FxHashMap<&'a str, Rc<Vec<V>>>,
@@ -1048,7 +1058,7 @@ impl Row<'_> {
             }
         }
         if t.kind == "handler" {
-            return call_function(name, &argv);
+            return call_caught(name, &argv);
         }
         if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
             return e.clone();
@@ -1058,7 +1068,7 @@ impl Row<'_> {
                 if !t.nullable_ok && argv.iter().enumerate().any(|(i, v)| matches!(v, V::Null) && !settled[i]) {
                     return V::Null;
                 }
-                call_function(name, &argv)
+                call_caught(name, &argv)
             }
             "range" => {
                 // prepRangeArgs: a list's first error answers, and its blanks drop, unless the function reads them raw.
@@ -1115,7 +1125,7 @@ impl Row<'_> {
                 }
                 // SUM adds a list as its own subtotal, and the positional bodies read their lists in place; every other
                 // ported range function reads its lists flat.
-                match call_function(name, if crate::excel_functions::reads_lists(name) { &prepped } else { &flat }) {
+                match call_caught(name, if crate::excel_functions::reads_lists(name) { &prepped } else { &flat }) {
                     V::Num(r) if !r.is_finite() => guard(r, &flat),
                     r => r,
                 }
@@ -1137,11 +1147,11 @@ impl Row<'_> {
                         return broadcast_with(&rest, &blanks, t.inspects_null, |args| {
                             let mut full = args.to_vec();
                             full.insert(w.min(full.len()), whole.clone());
-                            call_function(name, &full)
+                            call_caught(name, &full)
                         });
                     }
                 }
-                broadcast_with(&argv, &settled, t.inspects_null, |args| call_function(name, args))
+                broadcast_with(&argv, &settled, t.inspects_null, |args| call_caught(name, args))
             }
         }
     }

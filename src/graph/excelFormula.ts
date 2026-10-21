@@ -407,10 +407,19 @@ export function atColNames(expr: string): string[] {
   return [...out];
 }
 
+/** A body that throws answers an error value, so IFERROR and the rest read it like any other. A JavaScript engine's own
+ *  failure (a TypeError or RangeError: a scalar where a list goes, a recursion too deep) reads as #VALUE!, never its
+ *  internal message; a thrown Solenoid error is itself. */
 function dispatch(name: string, ...args: unknown[]): unknown {
   const f = resolveExcelFunction(name);
   if (!f) throw new Error(`Unknown function: ${name}`);
-  return f(...args);
+  try {
+    return f(...args);
+  } catch (e) {
+    if (isSolError(e)) return e;
+    if (e instanceof TypeError || e instanceof RangeError) return solError("#VALUE!", `${name} can't compute with these arguments`);
+    throw e;
+  }
 }
 
 // ─── Array-aware evaluator (Expression's compute core) ───────────────────────
