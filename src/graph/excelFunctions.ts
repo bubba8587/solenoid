@@ -2072,6 +2072,9 @@ const asRows = (v: unknown): unknown[][] | null => {
   if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];
   return [[v]];
 };
+/** A helper's LAMBDA answers one value each time, as Excel's do (#CALC!): a list would nest the answer past a table. */
+const oneValue = (host: string, each: string, r: unknown): unknown =>
+  Array.isArray(r) ? solError("#SHAPE!", `${host}'s LAMBDA answers one value for each ${each}, not a list`) : r;
 const likeInput = (v: unknown, rows: unknown[][]): unknown =>
   Array.isArray(v) && v.length > 0 && Array.isArray((v as unknown[])[0]) ? rows : rows.length === 1 ? rows[0] : rows;
 
@@ -2088,7 +2091,7 @@ registerInternal("MAP", (...args: unknown[]) => {
   const fn = etaFn(lam, arrays.length);
   const out = Array.from({ length: rows }, (_, i) =>
     Array.from({ length: cols }, (_, j) =>
-      fn(cellAt(shaped[0], i, j), cellAt(shaped[1] ?? [], i, j), cellAt(shaped[2] ?? [], i, j), i + 1, j + 1)));
+      oneValue("MAP", "cell", fn(cellAt(shaped[0], i, j), cellAt(shaped[1] ?? [], i, j), cellAt(shaped[2] ?? [], i, j), i + 1, j + 1))));
   return likeInput(arrays[0], out);
 });
 
@@ -2098,7 +2101,7 @@ registerInternal("BYROW", (v, fn) => {
   const m = asRows(v);
   const call = etaFn(lam, 1);
   // One answer per row, as a column beside the rows it came from ([[D85]] columnsStayColumns).
-  return m === null ? null : m.map((row) => [call([...row])]);
+  return m === null ? null : m.map((row) => [oneValue("BYROW", "row", call([...row]))]);
 });
 registerInternal("BYCOL", (v, fn) => {
   const lam = needLambda(fn, "BYCOL");
@@ -2107,7 +2110,7 @@ registerInternal("BYCOL", (v, fn) => {
   if (m === null) return null;
   const cols = m.reduce((w, r) => Math.max(w, r.length), 0);
   const call = etaFn(lam, 1);
-  return Array.from({ length: cols }, (_, j) => call(m.map((r) => (j < r.length ? r[j] : null))));
+  return Array.from({ length: cols }, (_, j) => oneValue("BYCOL", "column", call(m.map((r) => (j < r.length ? r[j] : null)))));
 });
 
 registerInternal("REDUCE", (init, v, fn) => {
@@ -2137,7 +2140,7 @@ registerInternal("SCAN", (init, v, fn) => {
   const out = m.map((row) => row.map((cell) => {
     if (poisoned) return poisoned;
     if (isSolError(cell)) { poisoned = cell; return cell; }
-    acc = call(acc, cell, ++step);
+    acc = oneValue("SCAN", "step", call(acc, cell, ++step));
     if (isSolError(acc)) poisoned = acc as SolError;
     return acc;
   }));
@@ -2153,7 +2156,7 @@ registerInternal("MAKEARRAY", (rows, cols, fn) => {
   if (r * c > MAX_GENERATED) {
     return solError("#OVERFLOW!", `MAKEARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
   }
-  return Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => lam.fn(i + 1, j + 1)));
+  return Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => oneValue("MAKEARRAY", "cell", lam.fn(i + 1, j + 1))));
 });
 
 registerInternal("GROUPBY", (keys, values, fn) => {
