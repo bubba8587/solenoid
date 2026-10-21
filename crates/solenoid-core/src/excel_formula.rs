@@ -450,6 +450,9 @@ pub enum Role {
     Setting { blank: Json },
     #[serde(rename = "required")]
     Required,
+    /// Positions (INDEX's): a blank one is left out.
+    #[serde(rename = "picks")]
+    Picks { required: bool },
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -471,6 +474,9 @@ pub struct CallTraits {
     /// The argument indexes a list would lift in, which runs on the TS.
     #[serde(default)]
     pub scalar: Vec<usize>,
+    /// Whether a broadcast call maps over a whole column cell by cell.
+    #[serde(rename = "mapsColumns", default)]
+    pub maps_columns: bool,
 }
 
 pub type CallTable = FxHashMap<String, CallTraits>;
@@ -503,7 +509,6 @@ fn whole_column<'a>(n: &Ast, columns: &FxHashMap<&str, &'a FrameColumn>, sides: 
 }
 
 fn supported_at(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHashMap<String, V>, table: &CallTable, list_ok: bool) -> bool {
-    let ok = |a: &Ast| supported_at(a, columns, sides, table, false);
     if whole_column(n, columns, sides).is_some() {
         return list_ok;
     }
@@ -512,13 +517,17 @@ fn supported_at(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHash
         Ast::Name(name) => constant_value(name).is_some() || sides.contains_key(name),
         Ast::AtCol(name) => columns.contains_key(name.as_str()) || sides.contains_key(name),
         Ast::WholeCol(_) | Ast::Apply { .. } => false,
-        Ast::Unary { arg, .. } | Ast::Percent(arg) => ok(arg),
-        Ast::Bin { l, r, .. } => ok(l) && ok(r),
+        // An operator maps over a list cell by cell (`mapCells`): where a list may go, its operands may be lists too.
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => supported_at(arg, columns, sides, table, list_ok),
+        Ast::Bin { l, r, .. } => supported_at(l, columns, sides, table, list_ok) && supported_at(r, columns, sides, table, list_ok),
         Ast::Call { name, args } => {
             let up = name.to_uppercase();
             let roles_ok = table.get(&up).is_some_and(|t| {
-                matches!(t.kind.as_str(), "handler" | "whole" | "range" | "broadcast") && t.roles.len() >= args.len()
+                matches!(t.kind.as_str(), "handler" | "whole" | "range" | "broadcast")
+                    && t.roles.len() >= args.len()
+                    && !t.roles.iter().any(|r| matches!(r, Some(Role::Picks { required: true })))
             });
+            let picks = |i: usize| table.get(&up).is_some_and(|t| matches!(t.roles.get(i), Some(Some(Role::Picks { .. }))));
             let lists = table.get(&up).is_some_and(|t| {
                 (t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default" | "positional" | "paired"))
                     || (t.kind == "whole" && crate::excel_functions::takes_whole_lists(&up))
@@ -526,7 +535,16 @@ fn supported_at(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHash
             // A list where one value goes lifts, and a lookup over a list spills: either answers a list, which only
             // the TS's broadcast reads.
             let lifts = |i: usize| table.get(&up).is_some_and(|t| t.scalar.contains(&i)) || (i == 0 && matches!(up.as_str(), "XLOOKUP" | "XMATCH"));
-            is_ported(&up) && roles_ok && args.iter().enumerate().all(|(i, a)| supported_at(a, columns, sides, table, lists && !lifts(i)))
+            // A broadcast or error-handling call over a list answers a list (`broadcastCall`, `mapCells`): its arguments
+            // may be lists only where that list may go. A holiday list goes whole wherever the call is.
+            let kind = table.get(&up).map_or("", |t| t.kind.as_str());
+            let list_at = |i: usize| match kind {
+                "broadcast" => (list_ok && table.get(&up).is_some_and(|t| t.maps_columns)) || whole_list_arg(&up) == Some(i),
+                "handler" => list_ok,
+                _ => lists && !lifts(i),
+            };
+            // A list of positions picks many (`indexMany`), which stays on the TS.
+            is_ported(&up) && roles_ok && args.iter().enumerate().all(|(i, a)| supported_at(a, columns, sides, table, list_at(i) && !picks(i)))
         }
     }
 }
@@ -677,6 +695,76 @@ fn js_number(v: &V) -> f64 {
     }
 }
 
+/// `WHOLE_LIST_ARG`: the argument a function reads as one whole list (the holidays).
+fn whole_list_arg(name: &str) -> Option<usize> {
+    match name {
+        "WORKDAY" | "NETWORKDAYS" => Some(2),
+        "WORKDAY.INTL" | "NETWORKDAYS.INTL" => Some(3),
+        _ => None,
+    }
+}
+
+/// `broadcastWith`: the function over each cell of its list arguments; a cell's error answers, and a blank answers
+/// blank unless the function inspects blanks.
+fn broadcast_with(argv: &[V], blank_slots: &[bool], inspects_null: bool, f: impl Fn(&[V]) -> V) -> V {
+    let call = |args: &[V]| match f(args) {
+        V::Num(r) => guard(r, args),
+        r => r,
+    };
+    if !argv.iter().any(|v| matches!(v, V::List(_))) {
+        let blank = argv.iter().enumerate().any(|(i, v)| matches!(v, V::Null) && !blank_slots.get(i).copied().unwrap_or(false));
+        return if !inspects_null && blank { V::Null } else { call(argv) };
+    }
+    let len = argv.iter().filter_map(|v| if let V::List(l) = v { Some(l.len()) } else { None }).max().unwrap_or(0);
+    if len == 0 {
+        return V::List(Rc::new(Vec::new()));
+    }
+    map_cells(argv, |ops| {
+        if let Some(e) = ops.iter().find(|v| v.is_sol_error()) {
+            return e.clone();
+        }
+        if !inspects_null && ops.iter().any(|v| matches!(v, V::Null)) {
+            return V::Null;
+        }
+        call(ops)
+    })
+}
+
+/// `mapCells` over values and 1-D lists: a one-item list reads as its item, and a cell past a shorter list's end is
+/// blank.
+pub fn map_cells_pub(argv: &[V], cell: impl Fn(&[V]) -> V) -> V {
+    map_cells(argv, cell)
+}
+
+fn map_cells(argv: &[V], cell: impl Fn(&[V]) -> V) -> V {
+    let args: Vec<V> = argv
+        .iter()
+        .map(|a| match a {
+            V::List(items) if items.len() == 1 && !matches!(items[0], V::List(_)) => items[0].clone(),
+            other => other.clone(),
+        })
+        .collect();
+    let len = args.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).max();
+    let Some(len) = len else { return cell(&args) };
+    let mut out = Vec::with_capacity(len);
+    let mut ops: Vec<V> = Vec::with_capacity(args.len());
+    for i in 0..len {
+        ops.clear();
+        let mut short = false;
+        for a in &args {
+            match a {
+                V::List(l) => match l.get(i) {
+                    Some(v) => ops.push(v.clone()),
+                    None => short = true,
+                },
+                other => ops.push(other.clone()),
+            }
+        }
+        out.push(if short { V::Null } else { cell(&ops) });
+    }
+    V::List(Rc::new(out))
+}
+
 fn reads_row(n: &Ast) -> bool {
     match n {
         Ast::AtCol(_) => true,
@@ -705,6 +793,14 @@ impl Row<'_> {
             Ast::WholeCol(_) | Ast::Apply { .. } => V::Undef,
             Ast::Unary { op, arg } => {
                 let a = self.eval(arg);
+                if let V::List(_) = a {
+                    let neg = *op == '-';
+                    return map_cells(&[a], |x| match &x[0] {
+                        e @ V::Err(_) => e.clone(),
+                        V::Null => V::Null,
+                        other => V::Num(if neg { -js_number(other) } else { js_number(other) }),
+                    });
+                }
                 match a {
                     V::Err(_) | V::Fx(_) => a,
                     V::Null => V::Null,
@@ -713,6 +809,13 @@ impl Row<'_> {
             }
             Ast::Percent(arg) => {
                 let a = self.eval(arg);
+                if let V::List(_) = a {
+                    return map_cells(&[a], |x| match &x[0] {
+                        e @ V::Err(_) => e.clone(),
+                        V::Null => V::Null,
+                        other => V::Num(js_number(other) / 100.0),
+                    });
+                }
                 match a {
                     V::Err(_) | V::Fx(_) => a,
                     V::Null => V::Null,
@@ -721,6 +824,9 @@ impl Row<'_> {
             }
             Ast::Bin { op, l, r } => {
                 let (l, r) = (self.eval(l), self.eval(r));
+                if matches!(l, V::List(_)) || matches!(r, V::List(_)) {
+                    return map_cells(&[l, r], |x| apply_op(op, &x[0], &x[1]));
+                }
                 apply_op(op, &l, &r)
             }
             Ast::Call { name, args } => {
@@ -752,10 +858,35 @@ impl Row<'_> {
             if v.is_sol_error() {
                 continue;
             }
+            // `applyRole` reads a list item by item: a blank setting fills, a blank required item is its own error.
+            fn each(v: &V, f: &dyn Fn(&V) -> V) -> V {
+                match v {
+                    V::List(items) => V::List(Rc::new(items.iter().map(|x| if x.is_sol_error() { x.clone() } else { each(x, f) }).collect())),
+                    other => f(other),
+                }
+            }
+            if let V::List(_) = v {
+                match role {
+                    Role::Setting { blank } => *v = each(v, &|x| if matches!(x, V::Null | V::Undef) { lowered(blank) } else { x.clone() }),
+                    Role::Required => {
+                        let err = V::err(sol_error("#SYNTAX!", format!("{name}: argument {} is blank, and it has no default", i + 1)));
+                        *v = each(v, &|x| if matches!(x, V::Null | V::Undef) { err.clone() } else { x.clone() });
+                    }
+                    Role::Picks { .. } => {}
+                }
+                continue;
+            }
             match role {
                 Role::Setting { blank } => {
                     if matches!(v, V::Null | V::Undef) {
                         *v = lowered(blank);
+                    }
+                }
+                // `applyRole` with `required` off, as `applyArgRoles` reads a picks role; only a variadic required group
+                // (CHOOSEROWS) errors, and the support check keeps that on the TS.
+                Role::Picks { .. } => {
+                    if matches!(v, V::Null | V::Undef) {
+                        *v = V::Undef;
                     }
                 }
                 Role::Required => {
@@ -844,13 +975,27 @@ impl Row<'_> {
                 }
             }
             _ => {
-                if !t.inspects_null && argv.iter().enumerate().any(|(i, v)| matches!(v, V::Null) && !settled[i]) {
-                    return V::Null;
+                // `broadcastCall`: a whole-list argument goes in whole, its errors answering and its blanks dropped.
+                if let Some(w) = whole_list_arg(name) {
+                    if let Some(V::List(items)) = argv.get(w) {
+                        let items: Vec<V> = items.iter().flat_map(|v| match v {
+                            V::List(inner) => inner.as_ref().clone(),
+                            other => vec![other.clone()],
+                        }).collect();
+                        if let Some(e) = items.iter().find(|v| v.is_sol_error()) {
+                            return e.clone();
+                        }
+                        let whole = V::List(Rc::new(items.into_iter().filter(|v| !matches!(v, V::Null | V::Undef)).collect()));
+                        let rest: Vec<V> = argv.iter().enumerate().filter(|&(i, _)| i != w).map(|(_, v)| v.clone()).collect();
+                        let blanks: Vec<bool> = settled.iter().enumerate().filter(|&(i, _)| i != w).map(|(_, b)| *b).collect();
+                        return broadcast_with(&rest, &blanks, t.inspects_null, |args| {
+                            let mut full = args.to_vec();
+                            full.insert(w.min(full.len()), whole.clone());
+                            call_function(name, &full)
+                        });
+                    }
                 }
-                match call_function(name, &argv) {
-                    V::Num(r) => guard(r, &argv),
-                    r => r,
-                }
+                broadcast_with(&argv, &settled, t.inspects_null, |args| call_function(name, args))
             }
         }
     }

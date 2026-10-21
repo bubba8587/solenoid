@@ -1032,10 +1032,13 @@ export interface FormulaCallTraits {
   prep: "raw" | "positional" | "zero" | "paired" | "default";
   inspectsNull: boolean;
   nullableOk: boolean;
-  roles: ({ kind: "setting"; blank: unknown } | { kind: "required" } | null)[];
+  roles: ({ kind: "setting"; blank: unknown } | { kind: "required" } | { kind: "picks"; required: boolean } | null)[];
   blanks: Record<number, unknown>;
   /** The argument indexes a list would lift in (`RANGE_SCALAR_ARGS`), up to the longest call. */
   scalar: number[];
+  /** A broadcast function maps over a whole column (a one-column matrix) cell by cell; one Solenoid doesn't know
+   *  answers #SHAPE!, and one that takes matrices gets the matrix itself. */
+  mapsColumns: boolean;
 }
 
 /** `undefined` (a left-out default) as the lowered table spells it. */
@@ -1085,12 +1088,13 @@ export function formulaCallTable(expr: string): Record<string, FormulaCallTraits
       roles: [],
       blanks: {},
       scalar: [],
+      mapsColumns: t.known && !t.matrixArgs,
     };
     for (let i = entry.roles.length; i < n.args.length; i++) {
       if (takesOne(name, i)) entry.scalar.push(i);
       const role = argRole(name, i);
-      if (role?.kind === "picks") return null;
-      entry.roles.push(!role ? null : role.kind === "setting" ? { kind: "setting", blank: lowerValue(role.blank) } : { kind: "required" });
+      entry.roles.push(!role ? null : role.kind === "setting" ? { kind: "setting", blank: lowerValue(role.blank) }
+        : role.kind === "picks" ? { kind: "picks", required: role.required } : { kind: "required" });
     }
     n.args.forEach((a, i) => {
       if (a.t !== "blank" || i in entry.blanks) return;

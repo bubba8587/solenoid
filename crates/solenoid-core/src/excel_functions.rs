@@ -105,7 +105,7 @@ const PORTED: &[&str] = &[
     "CLAMP", "BETWEEN", "ISBOOLEAN", "ISCLOSE", "HYPOTENUSE", "NAND", "NOR", "XNOR", "STANDARDIZE", "FISHER", "SLN",
     "ORDINAL", "TEXTBEFORE", "TEXTAFTER", "REVERSETEXT", "PADTEXT", "TRUNCATETEXT", "NUMBERVALUE",
     "PMT", "FV", "PV", "NPER", "IPMT", "PPMT",
-    "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS",
+    "INDEX", "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS",
     "NORM.DIST", "NORM.INV", "NORM.S.DIST", "NORM.S.INV", "CHISQ.DIST", "CHISQ.INV", "CHISQ.DIST.RT", "CHISQ.INV.RT",
     "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
     "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
@@ -121,7 +121,7 @@ pub fn is_ported(name: &str) -> bool {
 
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
 pub fn takes_whole_lists(name: &str) -> bool {
-    matches!(name, "WAVG" | "WVAR" | "WSTDEV" | "COUNTDISTINCT" | "ARGMAX" | "ARGMIN" | "LENGTH" | "CONTAINS")
+    matches!(name, "WAVG" | "WVAR" | "WSTDEV" | "COUNTDISTINCT" | "ARGMAX" | "ARGMIN" | "LENGTH" | "CONTAINS" | "INDEX")
 }
 
 /// The range functions whose body takes each argument in its place, a list as one argument.
@@ -129,7 +129,7 @@ pub fn reads_lists(name: &str) -> bool {
     matches!(
         name,
         "SUM" | "LARGE" | "SMALL" | "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" | "QUARTILE" | "QUARTILE.INC" | "QUARTILE.EXC"
-            | "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" | "COUNTIFS" | "COUNTIF" | "AVERAGEIF" | "TEXTJOIN" | "XLOOKUP" | "XMATCH"
+            | "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" | "COUNTIFS" | "COUNTIF" | "AVERAGEIF" | "TEXTJOIN" | "XLOOKUP" | "XMATCH" | "INDEX"
             | "CORREL" | "PEARSON" | "RSQ" | "KENDALL" | "COVAR" | "COVARIANCE.P" | "COVARIANCE.S" | "SLOPE" | "INTERCEPT"
             | "STEYX" | "RANK" | "RANK.EQ" | "RANK.AVG" | "TRIMMEAN" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC"
     )
@@ -1224,6 +1224,69 @@ fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
         Ok(None) => dist_domain(),
         Ok(Some(r)) => finite_or_null(r),
     }
+}
+
+/// `indexRefError`.
+fn index_ref_error(n: f64, max: usize, what: &str) -> V {
+    V::err(sol_error("#REF!", format!("{what} {} is outside 1…{max}", number_to_string(n))))
+}
+
+/// `indexInto` (indexAccess.ts) for one value or a whole column, which the TS holds as a one-column table. A null
+/// position (`row_null`) is a blank answer; None is a position left out.
+fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_null: bool) -> V {
+    if matches!(v, V::Null | V::Undef) {
+        return V::Null;
+    }
+    if row_null || col_null {
+        return V::Null;
+    }
+    let row_all = row.is_none_or(|r| r.trunc() == 0.0);
+    let col_all = col.is_none_or(|c| c.trunc() == 0.0);
+    let r = if row_all { -1.0 } else { row.unwrap_or(0.0).trunc() - 1.0 };
+    let c = if col_all { -1.0 } else { col.unwrap_or(0.0).trunc() - 1.0 };
+    let V::List(items) = v else {
+        let ok = (row_all || r == 0.0) && (col_all || c == 0.0);
+        return if ok { v.clone() } else { V::err(sol_error("#REF!", "Index is outside a single value. Only index 1 exists")) };
+    };
+    // A one-column table: `grid[i] = [items[i]]`; an empty column is the empty list.
+    let n = items.len();
+    let inside = |k: f64, len: usize| k >= 0.0 && k < len as f64;
+    if n == 0 {
+        if col.is_none() {
+            return if row_all { v.clone() } else { index_ref_error(r + 1.0, 0, "Item") };
+        }
+        if !row_all && r != 0.0 {
+            return index_ref_error(r + 1.0, 1, "Row");
+        }
+        return if col_all { v.clone() } else { index_ref_error(c + 1.0, 0, "Column") };
+    }
+    if row_all && col_all {
+        return v.clone();
+    }
+    if col.is_none() && !row_all {
+        if n == 1 {
+            return if inside(r, 1) { items[0].clone() } else { index_ref_error(r + 1.0, 1, "Column") };
+        }
+        return if inside(r, n) { items[r as usize].clone() } else { index_ref_error(r + 1.0, n, "Row") };
+    }
+    if !row_all && !inside(r, n) {
+        return index_ref_error(r + 1.0, n, "Row");
+    }
+    if row_all {
+        let width = usize::from(n > 0);
+        if !inside(c, width) {
+            return index_ref_error(c + 1.0, width, "Column");
+        }
+        return v.clone();
+    }
+    let cell = &items[r as usize];
+    if col_all {
+        return V::List(Rc::new(vec![cell.clone()]));
+    }
+    if !inside(c, 1) {
+        return index_ref_error(c + 1.0, 1, "Column");
+    }
+    cell.clone()
 }
 
 /// `toList`: a list as its items, a blank as none, anything else as one.
@@ -2498,6 +2561,29 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             best.map_or(V::Null, |(i, _)| V::Num(i as f64 + 1.0))
         }
         "LENGTH" => V::Num(to_list(arg(a, 0)).len() as f64),
+        "INDEX" => {
+            // `axis`: a left-out or blank position as it is, anything else a number.
+            let axis = |v: &V| -> Result<Option<f64>, V> {
+                match v {
+                    V::Undef => Ok(None),
+                    V::Null => Ok(Some(f64::NAN)),
+                    V::List(_) => Err(bail()),
+                    other => {
+                        let n = to_num(other);
+                        if n.is_nan() { Err(V::err(sol_error("#VALUE!", "INDEX position must be a number"))) } else { Ok(Some(n)) }
+                    }
+                }
+            };
+            let (row, col) = match (axis(arg(a, 1)), axis(arg(a, 2))) {
+                (Err(e), _) | (_, Err(e)) => return e,
+                (Ok(r), Ok(c)) => (r, c),
+            };
+            // A whole row or column answers a list, which only the TS's broadcast reads wherever it lands.
+            match index_into(arg(a, 0), row, col, matches!(arg(a, 1), V::Null), matches!(arg(a, 2), V::Null)) {
+                V::List(_) => bail(),
+                r => r,
+            }
+        }
         "CONTAINS" => {
             if let V::List(items) = arg(a, 0) {
                 if items.iter().any(|v| matches!(v, V::List(_))) {
@@ -2950,15 +3036,25 @@ fn error_handler(name: &str, a: &[V]) -> V {
         }
     };
     let value = arg(a, 0);
+    // A list maps cell by cell: the fallback pairs with each value (`mapCells`), the tests walk the items.
+    fn walk(v: &V, f: &dyn Fn(&V) -> V) -> V {
+        match v {
+            V::List(items) => V::List(Rc::new(items.iter().map(|x| walk(x, f)).collect())),
+            other => f(other),
+        }
+    }
     match name {
         "IFERROR" | "IFNA" => {
             let fallback = if a.len() > 1 { a[1].clone() } else { V::Null };
-            if caught(value) { fallback } else { value.clone() }
+            if !matches!(value, V::List(_)) && !matches!(fallback, V::List(_)) {
+                return if caught(value) { fallback } else { value.clone() };
+            }
+            crate::excel_formula::map_cells_pub(&[value.clone(), fallback], |x| if caught(&x[0]) { x[1].clone() } else { x[0].clone() })
         }
-        "ERROR.TYPE" => match as_sol(value) {
+        "ERROR.TYPE" => walk(value, &|v| match as_sol(v) {
             Some(e) => V::Num(error_type_num(&e.code).unwrap_or(3.0)),
             None => V::err(sol_error("#N/A", "ERROR.TYPE: the value is not an error")),
-        },
-        _ => V::Bool(caught(value)),
+        }),
+        _ => walk(value, &|v| V::Bool(caught(v))),
     }
 }

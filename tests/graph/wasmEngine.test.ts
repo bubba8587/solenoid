@@ -318,7 +318,7 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
   "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
   "BINOM.INV", "POISSON.DIST", "HYPGEOM.DIST", "NEGBINOM.DIST",
-  "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS"];
+  "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "INDEX"];
 /** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
 const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE|TRIMMEAN|PERCENTRANK/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
@@ -367,7 +367,9 @@ describe("the Rust formula parser matches the TS one", () => {
 });
 
 describe("random row formulas: the Rust evaluator matches the TS one", () => {
-  const well = (v: unknown) => (typeof v === "string" ? (v as string & { toWellFormed(): string }).toWellFormed() : v);
+  // Rust strings can't hold half a surrogate pair (RIGHT("😀", 1)); it reads as U+FFFD, as it does on screen.
+  const wf = (t: string) => (t as string & { toWellFormed(): string }).toWellFormed();
+  const well = (v: unknown) => (typeof v === "string" ? wf(v) : isSolError(v) ? { ...v, message: wf(v.message) } : v);
   it(`${FUZZ_RUNS * 3} computed columns`, { timeout: 600_000 }, () => {
     const rand = mulberry32(4242 + FUZZ_SEED);
     const g = gen(rand);
@@ -469,6 +471,11 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
     "AVERAGEIF(a, \">0\")", "MAXIFS(d, a, \"<5\")", "MINIFS(a, b, \"*\")", "COUNTIFS(a, @a, c, @c)",
     "COUNTIF(a, \"2024-01-15\")", "COUNTIF(a, \"05/01/2024\")",
     "XLOOKUP(@b, b, a)", "XLOOKUP(@a + 1, a, d, \"none\")", "XMATCH(@a, a, 1)", "XMATCH(@a, a, -1, -1)",
+    "SUM(a * d)", "SUM((a > 0) * a)", "AVERAGE(-a) + @a", "SUM(a%)", "COUNTIF(a * 2, \">5\")", "SUM(LEN(@b) * a)",
+    "INDEX(a, 2)", "INDEX(d, XMATCH(@b, b))", "INDEX(a, 3, 1)", "INDEX(@a, 1)", "INDEX(b, 9)",
+    "SUM(REPT(\"x\", a) = \"\")", "SUM(IF(a > 0, a, 0))", "SUM(LEN(b))", "COUNT(IFERROR(1 / a, \"x\"))", "SUM(ISERROR(d) * 1)", "MAX(ABS(a))",
+    "SUM(ROUND(a, 0))", "WORKDAY(@d, 5, a)", "NETWORKDAYS(45000, @d, [a])", "SUM(ERROR.TYPE(d))", "SUM(IFNA(d, 0))",
+    "SUM(a * [c])", "COUNTA(b & \"x\")", "SUM(a / (d - 40000))",
     "WAVG(a, d)", "WSTDEV(d, a)", "COUNTDISTINCT(b)", "ARGMAX(a) + ARGMIN(d)", "LENGTH(a)", "CONTAINS(b, @b)",
     "CORREL(a, d)", "SLOPE(d, a) * @a", "RANK(@a, a)", "PERCENTRANK(a, @a)", "TRIMMEAN(a, 0.2)", "KURT(a, d)", "GCD(5, @a)",
   ])("%s", (src) => {
@@ -482,8 +489,9 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
   });
 });
 
-describe("a criterion only chrono-node reads leaves the column to the TS", () => {
-  it.each(["COUNTIF(a, \"3-Apr-2026\")", "SUMIFS(a, a, \">=Jan 5 2024\")"])("%s", (src) => {
+describe("a reading the port leaves out sends the column to the TS", () => {
+  // An INDEX that answers a whole column lands somewhere only the TS's broadcast reads.
+  it.each(["COUNTIF(a, \"3-Apr-2026\")", "SUMIFS(a, a, \">=Jan 5 2024\")", "INDEX(a, 0, 1)", "INDEX(a, , )"])("%s", (src) => {
     const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [45000, 46115] }] };
     expect(computeColumnOnEngine(f, src, 2)).toBeNull();
   });
