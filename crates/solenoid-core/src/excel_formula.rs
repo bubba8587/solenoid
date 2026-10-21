@@ -519,7 +519,10 @@ fn supported_at(n: &Ast, columns: &FxHashMap<&str, &FrameColumn>, sides: &FxHash
             let roles_ok = table.get(&up).is_some_and(|t| {
                 matches!(t.kind.as_str(), "handler" | "whole" | "range" | "broadcast") && t.roles.len() >= args.len()
             });
-            let lists = table.get(&up).is_some_and(|t| t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default" | "positional" | "paired"));
+            let lists = table.get(&up).is_some_and(|t| {
+                (t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default" | "positional" | "paired"))
+                    || (t.kind == "whole" && crate::excel_functions::takes_whole_lists(&up))
+            });
             // A list where one value goes lifts, and a lookup over a list spills: either answers a list, which only
             // the TS's broadcast reads.
             let lifts = |i: usize| table.get(&up).is_some_and(|t| t.scalar.contains(&i)) || (i == 0 && matches!(up.as_str(), "XLOOKUP" | "XMATCH"));

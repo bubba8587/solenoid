@@ -105,6 +105,7 @@ const PORTED: &[&str] = &[
     "CLAMP", "BETWEEN", "ISBOOLEAN", "ISCLOSE", "HYPOTENUSE", "NAND", "NOR", "XNOR", "STANDARDIZE", "FISHER", "SLN",
     "ORDINAL", "TEXTBEFORE", "TEXTAFTER", "REVERSETEXT", "PADTEXT", "TRUNCATETEXT", "NUMBERVALUE",
     "PMT", "FV", "PV", "NPER", "IPMT", "PPMT",
+    "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS",
     "NORM.DIST", "NORM.INV", "NORM.S.DIST", "NORM.S.INV", "CHISQ.DIST", "CHISQ.INV", "CHISQ.DIST.RT", "CHISQ.INV.RT",
     "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
     "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
@@ -116,6 +117,11 @@ const PORTED: &[&str] = &[
 
 pub fn is_ported(name: &str) -> bool {
     PORTED.contains(&name)
+}
+
+/// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
+pub fn takes_whole_lists(name: &str) -> bool {
+    matches!(name, "WAVG" | "WVAR" | "WSTDEV" | "COUNTDISTINCT" | "ARGMAX" | "ARGMIN" | "LENGTH" | "CONTAINS")
 }
 
 /// The range functions whose body takes each argument in its place, a list as one argument.
@@ -1217,6 +1223,55 @@ fn dist(key: &str, form: Form, v: &V, params: &[V]) -> V {
         Err(crate::dists::TooLong) => bail(),
         Ok(None) => dist_domain(),
         Ok(Some(r)) => finite_or_null(r),
+    }
+}
+
+/// `toList`: a list as its items, a blank as none, anything else as one.
+fn to_list(v: &V) -> Rc<Vec<V>> {
+    match v {
+        V::List(items) => items.clone(),
+        V::Null | V::Undef => Rc::new(Vec::new()),
+        other => Rc::new(vec![other.clone()]),
+    }
+}
+
+/// `weighted` (listOps.ts). Text among the values or weights would add as text: leave that to the TS.
+fn weighted(name: &str, values: &[V], weights: &[V]) -> V {
+    if let Some(e) = values.iter().chain(weights).find(|v| v.is_sol_error()) {
+        return e.clone();
+    }
+    if values.is_empty() || weights.len() < values.len() {
+        return V::Null;
+    }
+    let mut pairs: Vec<(f64, f64)> = Vec::new();
+    for i in 0..values.len() {
+        let (v, w) = (&values[i], &weights[i]);
+        if matches!(v, V::Null) || matches!(w, V::Null) {
+            continue;
+        }
+        match (v, w) {
+            (V::Num(v), V::Num(w)) => pairs.push((*v, *w)),
+            _ => return bail(),
+        }
+    }
+    let w_sum = pairs.iter().fold(0.0, |a, (_, w)| a + w);
+    if pairs.is_empty() || w_sum == 0.0 {
+        return V::Null;
+    }
+    let wavg = pairs.iter().fold(0.0, |s, (v, w)| s + v * w) / w_sum;
+    let mut result = Some(wavg);
+    if name != "WAVG" {
+        let w_sum2 = pairs.iter().fold(0.0, |a, (_, w)| a + w * w);
+        let denom = w_sum - w_sum2 / w_sum;
+        result = None;
+        if denom > 0.0 {
+            let wvar = pairs.iter().fold(0.0, |s, (v, w)| s + w * js_pow(v - wavg, 2.0)) / denom;
+            result = Some(if name == "WVAR" { wvar } else { wvar.sqrt() });
+        }
+    }
+    match result {
+        Some(r) if r.is_finite() => V::Num(r),
+        _ => V::Null,
     }
 }
 
@@ -2396,6 +2451,61 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 V::Num(r) if !cum => finite_or_null(r / (hi - lo)),
                 other => other,
             }
+        }
+        "WAVG" | "WVAR" | "WSTDEV" => weighted(name, &to_list(arg(a, 0)), &to_list(arg(a, 1))),
+        "COUNTDISTINCT" => {
+            let arr = to_list(arg(a, 0));
+            if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
+                return e.clone();
+            }
+            // A Set's SameValueZero: NaN is one value, -0 is 0, text by its characters, anything else only itself.
+            #[derive(Hash, PartialEq, Eq)]
+            enum Key<'a> {
+                Num(u64),
+                Str(&'a str),
+                Bool(bool),
+                Other(usize),
+            }
+            let mut seen: crate::fxhash::FxHashSet<Key> = Default::default();
+            for (i, v) in arr.iter().enumerate() {
+                seen.insert(match v {
+                    V::Null | V::Undef => continue,
+                    V::Num(x) if x.is_nan() => Key::Num(f64::NAN.to_bits()),
+                    V::Num(x) => Key::Num((x + 0.0).to_bits()),
+                    V::Str(s) => Key::Str(s),
+                    V::Bool(b) => Key::Bool(*b),
+                    _ => Key::Other(i),
+                });
+            }
+            V::Num(seen.len() as f64)
+        }
+        "ARGMAX" | "ARGMIN" => {
+            let arr = to_list(arg(a, 0));
+            if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
+                return e.clone();
+            }
+            let max = name == "ARGMAX";
+            let mut best: Option<(usize, f64)> = None;
+            for (i, v) in arr.iter().enumerate() {
+                let V::Num(x) = v else { continue };
+                if !x.is_finite() {
+                    continue;
+                }
+                if best.is_none_or(|(_, b)| if max { *x > b } else { *x < b }) {
+                    best = Some((i, *x));
+                }
+            }
+            best.map_or(V::Null, |(i, _)| V::Num(i as f64 + 1.0))
+        }
+        "LENGTH" => V::Num(to_list(arg(a, 0)).len() as f64),
+        "CONTAINS" => {
+            if let V::List(items) = arg(a, 0) {
+                if items.iter().any(|v| matches!(v, V::List(_))) {
+                    return V::err(sol_error("#SHAPE!", "CONTAINS takes a list"));
+                }
+            }
+            let k = arg(a, 1);
+            V::Bool(to_list(arg(a, 0)).iter().any(|x| !matches!(x, V::Null) && !x.is_sol_error() && strict_equals(x, k)))
         }
         "PMT" => fx_pmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
         "FV" => fx_fv(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
