@@ -37,6 +37,13 @@ describe("dimensional AST interpretation — operators", () => {
     // but a dimensionless base powered by anything stays dimensionless
     expect(evalExpr("a ^ n", { a: {}, n: {} })).toEqual({});
   });
+  it("an indeterminate argument stays indeterminate through a branch, a pick or a root", () => {
+    const env = { a: LENGTH, g: {} };
+    for (const f of ["IF(c, a ^ g, 0)", "IFERROR(a ^ g, 0)", "CHOOSE(1, a ^ g, a)", "SQRT(a ^ g)", "LARGE(a ^ g, 1)", "LAMBDA(x, x * 2)(a ^ g)"]) {
+      expect(evalExpr(f, { ...env, c: {} }), f).toBeNull();
+    }
+    expect(evalExpr("IF(c, a)", { a: LENGTH, c: {} })).toEqual(LENGTH);
+  });
   it("unary minus and percent keep the dimension", () => {
     expect(evalExpr("-a", { a: LENGTH })).toEqual(LENGTH);
     expect(evalExpr("a%", { a: LENGTH })).toEqual(LENGTH);

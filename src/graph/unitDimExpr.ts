@@ -90,6 +90,11 @@ function requireSame(args: DimResult[], what: string): DimResult {
   return acc ?? DIMENSIONLESS;
 }
 
+/** A left-out argument is dimensionless; an indeterminate one (null) stays indeterminate. */
+function argOr(argDims: DimResult[], i: number): DimResult {
+  return i < argDims.length ? argDims[i] : DIMENSIONLESS;
+}
+
 function multiplyAll(args: DimResult[]): DimResult {
   let acc: Dim = DIMENSIONLESS;
   for (const a of args) {
@@ -130,13 +135,13 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
   if (fn === "PRODUCT" || fn === "SUMPRODUCT") return multiplyAll(argDims);
 
   if (fn === "SQRT") {
-    const a = argDims[0] ?? DIMENSIONLESS;
+    const a = argOr(argDims, 0);
     if (a === null) return null;
     if (isSolError(a)) return a;
     return dimPow(a, 0.5);
   }
   if (fn === "POWER") {
-    const base = argDims[0] ?? DIMENSIONLESS;
+    const base = argOr(argDims, 0);
     if (base === null) return null;
     if (isSolError(base)) return base;
     return isDimensionless(base) ? DIMENSIONLESS : null;
@@ -146,7 +151,7 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
     // A dimensionless branch adopts, as under `+` (IF(c, 5 km, 0) is km).
     let acc: Dim | null = null;
     for (const i of branches) {
-      const a = argDims[i] ?? DIMENSIONLESS;
+      const a = argOr(argDims, i);
       if (a === null) return null;
       if (isSolError(a)) return a;
       if (isDimensionless(a)) continue;
@@ -161,13 +166,13 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
     for (const a of argDims.slice(1)) {
       if (isDim(a) && !isDimensionless(a)) return unitError(`${fn} needs a plain number beside its values.`);
     }
-    return argDims[0] ?? DIMENSIONLESS;
+    return argOr(argDims, 0);
   }
 
   const valueArg = CRITERIA_VALUE_ARG[fn];
   if (valueArg) {
     for (const a of argDims) if (isSolError(a)) return a;
-    return argDims[valueArg(argDims.length)] ?? DIMENSIONLESS;
+    return argOr(argDims, valueArg(argDims.length));
   }
 
   // A bound LAMBDA's body is not visible, as for a computed application.
@@ -327,7 +332,7 @@ function applyDim(lam: Lam, args: OpResult[], env: DimEnv, codes: CodeEnv): OpRe
   const inner: DimEnv = { ...env };
   const innerCodes: CodeEnv = { ...codes };
   for (const [i, p] of lam.params.entries()) {
-    const a = args[i] ?? { dim: DIMENSIONLESS };
+    const a = args[i] === undefined ? { dim: DIMENSIONLESS } : args[i];
     if (a === null || isSolError(a)) return a;
     inner[p] = a.dim;
     if (a.code === undefined) delete innerCodes[p]; else innerCodes[p] = a.code;
