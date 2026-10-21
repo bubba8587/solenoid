@@ -145,7 +145,8 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let table: CallTable = parse(args, "table")?;
             let sides: HashMap<String, Json> = parse::<Option<_>>(args, "sides")?.unwrap_or_default();
             let sides = sides.iter().map(|(k, v)| (k.clone(), crate::wire::decode_cell(v))).collect();
-            match formula_column(&f, &parse::<String>(args, "expr")?, &table, &sides, parse::<usize>(args, "rows")?)? {
+            let rows = parse::<Option<usize>>(args, "rows")?.unwrap_or_else(|| frame_row_count(&f));
+            match formula_column(&f, &parse::<String>(args, "expr")?, &table, &sides, rows)? {
                 ColumnOutcome::Unsupported => Ok(json!({ "supported": false })),
                 ColumnOutcome::Cells(cells) => {
                     let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, cells)] };
@@ -167,6 +168,24 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 };
                 json!(r.to_bits().to_string())
             }).collect()))
+        }
+        "engine_assemble" => {
+            #[derive(Deserialize)]
+            struct Part {
+                handle: String,
+                column: String,
+                #[serde(rename = "as")]
+                as_: String,
+                #[serde(rename = "type")]
+                ty: String,
+            }
+            let mut columns = Vec::new();
+            for p in parse::<Vec<Part>>(args, "parts")? {
+                let f = get(&p.handle)?;
+                let c = f.columns.iter().find(|c| c.name == p.column).ok_or_else(|| sol_error("#REF!", format!("column \"{}\" not found", p.column)))?;
+                columns.push(FrameColumn { name: p.as_, ty: FrameColType::from_tag(&p.ty), values: c.values.clone() });
+            }
+            Ok(json!(register(FrameValue { columns })))
         }
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),

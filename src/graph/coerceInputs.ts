@@ -21,7 +21,7 @@ export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
   "AppendNode", "BindColumnsNode", "RenameNode",
   "FillBlanksNode", "ReplaceValuesNode", "WindowNode",
   "GetColumnNode", "SumIfsNode", "TableInfoNode", "WriteFileNode", "PivotNode",
-  "SlicerNode",
+  "SlicerNode", "ComputedColumnNode",
 ]);
 
 export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);

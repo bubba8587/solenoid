@@ -10,7 +10,8 @@ import { pivotLayoutOf } from "../../src/graph/pivotLayout";
 import type { ColumnUnit } from "../../src/graph/unitValue";
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "../../src/graph/frame";
 import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
-import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine } from "../../src/graph/frameBackend";
+import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef } from "../../src/graph/frameBackend";
+import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { parseFormula, compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
@@ -439,5 +440,51 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
     if (isSolError(js)) return;
     expect(view({ __frame: true, columns: [{ name: "o", type: "number", values: engine!.cells }] }))
       .toEqual(view({ __frame: true, columns: [{ name: "o", type: "number", values: js.cells }] }));
+  });
+});
+
+describe("a computed column over a frame in the engine matches the value path", () => {
+  it(`${FUZZ_RUNS / 10} nodes, refs in and out`, { timeout: 600_000 }, async () => {
+    const rand = mulberry32(555 + FUZZ_SEED);
+    const g = gen(rand);
+    const expr = formulaGen(rand);
+    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+    let resident = 0;
+    for (let i = 0; i < FUZZ_RUNS / 10; i++) {
+      const rows = g.int(1, 6);
+      const f: FrameValue = {
+        __frame: true,
+        columns: (["a:number", "b:string", "c:logical", "d:date"] as const).map((s) => {
+          const [name, type] = s.split(":") as [string, FrameColType];
+          const vals = Array.from({ length: rows }, (_, k) => (type === "number" ? k * 1.5 - 2 : type === "string" ? ["x", "Yo", "", null][k % 4] : type === "logical" ? k % 2 === 0 : 45000 + k));
+          return { name, type, values: vals as FrameCell[], ...(name === "a" && rand() < 0.3 ? { unit: { dim: { length: 1 }, display: "km" } } : {}) };
+        }),
+      };
+      const src = expr(2);
+      const name = pick(["computed", "a", "Total (km)", "d", "new"]);
+      const after = pick(["", "", "b", "nope"]);
+      const setup = (n: ComputedColumnNode) => {
+        n.stringLiterals.name = name;
+        n.stringLiterals.after = after;
+      };
+      const run = async () => {
+        const ref = await runFrameUnary(f, { kind: "sort", by: "a", dir: "desc" });
+        const node = new ComputedColumnNode({ expr: src });
+        setup(node);
+        let out: unknown;
+        try { out = (await node.data({ frame: [ref] } as never)).frame; } catch (e) { out = e; }
+        const v = isFrameRef(out) ? await readFrame(out) : out;
+        return isSolError(v) ? { error: v.code } : v && { cells: view(v as FrameValue), units: (v as FrameValue).columns.map((c) => c.unit ?? null) };
+      };
+      useWasmBackend();
+      const before = wasmInvokeSync<number>("engine_count");
+      const got = await run();
+      if (wasmInvokeSync<number>("engine_count") > before) resident++;
+      resetFrameBackendToJs();
+      const want = await run();
+      useWasmBackend();
+      if (JSON.stringify(got) !== JSON.stringify(want)) expect({ i, src, got }).toEqual({ i, src, got: want });
+    }
+    expect(resident).toBeGreaterThan(0);
   });
 });

@@ -19,7 +19,7 @@ import { readFilterValue, readConditionValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
-import { isSolError, solError, type SolError } from "../errorValue";
+import { isSolError, solError, SEES_ERRORS, type SolError } from "../errorValue";
 import { logicalOrTypeError } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
@@ -48,7 +48,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -2550,6 +2550,8 @@ export class AddColumnNode extends ClassicPreset.Node {
 
 export type ComputedColumnAs = "auto" | AddColumnAddAs;
 
+type ComputedColumnInputs = { frame?: unknown[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>;
+
 export class ComputedColumnNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     after: "Empty appends the new column at the end. A column name inserts it immediately after that column. A replaced column keeps its place.",
@@ -2626,7 +2628,70 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     return shapeOfFrameValue({ __frame: true, columns: cols });
   }
 
-  data(inputs: { frame?: unknown[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>) {
+  _gen?: number;
+  _ref?: FrameRef | null;
+
+  data(inputs: ComputedColumnInputs) {
+    const raw = inputs.frame?.[0] ?? null;
+    // A ref's answer is a promise, which the compute pass awaits; a value's stays synchronous, as callers read it.
+    return (isFrameRef(raw) ? this.dataOnRef(raw, inputs) : this.dataValue(inputs)) as ReturnType<ComputedColumnNode["dataValue"]>;
+  }
+
+  /** A frame in the engine: the formula runs there and only its answer column comes back, for the type, the unit
+   *  refusal and the placement, which stay here. Anything the engine path doesn't carry reads the frame and runs
+   *  as a value. */
+  private async dataOnRef(ref: FrameRef, inputs: ComputedColumnInputs) {
+    const gen = beginPass(this);
+    const asValue = async () => {
+      const mat = await readFrame(ref);
+      // As coerceInputs reads a ref for a node that sees no errors: the error is the answer.
+      if (isSolError(mat) && !SEES_ERRORS.has("ComputedColumnNode")) throw mat;
+      return gen === this._gen ? this.dataValue({ ...inputs, frame: [mat] }) : { frame: null };
+    };
+    const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
+    const afterRaw = readInput(inputs.after, this.stringLiterals.after ?? "");
+    if (isLambdaValue(inputs.fn?.[0]) || Object.keys(this.bindings).length > 0 || !this.expr.trim() || nameRaw === null) return asValue();
+    if (this._compiledFor !== this.expr) {
+      this._evaluator = compileEvaluator(this.expr);
+      this._vars = this._evaluator ? extractVariables(this.expr) : [];
+      this._rowRefs = this._evaluator ? rowRefNames(this.expr) : [];
+      this._compiledFor = this.expr;
+    }
+    if (!this._evaluator) return asValue();
+    const schema = await collectPreview(ref, 0);
+    if (!isFrameValue(schema)) return asValue();
+    const sideValue = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
+    const r = await computeColumnOnRef(ref, this.expr, schema.columns.map((c) => c.name), { sideValue, reserved: ["frame", "name", "fn", "after"] });
+    if (!r || readingsRefusal(this.expr, schema, this.bindings)) return asValue();
+    if (gen !== this._gen) return { frame: null };
+    const name = nameRaw.trim() || "computed";
+    const after = (afterRaw ?? "").trim();
+    this.sourceColumns = schema.columns.map((c) => c.name);
+    this.defVars = this._vars;
+    this._reconcileSideSockets(r.sideVars);
+    const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs) : computedColumnType(name, r.cells, schema, this.expr, this.bindings);
+    // The schema's columns without their cells, units and formats kept, for addColumn's placement and naming.
+    const shape: FrameValue = { __frame: true, columns: schema.columns.map((c) => ({ ...c, values: [] })) };
+    const added = addColumn(shape, name, [], colType);
+    const replaced = added.columns.length === shape.columns.length;
+    const fresh = replaced ? added.columns.find((c, i) => c !== shape.columns[i])! : added.columns[added.columns.length - 1];
+    let cols = added.columns;
+    if (after && !replaced) {
+      const anchorIdx = cols.findIndex((c) => c.name === after);
+      if (anchorIdx < 0) return emitFrame(this, gen, solError("#REF!", `No column "${after}" to place after`));
+      cols = [...cols];
+      cols.splice(anchorIdx + 1, 0, cols.pop()!);
+    }
+    const out = await assembleOnEngine(
+      cols.map((c) => (c === fresh
+        ? { handle: r.col, column: "out", as: c.name, type: colType }
+        : { handle: r.base, column: c.name, as: c.name, type: c.type })),
+      { __frame: true, columns: cols },
+    );
+    return emitFrame(this, gen, out);
+  }
+
+  private dataValue(inputs: ComputedColumnInputs) {
     const rawF = inputs.frame?.[0] ?? null;
     const isCube = isCubeValue(rawF);
     const f = rawF == null ? null : isCube ? cubeRowTable(rawF) : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));

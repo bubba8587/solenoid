@@ -461,17 +461,12 @@ export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null
 const isScalarCell = (v: unknown): v is FrameCell =>
   v === null || typeof v === "number" || typeof v === "string" || typeof v === "boolean" || isSolError(v);
 
-/** `computeColumnCells` with an `expr` spec on the Rust evaluator, when every name is a `@column` of `f` or a scalar
- *  side value and every function is ported; null where the TS evaluator should run it. */
-export function computeColumnOnEngine(
-  f: FrameValue, expr: string, rows: number,
-  opts: { sideValue?: (name: string, kind: "var" | "row") => unknown; reserved?: readonly string[] } = {},
-): { cells: FrameCell[]; sideVars: string[] } | null {
-  // Text with a lone surrogate can't cross into Rust, whose strings are well-formed.
-  if (!wasmEngineLoaded() || !wasmEngineOn() || !(expr as string & { isWellFormed(): boolean }).isWellFormed()) return null;
-  const table = formulaCallTable(expr);
-  if (!table) return null;
-  const columns = new Set(f.columns.map((c) => c.name));
+type SideValue = (name: string, kind: "var" | "row") => unknown;
+
+/** A row formula's side values, as `runColumn` binds them: every name that isn't a column of `columns` reads one
+ *  scalar, in the order its side sockets take. Null where a side value isn't a scalar or a name is reserved. */
+function formulaSides(expr: string, columns: ReadonlySet<string>, opts: { sideValue?: SideValue; reserved?: readonly string[] }):
+  { sides: Record<string, unknown>; sideVars: string[] } | null {
   const reserved = opts.reserved ?? [];
   const sides: Record<string, unknown> = {};
   const sideVars: string[] = [];
@@ -484,8 +479,7 @@ export function computeColumnOnEngine(
     sideVars.push(p);
     sides[p] = encodeWireCell(v);
   }
-  const refs = rowRefNames(expr);
-  for (const p of refs) {
+  for (const p of rowRefNames(expr)) {
     if (reserved.includes(p)) return null;
     if (columns.has(p)) continue;
     if (!sideVars.includes(p)) sideVars.push(p);
@@ -495,18 +489,64 @@ export function computeColumnOnEngine(
       sides[p] = encodeWireCell(v);
     }
   }
+  return { sides, sideVars };
+}
+
+const wellFormed = (s: string): boolean => (s as string & { isWellFormed(): boolean }).isWellFormed();
+
+/** `computeColumnCells` with an `expr` spec on the Rust evaluator, when every name is a `@column` of `f` or a scalar
+ *  side value and every function is ported; null where the TS evaluator should run it. */
+export function computeColumnOnEngine(
+  f: FrameValue, expr: string, rows: number,
+  opts: { sideValue?: SideValue; reserved?: readonly string[] } = {},
+): { cells: FrameCell[]; sideVars: string[] } | null {
+  // Text with a lone surrogate can't cross into Rust, whose strings are well-formed.
+  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(expr)) return null;
+  const table = formulaCallTable(expr);
+  if (!table) return null;
+  const bound = formulaSides(expr, new Set(f.columns.map((c) => c.name)), opts);
+  if (!bound) return null;
   const named = new Set(referencedNames(expr));
   const src = wasmSourceBin(encodeBinary({ __frame: true, columns: f.columns.filter((c) => named.has(c.name)) }));
   let out: string | undefined;
   try {
-    const r = wasmInvokeSync<{ supported: boolean; handle?: string }>("engine_formula_column", { handle: src, expr, table, sides, rows });
+    const r = wasmInvokeSync<{ supported: boolean; handle?: string }>("engine_formula_column", { handle: src, expr, table, sides: bound.sides, rows });
     if (!r.supported) return null;
     out = r.handle!;
-    return { cells: decodeBinary(wasmReadBin(out)!)[0].values, sideVars };
+    return { cells: decodeBinary(wasmReadBin(out)!)[0].values, sideVars: bound.sideVars };
   } finally {
     wasmInvokeSync("engine_drop", { handle: src });
     if (out) wasmInvokeSync("engine_drop", { handle: out });
   }
+}
+
+/** The same over a frame already in the wasm engine: only the answer column comes back, and `col` keeps it in the
+ *  engine for `assembleOnEngine`. Null where the active backend isn't the wasm engine or the formula isn't ported. */
+export async function computeColumnOnRef(
+  ref: FrameRef, expr: string, columns: readonly string[],
+  opts: { sideValue?: SideValue; reserved?: readonly string[] } = {},
+): Promise<{ cells: FrameCell[]; sideVars: string[]; base: FrameHandle; col: FrameHandle } | null> {
+  const be = frameBackend();
+  if (!(be instanceof EngineBackend) || !be.resident || !wellFormed(expr)) return null;
+  const table = formulaCallTable(expr);
+  if (!table) return null;
+  const bound = formulaSides(expr, new Set(columns), opts);
+  if (!bound) return null;
+  const base = await flushRef(ref);
+  if (isOracleHandle(base)) return null;
+  const col = await be.formulaColumn(base, { expr, table, sides: bound.sides });
+  if (!col) return null;
+  const cells = (await be.column(col, "out"))?.values ?? [];
+  return { cells, sideVars: bound.sideVars, base, col };
+}
+
+/** A frame built in the engine from named columns of resident frames, each renamed and typed; `schema` is its
+ *  units and formats. */
+export async function assembleOnEngine(
+  parts: readonly { handle: FrameHandle; column: string; as: string; type: FrameColType }[], schema: FrameValue,
+): Promise<FrameRef> {
+  const be = frameBackend() as EngineBackend;
+  return wrapRef(await be.assemble(parts, schemaOnly(schema)));
 }
 
 /** Each op against the schema it will meet, so a reading column's aggregates reach the
@@ -559,6 +599,21 @@ type EngineInvoke = <T>(command: string, args?: Record<string, unknown>) => Prom
  *  engine stores every cell the oracle does, so no frame needs the oracle's fallback. */
 class EngineBackend implements FrameBackend {
   constructor(private readonly invoke: EngineInvoke, private readonly fullCells: boolean, private readonly bulk?: BulkTransport) {}
+
+  /** Row formulas and frame assembly run in this engine itself (the wasm one). */
+  get resident(): boolean {
+    return this.bulk !== undefined;
+  }
+
+  async formulaColumn(handle: FrameHandle, args: { expr: string; table: unknown; sides: Record<string, unknown> }): Promise<FrameHandle | null> {
+    const r = await this.invoke<{ supported: boolean; handle?: string }>("engine_formula_column", { handle, ...args });
+    return r.supported ? this.remember(r.handle as FrameHandle, null) : null;
+  }
+
+  async assemble(parts: readonly { handle: FrameHandle; column: string; as: string; type: FrameColType }[], schema: FrameValue): Promise<FrameHandle> {
+    const h = await (this.invoke<string>("engine_assemble", { parts }) as Promise<FrameHandle>);
+    return this.remember(h, schema);
+  }
 
   private schemas = new Map<string, FrameValue | null>();
   private pivots = new Map<string, PivotWire>();
