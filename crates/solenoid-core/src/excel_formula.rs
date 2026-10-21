@@ -465,6 +465,9 @@ pub struct CallTraits {
     /// An empty slot's reading by argument index, where the blank-slot pass sets one.
     #[serde(default)]
     pub blanks: HashMap<String, Json>,
+    /// The argument indexes a list would lift in, which runs on the TS.
+    #[serde(default)]
+    pub scalar: Vec<usize>,
 }
 
 pub type CallTable = HashMap<String, CallTraits>;
@@ -514,7 +517,8 @@ fn supported_at(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<
                 matches!(t.kind.as_str(), "handler" | "whole" | "range" | "broadcast") && t.roles.len() >= args.len()
             });
             let lists = table.get(&up).is_some_and(|t| t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default"));
-            is_ported(&up) && roles_ok && args.iter().all(|a| supported_at(a, columns, sides, table, lists))
+            let lifts = |i: usize| table.get(&up).is_some_and(|t| t.scalar.contains(&i));
+            is_ported(&up) && roles_ok && args.iter().enumerate().all(|(i, a)| supported_at(a, columns, sides, table, lists && !lifts(i)))
         }
     }
 }
@@ -793,8 +797,9 @@ impl Row<'_> {
                         }
                     }
                 }
-                // SUM adds a list as its own subtotal; every other ported range function reads its lists flat.
-                match call_function(name, if name == "SUM" { &prepped } else { &flat }) {
+                // SUM adds a list as its own subtotal, and the positional bodies read their lists in place; every other
+                // ported range function reads its lists flat.
+                match call_function(name, if crate::excel_functions::reads_lists(name) { &prepped } else { &flat }) {
                     V::Num(r) if !r.is_finite() => guard(r, &flat),
                     r => r,
                 }

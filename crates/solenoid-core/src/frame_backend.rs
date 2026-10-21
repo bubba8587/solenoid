@@ -200,10 +200,14 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         "engine_call" => {
             use crate::excel_functions::{call_function, take_thrown, V};
             let name = parse::<String>(args, "name")?;
-            let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?
-                .iter()
-                .map(|j| if j.get("__undef").is_some() { V::Undef } else { crate::excel_formula::cell_to_v_pub(&crate::wire::decode_cell(j)) })
-                .collect();
+            fn arg_of(j: &Json) -> V {
+                match j {
+                    Json::Array(items) => V::List(std::rc::Rc::new(items.iter().map(arg_of).collect())),
+                    _ if j.get("__undef").is_some() => V::Undef,
+                    _ => crate::excel_formula::cell_to_v_pub(&crate::wire::decode_cell(j)),
+                }
+            }
+            let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
             let r = call_function(&name, &argv);
             if let Some(e) = take_thrown() {
                 return Ok(json!({ "thrown": e.message }));

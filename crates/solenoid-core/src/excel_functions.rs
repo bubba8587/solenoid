@@ -4,6 +4,7 @@
 //! value: `Fx` is a Formula.js `Error` object, which flows until `normalizeFxResult` turns it into a SolError.
 
 use std::rc::Rc;
+use std::collections::HashMap;
 
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, serial_to_utc_parts, MS_PER_DAY};
 use crate::error_value::{sol_error, SolError};
@@ -81,11 +82,21 @@ const PORTED: &[&str] = &[
     "SIN", "COS", "TAN", "ATAN", "SINH", "COSH", "TANH", "ASINH", "COT", "COTH", "ACOT", "ACOTH", "SEC", "SECH", "CSC",
     "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH",
     "HOUR", "MINUTE", "SECOND", "EOMONTH", "WEEKDAY", "WEEKNUM", "ISOWEEKNUM", "DAYS", "TIME",
+    "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
+    "MODE", "MODE.SNGL",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
 ];
 
 pub fn is_ported(name: &str) -> bool {
     PORTED.contains(&name)
+}
+
+/// The range functions whose body takes each argument in its place, a list as one argument.
+pub fn reads_lists(name: &str) -> bool {
+    matches!(
+        name,
+        "SUM" | "LARGE" | "SMALL" | "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" | "QUARTILE" | "QUARTILE.INC" | "QUARTILE.EXC"
+    )
 }
 
 // ─── JavaScript's coercions ─────────────────────────────────────────────────────
@@ -345,14 +356,155 @@ fn aggregate(op: &str, arr: &[f64]) -> V {
     }
 }
 
-/// `numsOf`: numbers, and whatever else reads as one.
+/// `a.flat(Infinity)`.
+fn flat_all(a: &[V]) -> Vec<V> {
+    let mut out = Vec::with_capacity(a.len());
+    for v in a {
+        match v {
+            V::List(items) => out.extend(flat_all(items)),
+            other => out.push(other.clone()),
+        }
+    }
+    out
+}
+
+/// `numsOf`: numbers, and whatever else reads as one, lists flattened.
 fn nums_of(args: &[V]) -> Vec<f64> {
     args.iter()
+        .flat_map(|v| match v {
+            V::List(items) => items.iter().cloned().collect::<Vec<V>>(),
+            other => vec![other.clone()],
+        })
         .filter_map(|v| {
+            let v = &v;
             let n = to_num(v);
             (matches!(v, V::Num(_)) || !n.is_nan()).then_some(n)
         })
         .collect()
+}
+
+// ─── Order statistics (statsOps.ts) ─────────────────────────────────────────────
+
+fn finite_v(r: f64, inputs: &[f64]) -> V {
+    match guard_finite(r, inputs) {
+        FrameCell::Num(n) => V::Num(n),
+        FrameCell::Err(e) => V::Err(e),
+        _ => V::Null,
+    }
+}
+
+fn sorted_nums(arr: &[f64]) -> Vec<f64> {
+    let mut s = arr.to_vec();
+    crate::js_sort::js_sort_by(&mut s, |a, b| (a - b).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+    s
+}
+
+/// `percentileOf`. A NaN `p` indexes past the array: both ends read `undefined`, which are equal, so it answers
+/// `undefined` (None); one `undefined` end makes the blend NaN.
+fn percentile_of(sorted: &[f64], p: f64, exc: bool) -> Option<f64> {
+    let n = sorted.len() as f64;
+    let i = if exc { p * (n + 1.0) - 1.0 } else { p * (n - 1.0) };
+    let lo = i.floor();
+    let hi = if exc { js_min(n - 1.0, i.ceil()) } else { i.ceil() };
+    let at = |k: f64| (k >= 0.0 && k < n && k.fract() == 0.0).then(|| sorted[k as usize]);
+    let t = i - lo;
+    match (at(lo), at(hi)) {
+        (None, None) => None,
+        (Some(a), Some(b)) if a == b => Some(a),
+        (Some(a), Some(b)) if a.is_finite() && b.is_finite() => Some(a + (b - a) * t),
+        (Some(a), Some(b)) => Some((1.0 - t) * a + t * b),
+        _ => Some(f64::NAN),
+    }
+}
+
+/// `Math.min` of two: a NaN wins, where `f64::min` drops it.
+fn js_min(a: f64, b: f64) -> f64 {
+    if a.is_nan() || b.is_nan() { f64::NAN } else { a.min(b) }
+}
+
+/// `guardFinite(undefined, inputs)`: not finite and not NaN, so it stands only beside an infinite input.
+fn finite_opt(r: Option<f64>, inputs: &[f64]) -> V {
+    match r {
+        Some(r) => finite_v(r, inputs),
+        None if inputs.iter().any(|v| v.is_infinite()) => V::Undef,
+        None => V::err(sol_error("#OVERFLOW!", crate::value_kinds::OVERFLOW_MESSAGE)),
+    }
+}
+
+#[allow(clippy::manual_range_contains)] // a NaN must pass these checks, as it does in the TS
+fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
+    let n = arr.len() as f64;
+    if arr.is_empty() {
+        return V::Null;
+    }
+    if !exc && (p < 0.0 || p > 1.0) {
+        return V::err(sol_error("#DOMAIN!", "Percentile must be between 0 and 1"));
+    }
+    if exc && (p < 1.0 / (n + 1.0) || p > n / (n + 1.0)) {
+        return V::err(sol_error(
+            "#DOMAIN!",
+            "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)",
+        ));
+    }
+    finite_opt(percentile_of(&sorted_nums(arr), p, exc), arr)
+}
+
+#[allow(clippy::manual_range_contains)] // a NaN must pass these checks, as it does in the TS
+fn quartile(arr: &[f64], q: f64, exc: bool) -> V {
+    let qi = q.trunc();
+    if arr.is_empty() {
+        return V::Null;
+    }
+    if qi < 0.0 || qi > 4.0 {
+        return V::err(sol_error("#DOMAIN!", "Quartile must be 0, 1, 2, 3, or 4"));
+    }
+    if exc && (qi == 0.0 || qi == 4.0) {
+        return V::err(sol_error("#DOMAIN!", "QUARTILE.EXC is undefined for quartile 0 or 4"));
+    }
+    let (n, p) = (arr.len() as f64, qi / 4.0);
+    if exc && (p < 1.0 / (n + 1.0) || p > n / (n + 1.0)) {
+        return V::err(sol_error(
+            "#DOMAIN!",
+            "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)",
+        ));
+    }
+    finite_opt(percentile_of(&sorted_nums(arr), p, exc), arr)
+}
+
+fn nth_extreme(arr: &[f64], k: f64, largest: bool) -> V {
+    if k.is_nan() {
+        return V::err(sol_error("#VALUE!", "k must be a number"));
+    }
+    if k < 1.0 {
+        return V::err(sol_error("#DOMAIN!", "k starts at 1, the largest or smallest value"));
+    }
+    let n = arr.len() as f64;
+    if arr.is_empty() || k > n {
+        return V::Null;
+    }
+    let sorted = sorted_nums(arr);
+    let at = (if largest { n - k + 1.0 } else { k }).floor() - 1.0;
+    V::Num(sorted[at as usize])
+}
+
+fn mode_single(arr: &[f64]) -> V {
+    if arr.is_empty() {
+        return V::Null;
+    }
+    if arr.iter().any(|v| v.is_nan()) {
+        return finite_v(f64::NAN, arr);
+    }
+    // A Map key is SameValueZero: -0 and 0 count together.
+    let key = |v: f64| if v == 0.0 { 0u64 } else { v.to_bits() };
+    let mut counts: HashMap<u64, usize> = HashMap::new();
+    for &v in arr {
+        *counts.entry(key(v)).or_insert(0) += 1;
+    }
+    let max_count = counts.values().copied().max().unwrap_or(0);
+    if max_count < 2 {
+        return V::err(sol_error("#N/A", "No value repeats, so there is no mode"));
+    }
+    arr.iter().find(|&&v| counts[&key(v)] == max_count).map_or(V::Null, |&v| V::Num(v))
 }
 
 // ─── Rounding (mathUtils.ts `roundDigits`) ──────────────────────────────────────
@@ -561,10 +713,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         "SUM" => sum_like_fx(a),
         "MIN" | "MAX" => {
-            if let Some(e) = a.iter().find(|v| v.is_err()) {
+            let cells = flat_all(a);
+            if let Some(e) = cells.iter().find(|v| v.is_err()) {
                 return e.clone();
             }
-            let nums: Vec<f64> = a.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect();
+            let nums: Vec<f64> = cells.iter().filter_map(|v| if let V::Num(n) = v { Some(*n) } else { None }).collect();
             if nums.is_empty() {
                 return V::Num(0.0);
             }
@@ -572,6 +725,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         "AVERAGE" => aggregate("avg", &nums_of(a)),
         "MEDIAN" => aggregate("median", &nums_of(a)),
+        "LARGE" | "SMALL" => nth_extreme(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "LARGE"),
+        "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" => {
+            percentile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "PERCENTILE.EXC")
+        }
+        "QUARTILE" | "QUARTILE.INC" | "QUARTILE.EXC" => {
+            quartile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "QUARTILE.EXC")
+        }
+        "MODE" | "MODE.SNGL" => mode_single(&nums_of(a)),
         "STDEV" | "STDEV.S" => aggregate("stdev", &nums_of(a)),
         "STDEV.P" => aggregate("stdev_p", &nums_of(a)),
         "VAR" | "VAR.S" => aggregate("var_s", &nums_of(a)),

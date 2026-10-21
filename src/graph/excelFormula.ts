@@ -461,11 +461,14 @@ export const RANGE_SCALAR_ARGS: Record<string, ScalarArgs> = {
   "Z.TEST": [1, 2], "T.TEST": [2, 3], PROB: [2, 3],
 };
 
-function liftedArgs(name: string, argv: readonly unknown[]): number[] {
+function takesOne(name: string, i: number): boolean {
   const decl = RANGE_SCALAR_ARGS[name];
-  if (!decl || !RANGE_FUNCTIONS.has(name)) return [];
-  const takesOne = (i: number) => ("from" in decl ? i >= decl.from && (i - decl.from) % decl.every === 0 : decl.includes(i));
-  return argv.flatMap((a, i) => (isArr(a) && takesOne(i) ? [i] : []));
+  if (!decl || !RANGE_FUNCTIONS.has(name)) return false;
+  return "from" in decl ? i >= decl.from && (i - decl.from) % decl.every === 0 : decl.includes(i);
+}
+
+function liftedArgs(name: string, argv: readonly unknown[]): number[] {
+  return argv.flatMap((a, i) => (isArr(a) && takesOne(name, i) ? [i] : []));
 }
 
 // ── Range-argument prep (the null/error aggregator policy) ────────────────────
@@ -1031,6 +1034,8 @@ export interface FormulaCallTraits {
   nullableOk: boolean;
   roles: ({ kind: "setting"; blank: unknown } | { kind: "required" } | null)[];
   blanks: Record<number, unknown>;
+  /** The argument indexes a list would lift in (`RANGE_SCALAR_ARGS`), up to the longest call. */
+  scalar: number[];
 }
 
 /** `undefined` (a left-out default) as the lowered table spells it. */
@@ -1079,8 +1084,10 @@ export function formulaCallTable(expr: string): Record<string, FormulaCallTraits
       nullableOk: t.nullableOk,
       roles: [],
       blanks: {},
+      scalar: [],
     };
     for (let i = entry.roles.length; i < n.args.length; i++) {
+      if (takesOne(name, i)) entry.scalar.push(i);
       const role = argRole(name, i);
       if (role?.kind === "picks") return null;
       entry.roles.push(!role ? null : role.kind === "setting" ? { kind: "setting", blank: lowerValue(role.blank) } : { kind: "required" });

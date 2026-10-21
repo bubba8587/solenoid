@@ -301,7 +301,11 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
   "SIN", "COS", "TAN", "ATAN", "SINH", "COSH", "TANH", "ASINH", "COT", "COTH", "ACOT", "ACOTH", "SEC", "SECH", "CSC",
   "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH",
-  "HOUR", "MINUTE", "SECOND", "EOMONTH", "WEEKDAY", "WEEKNUM", "ISOWEEKNUM", "DAYS", "TIME"];
+  "HOUR", "MINUTE", "SECOND", "EOMONTH", "WEEKDAY", "WEEKNUM", "ISOWEEKNUM", "DAYS", "TIME",
+  "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
+  "MODE", "MODE.SNGL"];
+/** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
+const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
 
 function formulaGen(rand: () => number) {
@@ -371,6 +375,7 @@ describe("random row formulas: the Rust evaluator matches the TS one", () => {
         }),
       };
       const src = expr(3);
+      if (SORTS_NUMBERS.test(src)) f.columns[0].values = f.columns[0].values.map((v) => (Number.isNaN(v) ? null : v));
       const sideVals: Record<string, unknown> = { s1: cell("number"), s2: cell("string"), s3: [1, 2], nope: cell("logical") };
       const opts = { sideValue: (p: string) => sideVals[p], reserved: ["name"] };
       const engine = computeColumnOnEngine(f, src, rows, opts);
@@ -516,14 +521,19 @@ describe("each ported function body matches its JS one on random arguments", () 
     if (typeof r === "boolean") return { bool: r };
     return { other: String(r) };
   };
+  const LIST_BODIES = new Set(["SUM", "MIN", "MAX", "AVERAGE", "MEDIAN", "PRODUCT", "STDEV", "STDEV.S", "STDEV.P", "VAR", "VAR.S", "VAR.P",
+    "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC", "MODE", "MODE.SNGL"]);
   it.each(PORTED)("%s", (name) => {
     const rand = mulberry32(77 + FUZZ_SEED + name.length * 1000 + name.charCodeAt(0));
     const fn = resolveExcelFunction(name)!;
     for (let i = 0; i < FUZZ_RUNS / 3; i++) {
-      const args = Array.from({ length: Math.floor(rand() * 5) }, () => POOL[Math.floor(rand() * POOL.length)]);
+      const one = () => POOL[Math.floor(rand() * POOL.length)];
+      // A range argument as prepRangeArgs leaves it: no errors, no blanks, and no NaN (see SORTS_NUMBERS).
+      const list = () => Array.from({ length: Math.floor(rand() * 7) }, one).filter((v) => v != null && !isSolError(v) && !Number.isNaN(v));
+      const args = Array.from({ length: Math.floor(rand() * 5) }, () => (LIST_BODIES.has(name) && rand() < 0.5 ? list() : one()));
       let want: unknown;
       try { want = norm(fn(...args)); } catch (e) { want = { thrown: (e as Error).message }; }
-      const wire = (a: unknown) => (a === undefined ? { __undef: 1 }
+      const wire = (a: unknown): unknown => (Array.isArray(a) ? a.map(wire) : a === undefined ? { __undef: 1 }
         : typeof a === "number" && !Number.isFinite(a) ? { __nf: Number.isNaN(a) ? "nan" : a > 0 ? "inf" : "-inf" }
         : Object.is(a, -0) ? { __nf: "-0" }
         : isSolError(a) ? { __err: a.code, msg: a.message } : a);

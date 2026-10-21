@@ -17,7 +17,8 @@ Experimental, on the `solenoid/tsrs` branch. The method is borrowed from [tsrs](
   - `String(x)`, `Number(x)`, `trim` and UTF-16 string order, in `jsnum.rs`.
   - `Array.prototype.sort` that never panics on an inconsistent comparator, in `js_sort.rs`.
   - `toPrecision`, in `unit_value.rs`.
-  - V8's `Math.exp`, `log`, `log10` and `pow`, in `fdlibm.rs`. These are fdlibm with V8's own tweaks, because
+  - V8's `Math.exp`, `log`, `log10`, `log1p`, `pow`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `acosh`
+    and `atanh`, in `fdlibm.rs`. These are fdlibm with V8's own tweaks, because
     the platform libm is off by an ulp on some inputs.
   - A JS exception (a function that throws) ends the row's evaluation.
 - Table-driven facts stay in the TS and get *lowered* into the call, as unit scales are for Polars:
@@ -62,8 +63,9 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
 | Units, formats | Unit-blind, as Polars is: the TS lowers reading and unit scales into the op and restores metadata | `lowerForEngine`, `pivotUnits` |
 | Formula tokenizer and parser | Ported whole | 300k random strings, well-formed and broken, give the same tree |
 | Row formulas (computed columns): literals, `@column`, scalar side values, constants, every operator | Ported | 300k random computed columns match cells, messages and side sockets |
-| Formula functions | 69 ported: IF IFS AND OR NOT XOR IFERROR IFNA ISERROR ISERR ISNA ERROR.TYPE ISBLANK ISNUMBER ISTEXT ISLOGICAL ISNONTEXT ISEVEN ISODD N T ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG10 MOD POWER QUOTIENT PI SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV STDEV.S STDEV.P VAR VAR.S VAR.P COUNT COUNTA COUNTBLANK LEN CONCAT CONCATENATE MID LEFT RIGHT UPPER LOWER TRIM REPT SUBSTITUTE EXACT FIND CHOOSE YEAR MONTH DAY DATE | a formula calling anything else runs on the TS |
+| Formula functions | 113 ported. Logic: IF IFS AND OR NOT XOR CHOOSE, the IFERROR family, the IS tests. Math: ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG LOG10 MOD POWER QUOTIENT PI SQRTPI DEGREES RADIANS. Trig: SIN COS TAN ASIN ACOS ATAN ATAN2 SINH COSH TANH ASINH ACOSH ATANH COT COTH ACOT ACOTH SEC SECH CSC CSCH. Aggregates: SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV(.S/.P) VAR(.S/.P) COUNT COUNTA COUNTBLANK. Order statistics: LARGE SMALL PERCENTILE(.INC/.EXC) QUARTILE(.INC/.EXC) MODE MODE.SNGL. Text: LEN CONCAT CONCATENATE MID LEFT RIGHT UPPER LOWER TRIM REPT SUBSTITUTE EXACT FIND N T. Dates: DATE YEAR MONTH DAY HOUR MINUTE SECOND TIME DAYS EOMONTH WEEKDAY WEEKNUM ISOWEEKNUM | each body is checked directly against its JS one on random arguments; a formula calling anything else runs on the TS |
 | Whole-column refs (a bare column name, `[col]`) as a range function's argument: `@x / SUM(x)`, `MAX([x])`, `COUNTBLANK(b)` | Ported, with `prepRangeArgs`' error scan and blank drop, and a call that reads no `@` cell evaluated once | explicit cases plus the fuzzer |
+| A whole column in an argument that takes one value (`LARGE(x, x)` lifts per item) | Not ported: `formulaCallTable` lowers those positions (`scalar`) and the support check sends them to the TS | |
 | Whole columns anywhere else (broadcast), lists and matrices, LAMBDA, complex numbers, units in formulas | Not ported: runs on the TS | |
 | Expression nodes, the compute pass, node `data()` | Not started | |
 
