@@ -348,7 +348,11 @@ export function kruskalP(groups: readonly (readonly number[])[]): number | null 
   return Math.min(1, Math.max(0, 1 - chiSqCDF(h, k - 1)));
 }
 
-export function fisherExactP(a: number, b: number, c: number, d: number): number | null {
+/** The outcomes an exact test may sum; each costs a pmf, so a count past it would hang ([[C120]] linearWork). */
+const EXACT_TEST_OUTCOMES = 1_000_000;
+const exactTestTooLarge = (): SolError => solError("#DOMAIN!", "An exact test sums at most 1,000,000 outcomes");
+
+export function fisherExactP(a: number, b: number, c: number, d: number): number | SolError | null {
   const cells = [a, b, c, d].map((v) => Math.round(v));
   if (cells.some((v) => v < 0 || !Number.isFinite(v))) return null;
   const [A, B, C, D] = cells;
@@ -356,6 +360,7 @@ export function fisherExactP(a: number, b: number, c: number, d: number): number
   if (N === 0) return null;
   const pmf = (x: number): number => Math.exp(lnCombin(col1, x) + lnCombin(N - col1, row1 - x) - lnCombin(N, row1));
   const lo = Math.max(0, row1 - (N - col1)), hi = Math.min(row1, col1);
+  if (hi - lo + 1 > EXACT_TEST_OUTCOMES) return exactTestTooLarge();
   const pObs = pmf(A);
   let p = 0;
   for (let x = lo; x <= hi; x++) { const px = pmf(x); if (px <= pObs * (1 + 1e-7)) p += px; }
@@ -402,11 +407,12 @@ export function twoProportionP(x1: number, n1: number, x2: number, n2: number): 
   return twoSidedZ((p1 - p2) / se);
 }
 
-export function binomTestP(k: number, n: number, p0: number): number | null {
+export function binomTestP(k: number, n: number, p0: number): number | SolError | null {
   const K = Math.round(k), N = Math.round(n);
   if (!(N >= 1) || K < 0 || K > N || !(p0 >= 0 && p0 <= 1)) return null;
   if (p0 === 0) return K === 0 ? 1 : 0;
   if (p0 === 1) return K === N ? 1 : 0;
+  if (N + 1 > EXACT_TEST_OUTCOMES) return exactTestTooLarge();
   const pmf = (x: number): number => Math.exp(lnCombin(N, x) + x * Math.log(p0) + (N - x) * Math.log(1 - p0));
   const pObs = pmf(K);
   let p = 0;
