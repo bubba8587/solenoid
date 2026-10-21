@@ -16,6 +16,7 @@ pub mod excel_functions;
 pub mod fdlibm;
 pub mod fns_complex;
 pub mod finance_ops;
+pub mod fns_lists;
 pub mod fns_matrix;
 pub mod formulajs;
 pub mod frame;
