@@ -5,7 +5,8 @@ import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
 import { registerDisplayUnits, fcUnitToUnit } from "../unitBridge";
 import { solError, type SolError } from "../errorValue";
 import { commensurable, dimEqual, formatDim, type Unit } from "../dimension";
-import { CONVERT_UNIT_DEFS, convertValue } from "./convertUnits";
+import { CONVERT_UNIT_DEFS } from "./convertUnits";
+import { callCore } from "../coreValues";
 export { CONVERT_UNIT_DEFS, convertValue, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
 import { isUnitCell, fromUnit, withDisplay, unitError, type UnitCell } from "../unitValue";
 
@@ -79,8 +80,8 @@ export class ConvertNode extends ClassicPreset.Node {
         if (dimEqual(v.dim, toDim.dim)) return display ? (withDisplay(v, display) as UnitCell) : v;
         return unitError(`This value is ${formatDim(v.dim) || "a plain number"}, but Convert targets ${formatDim(toDim.dim) || "a plain number"}.`);
       }
-      const conv = convertValue(v, this.fromUnit, this.toUnit);
-      if (conv === null) return rangeErr();
+      const conv = callCore("CONVERT", [v, this.fromUnit, this.toUnit]);
+      if (typeof conv !== "number") return rangeErr();
       return fromUnit(conv, toDim, display);
     };
     const result = broadcastUnit(convertCell, x);
