@@ -41,6 +41,20 @@ describe("ROUND family and POWER share the node's kernels (FX is wrong)", () => 
   });
 });
 
+describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per period)", () => {
+  it("a huge period within the life answers at once; an ordinary one is Formula.js's", () => {
+    const t = performance.now();
+    for (const name of ["DB", "DDB"]) expect((call(name, 1000, 100, 1e12, 5e11) as { code?: string }).code).toBe("#DOMAIN!");
+    expect(performance.now() - t).toBeLessThan(500);
+    expect(num(call("DB", 1000, 100, 10, 3))).toBeCloseTo(129.869816, 6);
+    expect(typeof call("DB", 1000, 100, 1e7, 2e7)).not.toBe("number");
+  });
+  it("FX still loops over the periods (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => unknown>;
+    for (const name of ["DB", "DDB"]) expect(fx[name].toString()).toMatch(/for \(let i = \d; i <= \w+; i\+\+\)/);
+  });
+});
+
 describe("MOD — Excel result takes the DIVISOR's sign (FX is wrong)", () => {
   it("our impl matches Excel across sign combinations", () => {
     expect(num(call("MOD", 10, -3))).toBeCloseTo(-2, 9); // divisor negative → negative
