@@ -28,6 +28,8 @@ Without the tripwire, a vendor update that fixes or changes a function passes si
 
 - **FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT, MULTINOMIAL** run `combinatoric` (`mathUtils.ts`). Formula.js builds FACT by recursion, so a large count, or a negative one that never reaches its base case, overflowed the call stack, and COMBIN, PERMUT and MULTINOMIAL divide factorials, so `COMBIN(30, 15)` was 155117519.99999997. Arguments truncate; a negative count or choosing more than there are is `#DOMAIN!`; COMBIN divides as it multiplies, so its answer is the exact integer wherever a double holds one; past a double's range the answer overflows to `#OVERFLOW!`. The factorials multiply in Formula.js's order, so FACT and FACTDOUBLE answer what it did up to 170.
 
+- **BINOM.DIST.RANGE** runs `binomDistRange` (`mathUtils.ts`): Excel's constraints (0 ≤ s ≤ s2 ≤ trials, a probability from 0 to 1) answer `#DOMAIN!`, where Formula.js checks nothing and sums a reversed range to 0; each term multiplies COMBIN's exact count by the powers, or works in logs where the count overflows, so `BINOM.DIST.RANGE(1e5, 0.5, 0, 50000)` answers instead of overflowing the call stack; a range past a million outcomes is `#DOMAIN!`.
+
 These match the Math node's own compute.
 
 ## Logic

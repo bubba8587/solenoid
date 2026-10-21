@@ -264,6 +264,26 @@ function combinations(n: number, k: number): number {
   return r < 2 ** 53 ? Math.round(r) : r;
 }
 
+/** Excel's BINOM.DIST.RANGE: the chance of s to s2 successes in n trials (s2 defaults to s). Counts truncate; each
+ *  term is the exact COMBIN times the powers, or in logs where the coefficient alone would overflow. A range past a
+ *  million outcomes is refused, as the exact tests do ([[C120]] linearWork). */
+export function binomDistRange(trials: number, p: number, s: number, s2?: number): number | SolError {
+  const n = Math.trunc(trials), lo = Math.trunc(s), hi = Math.trunc(s2 ?? s);
+  if (!(n >= 0 && n < Infinity && p >= 0 && p <= 1 && lo >= 0 && lo <= n && hi >= lo && hi <= n)) {
+    return solError("#DOMAIN!", "BINOM.DIST.RANGE needs 0 ≤ s ≤ s2 ≤ trials and a probability from 0 to 1");
+  }
+  if (hi - lo + 1 > 1_000_000) return solError("#DOMAIN!", "BINOM.DIST.RANGE sums at most 1,000,000 outcomes");
+  if (p === 0 || p === 1) return (p === 0 ? lo === 0 : hi === n) ? 1 : 0;
+  let sum = 0;
+  for (let k = lo; k <= hi; k++) {
+    const c = combinations(n, k);
+    sum += Number.isFinite(c)
+      ? c * Math.pow(p, k) * Math.pow(1 - p, n - k)
+      : Math.exp(lnCombin(n, k) + k * Math.log(p) + (n - k) * Math.log1p(-p));
+  }
+  return sum;
+}
+
 export function lnCombin(n: number, k: number): number {
   if (k < 0 || k > n) return -Infinity;
   return lnFactorial(n) - lnFactorial(k) - lnFactorial(n - k);

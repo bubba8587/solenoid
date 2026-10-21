@@ -4,7 +4,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate, wildcardSource } from "./excelCriteria";
-import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm, combinatoric } from "./nodes/mathUtils";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm, combinatoric, binomDistRange } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantiles, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -516,6 +516,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   COMBINA:     { returns: "number", arity: [2, 2], family: "combinatorics" },
   PERMUT:      { returns: "number", arity: [2, 2], family: "combinatorics" },
   MULTINOMIAL: { returns: "number", arity: [1, 255], family: "combinatorics" },
+  "BINOM.DIST.RANGE": { returns: "number", arity: [3, 4], family: "distributions" },
   PRODUCT:     { returns: "number", arity: [1, 255], family: "scalar-math" },
   LCM:         { returns: "number", arity: [1, 255], family: "scalar-math" },
   ATAN2:       { returns: "number", arity: [2, 2], family: "scalar-math" },
@@ -981,6 +982,10 @@ registerInternal("GCD", (...a) => gcdLcm("gcd", numsOf(...a)));
 for (const [name, op] of [["FACT", "fact"], ["FACTDOUBLE", "factdouble"], ["COMBIN", "combin"], ["COMBINA", "combina"], ["PERMUT", "permut"]] as const) {
   registerInternal(name, (...a) => { const v = a.map(toNum); return badNum(...v) ? VALUE(name) : combinatoric(op, v); });
 }
+registerInternal("BINOM.DIST.RANGE", (n, p, s, s2) => {
+  const v = [n, p, s].map(toNum), hi = s2 == null ? undefined : toNum(s2);
+  return badNum(...v, hi ?? 0) ? VALUE("BINOM.DIST.RANGE") : binomDistRange(v[0], v[1], v[2], hi);
+});
 registerInternal("MULTINOMIAL", (...a) => { const v = numsOf(...a); return badNum(...v) ? VALUE("MULTINOMIAL") : combinatoric("multinomial", v); });
 registerInternal("LCM", (...a) => gcdLcm("lcm", numsOf(...a)));
 for (const [name, op] of [["MIN", "min"], ["MAX", "max"]] as const) {
