@@ -68,12 +68,16 @@
   color: var(--text);
 }
 .pivot-zone__add {
+  field-sizing: content;
   font-size: 11px;
-  background: var(--surface-sunken);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: var(--surface-sunken) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 6px center / 9px 5px;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 2px 4px;
+  padding: 2px 18px 2px 4px;
   max-width: 110px;
 }
 .pivot-zone__chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; align-content: flex-start; flex: 1 1 auto; }
@@ -81,12 +85,16 @@
 .pivot-zone__controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px; }
 .pivot-zone__controls label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
 .pivot-ctl {
+  field-sizing: content;
   font-size: 11px;
-  background: var(--surface-sunken);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: var(--surface-sunken) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 6px center / 9px 5px;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 2px 4px;
+  padding: 2px 18px 2px 4px;
 }
 
 .pivot-chip {
@@ -120,12 +128,16 @@
 }
 .pivot-chip__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pivot-chip__func {
+  field-sizing: content;
   font-size: 10px;
-  background: var(--surface-sunken);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: var(--surface-sunken) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 4px center / 9px 5px;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 3px;
-  padding: 1px 3px;
+  padding: 1px 15px 1px 3px;
 }
 .pivot-chip__x {
   display: inline-flex;
@@ -213,7 +225,7 @@
   .pivot-chip { font-size: 13px; padding: 3px 6px 3px 5px; }
   .pivot-chip__x { width: 24px; height: 24px; font-size: 16px; }
   .pivot-ctl,
-  .pivot-zone__add { font-size: 12px; padding: 5px 6px; }
+  .pivot-zone__add { font-size: 12px; padding: 5px 20px 5px 6px; }
   .pivot-filter__actions button { font-size: 12px; padding: 4px 9px; }
   .pivot-editor__done { font-size: 13px; padding: 9px 16px; }
 }

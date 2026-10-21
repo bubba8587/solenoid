@@ -414,11 +414,15 @@
 .table-popup__fmtpanel .table-popup__fmtselect {
   width: 100%;
   box-sizing: border-box;
-  padding: 2px 4px;
+  padding: 2px 20px 2px 4px;
   font-family: var(--font-sans);
   font-size: 11px;
   color: var(--text);
-  background: var(--surface);
+  /* The app-standard chevron (.solenoid-node__select), sat in from the edge, never the native arrow pinned to it. */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 7px center / 9px 5px;
   border: 1px solid var(--border-strong);
   border-radius: 4px;
   cursor: pointer;
@@ -608,12 +612,18 @@
 .sol-pill-select {
   flex-shrink: 0;
   box-sizing: border-box;
+  /* As wide as the current choice, not the longest one, so the chevron sits by its label. */
+  field-sizing: content;
   height: 28px;
   max-width: 100%;
-  padding: 0 6px 0 11px;
+  padding: 0 28px 0 11px;
   font-size: 12px;
   color: var(--text);
-  background: var(--surface);
+  /* The app-standard chevron (.solenoid-node__select), sat in from the edge, never the native arrow pinned to it. */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 11px center / 10px 6px;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   cursor: pointer;
@@ -713,6 +723,7 @@
   .table-popup__view,
   .sol-pill-btn,
   .sol-pill-select { height: 30px; }
+  .sol-pill-select { padding-right: 24px; background-position: right 9px center; }
   .table-popup__view button { padding-top: 0; padding-bottom: 0; }
   .sol-pill-btn--icon { width: 32px; padding: 0; }
   .table-popup__footer,
@@ -730,6 +741,7 @@
     font-size: 10px;
   }
   .table-popup__view button { padding-top: 0; padding-bottom: 0; }
+  .sol-pill-select { padding-right: 22px; background-position: right 8px center; }
   .table-popup__footer,
   .table-popup__dim-controls,
   .table-popup__actions {
