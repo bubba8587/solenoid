@@ -401,7 +401,8 @@ describe("[[D86]] blankRoles — a wired blank never falls back to a literal or 
   // `inputs.x?.[0] ?? fallback` hides a wired null behind the fallback. Test connection presence
   // (readInput, or inputs.x?.length) instead. `?? null` / `?? []` only normalize an absent cable.
   const PATTERN = /\binputs(?:\.\w+|\[[^\]]+\])\?\.\[0\]\s*\?\?\s*([^\s,;)]+)/g;
-  const NEUTRAL = /^(?:null|undefined|\[\]|"")$/;
+  // A closing bracket after it belongs to the enclosing argument list (`callCore("X", [a?.[0] ?? []])`).
+  const NEUTRAL = /^(?:null|undefined|\[\]|"")\]*$/;
   const SANCTIONED: Record<string, string> = {
     "nodes/composite.ts::driverMarker?.defaultValue": "goal seek's starting guess, not a value: a wired blank seeds from the default",
   };
