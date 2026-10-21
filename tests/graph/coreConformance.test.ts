@@ -10,8 +10,12 @@ import { isCx } from "../../src/graph/cxValue";
 import { resolveExcelFunction, FX_FUNCTION_NAMES, internalFunctionNames } from "../../src/graph/excelFunctions";
 import { compileTsEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { computeColumnCells } from "../../src/graph/computedColumnCore";
-import { applyVerb, joinFrames, appendFrames, bindColumns, promoteHeaders, demoteHeaders, type FrameOp, type JoinOpts } from "../../src/graph/frameVerbs";
-import type { FrameValue, FrameCell, FrameColType } from "../../src/graph/frame";
+import {
+  applyVerb, joinFrames, appendFrames, bindColumns, promoteHeaders, demoteHeaders, decisionMatrix, decisionCriteria, resolveDecisionWeights,
+  flipPoints, allocateFrame, type FrameOp, type JoinOpts, type DecisionNormalize,
+} from "../../src/graph/frameVerbs";
+import type { AllocateMode } from "../../src/graph/nodes/allocateOps";
+import type { FrameValue, FrameCell, FrameColType, FrameColumn } from "../../src/graph/frame";
 import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { isLambdaValue, type LambdaValue } from "../../src/graph/lambdaValue";
@@ -439,7 +443,70 @@ type Gen = ReturnType<typeof gen>;
 const FRAME_FNS: Record<string, { run: (frames: FrameValue[], args: unknown[]) => unknown; make: (g: Gen) => { frames: FrameValue[]; args: unknown[] } }> = {
   promoteHeaders: { run: ([f]) => promoteHeaders(f), make: (g) => ({ frames: [g.frame()], args: [] }) },
   demoteHeaders: { run: ([f]) => demoteHeaders(f), make: (g) => ({ frames: [g.frame()], args: [] }) },
+  decisionMatrix: {
+    run: ([f, w], [normalize, breakdown]) => {
+      const { weights, normOverrides, bounds } = resolveDecisionWeights(w ?? null, decisionCriteria(f));
+      return decisionMatrix(f, weights, normalize as DecisionNormalize, breakdown as boolean, normOverrides, bounds);
+    },
+    make: (g) => { const d = decisionGen(g); return { frames: d.frames, args: [d.normalize, d.rand() < 0.5] }; },
+  },
+  flipPoints: {
+    run: ([f, w], [normalize]) => flipPoints(f, w ?? null, normalize as DecisionNormalize),
+    make: (g) => { const d = decisionGen(g); return { frames: d.frames, args: [d.normalize] }; },
+  },
+  allocateFrame: { run: ([f], [mode, amount]) => allocateFrame(f, mode as AllocateMode, amount as number), make: allocatorGen },
 };
+
+/** An options frame with criteria and, mostly, a Weights frame naming them, with norms and deal-breakers. */
+function decisionGen(g: Gen) {
+  const rand = g.rand;
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const rows = g.int(0, 8);
+  const num = (): FrameCell => {
+    const r = rand();
+    if (r < 0.08) return null;
+    if (r < 0.085) return solError("#N/A", "fuzz");
+    if (r < 0.115) return pick([NaN, Infinity, -Infinity, -0, 1e308, "7", true]);
+    return rand() < 0.6 ? g.int(-3, 9) : Math.round(rand() * 2000 - 500) / 8;
+  };
+  const crit = ["Cost", "Speed", "Risk", "Fun", "Score", "cost"].filter(() => rand() < 0.6);
+  const columns: FrameColumn[] = [];
+  if (rand() < 0.85) columns.push({ name: pick(["Option", "Name", "Score", ""]), type: "string", values: Array.from({ length: rows }, () => (rand() < 0.1 ? null : pick(["A", "B", "C", "D", "é", "", "A"]))) });
+  for (const name of crit) {
+    const logical = rand() < 0.15;
+    columns.push({ name, type: logical ? "logical" : rand() < 0.1 ? "date" : "number", values: Array.from({ length: rand() < 0.1 ? g.int(0, rows) : rows }, () => (logical ? (rand() < 0.1 ? null : rand() < 0.05 ? 2 : rand() < 0.5) : num())) });
+  }
+  if (rand() < 0.2) columns.push({ name: "Notes", type: "string", values: Array.from({ length: rows }, () => pick(["x", null])) });
+  if (rand() < 0.1) columns.splice(g.int(0, columns.length), 0, { name: "Tag", type: "string", values: Array.from({ length: rows }, () => "t") });
+  const frames: FrameValue[] = [{ __frame: true, columns }];
+  if (rand() < 0.8) {
+    const names = [...crit.map((c) => pick([c, ` ${c.toUpperCase()} `, c])), ...(rand() < 0.3 ? ["Other", ""] : [])].filter(() => rand() < 0.85);
+    const n = names.length;
+    const wcols: FrameColumn[] = [{ name: "Criterion", type: "string", values: names }];
+    if (rand() < 0.9) wcols.push({ name: pick(["Weight", "Value", "W", "weights"]), type: "number", values: Array.from({ length: n }, () => (rand() < 0.1 ? null : rand() < 0.03 ? pick([NaN, true, "2"]) : pick([-3, -1, 0, 1, 2, 3, 0.5, -0]))) });
+    if (rand() < 0.2) wcols.push({ name: "Other", type: "number", values: Array.from({ length: n }, () => g.int(-2, 4)) });
+    if (rand() < 0.3) wcols.push({ name: pick(["Norm", " norm "]), type: "string", values: Array.from({ length: n }, () => pick(["raw", "none", "Max", "÷ max", "range", "min max", "rank", "nope", null])) });
+    if (rand() < 0.35) wcols.push({ name: pick(["At least", "at least "]), type: "number", values: Array.from({ length: n }, () => (rand() < 0.5 ? null : rand() < 0.03 ? solError("#VALUE!", "bad bound") : pick([0, 1, 2.5, 1234.56789, -1, 1e21, 0.00001]))) });
+    if (rand() < 0.35) wcols.push({ name: "At most", type: rand() < 0.1 ? "string" : "number", values: Array.from({ length: n }, () => (rand() < 0.5 ? null : pick([3, 5, 2400, 1e6, -0.5, 7.123456]))) });
+    frames.push({ __frame: true, columns: wcols });
+  }
+  return { frames, normalize: pick(["none", "max", "range", "rank"]), rand };
+}
+
+function allocatorGen(g: Gen) {
+  const rand = g.rand;
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const rows = g.int(0, 6);
+  const nums = (lo: number, hi: number) => Array.from({ length: rows }, (): FrameCell => (rand() < 0.04 ? pick([null, NaN, "5", solError("#N/A", "fuzz")]) : rand() < 0.5 ? g.int(lo, hi) * 1000 : Math.round(rand() * (hi - lo) + lo) * 100));
+  const columns: FrameColumn[] = [];
+  if (rand() < 0.8) columns.push({ name: pick(["Category", "Item"]), type: "string", values: Array.from({ length: rows }, () => pick(["Car", "Housing", null, "Other", ""])) });
+  if (rand() < 0.9) columns.push({ name: pick(["Min", " min ", "Low"]), type: "number", values: nums(0, 30) });
+  if (rand() < 0.9) columns.push({ name: pick(["Max", "MAX", "High"]), type: "number", values: nums(10, 60) });
+  if (rand() < 0.7) columns.push({ name: pick(["Weight", "Value", "weights"]), type: rand() < 0.1 ? "string" : "number", values: Array.from({ length: rows }, () => (rand() < 0.1 ? pick([null, NaN, -1, 0, "2"]) : pick([1, 2, 3, 0.5, 0]))) });
+  if (rand() < 0.2) columns.push({ name: "Extra", type: "number", values: nums(0, 9) });
+  if (rand() < 0.2) columns.reverse();
+  return { frames: [{ __frame: true, columns } as FrameValue], args: [pick(["budget", "budget", "minTarget", "minProportional"]), pick([0, 50000, 60000, 120000, 1e6, -5, 25000.5, 90000])] };
+}
 const fnOutcome = (run: () => unknown): unknown => {
   try {
     const r = run();
@@ -464,10 +531,16 @@ describe("frame functions answer as frozen", () => {
     it(`${name} (${cases.length})`, () => {
       let ran = 0;
       for (const c of cases) {
-        const r = frameFnOnCore(name, c.frames, c.args);
-        if (!r) continue;
+        let got: unknown;
+        try {
+          const r = frameFnOnCore(name, c.frames, c.args);
+          if (!r) continue;
+          got = "frame" in r ? { frame: view(r.frame) } : { value: canon(r.value) };
+        } catch (e) {
+          if (!isSolError(e)) throw e;
+          got = { error: { code: e.code, message: wf(e.message) } };
+        }
         ran++;
-        const got = "frame" in r ? { frame: view(r.frame) } : { value: canon(r.value) };
         if (JSON.stringify(got) !== JSON.stringify(c.want)) expect({ name, frames: c.frames, args: c.args, got }).toEqual({ name, frames: c.frames, args: c.args, got: c.want });
       }
       checkBails(`frame fn ${name}`, cases.length - ran);

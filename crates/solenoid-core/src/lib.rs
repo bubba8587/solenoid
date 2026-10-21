@@ -24,6 +24,7 @@ pub mod formulajs;
 pub mod frame;
 pub mod fxhash;
 pub mod frame_backend;
+pub mod decision;
 pub mod frame_fns;
 pub mod frame_verbs;
 pub mod hash_ops;

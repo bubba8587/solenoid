@@ -509,7 +509,8 @@ function columnAnswer(r: { bail?: boolean; error?: { code: string; message: stri
 
 
 /** A frame computation no formula shares, on the core (`frame_fns.rs`, [[D99]] rustIsSpec): its frames as names, types
- *  and cells (units, formats and provenance are the caller's to carry over), and its answer as a frame or a value. Null
+ *  and cells (units, formats and provenance are the caller's to carry over), and its answer as a frame or a value; what
+ *  the TS throws, it throws. Null
  *  where the wasm engine is off, a value can't cross, or the core leaves the reading to the TS. */
 export function frameFnOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = []):
   { frame: FrameValue } | { value: unknown } | null {
@@ -519,8 +520,9 @@ export function frameFnOnCore(name: string, frames: readonly FrameValue[], args:
   const handles = frames.map((f) => wasmSourceBin(encodeBinary(f)));
   let out: string | undefined;
   try {
-    const r = wasmInvokeSync<{ bail?: boolean; handle?: string; value?: unknown }>("engine_frame_fn", { name, handles, args: wire });
+    const r = wasmInvokeSync<{ bail?: boolean; handle?: string; value?: unknown; error?: { code: string; message: string; ref?: number } }>("engine_frame_fn", { name, handles, args: wire });
     if (r.bail) return null;
+    if (r.error) throw errorFromCore(r.error.code, r.error.message, r.error.ref);
     if (r.handle) {
       out = r.handle;
       return { frame: { __frame: true, columns: decodeBinary(wasmReadBin(out)!) } };

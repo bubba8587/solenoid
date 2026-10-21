@@ -161,6 +161,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             match out {
                 crate::frame_fns::FrameOut::Frame(f) => Ok(json!({ "handle": register(f) })),
                 crate::frame_fns::FrameOut::Value(v) => Ok(json!({ "value": serde_json::to_value(CallReply::Value(v)).expect("a value serializes") })),
+                crate::frame_fns::FrameOut::Throw(e) => Ok(json!({ "error": { "code": e.code, "message": e.message, "ref": e.reference } })),
                 crate::frame_fns::FrameOut::Bail => Ok(json!({ "bail": true })),
             }
         }
@@ -222,7 +223,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 return Ok(json!({ "bail": true }));
             }
             match outcome {
-                Err(e) => Ok(json!({ "error": { "code": e.code, "message": e.message } })),
+                Err(e) => Ok(json!({ "error": { "code": e.code, "message": e.message, "ref": e.reference } })),
                 Ok(crate::eval::ColumnOutcome::Bail) => Ok(json!({ "bail": true })),
                 Ok(crate::eval::ColumnOutcome::Done { cells, side_vars }) => {
                     let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, cells)] };

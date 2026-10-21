@@ -32,7 +32,7 @@ import {
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, choiceLadder,
+  decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, allocateColumns, choiceLadder,
   promoteHeaders, demoteHeaders,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
@@ -1476,6 +1476,12 @@ function headersOnCore(f: FrameValue, promote: boolean): FrameValue | null {
   return { __frame: true, columns: r.frame.columns.map((c, i) => ({ ...f.columns[i], name: c.name, values: c.values })) };
 }
 
+/** A frame computation on the core that answers a frame, or null for the TS to compute ([[D99]] rustIsSpec). */
+function frameOnCore(name: string, frames: FrameValue[], args: unknown[]): FrameValue | null {
+  const r = frameFnOnCore(name, frames, args);
+  return r && "frame" in r ? r.frame : null;
+}
+
 export type BlankRowMode = "all" | "any";
 
 export const BLANK_ROW_OP_META: Record<BlankRowMode, { label: string; description: string }> = {
@@ -1574,10 +1580,11 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
       return { frame: this.cachedResult };
     }
     const f = isFrameValue(raw) ? raw : widenToFrame(raw);
-    this.cachedResult = runVerb(() => {
-      const { weights, normOverrides, bounds } = resolveDecisionWeights(inputs.weights?.[0] ?? null, decisionCriteria(f));
+    const w = inputs.weights?.[0] ?? null;
+    this.cachedResult = runVerb(() => frameOnCore("decisionMatrix", w ? [f, w] : [f], [this.normalize, this.detail === "breakdown"]) ?? (() => {
+      const { weights, normOverrides, bounds } = resolveDecisionWeights(w, decisionCriteria(f));
       return decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", normOverrides, bounds);
-    });
+    })());
     return { frame: this.cachedResult };
   }
 }
@@ -1646,7 +1653,9 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     const scores = inputs.scores?.[0] ?? null;
     const scenarios = inputs.scenarios?.[0] ?? null;
     if (!scores || (!scenarios && this.mode === "scenarios")) { this.cachedResult = null; return { cube: null }; }
-    this.cachedResult = runVerb(() => (this.mode === "flips" ? flipPoints(scores, scenarios, this.normalize) : decisionSensitivity(scores, scenarios!, this.normalize)));
+    this.cachedResult = runVerb(() => (this.mode === "flips"
+      ? frameOnCore("flipPoints", scenarios ? [scores, scenarios] : [scores], [this.normalize]) ?? flipPoints(scores, scenarios, this.normalize)
+      : decisionSensitivity(scores, scenarios!, this.normalize)));
     return { cube: this.cachedResult };
   }
 }
@@ -1772,9 +1781,18 @@ export class AllocatorNode extends ClassicPreset.Node {
     const f = inputs.categories?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
     const amount = readInput(inputs.amount, this.literals.amount ?? 0) ?? 0;
-    this.cachedResult = runVerb(() => allocateFrame(f, this.mode, amount));
+    this.cachedResult = runVerb(() => allocateOnCore(f, this.mode, amount) ?? allocateFrame(f, this.mode, amount));
     return { frame: this.cachedResult };
   }
+}
+
+/** The allocation on the core; Allocation carries the min column's unit and format. */
+function allocateOnCore(f: FrameValue, mode: AllocateMode, amount: number): FrameValue | null {
+  const out = frameOnCore("allocateFrame", [f], [mode, amount]);
+  const { minCol } = allocateColumns(f);
+  if (!out || !minCol || out.columns.length !== 3) return out;
+  const [names, alloc, share] = out.columns;
+  return { __frame: true, columns: [names, { ...alloc, ...(minCol.unit ? { unit: minCol.unit } : {}), ...(minCol.format ? { format: minCol.format } : {}) }, share] };
 }
 
 // ─── PAYOFF PLANNER ─────────────────────────────────────────────────────────
