@@ -27,8 +27,20 @@ mod host {
         pub fn local(y: f64, m: f64, d: f64, h: f64, mi: f64, s: f64, ms: f64) -> Date;
         #[wasm_bindgen(method, js_name = getTime)]
         pub fn get_time(this: &Date) -> f64;
-        #[wasm_bindgen(method, js_name = getTimezoneOffset)]
-        pub fn get_timezone_offset(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getFullYear)]
+        pub fn year(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getMonth)]
+        pub fn month(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getDate)]
+        pub fn date(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getHours)]
+        pub fn hours(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getMinutes)]
+        pub fn minutes(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getSeconds)]
+        pub fn seconds(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getMilliseconds)]
+        pub fn millis(this: &Date) -> f64;
 
         #[wasm_bindgen(js_namespace = Intl)]
         pub type DateTimeFormat;
@@ -62,21 +74,17 @@ mod host {
     }
 }
 
-/// `new Date(t).getTimezoneOffset()`: minutes west of UTC at the instant t.
+/// LocalTime(t): the local wall clock at the instant t, as a time value read as UTC. Read through the local getters,
+/// since `getTimezoneOffset` truncates to whole minutes and a zone's early offsets carry seconds.
 #[cfg(target_arch = "wasm32")]
-pub fn local_offset_minutes(t: f64) -> f64 {
-    host::Date::at(t).get_timezone_offset()
+pub fn local_time(t: f64) -> f64 {
+    let d = host::Date::at(t);
+    make_date(make_day(d.year(), d.month(), d.date()), make_time(d.hours(), d.minutes(), d.seconds(), d.millis()))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn local_offset_minutes(t: f64) -> f64 {
-    if t.is_nan() { f64::NAN } else { 0.0 }
-}
-
-/// LocalTime(t): the local wall clock at the instant t, as a time value read as UTC.
 pub fn local_time(t: f64) -> f64 {
-    // The minutes are (t − local) / 60000, so scaling back and rounding recovers the whole milliseconds.
-    t - (local_offset_minutes(t) * 60_000.0).round()
+    t
 }
 
 /// The instant a local wall clock names, as V8's `new Date(y, m, d, …)` and the local setters resolve it: past the

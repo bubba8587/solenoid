@@ -171,23 +171,18 @@ pub fn reads_lists(name: &str) -> bool {
     )
 }
 
-/// The local time a calc reads, lowered from the TS (`engineClock`): TODAY's and NOW's serials, and whether a day
-/// built at local midnight rounds back to its serial (EDATE's reading).
+/// The moment a calc reads, lowered from the TS (`engineClock`, [[D46]] freezeVolatilePerCalc): NOW's serial, the
+/// local wall clock read as UTC.
 #[derive(Clone, Copy, Debug, serde::Deserialize)]
 pub struct Clock {
     pub now: f64,
-    pub today: f64,
-    #[serde(rename = "midnightRounds")]
-    pub midnight_rounds: bool,
-    #[serde(rename = "dayZeroNegative", default)]
-    pub day_zero_negative: bool,
 }
 
 thread_local! {
     static CLOCK: std::cell::Cell<Option<Clock>> = const { std::cell::Cell::new(None) };
 }
 
-/// The clock the next calc reads; without one TODAY, NOW and EDATE leave the column to the TS.
+/// The clock the next calc reads; without one TODAY and NOW leave the column to the TS.
 pub fn set_clock(c: Option<Clock>) {
     CLOCK.with(|k| k.set(c));
 }
@@ -3366,7 +3361,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             None => V::err(sol_error("#NAME?", "ROW() is this row's number, so it only works inside a computed column")),
         },
         "TODAY" | "NOW" => match clock() {
-            Some(c) => V::Num(if name == "TODAY" { c.today } else { c.now }),
+            Some(c) => V::Num(if name == "TODAY" { c.now.floor() } else { c.now }),
             None => bail(),
         },
         "EDATE" => fx_edate(arg(a, 0), arg(a, 1)),

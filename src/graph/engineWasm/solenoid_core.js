@@ -377,12 +377,36 @@ function __wbg_get_imports() {
         const ret = getObject(arg0).formatToParts(getObject(arg1));
         return addHeapObject(ret);
     }, arguments) };
-    imports.wbg.__wbg_getTime_f76347a3537b1991 = function(arg0) {
-        const ret = getObject(arg0).getTime();
+    imports.wbg.__wbg_getDate_80248a8173b8f15d = function(arg0) {
+        const ret = getObject(arg0).getDate();
         return ret;
     };
-    imports.wbg.__wbg_getTimezoneOffset_67c8dcee63af09b6 = function(arg0) {
-        const ret = getObject(arg0).getTimezoneOffset();
+    imports.wbg.__wbg_getFullYear_e2f381659700975f = function(arg0) {
+        const ret = getObject(arg0).getFullYear();
+        return ret;
+    };
+    imports.wbg.__wbg_getHours_042e08d342222664 = function(arg0) {
+        const ret = getObject(arg0).getHours();
+        return ret;
+    };
+    imports.wbg.__wbg_getMilliseconds_c59d5f69e1c284ed = function(arg0) {
+        const ret = getObject(arg0).getMilliseconds();
+        return ret;
+    };
+    imports.wbg.__wbg_getMinutes_d62a855f70fdaf08 = function(arg0) {
+        const ret = getObject(arg0).getMinutes();
+        return ret;
+    };
+    imports.wbg.__wbg_getMonth_b6fd4ed305fd0ae2 = function(arg0) {
+        const ret = getObject(arg0).getMonth();
+        return ret;
+    };
+    imports.wbg.__wbg_getSeconds_f3995058e28ecd4a = function(arg0) {
+        const ret = getObject(arg0).getSeconds();
+        return ret;
+    };
+    imports.wbg.__wbg_getTime_f76347a3537b1991 = function(arg0) {
+        const ret = getObject(arg0).getTime();
         return ret;
     };
     imports.wbg.__wbg_get_67b2ba62fc30de12 = function() { return handleError(function (arg0, arg1) {
