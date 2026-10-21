@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { compileEvaluator, extractVariables } from "../../src/graph/excelFormula";
 import { computeColumnCells, type ComputedColumnResult } from "../../src/graph/computedColumnCore";
-import "../../src/graph/excelFunctions";
+import { registerInternal, resolveExcelFunction, unregisterInternal } from "../../src/graph/excelFunctions";
 
 const run = (expr: string, values: number[]) => {
   const ev = compileEvaluator(expr)!;
@@ -29,5 +29,32 @@ describe("a range function over a whole column", () => {
     const t0 = performance.now();
     run("@price / SUM(price)", Array.from({ length: 20000 }, (_, i) => i));
     expect(performance.now() - t0).toBeLessThan(2000);
+  });
+});
+
+describe("a list shaper over a whole column", () => {
+  const regions = ["N", "S", "N", "E", "S"];
+  const cells = (expr: string, values: unknown[]) => (computeColumnCells(
+    { columns: [{ name: "region", values }] },
+    { kind: "expr", evaluator: compileEvaluator(expr)!, vars: extractVariables(expr) },
+  ) as ComputedColumnResult).cells;
+
+  it("answers the right count on every row", () => {
+    expect(cells("COUNTA(UNIQUE(region))", regions)).toEqual([3, 3, 3, 3, 3]);
+    expect(cells("COUNTA(UNIQUE(region))", ["A", "A"])).toEqual([1, 1]);
+  });
+
+  it("builds the list once per column, not once per row", () => {
+    const unique = resolveExcelFunction("UNIQUE")!;
+    let calls = 0;
+    unregisterInternal("UNIQUE");
+    registerInternal("UNIQUE", (...a) => { calls++; return unique(...a); });
+    try {
+      expect(cells("COUNTA(UNIQUE(region))", regions)).toEqual([3, 3, 3, 3, 3]);
+      expect(calls).toBe(1);
+    } finally {
+      unregisterInternal("UNIQUE");
+      registerInternal("UNIQUE", unique);
+    }
   });
 });
