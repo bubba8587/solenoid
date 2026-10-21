@@ -457,6 +457,8 @@ pub struct CallTraits {
     pub inspects_null: bool,
     #[serde(rename = "nullableOk", default)]
     pub nullable_ok: bool,
+    #[serde(default)]
+    pub prep: String,
     /// By argument index; null where the argument has no role.
     #[serde(default)]
     pub roles: Vec<Option<Role>>,
@@ -480,8 +482,25 @@ fn lowered(v: &Json) -> V {
 
 // ─── Support check ──────────────────────────────────────────────────────────────
 
+/// A whole column (a bare column name or `[name]`) is supported only as a direct argument of a range function
+/// whose prep this port carries, `list_ok`; anywhere else it would broadcast, which runs on the TS.
 fn supported(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<String, V>, table: &CallTable) -> bool {
-    let ok = |a: &Ast| supported(a, columns, sides, table);
+    supported_at(n, columns, sides, table, false)
+}
+
+fn whole_column<'a>(n: &Ast, columns: &HashMap<&str, &'a FrameColumn>, sides: &HashMap<String, V>) -> Option<&'a FrameColumn> {
+    match n {
+        Ast::Name(name) if constant_value(name).is_none() && !sides.contains_key(name) => columns.get(name.as_str()).copied(),
+        Ast::WholeCol(name) => columns.get(name.as_str()).copied(),
+        _ => None,
+    }
+}
+
+fn supported_at(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<String, V>, table: &CallTable, list_ok: bool) -> bool {
+    let ok = |a: &Ast| supported_at(a, columns, sides, table, false);
+    if whole_column(n, columns, sides).is_some() {
+        return list_ok;
+    }
     match n {
         Ast::Num(_) | Ast::Str(_) | Ast::Bool(_) | Ast::Blank => true,
         Ast::Name(name) => constant_value(name).is_some() || sides.contains_key(name),
@@ -494,7 +513,8 @@ fn supported(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<Str
             let roles_ok = table.get(&up).is_some_and(|t| {
                 matches!(t.kind.as_str(), "handler" | "whole" | "range" | "broadcast") && t.roles.len() >= args.len()
             });
-            is_ported(&up) && roles_ok && args.iter().all(ok)
+            let lists = table.get(&up).is_some_and(|t| t.kind == "range" && matches!(t.prep.as_str(), "raw" | "default"));
+            is_ported(&up) && roles_ok && args.iter().all(|a| supported_at(a, columns, sides, table, lists))
         }
     }
 }
@@ -502,6 +522,10 @@ fn supported(n: &Ast, columns: &HashMap<&str, &FrameColumn>, sides: &HashMap<Str
 // ─── Evaluator ──────────────────────────────────────────────────────────────────
 
 struct Row<'a> {
+    /// Each whole column once, as the TS's `wholeCol` caches it.
+    lists: HashMap<&'a str, Rc<Vec<V>>>,
+    /// A call whose subtree reads no `@` cell answers the same every row (`rangeMemo`'s hit), so once.
+    memo: std::cell::RefCell<HashMap<*const Ast, V>>,
     columns: &'a HashMap<&'a str, &'a FrameColumn>,
     /// The side values a name that isn't a column reads: one scalar for every row.
     sides: &'a HashMap<String, V>,
@@ -630,8 +654,21 @@ fn js_number(v: &V) -> f64 {
     }
 }
 
+fn reads_row(n: &Ast) -> bool {
+    match n {
+        Ast::AtCol(_) => true,
+        Ast::Call { args, .. } | Ast::Apply { args, .. } => args.iter().any(reads_row),
+        Ast::Unary { arg, .. } | Ast::Percent(arg) => reads_row(arg),
+        Ast::Bin { l, r, .. } => reads_row(l) || reads_row(r),
+        _ => false,
+    }
+}
+
 impl Row<'_> {
     fn eval(&self, n: &Ast) -> V {
+        if let Some(c) = whole_column(n, self.columns, self.sides) {
+            return V::List(self.lists.get(c.name.as_str()).cloned().unwrap_or_default());
+        }
         match n {
             Ast::Num(v) => V::Num(v.parse::<f64>().unwrap_or(f64::NAN)),
             Ast::Str(v) => V::Str(Rc::from(v.as_str())),
@@ -663,7 +700,21 @@ impl Row<'_> {
                 let (l, r) = (self.eval(l), self.eval(r));
                 apply_op(op, &l, &r)
             }
-            Ast::Call { name, args } => self.call(name, args),
+            Ast::Call { name, args } => {
+                if reads_row(n) {
+                    return self.call(name, args);
+                }
+                let key = n as *const Ast;
+                if let Some(v) = self.memo.borrow().get(&key) {
+                    return v.clone();
+                }
+                let v = self.call(name, args);
+                if crate::excel_functions::thrown_pending() {
+                    return v;
+                }
+                self.memo.borrow_mut().insert(key, v.clone());
+                v
+            }
         }
     }
 
@@ -711,10 +762,39 @@ impl Row<'_> {
                 }
                 call_function(name, &argv)
             }
-            "range" => match call_function(name, &argv) {
-                V::Num(r) if !r.is_finite() => guard(r, &argv),
-                r => r,
-            },
+            "range" => {
+                // prepRangeArgs: a list's first error answers, and its blanks drop, unless the function reads them raw.
+                let mut prepped: Vec<V> = Vec::with_capacity(argv.len());
+                let mut flat: Vec<V> = Vec::with_capacity(argv.len());
+                for v in &argv {
+                    match v {
+                        V::List(items) => {
+                            let kept: Vec<V> = if t.prep != "raw" {
+                                if let Some(e) = items.iter().find(|x| x.is_err()) {
+                                    return match e {
+                                        V::Fx(code) => V::err(crate::excel_functions::fx_error_to_sol(code)),
+                                        other => other.clone(),
+                                    };
+                                }
+                                items.iter().filter(|x| !matches!(x, V::Null)).cloned().collect()
+                            } else {
+                                items.as_ref().clone()
+                            };
+                            flat.extend(kept.iter().cloned());
+                            prepped.push(V::List(Rc::new(kept)));
+                        }
+                        other => {
+                            flat.push(other.clone());
+                            prepped.push(other.clone());
+                        }
+                    }
+                }
+                // SUM adds a list as its own subtotal; every other ported range function reads its lists flat.
+                match call_function(name, if name == "SUM" { &prepped } else { &flat }) {
+                    V::Num(r) if !r.is_finite() => guard(r, &flat),
+                    r => r,
+                }
+            }
             _ => {
                 if !t.inspects_null && argv.iter().enumerate().any(|(i, v)| matches!(v, V::Null) && !settled[i]) {
                     return V::Null;
@@ -738,6 +818,7 @@ fn tag_computed_cell(v: V) -> FrameCell {
         V::Null | V::Undef => FrameCell::Null,
         V::Err(e) => FrameCell::Err(e),
         V::Fx(code) => FrameCell::err(crate::excel_functions::fx_error_to_sol(code)),
+        V::List(_) => FrameCell::err(sol_error("#SHAPE!", "A computed column needs one value per row. Use @name to read this row's cell.")),
     }
 }
 
@@ -768,7 +849,8 @@ pub fn formula_column(f: &FrameValue, expr: &str, table: &CallTable, sides: &Has
         return Ok(ColumnOutcome::Unsupported);
     }
     let ast = upper_calls(ast);
-    let mut row = Row { columns: &columns, sides: &sides, table, cursor: 0 };
+    let lists = columns.iter().map(|(k, c)| (*k, Rc::new(c.values.iter().map(cell_to_v).collect::<Vec<_>>()))).collect();
+    let mut row = Row { lists, memo: Default::default(), columns: &columns, sides: &sides, table, cursor: 0 };
     let mut cells = Vec::with_capacity(rows);
     for i in 0..rows {
         row.cursor = i;

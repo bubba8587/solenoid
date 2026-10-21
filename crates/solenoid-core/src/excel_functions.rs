@@ -23,6 +23,8 @@ pub enum V {
     Err(Rc<SolError>),
     /// A Formula.js `Error`, by its message (`#VALUE!`, `#N/A`, …).
     Fx(&'static str),
+    /// A whole column, as a range function takes it (flattened, its cells in order).
+    List(Rc<Vec<V>>),
 }
 
 impl V {
@@ -57,6 +59,10 @@ fn throw(e: SolError) -> V {
         }
     });
     V::Undef
+}
+
+pub fn thrown_pending() -> bool {
+    THROWN.with(|t| t.borrow().is_some())
 }
 
 /// The exception the last row threw, if it did.
@@ -110,6 +116,7 @@ pub fn js_string_of(v: &V) -> String {
         V::Bool(b) => (if *b { "true" } else { "false" }).into(),
         V::Err(_) => "[object Object]".into(),
         V::Fx(code) => format!("Error: {code}"),
+        V::List(items) => items.iter().map(js_string_of).collect::<Vec<_>>().join(","),
     }
 }
 
@@ -228,7 +235,7 @@ fn parse_number(v: &V) -> V {
         V::Str(s) => {
             if s.is_empty() || string_to_number(s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(s)) }
         }
-        V::Err(_) => V::Fx("#VALUE!"),
+        V::Err(_) | V::List(_) => V::Fx("#VALUE!"),
     }
 }
 
@@ -248,7 +255,7 @@ fn truthy(v: &V) -> bool {
         V::Num(n) => *n != 0.0 && !n.is_nan(),
         V::Str(s) => !s.is_empty(),
         V::Bool(b) => *b,
-        V::Err(_) | V::Fx(_) => true,
+        V::Err(_) | V::Fx(_) | V::List(_) => true,
     }
 }
 
@@ -549,23 +556,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             if y == 0.0 { V::err(sol_error("#DIV/0!", "Division by zero")) } else { V::Num((x / y).trunc()) }
         }
-        "SUM" => {
-            let mut result = 0.0;
-            for v in a {
-                match v {
-                    V::Fx(_) => return v.clone(),
-                    V::Num(n) => result += n,
-                    V::Str(s) => {
-                        let p = js_parse_float(s);
-                        if !p.is_nan() {
-                            result += p;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            V::Num(result)
-        }
+        "SUM" => sum_like_fx(a),
         "MIN" | "MAX" => {
             if let Some(e) = a.iter().find(|v| v.is_err()) {
                 return e.clone();
@@ -850,6 +841,29 @@ fn date_from_parts(raw_y: f64, raw_m: f64, raw_d: f64) -> V {
         days
     };
     V::Num(days + 25569.0)
+}
+
+/// excelFunctions.ts `sumLikeFx`: Formula.js's SUM, a nested list adding as its own subtotal.
+fn sum_like_fx(a: &[V]) -> V {
+    let mut result = 0.0;
+    for v in a {
+        match v {
+            V::Fx(_) => return v.clone(),
+            V::Num(n) => result += n,
+            V::Str(s) => {
+                let p = js_parse_float(s);
+                if !p.is_nan() {
+                    result += p;
+                }
+            }
+            V::List(items) => match sum_like_fx(items) {
+                V::Num(n) => result += n,
+                e => return e,
+            },
+            _ => {}
+        }
+    }
+    V::Num(result)
 }
 
 fn error_type_num(code: &str) -> Option<f64> {

@@ -303,7 +303,7 @@ function formulaGen(rand: () => number) {
   const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
   const lit = () => pick(["0", "1", "2", "-0", "3.5", "1e3", ".5", "10", "100", "1e308", "0.1", "7"]);
   const str = () => `"${pick(["", "abc", "ABC", "TRUE", "false", "5", " a  b ", "😀x", "é", "1,000", "x", "#N/A"])}"`;
-  const ref = () => pick(["@a", "@b", "@c", "@d", "[@a]", "@[b]", "[@[c]]", "@nope", "a", "pi", "E", "Tau", "s1", "@s2", "[@s1]", "s3", "@name"]);
+  const ref = () => pick(["@a", "@b", "@c", "@d", "[@a]", "@[b]", "[@[c]]", "@nope", "a", "pi", "E", "Tau", "s1", "@s2", "[@s1]", "s3", "@name", "b", "c", "d", "[a]", "[b]", "[d]", "[nope]"]);
   const expr = (depth: number): string => {
     const r = rand();
     if (depth <= 0 || r < 0.3) return pick([lit, str, ref, ref, () => pick(["TRUE", "FALSE", "true"])])();
@@ -415,5 +415,29 @@ describe("the Rust engine's fdlibm matches V8's Math bit for bit", () => {
     const bad = xs.map((x, i) => [x, ys[i], math(x, ys[i]), got[i]] as const)
       .filter(([, , want, g]) => !(Number.isNaN(want) ? (BigInt(g) & 0x7ff0000000000000n) === 0x7ff0000000000000n : bits(want) === g));
     expect(bad.slice(0, 3)).toEqual([]);
+  });
+});
+
+describe("whole-column aggregates run on the Rust evaluator and match", () => {
+  const f: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "a", type: "number", values: [3, null, -1.5, 8, 0] },
+      { name: "b", type: "string", values: ["x", "", null, "Yo", "z"] },
+      { name: "c", type: "logical", values: [true, false, null, true, true] },
+      { name: "d", type: "number", values: [1, 2, solError("#N/A", "gap"), 4, 5] },
+    ],
+  };
+  it.each([
+    "@a / SUM(a)", "MAX([a]) - @a", "COUNTBLANK(b)", "AVERAGE(a, @a)", "CONCAT(b)", "AND(c)", "COUNT(d) + COUNTA(b)",
+    "SUM(d)", "IFERROR(SUM(d), -1)", "MEDIAN(a) & \"|\" & @b", "PRODUCT([a], 2)", "XOR(c, @c)",
+  ])("%s", (src) => {
+    const engine = computeColumnOnEngine(f, src, 5);
+    expect(engine, "should run on the engine").not.toBeNull();
+    const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
+    expect(isSolError(js)).toBe(false);
+    if (isSolError(js)) return;
+    expect(view({ __frame: true, columns: [{ name: "o", type: "number", values: engine!.cells }] }))
+      .toEqual(view({ __frame: true, columns: [{ name: "o", type: "number", values: js.cells }] }));
   });
 });

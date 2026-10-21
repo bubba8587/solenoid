@@ -63,7 +63,8 @@ git diff 31ce0f7..develop -- src/graph/frameVerbs.ts src/graph/frame.ts src/grap
 | Formula tokenizer and parser | Ported whole | 300k random strings, well-formed and broken, give the same tree |
 | Row formulas (computed columns): literals, `@column`, scalar side values, constants, every operator | Ported | 300k random computed columns match cells, messages and side sockets |
 | Formula functions | 69 ported: IF IFS AND OR NOT XOR IFERROR IFNA ISERROR ISERR ISNA ERROR.TYPE ISBLANK ISNUMBER ISTEXT ISLOGICAL ISNONTEXT ISEVEN ISODD N T ROUND ROUNDUP ROUNDDOWN TRUNC INT ABS SIGN SQRT EXP LN LOG10 MOD POWER QUOTIENT PI SUM MIN MAX AVERAGE MEDIAN PRODUCT STDEV STDEV.S STDEV.P VAR VAR.S VAR.P COUNT COUNTA COUNTBLANK LEN CONCAT CONCATENATE MID LEFT RIGHT UPPER LOWER TRIM REPT SUBSTITUTE EXACT FIND CHOOSE YEAR MONTH DAY DATE | a formula calling anything else runs on the TS |
-| Whole-column refs (a bare column name, `[col]`), lists and matrices, LAMBDA, complex numbers, units in formulas | Not ported: runs on the TS | |
+| Whole-column refs (a bare column name, `[col]`) as a range function's argument: `@x / SUM(x)`, `MAX([x])`, `COUNTBLANK(b)` | Ported, with `prepRangeArgs`' error scan and blank drop, and a call that reads no `@` cell evaluated once | explicit cases plus the fuzzer |
+| Whole columns anywhere else (broadcast), lists and matrices, LAMBDA, complex numbers, units in formulas | Not ported: runs on the TS | |
 | Expression nodes, the compute pass, node `data()` | Not started | |
 
 ## Where it runs
@@ -97,10 +98,19 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 | window: rank by cat | 156.5 | 84.8 | 1.8 |
 | pipeline: filter, group, sort | 97.1 | 24.8 | 3.9 |
 | left join a 1000-row lookup | 95.6 | 20.5 | 4.7 |
+| fx: `@value / SUM(value)` | 180.4 | 47.3 | 3.8 |
 | fx: `@value * 1.2 + @cat` | 138.5 | 57.3 | 2.4 |
 | fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 724.7 | 403.1 | 1.8 |
 | fx: `@key & "-" & UPPER(@key)` | 356.3 | 290.1 | 1.2 |
 | fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 566.5 | 159.0 | 3.6 |
+
+## Found on the way (fixed in the TS here, worth carrying to develop)
+
+- **SUM over a long column hung.** Formula.js's SUM recurses through `SUM.apply(null, list)`, which throws past
+  about 125k values. `SUM(column)` in a computed column over a long table threw in every row, and because a throw
+  isn't memoized it re-summed the column per row: quadratic, effectively a hang. SUM is now owned
+  (`sumLikeFx`, pinned in `formulaDivergence.test.ts`, listed in `formulajs-divergences.md`), as MIN and MAX
+  already were for the same reason.
 
 ## Follow-ups
 

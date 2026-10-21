@@ -1025,6 +1025,8 @@ function routeCall(name: string, argv: unknown[], settled: readonly boolean[]): 
  *  step of the ladder it takes, its argument roles, and each empty slot's reading. Null when a role isn't one it reads. */
 export interface FormulaCallTraits {
   kind: "handler" | "whole" | "range" | "broadcast";
+  /** A range function's argument prep (`prepRangeArgs`). */
+  prep: "raw" | "positional" | "zero" | "paired" | "default";
   inspectsNull: boolean;
   nullableOk: boolean;
   roles: ({ kind: "setting"; blank: unknown } | { kind: "required" } | null)[];
@@ -1033,6 +1035,24 @@ export interface FormulaCallTraits {
 
 /** `undefined` (a left-out default) as the lowered table spells it. */
 const lowerValue = (v: unknown): unknown => (v === undefined ? { __undef: 1 } : v);
+
+/** Every name a formula reads a column or a value by: `@name`, `[name]` and bare names. */
+export function referencedNames(expr: string): string[] {
+  const ast = parseExpr(expr);
+  if (!ast) return [];
+  const out = new Set<string>();
+  const walk = (n: Ast): void => {
+    switch (n.t) {
+      case "name": case "atcol": case "wholecol": out.add(n.name); break;
+      case "call": n.args.forEach(walk); break;
+      case "apply": walk(n.fn); n.args.forEach(walk); break;
+      case "unary": case "percent": walk(n.arg); break;
+      case "bin": walk(n.l); walk(n.r); break;
+    }
+  };
+  walk(ast);
+  return [...out];
+}
 
 export function formulaCallTable(expr: string): Record<string, FormulaCallTraits> | null {
   const ast = parseExpr(expr);
@@ -1053,6 +1073,8 @@ export function formulaCallTable(expr: string): Record<string, FormulaCallTraits
     const t = nameTraits(name);
     const entry = table[name] ??= {
       kind: ERROR_HANDLER_FUNCTIONS.has(name) ? "handler" : t.whole ? "whole" : t.range ? "range" : "broadcast",
+      prep: RANGE_RAW.has(name) ? "raw" : RANGE_POSITIONAL.has(name) ? "positional"
+        : RANGE_ZERO_FILL.has(name) ? "zero" : RANGE_PAIRED.has(name) ? "paired" : "default",
       inspectsNull: NULL_INSPECTING.has(name),
       nullableOk: t.nullableOk,
       roles: [],

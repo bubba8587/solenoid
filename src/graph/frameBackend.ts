@@ -6,7 +6,7 @@ import {
 import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, aggUnitPlan, readingScaleOf, linearScaleOf, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp, type PivotSpec } from "./frameVerbs";
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
-import { formulaCallTable, rowRefNames, extractVariables } from "./excelFormula";
+import { formulaCallTable, rowRefNames, extractVariables, referencedNames } from "./excelFormula";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -476,7 +476,9 @@ export function computeColumnOnEngine(
   const sides: Record<string, unknown> = {};
   const sideVars: string[] = [];
   for (const p of extractVariables(expr)) {
-    if (columns.has(p) || reserved.includes(p)) return null;
+    // A bare column name is the whole column, which the Rust evaluator reads where a range function takes it.
+    if (columns.has(p)) continue;
+    if (reserved.includes(p)) return null;
     const v = opts.sideValue?.(p, "var");
     if (!isScalarCell(v)) return null;
     sideVars.push(p);
@@ -493,7 +495,8 @@ export function computeColumnOnEngine(
       sides[p] = encodeWireCell(v);
     }
   }
-  const src = wasmSourceBin(encodeBinary({ __frame: true, columns: f.columns.filter((c) => refs.includes(c.name)) }));
+  const named = new Set(referencedNames(expr));
+  const src = wasmSourceBin(encodeBinary({ __frame: true, columns: f.columns.filter((c) => named.has(c.name)) }));
   let out: string | undefined;
   try {
     const r = wasmInvokeSync<{ supported: boolean; handle?: string }>("engine_formula_column", { handle: src, expr, table, sides, rows });
