@@ -49,9 +49,11 @@ impl Hasher for FxHasher {
         self.add(i as u64);
     }
 
+    /// The multiply leaves the low bits weak, and hashbrown picks a bucket from them: rotating the strong high bits
+    /// down, as rustc-hash 2 does, keeps short keys that differ in one byte from piling into a few buckets.
     #[inline]
     fn finish(&self) -> u64 {
-        self.hash
+        self.hash.rotate_left(26)
     }
 }
 
