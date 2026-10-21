@@ -28,6 +28,8 @@ pub enum V {
     List(Rc<Vec<V>>),
     /// A complex number (`cxValue.ts`' `Cx`): real part, imaginary part.
     Cx(f64, f64),
+    /// A LAMBDA, or a function named bare where a LAMBDA goes.
+    Lambda(Rc<crate::eval::LambdaV>),
 }
 
 impl V {
@@ -136,11 +138,16 @@ const PORTED: &[&str] = &[
 /// name from a ported one. The shapers read a list as a column, as a computed column hands one over, so they wait
 /// for the value model to tell a column from a row.
 pub fn ported_names() -> Vec<&'static str> {
-    PORTED.iter().chain(crate::formulajs::NAMES.iter()).chain(crate::fns_lists::NAMES.iter()).copied().collect()
+    PORTED.iter().chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).chain(crate::fns_lists::NAMES.iter()).copied().collect()
+}
+
+/// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
+pub fn reads_matrices(name: &str) -> bool {
+    crate::fns_lists::NAMES.contains(&name)
 }
 
 pub fn is_ported(name: &str) -> bool {
-    PORTED.contains(&name) || crate::shapers::is_shaper(name) || crate::formulajs::NAMES.contains(&name)
+    PORTED.contains(&name) || crate::shapers::is_shaper(name) || crate::formulajs::NAMES.contains(&name) || crate::fns_complex::NAMES.contains(&name)
         || crate::fns_lists::NAMES.contains(&name)
 }
 
@@ -229,7 +236,7 @@ pub fn js_string_of(v: &V) -> String {
         V::Num(n) => number_to_string(*n),
         V::Str(s) => s.to_string(),
         V::Bool(b) => (if *b { "true" } else { "false" }).into(),
-        V::Err(_) | V::Cx(..) => "[object Object]".into(),
+        V::Err(_) | V::Cx(..) | V::Lambda(_) => "[object Object]".into(),
         V::Fx(code) => format!("Error: {code}"),
         // `Array.prototype.join` renders null and undefined as empty.
         V::List(items) => items.iter().map(|v| if matches!(v, V::Null | V::Undef) { String::new() } else { js_string_of(v) }).collect::<Vec<_>>().join(","),
@@ -357,7 +364,7 @@ pub(crate) fn parse_number(v: &V) -> V {
             let s = js_string_of(v);
             if string_to_number(&s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(&s)) }
         }
-        V::Err(_) | V::Cx(..) => V::Fx("#VALUE!"),
+        V::Err(_) | V::Cx(..) | V::Lambda(_) => V::Fx("#VALUE!"),
     }
 }
 
@@ -377,7 +384,7 @@ pub(crate) fn truthy(v: &V) -> bool {
         V::Num(n) => *n != 0.0 && !n.is_nan(),
         V::Str(s) => !s.is_empty(),
         V::Bool(b) => *b,
-        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) => true,
+        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) | V::Lambda(_) => true,
     }
 }
 
@@ -1113,7 +1120,7 @@ fn group_thousands(s: &str) -> String {
 }
 
 /// V8's `Math.hypot`: the largest magnitude scales a Kahan-compensated sum of squares.
-fn math_hypot(xs: &[f64]) -> f64 {
+pub(crate) fn math_hypot(xs: &[f64]) -> f64 {
     let mut max: f64 = 0.0;
     let mut nan = false;
     let abs: Vec<f64> = xs.iter().map(|x| x.abs()).collect();
@@ -3318,6 +3325,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         },
         _ if crate::formulajs::NAMES.contains(&name) => crate::formulajs::call(name, a),
+        _ if crate::fns_complex::NAMES.contains(&name) => crate::fns_complex::call(name, a),
         _ if crate::fns_lists::NAMES.contains(&name) => crate::fns_lists::call(name, a),
         _ if is_finance(name) => finance_function(name, a),
         "REGEXTEST" | "REGEXEXTRACT" | "REGEXREPLACE" => regex_call(name, a),
@@ -3739,7 +3747,7 @@ fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
 fn fx_edate(start: &V, months: &V) -> V {
     let d = match start {
         V::Undef | V::Err(_) | V::Fx(_) => return V::Fx("#VALUE!"),
-        V::List(_) | V::Cx(..) => return bail(),
+        V::List(_) | V::Cx(..) | V::Lambda(_) => return bail(),
         V::Str(s) if string_to_number(s).is_nan() => return bail(),
         V::Str(s) => js_parse_float(s),
         V::Num(n) if n.is_nan() => return V::Fx("#VALUE!"),

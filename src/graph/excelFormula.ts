@@ -1052,6 +1052,14 @@ export interface FormulaCallTraits {
   /** A broadcast function maps over a whole column (a one-column matrix) cell by cell; one Solenoid doesn't know
    *  answers #SHAPE!, and one that takes matrices gets the matrix itself. */
   mapsColumns: boolean;
+  /** `routeCall`'s facts: a free function reads one-column and one-row tables as their items, a matrix-taking one
+   *  gets matrices whole, a known one is registered, and checksCx refuses complex arguments. */
+  free: boolean;
+  matrixArgs: boolean;
+  known: boolean;
+  checksCx: boolean;
+  /** A bare name of it is that function as a LAMBDA (`etaOrEval`). */
+  resolves: boolean;
   /** The error a blocked, node-only or unknown name answers before its arguments are read (`callRefusal`). */
   refusal?: { code: string; message: string };
 }
@@ -1081,20 +1089,21 @@ export function formulaCallTable(expr: string): Record<string, FormulaCallTraits
   const ast = parseExpr(expr);
   if (!ast) return null;
   const calls: CallAst[] = [];
+  const bare: string[] = [];
   const walk = (n: Ast): void => {
     switch (n.t) {
       case "call": calls.push(n); n.args.forEach(walk); break;
       case "apply": walk(n.fn); n.args.forEach(walk); break;
       case "unary": case "percent": walk(n.arg); break;
       case "bin": walk(n.l); walk(n.r); break;
+      case "name": if (constantValue(n.name) === undefined && resolveExcelFunction(n.name)) bare.push(n.name.toUpperCase()); break;
     }
   };
   walk(ast);
   const table: Record<string, FormulaCallTraits> = {};
-  for (const n of calls) {
-    const name = n.name.toUpperCase();
+  const entryFor = (name: string): FormulaCallTraits => {
     const t = nameTraits(name);
-    const entry = table[name] ??= {
+    return table[name] ??= {
       kind: ERROR_HANDLER_FUNCTIONS.has(name) ? "handler" : t.whole ? "whole" : t.range ? "range" : "broadcast",
       prep: RANGE_RAW.has(name) ? "raw" : RANGE_POSITIONAL.has(name) ? "positional"
         : RANGE_ZERO_FILL.has(name) ? "zero" : RANGE_PAIRED.has(name) ? "paired" : "default",
@@ -1104,7 +1113,17 @@ export function formulaCallTable(expr: string): Record<string, FormulaCallTraits
       blanks: {},
       scalar: [],
       mapsColumns: t.known && !t.matrixArgs,
+      free: t.free,
+      matrixArgs: t.matrixArgs,
+      known: t.known,
+      checksCx: t.checksCx,
+      resolves: !!resolveExcelFunction(name),
     };
+  };
+  for (const name of bare) entryFor(name);
+  for (const n of calls) {
+    const name = n.name.toUpperCase();
+    const entry = entryFor(name);
     const refused = callRefusal(name);
     if (refused) entry.refusal = { code: refused.code, message: refused.message };
     for (let i = entry.roles.length; i < n.args.length; i++) {
