@@ -48,7 +48,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, frameFnOnCore, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -1461,9 +1461,19 @@ export class HeadersNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => (this.action === "promote" ? promoteHeaders(f) : demoteHeaders(f)));
+    this.cachedResult = runVerb(() => headersOnCore(f, this.action === "promote") ?? (this.action === "promote" ? promoteHeaders(f) : demoteHeaders(f)));
     return { frame: this.cachedResult };
   }
+}
+
+/** Promote or demote headers on the core; a promoted column keeps its unit and format, and one carrying source text
+ *  stays on the TS, which slices it. */
+function headersOnCore(f: FrameValue, promote: boolean): FrameValue | null {
+  if (promote && f.columns.some((c) => c.raw)) return null;
+  const r = frameFnOnCore(promote ? "promoteHeaders" : "demoteHeaders", [f]);
+  if (!r || !("frame" in r)) return null;
+  if (!promote || r.frame.columns.length !== f.columns.length) return r.frame;
+  return { __frame: true, columns: r.frame.columns.map((c, i) => ({ ...f.columns[i], name: c.name, values: c.values })) };
 }
 
 export type BlankRowMode = "all" | "any";
