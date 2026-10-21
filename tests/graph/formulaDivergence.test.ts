@@ -63,6 +63,23 @@ describe("FACT, FACTDOUBLE, COMBIN, COMBINA, PERMUT, MULTINOMIAL multiply withou
   });
 });
 
+describe("BINOM.DIST.RANGE checks its range and stays finite on large trials (FX is wrong)", () => {
+  it("Excel's worked examples, a large range, and Excel's domain", () => {
+    expect(num(call("BINOM.DIST.RANGE", 60, 0.75, 48))).toBeCloseTo(0.083974967, 9);
+    expect(num(call("BINOM.DIST.RANGE", 60, 0.75, 45, 50))).toBeCloseTo(0.523629793, 9);
+    expect(num(call("BINOM.DIST.RANGE", 1e5, 0.5, 0, 50000))).toBeCloseTo(0.501261, 5);
+    expect(call("BINOM.DIST.RANGE", 10, 0, 0, 3)).toBe(1);
+    for (const args of [[10, 0.5, 6, 5], [10, 1.5, 1], [10, 0.5, 11], [1e7, 0.5, 0, 5e6]]) {
+      expect((call("BINOM.DIST.RANGE", ...args) as { code?: string }).code).toBe("#DOMAIN!");
+    }
+  });
+  it("FX still overflows the stack on large trials and takes a reversed range (tripwire)", () => {
+    const fx = (FX as unknown as { BINOM: { DIST: { RANGE: (...a: number[]) => number } } }).BINOM.DIST.RANGE;
+    expect(() => fx(1e5, 0.5, 0, 50000)).toThrow(RangeError);
+    expect(fx(10, 0.5, 6, 5)).toBe(0);
+  });
+});
+
 describe("DB and DDB past a million periods answer #DOMAIN! (FX steps once per period)", () => {
   it("a huge period within the life answers at once; an ordinary one is Formula.js's", () => {
     const t = performance.now();
