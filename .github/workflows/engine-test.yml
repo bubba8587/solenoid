@@ -1,17 +1,20 @@
 # The native half of the frame-verb parity corpus: every fixture in fixtures/frame-verbs runs through
-# Polars too (`corpus_cases`), so an engine change is held to the same cases the JS oracle is. It runs
-# only when the engine or the corpus changes, so an ordinary push asks for one runner, not two.
+# Polars too (`corpus_cases`), so an engine change is held to the same cases the JS oracle is; and the Rust
+# core's own tests ([[C130]] rustCore). It runs only when an engine or the corpus changes, so an ordinary
+# push asks for one runner, not two.
 name: Engine test
 
 on:
   push:
     paths:
       - "src-tauri/**"
+      - "crates/**"
       - "fixtures/frame-verbs/**"
       - ".github/workflows/engine-test.yml"
   pull_request:
     paths:
       - "src-tauri/**"
+      - "crates/**"
       - "fixtures/frame-verbs/**"
       - ".github/workflows/engine-test.yml"
   workflow_dispatch:
@@ -40,3 +43,17 @@ jobs:
 
       - name: Engine tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "crates/solenoid-core -> target"
+
+      - name: Core tests
+        run: cargo test --manifest-path crates/solenoid-core/Cargo.toml

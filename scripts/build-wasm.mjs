@@ -2,7 +2,8 @@
 // Builds the Rust core (crates/solenoid-core) to WebAssembly into src/graph/engineWasm/: cargo, wasm-bindgen, then
 // wasm-opt -O3 when it's installed (`cargo install wasm-opt`), which strips names and trims about a fifth.
 import { execFileSync } from "node:child_process";
-import { statSync } from "node:fs";
+import { statSync, writeFileSync } from "node:fs";
+import { sourceStamp } from "./wasm-stamp.mjs";
 
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: "inherit" });
 const has = (cmd) => { try { execFileSync(cmd, ["--version"], { stdio: "ignore" }); return true; } catch { return false; } };
@@ -17,4 +18,5 @@ if (has("wasm-opt")) {
 } else {
   console.warn("wasm-opt not found: the module ships unoptimized (cargo install wasm-opt)");
 }
+writeFileSync(`${out}/source-stamp.txt`, sourceStamp() + "\n");
 console.log(`${wasm}: ${statSync(wasm).size} bytes`);
