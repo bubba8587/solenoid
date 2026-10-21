@@ -279,6 +279,7 @@ describe("Hypothesis tests beyond Excel's four (values from scipy / R)", () => {
     const big2 = [-0.627, -0.083, 0.528, -0.345, 0.502, 0.695, 0.636, 0.094, 1.194, 1.491, 0.921, -0.218, 1.332, 0.099, 1.479, -0.472, 1.514, 0.58, -0.649, 0.286, 0.654, 0.873, -0.382, -0.507, 0.8, 0.133, 0.836, 1.36, -1.049, 0.854, 1.825, 0.302, -0.211, 1.352, 0.853];
     expect(ksTwoSampleP(big1, big2)).toBeCloseTo(0.059495912884303954, 9);
     expect(ksTwoSampleP(a, a)).toBe(1);
+    expect(ksTwoSampleP([1, NaN], [2, 3])).toBeNull(); // a NaN never compares, so the merge would never end
   });
   it("two-proportion z (pooled, no correction): z = 0.15/sqrt(0.375·0.625·0.02) = 2.1909 → p = 0.0284597", () => {
     expect(twoProportionP(45, 100, 30, 100)).toBeCloseTo(0.02845973691631065, 10);
