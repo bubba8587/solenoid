@@ -71,8 +71,11 @@ export function PivotRibbon({ layout, options, onOptions, totals, valueFormat, f
   const select = <T extends string>(value: T, opts: { value: T; label: string }[], onChange: (v: T) => void, title: string) => (
     <PopupChoice value={value} options={opts} onChange={onChange} label={title} segmented={false} />
   );
-  const toggle = (key: "repeatLabels" | "blankRows" | "fieldHeaders", label: string, title: string, disabled = false) => (
-    <button type="button" aria-pressed={options[key]} disabled={disabled} title={title} onClick={() => set({ [key]: !options[key] })}>{label}</button>
+  const check = (key: "repeatLabels" | "blankRows" | "fieldHeaders", label: string, title: string, disabled = false) => (
+    <label className={`table-popup__check${disabled ? " table-popup__check--off" : ""}`} title={title}>
+      <input type="checkbox" checked={options[key]} disabled={disabled} onChange={() => set({ [key]: !options[key] })} />
+      {label}
+    </label>
   );
   return (
     <div ref={barRef} className={sheet ? "pivot-sheet__body" : "pivot-view__bar"} role="toolbar" aria-label="Pivot table layout">
@@ -88,16 +91,16 @@ export function PivotRibbon({ layout, options, onOptions, totals, valueFormat, f
       {modes && totals && select(modes.grand, GRAND_OPTIONS, totals.setGrand, "Grand totals. They change the Pivot's output.")}
       {select(options.emptyAs, EMPTY_OPTIONS, (emptyAs) => set({ emptyAs }), "What an empty value cell shows")}
       {select(banding, BAND_OPTIONS, (b) => set({ bandedRows: b === "rows" || b === "both", bandedCols: b === "cols" || b === "both" }), "Shade every other row or column")}
-      <div className="table-popup__view" role="group" aria-label="Layout options">
-        {toggle("repeatLabels", "Repeat Labels", "Repeat each item's label on every row of its group", compact || keyCols < 2)}
-        {toggle("blankRows", "Blank Rows", "Put a blank row after each group", keyCols < 2)}
-        {toggle("fieldHeaders", "Headers", "Show the field names over the labels")}
+      <div className="pivot-view__checks" role="group" aria-label="Layout options">
+        {check("repeatLabels", "Repeat Labels", "Repeat each item's label on every row of its group", compact || keyCols < 2)}
+        {check("blankRows", "Blank Rows", "Put a blank row after each group", keyCols < 2)}
+        {check("fieldHeaders", "Headers", "Show the field names over the labels")}
       </div>
       <div className="pivot-view__tail">
         {foldKeys.length > 0 && (
-          <div className="table-popup__view" role="group" aria-label="Groups">
-            <button type="button" className="sol-pill-btn--icon" onClick={() => set({ collapsed: [] })} disabled={options.collapsed.length === 0} title="Expand all groups" aria-label="Expand all groups"><PlusSquareIcon size={14} /></button>
-            <button type="button" className="sol-pill-btn--icon" onClick={() => set({ collapsed: foldKeys })} title="Collapse all groups" aria-label="Collapse all groups"><MinusSquareIcon size={14} /></button>
+          <div className="pivot-view__actions" role="group" aria-label="Groups">
+            <button type="button" className="sol-pill-btn sol-pill-btn--icon" onClick={() => set({ collapsed: [] })} disabled={options.collapsed.length === 0} title="Expand all groups" aria-label="Expand all groups"><PlusSquareIcon size={14} /></button>
+            <button type="button" className="sol-pill-btn sol-pill-btn--icon" onClick={() => set({ collapsed: foldKeys })} title="Collapse all groups" aria-label="Collapse all groups"><MinusSquareIcon size={14} /></button>
           </div>
         )}
         {valueFormat && (
@@ -206,7 +209,7 @@ export function PivotTableView({ layout, options, onOptions, cellText, isErrorAt
 
   const empty = emptyText(options.emptyAs);
   return (
-    <div className="pivot-view">
+    <div className="pivot-view sol-popup__view">
       {ribbon}
       <div className="pivot-view__scroll sol-popup__scroll">
         <table className={`pivot-view__table${options.bandedRows ? " pivot-view__table--band-rows" : ""}${options.bandedCols ? " pivot-view__table--band-cols" : ""}`}>

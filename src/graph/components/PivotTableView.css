@@ -8,6 +8,8 @@
   margin: 10px 14px 0;
 }
 .pivot-view__tail { display: contents; }
+.pivot-view__actions { display: inline-flex; gap: 4px; }
+.pivot-view__checks { display: inline-flex; align-items: center; gap: 12px; padding: 0 4px; }
 .pivot-view__fields { margin-left: auto; }
 .pivot-view__format { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-dim); }
 .pivot-view__format + .pivot-view__format { margin-top: 8px; }
@@ -35,6 +37,8 @@
 .pivot-sheet__body > .table-popup__view { width: 100%; grid-column: 1 / -1; }
 .pivot-sheet__body > .table-popup__view button { flex: 1 1 0; min-width: 0; }
 .pivot-sheet__body .pivot-view__tail { display: flex; gap: 6px; grid-column: 1 / -1; }
+.pivot-sheet__body .pivot-view__actions { display: inline-flex; gap: 4px; }
+.pivot-view__checks { grid-column: 1 / -1; justify-content: space-between; padding: 4px 4px; }
 
 .pivot-view__scroll {
   margin: 10px 14px 12px;
@@ -161,14 +165,3 @@ thead .pivot-view__label--sticky { z-index: 3; }
 @media (max-width: 640px) {
   .pivot-view__scroll { max-height: calc(100vh - 190px); max-height: calc(100dvh - 190px); }
 }
-
-/* A resized popup is a flex column that hands its spare height to its scroll region; the view passes it through to the table. */
-.sol-popup--sized .pivot-view {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  /* At the smallest size the table yields before anything draws under the footer. */
-  overflow: hidden;
-}
-.sol-popup--sized .pivot-view__bar { flex: none; }

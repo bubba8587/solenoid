@@ -608,7 +608,6 @@
   border-radius: 999px;
 }
 .sol-pill-btn--icon { width: 34px; padding: 0; }
-.table-popup__view .sol-pill-btn--icon { width: 32px; }
 .sol-pill-select {
   flex-shrink: 0;
   box-sizing: border-box;
@@ -631,7 +630,9 @@
 .sol-pill-select:focus-visible,
 .sol-pill-btn:focus-visible { outline: none; border-color: var(--node-accent, var(--accent)); }
 
-.table-popup__source-check {
+/* A popup's on-off option: the footer's Source, the Pivot ribbon's options. */
+.table-popup__source-check,
+.table-popup__check {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -642,11 +643,16 @@
   cursor: pointer;
   user-select: none;
 }
-.table-popup__source-check input {
+.table-popup__source-check input,
+.table-popup__check input {
   margin: 0;
   cursor: pointer;
   accent-color: var(--node-accent, var(--accent));
 }
+.table-popup__check { margin-right: 0; }
+.table-popup__check:has(input:checked) { color: var(--text); }
+.table-popup__check--off { opacity: 0.45; cursor: default; }
+.table-popup__check--off input { cursor: default; }
 
 .table-popup__dim-controls {
   display: flex;

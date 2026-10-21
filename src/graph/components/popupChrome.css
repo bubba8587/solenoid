@@ -195,6 +195,15 @@
   min-height: 0;
   max-height: none;
 }
+/* The one contract for a view's body: either it is the scroll region (`sol-popup__scroll`), or it is a `sol-popup__view` holding bars and one scroll region, which passes the card's spare height down to that region and shrinks before it draws under the footer. */
+.sol-popup--sized .sol-popup__view {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sol-popup--sized .sol-popup__view > :not(.sol-popup__scroll) { flex: none; }
 /* Above the group-membership triangle (z 5), which shares this corner. */
 .sol-popup__resize {
   position: absolute;
