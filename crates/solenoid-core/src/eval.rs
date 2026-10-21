@@ -790,6 +790,11 @@ impl Eval<'_> {
             if lam.eta.is_some() { self.call_lambda(&lam, &args[..meaningful.min(args.len())]) } else { self.call_lambda(&lam, args) }
         };
         let absent = |v: &V| matches!(v, V::Null | V::Undef);
+        // `oneValue`: the LAMBDA answers one value each time, as Excel's does; a list would nest past a table.
+        let one = |each: &str, r: V| match r {
+            V::List(_) => V::err(sol_error("#SHAPE!", format!("{name}'s LAMBDA answers one value for each {each}, not a list"))),
+            other => other,
+        };
         match name {
             "MAP" => {
                 let arrays = &a[..a.len() - 1];
@@ -806,7 +811,7 @@ impl Eval<'_> {
                 let out: Vec<Vec<V>> = (0..rows)
                     .map(|i| {
                         (0..cols)
-                            .map(|j| call(&[cell_at(0, i, j), cell_at(1, i, j), cell_at(2, i, j), V::Num((i + 1) as f64), V::Num((j + 1) as f64)], arrays.len()))
+                            .map(|j| one("cell", call(&[cell_at(0, i, j), cell_at(1, i, j), cell_at(2, i, j), V::Num((i + 1) as f64), V::Num((j + 1) as f64)], arrays.len())))
                             .collect()
                     })
                     .collect();
@@ -814,13 +819,13 @@ impl Eval<'_> {
             }
             "BYROW" => match as_rows(&arg(0)) {
                 None => V::Null,
-                Some(m) => list(m.into_iter().map(|row| list(vec![call(&[list(row)], 1)])).collect()),
+                Some(m) => list(m.into_iter().map(|row| list(vec![one("row", call(&[list(row)], 1))])).collect()),
             },
             "BYCOL" => match as_rows(&arg(0)) {
                 None => V::Null,
                 Some(m) => {
                     let cols = m.iter().map(Vec::len).max().unwrap_or(0);
-                    list((0..cols).map(|j| call(&[list(m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Null)).collect())], 1)).collect())
+                    list((0..cols).map(|j| one("column", call(&[list(m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Null)).collect())], 1))).collect())
                 }
             },
             "REDUCE" => {
@@ -858,7 +863,7 @@ impl Eval<'_> {
                                     return cell;
                                 }
                                 step += 1.0;
-                                acc = call(&[acc.clone(), cell, V::Num(step)], 2);
+                                acc = one("step", call(&[acc.clone(), cell, V::Num(step)], 2));
                                 if acc.is_sol_error() {
                                     poisoned = Some(acc.clone());
                                 }
@@ -881,7 +886,7 @@ impl Eval<'_> {
                 if r * c > MAX_GENERATED {
                     return V::err(sol_error("#OVERFLOW!", format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(r * c))));
                 }
-                list((0..r as usize).map(|i| list((0..c as usize).map(|j| self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)])).collect())).collect())
+                list((0..r as usize).map(|i| list((0..c as usize).map(|j| one("cell", self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]))).collect())).collect())
             }
             "GROUPBY" => {
                 if absent(&arg(0)) || absent(&arg(1)) {
