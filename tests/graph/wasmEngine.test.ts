@@ -702,14 +702,10 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
   });
 });
 
-describe("EDATE runs on the engine wherever a local midnight rounds to its own day", () => {
+describe("EDATE runs on the engine in any zone", () => {
   it.each(["EDATE(@d, 13)", "EDATE(@d, -1)", "EDATE(@d + 0.5, 1)"])("%s", (src) => {
     const f: FrameValue = { __frame: true, columns: [{ name: "d", type: "date", values: [0, 1, 59, 60, 61, 45351, 45322, null] }] };
     const engine = computeColumnOnEngine(f, src, 8);
-    if (!engineClock().midnightRounds || src.includes("0.5")) {
-      expect(engine).toBeNull();
-      return;
-    }
     const js = computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
     if (isSolError(js)) throw js;
     const sign = (c: unknown) => (Object.is(c, -0) ? "-0" : c);
@@ -1316,8 +1312,7 @@ describe("the leftover one-value functions match bit for bit on realistic argume
       const g = got(raw);
       if (JSON.stringify(g) !== JSON.stringify(want)) expect({ name, args, got: g }).toEqual({ name, args, got: want });
     }
-    // EDATE stays on the TS in a zone whose local midnight can round to another day (Pacific/Auckland's +13).
-    if (name !== "EDATE" || engineClock().midnightRounds) expect(ran, "most calls should run on the engine").toBeGreaterThan(FUZZ_RUNS / 20);
+    expect(ran, "most calls should run on the engine").toBeGreaterThan(FUZZ_RUNS / 20);
   });
 });
 

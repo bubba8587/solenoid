@@ -107,34 +107,12 @@ export function wasmEngineOn(): boolean {
   return settingsStore.get("wasmEngine") !== false;
 }
 
-/** The local time a row formula reads, lowered once per calc ([[D46]] freezeVolatilePerCalc): TODAY and NOW as the
- *  TS reads them now, and whether a day built at local midnight rounds back to its own serial (EDATE's
- *  `toSerialIfDate`), true where every local offset lies in (−11 h, +12 h]. East of UTC, day 0 rounds up from below
- *  to −0 (`dayZeroNegative`). */
-export interface EngineClock { now: number; today: number; midnightRounds: boolean; dayZeroNegative: boolean }
-
-let localZone: { zone: string; midnightRounds: boolean; dayZeroNegative: boolean } | null = null;
-
-function localZoneFacts(): { midnightRounds: boolean; dayZeroNegative: boolean } {
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
-  if (localZone?.zone !== zone) {
-    // Twice a month over 1700–2100: a zone's offset is constant before its first transition and its DST rule repeats after 2037.
-    let ok = true;
-    for (let y = 1700; y <= 2100 && ok; y++) {
-      for (let m = 0; m < 24 && ok; m++) {
-        const tzo = new Date(y, m >> 1, m % 2 === 0 ? 1 : 16).getTimezoneOffset();
-        ok = tzo >= -720 && tzo < 660;
-      }
-    }
-    const dayZero = Math.round(new Date(1899, 11, 30).getTime() / 86400000 + 25569);
-    localZone = { zone, midnightRounds: ok, dayZeroNegative: Object.is(dayZero, -0) };
-  }
-  return localZone;
-}
+/** The moment a row formula reads, lowered once per calc ([[D46]] freezeVolatilePerCalc): NOW as the TS reads it
+ *  (TODAY is its day). The core reads the local zone itself. */
+export interface EngineClock { now: number }
 
 export function engineClock(at: Date = new Date()): EngineClock {
-  const { midnightRounds, dayZeroNegative } = localZoneFacts();
-  return { now: wallClockSerial(at), today: wallClockSerial(at, true), midnightRounds, dayZeroNegative };
+  return { now: wallClockSerial(at) };
 }
 
 /** `compileEvaluator(src)(env)` on the core, or null where the wasm engine is off, a value can't cross, or the core

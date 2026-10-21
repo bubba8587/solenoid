@@ -3,14 +3,8 @@
  "AVERAGEIFS": 1,
  "COUNTIF": 3,
  "COUNTIFS": 4,
- "COUPDAYS": 20,
- "DISC": 9,
- "EDATE": 104,
  "MAXIFS": 1,
  "MINIFS": 1,
- "PRICEDISC": 7,
  "SUMIFS": 1,
- "TIMEZONECONVERT": 3,
- "computed columns": 4,
- "formulas over values": 28
+ "formulas over values": 21
 }

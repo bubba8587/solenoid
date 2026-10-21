@@ -1,0 +1,272 @@
+// [[C130]] rustCore, [[C44]] dateSerials
+//! The time zones a JS `Date` reads: the local zone and IANA zones, both read from the JavaScript engine the wasm runs
+//! in, as the TS reads them. Natively (`cargo test`) the local zone is UTC and no IANA zone is known.
+//!
+//! A date here is a JS time value: milliseconds since 1970 UTC, NaN for an Invalid Date. The local-time methods below
+//! follow V8's `Date.prototype` (LocalTime, then MakeDay / MakeTime, then UTC and TimeClip).
+
+use crate::date_serial::{civil_from_days, days_from_civil};
+
+const MS_PER_DAY: f64 = 86_400_000.0;
+/// V8's `kMaxTimeBeforeUTCInMs`: a local time past this is an Invalid Date before any zone is read.
+const MAX_TIME_BEFORE_UTC: f64 = 8.64e15 + 864e6;
+
+#[cfg(target_arch = "wasm32")]
+mod host {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use wasm_bindgen::prelude::*;
+
+    #[wasm_bindgen]
+    extern "C" {
+        #[wasm_bindgen(js_name = Date)]
+        pub type Date;
+        #[wasm_bindgen(constructor, js_class = "Date")]
+        pub fn at(ms: f64) -> Date;
+        #[wasm_bindgen(constructor, js_class = "Date")]
+        pub fn local(y: f64, m: f64, d: f64, h: f64, mi: f64, s: f64, ms: f64) -> Date;
+        #[wasm_bindgen(method, js_name = getTime)]
+        pub fn get_time(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getFullYear)]
+        pub fn year(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getMonth)]
+        pub fn month(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getDate)]
+        pub fn date(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getHours)]
+        pub fn hours(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getMinutes)]
+        pub fn minutes(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getSeconds)]
+        pub fn seconds(this: &Date) -> f64;
+        #[wasm_bindgen(method, js_name = getMilliseconds)]
+        pub fn millis(this: &Date) -> f64;
+
+        #[wasm_bindgen(js_namespace = Intl)]
+        pub type DateTimeFormat;
+        #[wasm_bindgen(catch, constructor, js_namespace = Intl)]
+        pub fn new(locale: &str, options: &js_sys::Object) -> Result<DateTimeFormat, JsValue>;
+        #[wasm_bindgen(catch, method, js_name = formatToParts)]
+        pub fn format_to_parts(this: &DateTimeFormat, date: &Date) -> Result<js_sys::Array, JsValue>;
+    }
+
+    thread_local! {
+        static FORMATS: RefCell<HashMap<String, Option<DateTimeFormat>>> = RefCell::new(HashMap::new());
+    }
+
+    /// The `zoneOffsetMs` formatter for a zone, None where `Intl` refuses the zone.
+    pub fn with_format<R>(zone: &str, f: impl FnOnce(Option<&DateTimeFormat>) -> R) -> R {
+        FORMATS.with(|m| {
+            let mut m = m.borrow_mut();
+            let dtf = m.entry(zone.to_string()).or_insert_with(|| {
+                let o = js_sys::Object::new();
+                let set = |k: &str, v: &str| js_sys::Reflect::set(&o, &k.into(), &v.into()).ok();
+                set("timeZone", zone);
+                set("hourCycle", "h23");
+                set("year", "numeric");
+                for k in ["month", "day", "hour", "minute", "second"] {
+                    set(k, "2-digit");
+                }
+                DateTimeFormat::new("en-US", &o).ok()
+            });
+            f(dtf.as_ref())
+        })
+    }
+}
+
+/// LocalTime(t): the local wall clock at the instant t, as a time value read as UTC. Read through the local getters,
+/// since `getTimezoneOffset` truncates to whole minutes and a zone's early offsets carry seconds.
+#[cfg(target_arch = "wasm32")]
+pub fn local_time(t: f64) -> f64 {
+    let d = host::Date::at(t);
+    make_date(make_day(d.year(), d.month(), d.date()), make_time(d.hours(), d.minutes(), d.seconds(), d.millis()))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn local_time(t: f64) -> f64 {
+    t
+}
+
+/// The instant a local wall clock names, as V8's `new Date(y, m, d, …)` and the local setters resolve it: past the
+/// range an Invalid Date, a time a DST gap skips read with the offset before it, a repeated one the earlier.
+pub fn utc(local: f64) -> f64 {
+    if !(local.abs() <= MAX_TIME_BEFORE_UTC) {
+        return f64::NAN;
+    }
+    host_utc(local)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn host_utc(local: f64) -> f64 {
+    let local = local.trunc();
+    let days = (local / MS_PER_DAY).floor();
+    let in_day = local - days * MS_PER_DAY;
+    let (y, m, d) = civil_from_days(days as i64);
+    // `new Date` reads a year from 0 to 99 as 1900 to 1999, so such a year is spelled as months from year 100.
+    let (y, m0) = if (0..=99).contains(&y) { (100.0, f64::from(m - 1) - 12.0 * (100 - y) as f64) } else { (y as f64, f64::from(m - 1)) };
+    host::Date::local(y, m0, f64::from(d), 0.0, 0.0, 0.0, in_day).get_time()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn host_utc(local: f64) -> f64 {
+    time_clip(local)
+}
+
+/// ECMAScript TimeClip.
+pub fn time_clip(t: f64) -> f64 {
+    if t.is_finite() && t.abs() <= 8.64e15 { t.trunc() + 0.0 } else { f64::NAN }
+}
+
+fn to_integer(x: f64) -> f64 {
+    if x.is_nan() { 0.0 } else { x.trunc() + 0.0 }
+}
+
+/// V8's MakeDay: years past ±1e6 and months past ±1e7 are NaN, as is a non-finite day.
+pub fn make_day(year: f64, month: f64, date: f64) -> f64 {
+    if !((-1e6..=1e6).contains(&year) && (-1e7..=1e7).contains(&month) && date.is_finite()) {
+        return f64::NAN;
+    }
+    let (mut y, mut m) = (year.trunc() as i64, month.trunc() as i64);
+    y += m / 12;
+    m %= 12;
+    if m < 0 {
+        m += 12;
+        y -= 1;
+    }
+    days_from_civil(y, m as u32 + 1, 1) as f64 + to_integer(date) - 1.0
+}
+
+pub fn make_time(h: f64, m: f64, s: f64, ms: f64) -> f64 {
+    if !(h.is_finite() && m.is_finite() && s.is_finite() && ms.is_finite()) {
+        return f64::NAN;
+    }
+    to_integer(h) * 3_600_000.0 + to_integer(m) * 60_000.0 + to_integer(s) * 1000.0 + to_integer(ms)
+}
+
+pub fn make_date(day: f64, time: f64) -> f64 {
+    if day.is_finite() && time.is_finite() { day * MS_PER_DAY + time } else { f64::NAN }
+}
+
+/// `Date.UTC(y, m, d, h, mi, s)`.
+pub fn date_utc(y: f64, m: f64, d: f64, h: f64, mi: f64, s: f64) -> f64 {
+    let y = if !y.is_nan() && (0.0..=99.0).contains(&to_integer(y)) { 1900.0 + to_integer(y) } else { y };
+    time_clip(make_date(make_day(y, m, d), make_time(h, mi, s, 0.0)))
+}
+
+/// `new Date(y, m, d, h, mi, s, ms).getTime()`.
+pub fn new_local(y: f64, m: f64, d: f64, h: f64, mi: f64, s: f64, ms: f64) -> f64 {
+    let y = if !y.is_nan() && (0.0..=99.0).contains(&to_integer(y)) { 1900.0 + to_integer(y) } else { y };
+    utc(make_date(make_day(y, m, d), make_time(h, mi, s, ms)))
+}
+
+/// A date's local fields: year, month from 0, day of the month, and the milliseconds into the day.
+#[derive(Clone, Copy, Debug)]
+pub struct Local {
+    pub year: f64,
+    pub month: f64,
+    pub date: f64,
+    pub in_day: f64,
+}
+
+/// The local fields of an instant, None for an Invalid Date.
+pub fn local_fields(t: f64) -> Option<Local> {
+    if t.is_nan() {
+        return None;
+    }
+    let l = local_time(t);
+    let days = (l / MS_PER_DAY).floor();
+    let (y, m, d) = civil_from_days(days as i64);
+    Some(Local { year: y as f64, month: f64::from(m - 1), date: f64::from(d), in_day: l - days * MS_PER_DAY })
+}
+
+/// `getFullYear`, `getMonth`, `getDate`: NaN for an Invalid Date.
+pub fn get_full_year(t: f64) -> f64 {
+    local_fields(t).map_or(f64::NAN, |l| l.year)
+}
+
+pub fn get_month(t: f64) -> f64 {
+    local_fields(t).map_or(f64::NAN, |l| l.month)
+}
+
+pub fn get_date(t: f64) -> f64 {
+    local_fields(t).map_or(f64::NAN, |l| l.date)
+}
+
+/// `setDate(d)`.
+pub fn set_date(t: f64, d: f64) -> f64 {
+    match local_fields(t) {
+        Some(l) => utc(make_date(make_day(l.year, l.month, d), l.in_day)),
+        None => f64::NAN,
+    }
+}
+
+/// `setMonth(m)`.
+pub fn set_month(t: f64, m: f64) -> f64 {
+    match local_fields(t) {
+        Some(l) => utc(make_date(make_day(l.year, m, l.date), l.in_day)),
+        None => f64::NAN,
+    }
+}
+
+/// `setFullYear(y)`: an Invalid Date counts from +0.
+pub fn set_full_year(t: f64, y: f64) -> f64 {
+    let l = local_fields(t).unwrap_or(Local { year: 1970.0, month: 0.0, date: 1.0, in_day: 0.0 });
+    utc(make_date(make_day(y, l.month, l.date), l.in_day))
+}
+
+/// `setHours(0, 0, 0, 0)`.
+pub fn start_of_day(t: f64) -> f64 {
+    match local_fields(t) {
+        Some(l) => utc(make_date(make_day(l.year, l.month, l.date), 0.0)),
+        None => f64::NAN,
+    }
+}
+
+// ─── IANA zones (`timeZone.ts`) ─────────────────────────────────────────────────
+
+/// Why a zone read failed: `Intl` refused the zone, or the instant is an Invalid Date (a RangeError in the TS).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ZoneError {
+    UnknownZone,
+    InvalidTime,
+}
+
+/// `isValidZone`.
+#[cfg(target_arch = "wasm32")]
+pub fn is_valid_zone(zone: &str) -> bool {
+    host::with_format(zone, |f| f.is_some())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn is_valid_zone(_zone: &str) -> bool {
+    false
+}
+
+/// `zoneOffsetMs`: the zone's wall clock at the instant, read through `formatToParts`, less the instant.
+#[cfg(target_arch = "wasm32")]
+pub fn zone_offset_ms(zone: &str, utc_ms: f64) -> Result<f64, ZoneError> {
+    host::with_format(zone, |f| {
+        let f = f.ok_or(ZoneError::UnknownZone)?;
+        let parts = f.format_to_parts(&host::Date::at(utc_ms)).map_err(|_| ZoneError::InvalidTime)?;
+        let mut p = [f64::NAN; 6];
+        for part in parts.iter() {
+            let get = |k: &str| js_sys::Reflect::get(&part, &k.into()).ok().and_then(|v| v.as_string()).unwrap_or_default();
+            let slot = match get("type").as_str() {
+                "year" => 0,
+                "month" => 1,
+                "day" => 2,
+                "hour" => 3,
+                "minute" => 4,
+                "second" => 5,
+                _ => continue,
+            };
+            p[slot] = crate::jsnum::string_to_number(&get("value"));
+        }
+        Ok(date_utc(p[0], p[1] - 1.0, p[2], p[3], p[4], p[5]) - utc_ms)
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn zone_offset_ms(_zone: &str, _utc_ms: f64) -> Result<f64, ZoneError> {
+    Err(ZoneError::UnknownZone)
+}

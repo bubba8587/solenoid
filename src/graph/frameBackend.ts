@@ -508,7 +508,6 @@ function columnAnswer(r: { bail?: boolean; error?: { code: string; message: stri
 
 
 
-
 /** `computeColumnCells` on the core ([[D99]] rustIsSpec): a formula, or with `bare` a wired LAMBDA called with each
  *  row's cells. Null where the wasm engine is off, a value can't cross, or a body leaves the column to the TS. */
 export function computeColumnOnEngine(f: FrameValue, expr: string, rows: number, opts: ColumnOpts = {}): ColumnAnswer | null {
