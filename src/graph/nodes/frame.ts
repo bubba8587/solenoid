@@ -48,7 +48,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -2664,33 +2664,38 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     if (!isFrameValue(schema)) return asValue();
     const sideValue = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
     const r = await computeColumnOnRef(ref, this.expr, schema.columns.map((c) => c.name), { sideValue, reserved: ["frame", "name", "fn", "after"] });
-    if (!r || readingsRefusal(this.expr, schema, this.bindings)) return asValue();
-    if (gen !== this._gen) return { frame: null };
-    const name = nameRaw.trim() || "computed";
-    const after = (afterRaw ?? "").trim();
-    this.sourceColumns = schema.columns.map((c) => c.name);
-    this.defVars = this._vars;
-    this._reconcileSideSockets(r.sideVars);
-    const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs) : computedColumnType(name, r.cells, schema, this.expr, this.bindings);
-    // The schema's columns without their cells, units and formats kept, for addColumn's placement and naming.
-    const shape: FrameValue = { __frame: true, columns: schema.columns.map((c) => ({ ...c, values: [] })) };
-    const added = addColumn(shape, name, [], colType);
-    const replaced = added.columns.length === shape.columns.length;
-    const fresh = replaced ? added.columns.find((c, i) => c !== shape.columns[i])! : added.columns[added.columns.length - 1];
-    let cols = added.columns;
-    if (after && !replaced) {
-      const anchorIdx = cols.findIndex((c) => c.name === after);
-      if (anchorIdx < 0) return emitFrame(this, gen, solError("#REF!", `No column "${after}" to place after`));
-      cols = [...cols];
-      cols.splice(anchorIdx + 1, 0, cols.pop()!);
+    if (!r) return asValue();
+    try {
+      if (readingsRefusal(this.expr, schema, this.bindings)) return asValue();
+      if (gen !== this._gen) return { frame: null };
+      const name = nameRaw.trim() || "computed";
+      const after = (afterRaw ?? "").trim();
+      this.sourceColumns = schema.columns.map((c) => c.name);
+      this.defVars = this._vars;
+      this._reconcileSideSockets(r.sideVars);
+      const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs) : computedColumnType(name, r.cells, schema, this.expr, this.bindings);
+      // The schema's columns without their cells, units and formats kept, for addColumn's placement and naming.
+      const shape: FrameValue = { __frame: true, columns: schema.columns.map((c) => ({ ...c, values: [] })) };
+      const added = addColumn(shape, name, [], colType);
+      const replaced = added.columns.length === shape.columns.length;
+      const fresh = replaced ? added.columns.find((c, i) => c !== shape.columns[i])! : added.columns[added.columns.length - 1];
+      let cols = added.columns;
+      if (after && !replaced) {
+        const anchorIdx = cols.findIndex((c) => c.name === after);
+        if (anchorIdx < 0) return emitFrame(this, gen, solError("#REF!", `No column "${after}" to place after`));
+        cols = [...cols];
+        cols.splice(anchorIdx + 1, 0, cols.pop()!);
+      }
+      const out = await assembleOnEngine(
+        cols.map((c) => (c === fresh
+          ? { handle: r.col, column: "out", as: c.name, type: colType }
+          : { handle: r.base, column: c.name, as: c.name, type: c.type })),
+        { __frame: true, columns: cols },
+      );
+      return emitFrame(this, gen, out);
+    } finally {
+      frameBackend().drop(r.col);
     }
-    const out = await assembleOnEngine(
-      cols.map((c) => (c === fresh
-        ? { handle: r.col, column: "out", as: c.name, type: colType }
-        : { handle: r.base, column: c.name, as: c.name, type: c.type })),
-      { __frame: true, columns: cols },
-    );
-    return emitFrame(this, gen, out);
   }
 
   private dataValue(inputs: ComputedColumnInputs) {

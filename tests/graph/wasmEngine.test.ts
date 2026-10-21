@@ -10,7 +10,7 @@ import { pivotLayoutOf } from "../../src/graph/pivotLayout";
 import type { ColumnUnit } from "../../src/graph/unitValue";
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "../../src/graph/frame";
 import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
-import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef, engineClock } from "../../src/graph/frameBackend";
+import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef, engineClock, clearCollectMemo } from "../../src/graph/frameBackend";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { isLambdaValue } from "../../src/graph/lambdaValue";
@@ -764,6 +764,21 @@ describe("a computed column over a frame in the engine matches the value path", 
       if (JSON.stringify(got) !== JSON.stringify(want)) expect({ i, src, got }).toEqual({ i, src, got: want });
     }
     expect(resident).toBeGreaterThan(0);
+  });
+});
+
+describe("a computed column over a frame in the engine frees its own column", () => {
+  it("recomputing twenty times leaves the engine's frame count flat", async () => {
+    const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: Array.from({ length: 100 }, (_, i) => i) }] };
+    const node = new ComputedColumnNode({ expr: "@a * 2" });
+    const counts: number[] = [];
+    for (let pass = 0; pass < 20; pass++) {
+      clearCollectMemo();
+      const ref = await runFrameUnary(f, { kind: "sort", by: "a", dir: "desc" });
+      expect(isFrameRef((await node.data({ frame: [ref] } as never)).frame)).toBe(true);
+      counts.push(wasmInvokeSync<number>("engine_count"));
+    }
+    expect(counts[19]).toBe(counts[2]);
   });
 });
 
