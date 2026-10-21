@@ -750,6 +750,8 @@ export async function initFrameBackend(): Promise<void> {
       if (info?.backend === "polars") {
         await ipcInvoke("engine_clear", {}).catch(() => {});
         setFrameBackend(new EngineBackend(ipcInvoke, false));
+        // Pivots and row formulas run on the Rust core beside Polars, which has neither.
+        if (wasmEngineOn()) void loadWasmEngine();
         return;
       }
     } catch {

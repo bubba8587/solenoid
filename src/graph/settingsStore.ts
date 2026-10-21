@@ -254,7 +254,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "wasmEngine",
         label: "Rust engine",
-        help: "Runs table operations on Solenoid's Rust engine in WebAssembly, where Polars isn't on. Turn it off to compare results with the JavaScript engine. Changing it reloads the document.",
+        help: "Runs table operations on Solenoid's Rust engine in WebAssembly where Polars isn't on, and pivots and computed-column formulas everywhere. Turn it off to compare results with the JavaScript engine. Changing it reloads the document.",
       },
       {
         key: "alwaysAllowNetwork",
