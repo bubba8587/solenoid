@@ -150,7 +150,10 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let sides: HashMap<String, Json> = parse::<Option<_>>(args, "sides")?.unwrap_or_default();
             let sides = sides.iter().map(|(k, v)| (k.clone(), crate::wire::decode_cell(v))).collect();
             let rows = parse::<Option<usize>>(args, "rows")?.unwrap_or_else(|| frame_row_count(&f));
-            match formula_column(&f, &parse::<String>(args, "expr")?, &table, &sides, rows)? {
+            crate::excel_functions::set_clock(parse(args, "clock")?);
+            let outcome = formula_column(&f, &parse::<String>(args, "expr")?, &table, &sides, rows);
+            crate::excel_functions::set_clock(None);
+            match outcome? {
                 ColumnOutcome::Unsupported => Ok(json!({ "supported": false })),
                 ColumnOutcome::Cells(cells) => {
                     let out = FrameValue { columns: vec![FrameColumn::new("out", FrameColType::Number, cells)] };
@@ -177,6 +180,9 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     "acosh" => crate::fdlibm::acosh(x),
                     "atanh" => crate::fdlibm::atanh(x),
                     "log1p" => crate::fdlibm::log1p(x),
+                    "expm1" => crate::fdlibm::expm1(x),
+                    "tanh" => crate::fdlibm::tanh(x),
+                    "log2" => crate::fdlibm::log2(x),
                     "atan2" => crate::fdlibm::atan2(x, ys.get(i).copied().unwrap_or(f64::NAN)),
                     _ => crate::excel_functions::js_pow(x, ys.get(i).copied().unwrap_or(f64::NAN)),
                 };
@@ -212,7 +218,9 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 }
             }
             let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
+            crate::excel_functions::set_clock(parse(args, "clock")?);
             let r = call_function(&name, &argv);
+            crate::excel_functions::set_clock(None);
             if crate::excel_functions::take_bailed() {
                 take_thrown();
                 return Ok(json!({ "bail": true }));

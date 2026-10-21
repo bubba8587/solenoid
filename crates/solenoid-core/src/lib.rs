@@ -4,6 +4,7 @@
 //! order of operations, and any difference from the TS is a bug here (PORTING.md).
 
 pub mod binary;
+pub mod convert_units;
 pub mod date_ops;
 pub mod date_serial;
 pub mod dists;
@@ -12,10 +13,12 @@ pub mod excel_criteria;
 pub mod excel_formula;
 pub mod excel_functions;
 pub mod fdlibm;
+pub mod formulajs;
 pub mod frame;
 pub mod fxhash;
 pub mod frame_backend;
 pub mod frame_verbs;
+pub mod js_radix;
 pub mod js_sort;
 pub mod letters;
 pub mod jsnum;

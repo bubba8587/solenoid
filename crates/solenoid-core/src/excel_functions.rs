@@ -65,7 +65,7 @@ pub fn take_bailed() -> bool {
 }
 
 /// A JS exception: it ends the row's evaluation, so the row answers it whatever encloses the call (the first one wins).
-fn throw(e: SolError) -> V {
+pub(crate) fn throw(e: SolError) -> V {
     THROWN.with(|t| {
         let mut t = t.borrow_mut();
         if t.is_none() {
@@ -113,10 +113,11 @@ const PORTED: &[&str] = &[
     "TEXT", "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
     "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
     "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
+    "TODAY", "NOW", "EDATE", "CONVERT", "SPEARMAN", "FORECAST.LINEAR", "T.TEST", "F.TEST", "PROB", "FISHERINV", "LOG2",
 ];
 
 pub fn is_ported(name: &str) -> bool {
-    PORTED.contains(&name)
+    PORTED.contains(&name) || crate::formulajs::NAMES.contains(&name)
 }
 
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
@@ -132,7 +133,34 @@ pub fn reads_lists(name: &str) -> bool {
             | "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" | "COUNTIFS" | "COUNTIF" | "AVERAGEIF" | "TEXTJOIN" | "XLOOKUP" | "XMATCH" | "INDEX"
             | "CORREL" | "PEARSON" | "RSQ" | "KENDALL" | "COVAR" | "COVARIANCE.P" | "COVARIANCE.S" | "SLOPE" | "INTERCEPT"
             | "STEYX" | "RANK" | "RANK.EQ" | "RANK.AVG" | "TRIMMEAN" | "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC"
+            | "SUMPRODUCT" | "SUMX2MY2" | "SUMX2PY2" | "SUMXMY2" | "SERIESSUM" | "Z.TEST" | "CHISQ.TEST" | "SPEARMAN"
+            | "FORECAST.LINEAR" | "T.TEST" | "F.TEST" | "PROB"
     )
+}
+
+/// The local time a calc reads, lowered from the TS (`engineClock`): TODAY's and NOW's serials, and whether a day
+/// built at local midnight rounds back to its serial (EDATE's reading).
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+pub struct Clock {
+    pub now: f64,
+    pub today: f64,
+    #[serde(rename = "midnightRounds")]
+    pub midnight_rounds: bool,
+    #[serde(rename = "dayZeroNegative", default)]
+    pub day_zero_negative: bool,
+}
+
+thread_local! {
+    static CLOCK: std::cell::Cell<Option<Clock>> = const { std::cell::Cell::new(None) };
+}
+
+/// The clock the next calc reads; without one TODAY, NOW and EDATE leave the column to the TS.
+pub fn set_clock(c: Option<Clock>) {
+    CLOCK.with(|k| k.set(c));
+}
+
+fn clock() -> Option<Clock> {
+    CLOCK.with(|k| k.get())
 }
 
 // ─── JavaScript's coercions ─────────────────────────────────────────────────────
@@ -152,6 +180,8 @@ pub fn to_f64_js(v: &V) -> f64 {
         V::Bool(b) => f64::from(u8::from(*b)),
         V::Str(s) => string_to_number(s),
         V::Null => 0.0,
+        // An array reads as its joined text.
+        V::List(_) => string_to_number(&js_string_of(v)),
         _ => f64::NAN,
     }
 }
@@ -172,7 +202,7 @@ pub fn js_string_of(v: &V) -> String {
 }
 
 /// `coerceNumber` (valueKinds.ts), the evaluator's `toNum`.
-fn to_num(v: &V) -> f64 {
+pub(crate) fn to_num(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
         V::Bool(b) => f64::from(u8::from(*b)),
@@ -204,7 +234,7 @@ pub fn number_to_text(x: f64) -> String {
 }
 
 /// `toStr` (excelFunctions.ts).
-fn to_str(v: &V) -> String {
+pub(crate) fn to_str(v: &V) -> String {
     match v {
         V::Str(s) => s.to_string(),
         V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
@@ -214,7 +244,7 @@ fn to_str(v: &V) -> String {
     }
 }
 
-fn value_err(f: &str) -> V {
+pub(crate) fn value_err(f: &str) -> V {
     V::err(sol_error("#VALUE!", format!("{f} needs a number")))
 }
 
@@ -232,7 +262,7 @@ pub fn fx_error_to_sol(code: &str) -> SolError {
 }
 
 /// JS `parseFloat`: the longest decimal (or `Infinity`) prefix after leading space.
-fn js_parse_float(s: &str) -> f64 {
+pub(crate) fn js_parse_float(s: &str) -> f64 {
     let t = s.trim_start_matches(is_js_space);
     let b = t.as_bytes();
     let mut i = 0;
@@ -275,7 +305,7 @@ fn js_parse_float(s: &str) -> f64 {
 }
 
 /// Formula.js `parseNumber`.
-fn parse_number(v: &V) -> V {
+pub(crate) fn parse_number(v: &V) -> V {
     match v {
         V::Fx(_) => v.clone(),
         V::Undef | V::Null => V::Num(0.0),
@@ -287,7 +317,12 @@ fn parse_number(v: &V) -> V {
         V::Str(s) => {
             if s.is_empty() || string_to_number(s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(s)) }
         }
-        V::Err(_) | V::List(_) => V::Fx("#VALUE!"),
+        // A list reads as its joined text; `[] !== ''`, so even an empty one gets to `parseFloat`.
+        V::List(_) => {
+            let s = js_string_of(v);
+            if string_to_number(&s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(&s)) }
+        }
+        V::Err(_) => V::Fx("#VALUE!"),
     }
 }
 
@@ -301,7 +336,7 @@ fn parse_string(v: &V) -> Result<String, V> {
 }
 
 /// JS truthiness.
-fn truthy(v: &V) -> bool {
+pub(crate) fn truthy(v: &V) -> bool {
     match v {
         V::Undef | V::Null => false,
         V::Num(n) => *n != 0.0 && !n.is_nan(),
@@ -3022,8 +3057,336 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             date_from_parts(y, m, d)
         }
+        "TODAY" | "NOW" => match clock() {
+            Some(c) => V::Num(if name == "TODAY" { c.today } else { c.now }),
+            None => bail(),
+        },
+        "EDATE" => match clock() {
+            Some(c) if c.midnight_rounds => match fx_edate(arg(a, 0), arg(a, 1)) {
+                V::Num(n) if n == 0.0 && c.day_zero_negative => V::Num(-0.0),
+                r => r,
+            },
+            _ => bail(),
+        },
+        "CONVERT" => {
+            let n = to_num(arg(a, 0));
+            if n.is_nan() {
+                return value_err("CONVERT");
+            }
+            match crate::convert_units::convert_value(n, &to_str(arg(a, 1)), &to_str(arg(a, 2))) {
+                Some(r) => V::Num(r),
+                None => V::err(sol_error("#N/A", "CONVERT: unknown or incompatible units")),
+            }
+        }
+        "SPEARMAN" => spearman(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
+        "FORECAST.LINEAR" => {
+            let n = to_num(arg(a, 0));
+            if n.is_nan() {
+                return value_err("FORECAST.LINEAR");
+            }
+            let (xs, ys) = match (raw_numbers(arg(a, 2)), raw_numbers(arg(a, 1))) {
+                (Err(()), _) | (_, Err(())) => return bail(),
+                (Ok(xs), Ok(ys)) => (xs, ys),
+            };
+            // `(xs as number[]) ?? []`: a scalar has no length, so the fit finds no spread.
+            match xs.zip(ys).and_then(|(xs, ys)| linear_fit(&xs, &ys)) {
+                Some((slope, intercept)) => V::Num(intercept + slope * n),
+                None => V::err(sol_error("#DIV/0!", "Known Xs have zero variance")),
+            }
+        }
+        "T.TEST" | "F.TEST" => {
+            let lists = |i: usize| match arg(a, i) {
+                V::Null | V::Undef => Ok(Vec::new()),
+                v => match raw_numbers(v) {
+                    Ok(Some(xs)) => Ok(xs),
+                    _ => Err(()),
+                },
+            };
+            if name == "F.TEST" {
+                let (Ok(xa), Ok(xb)) = (lists(0), lists(1)) else { return bail() };
+                return f_test_p(&xa, &xb).map_or(V::Null, V::Num);
+            }
+            let tails = if matches!(arg(a, 2), V::Null | V::Undef) { 2.0 } else { to_f64_js(arg(a, 2)) };
+            let ty = to_f64_js(arg(a, 3));
+            let kind = if ty == 1.0 {
+                TTestKind::Paired
+            } else if ty == 2.0 {
+                TTestKind::EqualVar
+            } else if ty == 3.0 {
+                TTestKind::UnequalVar
+            } else {
+                return V::err(sol_error("#DOMAIN!", "T.TEST: type must be 1 (paired), 2 (equal variance) or 3 (Welch)"));
+            };
+            if tails != 1.0 && tails != 2.0 {
+                return V::err(sol_error("#DOMAIN!", "T.TEST: tails must be 1 or 2"));
+            }
+            let (Ok(xa), Ok(xb)) = (lists(0), lists(1)) else { return bail() };
+            match t_test_p(kind, &xa, &xb) {
+                Some(p2) => V::Num(if tails == 2.0 { p2 } else { p2 / 2.0 }),
+                None => V::Null,
+            }
+        }
+        "PROB" => {
+            let l = to_num(arg(a, 2));
+            let h = if matches!(arg(a, 3), V::Null | V::Undef) { l } else { to_num(arg(a, 3)) };
+            if l.is_nan() || h.is_nan() {
+                return value_err("PROB");
+            }
+            prob_between(&to_list(arg(a, 0)), &to_list(arg(a, 1)), l, h)
+        }
+        "FISHERINV" => {
+            let n = to_num(arg(a, 0));
+            if n.is_nan() { value_err("FISHERINV") } else { V::Num(crate::fdlibm::tanh(n)) }
+        }
+        "LOG2" => match arg(a, 0) {
+            V::Null | V::Undef => V::Null,
+            x => {
+                let n = to_f64_js(x);
+                if n <= 0.0 {
+                    V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"))
+                } else {
+                    V::Num(crate::fdlibm::log2(n))
+                }
+            }
+        },
+        _ if crate::formulajs::NAMES.contains(&name) => crate::formulajs::call(name, a),
         _ => V::Undef,
     }
+}
+
+/// `averageRanks` (statsOps.ts): ties share the mean of their places.
+fn average_ranks(arr: &[f64]) -> Vec<f64> {
+    let mut idx: Vec<usize> = (0..arr.len()).collect();
+    crate::js_sort::js_sort_by(&mut idx, |&x, &y| (arr[x] - arr[y]).partial_cmp(&0.0).unwrap_or(std::cmp::Ordering::Equal));
+    let mut ranks = vec![0.0; arr.len()];
+    let mut i = 0;
+    while i < idx.len() {
+        let mut j = i;
+        while j + 1 < idx.len() && arr[idx[j + 1]] == arr[idx[i]] {
+            j += 1;
+        }
+        let r = (i + j) as f64 / 2.0 + 1.0;
+        for &k in &idx[i..=j] {
+            ranks[k] = r;
+        }
+        i = j + 1;
+    }
+    ranks
+}
+
+/// `spearman` (statsOps.ts).
+fn spearman(xs: &[f64], ys: &[f64]) -> V {
+    let n = xs.len().min(ys.len());
+    if n < 2 {
+        return V::Null;
+    }
+    pearson(&average_ranks(&xs[..n]), &average_ranks(&ys[..n]), false)
+}
+
+/// A list a statistics kernel reads as `number[]`: None for a scalar, which has no length; Err where an item isn't
+/// a number, which JS would add as text.
+fn raw_numbers(v: &V) -> Result<Option<Vec<f64>>, ()> {
+    match v {
+        V::List(items) => items.iter().map(|x| if let V::Num(n) = x { Ok(*n) } else { Err(()) }).collect::<Result<Vec<_>, _>>().map(Some),
+        V::Null | V::Undef => Ok(Some(Vec::new())),
+        V::Str(_) => Err(()),
+        _ => Ok(None),
+    }
+}
+
+/// `linearFit` (mathUtils.ts): the slope and intercept.
+fn linear_fit(xs: &[f64], ys: &[f64]) -> Option<(f64, f64)> {
+    let n = xs.len().min(ys.len());
+    if n < 2 {
+        return None;
+    }
+    let (mut x_mean, mut y_mean) = (0.0, 0.0);
+    for i in 0..n {
+        x_mean += xs[i];
+        y_mean += ys[i];
+    }
+    x_mean /= n as f64;
+    y_mean /= n as f64;
+    let (mut sxy, mut sxx) = (0.0, 0.0);
+    for i in 0..n {
+        let dx = xs[i] - x_mean;
+        sxy += dx * (ys[i] - y_mean);
+        sxx += dx * dx;
+    }
+    if sxx == 0.0 {
+        return None;
+    }
+    let slope = sxy / sxx;
+    Some((slope, y_mean - slope * x_mean))
+}
+
+fn arr_mean(arr: &[f64]) -> f64 {
+    arr.iter().fold(0.0, |a, b| a + b) / arr.len() as f64
+}
+
+fn arr_sample_var(arr: &[f64]) -> f64 {
+    let m = arr_mean(arr);
+    arr.iter().fold(0.0, |s, v| s + js_pow(v - m, 2.0)) / (arr.len() as f64 - 1.0)
+}
+
+fn clamp01(v: f64) -> f64 {
+    v.clamp(0.0, 1.0)
+}
+
+#[derive(Clone, Copy)]
+enum TTestKind {
+    Paired,
+    EqualVar,
+    UnequalVar,
+}
+
+/// `tTestP` (mathUtils.ts): the two-tailed p.
+fn t_test_p(kind: TTestKind, a: &[f64], b: &[f64]) -> Option<f64> {
+    if a.len() < 2 || b.len() < 2 {
+        return None;
+    }
+    let (t, df) = match kind {
+        TTestKind::Paired => {
+            let n = a.len().min(b.len());
+            let diffs: Vec<f64> = (0..n).map(|i| a[i] - b[i]).collect();
+            let d_var = arr_sample_var(&diffs);
+            if d_var <= 0.0 {
+                return None;
+            }
+            (arr_mean(&diffs) / (d_var / n as f64).sqrt(), n as f64 - 1.0)
+        }
+        TTestKind::EqualVar => {
+            let (n1, n2) = (a.len() as f64, b.len() as f64);
+            let (v1, v2) = (arr_sample_var(a), arr_sample_var(b));
+            let sp2 = ((n1 - 1.0) * v1 + (n2 - 1.0) * v2) / (n1 + n2 - 2.0);
+            if sp2 <= 0.0 {
+                return None;
+            }
+            ((arr_mean(a) - arr_mean(b)) / (sp2 * (1.0 / n1 + 1.0 / n2)).sqrt(), n1 + n2 - 2.0)
+        }
+        TTestKind::UnequalVar => {
+            let (n1, n2) = (a.len() as f64, b.len() as f64);
+            let (v1n, v2n) = (arr_sample_var(a) / n1, arr_sample_var(b) / n2);
+            let sum = v1n + v2n;
+            if sum <= 0.0 {
+                return None;
+            }
+            let t = (arr_mean(a) - arr_mean(b)) / sum.sqrt();
+            (t, js_pow(sum, 2.0) / (js_pow(v1n, 2.0) / (n1 - 1.0) + js_pow(v2n, 2.0) / (n2 - 1.0)))
+        }
+    };
+    if df.is_nan() || df <= 0.0 || !t.is_finite() || !df.is_finite() {
+        return None;
+    }
+    let p = 2.0 * (1.0 - crate::dists::t_cdf(t.abs(), df));
+    p.is_finite().then(|| clamp01(p))
+}
+
+/// `fTestP` (mathUtils.ts).
+fn f_test_p(a: &[f64], b: &[f64]) -> Option<f64> {
+    if a.len() < 2 || b.len() < 2 {
+        return None;
+    }
+    let (v1, v2) = (arr_sample_var(a), arr_sample_var(b));
+    if v1.is_nan() || v1 <= 0.0 || v2.is_nan() || v2 <= 0.0 {
+        return None;
+    }
+    let f = v1 / v2;
+    let (df1, df2) = (a.len() as f64 - 1.0, b.len() as f64 - 1.0);
+    let p1 = crate::dists::regularized_beta((f * df1) / (f * df1 + df2), df1 / 2.0, df2 / 2.0);
+    let p = 2.0 * crate::jsnum::math_min(p1, 1.0 - p1);
+    p.is_finite().then_some(p)
+}
+
+/// `probBetween` (mathUtils.ts) over `pairPresent`. Text added to the total turns it into text, which isn't finite.
+fn prob_between(range: &[V], probs: &[V], lo: f64, hi: f64) -> V {
+    if let Some(e) = range.iter().chain(probs).find(|v| v.is_sol_error()) {
+        return e.clone();
+    }
+    let n = range.len().min(probs.len());
+    let pairs: Vec<(&V, &V)> = (0..n).map(|i| (&range[i], &probs[i])).filter(|(x, y)| !matches!(x, V::Null) && !matches!(y, V::Null)).collect();
+    if pairs.is_empty() {
+        return V::Null;
+    }
+    let mut prob = 0.0;
+    let mut text = false;
+    for (x, y) in pairs {
+        let x = to_f64_js(x);
+        if x >= lo && x <= hi {
+            match y {
+                V::Str(_) | V::Fx(_) | V::List(_) => text = true,
+                y => prob += to_f64_js(y),
+            }
+        }
+    }
+    if text || !prob.is_finite() { V::Null } else { V::Num(clamp01(prob)) }
+}
+
+/// Formula.js EDATE under the registration's `toSerialIfDate`: a whole local day, moved by whole months with the
+/// day clamped to the month's last, rounded back to a serial. A start with a time of day lands beside midnight,
+/// where the zone decides the rounding, and a date only `new Date` parses: both stay on the TS.
+fn fx_edate(start: &V, months: &V) -> V {
+    let d = match start {
+        V::Undef | V::Err(_) | V::Fx(_) => return V::Fx("#VALUE!"),
+        V::List(_) => return bail(),
+        V::Str(s) if string_to_number(s).is_nan() => return bail(),
+        V::Str(s) => js_parse_float(s),
+        V::Num(n) if n.is_nan() => return V::Fx("#VALUE!"),
+        V::Num(n) => *n,
+        V::Bool(_) | V::Null => f64::NAN,
+    };
+    if !(0.0..2_958_466.0).contains(&d) && !d.is_nan() {
+        return V::Fx("#NUM!");
+    }
+    // `serialToDate`: the local wall date, or None for an invalid one.
+    let start_day = if d.is_nan() {
+        None
+    } else {
+        let serial = if d < 60.0 { d + 1.0 } else { d };
+        let utc_days = (serial - 25569.0).floor();
+        let total_seconds = (86400.0 * (serial - serial.floor() + 0.0000001)).floor();
+        if total_seconds != 0.0 {
+            return bail();
+        }
+        let (y, mut m, mut day) = crate::date_serial::civil_from_days(utc_days as i64);
+        if (60.0..61.0).contains(&serial) {
+            day = 29;
+            m = 2;
+        }
+        // `new Date(y, m, day)` carries an overflowing day into the next month.
+        Some(crate::date_serial::days_from_civil(y, m, 1) + i64::from(day) - 1)
+    };
+    if to_f64_js(months).is_nan() {
+        return V::Fx("#VALUE!");
+    }
+    let Some(start_day) = start_day else { return V::Num(f64::NAN) };
+    let m = crate::js_radix::parse_int(&js_string_of(months), 10.0);
+    if m.is_nan() {
+        return V::Num(f64::NAN);
+    }
+    let (y, m0, stored) = crate::date_serial::civil_from_days(start_day);
+    let total = f64::from(m0 - 1) + m;
+    let y2 = y as f64 + (total / 12.0).floor();
+    // Dates past ±1e8 days from 1970 are invalid; beside that edge the local offset decides.
+    const EDGE: f64 = 100_000_000.0;
+    if y2.abs() > 300_000.0 {
+        return V::Num(f64::NAN);
+    }
+    let m2 = total.rem_euclid(12.0) as u32 + 1;
+    let first = crate::date_serial::days_from_civil(y2 as i64, m2, 1) as f64;
+    if first.abs() > EDGE + 40.0 {
+        return V::Num(f64::NAN);
+    }
+    if first.abs() > EDGE - 40.0 {
+        return bail();
+    }
+    let mut day = stored;
+    if day > 28 {
+        let leap = (y2 % 4.0 == 0.0 && y2 % 100.0 != 0.0) || y2 % 400.0 == 0.0;
+        let dim = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][(m2 - 1) as usize];
+        day = day.min(dim);
+    }
+    V::Num(first + f64::from(day) - 1.0 + 25569.0)
 }
 
 /// `Number(v)` as `Math.abs` reads it.

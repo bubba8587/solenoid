@@ -7,6 +7,7 @@ import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, 
 import { READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { setPivotLayout, type PivotLayout } from "./pivotLayout";
 import { formulaCallTable, rowRefNames, extractVariables, referencedNames } from "./excelFormula";
+import { wallClockSerial } from "./nodes/dateSerial";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -499,6 +500,36 @@ function formulaSides(expr: string, columns: ReadonlySet<string>, opts: { sideVa
 
 const wellFormed = (s: string): boolean => (s as string & { isWellFormed(): boolean }).isWellFormed();
 
+/** The local time a row formula reads, lowered once per calc ([[D46]] freezeVolatilePerCalc): TODAY and NOW as the
+ *  TS reads them now, and whether a day built at local midnight rounds back to its own serial (EDATE's
+ *  `toSerialIfDate`), true where every local offset lies in (−11 h, +12 h]. East of UTC, day 0 rounds up from below
+ *  to −0 (`dayZeroNegative`). */
+export interface EngineClock { now: number; today: number; midnightRounds: boolean; dayZeroNegative: boolean }
+
+let localZone: { zone: string; midnightRounds: boolean; dayZeroNegative: boolean } | null = null;
+
+function localZoneFacts(): { midnightRounds: boolean; dayZeroNegative: boolean } {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+  if (localZone?.zone !== zone) {
+    // Twice a month over 1700–2100: a zone's offset is constant before its first transition and its DST rule repeats after 2037.
+    let ok = true;
+    for (let y = 1700; y <= 2100 && ok; y++) {
+      for (let m = 0; m < 24 && ok; m++) {
+        const tzo = new Date(y, m >> 1, m % 2 === 0 ? 1 : 16).getTimezoneOffset();
+        ok = tzo >= -720 && tzo < 660;
+      }
+    }
+    const dayZero = Math.round(new Date(1899, 11, 30).getTime() / 86400000 + 25569);
+    localZone = { zone, midnightRounds: ok, dayZeroNegative: Object.is(dayZero, -0) };
+  }
+  return localZone;
+}
+
+export function engineClock(at: Date = new Date()): EngineClock {
+  const { midnightRounds, dayZeroNegative } = localZoneFacts();
+  return { now: wallClockSerial(at), today: wallClockSerial(at, true), midnightRounds, dayZeroNegative };
+}
+
 /** `computeColumnCells` with an `expr` spec on the Rust evaluator, when every name is a `@column` of `f` or a scalar
  *  side value and every function is ported; null where the TS evaluator should run it. */
 export function computeColumnOnEngine(
@@ -515,7 +546,7 @@ export function computeColumnOnEngine(
   const src = wasmSourceBin(encodeBinary({ __frame: true, columns: f.columns.filter((c) => named.has(c.name)) }));
   let out: string | undefined;
   try {
-    const r = wasmInvokeSync<{ supported: boolean; handle?: string }>("engine_formula_column", { handle: src, expr, table, sides: bound.sides, rows });
+    const r = wasmInvokeSync<{ supported: boolean; handle?: string }>("engine_formula_column", { handle: src, expr, table, sides: bound.sides, rows, clock: engineClock() });
     if (!r.supported) return null;
     out = r.handle!;
     return { cells: decodeBinary(wasmReadBin(out)!)[0].values, sideVars: bound.sideVars };
@@ -539,7 +570,7 @@ export async function computeColumnOnRef(
   if (!bound) return null;
   const base = await flushRef(ref);
   if (isOracleHandle(base)) return null;
-  const col = await be.formulaColumn(base, { expr, table, sides: bound.sides });
+  const col = await be.formulaColumn(base, { expr, table, sides: bound.sides, clock: engineClock() });
   if (!col) return null;
   const cells = (await be.column(col, "out"))?.values ?? [];
   return { cells, sideVars: bound.sideVars, base, col };
@@ -610,7 +641,7 @@ class EngineBackend implements FrameBackend {
     return this.bulk !== undefined;
   }
 
-  async formulaColumn(handle: FrameHandle, args: { expr: string; table: unknown; sides: Record<string, unknown> }): Promise<FrameHandle | null> {
+  async formulaColumn(handle: FrameHandle, args: { expr: string; table: unknown; sides: Record<string, unknown>; clock: EngineClock }): Promise<FrameHandle | null> {
     const r = await this.invoke<{ supported: boolean; handle?: string }>("engine_formula_column", { handle, ...args });
     return r.supported ? this.remember(r.handle as FrameHandle, null) : null;
   }

@@ -2,7 +2,7 @@
 // The Rust engine (crates/solenoid-core) in WebAssembly against the JS oracle, through the real backend wrapper:
 // the parity corpus, then seeded random frames under random verbs. The oracle is the spec, so every difference,
 // a cell, an error's code or message, or a thrown error, is a Rust bug.
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { applyVerb, joinFrames, appendFrames, bindColumns, pivotFrame, type FrameOp, type JoinOpts, type PivotSpec, type AggOp } from "../../src/graph/frameVerbs";
@@ -10,7 +10,7 @@ import { pivotLayoutOf } from "../../src/graph/pivotLayout";
 import type { ColumnUnit } from "../../src/graph/unitValue";
 import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "../../src/graph/frame";
 import { isSolError, solError, type SolErrorCode } from "../../src/graph/errorValue";
-import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef } from "../../src/graph/frameBackend";
+import { frameBackend, useWasmBackend, resetFrameBackendToJs, pivotOnEngine, computeColumnOnEngine, runFrameUnary, readFrame, isFrameRef, engineClock } from "../../src/graph/frameBackend";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { parseFormula, compileEvaluator, extractVariables, rowRefNames } from "../../src/graph/excelFormula";
 import { resolveExcelFunction } from "../../src/graph/excelFunctions";
@@ -20,11 +20,16 @@ import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 const WASM = path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm");
 const CORPUS_DIR = path.resolve(__dirname, "../../fixtures/frame-verbs");
 
+// TODAY and NOW read the clock on both sides: frozen, they read the same moment.
 beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 5, 15, 13, 45, 30, 250) });
   loadWasmEngineSync(fs.readFileSync(WASM));
   useWasmBackend();
 });
-afterAll(() => resetFrameBackendToJs());
+afterAll(() => {
+  resetFrameBackendToJs();
+  vi.useRealTimers();
+});
 
 type Outcome = { frame: unknown } | { error: { code: string; message: string } };
 
@@ -318,9 +323,15 @@ const FNS = ["IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISE
   "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
   "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
   "BINOM.INV", "POISSON.DIST", "HYPGEOM.DIST", "NEGBINOM.DIST",
-  "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "INDEX", "FIXED", "DATEVALUE", "TIMEVALUE"];
+  "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "INDEX", "FIXED", "DATEVALUE", "TIMEVALUE",
+  "TODAY", "NOW", "EDATE", "CONVERT", "SPEARMAN", "FORECAST.LINEAR", "T.TEST", "F.TEST", "PROB", "FISHERINV", "LOG2",
+  "FACT", "FACTDOUBLE", "COMBIN", "COMBINA", "PERMUT", "PERMUTATIONA", "MULTINOMIAL", "SUMSQ", "SUMPRODUCT",
+  "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "SERIESSUM", "BASE", "DECIMAL", "ROMAN", "ARABIC", "BIN2DEC", "BIN2HEX",
+  "BIN2OCT", "DEC2BIN", "DEC2HEX", "DEC2OCT", "HEX2BIN", "HEX2DEC", "HEX2OCT", "OCT2BIN", "OCT2DEC", "OCT2HEX",
+  "BITAND", "BITOR", "BITXOR", "BITLSHIFT", "BITRSHIFT", "DELTA", "GESTEP", "TYPE", "ERF", "ERF.PRECISE", "ERFC",
+  "ERFC.PRECISE", "GAMMA", "GAMMALN", "GAMMALN.PRECISE", "Z.TEST", "CHISQ.TEST"];
 /** These sort their numbers, and a NaN among them makes JS's comparator inconsistent, where JS engines disagree. */
-const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE|TRIMMEAN|PERCENTRANK/i;
+const SORTS_NUMBERS = /LARGE|SMALL|PERCENTILE|QUARTILE|TRIMMEAN|PERCENTRANK|SPEARMAN/i;
 const OPS = ["+", "-", "*", "/", "^", "&", "=", "<>", "<", ">", "<=", ">="];
 
 function formulaGen(rand: () => number) {
@@ -427,7 +438,7 @@ describe("the Rust engine's fdlibm matches V8's Math bit for bit", () => {
     expect(bad).toEqual([]);
   });
 
-  it.each(["exp", "log", "log10", "pow", "sin", "cos", "tan", "asin", "acos", "atan", "acosh", "atanh", "log1p", "atan2"])("%s", (fn) => {
+  it.each(["exp", "log", "log10", "pow", "sin", "cos", "tan", "asin", "acos", "atan", "acosh", "atanh", "log1p", "atan2", "expm1", "tanh", "log2"])("%s", (fn) => {
     const rand = mulberry32(31337 + FUZZ_SEED);
     const xs: number[] = [], ys: number[] = [];
     for (let i = 0; i < FUZZ_RUNS * 10; i++) {
@@ -437,6 +448,7 @@ describe("the Rust engine's fdlibm matches V8's Math bit for bit", () => {
         : fn === "log1p" ? (nice ? Math.round(rand() * 1e4) / 100 - 0.99 : 10 ** (rand() * 20 - 10) - 0.5)
         : fn === "sin" || fn === "cos" || fn === "tan" || fn === "atan" || fn === "atan2" ? (nice ? Math.round(rand() * 1e5) / 100 - 500 : (rand() - 0.5) * 10 ** Math.floor(rand() * 40 - 10))
         : fn === "exp" ? (nice ? Math.round(rand() * 1400 - 700) / 4 : rand() * 1400 - 700)
+        : fn === "expm1" || fn === "tanh" ? (nice ? Math.round(rand() * 1600 - 800) / 8 : (rand() - 0.5) * 10 ** Math.floor(rand() * 24 - 20))
         : fn === "pow" ? (nice ? Math.round(rand() * 400) / 10 : rand() * 50)
         : (nice ? Math.round(rand() * 1e4) / 8 : Math.exp(rand() * 300 - 150));
       // engine_math takes plain JSON numbers, which carry no -0.
@@ -444,7 +456,8 @@ describe("the Rust engine's fdlibm matches V8's Math bit for bit", () => {
       ys.push((nice ? Math.round(rand() * 60 - 30) / 2 : rand() * 60 - 30) + 0);
     }
     const math = { exp: Math.exp, log: Math.log, log10: Math.log10, pow: Math.pow, sin: Math.sin, cos: Math.cos, tan: Math.tan,
-      asin: Math.asin, acos: Math.acos, atan: Math.atan, acosh: Math.acosh, atanh: Math.atanh, log1p: Math.log1p, atan2: Math.atan2 }[fn as "exp"] as (a: number, b?: number) => number;
+      asin: Math.asin, acos: Math.acos, atan: Math.atan, acosh: Math.acosh, atanh: Math.atanh, log1p: Math.log1p, atan2: Math.atan2,
+      expm1: Math.expm1, tanh: Math.tanh, log2: Math.log2 }[fn as "exp"] as (a: number, b?: number) => number;
     const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
     const got = wasmInvokeSync<string[]>("engine_math", { fn, xs, ys });
     const bad = xs.map((x, i) => [x, ys[i], math(x, ys[i]), got[i]] as const)
@@ -478,6 +491,10 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
     "SUM(a * [c])", "COUNTA(b & \"x\")", "SUM(a / (d - 40000))",
     "WAVG(a, d)", "WSTDEV(d, a)", "COUNTDISTINCT(b)", "ARGMAX(a) + ARGMIN(d)", "LENGTH(a)", "CONTAINS(b, @b)",
     "CORREL(a, d)", "SLOPE(d, a) * @a", "RANK(@a, a)", "PERCENTRANK(a, @a)", "TRIMMEAN(a, 0.2)", "KURT(a, d)", "GCD(5, @a)",
+    "SUMSQ(a, @a)", "SUMPRODUCT(a, [a])", "SUMPRODUCT(a, d)", "SPEARMAN(a, a * a)", "FORECAST.LINEAR(@a, a * 2, a)",
+    "T.TEST(a, a * a, 2, 3)", "T.TEST(a, -a, 1, 1)", "F.TEST(a, a * a)", "PROB(a, a / 10, 0, 5)", "SUMX2MY2(a, a + 1)",
+    "SUMXMY2(a, a / 2)", "SERIESSUM(2, 1, 1, a)", "Z.TEST(a, 1)", "Z.TEST(a, @a, 2)", "CHISQ.TEST(a + 10, a * 0 + 12)",
+    "MULTINOMIAL(a)", "MULTINOMIAL(2, 3, @d)", "TODAY() - @d", "NOW()", "CONVERT(@a, \"km\", \"mi\")",
   ])("%s", (src) => {
     const engine = computeColumnOnEngine(f, src, 5);
     expect(engine, "should run on the engine").not.toBeNull();
@@ -486,6 +503,21 @@ describe("whole-column aggregates run on the Rust evaluator and match", () => {
     if (isSolError(js)) return;
     expect(view({ __frame: true, columns: [{ name: "o", type: "number", values: engine!.cells }] }))
       .toEqual(view({ __frame: true, columns: [{ name: "o", type: "number", values: js.cells }] }));
+  });
+});
+
+describe("EDATE runs on the engine wherever a local midnight rounds to its own day", () => {
+  it.each(["EDATE(@d, 13)", "EDATE(@d, -1)", "EDATE(@d + 0.5, 1)"])("%s", (src) => {
+    const f: FrameValue = { __frame: true, columns: [{ name: "d", type: "date", values: [0, 1, 59, 60, 61, 45351, 45322, null] }] };
+    const engine = computeColumnOnEngine(f, src, 8);
+    if (!engineClock().midnightRounds || src.includes("0.5")) {
+      expect(engine).toBeNull();
+      return;
+    }
+    const js = computeColumnCells(f, { kind: "expr", evaluator: compileEvaluator(src)!, vars: extractVariables(src) }, { rowRefs: rowRefNames(src) });
+    if (isSolError(js)) throw js;
+    const sign = (c: unknown) => (Object.is(c, -0) ? "-0" : c);
+    expect(engine!.cells.map(sign)).toEqual(js.cells.map(sign));
   });
 });
 
@@ -643,7 +675,9 @@ describe("each ported function body matches its JS one on random arguments", () 
     "2024-03-15", "2024-02-30", "03/15/2024", "05/06/2024", "2024-03", "15-Mar-2024", "1:2:3:4", "12:34.5", 0.3, 0.975, 1.96, 4, 20, 0.01, 0.99, 6, 30, 0.05, 0.004, 360, 12, -200000, 5000, "a-b-c", "-", "B", "left", " Both ", "center", "1.234,5", ",", ".", 21, 112, 3, 0.25, "x😀", "😀", "İstanbul", "1e3%", "0.00", "#,##0.0", "$0.00%", "0.0E+00", "00000", "yyyy-mm-dd", "0.", "General", "@", "mmm \"d\" 0", 0.125, 2.5, -1234567.891, 45000, 45351.5, 36, 60, 1, 2958465, -5, "0000011", "1010101", "ms", " S ", "Quarter", "YM", "md", "y", 11, 17,
     "hello wORLD", "o'neil-x2y", "(1,234.5)", " $5% ", "-$3", "1.2.3", "ÉCOLE éa", "ΣΑΣ", "привет мИР", "ǆemal ⅷx", "a~?b", 65, 128512, 0xd800, ">5", "<>abc", "a*", "?B?", "~*", "<=0", "<>", "=", "2024-01-15", "05/01/2024", "=TRUE", undefined, null, 0, -0, 1, 2, -1, 0.5, -2.5, 3.75, 7, 10, 45000.25, 1e308, -1e-9, 1e21, 123456789.123,
     NaN, Infinity, -Infinity, "", " ", "abc", "ABC", "5", " 12 ", "1e3", "0x10", "1,000", "TRUE", "false", "Infinity",
-    "😀ab", "é", "a b  c", true, false, solError("#N/A", "x"), solError("#DIV/0!", "y")];
+    "😀ab", "é", "a b  c", true, false, solError("#N/A", "x"), solError("#DIV/0!", "y"),
+    "MCMXCIV", "XLII", "IIII", "CM", "MMXXVI", "1F", "ff", "FFFFFFFFFF", "7777777777", "1111111111", "101", "777", "1e2",
+    "m", "ft", "C", "F", "K", "kg", "lb", "deg", "toString", 16, 8, 36, 2.75, 170, 171, -3, 1000, 1e6, 0.1, 13, "12"];
   const bits = (x: number) => { const v = new DataView(new ArrayBuffer(8)); v.setFloat64(0, x); return v.getBigUint64(0).toString(); };
   const norm = (r: unknown): unknown => {
     if (r === undefined) return { undef: true };
@@ -661,7 +695,9 @@ describe("each ported function body matches its JS one on random arguments", () 
     "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF", "XLOOKUP", "XMATCH",
     "AVEDEV", "GEOMEAN", "HARMEAN", "DEVSQ", "SKEW", "SKEW.P", "KURT", "PTP", "IQR", "MAD", "SEM", "CV", "RMS",
   "CORREL", "PEARSON", "RSQ", "KENDALL", "COVAR", "COVARIANCE.P", "COVARIANCE.S", "SLOPE", "INTERCEPT", "STEYX",
-  "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM"]);
+  "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
+  "SUMSQ", "SUMPRODUCT", "MULTINOMIAL", "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "SERIESSUM", "Z.TEST", "CHISQ.TEST", "SPEARMAN",
+  "FORECAST.LINEAR", "T.TEST", "F.TEST", "PROB"]);
   /** The IFS family reads its ranges raw and the lookups positionally: blanks and errors stay. */
   const RAW_LISTS = new Set(["WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS", "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF", "XLOOKUP", "XMATCH"]);
   it.each(PORTED)("%s", (name) => {
@@ -678,13 +714,16 @@ describe("each ported function body matches its JS one on random arguments", () 
       // A pad to a serial-sized width builds megabytes of text per call: true on both sides, and only slow.
       if (name === "PADTEXT" && Math.abs(Number(args[1])) > 1e4) continue;
       if (name === "BINOM.INV" && Math.abs(Number(args[0])) > 1e4) continue;
+      // Text megabytes long, as above.
+      if (/^(ROMAN|BASE|DEC2|HEX2|OCT2|BIN2)/.test(name) && args.some((a) => Math.abs(Number(a)) > 1e7 && Number.isFinite(Number(a)))) continue;
       let want: unknown;
-      try { want = norm(fn(...args)); } catch (e) { want = { thrown: (e as Error).message }; }
+      // A copy of each list, as `routeCall` hands a range function: Formula.js's `flatten` pushes into its first one.
+      try { want = norm(fn(...args.map((a) => (Array.isArray(a) ? a.slice() : a)))); } catch (e) { want = { thrown: (e as Error).message }; }
       const wire = (a: unknown): unknown => (Array.isArray(a) ? a.map(wire) : a === undefined ? { __undef: 1 }
         : typeof a === "number" && !Number.isFinite(a) ? { __nf: Number.isNaN(a) ? "nan" : a > 0 ? "inf" : "-inf" }
         : Object.is(a, -0) ? { __nf: "-0" }
         : isSolError(a) ? { __err: a.code, msg: a.message } : a);
-      const raw = wasmInvokeSync<{ num?: string }>("engine_call", { name, args: args.map(wire) });
+      const raw = wasmInvokeSync<{ num?: string }>("engine_call", { name, args: args.map(wire), clock: engineClock() });
       const nanBits = (b: string) => (BigInt(b) & 0x7ff0000000000000n) === 0x7ff0000000000000n && (BigInt(b) & 0xfffffffffffffn) !== 0n;
       if (raw && (raw as { bail?: boolean }).bail) continue;
       const nanFix = (x: unknown): unknown => {
@@ -695,5 +734,103 @@ describe("each ported function body matches its JS one on random arguments", () 
       const got = nanFix(raw);
       if (JSON.stringify(got) !== JSON.stringify(want)) expect({ name, args, got }).toEqual({ name, args, got: want });
     }
+  });
+});
+
+describe("the leftover one-value functions match bit for bit on realistic arguments", () => {
+  const bits = (x: number) => (Number.isNaN(x) ? "NaN" : new DataView(Float64Array.of(x).buffer).getBigUint64(0, true).toString());
+  const norm = (r: unknown): unknown => (r === undefined ? { undef: true } : r === null ? null
+    : r instanceof Error ? { fx: (/#[A-Z0-9/?!.]+/.exec(r.message) ?? [""])[0] }
+    : isSolError(r) ? { err: r.code, msg: r.message } : typeof r === "number" ? { num: bits(r) } : typeof r === "string" ? { str: r }
+    : typeof r === "boolean" ? { bool: r } : { other: String(r) });
+  const got = (raw: unknown): unknown => {
+    const o = raw as { num?: string } | null;
+    if (o && o.num !== undefined) return { num: bits(new DataView(new BigUint64Array([BigInt(o.num)]).buffer).getFloat64(0, true)) };
+    return o;
+  };
+  const UNITS = ["rad", "deg", "grad", "m", "km", "cm", "mm", "in", "ft", "yd", "mi", "g", "kg", "mg", "lb", "oz_m", "stone", "tonne",
+    "C", "F", "K", "s", "min", "hr", "day", "wk", "yr", "m2", "km2", "ha", "acre", "l", "ml", "cup", "gal", "m3", "m_s", "km_h", "mph",
+    "knot", "J", "kJ", "cal", "kcal", "BTU", "Wh", "kWh", "Pa", "kPa", "bar", "atm", "psi", "mmHg", "nope", "toString", "M"];
+  type Gen = (r: () => number) => unknown[];
+  const int = (r: () => number, lo: number, hi: number) => lo + Math.floor(r() * (hi - lo + 1));
+  const list = (n: number, f: () => number) => Array.from({ length: n }, f);
+  const reals = (r: () => number, n: number) => list(n, () => Math.round((r() * 200 - 100) * 64) / 64);
+  const places = (r: () => number) => (r() < 0.5 ? [int(r, 0, 12)] : []);
+  const CASES: Array<[string, Gen]> = [
+    ["FACT", (r) => [r() < 0.8 ? int(r, 0, 200) : r() * 30]],
+    ["FACTDOUBLE", (r) => [r() < 0.8 ? int(r, 0, 320) : r() * 30]],
+    ["COMBIN", (r) => { const n = int(r, 0, 80); return [n, int(r, 0, n)]; }],
+    ["COMBINA", (r) => { const n = int(r, 1, 40); return [n, int(r, 0, n)]; }],
+    ["PERMUT", (r) => { const n = int(r, 0, 120); return [n, int(r, 0, n)]; }],
+    ["PERMUTATIONA", (r) => [int(r, 0, 40), int(r, 0, 12)]],
+    ["MULTINOMIAL", (r) => list(int(r, 1, 5), () => int(r, 0, 25))],
+    ["SUMSQ", (r) => [reals(r, int(r, 1, 9)), r() * 10]],
+    ["SUMPRODUCT", (r) => { const n = int(r, 1, 8); return [reals(r, n), reals(r, n), ...(r() < 0.5 ? [reals(r, n)] : [])]; }],
+    ["SUMX2MY2", (r) => { const n = int(r, 1, 8); return [reals(r, n), reals(r, n)]; }],
+    ["SUMX2PY2", (r) => { const n = int(r, 1, 8); return [reals(r, n), reals(r, n)]; }],
+    ["SUMXMY2", (r) => { const n = int(r, 1, 8); return [reals(r, n), reals(r, n)]; }],
+    ["SERIESSUM", (r) => [r() * 4 - 2, int(r, 0, 4), r() < 0.5 ? 1 : r() * 2, reals(r, int(r, 1, 6))]],
+    ["BASE", (r) => [r() < 0.6 ? int(r, 0, 2 ** 40) : r() < 0.5 ? r() * 10 ** int(r, -8, 30) : -r() * 1000, int(r, 2, 36), int(r, 0, 12)]],
+    ["DECIMAL", (r) => {
+      const radix = int(r, 2, 36);
+      const v = r() < 0.5 ? int(r, 0, 2 ** 31) : r() * 2 ** int(r, 40, 120);
+      return [Math.floor(v).toString(radix) + (r() < 0.2 ? "zz!" : ""), radix];
+    }],
+    ["ROMAN", (r) => [int(r, 0, 3999) + (r() < 0.1 ? 0.5 : 0)]],
+    ["ARABIC", (r) => [r() < 0.9 ? resolveExcelFunction("ROMAN")!(int(r, 1, 3999)) : ["MMXXVI", "IIII", "IM", "", "mcm", "CMCM"][int(r, 0, 5)]]],
+    ["DEC2BIN", (r) => [int(r, -512, 511), ...places(r)]],
+    ["DEC2OCT", (r) => [int(r, -536870912, 536870911), ...places(r)]],
+    ["DEC2HEX", (r) => [int(r, -549755813888, 549755813887), ...places(r)]],
+    ["BIN2DEC", (r) => [int(r, 0, 1023).toString(2).padStart(int(r, 1, 10), "0").slice(-10)]],
+    ["BIN2HEX", (r) => [int(r, 0, 1023).toString(2), ...places(r)]],
+    ["BIN2OCT", (r) => [int(r, 0, 1023).toString(2), ...places(r)]],
+    ["HEX2DEC", (r) => [int(r, 0, 2 ** 40 - 1).toString(16)]],
+    ["HEX2BIN", (r) => [(r() < 0.5 ? int(r, 0, 511) : 2 ** 40 - int(r, 1, 512)).toString(16), ...places(r)]],
+    ["HEX2OCT", (r) => [(r() < 0.5 ? int(r, 0, 536870911) : 2 ** 40 - int(r, 1, 536870912)).toString(16), ...places(r)]],
+    ["OCT2DEC", (r) => [int(r, 0, 2 ** 30 - 1).toString(8)]],
+    ["OCT2BIN", (r) => [(r() < 0.5 ? int(r, 0, 511) : 2 ** 30 - int(r, 1, 512)).toString(8), ...places(r)]],
+    ["OCT2HEX", (r) => [int(r, 0, 2 ** 30 - 1).toString(8), ...places(r)]],
+    ["BITAND", (r) => [int(r, 0, 2 ** 48 - 1), int(r, 0, 2 ** 48 - 1)]],
+    ["BITOR", (r) => [int(r, 0, 2 ** 40), int(r, 0, 2 ** 20)]],
+    ["BITXOR", (r) => [int(r, 0, 2 ** 33), int(r, 0, 2 ** 33)]],
+    ["BITLSHIFT", (r) => [int(r, 0, 2 ** 40), int(r, -53, 53) + (r() < 0.2 ? 0.5 : 0)]],
+    ["BITRSHIFT", (r) => [int(r, 0, 2 ** 40), int(r, -53, 53)]],
+    ["DELTA", (r) => [int(r, 0, 3), ...(r() < 0.5 ? [int(r, 0, 3)] : [])]],
+    ["GESTEP", (r) => [r() * 10 - 5, ...(r() < 0.5 ? [r() * 10 - 5] : [])]],
+    ["ERF", (r) => [r() * 8 - 4]],
+    ["ERF.PRECISE", (r) => [r() * 12 - 6]],
+    ["ERFC", (r) => [r() < 0.8 ? r() * 8 - 4 : String(Math.round(r() * 40) / 10)]],
+    ["ERFC.PRECISE", (r) => [r() * 8 - 4]],
+    ["GAMMA", (r) => [r() < 0.7 ? r() * 60 - 20 : -int(r, 0, 1e5) - 0.5]],
+    ["GAMMALN", (r) => [r() * 200]],
+    ["GAMMALN.PRECISE", (r) => [r() * 200 - 1]],
+    ["Z.TEST", (r) => [reals(r, int(r, 1, 9)), r() * 20 - 10, ...(r() < 0.4 ? [r() * 5] : [])]],
+    ["CHISQ.TEST", (r) => { const n = int(r, 1, 8); return [list(n, () => int(r, 1, 60)), list(n, () => int(r, 1, 60))]; }],
+    ["SPEARMAN", (r) => { const n = int(r, 0, 9); return [list(n, () => int(r, 0, 6)), reals(r, n)]; }],
+    ["FORECAST.LINEAR", (r) => { const n = int(r, 0, 9); return [r() * 20, reals(r, n), list(n, () => int(r, 0, 5))]; }],
+    ["T.TEST", (r) => [reals(r, int(r, 1, 9)), reals(r, int(r, 1, 9)), int(r, 1, 2), int(r, 1, 3)]],
+    ["F.TEST", (r) => [reals(r, int(r, 1, 9)), reals(r, int(r, 1, 9))]],
+    ["PROB", (r) => { const n = int(r, 0, 8); return [list(n, () => int(r, 0, 9)), list(n, () => r() / 4), int(r, 0, 9), ...(r() < 0.5 ? [int(r, 0, 9)] : [])]; }],
+    ["FISHERINV", (r) => [r() * 8 - 4]],
+    ["LOG2", (r) => [r() < 0.5 ? 2 ** int(r, -60, 60) : 10 ** (r() * 40 - 20)]],
+    ["CONVERT", (r) => [r() * 2000 - 1000, UNITS[int(r, 0, UNITS.length - 1)], UNITS[int(r, 0, UNITS.length - 1)]]],
+    ["EDATE", (r) => [r() < 0.1 ? int(r, 0, 70) : int(r, 0, 2958465), r() < 0.8 ? int(r, -2400, 2400) : [String(int(r, -40, 40)), 2.9, -0.5, " 3x", 1e21][int(r, 0, 4)]]],
+  ];
+  it.each(CASES)("%s", (name, gen) => {
+    const rand = mulberry32(8080 + FUZZ_SEED + name.length * 31 + name.charCodeAt(0));
+    const fn = resolveExcelFunction(name)!;
+    let ran = 0;
+    for (let i = 0; i < FUZZ_RUNS / 10; i++) {
+      const args = gen(rand);
+      let want: unknown;
+      try { want = norm(fn(...args.map((a) => (Array.isArray(a) ? a.slice() : a)))); } catch (e) { want = { thrown: (e as Error).message }; }
+      const raw = wasmInvokeSync("engine_call", { name, args, clock: engineClock() });
+      if ((raw as { bail?: boolean } | null)?.bail) continue;
+      ran++;
+      const g = got(raw);
+      if (JSON.stringify(g) !== JSON.stringify(want)) expect({ name, args, got: g }).toEqual({ name, args, got: want });
+    }
+    // EDATE stays on the TS in a zone whose local midnight can round to another day (Pacific/Auckland's +13).
+    if (name !== "EDATE" || engineClock().midnightRounds) expect(ran, "most calls should run on the engine").toBeGreaterThan(FUZZ_RUNS / 20);
   });
 });
