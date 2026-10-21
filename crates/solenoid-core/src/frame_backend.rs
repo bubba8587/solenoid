@@ -250,6 +250,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(out(&r))
         }
+        "engine_ported" => Ok(json!(crate::excel_functions::ported_names())),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),
     }

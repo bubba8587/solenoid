@@ -130,6 +130,13 @@ const PORTED: &[&str] = &[
     "BINOM.DIST.RANGE", "CLEAN",
 ];
 
+/// Every function the core carries over JavaScript-shaped arguments, for the conformance suites to tell a pending
+/// name from a ported one. The shapers read a list as a column, as a computed column hands one over, so they wait
+/// for the value model to tell a column from a row.
+pub fn ported_names() -> Vec<&'static str> {
+    PORTED.iter().chain(crate::formulajs::NAMES.iter()).copied().collect()
+}
+
 pub fn is_ported(name: &str) -> bool {
     PORTED.contains(&name) || crate::shapers::is_shaper(name) || crate::formulajs::NAMES.contains(&name)
 }
