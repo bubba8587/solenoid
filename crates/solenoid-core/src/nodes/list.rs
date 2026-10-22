@@ -54,6 +54,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "OutliersNode" => outliers(c),
         "TallyNode" => tally(c),
         "GroupListsNode" => group_lists(c),
+        "FindPeaksNode" => find_peaks(c),
         _ => return None,
     })
 }
@@ -1296,5 +1297,31 @@ fn group_lists(c: &mut Call) -> Answer {
         })
         .collect();
     let frame = frame_of(vec![infer_column("Key", &order), number_column("Value", values)]);
+    shown(c, "cachedResult", "result", frame)
+}
+
+/// FINDPEAKS's positions, beside each peak's own cell.
+fn find_peaks(c: &mut Call) -> Answer {
+    let arr = slot(c, "list");
+    if nullish(&arr) {
+        return shown(c, "cachedResult", "result", V::Null);
+    }
+    let opt = |c: &Call, k: &str| match super::text::setting(c, k, V::Undef) {
+        V::Num(n) if n.is_nan() => V::Undef,
+        v => v,
+    };
+    let args = [arr.clone(), opt(c, "height"), opt(c, "distance"), opt(c, "prominence")];
+    let V::List(positions) = core_call("FINDPEAKS", &args) else {
+        return Err(err("#ERROR!", "This node failed to compute: positions.map is not a function"));
+    };
+    let height = positions
+        .iter()
+        .map(|p| match (&arr, p) {
+            (V::List(items), V::Num(n)) if *n >= 1.0 && n.fract() == 0.0 => items.get(*n as usize - 1).cloned().unwrap_or(V::Undef),
+            _ => V::Undef,
+        })
+        .collect();
+    let columns = vec![number_column("Position", positions.as_ref().clone()), number_column("Height", height)];
+    let frame = V::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
     shown(c, "cachedResult", "result", frame)
 }
