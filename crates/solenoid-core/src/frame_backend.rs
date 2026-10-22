@@ -10,7 +10,7 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::excel_formula::parse_formula;
 use crate::excel_functions::{take_raised, Calc, Raised};
 use crate::frame::{frame_row_count, get_column, FrameColType, FrameColumn, FrameValue};
@@ -41,16 +41,16 @@ pub(crate) fn register(frame: FrameValue) -> String {
 
 pub(crate) fn get(handle: &str) -> Result<Rc<FrameValue>, SolError> {
     STORE.with(|s| s.borrow().frames.get(handle).cloned()).ok_or_else(|| {
-        sol_error("#REF!", format!("frame handle {handle} not found (dropped or never created)"))
+        sol_error(ErrorCode::Ref, format!("frame handle {handle} not found (dropped or never created)"))
     })
 }
 
 fn parse<'a, T: Deserialize<'a>>(args: &'a Json, key: &str) -> Result<T, SolError> {
-    T::deserialize(args.get(key).unwrap_or(&Json::Null)).map_err(|e| sol_error("#ERROR!", format!("bad argument \"{key}\": {e}")))
+    T::deserialize(args.get(key).unwrap_or(&Json::Null)).map_err(|e| sol_error(ErrorCode::Error, format!("bad argument \"{key}\": {e}")))
 }
 
 fn bad_arg(key: &str, want: &str) -> SolError {
-    sol_error("#ERROR!", format!("bad argument \"{key}\": expected {want}"))
+    sol_error(ErrorCode::Error, format!("bad argument \"{key}\": expected {want}"))
 }
 
 /// `args[key]` as a list, borrowed rather than parsed into a copy; `None` where it is absent or null.
@@ -281,7 +281,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                     _ => Ok(crate::eval::ColumnOutcome::Bail),
                 },
                 _ => match crate::excel_formula::parse_formula(&parse::<String>(args, "src")?) {
-                    None => Err(sol_error("#SYNTAX!", "The formula doesn't parse")),
+                    None => Err(sol_error(ErrorCode::Syntax, "The formula doesn't parse")),
                     Some(ast) => crate::eval::column(crate::eval::ColumnSpec::Expr { ast: &ast, lambdas: &lambdas }, inputs),
                 },
             };
@@ -338,7 +338,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let mut columns = Vec::new();
             for p in parse::<Vec<Part>>(args, "parts")? {
                 let f = get(&p.handle)?;
-                let c = f.columns.iter().find(|c| c.name == p.column).ok_or_else(|| sol_error("#REF!", format!("column \"{}\" not found", p.column)))?;
+                let c = f.columns.iter().find(|c| c.name == p.column).ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{}\" not found", p.column)))?;
                 columns.push(FrameColumn { name: p.as_, ty: FrameColType::from_tag(&p.ty), values: c.values.clone() });
             }
             Ok(json!(register(FrameValue { columns })))
@@ -346,7 +346,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         "engine_call" | "engine_call_each" | "engine_eval" | "engine_expression_units" | "engine_fold_units" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
         "engine_ported" => Ok(json!(crate::excel_functions::ported_names())),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
-        other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),
+        other => Err(sol_error(ErrorCode::Error, format!("unknown engine command \"{other}\""))),
     }
 }
 
@@ -371,7 +371,7 @@ fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> Opti
         return if crate::eval::is_external(&upper) {
             None
         } else {
-            Some(V::err(sol_error("#NAME?", format!("Unknown function {name}"))))
+            Some(V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))))
         };
     }
     if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&upper.as_str()) {
@@ -401,7 +401,7 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         let scan = parse::<Option<bool>>(args, "scan")?.unwrap_or(false);
         let mut argv: Vec<V> = list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
         let at = parse::<Vec<usize>>(args, "at")?;
-        let bad = |k: &str| sol_error("#ERROR!", format!("bad argument \"{k}\""));
+        let bad = |k: &str| sol_error(ErrorCode::Error, format!("bad argument \"{k}\""));
         if at.iter().any(|&p| p >= argv.len()) {
             return Err(bad("at"));
         }
@@ -442,7 +442,7 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         if crate::eval::take_missing() || env.values().any(crate::unit_dims::holds_unit) {
             return Ok(CallReply::Bail);
         }
-        crate::eval::formula(&src, env).unwrap_or_else(|| V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")))
+        crate::eval::formula(&src, env).unwrap_or_else(|| V::err(crate::error_value::sol_error(ErrorCode::Syntax, "The formula doesn't parse")))
     };
     Ok(match take_raised() {
         Raised::Bailed => CallReply::Bail,

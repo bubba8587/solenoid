@@ -12,7 +12,7 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::fxhash::{FxHashMap, FxHashSet};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::js_sort::js_sort_by;
@@ -170,7 +170,7 @@ fn require_column<'a>(f: &'a FrameValue, name: &str) -> Res<&'a FrameColumn> {
     f.columns
         .iter()
         .find(|c| c.name == name)
-        .ok_or_else(|| sol_error("#REF!", format!("column \"{name}\" not found")))
+        .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{name}\" not found")))
 }
 
 pub fn reorder_rows(f: &FrameValue, indices: &[usize]) -> FrameValue {
@@ -205,7 +205,7 @@ fn compare_numbers(a: f64, b: f64) -> Ordering {
 pub enum CellKey<'a> {
     Null,
     Bool(bool),
-    Err(&'a str),
+    Err(ErrorCode),
     Num(u64),
     Str(&'a str),
 }
@@ -214,7 +214,7 @@ pub fn cell_key(v: &FrameCell) -> CellKey<'_> {
     match v {
         FrameCell::Null => CellKey::Null,
         FrameCell::Bool(b) => CellKey::Bool(*b),
-        FrameCell::Err(e) => CellKey::Err(&e.code),
+        FrameCell::Err(e) => CellKey::Err(e.code),
         FrameCell::Num(n) if n.is_nan() => CellKey::Num(f64::NAN.to_bits()),
         FrameCell::Num(n) if *n == 0.0 => CellKey::Num(0f64.to_bits()),
         FrameCell::Num(n) => CellKey::Num(n.to_bits()),
@@ -387,7 +387,7 @@ pub fn require_text_column(op: &str, ty: FrameColType, column: &str) -> Res<()> 
         return Ok(());
     }
     Err(sol_error(
-        "#TYPE!",
+        ErrorCode::Type,
         format!(
             "{} reads text — \"{column}\" is a {} column. Convert it first: a Computed Column like TEXT(@{column}, \"@\"), or Cast to Text",
             text_op_label(op),
@@ -597,7 +597,7 @@ pub fn aggregate_group(values: &[FrameCell], op: &str, ty: Option<FrameColType>)
         return Ok(guard_finite(f64::NAN, &nums));
     }
     match raw_aggregate(&nums, op) {
-        None => Err(sol_error("#NAME?", format!("Unknown aggregation \"{op}\""))),
+        None => Err(sol_error(ErrorCode::Name, format!("Unknown aggregation \"{op}\""))),
         Some(r) => Ok(guard_agg(r, &nums)),
     }
 }
@@ -894,7 +894,7 @@ fn asof_key(cell: &FrameCell) -> Option<f64> {
 
 fn asof_pairs(left: &FrameValue, lk: &FrameColumn, right: &FrameValue, rk: &FrameColumn, opts: &JoinOpts) -> Res<Vec<Pair>> {
     if !is_orderable_key(lk.ty) || !is_orderable_key(rk.ty) {
-        return Err(sol_error("#VALUE!", "As-of join requires a numeric or date key"));
+        return Err(sol_error(ErrorCode::Value, "As-of join requires a numeric or date key"));
     }
     let mut sorted_right: Vec<Keyed> = Vec::new();
     for j in 0..frame_row_count(right) {
@@ -941,7 +941,7 @@ pub fn cross_join_frames(left: &FrameValue, right: &FrameValue) -> FrameValue {
 
 pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Res<FrameValue> {
     if !["inner", "left", "right", "outer", "cross", "semi", "anti", "asof"].contains(&opts.how.as_str()) {
-        return Err(sol_error("#VALUE!", format!("unknown join how \"{}\"", opts.how)));
+        return Err(sol_error(ErrorCode::Value, format!("unknown join how \"{}\"", opts.how)));
     }
     if opts.how == "cross" {
         return Ok(cross_join_frames(left, right));
@@ -950,7 +950,7 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
     let rk0 = require_column(right, &opts.right_key)?;
     if lk.ty != rk0.ty {
         return Err(sol_error(
-            "#TYPE!",
+            ErrorCode::Type,
             format!("Join keys must share a type (\"{}\" vs \"{}\")", lk.ty.tag(), rk0.ty.tag()),
         ));
     }
@@ -1043,7 +1043,7 @@ pub fn unpivot_frame(
     let val_cols: Vec<&FrameColumn> = value_columns.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
     if let Some(mixed) = val_cols.iter().find(|c| c.ty != val_cols[0].ty) {
         return Err(sol_error(
-            "#TYPE!",
+            ErrorCode::Type,
             format!(
                 "Unpivot value columns must share a type (\"{}\" is {}, \"{}\" is {})",
                 val_cols[0].name,
@@ -1277,7 +1277,7 @@ fn sum_group(values: &[FrameCell]) -> FrameCell {
 /// `formatFrameCell` with no format annotation.
 pub(crate) fn format_frame_cell(ty: FrameColType, v: &FrameCell) -> String {
     match v {
-        FrameCell::Err(e) => e.code.clone(),
+        FrameCell::Err(e) => e.code.to_string(),
         FrameCell::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
         FrameCell::Num(n) if ty == FrameColType::Date && n.is_finite() => format_date_serial(*n, DEFAULT_DATE_FORMAT),
         other => js_string(other).into_owned(),
@@ -1299,7 +1299,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let col_fields = keep(&spec.col_fields);
     let value_names = keep(&spec.values);
     if value_names.is_empty() {
-        return Err(sol_error("#VALUE!", "PIVOTBY needs at least one value field"));
+        return Err(sol_error(ErrorCode::Value, "PIVOTBY needs at least one value field"));
     }
     let row_cols: Vec<&FrameColumn> = row_fields.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
     let col_cols: Vec<&FrameColumn> = col_fields.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
@@ -1588,7 +1588,7 @@ pub fn append_frames(frames: &[&FrameValue]) -> Res<FrameValue> {
                 }
                 Some(&existing) if existing != c.ty => {
                     return Err(sol_error(
-                        "#TYPE!",
+                        ErrorCode::Type,
                         format!("append: column \"{}\" is {} in one frame and {} in another", c.name, existing.tag(), c.ty.tag()),
                     ));
                 }
@@ -1867,7 +1867,7 @@ pub fn split_column(f: &FrameValue, column: &str, delimiter: &str, names: Option
 pub fn merge_columns(f: &FrameValue, columns: &[String], separator: &str, name: &str) -> Res<FrameValue> {
     let sources: Vec<&FrameColumn> = columns.iter().map(|c| require_column(f, c)).collect::<Res<_>>()?;
     if sources.len() < 2 {
-        return Err(sol_error("#VALUE!", "Merge needs at least two columns"));
+        return Err(sol_error(ErrorCode::Value, "Merge needs at least two columns"));
     }
     let values = (0..frame_row_count(f))
         .map(|i| {
@@ -1932,13 +1932,13 @@ fn blank_key(k: &FrameCell) -> bool {
 }
 
 fn div0(msg: &str) -> FrameCell {
-    FrameCell::err(sol_error("#DIV/0!", msg))
+    FrameCell::err(sol_error(ErrorCode::DivZero, msg))
 }
 
 pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
     let func = spec.fn_.as_str();
     if !WINDOW_FNS.contains(&func) {
-        return Err(sol_error("#VALUE!", format!("unknown window function \"{func}\"")));
+        return Err(sol_error(ErrorCode::Value, format!("unknown window function \"{func}\"")));
     }
     let n = frame_row_count(f);
     let key_cols: Vec<&FrameColumn> = spec.partition_by.iter().map(|k| require_column(f, k)).collect::<Res<_>>()?;

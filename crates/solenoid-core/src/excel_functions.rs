@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::collections::HashMap;
 
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, serial_to_utc_parts, MS_PER_DAY};
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, FxError, SolError, sol_error};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string, string_to_number};
 use crate::unit_value::to_precision;
 use crate::value_kinds::{decimal_from_text, guard_finite};
@@ -23,7 +23,7 @@ pub enum V {
     Bool(bool),
     Err(Rc<SolError>),
     /// A Formula.js `Error`, by its message (`#VALUE!`, `#N/A`, …).
-    Fx(&'static str),
+    Fx(FxError),
     /// A whole column, as a range function takes it (flattened, its cells in order).
     List(Rc<Vec<V>>),
     /// A complex number (`cxValue.ts`' `Cx`): real part, imaginary part.
@@ -68,7 +68,7 @@ thread_local! {
 /// whole column runs on the TS.
 pub fn bail() -> V {
     BAILED.with(|b| b.set(true));
-    throw(sol_error("#VALUE!", "left to the TS"))
+    throw(sol_error(ErrorCode::Value, "left to the TS"))
 }
 
 /// Whether a row bailed since the last call.
@@ -316,18 +316,18 @@ pub(crate) fn to_str(v: &V) -> String {
 }
 
 pub(crate) fn value_err(f: &str) -> V {
-    V::err(sol_error("#VALUE!", format!("{f} needs a number")))
+    V::err(sol_error(ErrorCode::Value, format!("{f} needs a number")))
 }
 
 /// `fxErrorToSol`: Formula.js's codes read as Solenoid's.
-pub fn fx_error_to_sol(code: &str) -> SolError {
+pub fn fx_error_to_sol(code: FxError) -> SolError {
     let mapped = match code {
-        "#DIV/0!" => "#DIV/0!",
-        "#N/A" => "#N/A",
-        "#NAME?" => "#NAME?",
-        "#REF!" => "#REF!",
-        "#NUM!" => "#DOMAIN!",
-        _ => "#VALUE!",
+        FxError::DivZero => ErrorCode::DivZero,
+        FxError::NotAvailable => ErrorCode::NotAvailable,
+        FxError::Name => ErrorCode::Name,
+        FxError::Ref => ErrorCode::Ref,
+        FxError::Num => ErrorCode::Domain,
+        FxError::Value | FxError::Null | FxError::Error => ErrorCode::Value,
     };
     sol_error(mapped, "The formula produced an error")
 }
@@ -383,17 +383,17 @@ pub(crate) fn parse_number(v: &V) -> V {
         V::Bool(b) => V::Num(f64::from(u8::from(*b))),
         // `parseFloat(String(n))` gives n back for every number but -0, which reads as 0.
         V::Num(n) => {
-            if n.is_nan() { V::Fx("#VALUE!") } else { V::Num(*n + 0.0) }
+            if n.is_nan() { V::Fx(FxError::Value) } else { V::Num(*n + 0.0) }
         }
         V::Str(s) => {
-            if s.is_empty() || string_to_number(s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(s)) }
+            if s.is_empty() || string_to_number(s).is_nan() { V::Fx(FxError::Value) } else { V::Num(js_parse_float(s)) }
         }
         // A list reads as its joined text; `[] !== ''`, so even an empty one gets to `parseFloat`.
         V::List(_) => {
             let s = js_string_of(v);
-            if string_to_number(&s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(&s)) }
+            if string_to_number(&s).is_nan() { V::Fx(FxError::Value) } else { V::Num(js_parse_float(&s)) }
         }
-        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => V::Fx("#VALUE!"),
+        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => V::Fx(FxError::Value),
     }
 }
 
@@ -487,7 +487,7 @@ pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
             "median" => V::Num(median_of(arr)),
             "stdev" => {
                 if n < 2 {
-                    V::err(sol_error("#DIV/0!", "A sample standard deviation needs at least two values"))
+                    V::err(sol_error(ErrorCode::DivZero, "A sample standard deviation needs at least two values"))
                 } else {
                     V::Num((ssd(arr, mean()) / (n - 1) as f64).sqrt())
                 }
@@ -495,7 +495,7 @@ pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
             "stdev_p" => V::Num((ssd(arr, mean()) / n as f64).sqrt()),
             "var_s" => {
                 if n < 2 {
-                    V::err(sol_error("#DIV/0!", "A sample variance needs at least two values"))
+                    V::err(sol_error(ErrorCode::DivZero, "A sample variance needs at least two values"))
                 } else {
                     V::Num(ssd(arr, mean()) / (n - 1) as f64)
                 }
@@ -503,14 +503,14 @@ pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
             "var_p" => V::Num(ssd(arr, mean()) / n as f64),
             "geomean" => {
                 if arr.iter().any(|&v| v <= 0.0) {
-                    V::err(sol_error("#DOMAIN!", "GEOMEAN needs every value > 0"))
+                    V::err(sol_error(ErrorCode::Domain, "GEOMEAN needs every value > 0"))
                 } else {
                     V::Num(crate::fdlibm::exp(arr.iter().fold(0.0, |a, &b| a + crate::fdlibm::log(b)) / n as f64))
                 }
             }
             "harmean" => {
                 if arr.iter().any(|&v| v <= 0.0) {
-                    V::err(sol_error("#DOMAIN!", "HARMEAN needs every value > 0"))
+                    V::err(sol_error(ErrorCode::Domain, "HARMEAN needs every value > 0"))
                 } else {
                     V::Num(n as f64 / arr.iter().fold(0.0, |a, &b| a + 1.0 / b))
                 }
@@ -572,7 +572,7 @@ pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
                 }
                 let m = mean();
                 if m == 0.0 {
-                    V::err(sol_error("#DIV/0!", "CV is undefined when the mean is 0"))
+                    V::err(sol_error(ErrorCode::DivZero, "CV is undefined when the mean is 0"))
                 } else {
                     V::Num((ssd(arr, m) / (n - 1) as f64).sqrt() / m)
                 }
@@ -603,7 +603,7 @@ fn flat_all(a: &[V]) -> Vec<V> {
 fn ceiling_floor_math(ceiling: bool, n: V, sig: V, mode: V) -> V {
     let (n, sig, mode) = match (n, sig, mode) {
         (V::Num(n), V::Num(s), V::Num(m)) => (n, s, m),
-        (n, s, m) => return [n, s, m].into_iter().find(V::is_err).unwrap_or(V::Fx("#VALUE!")),
+        (n, s, m) => return [n, s, m].into_iter().find(V::is_err).unwrap_or(V::Fx(FxError::Value)),
     };
     if sig == 0.0 {
         return V::Num(0.0);
@@ -661,9 +661,9 @@ fn x_match_mode(v: &V) -> Result<MatchMode, V> {
     } else if n == -1.0 {
         MatchMode::NextSmaller
     } else if n == 2.0 {
-        return Err(V::err(sol_error("#VALUE!", "Wildcard match (2) isn't supported")));
+        return Err(V::err(sol_error(ErrorCode::Value, "Wildcard match (2) isn't supported")));
     } else {
-        return Err(V::err(sol_error("#VALUE!", "match_mode is 0, 1, or -1")));
+        return Err(V::err(sol_error(ErrorCode::Value, "match_mode is 0, 1, or -1")));
     })
 }
 
@@ -678,9 +678,9 @@ fn x_search_mode(v: &V) -> Result<bool, V> {
     } else if n == -1.0 {
         Ok(true)
     } else if n == 2.0 || n == -2.0 {
-        Err(V::err(sol_error("#VALUE!", "Binary search (±2) isn't supported. Every search scans the whole list")))
+        Err(V::err(sol_error(ErrorCode::Value, "Binary search (±2) isn't supported. Every search scans the whole list")))
     } else {
-        Err(V::err(sol_error("#VALUE!", "search_mode is 1 or -1")))
+        Err(V::err(sol_error(ErrorCode::Value, "search_mode is 1 or -1")))
     }
 }
 
@@ -701,7 +701,7 @@ pub(crate) fn xmatch_index(lookup: &V, keys: &[V], mm: MatchMode, last: bool) ->
     }
     let lookup = match lookup {
         V::Num(x) if x.is_finite() => *x,
-        _ => return Err(V::err(sol_error("#VALUE!", "Approximate match compares numbers. Use exact match (0) for text"))),
+        _ => return Err(V::err(sol_error(ErrorCode::Value, "Approximate match compares numbers. Use exact match (0) for text"))),
     };
     let mut best: Option<(usize, f64)> = None;
     for i in (0..n).map(at) {
@@ -747,7 +747,7 @@ pub(crate) fn pearson(xs: &[f64], ys: &[f64], rsq: bool) -> V {
     }
     let den = (dx2 * dy2).sqrt();
     if den == 0.0 {
-        return V::err(sol_error("#DIV/0!", "One of the lists has zero variance"));
+        return V::err(sol_error(ErrorCode::DivZero, "One of the lists has zero variance"));
     }
     let r = num / den;
     finite_of(if rsq { r * r } else { r }, xs, ys)
@@ -858,7 +858,7 @@ pub(crate) fn kendall_tau(xs: &[f64], ys: &[f64]) -> V {
     }
     let den = ((conc + disc + tx) * (conc + disc + ty)).sqrt();
     if den == 0.0 {
-        return V::err(sol_error("#DIV/0!", "One of the lists has no variation"));
+        return V::err(sol_error(ErrorCode::DivZero, "One of the lists has no variation"));
     }
     V::Num((conc - disc) / den)
 }
@@ -889,7 +889,7 @@ fn regression(xs: &[f64], ys: &[f64], op: &str) -> V {
         syy += dy * dy;
     }
     if sxx == 0.0 {
-        return V::err(sol_error("#DIV/0!", "Known Xs have zero variance"));
+        return V::err(sol_error(ErrorCode::DivZero, "Known Xs have zero variance"));
     }
     let slope = sxy / sxx;
     let r = match op {
@@ -923,7 +923,7 @@ fn excel_rank(value: f64, refs: &[V], avg: bool, ascending: bool) -> V {
     }).count() as f64;
     let equal = refs.iter().filter(|x| matches!(x, V::Num(n) if *n == value)).count() as f64;
     if equal == 0.0 {
-        return V::err(sol_error("#N/A", "Value not found in the list"));
+        return V::err(sol_error(ErrorCode::NotAvailable, "Value not found in the list"));
     }
     V::Num(if avg { above + 1.0 + (equal - 1.0) / 2.0 } else { above + 1.0 })
 }
@@ -1014,9 +1014,9 @@ fn excel_trimmean(n: Option<f64>, items: Option<Vec<V>>, percent: f64) -> V {
     }
     let trim = ((n * percent) / 2.0).floor();
     if trim * 2.0 >= n {
-        return V::err(sol_error("#DOMAIN!", "TRIMMEAN trimmed away every value"));
+        return V::err(sol_error(ErrorCode::Domain, "TRIMMEAN trimmed away every value"));
     }
-    let Some(items) = items else { return throw(sol_error("#VALUE!", "values is not iterable")) };
+    let Some(items) = items else { return throw(sol_error(ErrorCode::Value, "values is not iterable")) };
     let Some(s) = js_numeric_sort(&items) else { return bail() };
     let (lo, hi) = (js_slice_index(trim, s.len()), js_slice_index(n - trim, s.len()));
     let kept = if lo < hi { &s[lo..hi] } else { &s[0..0] };
@@ -1038,7 +1038,7 @@ fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
         return value_err("PERCENTRANK");
     }
     if x < s[0] || x > s[n - 1] {
-        return V::err(sol_error("#N/A", "Value is outside the range of the data"));
+        return V::err(sol_error(ErrorCode::NotAvailable, "Value is outside the range of the data"));
     }
     if n == 1 {
         return V::Num(1.0);
@@ -1059,17 +1059,17 @@ fn excel_percent_rank(arr: &[V], x: f64, sig: f64, exc: bool) -> V {
 fn gcd_lcm(gcd: bool, values: &[f64]) -> V {
     let name = if gcd { "GCD" } else { "LCM" };
     if values.is_empty() {
-        return V::err(sol_error("#VALUE!", format!("{name} needs at least one number")));
+        return V::err(sol_error(ErrorCode::Value, format!("{name} needs at least one number")));
     }
     let two53 = 9_007_199_254_740_992.0;
     let mut acc: f64 = if gcd { 0.0 } else { 1.0 };
     for &v in values {
         let n = v.trunc();
         if n.is_nan() || n < 0.0 {
-            return V::err(sol_error("#DOMAIN!", format!("{name} needs values of 0 or more")));
+            return V::err(sol_error(ErrorCode::Domain, format!("{name} needs values of 0 or more")));
         }
         if n >= two53 {
-            return V::err(sol_error("#DOMAIN!", format!("{name} needs values below 2^53")));
+            return V::err(sol_error(ErrorCode::Domain, format!("{name} needs values below 2^53")));
         }
         let (mut x, mut y) = (acc, n);
         while y != 0.0 && !y.is_nan() {
@@ -1077,7 +1077,7 @@ fn gcd_lcm(gcd: bool, values: &[f64]) -> V {
         }
         acc = if gcd { x } else if x == 0.0 { 0.0 } else { (acc / x) * n };
         if acc >= two53 {
-            return V::err(sol_error("#DOMAIN!", "LCM is 2^53 or more"));
+            return V::err(sol_error(ErrorCode::Domain, "LCM is 2^53 or more"));
         }
     }
     V::Num(acc)
@@ -1101,7 +1101,7 @@ fn excel_text(value: &V, fmt: &V) -> V {
     if let Some((frac, sign_ok, exp_zeros)) = sci_code(&f) {
         let _ = sign_ok;
         let Some(s) = crate::jsnum::to_exponential(n, frac as f64) else {
-            return throw(sol_error("#VALUE!", "toExponential() argument must be between 0 and 100"));
+            return throw(sol_error(ErrorCode::Value, "toExponential() argument must be between 0 and 100"));
         };
         let (mant, e) = match s.split_once('e') {
             Some((m, e)) => (m.to_string(), e.parse::<f64>().unwrap_or(f64::NAN)),
@@ -1117,7 +1117,7 @@ fn excel_text(value: &V, fmt: &V) -> V {
         // Formula.js writes any Date as its ISO date, whatever the code.
         return match serial_to_ms(n) {
             Some(ms) => V::str(&iso_date(ms)),
-            None => throw(sol_error("#VALUE!", "Invalid time value")),
+            None => throw(sol_error(ErrorCode::Value, "Invalid time value")),
         };
     }
     fx_text_number(n, &f)
@@ -1182,7 +1182,7 @@ fn fx_text_number(n: f64, f: &str) -> V {
     let code: String = f.chars().filter(|&c| c != '%' && c != '$').collect();
     let places = match code.split('.').nth(1) {
         Some(after) => match after.chars().filter(|&c| c == '0').count() {
-            0 => return throw(sol_error("#VALUE!", "Cannot read properties of null (reading 'length')")),
+            0 => return throw(sol_error(ErrorCode::Value, "Cannot read properties of null (reading 'length')")),
             z => z as f64,
         },
         None => 0.0,
@@ -1190,7 +1190,7 @@ fn fx_text_number(n: f64, f: &str) -> V {
     let no_commas = !code.contains(',');
     let n = if percent { n * 100.0 } else { n };
     let Some(fixed) = crate::jsnum::to_fixed(n, places) else {
-        return throw(sol_error("#VALUE!", "toFixed() digits argument must be between 0 and 100"));
+        return throw(sol_error(ErrorCode::Value, "toFixed() digits argument must be between 0 and 100"));
     };
     let fixed = if no_commas { fixed } else { group_thousands(&fixed) };
     let mut out = match fixed.strip_prefix('-') {
@@ -1264,7 +1264,7 @@ pub(crate) fn logical_or_type_error(v: &V, place: &str) -> Result<Option<bool>, 
             V::Str(s) => format!("\"{s}\""),
             other => js_string_of(other),
         };
-        Err(V::err(sol_error("#TYPE!", format!("{place}: {shown} isn't a logical. Only TRUE, FALSE or a number read as one"))))
+        Err(V::err(sol_error(ErrorCode::Type, format!("{place}: {shown} isn't a logical. Only TRUE, FALSE or a number read as one"))))
     };
     match v {
         V::Null | V::Undef => Ok(None),
@@ -1322,7 +1322,7 @@ fn ordinal_text(n: f64) -> String {
 fn text_after_before(after: bool, text: &str, delimiter: &str, instance: f64, caseless: bool, match_end: bool) -> V {
     let n = instance.trunc();
     if n == 0.0 {
-        return V::err(sol_error("#VALUE!", format!("TEXT{}: instance_num can't be 0", if after { "AFTER" } else { "BEFORE" })));
+        return V::err(sol_error(ErrorCode::Value, format!("TEXT{}: instance_num can't be 0", if after { "AFTER" } else { "BEFORE" })));
     }
     if delimiter.is_empty() {
         return V::Null;
@@ -1368,7 +1368,7 @@ fn pad_text(t: &str, width: f64, side: &str, fill: &str) -> V {
         return V::str(t);
     }
     if w > 32767.0 {
-        return V::err(sol_error("#VALUE!", "PADTEXT's result would pass 32,767 characters, Excel's text limit"));
+        return V::err(sol_error(ErrorCode::Value, "PADTEXT's result would pass 32,767 characters, Excel's text limit"));
     }
     let need = w - chars.len() as f64;
     if need.is_nan() {
@@ -1408,7 +1408,7 @@ fn truncate_text(t: &str, width: f64, ellipsis: &str) -> String {
 
 /// `numberValue` (textOps.ts), over UTF-16 units: a separator is its `[0]`, half of an astral character included.
 fn number_value(text: &str, decimal_sep: &str, group_sep: &str) -> V {
-    let bad = || V::err(sol_error("#VALUE!", "NUMBERVALUE needs a number"));
+    let bad = || V::err(sol_error(ErrorCode::Value, "NUMBERVALUE needs a number"));
     let (dot, comma, percent) = (u16::from(b'.'), u16::from(b','), u16::from(b'%'));
     let d = decimal_sep.encode_utf16().next().unwrap_or(dot);
     let g: Option<u16> = if !group_sep.is_empty() { group_sep.encode_utf16().next() } else if d == comma { None } else { Some(comma) };
@@ -1518,7 +1518,7 @@ fn wrap_text(t: &str, width: f64) -> Vec<String> {
 use crate::dists::Form;
 
 fn dist_domain() -> V {
-    V::err(sol_error("#DOMAIN!", "A parameter is outside the distribution's domain"))
+    V::err(sol_error(ErrorCode::Domain, "A parameter is outside the distribution's domain"))
 }
 
 fn finite_or_null(r: f64) -> V {
@@ -1571,7 +1571,7 @@ fn as_one_dim(v: &V) -> Option<Vec<V>> {
 }
 
 fn index_ref_error(n: f64, max: usize, what: &str) -> V {
-    V::err(sol_error("#REF!", format!("{what} {} is outside 1…{max}", number_to_string(n))))
+    V::err(sol_error(ErrorCode::Ref, format!("{what} {} is outside 1…{max}", number_to_string(n))))
 }
 
 /// `indexInto` (indexAccess.ts) at one position per axis: a table, a list (one row) or one value. A null position
@@ -1616,7 +1616,7 @@ fn position_of(x: &V) -> Result<Ax, V> {
         V::Str(s) if !js_trim(s).is_empty() => string_to_number(s),
         _ => f64::NAN,
     };
-    if n.is_nan() { Err(V::err(sol_error("#VALUE!", "INDEX position must be a number"))) } else { Ok(Ax::Num(n)) }
+    if n.is_nan() { Err(V::err(sol_error(ErrorCode::Value, "INDEX position must be a number"))) } else { Ok(Ax::Num(n)) }
 }
 
 /// `indexMany`: on a table whose other axis is whole, a list picks rows or columns; otherwise the axes pair up as
@@ -1675,7 +1675,7 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
     let at = |g: &Option<Vec<V>>, i: usize, j: usize| -> Result<Ax, V> {
         let Some(g) = g else { return Ok(Ax::Undef) };
         let gi = if g.len() == 1 { 0 } else { i };
-        let short = || Err(V::err(sol_error("#N/A", "The positions are different sizes")));
+        let short = || Err(V::err(sol_error(ErrorCode::NotAvailable, "The positions are different sizes")));
         let Some(row) = g.get(gi) else { return short() };
         // A row that isn't a list is one position (a blank row, blank positions).
         let V::List(cells) = row else { return position_of(row) };
@@ -1692,7 +1692,7 @@ fn index_many(v: &V, row: Ax, col: Ax) -> V {
             (Ok(r), Ok(c)) => (r, c),
         };
         match index_at(v, r, c) {
-            V::List(_) => V::err(sol_error("#VALUE!", "Each pair of positions must pick one value")),
+            V::List(_) => V::err(sol_error(ErrorCode::Value, "Each pair of positions must pick one value")),
             x => x,
         }
     }).collect()))).collect();
@@ -1709,7 +1709,7 @@ fn index_into(v: &V, row: Option<f64>, col: Option<f64>, row_null: bool, col_nul
     let c = if col_all { -1.0 } else { col.unwrap_or(0.0).trunc() - 1.0 };
     let V::List(items) = v else {
         let ok = (row_all || r == 0.0) && (col_all || c == 0.0);
-        return if ok { v.clone() } else { V::err(sol_error("#REF!", "Index is outside a single value. Only index 1 exists")) };
+        return if ok { v.clone() } else { V::err(sol_error(ErrorCode::Ref, "Index is outside a single value. Only index 1 exists")) };
     };
     let inside = |k: f64, len: usize| k >= 0.0 && k < len as f64;
     let or_null = |x: Option<&V>| match x {
@@ -1904,7 +1904,7 @@ fn js_arith(v: &V) -> f64 {
 /// Formula.js PMT.
 fn fx_pmt(rate: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
     let nums = [parse_number(rate), parse_number(nper), parse_number(pv), parse_number(or_zero(fv)), parse_number(or_zero(ty))];
-    let Some([rate, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+    let Some([rate, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
     let result = if rate == 0.0 {
         (pv + fv) / nper
     } else {
@@ -1918,7 +1918,7 @@ fn fx_pmt(rate: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
 /// Formula.js FV.
 fn fx_fv(rate: &V, nper: &V, payment: &V, value: &V, ty: &V) -> V {
     let nums = [parse_number(rate), parse_number(nper), parse_number(payment), parse_number(or_zero(value)), parse_number(or_zero(ty))];
-    let Some([rate, nper, payment, value, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+    let Some([rate, nper, payment, value, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
     let result = if rate == 0.0 {
         value + payment * nper
     } else {
@@ -1935,7 +1935,7 @@ fn fx_fv(rate: &V, nper: &V, payment: &V, value: &V, ty: &V) -> V {
 /// Formula.js IPMT: its inner PMT and FV take the parsed numbers and parse them again.
 fn fx_ipmt(rate: &V, per: &V, nper: &V, pv: &V, fv: &V, ty: &V) -> V {
     let nums = [parse_number(rate), parse_number(per), parse_number(nper), parse_number(pv), parse_number(or_zero(fv)), parse_number(or_zero(ty))];
-    let Some([rate, per, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+    let Some([rate, per, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
     let num = V::Num;
     let payment = fx_pmt(&num(rate), &num(nper), &num(pv), &num(fv), &num(ty));
     let interest = if per == 1.0 {
@@ -2121,7 +2121,7 @@ fn finite_opt(r: Option<f64>, inputs: &[f64]) -> V {
     match r {
         Some(r) => finite_v(r, inputs),
         None if inputs.iter().any(|v| v.is_infinite()) => V::Undef,
-        None => V::err(sol_error("#OVERFLOW!", crate::value_kinds::OVERFLOW_MESSAGE)),
+        None => V::err(sol_error(ErrorCode::Overflow, crate::value_kinds::OVERFLOW_MESSAGE)),
     }
 }
 
@@ -2132,11 +2132,11 @@ fn percentile(arr: &[f64], p: f64, exc: bool) -> V {
         return V::Null;
     }
     if !exc && (p < 0.0 || p > 1.0) {
-        return V::err(sol_error("#DOMAIN!", "Percentile must be between 0 and 1"));
+        return V::err(sol_error(ErrorCode::Domain, "Percentile must be between 0 and 1"));
     }
     if exc && (p < 1.0 / (n + 1.0) || p > n / (n + 1.0)) {
         return V::err(sol_error(
-            "#DOMAIN!",
+            ErrorCode::Domain,
             "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)",
         ));
     }
@@ -2150,15 +2150,15 @@ fn quartile(arr: &[f64], q: f64, exc: bool) -> V {
         return V::Null;
     }
     if qi < 0.0 || qi > 4.0 {
-        return V::err(sol_error("#DOMAIN!", "Quartile must be 0, 1, 2, 3, or 4"));
+        return V::err(sol_error(ErrorCode::Domain, "Quartile must be 0, 1, 2, 3, or 4"));
     }
     if exc && (qi == 0.0 || qi == 4.0) {
-        return V::err(sol_error("#DOMAIN!", "QUARTILE.EXC is undefined for quartile 0 or 4"));
+        return V::err(sol_error(ErrorCode::Domain, "QUARTILE.EXC is undefined for quartile 0 or 4"));
     }
     let (n, p) = (arr.len() as f64, qi / 4.0);
     if exc && (p < 1.0 / (n + 1.0) || p > n / (n + 1.0)) {
         return V::err(sol_error(
-            "#DOMAIN!",
+            ErrorCode::Domain,
             "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)",
         ));
     }
@@ -2167,10 +2167,10 @@ fn quartile(arr: &[f64], q: f64, exc: bool) -> V {
 
 fn nth_extreme(arr: &[f64], k: f64, largest: bool) -> V {
     if k.is_nan() {
-        return V::err(sol_error("#VALUE!", "k must be a number"));
+        return V::err(sol_error(ErrorCode::Value, "k must be a number"));
     }
     if k < 1.0 {
-        return V::err(sol_error("#DOMAIN!", "k starts at 1, the largest or smallest value"));
+        return V::err(sol_error(ErrorCode::Domain, "k starts at 1, the largest or smallest value"));
     }
     let n = arr.len() as f64;
     if arr.is_empty() || k > n {
@@ -2196,7 +2196,7 @@ fn mode_single(arr: &[f64]) -> V {
     }
     let max_count = counts.values().copied().max().unwrap_or(0);
     if max_count < 2 {
-        return V::err(sol_error("#N/A", "No value repeats, so there is no mode"));
+        return V::err(sol_error(ErrorCode::NotAvailable, "No value repeats, so there is no mode"));
     }
     arr.iter().find(|&&v| counts[&key(v)] == max_count).map_or(V::Null, |&v| V::Num(v))
 }
@@ -2247,11 +2247,11 @@ fn if_test(v: &V) -> Cond {
         V::Null => Cond::Missing,
         V::Err(_) => Cond::Err(v.clone()),
         V::Bool(b) => Cond::Bool(*b),
-        V::Num(n) if n.is_nan() => Cond::Err(V::err(sol_error("#VALUE!", "A condition is not a number"))),
+        V::Num(n) if n.is_nan() => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition is not a number"))),
         V::Num(n) => Cond::Bool(*n != 0.0),
         V::Str(s) if s.to_lowercase() == "true" => Cond::Bool(true),
         V::Str(s) if s.to_lowercase() == "false" => Cond::Bool(false),
-        _ => Cond::Err(V::err(sol_error("#VALUE!", "A condition needs a logical. Text counts only as TRUE or FALSE"))),
+        _ => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition needs a logical. Text counts only as TRUE or FALSE"))),
     }
 }
 
@@ -2692,7 +2692,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::IFS => {
             if !a.len().is_multiple_of(2) {
-                return V::err(sol_error("#VALUE!", "IFS takes conditions and values in pairs"));
+                return V::err(sol_error(ErrorCode::Value, "IFS takes conditions and values in pairs"));
             }
             for pair in a.chunks(2) {
                 let test = if matches!(pair[0], V::Undef) { V::Null } else { pair[0].clone() };
@@ -2703,7 +2703,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     Cond::Bool(false) => {}
                 }
             }
-            V::err(sol_error("#N/A", "No IFS condition matched"))
+            V::err(sol_error(ErrorCode::NotAvailable, "No IFS condition matched"))
         }
         F::AND | F::OR => {
             let and = arm == F::AND;
@@ -2723,10 +2723,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     *r = true;
                 }
             }
-            result.map_or(V::Fx("#VALUE!"), V::Bool)
+            result.map_or(V::Fx(FxError::Value), V::Bool)
         }
         F::NOT => match arg(a, 0) {
-            V::Str(_) => V::Fx("#VALUE!"),
+            V::Str(_) => V::Fx(FxError::Value),
             v @ V::Fx(_) => v.clone(),
             v => V::Bool(!truthy(v)),
         },
@@ -2751,7 +2751,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     let p = js_pow(10.0, d);
                     V::Num((sign * (n.abs() * p).floor()) / p)
                 }
-                _ => V::Fx("#VALUE!"),
+                _ => V::Fx(FxError::Value),
             }
         }
         F::INT | F::ABS | F::SIGN => match parse_number(arg(a, 0)) {
@@ -2772,10 +2772,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         },
         F::EXP => {
             if a.is_empty() {
-                return V::Fx("#N/A");
+                return V::Fx(FxError::NotAvailable);
             }
             if a.len() > 1 {
-                return V::Fx("#ERROR!");
+                return V::Fx(FxError::Error);
             }
             match parse_number(&a[0]) {
                 V::Num(n) => V::Num(crate::fdlibm::exp(n)),
@@ -2787,7 +2787,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if n.is_nan() {
                 return value_err("SQRT");
             }
-            if n < 0.0 { V::err(sol_error("#DOMAIN!", "SQRT of a negative number")) } else { V::Num(n.sqrt()) }
+            if n < 0.0 { V::err(sol_error(ErrorCode::Domain, "SQRT of a negative number")) } else { V::Num(n.sqrt()) }
         }
         F::LN | F::LOG10 => {
             let n = to_num(arg(a, 0));
@@ -2795,7 +2795,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err(name);
             }
             if n <= 0.0 {
-                return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));
+                return V::err(sol_error(ErrorCode::Domain, "Input is outside this function's domain"));
             }
             V::Num(if arm == F::LN { crate::fdlibm::log(n) } else { crate::fdlibm::log10(n) })
         }
@@ -2804,7 +2804,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if x.is_nan() || y.is_nan() {
                 return value_err("MOD");
             }
-            if y == 0.0 { V::err(sol_error("#DIV/0!", "Division by zero")) } else { V::Num(x - y * (x / y).floor()) }
+            if y == 0.0 { V::err(sol_error(ErrorCode::DivZero, "Division by zero")) } else { V::Num(x - y * (x / y).floor()) }
         }
         F::POWER => {
             let (x, y) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
@@ -2812,7 +2812,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err("POWER");
             }
             if x == 0.0 && y < 0.0 {
-                V::err(sol_error("#DIV/0!", "Zero to a negative power divides by zero"))
+                V::err(sol_error(ErrorCode::DivZero, "Zero to a negative power divides by zero"))
             } else {
                 V::Num(js_pow(x, y))
             }
@@ -2822,7 +2822,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if x.is_nan() || y.is_nan() {
                 return value_err("QUOTIENT");
             }
-            if y == 0.0 { V::err(sol_error("#DIV/0!", "Division by zero")) } else { V::Num((x / y).trunc()) }
+            if y == 0.0 { V::err(sol_error(ErrorCode::DivZero, "Division by zero")) } else { V::Num((x / y).trunc()) }
         }
         F::SUM => sum_like_fx(a),
         F::MIN | F::MAX => {
@@ -2866,7 +2866,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 V::Null | V::Undef => excel_rank(value, &[], arm == F::RANK_AVG, o != 0.0),
                 _ if value.is_nan() => value_err("RANK"),
                 // `ref.filter` on anything but a list is a TypeError.
-                _ => throw(sol_error("#VALUE!", "ref.filter is not a function")),
+                _ => throw(sol_error(ErrorCode::Value, "ref.filter is not a function")),
             }
         }
         F::TRIMMEAN => {
@@ -2943,7 +2943,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err("MID");
             }
             if s < 1.0 || n < 0.0 {
-                return V::err(sol_error("#VALUE!", "MID starts at 1 or later and takes 0 or more characters"));
+                return V::err(sol_error(ErrorCode::Value, "MID starts at 1 or later and takes 0 or more characters"));
             }
             let start = clamp_index(s - 1.0, t.len());
             let end = clamp_index(s - 1.0 + n, t.len()).max(start);
@@ -2951,7 +2951,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::LEFT | F::RIGHT => {
             if !matches!(arg(a, 1), V::Null | V::Undef) && to_num(arg(a, 1)).trunc() < 0.0 {
-                return V::err(sol_error("#VALUE!", format!("{name} takes 0 or more characters")));
+                return V::err(sol_error(ErrorCode::Value, format!("{name} takes 0 or more characters")));
             }
             let text = V::str(&to_str(arg(a, 0)));
             let num_chars = arg(a, 1);
@@ -2964,7 +2964,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             };
             let n = match parse_number(if matches!(num_chars, V::Undef) { &V::Num(1.0) } else { num_chars }) {
                 V::Num(n) => n,
-                e => return if arm == F::LEFT { V::Fx("#VALUE!") } else { e },
+                e => return if arm == F::LEFT { V::Fx(FxError::Value) } else { e },
             };
             if arm == F::LEFT {
                 V::str(&from_utf16(&text[..clamp_index(n, text.len())]))
@@ -2974,7 +2974,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::UPPER | F::LOWER | F::TRIM => {
             if arm == F::LOWER && a.len() != 1 {
-                return V::Fx("#VALUE!");
+                return V::Fx(FxError::Value);
             }
             let t = to_str(arg(a, 0));
             V::str(&match arm {
@@ -3008,14 +3008,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err("REPT");
             }
             if n < 0.0 {
-                return V::err(sol_error("#VALUE!", "REPT can't repeat text a negative number of times"));
+                return V::err(sol_error(ErrorCode::Value, "REPT can't repeat text a negative number of times"));
             }
             let len = utf16(&t).len() as f64;
             if len * n > 32767.0 {
-                return V::err(sol_error("#VALUE!", "REPT's result would pass 32,767 characters, Excel's text limit"));
+                return V::err(sol_error(ErrorCode::Value, "REPT's result would pass 32,767 characters, Excel's text limit"));
             }
             if n.is_infinite() {
-                return throw(sol_error("#VALUE!", format!("Invalid count value: {}", number_to_string(n))));
+                return throw(sol_error(ErrorCode::Value, format!("Invalid count value: {}", number_to_string(n))));
             }
             V::str(&t.repeat(n as usize))
         }
@@ -3066,7 +3066,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 V::Num(n) => n,
                 e => return e,
             };
-            let div0 = V::Fx("#DIV/0!");
+            let div0 = V::Fx(FxError::DivZero);
             V::Num(match arm {
                 F::SIN => sin(n),
                 F::COS => cos(n),
@@ -3089,7 +3089,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 F::ACOTH => {
                     let r = 0.5 * log((n + 1.0) / (n - 1.0));
                     if r.is_nan() {
-                        return V::Fx("#NUM!");
+                        return V::Fx(FxError::Num);
                     }
                     r
                 }
@@ -3110,12 +3110,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => e,
                 (V::Num(n), V::Num(b)) => {
                     if n == 0.0 || b == 0.0 {
-                        V::Fx("#NUM!")
+                        V::Fx(FxError::Num)
                     } else {
                         V::Num(crate::fdlibm::log(n) / crate::fdlibm::log(b))
                     }
                 }
-                _ => V::Fx("#VALUE!"),
+                _ => V::Fx(FxError::Value),
             }
         }
         F::ATAN2 => {
@@ -3142,7 +3142,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 });
             }
             if x <= 0.0 {
-                return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));
+                return V::err(sol_error(ErrorCode::Domain, "Input is outside this function's domain"));
             }
             V::Num(crate::dists::ln_gamma(x))
         }
@@ -3158,7 +3158,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 _ => x <= -1.0 || x >= 1.0,
             };
             if outside {
-                return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));
+                return V::err(sol_error(ErrorCode::Domain, "Input is outside this function's domain"));
             }
             V::Num(match arm {
                 F::SQRTPI => (x * std::f64::consts::PI).sqrt(),
@@ -3237,7 +3237,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::PI => V::Num(std::f64::consts::PI),
         F::EXACT => {
             if a.len() != 2 {
-                return V::Fx("#N/A");
+                return V::Fx(FxError::NotAvailable);
             }
             V::Bool(to_str(&a[0]) == to_str(&a[1]))
         }
@@ -3247,12 +3247,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let (n, sig) = (*n, *sig);
             match arm {
                 F::CEILING if sig == 0.0 => V::Num(0.0),
-                F::FLOOR if sig == 0.0 || sig.is_nan() => V::Fx("#DIV/0!"),
-                F::CEILING | F::FLOOR if n > 0.0 && sig < 0.0 => V::Fx("#NUM!"),
+                F::FLOOR if sig == 0.0 || sig.is_nan() => V::Fx(FxError::DivZero),
+                F::CEILING | F::FLOOR if n > 0.0 && sig < 0.0 => V::Fx(FxError::Num),
                 F::CEILING => V::Num((n / sig).ceil() * sig),
                 F::FLOOR => V::Num((n / sig).floor() * sig),
                 _ if n * sig == 0.0 => V::Num(0.0),
-                _ if n * sig < 0.0 => V::Fx("#NUM!"),
+                _ if n * sig < 0.0 => V::Fx(FxError::Num),
                 _ => V::Num(math_round(n / sig) * sig),
             }
         }
@@ -3281,23 +3281,23 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         },
         F::SWITCH => {
             if a.is_empty() {
-                return V::Fx("#VALUE!");
+                return V::Fx(FxError::Value);
             }
             let argc = a.len() - 1;
             let hit = (0..argc / 2).find(|&i| strict_equals(&a[0], &a[i * 2 + 1]));
             match hit {
                 Some(i) => a[i * 2 + 2].clone(),
                 None if !argc.is_multiple_of(2) => a[a.len() - 1].clone(),
-                None => V::Fx("#N/A"),
+                None => V::Fx(FxError::NotAvailable),
             }
         }
         F::REPLACE => {
             // The pass-through maps only the arguments given: a missing new_text isn't a string.
             if a.len() < 4 {
-                return V::Fx("#VALUE!");
+                return V::Fx(FxError::Value);
             }
             let (old, new) = (to_str(arg(a, 0)), to_str(arg(a, 3)));
-            let (V::Num(at), V::Num(len)) = (parse_number(arg(a, 1)), parse_number(arg(a, 2))) else { return V::Fx("#VALUE!") };
+            let (V::Num(at), V::Num(len)) = (parse_number(arg(a, 1)), parse_number(arg(a, 2))) else { return V::Fx(FxError::Value) };
             let old = utf16(&old);
             let mut out = js_substr(&old, 0.0, Some(at - 1.0));
             out.extend(utf16(&new));
@@ -3310,12 +3310,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if s.is_nan() || e.is_nan() {
                 return value_err("DATEDIF");
             }
-            let reversed = || V::err(sol_error("#DOMAIN!", "DATEDIF needs the start date on or before the end date"));
+            let reversed = || V::err(sol_error(ErrorCode::Domain, "DATEDIF needs the start date on or before the end date"));
             if s > e {
                 return reversed();
             }
             let Some(op) = date_diff_op_for_unit(&to_str(arg(a, 2))) else {
-                return V::err(sol_error("#DOMAIN!", "DATEDIF unit must be Y, M, D, YM, MD or YD"));
+                return V::err(sol_error(ErrorCode::Domain, "DATEDIF unit must be Y, M, D, YM, MD or YD"));
             };
             match date_diff(op, s, e, 0.0) {
                 Ok(Some(n)) => V::Num(n),
@@ -3349,7 +3349,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let unit = if matches!(unit, V::Null | V::Undef) { "day".to_string() } else { js_string_of(unit) };
             match crate::date_ops::date_trunc_unit_for(&unit) {
                 Some(u) => V::Num(crate::date_ops::date_trunc(n, u, is_true(arg(a, 2)))),
-                None => V::err(sol_error("#DOMAIN!", "DATETRUNC unit must be day, week, week_sun, month, quarter or year")),
+                None => V::err(sol_error(ErrorCode::Domain, "DATETRUNC unit must be day, week, week_sun, month, quarter or year")),
             }
         }
         F::FROMEPOCH | F::TOEPOCH => {
@@ -3358,7 +3358,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err(name);
             }
             match epoch_unit(arg(a, 1)) {
-                None => V::err(sol_error("#DOMAIN!", format!("{name} unit must be s or ms"))),
+                None => V::err(sol_error(ErrorCode::Domain, format!("{name} unit must be s or ms"))),
                 Some(ms) if arm == F::FROMEPOCH => V::Num(crate::date_ops::epoch_to_serial(n, ms)),
                 Some(ms) => V::Num(crate::date_ops::serial_to_epoch(n, ms)),
             }
@@ -3373,7 +3373,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             let Some(off) = off else {
                 return V::err(sol_error(
-                    "#VALUE!",
+                    ErrorCode::Value,
                     format!("{name} weekend must be a code (1 to 7, 11 to 17) or seven 0/1 characters with a working day"),
                 ));
             };
@@ -3396,35 +3396,35 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Err(e) => return e,
             };
             let Some(ks) = as_one_dim(arg(a, 1)) else {
-                return V::err(sol_error("#VALUE!", format!("{name}'s lookup array must be a single row or a single column")));
+                return V::err(sol_error(ErrorCode::Value, format!("{name}'s lookup array must be a single row or a single column")));
             };
             let pick: Box<dyn Fn(&V) -> V> = if arm == F::XLOOKUP {
                 let values = arg(a, 2);
                 let Some(vs) = as_one_dim(values) else {
-                    return V::err(sol_error("#VALUE!", "XLOOKUP's return array must be a single row or a single column"));
+                    return V::err(sol_error(ErrorCode::Value, "XLOOKUP's return array must be a single row or a single column"));
                 };
                 if matches!(values, V::List(_)) && vs.len() != ks.len() {
-                    return V::err(sol_error("#VALUE!", "XLOOKUP's return array must match the lookup array's length"));
+                    return V::err(sol_error(ErrorCode::Value, "XLOOKUP's return array must match the lookup array's length"));
                 }
                 let if_not_found = arg(a, 3).clone();
                 Box::new(move |l: &V| match xmatch_index(l, &ks, mm, sm_last) {
                     Err(e) => e,
                     Ok(Some(i)) if i < vs.len() => vs[i].clone(),
                     Ok(_) if !matches!(if_not_found, V::Undef) => if_not_found.clone(),
-                    Ok(_) => V::err(sol_error("#N/A", "No match found in the lookup list")),
+                    Ok(_) => V::err(sol_error(ErrorCode::NotAvailable, "No match found in the lookup list")),
                 })
             } else {
                 Box::new(move |l: &V| match xmatch_index(l, &ks, mm, sm_last) {
                     Err(e) => e,
                     Ok(Some(i)) => V::Num(i as f64 + 1.0),
-                    Ok(None) => V::err(sol_error("#N/A", "No match found")),
+                    Ok(None) => V::err(sol_error(ErrorCode::NotAvailable, "No match found")),
                 })
             };
             // `spillLookup`: a list of lookups answers one each; a table only as one row or column.
             match arg(a, 0) {
                 l @ V::List(items) if matches!(items.first(), Some(V::List(_))) => match as_one_dim(l) {
                     Some(cells) => V::List(Rc::new(cells.iter().map(&pick).collect())),
-                    None => V::err(sol_error("#SHAPE!", format!("{name}'s lookup value is one value or a list, not a 2-D grid"))),
+                    None => V::err(sol_error(ErrorCode::Shape, format!("{name}'s lookup value is one value or a list, not a 2-D grid"))),
                 },
                 V::List(items) => V::List(Rc::new(items.iter().map(&pick).collect())),
                 l => pick(l),
@@ -3515,7 +3515,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Num(u64),
                 Str(&'a str),
                 Bool(bool),
-                Fx(&'static str),
+                Fx(FxError),
                 Other(usize),
             }
             let mut seen: crate::fxhash::FxHashSet<Key> = Default::default();
@@ -3526,7 +3526,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     V::Num(x) => Key::Num((x + 0.0).to_bits()),
                     V::Str(s) => Key::Str(s),
                     V::Bool(b) => Key::Bool(*b),
-                    V::Fx(code) => Key::Fx(code),
+                    V::Fx(code) => Key::Fx(*code),
                     _ => Key::Other(i),
                 });
             }
@@ -3555,7 +3555,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             use crate::excel_criteria::{parse_date, DateReading};
             let raw = to_str(arg(a, 0));
             let t = js_trim(&raw);
-            let bad = |what: &str| V::err(sol_error("#VALUE!", format!("Cannot parse \"{t}\" as a {what}")));
+            let bad = |what: &str| V::err(sol_error(ErrorCode::Value, format!("Cannot parse \"{t}\" as a {what}")));
             if arm == F::DATEVALUE {
                 return match parse_date(t) {
                     DateReading::Serial(d) if !d.is_nan() => V::Num(d.floor()),
@@ -3603,7 +3603,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             } else {
                 match crate::jsnum::to_fixed(x, dd) {
                     Some(t) => t,
-                    None => return throw(sol_error("#VALUE!", "toFixed() digits argument must be between 0 and 100")),
+                    None => return throw(sol_error(ErrorCode::Value, "toFixed() digits argument must be between 0 and 100")),
                 }
             };
             V::str(&if no_commas { text.replace(',', "") } else { group_thousands(&text) })
@@ -3617,7 +3617,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     V::List(items) => Ok(Ax::Many(items.clone())),
                     other => {
                         let n = to_num(other);
-                        if n.is_nan() { Err(V::err(sol_error("#VALUE!", "INDEX position must be a number"))) } else { Ok(Ax::Num(n)) }
+                        if n.is_nan() { Err(V::err(sol_error(ErrorCode::Value, "INDEX position must be a number"))) } else { Ok(Ax::Num(n)) }
                     }
                 }
             };
@@ -3629,7 +3629,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::CONTAINS => {
             if let V::List(items) = arg(a, 0) {
                 if items.iter().any(|v| matches!(v, V::List(_))) {
-                    return V::err(sol_error("#SHAPE!", "CONTAINS takes a list"));
+                    return V::err(sol_error(ErrorCode::Shape, "CONTAINS takes a list"));
                 }
             }
             let k = arg(a, 1);
@@ -3639,7 +3639,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::FV => fx_fv(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
         F::PV => {
             let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)), parse_number(or_zero(arg(a, 3))), parse_number(or_zero(arg(a, 4)))];
-            let Some([rate, per, pmt, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+            let Some([rate, per, pmt, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
             V::Num(if rate == 0.0 {
                 -pmt * per - fv
             } else {
@@ -3649,7 +3649,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::NPER => {
             let opt = |v: &V| if matches!(v, V::Undef) { V::Num(0.0) } else { v.clone() };
             let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)), parse_number(&opt(arg(a, 3))), parse_number(&opt(arg(a, 4)))];
-            let Some([rate, pmt, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+            let Some([rate, pmt, pv, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
             V::Num(if rate == 0.0 {
                 -(pv + fv) / pmt
             } else {
@@ -3661,7 +3661,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::IPMT => fx_ipmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)),
         F::PPMT => {
             let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 2)), parse_number(arg(a, 3)), parse_number(or_zero(arg(a, 4))), parse_number(or_zero(arg(a, 5)))];
-            let Some([rate, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
+            let Some([rate, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx(FxError::Value) };
             let (rate, nper, pv, fv, ty) = (V::Num(rate), V::Num(nper), V::Num(pv), V::Num(fv), V::Num(ty));
             V::Num(js_arith(&fx_pmt(&rate, &nper, &pv, &fv, &ty)) - js_arith(&fx_ipmt(&rate, arg(a, 1), &nper, &pv, &fv, &ty)))
         }
@@ -3726,7 +3726,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err("STANDARDIZE");
             }
             if sd <= 0.0 {
-                return V::err(sol_error("#DOMAIN!", "STANDARDIZE needs a positive standard deviation"));
+                return V::err(sol_error(ErrorCode::Domain, "STANDARDIZE needs a positive standard deviation"));
             }
             V::Num((x - m) / sd)
         }
@@ -3736,14 +3736,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err("FISHER");
             }
             if x <= -1.0 || x >= 1.0 {
-                return V::err(sol_error("#DOMAIN!", "FISHER requires \u{2212}1 < x < 1"));
+                return V::err(sol_error(ErrorCode::Domain, "FISHER requires \u{2212}1 < x < 1"));
             }
             V::Num(crate::fdlibm::atanh(x))
         }
         F::SLN => {
             let l = to_num(arg(a, 2));
             if l == 0.0 {
-                return V::err(sol_error("#DIV/0!", "Life is 0"));
+                return V::err(sol_error(ErrorCode::DivZero, "Life is 0"));
             }
             let r = (to_num(arg(a, 0)) - to_num(arg(a, 1))) / l;
             if r.is_finite() { V::Num(r) } else { V::Null }
@@ -3788,7 +3788,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 crate::jsnum::js_lower(crate::jsnum::js_trim(&js_string_of(side))).replacen("both", "center", 1)
             };
             if !matches!(side.as_str(), "left" | "right" | "center") {
-                return V::err(sol_error("#DOMAIN!", "PADTEXT side must be left, right or center"));
+                return V::err(sol_error(ErrorCode::Domain, "PADTEXT side must be left, right or center"));
             }
             let fill = if matches!(arg(a, 3), V::Null | V::Undef) { " ".to_string() } else { to_str(arg(a, 3)) };
             pad_text(&to_str(t), to_num(arg(a, 1)), &side, &fill)
@@ -3810,10 +3810,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if !matches!(start, V::Null | V::Undef) {
                 let s = to_num(start).trunc();
                 if s < 1.0 {
-                    return V::err(sol_error("#VALUE!", "SEARCH starts at 1 or later"));
+                    return V::err(sol_error(ErrorCode::Value, "SEARCH starts at 1 or later"));
                 }
                 if s > utf16(&to_str(arg(a, 1))).len() as f64 + 1.0 {
-                    return V::err(sol_error("#VALUE!", "SEARCH starts past the end of the text"));
+                    return V::err(sol_error(ErrorCode::Value, "SEARCH starts past the end of the text"));
                 }
             }
             let s = if matches!(start, V::Null | V::Undef) { 1.0 } else { to_num(start).trunc() };
@@ -3826,7 +3826,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             match crate::excel_criteria::wild_search(&f, &w[s as usize - 1..]) {
                 Some(at) => V::Num(at as f64 + s),
-                None => V::err(sol_error("#VALUE!", "Find text not found within the text")),
+                None => V::err(sol_error(ErrorCode::Value, "Find text not found within the text")),
             }
         }
         F::PROPER => proper_case(&to_str(arg(a, 0))),
@@ -3834,12 +3834,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let c = to_num(arg(a, 0)).trunc();
             match (1.0..=1_114_111.0).contains(&c).then(|| char::from_u32(c as u32)).flatten() {
                 Some(ch) => V::str(&ch.to_string()),
-                None => V::err(sol_error("#VALUE!", "A character code is a code point from 1 to 1114111")),
+                None => V::err(sol_error(ErrorCode::Value, "A character code is a code point from 1 to 1114111")),
             }
         }
         F::CODE | F::UNICODE => match to_str(arg(a, 0)).chars().next() {
             Some(c) => V::Num(f64::from(c as u32)),
-            None => V::err(sol_error("#VALUE!", "Empty text has no character code")),
+            None => V::err(sol_error(ErrorCode::Value, "Empty text has no character code")),
         },
         F::VALUE => {
             let x = arg(a, 0);
@@ -3860,14 +3860,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if !matches!(start, V::Null | V::Undef) {
                 let s = to_num(start).trunc();
                 if s < 1.0 {
-                    return V::err(sol_error("#VALUE!", "FIND starts at 1 or later"));
+                    return V::err(sol_error(ErrorCode::Value, "FIND starts at 1 or later"));
                 }
                 if s > utf16(&to_str(arg(a, 1))).len() as f64 + 1.0 {
-                    return V::err(sol_error("#VALUE!", "FIND starts past the end of the text"));
+                    return V::err(sol_error(ErrorCode::Value, "FIND starts past the end of the text"));
                 }
             }
             if a.len() < 2 {
-                return V::Fx("#N/A");
+                return V::Fx(FxError::NotAvailable);
             }
             let (find, within) = (utf16(&to_str(&a[0])), utf16(&to_str(&a[1])));
             let from = match start {
@@ -3879,7 +3879,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 .find(|&i| i + find.len() <= within.len() && within[i..i + find.len()] == find[..]);
             match hit {
                 Some(i) if from <= within.len() => V::Num(i as f64 + 1.0),
-                _ => V::Fx("#VALUE!"),
+                _ => V::Fx(FxError::Value),
             }
         }
         F::XOR => {
@@ -3896,7 +3896,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                     *r += 1.0;
                 }
             }
-            result.map_or(V::Fx("#VALUE!"), |r| V::Bool((r.abs().floor() as i64) & 1 == 1))
+            result.map_or(V::Fx(FxError::Value), |r| V::Bool((r.abs().floor() as i64) & 1 == 1))
         }
         F::COUNT => V::Num(a.iter().filter(|v| matches!(v, V::Num(_))).count() as f64),
         F::COUNTA | F::COUNTBLANK => {
@@ -3911,7 +3911,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::N => match arg(a, 0) {
             V::Num(n) => V::Num(*n),
             V::Bool(b) => V::Num(f64::from(u8::from(*b))),
-            v @ V::Fx(code) if matches!(*code, "#VALUE!" | "#REF!" | "#DIV/0!" | "#NUM!" | "#NAME?" | "#NULL!" | "#N/A") => v.clone(),
+            v @ V::Fx(code) if matches!(*code, FxError::Value | FxError::Ref | FxError::DivZero | FxError::Num | FxError::Name | FxError::Null | FxError::NotAvailable) => v.clone(),
             _ => V::Num(0.0),
         },
         F::T => match arg(a, 0) {
@@ -3929,7 +3929,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             let n = a.len() - 1;
             if idx < 1.0 || idx > n as f64 {
-                return V::err(sol_error("#VALUE!", format!("CHOOSE index {} is outside the range 1–{n}", number_to_string(idx))));
+                return V::err(sol_error(ErrorCode::Value, format!("CHOOSE index {} is outside the range 1–{n}", number_to_string(idx))));
             }
             match &a[idx as usize] {
                 V::Undef => V::Null,
@@ -3984,7 +3984,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::ROW => match ROW_NUMBER.with(|r| r.get()) {
             Some(n) => V::Num(n),
-            None => V::err(sol_error("#NAME?", "ROW() is this row's number, so it only works inside a computed column")),
+            None => V::err(sol_error(ErrorCode::Name, "ROW() is this row's number, so it only works inside a computed column")),
         },
         F::TODAY | F::NOW => match clock() {
             Some(c) => V::Num(if arm == F::TODAY { c.now.floor() } else { c.now }),
@@ -3999,7 +3999,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let key = |v: &V| crate::convert_units::convert_unit_key(&to_str(v));
             match key(arg(a, 1)).zip(key(arg(a, 2))).and_then(|(f, t)| crate::convert_units::convert_value(n, f, t)) {
                 Some(r) => V::Num(r),
-                None => V::err(sol_error("#N/A", "CONVERT: unknown or incompatible units")),
+                None => V::err(sol_error(ErrorCode::NotAvailable, "CONVERT: unknown or incompatible units")),
             }
         }
         F::SPEARMAN => spearman(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
@@ -4011,7 +4011,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             // A scalar's length is `undefined`, so the fit finds no spread.
             match js_indexed(arg(a, 2)).zip(js_indexed(arg(a, 1))).and_then(|(xs, ys)| js_linear_fit(&xs, &ys)) {
                 Some((slope, intercept)) => V::Num(intercept + slope * n),
-                None => V::err(sol_error("#DIV/0!", "Known Xs have zero variance")),
+                None => V::err(sol_error(ErrorCode::DivZero, "Known Xs have zero variance")),
             }
         }
         F::F_TEST => {
@@ -4021,7 +4021,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return V::Null;
             }
             let unspread = if sa.is_none() { "a" } else { "b" };
-            let (Some(sa), Some(sb)) = (sa, sb) else { return throw(sol_error("#VALUE!", format!("{unspread} is not iterable"))) };
+            let (Some(sa), Some(sb)) = (sa, sb) else { return throw(sol_error(ErrorCode::Value, format!("{unspread} is not iterable"))) };
             let (v1, v2) = (js_sample_var(&sa), js_sample_var(&sb));
             if !(v1 > 0.0) || !(v2 > 0.0) {
                 return V::Null;
@@ -4049,10 +4049,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             } else if ty == 3.0 {
                 TTestKind::UnequalVar
             } else {
-                return V::err(sol_error("#DOMAIN!", "T.TEST: type must be 1 (paired), 2 (equal variance) or 3 (Welch)"));
+                return V::err(sol_error(ErrorCode::Domain, "T.TEST: type must be 1 (paired), 2 (equal variance) or 3 (Welch)"));
             };
             if tails != 1.0 && tails != 2.0 {
-                return V::err(sol_error("#DOMAIN!", "T.TEST: tails must be 1 or 2"));
+                return V::err(sol_error(ErrorCode::Domain, "T.TEST: tails must be 1 or 2"));
             }
             let (Ok(xa), Ok(xb)) = (lists(0), lists(1)) else { return bail() };
             match t_test_p(kind, &xa, &xb) {
@@ -4077,7 +4077,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             x => {
                 let n = to_f64_js(x);
                 if n <= 0.0 {
-                    V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"))
+                    V::err(sol_error(ErrorCode::Domain, "Input is outside this function's domain"))
                 } else {
                     V::Num(crate::fdlibm::log2(n))
                 }
@@ -4113,7 +4113,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             match crate::hash_ops::hash_text(&to_str(arg(a, 0)), &alg) {
                 Some(h) => V::str(&h),
                 None => V::err(sol_error(
-                    "#DOMAIN!",
+                    ErrorCode::Domain,
                     format!("HASH algorithm must be one of {}", crate::hash_ops::HASH_ALGORITHMS.join(", ")),
                 )),
             }
@@ -4138,7 +4138,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::SPELLNUMBER => match crate::text_ops::spell_number(to_f64_js(arg(a, 0))) {
             Ok(words) => V::str(&words),
-            Err(msg) => V::err(sol_error("#DOMAIN!", msg)),
+            Err(msg) => V::err(sol_error(ErrorCode::Domain, msg)),
         },
         F::VALUETOTEXT => V::str(&to_str(arg(a, 0))),
         F::TEMPLATE => template(a),
@@ -4147,12 +4147,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let given = |v: &V| !matches!(v, V::Null | V::Undef);
             let (col, row) = (arg(a, 1), arg(a, 2));
             if !given(col) && !given(row) {
-                return V::err(sol_error("#SYNTAX!", "TEXTSPLIT needs a column delimiter, a row delimiter, or both"));
+                return V::err(sol_error(ErrorCode::Syntax, "TEXTSPLIT needs a column delimiter, a row delimiter, or both"));
             }
             let mode = arg(a, 4);
             let caseless = given(mode) && to_num(mode) == 1.0;
             let pad = match arg(a, 5) {
-                V::Undef => V::err(sol_error("#N/A", "TEXTSPLIT: this row has fewer parts than the longest")),
+                V::Undef => V::err(sol_error(ErrorCode::NotAvailable, "TEXTSPLIT: this row has fewer parts than the longest")),
                 v => v.clone(),
             };
             let col = given(col).then(|| to_str(col));
@@ -4165,7 +4165,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             let w = to_num(arg(a, 1));
             if w < 1.0 {
-                return V::err(sol_error("#DOMAIN!", "Width must be at least 1"));
+                return V::err(sol_error(ErrorCode::Domain, "Width must be at least 1"));
             }
             V::List(Rc::new(wrap_text(&to_str(arg(a, 0)), w).iter().map(|l| V::str(l)).collect()))
         }
@@ -4176,7 +4176,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
 const MAX_OUTCOMES: f64 = 1e6;
 
 fn exact_test_too_large() -> V {
-    V::err(sol_error("#DOMAIN!", "An exact test sums at most 1,000,000 outcomes"))
+    V::err(sol_error(ErrorCode::Domain, "An exact test sums at most 1,000,000 outcomes"))
 }
 
 /// `combinatoric` (mathUtils.ts): counts truncate, products run from the small end and stop once infinite, and
@@ -4187,11 +4187,11 @@ fn combinatoric(op: &str, args: &[f64]) -> V {
         return V::Num(1.0);
     }
     if ns.iter().any(|&n| n.is_nan() || n < 0.0 || n == f64::INFINITY) {
-        return V::err(sol_error("#DOMAIN!", "Counts must be finite and 0 or more"));
+        return V::err(sol_error(ErrorCode::Domain, "Counts must be finite and 0 or more"));
     }
     let n = ns.first().copied().unwrap_or(f64::NAN);
     let k = ns.get(1).copied().unwrap_or(f64::NAN);
-    let chosen = || V::err(sol_error("#DOMAIN!", "Can't choose more items than there are"));
+    let chosen = || V::err(sol_error(ErrorCode::Domain, "Can't choose more items than there are"));
     V::Num(match op {
         "FACT" => product(2.0, n, 1.0),
         "FACTDOUBLE" => product(if n % 2.0 == 0.0 { 2.0 } else { 1.0 }, n, 2.0),
@@ -4258,10 +4258,10 @@ fn binom_dist_range(trials: f64, p: f64, s: f64, s2: Option<f64>) -> V {
     let (n, lo, hi) = (trials.trunc(), s.trunc(), s2.unwrap_or(s).trunc());
     let ok = (0.0..f64::INFINITY).contains(&n) && (0.0..=1.0).contains(&p) && lo >= 0.0 && lo <= n && hi >= lo && hi <= n;
     if !ok {
-        return V::err(sol_error("#DOMAIN!", "BINOM.DIST.RANGE needs 0 \u{2264} s \u{2264} s2 \u{2264} trials and a probability from 0 to 1"));
+        return V::err(sol_error(ErrorCode::Domain, "BINOM.DIST.RANGE needs 0 \u{2264} s \u{2264} s2 \u{2264} trials and a probability from 0 to 1"));
     }
     if hi - lo + 1.0 > MAX_OUTCOMES {
-        return V::err(sol_error("#DOMAIN!", "BINOM.DIST.RANGE sums at most 1,000,000 outcomes"));
+        return V::err(sol_error(ErrorCode::Domain, "BINOM.DIST.RANGE sums at most 1,000,000 outcomes"));
     }
     if p == 0.0 || p == 1.0 {
         let hit = if p == 0.0 { lo == 0.0 } else { hi == n };
@@ -4514,7 +4514,7 @@ fn fx_edate(start: &V, months: &V) -> V {
         FxDate::Err(e) => return V::Fx(e),
     };
     if to_f64_js(months).is_nan() {
-        return V::Fx("#VALUE!");
+        return V::Fx(FxError::Value);
     }
     let mut stored = zone::get_date(date);
     date = zone::set_date(date, 1.0);
@@ -4554,7 +4554,7 @@ fn case_flag(f: &str, cs: &V) -> Result<bool, V> {
     } else if v == 1.0 {
         Ok(true)
     } else {
-        Err(V::err(sol_error("#VALUE!", format!("{f}: case_sensitivity must be 0 or 1"))))
+        Err(V::err(sol_error(ErrorCode::Value, format!("{f}: case_sensitivity must be 0 or 1"))))
     }
 }
 
@@ -4585,13 +4585,13 @@ fn regex_call(name: &str, a: &[V]) -> V {
     if name == "REGEXREPLACE" {
         match regex_occurrence(arg(a, 3)) {
             Some(n) => occurrence = n,
-            None => return V::err(sol_error("#VALUE!", "REGEXREPLACE: occurrence must be a number")),
+            None => return V::err(sol_error(ErrorCode::Value, "REGEXREPLACE: occurrence must be a number")),
         }
     }
     if name == "REGEXEXTRACT" {
         mode = if matches!(arg(a, 2), V::Null | V::Undef) { 0.0 } else { to_f64_js(arg(a, 2)) };
         if mode != 0.0 && mode != 1.0 && mode != 2.0 {
-            return V::err(sol_error("#VALUE!", "REGEXEXTRACT: return_mode must be 0, 1 or 2"));
+            return V::err(sol_error(ErrorCode::Value, "REGEXEXTRACT: return_mode must be 0, 1 or 2"));
         }
     }
     let (text, pattern) = (to_str(arg(a, 0)), to_str(arg(a, 1)));
@@ -4626,7 +4626,7 @@ fn regex_call(name: &str, a: &[V]) -> V {
 fn template_format(v: &V, spec: Option<&str>) -> String {
     match v {
         V::Null | V::Undef => String::new(),
-        V::Err(e) => e.code.clone(),
+        V::Err(e) => e.code.to_string(),
         V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
         V::Num(n) => js_string_of(&excel_text(&V::Num(*n), &V::str(spec.unwrap_or("@")))),
         V::List(items) => items.iter().map(|x| template_format(x, spec)).collect::<Vec<_>>().join(", "),
@@ -4644,7 +4644,7 @@ fn template(a: &[V]) -> V {
     });
     if let Some(bad) = bad {
         return V::err(sol_error(
-            "#NAME?",
+            ErrorCode::Name,
             format!("TEMPLATE placeholders are positional here: {{0}}, {{1}}… (got {{{bad}}}); the Template node takes names"),
         ));
     }
@@ -4672,7 +4672,7 @@ fn fx_round(number: &V, num_digits: &V) -> V {
     let (n, d) = match (parse_number(number), parse_number(num_digits)) {
         (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => return e,
         (V::Num(n), V::Num(d)) => (n, d),
-        _ => return V::Fx("#VALUE!"),
+        _ => return V::Fx(FxError::Value),
     };
     let sign = if n >= 0.0 { 1.0 } else { -1.0 };
     // `(x + "e" + e).split("e")`, its first two parts read back as one number.
@@ -4765,14 +4765,14 @@ fn dollar(value: &V, decimals: &V) -> V {
     let decimals = if matches!(decimals, V::Undef) { V::Num(2.0) } else { decimals.clone() };
     let number = match parse_number(&pre) {
         V::Num(x) if !x.is_nan() => x,
-        _ => return V::Fx("#VALUE!"),
+        _ => return V::Fx(FxError::Value),
     };
     let out = match fx_round(&V::Num(number), &decimals) {
         V::Num(x) => {
             let dn = to_f64_js(&decimals);
             let fd = if dn >= 0.0 { dn } else { 0.0 };
             if fd > 100.0 {
-                return throw(sol_error("#VALUE!", "minimumFractionDigits value is out of range."));
+                return throw(sol_error(ErrorCode::Value, "minimumFractionDigits value is out of range."));
             }
             let formatted = intl_usd(x, fd.floor() as usize);
             if x < 0.0 { format!("$({})", formatted.get(2..).unwrap_or("")) } else { formatted }
@@ -4809,7 +4809,7 @@ fn to_int32(x: f64) -> i32 {
 fn date_from_parts(raw_y: f64, raw_m: f64, raw_d: f64) -> V {
     let (year, month, day) = (raw_y.floor(), raw_m.floor(), raw_d.floor());
     if !(1.0..=9999.0).contains(&year) {
-        return V::err(sol_error("#DOMAIN!", "Year must be between 1 and 9999"));
+        return V::err(sol_error(ErrorCode::Domain, "Year must be between 1 and 9999"));
     }
     if month.abs() > 1e9 || day.abs() > 1e12 {
         return V::Num(f64::NAN);
@@ -4888,16 +4888,23 @@ fn iso_week(ms: f64) -> f64 {
     week
 }
 
-fn error_type_num(code: &str) -> Option<f64> {
-    Some(match code {
-        "#DIV/0!" => 2.0,
-        "#VALUE!" => 3.0,
-        "#REF!" => 4.0,
-        "#NAME?" => 5.0,
-        "#N/A" => 7.0,
-        "#DOMAIN!" | "#OVERFLOW!" | "#CONV!" | "#NUM!" => 6.0,
-        _ => return None,
-    })
+fn error_type_num(code: ErrorCode) -> f64 {
+    match code {
+        ErrorCode::DivZero => 2.0,
+        ErrorCode::Ref => 4.0,
+        ErrorCode::Name => 5.0,
+        ErrorCode::NotAvailable => 7.0,
+        ErrorCode::Domain | ErrorCode::Overflow | ErrorCode::Conv => 6.0,
+        ErrorCode::Value
+        | ErrorCode::Syntax
+        | ErrorCode::Type
+        | ErrorCode::Shape
+        | ErrorCode::Unit
+        | ErrorCode::Circ
+        | ErrorCode::Solve
+        | ErrorCode::Ambiguous
+        | ErrorCode::Error => 3.0,
+    }
 }
 
 /// `applyErrorHandler` (excelFormula.ts) over scalars.
@@ -4906,7 +4913,7 @@ pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
     let as_sol = |v: &V| -> Option<SolError> {
         match v {
             V::Err(e) => Some(e.as_ref().clone()),
-            V::Fx(code) => Some(fx_error_to_sol(code)),
+            V::Fx(code) => Some(fx_error_to_sol(*code)),
             _ => None,
         }
     };
@@ -4914,8 +4921,8 @@ pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
         match as_sol(v) {
             None => false,
             Some(e) => match name {
-                "IFNA" | "ISNA" => e.code == "#N/A",
-                "ISERR" => e.code != "#N/A",
+                "IFNA" | "ISNA" => e.code == ErrorCode::NotAvailable,
+                "ISERR" => e.code != ErrorCode::NotAvailable,
                 _ => true,
             },
         }
@@ -4937,8 +4944,8 @@ pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
             crate::eval::map_cells(&[value.clone(), fallback], &mut |x| if caught(&x[0]) { x[1].clone() } else { x[0].clone() })
         }
         "ERROR.TYPE" => walk(value, &|v| match as_sol(v) {
-            Some(e) => V::Num(error_type_num(&e.code).unwrap_or(3.0)),
-            None => V::err(sol_error("#N/A", "ERROR.TYPE: the value is not an error")),
+            Some(e) => V::Num(error_type_num(e.code)),
+            None => V::err(sol_error(ErrorCode::NotAvailable, "ERROR.TYPE: the value is not an error")),
         }),
         _ => walk(value, &|v| V::Bool(caught(v))),
     }
@@ -4973,7 +4980,7 @@ fn fin(r: crate::finance_ops::Fin) -> V {
         Fin::Num(n) => V::Num(n),
         Fin::Err(e) => V::err(e),
         Fin::Null => V::Null,
-        Fin::Throw(m) => throw(sol_error("#VALUE!", m)),
+        Fin::Throw(m) => throw(sol_error(ErrorCode::Value, m)),
     }
 }
 
@@ -5069,7 +5076,7 @@ fn finance_function(name: &str, a: &[V]) -> V {
             match f::solve_discount_rate(&nums, &exps) {
                 Some(r) => V::Num(r),
                 None => V::err(sol_error(
-                    "#CONV!",
+                    ErrorCode::Conv,
                     "IRR couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.",
                 )),
             }
@@ -5158,7 +5165,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             // `parseNumberArray(flatten(arguments))`, which reads from the end.
             let args = flat_all(a);
             if args.is_empty() {
-                return V::Fx("#VALUE!");
+                return V::Fx(FxError::Value);
             }
             let mut nums = vec![0.0; args.len()];
             for i in (0..args.len()).rev() {
@@ -5176,13 +5183,13 @@ fn fx_finance(name: &str, a: &[V]) -> V {
         }
         "RATE" => {
             let vals = [p(0), p(1), p(2), undef_or(3, 0.0), undef_or(4, 0.0), undef_or(5, 0.1)];
-            let Some([nper, pmt, pv, fv, ty, guess]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let Some([nper, pmt, pv, fv, ty, guess]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             let eps_max = 1e-10;
             let mut rate = guess;
             let ty = if ty != 0.0 { 1.0 } else { 0.0 };
             for _ in 0..100 {
                 if rate <= -1.0 {
-                    return V::Fx("#NUM!");
+                    return V::Fx(FxError::Num);
                 }
                 let y = if rate.abs() < eps_max {
                     pv * (1.0 + nper * rate) + pmt * (1.0 + rate * ty) * nper + fv
@@ -5206,12 +5213,12 @@ fn fx_finance(name: &str, a: &[V]) -> V {
         }
         "DB" => {
             let vals = [p(0), p(1), p(2), p(3), undef_or(4, 12.0)];
-            let Some([cost, salvage, life, period, month]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let Some([cost, salvage, life, period, month]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 {
-                return V::Fx("#NUM!");
+                return V::Fx(FxError::Num);
             }
             if !(1.0..=12.0).contains(&month) || month.fract() != 0.0 || period > life {
-                return V::Fx("#NUM!");
+                return V::Fx(FxError::Num);
             }
             if salvage >= cost {
                 return V::Num(0.0);
@@ -5242,9 +5249,9 @@ fn fx_finance(name: &str, a: &[V]) -> V {
         }
         "DDB" => {
             let vals = [p(0), p(1), p(2), p(3), undef_or(4, 2.0)];
-            let Some([cost, salvage, life, period, factor]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let Some([cost, salvage, life, period, factor]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             if cost < 0.0 || salvage < 0.0 || life < 0.0 || period < 0.0 || factor <= 0.0 || period > life {
-                return V::Fx("#NUM!");
+                return V::Fx(FxError::Num);
             }
             if salvage >= cost {
                 return V::Num(0.0);
@@ -5263,18 +5270,18 @@ fn fx_finance(name: &str, a: &[V]) -> V {
         }
         "SYD" => {
             let vals = [p(0), p(1), p(2), p(3)];
-            let Some([cost, salvage, life, per]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let Some([cost, salvage, life, per]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             if life == 0.0 || per < 1.0 || per > life {
-                return V::Fx("#NUM!");
+                return V::Fx(FxError::Num);
             }
             let per = parse_int_of(per);
             V::Num(((cost - salvage) * (life - per + 1.0) * 2.0) / (life * (life + 1.0)))
         }
         "EFFECT" | "NOMINAL" => {
             let vals = [p(0), p(1)];
-            let Some([rate, npery]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let Some([rate, npery]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             if rate <= 0.0 || npery < 1.0 {
-                return V::Fx("#NUM!");
+                return V::Fx(FxError::Num);
             }
             let npery = parse_int_of(npery);
             V::Num(if name == "EFFECT" {
@@ -5285,28 +5292,28 @@ fn fx_finance(name: &str, a: &[V]) -> V {
         }
         "PDURATION" => {
             let vals = [p(0), p(1), p(2)];
-            let Some([rate, pv, fv]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let Some([rate, pv, fv]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             if rate <= 0.0 {
-                return V::Fx("#NUM!");
+                return V::Fx(FxError::Num);
             }
             V::Num((log(fv) - log(pv)) / log(1.0 + rate))
         }
         "RRI" => {
             let vals = [p(0), p(1), p(2)];
-            let Some([nper, pv, fv]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let Some([nper, pv, fv]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             if nper == 0.0 || pv == 0.0 {
-                return V::Fx("#NUM!");
+                return V::Fx(FxError::Num);
             }
             V::Num(js_pow(fv / pv, 1.0 / nper) - 1.0)
         }
         "DOLLARDE" | "DOLLARFR" => {
             let vals = [p(0), p(1)];
-            let Some([dollar, fraction]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let Some([dollar, fraction]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             if fraction < 0.0 {
-                return V::Fx("#NUM!");
+                return V::Fx(FxError::Num);
             }
             if (0.0..1.0).contains(&fraction) {
-                return V::Fx("#DIV/0!");
+                return V::Fx(FxError::DivZero);
             }
             let fraction = parse_int_of(fraction);
             let mut result = parse_int_of(dollar);
@@ -5321,7 +5328,7 @@ fn fx_finance(name: &str, a: &[V]) -> V {
         }
         "ISPMT" => {
             let vals = [p(0), p(1), p(2), p(3)];
-            let Some([rate, per, nper, pv]) = all_nums(&vals) else { return V::Fx("#VALUE!") };
+            let Some([rate, per, nper, pv]) = all_nums(&vals) else { return V::Fx(FxError::Value) };
             V::Num(pv * rate * (per / nper - 1.0))
         }
         _ => V::Undef,

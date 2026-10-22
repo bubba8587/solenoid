@@ -4,7 +4,7 @@
 //! the outputs, or the error the body threw, beside the fields the body sets on the card for its component.
 //! `tree/specs/computation/node-bodies.md` is the mechanism; `fixtures/core/nodes/` the answers each body is held to.
 
-use crate::error_value::sol_error;
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::V;
 use serde_json::{Map, Value as Json};
 use std::rc::Rc;
@@ -58,7 +58,7 @@ pub fn list(items: Vec<V>) -> V {
     V::List(Rc::new(items))
 }
 
-pub fn err(code: &str, message: impl Into<String>) -> V {
+pub fn err(code: ErrorCode, message: impl Into<String>) -> V {
     V::err(sol_error(code, message))
 }
 

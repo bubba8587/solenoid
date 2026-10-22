@@ -2,6 +2,7 @@
 //! depreciation, cash flows, securities, coupons, bonds, payments and returns. A card reads its money as its formula
 //! does, and a money answer carries that currency.
 
+use crate::error_value::ErrorCode;
 use super::kit::{core_call, guard_finite};
 use super::stats::{finite_num, first, js_num, nullish, or, read_role, Role};
 use super::{err, list, Answer, Call};
@@ -67,7 +68,7 @@ fn fin(r: Fin) -> V {
         Fin::Num(n) => V::Num(n),
         Fin::Err(e) => V::err(e),
         Fin::Null => V::Null,
-        Fin::Throw(m) => err("#VALUE!", m),
+        Fin::Throw(m) => err(ErrorCode::Value, m),
     }
 }
 

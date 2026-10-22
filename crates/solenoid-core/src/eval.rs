@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::frame::FrameColumn;
 
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_formula::{apply_op, call_caught, constant_value, guard, lowered, Refusal, Role};
 use crate::excel_functions::{fx_error_to_sol, is_ported, V};
 use crate::fxhash::FxHashMap;
@@ -215,7 +215,7 @@ fn row_len(r: &V) -> Option<usize> {
 /// `mapCells`: the function over each cell of its arguments, by the broadcast-rules table.
 pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
     if argv.iter().any(too_deep) {
-        return V::err(sol_error("#SHAPE!", "A value nested deeper than a 2-D matrix isn't a thing formulas compute on"));
+        return V::err(sol_error(ErrorCode::Shape, "A value nested deeper than a 2-D matrix isn't a thing formulas compute on"));
     }
     let args: Vec<V> = argv.iter().map(collapse_singleton_rank).collect();
     let rank = args.iter().map(rank_of).max().unwrap_or(0);
@@ -332,8 +332,8 @@ fn apply_cx_op(op: BinOp, a: &V, b: &V) -> V {
             let eq = matches!((a, b), (V::Cx(ar, ai), V::Cx(br, bi)) if ar == br && ai == bi);
             V::Bool(if op == BinOp::Eq { eq } else { !eq })
         }
-        BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => V::err(sol_error("#TYPE!", "Complex numbers have no order. Compare their IMABS values instead")),
-        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow => V::err(sol_error("#TYPE!", "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV")),
+        BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => V::err(sol_error(ErrorCode::Type, "Complex numbers have no order. Compare their IMABS values instead")),
+        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV")),
     }
 }
 
@@ -352,7 +352,7 @@ fn op2(op: BinOp, a: &V, b: &V) -> V {
         return apply_cx_op(op, a, b);
     }
     if matches!(a, V::Lambda(_)) || matches!(b, V::Lambda(_)) {
-        return V::err(sol_error("#TYPE!", "A LAMBDA isn't a value. Call it with (…) or pass it to MAP, REDUCE and the other helpers"));
+        return V::err(sol_error(ErrorCode::Type, "A LAMBDA isn't a value. Call it with (…) or pass it to MAP, REDUCE and the other helpers"));
     }
     apply_op(op, a, b)
 }
@@ -399,7 +399,7 @@ impl<'a> RowCtx<'a> {
     }
 
     fn reserved_err(key: &str) -> V {
-        V::err(sol_error("#REF!", format!("\"{key}\" is a reserved input name. Rename the variable or the column")))
+        V::err(sol_error(ErrorCode::Ref, format!("\"{key}\" is a reserved input name. Rename the variable or the column")))
     }
 
     /// `wholeOf`: a column as a one-column table, built once.
@@ -426,10 +426,10 @@ impl<'a> RowCtx<'a> {
         if fresh {
             let n = self.rows;
             let err = if items.iter().any(is_arr) {
-                Some(V::err(sol_error("#SHAPE!", format!("@{key} reads one value per row, and a matrix has no single this-row value"))))
+                Some(V::err(sol_error(ErrorCode::Shape, format!("@{key} reads one value per row, and a matrix has no single this-row value"))))
             } else if items.len() != n {
                 let l = items.len();
-                Some(V::err(sol_error("#SHAPE!", format!("@{key}: {l} value{} for {n} row{}", if l == 1 { "" } else { "s" }, if n == 1 { "" } else { "s" }))))
+                Some(V::err(sol_error(ErrorCode::Shape, format!("@{key}: {l} value{} for {n} row{}", if l == 1 { "" } else { "s" }, if n == 1 { "" } else { "s" }))))
             } else {
                 None
             };
@@ -550,7 +550,7 @@ impl Eval<'_> {
     /// `compileEvaluator`'s answer: a LAMBDA left uncalled is an error, a Formula.js error reads as Solenoid's.
     pub fn run(&self, ast: &Ast, env: &Rc<Env>) -> V {
         match self.eval(ast, env) {
-            V::Lambda(_) => V::err(sol_error("#VALUE!", "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
+            V::Lambda(_) => V::err(sol_error(ErrorCode::Value, "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
             V::Fx(code) => V::err(fx_error_to_sol(code)),
             other => other,
         }
@@ -575,7 +575,7 @@ impl Eval<'_> {
             Ast::Bool(b) => V::Bool(*b),
             Ast::Blank => V::Null,
             Ast::AtCol(name) => match self.row {
-                None => V::err(sol_error("#REF!", "@ reads the current row, so it only works inside a computed column")),
+                None => V::err(sol_error(ErrorCode::Ref, "@ reads the current row, so it only works inside a computed column")),
                 Some(row) => match row.column(name) {
                     Some(c) => match c.cell_at(row.cursor.get()) {
                         crate::frame::FrameCell::Null => V::Null,
@@ -588,7 +588,7 @@ impl Eval<'_> {
                 },
             },
             Ast::WholeCol(name) => match self.row {
-                None => V::err(sol_error("#REF!", "[column] reads a whole table column, so it only works inside a computed column")),
+                None => V::err(sol_error(ErrorCode::Ref, "[column] reads a whole table column, so it only works inside a computed column")),
                 Some(row) => row.whole(name),
             },
             Ast::Name(name) => constant_value(name).map_or_else(|| env.get(name).cloned().unwrap_or(V::Undef), V::Num),
@@ -598,7 +598,7 @@ impl Eval<'_> {
                 let f = |x: &V| match x {
                     V::Err(_) => x.clone(),
                     V::Null => V::Null,
-                    V::Cx(..) => V::err(sol_error("#TYPE!", "Operators don't work on complex numbers. Use IMSUB(0, z) to negate")),
+                    V::Cx(..) => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMSUB(0, z) to negate")),
                     other => V::Num(if neg { -js_unary(other) } else { js_unary(other) }),
                 };
                 if is_arr(&a) {
@@ -614,7 +614,7 @@ impl Eval<'_> {
                 let f = |x: &V| match x {
                     V::Err(_) => x.clone(),
                     V::Null => V::Null,
-                    V::Cx(..) => V::err(sol_error("#TYPE!", "Operators don't work on complex numbers. Use IMDIV(z, COMPLEX(100, 0))")),
+                    V::Cx(..) => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMDIV(z, COMPLEX(100, 0))")),
                     other => V::Num(js_unary(other) / 100.0),
                 };
                 if is_arr(&a) {
@@ -638,7 +638,7 @@ impl Eval<'_> {
                     return f;
                 }
                 let V::Lambda(lam) = f else {
-                    return V::err(sol_error("#VALUE!", "Only a LAMBDA can be called like a function"));
+                    return V::err(sol_error(ErrorCode::Value, "Only a LAMBDA can be called like a function"));
                 };
                 let argv: Vec<V> = args.iter().map(|a| self.eta_or_eval(a, env)).collect();
                 if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
@@ -646,7 +646,7 @@ impl Eval<'_> {
                 }
                 let p = lam.params.len();
                 if p > 0 && argv.len() != p {
-                    return V::err(sol_error("#VALUE!", format!("This LAMBDA takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
+                    return V::err(sol_error(ErrorCode::Value, format!("This LAMBDA takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
                 }
                 self.call_lambda(&lam, &argv)
             }
@@ -694,7 +694,7 @@ impl Eval<'_> {
             }
             let p = bound.params.len();
             if p > 0 && argv.len() != p {
-                return V::err(sol_error("#VALUE!", format!("{raw} takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
+                return V::err(sol_error(ErrorCode::Value, format!("{raw} takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
             }
             return self.call_lambda(&bound, &argv);
         }
@@ -702,19 +702,19 @@ impl Eval<'_> {
         let name = &site.name;
         if name == "LAMBDA" {
             let Some((body, ps)) = args.split_last() else {
-                return V::err(sol_error("#VALUE!", "LAMBDA needs a body: LAMBDA(param…, body)"));
+                return V::err(sol_error(ErrorCode::Value, "LAMBDA needs a body: LAMBDA(param…, body)"));
             };
             let mut params: Vec<String> = Vec::with_capacity(ps.len());
             for a in ps {
                 let Ast::Name(p) = a else {
-                    return V::err(sol_error("#VALUE!", "LAMBDA parameters must be plain names"));
+                    return V::err(sol_error(ErrorCode::Value, "LAMBDA parameters must be plain names"));
                 };
                 if params.contains(p) {
-                    return V::err(sol_error("#NAME?", format!("LAMBDA parameter {p} appears twice")));
+                    return V::err(sol_error(ErrorCode::Name, format!("LAMBDA parameter {p} appears twice")));
                 }
                 // [[D77]] constantsAlwaysWin
                 if constant_value(p).is_some() {
-                    return V::err(sol_error("#NAME?", format!("{p} is a constant, so it can't name a LAMBDA parameter")));
+                    return V::err(sol_error(ErrorCode::Name, format!("{p} is a constant, so it can't name a LAMBDA parameter")));
                 }
                 params.push(p.clone());
             }
@@ -733,11 +733,11 @@ impl Eval<'_> {
             return if crate::external::HOSTED || is_external(name) {
                 self.call_external(name, &site, args, env)
             } else {
-                V::err(sol_error("#NAME?", format!("Unknown function {name}")))
+                V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}")))
             };
         };
         if let Some(r) = &t.refusal {
-            return V::err(sol_error(&r.code, r.message.as_str()));
+            return V::err(sol_error(r.code, r.message.as_str()));
         }
         let mut argv: Vec<V> = if t.fast.eta_host {
             args.iter().map(|a| self.eta_or_eval(a, env)).collect()
@@ -822,16 +822,16 @@ impl Eval<'_> {
         }
         if !t.matrix_args && argv.iter().any(is_matrix) {
             if t.prep == Prep::Positional {
-                return V::err(sol_error("#SHAPE!", format!("{name} over a matrix isn't supported yet. Wire the matrix through its node")));
+                return V::err(sol_error(ErrorCode::Shape, format!("{name} over a matrix isn't supported yet. Wire the matrix through its node")));
             }
             if t.kind == Kind::Range {
                 argv = argv.into_iter().map(|a| if is_matrix(&a) { flat1(&a) } else { a }).collect();
             } else if t.kind == Kind::Whole || !t.known {
-                return V::err(sol_error("#SHAPE!", format!("{name} works on values and 1-D lists, not a 2-D matrix")));
+                return V::err(sol_error(ErrorCode::Shape, format!("{name} works on values and 1-D lists, not a 2-D matrix")));
             }
         }
         if t.checks_cx && argv.iter().any(contains_cx) {
-            return V::err(sol_error("#TYPE!", format!("{name} doesn't compute on complex numbers. Use the IM* family")));
+            return V::err(sol_error(ErrorCode::Type, format!("{name} doesn't compute on complex numbers. Use the IM* family")));
         }
         match t.kind {
             Kind::Whole => {
@@ -938,7 +938,7 @@ impl Eval<'_> {
         let arg = |i: usize| a.get(i).cloned().unwrap_or(V::Undef);
         let last = if name == "MAP" { a.last().cloned().unwrap_or(V::Undef) } else { arg(if matches!(name, "MAKEARRAY" | "REDUCE" | "SCAN" | "GROUPBY") { 2 } else { 1 }) };
         let V::Lambda(lam) = last else {
-            return V::err(sol_error("#VALUE!", format!("{name} needs a LAMBDA as its last argument")));
+            return V::err(sol_error(ErrorCode::Value, format!("{name} needs a LAMBDA as its last argument")));
         };
         // `etaFn`: a function named bare gets only the arguments that mean something to it.
         let call = |args: &[V], meaningful: usize| -> V {
@@ -957,7 +957,7 @@ impl Eval<'_> {
                     [c] => Some(c.clone()),
                     _ => None,
                 };
-                cell.unwrap_or_else(|| V::err(sol_error("#SHAPE!", format!("{name}'s LAMBDA answers one value for each {each}, not a list"))))
+                cell.unwrap_or_else(|| V::err(sol_error(ErrorCode::Shape, format!("{name}'s LAMBDA answers one value for each {each}, not a list"))))
             }
             other => other,
         };
@@ -965,7 +965,7 @@ impl Eval<'_> {
             "MAP" => {
                 let arrays = &a[..a.len() - 1];
                 if arrays.is_empty() || arrays.len() > 3 {
-                    return V::err(sol_error("#VALUE!", "MAP takes 1–3 arrays and a LAMBDA"));
+                    return V::err(sol_error(ErrorCode::Value, "MAP takes 1–3 arrays and a LAMBDA"));
                 }
                 if arrays.iter().any(absent) {
                     return V::Null;
@@ -1051,7 +1051,7 @@ impl Eval<'_> {
                 // Each side counts as at least one, so a zero side can't hide a huge other one.
                 let cells = js_max(r, 1.0) * js_max(c, 1.0);
                 if cells > MAX_GENERATED {
-                    return V::err(sol_error("#OVERFLOW!", format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(cells))));
+                    return V::err(sol_error(ErrorCode::Overflow, format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(cells))));
                 }
                 let (r, c) = (if r.is_nan() { 0.0 } else { r }, if c.is_nan() { 0.0 } else { c });
                 list((0..r as usize).map(|i| list((0..c as usize).map(|j| one("cell", self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]))).collect())).collect())
@@ -1180,7 +1180,7 @@ fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
             for v in l.iter() {
                 match v {
                     V::Err(_) => return Err(v.clone()),
-                    V::Fx(code) => return Err(V::err(fx_error_to_sol(code))),
+                    V::Fx(code) => return Err(V::err(fx_error_to_sol(*code))),
                     _ => {}
                 }
             }
@@ -1225,7 +1225,7 @@ fn apply_arg_roles(name: &str, t: &Traits, empty: &[bool], argv: &mut [V]) -> Op
     }
     let group: Vec<usize> = (0..argv.len()).filter(|&i| matches!(t.role(i), Some(Role::Picks { required: true }))).collect();
     if !group.is_empty() && group.iter().all(|&i| matches!(argv[i], V::Undef)) {
-        argv[group[0]] = V::err(sol_error("#SYNTAX!", format!("{name}: no positions given, and they have no default")));
+        argv[group[0]] = V::err(sol_error(ErrorCode::Syntax, format!("{name}: no positions given, and they have no default")));
     }
     Some(settled)
 }
@@ -1242,7 +1242,7 @@ fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bo
             other => other.clone(),
         }
     }
-    let no_default = || V::err(sol_error("#SYNTAX!", format!("{} is blank, and it has no default", label())));
+    let no_default = || V::err(sol_error(ErrorCode::Syntax, format!("{} is blank, and it has no default", label())));
     match role {
         Role::Setting { blank } => fill(v, &lowered(blank)),
         Role::Required => match v {
@@ -1256,11 +1256,11 @@ fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bo
                     rows.iter()
                         .map(|r| match r {
                             V::List(cells) => list(cells.iter().map(|x| if matches!(x, V::Null | V::Undef) {
-                                V::err(sol_error("#SYNTAX!", format!("A position in {} is blank", label())))
+                                V::err(sol_error(ErrorCode::Syntax, format!("A position in {} is blank", label())))
                             } else {
                                 x.clone()
                             }).collect()),
-                            V::Null | V::Undef => V::err(sol_error("#SYNTAX!", format!("A position in {} is blank", label()))),
+                            V::Null | V::Undef => V::err(sol_error(ErrorCode::Syntax, format!("A position in {} is blank", label()))),
                             other => other.clone(),
                         })
                         .collect(),
@@ -1556,7 +1556,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
         if let Some(target) = ctx.alias.get(p) {
             match ctx.cols.get(target.as_str()) {
                 Some(c) => binds.push(Bind::Col(c)),
-                None => return Err(sol_error("#REF!", format!("No column \"{target}\" to bind \"{p}\" to"))),
+                None => return Err(sol_error(ErrorCode::Ref, format!("No column \"{target}\" to bind \"{p}\" to"))),
             }
             continue;
         }
@@ -1565,7 +1565,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
             continue;
         }
         if ctx.reserved.contains(p) {
-            return Err(sol_error("#REF!", format!("\"{p}\" is a reserved input name. Rename the variable or the column")));
+            return Err(sol_error(ErrorCode::Ref, format!("\"{p}\" is a reserved input name. Rename the variable or the column")));
         }
         side_vars.push(p.clone());
         binds.push(Bind::Side(ctx.aligned(side(p))));
@@ -1599,7 +1599,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
                 }
                 if let Some(target) = ctx.alias.get(&p) {
                     if !has_col(target) {
-                        return Err(sol_error("#REF!", format!("No column \"{target}\" to bind \"{p}\" to")));
+                        return Err(sol_error(ErrorCode::Ref, format!("No column \"{target}\" to bind \"{p}\" to")));
                     }
                     continue;
                 }

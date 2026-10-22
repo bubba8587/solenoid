@@ -10,7 +10,7 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_functions::{call_function, to_f64_js, V};
 use crate::frame::FrameCell;
 use crate::jsnum::js_trim;
@@ -572,7 +572,7 @@ pub enum Role {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Refusal {
-    pub code: String,
+    pub code: ErrorCode,
     pub message: String,
 }
 
@@ -595,7 +595,7 @@ pub(crate) fn call_caught(name: &str, argv: &[V]) -> V {
     let v = call_function(name, argv);
     if crate::excel_functions::thrown_pending() && !crate::excel_functions::bail_pending() {
         crate::excel_functions::take_thrown();
-        return V::err(sol_error("#VALUE!", format!("{name} can't compute with these arguments")));
+        return V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments")));
     }
     v
 }
@@ -650,7 +650,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
     let (na, nb) = (num_of(a), num_of(b));
     let fin = |r: f64| if r.is_finite() { V::Num(r) } else { guard(r, &[na.clone(), nb.clone()]) };
     if matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow) && (matches!(na, V::Str(_)) || matches!(nb, V::Str(_))) {
-        return V::err(sol_error("#VALUE!", "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE"));
+        return V::err(sol_error(ErrorCode::Value, "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE"));
     }
     let xy = || (to_f64_js(&na), to_f64_js(&nb));
     match op {
@@ -669,7 +669,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
         BinOp::Div => {
             let (x, y) = xy();
             if matches!(nb, V::Num(n) if n == 0.0) && matches!(na, V::Num(_)) {
-                V::err(sol_error("#DIV/0!", "Division by zero"))
+                V::err(sol_error(ErrorCode::DivZero, "Division by zero"))
             } else {
                 fin(x / y)
             }
@@ -677,7 +677,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
         BinOp::Pow => {
             let (x, y) = xy();
             if x == 0.0 && y < 0.0 {
-                V::err(sol_error("#DIV/0!", "Zero to a negative power divides by zero"))
+                V::err(sol_error(ErrorCode::DivZero, "Zero to a negative power divides by zero"))
             } else {
                 fin(crate::excel_functions::js_pow(x, y))
             }
@@ -719,7 +719,7 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
                     }
                 }
                 (V::Str(x), V::Str(y)) => compare_strings(x, y) as i32,
-                _ => return V::err(sol_error("#TYPE!", "Cannot order values of different types; Cast one side first")),
+                _ => return V::err(sol_error(ErrorCode::Type, "Cannot order values of different types; Cast one side first")),
             };
             V::Bool(match op {
                 BinOp::Lt => cmp < 0,
@@ -739,15 +739,15 @@ pub fn tag_computed_cell_pub(v: V) -> FrameCell {
 /// `tagComputedCell` after `normalizeFxResult`.
 fn tag_computed_cell(v: V) -> FrameCell {
     match v {
-        V::Num(n) if n.is_nan() => FrameCell::err(sol_error("#DOMAIN!", "The result is undefined: not a number")),
+        V::Num(n) if n.is_nan() => FrameCell::err(sol_error(ErrorCode::Domain, "The result is undefined: not a number")),
         V::Num(n) => FrameCell::Num(n),
         V::Str(s) => FrameCell::Str(s),
         V::Bool(b) => FrameCell::Bool(b),
         V::Null | V::Undef => FrameCell::Null,
         V::Err(e) => FrameCell::Err(e),
         V::Fx(code) => FrameCell::err(crate::excel_functions::fx_error_to_sol(code)),
-        V::List(_) => FrameCell::err(sol_error("#SHAPE!", "A computed column needs one value per row. Use @name to read this row's cell.")),
-        V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => FrameCell::err(sol_error("#VALUE!", "Each row of a computed column must be a number, text, TRUE/FALSE or blank.")),
+        V::List(_) => FrameCell::err(sol_error(ErrorCode::Shape, "A computed column needs one value per row. Use @name to read this row's cell.")),
+        V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => FrameCell::err(sol_error(ErrorCode::Value, "Each row of a computed column must be a number, text, TRUE/FALSE or blank.")),
     }
 }
 

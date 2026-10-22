@@ -1,6 +1,7 @@
 //! [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero. `nodes/logic.ts`: comparisons, IF and its kin, the Boolean
 //! reducers and the parity tests.
 
+use crate::error_value::ErrorCode;
 use super::kit::core_call;
 use super::scalar::{read_role, Role};
 use super::units::{adopt_reading, currency_mismatch, dim_of, magnitude_of, shown};
@@ -79,11 +80,11 @@ fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
 fn if_test(v: &V) -> V {
     match v {
         V::Null | V::Err(_) | V::Bool(_) => v.clone(),
-        V::Num(n) if n.is_nan() => err("#VALUE!", "A condition is not a number"),
+        V::Num(n) if n.is_nan() => err(ErrorCode::Value, "A condition is not a number"),
         V::Num(n) => V::Bool(*n != 0.0),
         V::Str(s) if crate::jsnum::js_lower(s) == "true" => V::Bool(true),
         V::Str(s) if crate::jsnum::js_lower(s) == "false" => V::Bool(false),
-        _ => err("#VALUE!", "A condition needs a logical. Text counts only as TRUE or FALSE"),
+        _ => err(ErrorCode::Value, "A condition needs a logical. Text counts only as TRUE or FALSE"),
     }
 }
 
@@ -294,7 +295,7 @@ fn choose(c: &mut Call) -> Answer {
     let key = (idx >= 1.0 && idx <= keys.len() as f64).then(|| keys[idx as usize - 1].clone());
     select(c, key.as_deref());
     let Some(key) = key else {
-        let e = err("#VALUE!", format!("CHOOSE index {} is outside the range 1–{}", crate::jsnum::number_to_string(idx), keys.len()));
+        let e = err(ErrorCode::Value, format!("CHOOSE index {} is outside the range 1–{}", crate::jsnum::number_to_string(idx), keys.len()));
         return answer(c, "result", e);
     };
     let result = pick_slot(c, &key);
@@ -317,7 +318,7 @@ fn switch(c: &mut Call) -> Answer {
     }
     select(c, Some("default"));
     if !is_set(c, "default") {
-        return answer(c, "result", err("#N/A", "No SWITCH case matched and no Default was set"));
+        return answer(c, "result", err(ErrorCode::NotAvailable, "No SWITCH case matched and no Default was set"));
     }
     let v = pick_slot(c, "default");
     answer(c, "result", v)
@@ -345,7 +346,7 @@ fn ifs(c: &mut Call) -> Answer {
     }
     select(c, Some("otherwise"));
     if !is_set(c, "otherwise") {
-        return answer(c, "result", err("#N/A", "No IFS condition matched and no Otherwise was set"));
+        return answer(c, "result", err(ErrorCode::NotAvailable, "No IFS condition matched and no Otherwise was set"));
     }
     let v = pick_slot(c, "otherwise");
     answer(c, "result", v)

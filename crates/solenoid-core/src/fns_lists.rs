@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::dists::{ln_gamma, norm_s_inv};
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_functions::{bail, js_pow, js_string_of, throw, to_f64_js, to_num, to_str, V};
 use crate::fdlibm::{atan2, cos, exp, log, sin};
 use crate::js_sort::js_sort_by;
@@ -85,11 +85,11 @@ fn num_or_null(x: Option<f64>) -> V {
 }
 
 fn domain(msg: &str) -> V {
-    V::err(sol_error("#DOMAIN!", msg))
+    V::err(sol_error(ErrorCode::Domain, msg))
 }
 
 fn value(msg: &str) -> V {
-    V::err(sol_error("#VALUE!", msg))
+    V::err(sol_error(ErrorCode::Value, msg))
 }
 
 /// `isTrue`: true, 1, or the text true or 1.
@@ -338,7 +338,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                             return V::Null;
                         }
                         if pct && matches!(prev, V::Num(p) if *p == 0.0) {
-                            return V::err(sol_error("#DIV/0!", "Percent change from zero is undefined"));
+                            return V::err(sol_error(ErrorCode::DivZero, "Percent change from zero is undefined"));
                         }
                         let d = number(v) - number(prev);
                         V::Num(if pct { d / number(prev) } else { d })
@@ -688,7 +688,7 @@ fn capped(f: &str, count: f64) -> Option<V> {
     }
     let k = math_round(count);
     (k > MAX_GENERATED).then(|| {
-        V::err(sol_error("#OVERFLOW!", format!("{f} count {} exceeds the {} element limit", number_to_string(k), number_to_string(MAX_GENERATED))))
+        V::err(sol_error(ErrorCode::Overflow, format!("{f} count {} exceeds the {} element limit", number_to_string(k), number_to_string(MAX_GENERATED))))
     })
 }
 
@@ -722,7 +722,7 @@ fn combinations_of(arr: &[V], k: f64, combos: bool) -> V {
     let count = math_round(count);
     if count > 10_000.0 {
         let kind = if combos { "combinations" } else { "permutations" };
-        return V::err(sol_error("#OVERFLOW!", format!("That makes {} {kind}, over the 10000 cap. Use a shorter list or a smaller k.", number_to_string(count))));
+        return V::err(sol_error(ErrorCode::Overflow, format!("That makes {} {kind}, over the 10000 cap. Use a shorter list or a smaller k.", number_to_string(count))));
     }
     let mut out = Vec::new();
     let mut cur = Vec::new();
@@ -1300,7 +1300,7 @@ fn savgol(values: &[V], window: f64, order: f64) -> V {
             }
         }
         match poly_fit_w(&xs, &ys, &ws, order) {
-            Err(()) => return throw(sol_error("#VALUE!", "Invalid array length")),
+            Err(()) => return throw(sol_error(ErrorCode::Value, "Invalid array length")),
             Ok(c) => out.push(c.map_or(V::Null, |c| V::Num(c[0]))),
         }
     }
@@ -1533,7 +1533,7 @@ fn norm(m: &V) -> V {
         other => vec![list(vec![other.clone()])],
     };
     let missing = || value("This matrix operation needs complete data. A cell is missing");
-    let text = || V::err(sol_error("#TYPE!", "This matrix operation needs numbers, but got text"));
+    let text = || V::err(sol_error(ErrorCode::Type, "This matrix operation needs numbers, but got text"));
     for row in &rows {
         match row {
             V::List(cells) => {
@@ -1549,12 +1549,12 @@ fn norm(m: &V) -> V {
             // A string iterates its characters, each one text.
             V::Str(s) if !s.is_empty() => return text(),
             V::Str(_) => {}
-            _ => return throw(sol_error("#VALUE!", "row is not iterable")),
+            _ => return throw(sol_error(ErrorCode::Value, "row is not iterable")),
         }
     }
     let mut total = 0.0;
     for row in &rows {
-        let V::List(cells) = row else { return throw(sol_error("#VALUE!", "r.reduce is not a function")) };
+        let V::List(cells) = row else { return throw(sol_error(ErrorCode::Value, "r.reduce is not a function")) };
         total += cells.iter().fold(0.0, |x, y| if let V::Num(y) = y { x + y * y } else { x });
     }
     V::Num(total.sqrt())
@@ -2230,7 +2230,7 @@ fn grid_mode(z: &[V], xs: &V, ys: &V, forecast: &V) -> V {
         };
         let unit = if name == "Xs" { "columns" } else { "rows" };
         if l.len() != n {
-            return Err(V::err(sol_error("#SHAPE!", format!("{name} has {} values for {n} {unit}", l.len()))));
+            return Err(V::err(sol_error(ErrorCode::Shape, format!("{name} has {} values for {n} {unit}", l.len()))));
         }
         l.iter().map(|v| finite(v).ok_or_else(|| value(&format!("{name} must be finite numbers")))).collect()
     };

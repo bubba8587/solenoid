@@ -4,7 +4,7 @@
 
 use std::rc::Rc;
 
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::eval::{Env, Eval};
 use crate::excel_functions::{fx_error_to_sol, js_pow, V};
 use crate::unit_dims::{affine_weight, dim_equal, dim_eval_with_code, holds_unit, is_dimensionless, AffScope, Codes, Dim, NamedLambdas};
@@ -39,7 +39,7 @@ fn elem_unit(m: &[Vec<V>]) -> Result<Option<(Elem, Option<DisplayUnit>)>, V> {
             }
             Some(f) => {
                 if !dim_equal(&f.dim, &u.dim) {
-                    return Err(V::err(sol_error("#UNIT!", "Can't fold a list with mixed units.")));
+                    return Err(V::err(sol_error(ErrorCode::Unit, "Can't fold a list with mixed units.")));
                 }
                 if display != u.display {
                     display = None;
@@ -62,7 +62,7 @@ fn read_in(base: f64, u: Option<&DisplayUnit>) -> f64 {
 /// A step's answer as `compileTsEvaluator` hands it back.
 fn normalize(v: V) -> V {
     match v {
-        V::Lambda(_) => V::err(sol_error("#VALUE!", "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
+        V::Lambda(_) => V::err(sol_error(ErrorCode::Value, "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
         V::Fx(m) => V::err(fx_error_to_sol(m)),
         other => other,
     }
@@ -72,7 +72,7 @@ fn normalize(v: V) -> V {
 fn cell(v: &V) -> V {
     match v {
         V::Err(_) | V::Str(_) | V::Bool(_) => v.clone(),
-        V::Num(n) if n.is_nan() => V::err(sol_error("#DOMAIN!", crate::value_kinds::DOMAIN_MESSAGE)),
+        V::Num(n) if n.is_nan() => V::err(sol_error(ErrorCode::Domain, crate::value_kinds::DOMAIN_MESSAGE)),
         V::Num(_) => v.clone(),
         _ => V::Null,
     }
@@ -92,7 +92,7 @@ fn retag(out: V, dr: &Option<Dim>, elem: &Elem, u: Option<&DisplayUnit>, point: 
             match u {
                 None => tag_dim(n, dr.clone(), display),
                 Some(u) => match dim_power_of(dr, &elem.dim) {
-                    None => V::err(sol_error("#UNIT!", "The fold's result unit can't be read back from the list's unit.")),
+                    None => V::err(sol_error(ErrorCode::Unit, "The fold's result unit can't be read back from the list's unit.")),
                     Some(k) => tag_dim(n * js_pow(u.scale, k), dr.clone(), display),
                 },
             }
@@ -129,7 +129,7 @@ pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured
             Ok(e) => e,
         },
         (FoldKind::Reduce, V::Unit(i), Some((e, _))) if !dim_equal(&e.dim, &i.dim) => {
-            return Some(V::err(sol_error("#UNIT!", "REDUCE's initial value and its list are in different units.")));
+            return Some(V::err(sol_error(ErrorCode::Unit, "REDUCE's initial value and its list are in different units.")));
         }
         (FoldKind::Reduce, V::Unit(i), Some((e, _))) if e.display != i.display => Some((Elem { dim: e.dim, display: None }, None)),
         (_, _, elem) => elem,
@@ -182,7 +182,7 @@ pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured
         };
         let points: Vec<String> = united.iter().map(|v| v.to_string()).collect();
         let point = match weight(&points, &[]) {
-            Ok(Some(0)) => return Some(V::err(sol_error("#UNIT!", READINGS_FOLD))),
+            Ok(Some(0)) => return Some(V::err(sol_error(ErrorCode::Unit, READINGS_FOLD))),
             Ok(p) => p,
             Err(e) => return Some(e),
         };

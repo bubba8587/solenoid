@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::decision::{self, Normalize};
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::planners;
 use crate::excel_functions::V;
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
@@ -204,7 +204,7 @@ fn require_column<'a>(f: &'a FrameValue, name: &str) -> Res<&'a FrameColumn> {
     f.columns
         .iter()
         .find(|c| c.name == name)
-        .ok_or_else(|| FrameOut::Error(sol_error("#REF!", format!("column \"{name}\" not found"))))
+        .ok_or_else(|| FrameOut::Error(sol_error(ErrorCode::Ref, format!("column \"{name}\" not found"))))
 }
 
 // ─── Headers ────────────────────────────────────────────────────────────────────
@@ -681,7 +681,7 @@ fn lookup_row_index(f: &FrameValue, args: &[V]) -> Res<Option<usize>> {
     let last = opt_str_arg(args, 3)?.as_deref() == Some("last");
     let key = require_column(f, &column)?;
     if mm != MatchMode::Exact && !matches!(key.ty, FrameColType::Number | FrameColType::Date) {
-        return Err(FrameOut::Error(sol_error("#VALUE!", "Approximate lookup requires a numeric or date column")));
+        return Err(FrameOut::Error(sol_error(ErrorCode::Value, "Approximate lookup requires a numeric or date column")));
     }
     let needle = lookup_needle(&lookup, key.ty)?;
     if mm != MatchMode::Exact && !matches!(needle, V::Num(n) if n.is_finite()) {

@@ -4,7 +4,7 @@
 //! read NaN.
 
 use crate::date_serial::{date_utc, days_from_civil, parts_of_ms, serial_to_ms, MS_PER_DAY};
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::jsnum::{math_max as js_max, math_min as js_min, math_round};
 
 type Date = Option<f64>;
@@ -98,7 +98,7 @@ pub fn date_diff(op: DiffOp, s: f64, e: f64, basis: f64) -> Result<Option<f64>, 
     let (mut s, mut e) = (s, e);
     if op == DiffOp::YearFrac {
         if !((0.0..=4.0).contains(&basis)) {
-            return Err(sol_error("#DOMAIN!", "Basis must be 0, 1, 2, 3, or 4"));
+            return Err(sol_error(ErrorCode::Domain, "Basis must be 0, 1, 2, 3, or 4"));
         }
         (s, e) = (js_min(s, e).trunc(), js_max(s, e).trunc());
     }
@@ -305,7 +305,7 @@ fn weekday(serial: f64) -> f64 {
 
 /// `addWorkdays`. `holidays` is a set: each day once.
 pub fn add_workdays(start: f64, days: f64, off: Weekend, holidays: &[f64]) -> Result<f64, SolError> {
-    let outside = || sol_error("#DOMAIN!", "WORKDAY lands outside the years 1 to 9999");
+    let outside = || sol_error(ErrorCode::Domain, "WORKDAY lands outside the years 1 to 9999");
     let (first, last) = (first_day(), last_day());
     let mut d = start.floor();
     let mut left = days.trunc().abs();
@@ -335,7 +335,7 @@ pub fn add_workdays(start: f64, days: f64, off: Weekend, holidays: &[f64]) -> Re
 pub fn network_days(start: f64, end: f64, off: Weekend, holidays: &[f64]) -> Result<f64, SolError> {
     let (a, b) = (js_min(start, end).floor(), js_max(start, end).floor());
     if a < first_day() || b > last_day() {
-        return Err(sol_error("#DOMAIN!", "NETWORKDAYS spans outside the years 1 to 9999"));
+        return Err(sol_error(ErrorCode::Domain, "NETWORKDAYS spans outside the years 1 to 9999"));
     }
     let weeks = ((b - a + 1.0) / 7.0).floor();
     let mut count = weeks * (7.0 - off.size());

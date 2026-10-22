@@ -8,7 +8,7 @@ use std::rc::Rc;
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Map, Value as Json};
 
-use crate::error_value::SolError;
+use crate::error_value::{ErrorCode, SolError};
 use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
 
 pub fn decode_cell(v: &Json) -> FrameCell {
@@ -28,7 +28,7 @@ pub fn decode_cell(v: &Json) -> FrameCell {
             }
             if let Some(code) = o.get("__err").and_then(Json::as_str) {
                 return FrameCell::Err(Rc::new(SolError {
-                    code: code.to_string(),
+                    code: ErrorCode::from_wire(code),
                     message: o.get("msg").and_then(Json::as_str).unwrap_or("").to_string(),
                     reference: o.get("ref").and_then(Json::as_u64).map(|r| r as u32),
                 }));
@@ -58,7 +58,7 @@ pub fn encode_cell(c: &FrameCell) -> Json {
         FrameCell::Num(n) => json!({ "__nf": if n.is_nan() { "nan" } else if *n > 0.0 { "inf" } else { "-inf" } }),
         FrameCell::Err(e) => {
             let mut o = Map::new();
-            o.insert("__err".into(), Json::String(e.code.clone()));
+            o.insert("__err".into(), e.code.as_str().into());
             if let Some(r) = e.reference {
                 o.insert("ref".into(), json!(r));
             }

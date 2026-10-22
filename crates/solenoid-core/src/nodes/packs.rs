@@ -3,6 +3,7 @@
 //! card bodies: `nodes/electrical.ts`, `astro.ts`, `thermo.ts`, `fluids.ts`, `health.ts`, `emSpectrum.ts`, `convert.ts`
 //! and `tornado.ts`, with the kernels of their `*Ops.ts` beside them.
 
+use crate::error_value::ErrorCode;
 use super::units::broadcast_unit;
 use super::values::{Column, Frame};
 use super::{err, Answer, Call};
@@ -64,7 +65,7 @@ fn shown(c: &mut Call, outs: &[(&str, &str, V)]) -> Answer {
 }
 
 fn domain(message: &str) -> V {
-    err("#DOMAIN!", message)
+    err(ErrorCode::Domain, message)
 }
 
 fn null_or(v: Option<f64>) -> V {
@@ -87,7 +88,7 @@ fn parallel_combine_of(cells: &[V]) -> V {
     }
     let sum = nums.iter().fold(0.0, |a, b| a + 1.0 / b);
     if sum == 0.0 {
-        err("#DIV/0!", "The reciprocals cancel out, so the combination is undefined")
+        err(ErrorCode::DivZero, "The reciprocals cancel out, so the combination is undefined")
     } else {
         V::Num(1.0 / sum)
     }
@@ -142,7 +143,7 @@ fn e_series(c: &mut Call) -> Answer {
                 let n = nearest_e_series(v, &table);
                 (V::Num(n), V::Num(((n - v) / v) * 100.0))
             }
-            None => return Err(err("#ERROR!", "E_SERIES[series] is not iterable")),
+            None => return Err(err(ErrorCode::Error, "E_SERIES[series] is not iterable")),
         },
         Some(_) => {
             let e = domain("A component value must be a positive number");
@@ -406,7 +407,7 @@ fn antoine(c: &mut Call) -> Answer {
     let t = c.read_input("t", c.literal("t"));
     let substance = c.field_str("substance", "water");
     let Some((a, b, cc)) = antoine_coefficients(substance) else {
-        return Err(err("#ERROR!", "Cannot destructure property 'A' of 'ANTOINE[this.substance]' as it is undefined."));
+        return Err(err(ErrorCode::Error, "Cannot destructure property 'A' of 'ANTOINE[this.substance]' as it is undefined."));
     };
     let pressure = match number(&t) {
         None => V::Null,
@@ -612,11 +613,11 @@ fn convert(c: &mut Call) -> Answer {
         (Some(f), Some(t)) => (f, t),
         (f, _) => {
             let missing = if f.is_none() { &from_key } else { &to_key };
-            return done(c, err("#N/A", format!("Convert doesn't know the unit \"{missing}\"")));
+            return done(c, err(ErrorCode::NotAvailable, format!("Convert doesn't know the unit \"{missing}\"")));
         }
     };
     if from.2 != to.2 {
-        return done(c, err("#N/A", format!("Can't convert {} to {}: the units measure different things", category_of(from.2), category_of(to.2))));
+        return done(c, err(ErrorCode::NotAvailable, format!("Can't convert {} to {}: the units measure different things", category_of(from.2), category_of(to.2))));
     }
     let to_dim = parse_dim(to.2);
     let display: Option<String> = Some(to_key.clone());
@@ -634,7 +635,7 @@ fn convert(c: &mut Call) -> Answer {
         }
         v => match super::kit::core_call("CONVERT", &[v.clone(), from_code.clone(), to_code.clone()]) {
             V::Num(conv) => crate::unit_lists::tag_dim(conv * to.3 + to.4.unwrap_or(0.0), to_dim.clone(), display.clone()),
-            _ => err("#OVERFLOW!", "The converted value is too large to represent"),
+            _ => err(ErrorCode::Overflow, "The converted value is too large to represent"),
         },
     });
     done(c, result)

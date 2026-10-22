@@ -1,7 +1,7 @@
 // [[C130]] rustCore
 //! Port of `src/graph/valueKinds.ts` (the parts the frame verbs use).
 
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::frame::FrameCell;
 use crate::jsnum::{js_string, js_trim};
 
@@ -116,7 +116,7 @@ pub fn logical_or_type_error(v: &FrameCell, r#where: &str) -> Result<Option<bool
                 other => js_string(other).into_owned(),
             };
             Err(sol_error(
-                "#TYPE!",
+                ErrorCode::Type,
                 format!("{where}: {shown} isn't a logical. Only TRUE, FALSE or a number read as one"),
             ))
         }
@@ -128,12 +128,12 @@ pub fn guard_finite(result: f64, inputs: &[f64]) -> FrameCell {
         return FrameCell::Num(result);
     }
     if result.is_nan() {
-        return FrameCell::err(sol_error("#DOMAIN!", DOMAIN_MESSAGE));
+        return FrameCell::err(sol_error(ErrorCode::Domain, DOMAIN_MESSAGE));
     }
     if inputs.iter().any(|v| v.is_infinite()) {
         FrameCell::Num(result)
     } else {
-        FrameCell::err(sol_error("#OVERFLOW!", OVERFLOW_MESSAGE))
+        FrameCell::err(sol_error(ErrorCode::Overflow, OVERFLOW_MESSAGE))
     }
 }
 

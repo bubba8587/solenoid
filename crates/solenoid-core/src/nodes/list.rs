@@ -1,6 +1,7 @@
 //! [[B11]] maximalMerge, [[C48]] appendLadder, [[C49]] filterOneJob. `nodes/list.ts`: the list cards, most of them
 //! one call to the list function they share their kernel with.
 
+use crate::error_value::ErrorCode;
 use super::kit::core_call;
 use super::scalar::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Frame};
@@ -109,7 +110,7 @@ fn finite(v: &V) -> bool {
 }
 
 fn over_limit(what: &str, n: f64) -> V {
-    err("#OVERFLOW!", format!("{what} {} exceeds the {} element limit", number_to_string(n), number_to_string(MAX_GENERATED)))
+    err(ErrorCode::Overflow, format!("{what} {} exceeds the {} element limit", number_to_string(n), number_to_string(MAX_GENERATED)))
 }
 
 fn shown(c: &mut Call, field: &str, out: &str, v: V) -> Answer {
@@ -142,9 +143,9 @@ fn series(c: &mut Call) -> Answer {
                     }
                 };
                 if !n.is_finite() {
-                    err("#DOMAIN!", "Step is 0 (or signed away from Stop), so the range never ends")
+                    err(ErrorCode::Domain, "Step is 0 (or signed away from Stop), so the range never ends")
                 } else if n > MAX_GENERATED {
-                    err("#OVERFLOW!", format!("Range of {} elements exceeds the {} element limit", number_to_string(math_round(n)), number_to_string(MAX_GENERATED)))
+                    err(ErrorCode::Overflow, format!("Range of {} elements exceeds the {} element limit", number_to_string(math_round(n)), number_to_string(MAX_GENERATED)))
                 } else {
                     core_call("RANGE", &[start, stop, step])
                 }
@@ -388,7 +389,7 @@ fn running(c: &mut Call) -> Answer {
     let w = or(setting(c, "window"), V::Num(0.0));
     if !matches!(w, V::Num(n) if n.is_finite() && n >= 0.0) {
         c.show("cachedList", empty());
-        return Ok(vec![("result".into(), err("#DOMAIN!", "Window must be 0 (cumulative) or a positive count"))]);
+        return Ok(vec![("result".into(), err(ErrorCode::Domain, "Window must be 0 (cumulative) or a positive count"))]);
     }
     let label = match c.field_str("agg", "sum") {
         "avg" => "AVERAGE",
@@ -803,7 +804,7 @@ fn filter(c: &mut Call) -> Answer {
                 m.iter().map(|r| if let V::List(cells) = r { cells.get(j).cloned().unwrap_or(V::Undef) } else { V::Undef }).collect()
             }
             other => {
-                let e = err("#VALUE!", format!("Column {} is outside the table's {width} columns", js_string_of(&other)));
+                let e = err(ErrorCode::Value, format!("Column {} is outside the table's {width} columns", js_string_of(&other)));
                 return done(c, e, V::Null);
             }
         }
@@ -841,7 +842,7 @@ fn filter(c: &mut Call) -> Answer {
             Some(v) => elem_col_type(std::slice::from_ref(v)),
         };
         if let Some((op, _, _)) = conds.iter().find(|(op, _, _)| text_op(op) && gate != FrameColType::String) {
-            return Err(err("#TYPE!", format!("{} reads text — this is a {} list. Cast it to Text first", label(op), gate.tag())));
+            return Err(err(ErrorCode::Type, format!("{} reads text — this is a {} list. Cast it to Text first", label(op), gate.tag())));
         }
     }
     let first_text = conds.iter().find(|(op, _, _)| text_op(op)).map(|(op, _, _)| op.clone());
@@ -856,7 +857,7 @@ fn filter(c: &mut Call) -> Answer {
         if let Some(op) = &first_text {
             if !nullish(mag) && !mag.is_sol_error() && !matches!(mag, V::Str(_)) {
                 let what = elem_col_type(std::slice::from_ref(mag)).tag();
-                kept.push(err("#TYPE!", format!("{} reads text; this item is a {what}. Cast it to Text first", label(op))));
+                kept.push(err(ErrorCode::Type, format!("{} reads text; this item is a {what}. Cast it to Text first", label(op))));
                 continue;
             }
         }
@@ -1029,7 +1030,7 @@ fn xmatch(c: &mut Call) -> Answer {
     let pick = |l: &V| match xmatch_index(l, &ks, mm, last) {
         Err(e) => e,
         Ok(Some(i)) => V::Num((i + 1) as f64),
-        Ok(None) if wired => err("#N/A", "No match found in the array"),
+        Ok(None) if wired => err(ErrorCode::NotAvailable, "No match found in the array"),
         Ok(None) => V::Null,
     };
     let r = match &val {

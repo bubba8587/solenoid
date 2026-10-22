@@ -2,6 +2,7 @@
 //! cards, each answering its chart whole as `V::Json` (tagged as `nodeWire.ts` `jsonEnc` writes it), with the option
 //! reader (`chartOptions.ts`), the XY reader (`xyPlot.ts`) and the frame-column readers they share.
 
+use crate::error_value::ErrorCode;
 use super::scalar::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, Frame};
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
@@ -112,7 +113,7 @@ fn opt_nums(items: &[Option<f64>]) -> Json {
 
 /// What the error guard answers for a TypeError the TS body throws.
 fn crashed(message: &str) -> V {
-    err("#ERROR!", format!("This node failed to compute: {message}"))
+    err(ErrorCode::Error, format!("This node failed to compute: {message}"))
 }
 
 // ─── Reading the card ───────────────────────────────────────────────────────────
@@ -365,7 +366,7 @@ fn date_pattern(format: Option<&Json>) -> String {
 fn format_cell(ty: &str, v: &V, format: Option<&Json>) -> V {
     match v {
         V::Undef => V::Null,
-        V::Err(e) => V::str(&e.code),
+        V::Err(e) => V::str(e.code.as_str()),
         V::Bool(b) => V::str(if *b { "TRUE" } else { "FALSE" }),
         V::Num(n) if ty == "date" && n.is_finite() => V::str(&format_date_serial(*n, &date_pattern(format))),
         other => other.clone(),
@@ -570,7 +571,7 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
         let key = js_lower(js_trim(name)).into_owned();
         cols.iter()
             .position(|c| js_lower(js_trim(&c.name)) == key)
-            .ok_or_else(|| err("#REF!", format!("The options name a {role} column \"{name}\", which the data doesn't have")))
+            .ok_or_else(|| err(ErrorCode::Ref, format!("The options name a {role} column \"{name}\", which the data doesn't have")))
     };
     let named = |k: &str, role: &str| opts.get(k).and_then(Json::as_str).map(|n| find(n, role)).transpose();
     let x_named = named("x", "x");
@@ -620,7 +621,7 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
     }
     for (i, role) in y_cols.iter().map(|i| (*i, "y")).chain(s_col.map(|i| (i, "size"))) {
         if cols[i].ty != "number" {
-            return Err(err("#TYPE!", format!("Column \"{}\" is the {role} column but holds {}, not numbers", cols[i].name, cols[i].ty)));
+            return Err(err(ErrorCode::Type, format!("Column \"{}\" is the {role} column but holds {}, not numbers", cols[i].name, cols[i].ty)));
         }
     }
     if y_cols.is_empty() {
@@ -937,7 +938,7 @@ fn candlestick(c: &mut Call) -> Answer {
         return Ok(vec![("chart".into(), V::Null)]);
     }
     if cols.len() < 4 {
-        let e = err("#SHAPE!", "Candlestick needs Open, High, Low and Close columns (a date column first is optional)");
+        let e = err(ErrorCode::Shape, "Candlestick needs Open, High, Low and Close columns (a date column first is optional)");
         c.show("cachedChart", e.clone());
         return Ok(vec![("chart".into(), e)]);
     }
@@ -1025,7 +1026,7 @@ fn merge_plots(c: &mut Call) -> Answer {
         }
         let op = field(&cv, "op");
         if !op.and_then(Json::as_str).is_some_and(|o| PLANAR_OPS.contains(&o)) {
-            refusal.get_or_insert_with(|| err("#TYPE!", format!("Plot {} is a {} chart, which has no x/y plane to overlay", i + 1, json_text(op))));
+            refusal.get_or_insert_with(|| err(ErrorCode::Type, format!("Plot {} is a {} chart, which has no x/y plane to overlay", i + 1, json_text(op))));
             continue;
         }
         sources.push((cv, i + 1));
@@ -1174,11 +1175,11 @@ fn source_as_xy(cv: &Json, plot_no: usize) -> Result<XySource, V> {
     }
     let op = field(cv, "op");
     if let Some(o @ ("column" | "bar")) = op.and_then(Json::as_str) {
-        return Err(err("#TYPE!", format!("Plot {plot_no} is a {o} chart; bars can't share an x/y plane with a scatter or XY line")));
+        return Err(err(ErrorCode::Type, format!("Plot {plot_no} is a {o} chart; bars can't share an x/y plane with a scatter or XY line")));
     }
     let labels = field(cv, "labels").and_then(Json::as_array).filter(|l| !l.is_empty());
     if labels.is_some_and(|l| !l.iter().all(Json::is_number)) {
-        return Err(err("#TYPE!", format!("Plot {plot_no} plots against text labels, so it can't share an x/y plane with a scatter or XY line")));
+        return Err(err(ErrorCode::Type, format!("Plot {plot_no} plots against text labels, so it can't share an x/y plane with a scatter or XY line")));
     }
     let x_at = |i: usize| match labels {
         Some(l) => l.get(i).cloned().unwrap_or_else(undef),
@@ -1234,7 +1235,7 @@ fn merge_xy(sources: &[(Rc<Json>, usize)]) -> Result<Json, V> {
     let text_x = got.iter().find(|(_, g)| has_cats(g));
     let num_x = got.iter().find(|(_, g)| !has_cats(g));
     if let (Some((t, _)), Some((n, _))) = (text_x, num_x) {
-        return Err(err("#TYPE!", format!("Plot {t} plots against text x values and plot {n} against numbers, so they have no one x axis")));
+        return Err(err(ErrorCode::Type, format!("Plot {t} plots against text x values and plot {n} against numbers, so they have no one x axis")));
     }
     let mut xcats: Vec<Json> = Vec::new();
     let mut at: HashMap<String, usize> = HashMap::new();
@@ -1308,7 +1309,7 @@ fn merge_xy(sources: &[(Rc<Json>, usize)]) -> Result<Json, V> {
 fn bin_count(k: &V) -> Result<f64, V> {
     match k {
         V::Num(n) if n.is_finite() && n.floor() >= 1.0 => Ok(*n),
-        _ => Err(err("#DOMAIN!", "Bins must be 1 or more")),
+        _ => Err(err(ErrorCode::Domain, "Bins must be 1 or more")),
     }
 }
 
@@ -1559,7 +1560,7 @@ fn sankey(c: &mut Call) -> Answer {
     let drawable = sources.iter().zip(&targets).zip(&values).any(|((s, t), v)| !s.is_empty() && !t.is_empty() && s != t && *v > 0.0);
     if dropped > 0 && !drawable {
         c.show("cachedPayload", V::Null);
-        return Ok(vec![("chart".into(), err("#SHAPE!", "The flows form a loop; a Sankey needs a direction"))]);
+        return Ok(vec![("chart".into(), err(ErrorCode::Shape, "The flows form a loop; a Sankey needs a direction"))]);
     }
     let values = Json::Array(values.iter().map(|n| jn(*n)).collect());
     let payload = json!({ "kind": "sankey", "sources": strs(&sources), "targets": strs(&targets), "values": values });

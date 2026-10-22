@@ -3,7 +3,7 @@
 
 use super::kit::{broadcast_err, core_call};
 use super::{err, list, Answer, Call};
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_functions::{to_f64_js, V};
 
 /// `readAsRole`'s raw value: unwired, the typed literal (a number's, else a text's); wired, the first cable's.
@@ -38,7 +38,7 @@ pub(crate) fn required(c: &Call, key: &str) -> V {
         match v {
             V::Err(_) => v.clone(),
             V::List(l) => list(l.iter().map(|x| need(x, label)).collect()),
-            V::Null | V::Undef => err("#SYNTAX!", format!("{label} is blank, and it has no default")),
+            V::Null | V::Undef => err(ErrorCode::Syntax, format!("{label} is blank, and it has no default")),
             other => other.clone(),
         }
     }
@@ -202,7 +202,7 @@ fn wrap_text(c: &mut Call) -> Answer {
         return done(c, "cachedResult", V::Null);
     }
     if to_f64_js(&w) < 1.0 {
-        return done(c, "cachedResult", err("#DOMAIN!", "Width must be at least 1"));
+        return done(c, "cachedResult", err(ErrorCode::Domain, "Width must be at least 1"));
     }
     let r = core_call("WRAPTEXT", &[text, w]);
     done(c, "cachedResult", r)
@@ -319,7 +319,7 @@ const ROMAN: [(f64, &str); 13] = [
 fn roman(raw: &V) -> V {
     let n = js_floor(raw);
     if n < 1.0 || n > 3999.0 {
-        return err("#VALUE!", "ROMAN is defined only for 1–3999");
+        return err(ErrorCode::Value, "ROMAN is defined only for 1–3999");
     }
     let mut out = String::new();
     let mut rem = n;
@@ -335,7 +335,7 @@ fn roman(raw: &V) -> V {
 /// The Arabic reading, from the right.
 fn arabic(raw: &V) -> V {
     let V::Str(s) = raw else {
-        return V::err(sol_error("#VALUE!", "ARABIC needs text"));
+        return V::err(sol_error(ErrorCode::Value, "ARABIC needs text"));
     };
     let upper = s.to_uppercase();
     let text = crate::jsnum::js_trim(&upper);
@@ -352,7 +352,7 @@ fn arabic(raw: &V) -> V {
             'X' => 10.0,
             'V' => 5.0,
             'I' => 1.0,
-            _ => return err("#VALUE!", format!("\"{text}\" is not a valid Roman numeral")),
+            _ => return err(ErrorCode::Value, format!("\"{text}\" is not a valid Roman numeral")),
         };
         if v < prev {
             out -= v;

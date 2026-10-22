@@ -7,6 +7,7 @@ use std::fs;
 use std::path::Path;
 
 use serde_json::{json, Value as Json};
+use solenoid_core::error_value::ErrorCode;
 use solenoid_core::frame::FrameCell;
 use solenoid_core::frame_backend::invoke;
 use solenoid_core::wire::decode_cell;
@@ -46,7 +47,7 @@ fn source(frame: &Json) -> String {
     invoke("engine_source", &json!({ "frame": frame })).unwrap().as_str().unwrap().to_string()
 }
 
-fn run_case(verb: &str, kase: &Json) -> Result<Json, String> {
+fn run_case(verb: &str, kase: &Json) -> Result<Json, ErrorCode> {
     let frames = &kase["frames"];
     let op = &kase["op"];
     let handle = match op["kind"].as_str().unwrap() {
@@ -84,7 +85,7 @@ fn corpus() {
         for kase in file["cases"].as_array().unwrap() {
             let name = format!("{verb}: {}", kase["name"].as_str().unwrap());
             let outcome = match (run_case(verb, kase), kase.get("expectError").and_then(Json::as_str)) {
-                (Err(code), Some(want)) if code == want => Ok(()),
+                (Err(code), Some(want)) if code.as_str() == want => Ok(()),
                 (Err(code), want) => Err(format!("threw {code}, expected {}", want.unwrap_or("a frame"))),
                 (Ok(_), Some(want)) => Err(format!("expected {want}, got a frame")),
                 (Ok(out), None) => columns_match(&out, &kase["expect"]),

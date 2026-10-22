@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::error_value::SolError;
+use crate::error_value::{ErrorCode, SolError};
 use crate::excel_formula::{Ast, BinOp, UnaryOp};
 use crate::finance_units::{finance_dim, finance_money};
 use crate::unit_value::{unit_error, READINGS_ADD, READINGS_FOLD, READINGS_SCALE};
@@ -116,7 +116,7 @@ fn resolves(fn_: &str) -> bool {
 
 /// A retired spelling (`STDEVP`): it answers its #NAME?, united input or not.
 fn eliminated(fn_: &str) -> bool {
-    crate::eval::traits(fn_).is_some_and(|t| t.resolves && t.refusal.as_ref().is_some_and(|r| r.code == "#NAME?"))
+    crate::eval::traits(fn_).is_some_and(|t| t.resolves && t.refusal.as_ref().is_some_and(|r| r.code == ErrorCode::Name))
 }
 
 fn dimless() -> Dim {

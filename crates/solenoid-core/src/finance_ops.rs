@@ -6,7 +6,7 @@
 #![allow(clippy::manual_range_contains, clippy::neg_cmp_op_on_partial_ord)]
 
 use crate::date_serial::{date_utc, parts_of_ms, MS_PER_DAY};
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::excel_functions::js_pow;
 use crate::fdlibm::{exp, log};
 use crate::jsnum::{math_max, math_min, math_round};
@@ -140,7 +140,7 @@ fn valid_freq(f: f64) -> bool {
 }
 
 fn domain(op: &str, need: &str) -> SolError {
-    sol_error("#DOMAIN!", format!("{} needs {need}", op.to_uppercase()))
+    sol_error(ErrorCode::Domain, format!("{} needs {need}", op.to_uppercase()))
 }
 
 /// Excel's `#NUM!` checks as a `#DOMAIN!`; a left-out frequency or basis goes unchecked.
@@ -787,7 +787,7 @@ pub fn solve_discount_rate(values: &[f64], exponents: &[f64]) -> Option<f64> {
 }
 
 fn date_before_first() -> SolError {
-    sol_error("#DOMAIN!", "A cash-flow date comes before the first date")
+    sol_error(ErrorCode::Domain, "A cash-flow date comes before the first date")
 }
 
 /// `before_first`: a date among the first `n` compares (JS `<`) below the first one.
@@ -820,7 +820,7 @@ pub fn xirr(values: &[f64], dates: &[f64], before_first: bool) -> Fin {
     match solve_discount_rate(&values[..n], &exps) {
         Some(r) => Fin::Num(r),
         None => Fin::Err(sol_error(
-            "#CONV!",
+            ErrorCode::Conv,
             "XIRR couldn't converge. The dated cash flows may have no internal rate of return, for example they never change sign.",
         )),
     }
@@ -838,10 +838,10 @@ pub fn mirr(cashflows: &[f64], finrate: f64, reinrate: f64) -> Fin {
         }
     }
     if pv_neg == 0.0 || fv_pos == 0.0 {
-        return Fin::Err(sol_error("#DIV/0!", "MIRR needs both a negative (investment) and a positive (return) cash flow"));
+        return Fin::Err(sol_error(ErrorCode::DivZero, "MIRR needs both a negative (investment) and a positive (return) cash flow"));
     }
     let r = js_pow(-fv_pos / pv_neg, 1.0 / (n - 1.0)) - 1.0;
-    if r.is_finite() { Fin::Num(r) } else { Fin::Err(sol_error("#OVERFLOW!", "MIRR overflowed: the cash flows or rates are extreme")) }
+    if r.is_finite() { Fin::Num(r) } else { Fin::Err(sol_error(ErrorCode::Overflow, "MIRR overflowed: the cash flows or rates are extreme")) }
 }
 
 // ─── Return-series math, the ops that answer one value ───────────────────────
@@ -909,7 +909,7 @@ pub fn cagr(prices: &[Cell], periods_per_year: f64) -> Fin {
     let (first, last) = (finite(&prices[i0]).unwrap_or(f64::NAN), finite(&prices[i1]).unwrap_or(f64::NAN));
     let elapsed = (i1 - i0) as f64;
     if first <= 0.0 || last <= 0.0 {
-        return Fin::Err(sol_error("#DOMAIN!", "CAGR needs positive prices"));
+        return Fin::Err(sol_error(ErrorCode::Domain, "CAGR needs positive prices"));
     }
     Fin::Num(js_pow(last / first, periods_per_year / elapsed) - 1.0)
 }
@@ -949,12 +949,12 @@ pub fn returns_op(op: ReturnsOp, series: &[Cell], rf: f64, periods_per_year: f64
             Err(f) => f,
         },
         ReturnsOp::Sharpe => match stats() {
-            Ok((_, 0.0, _)) => Fin::Err(sol_error("#DIV/0!", "Sharpe: the returns have no spread")),
+            Ok((_, 0.0, _)) => Fin::Err(sol_error(ErrorCode::DivZero, "Sharpe: the returns have no spread")),
             Ok((mean, sd, _)) => Fin::Num((mean / sd) * periods_per_year.sqrt()),
             Err(f) => f,
         },
         ReturnsOp::Sortino => match stats() {
-            Ok((_, _, 0.0)) => Fin::Err(sol_error("#DIV/0!", "Sortino: no return fell below the target")),
+            Ok((_, _, 0.0)) => Fin::Err(sol_error(ErrorCode::DivZero, "Sortino: no return fell below the target")),
             Ok((mean, _, d)) => Fin::Num((mean / d) * periods_per_year.sqrt()),
             Err(f) => f,
         },
@@ -967,13 +967,13 @@ pub fn cumulative_payment(cumipmt: bool, rate: f64, nper: f64, pv: f64, start_ra
     let end = math_round(end_raw);
     if !(rate > 0.0 && nper > 0.0 && pv > 0.0 && start >= 1.0 && end >= start && end <= nper) {
         return Fin::Err(sol_error(
-            "#DOMAIN!",
+            ErrorCode::Domain,
             "Rate, periods and PV must be above 0, and the range must run from period 1 or later to the loan's last period at most",
         ));
     }
     // Each period is a step of the loop below, and past 2^53 a step no longer moves.
     if end - start >= MAX_PERIODS || end > 9_007_199_254_740_991.0 {
-        return Fin::Err(sol_error("#DOMAIN!", format!("{} sums at most 1,000,000 periods", if cumipmt { "CUMIPMT" } else { "CUMPRINC" })));
+        return Fin::Err(sol_error(ErrorCode::Domain, format!("{} sums at most 1,000,000 periods", if cumipmt { "CUMIPMT" } else { "CUMPRINC" })));
     }
     let r_n = js_pow(1.0 + rate, nper);
     let pmt = -(pv * r_n) * rate / ((1.0 + rate * ty) * (r_n - 1.0));

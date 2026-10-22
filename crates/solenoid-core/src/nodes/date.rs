@@ -1,6 +1,7 @@
 //! [[C44]] dateSerials, [[B11]] maximalMerge, [[C17]] shareImpl, [[D41]] formatFlowsDownstream. `nodes/date.ts`'s
 //! card bodies: dates are serials, each card the formula of its name item by item.
 
+use crate::error_value::ErrorCode;
 use super::kit::{broadcast_err, core_call, each, guard_finite, short_circuit};
 use super::text::{js_floor, setting};
 use super::{err, list, Answer, Call};
@@ -16,7 +17,7 @@ fn broadcast(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
             V::Null => V::Null,
             V::Num(n) => guard_finite(n, ops),
             other if ops.iter().any(|v| matches!(v, V::Num(n) if n.is_infinite())) => other,
-            _ => err("#OVERFLOW!", OVERFLOW_MESSAGE),
+            _ => err(ErrorCode::Overflow, OVERFLOW_MESSAGE),
         },
     })
 }
@@ -108,7 +109,7 @@ fn date_diff(c: &Call) -> V {
 fn workdays(c: &Call) -> V {
     let code = js_floor(&setting(c, "weekend_code", V::Num(1.0)));
     if !((1.0..=7.0).contains(&code) || (11.0..=17.0).contains(&code)) {
-        return err("#VALUE!", "Weekend must be a code: 1 to 7, or 11 to 17");
+        return err(ErrorCode::Value, "Weekend must be a code: 1 to 7, or 11 to 17");
     }
     let mut hol: Vec<f64> = Vec::new();
     if let Some(V::List(hs)) = c.wired("holidays").and_then(|w| w.first()) {
