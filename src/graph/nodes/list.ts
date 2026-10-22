@@ -23,8 +23,7 @@ import { iterMin, iterMax } from "./mathUtils";
 import type { AggregateOp } from "./statsOps";
 import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, type OutlierMethod, type RunningOp, type XMatchMatchMode, type XMatchSearchMode, weightedShuffleKey, type Cell as ListCell, ARG_LIST_OPS } from "./listOps";
 import { isFrameRef, readRefColumn, materialize } from "../frameBackend";
-import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell } from "../frame";
-import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
+import { isFrameValue, isCubeValue, frameRowCount, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
 
@@ -274,8 +273,9 @@ export class ListIndexNode extends ClassicPreset.Node {
     if (want === this.indexAxes) return;
     const departing = ListIndexNode.axisKeys(this.indexAxes);
     const carried = this.literals[want === "position" ? "index" : "position"];
-    this.indexAxes = want;
     queueMicrotask(() => {
+      if (this.indexAxes === want) return;
+      this.indexAxes = want;
       void (async () => {
         await dropInputCables(this.id, departing);
         for (const k of departing) { if (this.inputs[k]) this.removeInput(k); delete this.literals[k]; }
@@ -325,58 +325,13 @@ export class ListIndexNode extends ClassicPreset.Node {
     return comboOfFamily(c.type) ?? "trueany";
   }
 
-  data(inputs: { list?: unknown[]; index?: IndexAxis[]; column?: IndexAxis[]; position?: IndexAxis[] }): { result: IndexResult } {
-    const v = inputs.list?.[0] ?? null;
-    this.reconcileAxes(v);
-    // Until the swap lands, the sockets on the card say what the numbers mean.
-    const rowIn = this.inputs.position ? readRole<IndexAxis>(this, "position", inputs.position) : readRole<IndexAxis>(this, "index", inputs.index);
-    const colIn = this.inputs.column ? readRole<IndexAxis>(this, "column", inputs.column) : undefined;
-    const result = indexIntoContainer(v, rowIn, colIn);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    this.reconcileAxes(inputs.list?.[0] ?? null);
+    return nodeOnCore(this, inputs) as { result: IndexResult };
   }
 }
 
 type IndexResult = number | SolError | null | CubeCell | FrameValue | CubeValue;
-
-/** Lives here, not in indexAccess: formulas never hold a frame or cube, and indexAccess must stay rete-free. */
-function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexResult {
-  if (v === null || v === undefined) return null;
-  if (!isFrameValue(v) && !isCubeValue(v)) {
-    return indexInto(v, row, col, tagFrameCellUnit) as IndexResult;
-  }
-  if (Array.isArray(row) || Array.isArray(col)) return solError("#VALUE!", "INDEX takes one row and one column of a Frame or Cube at a time");
-  const ax = resolveAxes(row, col);
-  if (ax.blank) return null;
-  const { rowAll, colAll, r, c } = ax;
-
-  if (isCubeValue(v)) {
-    if (rowAll && colAll) return v;
-    const rows = cubeRowCount(v);
-    if (!rowAll && (r < 0 || r >= rows)) return indexRefError(r + 1, rows, "Row");
-    if (!colAll && (c < 0 || c >= v.columns.length)) return indexRefError(c + 1, v.columns.length, "Column");
-    if (rowAll) return cubeFromColumns([v.columns[c]]);
-    if (colAll) return cubeFromColumns(v.columns.map((col) => ({ ...col, cells: [col.cells[r] ?? null] })));
-    return v.columns[c].cells[r] ?? null;
-  }
-
-  if (rowAll && colAll) return v;
-  const rows = frameRowCount(v);
-  if (!rowAll && (r < 0 || r >= rows)) return indexRefError(r + 1, rows, "Row");
-  if (!colAll && (c < 0 || c >= v.columns.length)) return indexRefError(c + 1, v.columns.length, "Column");
-  if (rowAll) {
-    const col = v.columns[c];
-    return (col.unit ? col.values.map((x) => tagFrameCellUnit(x, col.unit!)) : [...col.values]) as CubeCell;
-  }
-  if (colAll) {
-    const columns: FrameColumn[] = v.columns.map((col) => ({
-      ...col, values: [col.values[r] ?? null], raw: col.raw ? [col.raw[r] ?? ""] : undefined,
-    }));
-    return { __frame: true, columns };
-  }
-  const cell = v.columns[c].values[r] ?? null;
-  return v.columns[c].unit ? (tagFrameCellUnit(cell, v.columns[c].unit!) as CubeCell) : cell;
-}
 
 export type SortDir = "asc" | "desc";
 

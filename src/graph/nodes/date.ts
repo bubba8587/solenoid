@@ -130,12 +130,8 @@ export class DateTimeValueNode extends ClassicPreset.Node {
     out.label  = spec.label;
   }
 
-  data(inputs: { text?: string[] }): { result: number | SolError | null } {
-    const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
-    if (!text) { this.cachedResult = null; return { result: null }; }
-    const result = callCore(this.op === "date" ? "DATEVALUE" : "TIMEVALUE", [text]) as number | SolError;
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 

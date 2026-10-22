@@ -226,7 +226,7 @@ fn chrono_reading(t: &str) -> DateReading {
     if !whole.is_empty() && ascii_digits(whole) && frac.is_none_or(|f| !f.is_empty() && ascii_digits(f)) {
         return DateReading::NotADate;
     }
-    if let Some(r) = month_name_little_endian(t).or_else(|| slash_date_time(t)) {
+    if let Some(r) = iso_date_time(t).or_else(|| month_name_little_endian(t)).or_else(|| slash_date_time(t)) {
         return r;
     }
     // An ISO day then " and …": chrono reads the day alone, so text is left over.
@@ -352,6 +352,119 @@ fn could_cover(t: &str) -> bool {
         }
     }
     false
+}
+
+/// chrono-node's ISOFormatParser (`YYYY-M-D`, then optionally `THH:MM[:SS[.ffff]]` and `Z` or `±HH[:][MM]`), or its
+/// date then a time expression after spaces or one comma, merged as ENMergeDateTimeRefiner does; then only
+/// `[\s.,]*`. With a zone the reading is that instant; without one, the wall clock it names in the local zone, read
+/// back as `parseDate` reads it (`Date.UTC` of the local fields). `None` for any other shape.
+fn iso_date_time(t: &str) -> Option<DateReading> {
+    let b = t.as_bytes();
+    let digits = |from: usize, max: usize| b.get(from..).map_or(0, |r| r.iter().take(max).take_while(|c| c.is_ascii_digit()).count());
+    let num = |r: std::ops::Range<usize>| f64::from(b[r].iter().fold(0u32, |a, c| a * 10 + u32::from(c - b'0')));
+    let word = |i: usize| b.get(i).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_');
+    if digits(0, 5) != 4 || b.get(4) != Some(&b'-') {
+        return None;
+    }
+    let mn = digits(5, 3);
+    if !(1..=2).contains(&mn) || b.get(5 + mn) != Some(&b'-') {
+        return None;
+    }
+    let d0 = 6 + mn;
+    let dn = digits(d0, 3);
+    if !(1..=2).contains(&dn) {
+        return None;
+    }
+    let (year, month, day) = (num(0..4), num(5..5 + mn), num(d0..d0 + dn));
+    let mut i = d0 + dn;
+    // The clock (ms into the day) and the zone offset in minutes, where the text gives them.
+    let mut clock: Option<f64> = None;
+    let mut offset: Option<f64> = None;
+    if matches!(b.get(i), Some(b'T' | b't')) {
+        let hn = digits(i + 1, 3);
+        let m0 = i + 2 + hn;
+        let mn = digits(m0, 3);
+        if !(1..=2).contains(&hn) || b.get(i + 1 + hn) != Some(&b':') || !(1..=2).contains(&mn) {
+            return None;
+        }
+        let (h, mi) = (num(i + 1..i + 1 + hn), num(m0..m0 + mn));
+        i = m0 + mn;
+        let (mut s, mut ms) = (0.0, 0.0);
+        if b.get(i) == Some(&b':') {
+            let sn = digits(i + 1, 3);
+            if !(1..=2).contains(&sn) {
+                return None;
+            }
+            s = num(i + 1..i + 1 + sn);
+            i += 1 + sn;
+            if b.get(i) == Some(&b'.') && digits(i + 1, 5) > 0 {
+                let fnum = digits(i + 1, 5);
+                if fnum > 4 {
+                    return None;
+                }
+                // parseInt of the digits: `.5` is 5 ms.
+                ms = num(i + 1..i + 1 + fnum);
+                i += 1 + fnum;
+            }
+        }
+        if matches!(b.get(i), Some(b'Z' | b'z')) {
+            offset = Some(0.0);
+            i += 1;
+        } else if matches!(b.get(i), Some(b'+' | b'-')) && digits(i + 1, 2) == 2 {
+            let sign = if b[i] == b'-' { -1.0 } else { 1.0 };
+            let hours = sign * num(i + 1..i + 3) * 60.0;
+            i += 3;
+            let colon = usize::from(b.get(i) == Some(&b':'));
+            let om = if digits(i + colon, 2) == 2 { let v = num(i + colon..i + colon + 2); i += colon + 2; v } else { 0.0 };
+            // As chrono adds them: `-00:30` is +30, since -0 is not below 0.
+            offset = Some(if hours < 0.0 { hours - om } else { hours + om });
+        }
+        let c = ((h * 60.0 + mi) * 60.0 + s) * 1000.0 + ms;
+        // `isValidDate`: seconds and milliseconds may carry, but not into another minute, hour or day.
+        if !(c < 86_400_000.0 && (c / 3_600_000.0).floor() == h && (c % 3_600_000.0 / 60_000.0).floor() == mi) {
+            return None;
+        }
+        clock = Some(c);
+    }
+    if word(i) {
+        return None;
+    }
+    let tail = |s: &str| s.chars().all(|c| c == '.' || c == ',' || is_js_space(c));
+    let mut rest = &t[i..];
+    if clock.is_none() && !tail(rest) {
+        let gap = rest.trim_start_matches(is_js_space);
+        let gap = gap.strip_prefix(',').or_else(|| gap.strip_prefix("at ")).unwrap_or(gap).trim_start_matches(is_js_space);
+        if gap.len() == rest.len() {
+            return None;
+        }
+        let (ms, after) = time_expression(gap)?;
+        if ms >= 86_400_000.0 {
+            return None;
+        }
+        clock = Some(ms);
+        rest = after;
+    }
+    if !tail(rest) || !(1.0..=12.0).contains(&month) || day < 1.0 {
+        return None;
+    }
+    let days = crate::date_serial::days_from_civil(year as i64, month as u32, day as u32);
+    // A day the month lacks fails `isValidDate`; what chrono reads instead stays with the TS.
+    if crate::date_serial::civil_from_days(days).1 != month as u32 {
+        return None;
+    }
+    let ms = match (clock, offset) {
+        (Some(c), Some(off)) => days as f64 * 86_400_000.0 + c - off * 60_000.0,
+        _ => {
+            use crate::zone;
+            // `new Date(y, m, d, h, …)` then `setFullYear(y)`: the wall clock as an instant, chrono implying noon.
+            let at = zone::utc(zone::make_date(zone::make_day(year, month - 1.0, day), clock.unwrap_or(43_200_000.0)));
+            let l = zone::local_fields(at)?;
+            // `Date.UTC` reads a year from 0 to 99 as 1900 to 1999.
+            let y = if (0.0..=99.0).contains(&l.year) { l.year + 1900.0 } else { l.year };
+            zone::make_date(zone::make_day(y, l.month, l.date), if clock.is_some() { l.in_day } else { 0.0 })
+        }
+    };
+    Some(DateReading::Serial(ms / 86_400_000.0 + 25569.0))
 }
 
 /// chrono-node's `ENMonthNameLittleEndianParser` on `15-Mar-2024`: a day of one or two digits, a month name from its

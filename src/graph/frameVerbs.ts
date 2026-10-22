@@ -875,17 +875,6 @@ export function reconcileSummaryList(s: ReconcileSummary): unknown[] {
     p ? [p.totalBefore, p.totalAfter, p.delta, p.price, p.volume, p.mix, p.excluded] : null];
 }
 
-export function reconcileSummaryFromList(l: unknown[]): ReconcileSummary {
-  const [added, removed, changed, unchanged, skipped, addedColumns, removedColumns, pvm] = l as
-    [number, number, number, number, number, string[], string[], number[] | null];
-  const s: ReconcileSummary = { added, removed, changed, unchanged, skipped, addedColumns, removedColumns };
-  if (pvm) {
-    const [totalBefore, totalAfter, delta, price, volume, mix, excluded] = pvm;
-    s.pvm = { totalBefore, totalAfter, delta, price, volume, mix, excluded };
-  }
-  return s;
-}
-
 export function reconcileFrames(
   left: FrameValue, right: FrameValue, opts: ReconcileOpts,
 ): { frame: FrameValue; summary: ReconcileSummary } {

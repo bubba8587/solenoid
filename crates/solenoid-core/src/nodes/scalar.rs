@@ -15,6 +15,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "MRoundNode" => mround(c),
         "RoundNNode" => round_n(c),
         "GCDNode" => gcd(c),
+        "CombinatoricsNode" => combinatorics(c),
         "TwoInputMathNode" => two_input_math(c),
         "SumProductNode" => sum_product(c),
         "SeriesSumNode" => series_sum(c),
@@ -253,6 +254,35 @@ fn gcd(c: &mut Call) -> Answer {
     let a = c.read_input("a", c.literal("a"));
     let b = c.read_input("b", c.literal("b"));
     let result = broadcast_err(&[a, b], |o| core_call(&op, &[o[0].clone(), o[1].clone()]));
+    c.show("cachedResult", result.clone());
+    Ok(vec![("result".into(), result)])
+}
+
+/// FACT and FACTDOUBLE never read k, so a wired blank k doesn't blank them. PERMUTATIONA is the card's own; the rest
+/// are the formulas' kernel ([[C17]] shareImpl), which a count that isn't a number reaches as out of the domain.
+fn combinatorics(c: &mut Call) -> Answer {
+    let op = c.field_str("op", "combin").to_string();
+    let uses_k = op != "fact" && op != "factdouble";
+    let n = c.read_num("n", 0.0);
+    let k = if uses_k { c.read_num("k", 0.0) } else { V::Num(0.0) };
+    if matches!(n, V::Null) || matches!(k, V::Null) {
+        c.show("cachedResult", V::Null);
+        return Ok(vec![("result".into(), V::Null)]);
+    }
+    let domain = || err("#DOMAIN!", "Counts must be finite and 0 or more");
+    let (tn, tk) = (num(&n).trunc(), num(&k).trunc());
+    let result = if op == "permutationa" {
+        if tn >= 0.0 && tk >= 0.0 { V::Num(crate::excel_functions::js_pow(tn, tk)) } else { domain() }
+    } else if tn.is_nan() || (uses_k && tk.is_nan()) {
+        domain()
+    } else {
+        let args: Vec<V> = if uses_k { vec![V::Num(tn), V::Num(tk)] } else { vec![V::Num(tn)] };
+        core_call(&op.to_uppercase(), &args)
+    };
+    let result = match result {
+        V::Num(r) if !r.is_finite() => err("#OVERFLOW!", "The result is too large to represent. Reduce N"),
+        r => r,
+    };
     c.show("cachedResult", result.clone());
     Ok(vec![("result".into(), result)])
 }

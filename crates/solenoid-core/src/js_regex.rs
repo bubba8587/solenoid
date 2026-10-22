@@ -1,8 +1,11 @@
 // [[C130]] rustCore, [[D99]] rustIsSpec
-//! `new RegExp(pattern, icase ? "i" : "")` as V8 reads it without the u flag (Annex B): which patterns it refuses,
-//! and for the rest a pattern regress reads the same way. Every literal, escape and class lowers to an explicit set
-//! of code units, so neither regress's escape leniencies nor its Unicode case folding ever apply; a caseless match
-//! folds by the non-Unicode Canonicalize (simple uppercase, never non-ASCII to ASCII).
+//! `new RegExp(pattern, flags)` as V8 reads it. Without the u or v flag (Annex B): which patterns it refuses, and for
+//! the rest a pattern regress reads the same way. Every literal, escape and class lowers to an explicit set of code
+//! units, so neither regress's escape leniencies nor its Unicode case folding ever apply; a caseless match folds by
+//! the non-Unicode Canonicalize (simple uppercase, never non-ASCII to ASCII). With u or v the syntax is the strict
+//! one, which regress reads as V8 does, by code point and with Unicode case folding; its property escapes
+//! (`\p{…}`) are left out of the build, so a pattern with one is `Unsure`. The m and s flags are regress's own, g, y
+//! and d change how a caller runs the pattern, not what it matches.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -23,19 +26,60 @@ pub enum Compiled {
 /// Quantifier bounds past this stay with the TS (V8 clamps them; regress may not).
 const MAX_BOUND: u64 = 100_000;
 
-type Cache = HashMap<(Vec<u16>, bool), Compiled>;
+/// The flags that change what a pattern matches.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct JsFlags {
+    pub icase: bool,
+    pub multiline: bool,
+    pub dot_all: bool,
+    pub unicode: bool,
+    pub unicode_sets: bool,
+}
+
+/// A flags string as `new RegExp` reads it: the flags that shape the pattern, and whether it is global and sticky.
+/// `None` where V8 throws: a flag it doesn't know, one twice, or u with v.
+pub fn parse_flags(flags: &str) -> Option<(JsFlags, bool, bool)> {
+    let (mut f, mut global, mut sticky, mut indices) = (JsFlags::default(), false, false, false);
+    for ch in flags.chars() {
+        let slot = match ch {
+            'd' => &mut indices,
+            'g' => &mut global,
+            'i' => &mut f.icase,
+            'm' => &mut f.multiline,
+            's' => &mut f.dot_all,
+            'u' => &mut f.unicode,
+            'v' => &mut f.unicode_sets,
+            'y' => &mut sticky,
+            _ => return None,
+        };
+        if *slot {
+            return None;
+        }
+        *slot = true;
+    }
+    if f.unicode && f.unicode_sets {
+        return None;
+    }
+    Some((f, global, sticky))
+}
+
+type Cache = HashMap<(Vec<u16>, JsFlags), Compiled>;
 
 thread_local! {
     static COMPILED: RefCell<Cache> = RefCell::new(HashMap::new());
 }
 
 pub fn compile(pattern: &[u16], icase: bool) -> Compiled {
+    compile_with(pattern, JsFlags { icase, ..JsFlags::default() })
+}
+
+pub fn compile_with(pattern: &[u16], flags: JsFlags) -> Compiled {
     COMPILED.with(|c| {
-        let key = (pattern.to_vec(), icase);
+        let key = (pattern.to_vec(), flags);
         if let Some(r) = c.borrow().get(&key) {
             return r.clone();
         }
-        let r = lower(pattern, icase);
+        let r = if flags.unicode || flags.unicode_sets { strict(pattern, flags) } else { lower(pattern, flags) };
         let mut c = c.borrow_mut();
         if c.len() > 256 {
             c.clear();
@@ -45,16 +89,49 @@ pub fn compile(pattern: &[u16], icase: bool) -> Compiled {
     })
 }
 
-fn lower(pattern: &[u16], icase: bool) -> Compiled {
+fn lower(pattern: &[u16], flags: JsFlags) -> Compiled {
     let names = match prescan(pattern) {
         Ok(n) => n,
         Err(e) => return e.into(),
     };
-    let mut p = Parser { p: pattern, i: 0, names, icase, out: Vec::new() };
+    let mut p = Parser { p: pattern, i: 0, names, icase: flags.icase, dot_all: flags.dot_all, out: Vec::new() };
     if let Err(e) = p.pattern() {
         return e.into();
     }
-    Regex::from_unicode(p.out.iter().copied(), Flags::default()).map_or(Compiled::Unsure, |r| Compiled::Ok(Rc::new(r)))
+    let rf = Flags { multiline: flags.multiline, ..Flags::default() };
+    Regex::from_unicode(p.out.iter().copied(), rf).map_or(Compiled::Unsure, |r| Compiled::Ok(Rc::new(r)))
+}
+
+/// The u and v syntax, by code point: regress reads it as V8 does, a lone surrogate in the pattern as itself.
+fn strict(pattern: &[u16], flags: JsFlags) -> Compiled {
+    let mut points = Vec::with_capacity(pattern.len());
+    let mut i = 0;
+    while i < pattern.len() {
+        let u = u32::from(pattern[i]);
+        match pattern.get(i + 1).map(|&t| u32::from(t)) {
+            Some(t) if (0xd800..0xdc00).contains(&u) && (0xdc00..0xe000).contains(&t) => {
+                points.push(0x10000 + ((u - 0xd800) << 10) + (t - 0xdc00));
+                i += 2;
+            }
+            _ => {
+                points.push(u);
+                i += 1;
+            }
+        }
+    }
+    let rf = Flags {
+        icase: flags.icase,
+        multiline: flags.multiline,
+        dot_all: flags.dot_all,
+        unicode: flags.unicode || flags.unicode_sets,
+        unicode_sets: flags.unicode_sets,
+        ..Flags::default()
+    };
+    match Regex::from_unicode(points.into_iter(), rf) {
+        Ok(r) => Compiled::Ok(Rc::new(r)),
+        Err(e) if e.text.contains("Property escapes") => Compiled::Unsure,
+        Err(_) => Compiled::Invalid,
+    }
 }
 
 enum Fail {
@@ -309,6 +386,7 @@ struct Parser<'a> {
     i: usize,
     names: Names,
     icase: bool,
+    dot_all: bool,
     out: Vec<u32>,
 }
 
@@ -393,7 +471,8 @@ impl Parser<'_> {
             }
             0x28 => self.group()?,
             0x2e => {
-                self.emit_set(Set::of(LINE_TERMINATORS).inverted(), true);
+                let any = if self.dot_all { Set::of(&[(0, 0xffff)]) } else { Set::of(LINE_TERMINATORS).inverted() };
+                self.emit_set(any, true);
                 self.i += 1;
                 Kind::Atom
             }

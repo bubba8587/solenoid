@@ -2,6 +2,7 @@
 //! one call to the list function they share their kernel with.
 
 use super::kit::core_call;
+use super::text::role_value;
 use super::scalar::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Frame};
 use super::units::tag;
@@ -55,6 +56,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "TallyNode" => tally(c),
         "GroupListsNode" => group_lists(c),
         "FindPeaksNode" => find_peaks(c),
+        "ListIndexNode" => list_index(c),
         _ => return None,
     })
 }
@@ -1326,4 +1328,313 @@ fn find_peaks(c: &mut Call) -> Answer {
     let columns = vec![number_column("Position", positions.as_ref().clone()), number_column("Height", height)];
     let frame = V::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
     shown(c, "cachedResult", "result", frame)
+}
+
+// ─── INDEX (list.ts) ────────────────────────────────────────────────────────────
+
+/// A list takes one Position and anything else a Row and a Column ([[D85]] columnsStayColumns); the class swaps the
+/// sockets, and until it has, the sockets on the card say what the numbers mean.
+fn list_index(c: &mut Call) -> Answer {
+    let v = match slot(c, "list") {
+        V::Undef => V::Null,
+        v => v,
+    };
+    let has = |c: &Call, k: &str| c.sockets.iter().any(|(s, _, _)| s == k);
+    let row = picks(&c.label(if has(c, "position") { "position" } else { "index" }), if has(c, "position") { role_value(c, "position") } else { role_value(c, "index") });
+    let col = if has(c, "column") { picks(&c.label("column"), role_value(c, "column")) } else { V::Undef };
+    let unit = c.matrix_unit("list").cloned();
+    let result = index_container(&v, &row, &col, unit.as_ref());
+    if let (Some(u), V::List(a), V::List(b)) = (&unit, &v, &result) {
+        if std::rc::Rc::ptr_eq(a, b) {
+            c.set_matrix_unit("result", u.clone());
+        }
+    }
+    c.show("cachedResult", result.clone());
+    Ok(vec![("result".into(), result)])
+}
+
+/// `applyRole` of a `picks` role ([[D86]] blankRoles): a blank position in a list dropped, none left (or a blank) the
+/// positions left out; a blank inside a table of positions `#SYNTAX!`.
+fn picks(label: &str, v: V) -> V {
+    let blank = |x: &V| if nullish(x) { err("#SYNTAX!", format!("A position in {label} is blank")) } else { x.clone() };
+    match &v {
+        V::Err(_) => v,
+        V::List(rows) if matches!(rows.first(), Some(V::List(_))) => {
+            list(rows.iter().map(|r| if let V::List(cells) = r { list(cells.iter().map(blank).collect()) } else { blank(r) }).collect())
+        }
+        V::List(items) => {
+            let kept: Vec<V> = items.iter().filter(|x| !nullish(x)).cloned().collect();
+            if kept.is_empty() { V::Undef } else { list(kept) }
+        }
+        x if nullish(x) => V::Undef,
+        _ => v,
+    }
+}
+
+fn index_ref_error(n: f64, max: usize, what: &str) -> V {
+    err("#REF!", format!("{what} {} is outside 1…{max}", number_to_string(n)))
+}
+
+/// `Math.trunc` of a position as JS reads it.
+fn trunc_of(v: &V) -> f64 {
+    super::kit::num(v).trunc()
+}
+
+/// `resolveAxes`: `None` where a position is blank; else whether each axis is whole, and the 0-based positions.
+fn resolve_axes(row: &V, col: &V) -> Option<(bool, bool, f64, f64)> {
+    if matches!(row, V::Null) || matches!(col, V::Null) {
+        return None;
+    }
+    let row_all = matches!(row, V::Undef) || trunc_of(row) == 0.0;
+    let col_all = matches!(col, V::Undef) || trunc_of(col) == 0.0;
+    Some((row_all, col_all, if row_all { -1.0 } else { trunc_of(row) - 1.0 }, if col_all { -1.0 } else { trunc_of(col) - 1.0 }))
+}
+
+/// `xs[i]` at a position that may be NaN or out of range.
+fn at_pos(xs: &[V], i: f64) -> Option<&V> {
+    if i >= 0.0 && i < xs.len() as f64 { xs.get(i as usize) } else { None }
+}
+
+fn outside(i: f64, len: usize) -> bool {
+    i < 0.0 || i >= len as f64
+}
+
+/// `x ?? null`.
+fn or_null(x: Option<&V>) -> V {
+    match x {
+        None | Some(V::Undef) => V::Null,
+        Some(x) => x.clone(),
+    }
+}
+
+/// `indexIntoContainer`: a frame or a cube sliced here, anything else as the INDEX formula reads it, a table's
+/// cells in its unit.
+fn index_container(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
+    use super::frames::{cube_from_columns, cube_row_count, tag_cell_unit};
+    if matches!(v, V::Null | V::Undef) {
+        return V::Null;
+    }
+    if !matches!(v, V::Frame(_) | V::Cube(_)) {
+        return index_into(v, row, col, unit);
+    }
+    if matches!(row, V::List(_)) || matches!(col, V::List(_)) {
+        return err("#VALUE!", "INDEX takes one row and one column of a Frame or Cube at a time");
+    }
+    let Some((row_all, col_all, r, ci)) = resolve_axes(row, col) else { return V::Null };
+    if let V::Cube(cube) = v {
+        if row_all && col_all {
+            return v.clone();
+        }
+        let rows = cube_row_count(cube);
+        if !row_all && outside(r, rows) {
+            return index_ref_error(r + 1.0, rows, "Row");
+        }
+        if !col_all && outside(ci, cube.columns.len()) {
+            return index_ref_error(ci + 1.0, cube.columns.len(), "Column");
+        }
+        if row_all {
+            return cube_from_columns(vec![cube.columns[ci as usize].clone()]);
+        }
+        if col_all {
+            return cube_from_columns(cube.columns.iter().map(|col| super::CubeColumn { cells: vec![or_null(at_pos(&col.cells, r))], ..col.clone() }).collect());
+        }
+        return or_null(at_pos(&cube.columns[ci as usize].cells, r));
+    }
+    let V::Frame(frame) = v else { return V::Null };
+    if row_all && col_all {
+        return v.clone();
+    }
+    let rows = frame.columns.iter().map(|col| col.values.len()).max().unwrap_or(0);
+    if !row_all && outside(r, rows) {
+        return index_ref_error(r + 1.0, rows, "Row");
+    }
+    if !col_all && outside(ci, frame.columns.len()) {
+        return index_ref_error(ci + 1.0, frame.columns.len(), "Column");
+    }
+    if row_all {
+        let col = &frame.columns[ci as usize];
+        return list(match &col.unit {
+            Some(u) => col.values.iter().map(|x| tag_cell_unit(x, u)).collect(),
+            None => col.values.clone(),
+        });
+    }
+    if col_all {
+        let columns = frame.columns.iter().map(|col| Column {
+            values: vec![or_null(at_pos(&col.values, r))],
+            raw: col.raw.as_ref().and_then(|raw| raw.as_array()).map(|raw| {
+                serde_json::Value::Array(vec![raw.get(r as usize).filter(|x| !x.is_null()).cloned().unwrap_or_else(|| serde_json::Value::String(String::new()))])
+            }),
+            ..col.clone()
+        }).collect();
+        return V::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
+    }
+    let col = &frame.columns[ci as usize];
+    let cell = or_null(at_pos(&col.values, r));
+    match &col.unit {
+        Some(u) => tag_cell_unit(&cell, u),
+        None => cell,
+    }
+}
+
+/// `indexInto` (indexAccess.ts) with `tagFrameCellUnit`: an empty list of positions is the positions left out
+/// ([[D86]] blankRoles).
+fn index_into(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
+    if matches!(v, V::Null | V::Undef) {
+        return V::Null;
+    }
+    let unlist = |x: &V| match x {
+        V::List(l) if l.is_empty() => V::Undef,
+        x => x.clone(),
+    };
+    let (row, col) = (unlist(row), unlist(col));
+    if matches!(row, V::List(_)) || matches!(col, V::List(_)) {
+        return index_many(v, &row, &col, unit);
+    }
+    let Some((row_all, col_all, r, ci)) = resolve_axes(&row, &col) else { return V::Null };
+    let V::List(items) = v else {
+        let ok = (row_all || r == 0.0) && (col_all || ci == 0.0);
+        return if ok { v.clone() } else { err("#REF!", "Index is outside a single value. Only index 1 exists") };
+    };
+    if matches!(items.first(), Some(V::List(_))) {
+        let grid = items;
+        let tag = |x: V| match unit {
+            Some(u) => super::frames::tag_cell_unit(&x, u),
+            None => x,
+        };
+        if row_all && col_all {
+            return v.clone();
+        }
+        let width = || grid.iter().map(|row| if let V::List(r) = row { r.len() } else { 1 }).max().unwrap_or(0);
+        // One position on a one-row or one-column table walks along it, as Excel's INDEX does.
+        if matches!(col, V::Undef) && !row_all {
+            if grid.len() == 1 {
+                if let V::List(only) = &grid[0] {
+                    return if outside(r, only.len()) { index_ref_error(r + 1.0, only.len(), "Column") } else { tag(or_null(at_pos(only, r))) };
+                }
+            }
+            if width() == 1 {
+                if outside(r, grid.len()) {
+                    return index_ref_error(r + 1.0, grid.len(), "Row");
+                }
+                return tag(match at_pos(grid, r) {
+                    Some(V::List(row)) => or_null(row.first()),
+                    Some(x) => x.clone(),
+                    None => V::Undef,
+                });
+            }
+        }
+        if !row_all && outside(r, grid.len()) {
+            return index_ref_error(r + 1.0, grid.len(), "Row");
+        }
+        if row_all {
+            let w = width();
+            if outside(ci, w) {
+                return index_ref_error(ci + 1.0, w, "Column");
+            }
+            return list(grid.iter().map(|row| tag(match row {
+                V::List(cells) => or_null(at_pos(cells, ci)),
+                other => if ci == 0.0 { other.clone() } else { V::Null },
+            })).collect());
+        }
+        let row_arr: Vec<V> = match at_pos(grid, r) {
+            Some(V::List(cells)) => cells.to_vec(),
+            Some(other) => vec![other.clone()],
+            None => vec![V::Undef],
+        };
+        if col_all {
+            return list(row_arr.into_iter().map(tag).collect());
+        }
+        return if outside(ci, row_arr.len()) { index_ref_error(ci + 1.0, row_arr.len(), "Column") } else { tag(or_null(at_pos(&row_arr, ci))) };
+    }
+    // A list is one row: one index walks along it; with two, the row must be 1 and the column picks the item.
+    let item = |i: f64, what: &str| if outside(i, items.len()) { index_ref_error(i + 1.0, items.len(), what) } else { at_pos(items, i).cloned().unwrap_or(V::Undef) };
+    if matches!(col, V::Undef) {
+        return if row_all { list(items.to_vec()) } else { item(r, "Item") };
+    }
+    if !row_all && r != 0.0 {
+        return index_ref_error(r + 1.0, 1, "Row");
+    }
+    if col_all { list(items.to_vec()) } else { item(ci, "Column") }
+}
+
+fn is_grid(x: &V) -> bool {
+    matches!(x, V::List(l) if matches!(l.first(), Some(V::List(_))))
+}
+
+/// `positionOf`: blank, an error as it is, a number, or #VALUE!.
+fn position_of(x: &V) -> V {
+    let n = match x {
+        V::Null | V::Undef => return V::Null,
+        V::Err(_) => return x.clone(),
+        V::Num(n) => *n,
+        V::Bool(b) => f64::from(u8::from(*b)),
+        V::Str(s) if !js_trim(s).is_empty() => crate::jsnum::string_to_number(s),
+        _ => f64::NAN,
+    };
+    if n.is_nan() { err("#VALUE!", "INDEX position must be a number") } else { V::Num(n) }
+}
+
+/// `indexMany`: on a table whose other axis is whole, a list of rows or columns picks those, as CHOOSEROWS and
+/// CHOOSECOLS do; otherwise the two axes pair up as Excel's array arguments do, one value per pair.
+fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
+    let (row_many, col_many) = (matches!(row, V::List(_)), matches!(col, V::List(_)));
+    if let (true, V::List(grid)) = (is_grid(v) && row_many != col_many, v) {
+        let picks = if row_many { row } else { col };
+        let other = if row_many { col } else { row };
+        let walks = matches!(col, V::Undef) && (grid.len() == 1 || grid.iter().all(|r| !matches!(r, V::List(l) if l.len() > 1)));
+        let whole = matches!(other, V::Undef) || matches!(other, V::Num(n) if n.trunc() == 0.0);
+        if !walks && whole && !is_grid(picks) {
+            let V::List(picks) = picks else { return V::Null };
+            let slices: Vec<V> = picks.iter().map(|p| match position_of(p) {
+                at @ (V::Null | V::Err(_)) => at,
+                at if row_many => index_into(v, &at, other, unit),
+                at => index_into(v, other, &at, unit),
+            }).collect();
+            if let Some(bad) = slices.iter().find(|x| !matches!(x, V::List(_)) || x.is_sol_error()) {
+                return bad.clone();
+            }
+            if row_many {
+                return list(slices);
+            }
+            let lists: Vec<&[V]> = slices.iter().map(|s| if let V::List(l) = s { l.as_slice() } else { &[][..] }).collect();
+            return list((0..lists[0].len()).map(|i| list(lists.iter().map(|c| or_null(c.get(i))).collect())).collect());
+        }
+    }
+    let as_grid = |x: &V| -> Vec<V> {
+        match x {
+            V::List(l) if is_grid(x) => l.to_vec(),
+            V::List(_) => vec![x.clone()],
+            _ => vec![list(vec![x.clone()])],
+        }
+    };
+    let rg = (!matches!(row, V::Undef)).then(|| as_grid(row));
+    let cg = (!matches!(col, V::Undef)).then(|| as_grid(col));
+    let len0 = |g: &Option<Vec<V>>| g.as_ref().and_then(|g| g.first()).map(|r| if let V::List(l) = r { l.len() } else { 1 }).unwrap_or(1);
+    let h = rg.as_ref().map_or(1, Vec::len).max(cg.as_ref().map_or(1, Vec::len));
+    let w = len0(&rg).max(len0(&cg));
+    let at = |g: &Option<Vec<V>>, i: usize, j: usize| -> V {
+        let Some(g) = g else { return V::Undef };
+        let gi = if g.len() == 1 { 0 } else { i };
+        let Some(line) = g.get(gi) else { return err("#N/A", "The positions are different sizes") };
+        let V::List(line) = line else { return position_of(line) };
+        let gj = if (if let Some(V::List(f)) = g.first() { f.len() } else { 1 }) == 1 { 0 } else { j };
+        match line.get(gj) {
+            None => err("#N/A", "The positions are different sizes"),
+            Some(x) => position_of(x),
+        }
+    };
+    let out: Vec<V> = (0..h).map(|i| list((0..w).map(|j| {
+        let (r, cc) = (at(&rg, i, j), at(&cg, i, j));
+        if r.is_sol_error() {
+            return r;
+        }
+        if cc.is_sol_error() {
+            return cc;
+        }
+        match index_into(v, &r, &cc, unit) {
+            V::List(_) => err("#VALUE!", "Each pair of positions must pick one value"),
+            x => x,
+        }
+    }).collect())).collect();
+    if h == 1 { out.into_iter().next().unwrap_or(V::Null) } else { list(out) }
 }

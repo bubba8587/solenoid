@@ -336,6 +336,11 @@ export function unitById(id: string): UnitAnnotation {
   return UNIT_ANNOTATIONS.find((u) => u.id === id) ?? _packUnits.get(id) ?? UNIT_ANNOTATIONS[0];
 }
 
+/** Every unit the FC names, the packs' registered ones after the built-in ones, as `unitById` looks them up. */
+export function fcUnitAnnotations(): UnitAnnotation[] {
+  return [...UNIT_ANNOTATIONS, ..._packUnits.values()];
+}
+
 export function isFcUnit(id: string): boolean {
   return UNIT_ANNOTATIONS.some((u) => u.id === id) || _packUnits.has(id);
 }

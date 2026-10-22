@@ -1,8 +1,7 @@
 // [[B11]] maximalMerge, [[C24]]
 import { describe, expect, it } from "vitest";
-import { CastNode, castOutput, parseCx, type CastTarget } from "../../../src/graph/nodes/cast";
+import { CastNode, castOutput, type CastTarget } from "../../../src/graph/nodes/cast";
 import { cx } from "../../../src/graph/cxValue";
-import { formatNumberPattern } from "../../../src/graph/nodes/text";
 import { isSolError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, isDateType } from "../../../src/graph/sockets";
 import { applyFcUnit } from "../../../src/graph/unitBridge";
@@ -68,12 +67,15 @@ describe("Cast node", () => {
     expect(cast("text", "already text")).toBe("already text");
   });
 
-  // The number-format util still exists (used by Text nodes); Cast no longer
-  // exposes a format code, but the regression coverage stays.
-  it("formatNumberPattern formats decimals (old TEXT regex was double-escaped)", () => {
-    expect(formatNumberPattern(2.345, "0.00")).toBe("2.35");
-    expect(formatNumberPattern(5, "0")).toBe("5");
-    expect(formatNumberPattern(0.123, "0.0%")).toBe("12.3%");
+  it("formats decimals and percents (old TEXT regex was double-escaped)", () => {
+    const text = (format: string, v: number) => {
+      const n = new CastNode({ target: "text" });
+      n.stringLiterals = { format };
+      return n.data({ value: [v] }).result;
+    };
+    expect(text("0.00", 2.345)).toBe("2.35");
+    expect(text("0", 5)).toBe("5");
+    expect(text("0.0%", 0.123)).toBe("12.3%");
   });
 
   it("casts to date serials", () => {
@@ -132,14 +134,9 @@ describe("Cast node", () => {
   });
 
   it("parses complex text forms", () => {
-    expect(parseCx("3+4i")).toEqual(cx(3, 4));
-    expect(parseCx("3-4i")).toEqual(cx(3, -4));
-    expect(parseCx("-i")).toEqual(cx(0, -1));
-    expect(parseCx("i")).toEqual(cx(0, 1));
-    expect(parseCx("2.5")).toEqual(cx(2.5, 0));
-    expect(parseCx("5j")).toEqual(cx(0, 5));
-    expect(parseCx("1+j")).toEqual(cx(1, 1));
-    expect(parseCx("garbage")).toEqual(cx(NaN, NaN));
+    expect(cast("complex", ["3+4i", "3-4i", "-i", "i", "2.5", "5j", "1+j"]))
+      .toEqual([cx(3, 4), cx(3, -4), cx(0, -1), cx(0, 1), cx(2.5, 0), cx(0, 5), cx(1, 1)]);
+    expect(isSolError(cast("complex", "garbage"))).toBe(true);
   });
 
   it("passes null through and exposes lists as a structured value (chip, not a joined string)", () => {
@@ -175,5 +172,36 @@ describe("Cast keeps a value's unit where the target can hold it ([[C25]] firstC
   });
   it("a number is the value as it reads, with no unit", () => {
     expect(through("number", applyFcUnit(5, "km"))).toBe(5);
+  });
+});
+
+describe("Cast reads what the card is set to", () => {
+  const card = (target: CastTarget, fields: Record<string, string>, source: string | null = null) => {
+    const n = new CastNode({ target });
+    n.stringLiterals = fields;
+    (n as unknown as { sourceKind: () => string | null }).sourceKind = () => source;
+    return n;
+  };
+  it("a date's serial casts to text as a date, in the card's format or the default one", () => {
+    expect(card("text", {}, "date").data({ value: [46025.25] }).result).toBe("03-Jan-2026");
+    expect(card("text", { format: "YYYY-MM-DD" }, "datelist").data({ value: [[46025, null]] }).result).toEqual(["2026-01-03", null]);
+    expect(card("text", { format: "0.0" }, "number").data({ value: [46025.25] }).result).toBe("46025.3");
+  });
+  it("a number casts to text through the format's decimals or percent", () => {
+    expect(card("text", { format: "0.000" }).data({ value: [[1, 2.5, -0.0005]] }).result).toEqual(["1.000", "2.500", "-0.001"]);
+    expect(card("text", { format: "0%" }).data({ value: [0.256] }).result).toBe("26%");
+    expect(card("text", { format: "general" }).data({ value: [1e21] }).result).toBe("1e+21");
+    expect(card("text", { format: "#,##0" }).data({ value: [1234] }).result).toBe("1234");
+    expect(card("text", { format: "0.00" }).data({ value: [applyFcUnit(1.5, "km")] }).result).toBe("1.50 km");
+  });
+  it("text casts to a number with the card's separators, and a date or complex value from its text", () => {
+    expect(card("number", { decimal_sep: ",", group_sep: " " }).data({ value: ["1 234,5"] }).result).toBe(1234.5);
+    expect(card("number", { decimal_sep: ",", group_sep: "." }).data({ value: ["1.234"] }).result).toBe(1234);
+    expect(card("number", { group_sep: "." }).data({ value: ["1.234"] }).result).toEqual(expect.objectContaining({ code: "#VALUE!" }));
+    expect(card("date", {}).data({ value: [["2026-01-03T06:00", "15 March 1996", "3/4/2026"]] }).result)
+      .toEqual([46025.25, 35139, expect.objectContaining({ code: "#VALUE!" })]);
+    expect(card("complex", {}).data({ value: [["-2.5-0.5j", "i", "4e2"]] }).result).toEqual([cx(-2.5, -0.5), cx(0, 1), cx(400, 0)]);
+    expect(card("logical", {}).data({ value: [["", 0.5, "2,5"]] }).result)
+      .toEqual([expect.objectContaining({ code: "#VALUE!" }), true, expect.objectContaining({ code: "#VALUE!" })]);
   });
 });
