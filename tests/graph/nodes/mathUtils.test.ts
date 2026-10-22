@@ -9,8 +9,8 @@ import {
   bisectionInv,
   lnFactorial,
   lnCombin,
-  expFitR2,
 } from "../../../src/graph/nodes/mathUtils";
+import { LinestNode } from "../../../src/graph/nodes/stats";
 
 describe("lnGamma", () => {
   it("matches ln of factorials at integer points", () => {
@@ -160,15 +160,15 @@ describe("bisectionInv", () => {
   });
 });
 
-describe("expFitR2", () => {
+describe("Linest's exponential fit", () => {
   it("recovers y = b·mˣ with a perfect log-scale R²", () => {
-    const fit = expFitR2([1, 2, 3, 4], [2, 4, 8, 16]); // y = 1·2ˣ
-    expect(fit!.m).toBeCloseTo(2, 10);
-    expect(fit!.b).toBeCloseTo(1, 10);
-    expect(fit!.r2).toBeCloseTo(1, 10);
+    const fit = new LinestNode({ op: "exponential" }).data({ xs: [[1, 2, 3, 4]], ys: [[2, 4, 8, 16]] }); // y = 1·2ˣ
+    expect(fit.slope).toBeCloseTo(2, 10);
+    expect(fit.intercept).toBeCloseTo(1, 10);
+    expect(fit.r2).toBeCloseTo(1, 10);
   });
 
-  it("is null when any y ≤ 0 (the log is undefined)", () => {
-    expect(expFitR2([1, 2, 3], [1, -1, 2])).toBeNull();
+  it("is #DOMAIN! when any y ≤ 0 (the log is undefined)", () => {
+    expect(new LinestNode({ op: "exponential" }).data({ xs: [[1, 2, 3]], ys: [[1, -1, 2]] }).slope).toMatchObject({ code: "#DOMAIN!" });
   });
 });
