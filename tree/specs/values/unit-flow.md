@@ -2,7 +2,7 @@
 aliases: ["Unit flow"]
 tags: [spec, values]
 ---
-<!-- [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity, [[D47]] noMixCurrencies -->
+<!-- [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity, [[D47]] noMixCurrencies, [[D100]] computedColumnInfersUnit -->
 
 # Spec: Unit flow
 
@@ -16,7 +16,8 @@ There are two layers. **The unit is a property of the value**: it travels as dat
 - **Who sets it.** Only the value's origin:
   - an FC, through `applyFcUnit` in `FormatControllerNode.data()`;
   - Convert, in its `data()`;
-  - the column-unit surfaces, a `Name (unit)` header spec or the popup's per-column unit dropdown, stored as a `ColumnUnit` that computed columns carry too (`unitColumn.ts`);
+  - the column-unit surfaces, a `Name (unit)` header spec or the popup's per-column unit dropdown, stored as a `ColumnUnit` (`unitColumn.ts`);
+  - a computed column, which works its unit out from its formula ([[#Computed columns]]);
   - Table Input's own unit picker (the `author` policy in `matrixUnitPolicy.test.ts`).
   The Number node is a plain literal source and sets nothing.
 - **How it travels.** The tag rides through anything that passes the value along. A transform works the dimension out again through the algebra (`tagDim`) and keeps an operand's `display` when the result's dimension matches it (`$5 + 2 = $7`, `2 × 3 m = 6 m`). A result whose dimension fits neither operand falls back to its derived-symbol form.
@@ -131,7 +132,7 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 - a `SolError`, a real dimensional conflict (`#UNIT!`: meters plus seconds, SIN of a length, comparing incommensurable quantities, two currency codes);
 - `null`, indeterminate (a non-constant exponent, a LAMBDA call, IF branches in two different dimensions). The caller drops the unit rather than guessing; no error is raised.
 
-**Leaves.** Numbers, logicals, text, a blank argument, and `@`-row and whole-column references are dimensionless, since a Frame's unit lives on the column, not the cell ([[D43]] unitByGranularity); the affine pass alone reads a reading column's references as readings ([[computed-columns]] § Units). A name reads `env` and `codes`. Unary `±` and `%` keep the argument's dimension.
+**Leaves.** Numbers, logicals, text and a blank argument are dimensionless. A name, an `@`-row reference and a whole-column reference read `env` and `codes`, which a computed column fills from its columns' units, since a Frame's unit lives on the column, not the cell ([[D43]] unitByGranularity). A LAMBDA the formula calls by name (`fns`, a computed column's `λ1`) is read through its body, each parameter taking its argument's dimension. Unary `±` and `%` keep the argument's dimension.
 
 **Operators.**
 
@@ -169,6 +170,19 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 `dimEval` (`unitDimExpr.ts`) sets the result dimension. A dimensionless argument adopts, under `+` and in the dimension-preserving functions alike (ROUND's digits, MIN(5 km, 3)). When every united input reads in ONE linear display unit, the formula runs on the displayed numbers: `5 km + 3` is 8 km, `5 km > 3000` is FALSE and `5 km & "x"` is "5x", as on Arithmetic and Comparison. A result `k` powers of that unit converts back by scale^k. Mixed units or a derived form run on base SI. A list input holding two dimensions is `#UNIT!` ("xs holds mixed units: m and s."), since the formula reads each variable in one; a bare number beside its united cells adopts their unit, as under `+`. A list or table answer is re-tagged cell by cell. An affine unit (°C, °F) is classified statically (`affineWeight` in `unitDimExpr.ts`): each subexpression carries its point weight, the sum of its coefficients on the readings. A reading is 1, a difference or a bare number 0, and a reading scales only by a constant, so `(a + b) / 2` is 1 again. MIN, MAX, MEDIAN and AVERAGE keep their arguments' weight (a bare number beside readings is a reading, a literal or a wired plain number alike, as on the Aggregate card); the spreads and squared spreads (STDEV, AVEDEV, VAR, DEVSQ) need their arguments to agree and answer a difference; SUM adds them and refuses a list of readings, as SUMIF and SUMIFS do; ROUND and its kin, and the picks (LARGE, SORT), keep their first argument's; AVERAGEIF, MAXIFS and MINIFS keep their value range's; IF, IFS, SWITCH, IFERROR, IFNA and CHOOSE need their branches to agree, a literal or wired plain-number branch counting as a reading (`IF(c, a, 0)` is 0 °C when it picks the 0); a LAMBDA's parameters take their arguments' weights, inline or through a host, and a fold must answer its accumulator's kind each step (`REDUCE(0, a, MAX)` is a reading, `REDUCE(0, a, LAMBDA(p, v, p + v))` is `#UNIT!`); any other function of a reading is `#UNIT!`. The formula then runs once on the readings: weight 1 is a reading (`a + 5` is 25 °C), 0 a difference in the base unit (`b - a` is 10 K), anything else `#UNIT!` (`a * 2`, `b / a`, `SUM(a, b)`). The message names the cause: a weight a constant factor produced (`a * 2`, `a * 2 + b`) says a reading can't be scaled, any other weight above 1 (`a + b`) says readings can't be added. Readings in different offset units (°C and °F) run in base SI but are classified the same way, so `a + b` is `#UNIT!` there too. Machine-checked: `unitWiring.test.ts`.
 
 A formula preset may declare the unit a variable is read in (`units` on the pack entry, `varUnits` on the Expression or Equation node, `readInDeclaredUnit` in `unitBridge.ts`). That variable converts to the declared unit before anything above runs, a bare number is taken as already in it, and another dimension is `#UNIT!`; the variable is then dimensionless to `dimEval`. Proposed in the inbox item `preset-declared-units`; machine-checked by `thermo.test.ts`.
+
+## Computed columns
+
+A computed column with no authored unit takes the unit its formula works out, as Expression does ([[D100]] computedColumnInfersUnit; `planColumnUnits` in `computedColumnUnits.ts`). A column holds one unit, so this is one `dimEval` pass per column, never per row.
+
+- **Inputs.** Each name, `@` read and `[Name]` read of a column takes that column's `ColumnUnit` (a currency column also its code); a wired side value takes its cells' one dimension, and a side list mixing two is `#UNIT!`. The Computed Column node is `unitAware`, so a side value arrives with its unit. With no united input the column computes as plain numbers and carries only an authored unit.
+- **A conflict** (`@dist + @time` over km and h, `$` beside `€`) makes every cell of the column `#UNIT!`, as a column-level error is shown.
+- **Readings** on an offset scale are classified as on Expression (`affineWeight`): over °C `@hi - @lo` is a difference in K, `(@lo + @hi) / 2` is a °C reading, and `@lo + @hi` is `#UNIT!`.
+- **Magnitudes.** When every united input reads in a linear display unit, the formula runs on the numbers the columns show (`@d + 1` over km is +1 km), and a second pass that treats each display unit as its own axis says which display units the answer is in: one unit to the first power keeps it (`@price * @qty` over `$` is `$`), a product or quotient keeps the FC unit with exactly that scale (`@dist / @time` over km and hr is km/h), and anything else converts to base SI with the derived symbol. Display units that can't share an axis (km beside mi under `+`), a derived form, or readings in two offset units run in base SI.
+- **An authored unit wins** (a `Name (unit)` name, or the Fx column's unit picker): the answer converts into it, a plain-number answer is tagged with it as typed, and an answer in another dimension, or another currency code, is `#UNIT!`.
+- **Replacing a column** sets the new unit, or none, never the replaced column's stale one.
+
+A Cube's computed column still reads its cells as bare numbers and only classifies readings (`readingsRefusal`).
 
 ## LAMBDA hosts over a 1-D list
 
