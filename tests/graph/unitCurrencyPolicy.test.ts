@@ -1,7 +1,8 @@
 // [[D47]]
 import { describe, it, expect } from "vitest";
 import * as UV from "../../src/graph/unitValue";
-import { arithmeticCell, compareUnits, forAggregateUnits, type ArithmeticOp, type UnitCell } from "../../src/graph/unitValue";
+import { arithmeticCell, forAggregateUnits, type ArithmeticOp, type UnitCell } from "../../src/graph/unitValue";
+import { ComparisonNode } from "../../src/graph/nodes/logic";
 import { isSolError } from "../../src/graph/errorValue";
 
 // ─── The currency policy sweep (matrixUnitPolicy's shape, applied to currency) ──
@@ -54,8 +55,8 @@ describe("every arithmetic op refuses mismatched currencies", () => {
 });
 
 describe("the non-arithmetic combinators carry the same policy", () => {
-  it("compareUnits: $5 vs 5€ → #UNIT!", () => {
-    expect(err(compareUnits(usd5, eur5))).toBe(true);
+  it("Comparison: $5 vs 5€ → #UNIT!", () => {
+    expect(err(new ComparisonNode({ op: "gt" }).data({ a: [usd5], b: [eur5] }).result)).toBe(true);
   });
   it("forAggregateUnits: mixed codes → #UNIT!", () => {
     const r = forAggregateUnits([usd5, eur5]);
@@ -68,7 +69,7 @@ describe("completeness — a new combinator must join this sweep", () => {
     // Every exported function that COMBINES two-or-more dimensioned operands is
     // listed here with its sweep above. A new `*Units` export (or arithmetic
     // entry point) fails this until it registers — the matrixUnitPolicy pattern.
-    const SWEPT = ["arithmeticCell", "compareUnits", "forAggregateUnits"];
+    const SWEPT = ["arithmeticCell", "forAggregateUnits"];
     const combinators = Object.keys(UV).filter(
       (k) => /Units$/.test(k) || k === "arithmeticCell",
     ).filter((k) => typeof (UV as Record<string, unknown>)[k] === "function");

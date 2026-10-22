@@ -1,40 +1,18 @@
 // [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero
 import { ClassicPreset } from "rete";
-import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, readInput, readRole, keepInputLast } from "./shared";
+import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, keepInputLast } from "./shared";
 import { rolesFrom } from "../inputRoles";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
-import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, ifTest, type Tri } from "../valueKinds";
-import { compareUnits, isUnitCell } from "../unitValue";
-import { callCore, coreEach } from "../coreValues";
+import { isMissing, type Tri } from "../valueKinds";
+import { isUnitCell } from "../unitValue";
+import { nodeOnCore } from "../nodeOnCore";
 import { isFrameValue, isCubeValue, frameRowCount, type FrameValue, type FrameColType } from "../frame";
 
 function frameCells(f: FrameValue): unknown[][] {
   const rows = frameRowCount(f);
   return Array.from({ length: rows }, (_, i) => f.columns.map((c) => c.values[i] ?? null));
 }
-
-// Null operands flow into `fn`, whose Kleene rule decides; ragged lists zip to the longest, padding with null.
-function broadcastEl<A, T>(
-  fn: (...xs: A[]) => T,
-  ...args: Array<A | A[]>
-): T | T[] {
-  const lists = args.filter((a): a is A[] => Array.isArray(a));
-  if (lists.length === 0) {
-    const err = cellError(args);
-    return (err !== undefined ? err : fn(...(args as A[]))) as T;
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  return coreEach(len, (i) => {
-    const ops = args.map((a) => (Array.isArray(a) ? (i < a.length ? a[i] : null) : a));
-    const err = cellError(ops);
-    return (err !== undefined ? err : fn(...(ops as A[]))) as T;
-  });
-}
-// A wired logical is a boolean but a typed literal is 0/1, so accept both; a bare `x !== 0` reads a wired FALSE as true.
-const triBool = (x: number | boolean | null): Tri =>
-  isMissing(x) ? null : x === true || (typeof x === "number" && x !== 0);
-
 
 type LiteralHost = { literals: Record<string, number>; stringLiterals: Record<string, string> };
 
@@ -47,11 +25,6 @@ function typedLiteral(node: LiteralHost, key: string): number | string | undefin
 export function pickSlot(node: LiteralHost, inputs: Record<string, unknown[] | undefined>, key: string): unknown {
   if (inputs[key]?.length) return inputs[key][0];
   return typedLiteral(node, key) ?? null;
-}
-
-/** Set means a cable or a typed literal, which differs from a slot set to null or 0; an unmatched selector with an unset fallback is #N/A. */
-function isSet(inputs: Record<string, unknown[] | undefined>, node: LiteralHost, key: string): boolean {
-  return inputs[key] !== undefined || typedLiteral(node, key) !== undefined;
 }
 
 // Load and paste must rebuild the exact pair ids, or literals and cables misalign.
@@ -71,7 +44,6 @@ export function pairIdsFromKeys(valueKeys: string[] | undefined, prefixA: string
 
 export type ComparisonOp = "gt" | "gte" | "lt" | "lte" | "eq" | "neq";
 
-// Shared by Comparison and Filter so their operator semantics cannot drift.
 export function compareOp(op: ComparisonOp, x: number, y: number): boolean {
   switch (op) {
     case "gt":  return x > y;
@@ -116,29 +88,9 @@ export class ComparisonNode extends ClassicPreset.Node {
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { a?: unknown[]; b?: unknown[] }) {
-    const a = (inputs.a?.length ? inputs.a[0] : this.literals.a) ?? null;
-    const b = (inputs.b?.length ? inputs.b[0] : this.literals.b) ?? null;
-    const result: Tri | Tri[] | SolError =
-      a === null && b === null ? null
-        : broadcastEl<unknown, Tri | SolError>(
-            (x, y) => compareCell(this.op, x, y),
-            a, b,
-          ) as Tri | Tri[] | SolError;
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Tri | Tri[] | SolError };
   }
-}
-
-function compareCell(op: ComparisonOp, x: unknown, y: unknown): Tri | SolError {
-  if (isMissing(x) || isMissing(y)) return null;
-  const cmp = compareUnits(x as number, y as number);
-  if (isSolError(cmp)) {
-    if (op === "eq") return false;
-    if (op === "neq") return true;
-    return cmp;
-  }
-  return compareOp(op, cmp.l, cmp.r);
 }
 
 // ─── BETWEEN / IS CLOSE ───────────────────────────────────────────────────────
@@ -161,14 +113,8 @@ export class BetweenNode extends ClassicPreset.Node {
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { value?: unknown[]; lo?: number[]; hi?: number[] }) {
-    const value = (inputs.value?.length ? inputs.value[0] : this.literals.value) ?? null;
-    const lo = readInput(inputs.lo, this.literals.lo ?? 0);
-    const hi = readInput(inputs.hi, this.literals.hi ?? 0);
-    const result: Tri | Tri[] = lo === null || hi === null ? null
-      : broadcastEl<unknown, Tri>((x) => (typeof x === "number" ? callCore("BETWEEN", [x, lo, hi]) as boolean : null), value);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Tri | Tri[] };
   }
 }
 
@@ -192,13 +138,8 @@ export class IsCloseNode extends ClassicPreset.Node {
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { a?: unknown[]; b?: unknown[]; tol?: number[] }) {
-    const a = (inputs.a?.length ? inputs.a[0] : this.literals.a) ?? null;
-    const b = (inputs.b?.length ? inputs.b[0] : this.literals.b) ?? null;
-    const tol = readRole<number | undefined>(this, "tol", inputs.tol) ?? 1e-9;
-    const result: Tri | Tri[] = broadcastEl<unknown, Tri>((x, y) => (typeof x === "number" && typeof y === "number" ? callCore("ISCLOSE", [x, y, tol]) as boolean : null), a, b);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Tri | Tri[] };
   }
 }
 
@@ -232,19 +173,8 @@ export class IfNode extends ClassicPreset.Node {
     return [{ output: "result", inputs: ["then", "else"], combine: "agree", selected: () => this._selectedUnitKey }];
   }
 
-  data(inputs: { cond?: unknown[]; then?: unknown[]; else?: unknown[] }) {
-    // Test connection presence, not `??`, so a wired null or FALSE survives.
-    const cond = inputs.cond?.length ? inputs.cond[0] : this.literals.cond;
-    const then = pickSlot(this, inputs, "then");
-    const els  = pickSlot(this, inputs, "else");
-    const scalarTest = Array.isArray(cond) ? null : ifTest(cond);
-    this._selectedUnitKey = typeof scalarTest === "boolean" ? (scalarTest ? "then" : "else") : null;
-    const result = broadcastEl<unknown, unknown>(
-      (x, y, z) => { const t = ifTest(x); return typeof t === "boolean" ? (t ? y : z) : t; },
-      cond, then, els,
-    );
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
@@ -260,22 +190,6 @@ export const BOOLEAN_OP_META = {
   nor:  { label: "NOR",  description: "Negated `OR`: `TRUE` only when every input is false. Excel: `NOT(OR(…))`." },
   xnor: { label: "XNOR", description: "`TRUE` if an even number of inputs are true. The negation of `XOR`." },
 } satisfies Record<BooleanOp, { label: string; description: string }>;
-
-function foldBoolean(op: BooleanOp, xs: (number | boolean | null)[]): Tri {
-  const tris = xs.map(triBool);
-  switch (op) {
-    case "and":  return tris.reduce<Tri>((a, t) => kleeneAnd(a, t), true);
-    case "or":   return tris.reduce<Tri>((a, t) => kleeneOr(a, t), false);
-    case "nand": return kleeneNot(tris.reduce<Tri>((a, t) => kleeneAnd(a, t), true));
-    case "nor":  return kleeneNot(tris.reduce<Tri>((a, t) => kleeneOr(a, t), false));
-    case "xor":
-    case "xnor": {
-      if (tris.some(isMissing)) return null;
-      const odd = tris.filter((t) => t === true).length % 2 === 1;
-      return op === "xor" ? odd : !odd;
-    }
-  }
-}
 
 export class BooleanOpNode extends ClassicPreset.Node {
   label: string;
@@ -317,12 +231,8 @@ export class BooleanOpNode extends ClassicPreset.Node {
     delete this.literals[key];
   }
 
-  data(inputs: Record<string, (number | null | (number | null)[])[] | undefined>) {
-    // readInput, not `?? 0`: a wired blank is unknown, not FALSE.
-    const operands = this.valueInputKeys().map((k) => readInput(inputs[k], this.literals[k] ?? 0));
-    const result = broadcastEl((...xs) => foldBoolean(this.op, xs), ...operands);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Tri | Tri[] };
   }
 }
 
@@ -346,12 +256,8 @@ export class NotNode extends ClassicPreset.Node {
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { in?: (number | null | (number | null)[])[] }) {
-    // readInput, not `?? 0`, which would make NOT(blank) answer TRUE.
-    const v = readInput(inputs.in, this.literals.in ?? 0);
-    const result = broadcastEl((x) => kleeneNot(triBool(x)), v);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Tri | Tri[] };
   }
 }
 
@@ -603,20 +509,7 @@ export class ChooseNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const idxRaw = readRole<number | SolError>(this, "index", inputs.index);
-    if (isSolError(idxRaw)) { this.cachedResult = idxRaw; return { result: idxRaw }; }
-    const idx = Math.trunc(idxRaw);
-    const keys = this.valueInputKeys();
-    const key = idx >= 1 && idx <= keys.length ? keys[idx - 1] : undefined;
-    this._selectedUnitKey = key ?? null;
-    if (!key) {
-      const err = solError("#VALUE!", `CHOOSE index ${idx} is outside the range 1–${keys.length}`);
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const result = pickSlot(this, inputs, key);
-    this.cachedResult = result;
-    return { result };
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
@@ -687,31 +580,7 @@ export class SwitchNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const pick = (key: string): unknown => pickSlot(this, inputs, key);
-    const expr = pick("expr");
-    // An unknown expression propagates; otherwise null === null would match an unset row.
-    if (isMissing(expr)) {
-      this._selectedUnitKey = null;
-      this.cachedResult = null;
-      return { result: null };
-    }
-    for (const [whenKey, thenKey] of this.valuePairKeys()) {
-      if (expr === pick(whenKey)) {
-        const then = pick(thenKey);
-        this._selectedUnitKey = thenKey;
-        this.cachedResult = then;
-        return { result: then };
-      }
-    }
-    this._selectedUnitKey = "default";
-    if (!isSet(inputs, this, "default")) {
-      const err = solError("#N/A", "No SWITCH case matched and no Default was set");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const def = pick("default");
-    this.cachedResult = def;
-    return { result: def };
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
@@ -779,38 +648,7 @@ export class IfsNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const pick = (key: string): unknown => pickSlot(this, inputs, key);
-    for (const [condKey, valKey] of this.valuePairKeys()) {
-      const cond = pick(condKey);
-      // A wired blank condition makes the answer unknown, since that row might have matched; an unset row falls through like FALSE.
-      if (isMissing(cond) && (inputs[condKey]?.length ?? 0) > 0) {
-        this._selectedUnitKey = null;
-        this.cachedResult = null;
-        return { result: null };
-      }
-      const test = isMissing(cond) ? false : ifTest(cond);
-      if (isSolError(test)) {
-        this._selectedUnitKey = null;
-        this.cachedResult = test;
-        return { result: test };
-      }
-      if (test) {
-        const val = pick(valKey);
-        this._selectedUnitKey = valKey;
-        this.cachedResult = val;
-        return { result: val };
-      }
-    }
-    // An unset Otherwise is a catchable #N/A, not a silent null that aggregators skip.
-    this._selectedUnitKey = "otherwise";
-    if (!isSet(inputs, this, "otherwise")) {
-      const err = solError("#N/A", "No IFS condition matched and no Otherwise was set");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const els = pick("otherwise");
-    this.cachedResult = els;
-    return { result: els };
+    return nodeOnCore(this, inputs) as { result: unknown };
   }
 }
 
@@ -840,11 +678,7 @@ export class IsEvenOddNode extends ClassicPreset.Node {
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { in?: (number | null | (number | null)[])[] }) {
-    const input = readInput(inputs.in, this.literals.in ?? null);
-    const result: Tri | Tri[] = input === null ? null
-      : broadcastEl((x) => (isMissing(x) ? null : callCore(this.op === "iseven" ? "ISEVEN" : "ISODD", [x]) as boolean), input);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Tri | Tri[] };
   }
 }
