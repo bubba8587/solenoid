@@ -450,6 +450,24 @@ export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null
   }, null);
 }
 
+/** A frame verb run on the core over a frame the TS built, synchronously ([[D99]] rustIsSpec): the cube verbs hand it their
+ *  scalar columns and carry the nested cells along by the rows it answers. Null where the core is off or a cell can't
+ *  cross; an error the verb raises throws, as the TS verb's would. */
+export function verbOnEngine(flat: FrameValue, op: FrameOp): FrameValue | null {
+  return onCore(() => {
+    if (!wasmEngineLoaded() || !wasmEngineOn() || !crossesWhole(flat)) return null;
+    const src = wasmSourceBin(encodeBinary(flat));
+    let out: string | undefined;
+    try {
+      out = wasmInvokeSync<string>("engine_apply", { handle: src, op: encodeOpCells(withUnitScales(flat, op)) });
+      return { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
+    } finally {
+      wasmInvokeSync("engine_drop", { handle: src });
+      if (out) wasmInvokeSync("engine_drop", { handle: out });
+    }
+  }, null);
+}
+
 type SideValue = (name: string, kind: "var" | "row") => unknown;
 
 interface ColumnOpts { sideValue?: SideValue; reserved?: readonly string[]; lambdas?: Record<string, LambdaValue>; bare?: LambdaValue; alias?: Record<string, string | undefined> }

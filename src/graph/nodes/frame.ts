@@ -49,7 +49,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, frameFnOnCore, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, pivotOnEngine, verbOnEngine, computeColumnOnEngine, computeColumnOnRef, assembleOnEngine, frameBackend, frameFnOnCore, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -368,7 +368,7 @@ export class DistinctNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: unknown[] }) {
     const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    if (isCubeValue(f)) { const r = runVerb(() => distinctCube(f)); this.cachedResult = r; return { frame: r }; }
+    if (isCubeValue(f)) { const r = runVerb(() => distinctCube(f, verbOnEngine)); this.cachedResult = r; return { frame: r }; }
     return emitFrame(this, beginPass(this), f != null ? await runFrameUnary(f, { kind: "distinct" }) : null);
   }
 }
@@ -452,7 +452,7 @@ export class SortFrameNode extends ClassicPreset.Node {
     const f = rowVerbInput(inputs.frame?.[0] ?? null);
     const col = readInput(inputs.column, this.stringLiterals.column ?? "");
     if (f == null || col === null) return emitFrame(this, beginPass(this), null);
-    if (isCubeValue(f)) { const r = runVerb(() => col.trim() === "" ? f : sortCube(f, col.trim(), this.dir)); this.cachedResult = r; return { frame: r }; }
+    if (isCubeValue(f)) { const r = runVerb(() => col.trim() === "" ? f : sortCube(f, col.trim(), this.dir, verbOnEngine)); this.cachedResult = r; return { frame: r }; }
     return emitFrame(this, beginPass(this), col.trim() === "" ? await passFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
   }
 }
@@ -559,8 +559,8 @@ export class FilterFrameNode extends ClassicPreset.Node {
       conditions.push({ column: col, op, value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
     }
     if (isCubeValue(f)) {
-      const kept = runVerb(() => filterCube(f, this.combine, conditions));
-      const dropped = runVerb(() => filterCube(f, this.combine, conditions, true));
+      const kept = runVerb(() => filterCube(f, this.combine, conditions, false, verbOnEngine));
+      const dropped = runVerb(() => filterCube(f, this.combine, conditions, true, verbOnEngine));
       this.cachedResult = kept;
       return { frame: kept, dropped };
     }
@@ -3468,7 +3468,7 @@ export class WindowNode extends ClassicPreset.Node {
       const r = runVerb(() => windowCube(f, {
         partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,
         column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.agg) ? n : undefined,
-      }));
+      }, verbOnEngine));
       this.cachedResult = r;
       return { frame: r };
     }
