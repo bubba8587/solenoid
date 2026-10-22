@@ -150,6 +150,10 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             STORE.with(|s| s.borrow_mut().seq = base);
             Ok(Json::Null)
         }
+        "engine_forget" => {
+            crate::eval::forget_held(&parse::<Vec<u64>>(args, "ids")?);
+            Ok(Json::Null)
+        }
         // Aborts the instance from a frame holding 64 KB of stack, as a deep evaluation would, so the tests can show
         // a trap falls back and the module comes back (`coreTrap.test.ts`).
         "engine_trap" => {
@@ -184,6 +188,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         }
         "engine_external_names" => {
             crate::eval::set_external(parse::<Vec<String>>(args, "names")?);
+            crate::eval::forget_formulas();
             Ok(Json::Null)
         }
         // [[D99]] rustIsSpec: the names a formula (and the wired LAMBDAs it calls) reads, for the caller to bind.
@@ -372,14 +377,11 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;
         let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
-        if env.values().any(crate::unit_dims::holds_unit) {
+        if crate::eval::take_missing() || env.values().any(crate::unit_dims::holds_unit) {
             crate::excel_functions::set_clock(None);
             return Ok(CallReply::Bail);
         }
-        match crate::excel_formula::parse_formula(&src) {
-            None => V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")),
-            Some(ast) => crate::eval::Eval::default().run(&ast, &std::rc::Rc::new(env)),
-        }
+        crate::eval::formula(&src, env).unwrap_or_else(|| V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")))
     };
     crate::excel_functions::set_clock(None);
     if crate::excel_functions::take_bailed() {

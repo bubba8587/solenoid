@@ -110,7 +110,7 @@ fn branch_args(fn_: &str, argc: usize) -> Option<Vec<usize>> {
 }
 
 fn resolves(fn_: &str) -> bool {
-    crate::eval::traits(fn_).is_some_and(|t| t.resolves) || crate::eval::is_external(fn_)
+    crate::eval::traits(fn_).is_some_and(|t| t.resolves) || crate::eval::listed_external(fn_)
 }
 
 /// A retired spelling (`STDEVP`): it answers its #NAME?, united input or not.

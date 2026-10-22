@@ -170,7 +170,8 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   reading one as U+FFFD at the boundary, which is the author's call.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
-- **Crossing per call is slow where a node calls one body per item** ([[C120]] linearWork). A wired LAMBDA re-encodes
-  every captured value on each call (`compilePositional` → `coreValue`), so `x - AVERAGE(vals)` over 3,000 items takes
-  1.8 s against 8 ms on develop, quadratic in the list. Cards that map a body over a list pay about 4 µs an item:
-  UPPER over 50,000 items is 278 ms against 23 ms.
+- **Crossing per call is slow where a card maps a body over a list** ([[C120]] linearWork): about 4 µs an item, so
+  UPPER over 50,000 items is 278 ms against 23 ms on develop. A wired LAMBDA's captures no longer cost that: a list of
+  64 or more crosses once and the core holds it by id while the JS list lives (`envValue` in `coreValues.ts`, `HELD`
+  in `eval.rs`), and `engine_eval` keeps its last 16 formulas parsed with their range memo (`eval::formula`), so
+  `x - AVERAGE(vals)` over 3,000 items reads `vals` once: about 50 ms, from 1.9 s (develop: 8 ms).

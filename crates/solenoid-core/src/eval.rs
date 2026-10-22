@@ -83,16 +83,23 @@ thread_local! {
 }
 
 thread_local! {
-    static EXTERNAL: RefCell<crate::fxhash::FxHashSet<String>> = RefCell::default();
+    /// None until the TS first says: a fresh instance (after a trap) reads every name it doesn't know as possibly a
+    /// pack's, so the TS answers it rather than the core answering #NAME?.
+    static EXTERNAL: RefCell<Option<crate::fxhash::FxHashSet<String>>> = RefCell::default();
 }
 
 /// The names the TS registry holds (packs register theirs at run time), which a formula may call back into.
 pub fn set_external(names: Vec<String>) {
-    EXTERNAL.with(|e| *e.borrow_mut() = names.into_iter().map(|n| n.to_uppercase()).collect());
+    EXTERNAL.with(|e| *e.borrow_mut() = Some(names.into_iter().map(|n| n.to_uppercase()).collect()));
 }
 
 pub fn is_external(name: &str) -> bool {
-    EXTERNAL.with(|e| e.borrow().contains(name))
+    EXTERNAL.with(|e| e.borrow().as_ref().is_none_or(|names| names.contains(name)))
+}
+
+/// Whether the TS has said `name` is its own.
+pub fn listed_external(name: &str) -> bool {
+    EXTERNAL.with(|e| e.borrow().as_ref().is_some_and(|names| names.contains(name)))
 }
 
 /// The facts of an uppercased function name, if it is one.
@@ -428,6 +435,8 @@ const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "
 #[derive(Default)]
 pub struct Eval<'a> {
     row: Option<&'a RowCtx<'a>>,
+    /// Keeps the range memo across calls outside a row too: a formula evaluated once per item (`formula`).
+    memo_calls: bool,
     /// `rangeMemo`: a range function called again with the very same arguments (a whole column, row after row).
     memo: RefCell<FxHashMap<*const Ast, (String, Vec<V>, V)>>,
     /// Each call site's name, facts and empty slots, read once per site rather than once per row.
@@ -671,7 +680,7 @@ impl Eval<'_> {
         let any_arr = argv.iter().any(is_arr);
         let lifted: Vec<usize> = if any_arr { (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect() } else { Vec::new() };
         if lifted.is_empty() {
-            if any_arr && self.row.is_some() && (t.kind == "range" || MEMO_SHAPERS.contains(&name.as_str())) {
+            if any_arr && (self.row.is_some() || self.memo_calls) && (t.kind == "range" || MEMO_SHAPERS.contains(&name.as_str())) {
                 let key = args.as_ptr();
                 if let Some((f, last, r)) = self.memo.borrow().get(&key) {
                     if f == name && last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
@@ -1333,12 +1342,79 @@ pub fn row_refs(ast: &Ast) -> Vec<String> {
 
 // ─── Values across the boundary ─────────────────────────────────────────────────
 
+thread_local! {
+    /// Lists the TS sent once under an id (`{"__def": id, "v": …}`) and names again by it (`{"__ref": id}`), so a
+    /// formula called once per item doesn't re-send its captures each time ([[C120]] linearWork). The TS forgets an
+    /// id when its list is collected (`engine_forget`).
+    static HELD: RefCell<FxHashMap<u64, V>> = RefCell::new(FxHashMap::default());
+    static MISSING: Cell<bool> = const { Cell::new(false) };
+}
+
+thread_local! {
+    /// The formulas `engine_eval` ran last, parsed once, each with an evaluator whose range memo outlives the call, as
+    /// `compileEvaluator` keeps its AST and `rangeMemo` across calls: `x - AVERAGE(vals)` over each item of a held
+    /// list reads `vals` once ([[C120]] linearWork).
+    static FORMULAS: RefCell<Vec<(String, Rc<(Ast, Eval<'static>)>)>> = const { RefCell::new(Vec::new()) };
+}
+
+const FORMULAS_KEPT: usize = 16;
+
+/// `compileEvaluator(src)(env)`; None where it doesn't parse.
+pub fn formula(src: &str, env: Env) -> Option<V> {
+    let hit = FORMULAS.with(|f| f.borrow().iter().find(|(s, _)| s == src).map(|(_, c)| c.clone()));
+    let compiled = match hit {
+        Some(c) => c,
+        None => {
+            let c = Rc::new((crate::excel_formula::parse_formula(src)?, Eval { memo_calls: true, ..Eval::default() }));
+            FORMULAS.with(|f| {
+                let mut f = f.borrow_mut();
+                if f.len() == FORMULAS_KEPT {
+                    f.remove(0);
+                }
+                f.push((src.to_string(), c.clone()));
+            });
+            c
+        }
+    };
+    Some(compiled.1.run(&compiled.0, &Rc::new(env)))
+}
+
+/// A registry change can change what a call answers, so no memo outlives one.
+pub fn forget_formulas() {
+    FORMULAS.with(|f| f.borrow_mut().clear());
+}
+
+pub fn forget_held(ids: &[u64]) {
+    HELD.with(|h| {
+        let mut h = h.borrow_mut();
+        for id in ids {
+            h.remove(id);
+        }
+    });
+}
+
+/// Whether a `__ref` named a list the core doesn't hold since the last call; the call then goes to the TS.
+pub fn take_missing() -> bool {
+    MISSING.with(|m| m.replace(false))
+}
+
 /// A value as the TS sends it: arrays nest, `{"__undef": 1}` is undefined, `{"__lambda": …}` a wired LAMBDA or a
-/// function named bare, anything else a cell.
+/// function named bare, `{"__def"}` and `{"__ref"}` a held list, anything else a cell.
 pub fn decode_value(j: &serde_json::Value) -> V {
     use serde_json::Value as Json;
     match j {
         Json::Array(items) => list(items.iter().map(decode_value).collect()),
+        Json::Object(o) if o.contains_key("__ref") => o["__ref"].as_u64().and_then(|id| HELD.with(|h| h.borrow().get(&id).cloned())).unwrap_or_else(|| {
+            MISSING.with(|m| m.set(true));
+            V::Undef
+        }),
+        Json::Object(o) if o.contains_key("__def") => {
+            let v = decode_value(&o["v"]);
+            if let Some(id) = o["__def"].as_u64() {
+                HELD.with(|h| h.borrow_mut().insert(id, v.clone()));
+            }
+            v
+        }
         Json::Object(o) if o.contains_key("__undef") => V::Undef,
         Json::Object(o) if o.contains_key("__cx") => {
             let part = |i: usize| match o["__cx"].get(i).map(|p| cell_v(&crate::wire::decode_cell(p))) {

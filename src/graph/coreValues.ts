@@ -143,12 +143,34 @@ export function syncExternalNames(): void {
   externalGen = gen;
 }
 
+// A long list crossing again and again (a wired LAMBDA's capture, its body called once per item) is sent once: the
+// core holds it under an id for as long as the JS list lives, which is what makes a list's identity its content
+// ([[C120]] linearWork). Ids only grow, so one a dead instance held never names another list.
+const HELD_FROM = 64;
+let heldIds = new WeakMap<object, number>();
+let heldSeq = 0;
+const forgotten: number[] = [];
+const heldGone = typeof FinalizationRegistry !== "undefined" ? new FinalizationRegistry<number>((id) => forgotten.push(id)) : null;
+onWasmEngineReset(() => { heldIds = new WeakMap(); });
+
+function envValue(v: unknown): unknown {
+  if (!heldGone || !Array.isArray(v) || v.length < HELD_FROM) return coreValue(v);
+  const id = heldIds.get(v);
+  if (id !== undefined) return { __ref: id };
+  const w = coreValue(v);
+  if (w === undefined) return undefined;
+  heldIds.set(v, ++heldSeq);
+  heldGone.register(v, heldSeq);
+  return { __def: heldSeq, v: w };
+}
+
 export function evaluateOnCore(src: string, env: Record<string, unknown>): { value: unknown } | null {
   return onCore(() => {
     if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
+    if (forgotten.length) wasmInvokeSync("engine_forget", { ids: forgotten.splice(0) });
     const wire: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(env)) {
-      const w = coreValue(v);
+      const w = envValue(v);
       if (w === undefined) return null;
       wire[k] = w;
     }
