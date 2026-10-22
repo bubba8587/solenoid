@@ -218,7 +218,7 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     let mut shown: Option<Shown> = None;
     if dims.values().any(|d| !is_dimensionless(d)) {
         let codes: Codes = names.iter().filter_map(|n| env_currency_code(&env[*n], &dims[*n]).map(|c| ((*n).clone(), c))).collect();
-        match dim_eval_with_code(&ast, &dims, &codes) {
+        match dim_eval_with_code(&ast, &dims, &codes, None) {
             Err(e) => return Some(V::err(e)),
             Ok(op) => dr = op.map(|o| o.dim),
         }

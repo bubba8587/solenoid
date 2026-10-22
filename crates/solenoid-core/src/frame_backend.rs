@@ -211,13 +211,14 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(json!({ "parses": true, "vars": vars, "rows": rows }))
         }
-        // [[C25]] firstClassUnits: `dimEvalWithCode` over a formula, each exponent as its `String(x)`.
+        // [[C25]] firstClassUnits: `dimEvalWithCode` over a formula (its text, or its tree as `ast`), each exponent as
+        // its `String(x)`.
         "engine_dim_eval" => {
-            let src = parse::<String>(args, "src")?;
             let env = parse::<Option<std::collections::BTreeMap<String, crate::unit_dims::Dim>>>(args, "env")?.unwrap_or_default();
             let codes = parse::<Option<crate::unit_dims::Codes>>(args, "codes")?.unwrap_or_default();
-            let Some(ast) = crate::excel_formula::parse_formula(&src) else { return Ok(json!({ "parses": false })) };
-            Ok(match crate::unit_dims::dim_eval_with_code(&ast, &env, &codes) {
+            let fns = named_lambdas(args)?;
+            let Some(ast) = formula_arg(args)? else { return Ok(json!({ "parses": false })) };
+            Ok(match crate::unit_dims::dim_eval_with_code(&ast, &env, &codes, fns.as_ref()) {
                 Ok(Some(op)) => {
                     let dim: Vec<Json> = op.dim.iter().filter(|(_, v)| **v != 0.0).map(|(k, v)| json!([k, crate::jsnum::number_to_string(*v)])).collect();
                     json!({ "dim": dim, "code": op.code })
@@ -230,12 +231,8 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         "engine_affine_weight" => {
             let names = |key: &str| parse::<Option<Vec<String>>>(args, key).map(Option::unwrap_or_default);
             let (points, lists, bare) = (names("points")?, names("lists")?, names("bare")?);
-            let mut fns = crate::unit_dims::NamedLambdas::new();
-            for (name, (params, body)) in parse::<Option<std::collections::BTreeMap<String, (Vec<String>, String)>>>(args, "fns")?.unwrap_or_default() {
-                let Some(body) = crate::excel_formula::parse_formula(&body) else { continue };
-                fns.insert(name, (params, body));
-            }
-            let Some(ast) = crate::excel_formula::parse_formula(&parse::<String>(args, "src")?) else { return Ok(json!({ "parses": false })) };
+            let fns = named_lambdas(args)?.unwrap_or_default();
+            let Some(ast) = formula_arg(args)? else { return Ok(json!({ "parses": false })) };
             Ok(match crate::unit_dims::affine_weight(&ast, &crate::unit_dims::AffScope::new(&points, &lists, &bare, &fns)) {
                 Ok(w) => json!({ "w": w }),
                 Err(e) => json!({ "err": e.code, "msg": e.message }),
@@ -543,4 +540,29 @@ impl serde::Serialize for Out<'_> {
             }
         }
     }
+}
+
+/// A command's formula: `ast`, the TS tree as JSON, or else `src` parsed. None where neither reads.
+fn formula_arg(args: &Json) -> Result<Option<crate::excel_formula::Ast>, SolError> {
+    if let Some(ast) = args.get("ast") {
+        return Ok(crate::excel_formula::Ast::from_json(ast));
+    }
+    Ok(crate::excel_formula::parse_formula(&parse::<String>(args, "src")?))
+}
+
+/// `fns`: the LAMBDAs a formula calls by name, each `[params, body]` with the body as text or as a tree. One that
+/// doesn't read is left out.
+fn named_lambdas(args: &Json) -> Result<Option<crate::unit_dims::NamedLambdas>, SolError> {
+    let Some(m) = parse::<Option<std::collections::BTreeMap<String, (Vec<String>, Json)>>>(args, "fns")? else { return Ok(None) };
+    let mut fns = crate::unit_dims::NamedLambdas::new();
+    for (name, (params, body)) in m {
+        let body = match &body {
+            Json::String(src) => crate::excel_formula::parse_formula(src),
+            tree => crate::excel_formula::Ast::from_json(tree),
+        };
+        if let Some(body) = body {
+            fns.insert(name, (params, body));
+        }
+    }
+    Ok(Some(fns))
 }

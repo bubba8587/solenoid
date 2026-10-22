@@ -146,7 +146,7 @@ pub fn fold_units(kind: FoldKind, src: &str, m: &V, initial: &V) -> Option<V> {
     };
     let dims_of = |vars: &[&str], dim: &Dim| -> Result<Option<Dim>, V> {
         let env = vars.iter().map(|v| (v.to_string(), dim.clone())).collect();
-        dim_eval_with_code(&ast, &env, &Codes::new()).map(|op| op.map(|o| o.dim)).map_err(V::err)
+        dim_eval_with_code(&ast, &env, &Codes::new(), None).map(|op| op.map(|o| o.dim)).map_err(V::err)
     };
     let weight = |points: &[String], lists: &[String]| -> Result<Option<u8>, V> {
         match fu {

@@ -54,6 +54,32 @@ impl Ast {
             Ast::WholeCol(n) => json!({ "t": "wholecol", "name": n }),
         }
     }
+
+    /// The TS `Ast` object read back; None for anything that isn't one.
+    pub fn from_json(v: &Json) -> Option<Ast> {
+        let s = |k: &str| v.get(k).and_then(Json::as_str);
+        let one = |k: &str| v.get(k).and_then(Ast::from_json).map(Box::new);
+        let many = || v.get("args")?.as_array()?.iter().map(Ast::from_json).collect::<Option<Vec<_>>>();
+        Some(match s("t")? {
+            "num" => {
+                let t = s("v")?.to_string();
+                let n = t.parse::<f64>().unwrap_or(f64::NAN);
+                Ast::Num(t, n)
+            }
+            "str" => Ast::Str(Rc::from(s("v")?)),
+            "bool" => Ast::Bool(v.get("v")?.as_bool()?),
+            "name" => Ast::Name(s("name")?.to_string()),
+            "call" => Ast::Call { name: s("name")?.to_string(), args: many()? },
+            "apply" => Ast::Apply { func: one("fn")?, args: many()? },
+            "unary" => Ast::Unary { op: s("op")?.chars().next()?, arg: one("arg")? },
+            "percent" => Ast::Percent(one("arg")?),
+            "bin" => Ast::Bin { op: s("op")?.to_string(), l: one("l")?, r: one("r")? },
+            "blank" => Ast::Blank,
+            "atcol" => Ast::AtCol(s("name")?.to_string()),
+            "wholecol" => Ast::WholeCol(s("name")?.to_string()),
+            _ => return None,
+        })
+    }
 }
 
 // ─── Tokenizer ──────────────────────────────────────────────────────────────────

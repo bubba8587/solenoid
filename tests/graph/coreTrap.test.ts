@@ -19,15 +19,16 @@ it("a trap falls back for its call and leaves later calls on a working core", ()
   expect(col).toMatchObject({ cells: [2, 4] });
 });
 
-it("a lazy frame left in a dead instance previews as #REF!, never throws", async () => {
+// A verb's failure rejects its preview, so the error guard makes it the node's own error and nothing downstream reads a
+// frame that is gone.
+it("a lazy frame left in a dead instance rejects its preview with #REF!", async () => {
   loadWasmEngineSync(fs.readFileSync(path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm")));
   useWasmBackend();
   try {
     const frame = { __frame: true as const, columns: [{ name: "a", type: "number" as const, values: [3, 1, 2] }] };
     const ref = await runFrameUnary(frame, { kind: "sort", by: "a", dir: "asc" });
     expect(() => wasmInvokeSync("engine_trap")).toThrow(CoreTrap);
-    const preview = await collectPreview(ref);
-    expect((preview as { code?: string }).code).toBe("#REF!");
+    await expect(collectPreview(ref)).rejects.toMatchObject({ code: "#REF!" });
   } finally {
     resetFrameBackendToJs();
   }

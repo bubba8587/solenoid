@@ -59,6 +59,9 @@ specific item.
   dimension pass (`finance_units.rs`). `unit-dims` had gone stale: the TS read `@col` and `[Name]` units since the
   computed-column port and the core didn't; both now do, refrozen with finance calls in the generator. Develop's UI
   work since the snapshot (charts, the Describe Dashboard, Pele, Pivot details) is not on this branch.
+- **Every formula dimension and affine weight runs on the core**, Equation's isolated sides and a computed column's
+  unit plan included: the core reads a TS tree as JSON (`Ast::from_json`) and named LAMBDAs in its dimension pass,
+  frozen in `unit-dims-fns`. `formulaDim` and `formulaAffineWeight` folded into `dimEvalWithCode` and `affineWeight`.
 - **The graph core recovers from a trap** ([[graph-core]] § Traps), and every app-importing script runs through
   `scripts/vite-run.mjs` (they all failed under plain `tsx`).
 - **Open for the author:**

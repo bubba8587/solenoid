@@ -10,7 +10,7 @@ import { wallClockSerial } from "./nodes/dateSerial";
 import { settingsStore } from "./settingsStore";
 import { wasmEngineLoaded, wasmInvokeSync, onCore, onWasmEngineReset } from "./engineWasm";
 import { registryGeneration, internalFunctionNames, resolveExcelFunction, normalizeFxResult } from "./excelFunctions";
-import { argumentError } from "./excelFormula";
+import { argumentError, type Ast } from "./excelFormula";
 
 // An uploaded error carries a reference the core hands back, so it returns as the same SolError, message and
 // origin included, for as long as the original is alive.
@@ -305,14 +305,22 @@ export function callCore(name: string, args: readonly unknown[]): unknown {
   }
 }
 
-/** `dimEvalWithCode` of a formula on the core ([[C25]] firstClassUnits, [[D99]] rustIsSpec): `{ dim, code }`, a
- *  #UNIT! conflict, or null where it is indeterminate. Undefined where the core is off or the formula doesn't parse. */
-export function dimEvalOnCore(src: string, env: Record<string, Record<string, number>>, codes: Record<string, string>):
-  { dim: Record<string, number>; code?: string } | SolError | null | undefined {
+/** A formula as the core reads it: its text, or its tree (an Equation's isolated side has no text). */
+export type CoreFormula = { src: string } | { ast: Ast };
+/** Named LAMBDAs as their parameters and body, the body as text or as a tree. */
+export type CoreLambdas = Record<string, [string[], string | Ast]>;
+
+/** JSON escapes only a lone surrogate, which the core's UTF-8 strings can't hold. */
+const crosses = (v: unknown): boolean => !/\\ud[89a-f][0-9a-f]{2}/i.test(JSON.stringify(v));
+
+/** `dimEvalWithCode` on the core ([[C25]] firstClassUnits, [[D99]] rustIsSpec): a dimension (exponents as numbers) with its currency code, null where it is
+ *  indeterminate, an error, or undefined where the core is off or can't read the formula. */
+export function dimEvalOnCore(f: CoreFormula, env: Record<string, Record<string, number>>, codes: Record<string, string>,
+  fns?: CoreLambdas): { dim: Record<string, number>; code?: string } | SolError | null | undefined {
   return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return undefined;
+    if (!wasmEngineLoaded() || !wasmEngineOn() || !crosses(f) || (fns && !crosses(fns))) return undefined;
     const r = wasmInvokeSync<{ parses?: false; dim?: [string, string][]; code?: string | null; indeterminate?: true; err?: string; msg?: string }>(
-      "engine_dim_eval", { src, env, codes });
+      "engine_dim_eval", { ...f, env, codes, ...(fns ? { fns } : {}) });
     if (r.parses === false) return undefined;
     if (r.indeterminate) return null;
     if (r.err !== undefined) return solError(r.err as SolErrorCode, r.msg ?? "");
@@ -321,13 +329,13 @@ export function dimEvalOnCore(src: string, env: Record<string, Record<string, nu
   }, undefined);
 }
 
-/** `affineWeight` of a formula on the core: 1 a reading, 0 a difference, or #UNIT!. Undefined where the core is off or
- *  the formula doesn't parse. `fns` are named LAMBDAs as their parameters and body text. */
-export function affineWeightOnCore(src: string, points: readonly string[], lists: readonly string[], bare: readonly string[],
-  fns: Record<string, [string[], string]>): 0 | 1 | SolError | undefined {
+/** `affineWeight` on the core: 1 a reading, 0 a difference, or #UNIT!. Undefined where the core is off or can't read
+ *  the formula. */
+export function affineWeightOnCore(f: CoreFormula, points: readonly string[], lists: readonly string[], bare: readonly string[],
+  fns: CoreLambdas): 0 | 1 | SolError | undefined {
   return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src) || !Object.values(fns).every(([, b]) => wellFormed(b))) return undefined;
-    const r = wasmInvokeSync<{ parses?: false; w?: 0 | 1; err?: string; msg?: string }>("engine_affine_weight", { src, points, lists, bare, fns });
+    if (!wasmEngineLoaded() || !wasmEngineOn() || !crosses(f) || !crosses(fns)) return undefined;
+    const r = wasmInvokeSync<{ parses?: false; w?: 0 | 1; err?: string; msg?: string }>("engine_affine_weight", { ...f, points, lists, bare, fns });
     if (r.parses === false) return undefined;
     return r.err !== undefined ? solError(r.err as SolErrorCode, r.msg ?? "") : r.w!;
   }, undefined);

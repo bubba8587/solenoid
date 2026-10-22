@@ -299,6 +299,9 @@ fn lambda_of(n: Option<&Ast>, arity: usize, is_var: &dyn Fn(&str) -> bool) -> Op
             let params: Vec<String> = ps.iter().filter_map(|p| if let Ast::Name(n) = p { Some(n.clone()) } else { None }).collect();
             (params.len() == ps.len()).then(|| Lam { params, body: args[args.len() - 1].clone() })
         }
+        Ast::Name(name) if SCOPE_FNS.with(|f| f.borrow().contains_key(name)) => {
+            SCOPE_FNS.with(|f| f.borrow().get(name).map(|(params, body)| Lam { params: params.clone(), body: body.clone() }))
+        }
         Ast::Name(name) if !is_var(name) && resolves(&name.to_uppercase()) => {
             let params: Vec<String> = (0..arity).map(|i| format!("#{i}")).collect();
             let body = Ast::Call { name: name.clone(), args: params.iter().map(|p| Ast::Name(p.clone())).collect() };
@@ -309,6 +312,11 @@ fn lambda_of(n: Option<&Ast>, arity: usize, is_var: &dyn Fn(&str) -> bool) -> Op
 }
 
 type Dim2 = BTreeMap<String, Dim>;
+
+thread_local! {
+    /// `scopeFns`: the LAMBDAs the formula being read calls by name (a computed column's `λ1`).
+    static SCOPE_FNS: std::cell::RefCell<NamedLambdas> = const { std::cell::RefCell::new(BTreeMap::new()) };
+}
 
 fn clash(l: &Op, r: &Op) -> Option<SolError> {
     match (&l.code, &r.code) {
@@ -338,6 +346,11 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
             None => Ok(None),
         },
         Ast::Call { name, args } => {
+            let named = SCOPE_FNS.with(|f| f.borrow().get(name).map(|(params, body)| Lam { params: params.clone(), body: body.clone() }));
+            if let Some(lam) = named {
+                let vals: Vec<OpResult> = args.iter().map(|a| op_eval(a, env, codes)).collect();
+                return apply_dim(&lam, &vals, env, codes);
+            }
             let up = name.to_uppercase();
             if let Some(host) = host_of(&up, args.len()) {
                 if let Some(lam) = lambda_of(args.get(host.lam_arg), host.params.len(), &|n| env.contains_key(n)) {
@@ -463,8 +476,12 @@ fn host_dim(args: &[Ast], host: &Host, lam: &Lam, env: &Dim2, codes: &Codes) -> 
 }
 
 /// `dimEvalWithCode`: the result's dimension and currency code, a conflict, or None where it is indeterminate.
-pub fn dim_eval_with_code(node: &Ast, env: &BTreeMap<String, Dim>, codes: &Codes) -> OpResult {
-    op_eval(node, env, codes)
+pub fn dim_eval_with_code(node: &Ast, env: &BTreeMap<String, Dim>, codes: &Codes, fns: Option<&NamedLambdas>) -> OpResult {
+    let Some(fns) = fns else { return op_eval(node, env, codes) };
+    let outer = SCOPE_FNS.with(|f| f.replace(fns.clone()));
+    let r = op_eval(node, env, codes);
+    SCOPE_FNS.with(|f| *f.borrow_mut() = outer);
+    r
 }
 
 // ─── Affine units (°C, °F): `affineWeight` ───────────────────────────────────────

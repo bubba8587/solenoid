@@ -9,7 +9,7 @@ import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell, isAffineDisplay, tagDim, fromUnit, unitError, type UnitCell } from "../unitValue";
 import { fcUnitToUnit, displayMagnitudeOf, readInDeclaredUnit } from "../unitBridge";
-import { formulaDim, formulaAffineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
+import { dimEval, affineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { expressionUnitsOnCore } from "../coreValues";
 import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf, formatDim } from "../dimension";
 
@@ -235,7 +235,7 @@ export class ExpressionNode extends ClassicPreset.Node {
           const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
           if (code !== undefined) codeEnv[v] = code;
         }
-        const r = formulaDim(this.expr, this.ast, dimEnv, codeEnv);
+        const r = dimEval(this.ast, dimEnv, codeEnv);
         if (isSolError(r)) {
           this.cachedResult = r; this.cachedError = null;
           return { result: r };
@@ -251,7 +251,7 @@ export class ExpressionNode extends ClassicPreset.Node {
         let point: 0 | 1 | null = null;
         if (sd ? sd.unit.offset : allReadings(united.map((v) => rawEnv[v]))) {
           const bare = new Set(this.varNames.filter((v) => !united.includes(v)));
-          const w = formulaAffineWeight(this.expr, this.ast, new Set(united), new Set(united.filter((v) => Array.isArray(rawEnv[v]))), undefined, bare);
+          const w = affineWeight(this.ast, new Set(united), new Set(united.filter((v) => Array.isArray(rawEnv[v]))), undefined, bare);
           if (isSolError(w)) {
             this.cachedResult = w; this.cachedError = null;
             return { result: w };

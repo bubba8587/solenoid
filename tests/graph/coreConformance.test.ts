@@ -1049,9 +1049,77 @@ describe("formula dimensions answer as frozen", () => {
   it(`${unitDims.length} formulas`, () => {
     const bad: unknown[] = [];
     for (const c of unitDims) {
-      const raw = wasmInvokeSync<{ dim?: unknown; code?: unknown }>("engine_dim_eval", { src: c.src, env: c.env, codes: c.codes });
-      const got = raw.dim ? { dim: raw.dim, code: raw.code } : raw;
-      if (JSON.stringify(got) !== JSON.stringify(c.want)) bad.push({ src: c.src, env: c.env, codes: c.codes, got, want: c.want });
+      // As text, and as the tree a caller with no text (Equation's isolated side) sends.
+      for (const formula of [{ src: c.src }, { ast: parseFormula(c.src) }]) {
+        const raw = wasmInvokeSync<{ dim?: unknown; code?: unknown }>("engine_dim_eval", { ...formula, env: c.env, codes: c.codes });
+        const got = raw.dim ? { dim: raw.dim, code: raw.code } : raw;
+        if (JSON.stringify(got) !== JSON.stringify(c.want)) bad.push({ ...formula, env: c.env, codes: c.codes, got, want: c.want });
+      }
+    }
+    if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(b)).join("\n"));
+    expect(bad.slice(0, 5)).toEqual([]);
+  });
+});
+
+type DimFnsCase = DimCase & { fns: Record<string, [string[], string]> };
+
+/** The dimension of a formula calling LAMBDAs by name, as a computed column's unit plan reads its `λ1`: called
+ *  directly, handed to a host, nested in one another, over money and plain arguments. */
+const unitDimsFns = frozen<DimFnsCase>("unit-dims-fns", () => {
+  const cases: DimFnsCase[] = [];
+  const rand = mulberry32(4141);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const DIMS: Record<string, Record<string, number>[]> = {
+    a: [{ length: 1 }, { time: 1 }], b: [{ length: 1 }, {}], d: [{ currency: 1 }], g: [{}], h: [{ length: 2 }, { mass: 1 }],
+  };
+  const BODIES: Array<[string[], string]> = [
+    [["x", "y"], "x * y"], [["x", "y"], "x / y"], [["x", "y"], "x + y"], [["x"], "x ^ 2"], [["x"], "SQRT(x)"],
+    [["x", "y"], "IF(x > 0, x, y)"], [["x"], "SUM(x) + x"], [["x", "y"], "PMT(0.05, 12, x, y)"], [["x", "y"], "λ2(x, y) * x"],
+    [["x"], "MAP(x, LAMBDA(v, v * 2))"], [["x", "y"], "LAMBDA(v, v * y)(x)"], [["x", "y"], "x"],
+  ];
+  // λ1 may call λ2, never the reverse: a cycle has no dimension to find.
+  const LEAF_BODIES = BODIES.filter(([, body]) => !body.includes("λ"));
+  const leaf = () => pick(["a", "b", "d", "g", "h", "@a", "a", "2", "\"t\"", "{1,2}", "q"]);
+  const call = (depth: number): string => {
+    const r = rand();
+    const name = pick(["λ1", "λ2"]);
+    if (depth <= 0 || r < 0.3) return `${name}(${leaf()}, ${leaf()})`;
+    if (r < 0.5) {
+      const host = pick(["MAP", "BYROW", "REDUCE"]);
+      return host === "REDUCE" ? `REDUCE(0, ${leaf()}, ${name})` : `${host}(${leaf()}, ${name})`;
+    }
+    if (r < 0.75) return `${call(depth - 1)} ${pick(["+", "*", "/", "-"])} ${leaf()}`;
+    return `${name}(${call(depth - 1)}, ${leaf()})`;
+  };
+  for (let i = 0; i < 6000; i++) {
+    const env: Record<string, Record<string, number>> = {};
+    const codes: Record<string, string> = {};
+    for (const v of Object.keys(DIMS)) if (rand() < 0.85) env[v] = pick(DIMS[v]);
+    if (env.d) codes.d = pick(["usd", "eur"]);
+    const fns: Record<string, [string[], string]> = { "λ1": pick(BODIES), "λ2": pick(LEAF_BODIES) };
+    const src = call(2);
+    const ast = parseFormula(src);
+    if (!ast) continue;
+    const named = new Map<string, Lam>();
+    for (const [k, [params, body]] of Object.entries(fns)) {
+      const b = parseFormula(body);
+      if (b) named.set(k, { params, body: b });
+    }
+    cases.push({ src, env, codes, fns, want: dimAnswer(dimEvalWithCode(ast, env, codes, named)) });
+  }
+  return cases;
+});
+
+describe("formula dimensions through named LAMBDAs answer as frozen", () => {
+  it(`${unitDimsFns.length} formulas`, () => {
+    const bad: unknown[] = [];
+    for (const c of unitDimsFns) {
+      const trees = Object.fromEntries(Object.entries(c.fns).map(([k, [ps, body]]) => [k, [ps, parseFormula(body)]]));
+      for (const [formula, fns] of [[{ src: c.src }, c.fns], [{ ast: parseFormula(c.src) }, trees]] as const) {
+        const raw = wasmInvokeSync<{ dim?: unknown; code?: unknown }>("engine_dim_eval", { ...formula, env: c.env, codes: c.codes, fns });
+        const got = raw.dim ? { dim: raw.dim, code: raw.code } : raw;
+        if (JSON.stringify(got) !== JSON.stringify(c.want)) bad.push({ ...c, ...formula, got });
+      }
     }
     if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(b)).join("\n"));
     expect(bad.slice(0, 5)).toEqual([]);
@@ -1110,8 +1178,11 @@ describe("affine weights answer as frozen", () => {
   it(`${affineCases.length} formulas`, () => {
     const bad: unknown[] = [];
     for (const c of affineCases) {
-      const got = wasmInvokeSync<unknown>("engine_affine_weight", { src: c.src, points: c.points, lists: c.lists, bare: c.bare, fns: c.fns });
-      if (JSON.stringify(got) !== JSON.stringify(c.want)) bad.push({ ...c, got });
+      const trees = Object.fromEntries(Object.entries(c.fns).map(([k, [ps, body]]) => [k, [ps, parseFormula(body)]]));
+      for (const [formula, fns] of [[{ src: c.src }, c.fns], [{ ast: parseFormula(c.src) }, trees]] as const) {
+        const got = wasmInvokeSync<unknown>("engine_affine_weight", { ...formula, points: c.points, lists: c.lists, bare: c.bare, fns });
+        if (JSON.stringify(got) !== JSON.stringify(c.want)) bad.push({ ...c, ...formula, got });
+      }
     }
     if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(b)).join("\n"));
     expect(bad.slice(0, 5)).toEqual([]);
