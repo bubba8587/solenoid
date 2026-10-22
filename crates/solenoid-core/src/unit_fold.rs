@@ -116,6 +116,8 @@ pub fn fold_units(kind: FoldKind, src: &str, m: &V, initial: &V) -> Option<V> {
         Err(e) => return Some(e),
         Ok(e) => e,
     };
+    // Over a plain list only the accumulator carries the initial's unit: `value` is a plain number (a rate, a count).
+    let united: &[&str] = if elem.is_some() { &["acc", "value"] } else { &["acc"] };
     // REDUCE's initial value is the first accumulator, so its unit joins the list's (`initialUnit`).
     let elem = match (kind, initial, elem) {
         (FoldKind::Reduce, V::Unit(_), None) => match elem_unit(&[vec![initial.clone()]]) {
@@ -169,11 +171,12 @@ pub fn fold_units(kind: FoldKind, src: &str, m: &V, initial: &V) -> Option<V> {
         }
         let out = cell(&acc);
         let Some((elem, _)) = &elem else { return Some(out) };
-        let dr = match dims_of(&["acc", "value"], &elem.dim) {
+        let dr = match dims_of(united, &elem.dim) {
             Ok(d) => d,
             Err(e) => return Some(e),
         };
-        let point = match weight(&["acc".to_string(), "value".to_string()], &[]) {
+        let points: Vec<String> = united.iter().map(|v| v.to_string()).collect();
+        let point = match weight(&points, &[]) {
             Ok(Some(0)) => return Some(V::err(sol_error("#UNIT!", READINGS_FOLD))),
             Ok(p) => p,
             Err(e) => return Some(e),
