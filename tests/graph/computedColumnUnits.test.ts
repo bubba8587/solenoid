@@ -6,6 +6,9 @@ import { fromUnit } from "../../src/graph/unitValue";
 import { fcUnitToUnit } from "../../src/graph/unitBridge";
 import { frameSourceToText, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 import { ComputedColumnNode, FrameInputNode } from "../../src/graph/nodes/frame";
+import { LambdaNode } from "../../src/graph/nodes/lambda";
+import type { LambdaValue } from "../../src/graph/lambdaValue";
+import { wrapNodeData } from "../../src/graph/coerceInputs";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
 const num = (name: string, values: number[], spec?: string): FrameColumn =>
@@ -132,5 +135,52 @@ describe("a computed column infers its unit from its formula", () => {
     expect(get("back").values[0]).toBeCloseTo(100, 9);
     expect(get("back").unit?.display).toBe("km");
     expect(unitError(get("bad"))).toBe(true);
+  });
+});
+
+describe("a wired LAMBDA's captured values keep their units in a computed column", () => {
+  const lambda = (params: string, expr: string, captured: Record<string, unknown>) => {
+    const n = new LambdaNode({ params, expr });
+    wrapNodeData(n as unknown as Parameters<typeof wrapNodeData>[0]);
+    return n.data(Object.fromEntries(Object.entries(captured).map(([k, v]) => [k, [v]]))).result as LambdaValue;
+  };
+  const withLam = (f: FrameValue, lam: LambdaValue) => {
+    const n = new ComputedColumnNode({});
+    n.stringLiterals.name = "out";
+    return (n.data({ frame: [f], fn: [lam] } as never).frame as FrameValue).columns.find((c) => c.name === "out")!;
+  };
+
+  it("a column times a captured 5 km is km", () => {
+    const c = withLam(frame(num("a", [1, 2])), lambda("a", "a * k", { k: qty("km", 5) }));
+    expect(c.values).toEqual([5, 10]);
+    expect(c.unit?.display).toBe("km");
+  });
+
+  it("a captured km added to an m column runs in base SI", () => {
+    const c = withLam(frame(num("a", [1, 2], "m")), lambda("a", "a + k", { k: qty("km", 1) }));
+    expect(c.values).toEqual([1001, 1002]);
+    expect(c.unit).toEqual({ dim: { length: 1 } });
+  });
+
+  it("a captured h added to a km column is #UNIT!", () => {
+    expect(unitError(withLam(frame(num("a", [1], "km")), lambda("a", "a + k", { k: qty("hr", 1) })))).toBe(true);
+  });
+
+  it("the LAMBDA's own body still reads a capture as the number it shows", () => {
+    expect(lambda("x", "x + k", { k: qty("km", 5) }).fn(1)).toBe(6);
+  });
+
+  it("a Frame Input column calling a λ input reads its captures' units", () => {
+    const n = new FrameInputNode({
+      lambdaKeys: ["fn1"],
+      frameText: frameSourceToText([
+        { name: "a", type: "number", cells: ["1", "2"], unit: "m" },
+        { name: "b", type: "number", cells: [], expr: "λ1(@a)" },
+      ]),
+    });
+    const out = n.data({ fn1: [lambda("x", "x + k", { k: qty("km", 1) })] } as never).frame as FrameValue;
+    const b = out.columns.find((c) => c.name === "b")!;
+    expect(b.values).toEqual([1001, 1002]);
+    expect(b.unit).toEqual({ dim: { length: 1 } });
   });
 });

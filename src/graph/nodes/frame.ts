@@ -6,12 +6,11 @@ import { readInput, readRole, numIn, dateIn, numListOut, tableOut, strTableOut, 
 import { setting, required, LEFT_OUT } from "../inputRoles";
 import { flatCubeToFrame, coerceFrameCell } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
-import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
-import { affineWeight, formulaAffineWeight, type Lam } from "../unitDimExpr";
-import { isLambdaValue, type LambdaValue } from "../lambdaValue";
+import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
+import { isLambdaValue } from "../lambdaValue";
 import { volatileStamp } from "../volatileDates";
 import { computeColumnCells, computeCubeColumnCells } from "../computedColumnCore";
-import { planColumnUnits, exprDefinition, lambdaDefinition } from "../computedColumnUnits";
+import { planColumnUnits, exprDefinition, lambdaDefinition, lambdaCaptures, lambdaInPlan } from "../computedColumnUnits";
 import { stripUnitCells } from "../unitBridge";
 import { cubeRowTable, cubeCellsType } from "../cubeRows";
 import { dropInputCables } from "../components/cablePrune";
@@ -60,8 +59,8 @@ import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import { listLiteralText } from "../coerceInputs";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
-import { type UnitCell, type ColumnUnit, isUnitCell, isAffineDisplay } from "../unitValue";
-import { tagFrameCellUnit, columnUnitFromSpec, parseColumnUnitFromHeader } from "../unitColumn";
+import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
+import { tagFrameCellUnit, tagCubeCellUnit, columnUnitFromSpec, parseColumnUnitFromHeader } from "../unitColumn";
 import { readPivotView, type PivotViewOptions } from "../pivotLayout";
 
 function runVerb<T>(fn: () => T): T | SolError {
@@ -107,51 +106,10 @@ export function computedColumnType(
   return exprYieldsDate(definition, isDateName) ? "date" : type;
 }
 
-/** A row formula over readings on an offset scale (°C) is classified as Expression's is
- *  ([[C25]] firstClassUnits): a sum of readings, or a reading scaled or divided, is #UNIT!.
- *  A wired λ is read through its body. The result's unit stays the authored one. */
-export function readingsRefusal(
-  definition: string | Ast, f: TypedColumns, alias: Record<string, string | undefined> = {},
-  lams: ReadonlyMap<string, unknown> = new Map(),
-): SolError | null {
-  const isReading = (n: string) => isAffineDisplay(f.columns.find((c) => c.name === (alias[n] ?? n))?.unit?.display);
-  if (!f.columns.some((c) => isAffineDisplay(c.unit?.display))) return null;
-  const ast = typeof definition === "string" ? parseFormula(definition) : definition;
-  if (!ast) return null;
-  const fns = new Map<string, Lam>();
-  const fnSrc: Record<string, [string[], string]> = {};
-  for (const [name, lam] of lams) {
-    const body = isLambdaValue(lam) && lam.expr ? parseFormula(lam.expr) : null;
-    if (body) {
-      fns.set(name, { params: (lam as LambdaValue).params, body });
-      fnSrc[name] = [(lam as LambdaValue).params, (lam as LambdaValue).expr];
-    }
-  }
-  const names = new Set<string>();
-  const walk = (n: Ast): void => {
-    if (n.t === "name" || n.t === "atcol" || n.t === "wholecol") { if (isReading(n.name)) names.add(n.name); }
-    else if (n.t === "call") n.args.forEach(walk);
-    else if (n.t === "apply") { walk(n.fn); n.args.forEach(walk); }
-    else if (n.t === "unary" || n.t === "percent") walk(n.arg);
-    else if (n.t === "bin") { walk(n.l); walk(n.r); }
-  };
-  walk(ast);
-  for (const lam of fns.values()) walk(lam.body);
-  if (names.size === 0) return null;
-  const w = typeof definition === "string" ? formulaAffineWeight(definition, ast, names, names, fns, new Set(), fnSrc)
-    : affineWeight(ast, names, names, fns);
-  return isSolError(w) ? w : null;
-}
-
-/** A bare λ column reads its parameters' columns row by row. */
-function bareLambdaCall(lam: LambdaValue): Ast {
-  return { t: "call", name: "λ", args: lam.params.map((name): Ast => ({ t: "atcol", name })) };
-}
-
-/** The cube twin of `addColumn`: a "Name (unit)" header tags the cells, and a replaced column keeps its place and format. */
-function cubeWithColumn(cube: CubeValue, name: string, cells: CubeCell[], type: FrameColType | undefined, after: string): CubeValue {
-  const { clean, unit } = parseColumnUnitFromHeader(name);
-  const tagged = unit && type === "number" ? cells.map((v) => tagFrameCellUnit(v, unit) as CubeCell) : cells;
+/** The cube twin of `addColumn`: a Cube carries its unit on its cells, so `unit` tags each number, list items included, and a replaced column keeps its place and format. */
+function cubeWithColumn(cube: CubeValue, name: string, cells: CubeCell[], type: FrameColType | undefined, after: string, unit: ColumnUnit | null): CubeValue {
+  const { clean } = parseColumnUnitFromHeader(name);
+  const tagged = unit && type === "number" ? cells.map((v) => tagCubeCellUnit(v, unit) as CubeCell) : cells;
   const col: CubeColumn = { name: clean, cells: tagged, ...(type ? { type } : {}) };
   const at = cube.columns.findIndex((c) => c.name === clean);
   if (at >= 0) {
@@ -330,31 +288,33 @@ export class FrameInputNode extends ClassicPreset.Node {
           continue;
         }
         if (!bare && !ex) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
+        const captures = lambdaCaptures(usedLams);
         const plan = planColumnUnits<FrameCell>(
           lam ? lambdaDefinition(lam) : exprDefinition(c.expr!, lamByName),
           frame,
-          { authored: c.unit ? columnUnitFromSpec(c.unit) : null },
+          { authored: c.unit ? columnUnitFromSpec(c.unit) : null, sideValue: (n) => captures.get(n) },
         );
         if (isSolError(plan)) { fill(i, plan); continue; }
+        const inPlan = (l: unknown) => (isLambdaValue(l) ? lambdaInPlan(l, plan) : l);
         const planned = { __frame: true, columns: plan.table.columns } as FrameValue;
         // A wired λ runs in the engine too: its body crosses as text with its captures ([[C130]] rustCore).
         const onEngine = lam
           ? computeColumnOnEngine(planned, "", rowCount(), {
-            bare: lam,
+            bare: lambdaInPlan(lam, plan),
             sideValue: (p, kind) => solError("#REF!", kind === "var" ? `No column "${p}": a table λ's side values ride its captures` : `No column "${p}"`),
           })
           : computeColumnOnEngine(planned, c.expr!, rowCount(), {
             sideValue: (p) => solError("#REF!", `No column "${p}"`),
-            lambdas: Object.fromEntries(usedLams.map((l, k) => [used[k], l])),
+            lambdas: Object.fromEntries(usedLams.map((l, k) => [used[k], lambdaInPlan(l, plan)])),
           });
         const r = onEngine ?? computeColumnCells(
           plan.table,
           lam
-            ? { kind: "lambda", lam }
+            ? { kind: "lambda", lam: lambdaInPlan(lam, plan) }
             : { kind: "expr", evaluator: ex!.evaluator, vars: [...ex!.vars, ...used.filter((n) => !ex!.vars.includes(n))] },
           {
             sideValue: (p, kind) => (!lam && lamByName.has(p)
-              ? lamByName.get(p)
+              ? inPlan(lamByName.get(p))
               : solError("#REF!", lam && kind === "var"
                 ? `No column "${p}": a table λ's side values ride its captures`
                 : `No column "${p}"`)),
@@ -2700,7 +2660,7 @@ export class AddColumnNode extends ClassicPreset.Node {
     const rows = Math.max(isCube ? cubeRowCount(rawF as CubeValue) : frameRowCount(f!), values.length);
     const padded: FrameCell[] = Array.from({ length: rows }, (_, i) => (i < values.length ? values[i] : null));
     this.cachedResult = isCube
-      ? cubeWithColumn(rawF as CubeValue, name, padded, colType, "")
+      ? cubeWithColumn(rawF as CubeValue, name, padded, colType, "", parseColumnUnitFromHeader(name).unit ?? null)
       : addColumnOnCore(f!, name, padded, colType) ?? addColumn(f!, name, padded, colType);
     return { frame: this.cachedResult };
   }
@@ -2906,12 +2866,13 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 
     this.defVars = wired ? wired.params : this._vars;
     const sideRaw = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
-    const plan = isCube ? null : planColumnUnits<FrameCell>(
+    const captures = lambdaCaptures(wired ? [wired] : []);
+    const plan = planColumnUnits<CubeCell>(
       wired ? lambdaDefinition(wired) : exprDefinition(this.expr),
       f,
-      { alias: this.bindings, sideValue: sideRaw, authored: parseColumnUnitFromHeader(name).unit },
+      { alias: this.bindings, sideValue: (p) => (captures.has(p) ? captures.get(p) : sideRaw(p)), authored: parseColumnUnitFromHeader(name).unit },
     );
-    const runPlan = plan && !isSolError(plan) ? plan : null;
+    const runPlan = isSolError(plan) ? null : plan;
     const sideValue = (p: string) => (runPlan ? runPlan.side(sideRaw(p)) : stripUnitCells(sideRaw(p)));
     const reserved = ["frame", "name", "fn", "after"];
     const table = (runPlan ? runPlan.table : f) as FrameValue;
@@ -2919,7 +2880,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       ? computeColumnOnEngine(table, this.expr, table.columns.reduce((m, c) => Math.max(m, c.values.length), 0), { sideValue, reserved }) : null;
     const computed = onEngine ?? (isCube ? computeCubeColumnCells : computeColumnCells)(
       runPlan ? runPlan.table : f,
-      wired ? { kind: "lambda", lam: wired } : { kind: "expr", evaluator: this._evaluator!, vars: this._vars },
+      wired ? { kind: "lambda", lam: runPlan ? lambdaInPlan(wired, runPlan) : wired } : { kind: "expr", evaluator: this._evaluator!, vars: this._vars },
       {
         reserved,
         sideValue,
@@ -2931,19 +2892,14 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     );
     if (isSolError(computed)) { this._reconcileSideSockets([]); return out(computed); }
     this._reconcileSideSockets(computed.sideVars);
-    const refused = isSolError(plan) ? plan
-      : !isCube ? null
-      : wired
-        ? readingsRefusal(bareLambdaCall(wired), f, this.bindings, new Map([["λ", wired]]))
-        : readingsRefusal(this.expr, f, this.bindings);
-    const done = runPlan ? runPlan.finish(computed.cells as FrameCell[]) : null;
-    const values: CubeCell[] = refused ? computed.cells.map(() => refused) : done ? done.cells : computed.cells;
+    const done = runPlan ? runPlan.finish(computed.cells) : null;
+    const values: CubeCell[] = isSolError(plan) ? computed.cells.map(() => plan) : done ? done.cells : computed.cells;
     const listType = isCube ? cubeCellsType(values) : null;
     const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs)
       : listType ?? computedColumnType(name, values as FrameCell[], f, wired ? wired.expr : this.expr, this.bindings);
 
     if (isCube) {
-      const cubeOut = runVerb(() => cubeWithColumn(rawF as CubeValue, name, values, colType, after));
+      const cubeOut = runVerb(() => cubeWithColumn(rawF as CubeValue, name, values, colType, after, done?.unit ?? null));
       return isSolError(cubeOut) ? out(cubeOut) : remember(cubeOut);
     }
 

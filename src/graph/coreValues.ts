@@ -66,7 +66,7 @@ export function coreValue(v: unknown, units = false): unknown {
   if (isLambdaValue(v)) {
     if (v.eta) return { __lambda: { eta: v.expr } };
     if (!v.expr || !wellFormed(v.expr)) return undefined;
-    const values = (v.captured ?? []).map((_, i) => coreValue(v.capturedValues?.[i]));
+    const values = (v.captured ?? []).map((_, i) => coreValue((v.readValues ?? v.capturedValues)?.[i]));
     return values.includes(undefined) ? undefined : { __lambda: { params: v.params, expr: v.expr, captured: v.captured ?? [], capturedValues: values } };
   }
   if (v === null || typeof v === "number" || typeof v === "boolean" || isSolError(v)) return wireCell(v);
