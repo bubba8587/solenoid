@@ -88,7 +88,9 @@ columns to `engine_pivot_layout`.
 
 A body meeting a reading the core doesn't make yet calls `bail()`, and the whole formula or column runs on the
 TypeScript, never part of it: chrono-node's free-text dates in criteria, INDEX with a list of positions,
-REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table. A value that can't cross (a unit cell,
+REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table, a slice or match that halves a
+surrogate pair (`from_utf16` in `excel_functions.rs` and `text_ops.rs`; `coreSurrogates.test.ts` reads it raw, since
+the conformance `canon()` makes every frozen string well formed). A value that can't cross (a unit cell,
 a frame, text with a lone surrogate) keeps its call on the TS; so does a pack call whose arguments or answer can't
 cross (a LAMBDA, a unit cell), or one made where the core runs natively. A `UnitCell` crosses only into `callCore`, as
 `{__unit}` (`V::Unit`, with its display unit's scale, offset and dimension beside a display id), and only the bodies in
@@ -168,10 +170,6 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   reading one as U+FFFD at the boundary, which is the author's call.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
-- **Slicing an emoji turns its halves into U+FFFD** (`from_utf16` → `from_utf16_lossy`, `excel_functions.rs` and
-  `text_ops.rs`): for `t = "a😀b"`, `LEFT(t,2)&RIGHT(t,2)` is `a��b` on the core and `a😀b` on the TS, and
-  `UNICODE(MID(t,3,1))` 65533 against 56832. The conformance `canon()` runs `toWellFormed` on every frozen string, so
-  it can't see this; bailing when the strict `String::from_utf16` fails keeps the spec's lone-surrogate rule.
 - **Case-insensitive backreferences fold ſ↔s and ı↔I** (`js_regex.rs`, regress's `fold_equals`), where V8's
   Canonicalize doesn't: `REGEXTEST("sſ","(.)\1",1)` is 1 on the core, 0 in V8.
 - **Crossing per call is slow where a node calls one body per item** ([[C120]] linearWork). A wired LAMBDA re-encodes
