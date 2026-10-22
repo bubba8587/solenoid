@@ -67,6 +67,9 @@ specific item.
 - **The Hypothesis Test card's KS, Mann-Whitney and Wilcoxon ops hung or misread text** (develop too): text slipped
   past the kernels' NaN guard and the KS merge never advanced. The card now evaluates its formula (`KSTEST(a, b)` and
   kin), so it reads numbers only and keeps a paired test's pairs aligned. Found by a sweep feeding every card long lists.
+- **The Amortization card filled the memory on a huge period count** (1e9 or Infinity; develop too): it built a row
+  per period. Past a million it answers #DOMAIN! at once. Found by a second sweep feeding every card extreme scalars,
+  which found nothing else unbounded (ODE Integrate's 100,000-step cap costs a few seconds at worst, by design).
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
   - Whether the regex port's remaining 70 KB or so (gzipped) is worth it.
