@@ -70,6 +70,9 @@ for (const [kind, k] of [...byKind].sort()) {
   fs.writeFileSync(path.join(OUT, `${kind}.json.gz`), zlib.gzipSync(JSON.stringify(frozen), { level: 9 }));
 }
 fs.mkdirSync(path.join(ROOT, ".dev"), { recursive: true });
-fs.writeFileSync(path.join(ROOT, ".dev/node-freeze-report.json"), JSON.stringify(report, null, 1));
+// Freezing some classes updates their rows and keeps the rest.
+const reportFile = path.join(ROOT, ".dev/node-freeze-report.json");
+const kept = only.size && fs.existsSync(reportFile) ? JSON.parse(fs.readFileSync(reportFile, "utf8")) : {};
+fs.writeFileSync(reportFile, JSON.stringify({ ...kept, ...report }, null, 1));
 const rows = Object.entries(report);
 console.log(`${rows.length} classes, ${rows.reduce((s, [, r]) => s + r.kept, 0)} cases kept; report in .dev/node-freeze-report.json`);
