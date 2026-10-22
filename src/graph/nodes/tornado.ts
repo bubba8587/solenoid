@@ -1,4 +1,5 @@
 import { ClassicPreset } from "rete";
+import { nodeOnCore } from "../nodeOnCore";
 import { numIn, numOut } from "./shared";
 
 export interface TornadoResult {
@@ -32,9 +33,7 @@ export class TornadoNode extends ClassicPreset.Node {
     this.addOutput("out", numOut("Pass-through"));
   }
 
-  data(inputs: { value?: number[] }) {
-    const v = inputs.value?.[0] ?? null;
-    this.cachedResult = v;
-    return { out: v };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { out: number | null };
   }
 }

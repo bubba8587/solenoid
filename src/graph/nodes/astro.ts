@@ -1,9 +1,9 @@
 // [[C76]] formulaPackDefault, [[C44]] dateSerials
 
 import { ClassicPreset } from "rete";
-import { numIn, numOut, dateIn, dateOut, readInput } from "./shared";
+import { nodeOnCore } from "../nodeOnCore";
+import { numIn, numOut, dateIn, dateOut } from "./shared";
 import type { SolError } from "../errorValue";
-import { solarPosition, sunTimes, moonPhase, latLonError } from "./astroOps";
 
 export class SolarPositionNode extends ClassicPreset.Node {
   label: string;
@@ -25,26 +25,8 @@ export class SolarPositionNode extends ClassicPreset.Node {
     this.addOutput("declination", numOut("Declination °"));
   }
 
-  data(inputs: { when?: (number | null)[]; lat?: (number | null)[]; lon?: (number | null)[] }) {
-    const when = inputs.when?.[0] ?? null;
-    const lat = readInput(inputs.lat, this.literals.lat);
-    const lon = readInput(inputs.lon, this.literals.lon);
-    let elevation: number | SolError | null = null;
-    let azimuth: number | SolError | null = null;
-    let declination: number | SolError | null = null;
-    if (typeof when === "number" && typeof lat === "number" && typeof lon === "number") {
-      const err = latLonError(lat, lon);
-      if (err) {
-        elevation = azimuth = declination = err;
-      } else {
-        const p = solarPosition(when, lat, lon);
-        elevation = p.elevation; azimuth = p.azimuth; declination = p.declination;
-      }
-    }
-    this.cachedElevation = elevation;
-    this.cachedAzimuth = azimuth;
-    this.cachedDeclination = declination;
-    return { elevation, azimuth, declination };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { elevation: number | SolError | null; azimuth: number | SolError | null; declination: number | SolError | null };
   }
 }
 
@@ -68,26 +50,8 @@ export class SunriseSunsetNode extends ClassicPreset.Node {
     this.addOutput("daylength", numOut("Day length h"));
   }
 
-  data(inputs: { when?: (number | null)[]; lat?: (number | null)[]; lon?: (number | null)[] }) {
-    const when = inputs.when?.[0] ?? null;
-    const lat = readInput(inputs.lat, this.literals.lat);
-    const lon = readInput(inputs.lon, this.literals.lon);
-    let sunrise: number | SolError | null = null;
-    let sunset: number | SolError | null = null;
-    let daylength: number | SolError | null = null;
-    if (typeof when === "number" && typeof lat === "number" && typeof lon === "number") {
-      const err = latLonError(lat, lon);
-      if (err) {
-        sunrise = sunset = daylength = err;
-      } else {
-        const t = sunTimes(when, lat, lon);
-        sunrise = t.sunrise; sunset = t.sunset; daylength = t.dayLength; // null = polar day/night
-      }
-    }
-    this.cachedSunrise = sunrise;
-    this.cachedSunset = sunset;
-    this.cachedDayLength = daylength;
-    return { sunrise, sunset, daylength };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { sunrise: number | SolError | null; sunset: number | SolError | null; daylength: number | SolError | null };
   }
 }
 
@@ -108,18 +72,7 @@ export class MoonPhaseNode extends ClassicPreset.Node {
     this.addOutput("illumination", numOut("Illuminated"));
   }
 
-  data(inputs: { when?: (number | null)[] }) {
-    const when = inputs.when?.[0] ?? null;
-    let phase: number | SolError | null = null;
-    let age: number | SolError | null = null;
-    let illumination: number | SolError | null = null;
-    if (typeof when === "number") {
-      const m = moonPhase(when);
-      phase = m.phase; age = m.age; illumination = m.illumination;
-    }
-    this.cachedPhase = phase;
-    this.cachedAge = age;
-    this.cachedIllumination = illumination;
-    return { phase, age, illumination };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { phase: number | SolError | null; age: number | SolError | null; illumination: number | SolError | null };
   }
 }
