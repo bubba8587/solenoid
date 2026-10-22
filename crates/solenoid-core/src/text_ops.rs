@@ -19,18 +19,37 @@ fn from_utf16(units: &[u16]) -> String {
 
 /// `RegExp.prototype.exec` from `last_index`, as a global regex runs it.
 fn exec_at(re: &Regex, text: &[u16], last_index: usize) -> Option<Match> {
+    exec_from(re, text, last_index, false, false)
+}
+
+/// `RegExp.prototype.exec` from `last_index`; a sticky regex matches only there, and under the u or v flag the text
+/// reads by code point.
+pub fn exec_from(re: &Regex, text: &[u16], last_index: usize, sticky: bool, unicode: bool) -> Option<Match> {
     if last_index > text.len() {
         return None;
     }
-    re.find_from_ucs2(text, last_index).next()
+    let m = if unicode { re.find_from_utf16(text, last_index).next() } else { re.find_from_ucs2(text, last_index).next() };
+    m.filter(|m| !sticky || m.range.start == last_index)
 }
 
 /// Every match a global regex finds (`matchAll`, `replace`): an empty match moves on by one code unit.
 pub fn match_all(re: &Regex, text: &[u16]) -> Vec<Match> {
+    matches_with(re, text, false, false)
+}
+
+/// Every match a global regex finds, sticky or not: an empty match moves on by one code unit, or under the u or v
+/// flag by one code point (AdvanceStringIndex).
+pub fn matches_with(re: &Regex, text: &[u16], sticky: bool, unicode: bool) -> Vec<Match> {
     let mut out = Vec::new();
     let mut last = 0;
-    while let Some(m) = exec_at(re, text, last) {
-        last = if m.range.is_empty() { m.range.end + 1 } else { m.range.end };
+    while let Some(m) = exec_from(re, text, last, sticky, unicode) {
+        last = if !m.range.is_empty() {
+            m.range.end
+        } else if unicode && text.get(m.range.end).is_some_and(|u| (0xd800..0xdc00).contains(u)) && text.get(m.range.end + 1).is_some_and(|u| (0xdc00..0xe000).contains(u)) {
+            m.range.end + 2
+        } else {
+            m.range.end + 1
+        };
         out.push(m);
     }
     out
@@ -137,12 +156,17 @@ fn get_substitution(replacement: &[u16], m: &Match, text: &[u16]) -> Vec<u16> {
 
 /// `text.replace(globalRe, replacement)`.
 pub fn regex_replace_all(re: &Regex, text: &[u16], replacement: &[u16]) -> Vec<u16> {
+    replace_matches(&match_all(re, text), text, replacement)
+}
+
+/// `text.replace(globalRe, replacement)` over the matches the regex found.
+pub fn replace_matches(matches: &[Match], text: &[u16], replacement: &[u16]) -> Vec<u16> {
     let mut out = Vec::with_capacity(text.len());
     let mut next = 0;
-    for m in match_all(re, text) {
+    for m in matches {
         if m.range.start >= next {
             out.extend_from_slice(&text[next..m.range.start]);
-            out.extend(get_substitution(replacement, &m, text));
+            out.extend(get_substitution(replacement, m, text));
             next = m.range.end;
         }
     }
@@ -233,7 +257,11 @@ fn expand_replacement(replacement: &[u16], m: &Match, text: &[u16]) -> Vec<u16> 
 
 /// `replaceNth`: only the nth match (1-based; negative counts from the end) is replaced.
 pub fn replace_nth(re: &Regex, text: &[u16], replacement: &[u16], n: f64) -> Vec<u16> {
-    let all = match_all(re, text);
+    replace_nth_of(&match_all(re, text), text, replacement, n)
+}
+
+/// `replaceNth` over the matches the regex found.
+pub fn replace_nth_of(all: &[Match], text: &[u16], replacement: &[u16], n: f64) -> Vec<u16> {
     let target = if n < 0.0 { all.len() as f64 + n + 1.0 } else { n };
     if target < 1.0 {
         return text.to_vec();

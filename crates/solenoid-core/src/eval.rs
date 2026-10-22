@@ -275,7 +275,7 @@ pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
 }
 
 /// `formatCx` at four digits.
-fn format_cx(re: f64, im: f64) -> String {
+pub(crate) fn format_cx(re: f64, im: f64) -> String {
     let fmt = |n: f64| {
         if n.fract() == 0.0 && n.is_finite() {
             crate::jsnum::number_to_string(n)
