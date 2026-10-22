@@ -1,6 +1,6 @@
 // [[A1]] visualGraphCalculator, [[B12]] losslessSaves
 import type { ClassicPreset, GetSchemes } from "rete";
-import type { DataflowNode } from "rete-engine";
+import type { DataflowNode } from "./dataflowEngine";
 
 export type SolenoidNode = ClassicPreset.Node & DataflowNode & {
   width: number;

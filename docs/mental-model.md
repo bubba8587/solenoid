@@ -10,9 +10,9 @@ summaries; the docs they point to are authoritative.
 The app is one React tree. **React Flow** (`@xyflow/react`) is the view. It renders every
 card, cable, the minimap and the viewport. `flow/FlowSurface.tsx` is the one surface,
 shared by the main canvas and the composite drill-in ([[B3]] sameNodeEverywhere). **rete
-core** (`NodeEditor` + `ClassicPreset`) plus `rete-engine` (`DataflowEngine`) is the
-headless model and compute spine, kept on purpose; no rete render package exists
-([[A1]] visualGraphCalculator).
+core** (`NodeEditor` + `ClassicPreset`) is the headless model, kept on purpose; no rete
+render package exists ([[A1]] visualGraphCalculator). The compute spine, `DataflowEngine`,
+runs in Rust on Ruggine and mirrors that model (`dataflowEngine.ts`, [[D102]] graphOnCore).
 
 - `flow/SolNodeAdapter.tsx` binds a rete node instance to its registered card component.
 - `flow/flowView.ts` is the one implementation of the `View` seam (`view.ts`), turning the

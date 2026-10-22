@@ -2,7 +2,7 @@
 import { describe, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/rete-nodes";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
@@ -96,17 +96,15 @@ async function buildGraph(copies: number) {
     const node = editor.getNode(id) as unknown as AnyNode;
     const outs: Record<string, unknown> = {};
     for (const k of Object.keys(node.outputs)) outs[k] = circ;
-    engine.cache.add(id, Object.assign(Promise.resolve(outs), { cancel() {} }));
+    engine.seed(id, outs);
   }
   return { editor, engine };
 }
 
 /** One compute tick: exactly what processGraph does before it renders. */
-async function computeTick(editor: NodeEditor<Schemes>, engine: DataflowEngine<Schemes>) {
+async function computeTick(engine: DataflowEngine<Schemes>) {
   engine.reset();
-  for (const node of editor.getNodes()) {
-    await engine.fetch(node.id);
-  }
+  await engine.fetchAll();
 }
 
 function stats(samples: number[]) {
@@ -120,20 +118,20 @@ function stats(samples: number[]) {
 // nobody reads in a normal `npm test`. Gate it behind PERF so the default suite stays
 // fast; run with `PERF=1 npx vitest run src/graph/perfScaling.test.ts` when profiling.
 describe.runIf(!!process.env.PERF)("personal-finance compute scaling", () => {
-  it("times engine.reset + fetch-all at 1x / 2x / 4x node count", async () => {
+  it("times engine.reset + fetch-all at 1x / 2x / 4x / 8x node count", async () => {
     const WARMUP = 3;
     const ITERS = 30;
     const rows: string[] = [];
     rows.push("scale  nodes  conns   min    median   mean    p95     max    ms/node");
-    for (const copies of [1, 2, 4]) {
+    for (const copies of [1, 2, 4, 8]) {
       const { editor, engine } = await buildGraph(copies);
       const nodes = editor.getNodes().length;
       const conns = editor.getConnections().length;
-      for (let i = 0; i < WARMUP; i++) await computeTick(editor, engine);
+      for (let i = 0; i < WARMUP; i++) await computeTick(engine);
       const samples: number[] = [];
       for (let i = 0; i < ITERS; i++) {
         const t0 = performance.now();
-        await computeTick(editor, engine);
+        await computeTick(engine);
         samples.push(performance.now() - t0);
       }
       const r = stats(samples);

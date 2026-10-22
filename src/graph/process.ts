@@ -1,9 +1,9 @@
 // [[A1]], [[C23]] calcModes, [[D46]] freezeVolatilePerCalc (getRecalcGen)
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
-import type { DataflowEngine } from "rete-engine";
+import type { DataflowEngine } from "./dataflowEngine";
 import { cableValueStore } from "./cableValueStore";
-import { loopMembers, seedLoopErrors, invalidate, fetchAll } from "./graphCompute";
+import { seedLoopErrors } from "./graphCompute";
 import { perfEnabled, beginPass, passTopNodes, ipcSnapshot } from "./perfProbe";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
@@ -211,25 +211,25 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   if (perf) beginPass();
   const ipc0 = perf ? ipcSnapshot() : null;
   const t0 = perf ? performance.now() : 0;
-  const affected = invalidate(_editor, _engine, changedNodeId, !!renderOnly);
+  const affected = _engine.invalidate(changedNodeId, !!renderOnly);
 
   // Seed before fetching: the engine resolves inputs before data(), so an unseeded loop never returns.
   // An additive pass follows a paste, which can bring its own loop, so only a value edit reuses the set.
   const loop = changedNodeId && !topologyChanged
-    ? (_cachedLoop ?? (_cachedLoop = loopMembers(_editor)))
-    : (_cachedLoop = loopMembers(_editor));
+    ? (_cachedLoop ?? (_cachedLoop = _engine.loopMembers()))
+    : (_cachedLoop = _engine.loopMembers());
   seedLoopErrors(_editor, _engine, loop);
 
   const changedOut = affected ? new Set<string>() : null;
   const sinks = affected ? new Set<string>() : null;
-  const values = await fetchAll(_editor, _engine, (id, outputs) => {
+  const values = await _engine.fetchAll((id, outputs) => {
     if (changedOut) {
       const keys = Object.keys(outputs);
       if (keys.length === 0) sinks!.add(id);
       else if (keys.some((k) => cableValueStore.get(id, k) !== outputs[k])) changedOut.add(id); // must compare before setNodeOutputs overwrites
     }
     cableValueStore.setNodeOutputs(id, outputs);
-  }, { stopOnCancel: true });
+  }, true);
   if (!values) return;
   const t1 = perf ? performance.now() : 0;
   cableValueStore.bump();

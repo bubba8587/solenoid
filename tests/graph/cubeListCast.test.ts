@@ -1,7 +1,7 @@
 // [[D90]] cubeTypesAtDepth
 import { it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";

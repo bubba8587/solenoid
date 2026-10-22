@@ -9,7 +9,7 @@ import { promises as nodeFs } from "node:fs";
 import nodePath from "node:path";
 import { pathToFileURL } from "node:url";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine, graphEngineLoaded, loadGraphEngineSync } from "../src/graph/dataflowEngine";
 import * as Nodes from "../src/graph/rete-nodes";
 import type { Schemes } from "../src/graph/schemes";
 import { installInputCoercion } from "../src/graph/coerceInputs";
@@ -161,6 +161,9 @@ async function main() {
       process.exit(1);
     }
     g = graph as unknown as SavedGraph;
+  }
+  if (!graphEngineLoaded()) {
+    loadGraphEngineSync(readFileSync(nodePath.resolve(import.meta.dirname, "../src/graph/graphWasm/solenoid_graph_bg.wasm")));
   }
   const out = await runGraph(g, opts);
   console.log(JSON.stringify(out, null, 2));

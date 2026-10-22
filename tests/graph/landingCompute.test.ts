@@ -1,7 +1,7 @@
 // [[B3]] sameNodeEverywhere, [[C23]]
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
 import type { SurfaceStack } from "../../src/graph/flow/FlowSurface";

@@ -2,7 +2,7 @@
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes, SolenoidConnection, SolenoidNode } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";

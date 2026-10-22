@@ -29,6 +29,8 @@ the production minify, and its "esbuild options ignored" warning is expected.
 ## Rust core (solenoid/tsrs, [[D99]] rustIsSpec)
 - [ ] **Still on the TS:** Cube outputs (`decisionCube`, Sensitivity's Scenarios, `unnestCube` and the cube verbs), the LAMBDA folds' and computed columns' units, Equation's dimensions, ledgers with list cells. Each needs freezing before its port.
 - [ ] **Delete the TS once covered:** the TS evaluator and function bodies, `wasmEngine.test.ts`'s differentials, then retire [[D98]] wholeColumnFallback.
+- [ ] **The graph's next steps ([[D102]] graphOnCore):** the rete `NodeEditor` itself (the model the engine mirrors), then node `data()` bodies family by family, so a pass stops crossing into JS per node. A trap inside the graph module isn't recovered yet ([[graph-core]] § Limits).
+- [ ] **`npm run run-graph` fails under `tsx`**: Node can't import the `?url` wasm imports (`engineWasm.ts` first, then `dataflowEngine.ts`); it only runs under vitest.
 - [ ] **Settle's ledger reads an error cell in Paid by or For as a person named "[object Object]"** and a TRUE as "true" (`settleLedgerCube`; the core matches it). Decide: skip the row, or answer the error.
 
 ## Tooling

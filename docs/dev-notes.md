@@ -6,7 +6,7 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-10-21/22: the Rust core, branch solenoid/tsrs; cloud session)
+### SESSION DIGEST (2026-10-21/22: the Rust core and the graph on it, branch solenoid/tsrs; cloud session)
 - **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine), [[D99]] rustIsSpec and [[D98]] wholeColumnFallback; mechanics in [[rust-core]]. All three are unratified.
 - **What runs on the core:** every formula (compileEvaluator, outside a row frame) and computed column; about 150 node
   bodies through `callCore`; 25 frame computations through `frameFnOnCore` (headers, Describe, Correlation, Reconcile,
@@ -49,6 +49,11 @@ specific item.
   computed-column units as on develop.
 - **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
   and catching throws. Rerun after the fixes, no call takes over 300 ms.
+- **The graph moved onto the core** ([[D102]] graphOnCore, ratified; mechanics [[graph-core]]): `rete-engine` is gone.
+  The dataflow engine and the pass's graph walks (loop members, cones, fetching every node) run in Rust on Ruggine
+  (`crates/solenoid-graph`, its own wasm module so a formula trap can't take the graph with it), mirroring the rete
+  editor, which stays the model for now. The nodes stay JS objects the core calls back. About 2x rete-engine on a
+  1,232-node pass. Ruggine's engines gained `with_configure` for any node type to make this possible.
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
   - Whether the regex port's remaining 70 KB or so (gzipped) is worth it.

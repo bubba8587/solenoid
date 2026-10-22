@@ -72,7 +72,8 @@ This file is the map.
 - **View layer**: React Flow (`@xyflow/react`) — the ONE renderer. Cards, cables,
   minimap, viewport all render in the app's single React tree.
 - **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
-  + `rete-engine` (DataflowEngine, pull-based recompute). No rete render/area
+  + the graph core's DataflowEngine (pull-based recompute, Rust on Ruggine in its own
+  wasm module, `dataflowEngine.ts`, [[D102]] graphOnCore). No rete render/area
   plugins exist; `elkjs` is called directly for Tidy. The core stays on purpose
   ([[A1]] visualGraphCalculator — author-ratified 2026-08-27).
 - **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
@@ -101,7 +102,7 @@ src/
 | Module | Role |
 |---|---|
 | `process.ts` | The app's recompute ONLY: the MAIN `_editor/_engine/_area` refs, the graph-rebuild guard, `processGraph()` (the `graphCompute` pass + targeted re-render, cable values, perf, the compute overlay, calc mode), recalc generation (volatile nodes), `bulkSettle`. **STAYS MAIN-ONLY** (persistence/serialize read it) |
-| `graphCompute.ts` | THE model-level pass, one definition for every caller (`../tree/specs/computation/compute-pass.md` § The targeted pass equals the full pass): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
+| `graphCompute.ts` | THE model-level pass, one definition for every caller (`../tree/specs/computation/compute-pass.md` § The targeted pass equals the full pass): `loopMembers` and `downstreamClosure` (the engine's, through `engineOf`), `seedLoopErrors` (`#CIRC!` seeding + value boxes), `computeAll`; the engine runs `invalidate` and `fetchAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
 | `canvasCommands.ts` | The chrome → surface command slots (select/unselect, Tidy/Cleanup, delete, dock reposition, clear history) the mounted FlowSurface registers and the drill-in swaps (`swapSelectionSlots`/`swapArrangeSlots`) |
 | `graphSignals.ts`, `ctorProvider.ts` | The tiny version/flag stores cards subscribe to (connection version, cable-drag, conduit angle); the ctor-registry provider copyPaste reads (a cycle-breaker) |
 | `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore). Also an OWNERSHIP-only registry (`registerOwnedGraph`, distinct from the action-target override) so locked landing scene canvases resolve their OWN nodes for render-time cross-node resolvers (output-socket type → date/unit rendering); scenes are never the action target |

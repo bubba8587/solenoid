@@ -1,7 +1,7 @@
 // [[B3]] sameNodeEverywhere
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../dataflowEngine";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { FlowSurfaceContext, FlowRevealContext } from "../flowSurface";

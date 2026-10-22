@@ -39,8 +39,9 @@ SOFTWARE.
 The web bundle ships the complete generated license inventory for every
 bundled npm package at `third-party-licenses.txt` (produced by
 `rollup-plugin-license`, see `vite.config.ts`). Highlights: the headless graph
-model and dataflow engine are [Rete.js](https://retejs.org) (`rete`,
-`rete-engine`, MIT); Excel function semantics come from
+model is [Rete.js](https://retejs.org) (`rete`, MIT) and the dataflow engine is
+[Ruggine](https://github.com/bubba8587/ruggine) (MIT), a Rust port of `rete` and
+`rete-engine` (MIT); Excel function semantics come from
 [Formula.js](https://formulajs.info) (MIT); charts are
 [Recharts](https://recharts.org) (MIT); the desktop shell is
 [Tauri](https://tauri.app) (MIT/Apache-2.0) and the native relational engine is

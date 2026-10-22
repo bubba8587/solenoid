@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode } from "../schemes";
 import { FlowSurfaceContext } from "../flowSurface";
 import { cableSelectionStore } from "../cableState";

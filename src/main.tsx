@@ -11,6 +11,7 @@ import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initPackFormulas } from "./graph/formulaExtensions";
 import { initFrameBackend, watchEngineSetting } from "./graph/frameBackend";
+import { loadGraphEngine } from "./graph/dataflowEngine";
 import { documentStore } from "./graph/documentStore";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
@@ -116,7 +117,11 @@ initPackFcExtensions();
 initPackFormulas();
 
 // Formulas compute on the Rust core ([[D99]] rustIsSpec), so the first calc waits for it, never past a few seconds.
-const backendReady = Promise.race([initFrameBackend(), new Promise<void>((done) => setTimeout(done, 4000))]);
+// Nothing computes without the graph engine ([[D102]] graphOnCore), so it has no deadline.
+const backendReady = Promise.all([
+  Promise.race([initFrameBackend(), new Promise<void>((done) => setTimeout(done, 4000))]),
+  loadGraphEngine(),
+]);
 watchEngineSetting(() => void documentStore.reloadCurrent());
 
 initDevtoolsHotkey();

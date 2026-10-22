@@ -1,7 +1,7 @@
 // [[C25]]
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import * as Nodes from "../../src/graph/rete-nodes";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";

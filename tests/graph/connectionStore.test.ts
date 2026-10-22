@@ -1,7 +1,7 @@
 // [[C23]] calcModes
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import { WebSourceNode } from "../../src/graph/nodes/connection";
 import { GetColumnNode } from "../../src/graph/nodes/frame";
 import { AlertNode } from "../../src/graph/nodes/display";

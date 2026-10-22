@@ -10,7 +10,7 @@ vi.mock("../../src/graph/fileBridge", async (orig) => ({
 }));
 
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
 import { resetFrameBackendToJs, clearCollectMemo, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";

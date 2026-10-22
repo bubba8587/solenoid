@@ -934,7 +934,7 @@ describe("CompositeNode Goal Seek run mode", () => {
 
   it("a never-solved heavy composite fetches through the engine without throwing", async () => {
     const { c } = await makeAdder();
-    const { DataflowEngine } = await import("rete-engine");
+    const { DataflowEngine } = await import("../../../src/graph/dataflowEngine");
     const editor = new NodeEditor<Schemes>();
     const engine = new DataflowEngine<Schemes>();
     editor.use(engine);

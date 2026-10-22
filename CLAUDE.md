@@ -47,7 +47,7 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
 
 ## Project: Solenoid
 Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
-Tauri. The view is **React Flow**; the headless graph model + dataflow engine are **`rete` core + `rete-engine`**. Formulas, functions and table verbs run on Solenoid's own Rust core (`crates/solenoid-core`), wasm on the web and native on desktop, with Polars beside it for desktop table verbs ([[C130]] rustCore). On this branch the Rust is the spec and each TypeScript copy is deleted once the core covers it, its answers frozen into fixtures first ([[D99]] rustIsSpec; the routine is `tree/specs/computation/rust-core.md`).
+Tauri. The view is **React Flow**; the headless graph model is **`rete` core**, and the dataflow engine runs in Rust on Ruggine, the port of rete kept as its own library (`crates/solenoid-graph`, [[D102]] graphOnCore; `tree/specs/computation/graph-core.md`). Formulas, functions and table verbs run on Solenoid's own Rust core (`crates/solenoid-core`), wasm on the web and native on desktop, with Polars beside it for desktop table verbs ([[C130]] rustCore). On this branch the Rust is the spec and each TypeScript copy is deleted once the core covers it, its answers frozen into fixtures first ([[D99]] rustIsSpec; the routine is `tree/specs/computation/rust-core.md`).
 
 ### Docs map — read before touching code
 Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the index + the

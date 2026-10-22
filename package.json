@@ -64,7 +64,6 @@
     "react-is": "^19.3.0",
     "recharts": "^3.10.1",
     "rete": "^2.0.6",
-    "rete-engine": "^2.1.1",
     "web-worker": "^1.5.0",
     "yaml": "^2.9.1"
   },

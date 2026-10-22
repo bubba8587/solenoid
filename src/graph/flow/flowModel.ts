@@ -1,6 +1,6 @@
 // [[A1]] visualGraphCalculator, [[B3]] sameNodeEverywhere
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode } from "../schemes";
 import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";

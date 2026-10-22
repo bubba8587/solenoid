@@ -1,6 +1,6 @@
 # The native half of the frame-verb parity corpus: every fixture in fixtures/frame-verbs runs through
-# Polars too (`corpus_cases`), so an engine change is held to the same cases the JS oracle is; and the Rust
-# core's own tests ([[C130]] rustCore). It runs only when an engine or the corpus changes, so an ordinary
+# Polars too (`corpus_cases`), so an engine change is held to the same cases the JS oracle is; the Rust
+# core's own tests ([[C130]] rustCore); and the graph core's. It runs only when an engine or the corpus changes, so an ordinary
 # push asks for one runner, not two.
 name: Engine test
 
@@ -57,3 +57,17 @@ jobs:
 
       - name: Core tests
         run: cargo test --manifest-path crates/solenoid-core/Cargo.toml
+
+  graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "crates/solenoid-graph -> target"
+
+      - name: Graph core tests ([[D102]] graphOnCore)
+        run: cargo test --manifest-path crates/solenoid-graph/Cargo.toml

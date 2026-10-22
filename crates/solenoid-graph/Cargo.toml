@@ -1,0 +1,25 @@
+[package]
+name = "solenoid-graph"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ruggine = { git = "https://github.com/bubba8587/ruggine", rev = "0c4ed9bda0470e9d4c713281ec70fe22bcc12f75" }
+ruggine-engine = { git = "https://github.com/bubba8587/ruggine", rev = "0c4ed9bda0470e9d4c713281ec70fe22bcc12f75" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.100"
+wasm-bindgen-futures = "=0.4.50"
+js-sys = "=0.3.77"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

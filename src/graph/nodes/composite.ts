@@ -1,6 +1,6 @@
 // [[D52]], [[C77]]
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "../sockets";
 import { resolveTrigModes } from "../trigMode";
@@ -17,7 +17,7 @@ import {
 import { installInputCoercion } from "../coerceInputs";
 import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, cubeFromColumns } from "../frame";
 import { isGraphRebuilding } from "../process";
-import { loopMembers, seedLoopErrors } from "../graphCompute";
+import { seedLoopErrors } from "../graphCompute";
 import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore, whenConnectionsSettled } from "../connectionStore";
@@ -552,7 +552,7 @@ export class CompositeNode extends ClassicPreset.Node {
     seedLoopErrors(
       this.internalEditor,
       this.internalEngine,
-      loopMembers(this.internalEditor),
+      this.internalEngine.loopMembers(),
       "Part of a circular dependency: the calculation feeds itself. Switch the container to Simulation mode to run it as a feedback loop.",
     );
   }
@@ -610,7 +610,7 @@ export class CompositeNode extends ClassicPreset.Node {
     this.internalEngine.reset();
     this.simLastSteps = null;
 
-    const loop = loopMembers(this.internalEditor);
+    const loop = this.internalEngine.loopMembers();
     if (loop.size === 0) return this.runPass(inputs);
 
     const conns = this.internalEditor.getConnections();
@@ -658,8 +658,7 @@ export class CompositeNode extends ClassicPreset.Node {
 
     for (const id of loop) {
       const finalOut = state.get(id) ?? {};
-      const seeded = Object.assign(Promise.resolve(finalOut), { cancel() {} });
-      try { this.internalEngine.cache.add(id, seeded); } catch { this.internalEngine.cache.patch(id, seeded); }
+      this.internalEngine.seed(id, finalOut);
     }
 
     const outputs: Record<string, unknown> = {};
@@ -704,8 +703,7 @@ export class CompositeNode extends ClassicPreset.Node {
     } else {
       this.internalEngine.reset();
       for (const id of loop) {
-        const seeded = Object.assign(Promise.resolve(state.get(id) ?? {}), { cancel() {} });
-        try { this.internalEngine.cache.add(id, seeded); } catch { this.internalEngine.cache.patch(id, seeded); }
+        this.internalEngine.seed(id, state.get(id) ?? {});
       }
       try {
         const res = await this.internalEngine.fetch(feed.source) as Record<string, unknown>;

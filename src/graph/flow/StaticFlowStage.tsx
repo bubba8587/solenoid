@@ -7,7 +7,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../dataflowEngine";
 import type { Schemes } from "../schemes";
 import { FlowSurfaceContext, registerFlowSocket, registerFlowResizeGrip } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";

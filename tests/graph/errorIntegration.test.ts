@@ -1,7 +1,7 @@
 // [[D35]]
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
@@ -110,6 +110,7 @@ describe("error propagation through the engine", () => {
 describe("dependency loops (#CIRC!)", () => {
   it("loopMembers flags only the true loop, not its neighbors", async () => {
     const editor = new NodeEditor<Schemes>();
+    editor.use(new DataflowEngine<Schemes>());
     const a = new ArithmeticNode({ op: "add" });
     const b = new ArithmeticNode({ op: "add" });
     const c = new ArithmeticNode({ op: "add" });
@@ -144,7 +145,7 @@ describe("dependency loops (#CIRC!)", () => {
       const node = editor.getNode(id)!;
       const outs: Record<string, unknown> = {};
       for (const k of Object.keys(node.outputs)) outs[k] = circ;
-      engine.cache.add(id, Object.assign(Promise.resolve(outs), { cancel() {} }));
+      engine.seed(id, outs);
     }
     // Downstream nodes now compute against the cached error instead of deadlocking.
     const dispOut = await engine.fetch(disp.id) as { out: unknown };

@@ -184,8 +184,9 @@ area. When you coin a new load-bearing term, add it here.
 
 - **processGraph**: the recompute-and-rerender entry point; never call it from a text
   field's `onChange` (edits commit on Enter/blur). (`process.ts`)
-- **DataflowEngine**: rete's PULL-based execution engine (inputs resolve recursively
-  before `data()` runs; async ones awaited). (`rete-engine`, `process.ts`)
+- **DataflowEngine**: the PULL-based execution engine (inputs resolve recursively
+  before `data()` runs; async ones awaited), rete-engine's, ported to Rust in Ruggine.
+  (`dataflowEngine.ts`, `crates/solenoid-graph`)
 - **Calc mode**: manual vs. automatic recompute; F9 forces a recompute in manual mode.
   (`calcModeStore.ts`; see [[C23]] calcModes)
 - **Compute overlay**: the deferred "Computing…" curtain that blocks interaction during a

@@ -4,7 +4,7 @@
 // fusion for runFrameUnary in isolation; this pins what a graph actually pays.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
+import { DataflowEngine } from "../../src/graph/dataflowEngine";
 import type { Schemes } from "../../src/graph/schemes";
 
 const invokeMock = vi.fn();
