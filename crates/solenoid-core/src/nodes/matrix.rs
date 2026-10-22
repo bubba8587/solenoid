@@ -282,7 +282,7 @@ fn matrix_v(m: &[Vec<V>]) -> V {
 }
 
 /// `formulaSyntaxHint`: what is wrong with a formula that doesn't parse, where a common slip says.
-fn syntax_hint(expr: &str) -> Option<String> {
+pub(crate) fn syntax_hint(expr: &str) -> Option<String> {
     let mut quoted = String::new();
     let mut chars = expr.chars().peekable();
     while let Some(ch) = chars.next() {

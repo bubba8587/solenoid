@@ -2,78 +2,12 @@
 
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, logicalComboOut } from "./shared";
-import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
-import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, solveLinear, rootHolds, equalsWithin, isolate, countOccurrences, type ParsedEquation } from "../equationSolve";
-import { isSolError, solError, type SolError } from "../errorValue";
-import { dimEvalWithCode, type DimEnv, type CodeEnv } from "../unitDimExpr";
-import { isUnitCell, tagDim, unitError, type UnitCell } from "../unitValue";
-import { readInDeclaredUnit } from "../unitBridge";
-import { type Dim, DIMENSIONLESS, dimEqual, isDimensionless } from "../dimension";
+import { extractVariables } from "../excelFormula";
+import { type SolError } from "../errorValue";
+import { type UnitCell } from "../unitValue";
+import { nodeOnCore } from "../nodeOnCore";
 
 type Val = number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
-
-
-function dimOfVal(v: unknown): Dim {
-  if (isUnitCell(v)) return v.dim;
-  if (Array.isArray(v)) { for (const c of v) if (isUnitCell(c)) return c.dim; }
-  return DIMENSIONLESS;
-}
-
-function codeOfVal(v: unknown, dim: Dim): string | undefined {
-  if (!dimEqual(dim, { currency: 1 })) return undefined;
-  const cells = Array.isArray(v) ? v : [v];
-  let code: string | undefined;
-  for (const c of cells) {
-    if (!isUnitCell(c) || c.display == null) continue;
-    if (code === undefined) code = c.display;
-    else if (code !== c.display) return undefined;
-  }
-  return code;
-}
-
-function toBaseVal(v: unknown): unknown {
-  if (isUnitCell(v)) return v.value;
-  if (Array.isArray(v)) return v.map((c) => (isUnitCell(c) ? (c as UnitCell).value : c));
-  return v;
-}
-
-function checkEquals(l: Val, r: Val): boolean | (boolean | SolError | null)[] | SolError | null {
-  if (isSolError(l)) return l;
-  if (isSolError(r)) return r;
-  if (l === null || r === null) return null;
-  if (Array.isArray(l) || Array.isArray(r)) {
-    const ll = Array.isArray(l) ? l : null;
-    const rl = Array.isArray(r) ? r : null;
-    const len = Math.max(ll?.length ?? 0, rl?.length ?? 0);
-    const out: (boolean | SolError | null)[] = [];
-    for (let i = 0; i < len; i++) {
-      const a = ll ? ll[i] : (l as number);
-      const b = rl ? rl[i] : (r as number);
-      if (isSolError(a)) { out.push(a); continue; }
-      if (isSolError(b)) { out.push(b); continue; }
-      if (a == null || b == null || typeof a !== "number" || typeof b !== "number") { out.push(null); continue; }
-      out.push(equalsWithin(a, b));
-    }
-    return out;
-  }
-  if (typeof l !== "number" || typeof r !== "number") return null;
-  return equalsWithin(l, r);
-}
-
-function guardVal(raw: unknown): Val {
-  if (isSolError(raw)) return raw;
-  if (isUnitCell(raw)) return Number.isFinite(raw.value) ? raw : null;
-  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
-  if (Array.isArray(raw)) {
-    return raw.map((e) => {
-      if (isSolError(e)) return e;
-      if (isUnitCell(e)) return Number.isFinite(e.value) ? e : null;
-      if (typeof e === "number") return Number.isFinite(e) ? e : null;
-      return null;
-    });
-  }
-  return null;
-}
 
 export class EquationNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -92,12 +26,6 @@ export class EquationNode extends ClassicPreset.Node {
   varUnits: Record<string, string> = {};
   cachedHolds: boolean | (boolean | SolError | null)[] | SolError | null = null;
   solvedFor: string | null = null;
-
-  private equation: ParsedEquation | null = null;
-  private shapeError: string | null = null;
-  private lhsEval: ExprEvaluator | null = null;
-  private rhsEval: ExprEvaluator | null = null;
-  private solvers = new Map<string, ExprEvaluator | null>();
 
   width = 240;
   height = 220;
@@ -132,185 +60,10 @@ export class EquationNode extends ClassicPreset.Node {
     }
 
     this.varNames = next;
-    this.solvers.clear();
-    this.equation = null;
-    this.shapeError = null;
-    this.lhsEval = null;
-    this.rhsEval = null;
-    if (this.expr.trim()) {
-      const parsed = parseEquation(this.expr);
-      if (parsed === null) this.shapeError = "Syntax error";
-      else if (typeof parsed === "string") this.shapeError = parsed;
-      else {
-        this.equation = parsed;
-        this.lhsEval = compileEvaluator(parsed.lhsText);
-        this.rhsEval = compileEvaluator(parsed.rhsText);
-      }
-    }
     return { added, removed };
   }
 
-  private solverFor(unknown: string): ExprEvaluator | null {
-    if (!this.equation) return null;
-    if (!this.solvers.has(unknown)) {
-      this.solvers.set(unknown, compileSolver(this.equation, unknown));
-    }
-    return this.solvers.get(unknown) ?? null;
-  }
-
-  data(inputs: Record<string, unknown[]>): Record<string, unknown> {
-    const out: Record<string, unknown> = {};
-    const values: Record<string, Val> = {};
-    this.cachedHolds = null;
-    this.solvedFor = null;
-
-    const finish = (error: string | null) => {
-      this.cachedError = error;
-      this.cachedValues = values;
-      for (const v of this.varNames) out[v] = values[v] ?? null;
-      out.holds = this.cachedHolds;
-      return out;
-    };
-
-    if (!this.expr.trim()) return finish(null);
-    if (this.shapeError || !this.equation || !this.lhsEval || !this.rhsEval) {
-      return finish(this.shapeError ?? "Syntax error");
-    }
-
-    const env: Record<string, unknown> = {};
-    const unknowns: string[] = [];
-    for (const v of this.varNames) {
-      if (inputs[v] !== undefined && inputs[v].length > 0) {
-        env[v] = this.varUnits[v] ? readInDeclaredUnit(inputs[v][0], this.varUnits[v]) : inputs[v][0];
-      } else {
-        unknowns.push(v);
-      }
-    }
-    for (const v of this.varNames) if (!unknowns.includes(v)) values[v] = guardVal(env[v]);
-
-    const dims: DimEnv = {};
-    const codes: CodeEnv = {};
-    let anyDim = false;
-    for (const v of this.varNames) {
-      if (unknowns.includes(v)) continue;
-      const d = dimOfVal(env[v]);
-      dims[v] = d;
-      const code = codeOfVal(env[v], d);
-      if (code !== undefined) codes[v] = code;
-      if (!isDimensionless(d)) anyDim = true;
-    }
-    if (anyDim) for (const k of Object.keys(env)) env[k] = toBaseVal(env[k]);
-
-    if (unknowns.length > 1) {
-      return finish("Wire in all but one variable");
-    }
-
-    if (unknowns.length === 0) {
-      if (anyDim) {
-        const dl = dimEvalWithCode(this.equation.lhs, dims, codes);
-        const dr = dimEvalWithCode(this.equation.rhs, dims, codes);
-        if (isSolError(dl)) { this.cachedHolds = dl; return finish(null); }
-        if (isSolError(dr)) { this.cachedHolds = dr; return finish(null); }
-        if (dl !== null && dr !== null && !dimEqual(dl.dim, dr.dim)) {
-          this.cachedHolds = unitError("The two sides carry different units.");
-          return finish(null);
-        }
-        if (dl !== null && dr !== null && dl.code !== undefined && dr.code !== undefined && dl.code !== dr.code) {
-          this.cachedHolds = unitError(`Can't equate ${dl.code} and ${dr.code}: they are different currencies with no exchange rate.`);
-          return finish(null);
-        }
-      }
-      try {
-        const l = guardVal(this.lhsEval(env));
-        const r = guardVal(this.rhsEval(env));
-        this.cachedHolds = checkEquals(l, r);
-      } catch {
-        this.cachedHolds = solError("#VALUE!", "The equation failed to evaluate");
-      }
-      return finish(null);
-    }
-
-    const unknown = unknowns[0];
-    this.solvedFor = unknown;
-    const tagUnknown = () => {
-      if (!anyDim || !this.equation) return;
-      const raw = values[unknown];
-      if (raw === null || isSolError(raw)) return;
-      const eq = this.equation;
-      const iso = countOccurrences(eq.lhs, unknown) === 1
-        ? isolate(eq.lhs, eq.rhs, unknown)
-        : countOccurrences(eq.rhs, unknown) === 1
-          ? isolate(eq.rhs, eq.lhs, unknown)
-          : null;
-      if (!iso) return;
-      const dr = dimEvalWithCode(iso, dims, codes);
-      if (isSolError(dr)) { values[unknown] = dr; return; }
-      if (dr === null || isDimensionless(dr.dim)) return;
-      const tag = (n: number | UnitCell | SolError | null) => (typeof n === "number" ? tagDim(n, dr.dim, dr.code) : n);
-      values[unknown] = Array.isArray(raw) ? (raw.map(tag) as Val) : (tag(raw) as Val);
-    };
-    const knownVals = Object.values(env);
-    const errIn = knownVals.find(isSolError);
-    if (errIn) { values[unknown] = errIn as SolError; return finish(null); }
-    if (knownVals.some((k) => k === null)) { values[unknown] = null; return finish(null); }
-
-    const lhs = this.lhsEval, rhs = this.rhsEval;
-    const scalarKnowns = !knownVals.some(Array.isArray);
-    const residual = (x: number): number | null => {
-      try {
-        const e2 = { ...env, [unknown]: x };
-        const l = lhs(e2), r = rhs(e2);
-        if (typeof l !== "number" || typeof r !== "number") return null;
-        const d = l - r;
-        return Number.isFinite(d) ? d : null;
-      } catch {
-        return null;
-      }
-    };
-    if (scalarKnowns) {
-      const quad = sniffQuadratic(residual);
-      if (quad) {
-        const holds = (x: number) => rootHolds(quad, residual, x);
-        const roots = solveQuadratic(quad);
-        if (isSolError(roots)) {
-          const found = solveNumeric(residual);
-          values[unknown] = isSolError(found) ? roots : found;
-          tagUnknown();
-          return finish(null);
-        }
-        if (roots !== null && (Array.isArray(roots) ? roots.every(holds) : holds(roots))) {
-          values[unknown] = roots;
-          tagUnknown();
-          return finish(null);
-        }
-        const eq = this.equation;
-        const repeated = !!eq && countOccurrences(eq.lhs, unknown) + countOccurrences(eq.rhs, unknown) > 1;
-        const root = repeated && roots === null ? solveLinear(quad) : null;
-        if (root !== null && holds(root)) {
-          values[unknown] = root;
-          tagUnknown();
-          return finish(null);
-        }
-      }
-    }
-
-    const solver = this.solverFor(unknown);
-    if (solver) {
-      try {
-        values[unknown] = guardVal(solver(env));
-      } catch {
-        values[unknown] = solError("#VALUE!", "Solving failed to evaluate");
-      }
-      tagUnknown();
-      return finish(null);
-    }
-
-    if (!scalarKnowns) {
-      values[unknown] = solError("#SHAPE!", "Numeric solving works on single values. With lists, this equation solves only where the algebra can be inverted");
-      return finish(null);
-    }
-    values[unknown] = solveNumeric(residual);
-    tagUnknown();
-    return finish(null);
+  data(inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
+    return nodeOnCore(this, inputs);
   }
 }

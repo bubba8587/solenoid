@@ -296,18 +296,6 @@ describe("review pins: frontmatter keys", () => {
   });
 });
 
-describe("review pins: the Equation numeric solver", () => {
-  it("a pole is never a root; a root beside the domain edge is found", async () => {
-    const { solveNumeric } = await import("../../src/graph/equationSolve");
-    const pole = solveNumeric((x) => 1 / (x - 3));
-    expect(isSolError(pole)).toBe(true);
-    const edge = solveNumeric((x) => (x < 2 ? null : Math.sqrt(x - 2) - 1));
-    expect(edge as number).toBeCloseTo(3, 6);
-    expect(Math.abs(solveNumeric((x) => x * x - 4) as number)).toBeCloseTo(2, 6); // ±2 tie: either is a root
-    expect(solveNumeric((x) => x - 0.032173) as number).toBeCloseTo(0.032173, 9);
-  });
-});
-
 describe("review pins: SORTBY length, COMBINA at zero", () => {
   it("SORTBY refuses a key list of another length", () => {
     expect(isSolError(resolveExcelFunction("SORTBY")!(["a", "b", "c"], [2, 1]))).toBe(true);

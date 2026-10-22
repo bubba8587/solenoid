@@ -13,6 +13,7 @@ mod complex;
 mod control;
 mod date;
 mod finance;
+mod formula;
 mod frames;
 mod kit;
 mod list;
@@ -207,6 +208,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| packs::run(kind, c))
         .or_else(|| visual::run(kind, c))
         .or_else(|| frames::run(kind, c))
+        .or_else(|| formula::run(kind, c))
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or

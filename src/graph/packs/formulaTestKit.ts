@@ -4,7 +4,7 @@
 import { ExpressionNode, EquationNode } from "../rete-nodes";
 import { parseEquation } from "../equationSolve";
 import { initPackFormulas } from "../formulaExtensions";
-import { compileEvaluator } from "../excelFormula";
+import { compileEvaluator, parseFormula } from "../excelFormula";
 import type { FormulaPackEntry, Pack } from "./packShared";
 
 /** Evaluates with every pack's FORMULA FUNCTIONS registered, mirroring how a typed
@@ -59,8 +59,7 @@ export function auditFormulaPack(entries: FormulaPackEntry[]): string[] {
         problems.push(`${e.type}: equation does not parse: ${e.expr}${typeof parsed === "string" ? ` (${parsed})` : ""}`);
       }
     } else {
-      const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs });
-      if (!node.evaluator) problems.push(`${e.type}: formula does not compile: ${e.expr}`);
+      if (!parseFormula(e.expr)) problems.push(`${e.type}: formula does not compile: ${e.expr}`);
     }
     if (!e.description) problems.push(`${e.type}: missing description`);
   }

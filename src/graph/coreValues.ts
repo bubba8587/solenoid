@@ -180,22 +180,6 @@ export function evaluateOnCore(src: string, env: Record<string, unknown>): { val
   }, null);
 }
 
-/** Expression's unit wrapper over its read inputs on the core ([[C25]] firstClassUnits, `unit_expression.rs`), or null
- *  where the wasm engine is off, a value can't cross, or the core leaves it to the TS. */
-export function expressionUnitsOnCore(src: string, env: Record<string, unknown>): { value: unknown } | null {
-  return onCore(() => {
-    if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
-    const wire: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(env)) {
-      const w = coreValue(v, true);
-      if (w === undefined) return null;
-      wire[k] = w;
-    }
-    syncExternalNames();
-    return readReply(wasmInvokeSync<unknown>("engine_expression_units", { src, env: wire, order: Object.keys(env), clock: engineClock() }));
-  }, null);
-}
-
 // A card mapping one body over a list crosses once for the list, not once an item ([[C120]] linearWork): `coreEach`
 // runs the item loop twice, first recording each `callCore` (which answers a placeholder), then sending each body's
 // calls in one `engine_call_each` and answering the second run's calls from the replies. A call the second run makes

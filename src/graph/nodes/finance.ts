@@ -148,8 +148,6 @@ export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
   beg: "pv*(1+rate)^nper + pmt*(1+rate)*((1+rate)^nper - 1)/rate + fv = 0",
 };
 
-const TVM_ZERO_RATE_EXPR = "pv + pmt*nper + fv = 0";
-
 export class TvmNode extends EquationNode {
   static socketDocs: Record<string, string> = {
     ...EquationNode.socketDocs,
@@ -158,7 +156,6 @@ export class TvmNode extends EquationNode {
   };
 
   paymentTiming: PaymentTiming;
-  private _zeroRate: EquationNode | null = null;
 
   constructor(init?: { label?: string; paymentTiming?: PaymentTiming; locked?: boolean }) {
     const timing = init?.paymentTiming ?? "end";
@@ -176,20 +173,6 @@ export class TvmNode extends EquationNode {
     this.paymentTiming = t;
     this.expr = TVM_TIMING_EXPRS[t];
     this._rebuild();
-  }
-
-  data(inputs: Record<string, unknown[]>): Record<string, unknown> {
-    if (inputs.rate?.[0] === 0) {
-      const zr = (this._zeroRate ??= new EquationNode({ expr: TVM_ZERO_RATE_EXPR }));
-      const out = zr.data(inputs);
-      this.cachedError = zr.cachedError;
-      this.cachedHolds = zr.cachedHolds;
-      this.solvedFor = zr.solvedFor;
-      this.cachedValues = { ...zr.cachedValues, rate: 0 };
-      out.rate = 0;
-      return out;
-    }
-    return super.data(inputs);
   }
 }
 

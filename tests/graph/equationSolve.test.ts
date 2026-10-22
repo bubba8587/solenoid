@@ -1,9 +1,9 @@
 // [[C47]]
 import { describe, it, expect } from "vitest";
-import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, solveLinear, astToFormula, isolate, equalsWithin, type ParsedEquation } from "../../src/graph/equationSolve";
+import { parseEquation, astToFormula, type ParsedEquation } from "../../src/graph/equationSolve";
 import { parseFormula } from "../../src/graph/excelFormula";
 import { EquationNode } from "../../src/graph/nodes/equation";
-import { isSolError, type SolError } from "../../src/graph/errorValue";
+import { isSolError } from "../../src/graph/errorValue";
 
 const eq = (s: string): ParsedEquation => {
   const p = parseEquation(s);
@@ -11,13 +11,8 @@ const eq = (s: string): ParsedEquation => {
   return p;
 };
 
-const solve = (equation: string, unknown: string, env: Record<string, unknown>): number => {
-  const solver = compileSolver(eq(equation), unknown);
-  expect(solver, `${equation} solve ${unknown}`).not.toBe(null);
-  const r = solver!(env);
-  expect(typeof r).toBe("number");
-  return r as number;
-};
+// The solver itself (isolation, the quadratic fit, the numeric fallback) is pinned beside its body in
+// crates/solenoid-core/src/nodes/formula.rs; these drive the card.
 
 describe("parseEquation", () => {
   it("splits on the top-level =", () => {
@@ -33,126 +28,15 @@ describe("parseEquation", () => {
   });
 });
 
-describe("symbolic isolation", () => {
-  it("Ohm's law solves for every variable", () => {
-    expect(solve("V = I * R", "V", { I: 2, R: 50 })).toBe(100);
-    expect(solve("V = I * R", "I", { V: 100, R: 50 })).toBe(2);
-    expect(solve("V = I * R", "R", { V: 100, I: 2 })).toBe(50);
-  });
-
-  it("ideal gas — the four-way rearrangement in one node", () => {
-    // p·v = n·8.314·t
-    const gas = "p * v = n * 8.314462618 * t";
-    expect(solve(gas, "p", { v: 0.0227, n: 1, t: 273.15 })).toBeCloseTo(100048.26, 1);
-    expect(solve(gas, "v", { p: 100000, n: 1, t: 273.15 })).toBeCloseTo(0.022711, 5);
-    expect(solve(gas, "n", { p: 100000, v: 0.022711, t: 273.15 })).toBeCloseTo(1, 4);
-    expect(solve(gas, "t", { p: 100000, v: 0.022711, n: 1 })).toBeCloseTo(273.15, 1);
-  });
-
-  it("subtraction and division direction-sensitivity", () => {
-    expect(solve("a - b = c", "b", { a: 10, c: 3 })).toBe(7);
-    expect(solve("a / b = c", "b", { a: 10, c: 2 })).toBe(5);
-    expect(solve("a - b = c", "a", { b: 4, c: 3 })).toBe(7);
-  });
-
-  it("powers: root, exponent, POWER and LOG calls", () => {
-    expect(solve("a = b ^ 2", "b", { a: 25 })).toBe(5); // principal root
-    expect(solve("a = 2 ^ b", "b", { a: 32 })).toBeCloseTo(5, 12);
-    expect(solve("a = POWER(b, 3)", "b", { a: 27 })).toBeCloseTo(3, 12);
-    expect(solve("a = LOG(b, 10)", "b", { a: 3 })).toBeCloseTo(1000, 9);
-  });
-
-  it("function inverses: EXP/LN, SQRT, trig, DEGREES", () => {
-    expect(solve("a = EXP(b)", "b", { a: Math.E ** 2 })).toBeCloseTo(2, 12);
-    expect(solve("a = LN(b)", "b", { a: 1 })).toBeCloseTo(Math.E, 12);
-    expect(solve("c = SQRT(a^2 + b^2)", "b", { c: 5, a: 3 })).toBeCloseTo(4, 12);
-    expect(solve("y = SIN(x)", "x", { y: 0.5 })).toBeCloseTo(Math.asin(0.5), 12);
-    expect(solve("d = DEGREES(r)", "r", { d: 180 })).toBeCloseTo(Math.PI, 12);
-  });
-
-  it("unary minus and percent", () => {
-    expect(solve("a = -b", "b", { a: 5 })).toBe(-5);
-    expect(solve("a = b%", "b", { a: 0.25 })).toBe(25);
-  });
-
-  it("a real pack equation: solve Coulomb for distance", () => {
-    // F = k q1 q2 / r²  →  r = √(k q1 q2 / F)
-    const f = solve("f = 8.9875517923*10^9 * q1 * q2 / r ^ 2", "r",
-      { f: 8.98755e-3, q1: 1e-6, q2: 1e-6 });
-    expect(f).toBeCloseTo(1, 4);
-  });
-
-  it("broadcasts over lists (the isolated form is an ordinary formula)", () => {
-    const solver = compileSolver(eq("V = I * R"), "R")!;
-    const r = solver({ V: [10, 20, 30], I: 2 });
-    expect(r).toEqual([5, 10, 15]);
-  });
-
-  it("declines when the unknown appears twice or behind ABS", () => {
-    expect(compileSolver(eq("x^2 + x = 6"), "x")).toBe(null);
-    expect(compileSolver(eq("a = ABS(b)"), "b")).toBe(null);
-  });
-});
-
-describe("quadratic sniffing (both roots, not a principal branch)", () => {
-  it("recognises a quadratic residual in any arrangement, exactly", () => {
-    expect(sniffQuadratic((x) => x * x - 36)).toEqual({ a: 1, b: 0, c: -36 });
-    // (x−1)(x+3) − 5, pre-expanded by the probe fit: a=1, b=2, c=−8.
-    const q = sniffQuadratic((x) => (x - 1) * (x + 3) - 5)!;
-    expect(q.a).toBeCloseTo(1, 12);
-    expect(q.b).toBeCloseTo(2, 12);
-    expect(q.c).toBeCloseTo(-8, 12);
-  });
-
-  it("declines non-polynomials and cubics", () => {
-    expect(sniffQuadratic((x) => Math.sqrt(Math.abs(x)) - 2)).toBe(null);
-    expect(sniffQuadratic((x) => x * x * x - 10)).toBe(null);
-    expect(sniffQuadratic((x) => (x <= 0 ? null : Math.log10(x)))).toBe(null); // domain hole at a probe
-  });
-
-  it("solveQuadratic: ascending pair, double root scalar, negative discriminant, linear declines", () => {
-    expect(solveQuadratic({ a: 1, b: 0, c: -36 })).toEqual([-6, 6]);
-    expect(solveQuadratic({ a: 1, b: 2, c: -8 })).toEqual([-4, 2]);
-    expect(solveQuadratic({ a: 1, b: -6, c: 9 })).toBe(3); // (x−3)²
-    const none = solveQuadratic({ a: 1, b: 0, c: 1 });
-    expect((none as SolError).code).toBe("#SOLVE!");
-    expect(solveQuadratic({ a: 0, b: 2, c: -10 })).toBe(null); // linear → caller falls through
-  });
-
-  it("solveLinear: −c/b, null with no x term", () => {
-    expect(solveLinear({ a: 0, b: 15, c: -6000 })).toBe(400);
-    expect(solveLinear({ a: 0, b: 0, c: 5 })).toBe(null);
-  });
-
+describe("the Equation card's solves", () => {
   it("a line whose unknown appears twice solves exactly, not by root-finding", () => {
     const eq = new EquationNode({ expr: "profit = price * units - fixed - cost * units" });
     const out = eq.data({ profit: [0], price: [25], fixed: [6000], cost: [10] });
     expect(out.units).toBe(400);
   });
-});
 
-describe("numeric fallback", () => {
-  it("finds a real root of what it's given (quadratics are intercepted upstream)", () => {
-    const root = solveNumeric((x) => x * x + x - 6);
-    const r = root as number;
-    expect(Math.abs(r * r + r - 6)).toBeLessThan(1e-6);
-  });
-
-  it("transcendental: x·e^x = 5", () => {
-    const root = solveNumeric((x) => x * Math.exp(x) - 5) as number;
-    expect(Math.abs(root * Math.exp(root) - 5)).toBeLessThan(1e-6);
-  });
-
-  it("finds a root near a domain that ends on the right, as well as one that starts on the left", () => {
-    const right = (x: number) => (x <= 2 ? Math.sqrt(2 - x) - 0.1 : null);
-    expect(solveNumeric(right) as number).toBeCloseTo(1.99, 9);
-    const left = (x: number) => (x >= 2 ? Math.sqrt(x - 2) - 0.1 : null);
-    expect(solveNumeric(left) as number).toBeCloseTo(2.01, 9);
-  });
-
-  it("no real root → #SOLVE!", () => {
-    const r = solveNumeric((x) => x * x + 1);
-    expect((r as SolError).code).toBe("#SOLVE!");
+  it("broadcasts an isolated solve over lists", () => {
+    expect(new EquationNode({ expr: "V = I * R" }).data({ V: [[10, 20, 30]], I: [2] }).R).toEqual([5, 10, 15]);
   });
 });
 
@@ -163,10 +47,6 @@ describe("astToFormula round-trips", () => {
       const round = parseFormula(astToFormula(ast));
       expect(astToFormula(round!), s).toBe(astToFormula(ast));
     }
-  });
-
-  it("isolate returns null when the unknown is absent", () => {
-    expect(isolate(parseFormula("a+b")!, parseFormula("c")!, "z")).toBe(null);
   });
 });
 
@@ -250,13 +130,5 @@ describe("EquationNode", () => {
     const { added, removed } = n._rebuild();
     expect(added).toEqual(["d"]);
     expect(removed).toEqual(["c"]);
-  });
-});
-
-describe("equalsWithin", () => {
-  it("relative near, absolute for small numbers", () => {
-    expect(equalsWithin(1e12, 1e12 + 1)).toBe(true);
-    expect(equalsWithin(1, 1.001)).toBe(false);
-    expect(equalsWithin(0, 1e-12)).toBe(true);
   });
 });
