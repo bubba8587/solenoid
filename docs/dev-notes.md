@@ -49,6 +49,11 @@ specific item.
   computed-column units as on develop.
 - **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
   and catching throws. Rerun after the fixes, no call takes over 300 ms.
+- **Card bodies are moving onto the core** ([[D102]] graphOnCore; mechanics [[node-bodies]]): a ported class's
+  `data()` is one `engine_node` call, its TS body deleted. Every class's TS answers were frozen first
+  (`FREEZE_NODES=1`, `scripts/freeze-nodes.mjs`, `fixtures/core/nodes/`), frames, cubes and charts included (the
+  card wire, `nodeWire.ts`). The core now loads in every test file and the app waits for it. The display-unit
+  catalog runs in Rust too (`unit_catalog.rs`). Molar Mass answered a list with a JS TypeError; it says `#VALUE!`.
 - **The graph moved onto the core** ([[D102]] graphOnCore; mechanics [[graph-core]]): `rete-engine` is gone.
   The dataflow engine and the pass's graph walks (loop members, cones, fetching every node) run in Rust on Ruggine
   (`crates/solenoid-graph`, its own wasm module so a formula trap can't take the graph with it), mirroring the rete
