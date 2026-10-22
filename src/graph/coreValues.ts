@@ -195,11 +195,93 @@ export function expressionUnitsOnCore(src: string, env: Record<string, unknown>)
   }, null);
 }
 
+// A card mapping one body over a list crosses once for the list, not once an item ([[C120]] linearWork): `coreEach`
+// runs the item loop twice, first recording each `callCore` (which answers a placeholder), then sending each body's
+// calls in one `engine_call_each` and answering the second run's calls from the replies. A call the second run makes
+// differently from the first, or one the batch couldn't answer, goes through `callCore` as ever, so the answers are
+// the per-call ones. The loop must not keep what a call answers beyond the item (a cache would keep the placeholder).
+interface Recorded { name: string; args: readonly unknown[]; answer?: { value: unknown } }
+const PENDING = Object.freeze({ pendingCoreCall: true });
+let recording: Recorded[] | null = null;
+let replaying: { calls: Recorded[]; at: number } | null = null;
+const EACH_FROM = 8;
+
+export function coreEach<R>(n: number, item: (i: number) => R): R[] {
+  const out: R[] = new Array(n);
+  if (n >= EACH_FROM && !recording && !replaying && wasmEngineLoaded() && wasmEngineOn()) {
+    const calls: Recorded[] = [];
+    recording = calls;
+    try {
+      for (let i = 0; i < n; i++) item(i);
+    } catch {
+      calls.length = 0;
+    } finally {
+      recording = null;
+    }
+    answerEach(calls);
+    replaying = { calls, at: 0 };
+    try {
+      for (let i = 0; i < n; i++) out[i] = item(i);
+    } finally {
+      replaying = null;
+    }
+    return out;
+  }
+  for (let i = 0; i < n; i++) out[i] = item(i);
+  return out;
+}
+
+/** Answers the recorded calls body by body, one `engine_call_each` each over the argument positions that vary. */
+function answerEach(calls: Recorded[]): void {
+  const groups = new Map<string, Recorded[]>();
+  for (const c of calls) {
+    const key = `${c.args.length}:${c.name}`;
+    const g = groups.get(key);
+    if (g) g.push(c);
+    else groups.set(key, [c]);
+  }
+  for (const g of groups.values()) {
+    if (g.length < 2) continue;
+    const first = g[0].args;
+    const at = first.map((_, p) => p).filter((p) => g.some((c) => !Object.is(c.args[p], first[p])));
+    const args = first.map((a, p) => (at.includes(p) ? null : coreValue(a, true)));
+    if (args.includes(undefined)) continue;
+    const sent: Recorded[] = [];
+    const items: unknown[][] = [];
+    for (const c of g) {
+      const item = at.map((p) => coreValue(c.args[p], true));
+      if (item.includes(undefined)) continue;
+      sent.push(c);
+      items.push(item);
+    }
+    if (sent.length < 2) continue;
+    const r = onCore(() => {
+      syncExternalNames();
+      return wasmInvokeSync<{ each?: unknown[] }>("engine_call_each", { name: g[0].name, args, at, items, clock: engineClock(), scan: true });
+    }, null);
+    r?.each?.forEach((v, k) => {
+      const a = typeof v === "number" ? { value: v } : readReply(v);
+      if (a) sent[k].answer = { value: normalizeFxResult(a.value) };
+    });
+  }
+}
+
 /** A function body (`resolveExcelFunction(name)(...args)`, as `dispatch` calls it) on the core, so a node computes what
  *  its formula does in the one implementation ([[C17]] shareImpl, [[D99]] rustIsSpec). It runs on the TS where the
  *  core isn't loaded, an argument can't cross, or the core leaves the reading to the TS. An error argument and a Formula.js
  *  error answer read as the evaluator reads them (`argumentError`). */
 export function callCore(name: string, args: readonly unknown[]): unknown {
+  if (recording) {
+    recording.push({ name, args });
+    return PENDING;
+  }
+  if (replaying) {
+    const r = replaying.calls[replaying.at];
+    if (r && r.name === name && r.args.length === args.length && r.args.every((a, i) => Object.is(a, args[i]))) {
+      replaying.at++;
+      if (r.answer) return r.answer.value;
+    } else replaying.at = Infinity;
+  }
   if (wasmEngineLoaded() && wasmEngineOn()) {
     const wire = args.map((a) => coreValue(a, true));
     if (!wire.includes(undefined)) {

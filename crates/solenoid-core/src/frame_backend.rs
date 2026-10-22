@@ -329,7 +329,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(json!(register(FrameValue { columns })))
         }
-        "engine_call" | "engine_eval" | "engine_expression_units" | "engine_fold_units" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
+        "engine_call" | "engine_call_each" | "engine_eval" | "engine_expression_units" | "engine_fold_units" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
         "engine_ported" => Ok(json!(crate::excel_functions::ported_names())),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),
@@ -342,32 +342,78 @@ pub enum CallReply {
     Bail,
     Thrown(String),
     Value(crate::excel_functions::V),
+    /// `engine_call_each`'s answers, `{"each": [...]}`: a finite number other than -0 as a bare JSON number, which
+    /// reads back exact, the rest as `Value` spells them.
+    Each(Vec<crate::excel_functions::V>),
+}
+
+/// A body by name over decoded arguments, as `engine_call` makes it; `None` where the TS makes the call (a pack's
+/// function, a unit cell the body doesn't take).
+fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> Option<crate::excel_functions::V> {
+    use crate::excel_functions::{call_function, V};
+    let upper = name.to_uppercase();
+    // A name the core has no body for may be a pack's JS, which the TS calls; anything else is unknown.
+    if crate::eval::traits(&upper).is_none() && !crate::excel_functions::is_ported(name) {
+        return if crate::eval::is_external(&upper) {
+            None
+        } else {
+            Some(V::err(sol_error("#NAME?", format!("Unknown function {name}"))))
+        };
+    }
+    if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&upper.as_str()) {
+        return None;
+    }
+    // `scan`: a node's call (`callCore`) reads an error argument as the formula's call does; without it, the bare body.
+    let early = if scan { crate::eval::argument_error(&upper, argv) } else { None };
+    Some(early.unwrap_or_else(|| call_function(name, argv)))
 }
 
 /// `engine_call` (a body by name over wired arguments) and `engine_eval` (a formula over named values).
 pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
-    use crate::excel_functions::{call_function, take_thrown, V};
+    use crate::excel_functions::{take_thrown, V};
     let arg_of = crate::eval::decode_value;
     crate::excel_functions::set_clock(parse(args, "clock")?);
     let r = if command == "engine_call" {
         let name = parse::<String>(args, "name")?;
         let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
-        // A name the core has no body for may be a pack's JS, which the TS calls; anything else is unknown.
-        if crate::eval::traits(&name.to_uppercase()).is_none() && !crate::excel_functions::is_ported(&name) {
-            crate::excel_functions::set_clock(None);
-            return Ok(if crate::eval::is_external(&name.to_uppercase()) {
-                CallReply::Bail
-            } else {
-                CallReply::Value(V::err(crate::error_value::sol_error("#NAME?", format!("Unknown function {name}"))))
-            });
+        match call_body(&name, &argv, parse::<Option<bool>>(args, "scan")?.unwrap_or(false)) {
+            Some(v) => v,
+            None => {
+                crate::excel_functions::set_clock(None);
+                return Ok(CallReply::Bail);
+            }
         }
-        if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&name.to_uppercase().as_str()) {
-            crate::excel_functions::set_clock(None);
-            return Ok(CallReply::Bail);
+    } else if command == "engine_call_each" {
+        // [[C120]] linearWork: one body over many items in one crossing, each call as `engine_call` makes it, the
+        // items at the `at` positions. An item that would bail or throw bails the batch, and the TS calls one by one.
+        let name = parse::<String>(args, "name")?;
+        let scan = parse::<Option<bool>>(args, "scan")?.unwrap_or(false);
+        let mut argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
+        let at = parse::<Vec<usize>>(args, "at")?;
+        let bad = |k: &str| sol_error("#ERROR!", format!("bad argument \"{k}\""));
+        if at.iter().any(|&p| p >= argv.len()) {
+            return Err(bad("at"));
         }
-        // `scan`: a node's call (`callCore`) reads an error argument as the formula's call does; without it, the bare body.
-        let early = if parse::<Option<bool>>(args, "scan")?.unwrap_or(false) { crate::eval::argument_error(&name.to_uppercase(), &argv) } else { None };
-        early.unwrap_or_else(|| call_function(&name, &argv))
+        let items = args.get("items").and_then(Json::as_array).ok_or_else(|| bad("items"))?;
+        let mut out = Vec::with_capacity(items.len());
+        for item in items {
+            let item = item.as_array().filter(|a| a.len() == at.len()).ok_or_else(|| bad("items"))?;
+            for (&p, x) in at.iter().zip(item) {
+                argv[p] = arg_of(x);
+            }
+            let v = call_body(&name, &argv, scan);
+            let thrown = take_thrown().is_some();
+            match v {
+                Some(v) if !crate::excel_functions::take_bailed() && !thrown => out.push(v),
+                _ => {
+                    crate::excel_functions::set_clock(None);
+                    crate::excel_functions::take_bailed();
+                    return Ok(CallReply::Bail);
+                }
+            }
+        }
+        crate::excel_functions::set_clock(None);
+        return Ok(CallReply::Each(out));
     } else if command == "engine_expression_units" {
         // [[C25]] firstClassUnits: Expression's unit wrapper over its read inputs.
         let src = parse::<String>(args, "src")?;
@@ -421,6 +467,26 @@ impl serde::Serialize for CallReply {
                 m.end()
             }
             CallReply::Value(v) => Out(v).serialize(s),
+            CallReply::Each(vs) => {
+                use crate::excel_functions::V;
+                struct Items<'a>(&'a [V]);
+                impl serde::Serialize for Items<'_> {
+                    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                        use serde::ser::SerializeSeq;
+                        let mut q = s.serialize_seq(Some(self.0.len()))?;
+                        for v in self.0 {
+                            match v {
+                                V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => q.serialize_element(n)?,
+                                _ => q.serialize_element(&Out(v))?,
+                            }
+                        }
+                        q.end()
+                    }
+                }
+                let mut m = s.serialize_map(Some(1))?;
+                m.serialize_entry("each", &Items(vs))?;
+                m.end()
+            }
         }
     }
 }
