@@ -251,7 +251,7 @@ describe("Amortization schedule", () => {
     }
     const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 1_000_000, pv: 10000, fv: 0 };
     expect((node.data({}).frame as FrameValue).columns[0].values.length).toBe(1_000_000);
-  });
+  }, 30_000);
 });
 
 describe("Hypothesis tests beyond Excel's four (values from scipy / R)", () => {

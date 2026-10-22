@@ -38,7 +38,7 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
       seen.add(cls.name);
       const onCore = String(cls.prototype.data).includes("nodeOnCore");
       for (const key of Object.keys(cls.inputRoles)) {
-        if (onCore) expect(rust, `${cls.name}.${key}`).toMatch(new RegExp(`\\b(read_role|setting|required)\\(c, "${key}"`));
+        if (onCore) expect(rust, `${cls.name}.${key}`).toMatch(new RegExp(`\\b(read_role|setting|setting_or|required|required_picks|rounded_setting|role_value)\\(c, "${key}"`));
         else expect(src, `${cls.name}.${key}`).toMatch(new RegExp(`readRole(<[^>]*>)?\\(this, "${key}"`));
       }
     }

@@ -6,7 +6,7 @@ import type { ClassicPreset } from "rete";
 import { extractInit } from "./nodeInit";
 import { declaredTypeOf } from "./sockets";
 import { engineClock } from "./coreValues";
-import { nodeWire, readNodeReply, jsonDec } from "./nodeWire";
+import { nodeWire, readNodeReply, jsonDec, jsonEnc } from "./nodeWire";
 import { withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
 import { solError } from "./errorValue";
@@ -47,9 +47,9 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
   try {
     reply = wasmInvokeSync<Reply>("engine_node", {
       kind: node.constructor.name,
-      init: coreInit(node),
-      ...(n.literals ? { literals: n.literals } : {}),
-      ...(n.stringLiterals ? { stringLiterals: n.stringLiterals } : {}),
+      init: jsonEnc(coreInit(node)),
+      ...(n.literals ? { literals: jsonEnc(n.literals) } : {}),
+      ...(n.stringLiterals ? { stringLiterals: jsonEnc(n.stringLiterals) } : {}),
       sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k]),
       outputs: Object.entries(node.outputs).map(([k, output]) => [k, declaredTypeOf(output?.socket) ?? null]),
       inputs: wired,
@@ -60,10 +60,21 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
     throw e;
   }
   if (reply.none) throw new Error(`${node.constructor.name} has no body on the core`);
-  for (const [field, v] of Object.entries(reply.display)) n[field] = shown(v);
-  if ("thrown" in reply) throw read(reply.thrown);
+  if ("thrown" in reply) {
+    for (const [field, v] of Object.entries(reply.display)) n[field] = shown(v);
+    throw read(reply.thrown);
+  }
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(reply.out ?? {})) out[k] = read(v);
-  for (const [k, u] of Object.entries(reply.matrixUnits ?? {})) withMatrixUnit(out[k], jsonDec(u) as ColumnUnit);
+  // A field that is an output itself comes back as that output, the same object, as the TS body set it.
+  for (const [field, v] of Object.entries(reply.display)) {
+    const o = v as { output?: string } | null;
+    n[field] = o && typeof o === "object" && typeof o.output === "string" ? out[o.output] : shown(v);
+  }
+  for (const [k, u] of Object.entries(reply.matrixUnits ?? {})) {
+    const unit = jsonDec(u) as ColumnUnit;
+    if (k.startsWith("display:")) withMatrixUnit(n[k.slice("display:".length)], unit);
+    else withMatrixUnit(out[k], unit);
+  }
   return out;
 }

@@ -1,7 +1,7 @@
 // [[C17]]
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../../../src/graph/errorValue";
-import { TableTransposeNode, StackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, deriveTable } from "../../../src/graph/nodes/matrix";
+import { TableTransposeNode, StackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, type TableElemType } from "../../../src/graph/nodes/matrix";
 import { SolenoidSocket, type SocketDataType } from "../../../src/graph/sockets";
 import { withMatrixUnit, matrixUnitOf, isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
 import { ListIndexNode } from "../../../src/graph/nodes/list";
@@ -190,14 +190,17 @@ describe("numeric matrix ops reject a text anytable with #TYPE!", () => {
   });
 });
 
+/** What a Table Input of this text and element type answers. */
+const tableOf = (tableText: string, dataType: TableElemType) => new TableInputNode({ tableText, dataType }).data().table;
+
 describe("Table Input is a LITERAL source (the Frame Input model)", () => {
   it("blank cell → null; an unparseable cell → NaN (dirty data), never a whole-table reject", () => {
     // Old parseTableText nulled the ENTIRE table on one bad cell; the literal
     // model keeps the good cells and marks the bad one NaN (quiet affordance,
     // 1.0-tail #6 — not an error badge).
-    const t = deriveTable(tableRawCells("1,\n,4"), "number");
+    const t = tableOf("1,\n,4", "number");
     expect(t).toEqual([[1, null], [null, 4]]);
-    const bad = deriveTable(tableRawCells("1, abc\n3, 4"), "number") as (number | null)[][];
+    const bad = tableOf("1, abc\n3, 4", "number") as (number | null)[][];
     expect(bad[0][0]).toBe(1);
     expect(Number.isNaN(bad[0][1])).toBe(true);
     expect(bad[1]).toEqual([3, 4]);
@@ -218,7 +221,7 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
     // — and since the grid popup re-serializes through this parse, a popup save
     // deleted them for good.
     expect(tableRawCells("1, 2\n\n3, 4")).toEqual([["1", "2"], ["", ""], ["3", "4"]]);
-    expect(deriveTable(tableRawCells("1, 2\n\n3, 4"), "number")).toEqual([[1, 2], [null, null], [3, 4]]);
+    expect(tableOf("1, 2\n\n3, 4", "number")).toEqual([[1, 2], [null, null], [3, 4]]);
     expect(tableRawCells("\n1, 2")).toEqual([["", ""], ["1", "2"]]);
     // A deliberate trailing blank LINE is a row; the text's final newline is
     // just the line TERMINATOR (one phantom segment, not a row).
@@ -243,12 +246,12 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
 
   it("the element-type toggle derives text/date/logical tables from the same raw text", () => {
     const raw = tableRawCells("a, b\nc,");
-    expect(deriveTable(raw, "string")).toEqual([["a", "b"], ["c", null]]);
-    const logical = deriveTable(tableRawCells("true, FALSE\n1, x"), "logical") as unknown[][];
+    expect(tableOf(rawCellsToText(raw), "string")).toEqual([["a", "b"], ["c", null]]);
+    const logical = tableOf("true, FALSE\n1, x", "logical") as unknown[][];
     expect(logical[0]).toEqual([true, false]);
     expect(logical[1][0]).toBe(true); // numeric text reads by the number: non-zero is TRUE
     expect(logical[1][1]).toBeNaN();
-    const dates = deriveTable(tableRawCells("2026-03-15"), "date") as number[][];
+    const dates = tableOf("2026-03-15", "date") as number[][];
     expect(dates[0][0]).toBe(46096); // the audit-29 serial pin
   });
 

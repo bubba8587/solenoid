@@ -51,10 +51,6 @@ export function tagCubeCellUnit(v: unknown, cu: ColumnUnit): unknown {
   return Array.isArray(v) ? v.map((x) => tagCubeCellUnit(x, cu)) : tagFrameCellUnit(v, cu);
 }
 
-export function taggedListFromMatrix(cells: readonly unknown[], cu: ColumnUnit | undefined): unknown[] {
-  return cu ? cells.map((c) => tagFrameCellUnit(c, cu)) : [...cells];
-}
-
 export function matrixCellsFromList(cells: readonly unknown[]): { mags: unknown[]; unit: ColumnUnit | undefined } {
   const mags = cells.map((c) => (isUnitCell(c) ? displayMagnitudeOf(c) : c));
   let unit: ColumnUnit | undefined;

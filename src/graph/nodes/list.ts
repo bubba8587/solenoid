@@ -2,7 +2,6 @@
 import { ClassicPreset } from "rete";
 import { nodeOnCore } from "../nodeOnCore";
 import { is2DType, numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
-import { callCore } from "../coreValues";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
@@ -1942,24 +1941,7 @@ export class FindPeaksNode extends ClassicPreset.Node {
     return { columns: [{ name: "Position", type: "number" }, { name: "Height", type: "number" }] };
   }
 
-  data(inputs: { list?: ListCell[][]; height?: number[]; distance?: number[]; prominence?: number[] }): { result: FrameValue | null } {
-    const arr = inputs.list?.[0] ?? null;
-    const opt = (v: number | undefined) => (v === undefined || Number.isNaN(v) ? undefined : v);
-    if (arr === null) { this.cachedResult = null; return { result: null }; }
-    // FINDPEAKS answers the positions; a peak's height is its own cell.
-    const positions = callCore("FINDPEAKS", [arr,
-      opt(readRole<number | undefined>(this, "height", inputs.height)),
-      opt(readRole<number | undefined>(this, "distance", inputs.distance)),
-      opt(readRole<number | undefined>(this, "prominence", inputs.prominence)),
-    ]) as number[];
-    const frame: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "Position", type: "number", values: positions },
-        { name: "Height", type: "number", values: positions.map((p) => arr[p - 1]) },
-      ],
-    };
-    this.cachedResult = frame;
-    return { result: frame };
+  data(inputs: Record<string, unknown[] | undefined>): { result: FrameValue | null } {
+    return nodeOnCore(this, inputs) as { result: FrameValue | null };
   }
 }

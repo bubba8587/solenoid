@@ -269,16 +269,6 @@ export function carryMatrixUnit<T>(dst: T, src: unknown): T {
   return withMatrixUnit(dst, matrixUnitOf(src));
 }
 
-export function sharedMatrixUnit(mats: readonly unknown[]): ColumnUnit | undefined {
-  if (mats.length === 0) return undefined;
-  const first = matrixUnitOf(mats[0]);
-  if (!first) return undefined;
-  for (let i = 1; i < mats.length; i++) {
-    if (!sameColumnUnit(first, matrixUnitOf(mats[i]))) return undefined;
-  }
-  return first;
-}
-
 const decimalExponent = (x: number): number => Number(Math.abs(x).toExponential().split("e")[1]);
 
 /** `y` rounded at the 15th significant digit of `t`, the larger term of the conversion that produced it. */

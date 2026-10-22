@@ -13,6 +13,7 @@ mod complex;
 mod control;
 mod date;
 mod finance;
+mod frames;
 mod kit;
 mod list;
 mod logic;
@@ -196,6 +197,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| matrix::run(kind, c))
         .or_else(|| packs::run(kind, c))
         .or_else(|| visual::run(kind, c))
+        .or_else(|| frames::run(kind, c))
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or
@@ -211,7 +213,21 @@ pub fn reply(args: &Json) -> NodeReply {
     let _calc = crate::excel_functions::Calc::begin(args.get("clock").and_then(|j| serde_json::from_value(j.clone()).ok()));
     let mut c = Call::from_json(args);
     let answer = run(kind, &mut c);
-    NodeReply { answer, display: c.display, matrix_units: c.matrix_units_out }
+    // A field the body shows is often the output itself (`cachedResult = result`): it carries the output's unit too.
+    let mut matrix_units = c.matrix_units_out;
+    if let Some(Ok(outs)) = &answer {
+        let mut shown = Vec::new();
+        for (key, unit) in &matrix_units {
+            let Some((_, V::List(out))) = outs.iter().find(|(k, _)| k == key) else { continue };
+            for (field, v) in &c.display {
+                if matches!(v, Shown::V(V::List(l)) if Rc::ptr_eq(l, out)) {
+                    shown.push((format!("display:{field}"), unit.clone()));
+                }
+            }
+        }
+        matrix_units.extend(shown);
+    }
+    NodeReply { answer, display: c.display, matrix_units }
 }
 
 impl serde::Serialize for NodeReply {
@@ -228,12 +244,24 @@ impl serde::Serialize for NodeReply {
                 m.end()
             }
         }
-        struct Shows<'a>(&'a [(String, Shown)]);
+        struct Shows<'a>(&'a [(String, Shown)], Option<&'a [(String, V)]>);
         impl serde::Serialize for Shows<'_> {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                // A field that is an output itself (`cachedResult = frame`) crosses as that output's key, once.
+                let same = |v: &V| -> Option<&str> {
+                    let outs = self.1?;
+                    outs.iter().find(|(_, o)| match (v, o) {
+                        (V::List(a), V::List(b)) => Rc::ptr_eq(a, b),
+                        (V::Frame(a), V::Frame(b)) => Rc::ptr_eq(a, b),
+                        (V::Cube(a), V::Cube(b)) => Rc::ptr_eq(a, b),
+                        (V::Json(a), V::Json(b)) => Rc::ptr_eq(a, b),
+                        _ => false,
+                    }).map(|(k, _)| k.as_str())
+                };
                 let mut m = s.serialize_map(Some(self.0.len()))?;
                 for (k, v) in self.0 {
                     match v {
+                        Shown::V(v) if same(v).is_some() => m.serialize_entry(k, &serde_json::json!({ "output": same(v) }))?,
                         Shown::V(v) => m.serialize_entry(k, &Out(v))?,
                         Shown::Undef => m.serialize_entry(k, &serde_json::json!({ "undef": true }))?,
                     }
@@ -247,7 +275,11 @@ impl serde::Serialize for NodeReply {
             Some(Ok(outs)) => m.serialize_entry("out", &Outs(outs))?,
             Some(Err(e)) => m.serialize_entry("thrown", &Out(e))?,
         }
-        m.serialize_entry("display", &Shows(&self.display))?;
+        let outs = match &self.answer {
+            Some(Ok(outs)) => Some(outs.as_slice()),
+            _ => None,
+        };
+        m.serialize_entry("display", &Shows(&self.display, outs))?;
         if !self.matrix_units.is_empty() {
             let units: serde_json::Map<String, Json> = self.matrix_units.iter().cloned().collect();
             m.serialize_entry("matrixUnits", &units)?;

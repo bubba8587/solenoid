@@ -9,7 +9,7 @@ import { getRecalcGen } from "../process";
 import { uuidV4, type HashAlgorithm } from "./hashOps";
 export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
-import { solError, isSolError, type SolError } from "../errorValue";
+import { isSolError, type SolError } from "../errorValue";
 import { callCore } from "../coreValues";
 import { nodeOnCore } from "../nodeOnCore";
 import { regexApply, replaceNth, regexOccurrence, safeRegex, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
@@ -934,7 +934,7 @@ export class ReverseTextNode extends ClassicPreset.Node {
 
 // ─── Spell Number (Timesavers pack) ───────────────────────────────────────────
 export { spellNumber } from "./textOps";
-import { fuzzyBest, type SimilarityMethod } from "./textOps";
+import type { SimilarityMethod } from "./textOps";
 export type { SimilarityMethod } from "./textOps";
 
 
@@ -1022,19 +1022,7 @@ export class FuzzyMatchNode extends ClassicPreset.Node {
     this.addOutput("score", numListOut("Score"));
   }
 
-  data(inputs: { needle?: (string | string[])[]; candidates?: (string | null)[][]; threshold?: number[] }): { match: CellResult<string>; score: BroadcastResult } {
-    const needle = strVal(inputs.needle, this, "needle");
-    const cands = (inputs.candidates?.[0] ?? []).filter((v): v is string => typeof v === "string");
-    const threshold = readRole<number | undefined>(this, "threshold", inputs.threshold) ?? 0.6;
-    if (needle === null) { this.cachedMatch = null; this.cachedScore = null; return { match: null, score: null }; }
-    const pick = (n: string) => fuzzyBest(n, cands, this.method, threshold);
-    const na = () => solError("#N/A", "No candidate is similar enough");
-    const one = (n: string) => { const b = pick(n); return b ? b.text : na(); };
-    const sc = (n: string) => { const b = pick(n); return b ? b.score : na(); };
-    const match = Array.isArray(needle) ? needle.map(one) : one(needle);
-    const score = Array.isArray(needle) ? needle.map(sc) : sc(needle);
-    this.cachedMatch = match as CellResult<string>;
-    this.cachedScore = score as BroadcastResult;
-    return { match: this.cachedMatch, score: this.cachedScore };
+  data(inputs: Record<string, unknown[] | undefined>): { match: CellResult<string>; score: BroadcastResult } {
+    return nodeOnCore(this, inputs) as { match: CellResult<string>; score: BroadcastResult };
   }
 }

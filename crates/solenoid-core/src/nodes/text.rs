@@ -150,6 +150,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
             let r = broadcast_err(&[value], |o| core_call(name, &[o[0].clone()]));
             done(c, "cachedText", r)
         }
+        "FuzzyMatchNode" => fuzzy_match(c),
         "TextSimilarityNode" => {
             let method = V::str(c.field_str("method", "ratio"));
             let r = broadcast_err(&[str_val(c, "a"), str_val(c, "b")], |o| core_call("SIMILARITY", &[o[0].clone(), o[1].clone(), method.clone()]));
@@ -371,4 +372,60 @@ fn roman_arabic(c: &mut Call) -> Answer {
         broadcast_err(&[str_val(c, "text")], |o| arabic(o[0]))
     };
     done(c, "cachedResult", r)
+}
+
+/// `fuzzyBest`: the candidate scoring highest at or above the threshold, the first on a tie.
+fn fuzzy_best(needle: &V, cands: &[V], method: &V, threshold: f64) -> Result<Option<(V, f64)>, V> {
+    let mut best: Option<(V, f64)> = None;
+    for cand in cands {
+        // `textSimilarity` spreads its text into code points; anything else isn't iterable.
+        if !matches!(needle, V::Str(_)) {
+            return Err(err(ErrorCode::Error, "This node failed to compute: a is not iterable"));
+        }
+        let score = super::list::js_number(&core_call("SIMILARITY", &[needle.clone(), cand.clone(), method.clone()]));
+        if score >= threshold && best.as_ref().is_none_or(|(_, b)| score > *b) {
+            best = Some((cand.clone(), score));
+        }
+    }
+    Ok(best)
+}
+
+fn fuzzy_match(c: &mut Call) -> Answer {
+    let needle = str_val(c, "needle");
+    let cands: Vec<V> = match super::list::slot(c, "candidates") {
+        V::List(items) => items.iter().filter(|v| matches!(v, V::Str(_))).cloned().collect(),
+        V::Null | V::Undef => Vec::new(),
+        _ => return Err(err(ErrorCode::Error, "This node failed to compute: ((intermediate value) ?? []).filter is not a function")),
+    };
+    let threshold = match setting(c, "threshold", V::Undef) {
+        V::Undef | V::Null => 0.6,
+        v => super::list::js_number(&v),
+    };
+    if matches!(needle, V::Null) {
+        c.show("cachedMatch", V::Null);
+        c.show("cachedScore", V::Null);
+        return Ok(vec![("match".into(), V::Null), ("score".into(), V::Null)]);
+    }
+    let method = V::str(match c.field_str("method", "ratio") {
+        "levenshtein" => "ratio",
+        m => m,
+    });
+    let na = || err(ErrorCode::NotAvailable, "No candidate is similar enough");
+    let pick = |n: &V| -> Result<(V, V), V> {
+        Ok(match fuzzy_best(n, &cands, &method, threshold)? {
+            Some((t, s)) => (t, V::Num(s)),
+            None => (na(), na()),
+        })
+    };
+    let (m, s) = match &needle {
+        V::List(items) => {
+            let picked = items.iter().map(pick).collect::<Result<Vec<_>, V>>()?;
+            let (m, s): (Vec<V>, Vec<V>) = picked.into_iter().unzip();
+            (list(m), list(s))
+        }
+        n => pick(n)?,
+    };
+    c.show("cachedMatch", m.clone());
+    c.show("cachedScore", s.clone());
+    Ok(vec![("match".into(), m), ("score".into(), s)])
 }

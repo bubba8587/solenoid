@@ -71,6 +71,7 @@ export function nodeWire(v: unknown): unknown {
   if (isCubeValue(v)) {
     const columns: unknown[] = [];
     for (const c of v.columns) {
+      if (!Array.isArray(c.cells)) return undefined;
       const cells = all(c.cells);
       if (!cells) return undefined;
       columns.push({ name: c.name, cells, ...(c.type ? { type: c.type } : {}), ...(c.format !== undefined ? { format: jsonEnc(c.format) } : {}) });
@@ -83,8 +84,29 @@ export function nodeWire(v: unknown): unknown {
 
 type Wire = { frame?: { columns: Record<string, unknown>[]; totalRows?: number; approx?: unknown }; cube?: { columns: Record<string, unknown>[] }; json?: unknown; list?: unknown[] };
 
+/** A frame's or a cube's cells: a bare number, text or logical is itself (`nodes/values.rs` `Cell`). */
+function cells(vs: unknown[]): { value: unknown[] } | null {
+  // The parsed array is the reply's own, so where every cell is plain it is the column as it stands. (A preallocated
+  // array of a million holes would be V8's slow dictionary kind.)
+  if (vs.every((x) => x === null || typeof x !== "object")) return { value: vs };
+  let failed = false;
+  // A non-finite or -0 cell crosses as its bits; a column of them (a schedule past overflow) shares a handful.
+  const bits = new Map<string, unknown>();
+  const out = vs.map((x) => {
+    if (x === null || typeof x !== "object") return x;
+    const num = (x as { num?: string }).num;
+    if (num !== undefined && bits.has(num)) return bits.get(num);
+    const v = readNodeReply(x);
+    if (num !== undefined && v) bits.set(num, v.value);
+    if (!v) failed = true;
+    return v?.value;
+  });
+  return failed ? null : { value: out };
+}
+
 /** A card body's answer back as a JS value; `{ none }` where it holds something JS can't take (a LAMBDA). */
 export function readNodeReply(r: unknown): { value: unknown } | null {
+  if (typeof r === "number") return { value: r };
   const o = r as Wire | null;
   if (!o || typeof o !== "object" || Array.isArray(o)) return readReply(r);
   if (o.list) {
@@ -100,7 +122,7 @@ export function readNodeReply(r: unknown): { value: unknown } | null {
   if (o.frame) {
     const columns: FrameColumn[] = [];
     for (const c of o.frame.columns) {
-      const values = readNodeReply({ list: c.values as unknown[] });
+      const values = cells(c.values as unknown[]);
       if (!values) return null;
       columns.push({ name: c.name as string, type: c.type as FrameColumn["type"], values: values.value as FrameColumn["values"],
         ...(c.unit ? { unit: jsonDec(c.unit) as FrameColumn["unit"] } : {}), ...("format" in c ? { format: jsonDec(c.format) as FrameColumn["format"] } : {}),
@@ -114,9 +136,9 @@ export function readNodeReply(r: unknown): { value: unknown } | null {
   if (o.cube) {
     const columns: CubeColumn[] = [];
     for (const c of o.cube.columns) {
-      const cells = readNodeReply({ list: c.cells as unknown[] });
-      if (!cells) return null;
-      columns.push({ name: c.name as string, cells: cells.value as CubeColumn["cells"], ...(c.type ? { type: c.type as CubeColumn["type"] } : {}),
+      const read = cells(c.cells as unknown[]);
+      if (!read) return null;
+      columns.push({ name: c.name as string, cells: read.value as CubeColumn["cells"], ...(c.type ? { type: c.type as CubeColumn["type"] } : {}),
         ...("format" in c ? { format: jsonDec(c.format) as CubeColumn["format"] } : {}) });
     }
     return { value: makeCube(columns) satisfies CubeValue };

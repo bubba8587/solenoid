@@ -1672,9 +1672,9 @@ fn decompose(l: &V, period: &V, component: &V, model: &V) -> V {
     }
 }
 
-type Decomposition = [Vec<Option<f64>>; 3];
+pub(crate) type Decomposition = [Vec<Option<f64>>; 3];
 
-fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool) -> Option<Decomposition> {
+pub(crate) fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool) -> Option<Decomposition> {
     let n = y.len();
     let m = math_round(period);
     if m < 2.0 || (n as f64) < 2.0 * m {
@@ -1737,7 +1737,7 @@ fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool) -> Option<
     Some([trend, seasonal.into_iter().map(Some).collect(), residual])
 }
 
-fn stl_decompose(y: &[Option<f64>], period: f64) -> Option<Decomposition> {
+pub(crate) fn stl_decompose(y: &[Option<f64>], period: f64) -> Option<Decomposition> {
     let n = y.len();
     let m = math_round(period);
     if m < 2.0 || (n as f64) < 2.0 * m {
@@ -1773,7 +1773,7 @@ fn stl_decompose(y: &[Option<f64>], period: f64) -> Option<Decomposition> {
     Some([trend.into_iter().map(Some).collect(), seasonal.into_iter().map(Some).collect(), residual])
 }
 
-fn detect_season(y: &[f64]) -> usize {
+pub(crate) fn detect_season(y: &[f64]) -> usize {
     let n = y.len();
     if n < 6 {
         return 1;
@@ -1805,13 +1805,13 @@ fn detect_season(y: &[f64]) -> usize {
     best_lag
 }
 
-struct EtsFit {
-    season: usize,
+pub(crate) struct EtsFit {
+    pub(crate) season: usize,
     level: f64,
     trend: f64,
     seasonal: Vec<f64>,
-    fitted_len: usize,
-    sigma: f64,
+    pub(crate) fitted_len: usize,
+    pub(crate) sigma: f64,
 }
 
 fn run_hw(y: &[f64], m: usize, alpha: f64, beta: f64, gamma: f64) -> (f64, EtsFit) {
@@ -1856,7 +1856,7 @@ fn run_hw(y: &[f64], m: usize, alpha: f64, beta: f64, gamma: f64) -> (f64, EtsFi
     (sse, EtsFit { season: m, level, trend, seasonal, fitted_len: n, sigma })
 }
 
-fn fit_ets(y: &[f64], season: f64) -> Option<EtsFit> {
+pub(crate) fn fit_ets(y: &[f64], season: f64) -> Option<EtsFit> {
     let n = y.len();
     let m = math_max(1.0, math_round(season));
     if n < 3 || (m > 1.0 && (n as f64) < 2.0 * m) {
@@ -1906,7 +1906,7 @@ fn fit_ets(y: &[f64], season: f64) -> Option<EtsFit> {
     Some(best.1)
 }
 
-fn ets_forecast_at(fit: &EtsFit, h: f64) -> f64 {
+pub(crate) fn ets_forecast_at(fit: &EtsFit, h: f64) -> f64 {
     let m = fit.season;
     fit.level + h * fit.trend + if m > 1 { fit.seasonal[((fit.fitted_len as f64 + h - 1.0) % m as f64) as usize] } else { 0.0 }
 }
@@ -1937,7 +1937,7 @@ fn ets_prep(name: &str, values: &V, timeline: &V, target: &V, seasonality: &V) -
 
 // ─── Distribution fits (fitOps.ts) ──────────────────────────────────────────────
 
-const FIT_FAMILIES: [&str; 8] = ["normal", "lognorm", "expon", "gamma", "weibull", "uniform", "beta", "poisson"];
+pub(crate) const FIT_FAMILIES: [&str; 8] = ["normal", "lognorm", "expon", "gamma", "weibull", "uniform", "beta", "poisson"];
 
 fn mean(a: &[f64]) -> f64 {
     a.iter().fold(0.0, |x, y| x + y) / a.len() as f64
@@ -2021,7 +2021,7 @@ fn fit_gamma(x: &[f64]) -> Option<(f64, f64)> {
 }
 
 /// `fitDistribution`: the fitted parameters and the log-likelihood (the KS statistic decides no answer here).
-fn fit_distribution(data: &[f64], family: &str) -> Option<(Vec<f64>, f64)> {
+pub(crate) fn fit_distribution(data: &[f64], family: &str) -> Option<(Vec<f64>, f64)> {
     let x: Vec<f64> = data.iter().copied().filter(|v| v.is_finite()).collect();
     let n = x.len();
     if n < 3 {

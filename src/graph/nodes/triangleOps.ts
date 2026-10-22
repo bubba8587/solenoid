@@ -14,7 +14,7 @@ export interface TriangleSolved {
 }
 
 const D2R = Math.PI / 180;
-export const R2D = 180 / Math.PI;
+const R2D = 180 / Math.PI;
 const EPS = 1e-9;
 
 export function solveTriangle(g: TriangleGiven): TriangleSolved | SolError {

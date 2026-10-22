@@ -1,6 +1,7 @@
 //! [[D102]] graphOnCore. The values only cards hand each other, on the wire `nodeWire.ts` speaks: a frame, a cube, and plain data (a chart,
 //! a document, an image) carried whole as JSON whose special numbers and errors are tagged.
 
+use crate::frame::FrameColType;
 use crate::excel_functions::V;
 use serde_json::Value as Json;
 use std::rc::Rc;
@@ -9,7 +10,7 @@ use std::rc::Rc;
 #[derive(Clone, Debug)]
 pub struct Column {
     pub name: String,
-    pub ty: String,
+    pub ty: FrameColType,
     pub values: Vec<V>,
     pub unit: Option<Json>,
     pub format: Option<Json>,
@@ -29,7 +30,7 @@ pub struct Frame {
 pub struct CubeColumn {
     pub name: String,
     pub cells: Vec<V>,
-    pub ty: Option<String>,
+    pub ty: Option<FrameColType>,
     pub format: Option<Json>,
 }
 
@@ -56,7 +57,7 @@ pub fn decode(j: &Json) -> V {
                         .map(|c| CubeColumn {
                             name: c.get("name").and_then(Json::as_str).unwrap_or("").to_string(),
                             cells: c.get("cells").and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default(),
-                            ty: c.get("type").and_then(Json::as_str).map(String::from),
+                            ty: c.get("type").and_then(Json::as_str).and_then(|t| t.parse().ok()),
                             format: c.get("format").cloned(),
                         })
                         .collect()
@@ -74,7 +75,8 @@ pub fn decode(j: &Json) -> V {
 fn column(c: &Json) -> Column {
     Column {
         name: c.get("name").and_then(Json::as_str).unwrap_or("").to_string(),
-        ty: c.get("type").and_then(Json::as_str).unwrap_or("number").to_string(),
+        // The wire carries frame.ts's tags; a column without one is a number column, as `frameCol` makes it.
+        ty: c.get("type").and_then(Json::as_str).and_then(|t| t.parse().ok()).unwrap_or(FrameColType::Number),
         values: c.get("values").and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default(),
         unit: c.get("unit").cloned(),
         format: c.get("format").cloned(),
@@ -82,9 +84,25 @@ fn column(c: &Json) -> Column {
     }
 }
 
+/// A frame's or a cube's cell: a finite number other than -0 as a bare JSON number, which reads back exact (ryu's
+/// shortest form), text and logicals bare too, so a big frame's reply stays small and the TS takes its cells as they
+/// parse; the rest as `Out` writes it.
+struct Cell<'a>(&'a V);
+
+impl serde::Serialize for Cell<'_> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self.0 {
+            V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => s.serialize_f64(*n),
+            V::Str(t) => s.serialize_str(t),
+            V::Bool(b) => s.serialize_bool(*b),
+            v => crate::frame_backend::Out(v).serialize(s),
+        }
+    }
+}
+
 /// A frame's or a cube's reply, as `Out` writes the rest: `{"frame": {...}}`, `{"cube": {...}}`, `{"json": ...}`.
 pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S::Error> {
-    use crate::frame_backend::Out;
+    
     use serde::ser::SerializeMap;
     struct Cells<'a>(&'a [V]);
     impl serde::Serialize for Cells<'_> {
@@ -92,7 +110,7 @@ pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S
             use serde::ser::SerializeSeq;
             let mut q = s.serialize_seq(Some(self.0.len()))?;
             for v in self.0 {
-                q.serialize_element(&Out(v))?;
+                q.serialize_element(&Cell(v))?;
             }
             q.end()
         }
@@ -148,14 +166,14 @@ pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S
 }
 
 pub fn serialize_cube<S: serde::Serializer>(c: &Cube, s: S) -> Result<S::Ok, S::Error> {
-    use crate::frame_backend::Out;
+    
     use serde::ser::{SerializeMap, SerializeSeq};
     struct Cells<'a>(&'a [V]);
     impl serde::Serialize for Cells<'_> {
         fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             let mut q = s.serialize_seq(Some(self.0.len()))?;
             for v in self.0 {
-                q.serialize_element(&Out(v))?;
+                q.serialize_element(&Cell(v))?;
             }
             q.end()
         }

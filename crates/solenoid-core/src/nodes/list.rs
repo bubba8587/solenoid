@@ -56,6 +56,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "OutliersNode" => outliers(c),
         "TallyNode" => tally(c),
         "GroupListsNode" => group_lists(c),
+        "FindPeaksNode" => find_peaks(c),
         _ => return None,
     })
 }
@@ -576,6 +577,15 @@ fn literal_items(csv: &str) -> Vec<String> {
 /// `parseCsvLine`: the first row Papa Parse reads from the text (comma-delimited, blank rows skipped), or one empty
 /// field.
 fn csv_line(text: &str) -> Vec<String> {
+    csv_rows(text).into_iter().find(|r| !js_trim(&r.concat()).is_empty()).unwrap_or_else(|| vec![String::new()])
+}
+
+/// `parseCsvRows(text, { keepBlankLines: true })`: every row Papa Parse reads, a blank line among them, the final
+/// newline a terminator.
+pub(crate) fn csv_rows(text: &str) -> Vec<Vec<String>> {
+    if text.is_empty() {
+        return Vec::new();
+    }
     let t = text.replace("\r\n", "\n").replace('\r', "\n");
     let s: Vec<char> = t.chars().collect();
     let n = s.len();
@@ -634,7 +644,7 @@ fn csv_line(text: &str) -> Vec<String> {
             }
         }
     }
-    rows.into_iter().find(|r| !js_trim(&r.concat()).is_empty()).unwrap_or_else(|| vec![String::new()])
+    rows
 }
 
 /// `coerceLogical` as a cell: a boolean, blank, or NaN.
@@ -647,7 +657,7 @@ fn logical_cell(v: &FrameCell) -> V {
 }
 
 /// `coerceFrameCell`: typed text read as a cell of the list's type ([[D93]] oneTextReading).
-fn frame_cell_of(ty: &str, raw: &str) -> V {
+pub(crate) fn frame_cell_of(ty: &str, raw: &str) -> V {
     if ty == "string" {
         return if raw.is_empty() { V::Null } else { V::str(raw) };
     }
@@ -1145,19 +1155,19 @@ pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
         }
         cells.iter().map(|c| if c.is_sol_error() { Some(c.clone()) } else if blank(c) { Some(V::Null) } else { f(c).map(V::Num) }).collect()
     };
-    let column = |ty: &str, values: Vec<V>, unit: Option<serde_json::Value>| Column {
+    let column = |ty: FrameColType, values: Vec<V>, unit: Option<serde_json::Value>| Column {
         name: name.to_string(),
-        ty: ty.to_string(),
+        ty,
         values,
         unit,
         format: None,
         raw: Some(serde_json::Value::Array(raw.clone())),
     };
     if !filled.is_empty() && filled.iter().all(|c| matches!(c, V::Bool(_))) {
-        return column("logical", read(&|c| c.clone()), None);
+        return column(FrameColType::Logical, read(&|c| c.clone()), None);
     }
     if let Some(values) = read_all(&cell_number) {
-        return column("number", values, unit);
+        return column(FrameColType::Number, values, unit);
     }
     let logical_text = |c: &V| match c {
         V::Bool(_) => true,
@@ -1165,12 +1175,12 @@ pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
         _ => false,
     };
     if !filled.is_empty() && filled.iter().all(|c| logical_text(c)) {
-        return column("logical", read(&|c| if let V::Bool(_) = c { c.clone() } else { V::Bool(crate::jsnum::js_lower(&text(c)) == "true") }), None);
+        return column(FrameColType::Logical, read(&|c| if let V::Bool(_) = c { c.clone() } else { V::Bool(crate::jsnum::js_lower(&text(c)) == "true") }), None);
     }
     if let Some(values) = read_all(&date_serial) {
-        return column("date", values, None);
+        return column(FrameColType::Date, values, None);
     }
-    column("string", read(&|c| V::str(&text(c))), None)
+    column(FrameColType::String, read(&|c| V::str(&text(c))), None)
 }
 
 fn frame_of(columns: Vec<Column>) -> V {
@@ -1178,7 +1188,7 @@ fn frame_of(columns: Vec<Column>) -> V {
 }
 
 fn number_column(name: &str, values: Vec<V>) -> Column {
-    Column { name: name.to_string(), ty: "number".into(), values, unit: None, format: None, raw: None }
+    Column { name: name.to_string(), ty: FrameColType::Number, values, unit: None, format: None, raw: None }
 }
 
 fn outliers(c: &mut Call) -> Answer {
@@ -1196,7 +1206,7 @@ fn outliers(c: &mut Call) -> Answer {
     let flags = core_call("ISOUTLIER", &[arr.clone(), V::str(&method), t]);
     let flag_items = items(&flags);
     let clean: Vec<V> = items(&arr).into_iter().enumerate().map(|(i, v)| if matches!(flag_items.get(i), Some(V::Bool(true))) { V::Null } else { v }).collect();
-    let outlier = Column { name: "Outlier".into(), ty: "logical".into(), values: flag_items, unit: None, format: None, raw: None };
+    let outlier = Column { name: "Outlier".into(), ty: FrameColType::Logical, values: flag_items, unit: None, format: None, raw: None };
     let frame = frame_of(vec![infer_column("Value", &clean), outlier]);
     shown(c, "cachedResult", "result", frame)
 }
@@ -1228,7 +1238,7 @@ fn tally(c: &mut Call) -> Answer {
 }
 
 /// `Number(v)`.
-fn js_number(v: &V) -> f64 {
+pub(crate) fn js_number(v: &V) -> f64 {
     match v {
         V::Num(n) => *n,
         V::Null => 0.0,
@@ -1283,5 +1293,33 @@ fn group_lists(c: &mut Call) -> Answer {
         })
         .collect();
     let frame = frame_of(vec![infer_column("Key", &order), number_column("Value", values)]);
+    shown(c, "cachedResult", "result", frame)
+}
+
+/// FINDPEAKS's positions, beside each peak's own cell.
+fn find_peaks(c: &mut Call) -> Answer {
+    let arr = slot(c, "list");
+    if nullish(&arr) {
+        return shown(c, "cachedResult", "result", V::Null);
+    }
+    let opt = |v: V| match v {
+        V::Num(n) if n.is_nan() => V::Undef,
+        v => v,
+    };
+    use super::text::setting as setting_or;
+    let (height, distance, prominence) = (setting_or(c, "height", V::Undef), setting_or(c, "distance", V::Undef), setting_or(c, "prominence", V::Undef));
+    let args = [arr.clone(), opt(height), opt(distance), opt(prominence)];
+    let V::List(positions) = core_call("FINDPEAKS", &args) else {
+        return Err(err(ErrorCode::Error, "This node failed to compute: positions.map is not a function"));
+    };
+    let height = positions
+        .iter()
+        .map(|p| match (&arr, p) {
+            (V::List(items), V::Num(n)) if *n >= 1.0 && n.fract() == 0.0 => items.get(*n as usize - 1).cloned().unwrap_or(V::Undef),
+            _ => V::Undef,
+        })
+        .collect();
+    let columns = vec![number_column("Position", positions.as_ref().clone()), number_column("Height", height)];
+    let frame = V::Frame(std::rc::Rc::new(Frame { columns, total_rows: None, approx: None }));
     shown(c, "cachedResult", "result", frame)
 }

@@ -188,7 +188,7 @@ describe("Computed Column over a cube", () => {
     const n = new ComputedColumnNode({ expr: "@timeEstimate / 60" });
     n.stringLiterals.name = "hours";
     const c = n.data({ frame: [src] as never }).frame as CubeValue;
-    expect(colCells(c, "tags")[0]).toBe(colCells(src, "tags")[0]);
+    expect(colCells(c, "tags")[0]).toEqual(colCells(src, "tags")[0]);
   });
 
   // [[C22]] rowFormulaRefs
@@ -280,13 +280,13 @@ describe("Add Column over a cube", () => {
     expect(colCells(c, "score")).toEqual([10, 20]);
   });
 
-  it("a short values list pads with blanks; the nested list column rides through by reference", () => {
+  it("a short values list pads with blanks; the nested list column rides through unchanged", () => {
     const src = tasks();
     const n = new AddColumnNode({ addAs: "number" });
     n.stringLiterals.name = "score";
     const c = n.data({ frame: [src] as never, values: [[10] as never] }).frame as CubeValue;
     expect(colCells(c, "score")).toEqual([10, null]);
-    expect(colCells(c, "tags")[0]).toBe(colCells(src, "tags")[0]);
+    expect(colCells(c, "tags")[0]).toEqual(colCells(src, "tags")[0]);
   });
 });
 

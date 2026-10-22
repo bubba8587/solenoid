@@ -767,7 +767,7 @@ fn cell_to_number(c: &FrameCell) -> Option<f64> {
 }
 
 /// `typedColumn`: the cells as the known type, or the one every present cell shares (text otherwise).
-fn typed_column(name: String, cells: &[FrameCell], length: usize, known: Option<FrameColType>) -> FrameColumn {
+pub(crate) fn typed_column(name: String, cells: &[FrameCell], length: usize, known: Option<FrameColType>) -> FrameColumn {
     let present = || cells.iter().filter(|c| !matches!(c, FrameCell::Null | FrameCell::Err(_)));
     let any = present().next().is_some();
     let ty = known.unwrap_or(if any && present().all(|c| matches!(c, FrameCell::Num(_))) {

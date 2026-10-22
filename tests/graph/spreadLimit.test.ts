@@ -1,7 +1,7 @@
 // [[C15]] matricesInFormulas, [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { setCells } from "../../src/graph/nodes/matrixOps";
+import { SetCellNode } from "../../src/graph/nodes/matrix";
 import { coerceScriptResult } from "../../src/graph/nodes/scriptCoerce";
 import { pivotFrame } from "../../src/graph/frameVerbs";
 
@@ -29,7 +29,7 @@ describe("kernels take a list longer than a call's argument limit", () => {
   });
 
   it("Set Cells writing a long block", () => {
-    const out = setCells(col.map(() => [null]), [{ r: 1, c: 1, v: col }]) as number[][];
+    const out = new SetCellNode().data({ matrix: [col.map(() => [null])], value0: [col], row0: [1], col0: [1] }).result as number[][];
     expect(out[N - 1]).toEqual([N - 1]);
   });
 

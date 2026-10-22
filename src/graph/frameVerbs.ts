@@ -3,7 +3,7 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
-  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn, flatCubeToFrame, frameToCube,
+  isCubeValue, formatFrameCell, selectCubeRows, cubeCellsFromColumn, flatCubeToFrame, frameToCube,
 } from "./frame";
 import { isSolError, solError, type SolError } from "./errorValue";
 import { isUnitCell, withDisplay, sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, roundAtLargerTerm, type ColumnUnit } from "./unitValue";
@@ -15,7 +15,7 @@ import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
 import { allocate, type AllocateMode } from "./nodes/allocateOps";
 import { buildLadder, mustClash, isRough, type LadderOption } from "./nodes/ladderOps";
-import type { LadderEdge, LadderPayload } from "./chartValue";
+import type { LadderPayload } from "./chartValue";
 import { aggregate, percentileOf, pearson, spearman, kendallTau, covariance, averageRanks } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
 import { setPivotLayout } from "./pivotLayout";
@@ -1513,14 +1513,6 @@ export function cubeRowAt(c: CubeValue, i: number): CubeValue {
   );
 }
 
-export function asLookupSource(v: unknown): FrameValue | CubeValue | null {
-  if (v == null) return null;
-  if (isCubeValue(v)) return v;
-  if (isFrameValue(v)) return v;
-  if (Array.isArray(v)) return Array.isArray(v[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
-  return frameFromRows([[v]]);
-}
-
 // ─── Append / Union (n-ary) ────────────────────────────────────────────────────
 export function appendFrames(frames: readonly FrameValue[]): FrameValue {
   const names: string[] = [];
@@ -2257,32 +2249,6 @@ export function ladderWire(p: LadderPayload): unknown[] {
     p.edges.map((e) => [e.from, e.to, e.pick, e.share, e.kind, e.struck, e.conflicts]),
     p.main, p.choices, p.ruledOut,
   ];
-}
-
-/** `ladderWire`'s inverse, with each resource's format, and the plan's cost columns' units and formats, read off the
- *  Options column the resource names. */
-export function ladderFromWire(f: FrameValue, plan: FrameValue, wire: unknown): { plan: FrameValue; payload: LadderPayload } {
-  type W = [[string, number, number[], number[]][], string[], [string, number | null, number | null, boolean][],
-    [number, number, number, number[], boolean][], [number, number, number, number, LadderEdge["kind"], number[], number[]][], number[], string[], string[]];
-  const [options, criteria, resources, states, edges, main, choices, ruledOut] = wire as W;
-  const cols = resources.map(([name]) => f.columns.find((c) => (c.type === "number" || c.type === "logical") && c.name === name));
-  const R = resources.length;
-  const dress = (c: FrameColumn, j: number): FrameColumn => {
-    const src = j >= 4 && j < 4 + 2 * R ? cols[(j - 4) % R] : undefined;
-    return src ? { ...c, ...(src.unit ? { unit: src.unit } : {}), ...(src.format ? { format: src.format } : {}) } : c;
-  };
-  return {
-    plan: { ...plan, columns: plan.columns.map(dress) },
-    payload: {
-      kind: "ladder",
-      options: options.map(([name, score, costs, value]) => ({ name, score, costs, value })),
-      criteria,
-      resources: resources.map(([name, limit, floor, logical], k) => ({ name, limit, floor, logical, format: cols[k]?.format ?? null })),
-      states: states.map(([id, depth, share, taken, end]) => ({ id, depth, share, taken, end })),
-      edges: edges.map(([from, to, pick, share, kind, struck, conflicts]) => ({ from, to, pick, share, kind, struck, conflicts })),
-      main, choices, ruledOut,
-    },
-  };
 }
 
 // ─── Decision matrix sensitivity (weight scenarios → a Cube of rankings) ────────
