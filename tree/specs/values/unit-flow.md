@@ -269,7 +269,7 @@ Which steps keep a value's meaning ([[D41]] formatFlowsDownstream):
   - `lockedByConvert`: the Convert ahead dictates the FC's from-unit.
   - `forwarding`: the incoming value already carries a unit, so the dropdown mirrors it and locks. An inherited unit belongs to the value and was set elsewhere in the chain; Convert is the tool for changing it.
   - Only an FC on a value with no unit sets one freely.
-- **Reading:** a hero row's `ValueDisplay` names its `socketKey` and reads only that socket's annotation. `DisplayNode` reads `getForNode ?? inAnnotation("in") ?? downstreamAnnotation("out")`. A `UnitCell` with no annotation renders in its own `display` unit (`formatCellWithDisplay` in `valueDisplayFormat.ts`); an annotated one unwraps to the annotation's unit, which the FC keeps in sync with `display`.
+- **Reading:** a hero row's `ValueDisplay` names its `socketKey` and reads only that socket's annotation. `DisplayNode` reads `getForNode ?? inAnnotation("in") ?? downstreamAnnotation("out")`. A `UnitCell` with no annotation renders in its own `display` unit (`formatCellWithDisplay` in `valueDisplayFormat.ts`); an annotated one unwraps to the annotation's unit, which the FC keeps in sync with `display`. A card's own style pick wins over the annotation for a value with a unit: Convert's In and Out format dropdowns (`cardStyle`, `cardStyleAnnotation`) style the value in its own unit, so Integer shows 280 mi, and on a plain number the card's `render` applies.
 
 ### The resolver
 

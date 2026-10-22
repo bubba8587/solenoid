@@ -165,6 +165,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
         <div style={{ flex: "1 1 auto", minWidth: 0 }}>
           <ValueDisplay
             value={node.cachedInput}
+            cardStyle={inFormat}
             render={(v) => withUnit(v, fromCode, inFormat)}
             toClipboard={(v) => withUnit(v, fromCode, inFormat)}
           />
@@ -209,6 +210,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
         <div style={{ flex: "1 1 auto", minWidth: 0 }}>
           <ValueDisplay
             value={node.cachedResult}
+            cardStyle={outFormat}
             render={(v) => withUnit(v, toCode, outFormat)}
             toClipboard={(v) => withUnit(v, toCode, outFormat)}
           />

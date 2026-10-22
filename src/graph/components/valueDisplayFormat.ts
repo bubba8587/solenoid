@@ -12,7 +12,7 @@ import { fcUnitToUnit } from "../unitBridge";
 import { dimEqual } from "../dimension";
 import { formatScalar, displaySettingsKey } from "./format";
 import { frameFormatStore, MATRIX_FORMAT_KEY } from "../frameFormatStore";
-import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation, type FormatStyle } from "../formatAnnotationStore";
 
 export function resolveDisplayAnnotation(nodeId: string | null, socketKey?: string): FormatAnnotation | undefined {
   if (!nodeId) return undefined;
@@ -93,6 +93,13 @@ export function formatListCell(
 
 function annotationCarriesNoUnit(ann: FormatAnnotation): boolean {
   return ann.unit === "none" || (ann.unit === "custom" && !ann.customUnit);
+}
+
+/** A card's own style pick (Convert's format dropdowns) for a value that carries a unit; a plain number keeps the card's `render`. */
+export function cardStyleAnnotation(value: unknown, style: FormatStyle | undefined): FormatAnnotation | undefined {
+  if (!style || style === "auto") return undefined;
+  const united = isUnitCell(value) || (Array.isArray(value) && value.some((c) => isUnitCell(c)));
+  return united ? annotationForValue(value, { format: style, unit: "none" }) : undefined;
 }
 
 export function annotationForValue(value: unknown, ann: FormatAnnotation | undefined): FormatAnnotation | undefined {
