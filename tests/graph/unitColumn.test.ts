@@ -106,3 +106,13 @@ describe("column display helpers", () => {
     expect(columnUnitLabel(cu)).toBe("km");
   });
 });
+
+describe("cellUnitAnnotation: the unit a popup writes in a number's cell", () => {
+  it("an FC unit by its id, an FC unit under another id by the FC's, any other unit by its text", async () => {
+    const { cellUnitAnnotation } = await import("../../src/graph/unitColumn");
+    expect(cellUnitAnnotation("km")).toEqual({ unit: "km" });
+    expect(cellUnitAnnotation("h")).toEqual({ unit: "hr" });
+    expect(cellUnitAnnotation("furlong/fortnight")).toEqual({ unit: "custom", customUnit: " furlong/fortnight" });
+    expect(cellUnitAnnotation(undefined)).toEqual({ unit: "none" });
+  });
+});

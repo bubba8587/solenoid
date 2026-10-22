@@ -1,7 +1,8 @@
 // [[D43]] unitByGranularity, [[D47]] noMixCurrencies
 
 import { type ColumnUnit, fromUnit, tagDim, isUnitCell, sameColumnUnit } from "./unitValue";
-import { fcUnitToUnit, displayMagnitudeOf } from "./unitBridge";
+import { fcUnitToUnit, displayMagnitudeOf, exactFcUnitId } from "./unitBridge";
+import { unitById, type FormatAnnotation } from "./formatAnnotationStore";
 import { formatDim } from "./dimension";
 
 const CURRENCY_SYMBOL: Record<string, string> = { "$": "usd", "€": "eur", "£": "gbp", "¥": "jpy" };
@@ -64,4 +65,14 @@ export function matrixCellsFromList(cells: readonly unknown[]): { mags: unknown[
     else if (!sameColumnUnit(unit, cu)) return { mags, unit: undefined };
   }
   return { mags, unit };
+}
+
+/** The unit a cell's number is written with: an FC unit by its own id, one the FC lists under another id by that id
+ *  (`h` is written `hr`), and any other the column's text as written. */
+export function cellUnitAnnotation(id: string | undefined): Pick<FormatAnnotation, "unit" | "customUnit"> {
+  if (!id || id === "none") return { unit: "none" };
+  if (unitById(id).label) return { unit: id };
+  const u = fcUnitToUnit(id);
+  const fc = u && exactFcUnitId(u);
+  return fc ? { unit: fc } : { unit: "custom", customUnit: ` ${id}` };
 }

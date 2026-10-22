@@ -7,6 +7,8 @@ import {
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { isUnitCell } from "../unitValue";
+import { displayMagnitudeOf } from "../unitBridge";
+import { settingsStore } from "../settingsStore";
 import { cubePopup, type CellRef } from "../cubePopupStore";
 import { formatScalar } from "./format";
 import { formatListCell } from "./valueDisplayFormat";
@@ -82,6 +84,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   type?: FrameColType;
   format?: FormatAnnotation;
 }): ReactNode {
+  const showUnits = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupCellUnits"));
   if (cell === null || cell === undefined) {
     return <span className="solenoid-node__text-empty" style={{ color: "var(--text-muted)" }}>—</span>;
   }
@@ -138,7 +141,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   if (isSolError(cell)) {
     return <span title={errorTip(cell)} style={{ color: "var(--sol-error)" }}>{cell.code}</span>;
   }
-  if (isUnitCell(cell)) return <>{formatListCell(cell, formatScalar)}</>;
+  if (isUnitCell(cell)) return <>{showUnits ? formatListCell(cell, formatScalar) : formatScalar(displayMagnitudeOf(cell))}</>;
   if (type) return frameCellNode(type, cell, format);
   if (typeof cell === "boolean") return <>{cell ? "TRUE" : "FALSE"}</>;
   if (typeof cell === "number") return <>{formatScalar(cell)}</>;

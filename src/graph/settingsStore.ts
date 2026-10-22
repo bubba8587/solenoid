@@ -37,6 +37,8 @@ export interface Settings {
   hideGridDots: boolean;
   tablePopupSummary: boolean;
   tablePopupFrozen: boolean;
+  /** The table and cube popups write each number's unit in its cell (`100 km`). */
+  tablePopupCellUnits: boolean;
 
   quickWire: boolean;
   semanticZoom: boolean;
@@ -69,6 +71,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hideGridDots: false,
   tablePopupSummary: true,
   tablePopupFrozen: true,
+  tablePopupCellUnits: true,
   quickWire: false,
   semanticZoom: false,
   headerTitleCase: "upper",

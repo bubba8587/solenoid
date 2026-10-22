@@ -15,7 +15,7 @@ import { distinctColumnValues } from "../frameVerbs";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { decimalFromText } from "../valueKinds";
-import { columnUnitLabel } from "../unitColumn";
+import { columnUnitLabel, cellUnitAnnotation } from "../unitColumn";
 import { frameFormatStore, MATRIX_FORMAT_KEY, columnFormatRow, type ColumnFormatRow } from "../frameFormatStore";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
@@ -166,6 +166,7 @@ export function TablePopup() {
   const gridRef = useRef<HTMLTableElement | null>(null);
   const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
   const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
+  const showCellUnits = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupCellUnits"));
   const frozen = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupFrozen"));
   const [listVertical, setListVertical] = useState(false);
   const [colFmt, setColFmt] = useState<FormatAnnotation[]>([]);
@@ -447,6 +448,12 @@ export function TablePopup() {
       </ColumnFormatButton>
     );
   };
+  /** The unit a number cell is written with: the column's own pick, else the unit it inherits, unless cell units are off. */
+  function cellUnit(c: number, ann: FormatAnnotation): Pick<FormatAnnotation, "unit" | "customUnit"> {
+    if (!showCellUnits) return { unit: "none" };
+    if (ann.unit === "custom") return { unit: ann.unit, customUnit: ann.customUnit };
+    return cellUnitAnnotation(ann.unit !== "none" ? ann.unit : state?.columnUnits?.[state.formatControls === "matrix" ? 0 : c]?.display);
+  }
   function controlledCell(raw: CellValue, c: number): string {
     if (raw === null || raw === undefined || raw === "") return "";
     if (isSolError(raw)) return raw.code;
@@ -466,7 +473,7 @@ export function TablePopup() {
     }
     if (typeof v === "number" && type === "number") {
       const fmt: FormatStyleId = isDateStyle(ann.format) ? "auto" : ann.format;
-      return formatNumberWithAnnotation(v, { ...ann, format: fmt, unit: "none" });
+      return formatNumberWithAnnotation(v, { ...ann, format: fmt, ...cellUnit(c, ann) });
     }
     if (type === "string") return applyTextCase(String(v), ann.textCase);
     return String(v);
@@ -1019,6 +1026,7 @@ export function TablePopup() {
             { label: "Copy as Markdown", onClick: copyMarkdown },
             { label: "Export CSV…", onClick: exportCsv },
             ...(isFramePopup ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
+            ...(showFmtControls ? [{ label: showCellUnits ? "Hide units in cells" : "Show units in cells", onClick: () => settingsStore.set("tablePopupCellUnits", !showCellUnits) }] : []),
             ...(view === "grid" ? [{ label: frozen ? "Unfreeze header" : "Freeze header", onClick: () => settingsStore.set("tablePopupFrozen", !frozen) }] : []),
             ...(cardsCapable && state.pinNodeId && recordCards?.canAdd(state.pinNodeId) ? [{ label: "Add Record: Cards", onClick: () => addCardsChart(state.pinNodeId!) }] : []),
       ]}

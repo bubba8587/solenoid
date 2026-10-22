@@ -141,6 +141,7 @@ export function CubePopup() {
   const [query, setQuery] = useState("");
   const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
   const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
+  const showCellUnits = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupCellUnits"));
   // A cube or frame level reads as a table: filter, Cards and the summary footer.
   const table = useMemo(() => (last ? cubeLevelColumns(last) : null), [last]);
   const summaries = useMemo(
@@ -245,6 +246,7 @@ export function CubePopup() {
       pinNodeId={state.stack.length === 1 ? state.pinNodeId : undefined}
       menuItems={[
             ...(table ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
+            { label: showCellUnits ? "Hide units in cells" : "Show units in cells", onClick: () => settingsStore.set("tablePopupCellUnits", !showCellUnits) },
             { label: "Copy CSV", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "csv", listVertical)) },
             { label: "Copy as Markdown", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "md", listVertical)) },
             {
