@@ -579,6 +579,14 @@ function prepRangeArgs(name: string, argv: unknown[]): { error?: unknown; args: 
 // ── Error-handling functions (IFERROR family) ─────────────────────────────────
 const ERROR_HANDLER_FUNCTIONS = new Set(["IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"]);
 
+/** The arguments that pick a branch. Only an error there is the call's answer; an error in a branch not taken isn't,
+ *  as in Excel, so `IF(@qty = 0, 0, @total / @qty)` guards its division. */
+const BRANCH_SELECTORS: Record<string, (i: number) => boolean> = {
+  IF: (i) => i === 0,
+  IFS: (i) => i % 2 === 0,
+  CHOOSE: (i) => i === 0,
+};
+
 const ERROR_TYPE_NUM: Record<string, number> = {
   "#DIV/0!": 2, "#VALUE!": 3, "#REF!": 4, "#NAME?": 5, "#N/A": 7,
   "#DOMAIN!": 6, "#OVERFLOW!": 6, "#CONV!": 6, "#NUM!": 6,
@@ -778,10 +786,11 @@ function broadcastCall(name: string, argv: unknown[], blankSlots: readonly boole
     return broadcastWith(rest, blankSlots.filter((_, i) => i !== wholeAt), NULL_INSPECTING.has(name),
       (...args) => dispatch(name, ...args.slice(0, wholeAt), whole, ...args.slice(wholeAt)));
   }
-  return broadcastWith(argv, blankSlots, NULL_INSPECTING.has(name), (...args) => dispatch(name, ...args));
+  return broadcastWith(argv, blankSlots, NULL_INSPECTING.has(name), (...args) => dispatch(name, ...args), BRANCH_SELECTORS[name]);
 }
 
-function broadcastWith(argv: unknown[], blankSlots: readonly boolean[], inspectsNull: boolean, fn: (...args: unknown[]) => unknown): unknown {
+function broadcastWith(argv: unknown[], blankSlots: readonly boolean[], inspectsNull: boolean, fn: (...args: unknown[]) => unknown,
+  selects?: (i: number) => boolean): unknown {
   const call = (...args: unknown[]): unknown => {
     const r = fn(...args);
     return typeof r === "number" ? guardFinite(r, args) : r;
@@ -792,7 +801,7 @@ function broadcastWith(argv: unknown[], blankSlots: readonly boolean[], inspects
   const len = argv.reduce<number>((m, a) => (isArr(a) ? Math.max(m, a.length) : m), 0);
   if (len === 0) return [];
   return mapCells(argv, (...ops: unknown[]) => {
-    const err = ops.find(isSolError);
+    const err = selects ? ops.find((v, i) => selects(i) && isSolError(v)) : ops.find(isSolError);
     if (err) return err;
     if (!inspectsNull && ops.some(isMissing)) return null;
     return call(...ops);
@@ -910,14 +919,15 @@ function callWithArgs(name: string, emptySlots: boolean[], hasBlank: boolean, ev
     else if (!argRole(name, i)) argv[i] = emptySlotReading(name, i).value;
   });
   if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
-  const sol = argv.find(isSolError);
+  const selects = BRANCH_SELECTORS[name];
+  const sol = selects ? argv.find((v, i) => selects(i) && isSolError(v)) : argv.find(isSolError);
   if (sol) return sol;
   const lifted = liftedArgs(name, argv);
   if (lifted.length === 0) {
     return memoNode && (RANGE_FUNCTIONS.has(name) || MEMO_SHAPERS.has(name)) ? memoRangeCall(memoNode, name, argv, blanks.settled) : routeCall(name, argv, blanks.settled);
   }
   return mapCells(lifted.map((i) => argv[i]), (...cells) => {
-    const bad = cells.find(isErr);
+    const bad = selects ? cells.find((c, k) => selects(lifted[k]) && isErr(c)) : cells.find(isErr);
     if (bad !== undefined) return bad;
     if (cells.some(isMissing)) return null;
     const one = argv.slice();

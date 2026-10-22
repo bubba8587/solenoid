@@ -727,6 +727,17 @@ describe("an empty argument slot reads as Excel's blank ([[C80]] blankArgIsExcel
     if (!fn) throw new Error(`failed to compile: ${expr}`);
     return fn(env);
   };
+  it("an error in a branch not taken is not IF's, IFS's or CHOOSE's answer, as in Excel", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : v);
+    expect(ev("IF(qty=0, 0, total/qty)", { qty: 0, total: 9 })).toBe(0);
+    expect(ev("IF(qty<>0, total/qty, 0)", { qty: 0, total: 9 })).toBe(0);
+    expect(ev("IFS(qty=0, 0, TRUE, total/qty)", { qty: 0, total: 9 })).toBe(0);
+    expect(ev("CHOOSE(1, 5, 1/0)", {})).toBe(5);
+    expect(ev("IF(xs=0, 0, 1/xs)", { xs: [0, 2, 4] })).toEqual([0, 0.5, 0.25]);
+    expect(code(ev("IF(1/0, 1, 2)", {}))).toBe("#DIV/0!");
+    expect(code(ev("IF(FALSE, 1, 1/0)", {}))).toBe("#DIV/0!");
+    expect((ev("IF(xs>0, 1, 1/0)", { xs: [0, 2] }) as unknown[]).map(code)).toEqual(["#DIV/0!", 1]);
+  });
   it("an empty middle IF branch is 0, as in Excel, not a syntax error", () => {
     expect(ev("IF(value=0,,value)", { value: 0 })).toBe(0);
     expect(ev("IF(value=0,,value)", { value: 7 })).toBe(7);

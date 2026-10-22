@@ -188,10 +188,6 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   64 or more crosses once and the core holds it by id while the JS list lives (`envValue` in `coreValues.ts`, `HELD`
   in `eval.rs`), and `engine_eval` keeps its last 16 formulas parsed with their range memo (`eval::formula`), so
   `x - AVERAGE(vals)` over 3,000 items reads `vals` once: about 50 ms, from 1.9 s (develop: 8 ms).
-- **Port develop `deb66745`.** IF, IFS and CHOOSE propagate only an error in what picks
-  the branch (`BRANCH_SELECTORS` in `excelFormula.ts`, before the call and cell by cell in `broadcastWith`), so
-  `IF(@qty = 0, 0, @total / @qty)` is 0, not #DIV/0!; the core's call path answers the first error argument for every
-  call, and any frozen fixture holding the eager #DIV/0! needs refreezing.
 - **Caseless backreferences still fold Greek letters with a subscript iota** (`ᾳ`/`ᾼ`, `ᾀ`/`ᾈ`, `ῃ`/`ῌ`, `ῳ`/`ῼ`):
   `REGEXTEST("ᾳᾼ","(.)\1",1)` is 1 on the core, 0 in V8, since regress's `fold_code_point` takes the one-character
   uppercase where V8 keeps a character whose full uppercase is two.

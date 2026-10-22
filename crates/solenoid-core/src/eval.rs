@@ -432,6 +432,16 @@ fn same(a: &V, b: &V) -> bool {
 /// its own memo too ([[C120]] linearWork).
 const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "DROP"];
 
+/// `BRANCH_SELECTORS`: the arguments that pick a branch. Only an error there is the call's answer; an error in a branch
+/// not taken isn't, as in Excel, so `IF(@qty = 0, 0, @total / @qty)` guards its division.
+fn branch_selector(name: &str) -> Option<fn(usize) -> bool> {
+    match name {
+        "IF" | "CHOOSE" => Some(|i| i == 0),
+        "IFS" => Some(|i| i % 2 == 0),
+        _ => None,
+    }
+}
+
 #[derive(Default)]
 pub struct Eval<'a> {
     row: Option<&'a RowCtx<'a>>,
@@ -681,8 +691,9 @@ impl Eval<'_> {
         if t.kind == "handler" {
             return apply_error_handler(name, &argv);
         }
-        if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
-            return e.clone();
+        let selects = branch_selector(name);
+        if let Some(e) = argv.iter().enumerate().find(|&(i, v)| selects.is_none_or(|s| s(i)) && v.is_sol_error()) {
+            return e.1.clone();
         }
         let any_arr = argv.iter().any(is_arr);
         let lifted: Vec<usize> = if any_arr { (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect() } else { Vec::new() };
@@ -704,8 +715,8 @@ impl Eval<'_> {
         }
         let cols: Vec<V> = lifted.iter().map(|&i| argv[i].clone()).collect();
         map_cells(&cols, &mut |cells| {
-            if let Some(bad) = cells.iter().find(|v| v.is_err()) {
-                return bad.clone();
+            if let Some(bad) = cells.iter().enumerate().find(|&(k, v)| selects.is_none_or(|s| s(lifted[k])) && v.is_err()) {
+                return bad.1.clone();
             }
             if cells.iter().any(is_missing) {
                 return V::Null;
@@ -814,13 +825,13 @@ impl Eval<'_> {
                     full.push(whole.clone());
                     full.extend_from_slice(&args[w.min(args.len())..]);
                     self.dispatch(name, &full)
-                });
+                }, None);
             }
         }
-        self.broadcast_with(argv, blank_slots, t.inspects_null, &|args: &[V]| self.dispatch(name, args))
+        self.broadcast_with(argv, blank_slots, t.inspects_null, &|args: &[V]| self.dispatch(name, args), branch_selector(name))
     }
 
-    fn broadcast_with(&self, argv: &[V], blank_slots: &[bool], inspects_null: bool, f: &dyn Fn(&[V]) -> V) -> V {
+    fn broadcast_with(&self, argv: &[V], blank_slots: &[bool], inspects_null: bool, f: &dyn Fn(&[V]) -> V, selects: Option<fn(usize) -> bool>) -> V {
         let call = |args: &[V]| match f(args) {
             V::Num(r) => guard(r, args),
             r => r,
@@ -834,8 +845,8 @@ impl Eval<'_> {
             return V::List(Rc::new(Vec::new()));
         }
         map_cells(argv, &mut |ops| {
-            if let Some(e) = ops.iter().find(|v| v.is_sol_error()) {
-                return e.clone();
+            if let Some(e) = ops.iter().enumerate().find(|&(i, v)| selects.is_none_or(|s| s(i)) && v.is_sol_error()) {
+                return e.1.clone();
             }
             if !inspects_null && ops.iter().any(is_missing) {
                 return V::Null;
