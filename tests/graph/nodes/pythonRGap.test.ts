@@ -244,6 +244,14 @@ describe("Amortization schedule", () => {
     expect(f.columns.map((c) => c.name)).toEqual(["Period", "Payment", "Interest", "Principal", "Balance"]);
     expect(f.columns[4].values[11] as number).toBeCloseTo(0, 6);
   });
+  it("a row per period, so a count past a million (or an infinite one) is refused at once", () => {
+    for (const nper of [1e9, Infinity]) {
+      const node = new AmortizationNode(); node.literals = { rate: 0.005, nper, pv: 10000, fv: 0 };
+      expect((node.data({}).frame as { code?: string }).code).toBe("#DOMAIN!");
+    }
+    const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 1_000_000, pv: 10000, fv: 0 };
+    expect((node.data({}).frame as FrameValue).columns[0].values.length).toBe(1_000_000);
+  });
 });
 
 describe("Hypothesis tests beyond Excel's four (values from scipy / R)", () => {

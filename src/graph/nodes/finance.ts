@@ -5,6 +5,7 @@ import { setting, argRole } from "../inputRoles";
 import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";
 import { solError, isSolError, type SolError } from "../errorValue";
+import { MAX_GENERATED } from "./listOps";
 import { guardFinite } from "../valueKinds";
 import { resolveExcelFunction, normalizeFxResult } from "../excelFunctions";
 import { EquationNode } from "./equation";
@@ -1148,17 +1149,22 @@ export class AmortizationNode extends ClassicPreset.Node {
     const m = readMoneyInputs("Amortization", inputs, ["pv", "fv"]);
     if (isSolError(m)) { this.cachedResult = null; return { frame: m }; }
     const { frame } = this.compute(m.inputs as never);
-    if (!frame || !m.unit) return { frame };
+    if (!frame || isSolError(frame) || !m.unit) return { frame };
     const unit = m.unit;
     return { frame: { ...frame, columns: frame.columns.map((c) => (c.name === "Period" ? c : { ...c, unit })) } };
   }
 
-  private compute(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | null } {
+  private compute(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | SolError | null } {
     const rate = readInput(inputs.rate, this.literals.rate ?? 0);
     const nper = readInput(inputs.nper, this.literals.nper ?? 0);
     const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
     const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
     if (rate === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { frame: null }; }
+    // A row per period: a huge or infinite count would fill the memory before it finished ([[C120]] linearWork).
+    if (Math.floor(nper) > MAX_GENERATED) {
+      this.cachedResult = null;
+      return { frame: solError("#DOMAIN!", "Amortization takes at most 1,000,000 periods") };
+    }
     const rows = amortizationSchedule(rate, nper, pv, fv, this.paymentTiming === "beg" ? 1 : 0);
     const frame: FrameValue | null = rows.length === 0 ? null : { __frame: true, columns: [
       { name: "Period",    type: "number", values: rows.map((r) => r.period) },

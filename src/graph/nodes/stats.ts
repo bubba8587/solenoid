@@ -9,12 +9,13 @@ import { lambdaIn } from "./shared";
 import { gridAxes, fillGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, expFitR2, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
+import { compileEvaluator, type ExprEvaluator } from "../excelFormula";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { fitEts, etsForecast, etsInterval, detectSeason, seasonalDecompose, stlDecompose, type DecomposeModel } from "./forecastOps";
 export type { DecomposeModel } from "./forecastOps";
 import { fitAll, FIT_FAMILIES, type DistFit, type FitFamily } from "./fitOps";
 import type { FrameValue } from "../frame";
-import { percentile, quartile, nthExtreme, pearson, spearman, kendallTau, covariance, modes, fisher, regression, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "./statsOps";
+import { percentile, quartile, nthExtreme, pearson, spearman, kendallTau, covariance, modes, fisher, regression, anovaP, kruskalP, fisherExactP, twoProportionP, binomTestP } from "./statsOps";
 import { forAggregate } from "../valueKinds";
 import { carryMatrixUnit } from "../unitValue";
 
@@ -663,6 +664,13 @@ export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec>
 
 const T_KERNEL_OP = { "t-paired": "paired", "t-equal": "equal-var", "t-welch": "unequal-var" } as const;
 
+const rankTests = new Map<string, ExprEvaluator>();
+const rankTest = (fn: string): ExprEvaluator => {
+  let ev = rankTests.get(fn);
+  if (!ev) rankTests.set(fn, ev = compileEvaluator(`${fn}(a, b)`)!);
+  return ev;
+};
+
 export class HypothesisTestNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     sigma: "Left unset, the sample's own standard deviation is used. A wired blank instead blanks the result.",
@@ -734,7 +742,9 @@ export class HypothesisTestNode extends ClassicPreset.Node {
       result = g ? (this.op === "anova" ? anovaP(g) : kruskalP(g)) : null;
     } else if (this.op === "mannwhitney" || this.op === "wilcoxon" || this.op === "ks") {
       const b = inputs.b?.[0] ?? null;
-      if (a && b) result = this.op === "mannwhitney" ? mannWhitneyP(a, b) : this.op === "wilcoxon" ? wilcoxonSignedRankP(a, b) : ksTwoSampleP(a, b);
+      // The formula itself, so the card reads its lists as MANNWHITNEY, WILCOXON and KSTEST do: numbers only, a paired
+      // test's pairs kept aligned ([[C17]] shareImpl).
+      if (a && b) result = rankTest(this.op === "mannwhitney" ? "MANNWHITNEY" : this.op === "wilcoxon" ? "WILCOXON" : "KSTEST")({ a, b }) as number | SolError | null;
     } else if (this.op === "fisher") {
       const t = inputs.table?.[0] ?? null;
       const cell = (r: number, c: number): number | null => { const v = t?.[r]?.[c]; return typeof v === "number" ? v : null; };
