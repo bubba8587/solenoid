@@ -13,6 +13,7 @@ use serde_json::{json, Value as Json};
 use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_functions::{call_function, to_f64_js, V};
 use crate::frame::FrameCell;
+use crate::spelled::spelled;
 use crate::jsnum::js_trim;
 use crate::string_order::compare_strings;
 use crate::value_kinds::guard_finite;
@@ -36,79 +37,29 @@ pub enum Ast {
     WholeCol(String),
 }
 
-/// An infix operator.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BinOp {
-    Eq,
-    Ne,
-    Lt,
-    Gt,
-    Le,
-    Ge,
-    Concat,
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Pow,
-}
-
-impl BinOp {
-    const ALL: [BinOp; 12] = [
-        BinOp::Eq,
-        BinOp::Ne,
-        BinOp::Lt,
-        BinOp::Gt,
-        BinOp::Le,
-        BinOp::Ge,
-        BinOp::Concat,
-        BinOp::Add,
-        BinOp::Sub,
-        BinOp::Mul,
-        BinOp::Div,
-        BinOp::Pow,
-    ];
-
-    /// As a formula and the TS tree spell it.
-    pub fn symbol(self) -> &'static str {
-        match self {
-            BinOp::Eq => "=",
-            BinOp::Ne => "<>",
-            BinOp::Lt => "<",
-            BinOp::Gt => ">",
-            BinOp::Le => "<=",
-            BinOp::Ge => ">=",
-            BinOp::Concat => "&",
-            BinOp::Add => "+",
-            BinOp::Sub => "-",
-            BinOp::Mul => "*",
-            BinOp::Div => "/",
-            BinOp::Pow => "^",
-        }
-    }
-
-    pub fn from_symbol(s: &str) -> Option<BinOp> {
-        BinOp::ALL.into_iter().find(|op| op.symbol() == s)
+spelled! {
+    /// An infix operator, spelled as a formula and the TS tree spell it.
+    pub enum BinOp {
+        Eq = "=",
+        Ne = "<>",
+        Lt = "<",
+        Gt = ">",
+        Le = "<=",
+        Ge = ">=",
+        Concat = "&",
+        Add = "+",
+        Sub = "-",
+        Mul = "*",
+        Div = "/",
+        Pow = "^",
     }
 }
 
-/// A prefix sign.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum UnaryOp {
-    Neg,
-    Plus,
-}
-
-impl UnaryOp {
-    pub fn symbol(self) -> &'static str {
-        match self {
-            UnaryOp::Neg => "-",
-            UnaryOp::Plus => "+",
-        }
-    }
-
-    pub fn from_symbol(s: &str) -> Option<UnaryOp> {
-        [UnaryOp::Neg, UnaryOp::Plus].into_iter().find(|op| op.symbol() == s)
+spelled! {
+    /// A prefix sign.
+    pub enum UnaryOp {
+        Neg = "-",
+        Plus = "+",
     }
 }
 
@@ -122,9 +73,9 @@ impl Ast {
             Ast::Name(n) => json!({ "t": "name", "name": n }),
             Ast::Call { name, args } => json!({ "t": "call", "name": name, "args": args.iter().map(Ast::to_json).collect::<Vec<_>>() }),
             Ast::Apply { func, args } => json!({ "t": "apply", "fn": func.to_json(), "args": args.iter().map(Ast::to_json).collect::<Vec<_>>() }),
-            Ast::Unary { op, arg } => json!({ "t": "unary", "op": op.symbol(), "arg": arg.to_json() }),
+            Ast::Unary { op, arg } => json!({ "t": "unary", "op": op.as_str(), "arg": arg.to_json() }),
             Ast::Percent(a) => json!({ "t": "percent", "arg": a.to_json() }),
-            Ast::Bin { op, l, r } => json!({ "t": "bin", "op": op.symbol(), "l": l.to_json(), "r": r.to_json() }),
+            Ast::Bin { op, l, r } => json!({ "t": "bin", "op": op.as_str(), "l": l.to_json(), "r": r.to_json() }),
             Ast::Blank => json!({ "t": "blank" }),
             Ast::AtCol(n) => json!({ "t": "atcol", "name": n }),
             Ast::WholeCol(n) => json!({ "t": "wholecol", "name": n }),
@@ -147,9 +98,9 @@ impl Ast {
             "name" => Ast::Name(s("name")?.to_string()),
             "call" => Ast::Call { name: s("name")?.to_string(), args: many()? },
             "apply" => Ast::Apply { func: one("fn")?, args: many()? },
-            "unary" => Ast::Unary { op: UnaryOp::from_symbol(s("op")?)?, arg: one("arg")? },
+            "unary" => Ast::Unary { op: s("op")?.parse().ok()?, arg: one("arg")? },
             "percent" => Ast::Percent(one("arg")?),
-            "bin" => Ast::Bin { op: BinOp::from_symbol(s("op")?)?, l: one("l")?, r: one("r")? },
+            "bin" => Ast::Bin { op: s("op")?.parse().ok()?, l: one("l")?, r: one("r")? },
             "blank" => Ast::Blank,
             "atcol" => Ast::AtCol(s("name")?.to_string()),
             "wholecol" => Ast::WholeCol(s("name")?.to_string()),
@@ -356,7 +307,7 @@ impl Parser {
     /// The operator token next, if it is one of `ops`.
     fn peek_bin(&self, ops: &[BinOp]) -> Option<BinOp> {
         let t = self.peek().filter(|t| t.k == K::Op)?;
-        ops.iter().copied().find(|op| op.symbol() == t.v)
+        ops.iter().copied().find(|op| op.as_str() == t.v)
     }
 
     fn bin(op: BinOp, l: Ast, r: Ast) -> Ast {
@@ -424,7 +375,7 @@ impl Parser {
     }
 
     fn unary(&mut self) -> Option<Ast> {
-        if let Some(op) = self.peek().filter(|t| t.k == K::Op).and_then(|t| UnaryOp::from_symbol(&t.v)) {
+        if let Some(op) = self.peek().filter(|t| t.k == K::Op).and_then(|t| t.v.parse::<UnaryOp>().ok()) {
             self.eat();
             let arg = self.unary()?;
             return Some(Ast::Unary { op, arg: Box::new(arg) });
@@ -762,13 +713,13 @@ mod tests {
         for s in spelled {
             let ast = parse_formula(&format!("1{s}2")).unwrap_or_else(|| panic!("1{s}2 parses"));
             let Ast::Bin { op, .. } = &ast else { panic!("1{s}2 is a binary") };
-            assert_eq!(op.symbol(), s);
+            assert_eq!(op.as_str(), s);
             assert_eq!(Ast::from_json(&ast.to_json()).as_ref(), Some(&ast));
         }
         assert_eq!(spelled.len(), BinOp::ALL.len());
         for s in ["-", "+"] {
             let ast = parse_formula(&format!("{s}1")).expect("parses");
-            assert!(matches!(&ast, Ast::Unary { op, .. } if op.symbol() == s));
+            assert!(matches!(&ast, Ast::Unary { op, .. } if op.as_str() == s));
             assert_eq!(Ast::from_json(&ast.to_json()).as_ref(), Some(&ast));
         }
     }

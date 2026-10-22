@@ -41,6 +41,7 @@ pub mod nfd_table;
 pub mod nodes;
 pub mod planners;
 pub mod shapers;
+pub mod spelled;
 pub mod string_order;
 pub mod external;
 pub mod text_ops;
