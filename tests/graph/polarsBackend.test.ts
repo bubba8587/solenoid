@@ -294,7 +294,7 @@ describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b
     await frameBackend().source(withNf);
     const call = invokeMock.mock.calls.find((c) => c[0] === "engine_source");
     expect(call?.[1]).toEqual({
-      frame: { columns: [{ name: "v", type: "number", values: [1, { __nf: "inf" }, { __nf: "-inf" }, { __nf: "nan" }, { __err: "#DIV/0!", ref: expect.any(Number) }] }] },
+      frame: { columns: [{ name: "v", type: "number", values: [1, { __nf: "inf" }, { __nf: "-inf" }, { __nf: "nan" }, { __err: "#DIV/0!", msg: expect.any(String), ref: expect.any(Number) }] }] },
     });
   });
 

@@ -287,7 +287,7 @@ function encodeWireCell(v: unknown): WireCell {
   if (typeof v === "number" && !Number.isFinite(v)) {
     return { __nf: Number.isNaN(v) ? "nan" : v > 0 ? "inf" : "-inf" };
   }
-  if (isSolError(v)) { const ref = errorRef(v); return ref === undefined ? { __err: v.code } : { __err: v.code, ref }; }
+  if (isSolError(v)) { const ref = errorRef(v); return { __err: v.code, msg: v.message, ...(ref === undefined ? {} : { ref }) }; }
   return v;
 }
 
