@@ -6,11 +6,12 @@ import type { ClassicPreset } from "rete";
 import { extractInit } from "./nodeInit";
 import { declaredTypeOf } from "./sockets";
 import { engineClock } from "./coreValues";
-import { nodeWire, readNodeReply } from "./nodeWire";
+import { nodeWire, readNodeReply, jsonDec } from "./nodeWire";
+import { withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
 import { solError } from "./errorValue";
 
-type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; display: Record<string, unknown> };
+type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; display: Record<string, unknown>; matrixUnits?: Record<string, unknown> };
 
 function read(r: unknown): unknown {
   const v = readNodeReply(r);
@@ -63,5 +64,6 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
   if ("thrown" in reply) throw read(reply.thrown);
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(reply.out ?? {})) out[k] = read(v);
+  for (const [k, u] of Object.entries(reply.matrixUnits ?? {})) withMatrixUnit(out[k], jsonDec(u) as ColumnUnit);
   return out;
 }

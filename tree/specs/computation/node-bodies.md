@@ -36,7 +36,9 @@ fields the body sets on the card for its component (`cachedResult` and the like)
 **The card wire** (`nodeWire.ts`; `nodes/values.rs`) is the core's value wire (`coreValue`, units included) plus what
 only cards hand each other: a frame cell by cell with each column's unit, format and typed text (`V::Frame`), a cube
 (`V::Cube`), and plain data a card makes whole, a chart, a document, an image, an SVG or a diagram, as JSON whose
-non-finite numbers, -0 and `undefined` are tagged (`V::Json`). A frame ref (a lazy verb's plan) doesn't cross: the lazy
+non-finite numbers, -0 and `undefined` are tagged (`V::Json`), and a table's unit, a hidden field on the JS array
+(`matrixUnitOf`), beside its cells (`{__munit, m}`; a body reads it with `Call::matrix_unit` and sets an output's with
+`set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A frame ref (a lazy verb's plan) doesn't cross: the lazy
 verb cards route to the frame backend (Polars on desktop, the core in wasm) and stay TypeScript. A value that can't
 cross (a frame ref, text with a lone surrogate) answers `#VALUE!` on the card. A trap answers `#ERROR!` and the module comes back as [[rust-core]] § Where it
 runs says.

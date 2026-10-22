@@ -6,17 +6,18 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
-import { nodeUnwire, readNodeReply } from "../../src/graph/nodeWire";
+import { nodeUnwire, readNodeReply, jsonDec } from "../../src/graph/nodeWire";
 import { isSolError } from "../../src/graph/errorValue";
-import { isUnitCell } from "../../src/graph/unitValue";
+import { isUnitCell, matrixUnitOf, withMatrixUnit, type ColumnUnit } from "../../src/graph/unitValue";
 import { isCx } from "../../src/graph/cxValue";
 
 const DIR = path.resolve(__dirname, "../../fixtures/core/nodes");
 type Case = { init: unknown; inputs: [string, unknown[]][]; result: { out?: Record<string, unknown>; thrown?: unknown }; ctx: { clock: unknown }; unstable?: true };
-type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true };
+type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; matrixUnits?: Record<string, unknown> };
 
 /** The frozen wire value as the TS held it: errors by code and message, unit cells by what crosses back. */
 function same(got: unknown, want: unknown): boolean {
+  if (JSON.stringify(matrixUnitOf(got) ?? null) !== JSON.stringify(matrixUnitOf(want) ?? null)) return false;
   if (Array.isArray(got) || Array.isArray(want)) {
     return Array.isArray(got) && Array.isArray(want) && got.length === want.length && got.every((g, i) => same(g, want[i]));
   }
@@ -57,6 +58,7 @@ describe("card bodies on the core answer as frozen", () => {
         if (c.result.out) {
           for (const [k, w] of Object.entries(c.result.out)) {
             const got = r.out && k in r.out ? readNodeReply(r.out[k])?.value : "(missing)";
+            if (r.matrixUnits?.[k]) withMatrixUnit(got, jsonDec(r.matrixUnits[k]) as ColumnUnit);
             if (!same(got, nodeUnwire(w))) bad.push(`${k}: ${JSON.stringify(got)} vs ${JSON.stringify(w)} on ${JSON.stringify(c.inputs)}`);
           }
         } else if (c.result.thrown !== undefined) {

@@ -65,6 +65,8 @@ pub fn decode(j: &Json) -> V {
             V::Cube(Rc::new(Cube { columns }))
         }
         Json::Object(o) if o.contains_key("__json") => V::Json(Rc::new(o["__json"].clone())),
+        // A table with its unit: the unit is the call's (`Call::matrix_unit`), the cells the value.
+        Json::Object(o) if o.contains_key("__munit") => decode(&o["m"]),
         _ => crate::eval::decode_value(j),
     }
 }

@@ -45,6 +45,10 @@ pub struct Call {
     /// The inputs as `data()` receives them: a key is there when a cable is, and holds each cable's value.
     pub inputs: Vec<(String, Vec<V>)>,
     pub display: Vec<(String, Shown)>,
+    /// A table's unit (`matrixUnitOf`, a hidden field on the JS array) on an input's first value, by input key.
+    pub matrix_units_in: Vec<(String, Json)>,
+    /// The unit to put on an output table (`withMatrixUnit`), by output key.
+    pub matrix_units_out: Vec<(String, Json)>,
 }
 
 /// What a body answers: its outputs in order, or the error it throws (the error guard makes it every output's).
@@ -73,11 +77,29 @@ impl Call {
             })
             .collect();
         let outputs = rows("outputs").iter().map(|r| (text(r, 0).unwrap_or_default(), text(r, 1))).collect();
+        let mut matrix_units_in = Vec::new();
         let inputs = rows("inputs")
             .iter()
-            .map(|r| (text(r, 0).unwrap_or_default(), r.get(1).and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default()))
+            .map(|r| {
+                let key = text(r, 0).unwrap_or_default();
+                let values: Vec<V> = r.get(1).and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default();
+                if let Some(u) = r.get(1).and_then(|a| a.get(0)).and_then(|v| v.get("__munit")) {
+                    matrix_units_in.push((key.clone(), u.clone()));
+                }
+                (key, values)
+            })
             .collect();
-        Call { init: obj("init"), literals: obj("literals"), string_literals: obj("stringLiterals"), sockets, outputs, inputs, display: Vec::new() }
+        Call {
+            init: obj("init"),
+            literals: obj("literals"),
+            string_literals: obj("stringLiterals"),
+            sockets,
+            outputs,
+            inputs,
+            display: Vec::new(),
+            matrix_units_in,
+            matrix_units_out: Vec::new(),
+        }
     }
 
     /// `inputs[key]`: the cables' values, or `None` with no cable.
@@ -128,6 +150,16 @@ impl Call {
         self.sockets.iter().find(|(k, _, _)| k == key).map(|(_, _, l)| l.clone()).unwrap_or_else(|| key.to_string())
     }
 
+    /// `matrixUnitOf(inputs[key][0])`.
+    pub fn matrix_unit(&self, key: &str) -> Option<&Json> {
+        self.matrix_units_in.iter().find(|(k, _)| k == key).map(|(_, u)| u)
+    }
+
+    /// `withMatrixUnit(out[key], unit)`.
+    pub fn set_matrix_unit(&mut self, key: &str, unit: Json) {
+        self.matrix_units_out.push((key.to_string(), unit));
+    }
+
     pub fn show(&mut self, field: &str, v: V) {
         self.display.push((field.to_string(), Shown::V(v)));
     }
@@ -158,6 +190,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
 pub struct NodeReply {
     pub answer: Option<Answer>,
     pub display: Vec<(String, Shown)>,
+    pub matrix_units: Vec<(String, Json)>,
 }
 
 pub fn reply(args: &Json) -> NodeReply {
@@ -165,7 +198,7 @@ pub fn reply(args: &Json) -> NodeReply {
     let _calc = crate::excel_functions::Calc::begin(args.get("clock").and_then(|j| serde_json::from_value(j.clone()).ok()));
     let mut c = Call::from_json(args);
     let answer = run(kind, &mut c);
-    NodeReply { answer, display: c.display }
+    NodeReply { answer, display: c.display, matrix_units: c.matrix_units_out }
 }
 
 impl serde::Serialize for NodeReply {
@@ -202,6 +235,10 @@ impl serde::Serialize for NodeReply {
             Some(Err(e)) => m.serialize_entry("thrown", &Out(e))?,
         }
         m.serialize_entry("display", &Shows(&self.display))?;
+        if !self.matrix_units.is_empty() {
+            let units: serde_json::Map<String, Json> = self.matrix_units.iter().cloned().collect();
+            m.serialize_entry("matrixUnits", &units)?;
+        }
         m.end()
     }
 }
