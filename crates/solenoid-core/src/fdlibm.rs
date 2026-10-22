@@ -1416,3 +1416,26 @@ mod tests {
         assert_eq!(pow(10.0, -2.0), 0.01);
     }
 }
+
+/// V8's `Math.asinh` (fdlibm `s_asinh.c`).
+pub fn asinh(x: f64) -> f64 {
+    const LN2: f64 = 6.93147180559945286227e-01;
+    let hx = (x.to_bits() >> 32) as u32 as i32;
+    let ix = hx & 0x7fff_ffff;
+    if ix >= 0x7ff0_0000 {
+        return x + x;
+    }
+    if ix < 0x3e30_0000 && HUGE + x > 1.0 {
+        return x;
+    }
+    let w = if ix > 0x41b0_0000 {
+        log(x.abs()) + LN2
+    } else if ix > 0x4000_0000 {
+        let t = x.abs();
+        log(2.0 * t + 1.0 / ((x * x + 1.0).sqrt() + t))
+    } else {
+        let t = x * x;
+        log1p(x.abs() + t / (1.0 + (1.0 + t).sqrt()))
+    };
+    if hx > 0 { w } else { -w }
+}

@@ -9,6 +9,7 @@ use crate::jsnum::{math_round, number_to_string};
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     Some(match kind {
         "ArithmeticNode" => arithmetic(c),
+        "MathFXNode" => math_fx(c),
         "BaseConvertNode" => base_convert(c),
         "ClampNode" => clamp(c),
         "MRoundNode" => mround(c),
@@ -346,6 +347,124 @@ fn bessel(c: &mut Call) -> Answer {
             V::Num(r) if r.is_finite() => V::Num(r),
             _ => V::Null,
         }
+    };
+    c.show("cachedResult", result.clone());
+    Ok(vec![("result".into(), result)])
+}
+
+// ─── Math Function ──────────────────────────────────────────────────────────────
+
+const FORWARD_TRIG: &[&str] = &["sin", "cos", "tan", "cot", "csc", "sec"];
+const INVERSE_TRIG: &[&str] = &["asin", "acos", "atan", "acot"];
+const MATHFN_PRESERVE: &[&str] = &["abs", "trunc", "int", "even", "odd"];
+
+/// `mathFnResultDim`: the result's dimension, `#UNIT!` where the op can't take it, `None` for a dimensionless input.
+fn math_fn_result_dim(op: &str, dim: &crate::unit_dims::Dim) -> Result<Option<crate::unit_dims::Dim>, V> {
+    use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim};
+    if is_dimensionless(dim) {
+        return Ok(None);
+    }
+    if MATHFN_PRESERVE.contains(&op) {
+        return Ok(Some(dim.clone()));
+    }
+    if op == "sqrt" || op == "sqrtpi" {
+        return Ok(Some(dim_pow(dim, 0.5)));
+    }
+    if op == "sign" {
+        return Ok(Some(Dim::new()));
+    }
+    let upper = op.to_uppercase();
+    if FORWARD_TRIG.contains(&op) {
+        return if dim_equal(dim, &Dim::from([("angle".to_string(), 1.0)])) {
+            Ok(Some(Dim::new()))
+        } else {
+            Err(V::err(crate::unit_value::unit_error(&format!("{upper} needs an angle or a plain number."))))
+        };
+    }
+    Err(V::err(crate::unit_value::unit_error(&format!("{upper} needs a dimensionless argument."))))
+}
+
+/// The card's own kernel where the formula twin answers differently (last-digit noise, the ERF approximation, ACOTH
+/// at 1 and -1).
+fn own_kernel(op: &str, x: f64) -> Option<Option<f64>> {
+    use crate::fdlibm::{atanh, exp, tanh};
+    use crate::fns_complex::{cosh, sinh};
+    Some(match op {
+        "tanh" => Some(tanh(x)),
+        "sinh" => Some(sinh(x)),
+        "asinh" => Some(crate::fdlibm::asinh(x)),
+        "coth" => (sinh(x) != 0.0).then(|| cosh(x) / sinh(x)),
+        "csch" => (sinh(x) != 0.0).then(|| 1.0 / sinh(x)),
+        "acoth" => ((x <= -1.0 || x >= 1.0) && x.abs() != 1.0).then(|| atanh(1.0 / x)),
+        "erf" | "erfc" => {
+            let t = 1.0 / (1.0 + 0.3275911 * x.abs());
+            let p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+            let e = (if x < 0.0 { -1.0 } else { 1.0 }) * (1.0 - p * exp(-x * x));
+            Some(if op == "erf" { e } else { 1.0 - e })
+        }
+        "gammaln" => (x > 0.0).then(|| crate::dists::ln_gamma(x)),
+        _ => return None,
+    })
+}
+
+fn math_fx(c: &mut Call) -> Answer {
+    use super::units::{dim_of, magnitude_of, tag};
+    let op = c.field_str("op", "abs").to_string();
+    let angle = c.field_str("angleMode", "auto");
+    let mode = if angle == "auto" { c.field_str("_resolvedAngleMode", "rad") } else { angle };
+    let deg = mode == "deg";
+    let fwd_deg = deg && FORWARD_TRIG.contains(&op.as_str());
+    let inv_deg = deg && INVERSE_TRIG.contains(&op.as_str());
+    let (deg2rad, rad2deg) = (std::f64::consts::PI / 180.0, 180.0 / std::f64::consts::PI);
+    let domain_err = || err("#DOMAIN!", "Input is outside this function's domain");
+    let name = if op == "log" { "LN".to_string() } else { op.to_uppercase() };
+    let compute_raw = |x: f64| -> Option<f64> {
+        if let Some(r) = own_kernel(&op, x) {
+            return r;
+        }
+        match core_call(&name, &[V::Num(x)]) {
+            V::Num(r) => Some(r),
+            _ => None,
+        }
+    };
+    let input = c.read_input("in", c.literal("in"));
+    let result = if matches!(input, V::Null) {
+        V::Null
+    } else if any_dimensioned(&[&input]) {
+        broadcast_unit(&[input], |o| {
+            let cell = o[0];
+            let rd = match math_fn_result_dim(&op, &dim_of(cell)) {
+                Err(e) => return e,
+                Ok(rd) => rd,
+            };
+            let unit = if let V::Unit(u) = cell { Some(u.as_ref()) } else { None };
+            let bare = unit.is_none() || rd.is_none();
+            if let (false, Some(u)) = (bare, unit) {
+                if MATHFN_PRESERVE.contains(&op.as_str()) {
+                    if let Some(shown) = crate::unit_expression::display_unit(u).filter(|s| crate::unit_dims::dim_equal(&s.dim, &u.dim)) {
+                        return match compute_raw(crate::unit_expression::display_magnitude_of(u)) {
+                            None => domain_err(),
+                            Some(r) => tag(r * shown.scale + shown.offset, shown.dim, Some(u)),
+                        };
+                    }
+                }
+            }
+            let x = magnitude_of(cell);
+            let Some(raw) = compute_raw(if bare && fwd_deg { x * deg2rad } else { x }) else { return domain_err() };
+            let out = if bare && inv_deg { raw * rad2deg } else { raw };
+            match rd {
+                None => V::Num(out),
+                Some(d) => tag(out, d, None),
+            }
+        })
+    } else {
+        broadcast_err(&[input], |o| {
+            let x = num(o[0]);
+            match compute_raw(if fwd_deg { x * deg2rad } else { x }) {
+                Some(r) => V::Num(if inv_deg { r * rad2deg } else { r }),
+                None => domain_err(),
+            }
+        })
     };
     c.show("cachedResult", result.clone());
     Ok(vec![("result".into(), result)])

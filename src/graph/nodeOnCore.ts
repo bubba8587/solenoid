@@ -24,6 +24,14 @@ function shown(r: unknown): unknown {
   return read(r);
 }
 
+/** What a save holds, and the run-time fields the class names in `static coreFields` (a resolved mode no save keeps). */
+export function coreInit(node: ClassicPreset.Node): Record<string, unknown> {
+  const init = extractInit(node);
+  const fields = (node.constructor as { coreFields?: readonly string[] }).coreFields;
+  for (const f of fields ?? []) init[f] = (node as unknown as Record<string, unknown>)[f];
+  return init;
+}
+
 /** The card's outputs as its body on the core answers them; an error the body throws is thrown, for the error guard. */
 export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
   const n = node as unknown as { literals?: unknown; stringLiterals?: unknown } & Record<string, unknown>;
@@ -38,7 +46,7 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
   try {
     reply = wasmInvokeSync<Reply>("engine_node", {
       kind: node.constructor.name,
-      init: extractInit(node),
+      init: coreInit(node),
       ...(n.literals ? { literals: n.literals } : {}),
       ...(n.stringLiterals ? { stringLiterals: n.stringLiterals } : {}),
       sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k]),

@@ -17,11 +17,12 @@ const app = process.env.FREEZE_NODES ? {
   ...(await import("../../src/graph/sockets")),
   ...(await import("../../src/graph/coreValues")),
   ...(await import("../../src/graph/nodeWire")),
+  ...(await import("../../src/graph/nodeOnCore")),
   ...(await import("../../src/graph/process")),
   ...(await import("../../src/graph/settingsStore")),
   ...(await import("../../src/graph/errorValue")),
 } : null;
-const { ClassicPreset: Classic, ctorRegistry, extractInit, declaredTypeOf, nodeWire, jsonEnc, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError } = app ?? ({} as NonNullable<typeof app>);
+const { ClassicPreset: Classic, ctorRegistry, coreInit, declaredTypeOf, nodeWire, jsonEnc, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError } = app ?? ({} as NonNullable<typeof app>);
 
 const DIR = path.resolve(__dirname, "../../.dev/node-calls");
 const ONLY = process.env.FREEZE_NODES === "1" ? null : new Set((process.env.FREEZE_NODES ?? "").split(","));
@@ -113,7 +114,7 @@ function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string
   // The fields as they stood before the call, so a replay can tell a field set to what it already held from one left
   // alone; freeze-nodes.mjs keeps only the ones some call of the class sets.
   const prior: Record<string, unknown> = {};
-  const saved = extractInit(node);
+  const saved = coreInit(node);
   for (const [k, v] of before) {
     if (k in saved || k === "literals" || k === "stringLiterals") continue;
     const w = wire(v);
@@ -134,7 +135,7 @@ function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string
     catch { return { __unserializable: true }; }
   };
   const n = node as unknown as { literals?: unknown; stringLiterals?: unknown };
-  const init = json(saved);
+  const init = json(coreInit(node));
   const line = JSON.stringify({
     kind, init, ...(n.literals ? { literals: json(n.literals) } : {}), ...(n.stringLiterals ? { stringLiterals: json(n.stringLiterals) } : {}),
     sockets, outputs, inputs: ins, result, display, prior,

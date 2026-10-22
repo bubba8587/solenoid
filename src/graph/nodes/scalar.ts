@@ -1,16 +1,13 @@
 // [[B16]]
 import { ClassicPreset } from "rete";
-import { broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
+import { readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
 import { rolesFrom, required } from "../inputRoles";
-import { lnGamma, combinatoric } from "./mathUtils";
-import { callCore } from "../coreValues";
+import { combinatoric } from "./mathUtils";
 import { nodeOnCore } from "../nodeOnCore";
 import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
-import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
-import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
-import { type Dim, DIMENSIONLESS, dimEqual, dimPow, isDimensionless } from "../dimension";
+import { type UnitCell, type ArithmeticOp } from "../unitValue";
 
 // ─── Arithmetic ──────────────────────────────────────────────────────────────
 
@@ -115,49 +112,8 @@ export function isTrigOp(op: MathFnOp): boolean {
 }
 
 export type AngleMode = "auto" | "rad" | "deg";
-const DEG2RAD = Math.PI / 180;
-const RAD2DEG = 180 / Math.PI;
 
 const MATHFN_PRESERVE = new Set<MathFnOp>(["abs", "trunc", "int", "even", "odd"]);
-const MATHFN_FORWARD_TRIG = FORWARD_TRIG_OPS;
-
-/** Returns the result dim, #UNIT! for a dimensioned argument the op cannot take, or "strip" for a dimensionless input. */
-export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip" {
-  if (isDimensionless(dim)) return "strip";
-  if (MATHFN_PRESERVE.has(op)) return dim;
-  if (op === "sqrt") return dimPow(dim, 0.5);
-  if (op === "sqrtpi") return dimPow(dim, 0.5);
-  if (op === "sign") return DIMENSIONLESS;
-  if (MATHFN_FORWARD_TRIG.has(op)) {
-    return dimEqual(dim, { angle: 1 }) ? DIMENSIONLESS
-      : unitError(`${op.toUpperCase()} needs an angle or a plain number.`);
-  }
-  return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
-}
-
-// Where the formula twin answers differently (last-digit noise, the ERF approximation, ACOTH
-// at 1 and -1), the card keeps its own kernel; the rest run on the core.
-const OWN_KERNEL_OPS = new Set<MathFnOp>(["tanh", "sinh", "asinh", "coth", "csch", "acoth", "erf", "erfc", "gammaln"]);
-
-function ownKernel(op: MathFnOp, x: number): number | null {
-  switch (op) {
-    case "tanh":    return Math.tanh(x);
-    case "sinh":    return Math.sinh(x);
-    case "asinh":   return Math.asinh(x);
-    case "coth":    return Math.sinh(x) === 0 ? null : Math.cosh(x) / Math.sinh(x);
-    case "csch":    return Math.sinh(x) === 0 ? null : 1 / Math.sinh(x);
-    case "acoth":   return (x <= -1 || x >= 1) ? (Math.abs(x) === 1 ? null : Math.atanh(1 / x)) : null;
-    case "erf":
-    case "erfc": {
-      const t = 1 / (1 + 0.3275911 * Math.abs(x));
-      const p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-      const e = (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
-      return op === "erf" ? e : 1 - e;
-    }
-    case "gammaln": return x > 0 ? lnGamma(x) : null;
-    default:        return null;
-  }
-}
 
 export class MathFXNode extends ClassicPreset.Node {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
@@ -167,6 +123,7 @@ export class MathFXNode extends ClassicPreset.Node {
   angleMode: AngleMode;
   /** Stamped by resolveTrigModes each recompute; rad until then, matching Excel. */
   _resolvedAngleMode: "rad" | "deg" = "rad";
+  static coreFields = ["_resolvedAngleMode"];
   cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
   literals: Record<string, number> = { in: 0 };
   width = 180;
@@ -196,50 +153,8 @@ export class MathFXNode extends ClassicPreset.Node {
     return MATHFN_PRESERVE.has(this.op) ? [{ output: "result", inputs: ["in"] }] : [];
   }
 
-  data(inputs: { in?: (number | number[])[] }) {
-    const input = readInput(inputs.in, this.literals.in);
-    const mode = this.effectiveAngleMode();
-    const fwdDeg = mode === "deg" && FORWARD_TRIG_OPS.has(this.op);
-    const invDeg = mode === "deg" && INVERSE_TRIG_OPS.has(this.op);
-    const domainErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
-    const op = this.op;
-    const fn = op === "log" ? "LN" : op.toUpperCase();
-    const computeRaw = (x: number): number | null => {
-      if (OWN_KERNEL_OPS.has(op)) return ownKernel(op, x);
-      const r = callCore(fn, [x]);
-      return typeof r === "number" ? r : null;
-    };
-    const compute = (x: number): number | null => {
-      const r = computeRaw(fwdDeg ? x * DEG2RAD : x);
-      return r !== null && invDeg ? r * RAD2DEG : r;
-    };
-    let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
-    if (input !== null) {
-      if (anyDimensioned(input as UnitOperand | UnitOperand[])) {
-        // A UnitCell angle is already base radians and carries its own unit; a plain or dimensionless cell follows the node's angle mode, so one list can mix both.
-        result = broadcastUnit((cell) => {
-          const rd = mathFnResultDim(this.op, dimOf(cell));
-          if (typeof rd !== "string" && (rd as SolError).code) return rd as SolError;
-          const bare = !isUnitCell(cell) || rd === "strip";
-          // abs / int / even… act on the number the user reads (5 km, 20.5 °C), never
-          // its base-SI magnitude, and the reading keeps its display unit.
-          const shown = !bare && cell.display && MATHFN_PRESERVE.has(this.op) ? fcUnitToUnit(cell.display) : null;
-          if (shown && !bare && dimEqual(shown.dim, cell.dim)) {
-            const r = computeRaw(displayMagnitudeOf(cell));
-            return r === null ? domainErr() : fromUnit(r, shown, cell.display);
-          }
-          const x = magnitudeOf(cell);
-          const raw = computeRaw(bare && fwdDeg ? x * DEG2RAD : x);
-          if (raw === null) return domainErr();
-          const out = bare && invDeg ? raw * RAD2DEG : raw;
-          return rd === "strip" ? out : tagDim(out, rd as Dim);
-        }, input as UnitOperand | UnitOperand[]);
-      } else {
-        result = broadcastErr((x) => compute(x) ?? domainErr(), input);
-      }
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null };
   }
 }
 
