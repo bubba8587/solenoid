@@ -217,6 +217,8 @@ export type CodeEnv = Record<string, string>;
 // value), to the whole argument (BYROW's row), or to a plain number (MAKEARRAY's index).
 
 export type Lam = { params: string[]; body: Ast };
+/** The LAMBDAs a formula calls by name (a computed column's `λ1`), read through their bodies. */
+let scopeFns: ReadonlyMap<string, Lam> = new Map();
 type HostParam = { arg: number; whole: boolean } | null;
 type Host = { lamArg: number; params: HostParam[]; fold: boolean };
 
@@ -239,6 +241,7 @@ function lambdaOf(n: Ast | undefined, arity: number, isVar: (name: string) => bo
     const params = ps.flatMap((p) => (p.t === "name" ? [p.name] : []));
     return params.length === ps.length ? { params, body: n.args[n.args.length - 1] } : null;
   }
+  if (n.t === "name" && scopeFns.has(n.name)) return scopeFns.get(n.name)!;
   if (n.t === "name" && !isVar(n.name) && resolveExcelFunction(n.name.toUpperCase())) {
     const params = Array.from({ length: arity }, (_, i) => `#${i}`);
     return { params, body: { t: "call", name: n.name, args: params.map((name): Ast => ({ t: "name", name })) } };
@@ -260,10 +263,10 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
     case "bool":
     case "str":
     case "blank":
-    case "atcol":
-    case "wholecol":
       return { dim: DIMENSIONLESS };
     case "name":
+    case "atcol":
+    case "wholecol":
       return { dim: env[node.name] ?? DIMENSIONLESS, code: codes[node.name] };
     case "unary":
       return opEval(node.arg, env, codes);
@@ -274,6 +277,8 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
       return lam ? applyDim(lam, node.args.map((a) => opEval(a, env, codes)), env, codes) : null;
     }
     case "call": {
+      const named = scopeFns.get(node.name);
+      if (named) return applyDim(named, node.args.map((a) => opEval(a, env, codes)), env, codes);
       const host = hostOf(node.name.toUpperCase(), node.args.length);
       const lam = host && lambdaOf(node.args[host.lamArg], host.params.length, (n) => n in env);
       if (host && lam) return hostDim(node.args, host, lam, env, codes);
@@ -356,13 +361,18 @@ function hostDim(args: Ast[], host: Host, lam: Lam, env: DimEnv, codes: CodeEnv)
   return applyDim(lam, bound, env, codes);
 }
 
-export function dimEval(node: Ast, env: DimEnv, codes: CodeEnv = {}): DimResult {
-  const r = opEval(node, env, codes);
+export function dimEval(node: Ast, env: DimEnv, codes: CodeEnv = {}, fns?: ReadonlyMap<string, Lam>): DimResult {
+  const r = dimEvalWithCode(node, env, codes, fns);
   return r === null || isSolError(r) ? r : r.dim;
 }
 
-export function dimEvalWithCode(node: Ast, env: DimEnv, codes: CodeEnv = {}): { dim: Dim; code?: string } | SolError | null {
-  return opEval(node, env, codes);
+export function dimEvalWithCode(
+  node: Ast, env: DimEnv, codes: CodeEnv = {}, fns?: ReadonlyMap<string, Lam>,
+): { dim: Dim; code?: string } | SolError | null {
+  if (!fns) return opEval(node, env, codes);
+  const outer = scopeFns;
+  scopeFns = fns;
+  try { return opEval(node, env, codes); } finally { scopeFns = outer; }
 }
 
 /** `dimEval` of a formula's text: on the core where it is loaded ([[D99]] rustIsSpec), else on the TS. */

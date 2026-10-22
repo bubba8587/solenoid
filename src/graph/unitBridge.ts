@@ -133,6 +133,15 @@ export function stripUnitCells(v: unknown): unknown {
   return v;
 }
 
+/** The FC id whose scale and offset are exactly `u`'s, or none. */
+export function exactFcUnitId(u: Unit): string | undefined {
+  for (const ann of UNIT_ANNOTATIONS) {
+    const cand = fcUnitToUnit(ann.id);
+    if (cand && dimEqual(cand.dim, u.dim) && Math.abs(cand.scale - u.scale) <= 1e-9 * Math.abs(u.scale) && (cand.offset ?? 0) === (u.offset ?? 0)) return ann.id;
+  }
+  return undefined;
+}
+
 export function fcUnitIdForUnit(u: Unit): string | undefined {
   let sameDim: string | undefined;
   for (const ann of UNIT_ANNOTATIONS) {

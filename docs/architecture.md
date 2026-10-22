@@ -192,6 +192,7 @@ src/
 | `noteFrontmatter.ts` | Pure parser: a Note body's YAML frontmatter → typed fields (→ NoteNode output sockets) + the markdown below the block |
 | `scalarText.ts` | `guessScalarText`: how a note reads one scalar's text (null, Boolean, number, ISO date, complex, else text), shared by the frontmatter parser, a Note's quoted Knap fields and the Obsidian plugin |
 | `frame.ts` | Frame value model (named typed columns) + helpers; also the Cube model (recursive cells), cached `depth`, and `relateFramesToCube`; `FrameSourceColumn` carries the column-source model (Data, or a formula `expr?` that may name a λ socket) |
+| `computedColumnUnits.ts` | A Frame computed column's unit pass (`planColumnUnits`, [[D100]] computedColumnInfersUnit): the formula's dimension from its columns' and side values' units, the magnitudes it runs on, and the result column's unit |
 | `computedColumnCore.ts` | THE shared computed-column row-eval core (tableRefSemantics/noPerCellFormulas): binding resolution (bare name = whole column, `@` = this row), `readRowCell`/`readWholeColumn`, side values, `tagComputedCell` / `tagCubeComputedCell` — one home so the Frame Input popup, Cube Input and the Computed Column verb cannot disagree |
 | `cubeRows.ts` | `cubeRowTable`: a Cube as a row formula reads it (typed scalar columns, each row's list, `#SHAPE!` table cells) and `cubeCellsType` |
 | `nodes/cube.ts` | Cube nodes: Build Cube (extensible any-cell constructor), Nest Join, Cube Columns, Cube Rollup |

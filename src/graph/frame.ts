@@ -181,14 +181,19 @@ export function addColumn(
   name: string,
   values: FrameCell[],
   type: FrameColType = "number",
+  /** The new column's unit, in place of the one a `Name (unit)` header names; a replaced column drops its old unit. */
+  columnUnit?: ColumnUnit | null,
 ): FrameValue {
-  const { clean, unit } = parseColumnUnitFromHeader(name);
+  const { clean, unit: headerUnit } = parseColumnUnitFromHeader(name);
+  const unit = columnUnit === undefined ? headerUnit : columnUnit;
   const unitTag = unit && type === "number" ? { unit } : {};
   const existingIdx = f.columns.findIndex((c) => c.name === clean.trim());
   if (existingIdx >= 0) {
-    const columns = f.columns.map((c, i) =>
-      i === existingIdx ? { ...c, type, values, raw: undefined, ...unitTag } : c,
-    );
+    const columns = f.columns.map((c, i) => {
+      if (i !== existingIdx) return c;
+      const { unit: _old, ...rest } = c;
+      return { ...(columnUnit === undefined ? c : rest), type, values, raw: undefined, ...unitTag };
+    });
     return { __frame: true, columns };
   }
   const others = f.columns.map((c) => c.name);
