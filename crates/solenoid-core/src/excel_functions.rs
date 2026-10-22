@@ -247,7 +247,7 @@ pub fn js_string_of(v: &V) -> String {
         V::Undef => "undefined".into(),
         V::Null => "null".into(),
         V::Num(n) => number_to_string(*n),
-        V::Str(s) => s.to_string(),
+        V::Str(s) => String::from(&**s),
         V::Bool(b) => (if *b { "true" } else { "false" }).into(),
         V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => "[object Object]".into(),
         V::Fx(code) => format!("Error: {code}"),
@@ -291,7 +291,7 @@ pub fn number_to_text(x: f64) -> String {
 /// `toStr` (excelFunctions.ts).
 pub(crate) fn to_str(v: &V) -> String {
     match v {
-        V::Str(s) => s.to_string(),
+        V::Str(s) => String::from(&**s),
         V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).into(),
         V::Null | V::Undef => String::new(),
         V::Num(n) => number_to_text(*n),
