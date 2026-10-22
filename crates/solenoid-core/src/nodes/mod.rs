@@ -61,7 +61,7 @@ impl Call {
     /// The call as `engine_node` takes it: the sockets, outputs and inputs as lists of pairs, in the card's order.
     pub fn from_json(j: &Json) -> Call {
         let obj = |k: &str| j.get(k).and_then(Json::as_object).cloned().unwrap_or_default();
-        let rows = |k: &str| j.get(k).and_then(Json::as_array).cloned().unwrap_or_default();
+        let rows = |k: &str| j.get(k).and_then(Json::as_array).map(Vec::as_slice).unwrap_or_default();
         let text = |r: &Json, i: usize| r.get(i).and_then(Json::as_str).map(String::from);
         let sockets = rows("sockets")
             .iter()
