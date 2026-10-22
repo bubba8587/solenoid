@@ -12,7 +12,7 @@ import { formulaDim, formulaAffineWeight, type DimEnv } from "../unitDimExpr";
 import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
 import { fcUnitToUnit } from "../unitBridge";
 import { coreValue, readReply, wasmEngineOn, engineClock, wellFormed } from "../coreValues";
-import { wasmEngineLoaded, wasmInvokeSync } from "../engineWasm";
+import { onCore, wasmEngineLoaded, wasmInvokeSync } from "../engineWasm";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE / SCAN ─────────
 
@@ -165,7 +165,7 @@ function foldOnCore(kind: "reduce" | ByAxis, lam: unknown, src: string, m: Mat, 
   const wm = coreValue(m, true);
   const wi = coreValue(initial ?? null, true);
   if (wm === undefined || wi === undefined) return null;
-  return readReply(wasmInvokeSync<unknown>("engine_fold_units", { kind, src, m: wm, initial: wi, clock: engineClock() }));
+  return onCore(() => readReply(wasmInvokeSync<unknown>("engine_fold_units", { kind, src, m: wm, initial: wi, clock: engineClock() })), null);
 }
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────

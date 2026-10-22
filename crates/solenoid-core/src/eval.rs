@@ -83,16 +83,23 @@ thread_local! {
 }
 
 thread_local! {
-    static EXTERNAL: RefCell<crate::fxhash::FxHashSet<String>> = RefCell::default();
+    /// None until the TS first says: a fresh instance (after a trap) reads every name it doesn't know as possibly a
+    /// pack's, so the TS answers it rather than the core answering #NAME?.
+    static EXTERNAL: RefCell<Option<crate::fxhash::FxHashSet<String>>> = RefCell::default();
 }
 
 /// The names the TS registry holds (packs register theirs at run time), which a formula may call back into.
 pub fn set_external(names: Vec<String>) {
-    EXTERNAL.with(|e| *e.borrow_mut() = names.into_iter().map(|n| n.to_uppercase()).collect());
+    EXTERNAL.with(|e| *e.borrow_mut() = Some(names.into_iter().map(|n| n.to_uppercase()).collect()));
 }
 
 pub fn is_external(name: &str) -> bool {
-    EXTERNAL.with(|e| e.borrow().contains(name))
+    EXTERNAL.with(|e| e.borrow().as_ref().is_none_or(|names| names.contains(name)))
+}
+
+/// Whether the TS has said `name` is its own.
+pub fn listed_external(name: &str) -> bool {
+    EXTERNAL.with(|e| e.borrow().as_ref().is_some_and(|names| names.contains(name)))
 }
 
 /// The facts of an uppercased function name, if it is one.
@@ -428,6 +435,8 @@ const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "
 #[derive(Default)]
 pub struct Eval<'a> {
     row: Option<&'a RowCtx<'a>>,
+    /// Keeps the range memo across calls outside a row too: a formula evaluated once per item (`formula`).
+    memo_calls: bool,
     /// `rangeMemo`: a range function called again with the very same arguments (a whole column, row after row).
     memo: RefCell<FxHashMap<*const Ast, (String, Vec<V>, V)>>,
     /// Each call site's name, facts and empty slots, read once per site rather than once per row.
@@ -671,7 +680,7 @@ impl Eval<'_> {
         let any_arr = argv.iter().any(is_arr);
         let lifted: Vec<usize> = if any_arr { (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect() } else { Vec::new() };
         if lifted.is_empty() {
-            if any_arr && self.row.is_some() && (t.kind == "range" || MEMO_SHAPERS.contains(&name.as_str())) {
+            if any_arr && (self.row.is_some() || self.memo_calls) && (t.kind == "range" || MEMO_SHAPERS.contains(&name.as_str())) {
                 let key = args.as_ptr();
                 if let Some((f, last, r)) = self.memo.borrow().get(&key) {
                     if f == name && last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
@@ -852,8 +861,19 @@ impl Eval<'_> {
         };
         let absent = |v: &V| matches!(v, V::Null | V::Undef);
         // `oneValue`: the LAMBDA answers one value each time, as Excel's does; a list would nest past a table.
+        // A list or table of one cell is that cell, as Excel reads a 1×1 array.
         let one = |each: &str, r: V| match r {
-            V::List(_) => V::err(sol_error("#SHAPE!", format!("{name}'s LAMBDA answers one value for each {each}, not a list"))),
+            V::List(l) => {
+                let cell = match l.as_slice() {
+                    [V::List(row)] => match row.as_slice() {
+                        [c] if !matches!(c, V::List(_)) => Some(c.clone()),
+                        _ => None,
+                    },
+                    [c] => Some(c.clone()),
+                    _ => None,
+                };
+                cell.unwrap_or_else(|| V::err(sol_error("#SHAPE!", format!("{name}'s LAMBDA answers one value for each {each}, not a list"))))
+            }
             other => other,
         };
         match name {
@@ -939,14 +959,16 @@ impl Eval<'_> {
                 if absent(&arg(0)) || absent(&arg(1)) {
                     return V::Null;
                 }
-                let count = |v: &V| {
-                    let n = js_unary(v).floor().max(0.0);
-                    if n.is_nan() { 0.0 } else { n }
-                };
-                let (r, c) = (count(&arg(0)), count(&arg(1)));
-                if r * c > MAX_GENERATED {
-                    return V::err(sol_error("#OVERFLOW!", format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(r * c))));
+                // JS's Math.max: NaN stays NaN, so a NaN side passes the cap and builds nothing.
+                let js_max = |a: f64, b: f64| if a.is_nan() { a } else { a.max(b) };
+                let side = |v: &V| js_max(js_unary(v).floor(), 0.0);
+                let (r, c) = (side(&arg(0)), side(&arg(1)));
+                // Each side counts as at least one, so a zero side can't hide a huge other one.
+                let cells = js_max(r, 1.0) * js_max(c, 1.0);
+                if cells > MAX_GENERATED {
+                    return V::err(sol_error("#OVERFLOW!", format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(cells))));
                 }
+                let (r, c) = (if r.is_nan() { 0.0 } else { r }, if c.is_nan() { 0.0 } else { c });
                 list((0..r as usize).map(|i| list((0..c as usize).map(|j| one("cell", self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]))).collect())).collect())
             }
             "GROUPBY" => {
@@ -1045,6 +1067,25 @@ fn as_column(r: V) -> V {
 }
 
 /// `prepRangeArgs`: a list's first error answers, and its blanks drop (or read 0, or drop pairwise).
+/// The error a body called by name answers before it runs, as a formula's call scans for one (`argumentError` in
+/// excelFormula.ts): an error argument, or for a range function an error among a list's cells. None for the error
+/// handlers, which read errors.
+pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
+    let t = traits(name);
+    if t.as_ref().is_some_and(|t| t.kind == "handler") {
+        return None;
+    }
+    if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
+        return Some(e.clone());
+    }
+    let t = t?;
+    if t.kind != "range" {
+        return None;
+    }
+    let flat = argv.iter().map(|a| if !t.matrix_args && is_matrix(a) { flat1(a) } else { a.clone() }).collect();
+    prep_range_args(&t.prep, flat).err()
+}
+
 fn prep_range_args(prep: &str, argv: Vec<V>) -> Result<Vec<V>, V> {
     if prep == "raw" || prep == "positional" {
         return Ok(argv);
@@ -1301,12 +1342,79 @@ pub fn row_refs(ast: &Ast) -> Vec<String> {
 
 // ─── Values across the boundary ─────────────────────────────────────────────────
 
+thread_local! {
+    /// Lists the TS sent once under an id (`{"__def": id, "v": …}`) and names again by it (`{"__ref": id}`), so a
+    /// formula called once per item doesn't re-send its captures each time ([[C120]] linearWork). The TS forgets an
+    /// id when its list is collected (`engine_forget`).
+    static HELD: RefCell<FxHashMap<u64, V>> = RefCell::new(FxHashMap::default());
+    static MISSING: Cell<bool> = const { Cell::new(false) };
+}
+
+thread_local! {
+    /// The formulas `engine_eval` ran last, parsed once, each with an evaluator whose range memo outlives the call, as
+    /// `compileEvaluator` keeps its AST and `rangeMemo` across calls: `x - AVERAGE(vals)` over each item of a held
+    /// list reads `vals` once ([[C120]] linearWork).
+    static FORMULAS: RefCell<Vec<(String, Rc<(Ast, Eval<'static>)>)>> = const { RefCell::new(Vec::new()) };
+}
+
+const FORMULAS_KEPT: usize = 16;
+
+/// `compileEvaluator(src)(env)`; None where it doesn't parse.
+pub fn formula(src: &str, env: Env) -> Option<V> {
+    let hit = FORMULAS.with(|f| f.borrow().iter().find(|(s, _)| s == src).map(|(_, c)| c.clone()));
+    let compiled = match hit {
+        Some(c) => c,
+        None => {
+            let c = Rc::new((crate::excel_formula::parse_formula(src)?, Eval { memo_calls: true, ..Eval::default() }));
+            FORMULAS.with(|f| {
+                let mut f = f.borrow_mut();
+                if f.len() == FORMULAS_KEPT {
+                    f.remove(0);
+                }
+                f.push((src.to_string(), c.clone()));
+            });
+            c
+        }
+    };
+    Some(compiled.1.run(&compiled.0, &Rc::new(env)))
+}
+
+/// A registry change can change what a call answers, so no memo outlives one.
+pub fn forget_formulas() {
+    FORMULAS.with(|f| f.borrow_mut().clear());
+}
+
+pub fn forget_held(ids: &[u64]) {
+    HELD.with(|h| {
+        let mut h = h.borrow_mut();
+        for id in ids {
+            h.remove(id);
+        }
+    });
+}
+
+/// Whether a `__ref` named a list the core doesn't hold since the last call; the call then goes to the TS.
+pub fn take_missing() -> bool {
+    MISSING.with(|m| m.replace(false))
+}
+
 /// A value as the TS sends it: arrays nest, `{"__undef": 1}` is undefined, `{"__lambda": …}` a wired LAMBDA or a
-/// function named bare, anything else a cell.
+/// function named bare, `{"__def"}` and `{"__ref"}` a held list, anything else a cell.
 pub fn decode_value(j: &serde_json::Value) -> V {
     use serde_json::Value as Json;
     match j {
         Json::Array(items) => list(items.iter().map(decode_value).collect()),
+        Json::Object(o) if o.contains_key("__ref") => o["__ref"].as_u64().and_then(|id| HELD.with(|h| h.borrow().get(&id).cloned())).unwrap_or_else(|| {
+            MISSING.with(|m| m.set(true));
+            V::Undef
+        }),
+        Json::Object(o) if o.contains_key("__def") => {
+            let v = decode_value(&o["v"]);
+            if let Some(id) = o["__def"].as_u64() {
+                HELD.with(|h| h.borrow_mut().insert(id, v.clone()));
+            }
+            v
+        }
         Json::Object(o) if o.contains_key("__undef") => V::Undef,
         Json::Object(o) if o.contains_key("__cx") => {
             let part = |i: usize| match o["__cx"].get(i).map(|p| cell_v(&crate::wire::decode_cell(p))) {

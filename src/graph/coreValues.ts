@@ -8,8 +8,9 @@ import { isLambdaValue } from "./lambdaValue";
 import { isUnitCell, displayScale, displayOffset, displayDim, type UnitCell } from "./unitValue";
 import { wallClockSerial } from "./nodes/dateSerial";
 import { settingsStore } from "./settingsStore";
-import { wasmEngineLoaded, wasmInvokeSync } from "./engineWasm";
+import { wasmEngineLoaded, wasmInvokeSync, onCore, onWasmEngineReset } from "./engineWasm";
 import { registryGeneration, internalFunctionNames, resolveExcelFunction, normalizeFxResult } from "./excelFunctions";
+import { argumentError } from "./excelFormula";
 
 // An uploaded error carries a reference the core hands back, so it returns as the same SolError, message and
 // origin included, for as long as the original is alive.
@@ -131,6 +132,7 @@ export function engineClock(at: Date = new Date()): EngineClock {
 /** `compileEvaluator(src)(env)` on the core, or null where the wasm engine is off, a value can't cross, or the core
  *  leaves a reading to the TS. */
 let externalGen = -1;
+onWasmEngineReset(() => { externalGen = -1; });
 
 /** Tells the core which names the TS registry holds, once per registry change: a pack's function, registered in JS
  *  at run time, is called back on the TS rather than answered #NAME?. */
@@ -141,47 +143,77 @@ export function syncExternalNames(): void {
   externalGen = gen;
 }
 
+// A long list crossing again and again (a wired LAMBDA's capture, its body called once per item) is sent once: the
+// core holds it under an id for as long as the JS list lives, which is what makes a list's identity its content
+// ([[C120]] linearWork). Ids only grow, so one a dead instance held never names another list.
+const HELD_FROM = 64;
+let heldIds = new WeakMap<object, number>();
+let heldSeq = 0;
+const forgotten: number[] = [];
+const heldGone = typeof FinalizationRegistry !== "undefined" ? new FinalizationRegistry<number>((id) => forgotten.push(id)) : null;
+onWasmEngineReset(() => { heldIds = new WeakMap(); });
+
+function envValue(v: unknown): unknown {
+  if (!heldGone || !Array.isArray(v) || v.length < HELD_FROM) return coreValue(v);
+  const id = heldIds.get(v);
+  if (id !== undefined) return { __ref: id };
+  const w = coreValue(v);
+  if (w === undefined) return undefined;
+  heldIds.set(v, ++heldSeq);
+  heldGone.register(v, heldSeq);
+  return { __def: heldSeq, v: w };
+}
+
 export function evaluateOnCore(src: string, env: Record<string, unknown>): { value: unknown } | null {
-  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
-  const wire: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(env)) {
-    const w = coreValue(v);
-    if (w === undefined) return null;
-    wire[k] = w;
-  }
-  syncExternalNames();
-  return readReply(wasmInvokeSync<unknown>("engine_eval", { src, env: wire, clock: engineClock() }));
+  return onCore(() => {
+    if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
+    if (forgotten.length) wasmInvokeSync("engine_forget", { ids: forgotten.splice(0) });
+    const wire: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(env)) {
+      const w = envValue(v);
+      if (w === undefined) return null;
+      wire[k] = w;
+    }
+    syncExternalNames();
+    return readReply(wasmInvokeSync<unknown>("engine_eval", { src, env: wire, clock: engineClock() }));
+  }, null);
 }
 
 /** Expression's unit wrapper over its read inputs on the core ([[C25]] firstClassUnits, `unit_expression.rs`), or null
  *  where the wasm engine is off, a value can't cross, or the core leaves it to the TS. */
 export function expressionUnitsOnCore(src: string, env: Record<string, unknown>): { value: unknown } | null {
-  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
-  const wire: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(env)) {
-    const w = coreValue(v, true);
-    if (w === undefined) return null;
-    wire[k] = w;
-  }
-  syncExternalNames();
-  return readReply(wasmInvokeSync<unknown>("engine_expression_units", { src, env: wire, order: Object.keys(env), clock: engineClock() }));
+  return onCore(() => {
+    if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
+    const wire: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(env)) {
+      const w = coreValue(v, true);
+      if (w === undefined) return null;
+      wire[k] = w;
+    }
+    syncExternalNames();
+    return readReply(wasmInvokeSync<unknown>("engine_expression_units", { src, env: wire, order: Object.keys(env), clock: engineClock() }));
+  }, null);
 }
 
 /** A function body (`resolveExcelFunction(name)(...args)`, as `dispatch` calls it) on the core, so a node computes what
  *  its formula does in the one implementation ([[C17]] shareImpl, [[D99]] rustIsSpec). It runs on the TS where the
- *  core isn't loaded, an argument can't cross, or the core leaves the reading to the TS. A Formula.js error answer reads
- *  as Solenoid's, as the evaluator reads it. */
+ *  core isn't loaded, an argument can't cross, or the core leaves the reading to the TS. An error argument and a Formula.js
+ *  error answer read as the evaluator reads them (`argumentError`). */
 export function callCore(name: string, args: readonly unknown[]): unknown {
   if (wasmEngineLoaded() && wasmEngineOn()) {
     const wire = args.map((a) => coreValue(a, true));
     if (!wire.includes(undefined)) {
-      syncExternalNames();
-      const r = readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock() }));
+      const r = onCore(() => {
+        syncExternalNames();
+        return readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock(), scan: true }));
+      }, null);
       if (r) return normalizeFxResult(r.value);
     }
   }
   const f = resolveExcelFunction(name);
   if (!f) return solError("#NAME?", `Unknown function ${name}`);
+  const early = argumentError(name.toUpperCase(), args);
+  if (early) return early;
   try {
     return normalizeFxResult(f(...args));
   } catch (e) {
@@ -195,22 +227,26 @@ export function callCore(name: string, args: readonly unknown[]): unknown {
  *  #UNIT! conflict, or null where it is indeterminate. Undefined where the core is off or the formula doesn't parse. */
 export function dimEvalOnCore(src: string, env: Record<string, Record<string, number>>, codes: Record<string, string>):
   { dim: Record<string, number>; code?: string } | SolError | null | undefined {
-  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return undefined;
-  const r = wasmInvokeSync<{ parses?: false; dim?: [string, string][]; code?: string | null; indeterminate?: true; err?: string; msg?: string }>(
-    "engine_dim_eval", { src, env, codes });
-  if (r.parses === false) return undefined;
-  if (r.indeterminate) return null;
-  if (r.err !== undefined) return solError(r.err as SolErrorCode, r.msg ?? "");
-  const dim = Object.fromEntries(r.dim!.map(([k, v]) => [k, Number(v)]));
-  return r.code == null ? { dim } : { dim, code: r.code };
+  return onCore(() => {
+    if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return undefined;
+    const r = wasmInvokeSync<{ parses?: false; dim?: [string, string][]; code?: string | null; indeterminate?: true; err?: string; msg?: string }>(
+      "engine_dim_eval", { src, env, codes });
+    if (r.parses === false) return undefined;
+    if (r.indeterminate) return null;
+    if (r.err !== undefined) return solError(r.err as SolErrorCode, r.msg ?? "");
+    const dim = Object.fromEntries(r.dim!.map(([k, v]) => [k, Number(v)]));
+    return r.code == null ? { dim } : { dim, code: r.code };
+  }, undefined);
 }
 
 /** `affineWeight` of a formula on the core: 1 a reading, 0 a difference, or #UNIT!. Undefined where the core is off or
  *  the formula doesn't parse. `fns` are named LAMBDAs as their parameters and body text. */
 export function affineWeightOnCore(src: string, points: readonly string[], lists: readonly string[], bare: readonly string[],
   fns: Record<string, [string[], string]>): 0 | 1 | SolError | undefined {
-  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src) || !Object.values(fns).every(([, b]) => wellFormed(b))) return undefined;
-  const r = wasmInvokeSync<{ parses?: false; w?: 0 | 1; err?: string; msg?: string }>("engine_affine_weight", { src, points, lists, bare, fns });
-  if (r.parses === false) return undefined;
-  return r.err !== undefined ? solError(r.err as SolErrorCode, r.msg ?? "") : r.w!;
+  return onCore(() => {
+    if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src) || !Object.values(fns).every(([, b]) => wellFormed(b))) return undefined;
+    const r = wasmInvokeSync<{ parses?: false; w?: 0 | 1; err?: string; msg?: string }>("engine_affine_weight", { src, points, lists, bare, fns });
+    if (r.parses === false) return undefined;
+    return r.err !== undefined ? solError(r.err as SolErrorCode, r.msg ?? "") : r.w!;
+  }, undefined);
 }

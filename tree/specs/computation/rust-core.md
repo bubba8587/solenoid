@@ -76,7 +76,7 @@ columns to `engine_pivot_layout`.
 | Every function body in the registry | `excel_functions.rs` and the `fns_*.rs` modules; dates read the host's zone through `zone.rs` and text dates through `date_parse.rs` | the frozen function-body cases |
 | Computed columns: whole columns as one-column tables, `@name`, side values of any shape, wired LAMBDAs and their captures | `eval::column`, `engine_compute_column` | 15k frozen columns |
 | The Expression card and every `compileEvaluator` | `evaluateOnCore` (`coreValues.ts`) | as above |
-| Node `data()` | moving onto `callCore` (`coreValues.ts`), node family by node family | each family's tests, with and without `CORE_EVAL` |
+| Node `data()` | moving onto `callCore` (`coreValues.ts`), node family by node family; an error argument reads as the formula's call reads it, first found, and a range function's list cells too (`argumentError`, `engine_call` with `scan`) | each family's tests, with and without `CORE_EVAL`; `callCore.test.ts` |
 | Frame computations no formula shares: headers, Describe, Correlation Matrix, Reconcile, Nest's grouping, XLOOKUP over a frame, Get Row, Get and Add Column's naming, Build and Split Frame, Frame from Lists, the Decision Matrix and its flip points, the Allocator, the Payoff Planner, Group Cost Settle's totals and its ledger (a ledger holding lists stays with the TS), Amortization, K-Means, PCA, logistic regression. A thrown error crosses as itself; a card with several outputs gets them side by side in one frame | `frame_fns.rs`, `decision.rs`, `planners.rs`, `engine_frame_fn`, `frameFnOnCore` (`frameBackend.ts`) | the frozen frame-function cases |
 | A pack's function, registered in JS at run time: the core evaluates its arguments and calls the TS back for the call itself (its roles, blank slots and ladder on the TS); the same whole column row after row is one call | `external.rs`, `callFromCore` (`excelFormula.ts`), `globalThis.__solenoidCallExternal` | the frozen pack-call formulas |
 | A formula's unit reading ([[unit-flow]] § Formula dimensions, § Expression): its result dimension (`dimEval`) and its point weight over readings (`affineWeight`), for Expression, the LAMBDA folds and a computed column over °C. Outside Expression and the folds the numbers still cross unit-blind, and Equation still calls the TS `dimEval` on its own ASTs | `unit_dims.rs`, `engine_dim_eval`, `engine_affine_weight`, `formulaDim` and `formulaAffineWeight` (`unitDimExpr.ts`) | 18k frozen formula dimensions (`unit-dims`), 17k frozen weights (`affine-weights`) |
@@ -89,7 +89,9 @@ columns to `engine_pivot_layout`.
 
 A body meeting a reading the core doesn't make yet calls `bail()`, and the whole formula or column runs on the
 TypeScript, never part of it: chrono-node's free-text dates in criteria, INDEX with a list of positions,
-REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table. A value that can't cross (a unit cell,
+REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table, a slice or match that halves a
+surrogate pair (`from_utf16` in `excel_functions.rs` and `text_ops.rs`; `coreSurrogates.test.ts` reads it raw, since
+the conformance `canon()` makes every frozen string well formed). A value that can't cross (a unit cell,
 a frame, text with a lone surrogate) keeps its call on the TS; so does a pack call whose arguments or answer can't
 cross (a LAMBDA, a unit cell), or one made where the core runs natively. A `UnitCell` crosses only into `callCore`, as
 `{__unit}` (`V::Unit`, with its display unit's scale, offset and dimension beside a display id), and only the bodies in
@@ -109,6 +111,12 @@ list initial, and a step that throws keep the TS wrapper. `bails.json` counts wh
   - The wasm engine holds every cell kind, so unlike Polars it needs no oracle fallback for text or logical errors.
 - **Formulas, computed columns, pivots:** on the wasm core wherever it's on, desktop included, beside Polars. The app's
   first render waits for it (`main.tsx`, at most four seconds), so the first calc runs on it.
+- **A trap** (an abort, a stack overflow, anything escaping the module mid-call) leaves the instance's stack pointer
+  where it stopped, so `engineWasm.ts` drops it and instantiates the compiled module afresh (`__wbg_reset`, which
+  `scripts/build-wasm.mjs` appends to wasm-bindgen's glue), numbering its handles past the dead one's
+  (`engine_handle_base`). The call that trapped answers on the TS (`onCore`); a frame the verb backend held in the
+  dead instance is gone, so a verb over it answers #REF! until the document reloads. `engine_trap` is the
+  tests' trigger (`coreTrap.test.ts`).
 
 ## Performance (200k rows × 5 columns, Node, best of 3)
 
@@ -153,7 +161,7 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   broadcasting, the error guard), against about 450 for an operator. Each call site's name and facts resolve once per
   column already; resolving its route the same way (which rungs can apply to it at all) is the next cut.
 - **Size.** The module is 2.3 MB raw / 835 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the full NFD table included. `regress`
-  is vendored in `crates/vendor/regress` with one patch, the `no-property-escapes` feature: `\p{…}` parses only in
+  is vendored in `crates/vendor/regress` with two patches. Its non-Unicode Canonicalize (`fold_code_point`, which a caseless backreference compares by) never takes a non-ASCII unit to ASCII, as V8's doesn't, so `ſ` and `s` don't match each other. The `no-property-escapes` feature: `\p{…}` parses only in
   Unicode mode, which Solenoid never uses, and refusing it drops the property tables (82 KB gzipped). The case-folding
   tables stay. UNACCENT and SLUGIFY decompose through `nfd_table.rs` (`scripts/gen-nfd-table.mjs`, from Node's own
   NFD, every code point, combining classes read off its reordering; 19 KB gzipped) instead of `unicode-normalization`. Size
@@ -169,24 +177,8 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   reading one as U+FFFD at the boundary, which is the author's call.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
-- **A trap kills the engine for the session.** `MAKEARRAY(1e15, 0, LAMBDA(i,j,1))` passes the `r*c` cap and aborts
-  (`unreachable`); develop caps each side at least one (`8e86887`). Nothing in `evaluateOnCore`, `callCore` or
-  `computeColumnOnEngine` catches the RuntimeError, and the shadow stack isn't restored, so after a few hundred traps
-  every call, `SUM(xs)` included, throws `memory access out of bounds` until reload. A trap needs to fall back to the TS
-  and reinstantiate the module.
-- **Slicing an emoji turns its halves into U+FFFD** (`from_utf16` → `from_utf16_lossy`, `excel_functions.rs` and
-  `text_ops.rs`): for `t = "a😀b"`, `LEFT(t,2)&RIGHT(t,2)` is `a��b` on the core and `a😀b` on the TS, and
-  `UNICODE(MID(t,3,1))` 65533 against 56832. The conformance `canon()` runs `toWellFormed` on every frozen string, so
-  it can't see this; bailing when the strict `String::from_utf16` fails keeps the spec's lone-surrogate rule.
-- **Case-insensitive backreferences fold ſ↔s and ı↔I** (`js_regex.rs`, regress's `fold_equals`), where V8's
-  Canonicalize doesn't: `REGEXTEST("sſ","(.)\1",1)` is 1 on the core, 0 in V8.
-- **Port develop `e5b18f0`, `a03b040` and `8e86887`**: a helper LAMBDA's one-cell list is that cell (`MAP(ys,
-  LAMBDA(x, FILTER(vals, keys="b")))` was #SHAPE!), ACOT by `atan(1/x)` (`ACOT(1e8)` lost eight digits; the Math
-  Function card's `acot` in `scalar.ts` too), `lnGamma` exact at 1 and 2, and MAKEARRAY's per-side cap.
-- **Crossing per call is slow where a node calls one body per item** ([[C120]] linearWork). A wired LAMBDA re-encodes
-  every captured value on each call (`compilePositional` → `coreValue`), so `x - AVERAGE(vals)` over 3,000 items takes
-  1.8 s against 8 ms on develop, quadratic in the list. Cards that map a body over a list pay about 4 µs an item:
-  UPPER over 50,000 items is 278 ms against 23 ms.
-- **A card's answer can differ from its formula's on an error argument.** `callCore` doesn't scan the arguments for an
-  error first as the evaluator does, so a SUMPRODUCT card over `[1, #N/A, 3]` answers #VALUE! where
-  `SUMPRODUCT(a,b)` answers #N/A.
+- **Crossing per call is slow where a card maps a body over a list** ([[C120]] linearWork): about 4 µs an item, so
+  UPPER over 50,000 items is 278 ms against 23 ms on develop. A wired LAMBDA's captures no longer cost that: a list of
+  64 or more crosses once and the core holds it by id while the JS list lives (`envValue` in `coreValues.ts`, `HELD`
+  in `eval.rs`), and `engine_eval` keeps its last 16 formulas parsed with their range memo (`eval::formula`), so
+  `x - AVERAGE(vals)` over 3,000 items reads `vals` once: about 50 ms, from 1.9 s (develop: 8 ms).

@@ -421,10 +421,13 @@ fn utf16(s: &str) -> Vec<u16> {
     s.encode_utf16().collect()
 }
 
-/// `String.prototype.slice`/`substring` over UTF-16 units; a half surrogate pair reads as U+FFFD, as it does once
-/// it reaches the screen.
+/// `String.prototype.slice`/`substring` over UTF-16 units. A slice that halves a surrogate pair leaves the formula to
+/// the TS, whose strings hold the half (`rust-core.md` § Fallback).
 fn from_utf16(units: &[u16]) -> String {
-    String::from_utf16_lossy(units)
+    String::from_utf16(units).unwrap_or_else(|_| {
+        bail();
+        String::from_utf16_lossy(units)
+    })
 }
 
 /// `ToIntegerOrInfinity`, clamped to `0..=len` (`substring`'s reading of an index).
@@ -2753,7 +2756,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return value_err(name);
             }
             if name == "ACOT" {
-                return V::Num(std::f64::consts::FRAC_PI_2 - crate::fdlibm::atan(x));
+                // atan(1/x) keeps the digits π/2 − atan(x) cancels away as x grows.
+                return V::Num(if x > 0.0 {
+                    crate::fdlibm::atan(1.0 / x)
+                } else if x < 0.0 {
+                    std::f64::consts::PI + crate::fdlibm::atan(1.0 / x)
+                } else {
+                    std::f64::consts::FRAC_PI_2
+                });
             }
             if x <= 0.0 {
                 return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));

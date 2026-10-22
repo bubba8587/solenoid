@@ -143,6 +143,23 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             });
             Ok(Json::Null)
         }
+        // A fresh instance after a trap numbers its handles past the dead one's, so a handle JS still holds can't
+        // name another frame (`engineWasm.ts` `reinstantiate`).
+        "engine_handle_base" => {
+            let base = parse::<u64>(args, "base")?;
+            STORE.with(|s| s.borrow_mut().seq = base);
+            Ok(Json::Null)
+        }
+        "engine_forget" => {
+            crate::eval::forget_held(&parse::<Vec<u64>>(args, "ids")?);
+            Ok(Json::Null)
+        }
+        // Aborts the instance from a frame holding 64 KB of stack, as a deep evaluation would, so the tests can show
+        // a trap falls back and the module comes back (`coreTrap.test.ts`).
+        "engine_trap" => {
+            let frame = std::hint::black_box([0u8; 65_536]);
+            panic!("engine_trap {}", frame[0])
+        }
         "engine_formula_parse" => Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json())),
         // A frame computation no formula shares (`frame_fns.rs`): frames by handle and plain arguments in, a frame (by a
         // new handle) or a value out.
@@ -171,6 +188,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         }
         "engine_external_names" => {
             crate::eval::set_external(parse::<Vec<String>>(args, "names")?);
+            crate::eval::forget_formulas();
             Ok(Json::Null)
         }
         // [[D99]] rustIsSpec: the names a formula (and the wired LAMBDAs it calls) reads, for the caller to bind.
@@ -347,7 +365,9 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             crate::excel_functions::set_clock(None);
             return Ok(CallReply::Bail);
         }
-        call_function(&name, &argv)
+        // `scan`: a node's call (`callCore`) reads an error argument as the formula's call does; without it, the bare body.
+        let early = if parse::<Option<bool>>(args, "scan")?.unwrap_or(false) { crate::eval::argument_error(&name.to_uppercase(), &argv) } else { None };
+        early.unwrap_or_else(|| call_function(&name, &argv))
     } else if command == "engine_expression_units" {
         // [[C25]] firstClassUnits: Expression's unit wrapper over its read inputs.
         let src = parse::<String>(args, "src")?;
@@ -369,14 +389,11 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;
         let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
-        if env.values().any(crate::unit_dims::holds_unit) {
+        if crate::eval::take_missing() || env.values().any(crate::unit_dims::holds_unit) {
             crate::excel_functions::set_clock(None);
             return Ok(CallReply::Bail);
         }
-        match crate::excel_formula::parse_formula(&src) {
-            None => V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")),
-            Some(ast) => crate::eval::Eval::default().run(&ast, &std::rc::Rc::new(env)),
-        }
+        crate::eval::formula(&src, env).unwrap_or_else(|| V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")))
     };
     crate::excel_functions::set_clock(None);
     if crate::excel_functions::take_bailed() {

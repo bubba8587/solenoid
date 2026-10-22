@@ -894,7 +894,7 @@ describe("the regex functions match V8 on random patterns", () => {
     const rand = mulberry32(3131 + FUZZ_SEED);
     const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
     const run = (n: number, xs: readonly string[]) => Array.from({ length: n }, () => pick(xs)).join("");
-    let ran = 0, bailed = 0;
+    let ran = 0, bailed = 0, halved = 0;
     for (let i = 0; i < FUZZ_RUNS; i++) {
       const pat = run(1 + Math.floor(rand() * 6), ATOMS);
       const text = run(Math.floor(rand() * 12), rand() < 0.5 ? CHARS : ASCII);
@@ -907,14 +907,24 @@ describe("the regex functions match V8 on random patterns", () => {
       for (const [name, args] of calls) {
         const want = jsAnswer(resolveExcelFunction(name)!, args);
         const got = wasmInvokeSync<{ bail?: boolean }>("engine_call", { name, args: args.map(callWire) });
-        if (got && got.bail) { bailed++; continue; }
+        // An answer holding half an emoji stays with the TS (rust-core.md § Fallback); jsAnswer reads the half as U+FFFD.
+        if (got && got.bail) { if (JSON.stringify(want).includes("\uFFFD")) halved++; else bailed++; continue; }
         ran++;
         if (JSON.stringify(got) !== JSON.stringify(want)) expect({ name, args, got }).toEqual({ name, args, got: want });
       }
     }
-    expect(ran, "every pattern, valid or not, should run on the engine").toBe(FUZZ_RUNS * 3 - bailed);
+    expect(ran, "every pattern, valid or not, should run on the engine").toBe(FUZZ_RUNS * 3 - bailed - halved);
     expect(bailed).toBe(0);
   });
+});
+
+it("a caseless backreference folds as V8's Canonicalize: never a non-ASCII unit to ASCII", () => {
+  const fn = resolveExcelFunction("REGEXTEST")!;
+  for (const text of ["sſ", "ſs", "ſſ", "Ss", "ıI", "Iı", "ıı", "iI", "kK", "Kk", "ßß", "σΣ", "ςΣ"]) {
+    const args = [text, "(.)\\1", 1];
+    expect(wasmInvokeSync("engine_call", { name: "REGEXTEST", args: args.map(callWire) }), text).toEqual(jsAnswer(fn, args));
+  }
+  expect(fn("sſ", "(.)\\1", 1)).toBe(0);
 });
 
 describe("DOLLAR matches Intl's currency text on ties, huge values and negatives", () => {

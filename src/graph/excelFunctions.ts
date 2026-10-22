@@ -1105,7 +1105,7 @@ num1("ASIN",   (x) => (x < -1 || x > 1 ? domErr() : Math.asin(x)));
 num1("ACOS",   (x) => (x < -1 || x > 1 ? domErr() : Math.acos(x)));
 num1("ACOSH",  (x) => (x < 1 ? domErr() : Math.acosh(x)));
 num1("ATANH",  (x) => (x <= -1 || x >= 1 ? domErr() : Math.atanh(x)));
-num1("ACOT",   (x) => Math.PI / 2 - Math.atan(x));
+num1("ACOT",   (x) => (x > 0 ? Math.atan(1 / x) : x < 0 ? Math.PI + Math.atan(1 / x) : Math.PI / 2));
 for (const name of ["GAMMALN", "GAMMALN.PRECISE"]) num1(name, (x) => (x <= 0 ? domErr() : lnGamma(x)));
 
 const isTrue = (v: unknown) => v === true || v === 1 || (typeof v === "string" && /^(true|1)$/i.test(v.trim()));
@@ -2078,9 +2078,15 @@ const asRows = (v: unknown): unknown[][] | null => {
   if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];
   return [[v]];
 };
-/** A helper's LAMBDA answers one value each time, as Excel's do (#CALC!): a list would nest the answer past a table. */
-const oneValue = (host: string, each: string, r: unknown): unknown =>
-  Array.isArray(r) ? solError("#SHAPE!", `${host}'s LAMBDA answers one value for each ${each}, not a list`) : r;
+/** A helper's LAMBDA answers one value each time, as Excel's do (#CALC!): a list would nest the answer past a table.
+ *  A list or table of one cell is that cell, as Excel reads a 1×1 array. */
+const oneValue = (host: string, each: string, r: unknown): unknown => {
+  if (!Array.isArray(r)) return r;
+  const flat = r.flat();
+  return r.length === 1 && flat.length === 1 && !Array.isArray(flat[0])
+    ? flat[0]
+    : solError("#SHAPE!", `${host}'s LAMBDA answers one value for each ${each}, not a list`);
+};
 const likeInput = (v: unknown, rows: unknown[][]): unknown =>
   Array.isArray(v) && v.length > 0 && Array.isArray((v as unknown[])[0]) ? rows : rows.length === 1 ? rows[0] : rows;
 
@@ -2159,8 +2165,8 @@ registerInternal("MAKEARRAY", (rows, cols, fn) => {
   if (rows == null || cols == null) return null;
   const r = Math.max(0, Math.floor(Number(rows)));
   const c = Math.max(0, Math.floor(Number(cols)));
-  if (r * c > MAX_GENERATED) {
-    return solError("#OVERFLOW!", `MAKEARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
+  if (Math.max(r, 1) * Math.max(c, 1) > MAX_GENERATED) {
+    return solError("#OVERFLOW!", `MAKEARRAY count ${Math.max(r, 1) * Math.max(c, 1)} exceeds the ${MAX_GENERATED} element limit`);
   }
   return Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => oneValue("MAKEARRAY", "cell", lam.fn(i + 1, j + 1))));
 });

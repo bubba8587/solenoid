@@ -13,7 +13,7 @@ export { engineClock, wasmEngineOn, evaluateOnCore, type EngineClock } from "./c
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
-import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, type BinaryCells } from "./engineWasm";
+import { loadWasmEngine, wasmEngineLoaded, wasmInvoke, wasmInvokeSync, wasmSourceBin, wasmReadBin, onCore, onWasmEngineReset, type BinaryCells } from "./engineWasm";
 import { calcModeStore } from "./calcModeStore";
 import { pushNotice } from "./noticeStore";
 import { settingsStore } from "./settingsStore";
@@ -429,20 +429,22 @@ const pivotNeedsOracle = (spec: object): boolean =>
   ((spec as { details?: readonly string[] }).details ?? []).some((s) => s.trim() !== "");
 
 export function pivotOnEngine(f: FrameValue, spec: PivotSpec): FrameValue | null {
-  if (!wasmEngineLoaded() || !wasmEngineOn() || pivotNeedsOracle(spec) || !crossesWhole(f)) return null;
-  const { scales, units } = pivotUnits(f, spec);
-  const src = wasmSourceBin(encodeBinary(f));
-  let out: string | undefined;
-  try {
-    out = wasmInvokeSync<string>("engine_apply", { handle: src, op: { kind: "pivot", ...spec, valueScales: scales } });
-    const layout = wasmInvokeSync<unknown>("engine_pivot_layout", { handle: out });
-    const frame: FrameValue = { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
-    adoptPivot(frame, { layout, units });
-    return frame;
-  } finally {
-    wasmInvokeSync("engine_drop", { handle: src });
-    if (out) wasmInvokeSync("engine_drop", { handle: out });
-  }
+  return onCore(() => {
+    if (!wasmEngineLoaded() || !wasmEngineOn() || pivotNeedsOracle(spec) || !crossesWhole(f)) return null;
+    const { scales, units } = pivotUnits(f, spec);
+    const src = wasmSourceBin(encodeBinary(f));
+    let out: string | undefined;
+    try {
+      out = wasmInvokeSync<string>("engine_apply", { handle: src, op: { kind: "pivot", ...spec, valueScales: scales } });
+      const layout = wasmInvokeSync<unknown>("engine_pivot_layout", { handle: out });
+      const frame: FrameValue = { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
+      adoptPivot(frame, { layout, units });
+      return frame;
+    } finally {
+      wasmInvokeSync("engine_drop", { handle: src });
+      if (out) wasmInvokeSync("engine_drop", { handle: out });
+    }
+  }, null);
 }
 
 type SideValue = (name: string, kind: "var" | "row") => unknown;
@@ -514,49 +516,53 @@ function columnAnswer(r: { bail?: boolean; error?: { code: string; message: stri
  *  or the core leaves the reading to the TS. */
 export function frameFnOnCore(name: string, frames: readonly FrameValue[], args: readonly unknown[] = []):
   { frame: FrameValue; value?: unknown } | { value: unknown } | null {
-  if (!wasmEngineLoaded() || !wasmEngineOn() || !frames.every(crossesWhole)) return null;
-  const wire = args.map((a) => coreValue(a));
-  if (wire.includes(undefined)) return null;
-  const handles = frames.map((f) => wasmSourceBin(encodeBinary(f)));
-  let out: string | undefined;
-  try {
-    const r = wasmInvokeSync<{ bail?: boolean; handle?: string; value?: unknown; error?: { code: string; message: string; ref?: number } }>(
-      "engine_frame_fn", { name, handles, args: wire });
-    if (r.bail) return null;
-    if (r.error) throw errorFromCore(r.error.code, r.error.message, r.error.ref);
-    const v = r.value === undefined ? undefined : readReply(r.value);
-    if (v === null) return null;
-    if (r.handle) {
-      out = r.handle;
-      const frame: FrameValue = { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
-      return v ? { frame, value: v.value } : { frame };
+  return onCore(() => {
+    if (!wasmEngineLoaded() || !wasmEngineOn() || !frames.every(crossesWhole)) return null;
+    const wire = args.map((a) => coreValue(a));
+    if (wire.includes(undefined)) return null;
+    const handles = frames.map((f) => wasmSourceBin(encodeBinary(f)));
+    let out: string | undefined;
+    try {
+      const r = wasmInvokeSync<{ bail?: boolean; handle?: string; value?: unknown; error?: { code: string; message: string; ref?: number } }>(
+        "engine_frame_fn", { name, handles, args: wire });
+      if (r.bail) return null;
+      if (r.error) throw errorFromCore(r.error.code, r.error.message, r.error.ref);
+      const v = r.value === undefined ? undefined : readReply(r.value);
+      if (v === null) return null;
+      if (r.handle) {
+        out = r.handle;
+        const frame: FrameValue = { __frame: true, columns: decodeBinary(wasmReadBin(out)!) };
+        return v ? { frame, value: v.value } : { frame };
+      }
+      return v ?? null;
+    } finally {
+      for (const h of handles) wasmInvokeSync("engine_drop", { handle: h });
+      if (out) wasmInvokeSync("engine_drop", { handle: out });
     }
-    return v ?? null;
-  } finally {
-    for (const h of handles) wasmInvokeSync("engine_drop", { handle: h });
-    if (out) wasmInvokeSync("engine_drop", { handle: out });
-  }
+  }, null);
 }
 
 /** `computeColumnCells` on the core ([[D99]] rustIsSpec): a formula, or with `bare` a wired LAMBDA called with each
  *  row's cells. Null where the wasm engine is off, a value can't cross, or a body leaves the column to the TS. */
 export function computeColumnOnEngine(f: FrameValue, expr: string, rows: number, opts: ColumnOpts = {}): ColumnAnswer | null {
-  if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
-  const inputs = columnInputs(expr, f.columns.map((c) => c.name), opts);
-  if (!inputs) return null;
-  const frame: FrameValue = { __frame: true, columns: f.columns.filter((c) => inputs.named.has(c.name)) };
-  if (!crossesWhole(frame)) return null;
-  const src = wasmSourceBin(encodeBinary(frame));
-  let out: string | undefined;
-  try {
-    const r = wasmInvokeSync<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }>(
-      "engine_compute_column", { handle: src, rows, ...inputs.args });
-    out = r.handle;
-    return columnAnswer(r, (h) => decodeBinary(wasmReadBin(h)!)[0].values);
-  } finally {
-    wasmInvokeSync("engine_drop", { handle: src });
-    if (out) wasmInvokeSync("engine_drop", { handle: out });
-  }
+  return onCore(() => {
+    if (!wasmEngineLoaded() || !wasmEngineOn()) return null;
+    const inputs = columnInputs(expr, f.columns.map((c) => c.name), opts);
+    if (!inputs) return null;
+    const frame: FrameValue = { __frame: true, columns: f.columns.filter((c) => inputs.named.has(c.name)) };
+    if (!crossesWhole(frame)) return null;
+    const src = wasmSourceBin(encodeBinary(frame));
+    let out: string | undefined;
+    try {
+      const r = wasmInvokeSync<{ bail?: boolean; error?: { code: string; message: string }; handle?: string; sideVars?: string[] }>(
+        "engine_compute_column", { handle: src, rows, ...inputs.args });
+      out = r.handle;
+      return columnAnswer(r, (h) => decodeBinary(wasmReadBin(h)!)[0].values);
+    } finally {
+      wasmInvokeSync("engine_drop", { handle: src });
+      if (out) wasmInvokeSync("engine_drop", { handle: out });
+    }
+  }, null);
 }
 
 /** The same over a frame already in the wasm engine: only the answer column comes back, and `col` keeps it in the
@@ -832,6 +838,9 @@ export function frameBackend(): FrameBackend {
   if (!_backend) _backend = new JsFrameBackend();
   return _backend;
 }
+
+// A trap's fresh instance holds none of the old one's frames.
+onWasmEngineReset(() => clearHandleKeyedCaches());
 
 function clearHandleKeyedCaches(): void {
   _sourceCache = new WeakMap();
