@@ -235,7 +235,7 @@ export class MathFXNode extends ClassicPreset.Node {
           case "cot":     return Math.tan(x) === 0 ? null : 1 / Math.tan(x);
           case "csc":     return Math.sin(x) === 0 ? null : 1 / Math.sin(x);
           case "sec":     return Math.cos(x) === 0 ? null : 1 / Math.cos(x);
-          case "acot":    return Math.PI / 2 - Math.atan(x);
+          case "acot":    return x > 0 ? Math.atan(1 / x) : x < 0 ? Math.PI + Math.atan(1 / x) : Math.PI / 2;
           case "coth":    return Math.sinh(x) === 0 ? null : Math.cosh(x) / Math.sinh(x);
           case "csch":    return Math.sinh(x) === 0 ? null : 1 / Math.sinh(x);
           case "sech":    return 1 / Math.cosh(x);
