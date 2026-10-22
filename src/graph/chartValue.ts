@@ -76,7 +76,7 @@ export interface HeatmapPayload {
   z: (number | null)[][];
   rows: string[];
   cols: string[];
-  /** Set only when the table was cut to `HEATMAP_MAX` rows or columns. */
+  /** Set only when the table was cut to the 400 rows or columns a Heatmap draws. */
   totalRows?: number;
   totalCols?: number;
 }

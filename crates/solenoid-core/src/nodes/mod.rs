@@ -23,6 +23,7 @@ mod stats;
 mod text;
 mod units;
 mod values;
+mod visual;
 
 pub use values::{decode, serialize_cube, serialize_frame, Column, Cube, CubeColumn, Frame};
 
@@ -149,6 +150,7 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         .or_else(|| list::run(kind, c))
         .or_else(|| matrix::run(kind, c))
         .or_else(|| packs::run(kind, c))
+        .or_else(|| visual::run(kind, c))
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or
