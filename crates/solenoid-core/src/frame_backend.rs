@@ -360,7 +360,9 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             crate::excel_functions::set_clock(None);
             return Ok(CallReply::Bail);
         }
-        call_function(&name, &argv)
+        // `scan`: a node's call (`callCore`) reads an error argument as the formula's call does; without it, the bare body.
+        let early = if parse::<Option<bool>>(args, "scan")?.unwrap_or(false) { crate::eval::argument_error(&name.to_uppercase(), &argv) } else { None };
+        early.unwrap_or_else(|| call_function(&name, &argv))
     } else if command == "engine_expression_units" {
         // [[C25]] firstClassUnits: Expression's unit wrapper over its read inputs.
         let src = parse::<String>(args, "src")?;

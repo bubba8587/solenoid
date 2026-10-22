@@ -1026,6 +1026,19 @@ function nameTraits(name: string): NameTraits {
   return t;
 }
 
+/** The error a call answers before its body runs, as `callWithArgs` and `routeCall` scan for one: an error argument,
+ *  or for a range function an error among a list's cells. Null for the error handlers, which read errors. A node's
+ *  `callCore` reads its arguments by it, so a card answers what its formula does (`argument_error` in eval.rs). */
+export function argumentError(name: string, argv: readonly unknown[]): unknown {
+  if (ERROR_HANDLER_FUNCTIONS.has(name)) return null;
+  const sol = argv.find(isSolError);
+  if (sol) return sol;
+  const t = nameTraits(name);
+  if (t.whole || !t.range) return null;
+  const flat = argv.map((a) => (!t.matrixArgs && isMatrix(a) ? a.flat() : a));
+  return prepRangeArgs(name, flat).error ?? null;
+}
+
 /** Steps 9 to 11 of the dispatch ladder, once the arguments are evaluated, read by role and error-free. */
 function routeCall(name: string, argv: unknown[], settled: readonly boolean[]): unknown {
   const t = nameTraits(name);

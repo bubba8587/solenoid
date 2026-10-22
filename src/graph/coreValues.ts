@@ -10,6 +10,7 @@ import { wallClockSerial } from "./nodes/dateSerial";
 import { settingsStore } from "./settingsStore";
 import { wasmEngineLoaded, wasmInvokeSync, onCore, onWasmEngineReset } from "./engineWasm";
 import { registryGeneration, internalFunctionNames, resolveExcelFunction, normalizeFxResult } from "./excelFunctions";
+import { argumentError } from "./excelFormula";
 
 // An uploaded error carries a reference the core hands back, so it returns as the same SolError, message and
 // origin included, for as long as the original is alive.
@@ -174,21 +175,23 @@ export function expressionUnitsOnCore(src: string, env: Record<string, unknown>)
 
 /** A function body (`resolveExcelFunction(name)(...args)`, as `dispatch` calls it) on the core, so a node computes what
  *  its formula does in the one implementation ([[C17]] shareImpl, [[D99]] rustIsSpec). It runs on the TS where the
- *  core isn't loaded, an argument can't cross, or the core leaves the reading to the TS. A Formula.js error answer reads
- *  as Solenoid's, as the evaluator reads it. */
+ *  core isn't loaded, an argument can't cross, or the core leaves the reading to the TS. An error argument and a Formula.js
+ *  error answer read as the evaluator reads them (`argumentError`). */
 export function callCore(name: string, args: readonly unknown[]): unknown {
   if (wasmEngineLoaded() && wasmEngineOn()) {
     const wire = args.map((a) => coreValue(a, true));
     if (!wire.includes(undefined)) {
       const r = onCore(() => {
         syncExternalNames();
-        return readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock() }));
+        return readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock(), scan: true }));
       }, null);
       if (r) return normalizeFxResult(r.value);
     }
   }
   const f = resolveExcelFunction(name);
   if (!f) return solError("#NAME?", `Unknown function ${name}`);
+  const early = argumentError(name.toUpperCase(), args);
+  if (early) return early;
   try {
     return normalizeFxResult(f(...args));
   } catch (e) {

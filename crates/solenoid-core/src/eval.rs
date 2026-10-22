@@ -1058,6 +1058,25 @@ fn as_column(r: V) -> V {
 }
 
 /// `prepRangeArgs`: a list's first error answers, and its blanks drop (or read 0, or drop pairwise).
+/// The error a body called by name answers before it runs, as a formula's call scans for one (`argumentError` in
+/// excelFormula.ts): an error argument, or for a range function an error among a list's cells. None for the error
+/// handlers, which read errors.
+pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
+    let t = traits(name);
+    if t.as_ref().is_some_and(|t| t.kind == "handler") {
+        return None;
+    }
+    if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
+        return Some(e.clone());
+    }
+    let t = t?;
+    if t.kind != "range" {
+        return None;
+    }
+    let flat = argv.iter().map(|a| if !t.matrix_args && is_matrix(a) { flat1(a) } else { a.clone() }).collect();
+    prep_range_args(&t.prep, flat).err()
+}
+
 fn prep_range_args(prep: &str, argv: Vec<V>) -> Result<Vec<V>, V> {
     if prep == "raw" || prep == "positional" {
         return Ok(argv);
