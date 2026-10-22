@@ -69,9 +69,9 @@ const counts = new Map<string, number>();
 function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string, unknown[]>, before: Map<string, unknown>, outcome: { out?: unknown; thrown?: unknown }): void {
   const kind = node.constructor.name;
   if (ONLY && !ONLY.has(kind)) return;
-  const n = (counts.get(kind) ?? 0) + 1;
-  counts.set(kind, n);
-  if (n > PER_CLASS) return;
+  const calls = (counts.get(kind) ?? 0) + 1;
+  counts.set(kind, calls);
+  if (calls > PER_CLASS) return;
   const uncrossable: string[] = [];
   const ins: Record<string, unknown[]> = {};
   for (const [k, arr] of Object.entries(inputs ?? {})) {

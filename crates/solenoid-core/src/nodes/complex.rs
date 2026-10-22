@@ -1,4 +1,4 @@
-//! `nodes/complex.ts`: the complex-number cards over the IM* formula bodies. No `guardFinite` here: the complex ops
+//! [[C17]] shareImpl. `nodes/complex.ts`: the complex-number cards over the IM* formula bodies. No `guardFinite` here: the complex ops
 //! keep their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
 
 use super::kit::{core_call, each, num, short_circuit};
