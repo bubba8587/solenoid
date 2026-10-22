@@ -365,7 +365,8 @@ pub struct RowCtx<'a> {
     wholes: RefCell<FxHashMap<String, V>>,
     /// `sideValue(name, "row")` for each name the formula reads by `@` that no column holds.
     row_sides: FxHashMap<String, V>,
-    at_verdict: RefCell<FxHashMap<String, (*const Vec<V>, Option<V>)>>,
+    /// Each `@name` list's verdict, held with the list itself: an address alone could name the next list allocated there.
+    at_verdict: RefCell<FxHashMap<String, (Rc<Vec<V>>, Option<V>)>>,
 }
 
 impl<'a> RowCtx<'a> {
@@ -399,9 +400,8 @@ impl<'a> RowCtx<'a> {
 
     fn at(&self, key: &str, v: &V) -> V {
         let V::List(items) = v else { return v.clone() };
-        let ptr = Rc::as_ptr(items);
         let mut verdicts = self.at_verdict.borrow_mut();
-        let fresh = !matches!(verdicts.get(key), Some((p, _)) if *p == ptr);
+        let fresh = !matches!(verdicts.get(key), Some((held, _)) if Rc::ptr_eq(held, items));
         if fresh {
             let n = self.rows;
             let err = if items.iter().any(is_arr) {
@@ -412,7 +412,7 @@ impl<'a> RowCtx<'a> {
             } else {
                 None
             };
-            verdicts.insert(key.to_string(), (ptr, err));
+            verdicts.insert(key.to_string(), (items.clone(), err));
         }
         if let Some((_, Some(e))) = verdicts.get(key) {
             return e.clone();

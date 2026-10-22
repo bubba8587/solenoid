@@ -47,3 +47,15 @@ fn a_wired_lambda_runs_its_own_body_each_call() {
         assert_eq!(format!("{got:?}"), format!("List([Num({:?})])", want[i]), "round {round}: {}", bodies[i]);
     }
 }
+
+/// `@v` over a list made fresh each row: the next row's list can land at the freed one's address, and its own length
+/// decides its verdict.
+#[test]
+fn an_at_lists_verdict_is_its_own() {
+    let got = cells("LAMBDA(v, @v)(SEQUENCE(@xs))");
+    let shown: Vec<String> = got.iter().map(|c| match c {
+        FrameCell::Err(e) => e.message.clone(),
+        other => format!("{other:?}"),
+    }).collect();
+    assert_eq!(shown, ["@v: 1 value for 3 rows", "@v: 2 values for 3 rows", "Num(3.0)"]);
+}
