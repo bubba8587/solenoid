@@ -1117,7 +1117,8 @@ const unitShapers = frozen<UnitListCase>("unit-shapers", () => {
   const same = [unitCell(5000, { length: 1 }, "km"), unitCell(5000, { length: 1 }), unitCell(5000.0000000000001, { length: 1 }, "m"),
     unitCell(5000, { time: 1 }), unitCell(-0, { length: 1 }), unitCell(0, { length: 1 }, "km"), unitCell(NaN, { length: 1 }),
     unitCell(Infinity, { length: 1 }), unitCell(1, { length: 1, time: -1 }), unitCell(1, { time: -1, length: 1 }), unitCell(1.1, {}, undefined, true),
-    unitCell(3960, { time: 1 }, "h"), unitCell(1.1 * 3600, { time: 1 }), unitCell(2, { "custom:é": 1, "custom:z": 1 }), unitCell(2, { "custom:z": 1, "custom:é": 1 })];
+    unitCell(3960, { time: 1 }, "h"), unitCell(1.1 * 3600, { time: 1 }), unitCell(2, { "custom:é": 1, "custom:z": 1 }), unitCell(2, { "custom:z": 1, "custom:é": 1 }),
+    unitCell(5000, { length: 1, time: 0 }), unitCell(5000, { length: 1, "custom:b": 0 })];
   const cell = () => (rand() < 0.5 ? pick(same) : rand() < 0.4 ? pick(pick(UNIT_FAMILIES)) : pick([1, 2, -1, 0, null, undefined, "a", "b", true, false, NaN, solError("#N/A", "gone")]));
   const row = (n: number) => Array.from({ length: n }, cell);
   const data = (): unknown => {

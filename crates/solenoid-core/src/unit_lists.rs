@@ -203,6 +203,11 @@ pub fn running(op: RunOp, arr: &[V], window: Option<f64>) -> V {
 /// `setKey` of a unit cell: its base-SI magnitude at 15 significant digits and its dimension, so 5 km and 5000 m are
 /// one member.
 pub fn unit_set_key(u: &UnitCell) -> String {
-    let dims: Vec<String> = sorted_keys(&u.dim).into_iter().map(|k| format!("{k}{}", number_to_string(u.dim[k]))).collect();
+    // A zero exponent is no dimension (`dimEqual`); JS's truthiness drops NaN with it.
+    let dims: Vec<String> = sorted_keys(&u.dim)
+        .into_iter()
+        .filter(|k| u.dim[*k] != 0.0 && !u.dim[*k].is_nan())
+        .map(|k| format!("{k}{}", number_to_string(u.dim[k])))
+        .collect();
     format!("\u{0}u:{}:{}", number_to_string(to_precision(u.value, 15)), dims.join(","))
 }
