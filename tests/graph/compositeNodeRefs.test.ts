@@ -6,7 +6,7 @@ import { GroupNode } from "../../src/graph/nodes/group";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { PlaceholderNode } from "../../src/graph/nodes/placeholder";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { remapNodeRefs } from "../../src/graph/persistenceCore";
 
 type Snap = { internal: { nodes: Array<{ id: string; type: string; init: Record<string, unknown> }> } };

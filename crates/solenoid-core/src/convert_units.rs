@@ -3,7 +3,7 @@
 //! `node scripts/gen-convert-units.mjs`; rerun it when the TS table moves.
 
 /// Each unit's key, its Excel code, its dimension (the nonzero exponents, sorted), its SI scale and its offset.
-const UNITS: [(&str, &str, &str, f64, Option<f64>); 63] = [
+pub(crate) const UNITS: [(&str, &str, &str, f64, Option<f64>); 63] = [
     ("rad", "rad", "angle1", 1.0, None),
     ("deg", "deg", "angle1", 0.017453292519943295, None),
     ("grad", "grad", "angle1", 0.015707963267948967, None),

@@ -2,7 +2,7 @@
 
 import { ClassicPreset } from "rete";
 import { numOut, strIn, readInput } from "./shared";
-import type { SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass, type ElementMeta } from "./chemistryOps";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 
@@ -81,8 +81,10 @@ export class MolarMassNode extends ClassicPreset.Node {
   }
 
   data(inputs: { formula?: string[] }) {
-    const f = readInput(inputs.formula, this.stringLiterals.formula ?? "");
-    const result = f?.trim() ? molarMass(f) : null;
+    const f: unknown = readInput(inputs.formula, this.stringLiterals.formula ?? "");
+    const result = Array.isArray(f) ? solError("#VALUE!", "Molar Mass reads one formula, not a list")
+      : isSolError(f) ? f
+      : typeof f === "string" && f.trim() ? molarMass(f) : null;
     this.cachedResult = result;
     return { result };
   }

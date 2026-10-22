@@ -4,7 +4,7 @@ import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 import { readTextForm, parseNodeLine } from "./textForm";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { opVocabByCtor } from "./opVocab";
-import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./copyPaste";
+import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./nodeInit";
 import { NAME_RE } from "./nodeNaming";
 import {
   canConnect, SolenoidSocket, elementFamilyOf, latticeRank,

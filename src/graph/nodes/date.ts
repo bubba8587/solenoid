@@ -1,8 +1,9 @@
 // [[C44]], [[B11]], [[C17]] shareImpl, [[D41]] formatFlowsDownstream
 import { ClassicPreset } from "rete";
-import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, readRole, BASIS_DOC, readAsRole, type BroadcastResult } from "./shared";
-import { setting, argRole } from "../inputRoles";
-import { isSolError, solError, type SolError } from "../errorValue";
+import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, readInput, BASIS_DOC, type BroadcastResult } from "./shared";
+import { setting } from "../inputRoles";
+import { type SolError } from "../errorValue";
+import { nodeOnCore } from "../nodeOnCore";
 import { worldClockRows, worldClockFrame } from "../timeZone";
 import { callCore } from "../coreValues";
 import { type FrameValue } from "../frame";
@@ -13,19 +14,6 @@ import type { FormatAnnotation } from "../formatAnnotationStore";
 import { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
-
-/** `+1e-9` absorbs float drift from the serial↔ms round trip. */
-function dayKey(serial: number): number {
-  return Math.floor(serial + 1e-9);
-}
-
-function holidaySet(holidays?: (number | null)[]): Set<number> {
-  const s = new Set<number>();
-  if (holidays) for (const h of holidays) if (typeof h === "number" && Number.isFinite(h)) s.add(dayKey(h));
-  return s;
-}
-
-
 
 // ─── TODAY / NOW ──────────────────────────────────────────────────────────────
 
@@ -77,13 +65,8 @@ export class DateConstructNode extends ClassicPreset.Node {
     this.addOutput("result", dateComboOut("Date"));
   }
 
-  data(inputs: { year?: (number | number[])[]; month?: (number | number[])[]; day?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcastErr((y, m, d) => callCore("DATE", [y, m, d]) as number | SolError,
-      readInput(inputs.year,  this.literals.year  ?? 2024),
-      readInput(inputs.month, this.literals.month ?? 1),
-      readInput(inputs.day,   this.literals.day   ?? 1));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -104,13 +87,8 @@ export class TimeConstructNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Time fraction"));
   }
 
-  data(inputs: { hour?: (number | number[])[]; minute?: (number | number[])[]; second?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((h, m, s) => callCore("TIME", [h, m, s]) as number,
-      readInput(inputs.hour,   this.literals.hour   ?? 0),
-      readInput(inputs.minute, this.literals.minute ?? 0),
-      readInput(inputs.second, this.literals.second ?? 0));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -188,11 +166,8 @@ export class DatePartNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Number"));
   }
 
-  data(inputs: { date?: (number | number[])[] }): { result: BroadcastResult } {
-    const fn = this.op.toUpperCase();
-    const result = broadcast((serial) => callCore(fn, [serial]) as number, inputs.date?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -221,12 +196,8 @@ export class WeekInfoNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Number"));
   }
 
-  data(inputs: { date?: (number | number[])[]; return_type?: number[] }): { result: BroadcastResult } {
-    const rtRaw = readRole<number>(this, "return_type", inputs.return_type);
-    const rt = Math.floor(rtRaw);
-    const result = broadcast((serial) => callCore(this.op.toUpperCase(), this.op === "isoweeknum" ? [serial] : [serial, rt]) as number, inputs.date?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -242,8 +213,6 @@ export const DATE_DIFF_OP_META = {
   md:       { label: "Days ignoring months",  description: "Days past the last whole month, borrowing from the month before the end month. Excel: `DATEDIF \"MD\"`." },
   yd:       { label: "Days ignoring years",   description: "Days past the last whole year. Excel: `DATEDIF \"YD\"`." },
 } satisfies Record<DateDiffOp, { label: string; description: string }>;
-
-const DATEDIF_UNIT: Record<string, string> = { years: "Y", months: "M", ym: "YM", md: "MD", yd: "YD" };
 
 export class DateDiffNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -275,26 +244,8 @@ export class DateDiffNode extends ClassicPreset.Node {
     return true;
   }
 
-  data(inputs: { start?: (number | number[])[]; end?: (number | number[])[]; basis?: number[] }): { result: BroadcastResult } {
-    let basis = 0;
-    if (dateDiffNeedsBasis(this.op)) {
-      const basisRaw = readAsRole<number | SolError | undefined>(this, "basis", inputs.basis, argRole(this.op === "days360" ? "DAYS360" : "YEARFRAC", 2)!);
-      if (isSolError(basisRaw)) { this.cachedResult = basisRaw; return { result: basisRaw }; }
-      basis = Math.trunc(basisRaw ?? 0);
-    }
-    const result = broadcastErr((s, e) => this.dateDiffOnCore(s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
-  }
-
-  private dateDiffOnCore(s: number, e: number, basis: number): number | SolError | null {
-    switch (this.op) {
-      case "days":     return callCore("DAYS", [e, s]) as number | SolError;
-      case "days360":  return callCore("DAYS360", [s, e, basis !== 0]) as number | SolError;
-      case "yearfrac": return callCore("YEARFRAC", [s, e, basis]) as number | SolError;
-      // DATEDIF answers a reversed span with #DOMAIN!; the card leaves it blank.
-      default:         return s > e ? null : callCore("DATEDIF", [s, e, DATEDIF_UNIT[this.op]]) as number | SolError;
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -327,12 +278,8 @@ export class DateAddNode extends ClassicPreset.Node {
     return [{ output: "result", inputs: ["start"] }];
   }
 
-  data(inputs: { start?: (number | number[])[]; months?: (number | number[])[] }): { result: BroadcastResult } {
-    const fn = this.op === "edate" ? "EDATE" : "EOMONTH";
-    const result = broadcastErr((s, m) => callCore(fn, [Math.floor(s), Math.floor(m)]) as number | SolError,
-      inputs.start?.[0] ?? null, readInput(inputs.months, this.literals.months ?? 0));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -409,19 +356,8 @@ export class WorkdaysNode extends ClassicPreset.Node {
     this.seedLiterals();
   }
 
-  data(inputs: { start?: (number | number[])[]; days?: (number | number[])[]; end?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
-    const codeRaw = readRole<number>(this, "weekend_code", inputs.weekend_code);
-    const code = Math.floor(codeRaw);
-    if (!((code >= 1 && code <= 7) || (code >= 11 && code <= 17))) {
-      this.cachedResult = solError("#VALUE!", "Weekend must be a code: 1 to 7, or 11 to 17");
-      return { result: this.cachedResult };
-    }
-    const hol  = [...holidaySet(inputs.holidays?.[0])];
-    const fn = this.op === "workday" ? "WORKDAY.INTL" : "NETWORKDAYS.INTL";
-    const result = broadcastErr((s, x) => callCore(fn, [s, x, code, hol]) as number | SolError,
-      inputs.start?.[0] ?? null, this.op === "workday" ? readInput(inputs.days, this.literals.days ?? 5) : inputs.end?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -453,12 +389,8 @@ export class EpochNode extends ClassicPreset.Node {
     else { this.addInput("value", dateComboIn("Date")); this.addOutput("result", numListOut("Epoch")); }
   }
 
-  data(inputs: { value?: (number | number[])[] }): { result: BroadcastResult } {
-    const v = this.op === "from" ? readInput(inputs.value, this.literals.value ?? 0) : (inputs.value?.[0] ?? null);
-    const fn = this.op === "from" ? "FROMEPOCH" : "TOEPOCH";
-    const result = broadcast((x) => callCore(fn, [x, this.unit]) as number, v);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -491,10 +423,8 @@ export class DateTruncNode extends ClassicPreset.Node {
     this.addOutput("result", dateComboOut("Date"));
   }
 
-  data(inputs: { date?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((s) => callCore("DATETRUNC", [s, this.unit, this.ceiling]) as number, inputs.date?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 

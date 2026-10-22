@@ -233,28 +233,11 @@ export function couponValue(
   }
 }
 
-function accrualError(
-  op: string, issueSerial: number, settleSerial: number, rate: number, par: number, freq: number | undefined, basis: number,
-): SolError | null {
-  if (freq !== undefined && !VALID_FREQ.includes(freq)) return domain(op, "a frequency of 1, 2 or 4");
+function accrualError(op: string, issueSerial: number, settleSerial: number, rate: number, par: number, basis: number): SolError | null {
   if (!(basis >= 0 && basis <= 4)) return domain(op, "a basis from 0 to 4");
   if (!(issueSerial < settleSerial)) return domain(op, "the issue date before the settlement date");
   if (rate <= 0 || par <= 0) return domain(op, "a rate and par above 0");
   return null;
-}
-
-export function accrint(
-  issueSerial: number, settleSerial: number, rate: number, par = 1000, frequency = 2, basis = 0,
-): number | SolError | null {
-  if (!Number.isFinite(issueSerial) || !Number.isFinite(settleSerial)) return null;
-  const freq = Math.round(frequency);
-  const b = Math.round(basis);
-  const bad = accrualError("accrint", issueSerial, settleSerial, rate, par, freq, b);
-  if (bad) return bad;
-  const issue = serialToJsDate(issueSerial), settle = serialToJsDate(settleSerial);
-  const a = b === 0 || b === 4 ? days30_360(issue, settle) : actualDays(issue, settle);
-  const e = b === 1 ? actualDays(issue, coupAddMonths(issue, 12 / freq)) : b === 3 ? 365 / freq : 360 / freq;
-  return par * (rate / freq) * (a / e);
 }
 
 export function accrintM(
@@ -262,7 +245,7 @@ export function accrintM(
 ): number | SolError | null {
   if (!Number.isFinite(issueSerial) || !Number.isFinite(settleSerial)) return null;
   const b = Math.round(basis);
-  const bad = accrualError("accrintm", issueSerial, settleSerial, rate, par, undefined, b);
+  const bad = accrualError("accrintm", issueSerial, settleSerial, rate, par, b);
   if (bad) return bad;
   const issue = serialToJsDate(issueSerial), settle = serialToJsDate(settleSerial);
   const a = dayCount(b, issue, settle);

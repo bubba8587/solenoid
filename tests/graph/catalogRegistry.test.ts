@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { NODE_COMPONENTS, componentForNode } from "../../src/graph/nodeRegistry";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { MutableSocket, SolenoidSocket, isDateType, isWildcardRung } from "../../src/graph/sockets";
 import { getPassthrough } from "../../src/graph/nodes/passthrough";
 

@@ -1,7 +1,7 @@
 // [[D79]]
 import { describe, it, expect, beforeEach } from "vitest";
 import { AlertNode } from "../../../src/graph/nodes/display";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { alertStore } from "../../../src/graph/alertStore";
 import { solError } from "../../../src/graph/errorValue";
 

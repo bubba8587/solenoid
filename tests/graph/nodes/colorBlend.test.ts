@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { ColorBlendNode } from "../../../src/graph/nodes/input";
 import { isSolError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 
 describe("ColorBlendNode", () => {
   it("mixes the default pair to their channel average", () => {

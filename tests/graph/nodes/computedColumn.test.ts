@@ -5,7 +5,7 @@ import { LambdaNode, perRowParamClashes } from "../../../src/graph/nodes/lambda"
 import { compileEvaluator, rowRefNames } from "../../../src/graph/excelFormula";
 import { getColumn, frameSourceToText, parseFrameSource, type FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { computeColumnCells } from "../../../src/graph/computedColumnCore";
 
 // ─── Computed Column — the row-wise formula verb ─────────────────────────────

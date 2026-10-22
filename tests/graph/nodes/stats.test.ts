@@ -16,7 +16,7 @@ import {
 import { interpolateLinear, gridAxes, fillGrid } from "../../../src/graph/nodes/mathUtils";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError, solError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 
 // List-socket inputs arrive as inputs.<port>[0] = the array.
 

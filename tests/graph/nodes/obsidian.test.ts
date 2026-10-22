@@ -4,7 +4,7 @@ import { forceDemoVault } from "../../../src/graph/demoVault";
 import { refreshAllConnections, whenConnectionsSettled } from "../../../src/graph/connectionStore";
 import { WriteObsidianNode, ImportObsidianNode, obsidianTypeName } from "../../../src/graph/nodes/obsidian";
 import { NoteNode } from "../../../src/graph/nodes/annotation";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { makeDocument, isDocumentValue } from "../../../src/graph/documentValue";
 import { settingsStore } from "../../../src/graph/settingsStore";
 

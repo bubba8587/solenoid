@@ -27,7 +27,7 @@ writeFileSync(new URL("../crates/solenoid-core/src/convert_units.rs", import.met
 //! \`node scripts/gen-convert-units.mjs\`; rerun it when the TS table moves.
 
 /// Each unit's key, its Excel code, its dimension (the nonzero exponents, sorted), its SI scale and its offset.
-const UNITS: [(&str, &str, &str, f64, Option<f64>); ${rows.length}] = [
+pub(crate) const UNITS: [(&str, &str, &str, f64, Option<f64>); ${rows.length}] = [
 ${rows.join("\n")}
 ];
 

@@ -13,7 +13,7 @@ import type { XYPayload, BoxplotPayload, CandlePayload, ContourPayload, Waterfal
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
 import { XYPadNode } from "../../../src/graph/nodes/control";
 import { ValueInputNode } from "../../../src/graph/nodes/control";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial, parseDate } from "../../../src/graph/nodes/date";
 import type { ChartValue } from "../../../src/graph/chartValue";

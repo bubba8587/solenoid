@@ -5,7 +5,7 @@ import * as Nodes from "../../src/graph/rete-nodes";
 import { SolenoidSocket, canConnect } from "../../src/graph/sockets";
 import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 
 // Validates every seed graph against the REAL node classes: each saved type
 // resolves to a constructor, each connection lands on sockets that exist with

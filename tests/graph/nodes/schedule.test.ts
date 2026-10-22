@@ -1,7 +1,7 @@
 // [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
 import { ScheduleNode } from "../../../src/graph/rete-nodes";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { parseDateToSerial, formatDateSerial } from "../../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../../src/graph/errorValue";
 import { cubeFromColumns, isCubeValue, formatFrameCell, type CubeValue, type FrameValue } from "../../../src/graph/frame";

@@ -692,7 +692,7 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
     expect(ev("UUID()")).not.toBe(ev("UUID()"));
   });
   it("UUID's save holds no UUID, so a recompute is never an edit for undo", async () => {
-    const { extractInit } = await import("../../../src/graph/copyPaste");
+    const { extractInit } = await import("../../../src/graph/nodeInit");
     const n = new UuidNode();
     n.data();
     expect(JSON.stringify(extractInit(n))).not.toMatch(/[0-9a-f]{8}-/);

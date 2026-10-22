@@ -2,7 +2,7 @@
 import type { SavedGraph, SavedNode, SavedConnection, SavedStandoff } from "./persistence";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 import type { Pin } from "./pinStore";
-import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./copyPaste";
+import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./nodeInit";
 import { NAME_RE, typePrefix, nextAvailableName } from "./nodeNaming";
 
 const SEPARATOR = "---";

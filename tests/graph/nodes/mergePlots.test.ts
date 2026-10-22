@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { MergePlotsNode } from "../../../src/graph/nodes/visual";
 import type { ChartValue, ChartValueOp, OverlayPayload } from "../../../src/graph/chartValue";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 
 // A minimal single-series chart value, as one would arrive on a `chart` cable.
 function chart(op: ChartValueOp, values: number | number[] | null, extra: Partial<ChartValue> = {}): ChartValue {

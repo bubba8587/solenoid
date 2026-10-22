@@ -44,6 +44,7 @@ pub mod shapers;
 pub mod string_order;
 pub mod external;
 pub mod text_ops;
+pub mod unit_catalog;
 pub mod unit_dims;
 pub mod unit_lists;
 pub mod unit_expression;

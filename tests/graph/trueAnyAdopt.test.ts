@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { ClassicPreset } from "rete";
 import { reconcileTrueAnyTypes, type AdoptEditor } from "../../src/graph/trueAnyAdopt";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { IfNode, NaNode } from "../../src/graph/nodes/logic";
 import { CableSwitchNode } from "../../src/graph/nodes/control";

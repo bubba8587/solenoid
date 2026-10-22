@@ -17,7 +17,7 @@ A document has three representations: the live graph (rete editor plus side stor
 | `src/graph/persistence.ts` | `SavedGraph` types, `serializeGraph`, `loadGraph`, `rebuildGraph`, the autosave debounce |
 | `src/graph/persistenceCore.ts` | Pure helpers: `CURRENT_SAVE_VERSION`, `validateSavedGraph`, `deriveMissingNodeSockets`, slot choice |
 | `src/graph/textForm.ts` | `writeTextForm`, `readTextForm`, `parseNodeLine` |
-| `src/graph/copyPaste.ts` | `extractInit`, `INIT_FIELD_ORDER`, `INIT_EXTRA_FIELD_ORDER` (shared by paste and save) |
+| `src/graph/nodeInit.ts` | `extractInit`, `INIT_FIELD_ORDER`, `INIT_EXTRA_FIELD_ORDER` (shared by paste, save and a card body on the core) |
 | `src/graph/graphValidate.ts` | The strict validator (`validateGraph`, `validateText`) |
 | `src/graph/documentStore.ts`, `documentStoreCore.ts` | The document library and its localStorage persistence |
 | `src/graph/fileSession.ts`, `fileBridge.ts` | Disk save and open (desktop dialogs, browser download and upload) |
