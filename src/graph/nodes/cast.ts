@@ -10,7 +10,9 @@ import { parseValueText } from "./textOps";
 
 import { solError, isSolError, type SolError } from "../errorValue";
 import { isUnitCell } from "../unitValue";
-import { stripUnitCells, unitCellText } from "../unitBridge";
+import { stripUnitCells, unitCellText, fcUnitToUnit } from "../unitBridge";
+import { fcUnitAnnotations } from "../formatAnnotationStore";
+import type { Dim } from "../dimension";
 import { getOwningEditor } from "../activeGraph";
 
 export type CastTarget = "number" | "text" | "date" | "complex" | "logical";
@@ -177,8 +179,14 @@ export class CastNode extends ClassicPreset.Node {
   }
 
   /** The source socket's type is the only witness telling a date serial from a number; the body reads it here. */
-  static coreFields = ["sourceType"] as const;
+  static coreFields = ["sourceType", "unitLabels"] as const;
   get sourceType(): SocketDataType | null { return this.sourceKind(); }
+  /** Text names a value's unit by the FC's label, and packs register theirs at run time: each unit's id, label,
+   *  whether the label leads, and its dimension. */
+  get unitLabels(): [string, string, boolean, Dim | null][] | undefined {
+    if (this.target !== "text") return undefined;
+    return fcUnitAnnotations().map((u) => [u.id, u.label, !!u.prefix, fcUnitToUnit(u.id)?.dim ?? null]);
+  }
 
   private sourceKind(): SocketDataType | null {
     const editor = getOwningEditor(this.id);
