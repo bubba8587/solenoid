@@ -7,6 +7,7 @@ import {
 import { unitError, READINGS_ADD, READINGS_SCALE, READINGS_FOLD } from "./unitValue";
 import { isSolError, type SolError } from "./errorValue";
 import { resolveExcelFunction, ELIMINATED_FUNCTIONS } from "./excelFunctions";
+import { FINANCE_MONEY, financeDim } from "./financeUnits";
 
 export type DimResult = Dim | SolError | null;
 
@@ -281,6 +282,8 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
       const host = hostOf(node.name.toUpperCase(), node.args.length);
       const lam = host && lambdaOf(node.args[host.lamArg], host.params.length, (n) => n in env);
       if (host && lam) return hostDim(node.args, host, lam, env, codes);
+      const fin = FINANCE_MONEY[node.name.toUpperCase()];
+      if (fin) return financeDim(node.name.toUpperCase(), fin, node.args.map((a) => opEval(a, env, codes)));
       const d = callDim(node.name, node.args.map((a) => {
         const r = opEval(a, env, codes);
         return r === null || isSolError(r) ? r : r.dim;

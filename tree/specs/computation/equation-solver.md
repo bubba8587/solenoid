@@ -67,4 +67,4 @@ Any other step (`ABS`, a function of several arguments) has no clean inverse, an
 
 ## Units
 
-The numeric layers run on base-SI magnitudes: each known's dimension is captured, then its unit is stripped. The solved unknown's unit is the dimension of its isolated expression (`dimEval`), tagged onto the result. An unknown that appears more than once has no isolated form, so its result stays a bare number rather than a guessed unit. Knowns whose units cannot combine give `#UNIT!`.
+The numeric layers run on base-SI magnitudes: each known's dimension is captured, then its unit is stripped. The solved unknown's unit is the dimension of its isolated expression (`dimEvalWithCode`), tagged onto the result with its currency code, so a TVM payment on a dollar loan is in dollars. An unknown that appears more than once has no isolated form, so its result stays a bare number rather than a guessed unit. Knowns whose units cannot combine give `#UNIT!`.
