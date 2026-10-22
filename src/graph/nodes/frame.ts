@@ -36,7 +36,7 @@ import {
   pivotFrame, nestFrame, unnestCube,
   decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, allocateColumns, choiceLadder, ladderFromWire,
   promoteHeaders, demoteHeaders,
-  lookupCell, lookupRowIndex,
+  lookupCell, lookupRowIndex, keysInDisplayUnit,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames, reconcileSummaryFromList,
   VALUELESS_FILTER_OPS, LIST_FILTER_OPS,
   sortCube, distinctCube, sliceCube, filterCube, selectCubeColumns, windowCube,
@@ -3095,14 +3095,20 @@ export class XLookupNode extends ClassicPreset.Node {
 }
 
 /** XLOOKUP's matches over a frame on the core, one upload for every lookup: each row index (`retCol` null) or Return
- *  cell (undefined where nothing matched), the Return column's unit tagged back on. Null leaves them to the TS, as
- *  for an In column with a unit, whose cube cells carry it. */
+ *  cell (undefined where nothing matched), the Return column's unit tagged back on. An In column with a unit crosses
+ *  as the keys `lookupRowIndex` reads, the numbers it shows (`keysInDisplayUnit`). */
 function lookupOnCore(
   src: FrameValue | CubeValue, inCol: string, retCol: string | null, lookups: string[],
   matchMode: LookupMatchMode, searchMode: LookupSearchMode,
 ): unknown[] | null {
-  if (!isFrameValue(src) || lookups.length === 0 || src.columns.find((c) => c.name === inCol)?.unit) return null;
-  const f: FrameValue = { __frame: true, columns: src.columns.filter((c) => c.name === inCol || c.name === retCol) };
+  if (!isFrameValue(src) || lookups.length === 0) return null;
+  if (inCol === retCol && src.columns.find((c) => c.name === inCol)?.unit) return null;
+  const keyCol = (c: FrameColumn): FrameColumn => {
+    if (c.name !== inCol || !c.unit) return c;
+    const { unit, ...rest } = c;
+    return { ...rest, values: keysInDisplayUnit(c.values.map((v) => tagFrameCellUnit(v, unit) as CubeCell)) as FrameCell[] };
+  };
+  const f: FrameValue = { __frame: true, columns: src.columns.filter((c) => c.name === inCol || c.name === retCol).map(keyCol) };
   const r = retCol === null
     ? frameFnOnCore("lookupRowIndex", [f], [inCol, lookups, matchMode, searchMode])
     : frameFnOnCore("lookupCell", [f], [inCol, retCol, lookups, matchMode, searchMode]);

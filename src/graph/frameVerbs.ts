@@ -1423,7 +1423,8 @@ function inferCubeKeyType(col: CubeColumn): FrameColType {
   return "string";
 }
 
-function keysInDisplayUnit(cells: readonly CubeCell[]): readonly CubeCell[] {
+/** A unit key column read as the numbers it shows; a key of another dimension never matches. */
+export function keysInDisplayUnit(cells: readonly CubeCell[]): readonly CubeCell[] {
   const first = cells.find(isUnitCell);
   if (!first) return cells;
   return cells.map((c) => {
