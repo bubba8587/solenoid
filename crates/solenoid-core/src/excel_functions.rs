@@ -3617,7 +3617,8 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if n.is_nan() {
                 return value_err("CONVERT");
             }
-            match crate::convert_units::convert_value(n, &to_str(arg(a, 1)), &to_str(arg(a, 2))) {
+            let key = |v: &V| crate::convert_units::convert_unit_key(&to_str(v));
+            match key(arg(a, 1)).zip(key(arg(a, 2))).and_then(|(f, t)| crate::convert_units::convert_value(n, f, t)) {
                 Some(r) => V::Num(r),
                 None => V::err(sol_error("#N/A", "CONVERT: unknown or incompatible units")),
             }

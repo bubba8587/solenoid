@@ -1223,7 +1223,8 @@ describe("the leftover one-value functions match bit for bit on realistic argume
   };
   const UNITS = ["rad", "deg", "grad", "m", "km", "cm", "mm", "in", "ft", "yd", "mi", "g", "kg", "mg", "lb", "oz_m", "stone", "tonne",
     "C", "F", "K", "s", "min", "hr", "day", "wk", "yr", "m2", "km2", "ha", "acre", "l", "ml", "cup", "gal", "m3", "m_s", "km_h", "mph",
-    "knot", "J", "kJ", "cal", "kcal", "BTU", "Wh", "kWh", "Pa", "kPa", "bar", "atm", "psi", "mmHg", "nope", "toString", "M"];
+    "knot", "J", "kJ", "cal", "kcal", "BTU", "Wh", "kWh", "Pa", "kPa", "bar", "atm", "psi", "mmHg", "nope", "toString", "M",
+  "degC", "degF", "L", "mL", "oz", "ozm", "lbm", "floz", "ac", "uk_acre", "ms1", "kmh", "m/s", "km/h", "sec", "mn", "Cal", "kn", "t"];
   type Gen = (r: () => number) => unknown[];
   const int = (r: () => number, lo: number, hi: number) => lo + Math.floor(r() * (hi - lo + 1));
   const list = (n: number, f: () => number) => Array.from({ length: n }, f);

@@ -80,7 +80,8 @@ export class ConvertNode extends ClassicPreset.Node {
         if (dimEqual(v.dim, toDim.dim)) return display ? (withDisplay(v, display) as UnitCell) : v;
         return unitError(`This value is ${formatDim(v.dim) || "a plain number"}, but Convert targets ${formatDim(toDim.dim) || "a plain number"}.`);
       }
-      const conv = callCore("CONVERT", [v, this.fromUnit, this.toUnit]);
+      // CONVERT reads Excel's codes first, and "oz" there is the fluid ounce: the card names its units by code.
+      const conv = callCore("CONVERT", [v, from.excelCode, to.excelCode]);
       if (typeof conv !== "number") return rangeErr();
       return fromUnit(conv, toDim, display);
     };
