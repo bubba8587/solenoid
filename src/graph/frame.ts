@@ -554,7 +554,7 @@ function computeCubeDepth(columns: ReadonlyArray<CubeColumn>): number {
   return 1 + inner;
 }
 
-function makeCube(columns: CubeColumn[]): CubeValue {
+export function makeCube(columns: CubeColumn[]): CubeValue {
   return { __cube: true, columns, depth: computeCubeDepth(columns) };
 }
 

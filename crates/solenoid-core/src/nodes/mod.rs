@@ -22,11 +22,13 @@ mod scalar;
 mod stats;
 mod text;
 mod units;
+mod values;
 
-/// A field the body leaves on the card for its component: a value, plain JSON (a chart's payload), or `undefined`.
+pub use values::{decode, serialize_cube, serialize_frame, Column, Cube, CubeColumn, Frame};
+
+/// A field the body leaves on the card for its component: a value (plain data as `V::Json`), or `undefined`.
 pub enum Shown {
     V(V),
-    Json(Json),
     Undef,
 }
 
@@ -72,7 +74,7 @@ impl Call {
         let outputs = rows("outputs").iter().map(|r| (text(r, 0).unwrap_or_default(), text(r, 1))).collect();
         let inputs = rows("inputs")
             .iter()
-            .map(|r| (text(r, 0).unwrap_or_default(), r.get(1).and_then(Json::as_array).map(|a| a.iter().map(crate::eval::decode_value).collect()).unwrap_or_default()))
+            .map(|r| (text(r, 0).unwrap_or_default(), r.get(1).and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default()))
             .collect();
         Call { init: obj("init"), literals: obj("literals"), string_literals: obj("stringLiterals"), sockets, outputs, inputs, display: Vec::new() }
     }
@@ -95,12 +97,12 @@ impl Call {
 
     /// `this.literals[key]`, `undefined` where it isn't set.
     pub fn literal(&self, key: &str) -> V {
-        self.literals.get(key).map(crate::eval::decode_value).unwrap_or(V::Undef)
+        self.literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
     /// `this.stringLiterals[key]`.
     pub fn string_literal(&self, key: &str) -> V {
-        self.string_literals.get(key).map(crate::eval::decode_value).unwrap_or(V::Undef)
+        self.string_literals.get(key).map(decode).unwrap_or(V::Undef)
     }
 
     /// `readInput(inputs[key], this.literals[key] ?? dflt)`.
@@ -127,10 +129,6 @@ impl Call {
 
     pub fn show(&mut self, field: &str, v: V) {
         self.display.push((field.to_string(), Shown::V(v)));
-    }
-
-    pub fn show_json(&mut self, field: &str, v: Json) {
-        self.display.push((field.to_string(), Shown::Json(v)));
     }
 
     pub fn show_undef(&mut self, field: &str) {
@@ -192,7 +190,6 @@ impl serde::Serialize for NodeReply {
                 for (k, v) in self.0 {
                     match v {
                         Shown::V(v) => m.serialize_entry(k, &Out(v))?,
-                        Shown::Json(j) => m.serialize_entry(k, &serde_json::json!({ "json": j }))?,
                         Shown::Undef => m.serialize_entry(k, &serde_json::json!({ "undef": true }))?,
                     }
                 }

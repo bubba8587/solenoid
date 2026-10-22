@@ -15,11 +15,12 @@ const app = process.env.FREEZE_NODES ? {
   ...(await import("../../src/graph/copyPaste")),
   ...(await import("../../src/graph/sockets")),
   ...(await import("../../src/graph/coreValues")),
+  ...(await import("../../src/graph/nodeWire")),
   ...(await import("../../src/graph/process")),
   ...(await import("../../src/graph/settingsStore")),
   ...(await import("../../src/graph/errorValue")),
 } : null;
-const { ClassicPreset: Classic, ctorRegistry, extractInit, declaredTypeOf, coreValue, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError } = app ?? ({} as NonNullable<typeof app>);
+const { ClassicPreset: Classic, ctorRegistry, extractInit, declaredTypeOf, nodeWire, jsonEnc, engineClock, getRecalcGen, settingsStore, DEFAULT_SETTINGS, isSolError } = app ?? ({} as NonNullable<typeof app>);
 
 const DIR = path.resolve(__dirname, "../../.dev/node-calls");
 const ONLY = process.env.FREEZE_NODES === "1" ? null : new Set((process.env.FREEZE_NODES ?? "").split(","));
@@ -28,7 +29,7 @@ const g = globalThis as { [PATCHED]?: { lines: string[] } };
 
 /** The core's wire form with the run-time error references dropped; undefined where a value can't cross. */
 function wire(v: unknown): unknown {
-  const w = coreValue(v, true);
+  const w = nodeWire(v);
   return w === undefined ? undefined : JSON.parse(JSON.stringify(w, (k, x) => (k === "ref" ? undefined : x)));
 }
 
@@ -61,9 +62,16 @@ function changedSettings(): Partial<Settings> {
   return out as Partial<Settings>;
 }
 
+// A class called past this many times in one worker adds nothing a merge would keep, only bytes.
+const PER_CLASS = 4000;
+const counts = new Map<string, number>();
+
 function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string, unknown[]>, before: Map<string, unknown>, outcome: { out?: unknown; thrown?: unknown }): void {
   const kind = node.constructor.name;
   if (ONLY && !ONLY.has(kind)) return;
+  const n = (counts.get(kind) ?? 0) + 1;
+  counts.set(kind, n);
+  if (n > PER_CLASS) return;
   const uncrossable: string[] = [];
   const ins: Record<string, unknown[]> = {};
   for (const [k, arr] of Object.entries(inputs ?? {})) {
@@ -97,7 +105,7 @@ function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string
     const w = wire(v);
     if (w === undefined && v !== undefined) {
       // A plain-JSON field (a chart's payload, a picked list) crosses as JSON; anything else is named, not frozen.
-      try { display[k] = { __json: JSON.parse(JSON.stringify(v)) }; } catch { uncrossable.push(`display:${k}:${kindOf(v)}`); }
+      try { display[k] = { __json: jsonEnc(v) }; } catch { uncrossable.push(`display:${k}:${kindOf(v)}`); }
     } else display[k] = w === undefined ? { __undef: 1 } : w;
   }
   for (const k of before.keys()) if (!after.has(k)) display[k] = { __deleted: 1 };
@@ -111,7 +119,7 @@ function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string
     let x: unknown = w;
     if (w === undefined) {
       if (v === undefined) x = { __undef: 1 };
-      else try { x = { __json: JSON.parse(JSON.stringify(v)) }; } catch { continue; }
+      else try { x = { __json: jsonEnc(v) }; } catch { continue; }
     }
     if (JSON.stringify(x).length <= 4000) prior[k] = x;
   }
@@ -133,7 +141,7 @@ function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string
     ...(uncrossable.length ? { uncrossable } : {}),
   });
   // A call over a huge value (a 10⁵-item list) is counted, not kept.
-  lines.push(line.length > 256_000 ? JSON.stringify({ kind, uncrossable: ["oversize"] }) : line);
+  lines.push(line.length > 64_000 ? JSON.stringify({ kind, uncrossable: ["oversize"] }) : line);
   if (lines.length >= 2000) flush(lines);
 }
 

@@ -509,6 +509,9 @@ impl serde::Serialize for Out<'_> {
             V::Str(t) => one(s, "str", t.as_ref()),
             V::Bool(b) => one(s, "bool", b),
             V::Lambda(_) => one(s, "lambda", &true),
+            V::Frame(f) => crate::nodes::serialize_frame(f, s),
+            V::Cube(c) => crate::nodes::serialize_cube(c, s),
+            V::Json(j) => one(s, "json", j.as_ref()),
             V::Unit(u) => {
                 let dim: Vec<(&String, String)> = u.dim.iter().map(|(k, x)| (k, bits(*x))).collect();
                 one(s, "unit", &json!({ "value": bits(u.value), "dim": dim, "display": u.display, "ratio": u.ratio }))
