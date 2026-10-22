@@ -143,6 +143,19 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             });
             Ok(Json::Null)
         }
+        // A fresh instance after a trap numbers its handles past the dead one's, so a handle JS still holds can't
+        // name another frame (`engineWasm.ts` `reinstantiate`).
+        "engine_handle_base" => {
+            let base = parse::<u64>(args, "base")?;
+            STORE.with(|s| s.borrow_mut().seq = base);
+            Ok(Json::Null)
+        }
+        // Aborts the instance from a frame holding 64 KB of stack, as a deep evaluation would, so the tests can show
+        // a trap falls back and the module comes back (`coreTrap.test.ts`).
+        "engine_trap" => {
+            let frame = std::hint::black_box([0u8; 65_536]);
+            panic!("engine_trap {}", frame[0])
+        }
         "engine_formula_parse" => Ok(parse_formula(&parse::<String>(args, "expr")?).map_or(Json::Null, |a| a.to_json())),
         // A frame computation no formula shares (`frame_fns.rs`): frames by handle and plain arguments in, a frame (by a
         // new handle) or a value out.

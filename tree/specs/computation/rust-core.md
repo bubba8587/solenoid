@@ -106,6 +106,12 @@ nested past a table, a formula the core leaves to the TS). `bails.json` counts w
   - The wasm engine holds every cell kind, so unlike Polars it needs no oracle fallback for text or logical errors.
 - **Formulas, computed columns, pivots:** on the wasm core wherever it's on, desktop included, beside Polars. The app's
   first render waits for it (`main.tsx`, at most four seconds), so the first calc runs on it.
+- **A trap** (an abort, a stack overflow, anything escaping the module mid-call) leaves the instance's stack pointer
+  where it stopped, so `engineWasm.ts` drops it and instantiates the compiled module afresh (`__wbg_reset`, which
+  `scripts/build-wasm.mjs` appends to wasm-bindgen's glue), numbering its handles past the dead one's
+  (`engine_handle_base`). The call that trapped answers on the TS (`onCore`); a frame the verb backend held in the
+  dead instance is gone, so a verb over it answers #REF! until the document reloads. `engine_trap` is the
+  tests' trigger (`coreTrap.test.ts`).
 
 ## Performance (200k rows × 5 columns, Node, best of 3)
 
@@ -162,11 +168,6 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   reading one as U+FFFD at the boundary, which is the author's call.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
-- **A trap kills the engine for the session.** `MAKEARRAY(1e15, 0, LAMBDA(i,j,1))` passes the `r*c` cap and aborts
-  (`unreachable`); develop caps each side at least one (`8e86887`). Nothing in `evaluateOnCore`, `callCore` or
-  `computeColumnOnEngine` catches the RuntimeError, and the shadow stack isn't restored, so after a few hundred traps
-  every call, `SUM(xs)` included, throws `memory access out of bounds` until reload. A trap needs to fall back to the TS
-  and reinstantiate the module.
 - **Slicing an emoji turns its halves into U+FFFD** (`from_utf16` → `from_utf16_lossy`, `excel_functions.rs` and
   `text_ops.rs`): for `t = "a😀b"`, `LEFT(t,2)&RIGHT(t,2)` is `a��b` on the core and `a😀b` on the TS, and
   `UNICODE(MID(t,3,1))` 65533 against 56832. The conformance `canon()` runs `toWellFormed` on every frozen string, so

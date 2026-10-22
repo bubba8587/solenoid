@@ -538,3 +538,9 @@ async function __wbg_init(module_or_path) {
 
 export { initSync };
 export default __wbg_init;
+
+export function __wbg_reset() {
+    const module = __wbg_init.__wbindgen_wasm_module;
+    wasm = undefined;
+    return module;
+}
