@@ -132,6 +132,9 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 
 ## Follow-ups
 
+- **Load time is the module's bytes.** A `<link rel="preload">` for the wasm was measured and dropped (2026-10-22): under
+  4 Mbps throttling the first render came 0.4 s later, since the wasm then shares the link with the entry scripts the
+  render also waits for. What would move it is a smaller module, or a first render that doesn't wait for the core.
 - **A function call costs about 1,000 instructions a row** in the dispatch ladder (argument roles, blank slots,
   broadcasting, the error guard), against about 450 for an operator. Each call site's name and facts resolve once per
   column already; resolving its route the same way (which rungs can apply to it at all) is the next cut.
