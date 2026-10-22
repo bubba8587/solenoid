@@ -4,6 +4,7 @@ import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, d
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
+import { coreEach } from "../coreValues";
 import { applyRole, type InputRole } from "../inputRoles";
 import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../unitValue";
 import { dimOf } from "../unitValue";
@@ -157,16 +158,14 @@ export function broadcast(
     return r === null ? null : guardFinite(r, args);
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (number | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
+  return coreEach(len, (i): number | SolError | null => {
+    if (lists.some((l) => i >= l.length)) return null;
     const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
     const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
+    if (sc !== COMPUTE) return sc;
     const r = fn(...(ops as number[]));
-    out.push(r === null ? null : guardFinite(r, ops));
-  }
-  return out;
+    return r === null ? null : guardFinite(r, ops);
+  });
 }
 
 export function broadcastErr(
@@ -181,16 +180,14 @@ export function broadcastErr(
     return typeof r === "number" ? guardFinite(r, args) : r;
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (number | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
+  return coreEach(len, (i): number | SolError | null => {
+    if (lists.some((l) => i >= l.length)) return null;
     const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
     const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
+    if (sc !== COMPUTE) return sc;
     const r = fn(...(ops as number[]));
-    out.push(typeof r === "number" ? guardFinite(r, ops) : r);
-  }
-  return out;
+    return typeof r === "number" ? guardFinite(r, ops) : r;
+  });
 }
 
 // No array-shaped element: the list check is `Array.isArray`, so such an element needs its own broadcaster.
@@ -225,16 +222,14 @@ export function broadcastCells(
     return typeof r === "number" ? guardFinite(r, args) : r;
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (Cell | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
+  return coreEach(len, (i): Cell | SolError | null => {
+    if (lists.some((l) => i >= l.length)) return null;
     const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
     const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
+    if (sc !== COMPUTE) return sc;
     const r = call(...(ops as Cell[]));
-    out.push(typeof r === "number" ? guardFinite(r, ops) : r);
-  }
-  return out;
+    return typeof r === "number" ? guardFinite(r, ops) : r;
+  });
 }
 
 export type UnitOperand = number | UnitCell;
@@ -264,15 +259,13 @@ export function broadcastUnit(
     return guardCell(fn(...(args as UnitOperand[])), args);
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (number | UnitCell | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
+  return coreEach(len, (i): number | UnitCell | SolError | null => {
+    if (lists.some((l) => i >= l.length)) return null;
     const ops = args.map((a) => (Array.isArray(a) ? a[i] : a)) as UnitOperand[];
     const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
-    out.push(guardCell(fn(...ops), ops));
-  }
-  return out;
+    if (sc !== COMPUTE) return sc;
+    return guardCell(fn(...ops), ops);
+  });
 }
 
 export function anyDimensioned(...args: Array<UnitOperand | UnitOperand[] | null>): boolean {

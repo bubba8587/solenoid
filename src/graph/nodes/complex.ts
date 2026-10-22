@@ -3,7 +3,7 @@ import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complex
 import { solError, isSolError, type SolError } from "../errorValue";
 import { cellShortCircuit, COMPUTE } from "../valueKinds";
 import { cx, toCx, type Cx, cxPow, quadraticRoots } from "../cxValue";
-import { callCore } from "../coreValues";
+import { callCore, coreEach } from "../coreValues";
 
 export { cx, isCx, formatCx, type Cx } from "../cxValue";
 
@@ -45,15 +45,13 @@ function broadcastComplex(
     return call(...vals) as CellResult<unknown>;
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (unknown | SolError | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
+  return coreEach(len, (i) => {
+    if (lists.some((l) => i >= l.length)) return null;
     const ops = args.map((a) => (a.list ? a.list[i] : a.scalar));
     const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) { out.push(sc); continue; }
-    out.push(call(...ops));
-  }
-  return out;
+    if (sc !== COMPUTE) return sc;
+    return call(...ops);
+  }) as CellResult<unknown>;
 }
 
 export class ComplexFromNode extends ClassicPreset.Node {

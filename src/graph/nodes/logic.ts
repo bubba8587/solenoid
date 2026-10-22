@@ -6,7 +6,7 @@ import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, ifTest, type Tri } from "../valueKinds";
 import { compareUnits, isUnitCell } from "../unitValue";
-import { callCore } from "../coreValues";
+import { callCore, coreEach } from "../coreValues";
 import { isFrameValue, isCubeValue, frameRowCount, type FrameValue, type FrameColType } from "../frame";
 
 function frameCells(f: FrameValue): unknown[][] {
@@ -25,13 +25,11 @@ function broadcastEl<A, T>(
     return (err !== undefined ? err : fn(...(args as A[]))) as T;
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: T[] = [];
-  for (let i = 0; i < len; i++) {
+  return coreEach(len, (i) => {
     const ops = args.map((a) => (Array.isArray(a) ? (i < a.length ? a[i] : null) : a));
     const err = cellError(ops);
-    out.push((err !== undefined ? err : fn(...(ops as A[]))) as T);
-  }
-  return out;
+    return (err !== undefined ? err : fn(...(ops as A[]))) as T;
+  });
 }
 // A wired logical is a boolean but a typed literal is 0/1, so accept both; a bare `x !== 0` reads a wired FALSE as true.
 const triBool = (x: number | boolean | null): Tri =>
