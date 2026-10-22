@@ -4,6 +4,9 @@
 
 use crate::excel_functions::V;
 
+/// Whether a TS is there to call back.
+pub const HOSTED: bool = cfg!(target_arch = "wasm32");
+
 #[cfg(target_arch = "wasm32")]
 mod host {
     use wasm_bindgen::prelude::*;

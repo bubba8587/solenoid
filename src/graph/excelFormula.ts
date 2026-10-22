@@ -10,6 +10,7 @@ import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
 import { readRowCell, readWholeColumn, inRowFrame } from "./computedColumnCore";
 import { evaluateOnCore, coreValue, readReply } from "./coreValues";
+import { setExternalCaller } from "./engineWasm";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -932,7 +933,7 @@ export function callFromCore(name: string, emptySlots: boolean[], argv: unknown[
 }
 
 /** The core's way back in: arguments and answer as the core's wire values, undefined where one can't cross. */
-(globalThis as { __solenoidCallExternal?: unknown }).__solenoidCallExternal = (name: string, empty: string, args: string): string | undefined => {
+setExternalCaller((name: string, empty: string, args: string): string | undefined => {
   const argv: unknown[] = [];
   for (const a of JSON.parse(args) as unknown[]) {
     const r = readReply(a);
@@ -941,7 +942,7 @@ export function callFromCore(name: string, emptySlots: boolean[], argv: unknown[
   }
   const out = coreValue(callFromCore(name, JSON.parse(empty) as boolean[], argv));
   return out === undefined ? undefined : JSON.stringify(out);
-};
+});
 
 type CallAst = Extract<Ast, { t: "call" }>;
 const callPlans = new WeakMap<CallAst, { name: string; emptySlots: boolean[]; hasBlank: boolean }>();

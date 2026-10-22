@@ -650,7 +650,13 @@ impl Eval<'_> {
         }
         // A name the core doesn't know may be a pack's, registered in JS at run time: the TS calls it back.
         let Some(t) = site.traits.as_deref() else {
-            return if is_external(name) { self.call_external(name, &site, args, env) } else { V::err(sol_error("#NAME?", format!("Unknown function {name}"))) };
+            // In wasm the TS is always there to ask, so a name the core doesn't know goes to it rather than to a list of
+            // its names that may lag the registry; it answers the #NAME? itself.
+            return if crate::external::HOSTED || is_external(name) {
+                self.call_external(name, &site, args, env)
+            } else {
+                V::err(sol_error("#NAME?", format!("Unknown function {name}")))
+            };
         };
         if let Some(r) = &t.refusal {
             return V::err(sol_error(&r.code, r.message.as_str()));
