@@ -1627,17 +1627,26 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
         binds.push(Bind::Side(ctx.aligned(side(p))));
     }
     let mut cells = Vec::with_capacity(inp.rows);
-    crate::excel_functions::take_bailed();
-    let finish = |v: V| -> Result<crate::frame::FrameCell, ()> {
-        if crate::excel_functions::take_bailed() {
-            crate::excel_functions::take_thrown();
-            return Err(());
-        }
-        Ok(match crate::excel_functions::take_thrown() {
-            Some(e) => crate::frame::FrameCell::err(e),
-            None => crate::excel_formula::tag_computed_cell_pub(v),
-        })
+    use crate::excel_functions::{take_raised, Raised};
+    take_raised();
+    let finish = |v: V| match take_raised() {
+        Raised::Bailed => None,
+        Raised::Thrown(e) => Some(crate::frame::FrameCell::err(e)),
+        Raised::Nothing => Some(crate::excel_formula::tag_computed_cell_pub(v)),
     };
+    /// ROW()'s row while the column runs; dropping it clears the row.
+    struct Rows;
+    impl Rows {
+        fn at(&self, i: usize) {
+            crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+        }
+    }
+    impl Drop for Rows {
+        fn drop(&mut self) {
+            crate::excel_functions::set_row_number(None);
+        }
+    }
+    let rows = Rows;
     match spec {
         ColumnSpec::Expr { ast, .. } => {
             for p in row_refs(ast) {
@@ -1662,21 +1671,18 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
             let env = Rc::new(env);
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
-                crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+                rows.at(i);
                 let v = ev.run(ast, &env);
                 match finish(v) {
-                    Ok(c) => cells.push(c),
-                    Err(()) => {
-                        crate::excel_functions::set_row_number(None);
-                        return Ok(ColumnOutcome::Bail);
-                    }
+                    Some(c) => cells.push(c),
+                    None => return Ok(ColumnOutcome::Bail),
                 }
             }
         }
         ColumnSpec::Lambda(lam) => {
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
-                crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+                rows.at(i);
                 let argv: Vec<V> = binds.iter().map(|b| match b {
                     Bind::Col(c) => cell_v(c.cell_at(i)),
                     Bind::Side(v) => v.clone(),
@@ -1688,15 +1694,11 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
                     None => ev.call_lambda(lam, &argv),
                 };
                 match finish(v) {
-                    Ok(c) => cells.push(c),
-                    Err(()) => {
-                        crate::excel_functions::set_row_number(None);
-                        return Ok(ColumnOutcome::Bail);
-                    }
+                    Some(c) => cells.push(c),
+                    None => return Ok(ColumnOutcome::Bail),
                 }
             }
         }
     }
-    crate::excel_functions::set_row_number(None);
     Ok(ColumnOutcome::Done { cells, side_vars })
 }

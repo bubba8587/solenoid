@@ -160,12 +160,9 @@ pub struct NodeReply {
 
 pub fn reply(args: &Json) -> NodeReply {
     let kind = args.get("kind").and_then(Json::as_str).unwrap_or("");
+    let _calc = crate::excel_functions::Calc::begin(args.get("clock").and_then(|j| serde_json::from_value(j.clone()).ok()));
     let mut c = Call::from_json(args);
-    crate::excel_functions::set_clock(args.get("clock").and_then(|j| serde_json::from_value(j.clone()).ok()));
     let answer = run(kind, &mut c);
-    crate::excel_functions::set_clock(None);
-    crate::excel_functions::take_bailed();
-    crate::excel_functions::take_thrown();
     NodeReply { answer, display: c.display }
 }
 

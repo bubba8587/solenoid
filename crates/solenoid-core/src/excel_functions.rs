@@ -177,6 +177,43 @@ pub fn restore_calc_state(s: CalcState) {
     BAILED.with(|b| b.set(s.3));
 }
 
+/// What a calc raised beside its answer. A bail throws too, and outranks the throw.
+pub enum Raised {
+    Nothing,
+    Thrown(SolError),
+    Bailed,
+}
+
+/// What the calc raised since the last take, cleared.
+pub fn take_raised() -> Raised {
+    if take_bailed() {
+        take_thrown();
+        return Raised::Bailed;
+    }
+    take_thrown().map_or(Raised::Nothing, Raised::Thrown)
+}
+
+/// One engine call's span: the clock it reads is set while it lives, and dropping it clears the clock, the row and
+/// anything raised, so no return path leaves them to the next call.
+#[must_use]
+pub struct Calc(());
+
+impl Calc {
+    pub fn begin(clock: Option<Clock>) -> Calc {
+        set_clock(clock);
+        take_raised();
+        Calc(())
+    }
+}
+
+impl Drop for Calc {
+    fn drop(&mut self) {
+        set_clock(None);
+        set_row_number(None);
+        take_raised();
+    }
+}
+
 /// The computed column's current row, from 1, that ROW() reads (`currentRowNumber`).
 pub fn set_row_number(n: Option<f64>) {
     ROW_NUMBER.with(|r| r.set(n));
