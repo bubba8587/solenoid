@@ -1107,9 +1107,47 @@ describe("RUNNING over values with a unit answers as frozen", () => {
   it(`${unitRunning.length} calls`, () => replayUnitCalls(unitRunning));
 });
 
+/** SORT, SORTBY, UNIQUE, TAKE and DROP over lists and tables holding values with a unit ([[C25]] firstClassUnits): a
+ *  unit cell sorts after the logicals and ties with its kind, and UNIQUE keys it by base magnitude and dimension. */
+const unitShapers = frozen<UnitListCase>("unit-shapers", () => {
+  const cases: UnitListCase[] = [];
+  const rand = mulberry32(6262);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const same = [unitCell(5000, { length: 1 }, "km"), unitCell(5000, { length: 1 }), unitCell(5000.0000000000001, { length: 1 }, "m"),
+    unitCell(5000, { time: 1 }), unitCell(-0, { length: 1 }), unitCell(0, { length: 1 }, "km"), unitCell(NaN, { length: 1 }),
+    unitCell(Infinity, { length: 1 }), unitCell(1, { length: 1, time: -1 }), unitCell(1, { time: -1, length: 1 }), unitCell(1.1, {}, undefined, true),
+    unitCell(3960, { time: 1 }, "h"), unitCell(1.1 * 3600, { time: 1 }), unitCell(2, { "custom:é": 1, "custom:z": 1 }), unitCell(2, { "custom:z": 1, "custom:é": 1 })];
+  const cell = () => (rand() < 0.5 ? pick(same) : rand() < 0.4 ? pick(pick(UNIT_FAMILIES)) : pick([1, 2, -1, 0, null, undefined, "a", "b", true, false, NaN, solError("#N/A", "gone")]));
+  const row = (n: number) => Array.from({ length: n }, cell);
+  const data = (): unknown => {
+    const r = rand();
+    if (r < 0.1) return cell();
+    if (r < 0.55) return row(Math.floor(rand() * 7));
+    const w = 1 + Math.floor(rand() * 3);
+    return Array.from({ length: 1 + Math.floor(rand() * 5) }, () => row(w));
+  };
+  const setting = () => pick([undefined, null, 1, 2, -1, 0, true, false, ...same.slice(0, 2)]);
+  for (let i = 0; i < 5000; i++) {
+    const name = pick(["SORT", "SORT", "UNIQUE", "UNIQUE", "SORTBY", "TAKE", "DROP"]);
+    const v = data();
+    const args = name === "SORT" ? [v, pick([undefined, 1, 2]), pick([undefined, 1, -1]), pick([undefined, false, true])]
+      : name === "UNIQUE" ? [v, pick([undefined, false, true]), pick([undefined, false, true])]
+      : name === "SORTBY" ? [v, !Array.isArray(v) ? cell() : Array.isArray(v[0]) ? v.map(() => [cell()]) : row(v.length), pick([undefined, 1, -1])]
+      : [v, setting(), pick([undefined, 1, -1])];
+    let want: unknown;
+    try { want = unitData(resolveExcelFunction(name)!(...structuredClone(args))); } catch (e) { want = { thrown: String((e as Error).message ?? e) }; }
+    cases.push({ name, args, want });
+  }
+  return cases;
+});
+
+describe("SORT and UNIQUE over values with a unit answer as frozen", () => {
+  it(`${unitShapers.length} calls`, () => replayUnitCalls(unitShapers));
+});
+
 if (FREEZING) {
   it("froze every suite", () => {
-    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length + unitRunning.length).toBeGreaterThan(0);
+    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length + unitRunning.length + unitShapers.length).toBeGreaterThan(0);
   });
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.

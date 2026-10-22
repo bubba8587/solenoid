@@ -65,9 +65,9 @@ fn transpose(m: &Grid) -> Grid {
     (0..width).map(|j| m.iter().map(|r| r.get(j).cloned().unwrap_or(V::Undef)).collect()).collect()
 }
 
-/// `sortsLast`: a blank, an error or NaN.
+/// `sortsLast` of `vals[i] ?? null`: a blank (undefined too), an error or NaN.
 fn sorts_last(v: &V) -> bool {
-    matches!(v, V::Null | V::Err(_)) || matches!(v, V::Num(n) if n.is_nan())
+    matches!(v, V::Null | V::Undef | V::Err(_)) || matches!(v, V::Num(n) if n.is_nan())
 }
 
 /// `compareListCells`, with `a - b` for numbers: two equal infinities give NaN, which the sort reads as a tie that
@@ -248,6 +248,7 @@ fn key_of(row: &[V]) -> Vec<KeyPart> {
             V::Num(n) if n.is_finite() => KeyPart::Num(number_to_string(*n)),
             V::Str(s) => KeyPart::Str(s.clone()),
             V::Bool(b) => KeyPart::Bool(*b),
+            V::Unit(u) => KeyPart::Str(Rc::from(crate::unit_lists::unit_set_key(u))),
             _ => KeyPart::Null,
         })
         .collect()
