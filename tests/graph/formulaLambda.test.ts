@@ -198,4 +198,8 @@ describe("a helper's LAMBDA answers one value each time, as Excel's do", () => {
     expect(ev("BYROW(col, LAMBDA(r, r))", env)).toEqual([[1], [2], [3]]);
     expect(code((ev("MAP(ys, LAMBDA(x, FILTER(vals, keys <> \"b\")))", env) as unknown[])[0])).toBe("#SHAPE!");
   });
+  it("MAKEARRAY caps rows and columns each, so no columns can't hide a billion rows", () => {
+    for (const s of ["MAKEARRAY(1e9, 0, LAMBDA(i, j, 1))", "MAKEARRAY(0, 1e9, LAMBDA(i, j, 1))"]) expect(code(ev(s) as SolError)).toBe("#OVERFLOW!");
+    expect(ev("MAKEARRAY(2, 0, LAMBDA(i, j, 1))")).toEqual([[], []]);
+  });
 });

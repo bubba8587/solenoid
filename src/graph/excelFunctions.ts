@@ -2165,8 +2165,8 @@ registerInternal("MAKEARRAY", (rows, cols, fn) => {
   if (rows == null || cols == null) return null;
   const r = Math.max(0, Math.floor(Number(rows)));
   const c = Math.max(0, Math.floor(Number(cols)));
-  if (r * c > MAX_GENERATED) {
-    return solError("#OVERFLOW!", `MAKEARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
+  if (Math.max(r, 1) * Math.max(c, 1) > MAX_GENERATED) {
+    return solError("#OVERFLOW!", `MAKEARRAY count ${Math.max(r, 1) * Math.max(c, 1)} exceeds the ${MAX_GENERATED} element limit`);
   }
   return Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => oneValue("MAKEARRAY", "cell", lam.fn(i + 1, j + 1))));
 });
