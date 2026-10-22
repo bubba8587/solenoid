@@ -142,6 +142,10 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 - **Load time is the module's bytes.** A `<link rel="preload">` for the wasm was measured and dropped (2026-10-22): under
   4 Mbps throttling the first render came 0.4 s later, since the wasm then shares the link with the entry scripts the
   render also waits for. What would move it is a smaller module, or a first render that doesn't wait for the core.
+  Size against speed was measured too (2026-10-22): rustc's `opt-level = "z"` cuts the module from 860 KB to 650 KB
+  gzipped but runs formula columns 1.5 to 3 times slower; `"s"` saves 11% for about a third slower; `wasm-opt`'s level
+  moves it under 1%. It stays at 3. What's big after rustc: the dispatch functions `wasm-opt` inlines into, `.rodata`
+  (the call table's JSON among it) and serde's derive for `FrameOp`.
 - **A function call costs about 1,000 instructions a row** in the dispatch ladder (argument roles, blank slots,
   broadcasting, the error guard), against about 450 for an operator. Each call site's name and facts resolve once per
   column already; resolving its route the same way (which rungs can apply to it at all) is the next cut.
