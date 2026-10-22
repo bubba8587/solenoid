@@ -5,10 +5,11 @@ import { parseCubeSource, recordKeys, sourcePicks, DEFAULT_CUBE_TEXT, type CubeS
 import { compileEvaluator, extractVariables, rowRefNames } from "../excelFormula";
 import { computeCubeColumnCells } from "../computedColumnCore";
 import { cubeRowTable, cubeCellsType } from "../cubeRows";
-import { computedColumnType, readingsRefusal } from "./frame";
+import { computedColumnType } from "./frame";
+import { planColumnUnits, exprDefinition } from "../computedColumnUnits";
 import { cubeFromColumns, recordsToCube, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, typedColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type CubeColumn, type FrameValue, type FrameColumn, type FrameCell, type FrameColType } from "../frame";
 import { aggregateGroup, aggUnitPlan, type AggOp } from "../frameVerbs";
-import { matrixCellsFromList, tagFrameCellUnit } from "../unitColumn";
+import { matrixCellsFromList, tagFrameCellUnit, tagCubeCellUnit } from "../unitColumn";
 import type { ColumnUnit } from "../unitValue";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { volatileStamp } from "../volatileDates";
@@ -314,15 +315,17 @@ export function cubeFromSource(source: CubeSource): CubeValue {
       if (!expr.trim()) { fill(i, null); continue; }
       if (!ev) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
       const table = cubeRowTable(cubeFromColumns(cols));
-      const refused = readingsRefusal(expr, table);
-      if (refused) { fill(i, refused); continue; }
-      const r = computeCubeColumnCells(table, { kind: "expr", evaluator: ev, vars }, {
+      const plan = planColumnUnits<CubeCell>(exprDefinition(expr), table);
+      if (isSolError(plan)) { fill(i, plan); continue; }
+      const r = computeCubeColumnCells(plan.table, { kind: "expr", evaluator: ev, vars }, {
         rowRefs: refs,
         sideValue: (p) => solError("#REF!", `No column "${p}"`),
       });
       if (isSolError(r)) { fill(i, r); continue; }
-      const type = cubeCellsType(r.cells) ?? computedColumnType(cols[i].name, r.cells as FrameCell[], table, expr);
-      cols[i] = { name: cols[i].name, cells: r.cells, type };
+      const done = plan.finish(r.cells);
+      const type = cubeCellsType(done.cells) ?? computedColumnType(cols[i].name, done.cells as FrameCell[], table, expr);
+      const unit = type === "number" ? done.unit : undefined;
+      cols[i] = { name: cols[i].name, cells: unit ? done.cells.map((c) => tagCubeCellUnit(c, unit) as CubeCell) : done.cells, type };
     }
   }
   if (pending.size > 0) {

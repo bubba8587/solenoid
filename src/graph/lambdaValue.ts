@@ -6,6 +6,10 @@ export interface LambdaValue {
   fn: (...args: unknown[]) => unknown;
   expr: string;
   captured?: string[];
+  /** The captured values with their units, beside `captured`; `fn` reads them unit-blind, as the numbers they show. */
+  capturedValues?: readonly unknown[];
+  /** The same lambda reading other captured values, so a reader that runs in base SI can hand them over in it. */
+  withCaptures?: (values: readonly unknown[]) => LambdaValue;
   /** A host calls an eta lambda with its meaningful arity only, never trailing row, col or pad arguments. */
   eta?: true;
   descriptions?: Record<string, string>;

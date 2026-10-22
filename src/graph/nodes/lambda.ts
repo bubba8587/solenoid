@@ -5,6 +5,7 @@ export { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { type LambdaValue } from "../lambdaValue";
 import { solError, type SolError } from "../errorValue";
 import { readCapturedColumn } from "../computedColumnCore";
+import { stripUnitCells } from "../unitBridge";
 
 export function formatLambda(v: LambdaValue): string {
   return `λ(${v.params.join(", ")})`;
@@ -33,6 +34,7 @@ const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 type Compiled = (...args: unknown[]) => unknown;
 
 export class LambdaNode extends ClassicPreset.Node {
+  unitAware = true;
   label: string;
   params: string;
   expr: string;
@@ -129,14 +131,21 @@ export class LambdaNode extends ClassicPreset.Node {
       return { result: this.cachedValue };
     }
     const captured = [...this.captured];
-    // [[C22]] rowFormulaRefs: inside a computed column a column outranks a capture.
-    const fn: Compiled = (...args) =>
-      compiled(...args.slice(0, params.length), ...captured.map((c, i) => {
-        const col = readCapturedColumn(c);
-        return col.hit ? col.v : capturedVals[i];
-      }));
     const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
-    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, captured, descriptions };
+    const expr = this.expr;
+    const build = (vals: readonly unknown[]): LambdaValue => ({
+      __lambda: true, params, expr, captured, descriptions,
+      // [[C22]] rowFormulaRefs: inside a computed column a column outranks a capture.
+      fn: (...args) =>
+        compiled(...args.slice(0, params.length), ...captured.map((c, i) => {
+          const col = readCapturedColumn(c);
+          return col.hit ? col.v : vals[i];
+        })),
+      capturedValues: capturedVals,
+      withCaptures: build,
+    });
+    // [[C25]] firstClassUnits: the body reads its captures unit-blind; a computed column reads their units ([[D100]] computedColumnInfersUnit).
+    const value = build(capturedVals.map(stripUnitCells));
     this._lastBuild = { expr: this.expr, params: this.params, descJson, capturedVals };
     this.cachedValue = value;
     this.cachedError = null;

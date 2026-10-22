@@ -67,9 +67,9 @@ Anything else stays a number. The Computed Column node can also pin the type ins
 
 ## Units
 
-A Frame's computed column takes the unit its formula works out from its columns' units and its wired values' units, and an authored unit (a `Name (unit)` name, or the Fx column's unit picker) wins; a clash is `#UNIT!` in every cell ([[D100]] computedColumnInfersUnit). The rule, its magnitudes and its readings are [[unit-flow#Computed columns]]. A LAMBDA is read through its body, whether it is the column's whole definition (a wired λ, or a Frame Input column that is only `λ1`), called by name (`λ1(@lo, @hi)`), or written inline: each parameter takes the unit of the column or argument it binds to.
+A computed column, over a Frame or a Cube, takes the unit its formula works out from its columns' units and its wired values' units, and an authored unit (a `Name (unit)` name, or the Fx column's unit picker) wins; a clash is `#UNIT!` in every cell ([[D100]] computedColumnInfersUnit). The rule, its magnitudes and its readings are [[unit-flow#Computed columns]]. A LAMBDA is read through its body, whether it is the column's whole definition (a wired λ, or a Frame Input column that is only `λ1`), called by name (`λ1(@lo, @hi)`), or written inline: each parameter takes the unit of the column or argument it binds to.
 
-A Cube's computed column reads each cell as its bare number and carries only an authored unit; one rule reads its source units: over readings on an offset scale (°C, °F) a sum, or a reading scaled or divided, makes every cell `#UNIT!` (`readingsRefusal` in `nodes/frame.ts`).
+A Cube carries its unit on its cells, so a Cube column's unit is the one its cells share and the result's unit is tagged onto each new cell ([[unit-flow#Computed columns]], Cubes). A LAMBDA's captured values count with their units.
 
 ## Fx columns in Frame Input
 

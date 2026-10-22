@@ -32,6 +32,21 @@ export function lambdaDefinition(lam: LambdaValue): ColumnDefinition | null {
   return { ast: { t: "call", name: "λ", args: lam.params.map((name): Ast => ({ t: "atcol", name })) }, fns: new Map([["λ", l]]) };
 }
 
+/** The values the LAMBDAs a column calls capture, units kept, by name: the dimension pass reads them as side values. */
+export function lambdaCaptures(lams: Iterable<unknown>): Map<string, unknown> {
+  const out = new Map<string, unknown>();
+  for (const l of lams) {
+    if (!isLambdaValue(l) || !l.captured || !l.capturedValues) continue;
+    l.captured.forEach((name, i) => { if (!out.has(name)) out.set(name, l.capturedValues![i]); });
+  }
+  return out;
+}
+
+/** The lambda reading its captures in the magnitudes the plan runs the formula on. */
+export function lambdaInPlan<C>(lam: LambdaValue, plan: ColumnUnitPlan<C>): LambdaValue {
+  return lam.withCaptures && lam.capturedValues ? lam.withCaptures(lam.capturedValues.map(plan.side)) : lam;
+}
+
 export interface ColumnUnitPlan<C> {
   /** The table in the magnitudes the formula runs on. */
   table: RowTable;
@@ -89,8 +104,12 @@ const linearUnit = (id: string | undefined, dim: Dim): Unit | null => {
   return u && !u.offset && dimEqual(u.dim, dim) ? u : null;
 };
 
+/** Every number in a cell, a Cube row's list items included. */
+const mapNumbers = (v: unknown, f: (n: number) => number): unknown =>
+  typeof v === "number" ? f(v) : Array.isArray(v) ? v.map((x) => mapNumbers(x, f)) : v;
+
 const scaleCells = <C>(cells: C[], k: number): C[] =>
-  k === 1 ? cells : cells.map((c) => (typeof c === "number" ? (c * k) as C : c));
+  k === 1 ? cells : cells.map((c) => mapNumbers(c, (n) => n * k) as C);
 
 /**
  * The unit pass of one computed column, run once per column: the formula's dimension from its
@@ -101,7 +120,7 @@ const scaleCells = <C>(cells: C[], k: number): C[] =>
  */
 export function planColumnUnits<C>(
   def: ColumnDefinition | null,
-  table: { columns: ReadonlyArray<RowColumn & { unit?: ColumnUnit }> },
+  table: { columns: ReadonlyArray<RowColumn & { unit?: ColumnUnit; unitError?: SolError }> },
   opts: { alias?: Record<string, string | undefined>; sideValue?: (name: string) => unknown; authored?: ColumnUnit | null } = {},
 ): ColumnUnitPlan<C> | SolError {
   const authored = opts.authored && !isDimensionless(opts.authored.dim) ? opts.authored : null;
@@ -115,6 +134,7 @@ export function planColumnUnits<C>(
   for (const n of referencedNames(def)) {
     const col = byName.get(opts.alias?.[n] ?? n);
     let u: United | SolError | null = null;
+    if (col?.unitError) return col.unitError;
     if (col) u = col.unit && !isDimensionless(col.unit.dim) ? { dim: col.unit.dim, display: col.unit.display, list: true } : null;
     else if (opts.sideValue) u = sideUnit(n, opts.sideValue(n));
     if (isSolError(u)) return u;
@@ -192,7 +212,12 @@ export function planColumnUnits<C>(
   const columns = shown ? table.columns : table.columns.map((c) => {
     const u = c.unit && !isDimensionless(c.unit.dim) && c.unit.display ? fcUnitToUnit(c.unit.display) : null;
     if (!u || (u.scale === 1 && !u.offset)) return c;
-    return { ...c, values: c.values.map((v) => (typeof v === "number" ? v * u.scale + (u.offset ?? 0) : v)) };
+    const toBase = (n: number) => n * u.scale + (u.offset ?? 0);
+    return {
+      ...c,
+      values: c.values.map((v) => mapNumbers(v, toBase)),
+      ...("whole" in c ? { whole: mapNumbers(c.whole, toBase) } : {}),
+    };
   });
   const res = result;
   return {
@@ -204,7 +229,7 @@ export function planColumnUnits<C>(
       if (!res.unit) return { cells: scaled, unit: authored };
       const from: Unit = (res.unit.display && fcUnitToUnit(res.unit.display)) || { dim: res.unit.dim, scale: 1 };
       const to: Unit = (authored.display && fcUnitToUnit(authored.display)) || { dim: authored.dim, scale: 1 };
-      const out = scaled.map((c) => (typeof c === "number" ? (convert(c, from, to) ?? c) as C : c));
+      const out = scaled.map((c) => mapNumbers(c, (n) => convert(n, from, to) ?? n) as C);
       return { cells: out, unit: authored };
     },
   };

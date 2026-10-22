@@ -175,7 +175,7 @@ A formula preset may declare the unit a variable is read in (`units` on the pack
 
 A computed column with no authored unit takes the unit its formula works out, as Expression does ([[D100]] computedColumnInfersUnit; `planColumnUnits` in `computedColumnUnits.ts`). A column holds one unit, so this is one `dimEval` pass per column, never per row.
 
-- **Inputs.** Each name, `@` read and `[Name]` read of a column takes that column's `ColumnUnit` (a currency column also its code); a wired side value takes its cells' one dimension, and a side list mixing two is `#UNIT!`. The Computed Column node is `unitAware`, so a side value arrives with its unit. With no united input the column computes as plain numbers and carries only an authored unit.
+- **Inputs.** Each name, `@` read and `[Name]` read of a column takes that column's `ColumnUnit` (a currency column also its code); a wired side value takes its cells' one dimension, and a side list mixing two is `#UNIT!`. The Computed Column node is `unitAware`, so a side value arrives with its unit. A LAMBDA's captured values count as side values: the LAMBDA card is `unitAware` and keeps them with their units on the value (`capturedValues`), its own body still reads them as the numbers they show, and the column hands them to the body in the magnitudes it runs on (`lambdaInPlan`). With no united input the column computes as plain numbers and carries only an authored unit.
 - **Indeterminate** (`POWER(@d, 2)`, `@d ^ @q`, IF branches in two dimensions): the unit drops and the column computes on the numbers the columns show, carrying only an authored unit, as with no united input.
 - **A conflict** (`@dist + @time` over km and h, `$` beside `€`) makes every cell of the column `#UNIT!`, as a column-level error is shown.
 - **Readings** on an offset scale are classified as on Expression (`affineWeight`): over °C `@hi - @lo` is a difference in K, `(@lo + @hi) / 2` is a °C reading, and `@lo + @hi` is `#UNIT!`.
@@ -183,7 +183,7 @@ A computed column with no authored unit takes the unit its formula works out, as
 - **An authored unit wins** (a `Name (unit)` name, or the Fx column's unit picker): the answer converts into it, a plain-number answer is tagged with it as typed, and an answer in another dimension, or another currency code, is `#UNIT!`.
 - **Replacing a column** sets the new unit, or none, never the replaced column's stale one.
 
-A Cube's computed column still reads its cells as bare numbers and only classifies readings (`readingsRefusal`).
+- **Cubes.** A Cube's computed column (the Computed Column node over a Cube, and a Cube Input Fx column) runs the same pass. A Cube carries its unit on its cells, so a column's unit is the one its cells share, a row's list items included (`cubeRowTable`): cells in one display unit read as the numbers they show; cells in one dimension but two display units (km beside mi) read in base SI with only the dimension; cells in two dimensions make the column `#UNIT!` in every cell of a formula that reads it ("d holds mixed units: m and s."), while a formula that leaves it out computes. The result's unit is tagged onto each number of the new column, list items included, so a column of km lists doubled is km lists and `SUM(@legs)` is km.
 
 ## LAMBDA hosts over a 1-D list
 
