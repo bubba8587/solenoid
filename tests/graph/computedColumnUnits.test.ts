@@ -29,6 +29,15 @@ describe("a computed column infers its unit from its formula", () => {
   const trips = frame(num("dist", [100, 30], "km"), num("time", [2, 0.5], "hr"));
   const temps = frame(num("lo", [20, 18], "degC"), num("hi", [26, 30], "degC"));
 
+  it("an indeterminate unit drops, and the cells stay in the numbers the columns show", () => {
+    const d = frame(num("d", [3, 5], "km"), num("q", [2, 3]));
+    for (const expr of ["POWER(@d, 2)", "@d ^ @q"]) {
+      const c = run(d, expr);
+      expect(c.values).toEqual(expr === "POWER(@d, 2)" ? [9, 25] : [9, 125]);
+      expect(c.unit).toBeUndefined();
+    }
+  });
+
   it("price times a plain quantity is dollars", () => {
     const c = run(sales, "@price * @qty");
     expect(c.values).toEqual([15, 8]);
