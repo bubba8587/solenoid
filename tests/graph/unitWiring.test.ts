@@ -99,6 +99,20 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(magnitudeOf(r)).toBe(6);
     expect(unitLabelOf(r)).toBe("N");
   });
+  it("a table answer keeps its unit, as a list's does", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const n = new ExpressionNode({ expr: "xs * 2" });
+    const r = n.data({ xs: [[[cell(1, "m"), cell(2, "m")], [cell(3, "m"), cell(4, "m")]]] }).result as UnitCell[][];
+    expect(r.map((row) => row.map((c) => magnitudeOf(c)))).toEqual([[2, 4], [6, 8]]);
+    expect(r.flat().every((c) => unitLabelOf(c) === "m")).toBe(true);
+  });
+  it("a list mixing two units is #UNIT!, not read unit-blind", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const n = new ExpressionNode({ expr: "SUM(xs)" });
+    const r = n.data({ xs: [[cell(1, "km"), cell(5, "s")]] }).result;
+    expect(r).toMatchObject({ code: "#UNIT!", message: "xs holds mixed units: m and s." });
+    expect(magnitudeOf(n.data({ xs: [[cell(1, "m"), 5]] }).result)).toBe(6);
+  });
   it("d + t (incommensurable) is #UNIT!", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const n = new ExpressionNode({ expr: "d + t" });
