@@ -1146,9 +1146,38 @@ describe("SORT and UNIQUE over values with a unit answer as frozen", () => {
   it(`${unitShapers.length} calls`, () => replayUnitCalls(unitShapers));
 });
 
+/** FILTER over values with a unit ([[C25]] firstClassUnits): the data moves unread, and a unit cell read as a
+ *  condition is `#VALUE!` (`ifTest`). */
+const unitFilters = frozen<UnitListCase>("unit-filters", () => {
+  const cases: UnitListCase[] = [];
+  const rand = mulberry32(7373);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const cell = () => (rand() < 0.5 ? pick(pick(UNIT_FAMILIES)) : pick([1, 2, -1, 0, null, undefined, "a", true, false, NaN, solError("#N/A", "gone")]));
+  const cond = () => (rand() < 0.15 ? pick(pick(UNIT_FAMILIES)) : pick([true, false, true, 1, 0, -2, NaN, null, undefined, "TRUE", "false", "x", "", solError("#N/A", "gone")]));
+  const row = (n: number, f: () => unknown) => Array.from({ length: n }, f);
+  for (let i = 0; i < 4000; i++) {
+    const r = rand();
+    const w = 1 + Math.floor(rand() * 3);
+    const v: unknown = r < 0.1 ? cell() : r < 0.55 ? row(Math.floor(rand() * 7), cell) : row(1 + Math.floor(rand() * 5), () => row(w, cell));
+    const n = !Array.isArray(v) ? 1 : Array.isArray(v[0]) ? v.length : v.length;
+    const include = rand() < 0.1 ? cond()
+      : Array.isArray(v) && Array.isArray(v[0]) ? (rand() < 0.8 ? v.map(() => [cond()]) : row(w, cond))
+      : row(rand() < 0.9 ? n : n + 1, cond);
+    const args = rand() < 0.5 ? [v, include] : [v, include, pick([undefined, null, 0, "none", ...pick(UNIT_FAMILIES)])];
+    let want: unknown;
+    try { want = unitData(resolveExcelFunction("FILTER")!(...structuredClone(args))); } catch (e) { want = { thrown: String((e as Error).message ?? e) }; }
+    cases.push({ name: "FILTER", args, want });
+  }
+  return cases;
+});
+
+describe("FILTER over values with a unit answers as frozen", () => {
+  it(`${unitFilters.length} calls`, () => replayUnitCalls(unitFilters));
+});
+
 if (FREEZING) {
   it("froze every suite", () => {
-    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length + unitRunning.length + unitShapers.length).toBeGreaterThan(0);
+    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length + unitRunning.length + unitShapers.length + unitFilters.length).toBeGreaterThan(0);
   });
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.

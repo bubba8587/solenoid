@@ -745,7 +745,7 @@ pub struct UnitCell {
 /// The bodies that take a value with a unit: the ones that move values without reading them, and those
 /// `unit_lists.rs` reads them for. Any other call holding one stays on the TS.
 pub const UNIT_READY: &[&str] = &[
-    "REVERSE", "SLICE", "NTHELEMENT", "INTERLEAVE", "CONCATLISTS", "PADLEFT", "PADRIGHT", "RUNNING", "SORT", "SORTBY", "UNIQUE", "TAKE", "DROP",
+    "REVERSE", "SLICE", "NTHELEMENT", "INTERLEAVE", "CONCATLISTS", "PADLEFT", "PADRIGHT", "RUNNING", "SORT", "SORTBY", "UNIQUE", "TAKE", "DROP", "FILTER",
 ];
 
 pub fn holds_unit(v: &crate::excel_functions::V) -> bool {
