@@ -25,7 +25,12 @@ function same(got: unknown, want: unknown): boolean {
     return isUnitCell(got) && isUnitCell(want) && Object.is(got.value, want.value) && got.display === want.display && !!got.ratio === !!want.ratio;
   }
   if (isCx(got) || isCx(want)) return isCx(got) && isCx(want) && Object.is(got.re, want.re) && Object.is(got.im, want.im);
-  if (typeof got === "object" && got && typeof want === "object" && want) return JSON.stringify(got) === JSON.stringify(want);
+  if (typeof got === "object" && got && typeof want === "object" && want) {
+    // Plain data comes back with its keys sorted, so compare by key.
+    const g = got as Record<string, unknown>, w = want as Record<string, unknown>;
+    const keys = new Set([...Object.keys(g), ...Object.keys(w)]);
+    return [...keys].every((k) => same(g[k], w[k]));
+  }
   return Object.is(got, want);
 }
 
@@ -42,6 +47,13 @@ describe("card bodies on the core answer as frozen", () => {
       for (const c of cases) {
         if (c.unstable) continue;
         const r = call(c);
+        // A JS exception froze as its text; the error guard shows it as this error (`fromThrown`).
+        const js = (c.result as { thrownJs?: string }).thrownJs;
+        if (js !== undefined) {
+          const i = js.indexOf(": ");
+          const [name, msg] = i < 0 ? ["Error", js] : [js.slice(0, i), js.slice(i + 2)];
+          c.result = { thrown: name === "ShapeError" ? { __err: "#SHAPE!", msg } : { __err: "#ERROR!", msg: `This node failed to compute: ${msg}` } };
+        }
         if (c.result.out) {
           for (const [k, w] of Object.entries(c.result.out)) {
             const got = r.out && k in r.out ? readNodeReply(r.out[k])?.value : "(missing)";

@@ -1,8 +1,7 @@
 // [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
-import { buildXY } from "../../../src/graph/nodes/xyPlot";
-import { ChartNode, MergePlotsNode, readChartRefs } from "../../../src/graph/nodes/visual";
-import { parseChartOptions, serializeChartOptions } from "../../../src/graph/nodes/chartOptions";
+import { ChartNode, MergePlotsNode, ChartBuilderNode } from "../../../src/graph/nodes/visual";
+import { parseChartOptions } from "../../../src/graph/nodes/chartOptions";
 import type { ChartValue, XYPayload } from "../../../src/graph/chartValue";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
 import type { FrameValue } from "../../../src/graph/frame";
@@ -16,9 +15,10 @@ const curve: FrameValue = { __frame: true, columns: [
   { name: "name", type: "string", values: ["a", "b", "c", "d"] },
   { name: "arm", type: "string", values: ["L", "L", "R", "R"] },
 ] };
-const xy = (op: "scatter" | "xyline" | "bubble", frame: unknown, opts: string) => buildXY(op, frame, parseChartOptions(opts)) as XYPayload;
+const plot = (op: "scatter" | "xyline" | "bubble", frame: unknown, opts: string) => new ChartNode({ op }).data({ values: [frame], options: [opts] }).chart;
+const xy = (op: "scatter" | "xyline" | "bubble", frame: unknown, opts: string) => (plot(op, frame, opts) as ChartValue).payload as XYPayload;
 
-describe("buildXY", () => {
+describe("Chart node, XY payload", () => {
   it("plots named x against named y in row order, a blank cell a gap", () => {
     const p = xy("xyline", curve, "x=x;y=y");
     expect(p.series).toHaveLength(1);
@@ -81,11 +81,11 @@ describe("buildXY", () => {
   });
 
   it("a named column the data lacks is #REF!, a text column in a number role #TYPE!", () => {
-    const miss = buildXY("scatter", curve, parseChartOptions("x=x;y=z")) as SolError;
+    const miss = plot("scatter", curve, "x=x;y=z") as SolError;
     expect(miss.code).toBe("#REF!");
     expect(miss.message).toContain('"z"');
-    expect((buildXY("scatter", curve, parseChartOptions("x=x;y=name")) as SolError).code).toBe("#TYPE!");
-    expect((buildXY("bubble", curve, parseChartOptions("s=arm")) as SolError).code).toBe("#TYPE!");
+    expect((plot("scatter", curve, "x=x;y=name") as SolError).code).toBe("#TYPE!");
+    expect((plot("bubble", curve, "s=arm") as SolError).code).toBe("#TYPE!");
   });
 
   it("linestyle overrides the op's default; XY Line markers follow the series count", () => {
@@ -177,7 +177,10 @@ describe("XY option keys", () => {
   });
 
   it("serialize from the builder, xlim as one pair", () => {
-    expect(serializeChartOptions({ x: "t", y: "a,b", linestyle: "dashed", xmin: 1, xmax: null })).toBe("x=t;y=a,b;linestyle=dashed;xlim=1,");
+    const n = new ChartBuilderNode();
+    Object.assign(n.stringLiterals, { x: "t", y: "a,b", linestyle: "dashed" });
+    n.literals.xmin = 1;
+    expect(n.data({}).result).toBe("x=t;y=a,b;linestyle=dashed;xlim=1,");
   });
 });
 
@@ -202,7 +205,7 @@ describe("date x and References", () => {
   });
 
   it("reads References by column name, skipping a row with no position", () => {
-    expect(readChartRefs(refs)).toEqual([
+    expect((new ChartNode({ op: "line" }).data({ values: [[1]], references: [refs] }).chart as ChartValue).refs).toEqual([
       { x: 45670, label: "Launch", color: "pink" },
       { x: 45700, x2: 45600, color: "blue" },
       { y: 11, label: "Target", color: "gray" },

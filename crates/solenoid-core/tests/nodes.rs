@@ -85,7 +85,14 @@ fn mismatch(case: &Json) -> Option<String> {
     args["clock"] = case["ctx"]["clock"].clone();
     let r = reply(&args);
     let answer = r.answer.expect("checked by the caller");
-    let result = &case["result"];
+    // A JS exception froze as its text; the error guard shows it as this error, which is what the card answered.
+    let mut result = case["result"].clone();
+    if let Some(t) = result.get("thrownJs").and_then(Json::as_str).map(String::from) {
+        let (name, msg) = t.split_once(": ").unwrap_or(("Error", t.as_str()));
+        let e = if name == "ShapeError" { serde_json::json!({ "__err": "#SHAPE!", "msg": msg }) } else { serde_json::json!({ "__err": "#ERROR!", "msg": format!("This node failed to compute: {msg}") }) };
+        result = serde_json::json!({ "thrown": e });
+    }
+    let result = &result;
     match (&answer, result.get("out"), result.get("thrown")) {
         (Ok(outs), Some(Json::Object(want)), _) => {
             for (k, w) in want {

@@ -1,6 +1,17 @@
 // [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
-import { parseChartOptions, serializeChartOptions } from "../../../src/graph/nodes/chartOptions";
+import { parseChartOptions } from "../../../src/graph/nodes/chartOptions";
+import { ChartBuilderNode } from "../../../src/graph/nodes/visual";
+
+/** A Chart Builder's options string with these fields typed in. */
+function serializeChartOptions(fields: Record<string, string | number | null>): string {
+  const n = new ChartBuilderNode();
+  for (const [k, v] of Object.entries(fields)) {
+    if (typeof v === "number") n.literals[k] = v;
+    else if (typeof v === "string") n.stringLiterals[k] = v;
+  }
+  return n.data({}).result;
+}
 
 describe("parseChartOptions", () => {
   it("parses the full matplotlib-style string", () => {
@@ -52,7 +63,7 @@ describe("parseChartOptions", () => {
   });
 });
 
-describe("serializeChartOptions", () => {
+describe("Chart Builder serialization", () => {
   it("emits only set fields and collapses Y bounds into ylim", () => {
     expect(serializeChartOptions({ title: "A", color: "red", ymin: 0, ymax: 10 }))
       .toBe("title=A;color=red;ylim=0,10");
