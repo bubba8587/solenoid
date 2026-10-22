@@ -2,10 +2,10 @@
 import { cellImageSrc } from "../../../src/graph/recordLayout";
 import { describe, it, expect } from "vitest";
 import {
-  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapNode, ChartBuilderNode, SurfaceNode, histogram2d,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
-  boxplotStats, quantileSorted, HistogramNode, type Histogram2d,
-  RecordNode, recordRows, parseRecordLayout, recordImageSrc, HEATMAP_MAX,
+  HistogramNode, type Histogram2d,
+  RecordNode, recordRows, parseRecordLayout, recordImageSrc,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
@@ -232,17 +232,21 @@ describe("Chart Builder", () => {
   });
 });
 
-describe("histogramBins", () => {
+/** A 1-D Histogram's counts, or the error it draws, for these values and bin count. */
+const histogramBins = (vals: unknown[], k: number) => new HistogramNode().data({ values: [vals], bins: [k] }).chart;
+const counts = (vals: unknown[], k: number) => (histogramBins(vals, k) as ChartValue).values;
+
+describe("Histogram bins", () => {
   it("counts values into equal-width bins over the data's own range", () => {
     // 0..9 into 5 bins → pairs, with the max landing in the closed last bin
-    expect(histogramBins([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 5)).toEqual([2, 2, 2, 2, 2]);
-    expect(histogramBins([], 5)).toEqual([]);
-    expect(histogramBins([3, 3, 3], 4)).toEqual([3, 0, 0, 0]); // one spike, all in bin 0
+    expect(counts([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 5)).toEqual([2, 2, 2, 2, 2]);
+    expect(counts([], 5)).toEqual([]);
+    expect(counts([3, 3, 3], 4)).toEqual([3, 0, 0, 0]); // one spike, all in bin 0
   });
 
   it("a value on a bin's lower edge lands in that bin, however the division rounds", () => {
     const w = 0.3 / 7;
-    expect(histogramBins([0, 3 * w, 6 * w, 0.3], 7)).toEqual([1, 0, 0, 1, 0, 0, 2]);
+    expect(counts([0, 3 * w, 6 * w, 0.3], 7)).toEqual([1, 0, 0, 1, 0, 0, 2]);
     expect((histogram2d([0, 3 * w, 0.3], [0, 0, 0.3], 7, 1) as Histogram2d).counts[0]).toEqual([1, 0, 0, 1, 0, 0, 1]);
   });
 
@@ -251,7 +255,7 @@ describe("histogramBins", () => {
     // throws past ~125k args on min/max.
     const N = 200_000;
     const vals = Array.from({ length: N }, (_, i) => i);
-    const bins = histogramBins(vals, 10) as number[];
+    const bins = counts(vals, 10) as number[];
     expect(bins).toHaveLength(10);
     expect(bins.reduce((a, b) => a + b, 0)).toBe(N);
   });
@@ -349,24 +353,26 @@ describe("control nodes", () => {
 const frame = (cols: Array<Pick<FrameColumn, "name" | "type" | "values">>): FrameValue =>
   ({ __frame: true, columns: cols as FrameColumn[] });
 
-describe("quantileSorted / boxplotStats", () => {
+describe("Boxplot statistics", () => {
+  const boxes = (sample: unknown[]) => ((new BoxplotNode().data({ values: [sample] }).chart as ChartValue).payload as BoxplotPayload).boxes;
+
   it("linear-interpolated quantiles (PERCENTILE.INC)", () => {
-    const s = [1, 2, 3, 4];
-    expect(quantileSorted(s, 0)).toBe(1);
-    expect(quantileSorted(s, 1)).toBe(4);
-    expect(quantileSorted(s, 0.5)).toBe(2.5);
-    expect(quantileSorted(s, 0.25)).toBeCloseTo(1.75, 12);
+    const [b] = boxes([1, 2, 3, 4]);
+    expect(b.lo).toBe(1);
+    expect(b.hi).toBe(4);
+    expect(b.med).toBe(2.5);
+    expect(b.q1).toBeCloseTo(1.75, 12);
   });
 
   it("five-number summary with Tukey whiskers + outliers", () => {
     // 1..9 plus a wild 100: IQR fences exclude it → outlier, whisker stops at 9.
-    const s = boxplotStats([1, 2, 3, 4, 5, 6, 7, 8, 9, 100])!;
+    const [s] = boxes([1, 2, 3, 4, 5, 6, 7, 8, 9, 100]);
     expect(s.med).toBeCloseTo(5.5, 12);
     expect(s.hi).toBe(9);
     expect(s.outliers).toEqual([100]);
-    expect(boxplotStats([null, null])).toBeNull();
+    expect(boxes([null, null])).toEqual([]);
     // Nulls are skipped, not zeroes.
-    expect(boxplotStats([null, 5, null])!.med).toBe(5);
+    expect(boxes([null, 5, null])[0].med).toBe(5);
   });
 });
 
@@ -827,6 +833,7 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
     expect(out.options).toMatchObject({ origin: "lower", aspect: "auto", cmap: "magma" });
   });
   it("Heatmap cuts a huge table to HEATMAP_MAX and says how big it was", async () => {
+    const HEATMAP_MAX = 400;
     const big = Array.from({ length: HEATMAP_MAX + 5 }, (_, r) => Array.from({ length: 3 }, (_, c) => r + c));
     const p = (await new HeatmapNode().data({ values: [big] })).chart.payload as HeatmapPayload;
     expect(p.z.length).toBe(HEATMAP_MAX);
@@ -857,13 +864,16 @@ describe("Sparkline blanks are gaps", () => {
 });
 
 describe("Sankey loops, Histogram bins, Date Range order (review pins)", () => {
-  it("acyclicFlows drops the links that close a loop and keeps the rest in order", async () => {
-    const { acyclicFlows, SankeyNode } = await import("../../../src/graph/nodes/visual");
-    const r = acyclicFlows(["A", "B", "B"], ["B", "A", "C"], [10, 5, 3]);
-    expect(r.sources).toEqual(["A", "B"]);
-    expect(r.targets).toEqual(["B", "C"]);
-    expect(r.dropped).toBe(1);
+  it("Sankey drops the links that close a loop and keeps the rest in order", async () => {
+    const { SankeyNode } = await import("../../../src/graph/nodes/visual");
     const n = new SankeyNode();
+    const r = (await n.data({ frame: [{ __frame: true, columns: [
+      { name: "From", type: "string", values: ["A", "B", "B"] }, { name: "To", type: "string", values: ["B", "A", "C"] },
+      { name: "Value", type: "number", values: [10, 5, 3] },
+    ] } as never] })).chart as { payload?: { sources: string[]; targets: string[] } };
+    expect(r.payload?.sources).toEqual(["A", "B"]);
+    expect(r.payload?.targets).toEqual(["B", "C"]);
+    expect(n.droppedLoops).toBe(1);
     const f = { __frame: true, columns: [
       { name: "From", type: "string", values: ["A", "B"] }, { name: "To", type: "string", values: ["B", "A"] }, { name: "Value", type: "number", values: [10, 5] },
     ] };
@@ -890,7 +900,7 @@ describe("Sankey loops, Histogram bins, Date Range order (review pins)", () => {
     expect(p.values).toEqual([1200, 300, 500]);
   });
 
-  it("histogramBins refuses a bins count below 1 or not a number", () => {
+  it("Histogram refuses a bins count below 1 or not a number", () => {
     const err = histogramBins([1, 2, 3], 0);
     expect((err as { code?: string }).code).toBe("#DOMAIN!");
     expect((histogramBins([1, 2, 3], NaN) as { code?: string }).code).toBe("#DOMAIN!");

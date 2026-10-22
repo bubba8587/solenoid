@@ -1,7 +1,7 @@
 // [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
-import { ChartNode, MergePlotsNode } from "../../../src/graph/nodes/visual";
-import { parseChartOptions, serializeChartOptions } from "../../../src/graph/nodes/chartOptions";
+import { ChartNode, MergePlotsNode, ChartBuilderNode } from "../../../src/graph/nodes/visual";
+import { parseChartOptions } from "../../../src/graph/nodes/chartOptions";
 import type { ChartValue, XYPayload } from "../../../src/graph/chartValue";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
 import type { FrameValue } from "../../../src/graph/frame";
@@ -177,7 +177,10 @@ describe("XY option keys", () => {
   });
 
   it("serialize from the builder, xlim as one pair", () => {
-    expect(serializeChartOptions({ x: "t", y: "a,b", linestyle: "dashed", xmin: 1, xmax: null })).toBe("x=t;y=a,b;linestyle=dashed;xlim=1,");
+    const n = new ChartBuilderNode();
+    Object.assign(n.stringLiterals, { x: "t", y: "a,b", linestyle: "dashed" });
+    n.literals.xmin = 1;
+    expect(n.data({}).result).toBe("x=t;y=a,b;linestyle=dashed;xlim=1,");
   });
 });
 
