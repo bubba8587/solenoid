@@ -189,8 +189,9 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   body (`coreEach`) took 50,000 items from about 4 µs an item to about 1.5: UPPER 215 ms to about 70 (develop: 23),
   ROUND 290 to about 100, ISEVEN 210 to about 80 (`BENCH=1 npx vitest run tests/graph/cardBatchBench.test.ts`). What's
   left is the JSON both ways, the loop run twice, and the core's per-call name lookups (`call_body`, then
-  `call_function`), which one batch could resolve once. Cards that map with their own loop rather than a broadcast
-  helper (a bare `.map` over `callCore`) still cross per item. A wired LAMBDA's captures no longer cost that: a list of
+  `call_function`), which one batch could resolve once. No card crosses per item otherwise: a sweep feeding every
+  catalog card 300-item lists (2026-10-22) found only an item the core answers as JS's own throw (DOLLAR past 100
+  decimals) sending its batch back to the TS, as designed. A wired LAMBDA's captures no longer cost that: a list of
   64 or more crosses once and the core holds it by id while the JS list lives (`envValue` in `coreValues.ts`, `HELD`
   in `eval.rs`), and `engine_eval` keeps its last 16 formulas parsed with their range memo (`eval::formula`), so
   `x - AVERAGE(vals)` over 3,000 items reads `vals` once: about 50 ms, from 1.9 s (develop: 8 ms).

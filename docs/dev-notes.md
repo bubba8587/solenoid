@@ -64,6 +64,9 @@ specific item.
   frozen in `unit-dims-fns`. `formulaDim` and `formulaAffineWeight` folded into `dimEvalWithCode` and `affineWeight`.
 - **The graph core recovers from a trap** ([[graph-core]] § Traps), and every app-importing script runs through
   `scripts/vite-run.mjs` (they all failed under plain `tsx`).
+- **The Hypothesis Test card's KS, Mann-Whitney and Wilcoxon ops hung or misread text** (develop too): text slipped
+  past the kernels' NaN guard and the KS merge never advanced. The card now evaluates its formula (`KSTEST(a, b)` and
+  kin), so it reads numbers only and keeps a paired test's pairs aligned. Found by a sweep feeding every card long lists.
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
   - Whether the regex port's remaining 70 KB or so (gzipped) is worth it.

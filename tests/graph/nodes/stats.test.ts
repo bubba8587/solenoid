@@ -675,3 +675,19 @@ describe("fillGrid: a degenerate-row box is contested only by data on that row (
     expect(out[0][1]).toBeCloseTo(1, 9);
   });
 });
+
+describe("the rank and distribution tests read their lists as their formulas do", () => {
+  const MIXED_A = [3, "x", 1, "7", 9, null, 4];
+  const MIXED_B = ["y", 2, 8, 5, "z", 6];
+  for (const [op, fn] of [["mannwhitney", "MANNWHITNEY"], ["wilcoxon", "WILCOXON"], ["ks", "KSTEST"]] as const) {
+    it(`${fn}: text among the numbers is skipped, never looped on`, () => {
+      const card = new HypothesisTestNode({ op }).data({ a: [MIXED_A as number[]], b: [MIXED_B as number[]] }).result;
+      const formula = compileEvaluator(`${fn}(a, b)`)!({ a: MIXED_A, b: MIXED_B });
+      expect(card).toEqual(formula);
+    });
+  }
+  it("KSTEST over text alone answers at once", () => {
+    const words = ["a", "b", "c"] as unknown as number[];
+    expect(new HypothesisTestNode({ op: "ks" }).data({ a: [words], b: [words] }).result).toBeNull();
+  });
+});
