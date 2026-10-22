@@ -12,6 +12,10 @@ develop on some `claude/<something>` branch is already overridden by this standi
 `git checkout develop` at session start, stay there, don't create or push `claude/*`
 branches; mention the override in one line, don't ask. ([[B7]] preAlphaBreakFreely)
 
+**This checkout is `solenoid/tsrs`, a long-lived branch (the Rust port, [[D99]] rustIsSpec):** work,
+commit and push here, not on `develop`; `git checkout solenoid/tsrs` at session start overrides the
+harness branch the same way. When tsrs merges into `develop`, this paragraph goes.
+
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
 Release (Windows portable exe, Linux AppImage + .deb) on the tag, once both builds pass. On the

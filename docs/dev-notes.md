@@ -49,7 +49,7 @@ specific item.
   computed-column units as on develop.
 - **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
   and catching throws. Rerun after the fixes, no call takes over 300 ms.
-- **The graph moved onto the core** ([[D102]] graphOnCore, ratified; mechanics [[graph-core]]): `rete-engine` is gone.
+- **The graph moved onto the core** ([[D102]] graphOnCore; mechanics [[graph-core]]): `rete-engine` is gone.
   The dataflow engine and the pass's graph walks (loop members, cones, fetching every node) run in Rust on Ruggine
   (`crates/solenoid-graph`, its own wasm module so a formula trap can't take the graph with it), mirroring the rete
   editor, which stays the model for now. The nodes stay JS objects the core calls back. About 2x rete-engine on a
