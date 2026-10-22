@@ -101,7 +101,7 @@ fn branch_args(fn_: &str, argc: usize) -> Option<Vec<usize>> {
         "IFS" => Some((0..argc / 2).map(|i| 2 * i + 1).collect()),
         "SWITCH" => {
             let mut out: Vec<usize> = (2..argc).step_by(2).collect();
-            if argc > 1 && argc % 2 == 0 {
+            if argc > 1 && argc.is_multiple_of(2) {
                 out.push(argc - 1);
             }
             Some(out)

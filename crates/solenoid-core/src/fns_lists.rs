@@ -205,7 +205,7 @@ pub enum RunOp {
 
 fn median_of_sorted(sorted: &[f64]) -> f64 {
     let mid = sorted.len() / 2;
-    if sorted.len() % 2 == 0 { (sorted[mid - 1] + sorted[mid]) / 2.0 } else { sorted[mid] }
+    if sorted.len().is_multiple_of(2) { (sorted[mid - 1] + sorted[mid]) / 2.0 } else { sorted[mid] }
 }
 
 /// `runningPlain`: a window of `round(window)` ≥ 1 slides, anything else runs cumulative in one pass that answers
@@ -900,7 +900,7 @@ fn impute_stat(arr: &[V], op: &str) -> Option<f64> {
             let mut s = ns;
             sort_nums(&mut s);
             let m = s.len() / 2;
-            Some(if s.len() % 2 == 0 { (s[m - 1] + s[m]) / 2.0 } else { s[m] })
+            Some(if s.len().is_multiple_of(2) { (s[m - 1] + s[m]) / 2.0 } else { s[m] })
         }
         _ => {
             let mut counts: std::collections::HashMap<u64, usize> = std::collections::HashMap::new();
@@ -1518,7 +1518,7 @@ fn spectrum(x: &[V], rate: f64) -> V {
         (0..=half)
             .map(|k| {
                 let mag = hypot(re[k], im[k]);
-                let scale = if k == 0 || (n % 2 == 0 && k == half) { 1.0 / nf } else { 2.0 / nf };
+                let scale = if k == 0 || (n.is_multiple_of(2) && k == half) { 1.0 / nf } else { 2.0 / nf };
                 nums(vec![(k as f64 * rate) / nf, mag * scale, atan2(im[k], re[k])])
             })
             .collect(),
@@ -1681,7 +1681,7 @@ fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool) -> Option<
         return None;
     }
     let m = m as usize;
-    let filt: Vec<f64> = if m % 2 == 0 {
+    let filt: Vec<f64> = if m.is_multiple_of(2) {
         std::iter::once(0.5).chain(std::iter::repeat_n(1.0, m - 1)).chain([0.5]).map(|w| w / m as f64).collect()
     } else {
         vec![1.0 / m as f64; m]

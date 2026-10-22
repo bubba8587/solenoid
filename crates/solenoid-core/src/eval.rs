@@ -79,7 +79,7 @@ fn periodic<T>(xs: &[T], i: usize) -> Option<&T> {
     if i < n || n < 2 {
         return xs.get(i);
     }
-    xs.get(if (i - n) % 2 == 0 { n - 2 } else { n - 1 })
+    xs.get(if (i - n).is_multiple_of(2) { n - 2 } else { n - 1 })
 }
 
 impl Traits {
@@ -365,8 +365,13 @@ pub struct RowCtx<'a> {
     wholes: RefCell<FxHashMap<String, V>>,
     /// `sideValue(name, "row")` for each name the formula reads by `@` that no column holds.
     row_sides: FxHashMap<String, V>,
-    /// Each `@name` list's verdict, held with the list itself: an address alone could name the next list allocated there.
-    at_verdict: RefCell<FxHashMap<String, (Rc<Vec<V>>, Option<V>)>>,
+    at_verdict: RefCell<FxHashMap<String, AtVerdict>>,
+}
+
+/// An `@name` list's verdict, held with the list itself: an address alone could name the next list allocated there.
+struct AtVerdict {
+    list: Rc<Vec<V>>,
+    err: Option<V>,
 }
 
 impl<'a> RowCtx<'a> {
@@ -401,7 +406,7 @@ impl<'a> RowCtx<'a> {
     fn at(&self, key: &str, v: &V) -> V {
         let V::List(items) = v else { return v.clone() };
         let mut verdicts = self.at_verdict.borrow_mut();
-        let fresh = !matches!(verdicts.get(key), Some((held, _)) if Rc::ptr_eq(held, items));
+        let fresh = !verdicts.get(key).is_some_and(|v| Rc::ptr_eq(&v.list, items));
         if fresh {
             let n = self.rows;
             let err = if items.iter().any(is_arr) {
@@ -412,9 +417,9 @@ impl<'a> RowCtx<'a> {
             } else {
                 None
             };
-            verdicts.insert(key.to_string(), (items.clone(), err));
+            verdicts.insert(key.to_string(), AtVerdict { list: items.clone(), err });
         }
-        if let Some((_, Some(e))) = verdicts.get(key) {
+        if let Some(AtVerdict { err: Some(e), .. }) = verdicts.get(key) {
             return e.clone();
         }
         match items.get(self.cursor.get()) {
@@ -481,13 +486,26 @@ pub struct Eval<'a> {
     /// Keeps the range memo across calls outside a row too: a formula evaluated once per item (`formula`).
     memo_calls: bool,
     /// `rangeMemo`: a range function called again with the very same arguments (a whole column, row after row).
-    memo: RefCell<FxHashMap<*const Ast, (String, Vec<V>, V)>>,
+    memo: RefCell<FxHashMap<*const Ast, Memo>>,
     /// Each call site's name, facts and empty slots, read once per site rather than once per row.
     sites: RefCell<FxHashMap<*const u8, Rc<Site>>>,
     /// A LAMBDA's body, cloned once and kept while this evaluator lives: the memo and the sites are keyed by node
     /// address, which a body cloned per call and dropped would hand to the next one. A wired LAMBDA's tree is parsed
     /// per call and dropped, so its address can come back holding another body: an entry answers only an equal one.
     bodies: RefCell<FxHashMap<*const Ast, Rc<Ast>>>,
+}
+
+/// A range call's last answer at its site.
+struct Memo {
+    name: String,
+    args: Vec<V>,
+    answer: V,
+}
+
+impl Memo {
+    fn answers(&self, name: &str, argv: &[V]) -> Option<V> {
+        (self.name == name && self.args.len() == argv.len() && self.args.iter().zip(argv).all(|(a, b)| same(a, b))).then(|| self.answer.clone())
+    }
 }
 
 struct Site {
@@ -733,14 +751,12 @@ impl Eval<'_> {
         if lifted.is_empty() {
             if any_arr && (self.row.is_some() || self.memo_calls) && (t.kind == Kind::Range || t.fast.memo_shaper) {
                 let key = args.as_ptr();
-                if let Some((f, last, r)) = self.memo.borrow().get(&key) {
-                    if f == name && last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
-                        return r.clone();
-                    }
+                if let Some(r) = self.memo.borrow().get(&key).and_then(|m| m.answers(name, &argv)) {
+                    return r;
                 }
                 let r = self.route_call(name, t, argv.clone(), settled);
                 if !is_arr(&r) || t.fast.memo_shaper {
-                    self.memo.borrow_mut().insert(key, (name.clone(), argv, r.clone()));
+                    self.memo.borrow_mut().insert(key, Memo { name: name.clone(), args: argv, answer: r.clone() });
                 }
                 return r;
             }
@@ -768,15 +784,13 @@ impl Eval<'_> {
         let memo = self.row.is_some() && argv.iter().any(is_arr);
         let key = args.as_ptr();
         if memo {
-            if let Some((f, last, r)) = self.memo.borrow().get(&key) {
-                if f == name && last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
-                    return r.clone();
-                }
+            if let Some(r) = self.memo.borrow().get(&key).and_then(|m| m.answers(name, &argv)) {
+                return r;
             }
         }
         let Some(r) = crate::external::call(name, &site.empty, &argv) else { return crate::excel_functions::bail() };
         if memo && !is_arr(&r) {
-            self.memo.borrow_mut().insert(key, (name.to_string(), argv, r.clone()));
+            self.memo.borrow_mut().insert(key, Memo { name: name.to_string(), args: argv, answer: r.clone() });
         }
         r
     }
@@ -1409,7 +1423,13 @@ thread_local! {
     /// The formulas `engine_eval` ran last, parsed once, each with an evaluator whose range memo outlives the call, as
     /// `compileEvaluator` keeps its AST and `rangeMemo` across calls: `x - AVERAGE(vals)` over each item of a held
     /// list reads `vals` once ([[C120]] linearWork).
-    static FORMULAS: RefCell<Vec<(String, Rc<(Ast, Eval<'static>)>)>> = const { RefCell::new(Vec::new()) };
+    static FORMULAS: RefCell<Vec<(String, Rc<Compiled>)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// A formula parsed once, with the evaluator whose memo it keeps.
+struct Compiled {
+    ast: Ast,
+    eval: Eval<'static>,
 }
 
 const FORMULAS_KEPT: usize = 16;
@@ -1420,7 +1440,7 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
     let compiled = match hit {
         Some(c) => c,
         None => {
-            let c = Rc::new((crate::excel_formula::parse_formula(src)?, Eval { memo_calls: true, ..Eval::default() }));
+            let c = Rc::new(Compiled { ast: crate::excel_formula::parse_formula(src)?, eval: Eval { memo_calls: true, ..Eval::default() } });
             FORMULAS.with(|f| {
                 let mut f = f.borrow_mut();
                 if f.len() == FORMULAS_KEPT {
@@ -1431,7 +1451,7 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
             c
         }
     };
-    Some(compiled.1.run(&compiled.0, &Rc::new(env)))
+    Some(compiled.eval.run(&compiled.ast, &Rc::new(env)))
 }
 
 /// A registry change can change what a call answers, so no memo outlives one.

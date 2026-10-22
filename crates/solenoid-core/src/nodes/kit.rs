@@ -64,11 +64,6 @@ pub fn broadcast_err(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     })
 }
 
-/// `broadcast`: as `broadcastErr`, a body that answers only numbers or null.
-pub fn broadcast(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
-    broadcast_err(args, f)
-}
-
 /// The item loop the broadcasters share: `f` over the arguments, or over each position where any is a list.
 pub fn each(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
     let len = args.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).max();

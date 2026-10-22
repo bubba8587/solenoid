@@ -698,7 +698,7 @@ fn ladder_inner(
         } else {
             "needs an option that is ruled out".to_string()
         };
-        return Err(sol_error("#VALUE!", format!("Choice Ladder: Must option {} {why}", name_of(i))).into());
+        return Err(sol_error("#VALUE!", format!("Choice Ladder: Must option {} {why}", name_of(i))));
     }
     let kept: Vec<usize> = (0..rows).filter(|i| !out.contains(i)).collect();
     let ds = decision::decision_scores(&decision::frame_rows(&scoring, &kept), weights, normalize, &resolved.overrides)?;
@@ -762,17 +762,17 @@ fn ladder_inner(
     }
     match must_clash(&opts, &res) {
         Some(MustClash::Clash(a, b)) => {
-            return Err(sol_error("#VALUE!", format!("Choice Ladder: Must options {} and {} exclude each other", names[a], names[b])).into())
+            return Err(sol_error("#VALUE!", format!("Choice Ladder: Must options {} and {} exclude each other", names[a], names[b])))
         }
         Some(MustClash::Over(r)) => {
-            return Err(sol_error("#VALUE!", format!("Choice Ladder: the Must options need more {} than its limit", resources[r].name)).into())
+            return Err(sol_error("#VALUE!", format!("Choice Ladder: the Must options need more {} than its limit", resources[r].name)))
         }
         None => {}
     }
     for (k, r) in resources.iter().enumerate() {
         if let Some(floor) = r.floor {
             if opts.iter().fold(0.0, |s, o| s + math_max(0.0, o.costs[k])) < floor - 1e-9 {
-                return Err(sol_error("#VALUE!", format!("Choice Ladder: the options can't reach {}'s At least", r.name)).into());
+                return Err(sol_error("#VALUE!", format!("Choice Ladder: the options can't reach {}'s At least", r.name)));
             }
         }
     }

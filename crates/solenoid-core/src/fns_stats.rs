@@ -276,6 +276,7 @@ fn truthy(x: f64) -> bool {
 
 // ─── bessel.js 1.0.2 (SheetJS), which Formula.js's BESSELI…BESSELY call ─────────
 
+#[allow(clippy::approx_constant, reason = "bessel.js's own nine digits of 2/π, which its answers carry")]
 const W: f64 = 0.636619772;
 
 /// `_horner` over the coefficients as listed (bessel.js reverses them first).
@@ -971,11 +972,7 @@ fn days360(start: f64, end: f64, european: bool) -> f64 {
 fn discounted(name: &str, a: &[V]) -> V {
     let (settlement, maturity) = (parse_date(arg(a, 0)), parse_date(arg(a, 1)));
     let (pr, redemption) = (parse_number(arg(a, 2)), parse_number(arg(a, 3)));
-    // `basis || 0`.
-    let basis = match parse_number(arg(a, 4)) {
-        V::Num(n) if n == 0.0 => V::Num(0.0),
-        b => b,
-    };
+    let basis = parse_number(arg(a, 4));
     let (V::Num(pr), V::Num(redemption), V::Num(basis)) = (pr, redemption, basis) else { return V::Fx("#VALUE!") };
     let (FxDate::Date(settlement), FxDate::Date(maturity)) = (settlement, maturity) else { return V::Fx("#VALUE!") };
     if pr <= 0.0 || redemption <= 0.0 {
