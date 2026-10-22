@@ -194,3 +194,22 @@ pub fn broadcast_unit(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
         None => guard_cell(f(ops), ops),
     })
 }
+
+/// `fromUnit(value, unit, display)`: a face value in `unit` as a cell in base units, its display unit named `id` and
+/// resolved (`unit_catalog`), so later arithmetic can read the display's scale off the cell.
+pub fn from_unit(value: f64, unit: &crate::unit_catalog::Unit, id: Option<&str>) -> V {
+    let base = value * unit.scale + unit.offset.unwrap_or(0.0);
+    if is_dimensionless(&unit.dim) {
+        return V::Num(base);
+    }
+    let shown = id.filter(|i| !i.is_empty());
+    V::Unit(Rc::new(UnitCell {
+        value: base,
+        dim: unit.dim.clone(),
+        display: shown.map(String::from),
+        ratio: false,
+        scale: shown.map(|_| unit.scale),
+        offset: shown.map(|_| unit.offset.unwrap_or(0.0)),
+        unit_dim: shown.map(|_| unit.dim.clone()),
+    }))
+}
