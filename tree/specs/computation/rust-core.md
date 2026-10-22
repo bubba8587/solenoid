@@ -78,6 +78,7 @@ columns to `engine_pivot_layout`.
 | The Expression card and every `compileEvaluator` | `evaluateOnCore` (`coreValues.ts`) | as above |
 | Node `data()` | moving onto `callCore` (`coreValues.ts`), node family by node family | each family's tests, with and without `CORE_EVAL` |
 | Frame computations no formula shares: headers, Describe, Correlation Matrix, Reconcile, Nest's grouping, XLOOKUP over a frame, Get Row, Get and Add Column's naming, Build and Split Frame, Frame from Lists, the Decision Matrix and its flip points, the Allocator, the Payoff Planner, Group Cost Settle's totals and its ledger (a ledger holding lists stays with the TS), Amortization, K-Means, PCA, logistic regression. A thrown error crosses as itself; a card with several outputs gets them side by side in one frame | `frame_fns.rs`, `decision.rs`, `planners.rs`, `engine_frame_fn`, `frameFnOnCore` (`frameBackend.ts`) | the frozen frame-function cases |
+| A pack's function, registered in JS at run time: the core evaluates its arguments and calls the TS back for the call itself (its roles, blank slots and ladder on the TS); the same whole column row after row is one call | `external.rs`, `callFromCore` (`excelFormula.ts`), `globalThis.__solenoidCallExternal` | the frozen pack-call formulas |
 | A formula's unit reading ([[unit-flow]] § Formula dimensions, § Expression): its result dimension (`dimEval`) and its point weight over readings (`affineWeight`), for Expression, the LAMBDA folds and a computed column over °C. The numbers still cross unit-blind; the display-unit choice and the re-tagging stay on the TS, and Equation still calls the TS `dimEval` on its own ASTs | `unit_dims.rs`, `engine_dim_eval`, `engine_affine_weight`, `formulaDim` and `formulaAffineWeight` (`unitDimExpr.ts`) | 18k frozen formula dimensions (`unit-dims`), 17k frozen weights (`affine-weights`) |
 | List bodies over values with a unit: the ones that move cells without reading them (`UNIT_READY`) | `V::Unit`, `coreValue(v, true)` and `readReply` (`coreValues.ts`) | 4k frozen calls (`unit-lists`) |
 | A pack's formula functions | the TS, by design: a pack registers JS at run time, and the core calls it back (`syncExternalNames`) | |
@@ -87,7 +88,8 @@ columns to `engine_pivot_layout`.
 A body meeting a reading the core doesn't make yet calls `bail()`, and the whole formula or column runs on the
 TypeScript, never part of it: chrono-node's free-text dates in criteria, INDEX with a list of positions,
 REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table. A value that can't cross (a unit cell,
-a frame, text with a lone surrogate) keeps its call on the TS. A `UnitCell` crosses only into `callCore`, as
+a frame, text with a lone surrogate) keeps its call on the TS; so does a pack call whose arguments or answer can't
+cross (a LAMBDA, a unit cell), or one made where the core runs natively. A `UnitCell` crosses only into `callCore`, as
 `{__unit}` (`V::Unit`), and only the bodies that move values without reading them take it (`UNIT_READY` in
 `unit_dims.rs`: REVERSE, SLICE, NTHELEMENT, INTERLEAVE, CONCATLISTS, PADLEFT, PADRIGHT); any other call holding one
 bails, and a formula or computed column over one stays on the TS. `bails.json` counts what's left.

@@ -22,7 +22,8 @@ import {
 } from "../../src/graph/frame";
 import { tagFrameCellUnit } from "../../src/graph/unitColumn";
 import { isUnitCell, type ColumnUnit, type UnitCell } from "../../src/graph/unitValue";
-import { coreValue, readReply } from "../../src/graph/coreValues";
+import { coreValue, readReply, syncExternalNames } from "../../src/graph/coreValues";
+import { initPackFormulas } from "../../src/graph/formulaExtensions";
 import type { AllocateMode } from "../../src/graph/nodes/allocateOps";
 import type { PayoffOrder } from "../../src/graph/nodes/payoffOps";
 import { payoffFrame, settleFrame, settleLedgerCube, numericRows, kmeansOutputs, pcaOutputs, logisticOutputs, type PayoffView, type SettleSplit } from "../../src/graph/nodes/frame";
@@ -1073,3 +1074,88 @@ if (FREEZING) {
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.
 void FORMULA_FNS;
+
+// ─── Pack functions called back from the core (external.rs) ─────────────────────────
+
+type PackCase = { src: string; env: Record<string, unknown>; want: unknown };
+
+/** Formulas calling the built-in packs' functions, alone and inside the core's own functions and LAMBDA hosts: the core
+ *  evaluates the arguments and calls the TS back for each pack call. */
+const packCalls = frozen<PackCase>("pack-calls", () => {
+  initPackFormulas();
+  const cases: PackCase[] = [];
+  const rand = mulberry32(4242);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const PACK: (() => string)[] = [
+    () => `PHYSICSCONSTANT(${pick(['"c"', '"G"', '"h"', '"kb"', '"nope"', "1", "t", ""])})`,
+    () => `ELEMENT(${pick(['"Fe"', "26", '"Xx"', "x", "0", "119"])}${pick(["", ', "mass"', ', "name"', ", ", ', "nope"', ", t"])})`,
+    () => `MOLARMASS(${pick(['"H2O"', '"CuSO4·5H2O"', '"Zz"', "5", "t", '""'])})`,
+    () => `ISIN(${pick(["xs", "ts", "{1,2,3}", "x"])}, ${pick(["{1,2}", "xs", '{"a","x"}', "y"])})`,
+    () => `TALLY(${pick(["xs", "ts", "{1,1,2}", "x"])})`,
+    () => `PARALLELCOMBINE(${pick(["xs", "x, y", "y", "10, 10, 5", "x, 0", "xs, y"])})`,
+    () => `COLEBROOK(${pick(["1e5", "x", "2000", "-1"])}, ${pick(["0.001", "y", "0", ""])})`,
+    () => `PIPEROUGHNESS(${pick(['"pvc"', '"steel"', '"glass?"', "x"])})`,
+    () => `STANDARDATMOSPHERE(${pick(["1000", "x", "-500", "90000"])}${pick(["", ', "pressure"', ', "temperature"', ', "density"', ', "nope"', ", "])})`,
+    () => `ANTOINE(${pick(['"water"', '"ethanol"', '"unobtainium"', "x"])}, ${pick(["50", "x", "-300", "y"])})`,
+    () => `SUNRISE(${pick(["45000", "x", "45100.5"])}, ${pick(["51.5", "78", "-33.9", "y"])}, ${pick(["0", "151.2", "y"])})`,
+    () => `DAYLENGTH(${pick(["45000", "45180", "x"])}, ${pick(["51.5", "78", "0"])}, 0)`,
+    () => `MOONPHASE(${pick(["45000", "x", "45015"])}${pick(["", ', "phase"', ', "illumination"', ', "age"', ", "])})`,
+    () => `SUNPOSITION(${pick(["45000.5", "x"])}, ${pick(["51.5", "y"])}, ${pick(["0", "-0.1"])}${pick(["", ', "azimuth"', ', "elevation"'])})`,
+    () => `AWGWIRE(${pick(["12", "x", "0", "40", "-3"])}${pick(["", ', "diameter"', ', "area"', ', "resistance"'])})`,
+    () => `ESERIESVALUE(${pick(["4.6", "x", "1000", "0"])}${pick(["", ', "E12"', ', "E96"', ", y"])})`,
+    () => `RESISTORCOLORCODE(${pick(["1", '"brown"', "x"])}, ${pick(["0", '"black"', "y"])}, ${pick(["2", '"red"', "3"])}, ${pick(["5", '"gold"', "10"])})`,
+    () => `EMSPECTRUMBAND(${pick(["5e14", "x", "1e20", ""])}${pick(["", ", 5e-7", ", y"])})`,
+    () => `HEARTRATEZONES(${pick(["190", "x", "150"])}${pick(["", ", 60", ", y"])})`,
+    () => `TRIANGLESOLVER(${pick(["3, 4, 5", "3, 4, , , , 90", "x, y, 5", "1, 1, 3", ", , , 60, 60, 60"])})`,
+  ];
+  const wrap = (inner: string): string => pick([
+    inner, inner, `ROUND(${inner}, 3)`, `IFERROR(${inner}, -1)`, `x * ${inner}`, `SUM(${inner})`, `${inner} & "!"`,
+    `MAP(xs, LAMBDA(v, ${inner.replace(/\bx\b/g, "v")}))`, `IF(y > 1, ${inner}, 0)`, `INDEX(${inner}, 1)`, `COUNT(${inner})`,
+    `LET(q, ${inner}, q)`, `${inner} + ${pick(PACK)()}`,
+  ]);
+  for (let i = 0; i < 3000; i++) {
+    const env: Record<string, unknown> = {
+      x: pick([3, -1.5, 0, 45000, null, "7", true, 12]), y: pick([2, 0.5, -4, 10, 60]),
+      xs: pick([[1, 2, 3], [4, -2, 0, 9], [], [1.5, null, 3], [5], [10, 20]]),
+      t: pick(["c", "Fe", "", "water", "H2O"]), ts: pick([["a", "b", "a"], ["x"], ["10", "9", "x"]]),
+    };
+    const src = wrap(pick(PACK)());
+    const ev = compileTsEvaluator(src);
+    if (!ev) continue;
+    let want: unknown;
+    try { want = canon(ev(structuredClone(env))); } catch (e) { want = isSolError(e) ? canon(e) : { thrown: String((e as Error).message ?? e) }; }
+    if (JSON.stringify(want).includes('"other"')) continue;
+    cases.push({ src, env, want });
+  }
+  return cases;
+});
+
+describe("pack functions answer as frozen, called back from the core", () => {
+  it(`${packCalls.length} formulas`, { timeout: 600_000 }, () => {
+    initPackFormulas();
+    syncExternalNames();
+    let ran = 0;
+    const bad: unknown[] = [];
+    for (const c of packCalls) {
+      const raw = wasmInvokeSync<{ bail?: boolean } | null>("engine_eval", { src: c.src, env: Object.fromEntries(Object.entries(c.env).map(([k, v]) => [k, wire(v)])), clock: engineClock() });
+      if (raw && raw.bail) continue;
+      ran++;
+      const got = engineAnswer("", raw);
+      if (JSON.stringify(got) !== JSON.stringify(c.want)) bad.push({ src: c.src, env: c.env, got, want: c.want });
+    }
+    expect(bad.slice(0, 5)).toEqual([]);
+    checkBails("pack calls", packCalls.length - ran);
+  });
+});
+
+describe("a computed column calls a pack function back from the core", () => {
+  it("row by row, as the TS computes it", () => {
+    initPackFormulas();
+    const src = "PARALLELCOMBINE(@a, 10) + COUNT(TALLY(a))";
+    const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [10, 20, null, 5, -1] }] };
+    const core = computeColumnOnEngine(f, src, 5);
+    const ts = computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(src)!, vars: extractVariables(src) });
+    expect(core).not.toBeNull();
+    expect(core).toEqual(ts);
+  });
+});

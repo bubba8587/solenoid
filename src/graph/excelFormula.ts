@@ -9,7 +9,7 @@ import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
 import { readRowCell, readWholeColumn, inRowFrame } from "./computedColumnCore";
-import { evaluateOnCore } from "./coreValues";
+import { evaluateOnCore, coreValue, readReply } from "./coreValues";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -889,36 +889,59 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       }
       const refused = callRefusal(name);
       if (refused) return refused;
-      let argv = ETA_HOSTS.has(name)
+      const argv = ETA_HOSTS.has(name)
         ? n.args.map((a) => etaOrEval(a, env))
         : n.args.map((a) => evalAst(a, env));
-      const blanks = applyArgRoles(name, emptySlots, argv);
-      argv = blanks.argv;
-      // An empty slot reads as its parameter's Excel blank ([[C80]] blankArgIsExcelBlank); a role reads it unless Excel doesn't.
-      if (hasBlank) n.args.forEach((a, i) => {
-        if (a.t !== "blank") return;
-        const override = emptySlotOverride(name, i);
-        if (override) argv[i] = override.value;
-        else if (!argRole(name, i)) argv[i] = emptySlotReading(name, i).value;
-      });
-      if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
-      const sol = argv.find(isSolError);
-      if (sol) return sol;
-      const lifted = liftedArgs(name, argv);
-      if (lifted.length === 0) {
-        return RANGE_FUNCTIONS.has(name) || MEMO_SHAPERS.has(name) ? memoRangeCall(n, name, argv, blanks.settled) : routeCall(name, argv, blanks.settled);
-      }
-      return mapCells(lifted.map((i) => argv[i]), (...cells) => {
-        const bad = cells.find(isErr);
-        if (bad !== undefined) return bad;
-        if (cells.some(isMissing)) return null;
-        const one = argv.slice();
-        lifted.forEach((i, k) => { one[i] = cells[k]; });
-        return routeCall(name, one, blanks.settled);
-      });
+      return callWithArgs(name, emptySlots, hasBlank, argv, n);
     }
   }
 }
+
+/** A call once its arguments are evaluated: their roles and empty slots, the error handlers, lifting, the ladder. */
+function callWithArgs(name: string, emptySlots: boolean[], hasBlank: boolean, evaluated: unknown[], memoNode: Ast | null): unknown {
+  const blanks = applyArgRoles(name, emptySlots, evaluated);
+  const argv = blanks.argv;
+  // An empty slot reads as its parameter's Excel blank ([[C80]] blankArgIsExcelBlank); a role reads it unless Excel doesn't.
+  if (hasBlank) emptySlots.forEach((empty, i) => {
+    if (!empty) return;
+    const override = emptySlotOverride(name, i);
+    if (override) argv[i] = override.value;
+    else if (!argRole(name, i)) argv[i] = emptySlotReading(name, i).value;
+  });
+  if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
+  const sol = argv.find(isSolError);
+  if (sol) return sol;
+  const lifted = liftedArgs(name, argv);
+  if (lifted.length === 0) {
+    return memoNode && (RANGE_FUNCTIONS.has(name) || MEMO_SHAPERS.has(name)) ? memoRangeCall(memoNode, name, argv, blanks.settled) : routeCall(name, argv, blanks.settled);
+  }
+  return mapCells(lifted.map((i) => argv[i]), (...cells) => {
+    const bad = cells.find(isErr);
+    if (bad !== undefined) return bad;
+    if (cells.some(isMissing)) return null;
+    const one = argv.slice();
+    lifted.forEach((i, k) => { one[i] = cells[k]; });
+    return routeCall(name, one, blanks.settled);
+  });
+}
+
+/** A pack's function called from the core, its arguments already evaluated there (`external.rs`, [[D99]] rustIsSpec).
+ *  The core keeps the range memo, so the same whole column row after row is one call. */
+export function callFromCore(name: string, emptySlots: boolean[], argv: unknown[]): unknown {
+  return callRefusal(name) ?? callWithArgs(name, emptySlots, emptySlots.includes(true), argv, null);
+}
+
+/** The core's way back in: arguments and answer as the core's wire values, undefined where one can't cross. */
+(globalThis as { __solenoidCallExternal?: unknown }).__solenoidCallExternal = (name: string, empty: string, args: string): string | undefined => {
+  const argv: unknown[] = [];
+  for (const a of JSON.parse(args) as unknown[]) {
+    const r = readReply(a);
+    if (!r) return undefined;
+    argv.push(r.value);
+  }
+  const out = coreValue(callFromCore(name, JSON.parse(empty) as boolean[], argv));
+  return out === undefined ? undefined : JSON.stringify(out);
+};
 
 type CallAst = Extract<Ast, { t: "call" }>;
 const callPlans = new WeakMap<CallAst, { name: string; emptySlots: boolean[]; hasBlank: boolean }>();

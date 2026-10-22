@@ -198,6 +198,20 @@ thread_local! {
     static ROW_NUMBER: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
 }
 
+/// What one calc reads beside its arguments: the clock, the row, a pending throw or bail.
+pub struct CalcState(Option<Clock>, Option<f64>, Option<SolError>, bool);
+
+pub fn save_calc_state() -> CalcState {
+    CalcState(clock(), ROW_NUMBER.with(|r| r.get()), THROWN.with(|t| t.borrow_mut().take()), BAILED.with(|b| b.replace(false)))
+}
+
+pub fn restore_calc_state(s: CalcState) {
+    CLOCK.with(|k| k.set(s.0));
+    ROW_NUMBER.with(|r| r.set(s.1));
+    THROWN.with(|t| *t.borrow_mut() = s.2);
+    BAILED.with(|b| b.set(s.3));
+}
+
 /// The computed column's current row, from 1, that ROW() reads (`currentRowNumber`).
 pub fn set_row_number(n: Option<f64>) {
     ROW_NUMBER.with(|r| r.set(n));

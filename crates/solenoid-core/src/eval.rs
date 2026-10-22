@@ -632,7 +632,7 @@ impl Eval<'_> {
         }
         // A name the core doesn't know may be a pack's, registered in JS at run time: the TS calls it back.
         let Some(t) = site.traits.as_deref() else {
-            return if is_external(name) { crate::excel_functions::bail() } else { V::err(sol_error("#NAME?", format!("Unknown function {name}"))) };
+            return if is_external(name) { self.call_external(name, &site, args, env) } else { V::err(sol_error("#NAME?", format!("Unknown function {name}"))) };
         };
         if let Some(r) = &t.refusal {
             return V::err(sol_error(&r.code, r.message.as_str()));
@@ -691,6 +691,25 @@ impl Eval<'_> {
             }
             self.route_call(name, t, one, settled)
         })
+    }
+
+    /// A pack's function: its arguments here, the call on the TS. The same whole column row after row is one call.
+    fn call_external(&self, name: &str, site: &Site, args: &[Ast], env: &Rc<Env>) -> V {
+        let argv: Vec<V> = args.iter().map(|a| self.eval(a, env)).collect();
+        let memo = self.row.is_some() && argv.iter().any(is_arr);
+        let key = args.as_ptr();
+        if memo {
+            if let Some((last, r)) = self.memo.borrow().get(&key) {
+                if last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
+                    return r.clone();
+                }
+            }
+        }
+        let Some(r) = crate::external::call(name, &site.empty, &argv) else { return crate::excel_functions::bail() };
+        if memo && !is_arr(&r) {
+            self.memo.borrow_mut().insert(key, (argv, r.clone()));
+        }
+        r
     }
 
     /// Steps 9 to 11 of the dispatch ladder (`routeCall`).
