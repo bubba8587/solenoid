@@ -3,7 +3,7 @@ import { stringSocket } from "../sockets";
 import {
   strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
   strComboIn, strComboOut, numIn, numListIn, numListOut, logicalComboOut,
-  broadcastCells, readInput, readRole, leftOutAs, type CellResult, type BroadcastResult,
+  broadcastCells, readInput, readRole, type CellResult, type BroadcastResult,
 } from "./shared";
 import { getRecalcGen } from "../process";
 import { uuidV4, type HashAlgorithm } from "./hashOps";
@@ -11,6 +11,7 @@ export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { callCore } from "../coreValues";
+import { nodeOnCore } from "../nodeOnCore";
 import { regexApply, replaceNth, regexOccurrence, safeRegex, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { rolesFrom, setting, required } from "../inputRoles";
@@ -92,18 +93,6 @@ export const TEXT_TRANSFORM_OP_META = {
   slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. `python-slugify`, R `make_clean_names`." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
-function applyTextTransform(op: TextTransformOp, text: string): string {
-  switch (op) {
-    case "upper": return callCore("UPPER", [text]) as string;
-    case "lower": return callCore("LOWER", [text]) as string;
-    case "trim":  return callCore("TRIM", [text]) as string;
-    case "proper": return callCore("PROPER", [text]) as string;
-    case "clean":  return callCore("CLEAN", [text]) as string;
-    case "unaccent": return callCore("UNACCENT", [text]) as string;
-    case "slugify":  return callCore("SLUGIFY", [text]) as string;
-  }
-}
-
 export class TextTransformNode extends ClassicPreset.Node {
   label: string;
   op: TextTransformOp;
@@ -119,13 +108,8 @@ export class TextTransformNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (t: string) => applyTextTransform(this.op, t),
-      strVal(inputs.text, this, "text"),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -160,13 +144,8 @@ export class PadTextNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[]; width?: number[]; fill?: string[] }): { result: CellResult<string> } {
-    const w = readRole<number | SolError>(this, "width", inputs.width);
-    const fill = readRole<string>(this, "fill", inputs.fill);
-    if (isSolError(w)) { this.cachedText = w; return { result: w }; }
-    const result = broadcastCells((t: string) => callCore("PADTEXT", [t, w, this.side, fill]) as string | SolError, strVal(inputs.text, this, "text"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -191,13 +170,8 @@ export class TruncateTextNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[]; width?: number[]; ellipsis?: string[] }): { result: CellResult<string> } {
-    const w = readRole<number | SolError>(this, "width", inputs.width);
-    const e = readRole<string>(this, "ellipsis", inputs.ellipsis);
-    if (isSolError(w)) { this.cachedText = w; return { result: w }; }
-    const result = broadcastCells((t: string) => callCore("TRUNCATETEXT", [t, w, e]) as string, strVal(inputs.text, this, "text"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -222,15 +196,8 @@ export class WrapTextNode extends ClassicPreset.Node {
     this.addOutput("result", strListOut("Lines"));
   }
 
-  data(inputs: { text?: string[]; width?: number[] }): { result: string[] | SolError | null } {
-    const text = strScalar(inputs.text, this, "text");
-    const w = readRole<number | SolError>(this, "width", inputs.width);
-    if (isSolError(w)) { this.cachedResult = null; return { result: w as never }; }
-    if (text === null) { this.cachedResult = null; return { result: null }; }
-    if (w < 1) { const e = solError("#DOMAIN!", "Width must be at least 1"); this.cachedResult = e; return { result: e }; }
-    const result = callCore("WRAPTEXT", [text, w]) as string[];
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: string[] | SolError | null };
   }
 }
 
@@ -249,13 +216,8 @@ export class TextLenNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Length"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: BroadcastResult } {
-    const result = broadcastCells(
-      (t: string) => callCore("LEN", [t]) as number,
-      strVal(inputs.text, this, "text"),
-    );
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -298,12 +260,8 @@ export class ConcatNode extends ClassicPreset.Node {
     delete this.stringLiterals[key];
   }
 
-  data(inputs: Record<string, string[] | undefined>): { result: string } {
-    // Read through `readInput` before skipping blanks, or a wired blank revives the row's typed text.
-    const values = Object.keys(this.inputs).map((key) => readInput(inputs[key], this.stringLiterals[key] ?? "") ?? "");
-    const result = callCore("CONCAT", values) as string;
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: string };
   }
 }
 
@@ -343,29 +301,8 @@ export class TextSliceNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: (string | string[])[];
-    n?: (number | number[])[];
-    start?: (number | number[])[];
-    len?: (number | number[])[];
-  }): { result: CellResult<string> } {
-    const text = strVal(inputs.text, this, "text");
-    // Only the chosen op's operands join the zip, or a list left in an unused box would spill.
-    const result = this.op === "mid"
-      ? broadcastCells((t: string, s: number, l: number) => {
-          return callCore("MID", [t, s, l]) as string | SolError;
-        },
-        text,
-        readRole<number | number[]>(this, "start", inputs.start),
-        readRole<number | number[]>(this, "len", inputs.len))
-      : broadcastCells((t: string, count: number) => {
-          const fn = this.op === "left" ? "LEFT" : "RIGHT";
-          return callCore(fn, [t, count]) as string | SolError;
-        },
-        text,
-        readRole<number | number[]>(this, "n", inputs.n));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -401,22 +338,8 @@ export class TextFindNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Position"));
   }
 
-  data(inputs: {
-    needle?: (string | string[])[];
-    haystack?: (string | string[])[];
-    start?: (number | number[])[];
-  }): { result: BroadcastResult } {
-    const result = broadcastCells((needle: string, haystack: string, s: number) => {
-      const raw = callCore(this.op === "find" ? "FIND" : "SEARCH", [needle, haystack, s]);
-      return raw instanceof Error
-        ? solError("#VALUE!", "Find text not found within the text")
-        : raw as number | SolError;
-    },
-      strVal(inputs.needle,   this, "needle"),
-      strVal(inputs.haystack, this, "haystack"),
-      readRole<number | number[]>(this, "start", inputs.start));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -445,27 +368,8 @@ export class SubstituteNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: (string | string[])[];
-    old_text?: (string | string[])[];
-    new_text?: (string | string[])[];
-    instance?: (number | number[])[];
-  }): { result: CellResult<string> } {
-    // Call SUBSTITUTE directly, not through a hoisted alias, so the arg-parity scan sees the 4th argument.
-    const result = broadcastCells(
-      (text: string, oldText: string, newText: string, inst: number) => {
-        const n = Math.floor(inst);
-        return (n >= 1
-          ? callCore("SUBSTITUTE", [text, oldText, newText, n])
-          : callCore("SUBSTITUTE", [text, oldText, newText])) as string;
-      },
-      strVal(inputs.text,     this, "text"),
-      strVal(inputs.old_text, this, "old_text"),
-      strVal(inputs.new_text, this, "new_text"),
-      readRole<number | number[]>(this, "instance", inputs.instance),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -493,22 +397,8 @@ export class TextReplaceNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: (string | string[])[];
-    start?: (number | number[])[];
-    num_chars?: (number | number[])[];
-    new_text?: (string | string[])[];
-  }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (text: string, s: number, n: number, newText: string) =>
-        callCore("REPLACE", [text, Math.max(1, Math.floor(s)), Math.max(0, Math.floor(n)), newText]) as string,
-      strVal(inputs.text, this, "text"),
-      readRole<number | number[]>(this, "start", inputs.start),
-      readRole<number | number[]>(this, "num_chars", inputs.num_chars),
-      strVal(inputs.new_text, this, "new_text"),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -546,15 +436,8 @@ export class ReptNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[]; times?: (number | number[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (text: string, times: number) =>
-        callCore("REPT", [text, Math.max(0, Math.floor(times))]) as string,
-      strVal(inputs.text, this, "text"),
-      readRole<number | number[]>(this, "times", inputs.times),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -587,12 +470,8 @@ export class CharCodeNode extends ClassicPreset.Node {
     }
   }
 
-  data(inputs: { code?: (number | number[])[]; text?: (string | string[])[] }): { result: CellResult<string | number> } {
-    const result: CellResult<string | number> = this.op === "char"
-      ? broadcastCells((c: number) => callCore("CHAR", [c]) as string | SolError, readInput(inputs.code, this.literals.code ?? 65))
-      : broadcastCells((t: string) => callCore("CODE", [t]) as number | SolError, strVal(inputs.text, this, "text"));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string | number> };
   }
 }
 
@@ -622,15 +501,8 @@ export class TextJoinNode extends ClassicPreset.Node {
     this.addOutput("result", strOut("Result"));
   }
 
-  data(inputs: { strings?: string[][]; delimiter?: string[] }): { result: string | SolError | null } {
-    const strings: string[] = inputs.strings?.[0] ?? [];
-    const delimiter = readRole<string>(this, "delimiter", inputs.delimiter);
-    // A reduction: the first error wins and blanks drop out, as in the formula ([[D51]] oneAnswerOneDivergence).
-    const err = (strings as unknown[]).find(isSolError);
-    const present = strings.filter((s) => s != null);
-    const result = err ?? callCore("TEXTJOIN", [delimiter, this.ignoreEmpty === "ignore", present]) as string | SolError;
-    this.cachedText = isSolError(result) ? null : result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: string | SolError | null };
   }
 }
 
@@ -656,14 +528,8 @@ export class TextSplitNode extends ClassicPreset.Node {
     this.addOutput("result", strListOut("Parts"));
   }
 
-  data(inputs: { text?: string[]; delimiter?: string[] }): { result: string[] | null } {
-    const text      = strScalar(inputs.text,      this, "text");
-    const delimiter = readRole<string | SolError>(this, "delimiter", inputs.delimiter);
-    if (isSolError(delimiter)) { this.cachedResult = null; return { result: delimiter as never }; }
-    if (text === null) { this.cachedResult = null; return { result: null }; }
-    const result    = callCore("TEXTSPLIT", [text, delimiter]) as string[];
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: string[] | null };
   }
 }
 
@@ -742,14 +608,8 @@ export class ExactNode extends ClassicPreset.Node {
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { a?: (string | string[])[]; b?: (string | string[])[] }): { result: CellResult<boolean> } {
-    const result = broadcastCells(
-      (a: string, b: string) => callCore("EXACT", [a, b]) as boolean,
-      strVal(inputs.a, this, "a"),
-      strVal(inputs.b, this, "b"),
-    );
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<boolean> };
   }
 }
 
@@ -772,10 +632,8 @@ export class UrlEncodeNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells((text: string) => callCore(URL_ENCODE_LABEL[this.op], [text]) as string, strVal(inputs.text, this, "text"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -862,10 +720,8 @@ export class HashNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Digest"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells((t: string) => callCore("HASH", [t, this.algorithm]) as string, strVal(inputs.text, this, "text"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -918,33 +774,8 @@ export class RomanArabicNode extends ClassicPreset.Node {
     }
   }
 
-  data(inputs: { number?: (number | number[])[]; text?: (string | string[])[] }): { result: CellResult<string | number> } {
-    const result: CellResult<string | number> = this.op === "roman"
-      ? broadcastCells((raw: number) => {
-          const n = Math.floor(raw);
-          if (n < 1 || n > 3999) return solError("#VALUE!", "ROMAN is defined only for 1–3999");
-          const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1];
-          const syms = ["M","CM","D","CD","C","XC","L","XL","X","IX","V","IV","I"];
-          let out = ""; let rem = n;
-          for (let i = 0; i < vals.length; i++) {
-            while (rem >= vals[i]) { out += syms[i]; rem -= vals[i]; }
-          }
-          return out;
-        }, readInput(inputs.number, this.literals.number ?? 1))
-      : broadcastCells((raw: string) => {
-          const text = raw.toUpperCase().trim();
-          if (!text) return null;
-          const map: Record<string, number> = { M:1000, D:500, C:100, L:50, X:10, V:5, I:1 };
-          let out = 0; let prev = 0;
-          for (let i = text.length - 1; i >= 0; i--) {
-            const v = map[text[i]];
-            if (v === undefined) return solError("#VALUE!", `"${text}" is not a valid Roman numeral`);
-            if (v < prev) out -= v; else { out += v; prev = v; }
-          }
-          return out;
-        }, strVal(inputs.text, this, "text"));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string | number> };
   }
 }
 
@@ -974,14 +805,8 @@ export class FixedNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Text"));
   }
 
-  data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (n: number, d: number) => callCore("FIXED", [n, d, this.noCommas === "no_commas"]) as string,
-      readInput(inputs.number,   this.literals.number   ?? 0),
-      leftOutAs(readRole<number | (number | undefined)[] | undefined>(this, "decimals", inputs.decimals), 2),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -1081,12 +906,8 @@ export class FormatDollarNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Currency text"));
   }
 
-  data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells((n: number, d: number) => callCore("DOLLAR", [n, d]) as string,
-      readInput(inputs.number,   this.literals.number   ?? 0),
-      leftOutAs(readRole<number | (number | undefined)[] | undefined>(this, "decimals", inputs.decimals), 2));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -1106,13 +927,8 @@ export class ReverseTextNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Reversed"));
   }
 
-  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells(
-      (t: string) => callCore("REVERSETEXT", [t]) as string,
-      strVal(inputs.text, this, "text"),
-    );
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -1143,13 +959,8 @@ export class SpellNumberNode extends ClassicPreset.Node {
     if (out) out.label = next === "ordinal" ? "Ordinal" : "Words";
   }
 
-  data(inputs: { value?: (number | number[] | null)[] }): { result: CellResult<string> } {
-    const value = inputs.value === undefined || inputs.value.length === 0
-      ? this.literals.value
-      : inputs.value[0] ?? null;
-    const result = broadcastCells((v: number) => callCore(this.mode === "ordinal" ? "ORDINAL" : "SPELLNUMBER", [v]) as string | SolError, value);
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -1180,10 +991,8 @@ export class TextSimilarityNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Similarity"));
   }
 
-  data(inputs: { a?: (string | string[])[]; b?: (string | string[])[] }): { result: BroadcastResult } {
-    const result = broadcastCells((a: string, b: string) => callCore("SIMILARITY", [a, b, this.method]) as number, strVal(inputs.a, this, "a"), strVal(inputs.b, this, "b"));
-    this.cachedResult = result as BroadcastResult;
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
