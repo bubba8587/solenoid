@@ -894,7 +894,7 @@ describe("the regex functions match V8 on random patterns", () => {
     const rand = mulberry32(3131 + FUZZ_SEED);
     const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
     const run = (n: number, xs: readonly string[]) => Array.from({ length: n }, () => pick(xs)).join("");
-    let ran = 0, bailed = 0, halved = 0;
+    let ran = 0, bailed = 0;
     for (let i = 0; i < FUZZ_RUNS; i++) {
       const pat = run(1 + Math.floor(rand() * 6), ATOMS);
       const text = run(Math.floor(rand() * 12), rand() < 0.5 ? CHARS : ASCII);
@@ -907,13 +907,12 @@ describe("the regex functions match V8 on random patterns", () => {
       for (const [name, args] of calls) {
         const want = jsAnswer(resolveExcelFunction(name)!, args);
         const got = wasmInvokeSync<{ bail?: boolean }>("engine_call", { name, args: args.map(callWire) });
-        // An answer holding half an emoji stays with the TS (rust-core.md § Fallback); jsAnswer reads the half as U+FFFD.
-        if (got && got.bail) { if (JSON.stringify(want).includes("\uFFFD")) halved++; else bailed++; continue; }
+        if (got && got.bail) { bailed++; continue; }
         ran++;
         if (JSON.stringify(got) !== JSON.stringify(want)) expect({ name, args, got }).toEqual({ name, args, got: want });
       }
     }
-    expect(ran, "every pattern, valid or not, should run on the engine").toBe(FUZZ_RUNS * 3 - bailed - halved);
+    expect(ran, "every pattern, valid or not, should run on the engine").toBe(FUZZ_RUNS * 3 - bailed);
     expect(bailed).toBe(0);
   });
 });

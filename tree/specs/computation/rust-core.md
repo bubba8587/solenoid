@@ -89,9 +89,7 @@ columns to `engine_pivot_layout`.
 
 A body meeting a reading the core doesn't make yet calls `bail()`, and the whole formula or column runs on the
 TypeScript, never part of it: chrono-node's free-text dates in criteria, INDEX with a list of positions,
-REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table, a slice or match that halves a
-surrogate pair (`from_utf16` in `excel_functions.rs` and `text_ops.rs`; `coreSurrogates.test.ts` reads it raw, since
-the conformance `canon()` makes every frozen string well formed). A value that can't cross (a unit cell,
+REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table. A value that can't cross (a unit cell,
 a frame, text with a lone surrogate) keeps its call on the TS; so does a pack call whose arguments or answer can't
 cross (a LAMBDA, a unit cell), or one made where the core runs natively. A `UnitCell` crosses only into `callCore`, as
 `{__unit}` (`V::Unit`, with its display unit's scale, offset and dimension beside a display id), and only the bodies in
@@ -172,9 +170,11 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   (`CORE_BAILS_WRITE=1` rewrites it; its numbers only fall). Each entry needs a real answer before its TS goes:
   criteria whose text reaches chrono-node (the *IF/*IFS family), and the few frozen columns and formulas those
   reach. The suite pins `TZ=UTC`, so the zone readings (`zone.rs`) meet other zones only in the live fuzzers.
-- **Lone surrogates** can't cross into wasm, whose strings are UTF-8: a frame or formula holding one stays on the
-  TS (`crossesWhole`, `wellFormed` in frameBackend.ts). Once the TS goes, the core needs a rule for them, such as
-  reading one as U+FFFD at the boundary, which is the author's call.
+- **Text is always well formed** (the author, 2026-10-22). A slice or match that halves a surrogate pair answers
+  U+FFFD for the half on the core (`from_utf16` in `excel_functions.rs` and `text_ops.rs`; `coreSurrogates.test.ts`).
+  Input text holding a lone surrogate still can't cross into wasm, whose strings are UTF-8, so its frame or formula
+  stays on the TS (`crossesWhole`, `wellFormed` in frameBackend.ts); once the TS goes, it reads as U+FFFD at the
+  boundary.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
 - **Crossing per call is slow where a card maps a body over a list** ([[C120]] linearWork): about 4 µs an item, so

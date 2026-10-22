@@ -421,13 +421,10 @@ fn utf16(s: &str) -> Vec<u16> {
     s.encode_utf16().collect()
 }
 
-/// `String.prototype.slice`/`substring` over UTF-16 units. A slice that halves a surrogate pair leaves the formula to
-/// the TS, whose strings hold the half (`rust-core.md` § Fallback).
+/// `String.prototype.slice`/`substring` over UTF-16 units. Text stays well formed: a slice that halves a surrogate pair
+/// reads the half as U+FFFD (`rust-core.md`).
 fn from_utf16(units: &[u16]) -> String {
-    String::from_utf16(units).unwrap_or_else(|_| {
-        bail();
-        String::from_utf16_lossy(units)
-    })
+    String::from_utf16_lossy(units)
 }
 
 /// `ToIntegerOrInfinity`, clamped to `0..=len` (`substring`'s reading of an index).
