@@ -80,7 +80,7 @@ columns to `engine_pivot_layout`.
 | Frame computations no formula shares: headers, Describe, Correlation Matrix, Reconcile, Nest's grouping, XLOOKUP over a frame, Get Row, Get and Add Column's naming, Build and Split Frame, Frame from Lists, the Decision Matrix and its flip points, the Allocator, the Payoff Planner, Group Cost Settle's totals and its ledger (a ledger holding lists stays with the TS), Amortization, K-Means, PCA, logistic regression. A thrown error crosses as itself; a card with several outputs gets them side by side in one frame | `frame_fns.rs`, `decision.rs`, `planners.rs`, `engine_frame_fn`, `frameFnOnCore` (`frameBackend.ts`) | the frozen frame-function cases |
 | A pack's function, registered in JS at run time: the core evaluates its arguments and calls the TS back for the call itself (its roles, blank slots and ladder on the TS); the same whole column row after row is one call | `external.rs`, `callFromCore` (`excelFormula.ts`), `globalThis.__solenoidCallExternal` | the frozen pack-call formulas |
 | A formula's unit reading ([[unit-flow]] § Formula dimensions, § Expression): its result dimension (`dimEval`) and its point weight over readings (`affineWeight`), for Expression, the LAMBDA folds and a computed column over °C. The numbers still cross unit-blind; the display-unit choice and the re-tagging stay on the TS, and Equation still calls the TS `dimEval` on its own ASTs | `unit_dims.rs`, `engine_dim_eval`, `engine_affine_weight`, `formulaDim` and `formulaAffineWeight` (`unitDimExpr.ts`) | 18k frozen formula dimensions (`unit-dims`), 17k frozen weights (`affine-weights`) |
-| List bodies over values with a unit: the ones that move cells without reading them (`UNIT_READY`) | `V::Unit`, `coreValue(v, true)` and `readReply` (`coreValues.ts`) | 4k frozen calls (`unit-lists`) |
+| List bodies over values with a unit (`UNIT_READY`): the ones that move cells without reading them, the shapers SORT, SORTBY, UNIQUE, TAKE and DROP (a unit cell sorts after the logicals and ties with its kind; UNIQUE keys it by base magnitude at 15 digits and dimension), and RUNNING, which reads each cell's display unit from the wire (its scale and offset as the TS resolves them) | `V::Unit`, `unit_lists.rs`, `coreValue(v, true)` and `readReply` (`coreValues.ts`) | 4k frozen calls (`unit-lists`), 5k frozen shaper calls (`unit-shapers`), 6k frozen RUNNING calls with and without units (`unit-running`) |
 | A pack's formula functions | the TS, by design: a pack registers JS at run time, and the core calls it back (`syncExternalNames`) | |
 
 ## Fallback ([[D98]] wholeColumnFallback)
@@ -90,8 +90,10 @@ TypeScript, never part of it: chrono-node's free-text dates in criteria, INDEX w
 REGEXEXTRACT's list modes, a loop past a step cap, a value nested past a table. A value that can't cross (a unit cell,
 a frame, text with a lone surrogate) keeps its call on the TS; so does a pack call whose arguments or answer can't
 cross (a LAMBDA, a unit cell), or one made where the core runs natively. A `UnitCell` crosses only into `callCore`, as
-`{__unit}` (`V::Unit`), and only the bodies that move values without reading them take it (`UNIT_READY` in
-`unit_dims.rs`: REVERSE, SLICE, NTHELEMENT, INTERLEAVE, CONCATLISTS, PADLEFT, PADRIGHT); any other call holding one
+`{__unit}` (`V::Unit`, with its display unit's scale and offset beside a display id), and only the bodies in
+`UNIT_READY` (`unit_dims.rs`) take it: REVERSE, SLICE, NTHELEMENT, INTERLEAVE, CONCATLISTS, PADLEFT, PADRIGHT, which
+move values without reading them, SORT, SORTBY, UNIQUE, TAKE and DROP, and RUNNING (`unit_lists.rs`); FILTER isn't
+there yet (a unit cell as a condition is unread on the core), and any other call holding one
 bails, and a formula or computed column over one stays on the TS. `bails.json` counts what's left.
 
 ## Where it runs

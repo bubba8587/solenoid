@@ -1054,22 +1054,101 @@ const unitLists = frozen<UnitListCase>("unit-lists", () => {
   return cases;
 });
 
+function replayUnitCalls(cases: readonly UnitListCase[]): void {
+  const bad: unknown[] = [];
+  for (const c of cases) {
+    const r = readReply(wasmInvokeSync<unknown>("engine_call", { name: c.name, args: c.args.map((a) => coreValue(a, true)), clock: engineClock() }));
+    const got = r ? unitData(r.value) : { bailed: true };
+    if (JSON.stringify(enc(got)) !== JSON.stringify(enc(c.want))) bad.push({ name: c.name, args: c.args, got, want: c.want });
+  }
+  if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(enc(b))).join("\n"));
+  expect(bad.slice(0, 5)).toEqual([]);
+}
+
 describe("list bodies over values with a unit answer as frozen", () => {
-  it(`${unitLists.length} calls`, () => {
-    const bad: unknown[] = [];
-    for (const c of unitLists) {
-      const r = readReply(wasmInvokeSync<unknown>("engine_call", { name: c.name, args: c.args.map((a) => coreValue(a, true)), clock: engineClock() }));
-      const got = r ? unitData(r.value) : { bailed: true };
-      if (JSON.stringify(enc(got)) !== JSON.stringify(enc(c.want))) bad.push({ name: c.name, args: c.args, got, want: c.want });
-    }
-    if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(enc(b))).join("\n"));
-    expect(bad.slice(0, 5)).toEqual([]);
-  });
+  it(`${unitLists.length} calls`, () => replayUnitCalls(unitLists));
+});
+
+const unitCell = (value: number, dim: Record<string, number>, display?: string, ratio?: true): UnitCell =>
+  ({ __unitCell: true, value, dim, ...(display === undefined ? {} : { display }), ...(ratio ? { ratio } : {}) });
+/** Families of cells that share a dimension, so most lists aggregate and some mix. */
+const UNIT_FAMILIES: UnitCell[][] = [
+  [unitCell(5000, { length: 1 }, "km"), unitCell(1.5, { length: 1 }), unitCell(0.3048, { length: 1 }, "ft"), unitCell(-1609.344, { length: 1 }, "mi"), unitCell(-0, { length: 1 }, "km")],
+  [unitCell(293.15, { temperature: 1 }, "degC"), unitCell(255.3722222222222, { temperature: 1 }, "degF"), unitCell(300, { temperature: 1 }, "K"), unitCell(310.15, { temperature: 1 }, "degC")],
+  [unitCell(5, { currency: 1 }, "usd"), unitCell(7.25, { currency: 1 }, "usd"), unitCell(3, { currency: 1 }, "eur"), unitCell(2, { currency: 1 })],
+  [unitCell(2.5, {}, undefined, true), unitCell(0.5, {}, undefined, true)],
+  [unitCell(-0.25, { length: 1, time: -1 }, "ms1"), unitCell(3, { time: -1, length: 1 })],
+  [unitCell(3, { "custom:widget": 1 }), unitCell(1e21, { "custom:widget": 1 }), unitCell(NaN, { "custom:widget": 1 })],
+  [unitCell(7200, { time: 1 }, "h"), unitCell(90, { time: 1 }, "min"), unitCell(Infinity, { time: 1 }, ""), unitCell(12, { mass: 1, length: 2, time: -2 }, "J")],
+  [unitCell(2, { length: 2 }), unitCell(4, { length: 2, "custom:b": 0 }), unitCell(1, { mass: 1, length: 1, time: -2 })],
+];
+
+/** RUNNING over plain lists and lists with a unit ([[C25]] firstClassUnits): the core reads each display unit's scale
+ *  and offset from the wire (`unit_lists.rs`). */
+const unitRunning = frozen<UnitListCase>("unit-running", () => {
+  const cases: UnitListCase[] = [];
+  const rand = mulberry32(5151);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const plain = [1, -2.5, 0, -0, 3, 1e308, NaN, Infinity, null, undefined, "4", "", true, solError("#N/A", "gone"), [1, 2]];
+  for (let i = 0; i < 6000; i++) {
+    const fam = pick(UNIT_FAMILIES);
+    const mode = rand();
+    const cell = () => (mode < 0.25 ? pick(plain) : rand() < 0.75 ? pick(fam) : rand() < 0.15 ? pick(pick(UNIT_FAMILIES)) : pick(plain));
+    const list = rand() < 0.05 ? cell() : Array.from({ length: Math.floor(rand() * 7) }, cell);
+    const op = pick(["SUM", "AVERAGE", "avg", " min ", "MAX", "MEDIAN", "PRODUCT", "STDEV", "mode", null]);
+    const args = rand() < 0.3 ? [op, list] : [op, list, pick([0, 1, 2, 3, 2.5, 0.4, 0.6, -1, 10, null, NaN, "2"])];
+    let want: unknown;
+    try { want = unitData(resolveExcelFunction("RUNNING")!(...structuredClone(args))); } catch (e) { want = { thrown: String((e as Error).message ?? e) }; }
+    cases.push({ name: "RUNNING", args, want });
+  }
+  return cases;
+});
+
+describe("RUNNING over values with a unit answers as frozen", () => {
+  it(`${unitRunning.length} calls`, () => replayUnitCalls(unitRunning));
+});
+
+/** SORT, SORTBY, UNIQUE, TAKE and DROP over lists and tables holding values with a unit ([[C25]] firstClassUnits): a
+ *  unit cell sorts after the logicals and ties with its kind, and UNIQUE keys it by base magnitude and dimension. */
+const unitShapers = frozen<UnitListCase>("unit-shapers", () => {
+  const cases: UnitListCase[] = [];
+  const rand = mulberry32(6262);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const same = [unitCell(5000, { length: 1 }, "km"), unitCell(5000, { length: 1 }), unitCell(5000.0000000000001, { length: 1 }, "m"),
+    unitCell(5000, { time: 1 }), unitCell(-0, { length: 1 }), unitCell(0, { length: 1 }, "km"), unitCell(NaN, { length: 1 }),
+    unitCell(Infinity, { length: 1 }), unitCell(1, { length: 1, time: -1 }), unitCell(1, { time: -1, length: 1 }), unitCell(1.1, {}, undefined, true),
+    unitCell(3960, { time: 1 }, "h"), unitCell(1.1 * 3600, { time: 1 }), unitCell(2, { "custom:é": 1, "custom:z": 1 }), unitCell(2, { "custom:z": 1, "custom:é": 1 })];
+  const cell = () => (rand() < 0.5 ? pick(same) : rand() < 0.4 ? pick(pick(UNIT_FAMILIES)) : pick([1, 2, -1, 0, null, undefined, "a", "b", true, false, NaN, solError("#N/A", "gone")]));
+  const row = (n: number) => Array.from({ length: n }, cell);
+  const data = (): unknown => {
+    const r = rand();
+    if (r < 0.1) return cell();
+    if (r < 0.55) return row(Math.floor(rand() * 7));
+    const w = 1 + Math.floor(rand() * 3);
+    return Array.from({ length: 1 + Math.floor(rand() * 5) }, () => row(w));
+  };
+  const setting = () => pick([undefined, null, 1, 2, -1, 0, true, false, ...same.slice(0, 2)]);
+  for (let i = 0; i < 5000; i++) {
+    const name = pick(["SORT", "SORT", "UNIQUE", "UNIQUE", "SORTBY", "TAKE", "DROP"]);
+    const v = data();
+    const args = name === "SORT" ? [v, pick([undefined, 1, 2]), pick([undefined, 1, -1]), pick([undefined, false, true])]
+      : name === "UNIQUE" ? [v, pick([undefined, false, true]), pick([undefined, false, true])]
+      : name === "SORTBY" ? [v, !Array.isArray(v) ? cell() : Array.isArray(v[0]) ? v.map(() => [cell()]) : row(v.length), pick([undefined, 1, -1])]
+      : [v, setting(), pick([undefined, 1, -1])];
+    let want: unknown;
+    try { want = unitData(resolveExcelFunction(name)!(...structuredClone(args))); } catch (e) { want = { thrown: String((e as Error).message ?? e) }; }
+    cases.push({ name, args, want });
+  }
+  return cases;
+});
+
+describe("SORT and UNIQUE over values with a unit answer as frozen", () => {
+  it(`${unitShapers.length} calls`, () => replayUnitCalls(unitShapers));
 });
 
 if (FREEZING) {
   it("froze every suite", () => {
-    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length).toBeGreaterThan(0);
+    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length + unitRunning.length + unitShapers.length).toBeGreaterThan(0);
   });
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.
