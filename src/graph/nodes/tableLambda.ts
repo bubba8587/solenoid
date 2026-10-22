@@ -333,8 +333,11 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
       "acc + value", ["acc", "value", "step"], 3, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    const elem = initialUnit(elemUnitOf(m), initialRaw);
+    const listUnit = elemUnitOf(m);
+    const elem = initialUnit(listUnit, initialRaw);
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
+    // Over a plain list only the accumulator carries the initial's unit: `value` is a plain number (a rate, a count).
+    const united = listUnit ? ["acc", "value"] : ["acc"];
     const fu = foldUnit(elem);
     const mm = elem ? stripCells(m, fu) : m;
     const initial = isUnitCell(initialRaw) ? readIn(magnitudeOf(initialRaw), fu) : initialRaw;
@@ -345,10 +348,10 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
       let out: Cell | UnitCell = cell(acc);
       if (elem) {
         const expr = foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "acc + value");
-        const dr = foldResultDim(expr, ["acc", "value"], elem.dim);
+        const dr = foldResultDim(expr, united, elem.dim);
         if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
         // The accumulator is a reading step after step only when each step answers one.
-        const point = foldPoint(expr, fu, ["acc", "value"], []);
+        const point = foldPoint(expr, fu, united, []);
         const bad = isSolError(point) ? point : point === 0 ? unitError(READINGS_FOLD) : null;
         if (bad) { this.cachedResult = bad; this.cachedError = null; return { result: bad }; }
         out = retagFold(out as Cell, dr, elem, fu, point as 1 | null);

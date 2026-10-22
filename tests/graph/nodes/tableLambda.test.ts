@@ -352,6 +352,15 @@ describe("REDUCE's initial value carries its unit into the fold ([[C25]] firstCl
     const r = new ReduceLambdaNode().data({ initial: [fromUnit(5, s, "s")], table: [[[fromUnit(1, km, "km"), fromUnit(2, km, "km")]]] }).result;
     expect(r).toMatchObject({ code: "#UNIT!", message: "REDUCE's initial value and its list are in different units." });
   });
+  it("over a plain list only acc carries it: compound growth stays dollars, a product stays km", async () => {
+    const { fcUnitToUnit } = await import("../../../src/graph/unitBridge");
+    const [usd, km] = [fcUnitToUnit("usd")!, fcUnitToUnit("km")!];
+    const grow = new ReduceLambdaNode({ expr: "acc * (1 + value)" }).data({ initial: [fromUnit(1000, usd, "usd")], table: [[[0.05, 0.03]]] }).result as UnitCell;
+    expect(grow.dim).toEqual({ currency: 1 });
+    expect(magnitudeOf(grow)).toBeCloseTo(1081.5, 9);
+    const prod = new ReduceLambdaNode({ expr: "acc * value" }).data({ initial: [fromUnit(5, km, "km")], table: [[[2, 3]]] }).result as UnitCell;
+    expect(prod).toEqual({ __unitCell: true, value: 30000, dim: { length: 1 }, display: "km" });
+  });
   it("a ragged table folds its lone cells as one-cell rows instead of throwing", () => {
     expect(new ReduceLambdaNode().data({ table: [[[1, 2], 3]] }).result).toBe(6);
   });
