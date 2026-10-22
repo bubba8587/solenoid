@@ -918,6 +918,15 @@ describe("the regex functions match V8 on random patterns", () => {
   });
 });
 
+it("a caseless backreference folds as V8's Canonicalize: never a non-ASCII unit to ASCII", () => {
+  const fn = resolveExcelFunction("REGEXTEST")!;
+  for (const text of ["sſ", "ſs", "ſſ", "Ss", "ıI", "Iı", "ıı", "iI", "kK", "Kk", "ßß", "σΣ", "ςΣ"]) {
+    const args = [text, "(.)\\1", 1];
+    expect(wasmInvokeSync("engine_call", { name: "REGEXTEST", args: args.map(callWire) }), text).toEqual(jsAnswer(fn, args));
+  }
+  expect(fn("sſ", "(.)\\1", 1)).toBe(0);
+});
+
 describe("DOLLAR matches Intl's currency text on ties, huge values and negatives", () => {
   it(`${FUZZ_RUNS * 3} values`, { timeout: 600_000 }, () => {
     const rand = mulberry32(2121 + FUZZ_SEED);

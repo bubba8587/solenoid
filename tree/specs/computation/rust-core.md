@@ -154,7 +154,7 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   broadcasting, the error guard), against about 450 for an operator. Each call site's name and facts resolve once per
   column already; resolving its route the same way (which rungs can apply to it at all) is the next cut.
 - **Size.** The module is 2.3 MB raw / 835 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the full NFD table included. `regress`
-  is vendored in `crates/vendor/regress` with one patch, the `no-property-escapes` feature: `\p{…}` parses only in
+  is vendored in `crates/vendor/regress` with two patches. Its non-Unicode Canonicalize (`fold_code_point`, which a caseless backreference compares by) never takes a non-ASCII unit to ASCII, as V8's doesn't, so `ſ` and `s` don't match each other. The `no-property-escapes` feature: `\p{…}` parses only in
   Unicode mode, which Solenoid never uses, and refusing it drops the property tables (82 KB gzipped). The case-folding
   tables stay. UNACCENT and SLUGIFY decompose through `nfd_table.rs` (`scripts/gen-nfd-table.mjs`, from Node's own
   NFD, every code point, combining classes read off its reordering; 19 KB gzipped) instead of `unicode-normalization`. Size
@@ -170,8 +170,6 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   reading one as U+FFFD at the boundary, which is the author's call.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
-- **Case-insensitive backreferences fold ſ↔s and ı↔I** (`js_regex.rs`, regress's `fold_equals`), where V8's
-  Canonicalize doesn't: `REGEXTEST("sſ","(.)\1",1)` is 1 on the core, 0 in V8.
 - **Crossing per call is slow where a node calls one body per item** ([[C120]] linearWork). A wired LAMBDA re-encodes
   every captured value on each call (`compilePositional` → `coreValue`), so `x - AVERAGE(vals)` over 3,000 items takes
   1.8 s against 8 ms on develop, quadratic in the list. Cards that map a body over a list pay about 4 µs an item:

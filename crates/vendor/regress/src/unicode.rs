@@ -144,7 +144,13 @@ pub(crate) fn fold_code_point(cu: u32, unicode: bool) -> u32 {
     if unicode {
         return fold(cu);
     }
-    uppercase(cu)
+    // Solenoid patch: without the u flag, a non-ASCII unit never canonicalizes to ASCII (ſ is not s, ı is not I).
+    let up = uppercase(cu);
+    if cu >= 128 && up < 128 {
+        cu
+    } else {
+        up
+    }
 }
 
 pub fn fold(cu: u32) -> u32 {
