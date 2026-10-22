@@ -4,7 +4,7 @@
 // The mechanism is tree/specs/computation/node-bodies.md.
 import type { ClassicPreset } from "rete";
 import { extractInit } from "./nodeInit";
-import { declaredTypeOf } from "./sockets";
+import { declaredTypeOf, AdoptiveSocket } from "./sockets";
 import { engineClock } from "./coreValues";
 import { nodeWire, readNodeReply, jsonDec, jsonEnc } from "./nodeWire";
 import { withMatrixUnit, type ColumnUnit } from "./unitValue";
@@ -23,6 +23,12 @@ function shown(r: unknown): unknown {
   const o = r as { undef?: true } | null;
   if (o && typeof o === "object" && o.undef === true) return undefined;
   return read(r);
+}
+
+/** The type an adoptive socket took up, where it differs from the one it was declared at. */
+export function adopted(socket: unknown): string[] {
+  const now = (socket as { dataType?: string } | undefined)?.dataType;
+  return socket instanceof AdoptiveSocket && now !== undefined && now !== socket.base ? [now] : [];
 }
 
 /** What a save holds, and the run-time fields the class names in `static coreFields` (a resolved mode no save keeps). */
@@ -50,8 +56,8 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
       init: jsonEnc(coreInit(node)),
       ...(n.literals ? { literals: jsonEnc(n.literals) } : {}),
       ...(n.stringLiterals ? { stringLiterals: jsonEnc(n.stringLiterals) } : {}),
-      sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k]),
-      outputs: Object.entries(node.outputs).map(([k, output]) => [k, declaredTypeOf(output?.socket) ?? null]),
+      sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k, ...adopted(input?.socket)]),
+      outputs: Object.entries(node.outputs).map(([k, output]) => [k, declaredTypeOf(output?.socket) ?? null, ...adopted(output?.socket)]),
       inputs: wired,
       clock: engineClock(),
     });

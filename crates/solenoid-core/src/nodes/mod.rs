@@ -46,6 +46,10 @@ pub struct Call {
     /// The inputs as `data()` receives them: a key is there when a cable is, and holds each cable's value.
     pub inputs: Vec<(String, Vec<V>)>,
     pub display: Vec<(String, Shown)>,
+    /// The type an adoptive socket took up (`socket.dataType`), where it differs from the declared one: inputs, then
+    /// outputs, by key. A run-time fact no save keeps.
+    pub adopted_in: Vec<(String, String)>,
+    pub adopted_out: Vec<(String, String)>,
     /// A table's unit (`matrixUnitOf`, a hidden field on the JS array) on an input's first value, by input key.
     pub matrix_units_in: Vec<(String, Json)>,
     /// The unit to put on an output table (`withMatrixUnit`), by output key.
@@ -91,6 +95,10 @@ impl Call {
             })
             .collect();
         let outputs = rows("outputs").iter().map(|r| Output { key: text(r, 0).unwrap_or_default(), ty: text(r, 1) }).collect();
+        let adopted = |k: &str, at: usize| -> Vec<(String, String)> {
+            rows(k).iter().filter_map(|r| Some((text(r, 0)?, text(r, at)?))).collect()
+        };
+        let (adopted_in, adopted_out) = (adopted("sockets", 3), adopted("outputs", 2));
         let mut matrix_units_in = Vec::new();
         let inputs = rows("inputs")
             .iter()
@@ -111,6 +119,8 @@ impl Call {
             outputs,
             inputs,
             display: Vec::new(),
+            adopted_in,
+            adopted_out,
             matrix_units_in,
             matrix_units_out: Vec::new(),
         }
@@ -162,6 +172,18 @@ impl Call {
 
     pub fn label(&self, key: &str) -> String {
         self.sockets.iter().find(|s| s.key == key).map_or_else(|| key.to_string(), |s| s.label.clone())
+    }
+
+    /// `node.inputs[key].socket.dataType`: the adopted type, else the declared one.
+    pub fn input_type(&self, key: &str) -> Option<&str> {
+        self.adopted_in.iter().find(|(k, _)| k == key).map(|(_, t)| t.as_str())
+            .or_else(|| self.sockets.iter().find(|s| s.key == key).and_then(|s| s.ty.as_deref()))
+    }
+
+    /// `node.outputs[key].socket.dataType`.
+    pub fn output_type(&self, key: &str) -> Option<&str> {
+        self.adopted_out.iter().find(|(k, _)| k == key).map(|(_, t)| t.as_str())
+            .or_else(|| self.outputs.iter().find(|o| o.key == key).and_then(|o| o.ty.as_deref()))
     }
 
     /// `matrixUnitOf(inputs[key][0])`.

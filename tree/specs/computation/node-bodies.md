@@ -26,7 +26,7 @@ A ported class's `data()` is `return nodeOnCore(this, inputs)`. It sends:
 |---|---|
 | `kind` | the class name, which picks the body (`nodes::run`) |
 | `init`, `literals`, `stringLiterals` | what a save holds: `extractInit` and the two literal maps; `init` also carries the run-time fields the class names in `static coreFields` (Math Function's resolved angle mode), which no save keeps (`coreInit`) |
-| `sockets`, `outputs` | each input's key, declared type and label, each output's key and declared type, in the card's order |
+| `sockets`, `outputs` | each input's key, declared type and label, each output's key and declared type, in the card's order, and the type an adoptive socket took up where it differs (`adopted`; `Call::input_type`, `output_type`) |
 | `inputs` | each wired input's values on the card wire (`nodeWire.ts`), in order |
 | `clock` | `engineClock()`, for a body that reads today |
 
