@@ -105,6 +105,12 @@ fn mismatch(case: &Json) -> Option<String> {
             if let Some((k, _)) = outs.iter().find(|(o, _)| !want.contains_key(o)) {
                 return Some(format!("out {k}: not frozen"));
             }
+            for (k, w) in want {
+                let got = r.matrix_units.iter().find(|(o, _)| o == k).map(|(_, u)| u);
+                if got != w.get("__munit") {
+                    return Some(format!("out {k}: table unit {got:?}, want {:?}", w.get("__munit")));
+                }
+            }
         }
         (Err(e), _, Some(w)) if same(e, &dec(w)) => {}
         (Ok(outs), _, _) => return Some(format!("got outputs {:?}, want {result}", outs.iter().map(|(k, v)| format!("{k}={}", show(v))).collect::<Vec<_>>())),

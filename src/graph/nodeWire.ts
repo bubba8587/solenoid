@@ -5,6 +5,7 @@
 import { coreValue, readReply } from "./coreValues";
 import { solError, type SolErrorCode } from "./errorValue";
 import { cx } from "./cxValue";
+import { matrixUnitOf, withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { isFrameValue, isCubeValue, makeCube, type FrameValue, type CubeValue, type CubeColumn, type FrameColumn } from "./frame";
 
 /** The plain-data kinds a card makes whole, by their marker field. */
@@ -51,7 +52,12 @@ function all(vs: readonly unknown[]): unknown[] | undefined {
 
 /** A value as a card body on the core reads it; undefined where it can't cross (a frame ref, a closure, other objects). */
 export function nodeWire(v: unknown): unknown {
-  if (Array.isArray(v)) return all(v);
+  if (Array.isArray(v)) {
+    const cells = all(v);
+    // A table's unit is a hidden field on the array (`withMatrixUnit`), so it crosses beside the cells.
+    const unit = matrixUnitOf(v);
+    return cells && unit ? { __munit: jsonEnc(unit), m: cells } : cells;
+  }
   if (isFrameValue(v)) {
     const columns: unknown[] = [];
     for (const c of v.columns) {
@@ -123,6 +129,7 @@ export function nodeUnwire(w: unknown): unknown {
   if (Array.isArray(w)) return w.map(nodeUnwire);
   if (!w || typeof w !== "object") return w;
   const o = w as Record<string, unknown>;
+  if ("__munit" in o) return withMatrixUnit(nodeUnwire(o.m), jsonDec(o.__munit) as ColumnUnit);
   if ("__undef" in o) return undefined;
   if (typeof o.__nf === "string") return { nan: NaN, inf: Infinity, "-inf": -Infinity, "-0": -0 }[o.__nf];
   if (typeof o.__err === "string") return solError(o.__err as SolErrorCode, String(o.msg ?? ""));
