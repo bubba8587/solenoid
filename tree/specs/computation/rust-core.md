@@ -186,3 +186,22 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   64 or more crosses once and the core holds it by id while the JS list lives (`envValue` in `coreValues.ts`, `HELD`
   in `eval.rs`), and `engine_eval` keeps its last 16 formulas parsed with their range memo (`eval::formula`), so
   `x - AVERAGE(vals)` over 3,000 items reads `vals` once: about 50 ms, from 1.9 s (develop: 8 ms).
+- **A wired LAMBDA can run its previous body (found by the 2026-10-22 04:00 review; first).** `engine_eval` keeps an
+  evaluator per formula text (`eval::formula`, `FORMULAS`), but a wired LAMBDA in the env is parsed afresh each call
+  (`decode_value`'s `__lambda`) and dropped after, and `bodies` is keyed by a LAMBDA node's address inside that tree,
+  so the next call's parse can reuse the address and get the old body: `f(3)` after f changes from
+  `MAP(x,LAMBDA(y,y*2))` to `MAP(x,LAMBDA(y,y-1))` answers `[6]`, not `[2]` (33 of 126 edits wrong in a sweep). The
+  `sites` table has the same exposure across calls. A cache that outlives the tree it keys into needs a key the tree
+  can't hand back (the body's text, or an `Rc` held in the entry).
+- **Port develop `deb66745`, `8042d885` and `beac2169`.** IF, IFS and CHOOSE propagate only an error in what picks
+  the branch (`BRANCH_SELECTORS` in `excelFormula.ts`, before the call and cell by cell in `broadcastWith`), so
+  `IF(@qty = 0, 0, @total / @qty)` is 0, not #DIV/0!; the core's call path answers the first error argument for every
+  call, and any frozen fixture holding the eager #DIV/0! needs refreezing. A computed column whose unit is
+  indeterminate (`POWER(@d, 2)` over km) computes on the shown numbers, not base SI with no unit. REDUCE over a plain
+  list gives only `acc` the initial's unit (`$1000` over rates with `acc * (1 + value)` was dollars squared).
+- **Caseless backreferences still fold Greek letters with a subscript iota** (`ᾳ`/`ᾼ`, `ᾀ`/`ᾈ`, `ῃ`/`ῌ`, `ῳ`/`ῼ`):
+  `REGEXTEST("ᾳᾼ","(.)\1",1)` is 1 on the core, 0 in V8, since regress's `fold_code_point` takes the one-character
+  uppercase where V8 keeps a character whose full uppercase is two.
+- **The TS fallback still keeps a halved surrogate**, so `LEFT(t,2)&RIGHT(t,2)` over `"a😀b"` answers `a��b` on the
+  core and `a😀b` where the formula falls back; the author's well-formed rule has no leaf yet.
+- **After a trap, `collectPreview` of a dead instance's FrameRef throws** its `#REF!` rather than returning it.
