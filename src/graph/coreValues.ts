@@ -5,7 +5,7 @@
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { isCx, cx } from "./cxValue";
 import { isLambdaValue } from "./lambdaValue";
-import { isUnitCell, type UnitCell } from "./unitValue";
+import { isUnitCell, displayScale, displayOffset, type UnitCell } from "./unitValue";
 import { wallClockSerial } from "./nodes/dateSerial";
 import { settingsStore } from "./settingsStore";
 import { wasmEngineLoaded, wasmInvokeSync } from "./engineWasm";
@@ -53,7 +53,8 @@ export function coreValue(v: unknown, units = false): unknown {
   if (v === undefined) return { __undef: 1 };
   if (typeof v === "string") return wellFormed(v) ? v : undefined;
   if (units && isUnitCell(v)) {
-    return { __unit: { value: wireCell(v.value), dim: v.dim, ...(v.display === undefined ? {} : { display: v.display }), ...(v.ratio ? { ratio: true } : {}) } };
+    const shown = v.display ? { scale: wireCell(displayScale(v.display)), offset: wireCell(displayOffset(v.display)) } : {};
+    return { __unit: { value: wireCell(v.value), dim: v.dim, ...(v.display === undefined ? {} : { display: v.display }), ...(v.ratio ? { ratio: true } : {}), ...shown } };
   }
   if (Array.isArray(v)) {
     const out = v.map((x) => coreValue(x, units));

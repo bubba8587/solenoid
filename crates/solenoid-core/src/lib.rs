@@ -39,6 +39,7 @@ pub mod shapers;
 pub mod string_order;
 pub mod text_ops;
 pub mod unit_dims;
+pub mod unit_lists;
 pub mod unit_value;
 pub mod value_kinds;
 pub mod wire;

@@ -192,6 +192,107 @@ fn iter_max(xs: &[f64]) -> f64 {
     xs.iter().fold(f64::NEG_INFINITY, |m, &v| if v > m { v } else { m })
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum RunOp {
+    Sum,
+    Avg,
+    Min,
+    Max,
+    Median,
+    Product,
+    Stdev,
+}
+
+fn median_of_sorted(sorted: &[f64]) -> f64 {
+    let mid = sorted.len() / 2;
+    if sorted.len() % 2 == 0 { (sorted[mid - 1] + sorted[mid]) / 2.0 } else { sorted[mid] }
+}
+
+/// `runningPlain`: a window of `round(window)` ≥ 1 slides, anything else runs cumulative in one pass that answers
+/// what the sliding path would with the whole list as its window.
+pub fn running_plain(op: RunOp, arr: &[V], window: Option<f64>) -> Vec<V> {
+    if let Some(w) = window.map(math_round).filter(|&w| w >= 1.0) {
+        let w = w.min(usize::MAX as f64) as usize;
+        return (0..arr.len())
+            .map(|i| {
+                let slice = &arr[(i + 1).saturating_sub(w)..=i];
+                if let Some(e) = first_error(slice) {
+                    return e;
+                }
+                let nums = present_numbers(slice);
+                if nums.is_empty() {
+                    return if op == RunOp::Sum { V::Num(0.0) } else { V::Null };
+                }
+                let sum = || nums.iter().fold(0.0, |a, &b| a + b);
+                V::Num(match op {
+                    RunOp::Sum => sum(),
+                    RunOp::Avg => sum() / nums.len() as f64,
+                    RunOp::Min => iter_min(&nums),
+                    RunOp::Max => iter_max(&nums),
+                    RunOp::Product => nums.iter().fold(1.0, |a, &b| a * b),
+                    RunOp::Stdev => {
+                        if nums.len() < 2 {
+                            return V::Null;
+                        }
+                        let m = sum() / nums.len() as f64;
+                        (nums.iter().fold(0.0, |s, &v| s + sq(v - m)) / (nums.len() - 1) as f64).sqrt()
+                    }
+                    RunOp::Median => {
+                        let mut sorted = nums.clone();
+                        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                        median_of_sorted(&sorted)
+                    }
+                })
+            })
+            .collect();
+    }
+    let mut err: Option<V> = None;
+    let (mut count, mut sum, mut product, mut mn, mut mx) = (0usize, 0.0, 1.0, f64::INFINITY, f64::NEG_INFINITY);
+    let (mut mean, mut m2) = (0.0, 0.0);
+    let mut sorted: Vec<f64> = Vec::new();
+    arr.iter()
+        .map(|v| {
+            if err.is_none() && is_sol(v) {
+                err = Some(v.clone());
+            }
+            if let Some(e) = &err {
+                return e.clone();
+            }
+            if let Some(v) = finite(v) {
+                count += 1;
+                sum += v;
+                product *= v;
+                if v < mn {
+                    mn = v;
+                }
+                if v > mx {
+                    mx = v;
+                }
+                let d = v - mean;
+                mean += d / count as f64;
+                m2 += d * (v - mean);
+                if op == RunOp::Median {
+                    let at = sorted.partition_point(|&x| x < v);
+                    sorted.insert(at, v);
+                }
+            }
+            if count == 0 {
+                return if op == RunOp::Sum { V::Num(0.0) } else { V::Null };
+            }
+            V::Num(match op {
+                RunOp::Sum => sum,
+                RunOp::Avg => sum / count as f64,
+                RunOp::Min => mn,
+                RunOp::Max => mx,
+                RunOp::Product => product,
+                RunOp::Stdev if count < 2 => return V::Null,
+                RunOp::Stdev => (m2 / (count - 1) as f64).sqrt(),
+                RunOp::Median => median_of_sorted(&sorted),
+            })
+        })
+        .collect()
+}
+
 pub fn call(name: &str, a: &[V]) -> V {
     let a0 = arg(a, 0);
     match name {
@@ -424,13 +525,25 @@ pub fn call(name: &str, a: &[V]) -> V {
             if matches!(w, V::Null) {
                 return V::Null;
             }
-            if !matches!(w, V::Undef) {
+            let window = if matches!(w, V::Undef) {
+                None
+            } else {
                 let n = number(w);
                 if !n.is_finite() || n < 0.0 {
                     return domain("Window must be 0 (cumulative) or a positive count");
                 }
-            }
-            bail()
+                Some(n)
+            };
+            let op = match js_trim(&shown).to_uppercase().as_str() {
+                "SUM" => RunOp::Sum,
+                "AVERAGE" | "AVG" => RunOp::Avg,
+                "MIN" => RunOp::Min,
+                "MAX" => RunOp::Max,
+                "MEDIAN" => RunOp::Median,
+                "PRODUCT" => RunOp::Product,
+                _ => RunOp::Stdev,
+            };
+            crate::unit_lists::running(op, &to_list(l), window)
         }
         "ARGSORT" => {
             let l = to_list(a0);

@@ -730,18 +730,21 @@ pub fn affine_weight(node: &Ast, scope: &AffScope) -> Result<u8, SolError> {
 
 // ─── Values with a unit ─────────────────────────────────────────────────────────
 
-/// A `UnitCell` as it crosses: its base-SI value, dimension, display id and ratio brand.
+/// A `UnitCell` as it crosses: its base-SI value, dimension, display id and ratio brand, and the display unit's scale
+/// and offset as the TS resolves them (`displayScale`, `displayOffset`), present only beside a display id.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnitCell {
     pub value: f64,
     pub dim: Dim,
     pub display: Option<String>,
     pub ratio: bool,
+    pub scale: Option<f64>,
+    pub offset: Option<f64>,
 }
 
-/// The bodies that take a value with a unit as it is: they move values, never read them. Any other call holding one
-/// stays on the TS.
-pub const UNIT_READY: &[&str] = &["REVERSE", "SLICE", "NTHELEMENT", "INTERLEAVE", "CONCATLISTS", "PADLEFT", "PADRIGHT"];
+/// The bodies that take a value with a unit: the ones that move values without reading them, and those
+/// `unit_lists.rs` reads them for. Any other call holding one stays on the TS.
+pub const UNIT_READY: &[&str] = &["REVERSE", "SLICE", "NTHELEMENT", "INTERLEAVE", "CONCATLISTS", "PADLEFT", "PADRIGHT", "RUNNING"];
 
 pub fn holds_unit(v: &crate::excel_functions::V) -> bool {
     use crate::excel_functions::V;
