@@ -312,6 +312,14 @@ describe("DecisionMatrixNode (criterion-keyed weights frame)", () => {
     expect(col(out, "name").values[0]).toBe("C");
   });
 
+  it("an error in a Weight cell is the matrix's answer, not a weight of 1", () => {
+    const node = new DecisionMatrixNode({ normalize: "none" });
+    const w = wframe([["quality", 3], ["cost", 1]]);
+    w.columns[1].values[1] = solError("#DIV/0!", "boom");
+    const out = node.data({ frame: [f], weights: [w] }).frame;
+    expect(out).toMatchObject({ code: "#DIV/0!" });
+  });
+
   it("no weights frame means equal weights", () => {
     const node = new DecisionMatrixNode({ normalize: "none" });
     const out = node.data({ frame: [f] }).frame as FrameValue;

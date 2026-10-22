@@ -1678,7 +1678,10 @@ export function resolveDecisionWeights(
   const bounds = boundsFrom(wf, criteria, rowIndex);
   const weights = criteria.map((name, j) => {
     const r = rowIndex.get(critKey(name));
-    const v = r != null && weightCol ? numOrNull(weightCol.values[r]) : null;
+    const cell = r != null && weightCol ? weightCol.values[r] ?? null : null;
+    // An error is the matrix's answer, as an At least or At most cell's is; a blank weighs 1.
+    if (isSolError(cell)) throw cell;
+    const v = numOrNull(cell);
     // A row that sets only a limit is a screen, not a wish for more ([[C124]] dealBreakers).
     const screenOnly = r != null && (bounds?.[j]?.atLeast != null || bounds?.[j]?.atMost != null);
     return v ?? (screenOnly ? 0 : 1);
