@@ -294,3 +294,16 @@ describe("Choice Ladder: round-6 review", () => {
     expect((col(out.frame as FrameValue, "Option") as string[]).sort()).toEqual(["b", "x"]);
   });
 });
+
+describe("ChoiceLadderNode over a ragged table", () => {
+  it("a row only an unscored column reaches is no option, not a crash", () => {
+    const opts = frame([
+      { name: "Option", type: "string", values: ["A", "B"] },
+      { name: "Value", type: "number", values: [3, 5] },
+      { name: "Requires", type: "string", values: [null, "A", "B"] },
+    ]);
+    const out = new ChoiceLadderNode().data({ frame: [opts] });
+    expect(isSolError(out.frame)).toBe(false);
+    expect(col(out.frame as FrameValue, "Option")).toEqual(["A", "B"]);
+  });
+});

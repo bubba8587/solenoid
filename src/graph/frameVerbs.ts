@@ -2076,7 +2076,8 @@ export function choiceLadder(
   const { weights, normOverrides, bounds } = resolveDecisionWeights(weightsFrame, decisionCriteria(scoring));
 
   // Before the ladder: deal-breakers, Nevers, and whatever needs one of them ([[C124]] dealBreakers).
-  const rows = frameRowCount(f);
+  // A row only an unscored column (Requires, Never, an unweighted cost) reaches has no name and no criteria: no option.
+  const rows = frameRowCount(scoring);
   const allLabels = decisionScores(scoring, weights, normalize, normOverrides).labels;
   const nameOf = (i: number) => {
     const v = allLabels[i];

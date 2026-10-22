@@ -558,17 +558,6 @@ fn build_ladder(opts: &[Opt], res: &[Resource], gap: f64, chosen: &[usize]) -> R
 
 // ─── The card's reading (`choiceLadder` in frameVerbs.ts) ───────────────────────
 
-enum Fail {
-    Sol(SolError),
-    /// A table the TS reads past its end on (a column longer than every scored one): left to it.
-    Bail,
-}
-
-impl From<SolError> for Fail {
-    fn from(e: SolError) -> Fail {
-        Fail::Sol(e)
-    }
-}
 
 struct LimitRow {
     name: String,
@@ -638,21 +627,16 @@ fn list_v(xs: Vec<V>) -> V {
     V::List(Rc::new(xs))
 }
 
-/// The Choice Ladder: the plan along its main line, and the ladder as `ladderWire` lays it out. None leaves the call to
-/// the TS.
+/// The Choice Ladder: the plan along its main line, and the ladder as `ladderWire` lays it out.
 pub fn choice_ladder(
     f: &FrameValue, wf: Option<&FrameValue>, lf: Option<&FrameValue>, normalize: Normalize, close: f64, choices: &[String],
 ) -> Option<Res<(FrameValue, V)>> {
-    match ladder_inner(f, wf, lf, normalize, close, choices) {
-        Ok(r) => Some(Ok(r)),
-        Err(Fail::Sol(e)) => Some(Err(e)),
-        Err(Fail::Bail) => None,
-    }
+    Some(ladder_inner(f, wf, lf, normalize, close, choices))
 }
 
 fn ladder_inner(
     f: &FrameValue, wf: Option<&FrameValue>, lf: Option<&FrameValue>, normalize: Normalize, close: f64, choices: &[String],
-) -> Result<(FrameValue, V), Fail> {
+) -> Res<(FrameValue, V)> {
     let resources = ladder_resources(f, lf)?;
     let requires_col = rel_col(f, FrameColType::String, &["requires", "needs", "prerequisites", "depends on"]);
     let excludes_col = rel_col(f, FrameColType::String, &["excludes", "conflicts", "conflicts with"]);
@@ -673,7 +657,8 @@ fn ladder_inner(
     let resolved = decision::resolve_weights(wf, &decision::criteria_names(&scoring))?;
     let weights = resolved.weights.as_deref();
 
-    let rows = frame_row_count(f);
+    // A row only an unscored column (Requires, Never, an unweighted cost) reaches has no name and no criteria: no option.
+    let rows = frame_row_count(&scoring);
     let all_labels = decision::decision_scores(&scoring, weights, normalize, &resolved.overrides)?.labels;
     let name_of = |i: usize| match all_labels.get(i) {
         None | Some(FrameCell::Null) => format!("Option {}", i + 1),
@@ -690,9 +675,6 @@ fn ladder_inner(
         v.split([',', ';']).filter_map(|t| row_of.get(&crit_key(t)).copied()).filter(|&k| k != i).collect()
     };
     let failed = decision::decision_screen(&scoring, resolved.bounds.as_deref());
-    if failed.len() < rows {
-        return Err(Fail::Bail);
-    }
     let is_true = |col: Option<usize>, i: usize| matches!(cell(col, i), FrameCell::Bool(true));
     let mut out: HashSet<usize> = (0..rows).filter(|&i| !failed[i].is_empty() || is_true(never_col, i)).collect();
     let mut grew = true;
