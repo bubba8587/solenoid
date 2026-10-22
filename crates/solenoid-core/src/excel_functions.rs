@@ -4901,7 +4901,8 @@ fn error_type_num(code: &str) -> Option<f64> {
 }
 
 /// `applyErrorHandler` (excelFormula.ts) over scalars.
-fn error_handler(name: &str, a: &[V]) -> V {
+/// The IFERROR family (`applyErrorHandler`), for a formula's call and a body called by name alike.
+pub(crate) fn error_handler(name: &str, a: &[V]) -> V {
     let as_sol = |v: &V| -> Option<SolError> {
         match v {
             V::Err(e) => Some(e.as_ref().clone()),

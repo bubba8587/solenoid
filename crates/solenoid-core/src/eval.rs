@@ -756,7 +756,7 @@ impl Eval<'_> {
             }
         }
         if t.kind == Kind::Handler {
-            return apply_error_handler(name, &argv);
+            return crate::excel_functions::error_handler(name, &argv);
         }
         let selects = t.fast.selects;
         if let Some(e) = argv.iter().enumerate().find(|&(i, v)| selects.is_none_or(|s| s(i)) && v.is_sol_error()) {
@@ -1273,62 +1273,6 @@ fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bo
                 other => other.clone(),
             };
             if matches!(out, V::Undef) && *required && !picks_optional { no_default() } else { out }
-        }
-    }
-}
-
-/// The IFERROR family (`applyErrorHandler`).
-fn apply_error_handler(name: &str, argv: &[V]) -> V {
-    let as_sol = |v: &V| match v {
-        V::Err(e) => Some(e.code.clone()),
-        V::Fx(code) => Some(fx_error_to_sol(code).code),
-        _ => None,
-    };
-    let caught = |v: &V| match as_sol(v) {
-        None => false,
-        Some(code) => match name {
-            "IFNA" | "ISNA" => code == "#N/A",
-            "ISERR" => code != "#N/A",
-            _ => true,
-        },
-    };
-    let value = argv.first().cloned().unwrap_or(V::Undef);
-    match name {
-        "IFERROR" | "IFNA" => {
-            let fallback = argv.get(1).cloned().unwrap_or(V::Null);
-            if !is_arr(&value) && !is_arr(&fallback) {
-                return if caught(&value) { fallback } else { value };
-            }
-            map_cells(&[value, fallback], &mut |x| if caught(&x[0]) { x[1].clone() } else { x[0].clone() })
-        }
-        "ERROR.TYPE" => {
-            fn walk(v: &V, as_sol: &dyn Fn(&V) -> Option<String>) -> V {
-                match v {
-                    V::List(l) => list(l.iter().map(|x| walk(x, as_sol)).collect()),
-                    other => match as_sol(other) {
-                        Some(code) => V::Num(match code.as_str() {
-                            "#DIV/0!" => 2.0,
-                            "#VALUE!" => 3.0,
-                            "#REF!" => 4.0,
-                            "#NAME?" => 5.0,
-                            "#N/A" => 7.0,
-                            "#DOMAIN!" | "#OVERFLOW!" | "#CONV!" | "#NUM!" => 6.0,
-                            _ => 3.0,
-                        }),
-                        None => V::err(sol_error("#N/A", "ERROR.TYPE: the value is not an error")),
-                    },
-                }
-            }
-            walk(&value, &as_sol)
-        }
-        _ => {
-            fn walk(v: &V, caught: &dyn Fn(&V) -> bool) -> V {
-                match v {
-                    V::List(l) => list(l.iter().map(|x| walk(x, caught)).collect()),
-                    other => V::Bool(caught(other)),
-                }
-            }
-            walk(&value, &caught)
         }
     }
 }
