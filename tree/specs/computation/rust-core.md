@@ -114,7 +114,7 @@ the TS unit plan reads (`capturedValues`). `bails.json` counts what's left.
   first render waits for it (`main.tsx`, at most four seconds), so the first calc runs on it.
 - **A trap** (an abort, a stack overflow, anything escaping the module mid-call) leaves the instance's stack pointer
   where it stopped, so `engineWasm.ts` drops it and instantiates the compiled module afresh (`__wbg_reset`, which
-  `scripts/build-wasm.mjs` appends to wasm-bindgen's glue), numbering its handles past the dead one's
+  `scripts/build-wasm.mjs` appends to wasm-bindgen's glue, guarding it as [[graph-core]] § Traps says), numbering its handles past the dead one's
   (`engine_handle_base`). The call that trapped answers on the TS (`onCore`); a frame the verb backend held in the
   dead instance is gone, so a verb over it answers #REF! until the document reloads. `engine_trap` is the
   tests' trigger (`coreTrap.test.ts`).

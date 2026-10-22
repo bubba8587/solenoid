@@ -14,7 +14,7 @@ absent is simply not listed.
 The machine-readable source for the connection lists below is `src/graph/sockets.ts`;
 the arrival behavior is `src/graph/coerceInputs.ts`; the drawing is
 `src/graph/components/SocketComponent.tsx`. Regenerate the port counts with
-`npx tsx scripts/socket-inventory.ts`.
+`node scripts/vite-run.mjs scripts/socket-inventory.ts`.
 
 Every connection list here is checked against the code on each test run
 (`socketReference.test.ts`), so the lists cannot silently go stale. The port

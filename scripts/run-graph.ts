@@ -2,14 +2,14 @@
 // every node's outputs as JSON, keyed by label (else type, with a #n suffix on repeats). The strict
 // validator gates the run (--force skips it). Never calls initFrameBackend, so every frame verb runs
 // on the JS oracle with no Tauri dependency.
-//   npx tsx scripts/run-graph.ts <graph.json|graph.txt>
+//   npm run run-graph -- <graph.json|graph.txt>
 
 import { readFileSync } from "node:fs";
 import { promises as nodeFs } from "node:fs";
 import nodePath from "node:path";
 import { pathToFileURL } from "node:url";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine, graphEngineLoaded, loadGraphEngineSync } from "../src/graph/dataflowEngine";
+import { DataflowEngine, graphEngineLoaded, graphWasmUrl, loadGraphEngineSync } from "../src/graph/dataflowEngine";
 import * as Nodes from "../src/graph/rete-nodes";
 import type { Schemes } from "../src/graph/schemes";
 import { installInputCoercion } from "../src/graph/coerceInputs";
@@ -139,7 +139,7 @@ async function main() {
   for (const name of ["--vault", "--tasknotes", "--run"]) { const i = args.indexOf(name); if (i >= 0) { consumed.add(args[i]); if (args[i + 1]) consumed.add(args[i + 1]); } }
   const file = args.find((a) => !consumed.has(a));
   if (!file) {
-    console.error("Usage: npx tsx scripts/run-graph.ts <graph.json|graph.txt> [--force] [--vault <path>] [--tasknotes <url>] [--run <sink name>]");
+    console.error("Usage: npm run run-graph -- <graph.json|graph.txt> [--force] [--vault <path>] [--tasknotes <url>] [--run <sink name>]");
     process.exit(1);
   }
   const raw = readFileSync(file, "utf8");
@@ -162,16 +162,14 @@ async function main() {
     }
     g = graph as unknown as SavedGraph;
   }
-  if (!graphEngineLoaded()) {
-    loadGraphEngineSync(readFileSync(nodePath.resolve(import.meta.dirname, "../src/graph/graphWasm/solenoid_graph_bg.wasm")));
-  }
+  if (!graphEngineLoaded()) loadGraphEngineSync(readFileSync(graphWasmUrl));
   const out = await runGraph(g, opts);
   console.log(JSON.stringify(out, null, 2));
 }
 
 // pathToFileURL, not a `file://` template, so this matches a backslashed Windows argv[1].
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => {
+  await main().catch((e) => {
     console.error(e instanceof Error ? e.message : String(e));
     process.exit(1);
   });

@@ -1,6 +1,6 @@
 // Fuzzes the frame-verb parity corpus: random frames and ops, expected results from the JS oracle,
 // written as ordinary fixtures (fixtures/frame-verbs/fuzz-*.json) that the cargo corpus runner then checks.
-//   npx tsx scripts/fuzz-frame-verbs.ts [seed] [casesPerVerb]
+//   node scripts/vite-run.mjs scripts/fuzz-frame-verbs.ts [seed] [casesPerVerb]
 //   cd src-tauri && cargo test corpus_cases       # the divergence hunt
 //   rm fixtures/frame-verbs/fuzz-*.json           # cleanup; keep any find as a hand-named case
 // Error cells ride in number and date columns, encoded as {"__err": code}; pipelines (2-5 chained

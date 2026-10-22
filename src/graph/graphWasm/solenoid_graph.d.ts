@@ -1,6 +1,15 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+ * `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
+ * it and instantiate the module afresh.
+ */
+export function setPanicHandler(handler: Function): void;
+/**
+ * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ */
+export function graphTrap(): void;
+/**
  * One editor's mirror and its dataflow engine.
  */
 export class GraphCore {
@@ -53,6 +62,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_graphcore_free: (a: number, b: number) => void;
+  readonly graphTrap: () => void;
   readonly graphcore_addConnection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
   readonly graphcore_addNode: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly graphcore_downstreamClosure: (a: number, b: number, c: number, d: number) => void;
@@ -68,6 +78,7 @@ export interface InitOutput {
   readonly graphcore_removeNode: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_reset: (a: number, b: number, c: number, d: number) => void;
   readonly graphcore_seed: (a: number, b: number, c: number, d: number) => void;
+  readonly setPanicHandler: (a: number) => void;
   readonly __wbindgen_export_0: (a: number) => void;
   readonly __wbindgen_export_1: WebAssembly.Table;
   readonly __wbindgen_export_2: (a: number, b: number) => number;
@@ -98,3 +109,4 @@ export function initSync(module: { module: SyncInitInput } | SyncInitInput): Ini
 * @returns {Promise<InitOutput>}
 */
 export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;
+export function __wbg_reset(): WebAssembly.Module;

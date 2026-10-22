@@ -16,14 +16,15 @@ is hosted.
 - **Its own WebAssembly module**, `src/graph/graphWasm/`, apart from the formula core's `engineWasm/`. The formula
   core is dropped and instantiated afresh after a trap ([[rust-core]] § Where it runs), and a node's formula call runs
   while the graph's own frames are on the stack; one instance would lose the graph to any trapping formula.
-- **Built** by `npm run build:wasm` (`node scripts/build-wasm.mjs graph` for this one), with wasm-bindgen's weak
-  refs, and stamped like the core (`source-stamp.txt`, `wasmStamp.test.ts`).
+- **Built** by `npm run build:wasm` (`node scripts/build-wasm.mjs graph` for this one) and stamped like the core
+  (`source-stamp.txt`, `wasmStamp.test.ts`).
 - **Ruggine is pinned** by git revision in `crates/solenoid-graph/Cargo.toml`. Moving the pin: change the `rev`, run
   `cargo test --manifest-path crates/solenoid-graph/Cargo.toml`, rebuild, run the suite.
 - **Required.** Nothing computes without it, so there is no TypeScript fallback and no setting turns it off. The
   app's first render waits for `loadGraphEngine()` with no deadline (`main.tsx`); creating an engine before it loads
-  throws. Tests load it in `tests/setup/graphEngine.ts`; a Node script calls `loadGraphEngineSync` with the bytes
-  (`scripts/run-graph.ts`).
+  throws. Tests load it in `tests/setup/graphEngine.ts`; a Node script reads the bytes at `graphWasmUrl` and calls
+  `loadGraphEngineSync` (`scripts/run-graph.ts`, run through `scripts/vite-run.mjs` like every script that imports
+  the app).
 
 ## The engine (`dataflowEngine.ts`, `wasm.rs`)
 
@@ -60,12 +61,21 @@ The engine answers the walks over the graph it mirrors; `graphCompute.ts` reache
 | `invalidate(id, keepCaches)` | With a node: clears its cone's caches and returns the cone. Without one: `reset()` unless `keepCaches`, and `null`. |
 | `fetchAll(onNode?, stopOnCancel)` | Fetches every node in the editor's order, skipping one removed mid-pass; a cancelled fetch records `null`, or with `stopOnCancel` ends the pass with `null`; any other rejection rejects the pass. |
 
-## Limits
+## Traps
 
-- A trap inside this module (a panic is one) isn't recovered: its engines are gone until the page reloads. What
-  would change it: rebuilding each live engine's mirror from its editor after reinstantiating, as the core recovers.
-- `scripts/run-graph.ts` under plain `tsx` can't import either module's `?url` wasm import (it fails on the formula
-  core's first); it runs under vitest (`run-graph-vault.test.ts`).
+A panic in the core runs the module's panic hook (`setPanicHandler`) before the trap; a trap with no panic (a stack
+overflow) surfaces as a `WebAssembly.RuntimeError` at the call that crossed in. Either way:
+
+- every fetch and `fetchAll` still waiting rejects with `GraphTrap`, and so does the call that trapped, so a pass ends
+  instead of waiting forever;
+- once the stack has left the module (a microtask later), the instance is dropped and the compiled module
+  instantiated afresh (`__wbg_reset`), and every live engine builds a new core mirroring its editor as it stands.
+  Its caches start empty, so the next pass recomputes everything; until then a call throws `GraphTrap`;
+- what the dead instance left in JS never reaches the new one: `build-wasm.mjs` patches wasm-bindgen's glue so a
+  dead instance's closure (a node's promise settling late) does nothing, its finalizers free nothing, and the object
+  heap starts empty. The build fails if the glue reads differently.
+
+`graphTrap()` is the tests' trigger (`graphTrap.test.ts`).
 
 ## Performance
 

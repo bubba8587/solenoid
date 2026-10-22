@@ -1,6 +1,6 @@
 // Lists the Excel functions Solenoid lacks, minus those out of scope (cell refs, OLAP, web, superseded
 // classics) and those reachable by composing nodes. A function leaves the list once a node backs it.
-//   npx tsx scripts/parity.ts
+//   node scripts/vite-run.mjs scripts/parity.ts
 
 import { EXCEL_GAP } from "../src/graph/nodeExcel";
 

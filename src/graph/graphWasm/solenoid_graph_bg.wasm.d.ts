@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_graphcore_free: (a: number, b: number) => void;
+export const graphTrap: () => void;
 export const graphcore_addConnection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
 export const graphcore_addNode: (a: number, b: number, c: number, d: number, e: number) => void;
 export const graphcore_downstreamClosure: (a: number, b: number, c: number, d: number) => void;
@@ -17,6 +18,7 @@ export const graphcore_removeConnection: (a: number, b: number, c: number, d: nu
 export const graphcore_removeNode: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_reset: (a: number, b: number, c: number, d: number) => void;
 export const graphcore_seed: (a: number, b: number, c: number, d: number) => void;
+export const setPanicHandler: (a: number) => void;
 export const __wbindgen_export_0: (a: number) => void;
 export const __wbindgen_export_1: WebAssembly.Table;
 export const __wbindgen_export_2: (a: number, b: number) => number;

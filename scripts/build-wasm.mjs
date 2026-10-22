@@ -9,33 +9,59 @@ import { MODULES, sourceStamp } from "./wasm-stamp.mjs";
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: "inherit" });
 const has = (cmd) => { try { execFileSync(cmd, ["--version"], { stdio: "ignore" }); return true; } catch { return false; } };
 
+/** A trap leaves the instance corrupt, and wasm-bindgen's init returns early once it holds one: `__wbg_reset` lets
+ *  `engineWasm.ts` and `dataflowEngine.ts` drop it and instantiate the compiled module afresh. What the dead instance
+ *  left in JS must then never reach the new one: its closures (a promise settling late) do nothing, its finalizers
+ *  free nothing, and the object heap starts empty. Each piece is checked, so a wasm-bindgen whose glue reads
+ *  differently fails the build instead of shipping unguarded. */
+function patchGlue(src) {
+  const swap = (from, to, all = false) => {
+    if (!src.includes(from)) throw new Error(`build-wasm: wasm-bindgen's glue has no ${JSON.stringify(from)}`);
+    src = all ? src.split(from).join(to) : src.replace(from, to);
+  };
+  const maybe = (from, to, all) => { if (src.includes(from)) swap(from, to, all); };
+  swap("let wasm;\n", "let wasm;\nlet __wbg_epoch = 0;\n");
+  maybe("const state = { a: arg0, b: arg1, cnt: 1, dtor };", "const state = { a: arg0, b: arg1, cnt: 1, dtor, epoch: __wbg_epoch };", true);
+  maybe("const real = (...args) => {\n", "const real = (...args) => {\n        if (state.epoch !== __wbg_epoch) return;\n", true);
+  maybe("new FinalizationRegistry(state => {\n", "new FinalizationRegistry(state => {\n    if (state.epoch !== __wbg_epoch) return;\n");
+  src = src.replace(/new FinalizationRegistry\(ptr => (wasm\.__wbg_\w+_free)\(ptr >>> 0, 1\)\)/g,
+    "new FinalizationRegistry(({ ptr, epoch }) => epoch === __wbg_epoch && $1(ptr >>> 0, 1))");
+  src = src.replace(/Finalization\.register\(this, this\.__wbg_ptr, this\)/g,
+    "Finalization.register(this, { ptr: this.__wbg_ptr, epoch: __wbg_epoch }, this)");
+  const guarded = (src.match(/epoch === __wbg_epoch|state\.epoch !== __wbg_epoch/g) ?? []).length;
+  const registries = (src.match(/new FinalizationRegistry/g) ?? []).length;
+  const closures = (src.match(/const real = /g) ?? []).length;
+  if (guarded !== registries + closures) throw new Error("build-wasm: a finalizer or closure in the glue is unguarded");
+  return src + `
+export function __wbg_reset() {
+    const module = __wbg_init.__wbindgen_wasm_module;
+    wasm = undefined;
+    __wbg_epoch++;
+    heap.length = 128;
+    heap.fill(undefined);
+    heap.push(undefined, null, true, false);
+    heap_next = heap.length;
+    return module;
+}
+`;
+}
+
 function build(name) {
   const { crate, out } = MODULES[name];
   const lib = crate.replace(/-/g, "_");
   const target = `crates/${crate}/target`;
   run("cargo", ["build", "--release", "--target", "wasm32-unknown-unknown", "--manifest-path", `crates/${crate}/Cargo.toml`, "--target-dir", target]);
-  // The graph module holds JS nodes: weak refs free a dropped engine's core, and the nodes it holds, with it.
-  run("wasm-bindgen", ["--target", "web", ...(name === "graph" ? ["--weak-refs"] : []), "--out-dir", out, "--out-name", lib, `${target}/wasm32-unknown-unknown/release/${lib}.wasm`]);
+  run("wasm-bindgen", ["--target", "web", "--out-dir", out, "--out-name", lib, `${target}/wasm32-unknown-unknown/release/${lib}.wasm`]);
   const wasm = `${out}/${lib}_bg.wasm`;
   if (has("wasm-opt")) {
     run("wasm-opt", ["-O3", "--enable-bulk-memory", "--enable-nontrapping-float-to-int", "--enable-sign-ext", "--enable-mutable-globals", wasm, "-o", wasm]);
   } else {
     console.warn("wasm-opt not found: the module ships unoptimized (cargo install wasm-opt)");
   }
-  if (name === "core") {
-    // A trap leaves the instance corrupt, and wasm-bindgen's init returns early once it holds one: `__wbg_reset` lets
-    // `engineWasm.ts` drop it and instantiate the compiled module afresh.
-    const glue = `${out}/${lib}.js`;
-    writeFileSync(glue, readFileSync(glue, "utf8") + `
-export function __wbg_reset() {
-    const module = __wbg_init.__wbindgen_wasm_module;
-    wasm = undefined;
-    return module;
-}
-`);
-    const types = `${out}/${lib}.d.ts`;
-    writeFileSync(types, readFileSync(types, "utf8") + "export function __wbg_reset(): WebAssembly.Module;\n");
-  }
+  const glue = `${out}/${lib}.js`;
+  writeFileSync(glue, patchGlue(readFileSync(glue, "utf8")));
+  const types = `${out}/${lib}.d.ts`;
+  writeFileSync(types, readFileSync(types, "utf8") + "export function __wbg_reset(): WebAssembly.Module;\n");
   writeFileSync(`${out}/source-stamp.txt`, sourceStamp(".", name) + "\n");
   console.log(`${wasm}: ${statSync(wasm).size} bytes`);
 }

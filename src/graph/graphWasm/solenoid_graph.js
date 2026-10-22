@@ -1,4 +1,5 @@
 let wasm;
+let __wbg_epoch = 0;
 
 const heap = new Array(128).fill(undefined);
 
@@ -62,12 +63,14 @@ function takeObject(idx) {
 const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(state => {
+    if (state.epoch !== __wbg_epoch) return;
     wasm.__wbindgen_export_1.get(state.dtor)(state.a, state.b)
 });
 
 function makeMutClosure(arg0, arg1, dtor, f) {
-    const state = { a: arg0, b: arg1, cnt: 1, dtor };
+    const state = { a: arg0, b: arg1, cnt: 1, dtor, epoch: __wbg_epoch };
     const real = (...args) => {
+        if (state.epoch !== __wbg_epoch) return;
         // First up with a closure we increment the internal reference
         // count. This ensures that the Rust closure environment won't
         // be deallocated while we're invoking it.
@@ -219,6 +222,21 @@ function getDataViewMemory0() {
     }
     return cachedDataViewMemory0;
 }
+/**
+ * `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
+ * it and instantiate the module afresh.
+ * @param {Function} handler
+ */
+export function setPanicHandler(handler) {
+    wasm.setPanicHandler(addHeapObject(handler));
+}
+
+/**
+ * Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+ */
+export function graphTrap() {
+    wasm.graphTrap();
+}
 
 function getArrayJsValueFromWasm0(ptr, len) {
     ptr = ptr >>> 0;
@@ -233,13 +251,13 @@ function __wbg_adapter_22(arg0, arg1, arg2) {
     wasm.__wbindgen_export_5(arg0, arg1, addHeapObject(arg2));
 }
 
-function __wbg_adapter_68(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_70(arg0, arg1, arg2, arg3) {
     wasm.__wbindgen_export_6(arg0, arg1, addHeapObject(arg2), addHeapObject(arg3));
 }
 
 const GraphCoreFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_graphcore_free(ptr >>> 0, 1));
+    : new FinalizationRegistry(({ ptr, epoch }) => epoch === __wbg_epoch && wasm.__wbg_graphcore_free(ptr >>> 0, 1));
 /**
  * One editor's mirror and its dataflow engine.
  */
@@ -399,7 +417,7 @@ export class GraphCore {
     constructor(cancelled) {
         const ret = wasm.graphcore_new(addHeapObject(cancelled));
         this.__wbg_ptr = ret >>> 0;
-        GraphCoreFinalization.register(this, this.__wbg_ptr, this);
+        GraphCoreFinalization.register(this, { ptr: this.__wbg_ptr, epoch: __wbg_epoch }, this);
         return this;
     }
     /**
@@ -591,7 +609,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_68(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_70(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -682,8 +700,8 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper252 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 87, __wbg_adapter_22);
+    imports.wbg.__wbindgen_closure_wrapper258 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 89, __wbg_adapter_22);
         return addHeapObject(ret);
     };
     imports.wbg.__wbindgen_debug_string = function(arg0, arg1) {
@@ -802,3 +820,14 @@ async function __wbg_init(module_or_path) {
 
 export { initSync };
 export default __wbg_init;
+
+export function __wbg_reset() {
+    const module = __wbg_init.__wbindgen_wasm_module;
+    wasm = undefined;
+    __wbg_epoch++;
+    heap.length = 128;
+    heap.fill(undefined);
+    heap.push(undefined, null, true, false);
+    heap_next = heap.length;
+    return module;
+}

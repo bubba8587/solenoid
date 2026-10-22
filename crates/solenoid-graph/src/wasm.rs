@@ -2,6 +2,7 @@
 //! The WebAssembly entry: one `GraphCore` per editor, mirroring its nodes and cables, the nodes
 //! staying the app's JavaScript objects (`src/graph/dataflowEngine.ts` drives it).
 
+use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 
@@ -133,6 +134,31 @@ impl DataflowNode<JsValue> for HostNode {
             Ok(result) => ready(Ok(outputs_from_js(result))),
         }
     }
+}
+
+thread_local! {
+    static ON_PANIC: RefCell<Option<Function>> = const { RefCell::new(None) };
+}
+
+/// `handler(message)` runs when a panic starts, before the module traps, so the host can settle what was waiting on
+/// it and instantiate the module afresh.
+#[wasm_bindgen(js_name = setPanicHandler)]
+pub fn set_panic_handler(handler: Function) {
+    ON_PANIC.with(|h| *h.borrow_mut() = Some(handler));
+    std::panic::set_hook(Box::new(|info| {
+        let message = JsValue::from_str(&info.to_string());
+        ON_PANIC.with(|h| {
+            if let Some(f) = h.try_borrow().ok().and_then(|f| f.clone()) {
+                let _ = f.call1(&JsValue::NULL, &message);
+            }
+        });
+    }));
+}
+
+/// Panics: the tests' trigger for the recovery (`graphTrap.test.ts`).
+#[wasm_bindgen(js_name = graphTrap)]
+pub fn graph_trap() {
+    panic!("graph_trap");
 }
 
 /// One editor's mirror and its dataflow engine.
