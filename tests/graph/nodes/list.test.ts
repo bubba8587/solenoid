@@ -973,4 +973,10 @@ describe("UNIQUE takes any element family ([[D73]] nodeCoversFormula)", () => {
     const s = fromUnit(3960, parseUnit("s")!, "s");
     expect(uniqueList([h, s])).toEqual([h]);
   });
+  it("a zero exponent is no dimension, as everywhere else units compare", async () => {
+    const { uniqueList } = await import("../../../src/graph/nodes/listOps");
+    const a = { __unitCell: true as const, value: 4, dim: { length: 2 } };
+    const b = { __unitCell: true as const, value: 4, dim: { length: 2, "custom:b": 0 } };
+    expect(uniqueList([a, b])).toEqual([a]);
+  });
 });
