@@ -21,6 +21,7 @@ pub mod finance_ops;
 pub mod finance_units;
 pub mod fns_lists;
 pub mod fns_matrix;
+pub mod fns_random;
 pub mod formulajs;
 pub mod frame;
 pub mod fxhash;

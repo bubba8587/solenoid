@@ -324,7 +324,7 @@ fn gamma_pdf(x: f64, alpha: f64, beta: f64) -> f64 {
     if x <= 0.0 { 0.0 } else { exp((alpha - 1.0) * log(x) - x / beta - alpha * log(beta) - ln_gamma(alpha)) }
 }
 
-fn binom_pmf(k: f64, n: f64, p: f64) -> Option<f64> {
+pub(crate) fn binom_pmf(k: f64, n: f64, p: f64) -> Option<f64> {
     let (k, n) = (k.floor(), n.floor());
     if k < 0.0 || k > n || p < 0.0 || p > 1.0 {
         return None;
@@ -642,6 +642,25 @@ pub fn compute(key: &str, form: Form, v: f64, p: &[f64]) -> Result<Option<f64>, 
             } else {
                 let r = regularized_beta(pv, ri, ki + 1.0);
                 r.is_finite().then(|| math_min(1.0, math_max(0.0, r)))
+            }
+        }
+        "phi" => Some(exp(-v * v / 2.0) / sqrt_2pi),
+        "gauss" => Some(std_norm_cdf(v) - 0.5),
+        "t" => {
+            let dfv = at(0);
+            if dfv <= 0.0 {
+                None
+            } else if matches!(form, Form::Inv | Form::Inv2t) {
+                let target = if form == Form::Inv { v } else { 1.0 - v / 2.0 };
+                prob_guard(v).then(|| bisection_inv(|t| t_cdf(t, dfv), target, -1e6, 1e6))
+            } else if form == Form::Cdf {
+                Some(t_cdf(v, dfv))
+            } else if form == Form::TwoTail {
+                Some(2.0 * (1.0 - t_cdf(v.abs(), dfv)))
+            } else if form == Form::RightTail {
+                Some(1.0 - t_cdf(v, dfv))
+            } else {
+                Some(t_pdf(v, dfv))
             }
         }
         _ => None,

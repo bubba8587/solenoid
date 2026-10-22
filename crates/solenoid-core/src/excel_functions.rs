@@ -144,18 +144,18 @@ const PORTED: &[&str] = &[
 
 /// Every function the core carries, for the conformance suites to tell a pending name from a ported one.
 pub fn ported_names() -> Vec<&'static str> {
-    PORTED.iter().chain(crate::shapers::SHAPERS.iter()).chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).chain(crate::fns_matrix::NAMES.iter()).chain(crate::fns_lists::NAMES.iter()).chain(crate::fns_stats::NAMES.iter()).copied().collect()
+    PORTED.iter().chain(crate::shapers::SHAPERS.iter()).chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).chain(crate::fns_matrix::NAMES.iter()).chain(crate::fns_lists::NAMES.iter()).chain(crate::fns_stats::NAMES.iter()).chain(crate::fns_random::NAMES.iter()).copied().collect()
 }
 
 /// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
 pub fn reads_matrices(name: &str) -> bool {
-    matches!(name, "XLOOKUP" | "XMATCH" | "INDEX") || crate::fns_matrix::NAMES.contains(&name) || crate::fns_lists::NAMES.contains(&name) || crate::shapers::is_shaper(name)
+    matches!(name, "XLOOKUP" | "XMATCH" | "INDEX") || crate::fns_random::NAMES.contains(&name) || crate::fns_matrix::NAMES.contains(&name) || crate::fns_lists::NAMES.contains(&name) || crate::shapers::is_shaper(name)
 }
 
 pub fn is_ported(name: &str) -> bool {
     thread_local! {
         static NAMES: crate::fxhash::FxHashSet<&'static str> = [PORTED, &crate::shapers::SHAPERS[..], crate::formulajs::NAMES, crate::fns_complex::NAMES,
-            crate::fns_matrix::NAMES, crate::fns_lists::NAMES, crate::fns_stats::NAMES].concat().into_iter().collect();
+            crate::fns_matrix::NAMES, crate::fns_lists::NAMES, crate::fns_stats::NAMES, crate::fns_random::NAMES].concat().into_iter().collect();
     }
     NAMES.with(|n| n.contains(name))
 }
@@ -2590,6 +2590,7 @@ pub enum Route {
     Mod_fns_complex,
     Mod_fns_lists,
     Mod_fns_stats,
+    Mod_fns_random,
     Finance,
     None,
 }
@@ -2911,6 +2912,8 @@ pub fn route(name: &str) -> Route {
         Route::Mod_fns_lists
     } else if crate::fns_stats::NAMES.contains(&name) {
         Route::Mod_fns_stats
+    } else if crate::fns_random::NAMES.contains(&name) {
+        Route::Mod_fns_random
     } else if is_finance(name) {
         Route::Finance
     } else {
@@ -2952,6 +2955,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         Route::Mod_fns_complex => return crate::fns_complex::call(name, a),
         Route::Mod_fns_lists => return crate::fns_lists::call(name, a),
         Route::Mod_fns_stats => return crate::fns_stats::call(name, a),
+        Route::Mod_fns_random => return crate::fns_random::call(name, a),
         Route::Finance => return finance_function(name, a),
         Route::None => return V::Undef,
     };
