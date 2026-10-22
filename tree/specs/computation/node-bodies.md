@@ -25,15 +25,20 @@ A ported class's `data()` is `return nodeOnCore(this, inputs)`. It sends:
 | Field | What |
 |---|---|
 | `kind` | the class name, which picks the body (`nodes::run`) |
-| `init`, `literals`, `stringLiterals` | what a save holds: `extractInit` and the two literal maps |
+| `init`, `literals`, `stringLiterals` | what a save holds: `extractInit` and the two literal maps; `init` also carries the run-time fields the class names in `static coreFields` (Math Function's resolved angle mode), which no save keeps (`coreInit`) |
 | `sockets`, `outputs` | each input's key, declared type and label, each output's key and declared type, in the card's order |
-| `inputs` | each wired input's values in the core's wire form (`coreValue` with units), in order |
+| `inputs` | each wired input's values on the card wire (`nodeWire.ts`), in order |
 | `clock` | `engineClock()`, for a body that reads today |
 
 The reply is the outputs, or the error the body throws (thrown again for the error guard), beside `display`: the
-fields the body sets on the card for its component (`cachedResult` and the like), which `nodeOnCore` assigns. A value
-that can't cross (a frame, a chart, text with a lone surrogate) answers `#VALUE!` on the card; a class holding one
-doesn't move until the wire carries it. A trap answers `#ERROR!` and the module comes back as [[rust-core]] § Where it
+fields the body sets on the card for its component (`cachedResult` and the like), which `nodeOnCore` assigns.
+
+**The card wire** (`nodeWire.ts`; `nodes/values.rs`) is the core's value wire (`coreValue`, units included) plus what
+only cards hand each other: a frame cell by cell with each column's unit, format and typed text (`V::Frame`), a cube
+(`V::Cube`), and plain data a card makes whole, a chart, a document, an image, an SVG or a diagram, as JSON whose
+non-finite numbers, -0 and `undefined` are tagged (`V::Json`). A frame ref (a lazy verb's plan) doesn't cross: the lazy
+verb cards route to the frame backend (Polars on desktop, the core in wasm) and stay TypeScript. A value that can't
+cross (a frame ref, text with a lone surrogate) answers `#VALUE!` on the card. A trap answers `#ERROR!` and the module comes back as [[rust-core]] § Where it
 runs says.
 
 The core is required: the app's first render waits for it with no deadline (`main.tsx`), and every test file loads it
@@ -48,7 +53,7 @@ The core is required: the app's first render waits for it with no deadline (`mai
 - `node scripts/freeze-nodes.mjs [Class …]` folds the calls into `fixtures/core/nodes/<Class>.json.gz`: deduplicated,
   at most 2,500 a class, a call holding a value that can't cross counted in `.dev/node-freeze-report.json` and not
   kept. A call whose answer differed between two identical calls (a random draw, the clock) is kept marked
-  `unstable` and not checked.
+  `unstable` and not checked. The recorder writes a call once per worker and stops a class at 2,500 distinct calls.
 - A class is frozen while its TypeScript body exists; once it is deleted, its fixture changes only on purpose, in the
   commit that changes the behaviour.
 
@@ -64,4 +69,6 @@ The core is required: the app's first render waits for it with no deadline (`mai
 
 | Family | Classes | Rust |
 |---|---|---|
-| Scalar | Arithmetic | `nodes/scalar.rs` |
+| Scalar | Arithmetic, Math Function, Base Convert, Clamp, MROUND, ROUND, GCD, Two-Input Math, SUMPRODUCT, SERIESSUM, MULTINOMIAL, Bessel | `nodes/scalar.rs` |
+| Logic | Comparison, Between, Is Close, IF, Boolean Op, NOT, CHOOSE, SWITCH, IFS, ISEVEN/ISODD | `nodes/logic.rs` |
+| Complex | COMPLEX, Unpack, the unary and binary ops, Power, Poly Roots, Quadratic Roots | `nodes/complex.rs` |
