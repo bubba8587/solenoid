@@ -14,7 +14,7 @@ specific item.
   ledger, Amortization, K-Means, PCA, logistic). Frozen fixtures in `fixtures/core/` hold the TS answers; `bails.json`
   is `{}`. Still on the TS: pack functions, unit-carrying values, Cube outputs, the Choice Ladder.
 - **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the oracle (`RUST_CORE_ONLY`).
-- **Module size:** about 2.2 MB raw, with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
+- **Module size:** 2.3 MB raw / 835 KB gzipped, with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
 - **TS bugs fixed here and on develop:**
   - a lazy node's own column format never reached downstream (now a `formats` plan step, [[D41]] formatFlowsDownstream);
   - Split Column split a date's serial instead of its text;

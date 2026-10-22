@@ -106,31 +106,36 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
 
 - A verb row is the op plus a 100-row preview, with the frame already in wasm.
 - An fx row includes uploading its columns and downloading the answer.
-- Frames cross as columnar buffers: uploading 200k rows takes 55 ms, a full download 55 ms.
+- Frames cross as columnar buffers: uploading 200k rows takes about 55 ms, a full download about 55 ms.
+- Run to run the times move by about 20% on a shared machine. `examples/colbench.rs` counts a formula column's
+  instructions natively under callgrind, which doesn't move.
 
 | op | JS ms | Rust ms | × |
 | --- | ---: | ---: | ---: |
-| sort by a number | 139.6 | 47.3 | 3.0 |
-| sort by text | 180.9 | 88.6 | 2.0 |
-| filter value > 0 | 14.7 | 8.9 | 1.7 |
-| filter text contains | 13.4 | 8.0 | 1.7 |
-| distinct key | 8.8 | 7.1 | 1.2 |
-| group by key: sum, avg, median | 145.9 | 34.3 | 4.3 |
-| window: cumsum by cat over day | 136.1 | 71.0 | 1.9 |
-| window: rank by cat | 165.3 | 72.4 | 2.3 |
-| pipeline: filter, group, sort | 99.1 | 24.7 | 4.0 |
-| left join a 1000-row lookup | 105.6 | 20.9 | 5.1 |
-| fx: `@value / SUM(value)` | 198.8 | 31.8 | 6.3 |
-| fx: `@value * 1.2 + @cat` | 145.4 | 42.5 | 3.4 |
-| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 926.3 | 112.5 | 8.2 |
-| fx: `@key & "-" & UPPER(@key)` | 373.6 | 205.9 | 1.8 |
-| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 662.5 | 146.7 | 4.5 |
-| fx: `IF(@value > PERCENTILE(value, 0.9), "top", PROPER(@key))` | 1048.7 | 192.0 | 5.5 |
-| fx: `SUMIFS(value, key, "k1*") + DATEDIF(45000, 45000 + @cat, "md")` | 988.6 | 175.0 | 5.7 |
+| sort by a number | 93.0 | 30.5 | 3.0 |
+| sort by text | 183.5 | 65.3 | 2.8 |
+| filter value > 0 | 9.6 | 5.2 | 1.9 |
+| filter text contains | 8.3 | 4.2 | 2.0 |
+| distinct key | 7.7 | 6.2 | 1.3 |
+| group by key: sum, avg, median | 98.0 | 28.5 | 3.4 |
+| window: cumsum by cat over day | 85.5 | 36.5 | 2.3 |
+| window: rank by cat | 106.2 | 44.1 | 2.4 |
+| pipeline: filter, group, sort | 78.4 | 14.5 | 5.4 |
+| left join a 1000-row lookup | 81.9 | 16.8 | 4.9 |
+| fx: `@value / SUM(value)` | 141.7 | 86.3 | 1.6 |
+| fx: `@value * 1.2 + @cat` | 104.9 | 35.0 | 3.0 |
+| fx: `IF(@value > 0, ROUND(@value * 1.2, 2), 0)` | 413.0 | 97.1 | 4.3 |
+| fx: `@key & "-" & UPPER(@key)` | 238.9 | 115.8 | 2.1 |
+| fx: `IFERROR(LN(@value), 0) + MAX(@cat, 10)` | 433.2 | 121.6 | 3.6 |
+| fx: `IF(@value > PERCENTILE(value, 0.9), "top", PROPER(@key))` | 606.9 | 200.7 | 3.0 |
+| fx: `SUMIFS(value, key, "k1*") + DATEDIF(45000, 45000 + @cat, "md")` | 483.7 | 235.8 | 2.1 |
 
 ## Follow-ups
 
-- **Size.** The module is 1.9 MB raw / 680 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, V8's `Date.parse` and the full NFD table included. `regress`
+- **A function call costs about 1,000 instructions a row** in the dispatch ladder (argument roles, blank slots,
+  broadcasting, the error guard), against about 450 for an operator. Each call site's name and facts resolve once per
+  column already; resolving its route the same way (which rungs can apply to it at all) is the next cut.
+- **Size.** The module is 2.3 MB raw / 835 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the full NFD table included. `regress`
   is vendored in `crates/vendor/regress` with one patch, the `no-property-escapes` feature: `\p{…}` parses only in
   Unicode mode, which Solenoid never uses, and refusing it drops the property tables (82 KB gzipped). The case-folding
   tables stay. UNACCENT and SLUGIFY decompose through `nfd_table.rs` (`scripts/gen-nfd-table.mjs`, from Node's own
