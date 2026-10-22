@@ -1,58 +1,10 @@
 import { ClassicPreset } from "rete";
-import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complexListOut, readInput, type CellResult, type BroadcastResult } from "./shared";
-import { solError, isSolError, type SolError } from "../errorValue";
-import { cellShortCircuit, COMPUTE } from "../valueKinds";
-import { cx, toCx, type Cx, cxPow, quadraticRoots } from "../cxValue";
-import { callCore, coreEach } from "../coreValues";
+import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complexListOut, type CellResult, type BroadcastResult } from "./shared";
+import type { SolError } from "../errorValue";
+import type { Cx } from "../cxValue";
+import { nodeOnCore } from "../nodeOnCore";
 
 export { cx, isCx, formatCx, type Cx } from "../cxValue";
-
-// No `guardFinite` here: the complex ops keep their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
-
-type Operand<T> = { scalar: T | SolError | null; list: (T | SolError | null)[] | null };
-
-function cxOp(v: unknown, name: string): Operand<Cx> {
-  const one = (e: unknown): Cx | SolError | null => (e === null || e === undefined || isSolError(e) ? (e ?? null) as SolError | null : toCx(e, name));
-  return Array.isArray(v) ? { scalar: null, list: v.map(one) } : { scalar: one(v), list: null };
-}
-
-function numOp(v: number | (number | SolError | null)[] | SolError | null): Operand<number> {
-  return Array.isArray(v) ? { scalar: null, list: v } : { scalar: v, list: null };
-}
-
-function broadcastComplex<A, R>(
-  fn: (a: A) => R | SolError | null,
-  a: Operand<A>,
-): CellResult<R>;
-function broadcastComplex<A, B, R>(
-  fn: (a: A, b: B) => R | SolError | null,
-  a: Operand<A>, b: Operand<B>,
-): CellResult<R>;
-function broadcastComplex<A, B, C, R>(
-  fn: (a: A, b: B, c: C) => R | SolError | null,
-  a: Operand<A>, b: Operand<B>, c: Operand<C>,
-): CellResult<R>;
-function broadcastComplex(
-  fn: (...xs: never[]) => unknown,
-  ...args: Operand<unknown>[]
-): CellResult<unknown> {
-  const call = fn as (...xs: unknown[]) => unknown;
-  const lists = args.map((a) => a.list).filter((l): l is (unknown | SolError | null)[] => l !== null);
-  if (lists.length === 0) {
-    const vals = args.map((a) => a.scalar);
-    const sc = cellShortCircuit(vals);
-    if (sc !== COMPUTE) return sc;
-    return call(...vals) as CellResult<unknown>;
-  }
-  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  return coreEach(len, (i) => {
-    if (lists.some((l) => i >= l.length)) return null;
-    const ops = args.map((a) => (a.list ? a.list[i] : a.scalar));
-    const sc = cellShortCircuit(ops);
-    if (sc !== COMPUTE) return sc;
-    return call(...ops);
-  }) as CellResult<unknown>;
-}
 
 export class ComplexFromNode extends ClassicPreset.Node {
   label: string;
@@ -68,14 +20,8 @@ export class ComplexFromNode extends ClassicPreset.Node {
     this.addOutput("z", complexComboOut("z"));
   }
 
-  data(inputs: { re?: (number | number[])[]; im?: (number | number[])[] }): { z: CellResult<Cx> } {
-    const z = broadcastComplex(
-      (re: number, im: number): Cx => cx(re, im),
-      numOp(readInput(inputs.re, this.literals.re ?? 0)),
-      numOp(readInput(inputs.im, this.literals.im ?? 0)),
-    );
-    this.cachedResult = z;
-    return { z };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { z: CellResult<Cx> };
   }
 }
 
@@ -101,14 +47,8 @@ export class ComplexUnpackNode extends ClassicPreset.Node {
     this.addOutput("arg", numListOut("arg(z)"));
   }
 
-  data(inputs: { z?: (Cx | (Cx | SolError | null)[])[] }) {
-    const z = inputs.z?.[0] ?? null;
-    const part = (f: (c: Cx) => number) => broadcastComplex(f, cxOp(z, this.label));
-    this.cachedRe  = part((c) => c.re);
-    this.cachedIm  = part((c) => c.im);
-    this.cachedAbs = part((c) => callCore("IMABS", [c]) as number);
-    this.cachedArg = part((c) => callCore("IMARGUMENT", [c]) as number);
-    return { re: this.cachedRe, im: this.cachedIm, abs: this.cachedAbs, arg: this.cachedArg };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { re: BroadcastResult; im: BroadcastResult; abs: BroadcastResult; arg: BroadcastResult };
   }
 }
 
@@ -150,11 +90,8 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
     this.addOutput("result", complexComboOut("Result"));
   }
 
-  data(inputs: { z?: (Cx | (Cx | SolError | null)[])[] }): { result: CellResult<Cx> } {
-    const fn = COMPLEX_UNARY_OP_META[this.op].label;
-    const result = broadcastComplex((z: Cx) => callCore(fn, [z]) as Cx | SolError, cxOp(inputs.z?.[0] ?? null, this.label));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<Cx> };
   }
 }
 
@@ -182,16 +119,8 @@ export class ComplexBinaryNode extends ClassicPreset.Node {
     this.addOutput("result", complexComboOut("Result"));
   }
 
-  data(inputs: {
-    a?: (Cx | (Cx | SolError | null)[])[];
-    b?: (Cx | (Cx | SolError | null)[])[];
-  }): { result: CellResult<Cx> } {
-    const fn = COMPLEX_BINARY_OP_META[this.op].label;
-    const result = broadcastComplex((a: Cx, b: Cx) => callCore(fn, [a, b]) as Cx | SolError,
-      cxOp(inputs.a?.[0] ?? null, this.label),
-      cxOp(inputs.b?.[0] ?? null, this.label));
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<Cx> };
   }
 }
 
@@ -209,18 +138,8 @@ export class ComplexPowerNode extends ClassicPreset.Node {
     this.addOutput("result", complexComboOut("Result"));
   }
 
-  data(inputs: {
-    z?: (Cx | (Cx | SolError | null)[])[];
-    n?: (number | number[])[];
-  }): { result: CellResult<Cx> } {
-    const result = broadcastComplex(
-      // The formula answers #VALUE! for a NaN exponent, so that one stays on cxPow.
-      (z: Cx, n: number) => (Number.isNaN(n) ? cxPow(z, n) : callCore("IMPOWER", [z, n]) as Cx | SolError),
-      cxOp(inputs.z?.[0] ?? null, this.label),
-      numOp(readInput(inputs.n, this.literals.n ?? 2)),
-    );
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<Cx> };
   }
 }
 
@@ -243,25 +162,8 @@ export class PolyRootsNode extends ClassicPreset.Node {
     this.addOutput("real", numListOut("Real roots"));
   }
 
-  data(inputs: { coeffs?: (number | null | SolError)[][] }): { roots: Cx[] | SolError | null; real: number[] | null } {
-    const list = inputs.coeffs?.[0] ?? null;
-    if (list === null) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
-    // Positional: a coefficient's slot is its degree, so nothing is dropped. The first error wins; a blank leaves the polynomial unknown.
-    const err = list.find(isSolError);
-    if (err) { this.cachedRoots = err; this.cachedReal = null; return { roots: err, real: null }; }
-    if (list.some((v) => v === null)) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
-    if (!list.every((v) => typeof v === "number" && Number.isFinite(v))) {
-      const e = solError("#VALUE!", "Polynomial Roots needs a finite number in every coefficient");
-      this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null };
-    }
-    const rs = callCore("POLYROOTS", [list]) as Cx[] | SolError;
-    if (isSolError(rs)) {
-      const e = rs.code === "#DOMAIN!" ? solError("#DOMAIN!", "Polynomial Roots needs at least one non-zero coefficient") : rs;
-      this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null };
-    }
-    this.cachedRoots = rs;
-    this.cachedReal = rs.filter((z) => z.im === 0).map((z) => z.re).sort((x, y) => x - y);
-    return { roots: this.cachedRoots, real: this.cachedReal };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { roots: Cx[] | SolError | null; real: number[] | null };
   }
 }
 
@@ -283,23 +185,7 @@ export class QuadraticRootsNode extends ClassicPreset.Node {
     this.addOutput("x2", complexComboOut("x₂"));
   }
 
-  data(inputs: {
-    a?: (number | number[] | null)[];
-    b?: (number | number[] | null)[];
-    c?: (number | number[] | null)[];
-  }): { x1: CellResult<Cx>; x2: CellResult<Cx> } {
-    const root = (which: 1 | 2) => broadcastComplex((a: number, b: number, c: number): Cx | SolError => {
-      // The formula answers #VALUE! for a NaN coefficient, so that one stays on quadraticRoots.
-      const r = [a, b, c].some(Number.isNaN) ? quadraticRoots(a, b, c) : callCore("QUADRATICROOTS", [a, b, c]) as Cx[] | SolError;
-      return isSolError(r) ? r : r[which - 1];
-    },
-      numOp(readInput(inputs.a, this.literals.a)),
-      numOp(readInput(inputs.b, this.literals.b)),
-      numOp(readInput(inputs.c, this.literals.c)));
-    const x1 = root(1);
-    const x2 = root(2);
-    this.cachedX1 = x1;
-    this.cachedX2 = x2;
-    return { x1, x2 };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { x1: CellResult<Cx>; x2: CellResult<Cx> };
   }
 }

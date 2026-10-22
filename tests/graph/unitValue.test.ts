@@ -2,13 +2,16 @@
 import { describe, it, expect } from "vitest";
 import {
   isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit, unitLabelOf,
-  arithmeticCell, compareUnits,
+  arithmeticCell,
   forAggregateUnits, sameColumnUnit,
   matrixUnitOf, withMatrixUnit, carryMatrixUnit,
   adoptMagnitude, type UnitCell,
 } from "../../src/graph/unitValue";
 import { parseUnit, isDimensionless, type Unit } from "../../src/graph/dimension";
 import { isSolError, solError } from "../../src/graph/errorValue";
+import { ComparisonNode, type ComparisonOp } from "../../src/graph/nodes/logic";
+
+const compare = (op: ComparisonOp, a: unknown, b: unknown) => new ComparisonNode({ op }).data({ a: [a], b: [b] }).result;
 
 const U = (s: string): Unit => {
   const p = parseUnit(s);
@@ -74,15 +77,14 @@ describe("dimensional algebra at the ops", () => {
     expect(l.value).toBe(7);
     expect(l.dim).toEqual({ length: 1 });
   });
-  it("compareUnits returns base magnitudes when commensurable, else #UNIT!", () => {
-    const ok = compareUnits(cell(1, "km"), cell(900, "m"));
-    expect(ok).toEqual({ l: 1000, r: 900 }); // 1 km > 900 m
-    expect(isSolError(compareUnits(cell(1, "km"), cell(1, "s")))).toBe(true);
+  it("Comparison compares base magnitudes when commensurable, else #UNIT!", () => {
+    expect(compare("gt", cell(1, "km"), cell(900, "m"))).toBe(true); // 1 km > 900 m
+    expect(isSolError(compare("gt", cell(1, "km"), cell(1, "s")))).toBe(true);
   });
-  it("compareUnits lets a dimensionless operand ADOPT the other's unit ($5 vs 1000)", () => {
+  it("Comparison lets a dimensionless operand ADOPT the other's unit ($5 vs 1000)", () => {
     // a plain threshold compares against the magnitude, not #UNIT!
-    expect(compareUnits(cell(5, "m"), 3)).toEqual({ l: 5, r: 3 });
-    expect(compareUnits(1000, cell(5, "m"))).toEqual({ l: 1000, r: 5 });
+    expect(compare("gt", cell(5, "m"), 3)).toBe(true);
+    expect(compare("gt", 1000, cell(5, "m"))).toBe(true);
   });
 });
 
@@ -90,13 +92,13 @@ describe("currency: no exchange rate → different codes are incommensurable", (
   // Currency cells collapse onto the `currency` axis at scale 1, so a magnitude
   // compare would call $5 == 5€. The display CODE is the real unit identity.
   const money = (value: number, code: string): UnitCell => ({ __unitCell: true, value, dim: { currency: 1 }, display: code });
-  it("compareUnits: $5 vs 5€ is #UNIT! (not equal-by-magnitude)", () => {
-    expect(isSolError(compareUnits(money(5, "usd"), money(5, "eur")))).toBe(true);
+  it("Comparison: $5 vs 5€ is #UNIT! (not equal-by-magnitude)", () => {
+    expect(isSolError(compare("gt", money(5, "usd"), money(5, "eur")))).toBe(true);
     // same code still compares by magnitude
-    expect(compareUnits(money(5, "usd"), money(3, "usd"))).toEqual({ l: 5, r: 3 });
+    expect(compare("gt", money(5, "usd"), money(3, "usd"))).toBe(true);
     // an unlabeled currency cell adopts (lenient) — computed currency has no code
     const bare: UnitCell = { __unitCell: true, value: 5, dim: { currency: 1 } };
-    expect(compareUnits(money(5, "usd"), bare)).toEqual({ l: 5, r: 5 });
+    expect(compare("eq", money(5, "usd"), bare)).toBe(true);
   });
   it("forAggregateUnits: mixed currency codes → #UNIT!", () => {
     const r = forAggregateUnits([money(5, "usd"), money(5, "eur")]);
@@ -227,11 +229,9 @@ describe("affine temperatures (review pins)", () => {
     expect(isUnitCell(arithmeticCell("mul", fromUnit(20, U("K"), "K"), 2))).toBe(true); // kelvin is linear
   });
   it("a bare number compared with a reading is a reading: 25 °C > 30 is FALSE", () => {
-    const r = compareUnits(degC(25), 30) as { l: number; r: number };
-    expect(r.l > r.r).toBe(false);
-    expect(r.r).toBeCloseTo(303.15, 9);
-    const k = compareUnits(fromUnit(5, U("km"), "km"), 3000) as { l: number; r: number };
-    expect(k.l > k.r).toBe(false); // a linear unit is unchanged: 3000 km
+    expect(compare("gt", degC(25), 30)).toBe(false);
+    expect(compare("lt", degC(29.99), 30)).toBe(true);
+    expect(compare("gt", fromUnit(5, U("km"), "km"), 3000)).toBe(false); // a linear unit is unchanged: 3000 km
   });
   it("two readings have no sum, and a reading has no remainder, as in a formula", () => {
     const code = (v: unknown) => (isSolError(v) ? v.code : null);
