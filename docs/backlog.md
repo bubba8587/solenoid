@@ -307,6 +307,7 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 
 ## Formatting & units
 
+- [ ] **The Running card adds mixed units' shown numbers**: it isn't `unitAware`, so `[1 km, 500 m, 2 km]` strips to `[1, 500, 2]` and answers `[1, 501, 503]` (develop and the core alike); RUNNING's own unit branch is never reached from the card. Making the card unit-aware means retiring its `formatCarry` for the unit.
 - [ ] **FV, PV and PMT refuse a currency argument** (author to rule): unit-flow § Functions makes every unlisted function read plain numbers, so `FV(rate, n, -$107)` is `#UNIT!`. A money class (currency in, the same currency out) would let the finance functions carry dollars. Since [[D100]] a computed column reads the same rule, so a loan table's `PMT(@rate, @n, -@principal)` over a $ column is `#UNIT!` in every row (CEILING.MATH, QUOTIENT and EVEN over km too).
 
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
