@@ -5,6 +5,7 @@
 import { afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { createHash } from "node:crypto";
 import type { ClassicPreset } from "rete";
 import type { Settings } from "../../src/graph/settingsStore";
 
@@ -62,16 +63,16 @@ function changedSettings(): Partial<Settings> {
   return out as Partial<Settings>;
 }
 
-// A class called past this many times in one worker adds nothing a merge would keep, only bytes.
-const PER_CLASS = 4000;
+// A class past this many distinct calls in one worker adds nothing a merge would keep, only bytes; a call made
+// again (a graph recomputed) is written once.
+const PER_CLASS = 2500;
 const counts = new Map<string, number>();
+const written = new Set<string>();
 
 function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string, unknown[]>, before: Map<string, unknown>, outcome: { out?: unknown; thrown?: unknown }): void {
   const kind = node.constructor.name;
   if (ONLY && !ONLY.has(kind)) return;
-  const calls = (counts.get(kind) ?? 0) + 1;
-  counts.set(kind, calls);
-  if (calls > PER_CLASS) return;
+  if ((counts.get(kind) ?? 0) >= PER_CLASS) return;
   const uncrossable: string[] = [];
   const ins: Record<string, unknown[]> = {};
   for (const [k, arr] of Object.entries(inputs ?? {})) {
@@ -141,7 +142,12 @@ function record(lines: string[], node: ClassicPreset.Node, inputs: Record<string
     ...(uncrossable.length ? { uncrossable } : {}),
   });
   // A call over a huge value (a 10⁵-item list) is counted, not kept.
-  lines.push(line.length > 64_000 ? JSON.stringify({ kind, uncrossable: ["oversize"] }) : line);
+  const kept = line.length > 64_000 ? JSON.stringify({ kind, uncrossable: ["oversize"] }) : line;
+  const key = createHash("sha1").update(kept.replace(/"clock":\{[^}]*\},"gen":-?\d+/, "")).digest("base64");
+  if (written.has(key)) return;
+  written.add(key);
+  counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  lines.push(kept);
   if (lines.length >= 2000) flush(lines);
 }
 
