@@ -6,13 +6,18 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-10-21: the Rust core, branch solenoid/tsrs; cloud session)
+### SESSION DIGEST (2026-10-21/22: the Rust core, branch solenoid/tsrs; cloud session)
 - **The tree:** [[C130]] rustCore (supersedes C16 polarsEngine), [[D99]] rustIsSpec and [[D98]] wholeColumnFallback; mechanics in [[rust-core]]. All three are unratified.
 - **What runs on the core:** every formula (compileEvaluator, outside a row frame) and computed column; about 150 node
   bodies through `callCore`; 25 frame computations through `frameFnOnCore` (headers, Describe, Correlation, Reconcile,
   Nest, frame XLOOKUP, Build/Split Frame, the Decision Matrix and flip points, the Allocator, Payoff, Settle and its
-  ledger, Amortization, K-Means, PCA, logistic). Frozen fixtures in `fixtures/core/` hold the TS answers; `bails.json`
-  is `{}`. Still on the TS: pack functions, unit-carrying values, Cube outputs, the Choice Ladder.
+  ledger, Amortization, K-Means, PCA, logistic). A pack's function is called back on the TS from inside a core
+  formula (`external.rs`). Units: the dimension algebra, the °C/°F rules, Expression's whole unit wrapper, RUNNING and
+  the list verbs over unit cells. Frozen fixtures in `fixtures/core/` hold the TS answers, every suite frozen with the
+  core off; `bails.json` is `{}`. Still on the TS: the LAMBDA folds' and computed columns' units, Equation's
+  dimensions, Cube outputs, the Choice Ladder.
+- **Speed:** formula columns 2 to 4.6 times JS in wasm (the table in [[rust-core]]); each call site resolves once per
+  column, not per row. `examples/colbench.rs` under callgrind counts instructions, which don't drift.
 - **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the oracle (`RUST_CORE_ONLY`).
 - **Module size:** 2.3 MB raw / 835 KB gzipped, with `regress` vendored without its property tables and UNACCENT reading a generated NFD table (`scripts/gen-nfd-table.mjs`).
 - **TS bugs fixed here and on develop:**
@@ -32,7 +37,12 @@ specific item.
   - CLEAN threw on a number, and the Text Transform card's CLEAN dropped DEL;
   - a function that threw escaped the evaluator, past IFERROR (now `#VALUE!` at its call, on both cores);
   - BESSEL* rounded a fractional order (now truncated, as Excel) and the GAMMA card refused negatives; ACOT, COMBINA,
-    FACTDOUBLE, GAMMALN, INDEX's blank row, KSTEST on NaN and the decisionMatrix own-key read were fixed alongside.
+    FACTDOUBLE, GAMMALN, INDEX's blank row, KSTEST on NaN and the decisionMatrix own-key read were fixed alongside;
+  - an indeterminate unit read as dimensionless through IF, picks and roots, so a later `+ 5 km` guessed km;
+  - an Expression's table answer lost its unit, and a list mixing two dimensions ran unit-blind (now `#UNIT!`);
+  - UNIQUE kept `{length: 2, b: 0}` and `{length: 2}` apart.
+- **Core bug fixed:** a LAMBDA body cloned per evaluation let one body's range memo answer another's
+  (`MAX(xs)|SUM(xs)` read `3|3`); `tests/caches.rs` pins it natively.
 - **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
   and catching throws. Rerun after the fixes, no call takes over 300 ms.
 - **Open for the author:**
