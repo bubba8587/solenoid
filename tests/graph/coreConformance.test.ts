@@ -17,7 +17,7 @@ import {
   flipPoints, allocateFrame, type FrameOp, type JoinOpts, type CorrMethod, type LookupMatchMode, type LookupSearchMode, type DecisionNormalize,
 } from "../../src/graph/frameVerbs";
 import {
-  frameToCube, getColumn, addColumn, splitFrame, buildFrame, buildFrameTyped, frameFromLists,
+  frameToCube, getColumn, addColumn, splitFrame, buildFrame, buildFrameTyped, frameFromLists, frameRowCount,
   type FrameValue, type FrameCell, type FrameColType, type FrameColumn, type CubeCell,
 } from "../../src/graph/frame";
 import { tagFrameCellUnit } from "../../src/graph/unitColumn";
@@ -1236,6 +1236,26 @@ describe("a computed column calls a pack function back from the core", () => {
     const core = computeColumnOnEngine(f, src, 5);
     const ts = computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(src)!, vars: extractVariables(src) });
     expect(core).not.toBeNull();
+    expect(core).toEqual(ts);
+  });
+});
+
+describe("the core's per-site caches never answer one call from another's entry", () => {
+  const both = (src: string, f: FrameValue) => {
+    const core = computeColumnOnEngine(f, src, frameRowCount(f));
+    const ts = computeColumnCells(f, { kind: "expr", evaluator: compileTsEvaluator(src)!, vars: extractVariables(src) });
+    return { core, ts };
+  };
+  const f: FrameValue = { __frame: true, columns: [{ name: "xs", type: "number", values: [1, 2, 3] }, { name: "n", type: "number", values: [2, 3, 4] }] };
+  it("a range memo inside one LAMBDA body isn't read by another's", () => {
+    const src = 'CONCAT(MAP(SEQUENCE(1),LAMBDA(x,MAX(xs))),"|",MAP(SEQUENCE(1),LAMBDA(y,SUM(xs))))';
+    const g: FrameValue = { __frame: true, columns: [{ name: "r", type: "number", values: Array.from({ length: 40 }, (_, i) => i) }] };
+    const sideValue = (name: string) => (name === "xs" ? [1, 2, 3] : undefined);
+    const core = computeColumnOnEngine(g, src, 40, { sideValue } as never);
+    expect(core && !isSolError(core) && core.cells).toEqual(Array(40).fill("3|6"));
+  });
+  it("a call site's blank slots stay its own", () => {
+    const { core, ts } = both('MAP(SEQUENCE(1),LAMBDA(x,POWER(5,))) & "," & MAP(SEQUENCE(1),LAMBDA(y,POWER(5,@n)))', f);
     expect(core).toEqual(ts);
   });
 });

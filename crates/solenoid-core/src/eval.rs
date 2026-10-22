@@ -429,9 +429,12 @@ const MEMO_SHAPERS: [&str; 6] = ["FILTER", "UNIQUE", "SORT", "SORTBY", "TAKE", "
 pub struct Eval<'a> {
     row: Option<&'a RowCtx<'a>>,
     /// `rangeMemo`: a range function called again with the very same arguments (a whole column, row after row).
-    memo: RefCell<FxHashMap<*const Ast, (Vec<V>, V)>>,
+    memo: RefCell<FxHashMap<*const Ast, (String, Vec<V>, V)>>,
     /// Each call site's name, facts and empty slots, read once per site rather than once per row.
     sites: RefCell<FxHashMap<*const u8, Rc<Site>>>,
+    /// A LAMBDA's body, cloned once and kept while this evaluator lives: the memo and the sites are keyed by node
+    /// address, which a body cloned per call and dropped would hand to the next one.
+    bodies: RefCell<FxHashMap<*const Ast, Rc<Ast>>>,
 }
 
 struct Site {
@@ -628,7 +631,13 @@ impl Eval<'_> {
                 }
                 params.push(p.clone());
             }
-            return V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body.clone())), env: env.clone(), eta: None, captured: None }));
+            let kept = self.bodies.borrow().get(&(body as *const Ast)).cloned();
+            let body = kept.unwrap_or_else(|| {
+                let b = Rc::new(body.clone());
+                self.bodies.borrow_mut().insert(body as *const Ast, b.clone());
+                b
+            });
+            return V::Lambda(Rc::new(LambdaV { params, body: Some(body), env: env.clone(), eta: None, captured: None }));
         }
         // A name the core doesn't know may be a pack's, registered in JS at run time: the TS calls it back.
         let Some(t) = site.traits.as_deref() else {
@@ -664,14 +673,14 @@ impl Eval<'_> {
         if lifted.is_empty() {
             if any_arr && self.row.is_some() && (t.kind == "range" || MEMO_SHAPERS.contains(&name.as_str())) {
                 let key = args.as_ptr();
-                if let Some((last, r)) = self.memo.borrow().get(&key) {
-                    if last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
+                if let Some((f, last, r)) = self.memo.borrow().get(&key) {
+                    if f == name && last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
                         return r.clone();
                     }
                 }
                 let r = self.route_call(name, t, argv.clone(), settled);
                 if !is_arr(&r) || MEMO_SHAPERS.contains(&name.as_str()) {
-                    self.memo.borrow_mut().insert(key, (argv, r.clone()));
+                    self.memo.borrow_mut().insert(key, (name.clone(), argv, r.clone()));
                 }
                 return r;
             }
@@ -699,15 +708,15 @@ impl Eval<'_> {
         let memo = self.row.is_some() && argv.iter().any(is_arr);
         let key = args.as_ptr();
         if memo {
-            if let Some((last, r)) = self.memo.borrow().get(&key) {
-                if last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
+            if let Some((f, last, r)) = self.memo.borrow().get(&key) {
+                if f == name && last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
                     return r.clone();
                 }
             }
         }
         let Some(r) = crate::external::call(name, &site.empty, &argv) else { return crate::excel_functions::bail() };
         if memo && !is_arr(&r) {
-            self.memo.borrow_mut().insert(key, (argv, r.clone()));
+            self.memo.borrow_mut().insert(key, (name.to_string(), argv, r.clone()));
         }
         r
     }

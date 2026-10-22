@@ -38,6 +38,11 @@ fn main() {
             let t = Instant::now();
             let out = column(ColumnSpec::Expr { ast: &ast, lambdas: &[] }, inp);
             best = best.min(t.elapsed().as_secs_f64() * 1000.0);
+            if std::env::var("PRINT").is_ok() {
+                if let Ok(solenoid_core::eval::ColumnOutcome::Done { cells, .. }) = &out {
+                    println!("{:?}", &cells[..cells.len().min(3)]);
+                }
+            }
             assert!(out.is_ok());
         }
         println!("{best:8.1} ms  {s}");

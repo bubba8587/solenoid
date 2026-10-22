@@ -159,14 +159,6 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   reading one as U+FFFD at the boundary, which is the author's call.
 - **CI** runs the core's own tests (`engine-test.yml`, job `core`), and `wasmStamp.test.ts` fails when
   `crates/solenoid-core` changed without `npm run build:wasm` (the build writes `source-stamp.txt`).
-- **Wrong answers from two caches keyed by heap address (found by the 2026-10-22 review; first).** The range memo
-  (`eval.rs` `memo`, keyed by `args.as_ptr()`) compares the argument values but not the function, and the call-site
-  table (`sites`, keyed by `raw.as_ptr()`) compares the name and arity but not which slots are blank. A LAMBDA's body
-  is cloned per evaluation and dropped after, so the next clone can reuse the address. A computed column over
-  `xs = [1,2,3]`, `CONCAT(MAP(SEQUENCE(1),LAMBDA(x,MAX(xs))),"|",MAP(SEQUENCE(1),LAMBDA(y,SUM(xs))))`, answers
-  `"3|3"` on most rows where `"3|6"` is right (SUM read MAX's memo); `POWER(5,)` beside `POWER(5,n)` hands the second
-  the first's blank mask. Key both on something that can't be reused while the cache lives (bodies as `Rc<Ast>`, or an
-  `Rc` held in the entry), and name the function in the memo key.
 - **A trap kills the engine for the session.** `MAKEARRAY(1e15, 0, LAMBDA(i,j,1))` passes the `r*c` cap and aborts
   (`unreachable`); develop caps each side at least one (`8e86887`). Nothing in `evaluateOnCore`, `callCore` or
   `computeColumnOnEngine` catches the RuntimeError, and the shadow stack isn't restored, so after a few hundred traps
