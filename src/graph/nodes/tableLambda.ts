@@ -94,6 +94,15 @@ function elemUnitOf(m: Mat): { dim: Dim; display?: string } | null | SolError {
   return dim === null ? null : { dim, display };
 }
 
+/** REDUCE's initial value is the fold's first accumulator, so its unit joins the list's: alone it is the fold's unit,
+ *  and in another dimension it is #UNIT!. */
+function initialUnit(elem: { dim: Dim; display?: string } | null | SolError, initial: unknown): { dim: Dim; display?: string } | null | SolError {
+  if (isSolError(elem) || !isUnitCell(initial)) return elem;
+  if (!elem) return { dim: initial.dim, display: initial.display };
+  if (!dimEqual(elem.dim, initial.dim)) return unitError("REDUCE's initial value and its list are in different units.");
+  return initial.display === elem.display ? elem : { dim: elem.dim };
+}
+
 /** The linear display unit the tagged cells share, which the fold then runs in, so a bare
  *  `+ 1` means 1 km as it does on the Arithmetic card; null folds in base SI. */
 function foldUnit(elem: { dim: Dim; display?: string } | null): Unit | null {
@@ -324,7 +333,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
       "acc + value", ["acc", "value", "step"], 3, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    const elem = elemUnitOf(m);
+    const elem = initialUnit(elemUnitOf(m), initialRaw);
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
     const fu = foldUnit(elem);
     const mm = elem ? stripCells(m, fu) : m;

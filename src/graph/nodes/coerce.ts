@@ -57,7 +57,9 @@ export function toAnyMatrix(v: unknown): Cell[][] | null {
   if (v == null) return null;
   if (Array.isArray(v)) {
     if (v.length === 0) return [];
-    return (Array.isArray(v[0]) ? v : [v]) as Cell[][];
+    if (!Array.isArray(v[0])) return [v] as Cell[][];
+    // A later item that isn't a row is a one-cell row, so every reader gets a table.
+    return (v.every(Array.isArray) ? v : v.map((r) => (Array.isArray(r) ? r : [r]))) as Cell[][];
   }
   return [[v as Cell]];
 }
