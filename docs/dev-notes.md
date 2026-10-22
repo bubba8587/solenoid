@@ -14,7 +14,7 @@ specific item.
   ledger, Amortization, K-Means, PCA, logistic). A pack's function is called back on the TS from inside a core
   formula (`external.rs`). Units: the dimension algebra, the °C/°F rules, Expression's whole unit wrapper, RUNNING and
   the list verbs over unit cells. Frozen fixtures in `fixtures/core/` hold the TS answers, every suite frozen with the
-  core off; `bails.json` is `{}`. Still on the TS: the LAMBDA folds' and computed columns' units, Equation's
+  core off; `bails.json` is `{}`. Still on the TS: a computed column's unit plan (Frames and Cubes), Equation's
   dimensions, Cube outputs, the Choice Ladder.
 - **Speed:** formula columns 2 to 4.6 times JS in wasm (the table in [[rust-core]]); each call site resolves once per
   column, not per row. `examples/colbench.rs` under callgrind counts instructions, which don't drift.
@@ -42,7 +42,11 @@ specific item.
   - an Expression's table answer lost its unit, and a list mixing two dimensions ran unit-blind (now `#UNIT!`);
   - UNIQUE kept `{length: 2, b: 0}` and `{length: 2}` apart.
 - **Core bug fixed:** a LAMBDA body cloned per evaluation let one body's range memo answer another's
-  (`MAX(xs)|SUM(xs)` read `3|3`); `tests/caches.rs` pins it natively.
+  (`MAX(xs)|SUM(xs)` read `3|3`), and a wired LAMBDA, parsed per call, could run the body last parsed at its address
+  (`f(3)` answered the previous f); a kept body now answers only an equal one. `tests/caches.rs` pins both natively.
+- **Develop's fixes mirrored in the core:** IF, IFS and CHOOSE answer only an error in what picks the branch
+  (`branch_selector`); a Decision Matrix's error weight is its answer; REDUCE, lookups, CONVERT ids and Cube
+  computed-column units as on develop.
 - **How these were found:** a sweep calling every function with extreme and ordinary arguments, timing each call
   and catching throws. Rerun after the fixes, no call takes over 300 ms.
 - **Open for the author:**
