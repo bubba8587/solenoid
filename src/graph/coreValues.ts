@@ -84,6 +84,7 @@ class Uncrossable extends Error {}
 
 function fromReply(r: unknown): unknown {
   if (r === null) return null;
+  if (typeof r === "number") return r;
   if (Array.isArray(r)) throw new Uncrossable();
   const o = r as { undef?: true; num?: string; str?: string; bool?: boolean; err?: string; msg?: string; ref?: number; fx?: string; list?: unknown[]; cx?: string[]; lambda?: true;
     unit?: { value: string; dim: [string, string][]; display: string | null; ratio: boolean } };

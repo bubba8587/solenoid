@@ -800,8 +800,8 @@ describe("cube column references — read raw, guard, then trim", () => {
     const cube = {
       __cube: true,
       columns: [
-        { name: "k", type: "string" as const, values: ["x"] },
-        { name: "items", type: "frame" as const, values: [{ __frame: true, columns: [{ name: "v", type: "number" as const, values: [1] }] }] },
+        { name: "k", type: "string" as const, cells: ["x"] },
+        { name: "items", cells: [{ __frame: true, columns: [{ name: "v", type: "number" as const, values: [1] }] }] },
       ],
     };
     const node = new CubeRollupNode();

@@ -71,6 +71,7 @@ export function nodeWire(v: unknown): unknown {
   if (isCubeValue(v)) {
     const columns: unknown[] = [];
     for (const c of v.columns) {
+      if (!Array.isArray(c.cells)) return undefined;
       const cells = all(c.cells);
       if (!cells) return undefined;
       columns.push({ name: c.name, cells, ...(c.type ? { type: c.type } : {}), ...(c.format !== undefined ? { format: jsonEnc(c.format) } : {}) });
@@ -85,6 +86,7 @@ type Wire = { frame?: { columns: Record<string, unknown>[]; totalRows?: number; 
 
 /** A card body's answer back as a JS value; `{ none }` where it holds something JS can't take (a LAMBDA). */
 export function readNodeReply(r: unknown): { value: unknown } | null {
+  if (typeof r === "number") return { value: r };
   const o = r as Wire | null;
   if (!o || typeof o !== "object" || Array.isArray(o)) return readReply(r);
   if (o.list) {

@@ -6,7 +6,7 @@ import type { ClassicPreset } from "rete";
 import { extractInit } from "./nodeInit";
 import { declaredTypeOf } from "./sockets";
 import { engineClock } from "./coreValues";
-import { nodeWire, readNodeReply, jsonDec } from "./nodeWire";
+import { nodeWire, readNodeReply, jsonDec, jsonEnc } from "./nodeWire";
 import { withMatrixUnit, type ColumnUnit } from "./unitValue";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
 import { solError } from "./errorValue";
@@ -47,9 +47,9 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
   try {
     reply = wasmInvokeSync<Reply>("engine_node", {
       kind: node.constructor.name,
-      init: coreInit(node),
-      ...(n.literals ? { literals: n.literals } : {}),
-      ...(n.stringLiterals ? { stringLiterals: n.stringLiterals } : {}),
+      init: jsonEnc(coreInit(node)),
+      ...(n.literals ? { literals: jsonEnc(n.literals) } : {}),
+      ...(n.stringLiterals ? { stringLiterals: jsonEnc(n.stringLiterals) } : {}),
       sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k]),
       outputs: Object.entries(node.outputs).map(([k, output]) => [k, declaredTypeOf(output?.socket) ?? null]),
       inputs: wired,
