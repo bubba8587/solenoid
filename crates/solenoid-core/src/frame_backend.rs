@@ -76,7 +76,7 @@ fn preview_of(f: &FrameValue, n: usize) -> Json {
     let take = n.min(row_count);
     let rows: Vec<Json> = (0..take).map(|r| Json::Array(f.columns.iter().map(|c| encode_cell(c.cell_at(r))).collect())).collect();
     json!({
-        "schema": f.columns.iter().map(|c| json!({ "name": c.name, "type": c.ty.tag() })).collect::<Vec<_>>(),
+        "schema": f.columns.iter().map(|c| json!({ "name": c.name, "type": c.ty.as_str() })).collect::<Vec<_>>(),
         "rows": rows,
         "rowCount": row_count,
         "truncated": row_count > take,
@@ -333,13 +333,13 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 #[serde(rename = "as")]
                 as_: String,
                 #[serde(rename = "type")]
-                ty: String,
+                ty: FrameColType,
             }
             let mut columns = Vec::new();
             for p in parse::<Vec<Part>>(args, "parts")? {
                 let f = get(&p.handle)?;
                 let c = f.columns.iter().find(|c| c.name == p.column).ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{}\" not found", p.column)))?;
-                columns.push(FrameColumn { name: p.as_, ty: FrameColType::from_tag(&p.ty), values: c.values.clone() });
+                columns.push(FrameColumn { name: p.as_, ty: p.ty, values: c.values.clone() });
             }
             Ok(json!(register(FrameValue { columns })))
         }

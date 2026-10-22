@@ -74,7 +74,7 @@ pub fn encode_cell(c: &FrameCell) -> Json {
 pub struct WireColumn {
     pub name: String,
     #[serde(rename = "type")]
-    pub ty: String,
+    pub ty: FrameColType,
     pub values: Vec<Json>,
 }
 
@@ -88,13 +88,13 @@ pub fn wire_to_frame(w: WireFrame) -> FrameValue {
         columns: w
             .columns
             .into_iter()
-            .map(|c| FrameColumn::new(c.name, FrameColType::from_tag(&c.ty), c.values.iter().map(decode_cell).collect()))
+            .map(|c| FrameColumn::new(c.name, c.ty, c.values.iter().map(decode_cell).collect()))
             .collect(),
     }
 }
 
 pub fn column_to_wire(c: &FrameColumn) -> Json {
-    json!({ "name": c.name, "type": c.ty.tag(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() })
+    json!({ "name": c.name, "type": c.ty.as_str(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() })
 }
 
 pub fn error_to_wire(e: &SolError) -> Json {

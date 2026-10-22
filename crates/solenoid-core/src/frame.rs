@@ -5,32 +5,15 @@ use std::rc::Rc;
 
 use crate::error_value::SolError;
 use crate::jsnum::js_trim;
+use crate::spelled::spelled;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum FrameColType {
-    Number,
-    String,
-    Date,
-    Logical,
-}
-
-impl FrameColType {
-    pub fn from_tag(tag: &str) -> FrameColType {
-        match tag {
-            "string" => FrameColType::String,
-            "date" => FrameColType::Date,
-            "logical" => FrameColType::Logical,
-            _ => FrameColType::Number,
-        }
-    }
-
-    pub fn tag(self) -> &'static str {
-        match self {
-            FrameColType::Number => "number",
-            FrameColType::String => "string",
-            FrameColType::Date => "date",
-            FrameColType::Logical => "logical",
-        }
+spelled! {
+    /// `FrameColType`.
+    pub enum FrameColType {
+        Number = "number",
+        String = "string",
+        Date = "date",
+        Logical = "logical",
     }
 }
 

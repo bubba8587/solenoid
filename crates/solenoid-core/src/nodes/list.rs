@@ -837,7 +837,7 @@ fn filter(c: &mut Call) -> Answer {
             Some(v) => elem_col_type(std::slice::from_ref(v)),
         };
         if let Some(label) = conds.iter().find_map(|(op, _, _)| op.text_label()).filter(|_| gate != FrameColType::String) {
-            return Err(err(ErrorCode::Type, format!("{label} reads text — this is a {} list. Cast it to Text first", gate.tag())));
+            return Err(err(ErrorCode::Type, format!("{label} reads text — this is a {} list. Cast it to Text first", gate.as_str())));
         }
     }
     let first_text = conds.iter().find_map(|(op, _, _)| op.text_label());
@@ -851,7 +851,7 @@ fn filter(c: &mut Call) -> Answer {
     for (i, mag) in mags.iter().enumerate() {
         if let Some(label) = first_text {
             if !nullish(mag) && !mag.is_sol_error() && !matches!(mag, V::Str(_)) {
-                let what = elem_col_type(std::slice::from_ref(mag)).tag();
+                let what = elem_col_type(std::slice::from_ref(mag)).as_str();
                 kept.push(err(ErrorCode::Type, format!("{label} reads text; this item is a {what}. Cast it to Text first")));
                 continue;
             }

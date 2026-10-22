@@ -23,7 +23,7 @@ pub const TAG_ERR: u8 = 5;
 struct SchemaColumn {
     name: String,
     #[serde(rename = "type")]
-    ty: String,
+    ty: FrameColType,
     len: usize,
 }
 
@@ -91,7 +91,7 @@ pub fn decode_frame(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &
             });
         }
         at = end;
-        columns.push(FrameColumn::new(c.name, FrameColType::from_tag(&c.ty), values));
+        columns.push(FrameColumn::new(c.name, c.ty, values));
     }
     Ok(FrameValue { columns })
 }
@@ -111,7 +111,7 @@ impl Columnar {
         let mut out = Columnar::default();
         for c in columns {
             let n = limit.map_or(c.values.len(), |l| l.min(c.values.len()));
-            out.schema.push(json!({ "name": c.name, "type": c.ty.tag(), "len": n }));
+            out.schema.push(json!({ "name": c.name, "type": c.ty.as_str(), "len": n }));
             for v in &c.values[..n] {
                 match v {
                     FrameCell::Null => {

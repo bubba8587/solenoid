@@ -546,7 +546,7 @@ pub fn require_text_column(op: FilterOp, ty: FrameColType, column: &str) -> Res<
         ErrorCode::Type,
         format!(
             "{label} reads text — \"{column}\" is a {} column. Convert it first: a Computed Column like TEXT(@{column}, \"@\"), or Cast to Text",
-            ty.tag()
+            ty.as_str()
         ),
     ))
 }
@@ -1106,7 +1106,7 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
     if lk.ty != rk0.ty {
         return Err(sol_error(
             ErrorCode::Type,
-            format!("Join keys must share a type (\"{}\" vs \"{}\")", lk.ty.tag(), rk0.ty.tag()),
+            format!("Join keys must share a type (\"{}\" vs \"{}\")", lk.ty.as_str(), rk0.ty.as_str()),
         ));
     }
     let scaled_right;
@@ -1202,9 +1202,9 @@ pub fn unpivot_frame(
             format!(
                 "Unpivot value columns must share a type (\"{}\" is {}, \"{}\" is {})",
                 val_cols[0].name,
-                val_cols[0].ty.tag(),
+                val_cols[0].ty.as_str(),
                 mixed.name,
-                mixed.ty.tag()
+                mixed.ty.as_str()
             ),
         ));
     }
@@ -1701,14 +1701,14 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         .iter()
         .map(|n| {
             let c = require_column(f, n)?;
-            Ok(json!({ "name": c.name, "type": c.ty.tag(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() }))
+            Ok(json!({ "name": c.name, "type": c.ty.as_str(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() }))
         })
         .collect::<Res<_>>()?;
     let mut layout = json!({
         "rowFields": row_fields,
-        "rowTypes": row_cols.iter().map(|c| c.ty.tag()).collect::<Vec<_>>(),
+        "rowTypes": row_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
         "colFields": col_fields,
-        "colTypes": col_cols.iter().map(|c| c.ty.tag()).collect::<Vec<_>>(),
+        "colTypes": col_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
         "values": value_names,
         "funcs": funcs,
         "rows": row_out
@@ -1744,7 +1744,7 @@ pub fn append_frames(frames: &[&FrameValue]) -> Res<FrameValue> {
                 Some(&existing) if existing != c.ty => {
                     return Err(sol_error(
                         ErrorCode::Type,
-                        format!("append: column \"{}\" is {} in one frame and {} in another", c.name, existing.tag(), c.ty.tag()),
+                        format!("append: column \"{}\" is {} in one frame and {} in another", c.name, existing.as_str(), c.ty.as_str()),
                     ));
                 }
                 _ => {}

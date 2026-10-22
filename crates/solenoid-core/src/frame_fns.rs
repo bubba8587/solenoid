@@ -325,7 +325,7 @@ fn describe_frame(f: &FrameValue) -> FrameValue {
     let mut stats: [Vec<FrameCell>; 7] = Default::default();
     for c in &f.columns {
         names.push(FrameCell::str(&c.name));
-        types.push(FrameCell::str(c.ty.tag()));
+        types.push(FrameCell::str(c.ty.as_str()));
         let (count, blank, distinct, s) = describe_column(&c.values, c.ty);
         for (col, v) in counts.iter_mut().zip([count, blank, distinct]) {
             col.push(FrameCell::Num(v));
@@ -714,7 +714,7 @@ fn frame_row_at(f: &FrameValue, i: f64) -> Res<FrameOut> {
 fn add_column(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
     let name = str_arg(args, 0)?;
     let values: Vec<FrameCell> = list_arg(args, 1)?.iter().map(v_cell).collect::<Res<_>>()?;
-    let ty = FrameColType::from_tag(&str_arg(args, 2)?);
+    let ty: FrameColType = str_arg(args, 2)?.parse().map_err(|_| FrameOut::Bail)?;
     let clean = js_trim(&name);
     let mut columns = f.columns.clone();
     let at = match f.columns.iter().position(|c| c.name == clean) {
@@ -824,7 +824,7 @@ fn build_frame(args: &[V], typed: bool) -> Res<FrameOut> {
     let names = names_arg(args, 1)?;
     let known = if typed {
         match args.get(2) {
-            Some(V::Str(t)) => Some(FrameColType::from_tag(t)),
+            Some(V::Str(t)) => Some(t.parse().map_err(|_| FrameOut::Bail)?),
             None | Some(V::Undef) | Some(V::Null) => None,
             _ => return Err(FrameOut::Bail),
         }
@@ -859,7 +859,13 @@ fn frame_from_lists(args: &[V]) -> Res<FrameOut> {
             other => Ok(vec![v_cell(other)?]),
         })
         .collect::<Res<_>>()?;
-    let known: Vec<Option<FrameColType>> = list_arg(args, 2)?.iter().map(|v| if let V::Str(t) = v { Some(FrameColType::from_tag(t)) } else { None }).collect();
+    let known: Vec<Option<FrameColType>> = list_arg(args, 2)?
+        .iter()
+        .map(|v| match v {
+            V::Str(t) => t.parse().map(Some).map_err(|_| FrameOut::Bail),
+            _ => Ok(None),
+        })
+        .collect::<Res<_>>()?;
     let length = lists.iter().map(Vec::len).max().unwrap_or(0);
     let headers = make_headers(&names, lists.len());
     let columns = headers.into_iter().zip(&lists).enumerate().map(|(i, (name, cells))| typed_column(name, cells, length, known.get(i).copied().flatten())).collect();
