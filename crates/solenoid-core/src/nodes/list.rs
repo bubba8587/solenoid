@@ -9,6 +9,7 @@ use super::units::tag;
 use crate::excel_criteria::DateReading;
 use crate::excel_functions::{js_string_of, xmatch_index, MatchMode, V};
 use crate::frame::{FrameCell, FrameColType};
+use crate::frame_verbs::FilterOp;
 use crate::jsnum::{js_trim, math_round, number_to_string};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{unit_error, READINGS_ADD};
@@ -812,13 +813,13 @@ fn filter(c: &mut Call) -> Answer {
     let mags: Vec<V> = arr.iter().map(strip_unit_cells).collect();
     let ty = elem_col_type(&mags);
     let config = c.field("condConfig").cloned();
-    let mut conds: Vec<(String, String, bool)> = Vec::new();
+    let mut conds: Vec<(FilterOp, String, bool)> = Vec::new();
     for (key, _, _) in c.sockets.iter().filter(|(k, _, _)| k.starts_with("value")) {
         let cfg = config.as_ref().and_then(|o| o.get(&key[5..]));
-        let op = cfg.and_then(|o| o.get("op")).and_then(|v| v.as_str()).unwrap_or("gt").to_string();
+        let spelled = cfg.and_then(|o| o.get("op")).and_then(|v| v.as_str()).unwrap_or("gt");
+        let op: FilterOp = spelled.parse().map_err(|_| err(ErrorCode::Value, format!("Unknown filter condition \"{spelled}\"")))?;
         let value = condition_value(c, key);
-        let valueless = matches!(op.as_str(), "isblank" | "notblank" | "iserror" | "noterror" | "listEmpty");
-        if !valueless && js_trim(&value).is_empty() {
+        if !op.is_valueless() && js_trim(&value).is_empty() {
             continue;
         }
         let match_case = cfg.and_then(|o| o.get("matchCase")).and_then(|v| v.as_bool()).unwrap_or(false);
@@ -828,36 +829,29 @@ fn filter(c: &mut Call) -> Answer {
         let kept = if is_list { list(arr) } else { list(m.iter().map(|r| list(row_cells(r))).collect()) };
         return done(c, kept, V::Null);
     }
-    let text_op = |op: &str| matches!(op, "contains" | "startsWith" | "endsWith");
-    let label = |op: &str| match op {
-        "contains" => "Contains".to_string(),
-        "startsWith" => "Starts with".to_string(),
-        "endsWith" => "Ends with".to_string(),
-        other => other.to_string(),
-    };
     if !mags.iter().any(|v| matches!(v, V::Str(_))) {
         let other = mags.iter().find(|v| !nullish(v) && !v.is_sol_error() && !matches!(v, V::Str(_)));
         let gate = match other {
             None => FrameColType::String,
             Some(v) => elem_col_type(std::slice::from_ref(v)),
         };
-        if let Some((op, _, _)) = conds.iter().find(|(op, _, _)| text_op(op) && gate != FrameColType::String) {
-            return Err(err(ErrorCode::Type, format!("{} reads text — this is a {} list. Cast it to Text first", label(op), gate.tag())));
+        if let Some(label) = conds.iter().find_map(|(op, _, _)| op.text_label()).filter(|_| gate != FrameColType::String) {
+            return Err(err(ErrorCode::Type, format!("{label} reads text — this is a {} list. Cast it to Text first", gate.tag())));
         }
     }
-    let first_text = conds.iter().find(|(op, _, _)| text_op(op)).map(|(op, _, _)| op.clone());
+    let first_text = conds.iter().find_map(|(op, _, _)| op.text_label());
     let values: Vec<FrameCell> = conds.iter().map(|(_, v, _)| FrameCell::str(v)).collect();
     let mut preds = Vec::with_capacity(conds.len());
     for (k, (op, _, match_case)) in conds.iter().enumerate() {
-        preds.push(crate::frame_verbs::compile_filter(op, &values[k], ty, *match_case).map_err(V::err)?);
+        preds.push(crate::frame_verbs::compile_filter(*op, &values[k], ty, *match_case).map_err(V::err)?);
     }
     let any = c.field_str("combine", "and") != "and";
     let (mut kept, mut dropped) = (Vec::new(), Vec::new());
     for (i, mag) in mags.iter().enumerate() {
-        if let Some(op) = &first_text {
+        if let Some(label) = first_text {
             if !nullish(mag) && !mag.is_sol_error() && !matches!(mag, V::Str(_)) {
                 let what = elem_col_type(std::slice::from_ref(mag)).tag();
-                kept.push(err(ErrorCode::Type, format!("{} reads text; this item is a {what}. Cast it to Text first", label(op))));
+                kept.push(err(ErrorCode::Type, format!("{label} reads text; this item is a {what}. Cast it to Text first")));
                 continue;
             }
         }
