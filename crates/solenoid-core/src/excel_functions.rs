@@ -32,6 +32,12 @@ pub enum V {
     Lambda(Rc<crate::eval::LambdaV>),
     /// A value with a unit (`unitValue.ts`' `UnitCell`), opaque to every body but the unit-aware ones.
     Unit(Rc<crate::unit_dims::UnitCell>),
+    /// A card's frame (`frame.ts`' `FrameValue`), which only card bodies take ([[node-bodies]]).
+    Frame(Rc<crate::nodes::Frame>),
+    /// A card's cube (`CubeValue`).
+    Cube(Rc<crate::nodes::Cube>),
+    /// Plain data a card makes or reads whole: a chart, a document, an image, as `nodeWire.ts` encodes it.
+    Json(Rc<serde_json::Value>),
 }
 
 impl V {
@@ -222,7 +228,7 @@ pub fn js_string_of(v: &V) -> String {
         V::Num(n) => number_to_string(*n),
         V::Str(s) => String::from(&**s),
         V::Bool(b) => (if *b { "true" } else { "false" }).into(),
-        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => "[object Object]".into(),
+        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => "[object Object]".into(),
         V::Fx(code) => format!("Error: {code}"),
         // `Array.prototype.join` renders null and undefined as empty.
         V::List(items) => items.iter().map(|v| if matches!(v, V::Null | V::Undef) { String::new() } else { js_string_of(v) }).collect::<Vec<_>>().join(","),
@@ -350,7 +356,7 @@ pub(crate) fn parse_number(v: &V) -> V {
             let s = js_string_of(v);
             if string_to_number(&s).is_nan() { V::Fx("#VALUE!") } else { V::Num(js_parse_float(&s)) }
         }
-        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => V::Fx("#VALUE!"),
+        V::Err(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => V::Fx("#VALUE!"),
     }
 }
 
@@ -370,7 +376,7 @@ pub(crate) fn truthy(v: &V) -> bool {
         V::Num(n) => *n != 0.0 && !n.is_nan(),
         V::Str(s) => !s.is_empty(),
         V::Bool(b) => *b,
-        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) => true,
+        V::Err(_) | V::Fx(_) | V::List(_) | V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => true,
     }
 }
 

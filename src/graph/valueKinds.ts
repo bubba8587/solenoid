@@ -137,11 +137,6 @@ export function cellShortCircuit(args: ReadonlyArray<unknown>): CellShort {
   return COMPUTE;
 }
 
-export function cellError(args: ReadonlyArray<unknown>): SolError | undefined {
-  for (const a of args) if (isSolError(a)) return a;
-  return undefined;
-}
-
 export const DOMAIN_MESSAGE = "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.";
 export const OVERFLOW_MESSAGE = "The result is too large to represent. The true value exceeds the numeric range.";
 

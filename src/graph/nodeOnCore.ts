@@ -5,23 +5,31 @@
 import type { ClassicPreset } from "rete";
 import { extractInit } from "./copyPaste";
 import { declaredTypeOf } from "./sockets";
-import { coreValue, engineClock, readReply } from "./coreValues";
+import { engineClock } from "./coreValues";
+import { nodeWire, readNodeReply } from "./nodeWire";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
 import { solError } from "./errorValue";
 
 type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; display: Record<string, unknown> };
 
 function read(r: unknown): unknown {
-  const v = readReply(r);
+  const v = readNodeReply(r);
   if (!v) throw solError("#VALUE!", "The card's answer can't be read back");
   return v.value;
 }
 
 function shown(r: unknown): unknown {
-  const o = r as { json?: unknown; undef?: true } | null;
-  if (o && typeof o === "object" && "json" in o) return o.json;
+  const o = r as { undef?: true } | null;
   if (o && typeof o === "object" && o.undef === true) return undefined;
   return read(r);
+}
+
+/** What a save holds, and the run-time fields the class names in `static coreFields` (a resolved mode no save keeps). */
+export function coreInit(node: ClassicPreset.Node): Record<string, unknown> {
+  const init = extractInit(node);
+  const fields = (node.constructor as { coreFields?: readonly string[] }).coreFields;
+  for (const f of fields ?? []) init[f] = (node as unknown as Record<string, unknown>)[f];
+  return init;
 }
 
 /** The card's outputs as its body on the core answers them; an error the body throws is thrown, for the error guard. */
@@ -30,7 +38,7 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
   const wired: [string, unknown[]][] = [];
   for (const [k, arr] of Object.entries(inputs)) {
     if (!Array.isArray(arr)) continue;
-    const w = arr.map((v) => coreValue(v, true));
+    const w = arr.map(nodeWire);
     if (w.includes(undefined)) throw solError("#VALUE!", `${node.label || node.constructor.name}: an input holds a value the card can't read`);
     wired.push([k, w]);
   }
@@ -38,7 +46,7 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
   try {
     reply = wasmInvokeSync<Reply>("engine_node", {
       kind: node.constructor.name,
-      init: extractInit(node),
+      init: coreInit(node),
       ...(n.literals ? { literals: n.literals } : {}),
       ...(n.stringLiterals ? { stringLiterals: n.stringLiterals } : {}),
       sockets: Object.entries(node.inputs).map(([k, input]) => [k, declaredTypeOf(input?.socket) ?? null, input?.label ?? k]),

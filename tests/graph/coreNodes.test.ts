@@ -6,10 +6,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 import { wasmInvokeSync } from "../../src/graph/engineWasm";
-import { readReply } from "../../src/graph/coreValues";
-import { dec } from "./coreFixtures";
+import { nodeUnwire, readNodeReply } from "../../src/graph/nodeWire";
 import { isSolError } from "../../src/graph/errorValue";
 import { isUnitCell } from "../../src/graph/unitValue";
+import { isCx } from "../../src/graph/cxValue";
 
 const DIR = path.resolve(__dirname, "../../fixtures/core/nodes");
 type Case = { init: unknown; inputs: [string, unknown[]][]; result: { out?: Record<string, unknown>; thrown?: unknown }; ctx: { clock: unknown }; unstable?: true };
@@ -24,18 +24,9 @@ function same(got: unknown, want: unknown): boolean {
   if (isUnitCell(got) || isUnitCell(want)) {
     return isUnitCell(got) && isUnitCell(want) && Object.is(got.value, want.value) && got.display === want.display && !!got.ratio === !!want.ratio;
   }
+  if (isCx(got) || isCx(want)) return isCx(got) && isCx(want) && Object.is(got.re, want.re) && Object.is(got.im, want.im);
   if (typeof got === "object" && got && typeof want === "object" && want) return JSON.stringify(got) === JSON.stringify(want);
   return Object.is(got, want);
-}
-
-function frozenWire(v: unknown): unknown {
-  const o = v as { __unit?: { value: unknown; display?: string; ratio?: boolean } } | null;
-  if (o && typeof o === "object" && !Array.isArray(o) && o.__unit) {
-    const u = o.__unit;
-    return { __unitCell: true, value: dec(u.value), dim: {}, ...(u.display ? { display: u.display } : {}), ...(u.ratio ? { ratio: true } : {}) };
-  }
-  if (Array.isArray(v)) return v.map(frozenWire);
-  return dec(v);
 }
 
 const files = fs.existsSync(DIR) ? fs.readdirSync(DIR).filter((f) => f.endsWith(".json.gz")).sort() : [];
@@ -53,12 +44,12 @@ describe("card bodies on the core answer as frozen", () => {
         const r = call(c);
         if (c.result.out) {
           for (const [k, w] of Object.entries(c.result.out)) {
-            const got = r.out && k in r.out ? readReply(r.out[k])?.value : "(missing)";
-            if (!same(got, frozenWire(w))) bad.push(`${k}: ${JSON.stringify(got)} vs ${JSON.stringify(w)} on ${JSON.stringify(c.inputs)}`);
+            const got = r.out && k in r.out ? readNodeReply(r.out[k])?.value : "(missing)";
+            if (!same(got, nodeUnwire(w))) bad.push(`${k}: ${JSON.stringify(got)} vs ${JSON.stringify(w)} on ${JSON.stringify(c.inputs)}`);
           }
         } else if (c.result.thrown !== undefined) {
-          const got = r.thrown === undefined ? "(no throw)" : readReply(r.thrown)?.value;
-          if (!same(got, frozenWire(c.result.thrown))) bad.push(`thrown ${JSON.stringify(got)} vs ${JSON.stringify(c.result.thrown)}`);
+          const got = r.thrown === undefined ? "(no throw)" : readNodeReply(r.thrown)?.value;
+          if (!same(got, nodeUnwire(c.result.thrown))) bad.push(`thrown ${JSON.stringify(got)} vs ${JSON.stringify(c.result.thrown)}`);
         }
         if (bad.length >= 5) break;
       }

@@ -42,6 +42,15 @@ pub fn adopt_magnitude(face: f64, unit: Option<&UnitCell>) -> f64 {
     }
 }
 
+/// `adoptReading`: as `adoptMagnitude`, the offset too.
+pub fn adopt_reading(face: f64, unit: Option<&UnitCell>) -> f64 {
+    let base = adopt_magnitude(face, unit);
+    match unit {
+        Some(u) => base + u.offset.unwrap_or(0.0),
+        None => base,
+    }
+}
+
 /// `tagDim`, the display unit (and its scale and offset) borrowed from `from`.
 pub fn tag(value: f64, dim: Dim, from: Option<&UnitCell>) -> V {
     if is_dimensionless(&dim) {

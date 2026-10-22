@@ -35,6 +35,23 @@ fn same(a: &V, b: &V) -> bool {
                 nz(&x.dim) == nz(&y.dim)
             }
         }
+        (V::Json(x), V::Json(y)) => x == y,
+        (V::Frame(x), V::Frame(y)) => {
+            x.total_rows == y.total_rows
+                && x.approx == y.approx
+                && x.columns.len() == y.columns.len()
+                && x.columns.iter().zip(&y.columns).all(|(p, q)| {
+                    p.name == q.name && p.ty == q.ty && p.unit == q.unit && p.format == q.format && p.raw == q.raw
+                        && p.values.len() == q.values.len()
+                        && p.values.iter().zip(&q.values).all(|(a, b)| same(a, b))
+                })
+        }
+        (V::Cube(x), V::Cube(y)) => {
+            x.columns.len() == y.columns.len()
+                && x.columns.iter().zip(&y.columns).all(|(p, q)| {
+                    p.name == q.name && p.ty == q.ty && p.format == q.format && p.cells.len() == q.cells.len() && p.cells.iter().zip(&q.cells).all(|(a, b)| same(a, b))
+                })
+        }
         _ => false,
     }
 }
@@ -52,11 +69,14 @@ fn show(v: &V) -> String {
         V::Unit(u) => format!("unit({} {:?} {:?})", u.value, u.dim, u.display),
         V::Lambda(_) => "lambda".into(),
         V::Fx(m) => format!("fx({m})"),
+        V::Json(j) => j.to_string(),
+        V::Frame(f) => format!("frame[{}]", f.columns.iter().map(|c| format!("{}: [{}]", c.name, c.values.iter().map(show).collect::<Vec<_>>().join(", "))).collect::<Vec<_>>().join("; ")),
+        V::Cube(c) => format!("cube[{}]", c.columns.iter().map(|c| format!("{}: [{}]", c.name, c.cells.iter().map(show).collect::<Vec<_>>().join(", "))).collect::<Vec<_>>().join("; ")),
     }
 }
 
 fn dec(j: &Json) -> V {
-    solenoid_core::eval::decode_value(j)
+    solenoid_core::nodes::decode(j)
 }
 
 /// Why the core's answer differs from the frozen one, or `None` where they agree.
@@ -92,14 +112,12 @@ fn mismatch(case: &Json) -> Option<String> {
         let ok = match (got, w) {
             (Shown::Undef, None) => true,
             (Shown::Undef, Some(w)) => w.get("__undef").is_some(),
-            (Shown::Json(g), Some(w)) => w.get("__json") == Some(g),
-            (Shown::V(g), Some(w)) if w.get("__json").is_none() && w.get("__deleted").is_none() => same(g, &dec(w)),
+            (Shown::V(g), Some(w)) if w.get("__deleted").is_none() => same(g, &dec(w)),
             _ => false,
         };
         if !ok {
             let g = match got {
                 Shown::V(v) => show(v),
-                Shown::Json(j) => j.to_string(),
                 Shown::Undef => "undefined".into(),
             };
             return Some(format!("display {k}: got {g}, want {w:?}"));
