@@ -89,3 +89,4 @@ The core is required: the app's first render waits for it with no deadline (`mai
 | Frames and cubes | Amortization, Forecast (ETS), Fit Distribution, Decompose, K-Means, Logistic, Allocator, Payoff Planner, Choice Ladder, Decision Matrix, Add Column, Get Row, XLOOKUP, Nest, Unnest, Build Cube, Cube Columns, Nest Join, Cube Rollup | `nodes/frames.rs` |
 | Leftovers | the table cards that keep a unit (Table Input, Transpose, Stack, Reshape, Select, Take/Drop, EXPAND, Set Cell), IFERROR, the IS tests, Fuzzy Match, Find Peaks, Triangle Solver | their families' modules |
 | Formula cards | Expression, Equation, Time Value of Money; the RAND family joined the core for them (`fns_random.rs`: `Math.random` in wasm, a seeded generator natively) | `nodes/formula.rs` |
+| Misc | Combinatorics, TEXTAFTER/TEXTBEFORE, INDEX, DATEVALUE/TIMEVALUE, Regex (every JS flag), Cast, Reconcile, Build Frame, Frame from Lists | their families' modules |

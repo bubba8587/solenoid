@@ -211,7 +211,7 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     const cube = cubeFromColumns([{ name: "Start", type: "date", format: fmt, cells: [46000.5, 46001.25] }]);
     const n = new ListIndexNode();
     const row = n.data({ list: [cube], index: [2], column: [0] }).result as CubeValue;
-    expect(row.columns[0].format).toBe(fmt);
+    expect(row.columns[0].format).toEqual(fmt);
     expect(row.columns[0].cells).toEqual([46001.25]);
   });
 
