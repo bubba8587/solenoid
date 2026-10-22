@@ -14,7 +14,7 @@ import { computeColumnCells } from "../../src/graph/computedColumnCore";
 import {
   applyVerb, joinFrames, appendFrames, bindColumns, promoteHeaders, demoteHeaders, describeFrame, correlationMatrix, reconcileFrames,
   reconcileSummaryList, nestGroups, lookupRowIndex, lookupCell, frameRowAt, decisionMatrix, decisionCriteria, resolveDecisionWeights,
-  flipPoints, allocateFrame, type FrameOp, type JoinOpts, type CorrMethod, type LookupMatchMode, type LookupSearchMode, type DecisionNormalize,
+  flipPoints, allocateFrame, choiceLadder, ladderWire, type FrameOp, type JoinOpts, type CorrMethod, type LookupMatchMode, type LookupSearchMode, type DecisionNormalize,
 } from "../../src/graph/frameVerbs";
 import {
   frameToCube, getColumn, addColumn, splitFrame, buildFrame, buildFrameTyped, frameFromLists, frameRowCount,
@@ -606,7 +606,94 @@ const FRAME_FNS: Record<string, { run: (frames: FrameValue[], args: unknown[]) =
     },
     make: (g) => ({ frames: [mlFrame(g, "y")], args: ["y"] }),
   },
+  choiceLadder: {
+    run: (frames, [normalize, close, choices, hasW, hasL]) => {
+      const [f, ...rest] = frames;
+      const w = hasW ? rest.shift()! : null, l = hasL ? rest.shift()! : null;
+      const r = choiceLadder(f, w, l, normalize as DecisionNormalize, close as number, choices as string[]);
+      return { __pair: true, frame: r.plan, value: ladderWire(r.payload) };
+    },
+    make: ladderGen,
+  },
 };
+
+/** Options under limits for the Choice Ladder: rough and countable costs, floors, Requires, Excludes, One of, Must and
+ *  Never, blank and error cells, ties, settled forks, and now and then a search too big for its budget. */
+function ladderGen(g: Gen) {
+  const rand = g.rand;
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  // A hard case: one criterion and one capped cost in step with it, a subset sum the bound can't cut.
+  const hard = rand() < 0.012, exactCost = rand() < 0.6;
+  const rows = hard ? g.int(30, 40) : rand() < 0.02 ? g.int(41, 43) : rand() < 0.03 ? 0 : g.int(1, 9);
+  const NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+  const label = (i: number): FrameCell => (rand() < 0.05 ? pick([null, "", "a", " B ", 7, true, "Option 2"]) : i < NAMES.length ? NAMES[i] : `O${i}`);
+  const num = (lo: number, hi: number): FrameCell => {
+    const r = rand();
+    if (r < 0.04) return null;
+    if (r < 0.043) return solError("#N/A", "fuzz");
+    if (r < 0.055) return pick([NaN, Infinity, -0, "3"]);
+    return rand() < 0.7 ? g.int(lo, hi) : Math.round(rand() * (hi - lo) * 8 + lo * 8) / 8;
+  };
+  const clean = (lo: number, hi: number) => (): FrameCell => g.int(lo, hi);
+  const columns: FrameColumn[] = [];
+  const hasLabel = rand() < 0.92;
+  if (hasLabel) columns.push({ name: pick(["Option", "Name", "Policy"]), type: "string", values: Array.from({ length: rows }, (_, i) => label(i)) });
+  const crit = hard ? ["Value"] : ["Value", "Speed", "Risk"].filter((_, k) => k === 0 || rand() < 0.4);
+  for (const name of crit) {
+    const logical = !hard && rand() < 0.08;
+    const len = hasLabel && rand() < 0.05 ? g.int(0, rows) : rows;
+    const cell = hard ? clean(60, 100) : rand() < 0.3 ? () => num(1, 3) : () => num(-2, 9);
+    columns.push({ name, type: logical ? "logical" : "number", values: Array.from({ length: len }, () => (logical ? rand() < 0.5 : cell())) });
+  }
+  const costNames = hard ? ["Dollars"] : ["Dollars", "Hours", "Capital", "Veg"].filter(() => rand() < 0.5);
+  for (const name of costNames) {
+    const logical = name === "Veg";
+    const values = Array.from({ length: rows }, (_, i): FrameCell => {
+      if (hard) return Math.max(1, (columns[hasLabel ? 1 : 0].values[i] as number) + (exactCost ? 0 : g.int(-3, 3)));
+      if (logical) return rand() < 0.05 ? null : rand() < 0.4;
+      return name === "Capital" && rand() < 0.15 ? pick([-2, 0]) : num(0, 12);
+    });
+    columns.push({ name, type: logical ? "logical" : "number", values });
+  }
+  const names = () => Array.from({ length: g.int(1, 2) }, () => pick([...NAMES.slice(0, Math.max(1, rows)), "zz", " a"])).join(pick([",", ";", ", "]));
+  const rel = (name: string, p: number) => {
+    if (hard || rand() >= p) return;
+    columns.push({ name, type: "string", values: Array.from({ length: rows }, () => (rand() < 0.25 ? names() : rand() < 0.1 ? 3 : null)) });
+  };
+  rel(pick(["Requires", "needs"]), 0.35);
+  rel(pick(["Excludes", "Conflicts with"]), 0.3);
+  if (!hard && rand() < 0.2) columns.push({ name: "One of", type: "string", values: Array.from({ length: rows }, () => pick(["x", "y", " X ", "", null])) });
+  for (const [name, p] of [["Must", 0.15], ["Never", 0.15]] as const) {
+    if (!hard && rand() < p) columns.push({ name, type: "logical", values: Array.from({ length: rows }, () => rand() < 0.12) });
+  }
+  if (rand() < 0.15) columns.reverse();
+  const frames: FrameValue[] = [{ __frame: true, columns }];
+  const hasW = !hard && rand() < 0.4;
+  if (hasW) {
+    const wn = [...crit, ...costNames].filter(() => rand() < 0.7);
+    const wcols: FrameColumn[] = [{ name: "Criterion", type: "string", values: wn }];
+    wcols.push({ name: "Weight", type: "number", values: wn.map(() => pick([1, 2, -1, 0, 0.5, null])) });
+    if (rand() < 0.25) wcols.push({ name: "At least", type: "number", values: wn.map(() => pick([null, null, 1, 5])) });
+    frames.push({ __frame: true, columns: wcols });
+  }
+  const hasL = hard || rand() < 0.8;
+  if (hasL) {
+    const ln = hard ? ["Dollars"] : [...costNames.filter(() => rand() < 0.85), ...(rand() < 0.05 ? [pick(["Missing", "", " dollars "])] : [])];
+    const lcols: FrameColumn[] = [];
+    if (rand() < 0.97) lcols.push({ name: "Resource", type: "string", values: ln });
+    const sum = hard ? (columns.find((c) => c.name === "Dollars")!.values as number[]).reduce((s, v) => s + v, 0) : 0;
+    const style = rand();
+    const cap = (): FrameCell => (hard ? Math.round(sum / 2) + 0.5 : rand() < 0.3 ? null : rand() < 0.03 ? solError("#VALUE!", "bad limit") : pick([0, 5, 12.5, 20, 30, 40, 100]));
+    const floor = (): FrameCell => (rand() < 0.6 ? null : pick([1, 2, 6, 15, 100]));
+    if (hard || style < 0.5) lcols.push({ name: "At most", type: "number", values: ln.map(cap) });
+    else if (style < 0.75) lcols.push({ name: "Budget", type: "number", values: ln.map(cap) });
+    else lcols.push({ name: "At most", type: "number", values: ln.map(cap) }, { name: "At least", type: "number", values: ln.map(floor) });
+    if (!hard && rand() < 0.1) lcols.push({ name: "At least", type: "number", values: ln.map(floor) });
+    frames.push({ __frame: true, columns: lcols });
+  }
+  const choices = rand() < 0.4 ? Array.from({ length: g.int(1, 3) }, () => pick([...NAMES.slice(0, Math.max(1, rows)), "zz", " b "])) : [];
+  return { frames, args: [pick(["none", "max", "range", "rank"]), pick([0, 0.05, 0.05, 0.2, 0.5, 5, 30, -1, NaN, 1]), choices, hasW, hasL] };
+}
 
 /** A frame of mostly number columns, often whole (every cell finite), the shape correlation and splitting read. */
 function numberFrame(g: Gen): FrameValue {

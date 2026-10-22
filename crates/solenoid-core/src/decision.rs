@@ -108,7 +108,7 @@ fn round4(n: f64) -> f64 {
 }
 
 /// `decisionColumns`: the first text column labels the options; every other number or logical column is a criterion.
-fn decision_columns(f: &FrameValue) -> (Option<usize>, Vec<usize>) {
+pub(crate) fn decision_columns(f: &FrameValue) -> (Option<usize>, Vec<usize>) {
     let label = f.columns.iter().position(|c| c.ty == FrameColType::String);
     let criteria = (0..f.columns.len())
         .filter(|&i| Some(i) != label && matches!(f.columns[i].ty, FrameColType::Number | FrameColType::Logical))
@@ -116,11 +116,11 @@ fn decision_columns(f: &FrameValue) -> (Option<usize>, Vec<usize>) {
     (label, criteria)
 }
 
-fn crit_key(s: &str) -> String {
+pub(crate) fn crit_key(s: &str) -> String {
     js_lower(js_trim(s)).into_owned()
 }
 
-fn criterion_row_index(f: &FrameValue) -> HashMap<String, usize> {
+pub(crate) fn criterion_row_index(f: &FrameValue) -> HashMap<String, usize> {
     let mut m = HashMap::new();
     if let Some(c) = f.columns.iter().find(|c| c.ty == FrameColType::String) {
         for (i, v) in c.values.iter().enumerate() {
@@ -205,13 +205,13 @@ fn weight_columns(f: &FrameValue) -> Vec<&FrameColumn> {
 }
 
 pub struct Resolved {
-    weights: Option<Vec<f64>>,
-    overrides: HashMap<String, Normalize>,
-    bounds: Option<Vec<Bound>>,
+    pub(crate) weights: Option<Vec<f64>>,
+    pub(crate) overrides: HashMap<String, Normalize>,
+    pub(crate) bounds: Option<Vec<Bound>>,
 }
 
 /// `resolveDecisionWeights`.
-fn resolve_weights(wf: Option<&FrameValue>, criteria: &[String]) -> Res<Resolved> {
+pub(crate) fn resolve_weights(wf: Option<&FrameValue>, criteria: &[String]) -> Res<Resolved> {
     let Some(wf) = wf else { return Ok(Resolved { weights: None, overrides: HashMap::new(), bounds: None }) };
     let rows = criterion_row_index(wf);
     let nums = weight_columns(wf);
@@ -245,7 +245,7 @@ fn plain_number(v: f64) -> String {
     }
 }
 
-fn decision_screen(f: &FrameValue, bounds: Option<&[Bound]>) -> Vec<Vec<String>> {
+pub(crate) fn decision_screen(f: &FrameValue, bounds: Option<&[Bound]>) -> Vec<Vec<String>> {
     let rows = frame_row_count(f);
     let mut out = vec![Vec::new(); rows];
     let Some(bounds) = bounds else { return out };
@@ -267,7 +267,7 @@ fn decision_screen(f: &FrameValue, bounds: Option<&[Bound]>) -> Vec<Vec<String>>
     out
 }
 
-fn filled_in(f: &FrameValue, skip: &[String]) -> Vec<Vec<String>> {
+pub(crate) fn filled_in(f: &FrameValue, skip: &[String]) -> Vec<Vec<String>> {
     let rows = frame_row_count(f);
     let mut out = vec![Vec::new(); rows];
     for &ci in &decision_columns(f).1 {
@@ -284,20 +284,22 @@ fn filled_in(f: &FrameValue, skip: &[String]) -> Vec<Vec<String>> {
     out
 }
 
-fn frame_rows(f: &FrameValue, rows: &[usize]) -> FrameValue {
+pub(crate) fn frame_rows(f: &FrameValue, rows: &[usize]) -> FrameValue {
     FrameValue { columns: f.columns.iter().map(|c| FrameColumn::new(c.name.clone(), c.ty, rows.iter().map(|&i| c.cell_at(i).clone()).collect())).collect() }
 }
 
-struct Scores {
-    label_name: String,
-    labels: Vec<FrameCell>,
-    criteria: Vec<String>,
-    contrib: Vec<Vec<f64>>,
+pub(crate) struct Scores {
+    pub(crate) label_name: String,
+    pub(crate) labels: Vec<FrameCell>,
+    pub(crate) criteria: Vec<String>,
+    pub(crate) contrib: Vec<Vec<f64>>,
+    /// Each criterion's weight over the sum of the weights' sizes.
+    pub(crate) weight_share: Vec<f64>,
     effective: Vec<Vec<f64>>,
-    scores: Vec<f64>,
+    pub(crate) scores: Vec<f64>,
 }
 
-fn decision_scores(f: &FrameValue, weights: Option<&[f64]>, normalize: Normalize, overrides: &HashMap<String, Normalize>) -> Res<Scores> {
+pub(crate) fn decision_scores(f: &FrameValue, weights: Option<&[f64]>, normalize: Normalize, overrides: &HashMap<String, Normalize>) -> Res<Scores> {
     let rows = frame_row_count(f);
     let (label, criteria) = decision_columns(f);
     if criteria.is_empty() {
@@ -342,6 +344,7 @@ fn decision_scores(f: &FrameValue, weights: Option<&[f64]>, normalize: Normalize
         label_name: label.map_or("Option".to_string(), |l| f.columns[l].name.clone()),
         labels,
         criteria: criteria.iter().map(|&ci| f.columns[ci].name.clone()).collect(),
+        weight_share: (0..criteria.len()).map(|j| if sum_abs > 0.0 { weight_of(j) / sum_abs } else { 0.0 }).collect(),
         contrib,
         effective,
         scores,
@@ -395,7 +398,7 @@ fn rank_options(f: &FrameValue, r: &Resolved, normalize: Normalize, breakdown: b
     Ok(FrameValue { columns: out.into_iter().zip(names).map(|(c, name)| FrameColumn { name, ..c }).collect() })
 }
 
-fn criteria_names(f: &FrameValue) -> Vec<String> {
+pub(crate) fn criteria_names(f: &FrameValue) -> Vec<String> {
     decision_columns(f).1.iter().map(|&i| f.columns[i].name.clone()).collect()
 }
 

@@ -74,6 +74,24 @@ pub fn call(name: &str, frames: &[&FrameValue], args: &[V]) -> FrameOut {
             (Some(n), Some(V::Bool(b))) => Ok(decision::decision_matrix(f, second, n, *b).into()),
             _ => Err(FrameOut::Bail),
         },
+        // frames: options, then the Weights and Limits where wired; args: normalize, close, choices, has weights, has limits.
+        ("choiceLadder", Some(f)) => {
+            let (Some(n), close) = (normalize(), num_arg(args, 1)?) else { return Err(FrameOut::Bail) };
+            let choices = list_arg(args, 2)?.iter().map(|v| match v {
+                V::Str(s) => Ok(s.to_string()),
+                _ => Err(FrameOut::Bail),
+            });
+            let choices = choices.collect::<Res<Vec<_>>>()?;
+            let (Some(V::Bool(has_w)), Some(V::Bool(has_l))) = (args.get(3), args.get(4)) else { return Err(FrameOut::Bail) };
+            let mut rest = frames[1..].iter().copied();
+            let w = if *has_w { rest.next() } else { None };
+            let l = if *has_l { rest.next() } else { None };
+            match crate::ladder::choice_ladder(f, w, l, n, close, &choices) {
+                Some(Ok((plan, wire))) => Ok(FrameOut::FrameAnd(plan, wire)),
+                Some(Err(e)) => Ok(FrameOut::Error(e)),
+                None => Err(FrameOut::Bail),
+            }
+        }
         ("flipPoints", Some(f)) => normalize().map(|n| decision::flip_points(f, second, n).into()).ok_or(FrameOut::Bail),
         // args: mode, amount.
         ("allocateFrame", Some(f)) => {
