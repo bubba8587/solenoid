@@ -195,12 +195,10 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   `MAP(x,LAMBDA(y,y*2))` to `MAP(x,LAMBDA(y,y-1))` answers `[6]`, not `[2]` (33 of 126 edits wrong in a sweep). The
   `sites` table has the same exposure across calls. A cache that outlives the tree it keys into needs a key the tree
   can't hand back (the body's text, or an `Rc` held in the entry).
-- **Port develop `deb66745`, `8042d885` and `beac2169`.** IF, IFS and CHOOSE propagate only an error in what picks
+- **Port develop `deb66745`.** IF, IFS and CHOOSE propagate only an error in what picks
   the branch (`BRANCH_SELECTORS` in `excelFormula.ts`, before the call and cell by cell in `broadcastWith`), so
   `IF(@qty = 0, 0, @total / @qty)` is 0, not #DIV/0!; the core's call path answers the first error argument for every
-  call, and any frozen fixture holding the eager #DIV/0! needs refreezing. A computed column whose unit is
-  indeterminate (`POWER(@d, 2)` over km) computes on the shown numbers, not base SI with no unit. REDUCE over a plain
-  list gives only `acc` the initial's unit (`$1000` over rates with `acc * (1 + value)` was dollars squared).
+  call, and any frozen fixture holding the eager #DIV/0! needs refreezing.
 - **Caseless backreferences still fold Greek letters with a subscript iota** (`ᾳ`/`ᾼ`, `ᾀ`/`ᾈ`, `ῃ`/`ῌ`, `ῳ`/`ῼ`):
   `REGEXTEST("ᾳᾼ","(.)\1",1)` is 1 on the core, 0 in V8, since regress's `fold_code_point` takes the one-character
   uppercase where V8 keeps a character whose full uppercase is two.
