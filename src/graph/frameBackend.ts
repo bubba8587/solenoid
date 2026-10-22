@@ -153,7 +153,8 @@ export async function collectPreview(out: FrameInput | SolError | null, n = CARD
   if (out == null) return null;
   if (isSolError(out)) return out;
   if (!isFrameRef(out)) return out;
-  const handle = await flushRef(out);
+  const handle = await materialize(flushRef(out));
+  if (isSolError(handle)) return handle;
   const p = await materialize((async () => frameBackend().preview(handle, n))());
   if (isSolError(p)) return p;
   if (!p.truncated) return readFrame(out);

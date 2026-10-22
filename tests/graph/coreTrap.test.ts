@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { loadWasmEngineSync, wasmEngineLoaded, wasmInvokeSync, onCore, CoreTrap } from "../../src/graph/engineWasm";
 import { evaluateOnCore, callCore } from "../../src/graph/coreValues";
-import { computeColumnOnEngine } from "../../src/graph/frameBackend";
+import { computeColumnOnEngine, collectPreview, runFrameUnary, useWasmBackend, resetFrameBackendToJs } from "../../src/graph/frameBackend";
 
 it("a trap falls back for its call and leaves later calls on a working core", () => {
   loadWasmEngineSync(fs.readFileSync(path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm")));
@@ -17,4 +17,18 @@ it("a trap falls back for its call and leaves later calls on a working core", ()
   expect(callCore("SUM", [[1, 2], [3]])).toBe(6);
   const col = computeColumnOnEngine({ __frame: true, columns: [{ name: "a", type: "number", values: [1, 2] }] }, "@a * 2", 2);
   expect(col).toMatchObject({ cells: [2, 4] });
+});
+
+it("a lazy frame left in a dead instance previews as #REF!, never throws", async () => {
+  loadWasmEngineSync(fs.readFileSync(path.resolve(__dirname, "../../src/graph/engineWasm/solenoid_core_bg.wasm")));
+  useWasmBackend();
+  try {
+    const frame = { __frame: true as const, columns: [{ name: "a", type: "number" as const, values: [3, 1, 2] }] };
+    const ref = await runFrameUnary(frame, { kind: "sort", by: "a", dir: "asc" });
+    expect(() => wasmInvokeSync("engine_trap")).toThrow(CoreTrap);
+    const preview = await collectPreview(ref);
+    expect((preview as { code?: string }).code).toBe("#REF!");
+  } finally {
+    resetFrameBackendToJs();
+  }
 });

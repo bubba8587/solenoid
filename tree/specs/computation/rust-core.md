@@ -196,4 +196,3 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   uppercase where V8 keeps a character whose full uppercase is two.
 - **The TS fallback still keeps a halved surrogate**, so `LEFT(t,2)&RIGHT(t,2)` over `"a😀b"` answers `a��b` on the
   core and `a😀b` where the formula falls back; the author's well-formed rule has no leaf yet.
-- **After a trap, `collectPreview` of a dead instance's FrameRef throws** its `#REF!` rather than returning it.
