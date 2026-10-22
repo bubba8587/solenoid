@@ -55,6 +55,10 @@ describe("filter — error cells (oracle-only)", () => {
     const out = filterRows(t, "qty", "gte", 5);
     expect(out.columns[0].values).toEqual([5, 12, 20]);
   });
+  it("an error as the value is the filter's answer, whatever the column", () => {
+    const err = solError("#DIV/0!", "x");
+    for (const column of ["qty", "city"]) expect(() => filterRows(t, column, "gte", err)).toThrow(expect.objectContaining({ code: "#DIV/0!" }));
+  });
   it("an error cell is present, not blank: isblank false, notblank true", () => {
     const blank = filterRows(t, "qty", "isblank", null);
     expect(blank.columns[1].values).toEqual(["Oslo"]);

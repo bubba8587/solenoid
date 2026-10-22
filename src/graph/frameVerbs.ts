@@ -246,6 +246,8 @@ export function compileFilter(op: FilterOp, value: FrameCell, type: FrameColType
   if (op === "isblank")  return (cell) => cell === null;
   if (op === "notblank") return (cell) => cell !== null;
   if (value === null) return () => false;
+  // A wired error is the filter's answer, as an error argument is a formula's ([[C24]] arraySemantics).
+  if (isSolError(value)) throw value;
   const fold = (s: string) => (matchCase ? s : s.toLowerCase());
   const absent = (cell: FrameCell): cell is null | SolError => cell === null || isSolError(cell);
   if (op === "contains" || op === "startsWith" || op === "endsWith") {
