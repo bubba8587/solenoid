@@ -1,19 +1,15 @@
 // [[B11]] maximalMerge
 import { ClassicPreset } from "rete";
-import { isDateType, type SocketDataType } from "../sockets";
-import { trueAnyIn, strIn, readInput, numListOut, strComboOut, dateComboOut, complexOut, logicalComboOut } from "./shared";
-import { coerceLogical } from "../valueKinds";
-import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "./date";
-import { formatCx, cx, isCx, type Cx } from "./complex";
-import { formatNumberPattern } from "./text";
-import { parseValueText } from "./textOps";
+import { type SocketDataType } from "../sockets";
+import { trueAnyIn, strIn, numListOut, strComboOut, dateComboOut, complexOut, logicalComboOut } from "./shared";
+import { type Cx } from "./complex";
 
-import { solError, isSolError, type SolError } from "../errorValue";
-import { isUnitCell } from "../unitValue";
-import { stripUnitCells, unitCellText, fcUnitToUnit } from "../unitBridge";
+import { type SolError } from "../errorValue";
+import { fcUnitToUnit } from "../unitBridge";
 import { fcUnitAnnotations } from "../formatAnnotationStore";
 import type { Dim } from "../dimension";
 import { getOwningEditor } from "../activeGraph";
+import { nodeOnCore } from "../nodeOnCore";
 
 export type CastTarget = "number" | "text" | "date" | "complex" | "logical";
 
@@ -35,94 +31,7 @@ export function castOutput(target: CastTarget) {
   }
 }
 
-// Accepts a, bi, a+bi, a-bi, i and -i, with j for i.
-export function parseCx(s: string): Cx {
-  const t = s.trim().replace(/\s+/g, "");
-  if (t === "") return cx(NaN, NaN);
-  const NUM = "[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?";
-  let m = new RegExp(`^(${NUM})$`).exec(t);
-  if (m) return cx(Number(m[1]), 0);
-  m = new RegExp(`^([+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)?)[ij]$`).exec(t);
-  if (m) return cx(0, m[1] === "" || m[1] === "+" ? 1 : m[1] === "-" ? -1 : Number(m[1]));
-  m = new RegExp(`^(${NUM})([+-](?:\\d+(?:\\.\\d*)?|\\.\\d+)?)[ij]$`).exec(t);
-  if (m) return cx(Number(m[1]), m[2] === "+" ? 1 : m[2] === "-" ? -1 : Number(m[2]));
-  return cx(NaN, NaN);
-}
-
 type CastScalar = number | string | Cx | boolean | null;
-
-// `dateish` makes a text cast use the date formatter for numeric serials.
-function castOne(x: unknown, target: CastTarget, format: string, dateish: boolean, decimalSep = "", groupSep = ""): CastScalar {
-  if (x == null) return null;
-  switch (target) {
-    case "number": {
-      if (isCx(x)) return x.re;
-      if (typeof x === "number") return x;
-      if (typeof x === "boolean") return x ? 1 : 0;
-      if (typeof x === "string") return parseValueText(x, decimalSep, groupSep);
-      return NaN;
-    }
-    case "text": {
-      if (isUnitCell(x)) return unitCellText(x, (n) => formatNumberPattern(n, format));
-      if (isCx(x)) return formatCx(x);
-      if (typeof x === "string") return x;
-      if (typeof x === "number") {
-        return dateish ? formatDateSerial(x, format || DEFAULT_DATE_FORMAT) : formatNumberPattern(x, format);
-      }
-      if (typeof x === "boolean") return x ? "TRUE" : "FALSE";
-      return String(x);
-    }
-    case "date": {
-      if (typeof x === "number") return x;
-      if (typeof x === "string") return parseDateToSerial(x);
-      return NaN;
-    }
-    case "complex": {
-      if (isCx(x)) return x;
-      if (typeof x === "number") return cx(x, 0);
-      if (typeof x === "string") return parseCx(x);
-      return cx(NaN, NaN);
-    }
-    case "logical": {
-      // Unparseable gives NaN, the sentinel castFailed reads; a boolean is never a number, so a success cannot look like a failure.
-      const b = coerceLogical(x);
-      return b === null ? NaN : b;
-    }
-  }
-}
-
-// A null result means a blank input, which is not a failure.
-function castFailed(v: CastScalar, target: CastTarget): boolean {
-  if (v === null) return false;
-  if (target === "complex") {
-    return isCx(v) && (Number.isNaN(v.re) || Number.isNaN(v.im));
-  }
-  return typeof v === "number" && Number.isNaN(v);
-}
-
-// A list stays an array for ValueDisplay's chip, dates stay serials, and complex is pre-formatted because ValueDisplay cannot render a complex tuple.
-function displayScalar(v: CastScalar, target: CastTarget): number | string | boolean | null {
-  if (v === null) return null;
-  switch (target) {
-    case "number":  return v as number;
-    case "date":    return v as number;
-    case "complex": return formatCx(v as Cx);
-    case "text":    return v as string;
-    case "logical": return v as boolean;
-  }
-}
-
-function displayList(out: (CastScalar | SolError)[], target: CastTarget): (number | null | SolError)[] | (string | null)[] | (boolean | null | SolError)[] {
-  if (target === "number" || target === "date") {
-    return out.map((v) => (v === null || isSolError(v) ? v : (v as number))) as (number | null | SolError)[];
-  }
-  if (target === "logical") {
-    return out.map((v) => (v === null || isSolError(v) ? v : (v as boolean))) as (boolean | null | SolError)[];
-  }
-  return out.map((v) =>
-    v === null ? null : isSolError(v) ? v.code : (displayScalar(v as CastScalar, target) as string),
-  );
-}
 
 /** The typed-in arguments each target takes ([[B11]] maximalMerge: Cast absorbs the NUMBERVALUE card's separators and TEXT's format). */
 const CAST_TARGET_INPUTS: Record<CastTarget, readonly { key: string; label: string }[]> = {
@@ -199,33 +108,7 @@ export class CastNode extends ClassicPreset.Node {
     return sock && "dataType" in sock ? (sock as { dataType: SocketDataType }).dataType : null;
   }
 
-  data(inputs: { value?: unknown[]; format?: string[]; decimal_sep?: string[]; group_sep?: string[] }): { result: CastScalar | (CastScalar | SolError)[] | SolError } {
-    const raw = this.target === "text" ? inputs.value?.[0] : stripUnitCells(inputs.value?.[0]);
-    const arg = (key: "format" | "decimal_sep" | "group_sep") =>
-      this.inputs[key] ? readInput(inputs[key], this.stringLiterals[key] ?? "") : "";
-    const format = arg("format"), decimalSep = arg("decimal_sep"), groupSep = arg("group_sep");
-    if (format === null || decimalSep === null || groupSep === null) { this.cachedResult = null; return { result: null }; }
-    const kind = this.sourceKind();
-    const dateish = kind != null && isDateType(kind);
-
-    if (Array.isArray(raw)) {
-      const raw2 = raw.map((el) => castOne(el, this.target, format, dateish, decimalSep, groupSep));
-      const out: (CastScalar | SolError)[] = raw2.map((v) =>
-        v === null ? null
-        : castFailed(v, this.target) ? solError("#VALUE!", `Could not convert the value to ${this.target}`)
-        : v,
-      );
-      this.cachedResult = displayList(out, this.target);
-      return { result: out };
-    }
-
-    const scalar = castOne(raw, this.target, format, dateish, decimalSep, groupSep);
-    if (castFailed(scalar, this.target)) {
-      const err = solError("#VALUE!", `Could not convert the value to ${this.target}`);
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = displayScalar(scalar, this.target);
-    return { result: scalar };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CastScalar | (CastScalar | SolError)[] | SolError };
   }
 }

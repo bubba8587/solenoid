@@ -34,6 +34,9 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
         "NestJoinNode" => nest_join(c),
         "CubeRollupNode" => cube_rollup(c),
         "DecisionMatrixNode" => decision_matrix(c),
+        "ReconcileNode" => reconcile(c),
+        "BuildFrameNode" => build_frame(c),
+        "FrameFromListsNode" => frame_from_lists(c),
         _ => return None,
     })
 }
@@ -2076,4 +2079,182 @@ fn decision_matrix(c: &mut Call) -> Answer {
         }
     };
     shown_frame(c, "frame", out.unwrap_or_else(V::err))
+}
+
+// ─── Reconcile, Build Frame, Frame from Lists (frame.ts) ────────────────────────
+
+/// `colTypeForSocket`: the element family of a socket's type, as a frame column's type.
+fn col_type_for_socket(dt: Option<&str>) -> Option<&'static str> {
+    Some(match dt? {
+        "number" | "list" | "numlist" | "table" => "number",
+        "string" | "strlist" | "strcombo" | "strtable" => "string",
+        "date" | "datelist" | "datecombo" | "datetable" => "date",
+        "logical" | "logicallist" | "logicalcombo" | "logicaltable" => "logical",
+        _ => return None,
+    })
+}
+
+/// `toAnyMatrix`: a table as it is, a list as one row, a value as one cell; a later item that isn't a row is a
+/// one-cell row.
+fn to_any_matrix(v: &V) -> Option<Vec<Vec<V>>> {
+    match v {
+        V::Null | V::Undef => None,
+        V::List(items) if items.is_empty() => Some(Vec::new()),
+        V::List(items) if !matches!(items[0], V::List(_)) => Some(vec![items.to_vec()]),
+        V::List(rows) => Some(rows.iter().map(|r| if let V::List(r) = r { r.to_vec() } else { vec![r.clone()] }).collect()),
+        other => Some(vec![vec![other.clone()]]),
+    }
+}
+
+/// `parseColumnUnitFromHeader` over each header (`(header ?? "").trim()`).
+fn parsed_headers(headers: &V) -> Vec<(String, Option<Json>)> {
+    super::stats::items(headers)
+        .iter()
+        .map(|h| match h {
+            V::Null | V::Undef => (String::new(), None),
+            V::Str(s) => parse_column_unit_from_header(s),
+            other => parse_column_unit_from_header(&crate::excel_functions::js_string_of(other)),
+        })
+        .collect()
+}
+
+fn build_frame(c: &mut Call) -> Answer {
+    let raw = super::list::slot(c, "matrix");
+    let headers = super::list::slot(c, "headers");
+    let Some(m) = to_any_matrix(&raw).filter(|m| !m.is_empty()) else { return shown_frame(c, "frame", V::Null) };
+    let known = col_type_for_socket(c.input_type("matrix"));
+    let all_numeric = known.is_none() && m.iter().all(|row| row.iter().all(|x| matches!(x, V::Null | V::Err(_) | V::Num(_))));
+    let typed = !(known == Some("number") || all_numeric);
+    let parsed = if matches!(headers, V::Null | V::Undef) { Vec::new() } else { parsed_headers(&headers) };
+    let clean = list(parsed.iter().map(|(n, _)| V::str(n)).collect());
+    let matrix = list(m.into_iter().map(list).collect());
+    let out = if typed {
+        frame_fn("buildFrameTyped", &[], &[matrix, clean, known.map_or(V::Null, V::str)])
+    } else {
+        frame_fn("buildFrame", &[], &[matrix, clean])
+    };
+    let crate::frame_fns::FrameOut::Frame(f) = out else { return Err(thrown("Build Frame left a reading to the TS")) };
+    let mut f = from_core(&f);
+    for (col, (_, unit)) in f.columns.iter_mut().zip(&parsed) {
+        if unit.is_some() && (!typed || col.ty == "number") {
+            col.unit = unit.clone();
+        }
+    }
+    shown_frame(c, "frame", V::Frame(Rc::new(f)))
+}
+
+fn frame_from_lists(c: &mut Call) -> Answer {
+    let pairs: Vec<(String, String)> = c.sockets.iter().filter_map(|(k, _, _)| Some((k.clone(), format!("vals{}", k.strip_prefix("name")?)))).collect();
+    let (mut names, mut lists, mut known) = (Vec::new(), Vec::new(), Vec::new());
+    for (name_k, vals_k) in &pairs {
+        let wired = super::list::slot(c, vals_k);
+        if matches!(wired, V::Null | V::Undef) {
+            continue;
+        }
+        let name = match str_input(c, name_k, "") {
+            V::Null => return shown_frame(c, "frame", V::Null),
+            V::Str(s) => js_trim(&s).to_string(),
+            other => js_trim(&crate::excel_functions::js_string_of(&other)).to_string(),
+        };
+        names.push(V::str(&name));
+        lists.push(if matches!(wired, V::List(_)) { wired } else { list(vec![wired]) });
+        known.push(col_type_for_socket(c.input_type(vals_k)).map_or(V::Null, V::str));
+    }
+    if names.is_empty() {
+        return shown_frame(c, "frame", V::Null);
+    }
+    match frame_fn("frameFromLists", &[], &[list(names), list(lists), list(known)]) {
+        crate::frame_fns::FrameOut::Frame(f) => shown_frame(c, "frame", V::Frame(Rc::new(from_core(&f)))),
+        _ => Err(thrown("Frame from Lists left a reading to the TS")),
+    }
+}
+
+fn reconcile(c: &mut Call) -> Answer {
+    let left = first(c, "left");
+    let right = first(c, "right");
+    let key_raw = str_input(c, "key", "");
+    let price_raw = str_input(c, "priceColumn", "");
+    let qty_raw = str_input(c, "qtyColumn", "");
+    let blank = |c: &mut Call| {
+        c.show("cachedResult", V::Null);
+        c.show("cachedSummary", V::str(""));
+        Ok(vec![("frame".into(), V::Null), ("summary".into(), V::str(""))])
+    };
+    if [&key_raw, &price_raw, &qty_raw].iter().any(|v| matches!(v, V::Null)) {
+        return blank(c);
+    }
+    let key = trimmed(&key_raw, "keyRaw")?;
+    let column = |s: String| if s.is_empty() { V::Undef } else { V::str(&s) };
+    let price = column(trimmed(&price_raw, "priceRaw")?);
+    let qty = column(trimmed(&qty_raw, "qtyRaw")?);
+    let (V::Frame(l), V::Frame(r)) = (&left, &right) else { return blank(c) };
+    if key.is_empty() {
+        return blank(c);
+    }
+    use crate::frame_fns::FrameOut;
+    let outcome = match frame_fn("reconcileFrames", &[&to_core(l), &to_core(r)], &[V::str(&key), V::str(&key), price, qty]) {
+        FrameOut::FrameAnd(f, summary) => Ok((from_core(&f), summary)),
+        FrameOut::Error(e) => Err(V::err(e)),
+        _ => return Err(thrown("Reconcile left a reading to the TS")),
+    };
+    match outcome {
+        Err(e) => {
+            c.show("cachedResult", e.clone());
+            c.show("cachedSummary", V::str(""));
+            Ok(vec![("frame".into(), e.clone()), ("summary".into(), e)])
+        }
+        Ok((f, summary)) => {
+            let frame = V::Frame(Rc::new(f));
+            let text = V::str(&summarize_reconcile(&summary));
+            c.show("cachedResult", frame.clone());
+            c.show("cachedSummary", text.clone());
+            Ok(vec![("frame".into(), frame), ("summary".into(), text)])
+        }
+    }
+}
+
+/// `n.toLocaleString("en-US", { maximumFractionDigits: fd })`.
+fn locale_number(n: f64, fd: usize) -> String {
+    let s = crate::excel_functions::intl_usd(n, fd).replacen('$', "", 1);
+    match s.split_once('.') {
+        Some((int, frac)) => {
+            let frac = frac.trim_end_matches('0');
+            if frac.is_empty() { int.to_string() } else { format!("{int}.{frac}") }
+        }
+        None => s,
+    }
+}
+
+/// `summarizeReconcile`: markdown without headings, so it reads as plain text in a hero box.
+fn summarize_reconcile(s: &V) -> String {
+    use crate::jsnum::number_to_string as js;
+    let items = super::stats::items(s);
+    let n = |i: usize| super::kit::num(items.get(i).unwrap_or(&V::Null));
+    let names = |i: usize| -> Vec<String> {
+        items.get(i).map(super::stats::items).unwrap_or_default().iter().map(crate::excel_functions::js_string_of).collect()
+    };
+    let mut parts = vec![format!("**{}** added", js(n(0))), format!("**{}** removed", js(n(1))), format!("**{}** changed", js(n(2))), format!("**{}** unchanged", js(n(3)))];
+    if n(4) > 0.0 {
+        parts.push(format!("**{}** skipped", js(n(4))));
+    }
+    let mut out = parts.join(" · ");
+    let (added, removed) = (names(5), names(6));
+    if !added.is_empty() || !removed.is_empty() {
+        let bits: Vec<String> = added.iter().map(|c| format!("+{c}")).chain(removed.iter().map(|c| format!("−{c}"))).collect();
+        out += &format!("\n\n_Columns: {}._", bits.join(" · "));
+    }
+    if let Some(V::List(p)) = items.get(7) {
+        let p = |i: usize| super::kit::num(p.get(i).unwrap_or(&V::Null));
+        let fmt = |v: f64| if v.is_finite() && v.fract() == 0.0 { locale_number(v, 0) } else { locale_number(v, 2) };
+        let sign = |v: f64| if v >= 0.0 { "+" } else { "" };
+        let (delta, price, volume, mix, excluded) = (p(2), p(3), p(4), p(5), p(6));
+        out += &format!(
+            "\n\n**Δ {}{}**: price {}{} · volume {}{} · mix {}{}",
+            sign(delta), fmt(delta), sign(price), fmt(price), sign(volume), fmt(volume), sign(mix), fmt(mix)
+        );
+        if excluded > 0.0 {
+            out += &format!("\n\n_PVM excludes {} row{} with blank or errored price or qty._", js(excluded), if excluded == 1.0 { "" } else { "s" });
+        }
+    }
+    out
 }

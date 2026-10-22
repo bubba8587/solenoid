@@ -65,6 +65,24 @@ pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
             let unit = V::str(c.field_str("unit", "s"));
             broadcast(&[v], |o| core_call(name, &[o[0].clone(), unit.clone()]))
         }
+        "DateTimeValueNode" => {
+            let name = if c.field_str("op", "date") == "date" { "DATEVALUE" } else { "TIMEVALUE" };
+            let lit = match c.string_literal("text") {
+                V::Undef | V::Null => V::str(""),
+                v => v,
+            };
+            match c.read_input("text", lit) {
+                V::List(_) => err("#VALUE!", format!("{name} reads one text, not a list")),
+                e @ V::Err(_) => e,
+                raw => {
+                    let text = match raw {
+                        V::Null => String::new(),
+                        v => crate::jsnum::js_trim(&crate::excel_functions::js_string_of(&v)).to_string(),
+                    };
+                    if text.is_empty() { V::Null } else { core_call(name, &[V::str(&text)]) }
+                }
+            }
+        }
         "DateTruncNode" => {
             let unit = V::str(c.field_str("unit", "month"));
             let ceiling = V::Bool(c.field("ceiling").and_then(|j| j.as_bool()).unwrap_or(false));

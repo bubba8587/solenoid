@@ -3,16 +3,16 @@ import { stringSocket } from "../sockets";
 import {
   strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
   strComboIn, strComboOut, numIn, numListIn, numListOut, logicalComboOut,
-  broadcastCells, readInput, readRole, type CellResult, type BroadcastResult,
+  readInput, type CellResult, type BroadcastResult,
 } from "./shared";
 import { getRecalcGen } from "../process";
 import { uuidV4, type HashAlgorithm } from "./hashOps";
 export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
-import { isSolError, type SolError } from "../errorValue";
+import { type SolError } from "../errorValue";
 import { callCore } from "../coreValues";
 import { nodeOnCore } from "../nodeOnCore";
-import { regexApply, replaceNth, regexOccurrence, safeRegex, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
+import { templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { rolesFrom, setting, required } from "../inputRoles";
 import { dropInputCables } from "../components/cablePrune";
@@ -25,15 +25,6 @@ export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
 export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
 
 // ─── Element-wise text: the `strcombo` (scalar-or-list) sockets ───────────────
-
-function strVal(
-  input: (string | string[])[] | undefined,
-  node: { stringLiterals?: Record<string, string> },
-  key: string,
-  def = "",
-): string | string[] | null {
-  return readInput(input, node.stringLiterals?.[key] ?? def);
-}
 
 function strScalar(
   input: string[] | undefined,
@@ -404,20 +395,6 @@ export class TextReplaceNode extends ClassicPreset.Node {
 
 // ─── Number formatting pattern (shared by Cast-to-text) ───────────────────────
 
-export function formatNumberPattern(v: number, format: string): string {
-  if (format === "" || format === "general") return String(v);
-  if (/^0(\.0+)?$/.test(format)) {
-    const decimals = (format.split(".")[1] ?? "").length;
-    return v.toFixed(decimals);
-  }
-  if (format.endsWith("%")) {
-    const inner = format.slice(0, -1);
-    const decimals = (inner.split(".")[1] ?? "").length;
-    return (v * 100).toFixed(decimals) + "%";
-  }
-  return String(v);
-}
-
 // ─── REPT ─────────────────────────────────────────────────────────────────────
 
 export class ReptNode extends ClassicPreset.Node {
@@ -570,25 +547,8 @@ export class TextAfterBeforeNode extends ClassicPreset.Node {
     this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: (string | string[])[];
-    delimiter?: (string | string[])[];
-    instance?: number[];
-    if_not_found?: string[];
-  }): { result: CellResult<string> } {
-    const instance = readRole<number | SolError | undefined>(this, "instance", inputs.instance);
-    if (isSolError(instance)) { this.cachedText = instance; return { result: instance }; }
-    const ifNotFound = readRole<string | SolError | undefined>(this, "if_not_found", inputs.if_not_found);
-    if (isSolError(ifNotFound)) { this.cachedText = ifNotFound; return { result: ifNotFound }; }
-    const fn = this.op === "after" ? "TEXTAFTER" : "TEXTBEFORE";
-    const result = broadcastCells((text: string, delimiter: string) => {
-      const r = callCore(fn, [text, delimiter, instance ?? 1, this.matchCase ? 0 : 1, this.matchEnd ? 1 : 0]) as string | SolError | null;
-      return r === null && ifNotFound !== undefined && ifNotFound !== "" ? ifNotFound : r;
-    },
-      strVal(inputs.text,      this, "text"),
-      strVal(inputs.delimiter, this, "delimiter"));
-    this.cachedText = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: CellResult<string> };
   }
 }
 
@@ -848,44 +808,8 @@ export class RegexNode extends ClassicPreset.Node {
     this.addOutput("result", anyComboOut("Result"));
   }
 
-  data(inputs: {
-    text?: unknown[];
-    pattern?: string[];
-    replacement?: string[];
-    occurrence?: (number | number[])[];
-  }): { result: number | number[] | string | string[] | null } {
-    const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
-    // Read only under the replace op, so a wired blank here never blanks a test or extract.
-    const replacement = this.op === "replace"
-      ? readInput(inputs.replacement, this.stringLiterals.replacement ?? "")
-      : "";
-    const occurrenceRaw = this.op === "replace" ? readRole<number>(this, "occurrence", inputs.occurrence) : 0;
-    if (pattern === null || replacement === null || occurrenceRaw === null) { this.cachedResult = null; return { result: null }; }
-    const flags       = this.stringLiterals.flags ?? "";
-    const occ = regexOccurrence(occurrenceRaw);
-
-    if (occ === null || !pattern || !safeRegex(pattern, flags)) { this.cachedResult = null; return { result: null }; }
-
-    const rawText = inputs.text === undefined ? "" : (inputs.text[0] ?? null);
-    const applyCell = (c: unknown): number | string | string[] | SolError | null =>
-      c == null ? null
-      : isSolError(c) ? c
-      : this.op === "replace" && occ !== 0
-        ? replaceNth(String(c), pattern, replacement, occ, flags)
-        : (regexApply(this.op, String(c), pattern, replacement, flags) as number | string | string[]);
-
-    let result: number | number[] | string | string[] | null;
-    if (rawText === null) {
-      result = null;
-    } else if (this.op === "extract_all" || this.op === "extract_groups") {
-      result = applyCell(Array.isArray(rawText) ? (rawText as unknown[])[0] : rawText) as string[];
-    } else if (Array.isArray(rawText)) {
-      result = (rawText as unknown[]).map(applyCell) as number[] | string[];
-    } else {
-      result = applyCell(rawText) as number | string;
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | number[] | string | string[] | null };
   }
 }
 

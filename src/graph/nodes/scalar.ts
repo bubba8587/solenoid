@@ -1,10 +1,9 @@
 // [[B16]]
 import { ClassicPreset } from "rete";
-import { readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
+import { numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
 import { rolesFrom, required } from "../inputRoles";
-import { combinatoric } from "./mathUtils";
 import { nodeOnCore } from "../nodeOnCore";
-import { solError, type SolError } from "../errorValue";
+import { type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
 import { type UnitCell, type ArithmeticOp } from "../unitValue";
@@ -358,21 +357,8 @@ export class CombinatoricsNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { n?: number[]; k?: number[] }): { result: number | SolError | null } {
-    // FACT and FACTDOUBLE never read k, so a wired blank k must not blank them.
-    const usesK = this.op !== "fact" && this.op !== "factdouble";
-    const n = readInput(inputs.n, this.literals.n ?? 0);
-    const k = usesK ? readInput(inputs.k, this.literals.k ?? 0) : 0;
-    if (n === null || k === null) { this.cachedResult = null; return { result: null }; }
-    // [[C17]] shareImpl: the formula's kernel; PERMUTATIONA is the card's own.
-    let result: number | SolError = this.op === "permutationa"
-      ? (Math.trunc(n) >= 0 && Math.trunc(k) >= 0 ? Math.pow(Math.trunc(n), Math.trunc(k)) : solError("#DOMAIN!", "Counts must be finite and 0 or more"))
-      : combinatoric(this.op, usesK ? [n, k] : [n]);
-    if (typeof result === "number" && !Number.isFinite(result)) {
-      result = solError("#OVERFLOW!", "The result is too large to represent. Reduce N");
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 

@@ -19,13 +19,11 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 import { cableGhostStore } from "../cableState";
 import { readFilterValue, readConditionValue } from "./list";
 import type { FrameHint } from "../frameHint";
-import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
 import { isSolError, solError, SEES_ERRORS, type SolError } from "../errorValue";
 import { logicalOrTypeError } from "../valueKinds";
-import { APP_LOCALE } from "../locale";
 import {
-  buildFrame, buildFrameTyped, frameFromLists, colTypeForSocket,
+  colTypeForSocket,
   splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
   formatFrameCell, isCubeValue, isFrameValue, inferColumn, frameToCube,
@@ -36,10 +34,10 @@ import {
   pivotFrame,
   decisionSensitivity, flipPoints, allocateFrame,
   promoteHeaders, demoteHeaders,
-  reconcileFrames, reconcileSummaryFromList,
+  reconcileFrames,
   VALUELESS_FILTER_OPS, LIST_FILTER_OPS,
   sortCube, distinctCube, sliceCube, filterCube, selectCubeColumns, windowCube,
-  type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
+  type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode,
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
@@ -2107,61 +2105,9 @@ export class ReconcileNode extends ClassicPreset.Node {
     return shapeOfFrameValue(reconcileFrames(emptyFrameOf(left), emptyFrameOf(right), { leftKey: key, rightKey: key }).frame);
   }
 
-  data(inputs: {
-    left?: (FrameValue | null)[]; right?: (FrameValue | null)[];
-    key?: string[]; priceColumn?: string[]; qtyColumn?: string[];
-  }) {
-    const left = inputs.left?.[0] ?? null;
-    const right = inputs.right?.[0] ?? null;
-    const keyRaw = readInput(inputs.key, this.stringLiterals.key ?? "");
-    const priceRaw = readInput(inputs.priceColumn, this.stringLiterals.priceColumn ?? "");
-    const qtyRaw = readInput(inputs.qtyColumn, this.stringLiterals.qtyColumn ?? "");
-    if (keyRaw === null || priceRaw === null || qtyRaw === null) {
-      this.cachedResult = null; this.cachedSummary = "";
-      return { frame: null, summary: "" };
-    }
-    const key = keyRaw.trim();
-    const priceColumn = priceRaw.trim() || undefined;
-    const qtyColumn = qtyRaw.trim() || undefined;
-    if (!left || !right || !key) {
-      this.cachedResult = null; this.cachedSummary = "";
-      return { frame: null, summary: "" };
-    }
-    const outcome = runVerb(() => reconcileOnCore(left, right, key, priceColumn, qtyColumn)
-      ?? reconcileFrames(left, right, { leftKey: key, rightKey: key, priceColumn, qtyColumn }));
-    if (isSolError(outcome)) {
-      this.cachedResult = outcome; this.cachedSummary = "";
-      return { frame: outcome, summary: outcome };
-    }
-    this.cachedResult = outcome.frame;
-    this.cachedSummary = summarizeReconcile(outcome.summary);
-    return { frame: outcome.frame, summary: this.cachedSummary };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { frame: FrameValue | SolError | null; summary: string | SolError };
   }
-}
-
-function reconcileOnCore(left: FrameValue, right: FrameValue, key: string, priceColumn?: string, qtyColumn?: string):
-  { frame: FrameValue; summary: ReconcileSummary } | null {
-  const r = frameFnOnCore("reconcileFrames", [left, right], [key, key, priceColumn, qtyColumn]);
-  return r && "frame" in r ? { frame: r.frame, summary: reconcileSummaryFromList(r.value as unknown[]) } : null;
-}
-
-// Markdown without headings, so it reads as plain text in a hero box and still renders through a markdown Format Controller.
-function summarizeReconcile(s: ReconcileSummary): string {
-  const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString(APP_LOCALE) : n.toLocaleString(APP_LOCALE, { maximumFractionDigits: 2 }));
-  const parts = [`**${s.added}** added`, `**${s.removed}** removed`, `**${s.changed}** changed`, `**${s.unchanged}** unchanged`];
-  if (s.skipped > 0) parts.push(`**${s.skipped}** skipped`);
-  let out = parts.join(" · ");
-  if (s.addedColumns.length || s.removedColumns.length) {
-    const bits = [...s.addedColumns.map((n) => `+${n}`), ...s.removedColumns.map((n) => `−${n}`)];
-    out += `\n\n_Columns: ${bits.join(" · ")}._`;
-  }
-  if (s.pvm) {
-    const p = s.pvm;
-    const sign = (n: number) => (n >= 0 ? "+" : "");
-    out += `\n\n**Δ ${sign(p.delta)}${fmt(p.delta)}**: price ${sign(p.price)}${fmt(p.price)} · volume ${sign(p.volume)}${fmt(p.volume)} · mix ${sign(p.mix)}${fmt(p.mix)}`;
-    if (p.excluded > 0) out += `\n\n_PVM excludes ${p.excluded} row${p.excluded === 1 ? "" : "s"} with blank or errored price or qty._`;
-  }
-  return out;
 }
 
 // ─── BUILD FRAME ───────────────────────────────────────────────────────────────
@@ -2189,40 +2135,15 @@ export class BuildFrameNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  data(inputs: { matrix?: unknown[]; headers?: string[][] }) {
-    const rawMatrix = inputs.matrix?.[0];
-    const headers = inputs.headers?.[0];
+  data(inputs: Record<string, unknown[] | undefined>) {
     // Part of the memo key: a cable retyped between date and number must rebuild.
     const dt = this.inputs.matrix?.socket instanceof SolenoidSocket ? this.inputs.matrix.socket.dataType : undefined;
-    const sig = [rawMatrix, headers, dt];
+    const sig = [inputs.matrix?.[0], inputs.headers?.[0], dt];
     if (this.cachedResult && sameBuild(this, sig)) return { frame: this.cachedResult };
-    const m = toAnyMatrix(rawMatrix);
-    if (!m || m.length === 0) { this.cachedResult = null; return { frame: null }; }
-    const known = colTypeForSocket(dt);
-    const allNumeric = known === null && m.every((row) => row.every((c) => c === null || isSolError(c) || typeof c === "number"));
-    const typed = !(known === "number" || allNumeric);
-    this.cachedResult = buildFrameOnCore(m, headers, typed, known)
-      ?? (typed ? buildFrameTyped(m, headers, known) : buildFrame(m as number[][], headers));
+    const out = nodeOnCore(this, inputs) as { frame: FrameValue | null };
     builtFrom.set(this, sig);
-    return { frame: this.cachedResult };
+    return out;
   }
-}
-
-/** Build Frame on the core: the headers' units are parsed off here and tagged back on (a typed column takes one only
- *  as a number column). */
-function buildFrameOnCore(m: ReadonlyArray<ReadonlyArray<unknown>>, names: readonly string[] | undefined, typed: boolean, known: FrameColType | null):
-  FrameValue | null {
-  const parsed = (names ?? []).map((n) => parseColumnUnitFromHeader(n));
-  const clean = parsed.map((p) => p.clean);
-  const r = frameOnCore(typed ? "buildFrameTyped" : "buildFrame", [], typed ? [m, clean, known] : [m, clean]);
-  if (!r) return null;
-  return {
-    __frame: true,
-    columns: r.columns.map((c, j) => {
-      const unit = parsed[j]?.unit;
-      return unit && (!typed || c.type === "number") ? { ...c, unit } : c;
-    }),
-  };
 }
 
 // ─── FRAME FROM LISTS ─────────────────────────────────────────────────────────
@@ -2286,27 +2207,15 @@ export class FrameFromListsNode extends ClassicPreset.Node {
     return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })) };
   }
 
-  data(inputs: Record<string, unknown[]>) {
-    const cols: { name: string; cells: unknown[]; known: FrameColType | null }[] = [];
-    const sig: unknown[] = [];
-    for (const [nameK, valsK] of this.valuePairKeys()) {
-      const wired = inputs[valsK]?.[0];
-      if (wired === undefined || wired === null) continue;
-      const cells = Array.isArray(wired) ? wired : [wired];
-      const nameRaw = readInput(inputs[nameK] as string[] | undefined, this.stringLiterals[nameK] ?? "");
-      if (nameRaw === null) { this.cachedResult = null; builtFrom.delete(this); return { frame: null }; }
-      const name = String(nameRaw).trim();
+  data(inputs: Record<string, unknown[] | undefined>) {
+    const sig = this.valuePairKeys().flatMap(([nameK, valsK]) => {
       const sock = this.inputs[valsK]?.socket;
-      const known = colTypeForSocket(sock instanceof SolenoidSocket ? sock.dataType : undefined);
-      cols.push({ name, cells, known });
-      sig.push(name, wired, known);
-    }
-    if (cols.length === 0) { this.cachedResult = null; builtFrom.delete(this); return { frame: null }; }
+      return [inputs[nameK]?.[0], this.stringLiterals[nameK], inputs[valsK]?.[0], sock instanceof SolenoidSocket ? sock.dataType : undefined];
+    });
     if (this.cachedResult && sameBuild(this, sig)) return { frame: this.cachedResult };
-    this.cachedResult = frameOnCore("frameFromLists", [], [cols.map((c) => c.name), cols.map((c) => c.cells), cols.map((c) => c.known)])
-      ?? frameFromLists(cols);
+    const out = nodeOnCore(this, inputs) as { frame: FrameValue | null };
     builtFrom.set(this, sig);
-    return { frame: this.cachedResult };
+    return out;
   }
 }
 
