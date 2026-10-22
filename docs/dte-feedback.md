@@ -232,3 +232,11 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
 30. **`excluded_from_coverage` ignores `covers:` citations.** A spec whose front matter carries a `covers:` glob
     governs the files it matches, but the coverage numbers still count those files as uncited. Only the numbers are
     off; `coverage --check` passes. Count a file a `covers:` glob matches as cited.
+31. **Nothing makes an agent ask or narrow its ring.** `dte-rules/CLAUDE.md` § Your ring has a top-level agent
+    nobody told assume B, the highest ring an agent holds, so every session silently runs as the orchestrator,
+    scheduled runs included. Subagents are meant to get `dte brief C` and `DTE_RING=C`, but nothing checks it:
+    one session here spawned eleven reviewer and builder subagents with neither, and no step noticed. Solenoid
+    now has the agent ask the author its ring before the first leaf-governed task and work at C until answered
+    (`docs/dte.md` § Solenoid's rings). Suggest upstream: the protocol asks rather than assumes, an unanswered
+    or unattended agent defaults to the shallowest ring that can still build (C here), and `validate` warns
+    when tree changes were made with no ring declared (no `--as` and no `DTE_RING`).

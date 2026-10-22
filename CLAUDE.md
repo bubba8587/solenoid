@@ -56,15 +56,16 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
   Voice governs help markdown, catalog descriptions, tooltips, empty states).
 - **The decision tree (`tree/decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
-  The agent protocol is the vendored `dte-rules/CLAUDE.md` (read it once per session; you are
-  ring B unless told otherwise); `docs/dte.md` carries only Solenoid's differences and rings.
+  The agent protocol is the vendored `dte-rules/CLAUDE.md` (read it once per session). **Ask the
+  author your ring** before the first leaf-governed task; until answered work at C, and subagents are
+  always C or deeper (`docs/dte.md` § Solenoid's rings); `docs/dte.md` carries only Solenoid's differences and rings.
   A leaf is a choice a person could weigh, written in plain words (a MUST is fine when it is
   that kind of choice); how the code carries it out (call order, wrappers, internal formats)
   is spec content (`docs/dte.md` § What is a leaf and what is a spec). A new mechanism lands
   its rule before its code, and a rule's exceptions live under that rule, each naming what
   would remove it (`docs/dte.md` § Solenoid practice). "Leaf" is the author's word; "node" means an app node. Read the
   governing leaf and spec before changing sockets, names or value handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
-  `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate --as B` (your ring) before you finish.
+  `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate --as <your ring>` before you finish.
   **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
   author edits the tree from Obsidian and those edits reach you only this way.
 - **`tree/specs/` — the mechanics, one spec per subsystem, grouped in folders; `tree/` is one Obsidian vault with `tree/decisions/`** (`docs/subsystem-invariants.md` is the index).

@@ -132,8 +132,17 @@ sets `authorized_by` to the author.
   `covers:` glob, and blast runs leaf → spec → the files built to it. A file's own header cites
   only what is specific to it; a file with nothing specific has no header at all.
 
-Authority (`dte.cfg`): **A:human, B:orchestrator, C+:subagent**. Assume ring B unless told
-otherwise. The map binds agents, not the author.
+Authority (`dte.cfg`): **A:human, B:orchestrator, C+:subagent**. The map binds agents, not the author.
+
+**Ask your ring.** Before the first task in a session that works under a leaf (building, fixing,
+editing a spec or a leaf; nearly everything but answering questions about the repo), a top-level
+agent asks the author which ring it operates at, unless the author already said. Until the author
+answers, and in a run nobody watches (a scheduled routine), it works at C: it builds and fixes under
+leaves freely, and anything that would change a B leaf or above goes to the inbox
+(`tree/decisions/inbox/`) with the question in chat. Every subagent works at C or deeper, never
+the spawner's ring: `python tools/dte.py brief C` heads its instructions and `DTE_RING=C` is set in its
+environment, as `dte-rules/CLAUDE.md` § Your ring says. `validate --as <ring>` runs at the ring
+actually held.
 
 ## What is a leaf and what is a spec (the author's test)
 
