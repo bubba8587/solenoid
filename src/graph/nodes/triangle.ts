@@ -53,7 +53,7 @@ export class TriangleSolverNode extends ClassicPreset.Node {
   cachedArea: PartOut = null;
   cachedPerimeter: PartOut = null;
   cachedValid: boolean | SolError | null | (boolean | SolError | null)[] = null;
-  solvedKeys: Set<string> = new Set();
+  solvedKeys: string[] = [];
   width = 240;
   height = 430;
 
@@ -97,7 +97,7 @@ export class TriangleSolverNode extends ClassicPreset.Node {
     out.area = err; out.perimeter = err; out.valid = err;
     this.cachedValues = { ...out };
     this.cachedArea = err; this.cachedPerimeter = err; this.cachedValid = err;
-    this.solvedKeys = new Set();
+    this.solvedKeys = [];
     return out;
   }
 
@@ -129,7 +129,7 @@ export class TriangleSolverNode extends ClassicPreset.Node {
       this.cachedArea = r.area;
       this.cachedPerimeter = r.perimeter;
       this.cachedValid = r.valid;
-      this.solvedKeys = r.solved;
+      this.solvedKeys = [...r.solved];
       const out: Record<string, PartCell | boolean> = {};
       for (const k of PART_KEYS) out[k] = r.values[k];
       out.area = r.area; out.perimeter = r.perimeter; out.valid = r.valid;
@@ -160,7 +160,7 @@ export class TriangleSolverNode extends ClassicPreset.Node {
     this.cachedArea = areaL;
     this.cachedPerimeter = periL;
     this.cachedValid = validL;
-    this.solvedKeys = first?.solved ?? new Set();
+    this.solvedKeys = [...(first?.solved ?? [])];
     const out: Record<string, PartCell[] | (boolean | SolError | null)[]> = {};
     for (const k of PART_KEYS) out[k] = valuesL[k];
     out.area = areaL; out.perimeter = periL; out.valid = validL;

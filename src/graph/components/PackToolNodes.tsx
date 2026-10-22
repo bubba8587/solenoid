@@ -146,7 +146,7 @@ export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolver
           varKey={k}
           label={k.toUpperCase() === k ? `${k} °` : k}
           value={(v[k] ?? null) as DisplayValue}
-          solved={data.solvedKeys.has(k)}
+          solved={data.solvedKeys.includes(k)}
         />
       ))}
       <EquationOutRow node={data} emit={emit} socketKey="area" label="Area" value={data.cachedArea as DisplayValue} />

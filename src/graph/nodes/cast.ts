@@ -176,7 +176,10 @@ export class CastNode extends ClassicPreset.Node {
     if (out) out.socket = castOutput(next).socket;
   }
 
-  // The source socket's type is the only witness telling a date serial from a number.
+  /** The source socket's type is the only witness telling a date serial from a number; the body reads it here. */
+  static coreFields = ["sourceType"] as const;
+  get sourceType(): SocketDataType | null { return this.sourceKind(); }
+
   private sourceKind(): SocketDataType | null {
     const editor = getOwningEditor(this.id);
     if (!editor) return null;
