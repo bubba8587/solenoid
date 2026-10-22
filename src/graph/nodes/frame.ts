@@ -32,7 +32,7 @@ import {
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, allocateColumns, choiceLadder,
+  decisionMatrix, decisionCube, decisionCriteria, decisionSensitivity, flipPoints, resolveDecisionWeights, allocateFrame, allocateColumns, choiceLadder, ladderFromWire,
   promoteHeaders, demoteHeaders,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames, reconcileSummaryFromList,
@@ -1737,7 +1737,8 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
     if (!f) { this.cachedResult = null; this.cachedChart = null; return { frame: null, chart: null }; }
     const close = readInput(inputs.close, this.literals.close ?? 0.05) ?? 0;
     try {
-      const { plan, payload } = choiceLadder(f, inputs.weights?.[0] ?? null, inputs.limits?.[0] ?? null, this.normalize, close, this.choices);
+      const w = inputs.weights?.[0] ?? null, l = inputs.limits?.[0] ?? null;
+      const { plan, payload } = ladderOnCore(f, w, l, this.normalize, close, this.choices) ?? choiceLadder(f, w, l, this.normalize, close, this.choices);
       this.cachedResult = plan;
       this.cachedChart = { __chart: true, op: "ladder", values: null, payload, options: {}, title: this.label || "Choice Ladder" };
     } catch (e) {
@@ -1746,6 +1747,12 @@ export class ChoiceLadderNode extends ClassicPreset.Node {
     }
     return { frame: this.cachedResult, chart: this.cachedChart };
   }
+}
+
+/** The ladder on the core ([[D99]] rustIsSpec): the plan, with the ladder beside it as `ladderWire` lays it out. */
+function ladderOnCore(f: FrameValue, w: FrameValue | null, l: FrameValue | null, normalize: DecisionNormalize, close: number, choices: string[]) {
+  const r = frameFnOnCore("choiceLadder", [f, ...(w ? [w] : []), ...(l ? [l] : [])], [normalize, close, choices, w != null, l != null]);
+  return r && "frame" in r && "value" in r ? ladderFromWire(f, r.frame, r.value) : null;
 }
 
 // ─── BUDGET ALLOCATOR ───────────────────────────────────────────────────────────

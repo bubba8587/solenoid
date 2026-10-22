@@ -33,6 +33,7 @@ pub mod js_sort;
 pub mod letters;
 pub mod jsnum;
 pub mod js_regex;
+pub mod ladder;
 pub mod nfd_table;
 pub mod planners;
 pub mod shapers;
