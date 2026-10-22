@@ -21,7 +21,7 @@ pub const NAMES: &[&str] = &[
     "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "SERIESSUM", "BASE", "DECIMAL", "ROMAN", "ARABIC", "BIN2DEC", "BIN2HEX",
     "BIN2OCT", "DEC2BIN", "DEC2HEX", "DEC2OCT", "HEX2BIN", "HEX2DEC", "HEX2OCT", "OCT2BIN", "OCT2DEC", "OCT2HEX",
     "BITAND", "BITOR", "BITXOR", "BITLSHIFT", "BITRSHIFT", "DELTA", "GESTEP", "TYPE", "ERF", "ERF.PRECISE", "ERFC",
-    "ERFC.PRECISE", "GAMMA", "GAMMALN", "GAMMALN.PRECISE", "Z.TEST", "CHISQ.TEST", "NA", "GAUSS", "PHI", "CONFIDENCE.NORM",
+    "ERFC.PRECISE", "GAMMA", "Z.TEST", "CHISQ.TEST", "NA", "GAUSS", "PHI", "CONFIDENCE.NORM",
 ];
 
 fn arg(a: &[V], i: usize) -> &V {
@@ -784,23 +784,6 @@ pub fn call(name: &str, a: &[V]) -> V {
                 return NUM;
             }
             V::Num(jstat_gammafn(n))
-        }
-        "GAMMALN" => match parse_number(arg(a, 0)) {
-            V::Num(n) => V::Num(jstat_gammaln(n)),
-            e => e,
-        },
-        "GAMMALN.PRECISE" => {
-            if a.len() != 1 {
-                return NA;
-            }
-            let x = &a[0];
-            if js_number(x) <= 0.0 {
-                return NUM;
-            }
-            match x {
-                V::Num(n) => V::Num(jstat_gammaln(*n)),
-                _ => VALUE,
-            }
         }
         "Z.TEST" => {
             let array = parse_number_array(&flatten(arg(a, 0)));

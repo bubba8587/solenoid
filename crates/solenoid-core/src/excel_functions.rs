@@ -95,50 +95,13 @@ pub fn take_thrown() -> Option<SolError> {
     THROWN.with(|t| t.borrow_mut().take())
 }
 
-/// The functions this module carries. A formula calling anything else runs on the TS.
-const PORTED: &[&str] = &[
-    "IF", "IFS", "AND", "OR", "NOT", "IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE",
-    "ISBLANK", "ISNUMBER", "ISTEXT", "ISLOGICAL",
-    "ROUND", "ROUNDUP", "ROUNDDOWN", "TRUNC", "INT", "ABS", "SIGN", "SQRT", "EXP", "LN", "LOG10", "MOD", "POWER", "QUOTIENT",
-    "SUM", "MIN", "MAX", "AVERAGE", "MEDIAN", "PRODUCT", "STDEV", "STDEV.S", "STDEV.P", "VAR", "VAR.S", "VAR.P",
-    "LEN", "CONCAT", "CONCATENATE", "MID", "LEFT", "RIGHT", "UPPER", "LOWER", "TRIM", "REPT", "SUBSTITUTE",
-    "YEAR", "MONTH", "DAY",
-    "SIN", "COS", "TAN", "ATAN", "SINH", "COSH", "TANH", "ASINH", "COT", "COTH", "ACOT", "ACOTH", "SEC", "SECH", "CSC",
-    "CSCH", "DEGREES", "RADIANS", "LOG", "ATAN2", "SQRTPI", "ASIN", "ACOS", "ACOSH", "ATANH",
-    "HOUR", "MINUTE", "SECOND", "EOMONTH", "WEEKDAY", "WEEKNUM", "ISOWEEKNUM", "DAYS", "TIME",
-    "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
-    "MODE", "MODE.SNGL", "SUMIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIFS", "COUNTIF", "AVERAGEIF",
-    "CEILING", "CEILING.MATH", "FLOOR", "FLOOR.MATH", "MROUND", "EVEN", "ODD", "SWITCH", "REPLACE",
-    "DATEDIF", "DAYS360", "YEARFRAC", "DATETRUNC", "FROMEPOCH", "TOEPOCH", "WORKDAY", "WORKDAY.INTL", "NETWORKDAYS",
-    "NETWORKDAYS.INTL", "XLOOKUP", "XMATCH",
-    "AVEDEV", "GEOMEAN", "HARMEAN", "DEVSQ", "SKEW", "SKEW.P", "KURT", "PTP", "IQR", "MAD", "SEM", "CV", "RMS",
-    "CORREL", "PEARSON", "RSQ", "KENDALL", "COVAR", "COVARIANCE.P", "COVARIANCE.S", "SLOPE", "INTERCEPT", "STEYX",
-    "CLAMP", "BETWEEN", "ISBOOLEAN", "ISCLOSE", "HYPOTENUSE", "NAND", "NOR", "XNOR", "STANDARDIZE", "FISHER", "SLN",
-    "ORDINAL", "TEXTBEFORE", "TEXTAFTER", "REVERSETEXT", "PADTEXT", "TRUNCATETEXT", "NUMBERVALUE",
-    "PMT", "FV", "PV", "NPER", "IPMT", "PPMT",
-    "DATEVALUE", "TIMEVALUE", "FIXED", "INDEX", "WAVG", "WVAR", "WSTDEV", "COUNTDISTINCT", "ARGMAX", "ARGMIN", "LENGTH", "CONTAINS",
-    "NORM.DIST", "NORM.INV", "NORM.S.DIST", "NORM.S.INV", "CHISQ.DIST", "CHISQ.INV", "CHISQ.DIST.RT", "CHISQ.INV.RT",
-    "F.DIST", "F.INV", "F.DIST.RT", "F.INV.RT", "T.DIST", "T.DIST.RT", "T.DIST.2T", "T.INV", "T.INV.2T", "GAMMA.DIST",
-    "GAMMA.INV", "BETA.DIST", "BETA.INV", "LOGNORM.DIST", "LOGNORM.INV", "WEIBULL.DIST", "EXPON.DIST", "BINOM.DIST",
-    "BINOM.INV", "POISSON.DIST", "HYPGEOM.DIST", "NEGBINOM.DIST",
-    "TEXT", "RANK", "RANK.EQ", "RANK.AVG", "TRIMMEAN", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC", "GCD", "LCM",
-    "SEARCH", "PROPER", "CHAR", "UNICHAR", "CODE", "UNICODE", "VALUE", "TEXTJOIN",
-    "PI", "EXACT", "FIND", "XOR", "COUNT", "COUNTA", "COUNTBLANK", "ISEVEN", "ISODD", "ISNONTEXT", "N", "T", "CHOOSE", "DATE",
-    "COUPDAYBS", "COUPDAYSNC", "COUPNCD", "COUPPCD", "COUPNUM", "ACCRINTM", "INTRATE", "RECEIVED", "YIELDDISC", "TBILLEQ",
-    "TBILLPRICE", "TBILLYIELD", "PRICEMAT", "YIELDMAT", "DURATION", "MDURATION", "PRICE", "YIELD", "IRR", "MIRR", "XNPV", "XIRR",
-    "FVSCHEDULE", "CUMIPMT", "CUMPRINC", "VDB", "ODDFPRICE", "ODDFYIELD", "ODDLPRICE", "ODDLYIELD", "MAXDRAWDOWN", "CAGR",
-    "VOLATILITY", "SHARPE", "SORTINO", "NPV", "RATE", "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "DOLLARDE",
-    "DOLLARFR", "ISPMT",
-    "REGEXTEST", "REGEXEXTRACT", "REGEXREPLACE", "ENCODEURL", "DECODEURL", "ENCODEBASE64", "DECODEBASE64", "HASH", "UNACCENT",
-    "SLUGIFY", "SPELLNUMBER", "VALUETOTEXT", "TEMPLATE", "DOLLAR", "TEXTSPLIT", "WRAPTEXT",
-    "TODAY", "NOW", "EDATE", "CONVERT", "SPEARMAN", "FORECAST.LINEAR", "T.TEST", "F.TEST", "PROB", "FISHERINV", "LOG2", "ROW",
-    "FISHEREXACT", "PROPTEST", "BINOMTEST", "FACT", "FACTDOUBLE", "COMBIN", "COMBINA", "PERMUT", "MULTINOMIAL",
-    "BINOM.DIST.RANGE", "CLEAN",
-];
+/// The modules that answer their own names, beside `call_function`'s arms and the finance functions.
+const MODULES: [&[&str]; 5] = [crate::formulajs::NAMES, crate::fns_complex::NAMES, crate::fns_matrix::NAMES, crate::fns_lists::NAMES, crate::fns_stats::NAMES];
 
-/// Every function the core carries, for the conformance suites to tell a pending name from a ported one.
+/// Every function the core carries, for the conformance suites to tell a pending name from a ported one. A formula
+/// calling anything else runs on the TS.
 pub fn ported_names() -> Vec<&'static str> {
-    PORTED.iter().chain(crate::shapers::SHAPERS.iter()).chain(crate::formulajs::NAMES.iter()).chain(crate::fns_complex::NAMES.iter()).chain(crate::fns_matrix::NAMES.iter()).chain(crate::fns_lists::NAMES.iter()).chain(crate::fns_stats::NAMES.iter()).copied().collect()
+    F::ALL.iter().map(|f| f.name()).chain(FINANCE_WHOLE.iter().chain(FINANCE).copied()).chain(MODULES.into_iter().flatten().copied()).collect()
 }
 
 /// Whether a ported body reads a matrix (an array of arrays) as the TS does; the rest were ported for flat lists.
@@ -147,11 +110,7 @@ pub fn reads_matrices(name: &str) -> bool {
 }
 
 pub fn is_ported(name: &str) -> bool {
-    thread_local! {
-        static NAMES: crate::fxhash::FxHashSet<&'static str> = [PORTED, &crate::shapers::SHAPERS[..], crate::formulajs::NAMES, crate::fns_complex::NAMES,
-            crate::fns_matrix::NAMES, crate::fns_lists::NAMES, crate::fns_stats::NAMES].concat().into_iter().collect();
-    }
-    NAMES.with(|n| n.contains(name))
+    !matches!(route(name), Route::None)
 }
 
 /// The whole-list functions (`listArgs`) whose ported body reads a whole column as it comes.
@@ -2271,12 +2230,33 @@ fn arg(a: &[V], i: usize) -> &V {
     a.get(i).unwrap_or(&V::Undef)
 }
 
-/// `dispatch(name, ...args)`: the function body, its arguments as the evaluator hands them over.
-/// Every name `call_function`'s own match answers, so a call finds its arm by one hash lookup rather than a chain of
-/// string compares ([[C120]] linearWork).
-#[allow(non_camel_case_types, clippy::upper_case_acronyms)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum F {
+/// `dispatch(name, ...args)`'s arms: every name `call_function`'s own match answers, declared once. A variant is its
+/// name with `.` spelled `_`, and a dotted name is written out beside it. A call finds its arm by one hash lookup rather
+/// than a chain of string compares ([[C120]] linearWork).
+macro_rules! arms {
+    ($($arm:ident $(= $name:literal)?),* $(,)?) => {
+        #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
+        #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+        pub enum F {
+            $($arm),*
+        }
+
+        impl F {
+            pub const ALL: &'static [F] = &[$(F::$arm),*];
+
+            /// The function's name as a formula spells it.
+            pub fn name(self) -> &'static str {
+                match self {
+                    $(F::$arm => arms!(@name $arm $($name)?)),*
+                }
+            }
+        }
+    };
+    (@name $arm:ident) => { stringify!($arm) };
+    (@name $arm:ident $name:literal) => { $name };
+}
+
+arms! {
     FILTER,
     UNIQUE,
     SORT,
@@ -2293,7 +2273,7 @@ pub enum F {
     ISERROR,
     ISERR,
     ISNA,
-    ERROR_TYPE,
+    ERROR_TYPE = "ERROR.TYPE",
     ISBLANK,
     ISNUMBER,
     ISTEXT,
@@ -2322,7 +2302,7 @@ pub enum F {
     HARMEAN,
     DEVSQ,
     SKEW,
-    SKEW_P,
+    SKEW_P = "SKEW.P",
     KURT,
     PTP,
     IQR,
@@ -2335,30 +2315,30 @@ pub enum F {
     RSQ,
     KENDALL,
     COVAR,
-    COVARIANCE_P,
-    COVARIANCE_S,
+    COVARIANCE_P = "COVARIANCE.P",
+    COVARIANCE_S = "COVARIANCE.S",
     SLOPE,
     INTERCEPT,
     STEYX,
     RANK,
-    RANK_EQ,
-    RANK_AVG,
+    RANK_EQ = "RANK.EQ",
+    RANK_AVG = "RANK.AVG",
     TRIMMEAN,
     PERCENTRANK,
-    PERCENTRANK_INC,
-    PERCENTRANK_EXC,
+    PERCENTRANK_INC = "PERCENTRANK.INC",
+    PERCENTRANK_EXC = "PERCENTRANK.EXC",
     GCD,
     LCM,
     LARGE,
     SMALL,
     PERCENTILE,
-    PERCENTILE_INC,
-    PERCENTILE_EXC,
+    PERCENTILE_INC = "PERCENTILE.INC",
+    PERCENTILE_EXC = "PERCENTILE.EXC",
     QUARTILE,
-    QUARTILE_INC,
-    QUARTILE_EXC,
+    QUARTILE_INC = "QUARTILE.INC",
+    QUARTILE_EXC = "QUARTILE.EXC",
     MODE,
-    MODE_SNGL,
+    MODE_SNGL = "MODE.SNGL",
     SUMIFS,
     AVERAGEIFS,
     MINIFS,
@@ -2367,11 +2347,11 @@ pub enum F {
     COUNTIF,
     AVERAGEIF,
     STDEV,
-    STDEV_S,
-    STDEV_P,
+    STDEV_S = "STDEV.S",
+    STDEV_P = "STDEV.P",
     VAR,
-    VAR_S,
-    VAR_P,
+    VAR_S = "VAR.S",
+    VAR_P = "VAR.P",
     PRODUCT,
     LEN,
     CONCAT,
@@ -2408,7 +2388,7 @@ pub enum F {
     ATAN2,
     ACOT,
     GAMMALN,
-    GAMMALN_PRECISE,
+    GAMMALN_PRECISE = "GAMMALN.PRECISE",
     SQRTPI,
     ASIN,
     ACOS,
@@ -2428,8 +2408,8 @@ pub enum F {
     CEILING,
     FLOOR,
     MROUND,
-    CEILING_MATH,
-    FLOOR_MATH,
+    CEILING_MATH = "CEILING.MATH",
+    FLOOR_MATH = "FLOOR.MATH",
     EVEN,
     ODD,
     SWITCH,
@@ -2441,42 +2421,42 @@ pub enum F {
     FROMEPOCH,
     TOEPOCH,
     WORKDAY,
-    WORKDAY_INTL,
+    WORKDAY_INTL = "WORKDAY.INTL",
     NETWORKDAYS,
-    NETWORKDAYS_INTL,
+    NETWORKDAYS_INTL = "NETWORKDAYS.INTL",
     XLOOKUP,
     XMATCH,
     TEXT,
-    NORM_DIST,
-    NORM_INV,
-    NORM_S_DIST,
-    NORM_S_INV,
-    CHISQ_DIST,
-    CHISQ_INV,
-    CHISQ_DIST_RT,
-    F_DIST,
-    F_INV,
-    F_DIST_RT,
-    GAMMA_DIST,
-    LOGNORM_DIST,
-    LOGNORM_INV,
-    WEIBULL_DIST,
-    EXPON_DIST,
-    BINOM_DIST,
-    BINOM_INV,
-    POISSON_DIST,
-    HYPGEOM_DIST,
-    NEGBINOM_DIST,
-    T_DIST,
-    T_DIST_RT,
-    T_DIST_2T,
-    T_INV,
-    T_INV_2T,
-    CHISQ_INV_RT,
-    F_INV_RT,
-    GAMMA_INV,
-    BETA_DIST,
-    BETA_INV,
+    NORM_DIST = "NORM.DIST",
+    NORM_INV = "NORM.INV",
+    NORM_S_DIST = "NORM.S.DIST",
+    NORM_S_INV = "NORM.S.INV",
+    CHISQ_DIST = "CHISQ.DIST",
+    CHISQ_INV = "CHISQ.INV",
+    CHISQ_DIST_RT = "CHISQ.DIST.RT",
+    F_DIST = "F.DIST",
+    F_INV = "F.INV",
+    F_DIST_RT = "F.DIST.RT",
+    GAMMA_DIST = "GAMMA.DIST",
+    LOGNORM_DIST = "LOGNORM.DIST",
+    LOGNORM_INV = "LOGNORM.INV",
+    WEIBULL_DIST = "WEIBULL.DIST",
+    EXPON_DIST = "EXPON.DIST",
+    BINOM_DIST = "BINOM.DIST",
+    BINOM_INV = "BINOM.INV",
+    POISSON_DIST = "POISSON.DIST",
+    HYPGEOM_DIST = "HYPGEOM.DIST",
+    NEGBINOM_DIST = "NEGBINOM.DIST",
+    T_DIST = "T.DIST",
+    T_DIST_RT = "T.DIST.RT",
+    T_DIST_2T = "T.DIST.2T",
+    T_INV = "T.INV",
+    T_INV_2T = "T.INV.2T",
+    CHISQ_INV_RT = "CHISQ.INV.RT",
+    F_INV_RT = "F.INV.RT",
+    GAMMA_INV = "GAMMA.INV",
+    BETA_DIST = "BETA.DIST",
+    BETA_INV = "BETA.INV",
     WAVG,
     WVAR,
     WSTDEV,
@@ -2539,7 +2519,7 @@ pub enum F {
     COMBINA,
     PERMUT,
     MULTINOMIAL,
-    BINOM_DIST_RANGE,
+    BINOM_DIST_RANGE = "BINOM.DIST.RANGE",
     CLEAN,
     FISHEREXACT,
     PROPTEST,
@@ -2550,9 +2530,9 @@ pub enum F {
     EDATE,
     CONVERT,
     SPEARMAN,
-    FORECAST_LINEAR,
-    F_TEST,
-    T_TEST,
+    FORECAST_LINEAR = "FORECAST.LINEAR",
+    F_TEST = "F.TEST",
+    T_TEST = "T.TEST",
     PROB,
     FISHERINV,
     LOG2,
@@ -2591,303 +2571,7 @@ pub enum Route {
 /// `name`'s route, resolved once per name and kept.
 pub fn route(name: &str) -> Route {
     thread_local! {
-        static ARMS: crate::fxhash::FxHashMap<&'static str, F> = [
-        ("FILTER", F::FILTER),
-        ("UNIQUE", F::UNIQUE),
-        ("SORT", F::SORT),
-        ("SORTBY", F::SORTBY),
-        ("TAKE", F::TAKE),
-        ("DROP", F::DROP),
-        ("IF", F::IF),
-        ("IFS", F::IFS),
-        ("AND", F::AND),
-        ("OR", F::OR),
-        ("NOT", F::NOT),
-        ("IFERROR", F::IFERROR),
-        ("IFNA", F::IFNA),
-        ("ISERROR", F::ISERROR),
-        ("ISERR", F::ISERR),
-        ("ISNA", F::ISNA),
-        ("ERROR.TYPE", F::ERROR_TYPE),
-        ("ISBLANK", F::ISBLANK),
-        ("ISNUMBER", F::ISNUMBER),
-        ("ISTEXT", F::ISTEXT),
-        ("ISLOGICAL", F::ISLOGICAL),
-        ("ROUND", F::ROUND),
-        ("ROUNDUP", F::ROUNDUP),
-        ("ROUNDDOWN", F::ROUNDDOWN),
-        ("TRUNC", F::TRUNC),
-        ("INT", F::INT),
-        ("ABS", F::ABS),
-        ("SIGN", F::SIGN),
-        ("EXP", F::EXP),
-        ("SQRT", F::SQRT),
-        ("LN", F::LN),
-        ("LOG10", F::LOG10),
-        ("MOD", F::MOD),
-        ("POWER", F::POWER),
-        ("QUOTIENT", F::QUOTIENT),
-        ("SUM", F::SUM),
-        ("MIN", F::MIN),
-        ("MAX", F::MAX),
-        ("AVERAGE", F::AVERAGE),
-        ("MEDIAN", F::MEDIAN),
-        ("AVEDEV", F::AVEDEV),
-        ("GEOMEAN", F::GEOMEAN),
-        ("HARMEAN", F::HARMEAN),
-        ("DEVSQ", F::DEVSQ),
-        ("SKEW", F::SKEW),
-        ("SKEW.P", F::SKEW_P),
-        ("KURT", F::KURT),
-        ("PTP", F::PTP),
-        ("IQR", F::IQR),
-        ("MAD", F::MAD),
-        ("SEM", F::SEM),
-        ("CV", F::CV),
-        ("RMS", F::RMS),
-        ("CORREL", F::CORREL),
-        ("PEARSON", F::PEARSON),
-        ("RSQ", F::RSQ),
-        ("KENDALL", F::KENDALL),
-        ("COVAR", F::COVAR),
-        ("COVARIANCE.P", F::COVARIANCE_P),
-        ("COVARIANCE.S", F::COVARIANCE_S),
-        ("SLOPE", F::SLOPE),
-        ("INTERCEPT", F::INTERCEPT),
-        ("STEYX", F::STEYX),
-        ("RANK", F::RANK),
-        ("RANK.EQ", F::RANK_EQ),
-        ("RANK.AVG", F::RANK_AVG),
-        ("TRIMMEAN", F::TRIMMEAN),
-        ("PERCENTRANK", F::PERCENTRANK),
-        ("PERCENTRANK.INC", F::PERCENTRANK_INC),
-        ("PERCENTRANK.EXC", F::PERCENTRANK_EXC),
-        ("GCD", F::GCD),
-        ("LCM", F::LCM),
-        ("LARGE", F::LARGE),
-        ("SMALL", F::SMALL),
-        ("PERCENTILE", F::PERCENTILE),
-        ("PERCENTILE.INC", F::PERCENTILE_INC),
-        ("PERCENTILE.EXC", F::PERCENTILE_EXC),
-        ("QUARTILE", F::QUARTILE),
-        ("QUARTILE.INC", F::QUARTILE_INC),
-        ("QUARTILE.EXC", F::QUARTILE_EXC),
-        ("MODE", F::MODE),
-        ("MODE.SNGL", F::MODE_SNGL),
-        ("SUMIFS", F::SUMIFS),
-        ("AVERAGEIFS", F::AVERAGEIFS),
-        ("MINIFS", F::MINIFS),
-        ("MAXIFS", F::MAXIFS),
-        ("COUNTIFS", F::COUNTIFS),
-        ("COUNTIF", F::COUNTIF),
-        ("AVERAGEIF", F::AVERAGEIF),
-        ("STDEV", F::STDEV),
-        ("STDEV.S", F::STDEV_S),
-        ("STDEV.P", F::STDEV_P),
-        ("VAR", F::VAR),
-        ("VAR.S", F::VAR_S),
-        ("VAR.P", F::VAR_P),
-        ("PRODUCT", F::PRODUCT),
-        ("LEN", F::LEN),
-        ("CONCAT", F::CONCAT),
-        ("CONCATENATE", F::CONCATENATE),
-        ("MID", F::MID),
-        ("LEFT", F::LEFT),
-        ("RIGHT", F::RIGHT),
-        ("UPPER", F::UPPER),
-        ("LOWER", F::LOWER),
-        ("TRIM", F::TRIM),
-        ("REPT", F::REPT),
-        ("SUBSTITUTE", F::SUBSTITUTE),
-        ("YEAR", F::YEAR),
-        ("MONTH", F::MONTH),
-        ("DAY", F::DAY),
-        ("SIN", F::SIN),
-        ("COS", F::COS),
-        ("TAN", F::TAN),
-        ("ATAN", F::ATAN),
-        ("SINH", F::SINH),
-        ("COSH", F::COSH),
-        ("TANH", F::TANH),
-        ("ASINH", F::ASINH),
-        ("COT", F::COT),
-        ("COTH", F::COTH),
-        ("ACOTH", F::ACOTH),
-        ("SEC", F::SEC),
-        ("SECH", F::SECH),
-        ("CSC", F::CSC),
-        ("CSCH", F::CSCH),
-        ("DEGREES", F::DEGREES),
-        ("RADIANS", F::RADIANS),
-        ("LOG", F::LOG),
-        ("ATAN2", F::ATAN2),
-        ("ACOT", F::ACOT),
-        ("GAMMALN", F::GAMMALN),
-        ("GAMMALN.PRECISE", F::GAMMALN_PRECISE),
-        ("SQRTPI", F::SQRTPI),
-        ("ASIN", F::ASIN),
-        ("ACOS", F::ACOS),
-        ("ACOSH", F::ACOSH),
-        ("ATANH", F::ATANH),
-        ("HOUR", F::HOUR),
-        ("MINUTE", F::MINUTE),
-        ("SECOND", F::SECOND),
-        ("EOMONTH", F::EOMONTH),
-        ("WEEKDAY", F::WEEKDAY),
-        ("WEEKNUM", F::WEEKNUM),
-        ("ISOWEEKNUM", F::ISOWEEKNUM),
-        ("DAYS", F::DAYS),
-        ("TIME", F::TIME),
-        ("PI", F::PI),
-        ("EXACT", F::EXACT),
-        ("CEILING", F::CEILING),
-        ("FLOOR", F::FLOOR),
-        ("MROUND", F::MROUND),
-        ("CEILING.MATH", F::CEILING_MATH),
-        ("FLOOR.MATH", F::FLOOR_MATH),
-        ("EVEN", F::EVEN),
-        ("ODD", F::ODD),
-        ("SWITCH", F::SWITCH),
-        ("REPLACE", F::REPLACE),
-        ("DATEDIF", F::DATEDIF),
-        ("DAYS360", F::DAYS360),
-        ("YEARFRAC", F::YEARFRAC),
-        ("DATETRUNC", F::DATETRUNC),
-        ("FROMEPOCH", F::FROMEPOCH),
-        ("TOEPOCH", F::TOEPOCH),
-        ("WORKDAY", F::WORKDAY),
-        ("WORKDAY.INTL", F::WORKDAY_INTL),
-        ("NETWORKDAYS", F::NETWORKDAYS),
-        ("NETWORKDAYS.INTL", F::NETWORKDAYS_INTL),
-        ("XLOOKUP", F::XLOOKUP),
-        ("XMATCH", F::XMATCH),
-        ("TEXT", F::TEXT),
-        ("NORM.DIST", F::NORM_DIST),
-        ("NORM.INV", F::NORM_INV),
-        ("NORM.S.DIST", F::NORM_S_DIST),
-        ("NORM.S.INV", F::NORM_S_INV),
-        ("CHISQ.DIST", F::CHISQ_DIST),
-        ("CHISQ.INV", F::CHISQ_INV),
-        ("CHISQ.DIST.RT", F::CHISQ_DIST_RT),
-        ("F.DIST", F::F_DIST),
-        ("F.INV", F::F_INV),
-        ("F.DIST.RT", F::F_DIST_RT),
-        ("GAMMA.DIST", F::GAMMA_DIST),
-        ("LOGNORM.DIST", F::LOGNORM_DIST),
-        ("LOGNORM.INV", F::LOGNORM_INV),
-        ("WEIBULL.DIST", F::WEIBULL_DIST),
-        ("EXPON.DIST", F::EXPON_DIST),
-        ("BINOM.DIST", F::BINOM_DIST),
-        ("BINOM.INV", F::BINOM_INV),
-        ("POISSON.DIST", F::POISSON_DIST),
-        ("HYPGEOM.DIST", F::HYPGEOM_DIST),
-        ("NEGBINOM.DIST", F::NEGBINOM_DIST),
-        ("T.DIST", F::T_DIST),
-        ("T.DIST.RT", F::T_DIST_RT),
-        ("T.DIST.2T", F::T_DIST_2T),
-        ("T.INV", F::T_INV),
-        ("T.INV.2T", F::T_INV_2T),
-        ("CHISQ.INV.RT", F::CHISQ_INV_RT),
-        ("F.INV.RT", F::F_INV_RT),
-        ("GAMMA.INV", F::GAMMA_INV),
-        ("BETA.DIST", F::BETA_DIST),
-        ("BETA.INV", F::BETA_INV),
-        ("WAVG", F::WAVG),
-        ("WVAR", F::WVAR),
-        ("WSTDEV", F::WSTDEV),
-        ("COUNTDISTINCT", F::COUNTDISTINCT),
-        ("ARGMAX", F::ARGMAX),
-        ("ARGMIN", F::ARGMIN),
-        ("LENGTH", F::LENGTH),
-        ("DATEVALUE", F::DATEVALUE),
-        ("TIMEVALUE", F::TIMEVALUE),
-        ("FIXED", F::FIXED),
-        ("INDEX", F::INDEX),
-        ("CONTAINS", F::CONTAINS),
-        ("PMT", F::PMT),
-        ("FV", F::FV),
-        ("PV", F::PV),
-        ("NPER", F::NPER),
-        ("IPMT", F::IPMT),
-        ("PPMT", F::PPMT),
-        ("CLAMP", F::CLAMP),
-        ("BETWEEN", F::BETWEEN),
-        ("ISBOOLEAN", F::ISBOOLEAN),
-        ("ISCLOSE", F::ISCLOSE),
-        ("HYPOTENUSE", F::HYPOTENUSE),
-        ("NAND", F::NAND),
-        ("NOR", F::NOR),
-        ("XNOR", F::XNOR),
-        ("STANDARDIZE", F::STANDARDIZE),
-        ("FISHER", F::FISHER),
-        ("SLN", F::SLN),
-        ("ORDINAL", F::ORDINAL),
-        ("TEXTBEFORE", F::TEXTBEFORE),
-        ("TEXTAFTER", F::TEXTAFTER),
-        ("REVERSETEXT", F::REVERSETEXT),
-        ("PADTEXT", F::PADTEXT),
-        ("TRUNCATETEXT", F::TRUNCATETEXT),
-        ("NUMBERVALUE", F::NUMBERVALUE),
-        ("SEARCH", F::SEARCH),
-        ("PROPER", F::PROPER),
-        ("CHAR", F::CHAR),
-        ("UNICHAR", F::UNICHAR),
-        ("CODE", F::CODE),
-        ("UNICODE", F::UNICODE),
-        ("VALUE", F::VALUE),
-        ("TEXTJOIN", F::TEXTJOIN),
-        ("FIND", F::FIND),
-        ("XOR", F::XOR),
-        ("COUNT", F::COUNT),
-        ("COUNTA", F::COUNTA),
-        ("COUNTBLANK", F::COUNTBLANK),
-        ("ISEVEN", F::ISEVEN),
-        ("ISODD", F::ISODD),
-        ("ISNONTEXT", F::ISNONTEXT),
-        ("N", F::N),
-        ("T", F::T),
-        ("CHOOSE", F::CHOOSE),
-        ("DATE", F::DATE),
-        ("FACT", F::FACT),
-        ("FACTDOUBLE", F::FACTDOUBLE),
-        ("COMBIN", F::COMBIN),
-        ("COMBINA", F::COMBINA),
-        ("PERMUT", F::PERMUT),
-        ("MULTINOMIAL", F::MULTINOMIAL),
-        ("BINOM.DIST.RANGE", F::BINOM_DIST_RANGE),
-        ("CLEAN", F::CLEAN),
-        ("FISHEREXACT", F::FISHEREXACT),
-        ("PROPTEST", F::PROPTEST),
-        ("BINOMTEST", F::BINOMTEST),
-        ("ROW", F::ROW),
-        ("TODAY", F::TODAY),
-        ("NOW", F::NOW),
-        ("EDATE", F::EDATE),
-        ("CONVERT", F::CONVERT),
-        ("SPEARMAN", F::SPEARMAN),
-        ("FORECAST.LINEAR", F::FORECAST_LINEAR),
-        ("F.TEST", F::F_TEST),
-        ("T.TEST", F::T_TEST),
-        ("PROB", F::PROB),
-        ("FISHERINV", F::FISHERINV),
-        ("LOG2", F::LOG2),
-        ("REGEXTEST", F::REGEXTEST),
-        ("REGEXEXTRACT", F::REGEXEXTRACT),
-        ("REGEXREPLACE", F::REGEXREPLACE),
-        ("ENCODEURL", F::ENCODEURL),
-        ("DECODEURL", F::DECODEURL),
-        ("ENCODEBASE64", F::ENCODEBASE64),
-        ("DECODEBASE64", F::DECODEBASE64),
-        ("UNACCENT", F::UNACCENT),
-        ("SPELLNUMBER", F::SPELLNUMBER),
-        ("HASH", F::HASH),
-        ("SLUGIFY", F::SLUGIFY),
-        ("TEMPLATE", F::TEMPLATE),
-        ("VALUETOTEXT", F::VALUETOTEXT),
-        ("DOLLAR", F::DOLLAR),
-        ("TEXTSPLIT", F::TEXTSPLIT),
-        ("WRAPTEXT", F::WRAPTEXT),
-        ].into_iter().collect();
+        static ARMS: crate::fxhash::FxHashMap<&'static str, F> = F::ALL.iter().map(|&f| (f.name(), f)).collect();
         static ROUTES: std::cell::RefCell<crate::fxhash::FxHashMap<String, Route>> = std::cell::RefCell::new(Default::default());
     }
     if let Some(r) = ROUTES.with(|r| r.borrow().get(name).copied()) {
@@ -2939,7 +2623,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         return call_function(name, &flat);
     }
-    let f = match route(name) {
+    let arm = match route(name) {
         Route::Arm(f) => f,
         Route::Mod_formulajs => return crate::formulajs::call(name, a),
         Route::Mod_fns_matrix => return crate::fns_matrix::call(name, a),
@@ -2949,7 +2633,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         Route::Finance => return finance_function(name, a),
         Route::None => return V::Undef,
     };
-    match f {
+    match arm {
         F::FILTER | F::UNIQUE | F::SORT | F::SORTBY | F::TAKE | F::DROP => crate::shapers::call(name, a),
         F::IF => {
             let test = match arg(a, 0) {
@@ -2979,7 +2663,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             V::err(sol_error("#N/A", "No IFS condition matched"))
         }
         F::AND | F::OR => {
-            let and = name == "AND";
+            let and = arm == F::AND;
             let mut result: Option<bool> = None;
             for v in a {
                 if let V::Fx(_) = v {
@@ -3013,7 +2697,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if n.is_nan() || digits.is_nan() {
                 return value_err(name);
             }
-            V::Num(round_digits(n, digits, match f { F::ROUND => "round", F::ROUNDUP => "roundup", _ => "rounddown" }))
+            V::Num(round_digits(n, digits, match arm { F::ROUND => "round", F::ROUNDUP => "roundup", _ => "rounddown" }))
         }
         F::TRUNC => {
             let (n, d) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
@@ -3028,7 +2712,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
         }
         F::INT | F::ABS | F::SIGN => match parse_number(arg(a, 0)) {
-            V::Num(n) => V::Num(match f {
+            V::Num(n) => V::Num(match arm {
                 F::INT => n.floor(),
                 F::ABS => n.abs(),
                 _ => {
@@ -3070,7 +2754,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if n <= 0.0 {
                 return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));
             }
-            V::Num(if name == "LN" { crate::fdlibm::log(n) } else { crate::fdlibm::log10(n) })
+            V::Num(if arm == F::LN { crate::fdlibm::log(n) } else { crate::fdlibm::log10(n) })
         }
         F::MOD => {
             let (x, y) = (to_num(arg(a, 0)), opt_num(arg(a, 1), 0.0));
@@ -3107,7 +2791,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if nums.is_empty() {
                 return V::Num(0.0);
             }
-            aggregate(if name == "MIN" { "min" } else { "max" }, &nums)
+            aggregate(if arm == F::MIN { "min" } else { "max" }, &nums)
         }
         F::AVERAGE => aggregate("avg", &nums_of(a)),
         F::MEDIAN => aggregate("median", &nums_of(a)),
@@ -3122,7 +2806,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::RSQ => pearson(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), true),
         F::KENDALL => kendall_tau(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
         F::COVAR | F::COVARIANCE_P | F::COVARIANCE_S => {
-            covariance(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), name == "COVARIANCE.S")
+            covariance(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), arm == F::COVARIANCE_S)
         }
         F::SLOPE | F::INTERCEPT | F::STEYX => {
             regression(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), name)
@@ -3135,8 +2819,8 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             let value = to_num(arg(a, 0));
             match arg(a, 1) {
-                V::List(refs) => excel_rank(value, refs, name == "RANK.AVG", o != 0.0),
-                V::Null | V::Undef => excel_rank(value, &[], name == "RANK.AVG", o != 0.0),
+                V::List(refs) => excel_rank(value, refs, arm == F::RANK_AVG, o != 0.0),
+                V::Null | V::Undef => excel_rank(value, &[], arm == F::RANK_AVG, o != 0.0),
                 _ if value.is_nan() => value_err("RANK"),
                 // `ref.filter` on anything but a list is a TypeError.
                 _ => throw(sol_error("#VALUE!", "ref.filter is not a function")),
@@ -3162,20 +2846,20 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             };
             let sig = arg(a, 2);
             let sig = if matches!(sig, V::Null | V::Undef) { 3.0 } else { to_num(sig).trunc() };
-            excel_percent_rank(&arr, to_num(arg(a, 1)), sig, name == "PERCENTRANK.EXC")
+            excel_percent_rank(&arr, to_num(arg(a, 1)), sig, arm == F::PERCENTRANK_EXC)
         }
-        F::GCD | F::LCM => gcd_lcm(name == "GCD", &nums_of(a)),
-        F::LARGE | F::SMALL => nth_extreme(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "LARGE"),
+        F::GCD | F::LCM => gcd_lcm(arm == F::GCD, &nums_of(a)),
+        F::LARGE | F::SMALL => nth_extreme(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), arm == F::LARGE),
         F::PERCENTILE | F::PERCENTILE_INC | F::PERCENTILE_EXC => {
-            percentile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "PERCENTILE.EXC")
+            percentile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), arm == F::PERCENTILE_EXC)
         }
         F::QUARTILE | F::QUARTILE_INC | F::QUARTILE_EXC => {
-            quartile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "QUARTILE.EXC")
+            quartile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), arm == F::QUARTILE_EXC)
         }
         F::MODE | F::MODE_SNGL => mode_single(&nums_of(a)),
         F::SUMIFS | F::AVERAGEIFS | F::MINIFS | F::MAXIFS => {
             use crate::excel_criteria::{as_range, criteria_aggregate, ifs_pairs, Kind};
-            let kind = match f {
+            let kind = match arm {
                 F::SUMIFS => Kind::Sum,
                 F::AVERAGEIFS => Kind::Average,
                 F::MINIFS => Kind::Min,
@@ -3237,20 +2921,20 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             };
             let n = match parse_number(if matches!(num_chars, V::Undef) { &V::Num(1.0) } else { num_chars }) {
                 V::Num(n) => n,
-                e => return if name == "LEFT" { V::Fx("#VALUE!") } else { e },
+                e => return if arm == F::LEFT { V::Fx("#VALUE!") } else { e },
             };
-            if name == "LEFT" {
+            if arm == F::LEFT {
                 V::str(&from_utf16(&text[..clamp_index(n, text.len())]))
             } else {
                 V::str(&from_utf16(&text[clamp_index(text.len() as f64 - n, text.len())..]))
             }
         }
         F::UPPER | F::LOWER | F::TRIM => {
-            if name == "LOWER" && a.len() != 1 {
+            if arm == F::LOWER && a.len() != 1 {
                 return V::Fx("#VALUE!");
             }
             let t = to_str(arg(a, 0));
-            V::str(&match f {
+            V::str(&match arm {
                 F::UPPER => t.to_uppercase(),
                 F::LOWER => t.to_lowercase(),
                 _ => {
@@ -3324,7 +3008,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             match serial_to_utc_parts(n) {
                 None => V::Num(f64::NAN),
-                Some(p) => V::Num(match f {
+                Some(p) => V::Num(match arm {
                     F::YEAR => p.year as f64,
                     F::MONTH => f64::from(p.month),
                     _ => f64::from(p.day),
@@ -3340,7 +3024,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 e => return e,
             };
             let div0 = V::Fx("#DIV/0!");
-            V::Num(match f {
+            V::Num(match arm {
                 F::SIN => sin(n),
                 F::COS => cos(n),
                 F::TAN => crate::fdlibm::tan(n),
@@ -3404,7 +3088,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if x.is_nan() {
                 return value_err(name);
             }
-            if name == "ACOT" {
+            if arm == F::ACOT {
                 // atan(1/x) keeps the digits π/2 − atan(x) cancels away as x grows.
                 return V::Num(if x > 0.0 {
                     crate::fdlibm::atan(1.0 / x)
@@ -3424,7 +3108,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if x.is_nan() {
                 return value_err(name);
             }
-            let outside = match f {
+            let outside = match arm {
                 F::SQRTPI => x < 0.0,
                 F::ASIN | F::ACOS => !(-1.0..=1.0).contains(&x),
                 F::ACOSH => x < 1.0,
@@ -3433,7 +3117,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if outside {
                 return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));
             }
-            V::Num(match f {
+            V::Num(match arm {
                 F::SQRTPI => (x * std::f64::consts::PI).sqrt(),
                 F::ASIN => crate::fdlibm::asin(x),
                 F::ACOS => crate::fdlibm::acos(x),
@@ -3448,7 +3132,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Num(serial_to_ms(n).map_or(f64::NAN, |ms| {
                 let p = parts_of_ms(ms);
-                (match f {
+                (match arm {
                     F::HOUR => p.hours,
                     F::MINUTE => p.minutes,
                     _ => p.seconds,
@@ -3475,7 +3159,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let Some(ms) = serial_to_ms(n) else { return V::Num(f64::NAN) };
             let p = parts_of_ms(ms);
             let dow = p.weekday as f64;
-            V::Num(match f {
+            V::Num(match arm {
                 F::WEEKDAY if rt == 2.0 => (dow + 6.0) % 7.0 + 1.0,
                 F::WEEKDAY if rt == 3.0 => (dow + 6.0) % 7.0,
                 F::WEEKDAY => dow + 1.0,
@@ -3518,7 +3202,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let (n, sig) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
             let (V::Num(n), V::Num(sig)) = (&n, &sig) else { return if n.is_err() { n } else { sig } };
             let (n, sig) = (*n, *sig);
-            match f {
+            match arm {
                 F::CEILING if sig == 0.0 => V::Num(0.0),
                 F::FLOOR if sig == 0.0 || sig.is_nan() => V::Fx("#DIV/0!"),
                 F::CEILING | F::FLOOR if n > 0.0 && sig < 0.0 => V::Fx("#NUM!"),
@@ -3532,11 +3216,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::CEILING_MATH | F::FLOOR_MATH => {
             let raw_sig = arg(a, 1);
             let sig = match raw_sig {
-                V::Undef if name == "CEILING.MATH" => V::Num(if to_f64_js(arg(a, 0)) > 0.0 { 1.0 } else { -1.0 }),
+                V::Undef if arm == F::CEILING_MATH => V::Num(if to_f64_js(arg(a, 0)) > 0.0 { 1.0 } else { -1.0 }),
                 V::Undef => V::Num(1.0),
                 other => parse_number(other),
             };
-            ceiling_floor_math(name == "CEILING.MATH", parse_number(arg(a, 0)), sig, parse_number(arg(a, 2)))
+            ceiling_floor_math(arm == F::CEILING_MATH, parse_number(arg(a, 0)), sig, parse_number(arg(a, 2)))
         }
         F::EVEN => match parse_number(arg(a, 0)) {
             // CEILING.MATH parses again: a NaN (`parseFloat(" ")`) becomes #VALUE! there.
@@ -3602,7 +3286,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if s.is_nan() || e.is_nan() {
                 return value_err(name);
             }
-            let r = if name == "DAYS360" {
+            let r = if arm == F::DAYS360 {
                 date_diff(DiffOp::Days360, s, e, if is_true(arg(a, 2)) { 1.0 } else { 0.0 })
             } else {
                 date_diff(DiffOp::YearFrac, s, e, opt_num(arg(a, 2), 0.0).trunc())
@@ -3632,7 +3316,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             match epoch_unit(arg(a, 1)) {
                 None => V::err(sol_error("#DOMAIN!", format!("{name} unit must be s or ms"))),
-                Some(ms) if name == "FROMEPOCH" => V::Num(crate::date_ops::epoch_to_serial(n, ms)),
+                Some(ms) if arm == F::FROMEPOCH => V::Num(crate::date_ops::epoch_to_serial(n, ms)),
                 Some(ms) => V::Num(crate::date_ops::serial_to_epoch(n, ms)),
             }
         }
@@ -3651,7 +3335,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 ));
             };
             let hol = holiday_set(holidays);
-            let r = if name.starts_with("WORKDAY") {
+            let r = if matches!(arm, F::WORKDAY | F::WORKDAY_INTL) {
                 crate::date_ops::add_workdays(s, n, off, &hol)
             } else {
                 crate::date_ops::network_days(s, n, off, &hol)
@@ -3659,7 +3343,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             r.map_or_else(V::err, V::Num)
         }
         F::XLOOKUP | F::XMATCH => {
-            let (mode_at, search_at) = if name == "XLOOKUP" { (4, 5) } else { (2, 3) };
+            let (mode_at, search_at) = if arm == F::XLOOKUP { (4, 5) } else { (2, 3) };
             let mm = match x_match_mode(arg(a, mode_at)) {
                 Ok(m) => m,
                 Err(e) => return e,
@@ -3671,7 +3355,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let Some(ks) = as_one_dim(arg(a, 1)) else {
                 return V::err(sol_error("#VALUE!", format!("{name}'s lookup array must be a single row or a single column")));
             };
-            let pick: Box<dyn Fn(&V) -> V> = if name == "XLOOKUP" {
+            let pick: Box<dyn Fn(&V) -> V> = if arm == F::XLOOKUP {
                 let values = arg(a, 2);
                 let Some(vs) = as_one_dim(values) else {
                     return V::err(sol_error("#VALUE!", "XLOOKUP's return array must be a single row or a single column"));
@@ -3726,13 +3410,13 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::NEGBINOM_DIST => dist("negbinom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
         F::T_DIST | F::T_DIST_RT | F::T_DIST_2T | F::T_INV | F::T_INV_2T | F::CHISQ_INV_RT | F::F_INV_RT | F::GAMMA_INV => {
             use crate::dists::{bisection_inv, chi_sq_cdf, f_cdf, gamma_cdf, t_cdf, t_pdf};
-            let want = if matches!(name, "F.INV.RT" | "GAMMA.INV") { 3 } else { 2 };
+            let want = if matches!(arm, F::F_INV_RT | F::GAMMA_INV) { 3 } else { 2 };
             let ns: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
             if ns.iter().any(|x| x.is_nan()) {
                 return V::Null;
             }
             let (x, d) = (ns[0], ns[1]);
-            let r = match f {
+            let r = match arm {
                 F::T_DIST | F::T_DIST_RT | F::T_DIST_2T if d <= 0.0 => return dist_domain(),
                 F::T_DIST => if is_true(arg(a, 2)) { t_cdf(x, d) } else { t_pdf(x, d) },
                 F::T_DIST_RT => 1.0 - t_cdf(x, d),
@@ -3748,7 +3432,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if r.is_finite() { V::Num(r) } else { V::Null }
         }
         F::BETA_DIST | F::BETA_INV => {
-            let inv = name == "BETA.INV";
+            let inv = arm == F::BETA_INV;
             let (lo_at, hi_at) = if inv { (3, 4) } else { (4, 5) };
             let bound = |v: &V, d: f64| if matches!(v, V::Null | V::Undef) { d } else { to_num(v) };
             let (lo, hi) = (bound(arg(a, lo_at), 0.0), bound(arg(a, hi_at), 1.0));
@@ -3810,7 +3494,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
                 return e.clone();
             }
-            let max = name == "ARGMAX";
+            let max = arm == F::ARGMAX;
             let mut best: Option<(usize, f64)> = None;
             for (i, v) in arr.iter().enumerate() {
                 let V::Num(x) = v else { continue };
@@ -3829,7 +3513,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let raw = to_str(arg(a, 0));
             let t = js_trim(&raw);
             let bad = |what: &str| V::err(sol_error("#VALUE!", format!("Cannot parse \"{t}\" as a {what}")));
-            if name == "DATEVALUE" {
+            if arm == F::DATEVALUE {
                 return match parse_date(t) {
                     DateReading::Serial(d) if !d.is_nan() => V::Num(d.floor()),
                     DateReading::Ambiguous(e) => V::err(e),
@@ -3971,7 +3655,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             V::Num(math_hypot(&[to_f64_js(x), to_f64_js(y)]))
         }
         F::NAND | F::NOR => {
-            let and = name == "NAND";
+            let and = arm == F::NAND;
             let mut acc: Option<bool> = Some(and);
             for v in a {
                 let t = match logical_or_type_error(v, name) {
@@ -4033,7 +3717,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let instance = if matches!(instance, V::Null | V::Undef) { 1.0 } else { to_num(instance) };
             let flag = |v: &V| to_num(if matches!(v, V::Null | V::Undef) { &V::Num(0.0) } else { v }) == 1.0;
             let r = text_after_before(
-                name == "TEXTAFTER",
+                arm == F::TEXTAFTER,
                 &to_str(arg(a, 0)),
                 &to_str(arg(a, 1)),
                 instance,
@@ -4174,11 +3858,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         F::COUNT => V::Num(a.iter().filter(|v| matches!(v, V::Num(_))).count() as f64),
         F::COUNTA | F::COUNTBLANK => {
             let blanks = a.iter().filter(|v| matches!(v, V::Undef | V::Null) || matches!(v, V::Str(s) if s.is_empty())).count();
-            V::Num(if name == "COUNTA" { a.len() - blanks } else { blanks } as f64)
+            V::Num(if arm == F::COUNTA { a.len() - blanks } else { blanks } as f64)
         }
         F::ISEVEN | F::ISODD => {
             let odd = to_int32(js_number_of(arg(a, 0)).abs().floor()) & 1 == 1;
-            V::Bool(if name == "ISODD" { odd } else { !odd })
+            V::Bool(if arm == F::ISODD { odd } else { !odd })
         }
         F::ISNONTEXT => V::Bool(!matches!(arg(a, 0), V::Str(_))),
         F::N => match arg(a, 0) {
@@ -4240,12 +3924,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         F::CLEAN => V::str(&to_str(arg(a, 0)).chars().filter(|&c| c > '\u{1F}').collect::<String>()),
         F::FISHEREXACT | F::PROPTEST | F::BINOMTEST => {
-            let want = if name == "BINOMTEST" { 3 } else { 4 };
+            let want = if arm == F::BINOMTEST { 3 } else { 4 };
             let v: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
             if v.iter().any(|x| x.is_nan()) {
                 return value_err(name);
             }
-            let p = match f {
+            let p = match arm {
                 F::FISHEREXACT => fisher_exact_p(v[0], v[1], v[2], v[3]),
                 F::PROPTEST => Ok(two_proportion_p(v[0], v[1], v[2], v[3])),
                 _ => binom_test_p(v[0], v[1], v[2]),
@@ -4260,7 +3944,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             None => V::err(sol_error("#NAME?", "ROW() is this row's number, so it only works inside a computed column")),
         },
         F::TODAY | F::NOW => match clock() {
-            Some(c) => V::Num(if name == "TODAY" { c.now.floor() } else { c.now }),
+            Some(c) => V::Num(if arm == F::TODAY { c.now.floor() } else { c.now }),
             None => bail(),
         },
         F::EDATE => fx_edate(arg(a, 0), arg(a, 1)),
@@ -5218,19 +4902,25 @@ fn error_handler(name: &str, a: &[V]) -> V {
 
 // ─── Finance (financeOps.ts, and Formula.js's own) ──────────────────────────────
 
+/// The finance functions that read a whole list of cash flows (`listArgs`).
+const FINANCE_WHOLE: &[&str] = &[
+    "IRR", "MIRR", "XNPV", "XIRR", "MAXDRAWDOWN", "CAGR", "VOLATILITY", "SHARPE", "SORTINO",
+];
+
+/// The rest of the finance functions `finance_function` answers.
+const FINANCE: &[&str] = &[
+    "COUPDAYBS", "COUPDAYSNC", "COUPNCD", "COUPPCD", "COUPNUM", "ACCRINTM", "INTRATE", "RECEIVED", "YIELDDISC",
+    "TBILLEQ", "TBILLPRICE", "TBILLYIELD", "PRICEMAT", "YIELDMAT", "DURATION", "MDURATION", "PRICE", "YIELD",
+    "FVSCHEDULE", "CUMIPMT", "CUMPRINC", "VDB", "ODDFPRICE", "ODDFYIELD", "ODDLPRICE", "ODDLYIELD", "NPV", "RATE",
+    "DB", "DDB", "SYD", "EFFECT", "NOMINAL", "PDURATION", "RRI", "DOLLARDE", "DOLLARFR", "ISPMT",
+];
+
 fn is_finance_whole(name: &str) -> bool {
-    matches!(name, "IRR" | "MIRR" | "XNPV" | "XIRR" | "MAXDRAWDOWN" | "CAGR" | "VOLATILITY" | "SHARPE" | "SORTINO")
+    FINANCE_WHOLE.contains(&name)
 }
 
 fn is_finance(name: &str) -> bool {
-    is_finance_whole(name)
-        || matches!(
-            name,
-            "COUPDAYBS" | "COUPDAYSNC" | "COUPNCD" | "COUPPCD" | "COUPNUM" | "ACCRINTM" | "INTRATE" | "RECEIVED" | "YIELDDISC"
-                | "TBILLEQ" | "TBILLPRICE" | "TBILLYIELD" | "PRICEMAT" | "YIELDMAT" | "DURATION" | "MDURATION" | "PRICE" | "YIELD"
-                | "FVSCHEDULE" | "CUMIPMT" | "CUMPRINC" | "VDB" | "ODDFPRICE" | "ODDFYIELD" | "ODDLPRICE" | "ODDLYIELD"
-                | "NPV" | "RATE" | "DB" | "DDB" | "SYD" | "EFFECT" | "NOMINAL" | "PDURATION" | "RRI" | "DOLLARDE" | "DOLLARFR" | "ISPMT"
-        )
+    is_finance_whole(name) || FINANCE.contains(&name)
 }
 
 fn fin(r: crate::finance_ops::Fin) -> V {
@@ -5591,5 +5281,18 @@ fn fx_finance(name: &str, a: &[V]) -> V {
             V::Num(pv * rate * (per / nper - 1.0))
         }
         _ => V::Undef,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A name answered in two places runs only the first `route` finds, and the other body is dead code.
+    #[test]
+    fn every_name_has_one_body() {
+        let mut seen = std::collections::HashSet::new();
+        let twice: Vec<_> = ported_names().into_iter().filter(|n| !seen.insert(*n)).collect();
+        assert!(twice.is_empty(), "answered twice: {twice:?}");
     }
 }
