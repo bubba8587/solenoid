@@ -4,7 +4,7 @@
 //! the outputs, or the error the body threw, beside the fields the body sets on the card for its component.
 //! `tree/specs/computation/node-bodies.md` is the mechanism; `fixtures/core/nodes/` the answers each body is held to.
 
-use crate::error_value::sol_error;
+use crate::error_value::{sol_error, ErrorCode};
 use crate::excel_functions::V;
 use serde_json::{Map, Value as Json};
 use std::rc::Rc;
@@ -40,10 +40,10 @@ pub struct Call {
     pub init: Map<String, Json>,
     pub literals: Map<String, Json>,
     pub string_literals: Map<String, Json>,
-    /// Each input's declared socket type (`declaredTypeOf`) and label, in the card's order.
-    pub sockets: Vec<(String, Option<String>, String)>,
-    /// Each output's key and declared type, in the card's order.
-    pub outputs: Vec<(String, Option<String>)>,
+    /// The inputs, in the card's order.
+    pub sockets: Vec<Socket>,
+    /// The outputs, in the card's order.
+    pub outputs: Vec<Output>,
     /// The inputs as `data()` receives them: a key is there when a cable is, and holds each cable's value.
     pub inputs: Vec<(String, Vec<V>)>,
     pub display: Vec<(String, Shown)>,
@@ -57,6 +57,19 @@ pub struct Call {
     pub matrix_units_out: Vec<(String, Json)>,
 }
 
+/// An input socket: its key, its declared type (`declaredTypeOf`) and its label.
+pub struct Socket {
+    pub key: String,
+    pub ty: Option<String>,
+    pub label: String,
+}
+
+/// An output socket: its key and declared type.
+pub struct Output {
+    pub key: String,
+    pub ty: Option<String>,
+}
+
 /// What a body answers: its outputs in order, or the error it throws (the error guard makes it every output's).
 pub type Answer = Result<Vec<(String, V)>, V>;
 
@@ -64,7 +77,7 @@ pub fn list(items: Vec<V>) -> V {
     V::List(Rc::new(items))
 }
 
-pub fn err(code: &str, message: impl Into<String>) -> V {
+pub fn err(code: ErrorCode, message: impl Into<String>) -> V {
     V::err(sol_error(code, message))
 }
 
@@ -72,17 +85,17 @@ impl Call {
     /// The call as `engine_node` takes it: the sockets, outputs and inputs as lists of pairs, in the card's order.
     pub fn from_json(j: &Json) -> Call {
         let obj = |k: &str| j.get(k).and_then(Json::as_object).cloned().unwrap_or_default();
-        let rows = |k: &str| j.get(k).and_then(Json::as_array).cloned().unwrap_or_default();
+        let rows = |k: &str| j.get(k).and_then(Json::as_array).map(Vec::as_slice).unwrap_or_default();
         let text = |r: &Json, i: usize| r.get(i).and_then(Json::as_str).map(String::from);
         let sockets = rows("sockets")
             .iter()
             .map(|r| {
                 let key = text(r, 0).unwrap_or_default();
                 let label = text(r, 2).unwrap_or_else(|| key.clone());
-                (key, text(r, 1), label)
+                Socket { key, ty: text(r, 1), label }
             })
             .collect();
-        let outputs = rows("outputs").iter().map(|r| (text(r, 0).unwrap_or_default(), text(r, 1))).collect();
+        let outputs = rows("outputs").iter().map(|r| Output { key: text(r, 0).unwrap_or_default(), ty: text(r, 1) }).collect();
         let adopted = |k: &str, at: usize| -> Vec<(String, String)> {
             rows(k).iter().filter_map(|r| Some((text(r, 0)?, text(r, at)?))).collect()
         };
@@ -159,19 +172,19 @@ impl Call {
     }
 
     pub fn label(&self, key: &str) -> String {
-        self.sockets.iter().find(|(k, _, _)| k == key).map(|(_, _, l)| l.clone()).unwrap_or_else(|| key.to_string())
+        self.sockets.iter().find(|s| s.key == key).map_or_else(|| key.to_string(), |s| s.label.clone())
     }
 
     /// `node.inputs[key].socket.dataType`: the adopted type, else the declared one.
     pub fn input_type(&self, key: &str) -> Option<&str> {
         self.adopted_in.iter().find(|(k, _)| k == key).map(|(_, t)| t.as_str())
-            .or_else(|| self.sockets.iter().find(|(k, _, _)| k == key).and_then(|(_, t, _)| t.as_deref()))
+            .or_else(|| self.sockets.iter().find(|s| s.key == key).and_then(|s| s.ty.as_deref()))
     }
 
     /// `node.outputs[key].socket.dataType`.
     pub fn output_type(&self, key: &str) -> Option<&str> {
         self.adopted_out.iter().find(|(k, _)| k == key).map(|(_, t)| t.as_str())
-            .or_else(|| self.outputs.iter().find(|(k, _)| k == key).and_then(|(_, t)| t.as_deref()))
+            .or_else(|| self.outputs.iter().find(|o| o.key == key).and_then(|o| o.ty.as_deref()))
     }
 
     /// `matrixUnitOf(inputs[key][0])`.
@@ -221,12 +234,9 @@ pub struct NodeReply {
 
 pub fn reply(args: &Json) -> NodeReply {
     let kind = args.get("kind").and_then(Json::as_str).unwrap_or("");
+    let _calc = crate::excel_functions::Calc::begin(args.get("clock").and_then(|j| serde_json::from_value(j.clone()).ok()));
     let mut c = Call::from_json(args);
-    crate::excel_functions::set_clock(args.get("clock").and_then(|j| serde_json::from_value(j.clone()).ok()));
     let answer = run(kind, &mut c);
-    crate::excel_functions::set_clock(None);
-    crate::excel_functions::take_bailed();
-    crate::excel_functions::take_thrown();
     // A field the body shows is often the output itself (`cachedResult = result`): it carries the output's unit too.
     let mut matrix_units = c.matrix_units_out;
     if let Some(Ok(outs)) = &answer {

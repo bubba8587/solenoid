@@ -1,6 +1,8 @@
 //! [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero. `nodes/logic.ts`: comparisons, IF and its kin, the Boolean
 //! reducers and the parity tests.
 
+use crate::frame::FrameColType;
+use crate::error_value::ErrorCode;
 use super::kit::core_call;
 use super::scalar::{read_role, Role};
 use super::units::{adopt_reading, currency_mismatch, dim_of, magnitude_of, shown};
@@ -81,11 +83,11 @@ fn kleene_or(a: Option<bool>, b: Option<bool>) -> Option<bool> {
 fn if_test(v: &V) -> V {
     match v {
         V::Null | V::Err(_) | V::Bool(_) => v.clone(),
-        V::Num(n) if n.is_nan() => err("#VALUE!", "A condition is not a number"),
+        V::Num(n) if n.is_nan() => err(ErrorCode::Value, "A condition is not a number"),
         V::Num(n) => V::Bool(*n != 0.0),
         V::Str(s) if crate::jsnum::js_lower(s) == "true" => V::Bool(true),
         V::Str(s) if crate::jsnum::js_lower(s) == "false" => V::Bool(false),
-        _ => err("#VALUE!", "A condition needs a logical. Text counts only as TRUE or FALSE"),
+        _ => err(ErrorCode::Value, "A condition needs a logical. Text counts only as TRUE or FALSE"),
     }
 }
 
@@ -142,7 +144,7 @@ fn strict_eq(a: &V, b: &V) -> bool {
 
 /// The keys of the card's inputs that start with `prefix`, in the card's order.
 fn keys_from(c: &Call, prefix: &str) -> Vec<String> {
-    c.sockets.iter().filter(|(k, _, _)| k.starts_with(prefix)).map(|(k, _, _)| k.clone()).collect()
+    c.sockets.iter().filter(|s| s.key.starts_with(prefix)).map(|s| s.key.clone()).collect()
 }
 
 fn answer(c: &mut Call, out: &str, result: V) -> Answer {
@@ -296,7 +298,7 @@ fn choose(c: &mut Call) -> Answer {
     let key = (idx >= 1.0 && idx <= keys.len() as f64).then(|| keys[idx as usize - 1].clone());
     select(c, key.as_deref());
     let Some(key) = key else {
-        let e = err("#VALUE!", format!("CHOOSE index {} is outside the range 1–{}", crate::jsnum::number_to_string(idx), keys.len()));
+        let e = err(ErrorCode::Value, format!("CHOOSE index {} is outside the range 1–{}", crate::jsnum::number_to_string(idx), keys.len()));
         return answer(c, "result", e);
     };
     let result = pick_slot(c, &key);
@@ -319,7 +321,7 @@ fn switch(c: &mut Call) -> Answer {
     }
     select(c, Some("default"));
     if !is_set(c, "default") {
-        return answer(c, "result", err("#N/A", "No SWITCH case matched and no Default was set"));
+        return answer(c, "result", err(ErrorCode::NotAvailable, "No SWITCH case matched and no Default was set"));
     }
     let v = pick_slot(c, "default");
     answer(c, "result", v)
@@ -347,7 +349,7 @@ fn ifs(c: &mut Call) -> Answer {
     }
     select(c, Some("otherwise"));
     if !is_set(c, "otherwise") {
-        return answer(c, "result", err("#N/A", "No IFS condition matched and no Otherwise was set"));
+        return answer(c, "result", err(ErrorCode::NotAvailable, "No IFS condition matched and no Otherwise was set"));
     }
     let v = pick_slot(c, "otherwise");
     answer(c, "result", v)
@@ -367,7 +369,7 @@ fn is_even_odd(c: &mut Call) -> Answer {
 // ─── IFERROR, IS.TEST ([[B17]] typedValueModel) ──────────────────────────────────────────────────────────────────────
 
 fn is_na(v: &V) -> bool {
-    matches!(v, V::Err(e) if e.code == "#N/A")
+    matches!(v, V::Err(e) if e.code == ErrorCode::NotAvailable)
 }
 
 fn if_error(c: &mut Call) -> Answer {
@@ -385,21 +387,21 @@ fn if_error(c: &mut Call) -> Answer {
 }
 
 /// `fitsColumn`: whether a fallback can sit in a column of this type without blending families.
-fn fits_column(fallback: &V, ty: Option<&str>) -> bool {
+fn fits_column(fallback: &V, ty: Option<FrameColType>) -> bool {
     let Some(ty) = ty else { return true };
     match fallback {
         V::Null | V::Undef => true,
         f if f.is_sol_error() => true,
-        V::Num(_) | V::Unit(_) => ty == "number" || ty == "date",
-        V::Str(_) => ty == "string",
-        V::Bool(_) => ty == "logical",
+        V::Num(_) | V::Unit(_) => matches!(ty, FrameColType::Number | FrameColType::Date),
+        V::Str(_) => ty == FrameColType::String,
+        V::Bool(_) => ty == FrameColType::Logical,
         _ => false,
     }
 }
 
 /// `replaceCaught`: each caught cell becomes the fallback, item by item in a list, cell by cell in a Frame or Cube,
 /// where a fallback that doesn't suit its column is that cell's `#TYPE!`.
-fn replace_caught(value: &V, fallback: &V, caught: &dyn Fn(&V) -> bool, ty: Option<&str>) -> V {
+fn replace_caught(value: &V, fallback: &V, caught: &dyn Fn(&V) -> bool, ty: Option<FrameColType>) -> V {
     match value {
         V::List(items) => list(
             items
@@ -416,33 +418,33 @@ fn replace_caught(value: &V, fallback: &V, caught: &dyn Fn(&V) -> bool, ty: Opti
         ),
         V::Frame(_) | V::Cube(_) => {
             if matches!(fallback, V::List(_) | V::Frame(_) | V::Cube(_)) {
-                return err("#VALUE!", "Over a Frame or Cube the fallback is one value, used for every caught cell");
+                return err(ErrorCode::Value, "Over a Frame or Cube the fallback is one value, used for every caught cell");
             }
-            let cell_for = |cell: &V, name: &str, ty: Option<&str>| match cell {
+            let cell_for = |cell: &V, name: &str, ty: Option<FrameColType>| match cell {
                 V::Frame(_) | V::Cube(_) | V::List(_) => replace_caught(cell, fallback, caught, ty),
                 x if !caught(x) => x.clone(),
                 _ if fits_column(fallback, ty) => fallback.clone(),
-                _ => err("#TYPE!", format!("The fallback doesn't fit column \"{name}\", which holds {} values", ty.unwrap_or("undefined"))),
+                _ => err(ErrorCode::Type, format!("The fallback doesn't fit column \"{name}\", which holds {} values", ty.map_or("undefined", FrameColType::as_str))),
             };
             match value {
                 V::Frame(f) => V::Frame(Rc::new(Frame {
                     columns: f
                         .columns
                         .iter()
-                        .map(|col| Column { raw: None, values: col.values.iter().map(|v| cell_for(v, &col.name, Some(&col.ty))).collect(), ..col.clone() })
+                        .map(|col| Column { raw: None, values: col.values.iter().map(|v| cell_for(v, &col.name, Some(col.ty))).collect(), ..col.clone() })
                         .collect(),
                     total_rows: None,
                     approx: None,
                 })),
                 V::Cube(q) => V::Cube(Rc::new(Cube {
-                    columns: q.columns.iter().map(|col| CubeColumn { cells: col.cells.iter().map(|v| cell_for(v, &col.name, col.ty.as_deref())).collect(), ..col.clone() }).collect(),
+                    columns: q.columns.iter().map(|col| CubeColumn { cells: col.cells.iter().map(|v| cell_for(v, &col.name, col.ty)).collect(), ..col.clone() }).collect(),
                 })),
                 _ => unreachable!(),
             }
         }
         v if !caught(v) => v.clone(),
         _ if fits_column(fallback, ty) => fallback.clone(),
-        _ => err("#TYPE!", format!("The fallback doesn't fit this column, which holds {} values", ty.unwrap_or("undefined"))),
+        _ => err(ErrorCode::Type, format!("The fallback doesn't fit this column, which holds {} values", ty.map_or("undefined", FrameColType::as_str))),
     }
 }
 

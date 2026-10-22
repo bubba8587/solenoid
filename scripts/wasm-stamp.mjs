@@ -15,8 +15,9 @@ export const MODULES = {
 const SKIP = /(^|\/)(tests\/|README\.md$)/;
 
 export function sourceStamp(root = ".", module = "core") {
-  const files = execFileSync("git", ["ls-files", "-z", ...MODULES[module].roots], { cwd: root }).toString().split("\0")
-    .filter((f) => f && !SKIP.test(f.slice(f.indexOf("/", "crates/".length) + 1))).sort();
+  // Mid-merge, ls-files lists an unmerged file once per stage.
+  const listed = execFileSync("git", ["ls-files", "-z", ...MODULES[module].roots], { cwd: root }).toString().split("\0");
+  const files = [...new Set(listed)].filter((f) => f && !SKIP.test(f.slice(f.indexOf("/", "crates/".length) + 1))).sort();
   const h = createHash("sha256");
   for (const f of files) {
     h.update(f);

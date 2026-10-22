@@ -5,8 +5,8 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-use crate::error_value::sol_error;
-use crate::excel_functions::{if_test_pub, js_number_pub, to_num_pub, Cond, V};
+use crate::error_value::{ErrorCode, sol_error};
+use crate::excel_functions::{if_test, js_number_of, to_num, Cond, V};
 use crate::fxhash::{FxHashMap, FxHashSet};
 use crate::jsnum::{math_round, number_to_string};
 use crate::js_sort::js_sort_by;
@@ -184,13 +184,13 @@ fn truthy(v: &V) -> bool {
 
 /// `sortOrder`: 1 ascends, -1 descends.
 fn sort_order(f: &str, o: &V) -> Result<bool, V> {
-    let n = if absent(o) { 1.0 } else { to_num_pub(o) };
+    let n = if absent(o) { 1.0 } else { to_num(o) };
     if n == 1.0 {
         Ok(false)
     } else if n == -1.0 {
         Ok(true)
     } else {
-        Err(V::err(sol_error("#VALUE!", format!("{f}: sort_order is 1 or -1"))))
+        Err(V::err(sol_error(ErrorCode::Value, format!("{f}: sort_order is 1 or -1"))))
     }
 }
 
@@ -229,7 +229,7 @@ fn drop_slice<T: Clone>(arr: &[T], n: f64) -> Vec<T> {
 
 /// `Math.round(Number(v))`.
 fn rounded(v: &V) -> f64 {
-    math_round(js_number_pub(v))
+    math_round(js_number_of(v))
 }
 
 /// UNIQUE's row key: `JSON.stringify` of the row, an error as `\0err:<code>`; NaN and the infinities read as null.
@@ -262,18 +262,18 @@ fn filter(a: &[V]) -> V {
     let (m, list) = as_rows_of(v);
     let (dir, vals) = line_shape(include);
     let Some(rows) = line_axis(&m, &[dir]) else {
-        return V::err(sol_error("#VALUE!", "FILTER: include must be one row or one column"));
+        return V::err(sol_error(ErrorCode::Value, "FILTER: include must be one row or one column"));
     };
     let n = axis_count(&m, rows);
     if vals.len() != n {
         return V::err(sol_error(
-            "#VALUE!",
+            ErrorCode::Value,
             format!("FILTER: include has {} values but the data has {n} {}", vals.len(), axis_noun(rows)),
         ));
     }
     let mut keep = Vec::new();
     for (i, x) in vals.iter().enumerate() {
-        match if_test_pub(x) {
+        match if_test(x) {
             Cond::Err(e) => return e,
             Cond::Bool(true) => keep.push(i),
             _ => {}
@@ -325,7 +325,7 @@ fn sort(a: &[V]) -> V {
         Err(e) => return e,
     };
     let (m, list) = as_rows_of(v);
-    let index = if absent(arg(a, 1)) { 1.0 } else { to_num_pub(arg(a, 1)) };
+    let index = if absent(arg(a, 1)) { 1.0 } else { to_num(arg(a, 1)) };
     let by_col = truthy(arg(a, 3));
     let g = if by_col { transpose(&m) } else { m.clone() };
     let width = g.first().map_or(0, Vec::len);
@@ -334,7 +334,7 @@ fn sort(a: &[V]) -> V {
     }
     if !(index.fract() == 0.0 && index >= 1.0 && index <= width as f64) {
         return V::err(sol_error(
-            "#VALUE!",
+            ErrorCode::Value,
             format!("SORT: sort_index {} is outside the {width} {}", number_to_string(index), if by_col { "rows" } else { "columns" }),
         ));
     }
@@ -367,12 +367,12 @@ fn sort_by(a: &[V]) -> V {
     }
     let lines: Vec<(Option<Dir>, Vec<V>)> = keys.iter().map(|(k, _)| line_shape(k)).collect();
     let Some(rows) = line_axis(&m, &lines.iter().map(|l| l.0).collect::<Vec<_>>()) else {
-        return V::err(sol_error("#VALUE!", "SORTBY: every sort key must be one row or one column, all the same way"));
+        return V::err(sol_error(ErrorCode::Value, "SORTBY: every sort key must be one row or one column, all the same way"));
     };
     let n = axis_count(&m, rows);
     if let Some((_, bad)) = lines.iter().find(|l| l.1.len() != n) {
         return V::err(sol_error(
-            "#VALUE!",
+            ErrorCode::Value,
             format!("SORTBY: a sort key has {} values but the table has {n} {}", bad.len(), axis_noun(rows)),
         ));
     }
@@ -389,7 +389,7 @@ fn take(a: &[V]) -> V {
     let n = if absent(arg(a, 1)) { None } else { Some(rounded(arg(a, 1))) };
     let c = if absent(arg(a, 2)) { None } else { Some(rounded(arg(a, 2))) };
     if n == Some(0.0) || c == Some(0.0) {
-        return V::err(sol_error("#DOMAIN!", "TAKE of 0 keeps nothing (Excel: #CALC!)"));
+        return V::err(sol_error(ErrorCode::Domain, "TAKE of 0 keeps nothing (Excel: #CALC!)"));
     }
     let (m, list) = as_rows_of(v);
     let cut: Grid = m.iter().map(|r| c.map_or_else(|| r.clone(), |c| take_slice(r, c))).collect();
@@ -407,7 +407,7 @@ fn drop(a: &[V]) -> V {
     let gone = |len: usize, k: f64| len > 0 && k.abs() >= len as f64;
     let (m, list) = as_rows_of(v);
     if gone(m.len(), n) || gone(m.first().map_or(0, Vec::len), c) {
-        return V::err(sol_error("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)"));
+        return V::err(sol_error(ErrorCode::Domain, "DROP would leave nothing (Excel: #CALC!)"));
     }
     let cut: Grid = m.iter().map(|r| if cols_given { drop_slice(r, c) } else { r.clone() }).collect();
     back_to_list(drop_slice(&cut, n), list)

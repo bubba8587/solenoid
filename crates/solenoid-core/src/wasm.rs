@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 
 use crate::binary::{decode_frame, Columnar};
-use crate::error_value::SolError;
+use crate::error_value::{ErrorCode, SolError};
 use crate::frame::get_column;
 use crate::frame_backend::{get, invoke, register};
 use crate::wire::error_to_wire;
@@ -29,7 +29,7 @@ pub fn engine_invoke(command: &str, args: &str) -> String {
         },
         Ok(parsed) if command == "engine_node" => format!("{{\"ok\":{}}}", serde_json::to_string(&crate::nodes::reply(&parsed)).expect("a card's reply serializes")),
         Ok(parsed) => reply(invoke(command, &parsed)),
-        Err(e) => reply(Err(crate::error_value::sol_error("#ERROR!", e.to_string()))),
+        Err(e) => reply(Err(crate::error_value::sol_error(ErrorCode::Error, e.to_string()))),
     }
 }
 

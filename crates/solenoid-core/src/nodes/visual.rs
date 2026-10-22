@@ -2,6 +2,8 @@
 //! cards, each answering its chart whole as `V::Json` (tagged as `nodeWire.ts` `jsonEnc` writes it), with the option
 //! reader (`chartOptions.ts`), the XY reader (`xyPlot.ts`) and the frame-column readers they share.
 
+use crate::frame::FrameColType;
+use crate::error_value::ErrorCode;
 use super::scalar::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, Frame};
 use crate::date_serial::{format_date_serial, DEFAULT_DATE_FORMAT};
@@ -112,7 +114,7 @@ fn opt_nums(items: &[Option<f64>]) -> Json {
 
 /// What the error guard answers for a TypeError the TS body throws.
 fn crashed(message: &str) -> V {
-    err("#ERROR!", format!("This node failed to compute: {message}"))
+    err(ErrorCode::Error, format!("This node failed to compute: {message}"))
 }
 
 // ─── Reading the card ───────────────────────────────────────────────────────────
@@ -362,12 +364,12 @@ fn date_pattern(format: Option<&Json>) -> String {
 }
 
 /// `formatFrameCell`: an error as its code, a logical as TRUE or FALSE, a date as its text, the rest as it is.
-fn format_cell(ty: &str, v: &V, format: Option<&Json>) -> V {
+fn format_cell(ty: FrameColType, v: &V, format: Option<&Json>) -> V {
     match v {
         V::Undef => V::Null,
-        V::Err(e) => V::str(&e.code),
+        V::Err(e) => V::str(e.code.as_str()),
         V::Bool(b) => V::str(if *b { "TRUE" } else { "FALSE" }),
-        V::Num(n) if ty == "date" && n.is_finite() => V::str(&format_date_serial(*n, &date_pattern(format))),
+        V::Num(n) if ty == FrameColType::Date && n.is_finite() => V::str(&format_date_serial(*n, &date_pattern(format))),
         other => other.clone(),
     }
 }
@@ -382,7 +384,7 @@ fn cell(col: &Column, r: usize) -> V {
 
 /// A shown cell as `String(...)` reads it, or `None` for a blank.
 fn shown_text(col: &Column, r: usize, format: Option<&Json>) -> Option<String> {
-    match format_cell(&col.ty, &cell(col, r), format) {
+    match format_cell(col.ty, &cell(col, r), format) {
         V::Null => None,
         v => Some(js_string_of(&v)),
     }
@@ -405,7 +407,7 @@ fn col_numbers(col: Option<&Column>) -> Vec<Option<f64>> {
     let Some(col) = col else { return Vec::new() };
     col.values
         .iter()
-        .map(|v| match format_cell(&col.ty, v, None) {
+        .map(|v| match format_cell(col.ty, v, None) {
             V::Num(n) if n.is_finite() => Some(n),
             V::Str(s) if !js_trim(&s).is_empty() => Some(string_to_number(&s)).filter(|n| n.is_finite()),
             _ => None,
@@ -422,34 +424,34 @@ fn frame_columns(v: &V) -> &[Column] {
 }
 
 /// `typedColumn`: the cells as one column of its known type, else the type every present cell shares.
-fn typed_column(name: &str, cells: &[V], rows: usize, known: Option<&str>) -> Column {
+fn typed_column(name: &str, cells: &[V], rows: usize, known: Option<FrameColType>) -> Column {
     let present: Vec<&V> = cells.iter().filter(|c| !matches!(c, V::Null | V::Undef | V::Err(_))).collect();
-    let ty = known.map(String::from).unwrap_or_else(|| {
+    let ty = known.unwrap_or_else(|| {
         let all = |f: fn(&V) -> bool| !present.is_empty() && present.iter().all(|c| f(c));
         if all(|c| matches!(c, V::Num(_))) {
-            "number".into()
+            FrameColType::Number
         } else if all(|c| matches!(c, V::Bool(_))) {
-            "logical".into()
+            FrameColType::Logical
         } else {
-            "string".into()
+            FrameColType::String
         }
     });
     let values = (0..rows)
         .map(|i| match cells.get(i) {
             None | Some(V::Null | V::Undef) => V::Null,
             Some(e @ V::Err(_)) => e.clone(),
-            Some(c) => match ty.as_str() {
-                "string" => match c {
+            Some(c) => match ty {
+                FrameColType::String => match c {
                     V::Str(_) => c.clone(),
                     _ => V::str(&js_string_of(c)),
                 },
-                "logical" => match c {
+                FrameColType::Logical => match c {
                     V::Bool(_) => c.clone(),
                     V::Num(n) => V::Bool(*n != 0.0),
                     V::Str(s) => V::Bool(js_lower(js_trim(s)) == "true"),
                     _ => V::Bool(false),
                 },
-                _ => match c {
+                FrameColType::Number | FrameColType::Date => match c {
                     V::Num(_) => c.clone(),
                     V::Bool(b) => V::Num(f64::from(u8::from(*b))),
                     V::Str(s) => V::Num(string_to_number(s)),
@@ -471,7 +473,7 @@ fn flat_cube(cube: &Cube) -> Frame {
         .filter(|col| !nested(&col.cells))
         .map(|col| {
             let cells: Vec<V> = col.cells.iter().map(|v| if let V::Unit(u) = v { V::Num(u.value) } else { v.clone() }).collect();
-            Column { format: col.format.clone(), ..typed_column(&col.name, &cells, rows, col.ty.as_deref()) }
+            Column { format: col.format.clone(), ..typed_column(&col.name, &cells, rows, col.ty) }
         })
         .collect();
     Frame { columns, ..Frame::default() }
@@ -570,7 +572,7 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
         let key = js_lower(js_trim(name)).into_owned();
         cols.iter()
             .position(|c| js_lower(js_trim(&c.name)) == key)
-            .ok_or_else(|| err("#REF!", format!("The options name a {role} column \"{name}\", which the data doesn't have")))
+            .ok_or_else(|| err(ErrorCode::Ref, format!("The options name a {role} column \"{name}\", which the data doesn't have")))
     };
     let named = |k: &str, role: &str| opts.get(k).and_then(Json::as_str).map(|n| find(n, role)).transpose();
     let x_named = named("x", "x");
@@ -583,7 +585,7 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
     let (xn, sn, cn, tn, byn) = (x_named?, s_named?, c_named?, t_named?, by_named?);
     let yn = y_named.transpose()?;
     let mut taken: Vec<usize> = [xn, sn, cn, tn, byn].into_iter().flatten().chain(yn.iter().flatten().copied()).collect();
-    let mut pool: Vec<usize> = (0..cols.len()).filter(|i| cols[*i].ty == "number" && !taken.contains(i)).collect();
+    let mut pool: Vec<usize> = (0..cols.len()).filter(|i| cols[*i].ty == FrameColType::Number && !taken.contains(i)).collect();
     let take = |pool: &mut Vec<usize>, taken: &mut Vec<usize>| {
         if pool.is_empty() {
             return None;
@@ -619,8 +621,8 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
         }
     }
     for (i, role) in y_cols.iter().map(|i| (*i, "y")).chain(s_col.map(|i| (i, "size"))) {
-        if cols[i].ty != "number" {
-            return Err(err("#TYPE!", format!("Column \"{}\" is the {role} column but holds {}, not numbers", cols[i].name, cols[i].ty)));
+        if cols[i].ty != FrameColType::Number {
+            return Err(err(ErrorCode::Type, format!("Column \"{}\" is the {role} column but holds {}, not numbers", cols[i].name, cols[i].ty)));
         }
     }
     if y_cols.is_empty() {
@@ -631,7 +633,7 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
     let mut xcats: Option<Vec<String>> = None;
     let x_at: Vec<Option<f64>> = match x_col {
         None => (0..rows).map(|r| Some((r + 1) as f64)).collect(),
-        Some(x) if cols[x].ty == "number" || cols[x].ty == "date" => (0..rows).map(|r| finite(&cell(&cols[x], r))).collect(),
+        Some(x) if cols[x].ty == FrameColType::Number || cols[x].ty == FrameColType::Date => (0..rows).map(|r| finite(&cell(&cols[x], r))).collect(),
         Some(x) => {
             let (mut cats, mut idx) = (Vec::new(), HashMap::new());
             let out = (0..rows)
@@ -649,7 +651,7 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
     };
     let c_at = |r: usize| -> Option<Json> {
         let ci = cn?;
-        if cols[ci].ty == "number" { finite(&cell(&cols[ci], r)).map(jn) } else { text(ci, r).map(Json::String) }
+        if cols[ci].ty == FrameColType::Number { finite(&cell(&cols[ci], r)).map(jn) } else { text(ci, r).map(Json::String) }
     };
     let mut groups: Vec<(Option<String>, Vec<usize>)> = Vec::new();
     match byn {
@@ -746,7 +748,7 @@ fn build_xy(op: &str, raw: &V, opts: &Obj) -> Result<Option<Obj>, V> {
     if let Some(cats) = xcats {
         p.insert("xcats".into(), strs(&cats));
     }
-    if x_col.is_some_and(|x| cols[x].ty == "date") {
+    if x_col.is_some_and(|x| cols[x].ty == FrameColType::Date) {
         p.insert("xDate".into(), Json::Bool(true));
     }
     p.insert("names".into(), Json::Object(names));
@@ -835,7 +837,7 @@ fn chart(c: &mut Call) -> Answer {
         };
         if op == "radar" && cols.len() >= 2 {
             let label_col = &cols[0];
-            let num_cols: Vec<&Column> = cols[1..].iter().filter(|c| c.ty == "number").collect();
+            let num_cols: Vec<&Column> = cols[1..].iter().filter(|c| c.ty == FrameColType::Number).collect();
             labels = Some(num_cols.iter().map(|c| V::str(&c.name)).collect());
             let rows: Vec<(String, Vec<V>)> = (0..label_col.values.len())
                 .map(|r| {
@@ -846,11 +848,11 @@ fn chart(c: &mut Call) -> Answer {
             v = rows.first().map_or(V::Null, |(_, vs)| list(vs.clone()));
             series = many(&rows);
         } else if cols.len() >= 2 {
-            labels = Some((0..cols[0].values.len()).map(|r| match format_cell(&cols[0].ty, &cell(&cols[0], r), None) {
+            labels = Some((0..cols[0].values.len()).map(|r| match format_cell(cols[0].ty, &cell(&cols[0], r), None) {
                 V::Null => V::str(""),
                 x => x,
             }).collect());
-            let rows: Vec<(String, Vec<V>)> = cols[1..].iter().filter(|c| c.ty == "number").map(|c| (c.name.clone(), num_col(c))).collect();
+            let rows: Vec<(String, Vec<V>)> = cols[1..].iter().filter(|c| c.ty == FrameColType::Number).map(|c| (c.name.clone(), num_col(c))).collect();
             v = rows.first().map_or(V::Null, |(_, vs)| list(vs.clone()));
             series = many(&rows);
         } else {
@@ -937,7 +939,7 @@ fn candlestick(c: &mut Call) -> Answer {
         return Ok(vec![("chart".into(), V::Null)]);
     }
     if cols.len() < 4 {
-        let e = err("#SHAPE!", "Candlestick needs Open, High, Low and Close columns (a date column first is optional)");
+        let e = err(ErrorCode::Shape, "Candlestick needs Open, High, Low and Close columns (a date column first is optional)");
         c.show("cachedChart", e.clone());
         return Ok(vec![("chart".into(), e)]);
     }
@@ -1013,7 +1015,7 @@ fn merge_plots(c: &mut Call) -> Answer {
     let keys: Vec<String> = c
         .sockets
         .iter()
-        .map(|(k, _, _)| k.clone())
+        .map(|s| s.key.clone())
         .filter(|k| k.len() > 1 && k.starts_with('p') && k[1..].bytes().all(|b| b.is_ascii_digit()))
         .collect();
     let mut sources: Vec<(Rc<Json>, usize)> = Vec::new();
@@ -1025,7 +1027,7 @@ fn merge_plots(c: &mut Call) -> Answer {
         }
         let op = field(&cv, "op");
         if !op.and_then(Json::as_str).is_some_and(|o| PLANAR_OPS.contains(&o)) {
-            refusal.get_or_insert_with(|| err("#TYPE!", format!("Plot {} is a {} chart, which has no x/y plane to overlay", i + 1, json_text(op))));
+            refusal.get_or_insert_with(|| err(ErrorCode::Type, format!("Plot {} is a {} chart, which has no x/y plane to overlay", i + 1, json_text(op))));
             continue;
         }
         sources.push((cv, i + 1));
@@ -1174,11 +1176,11 @@ fn source_as_xy(cv: &Json, plot_no: usize) -> Result<XySource, V> {
     }
     let op = field(cv, "op");
     if let Some(o @ ("column" | "bar")) = op.and_then(Json::as_str) {
-        return Err(err("#TYPE!", format!("Plot {plot_no} is a {o} chart; bars can't share an x/y plane with a scatter or XY line")));
+        return Err(err(ErrorCode::Type, format!("Plot {plot_no} is a {o} chart; bars can't share an x/y plane with a scatter or XY line")));
     }
     let labels = field(cv, "labels").and_then(Json::as_array).filter(|l| !l.is_empty());
     if labels.is_some_and(|l| !l.iter().all(Json::is_number)) {
-        return Err(err("#TYPE!", format!("Plot {plot_no} plots against text labels, so it can't share an x/y plane with a scatter or XY line")));
+        return Err(err(ErrorCode::Type, format!("Plot {plot_no} plots against text labels, so it can't share an x/y plane with a scatter or XY line")));
     }
     let x_at = |i: usize| match labels {
         Some(l) => l.get(i).cloned().unwrap_or_else(undef),
@@ -1234,7 +1236,7 @@ fn merge_xy(sources: &[(Rc<Json>, usize)]) -> Result<Json, V> {
     let text_x = got.iter().find(|(_, g)| has_cats(g));
     let num_x = got.iter().find(|(_, g)| !has_cats(g));
     if let (Some((t, _)), Some((n, _))) = (text_x, num_x) {
-        return Err(err("#TYPE!", format!("Plot {t} plots against text x values and plot {n} against numbers, so they have no one x axis")));
+        return Err(err(ErrorCode::Type, format!("Plot {t} plots against text x values and plot {n} against numbers, so they have no one x axis")));
     }
     let mut xcats: Vec<Json> = Vec::new();
     let mut at: HashMap<String, usize> = HashMap::new();
@@ -1308,7 +1310,7 @@ fn merge_xy(sources: &[(Rc<Json>, usize)]) -> Result<Json, V> {
 fn bin_count(k: &V) -> Result<f64, V> {
     match k {
         V::Num(n) if n.is_finite() && n.floor() >= 1.0 => Ok(*n),
-        _ => Err(err("#DOMAIN!", "Bins must be 1 or more")),
+        _ => Err(err(ErrorCode::Domain, "Bins must be 1 or more")),
     }
 }
 
@@ -1559,7 +1561,7 @@ fn sankey(c: &mut Call) -> Answer {
     let drawable = sources.iter().zip(&targets).zip(&values).any(|((s, t), v)| !s.is_empty() && !t.is_empty() && s != t && *v > 0.0);
     if dropped > 0 && !drawable {
         c.show("cachedPayload", V::Null);
-        return Ok(vec![("chart".into(), err("#SHAPE!", "The flows form a loop; a Sankey needs a direction"))]);
+        return Ok(vec![("chart".into(), err(ErrorCode::Shape, "The flows form a loop; a Sankey needs a direction"))]);
     }
     let values = Json::Array(values.iter().map(|n| jn(*n)).collect());
     let payload = json!({ "kind": "sankey", "sources": strs(&sources), "targets": strs(&targets), "values": values });
@@ -1580,8 +1582,8 @@ fn index_names(n: usize) -> Vec<String> {
 
 /// `heatmapFromColumns`: the number columns are the heat columns; a first column that is not numbers names the rows.
 fn heatmap_from_columns(cols: &[Column]) -> Grid {
-    let named = cols.len() >= 2 && cols[0].ty != "number";
-    let data: Vec<&Column> = cols[usize::from(named)..].iter().filter(|c| c.ty == "number").collect();
+    let named = cols.len() >= 2 && cols[0].ty != FrameColType::Number;
+    let data: Vec<&Column> = cols[usize::from(named)..].iter().filter(|c| c.ty == FrameColType::Number).collect();
     let n_rows = data.iter().map(|c| c.values.len()).max().unwrap_or(0);
     let z = (0..n_rows).map(|r| data.iter().map(|col| col.values.get(r).and_then(finite)).collect()).collect();
     let mut rows: Vec<String> = if named { col_strings(cols.first()).into_iter().take(n_rows).collect() } else { index_names(n_rows) };
@@ -1738,7 +1740,7 @@ fn boxplot(c: &mut Call) -> Answer {
     };
     match first(c, "values") {
         V::Frame(f) => {
-            for col in f.columns.iter().filter(|c| c.ty == "number") {
+            for col in f.columns.iter().filter(|c| c.ty == FrameColType::Number) {
                 add(&col.name, col.values.iter().map(finite).collect());
             }
         }

@@ -4,7 +4,7 @@
 
 use super::kit::{broadcast_err, core_call};
 use super::{err, list, Answer, Call};
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_functions::{js_string_of, to_f64_js, V};
 use crate::jsnum::js_trim;
 
@@ -40,7 +40,7 @@ pub(crate) fn required(c: &Call, key: &str) -> V {
         match v {
             V::Err(_) => v.clone(),
             V::List(l) => list(l.iter().map(|x| need(x, label)).collect()),
-            V::Null | V::Undef => err("#SYNTAX!", format!("{label} is blank, and it has no default")),
+            V::Null | V::Undef => err(ErrorCode::Syntax, format!("{label} is blank, and it has no default")),
             other => other.clone(),
         }
     }
@@ -208,14 +208,14 @@ fn wrap_text(c: &mut Call) -> Answer {
         return done(c, "cachedResult", V::Null);
     }
     if to_f64_js(&w) < 1.0 {
-        return done(c, "cachedResult", err("#DOMAIN!", "Width must be at least 1"));
+        return done(c, "cachedResult", err(ErrorCode::Domain, "Width must be at least 1"));
     }
     let r = core_call("WRAPTEXT", &[text, w]);
     done(c, "cachedResult", r)
 }
 
 fn concat(c: &mut Call) -> Answer {
-    let keys: Vec<String> = c.sockets.iter().map(|(k, _, _)| k.clone()).collect();
+    let keys: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).collect();
     let values: Vec<V> = keys
         .iter()
         .map(|k| match str_val(c, k) {
@@ -325,7 +325,7 @@ const ROMAN: [(f64, &str); 13] = [
 fn roman(raw: &V) -> V {
     let n = js_floor(raw);
     if n < 1.0 || n > 3999.0 {
-        return err("#VALUE!", "ROMAN is defined only for 1–3999");
+        return err(ErrorCode::Value, "ROMAN is defined only for 1–3999");
     }
     let mut out = String::new();
     let mut rem = n;
@@ -341,7 +341,7 @@ fn roman(raw: &V) -> V {
 /// The Arabic reading, from the right.
 fn arabic(raw: &V) -> V {
     let V::Str(s) = raw else {
-        return V::err(sol_error("#VALUE!", "ARABIC needs text"));
+        return V::err(sol_error(ErrorCode::Value, "ARABIC needs text"));
     };
     let upper = s.to_uppercase();
     let text = crate::jsnum::js_trim(&upper);
@@ -358,7 +358,7 @@ fn arabic(raw: &V) -> V {
             'X' => 10.0,
             'V' => 5.0,
             'I' => 1.0,
-            _ => return err("#VALUE!", format!("\"{text}\" is not a valid Roman numeral")),
+            _ => return err(ErrorCode::Value, format!("\"{text}\" is not a valid Roman numeral")),
         };
         if v < prev {
             out -= v;
@@ -385,7 +385,7 @@ fn fuzzy_best(needle: &V, cands: &[V], method: &V, threshold: f64) -> Result<Opt
     for cand in cands {
         // `textSimilarity` spreads its text into code points; anything else isn't iterable.
         if !matches!(needle, V::Str(_)) {
-            return Err(err("#ERROR!", "This node failed to compute: a is not iterable"));
+            return Err(err(ErrorCode::Error, "This node failed to compute: a is not iterable"));
         }
         let score = super::list::js_number(&core_call("SIMILARITY", &[needle.clone(), cand.clone(), method.clone()]));
         if score >= threshold && best.as_ref().is_none_or(|(_, b)| score > *b) {
@@ -400,7 +400,7 @@ fn fuzzy_match(c: &mut Call) -> Answer {
     let cands: Vec<V> = match super::list::slot(c, "candidates") {
         V::List(items) => items.iter().filter(|v| matches!(v, V::Str(_))).cloned().collect(),
         V::Null | V::Undef => Vec::new(),
-        _ => return Err(err("#ERROR!", "This node failed to compute: ((intermediate value) ?? []).filter is not a function")),
+        _ => return Err(err(ErrorCode::Error, "This node failed to compute: ((intermediate value) ?? []).filter is not a function")),
     };
     let threshold = match setting(c, "threshold", V::Undef) {
         V::Undef | V::Null => 0.6,
@@ -415,7 +415,7 @@ fn fuzzy_match(c: &mut Call) -> Answer {
         "levenshtein" => "ratio",
         m => m,
     });
-    let na = || err("#N/A", "No candidate is similar enough");
+    let na = || err(ErrorCode::NotAvailable, "No candidate is similar enough");
     let pick = |n: &V| -> Result<(V, V), V> {
         Ok(match fuzzy_best(n, &cands, &method, threshold)? {
             Some((t, s)) => (t, V::Num(s)),
@@ -546,7 +546,7 @@ fn regex(c: &mut Call) -> Answer {
     let re = match crate::js_regex::compile_with(&utf16(&js_string_of(&pattern)), jf) {
         crate::js_regex::Compiled::Ok(re) => re,
         crate::js_regex::Compiled::Invalid => return blank(c),
-        crate::js_regex::Compiled::Unsure => return done(c, "cachedResult", err("#VALUE!", "This pattern uses a feature the engine can't run yet")),
+        crate::js_regex::Compiled::Unsure => return done(c, "cachedResult", err(ErrorCode::Value, "This pattern uses a feature the engine can't run yet")),
     };
     let p = Pattern { re, global, sticky, unicode: jf.unicode || jf.unicode_sets };
     let raw = match c.wired("text") {
@@ -833,7 +833,7 @@ fn cast(c: &mut Call) -> Answer {
         Some(v) => v.clone(),
     };
     let raw = if target == "text" { first } else { super::list::strip_unit_cells(&first) };
-    let has = |k: &str| c.sockets.iter().any(|(s, _, _)| s == k);
+    let has = |k: &str| c.sockets.iter().any(|s| s.key == k);
     let arg = |k: &str| if has(k) { str_val(c, k) } else { V::str("") };
     let (format, decimal, group) = (arg("format"), arg("decimal_sep"), arg("group_sep"));
     if [&format, &decimal, &group].iter().any(|v| matches!(v, V::Null)) {
@@ -842,7 +842,7 @@ fn cast(c: &mut Call) -> Answer {
     let dateish = matches!(c.field("sourceType").and_then(serde_json::Value::as_str), Some("date" | "datelist" | "datecombo" | "datetable"));
     let labels = unit_labels(c);
     let (decimal, group) = (separator(&decimal), separator(&group));
-    let failed = || err("#VALUE!", format!("Could not convert the value to {target}"));
+    let failed = || err(ErrorCode::Value, format!("Could not convert the value to {target}"));
     let one = |x: &V| cast_one(x, &target, &format, dateish, (&decimal, &group), &labels);
     if let V::List(items) = &raw {
         let out: Vec<V> = items.iter().map(|x| one(x).map(|v| if cast_failed(&v) { failed() } else { v })).collect::<Result<_, _>>()?;
@@ -850,7 +850,7 @@ fn cast(c: &mut Call) -> Answer {
             .iter()
             .map(|v| match (v, target.as_str()) {
                 (V::Null, _) | (_, "number" | "date" | "logical") => v.clone(),
-                (V::Err(e), _) => V::str(&e.code),
+                (V::Err(e), _) => V::str(e.code.as_str()),
                 (v, t) => cast_display(v, t),
             })
             .collect();

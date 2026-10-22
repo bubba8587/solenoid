@@ -10,9 +10,10 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_functions::{call_function, to_f64_js, V};
 use crate::frame::FrameCell;
+use crate::spelled::spelled;
 use crate::jsnum::js_trim;
 use crate::string_order::compare_strings;
 use crate::value_kinds::guard_finite;
@@ -28,12 +29,38 @@ pub enum Ast {
     Name(String),
     Call { name: String, args: Vec<Ast> },
     Apply { func: Box<Ast>, args: Vec<Ast> },
-    Unary { op: char, arg: Box<Ast> },
+    Unary { op: UnaryOp, arg: Box<Ast> },
     Percent(Box<Ast>),
-    Bin { op: String, l: Box<Ast>, r: Box<Ast> },
+    Bin { op: BinOp, l: Box<Ast>, r: Box<Ast> },
     Blank,
     AtCol(String),
     WholeCol(String),
+}
+
+spelled! {
+    /// An infix operator, spelled as a formula and the TS tree spell it.
+    pub enum BinOp {
+        Eq = "=",
+        Ne = "<>",
+        Lt = "<",
+        Gt = ">",
+        Le = "<=",
+        Ge = ">=",
+        Concat = "&",
+        Add = "+",
+        Sub = "-",
+        Mul = "*",
+        Div = "/",
+        Pow = "^",
+    }
+}
+
+spelled! {
+    /// A prefix sign.
+    pub enum UnaryOp {
+        Neg = "-",
+        Plus = "+",
+    }
 }
 
 impl Ast {
@@ -46,9 +73,9 @@ impl Ast {
             Ast::Name(n) => json!({ "t": "name", "name": n }),
             Ast::Call { name, args } => json!({ "t": "call", "name": name, "args": args.iter().map(Ast::to_json).collect::<Vec<_>>() }),
             Ast::Apply { func, args } => json!({ "t": "apply", "fn": func.to_json(), "args": args.iter().map(Ast::to_json).collect::<Vec<_>>() }),
-            Ast::Unary { op, arg } => json!({ "t": "unary", "op": op.to_string(), "arg": arg.to_json() }),
+            Ast::Unary { op, arg } => json!({ "t": "unary", "op": op.as_str(), "arg": arg.to_json() }),
             Ast::Percent(a) => json!({ "t": "percent", "arg": a.to_json() }),
-            Ast::Bin { op, l, r } => json!({ "t": "bin", "op": op, "l": l.to_json(), "r": r.to_json() }),
+            Ast::Bin { op, l, r } => json!({ "t": "bin", "op": op.as_str(), "l": l.to_json(), "r": r.to_json() }),
             Ast::Blank => json!({ "t": "blank" }),
             Ast::AtCol(n) => json!({ "t": "atcol", "name": n }),
             Ast::WholeCol(n) => json!({ "t": "wholecol", "name": n }),
@@ -71,9 +98,9 @@ impl Ast {
             "name" => Ast::Name(s("name")?.to_string()),
             "call" => Ast::Call { name: s("name")?.to_string(), args: many()? },
             "apply" => Ast::Apply { func: one("fn")?, args: many()? },
-            "unary" => Ast::Unary { op: s("op")?.chars().next()?, arg: one("arg")? },
+            "unary" => Ast::Unary { op: s("op")?.parse().ok()?, arg: one("arg")? },
             "percent" => Ast::Percent(one("arg")?),
-            "bin" => Ast::Bin { op: s("op")?.to_string(), l: one("l")?, r: one("r")? },
+            "bin" => Ast::Bin { op: s("op")?.parse().ok()?, l: one("l")?, r: one("r")? },
             "blank" => Ast::Blank,
             "atcol" => Ast::AtCol(s("name")?.to_string()),
             "wholecol" => Ast::WholeCol(s("name")?.to_string()),
@@ -277,14 +304,20 @@ impl Parser {
         self.peek().is_some_and(|t| t.k == K::Op && vs.contains(&t.v.as_str()))
     }
 
-    fn bin(op: String, l: Ast, r: Ast) -> Ast {
+    /// The operator token next, if it is one of `ops`.
+    fn peek_bin(&self, ops: &[BinOp]) -> Option<BinOp> {
+        let t = self.peek().filter(|t| t.k == K::Op)?;
+        ops.iter().copied().find(|op| op.as_str() == t.v)
+    }
+
+    fn bin(op: BinOp, l: Ast, r: Ast) -> Ast {
         Ast::Bin { op, l: Box::new(l), r: Box::new(r) }
     }
 
     fn comparison(&mut self) -> Option<Ast> {
         let mut l = self.concat()?;
-        while self.is_op(&["=", "<>", "<", ">", "<=", ">="]) {
-            let op = self.eat().v;
+        while let Some(op) = self.peek_bin(&[BinOp::Eq, BinOp::Ne, BinOp::Lt, BinOp::Gt, BinOp::Le, BinOp::Ge]) {
+            self.eat();
             let r = self.concat()?;
             l = Self::bin(op, l, r);
         }
@@ -293,18 +326,18 @@ impl Parser {
 
     fn concat(&mut self) -> Option<Ast> {
         let mut l = self.add()?;
-        while self.is_op(&["&"]) {
+        while let Some(op) = self.peek_bin(&[BinOp::Concat]) {
             self.eat();
             let r = self.add()?;
-            l = Self::bin("&".into(), l, r);
+            l = Self::bin(op, l, r);
         }
         Some(l)
     }
 
     fn add(&mut self) -> Option<Ast> {
         let mut l = self.mul()?;
-        while self.is_op(&["+", "-"]) {
-            let op = self.eat().v;
+        while let Some(op) = self.peek_bin(&[BinOp::Add, BinOp::Sub]) {
+            self.eat();
             let r = self.mul()?;
             l = Self::bin(op, l, r);
         }
@@ -313,8 +346,8 @@ impl Parser {
 
     fn mul(&mut self) -> Option<Ast> {
         let mut l = self.exp()?;
-        while self.is_op(&["*", "/"]) {
-            let op = self.eat().v;
+        while let Some(op) = self.peek_bin(&[BinOp::Mul, BinOp::Div]) {
+            self.eat();
             let r = self.exp()?;
             l = Self::bin(op, l, r);
         }
@@ -324,10 +357,10 @@ impl Parser {
     // Left-associative, as in Excel: 2^3^2 is 64.
     fn exp(&mut self) -> Option<Ast> {
         let mut l = self.percent()?;
-        while self.is_op(&["^"]) {
+        while let Some(op) = self.peek_bin(&[BinOp::Pow]) {
             self.eat();
             let r = self.percent()?;
-            l = Self::bin("^".into(), l, r);
+            l = Self::bin(op, l, r);
         }
         Some(l)
     }
@@ -342,8 +375,8 @@ impl Parser {
     }
 
     fn unary(&mut self) -> Option<Ast> {
-        if self.is_op(&["-", "+"]) {
-            let op = self.eat().v.chars().next().unwrap();
+        if let Some(op) = self.peek().filter(|t| t.k == K::Op).and_then(|t| t.v.parse::<UnaryOp>().ok()) {
+            self.eat();
             let arg = self.unary()?;
             return Some(Ast::Unary { op, arg: Box::new(arg) });
         }
@@ -490,7 +523,7 @@ pub enum Role {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct Refusal {
-    pub code: String,
+    pub code: ErrorCode,
     pub message: String,
 }
 
@@ -513,12 +546,12 @@ pub(crate) fn call_caught(name: &str, argv: &[V]) -> V {
     let v = call_function(name, argv);
     if crate::excel_functions::thrown_pending() && !crate::excel_functions::bail_pending() {
         crate::excel_functions::take_thrown();
-        return V::err(sol_error("#VALUE!", format!("{name} can't compute with these arguments")));
+        return V::err(sol_error(ErrorCode::Value, format!("{name} can't compute with these arguments")));
     }
     v
 }
 
-fn cell_to_v(c: &FrameCell) -> V {
+pub(crate) fn cell_to_v(c: &FrameCell) -> V {
     match c {
         FrameCell::Null => V::Null,
         FrameCell::Num(n) => V::Num(*n),
@@ -528,9 +561,6 @@ fn cell_to_v(c: &FrameCell) -> V {
     }
 }
 
-pub fn cell_to_v_pub(c: &FrameCell) -> V {
-    cell_to_v(c)
-}
 
 pub(crate) fn guard(result: f64, inputs: &[V]) -> V {
     if result.is_finite() {
@@ -555,7 +585,7 @@ pub fn number_to_text(x: f64) -> String {
     crate::excel_functions::number_to_text(x)
 }
 
-pub(crate) fn apply_op(op: &str, a: &V, b: &V) -> V {
+pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
     if a.is_err() {
         return a.clone();
     }
@@ -567,40 +597,40 @@ pub(crate) fn apply_op(op: &str, a: &V, b: &V) -> V {
     }
     let (na, nb) = (num_of(a), num_of(b));
     let fin = |r: f64| if r.is_finite() { V::Num(r) } else { guard(r, &[na.clone(), nb.clone()]) };
-    if matches!(op, "+" | "-" | "*" | "/" | "^") && (matches!(na, V::Str(_)) || matches!(nb, V::Str(_))) {
-        return V::err(sol_error("#VALUE!", "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE"));
+    if matches!(op, BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow) && (matches!(na, V::Str(_)) || matches!(nb, V::Str(_))) {
+        return V::err(sol_error(ErrorCode::Value, "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE"));
     }
     let xy = || (to_f64_js(&na), to_f64_js(&nb));
     match op {
-        "+" => {
+        BinOp::Add => {
             let (x, y) = xy();
             fin(x + y)
         }
-        "-" => {
+        BinOp::Sub => {
             let (x, y) = xy();
             fin(x - y)
         }
-        "*" => {
+        BinOp::Mul => {
             let (x, y) = xy();
             fin(x * y)
         }
-        "/" => {
+        BinOp::Div => {
             let (x, y) = xy();
             if matches!(nb, V::Num(n) if n == 0.0) && matches!(na, V::Num(_)) {
-                V::err(sol_error("#DIV/0!", "Division by zero"))
+                V::err(sol_error(ErrorCode::DivZero, "Division by zero"))
             } else {
                 fin(x / y)
             }
         }
-        "^" => {
+        BinOp::Pow => {
             let (x, y) = xy();
             if x == 0.0 && y < 0.0 {
-                V::err(sol_error("#DIV/0!", "Zero to a negative power divides by zero"))
+                V::err(sol_error(ErrorCode::DivZero, "Zero to a negative power divides by zero"))
             } else {
                 fin(crate::excel_functions::js_pow(x, y))
             }
         }
-        "&" => {
+        BinOp::Concat => {
             let push = |out: &mut String, v: &V| match v {
                 V::Str(s) => out.push_str(s),
                 V::Bool(b) => out.push_str(if *b { "TRUE" } else { "FALSE" }),
@@ -612,7 +642,7 @@ pub(crate) fn apply_op(op: &str, a: &V, b: &V) -> V {
             push(&mut joined, b);
             V::Str(Rc::from(joined))
         }
-        "=" | "<>" => {
+        BinOp::Eq | BinOp::Ne => {
             let eq = match (a, b) {
                 // Lowercasing allocates, so equal or all-ASCII text skips it; non-ASCII can lowercase into ASCII (K, the Kelvin sign).
                 (V::Str(x), V::Str(y)) => x == y || if x.is_ascii() && y.is_ascii() { x.eq_ignore_ascii_case(y) } else { x.to_lowercase() == y.to_lowercase() },
@@ -623,9 +653,9 @@ pub(crate) fn apply_op(op: &str, a: &V, b: &V) -> V {
                     _ => false,
                 },
             };
-            V::Bool(if op == "=" { eq } else { !eq })
+            V::Bool(if op == BinOp::Eq { eq } else { !eq })
         }
-        "<" | ">" | "<=" | ">=" => {
+        BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
             let cmp = match (&na, &nb) {
                 (V::Num(x), V::Num(y)) => {
                     if x < y {
@@ -637,35 +667,54 @@ pub(crate) fn apply_op(op: &str, a: &V, b: &V) -> V {
                     }
                 }
                 (V::Str(x), V::Str(y)) => compare_strings(x, y) as i32,
-                _ => return V::err(sol_error("#TYPE!", "Cannot order values of different types; Cast one side first")),
+                _ => return V::err(sol_error(ErrorCode::Type, "Cannot order values of different types; Cast one side first")),
             };
             V::Bool(match op {
-                "<" => cmp < 0,
-                ">" => cmp > 0,
-                "<=" => cmp <= 0,
+                BinOp::Lt => cmp < 0,
+                BinOp::Gt => cmp > 0,
+                BinOp::Le => cmp <= 0,
                 _ => cmp >= 0,
             })
         }
-        _ => V::Num(f64::NAN),
     }
 }
 
 
-pub fn tag_computed_cell_pub(v: V) -> FrameCell {
-    tag_computed_cell(v)
-}
 
 /// `tagComputedCell` after `normalizeFxResult`.
-fn tag_computed_cell(v: V) -> FrameCell {
+pub(crate) fn tag_computed_cell(v: V) -> FrameCell {
     match v {
-        V::Num(n) if n.is_nan() => FrameCell::err(sol_error("#DOMAIN!", "The result is undefined: not a number")),
+        V::Num(n) if n.is_nan() => FrameCell::err(sol_error(ErrorCode::Domain, "The result is undefined: not a number")),
         V::Num(n) => FrameCell::Num(n),
         V::Str(s) => FrameCell::Str(s),
         V::Bool(b) => FrameCell::Bool(b),
         V::Null | V::Undef => FrameCell::Null,
         V::Err(e) => FrameCell::Err(e),
         V::Fx(code) => FrameCell::err(crate::excel_functions::fx_error_to_sol(code)),
-        V::List(_) => FrameCell::err(sol_error("#SHAPE!", "A computed column needs one value per row. Use @name to read this row's cell.")),
-        V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => FrameCell::err(sol_error("#VALUE!", "Each row of a computed column must be a number, text, TRUE/FALSE or blank.")),
+        V::List(_) => FrameCell::err(sol_error(ErrorCode::Shape, "A computed column needs one value per row. Use @name to read this row's cell.")),
+        V::Cx(..) | V::Lambda(_) | V::Unit(_) | V::Frame(_) | V::Cube(_) | V::Json(_) => FrameCell::err(sol_error(ErrorCode::Value, "Each row of a computed column must be a number, text, TRUE/FALSE or blank.")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every operator parses from its spelling and crosses the TS tree both ways.
+    #[test]
+    fn every_operator_parses_and_round_trips() {
+        let spelled = ["=", "<>", "<", ">", "<=", ">=", "&", "+", "-", "*", "/", "^"];
+        for s in spelled {
+            let ast = parse_formula(&format!("1{s}2")).unwrap_or_else(|| panic!("1{s}2 parses"));
+            let Ast::Bin { op, .. } = &ast else { panic!("1{s}2 is a binary") };
+            assert_eq!(op.as_str(), s);
+            assert_eq!(Ast::from_json(&ast.to_json()).as_ref(), Some(&ast));
+        }
+        assert_eq!(spelled.len(), BinOp::ALL.len());
+        for s in ["-", "+"] {
+            let ast = parse_formula(&format!("{s}1")).expect("parses");
+            assert!(matches!(&ast, Ast::Unary { op, .. } if op.as_str() == s));
+            assert_eq!(Ast::from_json(&ast.to_json()).as_ref(), Some(&ast));
+        }
     }
 }

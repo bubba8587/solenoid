@@ -1,5 +1,6 @@
 //! [[B16]] oneFormulaSurface. `nodes/scalar.ts`: Arithmetic, Math Function and the other one-number cards.
 
+use crate::error_value::ErrorCode;
 use super::kit::{broadcast_err, core_call, each, guard_finite, num, short_circuit};
 use super::units::{any_dimensioned, arithmetic_cell, broadcast_unit};
 use super::{err, list, Answer, Call};
@@ -55,7 +56,7 @@ fn apply_role(role: &Role, v: &V, label: &str) -> V {
     match (role, v) {
         (_, V::List(items)) => list(items.iter().map(|x| apply_role(role, x, label)).collect()),
         (Role::Setting(blank), V::Null | V::Undef) => blank.clone(),
-        (Role::Required, V::Null | V::Undef) => err("#SYNTAX!", format!("{label} is blank, and it has no default")),
+        (Role::Required, V::Null | V::Undef) => err(ErrorCode::Syntax, format!("{label} is blank, and it has no default")),
         _ => v.clone(),
     }
 }
@@ -113,7 +114,7 @@ fn arithmetic(c: &mut Call) -> Answer {
                 "add" => V::Num(x + y),
                 "sub" => V::Num(x - y),
                 "mul" => V::Num(x * y),
-                "div" if y == 0.0 => err("#DIV/0!", "Division by zero"),
+                "div" if y == 0.0 => err(ErrorCode::DivZero, "Division by zero"),
                 "div" => V::Num(x / y),
                 "mod" => core_call("MOD", &[V::Num(x), V::Num(y)]),
                 "pow" => core_call("POWER", &[V::Num(x), V::Num(y)]),
@@ -222,7 +223,7 @@ fn mround(c: &mut Call) -> Answer {
                 return V::Num(0.0);
             }
             if op == "nearest" && v != 0.0 && sign(v) != sign(m) {
-                return err("#DOMAIN!", "MROUND needs the value and multiple to share a sign");
+                return err(ErrorCode::Domain, "MROUND needs the value and multiple to share a sign");
             }
             // CEILING.MATH and FLOOR.MATH read the multiple's magnitude only; the card's up and down follow its sign.
             match op.as_str() {
@@ -269,7 +270,7 @@ fn combinatorics(c: &mut Call) -> Answer {
         c.show("cachedResult", V::Null);
         return Ok(vec![("result".into(), V::Null)]);
     }
-    let domain = || err("#DOMAIN!", "Counts must be finite and 0 or more");
+    let domain = || err(ErrorCode::Domain, "Counts must be finite and 0 or more");
     let (tn, tk) = (num(&n).trunc(), num(&k).trunc());
     let result = if op == "permutationa" {
         if tn >= 0.0 && tk >= 0.0 { V::Num(crate::excel_functions::js_pow(tn, tk)) } else { domain() }
@@ -280,7 +281,7 @@ fn combinatorics(c: &mut Call) -> Answer {
         core_call(&op.to_uppercase(), &args)
     };
     let result = match result {
-        V::Num(r) if !r.is_finite() => err("#OVERFLOW!", "The result is too large to represent. Reduce N"),
+        V::Num(r) if !r.is_finite() => err(ErrorCode::Overflow, "The result is too large to represent. Reduce N"),
         r => r,
     };
     c.show("cachedResult", result.clone());
@@ -304,7 +305,7 @@ fn two_input_math(c: &mut Call) -> Answer {
                 "atan2" => core_call("ATAN2", &[o[0].clone(), o[1].clone()]),
                 "hypot" => V::Num((x * x + y * y).sqrt()),
                 "log" if x <= 0.0 || y <= 0.0 || matches!(o[1], V::Num(n) if *n == 1.0) => {
-                    err("#DOMAIN!", "LOG needs x > 0 and a base > 0, ≠ 1")
+                    err(ErrorCode::Domain, "LOG needs x > 0 and a base > 0, ≠ 1")
                 }
                 "log" => core_call("LOG", &[o[0].clone(), o[1].clone()]),
                 "delta" => V::Num(if (x - y).abs() < 1e-12 { 1.0 } else { 0.0 }),
@@ -446,7 +447,7 @@ fn math_fx(c: &mut Call) -> Answer {
     let fwd_deg = deg && FORWARD_TRIG.contains(&op.as_str());
     let inv_deg = deg && INVERSE_TRIG.contains(&op.as_str());
     let (deg2rad, rad2deg) = (std::f64::consts::PI / 180.0, 180.0 / std::f64::consts::PI);
-    let domain_err = || err("#DOMAIN!", "Input is outside this function's domain");
+    let domain_err = || err(ErrorCode::Domain, "Input is outside this function's domain");
     let name = if op == "log" { "LN".to_string() } else { op.to_uppercase() };
     let compute_raw = |x: f64| -> Option<f64> {
         if let Some(r) = own_kernel(&op, x) {

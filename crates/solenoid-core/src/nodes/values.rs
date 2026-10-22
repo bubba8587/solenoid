@@ -1,6 +1,7 @@
 //! [[D102]] graphOnCore. The values only cards hand each other, on the wire `nodeWire.ts` speaks: a frame, a cube, and plain data (a chart,
 //! a document, an image) carried whole as JSON whose special numbers and errors are tagged.
 
+use crate::frame::FrameColType;
 use crate::excel_functions::V;
 use serde_json::Value as Json;
 use std::rc::Rc;
@@ -9,7 +10,7 @@ use std::rc::Rc;
 #[derive(Clone, Debug)]
 pub struct Column {
     pub name: String,
-    pub ty: String,
+    pub ty: FrameColType,
     pub values: Vec<V>,
     pub unit: Option<Json>,
     pub format: Option<Json>,
@@ -29,7 +30,7 @@ pub struct Frame {
 pub struct CubeColumn {
     pub name: String,
     pub cells: Vec<V>,
-    pub ty: Option<String>,
+    pub ty: Option<FrameColType>,
     pub format: Option<Json>,
 }
 
@@ -56,7 +57,7 @@ pub fn decode(j: &Json) -> V {
                         .map(|c| CubeColumn {
                             name: c.get("name").and_then(Json::as_str).unwrap_or("").to_string(),
                             cells: c.get("cells").and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default(),
-                            ty: c.get("type").and_then(Json::as_str).map(String::from),
+                            ty: c.get("type").and_then(Json::as_str).and_then(|t| t.parse().ok()),
                             format: c.get("format").cloned(),
                         })
                         .collect()
@@ -74,7 +75,8 @@ pub fn decode(j: &Json) -> V {
 fn column(c: &Json) -> Column {
     Column {
         name: c.get("name").and_then(Json::as_str).unwrap_or("").to_string(),
-        ty: c.get("type").and_then(Json::as_str).unwrap_or("number").to_string(),
+        // The wire carries frame.ts's tags; a column without one is a number column, as `frameCol` makes it.
+        ty: c.get("type").and_then(Json::as_str).and_then(|t| t.parse().ok()).unwrap_or(FrameColType::Number),
         values: c.get("values").and_then(Json::as_array).map(|a| a.iter().map(decode).collect()).unwrap_or_default(),
         unit: c.get("unit").cloned(),
         format: c.get("format").cloned(),
@@ -100,7 +102,7 @@ impl serde::Serialize for Cell<'_> {
 
 /// A frame's or a cube's reply, as `Out` writes the rest: `{"frame": {...}}`, `{"cube": {...}}`, `{"json": ...}`.
 pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S::Error> {
-    use crate::frame_backend::Out;
+    
     use serde::ser::SerializeMap;
     struct Cells<'a>(&'a [V]);
     impl serde::Serialize for Cells<'_> {
@@ -164,7 +166,7 @@ pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S
 }
 
 pub fn serialize_cube<S: serde::Serializer>(c: &Cube, s: S) -> Result<S::Ok, S::Error> {
-    use crate::frame_backend::Out;
+    
     use serde::ser::{SerializeMap, SerializeSeq};
     struct Cells<'a>(&'a [V]);
     impl serde::Serialize for Cells<'_> {

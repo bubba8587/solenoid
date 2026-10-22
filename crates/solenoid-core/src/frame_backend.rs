@@ -10,8 +10,9 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::excel_formula::parse_formula;
+use crate::excel_functions::{take_raised, Calc, Raised};
 use crate::frame::{frame_row_count, get_column, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{append_frames, apply_verb, bind_columns, join_frames, pivot_frame, sample_frame, FrameOp, JoinOpts, TaggedOp};
 use crate::wire::{column_to_wire, encode_cell, wire_to_frame, WireFrame};
@@ -40,13 +41,34 @@ pub(crate) fn register(frame: FrameValue) -> String {
 
 pub(crate) fn get(handle: &str) -> Result<Rc<FrameValue>, SolError> {
     STORE.with(|s| s.borrow().frames.get(handle).cloned()).ok_or_else(|| {
-        sol_error("#REF!", format!("frame handle {handle} not found (dropped or never created)"))
+        sol_error(ErrorCode::Ref, format!("frame handle {handle} not found (dropped or never created)"))
     })
 }
 
-fn parse<T: for<'de> Deserialize<'de>>(args: &Json, key: &str) -> Result<T, SolError> {
-    serde_json::from_value(args.get(key).cloned().unwrap_or(Json::Null))
-        .map_err(|e| sol_error("#ERROR!", format!("bad argument \"{key}\": {e}")))
+fn parse<'a, T: Deserialize<'a>>(args: &'a Json, key: &str) -> Result<T, SolError> {
+    T::deserialize(args.get(key).unwrap_or(&Json::Null)).map_err(|e| sol_error(ErrorCode::Error, format!("bad argument \"{key}\": {e}")))
+}
+
+fn bad_arg(key: &str, want: &str) -> SolError {
+    sol_error(ErrorCode::Error, format!("bad argument \"{key}\": expected {want}"))
+}
+
+/// `args[key]` as a list, borrowed rather than parsed into a copy; `None` where it is absent or null.
+fn list_arg<'a>(args: &'a Json, key: &str) -> Result<Option<&'a [Json]>, SolError> {
+    match args.get(key) {
+        None | Some(Json::Null) => Ok(None),
+        Some(Json::Array(items)) => Ok(Some(items)),
+        Some(_) => Err(bad_arg(key, "a list")),
+    }
+}
+
+/// `args[key]` as an object, borrowed; `None` where it is absent or null.
+fn map_arg<'a>(args: &'a Json, key: &str) -> Result<Option<&'a serde_json::Map<String, Json>>, SolError> {
+    match args.get(key) {
+        None | Some(Json::Null) => Ok(None),
+        Some(Json::Object(m)) => Ok(Some(m)),
+        Some(_) => Err(bad_arg(key, "an object")),
+    }
 }
 
 fn preview_of(f: &FrameValue, n: usize) -> Json {
@@ -54,7 +76,7 @@ fn preview_of(f: &FrameValue, n: usize) -> Json {
     let take = n.min(row_count);
     let rows: Vec<Json> = (0..take).map(|r| Json::Array(f.columns.iter().map(|c| encode_cell(c.cell_at(r))).collect())).collect();
     json!({
-        "schema": f.columns.iter().map(|c| json!({ "name": c.name, "type": c.ty.tag() })).collect::<Vec<_>>(),
+        "schema": f.columns.iter().map(|c| json!({ "name": c.name, "type": c.ty.as_str() })).collect::<Vec<_>>(),
         "rows": rows,
         "rowCount": row_count,
         "truncated": row_count > take,
@@ -168,11 +190,10 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             let handles = parse::<Vec<String>>(args, "handles")?;
             let frames = handles.iter().map(|h| get(h)).collect::<Result<Vec<_>, _>>()?;
             let refs: Vec<&FrameValue> = frames.iter().map(|f| f.as_ref()).collect();
-            let argv: Vec<crate::excel_functions::V> = parse::<Option<Vec<Json>>>(args, "args")?.unwrap_or_default().iter().map(crate::eval::decode_value).collect();
-            crate::excel_functions::take_bailed();
+            let argv: Vec<crate::excel_functions::V> = list_arg(args, "args")?.unwrap_or_default().iter().map(crate::eval::decode_value).collect();
+            let _calc = Calc::begin(None);
             let out = crate::frame_fns::call(&name, &refs, &argv);
-            if crate::excel_functions::take_bailed() {
-                crate::excel_functions::take_thrown();
+            if matches!(take_raised(), Raised::Bailed) {
                 return Ok(json!({ "bail": true }));
             }
             match out {
@@ -242,8 +263,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
         "engine_compute_column" => {
             let f = get(&parse::<String>(args, "handle")?)?;
             let values = |key: &str| -> Result<crate::fxhash::FxHashMap<String, crate::excel_functions::V>, SolError> {
-                let m = parse::<Option<serde_json::Map<String, Json>>>(args, key)?.unwrap_or_default();
-                Ok(m.iter().map(|(k, v)| (k.clone(), crate::eval::decode_value(v))).collect())
+                Ok(map_arg(args, key)?.into_iter().flatten().map(|(k, v)| (k.clone(), crate::eval::decode_value(v))).collect())
             };
             let inputs = crate::eval::ColumnInputs {
                 frame: &f,
@@ -254,21 +274,18 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 rows: parse::<Option<usize>>(args, "rows")?.unwrap_or_else(|| frame_row_count(&f)),
             };
             let lambdas = parse::<Option<Vec<String>>>(args, "lambdas")?.unwrap_or_default();
-            crate::excel_functions::set_clock(parse(args, "clock")?);
-            crate::excel_functions::take_bailed();
+            let _calc = Calc::begin(parse(args, "clock")?);
             let outcome = match args.get("bare") {
                 Some(w) if !w.is_null() => match crate::eval::decode_value(&json!({ "__lambda": w })) {
                     crate::excel_functions::V::Lambda(lam) => crate::eval::column(crate::eval::ColumnSpec::Lambda(&lam), inputs),
                     _ => Ok(crate::eval::ColumnOutcome::Bail),
                 },
                 _ => match crate::excel_formula::parse_formula(&parse::<String>(args, "src")?) {
-                    None => Err(sol_error("#SYNTAX!", "The formula doesn't parse")),
+                    None => Err(sol_error(ErrorCode::Syntax, "The formula doesn't parse")),
                     Some(ast) => crate::eval::column(crate::eval::ColumnSpec::Expr { ast: &ast, lambdas: &lambdas }, inputs),
                 },
             };
-            crate::excel_functions::set_clock(None);
-            if crate::excel_functions::take_bailed() {
-                crate::excel_functions::take_thrown();
+            if matches!(take_raised(), Raised::Bailed) {
                 return Ok(json!({ "bail": true }));
             }
             match outcome {
@@ -316,20 +333,20 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
                 #[serde(rename = "as")]
                 as_: String,
                 #[serde(rename = "type")]
-                ty: String,
+                ty: FrameColType,
             }
             let mut columns = Vec::new();
             for p in parse::<Vec<Part>>(args, "parts")? {
                 let f = get(&p.handle)?;
-                let c = f.columns.iter().find(|c| c.name == p.column).ok_or_else(|| sol_error("#REF!", format!("column \"{}\" not found", p.column)))?;
-                columns.push(FrameColumn { name: p.as_, ty: FrameColType::from_tag(&p.ty), values: c.values.clone() });
+                let c = f.columns.iter().find(|c| c.name == p.column).ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{}\" not found", p.column)))?;
+                columns.push(FrameColumn { name: p.as_, ty: p.ty, values: c.values.clone() });
             }
             Ok(json!(register(FrameValue { columns })))
         }
         "engine_call" | "engine_call_each" | "engine_eval" | "engine_expression_units" | "engine_fold_units" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
         "engine_ported" => Ok(json!(crate::excel_functions::ported_names())),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
-        other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),
+        other => Err(sol_error(ErrorCode::Error, format!("unknown engine command \"{other}\""))),
     }
 }
 
@@ -354,7 +371,7 @@ fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> Opti
         return if crate::eval::is_external(&upper) {
             None
         } else {
-            Some(V::err(sol_error("#NAME?", format!("Unknown function {name}"))))
+            Some(V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}"))))
         };
     }
     if argv.iter().any(crate::unit_dims::holds_unit) && !crate::unit_dims::UNIT_READY.contains(&upper.as_str()) {
@@ -367,27 +384,24 @@ fn call_body(name: &str, argv: &[crate::excel_functions::V], scan: bool) -> Opti
 
 /// `engine_call` (a body by name over wired arguments) and `engine_eval` (a formula over named values).
 pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
-    use crate::excel_functions::{take_thrown, V};
+    use crate::excel_functions::V;
     let arg_of = crate::eval::decode_value;
-    crate::excel_functions::set_clock(parse(args, "clock")?);
+    let _calc = Calc::begin(parse(args, "clock")?);
     let r = if command == "engine_call" {
         let name = parse::<String>(args, "name")?;
-        let argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
+        let argv: Vec<V> = list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
         match call_body(&name, &argv, parse::<Option<bool>>(args, "scan")?.unwrap_or(false)) {
             Some(v) => v,
-            None => {
-                crate::excel_functions::set_clock(None);
-                return Ok(CallReply::Bail);
-            }
+            None => return Ok(CallReply::Bail),
         }
     } else if command == "engine_call_each" {
         // [[C120]] linearWork: one body over many items in one crossing, each call as `engine_call` makes it, the
         // items at the `at` positions. An item that would bail or throw bails the batch, and the TS calls one by one.
         let name = parse::<String>(args, "name")?;
         let scan = parse::<Option<bool>>(args, "scan")?.unwrap_or(false);
-        let mut argv: Vec<V> = parse::<Vec<Json>>(args, "args")?.iter().map(arg_of).collect();
+        let mut argv: Vec<V> = list_arg(args, "args")?.ok_or_else(|| bad_arg("args", "a list"))?.iter().map(arg_of).collect();
         let at = parse::<Vec<usize>>(args, "at")?;
-        let bad = |k: &str| sol_error("#ERROR!", format!("bad argument \"{k}\""));
+        let bad = |k: &str| sol_error(ErrorCode::Error, format!("bad argument \"{k}\""));
         if at.iter().any(|&p| p >= argv.len()) {
             return Err(bad("at"));
         }
@@ -398,23 +412,16 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             for (&p, x) in at.iter().zip(item) {
                 argv[p] = arg_of(x);
             }
-            let v = call_body(&name, &argv, scan);
-            let thrown = take_thrown().is_some();
-            match v {
-                Some(v) if !crate::excel_functions::take_bailed() && !thrown => out.push(v),
-                _ => {
-                    crate::excel_functions::set_clock(None);
-                    crate::excel_functions::take_bailed();
-                    return Ok(CallReply::Bail);
-                }
+            match (call_body(&name, &argv, scan), take_raised()) {
+                (Some(v), Raised::Nothing) => out.push(v),
+                _ => return Ok(CallReply::Bail),
             }
         }
-        crate::excel_functions::set_clock(None);
         return Ok(CallReply::Each(out));
     } else if command == "engine_expression_units" {
         // [[C25]] firstClassUnits: Expression's unit wrapper over its read inputs.
         let src = parse::<String>(args, "src")?;
-        let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
+        let env: crate::eval::Env = map_arg(args, "env")?.ok_or_else(|| bad_arg("env", "an object"))?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
         let order = parse::<Option<Vec<String>>>(args, "order")?.unwrap_or_default();
         crate::unit_expression::expression_units(&src, &env, &order).unwrap_or_else(crate::excel_functions::bail)
     } else if command == "engine_fold_units" {
@@ -426,26 +433,21 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             _ => FoldKind::ByCol,
         };
         let src = parse::<String>(args, "src")?;
-        let (m, initial) = (arg_of(&parse::<Json>(args, "m")?), arg_of(&parse::<Option<Json>>(args, "initial")?.unwrap_or(Json::Null)));
+        let (m, initial) = (arg_of(args.get("m").unwrap_or(&Json::Null)), arg_of(args.get("initial").unwrap_or(&Json::Null)));
         crate::unit_fold::fold_units(kind, &src, &m, &initial).unwrap_or_else(crate::excel_functions::bail)
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;
-        let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
+        let env: crate::eval::Env = map_arg(args, "env")?.ok_or_else(|| bad_arg("env", "an object"))?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
         if crate::eval::take_missing() || env.values().any(crate::unit_dims::holds_unit) {
-            crate::excel_functions::set_clock(None);
             return Ok(CallReply::Bail);
         }
-        crate::eval::formula(&src, env).unwrap_or_else(|| V::err(crate::error_value::sol_error("#SYNTAX!", "The formula doesn't parse")))
+        crate::eval::formula(&src, env).unwrap_or_else(|| V::err(crate::error_value::sol_error(ErrorCode::Syntax, "The formula doesn't parse")))
     };
-    crate::excel_functions::set_clock(None);
-    if crate::excel_functions::take_bailed() {
-        take_thrown();
-        return Ok(CallReply::Bail);
-    }
-    Ok(match take_thrown() {
-        Some(e) => CallReply::Thrown(e.message),
-        None => CallReply::Value(r),
+    Ok(match take_raised() {
+        Raised::Bailed => CallReply::Bail,
+        Raised::Thrown(e) => CallReply::Thrown(e.message),
+        Raised::Nothing => CallReply::Value(r),
     })
 }
 

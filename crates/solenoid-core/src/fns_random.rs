@@ -5,7 +5,8 @@
 
 use crate::dists::{bisection_inv, compute, Form};
 use crate::error_value::sol_error;
-use crate::excel_functions::{js_number_pub as js_number, js_string_of, parse_number, to_num, V};
+use crate::error_value::{ErrorCode, FxError};
+use crate::excel_functions::{js_number_of as js_number, js_string_of, parse_number, to_num, V};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_round, number_to_string};
 use std::rc::Rc;
 
@@ -52,7 +53,7 @@ fn list(items: Vec<V>) -> V {
     V::List(Rc::new(items))
 }
 
-fn err(code: &str, msg: impl Into<String>) -> V {
+fn err(code: ErrorCode, msg: impl Into<String>) -> V {
     V::err(sol_error(code, msg))
 }
 
@@ -86,7 +87,7 @@ fn randbetween(bottom: &V, top: &V) -> V {
     let (b, t) = match (parse_number(bottom), parse_number(top)) {
         (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => return e,
         (V::Num(b), V::Num(t)) => (b, t),
-        _ => return V::Fx("#VALUE!"),
+        _ => return V::Fx(FxError::Value),
     };
     V::Num(b + ((t - b + 1.0) * random()).ceil() - 1.0)
 }
@@ -94,19 +95,19 @@ fn randbetween(bottom: &V, top: &V) -> V {
 /// `arrayCount`: a generated array's row or column count, truncated, and `#VALUE!` below 0 or unreadable.
 fn array_count(n: f64) -> Result<f64, V> {
     let k = n.trunc();
-    if k >= 0.0 { Ok(k) } else { Err(err("#VALUE!", "RANDARRAY needs a count of 0 or more")) }
+    if k >= 0.0 { Ok(k) } else { Err(err(ErrorCode::Value, "RANDARRAY needs a count of 0 or more")) }
 }
 
 /// `randArrayRange`: RANDARRAY's bounds check.
 fn rand_array_range(lo: f64, hi: f64, whole: bool) -> Option<V> {
     if lo.is_nan() || hi.is_nan() {
-        return Some(err("#VALUE!", "RANDARRAY's Min and Max must be numbers"));
+        return Some(err(ErrorCode::Value, "RANDARRAY's Min and Max must be numbers"));
     }
     if lo > hi {
-        return Some(err("#VALUE!", "RANDARRAY's Min is above its Max"));
+        return Some(err(ErrorCode::Value, "RANDARRAY's Min is above its Max"));
     }
     if whole && lo.ceil() > hi.floor() {
-        return Some(err("#VALUE!", "RANDARRAY's Min and Max hold no whole number"));
+        return Some(err(ErrorCode::Value, "RANDARRAY's Min and Max hold no whole number"));
     }
     None
 }
@@ -137,7 +138,7 @@ fn randarray(a: &[V]) -> V {
         return bad;
     }
     if r * c > MAX_GENERATED {
-        return err("#OVERFLOW!", format!("RANDARRAY count {} exceeds the {} element limit", number_to_string(r * c), number_to_string(MAX_GENERATED)));
+        return err(ErrorCode::Overflow, format!("RANDARRAY count {} exceeds the {} element limit", number_to_string(r * c), number_to_string(MAX_GENERATED)));
     }
     let flat: Vec<V> = (0..(r * c) as usize).map(|_| V::Num(rand_array_draw(random(), lo, hi, whole))).collect();
     if c == 1.0 || flat.is_empty() {
@@ -274,7 +275,7 @@ fn randdist(a: &[V]) -> V {
     let key = js_lower(js_trim(&family)).split(is_js_space).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("-");
     let Some(&(name, continuous, inverse, defaults)) = FAMILIES.iter().find(|(k, ..)| *k == key) else {
         let names: Vec<&str> = FAMILIES.iter().map(|(k, ..)| *k).collect();
-        return err("#DOMAIN!", format!("RANDDIST family must be one of {}", names.join(", ")));
+        return err(ErrorCode::Domain, format!("RANDDIST family must be one of {}", names.join(", ")));
     };
     let r = math_round(to_num(arg(a, 1)));
     let count = if r.is_nan() { f64::NAN } else { r.clamp(0.0, 100_000.0) };
@@ -330,7 +331,7 @@ mod tests {
         assert!(matches!(randarray(&[n(2.9)]), V::List(l) if l.len() == 2));
         assert!(matches!(randarray(&[n(2.0), n(3.0)]), V::List(l) if l.len() == 2 && matches!(&l[0], V::List(r) if r.len() == 3)));
         for bad in [vec![n(-1.0)], vec![n(2.0), n(-1.0)], vec![n(2.0), n(1.0), n(5.0), n(1.0)]] {
-            assert!(matches!(randarray(&bad), V::Err(e) if e.code == "#VALUE!"));
+            assert!(matches!(randarray(&bad), V::Err(e) if e.code == ErrorCode::Value));
         }
         let V::List(whole) = randarray(&[n(500.0), n(1.0), n(1.0), n(4.0), V::Bool(true)]) else { panic!() };
         assert!(whole.iter().all(|v| matches!(v, V::Num(x) if [1.0, 2.0, 3.0, 4.0].contains(x))));
@@ -340,7 +341,7 @@ mod tests {
     fn randdist_and_shuffle() {
         let V::List(xs) = randdist(&[V::str("Normal"), V::Num(200.0)]) else { panic!() };
         assert_eq!(xs.len(), 200);
-        assert!(matches!(randdist(&[V::str("nope"), V::Num(2.0)]), V::Err(e) if e.code == "#DOMAIN!"));
+        assert!(matches!(randdist(&[V::str("nope"), V::Num(2.0)]), V::Err(e) if e.code == ErrorCode::Domain));
         let V::List(ks) = randdist(&[V::str("binom"), V::Num(50.0), V::Num(4.0), V::Num(0.5)]) else { panic!() };
         assert!(ks.iter().all(|v| matches!(v, V::Num(k) if (0.0..=4.0).contains(k) && k.fract() == 0.0)));
         let V::List(s) = shuffle(&list((1..=20).map(|i| V::Num(f64::from(i))).collect())) else { panic!() };

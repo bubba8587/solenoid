@@ -1,6 +1,7 @@
 //! [[C17]] shareImpl. `nodes/complex.ts`: the complex-number cards over the IM* formula bodies. No `guardFinite` here: the complex ops
 //! keep their own non-finite conventions (IMDIV by zero is cx(NaN, NaN)).
 
+use crate::error_value::ErrorCode;
 use super::kit::{core_call, each, num, short_circuit};
 use super::{err, list, Answer, Call};
 use crate::excel_functions::V;
@@ -25,9 +26,9 @@ fn to_cx(v: &V, name: &str) -> V {
         V::Num(n) => V::Cx(*n, 0.0),
         V::Str(s) => match core_call("IMCONJUGATE", std::slice::from_ref(v)) {
             V::Cx(re, im) => V::Cx(re, -im),
-            _ => err("#VALUE!", format!("{name}: \"{s}\" is not a complex number. Write it as \"a+bi\"")),
+            _ => err(ErrorCode::Value, format!("{name}: \"{s}\" is not a complex number. Write it as \"a+bi\"")),
         },
-        _ => err("#TYPE!", format!("{name} expects a complex number")),
+        _ => err(ErrorCode::Type, format!("{name} expects a complex number")),
     }
 }
 
@@ -162,10 +163,10 @@ fn poly_roots(c: &mut Call) -> Answer {
         return done(c, V::Null, V::Null);
     }
     if !coeffs.iter().all(|v| matches!(v, V::Num(n) if n.is_finite())) {
-        return done(c, err("#VALUE!", "Polynomial Roots needs a finite number in every coefficient"), V::Null);
+        return done(c, err(ErrorCode::Value, "Polynomial Roots needs a finite number in every coefficient"), V::Null);
     }
     match core_call("POLYROOTS", &[V::List(coeffs)]) {
-        V::Err(e) if e.code == "#DOMAIN!" => done(c, err("#DOMAIN!", "Polynomial Roots needs at least one non-zero coefficient"), V::Null),
+        V::Err(e) if e.code == ErrorCode::Domain => done(c, err(ErrorCode::Domain, "Polynomial Roots needs at least one non-zero coefficient"), V::Null),
         e @ V::Err(_) => done(c, e, V::Null),
         rs => {
             let mut real: Vec<f64> = match &rs {
@@ -186,7 +187,7 @@ fn poly_roots(c: &mut Call) -> Answer {
 /// `quadraticRoots` (cxValue.ts), for the NaN coefficient the formula refuses.
 fn quadratic_roots(a: f64, b: f64, c: f64) -> V {
     if a == 0.0 {
-        return err("#DOMAIN!", "a = 0 is a line, not a quadratic. Solve b·x + c = 0 directly");
+        return err(ErrorCode::Domain, "a = 0 is a line, not a quadratic. Solve b·x + c = 0 directly");
     }
     let disc = b * b - 4.0 * a * c;
     let s = disc.abs().sqrt() / (2.0 * a);

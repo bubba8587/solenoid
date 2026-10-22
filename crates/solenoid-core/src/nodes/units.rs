@@ -2,6 +2,7 @@
 //! display unit's scale and offset across the wire, so a body reads them off the cell; a cell it makes in another
 //! cell's unit borrows that cell's.
 
+use crate::error_value::ErrorCode;
 use super::kit::{guard_finite, short_circuit};
 use super::err;
 use crate::excel_functions::V;
@@ -90,7 +91,7 @@ pub fn arithmetic_cell(op: &str, a: &V, b: &V) -> V {
     let (da, db) = (dim_of(a), dim_of(b));
     let (x, y) = (magnitude_of(a), magnitude_of(b));
     let (ua, ub) = (shown(a), shown(b));
-    let div_zero = || err("#DIV/0!", "Division by zero");
+    let div_zero = || err(ErrorCode::DivZero, "Division by zero");
     if currency_mismatch(a, b) {
         let name = |u: Option<&UnitCell>| u.and_then(|u| u.display.clone()).unwrap_or_default();
         return V::err(unit_error(&format!(
@@ -166,7 +167,7 @@ pub fn arithmetic_cell(op: &str, a: &V, b: &V) -> V {
                 return V::err(unit_error("An exponent must be a plain number, not a dimensioned quantity."));
             }
             if x == 0.0 && y < 0.0 {
-                return err("#DIV/0!", "Zero to a negative power divides by zero");
+                return err(ErrorCode::DivZero, "Zero to a negative power divides by zero");
             }
             tag(crate::fdlibm::pow(x, y), dim_pow(&da, y), None)
         }),

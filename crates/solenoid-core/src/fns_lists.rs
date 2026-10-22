@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::dists::{ln_gamma, norm_s_inv};
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_functions::{bail, js_pow, js_string_of, throw, to_f64_js, to_num, to_str, V};
 use crate::fdlibm::{atan2, cos, exp, log, sin};
 use crate::js_sort::js_sort_by;
@@ -85,11 +85,11 @@ fn num_or_null(x: Option<f64>) -> V {
 }
 
 fn domain(msg: &str) -> V {
-    V::err(sol_error("#DOMAIN!", msg))
+    V::err(sol_error(ErrorCode::Domain, msg))
 }
 
 fn value(msg: &str) -> V {
-    V::err(sol_error("#VALUE!", msg))
+    V::err(sol_error(ErrorCode::Value, msg))
 }
 
 /// `isTrue`: true, 1, or the text true or 1.
@@ -205,7 +205,7 @@ pub enum RunOp {
 
 fn median_of_sorted(sorted: &[f64]) -> f64 {
     let mid = sorted.len() / 2;
-    if sorted.len() % 2 == 0 { (sorted[mid - 1] + sorted[mid]) / 2.0 } else { sorted[mid] }
+    if sorted.len().is_multiple_of(2) { (sorted[mid - 1] + sorted[mid]) / 2.0 } else { sorted[mid] }
 }
 
 /// `runningPlain`: a window of `round(window)` ≥ 1 slides, anything else runs cumulative in one pass that answers
@@ -338,7 +338,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                             return V::Null;
                         }
                         if pct && matches!(prev, V::Num(p) if *p == 0.0) {
-                            return V::err(sol_error("#DIV/0!", "Percent change from zero is undefined"));
+                            return V::err(sol_error(ErrorCode::DivZero, "Percent change from zero is undefined"));
                         }
                         let d = number(v) - number(prev);
                         V::Num(if pct { d / number(prev) } else { d })
@@ -688,7 +688,7 @@ fn capped(f: &str, count: f64) -> Option<V> {
     }
     let k = math_round(count);
     (k > MAX_GENERATED).then(|| {
-        V::err(sol_error("#OVERFLOW!", format!("{f} count {} exceeds the {} element limit", number_to_string(k), number_to_string(MAX_GENERATED))))
+        V::err(sol_error(ErrorCode::Overflow, format!("{f} count {} exceeds the {} element limit", number_to_string(k), number_to_string(MAX_GENERATED))))
     })
 }
 
@@ -722,7 +722,7 @@ fn combinations_of(arr: &[V], k: f64, combos: bool) -> V {
     let count = math_round(count);
     if count > 10_000.0 {
         let kind = if combos { "combinations" } else { "permutations" };
-        return V::err(sol_error("#OVERFLOW!", format!("That makes {} {kind}, over the 10000 cap. Use a shorter list or a smaller k.", number_to_string(count))));
+        return V::err(sol_error(ErrorCode::Overflow, format!("That makes {} {kind}, over the 10000 cap. Use a shorter list or a smaller k.", number_to_string(count))));
     }
     let mut out = Vec::new();
     let mut cur = Vec::new();
@@ -900,7 +900,7 @@ fn impute_stat(arr: &[V], op: &str) -> Option<f64> {
             let mut s = ns;
             sort_nums(&mut s);
             let m = s.len() / 2;
-            Some(if s.len() % 2 == 0 { (s[m - 1] + s[m]) / 2.0 } else { s[m] })
+            Some(if s.len().is_multiple_of(2) { (s[m - 1] + s[m]) / 2.0 } else { s[m] })
         }
         _ => {
             let mut counts: std::collections::HashMap<u64, usize> = std::collections::HashMap::new();
@@ -1300,7 +1300,7 @@ fn savgol(values: &[V], window: f64, order: f64) -> V {
             }
         }
         match poly_fit_w(&xs, &ys, &ws, order) {
-            Err(()) => return throw(sol_error("#VALUE!", "Invalid array length")),
+            Err(()) => return throw(sol_error(ErrorCode::Value, "Invalid array length")),
             Ok(c) => out.push(c.map_or(V::Null, |c| V::Num(c[0]))),
         }
     }
@@ -1518,7 +1518,7 @@ fn spectrum(x: &[V], rate: f64) -> V {
         (0..=half)
             .map(|k| {
                 let mag = hypot(re[k], im[k]);
-                let scale = if k == 0 || (n % 2 == 0 && k == half) { 1.0 / nf } else { 2.0 / nf };
+                let scale = if k == 0 || (n.is_multiple_of(2) && k == half) { 1.0 / nf } else { 2.0 / nf };
                 nums(vec![(k as f64 * rate) / nf, mag * scale, atan2(im[k], re[k])])
             })
             .collect(),
@@ -1533,7 +1533,7 @@ fn norm(m: &V) -> V {
         other => vec![list(vec![other.clone()])],
     };
     let missing = || value("This matrix operation needs complete data. A cell is missing");
-    let text = || V::err(sol_error("#TYPE!", "This matrix operation needs numbers, but got text"));
+    let text = || V::err(sol_error(ErrorCode::Type, "This matrix operation needs numbers, but got text"));
     for row in &rows {
         match row {
             V::List(cells) => {
@@ -1549,12 +1549,12 @@ fn norm(m: &V) -> V {
             // A string iterates its characters, each one text.
             V::Str(s) if !s.is_empty() => return text(),
             V::Str(_) => {}
-            _ => return throw(sol_error("#VALUE!", "row is not iterable")),
+            _ => return throw(sol_error(ErrorCode::Value, "row is not iterable")),
         }
     }
     let mut total = 0.0;
     for row in &rows {
-        let V::List(cells) = row else { return throw(sol_error("#VALUE!", "r.reduce is not a function")) };
+        let V::List(cells) = row else { return throw(sol_error(ErrorCode::Value, "r.reduce is not a function")) };
         total += cells.iter().fold(0.0, |x, y| if let V::Num(y) = y { x + y * y } else { x });
     }
     V::Num(total.sqrt())
@@ -1681,7 +1681,7 @@ pub(crate) fn seasonal_decompose(y: &[Option<f64>], period: f64, additive: bool)
         return None;
     }
     let m = m as usize;
-    let filt: Vec<f64> = if m % 2 == 0 {
+    let filt: Vec<f64> = if m.is_multiple_of(2) {
         std::iter::once(0.5).chain(std::iter::repeat_n(1.0, m - 1)).chain([0.5]).map(|w| w / m as f64).collect()
     } else {
         vec![1.0 / m as f64; m]
@@ -2230,7 +2230,7 @@ fn grid_mode(z: &[V], xs: &V, ys: &V, forecast: &V) -> V {
         };
         let unit = if name == "Xs" { "columns" } else { "rows" };
         if l.len() != n {
-            return Err(V::err(sol_error("#SHAPE!", format!("{name} has {} values for {n} {unit}", l.len()))));
+            return Err(V::err(sol_error(ErrorCode::Shape, format!("{name} has {} values for {n} {unit}", l.len()))));
         }
         l.iter().map(|v| finite(v).ok_or_else(|| value(&format!("{name} must be finite numbers")))).collect()
     };

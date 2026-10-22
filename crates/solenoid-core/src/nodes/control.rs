@@ -2,9 +2,6 @@
 
 use super::{Answer, Call};
 
-pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
-    let _ = c;
-    match kind {
-        _ => None,
-    }
+pub fn run(_kind: &str, _c: &mut Call) -> Option<Answer> {
+    None
 }

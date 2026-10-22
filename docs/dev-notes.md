@@ -16,6 +16,14 @@ specific item.
   the list verbs over unit cells. Frozen fixtures in `fixtures/core/` hold the TS answers, every suite frozen with the
   core off; `bails.json` is `{}`. Still on the TS: a computed column's unit plan (Frames and Cubes), Equation's
   dimensions, Cube outputs, the Choice Ladder.
+- **Rust review pass (2026-10-22, branch `ccr-cc6b7c24-07oftp`):** clippy is clean and runs with `-D warnings` in
+  `engine-test.yml` (three JS-port lints allowed crate-wide with reasons in `lib.rs`; `manual_range_contains` among
+  them, since `!range.contains(x)` lets NaN fail where `x < lo || x > hi` lets it through). `call_function`'s arms are
+  one `arms!` declaration and `every_name_has_one_body` holds each name to one route. A call's clock and raised state
+  live in `Calc`, dropped on every return (`tests/calc_state.rs`). An `@`-list's verdict holds the list
+  (`tests/caches.rs`). Open findings are in `docs/backlog.md` § Rust core.
+  Closed names are typed: `spelled!` (`spelled.rs`) gives ErrorCode, FxError, BinOp, FrameColType and the frame verbs'
+  options their one spelling, read only at the wire; `Wire<T>` keeps a name the corpus refuses in a verb's own words.
 - **Speed:** formula columns 2 to 4.6 times JS in wasm (the table in [[rust-core]]); each call site resolves once per
   column, not per row. `examples/colbench.rs` under callgrind counts instructions, which don't drift.
 - **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the oracle (`RUST_CORE_ONLY`).

@@ -1,7 +1,9 @@
-// [[C130]] rustCore
-//! A faithful Rust port of Solenoid's headless TypeScript core. The TS on `develop` is the spec:
-//! each module mirrors one TS file, its functions keep their TS names in snake_case and their
-//! order of operations, and any difference from the TS is a bug here (PORTING.md).
+// [[C130]] rustCore, [[D99]] rustIsSpec
+//! Solenoid's headless core, for wasm and native. The Rust is the spec: it began as a port of the TypeScript and keeps
+//! its names and order of operations where a fixture depends on them (`tree/specs/computation/rust-core.md`).
+#![allow(clippy::neg_cmp_op_on_partial_ord, reason = "`!(a < b)` is how JS reads a comparison that NaN fails")]
+#![allow(clippy::manual_range_contains, reason = "`x < lo || x > hi` lets NaN through, and `contains` would not")]
+#![allow(clippy::needless_range_loop, reason = "the matrix bodies index rows and columns as the math writes them")]
 
 pub mod binary;
 pub mod convert_units;
@@ -40,6 +42,7 @@ pub mod nfd_table;
 pub mod nodes;
 pub mod planners;
 pub mod shapers;
+pub mod spelled;
 pub mod string_order;
 pub mod external;
 pub mod text_ops;

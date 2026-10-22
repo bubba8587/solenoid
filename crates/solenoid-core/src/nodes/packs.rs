@@ -3,6 +3,8 @@
 //! card bodies: `nodes/electrical.ts`, `astro.ts`, `thermo.ts`, `fluids.ts`, `health.ts`, `emSpectrum.ts`, `convert.ts`,
 //! `tornado.ts` and `triangle.ts`, with the kernels of their `*Ops.ts` beside them.
 
+use crate::frame::FrameColType;
+use crate::error_value::ErrorCode;
 use super::units::{broadcast_unit, from_unit};
 use super::values::{Column, Frame};
 use super::{err, list, Answer, Call};
@@ -67,7 +69,7 @@ fn shown(c: &mut Call, outs: &[(&str, &str, V)]) -> Answer {
 }
 
 fn domain(message: &str) -> V {
-    err("#DOMAIN!", message)
+    err(ErrorCode::Domain, message)
 }
 
 fn null_or(v: Option<f64>) -> V {
@@ -90,7 +92,7 @@ fn parallel_combine_of(cells: &[V]) -> V {
     }
     let sum = nums.iter().fold(0.0, |a, b| a + 1.0 / b);
     if sum == 0.0 {
-        err("#DIV/0!", "The reciprocals cancel out, so the combination is undefined")
+        err(ErrorCode::DivZero, "The reciprocals cancel out, so the combination is undefined")
     } else {
         V::Num(1.0 / sum)
     }
@@ -145,7 +147,7 @@ fn e_series(c: &mut Call) -> Answer {
                 let n = nearest_e_series(v, &table);
                 (V::Num(n), V::Num(((n - v) / v) * 100.0))
             }
-            None => return Err(err("#ERROR!", "E_SERIES[series] is not iterable")),
+            None => return Err(err(ErrorCode::Error, "E_SERIES[series] is not iterable")),
         },
         Some(_) => {
             let e = domain("A component value must be a positive number");
@@ -409,7 +411,7 @@ fn antoine(c: &mut Call) -> Answer {
     let t = c.read_input("t", c.literal("t"));
     let substance = c.field_str("substance", "water");
     let Some((a, b, cc)) = antoine_coefficients(substance) else {
-        return Err(err("#ERROR!", "Cannot destructure property 'A' of 'ANTOINE[this.substance]' as it is undefined."));
+        return Err(err(ErrorCode::Error, "Cannot destructure property 'A' of 'ANTOINE[this.substance]' as it is undefined."));
     };
     let pressure = match number(&t) {
         None => V::Null,
@@ -487,12 +489,12 @@ fn hr_zones_frame(max_hr: f64, resting: Option<f64>) -> V {
         Some(r) => r + pct * (max_hr - r),
         None => pct * max_hr,
     }));
-    let column = |name: &str, ty: &str, values: Vec<V>| Column { name: name.into(), ty: ty.into(), values, unit: None, format: None, raw: None };
+    let column = |name: &str, ty: FrameColType, values: Vec<V>| Column { name: name.into(), ty, values, unit: None, format: None, raw: None };
     V::Frame(Rc::new(Frame {
         columns: vec![
-            column("Zone", "string", ZONES.iter().map(|z| V::str(z.0)).collect()),
-            column("Low", "number", ZONES.iter().map(|z| at(z.1)).collect()),
-            column("High", "number", ZONES.iter().map(|z| at(z.2)).collect()),
+            column("Zone", FrameColType::String, ZONES.iter().map(|z| V::str(z.0)).collect()),
+            column("Low", FrameColType::Number, ZONES.iter().map(|z| at(z.1)).collect()),
+            column("High", FrameColType::Number, ZONES.iter().map(|z| at(z.2)).collect()),
         ],
         total_rows: None,
         approx: None,
@@ -615,11 +617,11 @@ fn convert(c: &mut Call) -> Answer {
         (Some(f), Some(t)) => (f, t),
         (f, _) => {
             let missing = if f.is_none() { &from_key } else { &to_key };
-            return done(c, err("#N/A", format!("Convert doesn't know the unit \"{missing}\"")));
+            return done(c, err(ErrorCode::NotAvailable, format!("Convert doesn't know the unit \"{missing}\"")));
         }
     };
     if from.2 != to.2 {
-        return done(c, err("#N/A", format!("Can't convert {} to {}: the units measure different things", category_of(from.2), category_of(to.2))));
+        return done(c, err(ErrorCode::NotAvailable, format!("Can't convert {} to {}: the units measure different things", category_of(from.2), category_of(to.2))));
     }
     let to_dim = parse_dim(to.2);
     let display: Option<String> = Some(to_key.clone());
@@ -637,7 +639,7 @@ fn convert(c: &mut Call) -> Answer {
         }
         v => match super::kit::core_call("CONVERT", &[v.clone(), from_code.clone(), to_code.clone()]) {
             V::Num(conv) => crate::unit_lists::tag_dim(conv * to.3 + to.4.unwrap_or(0.0), to_dim.clone(), display.clone()),
-            _ => err("#OVERFLOW!", "The converted value is too large to represent"),
+            _ => err(ErrorCode::Overflow, "The converted value is too large to represent"),
         },
     });
     done(c, result)
@@ -704,30 +706,30 @@ fn solve_triangle(g: &Parts) -> Result<Solved, V> {
     let angles: Vec<usize> = (3..6).filter(|&k| g[k].is_some()).collect();
     let v = |k: usize| g[k].unwrap_or(f64::NAN);
     if sides.len() + angles.len() != 3 {
-        return Err(err("#SOLVE!", "Give exactly three parts (sides and angles)"));
+        return Err(err(ErrorCode::Solve, "Give exactly three parts (sides and angles)"));
     }
     for &k in &sides {
         if !(v(k) > 0.0) {
-            return Err(err("#DOMAIN!", format!("Side {} must be positive", PART_KEYS[k])));
+            return Err(err(ErrorCode::Domain, format!("Side {} must be positive", PART_KEYS[k])));
         }
     }
     for &k in &angles {
         if !(v(k) > 0.0 && v(k) < 180.0) {
-            return Err(err("#DOMAIN!", format!("Angle {} must be between 0° and 180°", PART_KEYS[k])));
+            return Err(err(ErrorCode::Domain, format!("Angle {} must be between 0° and 180°", PART_KEYS[k])));
         }
     }
     if angles.len() == 3 {
-        return Err(err("#SOLVE!", "Three angles fix only the shape. Swap one for a side"));
+        return Err(err(ErrorCode::Solve, "Three angles fix only the shape. Swap one for a side"));
     }
     let sum_given: f64 = angles.iter().fold(0.0, |s, &k| s + v(k));
     if angles.len() >= 2 && sum_given >= 180.0 - TRI_EPS {
-        return Err(err("#DOMAIN!", "The angles reach 180° with nothing left over"));
+        return Err(err(ErrorCode::Domain, "The angles reach 180° with nothing left over"));
     }
     let mut t = *g;
     if sides.len() == 3 {
         let (a, b, c) = (v(0), v(1), v(2));
         if a + b <= c + TRI_EPS || b + c <= a + TRI_EPS || a + c <= b + TRI_EPS {
-            return Err(err("#DOMAIN!", "Those sides break the triangle inequality"));
+            return Err(err(ErrorCode::Domain, "Those sides break the triangle inequality"));
         }
         let ang_a = cos_rule(a, b, c);
         let ang_b = cos_rule(b, a, c);
@@ -745,14 +747,14 @@ fn solve_triangle(g: &Parts) -> Result<Solved, V> {
             let other = *sides.iter().find(|&&k| k != opposite).unwrap_or(&opposite);
             let sin_other = (v(other) * sin(v(angle) * D2R)) / v(opposite);
             if sin_other > 1.0 + TRI_EPS {
-                return Err(err("#DOMAIN!", "No triangle fits those parts"));
+                return Err(err(ErrorCode::Domain, "No triangle fits those parts"));
             }
             let right = sin_other >= 1.0 - TRI_EPS;
             let deg1 = if right { 90.0 } else { asin(clamp1(sin_other)) * R2D };
             let deg2 = 180.0 - deg1;
             let fits = |d: f64| v(angle) + d < 180.0 - TRI_EPS;
             if !right && fits(deg1) && fits(deg2) {
-                return Err(err("#SOLVE!", "Ambiguous (SSA): two triangles fit. Give a different third part"));
+                return Err(err(ErrorCode::Solve, "Ambiguous (SSA): two triangles fit. Give a different third part"));
             }
             let other_angle = other + 3;
             t[other_angle] = Some(if fits(deg1) { deg1 } else { deg2 });
@@ -814,7 +816,7 @@ fn solve_given_parts(given: &Parts, cell_err: Option<V>) -> TriangleResult {
         solve_triangle(&g).ok()
     });
     let Some(s) = solved else {
-        let e = err("#SOLVE!", "No three of those parts pin down a triangle");
+        let e = err(ErrorCode::Solve, "No three of those parts pin down a triangle");
         return done(std::array::from_fn(|k| given[k].map_or_else(|| e.clone(), V::Num)), e.clone(), e, V::Bool(false), Vec::new());
     };
     let agrees = |got: f64, want: f64| (got - want).abs() <= 1e-6 * math_max(1.0, want.abs());

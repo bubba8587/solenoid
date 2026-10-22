@@ -2,6 +2,8 @@
 //! its inputs and wrapped in their units; `nodes/equation.ts` with `equationSolve.ts`: the Equation card and Time
 //! Value of Money (`nodes/finance.ts`), a relation solved for its one unwired variable.
 
+use crate::error_value::ErrorCode;
+use crate::excel_formula::{BinOp, UnaryOp};
 use super::{err, list, Answer, Call};
 use crate::eval::{variables, Env};
 use crate::excel_formula::{parse_formula, Ast};
@@ -164,8 +166,8 @@ fn has_unit_cell(v: &V) -> bool {
 fn tag_result(v: &V) -> V {
     match v {
         V::Err(_) | V::Str(_) | V::Bool(_) | V::Cx(..) => v.clone(),
-        V::Fx(m) => V::err(fx_error_to_sol(m)),
-        V::Num(n) if n.is_nan() => err("#DOMAIN!", "The result is undefined: not a number"),
+        V::Fx(m) => V::err(fx_error_to_sol(*m)),
+        V::Num(n) if n.is_nan() => err(ErrorCode::Domain, "The result is undefined: not a number"),
         V::Num(_) => v.clone(),
         _ => V::Null,
     }
@@ -189,7 +191,7 @@ fn expression(c: &mut Call) -> Answer {
             return expression_done(c, V::Null, None, false);
         }
         let hint = syntax_hint(&expr);
-        let e = err("#SYNTAX!", hint.clone().unwrap_or_else(|| "The formula has a syntax error".into()));
+        let e = err(ErrorCode::Syntax, hint.clone().unwrap_or_else(|| "The formula has a syntax error".into()));
         return expression_done(c, e, Some(hint.as_deref().unwrap_or("Syntax error")), false);
     };
     let names = variables(&ast);
@@ -213,13 +215,13 @@ fn expression(c: &mut Call) -> Answer {
         return match r {
             Some(v) if !bailed && !thrown => expression_done(c, v, None, true),
             _ => {
-                let e = err("#VALUE!", "The formula failed to evaluate");
+                let e = err(ErrorCode::Value, "The formula failed to evaluate");
                 expression_done(c, e, Some("Evaluation error"), false)
             }
         };
     }
     let Ok(raw) = evaluate(&expr, env) else {
-        let e = err("#VALUE!", "The formula failed to evaluate");
+        let e = err(ErrorCode::Value, "The formula failed to evaluate");
         return expression_done(c, e, Some("Evaluation error"), false);
     };
     let result = match &raw {
@@ -240,7 +242,7 @@ struct Parsed {
 
 fn contains_equals(n: &Ast) -> bool {
     match n {
-        Ast::Bin { op, l, r } => op == "=" || contains_equals(l) || contains_equals(r),
+        Ast::Bin { op, l, r } => *op == BinOp::Eq || contains_equals(l) || contains_equals(r),
         Ast::Call { args, .. } => args.iter().any(contains_equals),
         Ast::Apply { func, args } => contains_equals(func) || args.iter().any(contains_equals),
         Ast::Unary { arg, .. } | Ast::Percent(arg) => contains_equals(arg),
@@ -252,7 +254,7 @@ fn contains_equals(n: &Ast) -> bool {
 fn parse_equation(expr: &str) -> Result<Parsed, String> {
     let Some(root) = parse_formula(expr) else { return Err("Syntax error".into()) };
     let Ast::Bin { op, l, r } = root else { return Err("An equation needs one = sign, like V = I * R".into()) };
-    if op != "=" {
+    if op != BinOp::Eq {
         return Err("An equation needs one = sign, like V = I * R".into());
     }
     if contains_equals(&l) || contains_equals(&r) {
@@ -299,7 +301,7 @@ fn ast_to_formula(n: &Ast) -> String {
 }
 
 fn bin(op: &str, l: Ast, r: Ast) -> Ast {
-    Ast::Bin { op: op.into(), l: Box::new(l), r: Box::new(r) }
+    Ast::Bin { op: op.parse().expect("a binary operator"), l: Box::new(l), r: Box::new(r) }
 }
 
 fn call(name: &str, args: Vec<Ast>) -> Ast {
@@ -346,8 +348,8 @@ fn isolate(side: &Ast, other: &Ast, unknown: &str) -> Option<Ast> {
                 if count_occurrences(arg, unknown) == 0 {
                     return None;
                 }
-                if *op == '-' {
-                    o = Ast::Unary { op: '-', arg: Box::new(o) };
+                if *op == UnaryOp::Neg {
+                    o = Ast::Unary { op: UnaryOp::Neg, arg: Box::new(o) };
                 }
                 s = arg;
             }
@@ -468,7 +470,7 @@ fn solve_quadratic(q: &Quad) -> Roots {
         return Roots::One(-b / (2.0 * a));
     }
     if disc < 0.0 {
-        return Roots::Err(err("#SOLVE!", "No real solution: the quadratic's discriminant is negative"));
+        return Roots::Err(err(ErrorCode::Solve, "No real solution: the quadratic's discriminant is negative"));
     }
     let s = disc.sqrt();
     let bb = if b == 0.0 || b.is_nan() { 1.0 } else { b };
@@ -588,7 +590,7 @@ fn solve_numeric(residual: &dyn Fn(f64) -> Option<f64>) -> V {
     }
     match best {
         Some(b) => V::Num(b),
-        None => err("#SOLVE!", "No solution found between \u{b1}10\u{b9}\u{b2}. The equation may have no real root here"),
+        None => err(ErrorCode::Solve, "No solution found between \u{b1}10\u{b9}\u{b2}. The equation may have no real root here"),
     }
 }
 
@@ -783,7 +785,7 @@ fn solve(c: &Call, expr: &str, units: &Map<String, Json>) -> Solved {
         }
         s.holds = match (evaluate(&eq.lhs_text, base.clone()), evaluate(&eq.rhs_text, base)) {
             (Ok(l), Ok(r)) => check_equals(&guard_val(&l), &guard_val(&r)),
-            _ => err("#VALUE!", "The equation failed to evaluate"),
+            _ => err(ErrorCode::Value, "The equation failed to evaluate"),
         };
         return s;
     }
@@ -873,7 +875,7 @@ fn solve(c: &Call, expr: &str, units: &Map<String, Json>) -> Solved {
     if let Some(text) = solver_text(&eq, &unknown) {
         let v = parse_formula(&text).map(|_| match evaluate(&text, base.clone()) {
             Ok(v) => guard_val(&v),
-            Err(()) => err("#VALUE!", "Solving failed to evaluate"),
+            Err(()) => err(ErrorCode::Value, "Solving failed to evaluate"),
         });
         if let Some(v) = v {
             s.set(&unknown, v);
@@ -882,7 +884,7 @@ fn solve(c: &Call, expr: &str, units: &Map<String, Json>) -> Solved {
         }
     }
     if !scalar_knowns {
-        s.set(&unknown, err("#SHAPE!", "Numeric solving works on single values. With lists, this equation solves only where the algebra can be inverted"));
+        s.set(&unknown, err(ErrorCode::Shape, "Numeric solving works on single values. With lists, this equation solves only where the algebra can be inverted"));
         return s;
     }
     s.set(&unknown, solve_numeric(&residual));
@@ -1025,7 +1027,7 @@ mod tests {
         assert!(matches!(roots(1.0, 0.0, -36.0), Roots::Two(l, h) if l == -6.0 && h == 6.0));
         assert!(matches!(roots(1.0, 2.0, -8.0), Roots::Two(l, h) if l == -4.0 && h == 2.0));
         assert!(matches!(roots(1.0, -6.0, 9.0), Roots::One(r) if r == 3.0));
-        assert!(matches!(roots(1.0, 0.0, 1.0), Roots::Err(V::Err(e)) if e.code == "#SOLVE!"));
+        assert!(matches!(roots(1.0, 0.0, 1.0), Roots::Err(V::Err(e)) if e.code == ErrorCode::Solve));
         assert!(matches!(roots(0.0, 2.0, -10.0), Roots::None));
         assert_eq!(solve_linear(&Quad { a: 0.0, b: 15.0, c: -6000.0 }), Some(400.0));
         assert_eq!(solve_linear(&Quad { a: 0.0, b: 0.0, c: 5.0 }), None);
@@ -1046,7 +1048,7 @@ mod tests {
         assert!((r * r.exp() - 5.0).abs() < 1e-6);
         close(root(&|x: f64| (x <= 2.0).then(|| (2.0 - x).sqrt() - 0.1)), 1.99, 9);
         close(root(&|x: f64| (x >= 2.0).then(|| (x - 2.0).sqrt() - 0.1)), 2.01, 9);
-        assert!(matches!(solve_numeric(&|x| Some(x * x + 1.0)), V::Err(e) if e.code == "#SOLVE!"));
+        assert!(matches!(solve_numeric(&|x| Some(x * x + 1.0)), V::Err(e) if e.code == ErrorCode::Solve));
         // A pole is never a root; a root beside the domain edge is found.
         assert!(solve_numeric(&|x| Some(1.0 / (x - 3.0))).is_sol_error());
         close(root(&|x: f64| (x >= 2.0).then(|| (x - 2.0).sqrt() - 1.0)), 3.0, 6);

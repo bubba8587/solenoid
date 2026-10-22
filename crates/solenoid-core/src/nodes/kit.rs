@@ -2,6 +2,7 @@
 //! `callCore` calls it, the per-cell short circuit and non-finite guard, and the broadcasters that map a body over
 //! lists ([[C24]] arraySemantics, [[D36]] nullSkippedNotZero, [[D48]] classifyNonFinite).
 
+use crate::error_value::ErrorCode;
 use super::list;
 use crate::excel_functions::V;
 use crate::value_kinds::guard_finite as guard_cells;
@@ -12,7 +13,7 @@ pub fn core_call(name: &str, args: &[V]) -> V {
     let upper = name.to_uppercase();
     let v = crate::eval::argument_error(&upper, args).unwrap_or_else(|| crate::excel_functions::call_function(name, args));
     if crate::excel_functions::take_thrown().is_some() {
-        return super::err("#VALUE!", format!("{name} can't compute with these arguments"));
+        return super::err(ErrorCode::Value, format!("{name} can't compute with these arguments"));
     }
     normalize(v)
 }
@@ -62,11 +63,6 @@ pub fn broadcast_err(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
         Some(sc) => sc,
         None => guarded(f(ops), ops),
     })
-}
-
-/// `broadcast`: as `broadcastErr`, a body that answers only numbers or null.
-pub fn broadcast(args: &[V], f: impl Fn(&[&V]) -> V) -> V {
-    broadcast_err(args, f)
 }
 
 /// The item loop the broadcasters share: `f` over the arguments, or over each position where any is a list.

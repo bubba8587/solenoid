@@ -4,7 +4,7 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::excel_functions::{bail, js_string_of, V};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_max as js_max, math_min as js_min};
 use crate::string_order::compare_strings;
@@ -204,7 +204,7 @@ pub(crate) fn parse_date(s: &str) -> DateReading {
             {
                 if year.len() == 4 && ascii_digits(year) && a <= 12 && bn <= 12 && a != bn {
                     return DateReading::Ambiguous(sol_error(
-                        "#AMBIGUOUS!",
+                        ErrorCode::Ambiguous,
                         format!("\"{t}\" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)"),
                     ));
                 }
@@ -822,7 +822,7 @@ pub fn as_range(v: &V) -> Rc<Vec<V>> {
 pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V {
     if pairs.is_empty() {
         return V::err(sol_error(
-            "#VALUE!",
+            ErrorCode::Value,
             "At least one criteria range and criterion is needed",
         ));
     }
@@ -840,7 +840,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
             && range.iter().any(is_text)
         {
             return V::err(sol_error(
-                "#TYPE!",
+                ErrorCode::Type,
                 format!("\"{}\" compares numbers, but its range holds text. Cast the range to numbers first.", js_string_of(raw)),
             ));
         }
@@ -873,7 +873,7 @@ pub fn criteria_aggregate(kind: Kind, values: Option<&[V]>, pairs: &[Pair]) -> V
         Kind::Count => V::Num(count as f64),
         Kind::Sum => V::Num(total()),
         Kind::Average if kept.is_empty() => {
-            V::err(sol_error("#DIV/0!", "No rows matched the criteria"))
+            V::err(sol_error(ErrorCode::DivZero, "No rows matched the criteria"))
         }
         Kind::Average => V::Num(total() / kept.len() as f64),
         Kind::Min => V::Num(kept.iter().copied().reduce(js_min).unwrap_or(0.0)),
@@ -890,7 +890,7 @@ pub type Pair = (Rc<Vec<V>>, V);
 pub fn ifs_pairs(rest: &[V]) -> Result<Vec<Pair>, V> {
     if rest.is_empty() || !rest.len().is_multiple_of(2) {
         return Err(V::err(sol_error(
-            "#VALUE!",
+            ErrorCode::Value,
             "Criteria come in range, criterion pairs",
         )));
     }

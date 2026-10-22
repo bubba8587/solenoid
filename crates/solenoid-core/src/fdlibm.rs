@@ -1402,20 +1402,6 @@ pub fn log2(x: f64) -> f64 {
     val_lo + val_hi
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn known_values() {
-        assert_eq!(exp(1.0), std::f64::consts::E);
-        assert_eq!(log(std::f64::consts::E), 1.0);
-        assert_eq!(log10(1000.0), 3.0);
-        assert_eq!(pow(2.0, 10.0), 1024.0);
-        assert!(pow(-8.0, 1.0 / 3.0).is_nan());
-        assert_eq!(pow(10.0, -2.0), 0.01);
-    }
-}
 
 /// V8's `Math.asinh` (fdlibm `s_asinh.c`).
 pub fn asinh(x: f64) -> f64 {
@@ -1438,4 +1424,19 @@ pub fn asinh(x: f64) -> f64 {
         log1p(x.abs() + t / (1.0 + (1.0 + t).sqrt()))
     };
     if hx > 0 { w } else { -w }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn known_values() {
+        assert_eq!(exp(1.0), std::f64::consts::E);
+        assert_eq!(log(std::f64::consts::E), 1.0);
+        assert_eq!(log10(1000.0), 3.0);
+        assert_eq!(pow(2.0, 10.0), 1024.0);
+        assert!(pow(-8.0, 1.0 / 3.0).is_nan());
+        assert_eq!(pow(10.0, -2.0), 0.01);
+    }
 }

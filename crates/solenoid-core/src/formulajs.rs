@@ -5,15 +5,15 @@
 
 #![allow(clippy::excessive_precision, clippy::approx_constant)]
 
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, FxError, sol_error};
 use crate::excel_functions::{bail, js_pow, js_string_of, parse_number, throw, truthy, V};
 use crate::fdlibm::{exp, log, sin};
 use crate::js_radix::{parse_int, to_int32, to_radix_string, to_uint32};
 use crate::jsnum::{math_round, number_to_string, string_to_number};
 
-const VALUE: V = V::Fx("#VALUE!");
-const NUM: V = V::Fx("#NUM!");
-const NA: V = V::Fx("#N/A");
+const VALUE: V = V::Fx(FxError::Value);
+const NUM: V = V::Fx(FxError::Num);
+const NA: V = V::Fx(FxError::NotAvailable);
 
 /// The names this module answers.
 pub const NAMES: &[&str] = &[
@@ -21,7 +21,7 @@ pub const NAMES: &[&str] = &[
     "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "SERIESSUM", "BASE", "DECIMAL", "ROMAN", "ARABIC", "BIN2DEC", "BIN2HEX",
     "BIN2OCT", "DEC2BIN", "DEC2HEX", "DEC2OCT", "HEX2BIN", "HEX2DEC", "HEX2OCT", "OCT2BIN", "OCT2DEC", "OCT2HEX",
     "BITAND", "BITOR", "BITXOR", "BITLSHIFT", "BITRSHIFT", "DELTA", "GESTEP", "TYPE", "ERF", "ERF.PRECISE", "ERFC",
-    "ERFC.PRECISE", "GAMMA", "GAMMALN", "GAMMALN.PRECISE", "Z.TEST", "CHISQ.TEST", "NA", "GAUSS", "PHI", "CONFIDENCE.NORM",
+    "ERFC.PRECISE", "GAMMA", "Z.TEST", "CHISQ.TEST", "NA", "GAUSS", "PHI", "CONFIDENCE.NORM",
 ];
 
 fn arg(a: &[V], i: usize) -> &V {
@@ -86,7 +86,7 @@ fn parse_number_array(arr: &[V]) -> Result<Vec<f64>, V> {
 
 
 fn invalid_array_length() -> V {
-    throw(sol_error("#VALUE!", "Invalid array length"))
+    throw(sol_error(ErrorCode::Value, "Invalid array length"))
 }
 
 /// `new Array(n).join(text)`: n − 1 copies, where n is a valid array length.
@@ -437,7 +437,7 @@ fn jstat_gammafn(x: f64) -> f64 {
 /// Formula.js AVERAGE over numbers: a NaN mean is #NUM!.
 fn fx_average(xs: &[f64]) -> Result<f64, V> {
     if xs.is_empty() {
-        return Err(V::Fx("#DIV/0!"));
+        return Err(V::Fx(FxError::DivZero));
     }
     let mut sum = 0.0;
     let mut count = 0.0;
@@ -541,7 +541,7 @@ fn js_member(v: &V, key: &str, list: impl Fn(&[V]) -> Option<V>) -> Result<V, V>
         }
         V::Null | V::Undef => {
             let what = if matches!(v, V::Null) { "null" } else { "undefined" };
-            Err(throw(sol_error("#VALUE!", format!("Cannot read properties of {what} (reading '{key}')"))))
+            Err(throw(sol_error(ErrorCode::Value, format!("Cannot read properties of {what} (reading '{key}')"))))
         }
         _ => Ok(V::Undef),
     }
@@ -641,7 +641,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                     let units: Vec<u16> = s.encode_utf16().collect();
                     let last = String::from_utf16_lossy(&units[units.len() - 1..]);
                     return match parse_number(&V::str(&last)) {
-                        V::Num(_) => throw(sol_error("#VALUE!", format!("Cannot assign to read only property '{}' of string '{s}'", units.len() - 1))),
+                        V::Num(_) => throw(sol_error(ErrorCode::Value, format!("Cannot assign to read only property '{}' of string '{s}'", units.len() - 1))),
                         _ => VALUE,
                     };
                 }
@@ -668,7 +668,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
             let s = match to_radix_string(n, r) {
                 Ok(s) => s,
-                Err(m) => return throw(sol_error("#VALUE!", m)),
+                Err(m) => return throw(sol_error(ErrorCode::Value, m)),
             };
             let len = crate::jsnum::math_max(l + 1.0 - s.len() as f64, 0.0);
             match array_join(len, "0") {
@@ -757,7 +757,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             V::Str(_) => V::Num(2.0),
             V::Bool(_) => V::Num(4.0),
             V::Num(_) => V::Num(16.0),
-            V::Fx(code) if matches!(*code, "#VALUE!" | "#REF!" | "#DIV/0!" | "#NUM!" | "#NAME?" | "#NULL!" | "#N/A") => V::Num(16.0),
+            V::Fx(code) if matches!(*code, FxError::Value | FxError::Ref | FxError::DivZero | FxError::Num | FxError::Name | FxError::Null | FxError::NotAvailable) => V::Num(16.0),
             V::List(_) => V::Num(64.0),
             _ => V::Undef,
         },
@@ -785,23 +785,6 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
             V::Num(jstat_gammafn(n))
         }
-        "GAMMALN" => match parse_number(arg(a, 0)) {
-            V::Num(n) => V::Num(jstat_gammaln(n)),
-            e => e,
-        },
-        "GAMMALN.PRECISE" => {
-            if a.len() != 1 {
-                return NA;
-            }
-            let x = &a[0];
-            if js_number(x) <= 0.0 {
-                return NUM;
-            }
-            match x {
-                V::Num(n) => V::Num(jstat_gammaln(*n)),
-                _ => VALUE,
-            }
-        }
         "Z.TEST" => {
             let array = parse_number_array(&flatten(arg(a, 0)));
             let x = parse_number(arg(a, 1));
@@ -826,7 +809,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                 return VALUE;
             }
             if actual.is_empty() {
-                return throw(sol_error("#VALUE!", "Cannot read properties of undefined (reading 'length')"));
+                return throw(sol_error(ErrorCode::Value, "Cannot read properties of undefined (reading 'length')"));
             }
             if actual.iter().chain(expected.iter()).any(|v| matches!(v, V::List(_))) {
                 return bail();

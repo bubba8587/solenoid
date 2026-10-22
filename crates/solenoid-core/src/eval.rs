@@ -2,16 +2,17 @@
 //! The array-aware evaluator (`excelFormula.ts`' `evalAst`): a formula over named values, the Expression card's
 //! core. A value is a JS value: a list is an array, a matrix an array of arrays, a LAMBDA a `V::Lambda`.
 
+use crate::excel_formula::cell_to_v;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::frame::FrameColumn;
 
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::excel_formula::{apply_op, call_caught, constant_value, guard, lowered, Refusal, Role};
 use crate::excel_functions::{fx_error_to_sol, is_ported, V};
 use crate::fxhash::FxHashMap;
-use crate::excel_formula::Ast;
+use crate::excel_formula::{Ast, BinOp, UnaryOp};
 
 pub type Env = FxHashMap<String, V>;
 
@@ -35,7 +36,7 @@ const MAX_GENERATED: f64 = 1_000_000.0;
 #[serde(rename_all = "camelCase")]
 pub struct Traits {
     pub kind: Kind,
-    pub prep: String,
+    pub prep: Prep,
     pub inspects_null: bool,
     pub nullable_ok: bool,
     pub free: bool,
@@ -63,6 +64,22 @@ pub enum Kind {
     Handler,
 }
 
+/// How a range call readies its lists before the body reads them (`prepRangeArgs`).
+#[derive(serde::Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Prep {
+    /// Blanks drop.
+    Default,
+    /// Blanks read 0.
+    Zero,
+    /// A position blank in any list drops from every list.
+    Paired,
+    /// The lists as they come.
+    Raw,
+    /// As they come, and a matrix among them is refused.
+    Positional,
+}
+
 /// A name's facts beside its traits: `ETA_HOSTS`, `LAMBDA_HOSTS`, `MEMO_SHAPERS`, `BRANCH_SELECTORS`, and whether the
 /// core carries its body.
 #[derive(Debug, Default)]
@@ -79,7 +96,7 @@ fn periodic<T>(xs: &[T], i: usize) -> Option<&T> {
     if i < n || n < 2 {
         return xs.get(i);
     }
-    xs.get(if (i - n) % 2 == 0 { n - 2 } else { n - 1 })
+    xs.get(if (i - n).is_multiple_of(2) { n - 2 } else { n - 1 })
 }
 
 impl Traits {
@@ -199,7 +216,7 @@ fn row_len(r: &V) -> Option<usize> {
 /// `mapCells`: the function over each cell of its arguments, by the broadcast-rules table.
 pub fn map_cells(argv: &[V], cell: &mut dyn FnMut(&[V]) -> V) -> V {
     if argv.iter().any(too_deep) {
-        return V::err(sol_error("#SHAPE!", "A value nested deeper than a 2-D matrix isn't a thing formulas compute on"));
+        return V::err(sol_error(ErrorCode::Shape, "A value nested deeper than a 2-D matrix isn't a thing formulas compute on"));
     }
     let args: Vec<V> = argv.iter().map(collapse_singleton_rank).collect();
     let rank = args.iter().map(rank_of).max().unwrap_or(0);
@@ -301,9 +318,9 @@ pub(crate) fn format_cx(re: f64, im: f64) -> String {
     if im < 0.0 { format!("{r} - {i}") } else { format!("{r} + {i}") }
 }
 
-fn apply_cx_op(op: &str, a: &V, b: &V) -> V {
+fn apply_cx_op(op: BinOp, a: &V, b: &V) -> V {
     match op {
-        "&" => {
+        BinOp::Concat => {
             let s = |v: &V| match v {
                 V::Cx(re, im) => format_cx(*re, *im),
                 V::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
@@ -312,17 +329,17 @@ fn apply_cx_op(op: &str, a: &V, b: &V) -> V {
             };
             V::Str(Rc::from(s(a) + &s(b)))
         }
-        "=" | "<>" => {
+        BinOp::Eq | BinOp::Ne => {
             let eq = matches!((a, b), (V::Cx(ar, ai), V::Cx(br, bi)) if ar == br && ai == bi);
-            V::Bool(if op == "=" { eq } else { !eq })
+            V::Bool(if op == BinOp::Eq { eq } else { !eq })
         }
-        "<" | ">" | "<=" | ">=" => V::err(sol_error("#TYPE!", "Complex numbers have no order. Compare their IMABS values instead")),
-        _ => V::err(sol_error("#TYPE!", "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV")),
+        BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => V::err(sol_error(ErrorCode::Type, "Complex numbers have no order. Compare their IMABS values instead")),
+        BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Pow => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV")),
     }
 }
 
 /// `applyOp`, with complex and LAMBDA operands caught first.
-fn op2(op: &str, a: &V, b: &V) -> V {
+fn op2(op: BinOp, a: &V, b: &V) -> V {
     if a.is_err() {
         return a.clone();
     }
@@ -336,7 +353,7 @@ fn op2(op: &str, a: &V, b: &V) -> V {
         return apply_cx_op(op, a, b);
     }
     if matches!(a, V::Lambda(_)) || matches!(b, V::Lambda(_)) {
-        return V::err(sol_error("#TYPE!", "A LAMBDA isn't a value. Call it with (…) or pass it to MAP, REDUCE and the other helpers"));
+        return V::err(sol_error(ErrorCode::Type, "A LAMBDA isn't a value. Call it with (…) or pass it to MAP, REDUCE and the other helpers"));
     }
     apply_op(op, a, b)
 }
@@ -365,7 +382,13 @@ pub struct RowCtx<'a> {
     wholes: RefCell<FxHashMap<String, V>>,
     /// `sideValue(name, "row")` for each name the formula reads by `@` that no column holds.
     row_sides: FxHashMap<String, V>,
-    at_verdict: RefCell<FxHashMap<String, (*const Vec<V>, Option<V>)>>,
+    at_verdict: RefCell<FxHashMap<String, AtVerdict>>,
+}
+
+/// An `@name` list's verdict, held with the list itself: an address alone could name the next list allocated there.
+struct AtVerdict {
+    list: Rc<Vec<V>>,
+    err: Option<V>,
 }
 
 impl<'a> RowCtx<'a> {
@@ -377,7 +400,7 @@ impl<'a> RowCtx<'a> {
     }
 
     fn reserved_err(key: &str) -> V {
-        V::err(sol_error("#REF!", format!("\"{key}\" is a reserved input name. Rename the variable or the column")))
+        V::err(sol_error(ErrorCode::Ref, format!("\"{key}\" is a reserved input name. Rename the variable or the column")))
     }
 
     /// `wholeOf`: a column as a one-column table, built once.
@@ -385,7 +408,7 @@ impl<'a> RowCtx<'a> {
         self.wholes
             .borrow_mut()
             .entry(c.name.clone())
-            .or_insert_with(|| list((0..c.values.len()).map(|i| list(vec![cell_v(c.cell_at(i))])).collect()))
+            .or_insert_with(|| list((0..c.values.len()).map(|i| list(vec![cell_to_v(c.cell_at(i))])).collect()))
             .clone()
     }
 
@@ -399,22 +422,21 @@ impl<'a> RowCtx<'a> {
 
     fn at(&self, key: &str, v: &V) -> V {
         let V::List(items) = v else { return v.clone() };
-        let ptr = Rc::as_ptr(items);
         let mut verdicts = self.at_verdict.borrow_mut();
-        let fresh = !matches!(verdicts.get(key), Some((p, _)) if *p == ptr);
+        let fresh = !verdicts.get(key).is_some_and(|v| Rc::ptr_eq(&v.list, items));
         if fresh {
             let n = self.rows;
             let err = if items.iter().any(is_arr) {
-                Some(V::err(sol_error("#SHAPE!", format!("@{key} reads one value per row, and a matrix has no single this-row value"))))
+                Some(V::err(sol_error(ErrorCode::Shape, format!("@{key} reads one value per row, and a matrix has no single this-row value"))))
             } else if items.len() != n {
                 let l = items.len();
-                Some(V::err(sol_error("#SHAPE!", format!("@{key}: {l} value{} for {n} row{}", if l == 1 { "" } else { "s" }, if n == 1 { "" } else { "s" }))))
+                Some(V::err(sol_error(ErrorCode::Shape, format!("@{key}: {l} value{} for {n} row{}", if l == 1 { "" } else { "s" }, if n == 1 { "" } else { "s" }))))
             } else {
                 None
             };
-            verdicts.insert(key.to_string(), (ptr, err));
+            verdicts.insert(key.to_string(), AtVerdict { list: items.clone(), err });
         }
-        if let Some((_, Some(e))) = verdicts.get(key) {
+        if let Some(AtVerdict { err: Some(e), .. }) = verdicts.get(key) {
             return e.clone();
         }
         match items.get(self.cursor.get()) {
@@ -441,9 +463,6 @@ impl<'a> RowCtx<'a> {
     }
 }
 
-fn cell_v(c: &crate::frame::FrameCell) -> V {
-    crate::excel_formula::cell_to_v_pub(c)
-}
 
 /// `Object.is` over the values a range call's memo compares: a list or error by identity, the rest by value.
 fn same(a: &V, b: &V) -> bool {
@@ -481,13 +500,26 @@ pub struct Eval<'a> {
     /// Keeps the range memo across calls outside a row too: a formula evaluated once per item (`formula`).
     memo_calls: bool,
     /// `rangeMemo`: a range function called again with the very same arguments (a whole column, row after row).
-    memo: RefCell<FxHashMap<*const Ast, (String, Vec<V>, V)>>,
+    memo: RefCell<FxHashMap<*const Ast, Memo>>,
     /// Each call site's name, facts and empty slots, read once per site rather than once per row.
     sites: RefCell<FxHashMap<*const u8, Rc<Site>>>,
     /// A LAMBDA's body, cloned once and kept while this evaluator lives: the memo and the sites are keyed by node
     /// address, which a body cloned per call and dropped would hand to the next one. A wired LAMBDA's tree is parsed
     /// per call and dropped, so its address can come back holding another body: an entry answers only an equal one.
     bodies: RefCell<FxHashMap<*const Ast, Rc<Ast>>>,
+}
+
+/// A range call's last answer at its site.
+struct Memo {
+    name: String,
+    args: Vec<V>,
+    answer: V,
+}
+
+impl Memo {
+    fn answers(&self, name: &str, argv: &[V]) -> Option<V> {
+        (self.name == name && self.args.len() == argv.len() && self.args.iter().zip(argv).all(|(a, b)| same(a, b))).then(|| self.answer.clone())
+    }
 }
 
 struct Site {
@@ -516,7 +548,7 @@ impl Eval<'_> {
     /// `compileEvaluator`'s answer: a LAMBDA left uncalled is an error, a Formula.js error reads as Solenoid's.
     pub fn run(&self, ast: &Ast, env: &Rc<Env>) -> V {
         match self.eval(ast, env) {
-            V::Lambda(_) => V::err(sol_error("#VALUE!", "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
+            V::Lambda(_) => V::err(sol_error(ErrorCode::Value, "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
             V::Fx(code) => V::err(fx_error_to_sol(code)),
             other => other,
         }
@@ -541,11 +573,11 @@ impl Eval<'_> {
             Ast::Bool(b) => V::Bool(*b),
             Ast::Blank => V::Null,
             Ast::AtCol(name) => match self.row {
-                None => V::err(sol_error("#REF!", "@ reads the current row, so it only works inside a computed column")),
+                None => V::err(sol_error(ErrorCode::Ref, "@ reads the current row, so it only works inside a computed column")),
                 Some(row) => match row.column(name) {
                     Some(c) => match c.cell_at(row.cursor.get()) {
                         crate::frame::FrameCell::Null => V::Null,
-                        cell => cell_v(cell),
+                        cell => cell_to_v(cell),
                     },
                     None => match env.get(name) {
                         Some(v) => row.at(name, v),
@@ -554,17 +586,17 @@ impl Eval<'_> {
                 },
             },
             Ast::WholeCol(name) => match self.row {
-                None => V::err(sol_error("#REF!", "[column] reads a whole table column, so it only works inside a computed column")),
+                None => V::err(sol_error(ErrorCode::Ref, "[column] reads a whole table column, so it only works inside a computed column")),
                 Some(row) => row.whole(name),
             },
             Ast::Name(name) => constant_value(name).map_or_else(|| env.get(name).cloned().unwrap_or(V::Undef), V::Num),
             Ast::Unary { op, arg } => {
                 let a = self.eval(arg, env);
-                let neg = *op == '-';
+                let neg = *op == UnaryOp::Neg;
                 let f = |x: &V| match x {
                     V::Err(_) => x.clone(),
                     V::Null => V::Null,
-                    V::Cx(..) => V::err(sol_error("#TYPE!", "Operators don't work on complex numbers. Use IMSUB(0, z) to negate")),
+                    V::Cx(..) => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMSUB(0, z) to negate")),
                     other => V::Num(if neg { -js_unary(other) } else { js_unary(other) }),
                 };
                 if is_arr(&a) {
@@ -580,7 +612,7 @@ impl Eval<'_> {
                 let f = |x: &V| match x {
                     V::Err(_) => x.clone(),
                     V::Null => V::Null,
-                    V::Cx(..) => V::err(sol_error("#TYPE!", "Operators don't work on complex numbers. Use IMDIV(z, COMPLEX(100, 0))")),
+                    V::Cx(..) => V::err(sol_error(ErrorCode::Type, "Operators don't work on complex numbers. Use IMDIV(z, COMPLEX(100, 0))")),
                     other => V::Num(js_unary(other) / 100.0),
                 };
                 if is_arr(&a) {
@@ -594,9 +626,9 @@ impl Eval<'_> {
             Ast::Bin { op, l, r } => {
                 let (l, r) = (self.eval(l, env), self.eval(r, env));
                 if is_arr(&l) || is_arr(&r) {
-                    return map_cells(&[l, r], &mut |x| op2(op, &x[0], &x[1]));
+                    return map_cells(&[l, r], &mut |x| op2(*op, &x[0], &x[1]));
                 }
-                op2(op, &l, &r)
+                op2(*op, &l, &r)
             }
             Ast::Apply { func, args } => {
                 let f = self.eval(func, env);
@@ -604,7 +636,7 @@ impl Eval<'_> {
                     return f;
                 }
                 let V::Lambda(lam) = f else {
-                    return V::err(sol_error("#VALUE!", "Only a LAMBDA can be called like a function"));
+                    return V::err(sol_error(ErrorCode::Value, "Only a LAMBDA can be called like a function"));
                 };
                 let argv: Vec<V> = args.iter().map(|a| self.eta_or_eval(a, env)).collect();
                 if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
@@ -612,7 +644,7 @@ impl Eval<'_> {
                 }
                 let p = lam.params.len();
                 if p > 0 && argv.len() != p {
-                    return V::err(sol_error("#VALUE!", format!("This LAMBDA takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
+                    return V::err(sol_error(ErrorCode::Value, format!("This LAMBDA takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
                 }
                 self.call_lambda(&lam, &argv)
             }
@@ -660,7 +692,7 @@ impl Eval<'_> {
             }
             let p = bound.params.len();
             if p > 0 && argv.len() != p {
-                return V::err(sol_error("#VALUE!", format!("{raw} takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
+                return V::err(sol_error(ErrorCode::Value, format!("{raw} takes {p} argument{}, not {}", if p == 1 { "" } else { "s" }, argv.len())));
             }
             return self.call_lambda(&bound, &argv);
         }
@@ -668,19 +700,19 @@ impl Eval<'_> {
         let name = &site.name;
         if name == "LAMBDA" {
             let Some((body, ps)) = args.split_last() else {
-                return V::err(sol_error("#VALUE!", "LAMBDA needs a body: LAMBDA(param…, body)"));
+                return V::err(sol_error(ErrorCode::Value, "LAMBDA needs a body: LAMBDA(param…, body)"));
             };
             let mut params: Vec<String> = Vec::with_capacity(ps.len());
             for a in ps {
                 let Ast::Name(p) = a else {
-                    return V::err(sol_error("#VALUE!", "LAMBDA parameters must be plain names"));
+                    return V::err(sol_error(ErrorCode::Value, "LAMBDA parameters must be plain names"));
                 };
                 if params.contains(p) {
-                    return V::err(sol_error("#NAME?", format!("LAMBDA parameter {p} appears twice")));
+                    return V::err(sol_error(ErrorCode::Name, format!("LAMBDA parameter {p} appears twice")));
                 }
                 // [[D77]] constantsAlwaysWin
                 if constant_value(p).is_some() {
-                    return V::err(sol_error("#NAME?", format!("{p} is a constant, so it can't name a LAMBDA parameter")));
+                    return V::err(sol_error(ErrorCode::Name, format!("{p} is a constant, so it can't name a LAMBDA parameter")));
                 }
                 params.push(p.clone());
             }
@@ -699,11 +731,11 @@ impl Eval<'_> {
             return if crate::external::HOSTED || is_external(name) {
                 self.call_external(name, &site, args, env)
             } else {
-                V::err(sol_error("#NAME?", format!("Unknown function {name}")))
+                V::err(sol_error(ErrorCode::Name, format!("Unknown function {name}")))
             };
         };
         if let Some(r) = &t.refusal {
-            return V::err(sol_error(&r.code, r.message.as_str()));
+            return V::err(sol_error(r.code, r.message.as_str()));
         }
         let mut argv: Vec<V> = if t.fast.eta_host {
             args.iter().map(|a| self.eta_or_eval(a, env)).collect()
@@ -722,7 +754,7 @@ impl Eval<'_> {
             }
         }
         if t.kind == Kind::Handler {
-            return apply_error_handler(name, &argv);
+            return crate::excel_functions::error_handler(name, &argv);
         }
         let selects = t.fast.selects;
         if let Some(e) = argv.iter().enumerate().find(|&(i, v)| selects.is_none_or(|s| s(i)) && v.is_sol_error()) {
@@ -733,14 +765,12 @@ impl Eval<'_> {
         if lifted.is_empty() {
             if any_arr && (self.row.is_some() || self.memo_calls) && (t.kind == Kind::Range || t.fast.memo_shaper) {
                 let key = args.as_ptr();
-                if let Some((f, last, r)) = self.memo.borrow().get(&key) {
-                    if f == name && last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
-                        return r.clone();
-                    }
+                if let Some(r) = self.memo.borrow().get(&key).and_then(|m| m.answers(name, &argv)) {
+                    return r;
                 }
                 let r = self.route_call(name, t, argv.clone(), settled);
                 if !is_arr(&r) || t.fast.memo_shaper {
-                    self.memo.borrow_mut().insert(key, (name.clone(), argv, r.clone()));
+                    self.memo.borrow_mut().insert(key, Memo { name: name.clone(), args: argv, answer: r.clone() });
                 }
                 return r;
             }
@@ -768,15 +798,13 @@ impl Eval<'_> {
         let memo = self.row.is_some() && argv.iter().any(is_arr);
         let key = args.as_ptr();
         if memo {
-            if let Some((f, last, r)) = self.memo.borrow().get(&key) {
-                if f == name && last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
-                    return r.clone();
-                }
+            if let Some(r) = self.memo.borrow().get(&key).and_then(|m| m.answers(name, &argv)) {
+                return r;
             }
         }
         let Some(r) = crate::external::call(name, &site.empty, &argv) else { return crate::excel_functions::bail() };
         if memo && !is_arr(&r) {
-            self.memo.borrow_mut().insert(key, (name.to_string(), argv, r.clone()));
+            self.memo.borrow_mut().insert(key, Memo { name: name.to_string(), args: argv, answer: r.clone() });
         }
         r
     }
@@ -791,17 +819,17 @@ impl Eval<'_> {
             }
         }
         if !t.matrix_args && argv.iter().any(is_matrix) {
-            if t.prep == "positional" {
-                return V::err(sol_error("#SHAPE!", format!("{name} over a matrix isn't supported yet. Wire the matrix through its node")));
+            if t.prep == Prep::Positional {
+                return V::err(sol_error(ErrorCode::Shape, format!("{name} over a matrix isn't supported yet. Wire the matrix through its node")));
             }
             if t.kind == Kind::Range {
                 argv = argv.into_iter().map(|a| if is_matrix(&a) { flat1(&a) } else { a }).collect();
             } else if t.kind == Kind::Whole || !t.known {
-                return V::err(sol_error("#SHAPE!", format!("{name} works on values and 1-D lists, not a 2-D matrix")));
+                return V::err(sol_error(ErrorCode::Shape, format!("{name} works on values and 1-D lists, not a 2-D matrix")));
             }
         }
         if t.checks_cx && argv.iter().any(contains_cx) {
-            return V::err(sol_error("#TYPE!", format!("{name} doesn't compute on complex numbers. Use the IM* family")));
+            return V::err(sol_error(ErrorCode::Type, format!("{name} doesn't compute on complex numbers. Use the IM* family")));
         }
         match t.kind {
             Kind::Whole => {
@@ -812,7 +840,7 @@ impl Eval<'_> {
                 if column { as_column(r) } else { r }
             }
             Kind::Range => {
-                let args = match prep_range_args(&t.prep, argv) {
+                let args = match prep_range_args(t.prep, argv) {
                     Ok(a) => a,
                     Err(e) => return e,
                 };
@@ -908,7 +936,7 @@ impl Eval<'_> {
         let arg = |i: usize| a.get(i).cloned().unwrap_or(V::Undef);
         let last = if name == "MAP" { a.last().cloned().unwrap_or(V::Undef) } else { arg(if matches!(name, "MAKEARRAY" | "REDUCE" | "SCAN" | "GROUPBY") { 2 } else { 1 }) };
         let V::Lambda(lam) = last else {
-            return V::err(sol_error("#VALUE!", format!("{name} needs a LAMBDA as its last argument")));
+            return V::err(sol_error(ErrorCode::Value, format!("{name} needs a LAMBDA as its last argument")));
         };
         // `etaFn`: a function named bare gets only the arguments that mean something to it.
         let call = |args: &[V], meaningful: usize| -> V {
@@ -927,7 +955,7 @@ impl Eval<'_> {
                     [c] => Some(c.clone()),
                     _ => None,
                 };
-                cell.unwrap_or_else(|| V::err(sol_error("#SHAPE!", format!("{name}'s LAMBDA answers one value for each {each}, not a list"))))
+                cell.unwrap_or_else(|| V::err(sol_error(ErrorCode::Shape, format!("{name}'s LAMBDA answers one value for each {each}, not a list"))))
             }
             other => other,
         };
@@ -935,7 +963,7 @@ impl Eval<'_> {
             "MAP" => {
                 let arrays = &a[..a.len() - 1];
                 if arrays.is_empty() || arrays.len() > 3 {
-                    return V::err(sol_error("#VALUE!", "MAP takes 1–3 arrays and a LAMBDA"));
+                    return V::err(sol_error(ErrorCode::Value, "MAP takes 1–3 arrays and a LAMBDA"));
                 }
                 if arrays.iter().any(absent) {
                     return V::Null;
@@ -1021,7 +1049,7 @@ impl Eval<'_> {
                 // Each side counts as at least one, so a zero side can't hide a huge other one.
                 let cells = js_max(r, 1.0) * js_max(c, 1.0);
                 if cells > MAX_GENERATED {
-                    return V::err(sol_error("#OVERFLOW!", format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(cells))));
+                    return V::err(sol_error(ErrorCode::Overflow, format!("MAKEARRAY count {} exceeds the 1000000 element limit", crate::jsnum::number_to_string(cells))));
                 }
                 let (r, c) = (if r.is_nan() { 0.0 } else { r }, if c.is_nan() { 0.0 } else { c });
                 list((0..r as usize).map(|i| list((0..c as usize).map(|j| one("cell", self.call_lambda(&lam, &[V::Num((i + 1) as f64), V::Num((j + 1) as f64)]))).collect())).collect())
@@ -1121,7 +1149,6 @@ fn as_column(r: V) -> V {
     }
 }
 
-/// `prepRangeArgs`: a list's first error answers, and its blanks drop (or read 0, or drop pairwise).
 /// The error a body called by name answers before it runs, as a formula's call scans for one (`argumentError` in
 /// excelFormula.ts): an error argument, or for a range function an error among a list's cells. None for the error
 /// handlers, which read errors.
@@ -1138,11 +1165,12 @@ pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
         return None;
     }
     let flat = argv.iter().map(|a| if !t.matrix_args && is_matrix(a) { flat1(a) } else { a.clone() }).collect();
-    prep_range_args(&t.prep, flat).err()
+    prep_range_args(t.prep, flat).err()
 }
 
-fn prep_range_args(prep: &str, argv: Vec<V>) -> Result<Vec<V>, V> {
-    if prep == "raw" || prep == "positional" {
+/// `prepRangeArgs`: a list's first error answers, then its blanks go as `prep` says.
+fn prep_range_args(prep: Prep, argv: Vec<V>) -> Result<Vec<V>, V> {
+    if matches!(prep, Prep::Raw | Prep::Positional) {
         return Ok(argv);
     }
     for a in &argv {
@@ -1150,34 +1178,35 @@ fn prep_range_args(prep: &str, argv: Vec<V>) -> Result<Vec<V>, V> {
             for v in l.iter() {
                 match v {
                     V::Err(_) => return Err(v.clone()),
-                    V::Fx(code) => return Err(V::err(fx_error_to_sol(code))),
+                    V::Fx(code) => return Err(V::err(fx_error_to_sol(*code))),
                     _ => {}
                 }
             }
         }
     }
-    match prep {
-        "zero" => Ok(argv.into_iter().map(|a| match a {
+    Ok(match prep {
+        Prep::Zero => argv.into_iter().map(|a| match a {
             V::List(l) => list(l.iter().map(|v| if is_missing(v) { V::Num(0.0) } else { v.clone() }).collect()),
             other => other,
-        }).collect()),
-        "paired" => {
+        }).collect(),
+        Prep::Paired => {
             let lens: Vec<usize> = argv.iter().filter_map(|a| if let V::List(l) = a { Some(l.len()) } else { None }).collect();
             let Some(&n) = lens.iter().min() else { return Ok(argv) };
             let keep: Vec<usize> = (0..n).filter(|&i| !argv.iter().any(|a| matches!(a, V::List(l) if is_missing(&l[i])))).collect();
             if keep.len() == n {
                 return Ok(argv);
             }
-            Ok(argv.into_iter().map(|a| match a {
+            argv.into_iter().map(|a| match a {
                 V::List(l) => list(keep.iter().map(|&i| l[i].clone()).collect()),
                 other => other,
-            }).collect())
+            }).collect()
         }
-        _ => Ok(argv.into_iter().map(|a| match a {
+        Prep::Default => argv.into_iter().map(|a| match a {
             V::List(l) => list(l.iter().filter(|v| !is_missing(v)).cloned().collect()),
             other => other,
-        }).collect()),
-    }
+        }).collect(),
+        Prep::Raw | Prep::Positional => argv,
+    })
 }
 
 /// `applyArgRoles`: each argument read by its role; the answer is which slots the null rule must not blank on.
@@ -1194,7 +1223,7 @@ fn apply_arg_roles(name: &str, t: &Traits, empty: &[bool], argv: &mut [V]) -> Op
     }
     let group: Vec<usize> = (0..argv.len()).filter(|&i| matches!(t.role(i), Some(Role::Picks { required: true }))).collect();
     if !group.is_empty() && group.iter().all(|&i| matches!(argv[i], V::Undef)) {
-        argv[group[0]] = V::err(sol_error("#SYNTAX!", format!("{name}: no positions given, and they have no default")));
+        argv[group[0]] = V::err(sol_error(ErrorCode::Syntax, format!("{name}: no positions given, and they have no default")));
     }
     Some(settled)
 }
@@ -1211,7 +1240,7 @@ fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bo
             other => other.clone(),
         }
     }
-    let no_default = || V::err(sol_error("#SYNTAX!", format!("{} is blank, and it has no default", label())));
+    let no_default = || V::err(sol_error(ErrorCode::Syntax, format!("{} is blank, and it has no default", label())));
     match role {
         Role::Setting { blank } => fill(v, &lowered(blank)),
         Role::Required => match v {
@@ -1225,11 +1254,11 @@ fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bo
                     rows.iter()
                         .map(|r| match r {
                             V::List(cells) => list(cells.iter().map(|x| if matches!(x, V::Null | V::Undef) {
-                                V::err(sol_error("#SYNTAX!", format!("A position in {} is blank", label())))
+                                V::err(sol_error(ErrorCode::Syntax, format!("A position in {} is blank", label())))
                             } else {
                                 x.clone()
                             }).collect()),
-                            V::Null | V::Undef => V::err(sol_error("#SYNTAX!", format!("A position in {} is blank", label()))),
+                            V::Null | V::Undef => V::err(sol_error(ErrorCode::Syntax, format!("A position in {} is blank", label()))),
                             other => other.clone(),
                         })
                         .collect(),
@@ -1242,62 +1271,6 @@ fn apply_role(role: &Role, v: &V, label: &dyn Fn() -> String, picks_optional: bo
                 other => other.clone(),
             };
             if matches!(out, V::Undef) && *required && !picks_optional { no_default() } else { out }
-        }
-    }
-}
-
-/// The IFERROR family (`applyErrorHandler`).
-fn apply_error_handler(name: &str, argv: &[V]) -> V {
-    let as_sol = |v: &V| match v {
-        V::Err(e) => Some(e.code.clone()),
-        V::Fx(code) => Some(fx_error_to_sol(code).code),
-        _ => None,
-    };
-    let caught = |v: &V| match as_sol(v) {
-        None => false,
-        Some(code) => match name {
-            "IFNA" | "ISNA" => code == "#N/A",
-            "ISERR" => code != "#N/A",
-            _ => true,
-        },
-    };
-    let value = argv.first().cloned().unwrap_or(V::Undef);
-    match name {
-        "IFERROR" | "IFNA" => {
-            let fallback = argv.get(1).cloned().unwrap_or(V::Null);
-            if !is_arr(&value) && !is_arr(&fallback) {
-                return if caught(&value) { fallback } else { value };
-            }
-            map_cells(&[value, fallback], &mut |x| if caught(&x[0]) { x[1].clone() } else { x[0].clone() })
-        }
-        "ERROR.TYPE" => {
-            fn walk(v: &V, as_sol: &dyn Fn(&V) -> Option<String>) -> V {
-                match v {
-                    V::List(l) => list(l.iter().map(|x| walk(x, as_sol)).collect()),
-                    other => match as_sol(other) {
-                        Some(code) => V::Num(match code.as_str() {
-                            "#DIV/0!" => 2.0,
-                            "#VALUE!" => 3.0,
-                            "#REF!" => 4.0,
-                            "#NAME?" => 5.0,
-                            "#N/A" => 7.0,
-                            "#DOMAIN!" | "#OVERFLOW!" | "#CONV!" | "#NUM!" => 6.0,
-                            _ => 3.0,
-                        }),
-                        None => V::err(sol_error("#N/A", "ERROR.TYPE: the value is not an error")),
-                    },
-                }
-            }
-            walk(&value, &as_sol)
-        }
-        _ => {
-            fn walk(v: &V, caught: &dyn Fn(&V) -> bool) -> V {
-                match v {
-                    V::List(l) => list(l.iter().map(|x| walk(x, caught)).collect()),
-                    other => V::Bool(caught(other)),
-                }
-            }
-            walk(&value, &caught)
         }
     }
 }
@@ -1409,7 +1382,13 @@ thread_local! {
     /// The formulas `engine_eval` ran last, parsed once, each with an evaluator whose range memo outlives the call, as
     /// `compileEvaluator` keeps its AST and `rangeMemo` across calls: `x - AVERAGE(vals)` over each item of a held
     /// list reads `vals` once ([[C120]] linearWork).
-    static FORMULAS: RefCell<Vec<(String, Rc<(Ast, Eval<'static>)>)>> = const { RefCell::new(Vec::new()) };
+    static FORMULAS: RefCell<Vec<(String, Rc<Compiled>)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// A formula parsed once, with the evaluator whose memo it keeps.
+struct Compiled {
+    ast: Ast,
+    eval: Eval<'static>,
 }
 
 const FORMULAS_KEPT: usize = 16;
@@ -1420,7 +1399,7 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
     let compiled = match hit {
         Some(c) => c,
         None => {
-            let c = Rc::new((crate::excel_formula::parse_formula(src)?, Eval { memo_calls: true, ..Eval::default() }));
+            let c = Rc::new(Compiled { ast: crate::excel_formula::parse_formula(src)?, eval: Eval { memo_calls: true, ..Eval::default() } });
             FORMULAS.with(|f| {
                 let mut f = f.borrow_mut();
                 if f.len() == FORMULAS_KEPT {
@@ -1431,7 +1410,7 @@ pub fn formula(src: &str, env: Env) -> Option<V> {
             c
         }
     };
-    Some(compiled.1.run(&compiled.0, &Rc::new(env)))
+    Some(compiled.eval.run(&compiled.ast, &Rc::new(env)))
 }
 
 /// A registry change can change what a call answers, so no memo outlives one.
@@ -1472,7 +1451,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
         }
         Json::Object(o) if o.contains_key("__undef") => V::Undef,
         Json::Object(o) if o.contains_key("__cx") => {
-            let part = |i: usize| match o["__cx"].get(i).map(|p| cell_v(&crate::wire::decode_cell(p))) {
+            let part = |i: usize| match o["__cx"].get(i).map(|p| cell_to_v(&crate::wire::decode_cell(p))) {
                 Some(V::Num(n)) => n,
                 _ => f64::NAN,
             };
@@ -1480,7 +1459,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
         }
         Json::Object(o) if o.contains_key("__unit") => {
             let w = &o["__unit"];
-            let num = |j: Option<&Json>| match j.map(|p| cell_v(&crate::wire::decode_cell(p))) {
+            let num = |j: Option<&Json>| match j.map(|p| cell_to_v(&crate::wire::decode_cell(p))) {
                 Some(V::Num(n)) => n,
                 _ => f64::NAN,
             };
@@ -1509,7 +1488,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
             let env: Env = captured.iter().cloned().zip(values.into_iter().chain(std::iter::repeat(V::Undef))).collect();
             V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body)), env: Rc::new(env), eta: None, captured: Some(captured) }))
         }
-        _ => cell_v(&crate::wire::decode_cell(j)),
+        _ => cell_to_v(&crate::wire::decode_cell(j)),
     }
 }
 
@@ -1575,7 +1554,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
         if let Some(target) = ctx.alias.get(p) {
             match ctx.cols.get(target.as_str()) {
                 Some(c) => binds.push(Bind::Col(c)),
-                None => return Err(sol_error("#REF!", format!("No column \"{target}\" to bind \"{p}\" to"))),
+                None => return Err(sol_error(ErrorCode::Ref, format!("No column \"{target}\" to bind \"{p}\" to"))),
             }
             continue;
         }
@@ -1584,23 +1563,32 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
             continue;
         }
         if ctx.reserved.contains(p) {
-            return Err(sol_error("#REF!", format!("\"{p}\" is a reserved input name. Rename the variable or the column")));
+            return Err(sol_error(ErrorCode::Ref, format!("\"{p}\" is a reserved input name. Rename the variable or the column")));
         }
         side_vars.push(p.clone());
         binds.push(Bind::Side(ctx.aligned(side(p))));
     }
     let mut cells = Vec::with_capacity(inp.rows);
-    crate::excel_functions::take_bailed();
-    let finish = |v: V| -> Result<crate::frame::FrameCell, ()> {
-        if crate::excel_functions::take_bailed() {
-            crate::excel_functions::take_thrown();
-            return Err(());
-        }
-        Ok(match crate::excel_functions::take_thrown() {
-            Some(e) => crate::frame::FrameCell::err(e),
-            None => crate::excel_formula::tag_computed_cell_pub(v),
-        })
+    use crate::excel_functions::{take_raised, Raised};
+    take_raised();
+    let finish = |v: V| match take_raised() {
+        Raised::Bailed => None,
+        Raised::Thrown(e) => Some(crate::frame::FrameCell::err(e)),
+        Raised::Nothing => Some(crate::excel_formula::tag_computed_cell(v)),
     };
+    /// ROW()'s row while the column runs; dropping it clears the row.
+    struct Rows;
+    impl Rows {
+        fn at(&self, i: usize) {
+            crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+        }
+    }
+    impl Drop for Rows {
+        fn drop(&mut self) {
+            crate::excel_functions::set_row_number(None);
+        }
+    }
+    let rows = Rows;
     match spec {
         ColumnSpec::Expr { ast, .. } => {
             for p in row_refs(ast) {
@@ -1609,7 +1597,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
                 }
                 if let Some(target) = ctx.alias.get(&p) {
                     if !has_col(target) {
-                        return Err(sol_error("#REF!", format!("No column \"{target}\" to bind \"{p}\" to")));
+                        return Err(sol_error(ErrorCode::Ref, format!("No column \"{target}\" to bind \"{p}\" to")));
                     }
                     continue;
                 }
@@ -1625,23 +1613,20 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
             let env = Rc::new(env);
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
-                crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+                rows.at(i);
                 let v = ev.run(ast, &env);
                 match finish(v) {
-                    Ok(c) => cells.push(c),
-                    Err(()) => {
-                        crate::excel_functions::set_row_number(None);
-                        return Ok(ColumnOutcome::Bail);
-                    }
+                    Some(c) => cells.push(c),
+                    None => return Ok(ColumnOutcome::Bail),
                 }
             }
         }
         ColumnSpec::Lambda(lam) => {
             for i in 0..inp.rows {
                 ctx.cursor.set(i);
-                crate::excel_functions::set_row_number(Some(i as f64 + 1.0));
+                rows.at(i);
                 let argv: Vec<V> = binds.iter().map(|b| match b {
-                    Bind::Col(c) => cell_v(c.cell_at(i)),
+                    Bind::Col(c) => cell_to_v(c.cell_at(i)),
                     Bind::Side(v) => v.clone(),
                 }).collect();
                 // A parameter's error cell answers the row before the body runs.
@@ -1651,15 +1636,11 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
                     None => ev.call_lambda(lam, &argv),
                 };
                 match finish(v) {
-                    Ok(c) => cells.push(c),
-                    Err(()) => {
-                        crate::excel_functions::set_row_number(None);
-                        return Ok(ColumnOutcome::Bail);
-                    }
+                    Some(c) => cells.push(c),
+                    None => return Ok(ColumnOutcome::Bail),
                 }
             }
         }
     }
-    crate::excel_functions::set_row_number(None);
     Ok(ColumnOutcome::Done { cells, side_vars })
 }

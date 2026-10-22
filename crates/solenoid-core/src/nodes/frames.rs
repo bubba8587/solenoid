@@ -6,7 +6,7 @@
 
 use super::stats::{read_role, Role};
 use super::{err, list, Answer, Call, Column, Cube, CubeColumn, Frame};
-use crate::error_value::SolError;
+use crate::error_value::{ErrorCode, SolError};
 use crate::excel_functions::V;
 use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::jsnum::{js_trim, math_max, math_round};
@@ -56,18 +56,18 @@ pub(crate) fn core_cell(v: &V) -> FrameCell {
 }
 
 pub(crate) fn card_cell(c: &FrameCell) -> V {
-    crate::excel_formula::cell_to_v_pub(c)
+    crate::excel_formula::cell_to_v(c)
 }
 
 /// The card's frame as the core computes on it: names, types and cells (units, formats and typed text stay behind).
 pub(crate) fn to_core(f: &Frame) -> FrameValue {
     FrameValue {
-        columns: f.columns.iter().map(|c| FrameColumn::new(c.name.clone(), FrameColType::from_tag(&c.ty), c.values.iter().map(core_cell).collect())).collect(),
+        columns: f.columns.iter().map(|c| FrameColumn::new(c.name.clone(), c.ty, c.values.iter().map(core_cell).collect())).collect(),
     }
 }
 
 pub(crate) fn core_column(c: &FrameColumn) -> Column {
-    Column { name: c.name.clone(), ty: c.ty.tag().to_string(), values: c.values.iter().map(card_cell).collect(), unit: None, format: None, raw: None }
+    Column { name: c.name.clone(), ty: c.ty, values: c.values.iter().map(card_cell).collect(), unit: None, format: None, raw: None }
 }
 
 /// The core's answer as a card's frame (`decodeBinary`): no unit, format or typed text.
@@ -80,12 +80,12 @@ pub(crate) fn frame_v(columns: Vec<Column>) -> V {
 }
 
 pub(crate) fn num_column(name: &str, values: Vec<V>) -> Column {
-    Column { name: name.to_string(), ty: "number".into(), values, unit: None, format: None, raw: None }
+    Column { name: name.to_string(), ty: FrameColType::Number, values, unit: None, format: None, raw: None }
 }
 
 /// What the error guard shows for a JS exception the TS body throws ([[node-bodies]] § Freezing).
 pub(crate) fn thrown(message: &str) -> V {
-    err("#ERROR!", format!("This node failed to compute: {message}"))
+    err(ErrorCode::Error, format!("This node failed to compute: {message}"))
 }
 
 /// `raw.trim()` on what `readInput` gave a text socket: text trims, anything else throws as JS's `trim` does.
@@ -232,7 +232,7 @@ fn amortization(c: &mut Call) -> Answer {
     let n = super::kit::num(&nper);
     if n.floor() > 1_000_000.0 {
         c.show("cachedResult", V::Null);
-        return Ok(vec![("frame".into(), err("#DOMAIN!", "Amortization takes at most 1,000,000 periods"))]);
+        return Ok(vec![("frame".into(), err(ErrorCode::Domain, "Amortization takes at most 1,000,000 periods"))]);
     }
     let ty = if c.field_str("paymentTiming", "end") == "beg" { 1.0 } else { 0.0 };
     let frame = crate::planners::amortization_frame(number_or_nan(&rate), n, number_or_nan(&pv), number_or_nan(&fv), ty).map(|f| from_core(&f));
@@ -379,7 +379,7 @@ fn fit_distribution(c: &mut Call) -> Answer {
     if fits.is_empty() {
         return shown(c, V::Null, V::Null, V::Null);
     }
-    let text = |name: &str, f: &dyn Fn(&Fit) -> String| Column { name: name.into(), ty: "string".into(), values: fits.iter().map(|x| V::str(&f(x))).collect(), unit: None, format: None, raw: None };
+    let text = |name: &str, f: &dyn Fn(&Fit) -> String| Column { name: name.into(), ty: FrameColType::String, values: fits.iter().map(|x| V::str(&f(x))).collect(), unit: None, format: None, raw: None };
     let nums = |name: &str, f: &dyn Fn(&Fit) -> V| num_column(name, fits.iter().map(f).collect());
     let pval = |i: usize| move |x: &Fit| x.params.get(i).map_or(V::Null, |v| V::Num(*v));
     let ranking = frame_v(vec![
@@ -447,8 +447,8 @@ fn kmeans(c: &mut Call) -> Answer {
         return out(c, k.clone(), k, (V::Null, V::Null));
     }
     let Some(f) = frame_in(c, "frame") else { return out(c, V::Null, V::Null, (V::Null, V::Null)) };
-    if !f.columns.iter().any(|col| col.ty == "number") {
-        let e = err("#VALUE!", "K-Means needs at least one number column");
+    if !f.columns.iter().any(|col| col.ty == FrameColType::Number) {
+        let e = err(ErrorCode::Value, "K-Means needs at least one number column");
         return out(c, e.clone(), V::Null, (e, V::Null));
     }
     let core = to_core(&f);
@@ -479,9 +479,9 @@ fn logistic(c: &mut Call) -> Answer {
     if t.is_empty() {
         return blank(c, V::Null);
     }
-    let Some(ti) = f.columns.iter().position(|col| col.name == t) else { return blank(c, err("#REF!", format!("Logistic Regression: no column \"{t}\""))) };
-    if !f.columns.iter().enumerate().any(|(i, col)| i != ti && col.ty == "number") {
-        return blank(c, err("#VALUE!", "Logistic Regression needs at least one number column besides the target"));
+    let Some(ti) = f.columns.iter().position(|col| col.name == t) else { return blank(c, err(ErrorCode::Ref, format!("Logistic Regression: no column \"{t}\""))) };
+    if !f.columns.iter().enumerate().any(|(i, col)| i != ti && col.ty == FrameColType::Number) {
+        return blank(c, err(ErrorCode::Value, "Logistic Regression needs at least one number column besides the target"));
     }
     match crate::planners::logistic_frame(&to_core(&f), &t) {
         Some(Some(r)) => {
@@ -492,7 +492,7 @@ fn logistic(c: &mut Call) -> Answer {
             c.show("cachedProbabilities", probs.clone());
             Ok(vec![("coefficients".into(), coef), ("probabilities".into(), probs)])
         }
-        _ => blank(c, err("#DOMAIN!", "Logistic Regression: the target must take both values and there must be more rows than columns")),
+        _ => blank(c, err(ErrorCode::Domain, "Logistic Regression: the target must take both values and there must be more rows than columns")),
     }
 }
 
@@ -534,11 +534,11 @@ fn allocator(c: &mut Call) -> Answer {
     let mode = c.field_str("mode", "budget").to_string();
     let out = match crate::decision::allocate_frame(&to_core(&f), &mode, super::kit::num(&amount)) {
         Some(r) => frame_or_error(r),
-        None => Err(err("#VALUE!", format!("Allocator: no mode \"{mode}\""))),
+        None => Err(err(ErrorCode::Value, format!("Allocator: no mode \"{mode}\""))),
     };
     let out = out.map(|mut out| {
         let weight = by_name(&f, &["weight", "weights", "value"]);
-        let price: Vec<usize> = (0..f.columns.len()).filter(|&i| f.columns[i].ty == "number" && Some(i) != weight).collect();
+        let price: Vec<usize> = (0..f.columns.len()).filter(|&i| f.columns[i].ty == FrameColType::Number && Some(i) != weight).collect();
         let min = by_name(&f, &["min"]).or(price.first().copied());
         if let (Some(min), 3) = (min, out.columns.len()) {
             carry_money(&mut out.columns[1], &f.columns[min]);
@@ -569,7 +569,7 @@ fn payoff_planner(c: &mut Call) -> Answer {
     let order = if c.field_str("order", "avalanche") == "snowball" { "snowball" } else { "avalanche" };
     let view = if c.field_str("mode", "summary") == "schedule" { "schedule" } else { "summary" };
     let out = frame_or_error(crate::planners::payoff_frame(&to_core(&f), super::kit::num(&extra), order, view, start)).map(|mut out| {
-        let nums: Vec<usize> = (0..f.columns.len()).filter(|&i| f.columns[i].ty == "number").collect();
+        let nums: Vec<usize> = (0..f.columns.len()).filter(|&i| f.columns[i].ty == FrameColType::Number).collect();
         if let Some(bal) = by_name(&f, &["balance", "owed", "principal"]).or(nums.first().copied()) {
             for (k, col) in out.columns.iter_mut().enumerate() {
                 if if view == "schedule" { k > 0 } else { k == 2 } {
@@ -598,7 +598,7 @@ fn ladder_from_wire(f: &Frame, plan: &FrameValue, wire: &V) -> (Frame, Json) {
         .iter()
         .map(|r| {
             let name = at(r, 0);
-            f.columns.iter().find(|c| (c.ty == "number" || c.ty == "logical") && matches!(&name, V::Str(s) if **s == *c.name))
+            f.columns.iter().find(|c| (c.ty == FrameColType::Number || c.ty == FrameColType::Logical) && matches!(&name, V::Str(s) if **s == *c.name))
         })
         .collect();
     let r = resources.len();
@@ -781,13 +781,13 @@ pub(crate) fn widen_to_frame(v: &V) -> Frame {
 
 /// The cube twin of `addColumn`: a Cube carries its unit on its cells, so `unit` tags each number, list items
 /// included, and a replaced column keeps its place and format.
-fn cube_with_column(cube: &Cube, name: &str, cells: Vec<V>, ty: &str, unit: Option<&Json>) -> V {
+fn cube_with_column(cube: &Cube, name: &str, cells: Vec<V>, ty: FrameColType, unit: Option<&Json>) -> V {
     let (clean, _) = parse_column_unit_from_header(name);
     let cells = match unit {
-        Some(u) if ty == "number" => cells.iter().map(|v| tag_cube_cell_unit(v, u)).collect(),
+        Some(u) if ty == FrameColType::Number => cells.iter().map(|v| tag_cube_cell_unit(v, u)).collect(),
         _ => cells,
     };
-    let col = CubeColumn { name: clean.clone(), cells, ty: Some(ty.to_string()), format: None };
+    let col = CubeColumn { name: clean.clone(), cells, ty: Some(ty), format: None };
     let mut cols = cube.columns.clone();
     match cols.iter().position(|c| c.name == clean) {
         Some(at) => {
@@ -810,16 +810,15 @@ fn add_column(c: &mut Call) -> Answer {
     let name = trimmed(&name_raw, "nameRaw")?;
     let name = if name.is_empty() { "Col".to_string() } else { name };
     let ty = match c.field_str("addAs", "number") {
-        "text" => "string",
-        t => t,
-    }
-    .to_string();
+        "text" => FrameColType::String,
+        t => t.parse().map_err(|_| err(ErrorCode::Value, format!("Add Column can't add a column as \"{t}\"")))?,
+    };
     let values = super::stats::items(&values).to_vec();
     if let V::Cube(cube) = &raw {
         let rows = cube_row_count(cube).max(values.len());
         let padded: Vec<V> = (0..rows).map(|i| values.get(i).cloned().unwrap_or(V::Null)).collect();
         let unit = parse_column_unit_from_header(&name).1;
-        let out = cube_with_column(cube, &name, padded, &ty, unit.as_ref());
+        let out = cube_with_column(cube, &name, padded, ty, unit.as_ref());
         return shown_frame(c, "frame", out);
     }
     let f = match &raw {
@@ -829,24 +828,24 @@ fn add_column(c: &mut Call) -> Answer {
     let rows = f.columns.iter().map(|col| col.values.len()).max().unwrap_or(0).max(values.len());
     let padded: Vec<V> = (0..rows).map(|i| values.get(i).cloned().unwrap_or(V::Null)).collect();
     let (clean, unit) = parse_column_unit_from_header(&name);
-    let names_only = FrameValue { columns: f.columns.iter().map(|col| FrameColumn::new(col.name.clone(), FrameColType::from_tag(&col.ty), Vec::new())).collect() };
-    let at = match frame_fn("addColumn", &[&names_only], &[V::str(&clean), list(Vec::new()), V::str(&ty)]) {
+    let names_only = FrameValue { columns: f.columns.iter().map(|col| FrameColumn::new(col.name.clone(), col.ty, Vec::new())).collect() };
+    let at = match frame_fn("addColumn", &[&names_only], &[V::str(&clean), list(Vec::new()), V::str(ty.as_str())]) {
         crate::frame_fns::FrameOut::FrameAnd(out, V::Num(at)) => Some((out, at as usize)),
         _ => None,
     };
     let Some((out, at)) = at else { return Err(thrown("Add Column left a reading to the TS")) };
-    let unit = unit.filter(|_| ty == "number");
+    let unit = unit.filter(|_| ty == FrameColType::Number);
     let mut columns = f.columns.clone();
     if at < f.columns.len() {
         let col = &mut columns[at];
-        col.ty = ty.clone();
+        col.ty = ty;
         col.values = padded;
         col.raw = None;
         if unit.is_some() {
             col.unit = unit;
         }
     } else {
-        columns.push(Column { name: out.columns[at].name.clone(), ty: ty.clone(), values: padded, unit, format: None, raw: None });
+        columns.push(Column { name: out.columns[at].name.clone(), ty, values: padded, unit, format: None, raw: None });
     }
     shown_frame(c, "frame", frame_v(columns))
 }
@@ -913,7 +912,7 @@ fn keys_in_display_unit(cells: &[V]) -> Vec<V> {
 }
 
 /// `inferCubeKeyType`: the one kind every filled cell is, text otherwise.
-fn infer_cube_key_type(cells: &[V]) -> &'static str {
+fn infer_cube_key_type(cells: &[V]) -> FrameColType {
     let (mut num, mut bool, mut other) = (false, false, false);
     for v in cells {
         match v {
@@ -924,25 +923,25 @@ fn infer_cube_key_type(cells: &[V]) -> &'static str {
         }
     }
     if other || (num && bool) {
-        "string"
+        FrameColType::String
     } else if num {
-        "number"
+        FrameColType::Number
     } else if bool {
-        "logical"
+        FrameColType::Logical
     } else {
-        "string"
+        FrameColType::String
     }
 }
 
 /// `lookupRowIndex` over a Cube's key column (a frame's read as `frameToCube` reads it): its keys as the numbers
 /// they show, matched on the core.
 fn cube_lookup_index(cube: &Cube, in_col: &str, lookup: &str, mm: &str, sm: &str) -> Result<i64, V> {
-    let Some(key) = cube.columns.iter().find(|k| k.name == in_col) else { return Err(err("#REF!", format!("column \"{in_col}\" not found"))) };
+    let Some(key) = cube.columns.iter().find(|k| k.name == in_col) else { return Err(err(ErrorCode::Ref, format!("column \"{in_col}\" not found"))) };
     let rows = cube_row_count(cube);
-    let ty = key.ty.clone().unwrap_or_else(|| infer_cube_key_type(&key.cells).to_string());
+    let ty = key.ty.unwrap_or_else(|| infer_cube_key_type(&key.cells));
     let cells: Vec<V> = (0..rows).map(|i| key.cells.get(i).cloned().unwrap_or(V::Undef)).collect();
     let keys: Vec<FrameCell> = keys_in_display_unit(&cells).iter().map(core_cell).collect();
-    let f = FrameValue { columns: vec![FrameColumn::new(in_col, FrameColType::from_tag(&ty), keys)] };
+    let f = FrameValue { columns: vec![FrameColumn::new(in_col, ty, keys)] };
     match frame_fn("lookupRowIndex", &[&f], &[V::str(in_col), V::str(lookup), V::str(mm), V::str(sm)]) {
         crate::frame_fns::FrameOut::Value(V::Num(i)) => Ok(i as i64),
         crate::frame_fns::FrameOut::Error(e) => Err(V::err(e)),
@@ -962,7 +961,7 @@ fn frame_to_cube(f: &Frame) -> Cube {
                     Some(u) => col.values.iter().map(|v| tag_cell_unit(v, u)).collect(),
                     None => col.values.clone(),
                 },
-                ty: Some(col.ty.clone()),
+                ty: Some(col.ty),
                 format: col.format.clone(),
             })
             .collect(),
@@ -984,7 +983,7 @@ fn lookup_on_core(src: &Frame, in_col: &str, ret: Option<&str>, lookups: &[Strin
                 (Some(u), true) => keys_in_display_unit(&c.values.iter().map(|v| tag_cell_unit(v, u)).collect::<Vec<_>>()).iter().map(core_cell).collect(),
                 _ => c.values.iter().map(core_cell).collect(),
             };
-            FrameColumn::new(c.name.clone(), FrameColType::from_tag(&c.ty), values)
+            FrameColumn::new(c.name.clone(), c.ty, values)
         })
         .collect();
     let f = FrameValue { columns };
@@ -1036,7 +1035,7 @@ fn xlookup(c: &mut Call) -> Answer {
         _ => false,
     };
     if !tabular {
-        return shown_value(c, err("#VALUE!", "XLOOKUP needs a table or Cube. Combine two Lists with Frame from Lists first."));
+        return shown_value(c, err(ErrorCode::Value, "XLOOKUP needs a table or Cube. Combine two Lists with Frame from Lists first."));
     }
     let src_frame: Option<Frame> = match &raw {
         V::Cube(_) => None,
@@ -1089,7 +1088,7 @@ fn xlookup(c: &mut Call) -> Answer {
                     Some(h) => Some(h),
                     None => {
                         let idx = cube_lookup_index(&src_cube, &in_col, &lookup, &mm, &sm)?;
-                        let Some(ret) = src_cube.columns.iter().find(|k| k.name == ret_col) else { return Err(err("#REF!", format!("column \"{ret_col}\" not found"))) };
+                        let Some(ret) = src_cube.columns.iter().find(|k| k.name == ret_col) else { return Err(err(ErrorCode::Ref, format!("column \"{ret_col}\" not found"))) };
                         (idx >= 0).then(|| ret.cells.get(idx as usize).cloned().unwrap_or(V::Null))
                     }
                 }
@@ -1098,7 +1097,7 @@ fn xlookup(c: &mut Call) -> Answer {
                 return Ok(cell);
             }
             if fb.is_empty() {
-                return Ok(err("#N/A", "No row matched the lookup value"));
+                return Ok(err(ErrorCode::NotAvailable, "No row matched the lookup value"));
             }
             let n = crate::jsnum::string_to_number(&fb);
             Ok(if n.is_nan() { V::str(&fb) } else { V::Num(n) })
@@ -1145,7 +1144,7 @@ fn nest_frame(f: &Frame, keys: &[String], name: &str) -> Result<V, V> {
         .enumerate()
         .map(|(k, key)| {
             let col = f.columns.iter().find(|c| &c.name == key).expect("the core found it");
-            CubeColumn { name: names[k].clone(), cells: groups.iter().map(|g| cell(col, g[0])).collect(), ty: Some(col.ty.clone()), format: col.format.clone() }
+            CubeColumn { name: names[k].clone(), cells: groups.iter().map(|g| cell(col, g[0])).collect(), ty: Some(col.ty), format: col.format.clone() }
         })
         .collect();
     let children: Vec<&Column> = f.columns.iter().filter(|c| !keys.contains(&c.name)).collect();
@@ -1187,7 +1186,7 @@ fn inferred(name: &str, cells: &[V], format: Option<Json>) -> Column {
 
 /// `unnestCube`: each nested row (a list's items, a table's or a Cube's rows) under a copy of its parent row.
 fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
-    let Some(at) = c.columns.iter().position(|col| col.name == nested_name) else { return Err(err("#REF!", format!("column \"{nested_name}\" not found"))) };
+    let Some(at) = c.columns.iter().position(|col| col.name == nested_name) else { return Err(err(ErrorCode::Ref, format!("column \"{nested_name}\" not found"))) };
     let flat: Vec<&CubeColumn> = c.columns.iter().enumerate().filter(|&(j, _)| j != at).map(|(_, col)| col).collect();
     let nested = &c.columns[at];
     let (mut saw_list, mut saw_frame, mut saw_cube) = (false, false, false);
@@ -1200,7 +1199,7 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
         }
     }
     if [saw_list, saw_frame, saw_cube].iter().filter(|b| **b).count() > 1 {
-        return Err(err("#TYPE!", "nested cells must all be lists, all tables, or all cubes"));
+        return Err(err(ErrorCode::Type, "nested cells must all be lists, all tables, or all cubes"));
     }
     if !saw_list && !saw_frame && !saw_cube {
         saw_list = nested.cells.iter().any(|v| matches!(v, V::List(_)));
@@ -1245,8 +1244,8 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
         }
         let names: Vec<String> = flat.iter().map(|c| c.name.clone()).chain(schema.iter().map(|c| c.name.clone())).collect();
         let names = crate::frame::make_headers(&names, names.len());
-        let mut cols: Vec<CubeColumn> = flat.iter().enumerate().map(|(k, fc)| CubeColumn { name: names[k].clone(), cells: flat_vals[k].clone(), ty: fc.ty.clone(), format: fc.format.clone() }).collect();
-        cols.extend(schema.iter().enumerate().map(|(k, cc)| CubeColumn { name: names[flat.len() + k].clone(), cells: child_vals[k].clone(), ty: cc.ty.clone(), format: cc.format.clone() }));
+        let mut cols: Vec<CubeColumn> = flat.iter().enumerate().map(|(k, fc)| CubeColumn { name: names[k].clone(), cells: flat_vals[k].clone(), ty: fc.ty, format: fc.format.clone() }).collect();
+        cols.extend(schema.iter().enumerate().map(|(k, cc)| CubeColumn { name: names[flat.len() + k].clone(), cells: child_vals[k].clone(), ty: cc.ty, format: cc.format.clone() }));
         return Ok(cube_from_columns(cols));
     }
     let schema: Vec<Column> = nested.cells.iter().find_map(|v| if let V::Frame(f) = v { Some(f.columns.clone()) } else { None }).unwrap_or_default();
@@ -1266,7 +1265,7 @@ fn unnest_cube(c: &Cube, nested_name: &str) -> Result<V, V> {
     let mut columns: Vec<Column> = flat.iter().enumerate().map(|(k, fc)| inferred(&names[k], &flat_vals[k], fc.format.clone())).collect();
     columns.extend(schema.iter().enumerate().map(|(k, cc)| Column {
         name: names[flat.len() + k].clone(),
-        ty: cc.ty.clone(),
+        ty: cc.ty,
         values: child_vals[k].clone(),
         unit: cc.unit.clone(),
         format: cc.format.clone(),
@@ -1307,8 +1306,9 @@ fn literal_cell(c: &Call, key: &str) -> V {
 fn value_cells(c: &Call, prefix: char) -> Vec<V> {
     c.sockets
         .iter()
-        .filter(|(k, _, _)| k.starts_with(prefix))
-        .map(|(k, _, _)| match c.wired(k) {
+        .map(|s| s.key.as_str())
+        .filter(|k| k.starts_with(prefix))
+        .map(|k| match c.wired(k) {
             Some([v, ..]) => v.clone(),
             _ => literal_cell(c, k),
         })
@@ -1471,7 +1471,7 @@ fn relate_frames(parent: &Frame, child: &V, key: &str, nested_name: &str) -> Opt
                     }
                 })
                 .collect();
-            CubeColumn { name: names[j].clone(), cells, ty: Some(c.ty.clone()), format: None }
+            CubeColumn { name: names[j].clone(), cells, ty: Some(c.ty), format: None }
         })
         .collect();
     let nested_cells = (0..p_rows)
@@ -1527,7 +1527,7 @@ fn nest_join(c: &mut Call) -> Answer {
         V::Cube(k) => relate_cube(k, &child, &key, &name),
         V::Frame(f) => relate_frames(f, &child, &key, &name).unwrap_or(V::Null),
         V::Null => V::Null,
-        _ => err("#TYPE!", "Nest Join parent must be a Frame or a Cube"),
+        _ => err(ErrorCode::Type, "Nest Join parent must be a Frame or a Cube"),
     };
     shown_cube(c, out)
 }
@@ -1625,11 +1625,11 @@ fn text_column(name: &str, cells: &[V]) -> Column {
             other => V::str(&crate::excel_functions::js_string_of(other)),
         })
         .collect();
-    Column { name: name.to_string(), ty: "string".into(), values, unit: None, format: None, raw: None }
+    Column { name: name.to_string(), ty: FrameColType::String, values, unit: None, format: None, raw: None }
 }
 
 /// A nested table's column to roll up: its cells, type and unit.
-type Nested = (Vec<V>, Option<String>, Option<Json>);
+type Nested = (Vec<V>, Option<FrameColType>, Option<Json>);
 
 fn cube_rollup(c: &mut Call) -> Answer {
     let Some(cube) = (match first(c, "cube") {
@@ -1650,7 +1650,7 @@ fn cube_rollup(c: &mut Call) -> Answer {
     if nested_name.is_empty() || col.is_empty() {
         return shown_frame(c, "frame", V::Null);
     }
-    let Some(at) = at else { return shown_frame(c, "frame", err("#REF!", format!("nested column \"{nested_name}\" not found"))) };
+    let Some(at) = at else { return shown_frame(c, "frame", err(ErrorCode::Ref, format!("nested column \"{nested_name}\" not found"))) };
     let agg = c.field_str("agg", "sum").to_string();
     let flat: Vec<&CubeColumn> = cube.columns.iter().enumerate().filter(|&(j, _)| j != at).map(|(_, k)| k).collect();
     let nested = &cube.columns[at];
@@ -1664,18 +1664,18 @@ fn cube_rollup(c: &mut Call) -> Answer {
         }
         let read: Option<Result<Nested, V>> = match nested.cells.get(i) {
             Some(V::Frame(f)) => Some(match f.columns.iter().find(|k| k.name == col) {
-                None => Err(err("#REF!", format!("column \"{col}\" not found in nested frame"))),
-                Some(fc) => Ok((fc.values.clone(), Some(fc.ty.clone()), fc.unit.clone())),
+                None => Err(err(ErrorCode::Ref, format!("column \"{col}\" not found in nested frame"))),
+                Some(fc) => Ok((fc.values.clone(), Some(fc.ty), fc.unit.clone())),
             }),
             Some(V::Cube(k)) => Some(match k.columns.iter().find(|x| x.name == col) {
-                None => Err(err("#REF!", format!("column \"{col}\" not found in nested cube"))),
+                None => Err(err(ErrorCode::Ref, format!("column \"{col}\" not found in nested cube"))),
                 Some(cc) if cc.cells.iter().any(|v| matches!(v, V::Cube(_) | V::Frame(_) | V::List(_))) => {
-                    Err(err("#SHAPE!", format!("column \"{col}\" holds nested cells; roll up a flat column")))
+                    Err(err(ErrorCode::Shape, format!("column \"{col}\" holds nested cells; roll up a flat column")))
                 }
                 Some(cc) => {
                     let (mags, unit) = matrix_cells_from_list(&cc.cells);
                     Ok(match &cc.ty {
-                        Some(t) => (mags, Some(t.clone()), unit),
+                        Some(t) => (mags, Some(*t), unit),
                         None => {
                             let r = super::list::infer_column(&col, &mags);
                             (r.values, Some(r.ty), unit)
@@ -1695,7 +1695,8 @@ fn cube_rollup(c: &mut Call) -> Answer {
             Err(e) => e,
             Ok((values, ty, _)) => {
                 let cells: Vec<FrameCell> = values.iter().map(core_cell).collect();
-                let v = card_cell(&crate::frame_verbs::aggregate_group(&cells, &agg, ty.as_deref().map(FrameColType::from_tag)).map_err(V::err)?);
+                let op: crate::frame_verbs::AggOp = agg.parse().map_err(|_| err(ErrorCode::Name, format!("Unknown aggregation \"{agg}\"")))?;
+                let v = card_cell(&crate::frame_verbs::aggregate_group(&cells, op, ty));
                 match plan {
                     Plan::Keep => v,
                     Plan::Scale(k) => match v {
@@ -1723,7 +1724,7 @@ fn cube_rollup(c: &mut Call) -> Answer {
         text_column(last, &rolled)
     } else {
         let (mags, unit) = matrix_cells_from_list(&rolled);
-        Column { name: last.clone(), ty: "number".into(), values: mags, unit, format: None, raw: None }
+        Column { name: last.clone(), ty: FrameColType::Number, values: mags, unit, format: None, raw: None }
     });
     shown_frame(c, "frame", frame_v(columns))
 }
@@ -1808,10 +1809,10 @@ fn table_rows(t: &V) -> usize {
 }
 
 /// A table's columns as name, type and cells, whichever kind it is.
-fn table_columns(t: &V) -> Vec<(String, Option<String>, Vec<V>)> {
+fn table_columns(t: &V) -> Vec<(String, Option<FrameColType>, Vec<V>)> {
     match t {
-        V::Frame(f) => f.columns.iter().map(|c| (c.name.clone(), Some(c.ty.clone()), c.values.clone())).collect(),
-        V::Cube(k) => k.columns.iter().map(|c| (c.name.clone(), c.ty.clone(), c.cells.clone())).collect(),
+        V::Frame(f) => f.columns.iter().map(|c| (c.name.clone(), Some(c.ty), c.values.clone())).collect(),
+        V::Cube(k) => k.columns.iter().map(|c| (c.name.clone(), c.ty, c.cells.clone())).collect(),
         _ => Vec::new(),
     }
 }
@@ -1828,7 +1829,7 @@ fn flat_cube_scalar(c: &Cube) -> FrameValue {
             .map(|col| {
                 let (mags, unit) = if col.cells.iter().any(|v| matches!(v, V::Unit(_))) { matrix_cells_from_list(&col.cells) } else { (col.cells.clone(), None) };
                 let cells: Vec<FrameCell> = if unit.is_some() { mags } else { col.cells.iter().map(|v| if let V::Unit(u) = v { V::Num(u.value) } else { v.clone() }).collect() }.iter().map(core_cell).collect();
-                crate::frame_fns::typed_column(col.name.clone(), &cells, rows, col.ty.as_deref().map(FrameColType::from_tag))
+                crate::frame_fns::typed_column(col.name.clone(), &cells, rows, col.ty)
             })
             .collect(),
     }
@@ -1839,7 +1840,7 @@ fn rank_any(t: &V, wf: Option<&FrameValue>, normalize: Normalize, breakdown: boo
     if let V::Cube(k) = t {
         return rank_cube(k, wf, normalize, breakdown);
     }
-    let V::Frame(f) = t else { return Err(crate::error_value::sol_error("#VALUE!", "not a table")) };
+    let V::Frame(f) = t else { return Err(crate::error_value::sol_error(ErrorCode::Value, "not a table")) };
     let f = to_core(f);
     let r = crate::decision::resolve_weights(wf, &crate::decision::criteria_names(&f))?;
     let failed = crate::decision::decision_screen(&f, r.bounds.as_deref());
@@ -1898,7 +1899,7 @@ fn strict_eq(a: &V, b: &V) -> bool {
 /// `poolTables`: tables with the same columns stacked into one, frames as a frame and anything with a Cube as a Cube.
 fn pool_tables(ts: &[V]) -> V {
     let mut names: Vec<String> = Vec::new();
-    let mut types: Vec<Option<String>> = Vec::new();
+    let mut types: Vec<Option<FrameColType>> = Vec::new();
     for t in ts {
         for (name, ty, _) in table_columns(t) {
             if !names.contains(&name) {
@@ -1966,7 +1967,7 @@ fn rank_nested(cells: &[V], rows: usize, wf: Option<&FrameValue>, normalize: Nor
             keys.push(pc.name.clone());
         }
     }
-    let label_of = |t: &V| table_columns(t).iter().position(|(n, ty, _)| ty.as_deref() == Some("string") && !keys.contains(n));
+    let label_of = |t: &V| table_columns(t).iter().position(|(n, ty, _)| *ty == Some(FrameColType::String) && !keys.contains(n));
     let label_name = cells.iter().find(|v| is_table(v)).and_then(|t| label_of(t).map(|j| table_columns(t)[j].0.clone()));
     let tidy = |t: &V| -> V {
         let first_text = label_of(t);
@@ -2037,19 +2038,19 @@ fn rank_cube(c: &Cube, wf: Option<&FrameValue>, normalize: Normalize, breakdown:
     let (frame, at, score_at) = rank_options(&parent, &r, normalize, breakdown, &failed, &nested_names)?;
     let k = nested_cols.len();
     let col_v = |fc: &FrameColumn| fc.values.iter().map(card_cell).collect::<Vec<_>>();
-    let mut out = vec![CubeColumn { name: frame.columns[0].name.clone(), cells: col_v(&frame.columns[0]), ty: Some("string".into()), format: None }];
+    let mut out = vec![CubeColumn { name: frame.columns[0].name.clone(), cells: col_v(&frame.columns[0]), ty: Some(FrameColType::String), format: None }];
     for (n, col) in nested_cols.iter().enumerate() {
         out.push(CubeColumn {
             name: format!("Best in {}", col.name),
             cells: at.iter().map(|&i| inner[n][i].1.as_ref().map_or(V::Null, |b| b.0.clone())).collect(),
-            ty: Some("string".into()),
+            ty: Some(FrameColType::String),
             format: None,
         });
     }
     let criteria = crate::decision::decision_columns(&parent).1;
     for (j, col) in frame.columns.iter().skip(1).enumerate() {
         let contribution = j + 1 < score_at && criteria.get(j).is_some_and(|&ci| nested_names.contains(&parent.columns[ci].name));
-        out.push(CubeColumn { name: if contribution { format!("{} score", col.name) } else { col.name.clone() }, cells: col_v(col), ty: Some(col.ty.tag().into()), format: None });
+        out.push(CubeColumn { name: if contribution { format!("{} score", col.name) } else { col.name.clone() }, cells: col_v(col), ty: Some(col.ty), format: None });
     }
     for (n, col) in nested_cols.iter().enumerate() {
         out.push(CubeColumn { name: col.name.clone(), cells: at.iter().map(|&i| inner[n][i].0.clone()).collect(), ty: None, format: None });
@@ -2136,7 +2137,7 @@ fn build_frame(c: &mut Call) -> Answer {
     let crate::frame_fns::FrameOut::Frame(f) = out else { return Err(thrown("Build Frame left a reading to the TS")) };
     let mut f = from_core(&f);
     for (col, (_, unit)) in f.columns.iter_mut().zip(&parsed) {
-        if unit.is_some() && (!typed || col.ty == "number") {
+        if unit.is_some() && (!typed || col.ty == crate::frame::FrameColType::Number) {
             col.unit = unit.clone();
         }
     }
@@ -2144,7 +2145,7 @@ fn build_frame(c: &mut Call) -> Answer {
 }
 
 fn frame_from_lists(c: &mut Call) -> Answer {
-    let pairs: Vec<(String, String)> = c.sockets.iter().filter_map(|(k, _, _)| Some((k.clone(), format!("vals{}", k.strip_prefix("name")?)))).collect();
+    let pairs: Vec<(String, String)> = c.sockets.iter().filter_map(|s| Some((s.key.clone(), format!("vals{}", s.key.strip_prefix("name")?)))).collect();
     let (mut names, mut lists, mut known) = (Vec::new(), Vec::new(), Vec::new());
     for (name_k, vals_k) in &pairs {
         let wired = super::list::slot(c, vals_k);

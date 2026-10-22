@@ -4,7 +4,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::jsnum::{is_js_space, js_lower, js_trim, math_max, math_min, math_round, number_to_string};
 
@@ -309,7 +309,7 @@ pub(crate) fn decision_scores(f: &FrameValue, weights: Option<&[f64]>, normalize
     let rows = frame_row_count(f);
     let (label, criteria) = decision_columns(f);
     if criteria.is_empty() {
-        return Err(sol_error("#VALUE!", "Decision Matrix needs at least one numeric criterion column"));
+        return Err(sol_error(ErrorCode::Value, "Decision Matrix needs at least one numeric criterion column"));
     }
     for &ci in &criteria {
         if let Some(FrameCell::Err(e)) = f.columns[ci].values.iter().find(|v| v.is_err()) {
@@ -425,7 +425,7 @@ struct Flip {
 pub fn flip_points(f: &FrameValue, wf: Option<&FrameValue>, normalize: Normalize) -> Res<FrameValue> {
     let criteria = criteria_names(f);
     if criteria.is_empty() {
-        return Err(sol_error("#VALUE!", "Decision Matrix needs at least one numeric criterion column"));
+        return Err(sol_error(ErrorCode::Value, "Decision Matrix needs at least one numeric criterion column"));
     }
     let r = resolve_weights(wf, &criteria)?;
     let w: Vec<f64> = (0..criteria.len()).map(|j| r.weights.as_ref().and_then(|w| w.get(j)).copied().unwrap_or(1.0)).collect();
@@ -578,7 +578,7 @@ fn allocate_min_target(mins: &[f64], maxs: &[f64], weights: &[f64], target: f64)
         }
     }
     let most = sum(&maxs.iter().enumerate().map(|(i, m)| w[i] * m).collect::<Vec<_>>());
-    Err(sol_error("#VALUE!", format!("The target is out of reach: the most is {}", number_to_string(crate::unit_value::to_precision(most, 12)))))
+    Err(sol_error(ErrorCode::Value, format!("The target is out of reach: the most is {}", number_to_string(crate::unit_value::to_precision(most, 12)))))
 }
 
 fn allocate_proportional(mins: &[f64], maxs: &[f64], weights: &[f64]) -> Vec<f64> {
@@ -609,13 +609,13 @@ fn allocate_inner(f: &FrameValue, mode: &str, amount: f64) -> Res<FrameValue> {
     let min_col = by_name(&["min"]).or(price.first().copied());
     let max_col = by_name(&["max"]).or(price.iter().copied().find(|&i| Some(i) != min_col));
     let (Some(min_col), Some(max_col)) = (min_col, max_col) else {
-        return Err(sol_error("#VALUE!", "Allocator needs a min and a max number column"));
+        return Err(sol_error(ErrorCode::Value, "Allocator needs a min and a max number column"));
     };
     let name_col = f.columns.iter().position(|c| c.ty == FrameColType::String);
     let as_num = |cell: &FrameCell, what: &str| -> Res<f64> {
         match cell {
             FrameCell::Err(e) => Err((**e).clone()),
-            c => finite(c).ok_or_else(|| sol_error("#VALUE!", format!("Allocator: every {what} must be a number"))),
+            c => finite(c).ok_or_else(|| sol_error(ErrorCode::Value, format!("Allocator: every {what} must be a number"))),
         }
     };
     let (mut mins, mut maxs, mut weights, mut names) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());

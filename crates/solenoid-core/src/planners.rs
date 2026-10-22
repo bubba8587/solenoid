@@ -5,7 +5,7 @@
 
 use crate::date_serial::{date_utc, parts_of_ms, serial_to_ms, MS_PER_DAY};
 use crate::decision::sort_by_num;
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::fdlibm;
 use crate::frame::{frame_row_count, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::jsnum::{is_js_space, js_lower, js_string, js_trim, math_max, math_min, math_round, string_to_number};
@@ -144,13 +144,13 @@ pub fn payoff_frame(f: &FrameValue, extra: f64, order: &str, view: &str, start: 
     let apr = by_name(f, &["apr", "rate", "interest"]).or(nums.iter().copied().find(|&c| Some(c) != bal));
     let min = by_name(f, &["min", "minimum", "min payment", "payment"]).or(nums.iter().copied().find(|&c| Some(c) != bal && Some(c) != apr));
     let (Some(bal), Some(apr), Some(min)) = (bal, apr, min) else {
-        return Err(sol_error("#VALUE!", "Payoff Planner needs Balance, APR and Min payment number columns"));
+        return Err(sol_error(ErrorCode::Value, "Payoff Planner needs Balance, APR and Min payment number columns"));
     };
     let num = |col: usize, i: usize, what: &str| -> Res<f64> {
         match f.columns[col].cell_at(i) {
             FrameCell::Err(e) => Err((**e).clone()),
             FrameCell::Null => Ok(0.0),
-            v => is_finite_num(v).ok_or_else(|| sol_error("#VALUE!", format!("Payoff Planner: every {what} must be a number"))),
+            v => is_finite_num(v).ok_or_else(|| sol_error(ErrorCode::Value, format!("Payoff Planner: every {what} must be a number"))),
         }
     };
     let mut debts = Vec::new();
@@ -161,7 +161,7 @@ pub fn payoff_frame(f: &FrameValue, extra: f64, order: &str, view: &str, start: 
         };
         debts.push(Debt { name, balance: num(bal, i, "balance")?, apr: num(apr, i, "APR")?, min: num(min, i, "minimum payment")? });
     }
-    let plan = payoff_plan(&debts, extra, order).map_err(|m| sol_error("#VALUE!", format!("Payoff Planner: {m}")))?;
+    let plan = payoff_plan(&debts, extra, order).map_err(|m| sol_error(ErrorCode::Value, format!("Payoff Planner: {m}")))?;
     if view == "schedule" {
         let mut cols = vec![num_col("Month", (0..plan.schedule.len()).map(|m| m as f64))];
         cols.extend(debts.iter().enumerate().map(|(j, d)| num_col(d.name.clone(), plan.schedule.iter().map(|row| row[j]))));
@@ -230,7 +230,7 @@ pub fn settle_frame(f: &FrameValue, split: &str) -> Res<FrameValue> {
     let nums = number_columns(f);
     let share_col = by_name(f, &["share", "weight", "shares"]);
     let Some(paid_col) = by_name(f, &["paid", "amount", "spent"]).or(nums.iter().copied().find(|&c| Some(c) != share_col)) else {
-        return Err(sol_error("#VALUE!", "Group Cost Settle needs a Paid number column"));
+        return Err(sol_error(ErrorCode::Value, "Group Cost Settle needs a Paid number column"));
     };
     let mut people: Vec<(String, f64, Option<f64>)> = Vec::new();
     let mut keys: Vec<String> = Vec::new();
@@ -300,10 +300,10 @@ pub fn settle_ledger(f: &FrameValue, unit_cols: &[String]) -> Res<FrameValue> {
     let payer_col = by_name(f, &["paid by", "paidby", "payer", "paid", "by", "who paid", "from"]);
     let for_col = by_name(f, &["for", "split", "split between", "participants", "shared", "shared by", "shared with", "with", "beneficiaries", "owed by"]);
     let Some(amount_col) = amount_col else {
-        return Err(sol_error("#VALUE!", "Group Cost Settle (Transactions) needs an Amount column"));
+        return Err(sol_error(ErrorCode::Value, "Group Cost Settle (Transactions) needs an Amount column"));
     };
     let Some(payer_col) = payer_col else {
-        return Err(sol_error("#VALUE!", "Group Cost Settle (Transactions) needs a Paid by column"));
+        return Err(sol_error(ErrorCode::Value, "Group Cost Settle (Transactions) needs a Paid by column"));
     };
     let unit = |c: usize| unit_cols.iter().any(|n| n == &f.columns[c].name);
     let mut canon: Vec<(String, String)> = Vec::new();

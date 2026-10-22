@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::eval::Env;
 use crate::excel_functions::{fx_error_to_sol, js_pow, V};
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, sol_error};
 use crate::unit_dims::{affine_weight, dim_equal, dim_eval_with_code, is_dimensionless, AffScope, Codes, Dim, NamedLambdas, UnitCell};
 use crate::unit_lists::tag_dim;
 use crate::unit_value::round_at_larger_term;
@@ -61,7 +61,7 @@ fn env_dim(name: &str, v: &V) -> Result<Dim, crate::error_value::SolError> {
                     None => dim = Some(u.dim.clone()),
                     Some(d) if !dim_equal(d, &u.dim) => {
                         let (a, b) = (crate::unit_lists::format_dim(d), crate::unit_lists::format_dim(&u.dim));
-                        return Err(sol_error("#UNIT!", format!("{name} holds mixed units: {a} and {b}.")));
+                        return Err(sol_error(ErrorCode::Unit, format!("{name} holds mixed units: {a} and {b}.")));
                     }
                     _ => {}
                 }
@@ -186,8 +186,8 @@ fn strip_units(v: &V) -> V {
 fn tag_result(v: &V) -> V {
     match v {
         V::Err(_) | V::Str(_) | V::Bool(_) | V::Cx(..) => v.clone(),
-        V::Fx(m) => V::err(fx_error_to_sol(m)),
-        V::Num(n) if n.is_nan() => V::err(sol_error("#DOMAIN!", "The result is undefined: not a number")),
+        V::Fx(m) => V::err(fx_error_to_sol(*m)),
+        V::Num(n) if n.is_nan() => V::err(sol_error(ErrorCode::Domain, "The result is undefined: not a number")),
         V::Num(_) => v.clone(),
         _ => V::Null,
     }
@@ -252,7 +252,7 @@ pub fn expression_units(src: &str, env: &Env, order: &[String]) -> Option<V> {
     }
     let raw = crate::eval::Eval::default().run(&ast, &Rc::new(run_env));
     let mut result = match &raw {
-        V::Lambda(_) => V::err(sol_error("#VALUE!", "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
+        V::Lambda(_) => V::err(sol_error(ErrorCode::Value, "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY")),
         V::List(items) => V::List(Rc::new(
             items
                 .iter()

@@ -147,7 +147,7 @@ impl<'a> Scanner<'a> {
             return Tok::Number { n, len: self.pos - start };
         }
         let c = self.ch();
-        if [b':', b'-', b'+', b'.', b')'].iter().any(|&s| c == u16::from(s)) {
+        if b":-+.)".iter().any(|&s| c == u16::from(s)) {
             self.pos += 1;
             return Tok::Symbol(c);
         }

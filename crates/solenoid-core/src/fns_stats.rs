@@ -8,7 +8,7 @@ use crate::date_parse::date_parse;
 use crate::date_serial::parts_of_ms;
 use crate::zone;
 use crate::dists::{chi_sq_cdf, f_cdf, std_norm_cdf};
-use crate::error_value::sol_error;
+use crate::error_value::{ErrorCode, FxError, sol_error};
 use crate::excel_functions::{
     average_ranks, bail, js_parse_float, js_pow, js_string_of, mean_of, nums_of, parse_number, ssd, sum, throw, to_f64_js, to_num, V,
 };
@@ -71,7 +71,7 @@ fn opt(r: Option<f64>) -> V {
 
 pub fn call(name: &str, a: &[V]) -> V {
     if let Some((_, to)) = BLOCKED.iter().find(|(from, _)| *from == name) {
-        return V::err(sol_error("#NAME?", format!("Use {to}")));
+        return V::err(sol_error(ErrorCode::Name, format!("Use {to}")));
     }
     match name {
         "TRUE" => V::Bool(true),
@@ -79,12 +79,12 @@ pub fn call(name: &str, a: &[V]) -> V {
         "GEOMETRIC" => {
             let count = number(arg(a, 2));
             if !count.is_finite() {
-                return V::err(sol_error("#VALUE!", "GEOMETRIC needs a number"));
+                return V::err(sol_error(ErrorCode::Value, "GEOMETRIC needs a number"));
             }
             let k = math_round(count);
             if k > 1_000_000.0 {
                 let msg = format!("GEOMETRIC count {} exceeds the 1000000 element limit", number_to_string(k));
-                return V::err(sol_error("#OVERFLOW!", msg));
+                return V::err(sol_error(ErrorCode::Overflow, msg));
             }
             let (mut v, ratio) = (number(arg(a, 0)), number(arg(a, 1)));
             let n = math_max(0.0, k) as usize;
@@ -116,17 +116,17 @@ pub fn call(name: &str, a: &[V]) -> V {
             // An order past a million, or an infinite one, would hang ([[C120]] linearWork).
             let order = to_num(arg(a, 1)).trunc();
             if matches!(arg(a, 1), V::Str(_)) && order.is_nan() {
-                return V::err(sol_error("#VALUE!", format!("{name} needs a number")));
+                return V::err(sol_error(ErrorCode::Value, format!("{name} needs a number")));
             }
             if order < 0.0 {
-                return V::err(sol_error("#DOMAIN!", format!("{name} takes an order of 0 or more")));
+                return V::err(sol_error(ErrorCode::Domain, format!("{name} takes an order of 0 or more")));
             }
             if order > 1_000_000.0 {
-                return V::err(sol_error("#DOMAIN!", format!("{name} takes an order of at most 1,000,000")));
+                return V::err(sol_error(ErrorCode::Domain, format!("{name} takes an order of at most 1,000,000")));
             }
             let (x, n) = match (parse_number(arg(a, 0)), parse_number(arg(a, 1))) {
                 (V::Num(x), V::Num(n)) => (x, n.trunc()),
-                _ => return V::Fx("#VALUE!"),
+                _ => return V::Fx(FxError::Value),
             };
             let r = match name {
                 "BESSELI" => besseli(x, n),
@@ -153,7 +153,7 @@ pub fn call(name: &str, a: &[V]) -> V {
                 let change = (studentt_inv(alpha / 2.0, size - 1.0) * sd / size.sqrt()).abs();
                 V::Num((1.0 + change) - 1.0)
             }
-            _ => V::Fx("#VALUE!"),
+            _ => V::Fx(FxError::Value),
         },
         "ACCRINT" => accrint(a),
         "COUPDAYS" => coupdays(a),
@@ -199,13 +199,13 @@ fn accrint(a: &[V]) -> V {
         return bail();
     }
     let (issue, first, settlement) = (new_date(arg(a, 0)), new_date(arg(a, 1)), new_date(arg(a, 2)));
-    let (Some(_), Some(basis)) = (valid_frequency(arg(a, 5)), valid_basis(arg(a, 6))) else { return V::Fx("#NUM!") };
+    let (Some(_), Some(basis)) = (valid_frequency(arg(a, 5)), valid_basis(arg(a, 6))) else { return V::Fx(FxError::Num) };
     if issue.is_nan() || first.is_nan() || settlement.is_nan() {
-        return V::Fx("#VALUE!");
+        return V::Fx(FxError::Value);
     }
     let (rate, par) = (number(arg(a, 3)), number(arg(a, 4)));
     if rate <= 0.0 || par <= 0.0 || settlement <= issue {
-        return V::Fx("#NUM!");
+        return V::Fx(FxError::Num);
     }
     let par = if truthy_value(arg(a, 4)) { par } else { 0.0 };
     V::Num(par * rate * fx_yearfrac(issue, settlement, basis))
@@ -276,6 +276,7 @@ fn truthy(x: f64) -> bool {
 
 // ─── bessel.js 1.0.2 (SheetJS), which Formula.js's BESSELI…BESSELY call ─────────
 
+#[allow(clippy::approx_constant, reason = "bessel.js's own nine digits of 2/π, which its answers carry")]
 const W: f64 = 0.636619772;
 
 /// `_horner` over the coefficients as listed (bessel.js reverses them first).
@@ -500,6 +501,8 @@ fn besseli(x: f64, n: f64) -> Option<f64> {
     Some(if x < 0.0 && truthy(n % 2.0) { -ret } else { ret })
 }
 
+// The polynomial's own truncated coefficient (Numerical Recipes' bessk0), not Euler's constant.
+#[allow(clippy::approx_constant)]
 const K0_A: [f64; 7] = [-0.57721566, 0.42278420, 0.23069756, 0.3488590e-1, 0.262698e-2, 0.10750e-3, 0.74e-5];
 const K0_B: [f64; 7] = [1.25331414, -0.7832358e-1, 0.2189568e-1, -0.1062446e-1, 0.587872e-2, -0.251540e-2, 0.53208e-3];
 const K1_A: [f64; 7] = [1.0, 0.15443144, -0.67278579, -0.18156897, -0.1919402e-1, -0.110404e-2, -0.4686e-4];
@@ -800,7 +803,7 @@ fn studentt_inv(p: f64, dof: f64) -> f64 {
 /// What Formula.js `parseDate` answers: a Date, or the Error it names.
 pub(crate) enum FxDate {
     Date(f64),
-    Err(&'static str),
+    Err(FxError),
 }
 
 /// `serialToDate`.
@@ -847,7 +850,7 @@ pub(crate) fn parse_date(v: &V) -> FxDate {
     if !to_f64_js(v).is_nan() {
         let d = js_parse_float(&js_string_of(v));
         if d < 0.0 || d >= 2958466.0 {
-            return FxDate::Err("#NUM!");
+            return FxDate::Err(FxError::Num);
         }
         return FxDate::Date(serial_to_date(d));
     }
@@ -857,7 +860,7 @@ pub(crate) fn parse_date(v: &V) -> FxDate {
             return FxDate::Date(t);
         }
     }
-    FxDate::Err("#VALUE!")
+    FxDate::Err(FxError::Value)
 }
 
 /// `validateFrequency` / `validateBasis`: the parsed number when it is one of `allowed`.
@@ -878,7 +881,7 @@ fn valid_basis(v: &V) -> Option<f64> {
 
 /// A method called on the Error `parseDate` answers for an Invalid Date: a TypeError.
 fn not_a_function(method: &str) -> V {
-    throw(sol_error("#VALUE!", format!("{method} is not a function")))
+    throw(sol_error(ErrorCode::Value, format!("{method} is not a function")))
 }
 
 /// `dateToSerial`.
@@ -913,11 +916,11 @@ fn coupdays(a: &[V]) -> V {
     let frequency = valid_frequency(arg(a, 2));
     let (settlement, maturity) = match (parse_date(arg(a, 0)), parse_date(arg(a, 1))) {
         (FxDate::Date(s), FxDate::Date(m)) => (s, m),
-        _ => return V::Fx("#VALUE!"),
+        _ => return V::Fx(FxError::Value),
     };
-    let (Some(basis), Some(frequency)) = (basis, frequency) else { return V::Fx("#NUM!") };
+    let (Some(basis), Some(frequency)) = (basis, frequency) else { return V::Fx(FxError::Num) };
     if settlement >= maturity {
-        return V::Fx("#NUM!");
+        return V::Fx(FxError::Num);
     }
     if basis == 1.0 {
         // `parseDate` of an Invalid Date is an Error, which has no Date methods.
@@ -971,18 +974,14 @@ fn days360(start: f64, end: f64, european: bool) -> f64 {
 fn discounted(name: &str, a: &[V]) -> V {
     let (settlement, maturity) = (parse_date(arg(a, 0)), parse_date(arg(a, 1)));
     let (pr, redemption) = (parse_number(arg(a, 2)), parse_number(arg(a, 3)));
-    // `basis || 0`.
-    let basis = match parse_number(arg(a, 4)) {
-        V::Num(n) if n == 0.0 => V::Num(0.0),
-        b => b,
-    };
-    let (V::Num(pr), V::Num(redemption), V::Num(basis)) = (pr, redemption, basis) else { return V::Fx("#VALUE!") };
-    let (FxDate::Date(settlement), FxDate::Date(maturity)) = (settlement, maturity) else { return V::Fx("#VALUE!") };
+    let basis = parse_number(arg(a, 4));
+    let (V::Num(pr), V::Num(redemption), V::Num(basis)) = (pr, redemption, basis) else { return V::Fx(FxError::Value) };
+    let (FxDate::Date(settlement), FxDate::Date(maturity)) = (settlement, maturity) else { return V::Fx(FxError::Value) };
     if pr <= 0.0 || redemption <= 0.0 {
-        return V::Fx("#NUM!");
+        return V::Fx(FxError::Num);
     }
     if settlement >= maturity {
-        return V::Fx("#VALUE!");
+        return V::Fx(FxError::Value);
     }
     let (basis_val, diff) = if basis == 0.0 {
         (360.0, days360(settlement, maturity, false))
@@ -994,7 +993,7 @@ fn discounted(name: &str, a: &[V]) -> V {
             Err(e) => return e,
         }
     } else {
-        return V::Fx("#NUM!");
+        return V::Fx(FxError::Num);
     };
     V::Num(if name == "DISC" {
         (((redemption - pr) / redemption) * basis_val) / diff

@@ -12,7 +12,8 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
+use crate::spelled::{spelled, Wire};
 use crate::fxhash::{FxHashMap, FxHashSet};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::js_sort::js_sort_by;
@@ -25,12 +26,160 @@ use crate::wire::{de_cell, encode_cell};
 
 type Res<T> = Result<T, SolError>;
 
+// ─── Names the ops carry (frameVerbs.ts's unions) ─────────────────────────────────
+
+spelled! {
+    pub enum SortDir {
+        Asc = "asc",
+        Desc = "desc",
+    }
+}
+
+spelled! {
+    /// `AggOp`.
+    pub enum AggOp {
+        Sum = "sum",
+        Avg = "avg",
+        Min = "min",
+        Max = "max",
+        Count = "count",
+        Product = "product",
+        Median = "median",
+        Mode = "mode",
+        Stdev = "stdev",
+        StdevP = "stdevp",
+        Var = "var",
+        VarP = "varp",
+        PercentOf = "percentof",
+    }
+}
+
+spelled! {
+    /// `FilterOp`: `ComparisonOp`, the text and blank tests, and the list conditions a cube's filter reads.
+    pub enum FilterOp {
+        Eq = "eq",
+        Neq = "neq",
+        Gt = "gt",
+        Gte = "gte",
+        Lt = "lt",
+        Lte = "lte",
+        Contains = "contains",
+        StartsWith = "startsWith",
+        EndsWith = "endsWith",
+        IsBlank = "isblank",
+        NotBlank = "notblank",
+        IsError = "iserror",
+        NotError = "noterror",
+        ListContains = "listContains",
+        ListContainsAny = "listContainsAny",
+        ListContainsAll = "listContainsAll",
+        ListEmpty = "listEmpty",
+    }
+}
+
+spelled! {
+    pub enum FilterCombine {
+        And = "and",
+        Or = "or",
+    }
+}
+
+spelled! {
+    /// `WindowFn`.
+    pub enum WindowFn {
+        RowNumber = "row_number",
+        Rank = "rank",
+        DenseRank = "dense_rank",
+        PercentRank = "percent_rank",
+        Ntile = "ntile",
+        CumSum = "cumsum",
+        CumAvg = "cumavg",
+        CumMin = "cummin",
+        CumMax = "cummax",
+        CumCount = "cumcount",
+        Lag = "lag",
+        Lead = "lead",
+        Diff = "diff",
+        PctChange = "pct_change",
+        RollingSum = "rolling_sum",
+        RollingAvg = "rolling_avg",
+        RollingMin = "rolling_min",
+        RollingMax = "rolling_max",
+        GroupSum = "group_sum",
+        GroupAvg = "group_avg",
+        GroupMin = "group_min",
+        GroupMax = "group_max",
+        GroupCount = "group_count",
+        Share = "share",
+        First = "first",
+        Last = "last",
+    }
+}
+
+spelled! {
+    pub enum FillDir {
+        Down = "down",
+        Up = "up",
+    }
+}
+
+spelled! {
+    pub enum ReplaceMode {
+        Cell = "cell",
+        Substring = "substring",
+    }
+}
+
+spelled! {
+    pub enum SliceMode {
+        First = "first",
+        Last = "last",
+        Skip = "skip",
+        Range = "range",
+    }
+}
+
+spelled! {
+    /// Which blank rows go: those blank in every column, or in any.
+    pub enum BlankRows {
+        All = "all",
+        Any = "any",
+    }
+}
+
+spelled! {
+    /// `JoinHow`.
+    pub enum JoinHow {
+        Inner = "inner",
+        Left = "left",
+        Right = "right",
+        Outer = "outer",
+        Semi = "semi",
+        Anti = "anti",
+        Asof = "asof",
+        Cross = "cross",
+    }
+}
+
+spelled! {
+    pub enum AsofDirection {
+        Backward = "backward",
+        Forward = "forward",
+        Nearest = "nearest",
+    }
+}
+
+/// An unknown aggregate refuses by name, as the corpus pins it.
+fn known_agg(op: &Wire<AggOp>) -> Res<AggOp> {
+    op.known().map_err(|name| sol_error(ErrorCode::Name, format!("Unknown aggregation \"{name}\"")))
+}
+
 // ─── Ops ────────────────────────────────────────────────────────────────────────
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct AggSpec {
     pub column: String,
-    pub op: String,
+    pub op: Wire<AggOp>,
     #[serde(rename = "as")]
     pub as_: String,
     #[serde(rename = "readingScale", default)]
@@ -42,7 +191,7 @@ pub struct AggSpec {
 #[derive(Deserialize, Clone, Debug)]
 pub struct FilterCond {
     pub column: String,
-    pub op: String,
+    pub op: FilterOp,
     #[serde(deserialize_with = "de_cell", default = "null_cell")]
     pub value: FrameCell,
     #[serde(rename = "matchCase", default)]
@@ -62,9 +211,9 @@ pub struct WindowSpec {
     #[serde(rename = "orderBy", default)]
     pub order_by: Option<String>,
     #[serde(rename = "orderDir", default)]
-    pub order_dir: Option<String>,
+    pub order_dir: Option<SortDir>,
     #[serde(rename = "fn")]
-    pub fn_: String,
+    pub fn_: Wire<WindowFn>,
     #[serde(default)]
     pub column: Option<String>,
     #[serde(rename = "as")]
@@ -84,7 +233,7 @@ pub enum FrameOp {
     #[serde(rename = "rename")]
     Rename { map: HashMap<String, String> },
     #[serde(rename = "sort")]
-    Sort { by: String, dir: String },
+    Sort { by: String, dir: SortDir },
     #[serde(rename = "distinct")]
     Distinct {
         #[serde(default)]
@@ -95,7 +244,7 @@ pub enum FrameOp {
     #[serde(rename = "filter")]
     Filter {
         column: String,
-        op: String,
+        op: FilterOp,
         #[serde(deserialize_with = "de_cell", default = "null_cell")]
         value: FrameCell,
         #[serde(rename = "matchCase", default)]
@@ -103,7 +252,7 @@ pub enum FrameOp {
     },
     #[serde(rename = "filterMulti")]
     FilterMulti {
-        combine: String,
+        combine: FilterCombine,
         conditions: Vec<FilterCond>,
         #[serde(default)]
         complement: Option<bool>,
@@ -126,24 +275,24 @@ pub enum FrameOp {
     #[serde(rename = "pivot")]
     Pivot(PivotSpec),
     #[serde(rename = "fillBlanks")]
-    FillBlanks { columns: Vec<String>, dir: String },
+    FillBlanks { columns: Vec<String>, dir: FillDir },
     #[serde(rename = "replaceValues")]
     ReplaceValues {
         column: String,
         find: String,
         #[serde(rename = "replaceWith")]
         replace_with: String,
-        mode: String,
+        mode: ReplaceMode,
     },
     #[serde(rename = "sliceRows")]
     SliceRows {
-        mode: String,
+        mode: SliceMode,
         n: f64,
         #[serde(default)]
         to: Option<f64>,
     },
     #[serde(rename = "dropBlankRows")]
-    DropBlankRows { mode: String },
+    DropBlankRows { mode: BlankRows },
     #[serde(rename = "addIndex")]
     AddIndex { name: String, start: f64 },
     #[serde(rename = "splitColumn")]
@@ -170,7 +319,7 @@ fn require_column<'a>(f: &'a FrameValue, name: &str) -> Res<&'a FrameColumn> {
     f.columns
         .iter()
         .find(|c| c.name == name)
-        .ok_or_else(|| sol_error("#REF!", format!("column \"{name}\" not found")))
+        .ok_or_else(|| sol_error(ErrorCode::Ref, format!("column \"{name}\" not found")))
 }
 
 pub fn reorder_rows(f: &FrameValue, indices: &[usize]) -> FrameValue {
@@ -205,7 +354,7 @@ fn compare_numbers(a: f64, b: f64) -> Ordering {
 pub enum CellKey<'a> {
     Null,
     Bool(bool),
-    Err(&'a str),
+    Err(ErrorCode),
     Num(u64),
     Str(&'a str),
 }
@@ -214,7 +363,7 @@ pub fn cell_key(v: &FrameCell) -> CellKey<'_> {
     match v {
         FrameCell::Null => CellKey::Null,
         FrameCell::Bool(b) => CellKey::Bool(*b),
-        FrameCell::Err(e) => CellKey::Err(&e.code),
+        FrameCell::Err(e) => CellKey::Err(e.code),
         FrameCell::Num(n) if n.is_nan() => CellKey::Num(f64::NAN.to_bits()),
         FrameCell::Num(n) if *n == 0.0 => CellKey::Num(0f64.to_bits()),
         FrameCell::Num(n) => CellKey::Num(n.to_bits()),
@@ -257,7 +406,7 @@ enum SortKey {
     S(Rc<str>),
 }
 
-fn sorted_index_order<'a>(len: usize, cell_at: impl Fn(usize) -> &'a FrameCell, ty: FrameColType, dir: &str) -> Vec<usize> {
+fn sorted_index_order<'a>(len: usize, cell_at: impl Fn(usize) -> &'a FrameCell, ty: FrameColType, dir: SortDir) -> Vec<usize> {
     let mut keys: Vec<Option<SortKey>> = Vec::with_capacity(len);
     let mut heads: Vec<usize> = Vec::new();
     let mut tails: Vec<usize> = Vec::new();
@@ -278,7 +427,7 @@ fn sorted_index_order<'a>(len: usize, cell_at: impl Fn(usize) -> &'a FrameCell, 
         }));
         heads.push(i);
     }
-    let desc = dir == "desc";
+    let desc = dir == SortDir::Desc;
     // NaN is a tail, so the keys left are totally ordered. Sorting (key, row) pairs with the row breaking ties is the
     // stable sort's order, and the pairs sit together in memory where an index sort chases each key.
     let mut out: Vec<usize> = if ty == FrameColType::String {
@@ -313,7 +462,7 @@ fn sorted_index_order<'a>(len: usize, cell_at: impl Fn(usize) -> &'a FrameCell, 
     out
 }
 
-pub fn sort_by_column(f: &FrameValue, by: &str, dir: &str) -> Res<FrameValue> {
+pub fn sort_by_column(f: &FrameValue, by: &str, dir: SortDir) -> Res<FrameValue> {
     let col = require_column(f, by)?;
     Ok(reorder_rows(f, &sorted_index_order(frame_row_count(f), |i| col.cell_at(i), col.ty, dir)))
 }
@@ -371,39 +520,46 @@ fn filter_value_to_number(value: &FrameCell, ty: FrameColType) -> Res<Option<f64
     })
 }
 
-const TEXT_FILTER_OPS: [&str; 3] = ["contains", "startsWith", "endsWith"];
+impl FilterOp {
+    /// The tests that read a cell as text, by the name the filter's menu shows.
+    pub fn text_label(self) -> Option<&'static str> {
+        match self {
+            FilterOp::Contains => Some("Contains"),
+            FilterOp::StartsWith => Some("Starts with"),
+            FilterOp::EndsWith => Some("Ends with"),
+            _ => None,
+        }
+    }
 
-fn text_op_label(op: &str) -> &str {
-    match op {
-        "contains" => "Contains",
-        "startsWith" => "Starts with",
-        "endsWith" => "Ends with",
-        other => other,
+    /// The tests that read no value (`VALUELESS_FILTER_OPS`).
+    pub fn is_valueless(self) -> bool {
+        matches!(self, FilterOp::IsBlank | FilterOp::NotBlank | FilterOp::IsError | FilterOp::NotError | FilterOp::ListEmpty)
     }
 }
 
-pub fn require_text_column(op: &str, ty: FrameColType, column: &str) -> Res<()> {
-    if !TEXT_FILTER_OPS.contains(&op) || ty == FrameColType::String {
+pub fn require_text_column(op: FilterOp, ty: FrameColType, column: &str) -> Res<()> {
+    let Some(label) = op.text_label() else { return Ok(()) };
+    if ty == FrameColType::String {
         return Ok(());
     }
     Err(sol_error(
-        "#TYPE!",
+        ErrorCode::Type,
         format!(
-            "{} reads text — \"{column}\" is a {} column. Convert it first: a Computed Column like TEXT(@{column}, \"@\"), or Cast to Text",
-            text_op_label(op),
-            ty.tag()
+            "{label} reads text — \"{column}\" is a {} column. Convert it first: a Computed Column like TEXT(@{column}, \"@\"), or Cast to Text",
+            ty.as_str()
         ),
     ))
 }
 
-fn compare_op(op: &str, x: f64, y: f64) -> bool {
+/// A comparison's verdict; the tests that aren't comparisons keep nothing.
+fn compare_op(op: FilterOp, x: f64, y: f64) -> bool {
     match op {
-        "gt" => x > y,
-        "gte" => x >= y,
-        "lt" => x < y,
-        "lte" => x <= y,
-        "eq" => x == y,
-        "neq" => x != y,
+        FilterOp::Gt => x > y,
+        FilterOp::Gte => x >= y,
+        FilterOp::Lt => x < y,
+        FilterOp::Lte => x <= y,
+        FilterOp::Eq => x == y,
+        FilterOp::Neq => x != y,
         _ => false,
     }
 }
@@ -419,13 +575,15 @@ fn ordering_num(o: Ordering) -> f64 {
 type Pred<'a> = Box<dyn FnMut(&FrameCell) -> Res<bool> + 'a>;
 
 /// Hoists the per-condition work (case folding, parsing the value) out of the row loop.
-pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, match_case: bool) -> Res<Pred<'a>> {
+pub fn compile_filter<'a>(op: FilterOp, value: &'a FrameCell, ty: FrameColType, match_case: bool) -> Res<Pred<'a>> {
     match op {
-        "listContains" | "listContainsAny" | "listContainsAll" | "listEmpty" => return Ok(Box::new(|_| Ok(false))),
-        "iserror" => return Ok(Box::new(|c| Ok(c.is_err()))),
-        "noterror" => return Ok(Box::new(|c| Ok(!c.is_err()))),
-        "isblank" => return Ok(Box::new(|c| Ok(c.is_null()))),
-        "notblank" => return Ok(Box::new(|c| Ok(!c.is_null()))),
+        FilterOp::ListContains | FilterOp::ListContainsAny | FilterOp::ListContainsAll | FilterOp::ListEmpty => {
+            return Ok(Box::new(|_| Ok(false)))
+        }
+        FilterOp::IsError => return Ok(Box::new(|c| Ok(c.is_err()))),
+        FilterOp::NotError => return Ok(Box::new(|c| Ok(!c.is_err()))),
+        FilterOp::IsBlank => return Ok(Box::new(|c| Ok(c.is_null()))),
+        FilterOp::NotBlank => return Ok(Box::new(|c| Ok(!c.is_null()))),
         _ => {}
     }
     if value.is_null() {
@@ -437,7 +595,7 @@ pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, m
     }
     let fold = move |s: &'_ str| -> String { if match_case { s.to_string() } else { js_lower(s).into_owned() } };
     let absent = |c: &FrameCell| c.is_null() || c.is_err();
-    if TEXT_FILTER_OPS.contains(&op) {
+    if op.text_label().is_some() {
         let needle = fold(&js_string(value));
         let ascii_fold = !match_case && needle.is_ascii();
         return Ok(Box::new(move |c| {
@@ -448,15 +606,15 @@ pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, m
             if ascii_fold && raw.is_ascii() {
                 let (h, n) = (raw.as_bytes(), needle.as_bytes());
                 return Ok(match op {
-                    "contains" => n.is_empty() || h.windows(n.len()).any(|w| w.eq_ignore_ascii_case(n)),
-                    "startsWith" => h.len() >= n.len() && h[..n.len()].eq_ignore_ascii_case(n),
+                    FilterOp::Contains => n.is_empty() || h.windows(n.len()).any(|w| w.eq_ignore_ascii_case(n)),
+                    FilterOp::StartsWith => h.len() >= n.len() && h[..n.len()].eq_ignore_ascii_case(n),
                     _ => h.len() >= n.len() && h[h.len() - n.len()..].eq_ignore_ascii_case(n),
                 });
             }
             let hay: Cow<str> = if match_case { raw } else { Cow::Owned(js_lower(&raw).into_owned()) };
             Ok(match op {
-                "contains" => hay.contains(needle.as_str()),
-                "startsWith" => hay.starts_with(needle.as_str()),
+                FilterOp::Contains => hay.contains(needle.as_str()),
+                FilterOp::StartsWith => hay.starts_with(needle.as_str()),
                 _ => hay.ends_with(needle.as_str()),
             })
         }));
@@ -475,8 +633,8 @@ pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, m
             }
         };
         return Ok(match op {
-            "eq" => Box::new(move |c| Ok(!absent(c) && same(c))),
-            "neq" => Box::new(move |c| Ok(!absent(c) && !same(c))),
+            FilterOp::Eq => Box::new(move |c| Ok(!absent(c) && same(c))),
+            FilterOp::Neq => Box::new(move |c| Ok(!absent(c) && !same(c))),
             _ => Box::new(move |c| Ok(!absent(c) && compare_op(op, ordering_num(compare_strings(&js_string(c), &target)), 0.0))),
         });
     }
@@ -491,7 +649,7 @@ pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, m
     }))
 }
 
-pub fn filter_rows(f: &FrameValue, column: &str, op: &str, value: &FrameCell, match_case: bool) -> Res<FrameValue> {
+pub fn filter_rows(f: &FrameValue, column: &str, op: FilterOp, value: &FrameCell, match_case: bool) -> Res<FrameValue> {
     let col = require_column(f, column)?;
     require_text_column(op, col.ty, column)?;
     let mut pass = compile_filter(op, value, col.ty, match_case)?;
@@ -504,22 +662,22 @@ pub fn filter_rows(f: &FrameValue, column: &str, op: &str, value: &FrameCell, ma
     Ok(reorder_rows(f, &keep))
 }
 
-pub fn filter_rows_multi(f: &FrameValue, combine: &str, conditions: &[FilterCond], complement: bool) -> Res<FrameValue> {
+pub fn filter_rows_multi(f: &FrameValue, combine: FilterCombine, conditions: &[FilterCond], complement: bool) -> Res<FrameValue> {
     if conditions.is_empty() {
         return Ok(if complement { reorder_rows(f, &[]) } else { f.clone() });
     }
     let cols: Vec<&FrameColumn> = conditions.iter().map(|c| require_column(f, &c.column)).collect::<Res<_>>()?;
     for (j, c) in conditions.iter().enumerate() {
-        require_text_column(&c.op, cols[j].ty, &c.column)?;
+        require_text_column(c.op, cols[j].ty, &c.column)?;
     }
     let mut preds: Vec<Pred> = conditions
         .iter()
         .enumerate()
-        .map(|(j, c)| compile_filter(&c.op, &c.value, cols[j].ty, c.match_case.unwrap_or(false)))
+        .map(|(j, c)| compile_filter(c.op, &c.value, cols[j].ty, c.match_case.unwrap_or(false)))
         .collect::<Res<_>>()?;
     let mut keep = Vec::new();
     for i in 0..frame_row_count(f) {
-        let mut kept = combine == "and";
+        let mut kept = combine == FilterCombine::And;
         for (j, pred) in preds.iter_mut().enumerate() {
             if pred(cols[j].cell_at(i))? != kept {
                 kept = !kept;
@@ -565,15 +723,15 @@ fn variance_of(nums: &[f64], sample: bool) -> Option<f64> {
     Some(ss / (if sample { n - 1 } else { n }) as f64)
 }
 
-pub fn aggregate_group(values: &[FrameCell], op: &str, ty: Option<FrameColType>) -> Res<FrameCell> {
-    if op == "count" {
-        return Ok(FrameCell::Num(values.iter().filter(|v| !v.is_null()).count() as f64));
+pub fn aggregate_group(values: &[FrameCell], op: AggOp, ty: Option<FrameColType>) -> FrameCell {
+    if op == AggOp::Count {
+        return FrameCell::Num(values.iter().filter(|v| !v.is_null()).count() as f64);
     }
-    if op == "percentof" {
-        return Ok(FrameCell::Null);
+    if op == AggOp::PercentOf {
+        return FrameCell::Null;
     }
-    if ty == Some(FrameColType::String) && (op == "min" || op == "max") {
-        return Ok(text_extreme(values, op));
+    if ty == Some(FrameColType::String) && matches!(op, AggOp::Min | AggOp::Max) {
+        return text_extreme(values, op);
     }
     let as_nums: Vec<FrameCell> = values
         .iter()
@@ -583,27 +741,24 @@ pub fn aggregate_group(values: &[FrameCell], op: &str, ty: Option<FrameColType>)
         })
         .collect();
     let nums = match for_aggregate(&as_nums) {
-        AggregatePrep::Error(e) => return Ok(e),
+        AggregatePrep::Error(e) => return e,
         AggregatePrep::Nums(n) => n,
     };
     if nums.is_empty() {
-        return Ok(match op {
-            "sum" => FrameCell::Num(0.0),
-            "product" => FrameCell::Num(1.0),
+        return match op {
+            AggOp::Sum => FrameCell::Num(0.0),
+            AggOp::Product => FrameCell::Num(1.0),
             _ => FrameCell::Null,
-        });
+        };
     }
     if nums.iter().any(|n| n.is_nan()) {
-        return Ok(guard_finite(f64::NAN, &nums));
+        return guard_finite(f64::NAN, &nums);
     }
-    match raw_aggregate(&nums, op) {
-        None => Err(sol_error("#NAME?", format!("Unknown aggregation \"{op}\""))),
-        Some(r) => Ok(guard_agg(r, &nums)),
-    }
+    guard_agg(raw_aggregate(&nums, op), &nums)
 }
 
 // [[D76]] textMinMax: code-unit order ([[C59]] byteStringOrder), blanks and "" skipped.
-fn text_extreme(values: &[FrameCell], op: &str) -> FrameCell {
+fn text_extreme(values: &[FrameCell], op: AggOp) -> FrameCell {
     let mut best: Option<String> = None;
     for v in values {
         if v.is_err() {
@@ -620,7 +775,7 @@ fn text_extreme(values: &[FrameCell], op: &str) -> FrameCell {
             None => true,
             Some(b) => {
                 let c = compare_strings(&t, b);
-                if op == "min" { c == Ordering::Less } else { c == Ordering::Greater }
+                if op == AggOp::Min { c == Ordering::Less } else { c == Ordering::Greater }
             }
         };
         if better {
@@ -637,45 +792,46 @@ fn guard_agg(r: Option<f64>, inputs: &[f64]) -> FrameCell {
     }
 }
 
-/// `None` outside: an unknown op. `Some(None)` is the null an undefined variance answers.
-fn raw_aggregate(nums: &[f64], op: &str) -> Option<Option<f64>> {
-    Some(match op {
-        "sum" => Some(sum_of(nums)),
-        "avg" => Some(sum_of(nums) / nums.len() as f64),
-        "min" => Some(nums[1..].iter().fold(nums[0], |a, &b| if b < a { b } else { a })),
-        "max" => Some(nums[1..].iter().fold(nums[0], |a, &b| if b > a { b } else { a })),
-        "product" => Some(nums.iter().fold(1.0, |a, b| a * b)),
-        "median" => {
+/// The aggregate over non-empty numbers; `None` is the null an undefined variance answers (and count and percent-of,
+/// which `aggregate_group` answers before).
+fn raw_aggregate(nums: &[f64], op: AggOp) -> Option<f64> {
+    match op {
+        AggOp::Sum => Some(sum_of(nums)),
+        AggOp::Avg => Some(sum_of(nums) / nums.len() as f64),
+        AggOp::Min => Some(nums[1..].iter().fold(nums[0], |a, &b| if b < a { b } else { a })),
+        AggOp::Max => Some(nums[1..].iter().fold(nums[0], |a, &b| if b > a { b } else { a })),
+        AggOp::Product => Some(nums.iter().fold(1.0, |a, b| a * b)),
+        AggOp::Median => {
             let mut s = nums.to_vec();
             js_sort_by(&mut s, |a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
             let m = s.len() >> 1;
             Some(if s.len() % 2 == 1 { s[m] } else { (s[m - 1] + s[m]) / 2.0 })
         }
-        "mode" => Some(mode_of(nums)),
-        "stdev" => variance_of(nums, true).map(f64::sqrt),
-        "stdevp" => variance_of(nums, false).map(f64::sqrt),
-        "var" => variance_of(nums, true),
-        "varp" => variance_of(nums, false),
-        _ => return None,
-    })
+        AggOp::Mode => Some(mode_of(nums)),
+        AggOp::Stdev => variance_of(nums, true).map(f64::sqrt),
+        AggOp::StdevP => variance_of(nums, false).map(f64::sqrt),
+        AggOp::Var => variance_of(nums, true),
+        AggOp::VarP => variance_of(nums, false),
+        AggOp::Count | AggOp::PercentOf => None,
+    }
 }
 
 // ─── Units through an aggregate ([[C25]] firstClassUnits) ───
 // The engine sees no units: the TS lowers an op over readings to name its reading scale, and a
 // variance over a scaled linear unit its scale (`withUnitScales`), as it does for Polars.
 
-fn agg_readings_refused(op: &str) -> Option<&'static str> {
+fn agg_readings_refused(op: AggOp) -> Option<&'static str> {
     match op {
-        "sum" => Some(READINGS_ADD),
-        "product" | "percentof" => Some(READINGS_SCALE),
+        AggOp::Sum => Some(READINGS_ADD),
+        AggOp::Product | AggOp::PercentOf => Some(READINGS_SCALE),
         _ => None,
     }
 }
 
-fn agg_readings_delta(op: &str) -> Option<u8> {
+fn agg_readings_delta(op: AggOp) -> Option<u8> {
     match op {
-        "stdev" | "stdevp" => Some(1),
-        "var" | "varp" => Some(2),
+        AggOp::Stdev | AggOp::StdevP => Some(1),
+        AggOp::Var | AggOp::VarP => Some(2),
         _ => None,
     }
 }
@@ -721,7 +877,7 @@ fn reading_plan(given: Option<f64>, refused: Option<&str>, delta: Option<u8>, gi
     }
 }
 
-fn agg_unit_plan(op: &str, reading_scale: Option<f64>, unit_scale: Option<f64>) -> ReadingPlan {
+fn agg_unit_plan(op: AggOp, reading_scale: Option<f64>, unit_scale: Option<f64>) -> ReadingPlan {
     reading_plan(reading_scale, agg_readings_refused(op), agg_readings_delta(op), unit_scale)
 }
 
@@ -735,12 +891,13 @@ pub fn group_by_frame(f: &FrameValue, keys: &[String], aggs: &[AggSpec]) -> Res<
         .map(|c| FrameColumn::new(c.name.clone(), c.ty, buckets.iter().map(|rows| c.cell_at(rows[0]).clone()).collect()))
         .collect();
     for (spec, col) in agg_cols {
-        let preserves = spec.op == "min" || spec.op == "max";
-        let plan = agg_unit_plan(&spec.op, spec.reading_scale, spec.unit_scale);
+        let op = known_agg(&spec.op)?;
+        let preserves = matches!(op, AggOp::Min | AggOp::Max);
+        let plan = agg_unit_plan(op, spec.reading_scale, spec.unit_scale);
         let mut values = Vec::with_capacity(buckets.len());
         for rows in &buckets {
             let cells: Vec<FrameCell> = rows.iter().map(|&i| col.cell_at(i).clone()).collect();
-            values.push(plan.cell(aggregate_group(&cells, &spec.op, Some(col.ty))?));
+            values.push(plan.cell(aggregate_group(&cells, op, Some(col.ty))));
         }
         if preserves && col.ty == FrameColType::Logical {
             values = values.into_iter().map(|v| if let FrameCell::Num(n) = v { FrameCell::Bool(n != 0.0) } else { v }).collect();
@@ -776,15 +933,15 @@ pub fn rename_columns(f: &FrameValue, map: &HashMap<String, String>) -> FrameVal
 
 // ─── Join ───────────────────────────────────────────────────────────────────────
 
-#[derive(Deserialize, Clone, Debug, Default)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct JoinOpts {
     #[serde(rename = "leftKey", default)]
     pub left_key: String,
     #[serde(rename = "rightKey", default)]
     pub right_key: String,
-    pub how: String,
+    pub how: Wire<JoinHow>,
     #[serde(rename = "asofDirection", default)]
-    pub asof_direction: Option<String>,
+    pub asof_direction: Option<AsofDirection>,
     #[serde(rename = "asofTolerance", default)]
     pub asof_tolerance: Option<f64>,
     #[serde(rename = "rightKeyScale", default)]
@@ -855,7 +1012,7 @@ struct Keyed {
     idx: usize,
 }
 
-fn asof_nearest(sorted_right: &[Keyed], key: f64, direction: &str, tolerance: Option<f64>) -> Option<usize> {
+fn asof_nearest(sorted_right: &[Keyed], key: f64, direction: AsofDirection, tolerance: Option<f64>) -> Option<usize> {
     let n = sorted_right.len();
     if n == 0 {
         return None;
@@ -864,9 +1021,9 @@ fn asof_nearest(sorted_right: &[Keyed], key: f64, direction: &str, tolerance: Op
     let lo2 = sorted_right.partition_point(|k| k.key < key);
     let forward = (lo2 < n).then_some(lo2);
     let pick = match direction {
-        "backward" => backward,
-        "forward" => forward,
-        _ => match (backward, forward) {
+        AsofDirection::Backward => backward,
+        AsofDirection::Forward => forward,
+        AsofDirection::Nearest => match (backward, forward) {
             (None, f) => f,
             (b, None) => b,
             (Some(b), Some(f)) => {
@@ -894,7 +1051,7 @@ fn asof_key(cell: &FrameCell) -> Option<f64> {
 
 fn asof_pairs(left: &FrameValue, lk: &FrameColumn, right: &FrameValue, rk: &FrameColumn, opts: &JoinOpts) -> Res<Vec<Pair>> {
     if !is_orderable_key(lk.ty) || !is_orderable_key(rk.ty) {
-        return Err(sol_error("#VALUE!", "As-of join requires a numeric or date key"));
+        return Err(sol_error(ErrorCode::Value, "As-of join requires a numeric or date key"));
     }
     let mut sorted_right: Vec<Keyed> = Vec::new();
     for j in 0..frame_row_count(right) {
@@ -903,7 +1060,7 @@ fn asof_pairs(left: &FrameValue, lk: &FrameColumn, right: &FrameValue, rk: &Fram
         }
     }
     js_sort_by(&mut sorted_right, |a, b| a.key.partial_cmp(&b.key).unwrap_or(Ordering::Equal).then(a.idx.cmp(&b.idx)));
-    let direction = opts.asof_direction.as_deref().unwrap_or("backward");
+    let direction = opts.asof_direction.unwrap_or(AsofDirection::Backward);
     Ok((0..frame_row_count(left))
         .map(|i| match asof_key(lk.cell_at(i)) {
             None => (Some(i), None),
@@ -940,18 +1097,16 @@ pub fn cross_join_frames(left: &FrameValue, right: &FrameValue) -> FrameValue {
 }
 
 pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Res<FrameValue> {
-    if !["inner", "left", "right", "outer", "cross", "semi", "anti", "asof"].contains(&opts.how.as_str()) {
-        return Err(sol_error("#VALUE!", format!("unknown join how \"{}\"", opts.how)));
-    }
-    if opts.how == "cross" {
+    let how = opts.how.known().map_err(|how| sol_error(ErrorCode::Value, format!("unknown join how \"{how}\"")))?;
+    if how == JoinHow::Cross {
         return Ok(cross_join_frames(left, right));
     }
     let lk = require_column(left, &opts.left_key)?;
     let rk0 = require_column(right, &opts.right_key)?;
     if lk.ty != rk0.ty {
         return Err(sol_error(
-            "#TYPE!",
-            format!("Join keys must share a type (\"{}\" vs \"{}\")", lk.ty.tag(), rk0.ty.tag()),
+            ErrorCode::Type,
+            format!("Join keys must share a type (\"{}\" vs \"{}\")", lk.ty.as_str(), rk0.ty.as_str()),
         ));
     }
     let scaled_right;
@@ -979,9 +1134,9 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
     let ln = frame_row_count(left);
     let rn = frame_row_count(right);
 
-    if opts.how == "semi" || opts.how == "anti" {
+    if matches!(how, JoinHow::Semi | JoinHow::Anti) {
         let r_idx = key_index(rk, rn);
-        let semi = opts.how == "semi";
+        let semi = how == JoinHow::Semi;
         let keep: Vec<usize> = (0..ln)
             .filter(|&i| {
                 let cell = lk.cell_at(i);
@@ -993,9 +1148,9 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
     }
 
     let mut pairs: Vec<Pair> = Vec::new();
-    if opts.how == "asof" {
+    if how == JoinHow::Asof {
         pairs = asof_pairs(left, lk, right, rk, opts)?;
-    } else if opts.how == "right" {
+    } else if how == JoinHow::Right {
         let l_idx = key_index(lk, ln);
         for j in 0..rn {
             match l_idx.get(&cell_key(rk.cell_at(j))) {
@@ -1006,7 +1161,7 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
     } else {
         let r_idx = key_index(rk, rn);
         let mut matched_right = vec![false; rn];
-        let keeps_left = opts.how == "left" || opts.how == "outer";
+        let keeps_left = matches!(how, JoinHow::Left | JoinHow::Outer);
         for i in 0..ln {
             let cell = lk.cell_at(i);
             match r_idx.get(&cell_key(cell)) {
@@ -1023,7 +1178,7 @@ pub fn join_frames(left: &FrameValue, right: &FrameValue, opts: &JoinOpts) -> Re
                 }
             }
         }
-        if opts.how == "outer" {
+        if how == JoinHow::Outer {
             pairs.extend((0..rn).filter(|&j| !matched_right[j]).map(|j| (None, Some(j))));
         }
     }
@@ -1043,13 +1198,13 @@ pub fn unpivot_frame(
     let val_cols: Vec<&FrameColumn> = value_columns.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
     if let Some(mixed) = val_cols.iter().find(|c| c.ty != val_cols[0].ty) {
         return Err(sol_error(
-            "#TYPE!",
+            ErrorCode::Type,
             format!(
                 "Unpivot value columns must share a type (\"{}\" is {}, \"{}\" is {})",
                 val_cols[0].name,
-                val_cols[0].ty.tag(),
+                val_cols[0].ty.as_str(),
                 mixed.name,
-                mixed.ty.tag()
+                mixed.ty.as_str()
             ),
         ));
     }
@@ -1101,7 +1256,7 @@ pub struct PivotSpec {
     #[serde(rename = "colFields")]
     pub col_fields: Vec<String>,
     pub values: Vec<String>,
-    pub funcs: Vec<String>,
+    pub funcs: Vec<Wire<AggOp>>,
     #[serde(rename = "rowTotalDepth", default)]
     pub row_total_depth: Option<f64>,
     #[serde(rename = "colTotalDepth", default)]
@@ -1277,7 +1432,7 @@ fn sum_group(values: &[FrameCell]) -> FrameCell {
 /// `formatFrameCell` with no format annotation.
 pub(crate) fn format_frame_cell(ty: FrameColType, v: &FrameCell) -> String {
     match v {
-        FrameCell::Err(e) => e.code.clone(),
+        FrameCell::Err(e) => e.code.to_string(),
         FrameCell::Bool(b) => (if *b { "TRUE" } else { "FALSE" }).to_string(),
         FrameCell::Num(n) if ty == FrameColType::Date && n.is_finite() => format_date_serial(*n, DEFAULT_DATE_FORMAT),
         other => js_string(other).into_owned(),
@@ -1299,14 +1454,14 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let col_fields = keep(&spec.col_fields);
     let value_names = keep(&spec.values);
     if value_names.is_empty() {
-        return Err(sol_error("#VALUE!", "PIVOTBY needs at least one value field"));
+        return Err(sol_error(ErrorCode::Value, "PIVOTBY needs at least one value field"));
     }
     let row_cols: Vec<&FrameColumn> = row_fields.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
     let col_cols: Vec<&FrameColumn> = col_fields.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
     let val_cols: Vec<&FrameColumn> = value_names.iter().map(|n| require_column(f, n)).collect::<Res<_>>()?;
-    let funcs: Vec<String> = (0..value_names.len())
-        .map(|i| spec.funcs.get(i).or(spec.funcs.first()).cloned().unwrap_or_else(|| "sum".to_string()))
-        .collect();
+    let funcs: Vec<AggOp> = (0..value_names.len())
+        .map(|i| spec.funcs.get(i).or(spec.funcs.first()).map_or(Ok(AggOp::Sum), known_agg))
+        .collect::<Res<_>>()?;
     let relative_to = spec.relative_to.unwrap_or(0.0);
 
     let rows: Vec<usize> = (0..frame_row_count(f))
@@ -1337,13 +1492,13 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         }
     }
 
-    let sort_key = |list: &[FrameCell], v: usize| -> Res<Score> {
-        let op = if funcs[v] == "percentof" { "sum" } else { funcs[v].as_str() };
-        Ok(match aggregate_group(list, op, Some(val_cols[v].ty))? {
+    let sort_key = |list: &[FrameCell], v: usize| -> Score {
+        let op = if funcs[v] == AggOp::PercentOf { AggOp::Sum } else { funcs[v] };
+        match aggregate_group(list, op, Some(val_cols[v].ty)) {
             FrameCell::Num(n) if !n.is_nan() => Score::N(n),
             FrameCell::Str(s) => Score::S(s.to_string()),
             _ => Score::Null,
-        })
+        }
     };
     let by_key = |desc: bool| {
         move |sx: &Score, sy: &Score| -> Ordering {
@@ -1367,7 +1522,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let row_val_sort = rs.abs() - 1.0 - row_cols.len() as f64;
     if row_val_sort >= 0.0 && row_val_sort < v_n as f64 && row_val_sort.fract() == 0.0 && r_n > 1 {
         let vs = row_val_sort as usize;
-        let scores: Vec<Score> = (0..r_n).map(|r| sort_key(&cells[vs][r].concat(), vs)).collect::<Res<_>>()?;
+        let scores: Vec<Score> = (0..r_n).map(|r| sort_key(&cells[vs][r].concat(), vs)).collect();
         let cmp = by_key(rs < 0.0);
         let mut perm: Vec<usize> = (0..r_n).collect();
         js_sort_by(&mut perm, |&x, &y| cmp(&scores[x], &scores[y]));
@@ -1380,7 +1535,7 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     if col_val_sort >= 0.0 && col_val_sort < v_n as f64 && col_val_sort.fract() == 0.0 && c_n > 1 {
         let vs = col_val_sort as usize;
         let scores: Vec<Score> =
-            (0..c_n).map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs)).collect::<Res<_>>()?;
+            (0..c_n).map(|c| sort_key(&(0..r_n).flat_map(|r| cells[vs][r][c].iter().cloned()).collect::<Vec<_>>(), vs)).collect();
         let cmp = by_key(cs < 0.0);
         let mut perm: Vec<usize> = (0..c_n).collect();
         js_sort_by(&mut perm, |&x, &y| cmp(&scores[x], &scores[y]));
@@ -1429,17 +1584,17 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     }
     let col_out = expand_axis(&col_leaves, spec.col_total_depth.unwrap_or(0.0), col_cols.len());
 
-    let mut cell_value = |v: usize, rset: &Rc<Vec<usize>>, cset: &Rc<Vec<usize>>| -> Res<FrameCell> {
+    let mut cell_value = |v: usize, rset: &Rc<Vec<usize>>, cset: &Rc<Vec<usize>>| -> FrameCell {
         let here = collect(v, rset, cset);
         if here.is_empty() {
-            return Ok(FrameCell::Null);
+            return FrameCell::Null;
         }
-        if funcs[v] != "percentof" {
-            return aggregate_group(&here, &funcs[v], Some(val_cols[v].ty));
+        if funcs[v] != AggOp::PercentOf {
+            return aggregate_group(&here, funcs[v], Some(val_cols[v].ty));
         }
         let num = sum_group(&here);
         if num.is_err() {
-            return Ok(num);
+            return num;
         }
         let (mut dr, mut dc) = (rset.clone(), cset.clone());
         if relative_to == 0.0 {
@@ -1456,13 +1611,13 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         }
         let key = (Rc::as_ptr(&dr) as usize, dr.len(), Rc::as_ptr(&dc) as usize, dc.len());
         let den = denominators[v].entry(key).or_insert_with(|| sum_group(&collect(v, &dr, &dc))).clone();
-        Ok(match (num, den) {
+        match (num, den) {
             (_, d @ FrameCell::Err(_)) => d,
             (FrameCell::Num(n), FrameCell::Num(d)) => {
                 if d == 0.0 { FrameCell::Null } else { FrameCell::Num(n / d) }
             }
             _ => FrameCell::Null,
-        })
+        }
     };
 
     let key_names = make_headers(&row_fields, row_fields.len());
@@ -1525,18 +1680,18 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
     let plans: Vec<ReadingPlan> = (0..v_n)
         .map(|v| {
             let s = spec.value_scales.as_ref().and_then(|x| x.get(v)).unwrap_or(&no_scale);
-            agg_unit_plan(&funcs[v], s.reading_scale, s.unit_scale)
+            agg_unit_plan(funcs[v], s.reading_scale, s.unit_scale)
         })
         .collect();
     for (bi, (co, v)) in body_specs.iter().enumerate() {
-        let ty = if val_cols[*v].ty == FrameColType::String && (funcs[*v] == "min" || funcs[*v] == "max") {
+        let ty = if val_cols[*v].ty == FrameColType::String && matches!(funcs[*v], AggOp::Min | AggOp::Max) {
             FrameColType::String
         } else {
             FrameColType::Number
         };
         let mut values = Vec::with_capacity(row_out.len());
         for ro in &row_out {
-            values.push(plans[*v].cell(cell_value(*v, &ro.span, &co.span)?));
+            values.push(plans[*v].cell(cell_value(*v, &ro.span, &co.span)));
         }
         out_cols.push(FrameColumn::new(body_names[bi].clone(), ty, values));
     }
@@ -1546,14 +1701,14 @@ pub fn pivot_frame(f: &FrameValue, spec: &PivotSpec) -> Res<(FrameValue, PivotLa
         .iter()
         .map(|n| {
             let c = require_column(f, n)?;
-            Ok(json!({ "name": c.name, "type": c.ty.tag(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() }))
+            Ok(json!({ "name": c.name, "type": c.ty.as_str(), "values": c.values.iter().map(encode_cell).collect::<Vec<_>>() }))
         })
         .collect::<Res<_>>()?;
     let mut layout = json!({
         "rowFields": row_fields,
-        "rowTypes": row_cols.iter().map(|c| c.ty.tag()).collect::<Vec<_>>(),
+        "rowTypes": row_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
         "colFields": col_fields,
-        "colTypes": col_cols.iter().map(|c| c.ty.tag()).collect::<Vec<_>>(),
+        "colTypes": col_cols.iter().map(|c| c.ty.as_str()).collect::<Vec<_>>(),
         "values": value_names,
         "funcs": funcs,
         "rows": row_out
@@ -1588,8 +1743,8 @@ pub fn append_frames(frames: &[&FrameValue]) -> Res<FrameValue> {
                 }
                 Some(&existing) if existing != c.ty => {
                     return Err(sol_error(
-                        "#TYPE!",
-                        format!("append: column \"{}\" is {} in one frame and {} in another", c.name, existing.tag(), c.ty.tag()),
+                        ErrorCode::Type,
+                        format!("append: column \"{}\" is {} in one frame and {} in another", c.name, existing.as_str(), c.ty.as_str()),
                     ));
                 }
                 _ => {}
@@ -1647,12 +1802,12 @@ pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
         FrameOp::Select { columns } => select_columns(f, columns),
         FrameOp::Drop { columns } => Ok(drop_columns(f, columns)),
         FrameOp::Rename { map } => Ok(rename_columns(f, map)),
-        FrameOp::Sort { by, dir } => sort_by_column(f, by, dir),
+        FrameOp::Sort { by, dir } => sort_by_column(f, by, *dir),
         FrameOp::Distinct { columns } => distinct_rows(f, columns.as_deref()),
         FrameOp::Head { n } => Ok(head_rows(f, *n)),
-        FrameOp::Filter { column, op, value, match_case } => filter_rows(f, column, op, value, match_case.unwrap_or(false)),
+        FrameOp::Filter { column, op, value, match_case } => filter_rows(f, column, *op, value, match_case.unwrap_or(false)),
         FrameOp::FilterMulti { combine, conditions, complement } => {
-            filter_rows_multi(f, combine, conditions, complement.unwrap_or(false))
+            filter_rows_multi(f, *combine, conditions, complement.unwrap_or(false))
         }
         FrameOp::GroupBy { keys, aggs } => group_by_frame(f, keys, aggs),
         FrameOp::Unpivot { id_columns, value_columns, variable_name, value_name } => {
@@ -1660,10 +1815,10 @@ pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
         }
         FrameOp::Window(spec) => window_frame(f, spec),
         FrameOp::Pivot(spec) => pivot_frame(f, spec).map(|(out, _)| out),
-        FrameOp::FillBlanks { columns, dir } => fill_blanks(f, columns, dir),
-        FrameOp::ReplaceValues { column, find, replace_with, mode } => replace_values(f, column, find, replace_with, mode),
-        FrameOp::SliceRows { mode, n, to } => Ok(slice_rows(f, mode, *n, *to)),
-        FrameOp::DropBlankRows { mode } => Ok(drop_blank_rows(f, mode)),
+        FrameOp::FillBlanks { columns, dir } => fill_blanks(f, columns, *dir),
+        FrameOp::ReplaceValues { column, find, replace_with, mode } => replace_values(f, column, find, replace_with, *mode),
+        FrameOp::SliceRows { mode, n, to } => Ok(slice_rows(f, *mode, *n, *to)),
+        FrameOp::DropBlankRows { mode } => Ok(drop_blank_rows(f, *mode)),
         FrameOp::AddIndex { name, start } => Ok(add_index_column(f, name, *start)),
         FrameOp::SplitColumn { column, delimiter, into } => split_column(f, column, delimiter, into.as_deref()),
         FrameOp::MergeColumns { columns, separator, name } => merge_columns(f, columns, separator, name),
@@ -1673,7 +1828,7 @@ pub fn apply_verb(f: &FrameValue, op: &FrameOp) -> Res<FrameValue> {
 
 // ─── Cleaning ───────────────────────────────────────────────────────────────────
 
-pub fn fill_blanks(f: &FrameValue, columns: &[String], dir: &str) -> Res<FrameValue> {
+pub fn fill_blanks(f: &FrameValue, columns: &[String], dir: FillDir) -> Res<FrameValue> {
     let targets: HashSet<String> = if columns.is_empty() {
         f.columns.iter().map(|c| c.name.clone()).collect()
     } else {
@@ -1695,7 +1850,7 @@ pub fn fill_blanks(f: &FrameValue, columns: &[String], dir: &str) -> Res<FrameVa
                     carry = v.clone();
                 }
             };
-            if dir == "down" {
+            if dir == FillDir::Down {
                 values.iter_mut().for_each(&mut step);
             } else {
                 values.iter_mut().rev().for_each(&mut step);
@@ -1729,7 +1884,7 @@ fn coerce_replacement(t: FrameColType, text: &str) -> Option<FrameCell> {
     }
 }
 
-pub fn replace_values(f: &FrameValue, column: &str, find: &str, replace_with: &str, mode: &str) -> Res<FrameValue> {
+pub fn replace_values(f: &FrameValue, column: &str, find: &str, replace_with: &str, mode: ReplaceMode) -> Res<FrameValue> {
     if find.is_empty() {
         return Ok(f.clone());
     }
@@ -1749,7 +1904,7 @@ pub fn replace_values(f: &FrameValue, column: &str, find: &str, replace_with: &s
             if !targets.contains(&col.name) {
                 return col.clone();
             }
-            if mode == "substring" {
+            if mode == ReplaceMode::Substring {
                 if col.ty != FrameColType::String {
                     return col.clone();
                 }
@@ -1782,13 +1937,13 @@ pub fn replace_values(f: &FrameValue, column: &str, find: &str, replace_with: &s
     Ok(frame(cols))
 }
 
-pub fn slice_bounds(rows: usize, mode: &str, n: f64, to: Option<f64>) -> (usize, usize) {
+pub fn slice_bounds(rows: usize, mode: SliceMode, n: f64, to: Option<f64>) -> (usize, usize) {
     let big_n = trunc_count(n);
     let (start, mut end) = match mode {
-        "first" => (0, rows.min(big_n)),
-        "last" => (rows.saturating_sub(big_n), rows),
-        "skip" => (rows.min(big_n), rows),
-        _ => {
+        SliceMode::First => (0, rows.min(big_n)),
+        SliceMode::Last => (rows.saturating_sub(big_n), rows),
+        SliceMode::Skip => (rows.min(big_n), rows),
+        SliceMode::Range => {
             let start = if n.is_nan() { 0 } else { trunc_count(n.trunc() - 1.0) };
             (start, rows.min(trunc_count(to.unwrap_or(n))))
         }
@@ -1799,7 +1954,7 @@ pub fn slice_bounds(rows: usize, mode: &str, n: f64, to: Option<f64>) -> (usize,
     (start, end)
 }
 
-pub fn slice_rows(f: &FrameValue, mode: &str, n: f64, to: Option<f64>) -> FrameValue {
+pub fn slice_rows(f: &FrameValue, mode: SliceMode, n: f64, to: Option<f64>) -> FrameValue {
     let (start, end) = slice_bounds(frame_row_count(f), mode, n, to);
     frame(
         f.columns
@@ -1813,11 +1968,11 @@ pub fn slice_rows(f: &FrameValue, mode: &str, n: f64, to: Option<f64>) -> FrameV
     )
 }
 
-pub fn drop_blank_rows(f: &FrameValue, mode: &str) -> FrameValue {
+pub fn drop_blank_rows(f: &FrameValue, mode: BlankRows) -> FrameValue {
     let keep: Vec<usize> = (0..frame_row_count(f))
         .filter(|&i| {
             let blanks = f.columns.iter().filter(|c| matches!(c.cell_at(i), FrameCell::Null)).count();
-            !(if mode == "all" { blanks == f.columns.len() } else { blanks > 0 })
+            !(if mode == BlankRows::All { blanks == f.columns.len() } else { blanks > 0 })
         })
         .collect();
     reorder_rows(f, &keep)
@@ -1867,7 +2022,7 @@ pub fn split_column(f: &FrameValue, column: &str, delimiter: &str, names: Option
 pub fn merge_columns(f: &FrameValue, columns: &[String], separator: &str, name: &str) -> Res<FrameValue> {
     let sources: Vec<&FrameColumn> = columns.iter().map(|c| require_column(f, c)).collect::<Res<_>>()?;
     if sources.len() < 2 {
-        return Err(sol_error("#VALUE!", "Merge needs at least two columns"));
+        return Err(sol_error(ErrorCode::Value, "Merge needs at least two columns"));
     }
     let values = (0..frame_row_count(f))
         .map(|i| {
@@ -1895,25 +2050,18 @@ pub fn merge_columns(f: &FrameValue, columns: &[String], separator: &str, name: 
 pub const PCT_CHANGE_FROM_ZERO: &str = "Percent change from zero is undefined";
 pub const ZERO_GROUP_TOTAL: &str = "The group total is 0";
 
-const WINDOW_FNS: [&str; 26] = [
-    "row_number", "rank", "dense_rank", "percent_rank", "ntile",
-    "cumsum", "cumavg", "cummin", "cummax", "cumcount",
-    "lag", "lead", "diff", "pct_change",
-    "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
-    "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
-];
+impl WindowFn {
+    /// Whether it reads a value column; the ranks and counters read only the order.
+    fn reads_column(self) -> bool {
+        !matches!(self, WindowFn::RowNumber | WindowFn::Rank | WindowFn::DenseRank | WindowFn::PercentRank | WindowFn::Ntile | WindowFn::CumCount)
+    }
 
-const WINDOW_FN_NEEDS_COLUMN: [&str; 20] = [
-    "cumsum", "cumavg", "cummin", "cummax", "lag", "lead", "diff", "pct_change",
-    "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
-    "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
-];
-
-fn window_readings_refused(f: &str) -> Option<&'static str> {
-    match f {
-        "cumsum" | "rolling_sum" | "group_sum" => Some(READINGS_ADD),
-        "share" | "pct_change" => Some(READINGS_SCALE),
-        _ => None,
+    fn readings_refused(self) -> Option<&'static str> {
+        match self {
+            WindowFn::CumSum | WindowFn::RollingSum | WindowFn::GroupSum => Some(READINGS_ADD),
+            WindowFn::Share | WindowFn::PctChange => Some(READINGS_SCALE),
+            _ => None,
+        }
     }
 }
 
@@ -1932,21 +2080,18 @@ fn blank_key(k: &FrameCell) -> bool {
 }
 
 fn div0(msg: &str) -> FrameCell {
-    FrameCell::err(sol_error("#DIV/0!", msg))
+    FrameCell::err(sol_error(ErrorCode::DivZero, msg))
 }
 
 pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
-    let func = spec.fn_.as_str();
-    if !WINDOW_FNS.contains(&func) {
-        return Err(sol_error("#VALUE!", format!("unknown window function \"{func}\"")));
-    }
+    let func = spec.fn_.known().map_err(|name| sol_error(ErrorCode::Value, format!("unknown window function \"{name}\"")))?;
     let n = frame_row_count(f);
     let key_cols: Vec<&FrameColumn> = spec.partition_by.iter().map(|k| require_column(f, k)).collect::<Res<_>>()?;
     let order_col = match &spec.order_by {
         Some(o) if !o.is_empty() => Some(require_column(f, o)?),
         _ => None,
     };
-    let val_col = if WINDOW_FN_NEEDS_COLUMN.contains(&func) {
+    let val_col = if func.reads_column() {
         Some(require_column(f, spec.column.as_deref().unwrap_or(""))?)
     } else {
         None
@@ -1958,7 +2103,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
     for rows in parts {
         let ordered: Vec<usize> = match order_col {
             Some(oc) => {
-                let desc = spec.order_dir.as_deref() == Some("desc");
+                let desc = spec.order_dir == Some(SortDir::Desc);
                 let (mut keyed, blanks): (Vec<usize>, Vec<usize>) = rows.iter().partition(|&&i| !blank_key(oc.cell_at(i)));
                 js_sort_by(&mut keyed, |&i, &j| {
                     let c = window_cmp(oc.cell_at(i), oc.cell_at(j));
@@ -1983,22 +2128,21 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
         let order_vals: Vec<&FrameCell> = order_col.map_or_else(Vec::new, |oc| ordered.iter().map(|&i| oc.cell_at(i)).collect());
         let m = ordered.len();
         let group_value = || -> FrameCell {
-            if !func.starts_with("group_") {
+            if !matches!(func, WindowFn::GroupSum | WindowFn::GroupAvg | WindowFn::GroupMin | WindowFn::GroupMax | WindowFn::GroupCount) {
                 return FrameCell::Null;
             }
             if let Some(e) = &err {
                 return e.clone();
             }
             if present.is_empty() {
-                return if func == "group_count" { FrameCell::Num(0.0) } else { FrameCell::Null };
+                return if func == WindowFn::GroupCount { FrameCell::Num(0.0) } else { FrameCell::Null };
             }
             FrameCell::Num(match func {
-                "group_sum" => sum_of(&present),
-                "group_avg" => sum_of(&present) / present.len() as f64,
-                "group_min" => present[1..].iter().fold(present[0], |a, &b| if b < a { b } else { a }),
-                "group_max" => present[1..].iter().fold(present[0], |a, &b| if b > a { b } else { a }),
-                "group_count" => present.len() as f64,
-                _ => return FrameCell::Null,
+                WindowFn::GroupSum => sum_of(&present),
+                WindowFn::GroupAvg => sum_of(&present) / present.len() as f64,
+                WindowFn::GroupMin => present[1..].iter().fold(present[0], |a, &b| if b < a { b } else { a }),
+                WindowFn::GroupMax => present[1..].iter().fold(present[0], |a, &b| if b > a { b } else { a }),
+                _ => present.len() as f64,
             })
         };
         let group_value = group_value();
@@ -2025,10 +2169,10 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
             }
             let pf = p as f64;
             let v: FrameCell = match func {
-                "row_number" | "cumcount" => FrameCell::Num(pf + 1.0),
-                "rank" | "dense_rank" | "percent_rank" => {
+                WindowFn::RowNumber | WindowFn::CumCount => FrameCell::Num(pf + 1.0),
+                WindowFn::Rank | WindowFn::DenseRank | WindowFn::PercentRank => {
                     if order_col.is_none() {
-                        FrameCell::Num(if func == "percent_rank" {
+                        FrameCell::Num(if func == WindowFn::PercentRank {
                             if m > 1 { pf / (m - 1) as f64 } else { 0.0 }
                         } else {
                             pf + 1.0
@@ -2037,37 +2181,37 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                         FrameCell::Null
                     } else {
                         FrameCell::Num(match func {
-                            "dense_rank" => dense as f64,
-                            "rank" => run_start as f64 + 1.0,
+                            WindowFn::DenseRank => dense as f64,
+                            WindowFn::Rank => run_start as f64 + 1.0,
                             _ => {
                                 if ranked > 1 { run_start as f64 / (ranked - 1) as f64 } else { 0.0 }
                             }
                         })
                     }
                 }
-                "ntile" => FrameCell::Num(((pf * big_n) / m as f64).floor() + 1.0),
-                "cumsum" | "cumavg" | "cummin" | "cummax" => match (&err, x) {
+                WindowFn::Ntile => FrameCell::Num(((pf * big_n) / m as f64).floor() + 1.0),
+                WindowFn::CumSum | WindowFn::CumAvg | WindowFn::CumMin | WindowFn::CumMax => match (&err, x) {
                     (Some(e), _) => e.clone(),
                     (None, None) => FrameCell::Null,
                     (None, Some(_)) => FrameCell::Num(match func {
-                        "cumsum" => cum_sum,
-                        "cumavg" => cum_sum / cum_count as f64,
-                        "cummin" => cum_min,
+                        WindowFn::CumSum => cum_sum,
+                        WindowFn::CumAvg => cum_sum / cum_count as f64,
+                        WindowFn::CumMin => cum_min,
                         _ => cum_max,
                     }),
                 },
-                "lag" => {
+                WindowFn::Lag => {
                     if pf - big_n >= 0.0 { vals[p - big_n as usize].clone() } else { FrameCell::Null }
                 }
-                "lead" => {
+                WindowFn::Lead => {
                     if pf + big_n < m as f64 { vals[p + big_n as usize].clone() } else { FrameCell::Null }
                 }
-                "diff" | "pct_change" => {
+                WindowFn::Diff | WindowFn::PctChange => {
                     let prev = if p >= 1 { nums[p - 1] } else { None };
                     match (&err, x, prev) {
                         (Some(e), _, _) => e.clone(),
                         (None, Some(x), Some(prev)) => {
-                            if func == "diff" {
+                            if func == WindowFn::Diff {
                                 FrameCell::Num(x - prev)
                             } else if prev == 0.0 {
                                 div0(PCT_CHANGE_FROM_ZERO)
@@ -2078,7 +2222,7 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                         _ => FrameCell::Null,
                     }
                 }
-                "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max" => {
+                WindowFn::RollingSum | WindowFn::RollingAvg | WindowFn::RollingMin | WindowFn::RollingMax => {
                     if let Some(e) = &err {
                         e.clone()
                     } else if pf < big_n - 1.0 || x.is_none() {
@@ -2098,36 +2242,37 @@ pub fn window_frame(f: &FrameValue, spec: &WindowSpec) -> Res<FrameValue> {
                             }
                         }
                         FrameCell::Num(match func {
-                            "rolling_sum" => sum,
-                            "rolling_avg" => sum / count as f64,
-                            "rolling_min" => lo,
+                            WindowFn::RollingSum => sum,
+                            WindowFn::RollingAvg => sum / count as f64,
+                            WindowFn::RollingMin => lo,
                             _ => hi,
                         })
                     }
                 }
-                "group_sum" | "group_avg" | "group_min" | "group_max" | "group_count" => group_value.clone(),
-                "share" => match (&err, x) {
+                WindowFn::GroupSum | WindowFn::GroupAvg | WindowFn::GroupMin | WindowFn::GroupMax | WindowFn::GroupCount => {
+                    group_value.clone()
+                }
+                WindowFn::Share => match (&err, x) {
                     (Some(e), _) => e.clone(),
                     (None, None) => FrameCell::Null,
                     (None, Some(x)) => {
                         if total == 0.0 { div0(ZERO_GROUP_TOTAL) } else { FrameCell::Num(x / total) }
                     }
                 },
-                "first" => err.clone().unwrap_or_else(|| vals.first().cloned().unwrap_or(FrameCell::Null)),
-                "last" => err.clone().unwrap_or_else(|| if vals.is_empty() { FrameCell::Null } else { vals[m - 1].clone() }),
-                _ => FrameCell::Null,
+                WindowFn::First => err.clone().unwrap_or_else(|| vals.first().cloned().unwrap_or(FrameCell::Null)),
+                WindowFn::Last => err.clone().unwrap_or_else(|| if vals.is_empty() { FrameCell::Null } else { vals[m - 1].clone() }),
             };
             out[row] = v;
         }
     }
     let out_type = match val_col {
-        Some(vc) if matches!(func, "lag" | "lead" | "first" | "last") => vc.ty,
+        Some(vc) if matches!(func, WindowFn::Lag | WindowFn::Lead | WindowFn::First | WindowFn::Last) => vc.ty,
         _ => FrameColType::Number,
     };
     let trimmed = js_trim(&spec.as_);
-    let name = if trimmed.is_empty() { func.to_string() } else { trimmed.to_string() };
+    let name = if trimmed.is_empty() { func.as_str().to_string() } else { trimmed.to_string() };
     let plan = if val_col.is_some() {
-        reading_plan(spec.reading_scale, window_readings_refused(func), if func == "diff" { Some(1) } else { None }, None)
+        reading_plan(spec.reading_scale, func.readings_refused(), if func == WindowFn::Diff { Some(1) } else { None }, None)
     } else {
         ReadingPlan::Identity
     };

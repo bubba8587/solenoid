@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use crate::decision::{self, sort_by_num, Normalize};
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::excel_functions::V;
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::format_frame_cell;
@@ -218,7 +218,7 @@ impl Search<'_> {
     fn dfs(&mut self, i: usize, l: Vec<Option<f64>>, nd: Vec<f64>, total: f64) -> Res<()> {
         self.visits += 1;
         if self.visits > SEARCH_BUDGET {
-            return Err(sol_error("#VALUE!", "Choice Ladder: too many combinations to search; narrow the options"));
+            return Err(sol_error(ErrorCode::Value, "Choice Ladder: too many combinations to search; narrow the options"));
         }
         // On a tie in score the plan taking more wins, so a worthless option that fits rides along.
         let better = match &self.best {
@@ -380,7 +380,7 @@ fn same_set(opts: &[Opt], open: &[usize], s: &State, a: usize, b: usize, exact: 
 /// `buildLadder`.
 fn build_ladder(opts: &[Opt], res: &[Resource], gap: f64, chosen: &[usize]) -> Res<Ladder> {
     if opts.len() > MAX_OPTIONS {
-        return Err(sol_error("#VALUE!", format!("Choice Ladder takes at most {MAX_OPTIONS} options")));
+        return Err(sol_error(ErrorCode::Value, format!("Choice Ladder takes at most {MAX_OPTIONS} options")));
     }
     let pri = priorities(opts, res);
     let mut order: Vec<usize> = (0..opts.len()).collect();
@@ -433,7 +433,7 @@ fn build_ladder(opts: &[Opt], res: &[Resource], gap: f64, chosen: &[usize]) -> R
             let must = order.iter().copied().find(|&i| opts[i].must && !has.contains(&i));
             let found = if must.is_some() { Some(Vec::new()) } else { best_plan(opts, &open, &s.taken, &s.left, &s.need, exact)? };
             if found.is_none() && s.forced {
-                return Err(sol_error("#VALUE!", "Choice Ladder: no plan meets every At least"));
+                return Err(sol_error(ErrorCode::Value, "Choice Ladder: no plan meets every At least"));
             }
             let plan: HashSet<usize> = found.unwrap_or_default().into_iter().collect();
             let Some(mut a) = must.or_else(|| order.iter().copied().find(|&i| plan.contains(&i) && !has.contains(&i))) else {
@@ -585,7 +585,7 @@ fn ladder_resources(f: &FrameValue, limits: Option<&FrameValue>) -> Res<Vec<Limi
     let named = |k: &str| nums.iter().copied().find(|c| crit_key(&c.name) == k);
     let lo_col = named("at least");
     let hi_col = named("at most").or_else(|| nums.iter().copied().find(|c| lo_col.is_none_or(|lo| !std::ptr::eq(*c, lo))));
-    let Some(name_col) = name_col else { return Err(sol_error("#VALUE!", "Limits needs a text column naming each resource")) };
+    let Some(name_col) = name_col else { return Err(sol_error(ErrorCode::Value, "Limits needs a text column naming each resource")) };
     let num = |c: Option<&FrameColumn>, i: usize| -> Res<Option<f64>> {
         let cell = c.map_or(&FrameCell::Null, |c| c.cell_at(i));
         if let FrameCell::Err(e) = cell {
@@ -602,7 +602,7 @@ fn ladder_resources(f: &FrameValue, limits: Option<&FrameValue>) -> Res<Vec<Limi
         }
         seen.insert(crit_key(v));
         let Some(col) = f.columns.iter().position(|c| matches!(c.ty, FrameColType::Number | FrameColType::Logical) && crit_key(&c.name) == crit_key(v)) else {
-            return Err(sol_error("#VALUE!", format!("Choice Ladder: no Options number column is named {}", js_trim(v))));
+            return Err(sol_error(ErrorCode::Value, format!("Choice Ladder: no Options number column is named {}", js_trim(v))));
         };
         let limit = num(hi_col, i)?;
         let floor = num(lo_col, i)?;
@@ -698,7 +698,7 @@ fn ladder_inner(
         } else {
             "needs an option that is ruled out".to_string()
         };
-        return Err(sol_error("#VALUE!", format!("Choice Ladder: Must option {} {why}", name_of(i))).into());
+        return Err(sol_error(ErrorCode::Value, format!("Choice Ladder: Must option {} {why}", name_of(i))));
     }
     let kept: Vec<usize> = (0..rows).filter(|i| !out.contains(i)).collect();
     let ds = decision::decision_scores(&decision::frame_rows(&scoring, &kept), weights, normalize, &resolved.overrides)?;
@@ -762,17 +762,17 @@ fn ladder_inner(
     }
     match must_clash(&opts, &res) {
         Some(MustClash::Clash(a, b)) => {
-            return Err(sol_error("#VALUE!", format!("Choice Ladder: Must options {} and {} exclude each other", names[a], names[b])).into())
+            return Err(sol_error(ErrorCode::Value, format!("Choice Ladder: Must options {} and {} exclude each other", names[a], names[b])))
         }
         Some(MustClash::Over(r)) => {
-            return Err(sol_error("#VALUE!", format!("Choice Ladder: the Must options need more {} than its limit", resources[r].name)).into())
+            return Err(sol_error(ErrorCode::Value, format!("Choice Ladder: the Must options need more {} than its limit", resources[r].name)))
         }
         None => {}
     }
     for (k, r) in resources.iter().enumerate() {
         if let Some(floor) = r.floor {
             if opts.iter().fold(0.0, |s, o| s + math_max(0.0, o.costs[k])) < floor - 1e-9 {
-                return Err(sol_error("#VALUE!", format!("Choice Ladder: the options can't reach {}'s At least", r.name)).into());
+                return Err(sol_error(ErrorCode::Value, format!("Choice Ladder: the options can't reach {}'s At least", r.name)));
             }
         }
     }

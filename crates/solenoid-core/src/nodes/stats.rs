@@ -2,6 +2,7 @@
 //! correlation and regression, the hypothesis tests, interpolation and the fits. Most share their kernel with a
 //! formula function.
 
+use crate::error_value::ErrorCode;
 use super::kit::{broadcast_err, core_call, num};
 use super::{err, list, Answer, Call};
 use crate::dists::{bisection_inv, ln_combin, norm_s_inv, regularized_gamma, std_norm_cdf, t_cdf};
@@ -128,7 +129,7 @@ pub(crate) fn read_role(c: &Call, key: &str, role: Role) -> V {
         match v {
             V::Err(_) => v.clone(),
             V::List(l) => list(l.iter().map(|x| required(x, label)).collect()),
-            V::Null | V::Undef => err("#SYNTAX!", format!("{label} is blank, and it has no default")),
+            V::Null | V::Undef => err(ErrorCode::Syntax, format!("{label} is blank, and it has no default")),
             other => other.clone(),
         }
     }
@@ -300,7 +301,7 @@ fn forecast(c: &mut Call) -> Answer {
         }
         match r {
             V::List(l) if !l.is_empty() => predicted = Some(l),
-            _ => return answer(c, err("#DIV/0!", "Known Xs have zero variance")),
+            _ => return answer(c, err(ErrorCode::DivZero, "Known Xs have zero variance")),
         }
     }
     if let V::List(qs) = &q {
@@ -407,7 +408,7 @@ fn standardize(c: &mut Call) -> Answer {
     } else {
         broadcast_err(&[v, m, s], |o| {
             if matches!(o[2], V::Num(z) if *z == 0.0) {
-                err("#DIV/0!", "Standard deviation is zero")
+                err(ErrorCode::DivZero, "Standard deviation is zero")
             } else {
                 V::Num((num(o[0]) - num(o[1])) / num(o[2]))
             }
@@ -687,10 +688,10 @@ fn grid_axis(raw: &V, n: usize, name: &str) -> Option<Result<(), V>> {
             let vals = if let V::List(l) = raw { l.as_slice() } else { &one[..] };
             let unit = if name == "Xs" { "columns" } else { "rows" };
             if vals.len() != n {
-                return Some(Err(err("#SHAPE!", format!("{name} has {} values for {n} {unit}", vals.len()))));
+                return Some(Err(err(ErrorCode::Shape, format!("{name} has {} values for {n} {unit}", vals.len()))));
             }
             if vals.iter().any(|v| finite_num(v).is_none()) {
-                return Some(Err(err("#VALUE!", format!("{name} must be finite numbers"))));
+                return Some(Err(err(ErrorCode::Value, format!("{name} must be finite numbers"))));
             }
             Some(Ok(()))
         }
@@ -783,7 +784,7 @@ fn linest(c: &mut Call) -> Answer {
         let (xn, yn): (Vec<f64>, Vec<f64>) = (items(&xs).iter().map(js_num).collect(), items(&ys).iter().map(js_num).collect());
         let e = exp_fit_r2(&xn, &yn);
         if e.is_none() && len(&xs) >= 2 && yn.iter().any(|y| y.is_nan() || *y <= 0.0) {
-            let e = err("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
+            let e = err(ErrorCode::Domain, "Exponential fit needs every y above 0 (Excel: #NUM!)");
             return outs(c, e.clone(), e.clone(), e);
         }
         e.map(|(m, b, r2)| (V::Num(m), V::Num(b), V::Num(r2)))
@@ -801,7 +802,7 @@ fn linest(c: &mut Call) -> Answer {
     match fit {
         Some((s, i, r)) => outs(c, s, i, r),
         None if len(&xs) >= 2 => {
-            let e = err("#DIV/0!", "Known Xs have zero variance");
+            let e = err(ErrorCode::DivZero, "Known Xs have zero variance");
             outs(c, e.clone(), e.clone(), e)
         }
         None => outs(c, V::Null, V::Null, V::Null),

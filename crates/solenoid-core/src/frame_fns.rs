@@ -3,13 +3,14 @@
 //! `frame.ts`' builders): each takes frames and plain arguments, and answers a frame, a value or both.
 //! `engine_frame_fn` reaches them.
 
+use crate::excel_formula::cell_to_v;
 use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::decision::{self, Normalize};
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::planners;
-use crate::excel_functions::V;
+use crate::excel_functions::{Stat, V};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{cell_key, unmatchable_key, CellKey};
 use crate::fxhash::FxHashMap;
@@ -192,9 +193,6 @@ fn v_cell(v: &V) -> Res<FrameCell> {
     })
 }
 
-fn cell_v(c: &FrameCell) -> V {
-    crate::excel_formula::cell_to_v_pub(c)
-}
 
 fn str_list(xs: impl IntoIterator<Item = String>) -> V {
     V::List(Rc::new(xs.into_iter().map(|s| V::str(&s)).collect()))
@@ -204,7 +202,7 @@ fn require_column<'a>(f: &'a FrameValue, name: &str) -> Res<&'a FrameColumn> {
     f.columns
         .iter()
         .find(|c| c.name == name)
-        .ok_or_else(|| FrameOut::Error(sol_error("#REF!", format!("column \"{name}\" not found"))))
+        .ok_or_else(|| FrameOut::Error(sol_error(ErrorCode::Ref, format!("column \"{name}\" not found"))))
 }
 
 // ─── Headers ────────────────────────────────────────────────────────────────────
@@ -295,7 +293,7 @@ fn describe_column(values: &[FrameCell], ty: FrameColType) -> (f64, f64, f64, [O
     let mut stats = [None; 7];
     if matches!(ty, FrameColType::Number | FrameColType::Date) {
         let finite: Vec<f64> = values.iter().filter_map(|v| if let FrameCell::Num(n) = v { n.is_finite().then_some(*n) } else { None }).collect();
-        let stat = |op: &str| num_or_none(crate::excel_functions::aggregate(op, &finite));
+        let stat = |op: Stat| num_or_none(crate::excel_functions::aggregate(op, &finite));
         let number = ty == FrameColType::Number;
         let mut sorted = if number { finite.clone() } else { Vec::new() };
         crate::js_sort::js_sort_by(&mut sorted, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -306,13 +304,13 @@ fn describe_column(values: &[FrameCell], ty: FrameColType) -> (f64, f64, f64, [O
             crate::excel_functions::percentile_of(&sorted, p, false).filter(|r| r.is_finite())
         };
         stats = [
-            if number { stat("avg") } else { None },
-            if number { stat("stdev") } else { None },
-            stat("min"),
+            if number { stat(Stat::Avg) } else { None },
+            if number { stat(Stat::Stdev) } else { None },
+            stat(Stat::Min),
             if number { pct(0.25) } else { None },
             if number { pct(0.5) } else { None },
             if number { pct(0.75) } else { None },
-            stat("max"),
+            stat(Stat::Max),
         ];
     }
     (count as f64, (values.len() - count) as f64, (nums.len() + bools.len() + text.len()) as f64, stats)
@@ -327,7 +325,7 @@ fn describe_frame(f: &FrameValue) -> FrameValue {
     let mut stats: [Vec<FrameCell>; 7] = Default::default();
     for c in &f.columns {
         names.push(FrameCell::str(&c.name));
-        types.push(FrameCell::str(c.ty.tag()));
+        types.push(FrameCell::str(c.ty.as_str()));
         let (count, blank, distinct, s) = describe_column(&c.values, c.ty);
         for (col, v) in counts.iter_mut().zip([count, blank, distinct]) {
             col.push(FrameCell::Num(v));
@@ -681,13 +679,13 @@ fn lookup_row_index(f: &FrameValue, args: &[V]) -> Res<Option<usize>> {
     let last = opt_str_arg(args, 3)?.as_deref() == Some("last");
     let key = require_column(f, &column)?;
     if mm != MatchMode::Exact && !matches!(key.ty, FrameColType::Number | FrameColType::Date) {
-        return Err(FrameOut::Error(sol_error("#VALUE!", "Approximate lookup requires a numeric or date column")));
+        return Err(FrameOut::Error(sol_error(ErrorCode::Value, "Approximate lookup requires a numeric or date column")));
     }
     let needle = lookup_needle(&lookup, key.ty)?;
     if mm != MatchMode::Exact && !matches!(needle, V::Num(n) if n.is_finite()) {
         return Ok(None);
     }
-    let keys: Vec<V> = key.values.iter().map(cell_v).collect();
+    let keys: Vec<V> = key.values.iter().map(cell_to_v).collect();
     Ok(crate::excel_functions::xmatch_index(&needle, &keys, mm, last).unwrap_or(None))
 }
 
@@ -698,7 +696,7 @@ fn lookup_cell(f: &FrameValue, args: &[V]) -> Res<V> {
     idx_args.extend(args.iter().skip(2).cloned());
     let idx = lookup_row_index(f, &idx_args)?;
     let ret = require_column(f, &ret_name)?;
-    Ok(idx.map_or(V::Undef, |i| cell_v(ret.cell_at(i))))
+    Ok(idx.map_or(V::Undef, |i| cell_to_v(ret.cell_at(i))))
 }
 
 /// `frameRowAt`: the row at a 0-based index as a one-row frame (blank past the end).
@@ -716,7 +714,7 @@ fn frame_row_at(f: &FrameValue, i: f64) -> Res<FrameOut> {
 fn add_column(f: &FrameValue, args: &[V]) -> Res<FrameOut> {
     let name = str_arg(args, 0)?;
     let values: Vec<FrameCell> = list_arg(args, 1)?.iter().map(v_cell).collect::<Res<_>>()?;
-    let ty = FrameColType::from_tag(&str_arg(args, 2)?);
+    let ty: FrameColType = str_arg(args, 2)?.parse().map_err(|_| FrameOut::Bail)?;
     let clean = js_trim(&name);
     let mut columns = f.columns.clone();
     let at = match f.columns.iter().position(|c| c.name == clean) {
@@ -826,7 +824,7 @@ fn build_frame(args: &[V], typed: bool) -> Res<FrameOut> {
     let names = names_arg(args, 1)?;
     let known = if typed {
         match args.get(2) {
-            Some(V::Str(t)) => Some(FrameColType::from_tag(t)),
+            Some(V::Str(t)) => Some(t.parse().map_err(|_| FrameOut::Bail)?),
             None | Some(V::Undef) | Some(V::Null) => None,
             _ => return Err(FrameOut::Bail),
         }
@@ -861,7 +859,13 @@ fn frame_from_lists(args: &[V]) -> Res<FrameOut> {
             other => Ok(vec![v_cell(other)?]),
         })
         .collect::<Res<_>>()?;
-    let known: Vec<Option<FrameColType>> = list_arg(args, 2)?.iter().map(|v| if let V::Str(t) = v { Some(FrameColType::from_tag(t)) } else { None }).collect();
+    let known: Vec<Option<FrameColType>> = list_arg(args, 2)?
+        .iter()
+        .map(|v| match v {
+            V::Str(t) => t.parse().map(Some).map_err(|_| FrameOut::Bail),
+            _ => Ok(None),
+        })
+        .collect::<Res<_>>()?;
     let length = lists.iter().map(Vec::len).max().unwrap_or(0);
     let headers = make_headers(&names, lists.len());
     let columns = headers.into_iter().zip(&lists).enumerate().map(|(i, (name, cells))| typed_column(name, cells, length, known.get(i).copied().flatten())).collect();

@@ -9,7 +9,7 @@ use std::rc::Rc;
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
 
-use crate::error_value::{sol_error, SolError};
+use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::frame::{FrameCell, FrameColType, FrameColumn, FrameValue};
 
 pub const TAG_NULL: u8 = 0;
@@ -23,7 +23,7 @@ pub const TAG_ERR: u8 = 5;
 struct SchemaColumn {
     name: String,
     #[serde(rename = "type")]
-    ty: String,
+    ty: FrameColType,
     len: usize,
 }
 
@@ -44,7 +44,7 @@ struct Cutter<'a> {
 
 impl<'a> Cutter<'a> {
     fn next(&mut self) -> Result<&'a str, SolError> {
-        let want = *self.lens.next().ok_or_else(|| sol_error("#ERROR!", "binary frame: text lengths run out"))? as usize;
+        let want = *self.lens.next().ok_or_else(|| sol_error(ErrorCode::Error, "binary frame: text lengths run out"))? as usize;
         let mut units = 0;
         let mut end = 0;
         for c in self.rest.chars() {
@@ -55,7 +55,7 @@ impl<'a> Cutter<'a> {
             end += c.len_utf8();
         }
         if units != want {
-            return Err(sol_error("#ERROR!", "binary frame: text shorter than its lengths"));
+            return Err(sol_error(ErrorCode::Error, "binary frame: text shorter than its lengths"));
         }
         let (piece, rest) = self.rest.split_at(end);
         self.rest = rest;
@@ -65,14 +65,14 @@ impl<'a> Cutter<'a> {
 
 pub fn decode_frame(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &[u32]) -> Result<FrameValue, SolError> {
     let schema: Vec<SchemaColumn> =
-        serde_json::from_str(schema).map_err(|e| sol_error("#ERROR!", format!("binary frame schema: {e}")))?;
+        serde_json::from_str(schema).map_err(|e| sol_error(ErrorCode::Error, format!("binary frame schema: {e}")))?;
     let mut cut = Cutter { rest: strs, lens: lens.iter() };
     let mut at = 0usize;
     let mut columns = Vec::with_capacity(schema.len());
     for c in schema {
         let end = at + c.len;
         if end > tags.len() || end > nums.len() {
-            return Err(sol_error("#ERROR!", "binary frame: buffers shorter than the schema"));
+            return Err(sol_error(ErrorCode::Error, "binary frame: buffers shorter than the schema"));
         }
         let mut values = Vec::with_capacity(c.len);
         for i in at..end {
@@ -82,7 +82,7 @@ pub fn decode_frame(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &
                 TAG_FALSE => FrameCell::Bool(false),
                 TAG_TRUE => FrameCell::Bool(true),
                 TAG_ERR => {
-                    let code = cut.next()?.to_string();
+                    let code = ErrorCode::from_wire(cut.next()?);
                     let message = cut.next()?.to_string();
                     let reference = (!nums[i].is_nan()).then_some(nums[i] as u32);
                     FrameCell::Err(Rc::new(SolError { code, message, reference }))
@@ -91,7 +91,7 @@ pub fn decode_frame(schema: &str, tags: &[u8], nums: &[f64], strs: &str, lens: &
             });
         }
         at = end;
-        columns.push(FrameColumn::new(c.name, FrameColType::from_tag(&c.ty), values));
+        columns.push(FrameColumn::new(c.name, c.ty, values));
     }
     Ok(FrameValue { columns })
 }
@@ -111,7 +111,7 @@ impl Columnar {
         let mut out = Columnar::default();
         for c in columns {
             let n = limit.map_or(c.values.len(), |l| l.min(c.values.len()));
-            out.schema.push(json!({ "name": c.name, "type": c.ty.tag(), "len": n }));
+            out.schema.push(json!({ "name": c.name, "type": c.ty.as_str(), "len": n }));
             for v in &c.values[..n] {
                 match v {
                     FrameCell::Null => {
@@ -134,7 +134,7 @@ impl Columnar {
                     FrameCell::Err(e) => {
                         out.tags.push(TAG_ERR);
                         out.nums.push(e.reference.map_or(f64::NAN, f64::from));
-                        out.push_str(&e.code);
+                        out.push_str(e.code.as_str());
                         out.push_str(&e.message);
                     }
                 }
@@ -159,7 +159,7 @@ mod tests {
                 FrameCell::Num(-0.0),
                 FrameCell::Num(f64::NEG_INFINITY),
                 FrameCell::Bool(true),
-                FrameCell::err(SolError { code: "#N/A".into(), message: "m".into(), reference: Some(7) }),
+                FrameCell::err(SolError { code: ErrorCode::NotAvailable, message: "m".into(), reference: Some(7) }),
                 FrameCell::str(""),
             ],
         );
@@ -169,7 +169,7 @@ mod tests {
         let v = &back.columns[0].values;
         assert!(matches!(&v[0], FrameCell::Str(s) if s.as_ref() == "x😀é"));
         assert!(matches!(v[2], FrameCell::Num(x) if x == 0.0 && x.is_sign_negative()));
-        assert!(matches!(&v[5], FrameCell::Err(e) if e.code == "#N/A" && e.message == "m" && e.reference == Some(7)));
+        assert!(matches!(&v[5], FrameCell::Err(e) if e.code == ErrorCode::NotAvailable && e.message == "m" && e.reference == Some(7)));
         assert!(matches!(&v[6], FrameCell::Str(s) if s.is_empty()));
     }
 }

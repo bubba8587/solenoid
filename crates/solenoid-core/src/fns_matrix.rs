@@ -6,8 +6,8 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::error_value::sol_error;
-use crate::excel_functions::{js_number_pub as js_number, js_string_of, logical_or_type_error, math_hypot, js_pow, throw, to_num, V};
+use crate::error_value::{ErrorCode, sol_error};
+use crate::excel_functions::{js_number_of as js_number, js_string_of, logical_or_type_error, math_hypot, js_pow, throw, to_num, V};
 use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string, string_to_number};
 
 /// The names this module answers.
@@ -33,7 +33,7 @@ fn nullish(v: &V) -> bool {
     matches!(v, V::Undef | V::Null)
 }
 
-fn err(code: &str, msg: impl Into<String>) -> V {
+fn err(code: ErrorCode, msg: impl Into<String>) -> V {
     V::err(sol_error(code, msg))
 }
 
@@ -121,7 +121,7 @@ fn present_numbers(arr: &[V]) -> Vec<f64> {
 /// An empty axis still costs a step per item of the other, and an infinite one never ends ([[C120]] linearWork).
 fn cell_cap(f: &str, rows: f64, cols: f64) -> Option<V> {
     (math_max(rows, 1.0) * math_max(cols, 1.0) > MAX_GENERATED).then(|| {
-        err("#OVERFLOW!", format!("{f} would build {}×{} cells, past the 1000000 element limit", number_to_string(rows), number_to_string(cols)))
+        err(ErrorCode::Overflow, format!("{f} would build {}×{} cells, past the 1000000 element limit", number_to_string(rows), number_to_string(cols)))
     })
 }
 
@@ -132,11 +132,11 @@ fn as_numeric(m: &Mat) -> Result<NumMat, V> {
         let mut r = Vec::with_capacity(row.len());
         for cell in row {
             if nullish(cell) || matches!(cell, V::Str(s) if s.is_empty()) {
-                return Err(err("#VALUE!", "This matrix operation needs complete data. A cell is missing"));
+                return Err(err(ErrorCode::Value, "This matrix operation needs complete data. A cell is missing"));
             }
             match cell {
                 V::Num(n) if n.is_finite() => r.push(*n),
-                _ => return Err(err("#TYPE!", "This matrix operation needs numbers, but got text")),
+                _ => return Err(err(ErrorCode::Type, "This matrix operation needs numbers, but got text")),
             }
         }
         out.push(r);
@@ -252,10 +252,10 @@ fn mat_inverse(m: &NumMat) -> Option<NumMat> {
 fn wrap_count(w: f64, f: &str) -> Result<f64, V> {
     let n = w.trunc();
     if !(n >= 1.0) {
-        return Err(err("#DOMAIN!", format!("{f} needs a wrap count of 1 or more")));
+        return Err(err(ErrorCode::Domain, format!("{f} needs a wrap count of 1 or more")));
     }
     if n > MAX_GENERATED {
-        return Err(err("#OVERFLOW!", format!("{f} count {} exceeds the 1000000 element limit", number_to_string(n))));
+        return Err(err(ErrorCode::Overflow, format!("{f} count {} exceeds the 1000000 element limit", number_to_string(n))));
     }
     Ok(n)
 }
@@ -280,7 +280,7 @@ fn wrap_cells(items: &[V], w: usize, rows: bool, pad: &dyn Fn() -> V) -> Mat {
 
 fn stack_h(mats: &[Mat]) -> Mat {
     let height = mats.iter().map(|m| m.len()).max().unwrap_or(0);
-    let na = err("#N/A", "Padded: this input is shorter than the largest one");
+    let na = err(ErrorCode::NotAvailable, "Padded: this input is shorter than the largest one");
     let mut out: Mat = vec![vec![]; height];
     for m in mats {
         let w = mat_cols(m);
@@ -296,7 +296,7 @@ fn stack_h(mats: &[Mat]) -> Mat {
 
 fn stack_v(mats: &[Mat]) -> Mat {
     let width = mats.iter().map(|m| mat_cols(m)).max().unwrap_or(0);
-    let na = err("#N/A", "Padded: this input is narrower than the largest one");
+    let na = err(ErrorCode::NotAvailable, "Padded: this input is narrower than the largest one");
     let mut out = Mat::new();
     for m in mats {
         for r in m {
@@ -318,7 +318,7 @@ fn choose_axis(m: &Mat, indices: &[f64], by_row: bool) -> V {
         let p = if i < 0.0 { size + i.trunc() } else { i.trunc() - 1.0 };
         if !(p >= 0.0 && p < size) {
             let (i, size) = (number_to_string(i), number_to_string(size));
-            return err("#VALUE!", format!("{label}: {kind} index {i} is out of range for a table with {size} {kind}s"));
+            return err(ErrorCode::Value, format!("{label}: {kind} index {i} is out of range for a table with {size} {kind}s"));
         }
         resolved.push(p as usize);
     }
@@ -335,7 +335,7 @@ fn expand_mat(m: &Mat, req_r: f64, req_c: f64, fill: V) -> V {
     let c = if req_c > 0.0 { req_c } else { cur_c };
     if r < cur_r || c < cur_c {
         let s = number_to_string;
-        return err("#VALUE!", format!("EXPAND can only grow: the table is {}×{}, the target {}×{}. Use TAKE to shrink", s(cur_r), s(cur_c), s(r), s(c)));
+        return err(ErrorCode::Value, format!("EXPAND can only grow: the table is {}×{}, the target {}×{}. Use TAKE to shrink", s(cur_r), s(cur_c), s(r), s(c)));
     }
     if let Some(e) = cell_cap("EXPAND", r, c) {
         return e;
@@ -495,14 +495,14 @@ fn flatten_args(f: &str, v: &V, ignore: &V, scan: &V) -> Result<Option<Vec<V>>, 
     let code = if nullish(ignore) { 0.0 } else { to_num(ignore) };
     // `SKIP_BY_CODE[code]`: 0 keeps every value, 1 skips blanks, 2 errors, 3 both.
     if !(code == 0.0 || code == 1.0 || code == 2.0 || code == 3.0) {
-        return Err(err("#VALUE!", format!("{f}'s ignore is 0, 1, 2 or 3")));
+        return Err(err(ErrorCode::Value, format!("{f}'s ignore is 0, 1, 2 or 3")));
     }
     let by_col = if nullish(scan) {
         false
     } else {
         match logical_or_type_error(scan, &format!("{f}'s scan_by_column"))? {
             Some(b) => b,
-            None => return Err(err("#VALUE!", format!("{f}'s scan_by_column is TRUE or FALSE"))),
+            None => return Err(err(ErrorCode::Value, format!("{f}'s scan_by_column is TRUE or FALSE"))),
         }
     };
     let (blanks, errors) = (code == 1.0 || code == 3.0, code == 2.0 || code == 3.0);
@@ -527,7 +527,7 @@ fn flatten_args(f: &str, v: &V, ignore: &V, scan: &V) -> Result<Option<Vec<V>>, 
 /// `arrayCount`.
 fn array_count(n: f64, f: &str) -> Result<f64, V> {
     let k = n.trunc();
-    if k >= 0.0 { Ok(k) } else { Err(err("#VALUE!", format!("{f} needs a count of 0 or more"))) }
+    if k >= 0.0 { Ok(k) } else { Err(err(ErrorCode::Value, format!("{f} needs a count of 0 or more"))) }
 }
 
 // ─── listOps.ts ─────────────────────────────────────────────────────────────────
@@ -560,7 +560,7 @@ fn mode_mult(arr: &[V]) -> V {
         return e;
     }
     if arr.iter().any(|v| matches!(v, V::Num(n) if n.is_nan())) {
-        return err("#DOMAIN!", crate::value_kinds::DOMAIN_MESSAGE);
+        return err(ErrorCode::Domain, crate::value_kinds::DOMAIN_MESSAGE);
     }
     let mut index: HashMap<Key, usize> = HashMap::new();
     let mut counts: Vec<(V, usize)> = Vec::new();
@@ -578,7 +578,7 @@ fn mode_mult(arr: &[V]) -> V {
     }
     let best = counts.iter().map(|e| e.1).max().unwrap_or(0);
     if best < 2 {
-        return err("#N/A", "No value repeats, so there is no mode");
+        return err(ErrorCode::NotAvailable, "No value repeats, so there is no mode");
     }
     list(counts.into_iter().filter(|e| e.1 == best).map(|e| e.0).collect())
 }
@@ -617,7 +617,7 @@ fn cross_product(a: &[V], b: &[V]) -> V {
     }
     let (a, b) = (present_numbers(a), present_numbers(b));
     if a.len() != 3 || b.len() != 3 {
-        return err("#SHAPE!", "Cross product needs two 3-element vectors");
+        return err(ErrorCode::Shape, "Cross product needs two 3-element vectors");
     }
     nums_v(vec![a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]])
 }
@@ -639,10 +639,10 @@ fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> V {
         return list(xs.iter().map(|_| V::Null).collect());
     }
     if (n as f64) < d + 1.0 {
-        return err("#VALUE!", format!("A degree-{} fit needs at least {} points", number_to_string(d), number_to_string(d + 1.0)));
+        return err(ErrorCode::Value, format!("A degree-{} fit needs at least {} points", number_to_string(d), number_to_string(d + 1.0)));
     }
     if d.is_nan() {
-        return throw(sol_error("#VALUE!", "Invalid array length"));
+        return throw(sol_error(ErrorCode::Value, "Invalid array length"));
     }
     let m = d as usize + 1;
     let mut ata = vec![vec![0.0; m]; m];
@@ -662,7 +662,7 @@ fn polyfit_eval(xs: &[V], ys: &[V], degree: f64) -> V {
         }
     }
     let Some(coeffs) = solve_linear(&ata, &aty) else {
-        return err("#SOLVE!", "The polynomial fit is singular. The points may be collinear for this degree");
+        return err(ErrorCode::Solve, "The polynomial fit is singular. The points may be collinear for this degree");
     };
     let eval_at = |xv: f64| coeffs.iter().rev().fold(0.0, |acc, c| acc * xv + c);
     list(xs.iter().map(|x| finite_num(x).map_or(V::Null, |x| V::Num(eval_at(x)))).collect())
@@ -878,7 +878,7 @@ fn is_true(v: &V) -> bool {
 }
 
 fn nonpositive_y() -> V {
-    err("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)")
+    err(ErrorCode::Domain, "Exponential fit needs every y above 0 (Excel: #NUM!)")
 }
 
 fn trend_like(growth: bool, ys: &V, xs: &V, new_xs: &V, konst: &V) -> V {
@@ -931,7 +931,7 @@ fn trend_like(growth: bool, ys: &V, xs: &V, new_xs: &V, konst: &V) -> V {
 fn histogram2d(xs: &[V], ys: &[V], kx: f64, ky: f64) -> V {
     let bins_bad = |k: f64| !k.is_finite() || k.floor() < 1.0;
     if bins_bad(kx) || bins_bad(ky) {
-        return err("#DOMAIN!", "Bins must be 1 or more");
+        return err(ErrorCode::Domain, "Bins must be 1 or more");
     }
     let (mut px, mut py) = (Vec::new(), Vec::new());
     for (x, y) in xs.iter().zip(ys) {
@@ -1022,7 +1022,7 @@ macro_rules! tri {
 
 pub fn call(name: &str, a: &[V]) -> V {
     if let Some(msg) = blocked(name) {
-        return err("#NAME?", msg);
+        return err(ErrorCode::Name, msg);
     }
     match name {
         "TRANSPOSE" => {
@@ -1051,7 +1051,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             let axis = arg(a, 0);
             let ax = if nullish(axis) { String::new() } else { js_lower(js_trim(&js_string_of(axis))).to_string() };
             if ax != "v" && ax != "h" {
-                return err("#VALUE!", "XSTACK axis must be \"v\" or \"h\"");
+                return err(ErrorCode::Value, "XSTACK axis must be \"v\" or \"h\"");
             }
             let mats = tri!(mats_of(a.get(1..).unwrap_or(&[])));
             if mats.is_empty() {
@@ -1079,7 +1079,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             let Some(mb) = tri!(num_matrix(arg(a, 1))) else { return V::Null };
             match mat_mul(&ma, &mb) {
                 Some(p) => num_mat_v(p),
-                None => err("#SHAPE!", "A's column count must equal B's row count"),
+                None => err(ErrorCode::Shape, "A's column count must equal B's row count"),
             }
         }
         "MUNIT" => {
@@ -1135,7 +1135,7 @@ pub fn call(name: &str, a: &[V]) -> V {
         "TRACE" => {
             let m = tri!(num_mat(arg(a, 0)));
             if m.len() != mat_cols(&m) {
-                return err("#SHAPE!", "TRACE needs a square matrix");
+                return err(ErrorCode::Shape, "TRACE needs a square matrix");
             }
             let mut t = 0.0;
             for (i, row) in m.iter().enumerate() {
@@ -1151,29 +1151,29 @@ pub fn call(name: &str, a: &[V]) -> V {
                 (matches!(v, V::Num(_)) || !n.is_nan()).then_some(n)
             }).collect();
             if m.len() != mat_cols(&m) || bs.len() != m.len() {
-                return err("#SHAPE!", "SOLVE needs a square A with one b per row");
+                return err(ErrorCode::Shape, "SOLVE needs a square A with one b per row");
             }
             match solve_linear(&m, &bs) {
                 Some(x) => nums_v(x),
-                None => err("#DIV/0!", "A is singular, so the system has no unique solution"),
+                None => err(ErrorCode::DivZero, "A is singular, so the system has no unique solution"),
             }
         }
         "EIGENVALUES" | "EIGENVECTORS" => {
             let m = tri!(num_mat(arg(a, 0)));
             match mat_eigh(&m, 1e-12) {
                 Some((values, vectors)) => if name == "EIGENVALUES" { nums_v(values) } else { num_mat_v(vectors) },
-                None => err("#SHAPE!", format!("{name} needs a square, symmetric matrix")),
+                None => err(ErrorCode::Shape, format!("{name} needs a square, symmetric matrix")),
             }
         }
         "MDETERM" | "MINVERSE" => {
             let Some(m) = tri!(num_matrix(arg(a, 0))) else { return V::Null };
             if m.len() != mat_cols(&m) {
-                return err("#SHAPE!", "Matrix must be square");
+                return err(ErrorCode::Shape, "Matrix must be square");
             }
             if name == "MDETERM" {
-                mat_det(&m).map_or_else(|| err("#DIV/0!", "Matrix is singular"), V::Num)
+                mat_det(&m).map_or_else(|| err(ErrorCode::DivZero, "Matrix is singular"), V::Num)
             } else {
-                mat_inverse(&m).map_or_else(|| err("#DIV/0!", "Matrix is singular. It has no inverse"), num_mat_v)
+                mat_inverse(&m).map_or_else(|| err(ErrorCode::DivZero, "Matrix is singular. It has no inverse"), num_mat_v)
             }
         }
         "WRAPROWS" | "WRAPCOLS" => {
@@ -1184,7 +1184,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             let width = tri!(wrap_count(js_number(w), name)) as usize;
             let rows = name == "WRAPROWS";
             let what = if rows { "row" } else { "column" };
-            let pad = || if nullish(pad_with) { err("#N/A", format!("Padded: the list doesn't fill the last {what}")) } else { pad_with.clone() };
+            let pad = || if nullish(pad_with) { err(ErrorCode::NotAvailable, format!("Padded: the list doesn't fill the last {what}")) } else { pad_with.clone() };
             mat_v(wrap_cells(&to_list(l), width, rows, &pad))
         }
         "TOCOL" => match tri!(flatten_args("TOCOL", arg(a, 0), arg(a, 1), arg(a, 2))) {
@@ -1205,7 +1205,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             let st = if nullish(step) { 1.0 } else { js_number(step) };
             let total = r * c;
             if total > MAX_GENERATED {
-                return err("#OVERFLOW!", format!("SEQUENCE count {} exceeds the 1000000 element limit", number_to_string(total)));
+                return err(ErrorCode::Overflow, format!("SEQUENCE count {} exceeds the 1000000 element limit", number_to_string(total)));
             }
             let n = if total.is_nan() { 0 } else { total.floor().max(0.0) as usize };
             let flat: Vec<V> = (0..n).map(|i| V::Num(s0 + i as f64 * st)).collect();
@@ -1237,16 +1237,16 @@ pub fn call(name: &str, a: &[V]) -> V {
             let cs = present_numbers(&to_list(arg(a, 0)));
             match poly_roots(&cs) {
                 Some(rs) => list(rs.into_iter().map(|(re, im)| V::Cx(re, im)).collect()),
-                None => err("#DOMAIN!", "POLYROOTS needs at least one non-zero coefficient"),
+                None => err(ErrorCode::Domain, "POLYROOTS needs at least one non-zero coefficient"),
             }
         }
         "QUADRATICROOTS" => {
             let (qa, qb, qc) = (js_number(arg(a, 0)), js_number(arg(a, 1)), js_number(arg(a, 2)));
             if qa.is_nan() || qb.is_nan() || qc.is_nan() {
-                return err("#VALUE!", "QUADRATICROOTS takes numeric coefficients a, b, c");
+                return err(ErrorCode::Value, "QUADRATICROOTS takes numeric coefficients a, b, c");
             }
             if qa == 0.0 {
-                return err("#DOMAIN!", "a = 0 is a line, not a quadratic. Solve b·x + c = 0 directly");
+                return err(ErrorCode::Domain, "a = 0 is a line, not a quadratic. Solve b·x + c = 0 directly");
             }
             let disc = qb * qb - 4.0 * qa * qc;
             let s = disc.abs().sqrt() / (2.0 * qa);
@@ -1266,7 +1266,7 @@ pub fn call(name: &str, a: &[V]) -> V {
             }
             let (px, py) = tri!(regression_pair(ys, arg(a, 1)));
             let enough = px.len() >= 2;
-            let zero_var = || err("#DIV/0!", "Known Xs have zero variance");
+            let zero_var = || err(ErrorCode::DivZero, "Known Xs have zero variance");
             if name == "LINEST" {
                 return match linear_fit(&px, &py, true) {
                     Some((slope, intercept, r2)) => nums_v(vec![slope, intercept, r2]),

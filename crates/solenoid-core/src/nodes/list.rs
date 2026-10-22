@@ -1,6 +1,7 @@
 //! [[B11]] maximalMerge, [[C48]] appendLadder, [[C49]] filterOneJob. `nodes/list.ts`: the list cards, most of them
 //! one call to the list function they share their kernel with.
 
+use crate::error_value::ErrorCode;
 use super::kit::core_call;
 use super::text::role_value;
 use super::scalar::{read_role, Role};
@@ -9,6 +10,7 @@ use super::units::tag;
 use crate::excel_criteria::DateReading;
 use crate::excel_functions::{js_string_of, xmatch_index, MatchMode, V};
 use crate::frame::{FrameCell, FrameColType};
+use crate::frame_verbs::FilterOp;
 use crate::jsnum::{js_trim, math_round, number_to_string};
 use crate::unit_dims::{dim_equal, dim_pow, is_dimensionless, Dim, UnitCell};
 use crate::unit_value::{unit_error, READINGS_ADD};
@@ -112,7 +114,7 @@ fn finite(v: &V) -> bool {
 }
 
 fn over_limit(what: &str, n: f64) -> V {
-    err("#OVERFLOW!", format!("{what} {} exceeds the {} element limit", number_to_string(n), number_to_string(MAX_GENERATED)))
+    err(ErrorCode::Overflow, format!("{what} {} exceeds the {} element limit", number_to_string(n), number_to_string(MAX_GENERATED)))
 }
 
 fn shown(c: &mut Call, field: &str, out: &str, v: V) -> Answer {
@@ -145,9 +147,9 @@ fn series(c: &mut Call) -> Answer {
                     }
                 };
                 if !n.is_finite() {
-                    err("#DOMAIN!", "Step is 0 (or signed away from Stop), so the range never ends")
+                    err(ErrorCode::Domain, "Step is 0 (or signed away from Stop), so the range never ends")
                 } else if n > MAX_GENERATED {
-                    err("#OVERFLOW!", format!("Range of {} elements exceeds the {} element limit", number_to_string(math_round(n)), number_to_string(MAX_GENERATED)))
+                    err(ErrorCode::Overflow, format!("Range of {} elements exceeds the {} element limit", number_to_string(math_round(n)), number_to_string(MAX_GENERATED)))
                 } else {
                     core_call("RANGE", &[start, stop, step])
                 }
@@ -232,7 +234,7 @@ fn sort(c: &mut Call) -> Answer {
     if nullish(&raw) {
         return shown(c, "cachedList", "result", V::Null);
     }
-    let key_slots: Vec<String> = c.sockets.iter().map(|(k, _, _)| k.clone()).filter(|k| k.starts_with("key")).collect();
+    let key_slots: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).filter(|k| k.starts_with("key")).collect();
     let order = c.field("keyOrder").cloned();
     let mut args = vec![raw.clone()];
     for k in &key_slots {
@@ -381,7 +383,7 @@ fn sets(c: &mut Call) -> Answer {
 }
 
 fn concat_lists(c: &mut Call) -> Answer {
-    let args: Vec<V> = c.sockets.iter().filter(|(k, _, _)| k.starts_with('l')).map(|(k, _, _)| or(slot(c, k), V::Null)).collect();
+    let args: Vec<V> = c.sockets.iter().filter(|s| s.key.starts_with('l')).map(|s| or(slot(c, &s.key), V::Null)).collect();
     let r = core_call("CONCATLISTS", &args);
     shown(c, "cachedList", "result", r)
 }
@@ -391,7 +393,7 @@ fn running(c: &mut Call) -> Answer {
     let w = or(setting(c, "window"), V::Num(0.0));
     if !matches!(w, V::Num(n) if n.is_finite() && n >= 0.0) {
         c.show("cachedList", empty());
-        return Ok(vec![("result".into(), err("#DOMAIN!", "Window must be 0 (cumulative) or a positive count"))]);
+        return Ok(vec![("result".into(), err(ErrorCode::Domain, "Window must be 0 (cumulative) or a positive count"))]);
     }
     let label = match c.field_str("agg", "sum") {
         "avg" => "AVERAGE",
@@ -507,8 +509,9 @@ fn fill(c: &mut Call) -> Answer {
     let fallbacks: Vec<V> = c
         .sockets
         .iter()
-        .filter(|(k, _, _)| is_else(k))
-        .map(|(k, _, _)| match slot(c, k) {
+        .map(|s| s.key.as_str())
+        .filter(|k| is_else(k))
+        .map(|k| match slot(c, k) {
             w @ V::List(_) => w,
             _ if c.wired(k).is_some() => V::Null,
             _ => match c.literal(k) {
@@ -715,7 +718,7 @@ fn list_item_of(ty: &str, v: &V) -> V {
 fn list_input(c: &mut Call) -> Answer {
     let ty = c.field_str("dataType", "number").to_string();
     let (mut items, mut source) = (Vec::new(), Vec::new());
-    let keys: Vec<String> = c.sockets.iter().map(|(k, _, _)| k.clone()).collect();
+    let keys: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).collect();
     for key in &keys {
         match c.wired(key) {
             Some([first, ..]) => {
@@ -807,7 +810,7 @@ fn filter(c: &mut Call) -> Answer {
     let arr: Vec<V> = if is_list {
         row_cells(&m[0])
     } else {
-        let col = if c.sockets.iter().any(|(k, _, _)| k == "column") { read_role(c, "column", &Role::Setting(V::Num(1.0))) } else { V::Num(1.0) };
+        let col = if c.sockets.iter().any(|s| s.key == "column") { read_role(c, "column", &Role::Setting(V::Num(1.0))) } else { V::Num(1.0) };
         let width = length(&m[0]).unwrap_or(0);
         match col {
             V::Num(n) if n.fract() == 0.0 && n >= 1.0 && n <= width as f64 => {
@@ -815,7 +818,7 @@ fn filter(c: &mut Call) -> Answer {
                 m.iter().map(|r| if let V::List(cells) = r { cells.get(j).cloned().unwrap_or(V::Undef) } else { V::Undef }).collect()
             }
             other => {
-                let e = err("#VALUE!", format!("Column {} is outside the table's {width} columns", js_string_of(&other)));
+                let e = err(ErrorCode::Value, format!("Column {} is outside the table's {width} columns", js_string_of(&other)));
                 return done(c, e, V::Null);
             }
         }
@@ -823,13 +826,13 @@ fn filter(c: &mut Call) -> Answer {
     let mags: Vec<V> = arr.iter().map(strip_unit_cells).collect();
     let ty = elem_col_type(&mags);
     let config = c.field("condConfig").cloned();
-    let mut conds: Vec<(String, String, bool)> = Vec::new();
-    for (key, _, _) in c.sockets.iter().filter(|(k, _, _)| k.starts_with("value")) {
+    let mut conds: Vec<(FilterOp, String, bool)> = Vec::new();
+    for key in c.sockets.iter().map(|s| &s.key).filter(|k| k.starts_with("value")) {
         let cfg = config.as_ref().and_then(|o| o.get(&key[5..]));
-        let op = cfg.and_then(|o| o.get("op")).and_then(|v| v.as_str()).unwrap_or("gt").to_string();
+        let spelled = cfg.and_then(|o| o.get("op")).and_then(|v| v.as_str()).unwrap_or("gt");
+        let op: FilterOp = spelled.parse().map_err(|_| err(ErrorCode::Value, format!("Unknown filter condition \"{spelled}\"")))?;
         let value = condition_value(c, key);
-        let valueless = matches!(op.as_str(), "isblank" | "notblank" | "iserror" | "noterror" | "listEmpty");
-        if !valueless && js_trim(&value).is_empty() {
+        if !op.is_valueless() && js_trim(&value).is_empty() {
             continue;
         }
         let match_case = cfg.and_then(|o| o.get("matchCase")).and_then(|v| v.as_bool()).unwrap_or(false);
@@ -839,36 +842,29 @@ fn filter(c: &mut Call) -> Answer {
         let kept = if is_list { list(arr) } else { list(m.iter().map(|r| list(row_cells(r))).collect()) };
         return done(c, kept, V::Null);
     }
-    let text_op = |op: &str| matches!(op, "contains" | "startsWith" | "endsWith");
-    let label = |op: &str| match op {
-        "contains" => "Contains".to_string(),
-        "startsWith" => "Starts with".to_string(),
-        "endsWith" => "Ends with".to_string(),
-        other => other.to_string(),
-    };
     if !mags.iter().any(|v| matches!(v, V::Str(_))) {
         let other = mags.iter().find(|v| !nullish(v) && !v.is_sol_error() && !matches!(v, V::Str(_)));
         let gate = match other {
             None => FrameColType::String,
             Some(v) => elem_col_type(std::slice::from_ref(v)),
         };
-        if let Some((op, _, _)) = conds.iter().find(|(op, _, _)| text_op(op) && gate != FrameColType::String) {
-            return Err(err("#TYPE!", format!("{} reads text — this is a {} list. Cast it to Text first", label(op), gate.tag())));
+        if let Some(label) = conds.iter().find_map(|(op, _, _)| op.text_label()).filter(|_| gate != FrameColType::String) {
+            return Err(err(ErrorCode::Type, format!("{label} reads text — this is a {} list. Cast it to Text first", gate.as_str())));
         }
     }
-    let first_text = conds.iter().find(|(op, _, _)| text_op(op)).map(|(op, _, _)| op.clone());
+    let first_text = conds.iter().find_map(|(op, _, _)| op.text_label());
     let values: Vec<FrameCell> = conds.iter().map(|(_, v, _)| FrameCell::str(v)).collect();
     let mut preds = Vec::with_capacity(conds.len());
     for (k, (op, _, match_case)) in conds.iter().enumerate() {
-        preds.push(crate::frame_verbs::compile_filter(op, &values[k], ty, *match_case).map_err(V::err)?);
+        preds.push(crate::frame_verbs::compile_filter(*op, &values[k], ty, *match_case).map_err(V::err)?);
     }
     let any = c.field_str("combine", "and") != "and";
     let (mut kept, mut dropped) = (Vec::new(), Vec::new());
     for (i, mag) in mags.iter().enumerate() {
-        if let Some(op) = &first_text {
+        if let Some(label) = first_text {
             if !nullish(mag) && !mag.is_sol_error() && !matches!(mag, V::Str(_)) {
-                let what = elem_col_type(std::slice::from_ref(mag)).tag();
-                kept.push(err("#TYPE!", format!("{} reads text; this item is a {what}. Cast it to Text first", label(op))));
+                let what = elem_col_type(std::slice::from_ref(mag)).as_str();
+                kept.push(err(ErrorCode::Type, format!("{label} reads text; this item is a {what}. Cast it to Text first")));
                 continue;
             }
         }
@@ -1041,7 +1037,7 @@ fn xmatch(c: &mut Call) -> Answer {
     let pick = |l: &V| match xmatch_index(l, &ks, mm, last) {
         Err(e) => e,
         Ok(Some(i)) => V::Num((i + 1) as f64),
-        Ok(None) if wired => err("#N/A", "No match found in the array"),
+        Ok(None) if wired => err(ErrorCode::NotAvailable, "No match found in the array"),
         Ok(None) => V::Null,
     };
     let r = match &val {
@@ -1161,19 +1157,19 @@ pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
         }
         cells.iter().map(|c| if c.is_sol_error() { Some(c.clone()) } else if blank(c) { Some(V::Null) } else { f(c).map(V::Num) }).collect()
     };
-    let column = |ty: &str, values: Vec<V>, unit: Option<serde_json::Value>| Column {
+    let column = |ty: FrameColType, values: Vec<V>, unit: Option<serde_json::Value>| Column {
         name: name.to_string(),
-        ty: ty.to_string(),
+        ty,
         values,
         unit,
         format: None,
         raw: Some(serde_json::Value::Array(raw.clone())),
     };
     if !filled.is_empty() && filled.iter().all(|c| matches!(c, V::Bool(_))) {
-        return column("logical", read(&|c| c.clone()), None);
+        return column(FrameColType::Logical, read(&|c| c.clone()), None);
     }
     if let Some(values) = read_all(&cell_number) {
-        return column("number", values, unit);
+        return column(FrameColType::Number, values, unit);
     }
     let logical_text = |c: &V| match c {
         V::Bool(_) => true,
@@ -1181,12 +1177,12 @@ pub(crate) fn infer_column(name: &str, cells: &[V]) -> Column {
         _ => false,
     };
     if !filled.is_empty() && filled.iter().all(|c| logical_text(c)) {
-        return column("logical", read(&|c| if let V::Bool(_) = c { c.clone() } else { V::Bool(crate::jsnum::js_lower(&text(c)) == "true") }), None);
+        return column(FrameColType::Logical, read(&|c| if let V::Bool(_) = c { c.clone() } else { V::Bool(crate::jsnum::js_lower(&text(c)) == "true") }), None);
     }
     if let Some(values) = read_all(&date_serial) {
-        return column("date", values, None);
+        return column(FrameColType::Date, values, None);
     }
-    column("string", read(&|c| V::str(&text(c))), None)
+    column(FrameColType::String, read(&|c| V::str(&text(c))), None)
 }
 
 fn frame_of(columns: Vec<Column>) -> V {
@@ -1194,7 +1190,7 @@ fn frame_of(columns: Vec<Column>) -> V {
 }
 
 fn number_column(name: &str, values: Vec<V>) -> Column {
-    Column { name: name.to_string(), ty: "number".into(), values, unit: None, format: None, raw: None }
+    Column { name: name.to_string(), ty: FrameColType::Number, values, unit: None, format: None, raw: None }
 }
 
 fn outliers(c: &mut Call) -> Answer {
@@ -1212,7 +1208,7 @@ fn outliers(c: &mut Call) -> Answer {
     let flags = core_call("ISOUTLIER", &[arr.clone(), V::str(&method), t]);
     let flag_items = items(&flags);
     let clean: Vec<V> = items(&arr).into_iter().enumerate().map(|(i, v)| if matches!(flag_items.get(i), Some(V::Bool(true))) { V::Null } else { v }).collect();
-    let outlier = Column { name: "Outlier".into(), ty: "logical".into(), values: flag_items, unit: None, format: None, raw: None };
+    let outlier = Column { name: "Outlier".into(), ty: FrameColType::Logical, values: flag_items, unit: None, format: None, raw: None };
     let frame = frame_of(vec![infer_column("Value", &clean), outlier]);
     shown(c, "cachedResult", "result", frame)
 }
@@ -1316,7 +1312,7 @@ fn find_peaks(c: &mut Call) -> Answer {
     let (height, distance, prominence) = (setting_or(c, "height", V::Undef), setting_or(c, "distance", V::Undef), setting_or(c, "prominence", V::Undef));
     let args = [arr.clone(), opt(height), opt(distance), opt(prominence)];
     let V::List(positions) = core_call("FINDPEAKS", &args) else {
-        return Err(err("#ERROR!", "This node failed to compute: positions.map is not a function"));
+        return Err(err(ErrorCode::Error, "This node failed to compute: positions.map is not a function"));
     };
     let height = positions
         .iter()
@@ -1339,7 +1335,7 @@ fn list_index(c: &mut Call) -> Answer {
         V::Undef => V::Null,
         v => v,
     };
-    let has = |c: &Call, k: &str| c.sockets.iter().any(|(s, _, _)| s == k);
+    let has = |c: &Call, k: &str| c.sockets.iter().any(|s| s.key == k);
     let row = picks(&c.label(if has(c, "position") { "position" } else { "index" }), if has(c, "position") { role_value(c, "position") } else { role_value(c, "index") });
     let col = if has(c, "column") { picks(&c.label("column"), role_value(c, "column")) } else { V::Undef };
     let unit = c.matrix_unit("list").cloned();
@@ -1356,7 +1352,7 @@ fn list_index(c: &mut Call) -> Answer {
 /// `applyRole` of a `picks` role ([[D86]] blankRoles): a blank position in a list dropped, none left (or a blank) the
 /// positions left out; a blank inside a table of positions `#SYNTAX!`.
 fn picks(label: &str, v: V) -> V {
-    let blank = |x: &V| if nullish(x) { err("#SYNTAX!", format!("A position in {label} is blank")) } else { x.clone() };
+    let blank = |x: &V| if nullish(x) { err(ErrorCode::Syntax, format!("A position in {label} is blank")) } else { x.clone() };
     match &v {
         V::Err(_) => v,
         V::List(rows) if matches!(rows.first(), Some(V::List(_))) => {
@@ -1372,7 +1368,7 @@ fn picks(label: &str, v: V) -> V {
 }
 
 fn index_ref_error(n: f64, max: usize, what: &str) -> V {
-    err("#REF!", format!("{what} {} is outside 1…{max}", number_to_string(n)))
+    err(ErrorCode::Ref, format!("{what} {} is outside 1…{max}", number_to_string(n)))
 }
 
 /// `Math.trunc` of a position as JS reads it.
@@ -1418,7 +1414,7 @@ fn index_container(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) ->
         return index_into(v, row, col, unit);
     }
     if matches!(row, V::List(_)) || matches!(col, V::List(_)) {
-        return err("#VALUE!", "INDEX takes one row and one column of a Frame or Cube at a time");
+        return err(ErrorCode::Value, "INDEX takes one row and one column of a Frame or Cube at a time");
     }
     let Some((row_all, col_all, r, ci)) = resolve_axes(row, col) else { return V::Null };
     if let V::Cube(cube) = v {
@@ -1493,7 +1489,7 @@ fn index_into(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
     let Some((row_all, col_all, r, ci)) = resolve_axes(&row, &col) else { return V::Null };
     let V::List(items) = v else {
         let ok = (row_all || r == 0.0) && (col_all || ci == 0.0);
-        return if ok { v.clone() } else { err("#REF!", "Index is outside a single value. Only index 1 exists") };
+        return if ok { v.clone() } else { err(ErrorCode::Ref, "Index is outside a single value. Only index 1 exists") };
     };
     if matches!(items.first(), Some(V::List(_))) {
         let grid = items;
@@ -1571,7 +1567,7 @@ fn position_of(x: &V) -> V {
         V::Str(s) if !js_trim(s).is_empty() => crate::jsnum::string_to_number(s),
         _ => f64::NAN,
     };
-    if n.is_nan() { err("#VALUE!", "INDEX position must be a number") } else { V::Num(n) }
+    if n.is_nan() { err(ErrorCode::Value, "INDEX position must be a number") } else { V::Num(n) }
 }
 
 /// `indexMany`: on a table whose other axis is whole, a list of rows or columns picks those, as CHOOSEROWS and
@@ -1615,11 +1611,11 @@ fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
     let at = |g: &Option<Vec<V>>, i: usize, j: usize| -> V {
         let Some(g) = g else { return V::Undef };
         let gi = if g.len() == 1 { 0 } else { i };
-        let Some(line) = g.get(gi) else { return err("#N/A", "The positions are different sizes") };
+        let Some(line) = g.get(gi) else { return err(ErrorCode::NotAvailable, "The positions are different sizes") };
         let V::List(line) = line else { return position_of(line) };
         let gj = if (if let Some(V::List(f)) = g.first() { f.len() } else { 1 }) == 1 { 0 } else { j };
         match line.get(gj) {
-            None => err("#N/A", "The positions are different sizes"),
+            None => err(ErrorCode::NotAvailable, "The positions are different sizes"),
             Some(x) => position_of(x),
         }
     };
@@ -1632,7 +1628,7 @@ fn index_many(v: &V, row: &V, col: &V, unit: Option<&serde_json::Value>) -> V {
             return cc;
         }
         match index_into(v, &r, &cc, unit) {
-            V::List(_) => err("#VALUE!", "Each pair of positions must pick one value"),
+            V::List(_) => err(ErrorCode::Value, "Each pair of positions must pick one value"),
             x => x,
         }
     }).collect())).collect();
