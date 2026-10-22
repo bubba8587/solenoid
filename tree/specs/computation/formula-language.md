@@ -398,7 +398,7 @@ The hosts accept a list, a matrix or a scalar (read as a 1×1), and read a list 
 
 Arity is not checked by the hosts: missing parameters bind `null` from the host's tuple and extra host arguments are ignored.
 
-The lambda answers one value each time in MAP, BYROW, BYCOL, SCAN and MAKEARRAY, as Excel's does (its `#CALC!`): a list answer is that cell's `#SHAPE!` "{HOST}'s LAMBDA answers one value for each {cell, row, column, step}, not a list", since keeping it would nest the answer past a table, which nothing downstream reads (`oneValue`). REDUCE's accumulator may be a list, and GROUPBY's answer for a group may be one.
+The lambda answers one value each time in MAP, BYROW, BYCOL, SCAN and MAKEARRAY, as Excel's does (its `#CALC!`): a list answer is that cell's `#SHAPE!` "{HOST}'s LAMBDA answers one value for each {cell, row, column, step}, not a list", since keeping it would nest the answer past a table, which nothing downstream reads (`oneValue`). A list or table of one cell is that cell, as Excel reads a 1×1 array, so `MAP(ys, LAMBDA(x, FILTER(vals, keys = "b")))` answers the one match. REDUCE's accumulator may be a list, and GROUPBY's answer for a group may be one.
 
 ### The LAMBDA node and wired lambdas
 
