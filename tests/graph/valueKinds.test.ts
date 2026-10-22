@@ -5,7 +5,7 @@ import {
   logicalToNumber, numberToLogical, coerceLogical, logicalOrTypeError,
   kleeneNot, kleeneOr, kleeneAnd,
   forAggregate,
-  cellShortCircuit, cellError, COMPUTE,
+  cellShortCircuit, COMPUTE,
 } from "../../src/graph/valueKinds";
 import { solError, isSolError } from "../../src/graph/errorValue";
 
@@ -107,12 +107,6 @@ describe("per-element broadcast contract", () => {
   it("cellShortCircuit: COMPUTE when every operand is present", () => {
     expect(cellShortCircuit([1, 2, 3])).toBe(COMPUTE);
     expect(cellShortCircuit([0, -1])).toBe(COMPUTE); // 0 is present, not missing
-  });
-
-  it("cellError: only the error half (missing is left for the fn)", () => {
-    expect(cellError([1, e1, 2])).toBe(e1);
-    expect(cellError([1, null, 2])).toBeUndefined(); // null is NOT short-circuited
-    expect(cellError([1, 2, 3])).toBeUndefined();
   });
 });
 

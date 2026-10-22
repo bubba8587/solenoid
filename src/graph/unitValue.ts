@@ -199,19 +199,6 @@ export function arithmeticCell(
   }
 }
 
-export function compareUnits(a: Operand, b: Operand): { l: number; r: number } | SolError {
-  const da = dimOf(a), db = dimOf(b);
-  if (!isDimensionless(da) && !isDimensionless(db) && !dimEqual(da, db))
-    return unitError("Can't compare values with different units.");
-  if (currencyMismatch(a, b))
-    return unitError("Can't compare different currencies. There is no exchange rate.");
-  const dispA = isUnitCell(a) ? a.display : undefined;
-  const dispB = isUnitCell(b) ? b.display : undefined;
-  const l = isDimensionless(da) && !isDimensionless(db) ? adoptReading(magnitudeOf(a), dispB) : magnitudeOf(a);
-  const r = isDimensionless(db) && !isDimensionless(da) ? adoptReading(magnitudeOf(b), dispA) : magnitudeOf(b);
-  return { l, r };
-}
-
 export type UnitAggregatePrep =
   | { error: SolError }
   | { error?: undefined; dim: Dim; display?: string; nums: number[] };

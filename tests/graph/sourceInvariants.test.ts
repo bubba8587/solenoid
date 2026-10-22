@@ -169,7 +169,7 @@ describe("[[C25]] firstClassUnits — a node file that runs the dimension algebr
   // unit-blind strip (stripUnitCells returns the same reference when no CELL is
   // tagged) — a unit-blind node carrying it through a reshape is correct, not a
   // violation (stats.ts's grid interpolation is the live example).
-  const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|arithmeticCell|compareUnits|forAggregateUnits|broadcastUnit|anyDimensioned)\s*\(/;
+  const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|arithmeticCell|forAggregateUnits|broadcastUnit|anyDimensioned)\s*\(/;
   // Files sanctioned to call the algebra WITHOUT declaring, with the reason:
   const SANCTIONED: Record<string, string> = {
     "nodes/shared.ts": "the helper library (broadcastUnit/guardCell/anyDimensioned) — declares no node class; every caller declares unitAware in its own file",

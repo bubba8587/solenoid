@@ -1,12 +1,11 @@
 // [[B16]]
 import { ClassicPreset } from "rete";
-import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readRole, numListIn, numListOut, numIn, numOut, listIn, readAsRole, leftOutAs, type BroadcastResult, type UnitOperand } from "./shared";
-import { rolesFrom, required, argRole } from "../inputRoles";
+import { broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
+import { rolesFrom, required } from "../inputRoles";
 import { lnGamma, combinatoric } from "./mathUtils";
 import { callCore } from "../coreValues";
 import { nodeOnCore } from "../nodeOnCore";
-import { solError, type SolError, isSolError } from "../errorValue";
-import { guardFinite } from "../valueKinds";
+import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
 import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
@@ -267,55 +266,8 @@ export class BaseConvertNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { value?: number[]; from?: number[]; to?: number[] }): { result: number | SolError | null } {
-    const rawVal = readInput(inputs.value, this.literals.value ?? 0);
-    const fromRaw = readRole<number | SolError>(this, "from", inputs.from);
-    const toRaw   = readRole<number | SolError>(this, "to", inputs.to);
-    if (isSolError(fromRaw)) { this.cachedResult = null; return { result: fromRaw }; }
-    if (isSolError(toRaw)) { this.cachedResult = null; return { result: toRaw }; }
-    if (rawVal === null) { this.cachedResult = null; return { result: null }; }
-    const from = Math.round(fromRaw);
-    const to   = Math.round(toRaw);
-
-    if (from < 2 || from > 36 || to < 2 || to > 36) {
-      this.cachedResult = null; return { result: null };
-    }
-
-    const intVal = Math.trunc(rawVal);
-    const sign   = intVal < 0 ? -1 : 1;
-    const absVal = Math.abs(intVal);
-
-    let decimal: number;
-    if (from === 10) {
-      decimal = absVal;
-    } else {
-      const str = absVal.toString();
-      let d = 0;
-      for (const ch of str) {
-        const digit = parseInt(ch, 10);
-        if (digit >= from) { this.cachedResult = null; return { result: null }; }
-        d = d * from + digit;
-      }
-      decimal = d;
-    }
-
-    let result: number;
-    if (to === 10) {
-      result = sign * decimal;
-    } else if (decimal === 0) {
-      result = 0;
-    } else {
-      let n = decimal;
-      const digitArr: number[] = [];
-      while (n > 0) { digitArr.unshift(n % to); n = Math.floor(n / to); }
-      if (digitArr.some(d => d > 9)) { this.cachedResult = null; return { result: null }; }
-      let r = 0;
-      for (const d of digitArr) r = r * 10 + d;
-      result = sign * r;
-    }
-
-    this.cachedResult = Number.isFinite(result) ? result : null;
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
@@ -347,17 +299,8 @@ export class ClampNode extends ClassicPreset.Node {
     return [{ output: "result", inputs: ["value"] }];
   }
 
-  data(inputs: { value?: (number | number[])[]; min?: (number | number[])[]; max?: (number | number[])[] }) {
-    const value = readInput(inputs.value, this.literals.value);
-    // A blank bound, whole or one item of a list, is no bound there ([[D86]] blankRoles).
-    const bound = (v: unknown, open: number): number | number[] | null =>
-      v === undefined ? null : Array.isArray(v) ? v.map((x) => (x === undefined ? open : x)) : (v as number);
-    const min = bound(readRole(this, "min", inputs.min), -Infinity);
-    const max = bound(readRole(this, "max", inputs.max), Infinity);
-    if (value === null) { this.cachedResult = null; return { result: null }; }
-    const result = broadcast((v, mn, mx) => callCore("CLAMP", [v, mn, mx]) as number, value, min ?? -Infinity, max ?? Infinity) as number | number[];
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | number[] | null };
   }
 }
 
@@ -397,24 +340,8 @@ export class MRoundNode extends ClassicPreset.Node {
     return [{ output: "result", inputs: ["value"] }];
   }
 
-  data(inputs: { value?: (number | number[])[]; multiple?: (number | number[])[] }) {
-    const value    = readInput(inputs.value,    this.literals.value);
-    const multiple = readRole<number | number[] | SolError>(this, "multiple", inputs.multiple);
-    let result: BroadcastResult = null;
-    if (isSolError(multiple)) result = multiple;
-    else if (value !== null) {
-      result = broadcastErr((v, m) => {
-        if (m === 0) return 0;
-        // Only MROUND requires value and multiple to share a sign; CEILING and FLOOR do not.
-        if (this.op === "nearest" && v !== 0 && Math.sign(v) !== Math.sign(m)) {
-          return solError("#DOMAIN!", "MROUND needs the value and multiple to share a sign");
-        }
-        // CEILING.MATH and FLOOR.MATH read the multiple's magnitude only; the card's up and down follow its sign.
-        return this.op === "nearest" ? callCore("MROUND", [v, m]) as number | SolError : (this.op === "up" ? Math.ceil : Math.floor)(v / m) * m;
-      }, value, multiple);
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -450,16 +377,8 @@ export class RoundNNode extends ClassicPreset.Node {
     return [{ output: "result", inputs: ["value"] }];
   }
 
-  data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
-    const value  = readInput(inputs.value, this.literals.value);
-    const digits = readRole<number | number[]>(this, "digits", inputs.digits);
-    let result: BroadcastResult = null;
-    if (value !== null) {
-      const fn = this.op.toUpperCase();
-      result = broadcast((v, d) => callCore(fn, [v, d]) as number, value, digits);
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -489,13 +408,8 @@ export class GCDNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
-    const a = readInput(inputs.a, this.literals.a);
-    const b = readInput(inputs.b, this.literals.b);
-    const fn = this.op.toUpperCase();
-    const result = broadcastErr((x, y) => callCore(fn, [x, y]) as number | SolError, a, b);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: BroadcastResult };
   }
 }
 
@@ -576,28 +490,8 @@ export class TwoInputMathNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
-    const a = readInput(inputs.a, this.literals.a);
-    // LOG's base and GESTEP's step are settings; B is data under every other op.
-    const b = this.op === "log" ? leftOutAs(readAsRole<number | (number | undefined)[] | undefined>(this, "b", inputs.b, argRole("LOG", 1)!), 10)
-      : this.op === "gestep" ? leftOutAs(readAsRole<number | (number | undefined)[] | undefined>(this, "b", inputs.b, argRole("GESTEP", 1)!), 0)
-      : readInput(inputs.b, this.literals.b);
-    const domainErr = () => solError("#DOMAIN!", "LOG needs x > 0 and a base > 0, ≠ 1");
-    let result: number | (number | SolError | null)[] | SolError | null = null;
-    if (a !== null && b !== null) {
-      result = broadcastErr((x, y) => {
-        switch (this.op) {
-          case "atan2":  return callCore("ATAN2", [x, y]) as number | SolError;
-          case "hypot":  return Math.sqrt(x * x + y * y);
-          case "log":    return (x <= 0 || y <= 0 || y === 1) ? domainErr() : callCore("LOG", [x, y]) as number | SolError;
-          case "delta":  return Math.abs(x - y) < 1e-12 ? 1 : 0;
-          case "gestep": return callCore("GESTEP", [x, y]) as number | SolError;
-        }
-        return null;
-      }, a, b);
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | (number | SolError | null)[] | SolError | null };
   }
 }
 
@@ -632,16 +526,8 @@ export class SumProductNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { x?: number[][]; y?: number[][] }) {
-    const xs = inputs.x?.[0] ?? null;
-    const ys = inputs.y?.[0] ?? null;
-    let result: number | null = null;
-    if (xs && ys && xs.length > 0 && ys.length > 0) {
-      const n = Math.min(xs.length, ys.length);
-      result = callCore(this.op.toUpperCase(), [xs.slice(0, n), ys.slice(0, n)]) as number;
-    }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | null };
   }
 }
 
@@ -664,16 +550,8 @@ export class SeriesSumNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { x?: number[]; n?: number[]; m?: number[]; coef?: number[][] }) {
-    const x = readInput(inputs.x, this.literals.x ?? 1);
-    const n = readInput(inputs.n, this.literals.n ?? 0);
-    const m = readInput(inputs.m, this.literals.m ?? 1);
-    if (x === null || n === null || m === null) { this.cachedResult = null; return { result: null }; }
-    const coef = inputs.coef?.[0] ?? null;
-    if (!coef || coef.length === 0) { this.cachedResult = null; return { result: null }; }
-    const result = callCore("SERIESSUM", [x, n, m, coef]) as number;
-    this.cachedResult = guardFinite(result, [x, n, m, ...coef]);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
@@ -695,16 +573,8 @@ export class MultinomialNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { values?: number[][] }) {
-    const vals = inputs.values?.[0] ?? null;
-    if (!vals || vals.length === 0) { this.cachedResult = null; return { result: null }; }
-    const ns = vals.map(Math.round);
-    if (ns.some(v => v < 0)) { this.cachedResult = null; return { result: null }; }
-    const total = ns.reduce((s, v) => s + v, 0);
-    const lnResult = lnGamma(total + 1) - ns.reduce((s, v) => s + lnGamma(v + 1), 0);
-    const result = Math.round(Math.exp(lnResult));
-    this.cachedResult = guardFinite(result, vals);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | SolError | null };
   }
 }
 
@@ -739,14 +609,8 @@ export class BesselNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { x?: number[]; n?: number[] }): { result: number | null } {
-    const x = readInput(inputs.x, this.literals.x ?? 1);
-    const nRaw = readRole<number>(this, "n", inputs.n);
-    if (x === null) { this.cachedResult = null; return { result: null }; }
-    const result = callCore(this.op.toUpperCase(), [x, nRaw]);
-    if (typeof result !== "number" || !Number.isFinite(result)) { this.cachedResult = null; return { result: null }; }
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | null };
   }
 }
 

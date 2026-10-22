@@ -5,21 +5,21 @@
 import type { ClassicPreset } from "rete";
 import { extractInit } from "./copyPaste";
 import { declaredTypeOf } from "./sockets";
-import { coreValue, engineClock, readReply } from "./coreValues";
+import { engineClock } from "./coreValues";
+import { nodeWire, readNodeReply } from "./nodeWire";
 import { wasmInvokeSync, CoreTrap } from "./engineWasm";
 import { solError } from "./errorValue";
 
 type Reply = { out?: Record<string, unknown>; thrown?: unknown; none?: true; display: Record<string, unknown> };
 
 function read(r: unknown): unknown {
-  const v = readReply(r);
+  const v = readNodeReply(r);
   if (!v) throw solError("#VALUE!", "The card's answer can't be read back");
   return v.value;
 }
 
 function shown(r: unknown): unknown {
-  const o = r as { json?: unknown; undef?: true } | null;
-  if (o && typeof o === "object" && "json" in o) return o.json;
+  const o = r as { undef?: true } | null;
   if (o && typeof o === "object" && o.undef === true) return undefined;
   return read(r);
 }
@@ -30,7 +30,7 @@ export function nodeOnCore(node: ClassicPreset.Node, inputs: Record<string, unkn
   const wired: [string, unknown[]][] = [];
   for (const [k, arr] of Object.entries(inputs)) {
     if (!Array.isArray(arr)) continue;
-    const w = arr.map((v) => coreValue(v, true));
+    const w = arr.map(nodeWire);
     if (w.includes(undefined)) throw solError("#VALUE!", `${node.label || node.constructor.name}: an input holds a value the card can't read`);
     wired.push([k, w]);
   }
