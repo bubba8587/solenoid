@@ -106,12 +106,27 @@ pub fn fold_units(kind: FoldKind, src: &str, m: &V, initial: &V) -> Option<V> {
     let V::List(rows) = m else { return None };
     let mut mat: Vec<Vec<V>> = Vec::with_capacity(rows.len());
     for r in rows.iter() {
-        let V::List(cells) = r else { return None };
-        mat.push(cells.to_vec());
+        // A lone item among rows is a one-cell row (`toAnyMatrix`).
+        mat.push(match r {
+            V::List(cells) => cells.to_vec(),
+            other => vec![other.clone()],
+        });
     }
     let elem = match elem_unit(&mat) {
         Err(e) => return Some(e),
         Ok(e) => e,
+    };
+    // REDUCE's initial value is the first accumulator, so its unit joins the list's (`initialUnit`).
+    let elem = match (kind, initial, elem) {
+        (FoldKind::Reduce, V::Unit(_), None) => match elem_unit(&[vec![initial.clone()]]) {
+            Err(e) => return Some(e),
+            Ok(e) => e,
+        },
+        (FoldKind::Reduce, V::Unit(i), Some((e, _))) if !dim_equal(&e.dim, &i.dim) => {
+            return Some(V::err(sol_error("#UNIT!", "REDUCE's initial value and its list are in different units.")));
+        }
+        (FoldKind::Reduce, V::Unit(i), Some((e, _))) if e.display != i.display => Some((Elem { dim: e.dim, display: None }, None)),
+        (_, _, elem) => elem,
     };
     let fu = elem.as_ref().and_then(|(_, u)| u.as_ref());
     let strip = |c: &V| match c {

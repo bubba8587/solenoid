@@ -96,6 +96,15 @@ function elemUnitOf(m: Mat): { dim: Dim; display?: string } | null | SolError {
   return dim === null ? null : { dim, display };
 }
 
+/** REDUCE's initial value is the fold's first accumulator, so its unit joins the list's: alone it is the fold's unit,
+ *  and in another dimension it is #UNIT!. */
+function initialUnit(elem: { dim: Dim; display?: string } | null | SolError, initial: unknown): { dim: Dim; display?: string } | null | SolError {
+  if (isSolError(elem) || !isUnitCell(initial)) return elem;
+  if (!elem) return { dim: initial.dim, display: initial.display };
+  if (!dimEqual(elem.dim, initial.dim)) return unitError("REDUCE's initial value and its list are in different units.");
+  return initial.display === elem.display ? elem : { dim: elem.dim };
+}
+
 /** The linear display unit the tagged cells share, which the fold then runs in, so a bare
  *  `+ 1` means 1 km as it does on the Arithmetic card; null folds in base SI. */
 function foldUnit(elem: { dim: Dim; display?: string } | null): Unit | null {
@@ -151,7 +160,7 @@ function retagFold(
 /** The fold's unit wrapper on the core ([[D99]] rustIsSpec, `unit_fold.rs`) for an inline formula over a table
  *  holding a unit cell; null leaves it to the TS (the core off, a wired LAMBDA, a value that can't cross). */
 function foldOnCore(kind: "reduce" | ByAxis, lam: unknown, src: string, m: Mat, initial?: unknown): { value: unknown } | null {
-  if (isLambdaValue(lam) || !m.some((row) => Array.isArray(row) && row.some(isUnitCell))) return null;
+  if (isLambdaValue(lam) || (!isUnitCell(initial) && !m.some((row) => Array.isArray(row) && row.some(isUnitCell)))) return null;
   if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
   const wm = coreValue(m, true);
   const wi = coreValue(initial ?? null, true);
@@ -346,7 +355,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
       const result = core.value as Cell | UnitCell | SolError;
       this.cachedResult = result; this.cachedError = null; return { result };
     }
-    const elem = elemUnitOf(m);
+    const elem = initialUnit(elemUnitOf(m), initialRaw);
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
     const fu = foldUnit(elem);
     const mm = elem ? stripCells(m, fu) : m;

@@ -338,3 +338,21 @@ describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
     expect(magnitudeOf(out[0])).toBeCloseTo(5000, 6);
   });
 });
+
+describe("REDUCE's initial value carries its unit into the fold ([[C25]] firstClassUnits)", () => {
+  it("over a plain list it is the fold's unit, its bare numbers read in it", async () => {
+    const { fcUnitToUnit } = await import("../../../src/graph/unitBridge");
+    const km = fcUnitToUnit("km")!;
+    const r = new ReduceLambdaNode().data({ initial: [fromUnit(5, km, "km")], table: [[[1, 2]]] }).result as UnitCell;
+    expect(r).toEqual({ __unitCell: true, value: 8000, dim: { length: 1 }, display: "km" });
+  });
+  it("in another dimension than the list it is #UNIT!", async () => {
+    const { fcUnitToUnit } = await import("../../../src/graph/unitBridge");
+    const [km, s] = [fcUnitToUnit("km")!, fcUnitToUnit("s")!];
+    const r = new ReduceLambdaNode().data({ initial: [fromUnit(5, s, "s")], table: [[[fromUnit(1, km, "km"), fromUnit(2, km, "km")]]] }).result;
+    expect(r).toMatchObject({ code: "#UNIT!", message: "REDUCE's initial value and its list are in different units." });
+  });
+  it("a ragged table folds its lone cells as one-cell rows instead of throwing", () => {
+    expect(new ReduceLambdaNode().data({ table: [[[1, 2], 3]] }).result).toBe(6);
+  });
+});
