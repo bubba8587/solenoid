@@ -32,3 +32,18 @@ fn a_call_sites_blank_slots_stay_its_own() {
         assert!(matches!(c, FrameCell::Str(s) if &**s == w), "{got:?}");
     }
 }
+
+/// A wired LAMBDA is parsed afresh each call and dropped after, so the next one's body can land at the same address
+/// while the kept formula's evaluator still holds the old one.
+#[test]
+fn a_wired_lambda_runs_its_own_body_each_call() {
+    let wired = |expr: &str| solenoid_core::eval::decode_value(&serde_json::json!({ "__lambda": { "params": ["x"], "expr": expr } }));
+    let bodies = ["MAP(x,LAMBDA(y,y*2))", "MAP(x,LAMBDA(y,y-1))", "MAP(x,LAMBDA(y,y+10))", "MAP(x,LAMBDA(y,y/2))"];
+    let want = [6.0, 2.0, 13.0, 1.5];
+    for round in 0..40 {
+        let i = round % bodies.len();
+        let env = [("f".to_string(), wired(bodies[i]))].into_iter().collect();
+        let got = solenoid_core::eval::formula("f(3)", env).expect("parses");
+        assert_eq!(format!("{got:?}"), format!("List([Num({:?})])", want[i]), "round {round}: {}", bodies[i]);
+    }
+}

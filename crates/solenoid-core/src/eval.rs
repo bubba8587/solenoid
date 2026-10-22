@@ -442,7 +442,8 @@ pub struct Eval<'a> {
     /// Each call site's name, facts and empty slots, read once per site rather than once per row.
     sites: RefCell<FxHashMap<*const u8, Rc<Site>>>,
     /// A LAMBDA's body, cloned once and kept while this evaluator lives: the memo and the sites are keyed by node
-    /// address, which a body cloned per call and dropped would hand to the next one.
+    /// address, which a body cloned per call and dropped would hand to the next one. A wired LAMBDA's tree is parsed
+    /// per call and dropped, so its address can come back holding another body: an entry answers only an equal one.
     bodies: RefCell<FxHashMap<*const Ast, Rc<Ast>>>,
 }
 
@@ -458,7 +459,7 @@ impl Eval<'_> {
     fn site(&self, raw: &str, args: &[Ast]) -> Rc<Site> {
         let key = raw.as_ptr();
         if let Some(s) = self.sites.borrow().get(&key) {
-            if s.raw == raw && s.empty.len() == args.len() {
+            if s.raw == raw && s.empty.len() == args.len() && s.empty.iter().zip(args).all(|(e, a)| *e == matches!(a, Ast::Blank)) {
                 return s.clone();
             }
         }
@@ -640,7 +641,7 @@ impl Eval<'_> {
                 }
                 params.push(p.clone());
             }
-            let kept = self.bodies.borrow().get(&(body as *const Ast)).cloned();
+            let kept = self.bodies.borrow().get(&(body as *const Ast)).filter(|b| ***b == *body).cloned();
             let body = kept.unwrap_or_else(|| {
                 let b = Rc::new(body.clone());
                 self.bodies.borrow_mut().insert(body as *const Ast, b.clone());
