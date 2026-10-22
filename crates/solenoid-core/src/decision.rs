@@ -223,13 +223,19 @@ pub(crate) fn resolve_weights(wf: Option<&FrameValue>, criteria: &[String]) -> R
         .map(|(j, name)| {
             let r = rows.get(&crit_key(name)).copied();
             let v = match (r, weight_col) {
-                (Some(r), Some(c)) => num_or_null(c.cell_at(r)),
+                (Some(r), Some(c)) => {
+                    let cell = c.cell_at(r);
+                    if let FrameCell::Err(e) = &cell {
+                        return Err((**e).clone());
+                    }
+                    num_or_null(cell)
+                }
                 _ => None,
             };
             let screen_only = r.is_some() && bounds.as_ref().and_then(|b| b.get(j)).is_some_and(|b| b.at_least.is_some() || b.at_most.is_some());
-            v.unwrap_or(if screen_only { 0.0 } else { 1.0 })
+            Ok(v.unwrap_or(if screen_only { 0.0 } else { 1.0 }))
         })
-        .collect();
+        .collect::<Res<Vec<f64>>>()?;
     Ok(Resolved { weights: Some(weights), overrides: norm_overrides(wf, criteria, &rows), bounds })
 }
 

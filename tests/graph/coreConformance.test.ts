@@ -905,6 +905,20 @@ describe("frame functions answer as frozen", () => {
       checkBails(`frame fn ${name}`, cases.length - ran);
     });
   }
+
+  it("an error in a Decision Matrix's Weight cell is its answer", () => {
+    const f: FrameValue = { __frame: true, columns: [
+      { name: "name", type: "string", values: ["A", "B"] },
+      { name: "quality", type: "number", values: [1, 2] },
+      { name: "cost", type: "number", values: [3, 4] },
+    ] };
+    const w: FrameValue = { __frame: true, columns: [
+      { name: "criterion", type: "string", values: ["quality", "cost"] },
+      { name: "weight", type: "number", values: [3, solError("#DIV/0!", "boom")] },
+    ] };
+    expect(fnOutcome(() => { const r = frameFnOnCore("decisionMatrix", [f, w], ["none", false]); return r && "frame" in r ? r.frame : r; }))
+      .toMatchObject({ error: { code: "#DIV/0!" } });
+  });
 });
 
 // ─── Formulas over values (the Expression card) ───────────────────────────────────
