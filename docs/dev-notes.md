@@ -22,6 +22,8 @@ specific item.
   one `arms!` declaration and `every_name_has_one_body` holds each name to one route. A call's clock and raised state
   live in `Calc`, dropped on every return (`tests/calc_state.rs`). An `@`-list's verdict holds the list
   (`tests/caches.rs`). Open findings are in `docs/backlog.md` § Rust core.
+  Closed names are typed: `spelled!` (`spelled.rs`) gives ErrorCode, FxError, BinOp, FrameColType and the frame verbs'
+  options their one spelling, read only at the wire; `Wire<T>` keeps a name the corpus refuses in a verb's own words.
 - **Speed:** formula columns 2 to 4.6 times JS in wasm (the table in [[rust-core]]); each call site resolves once per
   column, not per row. `examples/colbench.rs` under callgrind counts instructions, which don't drift.
 - **Verbs:** Drop Blank Rows, Add Index, Split Column and Merge Columns are lazy `FrameOp`s, so a chain through them stays in wasm. Under Polars they run on the oracle (`RUST_CORE_ONLY`).
