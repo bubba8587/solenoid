@@ -10,7 +10,7 @@ import { CompositeNode, type CompositeInternalSnapshot } from "../../src/graph/n
 import { ValueInputNode } from "../../src/graph/nodes/control";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { ctorRegistry } from "../../src/graph/nodeCtorRegistry";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { nodeNameStore } from "../../src/graph/nodeNameStore";
 import { pinStore } from "../../src/graph/pinStore";

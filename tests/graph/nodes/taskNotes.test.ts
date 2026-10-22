@@ -1,7 +1,7 @@
 // [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
 import { TaskNotesNode } from "../../../src/graph/rete-nodes";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { isCubeValue, isFrameValue } from "../../../src/graph/frame";
 
 // The TaskNotes node's SHAPE: provider select reshapes sockets, the switch reports the

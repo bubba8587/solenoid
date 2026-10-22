@@ -8,7 +8,7 @@ import {
 } from "../../src/graph/pivotLayout";
 import { carryFrameSidecars } from "../../src/graph/frameSidecar";
 import { PivotNode } from "../../src/graph/nodes/frame";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 
 const sales: FrameValue = {
   __frame: true,

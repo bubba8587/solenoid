@@ -5,7 +5,7 @@ import { scriptParams, toClonable, invokeScript, scriptIsVolatile } from "../../
 import { coerceScriptResult } from "../../../src/graph/nodes/scriptCoerce";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
 import { isSolError, solError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial } from "../../../src/graph/nodes/dateSerial";
 

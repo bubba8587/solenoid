@@ -1,6 +1,6 @@
 // [[C38]]
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { frameToCsvText, frameToJsonText, WriteFileNode } from "../../../src/graph/nodes/sink";
 import type { FrameValue } from "../../../src/graph/frame";
 import { solError } from "../../../src/graph/errorValue";

@@ -3,7 +3,7 @@
 // its sockets and its inputs, and takes back the outputs and the fields the body sets for the card's component.
 // The mechanism is tree/specs/computation/node-bodies.md.
 import type { ClassicPreset } from "rete";
-import { extractInit } from "./copyPaste";
+import { extractInit } from "./nodeInit";
 import { declaredTypeOf } from "./sockets";
 import { engineClock } from "./coreValues";
 import { nodeWire, readNodeReply } from "./nodeWire";

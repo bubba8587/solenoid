@@ -1,7 +1,7 @@
 // [[C17]], [[B16]] oneFormulaSurface
 import { describe, it, expect, vi } from "vitest";
 import { SeriesNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, RankPercentileNode, NPVNode } from "../../src/graph/rete-nodes";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
 import { compileEvaluator } from "../../src/graph/excelFormula";

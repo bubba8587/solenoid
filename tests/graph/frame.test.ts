@@ -24,7 +24,7 @@ import {
 } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
 import { BuildFrameNode, FrameFromListsNode, FrameInputNode } from "../../src/graph/nodes/frame";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { MutableSocket } from "../../src/graph/sockets";
 import { solError } from "../../src/graph/errorValue";
 

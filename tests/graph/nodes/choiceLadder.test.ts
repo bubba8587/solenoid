@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { ChoiceLadderNode } from "../../../src/graph/nodes/frame";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
 import { isSolError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import type { ChartValue, LadderPayload } from "../../../src/graph/chartValue";
 import seed from "../../../src/graph/seedGraphs/choice-ladder.json";
 

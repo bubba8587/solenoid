@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { ValueInputNode, carryValueText } from "../../../src/graph/nodes/control";
 import { isSolError } from "../../../src/graph/errorValue";
 import { isUnitCell } from "../../../src/graph/unitValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import { SolenoidSocket } from "../../../src/graph/sockets";
 
 const socketType = (n: ValueInputNode) => (n.outputs.value!.socket as SolenoidSocket).dataType;

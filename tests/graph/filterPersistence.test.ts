@@ -1,7 +1,7 @@
 // [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
 import type { ClassicPreset } from "rete";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { FilterNode } from "../../src/graph/nodes/list";
 import { FilterFrameNode } from "../../src/graph/nodes/frame";
 

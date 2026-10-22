@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import type { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
-import { extractInit, INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "../../src/graph/copyPaste";
+import { extractInit, INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "../../src/graph/nodeInit";
 
 // Catalog-wide persistence fixed-point sweep (v1.0 audit finding 38): node
 // state survives save/load ONLY if extractInit captures it AND the constructor

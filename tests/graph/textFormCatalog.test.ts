@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { isDeepStrictEqual } from "node:util";
 import type { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph, SavedNode, SavedConnection } from "../../src/graph/persistence";
 import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";

@@ -24,7 +24,7 @@ import { SetCellNode, TableMultNode } from "../../../src/graph/nodes/matrix";
 import { MakeArrayNode } from "../../../src/graph/nodes/tableLambda";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
 import { readFrame } from "../../../src/graph/frameBackend";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import type { FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
 import { FormatDollarNode, FixedNode } from "../../../src/graph/nodes/text";

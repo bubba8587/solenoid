@@ -198,7 +198,7 @@ describe("formatIssues", () => {
 describe("catalog sweep", () => {
   it("every catalog leaf validates clean as a single-node save", async () => {
     const { FLAT_CATALOG } = await import("../../src/graph/catalogUtils");
-    const { extractInit } = await import("../../src/graph/copyPaste");
+    const { extractInit } = await import("../../src/graph/nodeInit");
     const bad: string[] = [];
     for (const [type, leaf] of FLAT_CATALOG) {
       let inst;

@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { mergeNoteText } from "../../src/graph/obsidianWrite";
 import { WriteObsidianNode } from "../../src/graph/nodes/obsidian";
-import { extractInit } from "../../src/graph/copyPaste";
+import { extractInit } from "../../src/graph/nodeInit";
 import { beginMarker, END_MARKER } from "../../src/graph/managedBlock";
 import { makeDocument } from "../../src/graph/documentValue";
 

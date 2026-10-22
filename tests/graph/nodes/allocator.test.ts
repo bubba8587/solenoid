@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { AllocatorNode } from "../../../src/graph/nodes/frame";
 import { type FrameValue, type FrameColumn, frameFromInputText } from "../../../src/graph/frame";
 import { isSolError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/nodeInit";
 import seed from "../../../src/graph/seedGraphs/allocator.json";
 
 const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });

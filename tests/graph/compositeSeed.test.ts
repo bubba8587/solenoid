@@ -160,7 +160,7 @@ describe("Composite Workbench seed", () => {
 
 describe("a composite's saved bytes are stable across save → load → save", () => {
   it("every seed composite re-saves identically, its ports still finding their markers", async () => {
-    const { extractInit } = await import("../../src/graph/copyPaste");
+    const { extractInit } = await import("../../src/graph/nodeInit");
     const reg = ctorRegistry();
     const rebuild = async (init: Record<string, unknown>) => {
       const n = new CompositeNode({ ...init } as ConstructorParameters<typeof CompositeNode>[0]);

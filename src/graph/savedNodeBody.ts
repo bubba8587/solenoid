@@ -1,6 +1,6 @@
 // [[B12]] losslessSaves, [[C77]] compositeIsSubgraph
 import type { ClassicPreset } from "rete";
-import { extractInit } from "./copyPaste";
+import { extractInit } from "./nodeInit";
 import { nodeSizeStore } from "./nodeSizeStore";
 import { collapseStore } from "./collapseStore";
 import { socketFlipStore } from "./socketFlipStore";
