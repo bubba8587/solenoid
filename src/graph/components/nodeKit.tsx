@@ -32,8 +32,8 @@ import { ArrayChip } from "./ArrayChip";
 import type { TablePopupState } from "../tablePopupStore";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
-import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation } from "../formatAnnotationStore";
-import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, formatRowValue, resolveDisplayAnnotation, annotationForValue, type DisplayValue } from "./valueDisplayFormat";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation, type FormatStyle } from "../formatAnnotationStore";
+import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, formatRowValue, resolveDisplayAnnotation, annotationForValue, cardStyleAnnotation, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE, stopDragStart } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
@@ -443,12 +443,15 @@ export function ValueDisplay({
   socketKey,
   popupOverrides,
   renderWins,
+  cardStyle,
 }: {
   value: DisplayValue;
   empty?: ReactNode;
   render?: (v: number) => ReactNode;
   /** The card's own `render` and `toClipboard` win over any annotation: the constant cards, which show their precision. */
   renderWins?: boolean;
+  /** The card's own style pick, which wins over an annotation's for a value with a unit (Convert's format dropdowns). */
+  cardStyle?: FormatStyle;
   toClipboard?: (v: number) => string;
   /** Show a list in full (values joined) instead of a chip: the Display node. */
   full?: boolean;
@@ -479,7 +482,8 @@ export function ValueDisplay({
     return <div className="solenoid-node__display-value">{kindLabel}</div>;
   }
 
-  const ann = renderWins ? undefined : annotationForValue(rawValue, resolveDisplayAnnotation(ctxNodeId, socketKey));
+  const ann = renderWins ? undefined
+    : cardStyleAnnotation(rawValue, cardStyle) ?? annotationForValue(rawValue, resolveDisplayAnnotation(ctxNodeId, socketKey));
 
   // The declared element family, never a cell scan: a date serial looks numeric and an all-null list has no cells.
   const elemFam = nodeOutputElemFamily(ctxNodeId);

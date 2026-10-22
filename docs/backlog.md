@@ -315,7 +315,6 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 
 ## Formatting & units
 
-- [ ] **Convert's output format is ignored when the result carries a unit**: the value box's annotation wins over the card's `render` (`ValueDisplay`, `render && !ann`), so 279.617 mi stays unrounded under Integer.
 - [ ] **FV, PV and PMT refuse a currency argument** (author to rule): unit-flow § Functions makes every unlisted function read plain numbers, so `FV(rate, n, -$107)` is `#UNIT!`. A money class (currency in, the same currency out) would let the finance functions carry dollars. Since [[D100]] a computed column reads the same rule, so a loan table's `PMT(@rate, @n, -@principal)` over a $ column is `#UNIT!` in every row (CEILING.MATH, QUOTIENT and EVEN over km too).
 
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and

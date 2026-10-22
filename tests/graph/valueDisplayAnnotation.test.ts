@@ -5,7 +5,9 @@ import type { Schemes } from "../../src/graph/schemes";
 import { setEditorRefs } from "../../src/graph/process";
 import { formatAnnotationStore, type FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 import { frameFormatStore, MATRIX_FORMAT_KEY } from "../../src/graph/frameFormatStore";
-import { resolveDisplayAnnotation, resolveMatrixAnnotation, formatListCell, annotationForValue } from "../../src/graph/components/valueDisplayFormat";
+import { resolveDisplayAnnotation, resolveMatrixAnnotation, formatListCell, annotationForValue, cardStyleAnnotation, unwrapUnitCells } from "../../src/graph/components/valueDisplayFormat";
+import { formatNumberWithAnnotation } from "../../src/graph/formatAnnotationStore";
+import { ConvertNode } from "../../src/graph/nodes/convert";
 import { formatTableCell } from "../../src/graph/components/TableDisplay";
 import { solError } from "../../src/graph/errorValue";
 import { fromUnit } from "../../src/graph/unitValue";
@@ -173,5 +175,17 @@ describe("resolveMatrixAnnotation", () => {
     frameFormatStore.set(m.id, MATRIX_FORMAT_KEY, pick);
     expect(resolveMatrixAnnotation(m.id)).toEqual(pick);
     frameFormatStore.clear();
+  });
+});
+
+describe("a card's own format pick applies to a value with a unit ([[C25]] firstClassUnits)", () => {
+  const miles = new ConvertNode({ fromUnit: "km", toUnit: "mi" }).data({ in: [450] }).out;
+  it("Convert's Integer rounds 279.617 mi and keeps the unit", () => {
+    const ann = cardStyleAnnotation(miles, "integer")!;
+    expect(formatNumberWithAnnotation(unwrapUnitCells(miles, ann) as number, ann)).toBe("280 mi");
+  });
+  it("auto, or a plain number, leaves the box to its usual reading", () => {
+    expect(cardStyleAnnotation(miles, "auto")).toBeUndefined();
+    expect(cardStyleAnnotation(5, "integer")).toBeUndefined();
   });
 });
