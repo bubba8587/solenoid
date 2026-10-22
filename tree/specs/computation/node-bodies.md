@@ -73,3 +73,9 @@ The core is required: the app's first render waits for it with no deadline (`mai
 | Logic | Comparison, Between, Is Close, IF, Boolean Op, NOT, CHOOSE, SWITCH, IFS, ISEVEN/ISODD | `nodes/logic.rs` |
 | Complex | COMPLEX, Unpack, the unary and binary ops, Power, Poly Roots, Quadratic Roots | `nodes/complex.rs` |
 | Packs | Parallel Combine, E-Series, AWG, Solar Position, Sunrise/Sunset, Moon Phase, ISA Atmosphere, Antoine, Colebrook, Pipe Roughness, HR Zones, EM Spectrum, Convert, Tornado | `nodes/packs.rs` |
+| Text | Text Transform, Replace, Roman/Arabic, Pad, REPT, FIXED, Truncate, CHAR/CODE, DOLLAR, Wrap, TEXTJOIN, Reverse, LEN, Split, Spell Number, CONCAT, EXACT, Similarity, Slice, URL Encode, SUBSTITUTE, Find, Hash | `nodes/text.rs` |
+| Date | Date and Time Construct, Date Part, Week Info, Date Diff, Date Add, Workdays, Epoch, Date Trunc | `nodes/date.rs` |
+| Stats | Rank & Percentile, Correl, Standardize, Covariance, Fisher, Regression, Forecast, MODE, Frequency, Confidence, Hypothesis Test, Interpolate, LINEST, Binomial Range, PROB, TRIMMEAN | `nodes/stats.rs` |
+| Finance | Bitwise, Depreciation, NPV, IRR, MIRR, FVSCHEDULE, ISPMT, DOLLAR, Discount Security, Coupon, Accrued Interest, Payment Breakdown, Duration, Bond Pricing, Returns | `nodes/finance.rs` |
+| Lists | 37 list cards, Aggregate, XMATCH and Series among them | `nodes/list.rs` |
+| Tables | MDETERM and kin, Table Mult, Table Unit, Diag, Outer, Solve, Eigen, MAP over a table, BYROW/BYCOL, REDUCE, MAKEARRAY | `nodes/matrix.rs` |

@@ -544,18 +544,17 @@ fn spectrum(c: &mut Call) -> Answer {
 
 fn smooth(c: &mut Call) -> Answer {
     let arr = slot(c, "list");
-    let prm = |c: &Call, key: &str, dflt: f64| or(setting(c, key), V::Num(dflt));
     let op = c.field_str("op", "savgol").to_string();
     let out = if nullish(&arr) {
         V::Null
     } else if op == "savgol" {
-        let (w, o) = (prm(c, "window", 5.0), prm(c, "order", 2.0));
+        let (w, o) = (or(setting(c, "window"), V::Num(5.0)), or(setting(c, "order"), V::Num(2.0)));
         core_call("SAVGOL", &[arr, w, o])
     } else if op == "lowess" {
-        let f = prm(c, "frac", 0.67);
+        let f = or(setting(c, "frac"), V::Num(0.67));
         core_call("LOWESS", &[arr, f])
     } else {
-        let s = prm(c, "sigma", 1.0);
+        let s = or(setting(c, "sigma"), V::Num(1.0));
         core_call("GAUSSIANSMOOTH", &[arr, s])
     };
     if out.is_sol_error() && op != "lowess" {
