@@ -160,9 +160,12 @@ Run it with `BENCH=1 npx vitest run tests/graph/wasmEngineBench.test.ts`.
   gzipped but runs formula columns 1.5 to 3 times slower; `"s"` saves 11% for about a third slower; `wasm-opt`'s level
   moves it under 1%. It stays at 3. What's big after rustc: the dispatch functions `wasm-opt` inlines into, `.rodata`
   (the call table's JSON among it) and serde's derive for `FrameOp`.
-- **A function call costs about 1,000 instructions a row** in the dispatch ladder (argument roles, blank slots,
-  broadcasting, the error guard), against about 450 for an operator. Each call site's name and facts resolve once per
-  column already; resolving its route the same way (which rungs can apply to it at all) is the next cut.
+- **A function call costs about 1,100 to 2,000 instructions a row** (`ABS(@value)` 1,140, `PROPER(@key)` 1,820,
+  `ROUND(@value, 2)` 2,000), against about 490 for an operator (`@value * 1.2`), counted natively by `colbench` under
+  callgrind. A name resolves once: `route` (`excel_functions.rs`) gives it its arm of `call_function`'s match (an `F`)
+  or the module that holds its body, and the call path's per-name facts (eta host, LAMBDA host, memo shaper, branch
+  selector, ported) sit in its `Traits` as `fast`, so no string is compared per row; that cut `ABS` from 1,440.
+  What's left is spread thin: each call's argument vector, the call site's cache lookup, the column lookup by name.
 - **Size.** The module is 2.3 MB raw / 835 KB gzipped after `wasm-opt -O3` (`scripts/build-wasm.mjs`), every function body, the evaluator, the unit dimension algebra, V8's `Date.parse` and the full NFD table included. `regress`
   is vendored in `crates/vendor/regress` with two patches. Its non-Unicode Canonicalize (`fold_code_point`, which a caseless backreference compares by) reads as V8's: a non-ASCII unit never goes to ASCII (`ſ` and `s` don't match each other), and a unit whose full uppercase is two units stays itself (`ᾳ` and `ᾼ` don't), from a 102-unit table taken from V8 (`wasmEngine.test.ts` checks every BMP unit beside its own cases). The `no-property-escapes` feature: `\p{…}` parses only in
   Unicode mode, which Solenoid never uses, and refusing it drops the property tables (82 KB gzipped). The case-folding

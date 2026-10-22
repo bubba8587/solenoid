@@ -2272,10 +2272,652 @@ fn arg(a: &[V], i: usize) -> &V {
 }
 
 /// `dispatch(name, ...args)`: the function body, its arguments as the evaluator hands them over.
+/// Every name `call_function`'s own match answers, so a call finds its arm by one hash lookup rather than a chain of
+/// string compares ([[C120]] linearWork).
+#[allow(non_camel_case_types, clippy::upper_case_acronyms)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum F {
+    FILTER,
+    UNIQUE,
+    SORT,
+    SORTBY,
+    TAKE,
+    DROP,
+    IF,
+    IFS,
+    AND,
+    OR,
+    NOT,
+    IFERROR,
+    IFNA,
+    ISERROR,
+    ISERR,
+    ISNA,
+    ERROR_TYPE,
+    ISBLANK,
+    ISNUMBER,
+    ISTEXT,
+    ISLOGICAL,
+    ROUND,
+    ROUNDUP,
+    ROUNDDOWN,
+    TRUNC,
+    INT,
+    ABS,
+    SIGN,
+    EXP,
+    SQRT,
+    LN,
+    LOG10,
+    MOD,
+    POWER,
+    QUOTIENT,
+    SUM,
+    MIN,
+    MAX,
+    AVERAGE,
+    MEDIAN,
+    AVEDEV,
+    GEOMEAN,
+    HARMEAN,
+    DEVSQ,
+    SKEW,
+    SKEW_P,
+    KURT,
+    PTP,
+    IQR,
+    MAD,
+    SEM,
+    CV,
+    RMS,
+    CORREL,
+    PEARSON,
+    RSQ,
+    KENDALL,
+    COVAR,
+    COVARIANCE_P,
+    COVARIANCE_S,
+    SLOPE,
+    INTERCEPT,
+    STEYX,
+    RANK,
+    RANK_EQ,
+    RANK_AVG,
+    TRIMMEAN,
+    PERCENTRANK,
+    PERCENTRANK_INC,
+    PERCENTRANK_EXC,
+    GCD,
+    LCM,
+    LARGE,
+    SMALL,
+    PERCENTILE,
+    PERCENTILE_INC,
+    PERCENTILE_EXC,
+    QUARTILE,
+    QUARTILE_INC,
+    QUARTILE_EXC,
+    MODE,
+    MODE_SNGL,
+    SUMIFS,
+    AVERAGEIFS,
+    MINIFS,
+    MAXIFS,
+    COUNTIFS,
+    COUNTIF,
+    AVERAGEIF,
+    STDEV,
+    STDEV_S,
+    STDEV_P,
+    VAR,
+    VAR_S,
+    VAR_P,
+    PRODUCT,
+    LEN,
+    CONCAT,
+    CONCATENATE,
+    MID,
+    LEFT,
+    RIGHT,
+    UPPER,
+    LOWER,
+    TRIM,
+    REPT,
+    SUBSTITUTE,
+    YEAR,
+    MONTH,
+    DAY,
+    SIN,
+    COS,
+    TAN,
+    ATAN,
+    SINH,
+    COSH,
+    TANH,
+    ASINH,
+    COT,
+    COTH,
+    ACOTH,
+    SEC,
+    SECH,
+    CSC,
+    CSCH,
+    DEGREES,
+    RADIANS,
+    LOG,
+    ATAN2,
+    ACOT,
+    GAMMALN,
+    GAMMALN_PRECISE,
+    SQRTPI,
+    ASIN,
+    ACOS,
+    ACOSH,
+    ATANH,
+    HOUR,
+    MINUTE,
+    SECOND,
+    EOMONTH,
+    WEEKDAY,
+    WEEKNUM,
+    ISOWEEKNUM,
+    DAYS,
+    TIME,
+    PI,
+    EXACT,
+    CEILING,
+    FLOOR,
+    MROUND,
+    CEILING_MATH,
+    FLOOR_MATH,
+    EVEN,
+    ODD,
+    SWITCH,
+    REPLACE,
+    DATEDIF,
+    DAYS360,
+    YEARFRAC,
+    DATETRUNC,
+    FROMEPOCH,
+    TOEPOCH,
+    WORKDAY,
+    WORKDAY_INTL,
+    NETWORKDAYS,
+    NETWORKDAYS_INTL,
+    XLOOKUP,
+    XMATCH,
+    TEXT,
+    NORM_DIST,
+    NORM_INV,
+    NORM_S_DIST,
+    NORM_S_INV,
+    CHISQ_DIST,
+    CHISQ_INV,
+    CHISQ_DIST_RT,
+    F_DIST,
+    F_INV,
+    F_DIST_RT,
+    GAMMA_DIST,
+    LOGNORM_DIST,
+    LOGNORM_INV,
+    WEIBULL_DIST,
+    EXPON_DIST,
+    BINOM_DIST,
+    BINOM_INV,
+    POISSON_DIST,
+    HYPGEOM_DIST,
+    NEGBINOM_DIST,
+    T_DIST,
+    T_DIST_RT,
+    T_DIST_2T,
+    T_INV,
+    T_INV_2T,
+    CHISQ_INV_RT,
+    F_INV_RT,
+    GAMMA_INV,
+    BETA_DIST,
+    BETA_INV,
+    WAVG,
+    WVAR,
+    WSTDEV,
+    COUNTDISTINCT,
+    ARGMAX,
+    ARGMIN,
+    LENGTH,
+    DATEVALUE,
+    TIMEVALUE,
+    FIXED,
+    INDEX,
+    CONTAINS,
+    PMT,
+    FV,
+    PV,
+    NPER,
+    IPMT,
+    PPMT,
+    CLAMP,
+    BETWEEN,
+    ISBOOLEAN,
+    ISCLOSE,
+    HYPOTENUSE,
+    NAND,
+    NOR,
+    XNOR,
+    STANDARDIZE,
+    FISHER,
+    SLN,
+    ORDINAL,
+    TEXTBEFORE,
+    TEXTAFTER,
+    REVERSETEXT,
+    PADTEXT,
+    TRUNCATETEXT,
+    NUMBERVALUE,
+    SEARCH,
+    PROPER,
+    CHAR,
+    UNICHAR,
+    CODE,
+    UNICODE,
+    VALUE,
+    TEXTJOIN,
+    FIND,
+    XOR,
+    COUNT,
+    COUNTA,
+    COUNTBLANK,
+    ISEVEN,
+    ISODD,
+    ISNONTEXT,
+    N,
+    T,
+    CHOOSE,
+    DATE,
+    FACT,
+    FACTDOUBLE,
+    COMBIN,
+    COMBINA,
+    PERMUT,
+    MULTINOMIAL,
+    BINOM_DIST_RANGE,
+    CLEAN,
+    FISHEREXACT,
+    PROPTEST,
+    BINOMTEST,
+    ROW,
+    TODAY,
+    NOW,
+    EDATE,
+    CONVERT,
+    SPEARMAN,
+    FORECAST_LINEAR,
+    F_TEST,
+    T_TEST,
+    PROB,
+    FISHERINV,
+    LOG2,
+    REGEXTEST,
+    REGEXEXTRACT,
+    REGEXREPLACE,
+    ENCODEURL,
+    DECODEURL,
+    ENCODEBASE64,
+    DECODEBASE64,
+    UNACCENT,
+    SPELLNUMBER,
+    HASH,
+    SLUGIFY,
+    TEMPLATE,
+    VALUETOTEXT,
+    DOLLAR,
+    TEXTSPLIT,
+    WRAPTEXT,
+}
+
+/// Where a name's body lives: an arm of `call_function`'s match, a module's own table, or nowhere ported.
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Route {
+    Arm(F),
+    Mod_formulajs,
+    Mod_fns_matrix,
+    Mod_fns_complex,
+    Mod_fns_lists,
+    Mod_fns_stats,
+    Finance,
+    None,
+}
+
+/// `name`'s route, resolved once per name and kept.
+pub fn route(name: &str) -> Route {
+    thread_local! {
+        static ARMS: crate::fxhash::FxHashMap<&'static str, F> = [
+        ("FILTER", F::FILTER),
+        ("UNIQUE", F::UNIQUE),
+        ("SORT", F::SORT),
+        ("SORTBY", F::SORTBY),
+        ("TAKE", F::TAKE),
+        ("DROP", F::DROP),
+        ("IF", F::IF),
+        ("IFS", F::IFS),
+        ("AND", F::AND),
+        ("OR", F::OR),
+        ("NOT", F::NOT),
+        ("IFERROR", F::IFERROR),
+        ("IFNA", F::IFNA),
+        ("ISERROR", F::ISERROR),
+        ("ISERR", F::ISERR),
+        ("ISNA", F::ISNA),
+        ("ERROR.TYPE", F::ERROR_TYPE),
+        ("ISBLANK", F::ISBLANK),
+        ("ISNUMBER", F::ISNUMBER),
+        ("ISTEXT", F::ISTEXT),
+        ("ISLOGICAL", F::ISLOGICAL),
+        ("ROUND", F::ROUND),
+        ("ROUNDUP", F::ROUNDUP),
+        ("ROUNDDOWN", F::ROUNDDOWN),
+        ("TRUNC", F::TRUNC),
+        ("INT", F::INT),
+        ("ABS", F::ABS),
+        ("SIGN", F::SIGN),
+        ("EXP", F::EXP),
+        ("SQRT", F::SQRT),
+        ("LN", F::LN),
+        ("LOG10", F::LOG10),
+        ("MOD", F::MOD),
+        ("POWER", F::POWER),
+        ("QUOTIENT", F::QUOTIENT),
+        ("SUM", F::SUM),
+        ("MIN", F::MIN),
+        ("MAX", F::MAX),
+        ("AVERAGE", F::AVERAGE),
+        ("MEDIAN", F::MEDIAN),
+        ("AVEDEV", F::AVEDEV),
+        ("GEOMEAN", F::GEOMEAN),
+        ("HARMEAN", F::HARMEAN),
+        ("DEVSQ", F::DEVSQ),
+        ("SKEW", F::SKEW),
+        ("SKEW.P", F::SKEW_P),
+        ("KURT", F::KURT),
+        ("PTP", F::PTP),
+        ("IQR", F::IQR),
+        ("MAD", F::MAD),
+        ("SEM", F::SEM),
+        ("CV", F::CV),
+        ("RMS", F::RMS),
+        ("CORREL", F::CORREL),
+        ("PEARSON", F::PEARSON),
+        ("RSQ", F::RSQ),
+        ("KENDALL", F::KENDALL),
+        ("COVAR", F::COVAR),
+        ("COVARIANCE.P", F::COVARIANCE_P),
+        ("COVARIANCE.S", F::COVARIANCE_S),
+        ("SLOPE", F::SLOPE),
+        ("INTERCEPT", F::INTERCEPT),
+        ("STEYX", F::STEYX),
+        ("RANK", F::RANK),
+        ("RANK.EQ", F::RANK_EQ),
+        ("RANK.AVG", F::RANK_AVG),
+        ("TRIMMEAN", F::TRIMMEAN),
+        ("PERCENTRANK", F::PERCENTRANK),
+        ("PERCENTRANK.INC", F::PERCENTRANK_INC),
+        ("PERCENTRANK.EXC", F::PERCENTRANK_EXC),
+        ("GCD", F::GCD),
+        ("LCM", F::LCM),
+        ("LARGE", F::LARGE),
+        ("SMALL", F::SMALL),
+        ("PERCENTILE", F::PERCENTILE),
+        ("PERCENTILE.INC", F::PERCENTILE_INC),
+        ("PERCENTILE.EXC", F::PERCENTILE_EXC),
+        ("QUARTILE", F::QUARTILE),
+        ("QUARTILE.INC", F::QUARTILE_INC),
+        ("QUARTILE.EXC", F::QUARTILE_EXC),
+        ("MODE", F::MODE),
+        ("MODE.SNGL", F::MODE_SNGL),
+        ("SUMIFS", F::SUMIFS),
+        ("AVERAGEIFS", F::AVERAGEIFS),
+        ("MINIFS", F::MINIFS),
+        ("MAXIFS", F::MAXIFS),
+        ("COUNTIFS", F::COUNTIFS),
+        ("COUNTIF", F::COUNTIF),
+        ("AVERAGEIF", F::AVERAGEIF),
+        ("STDEV", F::STDEV),
+        ("STDEV.S", F::STDEV_S),
+        ("STDEV.P", F::STDEV_P),
+        ("VAR", F::VAR),
+        ("VAR.S", F::VAR_S),
+        ("VAR.P", F::VAR_P),
+        ("PRODUCT", F::PRODUCT),
+        ("LEN", F::LEN),
+        ("CONCAT", F::CONCAT),
+        ("CONCATENATE", F::CONCATENATE),
+        ("MID", F::MID),
+        ("LEFT", F::LEFT),
+        ("RIGHT", F::RIGHT),
+        ("UPPER", F::UPPER),
+        ("LOWER", F::LOWER),
+        ("TRIM", F::TRIM),
+        ("REPT", F::REPT),
+        ("SUBSTITUTE", F::SUBSTITUTE),
+        ("YEAR", F::YEAR),
+        ("MONTH", F::MONTH),
+        ("DAY", F::DAY),
+        ("SIN", F::SIN),
+        ("COS", F::COS),
+        ("TAN", F::TAN),
+        ("ATAN", F::ATAN),
+        ("SINH", F::SINH),
+        ("COSH", F::COSH),
+        ("TANH", F::TANH),
+        ("ASINH", F::ASINH),
+        ("COT", F::COT),
+        ("COTH", F::COTH),
+        ("ACOTH", F::ACOTH),
+        ("SEC", F::SEC),
+        ("SECH", F::SECH),
+        ("CSC", F::CSC),
+        ("CSCH", F::CSCH),
+        ("DEGREES", F::DEGREES),
+        ("RADIANS", F::RADIANS),
+        ("LOG", F::LOG),
+        ("ATAN2", F::ATAN2),
+        ("ACOT", F::ACOT),
+        ("GAMMALN", F::GAMMALN),
+        ("GAMMALN.PRECISE", F::GAMMALN_PRECISE),
+        ("SQRTPI", F::SQRTPI),
+        ("ASIN", F::ASIN),
+        ("ACOS", F::ACOS),
+        ("ACOSH", F::ACOSH),
+        ("ATANH", F::ATANH),
+        ("HOUR", F::HOUR),
+        ("MINUTE", F::MINUTE),
+        ("SECOND", F::SECOND),
+        ("EOMONTH", F::EOMONTH),
+        ("WEEKDAY", F::WEEKDAY),
+        ("WEEKNUM", F::WEEKNUM),
+        ("ISOWEEKNUM", F::ISOWEEKNUM),
+        ("DAYS", F::DAYS),
+        ("TIME", F::TIME),
+        ("PI", F::PI),
+        ("EXACT", F::EXACT),
+        ("CEILING", F::CEILING),
+        ("FLOOR", F::FLOOR),
+        ("MROUND", F::MROUND),
+        ("CEILING.MATH", F::CEILING_MATH),
+        ("FLOOR.MATH", F::FLOOR_MATH),
+        ("EVEN", F::EVEN),
+        ("ODD", F::ODD),
+        ("SWITCH", F::SWITCH),
+        ("REPLACE", F::REPLACE),
+        ("DATEDIF", F::DATEDIF),
+        ("DAYS360", F::DAYS360),
+        ("YEARFRAC", F::YEARFRAC),
+        ("DATETRUNC", F::DATETRUNC),
+        ("FROMEPOCH", F::FROMEPOCH),
+        ("TOEPOCH", F::TOEPOCH),
+        ("WORKDAY", F::WORKDAY),
+        ("WORKDAY.INTL", F::WORKDAY_INTL),
+        ("NETWORKDAYS", F::NETWORKDAYS),
+        ("NETWORKDAYS.INTL", F::NETWORKDAYS_INTL),
+        ("XLOOKUP", F::XLOOKUP),
+        ("XMATCH", F::XMATCH),
+        ("TEXT", F::TEXT),
+        ("NORM.DIST", F::NORM_DIST),
+        ("NORM.INV", F::NORM_INV),
+        ("NORM.S.DIST", F::NORM_S_DIST),
+        ("NORM.S.INV", F::NORM_S_INV),
+        ("CHISQ.DIST", F::CHISQ_DIST),
+        ("CHISQ.INV", F::CHISQ_INV),
+        ("CHISQ.DIST.RT", F::CHISQ_DIST_RT),
+        ("F.DIST", F::F_DIST),
+        ("F.INV", F::F_INV),
+        ("F.DIST.RT", F::F_DIST_RT),
+        ("GAMMA.DIST", F::GAMMA_DIST),
+        ("LOGNORM.DIST", F::LOGNORM_DIST),
+        ("LOGNORM.INV", F::LOGNORM_INV),
+        ("WEIBULL.DIST", F::WEIBULL_DIST),
+        ("EXPON.DIST", F::EXPON_DIST),
+        ("BINOM.DIST", F::BINOM_DIST),
+        ("BINOM.INV", F::BINOM_INV),
+        ("POISSON.DIST", F::POISSON_DIST),
+        ("HYPGEOM.DIST", F::HYPGEOM_DIST),
+        ("NEGBINOM.DIST", F::NEGBINOM_DIST),
+        ("T.DIST", F::T_DIST),
+        ("T.DIST.RT", F::T_DIST_RT),
+        ("T.DIST.2T", F::T_DIST_2T),
+        ("T.INV", F::T_INV),
+        ("T.INV.2T", F::T_INV_2T),
+        ("CHISQ.INV.RT", F::CHISQ_INV_RT),
+        ("F.INV.RT", F::F_INV_RT),
+        ("GAMMA.INV", F::GAMMA_INV),
+        ("BETA.DIST", F::BETA_DIST),
+        ("BETA.INV", F::BETA_INV),
+        ("WAVG", F::WAVG),
+        ("WVAR", F::WVAR),
+        ("WSTDEV", F::WSTDEV),
+        ("COUNTDISTINCT", F::COUNTDISTINCT),
+        ("ARGMAX", F::ARGMAX),
+        ("ARGMIN", F::ARGMIN),
+        ("LENGTH", F::LENGTH),
+        ("DATEVALUE", F::DATEVALUE),
+        ("TIMEVALUE", F::TIMEVALUE),
+        ("FIXED", F::FIXED),
+        ("INDEX", F::INDEX),
+        ("CONTAINS", F::CONTAINS),
+        ("PMT", F::PMT),
+        ("FV", F::FV),
+        ("PV", F::PV),
+        ("NPER", F::NPER),
+        ("IPMT", F::IPMT),
+        ("PPMT", F::PPMT),
+        ("CLAMP", F::CLAMP),
+        ("BETWEEN", F::BETWEEN),
+        ("ISBOOLEAN", F::ISBOOLEAN),
+        ("ISCLOSE", F::ISCLOSE),
+        ("HYPOTENUSE", F::HYPOTENUSE),
+        ("NAND", F::NAND),
+        ("NOR", F::NOR),
+        ("XNOR", F::XNOR),
+        ("STANDARDIZE", F::STANDARDIZE),
+        ("FISHER", F::FISHER),
+        ("SLN", F::SLN),
+        ("ORDINAL", F::ORDINAL),
+        ("TEXTBEFORE", F::TEXTBEFORE),
+        ("TEXTAFTER", F::TEXTAFTER),
+        ("REVERSETEXT", F::REVERSETEXT),
+        ("PADTEXT", F::PADTEXT),
+        ("TRUNCATETEXT", F::TRUNCATETEXT),
+        ("NUMBERVALUE", F::NUMBERVALUE),
+        ("SEARCH", F::SEARCH),
+        ("PROPER", F::PROPER),
+        ("CHAR", F::CHAR),
+        ("UNICHAR", F::UNICHAR),
+        ("CODE", F::CODE),
+        ("UNICODE", F::UNICODE),
+        ("VALUE", F::VALUE),
+        ("TEXTJOIN", F::TEXTJOIN),
+        ("FIND", F::FIND),
+        ("XOR", F::XOR),
+        ("COUNT", F::COUNT),
+        ("COUNTA", F::COUNTA),
+        ("COUNTBLANK", F::COUNTBLANK),
+        ("ISEVEN", F::ISEVEN),
+        ("ISODD", F::ISODD),
+        ("ISNONTEXT", F::ISNONTEXT),
+        ("N", F::N),
+        ("T", F::T),
+        ("CHOOSE", F::CHOOSE),
+        ("DATE", F::DATE),
+        ("FACT", F::FACT),
+        ("FACTDOUBLE", F::FACTDOUBLE),
+        ("COMBIN", F::COMBIN),
+        ("COMBINA", F::COMBINA),
+        ("PERMUT", F::PERMUT),
+        ("MULTINOMIAL", F::MULTINOMIAL),
+        ("BINOM.DIST.RANGE", F::BINOM_DIST_RANGE),
+        ("CLEAN", F::CLEAN),
+        ("FISHEREXACT", F::FISHEREXACT),
+        ("PROPTEST", F::PROPTEST),
+        ("BINOMTEST", F::BINOMTEST),
+        ("ROW", F::ROW),
+        ("TODAY", F::TODAY),
+        ("NOW", F::NOW),
+        ("EDATE", F::EDATE),
+        ("CONVERT", F::CONVERT),
+        ("SPEARMAN", F::SPEARMAN),
+        ("FORECAST.LINEAR", F::FORECAST_LINEAR),
+        ("F.TEST", F::F_TEST),
+        ("T.TEST", F::T_TEST),
+        ("PROB", F::PROB),
+        ("FISHERINV", F::FISHERINV),
+        ("LOG2", F::LOG2),
+        ("REGEXTEST", F::REGEXTEST),
+        ("REGEXEXTRACT", F::REGEXEXTRACT),
+        ("REGEXREPLACE", F::REGEXREPLACE),
+        ("ENCODEURL", F::ENCODEURL),
+        ("DECODEURL", F::DECODEURL),
+        ("ENCODEBASE64", F::ENCODEBASE64),
+        ("DECODEBASE64", F::DECODEBASE64),
+        ("UNACCENT", F::UNACCENT),
+        ("SPELLNUMBER", F::SPELLNUMBER),
+        ("HASH", F::HASH),
+        ("SLUGIFY", F::SLUGIFY),
+        ("TEMPLATE", F::TEMPLATE),
+        ("VALUETOTEXT", F::VALUETOTEXT),
+        ("DOLLAR", F::DOLLAR),
+        ("TEXTSPLIT", F::TEXTSPLIT),
+        ("WRAPTEXT", F::WRAPTEXT),
+        ].into_iter().collect();
+        static ROUTES: std::cell::RefCell<crate::fxhash::FxHashMap<String, Route>> = std::cell::RefCell::new(Default::default());
+    }
+    if let Some(r) = ROUTES.with(|r| r.borrow().get(name).copied()) {
+        return r;
+    }
+    let r = if let Some(f) = ARMS.with(|a| a.get(name).copied()) {
+        Route::Arm(f)
+    } else if crate::formulajs::NAMES.contains(&name) {
+        Route::Mod_formulajs
+    } else if crate::fns_matrix::NAMES.contains(&name) {
+        Route::Mod_fns_matrix
+    } else if crate::fns_complex::NAMES.contains(&name) {
+        Route::Mod_fns_complex
+    } else if crate::fns_lists::NAMES.contains(&name) {
+        Route::Mod_fns_lists
+    } else if crate::fns_stats::NAMES.contains(&name) {
+        Route::Mod_fns_stats
+    } else if is_finance(name) {
+        Route::Finance
+    } else {
+        Route::None
+    };
+    ROUTES.with(|m| m.borrow_mut().insert(name.to_string(), r));
+    r
+}
+
 pub fn call_function(name: &str, a: &[V]) -> V {
     // A range body ported for flat arguments reads a list or a table among them as its items, as the TS's does. A
     // value nested past a table is read differently by each TS body, which no ported one follows yet.
-    if a.iter().any(|v| matches!(v, V::List(_))) && !reads_lists(name) && crate::eval::traits(name).is_some_and(|t| t.kind == "range") {
+    if a.iter().any(|v| matches!(v, V::List(_))) && !reads_lists(name) && crate::eval::traits(name).is_some_and(|t| t.kind == crate::eval::Kind::Range) {
         let mut flat = Vec::with_capacity(a.len());
         for v in a {
             match v {
@@ -2297,9 +2939,19 @@ pub fn call_function(name: &str, a: &[V]) -> V {
         }
         return call_function(name, &flat);
     }
-    match name {
-        "FILTER" | "UNIQUE" | "SORT" | "SORTBY" | "TAKE" | "DROP" => crate::shapers::call(name, a),
-        "IF" => {
+    let f = match route(name) {
+        Route::Arm(f) => f,
+        Route::Mod_formulajs => return crate::formulajs::call(name, a),
+        Route::Mod_fns_matrix => return crate::fns_matrix::call(name, a),
+        Route::Mod_fns_complex => return crate::fns_complex::call(name, a),
+        Route::Mod_fns_lists => return crate::fns_lists::call(name, a),
+        Route::Mod_fns_stats => return crate::fns_stats::call(name, a),
+        Route::Finance => return finance_function(name, a),
+        Route::None => return V::Undef,
+    };
+    match f {
+        F::FILTER | F::UNIQUE | F::SORT | F::SORTBY | F::TAKE | F::DROP => crate::shapers::call(name, a),
+        F::IF => {
             let test = match arg(a, 0) {
                 V::Undef => V::Null,
                 v => v.clone(),
@@ -2311,7 +2963,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Cond::Bool(false) => if matches!(arg(a, 2), V::Undef) { V::Bool(false) } else { arg(a, 2).clone() },
             }
         }
-        "IFS" => {
+        F::IFS => {
             if !a.len().is_multiple_of(2) {
                 return V::err(sol_error("#VALUE!", "IFS takes conditions and values in pairs"));
             }
@@ -2326,7 +2978,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::err(sol_error("#N/A", "No IFS condition matched"))
         }
-        "AND" | "OR" => {
+        F::AND | F::OR => {
             let and = name == "AND";
             let mut result: Option<bool> = None;
             for v in a {
@@ -2346,24 +2998,24 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             result.map_or(V::Fx("#VALUE!"), V::Bool)
         }
-        "NOT" => match arg(a, 0) {
+        F::NOT => match arg(a, 0) {
             V::Str(_) => V::Fx("#VALUE!"),
             v @ V::Fx(_) => v.clone(),
             v => V::Bool(!truthy(v)),
         },
-        "IFERROR" | "IFNA" | "ISERROR" | "ISERR" | "ISNA" | "ERROR.TYPE" => error_handler(name, a),
-        "ISBLANK" => V::Bool(matches!(arg(a, 0), V::Null)),
-        "ISNUMBER" => V::Bool(matches!(arg(a, 0), V::Num(n) if n.is_finite())),
-        "ISTEXT" => V::Bool(matches!(arg(a, 0), V::Str(_))),
-        "ISLOGICAL" => V::Bool(matches!(arg(a, 0), V::Bool(_))),
-        "ROUND" | "ROUNDUP" | "ROUNDDOWN" => {
+        F::IFERROR | F::IFNA | F::ISERROR | F::ISERR | F::ISNA | F::ERROR_TYPE => error_handler(name, a),
+        F::ISBLANK => V::Bool(matches!(arg(a, 0), V::Null)),
+        F::ISNUMBER => V::Bool(matches!(arg(a, 0), V::Num(n) if n.is_finite())),
+        F::ISTEXT => V::Bool(matches!(arg(a, 0), V::Str(_))),
+        F::ISLOGICAL => V::Bool(matches!(arg(a, 0), V::Bool(_))),
+        F::ROUND | F::ROUNDUP | F::ROUNDDOWN => {
             let (n, digits) = (to_num(arg(a, 0)), opt_num(arg(a, 1), 0.0));
             if n.is_nan() || digits.is_nan() {
                 return value_err(name);
             }
-            V::Num(round_digits(n, digits, match name { "ROUND" => "round", "ROUNDUP" => "roundup", _ => "rounddown" }))
+            V::Num(round_digits(n, digits, match f { F::ROUND => "round", F::ROUNDUP => "roundup", _ => "rounddown" }))
         }
-        "TRUNC" => {
+        F::TRUNC => {
             let (n, d) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
             match (n, d) {
                 (e @ V::Fx(_), _) | (_, e @ V::Fx(_)) => e,
@@ -2375,10 +3027,10 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 _ => V::Fx("#VALUE!"),
             }
         }
-        "INT" | "ABS" | "SIGN" => match parse_number(arg(a, 0)) {
-            V::Num(n) => V::Num(match name {
-                "INT" => n.floor(),
-                "ABS" => n.abs(),
+        F::INT | F::ABS | F::SIGN => match parse_number(arg(a, 0)) {
+            V::Num(n) => V::Num(match f {
+                F::INT => n.floor(),
+                F::ABS => n.abs(),
                 _ => {
                     if n < 0.0 {
                         -1.0
@@ -2391,7 +3043,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }),
             e => e,
         },
-        "EXP" => {
+        F::EXP => {
             if a.is_empty() {
                 return V::Fx("#N/A");
             }
@@ -2403,14 +3055,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 e => e,
             }
         }
-        "SQRT" => {
+        F::SQRT => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err("SQRT");
             }
             if n < 0.0 { V::err(sol_error("#DOMAIN!", "SQRT of a negative number")) } else { V::Num(n.sqrt()) }
         }
-        "LN" | "LOG10" => {
+        F::LN | F::LOG10 => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err(name);
@@ -2420,14 +3072,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Num(if name == "LN" { crate::fdlibm::log(n) } else { crate::fdlibm::log10(n) })
         }
-        "MOD" => {
+        F::MOD => {
             let (x, y) = (to_num(arg(a, 0)), opt_num(arg(a, 1), 0.0));
             if x.is_nan() || y.is_nan() {
                 return value_err("MOD");
             }
             if y == 0.0 { V::err(sol_error("#DIV/0!", "Division by zero")) } else { V::Num(x - y * (x / y).floor()) }
         }
-        "POWER" => {
+        F::POWER => {
             let (x, y) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
             if x.is_nan() || y.is_nan() {
                 return value_err("POWER");
@@ -2438,15 +3090,15 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 V::Num(js_pow(x, y))
             }
         }
-        "QUOTIENT" => {
+        F::QUOTIENT => {
             let (x, y) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
             if x.is_nan() || y.is_nan() {
                 return value_err("QUOTIENT");
             }
             if y == 0.0 { V::err(sol_error("#DIV/0!", "Division by zero")) } else { V::Num((x / y).trunc()) }
         }
-        "SUM" => sum_like_fx(a),
-        "MIN" | "MAX" => {
+        F::SUM => sum_like_fx(a),
+        F::MIN | F::MAX => {
             let cells = flat_all(a);
             if let Some(e) = cells.iter().find(|v| v.is_err()) {
                 return e.clone();
@@ -2457,25 +3109,25 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             aggregate(if name == "MIN" { "min" } else { "max" }, &nums)
         }
-        "AVERAGE" => aggregate("avg", &nums_of(a)),
-        "MEDIAN" => aggregate("median", &nums_of(a)),
-        "AVEDEV" | "GEOMEAN" | "HARMEAN" | "DEVSQ" | "SKEW" | "SKEW.P" | "KURT" | "PTP" | "IQR" | "MAD" | "SEM" | "CV" | "RMS" => {
+        F::AVERAGE => aggregate("avg", &nums_of(a)),
+        F::MEDIAN => aggregate("median", &nums_of(a)),
+        F::AVEDEV | F::GEOMEAN | F::HARMEAN | F::DEVSQ | F::SKEW | F::SKEW_P | F::KURT | F::PTP | F::IQR | F::MAD | F::SEM | F::CV | F::RMS => {
             let op = match name {
                 "SKEW.P" => "skew_p".to_string(),
                 other => other.to_lowercase(),
             };
             aggregate(&op, &nums_of(a))
         }
-        "CORREL" | "PEARSON" => pearson(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), false),
-        "RSQ" => pearson(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), true),
-        "KENDALL" => kendall_tau(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
-        "COVAR" | "COVARIANCE.P" | "COVARIANCE.S" => {
+        F::CORREL | F::PEARSON => pearson(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), false),
+        F::RSQ => pearson(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), true),
+        F::KENDALL => kendall_tau(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
+        F::COVAR | F::COVARIANCE_P | F::COVARIANCE_S => {
             covariance(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), name == "COVARIANCE.S")
         }
-        "SLOPE" | "INTERCEPT" | "STEYX" => {
+        F::SLOPE | F::INTERCEPT | F::STEYX => {
             regression(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), name)
         }
-        "RANK" | "RANK.EQ" | "RANK.AVG" => {
+        F::RANK | F::RANK_EQ | F::RANK_AVG => {
             let order = arg(a, 2);
             let o = if matches!(order, V::Null | V::Undef) { 0.0 } else { to_num(order) };
             if o.is_nan() {
@@ -2490,7 +3142,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 _ => throw(sol_error("#VALUE!", "ref.filter is not a function")),
             }
         }
-        "TRIMMEAN" => {
+        F::TRIMMEAN => {
             let (n, items) = match arg(a, 0) {
                 V::Null | V::Undef => (Some(0.0), Some(Vec::new())),
                 V::List(vs) => (Some(vs.len() as f64), Some(vs.to_vec())),
@@ -2499,7 +3151,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             };
             excel_trimmean(n, items, to_num(arg(a, 1)))
         }
-        "PERCENTRANK" | "PERCENTRANK.INC" | "PERCENTRANK.EXC" => {
+        F::PERCENTRANK | F::PERCENTRANK_INC | F::PERCENTRANK_EXC => {
             let arr: Vec<V> = match arg(a, 0) {
                 V::List(items) => items.iter().flat_map(|v| match v {
                     V::List(inner) => inner.as_ref().clone(),
@@ -2512,21 +3164,21 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let sig = if matches!(sig, V::Null | V::Undef) { 3.0 } else { to_num(sig).trunc() };
             excel_percent_rank(&arr, to_num(arg(a, 1)), sig, name == "PERCENTRANK.EXC")
         }
-        "GCD" | "LCM" => gcd_lcm(name == "GCD", &nums_of(a)),
-        "LARGE" | "SMALL" => nth_extreme(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "LARGE"),
-        "PERCENTILE" | "PERCENTILE.INC" | "PERCENTILE.EXC" => {
+        F::GCD | F::LCM => gcd_lcm(name == "GCD", &nums_of(a)),
+        F::LARGE | F::SMALL => nth_extreme(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "LARGE"),
+        F::PERCENTILE | F::PERCENTILE_INC | F::PERCENTILE_EXC => {
             percentile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "PERCENTILE.EXC")
         }
-        "QUARTILE" | "QUARTILE.INC" | "QUARTILE.EXC" => {
+        F::QUARTILE | F::QUARTILE_INC | F::QUARTILE_EXC => {
             quartile(&nums_of(&a[..1.min(a.len())]), to_num(arg(a, 1)), name == "QUARTILE.EXC")
         }
-        "MODE" | "MODE.SNGL" => mode_single(&nums_of(a)),
-        "SUMIFS" | "AVERAGEIFS" | "MINIFS" | "MAXIFS" => {
+        F::MODE | F::MODE_SNGL => mode_single(&nums_of(a)),
+        F::SUMIFS | F::AVERAGEIFS | F::MINIFS | F::MAXIFS => {
             use crate::excel_criteria::{as_range, criteria_aggregate, ifs_pairs, Kind};
-            let kind = match name {
-                "SUMIFS" => Kind::Sum,
-                "AVERAGEIFS" => Kind::Average,
-                "MINIFS" => Kind::Min,
+            let kind = match f {
+                F::SUMIFS => Kind::Sum,
+                F::AVERAGEIFS => Kind::Average,
+                F::MINIFS => Kind::Min,
                 _ => Kind::Max,
             };
             match ifs_pairs(a.get(1..).unwrap_or(&[])) {
@@ -2534,30 +3186,30 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Err(e) => e,
             }
         }
-        "COUNTIFS" => match crate::excel_criteria::ifs_pairs(a) {
+        F::COUNTIFS => match crate::excel_criteria::ifs_pairs(a) {
             Ok(pairs) => crate::excel_criteria::criteria_aggregate(crate::excel_criteria::Kind::Count, None, &pairs),
             Err(e) => e,
         },
-        "COUNTIF" => {
+        F::COUNTIF => {
             use crate::excel_criteria::{as_range, criteria_aggregate, Kind};
             criteria_aggregate(Kind::Count, None, &[(as_range(arg(a, 0)), arg(a, 1).clone())])
         }
-        "AVERAGEIF" => {
+        F::AVERAGEIF => {
             use crate::excel_criteria::{as_range, criteria_aggregate, Kind};
             let values = if matches!(arg(a, 2), V::Undef) { arg(a, 0) } else { arg(a, 2) };
             criteria_aggregate(Kind::Average, Some(&as_range(values)), &[(as_range(arg(a, 0)), arg(a, 1).clone())])
         }
-        "STDEV" | "STDEV.S" => aggregate("stdev", &nums_of(a)),
-        "STDEV.P" => aggregate("stdev_p", &nums_of(a)),
-        "VAR" | "VAR.S" => aggregate("var_s", &nums_of(a)),
-        "VAR.P" => aggregate("var_p", &nums_of(a)),
-        "PRODUCT" => {
+        F::STDEV | F::STDEV_S => aggregate("stdev", &nums_of(a)),
+        F::STDEV_P => aggregate("stdev_p", &nums_of(a)),
+        F::VAR | F::VAR_S => aggregate("var_s", &nums_of(a)),
+        F::VAR_P => aggregate("var_p", &nums_of(a)),
+        F::PRODUCT => {
             let n = nums_of(a);
             if n.is_empty() { V::Num(0.0) } else { aggregate("product", &n) }
         }
-        "LEN" => V::Num(utf16(&to_str(arg(a, 0))).len() as f64),
-        "CONCAT" | "CONCATENATE" => V::str(&a.iter().map(to_str).collect::<String>()),
-        "MID" => {
+        F::LEN => V::Num(utf16(&to_str(arg(a, 0))).len() as f64),
+        F::CONCAT | F::CONCATENATE => V::str(&a.iter().map(to_str).collect::<String>()),
+        F::MID => {
             let t = utf16(&to_str(arg(a, 0)));
             let (s, n) = (to_num(arg(a, 1)).trunc(), to_num(arg(a, 2)).trunc());
             if s.is_nan() || n.is_nan() {
@@ -2570,7 +3222,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let end = clamp_index(s - 1.0 + n, t.len()).max(start);
             V::str(&from_utf16(&t[start..end]))
         }
-        "LEFT" | "RIGHT" => {
+        F::LEFT | F::RIGHT => {
             if !matches!(arg(a, 1), V::Null | V::Undef) && to_num(arg(a, 1)).trunc() < 0.0 {
                 return V::err(sol_error("#VALUE!", format!("{name} takes 0 or more characters")));
             }
@@ -2593,14 +3245,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 V::str(&from_utf16(&text[clamp_index(text.len() as f64 - n, text.len())..]))
             }
         }
-        "UPPER" | "LOWER" | "TRIM" => {
+        F::UPPER | F::LOWER | F::TRIM => {
             if name == "LOWER" && a.len() != 1 {
                 return V::Fx("#VALUE!");
             }
             let t = to_str(arg(a, 0));
-            V::str(&match name {
-                "UPPER" => t.to_uppercase(),
-                "LOWER" => t.to_lowercase(),
+            V::str(&match f {
+                F::UPPER => t.to_uppercase(),
+                F::LOWER => t.to_lowercase(),
                 _ => {
                     let mut out = String::with_capacity(t.len());
                     let mut space = false;
@@ -2622,7 +3274,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 }
             })
         }
-        "REPT" => {
+        F::REPT => {
             let t = to_str(arg(a, 0));
             let n = to_num(arg(a, 1)).trunc();
             if n.is_nan() {
@@ -2640,7 +3292,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::str(&t.repeat(n as usize))
         }
-        "SUBSTITUTE" => {
+        F::SUBSTITUTE => {
             let (t, o, n) = (to_str(arg(a, 0)), to_str(arg(a, 1)), to_str(arg(a, 2)));
             if o.is_empty() {
                 return V::str(&t);
@@ -2665,66 +3317,66 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let p = at.unwrap();
             V::str(&format!("{}{}{}", &t[..p], n, &t[p + o.len()..]))
         }
-        "YEAR" | "MONTH" | "DAY" => {
+        F::YEAR | F::MONTH | F::DAY => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err(name);
             }
             match serial_to_utc_parts(n) {
                 None => V::Num(f64::NAN),
-                Some(p) => V::Num(match name {
-                    "YEAR" => p.year as f64,
-                    "MONTH" => f64::from(p.month),
+                Some(p) => V::Num(match f {
+                    F::YEAR => p.year as f64,
+                    F::MONTH => f64::from(p.month),
                     _ => f64::from(p.day),
                 }),
             }
         }
         // Formula.js's trig: parseNumber, then V8's Math (fdlibm: ours, or the libm crate where it matches V8 bit for bit).
-        "SIN" | "COS" | "TAN" | "ATAN" | "SINH" | "COSH" | "TANH" | "ASINH" | "COT" | "COTH" | "ACOTH" | "SEC"
-        | "SECH" | "CSC" | "CSCH" | "DEGREES" | "RADIANS" => {
+        F::SIN | F::COS | F::TAN | F::ATAN | F::SINH | F::COSH | F::TANH | F::ASINH | F::COT | F::COTH | F::ACOTH | F::SEC
+        | F::SECH | F::CSC | F::CSCH | F::DEGREES | F::RADIANS => {
             use crate::fdlibm::{cos, exp, log, sin};
             let n = match parse_number(arg(a, 0)) {
                 V::Num(n) => n,
                 e => return e,
             };
             let div0 = V::Fx("#DIV/0!");
-            V::Num(match name {
-                "SIN" => sin(n),
-                "COS" => cos(n),
-                "TAN" => crate::fdlibm::tan(n),
-                "ATAN" => crate::fdlibm::atan(n),
-                "SINH" => (exp(n) - exp(-n)) / 2.0,
-                "COSH" => (exp(n) + exp(-n)) / 2.0,
-                "TANH" => {
+            V::Num(match f {
+                F::SIN => sin(n),
+                F::COS => cos(n),
+                F::TAN => crate::fdlibm::tan(n),
+                F::ATAN => crate::fdlibm::atan(n),
+                F::SINH => (exp(n) - exp(-n)) / 2.0,
+                F::COSH => (exp(n) + exp(-n)) / 2.0,
+                F::TANH => {
                     let e2 = exp(2.0 * n);
                     (e2 - 1.0) / (e2 + 1.0)
                 }
-                "ASINH" => log(n + (n * n + 1.0).sqrt()),
-                "COT" if n == 0.0 => return div0,
-                "COT" => 1.0 / crate::fdlibm::tan(n),
-                "COTH" if n == 0.0 => return div0,
-                "COTH" => {
+                F::ASINH => log(n + (n * n + 1.0).sqrt()),
+                F::COT if n == 0.0 => return div0,
+                F::COT => 1.0 / crate::fdlibm::tan(n),
+                F::COTH if n == 0.0 => return div0,
+                F::COTH => {
                     let e2 = exp(2.0 * n);
                     (e2 + 1.0) / (e2 - 1.0)
                 }
-                "ACOTH" => {
+                F::ACOTH => {
                     let r = 0.5 * log((n + 1.0) / (n - 1.0));
                     if r.is_nan() {
                         return V::Fx("#NUM!");
                     }
                     r
                 }
-                "SEC" => 1.0 / cos(n),
-                "SECH" => 2.0 / (exp(n) + exp(-n)),
-                "CSC" if n == 0.0 => return div0,
-                "CSC" => 1.0 / sin(n),
-                "CSCH" if n == 0.0 => return div0,
-                "CSCH" => 2.0 / (exp(n) - exp(-n)),
-                "DEGREES" => (n * 180.0) / std::f64::consts::PI,
+                F::SEC => 1.0 / cos(n),
+                F::SECH => 2.0 / (exp(n) + exp(-n)),
+                F::CSC if n == 0.0 => return div0,
+                F::CSC => 1.0 / sin(n),
+                F::CSCH if n == 0.0 => return div0,
+                F::CSCH => 2.0 / (exp(n) - exp(-n)),
+                F::DEGREES => (n * 180.0) / std::f64::consts::PI,
                 _ => (n * std::f64::consts::PI) / 180.0,
             })
         }
-        "LOG" => {
+        F::LOG => {
             let n = parse_number(arg(a, 0));
             let base = if truthy(arg(a, 1)) { parse_number(arg(a, 1)) } else { V::Num(10.0) };
             match (n, base) {
@@ -2739,7 +3391,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 _ => V::Fx("#VALUE!"),
             }
         }
-        "ATAN2" => {
+        F::ATAN2 => {
             let (x, y) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
             if x.is_nan() || y.is_nan() {
                 return value_err("ATAN2");
@@ -2747,7 +3399,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             V::Num(crate::fdlibm::atan2(y, x))
         }
         // Excel's ACOT lies in (0, π), and GAMMALN refuses x <= 0 as Excel's #NUM! does (excelFunctions.ts `num1`).
-        "ACOT" | "GAMMALN" | "GAMMALN.PRECISE" => {
+        F::ACOT | F::GAMMALN | F::GAMMALN_PRECISE => {
             let x = to_num(arg(a, 0));
             if x.is_nan() {
                 return value_err(name);
@@ -2767,43 +3419,43 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Num(crate::dists::ln_gamma(x))
         }
-        "SQRTPI" | "ASIN" | "ACOS" | "ACOSH" | "ATANH" => {
+        F::SQRTPI | F::ASIN | F::ACOS | F::ACOSH | F::ATANH => {
             let x = to_num(arg(a, 0));
             if x.is_nan() {
                 return value_err(name);
             }
-            let outside = match name {
-                "SQRTPI" => x < 0.0,
-                "ASIN" | "ACOS" => !(-1.0..=1.0).contains(&x),
-                "ACOSH" => x < 1.0,
+            let outside = match f {
+                F::SQRTPI => x < 0.0,
+                F::ASIN | F::ACOS => !(-1.0..=1.0).contains(&x),
+                F::ACOSH => x < 1.0,
                 _ => x <= -1.0 || x >= 1.0,
             };
             if outside {
                 return V::err(sol_error("#DOMAIN!", "Input is outside this function's domain"));
             }
-            V::Num(match name {
-                "SQRTPI" => (x * std::f64::consts::PI).sqrt(),
-                "ASIN" => crate::fdlibm::asin(x),
-                "ACOS" => crate::fdlibm::acos(x),
-                "ACOSH" => crate::fdlibm::acosh(x),
+            V::Num(match f {
+                F::SQRTPI => (x * std::f64::consts::PI).sqrt(),
+                F::ASIN => crate::fdlibm::asin(x),
+                F::ACOS => crate::fdlibm::acos(x),
+                F::ACOSH => crate::fdlibm::acosh(x),
                 _ => crate::fdlibm::atanh(x),
             })
         }
-        "HOUR" | "MINUTE" | "SECOND" => {
+        F::HOUR | F::MINUTE | F::SECOND => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err(name);
             }
             V::Num(serial_to_ms(n).map_or(f64::NAN, |ms| {
                 let p = parts_of_ms(ms);
-                (match name {
-                    "HOUR" => p.hours,
-                    "MINUTE" => p.minutes,
+                (match f {
+                    F::HOUR => p.hours,
+                    F::MINUTE => p.minutes,
                     _ => p.seconds,
                 }) as f64
             }))
         }
-        "EOMONTH" => {
+        F::EOMONTH => {
             let (n, m) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
             if n.is_nan() || m.is_nan() {
                 return value_err("EOMONTH");
@@ -2814,7 +3466,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             });
             V::Num(eom.map_or(f64::NAN, |ms| math_round(ms / MS_PER_DAY + 25569.0)))
         }
-        "WEEKDAY" | "WEEKNUM" | "ISOWEEKNUM" => {
+        F::WEEKDAY | F::WEEKNUM | F::ISOWEEKNUM => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err(name);
@@ -2823,11 +3475,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let Some(ms) = serial_to_ms(n) else { return V::Num(f64::NAN) };
             let p = parts_of_ms(ms);
             let dow = p.weekday as f64;
-            V::Num(match name {
-                "WEEKDAY" if rt == 2.0 => (dow + 6.0) % 7.0 + 1.0,
-                "WEEKDAY" if rt == 3.0 => (dow + 6.0) % 7.0,
-                "WEEKDAY" => dow + 1.0,
-                "WEEKNUM" => match date_utc(p.year as f64, 0.0, 1.0) {
+            V::Num(match f {
+                F::WEEKDAY if rt == 2.0 => (dow + 6.0) % 7.0 + 1.0,
+                F::WEEKDAY if rt == 3.0 => (dow + 6.0) % 7.0,
+                F::WEEKDAY => dow + 1.0,
+                F::WEEKNUM => match date_utc(p.year as f64, 0.0, 1.0) {
                     None => f64::NAN,
                     Some(jan1) => {
                         let jan1_dow = parts_of_ms(jan1).weekday as f64;
@@ -2838,7 +3490,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 _ => iso_week(ms),
             })
         }
-        "DAYS" => {
+        F::DAYS => {
             let (e, s) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
             if e.is_nan() || s.is_nan() {
                 return value_err("DAYS");
@@ -2848,36 +3500,36 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 _ => f64::NAN,
             })
         }
-        "TIME" => {
+        F::TIME => {
             let (h, m, s) = (to_num(arg(a, 0)), to_num(arg(a, 1)), to_num(arg(a, 2)));
             if h.is_nan() || m.is_nan() || s.is_nan() {
                 return value_err("TIME");
             }
             V::Num(((h * 3600.0 + m * 60.0 + s) % 86400.0) / 86400.0)
         }
-        "PI" => V::Num(std::f64::consts::PI),
-        "EXACT" => {
+        F::PI => V::Num(std::f64::consts::PI),
+        F::EXACT => {
             if a.len() != 2 {
                 return V::Fx("#N/A");
             }
             V::Bool(to_str(&a[0]) == to_str(&a[1]))
         }
-        "CEILING" | "FLOOR" | "MROUND" => {
+        F::CEILING | F::FLOOR | F::MROUND => {
             let (n, sig) = (parse_number(arg(a, 0)), parse_number(arg(a, 1)));
             let (V::Num(n), V::Num(sig)) = (&n, &sig) else { return if n.is_err() { n } else { sig } };
             let (n, sig) = (*n, *sig);
-            match name {
-                "CEILING" if sig == 0.0 => V::Num(0.0),
-                "FLOOR" if sig == 0.0 || sig.is_nan() => V::Fx("#DIV/0!"),
-                "CEILING" | "FLOOR" if n > 0.0 && sig < 0.0 => V::Fx("#NUM!"),
-                "CEILING" => V::Num((n / sig).ceil() * sig),
-                "FLOOR" => V::Num((n / sig).floor() * sig),
+            match f {
+                F::CEILING if sig == 0.0 => V::Num(0.0),
+                F::FLOOR if sig == 0.0 || sig.is_nan() => V::Fx("#DIV/0!"),
+                F::CEILING | F::FLOOR if n > 0.0 && sig < 0.0 => V::Fx("#NUM!"),
+                F::CEILING => V::Num((n / sig).ceil() * sig),
+                F::FLOOR => V::Num((n / sig).floor() * sig),
                 _ if n * sig == 0.0 => V::Num(0.0),
                 _ if n * sig < 0.0 => V::Fx("#NUM!"),
                 _ => V::Num(math_round(n / sig) * sig),
             }
         }
-        "CEILING.MATH" | "FLOOR.MATH" => {
+        F::CEILING_MATH | F::FLOOR_MATH => {
             let raw_sig = arg(a, 1);
             let sig = match raw_sig {
                 V::Undef if name == "CEILING.MATH" => V::Num(if to_f64_js(arg(a, 0)) > 0.0 { 1.0 } else { -1.0 }),
@@ -2886,12 +3538,12 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             };
             ceiling_floor_math(name == "CEILING.MATH", parse_number(arg(a, 0)), sig, parse_number(arg(a, 2)))
         }
-        "EVEN" => match parse_number(arg(a, 0)) {
+        F::EVEN => match parse_number(arg(a, 0)) {
             // CEILING.MATH parses again: a NaN (`parseFloat(" ")`) becomes #VALUE! there.
             n @ V::Num(_) => ceiling_floor_math(true, parse_number(&n), V::Num(-2.0), V::Num(-1.0)),
             e => e,
         },
-        "ODD" => match parse_number(arg(a, 0)) {
+        F::ODD => match parse_number(arg(a, 0)) {
             V::Num(n) => {
                 let t = n.abs().ceil();
                 // `temp & 1` reads the low bit through ToInt32: an infinity reads 0.
@@ -2900,7 +3552,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             e => e,
         },
-        "SWITCH" => {
+        F::SWITCH => {
             if a.is_empty() {
                 return V::Fx("#VALUE!");
             }
@@ -2912,7 +3564,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 None => V::Fx("#N/A"),
             }
         }
-        "REPLACE" => {
+        F::REPLACE => {
             // The pass-through maps only the arguments given: a missing new_text isn't a string.
             if a.len() < 4 {
                 return V::Fx("#VALUE!");
@@ -2925,7 +3577,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             out.extend(js_substr(&old, at - 1.0 + len, None));
             V::str(&from_utf16(&out))
         }
-        "DATEDIF" => {
+        F::DATEDIF => {
             use crate::date_ops::{date_diff, date_diff_op_for_unit};
             let (s, e) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
             if s.is_nan() || e.is_nan() {
@@ -2944,7 +3596,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Err(e) => V::err(e),
             }
         }
-        "DAYS360" | "YEARFRAC" => {
+        F::DAYS360 | F::YEARFRAC => {
             use crate::date_ops::{date_diff, DiffOp};
             let (s, e) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
             if s.is_nan() || e.is_nan() {
@@ -2961,7 +3613,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Err(e) => V::err(e),
             }
         }
-        "DATETRUNC" => {
+        F::DATETRUNC => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err("DATETRUNC");
@@ -2973,7 +3625,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 None => V::err(sol_error("#DOMAIN!", "DATETRUNC unit must be day, week, week_sun, month, quarter or year")),
             }
         }
-        "FROMEPOCH" | "TOEPOCH" => {
+        F::FROMEPOCH | F::TOEPOCH => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err(name);
@@ -2984,7 +3636,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Some(ms) => V::Num(crate::date_ops::serial_to_epoch(n, ms)),
             }
         }
-        "WORKDAY" | "WORKDAY.INTL" | "NETWORKDAYS" | "NETWORKDAYS.INTL" => {
+        F::WORKDAY | F::WORKDAY_INTL | F::NETWORKDAYS | F::NETWORKDAYS_INTL => {
             let intl = name.ends_with(".INTL");
             let (weekend, holidays) = if intl { (arg(a, 2), arg(a, 3)) } else { (&V::Undef, arg(a, 2)) };
             let (s, n) = (to_num(arg(a, 0)), to_num(arg(a, 1)));
@@ -3006,7 +3658,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             };
             r.map_or_else(V::err, V::Num)
         }
-        "XLOOKUP" | "XMATCH" => {
+        F::XLOOKUP | F::XMATCH => {
             let (mode_at, search_at) = if name == "XLOOKUP" { (4, 5) } else { (2, 3) };
             let mm = match x_match_mode(arg(a, mode_at)) {
                 Ok(m) => m,
@@ -3051,28 +3703,28 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 l => pick(l),
             }
         }
-        "TEXT" => excel_text(arg(a, 0), arg(a, 1)),
-        "NORM.DIST" => dist("normal", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "NORM.INV" => dist("normal", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "NORM.S.DIST" => dist("normal-s", cdf_or_pdf(arg(a, 1), false), arg(a, 0), &[]),
-        "NORM.S.INV" => dist("normal-s", Form::Inv, arg(a, 0), &[]),
-        "CHISQ.DIST" => dist("chisq", cdf_or_pdf(arg(a, 2), false), arg(a, 0), &[arg(a, 1).clone()]),
-        "CHISQ.INV" => dist("chisq", Form::Inv, arg(a, 0), &[arg(a, 1).clone()]),
-        "CHISQ.DIST.RT" => dist("chisq", Form::RightTail, arg(a, 0), &[arg(a, 1).clone()]),
-        "F.DIST" => dist("f", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "F.INV" => dist("f", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "F.DIST.RT" => dist("f", Form::RightTail, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "GAMMA.DIST" => dist("gamma", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "LOGNORM.DIST" => dist("lognorm", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "LOGNORM.INV" => dist("lognorm", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "WEIBULL.DIST" => dist("weibull", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "EXPON.DIST" => dist("expon", cdf_or_pdf(arg(a, 2), false), arg(a, 0), &[arg(a, 1).clone()]),
-        "BINOM.DIST" => dist("binom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "BINOM.INV" => dist("binom", Form::Inv, arg(a, 2), &[arg(a, 0).clone(), arg(a, 1).clone()]),
-        "POISSON.DIST" => dist("poisson", cdf_or_pdf(arg(a, 2), true), arg(a, 0), &[arg(a, 1).clone()]),
-        "HYPGEOM.DIST" => dist("hypgeom", cdf_or_pdf(arg(a, 4), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone(), arg(a, 3).clone()]),
-        "NEGBINOM.DIST" => dist("negbinom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
-        "T.DIST" | "T.DIST.RT" | "T.DIST.2T" | "T.INV" | "T.INV.2T" | "CHISQ.INV.RT" | "F.INV.RT" | "GAMMA.INV" => {
+        F::TEXT => excel_text(arg(a, 0), arg(a, 1)),
+        F::NORM_DIST => dist("normal", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::NORM_INV => dist("normal", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::NORM_S_DIST => dist("normal-s", cdf_or_pdf(arg(a, 1), false), arg(a, 0), &[]),
+        F::NORM_S_INV => dist("normal-s", Form::Inv, arg(a, 0), &[]),
+        F::CHISQ_DIST => dist("chisq", cdf_or_pdf(arg(a, 2), false), arg(a, 0), &[arg(a, 1).clone()]),
+        F::CHISQ_INV => dist("chisq", Form::Inv, arg(a, 0), &[arg(a, 1).clone()]),
+        F::CHISQ_DIST_RT => dist("chisq", Form::RightTail, arg(a, 0), &[arg(a, 1).clone()]),
+        F::F_DIST => dist("f", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::F_INV => dist("f", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::F_DIST_RT => dist("f", Form::RightTail, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::GAMMA_DIST => dist("gamma", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::LOGNORM_DIST => dist("lognorm", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::LOGNORM_INV => dist("lognorm", Form::Inv, arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::WEIBULL_DIST => dist("weibull", cdf_or_pdf(arg(a, 3), false), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::EXPON_DIST => dist("expon", cdf_or_pdf(arg(a, 2), false), arg(a, 0), &[arg(a, 1).clone()]),
+        F::BINOM_DIST => dist("binom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::BINOM_INV => dist("binom", Form::Inv, arg(a, 2), &[arg(a, 0).clone(), arg(a, 1).clone()]),
+        F::POISSON_DIST => dist("poisson", cdf_or_pdf(arg(a, 2), true), arg(a, 0), &[arg(a, 1).clone()]),
+        F::HYPGEOM_DIST => dist("hypgeom", cdf_or_pdf(arg(a, 4), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone(), arg(a, 3).clone()]),
+        F::NEGBINOM_DIST => dist("negbinom", cdf_or_pdf(arg(a, 3), true), arg(a, 0), &[arg(a, 1).clone(), arg(a, 2).clone()]),
+        F::T_DIST | F::T_DIST_RT | F::T_DIST_2T | F::T_INV | F::T_INV_2T | F::CHISQ_INV_RT | F::F_INV_RT | F::GAMMA_INV => {
             use crate::dists::{bisection_inv, chi_sq_cdf, f_cdf, gamma_cdf, t_cdf, t_pdf};
             let want = if matches!(name, "F.INV.RT" | "GAMMA.INV") { 3 } else { 2 };
             let ns: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
@@ -3080,22 +3732,22 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 return V::Null;
             }
             let (x, d) = (ns[0], ns[1]);
-            let r = match name {
-                "T.DIST" | "T.DIST.RT" | "T.DIST.2T" if d <= 0.0 => return dist_domain(),
-                "T.DIST" => if is_true(arg(a, 2)) { t_cdf(x, d) } else { t_pdf(x, d) },
-                "T.DIST.RT" => 1.0 - t_cdf(x, d),
-                "T.DIST.2T" => 2.0 * (1.0 - t_cdf(x.abs(), d)),
+            let r = match f {
+                F::T_DIST | F::T_DIST_RT | F::T_DIST_2T if d <= 0.0 => return dist_domain(),
+                F::T_DIST => if is_true(arg(a, 2)) { t_cdf(x, d) } else { t_pdf(x, d) },
+                F::T_DIST_RT => 1.0 - t_cdf(x, d),
+                F::T_DIST_2T => 2.0 * (1.0 - t_cdf(x.abs(), d)),
                 _ if d <= 0.0 || x <= 0.0 || x >= 1.0 => return dist_domain(),
-                "T.INV" => bisection_inv(|t| t_cdf(t, d), x, -1e6, 1e6),
-                "T.INV.2T" => bisection_inv(|t| t_cdf(t, d), 1.0 - x / 2.0, -1e6, 1e6),
-                "CHISQ.INV.RT" => bisection_inv(|v| chi_sq_cdf(v, d), 1.0 - x, 0.0, 1e6),
+                F::T_INV => bisection_inv(|t| t_cdf(t, d), x, -1e6, 1e6),
+                F::T_INV_2T => bisection_inv(|t| t_cdf(t, d), 1.0 - x / 2.0, -1e6, 1e6),
+                F::CHISQ_INV_RT => bisection_inv(|v| chi_sq_cdf(v, d), 1.0 - x, 0.0, 1e6),
                 _ if ns[2] <= 0.0 => return dist_domain(),
-                "F.INV.RT" => bisection_inv(|v| f_cdf(v, d, ns[2]), 1.0 - x, 0.0, 1e6),
+                F::F_INV_RT => bisection_inv(|v| f_cdf(v, d, ns[2]), 1.0 - x, 0.0, 1e6),
                 _ => bisection_inv(|v| gamma_cdf(v, d, ns[2]), x, 0.0, 1e6),
             };
             if r.is_finite() { V::Num(r) } else { V::Null }
         }
-        "BETA.DIST" | "BETA.INV" => {
+        F::BETA_DIST | F::BETA_INV => {
             let inv = name == "BETA.INV";
             let (lo_at, hi_at) = if inv { (3, 4) } else { (4, 5) };
             let bound = |v: &V, d: f64| if matches!(v, V::Null | V::Undef) { d } else { to_num(v) };
@@ -3123,8 +3775,8 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 other => other,
             }
         }
-        "WAVG" | "WVAR" | "WSTDEV" => weighted(name, &to_list(arg(a, 0)), &to_list(arg(a, 1))),
-        "COUNTDISTINCT" => {
+        F::WAVG | F::WVAR | F::WSTDEV => weighted(name, &to_list(arg(a, 0)), &to_list(arg(a, 1))),
+        F::COUNTDISTINCT => {
             let arr = to_list(arg(a, 0));
             if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
                 return e.clone();
@@ -3153,7 +3805,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Num(seen.len() as f64)
         }
-        "ARGMAX" | "ARGMIN" => {
+        F::ARGMAX | F::ARGMIN => {
             let arr = to_list(arg(a, 0));
             if let Some(e) = arr.iter().find(|v| v.is_sol_error()) {
                 return e.clone();
@@ -3171,8 +3823,8 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             best.map_or(V::Null, |(i, _)| V::Num(i as f64 + 1.0))
         }
-        "LENGTH" => V::Num(to_list(arg(a, 0)).len() as f64),
-        "DATEVALUE" | "TIMEVALUE" => {
+        F::LENGTH => V::Num(to_list(arg(a, 0)).len() as f64),
+        F::DATEVALUE | F::TIMEVALUE => {
             use crate::excel_criteria::{parse_date, DateReading};
             let raw = to_str(arg(a, 0));
             let t = js_trim(&raw);
@@ -3206,7 +3858,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 _ => bad("time"),
             }
         }
-        "FIXED" => {
+        F::FIXED => {
             let d = opt_num(arg(a, 1), 2.0);
             let n = to_num(arg(a, 0));
             if n.is_nan() || d.is_nan() {
@@ -3229,7 +3881,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             };
             V::str(&if no_commas { text.replace(',', "") } else { group_thousands(&text) })
         }
-        "INDEX" => {
+        F::INDEX => {
             // `axis`: a left-out or blank position, or a list of them, as it is; anything else a number.
             let axis = |v: &V| -> Result<Ax, V> {
                 match v {
@@ -3247,7 +3899,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 (Ok(r), Ok(c)) => index_at(arg(a, 0), r, c),
             }
         }
-        "CONTAINS" => {
+        F::CONTAINS => {
             if let V::List(items) = arg(a, 0) {
                 if items.iter().any(|v| matches!(v, V::List(_))) {
                     return V::err(sol_error("#SHAPE!", "CONTAINS takes a list"));
@@ -3256,9 +3908,9 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let k = arg(a, 1);
             V::Bool(to_list(arg(a, 0)).iter().any(|x| !matches!(x, V::Null) && !x.is_sol_error() && strict_equals(x, k)))
         }
-        "PMT" => fx_pmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
-        "FV" => fx_fv(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
-        "PV" => {
+        F::PMT => fx_pmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
+        F::FV => fx_fv(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4)),
+        F::PV => {
             let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)), parse_number(or_zero(arg(a, 3))), parse_number(or_zero(arg(a, 4)))];
             let Some([rate, per, pmt, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
             V::Num(if rate == 0.0 {
@@ -3267,7 +3919,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 (((1.0 - js_pow(1.0 + rate, per)) / rate) * pmt * (1.0 + rate * ty) - fv) / js_pow(1.0 + rate, per)
             })
         }
-        "NPER" => {
+        F::NPER => {
             let opt = |v: &V| if matches!(v, V::Undef) { V::Num(0.0) } else { v.clone() };
             let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 1)), parse_number(arg(a, 2)), parse_number(&opt(arg(a, 3))), parse_number(&opt(arg(a, 4)))];
             let Some([rate, pmt, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
@@ -3279,14 +3931,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 crate::fdlibm::log(num / den) / crate::fdlibm::log(1.0 + rate)
             })
         }
-        "IPMT" => fx_ipmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)),
-        "PPMT" => {
+        F::IPMT => fx_ipmt(arg(a, 0), arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), arg(a, 5)),
+        F::PPMT => {
             let nums = [parse_number(arg(a, 0)), parse_number(arg(a, 2)), parse_number(arg(a, 3)), parse_number(or_zero(arg(a, 4))), parse_number(or_zero(arg(a, 5)))];
             let Some([rate, nper, pv, fv, ty]) = all_nums(&nums) else { return V::Fx("#VALUE!") };
             let (rate, nper, pv, fv, ty) = (V::Num(rate), V::Num(nper), V::Num(pv), V::Num(fv), V::Num(ty));
             V::Num(js_arith(&fx_pmt(&rate, &nper, &pv, &fv, &ty)) - js_arith(&fx_ipmt(&rate, arg(a, 1), &nper, &pv, &fv, &ty)))
         }
-        "CLAMP" => {
+        F::CLAMP => {
             let n = to_num(arg(a, 0));
             let bound = |v: &V, d: f64| if matches!(v, V::Null | V::Undef) { d } else { to_num(v) };
             let (lo, hi) = (bound(arg(a, 1), f64::NEG_INFINITY), bound(arg(a, 2), f64::INFINITY));
@@ -3295,15 +3947,15 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Num(crate::jsnum::math_min(crate::jsnum::math_max(n, lo), hi))
         }
-        "BETWEEN" => {
+        F::BETWEEN => {
             let (n, lo, hi) = (to_num(arg(a, 0)), to_num(arg(a, 1)), to_num(arg(a, 2)));
             if n.is_nan() || lo.is_nan() || hi.is_nan() {
                 return value_err("BETWEEN");
             }
             V::Bool(n >= lo && n <= hi)
         }
-        "ISBOOLEAN" => V::Bool(matches!(arg(a, 0), V::Bool(_))),
-        "ISCLOSE" => {
+        F::ISBOOLEAN => V::Bool(matches!(arg(a, 0), V::Bool(_))),
+        F::ISCLOSE => {
             let (x, y) = (arg(a, 0), arg(a, 1));
             if matches!(x, V::Null | V::Undef) || matches!(y, V::Null | V::Undef) {
                 return V::Null;
@@ -3311,14 +3963,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let tol = if matches!(arg(a, 2), V::Null | V::Undef) { 1e-9 } else { to_f64_js(arg(a, 2)) };
             V::Bool((to_f64_js(x) - to_f64_js(y)).abs() <= tol)
         }
-        "HYPOTENUSE" => {
+        F::HYPOTENUSE => {
             let (x, y) = (arg(a, 0), arg(a, 1));
             if matches!(x, V::Null | V::Undef) || matches!(y, V::Null | V::Undef) {
                 return V::Null;
             }
             V::Num(math_hypot(&[to_f64_js(x), to_f64_js(y)]))
         }
-        "NAND" | "NOR" => {
+        F::NAND | F::NOR => {
             let and = name == "NAND";
             let mut acc: Option<bool> = Some(and);
             for v in a {
@@ -3330,7 +3982,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             acc.map_or(V::Null, |b| V::Bool(!b))
         }
-        "XNOR" => {
+        F::XNOR => {
             let mut acc = false;
             for v in a {
                 match logical_or_type_error(v, "XNOR") {
@@ -3341,7 +3993,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Bool(!acc)
         }
-        "STANDARDIZE" => {
+        F::STANDARDIZE => {
             let (x, m, sd) = (to_num(arg(a, 0)), to_num(arg(a, 1)), to_num(arg(a, 2)));
             if x.is_nan() || m.is_nan() || sd.is_nan() {
                 return value_err("STANDARDIZE");
@@ -3351,7 +4003,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Num((x - m) / sd)
         }
-        "FISHER" => {
+        F::FISHER => {
             let x = to_num(arg(a, 0));
             if x.is_nan() {
                 return value_err("FISHER");
@@ -3361,7 +4013,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::Num(crate::fdlibm::atanh(x))
         }
-        "SLN" => {
+        F::SLN => {
             let l = to_num(arg(a, 2));
             if l == 0.0 {
                 return V::err(sol_error("#DIV/0!", "Life is 0"));
@@ -3369,14 +4021,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let r = (to_num(arg(a, 0)) - to_num(arg(a, 1))) / l;
             if r.is_finite() { V::Num(r) } else { V::Null }
         }
-        "ORDINAL" => {
+        F::ORDINAL => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err("ORDINAL");
             }
             V::str(&ordinal_text(n))
         }
-        "TEXTBEFORE" | "TEXTAFTER" => {
+        F::TEXTBEFORE | F::TEXTAFTER => {
             let instance = arg(a, 2);
             let instance = if matches!(instance, V::Null | V::Undef) { 1.0 } else { to_num(instance) };
             let flag = |v: &V| to_num(if matches!(v, V::Null | V::Undef) { &V::Num(0.0) } else { v }) == 1.0;
@@ -3393,11 +4045,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 r => r,
             }
         }
-        "REVERSETEXT" => match arg(a, 0) {
+        F::REVERSETEXT => match arg(a, 0) {
             V::Null | V::Undef => V::Null,
             t => V::str(&to_str(t).chars().rev().collect::<String>()),
         },
-        "PADTEXT" => {
+        F::PADTEXT => {
             let t = arg(a, 0);
             if matches!(t, V::Null | V::Undef) {
                 return V::Null;
@@ -3414,7 +4066,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let fill = if matches!(arg(a, 3), V::Null | V::Undef) { " ".to_string() } else { to_str(arg(a, 3)) };
             pad_text(&to_str(t), to_num(arg(a, 1)), &side, &fill)
         }
-        "TRUNCATETEXT" => {
+        F::TRUNCATETEXT => {
             let t = arg(a, 0);
             if matches!(t, V::Null | V::Undef) {
                 return V::Null;
@@ -3422,11 +4074,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let e = if matches!(arg(a, 2), V::Null | V::Undef) { "\u{2026}".to_string() } else { to_str(arg(a, 2)) };
             V::str(&truncate_text(&to_str(t), to_num(arg(a, 1)), &e))
         }
-        "NUMBERVALUE" => {
+        F::NUMBERVALUE => {
             let sep = |v: &V| if matches!(v, V::Null | V::Undef) { String::new() } else { to_str(v) };
             number_value(&to_str(arg(a, 0)), &sep(arg(a, 1)), &sep(arg(a, 2)))
         }
-        "SEARCH" => {
+        F::SEARCH => {
             let start = arg(a, 2);
             if !matches!(start, V::Null | V::Undef) {
                 let s = to_num(start).trunc();
@@ -3450,19 +4102,19 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 None => V::err(sol_error("#VALUE!", "Find text not found within the text")),
             }
         }
-        "PROPER" => proper_case(&to_str(arg(a, 0))),
-        "CHAR" | "UNICHAR" => {
+        F::PROPER => proper_case(&to_str(arg(a, 0))),
+        F::CHAR | F::UNICHAR => {
             let c = to_num(arg(a, 0)).trunc();
             match (1.0..=1_114_111.0).contains(&c).then(|| char::from_u32(c as u32)).flatten() {
                 Some(ch) => V::str(&ch.to_string()),
                 None => V::err(sol_error("#VALUE!", "A character code is a code point from 1 to 1114111")),
             }
         }
-        "CODE" | "UNICODE" => match to_str(arg(a, 0)).chars().next() {
+        F::CODE | F::UNICODE => match to_str(arg(a, 0)).chars().next() {
             Some(c) => V::Num(f64::from(c as u32)),
             None => V::err(sol_error("#VALUE!", "Empty text has no character code")),
         },
-        "VALUE" => {
+        F::VALUE => {
             let x = arg(a, 0);
             if let V::Num(n) = x {
                 return V::Num(*n);
@@ -3470,13 +4122,13 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let n = parse_value_text(&to_str(if matches!(x, V::Bool(_)) { &V::Null } else { x }));
             if n.is_nan() { value_err("VALUE") } else { V::Num(n) }
         }
-        "TEXTJOIN" => {
+        F::TEXTJOIN => {
             let parts: Vec<String> = flat_all(a.get(2..).unwrap_or(&[])).iter().map(to_str).collect();
             let keep_all = matches!(arg(a, 1), V::Bool(false)) || matches!(arg(a, 1), V::Num(n) if *n == 0.0);
             let kept: Vec<&str> = parts.iter().map(String::as_str).filter(|p| keep_all || !p.is_empty()).collect();
             V::str(&kept.join(&to_str(arg(a, 0))))
         }
-        "FIND" => {
+        F::FIND => {
             let start = arg(a, 2);
             if !matches!(start, V::Null | V::Undef) {
                 let s = to_num(start).trunc();
@@ -3503,7 +4155,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 _ => V::Fx("#VALUE!"),
             }
         }
-        "XOR" => {
+        F::XOR => {
             let mut result: Option<f64> = None;
             for v in a {
                 if let V::Fx(_) = v {
@@ -3519,27 +4171,27 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             result.map_or(V::Fx("#VALUE!"), |r| V::Bool((r.abs().floor() as i64) & 1 == 1))
         }
-        "COUNT" => V::Num(a.iter().filter(|v| matches!(v, V::Num(_))).count() as f64),
-        "COUNTA" | "COUNTBLANK" => {
+        F::COUNT => V::Num(a.iter().filter(|v| matches!(v, V::Num(_))).count() as f64),
+        F::COUNTA | F::COUNTBLANK => {
             let blanks = a.iter().filter(|v| matches!(v, V::Undef | V::Null) || matches!(v, V::Str(s) if s.is_empty())).count();
             V::Num(if name == "COUNTA" { a.len() - blanks } else { blanks } as f64)
         }
-        "ISEVEN" | "ISODD" => {
+        F::ISEVEN | F::ISODD => {
             let odd = to_int32(js_number_of(arg(a, 0)).abs().floor()) & 1 == 1;
             V::Bool(if name == "ISODD" { odd } else { !odd })
         }
-        "ISNONTEXT" => V::Bool(!matches!(arg(a, 0), V::Str(_))),
-        "N" => match arg(a, 0) {
+        F::ISNONTEXT => V::Bool(!matches!(arg(a, 0), V::Str(_))),
+        F::N => match arg(a, 0) {
             V::Num(n) => V::Num(*n),
             V::Bool(b) => V::Num(f64::from(u8::from(*b))),
             v @ V::Fx(code) if matches!(*code, "#VALUE!" | "#REF!" | "#DIV/0!" | "#NUM!" | "#NAME?" | "#NULL!" | "#N/A") => v.clone(),
             _ => V::Num(0.0),
         },
-        "T" => match arg(a, 0) {
+        F::T => match arg(a, 0) {
             v @ (V::Fx(_) | V::Str(_)) => v.clone(),
             _ => V::str(""),
         },
-        "CHOOSE" => {
+        F::CHOOSE => {
             let index = arg(a, 0);
             if matches!(index, V::Null | V::Undef) {
                 return V::Null;
@@ -3557,28 +4209,28 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 v => v.clone(),
             }
         }
-        "DATE" => {
+        F::DATE => {
             let (y, m, d) = (to_num(arg(a, 0)), to_num(arg(a, 1)), opt_num(arg(a, 2), 0.0));
             if y.is_nan() || m.is_nan() || d.is_nan() {
                 return value_err("DATE");
             }
             date_from_parts(y, m, d)
         }
-        "FACT" | "FACTDOUBLE" | "COMBIN" | "COMBINA" | "PERMUT" => {
+        F::FACT | F::FACTDOUBLE | F::COMBIN | F::COMBINA | F::PERMUT => {
             let v: Vec<f64> = a.iter().map(to_num).collect();
             if v.iter().any(|x| x.is_nan()) {
                 return value_err(name);
             }
             combinatoric(name, &v)
         }
-        "MULTINOMIAL" => {
+        F::MULTINOMIAL => {
             let v = nums_of(a);
             if v.iter().any(|x| x.is_nan()) {
                 return value_err("MULTINOMIAL");
             }
             combinatoric(name, &v)
         }
-        "BINOM.DIST.RANGE" => {
+        F::BINOM_DIST_RANGE => {
             let v: Vec<f64> = (0..3).map(|i| to_num(arg(a, i))).collect();
             let hi = if matches!(arg(a, 3), V::Null | V::Undef) { None } else { Some(to_num(arg(a, 3))) };
             if v.iter().any(|x| x.is_nan()) || hi.is_some_and(f64::is_nan) {
@@ -3586,16 +4238,16 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             binom_dist_range(v[0], v[1], v[2], hi)
         }
-        "CLEAN" => V::str(&to_str(arg(a, 0)).chars().filter(|&c| c > '\u{1F}').collect::<String>()),
-        "FISHEREXACT" | "PROPTEST" | "BINOMTEST" => {
+        F::CLEAN => V::str(&to_str(arg(a, 0)).chars().filter(|&c| c > '\u{1F}').collect::<String>()),
+        F::FISHEREXACT | F::PROPTEST | F::BINOMTEST => {
             let want = if name == "BINOMTEST" { 3 } else { 4 };
             let v: Vec<f64> = (0..want).map(|i| to_num(arg(a, i))).collect();
             if v.iter().any(|x| x.is_nan()) {
                 return value_err(name);
             }
-            let p = match name {
-                "FISHEREXACT" => fisher_exact_p(v[0], v[1], v[2], v[3]),
-                "PROPTEST" => Ok(two_proportion_p(v[0], v[1], v[2], v[3])),
+            let p = match f {
+                F::FISHEREXACT => fisher_exact_p(v[0], v[1], v[2], v[3]),
+                F::PROPTEST => Ok(two_proportion_p(v[0], v[1], v[2], v[3])),
                 _ => binom_test_p(v[0], v[1], v[2]),
             };
             match p {
@@ -3603,16 +4255,16 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 Err(e) => e,
             }
         }
-        "ROW" => match ROW_NUMBER.with(|r| r.get()) {
+        F::ROW => match ROW_NUMBER.with(|r| r.get()) {
             Some(n) => V::Num(n),
             None => V::err(sol_error("#NAME?", "ROW() is this row's number, so it only works inside a computed column")),
         },
-        "TODAY" | "NOW" => match clock() {
+        F::TODAY | F::NOW => match clock() {
             Some(c) => V::Num(if name == "TODAY" { c.now.floor() } else { c.now }),
             None => bail(),
         },
-        "EDATE" => fx_edate(arg(a, 0), arg(a, 1)),
-        "CONVERT" => {
+        F::EDATE => fx_edate(arg(a, 0), arg(a, 1)),
+        F::CONVERT => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err("CONVERT");
@@ -3623,8 +4275,8 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 None => V::err(sol_error("#N/A", "CONVERT: unknown or incompatible units")),
             }
         }
-        "SPEARMAN" => spearman(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
-        "FORECAST.LINEAR" => {
+        F::SPEARMAN => spearman(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
+        F::FORECAST_LINEAR => {
             let n = to_num(arg(a, 0));
             if n.is_nan() {
                 return value_err("FORECAST.LINEAR");
@@ -3635,7 +4287,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 None => V::err(sol_error("#DIV/0!", "Known Xs have zero variance")),
             }
         }
-        "F.TEST" => {
+        F::F_TEST => {
             let ((na, sa), (nb, sb)) = (js_len_spread(arg(a, 0)), js_len_spread(arg(a, 1)));
             // `a.length < 2` is false for an `undefined` length.
             if na.is_some_and(|n| n < 2.0) || nb.is_some_and(|n| n < 2.0) {
@@ -3653,7 +4305,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let p = 2.0 * crate::jsnum::math_min(p1, 1.0 - p1);
             if p.is_finite() { V::Num(p) } else { V::Null }
         }
-        "T.TEST" => {
+        F::T_TEST => {
             let lists = |i: usize| match arg(a, i) {
                 V::Null | V::Undef => Ok(Vec::new()),
                 v => match raw_numbers(v) {
@@ -3681,7 +4333,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 None => V::Null,
             }
         }
-        "PROB" => {
+        F::PROB => {
             let l = to_num(arg(a, 2));
             let h = if matches!(arg(a, 3), V::Null | V::Undef) { l } else { to_num(arg(a, 3)) };
             if l.is_nan() || h.is_nan() {
@@ -3689,11 +4341,11 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             prob_between(&to_list(arg(a, 0)), &to_list(arg(a, 1)), l, h)
         }
-        "FISHERINV" => {
+        F::FISHERINV => {
             let n = to_num(arg(a, 0));
             if n.is_nan() { value_err("FISHERINV") } else { V::Num(crate::fdlibm::tanh(n)) }
         }
-        "LOG2" => match arg(a, 0) {
+        F::LOG2 => match arg(a, 0) {
             V::Null | V::Undef => V::Null,
             x => {
                 let n = to_f64_js(x);
@@ -3704,35 +4356,29 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 }
             }
         },
-        _ if crate::formulajs::NAMES.contains(&name) => crate::formulajs::call(name, a),
-        _ if crate::fns_matrix::NAMES.contains(&name) => crate::fns_matrix::call(name, a),
-        _ if crate::fns_complex::NAMES.contains(&name) => crate::fns_complex::call(name, a),
-        _ if crate::fns_lists::NAMES.contains(&name) => crate::fns_lists::call(name, a),
-        _ if crate::fns_stats::NAMES.contains(&name) => crate::fns_stats::call(name, a),
-        _ if is_finance(name) => finance_function(name, a),
-        "REGEXTEST" | "REGEXEXTRACT" | "REGEXREPLACE" => regex_call(name, a),
-        "ENCODEURL" => {
+        F::REGEXTEST | F::REGEXEXTRACT | F::REGEXREPLACE => regex_call(name, a),
+        F::ENCODEURL => {
             let t = to_str(arg(a, 0));
             if may_hold_lone_surrogate(&t) {
                 return bail();
             }
             V::str(&crate::text_ops::encode_uri_component(&t))
         }
-        "DECODEURL" | "ENCODEBASE64" | "DECODEBASE64" | "UNACCENT" | "SPELLNUMBER" | "HASH" | "SLUGIFY" | "TEMPLATE"
+        F::DECODEURL | F::ENCODEBASE64 | F::DECODEBASE64 | F::UNACCENT | F::SPELLNUMBER | F::HASH | F::SLUGIFY | F::TEMPLATE
             if matches!(arg(a, 0), V::Null | V::Undef) =>
         {
             V::Null
         }
-        "DECODEURL" => {
+        F::DECODEURL => {
             let t = to_str(arg(a, 0));
             V::str(&crate::text_ops::decode_uri_component(&t).unwrap_or(t))
         }
-        "ENCODEBASE64" => V::str(&crate::hash_ops::base64_encode(&to_str(arg(a, 0)))),
-        "DECODEBASE64" => {
+        F::ENCODEBASE64 => V::str(&crate::hash_ops::base64_encode(&to_str(arg(a, 0)))),
+        F::DECODEBASE64 => {
             let t = to_str(arg(a, 0));
             V::str(&crate::hash_ops::base64_decode(&t).unwrap_or(t))
         }
-        "HASH" => {
+        F::HASH => {
             let alg: String = match arg(a, 1) {
                 V::Null | V::Undef => "sha256".into(),
                 v => js_lower(js_trim(&js_string_of(v))).chars().filter(|&c| c != '-' && c != '_' && !is_js_space(c)).collect(),
@@ -3745,7 +4391,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
                 )),
             }
         }
-        "UNACCENT" => {
+        F::UNACCENT => {
             let t = to_str(arg(a, 0));
             // Dropping a mark can join the two halves of a pair the wire turned into U+FFFD.
             if may_hold_lone_surrogate(&t) {
@@ -3753,7 +4399,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::str(&crate::text_ops::unaccent(&t))
         }
-        "SLUGIFY" => {
+        F::SLUGIFY => {
             let sep = match arg(a, 1) {
                 V::Null | V::Undef => "-".to_string(),
                 v => to_str(v),
@@ -3763,14 +4409,14 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::str(&crate::text_ops::slugify(&to_str(arg(a, 0)), &sep))
         }
-        "SPELLNUMBER" => match crate::text_ops::spell_number(to_f64_js(arg(a, 0))) {
+        F::SPELLNUMBER => match crate::text_ops::spell_number(to_f64_js(arg(a, 0))) {
             Ok(words) => V::str(&words),
             Err(msg) => V::err(sol_error("#DOMAIN!", msg)),
         },
-        "VALUETOTEXT" => V::str(&to_str(arg(a, 0))),
-        "TEMPLATE" => template(a),
-        "DOLLAR" => dollar(arg(a, 0), arg(a, 1)),
-        "TEXTSPLIT" => {
+        F::VALUETOTEXT => V::str(&to_str(arg(a, 0))),
+        F::TEMPLATE => template(a),
+        F::DOLLAR => dollar(arg(a, 0), arg(a, 1)),
+        F::TEXTSPLIT => {
             let given = |v: &V| !matches!(v, V::Null | V::Undef);
             let (col, row) = (arg(a, 1), arg(a, 2));
             if !given(col) && !given(row) {
@@ -3786,7 +4432,7 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let row = given(row).then(|| to_str(row));
             split_text(&to_str(arg(a, 0)), col.as_deref(), row.as_deref(), is_true(arg(a, 3)), caseless, &pad)
         }
-        "WRAPTEXT" => {
+        F::WRAPTEXT => {
             if matches!(arg(a, 0), V::Null | V::Undef) {
                 return V::Null;
             }
@@ -3796,7 +4442,6 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             }
             V::List(Rc::new(wrap_text(&to_str(arg(a, 0)), w).iter().map(|l| V::str(l)).collect()))
         }
-        _ => V::Undef,
     }
 }
 

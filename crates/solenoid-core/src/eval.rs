@@ -34,7 +34,7 @@ const MAX_GENERATED: f64 = 1_000_000.0;
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Traits {
-    pub kind: String,
+    pub kind: Kind,
     pub prep: String,
     pub inspects_null: bool,
     pub nullable_ok: bool,
@@ -48,6 +48,30 @@ pub struct Traits {
     roles: Vec<Option<Role>>,
     blanks: Vec<serde_json::Value>,
     scalar: Vec<bool>,
+    /// The name's facts the call path reads on every row, resolved once as the table loads ([[C120]] linearWork).
+    #[serde(skip)]
+    pub fast: Fast,
+}
+
+/// How a call reads its arguments (`formulaCallTable`'s kind).
+#[derive(serde::Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Kind {
+    Broadcast,
+    Whole,
+    Range,
+    Handler,
+}
+
+/// A name's facts beside its traits: `ETA_HOSTS`, `LAMBDA_HOSTS`, `MEMO_SHAPERS`, `BRANCH_SELECTORS`, and whether the
+/// core carries its body.
+#[derive(Debug, Default)]
+pub struct Fast {
+    pub eta_host: bool,
+    pub lambda_host: bool,
+    pub memo_shaper: bool,
+    pub ported: bool,
+    pub selects: Option<fn(usize) -> bool>,
 }
 
 fn periodic<T>(xs: &[T], i: usize) -> Option<&T> {
@@ -78,7 +102,16 @@ thread_local! {
     static TRAITS: FxHashMap<String, Rc<Traits>> = serde_json::from_str::<FxHashMap<String, Traits>>(include_str!("../data/call_traits.json"))
         .expect("data/call_traits.json reads")
         .into_iter()
-        .map(|(k, v)| (k, Rc::new(v)))
+        .map(|(k, mut v)| {
+            v.fast = Fast {
+                eta_host: ETA_HOSTS.contains(&k.as_str()),
+                lambda_host: LAMBDA_HOSTS.contains(&k.as_str()),
+                memo_shaper: MEMO_SHAPERS.contains(&k.as_str()),
+                ported: is_ported(&k),
+                selects: branch_selector(&k),
+            };
+            (k, Rc::new(v))
+        })
         .collect();
 }
 
@@ -590,7 +623,7 @@ impl Eval<'_> {
     /// `lam.fn(...args)`.
     pub fn call_lambda(&self, lam: &LambdaV, args: &[V]) -> V {
         if let Some(name) = &lam.eta {
-            return match self.dispatch(name, args) {
+            return match self.dispatch(name, None, args) {
                 V::Num(r) => guard(r, args),
                 r => r,
             };
@@ -672,7 +705,7 @@ impl Eval<'_> {
         if let Some(r) = &t.refusal {
             return V::err(sol_error(&r.code, r.message.as_str()));
         }
-        let mut argv: Vec<V> = if ETA_HOSTS.contains(&name.as_str()) {
+        let mut argv: Vec<V> = if t.fast.eta_host {
             args.iter().map(|a| self.eta_or_eval(a, env)).collect()
         } else {
             args.iter().map(|a| self.eval(a, env)).collect()
@@ -688,17 +721,17 @@ impl Eval<'_> {
                 }
             }
         }
-        if t.kind == "handler" {
+        if t.kind == Kind::Handler {
             return apply_error_handler(name, &argv);
         }
-        let selects = branch_selector(name);
+        let selects = t.fast.selects;
         if let Some(e) = argv.iter().enumerate().find(|&(i, v)| selects.is_none_or(|s| s(i)) && v.is_sol_error()) {
             return e.1.clone();
         }
         let any_arr = argv.iter().any(is_arr);
         let lifted: Vec<usize> = if any_arr { (0..argv.len()).filter(|&i| t.scalar(i) && is_arr(&argv[i])).collect() } else { Vec::new() };
         if lifted.is_empty() {
-            if any_arr && (self.row.is_some() || self.memo_calls) && (t.kind == "range" || MEMO_SHAPERS.contains(&name.as_str())) {
+            if any_arr && (self.row.is_some() || self.memo_calls) && (t.kind == Kind::Range || t.fast.memo_shaper) {
                 let key = args.as_ptr();
                 if let Some((f, last, r)) = self.memo.borrow().get(&key) {
                     if f == name && last.len() == argv.len() && last.iter().zip(&argv).all(|(a, b)| same(a, b)) {
@@ -706,7 +739,7 @@ impl Eval<'_> {
                     }
                 }
                 let r = self.route_call(name, t, argv.clone(), settled);
-                if !is_arr(&r) || MEMO_SHAPERS.contains(&name.as_str()) {
+                if !is_arr(&r) || t.fast.memo_shaper {
                     self.memo.borrow_mut().insert(key, (name.clone(), argv, r.clone()));
                 }
                 return r;
@@ -761,24 +794,24 @@ impl Eval<'_> {
             if t.prep == "positional" {
                 return V::err(sol_error("#SHAPE!", format!("{name} over a matrix isn't supported yet. Wire the matrix through its node")));
             }
-            if t.kind == "range" {
+            if t.kind == Kind::Range {
                 argv = argv.into_iter().map(|a| if is_matrix(&a) { flat1(&a) } else { a }).collect();
-            } else if t.kind == "whole" || !t.known {
+            } else if t.kind == Kind::Whole || !t.known {
                 return V::err(sol_error("#SHAPE!", format!("{name} works on values and 1-D lists, not a 2-D matrix")));
             }
         }
         if t.checks_cx && argv.iter().any(contains_cx) {
             return V::err(sol_error("#TYPE!", format!("{name} doesn't compute on complex numbers. Use the IM* family")));
         }
-        match t.kind.as_str() {
-            "whole" => {
+        match t.kind {
+            Kind::Whole => {
                 if !t.nullable_ok && argv.iter().enumerate().any(|(i, a)| is_missing(a) && !settled.get(i).copied().unwrap_or(false)) {
                     return V::Null;
                 }
-                let r = self.dispatch(name, &argv);
+                let r = self.dispatch(name, Some(t), &argv);
                 if column { as_column(r) } else { r }
             }
-            "range" => {
+            Kind::Range => {
                 let args = match prep_range_args(&t.prep, argv) {
                     Ok(a) => a,
                     Err(e) => return e,
@@ -796,7 +829,7 @@ impl Eval<'_> {
                 if !in_place && flat.iter().any(is_arr) {
                     return crate::excel_functions::bail();
                 }
-                match self.dispatch(name, if in_place { &args } else { flat }) {
+                match self.dispatch(name, Some(t), if in_place { &args } else { flat }) {
                     V::Num(r) if !r.is_finite() => guard(r, flat),
                     r => r,
                 }
@@ -824,11 +857,11 @@ impl Eval<'_> {
                     let mut full: Vec<V> = args[..w.min(args.len())].to_vec();
                     full.push(whole.clone());
                     full.extend_from_slice(&args[w.min(args.len())..]);
-                    self.dispatch(name, &full)
+                    self.dispatch(name, Some(t), &full)
                 }, None);
             }
         }
-        self.broadcast_with(argv, blank_slots, t.inspects_null, &|args: &[V]| self.dispatch(name, args), branch_selector(name))
+        self.broadcast_with(argv, blank_slots, t.inspects_null, &|args: &[V]| self.dispatch(name, Some(t), args), t.fast.selects)
     }
 
     fn broadcast_with(&self, argv: &[V], blank_slots: &[bool], inspects_null: bool, f: &dyn Fn(&[V]) -> V, selects: Option<fn(usize) -> bool>) -> V {
@@ -856,11 +889,15 @@ impl Eval<'_> {
     }
 
     /// `dispatch`: the body itself, its JavaScript failure read as #VALUE!. A body the core doesn't carry yet bails.
-    fn dispatch(&self, name: &str, argv: &[V]) -> V {
-        if LAMBDA_HOSTS.contains(&name) {
+    fn dispatch(&self, name: &str, t: Option<&Traits>, argv: &[V]) -> V {
+        let (lambda_host, ported) = match t {
+            Some(t) => (t.fast.lambda_host, t.fast.ported),
+            None => (LAMBDA_HOSTS.contains(&name), is_ported(name)),
+        };
+        if lambda_host {
             return self.host(name, argv);
         }
-        if !is_ported(name) || (argv.iter().any(is_matrix) && !crate::excel_functions::reads_matrices(name)) {
+        if !ported || (argv.iter().any(is_matrix) && !crate::excel_functions::reads_matrices(name)) {
             return crate::excel_functions::bail();
         }
         call_caught(name, argv)
@@ -1090,14 +1127,14 @@ fn as_column(r: V) -> V {
 /// handlers, which read errors.
 pub fn argument_error(name: &str, argv: &[V]) -> Option<V> {
     let t = traits(name);
-    if t.as_ref().is_some_and(|t| t.kind == "handler") {
+    if t.as_ref().is_some_and(|t| t.kind == Kind::Handler) {
         return None;
     }
     if let Some(e) = argv.iter().find(|v| v.is_sol_error()) {
         return Some(e.clone());
     }
     let t = t?;
-    if t.kind != "range" {
+    if t.kind != Kind::Range {
         return None;
     }
     let flat = argv.iter().map(|a| if !t.matrix_args && is_matrix(a) { flat1(a) } else { a.clone() }).collect();
