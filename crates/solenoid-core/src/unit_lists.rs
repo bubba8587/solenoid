@@ -90,15 +90,15 @@ fn pure_currency(d: &Dim) -> bool {
 
 /// `forAggregateUnits`' answer: the shared dimension, the display unit of the first cell that carries it, and the
 /// present cells' magnitudes.
-struct Prep {
-    dim: Dim,
-    display: Option<Rc<UnitCell>>,
-    nums: Vec<f64>,
+pub(crate) struct Prep {
+    pub(crate) dim: Dim,
+    pub(crate) display: Option<Rc<UnitCell>>,
+    pub(crate) nums: Vec<f64>,
 }
 
 /// `forAggregateUnits` over values with no error. `bare_is_reading`: a bare number beside readings on an offset scale
 /// (°C) is a reading, not a delta.
-fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Result<Prep, SolError> {
+pub(crate) fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Result<Prep, SolError> {
     let present: Vec<&V> = values.iter().copied().filter(|v| !matches!(v, V::Null)).collect();
     let mut dim: Option<Dim> = None;
     let mut display: Option<Rc<UnitCell>> = None;

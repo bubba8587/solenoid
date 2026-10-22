@@ -102,7 +102,11 @@ fn retag(out: V, dr: &Option<Dim>, elem: &Elem, u: Option<&DisplayUnit>, point: 
 
 /// The fold over a table's rows; None leaves it to the TS (a row that isn't a list, a unit nested in a cell).
 pub fn fold_units(kind: FoldKind, src: &str, m: &V, initial: &V) -> Option<V> {
-    let ast = crate::excel_formula::parse_formula(src)?;
+    fold_units_over(kind, &crate::excel_formula::parse_formula(src)?, &Env::default(), m, initial)
+}
+
+/// `fold_units` with the formula parsed, each step's names beside `captured` (a wired LAMBDA's captures).
+pub fn fold_units_over(kind: FoldKind, ast: &crate::excel_formula::Ast, captured: &Env, m: &V, initial: &V) -> Option<V> {
     let V::List(rows) = m else { return None };
     let mut mat: Vec<Vec<V>> = Vec::with_capacity(rows.len());
     for r in rows.iter() {
@@ -141,17 +145,18 @@ pub fn fold_units(kind: FoldKind, src: &str, m: &V, initial: &V) -> Option<V> {
     }
     let ev = Eval::default();
     let run = |pairs: Vec<(&str, V)>| -> V {
-        let env: Env = pairs.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
-        normalize(ev.run(&ast, &Rc::new(env)))
+        let mut env = captured.clone();
+        env.extend(pairs.into_iter().map(|(k, v)| (k.to_string(), v)));
+        normalize(ev.run(ast, &Rc::new(env)))
     };
     let dims_of = |vars: &[&str], dim: &Dim| -> Result<Option<Dim>, V> {
         let env = vars.iter().map(|v| (v.to_string(), dim.clone())).collect();
-        dim_eval_with_code(&ast, &env, &Codes::new(), None).map(|op| op.map(|o| o.dim)).map_err(V::err)
+        dim_eval_with_code(ast, &env, &Codes::new(), None).map(|op| op.map(|o| o.dim)).map_err(V::err)
     };
     let weight = |points: &[String], lists: &[String]| -> Result<Option<u8>, V> {
         match fu {
             Some(u) if u.offset != 0.0 && !u.offset.is_nan() => {
-                affine_weight(&ast, &AffScope::new(points, lists, &[], &NamedLambdas::new())).map(Some).map_err(V::err)
+                affine_weight(ast, &AffScope::new(points, lists, &[], &NamedLambdas::new())).map(Some).map_err(V::err)
             }
             _ => Ok(None),
         }
