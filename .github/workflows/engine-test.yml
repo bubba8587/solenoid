@@ -50,10 +50,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: "crates/solenoid-core -> target"
+
+      - name: Core lints
+        run: |
+          cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path crates/solenoid-core/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
 
       - name: Core tests
         run: cargo test --manifest-path crates/solenoid-core/Cargo.toml
@@ -64,10 +72,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: "crates/solenoid-graph -> target"
+
+      - name: Graph core lints
+        run: |
+          cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --all-targets -- -D warnings
+          cargo clippy --manifest-path crates/solenoid-graph/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
 
       - name: Graph core tests ([[D102]] graphOnCore)
         run: cargo test --manifest-path crates/solenoid-graph/Cargo.toml
