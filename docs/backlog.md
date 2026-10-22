@@ -14,6 +14,7 @@ Current state (2026-10-10): everything is on latest except what's held below, Po
 bump them together. `magic-string` stays on 0.30 (the plugin build's pin; 1.x is a new major).
 Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.config.ts` serves only
 the production minify, and its "esbuild options ignored" warning is expected.
+
 ## Expect
 - [ ] **Range can't check dates**: Min and Max are number sockets, so a date value is range-checked only against typed serials. Adoptive bounds (a date range for a date value) would fix it.
 
