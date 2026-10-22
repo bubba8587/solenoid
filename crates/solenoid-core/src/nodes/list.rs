@@ -1306,11 +1306,13 @@ fn find_peaks(c: &mut Call) -> Answer {
     if nullish(&arr) {
         return shown(c, "cachedResult", "result", V::Null);
     }
-    let opt = |c: &Call, k: &str| match super::text::setting(c, k, V::Undef) {
+    let opt = |v: V| match v {
         V::Num(n) if n.is_nan() => V::Undef,
         v => v,
     };
-    let args = [arr.clone(), opt(c, "height"), opt(c, "distance"), opt(c, "prominence")];
+    use super::text::setting as setting_or;
+    let (height, distance, prominence) = (setting_or(c, "height", V::Undef), setting_or(c, "distance", V::Undef), setting_or(c, "prominence", V::Undef));
+    let args = [arr.clone(), opt(height), opt(distance), opt(prominence)];
     let V::List(positions) = core_call("FINDPEAKS", &args) else {
         return Err(err("#ERROR!", "This node failed to compute: positions.map is not a function"));
     };

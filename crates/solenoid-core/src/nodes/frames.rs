@@ -237,11 +237,15 @@ fn amortization(c: &mut Call) -> Answer {
         c.show("cachedResult", V::Null);
         return Ok(vec![("frame".into(), V::Null)]);
     };
+    // The card shows the schedule before its money columns take the currency; with none, the two are one frame.
+    let Some(u) = unit else {
+        let frame = V::Frame(Rc::new(frame));
+        c.show("cachedResult", frame.clone());
+        return Ok(vec![("frame".into(), frame)]);
+    };
     c.show("cachedResult", V::Frame(Rc::new(frame.clone())));
-    if let Some(u) = unit {
-        for col in frame.columns.iter_mut().filter(|col| col.name != "Period") {
-            col.unit = Some(u.clone());
-        }
+    for col in frame.columns.iter_mut().filter(|col| col.name != "Period") {
+        col.unit = Some(u.clone());
     }
     Ok(vec![("frame".into(), V::Frame(Rc::new(frame)))])
 }

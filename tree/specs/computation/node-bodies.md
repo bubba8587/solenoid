@@ -38,7 +38,9 @@ only cards hand each other: a frame cell by cell with each column's unit, format
 (`V::Cube`), and plain data a card makes whole, a chart, a document, an image, an SVG or a diagram, as JSON whose
 non-finite numbers, -0 and `undefined` are tagged (`V::Json`), and a table's unit, a hidden field on the JS array
 (`matrixUnitOf`), beside its cells (`{__munit, m}`; a body reads it with `Call::matrix_unit` and sets an output's with
-`set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A frame ref (a lazy verb's plan) doesn't cross: the lazy
+`set_matrix_unit`, which `nodeOnCore` puts back with `withMatrixUnit`). A frame's and a cube's cells cross bare where
+they can (a finite number, text, a logical), and a field the body shows that is one of its outputs crosses as that
+output's key, so it comes back the same object, as the TS body left it. A frame ref (a lazy verb's plan) doesn't cross: the lazy
 verb cards route to the frame backend (Polars on desktop, the core in wasm) and stay TypeScript. A value that can't
 cross (a frame ref, text with a lone surrogate) answers `#VALUE!` on the card. A trap answers `#ERROR!` and the module comes back as [[rust-core]] § Where it
 runs says.
@@ -84,3 +86,5 @@ The core is required: the app's first render waits for it with no deadline (`mai
 | Lists | 37 list cards, Aggregate, XMATCH and Series among them | `nodes/list.rs` |
 | Tables | MDETERM and kin, Table Mult, Table Unit, Diag, Outer, Solve, Eigen, MAP over a table, BYROW/BYCOL, REDUCE, MAKEARRAY | `nodes/matrix.rs` |
 | Figures | Sparkline, Chart, Mermaid, Gauge, Candlestick, Merge Plots, Histogram, KPI, Proportion, Sankey, Heatmap, Surface, Waterfall, Boxplot, Calendar Heatmap, Vector Field, Chart Builder | `nodes/visual.rs` |
+| Frames and cubes | Amortization, Forecast (ETS), Fit Distribution, Decompose, K-Means, Logistic, Allocator, Payoff Planner, Choice Ladder, Decision Matrix, Add Column, Get Row, XLOOKUP, Nest, Unnest, Build Cube, Cube Columns, Nest Join, Cube Rollup | `nodes/frames.rs` |
+| Leftovers | the table cards that keep a unit (Table Input, Transpose, Stack, Reshape, Select, Take/Drop, EXPAND, Set Cell), IFERROR, the IS tests, Fuzzy Match, Find Peaks, Triangle Solver | their families' modules |

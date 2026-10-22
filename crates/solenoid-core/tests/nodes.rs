@@ -106,7 +106,7 @@ fn mismatch(case: &Json) -> Option<String> {
                 return Some(format!("out {k}: not frozen"));
             }
             for (k, w) in want {
-                let got = r.matrix_units.iter().find(|(o, _)| o == k).map(|(_, u)| u);
+                let got = r.matrix_units.iter().find(|(o, _)| o == k && !o.starts_with("display:")).map(|(_, u)| u);
                 if got != w.get("__munit") {
                     return Some(format!("out {k}: table unit {got:?}, want {:?}", w.get("__munit")));
                 }

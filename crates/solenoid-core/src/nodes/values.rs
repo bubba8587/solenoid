@@ -82,6 +82,22 @@ fn column(c: &Json) -> Column {
     }
 }
 
+/// A frame's or a cube's cell: a finite number other than -0 as a bare JSON number, which reads back exact (ryu's
+/// shortest form), text and logicals bare too, so a big frame's reply stays small and the TS takes its cells as they
+/// parse; the rest as `Out` writes it.
+struct Cell<'a>(&'a V);
+
+impl serde::Serialize for Cell<'_> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self.0 {
+            V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => s.serialize_f64(*n),
+            V::Str(t) => s.serialize_str(t),
+            V::Bool(b) => s.serialize_bool(*b),
+            v => crate::frame_backend::Out(v).serialize(s),
+        }
+    }
+}
+
 /// A frame's or a cube's reply, as `Out` writes the rest: `{"frame": {...}}`, `{"cube": {...}}`, `{"json": ...}`.
 pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S::Error> {
     use crate::frame_backend::Out;
@@ -92,7 +108,7 @@ pub fn serialize_frame<S: serde::Serializer>(f: &Frame, s: S) -> Result<S::Ok, S
             use serde::ser::SerializeSeq;
             let mut q = s.serialize_seq(Some(self.0.len()))?;
             for v in self.0 {
-                q.serialize_element(&Out(v))?;
+                q.serialize_element(&Cell(v))?;
             }
             q.end()
         }
@@ -155,7 +171,7 @@ pub fn serialize_cube<S: serde::Serializer>(c: &Cube, s: S) -> Result<S::Ok, S::
         fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             let mut q = s.serialize_seq(Some(self.0.len()))?;
             for v in self.0 {
-                q.serialize_element(&Out(v))?;
+                q.serialize_element(&Cell(v))?;
             }
             q.end()
         }

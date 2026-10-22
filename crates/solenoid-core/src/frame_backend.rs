@@ -505,8 +505,6 @@ impl serde::Serialize for Out<'_> {
             V::Null => s.serialize_unit(),
             V::Undef => one(s, "undef", &true),
             V::Fx(code) => one(s, "fx", code),
-            // A finite number other than -0 reads back exact as a bare JSON number (ryu's shortest form).
-            V::Num(n) if n.is_finite() && !(*n == 0.0 && n.is_sign_negative()) => s.serialize_f64(*n),
             V::Num(n) => one(s, "num", &bits(*n)),
             V::Str(t) => one(s, "str", t.as_ref()),
             V::Bool(b) => one(s, "bool", b),
