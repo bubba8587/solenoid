@@ -9,7 +9,7 @@ import { isUnitCell, displayScale, displayOffset, type UnitCell } from "./unitVa
 import { wallClockSerial } from "./nodes/dateSerial";
 import { settingsStore } from "./settingsStore";
 import { wasmEngineLoaded, wasmInvokeSync } from "./engineWasm";
-import { registryGeneration, internalFunctionNames, resolveExcelFunction } from "./excelFunctions";
+import { registryGeneration, internalFunctionNames, resolveExcelFunction, normalizeFxResult } from "./excelFunctions";
 
 // An uploaded error carries a reference the core hands back, so it returns as the same SolError, message and
 // origin included, for as long as the original is alive.
@@ -154,20 +154,21 @@ export function evaluateOnCore(src: string, env: Record<string, unknown>): { val
 
 /** A function body (`resolveExcelFunction(name)(...args)`, as `dispatch` calls it) on the core, so a node computes what
  *  its formula does in the one implementation ([[C17]] shareImpl, [[D99]] rustIsSpec). It runs on the TS where the
- *  core isn't loaded, an argument can't cross, or the core leaves the reading to the TS. */
+ *  core isn't loaded, an argument can't cross, or the core leaves the reading to the TS. A Formula.js error answer reads
+ *  as Solenoid's, as the evaluator reads it. */
 export function callCore(name: string, args: readonly unknown[]): unknown {
   if (wasmEngineLoaded() && wasmEngineOn()) {
     const wire = args.map((a) => coreValue(a, true));
     if (!wire.includes(undefined)) {
       syncExternalNames();
       const r = readReply(wasmInvokeSync<unknown>("engine_call", { name, args: wire, clock: engineClock() }));
-      if (r) return r.value;
+      if (r) return normalizeFxResult(r.value);
     }
   }
   const f = resolveExcelFunction(name);
   if (!f) return solError("#NAME?", `Unknown function ${name}`);
   try {
-    return f(...args);
+    return normalizeFxResult(f(...args));
   } catch (e) {
     if (isSolError(e)) return e;
     if (e instanceof TypeError || e instanceof RangeError) return solError("#VALUE!", `${name} can't compute with these arguments`);

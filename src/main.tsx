@@ -129,7 +129,8 @@ if (import.meta.env.DEV) {
 }
 
 // Not wrapped in <React.StrictMode>: its double-invoked mount races rete's async editor init, leaving two elements per socket.
-void backendReady.then(() => ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+// A backend that fails to start still renders, on the TS; the rejection reaches the unhandled-rejection notice.
+void backendReady.finally(() => ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <ErrorBoundary scope="app">
     <App />
   </ErrorBoundary>,
