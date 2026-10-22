@@ -38,10 +38,10 @@ pub struct Call {
     pub init: Map<String, Json>,
     pub literals: Map<String, Json>,
     pub string_literals: Map<String, Json>,
-    /// Each input's declared socket type (`declaredTypeOf`) and label, in the card's order.
-    pub sockets: Vec<(String, Option<String>, String)>,
-    /// Each output's key and declared type, in the card's order.
-    pub outputs: Vec<(String, Option<String>)>,
+    /// The inputs, in the card's order.
+    pub sockets: Vec<Socket>,
+    /// The outputs, in the card's order.
+    pub outputs: Vec<Output>,
     /// The inputs as `data()` receives them: a key is there when a cable is, and holds each cable's value.
     pub inputs: Vec<(String, Vec<V>)>,
     pub display: Vec<(String, Shown)>,
@@ -49,6 +49,19 @@ pub struct Call {
     pub matrix_units_in: Vec<(String, Json)>,
     /// The unit to put on an output table (`withMatrixUnit`), by output key.
     pub matrix_units_out: Vec<(String, Json)>,
+}
+
+/// An input socket: its key, its declared type (`declaredTypeOf`) and its label.
+pub struct Socket {
+    pub key: String,
+    pub ty: Option<String>,
+    pub label: String,
+}
+
+/// An output socket: its key and declared type.
+pub struct Output {
+    pub key: String,
+    pub ty: Option<String>,
 }
 
 /// What a body answers: its outputs in order, or the error it throws (the error guard makes it every output's).
@@ -73,10 +86,10 @@ impl Call {
             .map(|r| {
                 let key = text(r, 0).unwrap_or_default();
                 let label = text(r, 2).unwrap_or_else(|| key.clone());
-                (key, text(r, 1), label)
+                Socket { key, ty: text(r, 1), label }
             })
             .collect();
-        let outputs = rows("outputs").iter().map(|r| (text(r, 0).unwrap_or_default(), text(r, 1))).collect();
+        let outputs = rows("outputs").iter().map(|r| Output { key: text(r, 0).unwrap_or_default(), ty: text(r, 1) }).collect();
         let mut matrix_units_in = Vec::new();
         let inputs = rows("inputs")
             .iter()
@@ -147,7 +160,7 @@ impl Call {
     }
 
     pub fn label(&self, key: &str) -> String {
-        self.sockets.iter().find(|(k, _, _)| k == key).map(|(_, _, l)| l.clone()).unwrap_or_else(|| key.to_string())
+        self.sockets.iter().find(|s| s.key == key).map_or_else(|| key.to_string(), |s| s.label.clone())
     }
 
     /// `matrixUnitOf(inputs[key][0])`.

@@ -141,7 +141,7 @@ fn strict_eq(a: &V, b: &V) -> bool {
 
 /// The keys of the card's inputs that start with `prefix`, in the card's order.
 fn keys_from(c: &Call, prefix: &str) -> Vec<String> {
-    c.sockets.iter().filter(|(k, _, _)| k.starts_with(prefix)).map(|(k, _, _)| k.clone()).collect()
+    c.sockets.iter().filter(|s| s.key.starts_with(prefix)).map(|s| s.key.clone()).collect()
 }
 
 fn answer(c: &mut Call, out: &str, result: V) -> Answer {

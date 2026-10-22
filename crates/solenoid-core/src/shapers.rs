@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use crate::error_value::{ErrorCode, sol_error};
-use crate::excel_functions::{if_test_pub, js_number_pub, to_num_pub, Cond, V};
+use crate::excel_functions::{if_test, js_number_of, to_num, Cond, V};
 use crate::fxhash::{FxHashMap, FxHashSet};
 use crate::jsnum::{math_round, number_to_string};
 use crate::js_sort::js_sort_by;
@@ -184,7 +184,7 @@ fn truthy(v: &V) -> bool {
 
 /// `sortOrder`: 1 ascends, -1 descends.
 fn sort_order(f: &str, o: &V) -> Result<bool, V> {
-    let n = if absent(o) { 1.0 } else { to_num_pub(o) };
+    let n = if absent(o) { 1.0 } else { to_num(o) };
     if n == 1.0 {
         Ok(false)
     } else if n == -1.0 {
@@ -229,7 +229,7 @@ fn drop_slice<T: Clone>(arr: &[T], n: f64) -> Vec<T> {
 
 /// `Math.round(Number(v))`.
 fn rounded(v: &V) -> f64 {
-    math_round(js_number_pub(v))
+    math_round(js_number_of(v))
 }
 
 /// UNIQUE's row key: `JSON.stringify` of the row, an error as `\0err:<code>`; NaN and the infinities read as null.
@@ -273,7 +273,7 @@ fn filter(a: &[V]) -> V {
     }
     let mut keep = Vec::new();
     for (i, x) in vals.iter().enumerate() {
-        match if_test_pub(x) {
+        match if_test(x) {
             Cond::Err(e) => return e,
             Cond::Bool(true) => keep.push(i),
             _ => {}
@@ -325,7 +325,7 @@ fn sort(a: &[V]) -> V {
         Err(e) => return e,
     };
     let (m, list) = as_rows_of(v);
-    let index = if absent(arg(a, 1)) { 1.0 } else { to_num_pub(arg(a, 1)) };
+    let index = if absent(arg(a, 1)) { 1.0 } else { to_num(arg(a, 1)) };
     let by_col = truthy(arg(a, 3));
     let g = if by_col { transpose(&m) } else { m.clone() };
     let width = g.first().map_or(0, Vec::len);

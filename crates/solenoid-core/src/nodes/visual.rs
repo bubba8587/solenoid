@@ -1014,7 +1014,7 @@ fn merge_plots(c: &mut Call) -> Answer {
     let keys: Vec<String> = c
         .sockets
         .iter()
-        .map(|(k, _, _)| k.clone())
+        .map(|s| s.key.clone())
         .filter(|k| k.len() > 1 && k.starts_with('p') && k[1..].bytes().all(|b| b.is_ascii_digit()))
         .collect();
     let mut sources: Vec<(Rc<Json>, usize)> = Vec::new();

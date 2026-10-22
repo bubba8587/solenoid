@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::error_value::{ErrorCode, sol_error};
-use crate::excel_functions::{js_number_pub as js_number, js_string_of, logical_or_type_error, math_hypot, js_pow, throw, to_num, V};
+use crate::excel_functions::{js_number_of as js_number, js_string_of, logical_or_type_error, math_hypot, js_pow, throw, to_num, V};
 use crate::jsnum::{js_lower, js_trim, math_max, math_round, number_to_string, string_to_number};
 
 /// The names this module answers.

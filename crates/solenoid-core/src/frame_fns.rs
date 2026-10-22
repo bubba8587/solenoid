@@ -3,13 +3,14 @@
 //! `frame.ts`' builders): each takes frames and plain arguments, and answers a frame, a value or both.
 //! `engine_frame_fn` reaches them.
 
+use crate::excel_formula::cell_to_v;
 use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::decision::{self, Normalize};
 use crate::error_value::{ErrorCode, SolError, sol_error};
 use crate::planners;
-use crate::excel_functions::V;
+use crate::excel_functions::{Stat, V};
 use crate::frame::{frame_row_count, make_headers, FrameCell, FrameColType, FrameColumn, FrameValue};
 use crate::frame_verbs::{cell_key, unmatchable_key, CellKey};
 use crate::fxhash::FxHashMap;
@@ -192,9 +193,6 @@ fn v_cell(v: &V) -> Res<FrameCell> {
     })
 }
 
-fn cell_v(c: &FrameCell) -> V {
-    crate::excel_formula::cell_to_v_pub(c)
-}
 
 fn str_list(xs: impl IntoIterator<Item = String>) -> V {
     V::List(Rc::new(xs.into_iter().map(|s| V::str(&s)).collect()))
@@ -295,7 +293,7 @@ fn describe_column(values: &[FrameCell], ty: FrameColType) -> (f64, f64, f64, [O
     let mut stats = [None; 7];
     if matches!(ty, FrameColType::Number | FrameColType::Date) {
         let finite: Vec<f64> = values.iter().filter_map(|v| if let FrameCell::Num(n) = v { n.is_finite().then_some(*n) } else { None }).collect();
-        let stat = |op: &str| num_or_none(crate::excel_functions::aggregate(op, &finite));
+        let stat = |op: Stat| num_or_none(crate::excel_functions::aggregate(op, &finite));
         let number = ty == FrameColType::Number;
         let mut sorted = if number { finite.clone() } else { Vec::new() };
         crate::js_sort::js_sort_by(&mut sorted, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -306,13 +304,13 @@ fn describe_column(values: &[FrameCell], ty: FrameColType) -> (f64, f64, f64, [O
             crate::excel_functions::percentile_of(&sorted, p, false).filter(|r| r.is_finite())
         };
         stats = [
-            if number { stat("avg") } else { None },
-            if number { stat("stdev") } else { None },
-            stat("min"),
+            if number { stat(Stat::Avg) } else { None },
+            if number { stat(Stat::Stdev) } else { None },
+            stat(Stat::Min),
             if number { pct(0.25) } else { None },
             if number { pct(0.5) } else { None },
             if number { pct(0.75) } else { None },
-            stat("max"),
+            stat(Stat::Max),
         ];
     }
     (count as f64, (values.len() - count) as f64, (nums.len() + bools.len() + text.len()) as f64, stats)
@@ -687,7 +685,7 @@ fn lookup_row_index(f: &FrameValue, args: &[V]) -> Res<Option<usize>> {
     if mm != MatchMode::Exact && !matches!(needle, V::Num(n) if n.is_finite()) {
         return Ok(None);
     }
-    let keys: Vec<V> = key.values.iter().map(cell_v).collect();
+    let keys: Vec<V> = key.values.iter().map(cell_to_v).collect();
     Ok(crate::excel_functions::xmatch_index(&needle, &keys, mm, last).unwrap_or(None))
 }
 
@@ -698,7 +696,7 @@ fn lookup_cell(f: &FrameValue, args: &[V]) -> Res<V> {
     idx_args.extend(args.iter().skip(2).cloned());
     let idx = lookup_row_index(f, &idx_args)?;
     let ret = require_column(f, &ret_name)?;
-    Ok(idx.map_or(V::Undef, |i| cell_v(ret.cell_at(i))))
+    Ok(idx.map_or(V::Undef, |i| cell_to_v(ret.cell_at(i))))
 }
 
 /// `frameRowAt`: the row at a 0-based index as a one-row frame (blank past the end).

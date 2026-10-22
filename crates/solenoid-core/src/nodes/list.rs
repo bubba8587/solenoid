@@ -231,7 +231,7 @@ fn sort(c: &mut Call) -> Answer {
     if nullish(&raw) {
         return shown(c, "cachedList", "result", V::Null);
     }
-    let key_slots: Vec<String> = c.sockets.iter().map(|(k, _, _)| k.clone()).filter(|k| k.starts_with("key")).collect();
+    let key_slots: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).filter(|k| k.starts_with("key")).collect();
     let order = c.field("keyOrder").cloned();
     let mut args = vec![raw.clone()];
     for k in &key_slots {
@@ -380,7 +380,7 @@ fn sets(c: &mut Call) -> Answer {
 }
 
 fn concat_lists(c: &mut Call) -> Answer {
-    let args: Vec<V> = c.sockets.iter().filter(|(k, _, _)| k.starts_with('l')).map(|(k, _, _)| or(slot(c, k), V::Null)).collect();
+    let args: Vec<V> = c.sockets.iter().filter(|s| s.key.starts_with('l')).map(|s| or(slot(c, &s.key), V::Null)).collect();
     let r = core_call("CONCATLISTS", &args);
     shown(c, "cachedList", "result", r)
 }
@@ -506,8 +506,9 @@ fn fill(c: &mut Call) -> Answer {
     let fallbacks: Vec<V> = c
         .sockets
         .iter()
-        .filter(|(k, _, _)| is_else(k))
-        .map(|(k, _, _)| match slot(c, k) {
+        .map(|s| s.key.as_str())
+        .filter(|k| is_else(k))
+        .map(|k| match slot(c, k) {
             w @ V::List(_) => w,
             _ if c.wired(k).is_some() => V::Null,
             _ => match c.literal(k) {
@@ -705,7 +706,7 @@ fn list_item_of(ty: &str, v: &V) -> V {
 fn list_input(c: &mut Call) -> Answer {
     let ty = c.field_str("dataType", "number").to_string();
     let (mut items, mut source) = (Vec::new(), Vec::new());
-    let keys: Vec<String> = c.sockets.iter().map(|(k, _, _)| k.clone()).collect();
+    let keys: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).collect();
     for key in &keys {
         match c.wired(key) {
             Some([first, ..]) => {
@@ -797,7 +798,7 @@ fn filter(c: &mut Call) -> Answer {
     let arr: Vec<V> = if is_list {
         row_cells(&m[0])
     } else {
-        let col = if c.sockets.iter().any(|(k, _, _)| k == "column") { read_role(c, "column", &Role::Setting(V::Num(1.0))) } else { V::Num(1.0) };
+        let col = if c.sockets.iter().any(|s| s.key == "column") { read_role(c, "column", &Role::Setting(V::Num(1.0))) } else { V::Num(1.0) };
         let width = length(&m[0]).unwrap_or(0);
         match col {
             V::Num(n) if n.fract() == 0.0 && n >= 1.0 && n <= width as f64 => {
@@ -814,7 +815,7 @@ fn filter(c: &mut Call) -> Answer {
     let ty = elem_col_type(&mags);
     let config = c.field("condConfig").cloned();
     let mut conds: Vec<(FilterOp, String, bool)> = Vec::new();
-    for (key, _, _) in c.sockets.iter().filter(|(k, _, _)| k.starts_with("value")) {
+    for key in c.sockets.iter().map(|s| &s.key).filter(|k| k.starts_with("value")) {
         let cfg = config.as_ref().and_then(|o| o.get(&key[5..]));
         let spelled = cfg.and_then(|o| o.get("op")).and_then(|v| v.as_str()).unwrap_or("gt");
         let op: FilterOp = spelled.parse().map_err(|_| err(ErrorCode::Value, format!("Unknown filter condition \"{spelled}\"")))?;

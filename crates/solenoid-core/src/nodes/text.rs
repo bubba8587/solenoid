@@ -209,7 +209,7 @@ fn wrap_text(c: &mut Call) -> Answer {
 }
 
 fn concat(c: &mut Call) -> Answer {
-    let keys: Vec<String> = c.sockets.iter().map(|(k, _, _)| k.clone()).collect();
+    let keys: Vec<String> = c.sockets.iter().map(|s| s.key.clone()).collect();
     let values: Vec<V> = keys
         .iter()
         .map(|k| match str_val(c, k) {

@@ -2,6 +2,7 @@
 //! The array-aware evaluator (`excelFormula.ts`' `evalAst`): a formula over named values, the Expression card's
 //! core. A value is a JS value: a list is an array, a matrix an array of arrays, a LAMBDA a `V::Lambda`.
 
+use crate::excel_formula::cell_to_v;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -407,7 +408,7 @@ impl<'a> RowCtx<'a> {
         self.wholes
             .borrow_mut()
             .entry(c.name.clone())
-            .or_insert_with(|| list((0..c.values.len()).map(|i| list(vec![cell_v(c.cell_at(i))])).collect()))
+            .or_insert_with(|| list((0..c.values.len()).map(|i| list(vec![cell_to_v(c.cell_at(i))])).collect()))
             .clone()
     }
 
@@ -462,9 +463,6 @@ impl<'a> RowCtx<'a> {
     }
 }
 
-fn cell_v(c: &crate::frame::FrameCell) -> V {
-    crate::excel_formula::cell_to_v_pub(c)
-}
 
 /// `Object.is` over the values a range call's memo compares: a list or error by identity, the rest by value.
 fn same(a: &V, b: &V) -> bool {
@@ -579,7 +577,7 @@ impl Eval<'_> {
                 Some(row) => match row.column(name) {
                     Some(c) => match c.cell_at(row.cursor.get()) {
                         crate::frame::FrameCell::Null => V::Null,
-                        cell => cell_v(cell),
+                        cell => cell_to_v(cell),
                     },
                     None => match env.get(name) {
                         Some(v) => row.at(name, v),
@@ -1453,7 +1451,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
         }
         Json::Object(o) if o.contains_key("__undef") => V::Undef,
         Json::Object(o) if o.contains_key("__cx") => {
-            let part = |i: usize| match o["__cx"].get(i).map(|p| cell_v(&crate::wire::decode_cell(p))) {
+            let part = |i: usize| match o["__cx"].get(i).map(|p| cell_to_v(&crate::wire::decode_cell(p))) {
                 Some(V::Num(n)) => n,
                 _ => f64::NAN,
             };
@@ -1461,7 +1459,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
         }
         Json::Object(o) if o.contains_key("__unit") => {
             let w = &o["__unit"];
-            let num = |j: Option<&Json>| match j.map(|p| cell_v(&crate::wire::decode_cell(p))) {
+            let num = |j: Option<&Json>| match j.map(|p| cell_to_v(&crate::wire::decode_cell(p))) {
                 Some(V::Num(n)) => n,
                 _ => f64::NAN,
             };
@@ -1490,7 +1488,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
             let env: Env = captured.iter().cloned().zip(values.into_iter().chain(std::iter::repeat(V::Undef))).collect();
             V::Lambda(Rc::new(LambdaV { params, body: Some(Rc::new(body)), env: Rc::new(env), eta: None, captured: Some(captured) }))
         }
-        _ => cell_v(&crate::wire::decode_cell(j)),
+        _ => cell_to_v(&crate::wire::decode_cell(j)),
     }
 }
 
@@ -1576,7 +1574,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
     let finish = |v: V| match take_raised() {
         Raised::Bailed => None,
         Raised::Thrown(e) => Some(crate::frame::FrameCell::err(e)),
-        Raised::Nothing => Some(crate::excel_formula::tag_computed_cell_pub(v)),
+        Raised::Nothing => Some(crate::excel_formula::tag_computed_cell(v)),
     };
     /// ROW()'s row while the column runs; dropping it clears the row.
     struct Rows;
@@ -1628,7 +1626,7 @@ pub fn column(spec: ColumnSpec, inp: ColumnInputs) -> Result<ColumnOutcome, crat
                 ctx.cursor.set(i);
                 rows.at(i);
                 let argv: Vec<V> = binds.iter().map(|b| match b {
-                    Bind::Col(c) => cell_v(c.cell_at(i)),
+                    Bind::Col(c) => cell_to_v(c.cell_at(i)),
                     Bind::Side(v) => v.clone(),
                 }).collect();
                 // A parameter's error cell answers the row before the body runs.

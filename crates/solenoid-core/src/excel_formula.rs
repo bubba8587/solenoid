@@ -551,7 +551,7 @@ pub(crate) fn call_caught(name: &str, argv: &[V]) -> V {
     v
 }
 
-fn cell_to_v(c: &FrameCell) -> V {
+pub(crate) fn cell_to_v(c: &FrameCell) -> V {
     match c {
         FrameCell::Null => V::Null,
         FrameCell::Num(n) => V::Num(*n),
@@ -561,9 +561,6 @@ fn cell_to_v(c: &FrameCell) -> V {
     }
 }
 
-pub fn cell_to_v_pub(c: &FrameCell) -> V {
-    cell_to_v(c)
-}
 
 pub(crate) fn guard(result: f64, inputs: &[V]) -> V {
     if result.is_finite() {
@@ -683,12 +680,9 @@ pub(crate) fn apply_op(op: BinOp, a: &V, b: &V) -> V {
 }
 
 
-pub fn tag_computed_cell_pub(v: V) -> FrameCell {
-    tag_computed_cell(v)
-}
 
 /// `tagComputedCell` after `normalizeFxResult`.
-fn tag_computed_cell(v: V) -> FrameCell {
+pub(crate) fn tag_computed_cell(v: V) -> FrameCell {
     match v {
         V::Num(n) if n.is_nan() => FrameCell::err(sol_error(ErrorCode::Domain, "The result is undefined: not a number")),
         V::Num(n) => FrameCell::Num(n),

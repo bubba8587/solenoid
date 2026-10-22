@@ -163,18 +163,29 @@ thread_local! {
     static ROW_NUMBER: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
 }
 
-/// What one calc reads beside its arguments: the clock, the row, a pending throw or bail.
-pub struct CalcState(Option<Clock>, Option<f64>, Option<SolError>, bool);
+/// What one calc reads beside its arguments, and what it has raised so far.
+pub struct CalcState {
+    clock: Option<Clock>,
+    row: Option<f64>,
+    thrown: Option<SolError>,
+    bailed: bool,
+}
 
+/// Takes the calc's state, leaving nothing raised, for a call made from inside it to start clean.
 pub fn save_calc_state() -> CalcState {
-    CalcState(clock(), ROW_NUMBER.with(|r| r.get()), THROWN.with(|t| t.borrow_mut().take()), BAILED.with(|b| b.replace(false)))
+    CalcState {
+        clock: clock(),
+        row: ROW_NUMBER.with(|r| r.get()),
+        thrown: THROWN.with(|t| t.borrow_mut().take()),
+        bailed: BAILED.with(|b| b.replace(false)),
+    }
 }
 
 pub fn restore_calc_state(s: CalcState) {
-    CLOCK.with(|k| k.set(s.0));
-    ROW_NUMBER.with(|r| r.set(s.1));
-    THROWN.with(|t| *t.borrow_mut() = s.2);
-    BAILED.with(|b| b.set(s.3));
+    CLOCK.with(|k| k.set(s.clock));
+    ROW_NUMBER.with(|r| r.set(s.row));
+    THROWN.with(|t| *t.borrow_mut() = s.thrown);
+    BAILED.with(|b| b.set(s.bailed));
 }
 
 /// What a calc raised beside its answer. A bail throws too, and outranks the throw.
@@ -465,7 +476,34 @@ fn median_of(arr: &[f64]) -> f64 {
     if s.len().is_multiple_of(2) { (s[m - 1] + s[m]) / 2.0 } else { s[m] }
 }
 
-pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
+/// The one-list statistics `aggregate` answers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Stat {
+    Avg,
+    Min,
+    Max,
+    Product,
+    Median,
+    Stdev,
+    StdevP,
+    VarS,
+    VarP,
+    GeoMean,
+    HarMean,
+    DevSq,
+    AveDev,
+    Skew,
+    SkewP,
+    Kurt,
+    Ptp,
+    Iqr,
+    Mad,
+    Sem,
+    Cv,
+    Rms,
+}
+
+pub(crate) fn aggregate(op: Stat, arr: &[f64]) -> V {
     let to_v = |c: FrameCell| match c {
         FrameCell::Num(n) => V::Num(n),
         FrameCell::Err(e) => V::Err(e),
@@ -476,52 +514,52 @@ pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
     }
     let n = arr.len();
     let raw: V = if n == 0 {
-        if op == "product" { V::Num(1.0) } else { V::Null }
+        if op == Stat::Product { V::Num(1.0) } else { V::Null }
     } else {
         let mean = || sum(arr) / n as f64;
         match op {
-            "avg" => V::Num(mean()),
-            "min" => V::Num(fold_min(arr)),
-            "max" => V::Num(fold_max(arr)),
-            "product" => V::Num(arr.iter().fold(1.0, |a, b| a * b)),
-            "median" => V::Num(median_of(arr)),
-            "stdev" => {
+            Stat::Avg => V::Num(mean()),
+            Stat::Min => V::Num(fold_min(arr)),
+            Stat::Max => V::Num(fold_max(arr)),
+            Stat::Product => V::Num(arr.iter().fold(1.0, |a, b| a * b)),
+            Stat::Median => V::Num(median_of(arr)),
+            Stat::Stdev => {
                 if n < 2 {
                     V::err(sol_error(ErrorCode::DivZero, "A sample standard deviation needs at least two values"))
                 } else {
                     V::Num((ssd(arr, mean()) / (n - 1) as f64).sqrt())
                 }
             }
-            "stdev_p" => V::Num((ssd(arr, mean()) / n as f64).sqrt()),
-            "var_s" => {
+            Stat::StdevP => V::Num((ssd(arr, mean()) / n as f64).sqrt()),
+            Stat::VarS => {
                 if n < 2 {
                     V::err(sol_error(ErrorCode::DivZero, "A sample variance needs at least two values"))
                 } else {
                     V::Num(ssd(arr, mean()) / (n - 1) as f64)
                 }
             }
-            "var_p" => V::Num(ssd(arr, mean()) / n as f64),
-            "geomean" => {
+            Stat::VarP => V::Num(ssd(arr, mean()) / n as f64),
+            Stat::GeoMean => {
                 if arr.iter().any(|&v| v <= 0.0) {
                     V::err(sol_error(ErrorCode::Domain, "GEOMEAN needs every value > 0"))
                 } else {
                     V::Num(crate::fdlibm::exp(arr.iter().fold(0.0, |a, &b| a + crate::fdlibm::log(b)) / n as f64))
                 }
             }
-            "harmean" => {
+            Stat::HarMean => {
                 if arr.iter().any(|&v| v <= 0.0) {
                     V::err(sol_error(ErrorCode::Domain, "HARMEAN needs every value > 0"))
                 } else {
                     V::Num(n as f64 / arr.iter().fold(0.0, |a, &b| a + 1.0 / b))
                 }
             }
-            "devsq" => V::Num(ssd(arr, mean())),
-            "avedev" => {
+            Stat::DevSq => V::Num(ssd(arr, mean())),
+            Stat::AveDev => {
                 let m = mean();
                 V::Num(arr.iter().fold(0.0, |a, &b| a + (b - m).abs()) / n as f64)
             }
-            "skew" | "skew_p" => {
-                let sample = op == "skew";
+            Stat::Skew | Stat::SkewP => {
+                let sample = op == Stat::Skew;
                 if n < if sample { 3 } else { 2 } {
                     return V::Null;
                 }
@@ -534,7 +572,7 @@ pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
                 let nf = n as f64;
                 V::Num(if sample { (nf / ((nf - 1.0) * (nf - 2.0))) * cubes } else { cubes / nf })
             }
-            "kurt" => {
+            Stat::Kurt => {
                 if n < 4 {
                     return V::Null;
                 }
@@ -550,23 +588,23 @@ pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
                         - (3.0 * js_pow(nf - 1.0, 2.0)) / ((nf - 2.0) * (nf - 3.0)),
                 )
             }
-            "ptp" => V::Num(fold_max(arr) - fold_min(arr)),
-            "iqr" => {
+            Stat::Ptp => V::Num(fold_max(arr) - fold_min(arr)),
+            Stat::Iqr => {
                 let s = sorted_nums(arr);
                 let at = |p| percentile_of(&s, p, false).unwrap_or(f64::NAN);
                 V::Num(at(0.75) - at(0.25))
             }
-            "mad" => {
+            Stat::Mad => {
                 let med = median_of(arr);
                 V::Num(median_of(&arr.iter().map(|v| (v - med).abs()).collect::<Vec<_>>()))
             }
-            "sem" => {
+            Stat::Sem => {
                 if n < 2 {
                     return V::Null;
                 }
                 V::Num((ssd(arr, mean()) / (n - 1) as f64).sqrt() / (n as f64).sqrt())
             }
-            "cv" => {
+            Stat::Cv => {
                 if n < 2 {
                     return V::Null;
                 }
@@ -577,8 +615,7 @@ pub(crate) fn aggregate(op: &str, arr: &[f64]) -> V {
                     V::Num((ssd(arr, m) / (n - 1) as f64).sqrt() / m)
                 }
             }
-            "rms" => V::Num((arr.iter().fold(0.0, |a, b| a + b * b) / n as f64).sqrt()),
-            _ => V::Null,
+            Stat::Rms => V::Num((arr.iter().fold(0.0, |a, b| a + b * b) / n as f64).sqrt()),
         }
     };
     match raw {
@@ -2242,7 +2279,7 @@ pub enum Cond {
     Err(V),
 }
 
-fn if_test(v: &V) -> Cond {
+pub(crate) fn if_test(v: &V) -> Cond {
     match v {
         V::Null => Cond::Missing,
         V::Err(_) => Cond::Err(v.clone()),
@@ -2253,18 +2290,6 @@ fn if_test(v: &V) -> Cond {
         V::Str(s) if s.to_lowercase() == "false" => Cond::Bool(false),
         _ => Cond::Err(V::err(sol_error(ErrorCode::Value, "A condition needs a logical. Text counts only as TRUE or FALSE"))),
     }
-}
-
-pub fn if_test_pub(v: &V) -> Cond {
-    if_test(v)
-}
-
-pub fn to_num_pub(v: &V) -> f64 {
-    to_num(v)
-}
-
-pub fn js_number_pub(v: &V) -> f64 {
-    js_number_of(v)
 }
 
 // ─── Dispatch ───────────────────────────────────────────────────────────────────
@@ -2834,17 +2859,23 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             if nums.is_empty() {
                 return V::Num(0.0);
             }
-            aggregate(if arm == F::MIN { "min" } else { "max" }, &nums)
+            aggregate(if arm == F::MIN { Stat::Min } else { Stat::Max }, &nums)
         }
-        F::AVERAGE => aggregate("avg", &nums_of(a)),
-        F::MEDIAN => aggregate("median", &nums_of(a)),
-        F::AVEDEV | F::GEOMEAN | F::HARMEAN | F::DEVSQ | F::SKEW | F::SKEW_P | F::KURT | F::PTP | F::IQR | F::MAD | F::SEM | F::CV | F::RMS => {
-            let op = match name {
-                "SKEW.P" => "skew_p".to_string(),
-                other => other.to_lowercase(),
-            };
-            aggregate(&op, &nums_of(a))
-        }
+        F::AVERAGE => aggregate(Stat::Avg, &nums_of(a)),
+        F::MEDIAN => aggregate(Stat::Median, &nums_of(a)),
+        F::AVEDEV => aggregate(Stat::AveDev, &nums_of(a)),
+        F::GEOMEAN => aggregate(Stat::GeoMean, &nums_of(a)),
+        F::HARMEAN => aggregate(Stat::HarMean, &nums_of(a)),
+        F::DEVSQ => aggregate(Stat::DevSq, &nums_of(a)),
+        F::SKEW => aggregate(Stat::Skew, &nums_of(a)),
+        F::SKEW_P => aggregate(Stat::SkewP, &nums_of(a)),
+        F::KURT => aggregate(Stat::Kurt, &nums_of(a)),
+        F::PTP => aggregate(Stat::Ptp, &nums_of(a)),
+        F::IQR => aggregate(Stat::Iqr, &nums_of(a)),
+        F::MAD => aggregate(Stat::Mad, &nums_of(a)),
+        F::SEM => aggregate(Stat::Sem, &nums_of(a)),
+        F::CV => aggregate(Stat::Cv, &nums_of(a)),
+        F::RMS => aggregate(Stat::Rms, &nums_of(a)),
         F::CORREL | F::PEARSON => pearson(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[])), false),
         F::RSQ => pearson(&nums_of(a.get(1..2).unwrap_or(&[])), &nums_of(&a[..1.min(a.len())]), true),
         F::KENDALL => kendall_tau(&nums_of(&a[..1.min(a.len())]), &nums_of(a.get(1..2).unwrap_or(&[]))),
@@ -2926,13 +2957,13 @@ pub fn call_function(name: &str, a: &[V]) -> V {
             let values = if matches!(arg(a, 2), V::Undef) { arg(a, 0) } else { arg(a, 2) };
             criteria_aggregate(Kind::Average, Some(&as_range(values)), &[(as_range(arg(a, 0)), arg(a, 1).clone())])
         }
-        F::STDEV | F::STDEV_S => aggregate("stdev", &nums_of(a)),
-        F::STDEV_P => aggregate("stdev_p", &nums_of(a)),
-        F::VAR | F::VAR_S => aggregate("var_s", &nums_of(a)),
-        F::VAR_P => aggregate("var_p", &nums_of(a)),
+        F::STDEV | F::STDEV_S => aggregate(Stat::Stdev, &nums_of(a)),
+        F::STDEV_P => aggregate(Stat::StdevP, &nums_of(a)),
+        F::VAR | F::VAR_S => aggregate(Stat::VarS, &nums_of(a)),
+        F::VAR_P => aggregate(Stat::VarP, &nums_of(a)),
         F::PRODUCT => {
             let n = nums_of(a);
-            if n.is_empty() { V::Num(0.0) } else { aggregate("product", &n) }
+            if n.is_empty() { V::Num(0.0) } else { aggregate(Stat::Product, &n) }
         }
         F::LEN => V::Num(utf16(&to_str(arg(a, 0))).len() as f64),
         F::CONCAT | F::CONCATENATE => V::str(&a.iter().map(to_str).collect::<String>()),
@@ -4790,7 +4821,7 @@ fn dollar(value: &V, decimals: &V) -> V {
 }
 
 /// `Number(v)` as `Math.abs` reads it.
-fn js_number_of(v: &V) -> f64 {
+pub(crate) fn js_number_of(v: &V) -> f64 {
     match v {
         V::Null => 0.0,
         other => to_f64_js(other),
