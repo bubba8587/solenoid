@@ -30,6 +30,7 @@ import { payoffFrame, settleFrame, settleLedgerCube, numericRows, kmeansOutputs,
 import { amortizationFrame } from "../../src/graph/nodes/finance";
 import { frameBackend, useWasmBackend, computeColumnOnEngine, engineClock, frameFnOnCore } from "../../src/graph/frameBackend";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
+import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { isLambdaValue, type LambdaValue } from "../../src/graph/lambdaValue";
 import { loadWasmEngineSync, wasmInvokeSync } from "../../src/graph/engineWasm";
 import { frozen, FREEZING, enc } from "./coreFixtures";
@@ -1147,9 +1148,109 @@ describe("SORT and UNIQUE over values with a unit answer as frozen", () => {
   it(`${unitShapers.length} calls`, () => replayUnitCalls(unitShapers));
 });
 
+/** FILTER over values with a unit ([[C25]] firstClassUnits): the data moves unread, and a unit cell read as a
+ *  condition is `#VALUE!` (`ifTest`). */
+const unitFilters = frozen<UnitListCase>("unit-filters", () => {
+  const cases: UnitListCase[] = [];
+  const rand = mulberry32(7373);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const cell = () => (rand() < 0.5 ? pick(pick(UNIT_FAMILIES)) : pick([1, 2, -1, 0, null, undefined, "a", true, false, NaN, solError("#N/A", "gone")]));
+  const cond = () => (rand() < 0.15 ? pick(pick(UNIT_FAMILIES)) : pick([true, false, true, 1, 0, -2, NaN, null, undefined, "TRUE", "false", "x", "", solError("#N/A", "gone")]));
+  const row = (n: number, f: () => unknown) => Array.from({ length: n }, f);
+  for (let i = 0; i < 4000; i++) {
+    const r = rand();
+    const w = 1 + Math.floor(rand() * 3);
+    const v: unknown = r < 0.1 ? cell() : r < 0.55 ? row(Math.floor(rand() * 7), cell) : row(1 + Math.floor(rand() * 5), () => row(w, cell));
+    const n = !Array.isArray(v) ? 1 : Array.isArray(v[0]) ? v.length : v.length;
+    const include = rand() < 0.1 ? cond()
+      : Array.isArray(v) && Array.isArray(v[0]) ? (rand() < 0.8 ? v.map(() => [cond()]) : row(w, cond))
+      : row(rand() < 0.9 ? n : n + 1, cond);
+    const args = rand() < 0.5 ? [v, include] : [v, include, pick([undefined, null, 0, "none", ...pick(UNIT_FAMILIES)])];
+    let want: unknown;
+    try { want = unitData(resolveExcelFunction("FILTER")!(...structuredClone(args))); } catch (e) { want = { thrown: String((e as Error).message ?? e) }; }
+    cases.push({ name: "FILTER", args, want });
+  }
+  return cases;
+});
+
+describe("FILTER over values with a unit answers as frozen", () => {
+  it(`${unitFilters.length} calls`, () => replayUnitCalls(unitFilters));
+});
+
+type ExprUnitCase = { src: string; env: Record<string, unknown>; want: unknown };
+
+/** Expression's unit wrapper ([[C25]] firstClassUnits, unit-flow § Expression): the dimension check, the one shared
+ *  display unit the formula reads its numbers in, the point weight over readings and the result's unit, frozen from
+ *  `ExpressionNode.data()` over generated inputs with a unit. */
+const expressionUnits = frozen<ExprUnitCase>("expression-units", () => {
+  const cases: ExprUnitCase[] = [];
+  const rand = mulberry32(8484);
+  const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+  const extra = [unitCell(1000, { length: 1 }, "km"), unitCell(2000, { length: 1 }, "km"), unitCell(283.15, { temperature: 1 }, "degC"),
+    unitCell(303.15, { temperature: 1 }, "degC"), unitCell(10, { currency: 1 }, "eur"), unitCell(3600, { time: 1 }, "km"),
+    unitCell(0.5, { length: 1 }, "custom"), unitCell(4, { length: 1 }, ""), unitCell(1e-9, { length: 1 }, "km"), unitCell(0.1 + 0.2, { length: 1 }, "ft")];
+  const plain = [1, 2, -3, 0.5, 0, 10, null, "x", "", true, NaN];
+  const family = () => pick([...UNIT_FAMILIES, extra, extra]);
+  const binary = ["+", "-", "*", "/", "^", ">", "<=", "=", "&"];
+  const leafOf = (vars: string[]) => (rand() < 0.75 ? pick(vars) : pick(["2", "0.5", "1", "3600", "100", "-1", '"a"']));
+  const exprOf = (vars: string[], depth: number): string => {
+    if (depth === 0 || rand() < 0.3) return leafOf(vars);
+    const r = rand();
+    const a = exprOf(vars, depth - 1);
+    if (r < 0.55) {
+      const op = pick(binary);
+      const b = op === "^" ? pick(["2", "0.5", "3", "-1", leafOf(vars)]) : exprOf(vars, depth - 1);
+      return `(${a} ${op} ${b})`;
+    }
+    const fn = pick(["SUM", "AVERAGE", "MIN", "MAX", "ABS", "SQRT", "ROUND", "IF", "COUNT", "MEDIAN", "STDEV", "INDEX", "LET", "MAP", "PRODUCT"]);
+    if (fn === "ROUND") return `ROUND(${a}, ${pick(["0", "1", "2"])})`;
+    if (fn === "IF") return `IF(${exprOf(vars, 0)} > ${exprOf(vars, 0)}, ${a}, ${exprOf(vars, depth - 1)})`;
+    if (fn === "INDEX") return `INDEX(${a}, 1)`;
+    if (fn === "LET") return `LET(q, ${a}, q ${pick(["+", "*", "-"])} ${exprOf(vars, 0)})`;
+    if (fn === "MAP") return `MAP(${a}, LAMBDA(v, v ${pick(["*", "+", "/"])} ${pick(["2", "v", exprOf(vars, 0)])}))`;
+    if (["ABS", "SQRT"].includes(fn)) return `${fn}(${a})`;
+    return `${fn}(${a}${rand() < 0.5 ? `, ${exprOf(vars, depth - 1)}` : ""})`;
+  };
+  for (let i = 0; i < 6000; i++) {
+    const fam = family();
+    const cell = () => (rand() < 0.8 ? pick(fam) : rand() < 0.5 ? pick(plain) : pick(family()));
+    const value = (): unknown => {
+      const r = rand();
+      if (r < 0.7) return cell();
+      if (r < 0.95) return Array.from({ length: 1 + Math.floor(rand() * 4) }, cell);
+      return Array.from({ length: 2 }, () => [cell(), cell()]);
+    };
+    const vars = ["a", "b", "c", "xs"].slice(0, 1 + Math.floor(rand() * 4));
+    const src = exprOf(vars, 1 + Math.floor(rand() * 3));
+    const node = new ExpressionNode({ expr: src });
+    const env: Record<string, unknown> = {};
+    for (const v of node.varNames) env[v] = rand() < 0.1 ? pick(plain) : value();
+    const inputs: Record<string, unknown[]> = {};
+    for (const v of node.varNames) inputs[v] = [structuredClone(env[v])];
+    let want: unknown;
+    try { want = unitData(node.data(inputs).result); } catch (e) { want = { thrown: String((e as Error).message ?? e) }; }
+    cases.push({ src, env, want });
+  }
+  return cases;
+});
+
+describe("Expression's unit wrapper answers as frozen", () => {
+  it(`${expressionUnits.length} formulas`, () => {
+    const bad: unknown[] = [];
+    for (const c of expressionUnits) {
+      const env = Object.fromEntries(Object.entries(c.env).map(([k, v]) => [k, coreValue(v, true)]));
+      const r = readReply(wasmInvokeSync<unknown>("engine_expression_units", { src: c.src, env, clock: engineClock() }));
+      const got = r ? unitData(r.value) : { bailed: true };
+      if (JSON.stringify(enc(got)) !== JSON.stringify(enc(c.want))) bad.push({ src: c.src, env: c.env, got, want: c.want });
+    }
+    if (process.env.CORE_DUMP) fs.writeFileSync(process.env.CORE_DUMP, `${bad.length} differ\n` + bad.map((b) => JSON.stringify(enc(b))).join("\n"));
+    expect(bad.slice(0, 5)).toEqual([]);
+  });
+});
+
 if (FREEZING) {
   it("froze every suite", () => {
-    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length + unitRunning.length + unitShapers.length).toBeGreaterThan(0);
+    expect(bodies.length + maths.length + columns.length + verbs.length + frameFns.length + expressions.length + unitDims.length + affineCases.length + unitLists.length + unitRunning.length + unitShapers.length + unitFilters.length + expressionUnits.length).toBeGreaterThan(0);
   });
 }
 // Kept for the differential suites' imports until they go: these names are also the core's to answer.

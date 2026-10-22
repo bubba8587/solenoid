@@ -27,9 +27,16 @@ export function setDisplayOffsetResolver(fn: (id: string) => number | null): voi
   _displayOffset = fn;
 }
 
-/** A display unit's scale and offset as the resolvers read them, for a cell crossing into the core. */
+let _displayDim: (id: string) => Dim | null = (id) => parseUnit(id)?.dim ?? null;
+
+export function setDisplayDimResolver(fn: (id: string) => Dim | null): void {
+  _displayDim = fn;
+}
+
+/** A display unit's scale, offset and dimension as the resolvers read them, for a cell crossing into the core. */
 export const displayScale = (id: string): number | null => _displayScale(id);
 export const displayOffset = (id: string): number | null => _displayOffset(id);
+export const displayDim = (id: string): Dim | null => _displayDim(id);
 
 export function isAffineDisplay(id: string | undefined): boolean {
   if (id === undefined || id === "") return false;

@@ -23,7 +23,7 @@ fn reply(r: Result<serde_json::Value, SolError>) -> String {
 #[wasm_bindgen]
 pub fn engine_invoke(command: &str, args: &str) -> String {
     match serde_json::from_str(args) {
-        Ok(parsed) if matches!(command, "engine_call" | "engine_eval") => match crate::frame_backend::call_reply(command, &parsed) {
+        Ok(parsed) if matches!(command, "engine_call" | "engine_eval" | "engine_expression_units") => match crate::frame_backend::call_reply(command, &parsed) {
             Ok(r) => format!("{{\"ok\":{}}}", serde_json::to_string(&r).expect("a call's reply serializes")),
             Err(e) => reply(Err(e)),
         },

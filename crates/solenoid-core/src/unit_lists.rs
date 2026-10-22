@@ -144,11 +144,11 @@ fn for_aggregate_units(values: &[&V], bare_is_reading: bool) -> Result<Prep, Sol
 }
 
 /// `tagDim`: a dimensionless value is a plain number.
-fn tag_dim(value: f64, dim: Dim, display: Option<String>) -> V {
+pub fn tag_dim(value: f64, dim: Dim, display: Option<String>) -> V {
     if is_dimensionless(&dim) {
         return V::Num(value);
     }
-    V::Unit(Rc::new(UnitCell { value, dim, display: display.filter(|d| !d.is_empty()), ratio: false, scale: None, offset: None }))
+    V::Unit(Rc::new(UnitCell { value, dim, display: display.filter(|d| !d.is_empty()), ratio: false, scale: None, offset: None, unit_dim: None }))
 }
 
 /// `running`: a list of one unit runs on its magnitudes and keeps the unit, as Reduce does: a product's power grows

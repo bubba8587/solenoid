@@ -311,7 +311,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(json!(register(FrameValue { columns })))
         }
-        "engine_call" | "engine_eval" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
+        "engine_call" | "engine_eval" | "engine_expression_units" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
         "engine_ported" => Ok(json!(crate::excel_functions::ported_names())),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),
@@ -348,6 +348,11 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
             return Ok(CallReply::Bail);
         }
         call_function(&name, &argv)
+    } else if command == "engine_expression_units" {
+        // [[C25]] firstClassUnits: Expression's unit wrapper over its read inputs.
+        let src = parse::<String>(args, "src")?;
+        let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
+        crate::unit_expression::expression_units(&src, &env).unwrap_or_else(crate::excel_functions::bail)
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;

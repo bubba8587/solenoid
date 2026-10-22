@@ -1,7 +1,7 @@
 // [[C25]], [[D43]]
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
 import { UNIT_ANNOTATIONS, isFcUnit, unitById } from "./formatAnnotationStore";
-import { fromUnit, formatUnitCell, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, matrixUnitOf, roundAtLargerTerm, setDisplayScaleResolver, setDisplayOffsetResolver, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
+import { fromUnit, formatUnitCell, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, matrixUnitOf, roundAtLargerTerm, setDisplayScaleResolver, setDisplayOffsetResolver, setDisplayDimResolver, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
 import { isSolError } from "./errorValue";
 
 const DIRECT: Record<string, Unit> = {
@@ -146,6 +146,7 @@ export function fcUnitIdForUnit(u: Unit): string | undefined {
 
 setDisplayScaleResolver((id) => fcUnitToUnit(id)?.scale ?? null);
 setDisplayOffsetResolver((id) => fcUnitToUnit(id)?.offset ?? null);
+setDisplayDimResolver((id) => fcUnitToUnit(id)?.dim ?? null);
 
 /** A formula preset's input read in its declared unit ([[C25]] firstClassUnits): a bare number is
  *  taken as already in it, a dimensioned cell converts, and another dimension is #UNIT!. */

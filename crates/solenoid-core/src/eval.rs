@@ -1329,6 +1329,7 @@ pub fn decode_value(j: &serde_json::Value) -> V {
                 ratio: w.get("ratio").and_then(Json::as_bool).unwrap_or(false),
                 scale: w.get("scale").filter(|j| !j.is_null()).map(|j| num(Some(j))),
                 offset: w.get("offset").filter(|j| !j.is_null()).map(|j| num(Some(j))),
+                unit_dim: w.get("udim").and_then(Json::as_object).map(|d| d.iter().map(|(k, x)| (k.clone(), num(Some(x)))).collect()),
             }))
         }
         Json::Object(o) if o.contains_key("__lambda") => {
