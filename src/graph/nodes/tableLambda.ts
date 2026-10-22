@@ -1,18 +1,13 @@
 // [[B14]], [[C50]]
 import { ClassicPreset } from "rete";
+import { nodeOnCore } from "../nodeOnCore";
 import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, readInput, type ResultType, type ResultDim } from "./shared";
 import { toAnyMatrix } from "./coerce";
-import { compilePositional, parseFormula, formulaSyntaxHint, extractVariables } from "../excelFormula";
-import { isLambdaValue, type LambdaValue } from "./lambda";
+import { compilePositional, formulaSyntaxHint, extractVariables } from "../excelFormula";
+import { isLambdaValue } from "./lambda";
 import { solError, isSolError, type SolError, type SolErrorCode } from "../errorValue";
 import { guardFinite } from "../valueKinds";
-import { MAX_GENERATED } from "./listOps";
-import { isUnitCell, tagDim, magnitudeOf, unitError, fromUnit, READINGS_FOLD, type UnitCell } from "../unitValue";
-import { dimEval, affineWeight, type DimEnv } from "../unitDimExpr";
-import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
-import { fcUnitToUnit } from "../unitBridge";
-import { coreValue, readReply, wasmEngineOn, engineClock, wellFormed } from "../coreValues";
-import { onCore, wasmEngineLoaded, wasmInvokeSync } from "../engineWasm";
+import type { UnitCell } from "../unitValue";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE / SCAN ─────────
 
@@ -65,107 +60,11 @@ function fnError(err: string, code: SolErrorCode): { result: SolError } {
   return { result: solError(code, err) };
 }
 
-function transpose<T>(m: T[][]): T[][] {
-  const cols = m[0]?.length ?? 0;
-  return Array.from({ length: cols }, (_, j) => m.map((row) => row[j]));
-}
-
 function cell(v: unknown): Cell {
   if (isSolError(v)) return v;
   if (typeof v === "string") return v;
   if (typeof v === "boolean") return v;
   return typeof v === "number" ? guardFinite(v, [v]) : null;
-}
-
-// ─── Unit carry over a 1-D list ───────────────────────────────────────────────
-// Only a widened 1-D list carries units; the matrix producers (MAP, MAKEARRAY, SCAN) are unit-agnostic.
-
-/** Null when nothing is tagged and #UNIT! when tagged cells disagree on dimension; the display survives only when every tagged cell agrees. */
-function elemUnitOf(m: Mat): { dim: Dim; display?: string } | null | SolError {
-  let dim: Dim | null = null;
-  let display: string | undefined;
-  let displaySet = false;
-  for (const row of m) for (const c of row) {
-    if (!isUnitCell(c)) continue;
-    const cell = c as unknown as UnitCell;
-    if (dim === null) dim = cell.dim;
-    else if (!dimEqual(dim, cell.dim)) return unitError("Can't fold a list with mixed units.");
-    if (!displaySet) { display = cell.display; displaySet = true; }
-    else if (display !== cell.display) display = undefined;
-  }
-  return dim === null ? null : { dim, display };
-}
-
-/** REDUCE's initial value is the fold's first accumulator, so its unit joins the list's: alone it is the fold's unit,
- *  and in another dimension it is #UNIT!. */
-function initialUnit(elem: { dim: Dim; display?: string } | null | SolError, initial: unknown): { dim: Dim; display?: string } | null | SolError {
-  if (isSolError(elem) || !isUnitCell(initial)) return elem;
-  if (!elem) return { dim: initial.dim, display: initial.display };
-  if (!dimEqual(elem.dim, initial.dim)) return unitError("REDUCE's initial value and its list are in different units.");
-  return initial.display === elem.display ? elem : { dim: elem.dim };
-}
-
-/** The linear display unit the tagged cells share, which the fold then runs in, so a bare
- *  `+ 1` means 1 km as it does on the Arithmetic card; null folds in base SI. */
-function foldUnit(elem: { dim: Dim; display?: string } | null): Unit | null {
-  const u = elem?.display ? fcUnitToUnit(elem.display) : null;
-  return u && dimEqual(u.dim, elem!.dim) ? u : null;
-}
-
-/** A base-SI magnitude as read in `u` (the reading, offset included). */
-const readIn = (base: number, u: Unit | null) => (u ? (base - (u.offset ?? 0)) / u.scale : base);
-
-function stripCells(m: Mat, u: Unit | null): Mat {
-  return m.map((row) => row.map((c) => (isUnitCell(c) ? readIn((c as unknown as UnitCell).value, u) : c)));
-}
-
-/** Over an affine unit (°C) the fold's point weight ([[C25]] firstClassUnits): 1 a reading,
- *  0 a difference; null over a linear unit. */
-function foldPoint(expr: string, u: Unit | null, points: string[], lists: string[]): 0 | 1 | SolError | null {
-  if (!u?.offset) return null;
-  const ast = parseFormula(expr);
-  return ast ? affineWeight(ast, new Set(points), new Set(lists)) : null;
-}
-
-/** `dimVars` take the element dim; every other variable is dimensionless. */
-function foldResultDim(expr: string, dimVars: string[], elemDim: Dim): Dim | SolError | null {
-  const ast = parseFormula(expr);
-  if (!ast) return null;
-  const env: DimEnv = {};
-  for (const v of dimVars) env[v] = elemDim;
-  return dimEval(ast, env);
-}
-
-function foldExpr(lam: unknown, inline: string | undefined, fallback: string): string {
-  if (isLambdaValue(lam)) return (lam as LambdaValue).expr || fallback;
-  return inline && inline.trim() ? inline : fallback;
-}
-
-function retagFold(
-  out: Cell,
-  dr: Dim | SolError | null,
-  elem: { dim: Dim; display?: string },
-  u: Unit | null,
-  point: 0 | 1 | null = null,
-): Cell | UnitCell {
-  if (typeof out !== "number" || dr === null || isSolError(dr) || isDimensionless(dr)) return out;
-  if (u && point === 1) return fromUnit(out, u, elem.display) as UnitCell;
-  if (u && point === 0) return tagDim(out * u.scale ** (dimPowerOf(dr, elem.dim) ?? 1), dr);
-  const display = dimEqual(dr, elem.dim) ? elem.display : undefined;
-  const k = u ? dimPowerOf(dr, elem.dim) : null;
-  if (u && k === null) return unitError("The fold's result unit can't be read back from the list's unit.");
-  return tagDim(u ? out * u.scale ** k! : out, dr, display);
-}
-
-/** The fold's unit wrapper on the core ([[D99]] rustIsSpec, `unit_fold.rs`) for an inline formula over a table
- *  holding a unit cell; null leaves it to the TS (the core off, a wired LAMBDA, a value that can't cross). */
-function foldOnCore(kind: "reduce" | ByAxis, lam: unknown, src: string, m: Mat, initial?: unknown): { value: unknown } | null {
-  if (isLambdaValue(lam) || (!isUnitCell(initial) && !m.some((row) => Array.isArray(row) && row.some(isUnitCell)))) return null;
-  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
-  const wm = coreValue(m, true);
-  const wi = coreValue(initial ?? null, true);
-  if (wm === undefined || wi === undefined) return null;
-  return onCore(() => readReply(wasmInvokeSync<unknown>("engine_fold_units", { kind, src, m: wm, initial: wi, clock: engineClock() })), null);
 }
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
@@ -194,37 +93,8 @@ export class MapTableNode extends ClassicPreset.Node {
     this.addOutput("result", resultOut("Mapped", "matrix", this.resultAs));
   }
 
-  data(inputs: { table?: unknown[]; table2?: unknown[]; table3?: unknown[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    const m = toAnyMatrix(inputs.table?.[0]);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "value^2", ["value", "value2", "value3", "row", "col"], 5, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    const extras: (Mat | null)[] = [toAnyMatrix(inputs.table2?.[0]), toAnyMatrix(inputs.table3?.[0])];
-    for (const e of extras) {
-      if (!e) continue;
-      const oneByOne = e.length === 1 && (e[0]?.length ?? 0) === 1;
-      if (!oneByOne && (e.length !== m.length || (e[0]?.length ?? 0) !== (m[0]?.length ?? 0))) {
-        const msg = `Shape mismatch: ${e.length}×${e[0]?.length ?? 0} vs ${m.length}×${m[0]?.length ?? 0}`;
-        this.cachedResult = null;
-        this.cachedError = msg;
-        return fnError(msg, "#SHAPE!");
-      }
-    }
-    const pick = (e: Mat | null, i: number, j: number): Cell =>
-      e ? (e.length === 1 && e[0].length === 1 ? e[0][0] : e[i][j]) : NaN;
-    try {
-      const out = m.map((row, i) =>
-        row.map((x, j) => cell(fn(x, pick(extras[0], i, j), pick(extras[1], i, j), i + 1, j + 1))));
-      this.cachedResult = out;
-      this.cachedError = null;
-      return { result: out };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
@@ -272,42 +142,8 @@ export class ByAxisNode extends ClassicPreset.Node {
     return true;
   }
 
-  data(inputs: { table?: unknown[]; lambda?: unknown[] }): { result: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null } {
-    const m = toAnyMatrix(inputs.table?.[0]);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "SUM(values)", ["values"], 1, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (!m || m.length === 0) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    const core = foldOnCore(this.op, inputs.lambda?.[0], foldExpr(undefined, this.stringLiterals.formula, "SUM(values)"), m);
-    if (core) {
-      const result = core.value as (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError;
-      this.cachedResult = result; this.cachedError = null; return { result };
-    }
-    const elem = elemUnitOf(m);
-    if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
-    const fu = foldUnit(elem);
-    const mm = elem ? stripCells(m, fu) : m;
-    try {
-      const vectors = this.op === "row" ? mm : transpose(mm);
-      let out: (Cell | UnitCell)[] = vectors.map((vec) => cell(fn(vec)));
-      if (elem) {
-        const expr = foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "SUM(values)");
-        const dr = foldResultDim(expr, ["values"], elem.dim);
-        if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
-        const point = foldPoint(expr, fu, ["values"], ["values"]);
-        if (isSolError(point)) { this.cachedResult = point; this.cachedError = null; return { result: point }; }
-        out = out.map((c) => retagFold(c as Cell, dr, elem, fu, point));
-      }
-      const shaped = this.op === "row" ? out.map((c) => [c]) : out;
-      this.cachedResult = shaped;
-      this.cachedError = null;
-      return { result: shaped };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null };
   }
 }
 
@@ -342,50 +178,8 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
     this.addOutput("result", resultOut("Result", "scalar", this.resultAs));
   }
 
-  data(inputs: { initial?: unknown[]; table?: unknown[]; lambda?: unknown[] }): { result: Cell | UnitCell | SolError | null } {
-    const initialRaw = readInput(inputs.initial as (unknown[] | undefined), this.literals.initial ?? 0);
-    const m = toAnyMatrix(inputs.table?.[0]);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "acc + value", ["acc", "value", "step"], 3, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    const core = foldOnCore("reduce", inputs.lambda?.[0], foldExpr(undefined, this.stringLiterals.formula, "acc + value"), m, initialRaw);
-    if (core) {
-      const result = core.value as Cell | UnitCell | SolError;
-      this.cachedResult = result; this.cachedError = null; return { result };
-    }
-    const listUnit = elemUnitOf(m);
-    const elem = initialUnit(listUnit, initialRaw);
-    if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
-    // Over a plain list only the accumulator carries the initial's unit: `value` is a plain number (a rate, a count).
-    const united = listUnit ? ["acc", "value"] : ["acc"];
-    const fu = foldUnit(elem);
-    const mm = elem ? stripCells(m, fu) : m;
-    const initial = isUnitCell(initialRaw) ? readIn(magnitudeOf(initialRaw), fu) : initialRaw;
-    try {
-      let acc: unknown = initial;
-      let i = 0;
-      for (const row of mm) for (const x of row) acc = fn(acc, x, ++i);
-      let out: Cell | UnitCell = cell(acc);
-      if (elem) {
-        const expr = foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "acc + value");
-        const dr = foldResultDim(expr, united, elem.dim);
-        if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
-        // The accumulator is a reading step after step only when each step answers one.
-        const point = foldPoint(expr, fu, united, []);
-        const bad = isSolError(point) ? point : point === 0 ? unitError(READINGS_FOLD) : null;
-        if (bad) { this.cachedResult = bad; this.cachedError = null; return { result: bad }; }
-        out = retagFold(out as Cell, dr, elem, fu, point as 1 | null);
-      }
-      this.cachedResult = out;
-      this.cachedError = null;
-      return { result: out };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Cell | UnitCell | SolError | null };
   }
 }
 
@@ -472,36 +266,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
     this.addOutput("result", resultOut("Array", "matrix", this.resultAs));
   }
 
-  data(inputs: { rows?: number[]; cols?: number[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    const rowsRaw = readInput(inputs.rows, this.literals.rows ?? 0);
-    const colsRaw = readInput(inputs.cols, this.literals.cols ?? 0);
-    const rows = rowsRaw === null ? 0 : Math.floor(rowsRaw);
-    const cols = colsRaw === null ? 0 : Math.floor(colsRaw);
-    const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], this.stringLiterals.formula,
-      "row * col", ["row", "col"], 2, true);
-    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
-    if (rows < 1 || cols < 1) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    if (rows * cols > MAX_GENERATED) {
-      const msg = `MAKEARRAY count ${rows * cols} exceeds the ${MAX_GENERATED} element limit`;
-      this.cachedResult = null;
-      this.cachedError = msg;
-      return fnError(msg, "#OVERFLOW!");
-    }
-    try {
-      const out: Mat = [];
-      for (let i = 1; i <= rows; i++) {
-        const row: Cell[] = [];
-        for (let j = 1; j <= cols; j++) row.push(cell(fn(i, j)));
-        out.push(row);
-      }
-      this.cachedResult = out;
-      this.cachedError = null;
-      return { result: out };
-    } catch {
-      this.cachedResult = null;
-      this.cachedError = "Evaluation error";
-      return fnError("Evaluation error", "#VALUE!");
-    }
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }

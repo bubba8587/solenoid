@@ -231,14 +231,6 @@ export function requireTextColumn(op: FilterOp, type: FrameColType, column: stri
   );
 }
 
-export function requireTextList(op: FilterOp, type: FrameColType): void {
-  if (!TEXT_FILTER_OPS.has(op) || type === "string") return;
-  throw solError(
-    "#TYPE!",
-    `${TEXT_OP_LABEL[op] ?? op} reads text — this is a ${type} list. Cast it to Text first`,
-  );
-}
-
 export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
   return compileFilter(op, value, type, matchCase)(cell);
 }

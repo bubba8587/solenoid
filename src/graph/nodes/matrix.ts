@@ -1,6 +1,7 @@
 // [[C58]], [[C48]], [[B11]]
 import { ClassicPreset } from "rete";
-import { matRows, matCols, matUnit, matDiag, outerProduct, asNumericMatrix, chooseAxis, setCells, SKIP_BY_CODE, type SkipCells } from "./matrixOps";
+import { nodeOnCore } from "../nodeOnCore";
+import { chooseAxis, setCells, SKIP_BY_CODE, type SkipCells } from "./matrixOps";
 import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput, readRole } from "./shared";
 import { rolesFrom } from "../inputRoles";
 import { pickSlot, pairIdsFromKeys } from "./logic";
@@ -8,7 +9,7 @@ import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
-import { solError, isSolError, type SolError } from "../errorValue";
+import { isSolError, type SolError } from "../errorValue";
 import { isFrameValue, frameRowCount, coerceFrameCell, type FrameValue } from "../frame";
 import { isFrameRef, collectPreview } from "../frameBackend";
 import { carryMatrixUnit, withMatrixUnit, matrixUnitOf, sharedMatrixUnit, isUnitCell } from "../unitValue";
@@ -20,7 +21,6 @@ import { callCore } from "../coreValues";
 
 type Mat = (number | null)[][]; // a null cell is missing; linear-algebra ops reject it
 type CellMat = Cell[][];
-const numOrNull = (v: unknown): boolean => v === null || typeof v === "number";
 
 // ─── TABLE INPUT ──────────────────────────────────────────────────────────────
 
@@ -111,7 +111,6 @@ export const MAT_DET_OP_META = {
   norm:     { label: "NORM",     description: "Frobenius norm: √Σ every cell squared (`numpy.linalg.norm` default, R `norm(m, \"F\")`). Excel: `SQRT(SUMSQ(range))`." },
 } satisfies Record<MatDetOp, { label: string; description: string }>;
 const MAT_DET_SCALAR: ReadonlySet<MatDetOp> = new Set(["mdeterm", "trace", "rank", "norm"]);
-const MAT_DET_FN: Record<MatDetOp, string> = { mdeterm: "MDETERM", minverse: "MINVERSE", trace: "TRACE", rank: "MATRIXRANK", norm: "NORM" };
 
 export class MatDetNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -143,33 +142,9 @@ export class MatDetNode extends ClassicPreset.Node {
     out.label = spec.label;
   }
 
-  data(inputs: { matrix?: CellMat[] }): { result: number | Mat | SolError | null } {
-    const raw = inputs.matrix?.[0] ?? null;
-    this.cachedScalar = null;
-    this.cachedMatrix = null;
-    if (!raw) return { result: null };
-    const m = asNumericMatrix(raw);
-    const scalar = MAT_DET_SCALAR.has(this.op);
-    if (isSolError(m)) {
-      if (scalar) this.cachedScalar = m; else this.cachedMatrix = m;
-      return { result: m };
-    }
-    const sized = this.op !== "rank" && this.op !== "norm";
-    if (sized && matRows(m) !== matCols(m)) {
-      const err = solError("#SHAPE!", "Matrix must be square");
-      if (scalar) this.cachedScalar = err; else this.cachedMatrix = err;
-      return { result: err };
-    }
-    // The formula reads an empty table as one empty row (#SHAPE!), so a 0×0 matrix answers here.
-    const r = sized && m.length === 0 ? emptyMatDet(this.op) : callCore(MAT_DET_FN[this.op], [m]);
-    if (scalar) this.cachedScalar = r as number | SolError; else this.cachedMatrix = r as Mat | SolError;
-    return { result: r as number | Mat | SolError };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number | Mat | SolError | null };
   }
-}
-
-/** A 0×0 matrix's determinant, inverse and trace: the empty product, the empty matrix, the empty sum. */
-function emptyMatDet(op: MatDetOp): number | Mat {
-  return op === "mdeterm" ? 1 : op === "minverse" ? [] : 0;
 }
 
 // ─── MMULT ────────────────────────────────────────────────────────────────────
@@ -191,15 +166,8 @@ export class TableMultNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("A × B"));
   }
 
-  data(inputs: { a?: CellMat[]; b?: CellMat[] }): { result: Mat | SolError | null } {
-    const rawA = inputs.a?.[0] ?? null, rawB = inputs.b?.[0] ?? null;
-    if (!rawA || !rawB) { this.cachedResult = null; return { result: null }; }
-    const a = asNumericMatrix(rawA), b = asNumericMatrix(rawB);
-    if (isSolError(a)) { this.cachedResult = a; return { result: a }; }
-    if (isSolError(b)) { this.cachedResult = b; return { result: b }; }
-    const product = callCore("MMULT", [a, b]) as Mat | SolError;
-    this.cachedResult = product;
-    return { result: product };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
@@ -222,11 +190,8 @@ export class TableUnitNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("n×n identity"));
   }
 
-  data(inputs: { n?: number[] }) {
-    const n = readRole<number | SolError>(this, "n", inputs.n);
-    if (isSolError(n)) { this.cachedResult = n; return { result: n }; }
-    this.cachedResult = this.offDiag === "zero" && typeof n === "number" ? callCore("MUNIT", [n]) as Mat | SolError : matUnit(n, this.offDiag === "blank" ? null : 0);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
@@ -245,14 +210,8 @@ export class TableDiagNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("Diagonal matrix"));
   }
 
-  data(inputs: { diag?: (number | null)[][] }) {
-    const values = inputs.diag?.[0] ?? null;
-    if (!values || values.length === 0) { this.cachedResult = null; return { result: null }; }
-    // The formula reads text as a number, so a list with text keeps the TS reading.
-    this.cachedResult = this.offDiag === "zero" && values.every(numOrNull)
-      ? callCore("DIAGONAL", [values]) as Mat | SolError
-      : matDiag(values, this.offDiag === "blank" ? null : 0);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
@@ -270,12 +229,8 @@ export class TableOuterNode extends ClassicPreset.Node {
     this.addOutput("result", tableOut("Outer product"));
   }
 
-  data(inputs: { a?: (number | null)[][]; b?: (number | null)[][] }) {
-    const a = inputs.a?.[0] ?? null;
-    const b = inputs.b?.[0] ?? null;
-    if (!a || !b || a.length === 0 || b.length === 0) { this.cachedResult = null; return { result: null }; }
-    this.cachedResult = a.every(numOrNull) && b.every(numOrNull) ? callCore("OUTER", [a, b]) as Mat | SolError : outerProduct(a, b);
-    return { result: this.cachedResult };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: Mat | SolError | null };
   }
 }
 
@@ -750,21 +705,8 @@ export class MatSolveNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("x"));
   }
 
-  data(inputs: { matrix?: CellMat[]; b?: (number | null)[][] }): { result: number[] | SolError | null } {
-    const raw = inputs.matrix?.[0] ?? null, b = inputs.b?.[0] ?? null;
-    if (!raw || !b) { this.cachedResult = null; return { result: null }; }
-    const m = asNumericMatrix(raw);
-    if (isSolError(m)) { this.cachedResult = m; return { result: m }; }
-    if (b.some((v) => typeof v !== "number")) { this.cachedResult = null; return { result: null }; }
-    if (matRows(m) !== matCols(m) || b.length !== matRows(m)) {
-      const err = solError("#SHAPE!", "A must be square with one b per row");
-      this.cachedResult = err; return { result: err };
-    }
-    const singular = () => solError("#DIV/0!", "A is singular, so the system has no unique solution");
-    // The formula reads an empty table as one empty row (#SHAPE!); the card calls a 0×0 system singular.
-    const result = m.length === 0 ? singular() : callCore("SOLVE", [m, b]) as number[] | SolError;
-    this.cachedResult = result;
-    return { result };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { result: number[] | SolError | null };
   }
 }
 
@@ -788,18 +730,7 @@ export class MatEigenNode extends ClassicPreset.Node {
     this.addOutput("vectors", tableOut("Eigenvectors"));
   }
 
-  data(inputs: { matrix?: CellMat[] }): { values: number[] | SolError | null; vectors: Mat | SolError | null } {
-    const raw = inputs.matrix?.[0] ?? null;
-    if (!raw) { this.cachedValues = null; this.cachedVectors = null; return { values: null, vectors: null }; }
-    const m = asNumericMatrix(raw);
-    if (isSolError(m)) { this.cachedValues = m; this.cachedVectors = m; return { values: m, vectors: m }; }
-    const values = callCore("EIGENVALUES", [m]) as number[] | SolError;
-    if (isSolError(values)) {
-      const err = values.code === "#SHAPE!" ? solError("#SHAPE!", "Eigen needs a square, symmetric matrix") : values;
-      this.cachedValues = err; this.cachedVectors = err; return { values: err, vectors: err };
-    }
-    const vectors = callCore("EIGENVECTORS", [m]) as Mat;
-    this.cachedValues = values; this.cachedVectors = vectors;
-    return { values, vectors };
+  data(inputs: Record<string, unknown[] | undefined>) {
+    return nodeOnCore(this, inputs) as { values: number[] | SolError | null; vectors: Mat | SolError | null };
   }
 }
