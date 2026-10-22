@@ -54,6 +54,13 @@ specific item.
   (`crates/solenoid-graph`, its own wasm module so a formula trap can't take the graph with it), mirroring the rete
   editor, which stays the model for now. The nodes stay JS objects the core calls back. About 2x rete-engine on a
   1,232-node pass. Ruggine's engines gained `with_configure` for any node type to make this possible.
+- **Develop mirrored to `3a6a667`** in the files the core ports: the finance functions carry their money's currency
+  ([[D101]] financeCarriesMoney, develop `b767a0fc` and the leaf rewrites of `3eaf4ea6`), in the TS and the core's
+  dimension pass (`finance_units.rs`). `unit-dims` had gone stale: the TS read `@col` and `[Name]` units since the
+  computed-column port and the core didn't; both now do, refrozen with finance calls in the generator. Develop's UI
+  work since the snapshot (charts, the Describe Dashboard, Pele, Pivot details) is not on this branch.
+- **The graph core recovers from a trap** ([[graph-core]] § Traps), and every app-importing script runs through
+  `scripts/vite-run.mjs` (they all failed under plain `tsx`).
 - **Open for the author:**
   - The TEXT date-code question (Formula.js answers an ISO date whatever the code).
   - Whether the regex port's remaining 70 KB or so (gzipped) is worth it.

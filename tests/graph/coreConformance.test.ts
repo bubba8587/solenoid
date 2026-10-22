@@ -1001,7 +1001,8 @@ const unitDims = frozen<DimCase>("unit-dims", () => {
     "CORREL", "ABS", "MIN", "MAX", "MEDIAN", "SUM", "AVERAGE", "ROUND", "MOD", "STDEV", "STDEV.P", "STDEVP", "VARP", "VAR", "VAR.S", "DEVSQ",
     "SUMSQ", "PRODUCT", "SUMPRODUCT", "SQRT", "POWER", "IF", "IFS", "SWITCH", "IFERROR", "IFNA", "CHOOSE", "LARGE", "SMALL",
     "PERCENTILE", "INDEX", "SORT", "TAKE", "FILTER", "AVERAGEIF", "SUMIFS", "MAXIFS", "XLOOKUP", "VLOOKUP", "LOOKUP", "SIGN", "FLOOR",
-    "LAMBDA", "NOSUCHFN", "TEXTFILTER", "UPPER", "CONVERT", "NPV", "RAND", "PI", "SEQUENCE", "MMULT", "AVERAGEA", "CEILINGMATH"];
+    "LAMBDA", "NOSUCHFN", "TEXTFILTER", "UPPER", "CONVERT", "NPV", "RAND", "PI", "SEQUENCE", "MMULT", "AVERAGEA", "CEILINGMATH",
+    "PMT", "PV", "FV", "IPMT", "CUMPRINC", "XNPV", "SLN", "NPER", "RATE", "IRR", "RRI"];
   const lambda = () => pick(["LAMBDA(v, v * 2)", "LAMBDA(v, v * v)", "LAMBDA(acc, v, acc + v)", "LAMBDA(acc, v, acc * v)",
     "LAMBDA(r, SUM(r))", "LAMBDA(i, j, i * j)", "LAMBDA(x, y, x / y)", "LAMBDA(v, IF(v > 0, v, 0))", "MAX", "SUM", "SQRT", "a", "LAMBDA(v)"]);
   const leaf = () => pick([...vars, ...vars, "1", "2", "0", "-3.5", "\"t\"", "TRUE", "{1,2,3}", "@a", "a%", "-a", "t", "q"]);

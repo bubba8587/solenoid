@@ -5,7 +5,7 @@ import { setting, argRole } from "../inputRoles";
 import type { FrameValue } from "../frame";
 import { frameFnOnCore } from "../frameBackend";
 import type { Shape } from "../frameShape";
-import type { SolError } from "../errorValue";
+import { isSolError, type SolError } from "../errorValue";
 import { guardFinite } from "../valueKinds";
 import { normalizeFxResult } from "../excelFunctions";
 import { callCore } from "../coreValues";
@@ -19,6 +19,18 @@ export type { ReturnsOp } from "./financeOps";
 import type {
   CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
+import { readMoneyInputs } from "../financeUnits";
+
+/** A card reads its money as its formula does, and a money answer carries that currency ([[D101]] financeCarriesMoney). */
+function moneyCard<I extends object>(
+  node: { cachedResult: unknown }, fn: string, inputs: I, money: readonly string[], moneyOut: boolean,
+  compute: (plain: I) => { result: unknown },
+): { result: unknown } {
+  const m = readMoneyInputs(fn, inputs, money);
+  if (isSolError(m)) { node.cachedResult = m; return { result: m }; }
+  const r = compute(m.inputs);
+  return moneyOut ? { result: m.tag(r.result) } : r;
+}
 export type {
   CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
@@ -107,6 +119,7 @@ const DEPRECIATION_INPUTS: Record<DepreciationOp, ReadonlyArray<{ key: string; l
 })();
 
 export class DepreciationNode extends ClassicPreset.Node {
+  unitAware = true;
   label: string;
   op: DepreciationOp;
   cachedResult: number | SolError | null = null;
@@ -154,7 +167,11 @@ export class DepreciationNode extends ClassicPreset.Node {
     this.height = this.heightFor();
   }
 
-  data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[]; month?: number[]; start?: number[]; end?: number[] }) {
+  data(inputs: { cost?: unknown[]; salvage?: unknown[]; life?: unknown[]; per?: unknown[]; factor?: unknown[]; month?: unknown[]; start?: unknown[]; end?: unknown[] }) {
+    return moneyCard(this, this.op.toUpperCase(), inputs, ["cost", "salvage"], true, (p) => this.compute(p as never));
+  }
+
+  private compute(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[]; month?: number[]; start?: number[]; end?: number[] }) {
     const cost    = readInput(inputs.cost, this.literals.cost ?? null);
     const salvage = readInput(inputs.salvage, this.literals.salvage ?? null);
     const life    = readInput(inputs.life, this.literals.life ?? null);
@@ -259,6 +276,7 @@ export const CASHFLOW_OP_OPTIONS: { value: CashflowOp; label: string }[] = [
 ];
 
 export class NPVNode extends ClassicPreset.Node {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
     dates: "Values discount back to the first date. A blank date makes the whole result blank.",
@@ -291,7 +309,11 @@ export class NPVNode extends ClassicPreset.Node {
     this.height = next === "dates" ? 231 : 203;
   }
 
-  data(inputs: { rate?: number[]; list?: (number | null | SolError)[][]; dates?: number[][] }) {
+  data(inputs: { rate?: unknown[]; list?: unknown[][]; dates?: number[][] }) {
+    return moneyCard(this, this.op === "dates" ? "XNPV" : "NPV", inputs, ["list"], true, (p) => this.compute(p as never));
+  }
+
+  private compute(inputs: { rate?: number[]; list?: (number | null | SolError)[][]; dates?: number[][] }) {
     const rate = readInput(inputs.rate, this.literals.rate ?? 0.1);
     if (this.op === "dates") {
       if (rate === null) { this.cachedResult = null; return { result: null }; }
@@ -318,6 +340,7 @@ export class NPVNode extends ClassicPreset.Node {
 // ─── IRR ──────────────────────────────────────────────────────────────────────
 
 export class IRRNode extends ClassicPreset.Node {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
   };
@@ -347,7 +370,11 @@ export class IRRNode extends ClassicPreset.Node {
     this.height = next === "dates" ? 191 : 163;
   }
 
-  data(inputs: { list?: (number | null | SolError)[][]; dates?: number[][] }): { result: number | SolError | null } {
+  data(inputs: { list?: unknown[][]; dates?: number[][] }) {
+    return moneyCard(this, this.op === "dates" ? "XIRR" : "IRR", inputs, ["list"], false, (p) => this.compute(p as never));
+  }
+
+  private compute(inputs: { list?: (number | null | SolError)[][]; dates?: number[][] }): { result: number | SolError | null } {
     if (this.op === "dates") return this.dataDated(inputs);
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
@@ -378,6 +405,7 @@ export const MIRR_META = {
 };
 
 export class MirrNode extends ClassicPreset.Node {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
   };
@@ -396,7 +424,11 @@ export class MirrNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { list?: (number | null | SolError)[][]; finrate?: number[]; reinrate?: number[] }): { result: number | SolError | null } {
+  data(inputs: { list?: unknown[][]; finrate?: unknown[]; reinrate?: unknown[] }) {
+    return moneyCard(this, "MIRR", inputs, ["list"], false, (p) => this.compute(p as never));
+  }
+
+  private compute(inputs: { list?: (number | null | SolError)[][]; finrate?: number[]; reinrate?: number[] }): { result: number | SolError | null } {
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
     const finrate    = readInput(inputs.finrate, this.literals.finrate ?? 0.1);
     const reinrate   = readInput(inputs.reinrate, this.literals.reinrate ?? 0.12);
@@ -419,6 +451,7 @@ export const FVSCHEDULE_META = {
 };
 
 export class FvScheduleNode extends ClassicPreset.Node {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     schedule: "Each rate compounds in order. A blank cell counts as zero interest for that period.",
   };
@@ -436,7 +469,11 @@ export class FvScheduleNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { pv?: number[]; schedule?: (number | null | SolError)[][] }) {
+  data(inputs: { pv?: unknown[]; schedule?: unknown[][] }) {
+    return moneyCard(this, "FVSCHEDULE", inputs, ["pv"], true, (p) => this.compute(p as never));
+  }
+
+  private compute(inputs: { pv?: number[]; schedule?: (number | null | SolError)[][] }) {
     const pv    = readInput(inputs.pv, this.literals.pv ?? 1000);
     const { error, nums: rates } = cashPrep(inputs.schedule?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
@@ -455,12 +492,13 @@ export const ISPMT_META = {
 };
 
 export class IspmtNode extends ClassicPreset.Node {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
   };
 
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { rate: 0.05, per: 1, nper: 12, pv: 10000 };
   width = 180; height = 270;
 
@@ -474,7 +512,11 @@ export class IspmtNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[] }) {
+  data(inputs: { rate?: unknown[]; per?: unknown[]; nper?: unknown[]; pv?: unknown[] }) {
+    return moneyCard(this, "ISPMT", inputs, ["pv"], true, (p) => this.compute(p as never));
+  }
+
+  private compute(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[] }) {
     const rate = readInput(inputs.rate, this.literals.rate ?? 0);
     const per  = readInput(inputs.per, this.literals.per ?? 1);
     const nper = readInput(inputs.nper, this.literals.nper ?? 0);
@@ -591,6 +633,7 @@ function discountSecurityKeys(op: DiscountSecurityOp): string[] {
 }
 
 export class DiscountSecurityNode extends ClassicPreset.Node {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     pr: "Per $100 of face value.",
     discount: "As a decimal, e.g. 0.05 for 5%.",
@@ -624,7 +667,12 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
     this.height = 149 + 27 * after.length;
   }
 
-  data(inputs: Record<string, number[] | undefined>): { result: number | SolError | null } {
+  data(inputs: Record<string, unknown[] | undefined>) {
+    const money = this.op === "intrate" ? ["investment", "redemption"] : this.op === "received" ? ["investment"] : [];
+    return moneyCard(this, this.op.toUpperCase(), inputs, money, this.op === "received", (p) => this.compute(p as never));
+  }
+
+  private compute(inputs: Record<string, number[] | undefined>): { result: number | SolError | null } {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
     const fail = () => { this.cachedResult = null; return { result: null }; };
@@ -740,6 +788,7 @@ function accruedInterestKeys(op: AccruedInterestOp): string[] {
 }
 
 export class AccruedInterestNode extends ClassicPreset.Node {
+  unitAware = true;
   static inputRoles = { basis: setting(0), frequency: setting(2) };
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
@@ -783,7 +832,11 @@ export class AccruedInterestNode extends ClassicPreset.Node {
     this.height = next === "periodic" ? 280 : 245;
   }
 
-  data(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; frequency?: number[]; basis?: number[] }): { result: number | SolError | null } {
+  data(inputs: { issue?: number[]; settle?: number[]; rate?: unknown[]; par?: unknown[]; frequency?: unknown[]; basis?: unknown[] }) {
+    return moneyCard(this, this.op === "periodic" ? "ACCRINT" : "ACCRINTM", inputs, ["par"], true, (p) => this.compute(p as never));
+  }
+
+  private compute(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; frequency?: number[]; basis?: number[] }): { result: number | SolError | null } {
     const is = inputs.issue?.[0], ss = inputs.settle?.[0];
     const fail = () => { this.cachedResult = null; return { result: null }; };
     if (is == null || ss == null) return fail();
@@ -830,6 +883,7 @@ const PAYMENT_BREAKDOWN_INPUTS: Record<string, () => ClassicPreset.Input<Classic
 };
 
 export class PaymentBreakdownNode extends ClassicPreset.Node {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
     per: "The single period to report, counted from 1.",
@@ -862,7 +916,11 @@ export class PaymentBreakdownNode extends ClassicPreset.Node {
     this.op = next;
   }
 
-  data(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[]; fv?: number[]; start?: number[]; end?: number[] }) {
+  data(inputs: { rate?: unknown[]; per?: unknown[]; nper?: unknown[]; pv?: unknown[]; fv?: unknown[]; start?: unknown[]; end?: unknown[] }) {
+    return moneyCard(this, this.op.toUpperCase(), inputs, ["pv", "fv"], true, (p) => this.compute(p as never));
+  }
+
+  private compute(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[]; fv?: number[]; start?: number[]; end?: number[] }) {
     if (this.op === "ipmt" || this.op === "ppmt") {
       const rate = readInput(inputs.rate, this.literals.rate ?? 0);
       const per  = readInput(inputs.per, this.literals.per ?? 1);
@@ -1059,6 +1117,7 @@ export class BondPricingNode extends ClassicPreset.Node {
 
 // ─── AMORTIZATION SCHEDULE ───────────────────────────────────────────────────
 export class AmortizationNode extends ClassicPreset.Node {
+  unitAware = true;
   static socketDocs: Record<string, string> = {
     rate: "The rate PER PERIOD: a 6% annual loan paid monthly is 0.005 here, with nper in months.",
     frame: "Period · Payment · Interest · Principal · Balance. Payment, interest and principal carry Excel's sign, negative for a loan received.",
@@ -1087,7 +1146,16 @@ export class AmortizationNode extends ClassicPreset.Node {
     ] };
   }
 
-  data(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | null } {
+  data(inputs: { rate?: unknown[]; nper?: unknown[]; pv?: unknown[]; fv?: unknown[] }): { frame: FrameValue | SolError | null } {
+    const m = readMoneyInputs("Amortization", inputs, ["pv", "fv"]);
+    if (isSolError(m)) { this.cachedResult = null; return { frame: m }; }
+    const { frame } = this.compute(m.inputs as never);
+    if (!frame || !m.unit) return { frame };
+    const unit = m.unit;
+    return { frame: { ...frame, columns: frame.columns.map((c) => (c.name === "Period" ? c : { ...c, unit })) } };
+  }
+
+  private compute(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | null } {
     const rate = readInput(inputs.rate, this.literals.rate ?? 0);
     const nper = readInput(inputs.nper, this.literals.nper ?? 0);
     const pv   = readInput(inputs.pv, this.literals.pv ?? 0);

@@ -240,7 +240,7 @@ describe("Amortization schedule", () => {
     expect(rows[0].interest).toBe(0);
     expect(rows[11].balance).toBeCloseTo(0, 6);
     const node = new AmortizationNode(); node.literals = { rate: 0.005, nper: 12, pv: 10000, fv: 0 };
-    const f = node.data({}).frame!;
+    const f = node.data({}).frame as FrameValue;
     expect(f.columns.map((c) => c.name)).toEqual(["Period", "Payment", "Interest", "Principal", "Balance"]);
     expect(f.columns[4].values[11] as number).toBeCloseTo(0, 6);
   });

@@ -5,7 +5,7 @@ import { numListIn, numListOut, logicalComboOut } from "./shared";
 import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
 import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, solveLinear, rootHolds, equalsWithin, isolate, countOccurrences, type ParsedEquation } from "../equationSolve";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { dimEval, dimEvalWithCode, type DimEnv, type CodeEnv } from "../unitDimExpr";
+import { dimEvalWithCode, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { isUnitCell, tagDim, unitError, type UnitCell } from "../unitValue";
 import { readInDeclaredUnit } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimEqual, isDimensionless } from "../dimension";
@@ -243,10 +243,10 @@ export class EquationNode extends ClassicPreset.Node {
           ? isolate(eq.rhs, eq.lhs, unknown)
           : null;
       if (!iso) return;
-      const dr = dimEval(iso, dims, codes);
+      const dr = dimEvalWithCode(iso, dims, codes);
       if (isSolError(dr)) { values[unknown] = dr; return; }
-      if (dr === null || isDimensionless(dr)) return;
-      const tag = (n: number | UnitCell | SolError | null) => (typeof n === "number" ? tagDim(n, dr) : n);
+      if (dr === null || isDimensionless(dr.dim)) return;
+      const tag = (n: number | UnitCell | SolError | null) => (typeof n === "number" ? tagDim(n, dr.dim, dr.code) : n);
       values[unknown] = Array.isArray(raw) ? (raw.map(tag) as Val) : (tag(raw) as Val);
     };
     const knownVals = Object.values(env);

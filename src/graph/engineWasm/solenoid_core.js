@@ -1,4 +1,5 @@
 let wasm;
+let __wbg_epoch = 0;
 
 const heap = new Array(128).fill(undefined);
 
@@ -542,5 +543,10 @@ export default __wbg_init;
 export function __wbg_reset() {
     const module = __wbg_init.__wbindgen_wasm_module;
     wasm = undefined;
+    __wbg_epoch++;
+    heap.length = 128;
+    heap.fill(undefined);
+    heap.push(undefined, null, true, false);
+    heap_next = heap.length;
     return module;
 }

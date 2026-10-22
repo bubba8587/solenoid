@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 
 use crate::error_value::SolError;
 use crate::excel_formula::Ast;
+use crate::finance_units::{finance_dim, finance_money};
 use crate::unit_value::{unit_error, READINGS_ADD, READINGS_FOLD, READINGS_SCALE};
 
 /// Exponents over the axes; an absent axis is 0 and a zero is never stored.
@@ -324,8 +325,10 @@ fn plain(dim: Dim) -> OpResult {
 
 fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
     match node {
-        Ast::Num(..) | Ast::Bool(_) | Ast::Str(_) | Ast::Blank | Ast::AtCol(_) | Ast::WholeCol(_) => plain(dimless()),
-        Ast::Name(n) => Ok(Some(Op { dim: env.get(n).cloned().unwrap_or_default(), code: codes.get(n).cloned() })),
+        Ast::Num(..) | Ast::Bool(_) | Ast::Str(_) | Ast::Blank => plain(dimless()),
+        Ast::Name(n) | Ast::AtCol(n) | Ast::WholeCol(n) => {
+            Ok(Some(Op { dim: env.get(n).cloned().unwrap_or_default(), code: codes.get(n).cloned() }))
+        }
         Ast::Unary { arg, .. } | Ast::Percent(arg) => op_eval(arg, env, codes),
         Ast::Apply { func, args } => match lambda_of(Some(func), args.len(), &|n| env.contains_key(n)) {
             Some(lam) => {
@@ -340,6 +343,10 @@ fn op_eval(node: &Ast, env: &Dim2, codes: &Codes) -> OpResult {
                 if let Some(lam) = lambda_of(args.get(host.lam_arg), host.params.len(), &|n| env.contains_key(n)) {
                     return host_dim(args, &host, &lam, env, codes);
                 }
+            }
+            if let Some(sig) = finance_money(&up) {
+                let vals: Vec<OpResult> = args.iter().map(|a| op_eval(a, env, codes)).collect();
+                return finance_dim(&up, &sig, &vals);
             }
             let dims: Vec<DimResult> = args
                 .iter()

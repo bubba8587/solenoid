@@ -18,6 +18,7 @@ pub mod fdlibm;
 pub mod fns_complex;
 pub mod fns_stats;
 pub mod finance_ops;
+pub mod finance_units;
 pub mod fns_lists;
 pub mod fns_matrix;
 pub mod formulajs;
