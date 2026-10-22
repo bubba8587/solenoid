@@ -9,8 +9,18 @@ use crate::excel_functions::V;
 use serde_json::{Map, Value as Json};
 use std::rc::Rc;
 
+mod complex;
+mod control;
+mod date;
+mod finance;
 mod kit;
+mod list;
+mod logic;
+mod matrix;
+mod packs;
 mod scalar;
+mod stats;
+mod text;
 mod units;
 
 /// A field the body leaves on the card for its component: a value, plain JSON (a chart's payload), or `undefined`.
@@ -131,6 +141,16 @@ impl Call {
 /// The class's body, or `None` where the class has none on the core yet.
 pub fn run(kind: &str, c: &mut Call) -> Option<Answer> {
     scalar::run(kind, c)
+        .or_else(|| logic::run(kind, c))
+        .or_else(|| complex::run(kind, c))
+        .or_else(|| control::run(kind, c))
+        .or_else(|| text::run(kind, c))
+        .or_else(|| date::run(kind, c))
+        .or_else(|| stats::run(kind, c))
+        .or_else(|| finance::run(kind, c))
+        .or_else(|| list::run(kind, c))
+        .or_else(|| matrix::run(kind, c))
+        .or_else(|| packs::run(kind, c))
 }
 
 /// `engine_node`'s reply: `{"out": {key: value}, "display": {...}}`, `{"thrown": value, "display": ...}`, or
