@@ -359,17 +359,6 @@ export function expFit(
   return { m: Math.exp(fit.slope), b: Math.exp(fit.intercept) };
 }
 
-export function expFitR2(
-  xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
-): { m: number; b: number; r2: number } | null {
-  const n = Math.min(xs.length, ys.length);
-  const ySlice = ys.slice(0, n);
-  if (!ySlice.every((y) => y > 0)) return null;
-  const fit = linearFitR2(xs.slice(0, n), ySlice.map(Math.log));
-  if (!fit) return null;
-  return { m: Math.exp(fit.slope), b: Math.exp(fit.intercept), r2: fit.r2 };
-}
-
 // ─── Piecewise-linear interpolation ───────────────────────────────────────────
 
 function bracket(axis: number[], x: number): [number, number, number] {
