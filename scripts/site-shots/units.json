@@ -81,7 +81,7 @@
       "type": "ConvertNode",
       "init": {
         "label": "In mph",
-        "fromUnit": "m_s",
+        "fromUnit": "ms1",
         "toUnit": "mph"
       },
       "x": 1040,

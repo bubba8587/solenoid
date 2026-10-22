@@ -5,7 +5,7 @@ import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSer
 import { convertZone } from "./timeZone";
 import { criteriaAggregate, wildcardSource } from "./excelCriteria";
 import { roundDigits, lnGamma, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm, combinatoric, binomDistRange } from "./nodes/mathUtils";
-import { convertValue } from "./nodes/convertUnits";
+import { convertValue, convertUnitKey } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantiles, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
@@ -1184,7 +1184,8 @@ registerInternal("NEGBINOM.DIST",(f, r, p, cum) => dist("negbinom", cdfOrPdf(cum
 registerInternal("CONVERT", (x, from, to) => {
   const n = toNum(x);
   if (Number.isNaN(n)) return VALUE("CONVERT");
-  const r = convertValue(n, toStr(from), toStr(to));
+  const f = convertUnitKey(toStr(from)), t = convertUnitKey(toStr(to));
+  const r = f && t ? convertValue(n, f, t) : null;
   return r == null ? solError("#N/A", "CONVERT: unknown or incompatible units") : r;
 });
 

@@ -7,7 +7,7 @@ import { solError, type SolError } from "../errorValue";
 import { commensurable, dimEqual, formatDim, type Unit } from "../dimension";
 import { CONVERT_UNIT_DEFS } from "./convertUnits";
 import { callCore } from "../coreValues";
-export { CONVERT_UNIT_DEFS, convertValue, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
+export { CONVERT_UNIT_DEFS, convertValue, convertUnitKey, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
 import { isUnitCell, fromUnit, withDisplay, unitError, type UnitCell } from "../unitValue";
 
 
