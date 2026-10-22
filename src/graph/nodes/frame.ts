@@ -2821,21 +2821,26 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     if (!this._evaluator) return asValue();
     const schema = await collectPreview(ref, 0);
     if (!isFrameValue(schema)) return asValue();
-    const sideValue = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
+    const name = nameRaw.trim() || "computed";
+    const after = (afterRaw ?? "").trim();
+    // The unit pass needs only the schema; a plan that rescales its inputs runs as a value ([[D100]] computedColumnInfersUnit).
+    const sideRaw = (p: string) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0);
+    const plan = planColumnUnits<FrameCell>(exprDefinition(this.expr), schema, { sideValue: sideRaw, authored: parseColumnUnitFromHeader(name).unit });
+    if (isSolError(plan) || plan.table.columns !== schema.columns) return asValue();
+    const sideValue = (p: string) => plan.side(sideRaw(p));
     const r = await computeColumnOnRef(ref, this.expr, schema.columns.map((c) => c.name), { sideValue, reserved: ["frame", "name", "fn", "after"] });
     if (!r || isSolError(r)) return asValue();
     try {
-      if (readingsRefusal(this.expr, schema, this.bindings)) return asValue();
+      const done = plan.finish(r.cells);
+      if (done.cells !== r.cells) return asValue();
       if (gen !== this._gen) return { frame: null };
-      const name = nameRaw.trim() || "computed";
-      const after = (afterRaw ?? "").trim();
       this.sourceColumns = schema.columns.map((c) => c.name);
       this.defVars = this._vars;
       this._reconcileSideSockets(r.sideVars);
       const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs) : computedColumnType(name, r.cells, schema, this.expr, this.bindings);
       // The schema's columns without their cells, units and formats kept, for addColumn's placement and naming.
       const shape: FrameValue = { __frame: true, columns: schema.columns.map((c) => ({ ...c, values: [] })) };
-      const added = addColumn(shape, name, [], colType);
+      const added = addColumn(shape, name, [], colType, done.unit ?? null);
       const replaced = added.columns.length === shape.columns.length;
       const fresh = replaced ? added.columns.find((c, i) => c !== shape.columns[i])! : added.columns[added.columns.length - 1];
       let cols = added.columns;
