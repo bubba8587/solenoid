@@ -18,11 +18,6 @@ Vitest 5 transforms with Oxc, so the `esbuild: { keepNames: true }` in `vite.con
 the production minify, and its "esbuild options ignored" warning is expected.
 - [ ] **Mermaid bundles KaTeX 0.16** (two low advisories, `npm audit`): clears when mermaid moves
   to KaTeX 0.18+; an override would hand mermaid a KaTeX major it wasn't built against.
-- [ ] **Filter parity over an empty frame** (found by `fuzz-frame-verbs.ts` seeds 1 and 4242, on
-  Polars 0.46 and 0.55 alike): a filter on a logical column against a text value, e.g.
-  `{ column: "city", op: "gte", value: "a" }` over no rows, is the empty frame on the oracle and
-  `#TYPE!` ("isn't a logical") natively, since the engine checks the value before it sees rows.
-  Pick one answer and pin it as a named corpus case.
 
 ## Expect
 - [ ] **Range can't check dates**: Min and Max are number sockets, so a date value is range-checked only against typed serials. Adoptive bounds (a date range for a date value) would fix it.

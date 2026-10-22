@@ -265,13 +265,12 @@ export function compileFilter(op: FilterOp, value: FrameCell, type: FrameColType
     if (op === "neq") return (cell) => !absent(cell) && fold(String(cell)) !== folded;
     return (cell) => !absent(cell) && compareOp(op, compareStrings(String(cell), target), 0);
   }
-  let y: number | null | undefined;
+  // Read before any row: a value the column can't compare with is the filter's error, rows or none.
+  const y = filterValueToNumber(value, type);
   return (cell) => {
-    if (absent(cell)) return false;
+    if (absent(cell) || y === null) return false;
     if (type === "logical" && typeof cell !== "boolean") return false;
     const x = type === "logical" ? (cell ? 1 : 0) : Number(cell);
-    if (y === undefined) y = filterValueToNumber(value, type);
-    if (y === null) return false;
     return compareOp(op, x, y);
   };
 }

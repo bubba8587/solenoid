@@ -419,24 +419,28 @@ fn ordering_num(o: Ordering) -> f64 {
 type Pred<'a> = Box<dyn FnMut(&FrameCell) -> Res<bool> + 'a>;
 
 /// Hoists the per-condition work (case folding, parsing the value) out of the row loop.
-pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, match_case: bool) -> Pred<'a> {
+pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, match_case: bool) -> Res<Pred<'a>> {
     match op {
-        "listContains" | "listContainsAny" | "listContainsAll" | "listEmpty" => return Box::new(|_| Ok(false)),
-        "iserror" => return Box::new(|c| Ok(c.is_err())),
-        "noterror" => return Box::new(|c| Ok(!c.is_err())),
-        "isblank" => return Box::new(|c| Ok(c.is_null())),
-        "notblank" => return Box::new(|c| Ok(!c.is_null())),
+        "listContains" | "listContainsAny" | "listContainsAll" | "listEmpty" => return Ok(Box::new(|_| Ok(false))),
+        "iserror" => return Ok(Box::new(|c| Ok(c.is_err()))),
+        "noterror" => return Ok(Box::new(|c| Ok(!c.is_err()))),
+        "isblank" => return Ok(Box::new(|c| Ok(c.is_null()))),
+        "notblank" => return Ok(Box::new(|c| Ok(!c.is_null()))),
         _ => {}
     }
     if value.is_null() {
-        return Box::new(|_| Ok(false));
+        return Ok(Box::new(|_| Ok(false)));
+    }
+    // A wired error is the filter's answer, as an error argument is a formula's ([[C24]] arraySemantics).
+    if let FrameCell::Err(e) = value {
+        return Err(e.as_ref().clone());
     }
     let fold = move |s: &'_ str| -> String { if match_case { s.to_string() } else { js_lower(s).into_owned() } };
     let absent = |c: &FrameCell| c.is_null() || c.is_err();
     if TEXT_FILTER_OPS.contains(&op) {
         let needle = fold(&js_string(value));
         let ascii_fold = !match_case && needle.is_ascii();
-        return Box::new(move |c| {
+        return Ok(Box::new(move |c| {
             if absent(c) {
                 return Ok(false);
             }
@@ -455,7 +459,7 @@ pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, m
                 "startsWith" => hay.starts_with(needle.as_str()),
                 _ => hay.ends_with(needle.as_str()),
             })
-        });
+        }));
     }
     if ty == FrameColType::String {
         let target = js_string(value).into_owned();
@@ -470,35 +474,27 @@ pub fn compile_filter<'a>(op: &'a str, value: &'a FrameCell, ty: FrameColType, m
                 js_lower(&raw) == folded.as_str()
             }
         };
-        return match op {
+        return Ok(match op {
             "eq" => Box::new(move |c| Ok(!absent(c) && same(c))),
             "neq" => Box::new(move |c| Ok(!absent(c) && !same(c))),
             _ => Box::new(move |c| Ok(!absent(c) && compare_op(op, ordering_num(compare_strings(&js_string(c), &target)), 0.0))),
-        };
+        });
     }
-    let mut y: Option<Option<f64>> = None;
-    Box::new(move |c| {
-        if absent(c) {
-            return Ok(false);
-        }
-        if ty == FrameColType::Logical && !matches!(c, FrameCell::Bool(_)) {
+    // Read before any row: a value the column can't compare with is the filter's error, rows or none.
+    let Some(y) = filter_value_to_number(value, ty)? else { return Ok(Box::new(|_| Ok(false))) };
+    Ok(Box::new(move |c| {
+        if absent(c) || (ty == FrameColType::Logical && !matches!(c, FrameCell::Bool(_))) {
             return Ok(false);
         }
         let x = if ty == FrameColType::Logical { if truthy(c) { 1.0 } else { 0.0 } } else { to_number(c) };
-        if y.is_none() {
-            y = Some(filter_value_to_number(value, ty)?);
-        }
-        match y.unwrap() {
-            None => Ok(false),
-            Some(y) => Ok(compare_op(op, x, y)),
-        }
-    })
+        Ok(compare_op(op, x, y))
+    }))
 }
 
 pub fn filter_rows(f: &FrameValue, column: &str, op: &str, value: &FrameCell, match_case: bool) -> Res<FrameValue> {
     let col = require_column(f, column)?;
     require_text_column(op, col.ty, column)?;
-    let mut pass = compile_filter(op, value, col.ty, match_case);
+    let mut pass = compile_filter(op, value, col.ty, match_case)?;
     let mut keep = Vec::new();
     for i in 0..frame_row_count(f) {
         if pass(col.cell_at(i))? {
@@ -520,7 +516,7 @@ pub fn filter_rows_multi(f: &FrameValue, combine: &str, conditions: &[FilterCond
         .iter()
         .enumerate()
         .map(|(j, c)| compile_filter(&c.op, &c.value, cols[j].ty, c.match_case.unwrap_or(false)))
-        .collect();
+        .collect::<Res<_>>()?;
     let mut keep = Vec::new();
     for i in 0..frame_row_count(f) {
         let mut kept = combine == "and";
