@@ -311,7 +311,7 @@ pub fn invoke(command: &str, args: &Json) -> Result<Json, SolError> {
             }
             Ok(json!(register(FrameValue { columns })))
         }
-        "engine_call" | "engine_eval" | "engine_expression_units" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
+        "engine_call" | "engine_eval" | "engine_expression_units" | "engine_fold_units" => Ok(serde_json::to_value(call_reply(command, args)?).expect("a call's reply serializes")),
         "engine_ported" => Ok(json!(crate::excel_functions::ported_names())),
         "engine_count" => Ok(json!(STORE.with(|s| s.borrow().frames.len()))),
         other => Err(sol_error("#ERROR!", format!("unknown engine command \"{other}\""))),
@@ -354,6 +354,17 @@ pub fn call_reply(command: &str, args: &Json) -> Result<CallReply, SolError> {
         let env: crate::eval::Env = parse::<serde_json::Map<String, Json>>(args, "env")?.iter().map(|(k, v)| (k.clone(), arg_of(v))).collect();
         let order = parse::<Option<Vec<String>>>(args, "order")?.unwrap_or_default();
         crate::unit_expression::expression_units(&src, &env, &order).unwrap_or_else(crate::excel_functions::bail)
+    } else if command == "engine_fold_units" {
+        // [[C25]] firstClassUnits: REDUCE, BYROW and BYCOL's unit wrapper over a table.
+        use crate::unit_fold::FoldKind;
+        let kind = match parse::<String>(args, "kind")?.as_str() {
+            "reduce" => FoldKind::Reduce,
+            "row" => FoldKind::ByRow,
+            _ => FoldKind::ByCol,
+        };
+        let src = parse::<String>(args, "src")?;
+        let (m, initial) = (arg_of(&parse::<Json>(args, "m")?), arg_of(&parse::<Option<Json>>(args, "initial")?.unwrap_or(Json::Null)));
+        crate::unit_fold::fold_units(kind, &src, &m, &initial).unwrap_or_else(crate::excel_functions::bail)
     } else {
         // A formula over named values ([[D99]] rustIsSpec): `compileEvaluator(src)(env)`.
         let src = parse::<String>(args, "src")?;

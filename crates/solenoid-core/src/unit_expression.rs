@@ -13,13 +13,13 @@ use crate::unit_lists::tag_dim;
 use crate::unit_value::round_at_larger_term;
 
 /// `fcUnitToUnit(display)` as the TS resolved it for the wire: its dimension, scale and offset.
-struct DisplayUnit {
-    dim: Dim,
-    scale: f64,
-    offset: f64,
+pub(crate) struct DisplayUnit {
+    pub(crate) dim: Dim,
+    pub(crate) scale: f64,
+    pub(crate) offset: f64,
 }
 
-fn display_unit(c: &UnitCell) -> Option<DisplayUnit> {
+pub(crate) fn display_unit(c: &UnitCell) -> Option<DisplayUnit> {
     match (&c.unit_dim, c.scale) {
         (Some(dim), Some(scale)) if c.display.as_deref().is_some_and(|d| !d.is_empty()) => {
             Some(DisplayUnit { dim: dim.clone(), scale, offset: c.offset.unwrap_or(0.0) })
@@ -120,7 +120,7 @@ fn all_readings(values: &[&V]) -> bool {
 }
 
 /// `dimPowerOf`: the k with dim = base^k, or None.
-fn dim_power_of(dim: &Dim, base: &Dim) -> Option<f64> {
+pub(crate) fn dim_power_of(dim: &Dim, base: &Dim) -> Option<f64> {
     let mut k: Option<f64> = None;
     for key in dim.keys().chain(base.keys().filter(|b| !dim.contains_key(*b))) {
         let d = dim.get(key).copied().unwrap_or(0.0);

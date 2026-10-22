@@ -11,6 +11,8 @@ import { isUnitCell, tagDim, magnitudeOf, unitError, fromUnit, READINGS_FOLD, ty
 import { formulaDim, formulaAffineWeight, type DimEnv } from "../unitDimExpr";
 import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
 import { fcUnitToUnit } from "../unitBridge";
+import { coreValue, readReply, wasmEngineOn, engineClock, wellFormed } from "../coreValues";
+import { wasmEngineLoaded, wasmInvokeSync } from "../engineWasm";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE / SCAN ─────────
 
@@ -146,6 +148,17 @@ function retagFold(
   return tagDim(u ? out * u.scale ** k! : out, dr, display);
 }
 
+/** The fold's unit wrapper on the core ([[D99]] rustIsSpec, `unit_fold.rs`) for an inline formula over a table
+ *  holding a unit cell; null leaves it to the TS (the core off, a wired LAMBDA, a value that can't cross). */
+function foldOnCore(kind: "reduce" | ByAxis, lam: unknown, src: string, m: Mat, initial?: unknown): { value: unknown } | null {
+  if (isLambdaValue(lam) || !m.some((row) => Array.isArray(row) && row.some(isUnitCell))) return null;
+  if (!wasmEngineLoaded() || !wasmEngineOn() || !wellFormed(src)) return null;
+  const wm = coreValue(m, true);
+  const wi = coreValue(initial ?? null, true);
+  if (wm === undefined || wi === undefined) return null;
+  return readReply(wasmInvokeSync<unknown>("engine_fold_units", { kind, src, m: wm, initial: wi, clock: engineClock() }));
+}
+
 // ─── MAP ────────────────────────────────────────────────────────────────────────
 
 export class MapTableNode extends ClassicPreset.Node {
@@ -257,6 +270,11 @@ export class ByAxisNode extends ClassicPreset.Node {
       "SUM(values)", ["values"], 1, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m || m.length === 0) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
+    const core = foldOnCore(this.op, inputs.lambda?.[0], foldExpr(undefined, this.stringLiterals.formula, "SUM(values)"), m);
+    if (core) {
+      const result = core.value as (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError;
+      this.cachedResult = result; this.cachedError = null; return { result };
+    }
     const elem = elemUnitOf(m);
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
     const fu = foldUnit(elem);
@@ -323,6 +341,11 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
       "acc + value", ["acc", "value", "step"], 3, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
+    const core = foldOnCore("reduce", inputs.lambda?.[0], foldExpr(undefined, this.stringLiterals.formula, "acc + value"), m, initialRaw);
+    if (core) {
+      const result = core.value as Cell | UnitCell | SolError;
+      this.cachedResult = result; this.cachedError = null; return { result };
+    }
     const elem = elemUnitOf(m);
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
     const fu = foldUnit(elem);
