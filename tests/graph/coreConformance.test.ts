@@ -24,7 +24,6 @@ import { tagFrameCellUnit } from "../../src/graph/unitColumn";
 import { isUnitCell, type ColumnUnit, type UnitCell } from "../../src/graph/unitValue";
 import { coreValue, readReply, syncExternalNames } from "../../src/graph/coreValues";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
-import { settingsStore } from "../../src/graph/settingsStore";
 import type { AllocateMode } from "../../src/graph/nodes/allocateOps";
 import type { PayoffOrder } from "../../src/graph/nodes/payoffOps";
 import { payoffFrame, settleFrame, settleLedgerCube, numericRows, kmeansOutputs, pcaOutputs, logisticOutputs, type PayoffView, type SettleSplit } from "../../src/graph/nodes/frame";
@@ -1183,12 +1182,7 @@ type ExprUnitCase = { src: string; env: Record<string, unknown>; want: unknown }
 /** Expression's unit wrapper ([[C25]] firstClassUnits, unit-flow § Expression): the dimension check, the one shared
  *  display unit the formula reads its numbers in, the point weight over readings and the result's unit, frozen from
  *  `ExpressionNode.data()` over generated inputs with a unit. */
-const expressionUnits = frozen<ExprUnitCase>("expression-units", () => {
-  // `data()` asks the core first; the frozen answers are the TS's.
-  const engine = settingsStore.get("wasmEngine");
-  settingsStore.set("wasmEngine", false);
-  try { return expressionUnitCases(); } finally { settingsStore.set("wasmEngine", engine); }
-});
+const expressionUnits = frozen<ExprUnitCase>("expression-units", expressionUnitCases);
 
 function expressionUnitCases(): ExprUnitCase[] {
   const cases: ExprUnitCase[] = [];

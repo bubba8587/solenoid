@@ -5,6 +5,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 import { solError, isSolError, type SolErrorCode } from "../../src/graph/errorValue";
+import { settingsStore } from "../../src/graph/settingsStore";
 
 /** FREEZE_CORE=1 freezes every suite; FREEZE_CORE=frame-fns,columns only those, so the rest keep their bytes. */
 const FREEZE = process.env.FREEZE_CORE ?? "";
@@ -42,7 +43,11 @@ export function dec(v: unknown): unknown {
 export function frozen<C>(suite: string, make: () => C[]): C[] {
   const file = path.join(DIR, `${suite}.json.gz`);
   if (freezes(suite)) {
-    const cases = make();
+    // A node or body that asks the core first would freeze the core's own answers: the TS runs with it off.
+    const engine = settingsStore.get("wasmEngine");
+    settingsStore.set("wasmEngine", false);
+    let cases: C[];
+    try { cases = make(); } finally { settingsStore.set("wasmEngine", engine); }
     fs.mkdirSync(DIR, { recursive: true });
     fs.writeFileSync(file, zlib.gzipSync(JSON.stringify(cases.map(enc)), { level: 9 }));
     return cases;
